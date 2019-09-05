@@ -1,0 +1,42 @@
+{
+  "name": "@repeaterjs/repeat",
+  "version": "0.1.0",
+  "private": true,
+  "description": "I can’t believe I’m thinking about building my own web framework",
+  "files": [
+    "/lib"
+  ],
+  "main": "lib/repeat.cjs.js",
+  "module": "lib/repeat.esm.js",
+  "types": "lib/repeat.d.ts",
+  "scripts": {
+    "prebuild": "yarn run clean",
+    "build": "rollup -c rollup.config.js",
+    "clean": "shx rm -rf ./lib",
+    "lint": "eslint --ignore-path .gitignore --ext .js,.ts,.tsx .",
+    "prepublishOnly": "yarn run test && yarn run build",
+    "test": "jest --config jest.config.js --color"
+  },
+  "dependencies": {
+    "@repeaterjs/repeater": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^24.0.18",
+    "@typescript-eslint/eslint-plugin": "^2.0.0",
+    "@typescript-eslint/parser": "^2.0.0",
+    "eslint": "^6.2.1",
+    "eslint-config-prettier": "^6.1.0",
+    "eslint-plugin-jest": "^22.15.2",
+    "eslint-plugin-prettier": "^3.1.0",
+    "jest": "^24.9.0",
+    "prettier": "^1.18.2",
+    "rollup": "^1.20.0",
+    "rollup-plugin-typescript2": "^0.22.1",
+    "shx": "^0.3.2",
+    "ts-jest": "^24.0.0",
+    "typescript": "^3.5.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
