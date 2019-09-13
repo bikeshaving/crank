@@ -2,33 +2,35 @@ import {createElement, Element, render} from "../repeat";
 const React = {createElement};
 
 describe("repeat", () => {
-	test("basic", () => {
-		type AProps = {href: string};
-		function A({href}: AProps, children: Iterable<Node>): Element<"a"> {
-			return <a href={href}>{children}</a>;
-		}
-
+	test("does this actually work", () => {
 		console.log(
-			require("util").inspect(
+			(render(
 				<div>
 					<h1>Hi</h1>
 					<h2>Hello</h2>
-					<A href="http://www.example.com">Example</A>
+					<a href="http://www.example.com">Example</a>
 				</div>,
-				{depth: 1000},
-			),
+				document.body,
+			).node as any).outerHTML,
+		);
+		console.log(
+			(render(
+				<div>
+					<h2>Hi</h2>
+					<a href="http://www.example.com">Example</a>
+				</div>,
+				document.body,
+			).node as any).outerHTML,
+		);
+		console.log(
+			(render(
+				<div>
+					<h1>Hi</h1>
+					<h2>Hello</h2>
+					<a href="http://www.example.com">Example</a>
+				</div>,
+				document.body,
+			).node as any).outerHTML,
 		);
 	});
-
-	test("does this actually work", () => {
-    const elem = (
-      <div>
-        <h1>Hi</h1>
-        <h2>Hello</h2>
-        <a href="http://www.example.com">Example</a>
-      </div>
-    );
-    const container = document.createElement("div");
-    render(elem, container);
-  });
 });

@@ -1,15 +1,11 @@
-import {Push, Repeater, Stop} from "@repeaterjs/repeater";
-
+export type Props = Record<string, any>;
+export type Tag = Component | string;
 export type Component = (
 	this: ComponentController,
+  // TODO: how do we parameterize this type
 	props: Props,
 	...children: Child[]
 ) => Element;
-
-// TODO: how do we parameterize this type
-export type Props = Record<string, any>;
-
-export type Tag = Component | string;
 
 function isPromiseLike(value: any): value is PromiseLike<unknown> {
 	return value != null && typeof value.then === "function";
@@ -43,7 +39,7 @@ export type ViewChild = ComponentView | IntrinsicView | string | undefined;
 
 // Components are called with a controller as the value of this.
 class ComponentController {
-	constructor(private view: ComponentView) {}
+	constructor(view: ComponentView) {}
 
 	reconcile(): void {}
 }
@@ -53,7 +49,7 @@ class ComponentView implements Element {
 		public tag: Component,
 		public props: Props,
 		public children: Child[],
-		private parent?: IntrinsicView,
+		private parent: ComponentView | IntrinsicView | RootView,
 	) {}
 
 	reconcile(props: Props, children: Child[]): void {}
@@ -65,15 +61,15 @@ class ComponentView implements Element {
 
 const iViews: WeakMap<IntrinsicController, IntrinsicView> = new WeakMap();
 class IntrinsicController {
-  constructor(view: IntrinsicView) {
-    iViews.set(this, view);
-  }
+	constructor(view: IntrinsicView) {
+		iViews.set(this, view);
+	}
 
 	*[Symbol.iterator](): Generator<[Props, (Node | string)[]]> {
-    const view = iViews.get(this);
-    if (view == null) {
-      throw new Error("Missing view");
-    }
+		const view = iViews.get(this);
+		if (view == null) {
+			throw new Error("Missing view");
+		}
 
 		while (true) {
 			yield [view.props, view.childNodes];
@@ -82,9 +78,9 @@ class IntrinsicController {
 }
 
 export type Intrinsic = (
-  this: IntrinsicController,
-  props: Props,
-  children: (Node | string)[],
+	this: IntrinsicController,
+	props: Props,
+	children: (Node | string)[],
 ) => Iterator<Node>;
 
 export class IntrinsicView implements Element {
@@ -97,7 +93,7 @@ export class IntrinsicView implements Element {
 		public tag: string,
 		props: Props,
 		children: Child[],
-		private parent?: ComponentView | IntrinsicView | RootView,
+		private parent: ComponentView | IntrinsicView | RootView,
 	) {
 		this.reconcile(props, children);
 	}
@@ -163,7 +159,7 @@ export class IntrinsicView implements Element {
 			}
 		}
 
-    this.commit();
+		this.commit();
 	}
 
 	get childNodes(): (Node | string)[] {
@@ -179,60 +175,91 @@ export class IntrinsicView implements Element {
 		return nodes;
 	}
 
-  commit(): void {
-    if (this.iter == null) {
-      const intrinsic = createBasicIntrinsic(this.tag);
-      this.iter = intrinsic.call(this.controller, this.props, this.childNodes);
-    }
+	commit(): void {
+		if (this.iter == null) {
+			const intrinsic = createBasicIntrinsic(this.tag);
+			this.iter = intrinsic.call(this.controller, this.props, this.childNodes);
+		}
 
-    this.node = this.iter.next().value;
-  }
+		this.node = this.iter.next().value;
+	}
 
-	destroy(): void {}
+	destroy(): void {
+		delete this.node;
+		if (this.iter == null) {
+			return;
+		}
+
+		this.iter.return && this.iter.return().value;
+	}
 }
 
 export class RootView {
-  tag = "";
-  props = {};
+	tag = "";
+	props = {};
 	child: ComponentView | IntrinsicView | undefined;
-  constructor(public node: Node) {
-  }
+	constructor(public node: Node) {}
 
-  reconcile(elem: Element): void {
-    if (this.child == null) {
-      if (elem != null) {
-        if (typeof elem.tag === "string") {
-          this.child = new IntrinsicView(
-            elem.tag, elem.props, elem.children, this,
-          );
-        } else {
-          // TODO: ComponentView
-        }
-      }
-    } else if (elem == null) {
-      this.child.destroy;
-      delete this.child;
-    } else if (this.child.tag !== elem.tag) {
-      this.child.destroy();
-      if (typeof elem.tag === "string") {
-        this.child = new IntrinsicView(elem.tag, elem.props, elem.children, this);
-      } else {
-        // TODO: ComponentView
-      }
-    } else {
-      this.child.reconcile(elem.props, elem.children);
-    }
-  }
+	update(elem: Element): void {
+		if (this.child == null) {
+			if (elem != null) {
+				if (typeof elem.tag === "string") {
+					this.child = new IntrinsicView(
+						elem.tag,
+						elem.props,
+						elem.children,
+						this,
+					);
+				} else {
+					// TODO: ComponentView
+				}
+			}
+		} else if (elem == null) {
+			this.child.destroy;
+			delete this.child;
+		} else if (this.child.tag !== elem.tag) {
+			this.child.destroy();
+			if (typeof elem.tag === "string") {
+				this.child = new IntrinsicView(
+					elem.tag,
+					elem.props,
+					elem.children,
+					this,
+				);
+			} else {
+				// TODO: ComponentView
+			}
+		} else {
+			this.child.reconcile(elem.props, elem.children);
+		}
 
-  commit(): void {
-    if (this.child != null && (this.child as IntrinsicView).node != null) {
-      this.node.appendChild((this.child as IntrinsicView).node!);
-    } else {
+		this.commit();
+	}
+
+	commit(): void {
+    // TODO: does this go in a generator
+		if (this.child == null) {
       while (this.node.firstChild) {
         this.node.firstChild.remove();
       }
-    }
-  }
+		} else if (this.child instanceof IntrinsicView) {
+      if (this.child.node == null) {
+        while (this.node.firstChild) {
+          this.node.firstChild.remove();
+        }
+      } else {
+        this.node.appendChild(this.child.node);
+      }
+		}
+	}
+
+	destroy(): void {
+		if (this.child != null) {
+			this.child.destroy();
+		}
+
+		delete this.child;
+	}
 }
 
 export function createElement<T extends Tag>(
@@ -245,26 +272,60 @@ export function createElement<T extends Tag>(
 }
 
 function createBasicIntrinsic(tag: string): Intrinsic {
-  return function* intrinsic(
-    this: IntrinsicController,
-    props: Props,
-    children: (Node | string)[],
-  ): Iterator<Node> {
+	return function* intrinsic(
+		this: IntrinsicController,
+		props: Props,
+		children: (Node | string)[],
+	): Iterator<Node> {
 		const el = document.createElement(tag);
-    for (const child of children) {
-      const node = typeof child === "string" ? document.createTextNode(child) : child;
-      el.appendChild(node);
-    }
-
 		try {
+			for (const attr in props) {
+				const value = props[attr];
+				(el as any)[attr] = value;
+			}
+
+			const fragment = document.createDocumentFragment();
+			for (const child of children) {
+				fragment.appendChild(
+					typeof child === "string" ? document.createTextNode(child) : child,
+				);
+			}
+
+			el.appendChild(fragment);
+			yield el;
+
 			for ([props, children] of this) {
 				for (const attr in props) {
 					const value = props[attr];
 					(el as any)[attr] = value;
 				}
 
-        // TODO: insert/remove children
-        console.log(el.outerHTML);
+				const max = Math.max(el.childNodes.length, children.length);
+				// TODO: is this right?
+				for (let i = 0; i < max; i++) {
+					const oldChild = el.childNodes[i];
+					const newChild = children[i];
+					if (oldChild == null) {
+						if (newChild != null) {
+							el.appendChild(
+								typeof newChild === "string"
+									? document.createTextNode(newChild)
+									: newChild,
+							);
+						}
+					} else if (newChild == null) {
+						el.removeChild(oldChild);
+					} else if (typeof newChild === "string") {
+						if (oldChild.nodeType === Node.TEXT_NODE) {
+							oldChild.nodeValue = newChild;
+						} else {
+							el.insertBefore(document.createTextNode(newChild), oldChild);
+						}
+					} else if (oldChild !== newChild) {
+						el.insertBefore(newChild, oldChild);
+					}
+				}
+
 				yield el;
 			}
 		} finally {
@@ -274,16 +335,23 @@ function createBasicIntrinsic(tag: string): Intrinsic {
 }
 
 const views: WeakMap<Node, RootView> = new WeakMap();
-export function render(elem: Element, container: Node): void {
-  let view: RootView;
-  if (views.has(container)) {
-    view = views.get(container)!;
-  } else {
-    view = new RootView(container);
-    views.set(container, view);
-  }
+export function render(
+	elem: Element | null | undefined,
+	container: Node,
+): RootView {
+	let view: RootView;
+	if (views.has(container)) {
+		view = views.get(container)!;
+	} else {
+		view = new RootView(container);
+		views.set(container, view);
+	}
 
-  view.reconcile(elem);
-  view.commit();
-  console.log((container as any).outerHTML);
+	if (elem == null) {
+		view.destroy();
+	} else {
+		view.update(elem);
+	}
+
+	return view;
 }
