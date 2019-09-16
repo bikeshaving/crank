@@ -2,7 +2,7 @@ export type Props = Record<string, any>;
 export type Tag = Component | string;
 export type Component = (
 	this: ComponentController,
-  // TODO: how do we parameterize this type
+	// TODO: how do we parameterize this type
 	props: Props,
 	...children: Child[]
 ) => Element;
@@ -237,19 +237,19 @@ export class RootView {
 	}
 
 	commit(): void {
-    // TODO: does this go in a generator
+		// TODO: does this go in a generator
 		if (this.child == null) {
-      while (this.node.firstChild) {
-        this.node.firstChild.remove();
-      }
+			while (this.node.firstChild) {
+				this.node.firstChild.remove();
+			}
 		} else if (this.child instanceof IntrinsicView) {
-      if (this.child.node == null) {
-        while (this.node.firstChild) {
-          this.node.firstChild.remove();
-        }
-      } else {
-        this.node.appendChild(this.child.node);
-      }
+			if (this.child.node == null) {
+				while (this.node.firstChild) {
+					this.node.firstChild.remove();
+				}
+			} else {
+				this.node.appendChild(this.child.node);
+			}
 		}
 	}
 
@@ -316,7 +316,10 @@ function createBasicIntrinsic(tag: string): Intrinsic {
 					} else if (newChild == null) {
 						el.removeChild(oldChild);
 					} else if (typeof newChild === "string") {
-						if (oldChild.nodeType === Node.TEXT_NODE) {
+						if (
+							oldChild.nodeType === Node.TEXT_NODE &&
+							oldChild.nodeValue !== newChild
+						) {
 							oldChild.nodeValue = newChild;
 						} else {
 							el.insertBefore(document.createTextNode(newChild), oldChild);
