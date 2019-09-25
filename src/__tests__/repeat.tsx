@@ -1,36 +1,40 @@
-import {createElement, Element, render} from "../repeat";
-const React = {createElement};
+/* @jsx createElement */
+import "core-js";
+import {createElement, Element, render} from "@repeaterjs/repeat";
 
-describe("repeat", () => {
-	test("does this actually work", () => {
-		console.log(
-			(render(
-				<div>
-					<h1>Hi</h1>
-					<h2>Hello</h2>
-					<a href="http://www.example.com">Example</a>
-				</div>,
-				document.body,
-			).node as any).outerHTML,
+describe("crank", () => {
+	test("render", () => {
+		render(
+			<div>
+				<h1>Hi</h1>
+				<h2>Hello</h2>
+				<a>Example</a>
+			</div>,
+			document.body,
 		);
-		console.log(
-			(render(
-				<div>
-					<h2>Hi</h2>
-					<a href="http://www.example.com">Example</a>
-				</div>,
-				document.body,
-			).node as any).outerHTML,
+		expect(document.body.innerHTML).toEqual(
+			"<div><h1>Hi</h1><h2>Hello</h2><a>Example</a></div>",
 		);
-		console.log(
-			(render(
-				<div>
-					<h1>Hi</h1>
-					<h2>Hello</h2>
-					<a href="http://www.example.com">Example</a>
-				</div>,
-				document.body,
-			).node as any).outerHTML,
+		render(
+			<div>
+				<h2>Goodbye</h2>
+				<a href="http://www.example.com">Example</a>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			'<div><h2>Goodbye</h2><a href="http://www.example.com">Example</a></div>',
+		);
+		render(
+			<div>
+				<h1>Hi</h1>
+				<h2>Hello</h2>
+				<a href="http://www.example.com">Example</a>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			'<div><h1>Hi</h1><h2>Hello</h2><a href="http://www.example.com">Example</a></div>',
 		);
 	});
 });

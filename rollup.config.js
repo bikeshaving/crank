@@ -5,7 +5,7 @@ const root = process.cwd();
 const pkg = require(path.join(root, "package.json")); // eslint-disable-line
 
 export default {
-	input: path.join(root, "src/react-hooks.ts"),
+	input: path.join(root, "src/repeat.ts"),
 	output: [
 		{
 			file: pkg.main,
@@ -19,5 +19,4 @@ export default {
 		},
 	],
 	plugins: [typescript()],
-	external: ["@repeaterjs/repeater"],
 };

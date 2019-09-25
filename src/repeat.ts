@@ -1,23 +1,16 @@
+declare global {
+	namespace JSX {
+		interface IntrinsicElements {
+			[name: string]: any;
+		}
+
+		interface ElementChildrenAttribute {}
+	}
+}
+
 export type Props = Record<string, any>;
-export type Tag = Component | string;
-export type Component = (
-	this: ComponentController,
-	// TODO: how do we parameterize this type
-	props: Props,
-	...children: Child[]
-) => Element;
 
-function isPromiseLike(value: any): value is PromiseLike<unknown> {
-	return value != null && typeof value.then === "function";
-}
-
-function isIterable(value: any): value is Iterable<unknown> {
-	return value != null && typeof value[Symbol.iterator] === "function";
-}
-
-function isAsyncIterable(value: any): value is AsyncIterable<unknown> {
-	return value != null && typeof value[Symbol.asyncIterator] === "function";
-}
+export type Tag<TProps extends Props = Props> = Component<Props> | string;
 
 export interface Element<T extends Tag = Tag> {
 	tag: T;
@@ -25,141 +18,83 @@ export interface Element<T extends Tag = Tag> {
 	children: Child[];
 }
 
+export function createElement<T extends Tag>(
+	tag: T,
+	props: Props | null,
+	...children: Children
+): Element<T> {
+	props = Object.assign({}, props);
+	return {tag, props, children: children.flat(Infinity)};
+}
+
 export type Child = Element | string | null | undefined;
 
-declare global {
-	namespace JSX {
-		interface IntrinsicElements {
-			[name: string]: any;
-		}
-	}
-}
+export interface Children extends Array<Children | Child> {}
 
 export type ViewChild = ComponentView | IntrinsicView | string | undefined;
 
 // Components are called with a controller as the value of this.
 class ComponentController {
-	constructor(view: ComponentView) {}
-
-	reconcile(): void {}
+	constructor(private _view: ComponentView) {}
 }
 
-class ComponentView implements Element {
+class ComponentView {
+	tag: Component;
+	props?: Props;
+	children: Child[] = [];
 	constructor(
-		public tag: Component,
-		public props: Props,
-		public children: Child[],
+		elem: Element,
 		private parent: ComponentView | IntrinsicView | RootView,
-	) {}
+	) {
+		if (typeof elem.tag !== "function") {
+			throw new Error("Component constructor called with intrinsic element");
+		}
 
-	reconcile(props: Props, children: Child[]): void {}
+		this.tag = elem.tag;
+		this.update(elem);
+	}
+
+	update(elem: Element): void {}
 
 	commit(): void {}
 
 	destroy(): void {}
 }
 
-const iViews: WeakMap<IntrinsicController, IntrinsicView> = new WeakMap();
+export type Component<TProps extends Props = Props> = (
+	this: ComponentController,
+	// TODO: how do we parameterize this type
+	props: TProps,
+	...children: Child[]
+) => Element;
+
 class IntrinsicController {
-	constructor(view: IntrinsicView) {
-		iViews.set(this, view);
-	}
+	constructor(private view: IntrinsicView) {}
 
 	*[Symbol.iterator](): Generator<[Props, (Node | string)[]]> {
-		const view = iViews.get(this);
-		if (view == null) {
-			throw new Error("Missing view");
-		}
-
 		while (true) {
-			yield [view.props, view.childNodes];
+			yield [this.view.props, this.view.childNodes];
 		}
 	}
 }
 
-export type Intrinsic = (
-	this: IntrinsicController,
-	props: Props,
-	children: (Node | string)[],
-) => Iterator<Node>;
-
-export class IntrinsicView implements Element {
+export class IntrinsicView {
+	private controller = new IntrinsicController(this);
+	tag: string;
 	props: Props = {};
 	children: ViewChild[] = [];
-	private controller = new IntrinsicController(this);
 	node?: Node;
 	protected iter?: Iterator<Node>;
 	constructor(
-		public tag: string,
-		props: Props,
-		children: Child[],
+		elem: Element,
 		private parent: ComponentView | IntrinsicView | RootView,
 	) {
-		this.reconcile(props, children);
-	}
-
-	reconcile(props: Props, children: Child[]): void {
-		this.props = props;
-		const max = Math.max(this.children.length, children.length);
-		for (let i = 0; i < max; i++) {
-			const oldChild = this.children[i];
-			const newChild = children[i];
-			if (oldChild == null) {
-				if (newChild != null) {
-					if (typeof newChild === "string") {
-						this.children[i] = newChild;
-					} else if (typeof newChild.tag === "string") {
-						this.children[i] = new IntrinsicView(
-							newChild.tag,
-							newChild.props,
-							newChild.children,
-							this,
-						);
-					} else {
-						// TODO: ComponentView
-					}
-				}
-			} else if (newChild == null) {
-				if (typeof oldChild !== "string") {
-					oldChild.destroy();
-				}
-				delete this.children[i];
-			} else if (typeof oldChild === "string") {
-				if (typeof newChild === "string") {
-					this.children[i] = newChild;
-				} else if (typeof newChild.tag === "string") {
-					this.children[i] = new IntrinsicView(
-						newChild.tag,
-						newChild.props,
-						newChild.children,
-						this,
-					);
-				} else {
-					// TODO: ComponentView
-				}
-			} else if (typeof newChild === "string") {
-				oldChild.destroy();
-				this.children[i] = newChild;
-			} else if (oldChild.tag !== newChild.tag) {
-				oldChild.destroy();
-				if (typeof newChild === "string") {
-					this.children[i] = newChild;
-				} else if (typeof newChild.tag === "string") {
-					this.children[i] = new IntrinsicView(
-						newChild.tag,
-						newChild.props,
-						newChild.children,
-						this,
-					);
-				} else {
-					// TODO: ComponentView
-				}
-			} else {
-				oldChild.reconcile(newChild.props, newChild.children);
-			}
+		if (typeof elem.tag !== "string") {
+			throw new Error("Called intrinsic view with non-string element");
 		}
 
-		this.commit();
+		this.tag = elem.tag;
+		this.update(elem);
 	}
 
 	get childNodes(): (Node | string)[] {
@@ -175,82 +110,130 @@ export class IntrinsicView implements Element {
 		return nodes;
 	}
 
-	commit(): void {
-		if (this.iter == null) {
-			const intrinsic = createBasicIntrinsic(this.tag);
-			this.iter = intrinsic.call(this.controller, this.props, this.childNodes);
-		}
-
-		this.node = this.iter.next().value;
-	}
-
-	destroy(): void {
-		delete this.node;
-		if (this.iter == null) {
-			return;
-		}
-
-		this.iter.return && this.iter.return().value;
-	}
-}
-
-export class RootView {
-	tag = "";
-	props = {};
-	child: ComponentView | IntrinsicView | undefined;
-	constructor(public node: Node) {}
-
 	update(elem: Element): void {
-		if (this.child == null) {
-			if (elem != null) {
-				if (typeof elem.tag === "string") {
-					this.child = new IntrinsicView(
-						elem.tag,
-						elem.props,
-						elem.children,
-						this,
-					);
+		this.props = elem.props;
+		const max = Math.max(this.children.length, elem.children.length);
+		for (let i = 0; i < max; i++) {
+			const oldChild = this.children[i];
+			const newChild = elem.children[i];
+			if (oldChild == null) {
+				if (newChild != null) {
+					if (typeof newChild === "string") {
+						this.children[i] = newChild;
+					} else if (typeof newChild.tag === "string") {
+						this.children[i] = new IntrinsicView(newChild, this);
+					} else {
+						// TODO: ComponentView
+					}
+				}
+			} else if (newChild == null) {
+				if (typeof oldChild !== "string") {
+					oldChild.destroy();
+				}
+
+				delete this.children[i];
+			} else if (typeof oldChild === "string") {
+				if (typeof newChild === "string") {
+					this.children[i] = newChild;
+				} else if (typeof newChild.tag === "string") {
+					this.children[i] = new IntrinsicView(newChild, this);
 				} else {
 					// TODO: ComponentView
 				}
-			}
-		} else if (elem == null) {
-			this.child.destroy;
-			delete this.child;
-		} else if (this.child.tag !== elem.tag) {
-			this.child.destroy();
-			if (typeof elem.tag === "string") {
-				this.child = new IntrinsicView(
-					elem.tag,
-					elem.props,
-					elem.children,
-					this,
-				);
+			} else if (typeof newChild === "string") {
+				oldChild.destroy();
+				this.children[i] = newChild;
+			} else if (oldChild.tag !== newChild.tag) {
+				oldChild.destroy();
+				if (typeof newChild === "string") {
+					this.children[i] = newChild;
+				} else if (typeof newChild.tag === "string") {
+					this.children[i] = new IntrinsicView(newChild, this);
+				} else {
+					// TODO: ComponentView
+				}
 			} else {
-				// TODO: ComponentView
+				oldChild.update(newChild);
 			}
-		} else {
-			this.child.reconcile(elem.props, elem.children);
 		}
 
 		this.commit();
 	}
 
 	commit(): void {
-		// TODO: does this go in a generator
-		if (this.child == null) {
-			while (this.node.firstChild) {
-				this.node.firstChild.remove();
-			}
-		} else if (this.child instanceof IntrinsicView) {
-			if (this.child.node == null) {
-				while (this.node.firstChild) {
-					this.node.firstChild.remove();
-				}
-			} else {
-				this.node.appendChild(this.child.node);
-			}
+		if (this.iter == null) {
+			const intrinsic = createBasicIntrinsic(this.tag);
+			this.iter = intrinsic.call(this.controller, this.props, this.childNodes);
 		}
+
+		const result = this.iter.next();
+		this.node = result.value;
+	}
+
+	destroy(): void {
+		delete this.node;
+		if (this.iter == null) {
+			return;
+		} else if (typeof this.iter.return === "function") {
+			this.iter.return();
+		}
+	}
+}
+
+export type Intrinsic = (
+	this: IntrinsicController,
+	props: Props,
+	children: (Node | string)[],
+) => Iterator<Node>;
+
+class RootController {
+	constructor() {}
+
+	*[Symbol.iterator](): Generator<(Node | string)[]> {}
+}
+
+export class RootView {
+	tag = "";
+	child: ComponentView | IntrinsicView | undefined;
+	constructor(public node: HTMLElement) {}
+
+	get childNodes(): (Node | string)[] {
+		if (this.child instanceof IntrinsicView && this.child.node != null) {
+			return [this.child.node];
+		}
+
+		return [];
+	}
+
+	update(child: Element | undefined): void {
+		// TODO: abstract
+		if (this.child == null) {
+			if (child != null) {
+				if (typeof child.tag === "string") {
+					this.child = new IntrinsicView(child, this);
+				} else {
+					// TODO: ComponentView
+				}
+			}
+		} else if (child == null) {
+			this.child.destroy();
+			delete this.child;
+		} else if (this.child.tag !== child.tag) {
+			this.child.destroy();
+			if (typeof child.tag === "string") {
+				this.child = new IntrinsicView(child, this);
+			} else {
+				// TODO: ComponentView
+			}
+		} else {
+			this.child.update(child);
+		}
+
+		this.commit();
+	}
+
+	commit(): void {
+		updateChildren(this.node, this.childNodes);
 	}
 
 	destroy(): void {
@@ -262,73 +245,65 @@ export class RootView {
 	}
 }
 
-export function createElement<T extends Tag>(
-	tag: T,
-	props: Props | null,
-	...children: Element[]
-): Element<T> {
-	props = Object.assign({}, props);
-	return {tag, props, children};
+function updateProps(el: HTMLElement, props: Props): void {
+	for (const [key, value] of Object.entries(props)) {
+		if (key in el) {
+			(el as any)[key] = value;
+		} else {
+			el.setAttribute(key.toLowerCase(), value);
+		}
+	}
+}
+
+function updateChildren(el: HTMLElement, children: (Node | string)[]): void {
+	if (el.childNodes.length === 0) {
+		const fragment = document.createDocumentFragment();
+		for (let child of children) {
+			if (typeof child === "string") {
+				child = document.createTextNode(child);
+			}
+
+			fragment.appendChild(child);
+		}
+
+		el.appendChild(fragment);
+		return;
+	}
+
+	// TODO: is this right?
+	const max = Math.max(el.childNodes.length, children.length);
+	for (let i = 0; i < max; i++) {
+		const oldChild = el.childNodes[i];
+		const newChild = children[i];
+		if (oldChild == null) {
+			if (newChild != null) {
+				if (typeof newChild === "string") {
+					el.appendChild(document.createTextNode(newChild));
+				} else {
+					el.appendChild(newChild);
+				}
+			}
+		} else if (newChild == null) {
+			el.removeChild(oldChild);
+		} else if (typeof newChild === "string") {
+			if (oldChild.nodeType === Node.TEXT_NODE) {
+				oldChild.nodeValue = newChild;
+			} else {
+				el.insertBefore(document.createTextNode(newChild), oldChild);
+			}
+		} else if (oldChild !== newChild) {
+			el.insertBefore(newChild, oldChild);
+		}
+	}
 }
 
 function createBasicIntrinsic(tag: string): Intrinsic {
-	return function* intrinsic(
-		this: IntrinsicController,
-		props: Props,
-		children: (Node | string)[],
-	): Iterator<Node> {
+	return function* intrinsic(this: IntrinsicController): Iterator<Node> {
 		const el = document.createElement(tag);
 		try {
-			for (const attr in props) {
-				const value = props[attr];
-				(el as any)[attr] = value;
-			}
-
-			const fragment = document.createDocumentFragment();
-			for (const child of children) {
-				fragment.appendChild(
-					typeof child === "string" ? document.createTextNode(child) : child,
-				);
-			}
-
-			el.appendChild(fragment);
-			yield el;
-
-			for ([props, children] of this) {
-				for (const attr in props) {
-					const value = props[attr];
-					(el as any)[attr] = value;
-				}
-
-				const max = Math.max(el.childNodes.length, children.length);
-				// TODO: is this right?
-				for (let i = 0; i < max; i++) {
-					const oldChild = el.childNodes[i];
-					const newChild = children[i];
-					if (oldChild == null) {
-						if (newChild != null) {
-							el.appendChild(
-								typeof newChild === "string"
-									? document.createTextNode(newChild)
-									: newChild,
-							);
-						}
-					} else if (newChild == null) {
-						el.removeChild(oldChild);
-					} else if (typeof newChild === "string") {
-						if (
-							oldChild.nodeType === Node.TEXT_NODE &&
-							oldChild.nodeValue !== newChild
-						) {
-							oldChild.nodeValue = newChild;
-						} else {
-							el.insertBefore(document.createTextNode(newChild), oldChild);
-						}
-					} else if (oldChild !== newChild) {
-						el.insertBefore(newChild, oldChild);
-					}
-				}
-
+			for (const [props, children] of this) {
+				updateProps(el, props);
+				updateChildren(el, children);
 				yield el;
 			}
 		} finally {
@@ -340,7 +315,7 @@ function createBasicIntrinsic(tag: string): Intrinsic {
 const views: WeakMap<Node, RootView> = new WeakMap();
 export function render(
 	elem: Element | null | undefined,
-	container: Node,
+	container: HTMLElement,
 ): RootView {
 	let view: RootView;
 	if (views.has(container)) {
