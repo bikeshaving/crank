@@ -1,6 +1,6 @@
 /* @jsx createElement */
 import "core-js";
-import {createElement, Element, render} from "@repeaterjs/repeat";
+import {createElement, Element, render} from "../repeat";
 
 describe("crank", () => {
 	test("render", () => {
