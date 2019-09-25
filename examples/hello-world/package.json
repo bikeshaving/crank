@@ -1,0 +1,20 @@
+{
+  "name": "crank-examples-hello-world",
+  "version": "0.1.0",
+  "private": true,
+  "files": [
+    "/lib"
+  ],
+  "scripts": {
+    "build": "rollup -c rollup.config.js"
+  },
+  "devDependencies": {
+    "rollup": "^1.20.0",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-typescript2": "^0.22.1",
+    "typescript": "^3.6.3"
+  },
+  "dependencies": {
+    "@repeaterjs/repeat": "../.."
+  }
+}
