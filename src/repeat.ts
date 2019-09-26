@@ -48,19 +48,7 @@ export abstract class View {
 						nodes.push(child.node);
 					}
 				} else if (child instanceof ComponentView) {
-					for (const grandchild of child.children) {
-						if (grandchild != null) {
-							if (typeof grandchild === "string") {
-								nodes.push(grandchild);
-							} else if (grandchild instanceof IntrinsicView) {
-								if (grandchild.node != null) {
-									nodes.push(grandchild.node);
-								}
-							} else {
-								nodes.push(...grandchild.nodes);
-							}
-						}
-					}
+          nodes.push(...child.nodes);
 				}
 			}
 		}
