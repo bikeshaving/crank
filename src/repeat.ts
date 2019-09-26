@@ -49,6 +49,16 @@ export abstract class View {
 		return nodes;
 	}
 
+	createViewChild(elem: Element | string): ViewChild {
+		if (typeof elem === "string") {
+			return elem;
+		} else if (typeof elem.tag === "string") {
+			return new IntrinsicView(elem, this);
+		} else {
+			return new ComponentView(elem, this);
+		}
+	}
+
 	reconcile(elems: Child[]): void {
 		const max = Math.max(this.children.length, elems.length);
 		for (let i = 0; i < max; i++) {
@@ -56,13 +66,7 @@ export abstract class View {
 			const elem = elems[i];
 			if (view == null) {
 				if (elem != null) {
-					if (typeof elem === "string") {
-						this.children[i] = elem;
-					} else if (typeof elem.tag === "string") {
-						this.children[i] = new IntrinsicView(elem, this);
-					} else {
-						this.children[i] = new ComponentView(elem, this);
-					}
+					this.children[i] = this.createViewChild(elem);
 				}
 			} else if (elem == null) {
 				if (typeof view !== "string") {
@@ -70,26 +74,16 @@ export abstract class View {
 				}
 
 				delete this.children[i];
-			} else if (typeof view === "string") {
-				if (typeof elem === "string") {
-					this.children[i] = elem;
-				} else if (typeof elem.tag === "string") {
-					this.children[i] = new IntrinsicView(elem, this);
-				} else {
-					this.children[i] = new ComponentView(elem, this);
+			} else if (
+				typeof view === "string" ||
+				typeof elem === "string" ||
+				view.tag !== elem.tag
+			) {
+				if (typeof view !== "string") {
+					view.update();
 				}
-			} else if (typeof elem === "string") {
-				view.update();
-				this.children[i] = elem;
-			} else if (view.tag !== elem.tag) {
-				view.update();
-				if (typeof elem === "string") {
-					this.children[i] = elem;
-				} else if (typeof elem.tag === "string") {
-					this.children[i] = new IntrinsicView(elem, this);
-				} else {
-					this.children[i] = new ComponentView(elem, this);
-				}
+
+				this.children[i] = this.createViewChild(elem);
 			} else {
 				view.update(elem);
 			}
@@ -104,7 +98,6 @@ class ComponentController {
 class ComponentView extends View {
 	private controller = new ComponentController(this);
 	tag: Component;
-	props?: Props;
 	constructor(elem: Element, private parent: View) {
 		super();
 		if (typeof elem.tag !== "function") {
