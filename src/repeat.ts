@@ -78,14 +78,11 @@ export abstract class View {
 		for (let i = 0; i < max; i++) {
 			const view = this.children[i];
 			const elem = children[i];
-			if (view === undefined) {
-				this.children[i] = this.createViewChild(elem);
-			} else if (
+			if (
+				view === undefined ||
 				elem == null ||
-				typeof view === "string" ||
-				typeof elem === "string" ||
-				typeof elem === "number" ||
-				typeof elem === "boolean" ||
+				typeof view !== "object" ||
+				typeof elem !== "object" ||
 				view.tag !== elem.tag
 			) {
 				if (typeof view === "object") {

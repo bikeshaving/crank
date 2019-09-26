@@ -36,4 +36,4 @@ const interval = setInterval(() => {
 	if (arr.length >= 10) {
 		clearInterval(interval);
 	}
-}, 1000);
+}, 666);
