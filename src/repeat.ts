@@ -23,8 +23,11 @@ export function createElement<T extends Tag>(
 	props: Props | null,
 	...children: Children
 ): Element<T> {
-	props = Object.assign({}, props);
-	return {tag, props, children: children.flat(Infinity)};
+	return {
+		tag,
+		props: Object.assign({}, props),
+		children: children.flat(Infinity),
+	};
 }
 
 export type Child = Element | string | null | undefined;
@@ -43,13 +46,23 @@ export abstract class View {
 				nodes.push(child);
 			} else if (child instanceof IntrinsicView && child.node != null) {
 				nodes.push(child.node);
+			} else if (child instanceof ComponentView) {
+				for (const grandchild of child.children) {
+					if (grandchild != null) {
+						if (typeof grandchild === "string") {
+							nodes.push(grandchild);
+						} else {
+							nodes.push(...grandchild.nodes);
+						}
+					}
+				}
 			}
 		}
 
 		return nodes;
 	}
 
-	createViewChild(elem: Element | string): ViewChild {
+	private createViewChild(elem: Element | string): ViewChild {
 		if (typeof elem === "string") {
 			return elem;
 		} else if (typeof elem.tag === "string") {
@@ -59,7 +72,7 @@ export abstract class View {
 		}
 	}
 
-	reconcile(elems: Child[]): void {
+	protected reconcile(elems: Child[]): void {
 		const max = Math.max(this.children.length, elems.length);
 		for (let i = 0; i < max; i++) {
 			const view = this.children[i];
@@ -69,7 +82,7 @@ export abstract class View {
 					this.children[i] = this.createViewChild(elem);
 				}
 			} else if (elem == null) {
-				if (typeof view !== "string") {
+				if (typeof view === "object") {
 					view.update();
 				}
 
@@ -79,7 +92,7 @@ export abstract class View {
 				typeof elem === "string" ||
 				view.tag !== elem.tag
 			) {
-				if (typeof view !== "string") {
+				if (typeof view === "object") {
 					view.update();
 				}
 
@@ -108,9 +121,14 @@ class ComponentView extends View {
 		this.update(elem);
 	}
 
-	update(elem?: Element): void {}
+	update(elem?: Element): void {
+		if (elem == null) {
+			return;
+		}
 
-	commit(): void {}
+		const child = this.tag.call(this.controller, elem.props, ...elem.children);
+		this.reconcile([child]);
+	}
 }
 
 export type Component<TProps extends Props = Props> = (
@@ -157,6 +175,12 @@ export class IntrinsicView extends View {
 				delete this.iter;
 			}
 
+			for (const child of this.children) {
+				if (typeof child === "object") {
+					child.update();
+				}
+			}
+
 			return;
 		}
 
@@ -193,17 +217,17 @@ export class RootView extends View {
 		super();
 	}
 
-	update(child?: Element): void {
-		this.reconcile(child == null ? [] : [child]);
+	update(elem?: Element): void {
+		this.reconcile(elem == null ? [] : [elem]);
 		this.commit();
 	}
 
 	commit(): void {
-		updateChildren(this.node, this.nodes);
+		updateDOMChildren(this.node, this.nodes);
 	}
 }
 
-function updateProps(el: HTMLElement, props: Props): void {
+function updateDOMProps(el: HTMLElement, props: Props): void {
 	for (const [key, value] of Object.entries(props)) {
 		if (key in el) {
 			(el as any)[key] = value;
@@ -213,7 +237,7 @@ function updateProps(el: HTMLElement, props: Props): void {
 	}
 }
 
-function updateChildren(el: HTMLElement, children: (Node | string)[]): void {
+function updateDOMChildren(el: HTMLElement, children: (Node | string)[]): void {
 	if (el.childNodes.length === 0) {
 		const fragment = document.createDocumentFragment();
 		for (let child of children) {
@@ -260,8 +284,8 @@ function createBasicIntrinsic(tag: string): Intrinsic {
 		const el = document.createElement(tag);
 		try {
 			for (const [props, children] of this) {
-				updateProps(el, props);
-				updateChildren(el, children);
+				updateDOMProps(el, props);
+				updateDOMChildren(el, children);
 				yield el;
 			}
 		} finally {
