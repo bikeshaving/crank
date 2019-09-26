@@ -30,29 +30,35 @@ export function createElement<T extends Tag>(
 	};
 }
 
-export type Child = Element | string | null | undefined;
+export type Child = Element | string | number | null | undefined;
 
 export interface Children extends Array<Children | Child> {}
 
-export type ViewChild = ComponentView | IntrinsicView | string | undefined;
-
 export abstract class View {
-	children: ViewChild[] = [];
+	children: (ComponentView | IntrinsicView | string | undefined)[] = [];
 
 	get nodes(): (Node | string)[] {
 		const nodes: (Node | string)[] = [];
 		for (const child of this.children) {
-			if (typeof child === "string") {
-				nodes.push(child);
-			} else if (child instanceof IntrinsicView && child.node != null) {
-				nodes.push(child.node);
-			} else if (child instanceof ComponentView) {
-				for (const grandchild of child.children) {
-					if (grandchild != null) {
-						if (typeof grandchild === "string") {
-							nodes.push(grandchild);
-						} else {
-							nodes.push(...grandchild.nodes);
+			if (child != null) {
+				if (typeof child === "string") {
+					nodes.push(child);
+				} else if (child instanceof IntrinsicView) {
+					if (child.node != null) {
+						nodes.push(child.node);
+					}
+				} else if (child instanceof ComponentView) {
+					for (const grandchild of child.children) {
+						if (grandchild != null) {
+							if (typeof grandchild === "string") {
+								nodes.push(grandchild);
+							} else if (grandchild instanceof IntrinsicView) {
+								if (grandchild.node != null) {
+									nodes.push(grandchild.node);
+								}
+							} else {
+								nodes.push(...grandchild.nodes);
+							}
 						}
 					}
 				}
@@ -62,43 +68,48 @@ export abstract class View {
 		return nodes;
 	}
 
-	private createViewChild(elem: Element | string): ViewChild {
-		if (typeof elem === "string") {
-			return elem;
+	private createViewChild(
+		elem: Element | string | number,
+	): ComponentView | IntrinsicView | string {
+		if (typeof elem === "string" || typeof elem === "number") {
+			return elem.toString();
 		} else if (typeof elem.tag === "string") {
 			return new IntrinsicView(elem, this);
-		} else {
+		} else if (typeof elem.tag === "function") {
 			return new ComponentView(elem, this);
+		} else {
+			throw new TypeError("unknown elem type");
 		}
 	}
 
-	protected reconcile(elems: Child[]): void {
-		const max = Math.max(this.children.length, elems.length);
+	protected reconcileChildren(children: Child[]): void {
+		const max = Math.max(this.children.length, children.length);
 		for (let i = 0; i < max; i++) {
 			const view = this.children[i];
-			const elem = elems[i];
+			const elem = children[i];
 			if (view == null) {
 				if (elem != null) {
 					this.children[i] = this.createViewChild(elem);
 				}
 			} else if (elem == null) {
 				if (typeof view === "object") {
-					view.update();
+					view.reconcile();
 				}
 
 				delete this.children[i];
 			} else if (
 				typeof view === "string" ||
 				typeof elem === "string" ||
+				typeof elem === "number" ||
 				view.tag !== elem.tag
 			) {
 				if (typeof view === "object") {
-					view.update();
+					view.reconcile();
 				}
 
 				this.children[i] = this.createViewChild(elem);
 			} else {
-				view.update(elem);
+				view.reconcile(elem);
 			}
 		}
 	}
@@ -118,16 +129,17 @@ class ComponentView extends View {
 		}
 
 		this.tag = elem.tag;
-		this.update(elem);
+		this.reconcile(elem);
 	}
 
-	update(elem?: Element): void {
+	reconcile(elem?: Element): void {
 		if (elem == null) {
+			this.reconcileChildren([]);
 			return;
 		}
 
 		const child = this.tag.call(this.controller, elem.props, ...elem.children);
-		this.reconcile([child]);
+		this.reconcileChildren([child]);
 	}
 }
 
@@ -161,10 +173,10 @@ export class IntrinsicView extends View {
 		}
 
 		this.tag = elem.tag;
-		this.update(elem);
+		this.reconcile(elem);
 	}
 
-	update(elem?: Element): void {
+	reconcile(elem?: Element): void {
 		if (elem == null) {
 			delete this.node;
 			if (this.iter != null) {
@@ -177,7 +189,7 @@ export class IntrinsicView extends View {
 
 			for (const child of this.children) {
 				if (typeof child === "object") {
-					child.update();
+					child.reconcile();
 				}
 			}
 
@@ -185,7 +197,7 @@ export class IntrinsicView extends View {
 		}
 
 		this.props = elem.props;
-		this.reconcile(elem.children);
+		this.reconcileChildren(elem.children);
 		this.commit();
 	}
 
@@ -217,8 +229,8 @@ export class RootView extends View {
 		super();
 	}
 
-	update(elem?: Element): void {
-		this.reconcile(elem == null ? [] : [elem]);
+	reconcile(elem?: Element): void {
+		this.reconcileChildren(elem == null ? [] : [elem]);
 		this.commit();
 	}
 
@@ -269,7 +281,9 @@ function updateDOMChildren(el: HTMLElement, children: (Node | string)[]): void {
 			el.removeChild(oldChild);
 		} else if (typeof newChild === "string") {
 			if (oldChild.nodeType === Node.TEXT_NODE) {
-				oldChild.nodeValue = newChild;
+				if (oldChild.nodeValue !== newChild) {
+					oldChild.nodeValue = newChild;
+				}
 			} else {
 				el.insertBefore(document.createTextNode(newChild), oldChild);
 			}
@@ -294,19 +308,19 @@ function createBasicIntrinsic(tag: string): Intrinsic {
 	};
 }
 
-const views: WeakMap<Node, RootView> = new WeakMap();
+const renderViews: WeakMap<Node, RootView> = new WeakMap();
 export function render(
 	elem: Element | null | undefined,
 	container: HTMLElement,
 ): RootView {
 	let view: RootView;
-	if (views.has(container)) {
-		view = views.get(container)!;
+	if (renderViews.has(container)) {
+		view = renderViews.get(container)!;
 	} else {
 		view = new RootView(container);
-		views.set(container, view);
+		renderViews.set(container, view);
 	}
 
-	view.update(elem || undefined);
+	view.reconcile(elem || undefined);
 	return view;
 }

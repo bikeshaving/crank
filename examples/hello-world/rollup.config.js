@@ -9,6 +9,7 @@ export default {
 	output: {
 		file: "lib/index.js",
 		format: "umd",
+		sourcemap: "inline",
 	},
 	plugins: [resolve(), typescript()],
 };
