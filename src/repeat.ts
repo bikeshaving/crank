@@ -30,7 +30,8 @@ export function createElement<T extends Tag>(
 	};
 }
 
-export type Child = Element | string | number | null | undefined;
+// TODO: rename to Node?
+export type Child = Element | string | number | boolean | null | undefined;
 
 export interface Children extends Array<Children | Child> {}
 
@@ -48,7 +49,7 @@ export abstract class View {
 						nodes.push(child.node);
 					}
 				} else if (child instanceof ComponentView) {
-          nodes.push(...child.nodes);
+					nodes.push(...child.nodes);
 				}
 			}
 		}
@@ -57,16 +58,18 @@ export abstract class View {
 	}
 
 	private createViewChild(
-		elem: Element | string | number,
-	): ComponentView | IntrinsicView | string {
-		if (typeof elem === "string" || typeof elem === "number") {
-			return elem.toString();
-		} else if (typeof elem.tag === "string") {
-			return new IntrinsicView(elem, this);
-		} else if (typeof elem.tag === "function") {
-			return new ComponentView(elem, this);
+		child: Child,
+	): ComponentView | IntrinsicView | string | undefined {
+		if (child == null || typeof child == "boolean") {
+			return undefined;
+		} else if (typeof child === "string" || typeof child === "number") {
+			return child.toString();
+		} else if (typeof child.tag === "string") {
+			return new IntrinsicView(child, this);
+		} else if (typeof child.tag === "function") {
+			return new ComponentView(child, this);
 		} else {
-			throw new TypeError("unknown elem type");
+			throw new TypeError("unknown child type");
 		}
 	}
 
@@ -75,20 +78,14 @@ export abstract class View {
 		for (let i = 0; i < max; i++) {
 			const view = this.children[i];
 			const elem = children[i];
-			if (view == null) {
-				if (elem != null) {
-					this.children[i] = this.createViewChild(elem);
-				}
-			} else if (elem == null) {
-				if (typeof view === "object") {
-					view.reconcile();
-				}
-
-				delete this.children[i];
+			if (view === undefined) {
+				this.children[i] = this.createViewChild(elem);
 			} else if (
+				elem == null ||
 				typeof view === "string" ||
 				typeof elem === "string" ||
 				typeof elem === "number" ||
+				typeof elem === "boolean" ||
 				view.tag !== elem.tag
 			) {
 				if (typeof view === "object") {
@@ -205,12 +202,6 @@ export type Intrinsic = (
 	props: Props,
 	children: (Node | string)[],
 ) => Iterator<Node>;
-
-class RootController {
-	constructor() {}
-
-	*[Symbol.iterator](): Generator<(Node | string)[]> {}
-}
 
 export class RootView extends View {
 	constructor(public node: HTMLElement) {
