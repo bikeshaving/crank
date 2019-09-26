@@ -33,19 +33,80 @@ export interface Children extends Array<Children | Child> {}
 
 export type ViewChild = ComponentView | IntrinsicView | string | undefined;
 
-// Components are called with a controller as the value of this.
-class ComponentController {
-	constructor(private _view: ComponentView) {}
+export abstract class View {
+	children: ViewChild[] = [];
+
+	get nodes(): (Node | string)[] {
+		const nodes: (Node | string)[] = [];
+		for (const child of this.children) {
+			if (typeof child === "string") {
+				nodes.push(child);
+			} else if (child instanceof IntrinsicView && child.node != null) {
+				nodes.push(child.node);
+			}
+		}
+
+		return nodes;
+	}
+
+	reconcile(elems: Child[]): void {
+		const max = Math.max(this.children.length, elems.length);
+		for (let i = 0; i < max; i++) {
+			const view = this.children[i];
+			const elem = elems[i];
+			if (view == null) {
+				if (elem != null) {
+					if (typeof elem === "string") {
+						this.children[i] = elem;
+					} else if (typeof elem.tag === "string") {
+						this.children[i] = new IntrinsicView(elem, this);
+					} else {
+						this.children[i] = new ComponentView(elem, this);
+					}
+				}
+			} else if (elem == null) {
+				if (typeof view !== "string") {
+					view.update();
+				}
+
+				delete this.children[i];
+			} else if (typeof view === "string") {
+				if (typeof elem === "string") {
+					this.children[i] = elem;
+				} else if (typeof elem.tag === "string") {
+					this.children[i] = new IntrinsicView(elem, this);
+				} else {
+					this.children[i] = new ComponentView(elem, this);
+				}
+			} else if (typeof elem === "string") {
+				view.update();
+				this.children[i] = elem;
+			} else if (view.tag !== elem.tag) {
+				view.update();
+				if (typeof elem === "string") {
+					this.children[i] = elem;
+				} else if (typeof elem.tag === "string") {
+					this.children[i] = new IntrinsicView(elem, this);
+				} else {
+					this.children[i] = new ComponentView(elem, this);
+				}
+			} else {
+				view.update(elem);
+			}
+		}
+	}
 }
 
-class ComponentView {
+class ComponentController {
+	constructor(private view: ComponentView) {}
+}
+
+class ComponentView extends View {
+	private controller = new ComponentController(this);
 	tag: Component;
 	props?: Props;
-	children: Child[] = [];
-	constructor(
-		elem: Element,
-		private parent: ComponentView | IntrinsicView | RootView,
-	) {
+	constructor(elem: Element, private parent: View) {
+		super();
 		if (typeof elem.tag !== "function") {
 			throw new Error("Component constructor called with intrinsic element");
 		}
@@ -54,11 +115,9 @@ class ComponentView {
 		this.update(elem);
 	}
 
-	update(elem: Element): void {}
+	update(elem?: Element): void {}
 
 	commit(): void {}
-
-	destroy(): void {}
 }
 
 export type Component<TProps extends Props = Props> = (
@@ -73,22 +132,19 @@ class IntrinsicController {
 
 	*[Symbol.iterator](): Generator<[Props, (Node | string)[]]> {
 		while (true) {
-			yield [this.view.props, this.view.childNodes];
+			yield [this.view.props, this.view.nodes];
 		}
 	}
 }
 
-export class IntrinsicView {
+export class IntrinsicView extends View {
 	private controller = new IntrinsicController(this);
 	tag: string;
 	props: Props = {};
-	children: ViewChild[] = [];
 	node?: Node;
 	protected iter?: Iterator<Node>;
-	constructor(
-		elem: Element,
-		private parent: ComponentView | IntrinsicView | RootView,
-	) {
+	constructor(elem: Element, private parent: View) {
+		super();
 		if (typeof elem.tag !== "string") {
 			throw new Error("Called intrinsic view with non-string element");
 		}
@@ -97,86 +153,33 @@ export class IntrinsicView {
 		this.update(elem);
 	}
 
-	get childNodes(): (Node | string)[] {
-		const nodes: (Node | string)[] = [];
-		for (const child of this.children) {
-			if (typeof child === "string") {
-				nodes.push(child);
-			} else if (child instanceof IntrinsicView && child.node != null) {
-				nodes.push(child.node);
+	update(elem?: Element): void {
+		if (elem == null) {
+			delete this.node;
+			if (this.iter != null) {
+				if (typeof this.iter.return === "function") {
+					this.iter.return();
+				}
+
+				delete this.iter;
 			}
+
+			return;
 		}
 
-		return nodes;
-	}
-
-	update(elem: Element): void {
 		this.props = elem.props;
-		const max = Math.max(this.children.length, elem.children.length);
-		for (let i = 0; i < max; i++) {
-			const oldChild = this.children[i];
-			const newChild = elem.children[i];
-			if (oldChild == null) {
-				if (newChild != null) {
-					if (typeof newChild === "string") {
-						this.children[i] = newChild;
-					} else if (typeof newChild.tag === "string") {
-						this.children[i] = new IntrinsicView(newChild, this);
-					} else {
-						// TODO: ComponentView
-					}
-				}
-			} else if (newChild == null) {
-				if (typeof oldChild !== "string") {
-					oldChild.destroy();
-				}
-
-				delete this.children[i];
-			} else if (typeof oldChild === "string") {
-				if (typeof newChild === "string") {
-					this.children[i] = newChild;
-				} else if (typeof newChild.tag === "string") {
-					this.children[i] = new IntrinsicView(newChild, this);
-				} else {
-					// TODO: ComponentView
-				}
-			} else if (typeof newChild === "string") {
-				oldChild.destroy();
-				this.children[i] = newChild;
-			} else if (oldChild.tag !== newChild.tag) {
-				oldChild.destroy();
-				if (typeof newChild === "string") {
-					this.children[i] = newChild;
-				} else if (typeof newChild.tag === "string") {
-					this.children[i] = new IntrinsicView(newChild, this);
-				} else {
-					// TODO: ComponentView
-				}
-			} else {
-				oldChild.update(newChild);
-			}
-		}
-
+		this.reconcile(elem.children);
 		this.commit();
 	}
 
 	commit(): void {
 		if (this.iter == null) {
 			const intrinsic = createBasicIntrinsic(this.tag);
-			this.iter = intrinsic.call(this.controller, this.props, this.childNodes);
+			this.iter = intrinsic.call(this.controller, this.props, this.nodes);
 		}
 
 		const result = this.iter.next();
 		this.node = result.value;
-	}
-
-	destroy(): void {
-		delete this.node;
-		if (this.iter == null) {
-			return;
-		} else if (typeof this.iter.return === "function") {
-			this.iter.return();
-		}
 	}
 }
 
@@ -192,56 +195,18 @@ class RootController {
 	*[Symbol.iterator](): Generator<(Node | string)[]> {}
 }
 
-export class RootView {
-	tag = "";
-	child: ComponentView | IntrinsicView | undefined;
-	constructor(public node: HTMLElement) {}
-
-	get childNodes(): (Node | string)[] {
-		if (this.child instanceof IntrinsicView && this.child.node != null) {
-			return [this.child.node];
-		}
-
-		return [];
+export class RootView extends View {
+	constructor(public node: HTMLElement) {
+		super();
 	}
 
-	update(child: Element | undefined): void {
-		// TODO: abstract
-		if (this.child == null) {
-			if (child != null) {
-				if (typeof child.tag === "string") {
-					this.child = new IntrinsicView(child, this);
-				} else {
-					// TODO: ComponentView
-				}
-			}
-		} else if (child == null) {
-			this.child.destroy();
-			delete this.child;
-		} else if (this.child.tag !== child.tag) {
-			this.child.destroy();
-			if (typeof child.tag === "string") {
-				this.child = new IntrinsicView(child, this);
-			} else {
-				// TODO: ComponentView
-			}
-		} else {
-			this.child.update(child);
-		}
-
+	update(child?: Element): void {
+		this.reconcile(child == null ? [] : [child]);
 		this.commit();
 	}
 
 	commit(): void {
-		updateChildren(this.node, this.childNodes);
-	}
-
-	destroy(): void {
-		if (this.child != null) {
-			this.child.destroy();
-		}
-
-		delete this.child;
+		updateChildren(this.node, this.nodes);
 	}
 }
 
@@ -325,11 +290,6 @@ export function render(
 		views.set(container, view);
 	}
 
-	if (elem == null) {
-		view.destroy();
-	} else {
-		view.update(elem);
-	}
-
+	view.update(elem || undefined);
 	return view;
 }
