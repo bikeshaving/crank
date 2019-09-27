@@ -30,6 +30,7 @@
     "eslint-plugin-jest": "^22.15.2",
     "eslint-plugin-prettier": "^3.1.0",
     "jest": "^24.9.0",
+    "mutationobserver-shim": "^0.3.3",
     "prettier": "^1.18.2",
     "rollup": "^1.20.0",
     "rollup-plugin-typescript2": "^0.22.1",

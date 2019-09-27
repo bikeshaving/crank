@@ -1,3 +1,7 @@
+function isPromiseLike(value: any): value is PromiseLike<unknown> {
+	return value != null && typeof value.then === "function";
+}
+
 declare global {
 	namespace JSX {
 		interface IntrinsicElements {
@@ -31,35 +35,48 @@ export function createElement<T extends Tag>(
 }
 
 // TODO: rename to Node?
-export type Child = Element | string | number | boolean | null | undefined;
+export type Text = string | number;
+export type Child = Element | Text | boolean | null | undefined;
 
 export interface Children extends Array<Children | Child> {}
 
+export type ViewChild = ComponentView | IntrinsicView | string | undefined;
+
 export abstract class View {
-	children: (ComponentView | IntrinsicView | string | undefined)[] = [];
+	children: ViewChild[] = [];
 
 	get nodes(): (Node | string)[] {
+		let buffer: string | undefined;
 		const nodes: (Node | string)[] = [];
 		for (const child of this.children) {
 			if (child != null) {
 				if (typeof child === "string") {
-					nodes.push(child);
-				} else if (child instanceof IntrinsicView) {
-					if (child.node != null) {
-						nodes.push(child.node);
+					buffer = buffer === undefined ? child : buffer + child;
+				} else {
+					if (buffer !== undefined) {
+						nodes.push(buffer);
+						buffer = undefined;
 					}
-				} else if (child instanceof ComponentView) {
-					nodes.push(...child.nodes);
+
+					if (child instanceof IntrinsicView) {
+						if (child.node != null) {
+							nodes.push(child.node);
+						}
+					} else if (child instanceof ComponentView) {
+						nodes.push(...child.nodes);
+					}
 				}
 			}
+		}
+
+		if (buffer !== undefined) {
+			nodes.push(buffer);
 		}
 
 		return nodes;
 	}
 
-	private createViewChild(
-		child: Child,
-	): ComponentView | IntrinsicView | string | undefined {
+	private createViewChild(child: Child): ViewChild {
 		if (child == null || typeof child == "boolean") {
 			return undefined;
 		} else if (typeof child === "string" || typeof child === "number") {
@@ -73,26 +90,45 @@ export abstract class View {
 		}
 	}
 
-	protected reconcileChildren(children: Child[]): void {
+	abstract reconcile(elem: Element): Promise<void> | void;
+
+	abstract destroy(): void;
+
+	protected reconcileChildren(children: Child[]): Promise<void> | void {
 		const max = Math.max(this.children.length, children.length);
+		const promises: Promise<void>[] = [];
 		for (let i = 0; i < max; i++) {
-			const view = this.children[i];
+			let view = this.children[i];
 			const elem = children[i];
 			if (
 				view === undefined ||
-				elem == null ||
+				elem === null ||
 				typeof view !== "object" ||
 				typeof elem !== "object" ||
 				view.tag !== elem.tag
 			) {
 				if (typeof view === "object") {
-					view.reconcile();
+					view.destroy();
 				}
 
-				this.children[i] = this.createViewChild(elem);
-			} else {
-				view.reconcile(elem);
+				view = this.createViewChild(elem);
+				this.children[i] = view;
 			}
+
+			if (
+				typeof view === "object" &&
+				elem !== null &&
+				typeof elem === "object"
+			) {
+				const p = view.reconcile(elem);
+				if (p !== undefined) {
+					promises.push(p);
+				}
+			}
+		}
+
+		if (promises.length) {
+			return Promise.all(promises).then(() => {});
 		}
 	}
 }
@@ -107,21 +143,29 @@ class ComponentView extends View {
 	constructor(elem: Element, private parent: View) {
 		super();
 		if (typeof elem.tag !== "function") {
-			throw new Error("Component constructor called with intrinsic element");
+			throw new TypeError("Tag mismatch");
 		}
 
 		this.tag = elem.tag;
-		this.reconcile(elem);
 	}
 
-	reconcile(elem?: Element): void {
-		if (elem == null) {
-			this.reconcileChildren([]);
-			return;
+	reconcile(elem: Element): Promise<void> | void {
+		if (this.tag !== elem.tag) {
+			throw new TypeError("Tag mismatch");
 		}
 
 		const child = this.tag.call(this.controller, elem.props, ...elem.children);
-		this.reconcileChildren([child]);
+		if (isPromiseLike(child)) {
+			return Promise.resolve(child).then((child) => {
+				return this.reconcileChildren([child]);
+			});
+		} else {
+			return this.reconcileChildren([child]);
+		}
+	}
+
+	destroy(): void {
+		this.reconcileChildren([]);
 	}
 }
 
@@ -130,7 +174,7 @@ export type Component<TProps extends Props = Props> = (
 	// TODO: how do we parameterize this type
 	props: TProps,
 	...children: Child[]
-) => Element;
+) => PromiseLike<Element> | Element;
 
 class IntrinsicController {
 	constructor(private view: IntrinsicView) {}
@@ -151,35 +195,23 @@ export class IntrinsicView extends View {
 	constructor(elem: Element, private parent: View) {
 		super();
 		if (typeof elem.tag !== "string") {
-			throw new Error("Called intrinsic view with non-string element");
+			throw new TypeError("Tag mismatch");
 		}
 
 		this.tag = elem.tag;
-		this.reconcile(elem);
 	}
 
-	reconcile(elem?: Element): void {
-		if (elem == null) {
-			delete this.node;
-			if (this.iter != null) {
-				if (typeof this.iter.return === "function") {
-					this.iter.return();
-				}
-
-				delete this.iter;
-			}
-
-			for (const child of this.children) {
-				if (typeof child === "object") {
-					child.reconcile();
-				}
-			}
-
-			return;
+	reconcile(elem: Element): Promise<void> | void {
+		if (this.tag !== elem.tag) {
+			throw new TypeError("Tag mismatch");
 		}
 
+		const p = this.reconcileChildren(elem.children);
 		this.props = elem.props;
-		this.reconcileChildren(elem.children);
+		if (p !== undefined) {
+			return p.then(() => this.commit());
+		}
+
 		this.commit();
 	}
 
@@ -191,6 +223,19 @@ export class IntrinsicView extends View {
 
 		const result = this.iter.next();
 		this.node = result.value;
+	}
+
+	destroy(): void {
+		delete this.node;
+		if (this.iter != null) {
+			if (typeof this.iter.return === "function") {
+				this.iter.return();
+			}
+
+			delete this.iter;
+		}
+
+		this.reconcileChildren([]);
 	}
 }
 
@@ -205,13 +250,21 @@ export class RootView extends View {
 		super();
 	}
 
-	reconcile(elem?: Element): void {
-		this.reconcileChildren(elem == null ? [] : [elem]);
+	reconcile(elem: Element): Promise<void> | void {
+		const p = this.reconcileChildren([elem]);
+		if (p !== undefined) {
+			return p.then(() => this.commit());
+		}
+
 		this.commit();
 	}
 
 	commit(): void {
 		updateDOMChildren(this.node, this.nodes);
+	}
+
+	destroy(): void {
+		this.reconcileChildren([]);
 	}
 }
 
@@ -288,7 +341,7 @@ const renderViews: WeakMap<Node, RootView> = new WeakMap();
 export function render(
 	elem: Element | null | undefined,
 	container: HTMLElement,
-): RootView {
+): Promise<RootView> | RootView {
 	let view: RootView;
 	if (renderViews.has(container)) {
 		view = renderViews.get(container)!;
@@ -297,6 +350,14 @@ export function render(
 		renderViews.set(container, view);
 	}
 
-	view.reconcile(elem || undefined);
+	if (elem == null) {
+		view.destroy();
+	} else {
+		const p = view.reconcile(elem);
+		if (p !== undefined) {
+			return p.then(() => view);
+		}
+	}
+
 	return view;
 }
