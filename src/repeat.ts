@@ -2,6 +2,14 @@ function isPromiseLike(value: any): value is PromiseLike<unknown> {
 	return value != null && typeof value.then === "function";
 }
 
+function isIterator(
+	value: any,
+): value is
+	| AsyncIterator<unknown, unknown, unknown>
+	| Iterator<unknown, unknown, unknown> {
+	return value != null && typeof value.next === "function";
+}
+
 declare global {
 	namespace JSX {
 		interface IntrinsicElements {
@@ -16,10 +24,18 @@ export type Props = Record<string, any>;
 
 export type Tag<TProps extends Props = Props> = Component<Props> | string;
 
+export const ElementSigil: unique symbol = Symbol.for("crank.element");
+export type ElementSigil = typeof ElementSigil;
+
 export interface Element<T extends Tag = Tag> {
+	sigil: ElementSigil;
 	tag: T;
 	props: Props;
 	children: Child[];
+}
+
+export function isElement(value: any): value is Element {
+	return value != null && value.sigil === ElementSigil;
 }
 
 export function createElement<T extends Tag>(
@@ -28,14 +44,16 @@ export function createElement<T extends Tag>(
 	...children: Children
 ): Element<T> {
 	return {
+		sigil: ElementSigil,
 		tag,
 		props: Object.assign({}, props),
+		// TODO: make this an iterator
 		children: children.flat(Infinity),
 	};
 }
 
-// TODO: rename to Node?
 export type Text = string | number;
+// TODO: rename to Node?
 export type Child = Element | Text | boolean | null | undefined;
 
 export interface Children extends Array<Children | Child> {}
@@ -49,7 +67,7 @@ export abstract class View {
 		let buffer: string | undefined;
 		const nodes: (Node | string)[] = [];
 		for (const child of this.children) {
-			if (child != null) {
+			if (child !== undefined) {
 				if (typeof child === "string") {
 					buffer = buffer === undefined ? child : buffer + child;
 				} else {
@@ -77,9 +95,11 @@ export abstract class View {
 	}
 
 	private createViewChild(child: Child): ViewChild {
-		if (child == null || typeof child == "boolean") {
+		if (child == null || typeof child === "boolean") {
 			return undefined;
-		} else if (typeof child === "string" || typeof child === "number") {
+		} else if (typeof child === "string") {
+			return child;
+		} else if (typeof child === "number") {
 			return child.toString();
 		} else if (typeof child.tag === "string") {
 			return new IntrinsicView(child, this);
@@ -137,9 +157,22 @@ class ComponentController {
 	constructor(private view: ComponentView) {}
 }
 
+export type ComponentIterator =
+	| AsyncIterator<Element, Element | void, (Node | string)[] | Node | string>
+	| Iterator<Element, Element | void, (Node | string)[] | Node | string>;
+
+export type Component<TProps extends Props = Props> = (
+	this: ComponentController,
+	// TODO: how do we parameterize this type
+	props: TProps,
+	// TODO: make this an iterator
+	children: Child[],
+) => ComponentIterator | PromiseLike<Element> | Element;
+
 class ComponentView extends View {
 	private controller = new ComponentController(this);
 	tag: Component;
+	iter?: ComponentIterator;
 	constructor(elem: Element, private parent: View) {
 		super();
 		if (typeof elem.tag !== "function") {
@@ -154,27 +187,37 @@ class ComponentView extends View {
 			throw new TypeError("Tag mismatch");
 		}
 
-		const child = this.tag.call(this.controller, elem.props, ...elem.children);
-		if (isPromiseLike(child)) {
-			return Promise.resolve(child).then((child) => {
-				return this.reconcileChildren([child]);
-			});
-		} else {
-			return this.reconcileChildren([child]);
+		if (this.iter == null) {
+			const value = this.tag.call(this.controller, elem.props, elem.children);
+			if (isIterator(value)) {
+				this.iter = value;
+			} else if (isPromiseLike(value)) {
+				return Promise.resolve(value).then((value) =>
+					this.reconcileChildren([value]),
+				);
+			} else {
+				return this.reconcileChildren([value]);
+			}
 		}
+
+		const nodes = this.nodes;
+		const next = nodes.length <= 1 ? nodes[0] : nodes;
+		const result = this.iter.next(next);
+		if (isPromiseLike(result)) {
+			return result.then(({value}) =>
+				this.reconcileChildren(isElement(value) ? [value] : []),
+			);
+		}
+
+		return this.reconcileChildren(
+			isElement(result.value) ? [result.value] : [],
+		);
 	}
 
 	destroy(): void {
 		this.reconcileChildren([]);
 	}
 }
-
-export type Component<TProps extends Props = Props> = (
-	this: ComponentController,
-	// TODO: how do we parameterize this type
-	props: TProps,
-	...children: Child[]
-) => PromiseLike<Element> | Element;
 
 class IntrinsicController {
 	constructor(private view: IntrinsicView) {}
@@ -191,7 +234,7 @@ export class IntrinsicView extends View {
 	tag: string;
 	props: Props = {};
 	node?: Node;
-	protected iter?: Iterator<Node>;
+	iter?: Iterator<Node>;
 	constructor(elem: Element, private parent: View) {
 		super();
 		if (typeof elem.tag !== "string") {
@@ -298,7 +341,7 @@ function updateDOMChildren(el: HTMLElement, children: (Node | string)[]): void {
 	for (let i = 0; i < max; i++) {
 		const oldChild = el.childNodes[i];
 		const newChild = children[i];
-		if (oldChild == null) {
+		if (oldChild === undefined) {
 			if (newChild != null) {
 				if (typeof newChild === "string") {
 					el.appendChild(document.createTextNode(newChild));
