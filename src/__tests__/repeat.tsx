@@ -1,7 +1,7 @@
 /* @jsx createElement */
 import "core-js";
 import "mutationobserver-shim";
-import {createElement, Element, render, RootView} from "../repeat";
+import {createElement, Controller, Element, render, RootView} from "../repeat";
 
 describe("render", () => {
 	afterEach(() => {
@@ -99,44 +99,192 @@ describe("render", () => {
 	});
 });
 
-describe("components", () => {
-	function SyncComponent(): Element {
-		return <span>Sync Component</span>;
-	}
-
-	async function AsyncComponent(): Promise<Element> {
-		await new Promise((resolve) => setTimeout(resolve, 100));
-		return <span>Async Component</span>;
-	}
-
+describe("sync function components", () => {
 	afterEach(() => {
 		document.body.innerHTML = "";
 	});
 
-	test("sync function", () => {
-		const view = render(
+	test("basic", () => {
+		function SyncFn({message}: {message: string}): Element {
+			return <span>{message}</span>;
+		}
+
+		render(
 			<div>
-				<SyncComponent />
+				<SyncFn message="Hello" />
 			</div>,
 			document.body,
 		);
-		expect(view).toBeInstanceOf(RootView);
-		expect(document.body.innerHTML).toEqual(
-			"<div><span>Sync Component</span></div>",
+		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+		render(
+			<div>
+				<SyncFn message="Goodbye" />
+			</div>,
+			document.body,
 		);
+		expect(document.body.innerHTML).toEqual("<div><span>Goodbye</span></div>");
+	});
+});
+
+describe("async function components", () => {
+	async function AsyncFn({
+		message,
+		time = 100,
+	}: {
+		message: string;
+		time?: number;
+	}): Promise<Element> {
+		await new Promise((resolve) => setTimeout(resolve, time));
+		return <span>{message}</span>;
+	}
+
+	const resolves: ((elem: Element) => void)[] = [];
+	function ResolveFn(): Promise<Element> {
+		return new Promise((resolve) => resolves.push(resolve));
+	}
+
+	afterEach(() => {
+		document.body.innerHTML = "";
+		resolves.length = 0;
 	});
 
-	test("async function", async () => {
+	test("basic", async () => {
 		const viewP = render(
 			<div>
-				<AsyncComponent />
+				<AsyncFn message="Hello" />
 			</div>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("");
 		await expect(viewP).resolves.toBeInstanceOf(RootView);
-		expect(document.body.innerHTML).toEqual(
-			"<div><span>Async Component</span></div>",
+		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+	});
+
+	test("rerender", async () => {
+		render(
+			<div>
+				<ResolveFn />
+			</div>,
+			document.body,
 		);
+		expect(document.body.innerHTML).toEqual("");
+		resolves[0](<span>Hello 0</span>);
+		expect(document.body.innerHTML).toEqual("");
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 0</span></div>");
+		render(
+			<div>
+				<ResolveFn />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 0</span></div>");
+		resolves[1](<span>Hello 1</span>);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 0</span></div>");
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
+		expect(resolves.length).toEqual(2);
+	});
+
+	test("race-condition", async () => {
+		render(
+			<div>
+				<ResolveFn />
+			</div>,
+			document.body,
+		);
+		render(
+			<div>
+				<ResolveFn />
+			</div>,
+			document.body,
+		);
+		render(
+			<div>
+				<ResolveFn />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("");
+		expect(resolves.length).toEqual(3);
+		resolves[1](<span>Hello 1</span>);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
+		resolves[2](<span>Hello 2</span>);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		resolves[0](<span>Hello 0</span>);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
+	});
+});
+
+describe("sync generator components", () => {
+	afterEach(() => {
+		document.body.innerHTML = "";
+	});
+
+	test("basic", () => {
+		const SyncGen = jest.fn(function*(
+			this: Controller,
+			{message}: {message: string},
+		): Generator<Element> {
+			let i = 0;
+			for ([{message}] of this) {
+				i++;
+				if (i > 2) {
+					return;
+				}
+
+				yield <span>{message}</span>;
+			}
+		});
+
+		render(
+			<div>
+				<SyncGen message="Hello 1" />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
+		render(
+			<div>
+				<SyncGen message="Hello 2" />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
+		render(
+			<div>
+				<SyncGen message="Hello 3" />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div></div>");
+		expect(SyncGen).toHaveBeenCalledTimes(1);
+	});
+
+	test("update", () => {
+		let update: () => void;
+		function* SyncGen(this: Controller): Generator<Element> {
+			let i = 1;
+			update = this.update.bind(this);
+			for (const _ of this) {
+				yield <span>Hello {i++}</span>;
+			}
+		}
+
+		render(
+			<div>
+				<SyncGen />
+			</div>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
+		update!();
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
+		update!();
+		update!();
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 4</span></div>");
 	});
 });

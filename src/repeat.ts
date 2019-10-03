@@ -1,3 +1,13 @@
+declare global {
+	namespace JSX {
+		interface IntrinsicElements {
+			[name: string]: any;
+		}
+
+		interface ElementChildrenAttribute {}
+	}
+}
+
 function isPromiseLike(value: any): value is PromiseLike<unknown> {
 	return value != null && typeof value.then === "function";
 }
@@ -8,16 +18,6 @@ function isIterator(
 	| AsyncIterator<unknown, unknown, unknown>
 	| Iterator<unknown, unknown, unknown> {
 	return value != null && typeof value.next === "function";
-}
-
-declare global {
-	namespace JSX {
-		interface IntrinsicElements {
-			[name: string]: any;
-		}
-
-		interface ElementChildrenAttribute {}
-	}
 }
 
 export type Props = Record<string, any>;
@@ -52,9 +52,8 @@ export function createElement<T extends Tag>(
 	};
 }
 
-export type Text = string | number;
 // TODO: rename to Node?
-export type Child = Element | Text | boolean | null | undefined;
+export type Child = Element | string | number | boolean | null | undefined;
 
 export interface Children extends Array<Children | Child> {}
 
@@ -106,7 +105,7 @@ export abstract class View {
 		} else if (typeof child.tag === "function") {
 			return new ComponentView(child, this);
 		} else {
-			throw new TypeError("unknown child type");
+			throw new TypeError("Unknown child type");
 		}
 	}
 
@@ -148,21 +147,44 @@ export abstract class View {
 		}
 
 		if (promises.length) {
-			return Promise.all(promises).then(() => {});
+			return Promise.all(promises).then();
 		}
 	}
 }
 
-class ComponentController {
+export class Controller {
 	constructor(private view: ComponentView) {}
+
+	*[Symbol.iterator](): Generator<[Props, Child[]]> {
+		while (true) {
+			yield [this.view.props, this.view.elementChildren];
+		}
+	}
+
+	update(): Promise<void> | void {
+		return this.view.update();
+	}
 }
 
-export type ComponentIterator =
-	| AsyncIterator<Element, Element | void, (Node | string)[] | Node | string>
-	| Iterator<Element, Element | void, (Node | string)[] | Node | string>;
+export enum ComponentMode {
+	Sync,
+	Async,
+}
+
+export type SyncComponentIterator = Iterator<
+	Element,
+	Element | void,
+	(Node | string)[] | Node | string
+>;
+export type AsyncComponentIterator = AsyncIterator<
+	Element,
+	Element | void,
+	(Node | string)[] | Node | string
+>;
+export type ComponentIterator = AsyncComponentIterator | SyncComponentIterator;
 
 export type Component<TProps extends Props = Props> = (
-	this: ComponentController,
+	this: Controller,
 	// TODO: how do we parameterize this type
 	props: TProps,
 	// TODO: make this an iterator
@@ -170,9 +192,15 @@ export type Component<TProps extends Props = Props> = (
 ) => ComponentIterator | PromiseLike<Element> | Element;
 
 class ComponentView extends View {
-	private controller = new ComponentController(this);
+	private controller = new Controller(this);
 	tag: Component;
+	props: Props;
+	elementChildren: Child[];
+	mode?: ComponentMode;
 	iter?: ComponentIterator;
+	asyncIter?: AsyncComponentIterator;
+	private nextUpdateId = 0;
+	private maxUpdateId = -1;
 	constructor(elem: Element, private parent: View) {
 		super();
 		if (typeof elem.tag !== "function") {
@@ -180,6 +208,8 @@ class ComponentView extends View {
 		}
 
 		this.tag = elem.tag;
+		this.props = elem.props;
+		this.elementChildren = elem.children;
 	}
 
 	reconcile(elem: Element): Promise<void> | void {
@@ -187,28 +217,70 @@ class ComponentView extends View {
 			throw new TypeError("Tag mismatch");
 		}
 
-		if (this.iter == null) {
-			const value = this.tag.call(this.controller, elem.props, elem.children);
-			if (isIterator(value)) {
-				this.iter = value;
-			} else if (isPromiseLike(value)) {
-				return Promise.resolve(value).then((value) =>
-					this.reconcileChildren([value]),
+		this.props = elem.props;
+		this.elementChildren = elem.children;
+		return this.update();
+	}
+
+	update(): Promise<void> | void {
+		const updateId = this.nextUpdateId++;
+		if (this.mode === undefined) {
+			const child = this.tag.call(
+				this.controller,
+				this.props,
+				this.elementChildren,
+			);
+			if (isIterator(child)) {
+				this.iter = child;
+				const result = this.iter.next();
+				if (isPromiseLike(result)) {
+					this.mode = ComponentMode.Async;
+					// TODO: set up async lifecycle
+					return;
+				}
+
+				this.mode = ComponentMode.Sync;
+				return this.reconcileChildren(
+					isElement(result.value) ? [result.value] : [],
 				);
+			} else if (isPromiseLike(child)) {
+				this.mode = ComponentMode.Async;
+				return Promise.resolve(child).then((child) => {
+					if (updateId > this.maxUpdateId) {
+						this.maxUpdateId = updateId;
+						return this.reconcileChildren([child]);
+					}
+				});
 			} else {
-				return this.reconcileChildren([value]);
+				this.mode = ComponentMode.Sync;
+				return this.reconcileChildren([child]);
+			}
+		} else if (this.iter === undefined) {
+			const child = this.tag.call(
+				this.controller,
+				this.props,
+				this.elementChildren,
+			);
+			if (this.mode === ComponentMode.Sync) {
+				return this.reconcileChildren([child as Element]);
+			} else {
+				return Promise.resolve(child as PromiseLike<Element>).then((child) => {
+					if (updateId > this.maxUpdateId) {
+						this.maxUpdateId = updateId;
+						return this.reconcileChildren([child]);
+					}
+				});
 			}
 		}
 
 		const nodes = this.nodes;
 		const next = nodes.length <= 1 ? nodes[0] : nodes;
-		const result = this.iter.next(next);
-		if (isPromiseLike(result)) {
-			return result.then(({value}) =>
-				this.reconcileChildren(isElement(value) ? [value] : []),
-			);
+		if (this.mode === ComponentMode.Async) {
+			// TODO: do something here
+			return;
 		}
 
+		const result = this.iter.next(next) as IteratorResult<Element>;
 		return this.reconcileChildren(
 			isElement(result.value) ? [result.value] : [],
 		);
@@ -269,7 +341,6 @@ export class IntrinsicView extends View {
 	}
 
 	destroy(): void {
-		delete this.node;
 		if (this.iter != null) {
 			if (typeof this.iter.return === "function") {
 				this.iter.return();

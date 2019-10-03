@@ -23,7 +23,8 @@ const mount = document.getElementById("mount")!;
 
 const arr: number[] = new Array(5).fill(null).map((_, i) => i);
 
-function List({elems}: {elems: number[]}): Element {
+async function List({elems}: {elems: number[]}): Promise<Element> {
+	await new Promise((resolve) => setTimeout(resolve, Math.random() * 1000));
 	const items = elems.map((elem) => <li>{elem}</li>);
 	return <ul>{items}</ul>;
 }
@@ -33,7 +34,4 @@ const interval = setInterval(() => {
 	arr.push(arr.length);
 	render(<List elems={arr} />, mount);
 	// logRecords(observer.takeRecords());
-	if (arr.length >= 10) {
-		clearInterval(interval);
-	}
-}, 666);
+}, 1000);
