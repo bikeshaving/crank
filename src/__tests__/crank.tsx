@@ -1,7 +1,7 @@
 /* @jsx createElement */
 import "core-js";
 import "mutationobserver-shim";
-import {createElement, Controller, Element, render, RootView} from "../repeat";
+import {createElement, Controller, Element, render, RootView} from "../crank";
 
 describe("render", () => {
 	afterEach(() => {

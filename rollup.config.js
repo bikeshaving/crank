@@ -5,7 +5,7 @@ const root = process.cwd();
 const pkg = require(path.join(root, "package.json")); // eslint-disable-line
 
 export default {
-	input: path.join(root, "src/repeat.ts"),
+	input: path.join(root, "src/crank.ts"),
 	output: [
 		{
 			file: pkg.main,
@@ -18,5 +18,6 @@ export default {
 			sourcemap: true,
 		},
 	],
+	external: ["@repeaterjs/repeater"],
 	plugins: [typescript()],
 };

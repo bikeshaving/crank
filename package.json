@@ -1,14 +1,14 @@
 {
-  "name": "@repeaterjs/repeat",
+  "name": "crank",
   "version": "0.1.0",
   "private": true,
   "description": "I can’t believe I’m thinking about building my own web framework",
   "files": [
     "/lib"
   ],
-  "main": "lib/repeat.cjs.js",
-  "module": "lib/repeat.esm.js",
-  "types": "lib/repeat.d.ts",
+  "main": "lib/crank.cjs.js",
+  "module": "lib/crank.esm.js",
+  "types": "lib/crank.d.ts",
   "scripts": {
     "prebuild": "yarn run clean",
     "build": "rollup -c rollup.config.js",

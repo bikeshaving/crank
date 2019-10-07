@@ -15,6 +15,6 @@
     "typescript": "^3.6.3"
   },
   "dependencies": {
-    "@repeaterjs/repeat": "../.."
+    "crank": "*"
   }
 }
