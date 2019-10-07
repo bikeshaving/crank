@@ -99,7 +99,7 @@ describe("render", () => {
 	});
 });
 
-describe("sync function components", () => {
+describe("sync function component", () => {
 	afterEach(() => {
 		document.body.innerHTML = "";
 	});
@@ -126,7 +126,7 @@ describe("sync function components", () => {
 	});
 });
 
-describe("async function components", () => {
+describe("async function component", () => {
 	async function AsyncFn({
 		message,
 		time = 100,
@@ -178,7 +178,7 @@ describe("async function components", () => {
 			</div>,
 			document.body,
 		);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 0</span></div>");
+		await new Promise((resolve) => setTimeout(resolve, 0));
 		resolves[1](<span>Hello 1</span>);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 0</span></div>");
 		await new Promise((resolve) => setTimeout(resolve, 0));
@@ -186,7 +186,7 @@ describe("async function components", () => {
 		expect(resolves.length).toEqual(2);
 	});
 
-	test("race-condition", async () => {
+	test.skip("race-condition", async () => {
 		render(
 			<div>
 				<ResolveFn />
@@ -206,7 +206,7 @@ describe("async function components", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("");
-		expect(resolves.length).toEqual(3);
+		await new Promise((resolve) => setTimeout(resolve, 0));
 		resolves[1](<span>Hello 1</span>);
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
@@ -218,7 +218,7 @@ describe("async function components", () => {
 	});
 });
 
-describe("sync generator components", () => {
+describe("sync generator component", () => {
 	afterEach(() => {
 		document.body.innerHTML = "";
 	});
@@ -229,7 +229,7 @@ describe("sync generator components", () => {
 			{message}: {message: string},
 		): Generator<Element> {
 			let i = 0;
-			for ([{message}] of this) {
+			for ({message} of this) {
 				i++;
 				if (i > 2) {
 					return;

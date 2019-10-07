@@ -1,3 +1,6 @@
+import {Repeater, SlidingBuffer} from "@repeaterjs/repeater";
+import {createRatchet, Ratchet} from "./ratchet";
+
 declare global {
 	namespace JSX {
 		interface IntrinsicElements {
@@ -20,18 +23,20 @@ function isIterator(
 	return value != null && typeof value.next === "function";
 }
 
-export type Props = Record<string, any>;
+export interface Props {
+	[key: string]: any;
+	children?: Iterable<Element>;
+}
 
 export type Tag<TProps extends Props = Props> = Component<Props> | string;
 
 export const ElementSigil: unique symbol = Symbol.for("crank.element");
 export type ElementSigil = typeof ElementSigil;
 
-export interface Element<T extends Tag = Tag> {
+export interface Element<TTag extends Tag = Tag, TProps extends Props = Props> {
 	sigil: ElementSigil;
-	tag: T;
-	props: Props;
-	children: Child[];
+	tag: TTag;
+	props: TProps;
 }
 
 export function isElement(value: any): value is Element {
@@ -43,13 +48,12 @@ export function createElement<T extends Tag>(
 	props: Props | null,
 	...children: Children
 ): Element<T> {
-	return {
-		sigil: ElementSigil,
-		tag,
-		props: Object.assign({}, props),
-		// TODO: make this an iterator
-		children: children.flat(Infinity),
-	};
+	props = Object.assign({}, props);
+	if (children.length) {
+		// TODO: make this a lazy iterator
+		props.children = children.flat(Infinity);
+	}
+	return {sigil: ElementSigil, tag, props};
 }
 
 // TODO: rename to Node?
@@ -113,12 +117,14 @@ export abstract class View {
 
 	abstract destroy(): void;
 
-	protected reconcileChildren(children: Child[]): Promise<void> | void {
-		const max = Math.max(this.children.length, children.length);
+	protected reconcileChildren(children: Iterable<Child>): Promise<void> | void {
+		// TODO: use iterator and maybe something like an iterator zipper instead
+		const children1 = Array.from(children);
+		const max = Math.max(this.children.length, children1.length);
 		const promises: Promise<void>[] = [];
 		for (let i = 0; i < max; i++) {
 			let view = this.children[i];
-			const elem = children[i];
+			const elem = children1[i];
 			if (
 				view === undefined ||
 				elem === null ||
@@ -153,12 +159,17 @@ export abstract class View {
 }
 
 export class Controller {
+	mounted = true;
 	constructor(private view: ComponentView) {}
 
-	*[Symbol.iterator](): Generator<[Props, Child[]]> {
-		while (true) {
-			yield [this.view.props, this.view.elementChildren];
+	*[Symbol.iterator](): Generator<Props> {
+		while (this.mounted) {
+			yield this.view.props;
 		}
+	}
+
+	[Symbol.asyncIterator](): AsyncGenerator<Props> {
+		return this.view.subscribe();
 	}
 
 	update(): Promise<void> | void {
@@ -166,41 +177,89 @@ export class Controller {
 	}
 }
 
-export enum ComponentMode {
-	Sync,
-	Async,
-}
-
 export type SyncComponentIterator = Iterator<
 	Element,
 	Element | void,
 	(Node | string)[] | Node | string
 >;
+
 export type AsyncComponentIterator = AsyncIterator<
 	Element,
 	Element | void,
 	(Node | string)[] | Node | string
 >;
-export type ComponentIterator = AsyncComponentIterator | SyncComponentIterator;
 
+function* createIterator(
+	controller: Controller,
+	first: Element,
+	tag: SyncFunctionComponent,
+): SyncComponentIterator {
+	yield first;
+	for (const props of controller) {
+		yield tag.call(controller, props);
+	}
+}
+
+async function* createAsyncIterator(
+	controller: Controller,
+	first: PromiseLike<Element>,
+	tag: AsyncFunctionComponent,
+): AsyncComponentIterator {
+	yield first;
+	for await (const props of controller) {
+		yield tag.call(controller, props);
+	}
+}
+
+export type SyncFunctionComponent<TProps extends Props = Props> = (
+	this: Controller,
+	props: TProps,
+) => Element;
+
+export type AsyncFunctionComponent<TProps extends Props = Props> = (
+	this: Controller,
+	props: TProps,
+) => Promise<Element>;
+
+export type SyncGeneratorComponent<TProps extends Props = Props> = (
+	this: Controller,
+	props: TProps,
+) => SyncComponentIterator;
+
+export type AsyncGeneratorComponent<TProps extends Props = Props> = (
+	this: Controller,
+	props: TProps,
+) => AsyncComponentIterator;
+
+// TODO: use the following code when this issue is fixed:
+// https://github.com/microsoft/TypeScript/issues/33815
+// export type Component<TProps extends Props = Props> =
+// 	| SyncFunctionComponent<TProps>
+// 	| AsyncFunctionComponent<TProps>
+// 	| SyncGeneratorComponent<TProps>
+// 	| AsyncGeneratorComponent<TProps>;
 export type Component<TProps extends Props = Props> = (
 	this: Controller,
-	// TODO: how do we parameterize this type
 	props: TProps,
-	// TODO: make this an iterator
-	children: Child[],
-) => ComponentIterator | PromiseLike<Element> | Element;
+) =>
+	| AsyncComponentIterator
+	| SyncComponentIterator
+	| Promise<Element>
+	| Element;
+
+interface Publication {
+	push(value: Props): void;
+	stop(): void;
+}
 
 class ComponentView extends View {
 	private controller = new Controller(this);
 	tag: Component;
 	props: Props;
-	elementChildren: Child[];
-	mode?: ComponentMode;
-	iter?: ComponentIterator;
-	asyncIter?: AsyncComponentIterator;
-	private nextUpdateId = 0;
-	private maxUpdateId = -1;
+	private iter?: SyncComponentIterator;
+	private asyncIter?: AsyncComponentIterator;
+	private publications: Set<Publication> = new Set();
+	private ratchet?: Ratchet<void> = createRatchet();
 	constructor(elem: Element, private parent: View) {
 		super();
 		if (typeof elem.tag !== "function") {
@@ -209,7 +268,6 @@ class ComponentView extends View {
 
 		this.tag = elem.tag;
 		this.props = elem.props;
-		this.elementChildren = elem.children;
 	}
 
 	reconcile(elem: Element): Promise<void> | void {
@@ -218,76 +276,111 @@ class ComponentView extends View {
 		}
 
 		this.props = elem.props;
-		this.elementChildren = elem.children;
 		return this.update();
 	}
 
 	update(): Promise<void> | void {
-		const updateId = this.nextUpdateId++;
-		if (this.mode === undefined) {
-			const child = this.tag.call(
-				this.controller,
-				this.props,
-				this.elementChildren,
-			);
+		if (this.iter === undefined && this.asyncIter === undefined) {
+			const child:
+				| AsyncComponentIterator
+				| SyncComponentIterator
+				| PromiseLike<Element>
+				| Element = this.tag.call(this.controller, this.props);
 			if (isIterator(child)) {
-				this.iter = child;
-				const result = this.iter.next();
+				const result = child.next();
+				this.publish();
 				if (isPromiseLike(result)) {
-					this.mode = ComponentMode.Async;
-					// TODO: set up async lifecycle
-					return;
-				}
+					this.asyncIter = child as AsyncComponentIterator;
+					if (this.ratchet === undefined) {
+						this.ratchet = createRatchet();
+					}
 
-				this.mode = ComponentMode.Sync;
-				return this.reconcileChildren(
-					isElement(result.value) ? [result.value] : [],
-				);
+					const ratchetResult = this.ratchet.next();
+					if (ratchetResult.done) {
+						return Promise.resolve();
+					}
+
+					const [promise, resolve] = ratchetResult.value;
+					result.then((result) => {
+						resolve(
+							this.reconcileChildren(
+								isElement(result.value) ? [result.value] : [],
+							),
+						);
+					});
+
+					return promise;
+				} else {
+					this.iter = child as SyncComponentIterator;
+					return this.reconcileChildren(
+						isElement(result.value) ? [result.value] : [],
+					);
+				}
 			} else if (isPromiseLike(child)) {
-				this.mode = ComponentMode.Async;
-				return Promise.resolve(child).then((child) => {
-					if (updateId > this.maxUpdateId) {
-						this.maxUpdateId = updateId;
-						return this.reconcileChildren([child]);
-					}
-				});
+				this.asyncIter = createAsyncIterator(this.controller, child, this
+					.tag as AsyncFunctionComponent);
 			} else {
-				this.mode = ComponentMode.Sync;
-				return this.reconcileChildren([child]);
-			}
-		} else if (this.iter === undefined) {
-			const child = this.tag.call(
-				this.controller,
-				this.props,
-				this.elementChildren,
-			);
-			if (this.mode === ComponentMode.Sync) {
-				return this.reconcileChildren([child as Element]);
-			} else {
-				return Promise.resolve(child as PromiseLike<Element>).then((child) => {
-					if (updateId > this.maxUpdateId) {
-						this.maxUpdateId = updateId;
-						return this.reconcileChildren([child]);
-					}
-				});
+				this.iter = createIterator(this.controller, child, this
+					.tag as SyncFunctionComponent);
 			}
 		}
 
 		const nodes = this.nodes;
 		const next = nodes.length <= 1 ? nodes[0] : nodes;
-		if (this.mode === ComponentMode.Async) {
-			// TODO: do something here
-			return;
-		}
+		if (this.asyncIter !== undefined) {
+			if (this.ratchet === undefined) {
+				this.ratchet = createRatchet();
+			}
 
-		const result = this.iter.next(next) as IteratorResult<Element>;
-		return this.reconcileChildren(
-			isElement(result.value) ? [result.value] : [],
-		);
+			const ratchetResult = this.ratchet.next();
+			if (ratchetResult.done) {
+				return Promise.resolve();
+			}
+
+			const [promise, resolve] = ratchetResult.value;
+			const result = this.asyncIter.next(next);
+			this.publish();
+			result.then((result) => {
+				resolve(
+					this.reconcileChildren(isElement(result.value) ? [result.value] : []),
+				);
+			});
+
+			return promise;
+		} else if (this.iter !== undefined) {
+			const result = this.iter.next(next);
+			return this.reconcileChildren(
+				isElement(result.value) ? [result.value] : [],
+			);
+		} else {
+			throw new Error("Invalid state");
+		}
+	}
+
+	subscribe(): Repeater<Props> {
+		return new Repeater(async (push, stop) => {
+			const publication: Publication = {push, stop};
+			this.publications.add(publication);
+			await stop;
+			this.publications.delete(publication);
+		}, new SlidingBuffer(1));
+	}
+
+	publish(): void {
+		for (const publication of this.publications) {
+			publication.push(this.props);
+		}
 	}
 
 	destroy(): void {
 		this.reconcileChildren([]);
+		for (const publication of this.publications) {
+			publication.stop();
+		}
+
+		if (this.ratchet !== undefined) {
+			this.ratchet.return();
+		}
 	}
 }
 
@@ -321,8 +414,10 @@ export class IntrinsicView extends View {
 			throw new TypeError("Tag mismatch");
 		}
 
-		const p = this.reconcileChildren(elem.children);
 		this.props = elem.props;
+		const children =
+			elem.props.children === undefined ? [] : elem.props.children;
+		const p = this.reconcileChildren(children);
 		if (p !== undefined) {
 			return p.then(() => this.commit());
 		}
@@ -385,7 +480,9 @@ export class RootView extends View {
 function updateDOMProps(el: HTMLElement, props: Props): void {
 	for (const [key, value] of Object.entries(props)) {
 		if (key in el) {
-			(el as any)[key] = value;
+			if (key !== "children") {
+				(el as any)[key] = value;
+			}
 		} else {
 			el.setAttribute(key.toLowerCase(), value);
 		}
@@ -468,7 +565,7 @@ export function render(
 		view.destroy();
 	} else {
 		const p = view.reconcile(elem);
-		if (p !== undefined) {
+		if (isPromiseLike(p)) {
 			return p.then(() => view);
 		}
 	}
