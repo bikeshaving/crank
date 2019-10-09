@@ -2,6 +2,18 @@
 # yarn lockfile v1
 
 
+"@repeaterjs/repeater@^2.0.0":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@repeaterjs/repeater/-/repeater-2.0.0.tgz#06e906c7bbd24f4707cbed74704cbace38ec2009"
+  integrity sha512-x0ObBZvxbYB25qYanf95ku2eZDQ9FKsLP8ncZ0mPlaV3o35WwdbX0G0ZlCsLGhL44Ui8YO6h/q64zDMZm07lMQ==
+
+"@repeaterjs/timers@^0.3.1":
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/@repeaterjs/timers/-/timers-0.3.1.tgz#677a659a45c9fe587f0c77a57e809c927f4e0cc5"
+  integrity sha512-Qb6rC491IUtU8WfWha5TZXOpYDxFXWrwLrAu2uX5dLf6dXXFAcsTJFDwshlxFwJPSt4DOM0z7o9TKRajmof5Qg==
+  dependencies:
+    "@repeaterjs/repeater" "^2.0.0"
+
 "@types/estree@0.0.39":
   version "0.0.39"
   resolved "https://registry.yarnpkg.com/@types/estree/-/estree-0.0.39.tgz#e177e699ee1b8c22d23174caaa7422644389509f"

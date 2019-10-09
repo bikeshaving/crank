@@ -6,6 +6,7 @@ import {createElement, Controller, Element, render, RootView} from "../crank";
 describe("render", () => {
 	afterEach(() => {
 		document.body.innerHTML = "";
+		render(null, document.body);
 	});
 
 	test("simple", () => {
@@ -97,11 +98,31 @@ describe("render", () => {
 		expect(removed.removedNodes.length).toEqual(1);
 		observer.disconnect();
 	});
+
+	test("rerender different", () => {
+		function Component({Root}: {Root: string}): Element {
+			return <Root>Hello world</Root>;
+		}
+		render(<Component Root="div" />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Hello world</div>");
+		render(<Component Root="span" />, document.body);
+		expect(document.body.innerHTML).toEqual("<span>Hello world</span>");
+	});
+
+	test("rerender children", () => {
+		render(<div>Loading...</div>, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Loading...</div>");
+		render(<div><span>1</span><span>2</span></div>, document.body);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span></div>",
+		);
+	});
 });
 
 describe("sync function component", () => {
 	afterEach(() => {
 		document.body.innerHTML = "";
+		render(null, document.body);
 	});
 
 	test("basic", () => {
@@ -145,6 +166,7 @@ describe("async function component", () => {
 
 	afterEach(() => {
 		document.body.innerHTML = "";
+		render(null, document.body);
 		resolves.length = 0;
 	});
 
@@ -221,6 +243,7 @@ describe("async function component", () => {
 describe("sync generator component", () => {
 	afterEach(() => {
 		document.body.innerHTML = "";
+		render(null, document.body);
 	});
 
 	test("basic", () => {

@@ -1,5 +1,4 @@
 import {Repeater, SlidingBuffer} from "@repeaterjs/repeater";
-import {createRatchet, Ratchet} from "./ratchet";
 
 declare global {
 	namespace JSX {
@@ -25,10 +24,10 @@ function isIterator(
 
 export interface Props {
 	[key: string]: any;
-	children?: Iterable<Element>;
+	children?: Iterable<Child>;
 }
 
-export type Tag<TProps extends Props = Props> = Component<Props> | string;
+export type Tag<TProps extends Props = Props> = Component<TProps> | string;
 
 export const ElementSigil: unique symbol = Symbol.for("crank.element");
 export type ElementSigil = typeof ElementSigil;
@@ -118,7 +117,7 @@ export abstract class View {
 	abstract destroy(): void;
 
 	protected reconcileChildren(children: Iterable<Child>): Promise<void> | void {
-		// TODO: use iterator and maybe something like an iterator zipper instead
+		// TODO: use iterable and maybe something like an iterator zipper instead
 		const children1 = Array.from(children);
 		const max = Math.max(this.children.length, children1.length);
 		const promises: Promise<void>[] = [];
@@ -133,6 +132,7 @@ export abstract class View {
 				view.tag !== elem.tag
 			) {
 				if (typeof view === "object") {
+					// TODO: should this be done in the commit phase???
 					view.destroy();
 				}
 
@@ -189,7 +189,7 @@ export type AsyncComponentIterator = AsyncIterator<
 	(Node | string)[] | Node | string
 >;
 
-function* createIterator(
+export function* createIterator(
 	controller: Controller,
 	first: Element,
 	tag: SyncFunctionComponent,
@@ -200,7 +200,7 @@ function* createIterator(
 	}
 }
 
-async function* createAsyncIterator(
+export async function* createAsyncIterator(
 	controller: Controller,
 	first: PromiseLike<Element>,
 	tag: AsyncFunctionComponent,
@@ -258,8 +258,8 @@ class ComponentView extends View {
 	props: Props;
 	private iter?: SyncComponentIterator;
 	private asyncIter?: AsyncComponentIterator;
+	private promise?: Promise<void>;
 	private publications: Set<Publication> = new Set();
-	private ratchet?: Ratchet<void> = createRatchet();
 	constructor(elem: Element, private parent: View) {
 		super();
 		if (typeof elem.tag !== "function") {
@@ -279,7 +279,7 @@ class ComponentView extends View {
 		return this.update();
 	}
 
-	update(): Promise<void> | void {
+	update(publish = true): Promise<void> | void {
 		if (this.iter === undefined && this.asyncIter === undefined) {
 			const child:
 				| AsyncComponentIterator
@@ -288,28 +288,20 @@ class ComponentView extends View {
 				| Element = this.tag.call(this.controller, this.props);
 			if (isIterator(child)) {
 				const result = child.next();
-				this.publish();
 				if (isPromiseLike(result)) {
 					this.asyncIter = child as AsyncComponentIterator;
-					if (this.ratchet === undefined) {
-						this.ratchet = createRatchet();
+					if (publish) {
+						this.publish();
 					}
 
-					const ratchetResult = this.ratchet.next();
-					if (ratchetResult.done) {
-						return Promise.resolve();
-					}
-
-					const [promise, resolve] = ratchetResult.value;
-					result.then((result) => {
-						resolve(
-							this.reconcileChildren(
+					return result.then(async (result) => {
+						if (!result.done) {
+							await this.reconcileChildren(
 								isElement(result.value) ? [result.value] : [],
-							),
-						);
+							);
+							this.update(false);
+						}
 					});
-
-					return promise;
 				} else {
 					this.iter = child as SyncComponentIterator;
 					return this.reconcileChildren(
@@ -328,25 +320,21 @@ class ComponentView extends View {
 		const nodes = this.nodes;
 		const next = nodes.length <= 1 ? nodes[0] : nodes;
 		if (this.asyncIter !== undefined) {
-			if (this.ratchet === undefined) {
-				this.ratchet = createRatchet();
-			}
-
-			const ratchetResult = this.ratchet.next();
-			if (ratchetResult.done) {
-				return Promise.resolve();
-			}
-
-			const [promise, resolve] = ratchetResult.value;
 			const result = this.asyncIter.next(next);
-			this.publish();
-			result.then((result) => {
-				resolve(
-					this.reconcileChildren(isElement(result.value) ? [result.value] : []),
-				);
+			if (publish) {
+				this.publish();
+			}
+
+			const p = result.then(async (result) => {
+				if (!result.done) {
+					await this.reconcileChildren(
+						isElement(result.value) ? [result.value] : [],
+					);
+					this.update(false);
+				}
 			});
 
-			return promise;
+			return p;
 		} else if (this.iter !== undefined) {
 			const result = this.iter.next(next);
 			return this.reconcileChildren(
@@ -377,13 +365,10 @@ class ComponentView extends View {
 		for (const publication of this.publications) {
 			publication.stop();
 		}
-
-		if (this.ratchet !== undefined) {
-			this.ratchet.return();
-		}
 	}
 }
 
+// TODO: give intrinsics a way to access parent node.
 class IntrinsicController {
 	constructor(private view: IntrinsicView) {}
 
@@ -462,7 +447,9 @@ export class RootView extends View {
 	reconcile(elem: Element): Promise<void> | void {
 		const p = this.reconcileChildren([elem]);
 		if (p !== undefined) {
-			return p.then(() => this.commit());
+			return p.then(() => {
+				this.commit();
+			});
 		}
 
 		this.commit();
@@ -504,32 +491,35 @@ function updateDOMChildren(el: HTMLElement, children: (Node | string)[]): void {
 		return;
 	}
 
-	// TODO: is this right?
-	const max = Math.max(el.childNodes.length, children.length);
-	for (let i = 0; i < max; i++) {
-		const oldChild = el.childNodes[i];
-		const newChild = children[i];
-		if (oldChild === undefined) {
-			if (newChild != null) {
-				if (typeof newChild === "string") {
-					el.appendChild(document.createTextNode(newChild));
-				} else {
-					el.appendChild(newChild);
-				}
-			}
-		} else if (newChild == null) {
-			el.removeChild(oldChild);
+	let oldChild = el.firstChild;
+	for (const newChild of children) {
+		if (oldChild === null) {
+			el.appendChild(
+				typeof newChild === "string"
+					? document.createTextNode(newChild)
+					: newChild,
+			);
 		} else if (typeof newChild === "string") {
 			if (oldChild.nodeType === Node.TEXT_NODE) {
 				if (oldChild.nodeValue !== newChild) {
 					oldChild.nodeValue = newChild;
 				}
+
+				oldChild = oldChild.nextSibling;
 			} else {
 				el.insertBefore(document.createTextNode(newChild), oldChild);
 			}
 		} else if (oldChild !== newChild) {
 			el.insertBefore(newChild, oldChild);
+		} else {
+			oldChild = oldChild.nextSibling;
 		}
+	}
+
+	while (oldChild !== null) {
+		const oldChild1 = oldChild;
+		oldChild = oldChild.nextSibling;
+		el.removeChild(oldChild1);
 	}
 }
 
@@ -543,6 +533,7 @@ function createBasicIntrinsic(tag: string): Intrinsic {
 				yield el;
 			}
 		} finally {
+			// TODO: don’t remove child if parent is already removed.
 			el.remove();
 		}
 	};
@@ -563,6 +554,7 @@ export function render(
 
 	if (elem == null) {
 		view.destroy();
+		renderViews.delete(container);
 	} else {
 		const p = view.reconcile(elem);
 		if (isPromiseLike(p)) {

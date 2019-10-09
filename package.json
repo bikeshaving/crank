@@ -15,7 +15,7 @@
     "clean": "shx rm -rf ./lib",
     "lint": "eslint --ignore-path .gitignore --ext .js,.ts,.tsx .",
     "prepublishOnly": "yarn run test && yarn run build",
-    "test": "jest --config jest.config.js --color"
+    "test": "jest --config jest.config.js --color --no-cache"
   },
   "dependencies": {
     "@repeaterjs/repeater": "^2.0.0"
