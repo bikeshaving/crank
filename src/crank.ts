@@ -249,53 +249,26 @@ export type AsyncComponentIterator = AsyncIterator<
 	(Node | string)[] | Node | string
 >;
 
-export type ComponentIterator = AsyncComponentIterator | SyncComponentIterator;
-
-export function* createIter(
+export function* createIterator(
 	controller: Controller,
-	tag: SyncFunctionComponent,
+	tag: (this: Controller, props: Props) => Element,
 ): SyncComponentIterator {
 	for (const props of controller) {
 		yield tag.call(controller, props);
 	}
 }
 
-export async function* createAsyncIter(
+export async function* createAsyncIterator(
 	controller: Controller,
-	tag: AsyncFunctionComponent,
+	tag: (this: Controller, props: Props) => PromiseLike<Element>,
 ): AsyncComponentIterator {
 	for await (const props of controller) {
 		yield tag.call(controller, props);
 	}
 }
 
-export type SyncFunctionComponent<TProps extends Props = Props> = (
-	this: Controller,
-	props: TProps,
-) => Element;
+export type ComponentIterator = AsyncComponentIterator | SyncComponentIterator;
 
-export type AsyncFunctionComponent<TProps extends Props = Props> = (
-	this: Controller,
-	props: TProps,
-) => PromiseLike<Element>;
-
-export type SyncGeneratorComponent<TProps extends Props = Props> = (
-	this: Controller,
-	props: TProps,
-) => SyncComponentIterator;
-
-export type AsyncGeneratorComponent<TProps extends Props = Props> = (
-	this: Controller,
-	props: TProps,
-) => AsyncComponentIterator;
-
-// TODO: use the following code when this issue is fixed:
-// https://github.com/microsoft/TypeScript/issues/33815
-// export type Component<TProps extends Props = Props> =
-// 	| SyncFunctionComponent<TProps>
-// 	| AsyncFunctionComponent<TProps>
-// 	| SyncGeneratorComponent<TProps>
-// 	| AsyncGeneratorComponent<TProps>;
 export type Component<TProps extends Props = Props> = (
 	this: Controller,
 	props: TProps,
@@ -370,11 +343,11 @@ class ComponentView extends View {
 				);
 			}
 		} else if (isPromiseLike(child)) {
-			this.iter = createAsyncIter(this.controller, this.tag as any);
+			this.iter = createAsyncIterator(this.controller, this.tag as any);
 			this.promise = this.pull(child.then((value) => ({value, done: false})));
 			return this.promise;
 		} else {
-			this.iter = createIter(this.controller, this.tag as any);
+			this.iter = createIterator(this.controller, this.tag as any);
 			return this.renderChildren([child]);
 		}
 	}
