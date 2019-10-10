@@ -56,7 +56,7 @@ export function isElement(value: any): value is Element {
 }
 
 export function* flattenChildren(
-	childOrChildren: Child | Children
+	childOrChildren: Child | Children,
 ): Iterable<Child> {
 	if (isIterable(childOrChildren)) {
 		for (const child of childOrChildren) {
@@ -251,6 +251,8 @@ export type AsyncComponentIterator = AsyncIterator<
 	(Node | string)[] | Node | string
 >;
 
+export type ComponentIterator = AsyncComponentIterator | SyncComponentIterator;
+
 export function* createIter(
 	controller: Controller,
 	tag: SyncFunctionComponent,
@@ -299,11 +301,7 @@ export type AsyncGeneratorComponent<TProps extends Props = Props> = (
 export type Component<TProps extends Props = Props> = (
 	this: Controller,
 	props: TProps,
-) =>
-	| AsyncComponentIterator
-	| SyncComponentIterator
-	| Promise<Element>
-	| Element;
+) => ComponentIterator | Promise<Element> | Element;
 
 interface Publication {
 	push(value: Props): void;
@@ -314,8 +312,7 @@ class ComponentView extends View {
 	private controller = new Controller(this);
 	tag: Component;
 	props: Props;
-	private iter?: SyncComponentIterator;
-	private asyncIter?: AsyncComponentIterator;
+	private iter?: ComponentIterator;
 	private promise?: Promise<void>;
 	private publications: Set<Publication> = new Set();
 	constructor(elem: Element, public parent: View) {
@@ -335,7 +332,7 @@ class ComponentView extends View {
 			this.commit();
 			const nodes = this.nodes;
 			const next = nodes.length <= 1 ? nodes[0] : nodes;
-			this.promise = this.pull(this.asyncIter!.next(next));
+			this.promise = this.pull((this.iter as any).next(next));
 		}
 	}
 
@@ -364,16 +361,16 @@ class ComponentView extends View {
 			const result = child.next();
 			if (isPromiseLike(result)) {
 				this.publish();
-				this.asyncIter = child as AsyncComponentIterator;
+				this.iter = child;
 				return (this.promise = this.pull(result));
 			} else {
-				this.iter = child as SyncComponentIterator;
+				this.iter = child;
 				return this.renderChildren(
 					isElement(result.value) ? [result.value] : [],
 				);
 			}
 		} else if (isPromiseLike(child)) {
-			this.asyncIter = createAsyncIter(this.controller, this.tag as any);
+			this.iter = createAsyncIter(this.controller, this.tag as any);
 			const resultP = child.then((value) => ({value, done: false}));
 			return (this.promise = this.pull(resultP));
 		} else {
@@ -383,17 +380,14 @@ class ComponentView extends View {
 	}
 
 	update(): Promise<void> | void {
-		if (this.iter === undefined && this.asyncIter === undefined) {
+		if (this.iter === undefined) {
 			return this.initialize();
 		}
 
-		if (this.asyncIter !== undefined) {
-			this.publish();
-			return this.promise;
-		} else if (this.iter !== undefined) {
+		if (this.promise === undefined) {
 			const nodes = this.nodes;
 			const next = nodes.length <= 1 ? nodes[0] : nodes;
-			const result = this.iter.next(next);
+			const result = this.iter.next(next) as IteratorResult<Element>;
 			const p = this.renderChildren(
 				isElement(result.value) ? [result.value] : [],
 			);
@@ -403,7 +397,8 @@ class ComponentView extends View {
 
 			this.commit();
 		} else {
-			throw new Error("Invalid state");
+			this.publish();
+			return this.promise;
 		}
 	}
 
