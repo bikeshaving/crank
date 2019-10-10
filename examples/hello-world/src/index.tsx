@@ -2,12 +2,15 @@
 import {Controller, createElement, Element, render} from "crank";
 const React = {createElement};
 const mount = document.getElementById("mount")!;
-function logRecords(records: MutationRecord[]): void {
-	console.log(records);
-}
-
-const observer = new MutationObserver(logRecords);
-observer.observe(mount, {attributes: true, childList: true, subtree: true});
+// function logRecords(records: MutationRecord[]): void {
+// 	const total = records.length;
+// 	const added = records.reduce((count, record) => count + record.addedNodes.length, 0);
+// 	const removed = records.reduce((count, record) => count + record.removedNodes.length, 0);
+// 	console.log({total, added, removed});
+// }
+//
+// const observer = new MutationObserver(logRecords);
+// observer.observe(mount, {attributes: true, childList: true, subtree: true});
 
 const arr: number[] = [];
 async function* List(
@@ -16,6 +19,10 @@ async function* List(
 ): AsyncGenerator<Element> {
 	let i = 0;
 	for await ({elems} of this) {
+		if (i > 10) {
+			break;
+		}
+
 		if (i++ % 5 === 0) {
 			yield <div>Loading {elems.length} items...</div>;
 			await new Promise((resolve) => setTimeout(resolve, 4000));

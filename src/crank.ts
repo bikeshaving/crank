@@ -6,6 +6,9 @@ declare global {
 			[name: string]: any;
 		}
 
+		// typescript children stuff is busted:
+		// https://github.com/microsoft/TypeScript/issues/14729
+		// https://github.com/microsoft/TypeScript/pull/29818
 		interface ElementChildrenAttribute {}
 	}
 }
@@ -25,6 +28,11 @@ function isIterator(
 export interface Props {
 	[key: string]: any;
 	children?: Iterable<Child>;
+}
+
+export interface IntrinsicProps {
+	[key: string]: any;
+	children: (Node | string)[];
 }
 
 export type Tag<TProps extends Props = Props> = Component<TProps> | string;
@@ -303,8 +311,8 @@ class ComponentView extends View {
 							await this.reconcileChildren(
 								isElement(result.value) ? [result.value] : [],
 							);
-							this.commit();
 							this.update(false);
+							this.commit();
 						}
 					});
 				} else {
@@ -335,15 +343,20 @@ class ComponentView extends View {
 					await this.reconcileChildren(
 						isElement(result.value) ? [result.value] : [],
 					);
-					this.commit();
 					this.update(false);
+					this.commit();
 				}
 			});
 		} else if (this.iter !== undefined) {
 			const result = this.iter.next(next);
-			return this.reconcileChildren(
+			const p = this.reconcileChildren(
 				isElement(result.value) ? [result.value] : [],
 			);
+			if (p !== undefined) {
+				return p;
+			}
+
+			this.commit();
 		} else {
 			throw new Error("Invalid state");
 		}
@@ -376,23 +389,14 @@ class ComponentView extends View {
 	}
 }
 
-// TODO: give intrinsics a way to access parent node.
 class IntrinsicController {
 	constructor(private view: IntrinsicView) {}
 
-	*[Symbol.iterator](): Generator<[Props, (Node | string)[]]> {
+	// TODO: parameterize IntrinsicProps
+	*[Symbol.iterator](): Generator<IntrinsicProps> {
 		while (true) {
-			yield [this.view.props, this.view.nodes];
+			yield {...this.view.props, children: this.view.nodes};
 		}
-	}
-
-	get parent(): Node | undefined {
-		let view: View | undefined = this.view.parent;
-		while (view !== undefined && (view as any).node !== undefined) {
-			view = view.parent;
-		}
-
-		return view && (view as any).node;
 	}
 }
 
@@ -421,7 +425,7 @@ export class IntrinsicView extends View {
 			elem.props.children === undefined ? [] : elem.props.children;
 		const p = this.reconcileChildren(children);
 		if (p !== undefined) {
-			return p;
+			return p.then(() => this.commit());
 		}
 
 		this.commit();
@@ -435,11 +439,10 @@ export class IntrinsicView extends View {
 
 		const result = this.iter.next();
 		this.node = result.value;
-		this.parent.commit();
 	}
 
 	destroy(): void {
-		if (this.iter != null) {
+		if (this.iter !== undefined) {
 			if (typeof this.iter.return === "function") {
 				this.iter.return();
 			}
@@ -466,8 +469,10 @@ export class RootView extends View {
 	reconcile(elem: Element): Promise<void> | void {
 		const p = this.reconcileChildren([elem]);
 		if (p !== undefined) {
-			return p;
+			return p.then(() => this.commit());
 		}
+
+		this.commit();
 	}
 
 	commit(): void {
@@ -541,16 +546,10 @@ function updateDOMChildren(el: HTMLElement, children: (Node | string)[]): void {
 function createBasicIntrinsic(tag: string): Intrinsic {
 	return function* intrinsic(this: IntrinsicController): Iterator<Node> {
 		const el = document.createElement(tag);
-		try {
-			for (const [props, children] of this) {
-				updateDOMProps(el, props);
-				updateDOMChildren(el, children);
-				yield el;
-			}
-		} finally {
-			if (this.parent !== undefined) {
-				this.parent.removeChild(el);
-			}
+		for (const {children, ...props} of this) {
+			updateDOMProps(el, props);
+			updateDOMChildren(el, children);
+			yield el;
 		}
 	};
 }
