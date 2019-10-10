@@ -7,7 +7,7 @@ declare global {
 			[name: string]: any;
 		}
 
-		// typescript children stuff is busted:
+		// typescript jsx children type checking is busted so we just opt out of it:
 		// https://github.com/microsoft/TypeScript/issues/14729
 		// https://github.com/microsoft/TypeScript/pull/29818
 		interface ElementChildrenAttribute {}
