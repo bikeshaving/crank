@@ -327,6 +327,7 @@ class ComponentView extends View {
 		const result = await resultP;
 		if (!result.done) {
 			await this.renderChildren(isElement(result.value) ? [result.value] : []);
+			// TODO: only commit if this is a non-update resolution
 			this.commit();
 			const nodes = this.nodes;
 			const next = nodes.length <= 1 ? nodes[0] : nodes;
@@ -393,8 +394,6 @@ class ComponentView extends View {
 			if (p !== undefined) {
 				return p;
 			}
-
-			this.commit();
 		} else {
 			this.publish();
 			return this.promise;
@@ -415,10 +414,11 @@ class ComponentView extends View {
 	}
 
 	unmount(): void {
-		this.renderChildren([]);
 		for (const publication of this.publications) {
 			publication.stop();
 		}
+
+		this.renderChildren([]);
 	}
 }
 
@@ -457,7 +457,7 @@ export class IntrinsicView extends View {
 			elem.props.children === undefined ? [] : elem.props.children;
 		const p = this.renderChildren(children);
 		if (p !== undefined) {
-			return p.then(() => this.commit());
+			return p;
 		}
 
 		this.commit();
