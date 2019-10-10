@@ -18,7 +18,7 @@ function isPromiseLike(value: any): value is PromiseLike<unknown> {
 	return value != null && typeof value.then === "function";
 }
 
-function isIterator(
+function isIteratorOrAsyncIterator(
 	value: any,
 ): value is
 	| AsyncIterator<unknown, unknown, unknown>
@@ -356,7 +356,7 @@ class ComponentView extends View {
 			| SyncComponentIterator
 			| PromiseLike<Element>
 			| Element = this.tag.call(this.controller, this.props);
-		if (isIterator(child)) {
+		if (isIteratorOrAsyncIterator(child)) {
 			const result = child.next();
 			if (isPromiseLike(result)) {
 				this.publish();
