@@ -126,6 +126,7 @@ export abstract class View {
 
 	abstract reconcile(elem: Element): Promise<void> | void;
 
+	// TODO: allow async destruction?
 	abstract destroy(): void;
 
 	protected reconcileChildren(children: Iterable<Child>): Promise<void> | void {
@@ -144,7 +145,6 @@ export abstract class View {
 				view.tag !== elem.tag
 			) {
 				if (typeof view === "object") {
-					// TODO: should this be done in the commit phase???
 					view.destroy();
 				}
 
@@ -201,23 +201,19 @@ export type AsyncComponentIterator = AsyncIterator<
 	(Node | string)[] | Node | string
 >;
 
-export function* createIterator(
+export function* createIter(
 	controller: Controller,
-	first: Element,
 	tag: SyncFunctionComponent,
 ): SyncComponentIterator {
-	yield first;
 	for (const props of controller) {
 		yield tag.call(controller, props);
 	}
 }
 
-export async function* createAsyncIterator(
+export async function* createAsyncIter(
 	controller: Controller,
-	first: PromiseLike<Element>,
 	tag: AsyncFunctionComponent,
 ): AsyncComponentIterator {
-	yield first;
 	for await (const props of controller) {
 		yield tag.call(controller, props);
 	}
@@ -282,88 +278,17 @@ class ComponentView extends View {
 		this.props = elem.props;
 	}
 
-	reconcile(elem: Element): Promise<void> | void {
-		if (this.tag !== elem.tag) {
-			throw new TypeError("Tag mismatch");
-		}
-
-		this.props = elem.props;
-		return this.update();
-	}
-
-	update(publish = true): Promise<void> | void {
-		if (this.iter === undefined && this.asyncIter === undefined) {
-			const child:
-				| AsyncComponentIterator
-				| SyncComponentIterator
-				| PromiseLike<Element>
-				| Element = this.tag.call(this.controller, this.props);
-			if (isIterator(child)) {
-				const result = child.next();
-				if (isPromiseLike(result)) {
-					this.asyncIter = child as AsyncComponentIterator;
-					if (publish) {
-						this.publish();
-					}
-
-					return result.then(async (result) => {
-						if (!result.done) {
-							await this.reconcileChildren(
-								isElement(result.value) ? [result.value] : [],
-							);
-							this.update(false);
-							this.commit();
-						}
-					});
-				} else {
-					this.iter = child as SyncComponentIterator;
-					return this.reconcileChildren(
-						isElement(result.value) ? [result.value] : [],
-					);
-				}
-			} else if (isPromiseLike(child)) {
-				this.asyncIter = createAsyncIterator(this.controller, child, this
-					.tag as AsyncFunctionComponent);
-			} else {
-				this.iter = createIterator(this.controller, child, this
-					.tag as SyncFunctionComponent);
-			}
-		}
-
-		const nodes = this.nodes;
-		const next = nodes.length <= 1 ? nodes[0] : nodes;
-		if (this.asyncIter !== undefined) {
-			const result = this.asyncIter.next(next);
-			if (publish) {
-				this.publish();
-			}
-
-			return result.then(async (result) => {
-				if (!result.done) {
-					await this.reconcileChildren(
-						isElement(result.value) ? [result.value] : [],
-					);
-					this.update(false);
-					this.commit();
-				}
-			});
-		} else if (this.iter !== undefined) {
-			const result = this.iter.next(next);
-			const p = this.reconcileChildren(
+	async pull(resultP: PromiseLike<IteratorResult<Element>>): Promise<void> {
+		const result = await resultP;
+		if (!result.done) {
+			await this.reconcileChildren(
 				isElement(result.value) ? [result.value] : [],
 			);
-			if (p !== undefined) {
-				return p;
-			}
-
 			this.commit();
-		} else {
-			throw new Error("Invalid state");
+			const nodes = this.nodes;
+			const next = nodes.length <= 1 ? nodes[0] : nodes;
+			this.promise = this.pull(this.asyncIter!.next(next));
 		}
-	}
-
-	commit(): void {
-		this.parent.commit();
 	}
 
 	subscribe(): Repeater<Props> {
@@ -379,6 +304,72 @@ class ComponentView extends View {
 		for (const publication of this.publications) {
 			publication.push(this.props);
 		}
+	}
+
+	initialize(): Promise<void> | void {
+		const child:
+			| AsyncComponentIterator
+			| SyncComponentIterator
+			| PromiseLike<Element>
+			| Element = this.tag.call(this.controller, this.props);
+		if (isIterator(child)) {
+			const result = child.next();
+			if (isPromiseLike(result)) {
+				this.publish();
+				this.asyncIter = child as AsyncComponentIterator;
+				return (this.promise = this.pull(result));
+			} else {
+				this.iter = child as SyncComponentIterator;
+				return this.reconcileChildren(
+					isElement(result.value) ? [result.value] : [],
+				);
+			}
+		} else if (isPromiseLike(child)) {
+			this.asyncIter = createAsyncIter(this.controller, this.tag as any);
+			const resultP = child.then((value) => ({value, done: false}));
+			return (this.promise = this.pull(resultP));
+		} else {
+			this.iter = createIter(this.controller, this.tag as any);
+			return this.reconcileChildren([child]);
+		}
+	}
+
+	update(): Promise<void> | void {
+		if (this.iter === undefined && this.asyncIter === undefined) {
+			return this.initialize();
+		}
+
+		if (this.asyncIter !== undefined) {
+			this.publish();
+			return this.promise;
+		} else if (this.iter !== undefined) {
+			const nodes = this.nodes;
+			const next = nodes.length <= 1 ? nodes[0] : nodes;
+			const result = this.iter.next(next);
+			const p = this.reconcileChildren(
+				isElement(result.value) ? [result.value] : [],
+			);
+			if (p !== undefined) {
+				return p;
+			}
+
+			this.commit();
+		} else {
+			throw new Error("Invalid state");
+		}
+	}
+
+	reconcile(elem: Element): Promise<void> | void {
+		if (this.tag !== elem.tag) {
+			throw new TypeError("Tag mismatch");
+		}
+
+		this.props = elem.props;
+		return this.update();
+	}
+
+	commit(): void {
+		this.parent.commit();
 	}
 
 	destroy(): void {
@@ -487,9 +478,7 @@ export class RootView extends View {
 function updateDOMProps(el: HTMLElement, props: Props): void {
 	for (const [key, value] of Object.entries(props)) {
 		if (key in el) {
-			if (key !== "children") {
-				(el as any)[key] = value;
-			}
+			(el as any)[key] = value;
 		} else {
 			el.setAttribute(key.toLowerCase(), value);
 		}
