@@ -10,7 +10,7 @@ declare global {
 		// typescript jsx children type checking is busted so we just opt out of it:
 		// https://github.com/microsoft/TypeScript/issues/14729
 		// https://github.com/microsoft/TypeScript/pull/29818
-		interface ElementChildrenAttribute {}
+		type ElementChildrenAttribute = {};
 	}
 }
 
@@ -82,7 +82,7 @@ export function* flattenChildren(
 export function createElement<T extends Tag>(
 	tag: T,
 	props?: Props | null,
-	...children: Children[]
+	...children: (Child | Children)[]
 ): Element<T>;
 export function createElement<T extends Tag>(
 	tag: T,
@@ -101,7 +101,8 @@ export function createElement<T extends Tag>(
 // TODO: rename to Node?
 export type Child = Element | string | number | boolean | null | undefined;
 
-export interface Children extends Iterable<Children | Child> {}
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface Children extends Iterable<Child | Children> {}
 
 export type ViewChild = ComponentView | IntrinsicView | string | undefined;
 
@@ -111,8 +112,6 @@ export abstract class View {
 	// TODO: parameterize Node
 	node?: Node;
 	parent?: View;
-
-	// TODO: parameterize Node
 	get nodes(): (Node | string)[] {
 		let buffer: string | undefined;
 		const nodes: (Node | string)[] = [];
@@ -144,6 +143,13 @@ export abstract class View {
 		return nodes;
 	}
 
+	abstract render(elem: Element): Promise<void> | void;
+
+	abstract commit(): void;
+
+	// TODO: allow async unmount
+	abstract unmount(): void;
+
 	private createViewChild(child: Child): ViewChild {
 		if (child == null || typeof child === "boolean") {
 			return undefined;
@@ -160,13 +166,6 @@ export abstract class View {
 		}
 	}
 
-	abstract commit(): void;
-
-	abstract render(elem: Element): Promise<void> | void;
-
-	// TODO: allow async unmount
-	abstract unmount(): void;
-
 	protected renderChildren(children: Iterable<Child>): Promise<void> | void {
 		const promises: Promise<void>[] = [];
 		let i = 0;
@@ -180,6 +179,7 @@ export abstract class View {
 				view.tag !== elem.tag
 			) {
 				if (typeof view === "object") {
+					// TODO: allow unmount to be async
 					view.unmount();
 				}
 
@@ -198,8 +198,7 @@ export abstract class View {
 				}
 			}
 
-			i++;
-			view = this.children[i];
+			view = this.children[++i];
 		}
 
 		while (i < this.children.length) {
@@ -208,12 +207,11 @@ export abstract class View {
 			}
 
 			delete this.children[i];
-			i++;
-			view = this.children[i];
+			view = this.children[++i];
 		}
 
 		if (promises.length) {
-			return Promise.all(promises).then();
+			return Promise.all(promises).then(() => {});
 		}
 	}
 }
@@ -279,7 +277,7 @@ export type SyncFunctionComponent<TProps extends Props = Props> = (
 export type AsyncFunctionComponent<TProps extends Props = Props> = (
 	this: Controller,
 	props: TProps,
-) => Promise<Element>;
+) => PromiseLike<Element>;
 
 export type SyncGeneratorComponent<TProps extends Props = Props> = (
 	this: Controller,
@@ -301,7 +299,7 @@ export type AsyncGeneratorComponent<TProps extends Props = Props> = (
 export type Component<TProps extends Props = Props> = (
 	this: Controller,
 	props: TProps,
-) => ComponentIterator | Promise<Element> | Element;
+) => ComponentIterator | PromiseLike<Element> | Element;
 
 interface Publication {
 	push(value: Props): void;
@@ -362,7 +360,8 @@ class ComponentView extends View {
 			if (isPromiseLike(result)) {
 				this.publish();
 				this.iter = child;
-				return (this.promise = this.pull(result));
+				this.promise = this.pull(result);
+				return this.promise;
 			} else {
 				this.iter = child;
 				return this.renderChildren(
@@ -371,8 +370,8 @@ class ComponentView extends View {
 			}
 		} else if (isPromiseLike(child)) {
 			this.iter = createAsyncIter(this.controller, this.tag as any);
-			const resultP = child.then((value) => ({value, done: false}));
-			return (this.promise = this.pull(resultP));
+			this.promise = this.pull(child.then((value) => ({value, done: false})));
+			return this.promise;
 		} else {
 			this.iter = createIter(this.controller, this.tag as any);
 			return this.renderChildren([child]);
@@ -438,8 +437,6 @@ export class IntrinsicView extends View {
 	private controller = new IntrinsicController(this);
 	tag: string;
 	props: Props = {};
-	// TODO: parameterize Node
-	node?: Node;
 	iter?: Iterator<Node>;
 	constructor(elem: Element, public parent: View) {
 		super();
@@ -589,22 +586,22 @@ function createBasicIntrinsic(tag: string): Intrinsic {
 	};
 }
 
-const renderViews: WeakMap<Node, RootView> = new WeakMap();
+const views: WeakMap<Node, RootView> = new WeakMap();
 export function render(
 	elem: Element | null | undefined,
 	container: HTMLElement,
 ): Promise<RootView> | RootView {
 	let view: RootView;
-	if (renderViews.has(container)) {
-		view = renderViews.get(container)!;
+	if (views.has(container)) {
+		view = views.get(container)!;
 	} else {
 		view = new RootView(container);
-		renderViews.set(container, view);
+		views.set(container, view);
 	}
 
 	if (elem == null) {
 		view.unmount();
-		renderViews.delete(container);
+		views.delete(container);
 	} else {
 		const p = view.render(elem);
 		if (isPromiseLike(p)) {
