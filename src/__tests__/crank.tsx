@@ -112,10 +112,53 @@ describe("render", () => {
 	test("rerender children", () => {
 		render(<div>Loading...</div>, document.body);
 		expect(document.body.innerHTML).toEqual("<div>Loading...</div>");
-		render(<div><span>1</span><span>2</span></div>, document.body);
+		render(
+			<div>
+				<span>1</span>
+				<span>2</span>
+			</div>,
+			document.body,
+		);
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>1</span><span>2</span></div>",
 		);
+	});
+
+	test("rerender children", () => {
+		render(<div>Loading...</div>, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Loading...</div>");
+		render(
+			<div>
+				<span>1</span>
+				<span>2</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span></div>",
+		);
+	});
+
+	test("rerender children 1", () => {
+		render(
+			<div>
+				<span>1</span>
+				<span>2</span>
+				<span>3</span>
+				<span>4</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span></div>",
+		);
+		render(
+			<div>
+				<span>1</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
 	});
 });
 

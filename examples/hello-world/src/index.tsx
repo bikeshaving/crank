@@ -3,43 +3,38 @@ import {Controller, createElement, Element, render} from "crank";
 const React = {createElement};
 const mount = document.getElementById("mount")!;
 function logRecords(records: MutationRecord[]): void {
-	const logs: {}[] = [];
-	for (const record of records) {
-		const added: string[] = [];
-		for (const node of Array.from(record.addedNodes)) {
-			added.push((node as HTMLElement).outerHTML);
-		}
-
-		const removed: string[] = [];
-		for (const node of Array.from(record.removedNodes)) {
-			removed.push((node as HTMLElement).outerHTML);
-		}
-
-		logs.push({target: record.target, added, removed});
-	}
-	console.log(JSON.stringify(logs, null, 2));
+	console.log(records);
 }
 
-// const observer = new MutationObserver(logRecords);
-// observer.observe(mount, {attributes: true, childList: true, subtree: true});
-const arr: number[] = new Array(5).fill(null).map((_, i) => i);
+const observer = new MutationObserver(logRecords);
+observer.observe(mount, {attributes: true, childList: true, subtree: true});
 
+const arr: number[] = [];
 async function* List(
 	this: Controller,
 	{elems}: {elems: number[]},
 ): AsyncGenerator<Element> {
+	let i = 0;
 	for await ({elems} of this) {
-		console.log("LEFT!");
-		yield <div>"Loading"</div>;
-		await new Promise((resolve) => setTimeout(resolve, 3000));
-		yield <div>{elems.map((i) => <li>{i}</li>)}</div>;
-		console.log("RIGHT!");
+		if (i++ % 5 === 0) {
+			yield <div>Loading {elems.length} items...</div>;
+			await new Promise((resolve) => setTimeout(resolve, 4000));
+		}
+
+		yield (
+			<ul>
+				{elems.map((i) => (
+					<li>{i}</li>
+				))}
+			</ul>
+		);
+		await new Promise((resolve) => setTimeout(resolve, 500));
 	}
 }
 
 render(<List elems={arr} />, mount);
-const interval = setInterval(() => {
-	arr.push(arr.length);
+setInterval(() => {
+	arr.push(arr.length + 1);
 	render(<List elems={arr} />, mount);
-	// logRecords(observer.takeRecords());
-}, 5000);
+	//logRecords(observer.takeRecords());
+}, 1000);

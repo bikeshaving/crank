@@ -64,6 +64,8 @@ export type ViewChild = ComponentView | IntrinsicView | string | undefined;
 
 export abstract class View {
 	children: ViewChild[] = [];
+	node?: Node;
+	parent?: View;
 
 	get nodes(): (Node | string)[] {
 		let buffer: string | undefined;
@@ -111,6 +113,8 @@ export abstract class View {
 			throw new TypeError("Unknown child type");
 		}
 	}
+
+	abstract commit(): void;
 
 	abstract reconcile(elem: Element): Promise<void> | void;
 
@@ -260,7 +264,7 @@ class ComponentView extends View {
 	private asyncIter?: AsyncComponentIterator;
 	private promise?: Promise<void>;
 	private publications: Set<Publication> = new Set();
-	constructor(elem: Element, private parent: View) {
+	constructor(elem: Element, public parent: View) {
 		super();
 		if (typeof elem.tag !== "function") {
 			throw new TypeError("Tag mismatch");
@@ -299,6 +303,7 @@ class ComponentView extends View {
 							await this.reconcileChildren(
 								isElement(result.value) ? [result.value] : [],
 							);
+							this.commit();
 							this.update(false);
 						}
 					});
@@ -325,16 +330,15 @@ class ComponentView extends View {
 				this.publish();
 			}
 
-			const p = result.then(async (result) => {
+			return result.then(async (result) => {
 				if (!result.done) {
 					await this.reconcileChildren(
 						isElement(result.value) ? [result.value] : [],
 					);
+					this.commit();
 					this.update(false);
 				}
 			});
-
-			return p;
 		} else if (this.iter !== undefined) {
 			const result = this.iter.next(next);
 			return this.reconcileChildren(
@@ -345,9 +349,13 @@ class ComponentView extends View {
 		}
 	}
 
+	commit(): void {
+		this.parent.commit();
+	}
+
 	subscribe(): Repeater<Props> {
 		return new Repeater(async (push, stop) => {
-			const publication: Publication = {push, stop};
+			const publication = {push, stop};
 			this.publications.add(publication);
 			await stop;
 			this.publications.delete(publication);
@@ -377,6 +385,15 @@ class IntrinsicController {
 			yield [this.view.props, this.view.nodes];
 		}
 	}
+
+	get parent(): Node | undefined {
+		let view: View | undefined = this.view.parent;
+		while (view !== undefined && (view as any).node !== undefined) {
+			view = view.parent;
+		}
+
+		return view && (view as any).node;
+	}
 }
 
 export class IntrinsicView extends View {
@@ -385,7 +402,7 @@ export class IntrinsicView extends View {
 	props: Props = {};
 	node?: Node;
 	iter?: Iterator<Node>;
-	constructor(elem: Element, private parent: View) {
+	constructor(elem: Element, public parent: View) {
 		super();
 		if (typeof elem.tag !== "string") {
 			throw new TypeError("Tag mismatch");
@@ -404,7 +421,7 @@ export class IntrinsicView extends View {
 			elem.props.children === undefined ? [] : elem.props.children;
 		const p = this.reconcileChildren(children);
 		if (p !== undefined) {
-			return p.then(() => this.commit());
+			return p;
 		}
 
 		this.commit();
@@ -418,6 +435,7 @@ export class IntrinsicView extends View {
 
 		const result = this.iter.next();
 		this.node = result.value;
+		this.parent.commit();
 	}
 
 	destroy(): void {
@@ -430,6 +448,7 @@ export class IntrinsicView extends View {
 		}
 
 		this.reconcileChildren([]);
+		delete this.node;
 	}
 }
 
@@ -447,12 +466,8 @@ export class RootView extends View {
 	reconcile(elem: Element): Promise<void> | void {
 		const p = this.reconcileChildren([elem]);
 		if (p !== undefined) {
-			return p.then(() => {
-				this.commit();
-			});
+			return p;
 		}
-
-		this.commit();
 	}
 
 	commit(): void {
@@ -517,9 +532,9 @@ function updateDOMChildren(el: HTMLElement, children: (Node | string)[]): void {
 	}
 
 	while (oldChild !== null) {
-		const oldChild1 = oldChild;
-		oldChild = oldChild.nextSibling;
-		el.removeChild(oldChild1);
+		const nextSibling = oldChild.nextSibling;
+		el.removeChild(oldChild);
+		oldChild = nextSibling;
 	}
 }
 
@@ -533,8 +548,9 @@ function createBasicIntrinsic(tag: string): Intrinsic {
 				yield el;
 			}
 		} finally {
-			// TODO: don’t remove child if parent is already removed.
-			el.remove();
+			if (this.parent !== undefined) {
+				this.parent.removeChild(el);
+			}
 		}
 	};
 }
