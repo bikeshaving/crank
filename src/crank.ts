@@ -1,5 +1,6 @@
 import {Repeater, SlidingBuffer} from "@repeaterjs/repeater";
 
+// TODO: make this non-global?
 declare global {
 	namespace JSX {
 		interface IntrinsicElements {
@@ -23,6 +24,10 @@ function isIterator(
 	| AsyncIterator<unknown, unknown, unknown>
 	| Iterator<unknown, unknown, unknown> {
 	return value != null && typeof value.next === "function";
+}
+
+function isIterable(value: any): value is Iterable<unknown> {
+	return value != null && typeof value[Symbol.iterator] === "function";
 }
 
 export interface Props {
@@ -50,31 +55,64 @@ export function isElement(value: any): value is Element {
 	return value != null && value.sigil === ElementSigil;
 }
 
+export function* flattenChildren(
+	childOrChildren: Child | Children
+): Iterable<Child> {
+	if (isIterable(childOrChildren)) {
+		for (const child of childOrChildren) {
+			if (
+				child == null ||
+				typeof child === "string" ||
+				typeof child === "number" ||
+				typeof child === "boolean" ||
+				isElement(child)
+			) {
+				yield child;
+			} else if (isIterable(child)) {
+				yield* flattenChildren(child);
+			} else {
+				throw new TypeError("Unknown child type");
+			}
+		}
+	} else {
+		yield childOrChildren;
+	}
+}
+
 export function createElement<T extends Tag>(
 	tag: T,
-	props: Props | null,
-	...children: Children
+	props?: Props | null,
+	...children: Children[]
+): Element<T>;
+export function createElement<T extends Tag>(
+	tag: T,
+	props?: Props | null,
 ): Element<T> {
 	props = Object.assign({}, props);
-	if (children.length) {
-		// TODO: make this a lazy iterator
-		props.children = children.flat(Infinity);
+	if (arguments.length > 3) {
+		props.children = flattenChildren(Array.from(arguments).slice(2));
+	} else if (arguments.length > 2) {
+		props.children = flattenChildren(arguments[2]);
 	}
+
 	return {sigil: ElementSigil, tag, props};
 }
 
 // TODO: rename to Node?
 export type Child = Element | string | number | boolean | null | undefined;
 
-export interface Children extends Array<Children | Child> {}
+export interface Children extends Iterable<Children | Child> {}
 
 export type ViewChild = ComponentView | IntrinsicView | string | undefined;
 
+// TODO: use a left-child right-sibling tree
 export abstract class View {
 	children: ViewChild[] = [];
+	// TODO: parameterize Node
 	node?: Node;
 	parent?: View;
 
+	// TODO: parameterize Node
 	get nodes(): (Node | string)[] {
 		let buffer: string | undefined;
 		const nodes: (Node | string)[] = [];
@@ -124,19 +162,16 @@ export abstract class View {
 
 	abstract commit(): void;
 
-	abstract reconcile(elem: Element): Promise<void> | void;
+	abstract render(elem: Element): Promise<void> | void;
 
-	// TODO: allow async destruction?
-	abstract destroy(): void;
+	// TODO: allow async unmount
+	abstract unmount(): void;
 
-	protected reconcileChildren(children: Iterable<Child>): Promise<void> | void {
-		// TODO: use iterable and maybe something like an iterator zipper instead
-		const children1 = Array.from(children);
-		const max = Math.max(this.children.length, children1.length);
+	protected renderChildren(children: Iterable<Child>): Promise<void> | void {
 		const promises: Promise<void>[] = [];
-		for (let i = 0; i < max; i++) {
-			let view = this.children[i];
-			const elem = children1[i];
+		let i = 0;
+		let view = this.children[i];
+		for (const elem of children) {
 			if (
 				view === undefined ||
 				elem === null ||
@@ -145,7 +180,7 @@ export abstract class View {
 				view.tag !== elem.tag
 			) {
 				if (typeof view === "object") {
-					view.destroy();
+					view.unmount();
 				}
 
 				view = this.createViewChild(elem);
@@ -157,11 +192,24 @@ export abstract class View {
 				elem !== null &&
 				typeof elem === "object"
 			) {
-				const p = view.reconcile(elem);
+				const p = view.render(elem);
 				if (p !== undefined) {
 					promises.push(p);
 				}
 			}
+
+			i++;
+			view = this.children[i];
+		}
+
+		while (i < this.children.length) {
+			if (typeof view === "object") {
+				view.unmount();
+			}
+
+			delete this.children[i];
+			i++;
+			view = this.children[i];
 		}
 
 		if (promises.length) {
@@ -192,12 +240,14 @@ export class Controller {
 export type SyncComponentIterator = Iterator<
 	Element,
 	Element | void,
+	// TODO: parameterize Node
 	(Node | string)[] | Node | string
 >;
 
 export type AsyncComponentIterator = AsyncIterator<
 	Element,
 	Element | void,
+	// TODO: parameterize Node
 	(Node | string)[] | Node | string
 >;
 
@@ -281,9 +331,7 @@ class ComponentView extends View {
 	async pull(resultP: PromiseLike<IteratorResult<Element>>): Promise<void> {
 		const result = await resultP;
 		if (!result.done) {
-			await this.reconcileChildren(
-				isElement(result.value) ? [result.value] : [],
-			);
+			await this.renderChildren(isElement(result.value) ? [result.value] : []);
 			this.commit();
 			const nodes = this.nodes;
 			const next = nodes.length <= 1 ? nodes[0] : nodes;
@@ -320,7 +368,7 @@ class ComponentView extends View {
 				return (this.promise = this.pull(result));
 			} else {
 				this.iter = child as SyncComponentIterator;
-				return this.reconcileChildren(
+				return this.renderChildren(
 					isElement(result.value) ? [result.value] : [],
 				);
 			}
@@ -330,7 +378,7 @@ class ComponentView extends View {
 			return (this.promise = this.pull(resultP));
 		} else {
 			this.iter = createIter(this.controller, this.tag as any);
-			return this.reconcileChildren([child]);
+			return this.renderChildren([child]);
 		}
 	}
 
@@ -346,7 +394,7 @@ class ComponentView extends View {
 			const nodes = this.nodes;
 			const next = nodes.length <= 1 ? nodes[0] : nodes;
 			const result = this.iter.next(next);
-			const p = this.reconcileChildren(
+			const p = this.renderChildren(
 				isElement(result.value) ? [result.value] : [],
 			);
 			if (p !== undefined) {
@@ -359,7 +407,7 @@ class ComponentView extends View {
 		}
 	}
 
-	reconcile(elem: Element): Promise<void> | void {
+	render(elem: Element): Promise<void> | void {
 		if (this.tag !== elem.tag) {
 			throw new TypeError("Tag mismatch");
 		}
@@ -372,8 +420,8 @@ class ComponentView extends View {
 		this.parent.commit();
 	}
 
-	destroy(): void {
-		this.reconcileChildren([]);
+	unmount(): void {
+		this.renderChildren([]);
 		for (const publication of this.publications) {
 			publication.stop();
 		}
@@ -395,6 +443,7 @@ export class IntrinsicView extends View {
 	private controller = new IntrinsicController(this);
 	tag: string;
 	props: Props = {};
+	// TODO: parameterize Node
 	node?: Node;
 	iter?: Iterator<Node>;
 	constructor(elem: Element, public parent: View) {
@@ -406,7 +455,7 @@ export class IntrinsicView extends View {
 		this.tag = elem.tag;
 	}
 
-	reconcile(elem: Element): Promise<void> | void {
+	render(elem: Element): Promise<void> | void {
 		if (this.tag !== elem.tag) {
 			throw new TypeError("Tag mismatch");
 		}
@@ -414,7 +463,7 @@ export class IntrinsicView extends View {
 		this.props = elem.props;
 		const children =
 			elem.props.children === undefined ? [] : elem.props.children;
-		const p = this.reconcileChildren(children);
+		const p = this.renderChildren(children);
 		if (p !== undefined) {
 			return p.then(() => this.commit());
 		}
@@ -432,7 +481,7 @@ export class IntrinsicView extends View {
 		this.node = result.value;
 	}
 
-	destroy(): void {
+	unmount(): void {
 		if (this.iter !== undefined) {
 			if (typeof this.iter.return === "function") {
 				this.iter.return();
@@ -441,7 +490,7 @@ export class IntrinsicView extends View {
 			delete this.iter;
 		}
 
-		this.reconcileChildren([]);
+		this.renderChildren([]);
 		delete this.node;
 	}
 }
@@ -449,6 +498,7 @@ export class IntrinsicView extends View {
 export type Intrinsic = (
 	this: IntrinsicController,
 	props: Props,
+	// TODO: parameterize Node
 	children: (Node | string)[],
 ) => Iterator<Node>;
 
@@ -457,8 +507,8 @@ export class RootView extends View {
 		super();
 	}
 
-	reconcile(elem: Element): Promise<void> | void {
-		const p = this.reconcileChildren([elem]);
+	render(elem: Element): Promise<void> | void {
+		const p = this.renderChildren([elem]);
 		if (p !== undefined) {
 			return p.then(() => this.commit());
 		}
@@ -467,11 +517,12 @@ export class RootView extends View {
 	}
 
 	commit(): void {
+		// TODO: abstract this
 		updateDOMChildren(this.node, this.nodes);
 	}
 
-	destroy(): void {
-		this.reconcileChildren([]);
+	unmount(): void {
+		this.renderChildren([]);
 	}
 }
 
@@ -557,10 +608,10 @@ export function render(
 	}
 
 	if (elem == null) {
-		view.destroy();
+		view.unmount();
 		renderViews.delete(container);
 	} else {
-		const p = view.reconcile(elem);
+		const p = view.render(elem);
 		if (isPromiseLike(p)) {
 			return p.then(() => view);
 		}
