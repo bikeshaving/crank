@@ -1,4 +1,4 @@
-/* @jsx createElement */
+/** @jsx createElement */
 import "core-js";
 import "mutationobserver-shim";
 import {createElement, Controller, Element, render, RootView} from "../crank";
@@ -235,37 +235,6 @@ describe("async function component", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
 		expect(resolves.length).toEqual(2);
 	});
-
-	test.skip("race-condition", async () => {
-		render(
-			<div>
-				<ResolveFn />
-			</div>,
-			document.body,
-		);
-		render(
-			<div>
-				<ResolveFn />
-			</div>,
-			document.body,
-		);
-		render(
-			<div>
-				<ResolveFn />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual("");
-		await new Promise((resolve) => setTimeout(resolve, 0));
-		resolves[1](<span>Hello 1</span>);
-		await new Promise((resolve) => setTimeout(resolve, 0));
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
-		resolves[2](<span>Hello 2</span>);
-		await new Promise((resolve) => setTimeout(resolve, 0));
-		resolves[0](<span>Hello 0</span>);
-		await new Promise((resolve) => setTimeout(resolve, 0));
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
-	});
 });
 
 describe("sync generator component", () => {
@@ -319,6 +288,7 @@ describe("sync generator component", () => {
 		function* SyncGen(this: Controller): Generator<Element> {
 			let i = 1;
 			update = this.update.bind(this);
+			// eslint-disable-next-line
 			for (const _ of this) {
 				yield <span>Hello {i++}</span>;
 			}

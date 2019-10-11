@@ -8,18 +8,21 @@
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "sourceType": "module",
-    "ecmaFeatures": {
-      "jsx": true
-    }
+    "project": [
+      "./tsconfig.json",
+      "./examples/hello-world/tsconfig.json"
+    ],
+    "createDefaultProgram": true
   },
   "plugins": [
     "@typescript-eslint",
     "jest",
-    "prettier"
+    "prettier",
+    "react"
   ],
   "extends": [
     "eslint:recommended",
-    "plugin:@typescript-eslint/recommended",
+    "recommended-plus-types",
     "plugin:jest/recommended",
     "plugin:prettier/recommended",
     "prettier/@typescript-eslint"
@@ -35,19 +38,7 @@
       }
     ],
     "linebreak-style": ["error", "unix"],
-    "@typescript-eslint/no-use-before-define": 0,
-    "@typescript-eslint/explicit-function-return-type": 0,
-    "@typescript-eslint/explicit-member-accessibility": 0,
-    "@typescript-eslint/no-explicit-any": 0,
-    "@typescript-eslint/no-object-literal-type-assertion": 0,
-    "@typescript-eslint/no-non-null-assertion": 0,
-    "@typescript-eslint/no-parameter-properties": 0,
-    "@typescript-eslint/no-unused-vars": [
-      "error",
-      {
-        "argsIgnorePattern": "^_",
-        "varsIgnorePattern": "^_"
-      }
-    ]
+    "react/jsx-uses-vars": 1,
+    "react/jsx-uses-react": 1
   }
 }

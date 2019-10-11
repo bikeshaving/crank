@@ -1,5 +1,5 @@
+/** @jsx createElement */
 import {Controller, createElement, Element, render} from "crank";
-const React = {createElement};
 const mount = document.getElementById("mount")!;
 const arr: number[] = [];
 async function* List(
