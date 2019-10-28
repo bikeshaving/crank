@@ -176,29 +176,23 @@ describe("sync function component", () => {
 });
 
 describe("async function component", () => {
-	async function AsyncFn({
-		message,
-		time = 100,
-	}: {
-		message: string;
-		time?: number;
-	}): Promise<Element> {
-		await new Promise((resolve) => setTimeout(resolve, time));
-		return <span>{message}</span>;
-	}
-
-	const resolves: ((elem: Element) => void)[] = [];
-	function ResolveFn(): Promise<Element> {
-		return new Promise((resolve) => resolves.push(resolve));
-	}
-
 	afterEach(() => {
 		document.body.innerHTML = "";
 		render(null, document.body);
-		resolves.length = 0;
 	});
 
 	test("basic", async () => {
+		async function AsyncFn({
+			message,
+			time = 100,
+		}: {
+			message: string;
+			time?: number;
+		}): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, time));
+			return <span>{message}</span>;
+		}
+
 		const viewP = render(
 			<div>
 				<AsyncFn message="Hello" />
@@ -211,6 +205,11 @@ describe("async function component", () => {
 	});
 
 	test("rerender", async () => {
+		const resolves: ((elem: Element) => void)[] = [];
+		function ResolveFn(): Promise<Element> {
+			return new Promise((resolve) => resolves.push(resolve));
+		}
+
 		render(
 			<div>
 				<ResolveFn />
@@ -284,7 +283,7 @@ describe("sync generator component", () => {
 	});
 
 	test("update", () => {
-		let update: () => void;
+		let update!: () => void;
 		function* SyncGen(this: Controller): Generator<Element> {
 			let i = 1;
 			update = this.update.bind(this);
@@ -302,10 +301,55 @@ describe("sync generator component", () => {
 		);
 
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
-		update!();
+		update();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
-		update!();
-		update!();
+		update();
+		update();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 4</span></div>");
+	});
+});
+
+describe("async generator component", () => {
+	afterEach(() => {
+		document.body.innerHTML = "";
+		render(null, document.body);
+	});
+
+	test("basic", async () => {
+		let resolve!: () => unknown;
+		const AsyncGen = jest.fn(async function*(
+			this: Controller,
+			{message}: {message: string},
+		) {
+			for await (const {message} of this) {
+				yield <span>Loading</span>;
+				await new Promise((resolve1) => (resolve = resolve1));
+				yield <span>{message}</span>;
+			}
+		});
+
+		const viewP = render(
+			<div>
+				<AsyncGen message="Hello" />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("");
+		await expect(viewP).resolves.toBeInstanceOf(RootView);
+		expect(document.body.innerHTML).toEqual("<div><span>Loading</span></div>");
+		resolve();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+		await render(
+			<div>
+				<AsyncGen message="Goodbye" />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>Loading</span></div>");
+		resolve();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(document.body.innerHTML).toEqual("<div><span>Goodbye</span></div>");
+		expect(AsyncGen).toHaveBeenCalledTimes(1);
 	});
 });

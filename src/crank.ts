@@ -18,16 +18,16 @@ function isPromiseLike(value: any): value is PromiseLike<unknown> {
 	return value != null && typeof value.then === "function";
 }
 
+function isIterable(value: any): value is Iterable<unknown> {
+	return value != null && typeof value[Symbol.iterator] === "function";
+}
+
 function isIteratorOrAsyncIterator(
 	value: any,
 ): value is
 	| AsyncIterator<unknown, unknown, unknown>
 	| Iterator<unknown, unknown, unknown> {
 	return value != null && typeof value.next === "function";
-}
-
-function isIterable(value: any): value is Iterable<unknown> {
-	return value != null && typeof value[Symbol.iterator] === "function";
 }
 
 export interface Props {
@@ -45,9 +45,9 @@ export type Tag<TProps extends Props = Props> = Component<TProps> | string;
 export const ElementSigil: unique symbol = Symbol.for("crank.element");
 export type ElementSigil = typeof ElementSigil;
 
-export interface Element<TTag extends Tag = Tag, TProps extends Props = Props> {
+export interface Element<T extends Tag = Tag, TProps extends Props = Props> {
 	sigil: ElementSigil;
-	tag: TTag;
+	tag: T;
 	props: TProps;
 }
 
@@ -112,7 +112,13 @@ export abstract class View {
 	// TODO: parameterize Node
 	node?: Node;
 	parent?: View;
+	// TODO: cache this.nodes so we don’t have to treat this.nodes with kid gloves
+	private _nodes: (Node | string)[] | undefined;
 	get nodes(): (Node | string)[] {
+		if (this._nodes !== undefined) {
+			return this._nodes;
+		}
+
 		let buffer: string | undefined;
 		const nodes: (Node | string)[] = [];
 		for (const child of this.children) {
@@ -140,6 +146,7 @@ export abstract class View {
 			nodes.push(buffer);
 		}
 
+		this._nodes = nodes;
 		return nodes;
 	}
 
@@ -160,13 +167,14 @@ export abstract class View {
 		} else if (typeof child.tag === "string") {
 			return new IntrinsicView(child, this);
 		} else if (typeof child.tag === "function") {
-			return new ComponentView(child, this);
+			return new ComponentView(child as Element<Component>, this);
 		} else {
 			throw new TypeError("Unknown child type");
 		}
 	}
 
 	protected renderChildren(children: Iterable<Child>): Promise<void> | void {
+		this._nodes = undefined;
 		const promises: Promise<void>[] = [];
 		let i = 0;
 		let view = this.children[i];
@@ -286,7 +294,7 @@ class ComponentView extends View {
 	private iter?: ComponentIterator;
 	private promise?: Promise<void>;
 	private publications: Set<Publication> = new Set();
-	constructor(elem: Element, public parent: View) {
+	constructor(elem: Element<Component>, public parent: View) {
 		super();
 		if (typeof elem.tag !== "function") {
 			throw new TypeError("Tag mismatch");
@@ -296,16 +304,34 @@ class ComponentView extends View {
 		this.props = elem.props;
 	}
 
-	async pull(resultP: PromiseLike<IteratorResult<Element>>): Promise<void> {
-		const result = await resultP;
-		if (!result.done) {
-			await this.renderChildren(isElement(result.value) ? [result.value] : []);
-			// TODO: only commit if this is a non-update resolution
-			this.commit();
-			const nodes = this.nodes;
-			const next = nodes.length <= 1 ? nodes[0] : nodes;
-			this.promise = this.pull((this.iter as any).next(next));
-		}
+	// TODO: handle resultP rejecting
+	pull(resultP: Promise<IteratorResult<Element>>): Promise<void> {
+		return resultP.then((result) => {
+			if (!result.done) {
+				const p = this.renderChildren(
+					isElement(result.value) ? [result.value] : [],
+				);
+				// TODO: only commit if this is a non-update resolution
+				let next:
+					| (Node | string)[]
+					| Node
+					| string
+					| Promise<(Node | string)[] | Node | string>;
+				if (p === undefined) {
+					this.commit();
+					next = this.nodes.length <= 1 ? this.nodes[0] : this.nodes;
+				} else {
+					next = p.then(() => {
+						this.commit();
+						return this.nodes.length <= 1 ? this.nodes[0] : this.nodes;
+					});
+				}
+
+				this.promise = this.pull(
+					(this.iter as AsyncComponentIterator).next(next),
+				);
+			}
+		});
 	}
 
 	subscribe(): Repeater<Props> {
@@ -325,26 +351,26 @@ class ComponentView extends View {
 
 	initialize(): Promise<void> | void {
 		const child:
-			| AsyncComponentIterator
-			| SyncComponentIterator
+			| ComponentIterator
 			| PromiseLike<Element>
 			| Element = this.tag.call(this.controller, this.props);
 		if (isIteratorOrAsyncIterator(child)) {
 			const result = child.next();
+			this.iter = child;
 			if (isPromiseLike(result)) {
-				this.publish();
-				this.iter = child;
 				this.promise = this.pull(result);
+				this.publish();
 				return this.promise;
 			} else {
-				this.iter = child;
 				return this.renderChildren(
 					isElement(result.value) ? [result.value] : [],
 				);
 			}
 		} else if (isPromiseLike(child)) {
+			this.promise = this.pull(
+				Promise.resolve(child).then((value) => ({value, done: false})),
+			);
 			this.iter = createAsyncIterator(this.controller, this.tag as any);
-			this.promise = this.pull(child.then((value) => ({value, done: false})));
 			return this.promise;
 		} else {
 			this.iter = createIterator(this.controller, this.tag as any);
