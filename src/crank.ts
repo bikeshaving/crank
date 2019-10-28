@@ -115,39 +115,38 @@ export abstract class View {
 	// TODO: cache this.nodes so we don’t have to treat this.nodes with kid gloves
 	private _nodes: (Node | string)[] | undefined;
 	get nodes(): (Node | string)[] {
-		if (this._nodes !== undefined) {
-			return this._nodes;
-		}
-
-		let buffer: string | undefined;
-		const nodes: (Node | string)[] = [];
-		for (const child of this.children) {
-			if (child !== undefined) {
-				if (typeof child === "string") {
-					buffer = buffer === undefined ? child : buffer + child;
-				} else {
-					if (buffer !== undefined) {
-						nodes.push(buffer);
-						buffer = undefined;
-					}
-
-					if (child instanceof IntrinsicView) {
-						if (child.node != null) {
-							nodes.push(child.node);
+		if (this._nodes === undefined) {
+			let buffer: string | undefined;
+			const nodes: (Node | string)[] = [];
+			for (const child of this.children) {
+				if (child !== undefined) {
+					if (typeof child === "string") {
+						buffer = buffer === undefined ? child : buffer + child;
+					} else {
+						if (buffer !== undefined) {
+							nodes.push(buffer);
+							buffer = undefined;
 						}
-					} else if (child instanceof ComponentView) {
-						nodes.push(...child.nodes);
+
+						if (child instanceof IntrinsicView) {
+							if (child.node !== undefined) {
+								nodes.push(child.node);
+							}
+						} else if (child instanceof ComponentView) {
+							nodes.push(...child.nodes);
+						}
 					}
 				}
 			}
+
+			if (buffer !== undefined) {
+				nodes.push(buffer);
+			}
+
+			this._nodes = nodes;
 		}
 
-		if (buffer !== undefined) {
-			nodes.push(buffer);
-		}
-
-		this._nodes = nodes;
-		return nodes;
+		return this._nodes;
 	}
 
 	abstract render(elem: Element): Promise<void> | void;
