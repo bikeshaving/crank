@@ -153,8 +153,7 @@ export abstract class View {
 
 	abstract commit(): void;
 
-	// TODO: allow async unmount
-	abstract unmount(): void;
+	abstract unmount(): Promise<void> | void;
 
 	private createViewChild(child: Child): ViewChild {
 		if (child == null || typeof child === "boolean") {
@@ -307,26 +306,23 @@ class ComponentView extends View {
 	// TODO: handle resultP rejecting
 	pull(resultP: Promise<IteratorResult<Element>>): Promise<void> {
 		return resultP.then((result) => {
-			if (!result.done) {
-				const p = this.renderChildren(
-					isElement(result.value) ? [result.value] : [],
-				);
-				// TODO: only commit if this is a non-update resolution
-				let next:
-					| (Node | string)[]
-					| Node
-					| string
-					| Promise<(Node | string)[] | Node | string>;
-				if (p === undefined) {
+			const p = this.renderChildren(result.value == null ? [] : [result.value]);
+			let next:
+				| (Node | string)[]
+				| Node
+				| string
+				| Promise<(Node | string)[] | Node | string>;
+			if (p === undefined) {
+				this.commit();
+				next = this.nodes.length <= 1 ? this.nodes[0] : this.nodes;
+			} else {
+				next = p.then(() => {
 					this.commit();
-					next = this.nodes.length <= 1 ? this.nodes[0] : this.nodes;
-				} else {
-					next = p.then(() => {
-						this.commit();
-						return this.nodes.length <= 1 ? this.nodes[0] : this.nodes;
-					});
-				}
+					return this.nodes.length <= 1 ? this.nodes[0] : this.nodes;
+				});
+			}
 
+			if (!result.done) {
 				this.promise = this.pull(
 					(this.iter as AsyncComponentIterator).next(next),
 				);
@@ -417,7 +413,15 @@ class ComponentView extends View {
 		this.requested = false;
 	}
 
-	unmount(): void {
+	unmount(): Promise<void> | void {
+		// should we unmount parent or child first?
+		if (this.iter !== undefined) {
+			if (typeof this.iter.return === "function") {
+				// TODO: await async return
+				this.iter.return();
+			}
+		}
+
 		for (const publication of this.publications) {
 			publication.stop();
 		}
@@ -477,7 +481,7 @@ export class IntrinsicView extends View {
 		this.node = result.value;
 	}
 
-	unmount(): void {
+	unmount(): Promise<void> | void {
 		if (this.iter !== undefined) {
 			if (typeof this.iter.return === "function") {
 				this.iter.return();
