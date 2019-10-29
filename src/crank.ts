@@ -293,6 +293,7 @@ class ComponentView extends View {
 	private iter?: ComponentIterator;
 	private promise?: Promise<void>;
 	private publications: Set<Publication> = new Set();
+	private requested = false;
 	constructor(elem: Element<Component>, public parent: View) {
 		super();
 		if (typeof elem.tag !== "function") {
@@ -399,6 +400,7 @@ class ComponentView extends View {
 	}
 
 	render(elem: Element): Promise<void> | void {
+		this.requested = true;
 		if (this.tag !== elem.tag) {
 			throw new TypeError("Tag mismatch");
 		}
@@ -408,7 +410,11 @@ class ComponentView extends View {
 	}
 
 	commit(): void {
-		this.parent.commit();
+		if (!this.requested) {
+			this.parent.commit();
+		}
+
+		this.requested = false;
 	}
 
 	unmount(): void {
@@ -455,7 +461,7 @@ export class IntrinsicView extends View {
 			elem.props.children === undefined ? [] : elem.props.children;
 		const p = this.renderChildren(children);
 		if (p !== undefined) {
-			return p;
+			return p.then(() => this.commit());
 		}
 
 		this.commit();
