@@ -237,8 +237,8 @@ export class Controller {
 		return this.view.subscribe();
 	}
 
-	update(): Promise<void> | void {
-		return this.view.update();
+	refresh(): Promise<void> | void {
+		return this.view.refresh();
 	}
 }
 
@@ -378,7 +378,7 @@ class ComponentView extends View {
 		}
 	}
 
-	update(): Promise<void> | void {
+	refresh(): Promise<void> | void {
 		if (this.iter === undefined) {
 			return this.initialize();
 		}
@@ -406,7 +406,7 @@ class ComponentView extends View {
 		}
 
 		this.props = elem.props;
-		return this.update();
+		return this.refresh();
 	}
 
 	commit(): void {
@@ -517,8 +517,8 @@ export class RootView extends View {
 		updateDOMChildren(this.node, this.nodes);
 	}
 
-	unmount(): void {
-		this.renderChildren([]);
+	unmount(): Promise<void> | void {
+		return this.renderChildren([]);
 	}
 }
 

@@ -282,11 +282,11 @@ describe("sync generator component", () => {
 		expect(SyncGen).toHaveBeenCalledTimes(1);
 	});
 
-	test("update", () => {
-		let update!: () => void;
+	test("refresh", () => {
+		let refresh!: () => void;
 		function* SyncGen(this: Controller): Generator<Element> {
 			let i = 1;
-			update = this.update.bind(this);
+			refresh = this.refresh.bind(this);
 			// eslint-disable-next-line
 			for (const _ of this) {
 				yield <span>Hello {i++}</span>;
@@ -301,10 +301,10 @@ describe("sync generator component", () => {
 		);
 
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
-		update();
+		refresh();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
-		update();
-		update();
+		refresh();
+		refresh();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 4</span></div>");
 	});
 });
