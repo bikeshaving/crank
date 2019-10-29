@@ -287,10 +287,10 @@
     "@types/istanbul-reports" "^1.1.1"
     "@types/yargs" "^13.0.0"
 
-"@repeaterjs/repeater@^2.0.0":
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/@repeaterjs/repeater/-/repeater-2.0.0.tgz#06e906c7bbd24f4707cbed74704cbace38ec2009"
-  integrity sha512-x0ObBZvxbYB25qYanf95ku2eZDQ9FKsLP8ncZ0mPlaV3o35WwdbX0G0ZlCsLGhL44Ui8YO6h/q64zDMZm07lMQ==
+"@repeaterjs/repeater@^3.0.0-beta.1":
+  version "3.0.0-beta.1"
+  resolved "https://registry.yarnpkg.com/@repeaterjs/repeater/-/repeater-3.0.0-beta.1.tgz#ccb3fbde8a7d0393094db861481d1c4bc7f6cbd1"
+  integrity sha512-AhBKnBStxIbe9MjnSwJn3RjOmFvvvNBLeSZliDqo5QJ6l4oKAglLUMOqMaA+IuNGd6USec2LhIIFsr+QlwMJBA==
 
 "@types/babel__core@^7.1.0":
   version "7.1.2"
