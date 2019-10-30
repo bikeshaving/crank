@@ -149,7 +149,7 @@ export abstract class View {
 		return this._nodes;
 	}
 
-	abstract render(elem: Element): Promise<void> | void;
+	abstract update(elem: Element): Promise<void> | void;
 
 	abstract commit(): void;
 
@@ -171,7 +171,7 @@ export abstract class View {
 		}
 	}
 
-	protected renderChildren(children: Iterable<Child>): Promise<void> | void {
+	protected updateChildren(children: Iterable<Child>): Promise<void> | void {
 		this._nodes = undefined;
 		const promises: Promise<void>[] = [];
 		let i = 0;
@@ -186,7 +186,10 @@ export abstract class View {
 			) {
 				if (typeof view === "object") {
 					// TODO: allow unmount to be async
-					view.unmount();
+					const p = view.unmount();
+					if (p !== undefined) {
+						promises.push(p);
+					}
 				}
 
 				view = this.createViewChild(elem);
@@ -198,7 +201,7 @@ export abstract class View {
 				elem !== null &&
 				typeof elem === "object"
 			) {
-				const p = view.render(elem);
+				const p = view.update(elem);
 				if (p !== undefined) {
 					promises.push(p);
 				}
@@ -209,7 +212,10 @@ export abstract class View {
 
 		while (i < this.children.length) {
 			if (typeof view === "object") {
-				view.unmount();
+				const p = view.unmount();
+				if (p !== undefined) {
+					promises.push(p);
+				}
 			}
 
 			delete this.children[i];
@@ -303,10 +309,25 @@ class ComponentView extends View {
 		this.props = elem.props;
 	}
 
+	subscribe(): Repeater<Props> {
+		return new Repeater(async (push, stop) => {
+			const publication = {push, stop};
+			this.publications.add(publication);
+			await stop;
+			this.publications.delete(publication);
+		}, new SlidingBuffer(1));
+	}
+
+	publish(): void {
+		for (const publication of this.publications) {
+			publication.push(this.props);
+		}
+	}
+
 	// TODO: handle resultP rejecting
 	pull(resultP: Promise<IteratorResult<Element>>): Promise<void> {
 		return resultP.then((result) => {
-			const p = this.renderChildren(result.value == null ? [] : [result.value]);
+			const p = this.updateChildren(result.value == null ? [] : [result.value]);
 			let next:
 				| (Node | string)[]
 				| Node
@@ -330,19 +351,8 @@ class ComponentView extends View {
 		});
 	}
 
-	subscribe(): Repeater<Props> {
-		return new Repeater(async (push, stop) => {
-			const publication = {push, stop};
-			this.publications.add(publication);
-			await stop;
-			this.publications.delete(publication);
-		}, new SlidingBuffer(1));
-	}
-
-	publish(): void {
-		for (const publication of this.publications) {
-			publication.push(this.props);
-		}
+	iterate(result: IteratorResult<Element>): void {
+		// return this.updateChildren();
 	}
 
 	initialize(): Promise<void> | void {
@@ -351,14 +361,14 @@ class ComponentView extends View {
 			| PromiseLike<Element>
 			| Element = this.tag.call(this.controller, this.props);
 		if (isIteratorOrAsyncIterator(child)) {
-			const result = child.next();
 			this.iter = child;
+			const result = this.iter.next();
 			if (isPromiseLike(result)) {
 				this.promise = this.pull(result);
 				this.publish();
 				return this.promise;
 			} else {
-				return this.renderChildren(
+				return this.updateChildren(
 					isElement(result.value) ? [result.value] : [],
 				);
 			}
@@ -370,7 +380,7 @@ class ComponentView extends View {
 			return this.promise;
 		} else {
 			this.iter = createIterator(this.controller, this.tag as any);
-			return this.renderChildren([child]);
+			return this.updateChildren([child]);
 		}
 	}
 
@@ -383,7 +393,7 @@ class ComponentView extends View {
 			const nodes = this.nodes;
 			const next = nodes.length <= 1 ? nodes[0] : nodes;
 			const result = this.iter.next(next) as IteratorResult<Element>;
-			const p = this.renderChildren(
+			const p = this.updateChildren(
 				isElement(result.value) ? [result.value] : [],
 			);
 			if (p !== undefined) {
@@ -395,7 +405,7 @@ class ComponentView extends View {
 		}
 	}
 
-	render(elem: Element): Promise<void> | void {
+	update(elem: Element): Promise<void> | void {
 		this.requested = true;
 		if (this.tag !== elem.tag) {
 			throw new TypeError("Tag mismatch");
@@ -426,7 +436,7 @@ class ComponentView extends View {
 			publication.stop();
 		}
 
-		this.renderChildren([]);
+		this.updateChildren([]);
 	}
 }
 
@@ -455,7 +465,7 @@ export class IntrinsicView extends View {
 		this.tag = elem.tag;
 	}
 
-	render(elem: Element): Promise<void> | void {
+	update(elem: Element): Promise<void> | void {
 		if (this.tag !== elem.tag) {
 			throw new TypeError("Tag mismatch");
 		}
@@ -463,7 +473,7 @@ export class IntrinsicView extends View {
 		this.props = elem.props;
 		const children =
 			elem.props.children === undefined ? [] : elem.props.children;
-		const p = this.renderChildren(children);
+		const p = this.updateChildren(children);
 		if (p !== undefined) {
 			return p.then(() => this.commit());
 		}
@@ -490,7 +500,7 @@ export class IntrinsicView extends View {
 			delete this.iter;
 		}
 
-		this.renderChildren([]);
+		this.updateChildren([]);
 		delete this.node;
 	}
 }
@@ -507,8 +517,8 @@ export class RootView extends View {
 		super();
 	}
 
-	render(elem: Element): Promise<void> | void {
-		const p = this.renderChildren([elem]);
+	update(elem: Element): Promise<void> | void {
+		const p = this.updateChildren([elem]);
 		if (p !== undefined) {
 			return p.then(() => this.commit());
 		}
@@ -522,7 +532,7 @@ export class RootView extends View {
 	}
 
 	unmount(): Promise<void> | void {
-		return this.renderChildren([]);
+		return this.updateChildren([]);
 	}
 }
 
@@ -607,14 +617,16 @@ export function render(
 		views.set(container, view);
 	}
 
+	let p: Promise<void> | void;
 	if (elem == null) {
-		view.unmount();
+		p = view.unmount();
 		views.delete(container);
 	} else {
-		const p = view.render(elem);
-		if (isPromiseLike(p)) {
-			return p.then(() => view);
-		}
+		p = view.update(elem);
+	}
+
+	if (p !== undefined) {
+		return p.then(() => view);
 	}
 
 	return view;
