@@ -37,7 +37,6 @@ export interface Props {
 
 export interface IntrinsicProps {
 	[key: string]: any;
-	children: (Node | string)[];
 }
 
 export type Tag<TProps extends Props = Props> = Component<TProps> | string;
@@ -472,10 +471,10 @@ class ComponentView extends View {
 class IntrinsicController {
 	constructor(private view: IntrinsicView) {}
 
-	// TODO: parameterize IntrinsicProps
-	*[Symbol.iterator](): Generator<IntrinsicProps> {
+	// TODO: parameterize Node
+	*[Symbol.iterator](): Generator<[IntrinsicProps, (Node | string)[]]> {
 		while (true) {
-			yield {...this.view.props, children: this.view.nodes};
+			yield [this.view.props, this.view.nodes];
 		}
 	}
 }
@@ -485,6 +484,7 @@ export class IntrinsicView extends View {
 	tag: string;
 	props: Props = {};
 	iter?: Iterator<Node>;
+	result?: IteratorResult<Node>;
 	constructor(elem: Element, public parent: View) {
 		super();
 		if (typeof elem.tag !== "string") {
@@ -499,10 +499,9 @@ export class IntrinsicView extends View {
 			throw new TypeError("Tag mismatch");
 		}
 
-		this.props = elem.props;
-		const children =
-			elem.props.children === undefined ? [] : elem.props.children;
-		const p = this.updateChildren(children);
+		const { children, ...props } = elem.props;
+		this.props = props;
+		const p = this.updateChildren(children == null ? [] : children);
 		if (p !== undefined) {
 			return p.then(() => this.commit());
 		}
@@ -512,30 +511,39 @@ export class IntrinsicView extends View {
 
 	commit(): void {
 		if (this.iter == null) {
-			const intrinsic = createBasicIntrinsic(this.tag);
+			const intrinsic = createIntrinsic(this.tag);
 			this.iter = intrinsic.call(this.controller, this.props, this.nodes);
 		}
 
-		const result = this.iter.next();
-		this.node = result.value;
+		this.result = this.iter.next();
+		this.node = this.result.value;
 	}
 
 	unmount(): Promise<void> | void {
-		if (this.iter !== undefined && typeof this.iter.return === "function") {
-			this.iter.return();
+		if (this.result !== undefined && !this.result.done) {
+			if (this.iter !== undefined && typeof this.iter.return === "function") {
+				this.result = this.iter.return();
+				if (!this.result.done) {
+					throw new Error("THE ITERATOR REFUSES TO DIE");
+				}
+			}
 		}
 
-		delete this.node;
-		return this.updateChildren([]);
+		const p = this.updateChildren([]);
+		if (p !== undefined) {
+			return p.then(() => this.commit());
+		}
+
+		this.commit();
 	}
 }
 
+// TODO: parameterize Node
 export type Intrinsic = (
 	this: IntrinsicController,
 	props: Props,
-	// TODO: parameterize Node
-	children: (Node | string)[],
-) => Iterator<Node>;
+	nodes: (Node | string)[],
+) => Iterator<Node, Node | void>;
 
 export class RootView extends View {
 	constructor(public node: HTMLElement) {
@@ -557,7 +565,12 @@ export class RootView extends View {
 	}
 
 	unmount(): Promise<void> | void {
-		return this.updateChildren([]);
+		const p = this.updateChildren([]);
+		if (p !== undefined) {
+			return p.then(() => this.commit());
+		}
+
+		this.commit();
 	}
 }
 
@@ -618,13 +631,28 @@ function updateDOMChildren(el: HTMLElement, children: (Node | string)[]): void {
 	}
 }
 
-function createBasicIntrinsic(tag: string): Intrinsic {
+function createIntrinsic(tag: string): Intrinsic {
 	return function* intrinsic(this: IntrinsicController): Iterator<Node> {
 		const el = document.createElement(tag);
-		for (const {children, ...props} of this) {
+		for (const [props, children] of this) {
 			updateDOMProps(el, props);
 			updateDOMChildren(el, children);
 			yield el;
+		}
+	};
+}
+
+function createRootIntrinsic(node: HTMLElement): Intrinsic {
+	return function* intrinsic(this): Iterator<Node> {
+		for (const [, nodes] of this) {
+			try {
+				updateDOMChildren(node, nodes);
+				yield node;
+			} finally {
+				while (node.firstChild != null) {
+					node.removeChild(node.firstChild);
+				}
+			}
 		}
 	};
 }

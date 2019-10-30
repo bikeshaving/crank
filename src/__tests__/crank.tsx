@@ -145,6 +145,13 @@ describe("render", () => {
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
 	});
+
+	test("render null", () => {
+		render(<div>Hello world</div>, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Hello world</div>");
+		render(null, document.body);
+		expect(document.body.innerHTML).toEqual("");
+	});
 });
 
 describe("sync function component", () => {
