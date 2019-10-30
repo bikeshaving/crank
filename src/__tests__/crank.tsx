@@ -320,7 +320,7 @@ describe("async generator component", () => {
 		const AsyncGen = jest.fn(async function*(
 			this: Controller,
 			{message}: {message: string},
-		) {
+		): AsyncGenerator<Element> {
 			for await (const {message} of this) {
 				yield <span>Loading</span>;
 				await new Promise((resolve1) => (resolve = resolve1));
@@ -351,5 +351,31 @@ describe("async generator component", () => {
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(document.body.innerHTML).toEqual("<div><span>Goodbye</span></div>");
 		expect(AsyncGen).toHaveBeenCalledTimes(1);
+	});
+
+	test("async unmount", async () => {
+		let cleanup!: () => unknown;
+		async function *Cleanup() {
+			try {
+				yield <span>Hello</span>;
+			} finally {
+				await new Promise((resolve) => (cleanup = resolve));
+			}
+		}
+
+		await render(
+			<div>
+				<Cleanup />
+			</div>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+		render(<div/>, document.body);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+		cleanup();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(document.body.innerHTML).toEqual("<div></div>");
 	});
 });
