@@ -149,6 +149,14 @@ export abstract class View {
 		return this._nodes;
 	}
 
+	get nodeOrNodes(): (Node | string | undefined) | (Node | string)[] {
+		if (this.nodes.length > 1) {
+			return this.nodes;
+		}
+
+		return this.nodes[0];
+	}
+
 	abstract update(elem: Element): Promise<void> | void;
 
 	abstract commit(): void;
@@ -328,28 +336,28 @@ class ComponentView extends View {
 	private pull(resultP: Promise<IteratorResult<Element>>): Promise<void> {
 		return resultP.then((result) => {
 			const p = this.iterate(result);
-			let next:
+			let nodeOrNodes:
 				| (Node | string)[]
 				| Node
 				| string
 				| Promise<(Node | string)[] | Node | string>;
 			if (p === undefined) {
 				this.commit();
-				next = this.nodes.length <= 1 ? this.nodes[0] : this.nodes;
+				nodeOrNodes = this.nodeOrNodes!;
 			} else {
-				next = p.then(() => {
+				nodeOrNodes = p.then(() => {
 					this.commit();
-					return this.nodes.length <= 1 ? this.nodes[0] : this.nodes;
+					return this.nodeOrNodes!;
 				});
 			}
 
 			if (!result.done) {
 				this.promise = this.pull(
-					(this.iter as AsyncComponentIterator).next(next),
+					(this.iter as AsyncComponentIterator).next(nodeOrNodes),
 				);
 			}
 
-			return Promise.resolve(next).then(() => {});
+			return Promise.resolve(nodeOrNodes).then(() => {});
 		});
 	}
 
@@ -397,13 +405,10 @@ class ComponentView extends View {
 		}
 
 		if (this.promise === undefined) {
-			const nodes = this.nodes;
-			const next = nodes.length <= 1 ? nodes[0] : nodes;
-			const result = this.iter.next(next) as IteratorResult<Element>;
-			const p = this.iterate(result);
-			if (p !== undefined) {
-				return p;
-			}
+			const result = this.iter.next(
+				this.nodeOrNodes!
+			) as IteratorResult<Element>;
+			return this.iterate(result);
 		} else {
 			this.publish();
 			return this.promise;
@@ -429,6 +434,7 @@ class ComponentView extends View {
 	}
 
 	unmount(): Promise<void> | void {
+		this.controller.mounted = false;
 		let result:
 			| Promise<IteratorResult<Element>>
 			| IteratorResult<Element>
