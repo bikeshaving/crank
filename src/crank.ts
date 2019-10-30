@@ -297,6 +297,7 @@ class ComponentView extends View {
 	props: Props;
 	private iter?: ComponentIterator;
 	private promise?: Promise<void>;
+	private result?: IteratorResult<Element, Element | void>;
 	private publications: Set<Publication> = new Set();
 	private requested = false;
 	constructor(elem: Element<Component>, public parent: View) {
@@ -318,16 +319,16 @@ class ComponentView extends View {
 		}, new SlidingBuffer(1));
 	}
 
-	publish(): void {
+	private publish(): void {
 		for (const publication of this.publications) {
 			publication.push(this.props);
 		}
 	}
 
 	// TODO: handle resultP rejecting
-	pull(resultP: Promise<IteratorResult<Element>>): Promise<void> {
+	private pull(resultP: Promise<IteratorResult<Element>>): Promise<void> {
 		return resultP.then((result) => {
-			const p = this.updateChildren(result.value == null ? [] : [result.value]);
+			const p = this.iterate(result);
 			let next:
 				| (Node | string)[]
 				| Node
@@ -348,11 +349,20 @@ class ComponentView extends View {
 					(this.iter as AsyncComponentIterator).next(next),
 				);
 			}
+
+			return Promise.resolve(next).then(() => {});
 		});
 	}
 
-	iterate(result: IteratorResult<Element>): void {
-		// return this.updateChildren();
+	private iterate(result: IteratorResult<Element>): Promise<void> | void {
+		this.result = result;
+		if (this.result.value == null) {
+			return this.updateChildren([]);
+		} else if (this.result.value.sigil !== ElementSigil) {
+			throw new TypeError("Element not returned");
+		}
+
+		return this.updateChildren([this.result.value]);
 	}
 
 	initialize(): Promise<void> | void {
@@ -368,9 +378,7 @@ class ComponentView extends View {
 				this.publish();
 				return this.promise;
 			} else {
-				return this.updateChildren(
-					isElement(result.value) ? [result.value] : [],
-				);
+				return this.iterate(result);
 			}
 		} else if (isPromiseLike(child)) {
 			this.promise = this.pull(
@@ -393,9 +401,7 @@ class ComponentView extends View {
 			const nodes = this.nodes;
 			const next = nodes.length <= 1 ? nodes[0] : nodes;
 			const result = this.iter.next(next) as IteratorResult<Element>;
-			const p = this.updateChildren(
-				isElement(result.value) ? [result.value] : [],
-			);
+			const p = this.iterate(result);
 			if (p !== undefined) {
 				return p;
 			}
