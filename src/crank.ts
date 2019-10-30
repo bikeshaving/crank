@@ -185,7 +185,6 @@ export abstract class View {
 				view.tag !== elem.tag
 			) {
 				if (typeof view === "object") {
-					// TODO: allow unmount to be async
 					const p = view.unmount();
 					if (p !== undefined) {
 						promises.push(p);
@@ -430,11 +429,13 @@ class ComponentView extends View {
 	}
 
 	unmount(): Promise<void> | void {
-		// should we unmount parent or child first?
-		if (this.iter !== undefined) {
-			if (typeof this.iter.return === "function") {
-				// TODO: await async return
-				this.iter.return();
+		let result:
+			| Promise<IteratorResult<Element>>
+			| IteratorResult<Element>
+			| undefined;
+		if (this.result !== undefined && !this.result.done) {
+			if (this.iter !== undefined && typeof this.iter.return === "function") {
+				result = this.iter.return();
 			}
 		}
 
@@ -442,7 +443,23 @@ class ComponentView extends View {
 			publication.stop();
 		}
 
-		this.updateChildren([]);
+		if (isPromiseLike(result)) {
+			return result.then((result) => {
+				if (!result.done) {
+					throw new Error("THE ITERATOR REFUSES TO DIE");
+				}
+
+				this.result = result;
+				return this.updateChildren([]);
+			});
+		}
+
+		if (result !== undefined && !result.done) {
+			throw new Error("THE ITERATOR REFUSES TO DIE");
+		}
+
+		this.result = result;
+		return this.updateChildren([]);
 	}
 }
 
@@ -498,16 +515,12 @@ export class IntrinsicView extends View {
 	}
 
 	unmount(): Promise<void> | void {
-		if (this.iter !== undefined) {
-			if (typeof this.iter.return === "function") {
-				this.iter.return();
-			}
-
-			delete this.iter;
+		if (this.iter !== undefined && typeof this.iter.return === "function") {
+			this.iter.return();
 		}
 
-		this.updateChildren([]);
 		delete this.node;
+		return this.updateChildren([]);
 	}
 }
 
