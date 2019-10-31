@@ -362,7 +362,7 @@ describe("async generator component", () => {
 
 	test("async unmount", async () => {
 		let cleanup!: () => unknown;
-		async function *Cleanup() {
+		async function* Cleanup() {
 			try {
 				yield <span>Hello</span>;
 			} finally {
@@ -378,7 +378,7 @@ describe("async generator component", () => {
 		);
 
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
-		render(<div/>, document.body);
+		render(<div />, document.body);
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 		cleanup();

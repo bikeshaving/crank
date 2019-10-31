@@ -404,9 +404,9 @@ class ComponentView extends View {
 		}
 
 		if (this.promise === undefined) {
-			const result = this.iter.next(
-				this.nodeOrNodes!
-			) as IteratorResult<Element>;
+			const result = this.iter.next(this.nodeOrNodes!) as IteratorResult<
+				Element
+			>;
 			return this.iterate(result);
 		} else {
 			this.publish();
@@ -468,8 +468,15 @@ class ComponentView extends View {
 	}
 }
 
+// TODO: parameterize Node
+export type Intrinsic = (
+	this: IntrinsicController,
+	props: Props,
+	nodes: (Node | string)[],
+) => Iterator<Node | undefined, Node | void>;
+
 class IntrinsicController {
-	constructor(private view: IntrinsicView) {}
+	constructor(private view: IntrinsicView | RootView) {}
 
 	// TODO: parameterize Node
 	*[Symbol.iterator](): Generator<[IntrinsicProps, (Node | string)[]]> {
@@ -483,8 +490,8 @@ export class IntrinsicView extends View {
 	private controller = new IntrinsicController(this);
 	tag: string;
 	props: Props = {};
-	iter?: Iterator<Node>;
-	result?: IteratorResult<Node>;
+	iter?: Iterator<Node | undefined>;
+	result?: IteratorResult<Node | undefined>;
 	constructor(elem: Element, public parent: View) {
 		super();
 		if (typeof elem.tag !== "string") {
@@ -499,7 +506,7 @@ export class IntrinsicView extends View {
 			throw new TypeError("Tag mismatch");
 		}
 
-		const { children, ...props } = elem.props;
+		const {children, ...props} = elem.props;
 		this.props = props;
 		const p = this.updateChildren(children == null ? [] : children);
 		if (p !== undefined) {
@@ -538,14 +545,13 @@ export class IntrinsicView extends View {
 	}
 }
 
-// TODO: parameterize Node
-export type Intrinsic = (
-	this: IntrinsicController,
-	props: Props,
-	nodes: (Node | string)[],
-) => Iterator<Node, Node | void>;
-
 export class RootView extends View {
+	private controller = new IntrinsicController(this);
+	iter?: Iterator<Node | undefined>;
+	result?: IteratorResult<Node | undefined>;
+	// TODO: Use a symbol here?
+	tag = "__ROOT__";
+	props = {};
 	constructor(public node: HTMLElement) {
 		super();
 	}
@@ -561,10 +567,25 @@ export class RootView extends View {
 
 	commit(): void {
 		// TODO: abstract this
-		updateDOMChildren(this.node, this.nodes);
+		if (this.iter == null) {
+			const intrinsic = createRootIntrinsic(this.node);
+			this.iter = intrinsic.call(this.controller, {}, this.nodes);
+		}
+
+		this.result = this.iter.next();
+		this.node = this.result.value;
 	}
 
 	unmount(): Promise<void> | void {
+		if (this.result !== undefined && !this.result.done) {
+			if (this.iter !== undefined && typeof this.iter.return === "function") {
+				this.result = this.iter.return();
+				if (!this.result.done) {
+					throw new Error("THE ITERATOR REFUSES TO DIE");
+				}
+			}
+		}
+
 		const p = this.updateChildren([]);
 		if (p !== undefined) {
 			return p.then(() => this.commit());
@@ -632,7 +653,7 @@ function updateDOMChildren(el: HTMLElement, children: (Node | string)[]): void {
 }
 
 function createIntrinsic(tag: string): Intrinsic {
-	return function* intrinsic(this: IntrinsicController): Iterator<Node> {
+	return function* intrinsic(this: IntrinsicController) {
 		const el = document.createElement(tag);
 		for (const [props, children] of this) {
 			updateDOMProps(el, props);
@@ -643,16 +664,14 @@ function createIntrinsic(tag: string): Intrinsic {
 }
 
 function createRootIntrinsic(node: HTMLElement): Intrinsic {
-	return function* intrinsic(this): Iterator<Node> {
-		for (const [, nodes] of this) {
-			try {
+	return function* intrinsic(this) {
+		try {
+			for (const [, nodes] of this) {
 				updateDOMChildren(node, nodes);
 				yield node;
-			} finally {
-				while (node.firstChild != null) {
-					node.removeChild(node.firstChild);
-				}
 			}
+		} finally {
+			updateDOMChildren(node, []);
 		}
 	};
 }
