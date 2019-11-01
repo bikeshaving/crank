@@ -39,7 +39,10 @@ export interface IntrinsicProps {
 	[key: string]: any;
 }
 
-export type Tag<TProps extends Props = Props> = Component<TProps> | string;
+export type Tag<TProps extends Props = Props> =
+	| Component<TProps>
+	| symbol
+	| string;
 
 export const ElementSigil: unique symbol = Symbol.for("crank.element");
 export type ElementSigil = typeof ElementSigil;
@@ -105,7 +108,16 @@ export interface Children extends Iterable<Child | Children> {}
 
 export type ViewChild = ComponentView | IntrinsicView | string | undefined;
 
+// TODO: composition not inheritance
 // TODO: use a left-child right-sibling tree
+interface View1<T> {
+	tag: string | Symbol | Function;
+	node?: T;
+	child?: View1<T>;
+	sibling?: View1<T>;
+	parent?: View1<T>;
+}
+
 export abstract class View {
 	children: ViewChild[] = [];
 	// TODO: parameterize Node
@@ -169,10 +181,10 @@ export abstract class View {
 			return child;
 		} else if (typeof child === "number") {
 			return child.toString();
-		} else if (typeof child.tag === "string") {
-			return new IntrinsicView(child, this);
 		} else if (typeof child.tag === "function") {
 			return new ComponentView(child as Element<Component>, this);
+		} else if (child.tag === Root || typeof child.tag === "string") {
+			return new IntrinsicView(child, this);
 		} else {
 			throw new TypeError("Unknown child type");
 		}
@@ -476,7 +488,7 @@ export type Intrinsic = (
 ) => Iterator<Node | undefined, Node | void>;
 
 class IntrinsicController {
-	constructor(private view: IntrinsicView | RootView) {}
+	constructor(private view: IntrinsicView) {}
 
 	// TODO: parameterize Node
 	*[Symbol.iterator](): Generator<[IntrinsicProps, (Node | string)[]]> {
@@ -488,13 +500,13 @@ class IntrinsicController {
 
 export class IntrinsicView extends View {
 	private controller = new IntrinsicController(this);
-	tag: string;
+	tag: string | symbol;
 	props: Props = {};
 	iter?: Iterator<Node | undefined>;
 	result?: IteratorResult<Node | undefined>;
-	constructor(elem: Element, public parent: View) {
+	constructor(elem: Element, public parent?: View) {
 		super();
-		if (typeof elem.tag !== "string") {
+		if (elem.tag !== Root && typeof elem.tag !== "string") {
 			throw new TypeError("Tag mismatch");
 		}
 
@@ -518,7 +530,14 @@ export class IntrinsicView extends View {
 
 	commit(): void {
 		if (this.iter == null) {
-			const intrinsic = createIntrinsic(this.tag);
+			// HOW DO WE PASS THIS IN
+			let intrinsic: Intrinsic;
+			if (typeof this.tag === "string") {
+				intrinsic = createIntrinsic(this.tag);
+			} else {
+				intrinsic = rootIntrinsic;
+			}
+
 			this.iter = intrinsic.call(this.controller, this.props, this.nodes);
 		}
 
@@ -546,52 +565,19 @@ export class IntrinsicView extends View {
 }
 
 export class RootView extends View {
-	private controller = new IntrinsicController(this);
-	iter?: Iterator<Node | undefined>;
-	result?: IteratorResult<Node | undefined>;
-	// TODO: Use a symbol here?
-	tag = "__ROOT__";
-	props = {};
-	constructor(public node: HTMLElement) {
+	props: Props = {};
+	constructor() {
 		super();
 	}
 
 	update(elem: Element): Promise<void> | void {
-		const p = this.updateChildren([elem]);
-		if (p !== undefined) {
-			return p.then(() => this.commit());
-		}
-
-		this.commit();
+		return this.updateChildren([elem]);
 	}
 
-	commit(): void {
-		// TODO: abstract this
-		if (this.iter == null) {
-			const intrinsic = createRootIntrinsic(this.node);
-			this.iter = intrinsic.call(this.controller, {}, this.nodes);
-		}
-
-		this.result = this.iter.next();
-		this.node = this.result.value;
-	}
+	commit(): void {}
 
 	unmount(): Promise<void> | void {
-		if (this.result !== undefined && !this.result.done) {
-			if (this.iter !== undefined && typeof this.iter.return === "function") {
-				this.result = this.iter.return();
-				if (!this.result.done) {
-					throw new Error("THE ITERATOR REFUSES TO DIE");
-				}
-			}
-		}
-
-		const p = this.updateChildren([]);
-		if (p !== undefined) {
-			return p.then(() => this.commit());
-		}
-
-		this.commit();
+		return this.updateChildren([]);
 	}
 }
 
@@ -653,9 +639,9 @@ function updateDOMChildren(el: HTMLElement, children: (Node | string)[]): void {
 }
 
 function createIntrinsic(tag: string): Intrinsic {
-	return function* intrinsic(this: IntrinsicController) {
+	return function* intrinsic(this: IntrinsicController, props, children) {
 		const el = document.createElement(tag);
-		for (const [props, children] of this) {
+		for ([props, children] of this) {
 			updateDOMProps(el, props);
 			updateDOMChildren(el, children);
 			yield el;
@@ -663,36 +649,39 @@ function createIntrinsic(tag: string): Intrinsic {
 	};
 }
 
-function createRootIntrinsic(node: HTMLElement): Intrinsic {
-	return function* intrinsic(this) {
-		try {
-			for (const [, nodes] of this) {
-				updateDOMChildren(node, nodes);
-				yield node;
-			}
-		} finally {
-			updateDOMChildren(node, []);
+const rootIntrinsic: Intrinsic = function*({node}, nodes) {
+	try {
+		for ([{node}, nodes] of this) {
+			updateDOMChildren(node, nodes);
+			yield node;
 		}
-	};
-}
+	} finally {
+		updateDOMChildren(node, []);
+	}
+};
 
-const views: WeakMap<Node, RootView> = new WeakMap();
+const views: WeakMap<Node, IntrinsicView> = new WeakMap();
 export function render(
 	elem: Element | null | undefined,
-	container: HTMLElement,
-): Promise<RootView> | RootView {
-	let view: RootView;
-	if (views.has(container)) {
-		view = views.get(container)!;
+	node: HTMLElement,
+): Promise<RootView> | RootView | undefined {
+	if (elem != null && elem.tag !== Root) {
+		elem = createElement(Root, {node}, elem);
+	}
+	let view: IntrinsicView;
+	if (views.has(node)) {
+		view = views.get(node)!;
+	} else if (elem == null) {
+		return;
 	} else {
-		view = new RootView(container);
-		views.set(container, view);
+		view = new IntrinsicView(elem);
+		views.set(node, view);
 	}
 
 	let p: Promise<void> | void;
 	if (elem == null) {
 		p = view.unmount();
-		views.delete(container);
+		views.delete(node);
 	} else {
 		p = view.update(elem);
 	}
@@ -703,3 +692,20 @@ export function render(
 
 	return view;
 }
+
+export const Default = Symbol("Default");
+export type Default = typeof Default;
+
+export const Root = Symbol("Root");
+export type Root = typeof Root;
+
+export const Portal = Symbol("Portal");
+export type Portal = typeof Portal;
+
+export const Fragment = Symbol("Fragment");
+export type Fragment = typeof Fragment;
+
+export const Text = Symbol("Text");
+export type Text = typeof Text;
+
+export type ControlTag = Root | Text | Portal | Fragment;
