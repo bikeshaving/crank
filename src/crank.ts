@@ -111,14 +111,13 @@ export type ViewChild = ComponentView | IntrinsicView | string | undefined;
 
 // TODO: composition not inheritance
 // TODO: use a left-child right-sibling tree
-interface View1<T> {
-	tag: string | Symbol | Function;
-	node?: T;
-	child?: View1<T>;
-	sibling?: View1<T>;
-	parent?: View1<T>;
-}
-
+// interface View<T> {
+// 	tag: string | Symbol | Function;
+// 	node?: T;
+// 	child?: View1<T>;
+// 	sibling?: View1<T>;
+// 	parent?: View1<T>;
+// }
 export abstract class View {
 	// TODO: parameterize Node
 	node?: Node;
@@ -337,11 +336,11 @@ class ComponentView extends View {
 	tag: Component;
 	props: Props;
 	private controller = new Controller(this);
-	private iter?: ComponentIterator;
-	private promise?: Promise<void>;
-	private result?: IteratorResult<Element, Element | void>;
-	private publications: Set<Publication> = new Set();
 	private requested = false;
+	private iter?: ComponentIterator;
+	private result?: IteratorResult<Element, Element | void>;
+	private promise?: Promise<void>;
+	private publications: Set<Publication> = new Set();
 	constructor(
 		elem: Element<Component>,
 		public env: Environment,
