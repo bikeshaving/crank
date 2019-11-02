@@ -37,7 +37,7 @@ export interface Props {
 
 export interface IntrinsicProps {
 	[key: string]: any;
-	children: (Node | string)[];
+	children?: (Node | string)[];
 }
 
 export type Tag<TProps extends Props = Props> =
@@ -127,7 +127,7 @@ export abstract class View {
 	env!: Environment;
 	props!: Props | IntrinsicProps;
 	protected controller!: Controller | IntrinsicController;
-	protected iter?: ComponentIterator | Iterator<Node | undefined>;
+	protected iter?: ComponentIterator | IntrinsicIterator;
 	protected result?:
 		| IteratorResult<Element, Element | void>
 		| IteratorResult<Node | undefined>;
@@ -179,7 +179,7 @@ export abstract class View {
 		return this.nodes[0];
 	}
 
-	protected intrinsicFor(tag: string | ControlTag): Intrinsic {
+	protected intrinsicFor(tag: string | ControlTag): IntrinsicFunction {
 		if (typeof tag === "string") {
 			const intrinsic = this.env[tag];
 			if (intrinsic == null) {
@@ -287,7 +287,7 @@ export abstract class View {
 				);
 			}
 
-			this.result = (this.iter as Iterator<Node | undefined>).next();
+			this.result = (this.iter as IntrinsicIterator).next();
 			this.node = this.result.value;
 		}
 
@@ -356,8 +356,8 @@ export type Component<TProps extends Props = Props> = (
 ) => ComponentIterator | PromiseLike<Element> | Element;
 
 interface Publication {
-	push(value: Props): void;
-	stop(): void;
+	push(value: Props): unknown;
+	stop(): unknown;
 }
 
 class ComponentView extends View {
@@ -492,6 +492,10 @@ class ComponentView extends View {
 
 	unmount(): Promise<void> | void {
 		this.controller.mounted = false;
+		for (const publication of this.publications) {
+			publication.stop();
+		}
+
 		let result:
 			| Promise<IteratorResult<Element>>
 			| IteratorResult<Element>
@@ -502,14 +506,10 @@ class ComponentView extends View {
 			}
 		}
 
-		for (const publication of this.publications) {
-			publication.stop();
-		}
-
 		if (isPromiseLike(result)) {
 			return result.then((result) => {
 				if (!result.done) {
-					throw new Error("THE ITERATOR REFUSES TO DIE");
+					throw new Error("Zombie iterator");
 				}
 
 				this.result = result;
@@ -518,7 +518,7 @@ class ComponentView extends View {
 		}
 
 		if (result !== undefined && !result.done) {
-			throw new Error("THE ITERATOR REFUSES TO DIE");
+			throw new Error("Zombie iterator");
 		}
 
 		this.result = result;
@@ -527,10 +527,11 @@ class ComponentView extends View {
 }
 
 // TODO: parameterize Node
-export type Intrinsic = (
+export type IntrinsicIterator = Iterator<Node | undefined, Node | void>;
+export type IntrinsicFunction = (
 	this: IntrinsicController,
 	props: IntrinsicProps,
-) => Iterator<Node | undefined, Node | void>;
+) => IntrinsicIterator;
 
 class IntrinsicController {
 	constructor(private view: IntrinsicView) {}
@@ -573,33 +574,17 @@ export class IntrinsicView extends View {
 		this.commit();
 	}
 
-	commit(): void {
-		this.props = {...this.props, children: this.nodes};
-		if (this.iter == null) {
-			const intrinsic = this.intrinsicFor(this.tag);
-			this.iter = intrinsic.call(this.controller, this.props);
-		}
-
-		this.result = this.iter.next();
-		this.node = this.result.value;
-	}
-
 	unmount(): Promise<void> | void {
 		if (this.result !== undefined && !this.result.done) {
 			if (this.iter !== undefined && typeof this.iter.return === "function") {
 				this.result = this.iter.return();
 				if (!this.result.done) {
-					throw new Error("THE ITERATOR REFUSES TO DIE");
+					throw new Error("Zombie iterator");
 				}
 			}
 		}
 
-		const p = this.updateChildren([]);
-		if (p !== undefined) {
-			return p.then(() => this.commit());
-		}
-
-		this.commit();
+		return this.updateChildren([]);
 	}
 }
 
@@ -614,7 +599,10 @@ function updateDOMProps(el: HTMLElement, props: Props): void {
 }
 
 // TODO: move createTextNode calls to environment
-function updateDOMChildren(el: HTMLElement, children: (Node | string)[]): void {
+function updateDOMChildren(
+	el: HTMLElement,
+	children: (Node | string)[] = [],
+): void {
 	if (el.childNodes.length === 0) {
 		const fragment = document.createDocumentFragment();
 		for (let child of children) {
@@ -667,9 +655,6 @@ export type Default = typeof Default;
 export const Root = Symbol("Root");
 export type Root = typeof Root;
 
-export const Text = Symbol("Text");
-export type Text = typeof Text;
-
 // TODO: implement these control tags
 export const Fragment = Symbol("Fragment");
 export type Fragment = typeof Fragment;
@@ -680,22 +665,21 @@ export type Copy = typeof Copy;
 export const Portal = Symbol("Portal");
 export type Portal = typeof Portal;
 
-const controlTags = new Set([Root, Text, Fragment, Portal]);
+const controlTags = new Set([Root, Fragment, Portal]);
 
-export type ControlTag = Root | Text | Fragment | Portal;
+export type ControlTag = Root | Fragment | Portal;
 export function isControlTag(value: any): value is ControlTag {
 	return controlTags.has(value);
 }
 
 // TODO: allow tags to define child intrinsics (for svg and stuff)
 interface Environment {
-	[Default](tag: string): Intrinsic;
-	[Text]: Intrinsic;
-	[Root]?: Intrinsic;
-	[Portal]?: Intrinsic;
-	[Fragment]?: Intrinsic;
+	[Default](tag: string): IntrinsicFunction;
+	[Root]?: IntrinsicFunction;
+	[Portal]?: IntrinsicFunction;
+	[Fragment]?: IntrinsicFunction;
 	// TODO: allow tags to define child tags somehow
-	[tag: string]: Intrinsic;
+	[tag: string]: IntrinsicFunction;
 }
 
 const defaultEnv: Environment = {
@@ -704,14 +688,11 @@ const defaultEnv: Environment = {
 			`tag ${tag} does not exist and default intrinsic not provided`,
 		);
 	},
-	[Text](): never {
-		throw new Error("Text Intrinsic has not been implemented");
-	},
 };
 
 const domEnv: Environment = {
-	[Default](tag: string): Intrinsic {
-		return function*(): Generator<Node | undefined> {
+	[Default](tag: string): IntrinsicFunction {
+		return function *(): Generator<Node | undefined> {
 			const node = document.createElement(tag);
 			for (const {children, ...props} of this) {
 				updateDOMProps(node, props);
@@ -720,16 +701,6 @@ const domEnv: Environment = {
 			}
 		};
 	},
-	*[Text]({text}) {
-		const node = document.createTextNode(text);
-		for ({text} of this) {
-			if (node.nodeValue !== text) {
-				node.nodeValue = text;
-			}
-
-			yield node;
-		}
-	},
 	*[Root]({node, children}) {
 		try {
 			for ({node, children} of this) {
@@ -737,7 +708,7 @@ const domEnv: Environment = {
 				yield node;
 			}
 		} finally {
-			updateDOMChildren(node, []);
+			updateDOMChildren(node);
 		}
 	},
 };
@@ -756,10 +727,6 @@ export class Renderer {
 		// TODO: use an iterator I think
 		if (env[Default] != null) {
 			this.env[Default] = env[Default]!;
-		}
-
-		if (env[Text] != null) {
-			this.env[Text] = env[Text]!;
 		}
 
 		if (env[Root] != null) {
