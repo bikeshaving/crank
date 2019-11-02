@@ -120,11 +120,12 @@ interface View1<T> {
 }
 
 export abstract class View {
-	children: ViewChild[] = [];
 	// TODO: parameterize Node
 	node?: Node;
 	parent?: View;
+	tag!: Tag;
 	env!: Environment;
+	children: ViewChild[] = [];
 	// TODO: cache this.nodes so we don’t have to treat this.nodes with kid gloves
 	private _nodes: (Node | string)[] | undefined;
 	get nodes(): (Node | string)[] {
@@ -170,13 +171,7 @@ export abstract class View {
 		return this.nodes[0];
 	}
 
-	abstract update(elem: Element): Promise<void> | void;
-
-	abstract commit(): void;
-
-	abstract unmount(): Promise<void> | void;
-
-	intrinsicFor(tag: string | symbol): Intrinsic {
+	protected intrinsicFor(tag: string | ControlTag): Intrinsic {
 		if (typeof tag === "string") {
 			const intrinsic = this.env[tag];
 			if (intrinsic == null) {
@@ -266,6 +261,13 @@ export abstract class View {
 			return Promise.all(promises).then(() => {});
 		}
 	}
+
+	abstract update(elem: Element): Promise<void> | void;
+
+	abstract commit(): void;
+
+	abstract unmount(): Promise<void> | void;
+
 }
 
 export class Controller {
@@ -332,9 +334,9 @@ interface Publication {
 }
 
 class ComponentView extends View {
-	private controller = new Controller(this);
 	tag: Component;
 	props: Props;
+	private controller = new Controller(this);
 	private iter?: ComponentIterator;
 	private promise?: Promise<void>;
 	private result?: IteratorResult<Element, Element | void>;
@@ -518,24 +520,25 @@ class IntrinsicController {
 	// TODO: parameterize Node
 	*[Symbol.iterator](): Generator<IntrinsicProps> {
 		while (true) {
-			yield {...this.view.props, children: this.view.nodes};
+			yield this.view.props;
 		}
 	}
 }
 
 export class IntrinsicView extends View {
 	private controller = new IntrinsicController(this);
-	tag: string | symbol;
-	props: Props = {};
+	tag: string | ControlTag;
+	props: IntrinsicProps;
 	iter?: Iterator<Node | undefined>;
 	result?: IteratorResult<Node | undefined>;
 	constructor(elem: Element, public env: Environment, public parent?: View) {
 		super();
-		if (typeof elem.tag !== "string" && elem.tag !== Root) {
+		if (typeof elem.tag !== "string" && !isControlTag(elem.tag)) {
 			throw new TypeError("Tag mismatch");
 		}
 
 		this.tag = elem.tag;
+		this.props = {...elem.props, children: []};
 	}
 
 	update(elem: Element): Promise<void> | void {
@@ -544,7 +547,6 @@ export class IntrinsicView extends View {
 		}
 
 		const {children, ...props} = elem.props;
-		this.props = props;
 		const p = this.updateChildren(children == null ? [] : children);
 		if (p !== undefined) {
 			return p.then(() => this.commit());
@@ -554,10 +556,10 @@ export class IntrinsicView extends View {
 	}
 
 	commit(): void {
+		this.props = {...this.props, children: this.nodes};
 		if (this.iter == null) {
 			const intrinsic = this.intrinsicFor(this.tag);
-			const props = {...this.props, children: this.nodes};
-			this.iter = intrinsic.call(this.controller, props);
+			this.iter = intrinsic.call(this.controller, this.props);
 		}
 
 		this.result = this.iter.next();
