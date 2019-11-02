@@ -114,9 +114,9 @@ export type ViewChild = ComponentView | IntrinsicView | string | undefined;
 // interface View<T> {
 // 	tag: string | Symbol | Function;
 // 	node?: T;
-// 	child?: View1<T>;
-// 	sibling?: View1<T>;
-// 	parent?: View1<T>;
+// 	child?: View<T>;
+// 	sibling?: View<T>;
+// 	parent?: View<T>;
 // }
 export abstract class View {
 	// TODO: parameterize Node
@@ -594,6 +594,7 @@ function updateDOMProps(el: HTMLElement, props: Props): void {
 	}
 }
 
+// TODO: move createTextNode calls to environment
 function updateDOMChildren(el: HTMLElement, children: (Node | string)[]): void {
 	if (el.childNodes.length === 0) {
 		const fragment = document.createDocumentFragment();
@@ -647,20 +648,24 @@ export type Default = typeof Default;
 export const Root = Symbol("Root");
 export type Root = typeof Root;
 
-export const Portal = Symbol("Portal");
-export type Portal = typeof Portal;
-
-export const Fragment = Symbol("Fragment");
-export type Fragment = typeof Fragment;
-
 export const Text = Symbol("Text");
 export type Text = typeof Text;
 
-export type ControlTag = Root | Text | Portal | Fragment;
+// TODO: implement these control tags
+export const Fragment = Symbol("Fragment");
+export type Fragment = typeof Fragment;
+
+export const Noop = Symbol("Noop");
+export type Noop = typeof Noop;
+
+export const Portal = Symbol("Portal");
+export type Portal = typeof Portal;
+
+const controlTags = new Set([Root, Text, Fragment, Portal]);
+
+export type ControlTag = Root | Text | Fragment | Portal;
 export function isControlTag(value: any): value is ControlTag {
-	return (
-		value === Root || value === Text || value === Portal || value === Fragment
-	);
+	return controlTags.has(value);
 }
 
 // TODO: allow tags to define child intrinsics (for svg and stuff)
@@ -668,8 +673,8 @@ interface Environment {
 	[Default](tag: string): Intrinsic;
 	[Text]: Intrinsic;
 	[Root]?: Intrinsic;
-	[Fragment]?: Intrinsic;
 	[Portal]?: Intrinsic;
+	[Fragment]?: Intrinsic;
 	// TODO: allow tags to define child tags somehow
 	[tag: string]: Intrinsic;
 }
