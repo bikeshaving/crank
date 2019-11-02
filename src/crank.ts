@@ -299,7 +299,30 @@ export abstract class View {
 		this.updating = false;
 	}
 
-	abstract unmount(): Promise<void> | void;
+	unmount(): Promise<void> | void {
+		let result: Promise<IteratorResult<any>> | IteratorResult<any> | undefined;
+		if (this.result !== undefined && !this.result.done) {
+			if (this.iter !== undefined && typeof this.iter.return === "function") {
+				result = this.iter.return();
+			}
+		}
+
+		if (isPromiseLike(result)) {
+			return result.then((result) => {
+				if (!result.done) {
+					throw new Error("Zombie iterator");
+				}
+
+				this.result = result;
+				return this.updateChildren([]);
+			});
+		} else if (result !== undefined && !result.done) {
+			throw new Error("Zombie iterator");
+		}
+
+		this.result = result;
+		return this.updateChildren([]);
+	}
 }
 
 export class Controller {
@@ -365,6 +388,7 @@ interface Publication {
 	stop(): unknown;
 }
 
+// TODO: move component specific stuff to the controller. The view’s main responsibility will be related to mounting/updating/unmounting; in other words, the view’s responsibility will be to diff changes and communicate updates to parents/siblings/children, while the Controller will be responsible for calling the iterator function and providing children.
 class ComponentView extends View {
 	tag: Component;
 	props: Props;
@@ -500,34 +524,8 @@ class ComponentView extends View {
 		for (const publication of this.publications) {
 			publication.stop();
 		}
-
-		let result:
-			| Promise<IteratorResult<Element>>
-			| IteratorResult<Element>
-			| undefined;
-		if (this.result !== undefined && !this.result.done) {
-			if (this.iter !== undefined && typeof this.iter.return === "function") {
-				result = this.iter.return();
-			}
-		}
-
-		if (isPromiseLike(result)) {
-			return result.then((result) => {
-				if (!result.done) {
-					throw new Error("Zombie iterator");
-				}
-
-				this.result = result;
-				return this.updateChildren([]);
-			});
-		}
-
-		if (result !== undefined && !result.done) {
-			throw new Error("Zombie iterator");
-		}
-
-		this.result = result;
-		return this.updateChildren([]);
+		this.controller.mounted = false;
+		return super.unmount();
 	}
 }
 
@@ -559,19 +557,6 @@ export class IntrinsicView extends View {
 		}
 
 		this.commit();
-	}
-
-	unmount(): Promise<void> | void {
-		if (this.result !== undefined && !this.result.done) {
-			if (this.iter !== undefined && typeof this.iter.return === "function") {
-				this.result = this.iter.return();
-				if (!this.result.done) {
-					throw new Error("Zombie iterator");
-				}
-			}
-		}
-
-		return this.updateChildren([]);
 	}
 }
 
