@@ -40,6 +40,14 @@ export interface IntrinsicProps {
 	children?: (Node | string)[];
 }
 
+export type IntrinsicIterator = Iterator<
+	Node | undefined,
+	Node | void,
+	IntrinsicProps
+>;
+
+export type IntrinsicFunction = (props: IntrinsicProps) => IntrinsicIterator;
+
 export type Tag<TProps extends Props = Props> =
 	| Component<TProps>
 	| ControlTag
@@ -126,7 +134,7 @@ export abstract class View {
 	tag!: Tag;
 	env!: Environment;
 	props!: Props | IntrinsicProps;
-	protected controller!: Controller | IntrinsicController;
+	protected controller!: Controller;
 	protected iter?: ComponentIterator | IntrinsicIterator;
 	protected result?:
 		| IteratorResult<Element, Element | void>
@@ -278,16 +286,13 @@ export abstract class View {
 				this.parent.commit();
 			}
 		} else {
-			this.props = {...this.props, children: this.nodes};
+			const props = {...this.props, children: this.nodes};
 			if (this.iter == null) {
 				const intrinsic = this.intrinsicFor(this.tag);
-				this.iter = intrinsic.call(
-					this.controller as IntrinsicController,
-					this.props,
-				);
+				this.iter = intrinsic(props);
 			}
 
-			this.result = (this.iter as IntrinsicIterator).next();
+			this.result = (this.iter as IntrinsicIterator).next(props);
 			this.node = this.result.value;
 		}
 
@@ -527,28 +532,10 @@ class ComponentView extends View {
 }
 
 // TODO: parameterize Node
-export type IntrinsicIterator = Iterator<Node | undefined, Node | void>;
-export type IntrinsicFunction = (
-	this: IntrinsicController,
-	props: IntrinsicProps,
-) => IntrinsicIterator;
-
-class IntrinsicController {
-	constructor(private view: IntrinsicView) {}
-
-	// TODO: parameterize Node
-	*[Symbol.iterator](): Generator<IntrinsicProps> {
-		while (true) {
-			yield this.view.props;
-		}
-	}
-}
-
 export class IntrinsicView extends View {
 	tag: string | ControlTag;
 	props: IntrinsicProps;
-	protected iter?: Iterator<Node | undefined>;
-	protected controller = new IntrinsicController(this);
+	protected iter?: IntrinsicIterator;
 	protected result?: IteratorResult<Node | undefined>;
 	constructor(elem: Element, public env: Environment, public parent?: View) {
 		super();
@@ -692,20 +679,20 @@ const defaultEnv: Environment = {
 
 const domEnv: Environment = {
 	[Default](tag: string): IntrinsicFunction {
-		return function *(): Generator<Node | undefined> {
+		return function* defaultDOM({children, ...props}): IntrinsicIterator {
 			const node = document.createElement(tag);
-			for (const {children, ...props} of this) {
+			while (true) {
 				updateDOMProps(node, props);
 				updateDOMChildren(node, children);
-				yield node;
+				({children, ...props} = yield node);
 			}
 		};
 	},
-	*[Root]({node, children}) {
+	*[Root]({node, children}): IntrinsicIterator {
 		try {
-			for ({node, children} of this) {
+			while (true) {
 				updateDOMChildren(node, children);
-				yield node;
+				({node, children} = yield node);
 			}
 		} finally {
 			updateDOMChildren(node);
