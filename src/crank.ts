@@ -37,6 +37,7 @@ export interface Props {
 
 export interface IntrinsicProps {
 	[key: string]: any;
+	children: (Node | string)[];
 }
 
 export type Tag<TProps extends Props = Props> =
@@ -123,6 +124,7 @@ export abstract class View {
 	// TODO: parameterize Node
 	node?: Node;
 	parent?: View;
+	env!: Environment;
 	// TODO: cache this.nodes so we don’t have to treat this.nodes with kid gloves
 	private _nodes: (Node | string)[] | undefined;
 	get nodes(): (Node | string)[] {
@@ -174,6 +176,26 @@ export abstract class View {
 
 	abstract unmount(): Promise<void> | void;
 
+	intrinsicFor(tag: string | symbol): Intrinsic {
+		if (typeof tag === "string") {
+			const intrinsic = this.env[tag];
+			if (intrinsic == null) {
+				return this.env[Default](tag);
+			}
+
+			return intrinsic;
+		} else if (isControlTag(tag)) {
+			const intrinsic = this.env[tag];
+			if (intrinsic == null) {
+				throw new Error("Unknown Tag");
+			}
+
+			return intrinsic;
+		} else {
+			throw new Error("Unknown Tag");
+		}
+	}
+
 	private createViewChild(child: Child): ViewChild {
 		if (child == null || typeof child === "boolean") {
 			return undefined;
@@ -182,9 +204,9 @@ export abstract class View {
 		} else if (typeof child === "number") {
 			return child.toString();
 		} else if (typeof child.tag === "function") {
-			return new ComponentView(child as Element<Component>, this);
+			return new ComponentView(child as Element<Component>, this.env, this);
 		} else if (child.tag === Root || typeof child.tag === "string") {
-			return new IntrinsicView(child, this);
+			return new IntrinsicView(child, this.env, this);
 		} else {
 			throw new TypeError("Unknown child type");
 		}
@@ -318,7 +340,11 @@ class ComponentView extends View {
 	private result?: IteratorResult<Element, Element | void>;
 	private publications: Set<Publication> = new Set();
 	private requested = false;
-	constructor(elem: Element<Component>, public parent: View) {
+	constructor(
+		elem: Element<Component>,
+		public env: Environment,
+		public parent: View,
+	) {
 		super();
 		if (typeof elem.tag !== "function") {
 			throw new TypeError("Tag mismatch");
@@ -483,17 +509,16 @@ class ComponentView extends View {
 // TODO: parameterize Node
 export type Intrinsic = (
 	this: IntrinsicController,
-	props: Props,
-	nodes: (Node | string)[],
+	props: IntrinsicProps,
 ) => Iterator<Node | undefined, Node | void>;
 
 class IntrinsicController {
 	constructor(private view: IntrinsicView) {}
 
 	// TODO: parameterize Node
-	*[Symbol.iterator](): Generator<[IntrinsicProps, (Node | string)[]]> {
+	*[Symbol.iterator](): Generator<IntrinsicProps> {
 		while (true) {
-			yield [this.view.props, this.view.nodes];
+			yield {...this.view.props, children: this.view.nodes};
 		}
 	}
 }
@@ -504,9 +529,9 @@ export class IntrinsicView extends View {
 	props: Props = {};
 	iter?: Iterator<Node | undefined>;
 	result?: IteratorResult<Node | undefined>;
-	constructor(elem: Element, public parent?: View) {
+	constructor(elem: Element, public env: Environment, public parent?: View) {
 		super();
-		if (elem.tag !== Root && typeof elem.tag !== "string") {
+		if (typeof elem.tag !== "string" && elem.tag !== Root) {
 			throw new TypeError("Tag mismatch");
 		}
 
@@ -530,15 +555,9 @@ export class IntrinsicView extends View {
 
 	commit(): void {
 		if (this.iter == null) {
-			// HOW DO WE PASS THIS IN
-			let intrinsic: Intrinsic;
-			if (typeof this.tag === "string") {
-				intrinsic = createIntrinsic(this.tag);
-			} else {
-				intrinsic = rootIntrinsic;
-			}
-
-			this.iter = intrinsic.call(this.controller, this.props, this.nodes);
+			const intrinsic = this.intrinsicFor(this.tag);
+			const props = {...this.props, children: this.nodes};
+			this.iter = intrinsic.call(this.controller, props);
 		}
 
 		this.result = this.iter.next();
@@ -561,23 +580,6 @@ export class IntrinsicView extends View {
 		}
 
 		this.commit();
-	}
-}
-
-export class RootView extends View {
-	props: Props = {};
-	constructor() {
-		super();
-	}
-
-	update(elem: Element): Promise<void> | void {
-		return this.updateChildren([elem]);
-	}
-
-	commit(): void {}
-
-	unmount(): Promise<void> | void {
-		return this.updateChildren([]);
 	}
 }
 
@@ -638,61 +640,6 @@ function updateDOMChildren(el: HTMLElement, children: (Node | string)[]): void {
 	}
 }
 
-function createIntrinsic(tag: string): Intrinsic {
-	return function* intrinsic(this: IntrinsicController, props, children) {
-		const el = document.createElement(tag);
-		for ([props, children] of this) {
-			updateDOMProps(el, props);
-			updateDOMChildren(el, children);
-			yield el;
-		}
-	};
-}
-
-const rootIntrinsic: Intrinsic = function*({node}, nodes) {
-	try {
-		for ([{node}, nodes] of this) {
-			updateDOMChildren(node, nodes);
-			yield node;
-		}
-	} finally {
-		updateDOMChildren(node, []);
-	}
-};
-
-const views: WeakMap<Node, IntrinsicView> = new WeakMap();
-export function render(
-	elem: Element | null | undefined,
-	node: HTMLElement,
-): Promise<RootView> | RootView | undefined {
-	if (elem != null && elem.tag !== Root) {
-		elem = createElement(Root, {node}, elem);
-	}
-	let view: IntrinsicView;
-	if (views.has(node)) {
-		view = views.get(node)!;
-	} else if (elem == null) {
-		return;
-	} else {
-		view = new IntrinsicView(elem);
-		views.set(node, view);
-	}
-
-	let p: Promise<void> | void;
-	if (elem == null) {
-		p = view.unmount();
-		views.delete(node);
-	} else {
-		p = view.update(elem);
-	}
-
-	if (p !== undefined) {
-		return p.then(() => view);
-	}
-
-	return view;
-}
-
 export const Default = Symbol("Default");
 export type Default = typeof Default;
 
@@ -709,3 +656,144 @@ export const Text = Symbol("Text");
 export type Text = typeof Text;
 
 export type ControlTag = Root | Text | Portal | Fragment;
+export function isControlTag(value: any): value is ControlTag {
+	return (
+		value === Root || value === Text || value === Portal || value === Fragment
+	);
+}
+
+// TODO: allow tags to define child intrinsics (for svg and stuff)
+interface Environment {
+	[Default](tag: string): Intrinsic;
+	[Text]: Intrinsic;
+	[Root]?: Intrinsic;
+	[Fragment]?: Intrinsic;
+	[Portal]?: Intrinsic;
+	// TODO: allow tags to define child tags somehow
+	[tag: string]: Intrinsic;
+}
+
+const defaultEnv: Environment = {
+	[Default](tag: string): never {
+		throw new Error(
+			`tag ${tag} does not exist and default intrinsic not provided`,
+		);
+	},
+	[Text](): never {
+		throw new Error("Text Intrinsic has not been implemented");
+	},
+};
+
+const domEnv: Environment = {
+	[Default](tag: string): Intrinsic {
+		return function*(): Generator<Node | undefined> {
+			const node = document.createElement(tag);
+			for (const {children, ...props} of this) {
+				updateDOMProps(node, props);
+				updateDOMChildren(node, children);
+				yield node;
+			}
+		};
+	},
+	*[Text]({text}) {
+		const node = document.createTextNode(text);
+		for ({text} of this) {
+			if (node.nodeValue !== text) {
+				node.nodeValue = text;
+			}
+
+			yield node;
+		}
+	},
+	*[Root]({node, children}) {
+		try {
+			for ({node, children} of this) {
+				updateDOMChildren(node, children);
+				yield node;
+			}
+		} finally {
+			updateDOMChildren(node, []);
+		}
+	},
+};
+
+export class Renderer {
+	views: WeakMap<Node, IntrinsicView> = new WeakMap();
+	env: Environment = defaultEnv;
+
+	constructor(envs: Partial<Environment>[]) {
+		for (const env of envs) {
+			this.extend(env);
+		}
+	}
+
+	extend(env: Partial<Environment>): void {
+		if (env[Default] != null) {
+			this.env[Default] = env[Default]!;
+		}
+
+		if (env[Text] != null) {
+			this.env[Text] = env[Text]!;
+		}
+
+		if (env[Root] != null) {
+			this.env[Root] = env[Root];
+		}
+
+		if (env[Fragment] != null) {
+			this.env[Fragment] = env[Fragment];
+		}
+
+		if (env[Portal] != null) {
+			this.env[Portal] = env[Portal];
+		}
+
+		for (const [tag, value] of Object.entries(env)) {
+			if (value != null) {
+				this.env[tag] = value;
+			}
+		}
+	}
+
+	render(
+		elem: Element | null | undefined,
+		node: HTMLElement,
+	): Promise<IntrinsicView> | IntrinsicView | undefined {
+		if (elem != null && elem.tag !== Root) {
+			elem = createElement(Root, {node}, elem);
+		}
+
+		let view: IntrinsicView;
+		if (this.views.has(node)) {
+			view = this.views.get(node)!;
+		} else if (elem == null) {
+			return;
+		} else {
+			view = new IntrinsicView(elem, this.env);
+			this.views.set(node, view);
+		}
+
+		let p: Promise<void> | void;
+		if (elem == null) {
+			p = view.unmount();
+			this.views.delete(node);
+		} else {
+			p = view.update(elem);
+		}
+
+		if (p !== undefined) {
+			return p.then(() => view);
+		}
+
+		return view;
+	}
+}
+
+export const renderer = new Renderer([domEnv]);
+
+export function render(
+	elem: Element | null | undefined,
+	node: HTMLElement,
+): Promise<IntrinsicView> | IntrinsicView | undefined {
+	return renderer.render(elem, node);
+}
