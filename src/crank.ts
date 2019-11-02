@@ -42,7 +42,7 @@ export interface IntrinsicProps {
 
 export type Tag<TProps extends Props = Props> =
 	| Component<TProps>
-	| symbol
+	| ControlTag
 	| string;
 
 export const ElementSigil: unique symbol = Symbol.for("crank.element");
@@ -111,19 +111,28 @@ export type ViewChild = ComponentView | IntrinsicView | string | undefined;
 
 // TODO: composition not inheritance
 // TODO: use a left-child right-sibling tree
-// interface View<T> {
-// 	tag: string | Symbol | Function;
-// 	node?: T;
-// 	child?: View<T>;
-// 	sibling?: View<T>;
-// 	parent?: View<T>;
-// }
+interface Fiber<T> {
+	value: Child;
+	node?: T;
+	child?: Fiber<T>;
+	sibling?: Fiber<T>;
+	parent?: Fiber<T>;
+}
+
 export abstract class View {
 	// TODO: parameterize Node
 	node?: Node;
 	parent?: View;
 	tag!: Tag;
 	env!: Environment;
+	props!: Props | IntrinsicProps;
+	protected controller!: Controller | IntrinsicController;
+	protected iter?: ComponentIterator | Iterator<Node | undefined>;
+	protected result?:
+		| IteratorResult<Element, Element | void>
+		| IteratorResult<Node | undefined>;
+	protected updating = false;
+	// TODO: left-child right-sibling tree
 	children: ViewChild[] = [];
 	// TODO: cache this.nodes so we don’t have to treat this.nodes with kid gloves
 	private _nodes: (Node | string)[] | undefined;
@@ -206,6 +215,8 @@ export abstract class View {
 		}
 	}
 
+	abstract update(elem: Element): Promise<void> | void;
+
 	protected updateChildren(children: Iterable<Child>): Promise<void> | void {
 		this._nodes = undefined;
 		const promises: Promise<void>[] = [];
@@ -261,12 +272,29 @@ export abstract class View {
 		}
 	}
 
-	abstract update(elem: Element): Promise<void> | void;
+	commit(): void {
+		if (typeof this.tag === "function") {
+			if (!this.updating && this.parent !== undefined) {
+				this.parent.commit();
+			}
+		} else {
+			this.props = {...this.props, children: this.nodes};
+			if (this.iter == null) {
+				const intrinsic = this.intrinsicFor(this.tag);
+				this.iter = intrinsic.call(
+					this.controller as IntrinsicController,
+					this.props,
+				);
+			}
 
-	abstract commit(): void;
+			this.result = (this.iter as Iterator<Node | undefined>).next();
+			this.node = this.result.value;
+		}
+
+		this.updating = false;
+	}
 
 	abstract unmount(): Promise<void> | void;
-
 }
 
 export class Controller {
@@ -335,10 +363,9 @@ interface Publication {
 class ComponentView extends View {
 	tag: Component;
 	props: Props;
-	private controller = new Controller(this);
-	private requested = false;
-	private iter?: ComponentIterator;
-	private result?: IteratorResult<Element, Element | void>;
+	protected iter?: ComponentIterator;
+	protected controller = new Controller(this);
+	protected result?: IteratorResult<Element, Element | void>;
 	private promise?: Promise<void>;
 	private publications: Set<Publication> = new Set();
 	constructor(
@@ -411,12 +438,12 @@ class ComponentView extends View {
 	}
 
 	initialize(): Promise<void> | void {
-		const child:
+		const value:
 			| ComponentIterator
 			| PromiseLike<Element>
 			| Element = this.tag.call(this.controller, this.props);
-		if (isIteratorOrAsyncIterator(child)) {
-			this.iter = child;
+		if (isIteratorOrAsyncIterator(value)) {
+			this.iter = value;
 			const result = this.iter.next();
 			if (isPromiseLike(result)) {
 				this.promise = this.pull(result);
@@ -425,15 +452,15 @@ class ComponentView extends View {
 			} else {
 				return this.iterate(result);
 			}
-		} else if (isPromiseLike(child)) {
+		} else if (isPromiseLike(value)) {
 			this.promise = this.pull(
-				Promise.resolve(child).then((value) => ({value, done: false})),
+				Promise.resolve(value).then((value) => ({value, done: false})),
 			);
 			this.iter = createAsyncIterator(this.controller, this.tag as any);
 			return this.promise;
 		} else {
 			this.iter = createIterator(this.controller, this.tag as any);
-			return this.updateChildren([child]);
+			return this.updateChildren([value]);
 		}
 	}
 
@@ -454,21 +481,13 @@ class ComponentView extends View {
 	}
 
 	update(elem: Element): Promise<void> | void {
-		this.requested = true;
+		this.updating = true;
 		if (this.tag !== elem.tag) {
 			throw new TypeError("Tag mismatch");
 		}
 
 		this.props = elem.props;
 		return this.refresh();
-	}
-
-	commit(): void {
-		if (!this.requested) {
-			this.parent.commit();
-		}
-
-		this.requested = false;
 	}
 
 	unmount(): Promise<void> | void {
@@ -525,11 +544,11 @@ class IntrinsicController {
 }
 
 export class IntrinsicView extends View {
-	private controller = new IntrinsicController(this);
 	tag: string | ControlTag;
 	props: IntrinsicProps;
-	iter?: Iterator<Node | undefined>;
-	result?: IteratorResult<Node | undefined>;
+	protected iter?: Iterator<Node | undefined>;
+	protected controller = new IntrinsicController(this);
+	protected result?: IteratorResult<Node | undefined>;
 	constructor(elem: Element, public env: Environment, public parent?: View) {
 		super();
 		if (typeof elem.tag !== "string" && !isControlTag(elem.tag)) {
@@ -545,7 +564,7 @@ export class IntrinsicView extends View {
 			throw new TypeError("Tag mismatch");
 		}
 
-		const {children, ...props} = elem.props;
+		const children = elem.props.children;
 		const p = this.updateChildren(children == null ? [] : children);
 		if (p !== undefined) {
 			return p.then(() => this.commit());
@@ -655,8 +674,8 @@ export type Text = typeof Text;
 export const Fragment = Symbol("Fragment");
 export type Fragment = typeof Fragment;
 
-export const Noop = Symbol("Noop");
-export type Noop = typeof Noop;
+export const Copy = Symbol("Copy");
+export type Copy = typeof Copy;
 
 export const Portal = Symbol("Portal");
 export type Portal = typeof Portal;
@@ -734,6 +753,7 @@ export class Renderer {
 	}
 
 	extend(env: Partial<Environment>): void {
+		// TODO: use an iterator I think
 		if (env[Default] != null) {
 			this.env[Default] = env[Default]!;
 		}
