@@ -35,6 +35,31 @@ export interface Props {
 	children?: Iterable<Child>;
 }
 
+// control tags are symbols that can be used for element tags whcih have special behavior in the reconciliation process
+// TODO: user-defined control tags?
+export const Default = Symbol("Default");
+export type Default = typeof Default;
+
+export const Root = Symbol("Root");
+export type Root = typeof Root;
+
+// TODO: implement these control tags
+export const Fragment = Symbol("Fragment");
+export type Fragment = typeof Fragment;
+
+export const Copy = Symbol("Copy");
+export type Copy = typeof Copy;
+
+export const Portal = Symbol("Portal");
+export type Portal = typeof Portal;
+
+const controlTags = new Set([Root, Fragment, Portal]);
+
+export type ControlTag = Root | Fragment | Portal;
+export function isControlTag(value: any): value is ControlTag {
+	return controlTags.has(value);
+}
+
 export interface IntrinsicProps {
 	[key: string]: any;
 	children?: (Node | string)[];
@@ -128,20 +153,28 @@ interface Fiber<T> {
 }
 
 export abstract class View {
+	tag: Tag;
+	props: Props | IntrinsicProps;
+	constructor(elem: Element, public env: Environment, public parent?: View) {
+		if (elem.tag === Root && parent !== undefined) {
+			throw new TypeError(
+				"Root Element must always be the root of an element tree"
+			);
+		}
+
+		this.tag = elem.tag;
+		this.props = elem.props;
+	}
+
 	// TODO: parameterize Node
-	node?: Node;
-	parent?: View;
-	tag!: Tag;
-	env!: Environment;
-	props!: Props | IntrinsicProps;
-	protected controller!: Controller;
+	protected node?: Node;
 	protected iter?: ComponentIterator | IntrinsicIterator;
 	protected result?:
 		| IteratorResult<Element, Element | void>
 		| IteratorResult<Node | undefined>;
 	protected updating = false;
 	// TODO: left-child right-sibling tree
-	children: ViewChild[] = [];
+	private children: ViewChild[] = [];
 	// TODO: cache this.nodes so we don’t have to treat this.nodes with kid gloves
 	private _nodes: (Node | string)[] | undefined;
 	get nodes(): (Node | string)[] {
@@ -326,11 +359,11 @@ export abstract class View {
 }
 
 export class Controller {
-	mounted = true;
+	// TODO: change type to View
 	constructor(private view: ComponentView) {}
 
 	*[Symbol.iterator](): Generator<Props> {
-		while (this.mounted) {
+		while (true) {
 			yield this.view.props;
 		}
 	}
@@ -390,27 +423,14 @@ interface Publication {
 
 // TODO: move component specific stuff to the controller. The view’s main responsibility will be related to mounting/updating/unmounting; in other words, the view’s responsibility will be to diff changes and communicate updates to parents/siblings/children, while the Controller will be responsible for calling the iterator function and providing children.
 class ComponentView extends View {
-	tag: Component;
-	props: Props;
+	tag!: Component;
+	props!: Props;
 	protected iter?: ComponentIterator;
-	protected controller = new Controller(this);
 	protected result?: IteratorResult<Element, Element | void>;
+	// TODO: no analogue for these in IntrinsicView
+	private controller = new Controller(this);
 	private promise?: Promise<void>;
 	private publications: Set<Publication> = new Set();
-	constructor(
-		elem: Element<Component>,
-		public env: Environment,
-		public parent: View,
-	) {
-		super();
-		if (typeof elem.tag !== "function") {
-			throw new TypeError("Tag mismatch");
-		}
-
-		this.tag = elem.tag;
-		this.props = elem.props;
-	}
-
 	subscribe(): Repeater<Props> {
 		return new Repeater(async (push, stop) => {
 			const publication = {push, stop};
@@ -475,18 +495,16 @@ class ComponentView extends View {
 			this.iter = value;
 			const result = this.iter.next();
 			if (isPromiseLike(result)) {
-				this.promise = this.pull(result);
 				this.publish();
-				return this.promise;
+				return this.pull(result);
 			} else {
 				return this.iterate(result);
 			}
 		} else if (isPromiseLike(value)) {
-			this.promise = this.pull(
+			this.iter = createAsyncIterator(this.controller, this.tag as any);
+			return this.pull(
 				Promise.resolve(value).then((value) => ({value, done: false})),
 			);
-			this.iter = createAsyncIterator(this.controller, this.tag as any);
-			return this.promise;
 		} else {
 			this.iter = createIterator(this.controller, this.tag as any);
 			return this.updateChildren([value]);
@@ -520,31 +538,20 @@ class ComponentView extends View {
 	}
 
 	unmount(): Promise<void> | void {
-		this.controller.mounted = false;
 		for (const publication of this.publications) {
 			publication.stop();
 		}
-		this.controller.mounted = false;
+
 		return super.unmount();
 	}
 }
 
 // TODO: parameterize Node
 export class IntrinsicView extends View {
-	tag: string | ControlTag;
-	props: IntrinsicProps;
+	tag!: string | ControlTag;
+	props!: IntrinsicProps;
 	protected iter?: IntrinsicIterator;
 	protected result?: IteratorResult<Node | undefined>;
-	constructor(elem: Element, public env: Environment, public parent?: View) {
-		super();
-		if (typeof elem.tag !== "string" && !isControlTag(elem.tag)) {
-			throw new TypeError("Tag mismatch");
-		}
-
-		this.tag = elem.tag;
-		this.props = {...elem.props, children: []};
-	}
-
 	update(elem: Element): Promise<void> | void {
 		if (this.tag !== elem.tag) {
 			throw new TypeError("Tag mismatch");
@@ -619,29 +626,6 @@ function updateDOMChildren(
 		el.removeChild(oldChild);
 		oldChild = nextSibling;
 	}
-}
-
-export const Default = Symbol("Default");
-export type Default = typeof Default;
-
-export const Root = Symbol("Root");
-export type Root = typeof Root;
-
-// TODO: implement these control tags
-export const Fragment = Symbol("Fragment");
-export type Fragment = typeof Fragment;
-
-export const Copy = Symbol("Copy");
-export type Copy = typeof Copy;
-
-export const Portal = Symbol("Portal");
-export type Portal = typeof Portal;
-
-const controlTags = new Set([Root, Fragment, Portal]);
-
-export type ControlTag = Root | Fragment | Portal;
-export function isControlTag(value: any): value is ControlTag {
-	return controlTags.has(value);
 }
 
 // TODO: allow tags to define child intrinsics (for svg and stuff)
