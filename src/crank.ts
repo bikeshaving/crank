@@ -54,20 +54,13 @@ export type Fragment = typeof Fragment;
 export const Portal = Symbol("Portal");
 export type Portal = typeof Portal;
 
-export type ControlTag = Root | Fragment | Portal;
+export type ControlTag = Root | Copy | Fragment | Portal;
 
-export interface IntrinsicProps {
-	[key: string]: any;
-	children?: (Node | string)[];
-}
+// TODO: rename to Node?
+export type Child = Element | string | number | boolean | null | undefined;
 
-export type IntrinsicIterator = Iterator<
-	Node | undefined,
-	Node | void,
-	IntrinsicProps
->;
-
-export type IntrinsicFunction = (props: IntrinsicProps) => IntrinsicIterator;
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface Children extends Iterable<Child | Children> {}
 
 export type Tag<TProps extends Props = Props> =
 	| Component<TProps>
@@ -130,31 +123,34 @@ export function createElement<T extends Tag>(
 	return {sigil: ElementSigil, tag, props};
 }
 
-// TODO: rename to Node?
-export type Child = Element | string | number | boolean | null | undefined;
+export interface IntrinsicProps {
+	[key: string]: any;
+	children?: (Node | string)[];
+}
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface Children extends Iterable<Child | Children> {}
+export type IntrinsicIterator = Iterator<
+	Node | undefined,
+	Node | void,
+	IntrinsicProps
+>;
+
+export type IntrinsicFunction = (props: IntrinsicProps) => IntrinsicIterator;
 
 export type ViewChild = ComponentView | IntrinsicView | string | undefined;
 
 // TODO: composition not inheritance
 // TODO: use a left-child right-sibling tree
-interface Fiber<T> {
-	value: Child;
-	node?: T;
-	child?: Fiber<T>;
-	sibling?: Fiber<T>;
-	parent?: Fiber<T>;
-}
-
+//interface Fiber<T> {
+//	value: Child;
+//	node?: T;
+//	child?: Fiber<T>;
+//	sibling?: Fiber<T>;
+//	parent?: Fiber<T>;
 export abstract class View {
-	tag: Tag;
-	props: Props | IntrinsicProps;
 	constructor(elem: Element, public env: Environment, public parent?: View) {
 		if (elem.tag === Root && parent !== undefined) {
 			throw new TypeError(
-				"Root Element must always be the root of an element tree"
+				"Root Element must always be the root of an element tree",
 			);
 		}
 
@@ -162,16 +158,17 @@ export abstract class View {
 		this.props = elem.props;
 	}
 
+	tag: Tag;
+	protected props: Props | IntrinsicProps;
 	// TODO: parameterize Node
 	protected node?: Node;
 	protected iter?: ComponentIterator | IntrinsicIterator;
 	protected result?:
-		| IteratorResult<Element, Element | void>
+		| IteratorResult<Element, Element | undefined>
 		| IteratorResult<Node | undefined>;
 	protected updating = false;
 	// TODO: left-child right-sibling tree
 	private children: ViewChild[] = [];
-	// TODO: cache this.nodes so we don’t have to treat this.nodes with kid gloves
 	private _nodes: (Node | string)[] | undefined;
 	get nodes(): (Node | string)[] {
 		if (this._nodes === undefined) {
@@ -243,16 +240,32 @@ export abstract class View {
 			return child;
 		} else if (typeof child === "number") {
 			return child.toString();
-		} else if (typeof child.tag === "function") {
-			return new ComponentView(child as Element<Component>, this.env, this);
-		} else if (child.tag === Root || typeof child.tag === "string") {
-			return new IntrinsicView(child, this.env, this);
+		} else if (isElement(child)) {
+			if (typeof child.tag === "function") {
+				return new ComponentView(child as Element<Component>, this.env, this);
+			} else {
+				// TODO: should we check that the tag is a known symbol
+				return new IntrinsicView(child, this.env, this);
+			}
 		} else {
 			throw new TypeError("Unknown child type");
 		}
 	}
 
-	abstract update(elem: Element): Promise<void> | void;
+	update(elem: Element): Promise<void> | void {
+		if (this.tag !== elem.tag) {
+			throw new TypeError("Tag mismatch");
+		}
+
+		this.updating = true;
+		const children = elem.props.children;
+		const p = this.updateChildren(children == null ? [] : children);
+		if (p !== undefined) {
+			return p.then(() => this.commit());
+		}
+
+		this.commit();
+	}
 
 	protected updateChildren(children: Iterable<Child>): Promise<void> | void {
 		this._nodes = undefined;
@@ -524,11 +537,11 @@ class ComponentView extends View {
 	}
 
 	update(elem: Element): Promise<void> | void {
-		this.updating = true;
 		if (this.tag !== elem.tag) {
 			throw new TypeError("Tag mismatch");
 		}
 
+		this.updating = true;
 		this.props = elem.props;
 		return this.refresh();
 	}
@@ -542,26 +555,8 @@ class ComponentView extends View {
 	}
 }
 
-// TODO: parameterize Node
-export class IntrinsicView extends View {
-	tag!: string | ControlTag;
-	props!: IntrinsicProps;
-	protected iter?: IntrinsicIterator;
-	protected result?: IteratorResult<Node | undefined>;
-	update(elem: Element): Promise<void> | void {
-		if (this.tag !== elem.tag) {
-			throw new TypeError("Tag mismatch");
-		}
-
-		const children = elem.props.children;
-		const p = this.updateChildren(children == null ? [] : children);
-		if (p !== undefined) {
-			return p.then(() => this.commit());
-		}
-
-		this.commit();
-	}
-}
+// TODO: delete
+export class IntrinsicView extends View {}
 
 function updateDOMProps(el: HTMLElement, props: Props): void {
 	for (const [key, value] of Object.entries(props)) {
