@@ -35,7 +35,7 @@ export interface Props {
 	children?: Iterable<Child>;
 }
 
-// control tags are symbols that can be used for element tags whcih have special behavior in the reconciliation process
+// control tags are symbols that can be used as element tags which have special behavior during rendering
 // TODO: user-defined control tags?
 export const Default = Symbol("Default");
 export type Default = typeof Default;
@@ -44,21 +44,17 @@ export const Root = Symbol("Root");
 export type Root = typeof Root;
 
 // TODO: implement these control tags
-export const Fragment = Symbol("Fragment");
-export type Fragment = typeof Fragment;
-
+// TODO: I wonder if the following tags can be implemented without defining a custom function for each for every environment
 export const Copy = Symbol("Copy");
 export type Copy = typeof Copy;
+
+export const Fragment = Symbol("Fragment");
+export type Fragment = typeof Fragment;
 
 export const Portal = Symbol("Portal");
 export type Portal = typeof Portal;
 
-const controlTags = new Set([Root, Fragment, Portal]);
-
 export type ControlTag = Root | Fragment | Portal;
-export function isControlTag(value: any): value is ControlTag {
-	return controlTags.has(value);
-}
 
 export interface IntrinsicProps {
 	[key: string]: any;
@@ -228,7 +224,7 @@ export abstract class View {
 			}
 
 			return intrinsic;
-		} else if (isControlTag(tag)) {
+		} else if (tag === Root) {
 			const intrinsic = this.env[tag];
 			if (intrinsic == null) {
 				throw new Error("Unknown Tag");
@@ -632,8 +628,9 @@ function updateDOMChildren(
 interface Environment {
 	[Default](tag: string): IntrinsicFunction;
 	[Root]?: IntrinsicFunction;
-	[Portal]?: IntrinsicFunction;
-	[Fragment]?: IntrinsicFunction;
+	// TODO: do we need custom functions for portal and fragment?
+	// [Portal]?: IntrinsicFunction;
+	// [Fragment]?: IntrinsicFunction;
 	// TODO: allow tags to define child tags somehow
 	[tag: string]: IntrinsicFunction;
 }
@@ -680,21 +677,12 @@ export class Renderer {
 	}
 
 	extend(env: Partial<Environment>): void {
-		// TODO: use an iterator I think
 		if (env[Default] != null) {
 			this.env[Default] = env[Default]!;
 		}
 
 		if (env[Root] != null) {
 			this.env[Root] = env[Root];
-		}
-
-		if (env[Fragment] != null) {
-			this.env[Fragment] = env[Fragment];
-		}
-
-		if (env[Portal] != null) {
-			this.env[Portal] = env[Portal];
 		}
 
 		for (const [tag, value] of Object.entries(env)) {
