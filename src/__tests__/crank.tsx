@@ -11,7 +11,6 @@ import {
 
 describe("render", () => {
 	afterEach(() => {
-		document.body.innerHTML = "";
 		render(null, document.body);
 	});
 
@@ -157,12 +156,15 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual("<div>Hello world</div>");
 		render(null, document.body);
 		expect(document.body.innerHTML).toEqual("");
+		render(<div>Hello again</div>, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Hello again</div>");
+		render(null, document.body);
+		expect(document.body.innerHTML).toEqual("");
 	});
 });
 
 describe("sync function component", () => {
 	afterEach(() => {
-		document.body.innerHTML = "";
 		render(null, document.body);
 	});
 
@@ -190,7 +192,6 @@ describe("sync function component", () => {
 
 describe("async function component", () => {
 	afterEach(() => {
-		document.body.innerHTML = "";
 		render(null, document.body);
 	});
 
@@ -251,7 +252,6 @@ describe("async function component", () => {
 
 describe("sync generator component", () => {
 	afterEach(() => {
-		document.body.innerHTML = "";
 		render(null, document.body);
 	});
 
