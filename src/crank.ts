@@ -170,7 +170,7 @@ export class View {
 		this.tag = elem.tag;
 		this.props = elem.props;
 		if (typeof this.tag === "function") {
-			this.controller = new Controller(this);
+			this.controller = new Controller(this, this.tag);
 		}
 	}
 
@@ -463,7 +463,8 @@ interface Publication {
 
 // TODO: the methods of this class look suspiciously like an iterator, maybe we can make this class extend ComponentIterator and have the pulling/iterating logic on view
 class Controller {
-	constructor(private view: View) {}
+	constructor(private view: View, private tag: Component) {
+	}
 	private ctx = new Context(this.view, this);
 	private iter?: ComponentIterator;
 	private result?: IteratorResult<Element, Element | void>;
@@ -509,14 +510,10 @@ class Controller {
 	}
 
 	private initialize(): Promise<void> | void {
-		if (typeof this.view.tag !== "function") {
-			throw new TypeError("Controller created for intrinsic element");
-		}
-
 		const value:
 			| ComponentIterator
 			| PromiseLike<Element>
-			| Element = this.view.tag.call(this.ctx, this.view.props);
+			| Element = this.tag.call(this.ctx, this.view.props);
 		if (isIteratorOrAsyncIterator(value)) {
 			this.iter = value;
 			const result = this.iter.next();
