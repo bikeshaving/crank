@@ -1,13 +1,7 @@
 /** @jsx createElement */
 import "core-js";
 import "mutationobserver-shim";
-import {
-	createElement,
-	Controller,
-	Element,
-	IntrinsicView,
-	render,
-} from "../crank";
+import {createElement, Controller, Element, render, View} from "../crank";
 
 describe("render", () => {
 	afterEach(() => {
@@ -214,7 +208,7 @@ describe("async function component", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("");
-		await expect(viewP).resolves.toBeInstanceOf(IntrinsicView);
+		await expect(viewP).resolves.toBeInstanceOf(View);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 	});
 
@@ -348,7 +342,7 @@ describe("async generator component", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("");
-		await expect(viewP).resolves.toBeInstanceOf(IntrinsicView);
+		await expect(viewP).resolves.toBeInstanceOf(View);
 		expect(document.body.innerHTML).toEqual("<div><span>Loading</span></div>");
 		resolve();
 		await new Promise((resolve) => setTimeout(resolve, 0));

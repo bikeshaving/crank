@@ -44,7 +44,7 @@ export const Root = Symbol("Root");
 export type Root = typeof Root;
 
 // TODO: implement these control tags
-// TODO: I wonder if the following tags can be implemented without defining a custom function for each for every environment
+// TODO: I wonder if the following tags can be implemented without defining a custom function for each tag for every environment
 export const Copy = Symbol("Copy");
 export type Copy = typeof Copy;
 
@@ -59,7 +59,6 @@ export type ControlTag = Root | Copy | Fragment | Portal;
 // TODO: rename to Node?
 export type Child = Element | string | number | boolean | null | undefined;
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface Children extends Iterable<Child | Children> {}
 
 export type Tag<TProps extends Props = Props> =
@@ -113,6 +112,7 @@ export function createElement<T extends Tag>(
 	tag: T,
 	props?: Props | null,
 ): Element<T> {
+	// TODO: maybe we can defer Object.assign and flattenChildren calls til later for maximal performance in createElement
 	props = Object.assign({}, props);
 	if (arguments.length > 3) {
 		props.children = flattenChildren(Array.from(arguments).slice(2));
@@ -136,17 +136,29 @@ export type IntrinsicIterator = Iterator<
 
 export type IntrinsicFunction = (props: IntrinsicProps) => IntrinsicIterator;
 
-export type ViewChild = ComponentView | IntrinsicView | string | undefined;
-
-// TODO: composition not inheritance
-// TODO: use a left-child right-sibling tree
+// TODO: use a left-child right-sibling tree, maybe we want to use an interface like this
 //interface Fiber<T> {
 //	value: Child;
 //	node?: T;
 //	child?: Fiber<T>;
 //	sibling?: Fiber<T>;
 //	parent?: Fiber<T>;
-export abstract class View {
+//}
+// TODO: composition not inheritance. Make this class concrete
+export class View {
+	tag: Tag;
+	protected props: Props;
+	protected updating = false;
+	// TODO: parameterize Node
+	protected node?: Node;
+	protected iter?: ComponentIterator | IntrinsicIterator;
+	protected result?:
+		| IteratorResult<Element, Element | undefined>
+		| IteratorResult<Node | undefined>;
+	// TODO: left-child right-sibling tree
+	private children: (View | string | undefined)[] = [];
+	// cached copy of nodes getter property, cleared when updateChildren is called
+	private _nodes: (Node | string)[] | undefined;
 	constructor(elem: Element, public env: Environment, public parent?: View) {
 		if (elem.tag === Root && parent !== undefined) {
 			throw new TypeError(
@@ -158,18 +170,6 @@ export abstract class View {
 		this.props = elem.props;
 	}
 
-	tag: Tag;
-	protected props: Props | IntrinsicProps;
-	// TODO: parameterize Node
-	protected node?: Node;
-	protected iter?: ComponentIterator | IntrinsicIterator;
-	protected result?:
-		| IteratorResult<Element, Element | undefined>
-		| IteratorResult<Node | undefined>;
-	protected updating = false;
-	// TODO: left-child right-sibling tree
-	private children: ViewChild[] = [];
-	private _nodes: (Node | string)[] | undefined;
 	get nodes(): (Node | string)[] {
 		if (this._nodes === undefined) {
 			let buffer: string | undefined;
@@ -184,7 +184,7 @@ export abstract class View {
 							buffer = undefined;
 						}
 
-						if (child instanceof IntrinsicView) {
+						if (child instanceof View && !(child instanceof ComponentView)) {
 							if (child.node !== undefined) {
 								nodes.push(child.node);
 							}
@@ -233,7 +233,7 @@ export abstract class View {
 		}
 	}
 
-	private createViewChild(child: Child): ViewChild {
+	private instantiate(child: Child): View | string | undefined {
 		if (child == null || typeof child === "boolean") {
 			return undefined;
 		} else if (typeof child === "string") {
@@ -242,10 +242,10 @@ export abstract class View {
 			return child.toString();
 		} else if (isElement(child)) {
 			if (typeof child.tag === "function") {
-				return new ComponentView(child as Element<Component>, this.env, this);
+				return new ComponentView(child, this.env, this);
 			} else {
 				// TODO: should we check that the tag is a known symbol
-				return new IntrinsicView(child, this.env, this);
+				return new View(child, this.env, this);
 			}
 		} else {
 			throw new TypeError("Unknown child type");
@@ -258,16 +258,23 @@ export abstract class View {
 		}
 
 		this.updating = true;
-		const children = elem.props.children;
-		const p = this.updateChildren(children == null ? [] : children);
-		if (p !== undefined) {
-			return p.then(() => this.commit());
-		}
+		this.props = elem.props;
+		// for component views, children are produced by the component
+		if (typeof this.tag === "function") {
+			throw new Error("This behavior is implemented in a subclass");
+		} else {
+			const children = this.props.children;
+			// for intrinsics, children are passed via props
+			const p = this.updateChildren(children == null ? [] : children);
+			if (p !== undefined) {
+				return p.then(() => this.commit());
+			}
 
-		this.commit();
+			this.commit();
+		}
 	}
 
-	protected updateChildren(children: Iterable<Child>): Promise<void> | void {
+	updateChildren(children: Iterable<Child>): Promise<void> | void {
 		this._nodes = undefined;
 		const promises: Promise<void>[] = [];
 		let i = 0;
@@ -287,7 +294,7 @@ export abstract class View {
 					}
 				}
 
-				view = this.createViewChild(elem);
+				view = this.instantiate(elem);
 				this.children[i] = view;
 			}
 
@@ -371,6 +378,8 @@ export class Controller {
 	// TODO: change type to View
 	constructor(private view: ComponentView) {}
 
+	private publications: Set<Publication> = new Set();
+
 	*[Symbol.iterator](): Generator<Props> {
 		while (true) {
 			yield this.view.props;
@@ -379,6 +388,21 @@ export class Controller {
 
 	[Symbol.asyncIterator](): AsyncGenerator<Props> {
 		return this.view.subscribe();
+	}
+
+	private publish(): void {
+		for (const publication of this.publications) {
+			publication.push(this.view.props);
+		}
+	}
+
+	private subscribe(): Repeater<Props> {
+		return new Repeater(async (push, stop) => {
+			const publication = {push, stop};
+			this.publications.add(publication);
+			await stop;
+			this.publications.delete(publication);
+		}, new SlidingBuffer(1));
 	}
 
 	refresh(): Promise<void> | void {
@@ -400,7 +424,7 @@ export type AsyncComponentIterator = AsyncIterator<
 	(Node | string)[] | Node | string
 >;
 
-export function* createIterator(
+export function* createSyncIterator(
 	controller: Controller,
 	tag: (this: Controller, props: Props) => Element,
 ): SyncComponentIterator {
@@ -430,7 +454,7 @@ interface Publication {
 	stop(): unknown;
 }
 
-// TODO: move component specific stuff to the controller. The view’s main responsibility will be related to mounting/updating/unmounting; in other words, the view’s responsibility will be to diff changes and communicate updates to parents/siblings/children, while the Controller will be responsible for calling the iterator function and providing children.
+// TODO: move component specific stuff to the controller. The view’s main responsibility will be related to mounting/updating/unmounting; in other words, the viewis responsible for diffing changes and communicating updates to parents/siblings/children, while the Controller is responsible for calling the iterator function and providing children.
 class ComponentView extends View {
 	tag!: Component;
 	props!: Props;
@@ -440,21 +464,6 @@ class ComponentView extends View {
 	private controller = new Controller(this);
 	private promise?: Promise<void>;
 	private publications: Set<Publication> = new Set();
-	subscribe(): Repeater<Props> {
-		return new Repeater(async (push, stop) => {
-			const publication = {push, stop};
-			this.publications.add(publication);
-			await stop;
-			this.publications.delete(publication);
-		}, new SlidingBuffer(1));
-	}
-
-	private publish(): void {
-		for (const publication of this.publications) {
-			publication.push(this.props);
-		}
-	}
-
 	// TODO: handle resultP rejecting
 	private pull(resultP: Promise<IteratorResult<Element>>): Promise<void> {
 		return resultP.then((result) => {
@@ -495,7 +504,22 @@ class ComponentView extends View {
 		return this.updateChildren([this.result.value]);
 	}
 
-	initialize(): Promise<void> | void {
+	private publish(): void {
+		for (const publication of this.publications) {
+			publication.push(this.props);
+		}
+	}
+
+	subscribe(): Repeater<Props> {
+		return new Repeater(async (push, stop) => {
+			const publication = {push, stop};
+			this.publications.add(publication);
+			await stop;
+			this.publications.delete(publication);
+		}, new SlidingBuffer(1));
+	}
+
+	private initialize(): Promise<void> | void {
 		const value:
 			| ComponentIterator
 			| PromiseLike<Element>
@@ -515,8 +539,8 @@ class ComponentView extends View {
 				Promise.resolve(value).then((value) => ({value, done: false})),
 			);
 		} else {
-			this.iter = createIterator(this.controller, this.tag as any);
-			return this.updateChildren([value]);
+			this.iter = createSyncIterator(this.controller, this.tag as any);
+			return this.iterate({value, done: false});
 		}
 	}
 
@@ -554,9 +578,6 @@ class ComponentView extends View {
 		return super.unmount();
 	}
 }
-
-// TODO: delete
-export class IntrinsicView extends View {}
 
 function updateDOMProps(el: HTMLElement, props: Props): void {
 	for (const [key, value] of Object.entries(props)) {
@@ -662,7 +683,7 @@ const domEnv: Environment = {
 };
 
 export class Renderer {
-	views: WeakMap<Node, IntrinsicView> = new WeakMap();
+	views: WeakMap<Node, View> = new WeakMap();
 	env: Environment = defaultEnv;
 
 	constructor(envs: Partial<Environment>[]) {
@@ -690,18 +711,18 @@ export class Renderer {
 	render(
 		elem: Element | null | undefined,
 		node: HTMLElement,
-	): Promise<IntrinsicView> | IntrinsicView | undefined {
+	): Promise<View> | View | undefined {
 		if (elem != null && elem.tag !== Root) {
 			elem = createElement(Root, {node}, elem);
 		}
 
-		let view: IntrinsicView;
+		let view: View;
 		if (this.views.has(node)) {
 			view = this.views.get(node)!;
 		} else if (elem == null) {
 			return;
 		} else {
-			view = new IntrinsicView(elem, this.env);
+			view = new View(elem, this.env);
 			this.views.set(node, view);
 		}
 
@@ -726,6 +747,6 @@ export const renderer = new Renderer([domEnv]);
 export function render(
 	elem: Element | null | undefined,
 	node: HTMLElement,
-): Promise<IntrinsicView> | IntrinsicView | undefined {
+): Promise<View> | View | undefined {
 	return renderer.render(elem, node);
 }
