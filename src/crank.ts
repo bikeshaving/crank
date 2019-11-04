@@ -136,7 +136,7 @@ export type IntrinsicIterator = Iterator<
 
 export type IntrinsicFunction = (props: IntrinsicProps) => IntrinsicIterator;
 
-// TODO: use a left-child right-sibling tree, maybe we want to use an interface like this
+// TODO: use a left-child right-sibling tree, maybe we want to use an interface like this to make views dumb and performant
 //interface Fiber<T> {
 //	value: Child;
 //	node?: T;
@@ -144,21 +144,22 @@ export type IntrinsicFunction = (props: IntrinsicProps) => IntrinsicIterator;
 //	sibling?: Fiber<T>;
 //	parent?: Fiber<T>;
 //}
-// TODO: composition not inheritance. Make this class concrete
 export class View {
 	tag: Tag;
-	protected props: Props;
-	protected updating = false;
+	props: Props;
 	// TODO: parameterize Node
 	protected node?: Node;
 	protected iter?: ComponentIterator | IntrinsicIterator;
 	protected result?:
 		| IteratorResult<Element, Element | undefined>
 		| IteratorResult<Node | undefined>;
+	private controller?: Controller;
 	// TODO: left-child right-sibling tree
 	private children: (View | string | undefined)[] = [];
 	// cached copy of nodes getter property, cleared when updateChildren is called
+	// maybe makes this an iterator so that nodes can be accessed lazily
 	private _nodes: (Node | string)[] | undefined;
+	protected updating = false;
 	constructor(elem: Element, public env: Environment, public parent?: View) {
 		if (elem.tag === Root && parent !== undefined) {
 			throw new TypeError(
@@ -168,6 +169,9 @@ export class View {
 
 		this.tag = elem.tag;
 		this.props = elem.props;
+		if (typeof this.tag === "function") {
+			this.controller = new Controller(this);
+		}
 	}
 
 	get nodes(): (Node | string)[] {
@@ -184,12 +188,12 @@ export class View {
 							buffer = undefined;
 						}
 
-						if (child instanceof View && !(child instanceof ComponentView)) {
+						if (child instanceof View) {
 							if (child.node !== undefined) {
 								nodes.push(child.node);
+							} else {
+								nodes.push(...child.nodes);
 							}
-						} else if (child instanceof ComponentView) {
-							nodes.push(...child.nodes);
 						}
 					}
 				}
@@ -241,12 +245,7 @@ export class View {
 		} else if (typeof child === "number") {
 			return child.toString();
 		} else if (isElement(child)) {
-			if (typeof child.tag === "function") {
-				return new ComponentView(child, this.env, this);
-			} else {
-				// TODO: should we check that the tag is a known symbol
-				return new View(child, this.env, this);
-			}
+			return new View(child, this.env, this);
 		} else {
 			throw new TypeError("Unknown child type");
 		}
@@ -260,8 +259,8 @@ export class View {
 		this.updating = true;
 		this.props = elem.props;
 		// for component views, children are produced by the component
-		if (typeof this.tag === "function") {
-			throw new Error("This behavior is implemented in a subclass");
+		if (this.controller !== undefined) {
+			return this.controller.refresh();
 		} else {
 			const children = this.props.children;
 			// for intrinsics, children are passed via props
@@ -349,6 +348,11 @@ export class View {
 	}
 
 	unmount(): Promise<void> | void {
+		// TODO: figure out how to merge the logic between controller.unmount and here
+		if (this.controller !== undefined) {
+			return this.controller.unmount();
+		}
+
 		let result: Promise<IteratorResult<any>> | IteratorResult<any> | undefined;
 		if (this.result !== undefined && !this.result.done) {
 			if (this.iter !== undefined && typeof this.iter.return === "function") {
@@ -374,9 +378,8 @@ export class View {
 	}
 }
 
-export class Controller {
-	// TODO: change type to View
-	constructor(private view: ComponentView) {}
+export class Context {
+	constructor(private view: View, private controller: Controller) {}
 
 	private publications: Set<Publication> = new Set();
 
@@ -387,26 +390,28 @@ export class Controller {
 	}
 
 	[Symbol.asyncIterator](): AsyncGenerator<Props> {
-		return this.view.subscribe();
-	}
-
-	private publish(): void {
-		for (const publication of this.publications) {
-			publication.push(this.view.props);
-		}
-	}
-
-	private subscribe(): Repeater<Props> {
 		return new Repeater(async (push, stop) => {
-			const publication = {push, stop};
-			this.publications.add(publication);
+			const pub = {push, stop};
+			this.publications.add(pub);
 			await stop;
-			this.publications.delete(publication);
+			this.publications.delete(pub);
 		}, new SlidingBuffer(1));
 	}
 
+	publish(): void {
+		for (const pub of this.publications) {
+			pub.push(this.view.props);
+		}
+	}
+
 	refresh(): Promise<void> | void {
-		return this.view.refresh();
+		return this.controller.refresh();
+	}
+
+	unmount(): Promise<void> | void {
+		for (const pub of this.publications) {
+			pub.stop();
+		}
 	}
 }
 
@@ -424,28 +429,30 @@ export type AsyncComponentIterator = AsyncIterator<
 	(Node | string)[] | Node | string
 >;
 
+export type ComponentIteratorResult = IteratorResult<Element, Element | void>;
+
 export function* createSyncIterator(
-	controller: Controller,
-	tag: (this: Controller, props: Props) => Element,
+	context: Context,
+	tag: (this: Context, props: Props) => Element,
 ): SyncComponentIterator {
-	for (const props of controller) {
-		yield tag.call(controller, props);
+	for (const props of context) {
+		yield tag.call(context, props);
 	}
 }
 
 export async function* createAsyncIterator(
-	controller: Controller,
-	tag: (this: Controller, props: Props) => PromiseLike<Element>,
+	context: Context,
+	tag: (this: Context, props: Props) => PromiseLike<Element>,
 ): AsyncComponentIterator {
-	for await (const props of controller) {
-		yield tag.call(controller, props);
+	for await (const props of context) {
+		yield tag.call(context, props);
 	}
 }
 
-export type ComponentIterator = AsyncComponentIterator | SyncComponentIterator;
+export type ComponentIterator = SyncComponentIterator | AsyncComponentIterator;
 
 export type Component<TProps extends Props = Props> = (
-	this: Controller,
+	this: Context,
 	props: TProps,
 ) => ComponentIterator | PromiseLike<Element> | Element;
 
@@ -454,16 +461,13 @@ interface Publication {
 	stop(): unknown;
 }
 
-// TODO: move component specific stuff to the controller. The view’s main responsibility will be related to mounting/updating/unmounting; in other words, the viewis responsible for diffing changes and communicating updates to parents/siblings/children, while the Controller is responsible for calling the iterator function and providing children.
-class ComponentView extends View {
-	tag!: Component;
-	props!: Props;
-	protected iter?: ComponentIterator;
-	protected result?: IteratorResult<Element, Element | void>;
-	// TODO: no analogue for these in IntrinsicView
-	private controller = new Controller(this);
+// TODO: the methods of this class look suspiciously like an iterator, maybe we can make this class extend ComponentIterator and have the pulling/iterating logic on view
+class Controller {
+	constructor(private view: View) {}
+	private ctx = new Context(this.view, this);
+	private iter?: ComponentIterator;
+	private result?: IteratorResult<Element, Element | void>;
 	private promise?: Promise<void>;
-	private publications: Set<Publication> = new Set();
 	// TODO: handle resultP rejecting
 	private pull(resultP: Promise<IteratorResult<Element>>): Promise<void> {
 		return resultP.then((result) => {
@@ -474,12 +478,12 @@ class ComponentView extends View {
 				| string
 				| Promise<(Node | string)[] | Node | string>;
 			if (p === undefined) {
-				this.commit();
-				nodeOrNodes = this.nodeOrNodes!;
+				this.view.commit();
+				nodeOrNodes = this.view.nodeOrNodes!;
 			} else {
 				nodeOrNodes = p.then(() => {
-					this.commit();
-					return this.nodeOrNodes!;
+					this.view.commit();
+					return this.view.nodeOrNodes!;
 				});
 			}
 
@@ -496,50 +500,39 @@ class ComponentView extends View {
 	private iterate(result: IteratorResult<Element>): Promise<void> | void {
 		this.result = result;
 		if (this.result.value == null) {
-			return this.updateChildren([]);
+			return this.view.updateChildren([]);
 		} else if (this.result.value.sigil !== ElementSigil) {
 			throw new TypeError("Element not returned");
 		}
 
-		return this.updateChildren([this.result.value]);
-	}
-
-	private publish(): void {
-		for (const publication of this.publications) {
-			publication.push(this.props);
-		}
-	}
-
-	subscribe(): Repeater<Props> {
-		return new Repeater(async (push, stop) => {
-			const publication = {push, stop};
-			this.publications.add(publication);
-			await stop;
-			this.publications.delete(publication);
-		}, new SlidingBuffer(1));
+		return this.view.updateChildren([this.result.value]);
 	}
 
 	private initialize(): Promise<void> | void {
+		if (typeof this.view.tag !== "function") {
+			throw new TypeError("Controller created for intrinsic element");
+		}
+
 		const value:
 			| ComponentIterator
 			| PromiseLike<Element>
-			| Element = this.tag.call(this.controller, this.props);
+			| Element = this.view.tag.call(this.ctx, this.view.props);
 		if (isIteratorOrAsyncIterator(value)) {
 			this.iter = value;
 			const result = this.iter.next();
 			if (isPromiseLike(result)) {
-				this.publish();
+				this.ctx.publish();
 				return this.pull(result);
 			} else {
 				return this.iterate(result);
 			}
 		} else if (isPromiseLike(value)) {
-			this.iter = createAsyncIterator(this.controller, this.tag as any);
+			this.iter = createAsyncIterator(this.ctx, this.view.tag as any);
 			return this.pull(
 				Promise.resolve(value).then((value) => ({value, done: false})),
 			);
 		} else {
-			this.iter = createSyncIterator(this.controller, this.tag as any);
+			this.iter = createSyncIterator(this.ctx, this.view.tag as any);
 			return this.iterate({value, done: false});
 		}
 	}
@@ -550,32 +543,40 @@ class ComponentView extends View {
 		}
 
 		if (this.promise === undefined) {
-			const result = this.iter.next(this.nodeOrNodes!) as IteratorResult<
+			const result = this.iter.next(this.view.nodeOrNodes!) as IteratorResult<
 				Element
 			>;
 			return this.iterate(result);
 		} else {
-			this.publish();
+			this.ctx.publish();
 			return this.promise;
 		}
 	}
 
-	update(elem: Element): Promise<void> | void {
-		if (this.tag !== elem.tag) {
-			throw new TypeError("Tag mismatch");
-		}
-
-		this.updating = true;
-		this.props = elem.props;
-		return this.refresh();
-	}
-
 	unmount(): Promise<void> | void {
-		for (const publication of this.publications) {
-			publication.stop();
+		this.ctx.unmount();
+		let result: Promise<IteratorResult<any>> | IteratorResult<any> | undefined;
+		if (this.result !== undefined && !this.result.done) {
+			if (this.iter !== undefined && typeof this.iter.return === "function") {
+				result = this.iter.return();
+			}
 		}
 
-		return super.unmount();
+		if (isPromiseLike(result)) {
+			return result.then((result) => {
+				if (!result.done) {
+					throw new Error("Zombie iterator");
+				}
+
+				this.result = result;
+				return this.view.updateChildren([]);
+			});
+		} else if (result !== undefined && !result.done) {
+			throw new Error("Zombie iterator");
+		}
+
+		this.result = result;
+		return this.view.updateChildren([]);
 	}
 }
 
@@ -589,7 +590,6 @@ function updateDOMProps(el: HTMLElement, props: Props): void {
 	}
 }
 
-// TODO: move createTextNode calls to environment
 function updateDOMChildren(
 	el: HTMLElement,
 	children: (Node | string)[] = [],
@@ -640,14 +640,13 @@ function updateDOMChildren(
 	}
 }
 
-// TODO: allow tags to define child intrinsics (for svg and stuff)
+// TODO: allow tags to define child tags (for svg and custom canvas tags a la react-three-fiber) 
 interface Environment {
 	[Default](tag: string): IntrinsicFunction;
 	[Root]?: IntrinsicFunction;
-	// TODO: do we need custom functions for portal and fragment?
+	// TODO: figure out if we need custom functions for portal and fragment?
 	// [Portal]?: IntrinsicFunction;
 	// [Fragment]?: IntrinsicFunction;
-	// TODO: allow tags to define child tags somehow
 	[tag: string]: IntrinsicFunction;
 }
 

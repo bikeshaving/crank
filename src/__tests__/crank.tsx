@@ -1,7 +1,7 @@
 /** @jsx createElement */
 import "core-js";
 import "mutationobserver-shim";
-import {createElement, Controller, Element, render, View} from "../crank";
+import {createElement, Context, Element, render, View} from "../crank";
 
 describe("render", () => {
 	afterEach(() => {
@@ -251,7 +251,7 @@ describe("sync generator component", () => {
 
 	test("basic", () => {
 		const SyncGen = jest.fn(function*(
-			this: Controller,
+			this: Context,
 			{message}: {message: string},
 		): Generator<Element> {
 			let i = 0;
@@ -291,7 +291,7 @@ describe("sync generator component", () => {
 
 	test("refresh", () => {
 		let refresh!: () => void;
-		function* SyncGen(this: Controller): Generator<Element> {
+		function* SyncGen(this: Context): Generator<Element> {
 			let i = 1;
 			refresh = this.refresh.bind(this);
 			// eslint-disable-next-line
@@ -325,7 +325,7 @@ describe("async generator component", () => {
 	test("basic", async () => {
 		let resolve!: () => unknown;
 		const AsyncGen = jest.fn(async function*(
-			this: Controller,
+			this: Context,
 			{message}: {message: string},
 		): AsyncGenerator<Element> {
 			for await (const {message} of this) {
