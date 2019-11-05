@@ -82,7 +82,9 @@ export function isElement(value: any): value is Element {
 export function* flattenChildren(
 	childOrChildren: Child | Children,
 ): Iterable<Child> {
-	if (isIterable(childOrChildren)) {
+	if (typeof childOrChildren === "string" || !isIterable(childOrChildren)) {
+		yield childOrChildren;
+	} else {
 		for (const child of childOrChildren) {
 			if (
 				child == null ||
@@ -98,8 +100,6 @@ export function* flattenChildren(
 				throw new TypeError("Unknown child type");
 			}
 		}
-	} else {
-		yield childOrChildren;
 	}
 }
 
