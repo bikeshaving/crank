@@ -192,7 +192,7 @@ describe("async function component", () => {
 	test("basic", async () => {
 		async function AsyncFn({
 			message,
-			time = 100,
+			time = 10,
 		}: {
 			message: string;
 			time?: number;
@@ -210,6 +210,69 @@ describe("async function component", () => {
 		expect(document.body.innerHTML).toEqual("");
 		await expect(viewP).resolves.toBeInstanceOf(View);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+	});
+
+	test("rerender batching", async () => {
+		const AsyncFn = jest.fn(async function AsyncFn({
+			message,
+			time = 10,
+		}: {
+			message: string;
+			time?: number;
+		}): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, time));
+			return <span>{message}</span>;
+		});
+		const viewP1 = render(
+			<div>
+				<AsyncFn message="Hello 1" />
+			</div>,
+			document.body,
+		);
+		const viewP2 = render(
+			<div>
+				<AsyncFn message="Hello 2" />
+			</div>,
+			document.body,
+		);
+		const viewP3 = render(
+			<div>
+				<AsyncFn message="Hello 3" />
+			</div>,
+			document.body,
+		);
+		const viewP4 = render(
+			<div>
+				<AsyncFn message="Hello 4" />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("");
+		await expect(viewP1).resolves.toBeInstanceOf(View);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
+		await expect(viewP2).resolves.toBeInstanceOf(View);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 4</span></div>");
+		const viewP5 = render(
+			<div>
+				<AsyncFn message="Hello 5" />
+			</div>,
+			document.body,
+		);
+		const viewP6 = render(
+			<div>
+				<AsyncFn message="Hello 6" />
+			</div>,
+			document.body,
+		);
+		await expect(viewP3).resolves.toBeInstanceOf(View);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 4</span></div>");
+		await expect(viewP4).resolves.toBeInstanceOf(View);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 4</span></div>");
+		await expect(viewP5).resolves.toBeInstanceOf(View);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 6</span></div>");
+		await expect(viewP6).resolves.toBeInstanceOf(View);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 6</span></div>");
+		expect(AsyncFn).toHaveBeenCalledTimes(3);
 	});
 
 	test("rerender", async () => {

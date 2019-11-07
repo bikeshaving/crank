@@ -32,7 +32,7 @@ function isIteratorOrAsyncIterator(
 
 export interface Props {
 	[key: string]: any;
-	children?: Iterable<Child>;
+	children?: Child | Children;
 }
 
 // control tags are symbols that can be used as element tags which have special behavior during rendering
@@ -112,12 +112,11 @@ export function createElement<T extends Tag>(
 	tag: T,
 	props?: Props | null,
 ): Element<T> {
-	// TODO: maybe we can defer Object.assign and flattenChildren calls til later for maximal performance in createElement
 	props = Object.assign({}, props);
 	if (arguments.length > 3) {
-		props.children = flattenChildren(Array.from(arguments).slice(2));
+		props.children = Array.from(arguments).slice(2);
 	} else if (arguments.length > 2) {
-		props.children = flattenChildren(arguments[2]);
+		props.children = arguments[2];
 	}
 
 	return {sigil: ElementSigil, tag, props};
@@ -148,65 +147,58 @@ export class View {
 	tag: Tag;
 	props: Props;
 	// TODO: parameterize Node
-	protected node?: Node;
-	protected iter?: ComponentIterator | IntrinsicIterator;
-	protected result?:
-		| IteratorResult<Element, Element | undefined>
-		| IteratorResult<Node | undefined>;
+	private node?: Node;
+	private iter?: IntrinsicIterator;
+	private result?: IteratorResult<Node | undefined>;
+	private pending: Promise<void | undefined> | void | undefined;
+	private enqueued: Promise<void | undefined> | void | undefined;
 	private controller?: Controller;
 	// TODO: left-child right-sibling tree
 	private children: (View | string | undefined)[] = [];
-	// cached copy of nodes getter property, cleared when updateChildren is called
-	// maybe makes this an iterator so that nodes can be accessed lazily
-	private _nodes: (Node | string)[] | undefined;
-	protected updating = false;
-	constructor(elem: Element, public env: Environment, public parent?: View) {
+	// whether or not the parent is updating this component or the component is being updated by the parent
+	private updating = false;
+	constructor(elem: Element, private env: Environment, private parent?: View) {
+		this.tag = elem.tag;
+		this.props = elem.props;
 		if (elem.tag === Root && parent !== undefined) {
 			throw new TypeError(
 				"Root Element must always be the root of an element tree",
 			);
-		}
-
-		this.tag = elem.tag;
-		this.props = elem.props;
-		if (typeof this.tag === "function") {
-			this.controller = new Controller(this, this.tag);
+		} else if (typeof elem.tag === "function") {
+			this.controller = new Controller(this, elem.tag);
 		}
 	}
 
+	// TODO: cache this or something
 	get nodes(): (Node | string)[] {
-		if (this._nodes === undefined) {
-			let buffer: string | undefined;
-			const nodes: (Node | string)[] = [];
-			for (const child of this.children) {
-				if (child !== undefined) {
-					if (typeof child === "string") {
-						buffer = buffer === undefined ? child : buffer + child;
-					} else {
-						if (buffer !== undefined) {
-							nodes.push(buffer);
-							buffer = undefined;
-						}
+		let buffer: string | undefined;
+		const nodes: (Node | string)[] = [];
+		for (const child of this.children) {
+			if (child !== undefined) {
+				if (typeof child === "string") {
+					buffer = buffer === undefined ? child : buffer + child;
+				} else {
+					if (buffer !== undefined) {
+						nodes.push(buffer);
+						buffer = undefined;
+					}
 
-						if (child instanceof View) {
-							if (child.node !== undefined) {
-								nodes.push(child.node);
-							} else {
-								nodes.push(...child.nodes);
-							}
+					if (child instanceof View) {
+						if (child.node !== undefined) {
+							nodes.push(child.node);
+						} else {
+							nodes.push(...child.nodes);
 						}
 					}
 				}
 			}
-
-			if (buffer !== undefined) {
-				nodes.push(buffer);
-			}
-
-			this._nodes = nodes;
 		}
 
-		return this._nodes;
+		if (buffer !== undefined) {
+			nodes.push(buffer);
+		}
+
+		return nodes;
 	}
 
 	get nodeOrNodes(): (Node | string | undefined) | (Node | string)[] {
@@ -218,23 +210,22 @@ export class View {
 	}
 
 	protected intrinsicFor(tag: string | ControlTag): IntrinsicFunction {
-		if (typeof tag === "string") {
-			const intrinsic = this.env[tag];
-			if (intrinsic == null) {
-				return this.env[Default](tag);
-			}
-
-			return intrinsic;
-		} else if (tag === Root) {
-			const intrinsic = this.env[tag];
+		let intrinsic: IntrinsicFunction | undefined;
+		if (tag === Root) {
+			intrinsic = this.env[tag];
 			if (intrinsic == null) {
 				throw new Error("Unknown Tag");
 			}
-
-			return intrinsic;
+		} else if (typeof tag === "string") {
+			intrinsic = this.env[tag];
+			if (intrinsic == null) {
+				intrinsic = this.env[Default](tag);
+			}
 		} else {
 			throw new Error("Unknown Tag");
 		}
+
+		return intrinsic;
 	}
 
 	private instantiate(child: Child): View | string | undefined {
@@ -262,23 +253,37 @@ export class View {
 		if (this.controller !== undefined) {
 			return this.controller.refresh();
 		} else {
-			const children = this.props.children;
 			// for intrinsics, children are passed via props
-			const p = this.updateChildren(children == null ? [] : children);
-			if (p !== undefined) {
-				return p.then(() => this.commit());
+			if (this.pending === undefined) {
+				const update = this.updateChildren(this.props.children);
+				if (update === undefined) {
+					this.commit();
+					return;
+				}
+
+				// TODO: turn this pending/enqueued pattern into a higher-order function or something. Also, shouldn’t components similarly use this logic
+				this.pending = update.then(() => {
+					this.pending = this.enqueued;
+					this.enqueued = undefined;
+					this.commit();
+				});
+				return this.pending;
+			} else if (this.enqueued === undefined) {
+				this.enqueued = this.pending.then(() => {
+					const update = this.updateChildren(this.props.children);
+					return Promise.resolve(update).then(() => this.commit());
+				});
 			}
 
-			this.commit();
+			return this.enqueued;
 		}
 	}
 
-	updateChildren(children: Iterable<Child>): Promise<void> | void {
-		this._nodes = undefined;
+	updateChildren(children: Child | Children): Promise<void> | void {
 		const promises: Promise<void>[] = [];
 		let i = 0;
 		let view = this.children[i];
-		for (const elem of children) {
+		for (const elem of flattenChildren(children)) {
 			if (
 				view === undefined ||
 				elem === null ||
@@ -381,8 +386,6 @@ export class View {
 export class Context {
 	constructor(private view: View, private controller: Controller) {}
 
-	private publications: Set<Publication> = new Set();
-
 	*[Symbol.iterator](): Generator<Props> {
 		while (true) {
 			yield this.view.props;
@@ -390,43 +393,20 @@ export class Context {
 	}
 
 	[Symbol.asyncIterator](): AsyncGenerator<Props> {
-		return new Repeater(async (push, stop) => {
-			const pub = {push, stop};
-			this.publications.add(pub);
-			await stop;
-			this.publications.delete(pub);
-		}, new SlidingBuffer(1));
-	}
-
-	publish(): void {
-		for (const pub of this.publications) {
-			pub.push(this.view.props);
-		}
+		return this.controller.subscribe();
 	}
 
 	refresh(): Promise<void> | void {
 		return this.controller.refresh();
 	}
-
-	unmount(): Promise<void> | void {
-		for (const pub of this.publications) {
-			pub.stop();
-		}
-	}
 }
 
-export type SyncComponentIterator = Iterator<
-	Element,
-	Element | void,
-	// TODO: parameterize Node
-	(Node | string)[] | Node | string
->;
+export type SyncComponentIterator = Iterator<Element, Element | void, any>;
 
 export type AsyncComponentIterator = AsyncIterator<
 	Element,
 	Element | void,
-	// TODO: parameterize Node
-	(Node | string)[] | Node | string
+	any
 >;
 
 export type ComponentIteratorResult = IteratorResult<Element, Element | void>;
@@ -461,14 +441,100 @@ interface Publication {
 	stop(): unknown;
 }
 
-// TODO: the methods of this class look suspiciously like an iterator, maybe we can make this class extend ComponentIterator and have the pulling/iterating logic on view
+// TODO: the methods of this class look suspiciously like an iterator, maybe we can make this class extend ComponentIterator and have the pulling/iterating logic on view, or move all updateChildren calls to the Controller consistently.
+// A Controller is an iterator or async iterator which updates the children of the view with every iteration. If an iteration is synchronous, it is updated whenever the view is updated. If an iteration is asynchronous, it will update the view on its own time, and further view updates are passed into the iterator asynchronously (how?). If it is synchronous but the children are asynchronous, then this whole sync/async distinction falls apart. Maybe we should just make update uniformly asynchronous?
 class Controller {
-	constructor(private view: View, private tag: Component) {
-	}
+	private publications: Set<Publication> = new Set();
 	private ctx = new Context(this.view, this);
 	private iter?: ComponentIterator;
 	private result?: IteratorResult<Element, Element | void>;
 	private promise?: Promise<void>;
+	constructor(private view: View, private tag: Component) {}
+
+	subscribe(): AsyncGenerator<Props> {
+		return new Repeater(async (push, stop) => {
+			const pub = {push, stop};
+			this.publications.add(pub);
+			await stop;
+			this.publications.delete(pub);
+		}, new SlidingBuffer(1));
+	}
+
+	publish(): void {
+		for (const pub of this.publications) {
+			pub.push(this.view.props);
+		}
+	}
+
+	// next(): Promise<ComponentIteratorResult> | ComponentIteratorResult {
+	// 	if (this.iter === undefined) {
+	// 		return this.initialize1();
+	// 	}
+
+	// 	this.publish();
+	// 	return this.iter.next();
+	// }
+
+	// private initialize1(
+	// ): Promise<ComponentIteratorResult> | ComponentIteratorResult {
+	// 	if (this.iter !== undefined) {
+	// 		throw new Error("Attempting to reinitialize controller");
+	// 	}
+
+	// 	const value:
+	// 		| ComponentIterator
+	// 		| PromiseLike<Element>
+	// 		| Element = this.tag.call(this.ctx, this.view.props);
+	// 	if (isIteratorOrAsyncIterator(value)) {
+	// 		this.iter = value;
+	// 		const result = this.iter.next();
+	// 		this.publish();
+	// 		return result;
+	// 	} else if (isPromiseLike(value)) {
+	// 		this.iter = createAsyncIterator(this.ctx, this.tag as any);
+	// 		return Promise.resolve(value).then((value) => ({value, done: false}));
+	// 	} else {
+	// 		this.iter = createSyncIterator(this.ctx, this.tag as any);
+	// 		return {value, done: false};
+	// 	}
+	// }
+
+	private initialize(): Promise<void> | void {
+		const value:
+			| ComponentIterator
+			| PromiseLike<Element>
+			| Element = this.tag.call(this.ctx, this.view.props);
+		if (isIteratorOrAsyncIterator(value)) {
+			this.iter = value;
+			const result = this.iter.next();
+			if (isPromiseLike(result)) {
+				this.publish();
+				return this.pull(result);
+			} else {
+				return this.iterate(result);
+			}
+		} else if (isPromiseLike(value)) {
+			this.iter = createAsyncIterator(this.ctx, this.view.tag as any);
+			return this.pull(
+				Promise.resolve(value).then((value) => ({value, done: false})),
+			);
+		} else {
+			this.iter = createSyncIterator(this.ctx, this.view.tag as any);
+			return this.iterate({value, done: false});
+		}
+	}
+
+	private iterate(result: IteratorResult<Element>): Promise<void> | void {
+		this.result = result;
+		if (this.result.value == null) {
+			return this.view.updateChildren([]);
+		} else if (this.result.value.sigil !== ElementSigil) {
+			throw new TypeError("Element not returned");
+		}
+
+		return this.view.updateChildren(this.result.value);
+	}
+
 	// TODO: handle resultP rejecting
 	private pull(resultP: Promise<IteratorResult<Element>>): Promise<void> {
 		return resultP.then((result) => {
@@ -489,49 +555,18 @@ class Controller {
 			}
 
 			if (!result.done) {
-				this.promise = this.pull(
-					(this.iter as AsyncComponentIterator).next(nodeOrNodes),
-				);
+				const resultP = this.iter!.next(nodeOrNodes);
+				if (isPromiseLike(resultP)) {
+					this.promise = this.pull(resultP);
+				} else {
+					this.result = resultP;
+					// TODO: trigger this branch
+					throw new Error("EY BABY");
+				}
 			}
 
 			return Promise.resolve(nodeOrNodes).then(() => {});
 		});
-	}
-
-	private iterate(result: IteratorResult<Element>): Promise<void> | void {
-		this.result = result;
-		if (this.result.value == null) {
-			return this.view.updateChildren([]);
-		} else if (this.result.value.sigil !== ElementSigil) {
-			throw new TypeError("Element not returned");
-		}
-
-		return this.view.updateChildren([this.result.value]);
-	}
-
-	private initialize(): Promise<void> | void {
-		const value:
-			| ComponentIterator
-			| PromiseLike<Element>
-			| Element = this.tag.call(this.ctx, this.view.props);
-		if (isIteratorOrAsyncIterator(value)) {
-			this.iter = value;
-			const result = this.iter.next();
-			if (isPromiseLike(result)) {
-				this.ctx.publish();
-				return this.pull(result);
-			} else {
-				return this.iterate(result);
-			}
-		} else if (isPromiseLike(value)) {
-			this.iter = createAsyncIterator(this.ctx, this.view.tag as any);
-			return this.pull(
-				Promise.resolve(value).then((value) => ({value, done: false})),
-			);
-		} else {
-			this.iter = createSyncIterator(this.ctx, this.view.tag as any);
-			return this.iterate({value, done: false});
-		}
 	}
 
 	refresh(): Promise<void> | void {
@@ -540,18 +575,22 @@ class Controller {
 		}
 
 		if (this.promise === undefined) {
+			// TODO: this feels wrong. If the children of a sync component are async, should we wait for the children to settle before pulling the next result? If so, how do we deal with updates that come in before the children have settled? The current behavior is surprising in that a sync generator component which has async children will resume undefined/stale nodes if update is called faster than the children settle.
 			const result = this.iter.next(this.view.nodeOrNodes!) as IteratorResult<
 				Element
 			>;
 			return this.iterate(result);
 		} else {
-			this.ctx.publish();
+			this.publish();
 			return this.promise;
 		}
 	}
 
 	unmount(): Promise<void> | void {
-		this.ctx.unmount();
+		for (const pub of this.publications) {
+			pub.stop();
+		}
+
 		let result: Promise<IteratorResult<any>> | IteratorResult<any> | undefined;
 		if (this.result !== undefined && !this.result.done) {
 			if (this.iter !== undefined && typeof this.iter.return === "function") {
@@ -637,7 +676,7 @@ function updateDOMChildren(
 	}
 }
 
-// TODO: allow tags to define child tags (for svg and custom canvas tags a la react-three-fiber) 
+// TODO: allow tags to define child tags (for svg and custom canvas tags a la react-three-fiber)
 interface Environment {
 	[Default](tag: string): IntrinsicFunction;
 	[Root]?: IntrinsicFunction;
