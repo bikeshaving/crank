@@ -30,11 +30,6 @@ function isIteratorOrAsyncIterator(
 	return value != null && typeof value.next === "function";
 }
 
-export interface Props {
-	[key: string]: any;
-	children?: Child | Children;
-}
-
 // control tags are symbols that can be used as element tags which have special behavior during rendering
 // TODO: user-defined control tags?
 export const Default = Symbol("Default");
@@ -45,34 +40,39 @@ export type Root = typeof Root;
 
 // TODO: implement these control tags
 // TODO: I wonder if the following tags can be implemented without defining a custom function for each tag for every environment
-export const Copy = Symbol("Copy");
-export type Copy = typeof Copy;
+// export const Copy = Symbol("Copy");
+// export type Copy = typeof Copy;
+//
+// export const Fragment = Symbol("Fragment");
+// export type Fragment = typeof Fragment;
+//
+// export const Portal = Symbol("Portal");
+// export type Portal = typeof Portal;
 
-export const Fragment = Symbol("Fragment");
-export type Fragment = typeof Fragment;
-
-export const Portal = Symbol("Portal");
-export type Portal = typeof Portal;
-
-export type ControlTag = Root | Copy | Fragment | Portal;
-
-// TODO: rename to Node?
-export type Child = Element | string | number | boolean | null | undefined;
-
-export interface Children extends Iterable<Child | Children> {}
+export type ControlTag = Root; // | Copy | Fragment | Portal;
 
 export type Tag<TProps extends Props = Props> =
 	| Component<TProps>
 	| ControlTag
 	| string;
 
+// TODO: rename to Node?
+export type Child = Element | string | number | boolean | null | undefined;
+
+export interface Children extends Iterable<Child | Children> {}
+
+export interface Props {
+	[key: string]: any;
+	children?: Child | Children;
+}
+
 export const ElementSigil: unique symbol = Symbol.for("crank.element");
 export type ElementSigil = typeof ElementSigil;
-
-export interface Element<T extends Tag = Tag, TProps extends Props = Props> {
+// TODO: parameterize Props
+export interface Element<T extends Tag = Tag> {
 	sigil: ElementSigil;
 	tag: T;
-	props: TProps;
+	props: Props;
 }
 
 export function isElement(value: any): value is Element {
@@ -84,22 +84,11 @@ export function* flattenChildren(
 ): Iterable<Child> {
 	if (typeof childOrChildren === "string" || !isIterable(childOrChildren)) {
 		yield childOrChildren;
-	} else {
-		for (const child of childOrChildren) {
-			if (
-				child == null ||
-				typeof child === "string" ||
-				typeof child === "number" ||
-				typeof child === "boolean" ||
-				isElement(child)
-			) {
-				yield child;
-			} else if (isIterable(child)) {
-				yield* flattenChildren(child);
-			} else {
-				throw new TypeError("Unknown child type");
-			}
-		}
+		return;
+	}
+
+	for (const child of childOrChildren) {
+		yield* flattenChildren(child);
 	}
 }
 
@@ -157,6 +146,7 @@ export class View {
 	private children: (View | string | undefined)[] = [];
 	// whether or not the parent is updating this component or the component is being updated by the parent
 	private updating = false;
+	// TODO: stop passing env into this thing.
 	constructor(elem: Element, private env: Environment, private parent?: View) {
 		this.tag = elem.tag;
 		this.props = elem.props;
