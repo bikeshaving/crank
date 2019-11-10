@@ -353,10 +353,10 @@ describe("sync generator component", () => {
 	});
 
 	test("refresh", () => {
-		let refresh!: () => void;
+		let ctx!: Context;
 		function* SyncGen(this: Context): Generator<Element> {
 			let i = 1;
-			refresh = this.refresh.bind(this);
+			ctx = this;
 			// eslint-disable-next-line
 			for (const _ of this) {
 				yield <span>Hello {i++}</span>;
@@ -371,11 +371,52 @@ describe("sync generator component", () => {
 		);
 
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
-		refresh();
+		ctx.refresh();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
-		refresh();
-		refresh();
+		ctx.refresh();
+		ctx.refresh();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 4</span></div>");
+	});
+
+	test("async children", async () => {
+		const mock = jest.fn();
+		async function Async({children}: any): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			return <span>{children}</span>;
+		}
+
+		let ctx!: Context;
+		function* Gen(this: Context): Generator<Element> {
+			ctx = this;
+			let i = 0;
+			for (const _ of this) {
+				const yielded = yield <Async>Hello {i++}</Async>;
+				mock(yielded);
+			}
+		}
+
+		const p1 = render(
+			<div>
+				<Gen />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("");
+		await p1;
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 0</span></div>");
+		const p2 = ctx.refresh();
+		await Promise.resolve();
+		const span = document.createElement("span");
+		span.appendChild(document.createTextNode("Hello 0"));
+		expect(mock).toHaveBeenCalledTimes(1);
+		expect(mock).toHaveBeenCalledWith(span);
+		await p2;
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
+		ctx.refresh();
+		await Promise.resolve();
+		expect(mock).toHaveBeenCalledTimes(2);
+		span.firstChild!.nodeValue = "Hello 1";
+		expect(mock).toHaveBeenCalledWith(span);
 	});
 });
 
@@ -442,7 +483,7 @@ describe("async generator component", () => {
 
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 		render(<div />, document.body);
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 		cleanup();
 		await new Promise((resolve) => setTimeout(resolve, 0));

@@ -30,6 +30,9 @@ function isIteratorOrAsyncIterator(
 	return value != null && typeof value.next === "function";
 }
 
+type MaybePromise<T> = Promise<T> | T;
+type MaybePromiseLike<T> = PromiseLike<T> | T;
+
 // control tags are symbols that can be used as element tags which have special behavior during rendering
 // TODO: user-defined control tags?
 export const Default = Symbol("Default");
@@ -139,6 +142,7 @@ export class View {
 	private node?: Node;
 	private iter?: IntrinsicIterator;
 	private result?: IteratorResult<Node | undefined>;
+	// These properties are exclusively used to batch intrinsic components with async children. There must be a better way to do this than to define these properties on View.
 	private pending: Promise<void | undefined> | void | undefined;
 	private enqueued: Promise<void | undefined> | void | undefined;
 	private controller?: Controller;
@@ -253,13 +257,13 @@ export class View {
 
 				// TODO: turn this pending/enqueued pattern into a higher-order function or something. Also, shouldn’t components similarly use this logic
 				this.pending = update.then(() => {
-					this.pending = this.enqueued;
-					this.enqueued = undefined;
 					this.commit();
 				});
 				return this.pending;
 			} else if (this.enqueued === undefined) {
 				this.enqueued = this.pending.then(() => {
+					this.pending = this.enqueued;
+					this.enqueued = undefined;
 					const update = this.updateChildren(this.props.children);
 					return Promise.resolve(update).then(() => this.commit());
 				});
@@ -391,40 +395,33 @@ export class Context {
 	}
 }
 
-export type SyncComponentIterator = Iterator<Element, Element | void, any>;
+// generator functions will not be able to use this type until
+export type ComponentIterator =
+	| Iterator<MaybePromise<Child>, MaybePromise<Child | void>, any>
+	| AsyncIterator<Child, Child | void, any>;
 
-export type AsyncComponentIterator = AsyncIterator<
-	Element,
-	Element | void,
-	any
+export type ComponentGenerator =
+	| Generator<MaybePromise<Child>, MaybePromise<Child | void>, any>
+	| AsyncGenerator<Child, Child | void, any>;
+
+export type ComponentIteratorResult = IteratorResult<
+	MaybePromiseLike<Child>,
+	MaybePromiseLike<Child | void>
 >;
 
-export type ComponentIteratorResult = IteratorResult<Element, Element | void>;
-
-export function* createSyncIterator(
+export function* createIterator(
 	context: Context,
-	tag: (this: Context, props: Props) => Element,
-): SyncComponentIterator {
+	tag: (this: Context, props: Props) => Child,
+): ComponentGenerator {
 	for (const props of context) {
 		yield tag.call(context, props);
 	}
 }
 
-export async function* createAsyncIterator(
-	context: Context,
-	tag: (this: Context, props: Props) => PromiseLike<Element>,
-): AsyncComponentIterator {
-	for await (const props of context) {
-		yield tag.call(context, props);
-	}
-}
-
-export type ComponentIterator = SyncComponentIterator | AsyncComponentIterator;
-
 export type Component<TProps extends Props = Props> = (
 	this: Context,
 	props: TProps,
-) => ComponentIterator | PromiseLike<Element> | Element;
+) => ComponentIterator | MaybePromiseLike<Element>;
 
 interface Publication {
 	push(value: Props): unknown;
@@ -433,12 +430,20 @@ interface Publication {
 
 // TODO: the methods of this class look suspiciously like an iterator, maybe we can make this class extend ComponentIterator and have the pulling/iterating logic on view, or move all updateChildren calls to the Controller consistently.
 // A Controller is an iterator or async iterator which updates the children of the view with every iteration. If an iteration is synchronous, it is updated whenever the view is updated. If an iteration is asynchronous, it will update the view on its own time, and further view updates are passed into the iterator asynchronously (how?). If it is synchronous but the children are asynchronous, then this whole sync/async distinction falls apart. Maybe we should just make update uniformly asynchronous?
+//
+// Things the Controller needs to do:
+// - turn sync fn, async fn, sync gen, async gen into an iterator.
+// - call the fn/gen with a newly created Context.
+// - if the iterator is sync, update the views children whenever an update is scheduled.
+// - if the iterator is async, constantly pull values from the iterator and do some other stuff
 class Controller {
-	private publications: Set<Publication> = new Set();
 	private ctx = new Context(this.view, this);
 	private iter?: ComponentIterator;
-	private result?: IteratorResult<Element, Element | void>;
-	private promise?: Promise<void>;
+	private result?: ComponentIteratorResult;
+	private publications: Set<Publication> = new Set();
+	private pulling = false;
+	private pending: Promise<void | undefined> | void | undefined;
+	private enqueued: Promise<void | undefined> | void | undefined;
 	constructor(private view: View, private tag: Component) {}
 
 	subscribe(): AsyncGenerator<Props> {
@@ -490,10 +495,10 @@ class Controller {
 	// }
 
 	private initialize(): Promise<void> | void {
-		const value:
-			| ComponentIterator
-			| PromiseLike<Element>
-			| Element = this.tag.call(this.ctx, this.view.props);
+		const value: ComponentIterator | MaybePromiseLike<Element> = this.tag.call(
+			this.ctx,
+			this.view.props,
+		);
 		if (isIteratorOrAsyncIterator(value)) {
 			this.iter = value;
 			const result = this.iter.next();
@@ -503,30 +508,29 @@ class Controller {
 			} else {
 				return this.iterate(result);
 			}
-		} else if (isPromiseLike(value)) {
-			this.iter = createAsyncIterator(this.ctx, this.view.tag as any);
-			return this.pull(
-				Promise.resolve(value).then((value) => ({value, done: false})),
-			);
 		} else {
-			this.iter = createSyncIterator(this.ctx, this.view.tag as any);
+			this.iter = createIterator(this.ctx, this.view.tag as any);
 			return this.iterate({value, done: false});
 		}
 	}
 
-	private iterate(result: IteratorResult<Element>): Promise<void> | void {
+	private iterate(result: ComponentIteratorResult): Promise<void> | void {
 		this.result = result;
 		if (this.result.value == null) {
 			return this.view.updateChildren([]);
-		} else if (this.result.value.sigil !== ElementSigil) {
-			throw new TypeError("Element not returned");
+		} else if (isPromiseLike(result.value)) {
+			// TODO: tie this into this.pending/this.enqueued stuff.
+			return Promise.resolve(result.value).then((value) => {
+				return this.view.updateChildren(value as Child);
+			});
 		}
 
-		return this.view.updateChildren(this.result.value);
+		return this.view.updateChildren(this.result.value as Child);
 	}
 
 	// TODO: handle resultP rejecting
-	private pull(resultP: Promise<IteratorResult<Element>>): Promise<void> {
+	private pull(resultP: Promise<ComponentIteratorResult>): Promise<void> {
+		this.pulling = true;
 		return resultP.then((result) => {
 			const p = this.iterate(result);
 			let nodeOrNodes:
@@ -547,7 +551,7 @@ class Controller {
 			if (!result.done) {
 				const resultP = this.iter!.next(nodeOrNodes);
 				if (isPromiseLike(resultP)) {
-					this.promise = this.pull(resultP);
+					this.pending = this.pull(resultP);
 				} else {
 					this.result = resultP;
 					// TODO: trigger this branch
@@ -561,19 +565,28 @@ class Controller {
 
 	refresh(): Promise<void> | void {
 		if (this.iter === undefined) {
-			return this.initialize();
-		}
-
-		if (this.promise === undefined) {
-			// TODO: this feels wrong. If the children of a sync component are async, should we wait for the children to settle before pulling the next result? If so, how do we deal with updates that come in before the children have settled? The current behavior is surprising in that a sync generator component which has async children will resume undefined/stale nodes if update is called faster than the children settle.
-			const result = this.iter.next(this.view.nodeOrNodes!) as IteratorResult<
+			this.pending = this.initialize();
+			return this.pending;
+		} else if (this.pulling) {
+			this.publish();
+			return this.pending;
+		} else if (this.pending === undefined) {
+			const result = this.iter.next(this.view.nodeOrNodes) as IteratorResult<
 				Element
 			>;
-			return this.iterate(result);
-		} else {
-			this.publish();
-			return this.promise;
+			this.pending = this.iterate(result);
+		} else if (this.enqueued === undefined) {
+			this.enqueued = this.pending.then(() => {
+				this.pending = this.enqueued;
+				this.enqueued = undefined;
+				const result = this.iter!.next(this.view.nodeOrNodes) as IteratorResult<
+					Element
+				>;
+				return this.iterate(result);
+			});
 		}
+
+		return this.enqueued;
 	}
 
 	unmount(): Promise<void> | void {
