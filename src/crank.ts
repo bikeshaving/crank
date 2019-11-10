@@ -256,13 +256,13 @@ export class View {
 				}
 
 				// TODO: turn this pending/enqueued pattern into a higher-order function or something. Also, shouldn’t components similarly use this logic
-				this.pending = update.then(() => {
-					this.commit();
+				this.pending = update.then(async () => {
+					await this.commit();
+					this.pending = this.enqueued;
 				});
 				return this.pending;
 			} else if (this.enqueued === undefined) {
 				this.enqueued = this.pending.then(() => {
-					this.pending = this.enqueued;
 					this.enqueued = undefined;
 					const update = this.updateChildren(this.props.children);
 					return Promise.resolve(update).then(() => this.commit());
@@ -574,10 +574,16 @@ class Controller {
 			const result = this.iter.next(this.view.nodeOrNodes) as IteratorResult<
 				Element
 			>;
-			this.pending = this.iterate(result);
+			const update = this.iterate(result);
+			if (update === undefined) {
+				return;
+			}
+
+			this.pending = update.then(() => {
+				this.pending = this.enqueued;
+			});
 		} else if (this.enqueued === undefined) {
 			this.enqueued = this.pending.then(() => {
-				this.pending = this.enqueued;
 				this.enqueued = undefined;
 				const result = this.iter!.next(this.view.nodeOrNodes) as IteratorResult<
 					Element
