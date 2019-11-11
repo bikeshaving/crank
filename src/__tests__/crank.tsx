@@ -391,7 +391,7 @@ describe("sync generator component", () => {
 			let i = 0;
 			for (const _ of this) {
 				const yielded = yield <Async>Hello {i++}</Async>;
-				mock(yielded);
+				mock((yielded as any).outerHTML);
 			}
 		}
 
@@ -406,23 +406,20 @@ describe("sync generator component", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 0</span></div>");
 		const p2 = ctx.refresh();
 		await Promise.resolve();
-		const span = document.createElement("span");
-		span.appendChild(document.createTextNode("Hello 0"));
 		expect(mock).toHaveBeenCalledTimes(1);
-		expect(mock).toHaveBeenCalledWith(span);
+		expect(mock).toHaveBeenCalledWith("<span>Hello 0</span>");
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 0</span></div>");
 		await p2;
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
 		ctx.refresh();
 		await Promise.resolve();
 		expect(mock).toHaveBeenCalledTimes(2);
-		span.firstChild!.nodeValue = "Hello 1";
-		expect(mock).toHaveBeenCalledWith(span);
+		expect(mock).toHaveBeenCalledWith("<span>Hello 1</span>");
 	});
 });
 
 describe("async generator component", () => {
 	afterEach(() => {
-		document.body.innerHTML = "";
 		render(null, document.body);
 	});
 
