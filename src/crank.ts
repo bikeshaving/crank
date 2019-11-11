@@ -14,6 +14,9 @@ declare global {
 	}
 }
 
+type MaybePromise<T> = Promise<T> | T;
+type MaybePromiseLike<T> = PromiseLike<T> | T;
+
 function isPromiseLike(value: any): value is PromiseLike<unknown> {
 	return value != null && typeof value.then === "function";
 }
@@ -30,47 +33,38 @@ function isIteratorOrAsyncIterator(
 	return value != null && typeof value.next === "function";
 }
 
-type MaybePromise<T> = Promise<T> | T;
-type MaybePromiseLike<T> = PromiseLike<T> | T;
-
 // control tags are symbols that can be used as element tags which have special behavior during rendering
 // TODO: user-defined control tags?
 export const Default = Symbol("Default");
 export type Default = typeof Default;
-
 export const Root = Symbol("Root");
 export type Root = typeof Root;
-
 // TODO: implement these control tags
 // TODO: I wonder if the following tags can be implemented without defining a custom function for each tag for every environment
 // export const Copy = Symbol("Copy");
 // export type Copy = typeof Copy;
-//
 // export const Fragment = Symbol("Fragment");
 // export type Fragment = typeof Fragment;
-//
 // export const Portal = Symbol("Portal");
 // export type Portal = typeof Portal;
-
 export type ControlTag = Root; // | Copy | Fragment | Portal;
-
 export type Tag<TProps extends Props = Props> =
 	| Component<TProps>
 	| ControlTag
 	| string;
-
-// TODO: rename to Node?
+// TODO: rename to Node or NodeValue?
 export type Child = Element | string | number | boolean | null | undefined;
 
 export interface Children extends Iterable<Child | Children> {}
 
 export interface Props {
-	[key: string]: any;
+	[name: string]: any;
 	children?: Child | Children;
 }
 
 export const ElementSigil: unique symbol = Symbol.for("crank.element");
 export type ElementSigil = typeof ElementSigil;
+
 // TODO: parameterize Props
 export interface Element<T extends Tag = Tag> {
 	sigil: ElementSigil;
@@ -80,19 +74,6 @@ export interface Element<T extends Tag = Tag> {
 
 export function isElement(value: any): value is Element {
 	return value != null && value.sigil === ElementSigil;
-}
-
-export function* flattenChildren(
-	childOrChildren: Child | Children,
-): Iterable<Child> {
-	if (typeof childOrChildren === "string" || !isIterable(childOrChildren)) {
-		yield childOrChildren;
-		return;
-	}
-
-	for (const child of childOrChildren) {
-		yield* flattenChildren(child);
-	}
 }
 
 export function createElement<T extends Tag>(
@@ -114,6 +95,19 @@ export function createElement<T extends Tag>(
 	return {sigil: ElementSigil, tag, props};
 }
 
+export function* flattenChildren(
+	childOrChildren: Child | Children,
+): Iterable<Child> {
+	if (typeof childOrChildren === "string" || !isIterable(childOrChildren)) {
+		yield childOrChildren;
+		return;
+	}
+
+	for (const child of childOrChildren) {
+		yield* flattenChildren(child);
+	}
+}
+
 export interface IntrinsicProps {
 	[key: string]: any;
 	children?: (Node | string)[];
@@ -124,17 +118,17 @@ export type IntrinsicIterator = Iterator<
 	Node | void,
 	IntrinsicProps
 >;
-
 export type IntrinsicFunction = (props: IntrinsicProps) => IntrinsicIterator;
 
 // TODO: use a left-child right-sibling tree, maybe we want to use an interface like this to make views dumb and performant
-//interface Fiber<T> {
-//	value: Child;
+//interface Node<T> {
+//	value: NodeValue;
 //	node?: T;
-//	child?: Fiber<T>;
-//	sibling?: Fiber<T>;
-//	parent?: Fiber<T>;
+//	child?: Node<T>;
+//	sibling?: Node<T>;
+//	parent?: Node<T>;
 //}
+//
 export class View {
 	tag: Tag;
 	props: Props;
@@ -163,8 +157,12 @@ export class View {
 		}
 	}
 
-	// TODO: cache this or something
+	private _nodes: (Node | string)[] | undefined;
 	get nodes(): (Node | string)[] {
+		if (this._nodes !== undefined) {
+			return this._nodes;
+		}
+
 		let buffer: string | undefined;
 		const nodes: (Node | string)[] = [];
 		for (const child of this.children) {
@@ -192,6 +190,7 @@ export class View {
 			nodes.push(buffer);
 		}
 
+		this._nodes = nodes;
 		return nodes;
 	}
 
@@ -255,7 +254,6 @@ export class View {
 					return;
 				}
 
-				// TODO: turn this pending/enqueued pattern into a higher-order function or something. Also, shouldn’t components similarly use this logic
 				this.pending = update
 					.then(() => this.commit())
 					.finally(() => {
@@ -285,6 +283,7 @@ export class View {
 	}
 
 	updateChildren(children: Child | Children): Promise<void> | void {
+		this._nodes = undefined;
 		const promises: Promise<void>[] = [];
 		let i = 0;
 		let view = this.children[i];
@@ -360,30 +359,15 @@ export class View {
 	unmount(): Promise<void> | void {
 		// TODO: figure out how to merge the logic between controller.unmount and here
 		if (this.controller !== undefined) {
-			return this.controller.unmount();
+			return this.controller.destroy();
 		}
 
-		let result: Promise<IteratorResult<any>> | IteratorResult<any> | undefined;
 		if (this.result !== undefined && !this.result.done) {
 			if (this.iter !== undefined && typeof this.iter.return === "function") {
-				result = this.iter.return();
+				this.result = this.iter.return();
 			}
 		}
 
-		if (isPromiseLike(result)) {
-			return result.then((result) => {
-				if (!result.done) {
-					throw new Error("Zombie iterator");
-				}
-
-				this.result = result;
-				return this.updateChildren([]);
-			});
-		} else if (result !== undefined && !result.done) {
-			throw new Error("Zombie iterator");
-		}
-
-		this.result = result;
 		return this.updateChildren([]);
 	}
 }
@@ -407,13 +391,13 @@ export class Context {
 }
 
 // TODO: get rid of the voids
-// generator functions will not be able to use this type until
+// (async) generator functions will not be able to return ComponentIterator until this issue is fixed https://github.com/microsoft/TypeScript/issues/34984
 export type ComponentIterator =
-	| Iterator<MaybePromise<Child>, MaybePromise<Child | void>, any>
+	| Iterator<MaybePromiseLike<Child>, MaybePromiseLike<Child | void>, any>
 	| AsyncIterator<Child, Child | void, any>;
 
 export type ComponentGenerator =
-	| Generator<MaybePromise<Child>, MaybePromise<Child | void>, any>
+	| Generator<MaybePromiseLike<Child>, MaybePromiseLike<Child | void>, any>
 	| AsyncGenerator<Child, Child | void, any>;
 
 export type ComponentIteratorResult = IteratorResult<
@@ -511,11 +495,7 @@ class Controller {
 		this.pulling = true;
 		return resultP.then((result) => {
 			const p = this.iterate(result);
-			let nodeOrNodes:
-				| (Node | string)[]
-				| Node
-				| string
-				| Promise<(Node | string)[] | Node | string>;
+			let nodeOrNodes: MaybePromise<(Node | string)[] | Node | string>;
 			if (p === undefined) {
 				this.view.commit();
 				nodeOrNodes = this.view.nodeOrNodes!;
@@ -527,14 +507,8 @@ class Controller {
 			}
 
 			if (!result.done) {
-				const resultP = this.iter!.next(nodeOrNodes);
-				if (isPromiseLike(resultP)) {
-					this.pending = this.pull(resultP);
-				} else {
-					this.result = resultP;
-					// TODO: trigger this branch
-					throw new Error("EY BABY");
-				}
+				const resultP = this.iter!.next(nodeOrNodes) as any;
+				this.pending = this.pull(resultP);
 			}
 
 			return Promise.resolve(nodeOrNodes).then(() => {});
@@ -578,11 +552,12 @@ class Controller {
 		return this.enqueued;
 	}
 
-	unmount(): Promise<void> | void {
+	destroy(): Promise<void> | void {
 		for (const pub of this.publications) {
 			pub.stop();
 		}
 
+		// TODO: dedupe this logic with intrinsic components
 		let result: Promise<IteratorResult<any>> | IteratorResult<any> | undefined;
 		if (this.result !== undefined && !this.result.done) {
 			if (this.iter !== undefined && typeof this.iter.return === "function") {
