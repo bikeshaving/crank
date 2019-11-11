@@ -241,17 +241,17 @@ describe("async function component", () => {
 			</div>,
 			document.body,
 		);
+		expect(document.body.innerHTML).toEqual("");
+		await expect(viewP1).resolves.toBeInstanceOf(View);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
+		await expect(viewP2).resolves.toBeInstanceOf(View);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 3</span></div>");
 		const viewP4 = render(
 			<div>
 				<AsyncFn message="Hello 4" />
 			</div>,
 			document.body,
 		);
-		expect(document.body.innerHTML).toEqual("");
-		await expect(viewP1).resolves.toBeInstanceOf(View);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
-		await expect(viewP2).resolves.toBeInstanceOf(View);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 4</span></div>");
 		const viewP5 = render(
 			<div>
 				<AsyncFn message="Hello 5" />
@@ -265,14 +265,14 @@ describe("async function component", () => {
 			document.body,
 		);
 		await expect(viewP3).resolves.toBeInstanceOf(View);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 4</span></div>");
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 3</span></div>");
 		await expect(viewP4).resolves.toBeInstanceOf(View);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 4</span></div>");
 		await expect(viewP5).resolves.toBeInstanceOf(View);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 6</span></div>");
 		await expect(viewP6).resolves.toBeInstanceOf(View);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 6</span></div>");
-		expect(AsyncFn).toHaveBeenCalledTimes(3);
+		expect(AsyncFn).toHaveBeenCalledTimes(4);
 	});
 
 	test("rerender", async () => {

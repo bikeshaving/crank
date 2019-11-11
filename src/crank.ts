@@ -256,17 +256,28 @@ export class View {
 				}
 
 				// TODO: turn this pending/enqueued pattern into a higher-order function or something. Also, shouldn’t components similarly use this logic
-				this.pending = update.then(async () => {
-					await this.commit();
-					this.pending = this.enqueued;
-				});
+				this.pending = update
+					.then(() => this.commit())
+					.finally(() => {
+						this.pending = this.enqueued;
+						this.enqueued = undefined;
+					});
 				return this.pending;
 			} else if (this.enqueued === undefined) {
-				this.enqueued = this.pending.then(() => {
-					this.enqueued = undefined;
-					const update = this.updateChildren(this.props.children);
-					return Promise.resolve(update).then(() => this.commit());
-				});
+				this.enqueued = this.pending
+					.then(() => {
+						const update = this.updateChildren(this.props.children);
+						if (update === undefined) {
+							this.commit();
+							return;
+						}
+
+						return update.then(() => this.commit());
+					})
+					.finally(() => {
+						this.pending = this.enqueued;
+						this.enqueued = undefined;
+					});
 			}
 
 			return this.enqueued;
@@ -395,6 +406,7 @@ export class Context {
 	}
 }
 
+// TODO: get rid of the voids
 // generator functions will not be able to use this type until
 export type ComponentIterator =
 	| Iterator<MaybePromise<Child>, MaybePromise<Child | void>, any>
@@ -455,44 +467,11 @@ class Controller {
 		}, new SlidingBuffer(1));
 	}
 
-	publish(): void {
+	private publish(): void {
 		for (const pub of this.publications) {
 			pub.push(this.view.props);
 		}
 	}
-
-	// next(): Promise<ComponentIteratorResult> | ComponentIteratorResult {
-	// 	if (this.iter === undefined) {
-	// 		return this.initialize1();
-	// 	}
-
-	// 	this.publish();
-	// 	return this.iter.next();
-	// }
-
-	// private initialize1(
-	// ): Promise<ComponentIteratorResult> | ComponentIteratorResult {
-	// 	if (this.iter !== undefined) {
-	// 		throw new Error("Attempting to reinitialize controller");
-	// 	}
-
-	// 	const value:
-	// 		| ComponentIterator
-	// 		| PromiseLike<Element>
-	// 		| Element = this.tag.call(this.ctx, this.view.props);
-	// 	if (isIteratorOrAsyncIterator(value)) {
-	// 		this.iter = value;
-	// 		const result = this.iter.next();
-	// 		this.publish();
-	// 		return result;
-	// 	} else if (isPromiseLike(value)) {
-	// 		this.iter = createAsyncIterator(this.ctx, this.tag as any);
-	// 		return Promise.resolve(value).then((value) => ({value, done: false}));
-	// 	} else {
-	// 		this.iter = createSyncIterator(this.ctx, this.tag as any);
-	// 		return {value, done: false};
-	// 	}
-	// }
 
 	private initialize(): Promise<void> | void {
 		const value: ComponentIterator | MaybePromiseLike<Element> = this.tag.call(
@@ -519,7 +498,6 @@ class Controller {
 		if (this.result.value == null) {
 			return this.view.updateChildren([]);
 		} else if (isPromiseLike(result.value)) {
-			// TODO: tie this into this.pending/this.enqueued stuff.
 			return Promise.resolve(result.value).then((value) => {
 				return this.view.updateChildren(value as Child);
 			});
@@ -579,17 +557,22 @@ class Controller {
 				return;
 			}
 
-			this.pending = update.then(() => {
+			this.pending = update.finally(() => {
 				this.pending = this.enqueued;
+				this.enqueued = undefined;
 			});
 		} else if (this.enqueued === undefined) {
-			this.enqueued = this.pending.then(() => {
-				this.enqueued = undefined;
-				const result = this.iter!.next(this.view.nodeOrNodes) as IteratorResult<
-					Element
-				>;
-				return this.iterate(result);
-			});
+			this.enqueued = this.pending
+				.then(() => {
+					const result = this.iter!.next(
+						this.view.nodeOrNodes,
+					) as IteratorResult<Element>;
+					return this.iterate(result);
+				})
+				.finally(() => {
+					this.pending = this.enqueued;
+					this.enqueued = undefined;
+				});
 		}
 
 		return this.enqueued;
