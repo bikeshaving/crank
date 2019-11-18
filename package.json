@@ -21,24 +21,24 @@
     "@repeaterjs/repeater": "^3.0.1"
   },
   "devDependencies": {
-    "@types/jest": "^24.0.20",
-    "@typescript-eslint/eslint-plugin": "^2.6.0",
-    "@typescript-eslint/parser": "^2.6.0",
-    "core-js": "^3.3.5",
-    "eslint": "^6.6.0",
-    "eslint-config-prettier": "^6.5.0",
+    "@types/jest": "^24.0.23",
+    "@typescript-eslint/eslint-plugin": "^2.7.0",
+    "@typescript-eslint/parser": "^2.7.0",
+    "core-js": "^3.4.1",
+    "eslint": "^6.5.1",
+    "eslint-config-prettier": "^6.6.0",
     "eslint-config-recommended-plus-types": "^1.0.0",
-    "eslint-plugin-jest": "^23.0.2",
+    "eslint-plugin-jest": "^23.0.4",
     "eslint-plugin-prettier": "^3.1.1",
     "eslint-plugin-react": "^7.16.0",
     "jest": "^24.9.0",
     "mutationobserver-shim": "^0.3.3",
-    "prettier": "^1.18.2",
-    "rollup": "^1.26.0",
-    "rollup-plugin-typescript2": "^0.25.1",
+    "prettier": "^1.19.1",
+    "rollup": "^1.27.0",
+    "rollup-plugin-typescript2": "^0.25.2",
     "shx": "^0.3.2",
     "ts-jest": "^24.1.0",
-    "typescript": "^3.6.4"
+    "typescript": "^3.7.2"
   },
   "publishConfig": {
     "access": "public"
