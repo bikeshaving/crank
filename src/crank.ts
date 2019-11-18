@@ -140,8 +140,8 @@ export class View {
 	// These properties are exclusively used to batch intrinsic components with async children. There must be a better way to do this than to define these properties on View.
 	// whether or not the parent is updating this component or the component is being updated by the parent
 	private updating = false;
-	private pending: Promise<void | undefined> | void | undefined;
-	private enqueued: Promise<void | undefined> | void | undefined;
+	private pending: Promise<undefined> | undefined;
+	private enqueued: Promise<undefined> | undefined;
 	// TODO: left-child right-sibling tree
 	private children: (View | string | undefined)[] = [];
 	// TODO: stop passing env into this thing.
@@ -250,8 +250,6 @@ export class View {
 	}
 
 	refresh(): Promise<void> | void {
-		// for component views, children are produced by the component
-		// for intrinsics, children are passed via props
 		if (this.pending === undefined) {
 			// TODO: move this to a separate method
 			let children: MaybePromiseLike<Child | Children>;
@@ -273,7 +271,7 @@ export class View {
 				children = this.props.children;
 			}
 
-			let update: Promise<void> | void;
+			let update: Promise<undefined> | undefined;
 			if (isPromiseLike(children)) {
 				update = Promise.resolve(children).then((children) =>
 					this.updateChildren(children),
@@ -287,12 +285,12 @@ export class View {
 				return;
 			}
 
-			this.pending = update
-				.then(() => this.commit())
-				.finally(() => {
-					this.pending = this.enqueued;
-					this.enqueued = undefined;
-				});
+			update = update.then(() => void this.commit());
+
+			this.pending = update.finally(() => {
+				this.pending = this.enqueued;
+				this.enqueued = undefined;
+			});
 
 			return this.pending;
 		} else if (this.enqueued === undefined) {
@@ -311,7 +309,7 @@ export class View {
 						children = this.props.children;
 					}
 
-					let update: Promise<void> | void;
+					let update: Promise<undefined> | undefined;
 					if (isPromiseLike(children)) {
 						update = Promise.resolve(children).then((children) =>
 							this.updateChildren(children),
@@ -325,7 +323,7 @@ export class View {
 						return;
 					}
 
-					return update.then(() => this.commit());
+					return update.then(() => void this.commit());
 				})
 				.finally(() => {
 					this.pending = this.enqueued;
@@ -336,9 +334,9 @@ export class View {
 		return this.enqueued;
 	}
 
-	updateChildren(children: Child | Children): Promise<void> | void {
+	updateChildren(children: Child | Children): Promise<undefined> | undefined {
 		this._nodes = undefined;
-		const promises: Promise<void>[] = [];
+		const promises: Promise<any>[] = [];
 		let i = 0;
 		let view = this.children[i];
 		for (const elem of flattenChildren(children)) {
@@ -387,7 +385,7 @@ export class View {
 		}
 
 		if (promises.length) {
-			return Promise.all(promises).then(() => {});
+			return Promise.all(promises).then(() => undefined);
 		}
 	}
 
