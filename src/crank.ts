@@ -53,9 +53,11 @@ export type Tag<TProps extends Props = Props> =
 	| ControlTag
 	| string;
 // TODO: rename to Node or NodeValue?
-export type Child = Element | string | number | boolean | null | undefined;
+export type Child = string | number | boolean | null | undefined | Element;
 
-export interface Children extends Iterable<Child | Children> {}
+export type Children = Iterable<Child | Children>;
+
+export type ChildOrChildren = Child | Children;
 
 export interface Props {
 	[name: string]: any;
@@ -128,22 +130,20 @@ export type IntrinsicFunction = (props: IntrinsicProps) => IntrinsicIterator;
 //	sibling?: Node<T>;
 //	parent?: Node<T>;
 //}
-//
 export class View {
 	tag: Tag;
 	props: Props;
-	// TODO: parameterize Node
+	// TODO: parameterize this value
 	private node?: Node;
-	private iter?: IntrinsicIterator;
-	private result?: IteratorResult<Node | undefined>;
-	// These properties are exclusively used to batch intrinsic components with async children. There must be a better way to do this than to define these properties on View.
-	private pending: Promise<void | undefined> | void | undefined;
-	private enqueued: Promise<void | undefined> | void | undefined;
 	private controller?: Controller;
-	// TODO: left-child right-sibling tree
-	private children: (View | string | undefined)[] = [];
+	private committer?: IntrinsicIterator;
+	// These properties are exclusively used to batch intrinsic components with async children. There must be a better way to do this than to define these properties on View.
 	// whether or not the parent is updating this component or the component is being updated by the parent
 	private updating = false;
+	private pending: Promise<void | undefined> | void | undefined;
+	private enqueued: Promise<void | undefined> | void | undefined;
+	// TODO: left-child right-sibling tree
+	private children: (View | string | undefined)[] = [];
 	// TODO: stop passing env into this thing.
 	constructor(elem: Element, private env: Environment, private parent?: View) {
 		this.tag = elem.tag;
@@ -153,7 +153,7 @@ export class View {
 				"Root Element must always be the root of an element tree",
 			);
 		} else if (typeof elem.tag === "function") {
-			this.controller = new Controller(this, elem.tag);
+			this.controller = new Controller(elem.tag, this);
 		}
 	}
 
@@ -242,44 +242,98 @@ export class View {
 
 		this.updating = true;
 		this.props = elem.props;
-		// for component views, children are produced by the component
 		if (this.controller !== undefined) {
-			return this.controller.refresh();
-		} else {
-			// for intrinsics, children are passed via props
-			if (this.pending === undefined) {
-				const update = this.updateChildren(this.props.children);
-				if (update === undefined) {
-					this.commit();
-					return;
-				}
+			this.controller.publish();
+		}
 
-				this.pending = update
-					.then(() => this.commit())
-					.finally(() => {
-						this.pending = this.enqueued;
-						this.enqueued = undefined;
-					});
-				return this.pending;
-			} else if (this.enqueued === undefined) {
-				this.enqueued = this.pending
-					.then(() => {
-						const update = this.updateChildren(this.props.children);
-						if (update === undefined) {
-							this.commit();
-							return;
+		return this.refresh();
+	}
+
+	refresh(): Promise<void> | void {
+		// for component views, children are produced by the component
+		// for intrinsics, children are passed via props
+		if (this.pending === undefined) {
+			// TODO: move this to a separate method
+			let children: MaybePromiseLike<Child | Children>;
+			if (this.controller !== undefined) {
+				const result = this.controller.next(this.nodeOrNodes);
+				if (isPromiseLike(result)) {
+					// TODO: eliminate void
+					children = result.then((result) => {
+						if (!result.done) {
+							void this.refresh();
 						}
 
-						return update.then(() => this.commit());
-					})
-					.finally(() => {
-						this.pending = this.enqueued;
-						this.enqueued = undefined;
+						return result.value as any;
 					});
+				} else {
+					children = result.value as any;
+				}
+			} else {
+				children = this.props.children;
 			}
 
-			return this.enqueued;
+			let update: Promise<void> | void;
+			if (isPromiseLike(children)) {
+				update = Promise.resolve(children).then((children) =>
+					this.updateChildren(children),
+				);
+			} else {
+				update = this.updateChildren(children);
+			}
+
+			if (update === undefined) {
+				this.commit();
+				return;
+			}
+
+			this.pending = update
+				.then(() => this.commit())
+				.finally(() => {
+					this.pending = this.enqueued;
+					this.enqueued = undefined;
+				});
+
+			return this.pending;
+		} else if (this.enqueued === undefined) {
+			this.enqueued = this.pending
+				.then(() => {
+					// TODO: move this to a separate method
+					let children: MaybePromiseLike<Child | Children>;
+					if (this.controller !== undefined) {
+						const result = this.controller.next(this.nodeOrNodes);
+						if (isPromiseLike(result)) {
+							children = result.then((result) => result.value as any);
+						} else {
+							children = result.value as any;
+						}
+					} else {
+						children = this.props.children;
+					}
+
+					let update: Promise<void> | void;
+					if (isPromiseLike(children)) {
+						update = Promise.resolve(children).then((children) =>
+							this.updateChildren(children),
+						);
+					} else {
+						update = this.updateChildren(children);
+					}
+
+					if (update === undefined) {
+						this.commit();
+						return;
+					}
+
+					return update.then(() => this.commit());
+				})
+				.finally(() => {
+					this.pending = this.enqueued;
+					this.enqueued = undefined;
+				});
 		}
+
+		return this.enqueued;
 	}
 
 	updateChildren(children: Child | Children): Promise<void> | void {
@@ -344,49 +398,39 @@ export class View {
 			}
 		} else {
 			const props = {...this.props, children: this.nodes};
-			if (this.iter == null) {
+			if (this.committer === undefined) {
 				const intrinsic = this.intrinsicFor(this.tag);
-				this.iter = intrinsic(props);
+				this.committer = intrinsic(props);
 			}
 
-			this.result = (this.iter as IntrinsicIterator).next(props);
-			this.node = this.result.value;
+			const result = this.committer.next(props);
+			if (result.done) {
+				delete this.committer;
+			}
+
+			this.node = result.value as Node | undefined;
 		}
 
 		this.updating = false;
 	}
 
 	unmount(): Promise<void> | void {
-		// TODO: figure out how to merge the logic between controller.unmount and here
-		if (this.controller !== undefined) {
-			return this.controller.destroy();
+		if (this.committer !== undefined) {
+			this.committer.return && this.committer.return();
+			delete this.committer;
 		}
 
-		if (this.result !== undefined && !this.result.done) {
-			if (this.iter !== undefined && typeof this.iter.return === "function") {
-				this.result = this.iter.return();
-			}
+		let result: any;
+		if (this.controller !== undefined) {
+			result = this.controller.return();
+			delete this.controller;
+		}
+
+		if (isPromiseLike(result)) {
+			return Promise.resolve(result).then(() => this.updateChildren([]));
 		}
 
 		return this.updateChildren([]);
-	}
-}
-
-export class Context {
-	constructor(private view: View, private controller: Controller) {}
-
-	*[Symbol.iterator](): Generator<Props> {
-		while (true) {
-			yield this.view.props;
-		}
-	}
-
-	[Symbol.asyncIterator](): AsyncGenerator<Props> {
-		return this.controller.subscribe();
-	}
-
-	refresh(): Promise<void> | void {
-		return this.controller.refresh();
 	}
 }
 
@@ -398,7 +442,11 @@ export type ComponentIterator =
 			MaybePromiseLike<Child | Children | void>,
 			any
 	  >
-	| AsyncIterator<Child | Children, Child | Children | void, any>;
+	| AsyncIterator<
+			MaybePromiseLike<Child | Children>,
+			MaybePromiseLike<Child | Children | void>,
+			any
+	  >;
 
 export type ComponentGenerator =
 	| Generator<
@@ -406,7 +454,11 @@ export type ComponentGenerator =
 			MaybePromiseLike<Child | Children | void>,
 			any
 	  >
-	| AsyncGenerator<Child | Children, Child | Children | void, any>;
+	| AsyncGenerator<
+			MaybePromiseLike<Child | Children>,
+			MaybePromiseLike<Child | Children | void>,
+			any
+	  >;
 
 export type ComponentIteratorResult = IteratorResult<
 	MaybePromiseLike<Child | Children>,
@@ -432,159 +484,91 @@ interface Publication {
 	stop(): unknown;
 }
 
-// TODO: the methods of this class look suspiciously like an iterator, maybe we can make this class extend ComponentIterator and have the pulling/iterating logic on view, or move all updateChildren calls to the Controller consistently.
-// A Controller is an iterator or async iterator which updates the children of the view with every iteration. If an iteration is synchronous, it is updated whenever the view is updated. If an iteration is asynchronous, it will update the view on its own time, and further view updates are passed into the iterator asynchronously (how?). If it is synchronous but the children are asynchronous, then this whole sync/async distinction falls apart. Maybe we should just make update uniformly asynchronous?
-//
-// Things the Controller needs to do:
-// - turn sync fn, async fn, sync gen, async gen into an iterator.
-// - call the fn/gen with a newly created Context.
-// - if the iterator is sync, update the views children whenever an update is scheduled.
-// - if the iterator is async, constantly pull values from the iterator and do some other stuff
-class Controller {
-	private ctx = new Context(this.view, this);
-	private iter?: ComponentIterator;
-	private result?: ComponentIteratorResult;
-	private publications: Set<Publication> = new Set();
-	private pulling = false;
-	private pending: Promise<void | undefined> | void | undefined;
-	private enqueued: Promise<void | undefined> | void | undefined;
-	constructor(private view: View, private tag: Component) {}
+export class Context {
+	constructor(private controller: Controller, private view: View) {}
 
-	subscribe(): AsyncGenerator<Props> {
-		return new Repeater(async (push, stop) => {
-			const pub = {push, stop};
-			this.publications.add(pub);
-			await stop;
-			this.publications.delete(pub);
-		}, new SlidingBuffer(1));
-	}
-
-	private publish(): void {
-		for (const pub of this.publications) {
-			pub.push(this.view.props);
+	*[Symbol.iterator](): Generator<Props> {
+		while (true) {
+			yield this.view.props;
 		}
 	}
 
-	private initialize(): Promise<void> | void {
-		const value = this.tag.call(this.ctx, this.view.props);
-		if (isIteratorOrAsyncIterator(value)) {
-			this.iter = value;
-			const result = this.iter.next();
-			if (isPromiseLike(result)) {
-				this.publish();
-				return this.pull(result);
-			} else {
-				return this.iterate(result);
-			}
-		} else {
-			this.iter = createChildIterator(this.ctx, this.view.tag as any);
-			return this.iterate({value, done: false});
-		}
-	}
-
-	private iterate(result: ComponentIteratorResult): Promise<void> | void {
-		this.result = result;
-		if (this.result.value == null) {
-			return this.view.updateChildren([]);
-		} else if (isPromiseLike(result.value)) {
-			return Promise.resolve(result.value).then((value) => {
-				return this.view.updateChildren(value as Child);
-			});
-		}
-
-		return this.view.updateChildren(this.result.value as Child);
-	}
-
-	// TODO: handle resultP rejecting
-	private pull(resultP: Promise<ComponentIteratorResult>): Promise<void> {
-		this.pulling = true;
-		return resultP.then((result) => {
-			const p = this.iterate(result);
-			let nodeOrNodes: MaybePromise<(Node | string)[] | Node | string>;
-			if (p === undefined) {
-				this.view.commit();
-				nodeOrNodes = this.view.nodeOrNodes!;
-			} else {
-				nodeOrNodes = p.then(() => {
-					this.view.commit();
-					return this.view.nodeOrNodes!;
-				});
-			}
-
-			if (!result.done) {
-				const resultP = this.iter!.next(nodeOrNodes) as any;
-				this.pending = this.pull(resultP);
-			}
-
-			return Promise.resolve(nodeOrNodes).then(() => {});
-		});
+	[Symbol.asyncIterator](): AsyncGenerator<Props> {
+		return this.controller.subscribe();
 	}
 
 	refresh(): Promise<void> | void {
-		if (this.iter === undefined) {
-			this.pending = this.initialize();
-			return this.pending;
-		} else if (this.pulling) {
-			this.publish();
-			return this.pending;
-		} else if (this.pending === undefined) {
-			const result = this.iter.next(this.view.nodeOrNodes) as IteratorResult<
-				Element
-			>;
-			const update = this.iterate(result);
-			if (update === undefined) {
-				return;
-			}
+		return this.view.refresh();
+	}
+}
 
-			this.pending = update.finally(() => {
-				this.pending = this.enqueued;
-				this.enqueued = undefined;
-			});
-		} else if (this.enqueued === undefined) {
-			this.enqueued = this.pending
-				.then(() => {
-					const result = this.iter!.next(
-						this.view.nodeOrNodes,
-					) as IteratorResult<Element>;
-					return this.iterate(result);
-				})
-				.finally(() => {
-					this.pending = this.enqueued;
-					this.enqueued = undefined;
-				});
+class Controller {
+	private ctx = new Context(this, this.view);
+	private pubs = new Set<Publication>();
+	private iter?: ComponentIterator;
+	constructor(private tag: Component, private view: View) {}
+
+	private initialize(): MaybePromise<ComponentIteratorResult> {
+		const value = this.tag.call(this.ctx as any, this.view.props);
+		if (isIteratorOrAsyncIterator(value)) {
+			this.iter = value;
+			return this.iter.next();
 		}
 
-		return this.enqueued;
+		// TODO: remove the type assertion from this.ctx
+		this.iter = createChildIterator(this.ctx as any, this.tag as any);
+		return {value, done: false};
 	}
 
-	destroy(): Promise<void> | void {
-		for (const pub of this.publications) {
+	next(
+		value?: any,
+	): Promise<ComponentIteratorResult> | ComponentIteratorResult {
+		if (this.iter === undefined) {
+			return this.initialize();
+		}
+
+		return this.iter.next(value);
+	}
+
+	return(value?: any): MaybePromise<ComponentIteratorResult> {
+		if (this.iter === undefined) {
+			this.iter = (function*() {})();
+		}
+
+		for (const pub of this.pubs) {
 			pub.stop();
 		}
 
-		// TODO: dedupe this logic with intrinsic components
-		let result: Promise<IteratorResult<any>> | IteratorResult<any> | undefined;
-		if (this.result !== undefined && !this.result.done) {
-			if (this.iter !== undefined && typeof this.iter.return === "function") {
-				result = this.iter.return();
-			}
+		return this.iter.return ? this.iter.return(value) : {value, done: true};
+	}
+
+	throw(error: any): MaybePromise<ComponentIteratorResult> {
+		if (this.iter === undefined) {
+			this.iter = (function*() {})();
 		}
 
-		if (isPromiseLike(result)) {
-			return result.then((result) => {
-				if (!result.done) {
-					throw new Error("Zombie iterator");
-				}
-
-				this.result = result;
-				return this.view.updateChildren([]);
-			});
-		} else if (result !== undefined && !result.done) {
-			throw new Error("Zombie iterator");
+		if (this.iter.throw) {
+			return this.iter.throw(error);
 		}
 
-		this.result = result;
-		return this.view.updateChildren([]);
+		throw error;
+	}
+
+	// NOT SURE THIS IF THIS BELONGS HERE
+	subscribe(): AsyncGenerator<Props> {
+		return new Repeater(async (push, stop) => {
+			push(this.view.props);
+			const pub = {push, stop};
+			this.pubs.add(pub);
+			await stop;
+			this.pubs.delete(pub);
+		}, new SlidingBuffer(1));
+	}
+
+	publish(): void {
+		for (const pub of this.pubs) {
+			pub.push(this.view.props);
+		}
 	}
 }
 
