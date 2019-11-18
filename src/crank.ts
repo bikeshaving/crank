@@ -520,7 +520,7 @@ class Controller {
 
 	next(
 		value?: any,
-	): Promise<ComponentIteratorResult> | ComponentIteratorResult {
+	): MaybePromise<ComponentIteratorResult> {
 		if (this.iter === undefined) {
 			return this.initialize();
 		}
