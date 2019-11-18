@@ -393,21 +393,29 @@ export class Context {
 // TODO: get rid of the voids
 // (async) generator functions will not be able to return ComponentIterator until this issue is fixed https://github.com/microsoft/TypeScript/issues/34984
 export type ComponentIterator =
-	| Iterator<MaybePromiseLike<Child>, MaybePromiseLike<Child | void>, any>
-	| AsyncIterator<Child, Child | void, any>;
+	| Iterator<
+			MaybePromiseLike<Child | Children>,
+			MaybePromiseLike<Child | Children | void>,
+			any
+	  >
+	| AsyncIterator<Child | Children, Child | Children | void, any>;
 
 export type ComponentGenerator =
-	| Generator<MaybePromiseLike<Child>, MaybePromiseLike<Child | void>, any>
-	| AsyncGenerator<Child, Child | void, any>;
+	| Generator<
+			MaybePromiseLike<Child | Children>,
+			MaybePromiseLike<Child | Children | void>,
+			any
+	  >
+	| AsyncGenerator<Child | Children, Child | Children | void, any>;
 
 export type ComponentIteratorResult = IteratorResult<
-	MaybePromiseLike<Child>,
-	MaybePromiseLike<Child | void>
+	MaybePromiseLike<Child | Children>,
+	MaybePromiseLike<Child | Children | void>
 >;
 
-export function* createIterator(
+export function* createChildIterator(
 	context: Context,
-	tag: (this: Context, props: Props) => Child,
+	tag: (this: Context, props: Props) => MaybePromise<Child | Children>,
 ): ComponentGenerator {
 	for (const props of context) {
 		yield tag.call(context, props);
@@ -417,7 +425,7 @@ export function* createIterator(
 export type Component<TProps extends Props = Props> = (
 	this: Context,
 	props: TProps,
-) => ComponentIterator | MaybePromiseLike<Element>;
+) => ComponentIterator | MaybePromiseLike<Child | Children>;
 
 interface Publication {
 	push(value: Props): unknown;
@@ -458,10 +466,7 @@ class Controller {
 	}
 
 	private initialize(): Promise<void> | void {
-		const value: ComponentIterator | MaybePromiseLike<Element> = this.tag.call(
-			this.ctx,
-			this.view.props,
-		);
+		const value = this.tag.call(this.ctx, this.view.props);
 		if (isIteratorOrAsyncIterator(value)) {
 			this.iter = value;
 			const result = this.iter.next();
@@ -472,7 +477,7 @@ class Controller {
 				return this.iterate(result);
 			}
 		} else {
-			this.iter = createIterator(this.ctx, this.view.tag as any);
+			this.iter = createChildIterator(this.ctx, this.view.tag as any);
 			return this.iterate({value, done: false});
 		}
 	}
