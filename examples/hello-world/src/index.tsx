@@ -9,12 +9,12 @@ async function* List(
 	let i = 0;
 	for await ({elems} of this) {
 		if (i++ % 5 === 0) {
-			yield <div>Loading {elems.length} items...</div>;
+			yield (<div>Loading {elems.length} items...</div>);
 			await new Promise((resolve) => setTimeout(resolve, 4000));
 		}
 
 		const lis = elems.map((i) => <li>{i}</li>);
-		yield <ul>{lis}</ul>;
+		yield (<ul>{lis}</ul>);
 		await new Promise((resolve) => setTimeout(resolve, 500));
 	}
 }

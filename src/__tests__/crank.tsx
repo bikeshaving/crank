@@ -325,7 +325,7 @@ describe("sync generator component", () => {
 					return;
 				}
 
-				yield <span>{message}</span>;
+				yield (<span>{message}</span>);
 			}
 		});
 
@@ -360,7 +360,7 @@ describe("sync generator component", () => {
 			ctx = this;
 			// eslint-disable-next-line
 			for (const _ of this) {
-				yield <span>Hello {i++}</span>;
+				yield (<span>Hello {i++}</span>);
 			}
 		}
 
@@ -391,7 +391,7 @@ describe("sync generator component", () => {
 			ctx = this;
 			let i = 0;
 			for (const _ of this) {
-				const yielded = yield <Async>Hello {i++}</Async>;
+				const yielded = yield (<Async>Hello {i++}</Async>);
 				mock((yielded as any).outerHTML);
 			}
 		}
@@ -431,9 +431,9 @@ describe("async generator component", () => {
 			{message}: {message: string},
 		): AsyncGenerator<Element> {
 			for await (const {message} of this) {
-				yield <span>Loading</span>;
+				yield (<span>Loading</span>);
 				await new Promise((resolve1) => (resolve = resolve1));
-				yield <span>{message}</span>;
+				yield (<span>{message}</span>);
 			}
 		});
 
@@ -466,7 +466,7 @@ describe("async generator component", () => {
 		let cleanup!: () => unknown;
 		async function* Cleanup() {
 			try {
-				yield <span>Hello</span>;
+				yield (<span>Hello</span>);
 			} finally {
 				await new Promise((resolve) => (cleanup = resolve));
 			}
