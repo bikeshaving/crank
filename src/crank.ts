@@ -53,7 +53,7 @@ export type Tag<TProps extends Props = Props> =
 	| ControlTag
 	| string;
 // TODO: rename to Node or NodeValue?
-export type Child = string | number | boolean | null | undefined | Element;
+export type Child = Element | string | number | boolean | null | undefined;
 
 export type Children = Iterable<Child | Children>;
 
@@ -140,6 +140,7 @@ export class View {
 	// These properties are exclusively used to batch intrinsic components with async children. There must be a better way to do this than to define these properties on View.
 	// whether or not the parent is updating this component or the component is being updated by the parent
 	private updating = false;
+	private pulling = false;
 	private pending: Promise<undefined> | undefined;
 	private enqueued: Promise<undefined> | undefined;
 	// TODO: left-child right-sibling tree
@@ -235,96 +236,70 @@ export class View {
 		}
 	}
 
-	update(elem: Element): Promise<void> | void {
+	update(elem: Element): Promise<undefined> | undefined {
 		if (this.tag !== elem.tag) {
 			throw new TypeError("Tag mismatch");
 		}
 
 		this.updating = true;
 		this.props = elem.props;
-		if (this.controller !== undefined) {
-			this.controller.publish();
-		}
-
 		return this.refresh();
 	}
 
-	refresh(): Promise<void> | void {
-		if (this.pending === undefined) {
-			// TODO: move this to a separate method
-			let children: MaybePromiseLike<Child | Children>;
-			if (this.controller !== undefined) {
-				const result = this.controller.next(this.nodeOrNodes);
-				if (isPromiseLike(result)) {
-					// TODO: eliminate void
-					children = result.then((result) => {
-						if (!result.done) {
-							void this.refresh();
-						}
+	_refresh(): Promise<undefined> | undefined {
+		let children: MaybePromiseLike<Child | Children>;
+		if (this.controller !== undefined) {
+			const result = this.controller.next(this.nodeOrNodes);
+			if (isPromiseLike(result)) {
+				this.pulling = true;
+				children = result.then((result) => {
+					if (!result.done) {
+						this.pending = this._refresh()!.then(() => void this.commit());
+					}
 
-						return result.value as any;
-					});
-				} else {
-					children = result.value as any;
-				}
+					return result.value as any;
+				});
 			} else {
-				children = this.props.children;
+				children = result.value as any;
 			}
+		} else {
+			children = this.props.children;
+		}
 
-			let update: Promise<undefined> | undefined;
-			if (isPromiseLike(children)) {
-				update = Promise.resolve(children).then((children) =>
-					this.updateChildren(children),
-				);
-			} else {
-				update = this.updateChildren(children);
+		let update: Promise<undefined> | undefined;
+		if (isPromiseLike(children)) {
+			update = Promise.resolve(children).then((children) =>
+				this.updateChildren(children),
+			);
+		} else {
+			update = this.updateChildren(children);
+		}
+
+		if (update === undefined) {
+			this.commit();
+			return;
+		}
+
+		return update.then(() => void this.commit());
+	}
+
+	refresh(): Promise<undefined> | undefined {
+		if (this.pulling) {
+			this.controller!.publish();
+			return this.pending;
+		} else if (this.pending === undefined) {
+			const update = this._refresh();
+			if (update !== undefined) {
+				this.pending = update.finally(() => {
+					this.pending = this.enqueued;
+					this.enqueued = undefined;
+				});
 			}
-
-			if (update === undefined) {
-				this.commit();
-				return;
-			}
-
-			update = update.then(() => void this.commit());
-
-			this.pending = update.finally(() => {
-				this.pending = this.enqueued;
-				this.enqueued = undefined;
-			});
 
 			return this.pending;
 		} else if (this.enqueued === undefined) {
 			this.enqueued = this.pending
-				.then(() => {
-					// TODO: move this to a separate method
-					let children: MaybePromiseLike<Child | Children>;
-					if (this.controller !== undefined) {
-						const result = this.controller.next(this.nodeOrNodes);
-						if (isPromiseLike(result)) {
-							children = result.then((result) => result.value as any);
-						} else {
-							children = result.value as any;
-						}
-					} else {
-						children = this.props.children;
-					}
-
-					let update: Promise<undefined> | undefined;
-					if (isPromiseLike(children)) {
-						update = Promise.resolve(children).then((children) =>
-							this.updateChildren(children),
-						);
-					} else {
-						update = this.updateChildren(children);
-					}
-
-					if (update === undefined) {
-						this.commit();
-						return;
-					}
-
-					return update.then(() => void this.commit());
-				})
+				.then(() => this._refresh())
 				.finally(() => {
 					this.pending = this.enqueued;
 					this.enqueued = undefined;
@@ -518,9 +493,7 @@ class Controller {
 		return {value, done: false};
 	}
 
-	next(
-		value?: any,
-	): MaybePromise<ComponentIteratorResult> {
+	next(value?: any): MaybePromise<ComponentIteratorResult> {
 		if (this.iter === undefined) {
 			return this.initialize();
 		}

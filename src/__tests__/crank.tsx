@@ -1,6 +1,7 @@
 /** @jsx createElement */
 import "core-js";
 import "mutationobserver-shim";
+import {Repeater} from "@repeaterjs/repeater";
 import {createElement, Context, Element, View} from "../crank";
 import {render} from "../envs/dom";
 
@@ -462,9 +463,33 @@ describe("async generator component", () => {
 		expect(AsyncGen).toHaveBeenCalledTimes(1);
 	});
 
+	test("multiple updates", async () => {
+		let push!: (value: Element) => unknown;
+		function Component() {
+			return new Repeater((push1) => (push = push1));
+		}
+
+		let p: any = render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		push(<span>Hello 1</span>);
+		await p;
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
+		push(<span>Hello 2</span>);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
+		push(<span>Hello 3</span>);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		push(<span>Hello 4</span>);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 3</span></div>");
+	});
+
 	test("async unmount", async () => {
 		let cleanup!: () => unknown;
-		async function* Cleanup() {
+		async function* Component() {
 			try {
 				yield (<span>Hello</span>);
 			} finally {
@@ -474,7 +499,7 @@ describe("async generator component", () => {
 
 		await render(
 			<div>
-				<Cleanup />
+				<Component />
 			</div>,
 			document.body,
 		);
