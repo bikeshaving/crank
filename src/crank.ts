@@ -10,11 +10,14 @@ declare global {
 		// typescript jsx children type checking is busted so we just opt out of it:
 		// https://github.com/microsoft/TypeScript/issues/14729
 		// https://github.com/microsoft/TypeScript/pull/29818
-		type ElementChildrenAttribute = {};
+		interface ElementChildrenAttribute {
+			children: Children;
+		}
 	}
 }
 
 type MaybePromise<T> = Promise<T> | T;
+
 type MaybePromiseLike<T> = PromiseLike<T> | T;
 
 function isPromiseLike(value: any): value is PromiseLike<unknown> {
@@ -33,12 +36,15 @@ function isIteratorOrAsyncIterator(
 	return value != null && typeof value.next === "function";
 }
 
-// control tags are symbols that can be used as element tags which have special behavior during rendering
 // TODO: user-defined control tags?
 export const Default = Symbol("Default");
+
 export type Default = typeof Default;
+
 export const Root = Symbol("Root");
+
 export type Root = typeof Root;
+
 // TODO: implement these control tags
 // TODO: I wonder if the following tags can be implemented without defining a custom function for each tag for every environment
 // export const Copy = Symbol("Copy");
@@ -47,11 +53,15 @@ export type Root = typeof Root;
 // export type Fragment = typeof Fragment;
 // export const Portal = Symbol("Portal");
 // export type Portal = typeof Portal;
-export type ControlTag = Root; // | Copy | Fragment | Portal;
+
+export type ControlTag = Root;
+
+// export type ControlTag = Root | Copy | Fragment | Portal;
 export type Tag<TProps extends Props = Props> =
 	| Component<TProps>
 	| ControlTag
 	| string;
+
 // TODO: rename to Node or NodeValue?
 export type Child = Element | string | number | boolean | null | undefined;
 
@@ -65,6 +75,7 @@ export interface Props {
 }
 
 export const ElementSigil: unique symbol = Symbol.for("crank.element");
+
 export type ElementSigil = typeof ElementSigil;
 
 // TODO: parameterize Props
@@ -115,36 +126,39 @@ export interface IntrinsicProps {
 	children?: (Node | string)[];
 }
 
-export type IntrinsicIterator = Iterator<
-	Node | undefined,
-	Node | void,
-	IntrinsicProps
->;
-export type IntrinsicFunction = (props: IntrinsicProps) => IntrinsicIterator;
+export type Committer = Iterator<Node | undefined, Node | void, IntrinsicProps>;
+
+export type Intrinsic = (props: IntrinsicProps) => Committer;
+
+export type Guest = View | string;
 
 // TODO: use a left-child right-sibling tree, maybe we want to use an interface like this to make views dumb and performant
-//interface Node<T> {
-//	value: NodeValue;
-//	node?: T;
-//	child?: Node<T>;
-//	sibling?: Node<T>;
-//	parent?: Node<T>;
+//interface Fiber<T extends string> {
+//	host?: T;
+//	guest?: Element | string;
+//	child?: Fiber<T>;
+//	sibling?: Fiber<T>;
+//	parent?: Fiber<T>;
+//	controller?: Controller;
+//	committer?: Committer;
 //}
 export class View {
 	tag: Tag;
 	props: Props;
 	// TODO: parameterize this value
 	private node?: Node;
-	private controller?: Controller;
-	private committer?: IntrinsicIterator;
-	private updating = false;
-	// These properties are exclusively used to batch intrinsic components with async children. There must be a better way to do this than to define these properties on View.
 	// whether or not the parent is updating this component or the component is being updated by the parent
+	private updating = false;
+	// TODO: The controller and committer properties are mutually exclusive.
+	// There must be a more beautiful way to split this up.
+	private committer?: Committer;
+	private controller?: Controller;
+	// These properties are exclusively used to batch intrinsic components with async children. There must be a better way to do this than to define these properties on View.
 	private pending?: Promise<undefined>;
 	private enqueued?: Promise<undefined>;
-	// TODO: left-child right-sibling tree
+	// TODO: Use a left-child right-sibling tree.
 	private children: (View | string | undefined)[] = [];
-	// TODO: stop passing env into this thing.
+	// TODO: Stop passing env into this thing.
 	constructor(elem: Element, private env: Environment, private parent?: View) {
 		this.tag = elem.tag;
 		this.props = elem.props;
@@ -152,8 +166,8 @@ export class View {
 			throw new TypeError(
 				"Root Element must always be the root of an element tree",
 			);
-		} else if (typeof elem.tag === "function") {
-			this.controller = new Controller(elem.tag, this);
+		} else if (typeof this.tag === "function") {
+			this.controller = new Controller(this.tag, this);
 		}
 	}
 
@@ -202,8 +216,8 @@ export class View {
 		return this.nodes[0];
 	}
 
-	protected intrinsicFor(tag: string | ControlTag): IntrinsicFunction {
-		let intrinsic: IntrinsicFunction | undefined;
+	protected intrinsicFor(tag: string | ControlTag): Intrinsic {
+		let intrinsic: Intrinsic | undefined;
 		if (tag === Root) {
 			intrinsic = this.env[tag];
 			if (intrinsic == null) {
@@ -245,19 +259,52 @@ export class View {
 		return this.refresh();
 	}
 
-	_refresh(): Promise<undefined> | undefined {
+	commit(): void {
+		if (typeof this.tag === "function") {
+			if (!this.updating && this.parent !== undefined) {
+				this.parent.commit();
+			}
+		} else {
+			const props = {...this.props, children: this.nodes};
+			if (this.committer === undefined) {
+				const intrinsic = this.intrinsicFor(this.tag);
+				this.committer = intrinsic(props);
+			}
+
+			const result = this.committer.next(props);
+			if (result.done) {
+				delete this.committer;
+			}
+
+			this.node = result.value as Node | undefined;
+		}
+
+		this.updating = false;
+	}
+
+	private run(): Promise<undefined> | undefined {
 		let children: MaybePromiseLike<Child | Children>;
 		if (this.controller !== undefined) {
-			const result = this.controller.next(this.nodeOrNodes);
+			const nodes =
+				this.pending === undefined
+					? this.nodeOrNodes
+					: this.pending.then(() => this.nodeOrNodes);
+			const result = this.controller.next(nodes);
 			if (isPromiseLike(result)) {
 				children = result.then((result) => {
-					if (!result.done) {
-						this.pending = this._refresh()!.then(() => void this.commit());
+					if (result.done) {
+						delete this.controller;
+						return result.value as any;
 					}
 
-					return result.value as any;
+					this.pending = this.run()!.then(() => void this.commit());
+					return result.value;
 				});
 			} else {
+				if (result.done) {
+					delete this.controller;
+				}
+
 				children = result.value as any;
 			}
 		} else {
@@ -286,7 +333,7 @@ export class View {
 			this.controller!.publish();
 			return this.pending;
 		} else if (this.pending === undefined) {
-			const update = this._refresh();
+			const update = this.run();
 			if (update !== undefined) {
 				this.pending = update.finally(() => {
 					this.pending = this.enqueued;
@@ -297,7 +344,7 @@ export class View {
 			return this.pending;
 		} else if (this.enqueued === undefined) {
 			this.enqueued = this.pending
-				.then(() => this._refresh())
+				.then(() => this.run())
 				.finally(() => {
 					this.pending = this.enqueued;
 					this.enqueued = undefined;
@@ -362,29 +409,6 @@ export class View {
 		}
 	}
 
-	commit(): void {
-		if (typeof this.tag === "function") {
-			if (!this.updating && this.parent !== undefined) {
-				this.parent.commit();
-			}
-		} else {
-			const props = {...this.props, children: this.nodes};
-			if (this.committer === undefined) {
-				const intrinsic = this.intrinsicFor(this.tag);
-				this.committer = intrinsic(props);
-			}
-
-			const result = this.committer.next(props);
-			if (result.done) {
-				delete this.committer;
-			}
-
-			this.node = result.value as Node | undefined;
-		}
-
-		this.updating = false;
-	}
-
 	unmount(): Promise<void> | void {
 		if (this.committer !== undefined) {
 			this.committer.return && this.committer.return();
@@ -436,15 +460,19 @@ export type ComponentIteratorResult = IteratorResult<
 	MaybePromiseLike<Child | Children | void>
 >;
 
-export function* createChildIterator(
-	context: Context,
-	tag: (this: Context, props: Props) => MaybePromise<Child | Children>,
-): ComponentGenerator {
-	for (const props of context) {
-		yield tag.call(context, props);
-	}
-}
+export type FunctionComponent<TProps extends Props = Props> = (
+	this: Context,
+	props: TProps,
+) => MaybePromiseLike<Child | Children>;
 
+export type IteratorComponent<TProps extends Props = Props> = (
+	this: Context,
+	props: TProps,
+) => ComponentIterator;
+
+// NOTE: we can’t use a type alias of FunctionComponent | IteratorComponent
+// because that breaks Function.prototype methods.
+// https://github.com/microsoft/TypeScript/issues/33815
 export type Component<TProps extends Props = Props> = (
 	this: Context,
 	props: TProps,
@@ -468,8 +496,17 @@ export class Context {
 		return this.controller.subscribe();
 	}
 
-	refresh(): Promise<void> | void {
+	refresh(): Promise<undefined> | undefined {
 		return this.view.refresh();
+	}
+}
+
+export function* createChildIterator(
+	context: Context,
+	tag: FunctionComponent,
+): ComponentGenerator {
+	for (const props of context) {
+		yield tag.call(context, props);
 	}
 }
 
@@ -481,7 +518,7 @@ class Controller {
 	constructor(private tag: Component, private view: View) {}
 
 	private initialize(): MaybePromise<ComponentIteratorResult> {
-		const value = this.tag.call(this.ctx as any, this.view.props);
+		const value = this.tag.call(this.ctx, this.view.props);
 		if (isIteratorOrAsyncIterator(value)) {
 			this.iter = value;
 			const result = this.iter.next();
@@ -490,7 +527,7 @@ class Controller {
 		}
 
 		// TODO: remove the type assertion from this.ctx
-		this.iter = createChildIterator(this.ctx as any, this.tag as any);
+		this.iter = createChildIterator(this.ctx, this.tag as FunctionComponent);
 		return {value, done: false};
 	}
 
@@ -519,14 +556,13 @@ class Controller {
 			this.iter = (function*() {})();
 		}
 
-		if (this.iter.throw) {
-			return this.iter.throw(error);
+		if (!this.iter.throw) {
+			throw error;
 		}
 
-		throw error;
+		return this.iter.throw(error);
 	}
 
-	// NOT SURE THIS IF THIS BELONGS HERE
 	subscribe(): AsyncGenerator<Props> {
 		return new Repeater(async (push, stop) => {
 			push(this.view.props);
@@ -546,12 +582,12 @@ class Controller {
 
 // TODO: allow tags to define child tags (for svg and custom canvas tags a la react-three-fiber)
 export interface Environment {
-	[Default](tag: string): IntrinsicFunction;
-	[Root]?: IntrinsicFunction;
+	[Default](tag: string): Intrinsic;
+	[Root]?: Intrinsic;
 	// TODO: figure out if we need custom functions for portal and fragment?
-	// [Portal]?: IntrinsicFunction;
-	// [Fragment]?: IntrinsicFunction;
-	[tag: string]: IntrinsicFunction;
+	// [Portal]?: Intrinsic;
+	// [Fragment]?: Intrinsic;
+	[tag: string]: Intrinsic;
 }
 
 const defaultEnv: Environment = {
