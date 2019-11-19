@@ -7,6 +7,9 @@ declare global {
 			[name: string]: any;
 		}
 
+		// TODO: I don‘t think this actually type checks children
+		// https://github.com/microsoft/TypeScript/issues/18357
+		// https://github.com/Microsoft/TypeScript/issues/28953
 		interface ElementChildrenAttribute {
 			children: Children;
 		}
@@ -45,10 +48,15 @@ export type Root = typeof Root;
 // TODO: implement these control tags
 // TODO: I wonder if the following tags can be implemented without defining a custom function for each tag for every environment
 // export const Copy = Symbol("Copy");
+//
 // export type Copy = typeof Copy;
+//
 // export const Fragment = Symbol("Fragment");
+//
 // export type Fragment = typeof Fragment;
+//
 // export const Portal = Symbol("Portal");
+//
 // export type Portal = typeof Portal;
 
 export type ControlTag = Root;
