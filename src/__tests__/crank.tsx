@@ -10,6 +10,7 @@ import {render} from "../envs/dom";
 // no interest in figuring out who goofed right now (maybe me) so we’re just
 // ignoring the properties in a custom matcher.
 declare global {
+	// eslint-disable-next-line no-redeclare
 	module jest {
 		interface Matchers<R, T> {
 			toEqualMutationRecords: (expected: any[]) => R;
@@ -43,6 +44,7 @@ expect.extend({
 				previousSibling: null,
 				nextSibling: null,
 			}));
+			// eslint-disable-next-line jest/no-standalone-expect
 			expect(received).toEqual(expected);
 		}
 
@@ -540,7 +542,7 @@ describe("sync generator component", () => {
 		function* Gen(this: Context): Generator<Element> {
 			ctx = this;
 			let i = 0;
-			for (const _ of this) {
+			for (const _ of this) {// eslint-disable-line
 				const yielded = yield (<Component>Hello {i++}</Component>);
 				mock((yielded as any).outerHTML);
 			}
@@ -580,7 +582,7 @@ describe("async generator component", () => {
 			this: Context,
 			{message}: {message: string},
 		): AsyncGenerator<Element> {
-			for await (const {message} of this) {
+			for await ({message} of this) {
 				yield (<span>Loading</span>);
 				await new Promise((resolve1) => (resolve = resolve1));
 				yield (<span>{message}</span>);

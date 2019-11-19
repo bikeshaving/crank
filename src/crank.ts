@@ -73,8 +73,6 @@ export type Child = Element | string | number | boolean | null | undefined;
 
 export type Children = Iterable<Child | Children>;
 
-export type ChildOrChildren = Child | Children;
-
 export interface Props {
 	[name: string]: any;
 	children?: Child | Children;
@@ -132,23 +130,19 @@ export interface IntrinsicProps<T> {
 	children?: T[];
 }
 
-export type Committer<T> = Iterator<
-	T | undefined,
-	T | void,
-	IntrinsicProps<T>
->;
+export type Committer<T> = Iterator<T | undefined, T | void, IntrinsicProps<T>>;
 
+// TODO: allow intrinsics to be a simple function
 export type Intrinsic<T> = (props: IntrinsicProps<T>) => Committer<T>;
 
 // TODO: use a left-child right-sibling tree, maybe we want to use an interface like this to make views dumb and performant
 //interface Fiber<T> {
-//	host?: T;
 //	guest?: Element | string;
+//	host?: T;
+//	iter?: Iterator<T | undefined, T | undefined, Props>;
 //	child?: Fiber<T>;
 //	sibling?: Fiber<T>;
 //	parent?: Fiber<T>;
-//	controller?: Controller;
-//	committer?: Committer;
 //}
 //TODO: shouldn’t the T type parameter extend string???
 export class View<T> {
@@ -167,7 +161,11 @@ export class View<T> {
 	// TODO: Use a left-child right-sibling tree.
 	private children: (View<T> | string | undefined)[] = [];
 	// TODO: Stop passing env into this thing.
-	constructor(elem: Element, private env: Environment<T>, private parent?: View<T>) {
+	constructor(
+		elem: Element,
+		private env: Environment<T>,
+		private parent?: View<T>,
+	) {
 		this.tag = elem.tag;
 		this.props = elem.props;
 		if (elem.tag === Root && parent !== undefined) {
@@ -338,25 +336,25 @@ export class View<T> {
 
 	refresh(): Promise<undefined> | undefined {
 		if (this.controller && this.controller.async) {
-			this.controller!.publish();
+			this.controller.publish();
 			return this.pending;
 		} else if (this.pending === undefined) {
 			const update = this.run();
 			if (update !== undefined) {
-				this.pending = update.finally(() => {
+				this.pending = update;
+				this.pending.finally(() => {
 					this.pending = this.enqueued;
-					this.enqueued = undefined;
+					delete this.enqueued;
 				});
 			}
 
 			return this.pending;
 		} else if (this.enqueued === undefined) {
-			this.enqueued = this.pending
-				.then(() => this.run())
-				.finally(() => {
-					this.pending = this.enqueued;
-					this.enqueued = undefined;
-				});
+			this.enqueued = this.pending.then(() => this.run());
+			this.enqueued.finally(() => {
+				this.pending = this.enqueued;
+				delete this.enqueued;
+			});
 		}
 
 		return this.enqueued;

@@ -72,7 +72,10 @@ function updateDOMChildren(
 
 export const env: Environment<Node | string> = {
 	[Default](tag: string): Intrinsic<Node | string> {
-		return function* defaultDOM({children, ...props}): Committer<Node | string> {
+		return function* defaultDOM({
+			children,
+			...props
+		}): Committer<Node | string> {
 			const node = document.createElement(tag);
 			while (true) {
 				updateDOMProps(node, props);
