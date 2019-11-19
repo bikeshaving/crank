@@ -5,75 +5,113 @@ import {Repeater} from "@repeaterjs/repeater";
 import {createElement, Context, Element, View} from "../crank";
 import {render} from "../envs/dom";
 
+// NOTE: for some reason MutationRecord.previousSibling and
+// MutationRecord.nextSibling are weird, non-node objects in some tests. I have
+// no interest in figuring out who goofed right now (maybe me) so we’re just
+// ignoring the properties in a custom matcher.
+declare global {
+	module jest {
+		interface Matchers<R, T> {
+			toEqualMutationRecords: (expected: any[]) => R;
+		}
+	}
+}
+
+expect.extend({
+	toEqualMutationRecords(received, expected) {
+		const empty: MutationRecord = {
+			type: "childList",
+			target: document.body,
+			addedNodes: [] as any,
+			removedNodes: [] as any,
+			attributeName: null,
+			attributeNamespace: null,
+			nextSibling: null,
+			previousSibling: null,
+			oldValue: null,
+		};
+		const pass = Array.isArray(received) && Array.isArray(expected);
+		if (pass) {
+			received = received.map((record: any) => ({
+				...record,
+				previousSibling: null,
+				nextSibling: null,
+			}));
+			expected = expected.map((record: any) => ({
+				...empty,
+				...record,
+				previousSibling: null,
+				nextSibling: null,
+			}));
+			expect(received).toEqual(expected);
+		}
+
+		return {pass, message: () => "received or expected is not an array"};
+	},
+});
+
 describe("render", () => {
-	afterEach(() => {
-		render(null, document.body);
-	});
-
-	test("simple", () => {
-		render(
-			<div>
-				<h1>Hello world</h1>
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual("<div><h1>Hello world</h1></div>");
-	});
-
-	test("rerender text", () => {
-		const observer = new MutationObserver(() => {});
+	let observer: MutationObserver;
+	function observe() {
 		observer.observe(document.body, {
 			childList: true,
 			attributes: true,
 			characterData: true,
 			subtree: true,
 		});
-		render(
-			<div>
-				<h1>Hello world</h1>
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual("<div><h1>Hello world</h1></div>");
-		const records1 = observer.takeRecords();
-		expect(records1.length).toEqual(1);
-		render(
-			<div>
-				<h1>Hi world</h1>
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual("<div><h1>Hi world</h1></div>");
-		const records2 = observer.takeRecords();
-		expect(records2.length).toEqual(1);
-		const [record2] = records2;
-		expect(record2.type).toEqual("characterData");
-		expect(record2.oldValue).toEqual("Hello world");
-		// TODO: normalize adjacent text values
-		render(
-			<div>
-				<h1>Hello {3}</h1>
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual("<div><h1>Hello 3</h1></div>");
-		const records3 = observer.takeRecords();
-		expect(records3.length).toEqual(1);
-		const [record3] = records3;
-		expect(record3.type).toEqual("characterData");
-		expect(record3.oldValue).toEqual("Hi world");
+	}
 
+	// taken from https://stackoverflow.com/a/35385518
+	function createHTML(innerHTML: string): ChildNode | null {
+		var template = document.createElement("template");
+		innerHTML = innerHTML.trim();
+		template.innerHTML = innerHTML;
+		return template.content.firstChild;
+	}
+
+	beforeEach(() => {
+		observer = new MutationObserver(() => {});
+	});
+
+	afterEach(() => {
+		render(null, document.body);
 		observer.disconnect();
 	});
 
-	test("rerender intrinsic", () => {
-		const observer = new MutationObserver(() => {});
-		observer.observe(document.body, {
-			childList: true,
-			attributes: true,
-			characterData: true,
-			subtree: true,
-		});
+	test("simple", () => {
+		observe();
+		render(<h1>Hello world</h1>, document.body);
+		expect(document.body.innerHTML).toEqual("<h1>Hello world</h1>");
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{addedNodes: [createHTML("<h1>Hello world</h1>")]},
+		]);
+	});
+
+	test("rerender text", () => {
+		render(<h1>Hello world 1</h1>, document.body);
+		expect(document.body.innerHTML).toEqual("<h1>Hello world 1</h1>");
+		observe();
+		render(<h1>Hello {"world"} 2</h1>, document.body);
+		expect(document.body.innerHTML).toEqual("<h1>Hello world 2</h1>");
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{
+				type: "characterData",
+				target: createHTML("Hello world 2"),
+				oldValue: "Hello world 1",
+			},
+		]);
+		render(<h1>Hello world {3}</h1>, document.body);
+		expect(document.body.innerHTML).toEqual("<h1>Hello world 3</h1>");
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{
+				type: "characterData",
+				target: createHTML("Hello world 3"),
+				oldValue: "Hello world 2",
+			},
+		]);
+	});
+
+	test("rerender different child", () => {
 		render(
 			<div>
 				<h1>Hello world</h1>
@@ -81,8 +119,7 @@ describe("render", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><h1>Hello world</h1></div>");
-		const records1 = observer.takeRecords();
-		expect(records1.length).toEqual(1);
+		observe();
 		render(
 			<div>
 				<h2>Hello world</h2>
@@ -90,29 +127,22 @@ describe("render", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><h2>Hello world</h2></div>");
-		const records2 = observer.takeRecords();
-		expect(records2.length).toEqual(2);
-		const [added, removed] = records2;
-		expect(added.type).toEqual("childList");
-		expect(added.addedNodes.length).toEqual(1);
-		expect(removed.type).toEqual("childList");
-		expect(removed.removedNodes.length).toEqual(1);
-		observer.disconnect();
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{
+				target: document.body.firstChild,
+				addedNodes: [createHTML("<h2>Hello world</h2>")],
+			},
+			{
+				target: document.body.firstChild,
+				removedNodes: [createHTML("<h1>Hello world</h1>")],
+			},
+		]);
 	});
 
-	test("rerender different", () => {
-		function Component({Root}: {Root: string}): Element {
-			return <Root>Hello world</Root>;
-		}
-		render(<Component Root="div" />, document.body);
+	test("rerender text with children", () => {
+		render(<div>Hello world</div>, document.body);
 		expect(document.body.innerHTML).toEqual("<div>Hello world</div>");
-		render(<Component Root="span" />, document.body);
-		expect(document.body.innerHTML).toEqual("<span>Hello world</span>");
-	});
-
-	test("rerender children", () => {
-		render(<div>Loading...</div>, document.body);
-		expect(document.body.innerHTML).toEqual("<div>Loading...</div>");
+		observe();
 		render(
 			<div>
 				<span>1</span>
@@ -123,6 +153,89 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>1</span><span>2</span></div>",
 		);
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{
+				target: document.body.firstChild,
+				addedNodes: [createHTML("<span>1</span>")],
+				nextSibling: createHTML("<span>2</span>"),
+			},
+			{
+				target: createHTML("<div><span>1</span><span>2</span></div>"),
+				removedNodes: [createHTML("Hello world")],
+			},
+			{
+				target: document.body.firstChild,
+				addedNodes: [createHTML("<span>2</span>")],
+				previousSibling: createHTML("<span>1</span>"),
+			},
+		]);
+	});
+
+	test("rerender children with text", () => {
+		render(
+			<div>
+				<span>1</span>
+				<span>2</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span></div>",
+		);
+		observe();
+		render(<div>Hello world</div>, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Hello world</div>");
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{
+				target: document.body.firstChild,
+				addedNodes: [createHTML("Hello world")],
+			},
+			{
+				target: document.body.firstChild,
+				removedNodes: [createHTML("<span>1</span>")],
+			},
+			{
+				target: document.body.firstChild,
+				removedNodes: [createHTML("<span>2</span>")],
+			},
+		]);
+	});
+
+	test("rerender more children", () => {
+		render(
+			<div>
+				<span>1</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
+		observe();
+		render(
+			<div>
+				<span>1</span>
+				<span>2</span>
+				<span>3</span>
+				<span>4</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span></div>",
+		);
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{
+				target: document.body.firstChild,
+				addedNodes: [createHTML("<span>2</span>")],
+			},
+			{
+				target: document.body.firstChild,
+				addedNodes: [createHTML("<span>3</span>")],
+			},
+			{
+				target: document.body.firstChild,
+				addedNodes: [createHTML("<span>4</span>")],
+			},
+		]);
 	});
 
 	test("rerender fewer children", () => {
@@ -138,6 +251,7 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>1</span><span>2</span><span>3</span><span>4</span></div>",
 		);
+		observe();
 		render(
 			<div>
 				<span>1</span>
@@ -145,17 +259,41 @@ describe("render", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{
+				target: document.body.firstChild,
+				removedNodes: [createHTML("<span>2</span>")],
+			},
+			{
+				target: document.body.firstChild,
+				removedNodes: [createHTML("<span>3</span>")],
+			},
+			{
+				target: document.body.firstChild,
+				removedNodes: [createHTML("<span>4</span>")],
+			},
+		]);
 	});
 
 	test("render null", () => {
-		render(<div>Hello world</div>, document.body);
-		expect(document.body.innerHTML).toEqual("<div>Hello world</div>");
+		render(<h1>Hello world</h1>, document.body);
+		expect(document.body.innerHTML).toEqual("<h1>Hello world</h1>");
+		observe();
 		render(null, document.body);
 		expect(document.body.innerHTML).toEqual("");
-		render(<div>Hello again</div>, document.body);
-		expect(document.body.innerHTML).toEqual("<div>Hello again</div>");
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{removedNodes: [createHTML("<h1>Hello world</h1>")]},
+		]);
+		render(<h1>Hello again</h1>, document.body);
+		expect(document.body.innerHTML).toEqual("<h1>Hello again</h1>");
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{addedNodes: [createHTML("<h1>Hello again</h1>")]},
+		]);
 		render(null, document.body);
 		expect(document.body.innerHTML).toEqual("");
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{removedNodes: [createHTML("<h1>Hello again</h1>")]},
+		]);
 	});
 });
 
@@ -165,24 +303,35 @@ describe("sync function component", () => {
 	});
 
 	test("basic", () => {
-		function SyncFn({message}: {message: string}): Element {
+		function Component({message}: {message: string}): Element {
 			return <span>{message}</span>;
 		}
 
 		render(
 			<div>
-				<SyncFn message="Hello" />
+				<Component message="Hello" />
 			</div>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 		render(
 			<div>
-				<SyncFn message="Goodbye" />
+				<Component message="Goodbye" />
 			</div>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>Goodbye</span></div>");
+	});
+
+	test("rerender different return value", () => {
+		function Component({ChildTag}: {ChildTag: string}): Element {
+			return <ChildTag>Hello world</ChildTag>;
+		}
+
+		render(<Component ChildTag="div" />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Hello world</div>");
+		render(<Component ChildTag="span" />, document.body);
+		expect(document.body.innerHTML).toEqual("<span>Hello world</span>");
 	});
 });
 
@@ -382,7 +531,7 @@ describe("sync generator component", () => {
 
 	test("async children", async () => {
 		const mock = jest.fn();
-		async function Async({children}: any): Promise<Element> {
+		async function Component({children}: {children: any}): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 100));
 			return <span>{children}</span>;
 		}
@@ -392,7 +541,7 @@ describe("sync generator component", () => {
 			ctx = this;
 			let i = 0;
 			for (const _ of this) {
-				const yielded = yield (<Async>Hello {i++}</Async>);
+				const yielded = yield (<Component>Hello {i++}</Component>);
 				mock((yielded as any).outerHTML);
 			}
 		}
