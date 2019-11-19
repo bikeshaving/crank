@@ -68,7 +68,7 @@ export type Tag<TProps extends Props = Props> =
 	| ControlTag
 	| string;
 
-// TODO: rename to Node or NodeValue?
+// TODO: rename to Node? NodeValue? Cog? Guest?
 export type Child = Element | string | number | boolean | null | undefined;
 
 export type Children = Iterable<Child | Children>;
@@ -127,7 +127,7 @@ export function* flattenChildren(
 
 export interface IntrinsicProps<T> {
 	[key: string]: any;
-	children?: T[];
+	children?: (T | string)[];
 }
 
 export type Committer<T> = Iterator<T | undefined, T | void, IntrinsicProps<T>>;
@@ -138,20 +138,20 @@ export type Intrinsic<T> = (props: IntrinsicProps<T>) => Committer<T>;
 // TODO: use a left-child right-sibling tree, maybe we want to use an interface like this to make views dumb and performant
 //interface Fiber<T> {
 //	guest?: Element | string;
-//	host?: T;
-//	iter?: Iterator<T | undefined, T | undefined, Props>;
+//	host?: T | string;
+//	engine?: Iterator<T | string | undefined, T | string | undefined, Props>;
 //	child?: Fiber<T>;
 //	sibling?: Fiber<T>;
 //	parent?: Fiber<T>;
 //}
-//TODO: shouldn’t the T type parameter extend string???
 export class View<T> {
 	tag: Tag;
 	props: Props;
-	private node?: T;
+	// TODO: rename to host
+	private node?: T | string;
 	// whether or not the parent is updating this component or the component is being updated by the parent
 	private updating = false;
-	// TODO: The controller and committer properties are mutually exclusive.
+	// TODO: The controller and committer properties are mutually exclusive on a view.
 	// There must be a more beautiful way to tie this logic together.
 	private committer?: Committer<T>;
 	private controller?: Controller;
@@ -177,21 +177,21 @@ export class View<T> {
 		}
 	}
 
-	private _nodes?: T[];
-	get nodes(): T[] {
+	private _nodes?: (T | string)[];
+	get nodes(): (T | string)[] {
 		if (this._nodes !== undefined) {
 			return this._nodes;
 		}
 
 		let buffer: string | undefined;
-		const nodes: T[] = [];
+		const nodes: (T | string)[] = [];
 		for (const child of this.children) {
 			if (child !== undefined) {
 				if (typeof child === "string") {
 					buffer = buffer === undefined ? child : buffer + child;
 				} else {
 					if (buffer !== undefined) {
-						nodes.push(buffer as any);
+						nodes.push(buffer);
 						buffer = undefined;
 					}
 
@@ -207,14 +207,14 @@ export class View<T> {
 		}
 
 		if (buffer !== undefined) {
-			nodes.push(buffer as any);
+			nodes.push(buffer);
 		}
 
 		this._nodes = nodes;
 		return nodes;
 	}
 
-	get nodeOrNodes(): (T | undefined) | T[] {
+	get nodeOrNodes(): (T | string)[] | T | string | undefined {
 		if (this.nodes.length > 1) {
 			return this.nodes;
 		}
