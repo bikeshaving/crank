@@ -46,7 +46,8 @@ export const Root = Symbol("Root");
 export type Root = typeof Root;
 
 // TODO: implement these control tags
-// TODO: I wonder if the following tags can be implemented without defining a custom function for each tag for every environment
+// I wonder if the following tags can be implemented without defining a custom
+// function for each tag for every environment
 // export const Copy = Symbol("Copy");
 //
 // export type Copy = typeof Copy;
@@ -126,19 +127,21 @@ export function* flattenChildren(
 	}
 }
 
-export interface IntrinsicProps {
+export interface IntrinsicProps<T> {
 	[key: string]: any;
-	children?: (Node | string)[];
+	children?: T[];
 }
 
-export type Committer = Iterator<Node | undefined, Node | void, IntrinsicProps>;
+export type Committer<T> = Iterator<
+	T | undefined,
+	T | void,
+	IntrinsicProps<T>
+>;
 
-export type Intrinsic = (props: IntrinsicProps) => Committer;
-
-export type Guest = View | string;
+export type Intrinsic<T> = (props: IntrinsicProps<T>) => Committer<T>;
 
 // TODO: use a left-child right-sibling tree, maybe we want to use an interface like this to make views dumb and performant
-//interface Fiber<T extends string> {
+//interface Fiber<T> {
 //	host?: T;
 //	guest?: Element | string;
 //	child?: Fiber<T>;
@@ -147,24 +150,24 @@ export type Guest = View | string;
 //	controller?: Controller;
 //	committer?: Committer;
 //}
-export class View {
+//TODO: shouldn’t the T type parameter extend string???
+export class View<T> {
 	tag: Tag;
 	props: Props;
-	// TODO: parameterize this value
-	private node?: Node;
+	private node?: T;
 	// whether or not the parent is updating this component or the component is being updated by the parent
 	private updating = false;
 	// TODO: The controller and committer properties are mutually exclusive.
-	// There must be a more beautiful way to split this up.
-	private committer?: Committer;
+	// There must be a more beautiful way to tie this logic together.
+	private committer?: Committer<T>;
 	private controller?: Controller;
 	// These properties are exclusively used to batch intrinsic components with async children. There must be a better way to do this than to define these properties on View.
 	private pending?: Promise<undefined>;
 	private enqueued?: Promise<undefined>;
 	// TODO: Use a left-child right-sibling tree.
-	private children: (View | string | undefined)[] = [];
+	private children: (View<T> | string | undefined)[] = [];
 	// TODO: Stop passing env into this thing.
-	constructor(elem: Element, private env: Environment, private parent?: View) {
+	constructor(elem: Element, private env: Environment<T>, private parent?: View<T>) {
 		this.tag = elem.tag;
 		this.props = elem.props;
 		if (elem.tag === Root && parent !== undefined) {
@@ -176,21 +179,21 @@ export class View {
 		}
 	}
 
-	private _nodes?: (Node | string)[];
-	get nodes(): (Node | string)[] {
+	private _nodes?: T[];
+	get nodes(): T[] {
 		if (this._nodes !== undefined) {
 			return this._nodes;
 		}
 
 		let buffer: string | undefined;
-		const nodes: (Node | string)[] = [];
+		const nodes: T[] = [];
 		for (const child of this.children) {
 			if (child !== undefined) {
 				if (typeof child === "string") {
 					buffer = buffer === undefined ? child : buffer + child;
 				} else {
 					if (buffer !== undefined) {
-						nodes.push(buffer);
+						nodes.push(buffer as any);
 						buffer = undefined;
 					}
 
@@ -206,14 +209,14 @@ export class View {
 		}
 
 		if (buffer !== undefined) {
-			nodes.push(buffer);
+			nodes.push(buffer as any);
 		}
 
 		this._nodes = nodes;
 		return nodes;
 	}
 
-	get nodeOrNodes(): (Node | string | undefined) | (Node | string)[] {
+	get nodeOrNodes(): (T | undefined) | T[] {
 		if (this.nodes.length > 1) {
 			return this.nodes;
 		}
@@ -221,8 +224,8 @@ export class View {
 		return this.nodes[0];
 	}
 
-	protected intrinsicFor(tag: string | ControlTag): Intrinsic {
-		let intrinsic: Intrinsic | undefined;
+	protected intrinsicFor(tag: string | ControlTag): Intrinsic<T> {
+		let intrinsic: Intrinsic<T> | undefined;
 		if (tag === Root) {
 			intrinsic = this.env[tag];
 			if (intrinsic == null) {
@@ -240,7 +243,7 @@ export class View {
 		return intrinsic;
 	}
 
-	private instantiate(child: Child): View | string | undefined {
+	private instantiate(child: Child): View<T> | string | undefined {
 		if (child == null || typeof child === "boolean") {
 			return undefined;
 		} else if (typeof child === "string") {
@@ -281,7 +284,7 @@ export class View {
 				delete this.committer;
 			}
 
-			this.node = result.value as Node | undefined;
+			this.node = result.value as T | undefined;
 		}
 
 		this.updating = false;
@@ -489,7 +492,7 @@ interface Publication {
 }
 
 export class Context {
-	constructor(private controller: Controller, private view: View) {}
+	constructor(private controller: Controller, private view: View<any>) {}
 
 	*[Symbol.iterator](): Generator<Props> {
 		while (true) {
@@ -520,7 +523,7 @@ class Controller {
 	private ctx = new Context(this, this.view);
 	private pubs = new Set<Publication>();
 	private iter?: ComponentIterator;
-	constructor(private tag: Component, private view: View) {}
+	constructor(private tag: Component, private view: View<any>) {}
 
 	private initialize(): MaybePromise<ComponentIteratorResult> {
 		const value = this.tag.call(this.ctx, this.view.props);
@@ -586,16 +589,16 @@ class Controller {
 }
 
 // TODO: allow tags to define child tags (for svg and custom canvas tags a la react-three-fiber)
-export interface Environment {
-	[Default](tag: string): Intrinsic;
-	[Root]?: Intrinsic;
+export interface Environment<T> {
+	[Default](tag: string): Intrinsic<T>;
+	[Root]?: Intrinsic<T>;
 	// TODO: figure out if we need custom functions for portal and fragment?
-	// [Portal]?: Intrinsic;
-	// [Fragment]?: Intrinsic;
-	[tag: string]: Intrinsic;
+	// [Portal]?: Intrinsic<T>;
+	// [Fragment]?: Intrinsic<T>;
+	[tag: string]: Intrinsic<T>;
 }
 
-const defaultEnv: Environment = {
+const defaultEnv: Environment<any> = {
 	[Default](tag: string): never {
 		throw new Error(
 			`tag ${tag} does not exist and default intrinsic not provided`,
@@ -603,17 +606,17 @@ const defaultEnv: Environment = {
 	},
 };
 
-export class Renderer {
-	views: WeakMap<Node, View> = new WeakMap();
-	env: Environment = defaultEnv;
+export class Renderer<T, TContainer extends {}> {
+	views: WeakMap<TContainer, View<T>> = new WeakMap();
+	env: Environment<T> = defaultEnv;
 
-	constructor(envs: Partial<Environment>[]) {
+	constructor(envs: Partial<Environment<T>>[]) {
 		for (const env of envs) {
 			this.extend(env);
 		}
 	}
 
-	extend(env: Partial<Environment>): void {
+	extend(env: Partial<Environment<T>>): void {
 		if (env[Default] != null) {
 			this.env[Default] = env[Default]!;
 		}
@@ -631,13 +634,13 @@ export class Renderer {
 
 	render(
 		elem: Element | null | undefined,
-		node: HTMLElement,
-	): Promise<View> | View | undefined {
+		node: TContainer,
+	): Promise<View<T>> | View<T> | undefined {
 		if (elem != null && elem.tag !== Root) {
 			elem = createElement(Root, {node}, elem);
 		}
 
-		let view: View;
+		let view: View<T>;
 		if (this.views.has(node)) {
 			view = this.views.get(node)!;
 		} else if (elem == null) {
