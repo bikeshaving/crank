@@ -137,12 +137,11 @@ export class View {
 	private node?: Node;
 	private controller?: Controller;
 	private committer?: IntrinsicIterator;
+	private updating = false;
 	// These properties are exclusively used to batch intrinsic components with async children. There must be a better way to do this than to define these properties on View.
 	// whether or not the parent is updating this component or the component is being updated by the parent
-	private updating = false;
-	private pulling = false;
-	private pending: Promise<undefined> | undefined;
-	private enqueued: Promise<undefined> | undefined;
+	private pending?: Promise<undefined>;
+	private enqueued?: Promise<undefined>;
 	// TODO: left-child right-sibling tree
 	private children: (View | string | undefined)[] = [];
 	// TODO: stop passing env into this thing.
@@ -158,7 +157,7 @@ export class View {
 		}
 	}
 
-	private _nodes: (Node | string)[] | undefined;
+	private _nodes?: (Node | string)[];
 	get nodes(): (Node | string)[] {
 		if (this._nodes !== undefined) {
 			return this._nodes;
@@ -251,7 +250,6 @@ export class View {
 		if (this.controller !== undefined) {
 			const result = this.controller.next(this.nodeOrNodes);
 			if (isPromiseLike(result)) {
-				this.pulling = true;
 				children = result.then((result) => {
 					if (!result.done) {
 						this.pending = this._refresh()!.then(() => void this.commit());
@@ -284,7 +282,7 @@ export class View {
 	}
 
 	refresh(): Promise<undefined> | undefined {
-		if (this.pulling) {
+		if (this.controller && this.controller.async) {
 			this.controller!.publish();
 			return this.pending;
 		} else if (this.pending === undefined) {
@@ -476,6 +474,7 @@ export class Context {
 }
 
 class Controller {
+	async = false;
 	private ctx = new Context(this, this.view);
 	private pubs = new Set<Publication>();
 	private iter?: ComponentIterator;
@@ -485,7 +484,9 @@ class Controller {
 		const value = this.tag.call(this.ctx as any, this.view.props);
 		if (isIteratorOrAsyncIterator(value)) {
 			this.iter = value;
-			return this.iter.next();
+			const result = this.iter.next();
+			this.async = isPromiseLike(result);
+			return result;
 		}
 
 		// TODO: remove the type assertion from this.ctx
