@@ -70,12 +70,9 @@ function updateDOMChildren(
 	}
 }
 
-export const env: Environment<Node | string> = {
-	[Default](tag: string): Intrinsic<Node | string> {
-		return function* defaultDOM({
-			children,
-			...props
-		}): Committer<Node | string> {
+export const env: Environment<Node> = {
+	[Default](tag: string): Intrinsic<Node> {
+		return function* defaultDOM({children, ...props}): Committer<Node> {
 			const node = document.createElement(tag);
 			while (true) {
 				updateDOMProps(node, props);
@@ -84,7 +81,7 @@ export const env: Environment<Node | string> = {
 			}
 		};
 	},
-	*[Root]({node, children}): Committer<Node | string> {
+	*[Root]({node, children}): Committer<Node> {
 		try {
 			while (true) {
 				updateDOMChildren(node, children);
@@ -101,6 +98,6 @@ export const renderer = new Renderer([env]);
 export function render(
 	elem: Element | null | undefined,
 	node: HTMLElement,
-): Promise<View<Node | string>> | View<Node | string> | undefined {
+): Promise<View<Node>> | View<Node> | undefined {
 	return renderer.render(elem, node);
 }
