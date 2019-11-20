@@ -71,11 +71,13 @@ export type Tag = Component | ControlTag | string;
 // TODO: rename to Node? NodeValue? Cog? Guest?
 export type Child = Element | string | number | boolean | null | undefined;
 
-export type Children = Iterable<Child | Children>;
+interface ChildIterable extends Iterable<Child | ChildIterable> {}
+
+export type Children = Child | ChildIterable;
 
 export interface Props {
 	[name: string]: any;
-	children?: Child | Children;
+	children?: Children;
 }
 
 export const ElementSigil: unique symbol = Symbol.for("crank.element");
@@ -95,7 +97,7 @@ export function isElement(value: any): value is Element {
 export function createElement<T extends Tag>(
 	tag: T,
 	props?: Props | null,
-	...children: (Child | Children)[]
+	...children: Children[]
 ): Element<T>;
 export function createElement<T extends Tag>(
 	tag: T,
@@ -111,15 +113,13 @@ export function createElement<T extends Tag>(
 	return {sigil: ElementSigil, tag, props};
 }
 
-export function* flattenChildren(
-	childOrChildren: Child | Children,
-): Iterable<Child> {
-	if (typeof childOrChildren === "string" || !isIterable(childOrChildren)) {
-		yield childOrChildren;
+export function* flattenChildren(children: Children): Iterable<Child> {
+	if (typeof children === "string" || !isIterable(children)) {
+		yield children;
 		return;
 	}
 
-	for (const child of childOrChildren) {
+	for (const child of children) {
 		yield* flattenChildren(child);
 	}
 }
@@ -298,7 +298,7 @@ export class View<T> {
 	}
 
 	private run(): Promise<undefined> | undefined {
-		let children: MaybePromiseLike<Child | Children>;
+		let children: MaybePromiseLike<Children>;
 		if (this.controller !== undefined) {
 			const nodes =
 				this.pending === undefined
@@ -371,7 +371,7 @@ export class View<T> {
 		return this.enqueued;
 	}
 
-	updateChildren(children: Child | Children): Promise<undefined> | undefined {
+	updateChildren(children: Children): Promise<undefined> | undefined {
 		this._childNodes = undefined;
 		const promises: Promise<any>[] = [];
 		let i = 0;
@@ -449,30 +449,21 @@ export class View<T> {
 // TODO: get rid of the voids
 // (async) generator functions will not be able to return ComponentIterator until this issue is fixed https://github.com/microsoft/TypeScript/issues/34984
 export type ComponentIterator =
-	| Iterator<
-			MaybePromiseLike<Child | Children>,
-			MaybePromiseLike<Child | Children | void>,
-			any
-	  >
-	| AsyncIterator<Child | Children, Child | Children | void, any>;
+	| Iterator<MaybePromiseLike<Children>>
+	| AsyncIterator<Children>;
 
 export type ComponentGenerator =
-	| Generator<
-			MaybePromiseLike<Child | Children>,
-			MaybePromiseLike<Child | Children | void>,
-			any
-	  >
-	| AsyncGenerator<Child | Children, Child | Children | void, any>;
+	| Generator<MaybePromiseLike<Children>>
+	| AsyncGenerator<Children>;
 
 export type ComponentIteratorResult = IteratorResult<
-	MaybePromiseLike<Child | Children>,
-	MaybePromiseLike<Child | Children | void>
+	MaybePromiseLike<Children>
 >;
 
 export type FunctionComponent = (
 	this: Context,
 	props: Props,
-) => MaybePromiseLike<Child | Children>;
+) => MaybePromiseLike<Children>;
 
 export type IteratorComponent = (
 	this: Context,
@@ -485,7 +476,7 @@ export type IteratorComponent = (
 export type Component = (
 	this: Context,
 	props: Props,
-) => ComponentIterator | MaybePromiseLike<Child | Children>;
+) => ComponentIterator | MaybePromiseLike<Children>;
 
 interface Publication {
 	push(value: Props): unknown;
@@ -510,7 +501,7 @@ export class Context {
 	}
 }
 
-export function* createChildIterator(
+function* createComponentGenerator(
 	context: Context,
 	tag: FunctionComponent,
 ): ComponentGenerator {
@@ -536,7 +527,10 @@ class Controller {
 		}
 
 		// TODO: remove the type assertion from this.ctx
-		this.iter = createChildIterator(this.ctx, this.tag as FunctionComponent);
+		this.iter = createComponentGenerator(
+			this.ctx,
+			this.tag as FunctionComponent,
+		);
 		return {value, done: false};
 	}
 
