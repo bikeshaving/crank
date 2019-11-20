@@ -97,7 +97,7 @@ export const renderer = new Renderer([env]);
 
 export function render(
 	elem: Element | null | undefined,
-	node: HTMLElement,
+	node?: HTMLElement,
 ): Promise<View<Node>> | View<Node> | undefined {
 	return renderer.render(elem, node);
 }

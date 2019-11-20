@@ -2,7 +2,7 @@
 import "core-js";
 import "mutationobserver-shim";
 import {Repeater} from "@repeaterjs/repeater";
-import {createElement, Context, Element, View} from "../crank";
+import {createElement, Context, Element, Root, View} from "../crank";
 import {render} from "../envs/dom";
 
 // NOTE: for some reason MutationRecord.previousSibling and
@@ -296,6 +296,11 @@ describe("render", () => {
 		expect(observer.takeRecords()).toEqualMutationRecords([
 			{removedNodes: [createHTML("<h1>Hello again</h1>")]},
 		]);
+	});
+
+	test("explicit root", () => {
+		render(createElement(Root, {node: document.body}, <div>Hello world</div>));
+		expect(document.body.innerHTML).toEqual("<div>Hello world</div>");
 	});
 });
 

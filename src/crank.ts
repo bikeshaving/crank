@@ -629,26 +629,36 @@ export class Renderer<T, TContainer extends {}> {
 
 	render(
 		elem: Element | null | undefined,
-		node: TContainer,
+		node?: TContainer,
 	): Promise<View<T>> | View<T> | undefined {
 		if (elem != null && elem.tag !== Root) {
+			if (node == null) {
+				throw new Error(
+					"Node is null or undefined and root element is not a root element",
+				);
+			}
+
 			elem = createElement(Root, {node}, elem);
 		}
 
 		let view: View<T>;
-		if (this.views.has(node)) {
+		if (node !== undefined && this.views.has(node)) {
 			view = this.views.get(node)!;
 		} else if (elem == null) {
 			return;
 		} else {
 			view = new View(elem, this.env);
-			this.views.set(node, view);
+			if (node !== undefined) {
+				this.views.set(node, view);
+			}
 		}
 
 		let p: Promise<void> | void;
 		if (elem == null) {
 			p = view.unmount();
-			this.views.delete(node);
+			if (node !== undefined) {
+				this.views.delete(node);
+			}
 		} else {
 			p = view.update(elem);
 		}
