@@ -36,11 +36,14 @@ function isIteratorOrAsyncIterator(
 	return value != null && typeof value.next === "function";
 }
 
+// TODO: should we use Symbol or Symbol.for?
 // TODO: user-defined control tags?
 export const Default = Symbol("Default");
 
 export type Default = typeof Default;
 
+// TODO: Rename this to Container? Maybe we can merge this tag concept with the
+// unimplemented Portal tag
 export const Root = Symbol("Root");
 
 export type Root = typeof Root;
@@ -132,18 +135,28 @@ export type Committer<T> = Iterator<T | undefined, T | void, IntrinsicProps<T>>;
 export type Intrinsic<T> = (props: IntrinsicProps<T>) => Committer<T>;
 
 // TODO: use a left-child right-sibling tree, maybe we want to use an interface like this to make views dumb and performant
+//type Engine<T> = Iterator<
+//	T | string | undefined,
+//	T | string | undefined,
+//	Props
+//>;
+//
+// Idea for a refactoring to a binary tree. What should this be called?
+// View? Fiber? Node?
+// Should this be an interface or a class?
 //interface Fiber<T> {
-//	guest?: Element | string;
+//	value?: Element | string;
 //	host?: T | string;
-//	engine?: Iterator<T | string | undefined, T | string | undefined, Props>;
-//	child?: Fiber<T>;
-//	sibling?: Fiber<T>;
+//	engine?: Engine;
+//	firstChild?: Fiber<T>;
+//	nextSibling?: Fiber<T>;
 //	parent?: Fiber<T>;
 //}
+//
 export class View<T> {
 	tag: Tag;
 	props: Props;
-	// TODO: rename to host
+	// TODO: rename to host?
 	private node?: T | string;
 	// whether or not the parent is updating this component or the component is being updated by the parent
 	private updating = false;
@@ -332,6 +345,8 @@ export class View<T> {
 
 	refresh(): Promise<undefined> | undefined {
 		if (this.controller && this.controller.async) {
+			// should we be calling publish here or should the controller call
+			// publish on next?
 			this.controller.publish();
 			return this.pending;
 		} else if (this.pending === undefined) {
