@@ -68,12 +68,11 @@ export type ControlTag = Root;
 // export type ControlTag = Root | Copy | Fragment | Portal;
 export type Tag = Component | ControlTag | string;
 
-// TODO: rename to Node? NodeValue? Cog? Guest?
 export type Child = Element | string | number | boolean | null | undefined;
 
-interface ChildIterable extends Iterable<Child | ChildIterable> {}
+interface NestedChildIterable extends Iterable<Child | NestedChildIterable> {}
 
-export type Children = Child | ChildIterable;
+export type Children = Child | NestedChildIterable;
 
 export interface Props {
 	[name: string]: any;
@@ -129,7 +128,11 @@ export interface IntrinsicProps<T> {
 	children?: (T | string)[];
 }
 
-export type Committer<T> = Iterator<T | undefined, T | void, IntrinsicProps<T>>;
+export type Committer<T> = Iterator<
+	T | undefined,
+	T | undefined | void,
+	IntrinsicProps<T>
+>;
 
 // TODO: allow intrinsics to be a simple function
 export type Intrinsic<T> = (props: IntrinsicProps<T>) => Committer<T>;
@@ -448,27 +451,19 @@ export class View<T> {
 
 // TODO: get rid of the voids
 // (async) generator functions will not be able to return ComponentIterator until this issue is fixed https://github.com/microsoft/TypeScript/issues/34984
-export type ComponentIterator =
-	| Iterator<MaybePromiseLike<Children>>
-	| AsyncIterator<Children>;
-
-export type ComponentGenerator =
-	| Generator<MaybePromiseLike<Children>>
-	| AsyncGenerator<Children>;
-
-export type ComponentIteratorResult = IteratorResult<
-	MaybePromiseLike<Children>
->;
+export type ChildGenerator =
+	| Generator<MaybePromiseLike<Child>>
+	| AsyncGenerator<Child>;
 
 export type FunctionComponent = (
 	this: Context,
 	props: Props,
-) => MaybePromiseLike<Children>;
+) => MaybePromiseLike<Child>;
 
 export type IteratorComponent = (
 	this: Context,
 	props: Props,
-) => ComponentIterator;
+) => ChildGenerator;
 
 // NOTE: we can’t use a type alias of FunctionComponent | IteratorComponent
 // because that breaks Function.prototype methods.
@@ -476,7 +471,7 @@ export type IteratorComponent = (
 export type Component = (
 	this: Context,
 	props: Props,
-) => ComponentIterator | MaybePromiseLike<Children>;
+) => ChildGenerator | MaybePromiseLike<Child>;
 
 interface Publication {
 	push(value: Props): unknown;
@@ -501,24 +496,31 @@ export class Context {
 	}
 }
 
-function* createComponentGenerator(
+function* createChildGenerator(
 	context: Context,
 	tag: FunctionComponent,
-): ComponentGenerator {
+): ChildGenerator {
 	for (const props of context) {
 		yield tag.call(context, props);
 	}
 }
 
+type ControllerResult =
+	| Promise<IteratorResult<Child>>
+	| IteratorResult<MaybePromiseLike<Child>>;
+
 class Controller {
 	async = false;
 	private ctx = new Context(this, this.view);
 	private pubs = new Set<Publication>();
-	private iter?: ComponentIterator;
+	private iter?: ChildGenerator;
 	constructor(private tag: Component, private view: View<any>) {}
 
-	private initialize(): MaybePromise<ComponentIteratorResult> {
+	private initialize(): ControllerResult {
 		const value = this.tag.call(this.ctx, this.view.props);
+		// TODO: use a more reliable check to determine if the object is a generator
+		// Check if Symbol.iterator or Symbol.asyncIterator + next/return/throw
+		// are defined.
 		if (isIteratorOrAsyncIterator(value)) {
 			this.iter = value;
 			const result = this.iter.next();
@@ -527,14 +529,14 @@ class Controller {
 		}
 
 		// TODO: remove the type assertion from this.ctx
-		this.iter = createComponentGenerator(
+		this.iter = createChildGenerator(
 			this.ctx,
 			this.tag as FunctionComponent,
 		);
 		return {value, done: false};
 	}
 
-	next(value?: any): MaybePromise<ComponentIteratorResult> {
+	next(value?: any): ControllerResult {
 		if (this.iter === undefined) {
 			return this.initialize();
 		}
@@ -542,7 +544,7 @@ class Controller {
 		return this.iter.next(value);
 	}
 
-	return(value?: any): MaybePromise<ComponentIteratorResult> {
+	return(value?: any): ControllerResult {
 		if (this.iter === undefined) {
 			this.iter = (function*() {})();
 		}
@@ -554,7 +556,7 @@ class Controller {
 		return this.iter.return ? this.iter.return(value) : {value, done: true};
 	}
 
-	throw(error: any): MaybePromise<ComponentIteratorResult> {
+	throw(error: any): ControllerResult {
 		if (this.iter === undefined) {
 			this.iter = (function*() {})();
 		}
