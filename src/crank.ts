@@ -439,11 +439,7 @@ export type ComponentIterator =
 			MaybePromiseLike<Child | Children | void>,
 			any
 	  >
-	| AsyncIterator<
-			MaybePromiseLike<Child | Children>,
-			MaybePromiseLike<Child | Children | void>,
-			any
-	  >;
+	| AsyncIterator<Child | Children, Child | Children | void, any>;
 
 export type ComponentGenerator =
 	| Generator<
@@ -451,11 +447,7 @@ export type ComponentGenerator =
 			MaybePromiseLike<Child | Children | void>,
 			any
 	  >
-	| AsyncGenerator<
-			MaybePromiseLike<Child | Children>,
-			MaybePromiseLike<Child | Children | void>,
-			any
-	  >;
+	| AsyncGenerator<Child | Children, Child | Children | void, any>;
 
 export type ComponentIteratorResult = IteratorResult<
 	MaybePromiseLike<Child | Children>,
