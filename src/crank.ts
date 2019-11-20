@@ -275,7 +275,7 @@ export class View<T> {
 
 			const result = this.committer.next(props);
 			if (result.done) {
-				delete this.committer;
+				this.committer = undefined;
 			}
 
 			this.node = result.value as T | undefined;
@@ -295,7 +295,7 @@ export class View<T> {
 			if (isPromiseLike(result)) {
 				children = result.then((result) => {
 					if (result.done) {
-						delete this.controller;
+						this.controller = undefined;
 						return result.value as any;
 					}
 
@@ -304,7 +304,7 @@ export class View<T> {
 				});
 			} else {
 				if (result.done) {
-					delete this.controller;
+					this.controller = undefined;
 				}
 
 				children = result.value as any;
@@ -340,7 +340,7 @@ export class View<T> {
 				this.pending = update;
 				this.pending.finally(() => {
 					this.pending = this.enqueued;
-					delete this.enqueued;
+					this.enqueued = undefined;
 				});
 			}
 
@@ -349,7 +349,7 @@ export class View<T> {
 			this.enqueued = this.pending.then(() => this.run());
 			this.enqueued.finally(() => {
 				this.pending = this.enqueued;
-				delete this.enqueued;
+				this.enqueued = undefined;
 			});
 		}
 
