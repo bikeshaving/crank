@@ -173,10 +173,10 @@ export class View<T> {
 		}
 	}
 
-	private _nodes?: (T | string)[];
-	get nodes(): (T | string)[] {
-		if (this._nodes !== undefined) {
-			return this._nodes;
+	private _childNodes?: (T | string)[];
+	get childNodes(): (T | string)[] {
+		if (this._childNodes !== undefined) {
+			return this._childNodes;
 		}
 
 		let buffer: string | undefined;
@@ -195,7 +195,7 @@ export class View<T> {
 						if (child.node !== undefined) {
 							nodes.push(child.node);
 						} else {
-							nodes.push(...child.nodes);
+							nodes.push(...child.childNodes);
 						}
 					}
 				}
@@ -206,16 +206,16 @@ export class View<T> {
 			nodes.push(buffer);
 		}
 
-		this._nodes = nodes;
+		this._childNodes = nodes;
 		return nodes;
 	}
 
-	get nodeOrNodes(): (T | string)[] | T | string | undefined {
-		if (this.nodes.length > 1) {
-			return this.nodes;
+	get childNodeOrNodes(): (T | string)[] | T | string | undefined {
+		if (this.childNodes.length > 1) {
+			return this.childNodes;
 		}
 
-		return this.nodes[0];
+		return this.childNodes[0];
 	}
 
 	protected intrinsicFor(tag: string | ControlTag): Intrinsic<T> {
@@ -267,7 +267,7 @@ export class View<T> {
 				this.parent.commit();
 			}
 		} else {
-			const props = {...this.props, children: this.nodes};
+			const props = {...this.props, children: this.childNodes};
 			if (this.committer === undefined) {
 				const intrinsic = this.intrinsicFor(this.tag);
 				this.committer = intrinsic(props);
@@ -289,8 +289,8 @@ export class View<T> {
 		if (this.controller !== undefined) {
 			const nodes =
 				this.pending === undefined
-					? this.nodeOrNodes
-					: this.pending.then(() => this.nodeOrNodes);
+					? this.childNodeOrNodes
+					: this.pending.then(() => this.childNodeOrNodes);
 			const result = this.controller.next(nodes);
 			if (isPromiseLike(result)) {
 				children = result.then((result) => {
@@ -357,7 +357,7 @@ export class View<T> {
 	}
 
 	updateChildren(children: Child | Children): Promise<undefined> | undefined {
-		this._nodes = undefined;
+		this._childNodes = undefined;
 		const promises: Promise<any>[] = [];
 		let i = 0;
 		let view = this.children[i];
