@@ -59,14 +59,11 @@ export type Root = typeof Root;
 // export const Portal = Symbol("Portal");
 //
 // export type Portal = typeof Portal;
-
+//
 export type ControlTag = Root;
 
 // export type ControlTag = Root | Copy | Fragment | Portal;
-export type Tag<TProps extends Props = Props> =
-	| Component<TProps>
-	| ControlTag
-	| string;
+export type Tag = Component | ControlTag | string;
 
 // TODO: rename to Node? NodeValue? Cog? Guest?
 export type Child = Element | string | number | boolean | null | undefined;
@@ -82,7 +79,6 @@ export const ElementSigil: unique symbol = Symbol.for("crank.element");
 
 export type ElementSigil = typeof ElementSigil;
 
-// TODO: parameterize Props
 export interface Element<T extends Tag = Tag> {
 	sigil: ElementSigil;
 	tag: T;
@@ -466,22 +462,22 @@ export type ComponentIteratorResult = IteratorResult<
 	MaybePromiseLike<Child | Children | void>
 >;
 
-export type FunctionComponent<TProps extends Props = Props> = (
+export type FunctionComponent = (
 	this: Context,
-	props: TProps,
+	props: Props,
 ) => MaybePromiseLike<Child | Children>;
 
-export type IteratorComponent<TProps extends Props = Props> = (
+export type IteratorComponent = (
 	this: Context,
-	props: TProps,
+	props: Props,
 ) => ComponentIterator;
 
 // NOTE: we can’t use a type alias of FunctionComponent | IteratorComponent
 // because that breaks Function.prototype methods.
 // https://github.com/microsoft/TypeScript/issues/33815
-export type Component<TProps extends Props = Props> = (
+export type Component = (
 	this: Context,
-	props: TProps,
+	props: Props,
 ) => ComponentIterator | MaybePromiseLike<Child | Children>;
 
 interface Publication {
