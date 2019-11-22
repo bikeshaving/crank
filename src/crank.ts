@@ -8,8 +8,6 @@ declare global {
 		}
 
 		// TODO: I don‘t think this actually type checks children
-		// https://github.com/microsoft/TypeScript/issues/18357
-		// https://github.com/Microsoft/TypeScript/issues/28953
 		interface ElementChildrenAttribute {
 			children: Children;
 		}
@@ -137,42 +135,72 @@ export type Committer<T> = Iterator<
 // TODO: allow intrinsics to be a simple function
 export type Intrinsic<T> = (props: IntrinsicProps<T>) => Committer<T>;
 
-// TODO: use a left-child right-sibling tree, maybe we want to use an interface like this to make views dumb and performant
-//type Engine<T> = Iterator<
-//	T | string | undefined,
-//	T | string | undefined,
+// TODO: use a left-child right-sibling tree, maybe we want to use an interface
+// like this to make views dumb and performant.
+//
+//interface Fiber<T> {
+//	host?: T | string;
+//	guest?: Element | string;
+//	parent?: Fiber<T>;
+//	firstChild?: Fiber<T>;
+//	nextSibling?: Fiber<T>;
+//	engine?: Engine;
+//}
+//
+//type Engine = Generator<
+//	MaybePromise<undefined>,
+//	MaybePromise<undefined>,
 //	Props
 //>;
 //
-// Idea for a refactoring to a binary tree. What should this be called?
-// View? Fiber? Node?
-// Should this be an interface or a class?
-//interface Fiber<T> {
-//	value?: Element | string;
-//	host?: T | string;
-//	engine?: Engine;
-//	firstChild?: Fiber<T>;
-//	nextSibling?: Fiber<T>;
-//	parent?: Fiber<T>;
-//}
+// We should split up the logic from View to Fiber, which is stateless, and
+// Engine, which is stateful. Engine would call updateChildren and yield host
+// nodes. I’m not sure why the engine would yield host nodes, insofar as this
+// would require the fiber or some other function to set the host on the fiber.
+// Why would the engine set the children of the fiber but not set the host?
+// This reveals the conceptual limits of iterators. They have to “yield”
+// something or why use iterators at all?
 //
+// I’m not sure if creating/deleting an engine is possible, because if
+// pending/enqueued isn’t defined on fibers, how do we enqueue multiple
+// synchronous updates?
+//
+// The main problem is unmounting, where a guest at a fiber is replaced with a
+// different type of guest. If this happens synchronously, but the old guest is
+// evicted asynchronously, does that mean the mounting of the new guest is
+// enqueued? If the new guest is a string or undefined, does that mean we need
+// to keep the engine around?
+//
+// This is making me realize that the logic around asynchronous eviction is
+// just wrong currently (using host/guest terminology opens us up to new
+// analogies like lease/evict). Right now, when an element has children which
+// are evicted asynchronously, we block the committing of that element (and all
+// its children). A better alternative would be to simply block committing of
+// the child in the unmounting “slot,” leaving the parent and siblings to
+// freely update while the child is leaving. This necessitates a switch over to
+// a Fiber-like data structure, insofar as we can’t simply call updateChildren
+// to add/remove children; each child needs to keep its own internal unmounting
+// state.
 export class View<T> {
 	tag: Tag;
 	props: Props;
 	// TODO: rename to host?
 	private node?: T | string;
-	// whether or not the parent is updating this component or the component is being updated by the parent
+	// whether or not the parent is updating this component or the component is
+	// being updated by the parent
 	private updating = false;
-	// TODO: The controller and committer properties are mutually exclusive on a view.
-	// There must be a more beautiful way to tie this logic together.
+	// TODO: The controller and committer properties are mutually exclusive on a
+	// view. There must be a more beautiful way to tie this logic together.
 	private committer?: Committer<T>;
 	private controller?: Controller;
-	// These properties are exclusively used to batch intrinsic components with async children. There must be a better way to do this than to define these properties on View.
+	// These properties are exclusively used to batch intrinsic components with
+	// async children. There must be a better way to do this than to define these
+	// properties on View.
 	private pending?: Promise<undefined>;
 	private enqueued?: Promise<undefined>;
 	// TODO: Use a left-child right-sibling tree.
 	private children: (View<T> | string | undefined)[] = [];
-	// TODO: Stop passing env into this thing.
+	// TODO: Stop passing env into trees.
 	constructor(
 		elem: Element,
 		private env: Environment<T>,
@@ -414,6 +442,10 @@ export class View<T> {
 
 		while (i < this.children.length) {
 			if (typeof view === "object") {
+				// TODO: this logic is wrong
+				// We don’t want to block updating of the view until every view is
+				// unmounted. We simply want to prevent any view in that slot from
+				// updating.
 				const p = view.unmount();
 				if (p !== undefined) {
 					promises.push(p);
@@ -449,8 +481,6 @@ export class View<T> {
 	}
 }
 
-// TODO: get rid of the voids
-// (async) generator functions will not be able to return ComponentIterator until this issue is fixed https://github.com/microsoft/TypeScript/issues/34984
 export type ChildGenerator =
 	| Generator<MaybePromiseLike<Child>>
 	| AsyncGenerator<Child>;
@@ -460,14 +490,14 @@ export type FunctionComponent = (
 	props: Props,
 ) => MaybePromiseLike<Child>;
 
-export type IteratorComponent = (
+export type GeneratorComponent = (
 	this: Context,
 	props: Props,
 ) => ChildGenerator;
 
-// NOTE: we can’t use a type alias of FunctionComponent | IteratorComponent
-// because that breaks Function.prototype methods.
-// https://github.com/microsoft/TypeScript/issues/33815
+// TODO: component cannot be a union of FunctionComponent | GeneratorComponent
+// because this breaks Function.prototype methods.
+// https://github.com/microsoft/TypeScript/issues/34984
 export type Component = (
 	this: Context,
 	props: Props,
@@ -529,10 +559,7 @@ class Controller {
 		}
 
 		// TODO: remove the type assertion from this.ctx
-		this.iter = createChildGenerator(
-			this.ctx,
-			this.tag as FunctionComponent,
-		);
+		this.iter = createChildGenerator(this.ctx, this.tag as FunctionComponent);
 		return {value, done: false};
 	}
 
@@ -629,10 +656,12 @@ export class Renderer<T, TContainer extends {}> {
 		}
 	}
 
+	// TODO: move the TContainer/node/Root wrapping logic into env-specific
+	// functions. It does not apply uniformly for all enviroments.
 	render(
 		elem: Element | null | undefined,
 		node?: TContainer,
-	): Promise<View<T>> | View<T> | undefined {
+	): MaybePromise<View<T>> | undefined {
 		if (elem != null && elem.tag !== Root) {
 			if (node == null) {
 				throw new Error(
