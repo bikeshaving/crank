@@ -197,13 +197,14 @@ function createGuest(child: Child): Guest {
 // a Fiber-like data structure, insofar as we can’t simply call updateChildren
 // to add/remove children; each child needs to keep its own internal unmounting
 // state.
+//
 // TODO: rename to host?
 //export class Host<T> {
 export class View<T> {
-	private node?: T | string;
 	// whether or not the parent is updating this component or the component is
 	// being updated by the parent
 	private updating = false;
+	private node?: T | string;
 	// TODO: The controller and committer properties are mutually exclusive on a
 	// view. There must be a more beautiful way to tie this logic together.
 	private committer?: Committer<T>;
@@ -235,11 +236,9 @@ export class View<T> {
 		let buffer: string | undefined;
 		const nodes: (T | string)[] = [];
 		for (const childView of this.children) {
-			// TODO: read string values off node not guest
-			if (childView !== undefined && childView.guest !== undefined) {
-				if (typeof childView.guest === "string") {
-					buffer =
-						buffer === undefined ? childView.guest : buffer + childView.guest;
+			if (childView !== undefined) {
+				if (typeof childView.node === "string") {
+					buffer = (buffer || "") + childView.node;
 				} else {
 					if (buffer !== undefined) {
 						nodes.push(buffer);
@@ -293,12 +292,12 @@ export class View<T> {
 
 	update(guest: Guest): Promise<undefined> | undefined {
 		this.updating = true;
-		const evicted = this.guest;
+		const oldGuest = this.guest;
 		this.guest = guest;
 		if (
-			typeof evicted !== "object" ||
+			typeof oldGuest !== "object" ||
 			typeof guest !== "object" ||
-			evicted.tag !== guest.tag
+			oldGuest.tag !== guest.tag
 		) {
 			// TODO: this logic is wrong
 			// We don’t want to block updating of the parent until every child is
@@ -333,6 +332,8 @@ export class View<T> {
 
 				this.node = result.value as T | undefined;
 			}
+		} else {
+			this.node = this.guest;
 		}
 
 		this.updating = false;
@@ -385,6 +386,8 @@ export class View<T> {
 
 			return update.then(() => void this.commit());
 		}
+
+		this.commit();
 	}
 
 	refresh(): Promise<undefined> | undefined {
@@ -660,7 +663,7 @@ export class Renderer<T, TContainer extends {}> {
 	// TODO: move the TContainer/node/Root wrapping logic into env-specific
 	// functions. It does not apply uniformly for all enviroments.
 	render(
-		elem: Element | null | undefined,
+		elem?: Element | null,
 		node?: TContainer,
 	): MaybePromise<View<T>> | undefined {
 		if (elem != null && elem.tag !== Root) {
