@@ -127,22 +127,36 @@ export interface IntrinsicProps<T> {
 
 export type Committer<T> = Iterator<
 	T | undefined,
-	T | undefined | void,
+	T | undefined,
 	IntrinsicProps<T>
 >;
 
 // TODO: allow intrinsics to be a simple function
 export type Intrinsic<T> = (props: IntrinsicProps<T>) => Committer<T>;
 
+export type Guest = Element | string | undefined;
+
+function createGuest(child: Child): Guest {
+	if (child == null || typeof child === "boolean") {
+		return;
+	} else if (typeof child === "number") {
+		return child.toString();
+	} else if (typeof child === "string" || isElement(child)) {
+		return child;
+	}
+
+	throw new Error("Unknown child type");
+}
+
 // TODO: use a left-child right-sibling tree, maybe we want to use an interface
 // like this to make views dumb and performant.
 //
-//interface Fiber<T> {
-//	host?: T | string;
+//interface Host<T> {
 //	guest?: Element | string;
-//	parent?: Fiber<T>;
-//	firstChild?: Fiber<T>;
-//	nextSibling?: Fiber<T>;
+//	node?: T | string;
+//	parent?: Host<T>;
+//	firstChild?: Host<T>;
+//	nextSibling?: Host<T>;
 //	engine?: Engine;
 //}
 //
@@ -159,6 +173,9 @@ export type Intrinsic<T> = (props: IntrinsicProps<T>) => Committer<T>;
 // Why would the engine set the children of the fiber but not set the host?
 // This reveals the conceptual limits of iterators. They have to “yield”
 // something or why use iterators at all?
+//
+// Engine is a type which both components and intrinsics can implement to
+// manipulate the host.
 //
 // I’m not sure if creating/deleting an engine is possible, because if
 // pending/enqueued isn’t defined on fibers, how do we enqueue multiple
@@ -180,10 +197,9 @@ export type Intrinsic<T> = (props: IntrinsicProps<T>) => Committer<T>;
 // a Fiber-like data structure, insofar as we can’t simply call updateChildren
 // to add/remove children; each child needs to keep its own internal unmounting
 // state.
+// TODO: rename to host?
+//export class Host<T> {
 export class View<T> {
-	tag: Tag;
-	props: Props;
-	// TODO: rename to host?
 	private node?: T | string;
 	// whether or not the parent is updating this component or the component is
 	// being updated by the parent
@@ -198,21 +214,15 @@ export class View<T> {
 	private pending?: Promise<undefined>;
 	private enqueued?: Promise<undefined>;
 	// TODO: Use a left-child right-sibling tree.
-	private children: (View<T> | string | undefined)[] = [];
-	// TODO: Stop passing env into trees.
+	private children: (View<T> | undefined)[] = [];
 	constructor(
-		elem: Element,
+		private guest: Guest,
+		// TODO: Stop passing env into trees, should we pass in renderer?
 		private env: Environment<T>,
 		private parent?: View<T>,
 	) {
-		this.tag = elem.tag;
-		this.props = elem.props;
-		if (elem.tag === Root && parent !== undefined) {
-			throw new TypeError(
-				"Root Element must always be the root of an element tree",
-			);
-		} else if (typeof this.tag === "function") {
-			this.controller = new Controller(this.tag, this);
+		if (isElement(this.guest) && typeof this.guest.tag === "function") {
+			this.controller = new Controller(this.guest.tag, this.guest.props, this);
 		}
 	}
 
@@ -224,22 +234,22 @@ export class View<T> {
 
 		let buffer: string | undefined;
 		const nodes: (T | string)[] = [];
-		for (const child of this.children) {
-			if (child !== undefined) {
-				if (typeof child === "string") {
-					buffer = buffer === undefined ? child : buffer + child;
+		for (const childView of this.children) {
+			// TODO: read string values off node not guest
+			if (childView !== undefined && childView.guest !== undefined) {
+				if (typeof childView.guest === "string") {
+					buffer =
+						buffer === undefined ? childView.guest : buffer + childView.guest;
 				} else {
 					if (buffer !== undefined) {
 						nodes.push(buffer);
 						buffer = undefined;
 					}
 
-					if (child instanceof View) {
-						if (child.node !== undefined) {
-							nodes.push(child.node);
-						} else {
-							nodes.push(...child.childNodes);
-						}
+					if (childView.node !== undefined) {
+						nodes.push(childView.node);
+					} else {
+						nodes.push(...childView.childNodes);
 					}
 				}
 			}
@@ -261,6 +271,7 @@ export class View<T> {
 		return this.childNodes[0];
 	}
 
+	// TODO: move this logic to the renderer
 	protected intrinsicFor(tag: string | ControlTag): Intrinsic<T> {
 		let intrinsic: Intrinsic<T> | undefined;
 		if (tag === Root) {
@@ -280,104 +291,93 @@ export class View<T> {
 		return intrinsic;
 	}
 
-	private instantiate(child: Child): View<T> | string | undefined {
-		if (child == null || typeof child === "boolean") {
-			return undefined;
-		} else if (typeof child === "string") {
-			return child;
-		} else if (typeof child === "number") {
-			return child.toString();
-		} else if (isElement(child)) {
-			return new View(child, this.env, this);
-		} else {
-			throw new TypeError("Unknown child type");
-		}
-	}
-
-	update(elem: Element): Promise<undefined> | undefined {
-		if (this.tag !== elem.tag) {
-			throw new TypeError("Tag mismatch");
-		}
-
+	update(guest: Guest): Promise<undefined> | undefined {
 		this.updating = true;
-		this.props = elem.props;
+		this.guest = guest;
 		return this.refresh();
 	}
 
 	commit(): void {
-		if (typeof this.tag === "function") {
-			if (!this.updating && this.parent !== undefined) {
-				this.parent.commit();
-			}
-		} else {
-			const props = {...this.props, children: this.childNodes};
-			if (this.committer === undefined) {
-				const intrinsic = this.intrinsicFor(this.tag);
-				this.committer = intrinsic(props);
-			}
+		if (isElement(this.guest)) {
+			if (typeof this.guest.tag === "function") {
+				if (!this.updating && this.parent !== undefined) {
+					this.parent.commit();
+				}
+			} else {
+				const props = {...this.guest.props, children: this.childNodes};
+				if (this.committer === undefined) {
+					const intrinsic = this.intrinsicFor(this.guest.tag);
+					this.committer = intrinsic(props);
+				}
 
-			const result = this.committer.next(props);
-			if (result.done) {
-				this.committer = undefined;
-			}
+				const result = this.committer.next(props);
+				if (result.done) {
+					this.committer = undefined;
+				}
 
-			this.node = result.value as T | undefined;
+				this.node = result.value as T | undefined;
+			}
 		}
 
 		this.updating = false;
 	}
 
 	private run(): Promise<undefined> | undefined {
-		let children: MaybePromiseLike<Children>;
-		if (this.controller !== undefined) {
-			const nodes =
-				this.pending === undefined
-					? this.childNodeOrNodes
-					: this.pending.then(() => this.childNodeOrNodes);
-			const result = this.controller.next(nodes);
-			if (isPromiseLike(result)) {
-				children = result.then((result) => {
+		if (isElement(this.guest)) {
+			let children: MaybePromiseLike<Children>;
+			if (this.controller !== undefined) {
+				const nodes =
+					this.pending === undefined
+						? this.childNodeOrNodes
+						: this.pending.then(() => this.childNodeOrNodes);
+				const result = this.controller.next(nodes);
+				if (isPromiseLike(result)) {
+					children = result.then((result) => {
+						if (result.done) {
+							this.controller = undefined;
+							return result.value as any;
+						}
+
+						this.pending = this.run()!.then(() => void this.commit());
+						return result.value;
+					});
+				} else {
 					if (result.done) {
 						this.controller = undefined;
-						return result.value as any;
 					}
 
-					this.pending = this.run()!.then(() => void this.commit());
-					return result.value;
-				});
-			} else {
-				if (result.done) {
-					this.controller = undefined;
+					children = result.value as any;
 				}
-
-				children = result.value as any;
+			} else {
+				children = this.guest.props.children;
 			}
-		} else {
-			children = this.props.children;
-		}
 
-		let update: Promise<undefined> | undefined;
-		if (isPromiseLike(children)) {
-			update = Promise.resolve(children).then((children) =>
-				this.updateChildren(children),
-			);
-		} else {
-			update = this.updateChildren(children);
-		}
+			let update: Promise<undefined> | undefined;
+			if (isPromiseLike(children)) {
+				update = Promise.resolve(children).then((children) =>
+					this.updateChildren(children),
+				);
+			} else {
+				update = this.updateChildren(children);
+			}
 
-		if (update === undefined) {
-			this.commit();
-			return;
-		}
+			if (update === undefined) {
+				this.commit();
+				return;
+			}
 
-		return update.then(() => void this.commit());
+			return update.then(() => void this.commit());
+		}
 	}
 
 	refresh(): Promise<undefined> | undefined {
+		// TODO: should we do a check that tag for the controller is the same as
+		// tag for the new guest?
+		if (this.controller && isElement(this.guest)) {
+			this.controller.publish(this.guest.props);
+		}
+
 		if (this.controller && this.controller.async) {
-			// should we be calling publish here or should the controller call
-			// publish on next?
-			this.controller.publish();
 			return this.pending;
 		} else if (this.pending === undefined) {
 			const update = this.run();
@@ -406,34 +406,26 @@ export class View<T> {
 		const promises: Promise<any>[] = [];
 		let i = 0;
 		let view = this.children[i];
-		for (const elem of flattenChildren(children)) {
-			if (
-				view === undefined ||
-				elem === null ||
-				typeof view !== "object" ||
-				typeof elem !== "object" ||
-				view.tag !== elem.tag
-			) {
-				if (typeof view === "object") {
-					const p = view.unmount();
-					if (p !== undefined) {
-						promises.push(p);
-					}
-				}
-
-				view = this.instantiate(elem);
-				this.children[i] = view;
+		for (const child of flattenChildren(children)) {
+			const guest = createGuest(child);
+			if (view === undefined) {
+				view = this.children[i] = new View(guest, this.env, this);
 			}
-
-			if (
-				typeof view === "object" &&
-				elem !== null &&
-				typeof elem === "object"
+			// TODO: move this logic to update.
+			else if (
+				typeof view.guest !== "object" ||
+				typeof guest !== "object" ||
+				view.guest.tag !== guest.tag
 			) {
-				const p = view.update(elem);
+				const p = view.unmount();
 				if (p !== undefined) {
 					promises.push(p);
 				}
+			}
+
+			const p = view.update(guest);
+			if (p !== undefined) {
+				promises.push(p);
 			}
 
 			view = this.children[++i];
@@ -512,7 +504,7 @@ export class Context {
 
 	*[Symbol.iterator](): Generator<Props> {
 		while (true) {
-			yield this.view.props;
+			yield this.controller.props;
 		}
 	}
 
@@ -543,10 +535,14 @@ class Controller {
 	private ctx = new Context(this, this.view);
 	private pubs = new Set<Publication>();
 	private iter?: ChildGenerator;
-	constructor(private tag: Component, private view: View<any>) {}
+	constructor(
+		private tag: Component,
+		public props: Props,
+		private view: View<any>,
+	) {}
 
 	private initialize(): ControllerResult {
-		const value = this.tag.call(this.ctx, this.view.props);
+		const value = this.tag.call(this.ctx, this.props);
 		// TODO: use a more reliable check to determine if the object is a generator
 		// Check if Symbol.iterator or Symbol.asyncIterator + next/return/throw
 		// are defined.
@@ -596,7 +592,7 @@ class Controller {
 
 	subscribe(): AsyncGenerator<Props> {
 		return new Repeater(async (push, stop) => {
-			push(this.view.props);
+			push(this.props);
 			const pub = {push, stop};
 			this.pubs.add(pub);
 			await stop;
@@ -604,9 +600,10 @@ class Controller {
 		}, new SlidingBuffer(1));
 	}
 
-	publish(): void {
+	publish(props: Props): void {
+		this.props = props;
 		for (const pub of this.pubs) {
-			pub.push(this.view.props);
+			pub.push(this.props);
 		}
 	}
 }
