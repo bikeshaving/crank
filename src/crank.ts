@@ -34,15 +34,14 @@ function isIteratorOrAsyncIterator(
 	return value != null && typeof value.next === "function";
 }
 
-// TODO: should we use Symbol or Symbol.for?
 // TODO: user-defined control tags?
-export const Default = Symbol("Default");
+export const Default = Symbol.for("crank:Default");
 
 export type Default = typeof Default;
 
 // TODO: Rename this to Container? Maybe we can merge this tag concept with the
 // unimplemented Portal tag
-export const Root = Symbol("Root");
+export const Root = Symbol.for("crank:Root");
 
 export type Root = typeof Root;
 
@@ -77,7 +76,7 @@ export interface Props {
 	children?: Children;
 }
 
-export const ElementSigil: unique symbol = Symbol.for("crank.element");
+export const ElementSigil: unique symbol = Symbol.for("crank:ElementSigil");
 
 export type ElementSigil = typeof ElementSigil;
 
