@@ -293,7 +293,23 @@ export class View<T> {
 
 	update(guest: Guest): Promise<undefined> | undefined {
 		this.updating = true;
+		const evicted = this.guest;
 		this.guest = guest;
+		if (
+			typeof evicted !== "object" ||
+			typeof guest !== "object" ||
+			evicted.tag !== guest.tag
+		) {
+			// TODO: this logic is wrong
+			// We don’t want to block updating of the parent until every child is
+			// unmounted. We simply want to prevent this child from updating.
+			this.pending = this.unmount();
+			this.enqueued = undefined;
+			if (this.pending !== undefined) {
+				return this.pending.then(() => this.refresh());
+			}
+		}
+
 		return this.refresh();
 	}
 
@@ -338,7 +354,8 @@ export class View<T> {
 							return result.value as any;
 						}
 
-						this.pending = this.run()!.then(() => void this.commit());
+						this.commit();
+						this.pending = this.run();
 						return result.value;
 					});
 				} else {
@@ -411,17 +428,6 @@ export class View<T> {
 			if (view === undefined) {
 				view = this.children[i] = new View(guest, this.env, this);
 			}
-			// TODO: move this logic to update.
-			else if (
-				typeof view.guest !== "object" ||
-				typeof guest !== "object" ||
-				view.guest.tag !== guest.tag
-			) {
-				const p = view.unmount();
-				if (p !== undefined) {
-					promises.push(p);
-				}
-			}
 
 			const p = view.update(guest);
 			if (p !== undefined) {
@@ -434,9 +440,8 @@ export class View<T> {
 		while (i < this.children.length) {
 			if (typeof view === "object") {
 				// TODO: this logic is wrong
-				// We don’t want to block updating of the view until every view is
-				// unmounted. We simply want to prevent any view in that slot from
-				// updating.
+				// We don’t want to block updating of the parent until every child is
+				// unmounted. We simply want to prevent this child from updating.
 				const p = view.unmount();
 				if (p !== undefined) {
 					promises.push(p);
@@ -452,7 +457,7 @@ export class View<T> {
 		}
 	}
 
-	unmount(): Promise<void> | void {
+	unmount(): Promise<undefined> | undefined {
 		if (this.committer !== undefined) {
 			this.committer.return && this.committer.return();
 			delete this.committer;
@@ -461,7 +466,7 @@ export class View<T> {
 		let result: any;
 		if (this.controller !== undefined) {
 			result = this.controller.return();
-			delete this.controller;
+			this.controller = undefined;
 		}
 
 		if (isPromiseLike(result)) {
