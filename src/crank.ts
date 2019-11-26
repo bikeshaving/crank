@@ -221,11 +221,7 @@ export class View<T> {
 		// TODO: Stop passing env into trees, should we pass in renderer?
 		private env: Environment<T>,
 		private parent?: View<T>,
-	) {
-		if (isElement(this.guest) && typeof this.guest.tag === "function") {
-			this.controller = new Controller(this.guest.tag, this.guest.props, this);
-		}
-	}
+	) {}
 
 	private _childNodes?: (T | string)[];
 	get childNodes(): (T | string)[] {
@@ -294,6 +290,14 @@ export class View<T> {
 		this.updating = true;
 		const oldGuest = this.guest;
 		this.guest = guest;
+		if (
+			isElement(this.guest) &&
+			typeof this.guest.tag === "function" &&
+			this.controller === undefined
+		) {
+			this.controller = new Controller(this.guest.tag, this.guest.props, this);
+		}
+
 		if (
 			typeof oldGuest !== "object" ||
 			typeof guest !== "object" ||
