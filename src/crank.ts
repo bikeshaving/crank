@@ -63,6 +63,7 @@ export type Root = typeof Root;
 export type ControlTag = Root;
 
 // export type ControlTag = Root | Copy | Fragment | Portal;
+//
 export type Tag = Component | ControlTag | string;
 
 export type Child = Element | string | number | boolean | null | undefined;
@@ -145,7 +146,7 @@ function createGuest(child: Child): Guest {
 		return child;
 	}
 
-	throw new Error("Unknown child type");
+	throw new TypeError("Unknown child type");
 }
 
 // TODO: use a left-child right-sibling tree, maybe we want to use an interface
@@ -272,7 +273,7 @@ export class View<T> {
 		if (tag === Root) {
 			intrinsic = this.env[tag];
 			if (intrinsic == null) {
-				throw new Error("Unknown Tag");
+				throw new TypeError("Unknown Tag");
 			}
 		} else if (typeof tag === "string") {
 			intrinsic = this.env[tag];
@@ -280,7 +281,7 @@ export class View<T> {
 				intrinsic = this.env[Default](tag);
 			}
 		} else {
-			throw new Error("Unknown Tag");
+			throw new TypeError("Unknown Tag");
 		}
 
 		return intrinsic;
@@ -299,18 +300,14 @@ export class View<T> {
 		}
 
 		if (
-			typeof oldGuest !== "object" ||
-			typeof guest !== "object" ||
-			oldGuest.tag !== guest.tag
+			isElement(oldGuest) &&
+			(!isElement(guest) || oldGuest.tag !== guest.tag)
 		) {
 			// TODO: this logic is wrong
 			// We don’t want to block updating of the parent until every child is
 			// unmounted. We simply want to prevent this child from updating.
 			this.pending = this.unmount();
 			this.enqueued = undefined;
-			if (this.pending !== undefined) {
-				return this.pending.then(() => this.refresh());
-			}
 		}
 
 		return this.refresh();
@@ -334,7 +331,7 @@ export class View<T> {
 					this.committer = undefined;
 				}
 
-				this.node = result.value as T | undefined;
+				this.node = result.value;
 			}
 		} else {
 			this.node = this.guest;
@@ -394,6 +391,7 @@ export class View<T> {
 		this.commit();
 	}
 
+	// TODO: enqueue this?
 	refresh(): Promise<undefined> | undefined {
 		// TODO: should we do a check that tag for the controller is the same as
 		// tag for the new guest?
@@ -465,15 +463,15 @@ export class View<T> {
 	}
 
 	unmount(): Promise<undefined> | undefined {
-		if (this.committer !== undefined) {
-			this.committer.return && this.committer.return();
-			delete this.committer;
-		}
-
 		let result: any;
 		if (this.controller !== undefined) {
 			result = this.controller.return();
 			this.controller = undefined;
+		}
+
+		if (this.committer !== undefined) {
+			this.committer.return && this.committer.return();
+			delete this.committer;
 		}
 
 		if (isPromiseLike(result)) {
@@ -529,6 +527,7 @@ export class Context {
 	}
 }
 
+// TODO: not sure if we need this
 function* createChildGenerator(
 	context: Context,
 	tag: FunctionComponent,
@@ -672,7 +671,7 @@ export class Renderer<T, TContainer extends {}> {
 	): MaybePromise<View<T>> | undefined {
 		if (elem != null && elem.tag !== Root) {
 			if (node == null) {
-				throw new Error(
+				throw new TypeError(
 					"Node is null or undefined and root element is not a root element",
 				);
 			}
