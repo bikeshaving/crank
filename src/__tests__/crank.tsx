@@ -645,9 +645,11 @@ describe("async generator component", () => {
 
 	test("async unmount", async () => {
 		let cleanup!: () => unknown;
-		async function* Component() {
+		async function* Component(this: Context, {message}: {message: string}) {
 			try {
-				yield (<span>Hello</span>);
+				for ({message} of this) {
+					yield (<span>{message}</span>);
+				}
 			} finally {
 				await new Promise((resolve) => (cleanup = resolve));
 			}
@@ -655,23 +657,37 @@ describe("async generator component", () => {
 
 		await render(
 			<div>
-				<Component />
+				<Component message="Hello 1" />
+				<div>Goodbye</div>
 			</div>,
 			document.body,
 		);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>Hello 1</span><div>Goodbye</div></div>",
+		);
 		// TODO: we need to implement logic where we reuse nodes to handle the case
 		// of a node being unmounted and updated continuously. The node should be
 		// allowed to commit but have the unmounting node in the children until
 		// such time as the node can be unmounted.
 		render(<div />, document.body);
 		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
-		render(<div>Hello</div>, document.body);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>Hello 1</span><div>Goodbye</div></div>",
+		);
+		render(
+			<div>
+				Hello<span>Goodbye</span>
+			</div>,
+			document.body,
+		);
 		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>Hello 1</span><div>Goodbye</div></div>",
+		);
 		cleanup();
 		await new Promise((resolve) => setTimeout(resolve, 0));
-		expect(document.body.innerHTML).toEqual("<div>Hello</div>");
+		expect(document.body.innerHTML).toEqual(
+			"<div>Hello<span>Goodbye</span></div>",
+		);
 	});
 });
