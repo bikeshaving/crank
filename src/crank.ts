@@ -39,11 +39,11 @@ export const Default = Symbol.for("crank:Default");
 
 export type Default = typeof Default;
 
-// TODO: Rename this to Container? Maybe we can merge this tag concept with the
-// unimplemented Portal tag
+// TODO: Rename to Container? Merge with Portal?
 export const Root = Symbol.for("crank:Root");
 
-export type Root = typeof Root;
+// TODO: typescript is dumb and doesn’t allow symbols in jsx expressions.
+export type Root = any;
 
 // TODO: implement these control tags
 // I wonder if the following tags can be implemented without defining a custom
@@ -202,17 +202,18 @@ function createGuest(child: Child): Guest {
 // TODO: rename to host?
 //export class Host<T> {
 export class View<T> {
-	// whether or not the parent is updating this component or the component is
-	// being updated by the parent
+	private nextRunId = 0;
+	// whether or not the parent is updating this node
 	private updating = false;
 	private node?: T | string;
+	// whether or not the node is unmounting (asynchronously)
+	private hanging?: (T | string)[];
 	// TODO: The controller and committer properties are mutually exclusive on a
 	// view. There must be a more beautiful way to tie this logic together.
 	private committer?: Committer<T>;
 	private controller?: Controller;
-	// These properties are exclusively used to batch intrinsic components with
-	// async children. There must be a better way to do this than to define these
-	// properties on View.
+	// These properties are used to batch updates to async components/components
+	// with async children.
 	private pending?: Promise<undefined>;
 	private enqueued?: Promise<undefined>;
 	// TODO: Use a left-child right-sibling tree.
@@ -224,39 +225,41 @@ export class View<T> {
 		private parent?: View<T>,
 	) {}
 
-	private _childNodes?: (T | string)[];
+	private _childNodes: (T | string)[] | undefined;
 	get childNodes(): (T | string)[] {
 		if (this._childNodes !== undefined) {
 			return this._childNodes;
 		}
 
 		let buffer: string | undefined;
-		const nodes: (T | string)[] = [];
+		const childNodes: (T | string)[] = [];
 		for (const childView of this.children) {
 			if (childView !== undefined) {
-				if (typeof childView.node === "string") {
+				if (childView.hanging !== undefined) {
+					childNodes.push(...childView.hanging);
+				} else if (typeof childView.node === "string") {
 					buffer = (buffer || "") + childView.node;
 				} else {
 					if (buffer !== undefined) {
-						nodes.push(buffer);
+						childNodes.push(buffer);
 						buffer = undefined;
 					}
 
 					if (childView.node !== undefined) {
-						nodes.push(childView.node);
+						childNodes.push(childView.node);
 					} else {
-						nodes.push(...childView.childNodes);
+						childNodes.push(...childView.childNodes);
 					}
 				}
 			}
 		}
 
 		if (buffer !== undefined) {
-			nodes.push(buffer);
+			childNodes.push(buffer);
 		}
 
-		this._childNodes = nodes;
-		return nodes;
+		this._childNodes = childNodes;
+		return childNodes;
 	}
 
 	get childNodeOrNodes(): (T | string)[] | T | string | undefined {
@@ -289,35 +292,28 @@ export class View<T> {
 
 	update(guest: Guest): Promise<undefined> | undefined {
 		this.updating = true;
-		const oldGuest = this.guest;
-		this.guest = guest;
 		if (
 			isElement(this.guest) &&
-			typeof this.guest.tag === "function" &&
-			this.controller === undefined
+			(!isElement(guest) || this.guest.tag !== guest.tag)
 		) {
-			this.controller = new Controller(this.guest.tag, this.guest.props, this);
+			this.unmount();
 		}
 
-		if (
-			isElement(oldGuest) &&
-			(!isElement(guest) || oldGuest.tag !== guest.tag)
-		) {
-			// TODO: this logic is wrong
-			// We don’t want to block updating of the parent until every child is
-			// unmounted. We simply want to prevent this child from updating.
-			this.pending = this.unmount();
-			this.enqueued = undefined;
-		}
-
+		this.guest = guest;
 		return this.refresh();
+	}
+
+	// TODO: batch this per tick
+	enqueueCommit(): void {
+		this._childNodes = undefined;
+		this.commit();
 	}
 
 	commit(): void {
 		if (isElement(this.guest)) {
 			if (typeof this.guest.tag === "function") {
 				if (!this.updating && this.parent !== undefined) {
-					this.parent.commit();
+					this.parent.enqueueCommit();
 				}
 			} else {
 				const props = {...this.guest.props, children: this.childNodes};
@@ -341,6 +337,7 @@ export class View<T> {
 	}
 
 	private run(): Promise<undefined> | undefined {
+		const runId = this.nextRunId++;
 		if (isElement(this.guest)) {
 			let children: MaybePromiseLike<Children>;
 			if (this.controller !== undefined) {
@@ -356,8 +353,6 @@ export class View<T> {
 							return result.value as any;
 						}
 
-						this.commit();
-						this.pending = this.run();
 						return result.value;
 					});
 				} else {
@@ -373,26 +368,39 @@ export class View<T> {
 
 			let update: Promise<undefined> | undefined;
 			if (isPromiseLike(children)) {
-				update = Promise.resolve(children).then((children) =>
-					this.updateChildren(children),
-				);
+				update = Promise.resolve(children).then((children) => {
+					if (runId + 1 === this.nextRunId) {
+						return this.updateChildren(children);
+					}
+				});
 			} else {
 				update = this.updateChildren(children);
 			}
 
-			if (update === undefined) {
-				this.commit();
-				return;
-			}
+			if (update !== undefined) {
+				return update.then(() => {
+					this.commit();
+					if (this.controller && this.controller.async) {
+						this.pending = this.run();
+					}
 
-			return update.then(() => void this.commit());
+					return undefined; // fuck void
+				});
+			}
 		}
 
 		this.commit();
 	}
 
-	// TODO: enqueue this?
 	refresh(): Promise<undefined> | undefined {
+		if (
+			isElement(this.guest) &&
+			typeof this.guest.tag === "function" &&
+			this.controller === undefined
+		) {
+			this.controller = new Controller(this.guest.tag, this.guest.props, this);
+		}
+
 		// TODO: should we do a check that tag for the controller is the same as
 		// tag for the new guest?
 		if (this.controller && isElement(this.guest)) {
@@ -444,16 +452,9 @@ export class View<T> {
 
 		while (i < this.children.length) {
 			if (typeof view === "object") {
-				// TODO: this logic is wrong
-				// We don’t want to block updating of the parent until every child is
-				// unmounted. We simply want to prevent this child from updating.
-				const p = view.unmount();
-				if (p !== undefined) {
-					promises.push(p);
-				}
+				view.unmount();
 			}
 
-			delete this.children[i];
 			view = this.children[++i];
 		}
 
@@ -463,22 +464,44 @@ export class View<T> {
 	}
 
 	unmount(): Promise<undefined> | undefined {
-		let result: any;
+		// TODO: catch and swallow any errors
+		this.pending = undefined;
+		this.enqueued = undefined;
+		this.node = undefined;
+		this.guest = undefined;
+		let promise: Promise<undefined> | undefined;
 		if (this.controller !== undefined) {
-			result = this.controller.return();
+			const result = this.controller.return();
+			if (isPromiseLike(result)) {
+				promise = result.then(() => undefined); // void :(
+			}
+
 			this.controller = undefined;
 		}
 
 		if (this.committer !== undefined) {
 			this.committer.return && this.committer.return();
-			delete this.committer;
+			this.committer = undefined;
 		}
 
-		if (isPromiseLike(result)) {
-			return Promise.resolve(result).then(() => this.updateChildren([]));
+		// TODO: is this right?
+		if (promise === undefined) {
+			promise = this.updateChildren([]);
+		} else {
+			promise = promise.then(() => this.updateChildren([]));
 		}
 
-		return this.updateChildren([]);
+		if (promise !== undefined) {
+			this.hanging = this.childNodes;
+			promise.then(() => {
+				this.hanging = undefined;
+				this.parent && this.parent.enqueueCommit();
+			});
+
+			return promise;
+		}
+
+		this.hanging = undefined;
 	}
 }
 

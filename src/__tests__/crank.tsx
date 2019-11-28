@@ -348,7 +348,7 @@ describe("async function component", () => {
 	});
 
 	test("basic", async () => {
-		async function AsyncFn({
+		async function Component({
 			message,
 			time = 10,
 		}: {
@@ -361,7 +361,7 @@ describe("async function component", () => {
 
 		const viewP = render(
 			<div>
-				<AsyncFn message="Hello" />
+				<Component message="Hello" />
 			</div>,
 			document.body,
 		);
@@ -371,7 +371,7 @@ describe("async function component", () => {
 	});
 
 	test("rerender batching", async () => {
-		const AsyncFn = jest.fn(async function AsyncFn({
+		const Component = jest.fn(async function Component({
 			message,
 			time = 10,
 		}: {
@@ -383,19 +383,19 @@ describe("async function component", () => {
 		});
 		const viewP1 = render(
 			<div>
-				<AsyncFn message="Hello 1" />
+				<Component message="Hello 1" />
 			</div>,
 			document.body,
 		);
 		const viewP2 = render(
 			<div>
-				<AsyncFn message="Hello 2" />
+				<Component message="Hello 2" />
 			</div>,
 			document.body,
 		);
 		const viewP3 = render(
 			<div>
-				<AsyncFn message="Hello 3" />
+				<Component message="Hello 3" />
 			</div>,
 			document.body,
 		);
@@ -406,19 +406,19 @@ describe("async function component", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 3</span></div>");
 		const viewP4 = render(
 			<div>
-				<AsyncFn message="Hello 4" />
+				<Component message="Hello 4" />
 			</div>,
 			document.body,
 		);
 		const viewP5 = render(
 			<div>
-				<AsyncFn message="Hello 5" />
+				<Component message="Hello 5" />
 			</div>,
 			document.body,
 		);
 		const viewP6 = render(
 			<div>
-				<AsyncFn message="Hello 6" />
+				<Component message="Hello 6" />
 			</div>,
 			document.body,
 		);
@@ -430,18 +430,18 @@ describe("async function component", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 6</span></div>");
 		await expect(viewP6).resolves.toBeInstanceOf(View);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 6</span></div>");
-		expect(AsyncFn).toHaveBeenCalledTimes(4);
+		expect(Component).toHaveBeenCalledTimes(4);
 	});
 
 	test("rerender", async () => {
 		const resolves: ((elem: Element) => void)[] = [];
-		function ResolveFn(): Promise<Element> {
+		function Component(): Promise<Element> {
 			return new Promise((resolve) => resolves.push(resolve));
 		}
 
 		render(
 			<div>
-				<ResolveFn />
+				<Component />
 			</div>,
 			document.body,
 		);
@@ -452,13 +452,13 @@ describe("async function component", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 0</span></div>");
 		render(
 			<div>
-				<ResolveFn />
+				<Component />
 			</div>,
 			document.body,
 		);
-		await new Promise((resolve) => setTimeout(resolve, 0));
-		resolves[1](<span>Hello 1</span>);
+		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 0</span></div>");
+		resolves[1](<span>Hello 1</span>);
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
 		expect(resolves.length).toEqual(2);
@@ -647,7 +647,7 @@ describe("async generator component", () => {
 		let cleanup!: () => unknown;
 		async function* Component(this: Context, {message}: {message: string}) {
 			try {
-				for ({message} of this) {
+				for await ({message} of this) {
 					yield (<span>{message}</span>);
 				}
 			} finally {
@@ -658,36 +658,52 @@ describe("async generator component", () => {
 		await render(
 			<div>
 				<Component message="Hello 1" />
-				<div>Goodbye</div>
+				<span>Goodbye 1</span>
 			</div>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual(
-			"<div><span>Hello 1</span><div>Goodbye</div></div>",
+			"<div><span>Hello 1</span><span>Goodbye 1</span></div>",
 		);
-		// TODO: we need to implement logic where we reuse nodes to handle the case
-		// of a node being unmounted and updated continuously. The node should be
-		// allowed to commit but have the unmounting node in the children until
-		// such time as the node can be unmounted.
 		render(<div />, document.body);
 		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual(
-			"<div><span>Hello 1</span><div>Goodbye</div></div>",
-		);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
 		render(
 			<div>
-				Hello<span>Goodbye</span>
+				<span>Hello 2</span>
+				<span>Goodbye 2</span>
 			</div>,
 			document.body,
 		);
 		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(document.body.innerHTML).toEqual(
-			"<div><span>Hello 1</span><div>Goodbye</div></div>",
+			"<div><span>Hello 1</span><span>Goodbye 2</span></div>",
 		);
 		cleanup();
 		await new Promise((resolve) => setTimeout(resolve, 0));
+		// TODO: this is wrong
 		expect(document.body.innerHTML).toEqual(
-			"<div>Hello<span>Goodbye</span></div>",
+			"<div><span>Hello 2</span><span>Goodbye 2</span></div>",
+		);
+		render(
+			<div>
+				{null}
+				<span>Goodbye 2</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>Goodbye 2</span></div>",
+		);
+		render(
+			<div>
+				<span>Hello 3</span>
+				<span>Goodbye 2</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>Hello 3</span><span>Goodbye 2</span></div>",
 		);
 	});
 });
