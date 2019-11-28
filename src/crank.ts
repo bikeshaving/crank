@@ -433,7 +433,7 @@ export class View<T> {
 
 	updateChildren(children: Children): Promise<undefined> | undefined {
 		this._childNodes = undefined;
-		const promises: Promise<any>[] = [];
+		const updates: Promise<any>[] = [];
 		let i = 0;
 		let view = this.children[i];
 		for (const child of flattenChildren(children)) {
@@ -442,9 +442,9 @@ export class View<T> {
 				view = this.children[i] = new View(guest, this.env, this);
 			}
 
-			const p = view.update(guest);
-			if (p !== undefined) {
-				promises.push(p);
+			const update = view.update(guest);
+			if (update !== undefined) {
+				updates.push(update);
 			}
 
 			view = this.children[++i];
@@ -458,8 +458,8 @@ export class View<T> {
 			view = this.children[++i];
 		}
 
-		if (promises.length) {
-			return Promise.all(promises).then(() => undefined);
+		if (updates.length) {
+			return Promise.all(updates).then(() => undefined);
 		}
 	}
 
