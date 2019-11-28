@@ -348,14 +348,8 @@ describe("async function component", () => {
 	});
 
 	test("basic", async () => {
-		async function Component({
-			message,
-			time = 10,
-		}: {
-			message: string;
-			time?: number;
-		}): Promise<Element> {
-			await new Promise((resolve) => setTimeout(resolve, time));
+		async function Component({message}: {message: string}): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 100));
 			return <span>{message}</span>;
 		}
 
@@ -370,17 +364,16 @@ describe("async function component", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 	});
 
-	test("rerender batching", async () => {
+	test("update batching", async () => {
 		const Component = jest.fn(async function Component({
 			message,
-			time = 10,
 		}: {
 			message: string;
-			time?: number;
 		}): Promise<Element> {
-			await new Promise((resolve) => setTimeout(resolve, time));
+			await new Promise((resolve) => setTimeout(resolve, 100));
 			return <span>{message}</span>;
 		});
+
 		const viewP1 = render(
 			<div>
 				<Component message="Hello 1" />
@@ -399,11 +392,6 @@ describe("async function component", () => {
 			</div>,
 			document.body,
 		);
-		expect(document.body.innerHTML).toEqual("");
-		await expect(viewP1).resolves.toBeInstanceOf(View);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
-		await expect(viewP2).resolves.toBeInstanceOf(View);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 3</span></div>");
 		const viewP4 = render(
 			<div>
 				<Component message="Hello 4" />
@@ -416,50 +404,87 @@ describe("async function component", () => {
 			</div>,
 			document.body,
 		);
+		expect(document.body.innerHTML).toEqual("");
+		await expect(viewP1).resolves.toBeInstanceOf(View);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
+		await expect(viewP2).resolves.toBeInstanceOf(View);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
+		await expect(viewP3).resolves.toBeInstanceOf(View);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
+		await expect(viewP4).resolves.toBeInstanceOf(View);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
 		const viewP6 = render(
 			<div>
 				<Component message="Hello 6" />
 			</div>,
 			document.body,
 		);
-		await expect(viewP3).resolves.toBeInstanceOf(View);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 3</span></div>");
-		await expect(viewP4).resolves.toBeInstanceOf(View);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 4</span></div>");
+		const viewP7 = render(
+			<div>
+				<Component message="Hello 7" />
+			</div>,
+			document.body,
+		);
+		const viewP8 = render(
+			<div>
+				<Component message="Hello 8" />
+			</div>,
+			document.body,
+		);
+		const viewP9 = render(
+			<div>
+				<Component message="Hello 9" />
+			</div>,
+			document.body,
+		);
+		const viewP10 = render(
+			<div>
+				<Component message="Hello 10" />
+			</div>,
+			document.body,
+		);
 		await expect(viewP5).resolves.toBeInstanceOf(View);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 6</span></div>");
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
 		await expect(viewP6).resolves.toBeInstanceOf(View);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 6</span></div>");
+		await expect(viewP7).resolves.toBeInstanceOf(View);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 10</span></div>");
+		await expect(viewP8).resolves.toBeInstanceOf(View);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 10</span></div>");
+		await expect(viewP9).resolves.toBeInstanceOf(View);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 10</span></div>");
+		await expect(viewP10).resolves.toBeInstanceOf(View);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 10</span></div>");
 		expect(Component).toHaveBeenCalledTimes(4);
 	});
 
-	test("rerender", async () => {
-		const resolves: ((elem: Element) => void)[] = [];
-		function Component(): Promise<Element> {
-			return new Promise((resolve) => resolves.push(resolve));
+	test("update", async () => {
+		const resolves: (() => unknown)[] = [];
+		async function Component({message}: {message: string}): Promise<Element> {
+			await new Promise((resolve) => resolves.push(resolve));
+			return <span>{message}</span>;
 		}
 
-		render(
+		let viewP = render(
 			<div>
-				<Component />
+				<Component message="Hello 0" />
 			</div>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("");
-		resolves[0](<span>Hello 0</span>);
-		expect(document.body.innerHTML).toEqual("");
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		resolves[0]();
+		await viewP;
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 0</span></div>");
-		render(
+		viewP = render(
 			<div>
-				<Component />
+				<Component message="Hello 1" />
 			</div>,
 			document.body,
 		);
 		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 0</span></div>");
-		resolves[1](<span>Hello 1</span>);
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		resolves[1]();
+		await viewP;
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
 		expect(resolves.length).toEqual(2);
 	});
