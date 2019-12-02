@@ -29,8 +29,8 @@ function isIterable(value: any): value is Iterable<unknown> {
 function isIteratorOrAsyncIterator(
 	value: any,
 ): value is
-	| AsyncIterator<unknown, unknown, unknown>
-	| Iterator<unknown, unknown, unknown> {
+	| Iterator<unknown, unknown, unknown>
+	| AsyncIterator<unknown, unknown, unknown> {
 	return value != null && typeof value.next === "function";
 }
 
@@ -158,12 +158,12 @@ function createGuest(child: Child): Guest {
 //	parent?: Host<T>;
 //	firstChild?: Host<T>;
 //	nextSibling?: Host<T>;
-//	engine?: Engine;
+//	engine?: Engine<T>;
 //}
 //
-//type Engine = Generator<
-//	MaybePromise<undefined>,
-//	MaybePromise<undefined>,
+//type Engine<T> = Generator<
+//	MaybePromise<T>,
+//	MaybePromise<T>,
 //	Props
 //>;
 //
@@ -203,11 +203,16 @@ function createGuest(child: Child): Guest {
 //export class Host<T> {
 export class View<T> {
 	private nextRunId = 0;
+	private maxRunId = -1;
 	// whether or not the parent is updating this node
 	private updating = false;
 	private node?: T | string;
 	// whether or not the node is unmounting (asynchronously)
 	private hanging?: (T | string)[];
+	private onNextUpdate: (
+		value: Promise<undefined> | undefined,
+	) => unknown = () => {};
+	private nextUpdateP?: Promise<undefined>;
 	// TODO: The controller and committer properties are mutually exclusive on a
 	// view. There must be a more beautiful way to tie this logic together.
 	private committer?: Committer<T>;
@@ -227,8 +232,11 @@ export class View<T> {
 
 	private _childNodes: (T | string)[] | undefined;
 	get childNodes(): (T | string)[] {
-		if (this._childNodes !== undefined) {
-			return this._childNodes;
+		if (
+			this._childNodes !== undefined &&
+			(!isElement(this.guest) || typeof this.guest.tag === "function")
+		) {
+			//return this._childNodes;
 		}
 
 		let buffer: string | undefined;
@@ -300,7 +308,9 @@ export class View<T> {
 		}
 
 		this.guest = guest;
-		return this.refresh();
+		const refreshP = this.refresh();
+		this.onNextUpdate(refreshP);
+		return refreshP;
 	}
 
 	// TODO: batch this per tick
@@ -341,11 +351,8 @@ export class View<T> {
 		if (isElement(this.guest)) {
 			let children: MaybePromiseLike<Children>;
 			if (this.controller !== undefined) {
-				const nodes =
-					this.pending === undefined
-						? this.childNodeOrNodes
-						: this.pending.then(() => this.childNodeOrNodes);
-				const result = this.controller.next(nodes);
+				// TODO: not sure if this logic is correct
+				const result = this.controller.next(this.childNodeOrNodes);
 				if (isPromiseLike(result)) {
 					children = result.then((result) => {
 						if (result.done) {
@@ -360,32 +367,42 @@ export class View<T> {
 						this.controller = undefined;
 					}
 
-					children = result.value as any;
+					children = result.value;
 				}
 			} else {
 				children = this.guest.props.children;
 			}
 
-			let update: Promise<undefined> | undefined;
+			let updateP: Promise<undefined> | undefined;
 			if (isPromiseLike(children)) {
-				update = Promise.resolve(children).then((children) => {
-					if (runId + 1 === this.nextRunId) {
+				updateP = Promise.resolve(children).then((children) => {
+					if (runId > this.maxRunId) {
+						this.maxRunId = runId;
 						return this.updateChildren(children);
 					}
 				});
 			} else {
-				update = this.updateChildren(children);
+				updateP = this.updateChildren(children);
+				this.maxRunId = runId;
 			}
 
-			if (update !== undefined) {
-				return update.then(() => {
+			if (updateP !== undefined) {
+				updateP = updateP.then(() => {
+					this._childNodes = undefined;
 					this.commit();
+					// TODO: I want an async iterator parent to update even if the
+					// children are currently pending.
 					if (this.controller && this.controller.async) {
 						this.pending = this.run();
 					}
 
 					return undefined; // fuck void
 				});
+
+				this.nextUpdateP = new Promise(
+					(resolve) => (this.onNextUpdate = resolve),
+				);
+				return Promise.race([updateP, this.nextUpdateP]);
 			}
 		}
 
@@ -401,8 +418,7 @@ export class View<T> {
 			this.controller = new Controller(this.guest.tag, this.guest.props, this);
 		}
 
-		// TODO: should we do a check that tag for the controller is the same as
-		// tag for the new guest?
+		// TODO: just pass props into the controller/maybe rename to engine
 		if (this.controller && isElement(this.guest)) {
 			this.controller.publish(this.guest.props);
 		}
@@ -412,11 +428,16 @@ export class View<T> {
 		} else if (this.pending === undefined) {
 			const update = this.run();
 			if (update !== undefined) {
-				this.pending = update;
-				this.pending.finally(() => {
-					this.pending = this.enqueued;
-					this.enqueued = undefined;
-				});
+				// TODO: clean this up
+				if (isElement(this.guest) && typeof this.guest.tag === "function") {
+					this.pending = update;
+					this.pending.finally(() => {
+						this.pending = this.enqueued;
+						this.enqueued = undefined;
+					});
+				} else {
+					return update;
+				}
 			}
 
 			return this.pending;
