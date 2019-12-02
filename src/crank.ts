@@ -55,11 +55,6 @@ export type Root = any;
 // export const Fragment = Symbol("Fragment");
 //
 // export type Fragment = typeof Fragment;
-//
-// export const Portal = Symbol("Portal");
-//
-// export type Portal = typeof Portal;
-//
 export type ControlTag = Root;
 
 // export type ControlTag = Root | Copy | Fragment | Portal;
@@ -663,21 +658,19 @@ class Controller {
 	}
 }
 
-// TODO: allow tags to define child tags (for svg and custom canvas tags a la react-three-fiber)
+// TODO: Should we allow Environments to define custom Symbol elements?
 export interface Environment<T> {
 	[Default](tag: string): Intrinsic<T>;
-	[Root]?: Intrinsic<T>;
-	// TODO: figure out if we need custom functions for portal and fragment?
-	// [Portal]?: Intrinsic<T>;
-	// [Fragment]?: Intrinsic<T>;
+	[Root]: Intrinsic<T>; // Intrinsic<T> | Environment<T>;
 	[tag: string]: Intrinsic<T>;
 }
 
 const defaultEnv: Environment<any> = {
 	[Default](tag: string): never {
-		throw new Error(
-			`tag ${tag} does not exist and default intrinsic not provided`,
-		);
+		throw new Error(`Environment did not provide an intrinsic for ${tag}`);
+	},
+	[Root](): never {
+		throw new Error("Environment did not provide an intrinsic for the Root");
 	},
 };
 
@@ -697,7 +690,7 @@ export class Renderer<T, TContainer extends {}> {
 		}
 
 		if (env[Root] != null) {
-			this.env[Root] = env[Root];
+			this.env[Root] = env[Root]!;
 		}
 
 		for (const [tag, value] of Object.entries(env)) {
