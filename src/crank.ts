@@ -213,7 +213,8 @@ export class View<T> {
 	private committer?: Committer<T>;
 	private controller?: Controller;
 	// These properties are used to batch updates to async components/components
-	// with async children.
+	// TODO: These properties are now specific to controllers and not committers.
+	// Delete them from View and add them to Controller maybe.
 	private pending?: Promise<undefined>;
 	private enqueued?: Promise<undefined>;
 	// TODO: Use a left-child right-sibling tree.
@@ -231,7 +232,7 @@ export class View<T> {
 			this._childNodes !== undefined &&
 			(!isElement(this.guest) || typeof this.guest.tag === "function")
 		) {
-			//return this._childNodes;
+			return this._childNodes;
 		}
 
 		let buffer: string | undefined;
@@ -355,6 +356,12 @@ export class View<T> {
 							return result.value as any;
 						}
 
+						// TODO: fix the next value passed the async controllers. It should
+						// be a promise if updateChildren is async, and T if it is not
+						if (this.controller && this.controller.async) {
+							this.pending = this.run();
+						}
+
 						return result.value;
 					});
 				} else {
@@ -383,14 +390,7 @@ export class View<T> {
 
 			if (updateP !== undefined) {
 				updateP = updateP.then(() => {
-					this._childNodes = undefined;
 					this.commit();
-					// TODO: I want an async iterator parent to update even if the
-					// children are currently pending.
-					if (this.controller && this.controller.async) {
-						this.pending = this.run();
-					}
-
 					return undefined; // fuck void
 				});
 
@@ -468,6 +468,8 @@ export class View<T> {
 
 		while (i < this.children.length) {
 			if (typeof view === "object") {
+				// TODO: optionally add this to the updates array so child unmounts are
+				// awaited when the parent is awaited.
 				view.unmount();
 			}
 
