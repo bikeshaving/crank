@@ -772,6 +772,41 @@ describe("async generator component", () => {
 	test("async unmount", async () => {
 		let cleanup!: () => unknown;
 		async function* Component(this: Context, {message}: {message: string}) {
+			if (cleanup !== undefined) {
+				throw new Error("Rendered component twice");
+			}
+
+			try {
+				for await ({message} of this) {
+					yield (<span>{message}</span>);
+				}
+			} finally {
+				await new Promise((resolve) => (cleanup = resolve));
+			}
+		}
+
+		await render(
+			<div>
+				<Component message="Hello 1" />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
+		render(<div />, document.body);
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
+		cleanup();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(document.body.innerHTML).toEqual("<div></div>");
+	});
+
+	test("async unmount preserves hanging children", async () => {
+		let cleanup!: () => unknown;
+		async function* Component(this: Context, {message}: {message: string}) {
+			if (cleanup !== undefined) {
+				throw new Error("Rendered component twice");
+			}
+
 			try {
 				for await ({message} of this) {
 					yield (<span>{message}</span>);
@@ -807,7 +842,6 @@ describe("async generator component", () => {
 		);
 		cleanup();
 		await new Promise((resolve) => setTimeout(resolve, 0));
-		// TODO: this is wrong
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>Hello 2</span><span>Goodbye 2</span></div>",
 		);
@@ -831,5 +865,36 @@ describe("async generator component", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>Hello 3</span><span>Goodbye 2</span></div>",
 		);
+	});
+
+	test("parents wait for async unmount", async () => {
+		let cleanup!: () => unknown;
+		async function* Component(this: Context, {message}: {message: string}) {
+			if (cleanup !== undefined) {
+				throw new Error("Rendered component twice");
+			}
+
+			try {
+				for await ({message} of this) {
+					yield (<span>{message}</span>);
+				}
+			} finally {
+				await new Promise((resolve) => (cleanup = resolve));
+			}
+		}
+
+		await render(
+			<div>
+				<Component message="Hello 1" />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
+		const p = render(null, document.body);
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
+		cleanup();
+		await p;
+		expect(document.body.innerHTML).toEqual("");
 	});
 });

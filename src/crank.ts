@@ -448,8 +448,9 @@ export class View<T> {
 	}
 
 	updateChildren(children: Children): Promise<undefined> | undefined {
+		const unmounting = Array.isArray(children) && children.length === 0;
 		this._childNodes = undefined;
-		const updates: Promise<any>[] = [];
+		const promises: (Promise<undefined> | undefined)[] = [];
 		let i = 0;
 		let view = this.children[i];
 		for (const child of flattenChildren(children)) {
@@ -460,7 +461,7 @@ export class View<T> {
 
 			const update = view.update(guest);
 			if (update !== undefined) {
-				updates.push(update);
+				promises.push(update);
 			}
 
 			view = this.children[++i];
@@ -468,16 +469,17 @@ export class View<T> {
 
 		while (i < this.children.length) {
 			if (typeof view === "object") {
-				// TODO: optionally add this to the updates array so child unmounts are
-				// awaited when the parent is awaited.
-				view.unmount();
+				const unmountP = view.unmount();
+				if (unmounting && unmountP !== undefined) {
+					promises.push(unmountP);
+				}
 			}
 
 			view = this.children[++i];
 		}
 
-		if (updates.length) {
-			return Promise.all(updates).then(() => undefined);
+		if (promises.length) {
+			return Promise.all(promises).then(() => undefined); // void :(
 		}
 	}
 
@@ -487,39 +489,44 @@ export class View<T> {
 		this.enqueued = undefined;
 		this.node = undefined;
 		this.guest = undefined;
-		let promise: Promise<undefined> | undefined;
+		let unmountP: Promise<undefined> | undefined;
 		if (this.controller !== undefined) {
 			const result = this.controller.return();
 			if (isPromiseLike(result)) {
-				promise = result.then(() => undefined); // void :(
+				unmountP = result.then(() => undefined); // void :(
 			}
 
 			this.controller = undefined;
 		}
 
+		// TODO: is this right?
+		if (unmountP === undefined) {
+			unmountP = this.updateChildren([]);
+		} else {
+			unmountP = unmountP.then(() => this.updateChildren([]));
+		}
+
+		if (unmountP !== undefined) {
+			this.hanging = this.childNodes;
+			unmountP = unmountP.then(() => {
+				this.hanging = undefined;
+				if (this.committer !== undefined) {
+					this.committer.return && this.committer.return();
+					this.committer = undefined;
+				}
+
+				this.parent && this.parent.enqueueCommit();
+				return undefined; // void :(
+			});
+
+			return unmountP;
+		}
+
+		this.hanging = undefined;
 		if (this.committer !== undefined) {
 			this.committer.return && this.committer.return();
 			this.committer = undefined;
 		}
-
-		// TODO: is this right?
-		if (promise === undefined) {
-			promise = this.updateChildren([]);
-		} else {
-			promise = promise.then(() => this.updateChildren([]));
-		}
-
-		if (promise !== undefined) {
-			this.hanging = this.childNodes;
-			promise.then(() => {
-				this.hanging = undefined;
-				this.parent && this.parent.enqueueCommit();
-			});
-
-			return promise;
-		}
-
-		this.hanging = undefined;
 	}
 }
 
