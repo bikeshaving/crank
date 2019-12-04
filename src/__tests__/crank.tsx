@@ -364,13 +364,13 @@ describe("async function component", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 	});
 
-	test("update batching", async () => {
+	test("updates enqueue", async () => {
 		const Component = jest.fn(async function Component({
 			message,
 		}: {
 			message: string;
 		}): Promise<Element> {
-			await new Promise((resolve) => setTimeout(resolve, 100));
+			await new Promise((resolve) => setTimeout(resolve, 25));
 			return <span>{message}</span>;
 		});
 
@@ -707,7 +707,7 @@ describe("async generator component", () => {
 		await render(null, document.body);
 	});
 
-	test("basic", async () => {
+	test("rerender", async () => {
 		let resolve!: () => unknown;
 		const AsyncGen = jest.fn(async function*(
 			this: Context,
