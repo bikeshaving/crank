@@ -575,16 +575,6 @@ export class Context {
 	}
 }
 
-// TODO: not sure if we need this
-function* createChildGenerator(
-	context: Context,
-	tag: FunctionComponent,
-): ChildGenerator {
-	for (const props of context) {
-		yield tag.call(context, props);
-	}
-}
-
 type ControllerResult =
 	| Promise<IteratorResult<Child>>
 	| IteratorResult<MaybePromiseLike<Child>>;
@@ -605,6 +595,7 @@ class Controller {
 		// TODO: use a more reliable check to determine if the object is a generator
 		// Check if Symbol.iterator or Symbol.asyncIterator + next/return/throw
 		// are defined.
+		// Check if its an instance of generator or async generator.
 		if (isIteratorOrAsyncIterator(value)) {
 			this.iter = value;
 			const result = this.iter.next();
@@ -612,8 +603,6 @@ class Controller {
 			return result;
 		}
 
-		// TODO: remove the type assertion from this.ctx
-		this.iter = createChildGenerator(this.ctx, this.tag as FunctionComponent);
 		return {value, done: false};
 	}
 
