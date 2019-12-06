@@ -495,15 +495,17 @@ export type Component = (
 	props: Props,
 ) => ChildIterableIterator | MaybePromiseLike<Child>;
 
-type ControllerResult = MaybePromise<IteratorResult<MaybePromiseLike<Child>>>;
+type ComponentIteratorResult = MaybePromise<
+	IteratorResult<MaybePromiseLike<Child>>
+>;
 
-export class Controller {
+export class ComponentIterator {
 	private finished = false;
 	private iter?: ChildIterableIterator;
 	// TODO: remove view
 	constructor(private component: Component, private ctx: Context) {}
 
-	private initialize(): ControllerResult {
+	private initialize(): ComponentIteratorResult {
 		if (this.finished) {
 			return {value: undefined, done: true};
 		}
@@ -518,7 +520,7 @@ export class Controller {
 		return {value, done: false};
 	}
 
-	next(value?: any): ControllerResult {
+	next(value?: any): ComponentIteratorResult {
 		if (this.iter === undefined) {
 			return this.initialize();
 		}
@@ -526,7 +528,7 @@ export class Controller {
 		return this.iter.next(value);
 	}
 
-	return(value?: any): ControllerResult {
+	return(value?: any): ComponentIteratorResult {
 		if (this.iter === undefined) {
 			this.finished = true;
 		} else if (this.iter.return) {
@@ -536,7 +538,7 @@ export class Controller {
 		return {value, done: true};
 	}
 
-	throw(error: any): ControllerResult {
+	throw(error: any): ComponentIteratorResult {
 		if (this.iter === undefined) {
 			this.finished = true;
 		} else if (this.iter.throw) {
@@ -554,7 +556,7 @@ interface Publication {
 
 class ComponentEngine implements Engine<unknown> {
 	props: Props;
-	private controller: Controller;
+	private iter: ComponentIterator;
 	private value?: Promise<undefined>;
 	private enqueued?: Promise<undefined>;
 	private done = false;
@@ -562,11 +564,11 @@ class ComponentEngine implements Engine<unknown> {
 	private pubs = new Set<Publication>();
 	constructor(element: Element<Component>, private view: View<any>) {
 		this.props = element.props;
-		this.controller = new Controller(element.tag, new Context(this, view));
+		this.iter = new ComponentIterator(element.tag, new Context(this, view));
 	}
 
 	run(): Promise<undefined> | undefined {
-		const iteration = this.controller.next(this.view.childNodeOrNodes);
+		const iteration = this.iter.next(this.view.childNodeOrNodes);
 		if (isPromiseLike(iteration)) {
 			this.async = true;
 			return iteration
@@ -620,7 +622,7 @@ class ComponentEngine implements Engine<unknown> {
 		}
 
 		this.done = true;
-		const iteration = this.controller.return();
+		const iteration = this.iter.return();
 		if (isPromiseLike(iteration)) {
 			const value = iteration.then(() => undefined); // void :(
 			return {value, done: true};
@@ -630,7 +632,7 @@ class ComponentEngine implements Engine<unknown> {
 	}
 
 	throw(error: any): never {
-		// TODO: throw error into this.controller.throw
+		// TODO: throw error into this.iter.throw
 		throw error;
 	}
 
