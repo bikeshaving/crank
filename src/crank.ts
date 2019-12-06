@@ -86,6 +86,19 @@ export function isElement(value: any): value is Element {
 	return value != null && value.sigil === ElementSigil;
 }
 
+export function isIntrinsicElement(
+	value: any,
+): value is Element<ControlTag | string> {
+	return (
+		isElement(value) &&
+		(typeof value.tag === "string" || value === (Root as any))
+	);
+}
+
+export function isComponentElement(value: any): value is Element<Component> {
+	return isElement(value) && typeof value.tag === "function";
+}
+
 export function createElement<T extends Tag>(
 	tag: T,
 	props?: Props | null,
@@ -144,9 +157,30 @@ function createGuest(child: Child): Guest {
 	throw new TypeError("Unknown child type");
 }
 
+// TODO: explain what this higher-order function does
+function chase<Return, This>(
+	fn: (this: This, ...args: any[]) => PromiseLike<Return> | Return,
+): (this: This, ...args: any[]) => Promise<Return> | Return {
+	let next: ((result: PromiseLike<Return> | Return) => unknown) | undefined;
+	return function chaseWrapper(...args: unknown[]): Promise<Return> | Return {
+		const result = fn.apply(this, args);
+		if (next !== undefined) {
+			next(result);
+		}
+
+		if (isPromiseLike(result)) {
+			const nextP = new Promise<Return>((resolve) => (next = resolve));
+			return Promise.race([result, nextP]);
+		}
+
+		return result;
+	};
+}
+
+type Engine<T> = Generator<MaybePromise<T | undefined>, any, Props>;
+
 // TODO: use a left-child right-sibling tree, maybe we want to use an interface
-// like this to make views dumb and performant.
-//
+// like this and get rid of the class in favor of functions/interfaces.
 //interface Host<T> {
 //	guest?: Element | string;
 //	node?: T | string;
@@ -155,12 +189,6 @@ function createGuest(child: Child): Guest {
 //	nextSibling?: Host<T>;
 //	engine?: Engine<T>;
 //}
-//
-//type Engine<T> = Generator<
-//	MaybePromise<T>,
-//	MaybePromise<T>,
-//	Props
-//>;
 //
 // We should split up the logic from View to Fiber, which is stateless, and
 // Engine, which is stateful. Engine would call updateChildren and yield host
@@ -173,66 +201,34 @@ function createGuest(child: Child): Guest {
 // Engine is a type which both components and intrinsics can implement to
 // manipulate the host.
 //
-// I’m not sure if creating/deleting an engine is possible, because if
-// pending/enqueued isn’t defined on fibers, how do we enqueue multiple
-// synchronous updates?
-//
-// The main problem is unmounting, where a guest at a fiber is replaced with a
-// different type of guest. If this happens synchronously, but the old guest is
-// evicted asynchronously, does that mean the mounting of the new guest is
-// enqueued? If the new guest is a string or undefined, does that mean we need
-// to keep the engine around?
-//
-// This is making me realize that the logic around asynchronous eviction is
-// just wrong currently (using host/guest terminology opens us up to new
-// analogies like lease/evict). Right now, when an element has children which
-// are evicted asynchronously, we block the committing of that element (and all
-// its children). A better alternative would be to simply block committing of
-// the child in the unmounting “slot,” leaving the parent and siblings to
-// freely update while the child is leaving. This necessitates a switch over to
-// a Fiber-like data structure, insofar as we can’t simply call updateChildren
-// to add/remove children; each child needs to keep its own internal unmounting
-// state.
-//
 // TODO: rename to host?
 //export class Host<T> {
 export class View<T> {
-	private nextRunId = 0;
-	private maxRunId = -1;
 	// whether or not the parent is updating this node
 	private updating = false;
 	private node?: T | string;
 	// whether or not the node is unmounting (asynchronously)
 	private hanging?: (T | string)[];
-	private onNextUpdate: (
-		value: Promise<undefined> | undefined,
-	) => unknown = () => {};
-	private nextUpdateP?: Promise<undefined>;
-	// TODO: The controller and committer properties are mutually exclusive on a
-	// view. There must be a more beautiful way to tie this logic together.
+	private engine?: Engine<T>;
+	// TODO: Refactor committer to an engine
 	private committer?: Committer<T>;
-	private controller?: Controller;
-	// These properties are used to batch updates to async components/components
-	// TODO: These properties are now specific to controllers and not committers.
-	// Delete them from View and add them to Controller maybe.
-	private pending?: Promise<undefined>;
-	private enqueued?: Promise<undefined>;
 	// TODO: Use a left-child right-sibling tree.
 	private children: (View<T> | undefined)[] = [];
 	constructor(
 		private guest: Guest,
-		// TODO: Stop passing env into trees, should we pass in renderer?
+		// TODO: Pass renderer into here instead
 		private env: Environment<T>,
 		private parent?: View<T>,
-	) {}
+	) {
+		if (isComponentElement(guest)) {
+			this.engine = new ComponentEngine(guest, this);
+		}
+	}
 
-	private _childNodes: (T | string)[] | undefined;
+	private cachedChildNodes?: (T | string)[];
 	get childNodes(): (T | string)[] {
-		if (
-			this._childNodes !== undefined &&
-			(!isElement(this.guest) || typeof this.guest.tag === "function")
-		) {
-			return this._childNodes;
+		if (this.cachedChildNodes !== undefined) {
+			return this.cachedChildNodes;
 		}
 
 		let buffer: string | undefined;
@@ -262,7 +258,7 @@ export class View<T> {
 			childNodes.push(buffer);
 		}
 
-		this._childNodes = childNodes;
+		this.cachedChildNodes = childNodes;
 		return childNodes;
 	}
 
@@ -294,24 +290,28 @@ export class View<T> {
 		return intrinsic;
 	}
 
-	update(guest: Guest): Promise<undefined> | undefined {
+	update = chase(function update(
+		this: View<T>,
+		guest: Guest,
+	): Promise<undefined> | undefined {
 		this.updating = true;
 		if (
 			isElement(this.guest) &&
 			(!isElement(guest) || this.guest.tag !== guest.tag)
 		) {
 			this.unmount();
+			if (isComponentElement(guest)) {
+				this.engine = new ComponentEngine(guest, this);
+			}
 		}
 
 		this.guest = guest;
-		const refreshP = this.refresh();
-		this.onNextUpdate(refreshP);
-		return refreshP;
-	}
+		return this.refresh();
+	});
 
 	// TODO: batch this per tick
 	enqueueCommit(): void {
-		this._childNodes = undefined;
+		this.cachedChildNodes = undefined;
 		this.commit();
 	}
 
@@ -343,61 +343,12 @@ export class View<T> {
 	}
 
 	private run(): Promise<undefined> | undefined {
-		const runId = this.nextRunId++;
 		if (isElement(this.guest)) {
 			let children: MaybePromiseLike<Children>;
-			if (this.controller !== undefined) {
-				// TODO: not sure if this logic is correct
-				const result = this.controller.next(this.childNodeOrNodes);
-				if (isPromiseLike(result)) {
-					children = result.then((result) => {
-						if (result.done) {
-							this.controller = undefined;
-							return result.value as any;
-						}
-
-						// TODO: fix the next value passed the async controllers. It should
-						// be a promise if updateChildren is async, and T if it is not
-						if (this.controller && this.controller.async) {
-							this.pending = this.run();
-						}
-
-						return result.value;
-					});
-				} else {
-					if (result.done) {
-						this.controller = undefined;
-					}
-
-					children = result.value;
-				}
-			} else {
-				children = this.guest.props.children;
-			}
-
-			let updateP: Promise<undefined> | undefined;
-			if (isPromiseLike(children)) {
-				updateP = Promise.resolve(children).then((children) => {
-					if (runId > this.maxRunId) {
-						this.maxRunId = runId;
-						return this.updateChildren(children);
-					}
-				});
-			} else {
-				updateP = this.updateChildren(children);
-				this.maxRunId = runId;
-			}
-
+			children = this.guest.props.children;
+			const updateP = this.updateChildren(children);
 			if (updateP !== undefined) {
-				updateP = updateP.then(() => {
-					this.commit();
-					return undefined; // fuck void
-				});
-
-				this.nextUpdateP = new Promise(
-					(resolve) => (this.onNextUpdate = resolve),
-				);
-				return Promise.race([updateP, this.nextUpdateP]);
+				return updateP.then(() => void this.commit()); // void :(
 			}
 		}
 
@@ -405,51 +356,28 @@ export class View<T> {
 	}
 
 	refresh(): Promise<undefined> | undefined {
-		if (
-			isElement(this.guest) &&
-			typeof this.guest.tag === "function" &&
-			this.controller === undefined
-		) {
-			this.controller = new Controller(this.guest.tag, this.guest.props, this);
-		}
-
-		// TODO: just pass props into the controller/maybe rename to engine
-		if (this.controller && isElement(this.guest)) {
-			this.controller.publish(this.guest.props);
-		}
-
-		if (this.controller && this.controller.async) {
-			return this.pending;
-		} else if (this.pending === undefined) {
-			const update = this.run();
-			if (update !== undefined) {
-				// TODO: clean this up
-				if (isElement(this.guest) && typeof this.guest.tag === "function") {
-					this.pending = update;
-					this.pending.finally(() => {
-						this.pending = this.enqueued;
-						this.enqueued = undefined;
-					});
-				} else {
-					return update;
+		if (isElement(this.guest)) {
+			if (this.engine !== undefined) {
+				const iteration = this.engine.next(this.guest.props);
+				if (iteration.done) {
+					this.engine = undefined;
 				}
-			}
 
-			return this.pending;
-		} else if (this.enqueued === undefined) {
-			this.enqueued = this.pending.then(() => this.run());
-			this.enqueued.finally(() => {
-				this.pending = this.enqueued;
-				this.enqueued = undefined;
-			});
+				if (iteration.value !== undefined) {
+					return iteration.value.then(() => void this.commit());
+				}
+
+				this.commit();
+				return;
+			}
 		}
 
-		return this.enqueued;
+		return this.run();
 	}
 
 	updateChildren(children: Children): Promise<undefined> | undefined {
+		this.cachedChildNodes = undefined;
 		const unmounting = Array.isArray(children) && children.length === 0;
-		this._childNodes = undefined;
 		const promises: (Promise<undefined> | undefined)[] = [];
 		let i = 0;
 		let view = this.children[i];
@@ -485,18 +413,18 @@ export class View<T> {
 
 	unmount(): Promise<undefined> | undefined {
 		// TODO: catch and swallow any errors
-		this.pending = undefined;
-		this.enqueued = undefined;
 		this.node = undefined;
 		this.guest = undefined;
 		let unmountP: Promise<undefined> | undefined;
-		if (this.controller !== undefined) {
-			const result = this.controller.return();
-			if (isPromiseLike(result)) {
-				unmountP = result.then(() => undefined); // void :(
+		if (this.engine !== undefined) {
+			// Need to explicitly return undefined because of this bullshit:
+			// https://github.com/microsoft/TypeScript/issues/33357
+			const iteration = this.engine.return(undefined);
+			if (iteration && iteration.value !== undefined) {
+				unmountP = iteration.value;
 			}
 
-			this.controller = undefined;
+			this.engine = undefined;
 		}
 
 		// TODO: is this right?
@@ -530,9 +458,32 @@ export class View<T> {
 	}
 }
 
-export type ChildGenerator =
-	| Generator<MaybePromiseLike<Child>>
-	| AsyncGenerator<Child>;
+export class Context {
+	constructor(private engine: ComponentEngine, private view: View<any>) {}
+
+	// TODO: throw an error if props are pulled multiple times per update
+	*[Symbol.iterator](): Generator<Props> {
+		while (true) {
+			yield this.engine.props;
+		}
+	}
+
+	[Symbol.asyncIterator](): AsyncGenerator<Props> {
+		return this.engine.subscribe();
+	}
+
+	refresh(): Promise<undefined> | undefined {
+		return this.view.refresh();
+	}
+
+	get props(): Props {
+		return this.engine.props;
+	}
+}
+
+export type ChildIterableIterator =
+	| IterableIterator<MaybePromiseLike<Child>>
+	| AsyncIterableIterator<MaybePromiseLike<Child>>;
 
 export type FunctionComponent = (
 	this: Context,
@@ -542,7 +493,7 @@ export type FunctionComponent = (
 export type GeneratorComponent = (
 	this: Context,
 	props: Props,
-) => ChildGenerator;
+) => ChildIterableIterator;
 
 // TODO: component cannot be a union of FunctionComponent | GeneratorComponent
 // because this breaks Function.prototype methods.
@@ -550,57 +501,26 @@ export type GeneratorComponent = (
 export type Component = (
 	this: Context,
 	props: Props,
-) => ChildGenerator | MaybePromiseLike<Child>;
+) => ChildIterableIterator | MaybePromiseLike<Child>;
 
-interface Publication {
-	push(value: Props): unknown;
-	stop(): unknown;
-}
+type ControllerResult = MaybePromise<IteratorResult<MaybePromiseLike<Child>>>;
 
-export class Context {
-	constructor(private controller: Controller, private view: View<any>) {}
-
-	*[Symbol.iterator](): Generator<Props> {
-		while (true) {
-			yield this.controller.props;
-		}
-	}
-
-	[Symbol.asyncIterator](): AsyncGenerator<Props> {
-		return this.controller.subscribe();
-	}
-
-	refresh(): Promise<undefined> | undefined {
-		return this.view.refresh();
-	}
-}
-
-type ControllerResult =
-	| Promise<IteratorResult<Child>>
-	| IteratorResult<MaybePromiseLike<Child>>;
-
-class Controller {
-	async = false;
-	private ctx = new Context(this, this.view);
-	private pubs = new Set<Publication>();
-	private iter?: ChildGenerator;
-	constructor(
-		private tag: Component,
-		public props: Props,
-		private view: View<any>,
-	) {}
+export class Controller {
+	private finished = false;
+	private iter?: ChildIterableIterator;
+	// TODO: remove view
+	constructor(private component: Component, private ctx: Context) {}
 
 	private initialize(): ControllerResult {
-		const value = this.tag.call(this.ctx, this.props);
-		// TODO: use a more reliable check to determine if the object is a generator
-		// Check if Symbol.iterator or Symbol.asyncIterator + next/return/throw
-		// are defined.
-		// Check if its an instance of generator or async generator.
+		if (this.finished) {
+			return {value: undefined, done: true};
+		}
+
+		const value = this.component.call(this.ctx, this.ctx.props);
+		// TODO: use a more reliable check?
 		if (isIteratorOrAsyncIterator(value)) {
 			this.iter = value;
-			const result = this.iter.next();
-			this.async = isPromiseLike(result);
-			return result;
+			return this.iter.next();
 		}
 
 		return {value, done: false};
@@ -616,26 +536,114 @@ class Controller {
 
 	return(value?: any): ControllerResult {
 		if (this.iter === undefined) {
-			this.iter = (function*() {})();
+			this.finished = true;
+		} else if (this.iter.return) {
+			return this.iter.return(value);
 		}
 
-		for (const pub of this.pubs) {
-			pub.stop();
-		}
-
-		return this.iter.return ? this.iter.return(value) : {value, done: true};
+		return {value, done: true};
 	}
 
 	throw(error: any): ControllerResult {
 		if (this.iter === undefined) {
-			this.iter = (function*() {})();
+			this.finished = true;
+		} else if (this.iter.throw) {
+			return this.iter.throw(error);
 		}
 
-		if (!this.iter.throw) {
-			throw error;
+		throw error;
+	}
+}
+
+interface Publication {
+	push(value: Props): unknown;
+	stop(): unknown;
+}
+
+class ComponentEngine implements Engine<unknown> {
+	props: Props;
+	private controller: Controller;
+	private value?: Promise<undefined>;
+	private enqueued?: Promise<undefined>;
+	private done = false;
+	private async = false;
+	private pubs = new Set<Publication>();
+	constructor(element: Element<Component>, private view: View<any>) {
+		this.props = element.props;
+		this.controller = new Controller(element.tag, new Context(this, view));
+	}
+
+	run(): Promise<undefined> | undefined {
+		const iteration = this.controller.next(this.view.childNodeOrNodes);
+		if (isPromiseLike(iteration)) {
+			this.async = true;
+			return iteration
+				.then((iteration) => {
+					this.done = !!iteration.done;
+					return this.view.updateChildren(iteration.value);
+				})
+				.finally(() => {
+					if (!this.done) {
+						this.value = this.run();
+					}
+				});
 		}
 
-		return this.iter.throw(error);
+		this.done = !!iteration.done;
+		const update = isPromiseLike(iteration.value)
+			? Promise.resolve(iteration.value).then((value: any) =>
+					this.view.updateChildren(value),
+			  )
+			: this.view.updateChildren(iteration.value);
+		if (update !== undefined) {
+			return update.finally(() => {
+				this.value = this.enqueued;
+				this.enqueued = undefined;
+			});
+		}
+	}
+
+	next(props: Props): IteratorResult<MaybePromise<undefined>> {
+		if (this.done) {
+			return {value: undefined, done: true};
+		}
+
+		this.props = props;
+		this.publish();
+		if (this.async) {
+			return {value: this.value, done: this.done};
+		} else if (this.value === undefined) {
+			this.value = this.run();
+			return {value: this.value, done: this.done};
+		} else if (this.enqueued === undefined) {
+			this.enqueued = this.value.then(() => this.run());
+		}
+
+		return {value: this.enqueued, done: this.done};
+	}
+
+	return(): IteratorResult<MaybePromise<undefined>> {
+		for (const pub of this.pubs) {
+			pub.stop();
+		}
+
+		this.done = true;
+		const iteration = this.controller.return();
+		if (isPromiseLike(iteration)) {
+			const value = iteration.then(() => undefined); // void :(
+			return {value, done: true};
+		}
+
+		return {value: undefined, done: true};
+	}
+
+	throw(error: any): never {
+		// TODO: throw error into this.controller.throw
+		throw error;
+	}
+
+	[Symbol.iterator](): never {
+		throw new Error("Not implemented");
 	}
 
 	subscribe(): AsyncGenerator<Props> {
@@ -648,8 +656,7 @@ class Controller {
 		}, new SlidingBuffer(1));
 	}
 
-	publish(props: Props): void {
-		this.props = props;
+	publish(): void {
 		for (const pub of this.pubs) {
 			pub.push(this.props);
 		}

@@ -559,14 +559,19 @@ describe("async function component", () => {
 	});
 
 	test("race where second wins", async () => {
+		const t = Date.now();
+		let t1: number;
+		let t2: number;
 		const promise = new Promise((resolve) => setTimeout(resolve, 100));
 		async function Loading(): Promise<Element> {
 			await promise;
+			t1 = Date.now();
 			return <span>Loading...</span>;
 		}
 
 		async function Component(): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 50));
+			t2 = Date.now();
 			return <span>Loaded</span>;
 		}
 
@@ -588,6 +593,8 @@ describe("async function component", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Loaded</span></div>");
 		await promise;
 		expect(document.body.innerHTML).toEqual("<div><span>Loaded</span></div>");
+		expect(t1! - t).toBeCloseTo(100, -2);
+		expect(t2! - t).toBeCloseTo(50, -2);
 	});
 });
 
@@ -597,15 +604,14 @@ describe("sync generator component", () => {
 	});
 
 	test("basic", () => {
-		const SyncGen = jest.fn(function*(
+		const Component = jest.fn(function* Component(
 			this: Context,
 			{message}: {message: string},
 		): Generator<Element> {
 			let i = 0;
 			for ({message} of this) {
-				i++;
-				if (i > 2) {
-					return;
+				if (++i > 2) {
+					return <span>Final</span>;
 				}
 
 				yield (<span>{message}</span>);
@@ -614,31 +620,31 @@ describe("sync generator component", () => {
 
 		render(
 			<div>
-				<SyncGen message="Hello 1" />
+				<Component message="Hello 1" />
 			</div>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
 		render(
 			<div>
-				<SyncGen message="Hello 2" />
+				<Component message="Hello 2" />
 			</div>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
 		render(
 			<div>
-				<SyncGen message="Hello 3" />
+				<Component message="Hello 3" />
 			</div>,
 			document.body,
 		);
-		expect(document.body.innerHTML).toEqual("<div></div>");
-		expect(SyncGen).toHaveBeenCalledTimes(1);
+		expect(document.body.innerHTML).toEqual("<div><span>Final</span></div>");
+		expect(Component).toHaveBeenCalledTimes(1);
 	});
 
 	test("refresh", () => {
 		let ctx!: Context;
-		function* SyncGen(this: Context): Generator<Element> {
+		function* Component(this: Context): Generator<Element> {
 			let i = 1;
 			ctx = this;
 			// eslint-disable-next-line
@@ -649,7 +655,7 @@ describe("sync generator component", () => {
 
 		render(
 			<div>
-				<SyncGen />
+				<Component />
 			</div>,
 			document.body,
 		);
@@ -707,9 +713,49 @@ describe("async generator component", () => {
 		await render(null, document.body);
 	});
 
-	test("rerender", async () => {
+	test("basic", async () => {
+		const Component = jest.fn(async function* Component(
+			this: Context,
+			{message}: {message: string},
+		): AsyncGenerator<Element> {
+			let i = 0;
+			for await ({message} of this) {
+				if (++i > 2) {
+					return <span>Final</span>;
+				}
+
+				yield (<span>{message}</span>);
+			}
+		});
+
+		await render(
+			<div>
+				<Component message="Hello 1" />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
+		await render(
+			<div>
+				<Component message="Hello 2" />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
+		await render(
+			<div>
+				<Component message="Hello 3" />
+			</div>,
+			document.body,
+		);
+		// TODO: this is wrong
+		expect(document.body.innerHTML).toEqual("<div><span>Final</span></div>");
+		expect(Component).toHaveBeenCalledTimes(1);
+	});
+
+	test("multiple yields per update", async () => {
 		let resolve!: () => unknown;
-		const AsyncGen = jest.fn(async function*(
+		const Component = async function* Component(
 			this: Context,
 			{message}: {message: string},
 		): AsyncGenerator<Element> {
@@ -718,11 +764,11 @@ describe("async generator component", () => {
 				await new Promise((resolve1) => (resolve = resolve1));
 				yield (<span>{message}</span>);
 			}
-		});
+		};
 
 		const viewP = render(
 			<div>
-				<AsyncGen message="Hello" />
+				<Component message="Hello" />
 			</div>,
 			document.body,
 		);
@@ -734,7 +780,7 @@ describe("async generator component", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 		await render(
 			<div>
-				<AsyncGen message="Goodbye" />
+				<Component message="Goodbye" />
 			</div>,
 			document.body,
 		);
@@ -742,7 +788,6 @@ describe("async generator component", () => {
 		resolve();
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(document.body.innerHTML).toEqual("<div><span>Goodbye</span></div>");
-		expect(AsyncGen).toHaveBeenCalledTimes(1);
 	});
 
 	test("multiple updates", async () => {
