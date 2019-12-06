@@ -342,19 +342,6 @@ export class View<T> {
 		this.updating = false;
 	}
 
-	private run(): Promise<undefined> | undefined {
-		if (isElement(this.guest)) {
-			let children: MaybePromiseLike<Children>;
-			children = this.guest.props.children;
-			const updateP = this.updateChildren(children);
-			if (updateP !== undefined) {
-				return updateP.then(() => void this.commit()); // void :(
-			}
-		}
-
-		this.commit();
-	}
-
 	refresh(): Promise<undefined> | undefined {
 		if (isElement(this.guest)) {
 			if (this.engine !== undefined) {
@@ -370,9 +357,14 @@ export class View<T> {
 				this.commit();
 				return;
 			}
+
+			const updateP = this.updateChildren(this.guest.props.children);
+			if (updateP !== undefined) {
+				return updateP.then(() => void this.commit()); // void :(
+			}
 		}
 
-		return this.run();
+		this.commit();
 	}
 
 	updateChildren(children: Children): Promise<undefined> | undefined {
