@@ -89,10 +89,7 @@ export function isElement(value: any): value is Element {
 export function isIntrinsicElement(
 	value: any,
 ): value is Element<ControlTag | string> {
-	return (
-		isElement(value) &&
-		(typeof value.tag === "string" || value === (Root as any))
-	);
+	return isElement(value) && typeof value.tag !== "function";
 }
 
 export function isComponentElement(value: any): value is Element<Component> {
@@ -134,14 +131,14 @@ export interface IntrinsicProps<T> {
 	children?: (T | string)[];
 }
 
-export type Committer<T> = Iterator<
+export type IntrinsicIterator<T> = Iterator<
 	T | undefined,
-	T | undefined,
+	undefined,
 	IntrinsicProps<T>
 >;
 
 // TODO: allow intrinsics to be a simple function
-export type Intrinsic<T> = (props: IntrinsicProps<T>) => Committer<T>;
+export type Intrinsic<T> = (props: IntrinsicProps<T>) => IntrinsicIterator<T>;
 
 export type Guest = Element | string | undefined;
 
@@ -177,7 +174,11 @@ function chase<Return, This>(
 	};
 }
 
-type Engine<T> = Generator<MaybePromise<T | undefined>, any, Props>;
+type Gear<T> = Generator<
+	MaybePromise<T | undefined>,
+	MaybePromise<undefined>,
+	Props
+>;
 
 // TODO: use a left-child right-sibling tree, maybe we want to use an interface
 // like this and get rid of the class in favor of functions/interfaces.
@@ -204,24 +205,27 @@ type Engine<T> = Generator<MaybePromise<T | undefined>, any, Props>;
 // TODO: rename to host?
 //export class Host<T> {
 export class View<T> {
-	// whether or not the parent is updating this node
-	private updating = false;
+	// Whether or not the update was initiated by the parent.
+	updating = false;
 	private node?: T | string;
-	// whether or not the node is unmounting (asynchronously)
+	// When a component unmounts asynchronously, its current nodes are stored in
+	// hanging until the unmount promise settles.
+	// Until that point, parents will continue to see the hanging nodes.
+	// The view can continue to be updated in the meantime.
 	private hanging?: (T | string)[];
-	private engine?: Engine<T>;
-	// TODO: Refactor committer to an engine
-	private committer?: Committer<T>;
+	private gear?: Gear<T>;
 	// TODO: Use a left-child right-sibling tree.
 	private children: (View<T> | undefined)[] = [];
 	constructor(
-		private guest: Guest,
+		public guest: Guest,
 		// TODO: Pass renderer into here instead
 		private env: Environment<T>,
 		private parent?: View<T>,
 	) {
 		if (isComponentElement(guest)) {
-			this.engine = new ComponentEngine(guest, this);
+			this.gear = new ComponentGear(this);
+		} else if (isIntrinsicElement(guest)) {
+			this.gear = new IntrinsicGear(this);
 		}
 	}
 
@@ -271,7 +275,7 @@ export class View<T> {
 	}
 
 	// TODO: move this logic to the renderer
-	protected intrinsicFor(tag: string | ControlTag): Intrinsic<T> {
+	intrinsicFor(tag: string | ControlTag): Intrinsic<T> {
 		let intrinsic: Intrinsic<T> | undefined;
 		if (tag === Root) {
 			intrinsic = this.env[tag];
@@ -296,81 +300,57 @@ export class View<T> {
 	): Promise<undefined> | undefined {
 		this.updating = true;
 		if (
-			isElement(this.guest) &&
-			(!isElement(guest) || this.guest.tag !== guest.tag)
+			!isElement(this.guest) ||
+			!isElement(guest) ||
+			this.guest.tag !== guest.tag
 		) {
-			this.unmount();
+			void this.unmount();
+			this.guest = guest;
 			if (isComponentElement(guest)) {
-				this.engine = new ComponentEngine(guest, this);
+				this.gear = new ComponentGear(this);
+			} else if (isIntrinsicElement(guest)) {
+				this.gear = new IntrinsicGear(this);
 			}
+		} else {
+			this.guest = guest;
 		}
 
-		this.guest = guest;
 		return this.refresh();
 	});
 
 	// TODO: batch this per tick
 	enqueueCommit(): void {
 		this.cachedChildNodes = undefined;
-		this.commit();
-	}
-
-	commit(): void {
-		if (isElement(this.guest)) {
-			if (typeof this.guest.tag === "function") {
-				if (!this.updating && this.parent !== undefined) {
-					this.parent.enqueueCommit();
-				}
-			} else {
-				const props = {...this.guest.props, children: this.childNodes};
-				if (this.committer === undefined) {
-					const intrinsic = this.intrinsicFor(this.guest.tag);
-					this.committer = intrinsic(props);
-				}
-
-				const result = this.committer.next(props);
-				if (result.done) {
-					this.committer = undefined;
-				}
-
-				this.node = result.value;
-			}
-		} else {
-			this.node = this.guest;
-		}
-
-		this.updating = false;
+		this.refresh();
 	}
 
 	refresh(): Promise<undefined> | undefined {
 		if (isElement(this.guest)) {
-			if (this.engine !== undefined) {
-				const iteration = this.engine.next(this.guest.props);
+			if (this.gear !== undefined) {
+				const iteration = this.gear.next(this.guest.props);
 				if (iteration.done) {
-					this.engine = undefined;
+					this.gear = undefined;
 				}
 
-				if (iteration.value !== undefined) {
-					return iteration.value.then(() => void this.commit());
+				if (isPromiseLike(iteration.value)) {
+					return Promise.resolve(iteration.value).then((value) => {
+						this.node = value;
+						return undefined; // void :(
+					});
 				}
 
-				this.commit();
-				return;
+				this.node = iteration.value;
 			}
-
-			const updateP = this.updateChildren(this.guest.props.children);
-			if (updateP !== undefined) {
-				return updateP.then(() => void this.commit()); // void :(
-			}
+		} else {
+			this.node = this.guest;
 		}
-
-		this.commit();
 	}
 
 	updateChildren(children: Children): Promise<undefined> | undefined {
 		this.cachedChildNodes = undefined;
+		// TODO: Not sure if this is the correct logic here.
 		const unmounting = Array.isArray(children) && children.length === 0;
-		const promises: (Promise<undefined> | undefined)[] = [];
+		const promises: Promise<any>[] = [];
 		let i = 0;
 		let view = this.children[i];
 		for (const child of flattenChildren(children)) {
@@ -390,7 +370,7 @@ export class View<T> {
 		while (i < this.children.length) {
 			if (typeof view === "object") {
 				const unmountP = view.unmount();
-				if (unmounting && unmountP !== undefined) {
+				if (unmounting && isPromiseLike(unmountP)) {
 					promises.push(unmountP);
 				}
 			}
@@ -403,65 +383,41 @@ export class View<T> {
 		}
 	}
 
-	unmount(): Promise<undefined> | undefined {
-		// TODO: catch and swallow any errors
+	unmount(): MaybePromise<undefined> {
 		this.node = undefined;
 		this.guest = undefined;
-		let unmountP: Promise<undefined> | undefined;
-		if (this.engine !== undefined) {
-			// Need to explicitly return undefined because of this bullshit:
-			// https://github.com/microsoft/TypeScript/issues/33357
-			const iteration = this.engine.return(undefined);
-			if (iteration && iteration.value !== undefined) {
-				unmountP = iteration.value;
+		if (this.gear !== undefined) {
+			const iteration = this.gear.return && this.gear.return(undefined);
+			if (!iteration.done) {
+				throw new Error("Zombie gear");
 			}
 
-			this.engine = undefined;
-		}
-
-		// TODO: is this right?
-		if (unmountP === undefined) {
-			unmountP = this.updateChildren([]);
-		} else {
-			unmountP = unmountP.then(() => this.updateChildren([]));
-		}
-
-		if (unmountP !== undefined) {
-			this.hanging = this.childNodes;
-			unmountP = unmountP.then(() => {
-				this.hanging = undefined;
-				if (this.committer !== undefined) {
-					this.committer.return && this.committer.return();
-					this.committer = undefined;
-				}
-
-				this.parent && this.parent.enqueueCommit();
-				return undefined; // void :(
-			});
-
-			return unmountP;
-		}
-
-		this.hanging = undefined;
-		if (this.committer !== undefined) {
-			this.committer.return && this.committer.return();
-			this.committer = undefined;
+			this.gear = undefined;
+			const p = iteration && iteration.value;
+			if (isPromiseLike(p)) {
+				this.hanging = this.childNodes;
+				return p.then(() => {
+					this.hanging = undefined;
+					this.parent && this.parent.enqueueCommit();
+					return undefined; // void :(
+				});
+			}
 		}
 	}
 }
 
 export class Context {
-	constructor(private engine: ComponentEngine, private view: View<any>) {}
+	constructor(private gear: ComponentGear, private view: View<any>) {}
 
 	// TODO: throw an error if props are pulled multiple times per update
 	*[Symbol.iterator](): Generator<Props> {
 		while (true) {
-			yield this.engine.props;
+			yield this.gear.props;
 		}
 	}
 
 	[Symbol.asyncIterator](): AsyncGenerator<Props> {
-		return this.engine.subscribe();
+		return this.gear.subscribe();
 	}
 
 	refresh(): Promise<undefined> | undefined {
@@ -469,23 +425,20 @@ export class Context {
 	}
 
 	get props(): Props {
-		return this.engine.props;
+		return this.gear.props;
 	}
 }
 
-export type ChildIterableIterator =
-	| IterableIterator<MaybePromiseLike<Child>>
-	| AsyncIterableIterator<MaybePromiseLike<Child>>;
+export type ChildIterator =
+	| Iterator<MaybePromiseLike<Child>>
+	| AsyncIterator<Child>;
 
 export type FunctionComponent = (
 	this: Context,
 	props: Props,
 ) => MaybePromiseLike<Child>;
 
-export type GeneratorComponent = (
-	this: Context,
-	props: Props,
-) => ChildIterableIterator;
+export type GeneratorComponent = (this: Context, props: Props) => ChildIterator;
 
 // TODO: component cannot be a union of FunctionComponent | GeneratorComponent
 // because this breaks Function.prototype methods.
@@ -493,16 +446,16 @@ export type GeneratorComponent = (
 export type Component = (
 	this: Context,
 	props: Props,
-) => ChildIterableIterator | MaybePromiseLike<Child>;
+) => ChildIterator | MaybePromiseLike<Child>;
 
 type ComponentIteratorResult = MaybePromise<
 	IteratorResult<MaybePromiseLike<Child>>
 >;
 
+// TODO: Delete this abstraction now that we have gears
 export class ComponentIterator {
 	private finished = false;
-	private iter?: ChildIterableIterator;
-	// TODO: remove view
+	private iter?: ChildIterator;
 	constructor(private component: Component, private ctx: Context) {}
 
 	private initialize(): ComponentIteratorResult {
@@ -511,7 +464,6 @@ export class ComponentIterator {
 		}
 
 		const value = this.component.call(this.ctx, this.ctx.props);
-		// TODO: use a more reliable check?
 		if (isIteratorOrAsyncIterator(value)) {
 			this.iter = value;
 			return this.iter.next();
@@ -554,7 +506,8 @@ interface Publication {
 	stop(): unknown;
 }
 
-class ComponentEngine implements Engine<unknown> {
+// TODO: rewrite this as a generator function
+class ComponentGear implements Gear<never> {
 	props: Props;
 	private iter: ComponentIterator;
 	private value?: Promise<undefined>;
@@ -562,9 +515,13 @@ class ComponentEngine implements Engine<unknown> {
 	private done = false;
 	private async = false;
 	private pubs = new Set<Publication>();
-	constructor(element: Element<Component>, private view: View<any>) {
-		this.props = element.props;
-		this.iter = new ComponentIterator(element.tag, new Context(this, view));
+	constructor(private view: View<any>) {
+		if (!isComponentElement(view.guest)) {
+			throw new Error("View’s guest is not a component element");
+		}
+
+		this.props = view.guest.props;
+		this.iter = new ComponentIterator(view.guest.tag, new Context(this, view));
 	}
 
 	run(): Promise<undefined> | undefined {
@@ -624,20 +581,20 @@ class ComponentEngine implements Engine<unknown> {
 		this.done = true;
 		const iteration = this.iter.return();
 		if (isPromiseLike(iteration)) {
-			const value = iteration.then(() => undefined); // void :(
+			const value = iteration.then(() => this.view.updateChildren([]));
 			return {value, done: true};
 		}
 
-		return {value: undefined, done: true};
+		return {value: this.view.updateChildren([]), done: true};
 	}
 
 	throw(error: any): never {
-		// TODO: throw error into this.iter.throw
+		// TODO: throw error into iter
 		throw error;
 	}
 
-	[Symbol.iterator](): never {
-		throw new Error("Not implemented");
+	[Symbol.iterator]() {
+		return this;
 	}
 
 	subscribe(): AsyncGenerator<Props> {
@@ -657,11 +614,92 @@ class ComponentEngine implements Engine<unknown> {
 	}
 }
 
+// TODO: rewrite this as a generator function
+class IntrinsicGear<T> implements Gear<T> {
+	private done = false;
+	private intrinsic: Intrinsic<T>;
+	private iter?: IntrinsicIterator<T>;
+	private props: Props;
+	private tag: string | symbol;
+	constructor(private view: View<T>) {
+		if (!isIntrinsicElement(view.guest)) {
+			throw new Error("View’s guest is not an intrinsic element");
+		}
+
+		this.props = view.guest.props;
+		// TODO: this probably should not be done here.
+		this.intrinsic = view.intrinsicFor(view.guest.tag);
+		this.tag = view.guest.tag;
+	}
+
+	private commit(): T | undefined {
+		if (this.done) {
+			return;
+		}
+
+		const props = {...this.props, children: this.view.childNodes};
+		if (this.iter === undefined) {
+			this.iter = this.intrinsic(props);
+		}
+
+		const iteration = this.iter.next(props);
+		this.done = !!iteration.done;
+		return iteration.value;
+	}
+
+	next(props: Props): IteratorResult<MaybePromise<T | undefined>, undefined> {
+		if (this.done) {
+			return {value: undefined, done: true};
+		}
+
+		this.props = props;
+		let updateP: MaybePromise<undefined>;
+		if (this.view.updating) {
+			updateP = this.view.updateChildren(this.props.children);
+		}
+
+		if (updateP !== undefined) {
+			return {
+				value: updateP.then(() => this.commit()),
+				done: false,
+			};
+		}
+
+		return {value: this.commit(), done: this.done};
+	}
+
+	return(): IteratorResult<
+		MaybePromise<T | undefined>,
+		MaybePromise<undefined>
+	> {
+		this.done = true;
+		if (this.iter === undefined || this.iter.return === undefined) {
+			return {value: this.view.updateChildren([]), done: true};
+		}
+
+		const value = this.view.updateChildren([]);
+		if (isPromiseLike(value)) {
+			return {value: value.then(() => void this.iter!.return!()), done: true};
+		}
+
+		this.iter.return();
+		return {value, done: true};
+	}
+
+	throw(): IteratorResult<T | undefined> {
+		throw new Error("Not implemented");
+	}
+
+	[Symbol.iterator]() {
+		return this;
+	}
+}
+
 // TODO: Should we allow Environments to define custom Symbol elements?
 export interface Environment<T> {
 	[Default](tag: string): Intrinsic<T>;
-	[Root]: Intrinsic<T>; // Intrinsic<T> | Environment<T>;
-	[tag: string]: Intrinsic<T>;
+	[Root]: Intrinsic<T>;
+	[tag: string]: Intrinsic<T>; // Intrinsic<T> | Environment<T>;
 }
 
 const defaultEnv: Environment<any> = {

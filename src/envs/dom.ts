@@ -1,9 +1,9 @@
 import {
-	Committer,
 	Default,
 	Element,
 	Environment,
 	Intrinsic,
+	IntrinsicIterator,
 	Props,
 	Renderer,
 	Root,
@@ -72,7 +72,7 @@ function updateDOMChildren(
 
 export const env: Environment<Node> = {
 	[Default](tag: string): Intrinsic<Node> {
-		return function* defaultDOM({children, ...props}): Committer<Node> {
+		return function* defaultDOM({children, ...props}): IntrinsicIterator<Node> {
 			const node = document.createElement(tag);
 			while (true) {
 				updateDOMProps(node, props);
@@ -81,7 +81,7 @@ export const env: Environment<Node> = {
 			}
 		};
 	},
-	*[Root]({node, children}): Committer<Node> {
+	*[Root]({node, children}): IntrinsicIterator<Node> {
 		try {
 			while (true) {
 				updateDOMChildren(node, children);
