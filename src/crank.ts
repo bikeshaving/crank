@@ -184,12 +184,13 @@ type Gear<T> = Generator<
 // like this and get rid of the class in favor of functions/interfaces.
 // TODO: rename to host?
 //interface Host<T> {
+//	updating: boolean;
 //	guest?: Element | string;
+//	gear?: Gear<T>;
 //	node?: T | string;
 //	parent?: Host<T>;
 //	firstChild?: Host<T>;
 //	nextSibling?: Host<T>;
-//	gear?: Gear<T>;
 //}
 //
 // The one method/function which might have to be defined on host is update,
@@ -210,14 +211,16 @@ export class View<T> {
 	private children: (View<T> | undefined)[] = [];
 	constructor(
 		public guest: Guest,
-		// TODO: Pass renderer into here instead
-		private env: Environment<T>,
+		private renderer: Renderer<T>,
 		private parent?: View<T>,
 	) {
 		if (isComponentElement(guest)) {
 			this.gear = new ComponentGear(this);
 		} else if (isIntrinsicElement(guest)) {
-			this.gear = new IntrinsicGear(this);
+			this.gear = new IntrinsicGear(
+				this,
+				this.renderer.intrinsicFor(guest.tag),
+			);
 		}
 	}
 
@@ -266,26 +269,6 @@ export class View<T> {
 		return this.childNodes[0];
 	}
 
-	// TODO: move this logic to the renderer
-	intrinsicFor(tag: string | symbol): Intrinsic<T> {
-		let intrinsic: Intrinsic<T> | undefined;
-		if (tag === Root) {
-			intrinsic = this.env[tag as any];
-			if (intrinsic == null) {
-				throw new TypeError("Unknown Tag");
-			}
-		} else if (typeof tag === "string") {
-			intrinsic = this.env[tag];
-			if (intrinsic == null) {
-				intrinsic = this.env[Default](tag);
-			}
-		} else {
-			throw new TypeError("Unknown Tag");
-		}
-
-		return intrinsic;
-	}
-
 	update = chase(function update(
 		this: View<T>,
 		guest: Guest,
@@ -297,11 +280,15 @@ export class View<T> {
 			this.guest.tag !== guest.tag
 		) {
 			void this.unmount();
+			// Need to set this.guest cuz component gear and intrinsic gear read it
 			this.guest = guest;
 			if (isComponentElement(guest)) {
 				this.gear = new ComponentGear(this);
 			} else if (isIntrinsicElement(guest)) {
-				this.gear = new IntrinsicGear(this);
+				this.gear = new IntrinsicGear(
+					this,
+					this.renderer.intrinsicFor(guest.tag),
+				);
 			}
 		} else {
 			this.guest = guest;
@@ -348,7 +335,7 @@ export class View<T> {
 		for (const child of flattenChildren(children)) {
 			const guest = createGuest(child);
 			if (view === undefined) {
-				view = this.children[i] = new View(guest, this.env, this);
+				view = this.children[i] = new View(guest, this.renderer, this);
 			}
 
 			const update = view.update(guest);
@@ -609,18 +596,15 @@ class ComponentGear implements Gear<never> {
 // TODO: rewrite this as a generator function
 class IntrinsicGear<T> implements Gear<T> {
 	private done = false;
-	private intrinsic: Intrinsic<T>;
 	private iter?: IntrinsicIterator<T>;
 	private props: Props;
 	private tag: string | symbol;
-	constructor(private view: View<T>) {
+	constructor(private view: View<T>, private intrinsic: Intrinsic<T>) {
 		if (!isIntrinsicElement(view.guest)) {
 			throw new Error("View’s guest is not an intrinsic element");
 		}
 
 		this.props = view.guest.props;
-		// TODO: this probably should not be done here.
-		this.intrinsic = view.intrinsicFor(view.guest.tag);
 		this.tag = view.guest.tag;
 	}
 
@@ -705,7 +689,8 @@ const defaultEnv: Environment<any> = {
 	},
 };
 
-export class Renderer<T, TContainer extends {}> {
+// TODO: delete TContainer type parameter
+export class Renderer<T, TContainer extends {} = any> {
 	views: WeakMap<TContainer, View<T>> = new WeakMap();
 	env: Environment<T> = defaultEnv;
 
@@ -731,8 +716,18 @@ export class Renderer<T, TContainer extends {}> {
 		}
 	}
 
-	// TODO: move the TContainer/node/Root wrapping logic into env-specific
-	// functions. It does not apply uniformly for all enviroments.
+	intrinsicFor(tag: string | symbol): Intrinsic<T> {
+		let intrinsic: Intrinsic<T> | undefined;
+		if (this.env[tag as any]) {
+			intrinsic = this.env[tag as any];
+		} else {
+			intrinsic = this.env[Default](tag);
+		}
+
+		return intrinsic;
+	}
+
+	// TODO: move root stuff into specific renderer subclasses
 	render(
 		elem?: Element | null,
 		node?: TContainer,
@@ -753,7 +748,7 @@ export class Renderer<T, TContainer extends {}> {
 		} else if (elem == null) {
 			return;
 		} else {
-			view = new View(elem, this.env);
+			view = new View(elem, this);
 			if (node !== undefined) {
 				this.views.set(node, view);
 			}
