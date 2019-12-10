@@ -535,7 +535,7 @@ class ComponentGear implements Gear<never> {
 
 	next(props: Props): IteratorResult<MaybePromise<undefined>> {
 		if (this.done) {
-			return {value: undefined, done: true};
+			return {value: this.value, done: true};
 		}
 
 		this.props = props;
