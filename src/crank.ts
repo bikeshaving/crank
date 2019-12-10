@@ -88,7 +88,7 @@ export function isElement(value: any): value is Element {
 
 export function isIntrinsicElement(
 	value: any,
-): value is Element<ControlTag | string> {
+): value is Element<string | symbol> {
 	return isElement(value) && typeof value.tag !== "function";
 }
 
@@ -275,10 +275,10 @@ export class View<T> {
 	}
 
 	// TODO: move this logic to the renderer
-	intrinsicFor(tag: string | ControlTag): Intrinsic<T> {
+	intrinsicFor(tag: string | symbol): Intrinsic<T> {
 		let intrinsic: Intrinsic<T> | undefined;
 		if (tag === Root) {
-			intrinsic = this.env[tag];
+			intrinsic = this.env[tag as any];
 			if (intrinsic == null) {
 				throw new TypeError("Unknown Tag");
 			}
@@ -695,15 +695,17 @@ class IntrinsicGear<T> implements Gear<T> {
 	}
 }
 
-// TODO: Should we allow Environments to define custom Symbol elements?
 export interface Environment<T> {
-	[Default](tag: string): Intrinsic<T>;
+	[Default](tag: string | symbol): Intrinsic<T>;
 	[Root]: Intrinsic<T>;
 	[tag: string]: Intrinsic<T>; // Intrinsic<T> | Environment<T>;
+	// TODO: allow symbol index parameters when typescript gets its shit together
+	// [tag: symbol]: Intrinsic<T>; // Intrinsic<T> | Environment<T>;
 }
 
 const defaultEnv: Environment<any> = {
-	[Default](tag: string): never {
+	[Default](tag: string | symbol): never {
+		tag = typeof tag === "string" ? tag : tag.toString();
 		throw new Error(`Environment did not provide an intrinsic for ${tag}`);
 	},
 	[Root](): never {
