@@ -182,27 +182,19 @@ type Gear<T> = Generator<
 
 // TODO: use a left-child right-sibling tree, maybe we want to use an interface
 // like this and get rid of the class in favor of functions/interfaces.
+// TODO: rename to host?
 //interface Host<T> {
 //	guest?: Element | string;
 //	node?: T | string;
 //	parent?: Host<T>;
 //	firstChild?: Host<T>;
 //	nextSibling?: Host<T>;
-//	engine?: Engine<T>;
+//	gear?: Gear<T>;
 //}
 //
-// We should split up the logic from View to Fiber, which is stateless, and
-// Engine, which is stateful. Engine would call updateChildren and yield host
-// nodes. I’m not sure why the engine would yield host nodes, insofar as this
-// would require the fiber or some other function to set the host on the fiber.
-// Why would the engine set the children of the fiber but not set the host?
-// This reveals the conceptual limits of iterators. They have to “yield”
-// something or why use iterators at all?
-//
-// Engine is a type which both components and intrinsics can implement to
-// manipulate the host.
-//
-// TODO: rename to host?
+// The one method/function which might have to be defined on host is update,
+// because it uses a function which later updates call to resolve previous
+// updates.
 //export class Host<T> {
 export class View<T> {
 	// Whether or not the update was initiated by the parent.
