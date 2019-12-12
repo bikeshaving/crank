@@ -1,3 +1,5 @@
+// TODO: maybe use our own event target shim
+import {EventTarget} from "event-target-shim";
 import {Repeater, SlidingBuffer} from "@repeaterjs/repeater";
 
 // TODO: make this non-global?
@@ -131,6 +133,7 @@ export interface IntrinsicProps<T> {
 	children?: (T | string)[];
 }
 
+// TODO: use a context pattern here?
 export type IntrinsicIterator<T> = Iterator<
 	T | undefined,
 	undefined,
@@ -196,10 +199,22 @@ type Gear<T> = Generator<
 // The one method/function which might have to be defined on host is update,
 // because it uses a function which later updates call to resolve previous
 // updates.
+//
+// Views/Hosts are like pegs or slots; the diffing/reconciliation algorithm
+// will create a peg for each child of a jsx expression and fill it with a
+// value. While it might make sense to reuse this class instead of creating a
+// separate context class/interface, using a separate context type might be
+// nicer because Views/hosts with atomic guests (string/undefined) do not need
+// a context, the context should not be reused between different guests, and
+// the host class currently defines more methods that should be available on
+// the context. So what we would have is a host tree, an additional context
+// tree, and gears/generators which call functions with the host and context.
+//
 //export class Host<T> {
 export class View<T> {
 	// Whether or not the update was initiated by the parent.
 	updating = false;
+	ctx?: Context;
 	private node?: T | string;
 	// When a component unmounts asynchronously, its current nodes are stored in
 	// hanging until the unmount promise settles.
@@ -211,16 +226,17 @@ export class View<T> {
 	private children: (View<T> | undefined)[] = [];
 	constructor(
 		public guest: Guest,
+		public parent: View<T> | undefined,
 		private renderer: Renderer<T>,
-		private parent?: View<T>,
 	) {
-		if (isComponentElement(guest)) {
-			this.gear = new ComponentGear(this);
-		} else if (isIntrinsicElement(guest)) {
-			this.gear = new IntrinsicGear(
-				this,
-				this.renderer.intrinsicFor(guest.tag),
-			);
+		if (isElement(guest)) {
+			this.ctx = new Context(this);
+			if (typeof guest.tag === "function") {
+				this.gear = new ComponentGear(this, this.ctx);
+			} else {
+				const intrinsic = this.renderer.intrinsicFor(guest.tag);
+				this.gear = new IntrinsicGear(this, intrinsic);
+			}
 		}
 	}
 
@@ -282,13 +298,14 @@ export class View<T> {
 			void this.unmount();
 			// Need to set this.guest cuz component gear and intrinsic gear read it
 			this.guest = guest;
-			if (isComponentElement(guest)) {
-				this.gear = new ComponentGear(this);
-			} else if (isIntrinsicElement(guest)) {
-				this.gear = new IntrinsicGear(
-					this,
-					this.renderer.intrinsicFor(guest.tag),
-				);
+			if (isElement(guest)) {
+				this.ctx = new Context(this);
+				if (typeof guest.tag === "function") {
+					this.gear = new ComponentGear(this, this.ctx);
+				} else {
+					const intrinsic = this.renderer.intrinsicFor(guest.tag);
+					this.gear = new IntrinsicGear(this, intrinsic);
+				}
 			}
 		} else {
 			this.guest = guest;
@@ -303,8 +320,15 @@ export class View<T> {
 		this.refresh();
 	}
 
-	refresh(): Promise<undefined> | undefined {
+	refresh(): MaybePromise<undefined> {
 		if (isElement(this.guest)) {
+			if (this.ctx !== undefined) {
+				const ev = new CustomEvent("crank.refresh", {
+					detail: {props: this.guest.props},
+				});
+				this.ctx.dispatchEvent(ev);
+			}
+
 			if (this.gear !== undefined) {
 				const iteration = this.gear.next(this.guest.props);
 				if (iteration.done) {
@@ -335,7 +359,7 @@ export class View<T> {
 		for (const child of flattenChildren(children)) {
 			const guest = createGuest(child);
 			if (view === undefined) {
-				view = this.children[i] = new View(guest, this.renderer, this);
+				view = this.children[i] = new View(guest, this, this.renderer);
 			}
 
 			const update = view.update(guest);
@@ -365,6 +389,11 @@ export class View<T> {
 	unmount(): MaybePromise<undefined> {
 		this.node = undefined;
 		this.guest = undefined;
+		if (this.ctx !== undefined) {
+			this.ctx.dispatchEvent(new Event("crank.unmount"));
+			this.ctx = undefined;
+		}
+
 		if (this.gear !== undefined) {
 			const iteration = this.gear.return && this.gear.return(undefined);
 			if (!iteration.done) {
@@ -385,26 +414,56 @@ export class View<T> {
 	}
 }
 
-export class Context {
-	constructor(private gear: ComponentGear, private view: View<any>) {}
+export type RefreshEvent = CustomEvent<{props: Props}>;
+
+export interface CrankEventMap {
+	"crank.refresh": RefreshEvent;
+	"crank.unmount": Event;
+}
+
+export interface Context {
+	[Symbol.iterator](): Generator<Props>;
+	[Symbol.asyncIterator](): AsyncGenerator<Props>;
+	refresh(): MaybePromise<undefined>;
+}
+
+export class Context extends EventTarget {
+	constructor(private view: View<any>) {
+		super();
+	}
 
 	// TODO: throw an error if props are pulled multiple times per update
 	*[Symbol.iterator](): Generator<Props> {
 		while (true) {
-			yield this.gear.props;
+			yield this.props;
 		}
 	}
 
 	[Symbol.asyncIterator](): AsyncGenerator<Props> {
-		return this.gear.subscribe();
+		return new Repeater(async (push, stop) => {
+			push(this.props);
+			const onRefresh = (ev: any) => void push(ev.detail.props);
+			const onUnmount = () => stop();
+			this.addEventListener("crank.refresh", onRefresh);
+			this.addEventListener("crank.unmount", onUnmount);
+			await stop;
+			this.removeEventListener("crank.refresh", onRefresh);
+			this.removeEventListener("crank.unmount", onUnmount);
+		}, new SlidingBuffer(1));
 	}
 
+	// TODO: throw an error if refresh is called on an unmounted component
 	refresh(): Promise<undefined> | undefined {
 		return this.view.refresh();
 	}
 
+	// TODO: make this private or delete this
 	get props(): Props {
-		return this.gear.props;
+		if (!isElement(this.view.guest)) {
+			throw new Error("Guest is not an element");
+		}
+
+		return this.view.guest.props;
 	}
 }
 
@@ -487,20 +546,21 @@ interface Publication {
 
 // TODO: rewrite this as a generator function
 class ComponentGear implements Gear<never> {
-	props: Props;
 	private iter: ComponentIterator;
-	private value?: Promise<undefined>;
-	private enqueued?: Promise<undefined>;
+	private value: MaybePromise<undefined>;
+	private enqueued: MaybePromise<undefined>;
 	private done = false;
 	private async = false;
 	private pubs = new Set<Publication>();
-	constructor(private view: View<any>) {
+	constructor(private view: View<any>, ctx: Context) {
 		if (!isComponentElement(view.guest)) {
 			throw new Error("View’s guest is not a component element");
 		}
-
-		this.props = view.guest.props;
-		this.iter = new ComponentIterator(view.guest.tag, new Context(this, view));
+		// TODO: ctx needs to be defined at the view/renderer level so that it can
+		// be passed to children so that we can create an EventTarget hierarchy.
+		// However, the Context class currently depends on ComponentGear because
+		// publish/subscribe is defined on this class.
+		this.iter = new ComponentIterator(view.guest.tag, ctx);
 	}
 
 	run(): Promise<undefined> | undefined {
@@ -533,13 +593,11 @@ class ComponentGear implements Gear<never> {
 		}
 	}
 
-	next(props: Props): IteratorResult<MaybePromise<undefined>> {
+	next(): IteratorResult<MaybePromise<undefined>> {
 		if (this.done) {
 			return {value: this.value, done: true};
 		}
 
-		this.props = props;
-		this.publish();
 		if (this.async) {
 			return {value: this.value, done: this.done};
 		} else if (this.value === undefined) {
@@ -575,22 +633,6 @@ class ComponentGear implements Gear<never> {
 	[Symbol.iterator]() {
 		return this;
 	}
-
-	subscribe(): AsyncGenerator<Props> {
-		return new Repeater(async (push, stop) => {
-			push(this.props);
-			const pub = {push, stop};
-			this.pubs.add(pub);
-			await stop;
-			this.pubs.delete(pub);
-		}, new SlidingBuffer(1));
-	}
-
-	publish(): void {
-		for (const pub of this.pubs) {
-			pub.push(this.props);
-		}
-	}
 }
 
 // TODO: rewrite this as a generator function
@@ -598,14 +640,12 @@ class IntrinsicGear<T> implements Gear<T> {
 	private done = false;
 	private iter?: IntrinsicIterator<T>;
 	private props: Props;
-	private tag: string | symbol;
 	constructor(private view: View<T>, private intrinsic: Intrinsic<T>) {
 		if (!isIntrinsicElement(view.guest)) {
 			throw new Error("View’s guest is not an intrinsic element");
 		}
 
 		this.props = view.guest.props;
-		this.tag = view.guest.tag;
 	}
 
 	private commit(): T | undefined {
@@ -648,11 +688,13 @@ class IntrinsicGear<T> implements Gear<T> {
 		MaybePromise<T | undefined>,
 		MaybePromise<undefined>
 	> {
-		this.done = true;
 		if (this.iter === undefined || this.iter.return === undefined) {
 			return {value: this.view.updateChildren([]), done: true};
+		} else if (this.done) {
+			return {value: undefined, done: true};
 		}
 
+		this.done = true;
 		const value = this.view.updateChildren([]);
 		if (isPromiseLike(value)) {
 			return {value: value.then(() => void this.iter!.return!()), done: true};
@@ -748,7 +790,7 @@ export class Renderer<T, TContainer extends {} = any> {
 		} else if (elem == null) {
 			return;
 		} else {
-			view = new View(elem, this);
+			view = new View(elem, undefined, this);
 			if (node !== undefined) {
 				this.views.set(node, view);
 			}

@@ -748,7 +748,6 @@ describe("async generator component", () => {
 			</div>,
 			document.body,
 		);
-		// TODO: this is wrong
 		expect(document.body.innerHTML).toEqual("<div><span>Final</span></div>");
 		expect(Component).toHaveBeenCalledTimes(1);
 	});
