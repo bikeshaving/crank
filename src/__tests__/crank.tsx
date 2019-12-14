@@ -668,6 +668,41 @@ describe("sync generator component", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 4</span></div>");
 	});
 
+	test("events", () => {
+		function* Component(this: Context): Generator {
+			let count = 0;
+			this.addEventListener("click", (ev) => {
+				// TODO: fix typings for event listeners
+				// @ts-ignore
+				if (ev.target.id === "button") {
+					count++;
+					this.refresh();
+				}
+			});
+
+			// eslint-disable-next-line
+			for (const props of this) {
+				yield (
+					<div>
+						<button id="button">Click me</button>
+						<span>Button has been clicked {count} times</span>
+					</div>
+				);
+			}
+		}
+
+		render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual(
+			'<div><button id="button">Click me</button><span>Button has been clicked 0 times</span></div>',
+		);
+
+		const button = document.getElementById("button")!;
+		button.click();
+		expect(document.body.innerHTML).toEqual(
+			'<div><button id="button">Click me</button><span>Button has been clicked 1 times</span></div>',
+		);
+	});
+
 	test("async children", async () => {
 		const mock = jest.fn();
 		async function Component({children}: {children: any}): Promise<Element> {

@@ -1,12 +1,172 @@
-// TODO: maybe use our own event target shim
-import {EventTarget} from "event-target-shim";
+// TODO: Use our own EventTarget implementation which doesn’t change
+// EventTarget typings and is exactly compatible with DOM EventTarget
+import {EventTarget as EventTargetShim} from "event-target-shim";
 import {Repeater, SlidingBuffer} from "@repeaterjs/repeater";
+
+interface EventListenerDetail {
+	type: string;
+	// TODO: how do we handle listener objects
+	callback: EventListenerOrEventListenerObject;
+	options: AddEventListenerOptions;
+}
+
+function normalizeOptions(
+	options?: boolean | AddEventListenerOptions,
+): AddEventListenerOptions {
+	let capture = false;
+	let passive: boolean | undefined;
+	let once: boolean | undefined;
+	if (typeof options === "boolean") {
+		capture = options;
+	} else if (options != null) {
+		capture = !!options.capture;
+		passive = options.passive;
+		once = options.once;
+	}
+
+	return {capture, passive, once};
+}
+
+// TODO: add these type overloads to CrankEventTarget
+export interface CrankEventMap {
+	"crank.refresh": RefreshEvent;
+	"crank.unmount": Event;
+}
+
+export class CrankEventTarget extends EventTargetShim implements EventTarget {
+	constructor(private parent?: CrankEventTarget) {
+		super();
+	}
+
+	// TODO: create a helper class which performantly:
+	// directly using an array here (for perf reasons).
+	private listeners: EventListenerDetail[] = [];
+
+	private _delegates: Set<EventTarget> = new Set();
+
+	get delegates(): Set<EventTarget> {
+		return this._delegates;
+	}
+
+	set delegates(delegates: Set<EventTarget>) {
+		const removed = new Set(
+			Array.from(this._delegates).filter((d) => !delegates.has(d)),
+		);
+		const added = new Set(
+			Array.from(delegates).filter((d) => !this._delegates.has(d)),
+		);
+
+		for (const delegate of removed) {
+			for (const listener of this.listeners) {
+				delegate.removeEventListener(
+					listener.type,
+					listener.callback,
+					listener.options,
+				);
+			}
+		}
+
+		for (const delegate of added) {
+			for (const listener of this.listeners) {
+				delegate.addEventListener(
+					listener.type,
+					listener.callback,
+					listener.options,
+				);
+			}
+		}
+
+		this._delegates = delegates;
+	}
+
+	addEventListener(
+		type: string,
+		callback: EventListenerOrEventListenerObject | null,
+		options?: boolean | AddEventListenerOptions,
+	): unknown {
+		if (callback == null) {
+			return;
+		}
+
+		options = normalizeOptions(options);
+		const detail: EventListenerDetail = {type, callback, options};
+		if (!detail.type.startsWith("crank.")) {
+			const idx = this.listeners.findIndex((detail1) => {
+				return (
+					detail.type === detail1.type &&
+					detail.callback === detail1.callback &&
+					detail.options.capture === detail1.options.capture
+				);
+			});
+
+			if (idx <= -1) {
+				this.listeners.push(detail);
+			}
+		}
+
+		for (const delegate of this.delegates) {
+			delegate.addEventListener(type, callback, options);
+		}
+
+		return super.addEventListener(type, callback, options);
+	}
+
+	removeEventListener(
+		type: string,
+		callback: EventListenerOrEventListenerObject | null,
+		options?: EventListenerOptions | boolean,
+	): unknown {
+		if (callback == null) {
+			return;
+		}
+
+		const capture =
+			typeof options === "boolean" ? options : !!(options && options.capture);
+		const idx = this.listeners.findIndex((detail) => {
+			return (
+				detail.type === type &&
+				detail.callback === callback &&
+				detail.options.capture === capture
+			);
+		});
+		const detail = this.listeners[idx];
+		if (detail !== undefined) {
+			this.listeners.splice(idx, 1);
+		}
+
+		for (const delegate of this.delegates) {
+			delegate.removeEventListener(type, callback, options);
+		}
+
+		return super.removeEventListener(type, callback, options);
+	}
+
+	// TODO: remove once listeners which were dispatched
+	// TODO: ev is any because event-target-shim has a weird dispatchEvent type
+	dispatchEvent(ev: any): boolean {
+		let continued = super.dispatchEvent(ev);
+		if (continued && ev.bubbles && this.parent !== undefined) {
+			continued = this.parent.dispatchEvent(ev);
+		}
+
+		return continued;
+	}
+}
+
+function isEventTarget(value: any): value is EventTarget {
+	return (
+		value != null &&
+		typeof value.addEventListener === "function" &&
+		typeof value.removeEventListener === "function" &&
+		typeof value.dispatchEvent === "function"
+	);
+}
 
 // TODO: make this non-global?
 declare global {
-	namespace JSX {
+	module JSX {
 		interface IntrinsicElements {
-			[name: string]: any;
+			[tag: string]: any;
 		}
 
 		// TODO: I don‘t think this actually type checks children
@@ -197,7 +357,7 @@ type Gear<T> = Generator<
 //}
 //
 // The one method/function which might have to be defined on host is update,
-// because it uses a function which later updates call to resolve previous
+// because it uses a function which later updates calls to resolve previous
 // updates.
 //
 // Views/Hosts are like pegs or slots; the diffing/reconciliation algorithm
@@ -232,7 +392,7 @@ export class View<T> {
 		if (isElement(guest)) {
 			this.ctx = new Context(this);
 			if (typeof guest.tag === "function") {
-				this.gear = new ComponentGear(this, this.ctx);
+				this.gear = new ComponentGear(this);
 			} else {
 				const intrinsic = this.renderer.intrinsicFor(guest.tag);
 				this.gear = new IntrinsicGear(this, intrinsic);
@@ -260,10 +420,10 @@ export class View<T> {
 						buffer = undefined;
 					}
 
-					if (childView.node !== undefined) {
-						childNodes.push(childView.node);
-					} else {
+					if (childView.node === undefined) {
 						childNodes.push(...childView.childNodes);
+					} else {
+						childNodes.push(childView.node);
 					}
 				}
 			}
@@ -271,6 +431,13 @@ export class View<T> {
 
 		if (buffer !== undefined) {
 			childNodes.push(buffer);
+		}
+
+		if (this.ctx !== undefined && isComponentElement(this.guest)) {
+			const delegates = (childNodes.filter(
+				isEventTarget,
+			) as unknown) as EventTarget[];
+			this.ctx.delegates = new Set(delegates);
 		}
 
 		this.cachedChildNodes = childNodes;
@@ -301,7 +468,7 @@ export class View<T> {
 			if (isElement(guest)) {
 				this.ctx = new Context(this);
 				if (typeof guest.tag === "function") {
-					this.gear = new ComponentGear(this, this.ctx);
+					this.gear = new ComponentGear(this);
 				} else {
 					const intrinsic = this.renderer.intrinsicFor(guest.tag);
 					this.gear = new IntrinsicGear(this, intrinsic);
@@ -315,7 +482,7 @@ export class View<T> {
 	});
 
 	// TODO: batch this per tick
-	enqueueCommit(): void {
+	enqueueRefresh(): void {
 		this.cachedChildNodes = undefined;
 		this.refresh();
 	}
@@ -340,9 +507,9 @@ export class View<T> {
 						this.node = value;
 						return undefined; // void :(
 					});
+				} else {
+					this.node = iteration.value;
 				}
-
-				this.node = iteration.value;
 			}
 		} else {
 			this.node = this.guest;
@@ -406,7 +573,7 @@ export class View<T> {
 				this.hanging = this.childNodes;
 				return p.then(() => {
 					this.hanging = undefined;
-					this.parent && this.parent.enqueueCommit();
+					this.parent && this.parent.enqueueRefresh();
 					return undefined; // void :(
 				});
 			}
@@ -416,18 +583,13 @@ export class View<T> {
 
 export type RefreshEvent = CustomEvent<{props: Props}>;
 
-export interface CrankEventMap {
-	"crank.refresh": RefreshEvent;
-	"crank.unmount": Event;
-}
-
 export interface Context {
 	[Symbol.iterator](): Generator<Props>;
 	[Symbol.asyncIterator](): AsyncGenerator<Props>;
 	refresh(): MaybePromise<undefined>;
 }
 
-export class Context extends EventTarget {
+export class Context extends CrankEventTarget {
 	constructor(private view: View<any>) {
 		super();
 	}
@@ -552,15 +714,18 @@ class ComponentGear implements Gear<never> {
 	private done = false;
 	private async = false;
 	private pubs = new Set<Publication>();
-	constructor(private view: View<any>, ctx: Context) {
+	constructor(private view: View<any>) {
 		if (!isComponentElement(view.guest)) {
-			throw new Error("View’s guest is not a component element");
+			throw new Error("View.guest is not a component element");
+		} else if (view.ctx === undefined) {
+			throw new Error("View.ctx is missing");
 		}
+
 		// TODO: ctx needs to be defined at the view/renderer level so that it can
 		// be passed to children so that we can create an EventTarget hierarchy.
 		// However, the Context class currently depends on ComponentGear because
 		// publish/subscribe is defined on this class.
-		this.iter = new ComponentIterator(view.guest.tag, ctx);
+		this.iter = new ComponentIterator(view.guest.tag, view.ctx!);
 	}
 
 	run(): Promise<undefined> | undefined {
@@ -663,7 +828,9 @@ class IntrinsicGear<T> implements Gear<T> {
 		return iteration.value;
 	}
 
-	next(props: Props): IteratorResult<MaybePromise<T | undefined>, undefined> {
+	next(
+		props: Props,
+	): IteratorResult<MaybePromise<T | undefined>, MaybePromise<undefined>> {
 		if (this.done) {
 			return {value: undefined, done: true};
 		}
