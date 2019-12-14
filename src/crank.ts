@@ -5,7 +5,6 @@ import {Repeater, SlidingBuffer} from "@repeaterjs/repeater";
 
 interface EventListenerDetail {
 	type: string;
-	// TODO: how do we handle listener objects
 	callback: EventListenerOrEventListenerObject;
 	options: AddEventListenerOptions;
 }
@@ -146,6 +145,8 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 	dispatchEvent(ev: any): boolean {
 		let continued = super.dispatchEvent(ev);
 		if (continued && ev.bubbles && this.parent !== undefined) {
+			// TODO: this is the poor man’s event dispatch, doesn’t even handle
+			// capturing
 			continued = this.parent.dispatchEvent(ev);
 		}
 
@@ -466,7 +467,7 @@ export class View<T> {
 			// Need to set this.guest cuz component gear and intrinsic gear read it
 			this.guest = guest;
 			if (isElement(guest)) {
-				this.ctx = new Context(this);
+				this.ctx = new Context(this, this.parent && this.parent.ctx);
 				if (typeof guest.tag === "function") {
 					this.gear = new ComponentGear(this);
 				} else {
@@ -590,8 +591,8 @@ export interface Context {
 }
 
 export class Context extends CrankEventTarget {
-	constructor(private view: View<any>) {
-		super();
+	constructor(private view: View<any>, parent?: Context) {
+		super(parent);
 	}
 
 	// TODO: throw an error if props are pulled multiple times per update
