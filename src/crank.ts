@@ -344,9 +344,8 @@ type Gear<T> = Generator<
 	Props
 >;
 
-// TODO: use a left-child right-sibling tree, maybe we want to use an interface
-// like this and get rid of the class in favor of functions/interfaces.
-// TODO: rename to host?
+// TODO: maybe we want to rename to host and use an interface like this to get
+// rid of the class in favor of functions/interfaces/objects.
 //interface Host<T> {
 //	updating: boolean;
 //	guest?: Element | string;
@@ -359,7 +358,7 @@ type Gear<T> = Generator<
 //
 // The one method/function which might have to be defined on host is update,
 // because it uses a function which later updates calls to resolve previous
-// updates.
+// updates. Maybe we can use a WeakMap instead.
 //
 // Views/Hosts are like pegs or slots; the diffing/reconciliation algorithm
 // will create a peg for each child of a jsx expression and fill it with a
@@ -370,7 +369,6 @@ type Gear<T> = Generator<
 // the host class currently defines more methods that should be available on
 // the context. So what we would have is a host tree, an additional context
 // tree, and gears/generators which call functions with the host and context.
-//
 //export class Host<T> {
 export class View<T> {
 	// Whether or not the update was initiated by the parent.
@@ -383,8 +381,8 @@ export class View<T> {
 	// The view can continue to be updated in the meantime.
 	private hanging?: (T | string)[];
 	private gear?: Gear<T>;
-	// TODO: Use a left-child right-sibling tree.
-	private children: (View<T> | undefined)[] = [];
+	private firstChild?: View<T>;
+	private nextSibling?: View<T>;
 	constructor(
 		public guest: Guest,
 		public parent: View<T> | undefined,
@@ -409,23 +407,25 @@ export class View<T> {
 
 		let buffer: string | undefined;
 		const childNodes: (T | string)[] = [];
-		for (const childView of this.children) {
-			if (childView !== undefined) {
-				if (childView.hanging !== undefined) {
-					childNodes.push(...childView.hanging);
-				} else if (typeof childView.node === "string") {
-					buffer = (buffer || "") + childView.node;
-				} else {
-					if (buffer !== undefined) {
-						childNodes.push(buffer);
-						buffer = undefined;
-					}
+		for (
+			let childView = this.firstChild;
+			childView !== undefined;
+			childView = childView.nextSibling
+		) {
+			if (childView.hanging !== undefined) {
+				childNodes.push(...childView.hanging);
+			} else if (typeof childView.node === "string") {
+				buffer = (buffer || "") + childView.node;
+			} else {
+				if (buffer !== undefined) {
+					childNodes.push(buffer);
+					buffer = undefined;
+				}
 
-					if (childView.node === undefined) {
-						childNodes.push(...childView.childNodes);
-					} else {
-						childNodes.push(childView.node);
-					}
+				if (childView.node === undefined) {
+					childNodes.push(...childView.childNodes);
+				} else {
+					childNodes.push(childView.node);
 				}
 			}
 		}
@@ -435,9 +435,8 @@ export class View<T> {
 		}
 
 		if (this.ctx !== undefined && isComponentElement(this.guest)) {
-			const delegates = (childNodes.filter(
-				isEventTarget,
-			) as unknown) as EventTarget[];
+			// TODO: filter type narrowing is not working
+			const delegates: EventTarget[] = childNodes.filter(isEventTarget) as any;
 			this.ctx.delegates = new Set(delegates);
 		}
 
@@ -456,7 +455,7 @@ export class View<T> {
 	update = chase(function update(
 		this: View<T>,
 		guest: Guest,
-	): Promise<undefined> | undefined {
+	): MaybePromise<undefined> {
 		this.updating = true;
 		if (
 			!isElement(this.guest) ||
@@ -517,36 +516,40 @@ export class View<T> {
 		}
 	}
 
-	updateChildren(children: Children): Promise<undefined> | undefined {
+	updateChildren(children: Children): MaybePromise<undefined> {
 		this.cachedChildNodes = undefined;
-		// TODO: Not sure if this is the correct logic here.
+		// TODO: Only await unmounting in unmount
 		const unmounting = Array.isArray(children) && children.length === 0;
 		const promises: Promise<any>[] = [];
-		let i = 0;
-		let view = this.children[i];
+		let prevView: View<T> | undefined;
+		let nextView: View<T> | undefined = this.firstChild;
 		for (const child of flattenChildren(children)) {
 			const guest = createGuest(child);
-			if (view === undefined) {
-				view = this.children[i] = new View(guest, this, this.renderer);
+			if (nextView === undefined) {
+				nextView = new View(guest, this, this.renderer);
+				if (prevView === undefined) {
+					this.firstChild = nextView;
+				} else {
+					prevView.nextSibling = nextView;
+				}
 			}
 
-			const update = view.update(guest);
+			const update = nextView.update(guest);
 			if (update !== undefined) {
 				promises.push(update);
 			}
 
-			view = this.children[++i];
+			prevView = nextView;
+			nextView = nextView.nextSibling;
 		}
 
-		while (i < this.children.length) {
-			if (typeof view === "object") {
-				const unmountP = view.unmount();
-				if (unmounting && isPromiseLike(unmountP)) {
-					promises.push(unmountP);
-				}
+		while (nextView !== undefined) {
+			const unmountP = nextView.unmount();
+			if (unmounting && isPromiseLike(unmountP)) {
+				promises.push(unmountP);
 			}
 
-			view = this.children[++i];
+			nextView = nextView.nextSibling;
 		}
 
 		if (promises.length) {
