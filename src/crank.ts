@@ -240,13 +240,13 @@ export const ElementSigil: unique symbol = Symbol.for("crank:ElementSigil");
 export type ElementSigil = typeof ElementSigil;
 
 export interface Element<T extends Tag = Tag> {
-	sigil: ElementSigil;
 	tag: T;
 	props: Props;
+	[ElementSigil]: true;
 }
 
 export function isElement(value: any): value is Element {
-	return value != null && value.sigil === ElementSigil;
+	return value != null && value[ElementSigil];
 }
 
 export function isIntrinsicElement(
@@ -275,7 +275,7 @@ export function createElement<T extends Tag>(
 		props.children = arguments[2];
 	}
 
-	return {sigil: ElementSigil, tag, props};
+	return {[ElementSigil]: true, tag, props};
 }
 
 export function* flattenChildren(children: Children): Iterable<Child> {
