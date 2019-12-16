@@ -306,7 +306,7 @@ export type Intrinsic<T> = (props: IntrinsicProps<T>) => IntrinsicIterator<T>;
 
 export type Guest = Element | string | undefined;
 
-function createGuest(child: Child): Guest {
+function toGuest(child: Child): Guest {
 	if (child == null || typeof child === "boolean") {
 		return;
 	} else if (typeof child === "number") {
@@ -524,7 +524,7 @@ export class View<T> {
 		let prevView: View<T> | undefined;
 		let nextView: View<T> | undefined = this.firstChild;
 		for (const child of flattenChildren(children)) {
-			const guest = createGuest(child);
+			const guest = toGuest(child);
 			if (nextView === undefined) {
 				nextView = new View(guest, this, this.renderer);
 				if (prevView === undefined) {
