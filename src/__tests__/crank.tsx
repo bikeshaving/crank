@@ -2,7 +2,7 @@
 import "core-js";
 import "mutationobserver-shim";
 import {Repeater} from "@repeaterjs/repeater";
-import {createElement, Context, Element, Root, View} from "../crank";
+import {createElement, Context, Element, Root} from "../crank";
 import {render} from "../envs/dom";
 
 // NOTE: for some reason MutationRecord.previousSibling and
@@ -27,22 +27,22 @@ expect.extend({
 			removedNodes: [] as any,
 			attributeName: null,
 			attributeNamespace: null,
-			nextSibling: null,
-			previousSibling: null,
+			nextSibling: undefined as any,
+			previousSibling: undefined as any,
 			oldValue: null,
 		};
 		const pass = Array.isArray(received) && Array.isArray(expected);
 		if (pass) {
 			received = received.map((record: any) => ({
 				...record,
-				previousSibling: null,
-				nextSibling: null,
+				previousSibling: undefined,
+				nextSibling: undefined,
 			}));
 			expected = expected.map((record: any) => ({
 				...empty,
 				...record,
-				previousSibling: null,
-				nextSibling: null,
+				previousSibling: undefined,
+				nextSibling: undefined,
 			}));
 			// eslint-disable-next-line jest/no-standalone-expect
 			expect(received).toEqual(expected);
@@ -360,7 +360,7 @@ describe("async function component", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("");
-		await expect(viewP).resolves.toBeInstanceOf(View);
+		await expect(viewP).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 	});
 
@@ -405,13 +405,13 @@ describe("async function component", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("");
-		await expect(viewP1).resolves.toBeInstanceOf(View);
+		await expect(viewP1).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
-		await expect(viewP2).resolves.toBeInstanceOf(View);
+		await expect(viewP2).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
-		await expect(viewP3).resolves.toBeInstanceOf(View);
+		await expect(viewP3).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
-		await expect(viewP4).resolves.toBeInstanceOf(View);
+		await expect(viewP4).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
 		const viewP6 = render(
 			<div>
@@ -443,17 +443,17 @@ describe("async function component", () => {
 			</div>,
 			document.body,
 		);
-		await expect(viewP5).resolves.toBeInstanceOf(View);
+		await expect(viewP5).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
-		await expect(viewP6).resolves.toBeInstanceOf(View);
+		await expect(viewP6).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 6</span></div>");
-		await expect(viewP7).resolves.toBeInstanceOf(View);
+		await expect(viewP7).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 10</span></div>");
-		await expect(viewP8).resolves.toBeInstanceOf(View);
+		await expect(viewP8).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 10</span></div>");
-		await expect(viewP9).resolves.toBeInstanceOf(View);
+		await expect(viewP9).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 10</span></div>");
-		await expect(viewP10).resolves.toBeInstanceOf(View);
+		await expect(viewP10).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 10</span></div>");
 		expect(Component).toHaveBeenCalledTimes(4);
 	});
@@ -807,7 +807,7 @@ describe("async generator component", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("");
-		await expect(viewP).resolves.toBeInstanceOf(View);
+		await expect(viewP).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Loading</span></div>");
 		resolve();
 		await new Promise((resolve) => setTimeout(resolve, 0));
