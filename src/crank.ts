@@ -344,22 +344,6 @@ type Gear<T> = Generator<
 	Props
 >;
 
-// TODO: maybe we want to rename to host and use an interface like this to get
-// rid of the class in favor of functions/interfaces/objects.
-//interface Host<T> {
-//	updating: boolean;
-//	guest?: Element | string;
-//	gear?: Gear<T>;
-//	node?: T | string;
-//	parent?: Host<T>;
-//	firstChild?: Host<T>;
-//	nextSibling?: Host<T>;
-//}
-//
-// The one method/function which might have to be defined on host is update,
-// because it uses a function which later updates calls to resolve previous
-// updates. Maybe we can use a WeakMap instead.
-//
 // Views/Hosts are like pegs or slots; the diffing/reconciliation algorithm
 // will create a peg for each child of a jsx expression and fill it with a
 // value. While it might make sense to reuse this class instead of creating a
@@ -369,7 +353,16 @@ type Gear<T> = Generator<
 // the host class currently defines more methods that should be available on
 // the context. So what we would have is a host tree, an additional context
 // tree, and gears/generators which call functions with the host and context.
-//export class Host<T> {
+export interface Host<T> {
+	guest?: Element | string;
+	gear?: Gear<T>;
+	node?: T | string;
+	parent?: Host<T>;
+	firstChild?: Host<T>;
+	nextSibling?: Host<T>;
+	updating: boolean;
+}
+
 export class View<T> {
 	// Whether or not the update was initiated by the parent.
 	updating = false;
@@ -953,40 +946,38 @@ export class Renderer<T, TContainer extends {} = any> {
 	}
 
 	// TODO: move root stuff into specific renderer subclasses
-	render(
-		elem?: Element | null,
-		node?: TContainer,
-	): MaybePromise<View<T>> | undefined {
-		if (elem != null && elem.tag !== Root) {
+	render(child?: Child, node?: TContainer): MaybePromise<View<T>> | undefined {
+		let guest = toGuest(child);
+		if (guest != null && typeof guest !== "string" && guest.tag !== Root) {
 			if (node == null) {
 				throw new TypeError(
 					"Node is null or undefined and root element is not a root element",
 				);
 			}
 
-			elem = createElement(Root, {node}, elem);
+			guest = createElement(Root, {node}, guest);
 		}
 
 		let view: View<T>;
 		if (node !== undefined && this.views.has(node)) {
 			view = this.views.get(node)!;
-		} else if (elem == null) {
+		} else if (guest == null) {
 			return;
 		} else {
-			view = new View(elem, undefined, this);
+			view = new View(guest, undefined, this);
 			if (node !== undefined) {
 				this.views.set(node, view);
 			}
 		}
 
 		let p: Promise<void> | void;
-		if (elem == null) {
+		if (guest == null) {
 			p = view.unmount();
 			if (node !== undefined) {
 				this.views.delete(node);
 			}
 		} else {
-			p = view.update(elem);
+			p = view.update(guest);
 		}
 
 		if (p !== undefined) {
