@@ -1,4 +1,6 @@
 import {
+	createElement,
+	Child,
 	Default,
 	Element,
 	Environment,
@@ -70,9 +72,12 @@ function updateDOMChildren(
 	}
 }
 
-export const env: Environment<Node> = {
-	[Default](tag: string): Intrinsic<Node> {
-		return function* defaultDOM({children, ...props}): IntrinsicIterator<Node> {
+export const env: Environment<HTMLElement> = {
+	[Default](tag: string): Intrinsic<HTMLElement> {
+		return function* defaultDOM({
+			children,
+			...props
+		}): IntrinsicIterator<HTMLElement> {
 			const node = document.createElement(tag);
 			while (true) {
 				updateDOMProps(node, props);
@@ -81,7 +86,7 @@ export const env: Environment<Node> = {
 			}
 		};
 	},
-	*[Root]({node, children}): IntrinsicIterator<Node> {
+	*[Root]({node, children}): IntrinsicIterator<HTMLElement> {
 		try {
 			while (true) {
 				updateDOMChildren(node, children);
@@ -93,11 +98,23 @@ export const env: Environment<Node> = {
 	},
 };
 
-export const renderer = new Renderer([env]);
+export class DOMRenderer extends Renderer<HTMLElement> {
+	render(
+		elem: Child,
+		node: HTMLElement,
+	): Promise<View<HTMLElement>> | View<HTMLElement> {
+		if (elem != null) {
+			elem = createElement(Root, {node}, elem);
+		}
+		return super.render(elem, node);
+	}
+}
+
+export const renderer = new DOMRenderer([env]);
 
 export function render(
 	elem: Element | null | undefined,
-	node?: HTMLElement,
-): Promise<View<Node>> | View<Node> | undefined {
+	node: HTMLElement,
+): Promise<View<HTMLElement>> | View<HTMLElement> {
 	return renderer.render(elem, node);
 }

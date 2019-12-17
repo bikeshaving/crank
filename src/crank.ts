@@ -181,7 +181,7 @@ type MaybePromise<T> = Promise<T> | T;
 
 type MaybePromiseLike<T> = PromiseLike<T> | T;
 
-function isPromiseLike(value: any): value is PromiseLike<unknown> {
+export function isPromiseLike(value: any): value is PromiseLike<unknown> {
 	return value != null && typeof value.then === "function";
 }
 
@@ -907,9 +907,24 @@ const defaultEnv: Environment<any> = {
 	},
 };
 
-// TODO: delete TContainer type parameter
-export class Renderer<T, TContainer extends {} = any> {
-	views: WeakMap<TContainer, View<T>> = new WeakMap();
+export class Renderer<T> {
+	private cache = new WeakMap<object, View<T>>();
+	private getOrCreateCachedView(key?: object, guest?: Guest): View<T> {
+		let view: View<T> | undefined;
+		if (key !== undefined) {
+			view = this.cache.get(key);
+		}
+
+		if (view === undefined) {
+			view = new View<T>(guest, undefined, this);
+			if (key !== undefined) {
+				this.cache.set(key, view);
+			}
+		}
+
+		return view;
+	}
+
 	env: Environment<T> = defaultEnv;
 
 	constructor(envs: Partial<Environment<T>>[]) {
@@ -945,43 +960,18 @@ export class Renderer<T, TContainer extends {} = any> {
 		return intrinsic;
 	}
 
-	// TODO: move root stuff into specific renderer subclasses
-	render(child?: Child, node?: TContainer): MaybePromise<View<T>> | undefined {
-		let guest = toGuest(child);
-		if (guest != null && typeof guest !== "string" && guest.tag !== Root) {
-			if (node == null) {
-				throw new TypeError(
-					"Node is null or undefined and root element is not a root element",
-				);
-			}
-
-			guest = createElement(Root, {node}, guest);
-		}
-
-		let view: View<T>;
-		if (node !== undefined && this.views.has(node)) {
-			view = this.views.get(node)!;
-		} else if (guest == null) {
-			return;
-		} else {
-			view = new View(guest, undefined, this);
-			if (node !== undefined) {
-				this.views.set(node, view);
-			}
-		}
-
+	render(child: Child, key?: object): MaybePromise<View<T>> {
+		const guest = toGuest(child);
+		const view = this.getOrCreateCachedView(key, guest);
 		let p: Promise<void> | void;
 		if (guest == null) {
 			p = view.unmount();
-			if (node !== undefined) {
-				this.views.delete(node);
-			}
 		} else {
 			p = view.update(guest);
 		}
 
 		if (p !== undefined) {
-			return p.then(() => view);
+			return p.then(() => view!);
 		}
 
 		return view;

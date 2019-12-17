@@ -2,7 +2,7 @@
 import "core-js";
 import "mutationobserver-shim";
 import {Repeater} from "@repeaterjs/repeater";
-import {createElement, Context, Element, Root} from "../crank";
+import {createElement, Context, Element} from "../crank";
 import {render} from "../envs/dom";
 
 // NOTE: for some reason MutationRecord.previousSibling and
@@ -296,11 +296,6 @@ describe("render", () => {
 		expect(observer.takeRecords()).toEqualMutationRecords([
 			{removedNodes: [createHTML("<h1>Hello again</h1>")]},
 		]);
-	});
-
-	test("explicit root", () => {
-		render(createElement(Root, {node: document.body}, <div>Hello world</div>));
-		expect(document.body.innerHTML).toEqual("<div>Hello world</div>");
 	});
 });
 
@@ -720,21 +715,21 @@ describe("sync generator component", () => {
 			}
 		}
 
-		const p1 = render(
+		const renderP = render(
 			<div>
 				<Gen />
 			</div>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("");
-		await p1;
+		await renderP;
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 0</span></div>");
-		const p2 = ctx.refresh();
+		const refreshP = ctx.refresh();
 		await Promise.resolve();
 		expect(mock).toHaveBeenCalledTimes(1);
 		expect(mock).toHaveBeenCalledWith("<span>Hello 0</span>");
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 0</span></div>");
-		await p2;
+		await refreshP;
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
 		ctx.refresh();
 		await Promise.resolve();
@@ -830,14 +825,14 @@ describe("async generator component", () => {
 			return new Repeater((push1) => (push = push1));
 		}
 
-		let p: any = render(
+		let renderP = render(
 			<div>
 				<Component />
 			</div>,
 			document.body,
 		);
 		push(<span>Hello 1</span>);
-		await p;
+		await renderP;
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
 		push(<span>Hello 2</span>);
 		await new Promise((resolve) => setTimeout(resolve, 0));
@@ -964,16 +959,22 @@ describe("async generator component", () => {
 
 		await render(
 			<div>
-				<Component message="Hello 1" />
+				<div>
+					<Component message="Hello 1" />
+				</div>
 			</div>,
 			document.body,
 		);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
-		const p = render(null, document.body);
+		expect(document.body.innerHTML).toEqual(
+			"<div><div><span>Hello 1</span></div></div>",
+		);
+		const renderP = render(null, document.body);
 		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
+		expect(document.body.innerHTML).toEqual(
+			"<div><div><span>Hello 1</span></div></div>",
+		);
 		cleanup();
-		await p;
+		await renderP;
 		expect(document.body.innerHTML).toEqual("");
 	});
 });
