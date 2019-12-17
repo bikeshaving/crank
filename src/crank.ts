@@ -518,8 +518,6 @@ export class View<T> {
 
 	updateChildren(children: Children): MaybePromise<undefined> {
 		this.cachedChildNodes = undefined;
-		// TODO: Only await unmounting in unmount
-		const unmounting = Array.isArray(children) && children.length === 0;
 		const promises: Promise<any>[] = [];
 		let prevView: View<T> | undefined;
 		let nextView: View<T> | undefined = this.firstChild;
@@ -544,11 +542,7 @@ export class View<T> {
 		}
 
 		while (nextView !== undefined) {
-			const unmountP = nextView.unmount();
-			if (unmounting && isPromiseLike(unmountP)) {
-				promises.push(unmountP);
-			}
-
+			void nextView.unmount();
 			nextView = nextView.nextSibling;
 		}
 
@@ -581,6 +575,24 @@ export class View<T> {
 					return undefined; // void :(
 				});
 			}
+		}
+	}
+
+	unmountChildren(): MaybePromise<undefined> {
+		this.cachedChildNodes = undefined;
+		const promises: Promise<any>[] = [];
+		let nextView: View<T> | undefined = this.firstChild;
+		while (nextView !== undefined) {
+			const unmountP = nextView.unmount();
+			if (isPromiseLike(unmountP)) {
+				promises.push(unmountP);
+			}
+
+			nextView = nextView.nextSibling;
+		}
+
+		if (promises.length) {
+			return Promise.all(promises).then(() => undefined); // void :(
 		}
 	}
 }
@@ -787,11 +799,11 @@ class ComponentGear implements Gear<never> {
 		this.done = true;
 		const iteration = this.iter.return();
 		if (isPromiseLike(iteration)) {
-			const value = iteration.then(() => this.view.updateChildren([]));
+			const value = iteration.then(() => this.view.unmountChildren());
 			return {value, done: true};
 		}
 
-		return {value: this.view.updateChildren([]), done: true};
+		return {value: this.view.unmountChildren(), done: true};
 	}
 
 	throw(error: any): never {
@@ -860,13 +872,13 @@ class IntrinsicGear<T> implements Gear<T> {
 		MaybePromise<undefined>
 	> {
 		if (this.iter === undefined || this.iter.return === undefined) {
-			return {value: this.view.updateChildren([]), done: true};
+			return {value: this.view.unmountChildren(), done: true};
 		} else if (this.done) {
 			return {value: undefined, done: true};
 		}
 
 		this.done = true;
-		const value = this.view.updateChildren([]);
+		const value = this.view.unmountChildren();
 		if (isPromiseLike(value)) {
 			return {value: value.then(() => void this.iter!.return!()), done: true};
 		}
