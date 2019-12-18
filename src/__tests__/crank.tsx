@@ -76,6 +76,7 @@ describe("render", () => {
 	});
 
 	afterEach(() => {
+		document.body.innerHTML = "";
 		render(null, document.body);
 		observer.disconnect();
 	});
@@ -86,6 +87,31 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual("<h1>Hello world</h1>");
 		expect(observer.takeRecords()).toEqualMutationRecords([
 			{addedNodes: [createHTML("<h1>Hello world</h1>")]},
+		]);
+	});
+
+	test("multiple children", () => {
+		observe();
+		render(
+			<div>
+				<span>1</span>
+				<span>2</span>
+				<span>3</span>
+				<span>4</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span></div>",
+		);
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{
+				addedNodes: [
+					createHTML(
+						"<div><span>1</span><span>2</span><span>3</span><span>4</span></div>",
+					),
+				],
+			},
 		]);
 	});
 
@@ -332,6 +358,7 @@ describe("render", () => {
 
 describe("sync function component", () => {
 	afterEach(async () => {
+		document.body.innerHTML = "";
 		await render(null, document.body);
 	});
 
@@ -370,6 +397,7 @@ describe("sync function component", () => {
 
 describe("async function component", () => {
 	afterEach(async () => {
+		document.body.innerHTML = "";
 		await render(null, document.body);
 	});
 
@@ -626,6 +654,7 @@ describe("async function component", () => {
 
 describe("sync generator component", () => {
 	afterEach(async () => {
+		document.body.innerHTML = "";
 		await render(null, document.body);
 	});
 
@@ -771,6 +800,7 @@ describe("sync generator component", () => {
 
 describe("async generator component", () => {
 	afterEach(async () => {
+		document.body.innerHTML = "";
 		await render(null, document.body);
 	});
 
