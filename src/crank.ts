@@ -181,19 +181,17 @@ type MaybePromise<T> = Promise<T> | T;
 
 type MaybePromiseLike<T> = PromiseLike<T> | T;
 
-export function isPromiseLike(value: any): value is PromiseLike<unknown> {
+export function isPromiseLike(value: any): value is PromiseLike<any> {
 	return value != null && typeof value.then === "function";
 }
 
-function isIterable(value: any): value is Iterable<unknown> {
+function isIterable(value: any): value is Iterable<any> {
 	return value != null && typeof value[Symbol.iterator] === "function";
 }
 
 function isIteratorOrAsyncIterator(
 	value: any,
-): value is
-	| Iterator<unknown, unknown, unknown>
-	| AsyncIterator<unknown, unknown, unknown> {
+): value is Iterator<any> | AsyncIterator<any> {
 	return value != null && typeof value.next === "function";
 }
 
@@ -208,21 +206,18 @@ export const Root = Symbol.for("crank:Root");
 // TODO: typescript is dumb and doesn’t allow symbols in jsx expressions.
 export type Root = any;
 
-// TODO: implement these control tags
-// I wonder if the following tags can be implemented without defining a custom
-// function for each tag for every environment
+// TODO: implement the Copy tag
 // export const Copy = Symbol("Copy");
 //
 // export type Copy = typeof Copy;
-//
-// export const Fragment = Symbol("Fragment");
-//
-// export type Fragment = typeof Fragment;
-export type ControlTag = Root;
 
-// export type ControlTag = Root | Copy | Fragment | Portal;
-//
-export type Tag = Component | ControlTag | string;
+export const Fragment = Symbol("Fragment");
+
+export type Fragment = typeof Fragment;
+
+export type ControlTag = Root | Fragment;
+
+export type Tag = Component | symbol | string;
 
 export type Child = Element | string | number | boolean | null | undefined;
 
@@ -344,25 +339,17 @@ type Gear<T> = Generator<
 	Props
 >;
 
-// Views/Hosts are like pegs or slots; the diffing/reconciliation algorithm
-// will create a peg for each child of a jsx expression and fill it with a
-// value. While it might make sense to reuse this class instead of creating a
-// separate context class/interface, using a separate context type might be
-// nicer because Views/hosts with atomic guests (string/undefined) do not need
-// a context, the context should not be reused between different guests, and
-// the host class currently defines more methods that should be available on
-// the context. So what we would have is a host tree, an additional context
-// tree, and gears/generators which call functions with the host and context.
-export interface Host<T> {
-	guest?: Element | string;
-	gear?: Gear<T>;
-	node?: T | string;
-	parent?: Host<T>;
-	firstChild?: Host<T>;
-	nextSibling?: Host<T>;
-	updating: boolean;
-}
-
+//export interface Host<T> {
+//	guest: Guest;
+//	parent: Host<T> | undefined;
+//	updating: boolean;
+//	node: T | string | undefined;
+//	ctx: Context | undefined;
+//	gear: Gear<T> | undefined;
+//	firstChild: Host<T> | undefined;
+//	nextSibling: Host<T> | undefined;
+//}
+//
 export class View<T> {
 	// Whether or not the update was initiated by the parent.
 	updating = false;
@@ -379,10 +366,13 @@ export class View<T> {
 	constructor(
 		public guest: Guest,
 		public parent: View<T> | undefined,
+		// TODO: Renderer is only passed in here to get intrinsics.
+		// In other words, it could probably be replaced with a function which
+		// takes a string or symbol an returns an intrinsic.
 		private renderer: Renderer<T>,
 	) {
 		if (isElement(guest)) {
-			this.ctx = new Context(this);
+			this.ctx = new Context(this, this.parent && this.parent.ctx);
 			if (typeof guest.tag === "function") {
 				this.gear = new ComponentGear(this);
 			} else {
@@ -513,7 +503,9 @@ export class View<T> {
 		this.cachedChildNodes = undefined;
 		const promises: Promise<any>[] = [];
 		let prevView: View<T> | undefined;
-		let nextView: View<T> | undefined = this.firstChild;
+		let nextView = this.firstChild;
+		// TODO: inline flattenChildren here so we can have different logic for
+		// fragments
 		for (const child of flattenChildren(children)) {
 			const guest = toGuest(child);
 			if (nextView === undefined) {
@@ -553,7 +545,7 @@ export class View<T> {
 		}
 
 		if (this.gear !== undefined) {
-			const iteration = this.gear.return && this.gear.return(undefined);
+			const iteration = this.gear.return(undefined);
 			if (!iteration.done) {
 				throw new Error("Zombie gear");
 			}
@@ -897,7 +889,7 @@ export interface Environment<T> {
 	// [tag: symbol]: Intrinsic<T>; // Intrinsic<T> | Environment<T>;
 }
 
-const defaultEnv: Environment<any> = {
+const env: Environment<any> = {
 	[Default](tag: string | symbol): never {
 		tag = typeof tag === "string" ? tag : tag.toString();
 		throw new Error(`Environment did not provide an intrinsic for ${tag}`);
@@ -925,7 +917,7 @@ export class Renderer<T> {
 		return view;
 	}
 
-	env: Environment<T> = defaultEnv;
+	env: Environment<T> = {...env};
 
 	constructor(envs: Partial<Environment<T>>[]) {
 		for (const env of envs) {
