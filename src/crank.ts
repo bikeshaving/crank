@@ -196,22 +196,23 @@ function isIteratorOrAsyncIterator(
 }
 
 // TODO: user-defined control tags?
-export const Default = Symbol.for("crank:Default");
+export const Default = Symbol("crank.Default");
 
 export type Default = typeof Default;
 
-// TODO: Rename to Container? Merge with Portal?
-export const Root = Symbol.for("crank:Root");
+// TODO: We use any for symbol tags because typescript is dumb and doesn’t
+// allow symbols in jsx expressions.
+// TODO: Rename to Container?
+export const Root: any = Symbol("crank.Root") as any;
 
-// TODO: typescript is dumb and doesn’t allow symbols in jsx expressions.
-export type Root = any;
+export type Root = typeof Root;
 
 // TODO: implement the Copy tag
 // export const Copy = Symbol("Copy");
 //
 // export type Copy = typeof Copy;
 
-export const Fragment = Symbol("Fragment");
+export const Fragment: any = Symbol("crank.Fragment") as any;
 
 export type Fragment = typeof Fragment;
 
@@ -230,9 +231,7 @@ export interface Props {
 	children?: Children;
 }
 
-export const ElementSigil: unique symbol = Symbol.for("crank:ElementSigil");
-
-export type ElementSigil = typeof ElementSigil;
+const ElementSigil: unique symbol = Symbol.for("crank:ElementSigil");
 
 export interface Element<T extends Tag = Tag> {
 	tag: T;
@@ -376,7 +375,10 @@ export class View<T> {
 			if (typeof guest.tag === "function") {
 				this.gear = new ComponentGear(this);
 			} else {
-				const intrinsic = this.renderer.intrinsicFor(guest.tag);
+				const intrinsic =
+					guest.tag === Fragment
+						? undefined
+						: this.renderer.intrinsicFor(guest.tag);
 				this.gear = new IntrinsicGear(this, intrinsic);
 			}
 		}
@@ -453,7 +455,10 @@ export class View<T> {
 				if (typeof guest.tag === "function") {
 					this.gear = new ComponentGear(this);
 				} else {
-					const intrinsic = this.renderer.intrinsicFor(guest.tag);
+					const intrinsic =
+						guest.tag === Fragment
+							? undefined
+							: this.renderer.intrinsicFor(guest.tag);
 					this.gear = new IntrinsicGear(this, intrinsic);
 				}
 			}
@@ -806,7 +811,7 @@ class IntrinsicGear<T> implements Gear<T> {
 	private done = false;
 	private iter?: IntrinsicIterator<T>;
 	private props: Props;
-	constructor(private view: View<T>, private intrinsic: Intrinsic<T>) {
+	constructor(private view: View<T>, private intrinsic?: Intrinsic<T>) {
 		if (!isIntrinsicElement(view.guest)) {
 			throw new Error("View’s guest is not an intrinsic element");
 		}
@@ -815,7 +820,7 @@ class IntrinsicGear<T> implements Gear<T> {
 	}
 
 	private commit(): T | undefined {
-		if (this.done) {
+		if (this.done || this.intrinsic === undefined) {
 			return;
 		}
 
@@ -882,20 +887,19 @@ class IntrinsicGear<T> implements Gear<T> {
 }
 
 export interface Environment<T> {
-	[Default](tag: string | symbol): Intrinsic<T>;
-	[Root]: Intrinsic<T>;
+	[Default](tag: string): Intrinsic<T>;
 	[tag: string]: Intrinsic<T>; // Intrinsic<T> | Environment<T>;
 	// TODO: allow symbol index parameters when typescript gets its shit together
-	// [tag: symbol]: Intrinsic<T>; // Intrinsic<T> | Environment<T>;
+	// [Root]: Intrinsic<T>;
+	// [tag: symbol]: Intrinsic<T>;// Intrinsic<T> | Environment<T>;
 }
 
 const env: Environment<any> = {
-	[Default](tag: string | symbol): never {
-		tag = typeof tag === "string" ? tag : tag.toString();
+	[Default](tag: string): never {
 		throw new Error(`Environment did not provide an intrinsic for ${tag}`);
 	},
 	[Root](): never {
-		throw new Error("Environment did not provide an intrinsic for the Root");
+		throw new Error("Environment did not provide an intrinsic for Root");
 	},
 };
 
@@ -945,6 +949,8 @@ export class Renderer<T> {
 		let intrinsic: Intrinsic<T> | undefined;
 		if (this.env[tag as any]) {
 			intrinsic = this.env[tag as any];
+		} else if (typeof tag !== "string") {
+			throw new Error(`Unknown tag for symbol ${tag.description}`);
 		} else {
 			intrinsic = this.env[Default](tag);
 		}

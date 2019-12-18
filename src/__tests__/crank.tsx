@@ -2,7 +2,7 @@
 import "core-js";
 import "mutationobserver-shim";
 import {Repeater} from "@repeaterjs/repeater";
-import {createElement, Context, Element} from "../crank";
+import {createElement, Context, Element, Fragment} from "../crank";
 import {render} from "../envs/dom";
 
 // NOTE: for some reason MutationRecord.previousSibling and
@@ -295,6 +295,37 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual("");
 		expect(observer.takeRecords()).toEqualMutationRecords([
 			{removedNodes: [createHTML("<h1>Hello again</h1>")]},
+		]);
+	});
+
+	test("fragment", () => {
+		render(
+			<Fragment>
+				<div>Line 1</div>
+				<div>Line 2</div>
+			</Fragment>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div>Line 1</div><div>Line 2</div>",
+		);
+		observe();
+		render(
+			<Fragment>
+				<div>Line 1</div>
+				<div>Line 2</div>
+				<div>Line 3</div>
+			</Fragment>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div>Line 1</div><div>Line 2</div><div>Line 3</div>",
+		);
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{
+				target: document.body,
+				addedNodes: [createHTML("<div>Line 3</div>")],
+			},
 		]);
 	});
 });
