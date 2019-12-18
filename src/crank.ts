@@ -958,14 +958,20 @@ export class Renderer<T> {
 		const guest = toGuest(child);
 		const view = this.getOrCreateCachedView(key, guest);
 		let p: Promise<void> | void;
-		if (guest == null) {
+		if (guest === undefined) {
 			p = view.unmount();
 		} else {
 			p = view.update(guest);
 		}
 
 		if (p !== undefined) {
-			return p.then(() => view!);
+			return p.then(() => {
+				if (guest === undefined && typeof key === "object") {
+					this.cache.delete(key);
+				}
+
+				return view!;
+			});
 		}
 
 		return view;
