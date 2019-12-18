@@ -727,11 +727,7 @@ class ComponentGear implements Gear<never> {
 			throw new Error("View.ctx is missing");
 		}
 
-		// TODO: ctx needs to be defined at the view/renderer level so that it can
-		// be passed to children so that we can create an EventTarget hierarchy.
-		// However, the Context class currently depends on ComponentGear because
-		// publish/subscribe is defined on this class.
-		this.iter = new ComponentIterator(view.guest.tag, view.ctx!);
+		this.iter = new ComponentIterator(view.guest.tag, view.ctx);
 	}
 
 	run(): Promise<undefined> | undefined {
