@@ -272,17 +272,6 @@ export function createElement<T extends Tag>(
 	return {[ElementSigil]: true, tag, props};
 }
 
-export function* flattenChildren(children: Children): Iterable<Child> {
-	if (typeof children === "string" || !isIterable(children)) {
-		yield children;
-		return;
-	}
-
-	for (const child of children) {
-		yield* flattenChildren(child);
-	}
-}
-
 export interface IntrinsicProps<T> {
 	[key: string]: any;
 	children?: (T | string)[];
@@ -352,6 +341,8 @@ type Gear<T> = Generator<
 export class View<T> {
 	// Whether or not the update was initiated by the parent.
 	updating = false;
+	// TODO: use this and get rid of hanging
+	private unmounting = false;
 	ctx?: Context;
 	private node?: T | string;
 	// When a component unmounts asynchronously, its current nodes are stored in
@@ -362,27 +353,14 @@ export class View<T> {
 	private gear?: Gear<T>;
 	private firstChild?: View<T>;
 	private nextSibling?: View<T>;
+	public guest?: Guest;
 	constructor(
-		public guest: Guest,
 		public parent: View<T> | undefined,
 		// TODO: Renderer is only passed in here to get intrinsics.
 		// In other words, it could probably be replaced with a function which
 		// takes a string or symbol an returns an intrinsic.
 		private renderer: Renderer<T>,
-	) {
-		if (isElement(guest)) {
-			this.ctx = new Context(this, this.parent && this.parent.ctx);
-			if (typeof guest.tag === "function") {
-				this.gear = new ComponentGear(this);
-			} else {
-				const intrinsic =
-					guest.tag === Fragment
-						? undefined
-						: this.renderer.intrinsicFor(guest.tag);
-				this.gear = new IntrinsicGear(this, intrinsic);
-			}
-		}
-	}
+	) {}
 
 	private cachedChildNodes?: (T | string)[];
 	get childNodes(): (T | string)[] {
@@ -504,38 +482,66 @@ export class View<T> {
 		}
 	}
 
-	updateChildren(children: Children): MaybePromise<undefined> {
+	updateChildren(
+		children: Children,
+		previousSibling?: View<T>,
+		// TODO: figure out how to infer this from arguments
+		unmountFurther: boolean = true,
+	): MaybePromise<undefined> {
 		this.cachedChildNodes = undefined;
 		const promises: Promise<any>[] = [];
-		let prevView: View<T> | undefined;
-		let nextView = this.firstChild;
-		// TODO: inline flattenChildren here so we can have different logic for
-		// fragments
-		for (const child of flattenChildren(children)) {
-			const guest = toGuest(child);
-			if (nextView === undefined) {
-				nextView = new View(guest, this, this.renderer);
-				if (prevView === undefined) {
-					this.firstChild = nextView;
-				} else {
-					prevView.nextSibling = nextView;
+		let view: View<T> | undefined;
+		if (previousSibling === undefined) {
+			view = this.firstChild;
+			if (view === undefined) {
+				view = new View(this, this.renderer);
+				this.firstChild = view;
+			}
+		} else {
+			view = previousSibling.nextSibling;
+			if (view === undefined) {
+				view = new View(this, this.renderer);
+				previousSibling.nextSibling = view;
+			}
+		}
+
+		if (typeof children !== "string" && isIterable(children)) {
+			for (const child of children) {
+				if (view === undefined) {
+					view = new View(this, this.renderer);
+					previousSibling!.nextSibling = view;
+				}
+
+				const updateP = this.updateChildren(child, previousSibling, false);
+				if (updateP !== undefined) {
+					promises.push(updateP);
+				}
+
+				previousSibling = view;
+				view = view.nextSibling;
+			}
+
+			while (view !== undefined) {
+				void view.unmount();
+				view = view.nextSibling;
+			}
+		} else {
+			const guest = toGuest(children);
+			const updateP = view.update(guest);
+			if (updateP !== undefined) {
+				promises.push(updateP);
+			}
+
+			if (unmountFurther) {
+				view = view.nextSibling;
+				while (view !== undefined) {
+					void view.unmount();
+					view = view.nextSibling;
 				}
 			}
-
-			const update = nextView.update(guest);
-			if (update !== undefined) {
-				promises.push(update);
-			}
-
-			prevView = nextView;
-			nextView = nextView.nextSibling;
 		}
 
-		while (nextView !== undefined) {
-			void nextView.unmount();
-			nextView = nextView.nextSibling;
-		}
-
+		// TODO: delete all views after the last non-empty view
 		if (promises.length) {
 			return Promise.all(promises).then(() => undefined); // void :(
 		}
@@ -901,14 +907,14 @@ const env: Environment<any> = {
 
 export class Renderer<T> {
 	private cache = new WeakMap<object, View<T>>();
-	private getOrCreateCachedView(key?: object, guest?: Guest): View<T> {
+	private getOrCreateView(key?: object): View<T> {
 		let view: View<T> | undefined;
 		if (key !== undefined) {
 			view = this.cache.get(key);
 		}
 
 		if (view === undefined) {
-			view = new View<T>(guest, undefined, this);
+			view = new View<T>(undefined, this);
 			if (key !== undefined) {
 				this.cache.set(key, view);
 			}
@@ -956,7 +962,7 @@ export class Renderer<T> {
 
 	render(child: Child, key?: object): MaybePromise<View<T>> {
 		const guest = toGuest(child);
-		const view = this.getOrCreateCachedView(key, guest);
+		const view = this.getOrCreateView(key);
 		let p: Promise<void> | void;
 		if (guest === undefined) {
 			p = view.unmount();
