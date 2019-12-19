@@ -185,7 +185,6 @@ describe("render", () => {
 			{
 				target: document.body.firstChild,
 				addedNodes: [createHTML("<span>1</span>")],
-				nextSibling: createHTML("<span>2</span>"),
 			},
 			{
 				target: createHTML("<div><span>1</span><span>2</span></div>"),
@@ -327,30 +326,70 @@ describe("render", () => {
 	test("fragment", () => {
 		render(
 			<Fragment>
-				<div>Line 1</div>
-				<div>Line 2</div>
+				<span>1</span>
+				<span>2</span>
 			</Fragment>,
 			document.body,
 		);
-		expect(document.body.innerHTML).toEqual(
-			"<div>Line 1</div><div>Line 2</div>",
-		);
+		expect(document.body.innerHTML).toEqual("<span>1</span><span>2</span>");
 		observe();
 		render(
 			<Fragment>
-				<div>Line 1</div>
-				<div>Line 2</div>
-				<div>Line 3</div>
+				<span>1</span>
+				<span>2</span>
+				<span>3</span>
 			</Fragment>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual(
-			"<div>Line 1</div><div>Line 2</div><div>Line 3</div>",
+			"<span>1</span><span>2</span><span>3</span>",
 		);
 		expect(observer.takeRecords()).toEqualMutationRecords([
 			{
 				target: document.body,
-				addedNodes: [createHTML("<div>Line 3</div>")],
+				addedNodes: [createHTML("<span>3</span>")],
+			},
+		]);
+	});
+
+	test("array", () => {
+		render(
+			<div>
+				<span>1</span>
+				{[<span>2</span>, <span>3</span>]}
+				<span>4</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span></div>",
+		);
+		observe();
+		render(
+			<div>
+				<span>1</span>
+				{[]}
+				<span>4</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>4</span></div>",
+		);
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{
+				target: document.body.firstChild,
+				removedNodes: [createHTML("<span>2</span>")],
+			},
+			{
+				target: document.body.firstChild,
+				removedNodes: [createHTML("<span>3</span>")],
+			},
+			// current algorithm will move existing nodes before the to-be-removed nodes
+			{
+				target: document.body.firstChild,
+				addedNodes: [createHTML("<span>4</span>")],
+				removedNodes: [createHTML("<span>4</span>")],
 			},
 		]);
 	});

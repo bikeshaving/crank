@@ -234,9 +234,9 @@ export interface Props {
 const ElementSigil: unique symbol = Symbol.for("crank:ElementSigil");
 
 export interface Element<T extends Tag = Tag> {
+	[ElementSigil]: true;
 	tag: T;
 	props: Props;
-	[ElementSigil]: true;
 }
 
 export function isElement(value: any): value is Element {
@@ -356,9 +356,7 @@ export class View<T> {
 	public guest?: Guest;
 	constructor(
 		public parent: View<T> | undefined,
-		// TODO: Renderer is only passed in here to get intrinsics.
-		// In other words, it could probably be replaced with a function which
-		// takes a string or symbol an returns an intrinsic.
+		// TODO: figure out a way not to have to pass in Renderer
 		private renderer: Renderer<T>,
 	) {}
 
@@ -482,68 +480,72 @@ export class View<T> {
 		}
 	}
 
+	// TODO: delete all views after the last non-empty view
 	updateChildren(
 		children: Children,
 		previousSibling?: View<T>,
-		// TODO: figure out how to infer this from arguments
-		unmountFurther: boolean = true,
+		// TODO: Figure out how to infer this from this/arguments. We can probably
+		// divide this into a top-level method and a nested-level method, and have
+		// the top-level method call the nested method but include start/end logic.
+		topLevel: boolean = true,
 	): MaybePromise<undefined> {
 		this.cachedChildNodes = undefined;
-		const promises: Promise<any>[] = [];
 		let view: View<T> | undefined;
 		if (previousSibling === undefined) {
 			view = this.firstChild;
 			if (view === undefined) {
-				view = new View(this, this.renderer);
-				this.firstChild = view;
+				view = this.firstChild = new View(this, this.renderer);
 			}
 		} else {
 			view = previousSibling.nextSibling;
 			if (view === undefined) {
-				view = new View(this, this.renderer);
-				previousSibling.nextSibling = view;
+				view = previousSibling.nextSibling = new View(this, this.renderer);
 			}
 		}
 
+		// TODO: remove unmounted nodes
 		if (typeof children !== "string" && isIterable(children)) {
-			for (const child of children) {
-				if (view === undefined) {
-					view = new View(this, this.renderer);
-					previousSibling!.nextSibling = view;
+			if (topLevel) {
+				const promises: Promise<any>[] = [];
+				for (let child of children) {
+					if (view === undefined) {
+						view = new View(this, this.renderer);
+						previousSibling!.nextSibling = view;
+					}
+
+					const updateP = this.updateChildren(child, previousSibling, false);
+					if (updateP !== undefined) {
+						promises.push(updateP);
+					}
+
+					previousSibling = view;
+					view = view.nextSibling;
 				}
 
-				const updateP = this.updateChildren(child, previousSibling, false);
-				if (updateP !== undefined) {
-					promises.push(updateP);
+				while (view !== undefined) {
+					void view.unmount();
+					view = view.nextSibling;
 				}
 
-				previousSibling = view;
-				view = view.nextSibling;
-			}
-
-			while (view !== undefined) {
-				void view.unmount();
-				view = view.nextSibling;
+				if (promises.length) {
+					return Promise.all(promises).then(() => undefined); // void :(
+				}
+			} else {
+				children = createElement(Fragment, null, children);
+				return view.update(children);
 			}
 		} else {
 			const guest = toGuest(children);
 			const updateP = view.update(guest);
-			if (updateP !== undefined) {
-				promises.push(updateP);
-			}
-
-			if (unmountFurther) {
+			if (topLevel) {
 				view = view.nextSibling;
 				while (view !== undefined) {
 					void view.unmount();
 					view = view.nextSibling;
 				}
 			}
-		}
 
-		// TODO: delete all views after the last non-empty view
-		if (promises.length) {
-			return Promise.all(promises).then(() => undefined); // void :(
+			return updateP;
 		}
 	}
 
