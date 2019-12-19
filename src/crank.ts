@@ -89,7 +89,7 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 
 		options = normalizeOptions(options);
 		const detail: EventListenerDetail = {type, callback, options};
-		if (!detail.type.startsWith("crank.")) {
+		if (detail.type.slice(0, 6) !== "crank.") {
 			const idx = this.listeners.findIndex((detail1) => {
 				return (
 					detail.type === detail1.type &&
