@@ -982,8 +982,12 @@ export class Renderer<T> {
 					this.cache.delete(key);
 				}
 
-				return view!;
+				return view;
 			});
+		}
+
+		if (guest === undefined && typeof key === "object") {
+			this.cache.delete(key);
 		}
 
 		return view;
