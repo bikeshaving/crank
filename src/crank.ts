@@ -358,10 +358,15 @@ export class View<T> {
 	private gear?: Gear<T>;
 	private firstChild?: View<T>;
 	private nextSibling?: View<T>;
+	private viewsByKey: Record<string, View<T>> = {};
 	public guest?: Guest;
 	constructor(
 		public parent: View<T> | undefined,
-		// TODO: figure out a way not to have to pass in Renderer
+		// TODO: Figure out a way to not have to pass in a renderer. The only thing
+		// we need renderer for is getting intrinsics for strings/symbols. Maybe we
+		// can turn the renderer into a simple callback? Alternatively, we may be
+		// able to refactor View to an interface and move some of the methods on
+		// this class to renderer.
 		private renderer: Renderer<T>,
 	) {}
 
