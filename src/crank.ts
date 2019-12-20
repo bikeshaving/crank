@@ -216,8 +216,6 @@ export const Fragment: any = Symbol("crank.Fragment") as any;
 
 export type Fragment = typeof Fragment;
 
-export type ControlTag = Root | Fragment;
-
 export type Tag = Component | symbol | string;
 
 export type Child = Element | string | number | boolean | null | undefined;
@@ -431,10 +429,7 @@ export class View<T> {
 				if (typeof guest.tag === "function") {
 					this.gear = new ComponentGear(this);
 				} else {
-					const intrinsic =
-						guest.tag === Fragment
-							? undefined
-							: this.renderer.intrinsicFor(guest.tag);
+					const intrinsic = this.renderer.intrinsicFor(guest.tag);
 					this.gear = new IntrinsicGear(this, intrinsic);
 				}
 			}
@@ -949,17 +944,16 @@ export class Renderer<T> {
 		}
 	}
 
-	intrinsicFor(tag: string | symbol): Intrinsic<T> {
-		let intrinsic: Intrinsic<T> | undefined;
-		if (this.env[tag as any]) {
-			intrinsic = this.env[tag as any];
-		} else if (typeof tag !== "string") {
-			throw new Error(`Unknown tag for symbol ${tag.description}`);
+	intrinsicFor(tag: string | symbol): Intrinsic<T> | undefined {
+		if (tag === Fragment) {
+			return;
+		} else if (this.env[tag as any]) {
+			return this.env[tag as any];
+		} else if (typeof tag === "string") {
+			return this.env[Default](tag);
 		} else {
-			intrinsic = this.env[Default](tag);
+			throw new Error(`Unknown tag for symbol ${tag.description}`);
 		}
-
-		return intrinsic;
 	}
 
 	render(child: Child, key?: object): MaybePromise<View<T>> {
