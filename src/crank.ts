@@ -225,8 +225,9 @@ interface NestedChildIterable extends Iterable<Child | NestedChildIterable> {}
 export type Children = Child | NestedChildIterable;
 
 export interface Props {
-	[name: string]: any;
+	"crank-key": string;
 	children?: Children;
+	[name: string]: any;
 }
 
 const ElementSigil: unique symbol = Symbol.for("crank:ElementSigil");
@@ -235,6 +236,7 @@ export interface Element<T extends Tag = Tag> {
 	[ElementSigil]: true;
 	tag: T;
 	props: Props;
+	key?: string;
 }
 
 export function isElement(value: any): value is Element {
@@ -261,13 +263,18 @@ export function createElement<T extends Tag>(
 	props?: Props | null,
 ): Element<T> {
 	props = Object.assign({}, props);
+	const key = props["crank-key"];
+	if (key !== undefined) {
+		delete props["crank-key"];
+	}
+
 	if (arguments.length > 3) {
 		props.children = Array.from(arguments).slice(2);
 	} else if (arguments.length > 2) {
 		props.children = arguments[2];
 	}
 
-	return {[ElementSigil]: true, tag, props};
+	return {[ElementSigil]: true, tag, props, key};
 }
 
 export interface IntrinsicProps<T> {
@@ -484,7 +491,10 @@ export class View<T> {
 		// the top-level method call the nested method but include start/end logic.
 		topLevel: boolean = true,
 	): MaybePromise<undefined> {
-		this.cachedChildNodes = undefined;
+		if (topLevel) {
+			this.cachedChildNodes = undefined;
+		}
+
 		let view: View<T> | undefined;
 		if (previousSibling === undefined) {
 			view = this.firstChild;
