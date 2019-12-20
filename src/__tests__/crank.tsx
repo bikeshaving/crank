@@ -393,6 +393,52 @@ describe("render", () => {
 			},
 		]);
 	});
+
+	test("nested arrays", () => {
+		render(
+			<div>
+				<span>1</span>
+				{[<span>2</span>, [<span>3</span>, <span>4</span>], <span>5</span>]}
+				<span>6</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>",
+		);
+		observe();
+		render(
+			<div>
+				<span>1</span>
+				{[<span>2</span>, [<span>4</span>]]}
+				<span>6</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span><span>4</span><span>6</span></div>",
+		);
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{
+				target: createHTML("4"),
+				oldValue: "3",
+				type: "characterData",
+			},
+			{
+				target: document.body.firstChild,
+				removedNodes: [createHTML("<span>4</span>")],
+			},
+			{
+				target: document.body.firstChild,
+				removedNodes: [createHTML("<span>5</span>")],
+			},
+			{
+				target: document.body.firstChild,
+				addedNodes: [createHTML("<span>6</span>")],
+				removedNodes: [createHTML("<span>6</span>")],
+			},
+		]);
+	});
 });
 
 describe("sync function component", () => {
