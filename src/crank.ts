@@ -296,10 +296,10 @@ export type Guest = Element | string | undefined;
 
 function toGuest(child: Child): Guest {
 	if (child == null || typeof child === "boolean") {
-		return;
+		return undefined;
 	} else if (typeof child === "number") {
 		return child.toString();
-	} else if (typeof child === "string" || isElement(child)) {
+	} else {
 		return child;
 	}
 
