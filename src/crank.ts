@@ -225,8 +225,8 @@ interface NestedChildIterable extends Iterable<Child | NestedChildIterable> {}
 export type Children = Child | NestedChildIterable;
 
 export interface Props {
-	"crank-key": string;
 	children?: Children;
+	"crank-key"?: string;
 	[name: string]: any;
 }
 
