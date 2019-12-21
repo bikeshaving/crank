@@ -4,6 +4,7 @@ import {Repeater} from "@repeaterjs/repeater";
 import {createElement, Context, Element, Fragment} from "../crank";
 import {render} from "../envs/dom";
 import "./_mutation-observer";
+import {createHTML} from "./_utils";
 
 describe("render", () => {
 	let observer: MutationObserver;
@@ -14,14 +15,6 @@ describe("render", () => {
 			characterData: true,
 			subtree: true,
 		});
-	}
-
-	// taken from https://stackoverflow.com/a/35385518
-	function createHTML(innerHTML: string): ChildNode | null {
-		var template = document.createElement("template");
-		innerHTML = innerHTML.trim();
-		template.innerHTML = innerHTML;
-		return template.content.firstChild;
 	}
 
 	beforeEach(() => {
