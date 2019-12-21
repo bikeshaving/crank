@@ -515,6 +515,7 @@ export class View<T> {
 					}
 				}
 
+				// logic for keyed elements
 				if (isElement(guest) && guest.key !== undefined) {
 					const previous = this.previousByKey[guest.key];
 					if (previous !== undefined) {
@@ -548,6 +549,7 @@ export class View<T> {
 
 					previousByKey[guest.key] = previousSibling || this;
 				} else if (isElement(view.guest) && view.guest.key !== undefined) {
+					// leave the keyed view in place, but set the current view to a new unkeyed View
 					const unkeyedView = new View(this, this.renderer);
 					unkeyedView.nextSibling = view.nextSibling;
 					view.nextSibling = unkeyedView;
@@ -623,6 +625,7 @@ export class View<T> {
 		}
 	}
 
+	// TODO: bandwagon unmounts
 	unmount(): MaybePromise<undefined> {
 		this.node = undefined;
 		this.guest = undefined;
