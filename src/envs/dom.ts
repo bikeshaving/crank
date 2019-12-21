@@ -12,7 +12,7 @@ import {
 	View,
 } from "../crank";
 
-function updateDOMProps(el: HTMLElement, props: Props): void {
+export function updateDOMProps(el: HTMLElement, props: Props): void {
 	for (const [key, value] of Object.entries(props)) {
 		if (key in el) {
 			(el as any)[key] = value;
@@ -22,7 +22,9 @@ function updateDOMProps(el: HTMLElement, props: Props): void {
 	}
 }
 
-function updateDOMChildren(
+// TODO: improve this algorithm
+// https://stackoverflow.com/questions/59418120/what-is-the-most-efficient-way-to-update-the-childnodes-of-a-dom-node-with-an-ar
+export function updateDOMChildren(
 	el: HTMLElement,
 	children: (Node | string)[] = [],
 ): void {
