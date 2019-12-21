@@ -359,7 +359,7 @@ export class View<T> {
 	private gear?: Gear<T>;
 	private firstChild?: View<T>;
 	private nextSibling?: View<T>;
-	private previousByKey: Record<string, View<T> | undefined> = {};
+	private previousByKey: Record<string, View<T>> = {};
 	public guest?: Guest;
 	constructor(
 		public parent: View<T> | undefined,
@@ -497,49 +497,48 @@ export class View<T> {
 		const promises: Promise<undefined>[] = [];
 		if (typeof children !== "string" && isIterable(children)) {
 			let previousSibling: View<T> | undefined;
-			const previousByKey: Record<string, View<T> | undefined> = {};
-			const viewByKey: Record<string, View<T> | undefined> = {};
+			const previousByKey: Record<string, View<T>> = {};
 			for (let child of children) {
-				if (view === undefined) {
-					// TODO: there may be a way to abstract this notion of “previous”
-					if (previousSibling === undefined) {
-						view = this.firstChild = new View(this, this.renderer);
-					} else {
-						view = previousSibling.nextSibling = new View(this, this.renderer);
-					}
-				}
-
+				// all non-top-level iterables are wrapped in an implicit Fragment
 				if (typeof child !== "string" && isIterable(child)) {
 					child = createElement(Fragment, null, child);
 				}
 
 				const guest = toGuest(child);
+				if (view === undefined) {
+					view = new View(this, this.renderer);
+					// TODO: there may be a way to abstract this notion of “previous”
+					if (previousSibling === undefined) {
+						this.firstChild = view;
+					} else {
+						previousSibling.nextSibling = view;
+					}
+				}
+
 				if (isElement(guest) && guest.key !== undefined) {
 					const previous = this.previousByKey[guest.key];
 					if (previous !== undefined) {
 						const keyedView =
 							previous === this ? previous.firstChild! : previous.nextSibling!;
 						if (view !== keyedView) {
-							if (!isElement(view.guest) || view.guest.key === undefined) {
-								// TODO: this is wrong, we want to simply make the view the
-								// nextSibling of the keyedView so that asynchronously unmounting views stay in the tree
-								void view.unmount();
-								view.nextSibling = undefined;
-							}
-
 							if (previous === this) {
-								// this code branch would never happen, because in that case keyedView would equal view
 								previous.firstChild = keyedView.nextSibling;
 							} else {
 								previous.nextSibling = keyedView.nextSibling;
 							}
 
-							if (previousSibling === undefined) {
-								keyedView.nextSibling = this.firstChild;
-								this.firstChild = keyedView;
-							} else {
-								keyedView.nextSibling = previousSibling.nextSibling;
-								previousSibling.nextSibling = keyedView;
+							// if the current view is keyed, then leave it in place
+							if (isElement(view.guest) && view.guest.key !== undefined) {
+								keyedView.nextSibling = view.nextSibling;
+								view.nextSibling = keyedView;
+							} // if the current view is unkeyed, push it forwards
+							else {
+								keyedView.nextSibling = view;
+								if (previousSibling === undefined) {
+									this.firstChild = keyedView;
+								} else {
+									previousSibling.nextSibling = keyedView;
+								}
 							}
 						}
 
@@ -547,30 +546,13 @@ export class View<T> {
 						view = keyedView;
 					}
 
-					const keyedView = viewByKey[guest.key];
-					if (keyedView !== undefined) {
-						keyedView.nextSibling = view.nextSibling;
-						if (previousSibling === undefined) {
-							view = this.firstChild = keyedView;
-						} else {
-							view = previousSibling.nextSibling = keyedView;
-						}
-
-						delete viewByKey[guest.key];
-					}
-
 					previousByKey[guest.key] = previousSibling || this;
 				} else if (isElement(view.guest) && view.guest.key !== undefined) {
 					const unkeyedView = new View(this, this.renderer);
 					unkeyedView.nextSibling = view.nextSibling;
-					view.nextSibling = undefined;
-					viewByKey[view.guest.key] = view;
-					delete this.previousByKey[view.guest.key];
-					if (previousSibling === undefined) {
-						view = this.firstChild = unkeyedView;
-					} else {
-						view = previousSibling.nextSibling = unkeyedView;
-					}
+					view.nextSibling = unkeyedView;
+					previousSibling = view;
+					view = unkeyedView;
 				}
 
 				const updateP = view.update(guest);
@@ -582,11 +564,33 @@ export class View<T> {
 				view = view.nextSibling;
 			}
 
-			this.previousByKey = previousByKey;
-			for (const view of Object.values(viewByKey)) {
-				// TODO: we should append all viewByKeys back to the tree and call unmount, so that they can be properly unmounted
-				void view!.unmount();
+			while (view !== undefined) {
+				if (isElement(view.guest) && view.guest.key !== undefined) {
+					delete this.previousByKey[view.guest.key];
+				}
+
+				void view.unmount();
+				view = view.nextSibling;
 			}
+
+			for (const previous of Object.values(this.previousByKey)) {
+				const view =
+					previous === this ? previous.firstChild! : previous.nextSibling!;
+				const unmountP = view.unmount();
+				if (isPromiseLike(unmountP)) {
+					throw new Error(
+						"Async unmounting for keyed elements has not been implemented yet",
+					);
+				}
+
+				if (previous === this) {
+					previous.firstChild = view.nextSibling;
+				} else {
+					previous.nextSibling = view.nextSibling;
+				}
+			}
+
+			this.previousByKey = previousByKey;
 		} else {
 			const guest = toGuest(children);
 			if (view === undefined && guest !== undefined) {
@@ -601,15 +605,17 @@ export class View<T> {
 
 				if (isElement(guest) && guest.key !== undefined) {
 					this.previousByKey = {[guest.key]: view};
+				} else {
+					this.previousByKey = {};
 				}
 
 				view = view.nextSibling;
 			}
-		}
 
-		while (view !== undefined) {
-			void view.unmount();
-			view = view.nextSibling;
+			while (view !== undefined) {
+				void view.unmount();
+				view = view.nextSibling;
+			}
 		}
 
 		if (promises.length) {
@@ -635,8 +641,10 @@ export class View<T> {
 			const p = iteration && iteration.value;
 			if (isPromiseLike(p)) {
 				this.hanging = this.childNodes;
+				this.unmounting = true;
 				return p.then(() => {
 					this.hanging = undefined;
+					this.unmounting = false;
 					this.parent && this.parent.enqueueRefresh();
 					return undefined; // void :(
 				});
