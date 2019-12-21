@@ -365,6 +365,7 @@ describe("render", () => {
 			"<div><span>1</span><span>2</span><span>3</span><span>4</span></div>",
 		);
 		observe();
+		const span4 = document.body.firstChild!.childNodes[3];
 		render(
 			<div>
 				<span>1</span>
@@ -392,6 +393,7 @@ describe("render", () => {
 				removedNodes: [createHTML("<span>4</span>")],
 			},
 		]);
+		expect(document.body.firstChild!.childNodes[1]).toBe(span4);
 	});
 
 	test("nested arrays", () => {
@@ -407,6 +409,7 @@ describe("render", () => {
 			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>",
 		);
 		observe();
+		const span6 = document.body.firstChild!.childNodes[5];
 		render(
 			<div>
 				<span>1</span>
@@ -432,10 +435,161 @@ describe("render", () => {
 				target: document.body.firstChild,
 				removedNodes: [createHTML("<span>5</span>")],
 			},
+			// current algorithm will move existing nodes before the to-be-removed nodes
 			{
 				target: document.body.firstChild,
 				addedNodes: [createHTML("<span>6</span>")],
 				removedNodes: [createHTML("<span>6</span>")],
+			},
+		]);
+		expect(document.body.firstChild!.childNodes[3]).toBe(span6);
+	});
+
+	test("keyed child moves forward", () => {
+		render(
+			<div>
+				<span crank-key="1">1</span>
+				<span>2</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span></div>",
+		);
+		render(
+			<div>
+				<span>0</span>
+				<span crank-key="1">1</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>0</span><span>1</span></div>",
+		);
+	});
+
+	test("keyed child moves backward", () => {
+		render(
+			<div>
+				<span>1</span>
+				<span crank-key="2">2</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span></div>",
+		);
+		render(
+			<div>
+				<span crank-key="2">2</span>
+				<span>3</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>2</span><span>3</span></div>",
+		);
+	});
+
+	test("keyed array", () => {
+		const spans = [
+			<span crank-key="2">2</span>,
+			<span crank-key="3">3</span>,
+			<span crank-key="4">4</span>,
+		];
+		render(
+			<div>
+				<span>1</span>
+				{spans}
+				<span>5</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>",
+		);
+		observe();
+		const span2 = document.body.firstChild!.childNodes[1];
+		const span4 = document.body.firstChild!.childNodes[3];
+		const span5 = document.body.firstChild!.childNodes[4];
+		spans.splice(1, 1);
+		render(
+			<div>
+				<span>1</span>
+				{spans}
+				<span>5</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span><span>4</span><span>5</span></div>",
+		);
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{
+				target: document.body.firstChild,
+				removedNodes: [createHTML("<span>3</span>")],
+			},
+			{
+				target: document.body.firstChild,
+				addedNodes: [createHTML("<span>5</span>")],
+				removedNodes: [createHTML("<span>5</span>")],
+			},
+			{
+				target: document.body.firstChild,
+				addedNodes: [createHTML("<span>4</span>")],
+				removedNodes: [createHTML("<span>4</span>")],
+			},
+		]);
+		expect(document.body.firstChild!.childNodes[1]).toBe(span2);
+		expect(document.body.firstChild!.childNodes[2]).toBe(span4);
+		expect(document.body.firstChild!.childNodes[3]).toBe(span5);
+	});
+
+	test("keyed only child", () => {
+		render(
+			<div>
+				<span>1</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
+		observe();
+		let span1 = document.body.firstChild!.firstChild;
+		render(
+			<div>
+				<span crank-key="1">1</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
+		expect(document.body.firstChild!.firstChild).not.toBe(span1);
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{
+				target: document.body.firstChild,
+				addedNodes: [createHTML("<span>1</span>")],
+			},
+			{
+				target: document.body.firstChild,
+				removedNodes: [createHTML("<span>1</span>")],
+			},
+		]);
+		span1 = document.body.firstChild!.firstChild;
+		render(
+			<div>
+				<span>1</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
+		expect(document.body.firstChild!.firstChild).not.toBe(span1);
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{
+				target: document.body.firstChild,
+				addedNodes: [createHTML("<span>1</span>")],
+			},
+			{
+				target: document.body.firstChild,
+				removedNodes: [createHTML("<span>1</span>")],
 			},
 		]);
 	});

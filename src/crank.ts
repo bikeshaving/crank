@@ -299,7 +299,7 @@ function toGuest(child: Child): Guest {
 		return undefined;
 	} else if (typeof child === "number") {
 		return child.toString();
-	} else {
+	} else if (typeof child === "string" || isElement(child)) {
 		return child;
 	}
 
@@ -349,6 +349,7 @@ export class View<T> {
 	// TODO: use this and get rid of hanging
 	private unmounting = false;
 	ctx?: Context;
+	// TODO: maybe rename this to value
 	private node?: T | string;
 	// When a component unmounts asynchronously, its current nodes are stored in
 	// hanging until the unmount promise settles.
@@ -358,7 +359,7 @@ export class View<T> {
 	private gear?: Gear<T>;
 	private firstChild?: View<T>;
 	private nextSibling?: View<T>;
-	private viewsByKey: Record<string, View<T>> = {};
+	private previousByKey: Record<string, View<T> | undefined> = {};
 	public guest?: Guest;
 	constructor(
 		public parent: View<T> | undefined,
@@ -423,6 +424,7 @@ export class View<T> {
 		return this.childNodes[0];
 	}
 
+	// TODO: get this function onto the prototype, not the instance
 	update = chase(function update(
 		this: View<T>,
 		guest: Guest,
@@ -431,7 +433,8 @@ export class View<T> {
 		if (
 			!isElement(this.guest) ||
 			!isElement(guest) ||
-			this.guest.tag !== guest.tag
+			this.guest.tag !== guest.tag ||
+			this.guest.key !== guest.key
 		) {
 			void this.unmount();
 			// Need to set this.guest cuz component gear and intrinsic gear read it
@@ -490,12 +493,15 @@ export class View<T> {
 	// TODO: delete all empty views after the last non-empty, non-unmounting view
 	updateChildren(children: Children): MaybePromise<undefined> {
 		this.cachedChildNodes = undefined;
-		let previousSibling: View<T> | undefined;
 		let view = this.firstChild;
 		const promises: Promise<undefined>[] = [];
 		if (typeof children !== "string" && isIterable(children)) {
+			let previousSibling: View<T> | undefined;
+			const previousByKey: Record<string, View<T> | undefined> = {};
+			const viewByKey: Record<string, View<T> | undefined> = {};
 			for (let child of children) {
 				if (view === undefined) {
+					// TODO: there may be a way to abstract this notion of “previous”
 					if (previousSibling === undefined) {
 						view = this.firstChild = new View(this, this.renderer);
 					} else {
@@ -507,13 +513,79 @@ export class View<T> {
 					child = createElement(Fragment, null, child);
 				}
 
-				const updateP = view.update(toGuest(child));
+				const guest = toGuest(child);
+				if (isElement(guest) && guest.key !== undefined) {
+					const previous = this.previousByKey[guest.key];
+					if (previous !== undefined) {
+						const keyedView =
+							previous === this ? previous.firstChild! : previous.nextSibling!;
+						if (view !== keyedView) {
+							if (!isElement(view.guest) || view.guest.key === undefined) {
+								// TODO: this is wrong, we want to simply make the view the
+								// nextSibling of the keyedView so that asynchronously unmounting views stay in the tree
+								void view.unmount();
+								view.nextSibling = undefined;
+							}
+
+							if (previous === this) {
+								// this code branch would never happen, because in that case keyedView would equal view
+								previous.firstChild = keyedView.nextSibling;
+							} else {
+								previous.nextSibling = keyedView.nextSibling;
+							}
+
+							if (previousSibling === undefined) {
+								keyedView.nextSibling = this.firstChild;
+								this.firstChild = keyedView;
+							} else {
+								keyedView.nextSibling = previousSibling.nextSibling;
+								previousSibling.nextSibling = keyedView;
+							}
+						}
+
+						delete this.previousByKey[guest.key];
+						view = keyedView;
+					}
+
+					const keyedView = viewByKey[guest.key];
+					if (keyedView !== undefined) {
+						keyedView.nextSibling = view.nextSibling;
+						if (previousSibling === undefined) {
+							view = this.firstChild = keyedView;
+						} else {
+							view = previousSibling.nextSibling = keyedView;
+						}
+
+						delete viewByKey[guest.key];
+					}
+
+					previousByKey[guest.key] = previousSibling || this;
+				} else if (isElement(view.guest) && view.guest.key !== undefined) {
+					const unkeyedView = new View(this, this.renderer);
+					unkeyedView.nextSibling = view.nextSibling;
+					view.nextSibling = undefined;
+					viewByKey[view.guest.key] = view;
+					delete this.previousByKey[view.guest.key];
+					if (previousSibling === undefined) {
+						view = this.firstChild = unkeyedView;
+					} else {
+						view = previousSibling.nextSibling = unkeyedView;
+					}
+				}
+
+				const updateP = view.update(guest);
 				if (updateP !== undefined) {
 					promises.push(updateP);
 				}
 
 				previousSibling = view;
 				view = view.nextSibling;
+			}
+
+			this.previousByKey = previousByKey;
+			for (const view of Object.values(viewByKey)) {
+				// TODO: we should append all viewByKeys back to the tree and call unmount, so that they can be properly unmounted
+				void view!.unmount();
 			}
 		} else {
 			const guest = toGuest(children);
@@ -525,6 +597,10 @@ export class View<T> {
 				const updateP = view.update(guest);
 				if (updateP !== undefined) {
 					promises.push(updateP);
+				}
+
+				if (isElement(guest) && guest.key !== undefined) {
+					this.previousByKey = {[guest.key]: view};
 				}
 
 				view = view.nextSibling;
