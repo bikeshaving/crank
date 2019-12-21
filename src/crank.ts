@@ -345,10 +345,10 @@ type Gear<T> = Generator<
 //
 export class View<T> {
 	// Whether or not the update was initiated by the parent.
-	updating = false;
 	// TODO: use this and get rid of hanging
-	private unmounting = false;
 	ctx?: Context;
+	updating = false;
+	private unmounting = false;
 	// TODO: maybe rename this to value
 	private node?: T | string;
 	// When a component unmounts asynchronously, its current nodes are stored in
