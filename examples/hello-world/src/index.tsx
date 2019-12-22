@@ -1,9 +1,9 @@
 /** @jsx createElement */
-import {Controller, createElement, Element, render} from "crank";
+import {Context, createElement, Element, render} from "crank";
 const mount = document.getElementById("mount")!;
 const arr: number[] = [];
 async function* List(
-	this: Controller,
+	this: Context,
 	{elems}: {elems: number[]},
 ): AsyncGenerator<Element> {
 	let i = 0;

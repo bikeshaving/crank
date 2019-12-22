@@ -16,6 +16,6 @@
   },
   "dependencies": {
     "@repeaterjs/timers": "^0.3.1",
-    "crank": "*"
+    "crank": "../.."
   }
 }

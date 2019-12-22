@@ -7,6 +7,11 @@
   resolved "https://registry.yarnpkg.com/@repeaterjs/repeater/-/repeater-2.0.0.tgz#06e906c7bbd24f4707cbed74704cbace38ec2009"
   integrity sha512-x0ObBZvxbYB25qYanf95ku2eZDQ9FKsLP8ncZ0mPlaV3o35WwdbX0G0ZlCsLGhL44Ui8YO6h/q64zDMZm07lMQ==
 
+"@repeaterjs/repeater@^3.0.1":
+  version "3.0.1"
+  resolved "https://registry.yarnpkg.com/@repeaterjs/repeater/-/repeater-3.0.1.tgz#506641792ae5fdc5b8c3981ceb210bce407cd104"
+  integrity sha512-kqdrZRvTLFfvgPTeMgj8DpREYZXU+sz4/kdX2825zMNGmiaEUzM6u7A4YBoI4WzqXX4q123VftkllAw1C/4rMg==
+
 "@repeaterjs/timers@^0.3.1":
   version "0.3.1"
   resolved "https://registry.yarnpkg.com/@repeaterjs/timers/-/timers-0.3.1.tgz#677a659a45c9fe587f0c77a57e809c927f4e0cc5"
@@ -36,36 +41,26 @@ acorn@^7.0.0:
   resolved "https://registry.yarnpkg.com/acorn/-/acorn-7.0.0.tgz#26b8d1cd9a9b700350b71c0905546f64d1284e7a"
   integrity sha512-PaF/MduxijYYt7unVGRuds1vBC9bFxbNf+VWqhOClfdgy7RlVkQqt610ig1/yxTgsDIfW1cWDel5EBbOy3jdtQ==
 
-"async@>= 0.1.18":
-  version "3.1.0"
-  resolved "https://registry.yarnpkg.com/async/-/async-3.1.0.tgz#42b3b12ae1b74927b5217d8c0016baaf62463772"
-  integrity sha512-4vx/aaY6j/j3Lw3fbCHNWP0pPaTCew3F6F3hYyl/tHs/ndmV1q7NW9T5yuJ2XAGwdQrP+6Wu20x06U4APo/iQQ==
-
 builtin-modules@^3.1.0:
   version "3.1.0"
   resolved "https://registry.yarnpkg.com/builtin-modules/-/builtin-modules-3.1.0.tgz#aad97c15131eb76b65b50ef208e7584cd76a7484"
   integrity sha512-k0KL0aWZuBt2lrxrcASWDfwOLMnodeQjodT/1SxEQAXsHANgo6ZC/VEaSEHCXt7aSTZ4/4H5LKa+tBXmW7Vtvw==
 
-crank@*:
-  version "0.0.8"
-  resolved "https://registry.yarnpkg.com/crank/-/crank-0.0.8.tgz#82c2ca37c46c3d32cf8417d3fa9bcbdbc2745cb8"
-  integrity sha1-gsLKN8RsPTLPhBfT+pvL28J0XLg=
+crank@../..:
+  version "0.1.0"
   dependencies:
-    async ">= 0.1.18"
-    dateformat ">= 1.0.2-1.2.3"
-    mu2 ">= 0.5.3"
-    semver ">= 1.0.13"
-    xregexp ">= 1.5.3 < 2.0.0"
-
-"dateformat@>= 1.0.2-1.2.3":
-  version "3.0.3"
-  resolved "https://registry.yarnpkg.com/dateformat/-/dateformat-3.0.3.tgz#a6e37499a4d9a9cf85ef5872044d62901c9889ae"
-  integrity sha512-jyCETtSl3VMZMWeRo7iY1FL19ges1t55hMo5yaam4Jrsm5EPL89UQkoQRyiI+Yf4k8r2ZpdngkV8hr1lIdjb3Q==
+    "@repeaterjs/repeater" "^3.0.1"
+    event-target-shim "^5.0.1"
 
 estree-walker@^0.6.1:
   version "0.6.1"
   resolved "https://registry.yarnpkg.com/estree-walker/-/estree-walker-0.6.1.tgz#53049143f40c6eb918b23671d1fe3219f3a1b362"
   integrity sha512-SqmZANLWS0mnatqbSfRP5g8OXZC12Fgg1IwNtLsyHDzJizORW4khDfjPqJZsemPWBB2uqykUah5YpQ6epsqC/w==
+
+event-target-shim@^5.0.1:
+  version "5.0.1"
+  resolved "https://registry.yarnpkg.com/event-target-shim/-/event-target-shim-5.0.1.tgz#5d4d3ebdf9583d63a5333ce2deb7480ab2b05789"
+  integrity sha512-i/2XbnSz/uxRCU6+NdVJgKWDTM427+MqYbkQzD321DuCQJUqOuJKIA0IM2+W2xtYHdKOmZ4dR6fExsd4SXL+WQ==
 
 fs-extra@8.1.0:
   version "8.1.0"
@@ -92,11 +87,6 @@ jsonfile@^4.0.0:
   integrity sha1-h3Gq4HmbZAdrdmQPygWPnBDjPss=
   optionalDependencies:
     graceful-fs "^4.1.6"
-
-"mu2@>= 0.5.3":
-  version "0.5.21"
-  resolved "https://registry.yarnpkg.com/mu2/-/mu2-0.5.21.tgz#888a8f0fd90eb1cfda9db81476f6e199cc9e58d3"
-  integrity sha1-iIqPD9kOsc/anbgUdvbhmcyeWNM=
 
 path-parse@^1.0.6:
   version "1.0.6"
@@ -161,11 +151,6 @@ rollup@^1.20.0:
     "@types/node" "^12.7.5"
     acorn "^7.0.0"
 
-"semver@>= 1.0.13":
-  version "6.3.0"
-  resolved "https://registry.yarnpkg.com/semver/-/semver-6.3.0.tgz#ee0a64c8af5e8ceea67687b133761e1becbd1d3d"
-  integrity sha512-b39TBaTSfV6yBrapU89p5fKekE2m/NwnDocOVruQFS1/veMgdzuPcnOM34M6CwxW8jH/lxEa5rBoDeUwu5HHTw==
-
 tslib@1.10.0:
   version "1.10.0"
   resolved "https://registry.yarnpkg.com/tslib/-/tslib-1.10.0.tgz#c3c19f95973fb0a62973fb09d90d961ee43e5c8a"
@@ -180,8 +165,3 @@ universalify@^0.1.0:
   version "0.1.2"
   resolved "https://registry.yarnpkg.com/universalify/-/universalify-0.1.2.tgz#b646f69be3942dabcecc9d6639c80dc105efaa66"
   integrity sha512-rBJeI5CXAlmy1pV+617WB9J63U6XcazHHF2f2dbJix4XzpUF0RS3Zbj0FGIOCAva5P/d/GBOYaACQ1w+0azUkg==
-
-"xregexp@>= 1.5.3 < 2.0.0":
-  version "1.5.3"
-  resolved "https://registry.yarnpkg.com/xregexp/-/xregexp-1.5.3.tgz#73bcd99eaff37dee3b941e204d4440267f47ac2c"
-  integrity sha1-c7zZnq/zfe47lB4gTURAJn9HrCw=
