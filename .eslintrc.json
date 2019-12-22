@@ -10,7 +10,8 @@
     "sourceType": "module",
     "project": [
       "./tsconfig.json",
-      "./examples/hello-world/tsconfig.json"
+      "./examples/async-generator/tsconfig.json",
+      "./examples/todomvc/tsconfig.json"
     ],
     "createDefaultProgram": true
   },
