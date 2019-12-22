@@ -17,7 +17,11 @@ export function updateDOMProps(el: HTMLElement, props: Props): void {
 		if (key in el && (el as any)[key] !== value) {
 			(el as any)[key] = value;
 		} else {
-			el.setAttribute(key.toLowerCase(), value);
+			if (!value) {
+				el.removeAttribute(key.toLowerCase());
+			} else {
+				el.setAttribute(key.toLowerCase(), value);
+			}
 		}
 	}
 }
