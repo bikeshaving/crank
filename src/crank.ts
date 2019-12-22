@@ -1,5 +1,5 @@
-// TODO: Use our own EventTarget implementation which doesn’t change
-// EventTarget typings and is exactly compatible with DOM EventTarget
+// TODO: Implement EventTarget implementation which doesn’t change EventTarget
+// typings and is exactly compatible with DOM/typescript lib EventTarget
 import {EventTarget as EventTargetShim} from "event-target-shim";
 import {Repeater, SlidingBuffer} from "@repeaterjs/repeater";
 
@@ -37,8 +37,10 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 		super();
 	}
 
-	// TODO: create a helper class which performantly:
-	// directly using an array here (for perf reasons).
+	// TODO: maybe use a helper class?
+	// we need a map from:
+	// type -> capture -> listener detail
+	// for efficient querying
 	private listeners: EventListenerDetail[] = [];
 
 	private _delegates: Set<EventTarget> = new Set();
@@ -89,6 +91,23 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 
 		options = normalizeOptions(options);
 		const detail: EventListenerDetail = {type, callback, options};
+		if (options.once) {
+			if (typeof callback === "object") {
+				throw new Error("options.once not implemented for listener objects");
+			} else {
+				const self = this;
+				detail.callback = function(ev: any) {
+					const result = callback.call(this, ev);
+					self.removeEventListener(
+						detail.type,
+						detail.callback,
+						detail.options,
+					);
+					return result;
+				};
+			}
+		}
+
 		if (detail.type.slice(0, 6) !== "crank.") {
 			const idx = this.listeners.findIndex((detail1) => {
 				return (
@@ -114,7 +133,7 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 		type: string,
 		callback: EventListenerOrEventListenerObject | null,
 		options?: EventListenerOptions | boolean,
-	): unknown {
+	): void {
 		if (callback == null) {
 			return;
 		}
@@ -132,7 +151,6 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 		if (detail !== undefined) {
 			this.listeners.splice(idx, 1);
 		}
-
 		for (const delegate of this.delegates) {
 			delegate.removeEventListener(type, callback, options);
 		}
@@ -140,13 +158,23 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 		return super.removeEventListener(type, callback, options);
 	}
 
+	removeAllEventListeners(): void {
+		for (const listener of this.listeners.slice()) {
+			this.removeEventListener(
+				listener.type,
+				listener.callback,
+				listener.options,
+			);
+		}
+	}
+
 	// TODO: remove once listeners which were dispatched
 	// TODO: ev is any because event-target-shim has a weird dispatchEvent type
 	dispatchEvent(ev: any): boolean {
 		let continued = super.dispatchEvent(ev);
 		if (continued && ev.bubbles && this.parent !== undefined) {
-			// TODO: this is the poor man’s event dispatch, doesn’t even handle
-			// capturing
+			// TODO: This is the poor man’s event dispatch, doesn’t even handle
+			// capturing.
 			continued = this.parent.dispatchEvent(ev);
 		}
 
@@ -631,6 +659,7 @@ export class View<T> {
 		this.guest = undefined;
 		if (this.ctx !== undefined) {
 			this.ctx.dispatchEvent(new Event("crank.unmount"));
+			this.ctx.removeAllEventListeners();
 			this.ctx = undefined;
 		}
 
@@ -784,6 +813,7 @@ class ComponentGear implements Gear<never> {
 	run(): MaybePromise<undefined> {
 		let iteration: ComponentIteratorResult;
 		if (this.iter === undefined) {
+			this.ctx.removeAllEventListeners();
 			iteration = this.initialize();
 		} else {
 			iteration = this.iter.next(this.view.childNodeOrNodes);

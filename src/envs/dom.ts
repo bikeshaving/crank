@@ -14,7 +14,7 @@ import {
 
 export function updateDOMProps(el: HTMLElement, props: Props): void {
 	for (const [key, value] of Object.entries(props)) {
-		if (key in el) {
+		if (key in el && (el as any)[key] !== value) {
 			(el as any)[key] = value;
 		} else {
 			el.setAttribute(key.toLowerCase(), value);
