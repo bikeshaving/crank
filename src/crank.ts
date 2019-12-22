@@ -708,7 +708,7 @@ export class Context extends CrankEventTarget {
 	}
 
 	// TODO: throw an error if refresh is called on an unmounted component
-	refresh(): Promise<undefined> | undefined {
+	refresh(): MaybePromise<undefined> {
 		return this.view.refresh();
 	}
 
@@ -745,55 +745,6 @@ type ComponentIteratorResult = MaybePromise<
 	IteratorResult<MaybePromiseLike<Child>>
 >;
 
-// TODO: Delete this abstraction now that we have gears
-export class ComponentIterator {
-	private finished = false;
-	private iter?: ChildIterator;
-	constructor(private component: Component, private ctx: Context) {}
-
-	private initialize(): ComponentIteratorResult {
-		if (this.finished) {
-			return {value: undefined, done: true};
-		}
-
-		const value = this.component.call(this.ctx, this.ctx.props);
-		if (isIteratorOrAsyncIterator(value)) {
-			this.iter = value;
-			return this.iter.next();
-		}
-
-		return {value, done: false};
-	}
-
-	next(value?: any): ComponentIteratorResult {
-		if (this.iter === undefined) {
-			return this.initialize();
-		}
-
-		return this.iter.next(value);
-	}
-
-	return(value?: any): ComponentIteratorResult {
-		if (this.iter === undefined) {
-			this.finished = true;
-		} else if (this.iter.return) {
-			return this.iter.return(value);
-		}
-
-		return {value, done: true};
-	}
-
-	throw(error: any): ComponentIteratorResult {
-		if (this.iter === undefined) {
-			this.finished = true;
-		} else if (this.iter.throw) {
-			return this.iter.throw(error);
-		}
-
-		throw error;
-	}
-}
-
 interface Publication {
 	push(value: Props): unknown;
 	stop(): unknown;
@@ -801,7 +752,9 @@ interface Publication {
 
 // TODO: rewrite this as a generator function
 class ComponentGear implements Gear<never> {
-	private iter: ComponentIterator;
+	private iter?: ChildIterator;
+	private component: Component;
+	private ctx: Context;
 	private value: MaybePromise<undefined>;
 	private enqueued: MaybePromise<undefined>;
 	private done = false;
@@ -814,11 +767,28 @@ class ComponentGear implements Gear<never> {
 			throw new Error("View.ctx is missing");
 		}
 
-		this.iter = new ComponentIterator(view.guest.tag, view.ctx);
+		this.component = view.guest.tag;
+		this.ctx = view.ctx;
 	}
 
-	run(): Promise<undefined> | undefined {
-		const iteration = this.iter.next(this.view.childNodeOrNodes);
+	private initialize(): ComponentIteratorResult {
+		const value = this.component.call(this.ctx, this.ctx.props);
+		if (isIteratorOrAsyncIterator(value)) {
+			this.iter = value;
+			return this.iter.next();
+		}
+
+		return {value, done: false};
+	}
+
+	run(): MaybePromise<undefined> {
+		let iteration: ComponentIteratorResult;
+		if (this.iter === undefined) {
+			iteration = this.initialize();
+		} else {
+			iteration = this.iter.next(this.view.childNodeOrNodes);
+		}
+
 		if (isPromiseLike(iteration)) {
 			this.async = true;
 			return iteration
@@ -870,7 +840,13 @@ class ComponentGear implements Gear<never> {
 		}
 
 		this.done = true;
-		const iteration = this.iter.return();
+		let iteration: ComponentIteratorResult;
+		if (this.iter === undefined || typeof this.iter.return !== "function") {
+			return {value: this.view.unmountChildren(), done: true};
+		} else {
+			iteration = this.iter.return();
+		}
+
 		if (isPromiseLike(iteration)) {
 			const value = iteration.then(() => this.view.unmountChildren());
 			return {value, done: true};
@@ -890,6 +866,9 @@ class ComponentGear implements Gear<never> {
 }
 
 // TODO: rewrite this as a generator function
+//function *createIntrinsicGear(view: View<T>): Gear<T> {
+//}
+// TODO: use ctx here again
 class IntrinsicGear<T> implements Gear<T> {
 	private done = false;
 	private iter?: IntrinsicIterator<T>;
