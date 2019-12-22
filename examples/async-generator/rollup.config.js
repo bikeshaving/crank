@@ -11,5 +11,5 @@ export default {
 		format: "umd",
 		sourcemap: "inline",
 	},
-	plugins: [resolve(), typescript()],
+	plugins: [typescript(), resolve()],
 };

@@ -6,9 +6,9 @@
   "files": [
     "/lib"
   ],
-  "main": "lib/crank.cjs.js",
-  "module": "lib/crank.esm.js",
-  "types": "lib/crank.d.ts",
+  "main": "lib/index.cjs.js",
+  "module": "lib/index.esm.js",
+  "types": "lib/index.d.ts",
   "scripts": {
     "prebuild": "yarn run clean",
     "build": "rollup -c rollup.config.js",

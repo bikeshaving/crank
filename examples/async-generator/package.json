@@ -11,11 +11,10 @@
   "devDependencies": {
     "rollup": "^1.20.0",
     "rollup-plugin-node-resolve": "^5.2.0",
-    "rollup-plugin-typescript2": "^0.22.1",
+    "rollup-plugin-typescript2": "^0.25.3",
     "typescript": "^3.6.3"
   },
   "dependencies": {
-    "@repeaterjs/timers": "^0.3.1",
     "crank": "../.."
   }
 }

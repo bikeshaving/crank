@@ -1,7 +1,6 @@
 node_modules
 lib
 coverage
-.rpt2_cache
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
