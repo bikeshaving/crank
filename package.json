@@ -13,7 +13,7 @@
     "prebuild": "yarn run clean",
     "build": "rollup -c rollup.config.js",
     "clean": "shx rm -rf ./lib",
-    "lint": "eslint --ignore-path .gitignore --ext .js,.ts,.tsx .",
+    "lint": "eslint --ext .js,.ts,.tsx .",
     "prepublishOnly": "yarn run test && yarn run build",
     "test": "jest --config jest.config.js --color --no-cache"
   },
