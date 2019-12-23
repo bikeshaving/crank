@@ -1,7 +1,7 @@
 /** @jsx createElement */
 import "core-js";
 import {Repeater} from "@repeaterjs/repeater";
-import {createElement, Context, Element, Fragment} from "../crank";
+import {createElement, Child, Context, Fragment} from "../crank";
 import {render} from "../envs/dom";
 import "./_mutation-observer";
 import {createHTML} from "./_utils";
@@ -296,6 +296,25 @@ describe("render", () => {
 				addedNodes: [createHTML("<span>3</span>")],
 			},
 		]);
+	});
+
+	test("rerendering fragment", () => {
+		render(
+			<Fragment>
+				{undefined}
+				{undefined}
+			</Fragment>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("");
+		render(
+			<Fragment>
+				<span>1</span>
+				<span>2</span>
+			</Fragment>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<span>1</span><span>2</span>");
 	});
 
 	test("array", () => {
@@ -885,10 +904,9 @@ describe("sync generator component", () => {
 	test("refresh", () => {
 		let ctx!: Context;
 		function* Component(this: Context): Generator<Element> {
-			let i = 1;
 			ctx = this;
-			// eslint-disable-next-line
-			for (const _ of this) {
+			let i = 1;
+			while (true) {
 				yield (<span>Hello {i++}</span>);
 			}
 		}
@@ -908,8 +926,134 @@ describe("sync generator component", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 4</span></div>");
 	});
 
+	test("updating undefined to component", () => {
+		function NestedComponent() {
+			return <span>Hello</span>;
+		}
+
+		let ctx!: Context;
+		function* Component(this: Context): Generator<Element> {
+			ctx = this;
+			let mounted = false;
+			while (true) {
+				let component: Element | undefined;
+				if (mounted) {
+					component = <NestedComponent />;
+				}
+
+				yield (<span>{component}</span>);
+				mounted = true;
+			}
+		}
+
+		render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span></span></div>");
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual(
+			"<div><span><span>Hello</span></span></div>",
+		);
+	});
+
+	test("refresh undefined to nested component", () => {
+		function NestedComponent() {
+			return <span>Hello</span>;
+		}
+
+		let ctx!: Context;
+		function* Component(this: Context): Generator<Element> {
+			ctx = this;
+			let mounted = false;
+			while (true) {
+				let component: Element | undefined;
+				if (mounted) {
+					component = <NestedComponent />;
+				}
+
+				yield (<span>{component}</span>);
+				mounted = true;
+			}
+		}
+
+		render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span></span></div>");
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual(
+			"<div><span><span>Hello</span></span></div>",
+		);
+	});
+
+	test("refresh null to element", () => {
+		let ctx!: Context;
+		function* Component(this: Context): Generator<Child> {
+			ctx = this;
+			yield null;
+			yield (<span>Hello</span>);
+			yield null;
+			yield (<span>Hello again</span>);
+		}
+
+		render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div></div>");
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual("<div></div>");
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>Hello again</span></div>",
+		);
+	});
+
+	test("refresh fragment", () => {
+		let ctx!: Context;
+		function* Component(this: Context): Generator<Child> {
+			ctx = this;
+			yield (
+				<Fragment>
+					{null}
+					<span>2</span>
+					{null}
+				</Fragment>
+			);
+			yield (
+				<Fragment>
+					<span>1</span>
+					<span>2</span>
+					<span>3</span>
+				</Fragment>
+			);
+		}
+
+		render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>2</span></div>");
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span><span>3</span></div>",
+		);
+	});
+
 	test("events", () => {
-		function* Component(this: Context): Generator {
+		function* Component(this: Context): Generator<Element> {
 			let count = 0;
 			this.addEventListener("click", (ev) => {
 				// TODO: fix typings for event listeners

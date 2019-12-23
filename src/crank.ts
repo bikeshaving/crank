@@ -507,10 +507,18 @@ export class View<T> {
 				if (isPromiseLike(iteration.value)) {
 					return Promise.resolve(iteration.value).then((value) => {
 						this.node = value;
+						if (!this.updating) {
+							this.parent && this.parent.enqueueRefresh();
+						}
+						this.updating = false;
 						return undefined; // void :(
 					});
 				} else {
 					this.node = iteration.value;
+					if (!this.updating) {
+						this.parent && this.parent.enqueueRefresh();
+					}
+					this.updating = false;
 				}
 			}
 		} else {
