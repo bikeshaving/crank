@@ -1226,6 +1226,61 @@ describe("sync generator component", () => {
 		expect(mock).toHaveBeenCalledTimes(2);
 		expect(mock).toHaveBeenCalledWith("<span>Hello 1</span>");
 	});
+
+	test("refreshing doesn’t cause siblings to update", () => {
+		const mock = jest.fn();
+		function Sibling(): Element {
+			mock();
+			return <div>Sibling</div>;
+		}
+
+		let ctx!: Context;
+		function *Component(this: Context): Generator<Element> {
+			ctx = this;
+			let i = 0;
+			while (true) {
+				i++;
+				yield <div>Hello {i}</div>;
+			}
+		}
+		render(
+			<Fragment>
+				<Component />
+				<Sibling />
+			</Fragment>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div>Hello 1</div><div>Sibling</div>"
+		);
+		expect(mock).toHaveBeenCalledTimes(1);
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual(
+			"<div>Hello 2</div><div>Sibling</div>"
+		);
+		expect(mock).toHaveBeenCalledTimes(1);
+		ctx.refresh();
+		ctx.refresh();
+		ctx.refresh();
+		ctx.refresh();
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual(
+			"<div>Hello 7</div><div>Sibling</div>"
+		);
+		expect(mock).toHaveBeenCalledTimes(1);
+		render(
+			<Fragment>
+				<Component />
+				<Sibling />
+			</Fragment>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div>Hello 8</div><div>Sibling</div>"
+		);
+		expect(mock).toHaveBeenCalledTimes(2);
+	});
+
 });
 
 describe("async generator component", () => {
