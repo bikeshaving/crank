@@ -421,6 +421,7 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>1</span><span>2</span></div>",
 		);
+		const span1 = document.body.firstChild!.firstChild;
 		render(
 			<div>
 				<span>0</span>
@@ -431,6 +432,7 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>0</span><span>1</span></div>",
 		);
+		expect(document.body.firstChild!.lastChild).toBe(span1);
 	});
 
 	test("keyed child moves backward", () => {
@@ -444,6 +446,7 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>1</span><span>2</span></div>",
 		);
+		const span2 = document.body.firstChild!.lastChild;
 		render(
 			<div>
 				<span crank-key="2">2</span>
@@ -454,6 +457,7 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>2</span><span>3</span></div>",
 		);
+		expect(document.body.firstChild!.firstChild).toBe(span2);
 	});
 
 	test("keyed array", () => {
@@ -508,6 +512,28 @@ describe("render", () => {
 		expect(document.body.firstChild!.childNodes[1]).toBe(span2);
 		expect(document.body.firstChild!.childNodes[2]).toBe(span4);
 		expect(document.body.firstChild!.childNodes[3]).toBe(span5);
+	});
+
+	test("keyed child added", () => {
+		render(
+			<div>
+				<span crank-key="2">2</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>2</span></div>");
+		const span2 = document.body.firstChild!.lastChild;
+		render(
+			<div>
+				<span crank-key="1">1</span>
+				<span crank-key="2">2</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span></div>",
+		);
+		expect(document.body.firstChild!.lastChild).toBe(span2);
 	});
 
 	test("keyed only child", () => {
