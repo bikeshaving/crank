@@ -254,7 +254,7 @@ export type Children = Child | NestedChildIterable;
 
 export interface Props {
 	children?: Children;
-	"crank-key"?: string;
+	"crank-key"?: unknown;
 	[name: string]: any;
 }
 
@@ -264,7 +264,7 @@ export interface Element<T extends Tag = Tag> {
 	[ElementSigil]: true;
 	tag: T;
 	props: Props;
-	key?: string;
+	key?: unknown;
 }
 
 export function isElement(value: any): value is Element {
@@ -279,6 +279,10 @@ export function isIntrinsicElement(
 
 export function isComponentElement(value: any): value is Element<Component> {
 	return isElement(value) && typeof value.tag === "function";
+}
+
+export function isKeyedElement(value: any): value is Element & {key: string} {
+	return value != null && value[ElementSigil] && value.key !== undefined;
 }
 
 export function createElement<T extends Tag>(
@@ -369,6 +373,7 @@ type Gear<T> = Generator<
 //	gear: Gear<T> | undefined;
 //	firstChild: Host<T> | undefined;
 //	nextSibling: Host<T> | undefined;
+//	previousSibling: Host<T> | undefined;
 //}
 //
 export class View<T> {
@@ -387,8 +392,9 @@ export class View<T> {
 	private gear?: Gear<T>;
 	private firstChild?: View<T>;
 	private nextSibling?: View<T>;
-	private previousByKey: Record<string, View<T>> = {};
-	public guest?: Guest;
+	private previousSibling?: View<T>;
+	private viewsByKey: Map<unknown, View<T>> = new Map();
+	guest?: Guest;
 	constructor(
 		public parent: View<T> | undefined,
 		// TODO: Figure out a way to not have to pass in a renderer. The only thing
@@ -504,6 +510,7 @@ export class View<T> {
 					this.gear = undefined;
 				}
 
+				// TODO: calling refresh on parent is causing over-rendering
 				if (isPromiseLike(iteration.value)) {
 					return Promise.resolve(iteration.value).then((value) => {
 						this.node = value;
@@ -529,65 +536,97 @@ export class View<T> {
 	// TODO: delete all empty views after the last non-empty, non-unmounting view
 	updateChildren(children: Children): MaybePromise<undefined> {
 		this.cachedChildNodes = undefined;
+		let previousSibling: View<T> | undefined;
 		let view = this.firstChild;
 		const promises: Promise<undefined>[] = [];
 		if (typeof children !== "string" && isIterable(children)) {
-			let previousSibling: View<T> | undefined;
-			const previousByKey: Record<string, View<T>> = {};
+			const viewsByKey: Map<unknown, View<T>> = new Map();
 			for (let child of children) {
 				// all non-top-level iterables are wrapped in an implicit Fragment
 				if (typeof child !== "string" && isIterable(child)) {
 					child = createElement(Fragment, null, child);
+				} else if (isKeyedElement(child) && viewsByKey.has(child.key)) {
+					// TODO: warn about a duplicate key
+					child = {...child, key: undefined};
 				}
 
+				// TODO: delete the key if the views key has already been seen
 				const guest = toGuest(child);
-				if (view === undefined) {
+				if (isKeyedElement(guest)) {
+					let keyedView = this.viewsByKey.get(guest.key);
+					if (keyedView === undefined) {
+						keyedView = new View(this, this.renderer);
+					} else {
+						this.viewsByKey.delete(guest.key);
+						if (view !== keyedView) {
+							// remove keyed view
+							if (keyedView.previousSibling === undefined) {
+								this.firstChild = keyedView.nextSibling;
+							} else {
+								keyedView.previousSibling.nextSibling = keyedView.nextSibling;
+							}
+
+							if (keyedView.nextSibling !== undefined) {
+								keyedView.nextSibling.previousSibling =
+									keyedView.previousSibling;
+							}
+
+							keyedView.previousSibling = undefined;
+							keyedView.nextSibling = undefined;
+						}
+					}
+
+					if (view === undefined) {
+						// prepend view
+						if (previousSibling === undefined) {
+							this.firstChild = keyedView;
+						} else {
+							previousSibling.nextSibling = keyedView;
+							keyedView.previousSibling = previousSibling;
+						}
+					} else if (view !== keyedView) {
+						if (isKeyedElement(view.guest)) {
+							// insertAfter(keyedView, view, this);
+							keyedView.previousSibling = view;
+							if (view.nextSibling !== undefined) {
+								keyedView.nextSibling = view.nextSibling;
+								view.nextSibling.previousSibling = keyedView;
+							}
+
+							view.nextSibling = keyedView;
+						} else {
+							//insertBefore(keyedView, view, parent);
+							keyedView.nextSibling = view;
+							if (view.previousSibling === undefined) {
+								this.firstChild = keyedView;
+							} else {
+								keyedView.previousSibling = view.previousSibling;
+								view.previousSibling.nextSibling = keyedView;
+							}
+
+							view.previousSibling = keyedView;
+						}
+					}
+
+					previousSibling = keyedView.previousSibling;
+					view = keyedView;
+					viewsByKey.set(guest.key, keyedView);
+				} else if (view === undefined) {
 					view = new View(this, this.renderer);
-					// TODO: there may be a way to abstract this notion of “previous”
 					if (previousSibling === undefined) {
 						this.firstChild = view;
 					} else {
 						previousSibling.nextSibling = view;
+						view.previousSibling = previousSibling;
 					}
-				}
-
-				// logic for keyed elements
-				if (isElement(guest) && guest.key !== undefined) {
-					const previous = this.previousByKey[guest.key];
-					if (previous !== undefined) {
-						const keyedView =
-							previous === this ? previous.firstChild! : previous.nextSibling!;
-						if (view !== keyedView) {
-							if (previous === this) {
-								previous.firstChild = keyedView.nextSibling;
-							} else {
-								previous.nextSibling = keyedView.nextSibling;
-							}
-
-							// if the current view is keyed, then leave it in place
-							if (isElement(view.guest) && view.guest.key !== undefined) {
-								keyedView.nextSibling = view.nextSibling;
-								view.nextSibling = keyedView;
-							} // if the current view is unkeyed, push it forwards
-							else {
-								keyedView.nextSibling = view;
-								if (previousSibling === undefined) {
-									this.firstChild = keyedView;
-								} else {
-									previousSibling.nextSibling = keyedView;
-								}
-							}
-						}
-
-						delete this.previousByKey[guest.key];
-						view = keyedView;
-					}
-
-					previousByKey[guest.key] = previousSibling || this;
-				} else if (isElement(view.guest) && view.guest.key !== undefined) {
-					// leave the keyed view in place, but set the current view to a new unkeyed View
+				} else if (isKeyedElement(view.guest)) {
 					const unkeyedView = new View(this, this.renderer);
-					unkeyedView.nextSibling = view.nextSibling;
+					unkeyedView.previousSibling = view;
+					if (view.nextSibling !== undefined) {
+						unkeyedView.nextSibling = view.nextSibling;
+						view.nextSibling.previousSibling = unkeyedView;
+					}
+
 					view.nextSibling = unkeyedView;
 					previousSibling = view;
 					view = unkeyedView;
@@ -603,48 +642,51 @@ export class View<T> {
 			}
 
 			while (view !== undefined) {
-				if (isElement(view.guest) && view.guest.key !== undefined) {
-					delete this.previousByKey[view.guest.key];
+				if (isKeyedElement(view.guest)) {
+					this.viewsByKey.delete(view.guest.key);
 				}
 
 				void view.unmount();
 				view = view.nextSibling;
 			}
 
-			for (const previous of Object.values(this.previousByKey)) {
-				const view =
-					previous === this ? previous.firstChild! : previous.nextSibling!;
-				const unmountP = view.unmount();
-				if (isPromiseLike(unmountP)) {
+			for (const view of this.viewsByKey.values()) {
+				const p = view.unmount();
+				if (isPromiseLike(p)) {
 					throw new Error(
-						"Async unmounting for keyed elements has not been implemented yet",
+						"Unmounting async generator components not supported for keyed views yet",
 					);
-				}
-
-				if (previous === this) {
-					previous.firstChild = view.nextSibling;
 				} else {
-					previous.nextSibling = view.nextSibling;
+					// remove keyed view
+					if (view.previousSibling === undefined) {
+						this.firstChild = view.nextSibling;
+					} else {
+						view.previousSibling.nextSibling = view.nextSibling;
+					}
+
+					if (view.nextSibling !== undefined) {
+						view.nextSibling.previousSibling = view.previousSibling;
+					}
 				}
 			}
 
-			this.previousByKey = previousByKey;
+			this.viewsByKey = viewsByKey;
 		} else {
 			const guest = toGuest(children);
 			if (view === undefined && guest !== undefined) {
 				view = this.firstChild = new View(this, this.renderer);
 			}
 
+			if (isKeyedElement(guest)) {
+				this.viewsByKey = new Map([[guest.key, view!]]);
+			} else {
+				this.viewsByKey = new Map();
+			}
+
 			if (view !== undefined) {
 				const updateP = view.update(guest);
 				if (updateP !== undefined) {
 					promises.push(updateP);
-				}
-
-				if (isElement(guest) && guest.key !== undefined) {
-					this.previousByKey = {[guest.key]: view};
-				} else {
-					this.previousByKey = {};
 				}
 
 				view = view.nextSibling;
