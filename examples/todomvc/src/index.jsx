@@ -263,8 +263,7 @@ function* App() {
 	});
 
 	this.addEventListener("todo.destroy", (ev) => {
-		const i = todos.findIndex((todo) => todo.id === ev.detail.id);
-		todos.splice(i, 1);
+		todos = todos.filter((todo) => todo.id !== ev.detail.id);
 		this.refresh();
 		save(todos);
 	});
