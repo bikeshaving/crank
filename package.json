@@ -15,7 +15,8 @@
     "clean": "shx rm -rf ./lib",
     "lint": "eslint --ext .js,.ts,.tsx .",
     "prepublishOnly": "yarn run test && yarn run build",
-    "test": "jest --config jest.config.js --color --no-cache"
+    "test": "jest --config jest.config.js --color --no-cache",
+    "debug": "node --inspect-brk node_modules/.bin/jest --runInBand"
   },
   "dependencies": {
     "@repeaterjs/repeater": "^3.0.1",
