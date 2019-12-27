@@ -13,14 +13,17 @@ import {
 } from "../crank";
 
 export function updateDOMProps(el: HTMLElement, props: Props): void {
-	for (const [key, value] of Object.entries(props)) {
+	for (let [key, value] of Object.entries(props)) {
 		if (key in el && (el as any)[key] !== value) {
 			(el as any)[key] = value;
 		} else {
-			if (!value) {
-				el.removeAttribute(key.toLowerCase());
+			key = key.toLowerCase();
+			if (value === true) {
+				el.setAttribute(key, "");
+			} else if (value === false || value == null) {
+				el.removeAttribute(key);
 			} else {
-				el.setAttribute(key.toLowerCase(), value);
+				el.setAttribute(key, value);
 			}
 		}
 	}
