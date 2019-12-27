@@ -393,6 +393,7 @@ export class View<T> {
 	private firstChild?: View<T>;
 	private nextSibling?: View<T>;
 	private previousSibling?: View<T>;
+	// TODO: create viewsByKey on demand upon encountering the first keyed child
 	private viewsByKey: Map<unknown, View<T>> = new Map();
 	guest?: Guest;
 	constructor(
