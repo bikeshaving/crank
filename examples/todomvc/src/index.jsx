@@ -268,7 +268,7 @@ function* App() {
 		save(todos);
 	});
 
-	const onHashChange = (ev) => {
+	const route = (ev) => {
 		switch (window.location.hash) {
 			case "#/active": {
 				filter = "active";
@@ -293,8 +293,8 @@ function* App() {
 		}
 	};
 
-	onHashChange();
-	window.addEventListener("hashchange", onHashChange);
+	route();
+	window.addEventListener("hashchange", route);
 	try {
 		while (true) {
 			yield (
