@@ -2,6 +2,7 @@
 // typings and is exactly compatible with DOM/typescript lib EventTarget
 import {EventTarget as EventTargetShim} from "event-target-shim";
 import {Repeater, SlidingBuffer} from "@repeaterjs/repeater";
+import {isPromiseLike, MaybePromise, MaybePromiseLike, Pledge} from "./pledge";
 
 interface EventListenerDetail {
 	type: string;
@@ -203,14 +204,6 @@ declare global {
 			children: Children;
 		}
 	}
-}
-
-type MaybePromise<T> = Promise<T> | T;
-
-type MaybePromiseLike<T> = PromiseLike<T> | T;
-
-export function isPromiseLike(value: any): value is PromiseLike<any> {
-	return value != null && typeof value.then === "function";
 }
 
 function isIterable(value: any): value is Iterable<any> {
@@ -530,8 +523,10 @@ export class View<T> {
 		return this.refresh();
 	});
 
+	commit(): void {}
+
 	// TODO: batch this per tick
-	enqueueRefresh(): void {
+	enqueueCommit(): void {
 		this.cachedChildNodes = undefined;
 		this.refresh();
 	}
@@ -551,23 +546,15 @@ export class View<T> {
 					this.gear = undefined;
 				}
 
-				// TODO: calling refresh on parent is causing over-rendering
-				if (isPromiseLike(iteration.value)) {
-					return Promise.resolve(iteration.value).then((value) => {
-						this.node = value;
-						if (!this.updating) {
-							this.parent && this.parent.enqueueRefresh();
-						}
-						this.updating = false;
-						return undefined; // void :(
-					});
-				} else {
-					this.node = iteration.value;
+				return new Pledge(iteration.value).then((value) => {
+					this.node = value;
 					if (!this.updating) {
-						this.parent && this.parent.enqueueRefresh();
+						this.parent && this.parent.enqueueCommit();
 					}
+
 					this.updating = false;
-				}
+					return undefined;
+				});
 			}
 		} else {
 			this.node = this.guest;
@@ -729,6 +716,7 @@ export class View<T> {
 			}
 
 			this.gear = undefined;
+			// TODO: use a pledge here
 			const p = iteration && iteration.value;
 			if (isPromiseLike(p)) {
 				this.hanging = this.childNodes;
@@ -736,7 +724,7 @@ export class View<T> {
 				return p.then(() => {
 					this.hanging = undefined;
 					this.unmounting = false;
-					this.parent && this.parent.enqueueRefresh();
+					this.parent && this.parent.enqueueCommit();
 					return undefined; // void :(
 				});
 			}
@@ -893,11 +881,10 @@ class ComponentGear implements Gear<never> {
 		}
 
 		this.done = !!iteration.done;
-		const update = isPromiseLike(iteration.value)
-			? Promise.resolve(iteration.value).then((value: any) =>
-					this.view.updateChildren(value),
-			  )
-			: this.view.updateChildren(iteration.value);
+		const update = new Pledge(iteration.value).then((children: any) => {
+			return this.view.updateChildren(children);
+		});
+
 		if (update !== undefined) {
 			return update.finally(() => {
 				this.value = this.enqueued;
@@ -936,12 +923,8 @@ class ComponentGear implements Gear<never> {
 			iteration = this.iter.return();
 		}
 
-		if (isPromiseLike(iteration)) {
-			const value = iteration.then(() => this.view.unmountChildren());
-			return {value, done: true};
-		}
-
-		return {value: this.view.unmountChildren(), done: true};
+		const value = new Pledge(iteration).then(() => this.view.unmountChildren());
+		return {value, done: true};
 	}
 
 	throw(error: any): never {
@@ -970,6 +953,7 @@ class IntrinsicGear<T> implements Gear<T> {
 		this.props = view.guest.props;
 	}
 
+	// TODO: move this logic back into view
 	private commit(): T | undefined {
 		if (this.done || this.intrinsic === undefined) {
 			return;
@@ -1111,27 +1095,19 @@ export class Renderer<T> {
 	render(child: Child, key?: object): MaybePromise<View<T>> {
 		const guest = toGuest(child);
 		const view = this.getOrCreateView(key);
-		let p: Promise<void> | void;
+		let p: MaybePromise<void>;
 		if (guest === undefined) {
 			p = view.unmount();
 		} else {
 			p = view.update(guest);
 		}
 
-		if (p !== undefined) {
-			return p.then(() => {
-				if (guest === undefined && typeof key === "object") {
-					this.cache.delete(key);
-				}
+		return new Pledge(p).then(() => {
+			if (guest === undefined && typeof key === "object") {
+				this.cache.delete(key);
+			}
 
-				return view;
-			});
-		}
-
-		if (guest === undefined && typeof key === "object") {
-			this.cache.delete(key);
-		}
-
-		return view;
+			return view;
+		});
 	}
 }
