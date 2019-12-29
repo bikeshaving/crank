@@ -376,6 +376,7 @@ type Gear<T> = Generator<
 //	previousSibling: Host<T> | undefined;
 //}
 //
+// TODO: maybe we should have only 1 host per tag and key
 export class View<T> {
 	// Whether or not the update was initiated by the parent.
 	// TODO: use this and get rid of hanging
@@ -388,6 +389,7 @@ export class View<T> {
 	// hanging until the unmount promise settles.
 	// Until that point, parents will continue to see the hanging nodes.
 	// The view can continue to be updated in the meantime.
+	// TODO: use unmounting + cachedChildNodes rather than a separate variable
 	private hanging?: (T | string)[];
 	private gear?: Gear<T>;
 	private firstChild?: View<T>;
@@ -405,6 +407,43 @@ export class View<T> {
 		// this class to renderer.
 		private renderer: Renderer<T>,
 	) {}
+
+	private insertBefore(newView: View<T>, view: View<T>): void {
+		newView.nextSibling = view;
+		if (view.previousSibling === undefined) {
+			this.firstChild = newView;
+		} else {
+			newView.previousSibling = view.previousSibling;
+			view.previousSibling.nextSibling = newView;
+		}
+
+		view.previousSibling = newView;
+	}
+
+	private insertAfter(newView: View<T>, view: View<T>): void {
+		newView.previousSibling = view;
+		if (view.nextSibling !== undefined) {
+			newView.nextSibling = view.nextSibling;
+			view.nextSibling.previousSibling = newView;
+		}
+
+		view.nextSibling = newView;
+	}
+
+	private removeChild(view: View<T>): void {
+		if (view.previousSibling === undefined) {
+			this.firstChild = view.nextSibling;
+		} else {
+			view.previousSibling.nextSibling = view.nextSibling;
+		}
+
+		if (view.nextSibling !== undefined) {
+			view.nextSibling.previousSibling = view.previousSibling;
+		}
+
+		view.previousSibling = undefined;
+		view.nextSibling = undefined;
+	}
 
 	private cachedChildNodes?: (T | string)[];
 	get childNodes(): (T | string)[] {
@@ -469,6 +508,7 @@ export class View<T> {
 			!isElement(this.guest) ||
 			!isElement(guest) ||
 			this.guest.tag !== guest.tag ||
+			// TODO: never reuse a view when keys differ
 			this.guest.key !== guest.key
 		) {
 			void this.unmount();
@@ -547,7 +587,7 @@ export class View<T> {
 				if (typeof child !== "string" && isIterable(child)) {
 					child = createElement(Fragment, null, child);
 				} else if (isKeyedElement(child) && viewsByKey.has(child.key)) {
-					// TODO: warn about a duplicate key
+					// TODO: warn about a duplicate key or maybe throw an error
 					child = {...child, key: undefined};
 				}
 
@@ -560,25 +600,12 @@ export class View<T> {
 					} else {
 						this.viewsByKey.delete(guest.key);
 						if (view !== keyedView) {
-							// remove keyed view
-							if (keyedView.previousSibling === undefined) {
-								this.firstChild = keyedView.nextSibling;
-							} else {
-								keyedView.previousSibling.nextSibling = keyedView.nextSibling;
-							}
-
-							if (keyedView.nextSibling !== undefined) {
-								keyedView.nextSibling.previousSibling =
-									keyedView.previousSibling;
-							}
-
-							keyedView.previousSibling = undefined;
-							keyedView.nextSibling = undefined;
+							this.removeChild(keyedView);
 						}
 					}
 
 					if (view === undefined) {
-						// prepend view
+						// append view
 						if (previousSibling === undefined) {
 							this.firstChild = keyedView;
 						} else {
@@ -587,25 +614,9 @@ export class View<T> {
 						}
 					} else if (view !== keyedView) {
 						if (isKeyedElement(view.guest)) {
-							// insertAfter(keyedView, view, this);
-							keyedView.previousSibling = view;
-							if (view.nextSibling !== undefined) {
-								keyedView.nextSibling = view.nextSibling;
-								view.nextSibling.previousSibling = keyedView;
-							}
-
-							view.nextSibling = keyedView;
+							this.insertAfter(keyedView, view);
 						} else {
-							//insertBefore(keyedView, view, parent);
-							keyedView.nextSibling = view;
-							if (view.previousSibling === undefined) {
-								this.firstChild = keyedView;
-							} else {
-								keyedView.previousSibling = view.previousSibling;
-								view.previousSibling.nextSibling = keyedView;
-							}
-
-							view.previousSibling = keyedView;
+							this.insertBefore(keyedView, view);
 						}
 					}
 
@@ -622,13 +633,7 @@ export class View<T> {
 					}
 				} else if (isKeyedElement(view.guest)) {
 					const unkeyedView = new View(this, this.renderer);
-					unkeyedView.previousSibling = view;
-					if (view.nextSibling !== undefined) {
-						unkeyedView.nextSibling = view.nextSibling;
-						view.nextSibling.previousSibling = unkeyedView;
-					}
-
-					view.nextSibling = unkeyedView;
+					this.insertAfter(unkeyedView, view);
 					previousSibling = view;
 					view = unkeyedView;
 				}
@@ -673,6 +678,7 @@ export class View<T> {
 
 			this.viewsByKey = viewsByKey;
 		} else {
+			// TODO: can we merge this with the previous branch
 			const guest = toGuest(children);
 			if (view === undefined && guest !== undefined) {
 				view = this.firstChild = new View(this, this.renderer);
@@ -695,6 +701,8 @@ export class View<T> {
 
 			while (view !== undefined) {
 				void view.unmount();
+				//const unmountP = view.unmount();
+				// TODO: remove view from parent when unmount is complete
 				view = view.nextSibling;
 			}
 		}
