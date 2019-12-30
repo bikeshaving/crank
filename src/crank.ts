@@ -821,11 +821,6 @@ type ComponentIteratorResult = MaybePromise<
 	IteratorResult<MaybePromiseLike<Child>>
 >;
 
-interface Publication {
-	push(value: Props): unknown;
-	stop(): unknown;
-}
-
 // TODO: rewrite this as a generator function
 class ComponentGear implements Gear<never> {
 	private iter?: ChildIterator;
@@ -835,7 +830,6 @@ class ComponentGear implements Gear<never> {
 	private enqueued: MaybePromise<undefined>;
 	private done = false;
 	private async = false;
-	private pubs = new Set<Publication>();
 	constructor(private view: View<any>) {
 		if (!isComponentElement(view.guest)) {
 			throw new Error("View.guest is not a component element");
@@ -911,10 +905,6 @@ class ComponentGear implements Gear<never> {
 	}
 
 	return(): IteratorResult<MaybePromise<undefined>> {
-		for (const pub of this.pubs) {
-			pub.stop();
-		}
-
 		this.done = true;
 		let iteration: ComponentIteratorResult;
 		if (this.iter === undefined || typeof this.iter.return !== "function") {
