@@ -210,6 +210,12 @@ function isIterable(value: any): value is Iterable<any> {
 	return value != null && typeof value[Symbol.iterator] === "function";
 }
 
+type NonStringIterable<T> = Iterable<T> & object;
+
+function isNonStringIterable(value: any): value is NonStringIterable<any> {
+	return typeof value !== "string" && isIterable(value);
+}
+
 function isIteratorOrAsyncIterator(
 	value: any,
 ): value is Iterator<any> | AsyncIterator<any> {
@@ -567,133 +573,106 @@ export class View<T> {
 		let previousSibling: View<T> | undefined;
 		let view = this.firstChild;
 		const promises: Promise<undefined>[] = [];
-		if (typeof children !== "string" && isIterable(children)) {
-			const viewsByKey: Map<unknown, View<T>> = new Map();
-			for (let child of children) {
-				// all non-top-level iterables are wrapped in an implicit Fragment
-				if (typeof child !== "string" && isIterable(child)) {
-					child = createElement(Fragment, null, child);
-				} else if (isKeyedElement(child) && viewsByKey.has(child.key)) {
-					// TODO: warn about a duplicate key or maybe throw an error
-					child = {...child, key: undefined};
-				}
+		const viewsByKey: Map<unknown, View<T>> = new Map();
+		if (!isNonStringIterable(children)) {
+			children = [children];
+		}
 
-				// TODO: delete the key if the views key has already been seen
-				const guest = toGuest(child);
-				if (isKeyedElement(guest)) {
-					let keyedView = this.viewsByKey.get(guest.key);
-					if (keyedView === undefined) {
-						keyedView = new View(this, this.renderer);
-					} else {
-						this.viewsByKey.delete(guest.key);
-						if (view !== keyedView) {
-							this.removeChild(keyedView);
-						}
-					}
-
-					if (view === undefined) {
-						// append view
-						if (previousSibling === undefined) {
-							this.firstChild = keyedView;
-						} else {
-							previousSibling.nextSibling = keyedView;
-							keyedView.previousSibling = previousSibling;
-						}
-					} else if (view !== keyedView) {
-						if (isKeyedElement(view.guest)) {
-							this.insertAfter(keyedView, view);
-						} else {
-							this.insertBefore(keyedView, view);
-						}
-					}
-
-					previousSibling = keyedView.previousSibling;
-					view = keyedView;
-					viewsByKey.set(guest.key, keyedView);
-				} else if (view === undefined) {
-					view = new View(this, this.renderer);
-					if (previousSibling === undefined) {
-						this.firstChild = view;
-					} else {
-						previousSibling.nextSibling = view;
-						view.previousSibling = previousSibling;
-					}
-				} else if (isKeyedElement(view.guest)) {
-					const unkeyedView = new View(this, this.renderer);
-					this.insertAfter(unkeyedView, view);
-					previousSibling = view;
-					view = unkeyedView;
-				}
-
-				const updateP = view.update(guest);
-				if (updateP !== undefined) {
-					promises.push(updateP);
-				}
-
-				previousSibling = view;
-				view = view.nextSibling;
+		for (let child of children) {
+			// all non-top-level iterables are wrapped in an implicit Fragment
+			if (isNonStringIterable(child)) {
+				child = createElement(Fragment, null, child);
+			} else if (isKeyedElement(child) && viewsByKey.has(child.key)) {
+				// TODO: warn about a duplicate key or maybe throw an error
+				child = {...child, key: undefined};
 			}
 
-			while (view !== undefined) {
-				if (isKeyedElement(view.guest)) {
-					this.viewsByKey.delete(view.guest.key);
-				}
-
-				void view.unmount();
-				view = view.nextSibling;
-			}
-
-			for (const view of this.viewsByKey.values()) {
-				const p = view.unmount();
-				if (isPromiseLike(p)) {
-					throw new Error(
-						"Unmounting async generator components not supported for keyed views yet",
-					);
-				} else {
-					// remove keyed view
-					if (view.previousSibling === undefined) {
-						this.firstChild = view.nextSibling;
-					} else {
-						view.previousSibling.nextSibling = view.nextSibling;
-					}
-
-					if (view.nextSibling !== undefined) {
-						view.nextSibling.previousSibling = view.previousSibling;
-					}
-				}
-			}
-
-			this.viewsByKey = viewsByKey;
-		} else {
-			// TODO: can we merge this with the previous branch
-			const guest = toGuest(children);
-			if (view === undefined && guest !== undefined) {
-				view = this.firstChild = new View(this, this.renderer);
-			}
-
+			// TODO: delete the key if the views key has already been seen
+			const guest = toGuest(child);
 			if (isKeyedElement(guest)) {
-				this.viewsByKey = new Map([[guest.key, view!]]);
-			} else {
-				this.viewsByKey = new Map();
-			}
-
-			if (view !== undefined) {
-				const updateP = view.update(guest);
-				if (updateP !== undefined) {
-					promises.push(updateP);
+				let keyedView = this.viewsByKey.get(guest.key);
+				if (keyedView === undefined) {
+					keyedView = new View(this, this.renderer);
+				} else {
+					this.viewsByKey.delete(guest.key);
+					if (view !== keyedView) {
+						this.removeChild(keyedView);
+					}
 				}
 
-				view = view.nextSibling;
+				if (view === undefined) {
+					// append view
+					if (previousSibling === undefined) {
+						this.firstChild = keyedView;
+					} else {
+						previousSibling.nextSibling = keyedView;
+						keyedView.previousSibling = previousSibling;
+					}
+				} else if (view !== keyedView) {
+					if (isKeyedElement(view.guest)) {
+						this.insertAfter(keyedView, view);
+					} else {
+						this.insertBefore(keyedView, view);
+					}
+				}
+
+				previousSibling = keyedView.previousSibling;
+				view = keyedView;
+				viewsByKey.set(guest.key, keyedView);
+			} else if (view === undefined) {
+				view = new View(this, this.renderer);
+				if (previousSibling === undefined) {
+					this.firstChild = view;
+				} else {
+					previousSibling.nextSibling = view;
+					view.previousSibling = previousSibling;
+				}
+			} else if (isKeyedElement(view.guest)) {
+				const unkeyedView = new View(this, this.renderer);
+				this.insertAfter(unkeyedView, view);
+				previousSibling = view;
+				view = unkeyedView;
 			}
 
-			while (view !== undefined) {
-				void view.unmount();
-				//const unmountP = view.unmount();
-				// TODO: remove view from parent when unmount is complete
-				view = view.nextSibling;
+			const updateP = view.update(guest);
+			if (updateP !== undefined) {
+				promises.push(updateP);
+			}
+
+			previousSibling = view;
+			view = view.nextSibling;
+		}
+
+		while (view !== undefined) {
+			if (isKeyedElement(view.guest)) {
+				this.viewsByKey.delete(view.guest.key);
+			}
+
+			void view.unmount();
+			view = view.nextSibling;
+		}
+
+		for (const view of this.viewsByKey.values()) {
+			const p = view.unmount();
+			if (isPromiseLike(p)) {
+				throw new Error(
+					"Unmounting async generator components not supported for keyed views yet",
+				);
+			} else {
+				// remove keyed view
+				if (view.previousSibling === undefined) {
+					this.firstChild = view.nextSibling;
+				} else {
+					view.previousSibling.nextSibling = view.nextSibling;
+				}
+
+				if (view.nextSibling !== undefined) {
+					view.nextSibling.previousSibling = view.previousSibling;
+				}
 			}
 		}
 
+		this.viewsByKey = viewsByKey;
 		if (promises.length) {
 			return Promise.all(promises).then(() => undefined); // void :(
 		}
