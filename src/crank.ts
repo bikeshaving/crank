@@ -223,23 +223,23 @@ function isIteratorOrAsyncIterator(
 }
 
 // TODO: user-defined control tags?
-export const Default = Symbol("crank.Default");
+export const Default = Symbol.for("crank.Default");
 
 export type Default = typeof Default;
 
 // TODO: We use any for symbol tags because typescript is dumb and doesn’t
 // allow symbols in jsx expressions.
 // TODO: Rename to Container?
-export const Root: any = Symbol("crank.Root") as any;
+export const Root: any = Symbol.for("crank.Root") as any;
 
 export type Root = typeof Root;
 
 // TODO: implement the Copy tag
-// export const Copy = Symbol("Copy");
+// export const Copy = Symbol("crank.Copy") as any;
 //
 // export type Copy = typeof Copy;
 
-export const Fragment: any = Symbol("crank.Fragment") as any;
+export const Fragment: any = Symbol.for("crank.Fragment") as any;
 
 export type Fragment = typeof Fragment;
 
@@ -257,7 +257,7 @@ export interface Props {
 	[name: string]: any;
 }
 
-const ElementSigil: unique symbol = Symbol.for("crank:ElementSigil");
+const ElementSigil: unique symbol = Symbol.for("crank.ElementSigil");
 
 export interface Element<T extends Tag = Tag> {
 	[ElementSigil]: true;
@@ -357,53 +357,26 @@ function chase<Return, This>(
 	};
 }
 
-type Gear<T> = Generator<
-	MaybePromise<T | undefined>,
-	MaybePromise<undefined>,
-	Props
->;
-
-//export interface Host<T> {
-//	guest: Guest;
-//	parent: Host<T> | undefined;
-//	updating: boolean;
-//	node: T | string | undefined;
-//	ctx: Context | undefined;
-//	gear: Gear<T> | undefined;
-//	firstChild: Host<T> | undefined;
-//	nextSibling: Host<T> | undefined;
-//	previousSibling: Host<T> | undefined;
-//}
-//
 // TODO: maybe we should have only 1 host per tag and key
 export class View<T> {
-	// Whether or not the update was initiated by the parent.
-	// TODO: use this and get rid of hanging
+	guest?: Guest;
 	ctx?: Context;
 	updating = false;
-	private unmounting = false;
-	// TODO: maybe rename this to value
-	private node?: T | string;
-	// When a component unmounts asynchronously, its current nodes are stored in
-	// hanging until the unmount promise settles.
-	// Until that point, parents will continue to see the hanging nodes.
-	// The view can continue to be updated in the meantime.
-	// TODO: use unmounting + cachedChildNodes rather than a separate variable
-	private hanging?: (T | string)[];
-	private gear?: Gear<T>;
 	private firstChild?: View<T>;
 	private nextSibling?: View<T>;
 	private previousSibling?: View<T>;
-	// TODO: create viewsByKey on demand upon encountering the first keyed child
+	private unmounting = false;
+	private node?: T | string;
+	// TODO: delete and use unmounting + cachedChildNodes
+	private hanging?: (T | string)[];
+	private cachedChildNodes?: (T | string)[];
+	private iterator?: ComponentIterator;
+	private committer?: IntrinsicIterator<T>;
+	// TODO: create viewsByKey on demand
 	private viewsByKey: Map<unknown, View<T>> = new Map();
-	guest?: Guest;
 	constructor(
-		public parent: View<T> | undefined,
-		// TODO: Figure out a way to not have to pass in a renderer. The only thing
-		// we need renderer for is getting intrinsics for strings/symbols. Maybe we
-		// can turn the renderer into a simple callback? Alternatively, we may be
-		// able to refactor View to an interface and move some of the methods on
-		// this class to renderer.
+		private parent: View<T> | undefined,
+		// TODO: Figure out a way to not have to pass in a renderer
 		private renderer: Renderer<T>,
 	) {}
 
@@ -444,7 +417,6 @@ export class View<T> {
 		view.nextSibling = undefined;
 	}
 
-	private cachedChildNodes?: (T | string)[];
 	get childNodes(): (T | string)[] {
 		if (this.cachedChildNodes !== undefined) {
 			return this.cachedChildNodes;
@@ -511,15 +483,11 @@ export class View<T> {
 			this.guest.key !== guest.key
 		) {
 			void this.unmount();
-			// Need to set this.guest cuz component gear and intrinsic gear read it
 			this.guest = guest;
 			if (isElement(guest)) {
 				this.ctx = new Context(this, this.parent && this.parent.ctx);
 				if (typeof guest.tag === "function") {
-					this.gear = new ComponentGear(this);
-				} else {
-					const intrinsic = this.renderer.intrinsicFor(guest.tag);
-					this.gear = new IntrinsicGear(this, intrinsic);
+					this.iterator = new ComponentIterator(this);
 				}
 			}
 		} else {
@@ -529,12 +497,43 @@ export class View<T> {
 		return this.refresh();
 	});
 
-	commit(): void {}
-
-	// TODO: batch this per tick
+	// TODO: batch this per microtask or something
 	enqueueCommit(): void {
 		this.cachedChildNodes = undefined;
-		this.refresh();
+		this.commit();
+	}
+
+	commit(): void {
+		if (isElement(this.guest)) {
+			if (typeof this.guest.tag === "function") {
+				if (!this.updating && this.parent !== undefined) {
+					this.parent.enqueueCommit();
+				}
+			} else {
+				const props = {...this.guest.props, children: this.childNodes};
+				if (this.committer === undefined) {
+					const intrinsic = this.renderer.intrinsicFor(this.guest.tag);
+					if (intrinsic) {
+						this.committer = intrinsic(props);
+					} else {
+						// TODO: don’t create an iterator for fragments
+						this.committer = (function*() {
+							while (true) {
+								yield;
+							}
+						})();
+					}
+				}
+
+				const iteration = this.committer.next(props);
+				this.node = iteration.value;
+				if (iteration.done) {
+					this.committer = undefined;
+				}
+			}
+		}
+
+		this.updating = false;
 	}
 
 	refresh(): MaybePromise<undefined> {
@@ -546,21 +545,20 @@ export class View<T> {
 				this.ctx.dispatchEvent(ev);
 			}
 
-			if (this.gear !== undefined) {
-				const iteration = this.gear.next(this.guest.props);
-				if (iteration.done) {
-					this.gear = undefined;
-				}
-
-				return new Pledge(iteration.value).then((value) => {
-					this.node = value;
-					if (!this.updating) {
-						this.parent && this.parent.enqueueCommit();
+			if (typeof this.guest.tag === "function") {
+				if (this.iterator !== undefined) {
+					const iteration = this.iterator.next();
+					if (iteration.done) {
+						this.iterator = undefined;
 					}
 
-					this.updating = false;
-					return undefined;
-				});
+					return new Pledge(iteration.value).then(() => void this.commit());
+				}
+			} else {
+				const children = this.guest.props.children;
+				return new Pledge(this.updateChildren(children)).then(
+					() => void this.commit(),
+				);
 			}
 		} else {
 			this.node = this.guest;
@@ -579,7 +577,6 @@ export class View<T> {
 		}
 
 		for (let child of children) {
-			// all non-top-level iterables are wrapped in an implicit Fragment
 			if (isNonStringIterable(child)) {
 				child = createElement(Fragment, null, child);
 			} else if (isKeyedElement(child) && viewsByKey.has(child.key)) {
@@ -680,31 +677,47 @@ export class View<T> {
 
 	// TODO: bandwagon unmounts
 	unmount(): MaybePromise<undefined> {
-		this.node = undefined;
-		this.guest = undefined;
 		if (this.ctx !== undefined) {
 			this.ctx.dispatchEvent(new Event("crank.unmount"));
 			this.ctx.removeAllEventListeners();
 			this.ctx = undefined;
 		}
 
-		if (this.gear !== undefined) {
-			const iteration = this.gear.return(undefined);
-			if (!iteration.done) {
-				throw new Error("Zombie gear");
-			}
+		const guest = this.guest;
+		this.node = undefined;
+		this.guest = undefined;
+		if (isElement(guest)) {
+			if (typeof guest.tag === "function") {
+				if (this.iterator !== undefined) {
+					const iteration = this.iterator.return();
+					if (!iteration.done) {
+						throw new Error("Zombie iterator");
+					}
 
-			this.gear = undefined;
-			// TODO: use a pledge here
-			const p = iteration && iteration.value;
-			if (isPromiseLike(p)) {
-				this.hanging = this.childNodes;
-				this.unmounting = true;
-				return p.then(() => {
-					this.hanging = undefined;
-					this.unmounting = false;
-					this.parent && this.parent.enqueueCommit();
-					return undefined; // void :(
+					this.iterator = undefined;
+					const unmountP = iteration && iteration.value;
+					if (isPromiseLike(unmountP)) {
+						this.hanging = this.childNodes;
+						this.unmounting = true;
+						return Promise.resolve(unmountP).then(() => {
+							this.hanging = undefined;
+							this.unmounting = false;
+							if (this.parent !== undefined) {
+								this.parent.enqueueCommit();
+							}
+
+							return undefined;
+						});
+					}
+				}
+			} else {
+				return new Pledge(this.unmountChildren()).then(() => {
+					if (this.committer && this.committer.return) {
+						this.committer.return();
+						this.committer = undefined;
+					}
+
+					return undefined;
 				});
 			}
 		}
@@ -800,12 +813,13 @@ type ComponentIteratorResult = MaybePromise<
 	IteratorResult<MaybePromiseLike<Child>>
 >;
 
-// TODO: rewrite this as a generator function
-class ComponentGear implements Gear<never> {
+// TODO: go back to a less involved component iterator which doesn’t know so
+// much about views
+class ComponentIterator {
 	private iter?: ChildIterator;
 	private component: Component;
 	private ctx: Context;
-	private value: MaybePromise<undefined>;
+	private pending: MaybePromise<undefined>;
 	private enqueued: MaybePromise<undefined>;
 	private done = false;
 	private async = false;
@@ -848,7 +862,11 @@ class ComponentGear implements Gear<never> {
 				})
 				.finally(() => {
 					if (!this.done) {
-						this.value = this.run();
+						if (!this.view.updating) {
+							this.view.enqueueCommit();
+						}
+
+						this.pending = this.run();
 					}
 				});
 		}
@@ -860,7 +878,7 @@ class ComponentGear implements Gear<never> {
 
 		if (update !== undefined) {
 			return update.finally(() => {
-				this.value = this.enqueued;
+				this.pending = this.enqueued;
 				this.enqueued = undefined;
 			});
 		}
@@ -868,16 +886,16 @@ class ComponentGear implements Gear<never> {
 
 	next(): IteratorResult<MaybePromise<undefined>> {
 		if (this.done) {
-			return {value: this.value, done: true};
+			return {value: this.pending, done: true};
 		}
 
 		if (this.async) {
-			return {value: this.value, done: this.done};
-		} else if (this.value === undefined) {
-			this.value = this.run();
-			return {value: this.value, done: this.done};
+			return {value: this.pending, done: this.done};
+		} else if (this.pending === undefined) {
+			this.pending = this.run();
+			return {value: this.pending, done: this.done};
 		} else if (this.enqueued === undefined) {
-			this.enqueued = this.value.then(() => this.run());
+			this.enqueued = this.pending.then(() => this.run());
 		}
 
 		return {value: this.enqueued, done: this.done};
@@ -899,90 +917,6 @@ class ComponentGear implements Gear<never> {
 	throw(error: any): never {
 		// TODO: throw error into iter
 		throw error;
-	}
-
-	[Symbol.iterator]() {
-		return this;
-	}
-}
-
-// TODO: rewrite this as a generator function
-//function *createIntrinsicGear(view: View<T>): Gear<T> {
-//}
-// TODO: use ctx here again
-class IntrinsicGear<T> implements Gear<T> {
-	private done = false;
-	private iter?: IntrinsicIterator<T>;
-	private props: Props;
-	constructor(private view: View<T>, private intrinsic?: Intrinsic<T>) {
-		if (!isIntrinsicElement(view.guest)) {
-			throw new Error("View’s guest is not an intrinsic element");
-		}
-
-		this.props = view.guest.props;
-	}
-
-	// TODO: move this logic back into view
-	private commit(): T | undefined {
-		if (this.done || this.intrinsic === undefined) {
-			return;
-		}
-
-		const props = {...this.props, children: this.view.childNodes};
-		if (this.iter === undefined) {
-			this.iter = this.intrinsic(props);
-		}
-
-		const iteration = this.iter.next(props);
-		this.done = !!iteration.done;
-		return iteration.value;
-	}
-
-	next(
-		props: Props,
-	): IteratorResult<MaybePromise<T | undefined>, MaybePromise<undefined>> {
-		if (this.done) {
-			return {value: undefined, done: true};
-		}
-
-		this.props = props;
-		let updateP: MaybePromise<undefined>;
-		if (this.view.updating) {
-			updateP = this.view.updateChildren(this.props.children);
-		}
-
-		if (updateP !== undefined) {
-			return {
-				value: updateP.then(() => this.commit()),
-				done: false,
-			};
-		}
-
-		return {value: this.commit(), done: this.done};
-	}
-
-	return(): IteratorResult<
-		MaybePromise<T | undefined>,
-		MaybePromise<undefined>
-	> {
-		if (this.iter === undefined || this.iter.return === undefined) {
-			return {value: this.view.unmountChildren(), done: true};
-		} else if (this.done) {
-			return {value: undefined, done: true};
-		}
-
-		this.done = true;
-		const value = this.view.unmountChildren();
-		if (isPromiseLike(value)) {
-			return {value: value.then(() => void this.iter!.return!()), done: true};
-		}
-
-		this.iter.return();
-		return {value, done: true};
-	}
-
-	throw(): IteratorResult<T | undefined> {
-		throw new Error("Not implemented");
 	}
 
 	[Symbol.iterator]() {

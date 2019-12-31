@@ -1,7 +1,7 @@
 /** @jsx createElement */
 import "core-js";
 import {Repeater} from "@repeaterjs/repeater";
-import {createElement, Child, Context, Fragment} from "../crank";
+import {createElement, Child, Context, Element, Fragment} from "../crank";
 import {render} from "../envs/dom";
 import "./_mutation-observer";
 import {createHTML} from "./_utils";
@@ -1235,12 +1235,12 @@ describe("sync generator component", () => {
 		}
 
 		let ctx!: Context;
-		function *Component(this: Context): Generator<Element> {
+		function* Component(this: Context): Generator<Element> {
 			ctx = this;
 			let i = 0;
 			while (true) {
 				i++;
-				yield <div>Hello {i}</div>;
+				yield (<div>Hello {i}</div>);
 			}
 		}
 		render(
@@ -1251,12 +1251,12 @@ describe("sync generator component", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual(
-			"<div>Hello 1</div><div>Sibling</div>"
+			"<div>Hello 1</div><div>Sibling</div>",
 		);
 		expect(mock).toHaveBeenCalledTimes(1);
 		ctx.refresh();
 		expect(document.body.innerHTML).toEqual(
-			"<div>Hello 2</div><div>Sibling</div>"
+			"<div>Hello 2</div><div>Sibling</div>",
 		);
 		expect(mock).toHaveBeenCalledTimes(1);
 		ctx.refresh();
@@ -1265,7 +1265,7 @@ describe("sync generator component", () => {
 		ctx.refresh();
 		ctx.refresh();
 		expect(document.body.innerHTML).toEqual(
-			"<div>Hello 7</div><div>Sibling</div>"
+			"<div>Hello 7</div><div>Sibling</div>",
 		);
 		expect(mock).toHaveBeenCalledTimes(1);
 		render(
@@ -1276,11 +1276,50 @@ describe("sync generator component", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual(
-			"<div>Hello 8</div><div>Sibling</div>"
+			"<div>Hello 8</div><div>Sibling</div>",
 		);
 		expect(mock).toHaveBeenCalledTimes(2);
 	});
 
+	test("refreshing child doesn’t cause siblings to update", () => {
+		const mock = jest.fn();
+		function Sibling(): Element {
+			mock();
+			return <div>Sibling</div>;
+		}
+
+		let ctx!: Context;
+		function* Child(this: Context): Generator<Element> {
+			ctx = this;
+			let i = 0;
+			while (true) {
+				i++;
+				yield (<div>Hello {i}</div>);
+			}
+		}
+
+		function* Parent(): Generator<Element> {
+			while (true) {
+				yield (
+					<Fragment>
+						<Child />
+						<Sibling />
+					</Fragment>
+				);
+			}
+		}
+
+		render(<Parent />, document.body);
+		expect(document.body.innerHTML).toEqual(
+			"<div>Hello 1</div><div>Sibling</div>",
+		);
+		expect(mock).toHaveBeenCalledTimes(1);
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual(
+			"<div>Hello 2</div><div>Sibling</div>",
+		);
+		expect(mock).toHaveBeenCalledTimes(1);
+	});
 });
 
 describe("async generator component", () => {
@@ -1365,10 +1404,10 @@ describe("async generator component", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Goodbye</span></div>");
 	});
 
-	test("multiple updates", async () => {
-		let push!: (value: Element) => unknown;
-		function Component(): AsyncGenerator<Element> {
-			return new Repeater((push1) => (push = push1));
+	test("repeater", async () => {
+		let push!: (value: Child) => unknown;
+		function Component(): AsyncGenerator<Child> {
+			return new Repeater(async (push1, stop) => ((push = push1), await stop));
 		}
 
 		let renderP = render(
@@ -1385,8 +1424,15 @@ describe("async generator component", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
 		push(<span>Hello 3</span>);
 		await new Promise((resolve) => setTimeout(resolve, 0));
-		push(<span>Hello 4</span>);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 3</span></div>");
+		push(<span>Hello 4</span>);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 4</span></div>");
+		push(null);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		push(<span>Hello 5</span>);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
 	});
 
 	test("async unmount", async () => {
