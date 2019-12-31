@@ -191,7 +191,6 @@ function Filters({filter}) {
 function Footer({todos, filter}) {
 	const completed = todos.filter((todo) => todo.completed).length;
 	const remaining = todos.length - completed;
-
 	this.addEventListener("click", (ev) => {
 		if (ev.target.className === "clear-completed") {
 			this.dispatchEvent(new Event("todo.clearCompleted", {bubbles: true}));
@@ -306,7 +305,7 @@ function* App() {
 			);
 		}
 	} finally {
-		window.removeEventListener("hashchange", onHashChange);
+		window.removeEventListener("hashchange", route);
 	}
 }
 
