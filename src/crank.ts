@@ -362,11 +362,12 @@ export class View<T> {
 	guest?: Guest;
 	ctx?: Context;
 	updating = false;
-	private firstChild?: View<T>;
-	private nextSibling?: View<T>;
-	private previousSibling?: View<T>;
 	private unmounting = false;
 	private node?: T | string;
+	private firstChild?: View<T>;
+	private lastChild?: View<T>;
+	private nextSibling?: View<T>;
+	private previousSibling?: View<T>;
 	// TODO: delete and use unmounting + cachedChildNodes
 	private hanging?: (T | string)[];
 	private cachedChildNodes?: (T | string)[];
@@ -383,6 +384,7 @@ export class View<T> {
 	private insertBefore(newView: View<T>, view: View<T>): void {
 		newView.nextSibling = view;
 		if (view.previousSibling === undefined) {
+			newView.previousSibling = undefined;
 			this.firstChild = newView;
 		} else {
 			newView.previousSibling = view.previousSibling;
@@ -394,12 +396,26 @@ export class View<T> {
 
 	private insertAfter(newView: View<T>, view: View<T>): void {
 		newView.previousSibling = view;
-		if (view.nextSibling !== undefined) {
+		if (view.nextSibling === undefined) {
+			newView.nextSibling = undefined;
+			this.lastChild = newView;
+		} else {
 			newView.nextSibling = view.nextSibling;
 			view.nextSibling.previousSibling = newView;
 		}
 
 		view.nextSibling = newView;
+	}
+
+	private appendChild(view: View<T>): void {
+		if (this.lastChild === undefined) {
+			this.firstChild = view;
+			this.lastChild = view;
+			view.previousSibling = undefined;
+			view.nextSibling = undefined;
+		} else {
+			this.insertAfter(view, this.lastChild);
+		}
 	}
 
 	private removeChild(view: View<T>): void {
@@ -409,12 +425,11 @@ export class View<T> {
 			view.previousSibling.nextSibling = view.nextSibling;
 		}
 
-		if (view.nextSibling !== undefined) {
+		if (view.nextSibling === undefined) {
+			this.lastChild = view.previousSibling;
+		} else {
 			view.nextSibling.previousSibling = view.previousSibling;
 		}
-
-		view.previousSibling = undefined;
-		view.nextSibling = undefined;
 	}
 
 	get childNodes(): (T | string)[] {
@@ -497,45 +512,6 @@ export class View<T> {
 		return this.refresh();
 	});
 
-	// TODO: batch this per microtask or something
-	enqueueCommit(): void {
-		this.cachedChildNodes = undefined;
-		this.commit();
-	}
-
-	commit(): void {
-		if (isElement(this.guest)) {
-			if (typeof this.guest.tag === "function") {
-				if (!this.updating && this.parent !== undefined) {
-					this.parent.enqueueCommit();
-				}
-			} else {
-				const props = {...this.guest.props, children: this.childNodes};
-				if (this.committer === undefined) {
-					const intrinsic = this.renderer.intrinsicFor(this.guest.tag);
-					if (intrinsic) {
-						this.committer = intrinsic(props);
-					} else {
-						// TODO: don’t create an iterator for fragments
-						this.committer = (function*() {
-							while (true) {
-								yield;
-							}
-						})();
-					}
-				}
-
-				const iteration = this.committer.next(props);
-				this.node = iteration.value;
-				if (iteration.done) {
-					this.committer = undefined;
-				}
-			}
-		}
-
-		this.updating = false;
-	}
-
 	refresh(): MaybePromise<undefined> {
 		if (isElement(this.guest)) {
 			if (this.ctx !== undefined) {
@@ -568,7 +544,6 @@ export class View<T> {
 	// TODO: delete all empty views after the last non-empty, non-unmounting view
 	updateChildren(children: Children): MaybePromise<undefined> {
 		this.cachedChildNodes = undefined;
-		let previousSibling: View<T> | undefined;
 		let view = this.firstChild;
 		const promises: Promise<undefined>[] = [];
 		const viewsByKey: Map<unknown, View<T>> = new Map();
@@ -598,13 +573,7 @@ export class View<T> {
 				}
 
 				if (view === undefined) {
-					// append view
-					if (previousSibling === undefined) {
-						this.firstChild = keyedView;
-					} else {
-						previousSibling.nextSibling = keyedView;
-						keyedView.previousSibling = previousSibling;
-					}
+					this.appendChild(keyedView);
 				} else if (view !== keyedView) {
 					if (isKeyedElement(view.guest)) {
 						this.insertAfter(keyedView, view);
@@ -613,21 +582,14 @@ export class View<T> {
 					}
 				}
 
-				previousSibling = keyedView.previousSibling;
 				view = keyedView;
 				viewsByKey.set(guest.key, keyedView);
 			} else if (view === undefined) {
 				view = new View(this, this.renderer);
-				if (previousSibling === undefined) {
-					this.firstChild = view;
-				} else {
-					previousSibling.nextSibling = view;
-					view.previousSibling = previousSibling;
-				}
+				this.appendChild(view);
 			} else if (isKeyedElement(view.guest)) {
 				const unkeyedView = new View(this, this.renderer);
 				this.insertAfter(unkeyedView, view);
-				previousSibling = view;
 				view = unkeyedView;
 			}
 
@@ -636,10 +598,10 @@ export class View<T> {
 				promises.push(updateP);
 			}
 
-			previousSibling = view;
 			view = view.nextSibling;
 		}
 
+		// TODO: async unmount
 		while (view !== undefined) {
 			if (isKeyedElement(view.guest)) {
 				this.viewsByKey.delete(view.guest.key);
@@ -652,20 +614,12 @@ export class View<T> {
 		for (const view of this.viewsByKey.values()) {
 			const p = view.unmount();
 			if (isPromiseLike(p)) {
+				// TODO: implement this
 				throw new Error(
-					"Unmounting async generator components not supported for keyed views yet",
+					"Unmounting async generator components not implemented for keyed views",
 				);
 			} else {
-				// remove keyed view
-				if (view.previousSibling === undefined) {
-					this.firstChild = view.nextSibling;
-				} else {
-					view.previousSibling.nextSibling = view.nextSibling;
-				}
-
-				if (view.nextSibling !== undefined) {
-					view.nextSibling.previousSibling = view.previousSibling;
-				}
+				this.removeChild(view);
 			}
 		}
 
@@ -673,6 +627,38 @@ export class View<T> {
 		if (promises.length) {
 			return Promise.all(promises).then(() => undefined); // void :(
 		}
+	}
+
+	// TODO: batch this per microtask or something
+	enqueueCommit(): void {
+		this.cachedChildNodes = undefined;
+		this.commit();
+	}
+
+	commit(): void {
+		if (isElement(this.guest)) {
+			if (typeof this.guest.tag === "function") {
+				if (!this.updating && this.parent !== undefined) {
+					this.parent.enqueueCommit();
+				}
+			} else {
+				const props = {...this.guest.props, children: this.childNodes};
+				if (this.committer === undefined && this.guest.tag !== Fragment) {
+					const intrinsic = this.renderer.intrinsicFor(this.guest.tag);
+					this.committer = intrinsic(props);
+				}
+
+				if (this.committer !== undefined) {
+					const iteration = this.committer.next(props);
+					this.node = iteration.value;
+					if (iteration.done) {
+						this.committer = undefined;
+					}
+				}
+			}
+		}
+
+		this.updating = false;
 	}
 
 	// TODO: bandwagon unmounts
@@ -983,10 +969,8 @@ export class Renderer<T> {
 		}
 	}
 
-	intrinsicFor(tag: string | symbol): Intrinsic<T> | undefined {
-		if (tag === Fragment) {
-			return;
-		} else if (this.env[tag as any]) {
+	intrinsicFor(tag: string | symbol): Intrinsic<T> {
+		if (this.env[tag as any]) {
 			return this.env[tag as any];
 		} else if (typeof tag === "string") {
 			return this.env[Default](tag);
