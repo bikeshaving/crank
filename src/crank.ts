@@ -381,7 +381,7 @@ export class View<T> {
 		private renderer: Renderer<T>,
 	) {}
 
-	private insertBefore(newView: View<T>, view: View<T>): void {
+	private insertBefore(view: View<T>, newView: View<T>): void {
 		newView.nextSibling = view;
 		if (view.previousSibling === undefined) {
 			newView.previousSibling = undefined;
@@ -394,7 +394,7 @@ export class View<T> {
 		view.previousSibling = newView;
 	}
 
-	private insertAfter(newView: View<T>, view: View<T>): void {
+	private insertAfter(view: View<T>, newView: View<T>): void {
 		newView.previousSibling = view;
 		if (view.nextSibling === undefined) {
 			newView.nextSibling = undefined;
@@ -414,7 +414,7 @@ export class View<T> {
 			view.previousSibling = undefined;
 			view.nextSibling = undefined;
 		} else {
-			this.insertAfter(view, this.lastChild);
+			this.insertAfter(this.lastChild, view);
 		}
 	}
 
@@ -576,9 +576,9 @@ export class View<T> {
 					this.appendChild(keyedView);
 				} else if (view !== keyedView) {
 					if (isKeyedElement(view.guest)) {
-						this.insertAfter(keyedView, view);
+						this.insertAfter(view, keyedView);
 					} else {
-						this.insertBefore(keyedView, view);
+						this.insertBefore(view, keyedView);
 					}
 				}
 
@@ -589,7 +589,7 @@ export class View<T> {
 				this.appendChild(view);
 			} else if (isKeyedElement(view.guest)) {
 				const unkeyedView = new View(this, this.renderer);
-				this.insertAfter(unkeyedView, view);
+				this.insertAfter(view, unkeyedView);
 				view = unkeyedView;
 			}
 
