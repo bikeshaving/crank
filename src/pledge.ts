@@ -1,5 +1,7 @@
+// TODO: unwrap promiselikes
 export type MaybePromise<T> = Promise<T> | T;
 
+// TODO: unwrap promiselikes
 export type MaybePromiseLike<T> = PromiseLike<T> | T;
 
 interface PromisePending<T> {
