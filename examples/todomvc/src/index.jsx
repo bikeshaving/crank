@@ -61,6 +61,7 @@ function* TodoItem({todo}) {
 		if (ev.target.tagName === "LABEL") {
 			active = true;
 			this.refresh();
+			// maybe we need to wait for refresh to happen if refreshes get batched
 			ev.target.parentElement.nextSibling.focus();
 		}
 	});
@@ -77,6 +78,7 @@ function* TodoItem({todo}) {
 			(ev.keyCode === ENTER_KEY || ev.keyCode === ESC_KEY)
 		) {
 			active = false;
+			title = title.trim();
 			if (title) {
 				this.dispatchEvent(new CustomEvent("todo.edit", {
 					bubbles: true,
