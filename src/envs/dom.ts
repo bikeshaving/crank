@@ -13,10 +13,14 @@ import {
 
 export function updateDOMProps(el: HTMLElement, props: Props): void {
 	for (let [key, value] of Object.entries(props)) {
+		key = key.toLowerCase();
+		if (key === "children") {
+			continue;
+		}
+
 		if (key in el && (el as any)[key] !== value) {
 			(el as any)[key] = value;
 		} else {
-			key = key.toLowerCase();
 			if (value === true) {
 				el.setAttribute(key, "");
 			} else if (value === false || value == null) {
@@ -82,23 +86,28 @@ export function updateDOMChildren(
 
 export const env: Environment<HTMLElement> = {
 	[Default](tag: string): Intrinsic<HTMLElement> {
-		return function* defaultDOM({
-			children,
-			...props
-		}): IntrinsicIterator<HTMLElement> {
+		return function* defaultDOM(
+			this: Context,
+			props,
+		): IntrinsicIterator<HTMLElement> {
 			const node = document.createElement(tag);
-			while (true) {
+			for (props of this) {
 				updateDOMProps(node, props);
-				updateDOMChildren(node, children);
-				({children, ...props} = yield node);
+				updateDOMChildren(node, this.childNodes);
+				yield node;
 			}
 		};
 	},
-	*[Root]({node, children}): IntrinsicIterator<HTMLElement> {
+	*[Root](this: Context, {node}): IntrinsicIterator<HTMLElement> {
 		try {
-			while (true) {
-				updateDOMChildren(node, children);
-				({node, children} = yield node);
+			for (const {node: newNode} of this) {
+				if (node !== newNode) {
+					updateDOMChildren(node);
+					node = newNode;
+				}
+
+				updateDOMChildren(node, this.childNodes);
+				yield node;
 			}
 		} finally {
 			updateDOMChildren(node);

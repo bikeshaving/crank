@@ -310,20 +310,11 @@ export function createElement<T extends Tag>(
 	return {[ElementSigil]: true, tag, props, key};
 }
 
-export interface IntrinsicProps<T> {
-	[key: string]: any;
-	children?: (T | string)[];
-}
-
 // TODO: use a context pattern here?
-export type IntrinsicIterator<T> = Iterator<
-	T | undefined,
-	undefined,
-	IntrinsicProps<T>
->;
+export type IntrinsicIterator<T> = Iterator<T | undefined>;
 
 // TODO: allow intrinsics to be a simple function
-export type Intrinsic<T> = (props: IntrinsicProps<T>) => IntrinsicIterator<T>;
+export type Intrinsic<T> = (props: Props) => IntrinsicIterator<T>;
 
 export type Guest = Element | string | undefined;
 
@@ -399,7 +390,7 @@ function enqueue<Return, This>(
 // TODO: maybe we should have only 1 host per tag and key
 class Host<T> {
 	guest?: Guest;
-	ctx?: Context;
+	ctx?: Context<T>;
 	private updating = false;
 	private node?: T | string;
 	private cachedChildNodes?: (T | string)[];
@@ -691,14 +682,13 @@ class Host<T> {
 					this.parent.scheduleCommit();
 				}
 			} else {
-				const props = {...this.guest.props, children: this.childNodes};
 				if (this.committer === undefined && this.guest.tag !== Fragment) {
 					const intrinsic = this.renderer.intrinsicFor(this.guest.tag);
-					this.committer = intrinsic(props);
+					this.committer = intrinsic.call(this.ctx, this.guest.props);
 				}
 
 				if (this.committer !== undefined) {
-					const iteration = this.committer.next(props);
+					const iteration = this.committer.next();
 					this.node = iteration.value;
 					if (iteration.done) {
 						this.committer = undefined;
@@ -757,15 +747,22 @@ class Host<T> {
 	}
 }
 
-export interface Context {
-	[Symbol.iterator](): Generator<Props>;
-	[Symbol.asyncIterator](): AsyncGenerator<Props>;
-	refresh(): MaybePromise<undefined>;
-}
-
-export class Context extends CrankEventTarget {
-	constructor(private host: Host<any>, parent?: Context) {
+export class Context<T = any> extends CrankEventTarget {
+	constructor(private host: Host<T>, parent?: Context<T>) {
 		super(parent);
+	}
+
+	// TODO: make this private or delete this
+	get props(): Props {
+		if (!isElement(this.host.guest)) {
+			throw new Error("Guest is not an element");
+		}
+
+		return this.host.guest.props;
+	}
+
+	get childNodes(): (T | string)[] {
+		return this.host.childNodes;
 	}
 
 	// TODO: throw an error if props are pulled multiple times per update
@@ -791,15 +788,6 @@ export class Context extends CrankEventTarget {
 	// TODO: throw an error if refresh is called on an unmounted component
 	refresh(): MaybePromise<undefined> {
 		return this.host.refresh();
-	}
-
-	// TODO: make this private or delete this
-	get props(): Props {
-		if (!isElement(this.host.guest)) {
-			throw new Error("Guest is not an element");
-		}
-
-		return this.host.guest.props;
 	}
 }
 
@@ -936,7 +924,7 @@ export class Renderer<T> {
 		}
 	}
 
-	render(child: Child, node?: object): MaybePromise<Context | undefined> {
+	render(child: Child, node?: object): MaybePromise<Context<T> | undefined> {
 		if (!isElement(child) || child.tag !== Root) {
 			child = createElement(Root, {node}, child);
 		}
