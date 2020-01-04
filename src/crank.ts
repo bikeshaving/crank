@@ -387,7 +387,7 @@ function enqueue<Return, This>(
 	};
 }
 
-// TODO: maybe we should have only 1 host per tag and key
+// TODO: don’t re-use hosts per tag and key
 class Host<T> {
 	guest?: Guest;
 	ctx?: Context<T>;
