@@ -667,7 +667,9 @@ class Host<T> {
 			}
 
 			void host.unmount();
-			host = host.nextSibling;
+			const nextSibling = host.nextSibling;
+			this.removeChild(host);
+			host = nextSibling;
 		}
 
 		for (const host of this.hostsByKey.values()) {
