@@ -399,7 +399,7 @@ function enqueue<Return, This>(
 // TODO: maybe we should have only 1 host per tag and key
 export class View<T> {
 	guest?: Guest;
-	private ctx?: Context;
+	ctx?: Context;
 	private updating = false;
 	private node?: T | string;
 	private cachedChildNodes?: (T | string)[];
@@ -934,8 +934,12 @@ export class Renderer<T> {
 		}
 	}
 
-	render(child: Child, key?: object): MaybePromise<View<T>> {
-		const view = this.getOrCreateView(key);
+	render(child: Child, node?: object): MaybePromise<Context | undefined> {
+		if (!isElement(child) || child.tag !== Root) {
+			child = createElement(Root, {node}, child);
+		}
+
+		const view = this.getOrCreateView(node);
 		let p: MaybePromise<void>;
 		if (child == null) {
 			p = view.unmount();
@@ -943,13 +947,6 @@ export class Renderer<T> {
 			p = view.update(toGuest(child));
 		}
 
-		return new Pledge(p).then(() => {
-			// TODO: let weakmaps be weakmaps and delete this logic
-			// if (child == null && typeof key === "object") {
-			// 	this.cache.delete(key);
-			// }
-
-			return view;
-		});
+		return new Pledge(p).then(() => view.ctx);
 	}
 }

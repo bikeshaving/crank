@@ -1,6 +1,6 @@
+import {MaybePromise} from "../pledge";
 import {
-	createElement,
-	Child,
+	Context,
 	Default,
 	Element,
 	Environment,
@@ -9,7 +9,6 @@ import {
 	Props,
 	Renderer,
 	Root,
-	View,
 } from "../crank";
 
 export function updateDOMProps(el: HTMLElement, props: Props): void {
@@ -107,23 +106,13 @@ export const env: Environment<HTMLElement> = {
 	},
 };
 
-export class DOMRenderer extends Renderer<HTMLElement> {
-	render(
-		elem: Child,
-		node: HTMLElement,
-	): Promise<View<HTMLElement>> | View<HTMLElement> {
-		if (elem != null) {
-			elem = createElement(Root, {node}, elem);
-		}
-		return super.render(elem, node);
-	}
-}
+export class DOMRenderer extends Renderer<HTMLElement> {}
 
 export const renderer = new DOMRenderer([env]);
 
 export function render(
 	elem: Element | null | undefined,
 	node: HTMLElement,
-): Promise<View<HTMLElement>> | View<HTMLElement> {
+): MaybePromise<Context | undefined> {
 	return renderer.render(elem, node);
 }
