@@ -401,10 +401,7 @@ export class View<T> {
 	guest?: Guest;
 	private ctx?: Context;
 	private updating = false;
-	private unmounting = false;
 	private node?: T | string;
-	// TODO: delete and use unmounting + cachedChildNodes
-	private hanging?: (T | string)[];
 	private cachedChildNodes?: (T | string)[];
 	private iterator?: ComponentIterator;
 	private committer?: IntrinsicIterator<T>;
@@ -487,9 +484,7 @@ export class View<T> {
 			view !== undefined;
 			view = view.nextSibling
 		) {
-			if (view.hanging !== undefined) {
-				childNodes.push(...view.hanging);
-			} else if (typeof view.node === "string") {
+			if (typeof view.node === "string") {
 				buffer = (buffer || "") + view.node;
 			} else {
 				if (buffer !== undefined) {
@@ -676,15 +671,9 @@ export class View<T> {
 		}
 
 		for (const view of this.viewsByKey.values()) {
-			const p = view.unmount();
-			if (isPromiseLike(p)) {
-				// TODO: implement this
-				throw new Error(
-					"Unmounting async generator components not implemented for keyed views",
-				);
-			} else {
-				this.removeChild(view);
-			}
+			// TODO: implement async unmount for keyed views
+			void view.unmount();
+			this.removeChild(view);
 		}
 
 		this.viewsByKey = viewsByKey;
@@ -725,7 +714,7 @@ export class View<T> {
 		this.commit();
 	}
 
-	unmount(): MaybePromise<undefined> {
+	unmount(): void {
 		if (this.ctx !== undefined) {
 			this.ctx.dispatchEvent(new Event("crank.unmount"));
 			this.ctx.removeAllEventListeners();
@@ -742,50 +731,26 @@ export class View<T> {
 			if (typeof guest.tag === "function") {
 				// TODO: this should only work if the host is keyed
 				if (this.iterator !== undefined) {
-					const iteration = new Pledge(this.iterator.return()).then(() =>
-						this.unmountChildren(),
-					);
-					this.iterator = undefined;
-					this.hanging = this.childNodes;
-					this.unmounting = true;
-					return new Pledge(iteration).then(() => {
-						this.hanging = undefined;
-						this.unmounting = false;
-						if (isPromiseLike(iteration) && this.parent !== undefined) {
-							this.parent.scheduleCommit();
-						}
-
-						return undefined; // void :(
-					});
+					void this.iterator.return();
 				}
-			} else {
-				return new Pledge(this.unmountChildren()).then(() => {
-					if (this.committer && this.committer.return) {
-						this.committer.return();
-						this.committer = undefined;
-					}
 
-					return undefined;
-				});
+				void this.unmountChildren();
+			} else {
+				void this.unmountChildren();
+				if (this.committer && this.committer.return) {
+					this.committer.return();
+					this.committer = undefined;
+				}
 			}
 		}
 	}
 
-	unmountChildren(): MaybePromise<undefined> {
+	unmountChildren(): void {
 		this.cachedChildNodes = undefined;
-		const promises: Promise<any>[] = [];
-		let nextView: View<T> | undefined = this.firstChild;
-		while (nextView !== undefined) {
-			const unmountP = nextView.unmount();
-			if (isPromiseLike(unmountP)) {
-				promises.push(unmountP);
-			}
-
-			nextView = nextView.nextSibling;
-		}
-
-		if (promises.length) {
-			return Promise.all(promises).then(() => undefined); // void :(
+		let view: View<T> | undefined = this.firstChild;
+		while (view !== undefined) {
+			void view.unmount();
+			view = view.nextSibling;
 		}
 	}
 }
@@ -980,9 +945,9 @@ export class Renderer<T> {
 
 		return new Pledge(p).then(() => {
 			// TODO: let weakmaps be weakmaps and delete this logic
-			if (child == null && typeof key === "object") {
-				this.cache.delete(key);
-			}
+			// if (child == null && typeof key === "object") {
+			// 	this.cache.delete(key);
+			// }
 
 			return view;
 		});
