@@ -27,6 +27,8 @@ function normalizeOptions(
 	return {capture, passive, once};
 }
 
+export type RefreshEvent = CustomEvent<{props: Props}>;
+
 // TODO: add these type overloads to CrankEventTarget
 export interface CrankEventMap {
 	"crank.refresh": RefreshEvent;
@@ -253,7 +255,7 @@ export type Children = Child | NestedChildIterable;
 
 export interface Props {
 	children?: Children;
-	"crank-key"?: unknown;
+	"crank-key"?: {};
 	[name: string]: any;
 }
 
@@ -263,7 +265,7 @@ export interface Element<T extends Tag = Tag> {
 	[ElementSigil]: true;
 	tag: T;
 	props: Props;
-	key?: unknown;
+	key?: {};
 }
 
 export function isElement(value: any): value is Element {
@@ -280,8 +282,8 @@ export function isComponentElement(value: any): value is Element<Component> {
 	return isElement(value) && typeof value.tag === "function";
 }
 
-export function isKeyedElement(value: any): value is Element & {key: string} {
-	return value != null && value[ElementSigil] && value.key !== undefined;
+export function isKeyedElement(value: any): value is Element & {key: {}} {
+	return isElement(value) && value.key != null;
 }
 
 export function createElement<T extends Tag>(
@@ -295,7 +297,7 @@ export function createElement<T extends Tag>(
 ): Element<T> {
 	props = Object.assign({}, props);
 	const key = props["crank-key"];
-	if (key !== undefined) {
+	if (key != null) {
 		delete props["crank-key"];
 	}
 
@@ -337,7 +339,7 @@ function toGuest(child: Child): Guest {
 	throw new TypeError("Unknown child type");
 }
 
-// TODO: explain what this higher-order function does
+// TODO: explain
 function chase<Return, This>(
 	fn: (this: This, ...args: any[]) => MaybePromiseLike<Return>,
 ): (this: This, ...args: any[]) => MaybePromise<Return> {
@@ -355,6 +357,7 @@ function chase<Return, This>(
 	};
 }
 
+// TODO: explain
 function enqueue<Return, This>(
 	fn: (this: This, ...args: any[]) => MaybePromiseLike<Return>,
 ): (this: This, ...args: any[]) => MaybePromise<Return> {
@@ -525,10 +528,7 @@ export class View<T> {
 	}
 
 	// TODO: get this function onto the prototype, not the instance
-	update = chase(function update(
-		this: View<T>,
-		guest: Guest,
-	): MaybePromise<undefined> {
+	update(guest: Guest): MaybePromise<undefined> {
 		this.updating = true;
 		if (
 			!isElement(this.guest) ||
@@ -550,7 +550,7 @@ export class View<T> {
 		}
 
 		return this.refresh();
-	});
+	}
 
 	_run(): MaybePromise<undefined> {
 		if (this.iterator !== undefined) {
@@ -564,19 +564,19 @@ export class View<T> {
 						return this.updateChildren(iteration.value);
 					})
 					.finally(() => {
+						if (this.parent) {
+							this.parent.scheduleCommit();
+						}
+
 						if (!done) {
-							// TODO: this is wrong, right?
-							this.commit();
 							this.run();
 						}
 					});
 			} else {
-				const updateP = new Pledge(iteration.value).then((child) => {
-					return this.updateChildren(child);
-				}) as MaybePromise<undefined>;
-				return new Pledge(updateP).finally(() => {
-					this.commit();
-				});
+				const updateP = new Pledge(iteration.value).then((child) =>
+					this.updateChildren(child),
+				);
+				return new Pledge(updateP).then(() => void this.commit());
 			}
 		}
 	}
@@ -587,20 +587,16 @@ export class View<T> {
 		if (isElement(this.guest)) {
 			if (this.ctx !== undefined) {
 				this.ctx.dispatchEvent(
-					new CustomEvent("crank.refresh", {
-						detail: {props: this.guest.props},
-					}),
+					new CustomEvent("crank.refresh", {detail: {props: this.guest.props}}),
 				);
 			}
 
 			if (typeof this.guest.tag === "function") {
 				return this.run();
 			} else {
-				return new Pledge(
-					this.updateChildren(this.guest.props.children),
-				).finally(() => {
-					this.commit();
-				});
+				return new Pledge(this.updateChildren(this.guest.props.children)).then(
+					() => void this.commit(),
+				);
 			}
 		} else {
 			this.node = this.guest;
@@ -608,66 +604,68 @@ export class View<T> {
 	}
 
 	// TODO: delete all empty views after the last non-empty, non-unmounting view
-	updateChildren(children: Children): MaybePromise<undefined> {
+	updateChildren = chase(function updateChildren(
+		this: View<T>,
+		children: Children,
+	): MaybePromise<undefined> {
 		this.cachedChildNodes = undefined;
 		let view = this.firstChild;
 		const promises: Promise<undefined>[] = [];
 		const viewsByKey: Map<unknown, View<T>> = new Map();
-		if (!isNonStringIterable(children)) {
-			children = [children];
-		}
-
-		for (let child of children) {
-			if (isNonStringIterable(child)) {
-				child = createElement(Fragment, null, child);
-			} else if (isKeyedElement(child) && viewsByKey.has(child.key)) {
-				// TODO: warn about a duplicate key or maybe throw an error
-				child = {...child, key: undefined};
+		if (children != null) {
+			if (!isNonStringIterable(children)) {
+				children = [children];
 			}
 
-			// TODO: delete the key if the views key has already been seen
-			const guest = toGuest(child);
-			if (isKeyedElement(guest)) {
-				let keyedView = this.viewsByKey.get(guest.key);
-				if (keyedView === undefined) {
-					keyedView = new View(this, this.renderer);
-				} else {
-					this.viewsByKey.delete(guest.key);
-					if (view !== keyedView) {
-						this.removeChild(keyedView);
-					}
+			for (let child of children) {
+				if (isNonStringIterable(child)) {
+					child = createElement(Fragment, null, child);
+				} else if (isKeyedElement(child) && viewsByKey.has(child.key)) {
+					// TODO: warn or throw
+					child = {...child, key: undefined};
 				}
 
-				if (view === undefined) {
-					this.appendChild(keyedView);
-				} else if (view !== keyedView) {
-					if (isKeyedElement(view.guest)) {
-						this.insertAfter(view, keyedView);
+				if (isKeyedElement(child)) {
+					let keyedView = this.viewsByKey.get(child.key);
+					if (keyedView === undefined) {
+						keyedView = new View(this, this.renderer);
 					} else {
-						this.insertBefore(view, keyedView);
+						this.viewsByKey.delete(child.key);
+						if (view !== keyedView) {
+							this.removeChild(keyedView);
+						}
 					}
+
+					if (view === undefined) {
+						this.appendChild(keyedView);
+					} else if (view !== keyedView) {
+						if (isKeyedElement(view.guest)) {
+							this.insertAfter(view, keyedView);
+						} else {
+							this.insertBefore(view, keyedView);
+						}
+					}
+
+					view = keyedView;
+					viewsByKey.set(child.key, keyedView);
+				} else if (view === undefined) {
+					view = new View(this, this.renderer);
+					this.appendChild(view);
+				} else if (isKeyedElement(view.guest)) {
+					const unkeyedView = new View(this, this.renderer);
+					this.insertAfter(view, unkeyedView);
+					view = unkeyedView;
 				}
 
-				view = keyedView;
-				viewsByKey.set(guest.key, keyedView);
-			} else if (view === undefined) {
-				view = new View(this, this.renderer);
-				this.appendChild(view);
-			} else if (isKeyedElement(view.guest)) {
-				const unkeyedView = new View(this, this.renderer);
-				this.insertAfter(view, unkeyedView);
-				view = unkeyedView;
-			}
+				const updateP = view.update(toGuest(child));
+				if (updateP !== undefined) {
+					promises.push(updateP);
+				}
 
-			const updateP = view.update(guest);
-			if (updateP !== undefined) {
-				promises.push(updateP);
+				view = view.nextSibling;
 			}
-
-			view = view.nextSibling;
 		}
 
-		// TODO: async unmount
 		while (view !== undefined) {
 			if (isKeyedElement(view.guest)) {
 				this.viewsByKey.delete(view.guest.key);
@@ -693,7 +691,7 @@ export class View<T> {
 		if (promises.length) {
 			return Promise.all(promises).then(() => undefined); // void :(
 		}
-	}
+	});
 
 	commit(): void {
 		if (isElement(this.guest)) {
@@ -739,26 +737,26 @@ export class View<T> {
 		this.guest = undefined;
 		(this._run as any).leading = false;
 		this.run = enqueue(this._run);
+		this.viewsByKey = new Map();
 		if (isElement(guest)) {
 			if (typeof guest.tag === "function") {
+				// TODO: this should only work if the host is keyed
 				if (this.iterator !== undefined) {
 					const iteration = new Pledge(this.iterator.return()).then(() =>
 						this.unmountChildren(),
 					);
 					this.iterator = undefined;
-					if (isPromiseLike(iteration)) {
-						this.hanging = this.childNodes;
-						this.unmounting = true;
-						return iteration.then(() => {
-							this.hanging = undefined;
-							this.unmounting = false;
-							if (this.parent !== undefined) {
-								this.parent.scheduleCommit();
-							}
+					this.hanging = this.childNodes;
+					this.unmounting = true;
+					return new Pledge(iteration).then(() => {
+						this.hanging = undefined;
+						this.unmounting = false;
+						if (isPromiseLike(iteration) && this.parent !== undefined) {
+							this.parent.scheduleCommit();
+						}
 
-							return undefined;
-						});
-					}
+						return undefined; // void :(
+					});
 				}
 			} else {
 				return new Pledge(this.unmountChildren()).then(() => {
@@ -791,8 +789,6 @@ export class View<T> {
 		}
 	}
 }
-
-export type RefreshEvent = CustomEvent<{props: Props}>;
 
 export interface Context {
 	[Symbol.iterator](): Generator<Props>;
@@ -974,17 +970,17 @@ export class Renderer<T> {
 	}
 
 	render(child: Child, key?: object): MaybePromise<View<T>> {
-		const guest = toGuest(child);
 		const view = this.getOrCreateView(key);
 		let p: MaybePromise<void>;
-		if (guest === undefined) {
+		if (child == null) {
 			p = view.unmount();
 		} else {
-			p = view.update(guest);
+			p = view.update(toGuest(child));
 		}
 
 		return new Pledge(p).then(() => {
-			if (guest === undefined && typeof key === "object") {
+			// TODO: let weakmaps be weakmaps and delete this logic
+			if (child == null && typeof key === "object") {
 				this.cache.delete(key);
 			}
 
