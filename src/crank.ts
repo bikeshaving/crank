@@ -397,7 +397,7 @@ function enqueue<Return, This>(
 }
 
 // TODO: maybe we should have only 1 host per tag and key
-export class View<T> {
+class Host<T> {
 	guest?: Guest;
 	ctx?: Context;
 	private updating = false;
@@ -405,10 +405,10 @@ export class View<T> {
 	private cachedChildNodes?: (T | string)[];
 	private iterator?: ComponentIterator;
 	private committer?: IntrinsicIterator<T>;
-	// TODO: create viewsByKey on demand
-	private viewsByKey: Map<unknown, View<T>> = new Map();
+	// TODO: create hostsByKey on demand
+	private hostsByKey: Map<unknown, Host<T>> = new Map();
 	constructor(
-		parent: View<T> | undefined,
+		parent: Host<T> | undefined,
 		// TODO: Figure out a way to not have to pass in a renderer
 		private renderer: Renderer<T>,
 	) {
@@ -416,59 +416,59 @@ export class View<T> {
 	}
 
 	// TODO: move these properties to a superclass or mixin
-	private parent?: View<T> | undefined;
-	private firstChild?: View<T>;
-	private lastChild?: View<T>;
-	private nextSibling?: View<T>;
-	private previousSibling?: View<T>;
-	private insertBefore(view: View<T>, newView: View<T>): void {
-		newView.nextSibling = view;
-		if (view.previousSibling === undefined) {
-			newView.previousSibling = undefined;
-			this.firstChild = newView;
+	private parent?: Host<T> | undefined;
+	private firstChild?: Host<T>;
+	private lastChild?: Host<T>;
+	private nextSibling?: Host<T>;
+	private previousSibling?: Host<T>;
+	private insertBefore(host: Host<T>, newHost: Host<T>): void {
+		newHost.nextSibling = host;
+		if (host.previousSibling === undefined) {
+			newHost.previousSibling = undefined;
+			this.firstChild = newHost;
 		} else {
-			newView.previousSibling = view.previousSibling;
-			view.previousSibling.nextSibling = newView;
+			newHost.previousSibling = host.previousSibling;
+			host.previousSibling.nextSibling = newHost;
 		}
 
-		view.previousSibling = newView;
+		host.previousSibling = newHost;
 	}
 
-	private insertAfter(view: View<T>, newView: View<T>): void {
-		newView.previousSibling = view;
-		if (view.nextSibling === undefined) {
-			newView.nextSibling = undefined;
-			this.lastChild = newView;
+	private insertAfter(host: Host<T>, newHost: Host<T>): void {
+		newHost.previousSibling = host;
+		if (host.nextSibling === undefined) {
+			newHost.nextSibling = undefined;
+			this.lastChild = newHost;
 		} else {
-			newView.nextSibling = view.nextSibling;
-			view.nextSibling.previousSibling = newView;
+			newHost.nextSibling = host.nextSibling;
+			host.nextSibling.previousSibling = newHost;
 		}
 
-		view.nextSibling = newView;
+		host.nextSibling = newHost;
 	}
 
-	private appendChild(view: View<T>): void {
+	private appendChild(host: Host<T>): void {
 		if (this.lastChild === undefined) {
-			this.firstChild = view;
-			this.lastChild = view;
-			view.previousSibling = undefined;
-			view.nextSibling = undefined;
+			this.firstChild = host;
+			this.lastChild = host;
+			host.previousSibling = undefined;
+			host.nextSibling = undefined;
 		} else {
-			this.insertAfter(this.lastChild, view);
+			this.insertAfter(this.lastChild, host);
 		}
 	}
 
-	private removeChild(view: View<T>): void {
-		if (view.previousSibling === undefined) {
-			this.firstChild = view.nextSibling;
+	private removeChild(host: Host<T>): void {
+		if (host.previousSibling === undefined) {
+			this.firstChild = host.nextSibling;
 		} else {
-			view.previousSibling.nextSibling = view.nextSibling;
+			host.previousSibling.nextSibling = host.nextSibling;
 		}
 
-		if (view.nextSibling === undefined) {
-			this.lastChild = view.previousSibling;
+		if (host.nextSibling === undefined) {
+			this.lastChild = host.previousSibling;
 		} else {
-			view.nextSibling.previousSibling = view.previousSibling;
+			host.nextSibling.previousSibling = host.previousSibling;
 		}
 	}
 
@@ -480,22 +480,22 @@ export class View<T> {
 		let buffer: string | undefined;
 		const childNodes: (T | string)[] = [];
 		for (
-			let view = this.firstChild;
-			view !== undefined;
-			view = view.nextSibling
+			let host = this.firstChild;
+			host !== undefined;
+			host = host.nextSibling
 		) {
-			if (typeof view.node === "string") {
-				buffer = (buffer || "") + view.node;
+			if (typeof host.node === "string") {
+				buffer = (buffer || "") + host.node;
 			} else {
 				if (buffer !== undefined) {
 					childNodes.push(buffer);
 					buffer = undefined;
 				}
 
-				if (view.node === undefined) {
-					childNodes.push(...view.childNodes);
+				if (host.node === undefined) {
+					childNodes.push(...host.childNodes);
 				} else {
-					childNodes.push(view.node);
+					childNodes.push(host.node);
 				}
 			}
 		}
@@ -529,7 +529,7 @@ export class View<T> {
 			!isElement(this.guest) ||
 			!isElement(guest) ||
 			this.guest.tag !== guest.tag ||
-			// TODO: never reuse a view when keys differ
+			// TODO: never reuse a host when keys differ
 			this.guest.key !== guest.key
 		) {
 			void this.unmount();
@@ -598,15 +598,15 @@ export class View<T> {
 		}
 	}
 
-	// TODO: delete all empty views after the last non-empty, non-unmounting view
+	// TODO: delete all empty hosts after the last non-empty, non-unmounting host
 	updateChildren = chase(function updateChildren(
-		this: View<T>,
+		this: Host<T>,
 		children: Children,
 	): MaybePromise<undefined> {
 		this.cachedChildNodes = undefined;
-		let view = this.firstChild;
+		let host = this.firstChild;
 		const promises: Promise<undefined>[] = [];
-		const viewsByKey: Map<unknown, View<T>> = new Map();
+		const hostsByKey: Map<unknown, Host<T>> = new Map();
 		if (children != null) {
 			if (!isNonStringIterable(children)) {
 				children = [children];
@@ -615,68 +615,68 @@ export class View<T> {
 			for (let child of children) {
 				if (isNonStringIterable(child)) {
 					child = createElement(Fragment, null, child);
-				} else if (isKeyedElement(child) && viewsByKey.has(child.key)) {
+				} else if (isKeyedElement(child) && hostsByKey.has(child.key)) {
 					// TODO: warn or throw
 					child = {...child, key: undefined};
 				}
 
 				if (isKeyedElement(child)) {
-					let keyedView = this.viewsByKey.get(child.key);
-					if (keyedView === undefined) {
-						keyedView = new View(this, this.renderer);
+					let keyedHost = this.hostsByKey.get(child.key);
+					if (keyedHost === undefined) {
+						keyedHost = new Host(this, this.renderer);
 					} else {
-						this.viewsByKey.delete(child.key);
-						if (view !== keyedView) {
-							this.removeChild(keyedView);
+						this.hostsByKey.delete(child.key);
+						if (host !== keyedHost) {
+							this.removeChild(keyedHost);
 						}
 					}
 
-					if (view === undefined) {
-						this.appendChild(keyedView);
-					} else if (view !== keyedView) {
-						if (isKeyedElement(view.guest)) {
-							this.insertAfter(view, keyedView);
+					if (host === undefined) {
+						this.appendChild(keyedHost);
+					} else if (host !== keyedHost) {
+						if (isKeyedElement(host.guest)) {
+							this.insertAfter(host, keyedHost);
 						} else {
-							this.insertBefore(view, keyedView);
+							this.insertBefore(host, keyedHost);
 						}
 					}
 
-					view = keyedView;
-					viewsByKey.set(child.key, keyedView);
-				} else if (view === undefined) {
-					view = new View(this, this.renderer);
-					this.appendChild(view);
-				} else if (isKeyedElement(view.guest)) {
-					const unkeyedView = new View(this, this.renderer);
-					this.insertAfter(view, unkeyedView);
-					view = unkeyedView;
+					host = keyedHost;
+					hostsByKey.set(child.key, keyedHost);
+				} else if (host === undefined) {
+					host = new Host(this, this.renderer);
+					this.appendChild(host);
+				} else if (isKeyedElement(host.guest)) {
+					const unkeyedHost = new Host(this, this.renderer);
+					this.insertAfter(host, unkeyedHost);
+					host = unkeyedHost;
 				}
 
-				const updateP = view.update(toGuest(child));
+				const updateP = host.update(toGuest(child));
 				if (updateP !== undefined) {
 					promises.push(updateP);
 				}
 
-				view = view.nextSibling;
+				host = host.nextSibling;
 			}
 		}
 
-		while (view !== undefined) {
-			if (isKeyedElement(view.guest)) {
-				this.viewsByKey.delete(view.guest.key);
+		while (host !== undefined) {
+			if (isKeyedElement(host.guest)) {
+				this.hostsByKey.delete(host.guest.key);
 			}
 
-			void view.unmount();
-			view = view.nextSibling;
+			void host.unmount();
+			host = host.nextSibling;
 		}
 
-		for (const view of this.viewsByKey.values()) {
-			// TODO: implement async unmount for keyed views
-			void view.unmount();
-			this.removeChild(view);
+		for (const host of this.hostsByKey.values()) {
+			// TODO: implement async unmount for keyed hosts
+			void host.unmount();
+			this.removeChild(host);
 		}
 
-		this.viewsByKey = viewsByKey;
+		this.hostsByKey = hostsByKey;
 		if (promises.length) {
 			return Promise.all(promises).then(() => undefined); // void :(
 		}
@@ -726,7 +726,7 @@ export class View<T> {
 		this.guest = undefined;
 		(this._run as any).leading = false;
 		this.run = enqueue(this._run);
-		this.viewsByKey = new Map();
+		this.hostsByKey = new Map();
 		if (isElement(guest)) {
 			if (typeof guest.tag === "function") {
 				// TODO: this should only work if the host is keyed
@@ -747,10 +747,10 @@ export class View<T> {
 
 	unmountChildren(): void {
 		this.cachedChildNodes = undefined;
-		let view: View<T> | undefined = this.firstChild;
-		while (view !== undefined) {
-			void view.unmount();
-			view = view.nextSibling;
+		let host: Host<T> | undefined = this.firstChild;
+		while (host !== undefined) {
+			void host.unmount();
+			host = host.nextSibling;
 		}
 	}
 }
@@ -762,7 +762,7 @@ export interface Context {
 }
 
 export class Context extends CrankEventTarget {
-	constructor(private view: View<any>, parent?: Context) {
+	constructor(private host: Host<any>, parent?: Context) {
 		super(parent);
 	}
 
@@ -788,16 +788,16 @@ export class Context extends CrankEventTarget {
 
 	// TODO: throw an error if refresh is called on an unmounted component
 	refresh(): MaybePromise<undefined> {
-		return this.view.refresh();
+		return this.host.refresh();
 	}
 
 	// TODO: make this private or delete this
 	get props(): Props {
-		if (!isElement(this.view.guest)) {
+		if (!isElement(this.host.guest)) {
 			throw new Error("Guest is not an element");
 		}
 
-		return this.view.guest.props;
+		return this.host.guest.props;
 	}
 }
 
@@ -883,21 +883,21 @@ const env: Environment<any> = {
 };
 
 export class Renderer<T> {
-	private cache = new WeakMap<object, View<T>>();
-	private getOrCreateView(key?: object): View<T> {
-		let view: View<T> | undefined;
+	private cache = new WeakMap<object, Host<T>>();
+	private getOrCreateHost(key?: object): Host<T> {
+		let host: Host<T> | undefined;
 		if (key !== undefined) {
-			view = this.cache.get(key);
+			host = this.cache.get(key);
 		}
 
-		if (view === undefined) {
-			view = new View<T>(undefined, this);
+		if (host === undefined) {
+			host = new Host<T>(undefined, this);
 			if (key !== undefined) {
-				this.cache.set(key, view);
+				this.cache.set(key, host);
 			}
 		}
 
-		return view;
+		return host;
 	}
 
 	env: Environment<T> = {...env};
@@ -939,14 +939,14 @@ export class Renderer<T> {
 			child = createElement(Root, {node}, child);
 		}
 
-		const view = this.getOrCreateView(node);
+		const host = this.getOrCreateHost(node);
 		let p: MaybePromise<void>;
 		if (child == null) {
-			p = view.unmount();
+			p = host.unmount();
 		} else {
-			p = view.update(toGuest(child));
+			p = host.update(toGuest(child));
 		}
 
-		return new Pledge(p).then(() => view.ctx);
+		return new Pledge(p).then(() => host.ctx);
 	}
 }
