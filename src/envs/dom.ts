@@ -11,22 +11,39 @@ import {
 	Root,
 } from "../crank";
 
-export function updateDOMProps(el: HTMLElement, props: Props): void {
-	for (let [key, value] of Object.entries(props)) {
-		key = key.toLowerCase();
-		if (key === "children") {
+export function updateDOMProps(
+	el: HTMLElement,
+	props: Props,
+	newProps: Props,
+): void {
+	for (let name in Object.assign({}, props, newProps)) {
+		name = name.toLowerCase();
+		if (name === "children") {
 			continue;
+		} else if (name === "className") {
+			name = "class";
 		}
 
-		if (key in el && (el as any)[key] !== value) {
-			(el as any)[key] = value;
+		const value = props[name];
+		const newValue = newProps[name];
+		if (name === "style") {
+			for (const styleName in Object.assign({}, value, newValue)) {
+				const newStyleValue = value[styleName] == null ? "" : value[styleName];
+				if (typeof el.style.setProperty === "function") {
+					el.style.setProperty(styleName, newStyleValue);
+				} else {
+					(el.style as any)[styleName] = newStyleValue;
+				}
+			}
+		} else if (name in el) {
+			(el as any)[name] = newValue;
 		} else {
-			if (value === true) {
-				el.setAttribute(key, "");
-			} else if (value === false || value == null) {
-				el.removeAttribute(key);
+			if (newValue === true) {
+				el.setAttribute(name, "");
+			} else if (newValue === false || newValue == null) {
+				el.removeAttribute(name);
 			} else {
-				el.setAttribute(key, value);
+				el.setAttribute(name, newValue);
 			}
 		}
 	}
@@ -91,10 +108,11 @@ export const env: Environment<HTMLElement> = {
 			props,
 		): IntrinsicIterator<HTMLElement> {
 			const node = document.createElement(tag);
-			for (props of this) {
-				updateDOMProps(node, props);
+			for (const newProps of this) {
+				updateDOMProps(node, props, newProps);
 				updateDOMChildren(node, this.childNodes);
 				yield node;
+				props = newProps;
 			}
 		};
 	},

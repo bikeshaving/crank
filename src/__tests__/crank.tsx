@@ -61,6 +61,33 @@ describe("render", () => {
 		]);
 	});
 
+	test("attrs", () => {
+		render(
+			<Fragment>
+				<input id="toggle" type="checkbox" checked data-checked />
+				<label for="toggle" />
+			</Fragment>,
+			document.body,
+		);
+		// jsdom doesn‘t seem to reflect checked property
+		expect(document.body.innerHTML).toEqual(
+			'<input id="toggle" type="checkbox" data-checked=""><label for="toggle"></label>',
+		);
+		expect((document.body.firstChild! as any).checked).toBe(true);
+		observe();
+		render(
+			<Fragment>
+				<input id="toggle" type="checkbox" />
+				<label for="toggle" class="inactive" />
+			</Fragment>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			'<input id="toggle" type="checkbox"><label for="toggle" class="inactive"></label>',
+		);
+		expect((document.body.firstChild! as any).checked).toBe(false);
+	});
+
 	test("rerender text", () => {
 		render(<h1>Hello world 1</h1>, document.body);
 		expect(document.body.innerHTML).toEqual("<h1>Hello world 1</h1>");
