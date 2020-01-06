@@ -5,7 +5,6 @@ import {
 	Element,
 	Environment,
 	Intrinsic,
-	IntrinsicIterator,
 	Props,
 	Renderer,
 	Root,
@@ -23,16 +22,22 @@ export function updateDOMProps(
 		} else if (name === "className") {
 			name = "class";
 		}
+		// TODO: throw an error if event props are found
 
 		const value = props[name];
 		const newValue = newProps[name];
 		if (name === "style") {
-			for (const styleName in Object.assign({}, value, newValue)) {
-				const newStyleValue = value[styleName] == null ? "" : value[styleName];
-				if (typeof el.style.setProperty === "function") {
-					el.style.setProperty(styleName, newStyleValue);
-				} else {
-					(el.style as any)[styleName] = newStyleValue;
+			if (typeof newValue === "string") {
+				el.setAttribute("style", newValue);
+			} else {
+				for (const styleName in Object.assign({}, value, newValue)) {
+					const newStyleValue =
+						value[styleName] == null ? "" : value[styleName];
+					if (typeof el.style.setProperty === "function") {
+						el.style.setProperty(styleName, newStyleValue);
+					} else {
+						(el.style as any)[styleName] = newStyleValue;
+					}
 				}
 			}
 		} else if (name in el) {
@@ -103,10 +108,7 @@ export function updateDOMChildren(
 
 export const env: Environment<HTMLElement> = {
 	[Default](tag: string): Intrinsic<HTMLElement> {
-		return function* defaultDOM(
-			this: Context,
-			props,
-		): IntrinsicIterator<HTMLElement> {
+		return function* defaultDOM(this: Context, props): Generator<HTMLElement> {
 			const node = document.createElement(tag);
 			for (const newProps of this) {
 				updateDOMProps(node, props, newProps);
@@ -116,7 +118,7 @@ export const env: Environment<HTMLElement> = {
 			}
 		};
 	},
-	*[Root](this: Context, {node}): IntrinsicIterator<HTMLElement> {
+	*[Root](this: Context, {node}): Generator<HTMLElement> {
 		try {
 			for (const {node: newNode} of this) {
 				if (node !== newNode) {
@@ -133,9 +135,11 @@ export const env: Environment<HTMLElement> = {
 	},
 };
 
-export class DOMRenderer extends Renderer<HTMLElement> {}
+export class DOMRenderer extends Renderer<HTMLElement> {
+	env = env;
+}
 
-export const renderer = new DOMRenderer([env]);
+export const renderer = new DOMRenderer();
 
 export function render(
 	elem: Element | null | undefined,

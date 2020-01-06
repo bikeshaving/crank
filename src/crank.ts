@@ -176,8 +176,7 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 	dispatchEvent(ev: any): boolean {
 		let continued = super.dispatchEvent(ev);
 		if (continued && ev.bubbles && this.parent !== undefined) {
-			// TODO: This is the poor man’s event dispatch, doesn’t even handle
-			// capturing.
+			// TODO: implement event capturing
 			continued = this.parent.dispatchEvent(ev);
 		}
 
@@ -310,11 +309,7 @@ export function createElement<T extends Tag>(
 	return {[ElementSigil]: true, tag, props, key};
 }
 
-// TODO: use a context pattern here?
-export type IntrinsicIterator<T> = Iterator<T | undefined>;
-
-// TODO: allow intrinsics to be a simple function
-export type Intrinsic<T> = (props: Props) => IntrinsicIterator<T>;
+export type Intrinsic<T> = (props: Props) => T | Iterator<T>;
 
 export type Guest = Element | string | undefined;
 
@@ -346,45 +341,6 @@ function chase<Return, This>(
 	};
 }
 
-// TODO: explain
-function enqueue<Return, This>(
-	fn: (this: This, ...args: any[]) => MaybePromiseLike<Return>,
-): (this: This, ...args: any[]) => MaybePromise<Return> {
-	let args: unknown[];
-	let leading: Promise<Return> | undefined;
-	let trailing: Promise<Return> | undefined;
-	const next = () => {
-		leading = trailing;
-		trailing = undefined;
-	};
-
-	return function enqueueWrapper(...args1) {
-		args = args1;
-		if (leading === undefined) {
-			const result = fn.apply(this, args);
-			if (isPromiseLike(result)) {
-				leading = Promise.resolve(result).finally(next);
-				return leading;
-			}
-
-			return result;
-			// TODO: figure out a better way to express this than this little hack
-			// for async generator components
-		} else if ((fn as any).leading) {
-			return leading;
-		} else if (trailing === undefined) {
-			trailing = leading
-				.then(
-					() => fn.apply(this, args),
-					() => fn.apply(this, args),
-				)
-				.finally(next);
-		}
-
-		return trailing;
-	};
-}
-
 // TODO: don’t re-use hosts per tag and key
 class Host<T> {
 	guest?: Guest;
@@ -393,7 +349,8 @@ class Host<T> {
 	private node?: T | string;
 	private cachedChildNodes?: (T | string)[];
 	private iterator?: ComponentIterator;
-	private committer?: IntrinsicIterator<T>;
+	private intrinsic?: Intrinsic<T>;
+	private committer?: Iterator<T | undefined>;
 	// TODO: create hostsByKey on demand
 	private hostsByKey: Map<unknown, Host<T>> = new Map();
 	constructor(
@@ -527,6 +484,8 @@ class Host<T> {
 				this.ctx = new Context(this, this.parent && this.parent.ctx);
 				if (typeof guest.tag === "function") {
 					this.iterator = new ComponentIterator(guest.tag, this.ctx);
+				} else if (guest.tag !== Fragment) {
+					this.intrinsic = this.renderer.intrinsicFor(guest.tag);
 				}
 			}
 		} else {
@@ -536,36 +495,66 @@ class Host<T> {
 		return this.refresh();
 	}
 
-	_run(): MaybePromise<undefined> {
+	private async = false;
+	private pending: MaybePromise<undefined>;
+	private enqueued: MaybePromise<undefined>;
+	private _run(): MaybePromise<undefined> {
 		if (this.iterator !== undefined) {
-			const iteration = this.iterator.next(this.childNodeOrNodes);
+			const next = this.async
+				? this.pending!.then(() => this.childNodeOrNodes)
+				: this.childNodeOrNodes;
+			const iteration = this.iterator.next(next);
 			if (isPromiseLike(iteration)) {
-				(this._run as any).leading = true;
-				let done: boolean;
-				return iteration
-					.then((iteration) => {
-						done = !!iteration.done;
-						return this.updateChildren(iteration.value);
-					})
-					.finally(() => {
-						if (this.parent) {
-							this.parent.scheduleCommit();
-						}
+				this.async = true;
+				return iteration.then((iteration) => {
+					if (!iteration.done) {
+						this.pending = this._run();
+					} else {
+						this.iterator = undefined;
+					}
 
-						if (!done) {
-							this.run();
-						}
-					});
+					return new Pledge(this.updateChildren(iteration.value)).then(
+						() => void this.commit(),
+					) as any;
+				});
 			} else {
 				const updateP = new Pledge(iteration.value).then((child) =>
 					this.updateChildren(child),
 				);
+
 				return new Pledge(updateP).then(() => void this.commit());
 			}
 		}
 	}
 
-	run = enqueue(this._run);
+	run(): MaybePromise<undefined> {
+		if (this.async) {
+			return this.pending;
+		} else if (this.pending === undefined) {
+			this.pending = new Pledge(this._run()).finally(() => {
+				if (!this.async) {
+					this.pending = this.enqueued;
+					this.enqueued = undefined;
+				}
+			});
+
+			return this.pending;
+		} else if (this.enqueued === undefined) {
+			this.enqueued = this.pending
+				.then(
+					() => this._run(),
+					() => this._run(),
+				)
+				.finally(() => {
+					if (!this.async) {
+						this.pending = this.enqueued;
+						this.enqueued = undefined;
+					}
+				});
+		}
+
+		return this.enqueued;
+	}
 
 	refresh(): MaybePromise<undefined> {
 		if (isElement(this.guest)) {
@@ -680,16 +669,23 @@ class Host<T> {
 					this.parent.scheduleCommit();
 				}
 			} else {
-				if (this.committer === undefined && this.guest.tag !== Fragment) {
-					const intrinsic = this.renderer.intrinsicFor(this.guest.tag);
-					this.committer = intrinsic.call(this.ctx, this.guest.props);
-				}
+				if (this.intrinsic !== undefined) {
+					if (this.committer === undefined) {
+						const value = this.intrinsic.call(this.ctx, this.guest.props);
+						if (isIteratorOrAsyncIterator(value)) {
+							this.committer = value;
+						} else {
+							this.node = value;
+						}
+					}
 
-				if (this.committer !== undefined) {
-					const iteration = this.committer.next();
-					this.node = iteration.value;
-					if (iteration.done) {
-						this.committer = undefined;
+					if (this.committer !== undefined) {
+						const iteration = this.committer.next();
+						this.node = iteration.value;
+						if (iteration.done) {
+							this.committer = undefined;
+							this.intrinsic = undefined;
+						}
 					}
 				}
 			}
@@ -711,28 +707,24 @@ class Host<T> {
 			this.ctx = undefined;
 		}
 
-		const guest = this.guest;
 		this.node = undefined;
 		this.guest = undefined;
-		(this._run as any).leading = false;
-		this.run = enqueue(this._run);
+		this.async = false;
+		this.intrinsic = undefined;
+		this.pending = undefined;
+		this.enqueued = undefined;
 		this.hostsByKey = new Map();
-		if (isElement(guest)) {
-			if (typeof guest.tag === "function") {
-				// TODO: this should only work if the host is keyed
-				if (this.iterator !== undefined) {
-					void this.iterator.return();
-				}
-
-				void this.unmountChildren();
-			} else {
-				void this.unmountChildren();
-				if (this.committer && this.committer.return) {
-					this.committer.return();
-					this.committer = undefined;
-				}
-			}
+		// TODO: this should only work if the host is keyed
+		if (this.iterator !== undefined) {
+			void this.iterator.return();
 		}
+
+		if (this.committer && this.committer.return) {
+			this.committer.return();
+			this.committer = undefined;
+		}
+
+		void this.unmountChildren();
 	}
 
 	unmountChildren(): void {
@@ -890,9 +882,11 @@ export class Renderer<T> {
 
 	env: Environment<T> = {...env};
 
-	constructor(envs: Partial<Environment<T>>[]) {
-		for (const env of envs) {
-			this.extend(env);
+	constructor(envs?: Partial<Environment<T>>[]) {
+		if (isIterable(envs)) {
+			for (const env of envs) {
+				this.extend(env);
+			}
 		}
 	}
 
