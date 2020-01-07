@@ -503,10 +503,8 @@ class Host<T> {
 	private _run(): MaybePromise<undefined> {
 		if (this.iterator !== undefined) {
 			const runId = this.nextRunId++;
-			const next = this.async
-				? this.pending!.then(() => this.childNodeOrNodes)
-				: this.childNodeOrNodes;
-			const iteration = this.iterator.next(next);
+			// TODO: yield a promise for current updateChildren for async components
+			const iteration = this.iterator.next(this.childNodeOrNodes);
 			if (isPromiseLike(iteration)) {
 				this.async = true;
 				return iteration.then((iteration) => {
@@ -583,7 +581,6 @@ class Host<T> {
 		this: Host<T>,
 		children: Children,
 	): MaybePromise<undefined> {
-		this.cachedChildNodes = undefined;
 		let host = this.firstChild;
 		const promises: Promise<undefined>[] = [];
 		const hostsByKey: Map<unknown, Host<T>> = new Map();
@@ -661,18 +658,19 @@ class Host<T> {
 		if (promises.length) {
 			return Promise.all(promises).then(() => {
 				this.commit();
-				return undefined;
-			}); // void :(
+				return undefined; // void :(
+			});
 		} else {
 			this.commit();
 		}
 	});
 
 	commit(): void {
+		this.cachedChildNodes = undefined;
 		if (isElement(this.guest)) {
 			if (typeof this.guest.tag === "function") {
 				if (!this.updating && this.parent !== undefined) {
-					this.parent.scheduleCommit();
+					this.parent.commit();
 				}
 			} else {
 				if (this.intrinsic !== undefined) {
@@ -700,12 +698,6 @@ class Host<T> {
 		this.updating = false;
 	}
 
-	// TODO: batch this with requestAnimationFrame/setTimeout
-	scheduleCommit(): void {
-		this.cachedChildNodes = undefined;
-		this.commit();
-	}
-
 	unmount(): void {
 		if (this.ctx !== undefined) {
 			this.ctx.dispatchEvent(new Event("crank.unmount"));
@@ -730,11 +722,11 @@ class Host<T> {
 			this.committer = undefined;
 		}
 
-		void this.unmountChildren();
+		this.unmountChildren();
+		this.commit();
 	}
 
 	unmountChildren(): void {
-		this.cachedChildNodes = undefined;
 		let host: Host<T> | undefined = this.firstChild;
 		while (host !== undefined) {
 			void host.unmount();
