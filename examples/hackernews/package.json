@@ -1,0 +1,13 @@
+{
+  "private": true,
+  "dependencies": {
+    "core-js": "^3.6.0",
+    "crank": "../..",
+    "regenerator-runtime": "^0.13.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.7.7",
+    "parcel-bundler": "^1.12.4",
+    "typescript": "^3.7.4"
+  }
+}
