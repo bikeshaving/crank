@@ -1495,6 +1495,7 @@ describe("async generator component", () => {
 
 		async function* Component(this: Context): AsyncGenerator<Child> {
 			let i = 0;
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			for await (const _ of this) {
 				if (i % 2 === 0) {
 					yield (<Slow />);
@@ -1533,6 +1534,7 @@ describe("async generator component", () => {
 		async function* Component(this: Context): AsyncGenerator<Child> {
 			ctx = this;
 			let i = 0;
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			for await (const _ of this) {
 				if (i % 2 === 0) {
 					yield (<Slow />);
