@@ -496,10 +496,13 @@ class Host<T> {
 	}
 
 	private async = false;
+	private nextRunId = 0;
+	private maxRunId = -1;
 	private pending: MaybePromise<undefined>;
 	private enqueued: MaybePromise<undefined>;
 	private _run(): MaybePromise<undefined> {
 		if (this.iterator !== undefined) {
+			const runId = this.nextRunId++;
 			const next = this.async
 				? this.pending!.then(() => this.childNodeOrNodes)
 				: this.childNodeOrNodes;
@@ -513,16 +516,18 @@ class Host<T> {
 						this.iterator = undefined;
 					}
 
-					return new Pledge(this.updateChildren(iteration.value)).then(
-						() => void this.commit(),
-					) as any;
+					this.maxRunId = Math.max(runId, this.maxRunId);
+					if (runId === this.maxRunId) {
+						return this.updateChildren(iteration.value);
+					}
 				});
 			} else {
-				const updateP = new Pledge(iteration.value).then((child) =>
-					this.updateChildren(child),
-				);
-
-				return new Pledge(updateP).then(() => void this.commit());
+				return new Pledge(iteration.value).then((child) => {
+					this.maxRunId = Math.max(runId, this.maxRunId);
+					if (runId === this.maxRunId) {
+						return this.updateChildren(child);
+					}
+				});
 			}
 		}
 	}
@@ -567,16 +572,13 @@ class Host<T> {
 			if (typeof this.guest.tag === "function") {
 				return this.run();
 			} else {
-				return new Pledge(this.updateChildren(this.guest.props.children)).then(
-					() => void this.commit(),
-				);
+				return this.updateChildren(this.guest.props.children);
 			}
 		} else {
 			this.node = this.guest;
 		}
 	}
 
-	// TODO: delete all empty hosts after the last non-empty, non-unmounting host
 	updateChildren = chase(function updateChildren(
 		this: Host<T>,
 		children: Children,
@@ -645,9 +647,8 @@ class Host<T> {
 			}
 
 			void host.unmount();
-			const nextSibling = host.nextSibling;
 			this.removeChild(host);
-			host = nextSibling;
+			host = host.nextSibling;
 		}
 
 		for (const host of this.hostsByKey.values()) {
@@ -658,7 +659,12 @@ class Host<T> {
 
 		this.hostsByKey = hostsByKey;
 		if (promises.length) {
-			return Promise.all(promises).then(() => undefined); // void :(
+			return Promise.all(promises).then(() => {
+				this.commit();
+				return undefined;
+			}); // void :(
+		} else {
+			this.commit();
 		}
 	});
 

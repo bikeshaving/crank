@@ -739,14 +739,14 @@ describe("async function component", () => {
 			return <span>{message}</span>;
 		}
 
-		const viewP = render(
+		const p = render(
 			<div>
 				<Component message="Hello" />
 			</div>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("");
-		await expect(viewP).resolves.toBeDefined();
+		await expect(p).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 	});
 
@@ -760,86 +760,86 @@ describe("async function component", () => {
 			return <span>{message}</span>;
 		});
 
-		const viewP1 = render(
+		const p1 = render(
 			<div>
 				<Component message="Hello 1" />
 			</div>,
 			document.body,
 		);
-		const viewP2 = render(
+		const p2 = render(
 			<div>
 				<Component message="Hello 2" />
 			</div>,
 			document.body,
 		);
-		const viewP3 = render(
+		const p3 = render(
 			<div>
 				<Component message="Hello 3" />
 			</div>,
 			document.body,
 		);
-		const viewP4 = render(
+		const p4 = render(
 			<div>
 				<Component message="Hello 4" />
 			</div>,
 			document.body,
 		);
-		const viewP5 = render(
+		const p5 = render(
 			<div>
 				<Component message="Hello 5" />
 			</div>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("");
-		await expect(viewP1).resolves.toBeDefined();
+		await expect(p1).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
-		await expect(viewP2).resolves.toBeDefined();
+		await expect(p2).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
-		await expect(viewP3).resolves.toBeDefined();
+		await expect(p3).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
-		await expect(viewP4).resolves.toBeDefined();
+		await expect(p4).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
-		const viewP6 = render(
+		const p6 = render(
 			<div>
 				<Component message="Hello 6" />
 			</div>,
 			document.body,
 		);
-		const viewP7 = render(
+		const p7 = render(
 			<div>
 				<Component message="Hello 7" />
 			</div>,
 			document.body,
 		);
-		const viewP8 = render(
+		const p8 = render(
 			<div>
 				<Component message="Hello 8" />
 			</div>,
 			document.body,
 		);
-		const viewP9 = render(
+		const p9 = render(
 			<div>
 				<Component message="Hello 9" />
 			</div>,
 			document.body,
 		);
-		const viewP10 = render(
+		const p10 = render(
 			<div>
 				<Component message="Hello 10" />
 			</div>,
 			document.body,
 		);
-		await expect(viewP5).resolves.toBeDefined();
+		await expect(p5).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
-		await expect(viewP6).resolves.toBeDefined();
+		await expect(p6).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 6</span></div>");
-		await expect(viewP7).resolves.toBeDefined();
+		await expect(p7).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 10</span></div>");
-		await expect(viewP8).resolves.toBeDefined();
+		await expect(p8).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 10</span></div>");
-		await expect(viewP9).resolves.toBeDefined();
+		await expect(p9).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 10</span></div>");
-		await expect(viewP10).resolves.toBeDefined();
+		await expect(p10).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 10</span></div>");
 		expect(Component).toHaveBeenCalledTimes(4);
 	});
@@ -851,7 +851,7 @@ describe("async function component", () => {
 			return <span>{message}</span>;
 		}
 
-		let viewP = render(
+		let p = render(
 			<div>
 				<Component message="Hello 1" />
 			</div>,
@@ -859,9 +859,9 @@ describe("async function component", () => {
 		);
 		expect(document.body.innerHTML).toEqual("");
 		resolves[0]();
-		await viewP;
+		await p;
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
-		viewP = render(
+		p = render(
 			<div>
 				<Component message="Hello 2" />
 			</div>,
@@ -870,7 +870,7 @@ describe("async function component", () => {
 		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
 		resolves[1]();
-		await viewP;
+		await p;
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
 		expect(resolves.length).toEqual(2);
 	});
@@ -887,22 +887,22 @@ describe("async function component", () => {
 			return <span>{message}</span>;
 		}
 
-		const viewP1 = render(
+		const p1 = render(
 			<div>
 				<Component message="Hello 1" delay={100} />
 			</div>,
 			document.body,
 		);
-		const viewP2 = render(
+		const p2 = render(
 			<div>
 				<Component message="Hello 2" delay={0} />
 			</div>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("");
-		await viewP1;
+		await p1;
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
-		await viewP2;
+		await p2;
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
 	});
 
@@ -910,77 +910,76 @@ describe("async function component", () => {
 		const t = Date.now();
 		let t1: number;
 		let t2: number;
-		async function Loading(): Promise<Element> {
-			await new Promise((resolve) => setTimeout(resolve, 50));
-			t1 = Date.now();
-			return <span>Loading...</span>;
-		}
-
-		async function Component(): Promise<Element> {
+		async function Fast(): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 100));
-			t2 = Date.now();
-			return <span>Loaded</span>;
+			t1 = Date.now();
+			return <span>Fast</span>;
 		}
 
-		const viewP1 = render(
+		async function Slow(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			t2 = Date.now();
+			return <span>Slow</span>;
+		}
+
+		const p1 = render(
 			<div>
-				<Loading />
+				<Fast />
 			</div>,
 			document.body,
 		);
-		const viewP2 = render(
+		const p2 = render(
 			<div>
-				<Component />
+				<Slow />
 			</div>,
 			document.body,
 		);
-		await viewP1;
-		expect(document.body.innerHTML).toEqual(
-			"<div><span>Loading...</span></div>",
-		);
-		await viewP2;
-		expect(document.body.innerHTML).toEqual("<div><span>Loaded</span></div>");
-		expect(t1! - t).toBeCloseTo(50, -2);
-		expect(t2! - t).toBeCloseTo(100, -2);
+		await p1;
+		expect(document.body.innerHTML).toEqual("<div><span>Fast</span></div>");
+		await p2;
+		expect(document.body.innerHTML).toEqual("<div><span>Slow</span></div>");
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("<div><span>Slow</span></div>");
+		expect(t1! - t).toBeCloseTo(100, -2);
+		expect(t2! - t).toBeCloseTo(200, -2);
 	});
 
 	test("race where second wins", async () => {
 		const t = Date.now();
 		let t1: number;
 		let t2: number;
-		const promise = new Promise((resolve) => setTimeout(resolve, 100));
-		async function Loading(): Promise<Element> {
-			await promise;
+		async function Slow(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 200));
 			t1 = Date.now();
-			return <span>Loading...</span>;
+			return <span>Slow</span>;
 		}
 
-		async function Component(): Promise<Element> {
-			await new Promise((resolve) => setTimeout(resolve, 50));
+		async function Fast(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 100));
 			t2 = Date.now();
-			return <span>Loaded</span>;
+			return <span>Fast</span>;
 		}
 
-		const viewP1 = render(
+		const p1 = render(
 			<div>
-				<Loading />
+				<Slow />
 			</div>,
 			document.body,
 		);
-		const viewP2 = render(
+		const p2 = render(
 			<div>
-				<Component />
+				<Fast />
 			</div>,
 			document.body,
 		);
-		await viewP1;
-		expect(document.body.innerHTML).toEqual("<div><span>Loaded</span></div>");
-		await viewP2;
-		expect(document.body.innerHTML).toEqual("<div><span>Loaded</span></div>");
-		await promise;
-		expect(document.body.innerHTML).toEqual("<div><span>Loaded</span></div>");
-		expect(t1! - t).toBeCloseTo(100, -2);
-		expect(t2! - t).toBeCloseTo(50, -2);
+		await p1;
+		expect(document.body.innerHTML).toEqual("<div><span>Fast</span></div>");
+		await p2;
+		expect(document.body.innerHTML).toEqual("<div><span>Fast</span></div>");
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("<div><span>Fast</span></div>");
+		expect(t1! - t).toBeCloseTo(200, -2);
+		expect(t2! - t).toBeCloseTo(100, -2);
 	});
 });
 
@@ -1407,14 +1406,14 @@ describe("async generator component", () => {
 			}
 		};
 
-		const viewP = render(
+		const p = render(
 			<div>
 				<Component message="Hello" />
 			</div>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("");
-		await expect(viewP).resolves.toBeDefined();
+		await expect(p).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Loading</span></div>");
 		resolve();
 		await new Promise((resolve) => setTimeout(resolve, 0));
@@ -1460,5 +1459,78 @@ describe("async generator component", () => {
 		push(<span>Hello 5</span>);
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
+	});
+
+	test("racing render", async () => {
+		async function Slow(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			return <div>Slow</div>;
+		}
+		async function Fast(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			return <div>Fast</div>;
+		}
+
+		async function* Component(this: Context): AsyncGenerator<Child> {
+			let i = 0;
+			for await (const _ of this) {
+				if (i % 2 === 0) {
+					yield (<Slow />);
+				} else {
+					yield (<Fast />);
+				}
+
+				i++;
+			}
+		}
+
+		await render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Slow</div>");
+		await render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
+		const p = render(<Component />, document.body);
+		await render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
+		await p;
+		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
+	});
+
+	test("racing refresh", async () => {
+		async function Slow(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			return <div>Slow</div>;
+		}
+		async function Fast(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			return <div>Fast</div>;
+		}
+
+		let ctx!: Context;
+		async function* Component(this: Context): AsyncGenerator<Child> {
+			ctx = this;
+			let i = 0;
+			for await (const _ of this) {
+				if (i % 2 === 0) {
+					yield (<Slow />);
+				} else {
+					yield (<Fast />);
+				}
+
+				i++;
+			}
+		}
+
+		await render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Slow</div>");
+		await ctx.refresh();
+		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
+		const p = ctx.refresh();
+		await ctx.refresh();
+		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
+		await p;
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
 	});
 });
