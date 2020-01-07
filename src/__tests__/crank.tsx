@@ -1395,7 +1395,7 @@ describe("async generator component", () => {
 
 	test("multiple yields per update", async () => {
 		let resolve!: () => unknown;
-		const Component = async function* Component(
+		async function* Component(
 			this: Context,
 			{message}: {message: string},
 		): AsyncGenerator<Element> {
@@ -1404,7 +1404,7 @@ describe("async generator component", () => {
 				await new Promise((resolve1) => (resolve = resolve1));
 				yield (<span>{message}</span>);
 			}
-		};
+		}
 
 		const p = render(
 			<div>
@@ -1428,6 +1428,28 @@ describe("async generator component", () => {
 		resolve();
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(document.body.innerHTML).toEqual("<div><span>Goodbye</span></div>");
+	});
+
+	test("multiple yields sync", async () => {
+		async function* Component(
+			this: Context,
+			{message}: {message: string},
+		): AsyncGenerator<Element> {
+			for await ({message} of this) {
+				yield (<span>Loading</span>);
+				yield (<span>{message}</span>);
+			}
+		}
+
+		const p = render(
+			<div>
+				<Component message="Hello" />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("");
+		await p;
+		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 	});
 
 	test("repeater", async () => {
