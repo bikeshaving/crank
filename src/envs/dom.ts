@@ -16,7 +16,6 @@ export function updateDOMProps(
 	newProps: Props,
 ): void {
 	for (let name in Object.assign({}, props, newProps)) {
-		name = name.toLowerCase();
 		if (name === "children") {
 			continue;
 		} else if (name === "className") {
@@ -31,18 +30,20 @@ export function updateDOMProps(
 				el.setAttribute("style", newValue);
 			} else {
 				for (const styleName in Object.assign({}, value, newValue)) {
-					const newStyleValue =
-						value[styleName] == null ? "" : value[styleName];
-					if (typeof el.style.setProperty === "function") {
-						el.style.setProperty(styleName, newStyleValue);
+					const styleValue =
+						newValue[styleName] == null ? "" : newValue[styleName];
+					if (styleName in el.style) {
+						(el.style as any)[styleName] = styleValue;
 					} else {
-						(el.style as any)[styleName] = newStyleValue;
+						el.style.setProperty(styleName, styleValue);
 					}
 				}
 			}
 		} else if (name in el) {
+			// TODO: check that there isn’t both innerHTML and children
 			(el as any)[name] = newValue;
 		} else {
+			name = name.toLowerCase();
 			if (newValue === true) {
 				el.setAttribute(name, "");
 			} else if (newValue === false || newValue == null) {
@@ -112,7 +113,10 @@ export const env: Environment<HTMLElement> = {
 			const node = document.createElement(tag);
 			for (const newProps of this) {
 				updateDOMProps(node, props, newProps);
-				updateDOMChildren(node, this.childNodes);
+				if (!("innerHTML" in newProps)) {
+					updateDOMChildren(node, this.childNodes);
+				}
+
 				yield node;
 				props = newProps;
 			}
