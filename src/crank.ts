@@ -500,7 +500,7 @@ class Host<T> {
 	private maxRunId = -1;
 	private pending: MaybePromise<undefined>;
 	private enqueued: MaybePromise<undefined>;
-	private _run(): MaybePromise<undefined> {
+	private step(): MaybePromise<undefined> {
 		if (this.iterator !== undefined) {
 			const runId = this.nextRunId++;
 			// TODO: yield a promise for current updateChildren for async components
@@ -509,7 +509,7 @@ class Host<T> {
 				this.async = true;
 				return iteration.then((iteration) => {
 					if (!iteration.done) {
-						this.pending = this._run();
+						this.pending = this.step();
 					} else {
 						this.iterator = undefined;
 					}
@@ -534,7 +534,7 @@ class Host<T> {
 		if (this.async) {
 			return this.pending;
 		} else if (this.pending === undefined) {
-			this.pending = new Pledge(this._run()).finally(() => {
+			this.pending = new Pledge(this.step()).finally(() => {
 				if (!this.async) {
 					this.pending = this.enqueued;
 					this.enqueued = undefined;
@@ -545,8 +545,8 @@ class Host<T> {
 		} else if (this.enqueued === undefined) {
 			this.enqueued = this.pending
 				.then(
-					() => this._run(),
-					() => this._run(),
+					() => this.step(),
+					() => this.step(),
 				)
 				.finally(() => {
 					if (!this.async) {
@@ -670,6 +670,7 @@ class Host<T> {
 		if (isElement(this.guest)) {
 			if (typeof this.guest.tag === "function") {
 				if (!this.updating && this.parent !== undefined) {
+					// TODO: batch this per microtask
 					this.parent.commit();
 				}
 			} else {
