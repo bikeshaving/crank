@@ -352,7 +352,7 @@ class Host<T> {
 	private intrinsic?: Intrinsic<T>;
 	private committer?: Iterator<T | undefined>;
 	// TODO: create hostsByKey on demand
-	private hostsByKey: Map<unknown, Host<T>> = new Map();
+	private hostsByKey: Map<unknown, Host<T>> | undefined;
 	constructor(
 		parent: Host<T> | undefined,
 		// TODO: Figure out a way to not have to pass in a renderer
@@ -503,7 +503,7 @@ class Host<T> {
 	private step(): MaybePromise<undefined> {
 		if (this.iterator !== undefined) {
 			const runId = this.nextRunId++;
-			// TODO: yield a promise for current updateChildren for async components
+			// TODO: yield a possible promise for async generator components
 			const iteration = this.iterator.next(this.childNodeOrNodes);
 			if (isPromiseLike(iteration)) {
 				this.async = true;
@@ -512,6 +512,7 @@ class Host<T> {
 						this.pending = this.step();
 					} else {
 						this.iterator = undefined;
+						this.ctx = undefined;
 					}
 
 					this.maxRunId = Math.max(runId, this.maxRunId);
@@ -583,7 +584,7 @@ class Host<T> {
 	): MaybePromise<undefined> {
 		let host = this.firstChild;
 		const promises: Promise<undefined>[] = [];
-		const hostsByKey: Map<unknown, Host<T>> = new Map();
+		let hostsByKey: Map<unknown, Host<T>> | undefined;
 		if (children != null) {
 			if (!isNonStringIterable(children)) {
 				children = [children];
@@ -592,17 +593,21 @@ class Host<T> {
 			for (let child of children) {
 				if (isNonStringIterable(child)) {
 					child = createElement(Fragment, null, child);
-				} else if (isKeyedElement(child) && hostsByKey.has(child.key)) {
+				} else if (
+					isKeyedElement(child) &&
+					hostsByKey &&
+					hostsByKey.has(child.key)
+				) {
 					// TODO: warn or throw
 					child = {...child, key: undefined};
 				}
 
 				if (isKeyedElement(child)) {
-					let keyedHost = this.hostsByKey.get(child.key);
+					let keyedHost = this.hostsByKey && this.hostsByKey.get(child.key);
 					if (keyedHost === undefined) {
 						keyedHost = new Host(this, this.renderer);
 					} else {
-						this.hostsByKey.delete(child.key);
+						this.hostsByKey!.delete(child.key);
 						if (host !== keyedHost) {
 							this.removeChild(keyedHost);
 						}
@@ -619,6 +624,10 @@ class Host<T> {
 					}
 
 					host = keyedHost;
+					if (hostsByKey === undefined) {
+						hostsByKey = new Map();
+					}
+
 					hostsByKey.set(child.key, keyedHost);
 				} else if (host === undefined) {
 					host = new Host(this, this.renderer);
@@ -639,7 +648,7 @@ class Host<T> {
 		}
 
 		while (host !== undefined) {
-			if (isKeyedElement(host.guest)) {
+			if (isKeyedElement(host.guest) && this.hostsByKey) {
 				this.hostsByKey.delete(host.guest.key);
 			}
 
@@ -648,24 +657,27 @@ class Host<T> {
 			host = host.nextSibling;
 		}
 
-		for (const host of this.hostsByKey.values()) {
-			// TODO: implement async unmount for keyed hosts
-			void host.unmount();
-			this.removeChild(host);
+		if (this.hostsByKey) {
+			for (const host of this.hostsByKey.values()) {
+				// TODO: implement async unmount for keyed hosts
+				void host.unmount();
+				this.removeChild(host);
+			}
 		}
 
 		this.hostsByKey = hostsByKey;
 		if (promises.length) {
-			return Promise.all(promises).then(() => {
-				this.commit();
-				return undefined; // void :(
-			});
+			return Promise.all(promises).then(() => void this.commit()); // void :(
 		} else {
 			this.commit();
 		}
 	});
 
 	commit(): void {
+		if (this.ctx === undefined) {
+			return;
+		}
+
 		this.cachedChildNodes = undefined;
 		if (isElement(this.guest)) {
 			if (typeof this.guest.tag === "function") {
@@ -674,23 +686,22 @@ class Host<T> {
 					this.parent.commit();
 				}
 			} else {
-				if (this.intrinsic !== undefined) {
-					if (this.committer === undefined) {
-						const value = this.intrinsic.call(this.ctx, this.guest.props);
-						if (isIteratorOrAsyncIterator(value)) {
-							this.committer = value;
-						} else {
-							this.node = value;
-						}
+				if (this.committer === undefined && this.intrinsic !== undefined) {
+					const value = this.intrinsic.call(this.ctx, this.guest.props);
+					if (isIteratorOrAsyncIterator(value)) {
+						this.committer = value;
+					} else {
+						this.node = value;
 					}
+				}
 
-					if (this.committer !== undefined) {
-						const iteration = this.committer.next();
-						this.node = iteration.value;
-						if (iteration.done) {
-							this.committer = undefined;
-							this.intrinsic = undefined;
-						}
+				if (this.committer !== undefined) {
+					const iteration = this.committer.next();
+					this.node = iteration.value;
+					if (iteration.done) {
+						this.committer = undefined;
+						this.intrinsic = undefined;
+						this.ctx = undefined;
 					}
 				}
 			}
@@ -699,23 +710,25 @@ class Host<T> {
 		this.updating = false;
 	}
 
+	// TODO: it would be better just to not reuse hosts
 	unmount(): void {
+		this.async = false;
+		this.node = undefined;
+		this.guest = undefined;
+		this.intrinsic = undefined;
+		this.pending = undefined;
+		this.enqueued = undefined;
+		this.hostsByKey = undefined;
 		if (this.ctx !== undefined) {
 			this.ctx.dispatchEvent(new Event("crank.unmount"));
 			this.ctx.removeAllEventListeners();
 			this.ctx = undefined;
 		}
 
-		this.node = undefined;
-		this.guest = undefined;
-		this.async = false;
-		this.intrinsic = undefined;
-		this.pending = undefined;
-		this.enqueued = undefined;
-		this.hostsByKey = new Map();
-		// TODO: this should only work if the host is keyed
+		// TODO: await the return if the host is keyed and commit the parent
 		if (this.iterator !== undefined) {
 			void this.iterator.return();
+			this.iterator = undefined;
 		}
 
 		if (this.committer && this.committer.return) {
@@ -724,12 +737,12 @@ class Host<T> {
 		}
 
 		this.unmountChildren();
-		this.commit();
 	}
 
 	unmountChildren(): void {
 		let host: Host<T> | undefined = this.firstChild;
 		while (host !== undefined) {
+			// TODO: catch errors
 			void host.unmount();
 			host = host.nextSibling;
 		}
@@ -780,14 +793,19 @@ export class Context<T = any> extends CrankEventTarget {
 	}
 }
 
-export type ChildIterator =
-	| Iterator<MaybePromiseLike<Child>>
-	| AsyncIterator<Child>;
-
 export type FunctionComponent = (
 	this: Context,
 	props: Props,
 ) => MaybePromiseLike<Child>;
+
+export type ChildIterator =
+	| Iterator<MaybePromiseLike<Child>>
+	| AsyncIterator<Child>;
+
+// TODO: if we use this abstraction we possibly run into a situation where
+type ChildIteratorResult = MaybePromise<
+	IteratorResult<MaybePromiseLike<Child>>
+>;
 
 export type GeneratorComponent = (this: Context, props: Props) => ChildIterator;
 
@@ -799,16 +817,11 @@ export type Component = (
 	props: Props,
 ) => ChildIterator | MaybePromiseLike<Child>;
 
-// TODO: if we use this abstraction we possibly run into a situation where
-type ComponentIteratorResult = MaybePromise<
-	IteratorResult<MaybePromiseLike<Child>>
->;
-
 class ComponentIterator {
 	private iter?: ChildIterator;
 	constructor(private component: Component, private ctx: Context) {}
 
-	private initialize(next: any): ComponentIteratorResult {
+	private initialize(next: any): ChildIteratorResult {
 		const value = this.component.call(this.ctx, this.ctx.props);
 		if (isIteratorOrAsyncIterator(value)) {
 			this.iter = value;
@@ -818,7 +831,7 @@ class ComponentIterator {
 		return {value, done: false};
 	}
 
-	next(next: any): ComponentIteratorResult {
+	next(next: any): ChildIteratorResult {
 		if (this.iter === undefined) {
 			// TODO: should this be here?
 			this.ctx.removeAllEventListeners();
@@ -828,7 +841,7 @@ class ComponentIterator {
 		}
 	}
 
-	return(value?: any): ComponentIteratorResult {
+	return(value?: any): ChildIteratorResult {
 		if (this.iter === undefined || typeof this.iter.return !== "function") {
 			return {value: undefined, done: true};
 		} else {
