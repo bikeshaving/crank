@@ -1380,6 +1380,8 @@ describe("async generator component", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
 		await render(
 			<div>
 				<Component message="Hello 2" />
@@ -1387,12 +1389,16 @@ describe("async generator component", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
 		await render(
 			<div>
 				<Component message="Hello 3" />
 			</div>,
 			document.body,
 		);
+		expect(document.body.innerHTML).toEqual("<div><span>Final</span></div>");
+		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(document.body.innerHTML).toEqual("<div><span>Final</span></div>");
 		expect(Component).toHaveBeenCalledTimes(1);
 	});
