@@ -508,11 +508,12 @@ class Host<T> {
 			if (isPromiseLike(iteration)) {
 				this.async = true;
 				return iteration.then((iteration) => {
-					if (!iteration.done) {
-						this.pending = this.step();
-					} else {
+					if (iteration.done) {
 						this.iterator = undefined;
 						this.ctx = undefined;
+					} else {
+						this.pending = undefined;
+						this.run();
 					}
 
 					this.maxRunId = Math.max(runId, this.maxRunId);
@@ -532,9 +533,7 @@ class Host<T> {
 	}
 
 	run(): MaybePromise<undefined> {
-		if (this.async) {
-			return this.pending;
-		} else if (this.pending === undefined) {
+		if (this.pending === undefined) {
 			this.pending = new Pledge(this.step()).finally(() => {
 				if (!this.async) {
 					this.pending = this.enqueued;
@@ -542,6 +541,8 @@ class Host<T> {
 				}
 			});
 
+			return this.pending;
+		} else if (this.async) {
 			return this.pending;
 		} else if (this.enqueued === undefined) {
 			this.enqueued = this.pending
