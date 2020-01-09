@@ -1,0 +1,32 @@
+.navbar {
+	display: flex;
+	justify-content: center;
+	margin: 30px 0;
+}
+
+.root {
+	font-family: sans-serif;
+	max-width: 800px;
+	margin: 0 auto;
+}
+
+.story {
+	margin: 30px 0;
+}
+
+.meta {
+	color: #484848;
+}
+
+.replies {
+	margin-left: 30px;
+}
+
+.comment {
+	margin: 30px 0;
+}
+
+.pager {
+	display: flex;
+	justify-content: center;
+}

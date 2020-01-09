@@ -1,62 +1,86 @@
 /** @jsx createElement */
-import {createElement, render} from "crank";
+import {createElement, Fragment, render} from "crank";
+import "./index.css";
 
-function Comment({comment}) {
-	let replies;
-	if (Array.isArray(comment.comments) && comment.comments.length) {
-		replies = (
-			<div class="replies" style={{marginLeft: "30px"}}>
-				{comment.comments.map((reply) => <Comment crank-key={reply.id} comment={reply}/>)}
+function *Comment({comment}) {
+	let expanded = true;
+	this.addEventListener("click", (ev) => {
+		if (ev.target.tagName.toUpperCase() === "BUTTON") {
+			expanded = !expanded;
+			this.refresh();
+			ev.stopPropagation();
+		}
+	});
+
+	for ({comment} of this) {
+		yield (
+			<div class="comment">
+				<p>
+					<button>{expanded ? "[-]" : "[+]"}</button> <a href="">{comment.user}</a> {comment.time_ago}
+				</p>
+				<div style={{display: expanded ? "block" : "none"}}>
+					<p innerHTML={comment.content} />
+					<div class="replies">
+						{
+							comment.comments.map(
+								(reply) => <Comment crank-key={reply.id} comment={reply} />,
+							)
+						}
+					</div>
+				</div>
 			</div>
 		);
 	}
-	return (
-		<div>
-			<p>{comment.user} {comment.time_ago}</p>
-			<p innerHTML={comment.content} />
-			{replies}
-		</div>
-	);
 }
 
 async function Item({id}) {
 	const result = await fetch(`https://api.hnpwa.com/v0/item/${id}.json`);
 	const item = await result.json();
-	const comments = item.comments.map((comment) => (
-		<Comment comment={comment} crank-key={comment.id} />
-	));
 	return (
-		<article>
-			<a href={item.url}>
-				<h1>{item.title}</h1>
-				<small>{item.domain}</small>
-			</a>
-			<p class="meta">submitted by {item.user} {item.time_ago}</p>
-			{comments}
-		</article>
+		<div>
+			<a href={item.url}><h1>{item.title}</h1></a>
+			<p class="domain">{item.domain}</p>
+			<p class="meta">submitted by <a>{item.user}</a> {item.time_ago}</p>
+			{
+				item.comments.map(
+					(comment) => <Comment comment={comment} crank-key={comment.id}/>
+				)
+			}
+		</div>
 	);
 }
 
 function Story({story}) {
 	return (
-		<div>
+		<li class="story">
+			<a href={story.url}>{story.title}</a> <span>({story.domain})</span>
+			<p class="meta">
+				<span>{story.points} points by <a href="">{story.user}</a></span> {story.time_ago} | <a href={`#/item/${story.id}`}>{story.comments_count} comments</a>
+			</p>
+		</li>
+	);
+}
+
+function Pager({page}) {
+	return (
+		<div class="pager">
 			<div>
-				<a href={story.url}>{story.title}</a> <span>({story.domain})</span>
-			</div>
-			<div>
-				{story.points} points by <a href="">{story.user}</a> {story.time_ago}
-				| <a href={`#/item/${story.id}`}>{story.comments_count} comments</a>
+				<a>Previous </a> {page}/25 <a>Next</a>
 			</div>
 		</div>
 	);
 }
 
-async function News({page}) {
+async function List({page, start=1}) {
 	const result = await fetch(`https://api.hnpwa.com/v0/news/${page}.json`);
 	const stories = await result.json();
 	const items = stories.map((story) => <Story story={story} crank-key={story.id} />);
 	return (
-		<div>{items}</div>
+		<Fragment>
+			<Pager page={page} />
+			<ol start={start}>{items}</ol>
+			<Pager page={page} />
+		</Fragment>
 	);
 }
 
@@ -66,11 +90,16 @@ function parseHash(hash) {
 		if (id) {
 			return {route: "item", id};
 		}
+	} else if (hash.startsWith("#/top/")) {
+		const page = parseInt(hash.slice(6)) || 1;
+		if (!Number.isNaN(page)) {
+			return {route: "top", page};
+		}
 	}
 }
 
-async function Loading() {
-	await new Promise((resolve) => setTimeout(resolve, 1000));
+async function Loading({wait = 2000}) {
+	await new Promise((resolve) => setTimeout(resolve, wait));
 	return "Loading...";
 }
 
@@ -96,11 +125,11 @@ async function *App() {
 			yield <Loading />;
 			switch (data.route) {
 				case "item": {
-					yield <Item id={data.id} />
+					yield <Item {...data} />;
 					break;
 				}
 				case "top": {
-					yield <News page={data.page} />;
+					yield <List {...data} />;
 					break;
 				}
 			}
@@ -110,4 +139,21 @@ async function *App() {
 	}
 }
 
-render(<App />, document.body.firstElementChild);
+function Navbar() {
+	return (
+		<div class="navbar">
+			Top New Show Ask Jobs
+		</div>
+	);
+}
+
+function Root() {
+	return (
+		<div class="root">
+			<Navbar />
+			<App />
+		</div>
+	);
+}
+
+render(<Root />, document.body.firstElementChild);
