@@ -501,7 +501,7 @@ class Host<T> extends Link {
 	private independent = false;
 	private step(): MaybePromiseLike<Child> {
 		if (this.ctx === undefined) {
-			throw new Error("Missing context"); 
+			throw new Error("Missing context");
 		} else if (!isComponentElement(this.guest)) {
 			throw new Error("Non-component element as guest");
 		}
@@ -522,8 +522,8 @@ class Host<T> extends Link {
 			this.independent = true;
 			return iteration.then((iteration) => {
 				if (iteration.done) {
-					this.iterator = undefined;
 					this.ctx = undefined;
+					this.iterator = undefined;
 				} else {
 					this.pending = undefined;
 					this.run();
@@ -536,57 +536,90 @@ class Host<T> extends Link {
 		}
 	}
 
+	// TODO: we won’t need these properties/checks if we stop reusing host nodes
 	private nextRunId = 0;
 	private maxRunId = -1;
-	private pending: MaybePromise<undefined>;
-	private enqueued: MaybePromise<undefined>;
+	private pending?: Promise<any>;
+	private enqueued?: Promise<any>;
 	run(): MaybePromise<undefined> {
 		if (this.pending === undefined) {
-			const child = this.step();
+			let child = this.step();
 			if (isPromiseLike(child)) {
 				const runId = this.nextRunId++;
-				this.pending = Promise.resolve(child)
-					.then((child) => {
+				if (this.iterator === undefined) {
+					this.pending = Promise.resolve(child)
+						.then(() => undefined) // void :(
+						.finally(() => {
+							this.pending = this.enqueued;
+							this.enqueued = undefined;
+						});
+
+					return Promise.resolve(child).then((child) => {
 						this.maxRunId = Math.max(runId, this.maxRunId);
 						if (runId === this.maxRunId) {
 							return this.updateChildren(child);
 						}
-					})
-					.finally(() => {
-						if (!this.independent) {
-							this.pending = this.enqueued;
-							this.enqueued = undefined;
+					});
+				} else {
+					this.pending = Promise.resolve(child).then((child) => {
+						this.maxRunId = Math.max(runId, this.maxRunId);
+						if (runId === this.maxRunId) {
+							return this.updateChildren(child);
 						}
 					});
+
+					if (!this.independent) {
+						this.pending.finally(() => {
+							this.pending = this.enqueued;
+							this.enqueued = undefined;
+						});
+					}
+
+					return this.pending;
+				}
+			} else if (this.iterator !== undefined) {
+				this.pending = this.updateChildren(child);
+				return this.pending;
 			} else {
 				return this.updateChildren(child);
 			}
-
-			return this.pending;
 		} else if (this.independent) {
 			return this.pending;
 		} else if (this.enqueued === undefined) {
-			const runId = this.nextRunId++;
-			this.enqueued = this.pending
-				.then(
-					() => this.step(),
-					() => this.step(),
-				)
-				.then((child) => {
+			this.enqueued = this.pending.then(
+				() => this.step(),
+				() => this.step(),
+			);
+			if (this.iterator !== undefined) {
+				const runId = this.nextRunId++;
+				this.enqueued = this.enqueued.then((child) => {
 					this.maxRunId = Math.max(runId, this.maxRunId);
 					if (runId === this.maxRunId) {
 						return this.updateChildren(child);
 					}
-				})
-				.finally(() => {
-					if (!this.independent) {
-						this.pending = this.enqueued;
-						this.enqueued = undefined;
-					}
 				});
+
+				this.enqueued.finally(() => {
+					this.pending = this.enqueued;
+					this.enqueued = undefined;
+				});
+
+				return this.enqueued;
+			}
 		}
 
-		return this.enqueued;
+		this.enqueued.finally(() => {
+			this.pending = this.enqueued;
+			this.enqueued = undefined;
+		});
+
+		const runId = this.nextRunId++;
+		return this.enqueued.then((child) => {
+			this.maxRunId = Math.max(runId, this.maxRunId);
+			if (runId === this.maxRunId) {
+				return this.updateChildren(child);
+			}
+		});
 	}
 
 	refresh(): MaybePromise<undefined> {
@@ -829,7 +862,7 @@ export type FunctionComponent = (
 
 export type ChildIterator =
 	| Iterator<MaybePromiseLike<Child>, any, any>
-	| AsyncIterator<Child, any, any>;
+	| AsyncIterator<MaybePromiseLike<Child>, any, any>;
 
 // TODO: if we use this abstraction we possibly run into a situation where
 type ChildIteratorResult = MaybePromise<
