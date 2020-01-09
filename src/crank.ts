@@ -407,7 +407,7 @@ class Host<T> extends Link {
 	// TODO: maybe rename these properties to “value” and “cachedChildValues”
 	private node?: T | string;
 	private cachedChildNodes?: (T | string)[];
-	private iterator?: ComponentIterator;
+	private iterator?: ChildIterator;
 	private intrinsic?: Intrinsic<T>;
 	private committer?: Iterator<T | undefined>;
 	private hostsByKey: Map<unknown, Host<T>> | undefined;
@@ -487,9 +487,7 @@ class Host<T> extends Link {
 			this.guest = guest;
 			if (isElement(guest)) {
 				this.ctx = new Context(this, this.parent && this.parent.ctx);
-				if (typeof guest.tag === "function") {
-					this.iterator = new ComponentIterator(guest.tag, this.ctx);
-				} else if (guest.tag !== Fragment) {
+				if (typeof guest.tag !== "function" && guest.tag !== Fragment) {
 					this.intrinsic = this.renderer.intrinsicFor(guest.tag);
 				}
 			}
@@ -500,63 +498,88 @@ class Host<T> extends Link {
 		return this.refresh();
 	}
 
-	private async = false;
+	private independent = false;
+	private step(): MaybePromiseLike<Child> {
+		if (this.ctx === undefined) {
+			throw new Error("Missing context"); 
+		} else if (!isComponentElement(this.guest)) {
+			throw new Error("Non-component element as guest");
+		}
+
+		if (this.iterator === undefined) {
+			this.ctx.removeAllEventListeners();
+			const value = this.guest.tag.call(this.ctx, this.guest.props);
+			if (isIteratorOrAsyncIterator(value)) {
+				this.iterator = value;
+			} else {
+				return value;
+			}
+		}
+
+		// TODO: call next with a promise for async generator components
+		const iteration = this.iterator.next(this.childNodeOrNodes);
+		if (isPromiseLike(iteration)) {
+			this.independent = true;
+			return iteration.then((iteration) => {
+				if (iteration.done) {
+					this.iterator = undefined;
+					this.ctx = undefined;
+				} else {
+					this.pending = undefined;
+					this.run();
+				}
+
+				return iteration.value;
+			});
+		} else {
+			return iteration.value;
+		}
+	}
+
 	private nextRunId = 0;
 	private maxRunId = -1;
 	private pending: MaybePromise<undefined>;
 	private enqueued: MaybePromise<undefined>;
-	private step(): MaybePromise<undefined> {
-		if (this.iterator !== undefined) {
-			const runId = this.nextRunId++;
-			// TODO: yield a possible promise for async generator components
-			const iteration = this.iterator.next(this.childNodeOrNodes);
-			if (isPromiseLike(iteration)) {
-				this.async = true;
-				return iteration.then((iteration) => {
-					if (iteration.done) {
-						this.iterator = undefined;
-						this.ctx = undefined;
-					} else {
-						this.pending = undefined;
-						this.run();
-					}
-
-					this.maxRunId = Math.max(runId, this.maxRunId);
-					if (runId === this.maxRunId) {
-						return this.updateChildren(iteration.value);
-					}
-				});
-			} else {
-				return new Pledge(iteration.value).then((child) => {
-					this.maxRunId = Math.max(runId, this.maxRunId);
-					if (runId === this.maxRunId) {
-						return this.updateChildren(child);
-					}
-				});
-			}
-		}
-	}
-
 	run(): MaybePromise<undefined> {
 		if (this.pending === undefined) {
-			this.pending = new Pledge(this.step()).finally(() => {
-				if (!this.async) {
-					this.pending = this.enqueued;
-					this.enqueued = undefined;
-				}
-			});
+			const child = this.step();
+			if (isPromiseLike(child)) {
+				const runId = this.nextRunId++;
+				this.pending = Promise.resolve(child)
+					.then((child) => {
+						this.maxRunId = Math.max(runId, this.maxRunId);
+						if (runId === this.maxRunId) {
+							return this.updateChildren(child);
+						}
+					})
+					.finally(() => {
+						if (!this.independent) {
+							this.pending = this.enqueued;
+							this.enqueued = undefined;
+						}
+					});
+			} else {
+				return this.updateChildren(child);
+			}
 
 			return this.pending;
-		} else if (this.async) {
+		} else if (this.independent) {
 			return this.pending;
 		} else if (this.enqueued === undefined) {
+			const runId = this.nextRunId++;
 			this.enqueued = this.pending
 				.then(
 					() => this.step(),
 					() => this.step(),
 				)
+				.then((child) => {
+					this.maxRunId = Math.max(runId, this.maxRunId);
+					if (runId === this.maxRunId) {
+						return this.updateChildren(child);
+					}
+				})
 				.finally(() => {
-					if (!this.async) {
+					if (!this.independent) {
 						this.pending = this.enqueued;
 						this.enqueued = undefined;
 					}
@@ -718,7 +741,7 @@ class Host<T> extends Link {
 
 	// TODO: it would be better just to not reuse hosts
 	unmount(): void {
-		this.async = false;
+		this.independent = false;
 		this.node = undefined;
 		this.guest = undefined;
 		this.intrinsic = undefined;
@@ -732,7 +755,7 @@ class Host<T> extends Link {
 		}
 
 		// TODO: await the return if the host is keyed and commit the parent
-		if (this.iterator !== undefined) {
+		if (this.iterator !== undefined && this.iterator.return) {
 			void this.iterator.return();
 			this.iterator = undefined;
 		}
@@ -805,8 +828,8 @@ export type FunctionComponent = (
 ) => MaybePromiseLike<Child>;
 
 export type ChildIterator =
-	| Iterator<MaybePromiseLike<Child>>
-	| AsyncIterator<Child>;
+	| Iterator<MaybePromiseLike<Child>, any, any>
+	| AsyncIterator<Child, any, any>;
 
 // TODO: if we use this abstraction we possibly run into a situation where
 type ChildIteratorResult = MaybePromise<
@@ -822,46 +845,6 @@ export type Component = (
 	this: Context,
 	props: Props,
 ) => ChildIterator | MaybePromiseLike<Child>;
-
-class ComponentIterator {
-	private iter?: ChildIterator;
-	constructor(private component: Component, private ctx: Context) {}
-
-	private initialize(next: any): ChildIteratorResult {
-		const value = this.component.call(this.ctx, this.ctx.props);
-		if (isIteratorOrAsyncIterator(value)) {
-			this.iter = value;
-			return this.iter.next(next);
-		}
-
-		return {value, done: false};
-	}
-
-	next(next: any): ChildIteratorResult {
-		if (this.iter === undefined) {
-			// TODO: should this be here?
-			this.ctx.removeAllEventListeners();
-			return this.initialize(next);
-		} else {
-			return this.iter.next(next);
-		}
-	}
-
-	return(value?: any): ChildIteratorResult {
-		if (this.iter === undefined || typeof this.iter.return !== "function") {
-			return {value: undefined, done: true};
-		} else {
-			const iteration = this.iter.return(value);
-			this.iter = undefined;
-			return iteration;
-		}
-	}
-
-	throw(error: any): never {
-		// TODO: throw error into inner iterator
-		throw error;
-	}
-}
 
 export interface Environment<T> {
 	[Default](tag: string): Intrinsic<T>;
