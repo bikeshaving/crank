@@ -341,81 +341,86 @@ function chase<Return, This>(
 	};
 }
 
+class Link {
+	protected parent?: Link;
+	protected firstChild?: Link;
+	protected lastChild?: Link;
+	protected nextSibling?: Link;
+	protected previousSibling?: Link;
+	protected insertBefore(link: Link, newLink: Link): void {
+		newLink.nextSibling = link;
+		if (link.previousSibling === undefined) {
+			newLink.previousSibling = undefined;
+			this.firstChild = newLink;
+		} else {
+			newLink.previousSibling = link.previousSibling;
+			link.previousSibling.nextSibling = newLink;
+		}
+
+		link.previousSibling = newLink;
+	}
+
+	protected insertAfter(link: Link, newLink: Link): void {
+		newLink.previousSibling = link;
+		if (link.nextSibling === undefined) {
+			newLink.nextSibling = undefined;
+			this.lastChild = newLink;
+		} else {
+			newLink.nextSibling = link.nextSibling;
+			link.nextSibling.previousSibling = newLink;
+		}
+
+		link.nextSibling = newLink;
+	}
+
+	protected appendChild(link: Link): void {
+		if (this.lastChild === undefined) {
+			this.firstChild = link;
+			this.lastChild = link;
+			link.previousSibling = undefined;
+			link.nextSibling = undefined;
+		} else {
+			this.insertAfter(this.lastChild, link);
+		}
+	}
+
+	protected removeChild(link: Link): void {
+		if (link.previousSibling === undefined) {
+			this.firstChild = link.nextSibling;
+		} else {
+			link.previousSibling.nextSibling = link.nextSibling;
+		}
+
+		if (link.nextSibling === undefined) {
+			this.lastChild = link.previousSibling;
+		} else {
+			link.nextSibling.previousSibling = link.previousSibling;
+		}
+	}
+}
+
 // TODO: don’t re-use hosts per tag and key
-class Host<T> {
+class Host<T> extends Link {
 	guest?: Guest;
 	ctx?: Context<T>;
 	private updating = false;
+	// TODO: maybe rename these properties to “value” and “cachedChildValues”
 	private node?: T | string;
 	private cachedChildNodes?: (T | string)[];
 	private iterator?: ComponentIterator;
 	private intrinsic?: Intrinsic<T>;
 	private committer?: Iterator<T | undefined>;
-	// TODO: create hostsByKey on demand
 	private hostsByKey: Map<unknown, Host<T>> | undefined;
+	protected firstChild?: Host<T>;
+	protected lastChild?: Host<T>;
+	protected nextSibling?: Host<T>;
+	protected previousSibling?: Host<T>;
 	constructor(
-		parent: Host<T> | undefined,
+		protected parent: Host<T> | undefined,
 		// TODO: Figure out a way to not have to pass in a renderer
 		private renderer: Renderer<T>,
 	) {
-		this.parent = parent;
-	}
-
-	// TODO: move these properties to a superclass or mixin
-	private parent?: Host<T> | undefined;
-	private firstChild?: Host<T>;
-	private lastChild?: Host<T>;
-	private nextSibling?: Host<T>;
-	private previousSibling?: Host<T>;
-	private insertBefore(host: Host<T>, newHost: Host<T>): void {
-		newHost.nextSibling = host;
-		if (host.previousSibling === undefined) {
-			newHost.previousSibling = undefined;
-			this.firstChild = newHost;
-		} else {
-			newHost.previousSibling = host.previousSibling;
-			host.previousSibling.nextSibling = newHost;
-		}
-
-		host.previousSibling = newHost;
-	}
-
-	private insertAfter(host: Host<T>, newHost: Host<T>): void {
-		newHost.previousSibling = host;
-		if (host.nextSibling === undefined) {
-			newHost.nextSibling = undefined;
-			this.lastChild = newHost;
-		} else {
-			newHost.nextSibling = host.nextSibling;
-			host.nextSibling.previousSibling = newHost;
-		}
-
-		host.nextSibling = newHost;
-	}
-
-	private appendChild(host: Host<T>): void {
-		if (this.lastChild === undefined) {
-			this.firstChild = host;
-			this.lastChild = host;
-			host.previousSibling = undefined;
-			host.nextSibling = undefined;
-		} else {
-			this.insertAfter(this.lastChild, host);
-		}
-	}
-
-	private removeChild(host: Host<T>): void {
-		if (host.previousSibling === undefined) {
-			this.firstChild = host.nextSibling;
-		} else {
-			host.previousSibling.nextSibling = host.nextSibling;
-		}
-
-		if (host.nextSibling === undefined) {
-			this.lastChild = host.previousSibling;
-		} else {
-			host.nextSibling.previousSibling = host.previousSibling;
-		}
+		super();
 	}
 
 	get childNodes(): (T | string)[] {
