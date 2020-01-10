@@ -13,7 +13,7 @@
     "prebuild": "yarn run clean",
     "build": "rollup -c rollup.config.js",
     "clean": "shx rm -rf ./lib",
-    "lint": "eslint --ext .js,.ts,.tsx .",
+    "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "prepublishOnly": "yarn run test && yarn run build",
     "test": "jest --config jest.config.js --color --no-cache",
     "debug": "node --inspect-brk node_modules/.bin/jest --runInBand"
@@ -29,7 +29,6 @@
     "core-js": "^3.6.0",
     "eslint": "^6.8.0",
     "eslint-config-prettier": "^6.7.0",
-    "eslint-config-recommended-plus-types": "^1.0.0",
     "eslint-plugin-jest": "^23.1.1",
     "eslint-plugin-prettier": "^3.1.2",
     "eslint-plugin-react": "^7.17.0",

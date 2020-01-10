@@ -1209,11 +1209,6 @@ eslint-config-prettier@^6.7.0:
   dependencies:
     get-stdin "^6.0.0"
 
-eslint-config-recommended-plus-types@^1.0.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/eslint-config-recommended-plus-types/-/eslint-config-recommended-plus-types-1.0.0.tgz#aaf8e6d7d6b0cef98b2cf6aae6b7c7c059d2b4c8"
-  integrity sha512-LKFuUDjAmIoSLV+DmyXFHpDg61f3tYFak63r/Od1WrntMwZOOeiSXaiWTsrXh1BK+UUEz3Wr6VUtoJ7i6C6fUA==
-
 eslint-plugin-eslint-plugin@^2.1.0:
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/eslint-plugin-eslint-plugin/-/eslint-plugin-eslint-plugin-2.1.0.tgz#a7a00f15a886957d855feacaafee264f039e62d5"

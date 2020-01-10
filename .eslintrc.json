@@ -23,12 +23,16 @@
   ],
   "extends": [
     "eslint:recommended",
-    "recommended-plus-types",
     "plugin:jest/recommended",
     "plugin:prettier/recommended",
     "prettier/@typescript-eslint"
   ],
   "rules": {
+    "no-unused-vars": 0,
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {"varsIgnorePattern": "^_"}
+    ],
     "prettier/prettier": [
       "error",
       {
