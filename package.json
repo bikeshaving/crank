@@ -1,14 +1,16 @@
 {
-  "name": "crank",
-  "version": "0.1.0",
+  "name": "@bikeshaving/crank",
+  "version": "0.1.0-beta",
   "private": true,
-  "description": "I can’t believe I’m thinking about building my own web framework",
+  "description": "JSX",
   "files": [
-    "/lib"
+    "/lib",
+    "dom.js",
+    "dom.d.ts"
   ],
-  "main": "lib/index.cjs.js",
-  "module": "lib/index.esm.js",
-  "types": "lib/index.d.ts",
+  "main": "lib/crank.cjs.js",
+  "module": "lib/crank.js",
+  "types": "lib/crank.d.ts",
   "scripts": {
     "prebuild": "yarn run clean",
     "build": "rollup -c rollup.config.js",
