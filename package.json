@@ -8,7 +8,7 @@
     "dom.js",
     "dom.d.ts"
   ],
-  "main": "lib/crank.cjs.js",
+  "main": "lib/cjs/crank.js",
   "module": "lib/crank.js",
   "types": "lib/crank.d.ts",
   "scripts": {

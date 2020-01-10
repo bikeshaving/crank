@@ -2,7 +2,7 @@
 import "core-js";
 import {Repeater} from "@repeaterjs/repeater";
 import {createElement, Child, Context, Element, Fragment} from "../crank";
-import {render} from "../envs/dom";
+import {render} from "../dom";
 import "./_mutation-observer";
 import {createHTML} from "./_utils";
 

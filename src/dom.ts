@@ -1,4 +1,4 @@
-import {MaybePromise} from "../pledge";
+import {MaybePromise} from "./pledge";
 import {
 	Context,
 	Default,
@@ -8,7 +8,7 @@ import {
 	Props,
 	Renderer,
 	Root,
-} from "../crank";
+} from "./crank";
 
 export function updateDOMProps(
 	el: HTMLElement,
