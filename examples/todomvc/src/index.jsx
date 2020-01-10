@@ -14,10 +14,12 @@ function* Header() {
 		if (ev.target.tagName === "INPUT" && ev.keyCode === ENTER_KEY) {
 			title = title.trim();
 			if (title) {
-				this.dispatchEvent(new CustomEvent("todo.create", {
-					bubbles: true,
-					detail: {title},
-				}));
+				this.dispatchEvent(
+					new CustomEvent("todo.create", {
+						bubbles: true,
+						detail: {title},
+					}),
+				);
 				title = "";
 			}
 
@@ -45,15 +47,19 @@ function* TodoItem({todo}) {
 	let title = todo.title;
 	this.addEventListener("click", (ev) => {
 		if (ev.target.className === "toggle") {
-			this.dispatchEvent(new CustomEvent("todo.toggle", {
-				bubbles: true,
-				detail: {id: todo.id, completed: !todo.completed},
-			}));
+			this.dispatchEvent(
+				new CustomEvent("todo.toggle", {
+					bubbles: true,
+					detail: {id: todo.id, completed: !todo.completed},
+				}),
+			);
 		} else if (ev.target.className === "destroy") {
-			this.dispatchEvent(new CustomEvent("todo.destroy", {
-				bubbles: true,
-				detail: {id: todo.id},
-			}));
+			this.dispatchEvent(
+				new CustomEvent("todo.destroy", {
+					bubbles: true,
+					detail: {id: todo.id},
+				}),
+			);
 		}
 	});
 
@@ -80,15 +86,19 @@ function* TodoItem({todo}) {
 			active = false;
 			title = title.trim();
 			if (title) {
-				this.dispatchEvent(new CustomEvent("todo.edit", {
-					bubbles: true,
-					detail: {id: todo.id, title},
-				}));
+				this.dispatchEvent(
+					new CustomEvent("todo.edit", {
+						bubbles: true,
+						detail: {id: todo.id, title},
+					}),
+				);
 			} else {
-				this.dispatchEvent(new CustomEvent("todo.destroy", {
-					bubbles: true,
-					detail: {id: todo.id},
-				}));
+				this.dispatchEvent(
+					new CustomEvent("todo.destroy", {
+						bubbles: true,
+						detail: {id: todo.id},
+					}),
+				);
 			}
 		}
 	});
@@ -99,15 +109,19 @@ function* TodoItem({todo}) {
 			if (ev.target.className === "edit") {
 				active = false;
 				if (title) {
-					this.dispatchEvent(new CustomEvent("todo.edit", {
-						bubbles: true,
-						detail: {id: todo.id, title},
-					}));
+					this.dispatchEvent(
+						new CustomEvent("todo.edit", {
+							bubbles: true,
+							detail: {id: todo.id, title},
+						}),
+					);
 				} else {
-					this.dispatchEvent(new CustomEvent("todo.destroy", {
-						bubbles: true,
-						detail: {id: todo.id},
-					}));
+					this.dispatchEvent(
+						new CustomEvent("todo.destroy", {
+							bubbles: true,
+							detail: {id: todo.id},
+						}),
+					);
 				}
 			}
 		},
@@ -140,10 +154,12 @@ function Main({todos, filter}) {
 	const completed = todos.every((todo) => todo.completed);
 	this.addEventListener("click", (ev) => {
 		if (ev.target.className === "toggle-all") {
-			this.dispatchEvent(new CustomEvent("todo.toggleAll", {
-				bubbles: true,
-				detail: {completed: !completed},
-			}));
+			this.dispatchEvent(
+				new CustomEvent("todo.toggleAll", {
+					bubbles: true,
+					detail: {completed: !completed},
+				}),
+			);
 		}
 	});
 
@@ -153,9 +169,6 @@ function Main({todos, filter}) {
 		todos = todos.filter((todo) => todo.completed);
 	}
 
-	const items = todos.map((todo) =>
-		(<TodoItem todo={todo} crank-key={todo.id} />)
-	);
 	return (
 		<section class="main">
 			<input
@@ -165,7 +178,11 @@ function Main({todos, filter}) {
 				checked={completed}
 			/>
 			<label for="toggle-all">Mark all as complete</label>
-			<ul class="todo-list">{items}</ul>
+			<ul class="todo-list">
+				{todos.map((todo) => (
+					<TodoItem todo={todo} crank-key={todo.id} />
+				))}
+			</ul>
 		</section>
 	);
 }
@@ -174,7 +191,9 @@ function Filters({filter}) {
 	return (
 		<ul class="filters">
 			<li>
-				<a class={filter === "" ? "selected" : ""} href="#/">All</a>
+				<a class={filter === "" ? "selected" : ""} href="#/">
+					All
+				</a>
 			</li>
 			<li>
 				<a class={filter === "active" ? "selected" : ""} href="#/active">

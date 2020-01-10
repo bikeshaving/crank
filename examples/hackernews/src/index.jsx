@@ -2,10 +2,10 @@
 import {createElement, Fragment, render} from "crank";
 import "./index.css";
 
-function *Comment({comment}) {
+function* Comment({comment}) {
 	let expanded = true;
 	this.addEventListener("click", (ev) => {
-		if (ev.target.tagName.toUpperCase() === "BUTTON") {
+		if (ev.target.className === "expand") {
 			expanded = !expanded;
 			this.refresh();
 			ev.stopPropagation();
@@ -16,16 +16,17 @@ function *Comment({comment}) {
 		yield (
 			<div class="comment">
 				<p>
-					<button>{expanded ? "[-]" : "[+]"}</button> <a href="">{comment.user}</a> {comment.time_ago}
+					<a href="">{comment.user}</a> {comment.time_ago}{" "}
+					<button class="expand">
+						{expanded ? "[-]" : `[+${comment.comments_count}]`}
+					</button>
 				</p>
 				<div style={{display: expanded ? "block" : "none"}}>
 					<p innerHTML={comment.content} />
 					<div class="replies">
-						{
-							comment.comments.map(
-								(reply) => <Comment crank-key={reply.id} comment={reply} />,
-							)
-						}
+						{comment.comments.map((reply) => (
+							<Comment crank-key={reply.id} comment={reply} />
+						))}
 					</div>
 				</div>
 			</div>
@@ -38,14 +39,16 @@ async function Item({id}) {
 	const item = await result.json();
 	return (
 		<div>
-			<a href={item.url}><h1>{item.title}</h1></a>
+			<a href={item.url}>
+				<h1>{item.title}</h1>
+			</a>
 			<p class="domain">{item.domain}</p>
-			<p class="meta">submitted by <a>{item.user}</a> {item.time_ago}</p>
-			{
-				item.comments.map(
-					(comment) => <Comment comment={comment} crank-key={comment.id}/>
-				)
-			}
+			<p class="meta">
+				submitted by <a>{item.user}</a> {item.time_ago}
+			</p>
+			{item.comments.map((comment) => (
+				<Comment comment={comment} crank-key={comment.id} />
+			))}
 		</div>
 	);
 }
@@ -55,7 +58,11 @@ function Story({story}) {
 		<li class="story">
 			<a href={story.url}>{story.title}</a> <span>({story.domain})</span>
 			<p class="meta">
-				<span>{story.points} points by <a href="">{story.user}</a></span> {story.time_ago} | <a href={`#/item/${story.id}`}>{story.comments_count} comments</a>
+				<span>
+					{story.points} points by <a href="">{story.user}</a>
+				</span>{" "}
+				{story.time_ago} |{" "}
+				<a href={`#/item/${story.id}`}>{story.comments_count} comments</a>
 			</p>
 		</li>
 	);
@@ -71,10 +78,12 @@ function Pager({page}) {
 	);
 }
 
-async function List({page, start=1}) {
+async function List({page, start = 1}) {
 	const result = await fetch(`https://api.hnpwa.com/v0/news/${page}.json`);
 	const stories = await result.json();
-	const items = stories.map((story) => <Story story={story} crank-key={story.id} />);
+	const items = stories.map((story) => (
+		<Story story={story} crank-key={story.id} />
+	));
 	return (
 		<Fragment>
 			<Pager page={page} />
@@ -103,14 +112,14 @@ async function Loading({wait = 2000}) {
 	return "Loading...";
 }
 
-async function *App() {
+async function* App() {
 	let data;
 	const route = (ev) => {
 		const hash = window.location.hash;
 		data = parseHash(hash);
 		if (data == null) {
 			data = {route: "top", page: 1};
-			window.location.hash = "#/top/1";
+			window.location.hash = "#/";
 		}
 
 		if (ev) {
@@ -122,14 +131,14 @@ async function *App() {
 	route();
 	try {
 		for await (const _ of this) {
-			yield <Loading />;
+			yield (<Loading />);
 			switch (data.route) {
 				case "item": {
-					yield <Item {...data} />;
+					yield (<Item {...data} />);
 					break;
 				}
 				case "top": {
-					yield <List {...data} />;
+					yield (<List {...data} />);
 					break;
 				}
 			}
@@ -140,11 +149,7 @@ async function *App() {
 }
 
 function Navbar() {
-	return (
-		<div class="navbar">
-			Top New Show Ask Jobs
-		</div>
-	);
+	return <div class="navbar">Top New Show Ask Jobs</div>;
 }
 
 function Root() {
