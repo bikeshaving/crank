@@ -11,20 +11,19 @@ function* Header() {
 		title = ev.target.value;
 	});
 
-	this.addEventListener("keyup", (ev) => {
+	this.addEventListener("keydown", (ev) => {
 		if (ev.target.tagName === "INPUT" && ev.keyCode === ENTER_KEY) {
-			title = title.trim();
-			if (title) {
+			if (title.trim()) {
+				ev.preventDefault();
+				const title1 = title.trim();
+				title = "";
 				this.dispatchEvent(
 					new CustomEvent("todo.create", {
 						bubbles: true,
-						detail: {title},
+						detail: {title: title1},
 					}),
 				);
-				title = "";
 			}
-
-			this.refresh();
 		}
 	});
 
@@ -79,7 +78,7 @@ function* TodoItem({todo}) {
 		}
 	});
 
-	this.addEventListener("keyup", (ev) => {
+	this.addEventListener("keydown", (ev) => {
 		if (
 			ev.target.className === "edit" &&
 			(ev.keyCode === ENTER_KEY || ev.keyCode === ESC_KEY)
