@@ -24,7 +24,7 @@ function* Comment({comment}) {
 						{expanded ? "[-]" : `[+${comment.comments_count}]`}
 					</button>
 				</p>
-				<div style={{display: expanded ? undefined : "none"}}>
+				<div style={{display: expanded ? null : "none"}}>
 					<p innerHTML={comment.content} />
 					<div class="replies">
 						{comment.comments.map((reply) => (
