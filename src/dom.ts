@@ -16,34 +16,32 @@ export function updateDOMProps(
 	newProps: Props,
 ): void {
 	for (let name in Object.assign({}, props, newProps)) {
+		// TODO: throw an error if event props are found
 		if (name === "children") {
 			continue;
-		} else if (name === "className") {
-			name = "class";
 		}
-		// TODO: throw an error if event props are found
 
 		const value = props[name];
 		const newValue = newProps[name];
 		if (name === "style") {
-			if (typeof newValue === "string") {
-				el.setAttribute("style", newValue);
+			if (newValue == null) {
+				el.removeAttribute("style");
+			} else if (typeof newValue === "string") {
+				el.style.cssText = newValue;
 			} else {
 				for (const styleName in Object.assign({}, value, newValue)) {
-					const styleValue =
-						newValue[styleName] == null ? "" : newValue[styleName];
-					if (styleName in el.style) {
-						(el.style as any)[styleName] = styleValue;
-					} else {
-						el.style.setProperty(styleName, styleValue);
+					const styleValue = value && value[styleName];
+					const newStyleValue = newValue && newValue[styleName];
+					if (newStyleValue == null) {
+						el.style.removeProperty(styleName);
+					} else if (styleValue !== newStyleValue) {
+						el.style.setProperty(styleName, newStyleValue);
 					}
 				}
 			}
 		} else if (name in el) {
-			// TODO: check that there isn’t both innerHTML and children
 			(el as any)[name] = newValue;
 		} else {
-			name = name.toLowerCase();
 			if (newValue === true) {
 				el.setAttribute(name, "");
 			} else if (newValue === false || newValue == null) {
@@ -108,20 +106,6 @@ export function updateDOMChildren(
 }
 
 export const env: Environment<HTMLElement> = {
-	[Default](tag: string): Intrinsic<HTMLElement> {
-		return function* defaultDOM(this: Context, props): Generator<HTMLElement> {
-			const node = document.createElement(tag);
-			for (const newProps of this) {
-				updateDOMProps(node, props, newProps);
-				if (!("innerHTML" in newProps)) {
-					updateDOMChildren(node, this.childNodes);
-				}
-
-				yield node;
-				props = newProps;
-			}
-		};
-	},
 	*[Root](this: Context, {node}): Generator<HTMLElement> {
 		try {
 			for (const {node: newNode} of this) {
@@ -136,6 +120,21 @@ export const env: Environment<HTMLElement> = {
 		} finally {
 			updateDOMChildren(node);
 		}
+	},
+	[Default](tag: string): Intrinsic<HTMLElement> {
+		return function* defaultDOM(this: Context): Generator<HTMLElement> {
+			const node = document.createElement(tag);
+			let props: Props = {};
+			for (const props1 of this) {
+				updateDOMProps(node, props, props1);
+				if (!("innerHTML" in props1)) {
+					updateDOMChildren(node, this.childNodes);
+				}
+
+				yield node;
+				props = props1;
+			}
+		};
 	},
 };
 
