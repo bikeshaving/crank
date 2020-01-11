@@ -1,8 +1,8 @@
 /** @jsx createElement */
-import "./_mutation-observer";
 import {createElement, Fragment} from "../crank";
-import {createHTML} from "./_utils";
 import {render} from "../dom";
+import "./_mutation-observer";
+import {createHTML} from "./_utils";
 describe("render", () => {
 	let observer: MutationObserver;
 	function observe() {

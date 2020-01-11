@@ -1,8 +1,7 @@
-import {MaybePromise} from "./pledge";
 import {
+	Child,
 	Context,
 	Default,
-	Element,
 	Environment,
 	Intrinsic,
 	Props,
@@ -145,8 +144,8 @@ export class DOMRenderer extends Renderer<HTMLElement> {
 export const renderer = new DOMRenderer();
 
 export function render(
-	elem: Element | null | undefined,
+	child: Child,
 	node: HTMLElement,
-): MaybePromise<Context | undefined> {
-	return renderer.render(elem, node);
+): Promise<Context | undefined> | Context | undefined {
+	return renderer.render(child, node);
 }
