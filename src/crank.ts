@@ -408,16 +408,16 @@ class Host<T> extends Link {
 	ctx?: Context<T>;
 	private updating = false;
 	// TODO: maybe rename these properties to “value” and “cachedChildValues”
-	private node?: T | string;
-	private cachedChildNodes?: (T | string)[];
-	private iterator?: ChildIterator;
-	private intrinsic?: Intrinsic<T>;
-	private committer?: Iterator<T | undefined>;
-	private hostsByKey: Map<unknown, Host<T>> | undefined;
-	protected firstChild?: Host<T>;
-	protected lastChild?: Host<T>;
-	protected nextSibling?: Host<T>;
-	protected previousSibling?: Host<T>;
+	private node?: T | string = undefined;
+	private cachedChildNodes?: (T | string)[] = undefined;
+	private iterator?: ChildIterator = undefined;
+	private intrinsic?: Intrinsic<T> = undefined;
+	private committer?: Iterator<T | undefined> = undefined;
+	private hostsByKey?: Map<unknown, Host<T>> = undefined;
+	protected firstChild?: Host<T> = undefined;
+	protected lastChild?: Host<T> = undefined;
+	protected nextSibling?: Host<T> = undefined;
+	protected previousSibling?: Host<T> = undefined;
 	constructor(
 		protected parent: Host<T> | undefined,
 		// TODO: Figure out a way to not have to pass in a renderer
@@ -777,7 +777,6 @@ class Host<T> extends Link {
 		this.updating = false;
 	}
 
-	// TODO: it would be better just to not reuse hosts
 	unmount(): void {
 		this.independent = false;
 		this.node = undefined;
@@ -786,6 +785,7 @@ class Host<T> extends Link {
 		this.pending = undefined;
 		this.enqueued = undefined;
 		this.hostsByKey = undefined;
+		this.cachedChildNodes = undefined;
 		if (this.ctx !== undefined) {
 			this.ctx.dispatchEvent(new Event("crank.unmount"));
 			this.ctx.removeAllEventListeners();
@@ -807,7 +807,6 @@ class Host<T> extends Link {
 	}
 
 	unmountChildren(): void {
-		this.cachedChildNodes = undefined;
 		let host = this.firstChild;
 		while (host !== undefined) {
 			// TODO: catch errors
