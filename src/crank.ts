@@ -741,11 +741,11 @@ class Host<T> extends Link {
 	});
 
 	commit(): void {
+		this.cachedChildNodes = undefined;
 		if (this.ctx === undefined) {
 			return;
 		}
 
-		this.cachedChildNodes = undefined;
 		if (isElement(this.guest)) {
 			if (typeof this.guest.tag === "function") {
 				if (!this.updating && this.parent !== undefined) {
@@ -807,7 +807,8 @@ class Host<T> extends Link {
 	}
 
 	unmountChildren(): void {
-		let host: Host<T> | undefined = this.firstChild;
+		this.cachedChildNodes = undefined;
+		let host = this.firstChild;
 		while (host !== undefined) {
 			// TODO: catch errors
 			void host.unmount();

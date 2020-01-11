@@ -61,6 +61,70 @@ describe("render", () => {
 		]);
 	});
 
+	test("nested children", () => {
+		observe();
+		render(
+			<div id="1">
+				<div id="2">
+					<div id="3">Hi</div>
+				</div>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			'<div id="1"><div id="2"><div id="3">Hi</div></div></div>',
+		);
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{
+				addedNodes: [
+					createHTML(
+						'<div id="1"><div id="2"><div id="3">Hi</div></div></div>',
+					),
+				],
+			},
+		]);
+		render(<div id="1" />, document.body);
+		expect(document.body.innerHTML).toEqual('<div id="1"></div>');
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{
+				target: document.body.firstChild,
+				removedNodes: [createHTML('<div id="2"><div id="3">Hi</div></div>')],
+			},
+		]);
+	});
+
+	test("boolean replaces nested children", () => {
+		observe();
+		render(
+			<div id="1">
+				<div id="2">
+					<div id="3">Hi</div>
+				</div>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			'<div id="1"><div id="2"><div id="3">Hi</div></div></div>',
+		);
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{
+				addedNodes: [
+					createHTML(
+						'<div id="1"><div id="2"><div id="3">Hi</div></div></div>',
+					),
+				],
+			},
+		]);
+		render(<div id="1">{true}</div>, document.body);
+		expect(document.body.innerHTML).toEqual('<div id="1"></div>');
+		expect(observer.takeRecords()).toEqualMutationRecords([
+			{
+				target: document.body.firstChild,
+				removedNodes: [createHTML('<div id="2"><div id="3">Hi</div></div>')],
+			},
+		]);
+	});
+
 	test("attrs", () => {
 		render(
 			<Fragment>
