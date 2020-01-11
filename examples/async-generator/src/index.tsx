@@ -1,5 +1,6 @@
 /** @jsx createElement */
-import {Context, createElement, Element, render} from "crank";
+import {Context, createElement, Element} from "@bikeshaving/crank";
+import {render} from "@bikeshaving/crank/dom";
 const mount = document.getElementById("mount")!;
 const arr: number[] = [];
 async function* List(
@@ -13,8 +14,13 @@ async function* List(
 			yield (<div>Loading {elems.length} items...</div>);
 			await new Promise((resolve) => setTimeout(resolve, 4000));
 		}
-		const lis = elems.map((i) => <li>{i}</li>);
-		yield (<ul>{lis}</ul>);
+		yield (
+			<ul>
+				{elems.map((i) => (
+					<li crank-key={i}>{i}</li>
+				))}
+			</ul>
+		);
 		await new Promise((resolve) => setTimeout(resolve, 500));
 	}
 }

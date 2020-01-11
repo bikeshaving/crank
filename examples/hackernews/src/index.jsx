@@ -1,5 +1,8 @@
-/** @jsx createElement */
-import {createElement, Fragment, render} from "crank";
+/** @jsx createElement */ import {
+	createElement,
+	Fragment,
+} from "@bikeshaving/crank";
+import {render} from "@bikeshaving/crank/dom";
 import "./index.css";
 
 function* Comment({comment}) {
@@ -21,7 +24,7 @@ function* Comment({comment}) {
 						{expanded ? "[-]" : `[+${comment.comments_count}]`}
 					</button>
 				</p>
-				<div style={{display: expanded ? "block" : "none"}}>
+				<div style={{display: expanded ? undefined : "none"}}>
 					<p innerHTML={comment.content} />
 					<div class="replies">
 						{comment.comments.map((reply) => (
@@ -38,7 +41,7 @@ async function Item({id}) {
 	const result = await fetch(`https://api.hnpwa.com/v0/item/${id}.json`);
 	const item = await result.json();
 	return (
-		<div>
+		<div class="item">
 			<a href={item.url}>
 				<h1>{item.title}</h1>
 			</a>

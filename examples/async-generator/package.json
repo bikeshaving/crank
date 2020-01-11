@@ -8,13 +8,13 @@
   "scripts": {
     "build": "rollup -c rollup.config.js"
   },
+  "dependencies": {
+    "@bikeshaving/crank": "*"
+  },
   "devDependencies": {
     "rollup": "^1.20.0",
     "rollup-plugin-node-resolve": "^5.2.0",
     "rollup-plugin-typescript2": "^0.25.3",
     "typescript": "^3.6.3"
-  },
-  "dependencies": {
-    "crank": "../.."
   }
 }
