@@ -223,10 +223,13 @@ function isIteratorOrAsyncIterator(
 	return value != null && typeof value.next === "function";
 }
 
-// TODO: user-defined control tags?
 export const Default = Symbol.for("crank.Default");
 
 export type Default = typeof Default;
+
+export const Text = Symbol.for("crank.Text");
+
+export type Text = typeof Text;
 
 // TODO: We use any for symbol tags because typescript is dumb and doesn’t
 // allow symbols in jsx expressions.
@@ -491,6 +494,8 @@ class Host<T> extends Link {
 					this.intrinsic = this.renderer.intrinsicFor(guest.tag);
 				}
 			}
+		} else if (typeof guest === "string") {
+			this.guest = this.renderer.text(guest);
 		} else {
 			this.guest = guest;
 		}
@@ -881,6 +886,7 @@ export type Component = (
 
 export interface Environment<T> {
 	[Default](tag: string): Intrinsic<T>;
+	[Text]?(text: string): string;
 	[tag: string]: Intrinsic<T>; // Intrinsic<T> | Environment<T>;
 	// TODO: allow symbol index parameters when typescript gets its shit together
 	// [Root]: Intrinsic<T>;
@@ -948,6 +954,15 @@ export class Renderer<T> {
 		} else {
 			throw new Error(`Unknown tag for symbol ${tag.description}`);
 		}
+	}
+
+	text(text: string): string {
+		if (this.env[Text] !== undefined) {
+			// TODO: remove non-null assertion when typescript gets its shit together
+			return this.env[Text]!(text);
+		}
+
+		return text;
 	}
 
 	render(child: Child, node?: object): MaybePromise<Context<T> | undefined> {
