@@ -1,5 +1,6 @@
 /** @jsx createElement */
-import {createElement, Fragment, render} from "crank";
+import {createElement, Fragment} from "@bikeshaving/crank";
+import {render} from "@bikeshaving/crank/dom";
 
 const ENTER_KEY = 13;
 const ESC_KEY = 27;

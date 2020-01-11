@@ -1,8 +1,9 @@
 {
   "private": true,
   "dependencies": {
+    "@bikeshaving/crank": "../..",
     "core-js": "^3.6.0",
-    "crank": "../..",
+    "crank": "^0.0.8",
     "regenerator-runtime": "^0.13.3",
     "todomvc-app-css": "2.2.0",
     "todomvc-common": "^1.0.5"
