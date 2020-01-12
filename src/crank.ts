@@ -538,6 +538,11 @@ class Host<T> extends Link {
 				return iteration.value;
 			});
 		} else {
+			if (iteration.done) {
+				this.ctx = undefined;
+				this.iterator = undefined;
+			}
+
 			return iteration.value;
 		}
 	}
