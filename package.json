@@ -6,7 +6,9 @@
   "files": [
     "/lib",
     "dom.js",
-    "dom.d.ts"
+    "dom.d.ts",
+    "string.js",
+    "string.d.ts"
   ],
   "main": "lib/cjs/crank.js",
   "module": "lib/crank.js",
