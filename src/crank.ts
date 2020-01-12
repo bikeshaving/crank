@@ -617,6 +617,8 @@ class Host<T> extends Link {
 
 				return this.enqueued;
 			}
+		} else if (this.iterator !== undefined) {
+			return this.enqueued;
 		}
 
 		this.enqueued.finally(() => {
