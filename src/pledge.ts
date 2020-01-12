@@ -28,7 +28,7 @@ export function isPromiseLike(value: any): value is PromiseLike<any> {
 	return value != null && typeof value.then === "function";
 }
 
-function upgrade<T>(value: MaybePromiseLike<T>): MaybePromise<T> {
+export function upgrade<T>(value: MaybePromiseLike<T>): MaybePromise<T> {
 	if (isPromiseLike(value) && !(value instanceof Promise)) {
 		return Promise.resolve(value);
 	}
@@ -37,7 +37,7 @@ function upgrade<T>(value: MaybePromiseLike<T>): MaybePromise<T> {
 }
 
 /**
- * A pledge is like a promise, but eager.
+ * A pledge is like a promise, but more eager.
  */
 export class Pledge<T> {
 	private state: PromiseState<T>;
@@ -54,68 +54,68 @@ export class Pledge<T> {
 	}
 
 	then<TResult1 = T, TResult2 = never>(
-		onfulfilled?: ((value: T) => MaybePromiseLike<TResult1>) | null,
-		onrejected?: ((reason: any) => MaybePromiseLike<TResult2>) | null,
+		onFulfilled?: ((value: T) => MaybePromiseLike<TResult1>) | null,
+		onRejected?: ((reason: any) => MaybePromiseLike<TResult2>) | null,
 	): MaybePromise<TResult1 | TResult2> {
 		switch (this.state.status) {
 			case "fulfilled": {
-				if (onfulfilled == null) {
+				if (onFulfilled == null) {
 					return (this.state.value as unknown) as TResult1;
 				} else {
-					return upgrade(onfulfilled(this.state.value));
+					return upgrade(onFulfilled(this.state.value));
 				}
 			}
 			case "rejected": {
-				if (onrejected == null) {
+				if (onRejected == null) {
 					throw this.state.reason;
 				} else {
-					return upgrade(onrejected(this.state.reason));
+					return upgrade(onRejected(this.state.reason));
 				}
 			}
 			case "pending": {
-				return this.state.promise.then(onfulfilled, onrejected);
+				return this.state.promise.then(onFulfilled, onRejected);
 			}
 		}
 	}
 
 	catch<TResult = never>(
-		onrejected?: ((reason: any) => MaybePromiseLike<TResult>) | null,
+		onRejected?: ((reason: any) => MaybePromiseLike<TResult>) | null,
 	): MaybePromise<T | TResult> {
 		switch (this.state.status) {
 			case "fulfilled": {
 				return this.state.value;
 			}
 			case "rejected": {
-				if (onrejected == null) {
+				if (onRejected == null) {
 					throw this.state.reason;
 				} else {
-					return upgrade(onrejected(this.state.reason));
+					return upgrade(onRejected(this.state.reason));
 				}
 			}
 			case "pending": {
-				return this.state.promise.catch(onrejected);
+				return this.state.promise.catch(onRejected);
 			}
 		}
 	}
 
-	finally(onfinally?: (() => unknown) | null): MaybePromise<T> {
+	finally(onFinally?: (() => unknown) | null): MaybePromise<T> {
 		switch (this.state.status) {
 			case "fulfilled": {
-				if (onfinally != null) {
-					onfinally();
+				if (onFinally != null) {
+					onFinally();
 				}
 
 				return this.state.value;
 			}
 			case "rejected": {
-				if (onfinally != null) {
-					onfinally();
+				if (onFinally != null) {
+					onFinally();
 				}
 
 				throw this.state.reason;
 			}
 			case "pending": {
-				return this.state.promise.finally(onfinally);
+				return this.state.promise.finally(onFinally);
 			}
 		}
 	}

@@ -478,7 +478,6 @@ class Host<T> extends Link {
 		return this.childNodes[0];
 	}
 
-	// TODO: get this function onto the prototype, not the instance
 	update(guest: Guest): MaybePromise<undefined> {
 		this.updating = true;
 		if (
@@ -832,6 +831,10 @@ export class Context<T = any> extends CrankEventTarget {
 		return this.host.guest.props;
 	}
 
+	get node(): T | string | undefined {
+		return this.host.node;
+	}
+
 	get childNodes(): (T | string)[] {
 		return this.host.childNodes;
 	}
@@ -859,10 +862,6 @@ export class Context<T = any> extends CrankEventTarget {
 	// TODO: throw an error if refresh is called on an unmounted component
 	refresh(): MaybePromise<undefined> {
 		return this.host.refresh();
-	}
-
-	get node(): T | string | undefined {
-		return this.host.node;
 	}
 }
 
