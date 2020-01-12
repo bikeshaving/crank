@@ -646,9 +646,11 @@ class Host<T> extends Link {
 			if (typeof this.guest.tag === "function") {
 				return this.run();
 			} else {
+				this.maxRunId = ++this.nextRunId;
 				return this.updateChildren(this.guest.props.children);
 			}
 		} else {
+			this.maxRunId = ++this.nextRunId;
 			this.node = this.guest;
 		}
 	}
@@ -750,10 +752,6 @@ class Host<T> extends Link {
 
 	commit(): void {
 		this.cachedChildNodes = undefined;
-		if (this.ctx === undefined) {
-			return;
-		}
-
 		if (isElement(this.guest)) {
 			if (typeof this.guest.tag === "function") {
 				if (!this.updating && this.parent !== undefined) {
@@ -761,7 +759,11 @@ class Host<T> extends Link {
 					this.parent.commit();
 				}
 			} else {
-				if (this.committer === undefined && this.intrinsic !== undefined) {
+				if (
+					this.committer === undefined &&
+					this.intrinsic !== undefined &&
+					this.ctx !== undefined
+				) {
 					const value = this.intrinsic.call(this.ctx, this.guest.props);
 					if (isIteratorOrAsyncIterator(value)) {
 						this.committer = value;
@@ -778,6 +780,10 @@ class Host<T> extends Link {
 						this.intrinsic = undefined;
 						this.ctx = undefined;
 					}
+				}
+
+				if (this.node == null && this.parent !== undefined) {
+					this.parent.commit();
 				}
 			}
 		}
