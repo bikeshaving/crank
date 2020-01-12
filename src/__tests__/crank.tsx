@@ -301,6 +301,46 @@ describe("async function component", () => {
 		expect(t1! - t).toBeCloseTo(200, -2);
 		expect(t2! - t).toBeCloseTo(100, -2);
 	});
+
+	test("race with intrinsic", async () => {
+		async function Component(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			return <div>Async</div>;
+		}
+
+		const p = render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("");
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		render(<div>Async component blown away</div>, document.body);
+		expect(document.body.innerHTML).toEqual(
+			"<div>Async component blown away</div>",
+		);
+		await p;
+		expect(document.body.innerHTML).toEqual(
+			"<div>Async component blown away</div>",
+		);
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		expect(document.body.innerHTML).toEqual(
+			"<div>Async component blown away</div>",
+		);
+	});
+
+	test("race with value", async () => {
+		async function Component(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			return <div>Async</div>;
+		}
+
+		const p = render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("");
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		render("Async component blown away", document.body);
+		expect(document.body.innerHTML).toEqual("Async component blown away");
+		await p;
+		expect(document.body.innerHTML).toEqual("Async component blown away");
+		await new Promise((resolve) => setTimeout(resolve, 300));
+		expect(document.body.innerHTML).toEqual("Async component blown away");
+	});
 });
 
 describe("sync generator component", () => {
@@ -892,5 +932,26 @@ describe("async generator component", () => {
 		expect(Date.now() - t).toBeCloseTo(400, -2);
 		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
+	});
+
+	test("Fragment parent", async () => {
+		let resolve!: () => unknown;
+		async function* Component(this: Context) {
+			for await (const _ of this) {
+				yield 1;
+				await new Promise((resolve1) => (resolve = resolve1));
+				yield 2;
+			}
+		}
+		await render(
+			<Fragment>
+				<Component />
+			</Fragment>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("1");
+		resolve();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(document.body.innerHTML).toEqual("2");
 	});
 });
