@@ -223,10 +223,12 @@ function isIteratorOrAsyncIterator(
 	return value != null && typeof value.next === "function";
 }
 
+// TODO: rename
 export const Default = Symbol.for("crank.Default");
 
 export type Default = typeof Default;
 
+// TODO: rename
 export const Text = Symbol.for("crank.Text");
 
 export type Text = typeof Text;
@@ -404,11 +406,11 @@ class Link {
 
 // TODO: don’t re-use hosts per tag and key
 class Host<T> extends Link {
-	guest?: Guest;
 	ctx?: Context<T>;
+	guest?: Guest;
+	node?: T | string = undefined;
 	private updating = false;
 	// TODO: maybe rename these properties to “value” and “cachedChildValues”
-	private node?: T | string = undefined;
 	private cachedChildNodes?: (T | string)[] = undefined;
 	private iterator?: ChildIterator = undefined;
 	private intrinsic?: Intrinsic<T> = undefined;
@@ -857,6 +859,10 @@ export class Context<T = any> extends CrankEventTarget {
 	// TODO: throw an error if refresh is called on an unmounted component
 	refresh(): MaybePromise<undefined> {
 		return this.host.refresh();
+	}
+
+	get node(): T | string | undefined {
+		return this.host.node;
 	}
 }
 

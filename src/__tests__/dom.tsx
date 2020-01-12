@@ -130,6 +130,7 @@ describe("render", () => {
 			</Fragment>,
 			document.body,
 		);
+		// this expectation is based on non-standard jsdom innerHTML behavior
 		// jsdom doesn‘t seem to reflect checked property
 		expect(document.body.innerHTML).toEqual(
 			'<input id="toggle" type="checkbox" data-checked=""><label for="toggle"></label>',
