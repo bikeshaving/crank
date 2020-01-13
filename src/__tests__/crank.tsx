@@ -1,7 +1,7 @@
 /** @jsx createElement */
 import "core-js";
 import {Repeater} from "@repeaterjs/repeater";
-import {createElement, Child, Context, Element, Fragment} from "../crank";
+import {Copy, createElement, Child, Context, Element, Fragment} from "../crank";
 import {render} from "../dom";
 
 describe("sync function component", () => {
@@ -32,6 +32,27 @@ describe("sync function component", () => {
 	});
 
 	test("rerender different return value", () => {
+		function Component({message}: {message: string}): Element {
+			return <span>{message}</span>;
+		}
+
+		render(
+			<div>
+				<Component message="Hello" />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+		render(
+			<div>
+				<Copy />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+	});
+
+	test("rerender copy", () => {
 		function Component({ChildTag}: {ChildTag: string}): Element {
 			return <ChildTag>Hello world</ChildTag>;
 		}

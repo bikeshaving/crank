@@ -240,14 +240,13 @@ export const Root: any = Symbol.for("crank.Root") as any;
 
 export type Root = typeof Root;
 
-// TODO: implement the Copy tag
-// export const Copy = Symbol("crank.Copy") as any;
-//
-// export type Copy = typeof Copy;
-
 export const Fragment: any = Symbol.for("crank.Fragment") as any;
 
 export type Fragment = typeof Fragment;
+
+export const Copy: any = Symbol("crank.Copy") as any;
+
+export type Copy = typeof Copy;
 
 export type Tag = Component | symbol | string;
 
@@ -479,6 +478,10 @@ class Host<T> extends Link {
 	}
 
 	update(guest: Guest): MaybePromise<undefined> {
+		if (isElement(guest) && guest.tag === Copy) {
+			return;
+		}
+
 		this.updating = true;
 		if (
 			!isElement(this.guest) ||
@@ -491,6 +494,8 @@ class Host<T> extends Link {
 			this.guest = guest;
 			if (isElement(guest)) {
 				this.ctx = new Context(this, this.parent && this.parent.ctx);
+				// TODO: allow people to provide custom intrinsics for fragments to
+				// allow for stuff like an innerHTML property
 				if (typeof guest.tag !== "function" && guest.tag !== Fragment) {
 					this.intrinsic = this.renderer.intrinsicFor(guest.tag);
 				}
