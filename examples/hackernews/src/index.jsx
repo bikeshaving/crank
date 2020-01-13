@@ -1,8 +1,5 @@
 /** @jsx createElement */
-import {
-	createElement,
-	Fragment,
-} from "@crankjs/crank";
+import {createElement, Fragment} from "@crankjs/crank";
 import {render} from "@crankjs/crank/dom";
 import "./index.css";
 

@@ -407,15 +407,9 @@ describe("render", () => {
 	});
 
 	test("rerender copy", () => {
-		render(
-			<div>Hello</div>,
-			document.body,
-		);
+		render(<div>Hello</div>, document.body);
 		expect(document.body.innerHTML).toEqual("<div>Hello</div>");
-		render(
-			<Copy />,
-			document.body,
-		);
+		render(<Copy />, document.body);
 		expect(document.body.innerHTML).toEqual("<div>Hello</div>");
 	});
 
@@ -717,9 +711,7 @@ describe("render", () => {
 		const span5 = document.body.firstChild!.childNodes[4];
 		const span6 = document.body.firstChild!.childNodes[5];
 		const span7 = document.body.firstChild!.childNodes[6];
-		spans = spans.reverse().map((el) => (
-			<Copy crank-key={el.key} />
-		));
+		spans = spans.reverse().map((el) => <Copy crank-key={el.key} />);
 		render(
 			<div>
 				<span>1</span>
@@ -746,9 +738,7 @@ describe("render", () => {
 		expect(document.body.firstChild!.childNodes[4]).toBe(span3);
 		expect(document.body.firstChild!.childNodes[5]).toBe(span2);
 		expect(document.body.firstChild!.childNodes[6]).toBe(span7);
-		spans = spans.reverse().map((el) => (
-			<Copy crank-key={el.key} />
-		));
+		spans = spans.reverse().map((el) => <Copy crank-key={el.key} />);
 		render(
 			<div>
 				<span>1</span>
