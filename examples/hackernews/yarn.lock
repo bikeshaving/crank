@@ -696,6 +696,12 @@
     lodash "^4.17.13"
     to-fast-properties "^2.0.0"
 
+"@crankjs/crank@../..":
+  version "0.1.0-beta.0"
+  dependencies:
+    "@repeaterjs/repeater" "^3.0.1"
+    event-target-shim "^5.0.1"
+
 "@iarna/toml@^2.2.0":
   version "2.2.3"
   resolved "https://registry.yarnpkg.com/@iarna/toml/-/toml-2.2.3.tgz#f060bf6eaafae4d56a7dac618980838b0696e2ab"
@@ -1466,12 +1472,6 @@ cosmiconfig@^5.0.0:
     is-directory "^0.3.1"
     js-yaml "^3.13.1"
     parse-json "^4.0.0"
-
-crank@../..:
-  version "0.1.0"
-  dependencies:
-    "@repeaterjs/repeater" "^3.0.1"
-    event-target-shim "^5.0.1"
 
 create-ecdh@^4.0.0:
   version "4.0.3"

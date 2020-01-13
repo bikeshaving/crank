@@ -1,8 +1,9 @@
-/** @jsx createElement */ import {
+/** @jsx createElement */
+import {
 	createElement,
 	Fragment,
-} from "@bikeshaving/crank";
-import {render} from "@bikeshaving/crank/dom";
+} from "@crankjs/crank";
+import {render} from "@crankjs/crank/dom";
 import "./index.css";
 
 function* Comment({comment}) {

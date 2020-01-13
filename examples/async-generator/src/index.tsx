@@ -1,6 +1,6 @@
 /** @jsx createElement */
-import {Context, createElement, Element} from "@bikeshaving/crank";
-import {render} from "@bikeshaving/crank/dom";
+import {Context, createElement, Element} from "@crankjs/crank";
+import {render} from "@crankjs/crank/dom";
 const mount = document.getElementById("mount")!;
 const arr: number[] = [];
 async function* List(

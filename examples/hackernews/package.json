@@ -1,7 +1,7 @@
 {
   "private": true,
   "dependencies": {
-    "@bikeshaving/crank": "*",
+    "@crankjs/crank": "../..",
     "core-js": "^3.6.0",
     "regenerator-runtime": "^0.13.3"
   },

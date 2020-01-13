@@ -1,7 +1,7 @@
 {
-  "name": "@bikeshaving/crank",
-  "version": "0.1.0-beta",
-  "private": true,
+  "name": "@crankjs/crank",
+  "version": "0.1.0-beta.0",
+  "license": "MIT",
   "description": "JSX",
   "files": [
     "/lib",

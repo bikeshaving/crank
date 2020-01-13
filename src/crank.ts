@@ -171,7 +171,6 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 		}
 	}
 
-	// TODO: remove once listeners which were dispatched
 	// TODO: ev is any because event-target-shim has a weird dispatchEvent type
 	dispatchEvent(ev: any): boolean {
 		let continued = super.dispatchEvent(ev);
@@ -235,7 +234,6 @@ export type Text = typeof Text;
 
 // TODO: We use any for symbol tags because typescript is dumb and doesn’t
 // allow symbols in jsx expressions.
-// TODO: Rename to Container?
 export const Root: any = Symbol.for("crank.Root") as any;
 
 export type Root = typeof Root;
