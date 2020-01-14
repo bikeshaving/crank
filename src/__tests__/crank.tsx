@@ -727,6 +727,27 @@ describe("sync generator component", () => {
 		);
 		expect(mock).toHaveBeenCalledTimes(1);
 	});
+
+	test("yield resumes with a node", () => {
+		let html: string | undefined;
+		function* Component(): Generator<Element> {
+			let i = 0;
+			while (true) {
+				const node: any = yield (<div id={i}>{i}</div>);
+				html = node.outerHTML;
+				i++;
+			}
+		}
+
+		render(<Component />, document.body);
+		expect(html).toBeUndefined();
+		render(<Component />, document.body);
+		expect(html).toEqual('<div id="0">0</div>');
+		expect(document.body.innerHTML).toEqual('<div id="1">1</div>');
+		render(<Component />, document.body);
+		expect(html).toEqual('<div id="1">1</div>');
+		expect(document.body.innerHTML).toEqual('<div id="2">2</div>');
+	});
 });
 
 describe("async generator component", () => {
@@ -974,5 +995,26 @@ describe("async generator component", () => {
 		resolve();
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(document.body.innerHTML).toEqual("2");
+	});
+
+	test("yield resumes with a node", async () => {
+		let html: string | undefined;
+		async function* Component(this: Context) {
+			let i = 0;
+			for await (const _ of this) {
+				const node: any = yield (<div id={i}>{i}</div>);
+				html = node.outerHTML;
+				i++;
+			}
+		}
+
+		await render(<Component />, document.body);
+		expect(html).toBeUndefined();
+		await render(<Component />, document.body);
+		expect(html).toEqual('<div id="0">0</div>');
+		expect(document.body.innerHTML).toEqual('<div id="1">1</div>');
+		await render(<Component />, document.body);
+		expect(html).toEqual('<div id="1">1</div>');
+		expect(document.body.innerHTML).toEqual('<div id="2">2</div>');
 	});
 });
