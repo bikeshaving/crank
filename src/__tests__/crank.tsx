@@ -748,6 +748,48 @@ describe("sync generator component", () => {
 		expect(html).toEqual('<div id="1">1</div>');
 		expect(document.body.innerHTML).toEqual('<div id="2">2</div>');
 	});
+
+	test("generator returns", () => {
+		const Component = jest.fn(function* Component(): Generator<Child> {
+			yield "Hello";
+			return "Goodbye";
+		});
+
+		render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div>Hello</div>");
+		render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div>Goodbye</div>");
+		render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div>Goodbye</div>");
+		expect(Component).toHaveBeenCalledTimes(1);
+	});
 });
 
 describe("async generator component", () => {
@@ -997,7 +1039,7 @@ describe("async generator component", () => {
 		expect(document.body.innerHTML).toEqual("2");
 	});
 
-	test("yield resumes with a node", async () => {
+	test("yield resumes with an element", async () => {
 		let html: string | undefined;
 		async function* Component(this: Context) {
 			let i = 0;
@@ -1009,12 +1051,197 @@ describe("async generator component", () => {
 		}
 
 		await render(<Component />, document.body);
-		expect(html).toBeUndefined();
-		await render(<Component />, document.body);
 		expect(html).toEqual('<div id="0">0</div>');
-		expect(document.body.innerHTML).toEqual('<div id="1">1</div>');
+		expect(document.body.innerHTML).toEqual('<div id="0">0</div>');
 		await render(<Component />, document.body);
 		expect(html).toEqual('<div id="1">1</div>');
+		expect(document.body.innerHTML).toEqual('<div id="1">1</div>');
+		await render(<Component />, document.body);
+		expect(html).toEqual('<div id="2">2</div>');
 		expect(document.body.innerHTML).toEqual('<div id="2">2</div>');
+	});
+
+	test("yield resumes async children", async () => {
+		const t = Date.now();
+		const Async = jest.fn(async function Async({
+			id,
+		}: {
+			id: number;
+		}): Promise<Child> {
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			return <div id={id}>{id}</div>;
+		});
+
+		let html: Promise<string> | undefined;
+		async function* Component(this: Context) {
+			let i = 0;
+			for await (const _ of this) {
+				const node: any = yield (<Async id={i} />);
+				html = node.then((node: HTMLElement) => node.outerHTML);
+				await node;
+				i++;
+			}
+		}
+
+		await render(<Component />, document.body);
+		await expect(html).resolves.toEqual('<div id="0">0</div>');
+		expect(document.body.innerHTML).toEqual('<div id="0">0</div>');
+		expect(Date.now() - t).toBeCloseTo(100, -2);
+		await render(<Component />, document.body);
+		await expect(html).resolves.toEqual('<div id="1">1</div>');
+		expect(document.body.innerHTML).toEqual('<div id="1">1</div>');
+		expect(Date.now() - t).toBeCloseTo(200, -2);
+		await render(<Component />, document.body);
+		await expect(html).resolves.toEqual('<div id="2">2</div>');
+		expect(document.body.innerHTML).toEqual('<div id="2">2</div>');
+		expect(Date.now() - t).toBeCloseTo(300, -2);
+		expect(Async).toHaveBeenCalledTimes(3);
+	});
+
+	test("yield resumes async children concurrent calls", async () => {
+		const t = Date.now();
+		const Async = jest.fn(async function Async({
+			id,
+		}: {
+			id: number;
+		}): Promise<Child> {
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			return <div id={id}>{id}</div>;
+		});
+
+		let html: Promise<string> | undefined;
+		async function* Component(this: Context) {
+			let i = 0;
+			for await (const _ of this) {
+				const node: any = yield (<Async id={i} />);
+				html = node.then((node: HTMLElement) => node.outerHTML);
+				await node;
+				i++;
+			}
+		}
+
+		const p1 = render(<Component />, document.body);
+		const p2 = render(<Component />, document.body);
+		const p3 = render(<Component />, document.body);
+		const p4 = render(<Component />, document.body);
+		await p1;
+		await expect(html).resolves.toEqual('<div id="0">0</div>');
+		expect(document.body.innerHTML).toEqual('<div id="0">0</div>');
+		expect(Date.now() - t).toBeCloseTo(100, -2);
+		await p2;
+		await expect(html).resolves.toEqual('<div id="1">1</div>');
+		expect(document.body.innerHTML).toEqual('<div id="1">1</div>');
+		expect(Date.now() - t).toBeCloseTo(200, -2);
+		await p3;
+		await expect(html).resolves.toEqual('<div id="1">1</div>');
+		expect(document.body.innerHTML).toEqual('<div id="1">1</div>');
+		expect(Date.now() - t).toBeCloseTo(200, -2);
+		await p4;
+		await expect(html).resolves.toEqual('<div id="1">1</div>');
+		expect(document.body.innerHTML).toEqual('<div id="1">1</div>');
+		expect(Date.now() - t).toBeCloseTo(200, -2);
+		const p5 = render(<Component />, document.body);
+		const p6 = render(<Component />, document.body);
+		const p7 = render(<Component />, document.body);
+		const p8 = render(<Component />, document.body);
+		const p9 = render(<Component />, document.body);
+		await p5;
+		await expect(html).resolves.toEqual('<div id="2">2</div>');
+		expect(document.body.innerHTML).toEqual('<div id="2">2</div>');
+		expect(Date.now() - t).toBeCloseTo(300, -2);
+		await p6;
+		await expect(html).resolves.toEqual('<div id="2">2</div>');
+		expect(document.body.innerHTML).toEqual('<div id="2">2</div>');
+		expect(Date.now() - t).toBeCloseTo(300, -2);
+		await p7;
+		await expect(html).resolves.toEqual('<div id="2">2</div>');
+		expect(document.body.innerHTML).toEqual('<div id="2">2</div>');
+		expect(Date.now() - t).toBeCloseTo(300, -2);
+		await p8;
+		await expect(html).resolves.toEqual('<div id="2">2</div>');
+		expect(document.body.innerHTML).toEqual('<div id="2">2</div>');
+		expect(Date.now() - t).toBeCloseTo(300, -2);
+		await p9;
+		await expect(html).resolves.toEqual('<div id="3">3</div>');
+		expect(document.body.innerHTML).toEqual('<div id="3">3</div>');
+		expect(Date.now() - t).toBeCloseTo(400, -2);
+		const p10 = render(<Component />, document.body);
+		const p11 = render(<Component />, document.body);
+		const p12 = render(<Component />, document.body);
+		const p13 = render(<Component />, document.body);
+		const p14 = render(<Component />, document.body);
+		await p10;
+		await expect(html).resolves.toEqual('<div id="4">4</div>');
+		expect(document.body.innerHTML).toEqual('<div id="4">4</div>');
+		expect(Date.now() - t).toBeCloseTo(500, -2);
+		await p11;
+		await expect(html).resolves.toEqual('<div id="4">4</div>');
+		expect(document.body.innerHTML).toEqual('<div id="4">4</div>');
+		expect(Date.now() - t).toBeCloseTo(500, -2);
+		await p12;
+		await expect(html).resolves.toEqual('<div id="4">4</div>');
+		expect(document.body.innerHTML).toEqual('<div id="4">4</div>');
+		expect(Date.now() - t).toBeCloseTo(500, -2);
+		await p13;
+		await expect(html).resolves.toEqual('<div id="4">4</div>');
+		expect(document.body.innerHTML).toEqual('<div id="4">4</div>');
+		expect(Date.now() - t).toBeCloseTo(500, -2);
+		await p14;
+		await expect(html).resolves.toEqual('<div id="5">5</div>');
+		expect(document.body.innerHTML).toEqual('<div id="5">5</div>');
+		expect(Date.now() - t).toBeCloseTo(600, -2);
+		expect(Async).toHaveBeenCalledTimes(6);
+	});
+
+	test("async generator returns", async () => {
+		const Component = jest.fn(async function* Component(
+			this: Context,
+		): AsyncGenerator<Child> {
+			// TODO: I wish there was a way to do this without using for await here
+			let started = false;
+			for await (const _ of this) {
+				if (started) {
+					return "Goodbye";
+				} else {
+					yield "Hello";
+					started = true;
+				}
+			}
+		});
+
+		await render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div>Hello</div>");
+		await render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div>Goodbye</div>");
+		await render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		await render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		await render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div>Goodbye</div>");
+		expect(Component).toHaveBeenCalledTimes(1);
 	});
 });

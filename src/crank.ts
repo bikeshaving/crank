@@ -407,6 +407,8 @@ class Host<T> extends Link {
 	guest?: Guest;
 	node?: T | string = undefined;
 	private updating = false;
+	private done = false;
+	private independent = false;
 	// TODO: maybe rename these properties to “value” and “cachedChildValues”
 	private cachedChildNodes?: (T | string)[] = undefined;
 	private iterator?: ChildIterator = undefined;
@@ -507,8 +509,12 @@ class Host<T> extends Link {
 		return this.refresh();
 	}
 
-	private independent = false;
-	private step(): MaybePromiseLike<Child> {
+	// TODO: we won’t need these properties/checks if we stop reusing host nodes
+	private nextRunId = 0;
+	private maxRunId = -1;
+	private step(
+		next?: MaybePromise<(T | string)[] | T | string | undefined>,
+	): MaybePromiseLike<Child> {
 		if (this.ctx === undefined) {
 			throw new Error("Missing context");
 		} else if (!isComponentElement(this.guest)) {
@@ -523,88 +529,81 @@ class Host<T> extends Link {
 			} else {
 				return value;
 			}
+		} else if (this.done) {
+			return;
 		}
 
-		// TODO: call next with a promise for async generator components
-		const iteration = this.iterator.next(this.childNodeOrNodes);
+		// TODO: call next with a promise for async generator components with async children
+		const iteration = this.iterator.next(next);
 		if (isPromiseLike(iteration)) {
 			this.independent = true;
 			return iteration.then((iteration) => {
+				const updateP = new Pledge(iteration.value).then((child) =>
+					this.updateChildren(child),
+				);
+				const next = new Pledge(updateP).then(() => this.childNodeOrNodes);
 				if (iteration.done) {
-					this.ctx = undefined;
-					this.iterator = undefined;
+					this.done = true;
 				} else {
-					this.pending = undefined;
-					this.run();
+					this.pending = new Pledge(this.step(next)).then(() => {});
 				}
 
-				return iteration.value;
+				return updateP;
 			});
-		} else {
-			if (iteration.done) {
-				this.ctx = undefined;
-				this.iterator = undefined;
-			}
-
-			return iteration.value;
 		}
+
+		if (iteration.done) {
+			this.done = true;
+		}
+
+		return new Pledge(iteration.value).then(
+			(child) => this.updateChildren(child) as any,
+		);
 	}
 
-	// TODO: we won’t need these properties/checks if we stop reusing host nodes
-	private nextRunId = 0;
-	private maxRunId = -1;
 	private pending?: Promise<any>;
 	private enqueued?: Promise<any>;
 	run(): MaybePromise<undefined> {
 		if (this.pending === undefined) {
-			let child = this.step();
-			if (isPromiseLike(child)) {
-				const runId = this.nextRunId++;
-				if (this.iterator === undefined) {
-					this.pending = Promise.resolve(child)
-						.then(() => undefined) // void :(
-						.finally(() => {
-							this.pending = this.enqueued;
-							this.enqueued = undefined;
-						});
+			const next =
+				this.iterator === undefined ? undefined : this.childNodeOrNodes;
+			const step = this.step(next);
+			if (this.iterator === undefined) {
+				if (isPromiseLike(step)) {
+					this.pending = Promise.resolve(step).finally(() => {
+						this.pending = this.enqueued;
+						this.enqueued = undefined;
+					});
 
-					return Promise.resolve(child).then((child) => {
+					const runId = this.nextRunId++;
+					return Promise.resolve(step).then((child) => {
 						this.maxRunId = Math.max(runId, this.maxRunId);
 						if (runId === this.maxRunId) {
 							return this.updateChildren(child);
 						}
 					});
 				} else {
-					this.pending = Promise.resolve(child).then((child) => {
-						this.maxRunId = Math.max(runId, this.maxRunId);
-						if (runId === this.maxRunId) {
-							return this.updateChildren(child);
-						}
-					});
-
-					if (!this.independent) {
-						this.pending.finally(() => {
-							this.pending = this.enqueued;
-							this.enqueued = undefined;
-						});
-					}
-
-					return this.pending;
+					return this.updateChildren(step);
 				}
-			} else if (this.iterator !== undefined) {
-				this.pending = this.updateChildren(child);
-				return this.pending;
-			} else {
-				return this.updateChildren(child);
+			} else if (isPromiseLike(step)) {
+				this.pending = Promise.resolve(step);
+				if (!this.independent) {
+					this.pending.finally(() => {
+						this.pending = this.enqueued;
+						this.enqueued = undefined;
+					});
+				}
 			}
+
+			return this.pending;
 		} else if (this.independent) {
 			return this.pending;
 		} else if (this.enqueued === undefined) {
 			this.enqueued = this.pending.then(
-				() => this.step(),
-				() => this.step(),
+				() => this.step(this.childNodeOrNodes),
+				() => this.step(this.childNodeOrNodes),
 			);
-			if (this.iterator !== undefined) {
+			if (this.iterator === undefined) {
 				const runId = this.nextRunId++;
 				this.enqueued = this.enqueued.then((child) => {
 					this.maxRunId = Math.max(runId, this.maxRunId);
@@ -612,30 +611,15 @@ class Host<T> extends Link {
 						return this.updateChildren(child);
 					}
 				});
-
-				this.enqueued.finally(() => {
-					this.pending = this.enqueued;
-					this.enqueued = undefined;
-				});
-
-				return this.enqueued;
 			}
-		} else if (this.iterator !== undefined) {
-			return this.enqueued;
+
+			this.enqueued.finally(() => {
+				this.pending = this.enqueued;
+				this.enqueued = undefined;
+			});
 		}
 
-		this.enqueued.finally(() => {
-			this.pending = this.enqueued;
-			this.enqueued = undefined;
-		});
-
-		const runId = this.nextRunId++;
-		return this.enqueued.then((child) => {
-			this.maxRunId = Math.max(runId, this.maxRunId);
-			if (runId === this.maxRunId) {
-				return this.updateChildren(child);
-			}
-		});
+		return this.enqueued;
 	}
 
 	refresh(): MaybePromise<undefined> {
@@ -781,7 +765,6 @@ class Host<T> extends Link {
 					if (iteration.done) {
 						this.committer = undefined;
 						this.intrinsic = undefined;
-						this.ctx = undefined;
 					}
 				}
 
@@ -810,16 +793,20 @@ class Host<T> extends Link {
 		}
 
 		// TODO: await the return if the host is keyed and commit the parent
-		if (this.iterator !== undefined && this.iterator.return) {
-			void this.iterator.return();
-			this.iterator = undefined;
+		if (!this.done) {
+			if (this.iterator !== undefined && this.iterator.return) {
+				void this.iterator.return();
+			}
+
+			if (this.committer && this.committer.return) {
+				this.committer.return();
+			}
 		}
 
-		if (this.committer && this.committer.return) {
-			this.committer.return();
-			this.committer = undefined;
-		}
-
+		this.committer = undefined;
+		this.iterator = undefined;
+		this.updating = false;
+		this.done = false;
 		this.unmountChildren();
 	}
 
