@@ -150,6 +150,19 @@ describe("render", () => {
 		expect((document.body.firstChild! as any).checked).toBe(false);
 	});
 
+	test("doesn’t blow away user-created html when it doesn’t have to", () => {
+		render(<div id="mount" />, document.body);
+		expect(document.body.innerHTML).toEqual('<div id="mount"></div>');
+		document.getElementById("mount")!.innerHTML = "<span>Hello world</span>";
+		expect(document.body.innerHTML).toEqual(
+			'<div id="mount"><span>Hello world</span></div>',
+		);
+		render(<div id="mount" />, document.body);
+		expect(document.body.innerHTML).toEqual(
+			'<div id="mount"><span>Hello world</span></div>',
+		);
+	});
+
 	test("rerender text", () => {
 		render(<h1>Hello world 1</h1>, document.body);
 		expect(document.body.innerHTML).toEqual("<h1>Hello world 1</h1>");

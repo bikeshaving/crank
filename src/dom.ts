@@ -9,11 +9,7 @@ import {
 	Root,
 } from "./crank";
 
-export function updateDOMProps(
-	el: HTMLElement,
-	props: Props,
-	newProps: Props,
-): void {
+function updateProps(el: HTMLElement, props: Props, newProps: Props): void {
 	for (let name in Object.assign({}, props, newProps)) {
 		// TODO: throw an error if event props are found
 		if (name === "children") {
@@ -54,7 +50,7 @@ export function updateDOMProps(
 
 // TODO: improve this algorithm
 // https://stackoverflow.com/questions/59418120/what-is-the-most-efficient-way-to-update-the-childnodes-of-a-dom-node-with-an-ar
-export function updateDOMChildren(
+function updateChildren(
 	el: HTMLElement,
 	children: (Node | string)[] = [],
 ): void {
@@ -109,25 +105,30 @@ export const env: Environment<HTMLElement> = {
 		try {
 			for (const {node: newNode} of this) {
 				if (node !== newNode) {
-					updateDOMChildren(node);
+					updateChildren(node);
 					node = newNode;
 				}
 
-				updateDOMChildren(node, this.childNodes);
+				updateChildren(node, this.childNodes);
 				yield node;
 			}
 		} finally {
-			updateDOMChildren(node);
+			updateChildren(node);
 		}
 	},
 	[Default](tag: string): Intrinsic<HTMLElement> {
 		return function* defaultDOM(this: Context): Generator<HTMLElement> {
 			const node = document.createElement(tag);
 			let props: Props = {};
+			let prevChildNodes: (string | HTMLElement)[] = [];
 			for (const props1 of this) {
-				updateDOMProps(node, props, props1);
-				if (!("innerHTML" in props1)) {
-					updateDOMChildren(node, this.childNodes);
+				updateProps(node, props, props1);
+				if (
+					!("innerHTML" in props1) &&
+					(this.childNodes.length > 0 || prevChildNodes.length > 0)
+				) {
+					updateChildren(node, this.childNodes);
+					prevChildNodes = this.childNodes;
 				}
 
 				yield node;
