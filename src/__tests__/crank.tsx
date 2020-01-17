@@ -323,7 +323,7 @@ describe("async function component", () => {
 		expect(t2! - t).toBeCloseTo(100, -2);
 	});
 
-	test("race with intrinsic", async () => {
+	test("racing async component with intrinsic", async () => {
 		async function Component(): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 200));
 			return <div>Async</div>;
@@ -346,7 +346,47 @@ describe("async function component", () => {
 		);
 	});
 
-	test("race with value", async () => {
+	test("racing intrinsic with async component", async () => {
+		async function Component(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			return <div>Async</div>;
+		}
+
+		render(<div>This should be blown away</div>, document.body);
+		const p = render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual(
+			"<div>This should be blown away</div>",
+		);
+		await p;
+		expect(document.body.innerHTML).toEqual("<div>Async</div>");
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("<div>Async</div>");
+	});
+
+	test("racing async component with intrinsic with async children", async () => {
+		async function Slow(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			return <span>Slow</span>;
+		}
+
+		async function Fast(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			return <span>Fast</span>;
+		}
+		const p1 = render(<Fast />, document.body);
+		const p2 = render(
+			<div>
+				<Slow />
+			</div>,
+			document.body,
+		);
+		await p1;
+		expect(document.body.innerHTML).toEqual("<span>Fast</span>");
+		await p2;
+		expect(document.body.innerHTML).toEqual("<div><span>Slow</span></div>");
+	});
+
+	test("racing with value", async () => {
 		async function Component(): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 200));
 			return <div>Async</div>;
@@ -1098,8 +1138,8 @@ describe("async generator component", () => {
 		expect(Async).toHaveBeenCalledTimes(3);
 	});
 
+	// Not sure why async generators behave this way but I don’t mind it.
 	test("yield resumes async children concurrent calls", async () => {
-		const t = Date.now();
 		const Async = jest.fn(async function Async({
 			id,
 		}: {
@@ -1127,70 +1167,60 @@ describe("async generator component", () => {
 		await p1;
 		await expect(html).resolves.toEqual('<div id="0">0</div>');
 		expect(document.body.innerHTML).toEqual('<div id="0">0</div>');
-		expect(Date.now() - t).toBeCloseTo(100, -2);
 		await p2;
 		await expect(html).resolves.toEqual('<div id="1">1</div>');
 		expect(document.body.innerHTML).toEqual('<div id="1">1</div>');
-		expect(Date.now() - t).toBeCloseTo(200, -2);
 		await p3;
 		await expect(html).resolves.toEqual('<div id="1">1</div>');
 		expect(document.body.innerHTML).toEqual('<div id="1">1</div>');
-		expect(Date.now() - t).toBeCloseTo(200, -2);
 		await p4;
 		await expect(html).resolves.toEqual('<div id="1">1</div>');
 		expect(document.body.innerHTML).toEqual('<div id="1">1</div>');
-		expect(Date.now() - t).toBeCloseTo(200, -2);
 		const p5 = render(<Component />, document.body);
 		const p6 = render(<Component />, document.body);
-		const p7 = render(<Component />, document.body);
-		const p8 = render(<Component />, document.body);
-		const p9 = render(<Component />, document.body);
 		await p5;
 		await expect(html).resolves.toEqual('<div id="2">2</div>');
 		expect(document.body.innerHTML).toEqual('<div id="2">2</div>');
-		expect(Date.now() - t).toBeCloseTo(300, -2);
 		await p6;
-		await expect(html).resolves.toEqual('<div id="2">2</div>');
-		expect(document.body.innerHTML).toEqual('<div id="2">2</div>');
-		expect(Date.now() - t).toBeCloseTo(300, -2);
-		await p7;
-		await expect(html).resolves.toEqual('<div id="2">2</div>');
-		expect(document.body.innerHTML).toEqual('<div id="2">2</div>');
-		expect(Date.now() - t).toBeCloseTo(300, -2);
-		await p8;
-		await expect(html).resolves.toEqual('<div id="2">2</div>');
-		expect(document.body.innerHTML).toEqual('<div id="2">2</div>');
-		expect(Date.now() - t).toBeCloseTo(300, -2);
-		await p9;
 		await expect(html).resolves.toEqual('<div id="3">3</div>');
 		expect(document.body.innerHTML).toEqual('<div id="3">3</div>');
-		expect(Date.now() - t).toBeCloseTo(400, -2);
-		const p10 = render(<Component />, document.body);
-		const p11 = render(<Component />, document.body);
-		const p12 = render(<Component />, document.body);
-		const p13 = render(<Component />, document.body);
-		const p14 = render(<Component />, document.body);
-		await p10;
+		const p7 = render(<Component />, document.body);
+		const p8 = render(<Component />, document.body);
+		const p9 = render(<Component />, document.body);
+		await p7;
 		await expect(html).resolves.toEqual('<div id="4">4</div>');
 		expect(document.body.innerHTML).toEqual('<div id="4">4</div>');
-		expect(Date.now() - t).toBeCloseTo(500, -2);
-		await p11;
+		await p8;
 		await expect(html).resolves.toEqual('<div id="4">4</div>');
 		expect(document.body.innerHTML).toEqual('<div id="4">4</div>');
-		expect(Date.now() - t).toBeCloseTo(500, -2);
-		await p12;
-		await expect(html).resolves.toEqual('<div id="4">4</div>');
-		expect(document.body.innerHTML).toEqual('<div id="4">4</div>');
-		expect(Date.now() - t).toBeCloseTo(500, -2);
-		await p13;
-		await expect(html).resolves.toEqual('<div id="4">4</div>');
-		expect(document.body.innerHTML).toEqual('<div id="4">4</div>');
-		expect(Date.now() - t).toBeCloseTo(500, -2);
-		await p14;
+		await p9;
 		await expect(html).resolves.toEqual('<div id="5">5</div>');
 		expect(document.body.innerHTML).toEqual('<div id="5">5</div>');
-		expect(Date.now() - t).toBeCloseTo(600, -2);
 		expect(Async).toHaveBeenCalledTimes(6);
+	});
+
+	test("concurrent unmount", async () => {
+		async function* Component(this: Context): AsyncGenerator<Child> {
+			for await (const _ of this) {
+				yield "Hello world";
+			}
+		}
+
+		render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		render(null, document.body);
+		expect(document.body.innerHTML).toEqual("");
+		await new Promise((resolve) => setTimeout(resolve, 4000));
 	});
 
 	test("async generator returns", async () => {
