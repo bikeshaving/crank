@@ -325,7 +325,7 @@ function toGuest(child: Child): Guest {
 	}
 }
 
-// TODO: explain
+// TODO: explain what this function does
 function chase<Return, This>(
 	fn: (this: This, ...args: any[]) => MaybePromiseLike<Return>,
 ): (this: This, ...args: any[]) => MaybePromise<Return> {
@@ -349,30 +349,30 @@ class Link {
 	protected lastChild?: Link;
 	protected nextSibling?: Link;
 	protected previousSibling?: Link;
-	protected insertBefore(link: Link, newLink: Link): void {
-		newLink.nextSibling = link;
-		if (link.previousSibling === undefined) {
+	protected insertBefore(newLink: Link, refLink: Link): void {
+		newLink.nextSibling = refLink;
+		if (refLink.previousSibling === undefined) {
 			newLink.previousSibling = undefined;
 			this.firstChild = newLink;
 		} else {
-			newLink.previousSibling = link.previousSibling;
-			link.previousSibling.nextSibling = newLink;
+			newLink.previousSibling = refLink.previousSibling;
+			refLink.previousSibling.nextSibling = newLink;
 		}
 
-		link.previousSibling = newLink;
+		refLink.previousSibling = newLink;
 	}
 
-	protected insertAfter(link: Link, newLink: Link): void {
-		newLink.previousSibling = link;
-		if (link.nextSibling === undefined) {
+	protected insertAfter(newLink: Link, refLink: Link): void {
+		newLink.previousSibling = refLink;
+		if (refLink.nextSibling === undefined) {
 			newLink.nextSibling = undefined;
 			this.lastChild = newLink;
 		} else {
-			newLink.nextSibling = link.nextSibling;
-			link.nextSibling.previousSibling = newLink;
+			newLink.nextSibling = refLink.nextSibling;
+			refLink.nextSibling.previousSibling = newLink;
 		}
 
-		link.nextSibling = newLink;
+		refLink.nextSibling = newLink;
 	}
 
 	protected appendChild(link: Link): void {
@@ -382,7 +382,7 @@ class Link {
 			link.previousSibling = undefined;
 			link.nextSibling = undefined;
 		} else {
-			this.insertAfter(this.lastChild, link);
+			this.insertAfter(link, this.lastChild);
 		}
 	}
 
@@ -399,22 +399,26 @@ class Link {
 			link.nextSibling.previousSibling = link.previousSibling;
 		}
 	}
+
+	protected replaceChild(newLink: Link, refLink: Link): void {
+		this.insertBefore(newLink, refLink);
+		this.removeChild(refLink);
+	}
 }
 
-// TODO: don’t re-use hosts per tag and key
 class Host<T> extends Link {
-	ctx?: Context<T>;
-	guest?: Guest;
+	ctx?: Context<T> = undefined;
+	guest?: Guest = undefined;
 	node?: T | string = undefined;
 	private updating = false;
 	private done = false;
 	private independent = false;
-	// TODO: maybe rename these properties to “value” and “cachedChildValues”
-	private cachedChildNodes?: (T | string)[] = undefined;
 	private iterator?: ChildIterator = undefined;
 	private intrinsic?: Intrinsic<T> = undefined;
 	private committer?: Iterator<T | undefined> = undefined;
 	private hostsByKey?: Map<unknown, Host<T>> = undefined;
+	private pending?: Promise<any> = undefined;
+	private enqueued?: Promise<any> = undefined;
 	protected firstChild?: Host<T> = undefined;
 	protected lastChild?: Host<T> = undefined;
 	protected nextSibling?: Host<T> = undefined;
@@ -423,10 +427,22 @@ class Host<T> extends Link {
 		protected parent: Host<T> | undefined,
 		// TODO: Figure out a way to not have to pass in a renderer
 		private renderer: Renderer<T>,
+		private clock: number = 0,
 	) {
 		super();
 	}
 
+	get tag(): Tag | undefined {
+		return isElement(this.guest) ? this.guest.tag : undefined;
+	}
+
+	get key(): unknown {
+		//key?: unknown;
+		return isElement(this.guest) ? this.guest.key : undefined;
+	}
+
+	props?: Props;
+	private cachedChildNodes?: (T | string)[] = undefined;
 	get childNodes(): (T | string)[] {
 		if (this.cachedChildNodes !== undefined) {
 			return this.cachedChildNodes;
@@ -478,20 +494,8 @@ class Host<T> extends Link {
 	}
 
 	update(guest: Guest): MaybePromise<undefined> {
-		if (isElement(guest) && guest.tag === Copy) {
-			return;
-		}
-
 		this.updating = true;
-		if (
-			!isElement(this.guest) ||
-			!isElement(guest) ||
-			this.guest.tag !== guest.tag ||
-			// TODO: never reuse a host when keys differ
-			this.guest.key !== guest.key
-		) {
-			void this.unmount();
-			this.guest = guest;
+		if (this.guest === undefined) {
 			if (isElement(guest)) {
 				this.ctx = new Context(this, this.parent && this.parent.ctx);
 				// TODO: allow people to provide custom intrinsics for fragments to
@@ -500,18 +504,12 @@ class Host<T> extends Link {
 					this.intrinsic = this.renderer.intrinsicFor(guest.tag);
 				}
 			}
-		} else if (typeof guest === "string") {
-			this.guest = this.renderer.text(guest);
-		} else {
-			this.guest = guest;
 		}
 
+		this.guest = guest;
 		return this.refresh();
 	}
 
-	// TODO: we won’t need these properties/checks if we stop reusing host nodes
-	private nextRunId = 0;
-	private maxRunId = -1;
 	private step(
 		next?: MaybePromise<(T | string)[] | T | string | undefined>,
 	): MaybePromiseLike<Child> {
@@ -533,16 +531,16 @@ class Host<T> extends Link {
 			return;
 		}
 
-		// TODO: call next with a promise for async generator components with async children
 		const iteration = this.iterator.next(next);
 		if (isPromiseLike(iteration)) {
 			this.independent = true;
 			return iteration.then((iteration) => {
-				const updateP = new Pledge(iteration.value).then((child) =>
-					this.updateChildren(child),
-				);
+				const updateP = new Pledge(iteration.value).then((child) => {
+					return this.updateChildren(child);
+				});
+
 				const next = new Pledge(updateP).then(() => this.childNodeOrNodes);
-				if (iteration.done) {
+				if (iteration.done || this.done) {
 					this.done = true;
 				} else {
 					this.pending = new Pledge(this.step(next)).then(() => {});
@@ -556,13 +554,11 @@ class Host<T> extends Link {
 			this.done = true;
 		}
 
-		return new Pledge(iteration.value).then(
-			(child) => this.updateChildren(child) as any,
-		);
+		return new Pledge(iteration.value).then((child) => {
+			return this.updateChildren(child) as any;
+		});
 	}
 
-	private pending?: Promise<any>;
-	private enqueued?: Promise<any>;
 	run(): MaybePromise<undefined> {
 		if (this.pending === undefined) {
 			const next =
@@ -575,12 +571,8 @@ class Host<T> extends Link {
 						this.enqueued = undefined;
 					});
 
-					const runId = this.nextRunId++;
 					return Promise.resolve(step).then((child) => {
-						this.maxRunId = Math.max(runId, this.maxRunId);
-						if (runId === this.maxRunId) {
-							return this.updateChildren(child);
-						}
+						return this.updateChildren(child);
 					});
 				} else {
 					return this.updateChildren(step);
@@ -604,12 +596,8 @@ class Host<T> extends Link {
 				() => this.step(this.childNodeOrNodes),
 			);
 			if (this.iterator === undefined) {
-				const runId = this.nextRunId++;
 				this.enqueued = this.enqueued.then((child) => {
-					this.maxRunId = Math.max(runId, this.maxRunId);
-					if (runId === this.maxRunId) {
-						return this.updateChildren(child);
-					}
+					return this.updateChildren(child);
 				});
 			}
 
@@ -633,11 +621,11 @@ class Host<T> extends Link {
 			if (typeof this.guest.tag === "function") {
 				return this.run();
 			} else {
-				this.maxRunId = ++this.nextRunId;
 				return this.updateChildren(this.guest.props.children);
 			}
+		} else if (typeof this.guest === "string") {
+			this.node = this.renderer.text(this.guest);
 		} else {
-			this.maxRunId = ++this.nextRunId;
 			this.node = this.guest;
 		}
 	}
@@ -657,54 +645,86 @@ class Host<T> extends Link {
 			for (let child of children) {
 				if (isNonStringIterable(child)) {
 					child = createElement(Fragment, null, child);
-				} else if (
-					isKeyedElement(child) &&
-					hostsByKey &&
-					hostsByKey.has(child.key)
-				) {
-					// TODO: warn or throw
-					child = {...child, key: undefined};
 				}
 
-				if (isKeyedElement(child)) {
-					let keyedHost = this.hostsByKey && this.hostsByKey.get(child.key);
-					if (keyedHost === undefined) {
-						keyedHost = new Host(this, this.renderer);
+				const guest = toGuest(child);
+				let tag: Tag | undefined;
+				let key: unknown;
+				let isNewHost = false;
+				if (isElement(guest)) {
+					tag = guest.tag;
+					key = guest.key;
+					if (hostsByKey !== undefined && hostsByKey.has(key)) {
+						// TODO: warn about a duplicate key
+						key = undefined;
+					}
+				}
+
+				if (key != null) {
+					let newHost = this.hostsByKey && this.hostsByKey.get(key);
+					if (newHost === undefined) {
+						newHost = new Host(this, this.renderer);
+						isNewHost = true;
 					} else {
-						this.hostsByKey!.delete(child.key);
-						if (host !== keyedHost) {
-							this.removeChild(keyedHost);
+						this.hostsByKey!.delete(key);
+						if (host !== newHost) {
+							this.removeChild(newHost);
 						}
 					}
 
 					if (host === undefined) {
-						this.appendChild(keyedHost);
-					} else if (host !== keyedHost) {
+						this.appendChild(newHost);
+					} else if (host !== newHost) {
 						if (isKeyedElement(host.guest)) {
-							this.insertAfter(host, keyedHost);
+							this.insertAfter(newHost, host);
 						} else {
-							this.insertBefore(host, keyedHost);
+							this.insertBefore(newHost, host);
 						}
 					}
 
-					host = keyedHost;
+					host = newHost;
+				} else if (host === undefined) {
+					host = new Host(this, this.renderer);
+					this.appendChild(host);
+					isNewHost = true;
+				} else if (host.key != null) {
+					const newHost = new Host(this, this.renderer);
+					this.insertAfter(newHost, host);
+					host = newHost;
+					isNewHost = true;
+				}
+
+				if (tag !== Copy) {
+					host.clock++;
+					if (host.tag === tag || isNewHost) {
+						const updateP = host.update(guest);
+						if (updateP !== undefined) {
+							promises.push(updateP);
+						}
+					} else {
+						host.unmount();
+						const newHost = new Host(this, this.renderer, host.clock);
+						const updateP = newHost.update(guest);
+						if (updateP === undefined) {
+							this.replaceChild(newHost, host);
+						} else {
+							const host1 = host;
+							updateP.then(() => {
+								if (host1.clock === newHost.clock) {
+									this.replaceChild(newHost, host1);
+								}
+							});
+							promises.push(updateP);
+						}
+					}
+				}
+
+				if (key !== undefined) {
 					if (hostsByKey === undefined) {
 						hostsByKey = new Map();
 					}
 
-					hostsByKey.set(child.key, keyedHost);
-				} else if (host === undefined) {
-					host = new Host(this, this.renderer);
-					this.appendChild(host);
-				} else if (isKeyedElement(host.guest)) {
-					const unkeyedHost = new Host(this, this.renderer);
-					this.insertAfter(host, unkeyedHost);
-					host = unkeyedHost;
-				}
-
-				const updateP = host.update(toGuest(child));
-				if (updateP !== undefined) {
-					promises.push(updateP);
+					hostsByKey.set(key, host);
 				}
 
 				host = host.nextSibling;
@@ -712,8 +732,8 @@ class Host<T> extends Link {
 		}
 
 		while (host !== undefined) {
-			if (isKeyedElement(host.guest) && this.hostsByKey) {
-				this.hostsByKey.delete(host.guest.key);
+			if (this.hostsByKey !== undefined && host.key !== undefined) {
+				this.hostsByKey.delete(host.key);
 			}
 
 			void host.unmount();
@@ -724,7 +744,7 @@ class Host<T> extends Link {
 		if (this.hostsByKey) {
 			for (const host of this.hostsByKey.values()) {
 				// TODO: implement async unmount for keyed hosts
-				void host.unmount();
+				host.unmount();
 				this.removeChild(host);
 			}
 		}
@@ -778,18 +798,9 @@ class Host<T> extends Link {
 	}
 
 	unmount(): void {
-		this.independent = false;
-		this.node = undefined;
-		this.guest = undefined;
-		this.intrinsic = undefined;
-		this.pending = undefined;
-		this.enqueued = undefined;
-		this.hostsByKey = undefined;
-		this.cachedChildNodes = undefined;
 		if (this.ctx !== undefined) {
 			this.ctx.dispatchEvent(new Event("crank.unmount"));
 			this.ctx.removeAllEventListeners();
-			this.ctx = undefined;
 		}
 
 		// TODO: await the return if the host is keyed and commit the parent
@@ -803,10 +814,10 @@ class Host<T> extends Link {
 			}
 		}
 
+		this.done = true;
 		this.committer = undefined;
 		this.iterator = undefined;
 		this.updating = false;
-		this.done = false;
 		this.unmountChildren();
 	}
 
@@ -862,7 +873,7 @@ export class Context<T = any> extends CrankEventTarget {
 		}, new SlidingBuffer(1));
 	}
 
-	// TODO: throw an error if refresh is called on an unmounted component
+	// TODO: warn if refresh is called on an unmounted component
 	refresh(): MaybePromise<undefined> {
 		return this.host.refresh();
 	}
@@ -877,7 +888,6 @@ export type ChildIterator =
 	| Iterator<MaybePromiseLike<Child>, any, any>
 	| AsyncIterator<MaybePromiseLike<Child>, any, any>;
 
-// TODO: if we use this abstraction we possibly run into a situation where
 type ChildIteratorResult = MaybePromise<
 	IteratorResult<MaybePromiseLike<Child>>
 >;
@@ -966,7 +976,7 @@ export class Renderer<T> {
 
 	text(text: string): string {
 		if (this.env[Text] !== undefined) {
-			// TODO: remove non-null assertion when typescript gets its shit together
+			// TODO: remove non-null assertion when typescript gets its shit together with symbols
 			return this.env[Text]!(text);
 		}
 

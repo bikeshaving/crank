@@ -242,166 +242,6 @@ describe("async function component", () => {
 		await p2;
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
 	});
-
-	test("race where first wins", async () => {
-		const t = Date.now();
-		let t1: number;
-		let t2: number;
-		async function Fast(): Promise<Element> {
-			await new Promise((resolve) => setTimeout(resolve, 100));
-			t1 = Date.now();
-			return <span>Fast</span>;
-		}
-
-		async function Slow(): Promise<Element> {
-			await new Promise((resolve) => setTimeout(resolve, 200));
-			t2 = Date.now();
-			return <span>Slow</span>;
-		}
-
-		const p1 = render(
-			<div>
-				<Fast />
-			</div>,
-			document.body,
-		);
-		const p2 = render(
-			<div>
-				<Slow />
-			</div>,
-			document.body,
-		);
-		await p1;
-		expect(Date.now() - t).toBeCloseTo(100, -2);
-		expect(document.body.innerHTML).toEqual("<div><span>Fast</span></div>");
-		await p2;
-		expect(Date.now() - t).toBeCloseTo(200, -2);
-		expect(document.body.innerHTML).toEqual("<div><span>Slow</span></div>");
-		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual("<div><span>Slow</span></div>");
-		expect(t1! - t).toBeCloseTo(100, -2);
-		expect(t2! - t).toBeCloseTo(200, -2);
-	});
-
-	test("race where second wins", async () => {
-		const t = Date.now();
-		let t1: number;
-		let t2: number;
-		async function Slow(): Promise<Element> {
-			await new Promise((resolve) => setTimeout(resolve, 200));
-			t1 = Date.now();
-			return <span>Slow</span>;
-		}
-
-		async function Fast(): Promise<Element> {
-			await new Promise((resolve) => setTimeout(resolve, 100));
-			t2 = Date.now();
-			return <span>Fast</span>;
-		}
-
-		const p1 = render(
-			<div>
-				<Slow />
-			</div>,
-			document.body,
-		);
-		const p2 = render(
-			<div>
-				<Fast />
-			</div>,
-			document.body,
-		);
-		await p1;
-		expect(Date.now() - t).toBeCloseTo(100, -2);
-		expect(document.body.innerHTML).toEqual("<div><span>Fast</span></div>");
-		await p2;
-		expect(Date.now() - t).toBeCloseTo(100, -2);
-		expect(document.body.innerHTML).toEqual("<div><span>Fast</span></div>");
-		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual("<div><span>Fast</span></div>");
-		expect(t1! - t).toBeCloseTo(200, -2);
-		expect(t2! - t).toBeCloseTo(100, -2);
-	});
-
-	test("racing async component with intrinsic", async () => {
-		async function Component(): Promise<Element> {
-			await new Promise((resolve) => setTimeout(resolve, 200));
-			return <div>Async</div>;
-		}
-
-		const p = render(<Component />, document.body);
-		expect(document.body.innerHTML).toEqual("");
-		await new Promise((resolve) => setTimeout(resolve, 100));
-		render(<div>Async component blown away</div>, document.body);
-		expect(document.body.innerHTML).toEqual(
-			"<div>Async component blown away</div>",
-		);
-		await p;
-		expect(document.body.innerHTML).toEqual(
-			"<div>Async component blown away</div>",
-		);
-		await new Promise((resolve) => setTimeout(resolve, 200));
-		expect(document.body.innerHTML).toEqual(
-			"<div>Async component blown away</div>",
-		);
-	});
-
-	test("racing intrinsic with async component", async () => {
-		async function Component(): Promise<Element> {
-			await new Promise((resolve) => setTimeout(resolve, 200));
-			return <div>Async</div>;
-		}
-
-		render(<div>This should be blown away</div>, document.body);
-		const p = render(<Component />, document.body);
-		expect(document.body.innerHTML).toEqual(
-			"<div>This should be blown away</div>",
-		);
-		await p;
-		expect(document.body.innerHTML).toEqual("<div>Async</div>");
-		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual("<div>Async</div>");
-	});
-
-	test("racing async component with intrinsic with async children", async () => {
-		async function Slow(): Promise<Element> {
-			await new Promise((resolve) => setTimeout(resolve, 200));
-			return <span>Slow</span>;
-		}
-
-		async function Fast(): Promise<Element> {
-			await new Promise((resolve) => setTimeout(resolve, 100));
-			return <span>Fast</span>;
-		}
-		const p1 = render(<Fast />, document.body);
-		const p2 = render(
-			<div>
-				<Slow />
-			</div>,
-			document.body,
-		);
-		await p1;
-		expect(document.body.innerHTML).toEqual("<span>Fast</span>");
-		await p2;
-		expect(document.body.innerHTML).toEqual("<div><span>Slow</span></div>");
-	});
-
-	test("racing with value", async () => {
-		async function Component(): Promise<Element> {
-			await new Promise((resolve) => setTimeout(resolve, 200));
-			return <div>Async</div>;
-		}
-
-		const p = render(<Component />, document.body);
-		expect(document.body.innerHTML).toEqual("");
-		await new Promise((resolve) => setTimeout(resolve, 100));
-		render("Async component blown away", document.body);
-		expect(document.body.innerHTML).toEqual("Async component blown away");
-		await p;
-		expect(document.body.innerHTML).toEqual("Async component blown away");
-		await new Promise((resolve) => setTimeout(resolve, 300));
-		expect(document.body.innerHTML).toEqual("Async component blown away");
-	});
 });
 
 describe("sync generator component", () => {
@@ -830,6 +670,29 @@ describe("sync generator component", () => {
 		expect(document.body.innerHTML).toEqual("<div>Goodbye</div>");
 		expect(Component).toHaveBeenCalledTimes(1);
 	});
+
+	test("unmount", () => {
+		const mock = jest.fn();
+		function* Component(): Generator<Child> {
+			try {
+				let i = 0;
+				while (true) {
+					yield (<div>Hello {i++}</div>);
+				}
+			} finally {
+				mock();
+			}
+		}
+
+		render(<Component />, document.body);
+		render(<Component />, document.body);
+		render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Hello 2</div>");
+		expect(mock).toHaveBeenCalledTimes(0);
+		render(<div />, document.body);
+		expect(document.body.innerHTML).toEqual("<div></div>");
+		expect(mock).toHaveBeenCalledTimes(1);
+	});
 });
 
 describe("async generator component", () => {
@@ -971,91 +834,6 @@ describe("async generator component", () => {
 		push(<span>Hello 5</span>);
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
-	});
-
-	test("racing render", async () => {
-		const t = Date.now();
-		async function Slow(): Promise<Element> {
-			await new Promise((resolve) => setTimeout(resolve, 200));
-			return <div>Slow</div>;
-		}
-		async function Fast(): Promise<Element> {
-			await new Promise((resolve) => setTimeout(resolve, 100));
-			return <div>Fast</div>;
-		}
-
-		async function* Component(this: Context): AsyncGenerator<Child> {
-			let i = 0;
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			for await (const _ of this) {
-				if (i % 2 === 0) {
-					yield (<Slow />);
-				} else {
-					yield (<Fast />);
-				}
-
-				i++;
-			}
-		}
-
-		await render(<Component />, document.body);
-		expect(Date.now() - t).toBeCloseTo(200, -2);
-		expect(document.body.innerHTML).toEqual("<div>Slow</div>");
-		await render(<Component />, document.body);
-		expect(Date.now() - t).toBeCloseTo(300, -2);
-		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
-		const p = render(<Component />, document.body);
-		await render(<Component />, document.body);
-		expect(Date.now() - t).toBeCloseTo(400, -2);
-		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
-		await p;
-		expect(Date.now() - t).toBeCloseTo(400, -2);
-		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
-		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
-	});
-
-	test("racing refresh", async () => {
-		const t = Date.now();
-		async function Slow(): Promise<Element> {
-			await new Promise((resolve) => setTimeout(resolve, 200));
-			return <div>Slow</div>;
-		}
-		async function Fast(): Promise<Element> {
-			await new Promise((resolve) => setTimeout(resolve, 100));
-			return <div>Fast</div>;
-		}
-
-		let ctx!: Context;
-		async function* Component(this: Context): AsyncGenerator<Child> {
-			ctx = this;
-			let i = 0;
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
-			for await (const _ of this) {
-				if (i % 2 === 0) {
-					yield (<Slow />);
-				} else {
-					yield (<Fast />);
-				}
-
-				i++;
-			}
-		}
-
-		await render(<Component />, document.body);
-		expect(Date.now() - t).toBeCloseTo(200, -2);
-		expect(document.body.innerHTML).toEqual("<div>Slow</div>");
-		await ctx.refresh();
-		expect(Date.now() - t).toBeCloseTo(300, -2);
-		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
-		const p = ctx.refresh();
-		await ctx.refresh();
-		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
-		expect(Date.now() - t).toBeCloseTo(400, -2);
-		await p;
-		expect(Date.now() - t).toBeCloseTo(400, -2);
-		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
 	});
 
 	test("Fragment parent", async () => {
@@ -1220,7 +998,7 @@ describe("async generator component", () => {
 		);
 		render(null, document.body);
 		expect(document.body.innerHTML).toEqual("");
-		await new Promise((resolve) => setTimeout(resolve, 4000));
+		await new Promise((resolve) => setTimeout(resolve, 100));
 	});
 
 	test("async generator returns", async () => {
@@ -1273,5 +1051,393 @@ describe("async generator component", () => {
 		);
 		expect(document.body.innerHTML).toEqual("<div>Goodbye</div>");
 		expect(Component).toHaveBeenCalledTimes(1);
+	});
+
+	test("unmount", async () => {
+		const mock = jest.fn();
+		async function* Component(this: Context): AsyncGenerator<Child> {
+			try {
+				let i = 0;
+				for await (const _ of this) {
+					yield (<div>Hello {i++}</div>);
+				}
+			} finally {
+				mock();
+			}
+		}
+
+		await render(<Component />, document.body);
+		await render(<Component />, document.body);
+		await render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Hello 2</div>");
+		expect(mock).toHaveBeenCalledTimes(0);
+		render(<div />, document.body);
+		expect(document.body.innerHTML).toEqual("<div></div>");
+		await new Promise((resolve) => setTimeout(resolve));
+		expect(mock).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe("races", () => {
+	afterEach(async () => {
+		document.body.innerHTML = "";
+		await render(null, document.body);
+	});
+
+	test("async fn vs value", async () => {
+		async function Component(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			return <div>Async</div>;
+		}
+
+		const p = render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("");
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		render("Async component blown away", document.body);
+		expect(document.body.innerHTML).toEqual("Async component blown away");
+		await p;
+		expect(document.body.innerHTML).toEqual("Async component blown away");
+		await new Promise((resolve) => setTimeout(resolve, 300));
+		expect(document.body.innerHTML).toEqual("Async component blown away");
+	});
+
+	test("fast vs slow", async () => {
+		const t = Date.now();
+		let t1: number;
+		let t2: number;
+		async function Fast(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			t1 = Date.now();
+			return <span>Fast</span>;
+		}
+
+		async function Slow(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			t2 = Date.now();
+			return <span>Slow</span>;
+		}
+
+		const p1 = render(
+			<div>
+				<Fast />
+			</div>,
+			document.body,
+		);
+		const p2 = render(
+			<div>
+				<Slow />
+			</div>,
+			document.body,
+		);
+		await p1;
+		expect(Date.now() - t).toBeCloseTo(100, -2);
+		expect(document.body.innerHTML).toEqual("<div><span>Fast</span></div>");
+		await p2;
+		expect(Date.now() - t).toBeCloseTo(200, -2);
+		expect(document.body.innerHTML).toEqual("<div><span>Slow</span></div>");
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("<div><span>Slow</span></div>");
+		expect(t1! - t).toBeCloseTo(100, -2);
+		expect(t2! - t).toBeCloseTo(200, -2);
+	});
+
+	test("slow vs fast", async () => {
+		const t = Date.now();
+		let t1: number;
+		let t2: number;
+		async function Slow(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			t1 = Date.now();
+			return <span>Slow</span>;
+		}
+
+		async function Fast(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			t2 = Date.now();
+			return <span>Fast</span>;
+		}
+
+		const p1 = render(
+			<div>
+				<Slow />
+			</div>,
+			document.body,
+		);
+		const p2 = render(
+			<div>
+				<Fast />
+			</div>,
+			document.body,
+		);
+		await p1;
+		expect(Date.now() - t).toBeCloseTo(100, -2);
+		expect(document.body.innerHTML).toEqual("<div><span>Fast</span></div>");
+		await p2;
+		expect(Date.now() - t).toBeCloseTo(100, -2);
+		expect(document.body.innerHTML).toEqual("<div><span>Fast</span></div>");
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("<div><span>Fast</span></div>");
+		expect(t1! - t).toBeCloseTo(200, -2);
+		expect(t2! - t).toBeCloseTo(100, -2);
+	});
+
+	test("async component vs intrinsic", async () => {
+		async function Component(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			return <div>Async</div>;
+		}
+
+		const p = render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("");
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		render(<div>Async component blown away</div>, document.body);
+		expect(document.body.innerHTML).toEqual(
+			"<div>Async component blown away</div>",
+		);
+		await p;
+		expect(document.body.innerHTML).toEqual(
+			"<div>Async component blown away</div>",
+		);
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		expect(document.body.innerHTML).toEqual(
+			"<div>Async component blown away</div>",
+		);
+	});
+
+	test("intrinsic vs async component", async () => {
+		async function Component(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			return <div>Async</div>;
+		}
+
+		render(<div>This should be blown away</div>, document.body);
+		const p = render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual(
+			"<div>This should be blown away</div>",
+		);
+		await p;
+		expect(document.body.innerHTML).toEqual("<div>Async</div>");
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("<div>Async</div>");
+	});
+
+	test("async generator slow vs fast via render", async () => {
+		const t = Date.now();
+		async function Slow(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			return <div>Slow</div>;
+		}
+
+		async function Fast(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			return <div>Fast</div>;
+		}
+
+		async function* Component(this: Context): AsyncGenerator<Child> {
+			let i = 0;
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			for await (const _ of this) {
+				if (i % 2 === 0) {
+					yield (<Slow />);
+				} else {
+					yield (<Fast />);
+				}
+
+				i++;
+			}
+		}
+
+		await render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Slow</div>");
+		expect(Date.now() - t).toBeCloseTo(200, -2);
+		await render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
+		expect(Date.now() - t).toBeCloseTo(300, -2);
+		const p = render(<Component />, document.body);
+		await render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
+		expect(Date.now() - t).toBeCloseTo(400, -2);
+		await p;
+		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
+		expect(Date.now() - t).toBeCloseTo(400, -2);
+		await new Promise((resolve) => setTimeout(resolve, 500));
+		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
+	});
+
+	test("async generator slow vs fast via refresh", async () => {
+		const t = Date.now();
+		async function Slow(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			return <div>Slow</div>;
+		}
+
+		async function Fast(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			return <div>Fast</div>;
+		}
+
+		let ctx!: Context;
+		async function* Component(this: Context): AsyncGenerator<Child> {
+			ctx = this;
+			let i = 0;
+			// eslint-disable-next-line @typescript-eslint/no-unused-vars
+			for await (const _ of this) {
+				if (i % 2 === 0) {
+					yield (<Slow />);
+				} else {
+					yield (<Fast />);
+				}
+
+				i++;
+			}
+		}
+
+		await render(<Component />, document.body);
+		expect(Date.now() - t).toBeCloseTo(200, -2);
+		expect(document.body.innerHTML).toEqual("<div>Slow</div>");
+		await ctx.refresh();
+		expect(Date.now() - t).toBeCloseTo(300, -2);
+		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
+		const p = ctx.refresh();
+		await ctx.refresh();
+		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
+		expect(Date.now() - t).toBeCloseTo(400, -2);
+		await p;
+		expect(Date.now() - t).toBeCloseTo(400, -2);
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
+	});
+
+	test("fast async generator vs slow async function", async () => {
+		const t = Date.now();
+		async function* Fast(this: Context): AsyncGenerator<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			for await (const _ of this) {
+				yield (<span>Fast</span>);
+			}
+		}
+
+		async function Slow(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			return <span>Slow</span>;
+		}
+
+		const p1 = render(<Fast />, document.body);
+		const p2 = render(<Slow />, document.body);
+		await p1;
+		expect(document.body.innerHTML).toEqual("<span>Fast</span>");
+		expect(Date.now() - t).toBeCloseTo(100, -2);
+		await p2;
+		expect(document.body.innerHTML).toEqual("<span>Slow</span>");
+		expect(Date.now() - t).toBeCloseTo(200, -2);
+	});
+
+	test("slow async generator vs fast async function", async () => {
+		const t = Date.now();
+		async function* Slow(this: Context): AsyncGenerator<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			for await (const _ of this) {
+				yield (<span>Slow</span>);
+			}
+		}
+
+		async function Fast(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			return <span>Fast</span>;
+		}
+
+		const p1 = render(<Slow />, document.body);
+		const p2 = render(<Fast />, document.body);
+		await p1;
+		expect(document.body.innerHTML).toEqual("<span>Fast</span>");
+		expect(Date.now() - t).toBeCloseTo(100, -2);
+		await p2;
+		expect(document.body.innerHTML).toEqual("<span>Fast</span>");
+		expect(Date.now() - t).toBeCloseTo(100, -2);
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		expect(document.body.innerHTML).toEqual("<span>Fast</span>");
+	});
+
+	test("sync generator with slow children vs fast async function", async () => {
+		const t = Date.now();
+		async function Slow(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			return <span>Slow</span>;
+		}
+
+		async function Fast(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			return <span>Fast</span>;
+		}
+
+		function* SlowGen(): Generator<Element> {
+			while (true) {
+				yield (<Slow />);
+			}
+		}
+
+		const p1 = render(<SlowGen />, document.body);
+		const p2 = render(<Fast />, document.body);
+		await p1;
+		expect(document.body.innerHTML).toEqual("<span>Fast</span>");
+		expect(Date.now() - t).toBeCloseTo(100, -2);
+		await p2;
+		expect(document.body.innerHTML).toEqual("<span>Fast</span>");
+		expect(Date.now() - t).toBeCloseTo(100, -2);
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		expect(document.body.innerHTML).toEqual("<span>Fast</span>");
+	});
+
+	test("sync generator with fast children vs fast async function", async () => {
+		const t = Date.now();
+		async function Slow(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			return <span>Slow</span>;
+		}
+
+		async function Fast(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			return <span>Fast</span>;
+		}
+
+		function* FastGen(): Generator<Element> {
+			while (true) {
+				yield (<Fast />);
+			}
+		}
+
+		const p1 = render(<FastGen />, document.body);
+		const p2 = render(<Slow />, document.body);
+		await p1;
+		expect(document.body.innerHTML).toEqual("<span>Fast</span>");
+		expect(Date.now() - t).toBeCloseTo(100, -2);
+		await p2;
+		expect(document.body.innerHTML).toEqual("<span>Slow</span>");
+		expect(Date.now() - t).toBeCloseTo(200, -2);
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		expect(document.body.innerHTML).toEqual("<span>Slow</span>");
+	});
+
+	test("slow async component vs intrinsic with fast async children", async () => {
+		async function Slow(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			return <span>Slow</span>;
+		}
+
+		async function Fast(): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			return <span>Fast</span>;
+		}
+		const p1 = render(<Fast />, document.body);
+		const p2 = render(
+			<div>
+				<Slow />
+			</div>,
+			document.body,
+		);
+		await p1;
+		expect(document.body.innerHTML).toEqual("<span>Fast</span>");
+		await p2;
+		expect(document.body.innerHTML).toEqual("<div><span>Slow</span></div>");
 	});
 });
