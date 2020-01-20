@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import {Copy, createElement, Fragment} from "@crankjs/crank";
+import {createElement, Fragment} from "@crankjs/crank";
 import {render} from "@crankjs/crank/dom";
 import "./index.css";
 import CodeMirror from "codemirror";
@@ -58,8 +58,7 @@ const babelOptions = {
 async function* Preview({id, code}) {
 	for await ({id, code} of this) {
 		try {
-			// TODO: do this async
-			const div = yield (<div id={id} class="preview" />);
+			yield (<div id={id} class="preview" />);
 			// TODO: resume async generators only after parent has committed or something
 			await new Promise((resolve) => setTimeout(resolve, 0));
 			code = Babel.transform(code, babelOptions).code;
@@ -118,10 +117,53 @@ render(<IPAddress />, document.getElementById("ip-address-demo"));
 `.trim();
 
 const todoCode = `
+function *TodoApp () {
+	const items = [];
+	let text = "";
+	this.addEventListener("input", (ev) => {
+		text = ev.target.value;
+		this.refresh();
+	});
+
+	this.addEventListener("submit", (ev) => {
+		ev.preventDefault();
+		if (!text.length) {
+			return;
+		}
+
+		items.push({text, id: Date.now()});
+		text = "";
+		this.refresh();
+	});
+
+	while (true) {
+		yield (
+			<div>
+				<h3>TODO</h3>
+				<TodoList items={items} />
+				<form>
+					<label for="new-todo">What needs to be done?</label>
+					<input id="new-todo" value={text} />
+					<button>Add #{items.length + 1}</button>
+				</form>
+			</div>
+		);
+	}
+}
+
+function TodoList ({items}) {
+	return (
+		<ul>
+			{items.map((item) => <li crank-key={item.id}>{item.text}</li>)}
+		</ul>
+	);
+}
+
+render(<TodoApp />, document.getElementById("todo-demo"));
 `.trim();
 
 const loadingCode = `
-async function RandomDogImage({throttle=false}) {
+async function RandomDogImage ({throttle=false}) {
 	if (throttle) {
 		await new Promise((resolve) => setTimeout(resolve, 2000));
 	}
@@ -136,19 +178,19 @@ async function RandomDogImage({throttle=false}) {
 	);
 }
 
-async function Fallback({wait = 1000, children}) {
+async function Fallback ({wait = 1000, children}) {
 	await new Promise((resolve) => setTimeout(resolve, wait));
 	return <Fragment>{children}</Fragment>;
 }
 
-async function *Suspense({fallback, children}) {
+async function *Suspense ({fallback, children}) {
 	for await ({fallback, children} of this) {
 		yield <Fallback>{fallback}</Fallback>;
 		yield <Fragment>{children}</Fragment>;
 	}
 }
 
-function *App() {
+function *App () {
 	let throttle = false;
 	this.addEventListener("click", (ev) => {
 		if (ev.target.tagName === "BUTTON") {
@@ -188,15 +230,16 @@ function* Playground({code = "", id = "playground"}) {
 	}
 }
 
-function Root() {
+function Page() {
 	return (
 		<div>
 			<Playground id="hello-world-demo" code={helloCode} />
 			<Playground id="timer-demo" code={timerCode} />
 			<Playground id="ip-address-demo" code={ipCode} />
+			<Playground id="todo-demo" code={todoCode} />
 			<Playground id="loading-demo" code={loadingCode} />
 		</div>
 	);
 }
 
-render(<Root />, document.body.firstElementChild);
+render(<Page />, document.body.firstElementChild);
