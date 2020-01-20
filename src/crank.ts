@@ -407,27 +407,29 @@ class Link {
 }
 
 class Host<T> extends Link {
-	ctx?: Context<T> = undefined;
-	guest?: Guest = undefined;
-	node?: T | string = undefined;
+	ctx?: Context<T>;
+	guest?: Guest;
+	node?: T | string;
 	private updating = false;
 	private done = false;
+	private unmounted = false;
 	private independent = false;
-	private iterator?: ChildIterator = undefined;
-	private intrinsic?: Intrinsic<T> = undefined;
-	private committer?: Iterator<T | undefined> = undefined;
-	private hostsByKey?: Map<unknown, Host<T>> = undefined;
-	private pending?: Promise<any> = undefined;
-	private enqueued?: Promise<any> = undefined;
-	protected firstChild?: Host<T> = undefined;
-	protected lastChild?: Host<T> = undefined;
-	protected nextSibling?: Host<T> = undefined;
-	protected previousSibling?: Host<T> = undefined;
+	private iterator?: ChildIterator;
+	private intrinsic?: Intrinsic<T>;
+	private committer?: Iterator<T | undefined>;
+	private hostsByKey?: Map<unknown, Host<T>>;
+	private pending?: Promise<any>;
+	private enqueued?: Promise<any>;
+	private replacedBy?: Host<T>;
+	private clock = 0;
+	protected firstChild?: Host<T>;
+	protected lastChild?: Host<T>;
+	protected nextSibling?: Host<T>;
+	protected previousSibling?: Host<T>;
 	constructor(
 		protected parent: Host<T> | undefined,
 		// TODO: Figure out a way to not have to pass in a renderer
 		private renderer: Renderer<T>,
-		private clock: number = 0,
 	) {
 		super();
 	}
@@ -442,7 +444,7 @@ class Host<T> extends Link {
 	}
 
 	props?: Props;
-	private cachedChildNodes?: (T | string)[] = undefined;
+	private cachedChildNodes?: (T | string)[];
 	get childNodes(): (T | string)[] {
 		if (this.cachedChildNodes !== undefined) {
 			return this.cachedChildNodes;
@@ -498,8 +500,8 @@ class Host<T> extends Link {
 		if (this.guest === undefined) {
 			if (isElement(guest)) {
 				this.ctx = new Context(this, this.parent && this.parent.ctx);
-				// TODO: allow people to provide custom intrinsics for fragments to
-				// allow for stuff like an innerHTML property
+				// TODO: allow custom intrinsics for fragments to allow for stuff like
+				// an innerHTML property
 				if (typeof guest.tag !== "function" && guest.tag !== Fragment) {
 					this.intrinsic = this.renderer.intrinsicFor(guest.tag);
 				}
@@ -611,7 +613,9 @@ class Host<T> extends Link {
 	}
 
 	refresh(): MaybePromise<undefined> {
-		if (isElement(this.guest)) {
+		if (this.unmounted) {
+			return;
+		} else if (isElement(this.guest)) {
 			if (this.ctx !== undefined) {
 				this.ctx.dispatchEvent(
 					new CustomEvent("crank.refresh", {detail: {props: this.guest.props}}),
@@ -630,6 +634,7 @@ class Host<T> extends Link {
 		}
 	}
 
+	// TODO: clean up this monster
 	updateChildren = chase(function updateChildren(
 		this: Host<T>,
 		children: Children,
@@ -695,26 +700,35 @@ class Host<T> extends Link {
 				}
 
 				if (tag !== Copy) {
-					host.clock++;
-					if (host.tag === tag || isNewHost) {
+					if (isNewHost || (!host.unmounted && host.tag === tag)) {
 						const updateP = host.update(guest);
 						if (updateP !== undefined) {
 							promises.push(updateP);
 						}
 					} else {
-						host.unmount();
-						const newHost = new Host(this, this.renderer, host.clock);
+						const clock = host.clock++;
+						const newHost = new Host(this, this.renderer);
+						newHost.clock = clock;
 						const updateP = newHost.update(guest);
+						host.unmount();
 						if (updateP === undefined) {
 							this.replaceChild(newHost, host);
+							host.replacedBy = newHost;
 						} else {
+							promises.push(updateP);
 							const host1 = host;
 							updateP.then(() => {
-								if (host1.clock === newHost.clock) {
+								if (host1.replacedBy === undefined) {
 									this.replaceChild(newHost, host1);
+									host1.replacedBy = newHost;
+								} else if (
+									host1.replacedBy.replacedBy === undefined &&
+									host1.replacedBy.clock < newHost.clock
+								) {
+									this.replaceChild(newHost, host1.replacedBy);
+									host1.replacedBy = newHost;
 								}
 							});
-							promises.push(updateP);
 						}
 					}
 				}
@@ -814,7 +828,7 @@ class Host<T> extends Link {
 			}
 		}
 
-		this.done = true;
+		this.unmounted = true;
 		this.committer = undefined;
 		this.iterator = undefined;
 		this.updating = false;
