@@ -1,6 +1,6 @@
 {
   "name": "@bikeshaving/crank",
-  "version": "0.1.0-beta.0",
+  "version": "0.1.0-beta.1",
   "license": "MIT",
   "description": "JSX components with functions, promises and generators.",
   "files": [
@@ -8,7 +8,8 @@
     "dom.js",
     "dom.d.ts",
     "string.js",
-    "string.d.ts"
+    "string.d.ts",
+    "node_modules"
   ],
   "main": "lib/cjs/crank.js",
   "module": "lib/crank.js",
