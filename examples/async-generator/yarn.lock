@@ -2,8 +2,10 @@
 # yarn lockfile v1
 
 
-"@crankjs/crank@../..":
-  version "0.1.0-beta.0"
+"@bikeshaving/crank@0.1.0-beta.1":
+  version "0.1.0-beta.1"
+  resolved "https://registry.yarnpkg.com/@bikeshaving/crank/-/crank-0.1.0-beta.1.tgz#ac20964c4b5dc9e6263c1cecaf598c57d1848804"
+  integrity sha512-anUemjyGqab/DmKIYfpCaHv7fK/sEwoiaSBjmyM5VE1THeDR9CzGKLwi4PSmTnKBmTCcDlEwcrZEw5N1IF/OAQ==
   dependencies:
     "@repeaterjs/repeater" "^3.0.1"
     event-target-shim "^5.0.1"
