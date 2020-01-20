@@ -8,14 +8,16 @@ This is an early beta.
 
 ### A Simple Component
 ```ts
-function HelloMessage({name}) {
-  return <div>Hello {name}</div>;
+function Hello ({name}) {
+  return (
+    <div>Hello {name}</div>
+  );
 }
 ```
 
 ### A Stateful Component
 ```ts
-function* Timer() {
+function *Timer () {
   let seconds = 0;
   const interval = setInterval(() => {
     seconds++;
@@ -24,7 +26,7 @@ function* Timer() {
 
   try {
     while (true) {
-      yield (<div>Seconds: {seconds}</div>);
+      yield <div>Seconds: {seconds}</div>;
     }
   } finally {
     clearInterval(interval);
@@ -34,7 +36,7 @@ function* Timer() {
 
 ### An Async Component
 ```ts
-async function IPAddress() {
+async function IPAddress () {
   const res = await fetch("https://api.ipify.org");
   const address = await res.text();
   return <div>Your IP Address: {address}</div>;
@@ -43,46 +45,51 @@ async function IPAddress() {
 
 ### A Loading Component
 ```ts
-async function Loading({message = "Loading…", wait = 1000}) {
-  await new Promise((resolve) => setTimeout(resolve, wait));
-  return message;
+async function RandomDogImage ({throttle=false}) {
+  if (throttle) {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+
+  const res = await fetch("https://dog.ceo/api/breeds/image/random");
+  console.log(res.ok);
+  const data = await res.json();
+  return (
+    <a href={data.message}>
+      <img src={data.message} width="250" />
+    </a>
+  );
 }
 
-async function* DogImage() {
-  yield null;
-  for await (const _ of this) {
-    yield (<Loading message="Fetching a dog…" />);
-    const res = await fetch("https://dog.ceo/api/breeds/image/random");
-    const data = await res.json();
-    if (Math.random() > 0.5) {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-    }
+async function Fallback ({wait = 1000, children}) {
+  await new Promise((resolve) => setTimeout(resolve, wait));
+  return <Fragment>{children}</Fragment>;
+}
 
-    yield (
-      <figure>
-        <img src={data.message} height="400" />
-        <figcaption>
-          <a href={data.message}>{data.message}</a>
-        </figcaption>
-      </figure>
-    );
+async function *Suspense ({fallback, children}) {
+  for await ({fallback, children} of this) {
+    yield <Fallback>{fallback}</Fallback>;
+    yield <Fragment>{children}</Fragment>;
   }
 }
 
-function RandomDogApp() {
+function *RandomDogApp () {
+  let throttle = false;
   this.addEventListener("click", (ev) => {
-    if (ev.target.className === "fetch") {
+    if (ev.target.tagName === "BUTTON") {
+      throttle = !throttle;
       this.refresh();
     }
   });
 
-  return (
-    <div>
-      <div>
-        <button class="fetch">Fetch!</button>
-      </div>
-      <DogImage />
-    </div>
-  );
+  while (true) {
+    yield (
+      <Fragment>
+        <button>Fetch a new dog</button>
+        <Suspense fallback={<div>Fetching a good boy…</div>}>
+          <RandomDogImage throttle={throttle} />
+        </Suspense>
+      </Fragment>
+    );
+  }
 }
 ```
