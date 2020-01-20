@@ -1,0 +1,15 @@
+.editor {
+	width: 70%;
+}
+.preview {
+	width: 30%;
+}
+
+.playground {
+	margin: 0 auto;
+	width: 1024px;
+	display: flex;
+	flex-direction: row;
+	justify-content: stretch;
+	align-items: stretch;
+}

@@ -1,0 +1,16 @@
+{
+  "private": true,
+  "dependencies": {
+    "@babel/standalone": "^7.8.3",
+    "@bikeshaving/crank": "./..",
+    "@types/codemirror": "^0.0.82",
+    "codemirror": "^5.50.2",
+    "core-js": "^3.6.0",
+    "regenerator-runtime": "^0.13.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.7.7",
+    "parcel-bundler": "^1.12.4",
+    "typescript": "^3.7.4"
+  }
+}
