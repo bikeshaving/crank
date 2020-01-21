@@ -1,0 +1,72 @@
+# Introducing Crank.js
+
+## Not another web framework
+After a couple months of development, I’m happy to introduce Crank, a new framework for creating JSX-driven components with functions, promises and generators. And I know what you’re thinking: *oh no, not another web framework.* There are already so many of them out there (React, Angular, Vue, Ember, Svelte) and each carries a non-negligible cost in terms of learning it and building an ecosystem surrounding it, so it makes sense that you would instinctively reject newcomers if only to avoid the deep sense of exhaustion which has come to be known colloquially amongst frontend developers as “JavaScript fatigue.” Therefore, this post is both an introduction to Crank as well as an apology: I’m sorry for creating yet another framework, and I hope that by explaining the circumstances which led me to do so, you will forgive me.
+
+I will be honest; before embarking on this project I had never made a framework before nor even considered myself capable of doing such a thing. I don’t maintain any particularly popular open-source libraries, and most of the early commits to this project had messages like “why on Earth are you doing this?” Before working on Crank, my framework of choice was React, and I had used it dutifully for almost every project within my control since the `React.createClass` days. And as React evolved, I must admit, I was intrigued and excited with the announcement of each new React concept like “fibers”, “concurrent mode”, “hooks”, “suspense.” I spent days attempting to decipher tweets like the following by Sebastian Markbage, one of the principal architects behind React.
+
+However, over time, I grew increasingly alienated by what I perceived to be the more general direction of React, which was to reframe it as a “UI runtime.” Each new concrete API produced by React seemed to be increasingly convoluted, and I had more and more difficultly with each update, reasoning about my React components and when code within it ran. *I already have a UI runtime*,  I would think whenever I read the latest on React, *it’s called JavaScript.*
+
+Towards the end, I felt marooned, because on the one hand I knew deep down that I had fallen out of love with React, but on the other hand, I did not want to use any of the alternatives. I agreed with the criticisms which Vue, Svelte and Ember advocates lobbed in the direction of React, but I was unwilling to convert to any of them because they all seemed to feature prominently magical HTML templates.
+
+I like JSX. I like the small surface area it provides compared to template languages, which provide non-portable custom syntax, custom html attributes and custom elements to do basic things. And while there were other libraries which used JSX like Preact and Inferno, they seemed to follow React exactly in its evolution from “a view layer” into “a UI runtime,” by providing compatability layers with React and opting to distinguish themselves in terms of bundle size (Preact) or runtime performance (Inferno). My problems with React weren’t related to bundle size or runtime performance; in my view, it was the API that needed fixing. I felt like React, which had up to this point been the standard-bearer of JSX, was no longer up to the task of defending its colors.
+
+## Tired of the Suspense
+
+The tipping point for me was React’s perennially unready `Suspense` API, React’s solution for async rendering. For the most part, I ignored talks and articles describing Suspense, partially because the React team was continuously signaling that the API was in flux, but mainly because most discussions of Suspense just went over my head. I assumed that the React team was working it out, and we’d eventually have something like `async`/`await` for React components, and continued to incorporate React into projects without thinking too hard about the future of promises within React.
+
+This was until I decided to explore the Suspense API when I was trying to create a React hook for usage with async iterators. I had created an async iterator library that I was proud of ([Repeater.js](https://github.com/repeaterjs/repeater)), and I wanted to figure out a way to increase adoption, not just of the library, but also of async iterators in general. The answer seemed logical: create a React hook. At the time, it seemed like every API in existence was being transformed into a React hook somehow, and I thought it would be nice for there to be hooks which allowed developers to use async iterators within components as well.
+
+The result of this effort is available at [repeaterjs/react-hooks](https://github.com/repeaterjs/react-hooks), and while library is usuable, I mostly abandoned the effort and any sort of greenfield React development, because of my new understanding what React Suspense was. As of January 2020, the mechanism behind Suspense is for components with async dependencies to throw a promise from the render function to indicate these async dependencies. “Throw” as in the way you would “throw” an error in JavaScript. I say “as of January 2020,” because the React team has consistently said the exact details of the Suspense API might change, but as far as I can tell, that’s how it will work, and how almost everyone who has written libraries featuring Suspense assumes it will work. In short, React will attempt to render your components and if a promise-like is thrown in the course of rendering, React will catch the promise in a special parent component called `Suspense`, await the Promise, render a fallback if sufficient time has elapsed, and then attempt to render the component again when the promise fulfills. 
+
+If this sounds wild to you, that’s because it is. It’s an unusual way to use promises and throw statements in JavaScript. And I almost could get past this, trusting that React team knew what they were doing, until I understood the add-on ramifications of this design decision. When a component throws a promise to suspend, most likely that component has not rendered, so there’s no state or refs or component instance which corresponds to this thrown promise or on which we can store this thrown promise. And when the thrown promise fulfills, React will attempt to render the component again, and hopefully whatever API you called which initially threw the promise, an API which would be otherwise useless or ill-behaved in regular JavaScript, would in this second renderering of the component, not throw a promise but return with the fulfilled value synchronously.
+
+All of a sudden, what little I had heard about React Suspense made sense. I understood, for instance, why discussions of Suspense almost always involved discussions of a cache. The cache is necessary because as I said, there is no component instance on which to store the thrown promise, so when the component attempts to render a second time, it needs to make the same call and hope that the result is cached time a promise is not thrown. And while caching async requests is a useful technique to create responsive, performant, offline-ready applications, I balked at the idea of this hard requirement of a cache to use promises in a React application. This is because to cache a promise, you need to two things. One, you need to be able to uniquely key the async call according to its arguments somehow. This is what will allow you to come back to a call which had previously thrown a promise and produce a value synchronously. Second, you need to know when to invalidate this cached result. In other words, you need to be able to identify when the cached result might have changed, so that the user doesn’t end up seeing stale data in their interface.
+
+Take a step back, and take a high-level at one of your applications. If you’re using promises and async/await, think of all the async calls you make, and whether 1. you can both uniquely key each call, and 2. know exactly when the results of these calls become stale. This is a hard problem; in fact, cache invalidation is one of two problems which we joke about as being difficult in computer science. Even if you like the idea of caching your async calls, do you want to add this requirement to making async calls when you’re making a one-off call to some random API, or when you’re trying to just build a small app as a hobby, or when you’re trying to create a demo?
+
+## React’s Dogmatic Assertion
+
+At this point I started to wonder, why can’t render functions just be async, why can’t React components simply return a promise which resolves to JSX? I searched the github issues for people making this suggested API change, there was at least one such in issue in the major JSX libraries (React, Inferno, Preact), but the maintainers simply dismissed the idea out of hand, and suggested that Suspense would solve the problems.
+
+But Suspense solves this problem at the cost of requing a caching mechanism for promises, which as I described seemed like such a huge cost. I went back and listened to the actual discussions of Suspense and I ended up feeling like I was being gaslit. Suspense allows you to treat async code like it’s synchronous. We already have a way to make async code look synchronous, and it’s `async`/`await`, which literally *suspends* your functions and resumes them when your promises fulfill. And the literature on Suspense seemed invent new issues with promises which I didn’t think were real, or at least, which didn’t seem to matter, like the idea that promises “waterfall,” or that can’t be run concurrently, when people who used `async`/`await` have found ways to make async functions run concurrently, namely with `Promise.all`.
+
+I realized Suspense, and the mechanism behind it, was not the most ideal API that the React team could have designed; rather it was borne of a single dogmatic assertion which the React team held and continues to hold, which is that the UI should be a pure function of state. Pure function here means a sync function, so async functions, which return promises, which are stateful, were ruled out by definition. But modern javascript is more than synchronous functions. Not only were there sync functions, but as I mentioned, async functions, and also there were also sync and async generators, which the React team had also dismissed, because again, iterators are stateful. Async functions, sync and async generators, these features were supported within JavaScript itself at the syntax-level.
+
+Knowing that this was single, immutable axiom around which React designed their features, much of the design decisions that React made seemed to fall into place. While I thought that hooks were an innovative API when they first came out, with this new understanding, they seemed like a hack, a way to front-load code to execute after the return of sync functions, when if we used the `yield` operator, we could simply yield JSX and then continue to do some additional work once the generator had resumed.
+
+So for about a week or so I thought on this assertion of React, and the kind of JSX library you could create if you ignored this assertion that a component had to be a synchronous function. At this point I was going to move on to some other work, because the task of creating a replacement for React seemed somewhat daunting, when all of a sudden it hit me. I had been working with async generators, and had a solid understanding of how they worked and executed, and it suddenly dawned on me: The entire React lifecycle, all the `componentShouldWhatever` methods, all of it could be expressed within a single async generator function which was called a specific way.
+```js
+// props can be passed in when the async generator is called for the first time
+async function *MyComponent(props) {
+  componentWillMount(props);
+  let state = {};
+  let ref = yield <MyElement />;
+  componentDidMount(props, ref);
+  try {
+    for await (const nextProps of updates()) {
+      if (shouldComponentUpdate(props, nextProps)) {
+        state = componentWillUpdate(props, nextProps, state);
+        ref = yield <MyElement />;
+        componentDidUpdate(props, nextProps, state, ref);
+      }
+
+      props = nextProps;
+    }
+  } catch (err) {
+    compnentDidCatch(err);
+    return <MyErrorViewer error={err} />;
+  } finally {
+    componentWillUnmount(ref);
+  }
+}
+```
+
+By yielding JSX elements rather than returning them, you could have code which ran before or after the component rendered. State could be And, the async generator could be called and iterated manually, so that rather than having refs, the JSX elements could be transformed by the framework into the real DOM nodes they produced. State and refs could be kept as local variables within the generator, because the generator is simply resumed. And you could even implement something like componentDidCatch or componentWillUnmount by throwing errors into the generator if the children produce errors, or return the generator if the component is to be unmounted.
+
+This didn’t come all at once, but the idea seemed to dazzle me, like wow maybe I could build the next big web framework. I didn’t really know the details behind how async functions or sync generators would work but I saw an end-goal. And the best part is that I would just be using JavaScript’s natural ability to suspend and resume via async/await and generators, so I wouldn’t really need the fancy programming chops or resources of the React team: I wasn’t building a UI runtime, I was just using the one already available, JavaScript.
+
+
+## Not another web framework
+
+Crank is the months-long effort into designing

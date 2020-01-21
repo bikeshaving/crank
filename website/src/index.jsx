@@ -230,15 +230,25 @@ function* Playground({code = "", id = "playground"}) {
 	}
 }
 
-function Page() {
+function Hero() {
 	return (
 		<div>
+			<h1>Crank.js</h1>
+			<p>JSX-based components with functions, generators and promises.</p>
+		</div>
+	);
+}
+
+function Page() {
+	return (
+		<Fragment>
+			<Hero />
 			<Playground id="hello-world-demo" code={helloCode} />
 			<Playground id="timer-demo" code={timerCode} />
 			<Playground id="ip-address-demo" code={ipCode} />
 			<Playground id="todo-demo" code={todoCode} />
 			<Playground id="loading-demo" code={loadingCode} />
-		</div>
+		</Fragment>
 	);
 }
 

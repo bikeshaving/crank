@@ -4,11 +4,12 @@
 
 .preview {
 	width: 30%;
+	padding: 30px;
 }
 
 .playground {
 	margin: 0 auto;
-	width: 1024px;
+	max-width: 1000px;
 	display: flex;
 	flex-direction: row;
 	justify-content: stretch;
