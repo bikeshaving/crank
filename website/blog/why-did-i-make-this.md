@@ -1,9 +1,8 @@
-# Introducing Crank.js
-
+# Introducing Crank.js 
 ## Not another web framework
-After a couple months of development, I’m happy to introduce Crank, a new framework for creating JSX-driven components with functions, promises and generators. And I know what you’re thinking: *oh no, not another web framework.* There are already so many of them out there (React, Angular, Vue, Ember, Svelte) and each carries a non-negligible cost in terms of learning it and building an ecosystem surrounding it, so it makes sense that you would instinctively reject newcomers if only to avoid the deep sense of exhaustion which has come to be known colloquially amongst frontend developers as “JavaScript fatigue.” Therefore, this post is both an introduction to Crank as well as an apology: I’m sorry for creating yet another framework, and I hope that by explaining the circumstances which led me to do so, you will forgive me.
+After a couple months of development, I’m happy to introduce Crank, a new framework for creating JSX-driven components with functions, promises and generators. And I know what you’re thinking: ***oh no, not another web framework.*** There are already so many of them out there (React, Angular, Vue, Ember, Svelte) and each carries a non-negligible cost in terms of learning it and building an ecosystem surrounding it, so it makes sense that you would instinctively reject newcomers if only to avoid the deep sense of exhaustion which has come to be known colloquially among frontend developers as “JavaScript fatigue.” Therefore, this post is both an introduction to Crank as well as an apology: I’m sorry for creating yet another framework, and I hope that by explaining the circumstances which led me to do so, you will forgive me.
 
-I will be honest; before embarking on this project I had never made a framework before nor even considered myself capable of doing such a thing. I don’t maintain any particularly popular open-source libraries, and most of the early commits to this project had messages like “why on Earth are you doing this?” Before working on Crank, my framework of choice was React, and I had used it dutifully for almost every project within my control since the `React.createClass` days. And as React evolved, I must admit, I was intrigued and excited with the announcement of each new React concept like “fibers”, “concurrent mode”, “hooks”, “suspense.” I spent days attempting to decipher tweets like the following by Sebastian Markbage, one of the principal architects behind React.
+I will be honest; before embarking on this project I had never made a “web framework” nor even considered myself capable of doing such a thing. I don’t maintain any particularly popular open-source libraries, and most of the early commits to this project had messages like “why on Earth are you doing this?” Before working on Crank, my framework of choice was React, and I had used it dutifully for almost every project within my control since the `React.createClass` days. And as React evolved, I must admit, I was intrigued and excited with the announcement of each new React concept like “fibers”, “concurrent mode”, “hooks”, “suspense.” I spent days attempting to decipher tweets like the following by Sebastian Markbage, one of the principal architects behind React.
 
 However, over time, I grew increasingly alienated by what I perceived to be the more general direction of React, which was to reframe it as a “UI runtime.” Each new concrete API produced by React seemed to be increasingly convoluted, and I had more and more difficultly with each update, reasoning about my React components and when code within it ran. *I already have a UI runtime*,  I would think whenever I read the latest on React, *it’s called JavaScript.*
 
@@ -35,27 +34,26 @@ I realized Suspense, and the mechanism behind it, was not the most ideal API tha
 
 Knowing that this was single, immutable axiom around which React designed their features, much of the design decisions that React made seemed to fall into place. While I thought that hooks were an innovative API when they first came out, with this new understanding, they seemed like a hack, a way to front-load code to execute after the return of sync functions, when if we used the `yield` operator, we could simply yield JSX and then continue to do some additional work once the generator had resumed.
 
-So for about a week or so I thought on this assertion of React, and the kind of JSX library you could create if you ignored this assertion that a component had to be a synchronous function. At this point I was going to move on to some other work, because the task of creating a replacement for React seemed somewhat daunting, when all of a sudden it hit me. I had been working with async generators, and had a solid understanding of how they worked and executed, and it suddenly dawned on me: The entire React lifecycle, all the `componentShouldWhatever` methods, all of it could be expressed within a single async generator function which was called a specific way.
+So for about a week or so I thought on this assertion of React, and the kind of JSX library you could create if you ignored this assertion that a component had to be a synchronous function. At this point I was going to move on to some other work, because the task of creating a replacement for React seemed somewhat daunting, when all of a sudden it hit me. I had been working with async generators, and had a solid understanding of how they worked and executed, and it suddenly dawned on me: The entire React lifecycle, all the `shouldComponentWhatever` methods, all of it could be expressed within a single async generator function which was called a specific way.
+
 ```js
 // props can be passed in when the async generator is called for the first time
 async function *MyComponent(props) {
-  componentWillMount(props);
-  let state = {};
+  let state = componentWillMount(props);
   let ref = yield <MyElement />;
-  componentDidMount(props, ref);
+  state = componentDidMount(props, state, ref);
   try {
     for await (const nextProps of updates()) {
       if (shouldComponentUpdate(props, nextProps)) {
         state = componentWillUpdate(props, nextProps, state);
         ref = yield <MyElement />;
-        componentDidUpdate(props, nextProps, state, ref);
+        state = componentDidUpdate(props, nextProps, state, ref);
       }
 
       props = nextProps;
     }
   } catch (err) {
-    compnentDidCatch(err);
-    return <MyErrorViewer error={err} />;
+    return componentDidCatch(err);
   } finally {
     componentWillUnmount(ref);
   }
@@ -64,9 +62,14 @@ async function *MyComponent(props) {
 
 By yielding JSX elements rather than returning them, you could have code which ran before or after the component rendered. State could be And, the async generator could be called and iterated manually, so that rather than having refs, the JSX elements could be transformed by the framework into the real DOM nodes they produced. State and refs could be kept as local variables within the generator, because the generator is simply resumed. And you could even implement something like componentDidCatch or componentWillUnmount by throwing errors into the generator if the children produce errors, or return the generator if the component is to be unmounted.
 
-This didn’t come all at once, but the idea seemed to dazzle me, like wow maybe I could build the next big web framework. I didn’t really know the details behind how async functions or sync generators would work but I saw an end-goal. And the best part is that I would just be using JavaScript’s natural ability to suspend and resume via async/await and generators, so I wouldn’t really need the fancy programming chops or resources of the React team: I wasn’t building a UI runtime, I was just using the one already available, JavaScript.
-
+This didn’t come all at once, but the idea dazzled me, and suddenly it felt possible, like wow maybe I could build the next big web framework. I didn’t really know the details behind how async functions or sync generators would work but I saw the end result. And the best part was that working on this idea was that it felt like programming arbitrage, where, while the React team and its considerable amoun of engineering resources went so far as to create a UI runtime, I could just let JavaScript do its thing. I didn’t need to unravel call stacks in a fiber data structure so I could arbitrarily pause and resume computations, I could let async functions and generators do this suspending and resuming automatically. And I didn’t need to create a scheduler, I could just use promises and the microtask queue provided by the runtime to coordinate asynchrony.
 
 ## Not another web framework
 
-Crank is the months-long effort into designing
+Crank is the result of a months-long investigation into the viability of this idea, that JSX-based components could be written not just with sync functions, but also with async functions, and with sync and async generator functions. Much of this time was spent refining the design of the API, figuring out what to do for instance, when an async component has not yet fulfilled but is rerendered. I’m very pleased with the result; I literally started tearing up while implementing TodoMVC in Crank, because it was the culmination of months of work, and because it felt so natural and easy.
+
+In 2020, there’s been a big push to figure out “reactivity” in each of the web frameworks, how best to track changes to data in an application to update the UI. What felt like a solved problem became again unsolved, as the various frameworks attempted to refactor their UI frameworks away from classes, and co-locate code which would ordinarily have gone into different lifecycle methods. React, as stated, invested into hooks, and the creation of a custom UI runtime, Vue invested in a Proxy-based observation system, Svelte invested in a compiler which hacked statement labels and export declarations to mark variables as having changed. On the other hand, Crank just uses promises, async/await, and generators, language features which have been available in JavaScript since ECMAScript 2015 and are now heavily entrenched in the ecosystem. But by combining these relatively old, almost boring technologies with JSX syntax, I think I’ve discovered a new way to write components, which is expressive, easy to reason about, and more composeable than any of the solutions the other frameworks have provided.
+
+In short, I think Crank is “not just another web framework,” but a pattern which would have been discovered by the JavaScript community at some point. Because while the other frameworks will argue that their APIs allow you to write “Just JavaScript™️,” Crank really is just javascript; all I’m doing is calling your functions which return or yield JSX elements in a specific way. And again I’m sorry for creating another web framework, but I hope, if you’ve read this far, you understand why I thought it was necessary to do so; namely, because I thought React was dropping the ball in terms of their newest APIs, and also because of the sudden realization that we could be doing so much more with generators and async generators than we currently are.
+
+If you’re interested in this, if you don’t share the skepticism the React team has of promises and generators, if you don’t want to use templates over JSX, if you’re looking for a framework with an arguably simpler API, I encourage you to check out Crank. This framework is in its early days, and there’s still so much work to be done before it can be considered a full-fledged framework like the others, but I think the ideas behind it and the design of the API are sound and show a lot of promise, and I can’t wait to see what people build with Crank.
