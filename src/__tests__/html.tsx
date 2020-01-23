@@ -1,17 +1,17 @@
 /** @jsx createElement */
 import {createElement, Fragment} from "../crank";
-import {renderToString} from "../string";
+import {renderer} from "../html";
 
 describe("render", () => {
 	test("simple", () => {
-		expect(renderToString(<h1>Hello world</h1>)).toEqual(
+		expect(renderer.renderToString(<h1>Hello world</h1>)).toEqual(
 			"<h1>Hello world</h1>",
 		);
 	});
 
 	test("multiple children", () => {
 		expect(
-			renderToString(
+			renderer.renderToString(
 				<div>
 					<span>1</span>
 					<span>2</span>
@@ -26,7 +26,7 @@ describe("render", () => {
 
 	test("nested children", () => {
 		expect(
-			renderToString(
+			renderer.renderToString(
 				<div id="1">
 					<div id="2">
 						<div id="3">Hi</div>
@@ -38,7 +38,7 @@ describe("render", () => {
 
 	test("boolean replaces nested children", () => {
 		expect(
-			renderToString(
+			renderer.renderToString(
 				<div id="1">
 					<div id="2">
 						<div id="3">Hi</div>
@@ -50,7 +50,7 @@ describe("render", () => {
 
 	test("attrs", () => {
 		expect(
-			renderToString(
+			renderer.renderToString(
 				<Fragment>
 					<input id="toggle" type="checkbox" checked data-checked />
 					<label for="toggle" />
@@ -62,12 +62,12 @@ describe("render", () => {
 	});
 
 	test("null", () => {
-		expect(renderToString(null)).toEqual("");
+		expect(renderer.renderToString(null)).toEqual("");
 	});
 
 	test("fragment", () => {
 		expect(
-			renderToString(
+			renderer.renderToString(
 				<Fragment>
 					<span>1</span>
 					<span>2</span>
@@ -78,7 +78,7 @@ describe("render", () => {
 
 	test("array", () => {
 		expect(
-			renderToString(
+			renderer.renderToString(
 				<div>
 					<span>1</span>
 					{[<span>2</span>, <span>3</span>]}
@@ -92,7 +92,7 @@ describe("render", () => {
 
 	test("nested arrays", () => {
 		expect(
-			renderToString(
+			renderer.renderToString(
 				<div>
 					<span>1</span>
 					{[<span>2</span>, [<span>3</span>, <span>4</span>], <span>5</span>]}
@@ -111,7 +111,7 @@ describe("render", () => {
 			<span crank-key="4">4</span>,
 		];
 		expect(
-			renderToString(
+			renderer.renderToString(
 				<div>
 					<span>1</span>
 					{spans}

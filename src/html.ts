@@ -5,13 +5,13 @@ import {
 	Default,
 	Environment,
 	Intrinsic,
+	Portal,
 	Props,
 	Renderer,
-	Root,
 	Text,
 } from "./crank";
 
-// https://stackoverflow.com/a/28458409/
+// Adapted from https://stackoverflow.com/a/28458409/
 function escapeText(text: string): string {
 	return text.replace(/[&<"']/g, (m) => {
 		switch (m) {
@@ -87,7 +87,7 @@ const voids = new Set([
 ]);
 
 export const env: Environment<string> = {
-	[Root](this: Context): string {
+	[Portal](this: Context): string {
 		return this.childNodes.join("");
 	},
 	[Text](text: string): string {
@@ -112,13 +112,15 @@ export const env: Environment<string> = {
 };
 
 export class StringRenderer extends Renderer<string> {
-	env = env;
+	constructor() {
+		super(env);
+	}
+
+	renderToString(child: Child, key?: object): Promise<string> | string {
+		return new Pledge(this.render(child, key)).then(
+			(ctx) => (ctx && ctx.node) || "",
+		);
+	}
 }
 
 export const renderer = new StringRenderer();
-
-export function renderToString(child: Child): Promise<string> | string {
-	return new Pledge(renderer.render(child)).then(
-		(ctx) => (ctx && ctx.node) || "",
-	);
-}

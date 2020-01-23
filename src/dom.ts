@@ -1,12 +1,11 @@
 import {
-	Child,
 	Context,
 	Default,
 	Environment,
 	Intrinsic,
 	Props,
 	Renderer,
-	Root,
+	Portal,
 } from "./crank";
 
 function updateProps(el: HTMLElement, props: Props, newProps: Props): void {
@@ -101,21 +100,6 @@ function updateChildren(
 }
 
 export const env: Environment<HTMLElement> = {
-	*[Root](this: Context, {node}): Generator<HTMLElement> {
-		try {
-			for (const {node: newNode} of this) {
-				if (node !== newNode) {
-					updateChildren(node);
-					node = newNode;
-				}
-
-				updateChildren(node, this.childNodes);
-				yield node;
-			}
-		} finally {
-			updateChildren(node);
-		}
-	},
 	[Default](tag: string): Intrinsic<HTMLElement> {
 		return function* defaultDOM(this: Context): Generator<HTMLElement> {
 			const node = document.createElement(tag);
@@ -136,17 +120,35 @@ export const env: Environment<HTMLElement> = {
 			}
 		};
 	},
+	*[Portal](this: Context, {root}): Generator<HTMLElement> {
+		if (root == null) {
+			throw new TypeError("Portal element is missing root node");
+		}
+
+		try {
+			for (const {root: newRoot} of this) {
+				if (newRoot == null) {
+					throw new TypeError("Portal element is missing root node");
+				}
+
+				if (root !== newRoot) {
+					updateChildren(root);
+					root = newRoot;
+				}
+
+				updateChildren(root, this.childNodes);
+				yield root;
+			}
+		} finally {
+			updateChildren(root);
+		}
+	},
 };
 
 export class DOMRenderer extends Renderer<HTMLElement> {
-	env = env;
+	constructor() {
+		super(env);
+	}
 }
 
 export const renderer = new DOMRenderer();
-
-export function render(
-	child: Child,
-	node: HTMLElement,
-): Promise<Context | undefined> | Context | undefined {
-	return renderer.render(child, node);
-}

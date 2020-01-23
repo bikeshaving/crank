@@ -1,8 +1,9 @@
 /** @jsx createElement */
 import {Copy, createElement, Fragment} from "../crank";
-import {render} from "../dom";
+import {renderer} from "../dom";
 import "./_mutation-observer";
 import {createHTML} from "./_utils";
+
 describe("render", () => {
 	let observer: MutationObserver;
 	function observe() {
@@ -20,13 +21,13 @@ describe("render", () => {
 
 	afterEach(() => {
 		document.body.innerHTML = "";
-		render(null, document.body);
+		renderer.render(null, document.body);
 		observer.disconnect();
 	});
 
 	test("simple", () => {
 		observe();
-		render(<h1>Hello world</h1>, document.body);
+		renderer.render(<h1>Hello world</h1>, document.body);
 		expect(document.body.innerHTML).toEqual("<h1>Hello world</h1>");
 		expect(observer.takeRecords()).toEqualMutationRecords([
 			{addedNodes: [createHTML("<h1>Hello world</h1>")]},
@@ -35,7 +36,7 @@ describe("render", () => {
 
 	test("multiple children", () => {
 		observe();
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 				<span>2</span>
@@ -60,7 +61,7 @@ describe("render", () => {
 
 	test("nested children", () => {
 		observe();
-		render(
+		renderer.render(
 			<div id="1">
 				<div id="2">
 					<div id="3">Hi</div>
@@ -80,7 +81,7 @@ describe("render", () => {
 				],
 			},
 		]);
-		render(<div id="1" />, document.body);
+		renderer.render(<div id="1" />, document.body);
 		expect(document.body.innerHTML).toEqual('<div id="1"></div>');
 		expect(observer.takeRecords()).toEqualMutationRecords([
 			{
@@ -92,7 +93,7 @@ describe("render", () => {
 
 	test("boolean replaces nested children", () => {
 		observe();
-		render(
+		renderer.render(
 			<div id="1">
 				<div id="2">
 					<div id="3">Hi</div>
@@ -112,7 +113,7 @@ describe("render", () => {
 				],
 			},
 		]);
-		render(<div id="1">{true}</div>, document.body);
+		renderer.render(<div id="1">{true}</div>, document.body);
 		expect(document.body.innerHTML).toEqual('<div id="1"></div>');
 		expect(observer.takeRecords()).toEqualMutationRecords([
 			{
@@ -123,7 +124,7 @@ describe("render", () => {
 	});
 
 	test("attrs", () => {
-		render(
+		renderer.render(
 			<Fragment>
 				<input id="toggle" type="checkbox" checked data-checked />
 				<label for="toggle" />
@@ -137,7 +138,7 @@ describe("render", () => {
 		);
 		expect((document.body.firstChild! as any).checked).toBe(true);
 		observe();
-		render(
+		renderer.render(
 			<Fragment>
 				<input id="toggle" type="checkbox" />
 				<label for="toggle" class="inactive" />
@@ -151,23 +152,23 @@ describe("render", () => {
 	});
 
 	test("doesn’t blow away user-created html when it doesn’t have to", () => {
-		render(<div id="mount" />, document.body);
+		renderer.render(<div id="mount" />, document.body);
 		expect(document.body.innerHTML).toEqual('<div id="mount"></div>');
 		document.getElementById("mount")!.innerHTML = "<span>Hello world</span>";
 		expect(document.body.innerHTML).toEqual(
 			'<div id="mount"><span>Hello world</span></div>',
 		);
-		render(<div id="mount" />, document.body);
+		renderer.render(<div id="mount" />, document.body);
 		expect(document.body.innerHTML).toEqual(
 			'<div id="mount"><span>Hello world</span></div>',
 		);
 	});
 
 	test("rerender text", () => {
-		render(<h1>Hello world 1</h1>, document.body);
+		renderer.render(<h1>Hello world 1</h1>, document.body);
 		expect(document.body.innerHTML).toEqual("<h1>Hello world 1</h1>");
 		observe();
-		render(<h1>Hello {"world"} 2</h1>, document.body);
+		renderer.render(<h1>Hello {"world"} 2</h1>, document.body);
 		expect(document.body.innerHTML).toEqual("<h1>Hello world 2</h1>");
 		expect(observer.takeRecords()).toEqualMutationRecords([
 			{
@@ -176,7 +177,7 @@ describe("render", () => {
 				oldValue: "Hello world 1",
 			},
 		]);
-		render(<h1>Hello world {3}</h1>, document.body);
+		renderer.render(<h1>Hello world {3}</h1>, document.body);
 		expect(document.body.innerHTML).toEqual("<h1>Hello world 3</h1>");
 		expect(observer.takeRecords()).toEqualMutationRecords([
 			{
@@ -188,7 +189,7 @@ describe("render", () => {
 	});
 
 	test("rerender different child", () => {
-		render(
+		renderer.render(
 			<div>
 				<h1>Hello world</h1>
 			</div>,
@@ -196,7 +197,7 @@ describe("render", () => {
 		);
 		expect(document.body.innerHTML).toEqual("<div><h1>Hello world</h1></div>");
 		observe();
-		render(
+		renderer.render(
 			<div>
 				<h2>Hello world</h2>
 			</div>,
@@ -216,10 +217,10 @@ describe("render", () => {
 	});
 
 	test("rerender text with children", () => {
-		render(<div>Hello world</div>, document.body);
+		renderer.render(<div>Hello world</div>, document.body);
 		expect(document.body.innerHTML).toEqual("<div>Hello world</div>");
 		observe();
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 				<span>2</span>
@@ -247,7 +248,7 @@ describe("render", () => {
 	});
 
 	test("rerender children with text", () => {
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 				<span>2</span>
@@ -258,7 +259,7 @@ describe("render", () => {
 			"<div><span>1</span><span>2</span></div>",
 		);
 		observe();
-		render(<div>Hello world</div>, document.body);
+		renderer.render(<div>Hello world</div>, document.body);
 		expect(document.body.innerHTML).toEqual("<div>Hello world</div>");
 		expect(observer.takeRecords()).toEqualMutationRecords([
 			{
@@ -277,7 +278,7 @@ describe("render", () => {
 	});
 
 	test("rerender more children", () => {
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 			</div>,
@@ -285,7 +286,7 @@ describe("render", () => {
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
 		observe();
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 				<span>2</span>
@@ -314,7 +315,7 @@ describe("render", () => {
 	});
 
 	test("rerender fewer children", () => {
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 				<span>2</span>
@@ -327,7 +328,7 @@ describe("render", () => {
 			"<div><span>1</span><span>2</span><span>3</span><span>4</span></div>",
 		);
 		observe();
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 			</div>,
@@ -351,20 +352,20 @@ describe("render", () => {
 	});
 
 	test("render null", () => {
-		render(<h1>Hello world</h1>, document.body);
+		renderer.render(<h1>Hello world</h1>, document.body);
 		expect(document.body.innerHTML).toEqual("<h1>Hello world</h1>");
 		observe();
-		render(null, document.body);
+		renderer.render(null, document.body);
 		expect(document.body.innerHTML).toEqual("");
 		expect(observer.takeRecords()).toEqualMutationRecords([
 			{removedNodes: [createHTML("<h1>Hello world</h1>")]},
 		]);
-		render(<h1>Hello again</h1>, document.body);
+		renderer.render(<h1>Hello again</h1>, document.body);
 		expect(document.body.innerHTML).toEqual("<h1>Hello again</h1>");
 		expect(observer.takeRecords()).toEqualMutationRecords([
 			{addedNodes: [createHTML("<h1>Hello again</h1>")]},
 		]);
-		render(null, document.body);
+		renderer.render(null, document.body);
 		expect(document.body.innerHTML).toEqual("");
 		expect(observer.takeRecords()).toEqualMutationRecords([
 			{removedNodes: [createHTML("<h1>Hello again</h1>")]},
@@ -372,7 +373,7 @@ describe("render", () => {
 	});
 
 	test("fragment", () => {
-		render(
+		renderer.render(
 			<Fragment>
 				<span>1</span>
 				<span>2</span>
@@ -381,7 +382,7 @@ describe("render", () => {
 		);
 		expect(document.body.innerHTML).toEqual("<span>1</span><span>2</span>");
 		observe();
-		render(
+		renderer.render(
 			<Fragment>
 				<span>1</span>
 				<span>2</span>
@@ -401,7 +402,7 @@ describe("render", () => {
 	});
 
 	test("rerendering fragment", () => {
-		render(
+		renderer.render(
 			<Fragment>
 				{undefined}
 				{undefined}
@@ -409,7 +410,7 @@ describe("render", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("");
-		render(
+		renderer.render(
 			<Fragment>
 				<span>1</span>
 				<span>2</span>
@@ -420,14 +421,14 @@ describe("render", () => {
 	});
 
 	test("rerender copy", () => {
-		render(<div>Hello</div>, document.body);
+		renderer.render(<div>Hello</div>, document.body);
 		expect(document.body.innerHTML).toEqual("<div>Hello</div>");
-		render(<Copy />, document.body);
+		renderer.render(<Copy />, document.body);
 		expect(document.body.innerHTML).toEqual("<div>Hello</div>");
 	});
 
 	test("array", () => {
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 				{[<span>2</span>, <span>3</span>]}
@@ -440,7 +441,7 @@ describe("render", () => {
 		);
 		observe();
 		const span4 = document.body.firstChild!.childNodes[3];
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 				{[]}
@@ -471,7 +472,7 @@ describe("render", () => {
 	});
 
 	test("nested arrays", () => {
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 				{[<span>2</span>, [<span>3</span>, <span>4</span>], <span>5</span>]}
@@ -484,7 +485,7 @@ describe("render", () => {
 		);
 		observe();
 		const span6 = document.body.firstChild!.childNodes[5];
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 				{[<span>2</span>, [<span>4</span>]]}
@@ -520,7 +521,7 @@ describe("render", () => {
 	});
 
 	test("keyed child moves forward", () => {
-		render(
+		renderer.render(
 			<div>
 				<span crank-key="1">1</span>
 				<span>2</span>
@@ -531,7 +532,7 @@ describe("render", () => {
 			"<div><span>1</span><span>2</span></div>",
 		);
 		const span1 = document.body.firstChild!.firstChild;
-		render(
+		renderer.render(
 			<div>
 				<span>0</span>
 				<span crank-key="1">1</span>
@@ -545,7 +546,7 @@ describe("render", () => {
 	});
 
 	test("keyed child moves backward", () => {
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 				<span crank-key="2">2</span>
@@ -556,7 +557,7 @@ describe("render", () => {
 			"<div><span>1</span><span>2</span></div>",
 		);
 		const span2 = document.body.firstChild!.lastChild;
-		render(
+		renderer.render(
 			<div>
 				<span crank-key="2">2</span>
 				<span>3</span>
@@ -575,7 +576,7 @@ describe("render", () => {
 			<span crank-key="3">3</span>,
 			<span crank-key="4">4</span>,
 		];
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 				{spans}
@@ -593,7 +594,7 @@ describe("render", () => {
 		const span4 = document.body.firstChild!.childNodes[3];
 		const span5 = document.body.firstChild!.childNodes[4];
 		spans.splice(1, 1);
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 				{spans}
@@ -635,7 +636,7 @@ describe("render", () => {
 			<span crank-key="5">5</span>,
 			<span crank-key="6">6</span>,
 		];
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 				{spans}
@@ -654,7 +655,7 @@ describe("render", () => {
 		const span6 = document.body.firstChild!.childNodes[5];
 		const span7 = document.body.firstChild!.childNodes[6];
 		spans.reverse();
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 				{spans}
@@ -665,7 +666,7 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>1</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>7</span></div>",
 		);
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 				{spans}
@@ -681,7 +682,7 @@ describe("render", () => {
 		expect(document.body.firstChild!.childNodes[5]).toBe(span2);
 		expect(document.body.firstChild!.childNodes[6]).toBe(span7);
 		spans.reverse();
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 				{spans}
@@ -706,7 +707,7 @@ describe("render", () => {
 			<span crank-key="5">5</span>,
 			<span crank-key="6">6</span>,
 		];
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 				{spans}
@@ -725,7 +726,7 @@ describe("render", () => {
 		const span6 = document.body.firstChild!.childNodes[5];
 		const span7 = document.body.firstChild!.childNodes[6];
 		spans = spans.reverse().map((el) => <Copy crank-key={el.key} />);
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 				{spans}
@@ -736,7 +737,7 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>1</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>7</span></div>",
 		);
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 				{spans}
@@ -752,7 +753,7 @@ describe("render", () => {
 		expect(document.body.firstChild!.childNodes[5]).toBe(span2);
 		expect(document.body.firstChild!.childNodes[6]).toBe(span7);
 		spans = spans.reverse().map((el) => <Copy crank-key={el.key} />);
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 				{spans}
@@ -770,7 +771,7 @@ describe("render", () => {
 	});
 
 	test("keyed child added", () => {
-		render(
+		renderer.render(
 			<div>
 				<span crank-key="2">2</span>
 			</div>,
@@ -778,7 +779,7 @@ describe("render", () => {
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>2</span></div>");
 		const span2 = document.body.firstChild!.lastChild;
-		render(
+		renderer.render(
 			<div>
 				<span crank-key="1">1</span>
 				<span crank-key="2">2</span>
@@ -792,7 +793,7 @@ describe("render", () => {
 	});
 
 	test("keyed only child", () => {
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 			</div>,
@@ -801,7 +802,7 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
 		observe();
 		let span1 = document.body.firstChild!.firstChild;
-		render(
+		renderer.render(
 			<div>
 				<span crank-key="1">1</span>
 			</div>,
@@ -820,7 +821,7 @@ describe("render", () => {
 			},
 		]);
 		span1 = document.body.firstChild!.firstChild;
-		render(
+		renderer.render(
 			<div>
 				<span>1</span>
 			</div>,

@@ -2,12 +2,12 @@
 import "core-js";
 import {Repeater} from "@repeaterjs/repeater";
 import {Copy, createElement, Child, Context, Element, Fragment} from "../crank";
-import {render} from "../dom";
+import {renderer} from "../dom";
 
 describe("sync function component", () => {
 	afterEach(async () => {
 		document.body.innerHTML = "";
-		await render(null, document.body);
+		await renderer.render(null, document.body);
 	});
 
 	test("basic", () => {
@@ -15,14 +15,14 @@ describe("sync function component", () => {
 			return <span>{message}</span>;
 		}
 
-		render(
+		renderer.render(
 			<div>
 				<Component message="Hello" />
 			</div>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
-		render(
+		renderer.render(
 			<div>
 				<Component message="Goodbye" />
 			</div>,
@@ -36,14 +36,14 @@ describe("sync function component", () => {
 			return <span>{message}</span>;
 		}
 
-		render(
+		renderer.render(
 			<div>
 				<Component message="Hello" />
 			</div>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
-		render(
+		renderer.render(
 			<div>
 				<Copy />
 			</div>,
@@ -57,9 +57,9 @@ describe("sync function component", () => {
 			return <ChildTag>Hello world</ChildTag>;
 		}
 
-		render(<Component ChildTag="div" />, document.body);
+		renderer.render(<Component ChildTag="div" />, document.body);
 		expect(document.body.innerHTML).toEqual("<div>Hello world</div>");
-		render(<Component ChildTag="span" />, document.body);
+		renderer.render(<Component ChildTag="span" />, document.body);
 		expect(document.body.innerHTML).toEqual("<span>Hello world</span>");
 	});
 });
@@ -67,7 +67,7 @@ describe("sync function component", () => {
 describe("async function component", () => {
 	afterEach(async () => {
 		document.body.innerHTML = "";
-		await render(null, document.body);
+		await renderer.render(null, document.body);
 	});
 
 	test("basic", async () => {
@@ -76,7 +76,7 @@ describe("async function component", () => {
 			return <span>{message}</span>;
 		}
 
-		const p = render(
+		const p = renderer.render(
 			<div>
 				<Component message="Hello" />
 			</div>,
@@ -97,31 +97,31 @@ describe("async function component", () => {
 			return <span>{message}</span>;
 		});
 
-		const p1 = render(
+		const p1 = renderer.render(
 			<div>
 				<Component message="Hello 1" />
 			</div>,
 			document.body,
 		);
-		const p2 = render(
+		const p2 = renderer.render(
 			<div>
 				<Component message="Hello 2" />
 			</div>,
 			document.body,
 		);
-		const p3 = render(
+		const p3 = renderer.render(
 			<div>
 				<Component message="Hello 3" />
 			</div>,
 			document.body,
 		);
-		const p4 = render(
+		const p4 = renderer.render(
 			<div>
 				<Component message="Hello 4" />
 			</div>,
 			document.body,
 		);
-		const p5 = render(
+		const p5 = renderer.render(
 			<div>
 				<Component message="Hello 5" />
 			</div>,
@@ -136,31 +136,31 @@ describe("async function component", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
 		await expect(p4).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
-		const p6 = render(
+		const p6 = renderer.render(
 			<div>
 				<Component message="Hello 6" />
 			</div>,
 			document.body,
 		);
-		const p7 = render(
+		const p7 = renderer.render(
 			<div>
 				<Component message="Hello 7" />
 			</div>,
 			document.body,
 		);
-		const p8 = render(
+		const p8 = renderer.render(
 			<div>
 				<Component message="Hello 8" />
 			</div>,
 			document.body,
 		);
-		const p9 = render(
+		const p9 = renderer.render(
 			<div>
 				<Component message="Hello 9" />
 			</div>,
 			document.body,
 		);
-		const p10 = render(
+		const p10 = renderer.render(
 			<div>
 				<Component message="Hello 10" />
 			</div>,
@@ -188,7 +188,7 @@ describe("async function component", () => {
 			return <span>{message}</span>;
 		}
 
-		let p = render(
+		let p = renderer.render(
 			<div>
 				<Component message="Hello 1" />
 			</div>,
@@ -198,7 +198,7 @@ describe("async function component", () => {
 		resolves[0]();
 		await p;
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
-		p = render(
+		p = renderer.render(
 			<div>
 				<Component message="Hello 2" />
 			</div>,
@@ -224,13 +224,13 @@ describe("async function component", () => {
 			return <span>{message}</span>;
 		}
 
-		const p1 = render(
+		const p1 = renderer.render(
 			<div>
 				<Component message="Hello 1" delay={100} />
 			</div>,
 			document.body,
 		);
-		const p2 = render(
+		const p2 = renderer.render(
 			<div>
 				<Component message="Hello 2" delay={0} />
 			</div>,
@@ -247,7 +247,7 @@ describe("async function component", () => {
 describe("sync generator component", () => {
 	afterEach(async () => {
 		document.body.innerHTML = "";
-		await render(null, document.body);
+		await renderer.render(null, document.body);
 	});
 
 	test("basic", () => {
@@ -265,21 +265,21 @@ describe("sync generator component", () => {
 			}
 		});
 
-		render(
+		renderer.render(
 			<div>
 				<Component message="Hello 1" />
 			</div>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
-		render(
+		renderer.render(
 			<div>
 				<Component message="Hello 2" />
 			</div>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
-		render(
+		renderer.render(
 			<div>
 				<Component message="Hello 3" />
 			</div>,
@@ -299,7 +299,7 @@ describe("sync generator component", () => {
 			}
 		}
 
-		render(
+		renderer.render(
 			<div>
 				<Component />
 			</div>,
@@ -334,7 +334,7 @@ describe("sync generator component", () => {
 			}
 		}
 
-		render(
+		renderer.render(
 			<div>
 				<Component />
 			</div>,
@@ -367,7 +367,7 @@ describe("sync generator component", () => {
 			}
 		}
 
-		render(
+		renderer.render(
 			<div>
 				<Component />
 			</div>,
@@ -390,7 +390,7 @@ describe("sync generator component", () => {
 			yield (<span>Hello again</span>);
 		}
 
-		render(
+		renderer.render(
 			<div>
 				<Component />
 			</div>,
@@ -427,7 +427,7 @@ describe("sync generator component", () => {
 			);
 		}
 
-		render(
+		renderer.render(
 			<div>
 				<Component />
 			</div>,
@@ -463,7 +463,7 @@ describe("sync generator component", () => {
 			}
 		}
 
-		render(<Component />, document.body);
+		renderer.render(<Component />, document.body);
 		expect(document.body.innerHTML).toEqual(
 			'<div><button id="button">Click me</button><span>Button has been clicked 0 times</span></div>',
 		);
@@ -492,7 +492,7 @@ describe("sync generator component", () => {
 			}
 		}
 
-		const renderP = render(
+		const renderP = renderer.render(
 			<div>
 				<Gen />
 			</div>,
@@ -530,7 +530,7 @@ describe("sync generator component", () => {
 				yield (<div>Hello {i}</div>);
 			}
 		}
-		render(
+		renderer.render(
 			<Fragment>
 				<Component />
 				<Sibling />
@@ -555,7 +555,7 @@ describe("sync generator component", () => {
 			"<div>Hello 7</div><div>Sibling</div>",
 		);
 		expect(mock).toHaveBeenCalledTimes(1);
-		render(
+		renderer.render(
 			<Fragment>
 				<Component />
 				<Sibling />
@@ -596,7 +596,7 @@ describe("sync generator component", () => {
 			}
 		}
 
-		render(<Parent />, document.body);
+		renderer.render(<Parent />, document.body);
 		expect(document.body.innerHTML).toEqual(
 			"<div>Hello 1</div><div>Sibling</div>",
 		);
@@ -619,12 +619,12 @@ describe("sync generator component", () => {
 			}
 		}
 
-		render(<Component />, document.body);
+		renderer.render(<Component />, document.body);
 		expect(html).toBeUndefined();
-		render(<Component />, document.body);
+		renderer.render(<Component />, document.body);
 		expect(html).toEqual('<div id="0">0</div>');
 		expect(document.body.innerHTML).toEqual('<div id="1">1</div>');
-		render(<Component />, document.body);
+		renderer.render(<Component />, document.body);
 		expect(html).toEqual('<div id="1">1</div>');
 		expect(document.body.innerHTML).toEqual('<div id="2">2</div>');
 	});
@@ -635,33 +635,33 @@ describe("sync generator component", () => {
 			return "Goodbye";
 		});
 
-		render(
+		renderer.render(
 			<div>
 				<Component />
 			</div>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div>Hello</div>");
-		render(
+		renderer.render(
 			<div>
 				<Component />
 			</div>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div>Goodbye</div>");
-		render(
+		renderer.render(
 			<div>
 				<Component />
 			</div>,
 			document.body,
 		);
-		render(
+		renderer.render(
 			<div>
 				<Component />
 			</div>,
 			document.body,
 		);
-		render(
+		renderer.render(
 			<div>
 				<Component />
 			</div>,
@@ -684,12 +684,12 @@ describe("sync generator component", () => {
 			}
 		}
 
-		render(<Component />, document.body);
-		render(<Component />, document.body);
-		render(<Component />, document.body);
+		renderer.render(<Component />, document.body);
+		renderer.render(<Component />, document.body);
+		renderer.render(<Component />, document.body);
 		expect(document.body.innerHTML).toEqual("<div>Hello 2</div>");
 		expect(mock).toHaveBeenCalledTimes(0);
-		render(<div />, document.body);
+		renderer.render(<div />, document.body);
 		expect(document.body.innerHTML).toEqual("<div></div>");
 		expect(mock).toHaveBeenCalledTimes(1);
 	});
@@ -698,7 +698,7 @@ describe("sync generator component", () => {
 describe("async generator component", () => {
 	afterEach(async () => {
 		document.body.innerHTML = "";
-		await render(null, document.body);
+		await renderer.render(null, document.body);
 	});
 
 	test("basic", async () => {
@@ -716,7 +716,7 @@ describe("async generator component", () => {
 			}
 		});
 
-		await render(
+		await renderer.render(
 			<div>
 				<Component message="Hello 1" />
 			</div>,
@@ -725,7 +725,7 @@ describe("async generator component", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
 		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
-		await render(
+		await renderer.render(
 			<div>
 				<Component message="Hello 2" />
 			</div>,
@@ -734,7 +734,7 @@ describe("async generator component", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
 		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
-		await render(
+		await renderer.render(
 			<div>
 				<Component message="Hello 3" />
 			</div>,
@@ -759,7 +759,7 @@ describe("async generator component", () => {
 			}
 		}
 
-		const p = render(
+		const p = renderer.render(
 			<div>
 				<Component message="Hello" />
 			</div>,
@@ -771,7 +771,7 @@ describe("async generator component", () => {
 		resolve();
 		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
-		await render(
+		await renderer.render(
 			<div>
 				<Component message="Goodbye" />
 			</div>,
@@ -794,7 +794,7 @@ describe("async generator component", () => {
 			}
 		}
 
-		const p = render(
+		const p = renderer.render(
 			<div>
 				<Component message="Hello" />
 			</div>,
@@ -811,7 +811,7 @@ describe("async generator component", () => {
 			return new Repeater(async (push1, stop) => ((push = push1), await stop));
 		}
 
-		let renderP = render(
+		let renderP = renderer.render(
 			<div>
 				<Component />
 			</div>,
@@ -845,7 +845,7 @@ describe("async generator component", () => {
 				yield 2;
 			}
 		}
-		await render(
+		await renderer.render(
 			<Fragment>
 				<Component />
 			</Fragment>,
@@ -868,13 +868,13 @@ describe("async generator component", () => {
 			}
 		}
 
-		await render(<Component />, document.body);
+		await renderer.render(<Component />, document.body);
 		expect(html).toEqual('<div id="0">0</div>');
 		expect(document.body.innerHTML).toEqual('<div id="0">0</div>');
-		await render(<Component />, document.body);
+		await renderer.render(<Component />, document.body);
 		expect(html).toEqual('<div id="1">1</div>');
 		expect(document.body.innerHTML).toEqual('<div id="1">1</div>');
-		await render(<Component />, document.body);
+		await renderer.render(<Component />, document.body);
 		expect(html).toEqual('<div id="2">2</div>');
 		expect(document.body.innerHTML).toEqual('<div id="2">2</div>');
 	});
@@ -901,15 +901,15 @@ describe("async generator component", () => {
 			}
 		}
 
-		await render(<Component />, document.body);
+		await renderer.render(<Component />, document.body);
 		await expect(html).resolves.toEqual('<div id="0">0</div>');
 		expect(document.body.innerHTML).toEqual('<div id="0">0</div>');
 		expect(Date.now() - t).toBeCloseTo(100, -2);
-		await render(<Component />, document.body);
+		await renderer.render(<Component />, document.body);
 		await expect(html).resolves.toEqual('<div id="1">1</div>');
 		expect(document.body.innerHTML).toEqual('<div id="1">1</div>');
 		expect(Date.now() - t).toBeCloseTo(200, -2);
-		await render(<Component />, document.body);
+		await renderer.render(<Component />, document.body);
 		await expect(html).resolves.toEqual('<div id="2">2</div>');
 		expect(document.body.innerHTML).toEqual('<div id="2">2</div>');
 		expect(Date.now() - t).toBeCloseTo(300, -2);
@@ -938,10 +938,10 @@ describe("async generator component", () => {
 			}
 		}
 
-		const p1 = render(<Component />, document.body);
-		const p2 = render(<Component />, document.body);
-		const p3 = render(<Component />, document.body);
-		const p4 = render(<Component />, document.body);
+		const p1 = renderer.render(<Component />, document.body);
+		const p2 = renderer.render(<Component />, document.body);
+		const p3 = renderer.render(<Component />, document.body);
+		const p4 = renderer.render(<Component />, document.body);
 		await p1;
 		await expect(html).resolves.toEqual('<div id="0">0</div>');
 		expect(document.body.innerHTML).toEqual('<div id="0">0</div>');
@@ -954,17 +954,17 @@ describe("async generator component", () => {
 		await p4;
 		await expect(html).resolves.toEqual('<div id="1">1</div>');
 		expect(document.body.innerHTML).toEqual('<div id="1">1</div>');
-		const p5 = render(<Component />, document.body);
-		const p6 = render(<Component />, document.body);
+		const p5 = renderer.render(<Component />, document.body);
+		const p6 = renderer.render(<Component />, document.body);
 		await p5;
 		await expect(html).resolves.toEqual('<div id="2">2</div>');
 		expect(document.body.innerHTML).toEqual('<div id="2">2</div>');
 		await p6;
 		await expect(html).resolves.toEqual('<div id="3">3</div>');
 		expect(document.body.innerHTML).toEqual('<div id="3">3</div>');
-		const p7 = render(<Component />, document.body);
-		const p8 = render(<Component />, document.body);
-		const p9 = render(<Component />, document.body);
+		const p7 = renderer.render(<Component />, document.body);
+		const p8 = renderer.render(<Component />, document.body);
+		const p9 = renderer.render(<Component />, document.body);
 		await p7;
 		await expect(html).resolves.toEqual('<div id="4">4</div>');
 		expect(document.body.innerHTML).toEqual('<div id="4">4</div>');
@@ -984,19 +984,19 @@ describe("async generator component", () => {
 			}
 		}
 
-		render(
+		renderer.render(
 			<div>
 				<Component />
 			</div>,
 			document.body,
 		);
-		render(
+		renderer.render(
 			<div>
 				<Component />
 			</div>,
 			document.body,
 		);
-		render(null, document.body);
+		renderer.render(null, document.body);
 		expect(document.body.innerHTML).toEqual("");
 		await new Promise((resolve) => setTimeout(resolve, 100));
 	});
@@ -1017,33 +1017,33 @@ describe("async generator component", () => {
 			}
 		});
 
-		await render(
+		await renderer.render(
 			<div>
 				<Component />
 			</div>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div>Hello</div>");
-		await render(
+		await renderer.render(
 			<div>
 				<Component />
 			</div>,
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div>Goodbye</div>");
-		await render(
+		await renderer.render(
 			<div>
 				<Component />
 			</div>,
 			document.body,
 		);
-		await render(
+		await renderer.render(
 			<div>
 				<Component />
 			</div>,
 			document.body,
 		);
-		await render(
+		await renderer.render(
 			<div>
 				<Component />
 			</div>,
@@ -1066,12 +1066,12 @@ describe("async generator component", () => {
 			}
 		}
 
-		await render(<Component />, document.body);
-		await render(<Component />, document.body);
-		await render(<Component />, document.body);
+		await renderer.render(<Component />, document.body);
+		await renderer.render(<Component />, document.body);
+		await renderer.render(<Component />, document.body);
 		expect(document.body.innerHTML).toEqual("<div>Hello 2</div>");
 		expect(mock).toHaveBeenCalledTimes(0);
-		render(<div />, document.body);
+		renderer.render(<div />, document.body);
 		expect(document.body.innerHTML).toEqual("<div></div>");
 		await new Promise((resolve) => setTimeout(resolve));
 		expect(mock).toHaveBeenCalledTimes(1);
@@ -1081,7 +1081,7 @@ describe("async generator component", () => {
 describe("races", () => {
 	afterEach(async () => {
 		document.body.innerHTML = "";
-		await render(null, document.body);
+		await renderer.render(null, document.body);
 	});
 
 	test("async fn vs value", async () => {
@@ -1090,10 +1090,10 @@ describe("races", () => {
 			return <div>Async</div>;
 		}
 
-		const p = render(<Component />, document.body);
+		const p = renderer.render(<Component />, document.body);
 		expect(document.body.innerHTML).toEqual("");
 		await new Promise((resolve) => setTimeout(resolve, 100));
-		render("Async component blown away", document.body);
+		renderer.render("Async component blown away", document.body);
 		expect(document.body.innerHTML).toEqual("Async component blown away");
 		await p;
 		expect(document.body.innerHTML).toEqual("Async component blown away");
@@ -1117,13 +1117,13 @@ describe("races", () => {
 			return <span>Slow</span>;
 		}
 
-		const p1 = render(
+		const p1 = renderer.render(
 			<div>
 				<Fast />
 			</div>,
 			document.body,
 		);
-		const p2 = render(
+		const p2 = renderer.render(
 			<div>
 				<Slow />
 			</div>,
@@ -1157,13 +1157,13 @@ describe("races", () => {
 			return <span>Fast</span>;
 		}
 
-		const p1 = render(
+		const p1 = renderer.render(
 			<div>
 				<Slow />
 			</div>,
 			document.body,
 		);
-		const p2 = render(
+		const p2 = renderer.render(
 			<div>
 				<Fast />
 			</div>,
@@ -1187,10 +1187,10 @@ describe("races", () => {
 			return <div>Async</div>;
 		}
 
-		const p = render(<Component />, document.body);
+		const p = renderer.render(<Component />, document.body);
 		expect(document.body.innerHTML).toEqual("");
 		await new Promise((resolve) => setTimeout(resolve, 100));
-		render(<div>Async component blown away</div>, document.body);
+		renderer.render(<div>Async component blown away</div>, document.body);
 		expect(document.body.innerHTML).toEqual(
 			"<div>Async component blown away</div>",
 		);
@@ -1210,8 +1210,8 @@ describe("races", () => {
 			return <div>Async</div>;
 		}
 
-		render(<div>This should be blown away</div>, document.body);
-		const p = render(<Component />, document.body);
+		renderer.render(<div>This should be blown away</div>, document.body);
+		const p = renderer.render(<Component />, document.body);
 		expect(document.body.innerHTML).toEqual(
 			"<div>This should be blown away</div>",
 		);
@@ -1221,7 +1221,7 @@ describe("races", () => {
 		expect(document.body.innerHTML).toEqual("<div>Async</div>");
 	});
 
-	test("slow vs fast in async generator updated via render", async () => {
+	test("slow vs fast in async generator updated via renderer.render", async () => {
 		const t = Date.now();
 		async function Slow(): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 200));
@@ -1246,14 +1246,14 @@ describe("races", () => {
 			}
 		}
 
-		await render(<Component />, document.body);
+		await renderer.render(<Component />, document.body);
 		expect(document.body.innerHTML).toEqual("<div>Slow</div>");
 		expect(Date.now() - t).toBeCloseTo(200, -2);
-		await render(<Component />, document.body);
+		await renderer.render(<Component />, document.body);
 		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
 		expect(Date.now() - t).toBeCloseTo(300, -2);
-		const p = render(<Component />, document.body);
-		await render(<Component />, document.body);
+		const p = renderer.render(<Component />, document.body);
+		await renderer.render(<Component />, document.body);
 		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
 		expect(Date.now() - t).toBeCloseTo(400, -2);
 		await p;
@@ -1290,7 +1290,7 @@ describe("races", () => {
 			}
 		}
 
-		await render(<Component />, document.body);
+		await renderer.render(<Component />, document.body);
 		expect(Date.now() - t).toBeCloseTo(200, -2);
 		expect(document.body.innerHTML).toEqual("<div>Slow</div>");
 		await ctx.refresh();
@@ -1334,7 +1334,7 @@ describe("races", () => {
 			}
 		}
 
-		await render(<Component />, document.body);
+		await renderer.render(<Component />, document.body);
 		expect(document.body.innerHTML).toEqual(
 			"<div>Hello: <div>Fast 0</div></div>",
 		);
@@ -1342,7 +1342,7 @@ describe("races", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div>Hello: <div>Slow 0</div></div>",
 		);
-		await render(<Component />, document.body);
+		await renderer.render(<Component />, document.body);
 		expect(document.body.innerHTML).toEqual(
 			"<div>Hello: <div>Fast 1</div></div>",
 		);
@@ -1389,7 +1389,7 @@ describe("races", () => {
 			}
 		}
 
-		await render(<Component />, document.body);
+		await renderer.render(<Component />, document.body);
 		expect(document.body.innerHTML).toEqual(
 			"<div>Hello: <div>Fast 0</div></div>",
 		);
@@ -1397,7 +1397,7 @@ describe("races", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div>Hello: <div>Slow 0</div></div>",
 		);
-		await render(<Component />, document.body);
+		await renderer.render(<Component />, document.body);
 		expect(document.body.innerHTML).toEqual(
 			"<div>Hello: <div>Fast 1</div></div>",
 		);
@@ -1426,8 +1426,8 @@ describe("races", () => {
 			return <span>Slow</span>;
 		}
 
-		const p1 = render(<Fast />, document.body);
-		const p2 = render(<Slow />, document.body);
+		const p1 = renderer.render(<Fast />, document.body);
+		const p2 = renderer.render(<Slow />, document.body);
 		await p1;
 		expect(document.body.innerHTML).toEqual("<span>Fast</span>");
 		expect(Date.now() - t).toBeCloseTo(100, -2);
@@ -1450,8 +1450,8 @@ describe("races", () => {
 			return <span>Fast</span>;
 		}
 
-		const p1 = render(<Slow />, document.body);
-		const p2 = render(<Fast />, document.body);
+		const p1 = renderer.render(<Slow />, document.body);
+		const p2 = renderer.render(<Fast />, document.body);
 		await p1;
 		expect(document.body.innerHTML).toEqual("<span>Fast</span>");
 		expect(Date.now() - t).toBeCloseTo(100, -2);
@@ -1480,8 +1480,8 @@ describe("races", () => {
 			}
 		}
 
-		const p1 = render(<SlowGen />, document.body);
-		const p2 = render(<Fast />, document.body);
+		const p1 = renderer.render(<SlowGen />, document.body);
+		const p2 = renderer.render(<Fast />, document.body);
 		await p1;
 		expect(document.body.innerHTML).toEqual("<span>Fast</span>");
 		expect(Date.now() - t).toBeCloseTo(100, -2);
@@ -1510,8 +1510,8 @@ describe("races", () => {
 			}
 		}
 
-		const p1 = render(<FastGen />, document.body);
-		const p2 = render(<Slow />, document.body);
+		const p1 = renderer.render(<FastGen />, document.body);
+		const p2 = renderer.render(<Slow />, document.body);
 		await p1;
 		expect(document.body.innerHTML).toEqual("<span>Fast</span>");
 		expect(Date.now() - t).toBeCloseTo(100, -2);
@@ -1532,8 +1532,8 @@ describe("races", () => {
 			await new Promise((resolve) => setTimeout(resolve, 100));
 			return <span>Fast</span>;
 		}
-		const p1 = render(<Fast />, document.body);
-		const p2 = render(
+		const p1 = renderer.render(<Fast />, document.body);
+		const p2 = renderer.render(
 			<div>
 				<Slow />
 			</div>,

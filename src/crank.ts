@@ -232,11 +232,10 @@ export const Text = Symbol.for("crank.Text");
 
 export type Text = typeof Text;
 
-// TODO: We use any for symbol tags because typescript is dumb and doesn’t
-// allow symbols in jsx expressions.
-export const Root: any = Symbol.for("crank.Root") as any;
+// TODO: We use any for symbol tags because typescript support for symbols is weak af.
+export const Portal: any = Symbol.for("crank.Portal") as any;
 
-export type Root = typeof Root;
+export type Portal = typeof Portal;
 
 export const Fragment: any = Symbol.for("crank.Fragment") as any;
 
@@ -500,9 +499,7 @@ class Host<T> extends Link {
 		if (this.guest === undefined) {
 			if (isElement(guest)) {
 				this.ctx = new Context(this, this.parent && this.parent.ctx);
-				// TODO: allow custom intrinsics for fragments to allow for stuff like
-				// an innerHTML property
-				if (typeof guest.tag !== "function" && guest.tag !== Fragment) {
+				if (typeof guest.tag !== "function") {
 					this.intrinsic = this.renderer.intrinsicFor(guest.tag);
 				}
 			}
@@ -921,7 +918,7 @@ export interface Environment<T> {
 	[Text]?(text: string): string;
 	[tag: string]: Intrinsic<T>; // Intrinsic<T> | Environment<T>;
 	// TODO: allow symbol index parameters when typescript gets its shit together
-	// [Root]: Intrinsic<T>;
+	// [Portal]: Intrinsic<T>;
 	// [tag: symbol]: Intrinsic<T>;// Intrinsic<T> | Environment<T>;
 }
 
@@ -929,36 +926,37 @@ const env: Environment<any> = {
 	[Default](tag: string): never {
 		throw new Error(`Environment did not provide an intrinsic for ${tag}`);
 	},
-	[Root](): never {
-		throw new Error("Environment did not provide an intrinsic for Root");
+	[Portal](): never {
+		throw new Error("Environment did not provide an intrinsic for Portal");
+	},
+	[Fragment](): undefined {
+		return undefined;
 	},
 };
 
 export class Renderer<T> {
 	private cache = new WeakMap<object, Host<T>>();
-	private getOrCreateHost(key?: object): Host<T> {
+	private getOrCreateHost(root?: object): Host<T> {
 		let host: Host<T> | undefined;
-		if (key !== undefined) {
-			host = this.cache.get(key);
+		if (root !== undefined) {
+			host = this.cache.get(root);
 		}
 
 		if (host === undefined) {
 			host = new Host<T>(undefined, this);
-			if (key !== undefined) {
-				this.cache.set(key, host);
+			if (root !== undefined) {
+				this.cache.set(root, host);
 			}
 		}
 
 		return host;
 	}
 
-	env: Environment<T> = {...env};
+	private env: Environment<T> = {...env};
 
-	constructor(envs?: Partial<Environment<T>>[]) {
-		if (isIterable(envs)) {
-			for (const env of envs) {
-				this.extend(env);
-			}
+	constructor(env1?: Environment<T>) {
+		if (env1) {
+			this.extend(env1);
 		}
 	}
 
@@ -967,8 +965,8 @@ export class Renderer<T> {
 			this.env[Default] = env[Default]!;
 		}
 
-		if (env[Root] != null) {
-			this.env[Root] = env[Root]!;
+		if (env[Portal] != null) {
+			this.env[Portal] = env[Portal]!;
 		}
 
 		for (const [tag, value] of Object.entries(env)) {
@@ -984,7 +982,7 @@ export class Renderer<T> {
 		} else if (typeof tag === "string") {
 			return this.env[Default](tag);
 		} else {
-			throw new Error(`Unknown tag for symbol ${tag.description}`);
+			throw new Error(`Unknown tag ${tag.toString()}`);
 		}
 	}
 
@@ -997,12 +995,12 @@ export class Renderer<T> {
 		return text;
 	}
 
-	render(child: Child, node?: object): MaybePromise<Context<T> | undefined> {
-		if (!isElement(child) || child.tag !== Root) {
-			child = createElement(Root, {node}, child);
+	render(child: Child, root?: object): MaybePromise<Context<T>> {
+		if (!isElement(child) || child.tag !== Portal) {
+			child = createElement(Portal, {root}, child);
 		}
 
-		const host = this.getOrCreateHost(node);
+		const host = this.getOrCreateHost(root);
 		let p: MaybePromise<void>;
 		if (child == null) {
 			p = host.unmount();
@@ -1010,6 +1008,6 @@ export class Renderer<T> {
 			p = host.update(toGuest(child));
 		}
 
-		return new Pledge(p).then(() => host.ctx);
+		return new Pledge(p).then(() => host.ctx!);
 	}
 }
