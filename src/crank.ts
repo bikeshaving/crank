@@ -458,7 +458,7 @@ class Host<T> extends Link {
 		) {
 			if (typeof host.node === "string") {
 				buffer = (buffer || "") + host.node;
-			} else {
+			} else if (host.tag !== Portal) {
 				if (buffer !== undefined) {
 					childNodes.push(buffer);
 					buffer = undefined;
@@ -930,7 +930,7 @@ const env: Environment<any> = {
 		throw new Error("Environment did not provide an intrinsic for Portal");
 	},
 	[Fragment](): undefined {
-		return undefined;
+		return undefined; // void :(
 	},
 };
 
@@ -954,6 +954,7 @@ export class Renderer<T> {
 
 	private env: Environment<T> = {...env};
 
+	// typescript has trouble with property initializers and constructor parameters which share the same name for some reason
 	constructor(env1?: Environment<T>) {
 		if (env1) {
 			this.extend(env1);

@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import {Copy, createElement, Fragment} from "../crank";
+import {Copy, createElement, Fragment, Portal} from "../crank";
 import {renderer} from "../dom";
 import "./_mutation-observer";
 import {createHTML} from "./_utils";
@@ -121,6 +121,55 @@ describe("render", () => {
 				removedNodes: [createHTML('<div id="2"><div id="3">Hi</div></div>')],
 			},
 		]);
+	});
+
+	test("portal", () => {
+		const el1 = document.createElement("div");
+		const el2 = document.createElement("div");
+		renderer.render(
+			<div>
+				Hello world
+				<Portal root={el1}>Hello from a portal</Portal>
+				<Portal root={el2}>
+					<div>Hello from another portal</div>
+				</Portal>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div>Hello world</div>");
+		expect(el1.innerHTML).toEqual("Hello from a portal");
+		expect(el2.innerHTML).toEqual("<div>Hello from another portal</div>");
+	});
+
+	test("root portal", () => {
+		renderer.render(
+			<Portal root={document.body}>
+				<div>Hello world</div>
+			</Portal>,
+		);
+		expect(document.body.innerHTML).toEqual("<div>Hello world</div>");
+	});
+
+	test("root portal with changing root", () => {
+		const el1 = document.createElement("div");
+		const el2 = document.createElement("div");
+		const key = {};
+		renderer.render(
+			<Portal root={el1}>
+				<div>Hello world</div>
+			</Portal>,
+			key,
+		);
+		expect(el1.innerHTML).toEqual("<div>Hello world</div>");
+		expect(el2.innerHTML).toEqual("");
+		renderer.render(
+			<Portal root={el2}>
+				<div>Hello world</div>
+			</Portal>,
+			key,
+		);
+		expect(el1.innerHTML).toEqual("");
+		expect(el2.innerHTML).toEqual("<div>Hello world</div>");
 	});
 
 	test("attrs", () => {

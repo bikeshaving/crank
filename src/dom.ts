@@ -49,10 +49,7 @@ function updateProps(el: HTMLElement, props: Props, newProps: Props): void {
 
 // TODO: improve this algorithm
 // https://stackoverflow.com/questions/59418120/what-is-the-most-efficient-way-to-update-the-childnodes-of-a-dom-node-with-an-ar
-function updateChildren(
-	el: HTMLElement,
-	children: (Node | string)[] = [],
-): void {
+function updateChildren(el: HTMLElement, children: (Node | string)[]): void {
 	if (el.childNodes.length === 0) {
 		const fragment = document.createDocumentFragment();
 		for (let child of children) {
@@ -132,7 +129,7 @@ export const env: Environment<HTMLElement> = {
 				}
 
 				if (root !== newRoot) {
-					updateChildren(root);
+					updateChildren(root, []);
 					root = newRoot;
 				}
 
@@ -140,7 +137,7 @@ export const env: Environment<HTMLElement> = {
 				yield root;
 			}
 		} finally {
-			updateChildren(root);
+			updateChildren(root, []);
 		}
 	},
 };

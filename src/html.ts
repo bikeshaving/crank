@@ -87,12 +87,6 @@ const voids = new Set([
 ]);
 
 export const env: Environment<string> = {
-	[Portal](this: Context): string {
-		return this.childNodes.join("");
-	},
-	[Text](text: string): string {
-		return escapeText(text);
-	},
 	[Default](tag: string): Intrinsic<string> {
 		return function defaultString(this: Context, props: Props): string {
 			const attrs = printAttrs(props);
@@ -108,6 +102,12 @@ export const env: Environment<string> = {
 
 			return `${open}${this.childNodes.join("")}${close}`;
 		};
+	},
+	[Text](text: string): string {
+		return escapeText(text);
+	},
+	[Portal](this: Context): string {
+		return this.childNodes.join("");
 	},
 };
 
