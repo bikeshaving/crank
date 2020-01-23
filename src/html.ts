@@ -67,7 +67,7 @@ function printAttrs(props: Props): string {
 	return attrs.join(" ");
 }
 
-const voids = new Set([
+const voidTags = new Set([
 	"area",
 	"base",
 	"br",
@@ -91,7 +91,7 @@ export const env: Environment<string> = {
 		return function defaultString(this: Context, props: Props): string {
 			const attrs = printAttrs(props);
 			const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
-			if (voids.has(tag)) {
+			if (voidTags.has(tag)) {
 				return open;
 			}
 
