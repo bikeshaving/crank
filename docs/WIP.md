@@ -6,8 +6,6 @@ Crank is available on [NPM](https://npmjs.org/@bikeshaving/crank) in the ESModul
 $ npm install @bikeshaving/crank
 ```
 
-## Basic Usage
-### JSX, Elements and Renderers
 ```jsx
 /* @jsx createElement */
 import {createElement} from "@bikeshaving/crank";
@@ -16,6 +14,10 @@ import {renderer} from "@bikeshaving/crank/dom";
 renderer.render(<div id="hello">Hello world</div>, document.body);
 ```
 
+If you want to play around with Crank, here’s a Code Sandbox template.
+
+## Basic Usage
+### JSX, Elements and Renderers
 Crank is best used with [JSX](https://facebook.github.io/jsx/), an XML-based syntax extension to JavaScript. Crank is designed to work with both the Babel and TypeScript parsers out-of-box; all you need to do is enable the parsing of JSX, import the `createElement` function, and reference it via a `@jsx` comment directive (`/* @jsx createElement */`). The parser will then transpile JSX into `createElement` calls. For example, in the code below, the JSX expression assigned to `el` desugars to the `createElement` call assigned to `el1`.
 
 ```jsx
@@ -246,20 +248,18 @@ One important detail about the `Timer` example is that it cleans up after itself
 The generator components we’ve seen so far haven’t used the props object like we’ve seen with regular function components, but they can accept props as well.
 
 ```jsx
-function *Counter ({message}) {
+function *LabeledCounter ({message}) {
   let count = 0;
   while (true) {
     count++;
-    yield (
-      <div>{message} {count}</div>
-    );
+    yield <div>{message} {count}</div>;
   }
 }
-renderer.render(<Counter message="The count is now:" />, document.body);
+renderer.render(<LabeledCounter message="The count is now:" />, document.body);
 console.log(document.body.innerHTML); // <div>The count is now: 1</div>
-renderer.render(<Counter message="The count is now:" />, document.body);
+renderer.render(<LabeledCounter message="The count is now:" />, document.body);
 console.log(document.body.innerHTML); // <div>The count is now: 2</div>
-renderer.render(<Counter message="What if I update the message:" />, document.body);
+renderer.render(<LabeledCounter message="What if I update the message:" />, document.body);
 console.log(document.body.innerHTML); // <div>The count is now: 3</div>
 // WOOPS!
 ```
@@ -429,7 +429,7 @@ By default, Crank will use the element diffing algorithm by tag to determine if 
 
 ```jsx
 let nextId = 0;
-function *Stateful() {
+function *ID() {
   const id = nextId++;
   while (true) {
     yield <span>Id: {id}</span>;
@@ -438,9 +438,9 @@ function *Stateful() {
 
 renderer.render(
   <div>
-    <Stateful crank-key="a" />
-    <Stateful crank-key="b" />
-    <Stateful crank-key="c" />
+    <ID crank-key="a" />
+    <ID crank-key="b" />
+    <ID crank-key="c" />
   </div>,
   document.body,
 );
@@ -449,9 +449,9 @@ console.log(document.body.innerHTML);
 
 renderer.render(
   <div>
-    <Stateful crank-key="c" />
-    <Stateful crank-key="b" />
-    <Stateful crank-key="a" />
+    <ID crank-key="c" />
+    <ID crank-key="b" />
+    <ID crank-key="a" />
   </div>,
   document.body,
 );
@@ -635,26 +635,45 @@ When Crank encounters an async component in the render tree, the entire renderin
 
 On the other hand, synchronous generator components which yield async elements will not resume until those async elements have fulfilled. This is because synchronous generators expect to be resumed after their children have rendered, and the actual DOM nodes which are rendered are passed back into the generator, but we wouldn’t have those available if the generator was concurrently resumed before the async children had fulfilled.
 
-### Async generator functions
+### Async generator functions and loading states
+The async components we’ve seen so far have been all or nothing, in the sense that the renderer cannot show anything until all components in the tree have fulfilled. This can be a problem when you have an async call which takes longer than expected; it would be nice if parts of the element tree could be shown without waiting, and if components which have yet to fulfill could be replaced with a spinner.
+
 Just as you can write stateful components with synchronous generator syntax, you can also write stateful async components with async generator syntax.
 
 ```jsx
-async function *AsyncCounter ({message}) { 
+async function *AsyncLabeledCounter ({message}) { 
   let count = 0;
   for await ({message} of this) {
-    yield <div>{message}</div>;
+    yield <div>Loading...</div>;
     await new Promise((resolve) => setTimeout(resolve, 1000));
-    yield <div>Count is now {count}</div>;
     count++;
+    yield <div>{message} {count}</div>;
   }
 }
+(async () => {
+  await renderer.render(
+    <AsyncLabeledCounter message="The count is now: " />,
+    document.body,
+  );
+  console.log(document.body.innerHTML); //<div>Loading...</div>
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  console.log(document.body.innerHTML); //<div>The count is now: 1</div>
+  await renderer.render(
+    <AsyncLabeledCounter message="The count is now: " />,
+    document.body,
+  );
+  console.log(document.body.innerHTML); //<div>Loading...</div>
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  console.log(document.body.innerHTML); //<div>The count is now: 2</div>
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  console.log(document.body.innerHTML); //<div>The count is now: 2</div>
+})();
 ```
-TODO: explain this function
 
-### Loading states
-The async components we’ve seen so far have been all or nothing, in the sense that the renderer cannot show anything until all components in the tree have fulfilled. This can be a problem when you have an async call which takes longer than expected; it would be nice if parts of the element tree could be shown without waiting, and if components which have yet to fulfill could be replaced with a spinner.
+`AsyncLabeledCounter` is an async version of the `LabeledCounter` example introduced earlier, and demonstrates several key differences between sync generator components and async generator components. First, rather than using `while` or `for…of` loops, we now use a `for await…of` loop. This is possible because Crank contexts are async iterable of props, just as they are iterables of props. Second, you’ll notice that the async generators yield multiple times per iteration over `this`. While this is possible for sync generators, it wouldn’t necessarily make sense to do so because generators suspend at each yield, and upon resuming the props would be stale. In contrast, async generator components continuously resume after yielding. This explains why we don’t really use a `while` loop in an async generator function, we have to use a `for await…of` loop so the async generator can pause at the bottom of the loop. As we can see, this allows us to yield loading indicators before awaiting a promise.
 
-In Crank, we can do this by using the concurrency rules described above along with async generator functions for components.
+### Responsive Loading Indicators
+Much has been written about loading indicators, and how we shouldn’t show them immediately because showing too many of them when the UI loads quickly can paradoxically make your UI seem less responsive. In Crank, we can use the async rules described for async functions above along with async generator functions to show loading indicators which wait a bit before showing.
 
 ```jsx
 async function Fallback ({wait = 1000, children}) {
@@ -668,9 +687,7 @@ async function *Suspense ({fallback, children}) {
     yield <Fragment>{children}</Fragment>;
   }
 }
-```
 
-```jsx
 async function RandomDog ({throttle=false}) {
   if (throttle) {
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -706,6 +723,7 @@ function *RandomDogs () {
   }
 }
 ```
+The above example shows how we could implement Suspense, a proposed custom React element which allows async components with fallback states. As you can see, in Crank, no special tags are needed, and the functionality to write async components is all available to the user. Best of all, we don’t need any special APIs, we can use `async`/`await` directly in our components.
 
 ## Custom Renderers
 ⚠️ Docs coming soon ⚠️
@@ -754,6 +772,7 @@ Crank is written in TypeScript and exports several types to help you write stron
 TODO: document how to use crank with TypeScript.
 
 ## API Reference
+TODO: document this
 ### `createElement`
 ### `Element`
 ### `Context` (the `this` object passed to components)
