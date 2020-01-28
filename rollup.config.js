@@ -1,6 +1,6 @@
 import typescript from "rollup-plugin-typescript2";
 export default {
-	input: ["src/crank.ts", "src/dom.ts"],
+	input: ["src/crank.ts", "src/dom.ts", "src/html.ts"],
 	output: [
 		{
 			format: "cjs",

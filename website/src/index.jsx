@@ -1,6 +1,6 @@
 /** @jsx createElement */
 import {createElement, Fragment} from "@crankjs/crank";
-import {render} from "@crankjs/crank/dom";
+import {renderer} from "@crankjs/crank/dom";
 import "./index.css";
 import CodeMirror from "codemirror";
 import * as Babel from "@babel/standalone";
@@ -55,15 +55,15 @@ const babelOptions = {
 	],
 };
 
-async function* Preview({id, code}) {
-	for await ({id, code} of this) {
+async function* Preview() {
+	for await (const {id, code} of this) {
 		try {
-			yield (<div id={id} class="preview" />);
+			yield <div id={id} class="preview" />;
 			// TODO: resume async generators only after parent has committed or something
 			await new Promise((resolve) => setTimeout(resolve, 0));
 			code = Babel.transform(code, babelOptions).code;
-			const fn = new Function(...["createElement", "render", "Fragment"], code);
-			fn(createElement, render, Fragment);
+			const fn = new Function(...["createElement", "renderer", "Fragment"], code);
+			fn(createElement, renderer, Fragment);
 		} catch (err) {
 			yield (
 				<div id={id} class="preview preview-error">
@@ -83,7 +83,7 @@ function Hello ({name}) {
 	);
 }
 
-render(<Hello name="Andrew" />, document.getElementById("hello-world-demo"));
+renderer.render(<Hello name="Andrew" />, document.getElementById("hello-world-demo"));
 `.trim();
 
 const timerCode = `
@@ -103,7 +103,7 @@ function *Timer () {
 	}
 }
 
-render(<Timer />, document.getElementById("timer-demo"));
+renderer.render(<Timer />, document.getElementById("timer-demo"));
 `.trim();
 
 const ipCode = `
@@ -113,7 +113,7 @@ async function IPAddress () {
 	return <div>Your IP Address: {address}</div>;
 }
 
-render(<IPAddress />, document.getElementById("ip-address-demo"));
+renderer.render(<IPAddress />, document.getElementById("ip-address-demo"));
 `.trim();
 
 const todoCode = `
@@ -159,7 +159,7 @@ function TodoList ({items}) {
 	);
 }
 
-render(<TodoApp />, document.getElementById("todo-demo"));
+renderer.render(<TodoApp />, document.getElementById("todo-demo"));
 `.trim();
 
 const loadingCode = `
@@ -211,7 +211,7 @@ function *App () {
 	}
 }
 
-render(<App />, document.getElementById("loading-demo"));
+renderer.render(<App />, document.getElementById("loading-demo"));
 `.trim();
 
 function* Playground({code = "", id = "playground"}) {
@@ -252,4 +252,4 @@ function Page() {
 	);
 }
 
-render(<Page />, document.body.firstElementChild);
+renderer.render(<Page />, document.body.firstElementChild);

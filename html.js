@@ -1,1 +1,1 @@
-export * from "./lib/string.js";
+export * from "./lib/html.js";
