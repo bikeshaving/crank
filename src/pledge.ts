@@ -53,14 +53,14 @@ export class Pledge<T> {
 		}
 	}
 
-	then<TResult1 = T, TResult2 = never>(
-		onFulfilled?: ((value: T) => MaybePromiseLike<TResult1>) | null,
-		onRejected?: ((reason: any) => MaybePromiseLike<TResult2>) | null,
-	): MaybePromise<TResult1 | TResult2> {
+	then<TFulfilled = T, TRejected = never>(
+		onFulfilled?: ((value: T) => MaybePromiseLike<TFulfilled>) | null,
+		onRejected?: ((reason: any) => MaybePromiseLike<TRejected>) | null,
+	): MaybePromise<TFulfilled | TRejected> {
 		switch (this.state.status) {
 			case "fulfilled": {
 				if (onFulfilled == null) {
-					return (this.state.value as unknown) as TResult1;
+					return this.state.value as any;
 				} else {
 					return upgrade(onFulfilled(this.state.value));
 				}
@@ -78,9 +78,9 @@ export class Pledge<T> {
 		}
 	}
 
-	catch<TResult = never>(
-		onRejected?: ((reason: any) => MaybePromiseLike<TResult>) | null,
-	): MaybePromise<T | TResult> {
+	catch<TRejected = never>(
+		onRejected?: ((reason: any) => MaybePromiseLike<TRejected>) | null,
+	): MaybePromise<T | TRejected> {
 		switch (this.state.status) {
 			case "fulfilled": {
 				return this.state.value;

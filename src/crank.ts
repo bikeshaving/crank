@@ -406,9 +406,15 @@ class Link {
 }
 
 class Host<T> extends Link {
+	protected parent?: Host<T>;
+	protected firstChild?: Host<T>;
+	protected lastChild?: Host<T>;
+	protected nextSibling?: Host<T>;
+	protected previousSibling?: Host<T>;
 	ctx?: Context<T>;
 	guest?: Guest;
 	node?: T | string;
+	// TODO: reduce the number of boolean properties
 	private updating = false;
 	private done = false;
 	private unmounted = false;
@@ -421,28 +427,30 @@ class Host<T> extends Link {
 	private enqueued?: Promise<any>;
 	private replacedBy?: Host<T>;
 	private clock = 0;
-	protected firstChild?: Host<T>;
-	protected lastChild?: Host<T>;
-	protected nextSibling?: Host<T>;
-	protected previousSibling?: Host<T>;
+	private renderer: Renderer<T>;
 	constructor(
-		protected parent: Host<T> | undefined,
+		parent: Host<T> | undefined,
 		// TODO: Figure out a way to not have to pass in a renderer
-		private renderer: Renderer<T>,
+		renderer: Renderer<T>,
 	) {
 		super();
+		this.parent = parent;
+		this.renderer = renderer;
 	}
 
+	// TODO: flatten these instead of storing guest
 	get tag(): Tag | undefined {
 		return isElement(this.guest) ? this.guest.tag : undefined;
 	}
 
 	get key(): unknown {
-		//key?: unknown;
 		return isElement(this.guest) ? this.guest.key : undefined;
 	}
 
-	props?: Props;
+	get props(): Props | undefined {
+		return isElement(this.guest) ? this.guest.props : undefined;
+	}
+
 	private cachedChildNodes?: (T | string)[];
 	get childNodes(): (T | string)[] {
 		if (this.cachedChildNodes !== undefined) {
@@ -476,7 +484,7 @@ class Host<T> extends Link {
 			childNodes.push(buffer);
 		}
 
-		if (this.ctx !== undefined && isComponentElement(this.guest)) {
+		if (this.ctx !== undefined && typeof this.tag === "function") {
 			// TODO: filter type narrowing is not working
 			const delegates: EventTarget[] = childNodes.filter(isEventTarget) as any;
 			this.ctx.delegates = new Set(delegates);
@@ -496,7 +504,7 @@ class Host<T> extends Link {
 
 	update(guest: Guest): MaybePromise<undefined> {
 		this.updating = true;
-		if (this.guest === undefined) {
+		if (this.tag === undefined) {
 			if (isElement(guest)) {
 				this.ctx = new Context(this, this.parent && this.parent.ctx);
 				if (typeof guest.tag !== "function") {
@@ -539,10 +547,12 @@ class Host<T> extends Link {
 				});
 
 				const next = new Pledge(updateP).then(() => this.childNodeOrNodes);
-				if (iteration.done || this.done) {
+				if (iteration.done) {
 					this.done = true;
-				} else {
-					this.pending = new Pledge(this.step(next)).then(() => {});
+				} else if (!this.done) {
+					this.pending = new Promise((resolve) => setFrame(resolve)).then(() =>
+						this.step(next),
+					);
 				}
 
 				return updateP;
@@ -553,9 +563,9 @@ class Host<T> extends Link {
 			this.done = true;
 		}
 
-		return new Pledge(iteration.value).then((child) => {
-			return this.updateChildren(child) as any;
-		});
+		return new Pledge(iteration.value).then(
+			(child) => this.updateChildren(child) as any,
+		);
 	}
 
 	run(): MaybePromise<undefined> {
@@ -612,22 +622,22 @@ class Host<T> extends Link {
 	refresh(): MaybePromise<undefined> {
 		if (this.unmounted) {
 			return;
-		} else if (isElement(this.guest)) {
+		} else if (this.tag !== undefined) {
 			if (this.ctx !== undefined) {
 				this.ctx.dispatchEvent(
-					new CustomEvent("crank.refresh", {detail: {props: this.guest.props}}),
+					new CustomEvent("crank.refresh", {detail: {props: this.props}}),
 				);
 			}
 
-			if (typeof this.guest.tag === "function") {
+			if (typeof this.tag === "function") {
 				return this.run();
 			} else {
-				return this.updateChildren(this.guest.props.children);
+				return this.updateChildren(this.props && this.props.children);
 			}
 		} else if (typeof this.guest === "string") {
 			this.node = this.renderer.text(this.guest);
 		} else {
-			this.node = this.guest;
+			this.node = undefined;
 		}
 	}
 
@@ -703,15 +713,18 @@ class Host<T> extends Link {
 							promises.push(updateP);
 						}
 					} else {
+						// replace the host with another one
 						const clock = host.clock++;
 						const newHost = new Host(this, this.renderer);
 						newHost.clock = clock;
 						const updateP = newHost.update(guest);
-						host.unmount();
 						if (updateP === undefined) {
+							host.unmount();
 							this.replaceChild(newHost, host);
 							host.replacedBy = newHost;
 						} else {
+							// TODO: unmount only when the host is ready to be replaced
+							host.unmount();
 							promises.push(updateP);
 							const host1 = host;
 							updateP.then(() => {
@@ -742,16 +755,19 @@ class Host<T> extends Link {
 			}
 		}
 
+		// unmounting excess hosts
 		while (host !== undefined) {
 			if (this.hostsByKey !== undefined && host.key !== undefined) {
 				this.hostsByKey.delete(host.key);
 			}
 
-			void host.unmount();
+			host.unmount();
+			const nextSibling = host.nextSibling;
 			this.removeChild(host);
-			host = host.nextSibling;
+			host = nextSibling;
 		}
 
+		// unmounting keyed hosts
 		if (this.hostsByKey) {
 			for (const host of this.hostsByKey.values()) {
 				// TODO: implement async unmount for keyed hosts
@@ -761,6 +777,7 @@ class Host<T> extends Link {
 		}
 
 		this.hostsByKey = hostsByKey;
+		// TODO: can we move this somewhere else
 		if (promises.length) {
 			return Promise.all(promises).then(() => void this.commit()); // void :(
 		} else {
@@ -817,7 +834,7 @@ class Host<T> extends Link {
 		// TODO: await the return if the host is keyed and commit the parent
 		if (!this.done) {
 			if (this.iterator !== undefined && this.iterator.return) {
-				void this.iterator.return();
+				this.iterator.return();
 			}
 
 			if (this.committer && this.committer.return) {
@@ -836,7 +853,7 @@ class Host<T> extends Link {
 		let host = this.firstChild;
 		while (host !== undefined) {
 			// TODO: catch errors
-			void host.unmount();
+			host.unmount();
 			host = host.nextSibling;
 		}
 	}
@@ -845,15 +862,6 @@ class Host<T> extends Link {
 export class Context<T = any> extends CrankEventTarget {
 	constructor(private host: Host<T>, parent?: Context<T>) {
 		super(parent);
-	}
-
-	// TODO: make this private or delete this
-	get props(): Props {
-		if (!isElement(this.host.guest)) {
-			throw new Error("Guest is not an element");
-		}
-
-		return this.host.guest.props;
 	}
 
 	get node(): T | string | undefined {
@@ -867,13 +875,13 @@ export class Context<T = any> extends CrankEventTarget {
 	// TODO: throw an error if props are pulled multiple times per update
 	*[Symbol.iterator](): Generator<Props> {
 		while (true) {
-			yield this.props;
+			yield this.host.props!;
 		}
 	}
 
 	[Symbol.asyncIterator](): AsyncGenerator<Props> {
 		return new Repeater(async (push, stop) => {
-			push(this.props);
+			push(this.host.props!);
 			const onRefresh = (ev: any) => void push(ev.detail.props);
 			const onUnmount = () => stop();
 			this.addEventListener("crank.refresh", onRefresh);
@@ -918,11 +926,13 @@ export interface Environment<T> {
 	[Text]?(text: string): string;
 	[tag: string]: Intrinsic<T>; // Intrinsic<T> | Environment<T>;
 	// TODO: allow symbol index parameters when typescript gets its shit together
+	// [Fragment]: Intrinsic<T>;
 	// [Portal]: Intrinsic<T>;
+	// [Copy]: Intrinsic<T>;
 	// [tag: symbol]: Intrinsic<T>;// Intrinsic<T> | Environment<T>;
 }
 
-const env: Environment<any> = {
+const defaultEnv: Environment<any> = {
 	[Default](tag: string): never {
 		throw new Error(`Environment did not provide an intrinsic for ${tag}`);
 	},
@@ -933,6 +943,26 @@ const env: Environment<any> = {
 		return undefined; // void :(
 	},
 };
+
+export function setFrame(callback: (time: number) => unknown): any {
+	if (requestAnimationFrame !== undefined) {
+		return requestAnimationFrame(callback);
+	} else if (setImmediate !== undefined) {
+		return setImmediate(() => callback(Date.now()));
+	} else {
+		return setTimeout(() => callback(Date.now()));
+	}
+}
+
+export function clearFrame(id: any): void {
+	if (requestAnimationFrame !== undefined) {
+		cancelAnimationFrame(id);
+	} else if (setImmediate !== undefined) {
+		clearImmediate(id);
+	} else {
+		clearTimeout(id);
+	}
+}
 
 export class Renderer<T> {
 	private cache = new WeakMap<object, Host<T>>();
@@ -952,12 +982,10 @@ export class Renderer<T> {
 		return host;
 	}
 
-	private env: Environment<T> = {...env};
-
-	// typescript has trouble with property initializers and constructor parameters which share the same name for some reason
-	constructor(env1?: Environment<T>) {
-		if (env1) {
-			this.extend(env1);
+	private env: Environment<T> = {...defaultEnv};
+	constructor(env?: Environment<T>) {
+		if (env) {
+			this.extend(env);
 		}
 	}
 
