@@ -968,7 +968,7 @@ describe("sync generator component", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>Error: immediate async errors are caught</span></div>",
 		);
-		await new Promise((resolve) => setTimeout(resolve, 4000));
+		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>Error: immediate async errors are caught</span></div>",
 		);
