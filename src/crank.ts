@@ -752,39 +752,45 @@ class Host<T> extends Link {
 	}
 }
 
+const hosts = new WeakMap<Context<any>, Host<any>>();
 export class Context<T = any> extends CrankEventTarget {
-	constructor(private host: Host<T>, parent?: Context<T>) {
+	constructor(host: Host<T>, parent?: Context<T>) {
 		super(parent);
+		hosts.set(this, host);
 	}
 
 	get node(): T | string | undefined {
-		return this.host.node;
+		return hosts.get(this)!.node;
 	}
 
 	get childNodes(): (T | string)[] {
-		return this.host.childNodes;
+		return hosts.get(this)!.childNodes;
 	}
 
-	// TODO: throw an error if props are pulled multiple times per update
+	// TODO: throw an error if props are pulled multiple times without a yield
 	*[Symbol.iterator](): Generator<Props> {
+		const host = hosts.get(this)!;
 		while (true) {
-			yield this.host.props!;
+			yield host.props!;
 		}
 	}
 
+	// TODO: throw an error if props are pulled multiple times without a yield
 	[Symbol.asyncIterator](): AsyncGenerator<Props> {
+		const host = hosts.get(this)!;
 		return new Repeater(async (push, stop) => {
-			push(this.host.props!);
+			push(host.props!);
 			const pub: Publication = {push, stop};
-			this.host.publications.add(pub);
+			host.publications.add(pub);
 			await stop;
-			this.host.publications.delete(pub);
+			host.publications.delete(pub);
 		}, new SlidingBuffer(1));
 	}
 
-	// TODO: warn if refresh is called on an unmounted component
+	// TODO: throw or warn if called on an unmounted component?
 	refresh(): MaybePromise<undefined> {
-		return this.host.refresh();
+		const host = hosts.get(this)!;
+		return host.refresh();
 	}
 }
 
