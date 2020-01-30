@@ -24,8 +24,7 @@
     "debug": "node --inspect-brk node_modules/.bin/jest --runInBand"
   },
   "dependencies": {
-    "@repeaterjs/repeater": "^3.0.1",
-    "event-target-shim": "^5.0.1"
+    "@repeaterjs/repeater": "^3.0.1"
   },
   "devDependencies": {
     "@types/jest": "^24.0.24",

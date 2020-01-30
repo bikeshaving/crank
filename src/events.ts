@@ -1,5 +1,22 @@
-// TODO: implement an EventTargetShim that works with TypeScript seamlessly
-import {EventTarget as EventTargetShim} from "event-target-shim";
+let GlobalEventTarget: typeof EventTarget;
+
+if (typeof EventTarget === "undefined") {
+	GlobalEventTarget = class EventTarget {
+		dispatchEvent(): never {
+			throw new Error("EventTarget not implemented in this environment");
+		}
+
+		addEventListener(): never {
+			throw new Error("EventTarget not implemented in this environment");
+		}
+
+		removeEventListener(): never {
+			throw new Error("EventTarget not implemented in this environment");
+		}
+	};
+} else {
+	GlobalEventTarget = EventTarget;
+}
 
 interface EventListenerRecord {
 	type: string;
@@ -25,7 +42,7 @@ function normalizeOptions(
 }
 
 // TODO: strongly typed events somehow
-export class CrankEventTarget extends EventTargetShim implements EventTarget {
+export class CrankEventTarget extends GlobalEventTarget implements EventTarget {
 	constructor(private parent?: CrankEventTarget) {
 		super();
 	}
