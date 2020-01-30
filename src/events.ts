@@ -2,16 +2,14 @@ let GlobalEventTarget: typeof EventTarget;
 
 if (typeof EventTarget === "undefined") {
 	GlobalEventTarget = class EventTarget {
-		dispatchEvent(): never {
-			throw new Error("EventTarget not implemented in this environment");
+		dispatchEvent(): boolean {
+			return false;
 		}
 
-		addEventListener(): never {
-			throw new Error("EventTarget not implemented in this environment");
+		addEventListener(): void {
 		}
 
-		removeEventListener(): never {
-			throw new Error("EventTarget not implemented in this environment");
+		removeEventListener(): void {
 		}
 	};
 } else {
