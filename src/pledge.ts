@@ -37,10 +37,11 @@ export function upgrade<T>(value: MaybePromiseLike<T>): MaybePromise<T> {
 }
 
 /**
- * A pledge is like a promise, but more eager.
+ * A pledge is like a promise, except it runs synchronously if possible.
  */
 export class Pledge<T> {
 	private state: PromiseState<T>;
+	// TODO: allow value to be a callable function so we can catch errors
 	constructor(value: MaybePromiseLike<T>) {
 		if (isPromiseLike(value)) {
 			this.state = {status: "pending", promise: Promise.resolve(value)};

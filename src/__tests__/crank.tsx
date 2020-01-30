@@ -1,4 +1,6 @@
 /** @jsx createElement */
+// TODO: THIS IS TRIGGERING FALSE POSITIVES THAT I DON’T HAVE TIME TO DEAL WITH
+/* eslint-disable no-unreachable */
 import "core-js";
 import {Repeater} from "@repeaterjs/repeater";
 import {
@@ -461,7 +463,7 @@ describe("sync generator component", () => {
 			});
 
 			// eslint-disable-next-line
-			for (const props of this) {
+			for (const _ of this) {
 				yield (
 					<div>
 						<button id="button">Click me</button>
@@ -679,6 +681,33 @@ describe("sync generator component", () => {
 		expect(Component).toHaveBeenCalledTimes(1);
 	});
 
+	test("generator returns with async children and concurrent updates", async () => {
+		async function Child(): Promise<string> {
+			return "child";
+		}
+
+		// eslint-disable-next-line require-yield
+		const Component = jest.fn(function* Component(): Generator<Child> {
+			return <Child />;
+		});
+
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		await renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div>child</div>");
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(Component).toHaveBeenCalledTimes(1);
+	});
+
 	test("unmount", () => {
 		const mock = jest.fn();
 		function* Component(): Generator<Child> {
@@ -700,6 +729,299 @@ describe("sync generator component", () => {
 		renderer.render(<div />, document.body);
 		expect(document.body.innerHTML).toEqual("<div></div>");
 		expect(mock).toHaveBeenCalledTimes(1);
+	});
+
+	test("errors are caught", () => {
+		function Thrower(): never {
+			throw new Error("errors are caught");
+		}
+
+		function* Child(): Generator<number> {
+			yield 1;
+			yield 2;
+			yield (<Thrower />);
+		}
+
+		function* Component(): Generator<Child> {
+			try {
+				while (true) {
+					yield (
+						<span>
+							<Child />
+						</span>
+					);
+				}
+			} catch (err) {
+				return <span>Error: {err.message}</span>;
+			}
+		}
+
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>2</span></div>");
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>Error: errors are caught</span></div>",
+		);
+	});
+
+	test("errors caught and rerendered", () => {
+		function Thrower(): never {
+			throw new Error("errors caught and rerendered");
+		}
+
+		function* Child(): Generator<number> {
+			yield 1;
+			yield 2;
+			yield (<Thrower />);
+		}
+
+		function* Component(): Generator<Child> {
+			try {
+				while (true) {
+					yield (
+						<span>
+							<Child />
+						</span>
+					);
+				}
+			} catch (err) {
+				return <span>Error: {err.message}</span>;
+			}
+		}
+
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>2</span></div>");
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>Error: errors caught and rerendered</span></div>",
+		);
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>Error: errors caught and rerendered</span></div>",
+		);
+	});
+
+	test("immediate errors are caught", () => {
+		function Thrower(): never {
+			throw new Error("immediate errors are caught");
+		}
+
+		function* Child(): Generator<number> {
+			yield (<Thrower />);
+		}
+
+		function* Component(): Generator<Child> {
+			try {
+				while (true) {
+					yield (
+						<span>
+							<Child />
+						</span>
+					);
+				}
+			} catch (err) {
+				return <span>Error: {err.message}</span>;
+			}
+		}
+
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>Error: immediate errors are caught</span></div>",
+		);
+	});
+
+	test("async errors are caught", async () => {
+		async function Thrower(): Promise<never> {
+			throw new Error("async errors are caught");
+		}
+
+		function* Component(): Generator<Child> {
+			try {
+				yield (<Thrower />);
+			} catch (err) {
+				return <span>Error: {err.message}</span>;
+			}
+		}
+
+		await renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>Error: async errors are caught</span></div>",
+		);
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>Error: async errors are caught</span></div>",
+		);
+	});
+
+	test("immediate async errors caught and rerendered", async () => {
+		async function Thrower(): Promise<never> {
+			throw new Error("immediate async errors caught and rerendered");
+		}
+
+		function* Component(): Generator<Child> {
+			try {
+				yield (<Thrower />);
+			} catch (err) {
+				return <span>Error: {err.message}</span>;
+			}
+		}
+
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		await renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>Error: immediate async errors caught and rerendered</span></div>",
+		);
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>Error: immediate async errors caught and rerendered</span></div>",
+		);
+	});
+
+	test("immediate async errors are caught", async () => {
+		async function Thrower(): Promise<never> {
+			throw new Error("immediate async errors are caught");
+		}
+
+		function* Child(): Generator<number> {
+			yield (<Thrower />);
+		}
+
+		function* Component(): Generator<Child> {
+			try {
+				while (true) {
+					yield (
+						<span>
+							<Child />
+						</span>
+					);
+				}
+			} catch (err) {
+				return <span>Error: {err.message}</span>;
+			}
+		}
+
+		await renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>Error: immediate async errors are caught</span></div>",
+		);
+		await new Promise((resolve) => setTimeout(resolve, 4000));
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>Error: immediate async errors are caught</span></div>",
+		);
+	});
+
+	test("async errors are caught in nested component", async () => {
+		async function Thrower(): Promise<never> {
+			throw new Error("async errors are caught in nested component");
+		}
+
+		function* Child(): Generator<Child> {
+			yield (<span>1</span>);
+			yield (<span>2</span>);
+			yield (<Thrower />);
+		}
+
+		function* Component(): Generator<Child> {
+			try {
+				while (true) {
+					yield (<Child />);
+				}
+			} catch (err) {
+				return <span>Error: {err.message}</span>;
+			}
+		}
+
+		await renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
+		await renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>2</span></div>");
+		await renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>Error: async errors are caught in nested component</span></div>",
+		);
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>Error: async errors are caught in nested component</span></div>",
+		);
 	});
 });
 
@@ -1034,7 +1356,7 @@ describe("async generator component", () => {
 	});
 });
 
-describe("races", () => {
+describe("async races", () => {
 	afterEach(async () => {
 		document.body.innerHTML = "";
 		await renderer.render(null, document.body);

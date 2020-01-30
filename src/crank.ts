@@ -528,7 +528,31 @@ class Host<T> extends Link {
 
 		if (this.iterator === undefined) {
 			this.ctx.removeAllEventListeners();
-			const value = this.guest.tag.call(this.ctx, this.guest.props);
+			// TODO: can we have pledges take an executor to reduce duplication
+			let value: ChildIterator | MaybePromiseLike<Child>;
+			try {
+				value = this.guest.tag.call(this.ctx, this.guest.props);
+				if (isPromiseLike(value)) {
+					value = Promise.resolve(value).catch((err) => {
+						if (this.parent === undefined) {
+							throw err;
+						}
+
+						this.parent.catch(err);
+						return undefined;
+					});
+
+					return value;
+				}
+			} catch (err) {
+				if (this.parent === undefined) {
+					throw err;
+				}
+
+				this.parent.catch(err);
+				return;
+			}
+
 			if (isIteratorOrAsyncIterator(value)) {
 				this.iterator = value;
 			} else {
@@ -538,7 +562,29 @@ class Host<T> extends Link {
 			return;
 		}
 
-		const iteration = this.iterator.next(next);
+		let iteration: MaybePromise<IteratorResult<MaybePromiseLike<Child>>>;
+		// TODO: figure out if we can have pledges take a callback to reduce duplication when catching events
+		try {
+			iteration = this.iterator.next(next);
+			if (isPromiseLike(iteration)) {
+				iteration = iteration.catch((err) => {
+					if (this.parent === undefined) {
+						throw err;
+					}
+
+					this.parent.catch(err);
+					return undefined as any;
+				});
+			}
+		} catch (err) {
+			if (this.parent === undefined) {
+				throw err;
+			}
+
+			this.parent.catch(err);
+			return;
+		}
+
 		if (isPromiseLike(iteration)) {
 			this.independent = true;
 			return iteration.then((iteration) => {
@@ -823,6 +869,37 @@ class Host<T> extends Link {
 		}
 
 		this.updating = false;
+	}
+
+	catch(reason: any): void {
+		if (
+			this.iterator === undefined ||
+			this.iterator.throw === undefined ||
+			this.done
+		) {
+			if (this.parent === undefined) {
+				throw reason;
+			}
+
+			this.parent.catch(reason);
+		} else {
+			try {
+				const iteration = this.iterator.throw(reason);
+				new Pledge(iteration).then((iteration) => {
+					if (iteration.done) {
+						this.done = true;
+					}
+
+					this.updateChildren(iteration.value);
+				});
+			} catch (err) {
+				if (this.parent === undefined) {
+					throw err;
+				}
+
+				this.parent.catch(err);
+			}
+		}
 	}
 
 	unmount(): void {
