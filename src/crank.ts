@@ -1,196 +1,8 @@
 // TODO: Implement EventTarget implementation which doesn’t change EventTarget
 // typings and is exactly compatible with DOM/typescript lib EventTarget
-import {EventTarget as EventTargetShim} from "event-target-shim";
+import {CrankEventTarget, isEventTarget} from "./events";
 import {Repeater, SlidingBuffer} from "@repeaterjs/repeater";
 import {isPromiseLike, MaybePromise, MaybePromiseLike, Pledge} from "./pledge";
-
-interface EventListenerDetail {
-	type: string;
-	callback: EventListenerOrEventListenerObject;
-	options: AddEventListenerOptions;
-}
-
-function normalizeOptions(
-	options?: boolean | AddEventListenerOptions,
-): AddEventListenerOptions {
-	let capture = false;
-	let passive: boolean | undefined;
-	let once: boolean | undefined;
-	if (typeof options === "boolean") {
-		capture = options;
-	} else if (options != null) {
-		capture = !!options.capture;
-		passive = options.passive;
-		once = options.once;
-	}
-
-	return {capture, passive, once};
-}
-
-export type RefreshEvent = CustomEvent<{props: Props}>;
-
-// TODO: add these type overloads to CrankEventTarget
-export interface CrankEventMap {
-	"crank.refresh": RefreshEvent;
-	"crank.unmount": Event;
-}
-
-export class CrankEventTarget extends EventTargetShim implements EventTarget {
-	constructor(private parent?: CrankEventTarget) {
-		super();
-	}
-
-	// TODO: maybe use a helper class?
-	// we need a map from:
-	// type -> capture -> listener detail
-	// for efficient querying
-	private listeners: EventListenerDetail[] = [];
-
-	private _delegates: Set<EventTarget> = new Set();
-
-	get delegates(): Set<EventTarget> {
-		return this._delegates;
-	}
-
-	set delegates(delegates: Set<EventTarget>) {
-		const removed = new Set(
-			Array.from(this._delegates).filter((d) => !delegates.has(d)),
-		);
-		const added = new Set(
-			Array.from(delegates).filter((d) => !this._delegates.has(d)),
-		);
-
-		for (const delegate of removed) {
-			for (const listener of this.listeners) {
-				delegate.removeEventListener(
-					listener.type,
-					listener.callback,
-					listener.options,
-				);
-			}
-		}
-
-		for (const delegate of added) {
-			for (const listener of this.listeners) {
-				delegate.addEventListener(
-					listener.type,
-					listener.callback,
-					listener.options,
-				);
-			}
-		}
-
-		this._delegates = delegates;
-	}
-
-	addEventListener(
-		type: string,
-		callback: EventListenerOrEventListenerObject | null,
-		options?: boolean | AddEventListenerOptions,
-	): unknown {
-		if (callback == null) {
-			return;
-		}
-
-		options = normalizeOptions(options);
-		const detail: EventListenerDetail = {type, callback, options};
-		if (options.once) {
-			if (typeof callback === "object") {
-				throw new Error("options.once not implemented for listener objects");
-			} else {
-				const self = this;
-				detail.callback = function(ev: any) {
-					const result = callback.call(this, ev);
-					self.removeEventListener(
-						detail.type,
-						detail.callback,
-						detail.options,
-					);
-					return result;
-				};
-			}
-		}
-
-		if (detail.type.slice(0, 6) !== "crank.") {
-			const idx = this.listeners.findIndex((detail1) => {
-				return (
-					detail.type === detail1.type &&
-					detail.callback === detail1.callback &&
-					detail.options.capture === detail1.options.capture
-				);
-			});
-
-			if (idx <= -1) {
-				this.listeners.push(detail);
-			}
-		}
-
-		for (const delegate of this.delegates) {
-			delegate.addEventListener(type, callback, options);
-		}
-
-		return super.addEventListener(type, callback, options);
-	}
-
-	removeEventListener(
-		type: string,
-		callback: EventListenerOrEventListenerObject | null,
-		options?: EventListenerOptions | boolean,
-	): void {
-		if (callback == null) {
-			return;
-		}
-
-		const capture =
-			typeof options === "boolean" ? options : !!(options && options.capture);
-		const idx = this.listeners.findIndex((detail) => {
-			return (
-				detail.type === type &&
-				detail.callback === callback &&
-				detail.options.capture === capture
-			);
-		});
-		const detail = this.listeners[idx];
-		if (detail !== undefined) {
-			this.listeners.splice(idx, 1);
-		}
-		for (const delegate of this.delegates) {
-			delegate.removeEventListener(type, callback, options);
-		}
-
-		return super.removeEventListener(type, callback, options);
-	}
-
-	removeAllEventListeners(): void {
-		for (const listener of this.listeners.slice()) {
-			this.removeEventListener(
-				listener.type,
-				listener.callback,
-				listener.options,
-			);
-		}
-	}
-
-	// TODO: ev is any because event-target-shim has a weird dispatchEvent type
-	dispatchEvent(ev: any): boolean {
-		let continued = super.dispatchEvent(ev);
-		if (continued && ev.bubbles && this.parent !== undefined) {
-			// TODO: implement event capturing
-			continued = this.parent.dispatchEvent(ev);
-		}
-
-		return continued;
-	}
-}
-
-function isEventTarget(value: any): value is EventTarget {
-	return (
-		value != null &&
-		typeof value.addEventListener === "function" &&
-		typeof value.removeEventListener === "function" &&
-		typeof value.dispatchEvent === "function"
-	);
-}
 
 // TODO: make this non-global?
 declare global {
@@ -405,28 +217,35 @@ class Link {
 	}
 }
 
+interface Publication {
+	push(props: Props): unknown;
+	stop(): unknown;
+}
+
 class Host<T> extends Link {
-	protected parent?: Host<T>;
 	protected firstChild?: Host<T>;
 	protected lastChild?: Host<T>;
 	protected nextSibling?: Host<T>;
 	protected previousSibling?: Host<T>;
+	protected parent?: Host<T>;
+	protected root?: Host<T>;
+	protected replacedBy?: Host<T>;
 	ctx?: Context<T>;
 	guest?: Guest;
 	node?: T | string;
+	publications = new Set<Publication>();
 	// TODO: reduce the number of boolean properties
 	private updating = false;
 	private done = false;
 	private unmounted = false;
 	private independent = false;
-	private iterator?: ChildIterator;
+	private clock = 0;
 	private intrinsic?: Intrinsic<T>;
+	private iterator?: ChildIterator;
 	private committer?: Iterator<T | undefined>;
-	private hostsByKey?: Map<unknown, Host<T>>;
 	private pending?: Promise<any>;
 	private enqueued?: Promise<any>;
-	private replacedBy?: Host<T>;
-	private clock = 0;
+	private hostsByKey?: Map<unknown, Host<T>>;
 	private renderer: Renderer<T>;
 	constructor(
 		parent: Host<T> | undefined,
@@ -485,9 +304,8 @@ class Host<T> extends Link {
 		}
 
 		if (this.ctx !== undefined && typeof this.tag === "function") {
-			// TODO: filter type narrowing is not working
-			const delegates: EventTarget[] = childNodes.filter(isEventTarget) as any;
-			this.ctx.delegates = new Set(delegates);
+			// TODO: filter predicate type narrowing is not working
+			this.ctx.delegates = new Set(childNodes.filter(isEventTarget) as any);
 		}
 
 		this.cachedChildNodes = childNodes;
@@ -527,8 +345,8 @@ class Host<T> extends Link {
 		}
 
 		if (this.iterator === undefined) {
-			this.ctx.removeAllEventListeners();
-			// TODO: can we have pledges take an executor to reduce duplication
+			this.ctx.clearEventListeners();
+			// TODO: can we have pledges take an executor to reduce error duplication
 			let value: ChildIterator | MaybePromiseLike<Child>;
 			try {
 				value = this.guest.tag.call(this.ctx, this.guest.props);
@@ -669,10 +487,8 @@ class Host<T> extends Link {
 		if (this.unmounted) {
 			return;
 		} else if (this.tag !== undefined) {
-			if (this.ctx !== undefined) {
-				this.ctx.dispatchEvent(
-					new CustomEvent("crank.refresh", {detail: {props: this.props}}),
-				);
+			for (const pub of this.publications) {
+				pub.push(this.props!);
 			}
 
 			if (typeof this.tag === "function") {
@@ -884,6 +700,7 @@ class Host<T> extends Link {
 			this.parent.catch(reason);
 		} else {
 			try {
+				// TODO: catch async errors too
 				const iteration = this.iterator.throw(reason);
 				new Pledge(iteration).then((iteration) => {
 					if (iteration.done) {
@@ -903,9 +720,8 @@ class Host<T> extends Link {
 	}
 
 	unmount(): void {
-		if (this.ctx !== undefined) {
-			this.ctx.dispatchEvent(new Event("crank.unmount"));
-			this.ctx.removeAllEventListeners();
+		for (const pub of this.publications) {
+			pub.stop();
 		}
 
 		// TODO: await the return if the host is keyed and commit the parent
@@ -959,13 +775,10 @@ export class Context<T = any> extends CrankEventTarget {
 	[Symbol.asyncIterator](): AsyncGenerator<Props> {
 		return new Repeater(async (push, stop) => {
 			push(this.host.props!);
-			const onRefresh = (ev: any) => void push(ev.detail.props);
-			const onUnmount = () => stop();
-			this.addEventListener("crank.refresh", onRefresh);
-			this.addEventListener("crank.unmount", onUnmount);
+			const pub: Publication = {push, stop};
+			this.host.publications.add(pub);
 			await stop;
-			this.removeEventListener("crank.refresh", onRefresh);
-			this.removeEventListener("crank.unmount", onUnmount);
+			this.host.publications.delete(pub);
 		}, new SlidingBuffer(1));
 	}
 
