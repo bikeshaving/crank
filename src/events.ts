@@ -1,20 +1,4 @@
-let GlobalEventTarget: typeof EventTarget;
-
-if (typeof EventTarget === "undefined") {
-	GlobalEventTarget = class EventTarget {
-		dispatchEvent(): boolean {
-			return false;
-		}
-
-		addEventListener(): void {
-		}
-
-		removeEventListener(): void {
-		}
-	};
-} else {
-	GlobalEventTarget = EventTarget;
-}
+import {EventTarget as EventTargetShim} from "event-target-shim";
 
 interface EventListenerRecord {
 	type: string;
@@ -40,7 +24,7 @@ function normalizeOptions(
 }
 
 // TODO: strongly typed events somehow
-export class CrankEventTarget extends GlobalEventTarget implements EventTarget {
+export class CrankEventTarget extends EventTargetShim implements EventTarget {
 	constructor(private parent?: CrankEventTarget) {
 		super();
 	}

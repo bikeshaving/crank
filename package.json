@@ -1,8 +1,8 @@
 {
   "name": "@bikeshaving/crank",
-  "version": "0.1.0-beta.2",
+  "version": "0.1.0-beta.3",
   "license": "MIT",
-  "description": "JSX components with functions, promises and generators.",
+  "description": "JSX-based components with functions, promises and generators.",
   "files": [
     "cjs",
     "esm",
@@ -24,7 +24,8 @@
     "debug": "node --inspect-brk node_modules/.bin/jest --runInBand"
   },
   "dependencies": {
-    "@repeaterjs/repeater": "^3.0.1"
+    "@repeaterjs/repeater": "^3.0.1",
+    "event-target-shim": "^5.0.1"
   },
   "devDependencies": {
     "@types/jest": "^24.0.24",
