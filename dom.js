@@ -1,1 +1,1 @@
-export * from "./lib/dom.js";
+export * from "./esm/dom.js";

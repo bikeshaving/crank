@@ -9,7 +9,7 @@ import {
 	Props,
 	Renderer,
 	Text,
-} from "./crank";
+} from "./index";
 
 // Adapted from https://stackoverflow.com/a/28458409/
 function escapeText(text: string): string {

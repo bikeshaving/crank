@@ -1,5 +1,3 @@
-// TODO: Implement EventTarget implementation which doesn’t change EventTarget
-// typings and is exactly compatible with DOM/typescript lib EventTarget
 import {Repeater, SlidingBuffer} from "@repeaterjs/repeater";
 import {CrankEventTarget, isEventTarget} from "./events";
 import {isPromiseLike, MaybePromise, MaybePromiseLike, Pledge} from "./pledge";

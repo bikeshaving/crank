@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import {createElement, Fragment} from "../crank";
+import {createElement, Fragment} from "../index";
 import {renderer} from "../html";
 
 describe("render", () => {

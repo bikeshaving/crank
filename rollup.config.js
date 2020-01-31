@@ -1,15 +1,15 @@
 import typescript from "rollup-plugin-typescript2";
 export default {
-	input: ["src/crank.ts", "src/dom.ts", "src/html.ts"],
+	input: ["src/index.ts", "src/dom.ts", "src/html.ts"],
 	output: [
 		{
 			format: "cjs",
-			dir: "lib/cjs",
+			dir: "cjs",
 			sourcemap: true,
 		},
 		{
 			format: "esm",
-			dir: "lib",
+			dir: "esm",
 			sourcemap: true,
 		},
 	],

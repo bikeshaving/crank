@@ -1,1 +1,1 @@
-export * from "./lib/html";
+export * from "./esm/html";

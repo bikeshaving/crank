@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import {Copy, createElement, Fragment, Portal} from "../crank";
+import {Copy, createElement, Fragment, Portal} from "../index";
 import {renderer} from "../dom";
 import "./_mutation-observer";
 import {createHTML} from "./_utils";

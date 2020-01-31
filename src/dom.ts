@@ -6,7 +6,7 @@ import {
 	Props,
 	Renderer,
 	Portal,
-} from "./crank";
+} from "./index";
 
 function updateProps(el: HTMLElement, props: Props, newProps: Props): void {
 	for (let name in Object.assign({}, props, newProps)) {

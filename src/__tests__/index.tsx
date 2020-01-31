@@ -11,7 +11,7 @@ import {
 	Element,
 	Fragment,
 	setFrame,
-} from "../crank";
+} from "../index";
 import {renderer} from "../dom";
 
 describe("sync function component", () => {

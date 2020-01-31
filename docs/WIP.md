@@ -1,4 +1,6 @@
 # Crank.js
+
+
 ## Installation
 Crank is available on [NPM](https://npmjs.org/@bikeshaving/crank) in the ESModule and CommonJS formats.
 
@@ -14,9 +16,15 @@ import {renderer} from "@bikeshaving/crank/dom";
 renderer.render(<div id="hello">Hello world</div>, document.body);
 ```
 
-If you want to play around with Crank, here’s a Code Sandbox template.
+If your environment does not support ESModules, you can import the CommonJS versions of the library like so:
+```jsx
+/* @jsx createElement */
+import {createElement} from "@bikeshaving/crank/cjs";
+import {renderer} from "@bikeshaving/crank/cjs/dom";
+```
 
-## Basic Usage
+## Key Examples
+## Concepts
 ### JSX, Elements and Renderers
 Crank is best used with [JSX](https://facebook.github.io/jsx/), an XML-based syntax extension to JavaScript. Crank is designed to work with both the Babel and TypeScript parsers out-of-box; all you need to do is enable the parsing of JSX, import the `createElement` function, and reference it via a `@jsx` comment directive (`/* @jsx createElement */`). The parser will then transpile JSX into `createElement` calls. For example, in the code below, the JSX expression assigned to `el` desugars to the `createElement` call assigned to `el1`.
 
