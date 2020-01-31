@@ -1,7 +1,7 @@
 // TODO: Implement EventTarget implementation which doesn’t change EventTarget
 // typings and is exactly compatible with DOM/typescript lib EventTarget
-import {CrankEventTarget, isEventTarget} from "./events";
 import {Repeater, SlidingBuffer} from "@repeaterjs/repeater";
+import {CrankEventTarget, isEventTarget} from "./events";
 import {isPromiseLike, MaybePromise, MaybePromiseLike, Pledge} from "./pledge";
 
 // TODO: make this non-global?
@@ -67,7 +67,7 @@ export type Children = Child | NestedChildIterable;
 
 export interface Props {
 	children?: Children;
-	"crank-key"?: {};
+	"crank-key"?: unknown;
 	[name: string]: any;
 }
 
@@ -77,7 +77,7 @@ export interface Element<T extends Tag = Tag> {
 	[ElementSigil]: true;
 	tag: T;
 	props: Props;
-	key?: {};
+	key?: unknown;
 }
 
 export function isElement(value: any): value is Element {
@@ -228,8 +228,6 @@ class Host<T> extends Link {
 	protected nextSibling?: Host<T>;
 	protected previousSibling?: Host<T>;
 	protected parent?: Host<T>;
-	protected root?: Host<T>;
-	protected replacedBy?: Host<T>;
 	ctx?: Context<T>;
 	guest?: Guest;
 	node?: T | string;
@@ -239,12 +237,14 @@ class Host<T> extends Link {
 	private done = false;
 	private unmounted = false;
 	private independent = false;
-	private clock = 0;
-	private intrinsic?: Intrinsic<T>;
-	private iterator?: ChildIterator;
-	private committer?: Iterator<T | undefined>;
+	// these properties are used when racing components
 	private pending?: Promise<any>;
 	private enqueued?: Promise<any>;
+	private replacedBy?: Host<T>;
+	private clock = 0;
+	private iterator?: ChildIterator;
+	private committer?: Iterator<T | undefined>;
+	private intrinsic?: Intrinsic<T>;
 	private hostsByKey?: Map<unknown, Host<T>>;
 	private renderer: Renderer<T>;
 	constructor(
