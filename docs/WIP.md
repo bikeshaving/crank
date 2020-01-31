@@ -1,7 +1,8 @@
 # Crank.js
+JSX-driven components with functions, promises and generators.
 
+Crank is a new React-like library for building user interfaces. This is an early beta. A documentation website is coming soon as we dogfood the library.
 
-## Installation
 Crank is available on [NPM](https://npmjs.org/@bikeshaving/crank) in the ESModule and CommonJS formats.
 
 ```
@@ -16,14 +17,104 @@ import {renderer} from "@bikeshaving/crank/dom";
 renderer.render(<div id="hello">Hello world</div>, document.body);
 ```
 
-If your environment does not support ESModules, you can import the CommonJS versions of the library like so:
+If your environment does not support ESModules (you’ll probably see a message like `SyntaxError: Unexpected token export`), you can import the CommonJS versions of the crank like so:
+
 ```jsx
 /* @jsx createElement */
 import {createElement} from "@bikeshaving/crank/cjs";
 import {renderer} from "@bikeshaving/crank/cjs/dom";
+
+renderer.render(<div id="hello">Hello world</div>, document.body);
 ```
 
 ## Key Examples
+
+### A Simple Component
+```jsx
+function Greeting ({name}) {
+  return (
+    <div>Hello {name}</div>
+  );
+}
+```
+
+### A Stateful Component
+```jsx
+function *Timer () {
+  let seconds = 0;
+  const interval = setInterval(() => {
+    seconds++;
+    this.refresh();
+  }, 1000);
+  try {
+    while (true) {
+      yield <div>Seconds: {seconds}</div>;
+    }
+  } finally {
+    clearInterval(interval);
+  }
+}
+```
+
+### An Async Component
+```jsx
+async function IPAddress () {
+  const res = await fetch("https://api.ipify.org");
+  const address = await res.text();
+  return <div>Your IP Address: {address}</div>;
+}
+```
+
+### A Suspending Component
+```jsx
+async function Fallback ({wait = 1000, children}) {
+  await new Promise((resolve) => setTimeout(resolve, wait));
+  return <Fragment>{children}</Fragment>;
+}
+
+async function *Suspense () {
+  for await (const {fallback, children} of this) {
+    yield <Fallback>{fallback}</Fallback>;
+    yield <Fragment>{children}</Fragment>;
+  }
+}
+
+async function RandomDog ({throttle=false}) {
+  if (throttle) {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
+
+  const res = await fetch("https://dog.ceo/api/breeds/image/random");
+  const data = await res.json();
+  return (
+    <a href={data.message}>
+      <img src={data.message} width="250" />
+    </a>
+  );
+}
+
+function *RandomDogs () {
+  let throttle = false;
+  this.addEventListener("click", (ev) => {
+    if (ev.target.tagName === "BUTTON") {
+      throttle = !throttle;
+      this.refresh();
+    }
+  });
+
+  while (true) {
+    yield (
+      <Fragment>
+        <button>Show me another dog.</button>
+        <Suspense fallback={<div>Fetching a good boy…</div>}>
+          <RandomDog throttle={throttle} />
+        </Suspense>
+      </Fragment>
+    );
+  }
+}
+```
+
 ## Concepts
 ### JSX, Elements and Renderers
 Crank is best used with [JSX](https://facebook.github.io/jsx/), an XML-based syntax extension to JavaScript. Crank is designed to work with both the Babel and TypeScript parsers out-of-box; all you need to do is enable the parsing of JSX, import the `createElement` function, and reference it via a `@jsx` comment directive (`/* @jsx createElement */`). The parser will then transpile JSX into `createElement` calls. For example, in the code below, the JSX expression assigned to `el` desugars to the `createElement` call assigned to `el1`.
@@ -102,7 +193,7 @@ const list1 = createElement("ul", null, [
 console.log(list.props.children.length); // 2
 ```
 
-As with HTML, Crank elements can have contents, and these contents are referred to as *children*. Insofar as an element can have children which are also elements, elements form a virtual tree of nodes. Renderers will then walk this tree in the course of rendering to produce values.
+As with HTML, Crank elements can have contents, and these contents are referred to in JSX-based libraries as *children*. Insofar as an element can have children which are also elements, elements form a virtual tree of nodes. Renderers will then walk this tree in the course of rendering to produce values.
 
 Similar to props, you can use curly brackets to interpolate arbitrary JavaScript expressions into an element’s children. JSX passes each child to the `createElement` function, and Crank will in turn collect each child in a special prop named `children`.
 
@@ -734,7 +825,7 @@ function *RandomDogs () {
 The above example shows how we could implement Suspense, a proposed custom React element which allows async components with fallback states. As you can see, in Crank, no special tags are needed, and the functionality to write async components is all available to the user. Best of all, we don’t need any special APIs, we can use `async`/`await` directly in our components.
 
 ## Custom Renderers
-⚠️ Docs coming soon ⚠️
+**Under construction**
 
 ## Differences from React
 Though Crank is very much inspired by and similar to React, exact compatibility is a non-goal, and we’ve used this as opportunity to “fix” a lot of pain points with React which bothered us over the years. The following is a list of differences with React, as well as justifications for why we chose to implement features differently.

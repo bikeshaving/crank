@@ -1,14 +1,35 @@
-# Crank
-## JSX-driven components with functions, promises and generators.
+# Crank.js
+JSX-driven components with functions, promises and generators.
 
-Crank is a JavaScript library for building user interfaces.
-This is an early beta.
+Crank is a new React-like library for building user interfaces. This is an early beta. A documentation website is coming soon as we dogfood the library.
 
-## Examples
+Crank is available on [NPM](https://npmjs.org/@bikeshaving/crank) in the ESModule and CommonJS formats.
+
+```
+$ npm install @bikeshaving/crank
+```
+
+```jsx
+/* @jsx createElement */
+import {createElement} from "@bikeshaving/crank";
+import {renderer} from "@bikeshaving/crank/dom";
+
+renderer.render(<div id="hello">Hello world</div>, document.body);
+```
+
+If your environment does not support ESModules (you’ll probably see a message like `SyntaxError: Unexpected token export`), you can import the CommonJS versions of the crank like so:
+
+```jsx
+/* @jsx createElement */
+import {createElement} from "@bikeshaving/crank/cjs";
+import {renderer} from "@bikeshaving/crank/cjs/dom";
+
+renderer.render(<div id="hello">Hello world</div>, document.body);
+```
+
+## Key Examples
 
 ### A Simple Component
-Eventually, you’re going to want to re-use elements, in the form of components. Crank has no class-based component API, every component is just a function which produces elements.
-
 ```jsx
 function Greeting ({name}) {
   return (
@@ -17,15 +38,7 @@ function Greeting ({name}) {
 }
 ```
 
-`Greeting` is a simple component which takes a name as props, and returns an element with the name interpolated into a div. You can use this element by creating an element with the function `Greeting` as the tag, and a string for props.
-
-```jsx
-renderer.render(<Greeting name="Andrew" />, document.body);
-```
-
 ### A Stateful Component
-So far, the components we’ve seen have all been stateless, but eventually, you will want to write stateful components, to create forms and stuff.
-
 ```jsx
 function *Timer () {
   let seconds = 0;
@@ -52,15 +65,15 @@ async function IPAddress () {
 }
 ```
 
-### A Loading Component
+### A Suspending Component
 ```jsx
 async function Fallback ({wait = 1000, children}) {
   await new Promise((resolve) => setTimeout(resolve, wait));
   return <Fragment>{children}</Fragment>;
 }
 
-async function *Suspense ({fallback, children}) {
-  for await ({fallback, children} of this) {
+async function *Suspense () {
+  for await (const {fallback, children} of this) {
     yield <Fallback>{fallback}</Fallback>;
     yield <Fragment>{children}</Fragment>;
   }

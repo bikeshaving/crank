@@ -1,6 +1,6 @@
 /* @jsx createElement */
 import webpack from "webpack";
-import {createElement, Fragment} from "@bikeshaving/crank/cjs";
+import {createElement, Fragment} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/cjs/html";
 
 let compiler: webpack.Compiler | undefined;
