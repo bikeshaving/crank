@@ -1,4 +1,5 @@
 /* @jsx createElement */
+import fs from "fs";
 import path from "path";
 import webpack from "webpack";
 import {createElement, Fragment} from "@bikeshaving/crank";
@@ -20,7 +21,7 @@ const config: webpack.Configuration = {
 		],
 	},
 	resolve: {
-		extensions: [".tsx", ".ts", ".jsx", ".js"],
+		extensions: [".js", ".jsx", ".ts", ".tsx"],
 	},
 	output: {
 		filename: "[contenthash].js",
@@ -56,8 +57,8 @@ async function Script(props: Record<string, any>) {
 	return <script {...props} />;
 }
 
-(async () => {
-	const html = await renderer.renderToString(
+function Home() {
+	return (
 		<Fragment>
 			{"<!DOCTYPE html>"}
 			<html lang="en">
@@ -74,6 +75,10 @@ async function Script(props: Record<string, any>) {
 					<Script src={path.resolve(__dirname, "./index.js")} />
 				</body>
 			</html>
-		</Fragment>,
+		</Fragment>
 	);
+}
+
+(async () => {
+	const html = await renderer.renderToString(<Page />);
 })();
