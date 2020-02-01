@@ -2,20 +2,23 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@babel/standalone": "^7.8.3",
-    "@bikeshaving/crank": "./..",
-    "@types/codemirror": "^0.0.82",
-    "codemirror": "^5.50.2",
-    "core-js": "^3.6.0",
+    "@babel/standalone": "^7.8.4",
+    "@bikeshaving/crank": "^0.1.0-beta.3",
+    "codemirror": "^5.51.0",
+    "core-js": "^3.6.4",
     "regenerator-runtime": "^0.13.3"
   },
   "devDependencies": {
-    "@babel/core": "^7.7.7",
+    "@babel/core": "^7.8.4",
+    "@types/babel__standalone": "^7.1.0",
+    "@types/codemirror": "^0.0.84",
     "@types/webpack": "^4.41.3",
+    "css-loader": "^3.4.2",
     "nodemon": "^2.0.2",
-    "parcel-bundler": "^1.12.4",
+    "style-loader": "^1.1.3",
+    "ts-loader": "^6.2.1",
     "ts-node": "^8.6.2",
-    "typescript": "^3.7.4",
+    "typescript": "^3.7.5",
     "webpack": "^4.41.5",
     "webpack-cli": "^3.3.10"
   }

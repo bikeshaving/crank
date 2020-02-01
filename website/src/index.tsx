@@ -1,12 +1,12 @@
 /** @jsx createElement */
-import {createElement, Fragment} from "@crankjs/crank";
-import {renderer} from "@crankjs/crank/dom";
-import "./index.css";
+import {Context, createElement, Fragment} from "@bikeshaving/crank";
+import {renderer} from "@bikeshaving/crank/dom";
 import CodeMirror from "codemirror";
 import * as Babel from "@babel/standalone";
 import "codemirror/lib/codemirror.css";
+import "./index.css";
 
-export function* Editor({value}) {
+export function* Editor(this: Context, {value}: {value: string}) {
 	setTimeout(() => this.refresh());
 	const el = yield (<div />);
 	const cm = CodeMirror(el, {
@@ -55,14 +55,17 @@ const babelOptions = {
 	],
 };
 
-async function* Preview() {
-	for await (const {id, code} of this) {
+async function* Preview(this: Context) {
+	for await (let {id, code} of this) {
 		try {
-			yield <div id={id} class="preview" />;
+			yield (<div id={id} class="preview" />);
 			// TODO: resume async generators only after parent has committed or something
 			await new Promise((resolve) => setTimeout(resolve, 0));
-			code = Babel.transform(code, babelOptions).code;
-			const fn = new Function(...["createElement", "renderer", "Fragment"], code);
+			code = (Babel.transform(code, babelOptions) as any).code;
+			const fn = new Function(
+				...["createElement", "renderer", "Fragment"],
+				code,
+			);
 			fn(createElement, renderer, Fragment);
 		} catch (err) {
 			yield (
@@ -214,8 +217,8 @@ function *App () {
 renderer.render(<App />, document.getElementById("loading-demo"));
 `.trim();
 
-function* Playground({code = "", id = "playground"}) {
-	this.addEventListener("codemirror.change", (ev) => {
+function* Playground(this: Context, {code = "", id = "playground"}) {
+	this.addEventListener("codemirror.change", (ev: any) => {
 		code = ev.detail.value;
 		this.refresh();
 	});
@@ -252,4 +255,4 @@ function Page() {
 	);
 }
 
-renderer.render(<Page />, document.body.firstElementChild);
+renderer.render(<Page />, document.body.firstElementChild!);
