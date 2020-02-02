@@ -1,8 +1,18 @@
 import {EventTarget as EventTargetShim} from "event-target-shim";
 
+declare global {
+	module crank {
+		interface EventMap {
+			[type: string]: Event;
+		}
+	}
+}
+
+type MappedEventListener<T extends string> = (ev: crank.EventMap[T]) => unknown;
+
 interface EventListenerRecord {
 	type: string;
-	callback: EventListenerOrEventListenerObject;
+	callback: MappedEventListener<any>;
 	options: AddEventListenerOptions;
 }
 
@@ -22,7 +32,6 @@ function normalizeOptions(
 
 	return {capture, passive, once};
 }
-
 // TODO: strongly typed events somehow
 export class CrankEventTarget extends EventTargetShim implements EventTarget {
 	constructor(private parent?: CrankEventTarget) {
@@ -72,32 +81,26 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 		this._delegates = delegates;
 	}
 
-	addEventListener(
-		type: string,
-		callback: EventListenerOrEventListenerObject | null,
+	addEventListener<T extends string>(
+		type: T,
+		callback: MappedEventListener<T> | null,
 		options?: boolean | AddEventListenerOptions,
 	): unknown {
 		if (callback == null) {
 			return;
+		} else if (typeof callback === "object") {
+			throw new Error("Listener objects are not supported");
 		}
 
 		options = normalizeOptions(options);
 		const record: EventListenerRecord = {type, callback, options};
 		if (options.once) {
-			if (typeof callback === "object") {
-				throw new Error("options.once not implemented for listener objects");
-			} else {
-				const self = this;
-				record.callback = function(ev: any) {
-					const result = callback.call(this, ev);
-					self.removeEventListener(
-						record.type,
-						record.callback,
-						record.options,
-					);
-					return result;
-				};
-			}
+			const self = this;
+			record.callback = function(ev: any) {
+				const result = callback.call(this, ev);
+				self.removeEventListener(record.type, record.callback, record.options);
+				return result;
+			};
 		}
 
 		if (record.type.slice(0, 6) !== "crank.") {
@@ -121,9 +124,9 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 		return super.addEventListener(type, callback, options);
 	}
 
-	removeEventListener(
-		type: string,
-		callback: EventListenerOrEventListenerObject | null,
+	removeEventListener<T extends string>(
+		type: T,
+		callback: MappedEventListener<T> | null,
 		options?: EventListenerOptions | boolean,
 	): void {
 		if (callback == null) {

@@ -122,7 +122,7 @@ export function createElement<T extends Tag>(
 
 export type Intrinsic<T> = (props: Props) => T | Iterator<T>;
 
-export type Guest = Element | string | undefined;
+type Guest = Element | string | undefined;
 
 function toGuest(child: Child): Guest {
 	if (child == null || typeof child === "boolean") {
