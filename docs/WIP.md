@@ -1,17 +1,18 @@
 # Crank.js
 A JavaScript framework for writing JSX-driven components with functions, generators and promises.
 
-Crank.js is in early beta, and some APIs are still unstable.
+I wrote a blog post describing the motivations and journey behind making Crank [here](#TKTKTK). Crank is in an early beta, and some APIs may be changed.
 
 ## Features
+### JSX-based elements
+Crank uses the same JSX syntax and element diffing algorithm popularized by React, so you can write declarative code which looks like HTML directly in your JavaScript. The portability of elements means you can reuse the same code to render DOM nodes on the client and HTML strings on the server.
+
 ### Components as functions and generators
-Rather than requiring classes, hooks, proxies, or fancy compilers, Crank lets you write stateless or stateful components with functions and generators exclusively. You can define define local state using plain old variables, and the same JSX element diffing algorithm used by virtual DOM libraries lets you write declarative code.
+Crank uses functions and generators for components exclusively. No fancy classes, hooks, proxies or template languages are needed, and you can take advantage of the natural lifecycle of generators to write stateful setup, update and teardown logic all in the same scope.
 
-### No lifecycles methods or callbacks necessary
-Generator functions provide a built-in way to setup, update, and teardown components using control flow operators you already know. Crank leverages the natural lifecycle of generators to make responding to updates as easy as writing a for-loop.
+### Promises today
+Crank provides first-class support for promises by allowing components to be defined as async functions and generators. You can `await` the rendering of async components just like any other async function, and you can even race renderings to create user interfaces with deferred loading states.
 
-### Use promises and async/await today
-Stop waiting for promises to be supported in your favorite JSX-based library; the suspense will kill you. Crank allows you to define components which are just async functions, meaning you can await promises directly in your components. And by racing async components you can write complex loading states declaratively.
 
 ## Getting Started
 Crank is available on [NPM](https://npmjs.org/@bikeshaving/crank) in the ESModule and CommonJS formats.
@@ -40,20 +41,28 @@ renderer.render(<div id="hello">Hello world</div>, document.body);
 
 ## Key Examples
 ### A Simple Component
-
 ```jsx
+/* @jsx createElement */
+import {createElement} from "@bikeshaving/crank";
+import {renderer} from "@bikeshaving/crank/dom";
+
 function Greeting ({name = "World"}) {
   return (
     <div>Hello {name}</div>
   );
 }
+
+renderer.render(<Greeting />, document.getElementById("app"));
 ```
 
-[Try on Code Sandbox](https://codesandbox.io/s/a-simple-crank-component-gnknz)
+[Try on CodeSandbox](https://codesandbox.io/s/a-simple-crank-component-gnknz)
 
 ### A Stateful Component
-
 ```jsx
+/* @jsx createElement */
+import {createElement} from "@bikeshaving/crank";
+import {renderer} from "@bikeshaving/crank/dom";
+
 function *Timer () {
   let seconds = 0;
   const interval = setInterval(() => {
@@ -68,24 +77,36 @@ function *Timer () {
     clearInterval(interval);
   }
 }
+
+renderer.render(<Timer />, document.getElementById("app"));
 ```
 
-[Try on Code Sandbox](https://codesandbox.io/s/a-stateful-crank-component-hh8zx)
+[Try on CodeSandbox](https://codesandbox.io/s/a-stateful-crank-component-hh8zx)
 
 ### An Async Component
 ```jsx
+/* @jsx createElement */
+import {createElement} from "@bikeshaving/crank";
+import {renderer} from "@bikeshaving/crank/dom";
+
 async function IPAddress () {
   const res = await fetch("https://api.ipify.org");
   const address = await res.text();
   return <div>Your IP Address: {address}</div>;
 }
+
+renderer.render(<IPAddress />, document.getElementById("app"));
 ```
 
-[Try on Code Sandbox](https://codesandbox.io/s/an-async-crank-component-ru02q)
+[Try on CodeSandbox](https://codesandbox.io/s/an-async-crank-component-ru02q)
 
 ### A Loading Component
 
 ```jsx
+/* @jsx createElement */
+import {createElement} from "@bikeshaving/crank";
+import {renderer} from "@bikeshaving/crank/dom";
+
 async function Fallback ({wait = 1000, children}) {
   await new Promise((resolve) => setTimeout(resolve, wait));
   return <Fragment>{children}</Fragment>;
@@ -134,9 +155,11 @@ function *RandomDogs () {
     );
   }
 }
+
+renderer.render(<RandomDogs />, document.getElementById("app"));
 ```
 
-[Try on Code Sandbox](https://codesandbox.io/s/a-loading-crank-component-pci9d)
+[Try on CodeSandbox](https://codesandbox.io/s/a-loading-crank-component-pci9d)
 
 ## Concepts
 ### JSX, Elements and Renderers
@@ -154,7 +177,7 @@ const el = <div id="element">An element</div>;
 const el1 = createElement("div", {id: "element"}, "An element");
 ```
 
-The `createElement` function which is called when using JSX returns an *element*, a plain old JavaScript object. Elements on their own don’t do anything special; instead, Crank provides special classes called *renderers* which interpret elements to produce DOM nodes, HTML strings, scene graphs, or whatever else a developer can think of. Crank ships with two renderers for web development, one which produces DOM nodes, available through the module `@bikeshaving/crank/dom`, and one which produces HTML strings, available through the module `@bikeshaving/crank/html`. You can use these modules to render interactive user interfaces on the client and HTML strings on the server.
+The `createElement` function returns an *element*, a plain old JavaScript object. Elements on their own don’t do anything special; instead, Crank provides special classes called *renderers* which interpret elements to produce DOM nodes, HTML strings, scene graphs, or whatever else a developer can think of. Crank ships with two renderers for web development, one for creating and updating DOM nodes, available through the module `@bikeshaving/crank/dom`, and one which creating HTML strings, available through the module `@bikeshaving/crank/html`. You can use these modules to render interactive user interfaces on the client and HTML responses on the server.
 
 ```jsx
 /* @jsx createElement */
@@ -169,12 +192,12 @@ console.log(node.innerHTML); // <div id="element">Hello world</div>
 console.log(HTMLRenderer.renderToString(el)); // <div id="element">Hello world</div>
 ```
 
-The two renderers have slightly different APIs, with DOM renderers statefully mutating a DOM node which is passed in as the second argument to its `render` method, and HTML renderers turning Crank elements into strings using a `renderToString` method. The exact methods and behaviors of a renderer will vary depending on its specific use-case and environment. Because elements are just objects, we can re-use the same elements across different environments to do different things.
+The two renderers have slightly different APIs, with DOM renderers statefully mutating a DOM node which is passed in as the second argument to the `render` method, and HTML renderers turning Crank elements into strings using the `renderToString` method. The exact methods and behaviors of a renderer will vary depending on its specific use-case and environment.
 
 ### The parts of an element.
 
 ![Image of JSX element](#TKTKTK)
-An element has three main parts, a *tag*, *props* and *children*. These roughly correspond to tags, attributes and content, the parts of an HTML element, and for the most part, you can copy-paste HTML into JavaScript and have things work as you would expect. The main difference is that JSX has to be well-balanced like XML, so HTML void elements must have a closing slash (`<input />` not `<input>`). Also, if you forget to close an element, the parser will throw an error, while HTML can be unbalanced or malformed and still mostly work. The advantage of using JSX is that it allows arbitrary JavaScript expressions to be interpolated into elements as the tag, props or children, allowing you to use syntax which looks like HTML/XML seamlessly within JavaScript.
+An element has three main parts, a *tag*, *props* and *children*. These roughly correspond to tags, attributes and content, the parts of an HTML element, and for the most part, you can copy-paste HTML into JavaScript and have things work as you would expect. The main difference is that JSX has to be well-balanced like XML, so void tags must have a closing slash (`<input />` not `<input>`). Also, if you forget to close an element, the parser will throw an error, while HTML can be unbalanced or malformed and still mostly work. The advantage of using JSX is that it allows arbitrary JavaScript expressions to be interpolated into elements as the tag, props or children, allowing you to use syntax which looks like HTML/XML seamlessly within JavaScript.
 
 ### Tags
 ```jsx
@@ -187,7 +210,7 @@ const componentEl = <Component />;
 const componentEl1 = createElement(Component);
 ```
 
-By convention, JSX parsers treat lower-cased tags as strings and capitalized tags as variables. When a tag is a string, this signifies that the element will be handled by the renderer. In Crank, we call elements with string tags *intrinsic elements*, and for both of the web renderers, these elements correspond to HTML tags like `div` or `input`. As we’ll see later, elements can also have tags which are functions, in which case the behavior of the element is defined by the execution of the referenced function and not the renderer. These elements are called *component elements*. Insofar as tags can be functions, JSX can be thought of as just another way to invoke a function, except the execution of the function is deferred till rendering. The tag is transpiled as the first argument of the `createElement` call.
+By convention, JSX parsers treat lower-cased tags as strings and capitalized tags as variables. When a tag is a string, this signifies that the element will be handled by the renderer. In Crank, we call elements with string tags *intrinsic elements*, and for both of the web renderers, these elements correspond to the actual HTML tags like `div` or `input`. As we’ll see later, elements can also have tags which are functions, in which case the behavior of the element is defined by the execution of the referenced function and not the renderer. These elements are called *component elements*. Insofar as tags can be functions, JSX can be thought of as just another way to invoke a function, except the execution of the function is deferred till rendering. Tags are transpiled to the first argument of the `createElement` call.
 
 ### Props
 ```jsx
@@ -218,7 +241,7 @@ const list1 = createElement("ul", null,
 console.log(list.props.children.length); // 2
 ```
 
-As with HTML, Crank elements can have contents, and these contents are referred to as *children*. Insofar as an element can have children which are also elements, elements form a tree of nodes. Renderers will then walk this tree in the course of rendering.
+As with HTML, Crank elements can have contents, and these contents are referred to as *children*. Insofar as an element can have children which are also elements, elements form a tree of nodes.
 
 ```jsx
 const el = <div>{"a"}{1 + 1}{true}{false}{null}{undefined}</div>;
@@ -227,7 +250,7 @@ renderer.render(el, document.body);
 console.log(document.body.innerHTML); // <div>a2</div>
 ```
 
-By default, the contents of JSX are interpreted as strings, but you can use curly brackets to interpolate arbitrary JavaScript expressions into an element’s children. Almost every value in JavaScript can participate in the element tree. Strings and numbers are rendered as text, while the values `null`, `undefined` and booleans are erased to allow you to render things conditionally. Crank also allows iterables of values to be inserted as well, so, for instance, you can interpolate an array or a set into elements as well.
+By default, the contents of JSX are interpreted as strings, but you can use curly brackets just as we did with props to interpolate arbitrary JavaScript expressions into an element’s children. Almost every value in JavaScript can participate in the element tree. Strings and numbers are rendered as text, while the values `null`, `undefined`, `true` and `false` are erased to allow you to render things conditionally. Crank also allows iterables of values to be inserted as well, so, for instance, you can interpolate an array or a set into elements as well.
 
 ```jsx
 const arr = [1, 2, 3];
@@ -237,7 +260,7 @@ console.log(document.body.innerHTML); // <div>123 abc</div>
 ```
 
 ## Element diffing
-Crank uses the same “virtual DOM” diffing algorithm made popular by React. This allows you to write declarative code which focuses on producing the right element tree, while Crank does the dirty work of managing state and mutating the DOM.
+Crank uses the same “virtual DOM” diffing algorithm made popular by React. This allows you to write declarative code which focuses on producing the right element tree, while Crank does the dirty work of managing state and mutating the DOM. The renderer will cache the previous element tree by each DOM element rendered into, so that DOM nodes can be re-used between renders.
 
 ```jsx
 renderer.render(
@@ -262,7 +285,7 @@ console.log(document.body.firstChild.firstChild === span); // true
 ```
 
 ## Components
-So far, we’ve only rendered intrinsic elements directly, but eventually, we’ll want to group parts of this element tree into reusable *components.* In Crank, all components are functions which are passed props and produce elements; there is no class-based interface or template language. These functions are called by creating elements with the functions as tags.
+So far, we’ve only rendered intrinsic elements directly, but eventually, we’ll want to group parts of the element tree into reusable *components.* In Crank, all components are functions which are passed props and produce elements; there is no class-based interface. These functions are called by creating elements with the functions as tags (`<Component />`).
 
 ### Basic Components
 ```js
@@ -279,7 +302,7 @@ The simplest kind of component you can write is a *synchronous function componen
 As seen in the example above, you can use [object destructuring](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment#Object_destructuring) on the props parameter for convenience. Additionally, you can assign default values to each prop using JavaScript’s default value syntax:
 
 ```js
-function Greeting ({name="Nemo"}) {
+function Greeting ({name = "Nemo"}) {
   return <div>Hello, {name}</div>;
 }
 
@@ -335,12 +358,17 @@ renderer.render(<Counter />, document.body);
 renderer.render(<Counter />, document.body);
 console.log(document.body.innerHTML);
 // <div>You have updated this component 5 times</div>
+renderer.render(null, document.body);
+console.log(document.body.innerHTML);
+// ""
+renderer.render(<Counter />, document.body);
+// <div>You have updated this component 1 time</div>
 ```
 
-Because we’re now yielding elements rather than returning them, we can make components stateful using local variables. Every time the component is updated, Crank steps through the generator once, pausing after the next `yield`. The yielded expressions, usually elements, are then recursively rendered by the renderer.
+Because we’re now yielding elements rather than returning them, we can make components stateful using local variables. Every time the component is updated, Crank steps through the generator once, pausing at the next `yield`. The yielded expressions, usually elements, are then recursively rendered by the renderer, just as if it were returned in a sync component. Crank uses the same diffing algorithm used to reuse DOM nodes to reuse generator objects, allowing you to encapsulate local state and reset it when necessary.
 
 ### The `this` keyword
-`Counter` is a stateful component whose local state updates when it is updated, but we may want to write components which update themselves based on timers or other events. Crank allows components to control themselves by passing in a custom object called a *context* as the `this` keyword of each component. Contexts provide several utility methods, most important of which is `this.refresh`, which tells Crank to update the component. For generator components, this means that the renderer will resume the generator so it can yield another value.
+`Counter` is a stateful component whose local state only changes when it is updated, but we may want to write components which update themselves based on timers or events. Crank allows components to control themselves by passing in a custom object called a *context* as the `this` keyword of each component. Contexts provide several utility methods, most important of which is `this.refresh`, which tells Crank to update the component in place. For generator components, this means that the renderer will resume the generator so it can yield another value.
 
 ```jsx
 function *Timer () {
@@ -365,7 +393,7 @@ function *Timer () {
 This `Timer` component is similar to the `Counter` one, except now the state (the local variable `seconds`) is updated in the callback passed to `setInterval`, rather than when the component is updated. `this.refresh` is called to ensure that the outer generator is stepped through, so that the rendered DOM actually reflects the updated state.
 
 ### Cleanup with `try`/`finally`
-One important detail about the `Timer` example is that it cleans up after itself with `clearInterval`. Crank will call `return` on the generator object which your component returns, so when your component is removed, the finally block executes and `clearInterval` is called. In this way, you can use the natural lifecycle of a generator to write setup and teardown logic for components, all within the same variable scope.
+One important detail about the `Timer` example above is that it cleans up after itself with `clearInterval`. Crank will call `return` on the generator object which your component returns, so when your component is removed, the finally block executes and `clearInterval` is called. In this way, you can use the natural lifecycle of a generator to write setup and teardown logic for components, all within the same variable scope.
 
 ### Prop updates
 The generator components we’ve seen so far haven’t used the props object, but they can accept props as the first parameter just like regular function components.
@@ -388,7 +416,7 @@ console.log(document.body.innerHTML); // <div>The count is now: 3</div>
 // WOOPS!
 ```
 
-This mostly works, except we have a bug where the component kept yielding the initial message even though a new message was passed in via props. In generator components, we can make sure props are up to date by iterating over the `this` object:
+This mostly works, except we have a bug where the component kept yielding the initial message even though a new message was passed in via props. In generator components, we can make sure props are kept up to date by iterating over the `this` object:
 
 ```jsx
 function *Counter ({message}) {
@@ -407,9 +435,9 @@ renderer.render(<Counter message="What if I update the message:" />, document.bo
 console.log(document.body.innerHTML); // <div>What if I update the message: 2</div>
 ```
 
-By replacing the `while (true)` loop with a `for…of` loop which iterates over the `this` object, you can get the latest props passed to the generator. This is possible because contexts are an iterable of the props passed to components. The generator is expected to yield once per iteration of the context in response to new props.
+By replacing the `while (true)` loop with a `for…of` loop which iterates over the `this` object, you can get the latest props passed to the generator. This is possible because contexts are an iterable of the props passed to components. The generator is then expected to yield once per iteration of the context in response to new props.
 
-One Crank idiom we see in the above example is overwriting variables declared via the generator’s parameters `message` with the `for…of` loop’s expression. This allows props to always remain in sync with the current props passed to each component. However, there is no reason you have to always overwrite old props in the `for` expression, meaning you can assign new props to a different variable and compare them against the old props:
+One Crank idiom we see in the example above is the overwriting of variables declared via the generator’s parameters (`message`) with the `for…of` loop. This allows those variables to always remain in sync with the current props passed to each component. However, there is no reason you have to always overwrite old props in the `for` expression, meaning you can assign new props to a different variable and compare them against the old props:
 
 ```jsx
 function *Greeting ({name}) {
@@ -441,7 +469,7 @@ console.log(document.body.innerHTML);
 // <div>Hello again Bob</div>
 ```
 
-The fact that state is just local variables allows us to blur the lines between props and state, in a way that is easy to understand and without verbose lifecycle methods like `componentWillReceiveProps` from React. With generator functions and `for` loops, comparing old and new props is as easy as comparing adjacent elements of an array.
+The fact that state is just local variables allows us to blur the lines between props and state, in a way that is easy to understand and without finicky lifecycle methods like `componentWillUpdate` from React. With generators and `for` loops, comparing old and new props is as easy as comparing adjacent elements of an array.
 
 ## Interactive components with event listeners
 Components produce elements, which are in turn rendered to DOM nodes. Most applications require event listeners to be attached to these nodes so that application state can be updated according to user input. To facilitate this, the Crank context implements the same `EventTarget` interface used by the DOM, and automatically registers and tears down these listeners as elements are inserted and removed. By combining event listeners with local variables and the `this.refresh` method, you can write interactive components.
@@ -463,7 +491,7 @@ function *Clicker () {
 
 ```
 
-The local state `count` is now updated in th event listener, which triggers when the yielded button is actually clicked. `this.addEventListener` only attaches to top-level node which each component renders, so if you want to listen to events on a nested node, you must use event delegation:
+The local state `count` is now updated in the event listener, which triggers when the yielded button is actually clicked. The `this.addEventListener` method only attaches to the top-level node which each component renders, so if you want to listen to events on a nested node, you must use event delegation:
 
 ```jsx
 function *Clicker () {
@@ -486,7 +514,7 @@ function *Clicker () {
 }
 ```
 
-Because the event listener is attached to the outer `div`, we have to filter events by `ev.target.tagName` to make sure we’re not incrementing `count` based on clicks which don’t target the button.
+Because the event listener is attached to the outer `div`, we have to filter events by `ev.target.tagName` to make sure we’re not incrementing `count` based on clicks which don’t target the `button`.
 
 ### Dispatching events
 You can also add event listeners to regular function components, but because function components can’t have local state, it doesn’t really make sense to update the component using `this.refresh`. However, one important use-case for adding event listeners to function components is to listen for events and then bubble custom events to parents using `this.dispatchEvent`.
@@ -524,10 +552,10 @@ function *MyApp () {
 }
 ```
 
-`MyButton` is a button which bubbles a [`CustomEvent`](https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent) whose type is `"custombutton.click"` with data about which button was clicked as the `detail` of the event. This event is not bubbled to parent DOM nodes but to parent component contexts, and in the example, it propagates to the component context of `MyApp`. Using custom events and event bubbling allows you to encapsulate state transitions within parent components without resorting to complicated state management solutions like `Redux` or `Vuex`.
+`MyButton` is a button which bubbles a [`CustomEvent`](https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent) whose type is `"mybutton.click"`, with data about which button was clicked as the `detail` of the event. This event is not bubbled to parent DOM nodes but to parent component contexts, and in the example, it propagates to the component context of `MyApp`. Using custom events and event bubbling allows you to encapsulate state transitions within parent components without resorting to complicated state management solutions like `Redux` or `Vuex`.
 
 ### Accessing rendered values
-Sometimes, the declarative rendering of DOM nodes is not enough, and you’ll want to access the actual DOM nodes you’ve rendered, calling imperative methods like `el.focus()`, for instance. To facilitate this, Crank will pass rendered DOM nodes back into the generator, so `yield` expressions can themselves be read. The following component is focused whenever it is updated.
+Sometimes, the declarative rendering of DOM nodes is not enough, and you’ll want to access the actual DOM nodes you’ve rendered, to make measurements or call imperative methods like `el.focus()`, for instance. To facilitate this, Crank will pass rendered DOM nodes back into the generator, so `yield` expressions can themselves be read. The following component is focused whenever it is updated.
 
 ```jsx
 function *MyInput (props) {
@@ -542,7 +570,7 @@ function *MyInput (props) {
 Because generator components pause at yield, we defer a `this.refresh` call using `setTimeout` when the component is initialized.
 
 ### Returning from a generator
-Usually, you’ll yield in generator components so that the component can continue to respond to updates, but you may want to also `return` a final state. Unlike function components, which are called and returned once for each update, once a generator component returns, it will never update again.
+Usually, you’ll yield in generator components so that they can continue to respond to updates, but you may want to also `return` a final state. Unlike function components, which are called and returned once for each update, once a generator component returns, it will never update again.
 
 ```jsx
 function *Stuck({message}) {
@@ -558,14 +586,14 @@ console.log(document.body.innerHTML); // <div>Hello</div>
 ```
 
 ### Catching errors from child components
-We all make mistakes, and it can be useful to show the user something when an error happens in one of your components. To facilitate this, Crank will throw errors from child components back into parent components, causing the most recent yield to throw the error. You can therefore use `try`/`catch` to handle these errors, recovering or rendering a notification that something in the application has errored.
+We all make mistakes, and it can be useful to catch errors in our components so we can show the user something or notify error-logging services. To facilitate this, Crank will throw errors from child components back into parent components, causing the most recent yield to throw the error. You can therefore wrap your `yield` operators in a `try`/`catch` block to catch errors from children.
 
 ```jsx
 function Thrower () { 
   throw new Error("Hi");
 }
 
-function Catcher () {
+function *Catcher () {
   try {
     yield <Thrower />;
   } catch (err) {
@@ -575,7 +603,7 @@ function Catcher () {
 ```
 
 ### The power of local variables
-As you can see, Crank leverages local variables within generators instead of requiring separate concepts like `state` and `refs` from React. If you add in event listeners and the natural lifecycle provided by generator functions, you have everything you need to write interactive applications.
+As you can see, Crank leverages local variables within generators instead of requiring separate concepts like `state` and `refs` from React. If you add in event listeners and the natural lifecycle provided by generator functions, it almost feels like the early days of JavaScript, when we made interactive pages by creating global variables and mutating them with global event listeners. Crank brings that same simplicity back to JavaScript development, except thanks to JSX and generators, the variables and callbacks are now fully encapsulated.
 
 ## Special Props and Tags
 The element diffing algorithm used by Crank is both declarative and efficient, but there are times when you might want to tweak the way it works in one way or another. Crank provides one special prop `crank-key` and three special tags `Fragment`, `Portal` and `Copy` which provide special rendering behaviors.
@@ -616,7 +644,7 @@ console.log(document.body.innerHTML);
 //<div><span>Id: 3</span><span>Id: 2</span><span>Id: 1</span><div>
 ```
 
-Keys are scoped to an element’s children. When rendering iterables, it’s useful to key elements of the iterable, because it’s common for elements to be added, removed or rearranged.
+Keys are scoped to an element’s children. When rendering iterables, it’s useful to key elements of the iterable, because it’s common for elements to be added, removed or rearranged. Both intrinsic and component elements can be keyed with `crank-key`, but the prop is erased from the props object before the props object is passed to the component.
 
 ```jsx
 function *Shuffler() {
@@ -647,7 +675,7 @@ console.log(document.firstChild.firstChild === el0); // true
 ```
 
 ## Special Tags
-Crank provides a couple element tags which have special meaning when rendering. In actuality, these tags are symbols and behave similarly to string tags, except they affect the way element diffing and rendering works.
+Crank provides a couple element tags which have special meaning when rendering. In actuality, these tags are symbols and behave similarly to string tags, except they affect the diffing algorithm to allow you to render multiple elements into a parent, render into multiple roots, or skip rendering altogether.
 
 ### Fragment
 Crank provides a `Fragment` tag, which allows you to render multiple siblings in a parent without wrapping them in another DOM node. Under the hood, iterables which appear in an element tree are actually implicitly wrapped in a Fragment element by the renderer.
@@ -670,7 +698,7 @@ console.log(document.body.innerHTML); // <div>Sibling 1</div><div>Sibling 2</div
 ```
 
 ### Portal
-Sometimes you may want to render into multiple DOM nodes from the same component tree. You can do this with the `Portal` tag, passing in a DOM node via a `root` prop. The Portal’s children will be rendered into the specified root. This is useful when writing modals or working with pages where you need to render into multiple entry-points. `renderer.render` actually wraps its first argument in an implicit Portal element if the argument is not a Portal element already. Events dispatched from a Portal’s children via `this.dispatchEvent` will still bubble into parent components contexts.
+Sometimes you may want to render into multiple DOM nodes from the same component tree. You can do this with the `Portal` tag, passing in a DOM node via a `root` prop. The Portal’s children will be rendered into the specified root. This is useful when writing modals or working with pages where you need to render into multiple entry-points. `renderer.render` actually wraps its first argument in an implicit Portal element if the argument is not a Portal element already. Events dispatched from a Portal’s children via `this.dispatchEvent` will still bubble into parent component contexts.
 
 ```jsx
 /* @jsx createElement */
@@ -688,6 +716,7 @@ function MyComponent() {
     </div>
   );
 }
+
 renderer.render(<MyComponent />, root1);
 console.log(root1.innerHTML);
 // "<div><div>This div is rendered into root1</div></div>"
@@ -696,7 +725,7 @@ console.log(root2.innerHTML);
 ```
 
 ### Copy
-It‘s often fine to rerender Crank components, because elements are diffed, persistent between renders, and unnecessary mutations are avoided. However, sometimes you might want to prevent a child from updating when the parent rerenders, perhaps because a certain prop hasn’t changed, or perhaps because you want to batch updates from the parent. To do this, you can use the `Copy` tag to indicate to Crank that you don’t want to update a previously rendered element or any of its children. Copy elements can be used to prevent the updating of children when props haven’t changed.
+It‘s often fine to rerender Crank components, because elements are diffed, persistent between renders, and unnecessary mutations are avoided. However, sometimes you might want to prevent a child from updating when the parent rerenders, perhaps because a certain prop hasn’t changed, because you want to batch updates from the parent, or because you want to improve performance. To do this, you can use the `Copy` tag to indicate to Crank that you don’t want to update a previously rendered element or any of its children.
 
 ```jsx
 function equals(oldProps, newProps) {
@@ -724,15 +753,13 @@ function Pure(Component) {
 }
 ```
 
-In the example above, `Pure` is a higher-order component, a function which takes a component and returns a component, a generator function which compares new and old props and yields a copy if old and new props are shallowly equal. The only prop Copy elements take is the `crank-key` prop, which allows you to do advanced optimizations where you move parts of the tree without having to  rerender them.
-
-*TODO: Provide an example of using Copy with crank-key*
+In the example above, `Pure` is a higher-order component, a function which takes a component and returns a component which compares new and old props and yields a copy if old and new props are shallowly equal. Copy elements can appear anywhere in an element tree to prevent rerenderings, and the only prop Copy elements take is the `crank-key` prop, which allows you to do advanced optimizations where you move parts of the tree around.
 
 ### TodoMVC
-At this point, you have all the knowledge needed to understand Crank’s TodoMVC application. Check it out!
+At this point, you have all the knowledge needed to understand Crank’s TodoMVC application. Check it out here.
 
 ### Asynchronous Components
-So far, every component we’ve seen has worked synchronusly, and Crank will respect this as an intentional decision made by the developer by rendering the components synchronously. However, modern JavaScript includes promises and `async`/`await`, allowing you to write concurrently executing code which calls I/O-backed APIs as if they were synchronous. To facilitate this, Crank allows components to be asynchronous functions as well.
+So far, every component we’ve seen has worked synchronously, and Crank will respect this as an intentional decision made by the developer by rendering the components synchronously from start to finish. However, modern JavaScript includes promises and `async`/`await`, allowing you to write concurrently executing code as if it were synchronous. To facilitate this, Crank allows components to be asynchronous functions as well.
 
 ```jsx
 async function IPAddress () {
@@ -749,7 +776,7 @@ async function IPAddress () {
 When a Crank renderer runs a component which returns a promise, rendering becomes asynchronous as well. This means that `renderer.render` itself will return a promise which fulfills when all components in the element tree have fulfilled at least once.
 
 ### Concurrent updates
-Renderers and components don’t have to await pending async children, they can update them concurrently, so Crank implements a couple rules to make concurrent updates predictable and performant.
+Renderers don’t have to await pending components, async components can be updated concurrently based on the calls to render and the component tree, so Crank implements a couple rules to make concurrent updates predictable and performant.
 
 1. There can only be one pending run of an element per slot at a time. If a component is updated concurrently while it is still pending, another update is enqueued with the latest props.
 
@@ -815,8 +842,10 @@ async function Fast () {
 })();
 ```
 
-### Async components and children
-When Crank encounters an async component anywhere in the render tree, the entire rendering process also becomes asynchronous. Therefore, child components make parent components asynchronous, and depending on the kind of component, parents will communicate updates to asynchronous children in different ways. For instance, sync function components will transparently pass updates along to async children, so that when a renderer updates a sync function component concurrently, its async children will also update concurrently. On the other hand, synchronous generator components which yield async elements will not resume until those async elements have fulfilled. This is because synchronous generators expect to be resumed after their children have rendered, and the actual DOM nodes which are rendered are passed back into the generator, but we wouldn’t have those available if the generator was concurrently resumed before the async children had fulfilled.
+### Components with async children 
+When Crank encounters an async component anywhere in the render tree, the entire rendering process also becomes asynchronous. Therefore, async child components make parent components asynchronous, and depending on the kind of component, parents will communicate updates to asynchronous children in different ways.
+
+For instance, sync function components will transparently pass updates along to async children, so that when a renderer updates a sync function component concurrently, its async children will also update concurrently. On the other hand, sync generator components which yield async elements will not resume until those async elements have fulfilled. This is because sync generators expect to be resumed after their children have rendered, and the actual DOM nodes which are rendered are passed back into the generator, but we wouldn’t have those available if the generator was concurrently resumed before the async children had fulfilled.
 
 ### Async generator functions
 Just as you can write stateful components with synchronous generator functions, you can also write stateful async components with async generator functions.
@@ -852,10 +881,10 @@ async function *AsyncLabeledCounter ({message}) {
 })();
 ```
 
-`AsyncLabeledCounter` is an async version of the `LabeledCounter` example introduced earlier, and demonstrates several key differences between sync and async generator components. First, rather than using `while` or `for…of` loops, we now use a `for await…of` loop. This is possible because Crank contexts are an async iterable of props, just as they are iterables of props. Second, you’ll notice that the async generators yield multiple times per iteration over `this`. While this is possible for sync generators, it wouldn’t necessarily make sense to do so because generators suspend at each yield, and upon resuming the props would be stale. In contrast, async generator components are continuously resumed as they yield. To suspend the async generator component between updates, we rely on the `for await…of` loop, which pauses at the bottom when there are no pending updates.
+`AsyncLabeledCounter` is an async version of the `LabeledCounter` example introduced earlier, and demonstrates several key differences between sync and async generator components. First, rather than using `while` or `for…of` loops, we now use a `for await…of` loop. This is possible because Crank contexts are not just an iterable of props, but also an async iterable of props. Second, you’ll notice that the async generator yields multiple times per iteration over `this`. While this is possible for sync generators, it wouldn’t necessarily make sense to do so because generators suspend at each yield, and upon resuming the props would be stale. In contrast, async generator components are continuously resumed. Therefore, to suspend the async generator component between updates, we rely on the `for await…of` loop, which pauses at the bottom when there are no pending updates.
 
 ### Responsive Loading Indicators
-The async components we’ve seen so far have been all or nothing, in the sense that the renderer cannot show anything until all components in the tree have fulfilled. This can be a problem when you have an async call which takes longer than expected; it would be nice if parts of the element tree could be shown without waiting, and if components which have yet to fulfill could be replaced with a loading indicator. Because loading indicators which show immediately can paradoxically make your app seem less responsive, we can use the async rules described functions above along with async generator functions to show loading indicators which wait before showing.
+The async components we’ve seen so far have been all or nothing, in the sense that the renderer cannot show anything until all components in the tree have fulfilled. This can be a problem when you have an async call which takes longer than expected; it would be nice if parts of the element tree could be shown without waiting, and if components which have yet to fulfill could be replaced with a loading indicator. Because loading indicators which show immediately can paradoxically make your app seem less responsive, we can use the async rules described above along with async generator functions to show loading indicators which wait before showing.
 
 ```jsx
 async function Fallback ({wait = 1000, children}) {
@@ -915,7 +944,28 @@ The above example shows how we could implement Suspense, a proposed custom React
 Though Crank is very much inspired by and similar to React, exact compatibility is a non-goal, and we’ve used this as opportunity to “fix” a lot of pain points with React which bothered us over the years. The following is a list of differences with React, as well as justifications for why we chose to implement features differently.
 
 - No Component class, no hooks.
-  Crank uses generator functions, async functions and the JavaScript runtime to implement much of what React implements.
+  Crank uses generator functions, async functions and the JavaScript runtime to implement much of what React implements. Here for instance, is the old React class-based API implemented with a single async generator function:
+  ```jsx
+  async function *ReactComponent(props) {
+    let state = componentWillMount(props);
+    let ref = yield render(props, state);
+    state = componentDidMount(props, state, ref);
+    try {
+      for await (const newProps of this) {
+        if (shouldComponentUpdate(props, newProps, state, ref)) {
+          state = componentWillUpdate(props, newProps, state, ref);
+          ref = yield render(props, state);
+          state = componentDidUpdate(props, newProps, state, ref);
+          props = newProps;
+        }
+      }
+    } catch (err) {
+      componentDidCatch(err);
+    } finally {
+      componentWillUnmount(ref);
+    }
+  }
+  ```
 - No `setState` or `useState`
   React has always tightly coupled component updates with the concept of local state. Because Crank uses generator functions, state is just local variables which is modified by local functions, and you can call `this.refresh()` to update the UI to match state. Decoupling these two concerns allows for more nuanced updates to components without `shouldComponentUpdate` hacks, and is easier to reason about than relying on the framework to provide local state.
 - No `Suspense`
@@ -978,6 +1028,7 @@ function *Timer (this: Context) {
   }
 }
 ```
+
 ### Typing props
 You can type the props object passed to components. This allows JSX calls which use your component as a tag to be type-checked.
 
@@ -1005,7 +1056,8 @@ function Greeting ({name, children}: {name: string, children: Children}) {
 ```
 
 ### Typing the return types of components
-You’ll often want to add a return type to your components. Crank exports custom types for various return types from components to make sure your components are well defined:
+You’ll often want to add a return type to your components. Crank exports custom types to help you type the return types of components:
+
 ```tsx
 import {Element} from "@bikeshaving/crank";
 function SyncFn(): Element {
