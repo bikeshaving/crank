@@ -1,7 +1,9 @@
 # Crank.js
 A JavaScript framework for writing JSX-driven components with functions, generators and promises.
 
-I wrote a blog post describing the motivations and journey behind making Crank [here](https://github.com/brainkim/crank/blob/0dcd613ebcb64b59cdc72cd33039e72763ec1d6c/docs/blog/introducing-crank.md). Crank is in an early beta, and some APIs may be changed.
+I wrote a blog post describing the motivations and journey behind making Crank [here](https://github.com/brainkim/crank/blob/master/docs/blog/introducing-crank.md). Crank is in an early beta, and some APIs may be changed.
+
+A documentation is in the works, where we dogfood Crank. In the meantime you can access the docs as markdown files in the docs directory.
 
 ## Features
 ### JSX-based elements

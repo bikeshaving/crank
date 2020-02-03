@@ -33,7 +33,7 @@ The two renderers have slightly different APIs, with DOM renderers statefully mu
 
 ### The parts of an element.
 
-![Image of JSX element](#TKTKTK)
+![Image of JSX element](./static/parts-of-jsx.svg)
 An element has three main parts, a *tag*, *props* and *children*. These roughly correspond to tags, attributes and content, the parts of an HTML element, and for the most part, you can copy-paste HTML into JavaScript and have things work as you would expect. The main difference is that JSX has to be well-balanced like XML, so void tags must have a closing slash (`<input />` not `<input>`). Also, if you forget to close an element, the parser will throw an error, while HTML can be unbalanced or malformed and still mostly work. The advantage of using JSX is that it allows arbitrary JavaScript expressions to be interpolated into elements as the tag, props or children, allowing you to use syntax which looks like HTML/XML seamlessly within JavaScript.
 
 ### Tags
