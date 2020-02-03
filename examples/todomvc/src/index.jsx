@@ -1,6 +1,6 @@
 /** @jsx createElement */
 import {createElement, Fragment} from "@bikeshaving/crank";
-import {render} from "@bikeshaving/crank/dom";
+import {renderer} from "@bikeshaving/crank/dom";
 
 const ENTER_KEY = 13;
 const ESC_KEY = 27;
@@ -330,4 +330,4 @@ function* App() {
 	}
 }
 
-render(<App />, document.getElementsByClassName("todoapp")[0]);
+renderer.render(<App />, document.getElementsByClassName("todoapp")[0]);
