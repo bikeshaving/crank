@@ -40,17 +40,19 @@ renderer.render(<div id="hello">Hello world</div>, document.body);
 
 ## Key Examples
 ### A Simple Component
+
 ```jsx
-function Greeting ({name}) {
+function Greeting ({name = "World"}) {
   return (
     <div>Hello {name}</div>
   );
 }
 ```
 
-[Try this example on Code Sandbox](#TK)
+[Try on Code Sandbox](https://codesandbox.io/s/a-simple-crank-component-gnknz)
 
 ### A Stateful Component
+
 ```jsx
 function *Timer () {
   let seconds = 0;
@@ -68,7 +70,7 @@ function *Timer () {
 }
 ```
 
-[Try this example on Code Sandbox](#TK)
+[Try on Code Sandbox](https://codesandbox.io/s/a-stateful-crank-component-hh8zx)
 
 ### An Async Component
 ```jsx
@@ -79,7 +81,7 @@ async function IPAddress () {
 }
 ```
 
-[Try this example on Code Sandbox](#TK)
+[Try on Code Sandbox](https://codesandbox.io/s/an-async-crank-component-ru02q)
 
 ### A Loading Component
 
@@ -105,7 +107,7 @@ async function RandomDog ({throttle=false}) {
   const data = await res.json();
   return (
     <a href={data.message}>
-      <img src={data.message} width="250" />
+      <img src={data.message} alt="A Random Dog" width="300" />
     </a>
   );
 }
@@ -122,7 +124,9 @@ function *RandomDogs () {
   while (true) {
     yield (
       <Fragment>
-        <button>Show me another dog.</button>
+        <div>
+          <button>Show me another dog.</button>
+        </div>
         <Suspense fallback={<div>Fetching a good boy…</div>}>
           <RandomDog throttle={throttle} />
         </Suspense>
@@ -132,7 +136,7 @@ function *RandomDogs () {
 }
 ```
 
-[Try this example on Code Sandbox](#TK)
+[Try on Code Sandbox](https://codesandbox.io/s/a-loading-crank-component-pci9d)
 
 ## Concepts
 ### JSX, Elements and Renderers
