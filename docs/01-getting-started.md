@@ -1,18 +1,3 @@
-# Crank.js
-A JavaScript framework for writing JSX-driven components with functions, generators and promises.
-
-I wrote a blog post describing the motivations and journey behind making Crank [here](#TKTKTK). Crank is in an early beta, and some APIs may be changed.
-
-## Features
-### JSX-based elements
-Crank uses the same JSX syntax and element diffing algorithm popularized by React, so you can write declarative code which looks like HTML directly in your JavaScript. The portability of elements means you can reuse the same code to render DOM nodes on the client and HTML strings on the server.
-
-### Components as functions and generators
-Crank uses functions and generators for components exclusively. No fancy classes, hooks, proxies or template languages are needed, and you can take advantage of the natural lifecycle of generators to write stateful setup, update and teardown logic all in the same scope.
-
-### Promises today
-Crank provides first-class support for promises by allowing components to be defined as async functions and generators. You can `await` the rendering of async components just like any other async function, and you can even race renderings to create user interfaces with deferred loading states.
-
 ## Getting Started
 Crank is available on [NPM](https://npmjs.org/@bikeshaving/crank) in the ESModule and CommonJS formats.
 

@@ -1,0 +1,118 @@
+# Using Crank with TypeScript
+Crank is written in TypeScript, and provides some types out of box so you can type-check your components and JSX calls.
+## Typing `this` in components
+Trying to reference `this` in a component without a type annotation for `this` will throw a type error in TypeScript‘s strict mode (you’ll see a message like `'this' implicitly has type 'any' because it does not have a type annotation`). TypeScript exports the `Context` class so you can annotate your components with `Context` as `this`:
+
+```tsx
+function *Timer (this: Context) {
+  let seconds = 0;
+  const interval = setInterval(() => {
+    seconds++;
+    this.refresh();
+  }, 1000);
+  try {
+    while (true) {
+      yield <div>Seconds: {seconds}</div>;
+    }
+  } finally {
+    clearInterval(interval);
+  }
+}
+```
+
+## Typing props
+You can type the props object passed to components. This allows JSX calls which use your component as a tag to be type-checked.
+
+```tsx
+function Greeting ({name}: {name: string}) {
+  return (
+    <div>Hello {name}</div>
+  );
+}
+
+const el = <Greeting name="Brian" />; // works fine
+const el1 = <Greeting name={1} />; // throws a type error
+```
+
+The children prop can be typed using the `Children` type provided by Crank. TypeScript doesn’t really provide a way to prevent functions from being used as the `children` prop, but such patterns are strongly discouraged. You should typically treat `children` as an opaque value only to be interpolated into JSX.
+```tsx
+import {Children} from "@bikeshaving/crank";
+function Greeting ({name, children}: {name: string, children: Children}) {
+  return (
+    <div>
+      Message for {name}: {children}
+    </div>
+  );
+}
+```
+
+## Typing the return types of components
+You’ll often want to add a return type to your components. Crank exports custom types to help you type the return types of components:
+
+```tsx
+import {Element} from "@bikeshaving/crank";
+function SyncFn(): Element {
+  return <div>Hello world</div>;
+}
+
+function *SyncGen(): Generator<Element> {
+  while (true) {
+    yield <div>Hello world</div>;
+  } 
+}
+
+async function AsyncFn(): Promise<Element> {
+  return <div>Hello world</div>;
+}
+
+async function *AsyncGen(): AsyncGenerator<Element> {
+  while (true) {
+    yield <div>Hello world</div>;
+  } 
+}
+```
+
+`Element` is just the type returned by JSX/`createElement`. As you can see, you still have to modify the return type of functions based on whether the function is async or a generator. You can also use the type `Child` which represents any valid value in an element tree. 
+
+```tsx
+function *SyncGen(): Generator<Child> {
+  yield true;
+  yield false;
+  yield null;
+  yield undefined;
+  yield 0;
+  yield 9001;
+  yield "Hello world";
+  yield <div>Hello world</div>;
+}
+```
+
+Anything assignable to `Child` can be part of the element tree.
+
+## Typing event listeners
+If you dispatch custom events, you’re going to want parent event listeners to be typed with the event you bubbled automatically. To do so, you can extend a global `EventMap` type provided by Crank.
+
+```tsx
+declare global {
+	module crank {
+		interface EventMap {
+			"mybutton.click": CustomEvent<{id: string}>;
+		}
+	}
+}
+
+
+function MyButton (props) {
+  this.addEventListener("click", () => {
+    this.dispatchEvent(new CustomEvent("mybutton.click", {
+      bubbles: true,
+      detail: {id: props.id},
+    }));
+  });
+
+  return (
+    <button {...props} />
+  );
+}
+```
+
