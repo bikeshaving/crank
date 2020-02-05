@@ -1,9 +1,9 @@
 /** @jsx createElement */
 import {createElement, Fragment} from "@bikeshaving/crank";
-import {render} from "@bikeshaving/crank/dom";
+import {renderer} from "@bikeshaving/crank/dom";
 import "./index.css";
 
-function* Comment({comment}) {
+function* Comment() {
 	let expanded = true;
 	this.addEventListener("click", (ev) => {
 		if (ev.target.className === "expand") {
@@ -13,14 +13,15 @@ function* Comment({comment}) {
 		}
 	});
 
-	for ({comment} of this) {
+	for (const {comment} of this) {
 		yield (
 			<div class="comment">
 				<p>
-					<a href="">{comment.user}</a> {comment.time_ago}{" "}
 					<button class="expand">
-						{expanded ? "[-]" : `[+${comment.comments_count}]`}
+						{expanded ? "[-]" : "[+]"}
 					</button>
+					{" "}
+					<a href="">{comment.user}</a> {comment.time_ago}{" "}
 				</p>
 				<div style={{display: expanded ? null : "none"}}>
 					<p innerHTML={comment.content} />
@@ -59,9 +60,7 @@ function Story({story}) {
 		<li class="story">
 			<a href={story.url}>{story.title}</a> <span>({story.domain})</span>
 			<p class="meta">
-				<span>
-					{story.points} points by <a href="">{story.user}</a>
-				</span>{" "}
+				{story.points} points by <a href="">{story.user}</a> |{" "}
 				{story.time_ago} |{" "}
 				<a href={`#/item/${story.id}`}>{story.comments_count} comments</a>
 			</p>
@@ -135,14 +134,16 @@ async function* App() {
 			yield (<Loading />);
 			switch (data.route) {
 				case "item": {
-					yield (<Item {...data} />);
+					await (yield <Item {...data} />);
 					break;
 				}
 				case "top": {
-					yield (<List {...data} />);
+					await (yield <List {...data} />);
 					break;
 				}
 			}
+
+			window.scrollTo(0, 0);
 		}
 	} finally {
 		window.removeEventListener("hashchange", route);
@@ -162,4 +163,4 @@ function Root() {
 	);
 }
 
-render(<Root />, document.body.firstElementChild);
+renderer.render(<Root />, document.body.firstElementChild);

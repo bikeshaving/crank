@@ -149,4 +149,4 @@ function Pure(Component) {
 In the example above, `Pure` is a higher-order component, a function which takes a component and returns a component which compares new and old props and yields a copy if old and new props are shallowly equal. Copy elements can appear anywhere in an element tree to prevent rerenderings, and the only prop Copy elements take is the `crank-key` prop, which allows you to do advanced optimizations where you move parts of the tree around.
 
 ### TodoMVC
-At this point, you have all the knowledge needed to understand Crank’s TodoMVC application. Check it out here.
+At this point, you have all the knowledge needed to understand Crank’s TodoMVC application. [Check it out here.](https://codesandbox.io/s/crank-todomvc-k6s0x)

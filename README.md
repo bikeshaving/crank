@@ -56,7 +56,7 @@ function Greeting ({name = "World"}) {
 renderer.render(<Greeting />, document.getElementById("app"));
 ```
 
-[Try on CodeSandbox](https://codesandbox.io/s/a-simple-crank-component-gnknz)
+[Try on CodeSandbox](https://codesandbox.io/s/a-simple-crank-component-mhciu)
 
 ### A Stateful Component
 ```jsx

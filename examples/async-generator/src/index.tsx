@@ -1,6 +1,6 @@
 /** @jsx createElement */
 import {Context, createElement, Element} from "@bikeshaving/crank";
-import {render} from "@bikeshaving/crank/dom";
+import {renderer} from "@bikeshaving/crank/dom";
 const mount = document.getElementById("mount")!;
 const arr: number[] = [];
 async function* List(
@@ -25,12 +25,12 @@ async function* List(
 	}
 }
 
-render(<List elems={arr} />, mount);
+renderer.render(<List elems={arr} />, mount);
 setInterval(() => {
 	arr.push(arr.length + 1);
 	if (arr.length > 30) {
 		arr.length = 0;
 	}
 
-	render(<List elems={arr} />, mount);
+	renderer.render(<List elems={arr} />, mount);
 }, 1000);
