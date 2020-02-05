@@ -9,40 +9,47 @@ import {
 } from "./index";
 
 function updateProps(el: HTMLElement, props: Props, newProps: Props): void {
-	for (let name in Object.assign({}, props, newProps)) {
-		// TODO: throw an error if event props are found
-		if (name === "children") {
-			continue;
-		}
-
+	for (let name in {...props, ...newProps}) {
 		const value = props[name];
 		const newValue = newProps[name];
-		if (name === "style") {
-			if (newValue == null) {
-				el.removeAttribute("style");
-			} else if (typeof newValue === "string") {
-				el.style.cssText = newValue;
-			} else {
-				for (const styleName in Object.assign({}, value, newValue)) {
-					const styleValue = value && value[styleName];
-					const newStyleValue = newValue && newValue[styleName];
-					if (newStyleValue == null) {
-						el.style.removeProperty(styleName);
-					} else if (styleValue !== newStyleValue) {
-						el.style.setProperty(styleName, newStyleValue);
+		switch (true) {
+			case name === "children":
+				break;
+			case name === "class": {
+				(el as any)["className"] = newValue;
+				break;
+			}
+			case name === "style": {
+				if (newValue == null) {
+					el.removeAttribute("style");
+				} else if (typeof newValue === "string") {
+					el.style.cssText = newValue;
+				} else {
+					for (const styleName in Object.assign({}, value, newValue)) {
+						const styleValue = value && value[styleName];
+						const newStyleValue = newValue && newValue[styleName];
+						if (newStyleValue == null) {
+							el.style.removeProperty(styleName);
+						} else if (styleValue !== newStyleValue) {
+							el.style.setProperty(styleName, newStyleValue);
+						}
 					}
 				}
+				break;
 			}
-		} else if (name in el) {
-			(el as any)[name] = newValue;
-		} else {
-			if (newValue === true) {
-				el.setAttribute(name, "");
-			} else if (newValue === false || newValue == null) {
-				el.removeAttribute(name);
-			} else {
-				el.setAttribute(name, newValue);
+			case name in el: {
+				(el as any)[name] = newValue;
+				break;
 			}
+			default:
+				if (newValue === true) {
+					el.setAttribute(name, "");
+				} else if (newValue === false || newValue == null) {
+					el.removeAttribute(name);
+				} else {
+					el.setAttribute(name, newValue);
+				}
+				break;
 		}
 	}
 }
