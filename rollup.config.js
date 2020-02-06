@@ -1,3 +1,4 @@
+import resolve from "@rollup/plugin-node-resolve";
 import typescript from "rollup-plugin-typescript2";
 export default {
 	input: ["src/index.ts", "src/dom.ts", "src/html.ts"],
@@ -13,6 +14,9 @@ export default {
 			sourcemap: true,
 		},
 	],
-	external: ["event-target-shim", "@repeaterjs/repeater"],
-	plugins: [typescript()],
+	external: ["@repeaterjs/repeater"],
+	plugins: [
+		typescript(),
+		resolve(),
+	],
 };
