@@ -1,2 +1,0 @@
-## Custom Renderers
-**Under construction**

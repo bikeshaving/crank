@@ -1,3 +1,6 @@
+---
+title: Working with TypeScript
+---
 # Using Crank with TypeScript
 Crank is written in TypeScript, and provides some types out of box so you can type-check your components and JSX calls.
 ## Typing `this` in components

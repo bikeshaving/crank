@@ -1,4 +1,7 @@
-# Asynchronous Components
+---
+title: Asynchronous Components
+---
+
 So far, every component we’ve seen has worked synchronously, and Crank will respect this as an intentional decision made by the developer by rendering the components synchronously from start to finish. However, modern JavaScript includes promises and `async`/`await`, allowing you to write concurrently executing code as if it were synchronous. To facilitate this, Crank allows components to be asynchronous functions as well.
 
 ```jsx
