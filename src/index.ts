@@ -884,12 +884,10 @@ export class Renderer<T> {
 	}
 
 	extend(env: Partial<Environment<T>>): void {
-		if (env[Default] != null) {
-			this.env[Default] = env[Default]!;
-		}
-
-		if (env[Portal] != null) {
-			this.env[Portal] = env[Portal]!;
+		for (const sym of Object.getOwnPropertySymbols(env)) {
+			if (env[sym as any] != null) {
+				this.env[sym as any] = env[sym as any]!;
+			}
 		}
 
 		for (const [tag, value] of Object.entries(env)) {

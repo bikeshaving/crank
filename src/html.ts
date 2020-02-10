@@ -11,9 +11,8 @@ import {
 	Text,
 } from "./index";
 
-// Adapted from https://stackoverflow.com/a/28458409/
 function escapeText(text: string): string {
-	return text.replace(/[&<"']/g, (m) => {
+	return text.replace(/[&<>"']/g, (m) => {
 		switch (m) {
 			case "&":
 				return "&amp;";
