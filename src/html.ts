@@ -116,9 +116,9 @@ export class StringRenderer extends Renderer<string> {
 	}
 
 	renderToString(child: Child, key?: object): Promise<string> | string {
-		return new Pledge(this.render(child, key)).then(
-			(ctx) => (ctx && ctx.node) || "",
-		);
+		return new Pledge(() => this.render(child, key))
+			.then((ctx) => (ctx && ctx.node) || "")
+			.execute();
 	}
 }
 

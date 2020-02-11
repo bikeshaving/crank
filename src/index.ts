@@ -389,7 +389,7 @@ class Host<T> extends Link {
 					}
 
 					this.parent.catch(err);
-					return undefined as any;
+					return {value: undefined, done: false};
 				});
 			}
 		} catch (err) {
@@ -404,11 +404,12 @@ class Host<T> extends Link {
 		if (isPromiseLike(iteration)) {
 			this.independent = true;
 			return iteration.then((iteration) => {
-				const updateP = new Pledge(iteration.value).then((child) => {
-					return this.updateChildren(child);
-				});
-
-				const next = new Pledge(updateP).then(() => this.childNodeOrNodes);
+				const updateP = new Pledge(() => iteration.value)
+					.then((child) => this.updateChildren(child))
+					.execute();
+				const next = new Pledge(() => updateP)
+					.then(() => this.childNodeOrNodes)
+					.execute();
 				if (iteration.done) {
 					this.done = true;
 				} else if (!this.done) {
@@ -425,9 +426,11 @@ class Host<T> extends Link {
 			this.done = true;
 		}
 
-		return new Pledge(iteration.value).then(
-			(child) => this.updateChildren(child) as any,
-		);
+		return new Pledge(
+			() => (iteration as IteratorResult<MaybePromiseLike<Child>>).value,
+		)
+			.then((child) => this.updateChildren(child) as any)
+			.execute();
 	}
 
 	run(): MaybePromise<undefined> {
@@ -697,23 +700,25 @@ class Host<T> extends Link {
 
 			this.parent.catch(reason);
 		} else {
-			try {
-				// TODO: catch async errors too
-				const iteration = this.iterator.throw(reason);
-				new Pledge(iteration).then((iteration) => {
+			new Pledge(() => this.iterator!.throw!(reason))
+				.then((iteration) => {
 					if (iteration.done) {
 						this.done = true;
 					}
 
-					this.updateChildren(iteration.value);
-				});
-			} catch (err) {
-				if (this.parent === undefined) {
-					throw err;
-				}
+					return iteration.value;
+				})
+				.then((child) => {
+					this.updateChildren(child);
+				})
+				.catch((err) => {
+					if (this.parent === undefined) {
+						throw err;
+					}
 
-				this.parent.catch(err);
-			}
+					this.parent.catch(err);
+				})
+				.execute();
 		}
 	}
 
@@ -929,6 +934,6 @@ export class Renderer<T> {
 			p = host.update(toGuest(child));
 		}
 
-		return new Pledge(p).then(() => host.ctx!);
+		return new Pledge(() => p).then(() => host.ctx!).execute();
 	}
 }
