@@ -2,7 +2,6 @@
 id: elements
 title: Elements
 ---
-## Concepts
 ### JSX, Elements and Renderers
 
 > Note for React developers: If you’re familiar with how JSX and elements work in React, you may want to skip ahead to the section on components. JSX and elements in Crank work almost exactly as they do in React.

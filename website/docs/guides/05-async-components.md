@@ -30,7 +30,7 @@ async function Delay ({message}) {
 }
 
 (async () => {
-  const p1 = renderer.render(<Delay message="Run 1">, document.body);
+  const p1 = renderer.render(<Delay message="Run 1" />, document.body);
   console.log(document.body.innerHTML); // ""
   await p1;
   console.log(document.body.innerHTML); // "Run 1"

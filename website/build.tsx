@@ -6,6 +6,13 @@ import frontmatter from "front-matter";
 import marked from "marked";
 import {Children, createElement, Fragment} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/cjs/html";
+import Typography from "typography";
+// @ts-ignore
+import CodePlugin from "typography-plugin-code";
+// @ts-ignore
+import githubTheme from "typography-theme-github";
+githubTheme.plugins = [new CodePlugin()];
+const typography = new Typography(githubTheme);
 
 interface WalkInfo {
 	filename: string;
@@ -69,9 +76,16 @@ function Page({head, children}: {head: Children, children: Children}) {
 						content="width=device-width, initial-scale=1.0"
 					/>
 					{head}
+					<style innerHTML={typography.createStyles()} />
+					<link
+						href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.19.0/themes/prism.min.css"
+						rel="stylesheet"
+					/>
 				</head>
 				<body>
 					{children}
+					<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.19.0/prism.min.js" />
+					<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.19.0/plugins/autoloader/prism-autoloader.min.js" />
 				</body>
 			</html>
 		</Fragment>
@@ -107,6 +121,7 @@ interface DocProps {
 function Doc({title, html}: DocProps) {
 	return (
 		<Page head={<title>Crank.js | {title}</title>}>
+			<h1>{title}</h1>
 			<div innerHTML={html} />
 		</Page>
 	);

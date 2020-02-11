@@ -1,7 +1,6 @@
 ---
 title: Components
 ---
-# Components
 So far, we’ve only rendered intrinsic elements directly, but eventually, we’ll want to group parts of the element tree into reusable *components.* In Crank, all components are functions which are passed props and produce elements; there is no class-based interface. These functions are called by creating elements with the functions as tags (`<Component />`).
 
 ### Basic Components

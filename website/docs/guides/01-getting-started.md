@@ -1,7 +1,6 @@
 ---
 title: Getting Started
 ---
-## Getting Started
 Crank is available on [NPM](https://npmjs.org/@bikeshaving/crank) in the ESModule and CommonJS formats.
 
 ```

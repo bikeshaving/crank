@@ -1,7 +1,6 @@
 ---
-title: Special Props and Tags
+title: Special Tags and Props
 ---
-## Special Props and Tags
 The element diffing algorithm used by Crank is both declarative and efficient, but there are times when you might want to tweak the way it works in one way or another. Crank provides one special prop `crank-key` and three special tags `Fragment`, `Portal` and `Copy` which provide special rendering behaviors.
 
 ### `crank-key`

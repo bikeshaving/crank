@@ -1,7 +1,6 @@
 ---
 title: Working with TypeScript
 ---
-# Using Crank with TypeScript
 Crank is written in TypeScript, and provides some types out of box so you can type-check your components and JSX calls.
 ## Typing `this` in components
 Trying to reference `this` in a component without a type annotation for `this` will throw a type error in TypeScript‘s strict mode (you’ll see a message like `'this' implicitly has type 'any' because it does not have a type annotation`). TypeScript exports the `Context` class so you can annotate your components with `Context` as `this`:
