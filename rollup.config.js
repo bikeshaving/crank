@@ -15,8 +15,5 @@ export default {
 		},
 	],
 	external: ["@repeaterjs/repeater"],
-	plugins: [
-		typescript(),
-		resolve(),
-	],
+	plugins: [typescript(), resolve()],
 };
