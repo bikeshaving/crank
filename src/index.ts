@@ -755,8 +755,8 @@ export class Context<T = any> extends CrankEventTarget {
 
 	// TODO: throw an error if props are pulled multiple times without a yield
 	[Symbol.asyncIterator](): AsyncGenerator<Props> {
-		const host = hosts.get(this)!;
 		return new Repeater(async (push, stop) => {
+			const host = hosts.get(this)!;
 			push(host.props!);
 			const pub: Publication = {push, stop};
 			host.publications.add(pub);
