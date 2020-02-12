@@ -91,4 +91,8 @@ export class Pledge<T> {
 	execute(): MaybePromise<T> {
 		return upgrade(this.executor());
 	}
+
+	static resolve<T>(value: MaybePromiseLike<T>): Pledge<T> {
+		return new Pledge(() => value);
+	}
 }

@@ -387,10 +387,12 @@ class Host<T> extends Link {
 		if (isPromiseLike(iteration)) {
 			this.independent = true;
 			return iteration.then((iteration) => {
-				const updateP = new Pledge(() => iteration.value)
+				const updateP = Pledge.resolve(iteration.value)
 					.then((child) => this.updateChildren(child))
 					.execute();
-				const next = new Pledge(() => updateP).then(() => this.next).execute();
+				const next = Pledge.resolve(updateP)
+					.then(() => this.next)
+					.execute();
 				if (iteration.done) {
 					this.done = true;
 				} else if (!this.done) {
@@ -406,8 +408,7 @@ class Host<T> extends Link {
 				this.done = true;
 			}
 
-			const child = iteration.value;
-			return new Pledge(() => child)
+			return Pledge.resolve(iteration.value)
 				.then((child) => this.updateChildren(child))
 				.execute();
 		}
@@ -418,14 +419,12 @@ class Host<T> extends Link {
 			const step = this.step(this.iterator && this.next);
 			if (this.iterator === undefined) {
 				if (isPromiseLike(step)) {
-					this.pending = Promise.resolve(step).finally(() => {
-						this.pending = this.enqueued;
-						this.enqueued = undefined;
-					});
-
-					return Promise.resolve(step).then((child) =>
-						this.updateChildren(child),
-					);
+					this.pending = Promise.resolve(step)
+						.then((child) => this.updateChildren(child))
+						.finally(() => {
+							this.pending = this.enqueued;
+							this.enqueued = undefined;
+						});
 				} else {
 					return this.updateChildren(step);
 				}
@@ -675,6 +674,7 @@ class Host<T> extends Link {
 
 			this.parent.catch(reason);
 		} else {
+			// TODO: should this be returned from catch?
 			new Pledge(() => this.iterator!.throw!(reason))
 				.then((iteration) => {
 					if (iteration.done) {
@@ -909,6 +909,8 @@ export class Renderer<T> {
 			p = host.update(toGuest(child));
 		}
 
-		return new Pledge(() => p).then(() => host.ctx!).execute();
+		return Pledge.resolve(p)
+			.then(() => host.ctx!)
+			.execute();
 	}
 }
