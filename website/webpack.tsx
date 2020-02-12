@@ -1,9 +1,7 @@
 /* @jsx createElement */
-import fs from "fs";
 import path from "path";
 import webpack from "webpack";
-import {createElement, Fragment} from "@bikeshaving/crank";
-import {renderer} from "@bikeshaving/crank/cjs/html";
+import {createElement} from "@bikeshaving/crank";
 
 const config: webpack.Configuration = {
 	mode: "development",
@@ -53,10 +51,10 @@ function runCompiler(): Promise<webpack.Stats.ToJsonOutput> {
 }
 
 export async function Script(props: Record<string, any>) {
-	const compiler = addEntry(props.src);
+	addEntry(props.src);
 	const stats = await runCompiler();
-	const src = stats.assetsByChunkName[props.src].find(
-		(asset) => /\.js/.test(asset),
+	const src = stats.assetsByChunkName[props.src].find((asset) =>
+		/\.js/.test(asset),
 	);
 	return <script {...props} src={src} />;
 }
