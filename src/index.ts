@@ -333,6 +333,12 @@ class Host<T> extends Link {
 		return this.refresh();
 	}
 
+	/*
+	 * TODO: maybe do a little untangling between step and run. Can we inline
+	 * step into run and see if we can reabstract the parts in a different way.
+	 * The real issue is the weird reqs with pending and enqueued promises, and
+	 * sync and async iterators.
+	 */
 	private step(
 		next?: MaybePromise<(T | string)[] | T | string | undefined>,
 	): MaybePromiseLike<Child> {
@@ -344,31 +350,18 @@ class Host<T> extends Link {
 
 		if (this.iterator === undefined) {
 			this.ctx.clearEventListeners();
-			// TODO: can we have pledges take an executor to reduce error duplication
-			let value: ChildIterator | MaybePromiseLike<Child>;
-			try {
-				value = this.guest.tag.call(this.ctx, this.guest.props);
-				if (isPromiseLike(value)) {
-					value = Promise.resolve(value).catch((err) => {
-						if (this.parent === undefined) {
-							throw err;
-						}
+			const {tag, props} = this.guest;
+			const value = new Pledge(() => tag.call(this.ctx!, props))
+				.catch((err) => {
+					if (this.parent === undefined) {
+						throw err;
+					}
 
-						this.parent.catch(err);
-						return undefined;
-					});
-
-					return value;
-				}
-			} catch (err) {
-				if (this.parent === undefined) {
-					throw err;
-				}
-
-				this.parent.catch(err);
-				return;
-			}
-
+					this.parent.catch(err);
+					return undefined;
+				})
+				// type assertion because we (shouldn’t) get a promise of an iterator
+				.execute() as ChildIterator | MaybePromise<Child>;
 			if (isIteratorOrAsyncIterator(value)) {
 				this.iterator = value;
 			} else {
@@ -378,28 +371,16 @@ class Host<T> extends Link {
 			return;
 		}
 
-		let iteration: MaybePromise<IteratorResult<MaybePromiseLike<Child>>>;
-		// TODO: figure out if we can have pledges take a callback to reduce duplication when catching events
-		try {
-			iteration = this.iterator.next(next);
-			if (isPromiseLike(iteration)) {
-				iteration = iteration.catch((err) => {
-					if (this.parent === undefined) {
-						throw err;
-					}
+		const iteration = new Pledge(() => this.iterator!.next(next))
+			.catch((err) => {
+				if (this.parent === undefined) {
+					throw err;
+				}
 
-					this.parent.catch(err);
-					return {value: undefined, done: false};
-				});
-			}
-		} catch (err) {
-			if (this.parent === undefined) {
-				throw err;
-			}
-
-			this.parent.catch(err);
-			return;
-		}
+				this.parent.catch(err);
+				return {value: undefined, done: false};
+			})
+			.execute();
 
 		if (isPromiseLike(iteration)) {
 			this.independent = true;
@@ -420,24 +401,21 @@ class Host<T> extends Link {
 
 				return updateP;
 			});
-		}
+		} else {
+			if (iteration.done) {
+				this.done = true;
+			}
 
-		if (iteration.done) {
-			this.done = true;
+			const child = iteration.value;
+			return new Pledge(() => child)
+				.then((child) => this.updateChildren(child))
+				.execute();
 		}
-
-		return new Pledge(
-			() => (iteration as IteratorResult<MaybePromiseLike<Child>>).value,
-		)
-			.then((child) => this.updateChildren(child) as any)
-			.execute();
 	}
 
 	run(): MaybePromise<undefined> {
 		if (this.pending === undefined) {
-			const next =
-				this.iterator === undefined ? undefined : this.childNodeOrNodes;
-			const step = this.step(next);
+			const step = this.step(this.iterator && this.childNodeOrNodes);
 			if (this.iterator === undefined) {
 				if (isPromiseLike(step)) {
 					this.pending = Promise.resolve(step).finally(() => {
@@ -445,9 +423,9 @@ class Host<T> extends Link {
 						this.enqueued = undefined;
 					});
 
-					return Promise.resolve(step).then((child) => {
-						return this.updateChildren(child);
-					});
+					return Promise.resolve(step).then((child) =>
+						this.updateChildren(child),
+					);
 				} else {
 					return this.updateChildren(step);
 				}

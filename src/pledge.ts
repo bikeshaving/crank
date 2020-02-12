@@ -17,7 +17,7 @@ export function upgrade<T>(value: MaybePromiseLike<T>): MaybePromise<T> {
 /**
  * A pledge is like a promise, except it runs synchronously if possible. It is
  * not meant to be exposed in API, rather you should use a pledge when you need
-* to conditionally return a promise.
+ * to conditionally return a promise.
  */
 export class Pledge<T> {
 	constructor(private executor: () => MaybePromiseLike<T>) {}
