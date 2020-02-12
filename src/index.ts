@@ -220,6 +220,8 @@ interface Publication {
 	stop(): unknown;
 }
 
+type Next<T> = Array<T | string> | T | string | undefined;
+
 class Host<T> extends Link {
 	protected firstChild?: Host<T>;
 	protected lastChild?: Host<T>;
@@ -268,14 +270,14 @@ class Host<T> extends Link {
 		return isElement(this.guest) ? this.guest.props : undefined;
 	}
 
-	private cachedChildNodes?: (T | string)[];
-	get childNodes(): (T | string)[] {
+	private cachedChildNodes?: Array<T | string>;
+	get childNodes(): Array<T | string> {
 		if (this.cachedChildNodes !== undefined) {
 			return this.cachedChildNodes;
 		}
 
 		let buffer: string | undefined;
-		const childNodes: (T | string)[] = [];
+		const childNodes: Array<T | string> = [];
 		for (
 			let host = this.firstChild;
 			host !== undefined;
@@ -310,7 +312,7 @@ class Host<T> extends Link {
 		return childNodes;
 	}
 
-	get childNodeOrNodes(): (T | string)[] | T | string | undefined {
+	get next(): Next<T> {
 		if (this.childNodes.length > 1) {
 			return this.childNodes;
 		}
@@ -388,9 +390,7 @@ class Host<T> extends Link {
 				const updateP = new Pledge(() => iteration.value)
 					.then((child) => this.updateChildren(child))
 					.execute();
-				const next = new Pledge(() => updateP)
-					.then(() => this.childNodeOrNodes)
-					.execute();
+				const next = new Pledge(() => updateP).then(() => this.next).execute();
 				if (iteration.done) {
 					this.done = true;
 				} else if (!this.done) {
@@ -415,7 +415,7 @@ class Host<T> extends Link {
 
 	run(): MaybePromise<undefined> {
 		if (this.pending === undefined) {
-			const step = this.step(this.iterator && this.childNodeOrNodes);
+			const step = this.step(this.iterator && this.next);
 			if (this.iterator === undefined) {
 				if (isPromiseLike(step)) {
 					this.pending = Promise.resolve(step).finally(() => {
@@ -443,10 +443,7 @@ class Host<T> extends Link {
 		} else if (this.independent) {
 			return this.pending;
 		} else if (this.enqueued === undefined) {
-			this.enqueued = this.pending.then(
-				() => this.step(this.childNodeOrNodes),
-				() => this.step(this.childNodeOrNodes),
-			);
+			this.enqueued = this.pending.then(() => this.step(this.next));
 			if (this.iterator === undefined) {
 				this.enqueued = this.enqueued.then((child) => {
 					return this.updateChildren(child);
@@ -744,7 +741,7 @@ export class Context<T = any> extends CrankEventTarget {
 		return hosts.get(this)!.node;
 	}
 
-	get childNodes(): (T | string)[] {
+	get childNodes(): Array<T | string> {
 		return hosts.get(this)!.childNodes;
 	}
 
