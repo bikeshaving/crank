@@ -240,17 +240,17 @@ class Host<T> extends Link {
 	// these properties are used when racing components
 	private pending?: Promise<any>;
 	private enqueued?: Promise<any>;
+	private scheduled?: Promise<undefined>;
 	private replacedBy?: Host<T>;
 	private clock = 0;
 	private iterator?: ChildIterator;
 	private committer?: Iterator<T | undefined>;
 	private intrinsic?: Intrinsic<T>;
 	private hostsByKey?: Map<unknown, Host<T>>;
-	private renderer: Renderer<T>;
 	constructor(
 		parent: Host<T> | undefined,
 		// TODO: Figure out a way to not have to pass in a renderer
-		renderer: Renderer<T>,
+		private renderer: Renderer<T>,
 	) {
 		super();
 		this.parent = parent;
@@ -268,6 +268,40 @@ class Host<T> extends Link {
 
 	get props(): Props | undefined {
 		return isElement(this.guest) ? this.guest.props : undefined;
+	}
+
+	private contextMap?: Map<unknown, any>;
+	private consumerMap?: Map<unknown, Set<Host<T>>>;
+	get(key: unknown): any {
+		for (let host = this.parent; host !== undefined; host = host.parent) {
+			if (host.contextMap !== undefined && host.contextMap.has(key)) {
+				if (host.consumerMap === undefined) {
+					host.consumerMap = new Map();
+				}
+
+				if (!host.consumerMap.has(key)) {
+					host.consumerMap.set(key, new Set());
+				}
+
+				host.consumerMap.get(key)!.add(this);
+				return host.contextMap.get(key);
+			}
+		}
+	}
+
+	set(key: unknown, value: any): void {
+		if (this.contextMap === undefined) {
+			this.contextMap = new Map();
+		}
+
+		this.contextMap.set(key, value);
+		if (this.consumerMap !== undefined && this.consumerMap.has(key)) {
+			for (const desc of this.consumerMap.get(key)!) {
+				desc.schedule();
+			}
+
+			this.consumerMap.set(key, new Set());
+		}
 	}
 
 	private cachedChildNodes?: Array<T | string>;
@@ -335,12 +369,15 @@ class Host<T> extends Link {
 		return this.refresh();
 	}
 
-	/*
-	 * TODO: maybe do a little untangling between step and run. Can we inline
-	 * step into run and see if we can reabstract the parts in a different way.
-	 * The real issue is the weird reqs with pending and enqueued promises, and
-	 * sync and async iterators.
-	 */
+	// TODO: maybe do a little untangling between step and run. Can we inline
+	// step into run and see if we can reabstract the parts in a different way.
+	// The real issue is the weird requirements with the pending and enqueued
+	// promises, and async generators which need to perpetually resume.
+	//
+	// Ideas:
+	// - somehow get async generators working within the pending/enqueued
+	// framework.
+	// - cache next on the host or something so it doesn’t have to be passed in
 	private step(
 		next?: MaybePromise<(T | string)[] | T | string | undefined>,
 	): MaybePromiseLike<Child> {
@@ -459,6 +496,10 @@ class Host<T> extends Link {
 	}
 
 	refresh(): MaybePromise<undefined> {
+		if (this.scheduled !== undefined) {
+			this.scheduled = undefined;
+		}
+
 		if (this.unmounted) {
 			return;
 		} else if (this.tag !== undefined) {
@@ -476,6 +517,22 @@ class Host<T> extends Link {
 		} else {
 			this.node = undefined;
 		}
+	}
+
+	schedule(): MaybePromise<undefined> {
+		if (this.scheduled === undefined) {
+			this.scheduled = new Promise((resolve) => {
+				setFrame(() => {
+					if (this.scheduled === undefined) {
+						resolve();
+					} else {
+						resolve(this.refresh());
+					}
+				});
+			});
+		}
+
+		return this.scheduled;
 	}
 
 	// TODO: clean up this monster
@@ -769,6 +826,22 @@ export class Context<T = any> extends CrankEventTarget {
 	refresh(): MaybePromise<undefined> {
 		const host = hosts.get(this)!;
 		return host.refresh();
+	}
+
+	// TODO: throw or warn if called on an unmounted component?
+	schedule(): MaybePromise<undefined> {
+		const host = hosts.get(this)!;
+		return host.schedule();
+	}
+
+	get(key: unknown): any {
+		const host = hosts.get(this)!;
+		return host.get(key);
+	}
+
+	set(key: unknown, value: any): void {
+		const host = hosts.get(this)!;
+		return host.set(key, value);
 	}
 }
 

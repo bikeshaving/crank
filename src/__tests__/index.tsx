@@ -5,6 +5,7 @@ import {
 	Copy,
 	createElement,
 	Child,
+	Children,
 	Context,
 	Element,
 	Fragment,
@@ -407,6 +408,35 @@ describe("sync generator component", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 4</span></div>");
 	});
 
+	test("schedule", async () => {
+		let ctx!: Context;
+		function* Component(this: Context): Generator<Element> {
+			ctx = this;
+			let i = 1;
+			while (true) {
+				yield (<span>Hello {i++}</span>);
+			}
+		}
+
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
+		const p = ctx.schedule();
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
+		await p;
+		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
+	});
+
 	test("updating undefined to component", () => {
 		function NestedComponent() {
 			return <span>Hello</span>;
@@ -570,7 +600,11 @@ describe("sync generator component", () => {
 
 	test("async children", async () => {
 		const mock = jest.fn();
-		async function Component({children}: {children: any}): Promise<Element> {
+		async function Component({
+			children,
+		}: {
+			children: Children;
+		}): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 100));
 			return <span>{children}</span>;
 		}
@@ -1904,5 +1938,156 @@ describe("async races", () => {
 		expect(document.body.innerHTML).toEqual("<span>Fast</span>");
 		await p2;
 		expect(document.body.innerHTML).toEqual("<div><span>Slow</span></div>");
+	});
+});
+
+describe("context", () => {
+	function* Provider(this: Context): Generator<Element> {
+		let i = 1;
+		for (const {children, message = "Hello "} of this) {
+			this.set("greeting", message + i++);
+			yield (<Fragment>{children}</Fragment>);
+		}
+	}
+
+	function Nested(
+		this: Context,
+		{depth, children}: {depth: number; children: Children},
+	): Element {
+		if (depth <= 0) {
+			return <Fragment>{children}</Fragment>;
+		} else {
+			return <Nested depth={depth - 1}>{children}</Nested>;
+		}
+	}
+
+	function Consumer(this: Context): Element {
+		const greeting = this.get("greeting");
+		return <div>{greeting}</div>;
+	}
+
+	afterEach(() => {
+		document.body.innerHTML = "";
+		renderer.render(null, document.body);
+	});
+
+	test("basic", () => {
+		renderer.render(
+			<Provider>
+				<Consumer />
+			</Provider>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual("<div>Hello 1</div>");
+	});
+
+	test("nested", () => {
+		renderer.render(
+			<Provider>
+				<Nested depth={10}>
+					<Consumer />
+				</Nested>
+			</Provider>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual("<div>Hello 1</div>");
+	});
+
+	test("missing provider", () => {
+		renderer.render(
+			<Nested depth={10}>
+				<Consumer />
+			</Nested>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div></div>");
+	});
+
+	test("update", () => {
+		const Consumer1 = jest.fn(Consumer);
+		renderer.render(
+			<Provider>
+				<Nested depth={10}>
+					<Consumer1 />
+				</Nested>
+			</Provider>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual("<div>Hello 1</div>");
+		renderer.render(
+			<Provider>
+				<Nested depth={10}>
+					<Consumer1 />
+				</Nested>
+			</Provider>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual("<div>Hello 2</div>");
+		renderer.render(
+			<Provider>
+				<Nested depth={10}>
+					<Consumer1 />
+				</Nested>
+			</Provider>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual("<div>Hello 3</div>");
+		expect(Consumer1).toHaveBeenCalledTimes(3);
+	});
+
+	test("overwritten", () => {
+		renderer.render(
+			<Provider>
+				<div>
+					<Provider message="Goodbye ">
+						<Consumer />
+					</Provider>
+				</div>
+				<Consumer />
+			</Provider>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><div>Goodbye 1</div></div><div>Hello 1</div>",
+		);
+	});
+
+	test("hole puncher", async () => {
+		const Consumer1 = jest.fn(Consumer);
+		function* Static({children}: {children: Children}) {
+			yield (<Fragment>{children}</Fragment>);
+			while (true) {
+				yield (<Copy />);
+			}
+		}
+
+		renderer.render(
+			<Provider>
+				<Static>
+					<Consumer1 />
+				</Static>
+			</Provider>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual("<div>Hello 1</div>");
+
+		renderer.render(
+			<Provider>
+				<Static>
+					<Consumer1 />
+				</Static>
+			</Provider>,
+			document.body,
+		);
+
+		await new Promise((resolve) => setFrame(resolve));
+		expect(document.body.innerHTML).toEqual("<div>Hello 2</div>");
+		expect(Consumer1).toHaveBeenCalledTimes(2);
 	});
 });
