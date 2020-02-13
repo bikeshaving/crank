@@ -350,7 +350,9 @@ class Host<T> extends Link {
 			throw new Error("Non-component element as guest");
 		}
 
-		if (this.iterator === undefined) {
+		if (this.done) {
+			return;
+		} else if (this.iterator === undefined) {
 			this.ctx.clearEventListeners();
 			const {tag, props} = this.guest;
 			const value = new Pledge(() => tag.call(this.ctx!, props))
@@ -369,8 +371,6 @@ class Host<T> extends Link {
 			} else {
 				return value;
 			}
-		} else if (this.done) {
-			return;
 		}
 
 		const iteration = new Pledge(() => this.iterator!.next(next))
@@ -419,15 +419,15 @@ class Host<T> extends Link {
 			const step = this.step(this.iterator && this.next);
 			if (this.iterator === undefined) {
 				if (isPromiseLike(step)) {
-					this.pending = Promise.resolve(step)
-						.then((child) => this.updateChildren(child))
-						.finally(() => {
-							this.pending = this.enqueued;
-							this.enqueued = undefined;
-						});
-				} else {
-					return this.updateChildren(step);
+					this.pending = Promise.resolve(step).finally(() => {
+						this.pending = this.enqueued;
+						this.enqueued = undefined;
+					});
 				}
+
+				return Pledge.resolve(step)
+					.then((child) => this.updateChildren(child))
+					.execute();
 			} else if (isPromiseLike(step)) {
 				this.pending = Promise.resolve(step);
 				if (!this.independent) {
