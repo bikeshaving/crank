@@ -296,11 +296,12 @@ class Host<T> extends Link {
 
 		this.contextMap.set(key, value);
 		if (this.consumerMap !== undefined && this.consumerMap.has(key)) {
-			for (const desc of this.consumerMap.get(key)!) {
+			const descendants = this.consumerMap.get(key)!;
+			for (const desc of descendants) {
 				desc.schedule();
 			}
 
-			this.consumerMap.set(key, new Set());
+			descendants.clear();
 		}
 	}
 
