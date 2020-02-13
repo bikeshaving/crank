@@ -15,7 +15,8 @@ function updateProps(el: HTMLElement, props: Props, newProps: Props): void {
 		switch (true) {
 			case name === "children":
 				break;
-			case name === "class": {
+			case name === "class":
+			case name === "className": {
 				(el as any)["className"] = newValue;
 				break;
 			}
@@ -35,13 +36,14 @@ function updateProps(el: HTMLElement, props: Props, newProps: Props): void {
 						}
 					}
 				}
+
 				break;
 			}
 			case name in el: {
 				(el as any)[name] = newValue;
 				break;
 			}
-			default:
+			default: {
 				if (newValue === true) {
 					el.setAttribute(name, "");
 				} else if (newValue === false || newValue == null) {
@@ -49,7 +51,9 @@ function updateProps(el: HTMLElement, props: Props, newProps: Props): void {
 				} else {
 					el.setAttribute(name, newValue);
 				}
+
 				break;
+			}
 		}
 	}
 }
