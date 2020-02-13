@@ -64,16 +64,16 @@ interface NestedChildIterable extends Iterable<Child | NestedChildIterable> {}
 export type Children = Child | NestedChildIterable;
 
 export interface Props {
-	children?: Children;
 	"crank-key"?: unknown;
+	children?: Children;
 	[name: string]: any;
 }
 
 const ElementSigil: unique symbol = Symbol.for("crank.ElementSigil");
 
-export interface Element<T extends Tag = Tag> {
+export interface Element<TTag extends Tag = Tag> {
 	[ElementSigil]: true;
-	tag: T;
+	tag: TTag;
 	props: Props;
 	key?: unknown;
 }
@@ -92,19 +92,15 @@ export function isComponentElement(value: any): value is Element<Component> {
 	return isElement(value) && typeof value.tag === "function";
 }
 
-export function isKeyedElement(value: any): value is Element & {key: {}} {
-	return isElement(value) && value.key != null;
-}
-
-export function createElement<T extends Tag>(
-	tag: T,
+export function createElement<TTag extends Tag>(
+	tag: TTag,
 	props?: Props | null,
 	...children: Children[]
-): Element<T>;
-export function createElement<T extends Tag>(
-	tag: T,
+): Element<TTag>;
+export function createElement<TTag extends Tag>(
+	tag: TTag,
 	props?: Props | null,
-): Element<T> {
+): Element<TTag> {
 	props = Object.assign({}, props);
 	const key = props["crank-key"];
 	if (key != null) {
@@ -223,15 +219,13 @@ interface Publication {
 type Next<T> = Array<T | string> | T | string | undefined;
 
 class Host<T> extends Link {
+	// Link properties
+	protected parent?: Host<T>;
 	protected firstChild?: Host<T>;
 	protected lastChild?: Host<T>;
 	protected nextSibling?: Host<T>;
 	protected previousSibling?: Host<T>;
-	protected parent?: Host<T>;
-	ctx?: Context<T>;
-	guest?: Guest;
-	node?: T | string;
-	publications = new Set<Publication>();
+	private guest?: Guest;
 	// TODO: reduce the number of boolean properties
 	private updating = false;
 	private done = false;
@@ -246,7 +240,13 @@ class Host<T> extends Link {
 	private iterator?: ChildIterator;
 	private committer?: Iterator<T | undefined>;
 	private intrinsic?: Intrinsic<T>;
-	private hostsByKey?: Map<unknown, Host<T>>;
+	private keyedChildren?: Map<unknown, Host<T>>;
+	private provisions?: Map<unknown, any>;
+	private consumers?: Map<unknown, Set<Host<T>>>;
+	// accessed by hosts
+	ctx?: Context<T>;
+	value?: T | string;
+	publications = new Set<Publication>();
 	constructor(
 		parent: Host<T> | undefined,
 		// TODO: Figure out a way to not have to pass in a renderer
@@ -254,7 +254,6 @@ class Host<T> extends Link {
 	) {
 		super();
 		this.parent = parent;
-		this.renderer = renderer;
 	}
 
 	// TODO: flatten these instead of storing guest
@@ -270,89 +269,87 @@ class Host<T> extends Link {
 		return isElement(this.guest) ? this.guest.props : undefined;
 	}
 
-	private contextMap?: Map<unknown, any>;
-	private consumerMap?: Map<unknown, Set<Host<T>>>;
 	get(key: unknown): any {
 		for (let host = this.parent; host !== undefined; host = host.parent) {
-			if (host.contextMap !== undefined && host.contextMap.has(key)) {
-				if (host.consumerMap === undefined) {
-					host.consumerMap = new Map();
+			if (host.provisions !== undefined && host.provisions.has(key)) {
+				if (host.consumers === undefined) {
+					host.consumers = new Map();
 				}
 
-				if (!host.consumerMap.has(key)) {
-					host.consumerMap.set(key, new Set());
+				if (!host.consumers.has(key)) {
+					host.consumers.set(key, new Set());
 				}
 
-				host.consumerMap.get(key)!.add(this);
-				return host.contextMap.get(key);
+				host.consumers.get(key)!.add(this);
+				return host.provisions.get(key);
 			}
 		}
 	}
 
 	set(key: unknown, value: any): void {
-		if (this.contextMap === undefined) {
-			this.contextMap = new Map();
+		if (this.provisions === undefined) {
+			this.provisions = new Map();
 		}
 
-		this.contextMap.set(key, value);
-		if (this.consumerMap !== undefined && this.consumerMap.has(key)) {
-			const descendants = this.consumerMap.get(key)!;
-			for (const desc of descendants) {
-				desc.schedule();
+		this.provisions.set(key, value);
+		if (this.consumers !== undefined && this.consumers.has(key)) {
+			const consumers = this.consumers.get(key)!;
+			for (const consumer of consumers) {
+				consumer.schedule();
 			}
 
-			descendants.clear();
+			consumers.clear();
 		}
 	}
 
-	private cachedChildNodes?: Array<T | string>;
-	get childNodes(): Array<T | string> {
-		if (this.cachedChildNodes !== undefined) {
-			return this.cachedChildNodes;
+	private cachedChildValues?: Array<T | string>;
+	get childValues(): Array<T | string> {
+		if (this.cachedChildValues !== undefined) {
+			return this.cachedChildValues;
 		}
 
 		let buffer: string | undefined;
-		const childNodes: Array<T | string> = [];
+		const childValues: Array<T | string> = [];
 		for (
 			let host = this.firstChild;
 			host !== undefined;
 			host = host.nextSibling
 		) {
-			if (typeof host.node === "string") {
-				buffer = (buffer || "") + host.node;
+			if (typeof host.value === "string") {
+				buffer = (buffer || "") + host.value;
 			} else if (host.tag !== Portal) {
 				if (buffer !== undefined) {
-					childNodes.push(buffer);
+					childValues.push(buffer);
 					buffer = undefined;
 				}
 
-				if (host.node === undefined) {
-					childNodes.push(...host.childNodes);
+				if (host.value === undefined) {
+					childValues.push(...host.childValues);
 				} else {
-					childNodes.push(host.node);
+					childValues.push(host.value);
 				}
 			}
 		}
 
 		if (buffer !== undefined) {
-			childNodes.push(buffer);
+			childValues.push(buffer);
 		}
 
 		if (this.ctx !== undefined && typeof this.tag === "function") {
 			// TODO: filter predicate type narrowing is not working
-			this.ctx.delegates = new Set(childNodes.filter(isEventTarget) as any);
+			this.ctx.delegates = new Set(childValues.filter(isEventTarget) as any);
 		}
 
-		this.cachedChildNodes = childNodes;
-		return childNodes;
+		this.cachedChildValues = childValues;
+		return childValues;
 	}
 
 	get next(): Next<T> {
-		if (this.childNodes.length > 1) {
-			return this.childNodes;
+		if (this.childValues.length > 1) {
+			return this.childValues;
 		}
 
-		return this.childNodes[0];
+		return this.childValues[0];
 	}
 
 	update(guest: Guest): MaybePromise<undefined> {
@@ -514,9 +511,9 @@ class Host<T> extends Link {
 				return this.updateChildren(this.props && this.props.children);
 			}
 		} else if (typeof this.guest === "string") {
-			this.node = this.renderer.text(this.guest);
+			this.value = this.renderer.text(this.guest);
 		} else {
-			this.node = undefined;
+			this.value = undefined;
 		}
 	}
 
@@ -543,7 +540,7 @@ class Host<T> extends Link {
 	): MaybePromise<undefined> {
 		let host = this.firstChild;
 		const promises: Promise<undefined>[] = [];
-		let hostsByKey: Map<unknown, Host<T>> | undefined;
+		let keyedChildren: Map<unknown, Host<T>> | undefined;
 		if (children != null) {
 			if (!isNonStringIterable(children)) {
 				children = [children];
@@ -561,19 +558,19 @@ class Host<T> extends Link {
 				if (isElement(guest)) {
 					tag = guest.tag;
 					key = guest.key;
-					if (hostsByKey !== undefined && hostsByKey.has(key)) {
+					if (keyedChildren !== undefined && keyedChildren.has(key)) {
 						// TODO: warn about a duplicate key
 						key = undefined;
 					}
 				}
 
 				if (key != null) {
-					let newHost = this.hostsByKey && this.hostsByKey.get(key);
+					let newHost = this.keyedChildren && this.keyedChildren.get(key);
 					if (newHost === undefined) {
 						newHost = new Host(this, this.renderer);
 						isNewHost = true;
 					} else {
-						this.hostsByKey!.delete(key);
+						this.keyedChildren!.delete(key);
 						if (host !== newHost) {
 							this.removeChild(newHost);
 						}
@@ -582,10 +579,10 @@ class Host<T> extends Link {
 					if (host === undefined) {
 						this.appendChild(newHost);
 					} else if (host !== newHost) {
-						if (isKeyedElement(host.guest)) {
-							this.insertAfter(newHost, host);
-						} else {
+						if (host.key == null) {
 							this.insertBefore(newHost, host);
+						} else {
+							this.insertAfter(newHost, host);
 						}
 					}
 
@@ -639,11 +636,11 @@ class Host<T> extends Link {
 				}
 
 				if (key !== undefined) {
-					if (hostsByKey === undefined) {
-						hostsByKey = new Map();
+					if (keyedChildren === undefined) {
+						keyedChildren = new Map();
 					}
 
-					hostsByKey.set(key, host);
+					keyedChildren.set(key, host);
 				}
 
 				host = host.nextSibling;
@@ -652,8 +649,8 @@ class Host<T> extends Link {
 
 		// unmounting excess hosts
 		while (host !== undefined) {
-			if (this.hostsByKey !== undefined && host.key !== undefined) {
-				this.hostsByKey.delete(host.key);
+			if (this.keyedChildren !== undefined && host.key !== undefined) {
+				this.keyedChildren.delete(host.key);
 			}
 
 			host.unmount();
@@ -663,15 +660,15 @@ class Host<T> extends Link {
 		}
 
 		// unmounting keyed hosts
-		if (this.hostsByKey) {
-			for (const host of this.hostsByKey.values()) {
+		if (this.keyedChildren) {
+			for (const host of this.keyedChildren.values()) {
 				// TODO: implement async unmount for keyed hosts
 				host.unmount();
 				this.removeChild(host);
 			}
 		}
 
-		this.hostsByKey = hostsByKey;
+		this.keyedChildren = keyedChildren;
 		// TODO: can we move this somewhere else
 		if (promises.length) {
 			return Promise.all(promises).then(() => void this.commit()); // void :(
@@ -681,7 +678,7 @@ class Host<T> extends Link {
 	});
 
 	commit(): void {
-		this.cachedChildNodes = undefined;
+		this.cachedChildValues = undefined;
 		if (isElement(this.guest)) {
 			if (typeof this.guest.tag === "function") {
 				if (!this.updating && this.parent !== undefined) {
@@ -698,20 +695,21 @@ class Host<T> extends Link {
 					if (isIteratorOrAsyncIterator(value)) {
 						this.committer = value;
 					} else {
-						this.node = value;
+						this.value = value;
 					}
 				}
 
 				if (this.committer !== undefined) {
 					const iteration = this.committer.next();
-					this.node = iteration.value;
+					this.value = iteration.value;
 					if (iteration.done) {
 						this.committer = undefined;
 						this.intrinsic = undefined;
 					}
 				}
 
-				if (this.node == null && this.parent !== undefined) {
+				// Fragment
+				if (this.parent !== undefined && this.value == null) {
 					this.parent.commit();
 				}
 			}
@@ -795,12 +793,12 @@ export class Context<T = any> extends CrankEventTarget {
 		hosts.set(this, host);
 	}
 
-	get node(): T | string | undefined {
-		return hosts.get(this)!.node;
+	get value(): T | string | undefined {
+		return hosts.get(this)!.value;
 	}
 
-	get childNodes(): Array<T | string> {
-		return hosts.get(this)!.childNodes;
+	get childValues(): Array<T | string> {
+		return hosts.get(this)!.childValues;
 	}
 
 	// TODO: throw an error if props are pulled multiple times without a yield

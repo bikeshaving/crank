@@ -112,19 +112,19 @@ export const env: Environment<HTMLElement> = {
 		return function* defaultDOM(this: Context): Generator<HTMLElement> {
 			const node = document.createElement(tag);
 			let props: Props = {};
-			let prevChildNodes: (string | HTMLElement)[] = [];
+			let childValues: (string | HTMLElement)[] = [];
 			for (const props1 of this) {
 				updateProps(node, props, props1);
 				if (
 					!("innerHTML" in props1) &&
-					(this.childNodes.length > 0 || prevChildNodes.length > 0)
+					(this.childValues.length > 0 || childValues.length > 0)
 				) {
-					updateChildren(node, this.childNodes);
-					prevChildNodes = this.childNodes;
+					updateChildren(node, this.childValues);
+					childValues = this.childValues;
 				}
 
-				yield node;
 				props = props1;
+				yield node;
 			}
 		};
 	},
@@ -144,7 +144,7 @@ export const env: Environment<HTMLElement> = {
 					root = newRoot;
 				}
 
-				updateChildren(root, this.childNodes);
+				updateChildren(root, this.childValues);
 				yield root;
 			}
 		} finally {

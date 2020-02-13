@@ -99,14 +99,14 @@ export const env: Environment<string> = {
 				return `${open}${props["innerHTML"]}${close}`;
 			}
 
-			return `${open}${this.childNodes.join("")}${close}`;
+			return `${open}${this.childValues.join("")}${close}`;
 		};
 	},
 	[Text](text: string): string {
 		return escapeText(text);
 	},
 	[Portal](this: Context): string {
-		return this.childNodes.join("");
+		return this.childValues.join("");
 	},
 };
 
@@ -117,7 +117,7 @@ export class StringRenderer extends Renderer<string> {
 
 	renderToString(child: Child, key?: object): Promise<string> | string {
 		return Pledge.resolve(this.render(child, key))
-			.then((ctx) => (ctx && ctx.node) || "")
+			.then((ctx) => (ctx && ctx.value) || "")
 			.execute();
 	}
 }
