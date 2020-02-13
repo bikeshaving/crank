@@ -1,6 +1,4 @@
 /** @jsx createElement */
-// TODO: THIS IS TRIGGERING FALSE POSITIVES THAT I DON’T HAVE TIME TO DEAL WITH
-/* eslint-disable no-unreachable */
 import "core-js";
 import {Repeater} from "@repeaterjs/repeater";
 import {
@@ -14,6 +12,8 @@ import {
 } from "../index";
 import {renderer} from "../dom";
 
+// TODO: no-unreachable is throwing false positives in some tests
+/* eslint-disable no-unreachable */
 describe("sync function component", () => {
 	afterEach(async () => {
 		document.body.innerHTML = "";

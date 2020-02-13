@@ -1,4 +1,4 @@
-/* @jsx createElement */
+/** @jsx createElement */
 import {Children, createElement, Fragment} from "@bikeshaving/crank";
 import {Stats} from "fs";
 import * as fs from "fs-extra";

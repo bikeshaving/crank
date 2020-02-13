@@ -1,4 +1,4 @@
-/* @jsx createElement */
+/** @jsx createElement */
 import path from "path";
 import webpack from "webpack";
 import {createElement} from "@bikeshaving/crank";
