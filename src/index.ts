@@ -230,11 +230,7 @@ class Host<T> extends Link {
 	private updating = false;
 	private done = false;
 	private unmounted = false;
-	private independent = false;
 	// these properties are used when racing components
-	private pending?: Promise<any>;
-	private enqueued?: Promise<any>;
-	private scheduled?: Promise<undefined>;
 	private replacedBy?: Host<T>;
 	private clock = 0;
 	private iterator?: ChildIterator;
@@ -344,14 +340,6 @@ class Host<T> extends Link {
 		return childValues;
 	}
 
-	get next(): Next<T> {
-		if (this.childValues.length > 1) {
-			return this.childValues;
-		}
-
-		return this.childValues[0];
-	}
-
 	update(guest: Guest): MaybePromise<undefined> {
 		this.updating = true;
 		if (this.tag === undefined) {
@@ -367,27 +355,34 @@ class Host<T> extends Link {
 		return this.refresh();
 	}
 
-	// TODO: maybe do a little untangling between step and run. Can we inline
-	// step into run and see if we can reabstract the parts in a different way.
-	// The real issue is the weird requirements with the pending and enqueued
-	// promises, and async generators which need to perpetually resume.
-	//
-	// Ideas:
-	// - somehow get async generators working within the pending/enqueued
-	// framework.
-	// - cache next on the host or something so it doesn’t have to be passed in
-	private step(
-		next?: MaybePromise<(T | string)[] | T | string | undefined>,
-	): MaybePromiseLike<Child> {
+	// TODO: EXPLAIN THIS MADNESS
+	private independent = false;
+	private scheduled?: Promise<undefined>;
+	private inflight?: Promise<undefined>;
+	private enqueued?: Promise<undefined>;
+	private inflightResult?: Promise<undefined>;
+	private enqueuedResult?: Promise<undefined>;
+	private previousResult?: Promise<undefined>;
+	private get previousValue(): MaybePromise<Next<T>> {
+		return Pledge.resolve(this.previousResult)
+			.then(() => {
+				if (this.childValues.length > 1) {
+					return this.childValues;
+				}
+
+				return this.childValues[0];
+			})
+			.execute();
+	}
+
+	private step(): [MaybePromise<undefined>, MaybePromise<undefined>] {
 		if (this.ctx === undefined) {
 			throw new Error("Missing context");
 		} else if (!isComponentElement(this.guest)) {
 			throw new Error("Non-component element as guest");
 		}
 
-		if (this.done) {
-			return;
-		} else if (this.iterator === undefined) {
+		if (this.iterator === undefined) {
 			this.ctx.clearEventListeners();
 			const {tag, props} = this.guest;
 			const value = new Pledge(() => tag.call(this.ctx!, props))
@@ -403,12 +398,21 @@ class Host<T> extends Link {
 				.execute() as ChildIterator | MaybePromise<Child>;
 			if (isIteratorOrAsyncIterator(value)) {
 				this.iterator = value;
+			} else if (isPromiseLike(value)) {
+				const pending = value.then(() => undefined);
+				const result = Promise.resolve(value).then((child) =>
+					this.updateChildren(child),
+				);
+				return [pending, result];
 			} else {
-				return value;
+				const result = this.updateChildren(value);
+				return [undefined, result];
 			}
+		} else if (this.done) {
+			return [undefined, undefined];
 		}
 
-		const iteration = new Pledge(() => this.iterator!.next(next))
+		const iteration = new Pledge(() => this.iterator!.next(this.previousValue))
 			.catch((err) => {
 				if (this.parent === undefined) {
 					throw err;
@@ -418,79 +422,67 @@ class Host<T> extends Link {
 				return {value: undefined, done: false};
 			})
 			.execute();
-
 		if (isPromiseLike(iteration)) {
 			this.independent = true;
-			return iteration.then((iteration) => {
-				const updateP = Pledge.resolve(iteration.value)
-					.then((child) => this.updateChildren(child))
-					.execute();
-				const next = Pledge.resolve(updateP)
-					.then(() => this.next)
-					.execute();
+			const pending = iteration.then((iteration) => {
 				if (iteration.done) {
 					this.done = true;
-				} else if (!this.done) {
-					this.pending = new Promise((resolve) => setFrame(resolve)).then(() =>
-						this.step(next),
-					);
+				} else {
+					setFrame(() => this.run());
 				}
 
-				return updateP;
+				return undefined; // void :(
 			});
+			const result = iteration
+				.then((iteration) => iteration.value)
+				.then((child) => {
+					this.previousResult = this.updateChildren(child);
+					return this.previousResult;
+				});
+			return [pending, result];
 		} else {
 			if (iteration.done) {
 				this.done = true;
 			}
 
-			return Pledge.resolve(iteration.value)
+			const result = Pledge.resolve(iteration.value)
 				.then((child) => this.updateChildren(child))
 				.execute();
+			return [result, result];
 		}
 	}
 
-	run(): MaybePromise<undefined> {
-		if (this.pending === undefined) {
-			const step = this.step(this.iterator && this.next);
-			if (this.iterator === undefined) {
-				if (isPromiseLike(step)) {
-					this.pending = Promise.resolve(step).finally(() => {
-						this.pending = this.enqueued;
-						this.enqueued = undefined;
-					});
-				}
+	private advance(): void {
+		this.inflight = this.enqueued;
+		this.inflightResult = this.enqueuedResult;
+		this.enqueued = undefined;
+		this.enqueuedResult = undefined;
+	}
 
-				return Pledge.resolve(step)
-					.then((child) => this.updateChildren(child))
-					.execute();
-			} else if (isPromiseLike(step)) {
-				this.pending = Promise.resolve(step);
-				if (!this.independent) {
-					this.pending.finally(() => {
-						this.pending = this.enqueued;
-						this.enqueued = undefined;
-					});
-				}
+	private run(): MaybePromise<undefined> {
+		if (this.inflight === undefined) {
+			const [pending, result] = this.step();
+			if (isPromiseLike(pending)) {
+				this.inflight = pending.finally(() => this.advance());
 			}
 
-			return this.pending;
+			this.inflightResult = result;
+			return this.inflightResult;
 		} else if (this.independent) {
-			return this.pending;
+			return this.inflightResult;
 		} else if (this.enqueued === undefined) {
-			this.enqueued = this.pending.then(() => this.step(this.next));
-			if (this.iterator === undefined) {
-				this.enqueued = this.enqueued.then((child) => {
-					return this.updateChildren(child);
-				});
-			}
-
-			this.enqueued.finally(() => {
-				this.pending = this.enqueued;
-				this.enqueued = undefined;
-			});
+			let resolve: (value: MaybePromise<undefined>) => unknown;
+			this.enqueued = this.inflight
+				.then(() => {
+					const [pending, result] = this.step();
+					resolve(result);
+					return pending;
+				})
+				.finally(() => this.advance());
+			this.enqueuedResult = new Promise((resolve1) => (resolve = resolve1));
 		}
 
-		return this.enqueued;
+		return this.enqueuedResult;
 	}
 
 	refresh(): MaybePromise<undefined> {
