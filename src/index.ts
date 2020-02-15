@@ -2,58 +2,7 @@ import {Repeater, SlidingBuffer} from "@repeaterjs/repeater";
 import {CrankEventTarget, isEventTarget} from "./events";
 import {isPromiseLike, MaybePromise, MaybePromiseLike, Pledge} from "./pledge";
 
-// TODO: make this non-global?
-declare global {
-	module JSX {
-		interface IntrinsicElements {
-			[tag: string]: any;
-		}
-
-		// TODO: I don‘t think this actually type checks children
-		interface ElementChildrenAttribute {
-			children: Children;
-		}
-	}
-}
-
-function isIterable(value: any): value is Iterable<any> {
-	return value != null && typeof value[Symbol.iterator] === "function";
-}
-
 type NonStringIterable<T> = Iterable<T> & object;
-
-function isNonStringIterable(value: any): value is NonStringIterable<any> {
-	return typeof value !== "string" && isIterable(value);
-}
-
-function isIteratorOrAsyncIterator(
-	value: any,
-): value is Iterator<any> | AsyncIterator<any> {
-	return value != null && typeof value.next === "function";
-}
-
-// TODO: rename
-export const Default = Symbol.for("crank.Default");
-
-export type Default = typeof Default;
-
-// TODO: rename
-export const Text = Symbol.for("crank.Text");
-
-export type Text = typeof Text;
-
-// TODO: We use any for symbol tags because typescript support for symbols is weak af.
-export const Portal: any = Symbol.for("crank.Portal") as any;
-
-export type Portal = typeof Portal;
-
-export const Fragment: any = Symbol.for("crank.Fragment") as any;
-
-export type Fragment = typeof Fragment;
-
-export const Copy: any = Symbol("crank.Copy") as any;
-
-export type Copy = typeof Copy;
 
 export type Tag = Component | symbol | string;
 
@@ -78,6 +27,71 @@ export interface Element<TTag extends Tag = Tag> {
 	key?: unknown;
 }
 
+export type FunctionComponent = (
+	this: Context,
+	props: Props,
+) => MaybePromiseLike<Child>;
+
+export type ComponentIterator =
+	| Iterator<Child, any, any>
+	| AsyncIterator<Child, any, any>;
+
+export type ComponentGenerator =
+	| Generator<Child, any, any>
+	| AsyncGenerator<Child, any, any>;
+
+export type GeneratorComponent = (
+	this: Context,
+	props: Props,
+) => ComponentGenerator;
+
+// TODO: component cannot be a union of FunctionComponent | GeneratorComponent
+// because this breaks Function.prototype methods.
+// https://github.com/microsoft/TypeScript/issues/34984
+export type Component = (
+	this: Context,
+	props: Props,
+) => ComponentGenerator | MaybePromiseLike<Child>;
+
+export type Intrinsic<T> = (props: Props) => T | Iterator<T>;
+
+// TODO: rename
+export const Default = Symbol.for("crank.Default");
+
+export type Default = typeof Default;
+
+// TODO: rename
+export const Text = Symbol.for("crank.Text");
+
+export type Text = typeof Text;
+
+// TODO: We use any for symbol tags because typescript support for symbols is weak af.
+export const Portal: any = Symbol.for("crank.Portal") as any;
+
+export type Portal = typeof Portal;
+
+export const Fragment: any = Symbol.for("crank.Fragment") as any;
+
+export type Fragment = typeof Fragment;
+
+export const Copy: any = Symbol("crank.Copy") as any;
+
+export type Copy = typeof Copy;
+
+// TODO: make this non-global?
+declare global {
+	module JSX {
+		interface IntrinsicElements {
+			[tag: string]: any;
+		}
+
+		// TODO: I don‘t think this actually type checks children
+		interface ElementChildrenAttribute {
+			children: Children;
+		}
+	}
+}
+
 export function isElement(value: any): value is Element {
 	return value != null && value[ElementSigil];
 }
@@ -90,6 +104,20 @@ export function isIntrinsicElement(
 
 export function isComponentElement(value: any): value is Element<Component> {
 	return isElement(value) && typeof value.tag === "function";
+}
+
+function isIterable(value: any): value is Iterable<any> {
+	return value != null && typeof value[Symbol.iterator] === "function";
+}
+
+function isNonStringIterable(value: any): value is NonStringIterable<any> {
+	return typeof value !== "string" && isIterable(value);
+}
+
+function isIteratorOrAsyncIterator(
+	value: any,
+): value is Iterator<any> | AsyncIterator<any> {
+	return value != null && typeof value.next === "function";
 }
 
 export function createElement<TTag extends Tag>(
@@ -115,8 +143,6 @@ export function createElement<TTag extends Tag>(
 
 	return {[ElementSigil]: true, tag, props, key};
 }
-
-export type Intrinsic<T> = (props: Props) => T | Iterator<T>;
 
 type Guest = Element | string | undefined;
 
@@ -209,7 +235,7 @@ class Host<T> extends Link {
 	protected previousSibling?: Host<T>;
 	private guest?: Guest;
 	private keyedChildren?: Map<unknown, Host<T>>;
-	// TODO: maybe create a state enum/union
+	// TODO: maybe create a state enum/union to reduce the number of boolean props
 	private updating = false;
 	private done = false;
 	private unmounted = false;
@@ -222,7 +248,6 @@ class Host<T> extends Link {
 	private provisions?: Map<unknown, any>;
 	private consumers?: Map<unknown, Set<Host<T>>>;
 	private publications?: Set<Publication>;
-	// accessed by hosts
 	ctx?: Context<T>;
 	value?: T | string;
 	constructor(
@@ -834,32 +859,6 @@ export class Context<T = any> extends CrankEventTarget {
 		return host.set(key, value);
 	}
 }
-
-export type FunctionComponent = (
-	this: Context,
-	props: Props,
-) => MaybePromiseLike<Child>;
-
-export type ComponentIterator =
-	| Iterator<Child, any, any>
-	| AsyncIterator<Child, any, any>;
-
-export type ComponentGenerator =
-	| Generator<Child, any, any>
-	| AsyncGenerator<Child, any, any>;
-
-export type GeneratorComponent = (
-	this: Context,
-	props: Props,
-) => ComponentGenerator;
-
-// TODO: component cannot be a union of FunctionComponent | GeneratorComponent
-// because this breaks Function.prototype methods.
-// https://github.com/microsoft/TypeScript/issues/34984
-export type Component = (
-	this: Context,
-	props: Props,
-) => ComponentGenerator | MaybePromiseLike<Child>;
 
 export interface Environment<T> {
 	[Default](tag: string): Intrinsic<T>;
