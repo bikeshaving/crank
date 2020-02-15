@@ -198,7 +198,7 @@ interface Publication {
 	stop(): unknown;
 }
 
-type Next<T> = Array<T | string> | T | string | undefined;
+type Value<T> = Array<T | string> | T | string | undefined;
 
 class Host<T> extends Link {
 	// Link properties
@@ -208,23 +208,23 @@ class Host<T> extends Link {
 	protected nextSibling?: Host<T>;
 	protected previousSibling?: Host<T>;
 	private guest?: Guest;
-	// TODO: reduce the number of boolean properties
+	private keyedChildren?: Map<unknown, Host<T>>;
+	// TODO: maybe create a state enum/union
 	private updating = false;
 	private done = false;
 	private unmounted = false;
 	// these properties are used when racing components
 	private replacedBy?: Host<T>;
 	private clock = 0;
-	private iterator?: ChildIterator;
+	private iterator?: ComponentIterator;
 	private committer?: Iterator<T | undefined>;
 	private intrinsic?: Intrinsic<T>;
-	private keyedChildren?: Map<unknown, Host<T>>;
 	private provisions?: Map<unknown, any>;
 	private consumers?: Map<unknown, Set<Host<T>>>;
+	private publications?: Set<Publication>;
 	// accessed by hosts
 	ctx?: Context<T>;
 	value?: T | string;
-	publications = new Set<Publication>();
 	constructor(
 		parent: Host<T> | undefined,
 		// TODO: Figure out a way to not have to pass in a renderer
@@ -235,11 +235,11 @@ class Host<T> extends Link {
 	}
 
 	// TODO: flatten these instead of storing guest
-	get tag(): Tag | undefined {
+	private get tag(): Tag | undefined {
 		return isElement(this.guest) ? this.guest.tag : undefined;
 	}
 
-	get key(): unknown {
+	private get key(): unknown {
 		return isElement(this.guest) ? this.guest.key : undefined;
 	}
 
@@ -338,14 +338,14 @@ class Host<T> extends Link {
 	}
 
 	// TODO: EXPLAIN THIS MADNESS
-	private independent = false;
+	private isAsyncGeneratorComponent = false;
 	private scheduled?: Promise<undefined>;
 	private inflight?: Promise<undefined>;
 	private enqueued?: Promise<undefined>;
 	private inflightResult?: Promise<undefined>;
 	private enqueuedResult?: Promise<undefined>;
 	private previousResult?: Promise<undefined>;
-	private get previousValue(): MaybePromise<Next<T>> {
+	private get previousValue(): MaybePromise<Value<T>> {
 		return Pledge.resolve(this.previousResult)
 			.then(() => {
 				if (this.childValues.length > 1) {
@@ -377,7 +377,7 @@ class Host<T> extends Link {
 					return undefined;
 				})
 				// type assertion because we (shouldn’t) get a promise of an iterator
-				.execute() as ChildIterator | MaybePromise<Child>;
+				.execute() as ComponentGenerator | MaybePromise<Child>;
 			if (isIteratorOrAsyncIterator(value)) {
 				this.iterator = value;
 			} else if (isPromiseLike(value)) {
@@ -404,8 +404,9 @@ class Host<T> extends Link {
 				return {value: undefined, done: false};
 			})
 			.execute();
+
 		if (isPromiseLike(iteration)) {
-			this.independent = true;
+			this.isAsyncGeneratorComponent = true;
 			const pending = iteration.then((iteration) => {
 				if (iteration.done) {
 					this.done = true;
@@ -415,21 +416,18 @@ class Host<T> extends Link {
 
 				return undefined; // void :(
 			});
-			const result = iteration
-				.then((iteration) => iteration.value)
-				.then((child) => {
-					this.previousResult = this.updateChildren(child);
-					return this.previousResult;
-				});
+			const result = iteration.then((iteration) => {
+				this.previousResult = this.updateChildren(iteration.value);
+				return this.previousResult;
+			});
+
 			return [pending, result];
 		} else {
 			if (iteration.done) {
 				this.done = true;
 			}
 
-			const result = Pledge.resolve(iteration.value)
-				.then((child) => this.updateChildren(child))
-				.execute();
+			const result = this.updateChildren(iteration.value);
 			return [result, result];
 		}
 	}
@@ -450,7 +448,7 @@ class Host<T> extends Link {
 
 			this.inflightResult = result;
 			return this.inflightResult;
-		} else if (this.independent) {
+		} else if (this.isAsyncGeneratorComponent) {
 			return this.inflightResult;
 		} else if (this.enqueued === undefined) {
 			let resolve: (value: MaybePromise<undefined>) => unknown;
@@ -475,8 +473,10 @@ class Host<T> extends Link {
 		if (this.unmounted) {
 			return;
 		} else if (this.tag !== undefined) {
-			for (const pub of this.publications) {
-				pub.push(this.props!);
+			if (this.publications !== undefined) {
+				for (const pub of this.publications) {
+					pub.push(this.props!);
+				}
 			}
 
 			if (typeof this.tag === "function") {
@@ -505,6 +505,20 @@ class Host<T> extends Link {
 		}
 
 		return this.scheduled;
+	}
+
+	subscribe(): AsyncGenerator<Props> {
+		if (this.publications === undefined) {
+			this.publications = new Set();
+		}
+
+		return new Repeater(async (push, stop) => {
+			push(this.props!);
+			const pub: Publication = {push, stop};
+			this.publications!.add(pub);
+			await stop;
+			this.publications!.delete(pub);
+		}, new SlidingBuffer(1));
 	}
 
 	private bail?: (result?: Promise<undefined>) => unknown;
@@ -735,8 +749,10 @@ class Host<T> extends Link {
 	}
 
 	unmount(): void {
-		for (const pub of this.publications) {
-			pub.stop();
+		if (this.publications !== undefined) {
+			for (const pub of this.publications) {
+				pub.stop();
+			}
 		}
 
 		// TODO: await the return if the host is keyed and commit the parent
@@ -792,14 +808,8 @@ export class Context<T = any> extends CrankEventTarget {
 
 	// TODO: throw an error if props are pulled multiple times without a yield
 	[Symbol.asyncIterator](): AsyncGenerator<Props> {
-		return new Repeater(async (push, stop) => {
-			const host = hosts.get(this)!;
-			push(host.props!);
-			const pub: Publication = {push, stop};
-			host.publications.add(pub);
-			await stop;
-			host.publications.delete(pub);
-		}, new SlidingBuffer(1));
+		const host = hosts.get(this)!;
+		return host.subscribe();
 	}
 
 	// TODO: throw or warn if called on an unmounted component?
@@ -830,15 +840,18 @@ export type FunctionComponent = (
 	props: Props,
 ) => MaybePromiseLike<Child>;
 
-export type ChildIterator =
-	| Iterator<MaybePromiseLike<Child>, any, any>
-	| AsyncIterator<MaybePromiseLike<Child>, any, any>;
+export type ComponentIterator =
+	| Iterator<Child, any, any>
+	| AsyncIterator<Child, any, any>;
 
-type ChildIteratorResult = MaybePromise<
-	IteratorResult<MaybePromiseLike<Child>>
->;
+export type ComponentGenerator =
+	| Generator<Child, any, any>
+	| AsyncGenerator<Child, any, any>;
 
-export type GeneratorComponent = (this: Context, props: Props) => ChildIterator;
+export type GeneratorComponent = (
+	this: Context,
+	props: Props,
+) => ComponentGenerator;
 
 // TODO: component cannot be a union of FunctionComponent | GeneratorComponent
 // because this breaks Function.prototype methods.
@@ -846,7 +859,7 @@ export type GeneratorComponent = (this: Context, props: Props) => ChildIterator;
 export type Component = (
 	this: Context,
 	props: Props,
-) => ChildIterator | MaybePromiseLike<Child>;
+) => ComponentGenerator | MaybePromiseLike<Child>;
 
 export interface Environment<T> {
 	[Default](tag: string): Intrinsic<T>;
