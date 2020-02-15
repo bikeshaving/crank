@@ -130,24 +130,6 @@ function toGuest(child: Child): Guest {
 	}
 }
 
-// TODO: explain what this function does
-function chase<Return, This>(
-	fn: (this: This, ...args: any[]) => MaybePromiseLike<Return>,
-): (this: This, ...args: any[]) => MaybePromise<Return> {
-	let next: (result: MaybePromiseLike<Return>) => unknown = () => {};
-	return function chaseWrapper(...args: unknown[]): MaybePromise<Return> {
-		const result = fn.apply(this, args);
-		next(result);
-
-		if (isPromiseLike(result)) {
-			const nextP = new Promise<Return>((resolve) => (next = resolve));
-			return Promise.race([result, nextP]);
-		}
-
-		return result;
-	};
-}
-
 class Link {
 	protected parent?: Link;
 	protected firstChild?: Link;
@@ -525,11 +507,9 @@ class Host<T> extends Link {
 		return this.scheduled;
 	}
 
+	private bail?: (result?: Promise<undefined>) => unknown;
 	// TODO: clean up this monster
-	updateChildren = chase(function updateChildren(
-		this: Host<T>,
-		children: Children,
-	): MaybePromise<undefined> {
+	updateChildren(children: Children): MaybePromise<undefined> {
 		let host = this.firstChild;
 		const promises: Promise<undefined>[] = [];
 		let keyedChildren: Map<unknown, Host<T>> | undefined;
@@ -661,13 +641,22 @@ class Host<T> extends Link {
 		}
 
 		this.keyedChildren = keyedChildren;
-		// TODO: can we move this somewhere else
 		if (promises.length) {
-			return Promise.all(promises).then(() => void this.commit()); // void :(
+			const result = Promise.all(promises).then(() => void this.commit()); // void :(
+			if (this.bail !== undefined) {
+				this.bail(result);
+			}
+			const nextResult = new Promise<undefined>(
+				(resolve) => (this.bail = resolve),
+			);
+			return Promise.race([result, nextResult]);
 		} else {
+			if (this.bail !== undefined) {
+				this.bail();
+			}
 			this.commit();
 		}
-	});
+	}
 
 	commit(): void {
 		this.cachedChildValues = undefined;
