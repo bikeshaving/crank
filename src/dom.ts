@@ -9,18 +9,18 @@ import {
 } from "./index";
 
 function updateProps(el: HTMLElement, props: Props, newProps: Props): void {
-	for (let name in {...props, ...newProps}) {
+	for (const name in {...props, ...newProps}) {
 		const value = props[name];
 		const newValue = newProps[name];
-		switch (true) {
-			case name === "children":
+		switch (name) {
+			case "children":
 				break;
-			case name === "class":
-			case name === "className": {
+			case "class":
+			case "className": {
 				(el as any)["className"] = newValue;
 				break;
 			}
-			case name === "style": {
+			case "style": {
 				if (newValue == null) {
 					el.removeAttribute("style");
 				} else if (typeof newValue === "string") {
@@ -39,12 +39,11 @@ function updateProps(el: HTMLElement, props: Props, newProps: Props): void {
 
 				break;
 			}
-			case name in el: {
-				(el as any)[name] = newValue;
-				break;
-			}
 			default: {
-				if (newValue === true) {
+				if (name in el) {
+					(el as any)[name] = newValue;
+					break;
+				} else if (newValue === true) {
 					el.setAttribute(name, "");
 				} else if (newValue === false || newValue == null) {
 					el.removeAttribute(name);
