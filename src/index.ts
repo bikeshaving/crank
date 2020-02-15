@@ -905,7 +905,7 @@ export function clearFrame(id: any): void {
 
 export class Renderer<T> {
 	private cache = new WeakMap<object, Host<T>>();
-	private getOrCreateHost(root?: object): Host<T> {
+	private getOrCreateRootHost(root?: object): Host<T> {
 		let host: Host<T> | undefined;
 		if (root !== undefined) {
 			host = this.cache.get(root);
@@ -966,7 +966,7 @@ export class Renderer<T> {
 			child = createElement(Portal, {root}, child);
 		}
 
-		const host = this.getOrCreateHost(root);
+		const host = this.getOrCreateRootHost(root);
 		let p: MaybePromise<void>;
 		if (child == null) {
 			p = host.unmount();
