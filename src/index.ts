@@ -693,6 +693,7 @@ class Host<T> extends Link {
 			if (this.bail !== undefined) {
 				this.bail();
 			}
+
 			this.commit();
 		}
 	}
