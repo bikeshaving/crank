@@ -1733,7 +1733,7 @@ describe("async races", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div>Hello: <div>Fast 0</div></div>",
 		);
-		await new Promise((resolve) => setTimeout(resolve, 500));
+		await new Promise((resolve) => setTimeout(resolve, 300));
 		expect(document.body.innerHTML).toEqual(
 			"<div>Hello: <div>Slow 0</div></div>",
 		);
@@ -1741,11 +1741,11 @@ describe("async races", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div>Hello: <div>Fast 1</div></div>",
 		);
-		await new Promise((resolve) => setTimeout(resolve, 500));
+		await new Promise((resolve) => setTimeout(resolve, 300));
 		expect(document.body.innerHTML).toEqual(
 			"<div>Hello: <div>Slow 1</div></div>",
 		);
-		await new Promise((resolve) => setTimeout(resolve, 500));
+		await new Promise((resolve) => setTimeout(resolve, 300));
 		expect(document.body.innerHTML).toEqual(
 			"<div>Hello: <div>Slow 1</div></div>",
 		);
@@ -1788,7 +1788,7 @@ describe("async races", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div>Hello: <div>Fast 0</div></div>",
 		);
-		await new Promise((resolve) => setTimeout(resolve, 500));
+		await new Promise((resolve) => setTimeout(resolve, 300));
 		expect(document.body.innerHTML).toEqual(
 			"<div>Hello: <div>Slow 0</div></div>",
 		);
@@ -1796,11 +1796,11 @@ describe("async races", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div>Hello: <div>Fast 1</div></div>",
 		);
-		await new Promise((resolve) => setTimeout(resolve, 500));
+		await new Promise((resolve) => setTimeout(resolve, 300));
 		expect(document.body.innerHTML).toEqual(
 			"<div>Hello: <div>Slow 1</div></div>",
 		);
-		await new Promise((resolve) => setTimeout(resolve, 500));
+		await new Promise((resolve) => setTimeout(resolve, 300));
 		expect(document.body.innerHTML).toEqual(
 			"<div>Hello: <div>Slow 1</div></div>",
 		);
