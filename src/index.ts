@@ -78,6 +78,10 @@ export const Copy: any = Symbol("crank.Copy") as any;
 
 export type Copy = typeof Copy;
 
+export const Raw: any = Symbol("crank.Raw") as any;
+
+export type Raw = typeof Raw;
+
 // TODO: make this non-global?
 declare global {
 	module JSX {
@@ -372,13 +376,9 @@ class Host<T> extends Link {
 	private previousResult?: Promise<undefined>;
 	private get previousValue(): MaybePromise<Value<T>> {
 		return Pledge.resolve(this.previousResult)
-			.then(() => {
-				if (this.childValues.length > 1) {
-					return this.childValues;
-				}
-
-				return this.childValues[0];
-			})
+			.then(() =>
+				this.childValues.length > 1 ? this.childValues : this.childValues[0],
+			)
 			.execute();
 	}
 
