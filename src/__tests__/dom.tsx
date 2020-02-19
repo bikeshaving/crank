@@ -917,4 +917,12 @@ describe("render", () => {
 		);
 		expect(document.getElementById("raw")).toBeDefined();
 	});
+
+	test("style text", () => {
+		renderer.render(<div style="display: none" />, document.body);
+		expect(document.body.innerHTML).toEqual(
+			'<div style="display: none;"></div>',
+		);
+		expect((document.body.firstChild! as HTMLElement).style.display).toEqual("none");
+	});
 });

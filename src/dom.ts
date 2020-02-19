@@ -9,6 +9,7 @@ import {
 	Portal,
 } from "./index";
 
+// TODO: create an allowlist/blocklist of props
 function updateProps(el: Element, props: Props, newProps: Props): void {
 	for (const name in {...props, ...newProps}) {
 		const value = props[name];
@@ -21,24 +22,20 @@ function updateProps(el: Element, props: Props, newProps: Props): void {
 				(el as any)["className"] = newValue;
 				break;
 			}
-			case name === "style" && (el as any)["style"]: {
+			case name === "style" && "style" in el: {
+				const style: CSSStyleDeclaration = (el as any).style;
 				if (newValue == null) {
 					el.removeAttribute("style");
 				} else if (typeof newValue === "string") {
-					(el as any).style.cssText = newValue;
+					style.cssText = newValue;
 				} else {
 					for (const styleName in Object.assign({}, value, newValue)) {
 						const styleValue = value && value[styleName];
 						const newStyleValue = newValue && newValue[styleName];
 						if (newStyleValue == null) {
-							((el as any).style as CSSStyleDeclaration).removeProperty(
-								styleName,
-							);
+							style.removeProperty(styleName);
 						} else if (styleValue !== newStyleValue) {
-							((el as any).style as CSSStyleDeclaration).setProperty(
-								styleName,
-								newStyleValue,
-							);
+							style.setProperty(styleName, newStyleValue);
 						}
 					}
 				}
