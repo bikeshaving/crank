@@ -685,7 +685,9 @@ class Host<T> extends Link {
 			const result = Promise.all(promises).then(() => void this.commit()); // void :(
 			if (this.bail !== undefined) {
 				this.bail(result);
+				this.bail = undefined;
 			}
+
 			const nextResult = new Promise<undefined>(
 				(resolve) => (this.bail = resolve),
 			);
@@ -693,6 +695,7 @@ class Host<T> extends Link {
 		} else {
 			if (this.bail !== undefined) {
 				this.bail();
+				this.bail = undefined;
 			}
 
 			this.commit();
