@@ -758,10 +758,7 @@ class Host<T> extends Link {
 						this.done = true;
 					}
 
-					return iteration.value;
-				})
-				.then((child) => {
-					this.updateChildren(child);
+					return this.updateChildren(iteration.value);
 				})
 				.catch((err) => {
 					if (this.parent === undefined) {
