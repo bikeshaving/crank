@@ -923,6 +923,24 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual(
 			'<div style="display: none;"></div>',
 		);
-		expect((document.body.firstChild! as HTMLElement).style.display).toEqual("none");
+		expect((document.body.firstChild! as HTMLElement).style.display).toEqual(
+			"none",
+		);
+	});
+
+	test("style object", () => {
+		renderer.render(
+			<div style={{display: "none", "margin-top": "30px"}} />,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			'<div style="display: none; margin-top: 30px;"></div>',
+		);
+		expect((document.body.firstChild! as HTMLElement).style.display).toEqual(
+			"none",
+		);
+		expect((document.body.firstChild! as HTMLElement).style.marginTop).toEqual(
+			"30px",
+		);
 	});
 });
