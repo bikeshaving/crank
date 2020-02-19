@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import {Copy, createElement, Fragment, Portal} from "../index";
+import {Copy, createElement, Fragment, Portal, Raw} from "../index";
 import {renderer} from "../dom";
 import "./_mutation-observer";
 import {createHTML} from "./_utils";
@@ -888,5 +888,33 @@ describe("render", () => {
 				removedNodes: [createHTML("<span>1</span>")],
 			},
 		]);
+	});
+
+	test("raw html", () => {
+		const html = '<span id="raw">Hi</span>';
+		renderer.render(
+			<div>
+				Raw: <Raw value={html} />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			'<div>Raw: <span id="raw">Hi</span></div>',
+		);
+		expect(document.getElementById("raw")).toBeDefined();
+	});
+
+	test("raw node", () => {
+		const el = createHTML('<span id="raw">Hi</span>');
+		renderer.render(
+			<div>
+				Raw: <Raw value={el} />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			'<div>Raw: <span id="raw">Hi</span></div>',
+		);
+		expect(document.getElementById("raw")).toBeDefined();
 	});
 });

@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import {createElement, Fragment} from "../index";
+import {createElement, Fragment, Raw} from "../index";
 import {renderer} from "../html";
 
 describe("render", () => {
@@ -127,5 +127,16 @@ describe("render", () => {
 		expect(renderer.renderToString(<div>{"< > & \" '"}</div>)).toEqual(
 			"<div>&lt; &gt; &amp; &quot; &#039;</div>",
 		);
+	});
+
+	test("raw html", () => {
+		const html = '<span id="raw">Hi</span>';
+		expect(
+			renderer.renderToString(
+				<div>
+					Raw: <Raw value={html} />
+				</div>,
+			),
+		).toEqual('<div>Raw: <span id="raw">Hi</span></div>');
 	});
 });

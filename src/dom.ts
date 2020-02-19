@@ -4,35 +4,41 @@ import {
 	Environment,
 	Intrinsic,
 	Props,
+	Raw,
 	Renderer,
 	Portal,
 } from "./index";
 
-function updateProps(el: HTMLElement, props: Props, newProps: Props): void {
+function updateProps(el: Element, props: Props, newProps: Props): void {
 	for (const name in {...props, ...newProps}) {
 		const value = props[name];
 		const newValue = newProps[name];
-		switch (name) {
-			case "children":
+		switch (true) {
+			case name === "children":
 				break;
-			case "class":
-			case "className": {
+			case name === "class":
+			case name === "className": {
 				(el as any)["className"] = newValue;
 				break;
 			}
-			case "style": {
+			case name === "style" && (el as any)["style"]: {
 				if (newValue == null) {
 					el.removeAttribute("style");
 				} else if (typeof newValue === "string") {
-					el.style.cssText = newValue;
+					(el as any).style.cssText = newValue;
 				} else {
 					for (const styleName in Object.assign({}, value, newValue)) {
 						const styleValue = value && value[styleName];
 						const newStyleValue = newValue && newValue[styleName];
 						if (newStyleValue == null) {
-							el.style.removeProperty(styleName);
+							((el as any).style as CSSStyleDeclaration).removeProperty(
+								styleName,
+							);
 						} else if (styleValue !== newStyleValue) {
-							el.style.setProperty(styleName, newStyleValue);
+							((el as any).style as CSSStyleDeclaration).setProperty(
+								styleName,
+								newStyleValue,
+							);
 						}
 					}
 				}
@@ -59,7 +65,7 @@ function updateProps(el: HTMLElement, props: Props, newProps: Props): void {
 
 // TODO: improve this algorithm
 // https://stackoverflow.com/questions/59418120/what-is-the-most-efficient-way-to-update-the-childnodes-of-a-dom-node-with-an-ar
-function updateChildren(el: HTMLElement, children: (Node | string)[]): void {
+function updateChildren(el: Element, children: (Node | string)[]): void {
 	if (el.childNodes.length === 0) {
 		const fragment = document.createDocumentFragment();
 		for (let child of children) {
@@ -106,12 +112,28 @@ function updateChildren(el: HTMLElement, children: (Node | string)[]): void {
 	}
 }
 
-export const env: Environment<HTMLElement> = {
-	[Default](tag: string): Intrinsic<HTMLElement> {
-		return function* defaultDOM(this: Context): Generator<HTMLElement> {
+function createDocumentFragmentFromHTML(html: string): DocumentFragment {
+	if (typeof document.createRange === "function") {
+		return document.createRange().createContextualFragment(html);
+	} else {
+		const fragment = document.createDocumentFragment();
+		const childNodes = new DOMParser().parseFromString(html, "text/html").body
+			.childNodes;
+		for (let i = 0; i < childNodes.length; i++) {
+			fragment.appendChild(childNodes[i]);
+		}
+
+		return fragment;
+	}
+}
+
+// TODO: Element should be ParentNode maybe?
+export const env: Environment<Element> = {
+	[Default](tag: string): Intrinsic<Element> {
+		return function* defaultDOM(this: Context): Generator<Element> {
 			const node = document.createElement(tag);
 			let props: Props = {};
-			let childValues: (string | HTMLElement)[] = [];
+			let childValues: (string | Element)[] = [];
 			for (const props1 of this) {
 				updateProps(node, props, props1);
 				if (
@@ -127,7 +149,15 @@ export const env: Environment<HTMLElement> = {
 			}
 		};
 	},
-	*[Portal](this: Context, {root}): Generator<HTMLElement> {
+	[Raw]({value}): Element {
+		if (typeof value === "string") {
+			// TODO: figure out what the type of element should actually be
+			return (createDocumentFragmentFromHTML(value) as unknown) as Element;
+		} else {
+			return value;
+		}
+	},
+	*[Portal](this: Context, {root}): Generator<Element> {
 		if (root == null) {
 			throw new TypeError("Portal element is missing root node");
 		}
@@ -152,7 +182,7 @@ export const env: Environment<HTMLElement> = {
 	},
 };
 
-export class DOMRenderer extends Renderer<HTMLElement> {
+export class DOMRenderer extends Renderer<Element> {
 	constructor() {
 		super(env);
 	}

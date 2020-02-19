@@ -78,7 +78,7 @@ export const Copy: any = Symbol("crank.Copy") as any;
 
 export type Copy = typeof Copy;
 
-export const Raw: any = Symbol("crank.Raw") as any;
+export const Raw: any = Symbol.for("crank.Raw") as any;
 
 export type Raw = typeof Raw;
 
@@ -356,7 +356,7 @@ class Host<T> extends Link {
 		if (this.tag === undefined) {
 			if (isElement(guest)) {
 				this.ctx = new Context(this, this.parent && this.parent.ctx);
-				if (typeof guest.tag !== "function") {
+				if (typeof guest.tag !== "function" && guest.tag !== Fragment) {
 					this.intrinsic = this.renderer.intrinsicFor(guest.tag);
 				}
 			}
@@ -436,6 +436,7 @@ class Host<T> extends Link {
 				if (iteration.done) {
 					this.done = true;
 				} else {
+					// TODO: replace this with this.schedule
 					setFrame(() => this.run());
 				}
 
@@ -706,6 +707,10 @@ class Host<T> extends Link {
 					// TODO: batch this per microtask
 					this.parent.commit();
 				}
+			} else if (this.guest.tag === Fragment) {
+				if (this.parent !== undefined && this.value == null) {
+					this.parent.commit();
+				}
 			} else {
 				if (
 					this.committer === undefined &&
@@ -727,11 +732,6 @@ class Host<T> extends Link {
 						this.committer = undefined;
 						this.intrinsic = undefined;
 					}
-				}
-
-				// Fragment
-				if (this.parent !== undefined && this.value == null) {
-					this.parent.commit();
 				}
 			}
 		}
@@ -869,6 +869,7 @@ export interface Environment<T> {
 	// [Fragment]: Intrinsic<T>;
 	// [Portal]: Intrinsic<T>;
 	// [Copy]: Intrinsic<T>;
+	// [Raw]: Intrinsic<T>;
 	// [tag: symbol]: Intrinsic<T>;// Intrinsic<T> | Environment<T>;
 }
 
@@ -879,8 +880,8 @@ const defaultEnv: Environment<any> = {
 	[Portal](): never {
 		throw new Error("Environment did not provide an intrinsic for Portal");
 	},
-	[Fragment](): undefined {
-		return undefined; // void :(
+	[Raw]({value}): any {
+		return value;
 	},
 };
 

@@ -796,6 +796,14 @@ describe("sync generator component", () => {
 		);
 		expect(document.body.innerHTML).toEqual("<div>Goodbye</div>");
 		expect(Component).toHaveBeenCalledTimes(1);
+		renderer.render(<div>{null}</div>, document.body);
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div>Hello</div>");
 	});
 
 	test("generator returns with async children and concurrent updates", async () => {
