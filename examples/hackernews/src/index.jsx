@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import {createElement, Fragment} from "@bikeshaving/crank";
+import {createElement, Fragment, Raw} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
 import "./index.css";
 
@@ -21,7 +21,9 @@ function* Comment() {
 					<a href="">{comment.user}</a> {comment.time_ago}{" "}
 				</p>
 				<div style={{display: expanded ? null : "none"}}>
-					<p innerHTML={comment.content} />
+					<p>
+						<Raw value={comment.content} />
+					</p>
 					<div class="replies">
 						{comment.comments.map((reply) => (
 							<Comment crank-key={reply.id} comment={reply} />
