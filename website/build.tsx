@@ -1,11 +1,11 @@
 /** @jsx createElement */
-import {Children, createElement, Fragment} from "@bikeshaving/crank";
+import {Children, createElement, Fragment, Raw} from "@bikeshaving/crank";
+import {renderer} from "@bikeshaving/crank/cjs/html";
 import {Stats} from "fs";
 import * as fs from "fs-extra";
 import * as path from "path";
 import frontmatter from "front-matter";
 import marked from "marked";
-import {renderer} from "@bikeshaving/crank/cjs/html";
 import Typography from "typography";
 // @ts-ignore
 import CodePlugin from "typography-plugin-code";
@@ -13,6 +13,7 @@ import CodePlugin from "typography-plugin-code";
 import githubTheme from "typography-theme-github";
 githubTheme.plugins = [new CodePlugin()];
 const typography = new Typography(githubTheme);
+import {Page, Script, Storage} from "./webpack";
 
 interface WalkInfo {
 	filename: string;
@@ -68,10 +69,12 @@ async function parseInfos(
 	return infos;
 }
 
-function Page({head, children}: {head: Children; children: Children}) {
+const storage = new Storage(path.join(__dirname, "src"));
+// TODO: I wonder if we can do some kind of slot-based or includes API
+function Root({head, children}: {head: Children; children: Children}) {
 	return (
-		<Fragment>
-			<Fragment innerHTML="<!DOCTYPE html>" />
+		<Page storage={storage}>
+			<Raw value="<!DOCTYPE html>" />
 			<html lang="en">
 				<head>
 					<meta charset="utf-8" />
@@ -80,19 +83,16 @@ function Page({head, children}: {head: Children; children: Children}) {
 						content="width=device-width, initial-scale=1.0"
 					/>
 					{head}
-					<style innerHTML={typography.createStyles()} />
+					{/*<style innerHTML={typography.createStyles()} />*/}
 					<link
 						href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.19.0/themes/prism.min.css"
 						rel="stylesheet"
 					/>
 				</head>
-				<body>
-					{children}
-					<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.19.0/prism.min.js" />
-					<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.19.0/plugins/autoloader/prism-autoloader.min.js" />
-				</body>
+				<body>{children}</body>
+				<Script src="index.tsx" />
 			</html>
-		</Fragment>
+		</Page>
 	);
 }
 
@@ -101,16 +101,15 @@ interface HomeProps {
 }
 
 function Home({docs}: HomeProps) {
+	const links = docs.map((doc) => (
+		<div>
+			<a href={doc.url}>{doc.title}</a>
+		</div>
+	));
 	return (
-		<Page head={<title>Crank.js</title>}>
-			<div>
-				{docs.map((doc) => (
-					<div>
-						<a href={doc.url}>{doc.title}</a>
-					</div>
-				))}
-			</div>
-		</Page>
+		<Root head={<title>Crank.js</title>}>
+			<div>{links}</div>
+		</Root>
 	);
 }
 
@@ -121,10 +120,10 @@ interface DocProps {
 
 function Doc({title, html}: DocProps) {
 	return (
-		<Page head={<title>Crank.js | {title}</title>}>
+		<Root head={<title>Crank.js | {title}</title>}>
 			<h1>{title}</h1>
-			<div innerHTML={html} />
-		</Page>
+			<Raw value={html} />
+		</Root>
 	);
 }
 
@@ -133,15 +132,16 @@ function Doc({title, html}: DocProps) {
 	await fs.ensureDir(dist);
 	await fs.emptyDir(dist);
 	const docs = await parseInfos(path.join(__dirname, "./docs"));
-	const home = renderer.renderToString(<Home docs={docs} />);
+	const home = await renderer.renderToString(<Home docs={docs} />);
 	await fs.writeFile(path.join(dist, "./index.html"), home);
 	await Promise.all(
 		docs.map(async (doc) => {
 			const filename = path.join(dist, doc.url + ".html");
 			await fs.ensureDir(path.dirname(filename));
-			const html = renderer.renderToString(
+			const html = await renderer.renderToString(
 				<Doc title={doc.title} html={doc.html} />,
 			);
+
 			return fs.writeFile(filename, html);
 		}),
 	);
