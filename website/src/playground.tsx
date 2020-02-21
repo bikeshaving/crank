@@ -242,7 +242,7 @@ function Hero() {
 	);
 }
 
-function Page() {
+export function Page() {
 	return (
 		<Fragment>
 			<Hero />

@@ -8,8 +8,11 @@
     "@types/webpack": "^4.41.6",
     "core-js": "^3.6.4",
     "css-loader": "^3.4.2",
+    "file-loader": "^5.1.0",
     "front-matter": "^3.1.0",
     "fs-extra": "^8.1.0",
+    "html-loader": "^0.5.5",
+    "markdown-loader": "^5.1.0",
     "marked": "^0.8.0",
     "prismjs": "^1.19.0",
     "regenerator-runtime": "^0.13.3",
@@ -18,6 +21,7 @@
     "typography": "^0.16.19",
     "typography-plugin-code": "^0.16.19",
     "typography-theme-github": "^0.16.19",
+    "url-loader": "^3.0.0",
     "webpack": "^4.41.6"
   },
   "devDependencies": {

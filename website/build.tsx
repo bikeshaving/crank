@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import {Children, createElement, Fragment, Raw} from "@bikeshaving/crank";
+import {Children, createElement, Raw} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/cjs/html";
 import {Stats} from "fs";
 import * as fs from "fs-extra";
@@ -20,53 +20,48 @@ interface WalkInfo {
 	info: Stats;
 }
 
-async function* walk(name: string): AsyncGenerator<WalkInfo> {
-	const files = await fs.readdir(name);
-	for (const filename of files) {
-		const name1 = path.join(name, filename);
-		const stat = await fs.stat(name1);
-		if (stat.isDirectory()) {
-			yield* walk(name1);
-		} else if (stat.isFile()) {
-			yield {filename: name1, info: stat};
+async function* walk(dir: string): AsyncGenerator<WalkInfo> {
+	const files = await fs.readdir(dir);
+	for (let filename of files) {
+		filename = path.join(dir, filename);
+		const info = await fs.stat(filename);
+		if (info.isDirectory()) {
+			yield* walk(filename);
+		} else if (info.isFile()) {
+			yield {filename, info};
 		}
 	}
 }
 
-interface ParseInfo {
+interface DocInfo {
 	url: string;
 	filename: string;
 	html: string;
 	title: string;
 }
 
-async function parseInfos(
+async function parseDocs(
 	name: string,
 	root: string = name,
-): Promise<Array<ParseInfo>> {
-	let infos: Array<ParseInfo> = [];
-	for await (const {filename, info} of walk(name)) {
-		if (info.isFile()) {
-			if (filename.endsWith(".md")) {
-				const md = await fs.readFile(filename, {encoding: "utf8"});
-				const {
-					attributes: {title},
-					body,
-				} = frontmatter(md);
-				const html = marked(body);
-				const url = path
-					.relative(root, filename)
-					.replace(/\.md$/, "")
-					.replace(/[0-9]+-/, "");
-				infos.push({url, filename, html, title});
-			}
-		} else if (filename !== name) {
-			const infos1 = await parseInfos(filename, name);
-			infos = infos.concat(infos1);
+): Promise<Array<DocInfo>> {
+	let docs: Array<DocInfo> = [];
+	for await (const {filename} of walk(name)) {
+		if (filename.endsWith(".md")) {
+			const md = await fs.readFile(filename, {encoding: "utf8"});
+			const {
+				attributes: {title},
+				body,
+			} = frontmatter(md);
+			const html = marked(body);
+			const url = path
+				.relative(root, filename)
+				.replace(/\.md$/, "")
+				.replace(/[0-9]+-/, "");
+			docs.push({url, filename, html, title});
 		}
 	}
 
-	return infos;
+	return docs;
 }
 
 const storage = new Storage(path.join(__dirname, "src"));
@@ -83,11 +78,9 @@ function Root({head, children}: {head: Children; children: Children}) {
 						content="width=device-width, initial-scale=1.0"
 					/>
 					{head}
-					{/*<style innerHTML={typography.createStyles()} />*/}
-					<link
-						href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.19.0/themes/prism.min.css"
-						rel="stylesheet"
-					/>
+					<style>
+						<Raw value={typography.createStyles()} />
+					</style>
 				</head>
 				<body>{children}</body>
 				<Script src="index.tsx" />
@@ -97,7 +90,7 @@ function Root({head, children}: {head: Children; children: Children}) {
 }
 
 interface HomeProps {
-	docs: Array<ParseInfo>;
+	docs: Array<DocInfo>;
 }
 
 function Home({docs}: HomeProps) {
@@ -131,7 +124,7 @@ function Doc({title, html}: DocProps) {
 	const dist = path.join(__dirname, "./dist");
 	await fs.ensureDir(dist);
 	await fs.emptyDir(dist);
-	const docs = await parseInfos(path.join(__dirname, "./docs"));
+	const docs = await parseDocs(path.join(__dirname, "./docs"));
 	const home = await renderer.renderToString(<Home docs={docs} />);
 	await fs.writeFile(path.join(dist, "./index.html"), home);
 	await Promise.all(

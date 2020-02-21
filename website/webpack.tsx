@@ -16,6 +16,19 @@ const config: webpack.Configuration = {
 				test: /\.css/i,
 				use: ["style-loader", "css-loader"],
 			},
+			{
+				test: /\.svg/i,
+				use: {
+					loader: "url-loader",
+					options: {
+						name: "[path][name].[ext]",
+					},
+				},
+			},
+			{
+				test: /\.md/i,
+				use: ["html-loader", "md-loader"],
+			},
 		],
 	},
 	resolve: {
@@ -33,26 +46,48 @@ function isWithinDir(dir: string, name: string) {
 }
 
 export class Storage {
-	private compiler?: webpack.Compiler;
+	private compiler: webpack.Compiler;
+	private dir: string;
+	private files: Record<string, string> = {};
 	private runResult?: Promise<webpack.Stats.ToJsonOutput>;
-	constructor(private dir: string) {
+	constructor(dir: string) {
 		if (!path.isAbsolute(dir)) {
 			throw new Error(`path ${dir} is not absolute`);
 		}
+
+		this.dir = path.normalize(dir);
+		this.compiler = webpack({
+			...config,
+			context: this.dir,
+			entry: () => this.files,
+		});
 	}
 
 	private run(): Promise<webpack.Stats.ToJsonOutput> {
 		if (this.compiler === undefined) {
 			throw new Error("this.compiler is not defined");
 		} else if (this.runResult === undefined) {
-			this.runResult = new Promise((resolve, reject) => {
-				this.compiler!.run((err, stats) => {
-					if (err) {
-						reject(err);
-					} else {
-						resolve(stats.toJson());
-					}
-				});
+			this.runResult = new Promise<webpack.Stats.ToJsonOutput>(
+				(resolve, reject) => {
+					setTimeout(() => {
+						this.compiler.run((err, stats) => {
+							if (err) {
+								reject(err);
+							} else {
+								const info = stats.toJson();
+								if (stats.hasErrors()) {
+									reject(info.errors.toString());
+								} else if (stats.hasWarnings()) {
+									console.error(info.warnings);
+								}
+
+								resolve(info);
+							}
+						});
+					}, 50);
+				},
+			).finally(() => {
+				this.runResult = undefined;
 			});
 		}
 
@@ -61,18 +96,15 @@ export class Storage {
 
 	async url(name: string): Promise<string | undefined> {
 		if (!isWithinDir(this.dir, name)) {
-			throw new Error("Attempting to access a file outside the provided directory");
+			throw new Error(
+				"Attempting to access a file outside the provided directory",
+			);
 		}
 
-		name = "./" + path.resolve(this.dir, name).replace(new RegExp("^" + this.dir + "/"), "");
-		if (this.compiler === undefined) {
-			const entry = {[name]: name};
-			this.compiler = webpack({...config, entry, context: this.dir});
-		} else {
-			const entry: Record<string, string> = this.compiler.options.entry as any;
-			entry[name] = name;
-		}
-
+		name = path
+			.resolve(this.dir, name)
+			.replace(new RegExp("^" + this.dir + "/"), "");
+		this.files[name] = "./" + name;
 		const stats = await this.run();
 		let assets = stats.assetsByChunkName![name];
 		if (!Array.isArray(assets)) {
@@ -104,12 +136,11 @@ export function* Page(this: Context, {storage, children}: PageProps) {
 
 //TODO: type script correctly
 export async function Script(this: Context, props: Record<string, any>) {
-	// TODO: use typed contexts
 	const storage: Storage = this.get(StorageKey);
 	if (storage == null) {
 		throw new Error("Storage not found");
 	}
 
 	const src = await storage.url(props.src);
-	return <script {...props} src={"/" + src} />;
+	return <script src={"/" + src} />;
 }
