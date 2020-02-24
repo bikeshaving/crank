@@ -18,7 +18,7 @@ export function upgrade<T>(value: MaybePromiseLike<T>): MaybePromise<T> {
  * A pledge is like a promise, except it runs synchronously if possible.
  *
  * It is not meant to be exposed in APIs; rather, you should unwrap pledges to
- * a MaybePromise by calling Pledge.prototype.execute.
+ * a possible promise by calling Pledge.prototype.execute.
  */
 export class Pledge<T> {
 	constructor(private executor: () => MaybePromiseLike<T>) {}
