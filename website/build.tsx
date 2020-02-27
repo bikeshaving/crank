@@ -1,19 +1,12 @@
 /** @jsx createElement */
-import {Children, createElement, Raw} from "@bikeshaving/crank";
+import {Children, createElement, Element, Raw} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/cjs/html";
 import {Stats} from "fs";
 import * as fs from "fs-extra";
 import * as path from "path";
 import frontmatter from "front-matter";
 import marked from "marked";
-import Typography from "typography";
-// @ts-ignore
-import CodePlugin from "typography-plugin-code";
-// @ts-ignore
-import githubTheme from "typography-theme-github";
-githubTheme.plugins = [new CodePlugin()];
-const typography = new Typography(githubTheme);
-import {Page, Script, Storage} from "./webpack";
+import {Page, Link, Script, Storage} from "./webpack";
 
 interface WalkInfo {
 	filename: string;
@@ -38,6 +31,7 @@ interface DocInfo {
 	filename: string;
 	html: string;
 	title: string;
+	publish: boolean;
 }
 
 async function parseDocs(
@@ -49,7 +43,7 @@ async function parseDocs(
 		if (filename.endsWith(".md")) {
 			const md = await fs.readFile(filename, {encoding: "utf8"});
 			const {
-				attributes: {title},
+				attributes: {title, publish=true},
 				body,
 			} = frontmatter(md);
 			const html = marked(body);
@@ -57,7 +51,7 @@ async function parseDocs(
 				.relative(root, filename)
 				.replace(/\.md$/, "")
 				.replace(/[0-9]+-/, "");
-			docs.push({url, filename, html, title});
+			docs.push({url, filename, html, title, publish});
 		}
 	}
 
@@ -65,57 +59,121 @@ async function parseDocs(
 }
 
 const storage = new Storage(path.join(__dirname, "src"));
+interface RootProps {
+	title: string;
+	children: Children;
+}
+
 // TODO: I wonder if we can do some kind of slot-based or includes API
-function Root({head, children}: {head: Children; children: Children}) {
+function Root({title, children}: RootProps): Element {
 	return (
-		<Page storage={storage}>
+		<html lang="en">
 			<Raw value="<!DOCTYPE html>" />
-			<html lang="en">
+			<Page storage={storage}>
 				<head>
-					<meta charset="utf-8" />
-					<meta
-						name="viewport"
-						content="width=device-width, initial-scale=1.0"
-					/>
-					{head}
-					<style>
-						<Raw value={typography.createStyles()} />
-					</style>
+					<meta charset="UTF-8" />
+					<title>{title}</title>
+					<Link rel="stylesheet" type="text/css" href="index.css" />
+
+					<link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" />
+					<link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/4.0.0/github-markdown.min.css" />
 				</head>
-				<body>{children}</body>
-				<Script src="index.tsx" />
-			</html>
-		</Page>
+				<body>
+					<Navbar />
+					<div class="main">{children}</div>
+					<Script src="index.tsx" />
+				</body>
+			</Page>
+		</html>
 	);
 }
 
-interface HomeProps {
+function Navbar(): Element {
+	return (
+		<div class="navbar-background markdown-body">
+			<header class="navbar">
+				<div class="navbar-group">
+					<div class="navbar-item">
+						<a href="/">Crank.js</a>
+					</div>
+					<div class="navbar-item">
+						<a href="/guides/getting-started">Docs</a>
+					</div>
+					<div class="navbar-item">
+						<a href="/blog/">Blog</a>
+					</div>
+				</div>
+				<div class="navbar-group">
+					<div class="navbar-item">
+						<a href="https://github.com/brainkim/crank">Github</a>
+					</div>
+					<div class="navbar-item">
+						<a href="http://npm.im/@bikeshaving/crank">NPM</a>
+					</div>
+				</div>
+			</header>
+		</div>
+	);
+}
+
+
+interface SidebarProps {
 	docs: Array<DocInfo>;
 }
 
-function Home({docs}: HomeProps) {
-	const links = docs.map((doc) => (
-		<div>
-			<a href={doc.url}>{doc.title}</a>
-		</div>
-	));
+function Sidebar({docs}: SidebarProps): Element {
+	const links: Array<Element> = [];
+	for (const doc of docs) {
+		if (doc.publish) {
+			links.push(
+				<div class="sidebar-item">
+					<a href={path.join("/guides", doc.url)}>{doc.title}</a>
+				</div>
+			);
+		}
+	}
+
+	return <div class="sidebar markdown-body">{links}</div>
+}
+
+interface PageProps {
+	docs: Array<DocInfo>;
+}
+
+function Home({docs}: PageProps): Element {
 	return (
-		<Root head={<title>Crank.js</title>}>
-			<div>{links}</div>
+		<Root title="Crank.js">
+			<h1>Crank.js</h1>
 		</Root>
 	);
 }
 
-interface DocProps {
-	html: string;
-	title: string;
+function Blog({title, docs, html}: DocProps): Element {
+	return (
+		<Root title={`Crank.js | ${title}`}>
+			<Sidebar docs={docs} />
+			<div class="content markdown-body">
+				<h1>{title}</h1>
+				<Raw value={html} />
+			</div>
+		</Root>
+	);
 }
 
-function Doc({title, html}: DocProps) {
+interface DocProps extends PageProps {
+	html: string;
+	title: string;
+	docs: Array<DocInfo>;
+}
+
+function Doc({title, html, docs}: DocProps): Element {
 	return (
-		<Root head={<title>Crank.js | {title}</title>}>
-			<h1>{title}</h1>
-			<Raw value={html} />
+		<Root title={`Crank.js | ${title}`}>
+			<Sidebar docs={docs} />
+			<div class="content markdown-body">	
+				<h1>{title}</h1>
+				<Raw value={html} />
+			</div>
 		</Root>
 	);
 }
@@ -125,17 +183,36 @@ function Doc({title, html}: DocProps) {
 	await fs.ensureDir(dist);
 	await fs.emptyDir(dist);
 	const docs = await parseDocs(path.join(__dirname, "./docs"));
+	const posts = await parseDocs(path.join(__dirname, "./blog"));
 	const home = await renderer.renderToString(<Home docs={docs} />);
 	await fs.writeFile(path.join(dist, "./index.html"), home);
+	await fs.ensureDir(path.join(dist, "blog"));
 	await Promise.all(
-		docs.map(async (doc) => {
-			const filename = path.join(dist, doc.url + ".html");
+		posts.map(async ({title, html, url, publish}) => {
+			if (!publish) {
+				return;
+			}
+
+			const filename = path.join(dist, "posts", url + ".html");
 			await fs.ensureDir(path.dirname(filename));
-			const html = await renderer.renderToString(
-				<Doc title={doc.title} html={doc.html} />,
+			return fs.writeFile(filename, await renderer.renderToString(
+				<Blog title={title} html={html} docs={posts} />
+			));
+		}),
+	);
+	await Promise.all(
+		docs.map(async ({title, html, url, publish}) => {
+			if (!publish) {
+				return;
+			}
+
+			const filename = path.join(dist, "guides", url + ".html");
+			await fs.ensureDir(path.dirname(filename));
+			const file = await renderer.renderToString(
+				<Doc title={title} html={html} docs={docs} />,
 			);
 
-			return fs.writeFile(filename, html);
+			return fs.writeFile(filename, file);
 		}),
 	);
 })();

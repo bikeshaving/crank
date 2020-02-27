@@ -1,17 +1,54 @@
-.editor {
-	width: 70%;
+@import "~prism-themes/themes/prism-ghcolors.css";
+
+.navbar-background {
+	background-color: #f6f8fa;
 }
 
-.preview {
-	width: 30%;
-	padding: 30px;
-}
-
-.playground {
+.navbar {
 	margin: 0 auto;
-	max-width: 1000px;
+	max-width: 1100px;
+	height: 50px;
 	display: flex;
-	flex-direction: row;
-	justify-content: stretch;
-	align-items: stretch;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.navbar-group {
+	display: flex;
+}
+
+.navbar-item {
+	margin: 0 10px;
+}
+
+.navbar-item:first-of-type {
+	margin-left: 0;
+}
+
+.navbar-item:last-of-type {
+	margin-right: 0;
+}
+
+.main {
+	display: flex;
+	flex-wrap: wrap;
+	margin: 20px auto;
+	max-width: 1100px;
+}
+
+.sidebar {
+	font-size: 3em;
+	min-width: 300px;
+	flex-grow: 1;
+	flex-shrink: 0;
+}
+
+.sidebar-item {
+	margin: 10px 0;
+}
+
+.content {
+	min-width: 300px;
+	max-width: 800px;
+	flex-grow: 999;
 }

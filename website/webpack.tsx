@@ -2,9 +2,14 @@
 import path from "path";
 import webpack from "webpack";
 import {Children, Context, createElement, Fragment} from "@bikeshaving/crank";
+import {Repeater} from "@repeaterjs/repeater";
+import MiniCssExtractPlugin from "mini-css-extract-plugin";
 
 const config: webpack.Configuration = {
 	mode: "development",
+	plugins: [
+		new MiniCssExtractPlugin(),
+	],
 	module: {
 		rules: [
 			{
@@ -14,7 +19,7 @@ const config: webpack.Configuration = {
 			},
 			{
 				test: /\.css/i,
-				use: ["style-loader", "css-loader"],
+				use: [MiniCssExtractPlugin.loader, "css-loader"],
 			},
 			{
 				test: /\.svg/i,
@@ -49,6 +54,7 @@ export class Storage {
 	private compiler: webpack.Compiler;
 	private dir: string;
 	private files: Record<string, string> = {};
+	private iterator?: AsyncGenerator<webpack.Stats.ToJsonOutput>;
 	private runResult?: Promise<webpack.Stats.ToJsonOutput>;
 	constructor(dir: string) {
 		if (!path.isAbsolute(dir)) {
@@ -64,9 +70,7 @@ export class Storage {
 	}
 
 	private run(): Promise<webpack.Stats.ToJsonOutput> {
-		if (this.compiler === undefined) {
-			throw new Error("this.compiler is not defined");
-		} else if (this.runResult === undefined) {
+		if (this.runResult === undefined) {
 			this.runResult = new Promise<webpack.Stats.ToJsonOutput>(
 				(resolve, reject) => {
 					setTimeout(() => {
@@ -94,7 +98,52 @@ export class Storage {
 		return this.runResult;
 	}
 
-	async url(name: string): Promise<string | undefined> {
+	private run1(): Promise<webpack.Stats.ToJsonOutput> {
+		if (this.runResult === undefined) {
+			if (this.iterator === undefined) {
+				this.iterator = this.watch();
+			}
+
+			this.runResult = new Promise((resolve) => setTimeout(resolve, 100))
+				.then(() => this.iterator!.next())
+				.then((iteration) => iteration.value)
+				.finally(() => (this.runResult = undefined));
+		}
+
+		return this.runResult;
+	}
+
+	private watch(): AsyncGenerator<webpack.Stats.ToJsonOutput> {
+		return new Repeater(async (push, stop) => {
+			let stopped = false;
+			stop.then(() => (stopped = true));
+			let resolve: (stats: webpack.Stats.ToJsonOutput) => unknown;
+			let stats = new Promise<webpack.Stats.ToJsonOutput>(
+				(resolve1) => (resolve = resolve1),
+			); 
+			const watching = this.compiler.watch({}, (err, stats) => {
+				if (err != null) {
+					stop(err);
+					return;
+				}
+
+				console.log("compiled ", new Date());
+				resolve(stats.toJson());
+			});
+
+			while (!stopped) {
+				await push(stats);
+				stats = new Promise<webpack.Stats.ToJsonOutput>(
+					(resolve1) => (resolve = resolve1),
+				);
+				watching.invalidate();
+			}
+
+			return new Promise((resolve) => watching.close(resolve));
+		});
+	}
+
+	async url(name: string, ext: string = ".js"): Promise<string | undefined> {
 		if (!isWithinDir(this.dir, name)) {
 			throw new Error(
 				"Attempting to access a file outside the provided directory",
@@ -104,14 +153,14 @@ export class Storage {
 		name = path
 			.resolve(this.dir, name)
 			.replace(new RegExp("^" + this.dir + "/"), "");
-		this.files[name] = "./" + name;
-		const stats = await this.run();
+		this.files = {...this.files, [name]: "./" + name};
+		const stats = await this.run1();
 		let assets = stats.assetsByChunkName![name];
 		if (!Array.isArray(assets)) {
 			assets = [assets];
 		}
 
-		return assets.find((asset) => /\.js/.test(asset));
+		return "/" + assets.find((asset) => asset && asset.endsWith(ext));
 	}
 }
 
@@ -134,6 +183,16 @@ export function* Page(this: Context, {storage, children}: PageProps) {
 	}
 }
 
+export async function Link(this: Context, props: Record<string, any>) {
+	const storage: Storage = this.get(StorageKey);
+	if (storage == null) {
+		throw new Error("Storage not found");
+	}
+
+	const url = await storage.url(props.href, ".css");
+	return <link rel="stylesheet" href={url} />;
+}
+
 //TODO: type script correctly
 export async function Script(this: Context, props: Record<string, any>) {
 	const storage: Storage = this.get(StorageKey);
@@ -141,6 +200,6 @@ export async function Script(this: Context, props: Record<string, any>) {
 		throw new Error("Storage not found");
 	}
 
-	const src = await storage.url(props.src);
-	return <script src={"/" + src} />;
+	const url = await storage.url(props.src, ".js");
+	return <script src={url} />;
 }
