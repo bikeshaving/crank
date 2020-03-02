@@ -7,9 +7,7 @@ import MiniCssExtractPlugin from "mini-css-extract-plugin";
 
 const config: webpack.Configuration = {
 	mode: "development",
-	plugins: [
-		new MiniCssExtractPlugin(),
-	],
+	plugins: [new MiniCssExtractPlugin()],
 	module: {
 		rules: [
 			{
@@ -120,7 +118,7 @@ export class Storage {
 			let resolve: (stats: webpack.Stats.ToJsonOutput) => unknown;
 			let stats = new Promise<webpack.Stats.ToJsonOutput>(
 				(resolve1) => (resolve = resolve1),
-			); 
+			);
 			const watching = this.compiler.watch({}, (err, stats) => {
 				if (err != null) {
 					stop(err);

@@ -1,5 +1,10 @@
 @import "~prism-themes/themes/prism-ghcolors.css";
 
+.hero {
+	height: 500px;
+	flex-grow: 1;
+}
+
 .navbar-background {
 	background-color: #f6f8fa;
 }
@@ -37,6 +42,7 @@
 }
 
 .sidebar {
+	margin-top: 5px;
 	font-size: 3em;
 	min-width: 300px;
 	flex-grow: 1;

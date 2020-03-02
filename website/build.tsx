@@ -43,7 +43,7 @@ async function parseDocs(
 		if (filename.endsWith(".md")) {
 			const md = await fs.readFile(filename, {encoding: "utf8"});
 			const {
-				attributes: {title, publish=true},
+				attributes: {title, publish = true},
 				body,
 			} = frontmatter(md);
 			const html = marked(body);
@@ -75,8 +75,16 @@ function Root({title, children}: RootProps): Element {
 					<title>{title}</title>
 					<Link rel="stylesheet" type="text/css" href="index.css" />
 
-					<link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" />
-					<link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/4.0.0/github-markdown.min.css" />
+					<link
+						rel="stylesheet"
+						type="text/css"
+						href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css"
+					/>
+					<link
+						rel="stylesheet"
+						type="text/css"
+						href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/4.0.0/github-markdown.min.css"
+					/>
 				</head>
 				<body>
 					<Navbar />
@@ -116,34 +124,50 @@ function Navbar(): Element {
 	);
 }
 
-
 interface SidebarProps {
 	docs: Array<DocInfo>;
+	prefix?: string;
 }
 
-function Sidebar({docs}: SidebarProps): Element {
+function Sidebar({docs, prefix = "/guides"}: SidebarProps): Element {
 	const links: Array<Element> = [];
 	for (const doc of docs) {
 		if (doc.publish) {
 			links.push(
 				<div class="sidebar-item">
-					<a href={path.join("/guides", doc.url)}>{doc.title}</a>
-				</div>
+					<a href={path.join(prefix, doc.url)}>{doc.title}</a>
+				</div>,
 			);
 		}
 	}
 
-	return <div class="sidebar markdown-body">{links}</div>
+	return (
+		<div class="sidebar markdown-body">
+			<h4>Sidebar</h4>
+			{links}
+		</div>
+	);
 }
 
 interface PageProps {
 	docs: Array<DocInfo>;
 }
 
-function Home({docs}: PageProps): Element {
+function Home(): Element {
 	return (
 		<Root title="Crank.js">
-			<h1>Crank.js</h1>
+			<div class="hero">
+				<h1>Crank.js</h1>
+				<p>JSX-driven components with functions, promises and generators.</p>
+			</div>
+		</Root>
+	);
+}
+
+function BlogIndex({docs}: PageProps): Element {
+	return (
+		<Root title="Crank.js | Blog">
+			<Sidebar prefix="/blog" docs={docs} />
 		</Root>
 	);
 }
@@ -170,7 +194,7 @@ function Doc({title, html, docs}: DocProps): Element {
 	return (
 		<Root title={`Crank.js | ${title}`}>
 			<Sidebar docs={docs} />
-			<div class="content markdown-body">	
+			<div class="content markdown-body">
 				<h1>{title}</h1>
 				<Raw value={html} />
 			</div>
@@ -182,23 +206,11 @@ function Doc({title, html, docs}: DocProps): Element {
 	const dist = path.join(__dirname, "./dist");
 	await fs.ensureDir(dist);
 	await fs.emptyDir(dist);
-	const docs = await parseDocs(path.join(__dirname, "./docs"));
+	const docs = await parseDocs(path.join(__dirname, "./guides"));
 	const posts = await parseDocs(path.join(__dirname, "./blog"));
-	const home = await renderer.renderToString(<Home docs={docs} />);
-	await fs.writeFile(path.join(dist, "./index.html"), home);
-	await fs.ensureDir(path.join(dist, "blog"));
-	await Promise.all(
-		posts.map(async ({title, html, url, publish}) => {
-			if (!publish) {
-				return;
-			}
-
-			const filename = path.join(dist, "posts", url + ".html");
-			await fs.ensureDir(path.dirname(filename));
-			return fs.writeFile(filename, await renderer.renderToString(
-				<Blog title={title} html={html} docs={posts} />
-			));
-		}),
+	await fs.writeFile(
+		path.join(dist, "./index.html"),
+		await renderer.renderToString(<Home docs={docs} />),
 	);
 	await Promise.all(
 		docs.map(async ({title, html, url, publish}) => {
@@ -208,11 +220,34 @@ function Doc({title, html, docs}: DocProps): Element {
 
 			const filename = path.join(dist, "guides", url + ".html");
 			await fs.ensureDir(path.dirname(filename));
-			const file = await renderer.renderToString(
-				<Doc title={title} html={html} docs={docs} />,
+			return fs.writeFile(
+				filename,
+				await renderer.renderToString(
+					<Doc title={title} html={html} docs={docs} />,
+				),
 			);
+		}),
+	);
 
-			return fs.writeFile(filename, file);
+	await fs.ensureDir(path.join(dist, "blog"));
+	await fs.writeFile(
+		path.join(dist, "blog/index.html"),
+		await renderer.renderToString(<BlogIndex docs={posts} />),
+	);
+	await Promise.all(
+		posts.map(async ({title, html, url, publish}) => {
+			if (!publish) {
+				return;
+			}
+
+			const filename = path.join(dist, "blog", url + ".html");
+			await fs.ensureDir(path.dirname(filename));
+			return fs.writeFile(
+				filename,
+				await renderer.renderToString(
+					<Blog title={title} html={html} docs={posts} />,
+				),
+			);
 		}),
 	);
 })();

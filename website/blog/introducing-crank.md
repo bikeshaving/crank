@@ -1,4 +1,6 @@
-# Introducing Crank
+---
+title: Introducting Crank
+---
 ## Oh no, not another web framework.
 After months of development, I’m happy to introduce Crank, a new framework for creating JSX-driven components with functions, promises and generators. And I know what you’re thinking: ***oh no, not another web framework.*** There are already so many of them out there (React, Angular, Vue, Ember, Svelte) and each carries a non-negligible cost in terms of learning it and building an ecosystem around it, so it makes sense that you would instinctively reject newcomers if only to avoid the deep sense of exhaustion which has come to be known colloquially amongst frontend developers as “JavaScript fatigue.” Therefore, this post is both an introduction to Crank as well as an apology: I’m sorry for creating yet another framework, and I hope that by explaining the circumstances which led me to do so, you will forgive me.
 
