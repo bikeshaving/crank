@@ -1,5 +1,11 @@
 /** @jsx createElement */
-import {Children, createElement, Element, Raw} from "@bikeshaving/crank";
+import {
+	Children,
+	createElement,
+	Element,
+	Fragment,
+	Raw,
+} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/cjs/html";
 import {Stats} from "fs";
 import * as fs from "fs-extra";
@@ -28,10 +34,11 @@ async function* walk(dir: string): AsyncGenerator<WalkInfo> {
 
 interface DocInfo {
 	url: string;
+	title: string;
 	filename: string;
 	html: string;
-	title: string;
 	publish: boolean;
+	publishDate?: Date;
 }
 
 async function parseDocs(
@@ -42,16 +49,25 @@ async function parseDocs(
 	for await (const {filename} of walk(name)) {
 		if (filename.endsWith(".md")) {
 			const md = await fs.readFile(filename, {encoding: "utf8"});
-			const {
-				attributes: {title, publish = true},
+			let {
+				attributes: {title, publish = true, publishDate},
 				body,
 			} = frontmatter(md);
 			const html = marked(body);
-			const url = path
-				.relative(root, filename)
-				.replace(/\.md$/, "")
-				.replace(/[0-9]+-/, "");
-			docs.push({url, filename, html, title, publish});
+			const urlRoot = path.relative(__dirname, name);
+			const url = path.join(
+				"/",
+				urlRoot,
+				path
+					.relative(root, filename)
+					.replace(/\.md$/, "")
+					.replace(/([0-9]+-)*/, ""),
+			);
+			if (publishDate != null) {
+				publishDate = new Date(publishDate);
+			}
+
+			docs.push({url, filename, html, title, publish, publishDate});
 		}
 	}
 
@@ -64,6 +80,20 @@ interface RootProps {
 	children: Children;
 }
 
+// @ts-ignore
+import Typography from "typography";
+// @ts-ignore
+import CodePlugin from "typography-plugin-code";
+const typo = new Typography({
+	overrideStyles: () => ({
+		a: {
+			color: "#22a2c9",
+			textDecoration: "none",
+		},
+	}),
+	plugins: [new CodePlugin()],
+});
+
 // TODO: I wonder if we can do some kind of slot-based or includes API
 function Root({title, children}: RootProps): Element {
 	return (
@@ -73,18 +103,10 @@ function Root({title, children}: RootProps): Element {
 				<head>
 					<meta charset="UTF-8" />
 					<title>{title}</title>
-					<Link rel="stylesheet" type="text/css" href="index.css" />
-
-					<link
-						rel="stylesheet"
-						type="text/css"
-						href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css"
-					/>
-					<link
-						rel="stylesheet"
-						type="text/css"
-						href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/4.0.0/github-markdown.min.css"
-					/>
+					<Link rel="stylesheet" type="text/css" href="./index.css" />
+					<style>
+						<Raw value={typo.toString()} />
+					</style>
 				</head>
 				<body>
 					<Navbar />
@@ -98,59 +120,56 @@ function Root({title, children}: RootProps): Element {
 
 function Navbar(): Element {
 	return (
-		<div class="navbar-background markdown-body">
-			<header class="navbar">
-				<div class="navbar-group">
-					<div class="navbar-item">
-						<a href="/">Crank.js</a>
-					</div>
-					<div class="navbar-item">
-						<a href="/guides/getting-started">Docs</a>
-					</div>
-					<div class="navbar-item">
-						<a href="/blog/">Blog</a>
-					</div>
+		<nav class="navbar">
+			<div class="navbar-group">
+				<div class="navbar-item">
+					<a href="/">Crank.js</a>
 				</div>
-				<div class="navbar-group">
-					<div class="navbar-item">
-						<a href="https://github.com/brainkim/crank">Github</a>
-					</div>
-					<div class="navbar-item">
-						<a href="http://npm.im/@bikeshaving/crank">NPM</a>
-					</div>
+				<div class="navbar-item">
+					<a href="/guides/getting-started">Docs</a>
 				</div>
-			</header>
-		</div>
+				<div class="navbar-item">
+					<a href="/blog/">Blog</a>
+				</div>
+			</div>
+			<div class="navbar-group">
+				<div class="navbar-item">
+					<a href="https://github.com/brainkim/crank">Github</a>
+				</div>
+				<div class="navbar-item">
+					<a href="http://npm.im/@bikeshaving/crank">NPM</a>
+				</div>
+			</div>
+		</nav>
 	);
 }
 
 interface SidebarProps {
 	docs: Array<DocInfo>;
-	prefix?: string;
+	url: string;
+	title: string;
 }
 
-function Sidebar({docs, prefix = "/guides"}: SidebarProps): Element {
+function Sidebar({docs, title, url}: SidebarProps): Element {
 	const links: Array<Element> = [];
 	for (const doc of docs) {
 		if (doc.publish) {
 			links.push(
 				<div class="sidebar-item">
-					<a href={path.join(prefix, doc.url)}>{doc.title}</a>
+					<a href={doc.url} class={doc.url === url ? "current" : ""}>
+						{doc.title}
+					</a>
 				</div>,
 			);
 		}
 	}
 
 	return (
-		<div class="sidebar markdown-body">
-			<h4>Sidebar</h4>
+		<div class="sidebar">
+			<h3>{title}</h3>
 			{links}
 		</div>
 	);
-}
-
-interface PageProps {
-	docs: Array<DocInfo>;
 }
 
 function Home(): Element {
@@ -164,37 +183,102 @@ function Home(): Element {
 	);
 }
 
-function BlogIndex({docs}: PageProps): Element {
+interface BlogContentProps {
+	title: string;
+	html: string;
+	publishDate?: Date;
+}
+
+function BlogContent({title, html, publishDate}: BlogContentProps) {
+	const formattedDate =
+		publishDate &&
+		publishDate.toLocaleString("en-US", {
+			month: "long",
+			year: "numeric",
+			day: "numeric",
+		});
+	return (
+		<Fragment>
+			<h1>{title}</h1>
+			{formattedDate && <p>{formattedDate}</p>}
+			<Raw value={html} />
+		</Fragment>
+	);
+}
+
+interface BlogPreviewProps {
+	docs: Array<DocInfo>;
+}
+
+function BlogPreview({docs}: BlogPreviewProps): Array<Element> {
+	return docs.map((doc) => {
+		let html = doc.html;
+		if (html.match("<!-- truncate -->")) {
+			[html] = html.split("<!-- truncate -->");
+		}
+
+		return (
+			<div class="content">
+				<BlogContent {...doc} html={html} />
+				<div>
+					<a href={doc.url}>Read more…</a>
+				</div>
+			</div>
+		);
+	});
+}
+
+interface BlogIndexPageProps {
+	docs: Array<DocInfo>;
+	url: string;
+}
+
+function BlogIndexPage({docs, url}: BlogIndexPageProps): Element {
 	return (
 		<Root title="Crank.js | Blog">
-			<Sidebar prefix="/blog" docs={docs} />
+			<Sidebar docs={docs} url={url} title="Recent Posts" />
+			<BlogPreview docs={docs} />
 		</Root>
 	);
 }
 
-function Blog({title, docs, html}: DocProps): Element {
+interface BlogPageProps {
+	html: string;
+	title: string;
+	url: string;
+	publishDate?: Date;
+	docs: Array<DocInfo>;
+}
+
+function BlogPage({
+	title,
+	docs,
+	html,
+	publishDate,
+	url,
+}: BlogPageProps): Element {
 	return (
 		<Root title={`Crank.js | ${title}`}>
-			<Sidebar docs={docs} />
-			<div class="content markdown-body">
-				<h1>{title}</h1>
-				<Raw value={html} />
+			<Sidebar docs={docs} url={url} title="Recent Posts" />
+			<div class="content">
+				<BlogContent title={title} html={html} publishDate={publishDate} />
 			</div>
 		</Root>
 	);
 }
 
-interface DocProps extends PageProps {
+interface GuidePageProps {
 	html: string;
 	title: string;
+	url: string;
 	docs: Array<DocInfo>;
 }
 
-function Doc({title, html, docs}: DocProps): Element {
+function GuidePage({title, html, docs, url}: GuidePageProps): Element {
 	return (
 		<Root title={`Crank.js | ${title}`}>
-			<Sidebar docs={docs} />
-			<div class="content markdown-body">
+			<Sidebar docs={docs} url={url} title="Guides" />
+			<div class="content">
 				<h1>{title}</h1>
 				<Raw value={html} />
 			</div>
@@ -206,10 +290,11 @@ function Doc({title, html, docs}: DocProps): Element {
 	const dist = path.join(__dirname, "./dist");
 	await fs.ensureDir(dist);
 	await fs.emptyDir(dist);
-	const docs = await parseDocs(path.join(__dirname, "./guides"));
-	const posts = await parseDocs(path.join(__dirname, "./blog"));
+	const docs = await parseDocs(path.join(__dirname, "guides"));
+	const posts = await parseDocs(path.join(__dirname, "blog"));
+	await fs.copy(path.join(__dirname, "static"), path.join(dist, "static"));
 	await fs.writeFile(
-		path.join(dist, "./index.html"),
+		path.join(dist, "index.html"),
 		await renderer.renderToString(<Home docs={docs} />),
 	);
 	await Promise.all(
@@ -218,12 +303,12 @@ function Doc({title, html, docs}: DocProps): Element {
 				return;
 			}
 
-			const filename = path.join(dist, "guides", url + ".html");
+			const filename = path.join(dist, url + ".html");
 			await fs.ensureDir(path.dirname(filename));
 			return fs.writeFile(
 				filename,
 				await renderer.renderToString(
-					<Doc title={title} html={html} docs={docs} />,
+					<GuidePage title={title} html={html} docs={docs} url={url} />,
 				),
 			);
 		}),
@@ -232,20 +317,26 @@ function Doc({title, html, docs}: DocProps): Element {
 	await fs.ensureDir(path.join(dist, "blog"));
 	await fs.writeFile(
 		path.join(dist, "blog/index.html"),
-		await renderer.renderToString(<BlogIndex docs={posts} />),
+		await renderer.renderToString(<BlogIndexPage docs={posts} url="/blog" />),
 	);
 	await Promise.all(
-		posts.map(async ({title, html, url, publish}) => {
+		posts.map(async ({title, html, url, publish, publishDate}) => {
 			if (!publish) {
 				return;
 			}
 
-			const filename = path.join(dist, "blog", url + ".html");
+			const filename = path.join(dist, url + ".html");
 			await fs.ensureDir(path.dirname(filename));
 			return fs.writeFile(
 				filename,
 				await renderer.renderToString(
-					<Blog title={title} html={html} docs={posts} />,
+					<BlogPage
+						title={title}
+						html={html}
+						docs={posts}
+						url={url}
+						publishDate={publishDate}
+					/>,
 				),
 			);
 		}),

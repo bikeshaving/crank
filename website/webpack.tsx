@@ -78,6 +78,7 @@ export class Storage {
 							} else {
 								const info = stats.toJson();
 								if (stats.hasErrors()) {
+									console.error(info.errors);
 									reject(info.errors.toString());
 								} else if (stats.hasWarnings()) {
 									console.error(info.warnings);

@@ -1,9 +1,10 @@
 ---
 title: Introducting Crank
+publishDate: 2020-03-04T17:04:20
 ---
 ## Oh no, not another web framework.
 After months of development, I’m happy to introduce Crank, a new framework for creating JSX-driven components with functions, promises and generators. And I know what you’re thinking: ***oh no, not another web framework.*** There are already so many of them out there (React, Angular, Vue, Ember, Svelte) and each carries a non-negligible cost in terms of learning it and building an ecosystem around it, so it makes sense that you would instinctively reject newcomers if only to avoid the deep sense of exhaustion which has come to be known colloquially amongst frontend developers as “JavaScript fatigue.” Therefore, this post is both an introduction to Crank as well as an apology: I’m sorry for creating yet another framework, and I hope that by explaining the circumstances which led me to do so, you will forgive me.
-
+<!-- truncate -->
 I will be honest; before embarking on this project I had never made a “web framework” nor even considered myself capable of doing such a thing. I don’t maintain any particularly popular open-source libraries, and most of the early commits to this project had messages like “why on Earth are you doing this?” Before working on Crank, my framework of choice was React, and I had used it dutifully for almost every project within my control since the `React.createClass` days. And as React evolved, I must admit, I was intrigued and excited with the announcement of each new code-named React feature like “Fibers,” “Concurrent Mode,” “Hooks” and “Suspense.” I’d spend hours attempting to decipher tweets from React architect Sebastian Markbage, one of the principal architects behind React, and I sincerely felt like React’s would continue to be relevant well into the next decade.
 
 ![Tweets from Sebastian Markbage](../static/sebmarkbage.png)

@@ -1,21 +1,31 @@
-@import "~prism-themes/themes/prism-ghcolors.css";
+@import "~normalize.css/normalize.css";
+@import "~prism-themes/themes/prism-base16-ateliersulphurpool.light.css";
+
+pre {
+	background-color: #f6f8fa !important;
+}
+
+a.current {
+	color: #5e6687;
+}
 
 .hero {
 	height: 500px;
 	flex-grow: 1;
 }
 
-.navbar-background {
-	background-color: #f6f8fa;
-}
-
 .navbar {
-	margin: 0 auto;
-	max-width: 1100px;
-	height: 50px;
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 3.5rem;
+	background-color: #fff;
+	padding: 1rem 2rem;
+	border-bottom: 1px solid #ccc;
 	display: flex;
-	align-items: center;
 	justify-content: space-between;
+	align-items: center;
 }
 
 .navbar-group {
@@ -23,7 +33,7 @@
 }
 
 .navbar-item {
-	margin: 0 10px;
+	margin: 0 0.5rem;
 }
 
 .navbar-item:first-of-type {
@@ -35,18 +45,18 @@
 }
 
 .main {
-	display: flex;
-	flex-wrap: wrap;
-	margin: 20px auto;
-	max-width: 1100px;
+	padding: 3.5rem 0 0 300px;
 }
 
 .sidebar {
-	margin-top: 5px;
-	font-size: 3em;
-	min-width: 300px;
-	flex-grow: 1;
-	flex-shrink: 0;
+	position: fixed;
+	top: 3.5rem;
+	left: 0;
+	bottom: 0;
+	width: 300px;
+	padding: 2rem;
+	overflow: auto;
+	border-right: 1px solid #ccc;
 }
 
 .sidebar-item {
@@ -54,7 +64,8 @@
 }
 
 .content {
-	min-width: 300px;
-	max-width: 800px;
+	max-width: 720px;
+	margin: 0 auto;
+	padding: 2rem;
 	flex-grow: 999;
 }
