@@ -1,17 +1,47 @@
 @import "~normalize.css/normalize.css";
-@import "~prism-themes/themes/prism-base16-ateliersulphurpool.light.css";
+@import "~highlight.js/styles/mono-blue.css";
 
-pre {
-	background-color: #f6f8fa !important;
+* {
+	box-sizing: border-box;
+}
+
+h1, h2, h3, h4, h5, h6 {
+	margin: 0;
+	margin-bottom: 1em;
+	padding: 0;
+}
+
+h1, h2, h3 {
+	font-family: sans-serif;
+}
+
+p {
+	line-height: 1.4;
+	margin-bottom: 1em;
+}
+
+img {
+	margin: 0 auto 1em;
+	max-width: 100%;
+}
+
+a {
+	color: black;
 }
 
 a.current {
-	color: #5e6687;
+	color: #0048ab;
 }
 
-.hero {
-	height: 500px;
-	flex-grow: 1;
+code {
+	background-color: lightgray;
+	border-radius: 0.2em;
+	padding: 0.1em 0.2em;
+	font-size: 0.8em;
+}
+
+.current {
+	color: black;
 }
 
 .navbar {
@@ -21,7 +51,7 @@ a.current {
 	right: 0;
 	height: 3.5rem;
 	background-color: #fff;
-	padding: 1rem 2rem;
+	padding: 0 2rem;
 	border-bottom: 1px solid #ccc;
 	display: flex;
 	justify-content: space-between;
@@ -44,6 +74,28 @@ a.current {
 	margin-right: 0;
 }
 
+.home {
+	padding: 3.5rem 0 0;
+	margin: 0 auto;
+	max-width: 1200px;
+}
+
+.hero {
+	min-height: 60vh;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+}
+
+.hero h1 {
+	font-size: 2.5rem;
+	margin-bottom: 0.5em;
+}
+
+.hero h2 {
+	font-size: 1.5rem;
+}
+
 .main {
 	padding: 3.5rem 0 0 300px;
 }
@@ -64,8 +116,21 @@ a.current {
 }
 
 .content {
-	max-width: 720px;
+	max-width: 700px;
 	margin: 0 auto;
 	padding: 2rem;
-	flex-grow: 999;
+}
+
+.features {
+	display: flex;
+	justify-content: space-between;
+}
+
+.feature {
+	max-width: 500px;
+	margin-right: 20px;
+}
+
+.feature:last-of-type {
+	margin-right: 0;
 }

@@ -7,7 +7,7 @@ import MiniCssExtractPlugin from "mini-css-extract-plugin";
 
 const config: webpack.Configuration = {
 	mode: "development",
-	plugins: [new MiniCssExtractPlugin()],
+	plugins: [new MiniCssExtractPlugin({filename: "[name].css"})],
 	module: {
 		rules: [
 			{

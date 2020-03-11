@@ -41,6 +41,11 @@ interface DocInfo {
 	publishDate?: Date;
 }
 
+async function parseREADME(name: string): Promise<string> {
+	const md = await fs.readFile(name, {encoding: "utf8"});
+	return marked(md);
+}
+
 async function parseDocs(
 	name: string,
 	root: string = name,
@@ -80,20 +85,6 @@ interface RootProps {
 	children: Children;
 }
 
-// @ts-ignore
-import Typography from "typography";
-// @ts-ignore
-import CodePlugin from "typography-plugin-code";
-const typo = new Typography({
-	overrideStyles: () => ({
-		a: {
-			color: "#22a2c9",
-			textDecoration: "none",
-		},
-	}),
-	plugins: [new CodePlugin()],
-});
-
 // TODO: I wonder if we can do some kind of slot-based or includes API
 function Root({title, children}: RootProps): Element {
 	return (
@@ -104,13 +95,10 @@ function Root({title, children}: RootProps): Element {
 					<meta charset="UTF-8" />
 					<title>{title}</title>
 					<Link rel="stylesheet" type="text/css" href="./index.css" />
-					<style>
-						<Raw value={typo.toString()} />
-					</style>
 				</head>
 				<body>
 					<Navbar />
-					<div class="main">{children}</div>
+					{children}
 					<Script src="index.tsx" />
 				</body>
 			</Page>
@@ -175,9 +163,26 @@ function Sidebar({docs, title, url}: SidebarProps): Element {
 function Home(): Element {
 	return (
 		<Root title="Crank.js">
-			<div class="hero">
-				<h1>Crank.js</h1>
-				<p>JSX-driven components with functions, promises and generators.</p>
+			<div class="home">
+				<header class="hero">
+					<h1>Crank.js</h1>
+					<h2>Write declarative components with functions, generators and promises.</h2>
+					<a href="/guides/getting-started">Get Started</a>
+				</header>
+				<main class="features">
+					<div class="feature">
+						<h3>Declarative components</h3>
+						<p>Crank uses the same JSX syntax and element diffing algorithm popularized by React, so you can write declarative code which looks like HTML directly in your JavaScript. The portability of elements means you can reuse the same code to render DOM nodes on the client and HTML strings on the server.</p>
+					</div>
+					<div class="feature">
+						<h3>Functions and generators</h3>
+						<p>Crank uses functions and generators for components exclusively. No fancy classes, hooks, proxies or template languages are needed, and you can take advantage of the natural lifecycle of generators to write stateful setup, update and teardown logic all in the same scope.</p>
+					</div>
+					<div class="feature">
+						<h3>Promises today</h3>
+						<p>Crank provides first-class support for promises by allowing components to be defined as async functions and generators. You can `await` the rendering of async components just like any other async function, and you can even race renderings to create user interfaces with deferred loading states.</p>
+					</div>
+				</main>
 			</div>
 		</Root>
 	);
@@ -237,7 +242,9 @@ function BlogIndexPage({docs, url}: BlogIndexPageProps): Element {
 	return (
 		<Root title="Crank.js | Blog">
 			<Sidebar docs={docs} url={url} title="Recent Posts" />
-			<BlogPreview docs={docs} />
+			<div class="main">
+				<BlogPreview docs={docs} />
+			</div>
 		</Root>
 	);
 }
@@ -260,8 +267,10 @@ function BlogPage({
 	return (
 		<Root title={`Crank.js | ${title}`}>
 			<Sidebar docs={docs} url={url} title="Recent Posts" />
-			<div class="content">
-				<BlogContent title={title} html={html} publishDate={publishDate} />
+			<div class="main">
+				<div class="content">
+					<BlogContent title={title} html={html} publishDate={publishDate} />
+				</div>
 			</div>
 		</Root>
 	);
@@ -278,9 +287,11 @@ function GuidePage({title, html, docs, url}: GuidePageProps): Element {
 	return (
 		<Root title={`Crank.js | ${title}`}>
 			<Sidebar docs={docs} url={url} title="Guides" />
-			<div class="content">
-				<h1>{title}</h1>
-				<Raw value={html} />
+			<div class="main">
+				<div class="content">
+					<h1>{title}</h1>
+					<Raw value={html} />
+				</div>
 			</div>
 		</Root>
 	);
@@ -295,7 +306,7 @@ function GuidePage({title, html, docs, url}: GuidePageProps): Element {
 	await fs.copy(path.join(__dirname, "static"), path.join(dist, "static"));
 	await fs.writeFile(
 		path.join(dist, "index.html"),
-		await renderer.renderToString(<Home docs={docs} />),
+		await renderer.renderToString(<Home />),
 	);
 	await Promise.all(
 		docs.map(async ({title, html, url, publish}) => {
