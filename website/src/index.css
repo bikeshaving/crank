@@ -1,8 +1,99 @@
 @import "~normalize.css/normalize.css";
-@import "~highlight.js/styles/mono-blue.css";
+
+/*********************************************************
+ * Prism.js theming
+ */
+pre {
+	padding: .8em;
+	color: #0b2f5b;
+	background: #f0f8ff;
+	margin: 0 0 2em;
+	overflow: auto;
+}
+
+code {
+	font-size: .9em;
+	color: #0b2f5b;
+	background: #f0f8ff;
+}
+
+:not(pre) > code {
+	display: inline-block;
+	padding: 0 .2em;
+	margin: 0 .1em;
+}
+
+/*********************************************************
+ * Tokens
+ */
+.namespace {
+	opacity: .7;
+}
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+	color: #aaaaaa;
+}
+.token.punctuation {
+	color: #6699cc;
+}
+.token.property,
+.token.tag,
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol,
+.token.deleted {
+	color: #3399ff;
+}
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted {
+	color: #0b2f5b;
+}
+.token.operator,
+.token.entity,
+.token.url,
+.language-css .token.string,
+.style .token.string {
+	color: #6699cc;
+}
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+	color: #d2691e;
+}
+.token.function {
+	color: #1f75fe;
+}
+.token.regex,
+.token.important,
+.token.variable {
+	color: #2081f9;
+}
+.token.important,
+.token.bold {
+	font-weight: bold;
+}
+.token.italic {
+	font-style: italic;
+}
+.token.entity {
+	cursor: help;
+}
 
 * {
 	box-sizing: border-box;
+}
+
+body {
+	background-color: #2e63bf;
+	color: #f0f8ff;
+	font-family: sans-serif;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -11,63 +102,70 @@ h1, h2, h3, h4, h5, h6 {
 	padding: 0;
 }
 
-h1, h2, h3 {
-	font-family: sans-serif;
-}
-
 p {
 	line-height: 1.4;
 	margin-bottom: 1em;
 }
 
 img {
-	margin: 0 auto 1em;
+	margin-bottom: 1em;
 	max-width: 100%;
+	background: #f0f8ff;
+}
+
+blockquote {
+	border-left: 2px solid #ffd080;
+	margin: 0 0 1em;
+	padding: 0 0 0 .8em;
+}
+
+blockquote p {
+	margin: 0;
 }
 
 a {
-	color: black;
+	color: inherit;
 }
 
 a.current {
-	color: #0048ab;
+	color: #ffd080;
 }
 
-code {
-	background-color: lightgray;
-	border-radius: 0.2em;
-	padding: 0.1em 0.2em;
-	font-size: 0.8em;
-}
-
-.current {
-	color: black;
+li {
+	margin: 0 0 1em;
 }
 
 .navbar {
 	position: fixed;
+	z-index: 100;
 	top: 0;
 	left: 0;
 	right: 0;
 	height: 3.5rem;
-	background-color: #fff;
+	background-color: inherit;
 	padding: 0 2rem;
-	border-bottom: 1px solid #ccc;
+	border-bottom: 1px solid #f0f8ff;
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	overflow-y: auto;
+}
+
+.navbar a {
+	text-decoration: none;
 }
 
 .navbar-group {
 	display: flex;
+	margin-right: 1rem;
+}
+
+.navbar-group:last-of-type {
+	margin-right: 0;
 }
 
 .navbar-item {
-	margin: 0 0.5rem;
-}
-
-.navbar-item:first-of-type {
-	margin-left: 0;
+	margin-right: 1rem;
 }
 
 .navbar-item:last-of-type {
@@ -75,13 +173,14 @@ code {
 }
 
 .home {
-	padding: 3.5rem 0 0;
+	box-sizing: content-box;
+	padding: 3.5rem 1rem 0;
 	margin: 0 auto;
 	max-width: 1200px;
 }
 
 .hero {
-	min-height: 60vh;
+	min-height: 50vh;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
@@ -89,11 +188,21 @@ code {
 
 .hero h1 {
 	font-size: 2.5rem;
-	margin-bottom: 0.5em;
+	margin-bottom: .5em;
+	color: #ffd080;
 }
 
 .hero h2 {
 	font-size: 1.5rem;
+	margin-bottom: 1em;
+}
+
+.hero a {
+	font-size: 1.25rem;
+	color: #ffd080;
+	border: 1px solid #ffd080;
+	text-decoration: none;
+	padding: 0.4rem;
 }
 
 .main {
@@ -103,20 +212,31 @@ code {
 .sidebar {
 	position: fixed;
 	top: 3.5rem;
+	background-color: inherit;
+	z-index: 100;
 	left: 0;
 	bottom: 0;
 	width: 300px;
 	padding: 2rem;
-	overflow: auto;
-	border-right: 1px solid #ccc;
+	overflow-x: hidden;
+	overflow-y: auto;
+	border-right: 1px solid #f0f8ff;
+}
+
+.sidebar h3 {
+	color: #ffd080;
 }
 
 .sidebar-item {
 	margin: 10px 0;
 }
 
+.sidebar a {
+	text-decoration: none;
+}
+
 .content {
-	max-width: 700px;
+	max-width: 800px;
 	margin: 0 auto;
 	padding: 2rem;
 }
@@ -126,11 +246,16 @@ code {
 	justify-content: space-between;
 }
 
+.features h3 {
+	color: #ffd080;
+}
+
 .feature {
 	max-width: 500px;
-	margin-right: 20px;
+	margin-right: 1rem;
 }
 
 .feature:last-of-type {
 	margin-right: 0;
 }
+

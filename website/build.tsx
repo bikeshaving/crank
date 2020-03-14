@@ -111,7 +111,7 @@ function Navbar(): Element {
 		<nav class="navbar">
 			<div class="navbar-group">
 				<div class="navbar-item">
-					<a href="/">Crank.js</a>
+					<a class="current" href="/">Crank.js</a>
 				</div>
 				<div class="navbar-item">
 					<a href="/guides/getting-started">Docs</a>
@@ -165,22 +165,24 @@ function Home(): Element {
 		<Root title="Crank.js">
 			<div class="home">
 				<header class="hero">
-					<h1>Crank.js</h1>
-					<h2>Write declarative components with functions, generators and promises.</h2>
-					<a href="/guides/getting-started">Get Started</a>
+					<div>
+						<h1>Crank.js</h1>
+						<h2>Write JSX-driven components with functions, promises and generators.</h2>
+						<a href="/guides/getting-started">Get Started</a>
+					</div>
 				</header>
 				<main class="features">
 					<div class="feature">
 						<h3>Declarative components</h3>
-						<p>Crank uses the same JSX syntax and element diffing algorithm popularized by React, so you can write declarative code which looks like HTML directly in your JavaScript. The portability of elements means you can reuse the same code to render DOM nodes on the client and HTML strings on the server.</p>
+						<p>Crank uses the same JSX syntax and diffing algorithm popularized by React, allowing you to write HTML-like, declarative code directly in your JavaScript.</p>
 					</div>
 					<div class="feature">
 						<h3>Functions and generators</h3>
-						<p>Crank uses functions and generators for components exclusively. No fancy classes, hooks, proxies or template languages are needed, and you can take advantage of the natural lifecycle of generators to write stateful setup, update and teardown logic all in the same scope.</p>
+							<p>No classes, hooks, proxies or template languages are needed. Stateless components are functions and stateful components are generator functions.</p>
 					</div>
 					<div class="feature">
 						<h3>Promises today</h3>
-						<p>Crank provides first-class support for promises by allowing components to be defined as async functions and generators. You can `await` the rendering of async components just like any other async function, and you can even race renderings to create user interfaces with deferred loading states.</p>
+						<p>Crank provides first-class support for promises. You can use async/await directly in your components, and race components to display fallback UIs.</p>
 					</div>
 				</main>
 			</div>
