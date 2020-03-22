@@ -41,11 +41,6 @@ interface DocInfo {
 	publishDate?: Date;
 }
 
-async function parseREADME(name: string): Promise<string> {
-	const md = await fs.readFile(name, {encoding: "utf8"});
-	return marked(md);
-}
-
 async function parseDocs(
 	name: string,
 	root: string = name,
@@ -83,10 +78,11 @@ const storage = new Storage(path.join(__dirname, "src"));
 interface RootProps {
 	title: string;
 	children: Children;
+	url: string;
 }
 
 // TODO: I wonder if we can do some kind of slot-based or includes API
-function Root({title, children}: RootProps): Element {
+function Root({title, children, url}: RootProps): Element {
 	return (
 		<html lang="en">
 			<Raw value="<!DOCTYPE html>" />
@@ -97,7 +93,7 @@ function Root({title, children}: RootProps): Element {
 					<Link rel="stylesheet" type="text/css" href="./index.css" />
 				</head>
 				<body>
-					<Navbar />
+					<Navbar url={url} />
 					{children}
 					<Script src="index.tsx" />
 				</body>
@@ -106,18 +102,31 @@ function Root({title, children}: RootProps): Element {
 	);
 }
 
-function Navbar(): Element {
+interface NavbarProps {
+	url: string;
+}
+
+function Navbar({url}: NavbarProps): Element {
 	return (
-		<nav class="navbar">
+		<nav id="navbar" class="navbar">
 			<div class="navbar-group">
 				<div class="navbar-item">
-					<a class="current" href="/">Crank.js</a>
+					<a class={url === "/" && "current"} href="/">
+						Crank.js
+					</a>
 				</div>
 				<div class="navbar-item">
-					<a href="/guides/getting-started">Docs</a>
+					<a
+						class={url.startsWith("/guides") && "current"}
+						href="/guides/getting-started"
+					>
+						Docs
+					</a>
 				</div>
 				<div class="navbar-item">
-					<a href="/blog/">Blog</a>
+					<a class={url.startsWith("/blog") && "current"} href="/blog/">
+						Blog
+					</a>
 				</div>
 			</div>
 			<div class="navbar-group">
@@ -153,7 +162,7 @@ function Sidebar({docs, title, url}: SidebarProps): Element {
 	}
 
 	return (
-		<div class="sidebar">
+		<div id="sidebar" class="sidebar">
 			<h3>{title}</h3>
 			{links}
 		</div>
@@ -162,27 +171,42 @@ function Sidebar({docs, title, url}: SidebarProps): Element {
 
 function Home(): Element {
 	return (
-		<Root title="Crank.js">
+		<Root title="Crank.js" url="/">
 			<div class="home">
 				<header class="hero">
 					<div>
 						<h1>Crank.js</h1>
-						<h2>Write JSX-driven components with functions, promises and generators.</h2>
+						<h2>
+							Write JSX-driven components with functions, promises and
+							generators.
+						</h2>
 						<a href="/guides/getting-started">Get Started</a>
 					</div>
 				</header>
 				<main class="features">
 					<div class="feature">
 						<h3>Declarative components</h3>
-						<p>Crank uses the same JSX syntax and diffing algorithm popularized by React, allowing you to write HTML-like, declarative code directly in your JavaScript.</p>
+						<p>
+							Crank uses the same JSX syntax and diffing algorithm popularized
+							by React, allowing you to write HTML-like, declarative code
+							directly in your JavaScript.
+						</p>
 					</div>
 					<div class="feature">
 						<h3>Functions and generators</h3>
-							<p>No classes, hooks, proxies or template languages are needed. Stateless components are functions and stateful components are generator functions.</p>
+						<p>
+							No classes, hooks, proxies or template languages are needed.
+							Stateless components are functions and stateful components are
+							generator functions.
+						</p>
 					</div>
 					<div class="feature">
 						<h3>Promises today</h3>
-						<p>Crank provides first-class support for promises. You can use async/await directly in your components, and race components to display fallback UIs.</p>
+						<p>
+							Crank provides first-class support for promises. You can use
+							async/await directly in your components, and race components to
+							display fallback UIs.
+						</p>
 					</div>
 				</main>
 			</div>
@@ -242,7 +266,7 @@ interface BlogIndexPageProps {
 
 function BlogIndexPage({docs, url}: BlogIndexPageProps): Element {
 	return (
-		<Root title="Crank.js | Blog">
+		<Root title="Crank.js | Blog" url={url}>
 			<Sidebar docs={docs} url={url} title="Recent Posts" />
 			<div class="main">
 				<BlogPreview docs={docs} />
@@ -267,7 +291,7 @@ function BlogPage({
 	url,
 }: BlogPageProps): Element {
 	return (
-		<Root title={`Crank.js | ${title}`}>
+		<Root title={`Crank.js | ${title}`} url={url}>
 			<Sidebar docs={docs} url={url} title="Recent Posts" />
 			<div class="main">
 				<div class="content">
@@ -287,7 +311,7 @@ interface GuidePageProps {
 
 function GuidePage({title, html, docs, url}: GuidePageProps): Element {
 	return (
-		<Root title={`Crank.js | ${title}`}>
+		<Root title={`Crank.js | ${title}`} url={url}>
 			<Sidebar docs={docs} url={url} title="Guides" />
 			<div class="main">
 				<div class="content">

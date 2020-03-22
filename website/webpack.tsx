@@ -4,6 +4,10 @@ import webpack from "webpack";
 import {Children, Context, createElement, Fragment} from "@bikeshaving/crank";
 import {Repeater} from "@repeaterjs/repeater";
 import MiniCssExtractPlugin from "mini-css-extract-plugin";
+// @ts-ignore
+import postcssPresetEnv from "postcss-preset-env";
+// @ts-ignore
+import postcssNested from "postcss-nested";
 
 const config: webpack.Configuration = {
 	mode: "development",
@@ -17,7 +21,21 @@ const config: webpack.Configuration = {
 			},
 			{
 				test: /\.css/i,
-				use: [MiniCssExtractPlugin.loader, "css-loader"],
+				use: [
+					MiniCssExtractPlugin.loader,
+					{
+						loader: "css-loader",
+						options: {
+							importLoaders: 1,
+						},
+					},
+					{
+						loader: "postcss-loader",
+						options: {
+							plugins: [postcssPresetEnv(), postcssNested()],
+						},
+					},
+				],
 			},
 			{
 				test: /\.svg/i,
@@ -87,7 +105,7 @@ export class Storage {
 								resolve(info);
 							}
 						});
-					}, 50);
+					});
 				},
 			).finally(() => {
 				this.runResult = undefined;
@@ -121,13 +139,21 @@ export class Storage {
 				(resolve1) => (resolve = resolve1),
 			);
 			const watching = this.compiler.watch({}, (err, stats) => {
-				if (err != null) {
+				if (err) {
 					stop(err);
-					return;
-				}
+				} else {
+					const info = stats.toJson();
+					if (stats.hasErrors()) {
+						console.error(info.errors.toString());
+						stop(info.errors.toString());
+						return;
+					} else if (stats.hasWarnings()) {
+						console.error(info.warnings.toString());
+					}
 
-				console.log("compiled ", new Date());
-				resolve(stats.toJson());
+					console.log("compiled ", new Date());
+					resolve(stats.toJson());
+				}
 			});
 
 			while (!stopped) {

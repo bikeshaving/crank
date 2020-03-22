@@ -1,6 +1,8 @@
 ---
 title: Getting Started
 ---
+
+## Installation
 Crank is available on [NPM](https://npmjs.org/@bikeshaving/crank) in the ESModule and CommonJS formats.
 
 ```shell
@@ -18,7 +20,7 @@ renderer.render(<div id="hello">Hello world</div>, document.body);
 If your environment does not support ESModules (you’ll probably see a message like `SyntaxError: Unexpected token export`), you can import the CommonJS versions of the library like so:
 
 ```jsx
-/* @jsx createElement */
+/** @jsx createElement */
 import {createElement} from "@bikeshaving/crank/cjs";
 import {renderer} from "@bikeshaving/crank/cjs/dom";
 
@@ -28,7 +30,7 @@ renderer.render(<div id="hello">Hello world</div>, document.body);
 ## Key Examples
 ### A Simple Component
 ```jsx
-/* @jsx createElement */
+/** @jsx createElement */
 import {createElement} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
 
@@ -45,7 +47,7 @@ renderer.render(<Greeting />, document.getElementById("app"));
 
 ### A Stateful Component
 ```jsx
-/* @jsx createElement */
+/** @jsx createElement */
 import {createElement} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
 
@@ -71,7 +73,7 @@ renderer.render(<Timer />, document.getElementById("app"));
 
 ### An Async Component
 ```jsx
-/* @jsx createElement */
+/** @jsx createElement */
 import {createElement} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
 
