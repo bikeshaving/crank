@@ -8,9 +8,9 @@ export type Tag = Component | symbol | string;
 
 export type Child = Element | string | number | boolean | null | undefined;
 
-interface NestedChildIterable extends Iterable<Child | NestedChildIterable> {}
+interface ChildIterable extends Iterable<Child | ChildIterable> {}
 
-export type Children = Child | NestedChildIterable;
+export type Children = Child | ChildIterable;
 
 export interface Props {
 	"crank-key"?: unknown;
@@ -173,68 +173,70 @@ class Host<T> {
 	protected lastChild?: Host<T>;
 	protected nextSibling?: Host<T>;
 	protected previousSibling?: Host<T>;
-	protected insertBefore(
-		newHost: Host<T>,
-		refHost: Host<T> | null | undefined,
-	): void {
-		if (refHost == null) {
-			this.appendChild(newHost);
+	protected appendChild(child: Host<T>): void {
+		if (this.lastChild === undefined) {
+			this.firstChild = child;
+			this.lastChild = child;
+			child.previousSibling = undefined;
+			child.nextSibling = undefined;
 		} else {
-			newHost.nextSibling = refHost;
-			if (refHost.previousSibling === undefined) {
-				newHost.previousSibling = undefined;
-				this.firstChild = newHost;
+			child.previousSibling = this.lastChild;
+			child.nextSibling = undefined;
+			this.lastChild.nextSibling = child;
+			this.lastChild = child;
+		}
+	}
+
+	protected insertBefore(
+		child: Host<T>,
+		reference: Host<T> | null | undefined,
+	): void {
+		if (reference == null) {
+			this.appendChild(child);
+		} else {
+			child.nextSibling = reference;
+			if (reference.previousSibling === undefined) {
+				child.previousSibling = undefined;
+				this.firstChild = child;
 			} else {
-				newHost.previousSibling = refHost.previousSibling;
-				refHost.previousSibling.nextSibling = newHost;
+				child.previousSibling = reference.previousSibling;
+				reference.previousSibling.nextSibling = child;
 			}
 
-			refHost.previousSibling = newHost;
+			reference.previousSibling = child;
 		}
 	}
 
-	protected appendChild(link: Host<T>): void {
-		if (this.lastChild === undefined) {
-			this.firstChild = link;
-			this.lastChild = link;
-			link.previousSibling = undefined;
-			link.nextSibling = undefined;
+	protected removeChild(child: Host<T>): void {
+		if (child.previousSibling === undefined) {
+			this.firstChild = child.nextSibling;
 		} else {
-			link.previousSibling = this.lastChild;
-			link.nextSibling = undefined;
-			this.lastChild.nextSibling = link;
-			this.lastChild = link;
+			child.previousSibling.nextSibling = child.nextSibling;
 		}
-	}
 
-	protected removeChild(link: Host<T>): void {
-		if (link.previousSibling === undefined) {
-			this.firstChild = link.nextSibling;
+		if (child.nextSibling === undefined) {
+			this.lastChild = child.previousSibling;
 		} else {
-			link.previousSibling.nextSibling = link.nextSibling;
-		}
-
-		if (link.nextSibling === undefined) {
-			this.lastChild = link.previousSibling;
-		} else {
-			link.nextSibling.previousSibling = link.previousSibling;
+			child.nextSibling.previousSibling = child.previousSibling;
 		}
 	}
 
-	protected replaceChild(newHost: Host<T>, refHost: Host<T>): void {
-		this.insertBefore(newHost, refHost);
-		this.removeChild(refHost);
+	protected replaceChild(child: Host<T>, reference: Host<T>): void {
+		this.insertBefore(child, reference);
+		this.removeChild(reference);
 	}
 
+	// Intrinsic/Component
 	private guest?: Guest;
 	private keyedChildren?: Map<unknown, Host<T>>;
+	// these properties are used when racing components
+	private replacedBy?: Host<T>;
+	private clock = 0;
 	// TODO: maybe create a state enum/union to reduce the number of boolean props
 	private updating = false;
 	private done = false;
 	private unmounted = false;
-	// these properties are used when racing components
-	private replacedBy?: Host<T>;
-	private clock = 0;
+	// TODO: split these out into sepearate classes
 	private iterator?: ChildIterator;
 	private committer?: Iterator<T | undefined>;
 	private intrinsic?: Intrinsic<T>;
@@ -359,8 +361,8 @@ class Host<T> {
 	private scheduled?: Promise<undefined>;
 	private inflight?: Promise<undefined>;
 	private enqueued?: Promise<undefined>;
-	private inflightResult?: Promise<undefined>;
-	private enqueuedResult?: Promise<undefined>;
+	private inflightChildren?: Promise<undefined>;
+	private enqueuedChildren?: Promise<undefined>;
 	private previousResult?: Promise<undefined>;
 	private get previousValue(): MaybePromise<Value<T>> {
 		return Pledge.resolve(this.previousResult)
@@ -448,9 +450,9 @@ class Host<T> {
 
 	private advance(): void {
 		this.inflight = this.enqueued;
-		this.inflightResult = this.enqueuedResult;
+		this.inflightChildren = this.enqueuedChildren;
 		this.enqueued = undefined;
-		this.enqueuedResult = undefined;
+		this.enqueuedChildren = undefined;
 	}
 
 	private run(): MaybePromise<undefined> {
@@ -460,10 +462,10 @@ class Host<T> {
 				this.inflight = pending.finally(() => this.advance());
 			}
 
-			this.inflightResult = result;
-			return this.inflightResult;
+			this.inflightChildren = result;
+			return this.inflightChildren;
 		} else if (this.isAsyncGeneratorComponent) {
-			return this.inflightResult;
+			return this.inflightChildren;
 		} else if (this.enqueued === undefined) {
 			let resolve: (value: MaybePromise<undefined>) => unknown;
 			this.enqueued = this.inflight
@@ -473,10 +475,10 @@ class Host<T> {
 					return pending;
 				})
 				.finally(() => this.advance());
-			this.enqueuedResult = new Promise((resolve1) => (resolve = resolve1));
+			this.enqueuedChildren = new Promise((resolve1) => (resolve = resolve1));
 		}
 
-		return this.enqueuedResult;
+		return this.enqueuedChildren;
 	}
 
 	refresh(): MaybePromise<undefined> {
@@ -784,15 +786,12 @@ class Host<T> {
 		this.committer = undefined;
 		this.iterator = undefined;
 		this.updating = false;
-		this.unmountChildren();
-	}
-
-	unmountChildren(): void {
-		let host = this.firstChild;
-		while (host !== undefined) {
-			// TODO: catch errors
+		for (
+			let host = this.firstChild;
+			host !== undefined;
+			host = host.nextSibling
+		) {
 			host.unmount();
-			host = host.nextSibling;
 		}
 	}
 }
