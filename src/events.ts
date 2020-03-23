@@ -17,7 +17,7 @@ interface EventListenerRecord {
 }
 
 function normalizeOptions(
-	options?: boolean | AddEventListenerOptions,
+	options?: boolean | null | AddEventListenerOptions,
 ): AddEventListenerOptions {
 	let capture = false;
 	let passive: boolean | undefined;

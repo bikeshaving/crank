@@ -32,18 +32,18 @@ export type FunctionComponent = (
 	props: Props,
 ) => MaybePromiseLike<Child>;
 
-export type ComponentIterator =
+export type ChildIterator =
 	| Iterator<Child, any, any>
 	| AsyncIterator<Child, any, any>;
 
-export type ComponentGenerator =
+export type ChildGenerator =
 	| Generator<Child, any, any>
 	| AsyncGenerator<Child, any, any>;
 
 export type GeneratorComponent = (
 	this: Context,
 	props: Props,
-) => ComponentGenerator;
+) => ChildGenerator;
 
 // TODO: component cannot be a union of FunctionComponent | GeneratorComponent
 // because this breaks Function.prototype methods.
@@ -51,7 +51,7 @@ export type GeneratorComponent = (
 export type Component = (
 	this: Context,
 	props: Props,
-) => ComponentGenerator | MaybePromiseLike<Child>;
+) => ChildGenerator | MaybePromiseLike<Child>;
 
 export type Intrinsic<T> = (props: Props) => T | Iterator<T>;
 
@@ -160,50 +160,54 @@ function toGuest(child: Child): Guest {
 	}
 }
 
-class Link {
-	protected parent?: Link;
-	protected firstChild?: Link;
-	protected lastChild?: Link;
-	protected nextSibling?: Link;
-	protected previousSibling?: Link;
-	protected insertBefore(newLink: Link, refLink: Link): void {
-		newLink.nextSibling = refLink;
-		if (refLink.previousSibling === undefined) {
-			newLink.previousSibling = undefined;
-			this.firstChild = newLink;
-		} else {
-			newLink.previousSibling = refLink.previousSibling;
-			refLink.previousSibling.nextSibling = newLink;
-		}
+interface Publication {
+	push(props: Props): unknown;
+	stop(): unknown;
+}
 
-		refLink.previousSibling = newLink;
+type Value<T> = Array<T | string> | T | string | undefined;
+
+class Host<T> {
+	protected parent?: Host<T>;
+	protected firstChild?: Host<T>;
+	protected lastChild?: Host<T>;
+	protected nextSibling?: Host<T>;
+	protected previousSibling?: Host<T>;
+	protected insertBefore(
+		newHost: Host<T>,
+		refHost: Host<T> | null | undefined,
+	): void {
+		if (refHost == null) {
+			this.appendChild(newHost);
+		} else {
+			newHost.nextSibling = refHost;
+			if (refHost.previousSibling === undefined) {
+				newHost.previousSibling = undefined;
+				this.firstChild = newHost;
+			} else {
+				newHost.previousSibling = refHost.previousSibling;
+				refHost.previousSibling.nextSibling = newHost;
+			}
+
+			refHost.previousSibling = newHost;
+		}
 	}
 
-	protected insertAfter(newLink: Link, refLink: Link): void {
-		newLink.previousSibling = refLink;
-		if (refLink.nextSibling === undefined) {
-			newLink.nextSibling = undefined;
-			this.lastChild = newLink;
-		} else {
-			newLink.nextSibling = refLink.nextSibling;
-			refLink.nextSibling.previousSibling = newLink;
-		}
-
-		refLink.nextSibling = newLink;
-	}
-
-	protected appendChild(link: Link): void {
+	protected appendChild(link: Host<T>): void {
 		if (this.lastChild === undefined) {
 			this.firstChild = link;
 			this.lastChild = link;
 			link.previousSibling = undefined;
 			link.nextSibling = undefined;
 		} else {
-			this.insertAfter(link, this.lastChild);
+			link.previousSibling = this.lastChild;
+			link.nextSibling = undefined;
+			this.lastChild.nextSibling = link;
+			this.lastChild = link;
 		}
 	}
 
-	protected removeChild(link: Link): void {
+	protected removeChild(link: Host<T>): void {
 		if (link.previousSibling === undefined) {
 			this.firstChild = link.nextSibling;
 		} else {
@@ -217,26 +221,11 @@ class Link {
 		}
 	}
 
-	protected replaceChild(newLink: Link, refLink: Link): void {
-		this.insertBefore(newLink, refLink);
-		this.removeChild(refLink);
+	protected replaceChild(newHost: Host<T>, refHost: Host<T>): void {
+		this.insertBefore(newHost, refHost);
+		this.removeChild(refHost);
 	}
-}
 
-interface Publication {
-	push(props: Props): unknown;
-	stop(): unknown;
-}
-
-type Value<T> = Array<T | string> | T | string | undefined;
-
-class Host<T> extends Link {
-	// Link properties
-	protected parent?: Host<T>;
-	protected firstChild?: Host<T>;
-	protected lastChild?: Host<T>;
-	protected nextSibling?: Host<T>;
-	protected previousSibling?: Host<T>;
 	private guest?: Guest;
 	private keyedChildren?: Map<unknown, Host<T>>;
 	// TODO: maybe create a state enum/union to reduce the number of boolean props
@@ -246,7 +235,7 @@ class Host<T> extends Link {
 	// these properties are used when racing components
 	private replacedBy?: Host<T>;
 	private clock = 0;
-	private iterator?: ComponentIterator;
+	private iterator?: ChildIterator;
 	private committer?: Iterator<T | undefined>;
 	private intrinsic?: Intrinsic<T>;
 	private provisions?: Map<unknown, any>;
@@ -259,7 +248,6 @@ class Host<T> extends Link {
 		// TODO: Figure out a way to not have to pass in a renderer
 		private renderer: Renderer<T>,
 	) {
-		super();
 		this.parent = parent;
 	}
 
@@ -398,11 +386,10 @@ class Host<T> extends Link {
 						throw err;
 					}
 
-					this.parent.catch(err);
-					return undefined;
+					return this.parent.catch(err);
 				})
-				// type assertion because we (shouldn’t) get a promise of an iterator
-				.execute() as ComponentGenerator | MaybePromise<Child>;
+				// type assertion because we shouldn’t get a promise of an iterator
+				.execute() as ChildGenerator | MaybePromise<Child>;
 			if (isIteratorOrAsyncIterator(value)) {
 				this.iterator = value;
 			} else if (isPromiseLike(value)) {
@@ -425,8 +412,9 @@ class Host<T> extends Link {
 					throw err;
 				}
 
-				this.parent.catch(err);
-				return {value: undefined, done: false};
+				return Pledge.resolve(this.parent.catch(err))
+					.then(() => ({value: undefined, done: true}))
+					.execute();
 			})
 			.execute();
 
@@ -594,7 +582,7 @@ class Host<T> extends Link {
 						if (host.key == null) {
 							this.insertBefore(newHost, host);
 						} else {
-							this.insertAfter(newHost, host);
+							this.insertBefore(newHost, host.nextSibling);
 						}
 					}
 
@@ -605,7 +593,7 @@ class Host<T> extends Link {
 					isNewHost = true;
 				} else if (host.key != null) {
 					const newHost = new Host(this, this.renderer);
-					this.insertAfter(newHost, host);
+					this.insertBefore(newHost, host.nextSibling);
 					host = newHost;
 					isNewHost = true;
 				}
@@ -826,38 +814,32 @@ export class Context<T = any> extends CrankEventTarget {
 
 	// TODO: throw an error if props are pulled multiple times without a yield
 	*[Symbol.iterator](): Generator<Props> {
-		const host = hosts.get(this)!;
 		while (true) {
-			yield host.props!;
+			yield hosts.get(this)!.props!;
 		}
 	}
 
 	// TODO: throw an error if props are pulled multiple times without a yield
 	[Symbol.asyncIterator](): AsyncGenerator<Props> {
-		const host = hosts.get(this)!;
-		return host.subscribe();
+		return hosts.get(this)!.subscribe();
 	}
 
 	// TODO: throw or warn if called on an unmounted component?
 	refresh(): MaybePromise<undefined> {
-		const host = hosts.get(this)!;
-		return host.refresh();
+		return hosts.get(this)!.refresh();
 	}
 
 	// TODO: throw or warn if called on an unmounted component?
 	schedule(): MaybePromise<undefined> {
-		const host = hosts.get(this)!;
-		return host.schedule();
+		return hosts.get(this)!.schedule();
 	}
 
 	get(key: unknown): any {
-		const host = hosts.get(this)!;
-		return host.get(key);
+		return hosts.get(this)!.get(key);
 	}
 
 	set(key: unknown, value: any): void {
-		const host = hosts.get(this)!;
-		return host.set(key, value);
+		return hosts.get(this)!.set(key, value);
 	}
 }
 
@@ -865,12 +847,12 @@ export interface Environment<T> {
 	[Default](tag: string): Intrinsic<T>;
 	[Text]?(text: string): string;
 	[tag: string]: Intrinsic<T>; // Intrinsic<T> | Environment<T>;
-	// TODO: allow symbol index parameters when typescript gets its shit together
 	// [Fragment]: Intrinsic<T>;
 	// [Portal]: Intrinsic<T>;
 	// [Copy]: Intrinsic<T>;
 	// [Raw]: Intrinsic<T>;
 	// [tag: symbol]: Intrinsic<T>;// Intrinsic<T> | Environment<T>;
+	// TODO: allow symbol index parameters when typescript gets its shit together
 }
 
 const defaultEnv: Environment<any> = {
