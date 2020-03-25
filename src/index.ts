@@ -4,7 +4,7 @@ import {isPromiseLike, MaybePromise, MaybePromiseLike, Pledge} from "./pledge";
 
 type NonStringIterable<T> = Iterable<T> & object;
 
-export type Tag = Component | symbol | string;
+export type Tag = Component | string | symbol;
 
 export type Child = Element | string | number | boolean | null | undefined;
 
@@ -36,14 +36,7 @@ export type ChildIterator =
 	| Iterator<Child, any, any>
 	| AsyncIterator<Child, any, any>;
 
-export type ChildGenerator =
-	| Generator<Child, any, any>
-	| AsyncGenerator<Child, any, any>;
-
-export type GeneratorComponent = (
-	this: Context,
-	props: Props,
-) => ChildGenerator;
+export type GeneratorComponent = (this: Context, props: Props) => ChildIterator;
 
 // TODO: component cannot be a union of FunctionComponent | GeneratorComponent
 // because this breaks Function.prototype methods.
@@ -51,7 +44,7 @@ export type GeneratorComponent = (
 export type Component = (
 	this: Context,
 	props: Props,
-) => ChildGenerator | MaybePromiseLike<Child>;
+) => ChildIterator | MaybePromiseLike<Child>;
 
 export type Intrinsic<T> = (props: Props) => T | Iterator<T>;
 
@@ -148,6 +141,11 @@ export function createElement<TTag extends Tag>(
 	return {[ElementSigil]: true, tag, props, key};
 }
 
+interface Publication {
+	push(props: Props): unknown;
+	stop(): unknown;
+}
+
 type Guest = Element | string | undefined;
 
 function toGuest(child: Child): Guest {
@@ -160,19 +158,28 @@ function toGuest(child: Child): Guest {
 	}
 }
 
-interface Publication {
-	push(props: Props): unknown;
-	stop(): unknown;
+function* flattenChildren(children: Children): Iterable<Guest> {
+	if (children == null) {
+		return;
+	} else if (!isNonStringIterable(children)) {
+		yield toGuest(children);
+		return;
+	}
+
+	for (const child of children) {
+		if (isNonStringIterable(child)) {
+			yield createElement(Fragment, null, child);
+		} else {
+			yield toGuest(child);
+		}
+	}
 }
 
-type Value<T> = Array<T | string> | T | string | undefined;
-
-class Host<T> {
-	protected parent?: Host<T>;
-	protected firstChild?: Host<T>;
-	protected lastChild?: Host<T>;
-	protected nextSibling?: Host<T>;
-	protected previousSibling?: Host<T>;
+abstract class Host<T> {
+	protected firstChild: Host<T> | undefined = undefined;
+	protected lastChild: Host<T> | undefined = undefined;
+	protected nextSibling: Host<T> | undefined = undefined;
+	protected previousSibling: Host<T> | undefined = undefined;
 	protected appendChild(child: Host<T>): void {
 		if (this.lastChild === undefined) {
 			this.firstChild = child;
@@ -226,8 +233,52 @@ class Host<T> {
 		this.removeChild(reference);
 	}
 
-	// Intrinsic/Component
-	private guest?: Guest;
+	private cachedChildValues?: Array<T | string>;
+	get childValues(): Array<T | string> {
+		if (this.cachedChildValues !== undefined) {
+			return this.cachedChildValues;
+		}
+
+		let buffer: string | undefined;
+		const childValues: Array<T | string> = [];
+		for (
+			let child = this.firstChild;
+			child != null;
+			child = child.nextSibling
+		) {
+			if (typeof child.value === "string") {
+				buffer = (buffer || "") + child.value;
+			} else if (child.tag !== Portal) {
+				if (buffer !== undefined) {
+					childValues.push(buffer);
+					buffer = undefined;
+				}
+
+				if (child.value === undefined) {
+					childValues.push(...child.childValues);
+				} else {
+					childValues.push(child.value);
+				}
+			}
+		}
+
+		if (buffer !== undefined) {
+			childValues.push(buffer);
+		}
+
+		// TODO: this probably should go somewhere else
+		if (this.ctx !== undefined && typeof this.tag === "function") {
+			// TODO: filter predicate type narrowing is not working
+			this.ctx.delegates = new Set(childValues.filter(isEventTarget) as any);
+		}
+
+		this.cachedChildValues = childValues;
+		return childValues;
+	}
+
+	protected abstract parent: Host<T> | undefined;
+	protected abstract renderer: Renderer<T>;
+	protected abstract guest: Guest | undefined;
 	private keyedChildren?: Map<unknown, Host<T>>;
 	// these properties are used when racing components
 	private replacedBy?: Host<T>;
@@ -239,32 +290,16 @@ class Host<T> {
 	// TODO: split these out into sepearate classes
 	private iterator?: ChildIterator;
 	private committer?: Iterator<T | undefined>;
-	private intrinsic?: Intrinsic<T>;
+	protected intrinsic?: Intrinsic<T>;
 	private provisions?: Map<unknown, any>;
 	private consumers?: Map<unknown, Set<Host<T>>>;
 	private publications?: Set<Publication>;
 	ctx?: Context<T>;
 	value?: T | string;
-	constructor(
-		parent: Host<T> | undefined,
-		// TODO: Figure out a way to not have to pass in a renderer
-		private renderer: Renderer<T>,
-	) {
-		this.parent = parent;
-	}
-
 	// TODO: flatten these instead of storing guest
-	private get tag(): Tag | undefined {
-		return isElement(this.guest) ? this.guest.tag : undefined;
-	}
-
-	private get key(): unknown {
-		return isElement(this.guest) ? this.guest.key : undefined;
-	}
-
-	get props(): Props | undefined {
-		return isElement(this.guest) ? this.guest.props : undefined;
-	}
+	protected tag: Tag | undefined = undefined;
+	protected key: unknown = undefined;
+	props: Props | undefined = undefined;
 
 	get(key: unknown): any {
 		for (let host = this.parent; host !== undefined; host = host.parent) {
@@ -299,72 +334,26 @@ class Host<T> {
 		}
 	}
 
-	private cachedChildValues?: Array<T | string>;
-	get childValues(): Array<T | string> {
-		if (this.cachedChildValues !== undefined) {
-			return this.cachedChildValues;
-		}
-
-		let buffer: string | undefined;
-		const childValues: Array<T | string> = [];
-		for (
-			let host = this.firstChild;
-			host !== undefined;
-			host = host.nextSibling
-		) {
-			if (typeof host.value === "string") {
-				buffer = (buffer || "") + host.value;
-			} else if (host.tag !== Portal) {
-				if (buffer !== undefined) {
-					childValues.push(buffer);
-					buffer = undefined;
-				}
-
-				if (host.value === undefined) {
-					childValues.push(...host.childValues);
-				} else {
-					childValues.push(host.value);
-				}
-			}
-		}
-
-		if (buffer !== undefined) {
-			childValues.push(buffer);
-		}
-
-		if (this.ctx !== undefined && typeof this.tag === "function") {
-			// TODO: filter predicate type narrowing is not working
-			this.ctx.delegates = new Set(childValues.filter(isEventTarget) as any);
-		}
-
-		this.cachedChildValues = childValues;
-		return childValues;
-	}
-
 	update(guest: Guest): MaybePromise<undefined> {
 		this.updating = true;
-		if (this.tag === undefined) {
-			if (isElement(guest)) {
-				this.ctx = new Context(this, this.parent && this.parent.ctx);
-				if (typeof guest.tag !== "function" && guest.tag !== Fragment) {
-					this.intrinsic = this.renderer.intrinsicFor(guest.tag);
-				}
-			}
+		this.guest = guest;
+		if (isElement(guest)) {
+			this.props = guest.props;
 		}
 
-		this.guest = guest;
 		return this.refresh();
 	}
 
 	// TODO: EXPLAIN THIS MADNESS
 	private isAsyncGeneratorComponent = false;
-	private scheduled?: Promise<undefined>;
 	private inflight?: Promise<undefined>;
 	private enqueued?: Promise<undefined>;
 	private inflightChildren?: Promise<undefined>;
 	private enqueuedChildren?: Promise<undefined>;
 	private previousResult?: Promise<undefined>;
-	private get previousValue(): MaybePromise<Value<T>> {
+	private get previousValue(): MaybePromise<
+		Array<T | string> | T | string | undefined
+	> {
 		return Pledge.resolve(this.previousResult)
 			.then(() =>
 				this.childValues.length > 1 ? this.childValues : this.childValues[0],
@@ -391,7 +380,7 @@ class Host<T> {
 					return this.parent.catch(err);
 				})
 				// type assertion because we shouldn’t get a promise of an iterator
-				.execute() as ChildGenerator | MaybePromise<Child>;
+				.execute() as ChildIterator | MaybePromise<Child>;
 			if (isIteratorOrAsyncIterator(value)) {
 				this.iterator = value;
 			} else if (isPromiseLike(value)) {
@@ -481,6 +470,7 @@ class Host<T> {
 		return this.enqueuedChildren;
 	}
 
+	private scheduled?: Promise<undefined>;
 	refresh(): MaybePromise<undefined> {
 		if (this.scheduled !== undefined) {
 			this.scheduled = undefined;
@@ -540,136 +530,105 @@ class Host<T> {
 	private bail?: (result?: Promise<undefined>) => unknown;
 	// TODO: clean up this monster
 	updateChildren(children: Children): MaybePromise<undefined> {
-		let host = this.firstChild;
 		const promises: Promise<undefined>[] = [];
 		let keyedChildren: Map<unknown, Host<T>> | undefined;
-		if (children != null) {
-			if (!isNonStringIterable(children)) {
-				children = [children];
+		let host = this.firstChild;
+		for (const guest of flattenChildren(children)) {
+			let tag: Tag | undefined;
+			let key: unknown;
+			let isNewHost = false;
+			if (isElement(guest)) {
+				tag = guest.tag;
+				key = guest.key;
+				if (keyedChildren !== undefined && keyedChildren.has(key)) {
+					// TODO: warn about a duplicate key
+					key = undefined;
+				}
 			}
 
-			for (let child of children) {
-				if (isNonStringIterable(child)) {
-					child = createElement(Fragment, null, child);
-				}
-
-				const guest = toGuest(child);
-				let tag: Tag | undefined;
-				let key: unknown;
-				let isNewHost = false;
-				if (isElement(guest)) {
-					tag = guest.tag;
-					key = guest.key;
-					if (keyedChildren !== undefined && keyedChildren.has(key)) {
-						// TODO: warn about a duplicate key
-						key = undefined;
-					}
-				}
-
-				if (key != null) {
-					let newHost = this.keyedChildren && this.keyedChildren.get(key);
-					if (newHost === undefined) {
-						newHost = new Host(this, this.renderer);
-						isNewHost = true;
-					} else {
-						this.keyedChildren!.delete(key);
-						if (host !== newHost) {
-							this.removeChild(newHost);
-						}
-					}
-
-					if (host === undefined) {
-						this.appendChild(newHost);
-					} else if (host !== newHost) {
-						if (host.key == null) {
-							this.insertBefore(newHost, host);
-						} else {
-							this.insertBefore(newHost, host.nextSibling);
-						}
-					}
-
-					host = newHost;
-				} else if (host === undefined) {
-					host = new Host(this, this.renderer);
-					this.appendChild(host);
+			if (key != null) {
+				let newHost = this.keyedChildren && this.keyedChildren.get(key);
+				if (newHost === undefined) {
+					newHost = createHost(this, this.renderer, guest);
 					isNewHost = true;
-				} else if (host.key != null) {
-					const newHost = new Host(this, this.renderer);
-					this.insertBefore(newHost, host.nextSibling);
-					host = newHost;
-					isNewHost = true;
+				} else {
+					this.keyedChildren!.delete(key);
+					if (host !== newHost) {
+						this.removeChild(newHost);
+					}
 				}
 
-				if (tag !== Copy) {
-					if (isNewHost || (!host.unmounted && host.tag === tag)) {
-						const updateP = host.update(guest);
-						if (updateP !== undefined) {
-							promises.push(updateP);
-						}
+				if (host === undefined) {
+					this.appendChild(newHost);
+				} else if (host !== newHost) {
+					if (host.key == null) {
+						this.insertBefore(newHost, host);
 					} else {
-						// replace the host with another one
-						const clock = host.clock++;
-						const newHost = new Host(this, this.renderer);
-						newHost.clock = clock;
-						const updateP = newHost.update(guest);
-						if (updateP === undefined) {
-							host.unmount();
-							this.replaceChild(newHost, host);
-							host.replacedBy = newHost;
-						} else {
-							// TODO: unmount only when the host is ready to be replaced
-							host.unmount();
-							promises.push(updateP);
-							const host1 = host;
-							updateP.then(() => {
-								if (host1.replacedBy === undefined) {
-									this.replaceChild(newHost, host1);
-									host1.replacedBy = newHost;
-								} else if (
-									host1.replacedBy.replacedBy === undefined &&
-									host1.replacedBy.clock < newHost.clock
-								) {
-									this.replaceChild(newHost, host1.replacedBy);
-									host1.replacedBy = newHost;
-								}
-							});
-						}
+						this.insertBefore(newHost, host.nextSibling);
 					}
 				}
 
-				if (key !== undefined) {
-					if (keyedChildren === undefined) {
-						keyedChildren = new Map();
-					}
+				host = newHost;
+			} else if (host === undefined) {
+				host = createHost(this, this.renderer, guest);
+				this.appendChild(host);
+				isNewHost = true;
+			} else if (host.key != null) {
+				const newHost = createHost(this, this.renderer, guest);
+				this.insertBefore(newHost, host.nextSibling);
+				host = newHost;
+				isNewHost = true;
+			}
 
-					keyedChildren.set(key, host);
+			if (tag !== Copy) {
+				if (isNewHost || (!host.unmounted && host.tag === tag)) {
+					const updateP = host.update(guest);
+					if (updateP !== undefined) {
+						promises.push(updateP);
+					}
+				} else {
+					// replace the host with another one
+					const clock = host.clock++;
+					const newHost = createHost(this, this.renderer, guest);
+					newHost.clock = clock;
+					const updateP = newHost.update(guest);
+					if (updateP === undefined) {
+						host.unmount();
+						this.replaceChild(newHost, host);
+						host.replacedBy = newHost;
+					} else {
+						// TODO: unmount only when the host is ready to be replaced
+						host.unmount();
+						promises.push(updateP);
+						const host1 = host;
+						updateP.then(() => {
+							if (host1.replacedBy === undefined) {
+								this.replaceChild(newHost, host1);
+								host1.replacedBy = newHost;
+							} else if (
+								host1.replacedBy.replacedBy === undefined &&
+								host1.replacedBy.clock < newHost.clock
+							) {
+								this.replaceChild(newHost, host1.replacedBy);
+								host1.replacedBy = newHost;
+							}
+						});
+					}
+				}
+			}
+
+			if (key !== undefined) {
+				if (keyedChildren === undefined) {
+					keyedChildren = new Map();
 				}
 
-				host = host.nextSibling;
-			}
-		}
-
-		// unmounting excess hosts
-		while (host !== undefined) {
-			if (this.keyedChildren !== undefined && host.key !== undefined) {
-				this.keyedChildren.delete(host.key);
+				keyedChildren.set(key, host);
 			}
 
-			host.unmount();
-			const nextSibling = host.nextSibling;
-			this.removeChild(host);
-			host = nextSibling;
+			host = host.nextSibling;
 		}
 
-		// unmounting keyed hosts
-		if (this.keyedChildren) {
-			for (const host of this.keyedChildren.values()) {
-				// TODO: implement async unmount for keyed hosts
-				host.unmount();
-				this.removeChild(host);
-			}
-		}
-
+		this.unmountExcessChildren(host);
 		this.keyedChildren = keyedChildren;
 		if (promises.length) {
 			const result = Promise.all(promises).then(() => void this.commit()); // void :(
@@ -689,6 +648,29 @@ class Host<T> {
 			}
 
 			this.commit();
+		}
+	}
+
+	unmountExcessChildren(child: Host<T> | undefined): void {
+		// unmounting excess hosts
+		while (child !== undefined) {
+			if (this.keyedChildren !== undefined && child.key !== undefined) {
+				this.keyedChildren.delete(child.key);
+			}
+
+			child.unmount();
+			const nextSibling = child.nextSibling;
+			this.removeChild(child);
+			child = nextSibling;
+		}
+
+		// unmounting excess keyed hosts
+		if (this.keyedChildren) {
+			for (const child of this.keyedChildren.values()) {
+				// TODO: implement async unmount for keyed hosts
+				child.unmount();
+				this.removeChild(child);
+			}
 		}
 	}
 
@@ -796,6 +778,131 @@ class Host<T> {
 	}
 }
 
+class ValueHost<T> extends Host<T> {
+	constructor(
+		protected parent: Host<T>,
+		protected renderer: Renderer<T>,
+		protected guest: string | undefined,
+	) {
+		super();
+		this.value = guest;
+	}
+}
+
+class IntrinsicHost<T> extends Host<T> {
+	protected tag: string | symbol;
+	constructor(
+		protected parent: Host<T> | undefined,
+		protected renderer: Renderer<T>,
+		protected guest: Element<string | symbol>,
+	) {
+		super();
+		this.tag = this.guest.tag;
+		this.key = this.guest.key;
+		this.props = this.guest.props;
+		this.ctx = new Context(this, this.parent && this.parent.ctx);
+		if (guest.tag !== Fragment) {
+			this.intrinsic = this.renderer.intrinsicFor(guest.tag);
+		}
+	}
+}
+
+class ComponentHost<T> extends Host<T> {
+	protected tag: Component;
+	constructor(
+		protected parent: Host<T>,
+		protected renderer: Renderer<T>,
+		protected guest: Element<Component>,
+	) {
+		super();
+		this.tag = this.guest.tag;
+		this.key = this.guest.key;
+		this.props = this.guest.props;
+		this.ctx = new Context(this, this.parent && this.parent.ctx);
+	}
+}
+
+class Host1<T> {
+	protected firstChild: Host1<T> | null = null;
+	protected lastChild: Host1<T> | null = null;
+	protected previousSibling: Host1<T> | null = null;
+	protected nextSibling: Host1<T> | null = null;
+	protected replacedBy: Host1<T> | null = null;
+	protected clock = 0;
+	constructor(
+		public parent: Host1<T> | null = null,
+		public value?: T | string | undefined,
+	) {}
+
+	protected appendChild(child: Host1<T>): void {
+		if (this.lastChild === null) {
+			this.firstChild = child;
+			this.lastChild = child;
+			child.previousSibling = null;
+			child.nextSibling = null;
+		} else {
+			child.previousSibling = this.lastChild;
+			child.nextSibling = null;
+			this.lastChild.nextSibling = child;
+			this.lastChild = child;
+		}
+	}
+
+	protected insertBefore(child: Host1<T>, reference: Host1<T> | null): void {
+		if (reference == null) {
+			this.appendChild(child);
+		} else {
+			child.nextSibling = reference;
+			if (reference.previousSibling === null) {
+				child.previousSibling = null;
+				this.firstChild = child;
+			} else {
+				child.previousSibling = reference.previousSibling;
+				reference.previousSibling.nextSibling = child;
+			}
+
+			reference.previousSibling = child;
+		}
+	}
+
+	protected removeChild(child: Host1<T>): void {
+		if (child.previousSibling === null) {
+			this.firstChild = child.nextSibling;
+		} else {
+			child.previousSibling.nextSibling = child.nextSibling;
+		}
+
+		if (child.nextSibling === null) {
+			this.lastChild = child.previousSibling;
+		} else {
+			child.nextSibling.previousSibling = child.previousSibling;
+		}
+	}
+
+	protected replaceChild(child: Host1<T>, reference: Host1<T>): void {
+		this.insertBefore(child, reference);
+		this.removeChild(reference);
+	}
+}
+
+function createHost<T>(
+	parent: Host<T>,
+	renderer: Renderer<T>,
+	guest: Guest,
+): Host<T> {
+	if (guest === undefined || typeof guest === "string") {
+		return new ValueHost(parent, renderer, guest);
+	} else if (typeof guest.tag === "function") {
+		return new ComponentHost(parent, renderer, guest as Element<Component>);
+	} else {
+		return new IntrinsicHost(
+			parent,
+			renderer,
+			guest as Element<string | symbol>,
+		);
+	}
+}
+
 const hosts = new WeakMap<Context<any>, Host<any>>();
 export class Context<T = any> extends CrankEventTarget {
 	constructor(host: Host<T>, parent?: Context<T>) {
@@ -888,14 +995,14 @@ export function clearFrame(id: any): void {
 
 export class Renderer<T> {
 	private cache = new WeakMap<object, Host<T>>();
-	private getOrCreateRootHost(root?: object): Host<T> {
-		let host: Host<T> | undefined;
-		if (root !== undefined) {
-			host = this.cache.get(root);
-		}
-
+	private getOrCreateRootHost(
+		root: object | undefined,
+		element: Element<Portal>,
+	): Host<T> {
+		let host: Host<T> | undefined =
+			root != null ? this.cache.get(root) : undefined;
 		if (host === undefined) {
-			host = new Host<T>(undefined, this);
+			host = createHost(undefined as any, this, element);
 			if (root !== undefined) {
 				this.cache.set(root, host);
 			}
@@ -949,7 +1056,7 @@ export class Renderer<T> {
 			child = createElement(Portal, {root}, child);
 		}
 
-		const host = this.getOrCreateRootHost(root);
+		const host = this.getOrCreateRootHost(root, child);
 		let p: MaybePromise<void>;
 		if (child == null) {
 			p = host.unmount();
