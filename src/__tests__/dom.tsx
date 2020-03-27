@@ -890,6 +890,29 @@ describe("render", () => {
 		]);
 	});
 
+	test("same key, different tag", () => {
+		renderer.render(
+			<div>
+				<span>0</span>
+				<span crank-key="1">1</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>0</span><span>1</span></div>",
+		);
+		renderer.render(
+			<div>
+				<div crank-key="1">1</div>
+				<span>2</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><div>1</div><span>2</span></div>",
+		);
+	});
+
 	test("raw html", () => {
 		const html = '<span id="raw">Hi</span>';
 		renderer.render(
