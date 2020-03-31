@@ -62,7 +62,7 @@ function updateProps(el: Element, props: Props, newProps: Props): void {
 
 // TODO: improve this algorithm
 // https://stackoverflow.com/questions/59418120/what-is-the-most-efficient-way-to-update-the-childnodes-of-a-dom-node-with-an-ar
-function updateChildren(el: Element, children: (Node | string)[]): void {
+function updateChildren(el: Element, children: Array<Node | string>): void {
 	if (el.childNodes.length === 0) {
 		const fragment = document.createDocumentFragment();
 		for (let child of children) {
@@ -130,18 +130,20 @@ export const env: Environment<Element> = {
 		return function* defaultDOM(this: Context): Generator<Element> {
 			const node = document.createElement(tag);
 			let props: Props = {};
-			let childValues: (string | Element)[] = [];
-			for (const props1 of this) {
-				updateProps(node, props, props1);
+			let nextProps: Props;
+			let children: Array<Element | string> = [];
+			let nextChildren: Array<Element | string>;
+			for ({children: nextChildren, ...nextProps} of this) {
+				updateProps(node, props, nextProps);
+				props = nextProps;
 				if (
-					!("innerHTML" in props1) &&
-					(this.childValues.length > 0 || childValues.length > 0)
+					!("innerHTML" in nextProps) &&
+					(children.length > 0 || nextChildren.length > 0)
 				) {
-					updateChildren(node, this.childValues);
-					childValues = this.childValues;
+					updateChildren(node, nextChildren);
+					children = nextChildren;
 				}
 
-				props = props1;
 				yield node;
 			}
 		};
@@ -160,7 +162,7 @@ export const env: Environment<Element> = {
 		}
 
 		try {
-			for (const {root: newRoot} of this) {
+			for (const {root: newRoot, children} of this) {
 				if (newRoot == null) {
 					throw new TypeError("Portal element is missing root node");
 				}
@@ -170,7 +172,7 @@ export const env: Environment<Element> = {
 					root = newRoot;
 				}
 
-				updateChildren(root, this.childValues);
+				updateChildren(root, children);
 				yield root;
 			}
 		} finally {

@@ -1,12 +1,11 @@
 import {Pledge} from "./pledge";
 import {
 	Child,
-	Context,
 	Default,
 	Environment,
 	Intrinsic,
+	IntrinsicProps,
 	Portal,
-	Props,
 	Renderer,
 	Text,
 } from "./index";
@@ -41,7 +40,7 @@ function printStyle(style: Record<string, string>): string {
 	return cssStrings.join("");
 }
 
-function printAttrs(props: Props): string {
+function printAttrs(props: IntrinsicProps<string>): string {
 	const attrs: string[] = [];
 	for (const [name, value] of Object.entries(props)) {
 		switch (true) {
@@ -87,7 +86,7 @@ const voidTags = new Set([
 
 export const env: Environment<string> = {
 	[Default](tag: string): Intrinsic<string> {
-		return function defaultString(this: Context, props: Props): string {
+		return function defaultString(props: IntrinsicProps<string>): string {
 			const attrs = printAttrs(props);
 			const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
 			if (voidTags.has(tag)) {
@@ -99,14 +98,14 @@ export const env: Environment<string> = {
 				return `${open}${props["innerHTML"]}${close}`;
 			}
 
-			return `${open}${this.childValues.join("")}${close}`;
+			return `${open}${props.children.join("")}${close}`;
 		};
 	},
 	[Text](text: string): string {
 		return escapeText(text);
 	},
-	[Portal](this: Context): string {
-		return this.childValues.join("");
+	[Portal]({children}): string {
+		return children.join("");
 	},
 };
 
