@@ -180,7 +180,25 @@ function* flatten(children: Children): Generator<Guest> {
 	}
 }
 
+const Initial = 0;
+type Initial = typeof Initial;
+
+const Waiting = 1;
+type Waiting = typeof Waiting;
+
+const Updating = 2;
+type Updating = typeof Updating;
+
+const Finished = 3;
+type Finished = typeof Finished;
+
+const Unmounted = 4;
+type Unmounted = typeof Unmounted;
+
+type HostState = Initial | Waiting | Updating | Finished | Unmounted;
+
 abstract class Host<T> {
+	state: HostState = Initial;
 	protected firstChild: Host<T> | undefined = undefined;
 	protected lastChild: Host<T> | undefined = undefined;
 	protected nextSibling: Host<T> | undefined = undefined;
@@ -251,10 +269,6 @@ abstract class Host<T> {
 	// these properties are used when racing components
 	private replacedBy?: Host<T>;
 	private clock = 0;
-	// TODO: maybe create a state enum/union to reduce the number of boolean props
-	private updating = false;
-	private done = false;
-	private unmounted = false;
 	// TODO: split these out into sepearate classes
 	// ComponentHost only
 	private iterator?: ChildIterator;
@@ -268,7 +282,7 @@ abstract class Host<T> {
 	protected key: unknown = undefined;
 	props: Record<string, any> | undefined = undefined;
 	update(guest: Guest): MaybePromise<undefined> {
-		this.updating = true;
+		this.state = this.state < Updating ? Updating : this.state;
 		this.guest = guest;
 		if (isElement(guest)) {
 			this.props = guest.props;
@@ -332,7 +346,7 @@ abstract class Host<T> {
 				const result = this.updateChildren(value);
 				return [undefined, result];
 			}
-		} else if (this.done) {
+		} else if (this.state >= Finished) {
 			return [undefined, undefined];
 		}
 
@@ -352,7 +366,7 @@ abstract class Host<T> {
 			this.isAsyncGeneratorComponent = true;
 			const pending = iteration.then((iteration) => {
 				if (iteration.done) {
-					this.done = true;
+					this.state = this.state < Finished ? Finished : this.state;
 				} else {
 					// TODO: replace this with this.schedule
 					setFrame(() => this.run());
@@ -368,7 +382,7 @@ abstract class Host<T> {
 			return [pending, result];
 		} else {
 			if (iteration.done) {
-				this.done = true;
+				this.state = this.state < Finished ? Finished : this.state;
 			}
 
 			const result = this.updateChildren(iteration.value);
@@ -418,7 +432,7 @@ abstract class Host<T> {
 			this.scheduled = undefined;
 		}
 
-		if (this.unmounted) {
+		if (this.state === Unmounted) {
 			return;
 		} else if (this.tag !== undefined) {
 			if (this.publications !== undefined) {
@@ -439,7 +453,6 @@ abstract class Host<T> {
 		}
 	}
 
-	// ComponentHost only
 	schedule(): Promise<undefined> {
 		if (this.scheduled === undefined) {
 			this.scheduled = new Promise((resolve) => {
@@ -472,17 +485,18 @@ abstract class Host<T> {
 		}, new SlidingBuffer(1));
 	}
 
-	private bail: ((result?: Promise<undefined>) => unknown) | undefined;
+	private bail:
+		| ((result?: Promise<undefined>) => unknown)
+		| undefined = undefined;
 	// TODO: clean up this monster
 	updateChildren(children: Children): MaybePromise<undefined> {
 		let host = this.firstChild;
 		let nextSibling = host && host.nextSibling;
-		let keyedChildren: Map<unknown, Host<T>> | undefined;
 		let updates: Array<Promise<unknown>> | undefined;
+		let keyedChildren: Map<unknown, Host<T>> | undefined;
 		for (const guest of flatten(children)) {
 			let tag: Tag | undefined;
 			let key: unknown;
-			let isNewHost = false;
 			if (isElement(guest)) {
 				tag = guest.tag;
 				key = guest.key;
@@ -496,7 +510,6 @@ abstract class Host<T> {
 				let nextHost = this.keyedChildren && this.keyedChildren.get(key);
 				if (nextHost === undefined) {
 					nextHost = createHost(this, this.renderer, guest);
-					isNewHost = true;
 				} else {
 					this.keyedChildren!.delete(key);
 					if (host !== nextHost) {
@@ -519,17 +532,18 @@ abstract class Host<T> {
 			} else if (host === undefined) {
 				host = createHost(this, this.renderer, guest);
 				this.appendChild(host);
-				isNewHost = true;
 			} else if (host.key != null) {
 				const nextHost = createHost(this, this.renderer, guest);
 				this.insertBefore(nextHost, host.nextSibling);
 				host = nextHost;
 				nextSibling = host.nextSibling;
-				isNewHost = true;
 			}
 
 			if (tag !== Copy) {
-				if (isNewHost || (!host.unmounted && host.tag === tag)) {
+				if (
+					host.state === Initial ||
+					(host.state !== Unmounted && host.tag === tag)
+				) {
 					const update = host.update(guest);
 					if (update !== undefined) {
 						if (updates === undefined) {
@@ -553,6 +567,8 @@ abstract class Host<T> {
 						}
 
 						updates.push(update);
+						// host is reassigned so we need to capture its current value in
+						// the then callback’s closure.
 						const host1 = host;
 						update.then(() => {
 							if (host1.replacedBy === undefined) {
@@ -673,7 +689,7 @@ abstract class Host<T> {
 
 		if (isElement(this.guest)) {
 			if (typeof this.guest.tag === "function" || this.guest.tag === Fragment) {
-				if (!this.updating && this.parent !== undefined) {
+				if (this.state < Updating && this.parent !== undefined) {
 					// TODO: batch this per microtask
 					this.parent.commit();
 				}
@@ -705,14 +721,14 @@ abstract class Host<T> {
 			}
 		}
 
-		this.updating = false;
+		this.state = this.state <= Updating ? Waiting : this.state;
 	}
 
 	catch(reason: any): MaybePromise<undefined> {
 		if (
 			this.iterator === undefined ||
 			this.iterator.throw === undefined ||
-			this.done
+			this.state >= Finished
 		) {
 			if (this.parent === undefined) {
 				throw reason;
@@ -723,7 +739,7 @@ abstract class Host<T> {
 			return new Pledge(() => this.iterator!.throw!(reason))
 				.then((iteration) => {
 					if (iteration.done) {
-						this.done = true;
+						this.state = this.state < Finished ? Finished : this.state;
 					}
 
 					return this.updateChildren(iteration.value);
@@ -747,7 +763,7 @@ abstract class Host<T> {
 		}
 
 		// TODO: await the return if the host is keyed and commit the parent
-		if (!this.done) {
+		if (this.state < Finished) {
 			if (this.iterator !== undefined && this.iterator.return) {
 				this.iterator.return();
 			}
@@ -757,11 +773,9 @@ abstract class Host<T> {
 			}
 		}
 
-		this.done = true;
-		this.unmounted = true;
+		this.state = Unmounted;
 		this.committer = undefined;
 		this.iterator = undefined;
-		this.updating = false;
 		for (
 			let host = this.firstChild;
 			host !== undefined;
@@ -850,6 +864,8 @@ class ComponentHost<T> extends Host<T> {
 		this.ctx = new Context(this, this.parent && this.parent.ctx);
 	}
 }
+
+type ParentHost<T> = IntrinsicHost<T> | ComponentHost<T>;
 
 function createHost<T>(
 	parent: Host<T>,
