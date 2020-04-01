@@ -61,7 +61,7 @@ export type GeneratorComponent = (this: Context, props: Props) => ChildIterator;
 
 // TODO: component cannot be a union of FunctionComponent | GeneratorComponent
 // because this breaks Function.prototype methods.
-// https://github.com/microsoft/TypeScript/issues/34984
+// https://github.com/microsoft/TypeScript/issues/33815
 export type Component = (
 	this: Context,
 	props: Props,
@@ -199,10 +199,41 @@ type HostState = Initial | Waiting | Updating | Finished | Unmounted;
 
 abstract class Host<T> {
 	state: HostState = Initial;
+	value: Array<T | string> | T | string | undefined = undefined;
+	tag: Tag | undefined = undefined;
+	key: unknown = undefined;
+	// these properties are used when racing components
+	replacedBy: Host<T> | undefined = undefined;
+	clock = 0;
+	nextSibling: Host<T> | undefined = undefined;
+	previousSibling: Host<T> | undefined = undefined;
+	protected abstract parent: ParentHost<T> | undefined;
+	protected abstract renderer: Renderer<T>;
+	update(guest: Guest): MaybePromise<undefined> {
+		this.state = this.state < Updating ? Updating : this.state;
+		if (typeof guest === "string") {
+			this.value = this.renderer.text(guest);
+		} else if (guest === undefined) {
+			this.value = undefined;
+		} else {
+			throw new Error("This is impossible");
+		}
+
+		return undefined;
+	}
+
+	unmount(): void {}
+}
+
+abstract class ParentHost<T> extends Host<T> {
+	abstract ctx: Context<T>;
+	abstract tag: Tag;
+	props: Record<string, any> | undefined = undefined;
+	// ComponentHost only
+	private iterator?: ChildIterator;
 	protected firstChild: Host<T> | undefined = undefined;
 	protected lastChild: Host<T> | undefined = undefined;
-	protected nextSibling: Host<T> | undefined = undefined;
-	protected previousSibling: Host<T> | undefined = undefined;
+	private keyedChildren: Map<unknown, Host<T>> | undefined;
 	protected appendChild(child: Host<T>): void {
 		if (this.lastChild === undefined) {
 			this.firstChild = child;
@@ -262,49 +293,415 @@ abstract class Host<T> {
 		this.removeChild(reference);
 	}
 
-	protected abstract parent: Host<T> | undefined;
-	protected abstract renderer: Renderer<T>;
-	protected abstract guest: Guest | undefined;
-	private keyedChildren: Map<unknown, Host<T>> | undefined;
-	// these properties are used when racing components
-	private replacedBy?: Host<T>;
-	private clock = 0;
-	// TODO: split these out into sepearate classes
-	// ComponentHost only
-	private iterator?: ChildIterator;
-	// IntrinsicHost only
-	private committer?: Iterator<T | undefined>;
-	// IntrinsicHost only
-	protected intrinsic?: Intrinsic<T>;
-	ctx: Context<T> | undefined;
-	value: Array<T | string> | T | string | undefined;
-	protected tag: Tag | undefined = undefined;
-	protected key: unknown = undefined;
-	props: Record<string, any> | undefined = undefined;
-	update(guest: Guest): MaybePromise<undefined> {
+	update(guest: Guest): Promise<undefined> | undefined {
 		this.state = this.state < Updating ? Updating : this.state;
-		this.guest = guest;
-		if (isElement(guest)) {
-			this.props = guest.props;
+		if (!isElement(guest)) {
+			throw new Error("TKTKTK SOLVE THIS");
 		}
 
+		this.props = guest.props;
 		return this.refresh();
 	}
 
+	protected scheduled?: Promise<undefined>;
+	refresh(): Promise<undefined> | undefined {
+		if (this.scheduled !== undefined) {
+			this.scheduled = undefined;
+		}
+
+		if (this.state === Unmounted) {
+			return;
+		} else {
+			if (this.publications !== undefined) {
+				for (const pub of this.publications) {
+					pub.push(this.props!);
+				}
+			}
+
+			if (typeof this.tag === "function") {
+				return this.run();
+			} else {
+				return this.updateChildren(this.props && this.props.children);
+			}
+		}
+	}
+
+	schedule(): Promise<undefined> {
+		if (this.scheduled === undefined) {
+			this.scheduled = new Promise((resolve) => {
+				setFrame(() => {
+					if (this.scheduled === undefined) {
+						resolve();
+					} else {
+						resolve(this.refresh());
+					}
+				});
+			});
+		}
+
+		return this.scheduled;
+	}
+
+	private bail:
+		| ((result?: Promise<undefined>) => unknown)
+		| undefined = undefined;
+
+	getChildValues(): Array<T | string> {
+		let buffer: string | undefined;
+		const childValues: Array<T | string> = [];
+		for (
+			let child = this.firstChild;
+			child != null;
+			child = child.nextSibling
+		) {
+			if (typeof child.value === "string") {
+				buffer = (buffer || "") + child.value;
+			} else if (child.tag !== Portal) {
+				if (buffer !== undefined) {
+					childValues.push(buffer);
+					buffer = undefined;
+				}
+
+				if (Array.isArray(child.value)) {
+					childValues.push(...child.value);
+				} else if (child.value !== undefined) {
+					childValues.push(child.value);
+				}
+			}
+		}
+
+		if (buffer !== undefined) {
+			childValues.push(buffer);
+		}
+
+		return childValues;
+	}
+
+	updateChildren(children: Children): MaybePromise<undefined> {
+		let host = this.firstChild;
+		let nextSibling = host && host.nextSibling;
+		let nextKeyedChildren: Map<unknown, Host<T>> | undefined;
+		let updates: Array<Promise<unknown>> | undefined;
+		for (const guest of flatten(children)) {
+			let tag: Tag | undefined;
+			let key: unknown;
+			if (isElement(guest)) {
+				tag = guest.tag;
+				key = guest.key;
+				if (nextKeyedChildren !== undefined && nextKeyedChildren.has(key)) {
+					// TODO: warn about a duplicate key
+					key = undefined;
+				}
+			}
+
+			if (key != null) {
+				let nextHost = this.keyedChildren && this.keyedChildren.get(key);
+				if (nextHost === undefined) {
+					nextHost = createHost(this, this.renderer, guest);
+				} else {
+					this.keyedChildren!.delete(key);
+					if (host !== nextHost) {
+						this.removeChild(nextHost);
+					}
+				}
+
+				if (host === undefined) {
+					this.appendChild(nextHost);
+				} else if (host !== nextHost) {
+					if (host.key == null) {
+						this.insertBefore(nextHost, host);
+					} else {
+						this.insertBefore(nextHost, host.nextSibling);
+					}
+				}
+
+				host = nextHost;
+				nextSibling = host.nextSibling;
+			} else if (host === undefined) {
+				host = createHost(this, this.renderer, guest);
+				this.appendChild(host);
+			} else if (host.key != null) {
+				const nextHost = createHost(this, this.renderer, guest);
+				this.insertBefore(nextHost, host.nextSibling);
+				host = nextHost;
+				nextSibling = host.nextSibling;
+			}
+
+			if (tag !== Copy) {
+				if (
+					host.state === Initial ||
+					(host.tag === tag && host.state !== Unmounted)
+				) {
+					const update = host.update(guest);
+					if (update !== undefined) {
+						if (updates === undefined) {
+							updates = [];
+						}
+
+						updates.push(update);
+					}
+				} else {
+					const nextHost = createHost(this, this.renderer, guest);
+					nextHost.clock = host.clock++;
+					const update = nextHost.update(guest);
+					// TODO: unmount only when the host is ready to be replaced
+					host.unmount();
+					if (update === undefined) {
+						this.replaceChild(nextHost, host);
+						host.replacedBy = nextHost;
+					} else {
+						if (updates === undefined) {
+							updates = [];
+						}
+
+						updates.push(update);
+						// host is reassigned so we need to capture its current value in
+						// the update.then callback’s closure.
+						const host1 = host;
+						update.then(() => {
+							if (host1.replacedBy === undefined) {
+								this.replaceChild(nextHost, host1);
+								host1.replacedBy = nextHost;
+							} else if (
+								host1.replacedBy.replacedBy === undefined &&
+								host1.replacedBy.clock < nextHost.clock
+							) {
+								this.replaceChild(nextHost, host1.replacedBy);
+								host1.replacedBy = nextHost;
+							}
+						});
+					}
+				}
+			}
+
+			if (key !== undefined) {
+				if (nextKeyedChildren === undefined) {
+					nextKeyedChildren = new Map();
+				}
+
+				nextKeyedChildren.set(key, host);
+			}
+
+			host = nextSibling;
+			nextSibling = host && host.nextSibling;
+		}
+
+		this.unmountExcessChildren(host);
+		this.keyedChildren = nextKeyedChildren;
+		if (updates !== undefined) {
+			const result = Promise.all(updates).then(() => void this.commit()); // void :(
+			if (this.bail !== undefined) {
+				this.bail(result);
+				this.bail = undefined;
+			}
+
+			const nextResult = new Promise<undefined>(
+				(resolve) => (this.bail = resolve),
+			);
+			return Promise.race([result, nextResult]);
+		} else {
+			this.commit();
+			if (this.bail !== undefined) {
+				this.bail();
+				this.bail = undefined;
+			}
+		}
+	}
+
+	unmountExcessChildren(child: Host<T> | undefined): void {
+		for (
+			let nextSibling = child && child.nextSibling;
+			child !== undefined;
+			child = nextSibling, nextSibling = child && child.nextSibling
+		) {
+			if (child.key !== undefined && this.keyedChildren !== undefined) {
+				this.keyedChildren.delete(child.key);
+			}
+
+			child.unmount();
+			this.removeChild(child);
+		}
+
+		if (this.keyedChildren !== undefined) {
+			for (const child of this.keyedChildren.values()) {
+				// TODO: implement async unmount for keyed hosts
+				child.unmount();
+				this.removeChild(child);
+			}
+		}
+	}
+
+	commit(): void {
+		const childValues = this.getChildValues();
+		this.ctx.delegates = new Set(childValues.filter(isEventTarget) as any);
+		if (typeof this.tag === "function" || this.tag === Fragment) {
+			this.value = childValues.length > 1 ? childValues : childValues[0];
+		} else {
+			this.props = {...this.props, children: childValues};
+		}
+
+		if (typeof this.tag === "function" || this.tag === Fragment) {
+			if (this.state < Updating && this.parent !== undefined) {
+				// TODO: batch this per microtask
+				this.parent.commit();
+			}
+		} else {
+			if (
+				this.committer === undefined &&
+				this.intrinsic !== undefined &&
+				this.ctx !== undefined
+			) {
+				const value = this.intrinsic.call(
+					this.ctx,
+					this.props as IntrinsicProps<T>,
+				);
+				if (isIteratorOrAsyncIterator(value)) {
+					this.committer = value;
+				} else {
+					this.value = value;
+				}
+			}
+
+			if (this.committer !== undefined) {
+				const iteration = this.committer.next();
+				this.value = iteration.value;
+				if (iteration.done) {
+					this.committer = undefined;
+					this.intrinsic = undefined;
+				}
+			}
+		}
+
+		this.state = this.state <= Updating ? Waiting : this.state;
+	}
+
+	catch(reason: any): MaybePromise<undefined> {
+		if (
+			this.iterator === undefined ||
+			this.iterator.throw === undefined ||
+			this.state >= Finished
+		) {
+			if (this.parent === undefined) {
+				throw reason;
+			}
+
+			this.parent.catch(reason);
+		} else {
+			return new Pledge(() => this.iterator!.throw!(reason))
+				.then((iteration) => {
+					if (iteration.done) {
+						this.state = this.state < Finished ? Finished : this.state;
+					}
+
+					return this.updateChildren(iteration.value);
+				})
+				.catch((err) => {
+					if (this.parent === undefined) {
+						throw err;
+					}
+
+					return this.parent.catch(err);
+				})
+				.execute();
+		}
+	}
+
+	unmount(): void {
+		if (this.publications !== undefined) {
+			for (const pub of this.publications) {
+				pub.stop();
+			}
+		}
+
+		// TODO: await the return if the host is keyed and commit the parent
+		if (this.state < Finished) {
+			if (this.iterator !== undefined && this.iterator.return) {
+				this.iterator.return();
+			}
+
+			if (this.committer !== undefined && this.committer.return) {
+				this.committer.return();
+			}
+		}
+
+		this.state = Unmounted;
+		this.committer = undefined;
+		this.iterator = undefined;
+		for (
+			let host = this.firstChild;
+			host !== undefined;
+			host = host.nextSibling
+		) {
+			if (typeof host.unmount === "function") {
+				host.unmount();
+			}
+		}
+	}
+
+	// Context stuff
+	private consumers?: Map<unknown, Set<ParentHost<T>>>;
+	private provisions?: Map<unknown, any>;
+	get(key: unknown): any {
+		for (let host = this.parent; host !== undefined; host = host.parent) {
+			if (host.provisions !== undefined && host.provisions.has(key)) {
+				if (host.consumers === undefined) {
+					host.consumers = new Map();
+				}
+
+				if (!host.consumers.has(key)) {
+					host.consumers.set(key, new Set());
+				}
+
+				host.consumers.get(key)!.add(this);
+				return host.provisions.get(key);
+			}
+		}
+	}
+
+	set(key: unknown, value: any): void {
+		if (this.provisions === undefined) {
+			this.provisions = new Map();
+		}
+
+		this.provisions.set(key, value);
+		if (this.consumers !== undefined && this.consumers.has(key)) {
+			const consumers = this.consumers.get(key)!;
+			for (const consumer of consumers) {
+				consumer.schedule();
+			}
+
+			consumers.clear();
+		}
+	}
+
+	// AsyncGeneratorComponent only
+	private publications?: Set<Publication>;
+	subscribe(): AsyncGenerator<Props> {
+		if (this.publications === undefined) {
+			this.publications = new Set();
+		}
+
+		return new Repeater(async (push, stop) => {
+			push(this.props!);
+			const pub: Publication = {push, stop};
+			this.publications!.add(pub);
+			await stop;
+			this.publications!.delete(pub);
+		}, new SlidingBuffer(1));
+	}
+
+	// IntrinsicHost only
+	private committer?: Iterator<T | undefined>;
+	protected intrinsic?: Intrinsic<T>;
+
+	// ComponentHost only
 	// TODO: EXPLAIN THIS MADNESS
-	// ComponentHost only
 	private isAsyncGeneratorComponent = false;
-	// ComponentHost only
 	private inflight?: Promise<undefined>;
-	// ComponentHost only
 	private enqueued?: Promise<undefined>;
-	// ComponentHost only
 	private inflightChildren?: Promise<undefined>;
-	// ComponentHost only
 	private enqueuedChildren?: Promise<undefined>;
-	// ComponentHost only
 	private previousResult?: Promise<undefined>;
-	// ComponentHost only
 	private get previousValue(): MaybePromise<
 		Array<T | string> | T | string | undefined
 	> {
@@ -312,19 +709,12 @@ abstract class Host<T> {
 			.then(() => this.value)
 			.execute();
 	}
-
-	// ComponentHost only
 	private step(): [MaybePromise<undefined>, MaybePromise<undefined>] {
-		if (this.ctx === undefined) {
-			throw new Error("Missing context");
-		} else if (!isComponentElement(this.guest)) {
-			throw new Error("Non-component element as guest");
-		}
-
 		if (this.iterator === undefined) {
 			this.ctx.clearEventListeners();
-			const {tag, props} = this.guest;
-			const value = new Pledge(() => tag.call(this.ctx!, props))
+			const value = new Pledge(() =>
+				(this.tag as Component).call(this.ctx, this.props!),
+			)
 				.catch((err) => {
 					if (this.parent === undefined) {
 						throw err;
@@ -390,7 +780,6 @@ abstract class Host<T> {
 		}
 	}
 
-	// ComponentHost only
 	private advance(): void {
 		this.inflight = this.enqueued;
 		this.inflightChildren = this.enqueuedChildren;
@@ -398,7 +787,6 @@ abstract class Host<T> {
 		this.enqueuedChildren = undefined;
 	}
 
-	// ComponentHost only
 	private run(): MaybePromise<undefined> {
 		if (this.inflight === undefined) {
 			const [pending, result] = this.step();
@@ -424,418 +812,26 @@ abstract class Host<T> {
 
 		return this.enqueuedChildren;
 	}
-
-	// ComponentHost only
-	private scheduled?: Promise<undefined>;
-	refresh(): MaybePromise<undefined> {
-		if (this.scheduled !== undefined) {
-			this.scheduled = undefined;
-		}
-
-		if (this.state === Unmounted) {
-			return;
-		} else if (this.tag !== undefined) {
-			if (this.publications !== undefined) {
-				for (const pub of this.publications) {
-					pub.push(this.props!);
-				}
-			}
-
-			if (typeof this.tag === "function") {
-				return this.run();
-			} else {
-				return this.updateChildren(this.props && this.props.children);
-			}
-		} else if (typeof this.guest === "string") {
-			this.value = this.renderer.text(this.guest);
-		} else {
-			this.value = undefined;
-		}
-	}
-
-	schedule(): Promise<undefined> {
-		if (this.scheduled === undefined) {
-			this.scheduled = new Promise((resolve) => {
-				setFrame(() => {
-					if (this.scheduled === undefined) {
-						resolve();
-					} else {
-						resolve(this.refresh());
-					}
-				});
-			});
-		}
-
-		return this.scheduled;
-	}
-
-	// ComponentHost only
-	private publications?: Set<Publication>;
-	subscribe(): AsyncGenerator<Props> {
-		if (this.publications === undefined) {
-			this.publications = new Set();
-		}
-
-		return new Repeater(async (push, stop) => {
-			push(this.props!);
-			const pub: Publication = {push, stop};
-			this.publications!.add(pub);
-			await stop;
-			this.publications!.delete(pub);
-		}, new SlidingBuffer(1));
-	}
-
-	private bail:
-		| ((result?: Promise<undefined>) => unknown)
-		| undefined = undefined;
-	// TODO: clean up this monster
-	updateChildren(children: Children): MaybePromise<undefined> {
-		let host = this.firstChild;
-		let nextSibling = host && host.nextSibling;
-		let updates: Array<Promise<unknown>> | undefined;
-		let keyedChildren: Map<unknown, Host<T>> | undefined;
-		for (const guest of flatten(children)) {
-			let tag: Tag | undefined;
-			let key: unknown;
-			if (isElement(guest)) {
-				tag = guest.tag;
-				key = guest.key;
-				if (keyedChildren !== undefined && keyedChildren.has(key)) {
-					// TODO: warn about a duplicate key
-					key = undefined;
-				}
-			}
-
-			if (key != null) {
-				let nextHost = this.keyedChildren && this.keyedChildren.get(key);
-				if (nextHost === undefined) {
-					nextHost = createHost(this, this.renderer, guest);
-				} else {
-					this.keyedChildren!.delete(key);
-					if (host !== nextHost) {
-						this.removeChild(nextHost);
-					}
-				}
-
-				if (host === undefined) {
-					this.appendChild(nextHost);
-				} else if (host !== nextHost) {
-					if (host.key == null) {
-						this.insertBefore(nextHost, host);
-					} else {
-						this.insertBefore(nextHost, host.nextSibling);
-					}
-				}
-
-				host = nextHost;
-				nextSibling = host.nextSibling;
-			} else if (host === undefined) {
-				host = createHost(this, this.renderer, guest);
-				this.appendChild(host);
-			} else if (host.key != null) {
-				const nextHost = createHost(this, this.renderer, guest);
-				this.insertBefore(nextHost, host.nextSibling);
-				host = nextHost;
-				nextSibling = host.nextSibling;
-			}
-
-			if (tag !== Copy) {
-				if (
-					host.state === Initial ||
-					(host.state !== Unmounted && host.tag === tag)
-				) {
-					const update = host.update(guest);
-					if (update !== undefined) {
-						if (updates === undefined) {
-							updates = [];
-						}
-
-						updates.push(update);
-					}
-				} else {
-					const nextHost = createHost(this, this.renderer, guest);
-					nextHost.clock = host.clock++;
-					const update = nextHost.update(guest);
-					// TODO: unmount only when the host is ready to be replaced
-					host.unmount();
-					if (update === undefined) {
-						this.replaceChild(nextHost, host);
-						host.replacedBy = nextHost;
-					} else {
-						if (updates === undefined) {
-							updates = [];
-						}
-
-						updates.push(update);
-						// host is reassigned so we need to capture its current value in
-						// the then callback’s closure.
-						const host1 = host;
-						update.then(() => {
-							if (host1.replacedBy === undefined) {
-								this.replaceChild(nextHost, host1);
-								host1.replacedBy = nextHost;
-							} else if (
-								host1.replacedBy.replacedBy === undefined &&
-								host1.replacedBy.clock < nextHost.clock
-							) {
-								this.replaceChild(nextHost, host1.replacedBy);
-								host1.replacedBy = nextHost;
-							}
-						});
-					}
-				}
-			}
-
-			if (key !== undefined) {
-				if (keyedChildren === undefined) {
-					keyedChildren = new Map();
-				}
-
-				keyedChildren.set(key, host);
-			}
-
-			host = nextSibling;
-			nextSibling = host && host.nextSibling;
-		}
-
-		this.unmountExcessChildren(host);
-		this.keyedChildren = keyedChildren;
-		if (updates !== undefined) {
-			const result = Promise.all(updates).then(() => void this.commit()); // void :(
-			if (this.bail !== undefined) {
-				this.bail(result);
-				this.bail = undefined;
-			}
-
-			const nextResult = new Promise<undefined>(
-				(resolve) => (this.bail = resolve),
-			);
-			return Promise.race([result, nextResult]);
-		} else {
-			this.commit();
-			if (this.bail !== undefined) {
-				this.bail();
-				this.bail = undefined;
-			}
-		}
-	}
-
-	unmountExcessChildren(child: Host<T> | undefined): void {
-		for (
-			let nextSibling = child && child.nextSibling;
-			child !== undefined;
-			child = nextSibling, nextSibling = child && child.nextSibling
-		) {
-			if (this.keyedChildren !== undefined && child.key !== undefined) {
-				this.keyedChildren.delete(child.key);
-			}
-
-			child.unmount();
-			this.removeChild(child);
-		}
-
-		if (this.keyedChildren !== undefined) {
-			for (const child of this.keyedChildren.values()) {
-				// TODO: implement async unmount for keyed hosts
-				child.unmount();
-				this.removeChild(child);
-			}
-		}
-	}
-
-	getChildValues(): Array<T | string> {
-		let buffer: string | undefined;
-		const childValues: Array<T | string> = [];
-		for (
-			let child = this.firstChild;
-			child != null;
-			child = child.nextSibling
-		) {
-			if (typeof child.value === "string") {
-				buffer = (buffer || "") + child.value;
-			} else if (child.tag !== Portal) {
-				if (buffer !== undefined) {
-					childValues.push(buffer);
-					buffer = undefined;
-				}
-
-				if (Array.isArray(child.value)) {
-					childValues.push(...child.value);
-				} else if (child.value !== undefined) {
-					childValues.push(child.value);
-				}
-			}
-		}
-
-		if (buffer !== undefined) {
-			childValues.push(buffer);
-		}
-
-		return childValues;
-	}
-
-	commit(): void {
-		const childValues = this.getChildValues();
-		if (this.ctx !== undefined) {
-			// TODO: filter predicate type narrowing is not working
-			this.ctx.delegates = new Set(childValues.filter(isEventTarget) as any);
-		}
-
-		if (typeof this.tag === "function" || this.tag === Fragment) {
-			this.value = childValues.length > 1 ? childValues : childValues[0];
-		} else {
-			this.props = {...this.props, children: childValues};
-		}
-
-		if (isElement(this.guest)) {
-			if (typeof this.guest.tag === "function" || this.guest.tag === Fragment) {
-				if (this.state < Updating && this.parent !== undefined) {
-					// TODO: batch this per microtask
-					this.parent.commit();
-				}
-			} else {
-				if (
-					this.committer === undefined &&
-					this.intrinsic !== undefined &&
-					this.ctx !== undefined
-				) {
-					const value = this.intrinsic.call(
-						this.ctx,
-						this.props as IntrinsicProps<T>,
-					);
-					if (isIteratorOrAsyncIterator(value)) {
-						this.committer = value;
-					} else {
-						this.value = value;
-					}
-				}
-
-				if (this.committer !== undefined) {
-					const iteration = this.committer.next();
-					this.value = iteration.value;
-					if (iteration.done) {
-						this.committer = undefined;
-						this.intrinsic = undefined;
-					}
-				}
-			}
-		}
-
-		this.state = this.state <= Updating ? Waiting : this.state;
-	}
-
-	catch(reason: any): MaybePromise<undefined> {
-		if (
-			this.iterator === undefined ||
-			this.iterator.throw === undefined ||
-			this.state >= Finished
-		) {
-			if (this.parent === undefined) {
-				throw reason;
-			}
-
-			this.parent.catch(reason);
-		} else {
-			return new Pledge(() => this.iterator!.throw!(reason))
-				.then((iteration) => {
-					if (iteration.done) {
-						this.state = this.state < Finished ? Finished : this.state;
-					}
-
-					return this.updateChildren(iteration.value);
-				})
-				.catch((err) => {
-					if (this.parent === undefined) {
-						throw err;
-					}
-
-					return this.parent.catch(err);
-				})
-				.execute();
-		}
-	}
-
-	unmount(): void {
-		if (this.publications !== undefined) {
-			for (const pub of this.publications) {
-				pub.stop();
-			}
-		}
-
-		// TODO: await the return if the host is keyed and commit the parent
-		if (this.state < Finished) {
-			if (this.iterator !== undefined && this.iterator.return) {
-				this.iterator.return();
-			}
-
-			if (this.committer !== undefined && this.committer.return) {
-				this.committer.return();
-			}
-		}
-
-		this.state = Unmounted;
-		this.committer = undefined;
-		this.iterator = undefined;
-		for (
-			let host = this.firstChild;
-			host !== undefined;
-			host = host.nextSibling
-		) {
-			host.unmount();
-		}
-	}
-
-	private consumers?: Map<unknown, Set<Host<T>>>;
-	private provisions?: Map<unknown, any>;
-	get(key: unknown): any {
-		for (let host = this.parent; host !== undefined; host = host.parent) {
-			if (host.provisions !== undefined && host.provisions.has(key)) {
-				if (host.consumers === undefined) {
-					host.consumers = new Map();
-				}
-
-				if (!host.consumers.has(key)) {
-					host.consumers.set(key, new Set());
-				}
-
-				host.consumers.get(key)!.add(this);
-				return host.provisions.get(key);
-			}
-		}
-	}
-
-	set(key: unknown, value: any): void {
-		if (this.provisions === undefined) {
-			this.provisions = new Map();
-		}
-
-		this.provisions.set(key, value);
-		if (this.consumers !== undefined && this.consumers.has(key)) {
-			const consumers = this.consumers.get(key)!;
-			for (const consumer of consumers) {
-				consumer.schedule();
-			}
-
-			consumers.clear();
-		}
-	}
 }
 
 class ValueHost<T> extends Host<T> {
 	constructor(
-		protected parent: Host<T>,
+		protected parent: ParentHost<T>,
 		protected renderer: Renderer<T>,
 		protected guest: string | undefined,
 	) {
 		super();
-		this.value = guest;
+		if (guest !== undefined) {
+			this.value = this.renderer.text(guest);
+		}
 	}
 }
 
-class IntrinsicHost<T> extends Host<T> {
-	protected tag: string | symbol;
+class IntrinsicHost<T> extends ParentHost<T> {
+	tag: string | symbol;
+	ctx: Context<T>;
 	constructor(
-		protected parent: Host<T> | undefined,
+		protected parent: ParentHost<T> | undefined,
 		protected renderer: Renderer<T>,
 		protected guest: Element<string | symbol>,
 	) {
@@ -850,10 +846,11 @@ class IntrinsicHost<T> extends Host<T> {
 	}
 }
 
-class ComponentHost<T> extends Host<T> {
-	protected tag: Component;
+class ComponentHost<T> extends ParentHost<T> {
+	tag: Component;
+	ctx: Context<T>;
 	constructor(
-		protected parent: Host<T>,
+		protected parent: ParentHost<T>,
 		protected renderer: Renderer<T>,
 		protected guest: Element<Component>,
 	) {
@@ -865,10 +862,8 @@ class ComponentHost<T> extends Host<T> {
 	}
 }
 
-type ParentHost<T> = IntrinsicHost<T> | ComponentHost<T>;
-
 function createHost<T>(
-	parent: Host<T>,
+	parent: ParentHost<T>,
 	renderer: Renderer<T>,
 	guest: Guest,
 ): Host<T> {
@@ -885,9 +880,9 @@ function createHost<T>(
 	}
 }
 
-const hosts = new WeakMap<Context<any>, Host<any>>();
+const hosts = new WeakMap<Context<any>, ParentHost<any>>();
 export class Context<T = any> extends CrankEventTarget {
-	constructor(host: Host<T>, parent?: Context<T>) {
+	constructor(host: ParentHost<T>, parent?: Context<T>) {
 		super(parent);
 		hosts.set(this, host);
 	}
@@ -973,7 +968,7 @@ export function clearFrame(id: any): void {
 }
 
 export class Renderer<T> {
-	private cache = new WeakMap<object, Host<T>>();
+	private cache = new WeakMap<object, IntrinsicHost<T>>();
 	private env: Environment<T> = {...defaultEnv};
 	constructor(env?: Environment<T>) {
 		if (env) {
@@ -1019,7 +1014,7 @@ export class Renderer<T> {
 			child = createElement(Portal, {root}, child);
 		}
 
-		let host: Host<T> | undefined =
+		let host: IntrinsicHost<T> | undefined =
 			root != null ? this.cache.get(root) : undefined;
 		if (host === undefined) {
 			host = new IntrinsicHost(undefined, this, child as Element<symbol>);
