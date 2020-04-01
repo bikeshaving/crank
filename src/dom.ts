@@ -1,5 +1,5 @@
 import {
-	Context,
+	HostContext,
 	Default,
 	Environment,
 	Intrinsic,
@@ -127,7 +127,7 @@ function createDocumentFragmentFromHTML(html: string): DocumentFragment {
 // TODO: Element should be ParentNode maybe?
 export const env: Environment<Element> = {
 	[Default](tag: string): Intrinsic<Element> {
-		return function* defaultDOM(this: Context): Generator<Element> {
+		return function* defaultDOM(this: HostContext): Generator<Element> {
 			const node = document.createElement(tag);
 			let props: Props = {};
 			let nextProps: Props;
@@ -156,7 +156,7 @@ export const env: Environment<Element> = {
 			return value;
 		}
 	},
-	*[Portal](this: Context, {root}): Generator<Element> {
+	*[Portal](this: HostContext, {root}): Generator<Element> {
 		if (root == null) {
 			throw new TypeError("Portal element is missing root node");
 		}

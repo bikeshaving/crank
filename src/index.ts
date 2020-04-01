@@ -67,8 +67,30 @@ export type Component = (
 	props: Props,
 ) => ChildIterator | MaybePromiseLike<Child>;
 
-export type Intrinsic<T> = (props: IntrinsicProps<T>) => Iterator<T> | T;
+export type Intrinsic<T> = (
+	this: HostContext,
+	props: IntrinsicProps<T>,
+) => Iterator<T> | T;
 
+export function setFrame(callback: (time: number) => unknown): any {
+	if (requestAnimationFrame !== undefined) {
+		return requestAnimationFrame(callback);
+	} else if (setImmediate !== undefined) {
+		return setImmediate(() => callback(Date.now()));
+	} else {
+		return setTimeout(() => callback(Date.now()));
+	}
+}
+
+export function clearFrame(id: any): void {
+	if (requestAnimationFrame !== undefined) {
+		cancelAnimationFrame(id);
+	} else if (setImmediate !== undefined) {
+		clearImmediate(id);
+	} else {
+		clearTimeout(id);
+	}
+}
 // TODO: rename
 export const Default = Symbol.for("crank.Default");
 
@@ -134,11 +156,6 @@ export function createElement<TTag extends Tag>(
 	}
 
 	return {[ElementSigil]: true, tag, props, key};
-}
-
-interface Publication {
-	push(props: Props): unknown;
-	stop(): unknown;
 }
 
 type Guest = Element | string | undefined;
@@ -214,21 +231,17 @@ class Host<T> {
 		return undefined;
 	}
 
+	// TODO: figure out a way to delete this
 	unmount(): void {}
 }
 
 abstract class ParentHost<T> extends Host<T> {
-	abstract ctx: Context<T>;
 	abstract tag: Tag;
+	abstract ctx: HostContext<T> | Context<T>;
 	props: Record<string, any> | undefined = undefined;
 	protected firstChild: Host<T> | undefined = undefined;
 	protected lastChild: Host<T> | undefined = undefined;
 	private keyedChildren: Map<unknown, Host<T>> | undefined;
-	private scheduled: Promise<undefined> | undefined = undefined;
-	private bail:
-		| ((result?: Promise<undefined>) => unknown)
-		| undefined = undefined;
-
 	protected appendChild(child: Host<T>): void {
 		if (this.lastChild === undefined) {
 			this.firstChild = child;
@@ -325,6 +338,7 @@ abstract class ParentHost<T> extends Host<T> {
 		return this.refresh();
 	}
 
+	private scheduled: Promise<undefined> | undefined = undefined;
 	refresh(): MaybePromise<undefined> {
 		if (this.scheduled !== undefined) {
 			this.scheduled = undefined;
@@ -354,6 +368,14 @@ abstract class ParentHost<T> extends Host<T> {
 
 		return this.scheduled;
 	}
+
+	// When children update asynchronously, we race the update against the next
+	// update of children. this.bail is the resolve function of the promise which
+	// the current update is raced against, and is resolved to the next update in
+	// updateChildren below.
+	private bail:
+		| ((result?: Promise<undefined>) => unknown)
+		| undefined = undefined;
 
 	updateChildren(children: Children): MaybePromise<undefined> {
 		let host = this.firstChild;
@@ -488,7 +510,13 @@ abstract class ParentHost<T> extends Host<T> {
 		}
 
 		this.keyedChildren = nextKeyedChildren;
-		if (updates !== undefined) {
+		if (updates === undefined) {
+			this.commit();
+			if (this.bail !== undefined) {
+				this.bail();
+				this.bail = undefined;
+			}
+		} else {
 			const result = Promise.all(updates).then(() => void this.commit()); // void :(
 			if (this.bail !== undefined) {
 				this.bail(result);
@@ -499,24 +527,10 @@ abstract class ParentHost<T> extends Host<T> {
 				(resolve) => (this.bail = resolve),
 			);
 			return Promise.race([result, nextResult]);
-		} else {
-			this.commit();
-			if (this.bail !== undefined) {
-				this.bail();
-				this.bail = undefined;
-			}
 		}
 	}
 
 	commit(): void {
-		const childValues = this.getChildValues();
-		this.ctx.delegates = new Set(childValues.filter(isEventTarget) as any);
-		if (typeof this.tag === "function" || this.tag === Fragment) {
-			this.value = childValues.length > 1 ? childValues : childValues[0];
-		} else {
-			this.props = {...this.props, children: childValues};
-		}
-
 		this.commitSelf();
 		this.state = this.state <= Updating ? Waiting : this.state;
 	}
@@ -548,8 +562,8 @@ abstract class ParentHost<T> extends Host<T> {
 	abstract unmountSelf(): void;
 
 	// Context stuff
-	private consumers?: Map<unknown, Set<ParentHost<T>>>;
-	private provisions?: Map<unknown, any>;
+	private consumers: Map<unknown, Set<ParentHost<T>>> | undefined = undefined;
+	private provisions: Map<unknown, any> | undefined = undefined;
 	get(key: unknown): any {
 		for (let host = this.parent; host !== undefined; host = host.parent) {
 			if (host.provisions !== undefined && host.provisions.has(key)) {
@@ -582,31 +596,25 @@ abstract class ParentHost<T> extends Host<T> {
 			consumers.clear();
 		}
 	}
-
-	// TODO: delete this
-	subscribe(): AsyncGenerator<Props> {
-		throw new Error("Cannot subscribe");
-	}
 }
 
 class IntrinsicHost<T> extends ParentHost<T> {
 	tag: string | symbol;
-	ctx: Context<T>;
+	ctx: HostContext<T>;
 	private iterator: Iterator<T | undefined> | undefined = undefined;
 	private intrinsic: Intrinsic<T> | undefined = undefined;
 	constructor(
 		protected parent: ParentHost<T> | undefined,
 		protected renderer: Renderer<T>,
-		guest: Element<string | symbol>,
+		tag: string | symbol,
+		key?: unknown,
 	) {
 		super(parent, renderer);
-		this.tag = guest.tag;
-		this.key = guest.key;
-		this.props = guest.props;
-		// TODO: we need a different kind of context for Intrinsics
-		this.ctx = new Context(this, this.parent && this.parent.ctx);
-		if (guest.tag !== Fragment) {
-			this.intrinsic = this.renderer.intrinsicFor(guest.tag);
+		this.tag = tag;
+		this.key = key;
+		this.ctx = new HostContext(this, this.parent && this.parent.ctx);
+		if (tag !== Fragment) {
+			this.intrinsic = this.renderer.intrinsicFor(tag);
 		}
 	}
 
@@ -615,17 +623,22 @@ class IntrinsicHost<T> extends ParentHost<T> {
 	}
 
 	commitSelf(): void {
+		const childValues = this.getChildValues();
+		if (this.tag === Fragment) {
+			this.value = childValues.length > 1 ? childValues : childValues[0];
+		} else {
+			this.props = {...this.props, children: childValues};
+		}
+
 		if (
-			this.tag === Fragment &&
 			this.state < Updating &&
+			this.tag === Fragment &&
 			this.parent !== undefined
 		) {
 			// TODO: batch this per microtask
 			this.parent.commit();
 			return;
-		}
-
-		if (
+		} else if (
 			this.iterator === undefined &&
 			this.intrinsic !== undefined &&
 			this.ctx !== undefined
@@ -659,30 +672,61 @@ class IntrinsicHost<T> extends ParentHost<T> {
 	}
 }
 
+const intrinsicHosts = new WeakMap<HostContext<any>, IntrinsicHost<any>>();
+export class HostContext<T = any> extends CrankEventTarget {
+	constructor(host: IntrinsicHost<T>, parent?: HostContext<T> | Context<T>) {
+		super(parent);
+		intrinsicHosts.set(this, host);
+	}
+
+	get value(): Array<T | string> | T | string | undefined {
+		return intrinsicHosts.get(this)!.value;
+	}
+
+	get(key: unknown): any {
+		return intrinsicHosts.get(this)!.get(key);
+	}
+
+	set(key: unknown, value: any): void {
+		intrinsicHosts.get(this)!.set(key, value);
+	}
+
+	*[Symbol.iterator](): Generator<Record<string, any>> {
+		while (true) {
+			yield intrinsicHosts.get(this)!.props!;
+		}
+	}
+}
+
+// TODO: delete this
+interface Publication {
+	push(props: Props): unknown;
+	stop(): unknown;
+}
+
 class ComponentHost<T> extends ParentHost<T> {
 	tag: Component;
 	ctx: Context<T>;
 	constructor(
 		protected parent: ParentHost<T>,
 		protected renderer: Renderer<T>,
-		guest: Element<Component>,
+		tag: Component,
+		key?: unknown,
 	) {
 		super(parent, renderer);
 		this.ctx = new Context(this, this.parent && this.parent.ctx);
-		this.tag = guest.tag;
-		this.key = guest.key;
-		this.props = guest.props;
+		this.tag = tag;
+		this.key = key;
 	}
 
 	private iterator: ChildIterator | undefined = undefined;
-	// TODO: Explain this shit
-	private previousResult: Promise<undefined> | undefined = undefined;
-	private isAsyncGenerator = false;
+	// TODO: explain this shizzzz
+	isAsyncGenerator = false;
 	private inflightSelf: Promise<undefined> | undefined = undefined;
 	private enqueuedSelf: Promise<undefined> | undefined = undefined;
 	private inflightChildren: Promise<undefined> | undefined = undefined;
 	private enqueuedChildren: Promise<undefined> | undefined = undefined;
-	private publications: Set<Publication> | undefined = undefined;
+	private previousChildren: Promise<undefined> | undefined = undefined;
 	private step(): [MaybePromise<undefined>, MaybePromise<undefined>] {
 		if (this.state >= Finished) {
 			return [undefined, undefined];
@@ -712,7 +756,7 @@ class ComponentHost<T> extends ParentHost<T> {
 			}
 		}
 
-		const previousValue = Pledge.resolve(this.previousResult)
+		const previousValue = Pledge.resolve(this.previousChildren)
 			.then(() => this.value)
 			.execute();
 		const iteration = new Pledge(() => this.iterator!.next(previousValue))
@@ -739,8 +783,8 @@ class ComponentHost<T> extends ParentHost<T> {
 				return undefined; // void :(
 			});
 			const result = iteration.then((iteration) => {
-				this.previousResult = this.updateChildren(iteration.value);
-				return this.previousResult;
+				this.previousChildren = this.updateChildren(iteration.value);
+				return this.previousChildren;
 			});
 
 			return [pending, result];
@@ -761,6 +805,7 @@ class ComponentHost<T> extends ParentHost<T> {
 		this.enqueuedChildren = undefined;
 	}
 
+	private publications: Set<Publication> | undefined = undefined;
 	refreshSelf(): MaybePromise<undefined> {
 		if (this.publications !== undefined) {
 			for (const pub of this.publications) {
@@ -811,6 +856,30 @@ class ComponentHost<T> extends ParentHost<T> {
 		return this.enqueuedChildren;
 	}
 
+	commitSelf(): void {
+		const childValues = this.getChildValues();
+		this.ctx.delegates = new Set(childValues.filter(isEventTarget) as any);
+		this.value = childValues.length > 1 ? childValues : childValues[0];
+		if (this.state < Updating && this.parent !== undefined) {
+			// TODO: batch this per microtask
+			this.parent.commit();
+		}
+	}
+
+	unmountSelf(): void {
+		if (this.publications !== undefined) {
+			for (const pub of this.publications) {
+				pub.stop();
+			}
+		}
+
+		if (this.state < Finished) {
+			if (this.iterator !== undefined && this.iterator.return) {
+				this.iterator.return();
+			}
+		}
+	}
+
 	catch(reason: any): MaybePromise<undefined> {
 		if (
 			this.iterator === undefined ||
@@ -837,26 +906,45 @@ class ComponentHost<T> extends ParentHost<T> {
 				.execute();
 		}
 	}
+}
 
-	commitSelf(): void {
-		if (this.state < Updating && this.parent !== undefined) {
-			// TODO: batch this per microtask
-			this.parent.commit();
+const componentHosts = new WeakMap<Context<any>, ComponentHost<any>>();
+export class Context<T = any> extends CrankEventTarget {
+	constructor(host: ComponentHost<T>, parent?: HostContext<T> | Context<T>) {
+		super(parent);
+		componentHosts.set(this, host);
+	}
+
+	get value(): Array<T | string> | T | string | undefined {
+		return componentHosts.get(this)!.value;
+	}
+
+	get(key: unknown): any {
+		return componentHosts.get(this)!.get(key);
+	}
+
+	set(key: unknown, value: any): void {
+		componentHosts.get(this)!.set(key, value);
+	}
+
+	*[Symbol.iterator](): Generator<Record<string, any>> {
+		while (true) {
+			yield componentHosts.get(this)!.props!;
 		}
 	}
 
-	unmountSelf(): void {
-		if (this.publications !== undefined) {
-			for (const pub of this.publications) {
-				pub.stop();
-			}
-		}
+	[Symbol.asyncIterator](): AsyncGenerator<Record<string, any>> {
+		return componentHosts.get(this)!.subscribe();
+	}
 
-		if (this.state < Finished) {
-			if (this.iterator !== undefined && this.iterator.return) {
-				this.iterator.return();
-			}
-		}
+	// TODO: throw or warn if called on an unmounted component?
+	refresh(): MaybePromise<undefined> {
+		return componentHosts.get(this)!.refresh();
+	}
+
+	// TODO: throw or warn if called on an unmounted component?
+	schedule(): MaybePromise<undefined> {
+		return componentHosts.get(this)!.schedule();
 	}
 }
 
@@ -868,54 +956,9 @@ function createHost<T>(
 	if (guest === undefined || typeof guest === "string") {
 		return new Host(parent, renderer);
 	} else if (typeof guest.tag === "function") {
-		return new ComponentHost(parent, renderer, guest as Element<Component>);
+		return new ComponentHost(parent, renderer, guest.tag, guest.key);
 	} else {
-		return new IntrinsicHost(
-			parent,
-			renderer,
-			guest as Element<string | symbol>,
-		);
-	}
-}
-
-const hosts = new WeakMap<Context<any>, ParentHost<any>>();
-export class Context<T = any> extends CrankEventTarget {
-	constructor(host: ParentHost<T>, parent?: Context<T>) {
-		super(parent);
-		hosts.set(this, host);
-	}
-
-	get value(): T | string | undefined {
-		return hosts.get(this)!.value;
-	}
-
-	*[Symbol.iterator](): Generator<Record<string, any>> {
-		while (true) {
-			yield hosts.get(this)!.props!;
-		}
-	}
-
-	// Component Context only
-	[Symbol.asyncIterator](): AsyncGenerator<Record<string, any>> {
-		return hosts.get(this)!.subscribe();
-	}
-
-	// TODO: throw or warn if called on an unmounted component?
-	refresh(): MaybePromise<undefined> {
-		return hosts.get(this)!.refresh();
-	}
-
-	// TODO: throw or warn if called on an unmounted component?
-	schedule(): MaybePromise<undefined> {
-		return hosts.get(this)!.schedule();
-	}
-
-	get(key: unknown): any {
-		return hosts.get(this)!.get(key);
-	}
-
-	set(key: unknown, value: any): void {
-		return hosts.get(this)!.set(key, value);
+		return new IntrinsicHost(parent, renderer, guest.tag, guest.key);
 	}
 }
 
@@ -923,12 +966,9 @@ export interface Environment<T> {
 	[Default](tag: string): Intrinsic<T>;
 	[Text]?(text: string): string;
 	[tag: string]: Intrinsic<T>; // Intrinsic<T> | Environment<T>;
-	// [Fragment]: Intrinsic<T>;
 	// [Portal]: Intrinsic<T>;
 	// [Copy]: Intrinsic<T>;
 	// [Raw]: Intrinsic<T>;
-	// [tag: symbol]: Intrinsic<T>;// Intrinsic<T> | Environment<T>;
-	// TODO: allow symbol index parameters when typescript gets its shit together
 }
 
 const defaultEnv: Environment<any> = {
@@ -942,26 +982,6 @@ const defaultEnv: Environment<any> = {
 		return value;
 	},
 };
-
-export function setFrame(callback: (time: number) => unknown): any {
-	if (requestAnimationFrame !== undefined) {
-		return requestAnimationFrame(callback);
-	} else if (setImmediate !== undefined) {
-		return setImmediate(() => callback(Date.now()));
-	} else {
-		return setTimeout(() => callback(Date.now()));
-	}
-}
-
-export function clearFrame(id: any): void {
-	if (requestAnimationFrame !== undefined) {
-		cancelAnimationFrame(id);
-	} else if (setImmediate !== undefined) {
-		clearImmediate(id);
-	} else {
-		clearTimeout(id);
-	}
-}
 
 export class Renderer<T> {
 	private cache = new WeakMap<object, IntrinsicHost<T>>();
@@ -979,9 +999,9 @@ export class Renderer<T> {
 			}
 		}
 
-		for (const [tag, value] of Object.entries(env)) {
-			if (value != null) {
-				this.env[tag] = value;
+		for (const tag of Object.keys(env)) {
+			if (env[tag] != null) {
+				this.env[tag] = env[tag]!;
 			}
 		}
 	}
@@ -1005,28 +1025,24 @@ export class Renderer<T> {
 		return text;
 	}
 
-	render(child: Child, root?: object): MaybePromise<Context<T>> {
-		if (!isElement(child) || child.tag !== Portal) {
-			child = createElement(Portal, {root}, child);
+	render(child: Child, root?: object): MaybePromise<HostContext<T>> {
+		let portal: Element<Portal>;
+		if (isElement(child) && child.tag === Portal) {
+			portal = child;
+		} else {
+			portal = createElement(Portal, {root}, child);
 		}
 
 		let host: IntrinsicHost<T> | undefined =
 			root != null ? this.cache.get(root) : undefined;
 		if (host === undefined) {
-			host = new IntrinsicHost(undefined, this, child as Element<symbol>);
+			host = new IntrinsicHost(undefined, this, portal.tag);
 			if (root !== undefined) {
 				this.cache.set(root, host);
 			}
 		}
 
-		let result: MaybePromise<void>;
-		if (child == null) {
-			result = host.unmount();
-		} else {
-			result = host.update(normalize(child));
-		}
-
-		return Pledge.resolve(result)
+		return Pledge.resolve(host.update(portal))
 			.then(() => host!.ctx)
 			.execute();
 	}

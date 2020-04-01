@@ -116,7 +116,7 @@ export class StringRenderer extends Renderer<string> {
 
 	renderToString(child: Child, key?: object): Promise<string> | string {
 		return Pledge.resolve(this.render(child, key))
-			.then((ctx) => (ctx && ctx.value) || "")
+			.then((ctx) => (ctx && (ctx.value as string)) || "")
 			.execute();
 	}
 }
