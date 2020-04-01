@@ -197,26 +197,28 @@ type Unmounted = typeof Unmounted;
 
 type HostState = Initial | Waiting | Updating | Finished | Unmounted;
 
-abstract class Host<T> {
+class Host<T> {
 	state: HostState = Initial;
 	value: Array<T | string> | T | string | undefined = undefined;
 	tag: Tag | undefined = undefined;
 	key: unknown = undefined;
+	nextSibling: Host<T> | undefined = undefined;
+	previousSibling: Host<T> | undefined = undefined;
 	// these properties are used when racing components
 	replacedBy: Host<T> | undefined = undefined;
 	clock = 0;
-	nextSibling: Host<T> | undefined = undefined;
-	previousSibling: Host<T> | undefined = undefined;
-	protected abstract parent: ParentHost<T> | undefined;
-	protected abstract renderer: Renderer<T>;
+
+	constructor(
+		protected parent: ParentHost<T> | undefined,
+		protected renderer: Renderer<T>,
+	) {}
+
 	update(guest: Guest): MaybePromise<undefined> {
 		this.state = this.state < Updating ? Updating : this.state;
 		if (typeof guest === "string") {
 			this.value = this.renderer.text(guest);
-		} else if (guest === undefined) {
+		} else  {
 			this.value = undefined;
-		} else {
-			throw new Error("This is impossible");
 		}
 
 		return undefined;
@@ -814,31 +816,18 @@ abstract class ParentHost<T> extends Host<T> {
 	}
 }
 
-class ValueHost<T> extends Host<T> {
-	constructor(
-		protected parent: ParentHost<T>,
-		protected renderer: Renderer<T>,
-		protected guest: string | undefined,
-	) {
-		super();
-		if (guest !== undefined) {
-			this.value = this.renderer.text(guest);
-		}
-	}
-}
-
 class IntrinsicHost<T> extends ParentHost<T> {
 	tag: string | symbol;
 	ctx: Context<T>;
 	constructor(
 		protected parent: ParentHost<T> | undefined,
 		protected renderer: Renderer<T>,
-		protected guest: Element<string | symbol>,
+		guest: Element<string | symbol>,
 	) {
-		super();
-		this.tag = this.guest.tag;
-		this.key = this.guest.key;
-		this.props = this.guest.props;
+		super(parent, renderer);
+		this.tag = guest.tag;
+		this.key = guest.key;
+		this.props = guest.props;
 		this.ctx = new Context(this, this.parent && this.parent.ctx);
 		if (guest.tag !== Fragment) {
 			this.intrinsic = this.renderer.intrinsicFor(guest.tag);
@@ -852,13 +841,13 @@ class ComponentHost<T> extends ParentHost<T> {
 	constructor(
 		protected parent: ParentHost<T>,
 		protected renderer: Renderer<T>,
-		protected guest: Element<Component>,
+		guest: Element<Component>,
 	) {
-		super();
-		this.tag = this.guest.tag;
-		this.key = this.guest.key;
-		this.props = this.guest.props;
+		super(parent, renderer);
 		this.ctx = new Context(this, this.parent && this.parent.ctx);
+		this.tag = guest.tag;
+		this.key = guest.key;
+		this.props = guest.props;
 	}
 }
 
@@ -868,7 +857,7 @@ function createHost<T>(
 	guest: Guest,
 ): Host<T> {
 	if (guest === undefined || typeof guest === "string") {
-		return new ValueHost(parent, renderer, guest);
+		return new Host(parent, renderer);
 	} else if (typeof guest.tag === "function") {
 		return new ComponentHost(parent, renderer, guest as Element<Component>);
 	} else {
