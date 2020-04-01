@@ -1,6 +1,6 @@
 // TODO: delete this dependency
 import {Repeater, SlidingBuffer} from "@repeaterjs/repeater";
-import {CrankEventTarget, isEventTarget} from "./events";
+import {CrankEventTarget} from "./events";
 import {isPromiseLike, MaybePromise, MaybePromiseLike, Pledge} from "./pledge";
 
 type NonStringIterable<T> = Iterable<T> & object;
@@ -33,7 +33,6 @@ export interface Props {
 	[name: string]: any;
 }
 
-// TODO: use this again
 export interface IntrinsicProps<T> {
 	children: Array<T | string>;
 	[name: string]: any;
@@ -43,7 +42,7 @@ const ElementSigil: unique symbol = Symbol.for("crank.ElementSigil");
 
 export interface Element<TTag extends Tag = Tag> {
 	[ElementSigil]: true;
-	tag: TTag;
+	readonly tag: TTag;
 	props: Props;
 	key?: unknown;
 }
@@ -91,30 +90,23 @@ export function clearFrame(id: any): void {
 		clearTimeout(id);
 	}
 }
-// TODO: rename
-export const Default = Symbol.for("crank.Default");
 
-export type Default = typeof Default;
-
-// TODO: rename
-export const Text = Symbol.for("crank.Text");
-
-export type Text = typeof Text;
-
-// TODO: We use any for symbol tags because typescript support for symbols is weak af.
-export const Portal: any = Symbol.for("crank.Portal") as any;
+// Special Intrinsic Tags
+// TODO: We assert symbol tags as any because typescript support for symbol
+// tags in JSX does not exist yet.
+export const Portal = Symbol.for("crank.Portal") as any;
 
 export type Portal = typeof Portal;
 
-export const Fragment: any = Symbol.for("crank.Fragment") as any;
+export const Fragment = Symbol.for("crank.Fragment") as any;
 
 export type Fragment = typeof Fragment;
 
-export const Copy: any = Symbol("crank.Copy") as any;
+export const Copy = Symbol("crank.Copy") as any;
 
 export type Copy = typeof Copy;
 
-export const Raw: any = Symbol.for("crank.Raw") as any;
+export const Raw = Symbol.for("crank.Raw") as any;
 
 export type Raw = typeof Raw;
 
@@ -207,7 +199,7 @@ type HostState = Initial | Waiting | Updating | Finished | Unmounted;
 class Host<T> {
 	state: HostState = Initial;
 	value: Array<T | string> | T | string | undefined = undefined;
-	tag: Tag | undefined = undefined;
+	readonly tag: Tag | undefined = undefined;
 	key: unknown = undefined;
 	nextSibling: Host<T> | undefined = undefined;
 	previousSibling: Host<T> | undefined = undefined;
@@ -222,12 +214,8 @@ class Host<T> {
 
 	update(guest: Guest): MaybePromise<undefined> {
 		this.state = this.state < Updating ? Updating : this.state;
-		if (typeof guest === "string") {
-			this.value = this.renderer.text(guest);
-		} else {
-			this.value = undefined;
-		}
-
+		this.value =
+			typeof guest === "string" ? this.renderer.text(guest) : undefined;
 		return undefined;
 	}
 
@@ -236,8 +224,8 @@ class Host<T> {
 }
 
 abstract class ParentHost<T> extends Host<T> {
-	abstract tag: Tag;
-	abstract ctx: HostContext<T> | Context<T>;
+	abstract ctx: Context<T> | HostContext<T>;
+	// TODO: move into subclasses
 	props: Record<string, any> | undefined = undefined;
 	protected firstChild: Host<T> | undefined = undefined;
 	protected lastChild: Host<T> | undefined = undefined;
@@ -338,6 +326,7 @@ abstract class ParentHost<T> extends Host<T> {
 		return this.refresh();
 	}
 
+	// TODO: move to component only
 	private scheduled: Promise<undefined> | undefined = undefined;
 	refresh(): MaybePromise<undefined> {
 		if (this.scheduled !== undefined) {
@@ -369,10 +358,9 @@ abstract class ParentHost<T> extends Host<T> {
 		return this.scheduled;
 	}
 
-	// When children update asynchronously, we race the update against the next
-	// update of children. this.bail is the resolve function of the promise which
-	// the current update is raced against, and is resolved to the next update in
-	// updateChildren below.
+	// When children update asynchronously, we race their result against the next
+	// update of children. The bail property is set to the resolve function of
+	// the promise which the current update is raced against.
 	private bail:
 		| ((result?: Promise<undefined>) => unknown)
 		| undefined = undefined;
@@ -428,10 +416,7 @@ abstract class ParentHost<T> extends Host<T> {
 			}
 
 			if (tag !== Copy) {
-				if (
-					host.state === Initial ||
-					(host.tag === tag && host.state !== Unmounted)
-				) {
+				if (host.tag === tag && host.state !== Unmounted) {
 					const update = host.update(guest);
 					if (update !== undefined) {
 						if (updates === undefined) {
@@ -598,8 +583,37 @@ abstract class ParentHost<T> extends Host<T> {
 	}
 }
 
+class FragmentHost<T> extends ParentHost<T> {
+	ctx: Context<T> | HostContext<T>;
+	readonly tag: Fragment = Fragment;
+	constructor(
+		protected parent: ParentHost<T>,
+		protected renderer: Renderer<T>,
+		key?: unknown,
+	) {
+		super(parent, renderer);
+		this.ctx = parent.ctx;
+		this.key = key;
+	}
+
+	refreshSelf(): MaybePromise<undefined> {
+		return this.updateChildren(this.props && this.props.children);
+	}
+
+	commitSelf(): void {
+		const childValues = this.getChildValues();
+		this.value = childValues.length > 1 ? childValues : childValues[0];
+		if (this.state < Updating) {
+			// TODO: batch this per microtask
+			this.parent.commit();
+		}
+	}
+
+	unmountSelf(): void {}
+}
+
 class IntrinsicHost<T> extends ParentHost<T> {
-	tag: string | symbol;
+	readonly tag: string | symbol;
 	ctx: HostContext<T>;
 	private iterator: Iterator<T | undefined> | undefined = undefined;
 	private intrinsic: Intrinsic<T> | undefined = undefined;
@@ -613,9 +627,7 @@ class IntrinsicHost<T> extends ParentHost<T> {
 		this.tag = tag;
 		this.key = key;
 		this.ctx = new HostContext(this, this.parent && this.parent.ctx);
-		if (tag !== Fragment) {
-			this.intrinsic = this.renderer.intrinsicFor(tag);
-		}
+		this.intrinsic = this.renderer.intrinsicFor(tag);
 	}
 
 	refreshSelf(): MaybePromise<undefined> {
@@ -624,21 +636,9 @@ class IntrinsicHost<T> extends ParentHost<T> {
 
 	commitSelf(): void {
 		const childValues = this.getChildValues();
-		if (this.tag === Fragment) {
-			this.value = childValues.length > 1 ? childValues : childValues[0];
-		} else {
-			this.props = {...this.props, children: childValues};
-		}
+		this.props = {...this.props, children: childValues};
 
 		if (
-			this.state < Updating &&
-			this.tag === Fragment &&
-			this.parent !== undefined
-		) {
-			// TODO: batch this per microtask
-			this.parent.commit();
-			return;
-		} else if (
 			this.iterator === undefined &&
 			this.intrinsic !== undefined &&
 			this.ctx !== undefined
@@ -683,14 +683,6 @@ export class HostContext<T = any> extends CrankEventTarget {
 		return intrinsicHosts.get(this)!.value;
 	}
 
-	get(key: unknown): any {
-		return intrinsicHosts.get(this)!.get(key);
-	}
-
-	set(key: unknown, value: any): void {
-		intrinsicHosts.get(this)!.set(key, value);
-	}
-
 	*[Symbol.iterator](): Generator<IntrinsicProps<T>> {
 		while (true) {
 			yield intrinsicHosts.get(this)!.props as any;
@@ -705,7 +697,7 @@ interface Publication {
 }
 
 class ComponentHost<T> extends ParentHost<T> {
-	tag: Component;
+	readonly tag: Component;
 	ctx: Context<T>;
 	constructor(
 		protected parent: ParentHost<T>,
@@ -739,10 +731,8 @@ class ComponentHost<T> extends ParentHost<T> {
 			if (isIteratorOrAsyncIterator(value)) {
 				this.iterator = value;
 			} else if (isPromiseLike(value)) {
-				const pending = value.then(() => undefined);
-				const result = Promise.resolve(value).then((child) =>
-					this.updateChildren(child),
-				);
+				const pending = value.then(() => undefined); // void :(
+				const result = value.then((child) => this.updateChildren(child));
 				return [pending, result];
 			} else {
 				const result = this.updateChildren(value);
@@ -755,6 +745,7 @@ class ComponentHost<T> extends ParentHost<T> {
 			.execute();
 		const iteration = new Pledge(() => this.iterator!.next(previousValue))
 			.catch((err) => {
+				// TODO: figure out why this is written like this
 				return Pledge.resolve(this.parent.catch(err))
 					.then(() => ({value: undefined, done: true}))
 					.execute();
@@ -848,7 +839,7 @@ class ComponentHost<T> extends ParentHost<T> {
 
 	commitSelf(): void {
 		const childValues = this.getChildValues();
-		this.ctx.delegates = new Set(childValues.filter(isEventTarget) as any);
+		this.ctx.setDelegates(childValues);
 		this.value = childValues.length > 1 ? childValues : childValues[0];
 		if (this.state < Updating) {
 			// TODO: batch this per microtask
@@ -899,10 +890,6 @@ export class Context<T = any> extends CrankEventTarget {
 		componentHosts.set(this, host);
 	}
 
-	get value(): Array<T | string> | T | string | undefined {
-		return componentHosts.get(this)!.value;
-	}
-
 	get(key: unknown): any {
 		return componentHosts.get(this)!.get(key);
 	}
@@ -939,6 +926,8 @@ function createHost<T>(
 ): Host<T> {
 	if (guest === undefined || typeof guest === "string") {
 		return new Host(parent, renderer);
+	} else if (guest.tag === Fragment) {
+		return new FragmentHost(parent, renderer, guest.key);
 	} else if (typeof guest.tag === "function") {
 		return new ComponentHost(parent, renderer, guest.tag, guest.key);
 	} else {
@@ -946,12 +935,20 @@ function createHost<T>(
 	}
 }
 
+export const Default = Symbol.for("crank.Default");
+
+export type Default = typeof Default;
+
+export const Text = Symbol.for("crank.Text");
+
+export type Text = typeof Text;
+
+// TODO: nested tags
 export interface Environment<T> {
 	[Default](tag: string): Intrinsic<T>;
 	[Text]?(text: string): string;
 	[tag: string]: Intrinsic<T>; // Intrinsic<T> | Environment<T>;
 	// [Portal]: Intrinsic<T>;
-	// [Copy]: Intrinsic<T>;
 	// [Raw]: Intrinsic<T>;
 }
 
@@ -1002,7 +999,6 @@ export class Renderer<T> {
 
 	text(text: string): string {
 		if (this.env[Text] !== undefined) {
-			// TODO: remove non-null assertion when typescript gets its shit together with symbols
 			return this.env[Text]!(text);
 		}
 

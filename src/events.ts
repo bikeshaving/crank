@@ -32,30 +32,36 @@ function normalizeOptions(
 
 	return {capture, passive, once};
 }
-// TODO: strongly typed events somehow
-export class CrankEventTarget extends EventTargetShim implements EventTarget {
-	constructor(private parent?: CrankEventTarget) {
-		super();
-	}
 
+export function isEventTarget(value: any): value is EventTarget {
+	return (
+		value !== null &&
+		typeof value === "object" &&
+		typeof value.addEventListener === "function" &&
+		// TODO: maybe we don’t need these checks
+		typeof value.removeEventListener === "function" &&
+		typeof value.dispatchEvent === "function"
+	);
+}
+
+export class CrankEventTarget extends EventTargetShim implements EventTarget {
 	// TODO: maybe use a helper class?
 	// we need a map from:
 	// type -> capture -> listener record
 	// for efficient querying
 	private listeners: EventListenerRecord[] = [];
-
-	private _delegates: Set<EventTarget> = new Set();
-
-	get delegates(): Set<EventTarget> {
-		return this._delegates;
+	private delegates: Set<EventTarget> = new Set();
+	constructor(private parent?: CrankEventTarget) {
+		super();
 	}
 
-	set delegates(delegates: Set<EventTarget>) {
+	setDelegates(delegates: Iterable<unknown>) {
+		const delegates1 = new Set(Array.from(delegates).filter(isEventTarget));
 		const removed = new Set(
-			Array.from(this._delegates).filter((d) => !delegates.has(d)),
+			Array.from(this.delegates).filter((d) => !delegates1.has(d)),
 		);
 		const added = new Set(
-			Array.from(delegates).filter((d) => !this._delegates.has(d)),
+			Array.from(delegates1).filter((d) => !this.delegates.has(d)),
 		);
 
 		for (const delegate of removed) {
@@ -78,7 +84,7 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 			}
 		}
 
-		this._delegates = delegates;
+		this.delegates = delegates1;
 	}
 
 	addEventListener<T extends string>(
@@ -173,13 +179,4 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 
 		return continued;
 	}
-}
-
-export function isEventTarget(value: any): value is EventTarget {
-	return (
-		value != null &&
-		typeof value.addEventListener === "function" &&
-		typeof value.removeEventListener === "function" &&
-		typeof value.dispatchEvent === "function"
-	);
 }
