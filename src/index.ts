@@ -691,9 +691,9 @@ export class HostContext<T = any> extends CrankEventTarget {
 		intrinsicHosts.get(this)!.set(key, value);
 	}
 
-	*[Symbol.iterator](): Generator<Record<string, any>> {
+	*[Symbol.iterator](): Generator<IntrinsicProps<T>> {
 		while (true) {
-			yield intrinsicHosts.get(this)!.props!;
+			yield intrinsicHosts.get(this)!.props as any;
 		}
 	}
 }
@@ -911,13 +911,13 @@ export class Context<T = any> extends CrankEventTarget {
 		componentHosts.get(this)!.set(key, value);
 	}
 
-	*[Symbol.iterator](): Generator<Record<string, any>> {
+	*[Symbol.iterator](): Generator<Props> {
 		while (true) {
 			yield componentHosts.get(this)!.props!;
 		}
 	}
 
-	[Symbol.asyncIterator](): AsyncGenerator<Record<string, any>> {
+	[Symbol.asyncIterator](): AsyncGenerator<Props> {
 		return componentHosts.get(this)!.subscribe();
 	}
 
