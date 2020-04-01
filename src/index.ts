@@ -714,7 +714,7 @@ class ComponentHost<T> extends ParentHost<T> {
 		key?: unknown,
 	) {
 		super(parent, renderer);
-		this.ctx = new Context(this, this.parent && this.parent.ctx);
+		this.ctx = new Context(this, this.parent.ctx);
 		this.tag = tag;
 		this.key = key;
 	}
@@ -733,13 +733,7 @@ class ComponentHost<T> extends ParentHost<T> {
 		} else if (this.iterator === undefined) {
 			this.ctx.clearEventListeners();
 			const value = new Pledge(() => this.tag.call(this.ctx, this.props!))
-				.catch((err) => {
-					if (this.parent === undefined) {
-						throw err;
-					}
-
-					return this.parent.catch(err);
-				})
+				.catch((err) => this.parent.catch(err))
 				// type assertion because we shouldn’t get a promise of an iterator
 				.execute() as ChildIterator | Promise<Child> | Child;
 			if (isIteratorOrAsyncIterator(value)) {
@@ -761,10 +755,6 @@ class ComponentHost<T> extends ParentHost<T> {
 			.execute();
 		const iteration = new Pledge(() => this.iterator!.next(previousValue))
 			.catch((err) => {
-				if (this.parent === undefined) {
-					throw err;
-				}
-
 				return Pledge.resolve(this.parent.catch(err))
 					.then(() => ({value: undefined, done: true}))
 					.execute();
@@ -860,7 +850,7 @@ class ComponentHost<T> extends ParentHost<T> {
 		const childValues = this.getChildValues();
 		this.ctx.delegates = new Set(childValues.filter(isEventTarget) as any);
 		this.value = childValues.length > 1 ? childValues : childValues[0];
-		if (this.state < Updating && this.parent !== undefined) {
+		if (this.state < Updating) {
 			// TODO: batch this per microtask
 			this.parent.commit();
 		}
@@ -896,13 +886,7 @@ class ComponentHost<T> extends ParentHost<T> {
 
 					return this.updateChildren(iteration.value);
 				})
-				.catch((err) => {
-					if (this.parent === undefined) {
-						throw err;
-					}
-
-					return this.parent.catch(err);
-				})
+				.catch((err) => this.parent.catch(err))
 				.execute();
 		}
 	}
