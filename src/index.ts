@@ -21,6 +21,8 @@ function isIteratorOrAsyncIterator(
 
 export type Tag = Component | string | symbol;
 
+export type Key = unknown;
+
 export type Child = Element | string | number | boolean | null | undefined;
 
 interface ChildIterable extends Iterable<Child | ChildIterable> {}
@@ -28,7 +30,7 @@ interface ChildIterable extends Iterable<Child | ChildIterable> {}
 export type Children = Child | ChildIterable;
 
 export interface Props {
-	"crank-key"?: unknown;
+	"crank-key"?: Key;
 	children?: Children;
 	[name: string]: any;
 }
@@ -179,6 +181,32 @@ function* flatten(children: Children): Generator<Guest> {
 	}
 }
 
+type Host<T> = LeafHost<T> | ParentHost<T>;
+
+interface HostBase<T> {
+	readonly tag: Tag | undefined;
+	readonly key: Key;
+	readonly internal: boolean;
+	state: HostState;
+	value: Array<T | string> | T | string | undefined;
+	nextSibling: Host<T> | undefined;
+	previousSibling: Host<T> | undefined;
+	clock: number;
+	replacedBy: Host<T> | undefined;
+}
+
+class LeafHost<T> implements HostBase<T> {
+	readonly tag = undefined;
+	readonly key = undefined;
+	readonly internal = false;
+	state: HostState = Initial;
+	value: string | undefined = undefined;
+	nextSibling: Host<T> | undefined = undefined;
+	previousSibling: Host<T> | undefined = undefined;
+	clock: number = 0;
+	replacedBy: Host<T> | undefined = undefined;
+}
+
 const Initial = 0;
 type Initial = typeof Initial;
 
@@ -196,39 +224,23 @@ type Unmounted = typeof Unmounted;
 
 type HostState = Initial | Waiting | Updating | Finished | Unmounted;
 
-class Host<T> {
-	state: HostState = Initial;
+abstract class ParentHost<T> implements HostBase<T> {
+	abstract readonly tag: Tag;
+	abstract parent: ParentHost<T> | undefined;
+	readonly key: Key = undefined;
 	value: Array<T | string> | T | string | undefined = undefined;
-	readonly tag: Tag | undefined = undefined;
-	key: unknown = undefined;
+	state: HostState = Initial;
+	readonly internal = true;
+	abstract ctx: Context<T> | HostContext<T>;
+	abstract renderer: Renderer<T>;
+	// TODO: move into subclasses
+	props: any = undefined;
 	nextSibling: Host<T> | undefined = undefined;
 	previousSibling: Host<T> | undefined = undefined;
-	// these properties are used when racing components
+	clock: number = 0;
 	replacedBy: Host<T> | undefined = undefined;
-	clock = 0;
-
-	constructor(
-		protected parent: ParentHost<T> | undefined,
-		protected renderer: Renderer<T>,
-	) {}
-
-	update(guest: Guest): MaybePromise<undefined> {
-		this.state = this.state < Updating ? Updating : this.state;
-		this.value =
-			typeof guest === "string" ? this.renderer.text(guest) : undefined;
-		return undefined;
-	}
-
-	// TODO: figure out a way to delete this
-	unmount(): void {}
-}
-
-abstract class ParentHost<T> extends Host<T> {
-	abstract ctx: Context<T> | HostContext<T>;
-	// TODO: move into subclasses
-	props: Record<string, any> | undefined = undefined;
-	protected firstChild: Host<T> | undefined = undefined;
-	protected lastChild: Host<T> | undefined = undefined;
+	firstChild: Host<T> | undefined = undefined;
+	lastChild: Host<T> | undefined = undefined;
 	private keyedChildren: Map<unknown, Host<T>> | undefined;
 	protected appendChild(child: Host<T>): void {
 		if (this.lastChild === undefined) {
@@ -320,9 +332,9 @@ abstract class ParentHost<T> extends Host<T> {
 		return childValues;
 	}
 
-	update(guest: Guest): MaybePromise<undefined> {
+	update(props: Props): MaybePromise<undefined> {
 		this.state = this.state < Updating ? Updating : this.state;
-		this.props = (guest as Element).props;
+		this.props = props;
 		return this.refresh();
 	}
 
@@ -417,20 +429,37 @@ abstract class ParentHost<T> extends Host<T> {
 
 			if (tag !== Copy) {
 				if (host.tag === tag && host.state !== Unmounted) {
-					const update = host.update(guest);
-					if (update !== undefined) {
-						if (updates === undefined) {
-							updates = [];
-						}
+					if (host.internal) {
+						const update = host.update((guest as Element).props);
+						if (update !== undefined) {
+							if (updates === undefined) {
+								updates = [];
+							}
 
-						updates.push(update);
+							updates.push(update);
+						}
+					} else if (typeof guest === "string") {
+						host.value = this.renderer.text(guest);
+					} else {
+						host.value = undefined;
 					}
 				} else {
+					// TODO: async exit for keyed hosts
+					if (host.internal) {
+						host.unmount();
+					}
+
 					const nextHost = createHost(this, this.renderer, guest);
 					nextHost.clock = host.clock++;
-					const update = nextHost.update(guest);
-					// TODO: unmount only when the host is ready to be replaced
-					host.unmount();
+					let update: MaybePromise<undefined>;
+					if (nextHost.internal) {
+						update = nextHost.update((guest as any).props);
+					} else if (typeof guest === "string") {
+						nextHost.value = this.renderer.text(guest);
+					} else {
+						nextHost.value = undefined;
+					}
+
 					if (update === undefined) {
 						this.replaceChild(nextHost, host);
 						host.replacedBy = nextHost;
@@ -473,7 +502,7 @@ abstract class ParentHost<T> extends Host<T> {
 
 		// unmount excess children
 		for (
-			let nextSibling = host && host.nextSibling;
+			;
 			host !== undefined;
 			host = nextSibling, nextSibling = host && host.nextSibling
 		) {
@@ -481,7 +510,10 @@ abstract class ParentHost<T> extends Host<T> {
 				this.keyedChildren.delete(host.key);
 			}
 
-			host.unmount();
+			if (host.internal) {
+				host.unmount();
+			}
+
 			this.removeChild(host);
 		}
 
@@ -489,7 +521,10 @@ abstract class ParentHost<T> extends Host<T> {
 		if (this.keyedChildren !== undefined) {
 			for (const child of this.keyedChildren.values()) {
 				// TODO: implement async unmount for keyed hosts
-				child.unmount();
+				if (child.internal) {
+					child.unmount();
+				}
+
 				this.removeChild(child);
 			}
 		}
@@ -538,7 +573,7 @@ abstract class ParentHost<T> extends Host<T> {
 			host !== undefined;
 			host = host.nextSibling
 		) {
-			if (typeof host.unmount === "function") {
+			if (host.internal) {
 				host.unmount();
 			}
 		}
@@ -549,31 +584,31 @@ abstract class ParentHost<T> extends Host<T> {
 	// Context stuff
 	private consumers: Map<unknown, Set<ParentHost<T>>> | undefined = undefined;
 	private provisions: Map<unknown, any> | undefined = undefined;
-	get(key: unknown): any {
+	get(name: unknown): any {
 		for (let host = this.parent; host !== undefined; host = host.parent) {
-			if (host.provisions !== undefined && host.provisions.has(key)) {
+			if (host.provisions !== undefined && host.provisions.has(name)) {
 				if (host.consumers === undefined) {
 					host.consumers = new Map();
 				}
 
-				if (!host.consumers.has(key)) {
-					host.consumers.set(key, new Set());
+				if (!host.consumers.has(name)) {
+					host.consumers.set(name, new Set());
 				}
 
-				host.consumers.get(key)!.add(this);
-				return host.provisions.get(key);
+				host.consumers.get(name)!.add(this);
+				return host.provisions.get(name);
 			}
 		}
 	}
 
-	set(key: unknown, value: any): void {
+	set(name: unknown, value: any): void {
 		if (this.provisions === undefined) {
 			this.provisions = new Map();
 		}
 
-		this.provisions.set(key, value);
-		if (this.consumers !== undefined && this.consumers.has(key)) {
-			const consumers = this.consumers.get(key)!;
+		this.provisions.set(name, value);
+		if (this.consumers !== undefined && this.consumers.has(name)) {
+			const consumers = this.consumers.get(name)!;
 			for (const consumer of consumers) {
 				consumer.schedule();
 			}
@@ -586,12 +621,17 @@ abstract class ParentHost<T> extends Host<T> {
 class FragmentHost<T> extends ParentHost<T> {
 	ctx: Context<T> | HostContext<T>;
 	readonly tag: Fragment = Fragment;
+	readonly key: Key;
+	parent: ParentHost<T>;
+	renderer: Renderer<T>;
 	constructor(
-		protected parent: ParentHost<T>,
-		protected renderer: Renderer<T>,
+		parent: ParentHost<T>,
+		renderer: Renderer<T>,
 		key?: unknown,
 	) {
-		super(parent, renderer);
+		super();
+		this.parent = parent;
+		this.renderer = renderer;
 		this.ctx = parent.ctx;
 		this.key = key;
 	}
@@ -614,16 +654,22 @@ class FragmentHost<T> extends ParentHost<T> {
 
 class IntrinsicHost<T> extends ParentHost<T> {
 	readonly tag: string | symbol;
+	readonly key: Key;
+	value: T | undefined;
 	ctx: HostContext<T>;
+	private intrinsic: Intrinsic<T>;
 	private iterator: Iterator<T | undefined> | undefined = undefined;
-	private intrinsic: Intrinsic<T> | undefined = undefined;
+	parent: ParentHost<T> | undefined;
+	renderer: Renderer<T>;
 	constructor(
-		protected parent: ParentHost<T> | undefined,
-		protected renderer: Renderer<T>,
+		parent: ParentHost<T> | undefined,
+		renderer: Renderer<T>,
 		tag: string | symbol,
 		key?: unknown,
 	) {
-		super(parent, renderer);
+		super();
+		this.parent = parent;
+		this.renderer = renderer;
 		this.tag = tag;
 		this.key = key;
 		this.ctx = new HostContext(this, this.parent && this.parent.ctx);
@@ -638,11 +684,7 @@ class IntrinsicHost<T> extends ParentHost<T> {
 		const childValues = this.getChildValues();
 		this.props = {...this.props, children: childValues};
 
-		if (
-			this.iterator === undefined &&
-			this.intrinsic !== undefined &&
-			this.ctx !== undefined
-		) {
+		if (this.iterator === undefined && this.ctx !== undefined) {
 			const value = this.intrinsic.call(
 				this.ctx,
 				this.props as IntrinsicProps<T>,
@@ -679,7 +721,7 @@ export class HostContext<T = any> extends CrankEventTarget {
 		intrinsicHosts.set(this, host);
 	}
 
-	get value(): Array<T | string> | T | string | undefined {
+	get value(): T | string | undefined {
 		return intrinsicHosts.get(this)!.value;
 	}
 
@@ -698,14 +740,19 @@ interface Publication {
 
 class ComponentHost<T> extends ParentHost<T> {
 	readonly tag: Component;
+	readonly key: Key;
+	parent: ParentHost<T>;
+	renderer: Renderer<T>;
 	ctx: Context<T>;
 	constructor(
-		protected parent: ParentHost<T>,
-		protected renderer: Renderer<T>,
+		parent: ParentHost<T>,
+		renderer: Renderer<T>,
 		tag: Component,
-		key?: unknown,
+		key: Key,
 	) {
-		super(parent, renderer);
+		super();
+		this.parent = parent;
+		this.renderer = renderer;
 		this.ctx = new Context(this, this.parent.ctx);
 		this.tag = tag;
 		this.key = key;
@@ -890,12 +937,12 @@ export class Context<T = any> extends CrankEventTarget {
 		componentHosts.set(this, host);
 	}
 
-	get(key: unknown): any {
-		return componentHosts.get(this)!.get(key);
+	get(name: unknown): any {
+		return componentHosts.get(this)!.get(name);
 	}
 
-	set(key: unknown, value: any): void {
-		componentHosts.get(this)!.set(key, value);
+	set(name: unknown, value: any): void {
+		componentHosts.get(this)!.set(name, value);
 	}
 
 	*[Symbol.iterator](): Generator<Props> {
@@ -925,7 +972,7 @@ function createHost<T>(
 	guest: Guest,
 ): Host<T> {
 	if (guest === undefined || typeof guest === "string") {
-		return new Host(parent, renderer);
+		return new LeafHost();
 	} else if (guest.tag === Fragment) {
 		return new FragmentHost(parent, renderer, guest.key);
 	} else if (typeof guest.tag === "function") {
@@ -1022,7 +1069,7 @@ export class Renderer<T> {
 			}
 		}
 
-		return Pledge.resolve(host.update(portal))
+		return Pledge.resolve(host.update(portal.props))
 			.then(() => host!.ctx)
 			.execute();
 	}
