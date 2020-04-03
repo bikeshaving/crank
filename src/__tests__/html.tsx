@@ -4,14 +4,14 @@ import {renderer} from "../html";
 
 describe("render", () => {
 	test("simple", () => {
-		expect(renderer.renderToString(<h1>Hello world</h1>)).toEqual(
+		expect(renderer.render(<h1>Hello world</h1>)).toEqual(
 			"<h1>Hello world</h1>",
 		);
 	});
 
 	test("multiple children", () => {
 		expect(
-			renderer.renderToString(
+			renderer.render(
 				<div>
 					<span>1</span>
 					<span>2</span>
@@ -26,7 +26,7 @@ describe("render", () => {
 
 	test("nested children", () => {
 		expect(
-			renderer.renderToString(
+			renderer.render(
 				<div id="1">
 					<div id="2">
 						<div id="3">Hi</div>
@@ -38,7 +38,7 @@ describe("render", () => {
 
 	test("boolean replaces nested children", () => {
 		expect(
-			renderer.renderToString(
+			renderer.render(
 				<div id="1">
 					<div id="2">
 						<div id="3">Hi</div>
@@ -50,7 +50,7 @@ describe("render", () => {
 
 	test("attrs", () => {
 		expect(
-			renderer.renderToString(
+			renderer.render(
 				<Fragment>
 					<input id="toggle" type="checkbox" checked data-checked />
 					<label for="toggle" />
@@ -62,12 +62,12 @@ describe("render", () => {
 	});
 
 	test("null", () => {
-		expect(renderer.renderToString(null)).toEqual("");
+		expect(renderer.render(null)).toEqual("");
 	});
 
 	test("fragment", () => {
 		expect(
-			renderer.renderToString(
+			renderer.render(
 				<Fragment>
 					<span>1</span>
 					<span>2</span>
@@ -78,7 +78,7 @@ describe("render", () => {
 
 	test("array", () => {
 		expect(
-			renderer.renderToString(
+			renderer.render(
 				<div>
 					<span>1</span>
 					{[<span>2</span>, <span>3</span>]}
@@ -92,7 +92,7 @@ describe("render", () => {
 
 	test("nested arrays", () => {
 		expect(
-			renderer.renderToString(
+			renderer.render(
 				<div>
 					<span>1</span>
 					{[<span>2</span>, [<span>3</span>, <span>4</span>], <span>5</span>]}
@@ -111,7 +111,7 @@ describe("render", () => {
 			<span crank-key="4">4</span>,
 		];
 		expect(
-			renderer.renderToString(
+			renderer.render(
 				<div>
 					<span>1</span>
 					{spans}
@@ -124,7 +124,7 @@ describe("render", () => {
 	});
 
 	test("escaped children", () => {
-		expect(renderer.renderToString(<div>{"< > & \" '"}</div>)).toEqual(
+		expect(renderer.render(<div>{"< > & \" '"}</div>)).toEqual(
 			"<div>&lt; &gt; &amp; &quot; &#039;</div>",
 		);
 	});
@@ -132,7 +132,7 @@ describe("render", () => {
 	test("raw html", () => {
 		const html = '<span id="raw">Hi</span>';
 		expect(
-			renderer.renderToString(
+			renderer.render(
 				<div>
 					Raw: <Raw value={html} />
 				</div>,

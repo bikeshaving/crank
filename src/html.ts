@@ -1,6 +1,4 @@
-import {Pledge} from "./pledge";
 import {
-	Child,
 	Default,
 	Environment,
 	Intrinsic,
@@ -112,12 +110,6 @@ export const env: Environment<string> = {
 export class StringRenderer extends Renderer<string> {
 	constructor() {
 		super(env);
-	}
-
-	renderToString(child: Child, key?: object): Promise<string> | string {
-		return Pledge.resolve(this.render(child, key))
-			.then((ctx) => (ctx && (ctx.value as string)) || "")
-			.execute();
 	}
 }
 

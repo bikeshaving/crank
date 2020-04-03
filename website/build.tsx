@@ -332,7 +332,7 @@ function GuidePage({title, html, docs, url}: GuidePageProps): Element {
 	await fs.copy(path.join(__dirname, "static"), path.join(dist, "static"));
 	await fs.writeFile(
 		path.join(dist, "index.html"),
-		await renderer.renderToString(<Home />),
+		await renderer.render(<Home />),
 	);
 	await Promise.all(
 		docs.map(async ({title, html, url, publish}) => {
@@ -344,7 +344,7 @@ function GuidePage({title, html, docs, url}: GuidePageProps): Element {
 			await fs.ensureDir(path.dirname(filename));
 			return fs.writeFile(
 				filename,
-				await renderer.renderToString(
+				await renderer.render(
 					<GuidePage title={title} html={html} docs={docs} url={url} />,
 				),
 			);
@@ -354,7 +354,7 @@ function GuidePage({title, html, docs, url}: GuidePageProps): Element {
 	await fs.ensureDir(path.join(dist, "blog"));
 	await fs.writeFile(
 		path.join(dist, "blog/index.html"),
-		await renderer.renderToString(<BlogIndexPage docs={posts} url="/blog" />),
+		await renderer.render(<BlogIndexPage docs={posts} url="/blog" />),
 	);
 	await Promise.all(
 		posts.map(async ({title, html, url, publish, publishDate}) => {
@@ -366,7 +366,7 @@ function GuidePage({title, html, docs, url}: GuidePageProps): Element {
 			await fs.ensureDir(path.dirname(filename));
 			return fs.writeFile(
 				filename,
-				await renderer.renderToString(
+				await renderer.render(
 					<BlogPage
 						title={title}
 						html={html}

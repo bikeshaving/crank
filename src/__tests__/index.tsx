@@ -2066,38 +2066,4 @@ describe("context", () => {
 			"<div><div>Goodbye 1</div></div><div>Hello 1</div>",
 		);
 	});
-
-	test("hole puncher", async () => {
-		const Consumer1 = jest.fn(Consumer);
-		function* Static({children}: {children: Children}) {
-			yield (<Fragment>{children}</Fragment>);
-			while (true) {
-				yield (<Copy />);
-			}
-		}
-
-		renderer.render(
-			<Provider>
-				<Static>
-					<Consumer1 />
-				</Static>
-			</Provider>,
-			document.body,
-		);
-
-		expect(document.body.innerHTML).toEqual("<div>Hello 1</div>");
-
-		renderer.render(
-			<Provider>
-				<Static>
-					<Consumer1 />
-				</Static>
-			</Provider>,
-			document.body,
-		);
-
-		await new Promise((resolve) => setFrame(resolve));
-		expect(document.body.innerHTML).toEqual("<div>Hello 2</div>");
-		expect(Consumer1).toHaveBeenCalledTimes(2);
-	});
 });

@@ -73,6 +73,7 @@ export type Intrinsic<T> = (
 	props: IntrinsicProps<T>,
 ) => Iterator<T> | T;
 
+// TODO: it doesn’t make sense to export this function
 export function setFrame(callback: (time: number) => unknown): any {
 	if (requestAnimationFrame !== undefined) {
 		return requestAnimationFrame(callback);
@@ -96,20 +97,16 @@ export function clearFrame(id: any): void {
 // Special Intrinsic Tags
 // TODO: We assert symbol tags as any because typescript support for symbol
 // tags in JSX does not exist yet.
-export const Portal = Symbol.for("crank.Portal") as any;
-
-export type Portal = typeof Portal;
-
 export const Fragment = Symbol.for("crank.Fragment") as any;
-
 export type Fragment = typeof Fragment;
 
 export const Copy = Symbol("crank.Copy") as any;
-
 export type Copy = typeof Copy;
 
-export const Raw = Symbol.for("crank.Raw") as any;
+export const Portal = Symbol.for("crank.Portal") as any;
+export type Portal = typeof Portal;
 
+export const Raw = Symbol.for("crank.Raw") as any;
 export type Raw = typeof Raw;
 
 declare global {
@@ -152,9 +149,9 @@ export function createElement<TTag extends Tag>(
 	return {[ElementSigil]: true, tag, props, key};
 }
 
-type Guest = Element | string | undefined;
+type NormalizedChild = Element | string | undefined;
 
-function normalize(child: Child): Guest {
+function normalize(child: Child): NormalizedChild {
 	if (child == null || typeof child === "boolean") {
 		return undefined;
 	} else if (typeof child === "string" || isElement(child)) {
@@ -164,7 +161,7 @@ function normalize(child: Child): Guest {
 	}
 }
 
-function* flatten(children: Children): Generator<Guest> {
+function* flatten(children: Children): Generator<NormalizedChild> {
 	if (children == null) {
 		return;
 	} else if (!isNonStringIterable(children)) {
@@ -181,13 +178,15 @@ function* flatten(children: Children): Generator<Guest> {
 	}
 }
 
+// This union exists because we needed to discriminate between leaf and parent
+// nodes using a property (host.internal).
 type Host<T> = LeafHost<T> | ParentHost<T>;
 
+// The shared properties between LeafHost and ParentHost
 interface HostBase<T> {
+	readonly internal: boolean;
 	readonly tag: Tag | undefined;
 	readonly key: Key;
-	readonly internal: boolean;
-	state: HostState;
 	value: Array<T | string> | T | string | undefined;
 	nextSibling: Host<T> | undefined;
 	previousSibling: Host<T> | undefined;
@@ -199,7 +198,6 @@ class LeafHost<T> implements HostBase<T> {
 	readonly tag = undefined;
 	readonly key = undefined;
 	readonly internal = false;
-	state: HostState = Initial;
 	value: string | undefined = undefined;
 	nextSibling: Host<T> | undefined = undefined;
 	previousSibling: Host<T> | undefined = undefined;
@@ -226,19 +224,19 @@ type HostState = Initial | Waiting | Updating | Finished | Unmounted;
 
 abstract class ParentHost<T> implements HostBase<T> {
 	abstract readonly tag: Tag;
-	abstract parent: ParentHost<T> | undefined;
 	readonly key: Key = undefined;
-	value: Array<T | string> | T | string | undefined = undefined;
-	state: HostState = Initial;
 	readonly internal = true;
-	abstract ctx: Context<T> | HostContext<T>;
+	value: Array<T | string> | T | string | undefined = undefined;
+	ctx: Context<T> | undefined = undefined;
 	abstract renderer: Renderer<T>;
+	state: HostState = Initial;
 	// TODO: move into subclasses
-	props: any = undefined;
+	props: Props | undefined = undefined;
+	clock: number = 0;
+	abstract parent: ParentHost<T> | undefined;
+	replacedBy: Host<T> | undefined = undefined;
 	nextSibling: Host<T> | undefined = undefined;
 	previousSibling: Host<T> | undefined = undefined;
-	clock: number = 0;
-	replacedBy: Host<T> | undefined = undefined;
 	firstChild: Host<T> | undefined = undefined;
 	lastChild: Host<T> | undefined = undefined;
 	private keyedChildren: Map<unknown, Host<T>> | undefined;
@@ -333,41 +331,17 @@ abstract class ParentHost<T> implements HostBase<T> {
 	}
 
 	update(props: Props): MaybePromise<undefined> {
-		this.state = this.state < Updating ? Updating : this.state;
 		this.props = props;
+		this.state = this.state < Updating ? Updating : this.state;
 		return this.refresh();
 	}
 
-	// TODO: move to component only
-	private scheduled: Promise<undefined> | undefined = undefined;
 	refresh(): MaybePromise<undefined> {
-		if (this.scheduled !== undefined) {
-			this.scheduled = undefined;
-		}
-
 		if (this.state === Unmounted) {
 			return;
 		}
 
-		return this.refreshSelf();
-	}
-
-	abstract refreshSelf(): MaybePromise<undefined>;
-
-	schedule(): Promise<undefined> {
-		if (this.scheduled === undefined) {
-			this.scheduled = new Promise((resolve) => {
-				setFrame(() => {
-					if (this.scheduled === undefined) {
-						resolve();
-					} else {
-						resolve(this.refresh());
-					}
-				});
-			});
-		}
-
-		return this.scheduled;
+		return this.updateChildren(this.props && this.props.children);
 	}
 
 	// When children update asynchronously, we race their result against the next
@@ -376,18 +350,20 @@ abstract class ParentHost<T> implements HostBase<T> {
 	private bail:
 		| ((result?: Promise<undefined>) => unknown)
 		| undefined = undefined;
-
+	// TODO: I bet we could simplify the algorithm further, perhaps by writing a
+	// custom alignment algorithm which automatically zips up old and new nodes or
+	// skips keyed nodes.
 	updateChildren(children: Children): MaybePromise<undefined> {
 		let host = this.firstChild;
 		let nextSibling = host && host.nextSibling;
 		let nextKeyedChildren: Map<unknown, Host<T>> | undefined;
 		let updates: Array<Promise<unknown>> | undefined;
-		for (const guest of flatten(children)) {
+		for (const child of flatten(children)) {
 			let tag: Tag | undefined;
 			let key: unknown;
-			if (isElement(guest)) {
-				tag = guest.tag;
-				key = guest.key;
+			if (isElement(child)) {
+				tag = child.tag;
+				key = child.key;
 				if (nextKeyedChildren !== undefined && nextKeyedChildren.has(key)) {
 					// TODO: warn about a duplicate key
 					key = undefined;
@@ -397,7 +373,7 @@ abstract class ParentHost<T> implements HostBase<T> {
 			if (key != null) {
 				let nextHost = this.keyedChildren && this.keyedChildren.get(key);
 				if (nextHost === undefined) {
-					nextHost = createHost(this, this.renderer, guest);
+					nextHost = createHost(this, this.renderer, child);
 				} else {
 					this.keyedChildren!.delete(key);
 					if (host !== nextHost) {
@@ -418,19 +394,20 @@ abstract class ParentHost<T> implements HostBase<T> {
 				host = nextHost;
 				nextSibling = host.nextSibling;
 			} else if (host === undefined) {
-				host = createHost(this, this.renderer, guest);
+				host = createHost(this, this.renderer, child);
 				this.appendChild(host);
 			} else if (host.key != null) {
-				const nextHost = createHost(this, this.renderer, guest);
+				const nextHost = createHost(this, this.renderer, child);
 				this.insertBefore(nextHost, host.nextSibling);
 				host = nextHost;
 				nextSibling = host.nextSibling;
 			}
 
 			if (tag !== Copy) {
-				if (host.tag === tag && host.state !== Unmounted) {
+				// TODO: figure out why do we do a check for unmounted hosts here
+				if (host.tag === tag && (!host.internal || host.state !== Unmounted)) {
 					if (host.internal) {
-						const update = host.update((guest as Element).props);
+						const update = host.update((child as Element).props);
 						if (update !== undefined) {
 							if (updates === undefined) {
 								updates = [];
@@ -438,24 +415,21 @@ abstract class ParentHost<T> implements HostBase<T> {
 
 							updates.push(update);
 						}
-					} else if (typeof guest === "string") {
-						host.value = this.renderer.text(guest);
+					} else if (typeof child === "string") {
+						host.value = this.renderer.text(child);
 					} else {
 						host.value = undefined;
 					}
 				} else {
-					// TODO: async exit for keyed hosts
-					if (host.internal) {
-						host.unmount();
-					}
-
-					const nextHost = createHost(this, this.renderer, guest);
+					// TODO: async unmount for keyed hosts
+					host.internal && host.unmount();
+					const nextHost = createHost(this, this.renderer, child);
 					nextHost.clock = host.clock++;
 					let update: MaybePromise<undefined>;
 					if (nextHost.internal) {
-						update = nextHost.update((guest as any).props);
-					} else if (typeof guest === "string") {
-						nextHost.value = this.renderer.text(guest);
+						update = nextHost.update((child as Element).props);
+					} else if (typeof child === "string") {
+						nextHost.value = this.renderer.text(child);
 					} else {
 						nextHost.value = undefined;
 					}
@@ -470,7 +444,7 @@ abstract class ParentHost<T> implements HostBase<T> {
 
 						updates.push(update);
 						// host is reassigned so we need to capture its current value in
-						// the update.then callback’s closure.
+						// host1 for the sake of the callback’s closure.
 						const host1 = host;
 						update.then(() => {
 							if (host1.replacedBy === undefined) {
@@ -520,11 +494,7 @@ abstract class ParentHost<T> implements HostBase<T> {
 		// unmount excess keyed children
 		if (this.keyedChildren !== undefined) {
 			for (const child of this.keyedChildren.values()) {
-				// TODO: implement async unmount for keyed hosts
-				if (child.internal) {
-					child.unmount();
-				}
-
+				child.internal && child.unmount();
 				this.removeChild(child);
 			}
 		}
@@ -551,11 +521,8 @@ abstract class ParentHost<T> implements HostBase<T> {
 	}
 
 	commit(): void {
-		this.commitSelf();
 		this.state = this.state <= Updating ? Waiting : this.state;
 	}
-
-	abstract commitSelf(): void;
 
 	catch(reason: any): MaybePromise<undefined> {
 		if (this.parent === undefined) {
@@ -566,69 +533,23 @@ abstract class ParentHost<T> implements HostBase<T> {
 	}
 
 	unmount(): void {
-		this.unmountSelf();
 		this.state = Unmounted;
 		for (
 			let host = this.firstChild;
 			host !== undefined;
 			host = host.nextSibling
 		) {
-			if (host.internal) {
-				host.unmount();
-			}
-		}
-	}
-
-	abstract unmountSelf(): void;
-
-	// Context stuff
-	private consumers: Map<unknown, Set<ParentHost<T>>> | undefined = undefined;
-	private provisions: Map<unknown, any> | undefined = undefined;
-	get(name: unknown): any {
-		for (let host = this.parent; host !== undefined; host = host.parent) {
-			if (host.provisions !== undefined && host.provisions.has(name)) {
-				if (host.consumers === undefined) {
-					host.consumers = new Map();
-				}
-
-				if (!host.consumers.has(name)) {
-					host.consumers.set(name, new Set());
-				}
-
-				host.consumers.get(name)!.add(this);
-				return host.provisions.get(name);
-			}
-		}
-	}
-
-	set(name: unknown, value: any): void {
-		if (this.provisions === undefined) {
-			this.provisions = new Map();
-		}
-
-		this.provisions.set(name, value);
-		if (this.consumers !== undefined && this.consumers.has(name)) {
-			const consumers = this.consumers.get(name)!;
-			for (const consumer of consumers) {
-				consumer.schedule();
-			}
-
-			consumers.clear();
+			host.internal && host.unmount();
 		}
 	}
 }
 
 class FragmentHost<T> extends ParentHost<T> {
-	ctx: Context<T> | HostContext<T>;
-	readonly tag: Fragment = Fragment;
-	readonly key: Key;
 	parent: ParentHost<T>;
 	renderer: Renderer<T>;
-	constructor(
-		parent: ParentHost<T>,
-		renderer: Renderer<T>,
-		key?: unknown,
-	) {
+	readonly tag: Fragment = Fragment;
+	readonly key: Key;
+	constructor(parent: ParentHost<T>, renderer: Renderer<T>, key: unknown) {
 		super();
 		this.parent = parent;
 		this.renderer = renderer;
@@ -636,29 +557,26 @@ class FragmentHost<T> extends ParentHost<T> {
 		this.key = key;
 	}
 
-	refreshSelf(): MaybePromise<undefined> {
-		return this.updateChildren(this.props && this.props.children);
-	}
-
-	commitSelf(): void {
+	commit(): void {
 		const childValues = this.getChildValues();
 		this.value = childValues.length > 1 ? childValues : childValues[0];
 		if (this.state < Updating) {
 			// TODO: batch this per microtask
 			this.parent.commit();
 		}
-	}
 
-	unmountSelf(): void {}
+		super.commit();
+	}
 }
 
 class IntrinsicHost<T> extends ParentHost<T> {
 	readonly tag: string | symbol;
 	readonly key: Key;
 	value: T | undefined;
-	ctx: HostContext<T>;
-	private intrinsic: Intrinsic<T>;
+	private readonly intrinsic: Intrinsic<T>;
 	private iterator: Iterator<T | undefined> | undefined = undefined;
+	readonly hostCtx: HostContext<T>;
+	childValues: Array<T | string> = [];
 	parent: ParentHost<T> | undefined;
 	renderer: Renderer<T>;
 	constructor(
@@ -672,23 +590,18 @@ class IntrinsicHost<T> extends ParentHost<T> {
 		this.renderer = renderer;
 		this.tag = tag;
 		this.key = key;
-		this.ctx = new HostContext(this, this.parent && this.parent.ctx);
-		this.intrinsic = this.renderer.intrinsicFor(tag);
+		this.ctx = this.parent && this.parent.ctx;
+		this.hostCtx = new HostContext(this);
+		this.intrinsic = this.renderer.intrinsic(tag);
 	}
 
-	refreshSelf(): MaybePromise<undefined> {
-		return this.updateChildren(this.props && this.props.children);
-	}
-
-	commitSelf(): void {
-		const childValues = this.getChildValues();
-		this.props = {...this.props, children: childValues};
-
-		if (this.iterator === undefined && this.ctx !== undefined) {
-			const value = this.intrinsic.call(
-				this.ctx,
-				this.props as IntrinsicProps<T>,
-			);
+	commit(): void {
+		this.childValues = this.getChildValues();
+		if (this.iterator === undefined) {
+			const value = this.intrinsic.call(this.hostCtx, {
+				...this.props,
+				children: this.childValues,
+			});
 			if (isIteratorOrAsyncIterator(value)) {
 				this.iterator = value;
 			} else {
@@ -703,31 +616,31 @@ class IntrinsicHost<T> extends ParentHost<T> {
 				this.state = this.state < Finished ? Finished : this.state;
 			}
 		}
+
+		super.commit();
 	}
 
-	unmountSelf(): void {
+	unmount(): void {
 		if (this.state < Finished) {
 			if (this.iterator !== undefined && this.iterator.return) {
 				this.iterator.return();
 			}
 		}
+
+		super.unmount();
 	}
 }
 
 const intrinsicHosts = new WeakMap<HostContext<any>, IntrinsicHost<any>>();
-export class HostContext<T = any> extends CrankEventTarget {
-	constructor(host: IntrinsicHost<T>, parent?: HostContext<T> | Context<T>) {
-		super(parent);
+export class HostContext<T = any> {
+	constructor(host: IntrinsicHost<T>) {
 		intrinsicHosts.set(this, host);
 	}
 
-	get value(): T | string | undefined {
-		return intrinsicHosts.get(this)!.value;
-	}
-
 	*[Symbol.iterator](): Generator<IntrinsicProps<T>> {
+		const host = intrinsicHosts.get(this)!;
 		while (true) {
-			yield intrinsicHosts.get(this)!.props as any;
+			yield {...host.props, children: host.childValues};
 		}
 	}
 }
@@ -753,7 +666,7 @@ class ComponentHost<T> extends ParentHost<T> {
 		super();
 		this.parent = parent;
 		this.renderer = renderer;
-		this.ctx = new Context(this, this.parent.ctx);
+		this.ctx = new Context(this, parent.ctx);
 		this.tag = tag;
 		this.key = key;
 	}
@@ -834,7 +747,12 @@ class ComponentHost<T> extends ParentHost<T> {
 	}
 
 	private publications: Set<Publication> | undefined = undefined;
-	refreshSelf(): MaybePromise<undefined> {
+	refresh(): MaybePromise<undefined> {
+		this.scheduled = undefined;
+		if (this.state === Unmounted) {
+			return;
+		}
+
 		if (this.publications !== undefined) {
 			for (const pub of this.publications) {
 				pub.push(this.props!);
@@ -842,6 +760,23 @@ class ComponentHost<T> extends ParentHost<T> {
 		}
 
 		return this.run();
+	}
+
+	private scheduled: Promise<undefined> | undefined = undefined;
+	schedule(): Promise<undefined> {
+		if (this.scheduled === undefined) {
+			this.scheduled = new Promise((resolve) => {
+				setFrame(() => {
+					if (this.scheduled === undefined) {
+						resolve();
+					} else {
+						resolve(this.refresh());
+					}
+				});
+			});
+		}
+
+		return this.scheduled;
 	}
 
 	subscribe(): AsyncGenerator<Props> {
@@ -884,7 +819,7 @@ class ComponentHost<T> extends ParentHost<T> {
 		return this.enqueuedChildren;
 	}
 
-	commitSelf(): void {
+	commit(): void {
 		const childValues = this.getChildValues();
 		this.ctx.setDelegates(childValues);
 		this.value = childValues.length > 1 ? childValues : childValues[0];
@@ -892,20 +827,24 @@ class ComponentHost<T> extends ParentHost<T> {
 			// TODO: batch this per microtask
 			this.parent.commit();
 		}
+
+		super.commit();
 	}
 
-	unmountSelf(): void {
+	unmount(): void {
+		if (this.state < Finished) {
+			if (this.iterator !== undefined && this.iterator.return) {
+				this.iterator.return();
+			}
+		}
+
 		if (this.publications !== undefined) {
 			for (const pub of this.publications) {
 				pub.stop();
 			}
 		}
 
-		if (this.state < Finished) {
-			if (this.iterator !== undefined && this.iterator.return) {
-				this.iterator.return();
-			}
-		}
+		super.unmount();
 	}
 
 	catch(reason: any): MaybePromise<undefined> {
@@ -928,11 +867,37 @@ class ComponentHost<T> extends ParentHost<T> {
 				.execute();
 		}
 	}
+
+	// Context stuff
+	private provisions: Map<unknown, any> | undefined = undefined;
+	get(name: unknown): any {
+		for (
+			let host: ParentHost<T> | undefined = this.parent;
+			host !== undefined;
+			host = host.parent
+		) {
+			if (
+				host instanceof ComponentHost &&
+				host.provisions !== undefined &&
+				host.provisions.has(name)
+			) {
+				return host.provisions.get(name);
+			}
+		}
+	}
+
+	set(name: unknown, value: any): void {
+		if (this.provisions === undefined) {
+			this.provisions = new Map();
+		}
+
+		this.provisions.set(name, value);
+	}
 }
 
 const componentHosts = new WeakMap<Context<any>, ComponentHost<any>>();
 export class Context<T = any> extends CrankEventTarget {
-	constructor(host: ComponentHost<T>, parent?: HostContext<T> | Context<T>) {
+	constructor(host: ComponentHost<T>, parent?: Context<T>) {
 		super(parent);
 		componentHosts.set(this, host);
 	}
@@ -969,16 +934,16 @@ export class Context<T = any> extends CrankEventTarget {
 function createHost<T>(
 	parent: ParentHost<T>,
 	renderer: Renderer<T>,
-	guest: Guest,
+	child: NormalizedChild,
 ): Host<T> {
-	if (guest === undefined || typeof guest === "string") {
+	if (child === undefined || typeof child === "string") {
 		return new LeafHost();
-	} else if (guest.tag === Fragment) {
-		return new FragmentHost(parent, renderer, guest.key);
-	} else if (typeof guest.tag === "function") {
-		return new ComponentHost(parent, renderer, guest.tag, guest.key);
+	} else if (child.tag === Fragment) {
+		return new FragmentHost(parent, renderer, child.key);
+	} else if (typeof child.tag === "function") {
+		return new ComponentHost(parent, renderer, child.tag, child.key);
 	} else {
-		return new IntrinsicHost(parent, renderer, guest.tag, guest.key);
+		return new IntrinsicHost(parent, renderer, child.tag, child.key);
 	}
 }
 
@@ -990,13 +955,13 @@ export const Text = Symbol.for("crank.Text");
 
 export type Text = typeof Text;
 
-// TODO: nested tags
 export interface Environment<T> {
 	[Default](tag: string): Intrinsic<T>;
 	[Text]?(text: string): string;
-	[tag: string]: Intrinsic<T>; // Intrinsic<T> | Environment<T>;
-	// [Portal]: Intrinsic<T>;
-	// [Raw]: Intrinsic<T>;
+	[tag: string]: Intrinsic<T>;
+	// TODO: these
+	// [Portal]?: Intrinsic<T>;
+	// [Raw]?: Intrinsic<T>;
 }
 
 const defaultEnv: Environment<any> = {
@@ -1034,7 +999,31 @@ export class Renderer<T> {
 		}
 	}
 
-	intrinsicFor(tag: string | symbol): Intrinsic<T> {
+	render(child: Child, root?: object): MaybePromise<T> {
+		let portal: Element<Portal>;
+		if (isElement(child) && child.tag === Portal) {
+			portal = child;
+		} else {
+			portal = createElement(Portal, {root}, child);
+		}
+
+		let host: IntrinsicHost<T> | undefined =
+			root != null ? this.cache.get(root) : undefined;
+
+		if (host === undefined) {
+			host = new IntrinsicHost(undefined, this, portal.tag);
+			if (root !== undefined) {
+				this.cache.set(root, host);
+			}
+		}
+
+		return Pledge.resolve(host.update(portal.props))
+			.then(() => host!.value!)
+			.execute();
+	}
+
+	// TODO: Ideally these two methods should not be exposed outside this module
+	intrinsic(tag: string | symbol): Intrinsic<T> {
 		if (this.env[tag as any]) {
 			return this.env[tag as any];
 		} else if (typeof tag === "string") {
@@ -1050,27 +1039,5 @@ export class Renderer<T> {
 		}
 
 		return text;
-	}
-
-	render(child: Child, root?: object): MaybePromise<HostContext<T>> {
-		let portal: Element<Portal>;
-		if (isElement(child) && child.tag === Portal) {
-			portal = child;
-		} else {
-			portal = createElement(Portal, {root}, child);
-		}
-
-		let host: IntrinsicHost<T> | undefined =
-			root != null ? this.cache.get(root) : undefined;
-		if (host === undefined) {
-			host = new IntrinsicHost(undefined, this, portal.tag);
-			if (root !== undefined) {
-				this.cache.set(root, host);
-			}
-		}
-
-		return Pledge.resolve(host.update(portal.props))
-			.then(() => host!.ctx)
-			.execute();
 	}
 }
