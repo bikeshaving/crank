@@ -204,7 +204,7 @@ export function* Page(this: Context, {storage, children}: PageProps) {
 			storage = nextStorage;
 		}
 
-		yield (<Fragment>{children}</Fragment>);
+		yield <Fragment>{children}</Fragment>;
 	}
 }
 

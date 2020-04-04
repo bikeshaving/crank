@@ -8,7 +8,7 @@ import "./index.css";
 
 export function* Editor(this: Context, {value}: {value: string}) {
 	setTimeout(() => this.refresh());
-	const el = yield (<div />);
+	const el = yield <div />;
 	const cm = CodeMirror(el, {
 		value,
 		tabSize: 2,
@@ -29,7 +29,7 @@ export function* Editor(this: Context, {value}: {value: string}) {
 			cm.setValue(newValue);
 		}
 
-		yield (<div class="editor" />);
+		yield <div class="editor" />;
 	}
 }
 
@@ -58,7 +58,7 @@ const babelOptions = {
 async function* Preview(this: Context) {
 	for await (let {id, code} of this) {
 		try {
-			yield (<div id={id} class="preview" />);
+			yield <div id={id} class="preview" />;
 			// TODO: resume async generators only after parent has committed or something
 			await new Promise((resolve) => setTimeout(resolve, 0));
 			code = (Babel.transform(code, babelOptions) as any).code;

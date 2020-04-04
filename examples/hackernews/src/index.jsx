@@ -129,14 +129,14 @@ async function* App() {
 	route();
 	try {
 		for await (const _ of this) {
-			yield (<Loading />);
+			yield <Loading />;
 			switch (data.route) {
 				case "item": {
-					await (yield (<Item {...data} />));
+					await (yield <Item {...data} />);
 					break;
 				}
 				case "top": {
-					await (yield (<List {...data} />));
+					await (yield <List {...data} />);
 					break;
 				}
 			}

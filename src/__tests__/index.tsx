@@ -354,7 +354,7 @@ describe("sync generator component", () => {
 					return <span>Final</span>;
 				}
 
-				yield (<span>{message}</span>);
+				yield <span>{message}</span>;
 			}
 		});
 
@@ -388,7 +388,7 @@ describe("sync generator component", () => {
 			ctx = this;
 			let i = 1;
 			while (true) {
-				yield (<span>Hello {i++}</span>);
+				yield <span>Hello {i++}</span>;
 			}
 		}
 
@@ -413,7 +413,7 @@ describe("sync generator component", () => {
 			ctx = this;
 			let i = 1;
 			while (true) {
-				yield (<span>Hello {i++}</span>);
+				yield <span>Hello {i++}</span>;
 			}
 		}
 
@@ -451,7 +451,7 @@ describe("sync generator component", () => {
 					component = <NestedComponent />;
 				}
 
-				yield (<span>{component}</span>);
+				yield <span>{component}</span>;
 				mounted = true;
 			}
 		}
@@ -484,7 +484,7 @@ describe("sync generator component", () => {
 					component = <NestedComponent />;
 				}
 
-				yield (<span>{component}</span>);
+				yield <span>{component}</span>;
 				mounted = true;
 			}
 		}
@@ -507,9 +507,9 @@ describe("sync generator component", () => {
 		function* Component(this: Context): Generator<Child> {
 			ctx = this;
 			yield null;
-			yield (<span>Hello</span>);
+			yield <span>Hello</span>;
 			yield null;
-			yield (<span>Hello again</span>);
+			yield <span>Hello again</span>;
 		}
 
 		renderer.render(
@@ -613,7 +613,7 @@ describe("sync generator component", () => {
 			ctx = this;
 			let i = 0;
 			for (const _ of this) {// eslint-disable-line
-				const yielded = yield (<Component>Hello {i++}</Component>);
+				const yielded = yield <Component>Hello {i++}</Component>;
 				mock((yielded as any).outerHTML);
 			}
 		}
@@ -653,7 +653,7 @@ describe("sync generator component", () => {
 			let i = 0;
 			while (true) {
 				i++;
-				yield (<div>Hello {i}</div>);
+				yield <div>Hello {i}</div>;
 			}
 		}
 		renderer.render(
@@ -707,7 +707,7 @@ describe("sync generator component", () => {
 			let i = 0;
 			while (true) {
 				i++;
-				yield (<div>Hello {i}</div>);
+				yield <div>Hello {i}</div>;
 			}
 		}
 
@@ -739,7 +739,7 @@ describe("sync generator component", () => {
 		function* Component(): Generator<Element> {
 			let i = 0;
 			while (true) {
-				const node: any = yield (<div id={i}>{i}</div>);
+				const node: any = yield <div id={i}>{i}</div>;
 				html = node.outerHTML;
 				i++;
 			}
@@ -838,7 +838,7 @@ describe("sync generator component", () => {
 			try {
 				let i = 0;
 				while (true) {
-					yield (<div>Hello {i++}</div>);
+					yield <div>Hello {i++}</div>;
 				}
 			} finally {
 				mock();
@@ -863,7 +863,7 @@ describe("sync generator component", () => {
 		function* Child(): Generator<number> {
 			yield 1;
 			yield 2;
-			yield (<Thrower />);
+			yield <Thrower />;
 		}
 
 		function* Component(): Generator<Child> {
@@ -913,7 +913,7 @@ describe("sync generator component", () => {
 		function* Child(): Generator<number> {
 			yield 1;
 			yield 2;
-			yield (<Thrower />);
+			yield <Thrower />;
 		}
 
 		function* Component(): Generator<Child> {
@@ -970,7 +970,7 @@ describe("sync generator component", () => {
 		}
 
 		function* Child(): Generator<number> {
-			yield (<Thrower />);
+			yield <Thrower />;
 		}
 
 		function* Component(): Generator<Child> {
@@ -1005,7 +1005,7 @@ describe("sync generator component", () => {
 
 		function* Component(): Generator<Child> {
 			try {
-				yield (<Thrower />);
+				yield <Thrower />;
 			} catch (err) {
 				return <span>Error: {err.message}</span>;
 			}
@@ -1033,7 +1033,7 @@ describe("sync generator component", () => {
 
 		function* Component(): Generator<Child> {
 			try {
-				yield (<Thrower />);
+				yield <Thrower />;
 			} catch (err) {
 				return <span>Error: {err.message}</span>;
 			}
@@ -1066,7 +1066,7 @@ describe("sync generator component", () => {
 		}
 
 		function* Child(): Generator<number> {
-			yield (<Thrower />);
+			yield <Thrower />;
 		}
 
 		function* Component(): Generator<Child> {
@@ -1104,15 +1104,15 @@ describe("sync generator component", () => {
 		}
 
 		function* Child(): Generator<Child> {
-			yield (<span>1</span>);
-			yield (<span>2</span>);
-			yield (<Thrower />);
+			yield <span>1</span>;
+			yield <span>2</span>;
+			yield <Thrower />;
 		}
 
 		function* Component(): Generator<Child> {
 			try {
 				while (true) {
-					yield (<Child />);
+					yield <Child />;
 				}
 			} catch (err) {
 				return <span>Error: {err.message}</span>;
@@ -1166,7 +1166,7 @@ describe("async generator component", () => {
 					return <span>Final</span>;
 				}
 
-				yield (<span>{message}</span>);
+				yield <span>{message}</span>;
 			}
 		});
 
@@ -1207,9 +1207,9 @@ describe("async generator component", () => {
 			{message}: {message: string},
 		): AsyncGenerator<Element> {
 			for await ({message} of this) {
-				yield (<span>Loading</span>);
+				yield <span>Loading</span>;
 				await new Promise((resolve1) => (resolve = resolve1));
-				yield (<span>{message}</span>);
+				yield <span>{message}</span>;
 			}
 		}
 
@@ -1249,8 +1249,8 @@ describe("async generator component", () => {
 			{message}: {message: string},
 		): AsyncGenerator<Element> {
 			for await ({message} of this) {
-				yield (<span>Loading</span>);
-				yield (<span>{message}</span>);
+				yield <span>Loading</span>;
+				yield <span>{message}</span>;
 			}
 		}
 
@@ -1321,7 +1321,7 @@ describe("async generator component", () => {
 		async function* Component(this: Context) {
 			let i = 0;
 			for await (const _ of this) {
-				const node: any = yield (<div id={i}>{i}</div>);
+				const node: any = yield <div id={i}>{i}</div>;
 				html = node.outerHTML;
 				i++;
 			}
@@ -1356,7 +1356,7 @@ describe("async generator component", () => {
 		async function* Component(this: Context) {
 			let i = 0;
 			for await (const _ of this) {
-				const node: any = yield (<Async id={i} />);
+				const node: any = yield <Async id={i} />;
 				html = node.then((node: HTMLElement) => node.outerHTML);
 				await node;
 				i++;
@@ -1460,7 +1460,7 @@ describe("async generator component", () => {
 			try {
 				let i = 0;
 				for await (const _ of this) {
-					yield (<div>Hello {i++}</div>);
+					yield <div>Hello {i++}</div>;
 				}
 			} finally {
 				mock();
@@ -1638,9 +1638,9 @@ describe("async races", () => {
 			let i = 0;
 			for await (const _ of this) {
 				if (i % 2 === 0) {
-					yield (<Slow />);
+					yield <Slow />;
 				} else {
-					yield (<Fast />);
+					yield <Fast />;
 				}
 
 				i++;
@@ -1684,9 +1684,9 @@ describe("async races", () => {
 			let i = 0;
 			for await (const _ of this) {
 				if (i % 2 === 0) {
-					yield (<Slow />);
+					yield <Slow />;
 				} else {
-					yield (<Fast />);
+					yield <Fast />;
 				}
 
 				i++;
@@ -1771,7 +1771,7 @@ describe("async races", () => {
 		): AsyncGenerator<Child> {
 			await new Promise((resolve) => setTimeout(resolve, 200));
 			for await (const _ of this) {
-				yield (<div>Slow {i}</div>);
+				yield <div>Slow {i}</div>;
 			}
 		});
 
@@ -1820,7 +1820,7 @@ describe("async races", () => {
 		async function* Fast(this: Context): AsyncGenerator<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 100));
 			for await (const _ of this) {
-				yield (<span>Fast</span>);
+				yield <span>Fast</span>;
 			}
 		}
 
@@ -1844,7 +1844,7 @@ describe("async races", () => {
 		async function* Slow(this: Context): AsyncGenerator<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 200));
 			for await (const _ of this) {
-				yield (<span>Slow</span>);
+				yield <span>Slow</span>;
 			}
 		}
 
@@ -1879,7 +1879,7 @@ describe("async races", () => {
 
 		function* SlowGen(): Generator<Element> {
 			while (true) {
-				yield (<Slow />);
+				yield <Slow />;
 			}
 		}
 
@@ -1909,7 +1909,7 @@ describe("async races", () => {
 
 		function* FastGen(): Generator<Element> {
 			while (true) {
-				yield (<Fast />);
+				yield <Fast />;
 			}
 		}
 
@@ -1954,7 +1954,7 @@ describe("context", () => {
 		let i = 1;
 		for (const {children, message = "Hello "} of this) {
 			this.set("greeting", message + i++);
-			yield (<Fragment>{children}</Fragment>);
+			yield <Fragment>{children}</Fragment>;
 		}
 	}
 

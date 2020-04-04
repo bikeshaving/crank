@@ -102,7 +102,7 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 		const record: EventListenerRecord = {type, callback, options};
 		if (options.once) {
 			const self = this;
-			record.callback = function(ev: any) {
+			record.callback = function (ev: any) {
 				const result = callback.call(this, ev);
 				self.removeEventListener(record.type, record.callback, record.options);
 				return result;
