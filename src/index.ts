@@ -73,7 +73,7 @@ export type Intrinsic<T> = (
 	props: IntrinsicProps<T>,
 ) => Iterator<T> | T;
 
-// TODO: it doesn’t make sense to export this function
+// TODO: it doesn’t make sense to export this function like this
 export function setFrame(callback: (time: number) => unknown): any {
 	if (requestAnimationFrame !== undefined) {
 		return requestAnimationFrame(callback);
@@ -180,29 +180,29 @@ function* flatten(children: Children): Generator<NormalizedChild> {
 
 // This union exists because we needed to discriminate between leaf and parent
 // nodes using a property (host.internal).
-type Host<T> = LeafHost<T> | ParentHost<T>;
+type Node<T> = LeafNode<T> | ParentNode<T>;
 
-// The shared properties between LeafHost and ParentHost
-interface HostBase<T> {
+// The shared properties between LeafNode and ParentNode
+interface NodeBase<T> {
 	readonly internal: boolean;
 	readonly tag: Tag | undefined;
 	readonly key: Key;
 	value: Array<T | string> | T | string | undefined;
-	nextSibling: Host<T> | undefined;
-	previousSibling: Host<T> | undefined;
+	nextSibling: Node<T> | undefined;
+	previousSibling: Node<T> | undefined;
 	clock: number;
-	replacedBy: Host<T> | undefined;
+	replacedBy: Node<T> | undefined;
 }
 
-class LeafHost<T> implements HostBase<T> {
+class LeafNode<T> implements NodeBase<T> {
 	readonly tag = undefined;
 	readonly key = undefined;
 	readonly internal = false;
 	value: string | undefined = undefined;
-	nextSibling: Host<T> | undefined = undefined;
-	previousSibling: Host<T> | undefined = undefined;
+	nextSibling: Node<T> | undefined = undefined;
+	previousSibling: Node<T> | undefined = undefined;
 	clock: number = 0;
-	replacedBy: Host<T> | undefined = undefined;
+	replacedBy: Node<T> | undefined = undefined;
 }
 
 const Initial = 0;
@@ -220,27 +220,27 @@ type Finished = typeof Finished;
 const Unmounted = 4;
 type Unmounted = typeof Unmounted;
 
-type HostState = Initial | Waiting | Updating | Finished | Unmounted;
+type NodeState = Initial | Waiting | Updating | Finished | Unmounted;
 
-abstract class ParentHost<T> implements HostBase<T> {
+abstract class ParentNode<T> implements NodeBase<T> {
 	abstract readonly tag: Tag;
 	readonly key: Key = undefined;
 	readonly internal = true;
 	value: Array<T | string> | T | string | undefined = undefined;
 	ctx: Context<T> | undefined = undefined;
 	abstract renderer: Renderer<T>;
-	state: HostState = Initial;
+	state: NodeState = Initial;
 	// TODO: move into subclasses
 	props: Props | undefined = undefined;
 	clock: number = 0;
-	abstract parent: ParentHost<T> | undefined;
-	replacedBy: Host<T> | undefined = undefined;
-	nextSibling: Host<T> | undefined = undefined;
-	previousSibling: Host<T> | undefined = undefined;
-	firstChild: Host<T> | undefined = undefined;
-	lastChild: Host<T> | undefined = undefined;
-	private keyedChildren: Map<unknown, Host<T>> | undefined;
-	protected appendChild(child: Host<T>): void {
+	abstract parent: ParentNode<T> | undefined;
+	replacedBy: Node<T> | undefined = undefined;
+	nextSibling: Node<T> | undefined = undefined;
+	previousSibling: Node<T> | undefined = undefined;
+	firstChild: Node<T> | undefined = undefined;
+	lastChild: Node<T> | undefined = undefined;
+	private keyedChildren: Map<unknown, Node<T>> | undefined;
+	protected appendChild(child: Node<T>): void {
 		if (this.lastChild === undefined) {
 			this.firstChild = child;
 			this.lastChild = child;
@@ -255,8 +255,8 @@ abstract class ParentHost<T> implements HostBase<T> {
 	}
 
 	protected insertBefore(
-		child: Host<T>,
-		reference: Host<T> | null | undefined,
+		child: Node<T>,
+		reference: Node<T> | null | undefined,
 	): void {
 		if (reference == null) {
 			this.appendChild(child);
@@ -277,7 +277,7 @@ abstract class ParentHost<T> implements HostBase<T> {
 		reference.previousSibling = child;
 	}
 
-	protected removeChild(child: Host<T>): void {
+	protected removeChild(child: Node<T>): void {
 		if (child.previousSibling === undefined) {
 			this.firstChild = child.nextSibling;
 		} else {
@@ -294,7 +294,7 @@ abstract class ParentHost<T> implements HostBase<T> {
 		child.nextSibling = undefined;
 	}
 
-	protected replaceChild(child: Host<T>, reference: Host<T>): void {
+	protected replaceChild(child: Node<T>, reference: Node<T>): void {
 		this.insertBefore(child, reference);
 		this.removeChild(reference);
 	}
@@ -356,7 +356,7 @@ abstract class ParentHost<T> implements HostBase<T> {
 	updateChildren(children: Children): MaybePromise<undefined> {
 		let host = this.firstChild;
 		let nextSibling = host && host.nextSibling;
-		let nextKeyedChildren: Map<unknown, Host<T>> | undefined;
+		let nextKeyedChildren: Map<unknown, Node<T>> | undefined;
 		let updates: Array<Promise<unknown>> | undefined;
 		for (const child of flatten(children)) {
 			let tag: Tag | undefined;
@@ -371,35 +371,35 @@ abstract class ParentHost<T> implements HostBase<T> {
 			}
 
 			if (key != null) {
-				let nextHost = this.keyedChildren && this.keyedChildren.get(key);
-				if (nextHost === undefined) {
-					nextHost = createHost(this, this.renderer, child);
+				let nextNode = this.keyedChildren && this.keyedChildren.get(key);
+				if (nextNode === undefined) {
+					nextNode = createNode(this, this.renderer, child);
 				} else {
 					this.keyedChildren!.delete(key);
-					if (host !== nextHost) {
-						this.removeChild(nextHost);
+					if (host !== nextNode) {
+						this.removeChild(nextNode);
 					}
 				}
 
 				if (host === undefined) {
-					this.appendChild(nextHost);
-				} else if (host !== nextHost) {
+					this.appendChild(nextNode);
+				} else if (host !== nextNode) {
 					if (host.key == null) {
-						this.insertBefore(nextHost, host);
+						this.insertBefore(nextNode, host);
 					} else {
-						this.insertBefore(nextHost, host.nextSibling);
+						this.insertBefore(nextNode, host.nextSibling);
 					}
 				}
 
-				host = nextHost;
+				host = nextNode;
 				nextSibling = host.nextSibling;
 			} else if (host === undefined) {
-				host = createHost(this, this.renderer, child);
+				host = createNode(this, this.renderer, child);
 				this.appendChild(host);
 			} else if (host.key != null) {
-				const nextHost = createHost(this, this.renderer, child);
-				this.insertBefore(nextHost, host.nextSibling);
-				host = nextHost;
+				const nextNode = createNode(this, this.renderer, child);
+				this.insertBefore(nextNode, host.nextSibling);
+				host = nextNode;
 				nextSibling = host.nextSibling;
 			}
 
@@ -423,20 +423,20 @@ abstract class ParentHost<T> implements HostBase<T> {
 				} else {
 					// TODO: async unmount for keyed hosts
 					host.internal && host.unmount();
-					const nextHost = createHost(this, this.renderer, child);
-					nextHost.clock = host.clock++;
+					const nextNode = createNode(this, this.renderer, child);
+					nextNode.clock = host.clock++;
 					let update: MaybePromise<undefined>;
-					if (nextHost.internal) {
-						update = nextHost.update((child as Element).props);
+					if (nextNode.internal) {
+						update = nextNode.update((child as Element).props);
 					} else if (typeof child === "string") {
-						nextHost.value = this.renderer.text(child);
+						nextNode.value = this.renderer.text(child);
 					} else {
-						nextHost.value = undefined;
+						nextNode.value = undefined;
 					}
 
 					if (update === undefined) {
-						this.replaceChild(nextHost, host);
-						host.replacedBy = nextHost;
+						this.replaceChild(nextNode, host);
+						host.replacedBy = nextNode;
 					} else {
 						if (updates === undefined) {
 							updates = [];
@@ -448,14 +448,14 @@ abstract class ParentHost<T> implements HostBase<T> {
 						const host1 = host;
 						update.then(() => {
 							if (host1.replacedBy === undefined) {
-								this.replaceChild(nextHost, host1);
-								host1.replacedBy = nextHost;
+								this.replaceChild(nextNode, host1);
+								host1.replacedBy = nextNode;
 							} else if (
 								host1.replacedBy.replacedBy === undefined &&
-								host1.replacedBy.clock < nextHost.clock
+								host1.replacedBy.clock < nextNode.clock
 							) {
-								this.replaceChild(nextHost, host1.replacedBy);
-								host1.replacedBy = nextHost;
+								this.replaceChild(nextNode, host1.replacedBy);
+								host1.replacedBy = nextNode;
 							}
 						});
 					}
@@ -544,12 +544,12 @@ abstract class ParentHost<T> implements HostBase<T> {
 	}
 }
 
-class FragmentHost<T> extends ParentHost<T> {
-	parent: ParentHost<T>;
+class FragmentNode<T> extends ParentNode<T> {
+	parent: ParentNode<T>;
 	renderer: Renderer<T>;
 	readonly tag: Fragment = Fragment;
 	readonly key: Key;
-	constructor(parent: ParentHost<T>, renderer: Renderer<T>, key: unknown) {
+	constructor(parent: ParentNode<T>, renderer: Renderer<T>, key: unknown) {
 		super();
 		this.parent = parent;
 		this.renderer = renderer;
@@ -569,7 +569,7 @@ class FragmentHost<T> extends ParentHost<T> {
 	}
 }
 
-class IntrinsicHost<T> extends ParentHost<T> {
+class IntrinsicNode<T> extends ParentNode<T> {
 	readonly tag: string | symbol;
 	readonly key: Key;
 	value: T | undefined;
@@ -577,10 +577,10 @@ class IntrinsicHost<T> extends ParentHost<T> {
 	private iterator: Iterator<T | undefined> | undefined = undefined;
 	readonly hostCtx: HostContext<T>;
 	childValues: Array<T | string> = [];
-	parent: ParentHost<T> | undefined;
+	parent: ParentNode<T> | undefined;
 	renderer: Renderer<T>;
 	constructor(
-		parent: ParentHost<T> | undefined,
+		parent: ParentNode<T> | undefined,
 		renderer: Renderer<T>,
 		tag: string | symbol,
 		key?: unknown,
@@ -631,14 +631,14 @@ class IntrinsicHost<T> extends ParentHost<T> {
 	}
 }
 
-const intrinsicHosts = new WeakMap<HostContext<any>, IntrinsicHost<any>>();
+const intrinsicNodes = new WeakMap<HostContext<any>, IntrinsicNode<any>>();
 export class HostContext<T = any> {
-	constructor(host: IntrinsicHost<T>) {
-		intrinsicHosts.set(this, host);
+	constructor(host: IntrinsicNode<T>) {
+		intrinsicNodes.set(this, host);
 	}
 
 	*[Symbol.iterator](): Generator<IntrinsicProps<T>> {
-		const host = intrinsicHosts.get(this)!;
+		const host = intrinsicNodes.get(this)!;
 		while (true) {
 			yield {...host.props, children: host.childValues};
 		}
@@ -651,14 +651,14 @@ interface Publication {
 	stop(): unknown;
 }
 
-class ComponentHost<T> extends ParentHost<T> {
+class ComponentNode<T> extends ParentNode<T> {
 	readonly tag: Component;
 	readonly key: Key;
-	parent: ParentHost<T>;
+	parent: ParentNode<T>;
 	renderer: Renderer<T>;
 	ctx: Context<T>;
 	constructor(
-		parent: ParentHost<T>,
+		parent: ParentNode<T>,
 		renderer: Renderer<T>,
 		tag: Component,
 		key: Key,
@@ -872,12 +872,12 @@ class ComponentHost<T> extends ParentHost<T> {
 	private provisions: Map<unknown, any> | undefined = undefined;
 	get(name: unknown): any {
 		for (
-			let host: ParentHost<T> | undefined = this.parent;
+			let host: ParentNode<T> | undefined = this.parent;
 			host !== undefined;
 			host = host.parent
 		) {
 			if (
-				host instanceof ComponentHost &&
+				host instanceof ComponentNode &&
 				host.provisions !== undefined &&
 				host.provisions.has(name)
 			) {
@@ -895,55 +895,55 @@ class ComponentHost<T> extends ParentHost<T> {
 	}
 }
 
-const componentHosts = new WeakMap<Context<any>, ComponentHost<any>>();
+const componentNodes = new WeakMap<Context<any>, ComponentNode<any>>();
 export class Context<T = any> extends CrankEventTarget {
-	constructor(host: ComponentHost<T>, parent?: Context<T>) {
+	constructor(host: ComponentNode<T>, parent?: Context<T>) {
 		super(parent);
-		componentHosts.set(this, host);
+		componentNodes.set(this, host);
 	}
 
 	get(name: unknown): any {
-		return componentHosts.get(this)!.get(name);
+		return componentNodes.get(this)!.get(name);
 	}
 
 	set(name: unknown, value: any): void {
-		componentHosts.get(this)!.set(name, value);
+		componentNodes.get(this)!.set(name, value);
 	}
 
 	*[Symbol.iterator](): Generator<Props> {
 		while (true) {
-			yield componentHosts.get(this)!.props!;
+			yield componentNodes.get(this)!.props!;
 		}
 	}
 
 	[Symbol.asyncIterator](): AsyncGenerator<Props> {
-		return componentHosts.get(this)!.subscribe();
+		return componentNodes.get(this)!.subscribe();
 	}
 
 	// TODO: throw or warn if called on an unmounted component?
 	refresh(): MaybePromise<undefined> {
-		return componentHosts.get(this)!.refresh();
+		return componentNodes.get(this)!.refresh();
 	}
 
 	// TODO: throw or warn if called on an unmounted component?
 	schedule(): MaybePromise<undefined> {
-		return componentHosts.get(this)!.schedule();
+		return componentNodes.get(this)!.schedule();
 	}
 }
 
-function createHost<T>(
-	parent: ParentHost<T>,
+function createNode<T>(
+	parent: ParentNode<T>,
 	renderer: Renderer<T>,
 	child: NormalizedChild,
-): Host<T> {
+): Node<T> {
 	if (child === undefined || typeof child === "string") {
-		return new LeafHost();
+		return new LeafNode();
 	} else if (child.tag === Fragment) {
-		return new FragmentHost(parent, renderer, child.key);
+		return new FragmentNode(parent, renderer, child.key);
 	} else if (typeof child.tag === "function") {
-		return new ComponentHost(parent, renderer, child.tag, child.key);
+		return new ComponentNode(parent, renderer, child.tag, child.key);
 	} else {
-		return new IntrinsicHost(parent, renderer, child.tag, child.key);
+		return new IntrinsicNode(parent, renderer, child.tag, child.key);
 	}
 }
 
@@ -977,7 +977,7 @@ const defaultEnv: Environment<any> = {
 };
 
 export class Renderer<T> {
-	private cache = new WeakMap<object, IntrinsicHost<T>>();
+	private cache = new WeakMap<object, IntrinsicNode<T>>();
 	private env: Environment<T> = {...defaultEnv};
 	constructor(env?: Environment<T>) {
 		if (env) {
@@ -1007,11 +1007,11 @@ export class Renderer<T> {
 			portal = createElement(Portal, {root}, child);
 		}
 
-		let host: IntrinsicHost<T> | undefined =
+		let host: IntrinsicNode<T> | undefined =
 			root != null ? this.cache.get(root) : undefined;
 
 		if (host === undefined) {
-			host = new IntrinsicHost(undefined, this, portal.tag);
+			host = new IntrinsicNode(undefined, this, portal.tag);
 			if (root !== undefined) {
 				this.cache.set(root, host);
 			}

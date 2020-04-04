@@ -9,7 +9,6 @@ import {
 	Context,
 	Element,
 	Fragment,
-	setFrame,
 } from "../index";
 import {renderer} from "../dom";
 
@@ -1178,7 +1177,7 @@ describe("async generator component", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
-		await new Promise((resolve) => setTimeout(resolve, 100));
+		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
 		await renderer.render(
 			<div>
@@ -1187,7 +1186,7 @@ describe("async generator component", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
-		await new Promise((resolve) => setTimeout(resolve, 100));
+		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
 		await renderer.render(
 			<div>
@@ -1196,7 +1195,7 @@ describe("async generator component", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>Final</span></div>");
-		await new Promise((resolve) => setTimeout(resolve, 100));
+		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(document.body.innerHTML).toEqual("<div><span>Final</span></div>");
 		expect(Component).toHaveBeenCalledTimes(1);
 	});
@@ -1223,11 +1222,11 @@ describe("async generator component", () => {
 		expect(document.body.innerHTML).toEqual("");
 		await expect(p).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Loading</span></div>");
-		await new Promise((resolve) => setFrame(resolve));
+		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(resolve).toBeDefined();
 		resolve!();
 		resolve = undefined;
-		await new Promise((resolve) => setFrame(resolve));
+		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 		await renderer.render(
 			<div>
@@ -1236,10 +1235,11 @@ describe("async generator component", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>Loading</span></div>");
-		await new Promise((resolve) => setFrame(resolve));
+		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(resolve).toBeDefined();
 		resolve!();
-		await new Promise((resolve) => setFrame(resolve));
+		resolve = undefined;
+		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(document.body.innerHTML).toEqual("<div><span>Goodbye</span></div>");
 	});
 
@@ -1263,9 +1263,7 @@ describe("async generator component", () => {
 		expect(document.body.innerHTML).toEqual("");
 		await p;
 		expect(document.body.innerHTML).toEqual("<div><span>Loading</span></div>");
-		// TODO: fix having to wait for frame twice like here wtf.
-		await new Promise((resolve) => setFrame(resolve));
-		await new Promise((resolve) => setFrame(resolve));
+		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 	});
 
@@ -1312,9 +1310,9 @@ describe("async generator component", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("1");
-		await new Promise((resolve) => setFrame(resolve));
+		await new Promise((resolve) => setTimeout(resolve, 100));
 		resolve();
-		await new Promise((resolve) => setFrame(resolve));
+		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(document.body.innerHTML).toEqual("2");
 	});
 
@@ -1330,15 +1328,15 @@ describe("async generator component", () => {
 		}
 
 		await renderer.render(<Component />, document.body);
-		await new Promise((resolve) => setFrame(resolve));
+		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(html).toEqual('<div id="0">0</div>');
 		expect(document.body.innerHTML).toEqual('<div id="0">0</div>');
 		await renderer.render(<Component />, document.body);
-		await new Promise((resolve) => setFrame(resolve));
+		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(html).toEqual('<div id="1">1</div>');
 		expect(document.body.innerHTML).toEqual('<div id="1">1</div>');
 		await renderer.render(<Component />, document.body);
-		await new Promise((resolve) => setFrame(resolve));
+		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(html).toEqual('<div id="2">2</div>');
 		expect(document.body.innerHTML).toEqual('<div id="2">2</div>');
 	});
