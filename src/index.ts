@@ -384,7 +384,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 
 			if (tag !== Copy) {
 				// TODO: figure out why do we do a check for unmounted hosts here
-				if (host.tag === tag && (!host.internal || host.state !== Unmounted)) {
+				if (host.tag === tag && !(host.internal && host.state === Unmounted)) {
 					if (host.internal) {
 						const update = host.update((child as Element).props);
 						if (update !== undefined) {
