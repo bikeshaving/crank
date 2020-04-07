@@ -174,14 +174,14 @@ interface NodeBase<T> {
 }
 
 class LeafNode<T> implements NodeBase<T> {
+	readonly internal = false;
 	readonly tag = undefined;
 	readonly key = undefined;
-	readonly internal = false;
-	value: string | undefined = undefined;
 	nextSibling: Node<T> | undefined = undefined;
 	previousSibling: Node<T> | undefined = undefined;
 	clock: number = 0;
 	replacedBy: Node<T> | undefined = undefined;
+	value: string | undefined = undefined;
 }
 
 const Initial = 0;
@@ -202,23 +202,22 @@ type Unmounted = typeof Unmounted;
 type NodeState = Initial | Waiting | Updating | Finished | Unmounted;
 
 abstract class ParentNode<T> implements NodeBase<T> {
-	abstract readonly tag: Tag;
-	readonly key: Key = undefined;
 	readonly internal = true;
-	value: Array<T | string> | T | string | undefined = undefined;
-	ctx: Context<T> | undefined = undefined;
-	abstract renderer: Renderer<T>;
-	state: NodeState = Initial;
-	// TODO: move into subclasses
-	props: Props | undefined = undefined;
-	clock: number = 0;
-	replacedBy: Node<T> | undefined = undefined;
-	abstract parent: ParentNode<T> | undefined;
 	nextSibling: Node<T> | undefined = undefined;
 	previousSibling: Node<T> | undefined = undefined;
+	clock: number = 0;
+	replacedBy: Node<T> | undefined = undefined;
 	firstChild: Node<T> | undefined = undefined;
 	lastChild: Node<T> | undefined = undefined;
 	keyedChildren: Map<unknown, Node<T>> | undefined = undefined;
+	abstract readonly tag: Tag;
+	readonly key: Key = undefined;
+	abstract readonly renderer: Renderer<T>;
+	abstract parent: ParentNode<T> | undefined;
+	state: NodeState = Initial;
+	props: Props | undefined = undefined;
+	value: Array<T | string> | T | string | undefined = undefined;
+	ctx: Context<T> | undefined = undefined;
 	protected appendChild(child: Node<T>): void {
 		if (this.lastChild === undefined) {
 			this.firstChild = child;
@@ -524,10 +523,10 @@ abstract class ParentNode<T> implements NodeBase<T> {
 }
 
 class FragmentNode<T> extends ParentNode<T> {
-	parent: ParentNode<T>;
-	renderer: Renderer<T>;
 	readonly tag: Fragment = Fragment;
 	readonly key: Key;
+	readonly parent: ParentNode<T>;
+	readonly renderer: Renderer<T>;
 	constructor(parent: ParentNode<T>, renderer: Renderer<T>, key: unknown) {
 		super();
 		this.parent = parent;
@@ -548,16 +547,16 @@ class FragmentNode<T> extends ParentNode<T> {
 	}
 }
 
-class IntrinsicNode<T> extends ParentNode<T> {
+class HostNode<T> extends ParentNode<T> {
 	readonly tag: string | symbol;
 	readonly key: Key;
+	readonly parent: ParentNode<T> | undefined;
+	readonly renderer: Renderer<T>;
 	value: T | undefined;
-	private readonly intrinsic: Intrinsic<T>;
-	private iterator: Iterator<T | undefined> | undefined = undefined;
-	readonly hostCtx: HostContext<T>;
 	childValues: Array<T | string> = [];
-	parent: ParentNode<T> | undefined;
-	renderer: Renderer<T>;
+	private readonly intrinsic: Intrinsic<T>;
+	private iterator: Iterator<T> | undefined = undefined;
+	private readonly hostCtx: HostContext<T>;
 	constructor(
 		parent: ParentNode<T> | undefined,
 		renderer: Renderer<T>,
@@ -565,13 +564,13 @@ class IntrinsicNode<T> extends ParentNode<T> {
 		key?: unknown,
 	) {
 		super();
-		this.parent = parent;
-		this.renderer = renderer;
 		this.tag = tag;
 		this.key = key;
-		this.ctx = this.parent && this.parent.ctx;
+		this.parent = parent;
+		this.renderer = renderer;
+		this.intrinsic = renderer.intrinsic(tag);
+		this.ctx = parent && parent.ctx;
 		this.hostCtx = new HostContext(this);
-		this.intrinsic = this.renderer.intrinsic(tag);
 	}
 
 	commit(): void {
@@ -610,14 +609,14 @@ class IntrinsicNode<T> extends ParentNode<T> {
 	}
 }
 
-const intrinsicNodes = new WeakMap<HostContext<any>, IntrinsicNode<any>>();
+const hostNodes = new WeakMap<HostContext<any>, HostNode<any>>();
 export class HostContext<T = any> {
-	constructor(host: IntrinsicNode<T>) {
-		intrinsicNodes.set(this, host);
+	constructor(host: HostNode<T>) {
+		hostNodes.set(this, host);
 	}
 
 	*[Symbol.iterator](): Generator<IntrinsicProps<T>> {
-		const host = intrinsicNodes.get(this)!;
+		const host = hostNodes.get(this)!;
 		while (true) {
 			yield {...host.props, children: host.childValues};
 		}
@@ -633,9 +632,9 @@ interface Publication {
 class ComponentNode<T> extends ParentNode<T> {
 	readonly tag: Component;
 	readonly key: Key;
-	parent: ParentNode<T>;
-	renderer: Renderer<T>;
-	ctx: Context<T>;
+	readonly parent: ParentNode<T>;
+	readonly renderer: Renderer<T>;
+	readonly ctx: Context<T>;
 	constructor(
 		parent: ParentNode<T>,
 		renderer: Renderer<T>,
@@ -652,7 +651,7 @@ class ComponentNode<T> extends ParentNode<T> {
 
 	private iterator: ChildIterator | undefined = undefined;
 	// TODO: explain this shizzzz
-	isAsyncGenerator = false;
+	private isAsyncGenerator = false;
 	private inflightSelf: Promise<undefined> | undefined = undefined;
 	private enqueuedSelf: Promise<undefined> | undefined = undefined;
 	private inflightChildren: Promise<undefined> | undefined = undefined;
@@ -900,7 +899,7 @@ function createNode<T>(
 	} else if (typeof child.tag === "function") {
 		return new ComponentNode(parent, renderer, child.tag, child.key);
 	} else {
-		return new IntrinsicNode(parent, renderer, child.tag, child.key);
+		return new HostNode(parent, renderer, child.tag, child.key);
 	}
 }
 
@@ -934,7 +933,7 @@ const defaultEnv: Environment<any> = {
 };
 
 export class Renderer<T> {
-	private cache = new WeakMap<object, IntrinsicNode<T>>();
+	private cache = new WeakMap<object, HostNode<T>>();
 	private env: Environment<T> = {...defaultEnv};
 	constructor(env?: Environment<T>) {
 		if (env) {
@@ -964,11 +963,11 @@ export class Renderer<T> {
 			portal = createElement(Portal, {root}, child);
 		}
 
-		let host: IntrinsicNode<T> | undefined =
+		let host: HostNode<T> | undefined =
 			root != null ? this.cache.get(root) : undefined;
 
 		if (host === undefined) {
-			host = new IntrinsicNode(undefined, this, portal.tag);
+			host = new HostNode(undefined, this, portal.tag);
 			if (root !== undefined) {
 				this.cache.set(root, host);
 			}
