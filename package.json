@@ -39,7 +39,6 @@
     "eslint-plugin-react": "^7.19.0",
     "event-target-shim": "^5.0.1",
     "jest": "^25.2.7",
-    "mutationobserver-shim": "^0.3.5",
     "prettier": "^2.0.2",
     "rollup": "^2.3.2",
     "rollup-plugin-typescript2": "^0.27.0",

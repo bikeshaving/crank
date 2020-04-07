@@ -1,5 +1,5 @@
-import "mutationobserver-shim";
-
+// TODO: find a better way to test DOM stuff than these MutationObserver hacks
+import "./_mutation-observer-shim";
 // NOTE: for some reason MutationRecord.previousSibling and
 // MutationRecord.nextSibling are weird, non-node objects in some tests. I have
 // no interest in figuring out who goofed right now (maybe me) so we’re just
@@ -29,9 +29,15 @@ expect.extend({
 		const pass = Array.isArray(received) && Array.isArray(expected);
 		if (pass) {
 			received = received.map((record: any) => ({
-				...record,
-				previousSibling: undefined,
+				type: record.type,
+				target: record.target,
+				addedNodes: Array.from(record.addedNodes),
+				removedNodes: Array.from(record.removedNodes),
+				attributeName: record.attributeName,
+				attributeNamespace: record.attributeNamespace,
 				nextSibling: undefined,
+				previousSibling: undefined,
+				oldValue: record.oldValue,
 			}));
 			expected = expected.map((record: any) => ({
 				...empty,

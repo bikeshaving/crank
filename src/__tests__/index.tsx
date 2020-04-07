@@ -1213,20 +1213,18 @@ describe("async generator component", () => {
 			}
 		}
 
-		const p = renderer.render(
+		await renderer.render(
 			<div>
 				<Component message="Hello" />
 			</div>,
 			document.body,
 		);
-		expect(document.body.innerHTML).toEqual("");
-		await expect(p).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div><span>Loading</span></div>");
-		await new Promise((resolve) => setTimeout(resolve, 100));
+		await new Promise((resolve) => setTimeout(resolve));
 		expect(resolve).toBeDefined();
 		resolve!();
 		resolve = undefined;
-		await new Promise((resolve) => setTimeout(resolve, 100));
+		await new Promise((resolve) => setTimeout(resolve));
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 		await renderer.render(
 			<div>
@@ -1235,13 +1233,13 @@ describe("async generator component", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>Loading</span></div>");
-		await new Promise((resolve) => setTimeout(resolve, 100));
+		await new Promise((resolve) => setTimeout(resolve));
 		expect(resolve).toBeDefined();
 		resolve!();
 		resolve = undefined;
-		await new Promise((resolve) => setTimeout(resolve, 100));
+		await new Promise((resolve) => setTimeout(resolve));
 		expect(document.body.innerHTML).toEqual("<div><span>Goodbye</span></div>");
-	});
+	}, 99999999);
 
 	test("multiple yields sync", async () => {
 		async function* Component(
@@ -1262,8 +1260,6 @@ describe("async generator component", () => {
 		);
 		expect(document.body.innerHTML).toEqual("");
 		await p;
-		expect(document.body.innerHTML).toEqual("<div><span>Loading</span></div>");
-		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 	});
 
