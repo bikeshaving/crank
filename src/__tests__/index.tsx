@@ -1210,7 +1210,7 @@ describe("async generator component", () => {
 		resolve = undefined;
 		await new Promise((resolve) => setTimeout(resolve));
 		expect(document.body.innerHTML).toEqual("<div><span>Goodbye</span></div>");
-	}, 99999999);
+	});
 
 	test("multiple yields sync", async () => {
 		async function* Component(
