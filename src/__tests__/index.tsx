@@ -407,35 +407,6 @@ describe("sync generator component", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 4</span></div>");
 	});
 
-	test("schedule", async () => {
-		let ctx!: Context;
-		function* Component(this: Context): Generator<Element> {
-			ctx = this;
-			let i = 1;
-			while (true) {
-				yield <span>Hello {i++}</span>;
-			}
-		}
-
-		renderer.render(
-			<div>
-				<Component />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
-		const p = ctx.schedule();
-		renderer.render(
-			<div>
-				<Component />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
-		await p;
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
-	});
-
 	test("updating undefined to component", () => {
 		function NestedComponent() {
 			return <span>Hello</span>;

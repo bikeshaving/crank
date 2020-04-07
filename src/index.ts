@@ -73,27 +73,6 @@ export type Intrinsic<T> = (
 	props: IntrinsicProps<T>,
 ) => Iterator<T> | T;
 
-// TODO: it doesn’t make sense to export this function like this
-export function setFrame(callback: (time: number) => unknown): any {
-	if (requestAnimationFrame !== undefined) {
-		return requestAnimationFrame(callback);
-	} else if (setImmediate !== undefined) {
-		return setImmediate(() => callback(Date.now()));
-	} else {
-		return setTimeout(() => callback(Date.now()));
-	}
-}
-
-export function clearFrame(id: any): void {
-	if (requestAnimationFrame !== undefined) {
-		cancelAnimationFrame(id);
-	} else if (setImmediate !== undefined) {
-		clearImmediate(id);
-	} else {
-		clearTimeout(id);
-	}
-}
-
 // Special Intrinsic Tags
 // TODO: We assert symbol tags as any because typescript support for symbol
 // tags in JSX does not exist yet.
@@ -233,13 +212,13 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	// TODO: move into subclasses
 	props: Props | undefined = undefined;
 	clock: number = 0;
-	abstract parent: ParentNode<T> | undefined;
 	replacedBy: Node<T> | undefined = undefined;
+	abstract parent: ParentNode<T> | undefined;
 	nextSibling: Node<T> | undefined = undefined;
 	previousSibling: Node<T> | undefined = undefined;
 	firstChild: Node<T> | undefined = undefined;
 	lastChild: Node<T> | undefined = undefined;
-	private keyedChildren: Map<unknown, Node<T>> | undefined;
+	keyedChildren: Map<unknown, Node<T>> | undefined = undefined;
 	protected appendChild(child: Node<T>): void {
 		if (this.lastChild === undefined) {
 			this.firstChild = child;
@@ -711,14 +690,12 @@ class ComponentNode<T> extends ParentNode<T> {
 					.execute();
 			})
 			.execute();
+
 		if (isPromiseLike(iteration)) {
 			this.isAsyncGenerator = true;
 			const pending = iteration.then((iteration) => {
 				if (iteration.done) {
 					this.state = this.state < Finished ? Finished : this.state;
-				} else {
-					// TODO: replace this with this.schedule
-					setFrame(() => this.run());
 				}
 
 				return undefined; // void :(
@@ -744,11 +721,13 @@ class ComponentNode<T> extends ParentNode<T> {
 		this.inflightChildren = this.enqueuedChildren;
 		this.enqueuedSelf = undefined;
 		this.enqueuedChildren = undefined;
+		if (this.isAsyncGenerator && this.state < Finished) {
+			this.run();
+		}
 	}
 
 	private publications: Set<Publication> | undefined = undefined;
 	refresh(): MaybePromise<undefined> {
-		this.scheduled = undefined;
 		if (this.state === Unmounted) {
 			return;
 		}
@@ -760,23 +739,6 @@ class ComponentNode<T> extends ParentNode<T> {
 		}
 
 		return this.run();
-	}
-
-	private scheduled: Promise<undefined> | undefined = undefined;
-	schedule(): Promise<undefined> {
-		if (this.scheduled === undefined) {
-			this.scheduled = new Promise((resolve) => {
-				setFrame(() => {
-					if (this.scheduled === undefined) {
-						resolve();
-					} else {
-						resolve(this.refresh());
-					}
-				});
-			});
-		}
-
-		return this.scheduled;
 	}
 
 	subscribe(): AsyncGenerator<Props> {
@@ -923,11 +885,6 @@ export class Context<T = any> extends CrankEventTarget {
 	// TODO: throw or warn if called on an unmounted component?
 	refresh(): MaybePromise<undefined> {
 		return componentNodes.get(this)!.refresh();
-	}
-
-	// TODO: throw or warn if called on an unmounted component?
-	schedule(): MaybePromise<undefined> {
-		return componentNodes.get(this)!.schedule();
 	}
 }
 
