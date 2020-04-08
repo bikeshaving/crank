@@ -1,13 +1,13 @@
 {
   "private": true,
   "dependencies": {
-    "@bikeshaving/crank": "^0.1.0-beta.4",
-    "core-js": "^3.6.0",
-    "regenerator-runtime": "^0.13.3"
+    "@bikeshaving/crank": "^0.1.0-beta.7",
+    "core-js": "^3.6.4",
+    "regenerator-runtime": "^0.13.5"
   },
   "devDependencies": {
-    "@babel/core": "^7.7.7",
+    "@babel/core": "^7.9.0",
     "parcel-bundler": "^1.12.4",
-    "typescript": "^3.7.4"
+    "typescript": "^3.8.3"
   }
 }
