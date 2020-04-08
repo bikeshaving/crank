@@ -184,25 +184,24 @@ class LeafNode<T> implements NodeBase<T> {
 	value: string | undefined = undefined;
 }
 
-const Initial = 0;
-type Initial = typeof Initial;
-
-const Waiting = 1;
+const Waiting = 0;
 type Waiting = typeof Waiting;
 
-const Updating = 2;
+const Updating = 1;
 type Updating = typeof Updating;
 
-const Finished = 3;
+const Finished = 2;
 type Finished = typeof Finished;
 
-const Unmounted = 4;
+const Unmounted = 3;
 type Unmounted = typeof Unmounted;
 
-type NodeState = Initial | Waiting | Updating | Finished | Unmounted;
+type NodeState = Waiting | Updating | Finished | Unmounted;
 
 abstract class ParentNode<T> implements NodeBase<T> {
 	readonly internal = true;
+	abstract readonly tag: Tag;
+	readonly key: Key = undefined;
 	nextSibling: Node<T> | undefined = undefined;
 	previousSibling: Node<T> | undefined = undefined;
 	clock: number = 0;
@@ -210,14 +209,19 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	firstChild: Node<T> | undefined = undefined;
 	lastChild: Node<T> | undefined = undefined;
 	keyedChildren: Map<unknown, Node<T>> | undefined = undefined;
-	abstract readonly tag: Tag;
-	readonly key: Key = undefined;
 	abstract readonly renderer: Renderer<T>;
 	abstract parent: ParentNode<T> | undefined;
-	state: NodeState = Initial;
+	state: NodeState = Waiting;
 	props: Props | undefined = undefined;
 	value: Array<T | string> | T | string | undefined = undefined;
 	ctx: Context<T> | undefined = undefined;
+	// When children update asynchronously, we race their result against the next
+	// update of children. The bail property is set to the resolve function of
+	// the promise which the current update is raced against.
+	private bail:
+		| ((result?: Promise<undefined>) => unknown)
+		| undefined = undefined;
+
 	protected appendChild(child: Node<T>): void {
 		if (this.lastChild === undefined) {
 			this.firstChild = child;
@@ -277,7 +281,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		this.removeChild(reference);
 	}
 
-	getChildValues(): Array<T | string> {
+	protected getChildValues(): Array<T | string> {
 		let buffer: string | undefined;
 		const childValues: Array<T | string> = [];
 		for (
@@ -308,30 +312,10 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		return childValues;
 	}
 
-	update(props: Props): MaybePromise<undefined> {
-		this.props = props;
-		this.state = this.state < Updating ? Updating : this.state;
-		return this.refresh();
-	}
-
-	refresh(): MaybePromise<undefined> {
-		if (this.state === Unmounted) {
-			return;
-		}
-
-		return this.updateChildren(this.props && this.props.children);
-	}
-
-	// When children update asynchronously, we race their result against the next
-	// update of children. The bail property is set to the resolve function of
-	// the promise which the current update is raced against.
-	private bail:
-		| ((result?: Promise<undefined>) => unknown)
-		| undefined = undefined;
 	// TODO: I bet we could simplify the algorithm further, perhaps by writing a
 	// custom alignment algorithm which automatically zips up old and new nodes or
 	// skips keyed nodes.
-	updateChildren(children: Children): MaybePromise<undefined> {
+	protected updateChildren(children: Children): MaybePromise<undefined> {
 		let host = this.firstChild;
 		let nextSibling = host && host.nextSibling;
 		let nextKeyedChildren: Map<unknown, Node<T>> | undefined;
@@ -498,19 +482,25 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		}
 	}
 
+	update(props: Props): MaybePromise<undefined> {
+		this.props = props;
+		this.state = this.state < Updating ? Updating : this.state;
+		return this.refresh();
+	}
+
+	refresh(): MaybePromise<undefined> {
+		if (this.state === Unmounted) {
+			return;
+		}
+
+		return this.updateChildren(this.props && this.props.children);
+	}
+
 	commit(): void {
 		this.state = this.state <= Updating ? Waiting : this.state;
 	}
 
-	catch(reason: any): MaybePromise<undefined> {
-		if (this.parent === undefined) {
-			throw reason;
-		}
-
-		return this.parent.catch(reason);
-	}
-
-	unmount(): void {
+	unmount(): MaybePromise<undefined> {
 		this.state = Unmounted;
 		for (
 			let host = this.firstChild;
@@ -519,6 +509,16 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		) {
 			host.internal && host.unmount();
 		}
+
+		return; // void :(
+	}
+
+	catch(reason: any): MaybePromise<undefined> {
+		if (this.parent === undefined) {
+			throw reason;
+		}
+
+		return this.parent.catch(reason);
 	}
 }
 
@@ -598,28 +598,22 @@ class HostNode<T> extends ParentNode<T> {
 		super.commit();
 	}
 
-	unmount(): void {
+	unmount(): MaybePromise<undefined> {
 		if (this.state < Finished) {
 			if (this.iterator !== undefined && this.iterator.return) {
-				this.iterator.return();
+				try {
+					this.iterator.return();
+				} catch (err) {
+					if (this.parent !== undefined) {
+						return this.parent.catch(err);
+					}
+
+					throw err;
+				}
 			}
 		}
 
-		super.unmount();
-	}
-}
-
-const hostNodes = new WeakMap<HostContext<any>, HostNode<any>>();
-export class HostContext<T = any> {
-	constructor(host: HostNode<T>) {
-		hostNodes.set(this, host);
-	}
-
-	*[Symbol.iterator](): Generator<IntrinsicProps<T>> {
-		const host = hostNodes.get(this)!;
-		while (true) {
-			yield {...host.props, children: host.childValues};
-		}
+		return super.unmount();
 	}
 }
 
@@ -792,20 +786,28 @@ class ComponentNode<T> extends ParentNode<T> {
 		super.commit();
 	}
 
-	unmount(): void {
-		if (this.state < Finished) {
-			if (this.iterator !== undefined && this.iterator.return) {
-				this.iterator.return();
-			}
-		}
-
+	unmount(): MaybePromise<undefined> {
 		if (this.publications !== undefined) {
 			for (const pub of this.publications) {
 				pub.stop();
 			}
 		}
 
-		super.unmount();
+		// TODO: maybe unmount should just be abstract
+		const state = this.state;
+		this.state = Unmounted;
+		if (state < Finished) {
+			if (this.iterator !== undefined && this.iterator.return) {
+				return new Pledge(() => this.iterator!.return!())
+					.then(
+						() => super.unmount(),
+						(err) => this.parent.catch(err),
+					)
+					.execute();
+			}
+		}
+
+		return super.unmount();
 	}
 
 	catch(reason: any): MaybePromise<undefined> {
@@ -856,6 +858,36 @@ class ComponentNode<T> extends ParentNode<T> {
 	}
 }
 
+function createNode<T>(
+	parent: ParentNode<T>,
+	renderer: Renderer<T>,
+	child: NormalizedChild,
+): Node<T> {
+	if (child === undefined || typeof child === "string") {
+		return new LeafNode();
+	} else if (child.tag === Fragment) {
+		return new FragmentNode(parent, renderer, child.key);
+	} else if (typeof child.tag === "function") {
+		return new ComponentNode(parent, renderer, child.tag, child.key);
+	} else {
+		return new HostNode(parent, renderer, child.tag, child.key);
+	}
+}
+
+const hostNodes = new WeakMap<HostContext<any>, HostNode<any>>();
+export class HostContext<T = any> {
+	constructor(host: HostNode<T>) {
+		hostNodes.set(this, host);
+	}
+
+	*[Symbol.iterator](): Generator<IntrinsicProps<T>> {
+		const host = hostNodes.get(this)!;
+		while (true) {
+			yield {...host.props, children: host.childValues};
+		}
+	}
+}
+
 const componentNodes = new WeakMap<Context<any>, ComponentNode<any>>();
 export class Context<T = any> extends CrankEventTarget {
 	constructor(host: ComponentNode<T>, parent?: Context<T>) {
@@ -863,6 +895,7 @@ export class Context<T = any> extends CrankEventTarget {
 		componentNodes.set(this, host);
 	}
 
+	// TODO: strongly typed contexts
 	get(name: unknown): any {
 		return componentNodes.get(this)!.get(name);
 	}
@@ -887,22 +920,6 @@ export class Context<T = any> extends CrankEventTarget {
 	}
 }
 
-function createNode<T>(
-	parent: ParentNode<T>,
-	renderer: Renderer<T>,
-	child: NormalizedChild,
-): Node<T> {
-	if (child === undefined || typeof child === "string") {
-		return new LeafNode();
-	} else if (child.tag === Fragment) {
-		return new FragmentNode(parent, renderer, child.key);
-	} else if (typeof child.tag === "function") {
-		return new ComponentNode(parent, renderer, child.tag, child.key);
-	} else {
-		return new HostNode(parent, renderer, child.tag, child.key);
-	}
-}
-
 export const Default = Symbol.for("crank.Default");
 
 export type Default = typeof Default;
@@ -915,7 +932,7 @@ export interface Environment<T> {
 	[Default](tag: string): Intrinsic<T>;
 	[Text]?(text: string): string;
 	[tag: string]: Intrinsic<T>;
-	// TODO: these
+	// TODO: uncomment
 	// [Portal]?: Intrinsic<T>;
 	// [Raw]?: Intrinsic<T>;
 }
@@ -978,7 +995,8 @@ export class Renderer<T> {
 			.execute();
 	}
 
-	// TODO: Ideally these two methods should not be exposed outside this module
+	// TODO: Ideally, the intrinsic and text methods should not be exposed
+	// outside this module
 	intrinsic(tag: string | symbol): Intrinsic<T> {
 		if (this.env[tag as any]) {
 			return this.env[tag as any];
