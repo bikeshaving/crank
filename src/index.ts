@@ -204,9 +204,9 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	previousSibling: Node<T> | undefined = undefined;
 	clock: number = 0;
 	replacedBy: Node<T> | undefined = undefined;
-	firstChild: Node<T> | undefined = undefined;
-	lastChild: Node<T> | undefined = undefined;
-	keyedChildren: Map<unknown, Node<T>> | undefined = undefined;
+	private firstChild: Node<T> | undefined = undefined;
+	private lastChild: Node<T> | undefined = undefined;
+	private keyedChildren: Map<unknown, Node<T>> | undefined = undefined;
 	abstract readonly renderer: Renderer<T>;
 	abstract parent: ParentNode<T> | undefined;
 	protected state: NodeState = Waiting;
@@ -220,7 +220,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		| ((result?: Promise<undefined>) => unknown)
 		| undefined = undefined;
 
-	protected appendChild(child: Node<T>): void {
+	private appendChild(child: Node<T>): void {
 		if (this.lastChild === undefined) {
 			this.firstChild = child;
 			this.lastChild = child;
@@ -234,7 +234,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		}
 	}
 
-	protected insertBefore(
+	private insertBefore(
 		child: Node<T>,
 		reference: Node<T> | null | undefined,
 	): void {
@@ -257,7 +257,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		reference.previousSibling = child;
 	}
 
-	protected removeChild(child: Node<T>): void {
+	private removeChild(child: Node<T>): void {
 		if (child.previousSibling === undefined) {
 			this.firstChild = child.nextSibling;
 		} else {
@@ -274,7 +274,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		child.nextSibling = undefined;
 	}
 
-	protected replaceChild(child: Node<T>, reference: Node<T>): void {
+	private replaceChild(child: Node<T>, reference: Node<T>): void {
 		this.insertBefore(child, reference);
 		this.removeChild(reference);
 	}
@@ -311,7 +311,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	}
 
 	// TODO: I bet we could simplify the algorithm further, perhaps by writing a
-	// custom alignment algorithm which automatically zips up old and new nodes.
+	// custom a method which automatically zips up old and new nodes.
 	protected updateChildren(children: Children): MaybePromise<undefined> {
 		let host = this.firstChild;
 		let nextSibling = host && host.nextSibling;
@@ -526,10 +526,10 @@ class FragmentNode<T> extends ParentNode<T> {
 	readonly renderer: Renderer<T>;
 	constructor(parent: ParentNode<T>, renderer: Renderer<T>, key: unknown) {
 		super();
+		this.key = key;
 		this.parent = parent;
 		this.renderer = renderer;
 		this.ctx = parent.ctx;
-		this.key = key;
 	}
 
 	commit(): undefined {
@@ -623,7 +623,7 @@ class HostNode<T> extends ParentNode<T> {
 					this.iterator.return();
 				} catch (err) {
 					if (this.parent !== undefined) {
-						return this.parent.catch(err);
+						this.parent.catch(err);
 					}
 
 					throw err;
@@ -678,11 +678,11 @@ class ComponentNode<T> extends ParentNode<T> {
 	private iterator: ChildIterator | undefined = undefined;
 	// TODO: explain these properties
 	private componentType: ComponentType = Unknown;
-	private inflightSelf: Promise<undefined> | undefined = undefined;
-	private enqueuedSelf: Promise<undefined> | undefined = undefined;
-	private inflightChildren: Promise<undefined> | undefined = undefined;
-	private enqueuedChildren: Promise<undefined> | undefined = undefined;
-	private previousChildren: Promise<undefined> | undefined = undefined;
+	private inflightPending: MaybePromise<undefined> = undefined;
+	private enqueuedPending: MaybePromise<undefined> = undefined;
+	private inflightResult: MaybePromise<undefined> = undefined;
+	private enqueuedResult: MaybePromise<undefined> = undefined;
+	private previousResult: MaybePromise<undefined> = undefined;
 	// Context stuff
 	private provisions: Map<unknown, any> | undefined = undefined;
 	// TODO: can these be added to state enum?
@@ -698,9 +698,9 @@ class ComponentNode<T> extends ParentNode<T> {
 		super();
 		this.parent = parent;
 		this.renderer = renderer;
-		this.ctx = new Context(this, parent.ctx);
 		this.tag = tag;
 		this.key = key;
+		this.ctx = new Context(this, parent.ctx);
 	}
 
 	private step(): [MaybePromise<undefined>, MaybePromise<undefined>] {
@@ -726,7 +726,7 @@ class ComponentNode<T> extends ParentNode<T> {
 			}
 		}
 
-		const previousValue = Pledge.resolve(this.previousChildren)
+		const previousValue = Pledge.resolve(this.previousResult)
 			.then(() => this.value)
 			.execute();
 		const iteration = new Pledge(() => this.iterator!.next(previousValue))
@@ -748,8 +748,8 @@ class ComponentNode<T> extends ParentNode<T> {
 				return undefined; // void :(
 			});
 			const result = iteration.then((iteration) => {
-				this.previousChildren = this.updateChildren(iteration.value);
-				return this.previousChildren;
+				this.previousResult = this.updateChildren(iteration.value);
+				return this.previousResult;
 			});
 
 			return [pending, result];
@@ -765,10 +765,10 @@ class ComponentNode<T> extends ParentNode<T> {
 	}
 
 	private advance(): void {
-		this.inflightSelf = this.enqueuedSelf;
-		this.inflightChildren = this.enqueuedChildren;
-		this.enqueuedSelf = undefined;
-		this.enqueuedChildren = undefined;
+		this.inflightPending = this.enqueuedPending;
+		this.inflightResult = this.enqueuedResult;
+		this.enqueuedPending = undefined;
+		this.enqueuedResult = undefined;
 		if (this.componentType === AsyncGen && this.state < Finished) {
 			this.run();
 		}
@@ -840,29 +840,29 @@ class ComponentNode<T> extends ParentNode<T> {
 	}
 
 	private run(): MaybePromise<undefined> {
-		if (this.inflightSelf === undefined) {
+		if (this.inflightPending === undefined) {
 			const [pending, result] = this.step();
 			if (isPromiseLike(pending)) {
-				this.inflightSelf = pending.finally(() => this.advance());
+				this.inflightPending = pending.finally(() => this.advance());
 			}
 
-			this.inflightChildren = result;
-			return this.inflightChildren;
+			this.inflightResult = result;
+			return this.inflightResult;
 		} else if (this.componentType === AsyncGen) {
-			return this.inflightChildren;
-		} else if (this.enqueuedSelf === undefined) {
+			return this.inflightResult;
+		} else if (this.enqueuedPending === undefined) {
 			let resolve: (value: MaybePromise<undefined>) => unknown;
-			this.enqueuedSelf = this.inflightSelf
+			this.enqueuedPending = this.inflightPending
 				.then(() => {
 					const [pending, result] = this.step();
 					resolve(result);
 					return pending;
 				})
 				.finally(() => this.advance());
-			this.enqueuedChildren = new Promise((resolve1) => (resolve = resolve1));
+			this.enqueuedResult = new Promise((resolve1) => (resolve = resolve1));
 		}
 
-		return this.enqueuedChildren;
+		return this.enqueuedResult;
 	}
 
 	commit(): undefined {
