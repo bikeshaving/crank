@@ -23,9 +23,6 @@
     "test": "jest --config jest.config.js --color --no-cache",
     "debug": "node --inspect-brk node_modules/.bin/jest --runInBand"
   },
-  "dependencies": {
-    "@repeaterjs/repeater": "^3.0.1"
-  },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^7.1.1",
     "@types/jest": "^25.2.1",

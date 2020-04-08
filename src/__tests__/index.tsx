@@ -1,6 +1,5 @@
 /** @jsx createElement */
 import "core-js";
-import {Repeater} from "@repeaterjs/repeater";
 import {
 	Copy,
 	createElement,
@@ -1232,33 +1231,6 @@ describe("async generator component", () => {
 		expect(document.body.innerHTML).toEqual("");
 		await p;
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
-	});
-
-	test("repeater", async () => {
-		let push!: (value: Child) => unknown;
-		function Component(): AsyncGenerator<Child> {
-			return new Repeater(async (push1, stop) => ((push = push1), await stop));
-		}
-
-		let renderP = renderer.render(
-			<div>
-				<Component />
-			</div>,
-			document.body,
-		);
-		push(<span>Hello 1</span>);
-		await renderP;
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
-		await push(<span>Hello 2</span>);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
-		await push(<span>Hello 3</span>);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 3</span></div>");
-		await push(<span>Hello 4</span>);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 4</span></div>");
-		await push(null);
-		expect(document.body.innerHTML).toEqual("<div></div>");
-		await push(<span>Hello 5</span>);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
 	});
 
 	test("Fragment parent", async () => {
