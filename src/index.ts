@@ -182,20 +182,6 @@ class LeafNode<T> implements NodeBase<T> {
 	value: string | undefined = undefined;
 }
 
-const Waiting = 0;
-type Waiting = typeof Waiting;
-
-const Updating = 1;
-type Updating = typeof Updating;
-
-const Finished = 2;
-type Finished = typeof Finished;
-
-const Unmounted = 3;
-type Unmounted = typeof Unmounted;
-
-type NodeState = Waiting | Updating | Finished | Unmounted;
-
 abstract class ParentNode<T> implements NodeBase<T> {
 	readonly internal = true;
 	abstract readonly tag: Tag;
@@ -209,17 +195,19 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	private keyedChildren: Map<unknown, Node<T>> | undefined = undefined;
 	abstract readonly renderer: Renderer<T>;
 	abstract parent: ParentNode<T> | undefined;
-	protected state: NodeState = Waiting;
-	protected props: Props | undefined = undefined;
-	value: Array<T | string> | T | string | undefined = undefined;
-	ctx: Context<T> | undefined = undefined;
 	// When children update asynchronously, we race their result against the next
 	// update of children. The onNextChildren property is set to the resolve
 	// function of the promise which the current update is raced against.
 	private onNextChildren:
 		| ((result?: Promise<undefined>) => unknown)
 		| undefined = undefined;
-
+	protected props: Props | undefined = undefined;
+	value: Array<T | string> | T | string | undefined = undefined;
+	ctx: Context<T> | undefined = undefined;
+	protected updating = false;
+	protected iterating = false;
+	protected finished = false;
+	protected unmounted = false;
 	private appendChild(child: Node<T>): void {
 		if (this.lastChild === undefined) {
 			this.firstChild = child;
@@ -363,7 +351,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 
 			if (tag !== Copy) {
 				// TODO: figure out why do we do a check for unmounted hosts here
-				if (host.tag === tag && !(host.internal && host.state === Unmounted)) {
+				if (host.tag === tag && !(host.internal && host.unmounted)) {
 					if (host.internal) {
 						const update = host.update((child as Element).props);
 						if (update !== undefined) {
@@ -494,12 +482,12 @@ abstract class ParentNode<T> implements NodeBase<T> {
 
 	update(props: Props): MaybePromise<undefined> {
 		this.props = props;
-		this.state = this.state < Updating ? Updating : this.state;
+		this.updating = true;
 		return this.refresh();
 	}
 
 	refresh(): MaybePromise<undefined> {
-		if (this.state === Unmounted) {
+		if (this.unmounted) {
 			return;
 		}
 
@@ -535,21 +523,21 @@ class FragmentNode<T> extends ParentNode<T> {
 	commit(): undefined {
 		const childValues = this.getChildValues();
 		this.value = childValues.length > 1 ? childValues : childValues[0];
-		if (this.state < Updating) {
+		if (!this.updating) {
 			// TODO: batch this per microtask
 			this.parent.commit();
 		}
 
-		this.state = this.state <= Updating ? Waiting : this.state;
+		this.updating = false;
 		return; // void :(
 	}
 
 	unmount(): undefined {
-		if (this.state >= Unmounted) {
+		if (this.unmounted) {
 			return;
 		}
 
-		this.state = Unmounted;
+		this.unmounted = true;
 		this.unmountChildren();
 	}
 }
@@ -563,7 +551,6 @@ class HostNode<T> extends ParentNode<T> {
 	private childValues: Array<T | string> = [];
 	private readonly intrinsic: Intrinsic<T>;
 	private iterator: Iterator<T> | undefined = undefined;
-	private iterating = false;
 	private readonly hostCtx: HostContext<T>;
 	constructor(
 		parent: ParentNode<T> | undefined,
@@ -599,8 +586,9 @@ class HostNode<T> extends ParentNode<T> {
 			if (this.iterator !== undefined) {
 				const iteration = this.iterator.next();
 				this.value = iteration.value;
+				this.iterating = false;
 				if (iteration.done) {
-					this.state = this.state < Finished ? Finished : this.state;
+					this.finished = true;
 				}
 			}
 		} catch (err) {
@@ -610,14 +598,14 @@ class HostNode<T> extends ParentNode<T> {
 
 			throw err;
 		} finally {
-			this.state = this.state <= Updating ? Waiting : this.state;
+			this.updating = false;
 		}
 	}
 
 	unmount(): MaybePromise<undefined> {
-		if (this.state >= Unmounted) {
+		if (this.unmounted) {
 			return;
-		} else if (this.state < Finished) {
+		} else if (this.finished) {
 			if (this.iterator !== undefined && this.iterator.return) {
 				try {
 					this.iterator.return();
@@ -631,53 +619,46 @@ class HostNode<T> extends ParentNode<T> {
 			}
 		}
 
-		this.state = Unmounted;
+		this.unmounted = true;
 		this.unmountChildren();
 	}
 
 	*[Symbol.iterator]() {
-		if (this.iterating) {
-			throw new Error("Multiple iterations over the same context detected");
-		}
-
-		this.iterating = true;
-		try {
-			// TODO: throw an error when props have been pulled multiple times
-			// without a yield
-			while (this.state !== Unmounted) {
-				yield {...this.props, children: this.childValues};
+		while (!this.unmounted) {
+			if (this.iterating) {
+				throw new Error("You must yield something each iteration over context");
 			}
-		} finally {
-			this.iterating = false;
+
+			this.iterating = true;
+			yield {...this.props, children: this.childValues};
 		}
 	}
 }
 
-const Unknown = 0;
-type Unknown = typeof Unknown;
-
-const SyncFn = 1;
+const SyncFn = 0;
 type SyncFn = typeof SyncFn;
 
-const AsyncFn = 2;
+const AsyncFn = 1;
 type AsyncFn = typeof AsyncFn;
 
-const SyncGen = 3;
+const SyncGen = 2;
 type SyncGen = typeof SyncGen;
 
-const AsyncGen = 4;
+const AsyncGen = 3;
 type AsyncGen = typeof AsyncGen;
 
-type ComponentType = Unknown | SyncFn | AsyncFn | SyncGen | AsyncGen;
+type ComponentType = SyncFn | AsyncFn | SyncGen | AsyncGen;
+
 class ComponentNode<T> extends ParentNode<T> {
 	readonly tag: Component;
 	readonly key: Key;
 	readonly parent: ParentNode<T>;
 	readonly renderer: Renderer<T>;
 	readonly ctx: Context<T>;
+	private available = true;
 	private iterator: ChildIterator | undefined = undefined;
 	// TODO: explain these properties
-	private componentType: ComponentType = Unknown;
+	private componentType: ComponentType | undefined = undefined;
 	private inflightPending: MaybePromise<undefined> = undefined;
 	private enqueuedPending: MaybePromise<undefined> = undefined;
 	private inflightResult: MaybePromise<undefined> = undefined;
@@ -685,9 +666,6 @@ class ComponentNode<T> extends ParentNode<T> {
 	private previousResult: MaybePromise<undefined> = undefined;
 	// Context stuff
 	private provisions: Map<unknown, any> | undefined = undefined;
-	// TODO: can these be added to state enum?
-	private iterating = false;
-	private available = true;
 	private publish: ((props: Props) => unknown) | undefined = undefined;
 	constructor(
 		parent: ParentNode<T>,
@@ -704,7 +682,7 @@ class ComponentNode<T> extends ParentNode<T> {
 	}
 
 	private step(): [MaybePromise<undefined>, MaybePromise<undefined>] {
-		if (this.state >= Finished) {
+		if (this.finished) {
 			return [undefined, undefined];
 		} else if (this.iterator === undefined) {
 			this.ctx.clearEventListeners();
@@ -737,16 +715,19 @@ class ComponentNode<T> extends ParentNode<T> {
 					.execute();
 			})
 			.execute();
-
 		if (isPromiseLike(iteration)) {
 			this.componentType = AsyncGen;
-			const pending = iteration.then((iteration) => {
-				if (iteration.done) {
-					this.state = this.state < Finished ? Finished : this.state;
-				}
+			const pending = iteration.then(
+				(iteration) => {
+					this.iterating = false;
+					if (iteration.done) {
+						this.finished = true;
+					}
 
-				return undefined; // void :(
-			});
+					return undefined; // void :(
+				},
+				() => undefined, // void :(
+			);
 			const result = iteration.then((iteration) => {
 				this.previousResult = this.updateChildren(iteration.value);
 				return this.previousResult;
@@ -754,9 +735,10 @@ class ComponentNode<T> extends ParentNode<T> {
 
 			return [pending, result];
 		} else {
+			this.iterating = false;
 			this.componentType = SyncGen;
 			if (iteration.done) {
-				this.state = this.state < Finished ? Finished : this.state;
+				this.finished = true;
 			}
 
 			const result = this.updateChildren(iteration.value);
@@ -769,13 +751,13 @@ class ComponentNode<T> extends ParentNode<T> {
 		this.inflightResult = this.enqueuedResult;
 		this.enqueuedPending = undefined;
 		this.enqueuedResult = undefined;
-		if (this.componentType === AsyncGen && this.state < Finished) {
+		if (this.componentType === AsyncGen && !this.finished && !this.unmounted) {
 			this.run();
 		}
 	}
 
 	refresh(): MaybePromise<undefined> {
-		if (this.state === Unmounted) {
+		if (this.unmounted) {
 			return;
 		}
 
@@ -790,53 +772,39 @@ class ComponentNode<T> extends ParentNode<T> {
 	}
 
 	*[Symbol.iterator](): Generator<Props> {
-		if (this.iterating) {
-			throw new Error("Mulitple iterations over the same context detected");
-		} else if (this.componentType === AsyncGen) {
-			throw new Error(
-				"The component related to this context is an async generator. Use for await...of instead.",
-			);
-		}
-
-		this.iterating = true;
-		try {
-			// TODO: throw an error when props have been pulled multiple times
-			// without a yield
-			while (this.state !== Unmounted) {
-				yield this.props!;
+		while (!this.unmounted) {
+			if (this.iterating) {
+				throw new Error("You must yield once per iteration over context");
+			} else if (this.componentType === AsyncGen) {
+				throw new Error("Use for await...of in async generator components.");
 			}
-		} finally {
-			this.iterating = false;
+
+			this.iterating = true;
+			yield this.props!;
 		}
 	}
 
 	async *[Symbol.asyncIterator](): AsyncGenerator<Props> {
-		if (this.iterating) {
-			throw new Error("Mulitple iterations over the same context detected");
-		} else if (this.componentType === SyncGen) {
-			throw new Error(
-				"The component related to this context is a sync generator. Use for ...of instead.",
-			);
-		}
+		do {
+			if (this.iterating) {
+				throw new Error("You must yield once per iteration over context");
+			} else if (this.componentType === SyncGen) {
+				throw new Error("Use for...of in sync generator components.");
+			}
 
-		this.iterating = true;
-		try {
-			do {
-				if (this.available) {
-					this.available = false;
-					yield this.props!;
-				} else {
-					const props = await new Promise<Props>(
-						(resolve) => (this.publish = resolve),
-					);
-					if (this.state < Unmounted) {
-						yield props;
-					}
+			this.iterating = true;
+			if (this.available) {
+				this.available = false;
+				yield this.props!;
+			} else {
+				const props = await new Promise<Props>(
+					(resolve) => (this.publish = resolve),
+				);
+				if (!this.unmounted) {
+					yield props;
 				}
-			} while (this.state < Unmounted);
-		} finally {
-			this.iterating = false;
-		}
+			}
+		} while (!this.unmounted);
 	}
 
 	private run(): MaybePromise<undefined> {
@@ -869,21 +837,23 @@ class ComponentNode<T> extends ParentNode<T> {
 		const childValues = this.getChildValues();
 		this.ctx.setDelegates(childValues);
 		this.value = childValues.length > 1 ? childValues : childValues[0];
-		if (this.state < Updating) {
+		if (!this.updating) {
 			// TODO: batch this per macrotask
 			this.parent.commit();
 		}
 
-		this.state = this.state <= Updating ? Waiting : this.state;
+		this.updating = false;
 		return; // void :(
 	}
 
 	unmount(): MaybePromise<undefined> {
-		const state = this.state;
-		this.state = Unmounted;
-		if (state >= Unmounted) {
+		if (this.unmounted) {
 			return;
-		} else if (state < Finished) {
+		}
+
+		this.unmounted = true;
+		if (!this.finished) {
+			this.finished = true;
 			// TODO: maybe we should return the async iterator rather than
 			// republishing props
 			if (this.publish !== undefined) {
@@ -908,14 +878,14 @@ class ComponentNode<T> extends ParentNode<T> {
 		if (
 			this.iterator === undefined ||
 			this.iterator.throw === undefined ||
-			this.state >= Finished
+			this.finished
 		) {
 			return super.catch(reason);
 		} else {
 			return new Pledge(() => this.iterator!.throw!(reason))
 				.then((iteration) => {
 					if (iteration.done) {
-						this.state = this.state < Finished ? Finished : this.state;
+						this.finished = true;
 					}
 
 					return this.updateChildren(iteration.value);

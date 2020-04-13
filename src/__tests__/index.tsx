@@ -1117,12 +1117,45 @@ describe("sync generator component", () => {
 			"<div><span>Error: async errors are caught in nested component</span></div>",
 		);
 	});
+
+	test("multiple iterations without a yield throw", () => {
+		let i = 0;
+		function* Component(this: Context) {
+			for (const _ of this) {
+				// just so the test suite doesn’t enter an infinite loop
+				if (i > 100) {
+					yield;
+					return;
+				}
+
+				i++;
+			}
+		}
+
+		expect(() => renderer.render(<Component />, document.body)).toThrow(
+			"You must yield",
+		);
+		expect(i).toBe(1);
+	});
+
+	test("for await...of throws", async () => {
+		let ctx: Context;
+		function* Component(this: Context): Generator<null> {
+			ctx = this;
+			yield null;
+		}
+
+		renderer.render(<Component />, document.body);
+		await expect((() => ctx![Symbol.asyncIterator]().next())()).rejects.toThrow(
+			"Use for...of",
+		);
+	});
 });
 
 describe("async generator component", () => {
-	afterEach(async () => {
+	afterEach(() => {
 		document.body.innerHTML = "";
-		await renderer.render(null, document.body);
+		renderer.render(null, document.body);
 	});
 
 	test("basic", async () => {
@@ -1415,6 +1448,38 @@ describe("async generator component", () => {
 		expect(document.body.innerHTML).toEqual("<div></div>");
 		await new Promise((resolve) => setTimeout(resolve));
 		expect(mock).toHaveBeenCalledTimes(1);
+	});
+
+	test("multiple iterations without a yield throw", async () => {
+		let i = 0;
+		async function* Component(this: Context) {
+			for await (const _ of this) {
+				// just so the test suite doesn’t enter an infinite loop
+				if (i > 100) {
+					yield;
+					return;
+				}
+
+				i++;
+			}
+		}
+
+		await expect(renderer.render(<Component />, document.body)).rejects.toThrow(
+			"You must yield",
+		);
+		expect(i).toBe(1);
+	});
+
+	test("for...of throws", async () => {
+		let ctx: Context;
+		async function* Component(this: Context): AsyncGenerator<null> {
+			ctx = this;
+			yield null;
+			await new Promise(() => {});
+		}
+
+		await renderer.render(<Component />, document.body);
+		expect(() => ctx[Symbol.iterator]().next()).toThrow("Use for await...of");
 	});
 });
 
