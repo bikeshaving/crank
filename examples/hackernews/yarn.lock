@@ -871,12 +871,10 @@
     lodash "^4.17.13"
     to-fast-properties "^2.0.0"
 
-"@bikeshaving/crank@^0.1.0-beta.7":
-  version "0.1.0-beta.7"
-  resolved "https://registry.yarnpkg.com/@bikeshaving/crank/-/crank-0.1.0-beta.7.tgz#d5ef3e8e1bf234c506de1adb1fd1504104e6809b"
-  integrity sha512-3HjzZIA0ouNtRufx+U0vao1YZcFwoDIEYCtNiDMPasB5ZWJldf7fbdKuGQBTRoUT4uCOw994ulT6rhd82dOAoA==
-  dependencies:
-    "@repeaterjs/repeater" "^3.0.1"
+"@bikeshaving/crank@^0.1.0-beta.8":
+  version "0.1.0-beta.8"
+  resolved "https://registry.yarnpkg.com/@bikeshaving/crank/-/crank-0.1.0-beta.8.tgz#1935d787854f45f691aeb572dc054549bd3aa579"
+  integrity sha512-yAmNgg02NcDlZNReunS9GmxqT3tYeMbK0Yzm0Ur5OzrbFJo0m8TKxFowVgQvNTK3XtlmTJxHPhqjzHWR2ObuWQ==
 
 "@iarna/toml@^2.2.0":
   version "2.2.3"
@@ -936,11 +934,6 @@
   dependencies:
     "@parcel/utils" "^1.11.0"
     physical-cpu-count "^2.0.0"
-
-"@repeaterjs/repeater@^3.0.1":
-  version "3.0.1"
-  resolved "https://registry.yarnpkg.com/@repeaterjs/repeater/-/repeater-3.0.1.tgz#506641792ae5fdc5b8c3981ceb210bce407cd104"
-  integrity sha512-kqdrZRvTLFfvgPTeMgj8DpREYZXU+sz4/kdX2825zMNGmiaEUzM6u7A4YBoI4WzqXX4q123VftkllAw1C/4rMg==
 
 "@types/q@^1.5.1":
   version "1.5.2"
