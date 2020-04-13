@@ -1,10 +1,12 @@
 ---
-title: Special Tags and Props
+title: Special Props and Tags
 ---
-The element diffing algorithm used by Crank is both declarative and efficient, but there are times when you might want to tweak the way it works in one way or another. Crank provides one special prop `crank-key` and three special tags `Fragment`, `Portal` and `Copy` which provide special rendering behaviors.
 
-### `crank-key`
-By default, Crank will use an element’s tag and position to determine if it represents an update or a change to the tree. Because elements often represent stateful DOM nodes or components, it can be useful to “key” the children of an element as a hint to Crank that an element has been added, moved or removed. In Crank, we do this with the special prop `crank-key`:
+The element diffing algorithm used by Crank is both declarative and efficient, but there are times when you might want to tweak the way it works. Crank provides special props and tags which produce different rendering behaviors.
+
+## Special Props
+### crank-key
+By default, Crank will use an element’s tag and position to determine if it represents an update or a change to the tree. Because elements often represent stateful DOM nodes or components, it can be useful to *key* the children of an element to hint to renderers that an element has been added, moved or removed. In Crank, we do this with the special prop `crank-key`:
 
 ```jsx
 let nextId = 0;
@@ -24,7 +26,7 @@ renderer.render(
   document.body,
 );
 console.log(document.body.innerHTML);
-//<div><span>Id: 1</span><span>Id: 2</span><span>Id: 3</span><div>
+// "<div><span>Id: 1</span><span>Id: 2</span><span>Id: 3</span><div>"
 
 renderer.render(
   <div>
@@ -36,10 +38,10 @@ renderer.render(
 );
 
 console.log(document.body.innerHTML);
-//<div><span>Id: 3</span><span>Id: 2</span><span>Id: 1</span><div>
+// "<div><span>Id: 3</span><span>Id: 2</span><span>Id: 1</span><div>"
 ```
 
-Keys are scoped to an element’s children. When rendering iterables, it’s useful to key elements of the iterable, because it’s common for elements to be added, removed or rearranged. Both intrinsic and component elements can be keyed with `crank-key`, but the prop is erased from the props object before the props object is passed to the component.
+Keys are scoped to an element’s children. When rendering iterables, it’s useful to key elements of the iterable, because in this case it’s common for elements to be added, removed or rearranged. Both host and component elements can be keyed with `crank-key`.
 
 ```jsx
 function *Shuffler() {
@@ -70,13 +72,12 @@ console.log(document.firstChild.firstChild === el0); // true
 ```
 
 ## Special Tags
-Crank provides a couple element tags which have special meaning when rendering. In actuality, these tags are symbols and behave similarly to string tags, except they affect the diffing algorithm to allow you to render multiple elements into a parent, render into multiple roots, or skip rendering altogether.
+Crank provides several element tags which have special meaning when rendering. In actuality, these tags are symbols and behave similarly to string tags, except they affect the diffing algorithm.
 
 ### Fragment
-Crank provides a `Fragment` tag, which allows you to render multiple siblings in a parent without wrapping them in another DOM node. Under the hood, iterables which appear in an element tree are actually implicitly wrapped in a Fragment element by the renderer.
+Crank provides a `Fragment` tag, which allows you to render multiple children into a parent without wrapping them in another DOM node. Under the hood, iterables which appear in the element tree are also implicitly wrapped in a `Fragment` element by the renderer.
 
 ```jsx
-/* @jsx createElement */
 import {createElement, Fragment} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
 function Siblings() {
@@ -89,14 +90,15 @@ function Siblings() {
 }
 
 renderer.render(<Siblings />, document.body);
-console.log(document.body.innerHTML); // <div>Sibling 1</div><div>Sibling 2</div>
+console.log(document.body.innerHTML);
+// "<div>Sibling 1</div><div>Sibling 2</div>"
 ```
 
 ### Portal
-Sometimes you may want to render into multiple DOM nodes from the same component tree. You can do this with the `Portal` tag, passing in a DOM node via a `root` prop. The Portal’s children will be rendered into the specified root. This is useful when writing modals or working with pages where you need to render into multiple entry-points. `renderer.render` actually wraps its first argument in an implicit Portal element if the argument is not a Portal element already. Events dispatched from a Portal’s children via `this.dispatchEvent` will still bubble into parent component contexts.
+Sometimes you may want to render into multiple DOM nodes from the same element tree. You can do this with the `Portal` tag, passing in a DOM node as its `root` prop. The Portal’s children will be rendered into the specified root. This is useful when writing modals or working with pages where you need to render into multiple entry-points. Events dispatched from a `Portal` element‘s child contexts via `this.dispatchEvent` will still bubble into parent component contexts.
 
 ```jsx
-/* @jsx createElement */
+/** @jsx createElement */
 import {createElement, Portal} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
 const root1 = document.createElement("div");
@@ -120,7 +122,7 @@ console.log(root2.innerHTML);
 ```
 
 ### Copy
-It‘s often fine to rerender Crank components, because elements are diffed, persistent between renders, and unnecessary mutations are avoided. However, sometimes you might want to prevent a child from updating when the parent rerenders, perhaps because a certain prop hasn’t changed, because you want to batch updates from the parent, or because you want to improve performance. To do this, you can use the `Copy` tag to indicate to Crank that you don’t want to update a previously rendered element or any of its children.
+It‘s often fine to rerender Crank components, because elements are diffed, persistent between renders, and unnecessary mutations are usually avoided. However, sometimes you might want to prevent a child from updating when the parent rerenders, perhaps because a certain prop hasn’t changed, because you want to batch updates from the parent, or because you want to improve performance. To do this, you can use the `Copy` tag to indicate to Crank that you don’t want to update a previously rendered element or any of its children.
 
 ```jsx
 function equals(oldProps, newProps) {
@@ -135,6 +137,7 @@ function equals(oldProps, newProps) {
 
 function pure(Component) {
   return function *Wrapped({props}) {
+    yield <Component {...props} />;
     for (const newProps of this) {
       if (equals(props, newProps)) {
         yield <Copy />;
@@ -148,7 +151,21 @@ function pure(Component) {
 }
 ```
 
-In the example above, `pure` is a higher-order component, a function which takes a component and returns a component which compares new and old props and yields a copy if old and new props are shallowly equal. Copy elements can appear anywhere in an element tree to prevent rerenderings, and the only prop Copy elements take is the `crank-key` prop, which allows you to do advanced optimizations where you move parts of the tree around.
+In the example above, `pure` is a higher-order component, a function which takes a component and returns a component which compares new and old props and yields a `Copy` element if old and new props are shallowly equal. A `Copy` element can appear anywhere in an element tree to prevent rerenderings, and the only prop `Copy` elements take is the `crank-key` prop, allowing you to copy elements by key.
 
-### TodoMVC
-At this point, you have all the knowledge needed to understand Crank’s TodoMVC application. [Check it out here.](https://codesandbox.io/s/crank-todomvc-k6s0x)
+### Raw
+Sometimes, you may want to insert raw HTML or actual DOM nodes into the rendered output. Crank allows you to do this with the `Raw` element. The `Raw` element takes a `value` prop which can be either an HTML string or a DOM node. If it’s an HTML string the renderer will parse it and inject the resulting DOM nodes, and if it’s a DOM node Crank will simply insert them in place. Be careful when using `Raw` elements, as passing unsanitized text inputs can lead to cross-site scripting vulnerabilities.
+
+```jsx
+/** @jsx createElement */
+import {createElement, Raw} from "@bikeshaving/crank";
+import marked from "marked";
+function MarkdownViewer({markdown=""}) {
+  const html = marked(markdown);
+  return (
+    <div>
+      <Raw value={html} />
+    </div>
+  );
+}
+```

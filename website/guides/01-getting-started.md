@@ -10,7 +10,7 @@ $ npm install @bikeshaving/crank
 ```
 
 ```jsx
-/* @jsx createElement */
+/** @jsx createElement */
 import {createElement} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
 
@@ -89,31 +89,23 @@ renderer.render(<IPAddress />, document.getElementById("app"));
 [Try on CodeSandbox](https://codesandbox.io/s/an-async-crank-component-ru02q)
 
 ### A Loading Component
-
 ```jsx
-/* @jsx createElement */
-import {createElement} from "@bikeshaving/crank";
+/** @jsx createElement */
+import {createElement, Fragment} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
 
-async function Fallback ({wait = 1000, children}) {
-  await new Promise((resolve) => setTimeout(resolve, wait));
-  return <Fragment>{children}</Fragment>;
+async function LoadingIndicator() {
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  return <div>Fetching a good boy...</div>;
 }
 
-async function *Suspense () {
-  for await (const {fallback, children} of this) {
-    yield <Fallback>{fallback}</Fallback>;
-    yield <Fragment>{children}</Fragment>;
-  }
-}
-
-async function RandomDog ({throttle=false}) {
-  if (throttle) {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-  }
-
+async function RandomDog({throttle = false}) {
   const res = await fetch("https://dog.ceo/api/breeds/image/random");
   const data = await res.json();
+  if (throttle) {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+
   return (
     <a href={data.message}>
       <img src={data.message} alt="A Random Dog" width="300" />
@@ -121,7 +113,14 @@ async function RandomDog ({throttle=false}) {
   );
 }
 
-function *RandomDogs () {
+async function *RandomDogLoader({throttle}) {
+  for await ({throttle} of this) {
+    yield <LoadingIndicator />
+    yield <RandomDog throttle={throttle} />;
+  }
+}
+
+function *RandomDogApp() {
   let throttle = false;
   this.addEventListener("click", (ev) => {
     if (ev.target.tagName === "BUTTON") {
@@ -136,15 +135,13 @@ function *RandomDogs () {
         <div>
           <button>Show me another dog.</button>
         </div>
-        <Suspense fallback={<div>Fetching a good boy…</div>}>
-          <RandomDog throttle={throttle} />
-        </Suspense>
+        <RandomDogLoader throttle={throttle} />
       </Fragment>
     );
   }
 }
 
-renderer.render(<RandomDogs />, document.getElementById("app"));
+renderer.render(<RandomDogApp />, document.body);
 ```
 
 [Try on CodeSandbox](https://codesandbox.io/s/a-loading-crank-component-pci9d)

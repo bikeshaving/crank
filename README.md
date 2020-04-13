@@ -23,7 +23,7 @@ $ npm install @bikeshaving/crank
 ```
 
 ```jsx
-/* @jsx createElement */
+/** @jsx createElement */
 import {createElement} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
 
@@ -33,7 +33,7 @@ renderer.render(<div id="hello">Hello world</div>, document.body);
 If your environment does not support ESModules (you’ll probably see a message like `SyntaxError: Unexpected token export`), you can import the CommonJS versions of the library like so:
 
 ```jsx
-/* @jsx createElement */
+/** @jsx createElement */
 import {createElement} from "@bikeshaving/crank/cjs";
 import {renderer} from "@bikeshaving/crank/cjs/dom";
 
@@ -60,7 +60,7 @@ renderer.render(<Greeting />, document.getElementById("app"));
 
 ### A Stateful Component
 ```jsx
-/* @jsx createElement */
+/** @jsx createElement */
 import {createElement} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
 
@@ -86,7 +86,7 @@ renderer.render(<Timer />, document.getElementById("app"));
 
 ### An Async Component
 ```jsx
-/* @jsx createElement */
+/** @jsx createElement */
 import {createElement} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
 
@@ -104,25 +104,18 @@ renderer.render(<IPAddress />, document.getElementById("app"));
 ### A Loading Component
 
 ```jsx
-/* @jsx createElement */
-import {createElement} from "@bikeshaving/crank";
+/** @jsx createElement */
+import {createElement, Fragment} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
 
-async function Fallback ({wait = 1000, children}) {
-  await new Promise((resolve) => setTimeout(resolve, wait));
+async function Fallback({wait = 1000, children}) {
+  await new Promise(resolve => setTimeout(resolve, wait));
   return <Fragment>{children}</Fragment>;
 }
 
-async function *Suspense () {
-  for await (const {fallback, children} of this) {
-    yield <Fallback>{fallback}</Fallback>;
-    yield <Fragment>{children}</Fragment>;
-  }
-}
-
-async function RandomDog ({throttle=false}) {
+async function RandomDog({throttle = false}) {
   if (throttle) {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await new Promise(resolve => setTimeout(resolve, 2000));
   }
 
   const res = await fetch("https://dog.ceo/api/breeds/image/random");
@@ -134,7 +127,18 @@ async function RandomDog ({throttle=false}) {
   );
 }
 
-function *RandomDogs () {
+async function* RandomDogLoader({throttle}) {
+  for await ({throttle} of this) {
+    yield (
+      <Fallback>
+        <div>Fetching a good boy...</div>
+      </Fallback>
+    );
+    yield <RandomDog throttle={throttle} />;
+  }
+}
+
+function* RandomDogs() {
   let throttle = false;
   this.addEventListener("click", (ev) => {
     if (ev.target.tagName === "BUTTON") {
@@ -149,15 +153,13 @@ function *RandomDogs () {
         <div>
           <button>Show me another dog.</button>
         </div>
-        <Suspense fallback={<div>Fetching a good boy…</div>}>
-          <RandomDog throttle={throttle} />
-        </Suspense>
+        <RandomDogLoader throttle={throttle} />
       </Fragment>
     );
   }
 }
 
-renderer.render(<RandomDogs />, document.getElementById("app"));
+renderer.render(<RandomDogs />, document.body);
 ```
 
 [Try on CodeSandbox](https://codesandbox.io/s/a-loading-crank-component-pci9d)
