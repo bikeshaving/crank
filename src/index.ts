@@ -664,7 +664,6 @@ class ComponentNode<T> extends ParentNode<T> {
 	private inflightResult: MaybePromise<undefined> = undefined;
 	private enqueuedResult: MaybePromise<undefined> = undefined;
 	private previousResult: MaybePromise<undefined> = undefined;
-	// Context stuff
 	private provisions: Map<unknown, any> | undefined = undefined;
 	private publish: ((props: Props) => unknown) | undefined = undefined;
 	constructor(
@@ -895,7 +894,7 @@ class ComponentNode<T> extends ParentNode<T> {
 		}
 	}
 
-	get(name: unknown): any {
+	get(name: unknown): unknown {
 		for (
 			let host: ParentNode<T> | undefined = this.parent;
 			host !== undefined;
@@ -911,7 +910,7 @@ class ComponentNode<T> extends ParentNode<T> {
 		}
 	}
 
-	set(name: unknown, value: any): void {
+	set(name: unknown, value: unknown): void {
 		if (this.provisions === undefined) {
 			this.provisions = new Map();
 		}
