@@ -1,0 +1,94 @@
+<html lang="en"><!DOCTYPE html><head><meta charset="UTF-8"><title>Crank.js | Working with TypeScript</title><link rel="stylesheet" href="/index.css.css"></head><body><nav id="navbar" class="navbar"><div class="navbar-group"><div class="navbar-item"><a class href="/">Crank.js</a></div><div class="navbar-item"><a class="current" href="/guides/getting-started">Docs</a></div><div class="navbar-item"><a class href="/blog/">Blog</a></div></div><div class="navbar-group"><div class="navbar-item"><a href="https://github.com/brainkim/crank">Github</a></div><div class="navbar-item"><a href="http://npm.im/@bikeshaving/crank">NPM</a></div></div></nav><div id="sidebar" class="sidebar"><h3>Guides</h3><div class="sidebar-item"><a href="/guides/getting-started" class="">Getting Started</a></div><div class="sidebar-item"><a href="/guides/elements" class="">JSX, Elements and Renderers</a></div><div class="sidebar-item"><a href="/guides/components" class="">Components</a></div><div class="sidebar-item"><a href="/guides/async-components" class="">Asynchronous Components</a></div><div class="sidebar-item"><a href="/guides/special-tags-and-props" class="">Special Props and Tags</a></div><div class="sidebar-item"><a href="/guides/working-with-typescript" class="current">Working with TypeScript</a></div></div><div class="main"><div class="content"><h1>Working with TypeScript</h1><p>Crank is written in TypeScript, and provides some types out of box so you can type-check your components and JSX calls.</p>
+<h2 id="typing-this-in-components">Typing <code>this</code> in components</h2>
+<p>Trying to reference <code>this</code> in a component without a <code>this</code> type annotation will throw a type error in TypeScript‘s strict mode (you’ll see a message like <code>&#39;this&#39; implicitly has type &#39;any&#39; because it does not have a type annotation</code>). TypeScript exports the <code>Context</code> class so you can annotate your components with <code>Context</code> as <code>this</code>:</p>
+<pre><code class="language-tsx">function *Timer (this: Context) {
+  let seconds = 0;
+  const interval = setInterval(() =&gt; {
+    seconds++;
+    this.refresh();
+  }, 1000);
+  try {
+    while (true) {
+      yield &lt;div&gt;Seconds: {seconds}&lt;/div&gt;;
+    }
+  } finally {
+    clearInterval(interval);
+  }
+}</code></pre>
+<h2 id="typing-the-return-types-of-components">Typing the return types of components</h2>
+<p>You’ll often want to add a return type to your components. Crank exports custom types to help you type the return types of components:</p>
+<pre><code class="language-tsx">import {Element} from &quot;@bikeshaving/crank&quot;;
+function SyncFn(): Element {
+  return &lt;div&gt;Hello world&lt;/div&gt;;
+}
+
+function *SyncGen(): Generator&lt;Element&gt; {
+  while (true) {
+    yield &lt;div&gt;Hello world&lt;/div&gt;;
+  } 
+}
+
+async function AsyncFn(): Promise&lt;Element&gt; {
+  return &lt;div&gt;Hello world&lt;/div&gt;;
+}
+
+async function *AsyncGen(): AsyncGenerator&lt;Element&gt; {
+  while (true) {
+    yield &lt;div&gt;Hello world&lt;/div&gt;;
+  } 
+}</code></pre>
+<p><code>Element</code> is just the type returned by JSX/<code>createElement</code>. As you can see, you still have to modify the return type of functions based on whether the function is async or a generator. You can also use the type <code>Child</code> which represents any valid value in an element tree. </p>
+<pre><code class="language-tsx">function *SyncGen(): Generator&lt;Child&gt; {
+  yield true;
+  yield false;
+  yield null;
+  yield undefined;
+  yield 0;
+  yield 9001;
+  yield &quot;Hello world&quot;;
+  yield &lt;div&gt;Hello world&lt;/div&gt;;
+}</code></pre>
+<p>Anything assignable to <code>Child</code> can be part of the element tree.</p>
+<h2 id="typing-props">Typing props</h2>
+<p>You can type the props object passed to components. This allows JSX elements which use your component as a tag to be type-checked.</p>
+<pre><code class="language-tsx">function Greeting ({name}: {name: string}) {
+  return (
+    &lt;div&gt;Hello {name}&lt;/div&gt;
+  );
+}
+
+const el = &lt;Greeting name=&quot;Brian&quot; /&gt;; // works fine
+const el1 = &lt;Greeting name={1} /&gt;; // throws a type error</code></pre>
+<p>The children prop can be typed using the <code>Children</code> type provided by Crank. The <code>Children</code> type is a broad type which can be <code>Child</code> or arbitrarily nested iterables of <code>Child</code>. TypeScript doesn’t really provide a way to prevent functions from being used as the <code>children</code> prop, but such patterns are strongly discouraged. You should typically treat <code>children</code> as an opaque value only to be interpolated into JSX because its value can be almost anything.</p>
+<pre><code class="language-tsx">import {Children} from &quot;@bikeshaving/crank&quot;;
+function Greeting ({name, children}: {name: string, children: Children}) {
+  return (
+    &lt;div&gt;
+      Message for {name}: {children}
+    &lt;/div&gt;
+  );
+}</code></pre>
+<h2 id="typing-event-listeners">Typing event listeners</h2>
+<p>If you dispatch custom events, you’re going to want parent event listeners to be typed with the event you bubbled automatically. To do so, you can extend a global <code>EventMap</code> type provided by Crank.</p>
+<pre><code class="language-tsx">declare global {
+  module &quot;@bikeshaving/crank&quot; {
+    interface EventMap {
+      &quot;mybutton.click&quot;: CustomEvent&lt;{id: string}&gt;;
+    }
+  }
+}
+
+
+function MyButton (props) {
+  this.addEventListener(&quot;click&quot;, () =&gt; {
+    this.dispatchEvent(new CustomEvent(&quot;mybutton.click&quot;, {
+      bubbles: true,
+      detail: {id: props.id},
+    }));
+  });
+
+  return (
+    &lt;button {...props} /&gt;
+  );
+}</code></pre>
+</div></div><script src="/index.tsx.js"></script></body></html>

@@ -1,0 +1,250 @@
+<html lang="en"><!DOCTYPE html><head><meta charset="UTF-8"><title>Crank.js | Components</title><link rel="stylesheet" href="/index.css.css"></head><body><nav id="navbar" class="navbar"><div class="navbar-group"><div class="navbar-item"><a class href="/">Crank.js</a></div><div class="navbar-item"><a class="current" href="/guides/getting-started">Docs</a></div><div class="navbar-item"><a class href="/blog/">Blog</a></div></div><div class="navbar-group"><div class="navbar-item"><a href="https://github.com/brainkim/crank">Github</a></div><div class="navbar-item"><a href="http://npm.im/@bikeshaving/crank">NPM</a></div></div></nav><div id="sidebar" class="sidebar"><h3>Guides</h3><div class="sidebar-item"><a href="/guides/getting-started" class="">Getting Started</a></div><div class="sidebar-item"><a href="/guides/elements" class="">JSX, Elements and Renderers</a></div><div class="sidebar-item"><a href="/guides/components" class="current">Components</a></div><div class="sidebar-item"><a href="/guides/async-components" class="">Asynchronous Components</a></div><div class="sidebar-item"><a href="/guides/special-tags-and-props" class="">Special Props and Tags</a></div><div class="sidebar-item"><a href="/guides/working-with-typescript" class="">Working with TypeScript</a></div></div><div class="main"><div class="content"><h1>Components</h1><p>So far, we’ve only seen and used intrinsic elements, but eventually, we’ll want to group parts of the element tree into reusable <em>components.</em> In Crank, all components are functions; there is no class-based interface.</p>
+<h2 id="basic-components">Basic Components</h2>
+<pre><code class="language-js">function Greeting({name}) {
+  return &lt;div&gt;Hello, {name}&lt;/div&gt;;
+}
+
+renderer.render(&lt;Greeting name=&quot;World&quot; /&gt;, document.body);
+console.log(document.body.innerHTML); // &quot;&lt;div&gt;Hello World&lt;/div&gt;&quot;</code></pre>
+<p>The simplest kind of component you can write is a <em>sync function component</em>. When these components are rendered, the function tag is invoked with the props object of the element as its first argument, and the return value, usually an element, is recursively rendered by the renderer as the element’s children.</p>
+<p>As seen in the example above, you can use <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment#Object_destructuring">object destructuring</a> on the props parameter for convenience. Additionally, you can assign default values to each prop using JavaScript’s default value syntax:</p>
+<pre><code class="language-js">function Greeting({name = &quot;Nemo&quot;}) {
+  return &lt;div&gt;Hello, {name}&lt;/div&gt;;
+}
+
+renderer.render(&lt;Greeting /&gt;, document.body); // &quot;&lt;div&gt;Hello Nemo&lt;/div&gt;&quot;</code></pre>
+<p>Component elements can take children just as intrinsic elements can. The <code>createElement</code> function will add children to props under the prop named <code>children</code>, and it is up to the component to place the children somewhere in the returned element tree. If you don’t use the <code>children</code> prop, the <code>children</code> passed in will not be rendered.</p>
+<pre><code class="language-js">function Greeting({name, children}) {
+  return (
+    &lt;div&gt;
+      Message for {name}: {children}
+    &lt;/div&gt;
+  );
+}
+
+renderer.render(
+  &lt;Greeting name=&quot;World&quot;&gt;
+    &lt;span&gt;Howdy!&lt;/span&gt;
+  &lt;/Greeting&gt;,
+  document.body,
+);
+
+console.log(document.body.innerHTML); // &quot;&lt;div&gt;Message for Nemo: &lt;span&gt;Howdy&lt;/span&gt;&lt;/div&gt;&quot;</code></pre>
+<h2 id="stateful-components">Stateful Components</h2>
+<p>Eventually, you’re going to want to create components with local state. In Crank, we use <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*">generator functions</a> to do so.</p>
+<pre><code class="language-jsx">function *Counter() {
+  let count = 0;
+  while (true) {
+    count++;
+    yield (
+      &lt;div&gt;
+        You have updated this component {count} {count === 1 ? &quot;time&quot; : &quot;times&quot;}
+      &lt;/div&gt;
+    );
+  }
+}
+
+renderer.render(&lt;Counter /&gt;, document.body);
+console.log(document.body.innerHTML); // &quot;&lt;div&gt;You have updated this component 1 time&lt;/div&gt;&quot;
+renderer.render(&lt;Counter /&gt;, document.body);
+console.log(document.body.innerHTML); // &quot;&lt;div&gt;You have updated this component 2 times&lt;/div&gt;&quot;
+renderer.render(&lt;Counter /&gt;, document.body);
+renderer.render(&lt;Counter /&gt;, document.body);
+renderer.render(&lt;Counter /&gt;, document.body);
+console.log(document.body.innerHTML); // &quot;&lt;div&gt;You have updated this component 5 times&lt;/div&gt;&quot;
+renderer.render(null, document.body);
+console.log(document.body.innerHTML); // &quot;&quot;
+renderer.render(&lt;Counter /&gt;, document.body);
+console.log(document.body.innerHTML); // &quot;&lt;div&gt;You have updated this component 1 time&lt;/div&gt;&quot;</code></pre>
+<p>Because we’re now yielding values rather than returning them, we can make components stateful using variables in the local scope. Every time the component is updated, Crank resumes the generator, pausing at the next <code>yield</code>. The yielded expressions, usually elements, are then recursively rendered by the renderer, just as if it were returned in a sync function component. Furthermore, Crank uses the same diffing algorithm used to reuse DOM nodes to reuse generator objects, so that the execution of the generator is preserved. This allows local state to be encapsulated within the generator’s scope.</p>
+<h3 id="contexts">Contexts</h3>
+<p>The <code>Counter</code> component is a stateful component whose local state only changes when it is rerendered, but we may want to write components which update themselves based on timers or events. Crank allows components to control themselves by passing in a custom object called a <em>context</em> as the <code>this</code> value of each component. These contexts provide several utility methods, most important of which is <code>this.refresh</code>, which tells Crank to update the component in place. For generator components, this means that the generator associated with the context will resume so it can yield another value.</p>
+<pre><code class="language-jsx">function *Timer() {
+  let seconds = 0;
+  const interval = setInterval(() =&gt; {
+    seconds++;
+    this.refresh();
+  }, 1000);
+
+  try {
+    while (true) {
+      yield (
+        &lt;div&gt;Seconds elapsed: {seconds}&lt;/div&gt;
+      );
+    }
+  } finally {
+    clearInterval(interval);
+  }
+}</code></pre>
+<p>This <code>Timer</code> component is similar to the <code>Counter</code> one, except now the state (the local variable <code>seconds</code>) is updated in the callback passed to <code>setInterval</code>, rather than when the component is updated. The <code>this.refresh</code> method is called to ensure that the generator is stepped through each interval, so that the rendered DOM actually reflects the updated <code>seconds</code> variable.</p>
+<p>One important detail about the <code>Timer</code> example is that it cleans up after itself with <code>clearInterval</code>. Crank will call <code>return</code> method on generator components when the element is removed from the tree, so that the finally block executes and <code>clearInterval</code> is called. In this way, you can use the natural lifecycle of a generator to write setup and teardown logic for components, all within the same scope.</p>
+<h3 id="prop-updates">Prop updates</h3>
+<p>The generator components we’ve seen so far haven’t used the props object, but they can accept props as the first parameter just like regular function components.</p>
+<pre><code class="language-jsx">function *LabeledCounter({message}) {
+  let count = 0;
+  while (true) {
+    count++;
+    yield &lt;div&gt;{message} {count}&lt;/div&gt;;
+  }
+}
+
+renderer.render(&lt;LabeledCounter message=&quot;The count is now:&quot; /&gt;, document.body);
+console.log(document.body.innerHTML); // &quot;&lt;div&gt;The count is now: 1&lt;/div&gt;&quot;
+renderer.render(&lt;LabeledCounter message=&quot;The count is now:&quot; /&gt;, document.body);
+console.log(document.body.innerHTML); // &quot;&lt;div&gt;The count is now: 2&lt;/div&gt;&quot;
+renderer.render(&lt;LabeledCounter message=&quot;What if I update the message:&quot; /&gt;, document.body);
+console.log(document.body.innerHTML); // &quot;&lt;div&gt;The count is now: 3&lt;/div&gt;&quot;
+// WOOPS!</code></pre>
+<p>This mostly works, except we have a bug where the component kept yielding the initial message even though a new message was passed in via props. In generator components, we can make sure props are kept up to date by iterating over the context:</p>
+<pre><code class="language-jsx">function *Counter({message}) {
+  let count = 0;
+  for ({message} of this) {
+    count++;
+    yield (
+      &lt;div&gt;{message} {count}&lt;/div&gt;
+    );
+  }
+}
+
+renderer.render(&lt;Counter message=&quot;The count is now:&quot; /&gt;, document.body);
+console.log(document.body.innerHTML); // &quot;&lt;div&gt;The count is now: 1&lt;/div&gt;&quot;
+renderer.render(&lt;Counter message=&quot;What if I update the message:&quot; /&gt;, document.body);
+console.log(document.body.innerHTML); // &quot;&lt;div&gt;What if I update the message: 2&lt;/div&gt;&quot;</code></pre>
+<p>By replacing the <code>while (true)</code> loop with a <code>for…of</code> loop which iterates over <code>this</code>, you can get the latest props each time the generator is resumed. This is possible because contexts are an iterable of the latest props passed to elements. The generator is expected to yield once per iteration of the context in response to new props.</p>
+<p>One idiom we see in the example above is the overwriting of variables declared via the generator’s parameters (<code>message</code>) with the <code>for…of</code> loop. This allows those variables to always remain in sync with the current props passed to each component. However, there is no reason you have to always overwrite old props in the <code>for</code> expression, meaning you can assign new props to a different variable and compare them against the old props:</p>
+<pre><code class="language-jsx">function *Greeting({name}) {
+  yield &lt;div&gt;Hello {name}&lt;/div&gt;;
+  for (const {name: newName} of this) {
+    if (name !== newName) {
+      yield (
+        &lt;div&gt;Goodbye {name} and hello {newName}&lt;/div&gt;
+      );
+    } else {
+      yield &lt;div&gt;Hello again {newName}&lt;/div&gt;;
+    }
+
+    name = newName;
+  }
+}
+
+renderer.render(&lt;Greeting name=&quot;Alice&quot; /&gt;, document.body);
+console.log(document.body.innerHTML); // &quot;&lt;div&gt;Hello Alice&lt;/div&gt;&quot;
+renderer.render(&lt;Greeting name=&quot;Alice&quot; /&gt;, document.body);
+console.log(document.body.innerHTML); // &quot;&lt;div&gt;Hello again Alice&lt;/div&gt;&quot;
+renderer.render(&lt;Greeting name=&quot;Bob&quot; /&gt;, document.body);
+console.log(document.body.innerHTML); // &quot;&lt;div&gt;Goodbye Alice and hello Bob&lt;/div&gt;&quot;
+renderer.render(&lt;Greeting name=&quot;Bob&quot; /&gt;, document.body);
+console.log(document.body.innerHTML); // &quot;&lt;div&gt;Hello again Bob&lt;/div&gt;&quot;</code></pre>
+<p>The fact that state is just local variables allows us to blur the lines between props and state, in a way that is easy to understand and without finicky lifecycle methods like <code>componentWillUpdate</code> from React. With generators and <code>for</code> loops, comparing old and new props is as easy as comparing adjacent elements of an array.</p>
+<h2 id="interactive-components">Interactive components</h2>
+<p>Components produce elements, which can then be rendered as DOM nodes. Most applications require event listeners to be attached to these nodes so that application state can be updated according to user input. To facilitate this, Crank contexts implement the same <code>EventTarget</code> interface used by the DOM, and automatically registers and tears down these listeners as DOM nodes are added and removed. By combining event listeners with local variables and the <code>this.refresh</code> method, you can write interactive components.</p>
+<pre><code class="language-jsx">function *Clicker() {
+  let count = 0;
+  this.addEventListener(&quot;click&quot;, () =&gt; {
+    count++;
+    this.refresh();
+  });
+
+  while (true) {
+    yield (
+      &lt;button&gt;I have been clicked {count} {count === 1 ? &quot;time&quot; : &quot;times&quot;}&lt;/button&gt;
+    );
+  }
+}</code></pre>
+<p>The local state <code>count</code> is now updated in the event listener, which triggers when the rendered button is actually clicked. The <code>this.addEventListener</code> method only attaches to the top-level node which each component renders, so if you want to listen to events on a nested node, you must use event delegation:</p>
+<pre><code class="language-jsx">function *Clicker() {
+  let count = 0;
+  this.addEventListener(&quot;click&quot;, (ev) =&gt; {
+    if (ev.target.tagName === &quot;BUTTON&quot;) {
+      count++;
+      this.refresh();
+    }
+  });
+
+  while (true) {
+    yield (
+      &lt;div&gt;
+        The button has been clicked {count} {count === 1 ? &quot;time&quot; : &quot;times&quot;}.
+        &lt;button&gt;Click me&lt;/button&gt;
+      &lt;/div&gt;
+    );
+  }
+}</code></pre>
+<p>Because the event listener is attached to the outer <code>div</code>, we have to filter events by <code>ev.target.tagName</code> to make sure we’re not incrementing <code>count</code> based on clicks which don’t target the <code>button</code>.</p>
+<h3 id="dispatching-events">Dispatching events</h3>
+<p>You can also add event listeners to function components, but because function components can’t have local state, it doesn’t really make sense to update the component using <code>this.refresh</code>. However, one important use-case for adding event listeners to function components is to listen for events and then bubble custom events to parents using <code>this.dispatchEvent</code>.</p>
+<pre><code class="language-jsx">function MyButton(props) {
+  this.addEventListener(&quot;click&quot;, () =&gt; {
+    this.dispatchEvent(new CustomEvent(&quot;mybutton.click&quot;, {
+      bubbles: true,
+      detail: {id: props.id},
+    }));
+  });
+
+  return (
+    &lt;div&gt;
+      &lt;button {...props} /&gt;
+    &lt;/div&gt;
+  );
+}
+
+function *MyApp() {
+  let lastId;
+  this.addEventListener(&quot;mybutton.click&quot;, (ev) =&gt; {
+    lastId = ev.detail.id;
+    this.refresh();
+  });
+  while (true) {
+    yield (
+      &lt;div&gt;
+        &lt;MyButton id=&quot;button1&quot;&gt;Button 1&lt;/MyButton&gt;
+        &lt;MyButton id=&quot;button2&quot;&gt;Button 2&lt;/MyButton&gt;
+        &lt;MyButton id=&quot;button3&quot;&gt;Button 3&lt;/MyButton&gt;
+        &lt;div&gt;Last pressed id: {lastId == null ? &quot;N/A&quot; : lastId}&lt;/div&gt;
+      &lt;/div&gt;
+    );
+  }
+}</code></pre>
+<p><code>MyButton</code> is a button which bubbles a <a href="https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent"><code>CustomEvent</code></a> whose type is <code>&quot;mybutton.click&quot;</code>, with data about which button was clicked as the <code>detail</code> of the event. This event is not bubbled to parent DOM nodes but to parent component contexts, and in the example, it propagates to the context of <code>MyApp</code>. Using custom events and event bubbling allows you to encapsulate state transitions within component hierarchies without resorting to complicated state management solutions.</p>
+<h3 id="accessing-rendered-values">Accessing rendered values</h3>
+<p>Sometimes, the declarative rendering of DOM nodes is not enough, and you’ll want to access the actual DOM nodes you’ve rendered, to make measurements or call imperative methods like <code>el.focus()</code>, for instance. To facilitate this, Crank will pass rendered DOM nodes back into the generator, so <code>yield</code> expressions can themselves be read. The following component is focused whenever it is updated.</p>
+<pre><code class="language-jsx">function *MyInput(props) {
+  let input; 
+  for (props of this) {
+    setTimeout(() =&gt; {
+      input.focus();
+    });
+    input = yield &lt;input {...props}/&gt;;
+  }
+}</code></pre>
+<h3 id="returning-from-a-generator">Returning from a generator</h3>
+<p>Usually, you’ll yield in generator components so that they can continue to respond to updates, but you may want to also <code>return</code> a final state. Unlike function components, which are called and returned once for each update, once a generator component returns, it will never update again.</p>
+<pre><code class="language-jsx">function *Stuck({message}) {
+  return &lt;div&gt;{message}&lt;/div&gt;;
+}
+
+renderer.render(&lt;Stuck message=&quot;Hello&quot; /&gt;, document.body);
+console.log(document.body.innerHTML); // &quot;&lt;div&gt;Hello&lt;/div&gt;&quot;
+renderer.render(&lt;Stuck message=&quot;Goodbye&quot; /&gt;, document.body);
+console.log(document.body.innerHTML); // &quot;&lt;div&gt;Hello&lt;/div&gt;&quot;
+renderer.render(&lt;Stuck message=&quot;Passing in new props is useless&quot; /&gt;, document.body);
+console.log(document.body.innerHTML); // &quot;&lt;div&gt;Hello&lt;/div&gt;&quot;</code></pre>
+<h3 id="catching-errors-from-child-components">Catching errors from child components</h3>
+<p>We all make mistakes, and it can be useful to catch errors in our components so we can show the user something or notify error-logging services. To facilitate this, Crank will throw errors thrown when rendering child elements back into parent components, meaning you can wrap <code>yield</code> operations in a <code>try</code>/<code>catch</code> block to catch errors from children.</p>
+<pre><code class="language-jsx">function Thrower() { 
+  throw new Error(&quot;Hi&quot;);
+}
+
+function *Catcher() {
+  try {
+    yield &lt;Thrower /&gt;;
+  } catch (err) {
+    return &lt;div&gt;Problem: {err.message}&lt;/div&gt;;
+  }
+}
+
+renderer.render(&lt;Catcher /&gt;, document.body);
+console.log(document.body.innerHTML); // &quot;&lt;div&gt;Problem: Hi&lt;/div&gt;&quot;</code></pre>
+<h3 id="the-power-of-local-variables">The power of local variables</h3>
+<p>As you can see, Crank leverages plain old local variables within generators instead of requiring separate concepts like <code>state</code> or <code>refs</code> from React. If you add in event listeners and the natural lifecycle provided by generator functions, it almost feels like the early days of JavaScript, when we made interactive pages by creating global variables and mutating them with global event listener callbacks. Crank brings that same simplicity back to JavaScript development, except thanks to JSX and generators, the variables and callbacks are now fully encapsulated within components.</p>
+</div></div><script src="/index.tsx.js"></script></body></html>

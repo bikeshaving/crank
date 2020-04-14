@@ -1,0 +1,142 @@
+<html lang="en"><!DOCTYPE html><head><meta charset="UTF-8"><title>Crank.js | Special Props and Tags</title><link rel="stylesheet" href="/index.css.css"></head><body><nav id="navbar" class="navbar"><div class="navbar-group"><div class="navbar-item"><a class href="/">Crank.js</a></div><div class="navbar-item"><a class="current" href="/guides/getting-started">Docs</a></div><div class="navbar-item"><a class href="/blog/">Blog</a></div></div><div class="navbar-group"><div class="navbar-item"><a href="https://github.com/brainkim/crank">Github</a></div><div class="navbar-item"><a href="http://npm.im/@bikeshaving/crank">NPM</a></div></div></nav><div id="sidebar" class="sidebar"><h3>Guides</h3><div class="sidebar-item"><a href="/guides/getting-started" class="">Getting Started</a></div><div class="sidebar-item"><a href="/guides/elements" class="">JSX, Elements and Renderers</a></div><div class="sidebar-item"><a href="/guides/components" class="">Components</a></div><div class="sidebar-item"><a href="/guides/async-components" class="">Asynchronous Components</a></div><div class="sidebar-item"><a href="/guides/special-tags-and-props" class="current">Special Props and Tags</a></div><div class="sidebar-item"><a href="/guides/working-with-typescript" class="">Working with TypeScript</a></div></div><div class="main"><div class="content"><h1>Special Props and Tags</h1><p>The element diffing algorithm used by Crank is both declarative and efficient, but there are times when you might want to tweak the way it works. Crank provides special props and tags which produce different rendering behaviors.</p>
+<h2 id="special-props">Special Props</h2>
+<h3 id="crank-key">crank-key</h3>
+<p>By default, Crank will use an element’s tag and position to determine if it represents an update or a change to the tree. Because elements often represent stateful DOM nodes or components, it can be useful to <em>key</em> the children of an element to hint to renderers that an element has been added, moved or removed. In Crank, we do this with the special prop <code>crank-key</code>:</p>
+<pre><code class="language-jsx">let nextId = 0;
+function *ID() {
+  const id = nextId++;
+  while (true) {
+    yield &lt;span&gt;Id: {id}&lt;/span&gt;;
+  }
+}
+
+renderer.render(
+  &lt;div&gt;
+    &lt;ID crank-key=&quot;a&quot; /&gt;
+    &lt;ID crank-key=&quot;b&quot; /&gt;
+    &lt;ID crank-key=&quot;c&quot; /&gt;
+  &lt;/div&gt;,
+  document.body,
+);
+console.log(document.body.innerHTML);
+// &quot;&lt;div&gt;&lt;span&gt;Id: 1&lt;/span&gt;&lt;span&gt;Id: 2&lt;/span&gt;&lt;span&gt;Id: 3&lt;/span&gt;&lt;div&gt;&quot;
+
+renderer.render(
+  &lt;div&gt;
+    &lt;ID crank-key=&quot;c&quot; /&gt;
+    &lt;ID crank-key=&quot;b&quot; /&gt;
+    &lt;ID crank-key=&quot;a&quot; /&gt;
+  &lt;/div&gt;,
+  document.body,
+);
+
+console.log(document.body.innerHTML);
+// &quot;&lt;div&gt;&lt;span&gt;Id: 3&lt;/span&gt;&lt;span&gt;Id: 2&lt;/span&gt;&lt;span&gt;Id: 1&lt;/span&gt;&lt;div&gt;&quot;</code></pre>
+<p>Keys are scoped to an element’s children. When rendering iterables, it’s useful to key elements of the iterable, because in this case it’s common for elements to be added, removed or rearranged. Both host and component elements can be keyed with <code>crank-key</code>.</p>
+<pre><code class="language-jsx">function *Shuffler() {
+  let nextId = 0;
+  const els = Array(4).fill(null).map((_, i) =&gt; &lt;span crank-key={i}&gt;{i}&lt;/span&gt;);
+  while (true) {
+    yield &lt;div&gt;{els}&lt;/div&gt;;
+    els.reverse();
+  }
+}
+
+renderer.render(&lt;Shuffler /&gt;, document.body);
+console.log(document.body.innerHTML);
+// &quot;&lt;div&gt;&lt;span&gt;0&lt;/span&gt;&lt;span&gt;1&lt;/span&gt;&lt;span&gt;2&lt;/span&gt;&lt;span&gt;3&lt;/span&gt;&lt;/div&gt;&quot;;
+
+const span0 = document.body.firstChild.firstChild;
+
+renderer.render(&lt;Shuffler /&gt;, document.body);
+console.log(document.body.innerHTML);
+// &quot;&lt;div&gt;&lt;span&gt;3&lt;/span&gt;&lt;span&gt;2&lt;/span&gt;&lt;span&gt;1&lt;/span&gt;&lt;span&gt;0&lt;/span&gt;&lt;/div&gt;&quot;;
+
+console.log(document.firstChild.lastChild === el0); // true
+renderer.render(&lt;Shuffler /&gt;, document.body);
+console.log(document.body.innerHTML);
+// &quot;&lt;div&gt;&lt;span&gt;0&lt;/span&gt;&lt;span&gt;1&lt;/span&gt;&lt;span&gt;2&lt;/span&gt;&lt;span&gt;3&lt;/span&gt;&lt;/div&gt;&quot;;
+
+console.log(document.firstChild.firstChild === el0); // true</code></pre>
+<h2 id="special-tags">Special Tags</h2>
+<p>Crank provides several element tags which have special meaning when rendering. In actuality, these tags are symbols and behave similarly to string tags, except they affect the diffing algorithm and output.</p>
+<h3 id="fragment">Fragment</h3>
+<p>Crank provides a <code>Fragment</code> tag, which allows you to render multiple children into a parent without wrapping them in another DOM node. Under the hood, iterables which appear in the element tree are also implicitly wrapped in a <code>Fragment</code> element by the renderer.</p>
+<pre><code class="language-jsx">import {createElement, Fragment} from &quot;@bikeshaving/crank&quot;;
+import {renderer} from &quot;@bikeshaving/crank/dom&quot;;
+function Siblings() {
+  return (
+    &lt;Fragment&gt;
+      &lt;div&gt;Sibling 1&lt;/div&gt;
+      &lt;div&gt;Sibling 2&lt;/div&gt;
+    &lt;/Fragment&gt;
+  );
+}
+
+renderer.render(&lt;Siblings /&gt;, document.body);
+console.log(document.body.innerHTML);
+// &quot;&lt;div&gt;Sibling 1&lt;/div&gt;&lt;div&gt;Sibling 2&lt;/div&gt;&quot;</code></pre>
+<h3 id="portal">Portal</h3>
+<p>Sometimes you may want to render into multiple DOM nodes from the same element tree. You can do this with the <code>Portal</code> tag, passing in a DOM node as its <code>root</code> prop. The Portal’s children will be rendered into the specified root. This is useful when writing modals or working with pages where you need to render into multiple entry-points. Events dispatched from a <code>Portal</code> element‘s child contexts via <code>this.dispatchEvent</code> will still bubble into parent component contexts.</p>
+<pre><code class="language-jsx">/** @jsx createElement */
+import {createElement, Portal} from &quot;@bikeshaving/crank&quot;;
+import {renderer} from &quot;@bikeshaving/crank/dom&quot;;
+const root1 = document.createElement(&quot;div&quot;);
+const root2 = document.createElement(&quot;div&quot;);
+function MyComponent() {
+  return (
+    &lt;div&gt;
+      &lt;div&gt;This div is rendered into root1&lt;/div&gt;
+      &lt;Portal root={root2}&gt;
+        &lt;div&gt;This div is rendered into root2&lt;/div&gt;
+      &lt;/Portal&gt;
+    &lt;/div&gt;
+  );
+}
+
+renderer.render(&lt;MyComponent /&gt;, root1);
+console.log(root1.innerHTML);
+// &quot;&lt;div&gt;&lt;div&gt;This div is rendered into root1&lt;/div&gt;&lt;/div&gt;&quot;
+console.log(root2.innerHTML);
+// &quot;&lt;div&gt;This div is rendered into root2&lt;/div&gt;&quot;</code></pre>
+<h3 id="copy">Copy</h3>
+<p>It‘s often fine to rerender Crank components, because elements are diffed, persistent between renders, and unnecessary mutations usually avoided. However, you might want to prevent a child from updating when the parent rerenders, perhaps because a certain prop hasn’t changed, because you want to batch updates from the parent, or as a performance optimization. To do this, you can use the <code>Copy</code> tag to indicate to Crank that you don’t want to update a previously rendered element in its position.</p>
+<pre><code class="language-jsx">function equals(props, newProps) {
+  for (const name in {...props, ...newProps}) {
+    if (props[name] !== newProps[name]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function memo(Component) {
+  return function *Wrapped({props}) {
+    yield &lt;Component {...props} /&gt;;
+    for (const newProps of this) {
+      if (equals(props, newProps)) {
+        yield &lt;Copy /&gt;;
+      } else {
+        yield &lt;Component {...newProps} /&gt;;
+      }
+
+      props = newProps;
+    }
+  };
+}</code></pre>
+<p>In the example above, <code>memo</code> is a higher-order component, a function which takes a component and returns a component which compares new and old props and yields a <code>Copy</code> element if old and new props are shallowly equal. A <code>Copy</code> element can appear anywhere in an element tree to prevent rerenderings, and the only prop <code>Copy</code> elements take is the <code>crank-key</code> prop, allowing you to copy elements by key rather than position.</p>
+<h3 id="raw">Raw</h3>
+<p>Sometimes, you may want to insert raw HTML or actual DOM nodes directly into the element tree. Crank allows you to do this with the <code>Raw</code> element. The <code>Raw</code> element takes a <code>value</code> prop which is interpreted by the renderer. For the DOM renderer, if <code>value</code> is an HTML string, the renderer will parse and insert the resulting DOM nodes, and if it’s already a DOM node Crank will insert them in place. Be careful when using <code>Raw</code> elements, as passing unsanitized text inputs can lead to security vulnerabilities.</p>
+<pre><code class="language-jsx">/** @jsx createElement */
+import {createElement, Raw} from &quot;@bikeshaving/crank&quot;;
+import marked from &quot;marked&quot;;
+function MarkdownViewer({markdown=&quot;&quot;}) {
+  const html = marked(markdown);
+  return (
+    &lt;div&gt;
+      &lt;Raw value={html} /&gt;
+    &lt;/div&gt;
+  );
+}</code></pre>
+</div></div><script src="/index.tsx.js"></script></body></html>
