@@ -1,6 +1,6 @@
 {
   "name": "@bikeshaving/crank",
-  "version": "0.1.0-beta.8",
+  "version": "0.1.0-beta.9",
   "license": "MIT",
   "description": "JSX-based components with functions, promises and generators.",
   "files": [
