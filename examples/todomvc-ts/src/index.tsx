@@ -160,7 +160,10 @@ function* TodoItem(this: Context, {todo}: {todo: Todo}): Generator<Element> {
 	}
 }
 
-function Main(this: Context, {todos, filter}: {todos: Todo[]; filter: Filter}): Element {
+function Main(
+	this: Context,
+	{todos, filter}: {todos: Todo[]; filter: Filter},
+): Element {
 	const completed = todos.every((todo) => todo.completed);
 	this.addEventListener("click", (ev) => {
 		if ((ev.target as HTMLElement).className === "toggle-all") {

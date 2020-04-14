@@ -9,7 +9,7 @@
     "build": "rollup -c rollup.config.js"
   },
   "dependencies": {
-    "@bikeshaving/crank": "0.1.0-beta.7"
+    "@bikeshaving/crank": "*"
   },
   "devDependencies": {
     "rollup": "^2.3.4",
