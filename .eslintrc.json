@@ -8,11 +8,6 @@
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
     "sourceType": "module",
-    "project": [
-      "./tsconfig.json",
-      "./examples/async-generator/tsconfig.json",
-      "./examples/todomvc/tsconfig.json"
-    ],
     "createDefaultProgram": true
   },
   "plugins": [
@@ -33,6 +28,8 @@
       "error",
       {"varsIgnorePattern": "^_"}
     ],
+    "no-dupe-class-members": 0,
+    "@typescript-eslint/no-dupe-class-members": 1,
     "prettier/prettier": [
       "error",
       {

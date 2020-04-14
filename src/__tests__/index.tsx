@@ -542,7 +542,6 @@ describe("sync generator component", () => {
 				}
 			});
 
-			// eslint-disable-next-line
 			for (const _ of this) {
 				yield (
 					<div>
@@ -580,7 +579,7 @@ describe("sync generator component", () => {
 		function* Gen(this: Context): Generator<Element> {
 			ctx = this;
 			let i = 0;
-			for (const _ of this) {// eslint-disable-line
+			for (const _ of this) {
 				const yielded = yield <Component>Hello {i++}</Component>;
 				mock((yielded as any).outerHTML);
 			}
