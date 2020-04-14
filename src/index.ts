@@ -1,5 +1,7 @@
 import {CrankEventTarget} from "./events";
 import {isPromiseLike, MaybePromise, MaybePromiseLike, Pledge} from "./pledge";
+// re-exporting EventMap for user extensions
+export {EventMap} from "./events";
 
 type NonStringIterable<T> = Iterable<T> & object;
 
@@ -894,7 +896,7 @@ class ComponentNode<T> extends ParentNode<T> {
 		}
 	}
 
-	get(name: unknown): unknown {
+	get(name: unknown): any {
 		for (
 			let host: ParentNode<T> | undefined = this.parent;
 			host !== undefined;
@@ -910,7 +912,7 @@ class ComponentNode<T> extends ParentNode<T> {
 		}
 	}
 
-	set(name: unknown, value: unknown): void {
+	set(name: unknown, value: any): void {
 		if (this.provisions === undefined) {
 			this.provisions = new Map();
 		}
@@ -946,6 +948,8 @@ export class HostContext<T = any> {
 	}
 }
 
+export interface ProvisionMap {}
+
 const componentNodes = new WeakMap<Context<any>, ComponentNode<any>>();
 export class Context<T = any> extends CrankEventTarget {
 	constructor(host: ComponentNode<T>, parent?: Context<T>) {
@@ -953,14 +957,19 @@ export class Context<T = any> extends CrankEventTarget {
 		componentNodes.set(this, host);
 	}
 
-	// TODO: strongly typed contexts
-	get(name: unknown): any {
+	/* eslint-disable no-dupe-class-members */
+	get<T extends keyof ProvisionMap>(name: T): ProvisionMap[T];
+	get(name: any): any;
+	get(name: any) {
 		return componentNodes.get(this)!.get(name);
 	}
 
-	set(name: unknown, value: any): void {
+	set<T extends keyof ProvisionMap>(name: T, value: ProvisionMap[T]): void;
+	set(name: any, value: any): void;
+	set(name: any, value: any) {
 		componentNodes.get(this)!.set(name, value);
 	}
+	/* eslint-enable no-dupe-class-members */
 
 	[Symbol.iterator](): Generator<Props> {
 		return componentNodes.get(this)![Symbol.iterator]();

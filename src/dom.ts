@@ -9,6 +9,10 @@ import {
 	Portal,
 } from "./index";
 
+declare module "./index" {
+	interface EventMap extends GlobalEventHandlersEventMap {}
+}
+
 // TODO: create an allowlist/blocklist of props
 function updateProps(el: Element, props: Props, newProps: Props): void {
 	for (const name in {...props, ...newProps}) {

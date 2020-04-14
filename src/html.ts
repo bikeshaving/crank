@@ -8,6 +8,10 @@ import {
 	Text,
 } from "./index";
 
+declare module "./index" {
+	interface EventMap extends GlobalEventHandlersEventMap {}
+}
+
 function escapeText(text: string): string {
 	return text.replace(/[&<>"']/g, (m) => {
 		switch (m) {

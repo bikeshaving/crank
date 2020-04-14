@@ -1,14 +1,10 @@
 import {EventTarget as EventTargetShim} from "event-target-shim";
 
-declare global {
-	module crank {
-		interface EventMap {
-			[type: string]: Event;
-		}
-	}
+export interface EventMap {
+	[type: string]: Event;
 }
 
-type MappedEventListener<T extends string> = (ev: crank.EventMap[T]) => unknown;
+type MappedEventListener<T extends string> = (ev: EventMap[T]) => unknown;
 
 interface EventListenerRecord {
 	type: string;

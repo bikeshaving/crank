@@ -536,9 +536,7 @@ describe("sync generator component", () => {
 		function* Component(this: Context): Generator<Element> {
 			let count = 0;
 			this.addEventListener("click", (ev) => {
-				// TODO: fix typings for event listeners
-				// @ts-ignore
-				if (ev.target.id === "button") {
+				if ((ev.target as HTMLElement).id === "button") {
 					count++;
 					this.refresh();
 				}

@@ -1,6 +1,14 @@
 /** @jsx createElement */
 import {createElement, Children, Context, Element, Fragment} from "../index";
 import {renderer} from "../dom";
+
+// TODO: test typings
+declare module "../index" {
+	interface ProvisionMap {
+		greeting: string;
+	}
+}
+
 describe("context", () => {
 	function* Provider(this: Context): Generator<Element> {
 		let i = 1;
