@@ -54,9 +54,13 @@ export type FunctionComponent = (
 	props: Props,
 ) => MaybePromiseLike<Child>;
 
-export type ChildIterator =
-	| Iterator<Child, any, any>
-	| AsyncIterator<Child, any, any>;
+export type ChildIterator<T = any> =
+	| Iterator<Child, Child, T>
+	| AsyncIterator<Child, Child, T>;
+
+export type ChildGenerator<T = any> =
+	| Generator<Child, Child, T>
+	| AsyncGenerator<Child, Child, T>;
 
 export type GeneratorComponent = (this: Context, props: Props) => ChildIterator;
 
