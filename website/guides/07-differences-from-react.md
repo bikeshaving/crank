@@ -1,10 +1,12 @@
 ---
 title: Differences from React
+publish: false
 ---
+
 Though Crank is very much inspired by and similar to React, exact compatibility is a non-goal, and we’ve used this as opportunity to “fix” a lot of pain points with React which bothered us over the years. The following is a list of differences with React, as well as justifications for why we chose to implement features differently.
 
-## No Component class, no hooks.
-Crank uses generator functions, async functions and the JavaScript runtime to implement much of what React implements. Here for instance, is the old React class-based API implemented with a single async generator function:
+## No classes
+Crank uses functions, generator functions and async functions to implement all of what React implements with classes. Here for instance, is the entirety of the React class-based API implemented with a single async generator function:
 
 ```jsx
 async function *ReactComponent(props) {
@@ -28,14 +30,18 @@ async function *ReactComponent(props) {
 }
 ```
 
+## No hooks
+Crank does not implement hooks. Hooks bad.
+
 ## No `setState` or `useState`
-React has always tightly coupled component updates with the concept of local state. Because Crank uses generator functions, state is just local variables which is modified by local functions, and you can call `this.refresh()` to update the UI to match state. Decoupling these two concerns allows for more nuanced updates to components without `shouldComponentUpdate` hacks, and is easier to reason about than relying on the framework to provide local state.
+React has always tightly coupled component updates with local state. Because Crank uses generator functions, state is just local variables, and you can call `this.refresh()` to update the UI to match state. Decoupling these two concerns allows for more nuanced updates to local state without `shouldComponentUpdate` hacks, and is easier to reason about than relying on the framework to provide local state.
 
 ## No `Suspense`
-The project known as React `Suspense` is likely both a boondoggle and vaporware. It relies on the unusual mechanism of throwing promises, has the hard requirement of a caching mechanism, and is generally difficult to reason about. By leveraging async functions and async generators, Crank allows you to implement the `Suspense` element in user-space. No argument from the React team about the necessity of `Suspense` will ever justify it over the convenience provided by being able to use the `await` operator directly in components. 
+The project known as React `Suspense` is both sub-optimal and likely to be vaporware. It relies on the unusual mechanism of throwing promises, has the hard requirement of a caching mechanism, and is generally difficult to reason about. By leveraging async functions and async generators, Crank allows you to implement the `Suspense` element in user space. No argument from the React team about the necessity of `Suspense` will ever justify it over the convenience provided by being able to use the `await` operator directly in components. 
 
-## JSX looks like HTML.
-###`for` not `htmlFor`, `class` not `className`
+## Props match HTML attributes rather than JS APIs
+### `for` not `htmlFor`, `class` not `className`
+
 Crank does not place any restrictions on the names of JSX props. This means that you can write JSX like `<label class="my-label" for="my-id">Label</label>`.
 ## style can be a `cssText` string, style object uses snake-case, and `px` is not magically added to numbers.
 ```jsx

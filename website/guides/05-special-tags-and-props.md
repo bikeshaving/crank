@@ -72,7 +72,7 @@ console.log(document.firstChild.firstChild === el0); // true
 ```
 
 ## Special Tags
-Crank provides several element tags which have special meaning when rendering. In actuality, these tags are symbols and behave similarly to string tags, except they affect the diffing algorithm.
+Crank provides several element tags which have special meaning when rendering. In actuality, these tags are symbols and behave similarly to string tags, except they affect the diffing algorithm and output.
 
 ### Fragment
 Crank provides a `Fragment` tag, which allows you to render multiple children into a parent without wrapping them in another DOM node. Under the hood, iterables which appear in the element tree are also implicitly wrapped in a `Fragment` element by the renderer.
@@ -122,12 +122,12 @@ console.log(root2.innerHTML);
 ```
 
 ### Copy
-It‘s often fine to rerender Crank components, because elements are diffed, persistent between renders, and unnecessary mutations are usually avoided. However, sometimes you might want to prevent a child from updating when the parent rerenders, perhaps because a certain prop hasn’t changed, because you want to batch updates from the parent, or because you want to improve performance. To do this, you can use the `Copy` tag to indicate to Crank that you don’t want to update a previously rendered element or any of its children.
+It‘s often fine to rerender Crank components, because elements are diffed, persistent between renders, and unnecessary mutations usually avoided. However, you might want to prevent a child from updating when the parent rerenders, perhaps because a certain prop hasn’t changed, because you want to batch updates from the parent, or as a performance optimization. To do this, you can use the `Copy` tag to indicate to Crank that you don’t want to update a previously rendered element in its position.
 
 ```jsx
-function equals(oldProps, newProps) {
-  for (const name in {...oldProps, ...newProps}) {
-    if (oldProps[name] !== newProps[name]) {
+function equals(props, newProps) {
+  for (const name in {...props, ...newProps}) {
+    if (props[name] !== newProps[name]) {
       return false;
     }
   }
@@ -135,7 +135,7 @@ function equals(oldProps, newProps) {
   return true;
 }
 
-function pure(Component) {
+function memo(Component) {
   return function *Wrapped({props}) {
     yield <Component {...props} />;
     for (const newProps of this) {
@@ -151,10 +151,10 @@ function pure(Component) {
 }
 ```
 
-In the example above, `pure` is a higher-order component, a function which takes a component and returns a component which compares new and old props and yields a `Copy` element if old and new props are shallowly equal. A `Copy` element can appear anywhere in an element tree to prevent rerenderings, and the only prop `Copy` elements take is the `crank-key` prop, allowing you to copy elements by key.
+In the example above, `memo` is a higher-order component, a function which takes a component and returns a component which compares new and old props and yields a `Copy` element if old and new props are shallowly equal. A `Copy` element can appear anywhere in an element tree to prevent rerenderings, and the only prop `Copy` elements take is the `crank-key` prop, allowing you to copy elements by key rather than position.
 
 ### Raw
-Sometimes, you may want to insert raw HTML or actual DOM nodes into the rendered output. Crank allows you to do this with the `Raw` element. The `Raw` element takes a `value` prop which can be either an HTML string or a DOM node. If it’s an HTML string the renderer will parse it and inject the resulting DOM nodes, and if it’s a DOM node Crank will simply insert them in place. Be careful when using `Raw` elements, as passing unsanitized text inputs can lead to cross-site scripting vulnerabilities.
+Sometimes, you may want to insert raw HTML or actual DOM nodes directly into the element tree. Crank allows you to do this with the `Raw` element. The `Raw` element takes a `value` prop which is interpreted by the renderer. For the DOM renderer, if `value` is an HTML string, the renderer will parse and insert the resulting DOM nodes, and if it’s already a DOM node Crank will insert them in place. Be careful when using `Raw` elements, as passing unsanitized text inputs can lead to security vulnerabilities.
 
 ```jsx
 /** @jsx createElement */

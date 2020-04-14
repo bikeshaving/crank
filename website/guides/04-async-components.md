@@ -21,9 +21,9 @@ async function IPAddress () {
 When a Crank renderer runs a component which returns a promise, the process of rendering becomes asynchronous as well. Concretely, this means that `renderer.render` itself will return a promise which fulfills when all async calls in the element tree have fulfilled at least once, and nothing will be added to the DOM until this happens.
 
 ### Concurrent updates
-Because rendering can continue to happen while async function components in the tree are still pending, Crank implements a couple rules to make concurrent updates predictable and performant:
+Because rendering can happen concurrently while async function components in the tree are still pending, Crank implements a couple rules to make concurrent updates predictable and performant:
 
-1. There can only be one pending run of an element at the same time for the same position. If the same async component is rerendered concurrently while it is still pending, another call is enqueued with the latest props.
+1. There can only be one pending run of an element at the same time for the same tag and position. If the same async component is rerendered concurrently while it is still pending, another call is enqueued with the latest props.
 
 ```jsx
 async function Delay ({message}) {
@@ -50,9 +50,9 @@ async function Delay ({message}) {
 })();
 ```
 
-In the example above, at no point is there more than one simultaneous call to the `Delay` component, despite the fact that it is rerendered concurrently for its second through fourth renders. And because these renderings happen synchronously, only the second and fourth renderings have any effect. This is because the element is busy with the second render by the type the third and fourth renderings are requested, and then only the fourth rendering is enqueued because third rendering’s props would be stale. This behavior allows async components to always be kept up-to-date without causing excess runs of your async components.
+In the example above, at no point is there more than one simultaneous call to the `Delay` component, despite the fact that it is rerendered concurrently for its second through fourth renders. And because these renderings happen synchronously, only the second and fourth renderings have any effect. This is because the element is busy with the second render by the type the third and fourth renderings are requested, and then only the fourth rendering is enqueued because third rendering’s props are obsolete by the time the component is ready to rerender. This behavior allows async components to always be kept up-to-date without producing excess calls to your async functions.
 
-2. If two different async components are rendered in the same position, the components are raced. If the earlier component fulfills first, it shows until the later component fulfills. If the later component fulfills first, the earlier component is never rendered.
+2. If two different async components are rendered in the same position, the components are raced. If the earlier component fulfills first, it shows until the later component fulfills. If the later component fulfills first, the earlier component is never rendered. This ratcheting effect becomes useful for rendering fallback states for async components, as we’ll see later.
 
 ```jsx
 async function Fast() {
@@ -89,7 +89,7 @@ async function Slow() {
 ```
 
 ### Components with async children 
-When Crank encounters an async component anywhere in the element tree, the entire rendering process becomes asynchronous. Therefore, async child components make parent components asynchronous, and sync function and generator components behave differently when they produce async children. On the one hand, sync function components transparently pass updates along to async children, so that when a renderer updates a sync function component concurrently, its async children will also enqueue an update immediately. On the other hand, sync generator components which produce async elements will not resume until those async children have fulfilled. This is because sync generators expect to be resumed after their children have rendered, and the actual DOM nodes which are created are passed back into the generator, but they wouldn’t be available if the generator was concurrently resumed before the async children had fulfilled.
+When Crank encounters an async component anywhere in the element tree, the entire rendering process becomes asynchronous. Therefore, async child components make parent components asynchronous, and sync function and generator components behave differently when they produce async children. On the one hand, sync function components transparently pass updates along to async children, so that when a renderer updates a sync function component concurrently, its async children will also enqueue an update immediately. On the other hand, sync generator components which produce async elements will not resume until those async children have fulfilled. This is because sync generators expect to be resumed after their children have rendered, and the actual DOM nodes which are created are passed back into the generator, but they wouldn’t be available if the generator was concurrently resumed before the async children had settled.
 
 ## Async generator components
 Just as you can write stateful components with sync generator functions, you can also write stateful async components with async generator functions.

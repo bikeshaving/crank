@@ -1,9 +1,11 @@
 ---
 title: Working with TypeScript
 ---
+
 Crank is written in TypeScript, and provides some types out of box so you can type-check your components and JSX calls.
+
 ## Typing `this` in components
-Trying to reference `this` in a component without a type annotation for `this` will throw a type error in TypeScript‘s strict mode (you’ll see a message like `'this' implicitly has type 'any' because it does not have a type annotation`). TypeScript exports the `Context` class so you can annotate your components with `Context` as `this`:
+Trying to reference `this` in a component without a `this` type annotation will throw a type error in TypeScript‘s strict mode (you’ll see a message like `'this' implicitly has type 'any' because it does not have a type annotation`). TypeScript exports the `Context` class so you can annotate your components with `Context` as `this`:
 
 ```tsx
 function *Timer (this: Context) {
@@ -19,32 +21,6 @@ function *Timer (this: Context) {
   } finally {
     clearInterval(interval);
   }
-}
-```
-
-## Typing props
-You can type the props object passed to components. This allows JSX calls which use your component as a tag to be type-checked.
-
-```tsx
-function Greeting ({name}: {name: string}) {
-  return (
-    <div>Hello {name}</div>
-  );
-}
-
-const el = <Greeting name="Brian" />; // works fine
-const el1 = <Greeting name={1} />; // throws a type error
-```
-
-The children prop can be typed using the `Children` type provided by Crank. TypeScript doesn’t really provide a way to prevent functions from being used as the `children` prop, but such patterns are strongly discouraged. You should typically treat `children` as an opaque value only to be interpolated into JSX.
-```tsx
-import {Children} from "@bikeshaving/crank";
-function Greeting ({name, children}: {name: string, children: Children}) {
-  return (
-    <div>
-      Message for {name}: {children}
-    </div>
-  );
 }
 ```
 
@@ -91,16 +67,44 @@ function *SyncGen(): Generator<Child> {
 
 Anything assignable to `Child` can be part of the element tree.
 
+
+## Typing props
+You can type the props object passed to components. This allows JSX elements which use your component as a tag to be type-checked.
+
+```tsx
+function Greeting ({name}: {name: string}) {
+  return (
+    <div>Hello {name}</div>
+  );
+}
+
+const el = <Greeting name="Brian" />; // works fine
+const el1 = <Greeting name={1} />; // throws a type error
+```
+
+The children prop can be typed using the `Children` type provided by Crank. The `Children` type is a broad type which can be `Child` or arbitrarily nested iterables of `Child`. TypeScript doesn’t really provide a way to prevent functions from being used as the `children` prop, but such patterns are strongly discouraged. You should typically treat `children` as an opaque value only to be interpolated into JSX because its value can be almost anything.
+
+```tsx
+import {Children} from "@bikeshaving/crank";
+function Greeting ({name, children}: {name: string, children: Children}) {
+  return (
+    <div>
+      Message for {name}: {children}
+    </div>
+  );
+}
+```
+
 ## Typing event listeners
 If you dispatch custom events, you’re going to want parent event listeners to be typed with the event you bubbled automatically. To do so, you can extend a global `EventMap` type provided by Crank.
 
 ```tsx
 declare global {
-	module crank {
-		interface EventMap {
-			"mybutton.click": CustomEvent<{id: string}>;
-		}
-	}
+  module "@bikeshaving/crank" {
+    interface EventMap {
+      "mybutton.click": CustomEvent<{id: string}>;
+    }
+  }
 }
 
 
@@ -117,4 +121,3 @@ function MyButton (props) {
   );
 }
 ```
-
