@@ -84,21 +84,23 @@ interface RootProps {
 // TODO: I wonder if we can do some kind of slot-based or includes API
 function Root({title, children, url}: RootProps): Element {
 	return (
-		<html lang="en">
+		<Fragment>
 			<Raw value="<!DOCTYPE html>" />
-			<Page storage={storage}>
-				<head>
-					<meta charset="UTF-8" />
-					<title>{title}</title>
-					<Link rel="stylesheet" type="text/css" href="./index.css" />
-				</head>
-				<body>
-					<Navbar url={url} />
-					{children}
-					<Script src="index.tsx" />
-				</body>
-			</Page>
-		</html>
+			<html lang="en">
+				<Page storage={storage}>
+					<head>
+						<meta charset="UTF-8" />
+						<title>{title}</title>
+						<Link rel="stylesheet" type="text/css" href="./index.css" />
+					</head>
+					<body>
+						<Navbar url={url} />
+						{children}
+						<Script src="index.tsx" />
+					</body>
+				</Page>
+			</html>
+		</Fragment>
 	);
 }
 
