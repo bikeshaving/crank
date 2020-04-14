@@ -1,9 +1,6 @@
 /** @jsx createElement */
-import {Context, createElement, Fragment} from "@bikeshaving/crank";
+import {Context, createElement, Element, Fragment} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
-
-const ENTER_KEY = 13;
-const ESC_KEY = 27;
 
 interface Todo {
 	id: number;
@@ -13,7 +10,10 @@ interface Todo {
 
 type Filter = "" | "active" | "completed";
 
-function* Header(this: Context) {
+const ENTER_KEY = 13;
+const ESC_KEY = 27;
+
+function* Header(this: Context): Generator<Element> {
 	let title = "";
 	this.addEventListener("input", (ev) => {
 		title = (ev.target as HTMLInputElement).value;
@@ -53,7 +53,7 @@ function* Header(this: Context) {
 	}
 }
 
-function* TodoItem(this: Context, {todo}: {todo: Todo}) {
+function* TodoItem(this: Context, {todo}: {todo: Todo}): Generator<Element> {
 	let active = false;
 	let title = todo.title;
 	this.addEventListener("click", (ev) => {
@@ -160,7 +160,7 @@ function* TodoItem(this: Context, {todo}: {todo: Todo}) {
 	}
 }
 
-function Main(this: Context, {todos, filter}: {todos: Todo[]; filter: Filter}) {
+function Main(this: Context, {todos, filter}: {todos: Todo[]; filter: Filter}): Element {
 	const completed = todos.every((todo) => todo.completed);
 	this.addEventListener("click", (ev) => {
 		if ((ev.target as HTMLElement).className === "toggle-all") {
@@ -197,7 +197,7 @@ function Main(this: Context, {todos, filter}: {todos: Todo[]; filter: Filter}) {
 	);
 }
 
-function Filters(this: Context, {filter}: {filter: Filter}) {
+function Filters(this: Context, {filter}: {filter: Filter}): Element {
 	return (
 		<ul class="filters">
 			<li>
@@ -222,7 +222,7 @@ function Filters(this: Context, {filter}: {filter: Filter}) {
 function Footer(
 	this: Context,
 	{todos, filter}: {todos: Todo[]; filter: Filter},
-) {
+): Element {
 	const completed = todos.filter((todo) => todo.completed).length;
 	const remaining = todos.length - completed;
 	this.addEventListener("click", (ev) => {
@@ -257,7 +257,7 @@ declare module "@bikeshaving/crank" {
 	}
 }
 
-function* App(this: Context) {
+function* App(this: Context): Generator<Element> {
 	let todos: Array<Todo> = [];
 	let nextTodoId = 0;
 	try {
