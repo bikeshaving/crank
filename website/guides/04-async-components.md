@@ -152,7 +152,7 @@ async function RandomDog({throttle = false}) {
 
 async function *RandomDogLoader({throttle}) {
   for await ({throttle} of this) {
-    yield <LoadingIndicator />
+    yield <LoadingIndicator />;
     yield <RandomDog throttle={throttle} />;
   }
 }
