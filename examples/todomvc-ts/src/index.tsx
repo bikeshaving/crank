@@ -1,18 +1,29 @@
 /** @jsx createElement */
-import {createElement, Fragment} from "@bikeshaving/crank";
+import {Context, createElement, Fragment} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
 
 const ENTER_KEY = 13;
 const ESC_KEY = 27;
 
-function* Header() {
+interface Todo {
+	id: number;
+	title: string;
+	completed: boolean;
+}
+
+type Filter = "" | "active" | "completed";
+
+function* Header(this: Context) {
 	let title = "";
 	this.addEventListener("input", (ev) => {
-		title = ev.target.value;
+		title = (ev.target as HTMLInputElement).value;
 	});
 
 	this.addEventListener("keydown", (ev) => {
-		if (ev.target.tagName === "INPUT" && ev.keyCode === ENTER_KEY) {
+		if (
+			(ev.target as HTMLInputElement).tagName === "INPUT" &&
+			ev.keyCode === ENTER_KEY
+		) {
 			if (title.trim()) {
 				ev.preventDefault();
 				const title1 = title.trim();
@@ -42,18 +53,18 @@ function* Header() {
 	}
 }
 
-function* TodoItem({todo}) {
+function* TodoItem(this: Context, {todo}: {todo: Todo}) {
 	let active = false;
 	let title = todo.title;
 	this.addEventListener("click", (ev) => {
-		if (ev.target.className === "toggle") {
+		if ((ev.target as HTMLButtonElement).className === "toggle") {
 			this.dispatchEvent(
 				new CustomEvent("todo.toggle", {
 					bubbles: true,
 					detail: {id: todo.id, completed: !todo.completed},
 				}),
 			);
-		} else if (ev.target.className === "destroy") {
+		} else if ((ev.target as HTMLElement).className === "destroy") {
 			this.dispatchEvent(
 				new CustomEvent("todo.destroy", {
 					bubbles: true,
@@ -64,22 +75,22 @@ function* TodoItem({todo}) {
 	});
 
 	this.addEventListener("dblclick", (ev) => {
-		if (ev.target.tagName === "LABEL") {
+		if ((ev.target as HTMLElement).tagName === "LABEL") {
 			active = true;
 			this.refresh();
-			ev.target.parentElement.nextSibling.focus();
+			(ev.target as any).parentElement!.nextSibling!.focus();
 		}
 	});
 
 	this.addEventListener("input", (ev) => {
-		if (ev.target.className === "edit") {
-			title = ev.target.value;
+		if ((ev.target as HTMLInputElement).className === "edit") {
+			title = (ev.target as HTMLInputElement).value;
 		}
 	});
 
 	this.addEventListener("keydown", (ev) => {
 		if (
-			ev.target.className === "edit" &&
+			(ev.target as HTMLElement).className === "edit" &&
 			(ev.keyCode === ENTER_KEY || ev.keyCode === ESC_KEY)
 		) {
 			active = false;
@@ -105,7 +116,7 @@ function* TodoItem({todo}) {
 	this.addEventListener(
 		"blur",
 		(ev) => {
-			if (ev.target.className === "edit") {
+			if ((ev.target as HTMLElement).className === "edit") {
 				active = false;
 				if (title) {
 					this.dispatchEvent(
@@ -149,10 +160,10 @@ function* TodoItem({todo}) {
 	}
 }
 
-function Main({todos, filter}) {
+function Main(this: Context, {todos, filter}: {todos: Todo[]; filter: Filter}) {
 	const completed = todos.every((todo) => todo.completed);
 	this.addEventListener("click", (ev) => {
-		if (ev.target.className === "toggle-all") {
+		if ((ev.target as HTMLElement).className === "toggle-all") {
 			this.dispatchEvent(
 				new CustomEvent("todo.toggleAll", {
 					bubbles: true,
@@ -186,7 +197,7 @@ function Main({todos, filter}) {
 	);
 }
 
-function Filters({filter}) {
+function Filters(this: Context, {filter}: {filter: Filter}) {
 	return (
 		<ul class="filters">
 			<li>
@@ -208,11 +219,14 @@ function Filters({filter}) {
 	);
 }
 
-function Footer({todos, filter}) {
+function Footer(
+	this: Context,
+	{todos, filter}: {todos: Todo[]; filter: Filter},
+) {
 	const completed = todos.filter((todo) => todo.completed).length;
 	const remaining = todos.length - completed;
 	this.addEventListener("click", (ev) => {
-		if (ev.target.className === "clear-completed") {
+		if ((ev.target as HTMLElement).className === "clear-completed") {
 			this.dispatchEvent(new Event("todo.clearCompleted", {bubbles: true}));
 		}
 	});
@@ -229,15 +243,25 @@ function Footer({todos, filter}) {
 }
 
 const STORAGE_KEY = "todos-crank";
-function save(todos) {
+function save(todos: Array<Todo>) {
 	localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
 }
 
-function* App() {
-	let todos = [];
+declare module "@bikeshaving/crank" {
+	interface EventMap {
+		"todo.create": CustomEvent<Todo>;
+		"todo.edit": CustomEvent<Todo>;
+		"todo.toggle": CustomEvent<Todo>;
+		"todo.toggleAll": CustomEvent<{completed: boolean}>;
+		"todo.destroy": CustomEvent<Todo>;
+	}
+}
+
+function* App(this: Context) {
+	let todos: Array<Todo> = [];
 	let nextTodoId = 0;
 	try {
-		const storedTodos = JSON.parse(localStorage.getItem(STORAGE_KEY));
+		const storedTodos = JSON.parse(localStorage.getItem(STORAGE_KEY) || "");
 		if (Array.isArray(storedTodos) && storedTodos.length) {
 			todos = storedTodos;
 			nextTodoId = Math.max(...storedTodos.map((todo) => todo.id)) + 1;
@@ -248,7 +272,7 @@ function* App() {
 		localStorage.removeItem(STORAGE_KEY);
 	}
 
-	let filter = "";
+	let filter: Filter = "";
 	this.addEventListener("todo.create", (ev) => {
 		todos.push({id: nextTodoId++, title: ev.detail.title, completed: false});
 		this.refresh();
@@ -287,7 +311,7 @@ function* App() {
 		save(todos);
 	});
 
-	const route = (ev) => {
+	const route = (ev?: HashChangeEvent) => {
 		switch (window.location.hash) {
 			case "#/active": {
 				filter = "active";

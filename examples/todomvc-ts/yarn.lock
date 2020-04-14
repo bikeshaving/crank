@@ -871,12 +871,10 @@
     lodash "^4.17.13"
     to-fast-properties "^2.0.0"
 
-"@bikeshaving/crank@0.1.0-beta.7":
-  version "0.1.0-beta.7"
-  resolved "https://registry.yarnpkg.com/@bikeshaving/crank/-/crank-0.1.0-beta.7.tgz#d5ef3e8e1bf234c506de1adb1fd1504104e6809b"
-  integrity sha512-3HjzZIA0ouNtRufx+U0vao1YZcFwoDIEYCtNiDMPasB5ZWJldf7fbdKuGQBTRoUT4uCOw994ulT6rhd82dOAoA==
-  dependencies:
-    "@repeaterjs/repeater" "^3.0.1"
+"@bikeshaving/crank@0.1.0-beta.8":
+  version "0.1.0-beta.8"
+  resolved "https://registry.yarnpkg.com/@bikeshaving/crank/-/crank-0.1.0-beta.8.tgz#1935d787854f45f691aeb572dc054549bd3aa579"
+  integrity sha512-yAmNgg02NcDlZNReunS9GmxqT3tYeMbK0Yzm0Ur5OzrbFJo0m8TKxFowVgQvNTK3XtlmTJxHPhqjzHWR2ObuWQ==
 
 "@iarna/toml@^2.2.0":
   version "2.2.3"
@@ -936,11 +934,6 @@
   dependencies:
     "@parcel/utils" "^1.11.0"
     physical-cpu-count "^2.0.0"
-
-"@repeaterjs/repeater@^3.0.1":
-  version "3.0.1"
-  resolved "https://registry.yarnpkg.com/@repeaterjs/repeater/-/repeater-3.0.1.tgz#506641792ae5fdc5b8c3981ceb210bce407cd104"
-  integrity sha512-kqdrZRvTLFfvgPTeMgj8DpREYZXU+sz4/kdX2825zMNGmiaEUzM6u7A4YBoI4WzqXX4q123VftkllAw1C/4rMg==
 
 "@types/q@^1.5.1":
   version "1.5.2"
@@ -1629,10 +1622,10 @@ core-js@^2.4.0, core-js@^2.6.5:
   resolved "https://registry.yarnpkg.com/core-js/-/core-js-2.6.11.tgz#38831469f9922bded8ee21c9dc46985e0399308c"
   integrity sha512-5wjnpaT/3dV+XB4borEsnAYQchn00XSgTAWKDkEqv+K8KevjbzmofK6hfJ9TZIlpj2N0xQpazy7PiRQiWHqzWg==
 
-core-js@^3.6.4:
-  version "3.6.4"
-  resolved "https://registry.yarnpkg.com/core-js/-/core-js-3.6.4.tgz#440a83536b458114b9cb2ac1580ba377dc470647"
-  integrity sha512-4paDGScNgZP2IXXilaffL9X7968RuvwlkK3xWtZRVqgd8SYNiVKRJvkFd1aqqEuPfN7E68ZHEp9hDj6lHj4Hyw==
+core-js@^3.6.5:
+  version "3.6.5"
+  resolved "https://registry.yarnpkg.com/core-js/-/core-js-3.6.5.tgz#7395dc273af37fb2e50e9bd3d9fe841285231d1a"
+  integrity sha512-vZVEEwZoIsI+vPEuoF9Iqf5H7/M3eeQqWlQnYa8FSKKePuYTf5MWnxb5SDAzCa60b3JBRS5g9b+Dq7b1y/RCrA==
 
 core-util-is@1.0.2, core-util-is@~1.0.0:
   version "1.0.2"
@@ -5035,6 +5028,11 @@ typedarray@^0.0.6:
   version "0.0.6"
   resolved "https://registry.yarnpkg.com/typedarray/-/typedarray-0.0.6.tgz#867ac74e3864187b1d3d47d996a78ec5c8830777"
   integrity sha1-hnrHTjhkGHsdPUfZlqeOxciDB3c=
+
+typescript@^3.8.3:
+  version "3.8.3"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.8.3.tgz#409eb8544ea0335711205869ec458ab109ee1061"
+  integrity sha512-MYlEfn5VrLNsgudQTVJeNaQFUAI7DkhnOjdpAp4T+ku1TfQClewlbSuTVHiA+8skNBgaf02TL/kLOvig4y3G8w==
 
 uncss@^0.17.2:
   version "0.17.2"
