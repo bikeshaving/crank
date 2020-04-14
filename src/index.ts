@@ -209,7 +209,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		| undefined = undefined;
 	protected props: Props | undefined = undefined;
 	value: Array<T | string> | T | string | undefined = undefined;
-	ctx: Context<T> | undefined = undefined;
+	ctx: Context | undefined = undefined;
 	protected updating = false;
 	protected iterating = false;
 	protected finished = false;
@@ -660,7 +660,7 @@ class ComponentNode<T> extends ParentNode<T> {
 	readonly key: Key;
 	readonly parent: ParentNode<T>;
 	readonly renderer: Renderer<T>;
-	readonly ctx: Context<T>;
+	readonly ctx: Context;
 	private available = true;
 	private iterator: ChildIterator | undefined = undefined;
 	// TODO: explain these properties
@@ -954,9 +954,9 @@ export class HostContext<T = any> {
 
 export interface ProvisionMap {}
 
-const componentNodes = new WeakMap<Context<any>, ComponentNode<any>>();
-export class Context<T = any> extends CrankEventTarget {
-	constructor(host: ComponentNode<T>, parent?: Context<T>) {
+const componentNodes = new WeakMap<Context, ComponentNode<any>>();
+export class Context extends CrankEventTarget {
+	constructor(host: ComponentNode<any>, parent?: Context) {
 		super(parent);
 		componentNodes.set(this, host);
 	}
