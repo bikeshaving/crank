@@ -191,21 +191,22 @@ function Home(): Element {
 						<p>
 							Crank uses the same JSX syntax and diffing algorithm popularized
 							by React, allowing you to write HTML-like code directly in your
-							JavaScript. </p> </div>
+							JavaScript.{" "}
+						</p>{" "}
+					</div>
 					<div class="feature">
 						<h3>Just JavaScript™</h3>
 						<p>
-							All components in Crank are just functions or generator
-							functions. No classes, hooks, proxies or template languages are
-							needed.
+							All components in Crank are just functions or generator functions.
+							No classes, hooks, proxies or template languages are needed.
 						</p>
 					</div>
 					<div class="feature">
 						<h3>Promises today</h3>
 						<p>
 							Crank provides first-class support for promises. You can use
-							async/await directly in components, and race components to
-							display fallback UIs.
+							async/await directly in components, and race components to display
+							fallback UIs.
 						</p>
 					</div>
 				</main>
