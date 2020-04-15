@@ -20,7 +20,7 @@ The simplest kind of component you can write is a *sync function component*. Whe
 As seen in the example above, you can use [object destructuring](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment#Object_destructuring) on the props parameter for convenience. Additionally, you can assign default values to each prop using JavaScript’s default value syntax:
 
 ```js
-function Greeting({name = "Nemo"}) {
+function Greeting({name="Nemo"}) {
   return <div>Hello, {name}</div>;
 }
 

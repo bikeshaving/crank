@@ -46,7 +46,7 @@ renderer.render(<div id="hello">Hello world</div>, document.body);
 import {createElement} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
 
-function Greeting ({name = "World"}) {
+function Greeting({name="World"}) {
   return (
     <div>Hello {name}</div>
   );
@@ -63,7 +63,7 @@ renderer.render(<Greeting />, document.body);
 import {createElement} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
 
-function *Timer () {
+function *Timer() {
   let seconds = 0;
   const interval = setInterval(() => {
     seconds++;
@@ -86,12 +86,12 @@ renderer.render(<Timer />, document.body);
 ### An Async Component
 ```jsx
 /** @jsx createElement */
-import { createElement } from "@bikeshaving/crank";
-import { renderer } from "@bikeshaving/crank/dom";
+import {createElement} from "@bikeshaving/crank";
+import {renderer} from "@bikeshaving/crank/dom";
 
 async function QuoteOfTheDay() {
   const res = await fetch("https://favqs.com/api/qotd");
-  const { quote } = await res.json();
+  const {quote} = await res.json();
   return (
     <p>
       “{quote.body}” – <a href={quote.url}>{quote.author}</a>
