@@ -18,7 +18,7 @@ renderer.render(&lt;div id=&quot;hello&quot;&gt;Hello world&lt;/div&gt;, documen
 import {createElement} from &quot;@bikeshaving/crank&quot;;
 import {renderer} from &quot;@bikeshaving/crank/dom&quot;;
 
-function Greeting ({name = &quot;World&quot;}) {
+function Greeting({name = &quot;World&quot;}) {
   return (
     &lt;div&gt;Hello {name}&lt;/div&gt;
   );
@@ -31,7 +31,7 @@ renderer.render(&lt;Greeting /&gt;, document.body);</code></pre>
 import {createElement} from &quot;@bikeshaving/crank&quot;;
 import {renderer} from &quot;@bikeshaving/crank/dom&quot;;
 
-function *Timer () {
+function *Timer() {
   let seconds = 0;
   const interval = setInterval(() =&gt; {
     seconds++;
@@ -50,12 +50,12 @@ renderer.render(&lt;Timer /&gt;, document.body);</code></pre>
 <p><a href="https://codesandbox.io/s/a-stateful-crank-component-hh8zx">Try on CodeSandbox</a></p>
 <h3 id="an-async-component">An Async Component</h3>
 <pre><code class="language-jsx">/** @jsx createElement */
-import { createElement } from &quot;@bikeshaving/crank&quot;;
-import { renderer } from &quot;@bikeshaving/crank/dom&quot;;
+import {createElement} from &quot;@bikeshaving/crank&quot;;
+import {renderer} from &quot;@bikeshaving/crank/dom&quot;;
 
 async function QuoteOfTheDay() {
   const res = await fetch(&quot;https://favqs.com/api/qotd&quot;);
-  const { quote } = await res.json();
+  const {quote} = await res.json();
   return (
     &lt;p&gt;
       “{quote.body}” – &lt;a href={quote.url}&gt;{quote.author}&lt;/a&gt;

@@ -8,7 +8,7 @@ renderer.render(&lt;Greeting name=&quot;World&quot; /&gt;, document.body);
 console.log(document.body.innerHTML); // &quot;&lt;div&gt;Hello World&lt;/div&gt;&quot;</code></pre>
 <p>The simplest kind of component you can write is a <em>sync function component</em>. When these components are rendered, the function tag is invoked with the props object of the element as its first argument, and the return value, usually an element, is recursively rendered by the renderer as the element’s children.</p>
 <p>As seen in the example above, you can use <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment#Object_destructuring">object destructuring</a> on the props parameter for convenience. Additionally, you can assign default values to each prop using JavaScript’s default value syntax:</p>
-<pre><code class="language-js">function Greeting({name = &quot;Nemo&quot;}) {
+<pre><code class="language-js">function Greeting({name=&quot;Nemo&quot;}) {
   return &lt;div&gt;Hello, {name}&lt;/div&gt;;
 }
 
