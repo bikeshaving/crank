@@ -40,7 +40,7 @@ function Greeting ({name = "World"}) {
   );
 }
 
-renderer.render(<Greeting />, document.getElementById("app"));
+renderer.render(<Greeting />, document.body);
 ```
 
 [Try on CodeSandbox](https://codesandbox.io/s/a-simple-crank-component-gnknz)
@@ -66,7 +66,7 @@ function *Timer () {
   }
 }
 
-renderer.render(<Timer />, document.getElementById("app"));
+renderer.render(<Timer />, document.body);
 ```
 
 [Try on CodeSandbox](https://codesandbox.io/s/a-stateful-crank-component-hh8zx)
@@ -74,16 +74,20 @@ renderer.render(<Timer />, document.getElementById("app"));
 ### An Async Component
 ```jsx
 /** @jsx createElement */
-import {createElement} from "@bikeshaving/crank";
-import {renderer} from "@bikeshaving/crank/dom";
+import { createElement } from "@bikeshaving/crank";
+import { renderer } from "@bikeshaving/crank/dom";
 
-async function IPAddress () {
-  const res = await fetch("https://api.ipify.org");
-  const address = await res.text();
-  return <div>Your IP Address: {address}</div>;
+async function QuoteOfTheDay() {
+  const res = await fetch("https://favqs.com/api/qotd");
+  const { quote } = await res.json();
+  return (
+    <p>
+      “{quote.body}” – <a href={quote.url}>{quote.author}</a>
+    </p>
+  );
 }
 
-renderer.render(<IPAddress />, document.getElementById("app"));
+renderer.render(<QuoteOfTheDay />, document.body);
 ```
 
 [Try on CodeSandbox](https://codesandbox.io/s/an-async-crank-component-ru02q)
@@ -115,7 +119,7 @@ async function RandomDog({throttle = false}) {
 
 async function *RandomDogLoader({throttle}) {
   for await ({throttle} of this) {
-    yield <LoadingIndicator />
+    yield <LoadingIndicator />;
     yield <RandomDog throttle={throttle} />;
   }
 }
