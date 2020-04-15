@@ -24,7 +24,7 @@ function Greeting ({name = &quot;World&quot;}) {
   );
 }
 
-renderer.render(&lt;Greeting /&gt;, document.getElementById(&quot;app&quot;));</code></pre>
+renderer.render(&lt;Greeting /&gt;, document.body);</code></pre>
 <p><a href="https://codesandbox.io/s/a-simple-crank-component-gnknz">Try on CodeSandbox</a></p>
 <h3 id="a-stateful-component">A Stateful Component</h3>
 <pre><code class="language-jsx">/** @jsx createElement */
@@ -46,20 +46,24 @@ function *Timer () {
   }
 }
 
-renderer.render(&lt;Timer /&gt;, document.getElementById(&quot;app&quot;));</code></pre>
+renderer.render(&lt;Timer /&gt;, document.body);</code></pre>
 <p><a href="https://codesandbox.io/s/a-stateful-crank-component-hh8zx">Try on CodeSandbox</a></p>
 <h3 id="an-async-component">An Async Component</h3>
 <pre><code class="language-jsx">/** @jsx createElement */
-import {createElement} from &quot;@bikeshaving/crank&quot;;
-import {renderer} from &quot;@bikeshaving/crank/dom&quot;;
+import { createElement } from &quot;@bikeshaving/crank&quot;;
+import { renderer } from &quot;@bikeshaving/crank/dom&quot;;
 
-async function IPAddress () {
-  const res = await fetch(&quot;https://api.ipify.org&quot;);
-  const address = await res.text();
-  return &lt;div&gt;Your IP Address: {address}&lt;/div&gt;;
+async function QuoteOfTheDay() {
+  const res = await fetch(&quot;https://favqs.com/api/qotd&quot;);
+  const { quote } = await res.json();
+  return (
+    &lt;p&gt;
+      “{quote.body}” – &lt;a href={quote.url}&gt;{quote.author}&lt;/a&gt;
+    &lt;/p&gt;
+  );
 }
 
-renderer.render(&lt;IPAddress /&gt;, document.getElementById(&quot;app&quot;));</code></pre>
+renderer.render(&lt;QuoteOfTheDay /&gt;, document.body);</code></pre>
 <p><a href="https://codesandbox.io/s/an-async-crank-component-ru02q">Try on CodeSandbox</a></p>
 <h3 id="a-loading-component">A Loading Component</h3>
 <pre><code class="language-jsx">/** @jsx createElement */
@@ -87,7 +91,7 @@ async function RandomDog({throttle = false}) {
 
 async function *RandomDogLoader({throttle}) {
   for await ({throttle} of this) {
-    yield &lt;LoadingIndicator /&gt;
+    yield &lt;LoadingIndicator /&gt;;
     yield &lt;RandomDog throttle={throttle} /&gt;;
   }
 }
