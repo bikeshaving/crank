@@ -133,7 +133,7 @@ function Navbar({url}: NavbarProps): Element {
 			</div>
 			<div class="navbar-group">
 				<div class="navbar-item">
-					<a href="https://github.com/brainkim/crank">Github</a>
+					<a href="https://github.com/bikeshaving/crank">Github</a>
 				</div>
 				<div class="navbar-item">
 					<a href="http://npm.im/@bikeshaving/crank">NPM</a>

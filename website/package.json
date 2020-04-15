@@ -1,6 +1,11 @@
 {
   "private": true,
   "type": "module",
+  "scripts": {
+    "build": "ts-node build.tsx && echo crank.js.org > dist/CNAME",
+    "predeploy": "yarn build",
+    "deploy": "gh-pages -d dist"
+  },
   "dependencies": {
     "@bikeshaving/crank": "*",
     "@repeaterjs/repeater": "^3.0.1",

@@ -1,6 +1,8 @@
 # Crank.js
 Write JSX-driven components with functions, promises and generators.
 
+Documentation is available at [crank.js.org](https://crank.js.org). Crank.js is in a beta phase, and some APIs may change. To read more about the motivations for this library, you can read the [introductory blog post](https://crank.js.org/blog/introducing-crank).
+
 ## Features
 ### Declarative components 
 Crank uses the same JSX syntax and diffing algorithm popularized by React, allowing you to write HTML-like code directly in your JavaScript.
