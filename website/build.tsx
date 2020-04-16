@@ -90,6 +90,7 @@ function Root({title, children, url}: RootProps): Element {
 				<Page storage={storage}>
 					<head>
 						<meta charset="UTF-8" />
+						<meta name="viewport" content="width=device-width" />
 						<title>{title}</title>
 						<Link rel="stylesheet" type="text/css" href="./index.css" />
 					</head>
