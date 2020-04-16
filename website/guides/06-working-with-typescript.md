@@ -5,9 +5,10 @@ title: Working with TypeScript
 Crank is written in TypeScript, and provides some types out of box so you can type-check your components and JSX calls.
 
 ## Typing `this` in components
-Trying to reference `this` in a component without a `this` type annotation will throw a type error in TypeScript‘s strict mode (you’ll see a message like `'this' implicitly has type 'any' because it does not have a type annotation`). TypeScript exports the `Context` class so you can annotate your components with `Context` as `this`:
+Trying to reference `this` in a component without a `this` type annotation will throw a type error in TypeScript‘s strict mode (you’ll see a message like `'this' implicitly has type 'any' because it does not have a type annotation`). Crank exports the `Context` class so you can annotate your components `this` as `Context`:
 
 ```tsx
+import {Context} from "@bikeshaving/crank";
 function *Timer (this: Context) {
   let seconds = 0;
   const interval = setInterval(() => {
@@ -50,7 +51,7 @@ async function *AsyncGen(): AsyncGenerator<Element> {
 }
 ```
 
-`Element` is just the type returned by JSX/`createElement`. As you can see, you still have to modify the return type of functions based on whether the function is async or a generator. You can also use the type `Child` which represents any valid value in an element tree. 
+`Element` is just the type returned by JSX expressions/`createElement`. As you can see, you still have to modify the return type of functions based on whether the function is async or a generator. You can also use the type `Child` which represents any valid value in an element tree.
 
 ```tsx
 function *SyncGen(): Generator<Child> {
@@ -65,8 +66,7 @@ function *SyncGen(): Generator<Child> {
 }
 ```
 
-Anything assignable to `Child` can be part of the element tree.
-
+Anything assignable to `Child` can be part of the element tree, and almost anything can be assigned to `Child`.
 
 ## Typing props
 You can type the props object passed to components. This allows JSX elements which use your component as a tag to be type-checked.
@@ -78,7 +78,7 @@ function Greeting ({name}: {name: string}) {
   );
 }
 
-const el = <Greeting name="Brian" />; // works fine
+const el = <Greeting name="Brian" />; // compiles
 const el1 = <Greeting name={1} />; // throws a type error
 ```
 

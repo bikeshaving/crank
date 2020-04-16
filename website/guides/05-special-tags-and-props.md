@@ -46,7 +46,7 @@ Keys are scoped to an element’s children. When rendering iterables, it’s use
 ```jsx
 function *Shuffler() {
   let nextId = 0;
-  const els = Array(4).fill(null).map((_, i) => <span crank-key={i}>{i}</span>);
+  const els = Array.from({length: 4}, (_, i) => <span crank-key={i}>{i}</span>);
   while (true) {
     yield <div>{els}</div>;
     els.reverse();
