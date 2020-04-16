@@ -178,9 +178,9 @@
     to-fast-properties "^2.0.0"
 
 "@bikeshaving/crank@*":
-  version "0.1.0-beta.9"
-  resolved "https://registry.yarnpkg.com/@bikeshaving/crank/-/crank-0.1.0-beta.9.tgz#418e6476c03c6a4a9f137cf48f58dee6b460b96f"
-  integrity sha512-Sq28rOcnCzJgcRCG0g7PTYq3lY7UboFz3CBdcaObMfVJxt57HrrwnnjD4f7EcXc2jI6FFl9s5WN0zAVwhlqG0A==
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/@bikeshaving/crank/-/crank-0.1.0.tgz#6e63135f7ac2e29eb9047c22e679d747effc589f"
+  integrity sha512-aEdQb/fL0PEqX0cmVQSzcHu3jwNuQbHKl5Pp7Be8ZSXQecB73WFphE/EVPZvRIgMu2pLoOPRIL7CidzI+5MiXQ==
 
 "@csstools/convert-colors@^1.4.0":
   version "1.4.0"
