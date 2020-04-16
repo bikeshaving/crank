@@ -5,7 +5,7 @@
 }
 
 body {
-	background-color: #2a57a8; 
+	background-color: #113576; 
 	color: #f5f9ff;
 	font-family: sans-serif;
 }
@@ -236,7 +236,7 @@ pre {
 }
 
 :not(pre) > code {
-	background: #4175d0;
+	background: #154294;
 	padding: 0 .1em;
 	margin: 0;
 	display: inline;
