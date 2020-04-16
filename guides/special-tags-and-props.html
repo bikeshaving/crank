@@ -35,7 +35,7 @@ console.log(document.body.innerHTML);
 <p>Keys are scoped to an element’s children. When rendering iterables, it’s useful to key elements of the iterable, because in this case it’s common for elements to be added, removed or rearranged. Both host and component elements can be keyed with <code>crank-key</code>.</p>
 <pre><code class="language-jsx">function *Shuffler() {
   let nextId = 0;
-  const els = Array(4).fill(null).map((_, i) =&gt; &lt;span crank-key={i}&gt;{i}&lt;/span&gt;);
+  const els = Array.from({length: 4}, (_, i) =&gt; &lt;span crank-key={i}&gt;{i}&lt;/span&gt;);
   while (true) {
     yield &lt;div&gt;{els}&lt;/div&gt;;
     els.reverse();
