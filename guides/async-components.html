@@ -166,7 +166,7 @@ renderer.render(&lt;RandomDogApp /&gt;, document.body);</code></pre>
 async function *Suspense({timeout, fallback, children}) {
   for await ({timeout, fallback, children} of this) {
     yield &lt;Fallback timeout={timeout}&gt;{fallback}&lt;/Fallback&gt;;
-    yield &lt;Fragment&gt;children&lt;/Fragment&gt;;
+    yield &lt;Fragment&gt;{children}&lt;/Fragment&gt;;
   }
 }
 

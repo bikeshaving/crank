@@ -354,7 +354,7 @@ template {
 }
 
 body {
-	background-color: #113576; 
+	background-color: #0c1227;
 	color: #f5f9ff;
 	font-family: sans-serif;
 }
@@ -615,7 +615,7 @@ pre {
 }
 
 :not(pre) > code {
-	background: #154294;
+	background: #2b303c;
 	padding: 0 .1em;
 	margin: 0;
 	display: inline;
