@@ -377,11 +377,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 h1, h2, h3 {
-	color: #ffd080;
+	color: #dbb368;
 }
 
 blockquote {
-	border-left: 2px solid #ffd080;
+	border-left: 2px solid #dbb368;
 	margin: 1.5em 0;
 	padding: 0 0 0 .8em;
 }
@@ -395,7 +395,7 @@ a {
 }
 
 a.current {
-	color: #ffd080;
+	color: #dbb368;
 }
 
 li {
@@ -490,7 +490,7 @@ li {
 	}
 
 .sidebar h3 {
-		color: #ffd080;
+		color: #dbb368;
 	}
 
 .sidebar a {
@@ -572,8 +572,8 @@ li {
 
 .hero a {
 		font-size: 1.25rem;
-		color: #ffd080;
-		border: 1px solid #ffd080;
+		color: #dbb368;
+		border: 1px solid #dbb368;
 		text-decoration: none;
 		padding: .4em;
 	}
@@ -583,7 +583,7 @@ li {
 	}
 
 .features h3 {
-		color: #ffd080;
+		color: #dbb368;
 	}
 
 @media screen and (min-width: 1100px) {
