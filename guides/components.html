@@ -45,17 +45,22 @@ console.log(document.body.innerHTML); // &quot;&lt;div&gt;Message for Nemo: &lt;
 }
 
 renderer.render(&lt;Counter /&gt;, document.body);
-console.log(document.body.innerHTML); // &quot;&lt;div&gt;You have updated this component 1 time&lt;/div&gt;&quot;
+console.log(document.body.innerHTML);
+// &quot;&lt;div&gt;You have updated this component 1 time&lt;/div&gt;&quot;
 renderer.render(&lt;Counter /&gt;, document.body);
-console.log(document.body.innerHTML); // &quot;&lt;div&gt;You have updated this component 2 times&lt;/div&gt;&quot;
+console.log(document.body.innerHTML);
+// &quot;&lt;div&gt;You have updated this component 2 times&lt;/div&gt;&quot;
 renderer.render(&lt;Counter /&gt;, document.body);
 renderer.render(&lt;Counter /&gt;, document.body);
 renderer.render(&lt;Counter /&gt;, document.body);
-console.log(document.body.innerHTML); // &quot;&lt;div&gt;You have updated this component 5 times&lt;/div&gt;&quot;
+console.log(document.body.innerHTML);
+// &quot;&lt;div&gt;You have updated this component 5 times&lt;/div&gt;&quot;
 renderer.render(null, document.body);
-console.log(document.body.innerHTML); // &quot;&quot;
+console.log(document.body.innerHTML);
+// &quot;&quot;
 renderer.render(&lt;Counter /&gt;, document.body);
-console.log(document.body.innerHTML); // &quot;&lt;div&gt;You have updated this component 1 time&lt;/div&gt;&quot;</code></pre>
+console.log(document.body.innerHTML);
+// &quot;&lt;div&gt;You have updated this component 1 time&lt;/div&gt;&quot;</code></pre>
 <p>Because we’re now yielding values rather than returning them, we can make components stateful using variables in the local scope. Every time the component is updated, Crank resumes the generator, pausing at the next <code>yield</code>. The yielded expressions, usually elements, are then recursively rendered by the renderer, just as if it were returned in a sync function component. Furthermore, Crank uses the same diffing algorithm used to reuse DOM nodes to reuse generator objects, so that the execution of the generator is preserved. This allows local state to be encapsulated within the generator’s scope.</p>
 <h3 id="contexts">Contexts</h3>
 <p>The <code>Counter</code> component is a stateful component whose local state only changes when it is rerendered, but we may want to write components which update themselves based on timers or events. Crank allows components to control themselves by passing in a custom object called a <em>context</em> as the <code>this</code> value of each component. These contexts provide several utility methods, most important of which is <code>this.refresh</code>, which tells Crank to update the component in place. For generator components, this means that the generator associated with the context will resume so it can yield another value.</p>
