@@ -65,17 +65,22 @@ function *Counter() {
 }
 
 renderer.render(<Counter />, document.body);
-console.log(document.body.innerHTML); // "<div>You have updated this component 1 time</div>"
+console.log(document.body.innerHTML);
+// "<div>You have updated this component 1 time</div>"
 renderer.render(<Counter />, document.body);
-console.log(document.body.innerHTML); // "<div>You have updated this component 2 times</div>"
+console.log(document.body.innerHTML);
+// "<div>You have updated this component 2 times</div>"
 renderer.render(<Counter />, document.body);
 renderer.render(<Counter />, document.body);
 renderer.render(<Counter />, document.body);
-console.log(document.body.innerHTML); // "<div>You have updated this component 5 times</div>"
+console.log(document.body.innerHTML);
+// "<div>You have updated this component 5 times</div>"
 renderer.render(null, document.body);
-console.log(document.body.innerHTML); // ""
+console.log(document.body.innerHTML);
+// ""
 renderer.render(<Counter />, document.body);
-console.log(document.body.innerHTML); // "<div>You have updated this component 1 time</div>"
+console.log(document.body.innerHTML);
+// "<div>You have updated this component 1 time</div>"
 ```
 
 Because we’re now yielding values rather than returning them, we can make components stateful using variables in the local scope. Every time the component is updated, Crank resumes the generator, pausing at the next `yield`. The yielded expressions, usually elements, are then recursively rendered by the renderer, just as if it were returned in a sync function component. Furthermore, Crank uses the same diffing algorithm used to reuse DOM nodes to reuse generator objects, so that the execution of the generator is preserved. This allows local state to be encapsulated within the generator’s scope.
