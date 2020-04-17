@@ -1,5 +1,8 @@
 {
   "private": true,
+  "scripts": {
+    "start": "parcel index.html"
+  },
   "dependencies": {
     "@bikeshaving/crank": "*",
     "core-js": "^3.6.4",
