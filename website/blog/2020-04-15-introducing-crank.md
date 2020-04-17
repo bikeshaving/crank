@@ -6,11 +6,9 @@ publishDate: 2020-04-15T19:18:41.371Z
 After months of development, I’m happy to introduce Crank.js, a new framework for creating JSX-driven components with functions, promises and generators. And I know what you’re thinking: ***oh no, not another web framework.*** There are already so many of them out there and each carries a non-negligible cost in terms of learning it and developing an ecosystem surrounding it, so it makes sense that you would reject newcomers if only to avoid the deep sense of exhaustion which has come to be known amongst frontend developers as “JavaScript fatigue.” Therefore, this post is both an introduction to Crank as well as an apology: I’m sorry for creating yet another framework, and I hope that by explaining the circumstances which led me to do so, you will forgive me.
 <!-- truncate -->
 
-![Early days of Crank](../static/commits.png)
-
 I will be honest; before embarking on this project, I had never made a “web framework” nor even considered myself capable of doing such a thing. I don’t maintain any particularly popular open-source libraries, and most of the early commits to this project had messages like “why on Earth are you doing this?” Before working on Crank, my framework of choice was React, and I had used it dutifully for almost every project within my control since the `React.createClass` days. And as React evolved, I must admit, I was intrigued and excited with the announcement of each new code-named React feature like “Fibers,” “Hooks” and “Suspense.” I’d spend hours attempting to decipher tweets from Sebastian Markbage, one of the principal architects behind React, and I sincerely felt like React’s would continue to be relevant well into the 2020s.
 
-![Tweets by Sebastian Markbage](../static/sebmarkbage.png)
+![Early days of Crank](../static/commits.png)
 
 However, over time, I grew increasingly alienated by what I perceived to be the more general direction of React, which was to reframe it as a “UI runtime.” The ideas behind each new API seemed exciting, but the concrete code each API produced seemed increasingly difficult to reason about; I was unhappy, for instance, with the strangeness and pitfalls of the new hooks API, and I worried about the constant warnings the React team gave about how code which worked today would not work once something called “Concurrent Mode” landed. *I already have a UI runtime*, I thought whenever I read the latest on React, *it’s called JavaScript.*
 
