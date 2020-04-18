@@ -39,7 +39,7 @@ function Greeting({name, children}) {
 }
 
 renderer.render(
-  <Greeting name="World">
+  <Greeting name="Nemo">
     <span>Howdy!</span>
   </Greeting>,
   document.body,
