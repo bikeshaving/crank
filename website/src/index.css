@@ -82,9 +82,23 @@ li {
 
 .navbar-group {
 	display: flex;
+	align-items: center;
 	+ .navbar-group {
 		margin-left: 1rem;
 	}
+}
+
+.navbar-title-link {
+	display: flex;
+	align-items: center;
+}
+
+.navbar-logo {
+	background-color: transparent;
+	display: inline-block;
+	height: 30px;
+	margin-top: -2px;
+	margin-right: 0.5rem;
 }
 
 .home {
