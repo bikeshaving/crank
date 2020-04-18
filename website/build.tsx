@@ -93,6 +93,7 @@ function Root({title, children, url}: RootProps): Element {
 						<meta name="viewport" content="width=device-width" />
 						<title>{title}</title>
 						<Link rel="stylesheet" type="text/css" href="./index.css" />
+						<link rel="shortcut icon" href="/static/favicon.ico" />
 					</head>
 					<body>
 						<Navbar url={url} />
@@ -114,8 +115,9 @@ function Navbar({url}: NavbarProps): Element {
 		<nav id="navbar" class="navbar">
 			<div class="navbar-group">
 				<div class="navbar-item">
-					<a class={url === "/" && "current"} href="/">
-						Crank.js
+					<a class={`navbar-title-link ${url === "/" && "current"}`} href="/">
+						<img class="navbar-logo" src="/static/logo.svg" />
+						<span>Crank.js</span>
 					</a>
 				</div>
 				<div class="navbar-item">
