@@ -1147,6 +1147,63 @@ describe("sync generator component", () => {
 			"Use for...of",
 		);
 	});
+	
+	describe("setTimeout", () => {
+		beforeAll(jest.useFakeTimers);
+		afterAll(jest.useRealTimers);
+		afterEach(jest.clearAllTimers);
+
+		test("set timeouts", () => {
+			function *TimeOut(this: Context): Generator<Element> {
+				let text = "foo";
+				this.setTimeout(() => { 
+					text = "bar";
+					this.refresh();
+				}, 100);
+				this.setTimeout(() => { 
+					text = "baz";
+					this.refresh();
+				}, 200);
+
+				for (const _ of this) {
+					yield <div>{text}</div>;
+				}
+			}
+		
+			renderer.render(<TimeOut />, document.body);
+			expect(document.body.innerHTML).toBe("<div>foo</div>");
+			jest.advanceTimersByTime(101);
+			expect(document.body.innerHTML).toBe("<div>bar</div>");
+			jest.advanceTimersByTime(101);
+			expect(document.body.innerHTML).toBe("<div>baz</div>");
+		});
+
+		test("cancel timeouts", () => {
+			let text = "foo"
+			function *TimeOut(this: Context): Generator<Element> {
+				this.setTimeout(() => { 
+					text = "bar";
+					this.refresh();
+				}, 100);
+				this.setTimeout(() => { 
+					text = "baz";
+					this.refresh();
+				}, 200);
+
+				for (const _ of this) {
+					yield <div>{text}</div>;
+				}
+			}
+		
+			renderer.render(<TimeOut />, document.body);
+			renderer.render(<div />, document.body);
+			expect(text).toBe("foo");
+			jest.advanceTimersByTime(101);
+			expect(text).toBe("foo");
+			jest.advanceTimersByTime(101);
+			expect(text).toBe("foo");
+		});
+	});
 });
 
 describe("async generator component", () => {

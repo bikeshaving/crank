@@ -663,6 +663,7 @@ class ComponentNode<T> extends ParentNode<T> {
 	readonly ctx: Context;
 	private available = true;
 	private iterator: ChildIterator | undefined = undefined;
+	private timeouts: Array<ReturnType<typeof setTimeout>> = []
 	// TODO: explain these properties
 	private componentType: ComponentType | undefined = undefined;
 	private inflightPending: MaybePromise<undefined> = undefined;
@@ -858,6 +859,8 @@ class ComponentNode<T> extends ParentNode<T> {
 
 		this.unmounted = true;
 		if (!this.finished) {
+			this.timeouts.forEach(clearTimeout);
+			this.timeouts = [];
 			this.finished = true;
 			// TODO: maybe we should return the async iterator rather than
 			// republishing props
@@ -923,6 +926,13 @@ class ComponentNode<T> extends ParentNode<T> {
 
 		this.provisions.set(name, value);
 	}
+
+	setTimeout(fn: () => void, delay: number): ReturnType<typeof setTimeout> {
+		const ref = setTimeout(fn, delay);
+		this.timeouts.push(ref);
+
+		return ref;
+	}
 }
 
 function createNode<T>(
@@ -985,6 +995,10 @@ export class Context extends CrankEventTarget {
 
 	refresh(): MaybePromise<undefined> {
 		return componentNodes.get(this)!.refresh();
+	}
+
+	setTimeout(fn: () => void, delay: number): MaybePromise<ReturnType<typeof setTimeout>> {
+		return componentNodes.get(this)!.setTimeout(fn, delay);
 	}
 }
 
