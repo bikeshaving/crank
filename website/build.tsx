@@ -116,7 +116,7 @@ function Navbar({url}: NavbarProps): Element {
 			<div class="navbar-group">
 				<div class="navbar-item">
 					<a class={`navbar-title-link ${url === "/" && "current"}`} href="/">
-						<img class="navbar-logo" src="/static/logo.svg" />
+						<img class="navbar-logo" src="/static/logo.svg"  alt="" />
 						<span>Crank.js</span>
 					</a>
 				</div>
