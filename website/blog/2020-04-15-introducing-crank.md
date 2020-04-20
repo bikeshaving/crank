@@ -1,5 +1,5 @@
 ---
-title: Introducting Crank
+title: Introducing Crank
 publishDate: 2020-04-15T19:18:41.371Z
 ---
 
