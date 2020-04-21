@@ -50,7 +50,7 @@ function printAttrs(props: IntrinsicProps<string>): string {
 			case name === "innerHTML":
 				break;
 			case name === "style":
-				attrs.push(`style="${printStyle(value)}"`);
+				attrs.push(`style="${escapeText(printStyle(value))}"`);
 				break;
 			case typeof value === "string":
 				attrs.push(`${escapeText(name)}="${escapeText(value)}"`);
