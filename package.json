@@ -4,6 +4,7 @@
   "license": "MIT",
   "description": "JSX-based components with functions, promises and generators.",
   "files": [
+    "umd",
     "cjs",
     "esm",
     "dom.d.ts",
