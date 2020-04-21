@@ -198,7 +198,13 @@ li {
 		color: #dbb368;
 		border: 1px solid #dbb368;
 		text-decoration: none;
-		padding: .4em;
+		margin-right: 1em;
+		padding: .5em;
+	}
+
+	iframe {
+		margin-top: 2em;
+		vertical-align: -8px;
 	}
 }
 
