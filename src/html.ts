@@ -59,7 +59,7 @@ function printAttrs(props: IntrinsicProps<string>): string {
 				attrs.push(`${escapeText(name)}="${value}"`);
 				break;
 			case typeof value === "boolean":
-				attrs.push(`${escapeText(name)}`);
+				if (value) attrs.push(`${escapeText(name)}`);
 				break;
 		}
 	}

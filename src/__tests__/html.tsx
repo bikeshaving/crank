@@ -52,7 +52,7 @@ describe("render", () => {
 		expect(
 			renderer.render(
 				<Fragment>
-					<input id="toggle" type="checkbox" checked data-checked />
+					<input id="toggle" type="checkbox" checked data-checked foo={false} />
 					<label for="toggle" />
 				</Fragment>,
 			),
