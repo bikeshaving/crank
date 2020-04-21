@@ -63,17 +63,17 @@ describe("render", () => {
 
 	test("styles", () => {
 		expect(
-		 renderer.render(
-			<Fragment>
-			 <div style={{color: "red"}} />
-			 <img
-				src="x"
-				style={{xss: 'foo;" onerror="alert(\'hack\')" other="'}}
-			 />
-			</Fragment>,
-		 ),
+			renderer.render(
+				<Fragment>
+					<div style={{color: "red"}} />
+					<img
+						src="x"
+						style={{xss: 'foo;" onerror="alert(\'hack\')" other="'}}
+					/>
+				</Fragment>,
+			),
 		).toEqual(
-		 '<div style="color:red;"></div><img src="x" style="xss:foo;&quot; onerror=&quot;alert(&#039;hack&#039;)&quot; other=&quot;;">',
+			'<div style="color:red;"></div><img src="x" style="xss:foo;&quot; onerror=&quot;alert(&#039;hack&#039;)&quot; other=&quot;;">',
 		);
 	});
 
