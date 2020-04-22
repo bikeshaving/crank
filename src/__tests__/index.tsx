@@ -8,6 +8,7 @@ import {
 	Context,
 	Element,
 	Fragment,
+	StateRef,
 } from "../index";
 import {renderer} from "../dom";
 
@@ -1948,4 +1949,132 @@ describe("async races", () => {
 		await p2;
 		expect(document.body.innerHTML).toEqual("<div><span>Slow</span></div>");
 	});
+
+});
+
+function smallSleep(): Promise<void> {
+	jest.useRealTimers();
+	return new Promise((resolve) => {
+		setTimeout(() => {
+			jest.useFakeTimers();
+			resolve();
+		}, 1)
+	});
+}
+
+describe("extensions", () => {
+	beforeEach(jest.useFakeTimers);
+	afterAll(jest.useRealTimers);
+	afterEach(jest.clearAllTimers);
+	test("extension with single setup and teardown", async () => {
+
+		let cleanupHappened = false;
+		async function* extension(this: Context, props: {}, state: StateRef<boolean>): AsyncGenerator<boolean> {
+			state.value = false;
+			let timer = setTimeout(() => {
+				state.value = true;
+				this.refresh();
+			}, 200);
+
+			try {
+				for await (props of this) {
+					// pass
+				}
+			}
+			finally {
+				cleanupHappened = true;
+				clearTimeout(timer);
+			}
+
+		}
+
+		function* Component(this: Context): Generator<Element> {
+
+			let timerCompleted = this.addExtension(extension);
+
+			for (const _ of this) {
+				yield (
+					<div>Timer Completed: {timerCompleted.value ? 'true' : 'false'}</div>
+				);
+			}
+		}
+		
+		renderer.render(<Component />, document.body);
+		expect(cleanupHappened).toBeFalsy();
+		expect(document.body.innerHTML).toEqual(
+			'<div>Timer Completed: false</div>'
+		);
+		jest.runAllTimers();
+		expect(cleanupHappened).toBeFalsy();
+		expect(document.body.innerHTML).toEqual(
+			'<div>Timer Completed: true</div>'
+		);
+		renderer.render(<div></div>, document.body);
+		await smallSleep();
+		expect(cleanupHappened).toBeTruthy();
+
+	});
+	test("setTimeout extension", async () => {
+		type State = number;
+		function setTimeoutExtension(cb: () => void, ms: number) {
+			return async function* extension(this: Context, props: {}, state: StateRef<State>): AsyncGenerator<State> {
+				let completed = false;
+				state.value = setTimeout(() => {
+					cb();
+				}, ms) as any;
+
+				try {
+					for await (props of this) {
+						if (completed = true)
+							break;
+					}
+				}
+				finally {
+					clearTimeout(state.value);
+				}
+			}
+		}
+
+		function* Component(this: Context): Generator<Element> {
+			let text = "foo";
+			let timer = this.addExtension(setTimeoutExtension(() => {
+				text = "bar";
+				this.refresh();
+			}, 100));
+			let timer2 = this.addExtension(setTimeoutExtension(() => {
+				text = "baz";
+				this.refresh();
+			}, 200));
+			let timer3 = this.addExtension(setTimeoutExtension(() => {
+				text = "oh no";
+				this.refresh();
+			}, 300));
+
+			for (const _ of this) {
+				clearTimeout(timer3.value);
+				yield (
+					<div>{text}</div>
+				)
+			}
+		}
+
+		renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual(
+			'<div>foo</div>'
+		);
+		jest.advanceTimersByTime(110);
+		expect(document.body.innerHTML).toEqual(
+			'<div>bar</div>'
+		);
+		jest.advanceTimersByTime(101);
+		expect(document.body.innerHTML).toEqual(
+			'<div>baz</div>'
+		);
+		jest.advanceTimersByTime(101);
+		expect(document.body.innerHTML).toEqual(
+			'<div>baz</div>'
+		);
+		
+
+	})
 });

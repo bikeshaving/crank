@@ -92,6 +92,11 @@ export type Portal = typeof Portal;
 export const Raw = Symbol.for("crank.Raw") as any;
 export type Raw = typeof Raw;
 
+export type StateRef<TState> = {
+	value: TState | undefined;
+};
+export type Extension<TState> = (this: Context, props: any, state: StateRef<TState>) => AsyncGenerator<TState>;
+
 declare global {
 	module JSX {
 		interface IntrinsicElements {
@@ -663,6 +668,9 @@ class ComponentNode<T> extends ParentNode<T> {
 	readonly ctx: Context;
 	private available = true;
 	private iterator: ChildIterator | undefined = undefined;
+	private extensions: AsyncGenerator<any>[] = [];
+	private inExtensionSetup: boolean = false;
+	private refreshCounter = 0;
 	// TODO: explain these properties
 	private componentType: ComponentType | undefined = undefined;
 	private inflightPending: MaybePromise<undefined> = undefined;
@@ -671,7 +679,7 @@ class ComponentNode<T> extends ParentNode<T> {
 	private enqueuedResult: MaybePromise<undefined> = undefined;
 	private previousResult: MaybePromise<undefined> = undefined;
 	private provisions: Map<unknown, any> | undefined = undefined;
-	private publish: ((props: Props) => unknown) | undefined = undefined;
+	private publishes: ((props: Props) => unknown)[] = [];
 	constructor(
 		parent: ParentNode<T>,
 		renderer: Renderer<T>,
@@ -766,45 +774,54 @@ class ComponentNode<T> extends ParentNode<T> {
 			return;
 		}
 
-		if (this.publish === undefined) {
-			this.available = true;
-		} else {
-			this.publish(this.props!);
-			this.publish = undefined;
-		}
+		this.refreshCounter++;
+		let publishes = this.publishes;
+		this.publishes = [];
+		publishes.forEach(publish => publish(this.props!));
 
 		return this.run();
 	}
 
 	*[Symbol.iterator](): Generator<Props> {
+		let inExtension = this.inExtensionSetup;
 		while (!this.unmounted) {
-			if (this.iterating) {
-				throw new Error("You must yield once per iteration over context");
-			} else if (this.componentType === AsyncGen) {
-				throw new Error("Use for await...of in async generator components.");
+			if (!inExtension) {
+				if (this.iterating) {
+					throw new Error("You must yield once per iteration over context");
+				} else if (this.componentType === AsyncGen) {
+					throw new Error("Use for await...of in async generator components.");
+				}
+
+				this.iterating = true;
 			}
 
-			this.iterating = true;
 			yield this.props!;
 		}
 	}
 
 	async *[Symbol.asyncIterator](): AsyncGenerator<Props> {
+		let inExtension = this.inExtensionSetup;
+		let lastRefreshCounter = -1;
 		do {
-			if (this.iterating) {
-				throw new Error("You must yield once per iteration over context");
-			} else if (this.componentType === SyncGen) {
-				throw new Error("Use for...of in sync generator components.");
+			if (!inExtension) {
+				if (this.iterating) {
+					throw new Error("You must yield once per iteration over context");
+				} else if (this.componentType === SyncGen) {
+					throw new Error("Use for...of in sync generator components.");
+				}
+				
+				this.iterating = true;
 			}
 
-			this.iterating = true;
-			if (this.available) {
+			if (this.refreshCounter > lastRefreshCounter) {
+				lastRefreshCounter = this.refreshCounter;
 				this.available = false;
 				yield this.props!;
 			} else {
 				const props = await new Promise<Props>(
-					(resolve) => (this.publish = resolve),
+					(resolve) => (this.publishes.push(resolve)),
 				);
+				lastRefreshCounter = this.refreshCounter;
 				if (!this.unmounted) {
 					yield props;
 				}
@@ -861,10 +878,8 @@ class ComponentNode<T> extends ParentNode<T> {
 			this.finished = true;
 			// TODO: maybe we should return the async iterator rather than
 			// republishing props
-			if (this.publish !== undefined) {
-				this.publish(this.props!);
-				this.publish = undefined;
-			}
+			this.publishes.forEach(publish => publish(this.props!));
+			this.publishes = [];
 
 			if (this.iterator !== undefined && this.iterator.return) {
 				return new Pledge(() => this.iterator!.return!())
@@ -923,6 +938,24 @@ class ComponentNode<T> extends ParentNode<T> {
 
 		this.provisions.set(name, value);
 	}
+
+	addExtension<TState>(extension: Extension<TState>): StateRef<TState>{
+		const stateRef: StateRef<TState> = {
+			value: undefined,
+		};
+
+		this.inExtensionSetup = true;
+		try {
+			let generator = extension.bind(this.ctx)(this.props, stateRef);
+			this.extensions.push(generator);
+			generator.next();
+		}
+		finally {
+			this.inExtensionSetup = false;
+		}
+
+		return stateRef;
+	}
 }
 
 function createNode<T>(
@@ -956,6 +989,7 @@ export interface ProvisionMap {}
 
 const componentNodes = new WeakMap<Context, ComponentNode<any>>();
 export class Context extends CrankEventTarget {
+
 	constructor(host: ComponentNode<any>, parent?: Context) {
 		super(parent);
 		componentNodes.set(this, host);
@@ -985,6 +1019,10 @@ export class Context extends CrankEventTarget {
 
 	refresh(): MaybePromise<undefined> {
 		return componentNodes.get(this)!.refresh();
+	}
+
+	addExtension<TState>(extension: Extension<TState>): StateRef<TState> {
+		return componentNodes.get(this)!.addExtension(extension);
 	}
 }
 
