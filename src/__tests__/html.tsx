@@ -52,12 +52,28 @@ describe("render", () => {
 		expect(
 			renderer.render(
 				<Fragment>
-					<input id="toggle" type="checkbox" checked data-checked />
+					<input id="toggle" type="checkbox" checked data-checked foo={false} />
 					<label for="toggle" />
 				</Fragment>,
 			),
 		).toEqual(
 			'<input id="toggle" type="checkbox" checked data-checked><label for="toggle"></label>',
+		);
+	});
+
+	test("styles", () => {
+		expect(
+			renderer.render(
+				<Fragment>
+					<div style={{color: "red"}} />
+					<img
+						src="x"
+						style={{xss: 'foo;" onerror="alert(\'hack\')" other="'}}
+					/>
+				</Fragment>,
+			),
+		).toEqual(
+			'<div style="color:red;"></div><img src="x" style="xss:foo;&quot; onerror=&quot;alert(&#039;hack&#039;)&quot; other=&quot;;">',
 		);
 	});
 
