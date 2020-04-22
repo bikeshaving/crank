@@ -58,8 +58,8 @@ function printAttrs(props: IntrinsicProps<string>): string {
 			case typeof value === "number":
 				attrs.push(`${escapeText(name)}="${value}"`);
 				break;
-			case typeof value === "boolean":
-				if (value) attrs.push(`${escapeText(name)}`);
+			case value === true:
+				attrs.push(`${escapeText(name)}`);
 				break;
 		}
 	}
