@@ -1969,7 +1969,7 @@ describe("extensions", () => {
 	test("extension with single setup and teardown", async () => {
 
 		let cleanupHappened = false;
-		async function* extension(this: Context, props: {}, state: StateRef<boolean>): AsyncGenerator<boolean> {
+		function* extension(this: Context, props: {}, state: StateRef<boolean>): Generator<boolean, any, boolean> {
 			state.value = false;
 			let timer = setTimeout(() => {
 				state.value = true;
@@ -1977,8 +1977,8 @@ describe("extensions", () => {
 			}, 200);
 
 			try {
-				for await (props of this) {
-					// pass
+				for (props of this) {
+					yield state.value!;
 				}
 			}
 			finally {
@@ -2017,16 +2017,18 @@ describe("extensions", () => {
 	test("setTimeout extension", async () => {
 		type State = number;
 		function setTimeoutExtension(cb: () => void, ms: number) {
-			return async function* extension(this: Context, props: {}, state: StateRef<State>): AsyncGenerator<State> {
+			return function* extension(this: Context, props: {}, state: StateRef<State>): Generator<State, any, State> {
 				let completed = false;
 				state.value = setTimeout(() => {
 					cb();
+					completed = true;
 				}, ms) as any;
 
 				try {
-					for await (props of this) {
-						if (completed = true)
+					for (props of this) {
+						if (completed)
 							break;
+						yield state.value!;
 					}
 				}
 				finally {
@@ -2058,11 +2060,12 @@ describe("extensions", () => {
 			}
 		}
 
-		renderer.render(<Component />, document.body);
+		renderer.render(<Component />,document.body);
+		jest.advanceTimersByTime(1);
 		expect(document.body.innerHTML).toEqual(
 			'<div>foo</div>'
 		);
-		jest.advanceTimersByTime(110);
+		jest.advanceTimersByTime(101);
 		expect(document.body.innerHTML).toEqual(
 			'<div>bar</div>'
 		);
@@ -2074,7 +2077,56 @@ describe("extensions", () => {
 		expect(document.body.innerHTML).toEqual(
 			'<div>baz</div>'
 		);
-		
+	});
+	test("extension and component both receive prop updates together", async () => {
+		type State = string;
+		function propComparer(propName: string) {
+			return function* extension(this: Context, props: any, state: StateRef<State>): Generator<State, any, State> {
+				let prev = props[propName];
+				state.value = "no changes";
 
-	})
+				for (props of this) {
+					debugger;
+					let current = props[propName];
+					let message = current === prev ? "no changes" : `changed from '${prev}' to '${current}'`;
+					prev = current;
+					yield message;
+				}
+			}
+		}
+
+		function* Component(this: Context): Generator<Element> {
+
+			let compareMessage = this.addExtension(propComparer("name"));
+
+			for (const {name} of this) {
+				debugger;
+				yield (
+					<div>Name: {name}. {compareMessage.value}</div>
+				)
+			}
+
+		}
+
+		renderer.render(<Component name="John" />, document.body);
+		jest.runAllTimers();
+		await smallSleep();
+		expect(document.body.innerHTML).toEqual(
+			'<div>Name: John. no changes</div>'
+		);
+		debugger;
+
+		renderer.render(<Component name="Frank" />, document.body);
+		await smallSleep();
+		expect(document.body.innerHTML).toEqual(
+			"<div>Name: Frank. changed from 'John' to 'Frank'</div>"
+		);
+		debugger;
+
+		renderer.render(<Component name="Frank" />, document.body);
+		await smallSleep();
+		expect(document.body.innerHTML).toEqual(
+			'<div>Name: Frank. no changes</div>'
+		);
+	});
 });

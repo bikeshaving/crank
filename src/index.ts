@@ -95,7 +95,8 @@ export type Raw = typeof Raw;
 export type StateRef<TState> = {
 	value: TState | undefined;
 };
-export type Extension<TState> = (this: Context, props: any, state: StateRef<TState>) => AsyncGenerator<TState>;
+export type Extension<TState> = (this: Context, props: any, state: StateRef<TState>) 
+	=> Generator<TState, any, TState>;
 
 declare global {
 	module JSX {
@@ -164,6 +165,10 @@ function* flatten(children: Children): Generator<NormalizedChild> {
 			yield normalize(child);
 		}
 	}
+}
+
+function yieldControl(): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 // This union exists because we needed to discriminate between leaf and parent
@@ -660,6 +665,12 @@ type AsyncGen = typeof AsyncGen;
 
 type ComponentType = SyncFn | AsyncFn | SyncGen | AsyncGen;
 
+type RunningExtension = {
+	iterator: Generator<any, undefined, any>;
+	state: StateRef<any>;
+	step: () => void;
+}
+
 class ComponentNode<T> extends ParentNode<T> {
 	readonly tag: Component;
 	readonly key: Key;
@@ -668,7 +679,7 @@ class ComponentNode<T> extends ParentNode<T> {
 	readonly ctx: Context;
 	private available = true;
 	private iterator: ChildIterator | undefined = undefined;
-	private extensions: AsyncGenerator<any>[] = [];
+	private extensions: RunningExtension[] = [];
 	private inExtensionSetup: boolean = false;
 	private refreshCounter = 0;
 	// TODO: explain these properties
@@ -720,6 +731,7 @@ class ComponentNode<T> extends ParentNode<T> {
 		const previousValue = Pledge.resolve(this.previousResult)
 			.then(() => this.value)
 			.execute();
+		this.extensions.forEach(e => e.step());
 		const iteration = new Pledge(() => this.iterator!.next(previousValue))
 			.catch((err) => {
 				// TODO: figure out why this is written like this
@@ -778,7 +790,7 @@ class ComponentNode<T> extends ParentNode<T> {
 		let publishes = this.publishes;
 		this.publishes = [];
 		publishes.forEach(publish => publish(this.props!));
-
+		
 		return this.run();
 	}
 
@@ -878,9 +890,11 @@ class ComponentNode<T> extends ParentNode<T> {
 			this.finished = true;
 			// TODO: maybe we should return the async iterator rather than
 			// republishing props
-			this.publishes.forEach(publish => publish(this.props!));
+			const publishes = this.publishes;
 			this.publishes = [];
+			publishes.forEach(publish => publish(this.props!));
 
+			this.extensions.forEach(e => e.iterator.return(undefined));
 			if (this.iterator !== undefined && this.iterator.return) {
 				return new Pledge(() => this.iterator!.return!())
 					.then(
@@ -940,21 +954,35 @@ class ComponentNode<T> extends ParentNode<T> {
 	}
 
 	addExtension<TState>(extension: Extension<TState>): StateRef<TState>{
-		const stateRef: StateRef<TState> = {
+		const state: StateRef<TState> = {
 			value: undefined,
 		};
 
 		this.inExtensionSetup = true;
 		try {
-			let generator = extension.bind(this.ctx)(this.props, stateRef);
-			this.extensions.push(generator);
-			generator.next();
+			let iterator = extension.bind(this.ctx)(this.props, state);
+			let runningExtension: RunningExtension = {
+				iterator,
+				state,
+				step: () => {
+					let result = iterator.next();
+					state.value = result.value;
+					if (result.done) {
+						let index = this.extensions.indexOf(runningExtension);
+						if (index > -1)
+							this.extensions.splice(index, 1);
+					}
+				}
+			}
+			this.extensions.push(runningExtension);
+			runningExtension.step();
+			debugger;
 		}
 		finally {
 			this.inExtensionSetup = false;
 		}
 
-		return stateRef;
+		return state;
 	}
 }
 
