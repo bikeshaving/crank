@@ -2086,7 +2086,6 @@ describe("extensions", () => {
 				state.value = "no changes";
 
 				for (props of this) {
-					debugger;
 					let current = props[propName];
 					let message = current === prev ? "no changes" : `changed from '${prev}' to '${current}'`;
 					prev = current;
@@ -2100,7 +2099,6 @@ describe("extensions", () => {
 			let compareMessage = this.addExtension(propComparer("name"));
 
 			for (const {name} of this) {
-				debugger;
 				yield (
 					<div>Name: {name}. {compareMessage.value}</div>
 				)
@@ -2114,14 +2112,12 @@ describe("extensions", () => {
 		expect(document.body.innerHTML).toEqual(
 			'<div>Name: John. no changes</div>'
 		);
-		debugger;
 
 		renderer.render(<Component name="Frank" />, document.body);
 		await smallSleep();
 		expect(document.body.innerHTML).toEqual(
 			"<div>Name: Frank. changed from 'John' to 'Frank'</div>"
 		);
-		debugger;
 
 		renderer.render(<Component name="Frank" />, document.body);
 		await smallSleep();

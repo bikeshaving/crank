@@ -976,7 +976,6 @@ class ComponentNode<T> extends ParentNode<T> {
 			}
 			this.extensions.push(runningExtension);
 			runningExtension.step();
-			debugger;
 		}
 		finally {
 			this.inExtensionSetup = false;
