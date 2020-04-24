@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Crank.js | Asynchronous Components</title><link rel="stylesheet" href="/index.css.css"></head><body><nav id="navbar" class="navbar"><div class="navbar-group"><div class="navbar-item"><a class href="/">Crank.js</a></div><div class="navbar-item"><a class="current" href="/guides/getting-started">Docs</a></div><div class="navbar-item"><a class href="/blog/">Blog</a></div></div><div class="navbar-group"><div class="navbar-item"><a href="https://github.com/bikeshaving/crank">GitHub</a></div><div class="navbar-item"><a href="http://npm.im/@bikeshaving/crank">NPM</a></div></div></nav><div id="sidebar" class="sidebar"><h3>Guides</h3><div class="sidebar-item"><a href="/guides/getting-started" class="">Getting Started</a></div><div class="sidebar-item"><a href="/guides/elements" class="">JSX, Elements and Renderers</a></div><div class="sidebar-item"><a href="/guides/components" class="">Components</a></div><div class="sidebar-item"><a href="/guides/async-components" class="current">Asynchronous Components</a></div><div class="sidebar-item"><a href="/guides/special-tags-and-props" class="">Special Props and Tags</a></div><div class="sidebar-item"><a href="/guides/working-with-typescript" class="">Working with TypeScript</a></div></div><div class="main"><div class="content"><h1>Asynchronous Components</h1><h2 id="async-function-components">Async function components</h2>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Crank.js | Async Components</title><link rel="stylesheet" href="/index.css.css"></head><body><nav id="navbar" class="navbar"><div class="navbar-group"><div class="navbar-item"><a class href="/">Crank.js</a></div><div class="navbar-item"><a class="current" href="/guides/getting-started">Docs</a></div><div class="navbar-item"><a class href="/blog/">Blog</a></div></div><div class="navbar-group"><div class="navbar-item"><a href="https://github.com/bikeshaving/crank">GitHub</a></div><div class="navbar-item"><a href="http://npm.im/@bikeshaving/crank">NPM</a></div></div></nav><div id="sidebar" class="sidebar"><h3>Guides</h3><div class="sidebar-item"><a href="/guides/getting-started" class="">Getting Started</a></div><div class="sidebar-item"><a href="/guides/elements" class="">JSX, Elements and Renderers</a></div><div class="sidebar-item"><a href="/guides/components" class="">Components</a></div><div class="sidebar-item"><a href="/guides/async-components" class="current">Async Components</a></div><div class="sidebar-item"><a href="/guides/special-tags-and-props" class="">Special Props and Tags</a></div><div class="sidebar-item"><a href="/guides/lifecycles" class="">Lifecycles</a></div><div class="sidebar-item"><a href="/guides/working-with-typescript" class="">Working with TypeScript</a></div></div><div class="main"><div class="content"><h1>Async Components</h1><h2 id="async-function-components">Async function components</h2>
 <p>So far, every component we’ve seen has worked synchronously, and Crank will respect this as an intentional decision by rendering your components synchronously from start to finish. However, modern JavaScript includes promises and <code>async</code>/<code>await</code>, allowing you to write concurrently executing code as if it were synchronous. To facilitate this style of code, Crank allows components to be asynchronous functions as well.</p>
 <pre><code class="language-jsx">async function IPAddress () {
   const res = await fetch(&quot;https://api.ipify.org&quot;);
@@ -27,12 +27,13 @@
   await p1;
   console.log(document.body.innerHTML); // &quot;Run 1&quot;
   const p2 = renderer.render(&lt;Delay message=&quot;Run 2&quot; /&gt;, document.body);
-  // this render is skipped because the second render is still pending
+  // These renders are enqueued because the second render is still pending.
   const p3 = renderer.render(&lt;Delay message=&quot;Run 3&quot; /&gt;, document.body);
   const p4 = renderer.render(&lt;Delay message=&quot;Run 4&quot; /&gt;, document.body);
   console.log(document.body.innerHTML); // &quot;Run 1&quot;
   await p2;
   console.log(document.body.innerHTML); // &quot;Run 2&quot;
+  // By the time the third render fulfills, the fourth render has already completed.
   await p3;
   console.log(document.body.innerHTML); // &quot;Run 4&quot;
   await p4;
@@ -73,8 +74,12 @@ async function Slow() {
   await new Promise((resolve) =&gt; setTimeout(resolve, 2000));
   console.log(document.body.innerHTML); // &quot;&lt;div&gt;&lt;span&gt;Fast&lt;/span&gt;&lt;/div&gt;&quot;
 })();</code></pre>
-<h3 id="components-with-async-children">Components with async children</h3>
-<p>When Crank encounters an async component anywhere in the element tree, the entire rendering process becomes asynchronous. Therefore, async child components make parent components asynchronous, and sync function and generator components behave differently when they produce async children. On the one hand, sync function components transparently pass updates along to async children, so that when a renderer updates a sync function component concurrently, its async children will also enqueue an update immediately. On the other hand, sync generator components which produce async elements will not resume until those async children have fulfilled. This is because sync generators expect to be resumed after their children have rendered, and the actual DOM nodes which are created are passed back into the generator, but they wouldn’t be available if the generator was concurrently resumed before the async children had settled.</p>
+<!--
+TODO: this section is too hard to understand and requires code examples so we’re removing it for now.
+### Components with async children 
+When Crank encounters an async component anywhere in the element tree, the entire rendering process becomes asynchronous. Therefore, async child components make parent components asynchronous, and sync function and generator components behave differently when they produce async children. On the one hand, sync function components transparently pass updates along to async children, so that when a renderer updates a sync function component concurrently, its async children will also enqueue an update immediately. On the other hand, sync generator components which produce async elements will not resume until those async children have fulfilled. This is because sync generators expect to be resumed after their children have rendered, and the actual DOM nodes which are created are passed back into the generator, but they wouldn’t be available if the generator was concurrently resumed before the async children had settled.
+-->
+
 <h2 id="async-generator-components">Async generator components</h2>
 <p>Just as you can write stateful components with sync generator functions, you can also write stateful async components with async generator functions.</p>
 <pre><code class="language-jsx">async function *AsyncLabeledCounter ({message}) { 
@@ -178,5 +183,5 @@ async function *Suspense({timeout, fallback, children}) {
     document.body,
   );
 })();</code></pre>
-<p>As you can see, with Crank, no special tags are needed for async loading states, and the functionality to write this complex logic is implemented using the same element diffing algorithm that governs synchronous components. This approach is also more flexible in the sense that you can extend it for instance, to include a second fallback state which fulfills after ten seconds, which might inform the user that something went wrong or that servers are slow to respond. Best of all, you can use async/await directly in your components!</p>
+<p>As you can see, with Crank, no special tags are needed for async loading states, and the functionality to write this complex logic is implemented using the same element diffing algorithm that governs synchronous components. This approach is also more flexible in the sense that you can extend it, for instance, to include a second fallback state which fulfills after ten seconds, which might inform the user that something went wrong or that servers are slow to respond. Best of all, you can use async/await directly in your components!</p>
 </div></div><script src="/index.tsx.js"></script></body></html>
