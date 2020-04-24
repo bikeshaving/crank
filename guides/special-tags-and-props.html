@@ -46,18 +46,18 @@ renderer.render(&lt;Shuffler /&gt;, document.body);
 console.log(document.body.innerHTML);
 // &quot;&lt;div&gt;&lt;span&gt;0&lt;/span&gt;&lt;span&gt;1&lt;/span&gt;&lt;span&gt;2&lt;/span&gt;&lt;span&gt;3&lt;/span&gt;&lt;/div&gt;&quot;;
 
-const span0 = document.body.firstChild.firstChild;
+const span = document.body.firstChild.firstChild;
 
 renderer.render(&lt;Shuffler /&gt;, document.body);
 console.log(document.body.innerHTML);
 // &quot;&lt;div&gt;&lt;span&gt;3&lt;/span&gt;&lt;span&gt;2&lt;/span&gt;&lt;span&gt;1&lt;/span&gt;&lt;span&gt;0&lt;/span&gt;&lt;/div&gt;&quot;;
 
-console.log(document.firstChild.lastChild === el0); // true
+console.log(document.firstChild.lastChild === span); // true
 renderer.render(&lt;Shuffler /&gt;, document.body);
 console.log(document.body.innerHTML);
 // &quot;&lt;div&gt;&lt;span&gt;0&lt;/span&gt;&lt;span&gt;1&lt;/span&gt;&lt;span&gt;2&lt;/span&gt;&lt;span&gt;3&lt;/span&gt;&lt;/div&gt;&quot;;
 
-console.log(document.firstChild.firstChild === el0); // true</code></pre>
+console.log(document.firstChild.firstChild === span); // true</code></pre>
 <h2 id="special-tags">Special Tags</h2>
 <p>Crank provides several element tags which have special meaning when rendering. In actuality, these tags are symbols and behave similarly to string tags, except they affect the diffing algorithm and output.</p>
 <h3 id="fragment">Fragment</h3>
