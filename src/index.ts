@@ -840,7 +840,6 @@ class ComponentNode<T> extends ParentNode<T> {
 
 	commit(): undefined {
 		const childValues = this.getChildValues();
-		this.ctx.setDelegates(childValues);
 		this.value = childValues.length > 1 ? childValues : childValues[0];
 		if (!this.updating) {
 			// TODO: batch this per macrotask

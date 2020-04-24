@@ -535,17 +535,17 @@ describe("sync generator component", () => {
 	test("events", () => {
 		function* Component(this: Context): Generator<Element> {
 			let count = 0;
-			this.addEventListener("click", (ev) => {
-				if ((ev.target as HTMLElement).id === "button") {
-					count++;
-					this.refresh();
-				}
-			});
+			const onClick = () => {
+				count++;
+				this.refresh();
+			};
 
 			for (const _ of this) {
 				yield (
 					<div>
-						<button id="button">Click me</button>
+						<button onclick={onClick} id="button">
+							Click me
+						</button>
 						<span>Button has been clicked {count} times</span>
 					</div>
 				);

@@ -46,41 +46,8 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 	// type -> capture -> listener record
 	// for efficient querying
 	private listeners: EventListenerRecord[] = [];
-	private delegates: Set<EventTarget> = new Set();
 	constructor(private parent?: CrankEventTarget) {
 		super();
-	}
-
-	setDelegates(delegates: Iterable<unknown>) {
-		const delegates1 = new Set(Array.from(delegates).filter(isEventTarget));
-		const removed = new Set(
-			Array.from(this.delegates).filter((d) => !delegates1.has(d)),
-		);
-		const added = new Set(
-			Array.from(delegates1).filter((d) => !this.delegates.has(d)),
-		);
-
-		for (const delegate of removed) {
-			for (const listener of this.listeners) {
-				delegate.removeEventListener(
-					listener.type,
-					listener.callback,
-					listener.options,
-				);
-			}
-		}
-
-		for (const delegate of added) {
-			for (const listener of this.listeners) {
-				delegate.addEventListener(
-					listener.type,
-					listener.callback,
-					listener.options,
-				);
-			}
-		}
-
-		this.delegates = delegates1;
 	}
 
 	addEventListener<T extends string>(
@@ -119,10 +86,6 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 			}
 		}
 
-		for (const delegate of this.delegates) {
-			delegate.addEventListener(type, callback, options);
-		}
-
 		return super.addEventListener(type, callback, options);
 	}
 
@@ -147,9 +110,6 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 		const record = this.listeners[idx];
 		if (record !== undefined) {
 			this.listeners.splice(idx, 1);
-		}
-		for (const delegate of this.delegates) {
-			delegate.removeEventListener(type, callback, options);
 		}
 
 		return super.removeEventListener(type, callback, options);
