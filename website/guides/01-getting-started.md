@@ -17,7 +17,7 @@ import {renderer} from "@bikeshaving/crank/dom";
 renderer.render(<div id="hello">Hello world</div>, document.body);
 ```
 
-If your environment does not support ESModules (you’ll probably see a message like `SyntaxError: Unexpected token export`), you can import the CommonJS versions of the library like so:
+If your environment does not support ESModules (you’ll probably see a message like `SyntaxError: Unexpected token export`), you can import the CommonJS versions of the library under the `cjs` directory.
 
 ```jsx
 /** @jsx createElement */
