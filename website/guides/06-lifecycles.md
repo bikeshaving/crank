@@ -1,10 +1,10 @@
 ---
-title: Generator Lifecycles
+title: Lifecycles
 ---
 
-Crank uses the full power and expressiveness of generator functions to encapsulate lifecycles within the same variable scope. Internally, this is achieved by calling the calling the `next`, `return` and `throw` methods of the generator object as components are rendered and removed from the tree. As a developer, you can use the `yield`, `return`, `try`, `catch`, and `finally` keywords within your generator components to take advantage of your generator’s natural lifecycle.
+Crank uses the full power and expressiveness of generator functions to encapsulate the notion of lifecycles within the same scope. Internally, Crank achieves this by calling the calling the `next`, `return` and `throw` methods of the generator object as components are inserted, updated and removed from the element tree. As a developer, you can use the `yield`, `return`, `try`, `catch`, and `finally` keywords within your generator components to take full advantage of the generator’s natural lifecycle.
 
-### Returning from a generator
+## Returning from a generator
 
 Usually, you’ll yield in generator components so that they can continue to respond to updates, but you may want to also `return` a final state. Unlike function components, which are called and returned once for each update, once a generator component returns, it will never update again.
 
@@ -46,9 +46,9 @@ renderer.render(<Numbers />, document.body);
 console.log(document.body.innerHTML); // "1"
 ```
 
-### Cleaning up after your components are removed
+## Cleaning up after your components are removed
 
-When a generator component is removed from the tree, Crank calls the `return` method on the generator object. You can think of it as whatever `yield` expression your component was suspended on being replaced by a `return` statement. This means that any loops that you were in when the generator was suspended will be broken. You can take advantage of this behavior by wrapping your `yield` loops in a `try`/`finally` to release any resources that your component may have used.
+When a generator component is removed from the tree, Crank calls the `return` method on the generator object. You can think of it as whatever `yield` expression your component was suspended on being replaced by a `return` statement. This means that any loops that you were in when the generator was suspended is broken out of and no code after the . You can take advantage of this behavior by wrapping your `yield` loops in a `try`/`finally` to release any resources that your component may have used.
 
 ```jsx
 function *Cleanup() {
@@ -70,7 +70,7 @@ console.log(document.body); // ""
 
 [The same best practices](https://eslint.org/docs/rules/no-unsafe-finally) which apply to `try`/`finally` blocks with regular `return` statements apply to generators. In short, you should not yield or return anything in the `finally` block, Crank will not use these values and you might inadvertently swallow errors in your code or suspend your component in an unexpected location.
 
-### Catching errors thrown by children 
+## Catching errors thrown by children 
 We all make mistakes, and it can be useful to catch errors in our components so that we can show the user something or notify error-logging services. To facilitate this, Crank will catch errors thrown when rendering child elements and throw them back into parent generator components by calling the `throw` method on the generator object. You can imagine that the most recently suspended `yield` expression is replaced with a `throw` statement with the error set to whatever was thrown during rendering. You can take advantage of this behavior by wrapping your `yield` operations in a `try`/`catch` block to catch errors caused by children.
  
 ```jsx
@@ -124,8 +124,8 @@ console.log(document.body.innerHTML); // "<div>I’ll be back</div>"
 
 Note that you can’t catch or recover from errors thrown from within the generator themselves, the yield operator only throws errors which were thrown in the course of rendering child elements.
 
-### Accessing rendered values
-Sometimes, the declarative rendering of DOM nodes is not enough, and you’ll want to access the actual DOM nodes you’ve rendered, to make measurements or call imperative methods like `el.focus()`, for instance. To facilitate this, Crank will pass rendered DOM nodes back into the generator using the `next` method, so `yield` expressions can be read and assigned to access the actual renkdered DOM nodes.
+## Accessing rendered values
+Sometimes, the declarative rendering of DOM nodes is not enough, and you’ll want to access the actual DOM nodes you’ve rendered, to make measurements or call imperative methods like `el.focus()`, for instance. To facilitate this, Crank will pass rendered DOM nodes back into the generator using the `next` method, so `yield` expressions can be read and assigned to access the actual rendered DOM nodes.
 
 ```jsx
 async function *MyInput(props) {
@@ -137,4 +137,6 @@ async function *MyInput(props) {
 }
 ```
 
-The above component focuses every time it is rendered. You might notice that we use an async generator component 
+The above component focuses every time it is rerendered. You might notice that we use an async generator component here. That’s because async generators continuously resume, and rely on the `for await` loop to await new updates.
+
+**TODO: Design APIs/Document them for working with yield expressions in sync generators.**

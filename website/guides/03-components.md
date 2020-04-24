@@ -272,7 +272,6 @@ function MyButton(props) {
 }
 
 function MyButtons() {
-  
   return [1, 2, 3, 4, 5].map((i) => (
     <div> 
       <MyButton id={"button" + i}>Button {i}</MyButton>
