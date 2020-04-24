@@ -5,7 +5,7 @@ title: JSX, Elements and Renderers
 
 **Note for React developers:** If you’re familiar with how JSX and elements work in React, you may want to skip ahead to the section on components. Elements in Crank work almost exactly as they do in React.
 
-Crank is best used with [JSX](https://facebook.github.io/jsx/), an XML-like syntax extension to JavaScript. Crank is designed to work with both the Babel and TypeScript parsers out-of-box; all you need to do is enable JSX parsing, import the `createElement` function from Crank, and include a `@jsx` comment directive (`/** @jsx createElement */`). The parser will then transpile JSX into `createElement` calls. For example, in the code below, the JSX expression assigned to `el` transpiles to the `createElement` call assigned to `el1`.
+Crank is best used with [JSX](https://facebook.github.io/jsx/), an XML-like syntax extension to JavaScript. Crank is designed to work with transpilers like Babel and TypeScript out-of-box; all you need to do is enable JSX parsing, import the `createElement` function, and include a `@jsx` comment directive (`/** @jsx createElement */`). The parser will then transpile JSX into `createElement` calls. For example, in the code below, the JSX expression assigned to `el` transpiles to the `createElement` call assigned to `el1`.
 
 ```jsx
 /** @jsx createElement */
@@ -16,7 +16,7 @@ const el = <div id="element">An element</div>;
 const el1 = createElement("div", {id: "element"}, "An element");
 ```
 
-The `createElement` function returns an *element*, a plain old JavaScript object. Elements on their own don’t do anything special; rather, Crank provides special classes called *renderers* which interpret elements to produce and manage DOM nodes, HTML strings, canvas scene graphs, or whatever else you can think of. Crank ships with two renderers for web development, one for managing DOM nodes, available through the module `@bikeshaving/crank/dom`, and one for creating HTML strings, available through the module `@bikeshaving/crank/html`. You can use these modules to render interactive user interfaces on the client and HTML responses on the server.
+The `createElement` function returns an *element*, a plain old JavaScript object. Elements on their own don’t do anything special; rather, Crank provides special classes called *renderers* which interpret elements to produce and manage DOM nodes, HTML strings, canvas scene graphs, or whatever else you can think of. Crank ships with two renderers for web development: one for managing DOM nodes, available through the module `@bikeshaving/crank/dom`, and one for creating HTML strings, available through the module `@bikeshaving/crank/html`. You can use these modules to render interactive user interfaces on the client and HTML responses on the server.
 
 ```jsx
 /** @jsx createElement */
@@ -31,11 +31,11 @@ console.log(node.innerHTML); // <div id="element">Hello world</div>
 console.log(HTMLRenderer.render(el)); // <div id="element">Hello world</div>
 ```
 
-## The parts of an element.
+## The parts of an element
 
 ![Image of a JSX element](../static/parts-of-jsx.svg)
 
-An element can be thought of as having three main parts: a *tag*, *props* and *children*. These roughly correspond to tags, attributes and content, the parts of an HTML element, and for the most part, you can copy-paste HTML into JavaScript and have things work as you would expect. The main difference is that JSX has to be well-balanced like XML, so void tags must have a closing slash (`<input />` not `<input>`). Also, if you forget to close an element, the parser will throw an error, whereas with HTML, your tags can be unbalanced or malformed and mostly still work. The advantage of using JSX is that it allows arbitrary JavaScript expressions to be interpolated into elements as the tag, props or children, which means you can use syntax which looks like HTML/XML seamlessly within JavaScript.
+An element can be thought of as having three main parts: a *tag*, *props* and *children*. These roughly correspond to tags, attributes and content in HTML, and for the most part, you can copy-paste HTML into JavaScript and have things work as you would expect. The main difference is that JSX has to be well-balanced like XML, so void tags must have a closing slash (`<input />` not `<input>`). Also, if you forget to close an element or mismatch opening and closing tags, the parser will throw an error, whereas HTML can contain unbalanced or malformed tags and mostly still work. The advantage of using JSX is that it allows arbitrary JavaScript expressions to be interpolated into elements as its tag, props or children, meaning you can use syntax which looks like HTML seamlessly within JavaScript.
 
 ### Tags
 ```jsx
@@ -48,7 +48,7 @@ const componentEl = <Component />;
 const componentEl1 = createElement(Component);
 ```
 
-Tags are the first part of an element expression, surrounded by angle brackets, and can be thought of as the name or type of the element. By convention, JSX parsers treat lower-cased tags as strings and capitalized tags as variables. When a tag is a string, this signifies that the element will be handled by the renderer. In Crank, we call elements with string tags *intrinsic* or *host* elements, and for both of the web renderers, these elements correspond to actual HTML elements like `div` or `input`. As we’ll see later, elements can also have function tags, in which case the behavior of the element is defined by the execution of the referenced function and not the renderer. These elements are called *component elements*.
+Tags are the first part of an element expression, surrounded by angle brackets, and can be thought of as the name or type of the element. By convention, JSX parsers treat lower-cased tags as strings and capitalized tags as variables. When a tag is a string, this signifies that the element will be handled by the renderer. In Crank, we call elements with string tags *intrinsic* elements, and for both of the web renderers, these elements correspond to actual HTML elements like `div` or `input`. As we’ll see later, elements can also have function tags, in which case the behavior of the element is defined by the execution of the referenced function and not the renderer. These elements are called *component elements*.
 
 ### Props
 ```jsx
@@ -60,8 +60,7 @@ const el1 = createElement("div", {id: "my-id", "class": myClass});
 console.log(el.props); // {id: "my-id", "class": "my-class"}
 ```
 
-The attribute-like `key="value"` syntax in JSX is transpiled to a single object for each element. We call this object the *props* object, short for “properties.” The value of each prop is a string if the string-like syntax is used (`key="value"`), or it can be an interpolated JavaScript value if the value is placed within curly brackets (`key={value}`). Props are used by both intrinsic and component elements to pass values into them and can be thought of as named arguments.
-
+The attribute-like `key="value"` syntax in JSX is transpiled to a single object for each element. We call this object the *props* object, short for “properties.” The value of each prop is a string if the string-like syntax is used (`key="value"`), or it can be an interpolated JavaScript value if the value is placed within curly brackets (`key={value}`). Props are used by both intrinsic and component elements to pass values into them and can be thought of as the named arguments to the tag.
 
 ### Children
 ```jsx
@@ -80,7 +79,7 @@ const list1 = createElement("ul", null,
 console.log(list.props.children.length); // 2
 ```
 
-As with HTML, Crank elements can have contents, placed between its opening and closing tags. These contents are referred to as *children*. Because elements can have children which are also elements, elements can form a recursive tree of nodes.
+As with HTML, Crank elements can have contents, placed between its opening and closing tags. These contents are referred to as *children*. Because elements can have children which are also elements, elements can form a tree of nodes.
 
 ```jsx
 const el = <div>{"a"}{1 + 1}{true}{false}{null}{undefined}</div>;
@@ -99,7 +98,7 @@ console.log(document.body.innerHTML); // "<div>123 abc</div>"
 ```
 
 ## Element diffing
-Crank uses the same “virtual DOM diffing” algorithm made popular by React, where elements of the tree between renders are compared by tag and position, and subtrees whose root tags don’t match are thrown away. This allows you to write declarative code which focuses on producing the right element tree, while Crank does the dirty work of managing state and mutating the DOM.
+Crank uses the same “virtual DOM diffing” algorithm made popular by React, where elements of the tree are compared by tag and position between renders, and subtrees whose root tags don’t match are thrown away. This allows you to write declarative code which focuses on producing the right element tree, while Crank does the dirty work of managing state and mutating the DOM.
 
 ```jsx
 renderer.render(

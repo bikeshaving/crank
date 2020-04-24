@@ -1,5 +1,5 @@
 ---
-title: Asynchronous Components
+title: Async Components
 ---
 
 ## Async function components
