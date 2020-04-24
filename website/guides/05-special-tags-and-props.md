@@ -57,18 +57,18 @@ renderer.render(<Shuffler />, document.body);
 console.log(document.body.innerHTML);
 // "<div><span>0</span><span>1</span><span>2</span><span>3</span></div>";
 
-const span0 = document.body.firstChild.firstChild;
+const span = document.body.firstChild.firstChild;
 
 renderer.render(<Shuffler />, document.body);
 console.log(document.body.innerHTML);
 // "<div><span>3</span><span>2</span><span>1</span><span>0</span></div>";
 
-console.log(document.firstChild.lastChild === el0); // true
+console.log(document.firstChild.lastChild === span); // true
 renderer.render(<Shuffler />, document.body);
 console.log(document.body.innerHTML);
 // "<div><span>0</span><span>1</span><span>2</span><span>3</span></div>";
 
-console.log(document.firstChild.firstChild === el0); // true
+console.log(document.firstChild.firstChild === span); // true
 ```
 
 ## Special Tags

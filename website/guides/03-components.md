@@ -289,7 +289,7 @@ function *MyApp() {
   while (true) {
     yield (
       <div>
-        <Buttons />
+        <MyButtons />
         <div>Last pressed id: {lastId == null ? "N/A" : lastId}</div>
       </div>
     );
