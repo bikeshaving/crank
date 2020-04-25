@@ -2,7 +2,7 @@
 title: Lifecycles
 ---
 
-Crank uses the full power and expressiveness of generator functions to encapsulate the notion of lifecycles within the same variable scope. Internally, Crank achieves this by calling the calling the `next`, `return` and `throw` methods of the generator object as components are inserted, updated and removed from the element tree. As a developer, you can use the `yield`, `return`, `try`, `catch`, and `finally` keywords within your generator components to take full advantage of the generator’s natural lifecycle.
+Crank uses the full power and expressiveness of generator functions to encapsulate the notion of lifecycles within the same variable scope. Internally, Crank achieves this by calling the `next`, `return` and `throw` methods of the generator object as components are inserted, updated and removed from the element tree. As a developer, you can use the `yield`, `return`, `try`, `catch`, and `finally` keywords within your generator components to take full advantage of the generator’s natural lifecycle.
 
 ## Returning from a generator
 
