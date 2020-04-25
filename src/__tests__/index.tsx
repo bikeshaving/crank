@@ -112,6 +112,21 @@ describe("sync function component", () => {
 		expect(document.body.innerHTML).toEqual("<div>Hello 8</div>");
 		expect(Child).toHaveBeenCalledTimes(4);
 	});
+
+	test("children wrapped in an implicit fragment", () => {
+		function Component({copy}: {copy?: boolean}) {
+			if (copy) {
+				return <Copy />;
+			} else {
+				return [1, 2, 3];
+			}
+		}
+
+		renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("123");
+		renderer.render(<Component copy={true} />, document.body);
+		expect(document.body.innerHTML).toEqual("123");
+	});
 });
 
 describe("async function component", () => {
