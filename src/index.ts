@@ -64,7 +64,7 @@ export type ChildGenerator<T = any> =
 
 export type GeneratorComponent = (this: Context, props: Props) => ChildIterator;
 
-// TODO: component cannot be a union of FunctionComponent | GeneratorComponent
+// TODO: Component cannot be a union of FunctionComponent | GeneratorComponent
 // because this breaks Function.prototype methods.
 // https://github.com/microsoft/TypeScript/issues/33815
 export type Component = (
@@ -684,6 +684,14 @@ class ComponentNode<T> extends ParentNode<T> {
 		this.tag = tag;
 		this.key = key;
 		this.ctx = new Context(this, parent.ctx);
+	}
+
+	protected updateChildren(children: Children): MaybePromise<undefined> {
+		if (isNonStringIterable(children)) {
+			children = createElement(Fragment, null, children);
+		}
+
+		return super.updateChildren(children);
 	}
 
 	private step(): [MaybePromise<undefined>, MaybePromise<undefined>] {
