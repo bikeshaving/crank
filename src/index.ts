@@ -617,7 +617,7 @@ class HostNode<T> extends ParentNode<T> {
 					this.iterator.return();
 				} catch (err) {
 					if (this.parent !== undefined) {
-						this.parent.catch(err);
+						return this.parent.catch(err);
 					}
 
 					throw err;
@@ -1067,7 +1067,13 @@ export class Renderer<T> {
 		}
 
 		return Pledge.resolve(host.update(portal.props))
-			.then(() => host!.value!)
+			.then(() => {
+				if (root === undefined) {
+					host!.unmount();
+				}
+
+				return host!.value!;
+			})
 			.execute();
 	}
 
