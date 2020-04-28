@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import {Copy, createElement, Fragment, Portal, Raw} from "../index";
+import {createElement, Fragment, Portal, Raw} from "../index";
 import {renderer} from "../dom";
 import "./_mutation-observer";
 import {createHTML} from "./_utils";
@@ -469,13 +469,6 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual("<span>1</span><span>2</span>");
 	});
 
-	test("rerender copy", () => {
-		renderer.render(<div>Hello</div>, document.body);
-		expect(document.body.innerHTML).toEqual("<div>Hello</div>");
-		renderer.render(<Copy />, document.body);
-		expect(document.body.innerHTML).toEqual("<div>Hello</div>");
-	});
-
 	test("array", () => {
 		renderer.render(
 			<div>
@@ -731,77 +724,6 @@ describe("render", () => {
 		expect(document.body.firstChild!.childNodes[5]).toBe(span2);
 		expect(document.body.firstChild!.childNodes[6]).toBe(span7);
 		spans.reverse();
-		renderer.render(
-			<div>
-				<span>1</span>
-				{spans}
-				<span>7</span>
-			</div>,
-			document.body,
-		);
-		expect(document.body.firstChild!.childNodes[0]).toBe(span1);
-		expect(document.body.firstChild!.childNodes[1]).toBe(span2);
-		expect(document.body.firstChild!.childNodes[2]).toBe(span3);
-		expect(document.body.firstChild!.childNodes[3]).toBe(span4);
-		expect(document.body.firstChild!.childNodes[4]).toBe(span5);
-		expect(document.body.firstChild!.childNodes[5]).toBe(span6);
-		expect(document.body.firstChild!.childNodes[6]).toBe(span7);
-	});
-
-	test("reversed keyed array with copies", () => {
-		let spans = [
-			<span crank-key="2">2</span>,
-			<span crank-key="3">3</span>,
-			<span crank-key="4">4</span>,
-			<span crank-key="5">5</span>,
-			<span crank-key="6">6</span>,
-		];
-		renderer.render(
-			<div>
-				<span>1</span>
-				{spans}
-				<span>7</span>
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual(
-			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span></div>",
-		);
-		const span1 = document.body.firstChild!.childNodes[0];
-		const span2 = document.body.firstChild!.childNodes[1];
-		const span3 = document.body.firstChild!.childNodes[2];
-		const span4 = document.body.firstChild!.childNodes[3];
-		const span5 = document.body.firstChild!.childNodes[4];
-		const span6 = document.body.firstChild!.childNodes[5];
-		const span7 = document.body.firstChild!.childNodes[6];
-		spans = spans.reverse().map((el) => <Copy crank-key={el.key} />);
-		renderer.render(
-			<div>
-				<span>1</span>
-				{spans}
-				<span>7</span>
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual(
-			"<div><span>1</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>7</span></div>",
-		);
-		renderer.render(
-			<div>
-				<span>1</span>
-				{spans}
-				<span>7</span>
-			</div>,
-			document.body,
-		);
-		expect(document.body.firstChild!.childNodes[0]).toBe(span1);
-		expect(document.body.firstChild!.childNodes[1]).toBe(span6);
-		expect(document.body.firstChild!.childNodes[2]).toBe(span5);
-		expect(document.body.firstChild!.childNodes[3]).toBe(span4);
-		expect(document.body.firstChild!.childNodes[4]).toBe(span3);
-		expect(document.body.firstChild!.childNodes[5]).toBe(span2);
-		expect(document.body.firstChild!.childNodes[6]).toBe(span7);
-		spans = spans.reverse().map((el) => <Copy crank-key={el.key} />);
 		renderer.render(
 			<div>
 				<span>1</span>

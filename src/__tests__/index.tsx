@@ -1,7 +1,6 @@
 /** @jsx createElement */
 import "core-js";
 import {
-	Copy,
 	createElement,
 	Child,
 	Children,
@@ -10,6 +9,8 @@ import {
 	Fragment,
 } from "../index";
 import {renderer} from "../dom";
+
+// TODO: start splitting out these tests into separate files
 
 // TODO: no-unreachable is throwing false positives in some tests
 /* eslint-disable no-unreachable */
@@ -41,27 +42,6 @@ describe("sync function component", () => {
 	});
 
 	test("rerender different return value", () => {
-		function Component({message}: {message: string}): Element {
-			return <span>{message}</span>;
-		}
-
-		renderer.render(
-			<div>
-				<Component message="Hello" />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
-		renderer.render(
-			<div>
-				<Copy />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
-	});
-
-	test("rerender copy", () => {
 		function Component({ChildTag}: {ChildTag: string}): Element {
 			return <ChildTag>Hello world</ChildTag>;
 		}
@@ -111,21 +91,6 @@ describe("sync function component", () => {
 		await expect(p8).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div>Hello 8</div>");
 		expect(Child).toHaveBeenCalledTimes(4);
-	});
-
-	test("children wrapped in an implicit fragment", () => {
-		function Component({copy}: {copy?: boolean}) {
-			if (copy) {
-				return <Copy />;
-			} else {
-				return [1, 2, 3];
-			}
-		}
-
-		renderer.render(<Component />, document.body);
-		expect(document.body.innerHTML).toEqual("123");
-		renderer.render(<Component copy={true} />, document.body);
-		expect(document.body.innerHTML).toEqual("123");
 	});
 
 	test("event listeners are cleaned up", () => {
@@ -1994,6 +1959,11 @@ describe("async races", () => {
 });
 
 describe("parent-child refresh cascades", () => {
+	afterEach(async () => {
+		document.body.innerHTML = "";
+		await renderer.render(null, document.body);
+	});
+
 	test("sync function parent and sync function child", () => {
 		return new Promise((done) => {
 			function Child(this: Context) {
