@@ -162,7 +162,7 @@ function* flatten(children: Children): Generator<NormalizedChild> {
 }
 
 // This union exists because we needed to discriminate between leaf and parent
-// nodes using a property (host.internal).
+// nodes using a property (node.internal).
 type Node<T> = LeafNode<T> | ParentNode<T>;
 
 // The shared properties between LeafNode and ParentNode
@@ -325,7 +325,9 @@ abstract class ParentNode<T> implements NodeBase<T> {
 			if (key != null) {
 				let nextNode = this.keyedChildren && this.keyedChildren.get(key);
 				if (nextNode === undefined) {
-					nextNode = createNode(this, this.renderer, child);
+					if (tag !== Copy) {
+						nextNode = createNode(this, this.renderer, child);
+					}
 				} else {
 					this.keyedChildren!.delete(key);
 					if (host !== nextNode) {
@@ -333,21 +335,25 @@ abstract class ParentNode<T> implements NodeBase<T> {
 					}
 				}
 
-				if (host === undefined) {
-					this.appendChild(nextNode);
-				} else if (host !== nextNode) {
-					if (host.key == null) {
-						this.insertBefore(nextNode, host);
-					} else {
-						this.insertBefore(nextNode, host.nextSibling);
+				if (nextNode !== undefined) {
+					if (host === undefined) {
+						this.appendChild(nextNode);
+					} else if (host !== nextNode) {
+						if (host.key == null) {
+							this.insertBefore(nextNode, host);
+						} else {
+							this.insertBefore(nextNode, host.nextSibling);
+						}
 					}
-				}
 
-				host = nextNode;
-				nextSibling = host.nextSibling;
+					host = nextNode;
+					nextSibling = host.nextSibling;
+				}
 			} else if (host === undefined) {
-				host = createNode(this, this.renderer, child);
-				this.appendChild(host);
+				if (tag !== Copy) {
+					host = createNode(this, this.renderer, child);
+					this.appendChild(host);
+				}
 			} else if (host.key != null) {
 				const nextNode = createNode(this, this.renderer, child);
 				this.insertBefore(nextNode, host.nextSibling);
@@ -355,7 +361,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				nextSibling = host.nextSibling;
 			}
 
-			if (tag !== Copy) {
+			if (host !== undefined && tag !== Copy) {
 				// TODO: figure out why do we do a check for unmounted hosts here
 				if (host.tag === tag && !(host.internal && host.unmounted)) {
 					if (host.internal) {
@@ -416,7 +422,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				}
 			}
 
-			if (key !== undefined) {
+			if (host !== undefined && key !== undefined) {
 				if (nextKeyedChildren === undefined) {
 					nextKeyedChildren = new Map();
 				}
