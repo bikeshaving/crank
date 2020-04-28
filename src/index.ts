@@ -661,7 +661,8 @@ class ComponentNode<T> extends ParentNode<T> {
 	readonly parent: ParentNode<T>;
 	readonly renderer: Renderer<T>;
 	readonly ctx: Context;
-	private available = true;
+	private stepping = false;
+	private available = false;
 	private iterator: ChildIterator | undefined = undefined;
 	// TODO: explain these properties
 	private componentType: ComponentType | undefined = undefined;
@@ -694,68 +695,99 @@ class ComponentNode<T> extends ParentNode<T> {
 		return super.updateChildren(children);
 	}
 
-	private step(): [MaybePromise<undefined>, MaybePromise<undefined>] {
-		if (this.finished) {
-			return [undefined, undefined];
-		} else if (this.iterator === undefined) {
-			this.ctx.clearEventListeners();
-			const value = new Pledge(() => this.tag.call(this.ctx, this.props!))
-				.catch((err) => this.parent.catch(err))
-				// type assertion because we shouldn’t get a promise of an iterator
-				.execute() as ChildIterator | Promise<Child> | Child;
-			if (isIteratorOrAsyncIterator(value)) {
-				this.iterator = value;
-			} else if (isPromiseLike(value)) {
-				this.componentType = AsyncFn;
-				const pending = value.then(() => undefined); // void :(
-				const result = value.then((child) => this.updateChildren(child));
-				return [pending, result];
-			} else {
-				this.componentType = SyncFn;
-				const result = this.updateChildren(value);
-				return [undefined, result];
+	private run(): MaybePromise<undefined> {
+		if (this.inflightPending === undefined) {
+			const [pending, result] = this.step();
+			if (isPromiseLike(pending)) {
+				this.inflightPending = pending.finally(() => this.advance());
 			}
+
+			this.inflightResult = result;
+			return this.inflightResult;
+		} else if (this.componentType === AsyncGen) {
+			return this.inflightResult;
+		} else if (this.enqueuedPending === undefined) {
+			let resolve: (value: MaybePromise<undefined>) => unknown;
+			this.enqueuedPending = this.inflightPending
+				.then(() => {
+					const [pending, result] = this.step();
+					resolve(result);
+					return pending;
+				})
+				.finally(() => this.advance());
+			this.enqueuedResult = new Promise((resolve1) => (resolve = resolve1));
 		}
 
-		const previousValue = Pledge.resolve(this.previousResult)
-			.then(() => this.value)
-			.execute();
-		const iteration = new Pledge(() => this.iterator!.next(previousValue))
-			.catch((err) => {
-				// TODO: figure out why this is written like this
-				return Pledge.resolve(this.parent.catch(err))
-					.then(() => ({value: undefined, done: true}))
-					.execute();
-			})
-			.execute();
-		if (isPromiseLike(iteration)) {
-			this.componentType = AsyncGen;
-			const pending = iteration.then(
-				(iteration) => {
-					this.iterating = false;
-					if (iteration.done) {
-						this.finished = true;
-					}
+		return this.enqueuedResult;
+	}
 
-					return undefined; // void :(
-				},
-				() => undefined, // void :(
-			);
-			const result = iteration.then((iteration) => {
-				this.previousResult = this.updateChildren(iteration.value);
-				return this.previousResult;
-			});
-
-			return [pending, result];
-		} else {
-			this.iterating = false;
-			this.componentType = SyncGen;
-			if (iteration.done) {
-				this.finished = true;
+	private step(): [MaybePromise<undefined>, MaybePromise<undefined>] {
+		this.stepping = true;
+		try {
+			if (this.finished) {
+				return [undefined, undefined];
+			} else if (this.iterator === undefined) {
+				this.ctx.clearEventListeners();
+				const value = new Pledge(() => this.tag.call(this.ctx, this.props!))
+					.catch((err) => this.parent.catch(err))
+					// type assertion because we shouldn’t get a promise of an iterator
+					.execute() as ChildIterator | Promise<Child> | Child;
+				if (isIteratorOrAsyncIterator(value)) {
+					this.iterator = value;
+				} else if (isPromiseLike(value)) {
+					this.componentType = AsyncFn;
+					const pending = value.then(() => undefined); // void :(
+					const result = value.then((child) => this.updateChildren(child));
+					return [pending, result];
+				} else {
+					this.componentType = SyncFn;
+					const result = this.updateChildren(value);
+					return [undefined, result];
+				}
 			}
 
-			const result = this.updateChildren(iteration.value);
-			return [result, result];
+			const previousValue = Pledge.resolve(this.previousResult)
+				.then(() => this.value)
+				.execute();
+			const iteration = new Pledge(() => this.iterator!.next(previousValue))
+				.catch((err) => {
+					// TODO: figure out why this is written like this
+					return Pledge.resolve(this.parent.catch(err))
+						.then(() => ({value: undefined, done: true}))
+						.execute();
+				})
+				.execute();
+			if (isPromiseLike(iteration)) {
+				this.componentType = AsyncGen;
+				const pending = iteration.then(
+					(iteration) => {
+						this.iterating = false;
+						if (iteration.done) {
+							this.finished = true;
+						}
+
+						return undefined; // void :(
+					},
+					() => undefined, // void :(
+				);
+				const result = iteration.then((iteration) => {
+					this.previousResult = this.updateChildren(iteration.value);
+					return this.previousResult;
+				});
+
+				return [pending, result];
+			} else {
+				this.iterating = false;
+				this.componentType = SyncGen;
+				if (iteration.done) {
+					this.finished = true;
+				}
+
+				const result = this.updateChildren(iteration.value);
+				return [result, result];
+			}
+		} finally {
+			this.stepping = false;
 		}
 	}
 
@@ -770,7 +802,8 @@ class ComponentNode<T> extends ParentNode<T> {
 	}
 
 	refresh(): MaybePromise<undefined> {
-		if (this.unmounted) {
+		if (this.stepping || this.unmounted) {
+			// TODO: we may want to log warnings when stuff like this happens
 			return;
 		}
 
@@ -818,32 +851,6 @@ class ComponentNode<T> extends ParentNode<T> {
 				}
 			}
 		} while (!this.unmounted);
-	}
-
-	private run(): MaybePromise<undefined> {
-		if (this.inflightPending === undefined) {
-			const [pending, result] = this.step();
-			if (isPromiseLike(pending)) {
-				this.inflightPending = pending.finally(() => this.advance());
-			}
-
-			this.inflightResult = result;
-			return this.inflightResult;
-		} else if (this.componentType === AsyncGen) {
-			return this.inflightResult;
-		} else if (this.enqueuedPending === undefined) {
-			let resolve: (value: MaybePromise<undefined>) => unknown;
-			this.enqueuedPending = this.inflightPending
-				.then(() => {
-					const [pending, result] = this.step();
-					resolve(result);
-					return pending;
-				})
-				.finally(() => this.advance());
-			this.enqueuedResult = new Promise((resolve1) => (resolve = resolve1));
-		}
-
-		return this.enqueuedResult;
 	}
 
 	commit(): undefined {
