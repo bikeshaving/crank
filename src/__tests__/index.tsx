@@ -127,6 +127,34 @@ describe("sync function component", () => {
 		renderer.render(<Component copy={true} />, document.body);
 		expect(document.body.innerHTML).toEqual("123");
 	});
+
+	test("event listeners are cleaned up", () => {
+		let ctx!: Context;
+		function Component(this: Context) {
+			ctx = this;
+			return <span>Hello</span>;
+		}
+
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		const listener1 = jest.fn();
+		const listener2 = jest.fn();
+		ctx.addEventListener("foo", listener1);
+		ctx.addEventListener("bar", listener1);
+		ctx.dispatchEvent(new Event("foo"));
+		expect(listener1).toHaveBeenCalledTimes(1);
+		expect(listener2).toHaveBeenCalledTimes(0);
+		const removeEventListener = jest.spyOn(ctx, "removeEventListener");
+		renderer.render(null, document.body);
+		expect(removeEventListener).toHaveBeenCalledTimes(2);
+		ctx.dispatchEvent(new Event("foo"));
+		expect(listener1).toHaveBeenCalledTimes(1);
+		expect(listener2).toHaveBeenCalledTimes(0);
+	});
 });
 
 describe("async function component", () => {

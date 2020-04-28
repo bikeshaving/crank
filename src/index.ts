@@ -865,6 +865,7 @@ class ComponentNode<T> extends ParentNode<T> {
 		}
 
 		this.unmounted = true;
+		this.ctx.clearEventListeners();
 		if (!this.finished) {
 			this.finished = true;
 			// TODO: maybe we should return the async iterator rather than
