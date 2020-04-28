@@ -307,8 +307,8 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	// TODO: I bet we could simplify the algorithm further, perhaps by writing a
 	// custom a method which automatically zips up old and new nodes.
 	protected updateChildren(children: Children): MaybePromise<undefined> {
-		let host = this.firstChild;
-		let nextSibling = host && host.nextSibling;
+		let node = this.firstChild;
+		let nextSibling = node && node.nextSibling;
 		let nextKeyedChildren: Map<unknown, Node<T>> | undefined;
 		let updates: Array<Promise<unknown>> | undefined;
 		for (const child of flatten(children)) {
@@ -330,125 +330,133 @@ abstract class ParentNode<T> implements NodeBase<T> {
 					}
 				} else {
 					this.keyedChildren!.delete(key);
-					if (host !== nextNode) {
+					if (node !== nextNode) {
 						this.removeChild(nextNode);
 					}
 				}
 
 				if (nextNode !== undefined) {
-					if (host === undefined) {
+					if (node === undefined) {
 						this.appendChild(nextNode);
-					} else if (host !== nextNode) {
-						if (host.key == null) {
-							this.insertBefore(nextNode, host);
+					} else if (node !== nextNode) {
+						if (node.key == null) {
+							this.insertBefore(nextNode, node);
 						} else {
-							this.insertBefore(nextNode, host.nextSibling);
+							this.insertBefore(nextNode, node.nextSibling);
 						}
 					}
 
-					host = nextNode;
-					nextSibling = host.nextSibling;
+					node = nextNode;
+					nextSibling = node.nextSibling;
 				}
-			} else if (host === undefined) {
+			} else if (node === undefined) {
+				// current parent has no more nodes
 				if (tag !== Copy) {
-					host = createNode(this, this.renderer, child);
-					this.appendChild(host);
+					node = createNode(this, this.renderer, child);
+					this.appendChild(node);
 				}
-			} else if (host.key != null) {
-				const nextNode = createNode(this, this.renderer, child);
-				this.insertBefore(nextNode, host.nextSibling);
-				host = nextNode;
-				nextSibling = host.nextSibling;
+			} else if (node.key != null) {
+				// the current node is keyed but the child is not
+				node = nextSibling;
+				nextSibling = node && node.nextSibling;
+				if (node === undefined) {
+					if (tag !== Copy) {
+						node = createNode(this, this.renderer, child);
+						this.appendChild(node);
+					}
+				}
 			}
 
-			if (host !== undefined && tag !== Copy) {
-				// TODO: figure out why do we do a check for unmounted hosts here
-				if (host.tag === tag && !(host.internal && host.unmounted)) {
-					if (host.internal) {
-						const update = host.update((child as Element).props);
-						if (update !== undefined) {
+			if (node !== undefined) {
+				if (tag !== Copy) {
+					// TODO: figure out why do we do a check for unmounted node here
+					if (node.tag === tag && !(node.internal && node.unmounted)) {
+						if (node.internal) {
+							const update = node.update((child as Element).props);
+							if (update !== undefined) {
+								if (updates === undefined) {
+									updates = [];
+								}
+
+								updates.push(update);
+							}
+						} else if (typeof child === "string") {
+							node.value = this.renderer.text(child);
+						} else {
+							node.value = undefined;
+						}
+					} else {
+						// TODO: async unmount for keyed nodes
+						if (node.internal) {
+							node.unmount();
+						}
+						const nextNode = createNode(this, this.renderer, child);
+						nextNode.clock = node.clock++;
+						let update: MaybePromise<undefined>;
+						if (nextNode.internal) {
+							update = nextNode.update((child as Element).props);
+						} else if (typeof child === "string") {
+							nextNode.value = this.renderer.text(child);
+						} else {
+							nextNode.value = undefined;
+						}
+
+						if (update === undefined) {
+							this.replaceChild(nextNode, node);
+							node.replacedBy = nextNode;
+						} else {
 							if (updates === undefined) {
 								updates = [];
 							}
 
 							updates.push(update);
+							// node is reassigned so we need to capture its current value in
+							// node for the sake of the callback’s closure.
+							const node1 = node;
+							update.then(() => {
+								if (node1.replacedBy === undefined) {
+									this.replaceChild(nextNode, node1);
+									node1.replacedBy = nextNode;
+								} else if (
+									node1.replacedBy.replacedBy === undefined &&
+									node1.replacedBy.clock < nextNode.clock
+								) {
+									this.replaceChild(nextNode, node1.replacedBy);
+									node1.replacedBy = nextNode;
+								}
+							});
 						}
-					} else if (typeof child === "string") {
-						host.value = this.renderer.text(child);
-					} else {
-						host.value = undefined;
 					}
-				} else {
-					// TODO: async unmount for keyed hosts
-					if (host.internal) {
-						host.unmount();
-					}
-					const nextNode = createNode(this, this.renderer, child);
-					nextNode.clock = host.clock++;
-					let update: MaybePromise<undefined>;
-					if (nextNode.internal) {
-						update = nextNode.update((child as Element).props);
-					} else if (typeof child === "string") {
-						nextNode.value = this.renderer.text(child);
-					} else {
-						nextNode.value = undefined;
+				}
+
+				if (key !== undefined) {
+					if (nextKeyedChildren === undefined) {
+						nextKeyedChildren = new Map();
 					}
 
-					if (update === undefined) {
-						this.replaceChild(nextNode, host);
-						host.replacedBy = nextNode;
-					} else {
-						if (updates === undefined) {
-							updates = [];
-						}
-
-						updates.push(update);
-						// host is reassigned so we need to capture its current value in
-						// host1 for the sake of the callback’s closure.
-						const host1 = host;
-						update.then(() => {
-							if (host1.replacedBy === undefined) {
-								this.replaceChild(nextNode, host1);
-								host1.replacedBy = nextNode;
-							} else if (
-								host1.replacedBy.replacedBy === undefined &&
-								host1.replacedBy.clock < nextNode.clock
-							) {
-								this.replaceChild(nextNode, host1.replacedBy);
-								host1.replacedBy = nextNode;
-							}
-						});
-					}
+					nextKeyedChildren.set(key, node);
 				}
 			}
 
-			if (host !== undefined && key !== undefined) {
-				if (nextKeyedChildren === undefined) {
-					nextKeyedChildren = new Map();
-				}
-
-				nextKeyedChildren.set(key, host);
-			}
-
-			host = nextSibling;
-			nextSibling = host && host.nextSibling;
+			node = nextSibling;
+			nextSibling = node && node.nextSibling;
 		}
 
 		// unmount excess children
 		for (
 			;
-			host !== undefined;
-			host = nextSibling, nextSibling = host && host.nextSibling
+			node !== undefined;
+			node = nextSibling, nextSibling = node && node.nextSibling
 		) {
-			if (host.key !== undefined && this.keyedChildren !== undefined) {
-				this.keyedChildren.delete(host.key);
+			if (node.key !== undefined && this.keyedChildren !== undefined) {
+				this.keyedChildren.delete(node.key);
 			}
 
-			if (host.internal) {
-				host.unmount();
+			if (node.internal) {
+				node.unmount();
 			}
 
-			this.removeChild(host);
+			this.removeChild(node);
 		}
 
 		// unmount excess keyed children
@@ -482,12 +490,12 @@ abstract class ParentNode<T> implements NodeBase<T> {
 
 	protected unmountChildren(): void {
 		for (
-			let host = this.firstChild;
-			host !== undefined;
-			host = host.nextSibling
+			let node = this.firstChild;
+			node !== undefined;
+			node = node.nextSibling
 		) {
-			if (host.internal) {
-				host.unmount();
+			if (node.internal) {
+				node.unmount();
 			}
 		}
 	}
@@ -1070,23 +1078,23 @@ export class Renderer<T> {
 			portal = createElement(Portal, {root}, child);
 		}
 
-		let host: HostNode<T> | undefined =
+		let rootNode: HostNode<T> | undefined =
 			root != null ? this.cache.get(root) : undefined;
 
-		if (host === undefined) {
-			host = new HostNode(undefined, this, portal.tag);
+		if (rootNode === undefined) {
+			rootNode = new HostNode(undefined, this, portal.tag);
 			if (root !== undefined) {
-				this.cache.set(root, host);
+				this.cache.set(root, rootNode);
 			}
 		}
 
-		return Pledge.resolve(host.update(portal.props))
+		return Pledge.resolve(rootNode.update(portal.props))
 			.then(() => {
 				if (root === undefined) {
-					host!.unmount();
+					rootNode!.unmount();
 				}
 
-				return host!.value!;
+				return rootNode!.value!;
 			})
 			.execute();
 	}
