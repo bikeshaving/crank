@@ -357,8 +357,11 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				}
 			} else if (node.key != null) {
 				// the current node is keyed but the child is not
-				node = nextSibling;
-				nextSibling = node && node.nextSibling;
+				while (node && node.key != null) {
+					node = nextSibling;
+					nextSibling = node && node.nextSibling;
+				}
+
 				if (node === undefined) {
 					if (tag !== Copy) {
 						node = createNode(this, this.renderer, child);
