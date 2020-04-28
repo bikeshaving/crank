@@ -1,0 +1,26 @@
+{
+  "name": "a-simple-crank-component",
+  "private": true,
+  "version": "1.0.0",
+  "main": "index.html",
+  "scripts": {
+    "start": "parcel index.html --open",
+    "build": "parcel build index.html"
+  },
+  "eslint": {
+    "settings": {
+      "react": {
+        "pragma": "createElement"
+      }
+    }
+  },
+  "dependencies": {
+    "@bikeshaving/crank": "*"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.0.0-0",
+    "@babel/preset-react": "^7.9.4",
+    "parcel-bundler": "^1.6.1"
+  },
+  "keywords": []
+}
