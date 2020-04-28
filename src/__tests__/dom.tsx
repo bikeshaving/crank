@@ -835,6 +835,62 @@ describe("render", () => {
 		);
 	});
 
+	test("unkeyed elements added in random spots", () => {
+		renderer.render(
+			<div>
+				<span crank-key="1">1</span>
+				<span crank-key="2">2</span>
+				<span crank-key="3">3</span>
+				<span crank-key="4">4</span>
+			</div>,
+			document.body,
+		);
+		const span1 = document.body.firstChild!.childNodes[0];
+		const span2 = document.body.firstChild!.childNodes[1];
+		const span3 = document.body.firstChild!.childNodes[2];
+		const span4 = document.body.firstChild!.childNodes[3];
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span></div>",
+		);
+		renderer.render(
+			<div>
+				<span>0.5</span>
+				<span crank-key="1">1</span>
+				<span>1.5</span>
+				<span crank-key="2">2</span>
+				<span>2.5</span>
+				<span crank-key="3">3</span>
+				<span>3.5</span>
+				<span crank-key="4">4</span>
+				<span>4.5</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>0.5</span><span>1</span><span>1.5</span><span>2</span><span>2.5</span><span>3</span><span>3.5</span><span>4</span><span>4.5</span></div>",
+		);
+		expect(span1).toEqual(document.body.firstChild!.childNodes[1]);
+		expect(span2).toEqual(document.body.firstChild!.childNodes[3]);
+		expect(span3).toEqual(document.body.firstChild!.childNodes[5]);
+		expect(span4).toEqual(document.body.firstChild!.childNodes[7]);
+		renderer.render(
+			<div>
+				<span crank-key="1">1</span>
+				<span crank-key="2">2</span>
+				<span crank-key="3">3</span>
+				<span crank-key="4">4</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span></div>",
+		);
+		expect(span1).toEqual(document.body.firstChild!.childNodes[0]);
+		expect(span2).toEqual(document.body.firstChild!.childNodes[1]);
+		expect(span3).toEqual(document.body.firstChild!.childNodes[2]);
+		expect(span4).toEqual(document.body.firstChild!.childNodes[3]);
+	});
+
 	test("raw html", () => {
 		const html = '<span id="raw">Hi</span>';
 		renderer.render(
