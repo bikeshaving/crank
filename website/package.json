@@ -1,6 +1,5 @@
 {
   "private": true,
-  "type": "module",
   "scripts": {
     "build": "ts-node build.tsx && echo crank.js.org > dist/CNAME",
     "predeploy": "yarn build",
