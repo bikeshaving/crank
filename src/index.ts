@@ -649,7 +649,7 @@ class HostNode<T> extends ParentNode<T> {
 	*[Symbol.iterator]() {
 		while (!this.unmounted) {
 			if (this.iterating) {
-				throw new Error("You must yield something each iteration over context");
+				throw new Error("You must yield for each iteration of this.");
 			}
 
 			this.iterating = true;
@@ -837,7 +837,7 @@ class ComponentNode<T> extends ParentNode<T> {
 	*[Symbol.iterator](): Generator<Props> {
 		while (!this.unmounted) {
 			if (this.iterating) {
-				throw new Error("You must yield once per iteration over context");
+				throw new Error("You must yield for each iteration of this.");
 			} else if (this.componentType === AsyncGen) {
 				throw new Error("Use for await...of in async generator components.");
 			}
@@ -850,7 +850,7 @@ class ComponentNode<T> extends ParentNode<T> {
 	async *[Symbol.asyncIterator](): AsyncGenerator<Props> {
 		do {
 			if (this.iterating) {
-				throw new Error("You must yield once per iteration over context");
+				throw new Error("You must yield for each iteration of this.");
 			} else if (this.componentType === SyncGen) {
 				throw new Error("Use for...of in sync generator components.");
 			}
