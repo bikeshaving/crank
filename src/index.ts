@@ -711,7 +711,7 @@ class ComponentNode<T> extends ParentNode<T> {
 				const result = value.then((child) => this.updateChildren(child));
 				return [pending, result];
 			} else {
-				this.componentType = AsyncGen;
+				this.componentType = SyncFn;
 				const result = this.updateChildren(value);
 				return [undefined, result];
 			}
