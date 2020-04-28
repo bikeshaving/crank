@@ -83,7 +83,7 @@ export type Intrinsic<T> = (
 export const Fragment = Symbol.for("crank.Fragment") as any;
 export type Fragment = typeof Fragment;
 
-export const Copy = Symbol("crank.Copy") as any;
+export const Copy = Symbol.for("crank.Copy") as any;
 export type Copy = typeof Copy;
 
 export const Portal = Symbol.for("crank.Portal") as any;
