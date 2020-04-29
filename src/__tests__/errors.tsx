@@ -64,7 +64,7 @@ describe("errors", () => {
 		);
 	});
 
-	// TODO: figure out how to catch the promise rejection
+	// TODO: figure out how to test for an unhandled promise rejection
 	// eslint-disable-next-line
 	test.skip("async generator throws independently", async () => {
 		const error = new Error("async generator throws independently");
@@ -79,9 +79,7 @@ describe("errors", () => {
 		await new Promise(() => {});
 	});
 
-	// TODO: figure out why this causes an unhandled rejection
-	// eslint-disable-next-line
-	test.skip("async generator throws in async generator", async () => {
+	test("async generator throws in async generator", async () => {
 		const error = new Error("async generator throws in async generator");
 		/* eslint-disable require-yield */
 		async function* Thrower() {
@@ -98,8 +96,6 @@ describe("errors", () => {
 		await expect(renderer.render(<Component />, document.body)).rejects.toBe(
 			error,
 		);
-
-		await new Promise(() => {});
 	});
 
 	test("sync function throws, sync generator catches", () => {
