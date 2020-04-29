@@ -202,9 +202,9 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	abstract readonly renderer: Renderer<T>;
 	abstract parent: ParentNode<T> | undefined;
 	// When children update asynchronously, we race their result against the next
-	// update of children. The onNextChildren property is set to the resolve
+	// update of children. The onNextResult property is set to the resolve
 	// function of the promise which the current update is raced against.
-	private onNextChildren:
+	private onNextResult:
 		| ((result?: Promise<undefined>) => unknown)
 		| undefined = undefined;
 	protected props: Props | undefined = undefined;
@@ -473,19 +473,19 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		this.keyedChildren = nextKeyedChildren;
 		if (updates === undefined) {
 			this.commit();
-			if (this.onNextChildren !== undefined) {
-				this.onNextChildren();
-				this.onNextChildren = undefined;
+			if (this.onNextResult !== undefined) {
+				this.onNextResult();
+				this.onNextResult = undefined;
 			}
 		} else {
 			const result = Promise.all(updates).then(() => void this.commit()); // void :(
-			if (this.onNextChildren !== undefined) {
-				this.onNextChildren(result);
-				this.onNextChildren = undefined;
+			if (this.onNextResult !== undefined) {
+				this.onNextResult(result.catch(() => undefined)); // void :(
+				this.onNextResult = undefined;
 			}
 
 			const nextResult = new Promise<undefined>(
-				(resolve) => (this.onNextChildren = resolve),
+				(resolve) => (this.onNextResult = resolve),
 			);
 			return Promise.race([result, nextResult]);
 		}
@@ -791,8 +791,12 @@ class ComponentNode<T> extends ParentNode<T> {
 					() => undefined, // void :(
 				);
 				const result = iteration.then((iteration) => {
-					this.previousResult = this.updateChildren(iteration.value);
-					return this.previousResult;
+					const result = this.updateChildren(iteration.value);
+					if (isPromiseLike(result)) {
+						this.previousResult = result.catch(() => undefined); // void
+					}
+
+					return result;
 				});
 
 				return [pending, result];
@@ -817,9 +821,8 @@ class ComponentNode<T> extends ParentNode<T> {
 		this.enqueuedPending = undefined;
 		this.enqueuedResult = undefined;
 		if (this.componentType === AsyncGen && !this.finished && !this.unmounted) {
-			// We catch and rethrow the error to trigger an unhandled promise rejection.
-			// We should probably do a larger audit of error handling and making sure error messages are helpful, but this
-			(this.run() as Promise<any>).catch((err) => {
+			Promise.resolve(this.run()).catch((err) => {
+				// We catch and rethrow the error to trigger an unhandled promise rejection.
 				if (!this.updating) {
 					throw err;
 				}
