@@ -753,7 +753,10 @@ class ComponentNode<T> extends ParentNode<T> {
 					this.iterator = value;
 				} else if (isPromiseLike(value)) {
 					this.componentType = AsyncFn;
-					const pending = value.then(() => undefined); // void :(
+					const pending = value.then(
+						() => undefined,
+						() => undefined,
+					); // void :(
 					const result = value.then((child) => this.updateChildren(child));
 					return [pending, result];
 				} else {
@@ -814,7 +817,13 @@ class ComponentNode<T> extends ParentNode<T> {
 		this.enqueuedPending = undefined;
 		this.enqueuedResult = undefined;
 		if (this.componentType === AsyncGen && !this.finished && !this.unmounted) {
-			this.run();
+			// We catch and rethrow the error to trigger an unhandled promise rejection.
+			// We should probably do a larger audit of error handling and making sure error messages are helpful, but this
+			(this.run() as Promise<any>).catch((err) => {
+				if (!this.updating) {
+					throw err;
+				}
+			});
 		}
 	}
 
@@ -888,12 +897,12 @@ class ComponentNode<T> extends ParentNode<T> {
 			return;
 		}
 
+		this.updating = false;
 		this.unmounted = true;
 		this.ctx.clearEventListeners();
 		if (!this.finished) {
 			this.finished = true;
-			// TODO: maybe we should return the async iterator rather than
-			// republishing props
+			// helps avoid deadlocks
 			if (this.publish !== undefined) {
 				this.publish(this.props!);
 				this.publish = undefined;
@@ -920,6 +929,12 @@ class ComponentNode<T> extends ParentNode<T> {
 		) {
 			return super.catch(reason);
 		} else {
+			// helps avoid deadlocks
+			if (this.publish !== undefined) {
+				this.publish(this.props!);
+				this.publish = undefined;
+			}
+
 			return new Pledge(() => this.iterator!.throw!(reason))
 				.then((iteration) => {
 					if (iteration.done) {
