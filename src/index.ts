@@ -843,42 +843,6 @@ class ComponentNode<T> extends ParentNode<T> {
 		return this.run();
 	}
 
-	*[Symbol.iterator](): Generator<Props> {
-		while (!this.unmounted) {
-			if (this.iterating) {
-				throw new Error("You must yield for each iteration of this.");
-			} else if (this.componentType === AsyncGen) {
-				throw new Error("Use for await...of in async generator components.");
-			}
-
-			this.iterating = true;
-			yield this.props!;
-		}
-	}
-
-	async *[Symbol.asyncIterator](): AsyncGenerator<Props> {
-		do {
-			if (this.iterating) {
-				throw new Error("You must yield for each iteration of this.");
-			} else if (this.componentType === SyncGen) {
-				throw new Error("Use for...of in sync generator components.");
-			}
-
-			this.iterating = true;
-			if (this.available) {
-				this.available = false;
-				yield this.props!;
-			} else {
-				const props = await new Promise<Props>(
-					(resolve) => (this.publish = resolve),
-				);
-				if (!this.unmounted) {
-					yield props;
-				}
-			}
-		} while (!this.unmounted);
-	}
-
 	commit(): undefined {
 		const childValues = this.getChildValues();
 		this.ctx.setDelegates(childValues);
@@ -971,6 +935,43 @@ class ComponentNode<T> extends ParentNode<T> {
 
 		this.provisions.set(name, value);
 	}
+
+	*[Symbol.iterator](): Generator<Props> {
+		while (!this.unmounted) {
+			if (this.iterating) {
+				throw new Error("You must yield for each iteration of this.");
+			} else if (this.componentType === AsyncGen) {
+				throw new Error("Use for await...of in async generator components.");
+			}
+
+			this.iterating = true;
+			yield this.props!;
+		}
+	}
+
+	async *[Symbol.asyncIterator](): AsyncGenerator<Props> {
+		do {
+			if (this.iterating) {
+				throw new Error("You must yield for each iteration of this.");
+			} else if (this.componentType === SyncGen) {
+				throw new Error("Use for...of in sync generator components.");
+			}
+
+			this.iterating = true;
+			if (this.available) {
+				this.available = false;
+				yield this.props!;
+			} else {
+				const props = await new Promise<Props>(
+					(resolve) => (this.publish = resolve),
+				);
+				if (!this.unmounted) {
+					yield props;
+				}
+			}
+		} while (!this.unmounted);
+	}
+
 }
 
 function createNode<T>(
