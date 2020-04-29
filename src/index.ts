@@ -971,7 +971,6 @@ class ComponentNode<T> extends ParentNode<T> {
 			}
 		} while (!this.unmounted);
 	}
-
 }
 
 function createNode<T>(
