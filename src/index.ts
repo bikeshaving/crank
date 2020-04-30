@@ -3,6 +3,18 @@ import {isPromiseLike, MaybePromise, MaybePromiseLike, Pledge} from "./pledge";
 // re-exporting EventMap for user extensions
 export {EventMap} from "./events";
 
+declare global {
+	module JSX {
+		interface IntrinsicElements {
+			[tag: string]: any;
+		}
+
+		interface ElementChildrenAttribute {
+			children: {};
+		}
+	}
+}
+
 type NonStringIterable<T> = Iterable<T> & object;
 
 function isIterable(value: any): value is Iterable<any> {
@@ -24,6 +36,7 @@ export type Tag<TProps = any> = Component<TProps> | string | symbol;
 // prettier-ignore
 type TagProps<TTag extends Tag> = 
 	TTag extends Component<infer TProps> ? TProps 
+	: TTag extends string ? JSX.IntrinsicElements[TTag]
 	: any;
 
 export type Key = unknown;
@@ -98,18 +111,6 @@ export type Portal = typeof Portal;
 
 export const Raw = Symbol.for("crank.Raw") as any;
 export type Raw = typeof Raw;
-
-declare global {
-	module JSX {
-		interface IntrinsicElements {
-			[tag: string]: any;
-		}
-
-		interface ElementChildrenAttribute {
-			children: {};
-		}
-	}
-}
 
 export function isElement(value: any): value is Element {
 	return value != null && value[ElementSigil];
