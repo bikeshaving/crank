@@ -539,16 +539,12 @@ abstract class ParentNode<T, TProps extends Props = Props>
 	}
 }
 
-class FragmentNode<T, TProps extends Props> extends ParentNode<T, TProps> {
+class FragmentNode<T> extends ParentNode<T, any> {
 	readonly tag: Fragment = Fragment;
 	readonly key: Key;
-	readonly parent: ParentNode<T, TProps>;
+	readonly parent: ParentNode<T>;
 	readonly renderer: Renderer<T>;
-	constructor(
-		parent: ParentNode<T, TProps>,
-		renderer: Renderer<T>,
-		key: unknown,
-	) {
+	constructor(parent: ParentNode<T>, renderer: Renderer<T>, key: unknown) {
 		super();
 		this.key = key;
 		this.parent = parent;
@@ -578,10 +574,10 @@ class FragmentNode<T, TProps extends Props> extends ParentNode<T, TProps> {
 	}
 }
 
-class HostNode<T, TProps extends Props> extends ParentNode<T, TProps> {
+class HostNode<T> extends ParentNode<T, any> {
 	readonly tag: string | symbol;
 	readonly key: Key;
-	readonly parent: ParentNode<T, TProps> | undefined;
+	readonly parent: ParentNode<T> | undefined;
 	readonly renderer: Renderer<T>;
 	value: T | undefined;
 	private childValues: Array<T | string> = [];
@@ -589,7 +585,7 @@ class HostNode<T, TProps extends Props> extends ParentNode<T, TProps> {
 	private iterator: Iterator<T> | undefined = undefined;
 	private readonly hostCtx: HostContext<T>;
 	constructor(
-		parent: ParentNode<T, TProps> | undefined,
+		parent: ParentNode<T> | undefined,
 		renderer: Renderer<T>,
 		tag: string | symbol,
 		key?: unknown,
@@ -990,7 +986,7 @@ class ComponentNode<T, TProps extends Props> extends ParentNode<T, TProps> {
 }
 
 function createNode<T>(
-	parent: ParentNode<T>,
+	parent: ParentNode<T, any>,
 	renderer: Renderer<T>,
 	child: NormalizedChild,
 ): Node<T> {
@@ -1007,9 +1003,9 @@ function createNode<T>(
 	}
 }
 
-const hostNodes = new WeakMap<HostContext<any>, HostNode<any, any>>();
-export class HostContext<T = any, TProps = any> {
-	constructor(host: HostNode<T, TProps>) {
+const hostNodes = new WeakMap<HostContext<any>, HostNode<any>>();
+export class HostContext<T = any> {
+	constructor(host: HostNode<T>) {
 		hostNodes.set(this, host);
 	}
 
@@ -1084,7 +1080,7 @@ const defaultEnv: Environment<any> = {
 };
 
 export class Renderer<T> {
-	private cache = new WeakMap<object, HostNode<T, Props>>();
+	private cache = new WeakMap<object, HostNode<T>>();
 	private env: Environment<T> = {...defaultEnv};
 	constructor(env?: Environment<T>) {
 		if (env) {
@@ -1114,7 +1110,7 @@ export class Renderer<T> {
 			portal = createElement(Portal, {root}, child);
 		}
 
-		let rootNode: HostNode<T, Props> | undefined =
+		let rootNode: HostNode<T> | undefined =
 			root != null ? this.cache.get(root) : undefined;
 
 		if (rootNode === undefined) {
