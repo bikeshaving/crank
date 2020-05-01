@@ -865,6 +865,7 @@ class ComponentNode<T> extends ParentNode<T> {
 		}
 
 		this.updating = false;
+		this.ctx.dispatchEvent(new CustomEvent("unmount"));
 		this.unmounted = true;
 		this.ctx.clearEventListeners();
 		if (!this.finished) {

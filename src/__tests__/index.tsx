@@ -1764,3 +1764,75 @@ describe("parent-child refresh cascades", () => {
 		});
 	});
 });
+
+describe("events fired within Crank", () => {
+	test("unmount event will fire", () => {
+		const onUnmount = jest.fn();
+
+		function Name(this: Context) {
+			this.addEventListener("unmount", onUnmount);
+			return <h1>crank</h1>;
+		}
+
+		function* Component(this: Context): Generator<Element> {
+			let visible = true;
+
+			const onclick = () => {
+				visible = !visible;
+				this.refresh();
+			};
+
+			for (const _ of this) {
+				yield (
+					<div>
+						<button onclick={onclick}>Toggle Name</button>
+						{visible && <Name />}
+					</div>
+				);
+			}
+		}
+
+		renderer.render(<Component />, document.body);
+
+		const button = document.querySelector("button")!;
+		button.click();
+
+		expect(onUnmount).toHaveBeenCalledTimes(1);
+	});
+
+	test("unmount event does not bubble", () => {
+		const onUnmount = jest.fn();
+		const onUnmountInParent = jest.fn();
+
+		function Name(this: Context) {
+			this.addEventListener("unmount", onUnmount);
+			return <h1>crank</h1>;
+		}
+
+		function* Component(this: Context): Generator<Element> {
+			let visible = true;
+			this.addEventListener("unmount", onUnmountInParent);
+			const onclick = () => {
+				visible = !visible;
+				this.refresh();
+			};
+
+			for (const _ of this) {
+				yield (
+					<div>
+						<button onclick={onclick}>Toggle Name</button>
+						{visible && <Name />}
+					</div>
+				);
+			}
+		}
+
+		renderer.render(<Component />, document.body);
+
+		const button = document.querySelector("button")!;
+		button.click();
+
+		expect(onUnmount).toHaveBeenCalledTimes(1);
+		expect(onUnmountInParent).not.toHaveBeenCalled();
+	});
+});
