@@ -1,1 +1,1 @@
-export * from "./esm/dom.js";
+export * from "./esm/dom.mjs";

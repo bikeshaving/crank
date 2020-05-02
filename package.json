@@ -3,6 +3,38 @@
   "version": "0.1.3",
   "description": "JSX-based components with functions, promises and generators.",
   "license": "MIT",
+  "exports": {
+    ".": {
+      "import": "./esm/index.mjs",
+      "require": "./cjs/index.js"
+    },
+    "./html": {
+      "import": "./esm/html.mjs",
+      "require": "./cjs/html.js"
+    },
+    "./dom": {
+      "import": "./esm/dom.mjs",
+      "require": "./cjs/dom.js"
+    },
+    "./cjs": {
+      "require": "./cjs/index.js"
+    },
+    "./cjs/index.js": {
+      "require": "./cjs/index.js"
+    },
+    "./cjs/html": {
+      "require": "./cjs/html.js"
+    },
+    "./cjs/dom": {
+      "require": "./cjs/dom.js"
+    },
+    "./cjs/html.js": {
+      "require": "./cjs/html.js"
+    },
+    "./cjs/dom.js": {
+      "require": "./cjs/dom.js"
+    }
+  },
   "files": [
     "cjs",
     "esm",
@@ -12,7 +44,7 @@
     "html.js"
   ],
   "main": "cjs/index.js",
-  "module": "esm/index.js",
+  "module": "esm/index.mjs",
   "types": "esm/index.d.ts",
   "homepage": "https://crank.js.org",
   "repository": {
