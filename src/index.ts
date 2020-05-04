@@ -33,11 +33,11 @@ function isIteratorOrAsyncIterator(
 
 export type Tag<TProps = any> = Component<TProps> | string | symbol;
 
-// prettier-ignore
-type TagProps<TTag extends Tag> = 
-	TTag extends Component<infer TProps> ? TProps 
-	: TTag extends string ? JSX.IntrinsicElements[TTag]
-	: any;
+type TagProps<TTag extends Tag> = TTag extends Component<infer TProps>
+	? TProps
+	: TTag extends string
+	? JSX.IntrinsicElements[TTag]
+	: unknown;
 
 export type Key = unknown;
 
@@ -121,7 +121,7 @@ export function createElement<TTag extends Tag>(
 	props?: TagProps<TTag> | null,
 	...children: Array<Children>
 ): Element<TTag>;
-export function createElement<TTag extends Tag, TProps extends Props>(
+export function createElement<TTag extends Tag>(
 	tag: TTag,
 	props?: TagProps<TTag> | null,
 ): Element<TTag> {
@@ -196,10 +196,9 @@ class LeafNode<T> implements NodeBase<T> {
 	value: string | undefined = undefined;
 }
 
-abstract class ParentNode<T, TProps extends Props = Props>
-	implements NodeBase<T> {
+abstract class ParentNode<T> implements NodeBase<T> {
 	readonly internal = true;
-	abstract readonly tag: Tag<TProps>;
+	abstract readonly tag: Tag;
 	readonly key: Key = undefined;
 	nextSibling: Node<T> | undefined = undefined;
 	previousSibling: Node<T> | undefined = undefined;
@@ -216,9 +215,9 @@ abstract class ParentNode<T, TProps extends Props = Props>
 	private onNextResult:
 		| ((result?: Promise<undefined>) => unknown)
 		| undefined = undefined;
-	protected props: TProps | undefined = undefined;
+	protected props: any = undefined;
 	value: Array<T | string> | T | string | undefined = undefined;
-	ctx: Context<TProps> | undefined = undefined;
+	ctx: Context | undefined = undefined;
 	protected updating = false;
 	protected iterating = false;
 	protected finished = false;
@@ -512,7 +511,7 @@ abstract class ParentNode<T, TProps extends Props = Props>
 		}
 	}
 
-	update(props: TProps): MaybePromise<undefined> {
+	update(props: any): MaybePromise<undefined> {
 		this.props = props;
 		this.updating = true;
 		return this.refresh();
@@ -539,7 +538,7 @@ abstract class ParentNode<T, TProps extends Props = Props>
 	}
 }
 
-class FragmentNode<T> extends ParentNode<T, any> {
+class FragmentNode<T> extends ParentNode<T> {
 	readonly tag: Fragment = Fragment;
 	readonly key: Key;
 	readonly parent: ParentNode<T>;
@@ -574,7 +573,7 @@ class FragmentNode<T> extends ParentNode<T, any> {
 	}
 }
 
-class HostNode<T> extends ParentNode<T, any> {
+class HostNode<T> extends ParentNode<T> {
 	readonly tag: string | symbol;
 	readonly key: Key;
 	readonly parent: ParentNode<T> | undefined;
@@ -681,12 +680,12 @@ type AsyncGen = typeof AsyncGen;
 
 type ComponentType = SyncFn | AsyncFn | SyncGen | AsyncGen;
 
-class ComponentNode<T, TProps extends Props> extends ParentNode<T, TProps> {
+class ComponentNode<T, TProps> extends ParentNode<T> {
 	readonly tag: Component<TProps>;
 	readonly key: Key;
-	readonly parent: ParentNode<T, any>;
+	readonly parent: ParentNode<T>;
 	readonly renderer: Renderer<T>;
-	readonly ctx: Context<TProps>;
+	readonly ctx: Context;
 	private stepping = false;
 	private available = false;
 	private iterator: ChildIterator | undefined = undefined;
@@ -700,9 +699,9 @@ class ComponentNode<T, TProps extends Props> extends ParentNode<T, TProps> {
 	private provisions: Map<unknown, any> | undefined = undefined;
 	private publish: ((props: TProps) => unknown) | undefined = undefined;
 	constructor(
-		parent: ParentNode<T, any>,
+		parent: ParentNode<T>,
 		renderer: Renderer<T>,
-		tag: Component<TProps>,
+		tag: Component,
 		key: Key,
 	) {
 		super();
@@ -986,7 +985,7 @@ class ComponentNode<T, TProps extends Props> extends ParentNode<T, TProps> {
 }
 
 function createNode<T>(
-	parent: ParentNode<T, any>,
+	parent: ParentNode<T>,
 	renderer: Renderer<T>,
 	child: NormalizedChild,
 ): Node<T> {
@@ -996,10 +995,8 @@ function createNode<T>(
 		return new FragmentNode(parent, renderer, child.key);
 	} else if (typeof child.tag === "function") {
 		return new ComponentNode(parent, renderer, child.tag, child.key);
-	} else if (typeof child.tag === "string" || typeof child.tag === "symbol") {
-		return new HostNode(parent, renderer, child.tag, child.key);
 	} else {
-		throw new Error("Unsupported child/tag type");
+		return new HostNode(parent, renderer, child.tag, child.key);
 	}
 }
 
@@ -1018,7 +1015,7 @@ export interface ProvisionMap {}
 
 const componentNodes = new WeakMap<Context<any>, ComponentNode<any, any>>();
 export class Context<TProps = any> extends CrankEventTarget {
-	constructor(host: ComponentNode<any, any>, parent?: Context<Props>) {
+	constructor(host: ComponentNode<any, TProps>, parent?: Context<TProps>) {
 		super(parent);
 		componentNodes.set(this, host);
 	}
@@ -1037,11 +1034,11 @@ export class Context<TProps = any> extends CrankEventTarget {
 	}
 	/* eslint-enable no-dupe-class-members */
 
-	[Symbol.iterator](): Generator<TProps & Props> {
+	[Symbol.iterator](): Generator<TProps> {
 		return componentNodes.get(this)![Symbol.iterator]();
 	}
 
-	[Symbol.asyncIterator](): AsyncGenerator<TProps & Props> {
+	[Symbol.asyncIterator](): AsyncGenerator<TProps> {
 		return componentNodes.get(this)![Symbol.asyncIterator]();
 	}
 
