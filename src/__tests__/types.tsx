@@ -8,13 +8,49 @@ import {
 	GeneratorComponent,
 } from "..";
 
+declare global {
+	module JSX {
+		interface IntrinsicElements {
+			myIntrinsic: {
+				message: string;
+			};
+		}
+	}
+}
 describe("types", () => {
 	type MyProps = {
 		message: string;
 	};
-	let elem: any;
 
-	test("Not Components", () => {
+	let elem: any;
+	test("createElement", () => {
+		const MyFunctionComponent: Component<MyProps> = function (this, props) {
+			const ctx: Context<MyProps> = this;
+			let message: string = props.message;
+			// @ts-expect-error
+			let unexpected = props.unexpected;
+
+			return <div></div>;
+		};
+
+		// @ts-expect-error
+		elem = createElement(MyFunctionComponent, {poop: 1});
+
+		// @ts-expect-error
+		elem = createElement(MyFunctionComponent, {message: 1});
+
+		elem = createElement(MyFunctionComponent, {message: "hello"});
+
+		// @ts-expect-error
+		elem = createElement("myIntrinsic", {poop: 1});
+
+		// @ts-expect-error
+		elem = createElement("myIntrinsic", {message: 1});
+
+		elem = createElement("myIntrinsic", {message: "hello"});
+	});
+
+	test("not components", () => {
 		// @ts-expect-error
 		const MyString: Component = "Hello";
 
@@ -39,7 +75,7 @@ describe("types", () => {
 		const NotComponent: Component = {};
 	});
 
-	test("Components", () => {
+	test("Component", () => {
 		const MyFunctionComponent: Component<MyProps> = function (this, props) {
 			const ctx: Context<MyProps> = this;
 			let message: string = props.message;
@@ -112,7 +148,7 @@ describe("types", () => {
 		elem = <MyAsyncGeneratorComponent message={"message"} />;
 	});
 
-	test("Function Components", () => {
+	test("FunctionComponent", () => {
 		const MyFunctionComponent: FunctionComponent<MyProps> = function (
 			this,
 			props,
@@ -159,7 +195,7 @@ describe("types", () => {
 		};
 	});
 
-	test("Generator Components", () => {
+	test("GeneratorComponent", () => {
 		const MyGeneratorComponent: GeneratorComponent<MyProps> = function* (
 			this,
 			initialProps,
@@ -205,7 +241,7 @@ describe("types", () => {
 		elem = <MyAsyncGeneratorComponent message={"message"} />;
 
 		// TODO: add ts-expect-error at some point in the future, I guess?
-		// This will not pass because the function is infered as any, and any matches Iterator<any, any, any>.
+		// This will not pass because the function is inferred as any, and any matches Iterator<any, any, any>.
 		// Hopefully a later typescript version fixes this :(
 		const MyFunctionComponent: GeneratorComponent<MyProps> = function (
 			this,
@@ -213,6 +249,7 @@ describe("types", () => {
 		) {
 			return <div></div>;
 		};
+
 		// @ts-expect-error
 		const MyAsyncFunctionComponent: GeneratorComponent<MyProps> = async function (
 			this,
@@ -222,7 +259,7 @@ describe("types", () => {
 		};
 	});
 
-	test("Loose Typings", () => {
+	test("loose typings", () => {
 		function MyFunctionComponent(props: MyProps) {
 			let message: string = props.message;
 			// @ts-expect-error
@@ -230,6 +267,7 @@ describe("types", () => {
 
 			return <div></div>;
 		}
+
 		// @ts-expect-error
 		elem = <MyFunctionComponent />;
 		elem = <MyFunctionComponent message={"message"} />;
@@ -241,6 +279,7 @@ describe("types", () => {
 
 			return <div></div>;
 		}
+
 		// @ts-expect-error
 		elem = <MyAsyncFunctionComponent />;
 		elem = <MyAsyncFunctionComponent message={"message"} />;
@@ -259,6 +298,7 @@ describe("types", () => {
 
 			return <div></div>;
 		}
+
 		// @ts-expect-error
 		elem = <MyGeneratorComponent />;
 		elem = <MyGeneratorComponent message={"message"} />;
@@ -277,6 +317,7 @@ describe("types", () => {
 
 			return <div></div>;
 		}
+
 		// @ts-expect-error
 		elem = <MyAsyncGeneratorComponent />;
 		elem = <MyAsyncGeneratorComponent message={"message"} />;
