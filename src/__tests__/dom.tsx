@@ -469,6 +469,13 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual("<span>1</span><span>2</span>");
 	});
 
+	test("iterable", () => {
+		renderer.render(["1", 2, <div>3</div>], document.body);
+		expect(document.body.innerHTML).toEqual("12<div>3</div>");
+		renderer.render(null, document.body);
+		expect(document.body.innerHTML).toEqual("");
+	});
+
 	test("array", () => {
 		renderer.render(
 			<div>
