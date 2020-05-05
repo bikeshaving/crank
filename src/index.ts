@@ -119,25 +119,25 @@ export function isElement(value: any): value is Element {
 export function createElement<TTag extends Tag>(
 	tag: TTag,
 	props?: TagProps<TTag> | null,
-	...children: Array<Children>
+	...children: Array<unknown>
 ): Element<TTag>;
 export function createElement<TTag extends Tag>(
 	tag: TTag,
 	props?: TagProps<TTag> | null,
 ): Element<TTag> {
-	const assignedProps = Object.assign({}, props);
-	const key = assignedProps["crank-key"];
+	const props1 = Object.assign({}, props);
+	const key = props1["crank-key"];
 	if (key != null) {
-		delete assignedProps["crank-key"];
+		delete props1["crank-key"];
 	}
 
 	if (arguments.length > 3) {
-		assignedProps.children = Array.from(arguments).slice(2);
+		props1.children = Array.from(arguments).slice(2);
 	} else if (arguments.length > 2) {
-		assignedProps.children = arguments[2];
+		props1.children = arguments[2];
 	}
 
-	return {[ElementSigil]: true, tag, props: assignedProps, key};
+	return {[ElementSigil]: true, tag, props: props1, key};
 }
 
 type NormalizedChild = Element | string | undefined;
