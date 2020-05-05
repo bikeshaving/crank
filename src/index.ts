@@ -1099,8 +1099,11 @@ export class Renderer<T> {
 		}
 	}
 
-	render(child: Child, root?: object): MaybePromise<T> {
+	render(children: Children, root?: object): MaybePromise<T> {
 		let portal: Element<Portal>;
+		const child: Child = isNonStringIterable(children)
+			? createElement(Fragment, null, children)
+			: children;
 		if (isElement(child) && child.tag === Portal) {
 			portal = child;
 		} else {
