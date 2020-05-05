@@ -1764,3 +1764,97 @@ describe("parent-child refresh cascades", () => {
 		});
 	});
 });
+
+describe("oncommit", () => {
+	afterEach(async () => {
+		document.body.innerHTML = "";
+		await renderer.render(null, document.body);
+	});
+
+	test("sync function", () => {
+		const runOnCommit = jest.fn();
+
+		function Component(this: Context): Element {
+			this.oncommit(() => {
+				runOnCommit();
+			});
+
+			return <span>one</span>;
+		}
+
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+
+		expect(runOnCommit).toHaveBeenCalledTimes(1);
+	});
+
+	test("async function", async () => {
+		const runOnCommit = jest.fn();
+
+		async function Component(this: Context): Promise<Element> {
+			this.oncommit(() => {
+				runOnCommit();
+			});
+
+			await new Promise((resolve) => setTimeout(resolve, 100));
+			return <span>one</span>;
+		}
+
+		await renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+
+		expect(runOnCommit).toHaveBeenCalledTimes(1);
+	});
+
+	test("sync generator", () => {
+		const runOnCommit = jest.fn();
+		let ctx!: Context;
+		function* Component(this: Context): Generator<Element> {
+			this.oncommit(() => {
+				runOnCommit();
+			});
+			ctx = this;
+			while (true) {
+				yield <span>Hello world</span>;
+			}
+		}
+
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+
+		expect(runOnCommit).toHaveBeenCalledTimes(1);
+		ctx.refresh();
+		expect(runOnCommit).toHaveBeenCalledTimes(2);
+	});
+
+	test("async generator", async () => {
+		const runOnCommit = jest.fn();
+
+		async function* Component(this: Context): AsyncGenerator<Element> {
+			this.oncommit(async () => {
+				runOnCommit();
+			});
+
+			for await (let _ of this) {
+				yield <span>one</span>;
+			}
+		}
+
+		await renderer.render(<Component />, document.body);
+		expect(runOnCommit).toHaveBeenCalledTimes(1);
+		await renderer.render(<Component />, document.body);
+		expect(runOnCommit).toHaveBeenCalledTimes(2);
+	});
+});

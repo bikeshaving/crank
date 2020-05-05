@@ -862,7 +862,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			// TODO: batch this per macrotask
 			this.parent.commit();
 		}
-
+		this.ctx.callOnCommitCallbacks();
 		this.updating = false;
 		return; // void :(
 	}
@@ -874,6 +874,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 
 		this.updating = false;
 		this.unmounted = true;
+		this.ctx.callOnTeardownCallbacks();
 		this.ctx.clearEventListeners();
 		if (!this.finished) {
 			this.finished = true;
@@ -1014,10 +1015,15 @@ export class HostContext<T = any> {
 export interface ProvisionMap {}
 
 const componentNodes = new WeakMap<Context<any>, ComponentNode<any, any>>();
+const commitCallbacks = new WeakMap<Context<any>, Set<Function>>();
+const teardownCallbacks = new WeakMap<Context<any>, Set<Function>>();
+
 export class Context<TProps = any> extends CrankEventTarget {
 	constructor(host: ComponentNode<any, TProps>, parent?: Context<TProps>) {
 		super(parent);
 		componentNodes.set(this, host);
+		commitCallbacks.set(this, new Set());
+		teardownCallbacks.set(this, new Set());
 	}
 
 	/* eslint-disable no-dupe-class-members */
@@ -1044,6 +1050,32 @@ export class Context<TProps = any> extends CrankEventTarget {
 
 	refresh(): MaybePromise<undefined> {
 		return componentNodes.get(this)!.refresh();
+	}
+
+	oncommit(callback: Function): void {
+		const callbacks = commitCallbacks.get(this);
+		callbacks!.add(callback);
+	}
+
+	onteardown(callback: Function): void {
+		const callbacks = teardownCallbacks.get(this);
+		callbacks!.add(callback);
+	}
+
+	callOnCommitCallbacks(): void {
+		const callbacks = commitCallbacks.get(this);
+		for (const callback of callbacks!) {
+			callback();
+		}
+	}
+
+	callOnTeardownCallbacks(): void {
+		const callbacks = teardownCallbacks.get(this);
+		for (const callback of callbacks!) {
+			callback();
+		}
+
+		teardownCallbacks.delete(this);
 	}
 }
 
