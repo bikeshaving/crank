@@ -1,4 +1,12 @@
 # Changelog
+## [0.1.3] - 2020-05-05
+### Fixed
+- Made event-target-shim a direct dependency so TypeScript doesn’t error #95
+### Changed
+- Updated the types of Component and Context to take explicit prop types #51
+- Allow createElement to be passed anything as Children #97
+- Allow arbitrary elements to be passed to renderer.render #97
+
 ## [0.1.2] - 2020-04-29
 ### Fixed
 - Fixed Copy element tag not using Symbol.for #69
