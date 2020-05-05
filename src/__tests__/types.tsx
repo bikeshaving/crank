@@ -41,6 +41,15 @@ describe("types", () => {
 
 		elem = createElement(MyFunctionComponent, {message: "hello"});
 
+		elem = createElement(
+			MyFunctionComponent,
+			{message: "hello"},
+			"a",
+			1,
+			{},
+			[],
+			() => {},
+		);
 		// @ts-expect-error
 		elem = createElement("myIntrinsic", {poop: 1});
 
@@ -48,6 +57,16 @@ describe("types", () => {
 		elem = createElement("myIntrinsic", {message: 1});
 
 		elem = createElement("myIntrinsic", {message: "hello"});
+
+		elem = createElement(
+			"myIntrinsic",
+			{message: "hello"},
+			"a",
+			1,
+			{},
+			[],
+			() => {},
+		);
 	});
 
 	test("not components", () => {
