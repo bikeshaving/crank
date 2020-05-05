@@ -14,6 +14,5 @@ export default {
 			sourcemap: true,
 		},
 	],
-	external: ["@repeaterjs/repeater"],
 	plugins: [typescript(), resolve()],
 };
