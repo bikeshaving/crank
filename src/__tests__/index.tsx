@@ -1,7 +1,6 @@
 /** @jsx createElement */
 import "core-js";
 import {
-	Copy,
 	createElement,
 	Child,
 	Children,
@@ -11,7 +10,8 @@ import {
 } from "../index";
 import {renderer} from "../dom";
 
-// TODO: no-unreachable is throwing false positives in some tests
+// TODO: start splitting out these tests into separate files
+
 /* eslint-disable no-unreachable */
 describe("sync function component", () => {
 	afterEach(async () => {
@@ -41,27 +41,6 @@ describe("sync function component", () => {
 	});
 
 	test("rerender different return value", () => {
-		function Component({message}: {message: string}): Element {
-			return <span>{message}</span>;
-		}
-
-		renderer.render(
-			<div>
-				<Component message="Hello" />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
-		renderer.render(
-			<div>
-				<Copy />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
-	});
-
-	test("rerender copy", () => {
 		function Component({ChildTag}: {ChildTag: string}): Element {
 			return <ChildTag>Hello world</ChildTag>;
 		}
@@ -111,6 +90,34 @@ describe("sync function component", () => {
 		await expect(p8).resolves.toBeDefined();
 		expect(document.body.innerHTML).toEqual("<div>Hello 8</div>");
 		expect(Child).toHaveBeenCalledTimes(4);
+	});
+
+	test("event listeners are cleaned up", () => {
+		let ctx!: Context;
+		function Component(this: Context) {
+			ctx = this;
+			return <span>Hello</span>;
+		}
+
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		const listener1 = jest.fn();
+		const listener2 = jest.fn();
+		ctx.addEventListener("foo", listener1);
+		ctx.addEventListener("bar", listener1);
+		ctx.dispatchEvent(new Event("foo"));
+		expect(listener1).toHaveBeenCalledTimes(1);
+		expect(listener2).toHaveBeenCalledTimes(0);
+		const removeEventListener = jest.spyOn(ctx, "removeEventListener");
+		renderer.render(null, document.body);
+		expect(removeEventListener).toHaveBeenCalledTimes(2);
+		ctx.dispatchEvent(new Event("foo"));
+		expect(listener1).toHaveBeenCalledTimes(1);
+		expect(listener2).toHaveBeenCalledTimes(0);
 	});
 });
 
@@ -822,299 +829,6 @@ describe("sync generator component", () => {
 		expect(mock).toHaveBeenCalledTimes(1);
 	});
 
-	test("errors are caught", () => {
-		function Thrower(): never {
-			throw new Error("errors are caught");
-		}
-
-		function* Child(): Generator<number> {
-			yield 1;
-			yield 2;
-			yield <Thrower />;
-		}
-
-		function* Component(): Generator<Child> {
-			try {
-				while (true) {
-					yield (
-						<span>
-							<Child />
-						</span>
-					);
-				}
-			} catch (err) {
-				return <span>Error: {err.message}</span>;
-			}
-		}
-
-		renderer.render(
-			<div>
-				<Component />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
-		renderer.render(
-			<div>
-				<Component />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual("<div><span>2</span></div>");
-		renderer.render(
-			<div>
-				<Component />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual(
-			"<div><span>Error: errors are caught</span></div>",
-		);
-	});
-
-	test("errors caught and rerendered", () => {
-		function Thrower(): never {
-			throw new Error("errors caught and rerendered");
-		}
-
-		function* Child(): Generator<number> {
-			yield 1;
-			yield 2;
-			yield <Thrower />;
-		}
-
-		function* Component(): Generator<Child> {
-			try {
-				while (true) {
-					yield (
-						<span>
-							<Child />
-						</span>
-					);
-				}
-			} catch (err) {
-				return <span>Error: {err.message}</span>;
-			}
-		}
-
-		renderer.render(
-			<div>
-				<Component />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
-		renderer.render(
-			<div>
-				<Component />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual("<div><span>2</span></div>");
-		renderer.render(
-			<div>
-				<Component />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual(
-			"<div><span>Error: errors caught and rerendered</span></div>",
-		);
-		renderer.render(
-			<div>
-				<Component />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual(
-			"<div><span>Error: errors caught and rerendered</span></div>",
-		);
-	});
-
-	test("immediate errors are caught", () => {
-		function Thrower(): never {
-			throw new Error("immediate errors are caught");
-		}
-
-		function* Child(): Generator<number> {
-			yield <Thrower />;
-		}
-
-		function* Component(): Generator<Child> {
-			try {
-				while (true) {
-					yield (
-						<span>
-							<Child />
-						</span>
-					);
-				}
-			} catch (err) {
-				return <span>Error: {err.message}</span>;
-			}
-		}
-
-		renderer.render(
-			<div>
-				<Component />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual(
-			"<div><span>Error: immediate errors are caught</span></div>",
-		);
-	});
-
-	test("async errors are caught", async () => {
-		async function Thrower(): Promise<never> {
-			throw new Error("async errors are caught");
-		}
-
-		function* Component(): Generator<Child> {
-			try {
-				yield <Thrower />;
-			} catch (err) {
-				return <span>Error: {err.message}</span>;
-			}
-		}
-
-		await renderer.render(
-			<div>
-				<Component />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual(
-			"<div><span>Error: async errors are caught</span></div>",
-		);
-		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual(
-			"<div><span>Error: async errors are caught</span></div>",
-		);
-	});
-
-	test("immediate async errors caught and rerendered", async () => {
-		async function Thrower(): Promise<never> {
-			throw new Error("immediate async errors caught and rerendered");
-		}
-
-		function* Component(): Generator<Child> {
-			try {
-				yield <Thrower />;
-			} catch (err) {
-				return <span>Error: {err.message}</span>;
-			}
-		}
-
-		renderer.render(
-			<div>
-				<Component />
-			</div>,
-			document.body,
-		);
-		await renderer.render(
-			<div>
-				<Component />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual(
-			"<div><span>Error: immediate async errors caught and rerendered</span></div>",
-		);
-		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual(
-			"<div><span>Error: immediate async errors caught and rerendered</span></div>",
-		);
-	});
-
-	test("immediate async errors are caught", async () => {
-		async function Thrower(): Promise<never> {
-			throw new Error("immediate async errors are caught");
-		}
-
-		function* Child(): Generator<number> {
-			yield <Thrower />;
-		}
-
-		function* Component(): Generator<Child> {
-			try {
-				while (true) {
-					yield (
-						<span>
-							<Child />
-						</span>
-					);
-				}
-			} catch (err) {
-				return <span>Error: {err.message}</span>;
-			}
-		}
-
-		await renderer.render(
-			<div>
-				<Component />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual(
-			"<div><span>Error: immediate async errors are caught</span></div>",
-		);
-		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual(
-			"<div><span>Error: immediate async errors are caught</span></div>",
-		);
-	});
-
-	test("async errors are caught in nested component", async () => {
-		async function Thrower(): Promise<never> {
-			throw new Error("async errors are caught in nested component");
-		}
-
-		function* Child(): Generator<Child> {
-			yield <span>1</span>;
-			yield <span>2</span>;
-			yield <Thrower />;
-		}
-
-		function* Component(): Generator<Child> {
-			try {
-				while (true) {
-					yield <Child />;
-				}
-			} catch (err) {
-				return <span>Error: {err.message}</span>;
-			}
-		}
-
-		await renderer.render(
-			<div>
-				<Component />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
-		await renderer.render(
-			<div>
-				<Component />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual("<div><span>2</span></div>");
-		await renderer.render(
-			<div>
-				<Component />
-			</div>,
-			document.body,
-		);
-		expect(document.body.innerHTML).toEqual(
-			"<div><span>Error: async errors are caught in nested component</span></div>",
-		);
-		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual(
-			"<div><span>Error: async errors are caught in nested component</span></div>",
-		);
-	});
-
 	test("multiple iterations without a yield throw", () => {
 		let i = 0;
 		function* Component(this: Context) {
@@ -1135,6 +849,7 @@ describe("sync generator component", () => {
 		expect(i).toBe(1);
 	});
 
+	// TODO: it would be nice to test this like other components
 	test("for await...of throws", async () => {
 		let ctx: Context;
 		function* Component(this: Context): Generator<null> {
@@ -1947,5 +1662,105 @@ describe("async races", () => {
 		expect(document.body.innerHTML).toEqual("<span>Fast</span>");
 		await p2;
 		expect(document.body.innerHTML).toEqual("<div><span>Slow</span></div>");
+	});
+});
+
+describe("parent-child refresh cascades", () => {
+	afterEach(async () => {
+		document.body.innerHTML = "";
+		await renderer.render(null, document.body);
+	});
+
+	test("sync function parent and sync function child", () => {
+		return new Promise((done) => {
+			function Child(this: Context) {
+				this.dispatchEvent(new Event("test", {bubbles: true}));
+				return <span>child</span>;
+			}
+
+			function Parent(this: Context) {
+				this.addEventListener("test", () => {
+					try {
+						this.refresh();
+						done();
+					} catch (err) {
+						done(err);
+					}
+				});
+
+				return (
+					<div>
+						<Child />
+					</div>
+				);
+			}
+
+			renderer.render(<Parent />, document.body);
+			expect(document.body.innerHTML).toEqual("<div><span>child</span></div>");
+		});
+	});
+
+	test("sync generator parent and sync function child", () => {
+		return new Promise((done) => {
+			function Child(this: Context) {
+				this.dispatchEvent(new Event("test", {bubbles: true}));
+				return <span>child</span>;
+			}
+
+			function* Parent(this: Context) {
+				this.addEventListener("test", () => {
+					try {
+						this.refresh();
+						done();
+					} catch (err) {
+						done(err);
+					}
+				});
+
+				while (true) {
+					yield (
+						<div>
+							<Child />
+						</div>
+					);
+				}
+			}
+
+			renderer.render(<Parent />, document.body);
+			expect(document.body.innerHTML).toEqual("<div><span>child</span></div>");
+		});
+	});
+
+	test("sync generator parent and sync generator child", () => {
+		return new Promise((done) => {
+			function* Child(this: Context) {
+				while (true) {
+					this.dispatchEvent(new Event("test", {bubbles: true}));
+					yield <span>child</span>;
+				}
+			}
+
+			function* Parent(this: Context) {
+				this.addEventListener("test", () => {
+					try {
+						this.refresh();
+						done();
+					} catch (err) {
+						done(err);
+					}
+				});
+
+				while (true) {
+					yield (
+						<div>
+							<Child />
+						</div>
+					);
+				}
+			}
+
+			renderer.render(<Parent />, document.body);
+			expect(document.body.innerHTML).toEqual("<div><span>child</span></div>");
+		});
 	});
 });

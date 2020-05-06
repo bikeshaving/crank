@@ -1,5 +1,5 @@
 ---
-title: Asynchronous Components
+title: Async Components
 ---
 
 ## Async function components
@@ -37,12 +37,13 @@ async function Delay ({message}) {
   await p1;
   console.log(document.body.innerHTML); // "Run 1"
   const p2 = renderer.render(<Delay message="Run 2" />, document.body);
-  // this render is skipped because the second render is still pending
+  // These renders are enqueued because the second render is still pending.
   const p3 = renderer.render(<Delay message="Run 3" />, document.body);
   const p4 = renderer.render(<Delay message="Run 4" />, document.body);
   console.log(document.body.innerHTML); // "Run 1"
   await p2;
   console.log(document.body.innerHTML); // "Run 2"
+  // By the time the third render fulfills, the fourth render has already completed.
   await p3;
   console.log(document.body.innerHTML); // "Run 4"
   await p4;
@@ -88,8 +89,11 @@ async function Slow() {
 })();
 ```
 
+<!--
+TODO: this section is too hard to understand and requires code examples so we’re removing it for now.
 ### Components with async children 
 When Crank encounters an async component anywhere in the element tree, the entire rendering process becomes asynchronous. Therefore, async child components make parent components asynchronous, and sync function and generator components behave differently when they produce async children. On the one hand, sync function components transparently pass updates along to async children, so that when a renderer updates a sync function component concurrently, its async children will also enqueue an update immediately. On the other hand, sync generator components which produce async elements will not resume until those async children have fulfilled. This is because sync generators expect to be resumed after their children have rendered, and the actual DOM nodes which are created are passed back into the generator, but they wouldn’t be available if the generator was concurrently resumed before the async children had settled.
+-->
 
 ## Async generator components
 Just as you can write stateful components with sync generator functions, you can also write stateful async components with async generator functions.
@@ -208,4 +212,4 @@ async function *Suspense({timeout, fallback, children}) {
 })();
 ```
 
-As you can see, with Crank, no special tags are needed for async loading states, and the functionality to write this complex logic is implemented using the same element diffing algorithm that governs synchronous components. This approach is also more flexible in the sense that you can extend it for instance, to include a second fallback state which fulfills after ten seconds, which might inform the user that something went wrong or that servers are slow to respond. Best of all, you can use async/await directly in your components!
+As you can see, with Crank, no special tags are needed for async loading states, and the functionality to write this complex logic is implemented using the same element diffing algorithm that governs synchronous components. This approach is also more flexible in the sense that you can extend it, for instance, to include a second fallback state which fulfills after ten seconds, which might inform the user that something went wrong or that servers are slow to respond. Best of all, you can use async/await directly in your components!

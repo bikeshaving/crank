@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import {createElement, Fragment, Raw} from "../index";
+import {Context, createElement, Fragment, Raw} from "../index";
 import {renderer} from "../html";
 
 describe("render", () => {
@@ -52,12 +52,28 @@ describe("render", () => {
 		expect(
 			renderer.render(
 				<Fragment>
-					<input id="toggle" type="checkbox" checked data-checked />
+					<input id="toggle" type="checkbox" checked data-checked foo={false} />
 					<label for="toggle" />
 				</Fragment>,
 			),
 		).toEqual(
 			'<input id="toggle" type="checkbox" checked data-checked><label for="toggle"></label>',
+		);
+	});
+
+	test("styles", () => {
+		expect(
+			renderer.render(
+				<Fragment>
+					<div style={{color: "red"}} />
+					<img
+						src="x"
+						style={{xss: 'foo;" onerror="alert(\'hack\')" other="'}}
+					/>
+				</Fragment>,
+			),
+		).toEqual(
+			'<div style="color:red;"></div><img src="x" style="xss:foo;&quot; onerror=&quot;alert(&#039;hack&#039;)&quot; other=&quot;;">',
 		);
 	});
 
@@ -138,5 +154,48 @@ describe("render", () => {
 				</div>,
 			),
 		).toEqual('<div>Raw: <span id="raw">Hi</span></div>');
+	});
+
+	test("sync generator components are cleaned up", () => {
+		const mock = jest.fn();
+		function* Component() {
+			let i = 0;
+			try {
+				while (true) {
+					yield <div>{i++}</div>;
+				}
+			} finally {
+				mock();
+			}
+		}
+
+		expect(renderer.render(<Component />)).toEqual("<div>0</div>");
+		expect(renderer.render(<Component />)).toEqual("<div>0</div>");
+		expect(mock).toHaveBeenCalledTimes(2);
+	});
+
+	test("async generator components are cleaned up", async () => {
+		const mock = jest.fn();
+		async function* Component(this: Context) {
+			let i = 0;
+			// TODO: investigate why using a while loop causes renderer.render to
+			// resolve to <div>1</div>
+			try {
+				for await (const _ of this) {
+					yield <div>{i++}</div>;
+				}
+			} finally {
+				mock();
+			}
+		}
+
+		await expect(renderer.render(<Component />)).resolves.toEqual(
+			"<div>0</div>",
+		);
+		await expect(renderer.render(<Component />)).resolves.toEqual(
+			"<div>0</div>",
+		);
+		await new Promise((resolve) => setTimeout(resolve));
+		expect(mock).toHaveBeenCalledTimes(2);
 	});
 });

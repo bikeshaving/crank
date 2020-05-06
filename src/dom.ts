@@ -14,7 +14,11 @@ declare module "./index" {
 }
 
 // TODO: create an allowlist/blocklist of props
-function updateProps(el: Element, props: Props, newProps: Props): void {
+function updateProps(
+	el: Element,
+	props: Record<string, any>,
+	newProps: Record<string, any>,
+): void {
 	for (const name in {...props, ...newProps}) {
 		const value = props[name];
 		const newValue = newProps[name];

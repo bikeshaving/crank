@@ -186,6 +186,13 @@ function Home(): Element {
 							generators.
 						</h2>
 						<a href="/guides/getting-started">Get Started</a>
+						<iframe
+							src="https://ghbtns.com/github-btn.html?user=bikeshaving&repo=crank&type=star&count=true&size=large"
+							frameborder="0"
+							scrolling="0"
+							width="160px"
+							height="30px"
+						/>
 					</div>
 				</header>
 				<main class="features">
@@ -194,8 +201,8 @@ function Home(): Element {
 						<p>
 							Crank uses the same JSX syntax and diffing algorithm popularized
 							by React, allowing you to write HTML-like code directly in your
-							JavaScript.{" "}
-						</p>{" "}
+							JavaScript.
+						</p>
 					</div>
 					<div class="feature">
 						<h3>Just JavaScript™</h3>
