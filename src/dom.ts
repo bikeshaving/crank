@@ -27,7 +27,7 @@ function updateProps(
 				break;
 			case name === "class":
 			case name === "className": {
-				(el as any)["className"] = newValue;
+				el.className = newValue;
 				break;
 			}
 			case name === "style" && "style" in el: {
