@@ -74,31 +74,15 @@ function updateProps(
 	}
 }
 
-// TODO: improve this algorithm
-// https://stackoverflow.com/questions/59418120/what-is-the-most-efficient-way-to-update-the-childnodes-of-a-dom-node-with-an-ar
-function updateChildren(el: Element, children: Array<Node | string>): void {
-	if (el.childNodes.length === 0) {
-		const fragment = document.createDocumentFragment();
-		for (let child of children) {
-			if (typeof child === "string") {
-				child = document.createTextNode(child);
-			}
-
-			fragment.appendChild(child);
-		}
-
-		el.appendChild(fragment);
-		return;
-	}
-
+function updateChildren(el: Element, newChildren: Array<Node | string>): void {
 	let oldChild = el.firstChild;
-	for (const newChild of children) {
-		if (oldChild === null) {
-			el.appendChild(
-				typeof newChild === "string"
-					? document.createTextNode(newChild)
-					: newChild,
-			);
+	let ni = 0;
+	let newChildSet: Set<Node | string> | undefined;
+	while (oldChild !== null && ni < newChildren.length) {
+		const newChild = newChildren[ni];
+		if (oldChild === newChild) {
+			oldChild = oldChild.nextSibling;
+			ni++;
 		} else if (typeof newChild === "string") {
 			if (oldChild.nodeType === Node.TEXT_NODE) {
 				if (oldChild.nodeValue !== newChild) {
@@ -109,10 +93,25 @@ function updateChildren(el: Element, children: Array<Node | string>): void {
 			} else {
 				el.insertBefore(document.createTextNode(newChild), oldChild);
 			}
-		} else if (oldChild !== newChild) {
-			el.insertBefore(newChild, oldChild);
+
+			ni++;
+		} else if (oldChild.nodeType === Node.TEXT_NODE) {
+			const nextSibling = oldChild.nextSibling;
+			el.removeChild(oldChild);
+			oldChild = nextSibling;
 		} else {
-			oldChild = oldChild.nextSibling;
+			if (newChildSet === undefined) {
+				newChildSet = new Set(newChildren);
+			}
+
+			if (newChildSet.has(oldChild)) {
+				el.insertBefore(newChild, oldChild);
+				ni++;
+			} else {
+				const nextSibling = oldChild.nextSibling;
+				el.removeChild(oldChild);
+				oldChild = nextSibling;
+			}
 		}
 	}
 
@@ -120,6 +119,15 @@ function updateChildren(el: Element, children: Array<Node | string>): void {
 		const nextSibling = oldChild.nextSibling;
 		el.removeChild(oldChild);
 		oldChild = nextSibling;
+	}
+
+	for (; ni < newChildren.length; ni++) {
+		const newChild = newChildren[ni];
+		el.appendChild(
+			typeof newChild === "string"
+				? document.createTextNode(newChild)
+				: newChild,
+		);
 	}
 }
 
