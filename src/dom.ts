@@ -3,7 +3,6 @@ import {
 	Default,
 	Environment,
 	Intrinsic,
-	Props,
 	Raw,
 	Renderer,
 	Portal,
@@ -162,19 +161,22 @@ export const env: Environment<Element> = {
 	[Default](tag: string): Intrinsic<Element> {
 		return function* defaultDOM(this: HostContext): Generator<Element> {
 			const node = document.createElement(tag);
-			let props: Props = {};
-			let nextProps: Props;
+			let props: Record<string, any> = {};
 			let children: Array<Element | string> = [];
-			let nextChildren: Array<Element | string>;
-			for ({children: nextChildren, ...nextProps} of this) {
-				updateProps(node, props, nextProps);
-				props = nextProps;
+			for (const nextProps of this) {
+				// We can’t use referential identity of props because we don’t have any
+				// restrictions like elements have to be immutable.
+				if (this.updating) {
+					updateProps(node, props, nextProps);
+					props = nextProps;
+				}
+
 				if (
 					!("innerHTML" in nextProps) &&
-					(children.length > 0 || nextChildren.length > 0)
+					(children.length > 0 || nextProps.children.length > 0)
 				) {
-					updateChildren(node, nextChildren);
-					children = nextChildren;
+					updateChildren(node, nextProps.children);
+					children = nextProps.children;
 				}
 
 				yield node;
@@ -190,7 +192,7 @@ export const env: Environment<Element> = {
 					value = newValue;
 				}
 
-				// TODO: figure out what the type of Environment actually is
+				// TODO: figure out what the type of this Environment actually is
 				yield (fragment as unknown) as Element;
 			} else {
 				fragment = undefined;

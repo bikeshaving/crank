@@ -218,7 +218,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	protected props: any = undefined;
 	value: Array<T | string> | T | string | undefined = undefined;
 	ctx: Context | undefined = undefined;
-	protected updating = false;
+	updating = false;
 	protected iterating = false;
 	protected finished = false;
 	protected unmounted = false;
@@ -290,7 +290,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 			child = child.nextSibling
 		) {
 			if (typeof child.value === "string") {
-				buffer = (buffer || "") + child.value;
+				buffer = buffer === undefined ? child.value : buffer + child.value;
 			} else if (child.tag !== Portal) {
 				if (buffer !== undefined) {
 					childValues.push(buffer);
@@ -1008,6 +1008,10 @@ export class HostContext<T = any> {
 
 	[Symbol.iterator](): Generator<IntrinsicProps<T>> {
 		return hostNodes.get(this)![Symbol.iterator]();
+	}
+
+	get updating(): boolean {
+		return hostNodes.get(this)!.updating;
 	}
 }
 
