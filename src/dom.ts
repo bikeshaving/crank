@@ -22,28 +22,34 @@ function updateProps(
 	for (const name in {...props, ...newProps}) {
 		const value = props[name];
 		const newValue = newProps[name];
-		switch (true) {
-			case name === "children":
+		if (value === newValue) {
+			continue;
+		}
+
+		switch (name) {
+			case "children":
 				break;
-			case name === "class":
-			case name === "className": {
+			case "class":
+			case "className": {
 				el.className = newValue;
 				break;
 			}
-			case name === "style" && "style" in el: {
+			case "style": {
 				const style: CSSStyleDeclaration = (el as any).style;
-				if (newValue == null) {
-					el.removeAttribute("style");
-				} else if (typeof newValue === "string") {
-					style.cssText = newValue;
-				} else {
-					for (const styleName in Object.assign({}, value, newValue)) {
-						const styleValue = value && value[styleName];
-						const newStyleValue = newValue && newValue[styleName];
-						if (newStyleValue == null) {
-							style.removeProperty(styleName);
-						} else if (styleValue !== newStyleValue) {
-							style.setProperty(styleName, newStyleValue);
+				if (style != null) {
+					if (newValue == null) {
+						el.removeAttribute("style");
+					} else if (typeof newValue === "string") {
+						style.cssText = newValue;
+					} else {
+						for (const styleName in {...value, ...newValue}) {
+							const styleValue = value && value[styleName];
+							const newStyleValue = newValue && newValue[styleName];
+							if (newStyleValue == null) {
+								style.removeProperty(styleName);
+							} else if (styleValue !== newStyleValue) {
+								style.setProperty(styleName, newStyleValue);
+							}
 						}
 					}
 				}
