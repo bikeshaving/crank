@@ -181,12 +181,21 @@ export const env: Environment<Element> = {
 			}
 		};
 	},
-	[Raw]({value}): Element {
-		if (typeof value === "string") {
-			// TODO: figure out what the type of element should actually be
-			return (createDocumentFragmentFromHTML(value) as unknown) as Element;
-		} else {
-			return value;
+	*[Raw]({value}): Generator<Element> {
+		let fragment: DocumentFragment | undefined;
+		for (const {value: newValue} of this) {
+			if (typeof value === "string") {
+				if (fragment === undefined || value !== newValue) {
+					fragment = createDocumentFragmentFromHTML(value);
+					value = newValue;
+				}
+
+				// TODO: figure out what the type of Environment actually is
+				yield (fragment as unknown) as Element;
+			} else {
+				fragment = undefined;
+				yield value;
+			}
 		}
 	},
 	*[Portal](this: HostContext, {root}): Generator<Element> {
