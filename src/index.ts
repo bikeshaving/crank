@@ -226,7 +226,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	// initiated by the current node or its descendants.
 	updating = false;
 	// A flag which means the current node can be blown away.
-	protected fragile = false;
+	private fragile = false;
 	// A flag which means the current node is unmounted.
 	protected unmounted = false;
 	private appendChild(child: Node<T>): void {
@@ -319,11 +319,10 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		this.childValues = childValues;
 	}
 
-	// TODO: I bet we could simplify the algorithm further, perhaps by writing a
-	// custom method which automatically zips up old and new nodes.
+	// TODO: reduce duplication and complexity of this method :P
 	protected updateChildren(children: Children): MaybePromise<undefined> {
-		let newKeyedChildren: Map<unknown, Node<T>> | undefined;
 		let updates: Array<Promise<unknown>> | undefined;
+		let newKeyedChildren: Map<unknown, Node<T>> | undefined;
 		let node = this.firstChild;
 		let nextSibling = node && node.nextSibling;
 		for (const child of flatten(children)) {
@@ -338,22 +337,50 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				}
 			}
 
-			// TODO: this code got really complex with all the Copy checks let’s
-			// simplify it somehow
-			if (key != null) {
-				let keyedNode = this.keyedChildren && this.keyedChildren.get(key);
-				if (keyedNode === undefined) {
-					if (tag !== Copy) {
-						keyedNode = createNode(this, this.renderer, child);
-					}
+			if (tag === Copy) {
+				if (key == null) {
+					node = nextSibling;
+					nextSibling = node && node.nextSibling;
 				} else {
-					this.keyedChildren!.delete(key);
-					if (node !== keyedNode) {
-						this.removeChild(keyedNode);
+					// TODO: deduplicate logic with keyed node logic below
+					const keyedNode = this.keyedChildren && this.keyedChildren.get(key);
+					if (keyedNode !== undefined) {
+						this.keyedChildren!.delete(key);
+						if (node !== keyedNode) {
+							this.removeChild(keyedNode);
+						}
+
+						if (node === undefined) {
+							this.appendChild(keyedNode);
+						} else if (node !== keyedNode) {
+							if (node.key == null) {
+								this.insertBefore(keyedNode, node);
+							} else {
+								this.insertBefore(keyedNode, node.nextSibling);
+							}
+						}
+
+						if (newKeyedChildren === undefined) {
+							newKeyedChildren = new Map();
+						}
+
+						newKeyedChildren.set(key, keyedNode);
+						node = keyedNode.nextSibling;
+						nextSibling = node && node.nextSibling;
 					}
 				}
+			} else {
+				if (key != null) {
+					let keyedNode = this.keyedChildren && this.keyedChildren.get(key);
+					if (keyedNode === undefined) {
+						keyedNode = createNode(this, this.renderer, child);
+					} else {
+						this.keyedChildren!.delete(key);
+						if (node !== keyedNode) {
+							this.removeChild(keyedNode);
+						}
+					}
 
-				if (keyedNode !== undefined) {
 					if (node === undefined) {
 						this.appendChild(keyedNode);
 					} else if (node !== keyedNode) {
@@ -364,119 +391,107 @@ abstract class ParentNode<T> implements NodeBase<T> {
 						}
 					}
 
-					node = keyedNode;
-					nextSibling = node.nextSibling;
-				}
-			} else if (node === undefined) {
-				// current parent has no more nodes
-				if (tag !== Copy) {
-					node = createNode(this, this.renderer, child);
-					this.appendChild(node);
-				}
-			} else if (node.key != null) {
-				// the current node is keyed but the child is not
-				while (node !== undefined && node.key != null) {
-					node = nextSibling;
-					nextSibling = node && node.nextSibling;
-				}
-
-				if (node === undefined) {
-					if (tag !== Copy) {
-						node = createNode(this, this.renderer, child);
-						this.appendChild(node);
-					}
-				}
-			}
-
-			if (node !== undefined) {
-				if (tag !== Copy) {
-					// TODO: figure out why do we do a check for unmounted node here
-					if (node.tag === tag && !(node.internal && node.fragile)) {
-						if (node.internal) {
-							const update = node.update((child as Element).props);
-							if (update !== undefined) {
-								if (updates === undefined) {
-									updates = [];
-								}
-
-								updates.push(update);
-							}
-						} else if (typeof child === "string") {
-							const text = this.renderer.text(child);
-							node.value = text;
-						} else {
-							node.value = undefined;
-						}
-					} else {
-						const newNode = createNode(this, this.renderer, child);
-						newNode.clock = node.clock++;
-						let update: MaybePromise<undefined>;
-						if (newNode.internal) {
-							update = newNode.update((child as Element).props);
-						} else if (typeof child === "string") {
-							newNode.value = this.renderer.text(child);
-						} else {
-							newNode.value = undefined;
-						}
-
-						if (update === undefined) {
-							if (node.internal) {
-								node.unmount();
-							}
-
-							this.replaceChild(newNode, node);
-							node.replacedBy = newNode;
-						} else {
-							if (updates === undefined) {
-								updates = [];
-							}
-
-							if (node.internal) {
-								node.fragile = true;
-							}
-
-							// The node variable is reassigned so we need to capture its
-							// current value in node1 for the sake of the callback’s closure.
-							const node1 = node;
-							update = update.then(() => {
-								if (node1.replacedBy === undefined) {
-									this.replaceChild(newNode, node1);
-									node1.replacedBy = newNode;
-
-									if (node1.internal) {
-										node1.unmount();
-									}
-								} else if (
-									node1.replacedBy.replacedBy === undefined &&
-									node1.replacedBy.clock < newNode.clock
-								) {
-									this.replaceChild(newNode, node1.replacedBy);
-									node1.replacedBy = newNode;
-
-									if (node1.internal) {
-										node1.unmount();
-									}
-								}
-
-								return undefined; // void :(
-							});
-
-							updates.push(update);
-						}
-					}
-				}
-
-				if (key !== undefined) {
 					if (newKeyedChildren === undefined) {
 						newKeyedChildren = new Map();
 					}
 
-					newKeyedChildren.set(key, node);
-				}
-			}
+					newKeyedChildren.set(key, keyedNode);
+					node = keyedNode;
+					nextSibling = node.nextSibling;
+				} else if (node === undefined) {
+					// the current node has no more children
+					node = createNode(this, this.renderer, child);
+					this.appendChild(node);
+				} else if (node.key != null) {
+					// the current node is keyed but the child is not
+					while (node !== undefined && node.key != null) {
+						node = nextSibling;
+						nextSibling = node && node.nextSibling;
+					}
 
-			node = nextSibling;
-			nextSibling = node && node.nextSibling;
+					if (node === undefined) {
+						node = createNode(this, this.renderer, child);
+						this.appendChild(node);
+					}
+				}
+
+				if (node.tag === tag && !(node.internal && node.fragile)) {
+					if (node.internal) {
+						const update = node.update((child as Element).props);
+						if (update !== undefined) {
+							if (updates === undefined) {
+								updates = [];
+							}
+
+							updates.push(update);
+						}
+					} else if (typeof child === "string") {
+						const text = this.renderer.text(child);
+						node.value = text;
+					} else {
+						node.value = undefined;
+					}
+				} else {
+					const newNode = createNode(this, this.renderer, child);
+					newNode.clock = node.clock++;
+					let update: Promise<unknown> | undefined;
+					if (newNode.internal) {
+						update = newNode.update((child as Element).props);
+					} else if (typeof child === "string") {
+						newNode.value = this.renderer.text(child);
+					} else {
+						newNode.value = undefined;
+					}
+
+					if (update === undefined) {
+						if (node.internal) {
+							node.unmount();
+						}
+
+						this.replaceChild(newNode, node);
+						node.replacedBy = newNode;
+					} else {
+						if (updates === undefined) {
+							updates = [];
+						}
+
+						if (node.internal) {
+							// we mark the current node as fragile so that it can be replaced
+							// by future updates even if the tags match
+							node.fragile = true;
+						}
+
+						// The node variable is reassigned so we need to capture its
+						// current value in node1 for the sake of the callback’s closure.
+						const node1 = node;
+						update = update.then(() => {
+							if (node1.replacedBy === undefined) {
+								this.replaceChild(newNode, node1);
+								node1.replacedBy = newNode;
+
+								if (node1.internal) {
+									node1.unmount();
+								}
+							} else if (
+								node1.replacedBy.replacedBy === undefined &&
+								node1.replacedBy.clock < newNode.clock
+							) {
+								this.replaceChild(newNode, node1.replacedBy);
+								node1.replacedBy = newNode;
+
+								if (node1.internal) {
+									node1.unmount();
+								}
+							}
+						});
+
+						updates.push(update);
+					}
+				}
+
+				node = nextSibling;
+				nextSibling = node && node.nextSibling;
+			}
 		}
 
 		// unmount excess children
@@ -495,10 +510,14 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		}
 
 		// unmount excess keyed children
+		// TODO: this is likely where the logic for asynchronous unmounting would go
 		if (this.keyedChildren !== undefined) {
-			for (const child of this.keyedChildren.values()) {
-				child.internal && child.unmount();
-				this.removeChild(child);
+			for (const node of this.keyedChildren.values()) {
+				if (node.internal) {
+					node.unmount();
+				}
+
+				this.removeChild(node);
 			}
 		}
 
