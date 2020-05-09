@@ -100,6 +100,7 @@ export type Intrinsic<T> = (
 // Special Intrinsic Tags
 // TODO: We assert symbol tags as any because typescript support for symbol
 // tags in JSX does not exist yet.
+// https://github.com/microsoft/TypeScript/issues/38367
 export const Fragment = Symbol.for("crank.Fragment") as any;
 export type Fragment = typeof Fragment;
 
@@ -212,15 +213,18 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	abstract readonly renderer: Renderer<T>;
 	abstract parent: ParentNode<T> | undefined;
 	// When children update asynchronously, we race their result against the next
-	// update of children. The onNextResult property is set to the resolve
+	// update of children. The onNewResult property is set to the resolve
 	// function of the promise which the current update is raced against.
-	private onNextResult:
+	private onNewResult:
 		| ((result?: Promise<undefined>) => unknown)
 		| undefined = undefined;
 	protected props: any = undefined;
 	ctx: Context | undefined = undefined;
+	// When updating is true, this means that the parent has created/updated this
+	// node. It is set to false once the node has committed, and if this.updating
+	// is not true when the node is refreshing or committing, this means that the
+	// work was initiated at the current level or below.
 	updating = false;
-	protected iterating = false;
 	protected finished = false;
 	protected unmounted = false;
 	private appendChild(child: Node<T>): void {
@@ -314,7 +318,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	}
 
 	// TODO: I bet we could simplify the algorithm further, perhaps by writing a
-	// custom a method which automatically zips up old and new nodes.
+	// custom method which automatically zips up old and new nodes.
 	protected updateChildren(children: Children): MaybePromise<undefined> {
 		let node = this.firstChild;
 		let nextSibling = node && node.nextSibling;
@@ -332,6 +336,8 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				}
 			}
 
+			// TODO: this code got really complex with all the Copy checks let’s
+			// simplify it somehow
 			if (key != null) {
 				let keyedNode = this.keyedChildren && this.keyedChildren.get(key);
 				if (keyedNode === undefined) {
@@ -367,7 +373,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				}
 			} else if (node.key != null) {
 				// the current node is keyed but the child is not
-				while (node && node.key != null) {
+				while (node !== undefined && node.key != null) {
 					node = nextSibling;
 					nextSibling = node && node.nextSibling;
 				}
@@ -400,15 +406,15 @@ abstract class ParentNode<T> implements NodeBase<T> {
 							node.value = undefined;
 						}
 					} else {
-						const nextNode = createNode(this, this.renderer, child);
-						nextNode.clock = node.clock++;
+						const newNode = createNode(this, this.renderer, child);
+						newNode.clock = node.clock++;
 						let update: MaybePromise<undefined>;
-						if (nextNode.internal) {
-							update = nextNode.update((child as Element).props);
+						if (newNode.internal) {
+							update = newNode.update((child as Element).props);
 						} else if (typeof child === "string") {
-							nextNode.value = this.renderer.text(child);
+							newNode.value = this.renderer.text(child);
 						} else {
-							nextNode.value = undefined;
+							newNode.value = undefined;
 						}
 
 						if (update === undefined) {
@@ -416,8 +422,8 @@ abstract class ParentNode<T> implements NodeBase<T> {
 								node.unmount();
 							}
 
-							this.replaceChild(nextNode, node);
-							node.replacedBy = nextNode;
+							this.replaceChild(newNode, node);
+							node.replacedBy = newNode;
 						} else {
 							if (updates === undefined) {
 								updates = [];
@@ -428,14 +434,14 @@ abstract class ParentNode<T> implements NodeBase<T> {
 							const node1 = node;
 							update = update.then(() => {
 								if (node1.replacedBy === undefined) {
-									this.replaceChild(nextNode, node1);
-									node1.replacedBy = nextNode;
+									this.replaceChild(newNode, node1);
+									node1.replacedBy = newNode;
 								} else if (
 									node1.replacedBy.replacedBy === undefined &&
-									node1.replacedBy.clock < nextNode.clock
+									node1.replacedBy.clock < newNode.clock
 								) {
-									this.replaceChild(nextNode, node1.replacedBy);
-									node1.replacedBy = nextNode;
+									this.replaceChild(newNode, node1.replacedBy);
+									node1.replacedBy = newNode;
 								}
 
 								if (node1.internal) {
@@ -469,15 +475,13 @@ abstract class ParentNode<T> implements NodeBase<T> {
 			node !== undefined;
 			node = nextSibling, nextSibling = node && node.nextSibling
 		) {
-			if (node.key !== undefined && this.keyedChildren !== undefined) {
-				this.keyedChildren.delete(node.key);
-			}
+			if (node.key == null) {
+				if (node.internal) {
+					node.unmount();
+				}
 
-			if (node.internal) {
-				node.unmount();
+				this.removeChild(node);
 			}
-
-			this.removeChild(node);
 		}
 
 		// unmount excess keyed children
@@ -489,21 +493,22 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		}
 
 		this.keyedChildren = newKeyedChildren;
+
 		if (updates === undefined) {
 			this.commit();
-			if (this.onNextResult !== undefined) {
-				this.onNextResult();
-				this.onNextResult = undefined;
+			if (this.onNewResult !== undefined) {
+				this.onNewResult();
+				this.onNewResult = undefined;
 			}
 		} else {
 			const result = Promise.all(updates).then(() => void this.commit()); // void :(
-			if (this.onNextResult !== undefined) {
-				this.onNextResult(result.catch(() => undefined)); // void :(
-				this.onNextResult = undefined;
+			if (this.onNewResult !== undefined) {
+				this.onNewResult(result.catch(() => undefined)); // void :(
+				this.onNewResult = undefined;
 			}
 
 			const nextResult = new Promise<undefined>(
-				(resolve) => (this.onNextResult = resolve),
+				(resolve) => (this.onNewResult = resolve),
 			);
 			return Promise.race([result, nextResult]);
 		}
@@ -592,6 +597,10 @@ class HostNode<T> extends ParentNode<T> {
 	private readonly intrinsic: Intrinsic<T>;
 	private readonly hostCtx: HostContext<T>;
 	private iterator: Iterator<T> | undefined = undefined;
+	// A flag to make sure the HostContext node isn’t stepped through multiple
+	// times without a yield. It is set to true when the [Symbol.iterator] is
+	// iterated, and set to false when the intrinsic returns or yields.
+	private iterating = false;
 	constructor(
 		parent: ParentNode<T> | undefined,
 		renderer: Renderer<T>,
@@ -694,19 +703,34 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	readonly key: Key;
 	readonly parent: ParentNode<T>;
 	readonly renderer: Renderer<T>;
-	readonly ctx: Context;
-	private stepping = false;
-	private available = false;
+	readonly ctx: Context<TProps>;
 	private iterator: ChildIterator | undefined = undefined;
-	// TODO: explain these properties
+	// A flag to make sure the Context isn’t stepped through multiple times
+	// without a yield. It is set to true when the [Symbol.iterator] or
+	// [Symbol.asyncIterator] is iterated, and set to false when the component
+	// returns or yields.
+	private iterating = false;
+	// A flag to make sure we aren’t stepping through generators multiple times
+	// synchronously. This can happen if a generator component yields some
+	// children, those children dispatch an event, and the currently yielding
+	// node listens to the event and dispatches another event. We simply fail
+	// silently when this occurs, though we may in the future log a warning.
+	private stepping = false;
+	// A flag used by the [Symbol.asyncIterator] method of component nodes to
+	// indicate when props are available. this.publish is the resolve function of
+	// the promise which resolves when props are made available.
+	// TODO: maybe we can use the existence/absence of this.publish instead of
+	// boolean flag.
+	private available = false;
+	private publish: ((props: TProps) => unknown) | undefined = undefined;
 	private componentType: ComponentType | undefined = undefined;
+	// TODO: explain these properties
 	private inflightPending: MaybePromise<undefined> = undefined;
 	private enqueuedPending: MaybePromise<undefined> = undefined;
 	private inflightResult: MaybePromise<undefined> = undefined;
 	private enqueuedResult: MaybePromise<undefined> = undefined;
 	private previousResult: MaybePromise<undefined> = undefined;
 	private provisions: Map<unknown, any> | undefined = undefined;
-	private publish: ((props: TProps) => unknown) | undefined = undefined;
 	constructor(
 		parent: ParentNode<T>,
 		renderer: Renderer<T>,
