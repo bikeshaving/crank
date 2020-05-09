@@ -220,12 +220,14 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		| undefined = undefined;
 	protected props: any = undefined;
 	ctx: Context | undefined = undefined;
-	// When updating is true, this means that the parent has created/updated this
-	// node. It is set to false once the node has committed, and if this.updating
-	// is not true when the node is refreshing or committing, this means that the
-	// work was initiated at the current level or below.
+	// A flag which means that the parent has updated the current node. It is set
+	// to false once the node has committed, and if this.updating is not true
+	// when the node is refreshing or committing, this means that the work was
+	// initiated by the current node or its descendants.
 	updating = false;
-	protected finished = false;
+	// A flag which means the current node can be blown away.
+	protected fragile = false;
+	// A flag which means the current node is unmounted.
 	protected unmounted = false;
 	private appendChild(child: Node<T>): void {
 		if (this.lastChild === undefined) {
@@ -320,10 +322,10 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	// TODO: I bet we could simplify the algorithm further, perhaps by writing a
 	// custom method which automatically zips up old and new nodes.
 	protected updateChildren(children: Children): MaybePromise<undefined> {
-		let node = this.firstChild;
-		let nextSibling = node && node.nextSibling;
 		let newKeyedChildren: Map<unknown, Node<T>> | undefined;
 		let updates: Array<Promise<unknown>> | undefined;
+		let node = this.firstChild;
+		let nextSibling = node && node.nextSibling;
 		for (const child of flatten(children)) {
 			let tag: Tag | undefined;
 			let key: unknown;
@@ -389,7 +391,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 			if (node !== undefined) {
 				if (tag !== Copy) {
 					// TODO: figure out why do we do a check for unmounted node here
-					if (node.tag === tag && !(node.internal && node.unmounted)) {
+					if (node.tag === tag && !(node.internal && node.fragile)) {
 						if (node.internal) {
 							const update = node.update((child as Element).props);
 							if (update !== undefined) {
@@ -429,23 +431,31 @@ abstract class ParentNode<T> implements NodeBase<T> {
 								updates = [];
 							}
 
-							// node is reassigned so we need to capture its current value in
-							// node for the sake of the callback’s closure.
+							if (node.internal) {
+								node.fragile = true;
+							}
+
+							// The node variable is reassigned so we need to capture its
+							// current value in node1 for the sake of the callback’s closure.
 							const node1 = node;
 							update = update.then(() => {
 								if (node1.replacedBy === undefined) {
 									this.replaceChild(newNode, node1);
 									node1.replacedBy = newNode;
+
+									if (node1.internal) {
+										node1.unmount();
+									}
 								} else if (
 									node1.replacedBy.replacedBy === undefined &&
 									node1.replacedBy.clock < newNode.clock
 								) {
 									this.replaceChild(newNode, node1.replacedBy);
 									node1.replacedBy = newNode;
-								}
 
-								if (node1.internal) {
-									node1.unmount();
+									if (node1.internal) {
+										node1.unmount();
+									}
 								}
 
 								return undefined; // void :(
@@ -501,16 +511,16 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				this.onNewResult = undefined;
 			}
 		} else {
-			const result = Promise.all(updates).then(() => void this.commit()); // void :(
+			const result = Promise.all(updates).then(() => this.commit());
 			if (this.onNewResult !== undefined) {
 				this.onNewResult(result.catch(() => undefined)); // void :(
 				this.onNewResult = undefined;
 			}
 
-			const nextResult = new Promise<undefined>(
+			const newResult = new Promise<undefined>(
 				(resolve) => (this.onNewResult = resolve),
 			);
-			return Promise.race([result, nextResult]);
+			return Promise.race([result, newResult]);
 		}
 	}
 
@@ -601,6 +611,9 @@ class HostNode<T> extends ParentNode<T> {
 	// times without a yield. It is set to true when the [Symbol.iterator] is
 	// iterated, and set to false when the intrinsic returns or yields.
 	private iterating = false;
+	// A flag which indicates that this node’s iterator has returned, as in, it
+	// produced an iteration whose done property is set to true.
+	private finished = false;
 	constructor(
 		parent: ParentNode<T> | undefined,
 		renderer: Renderer<T>,
@@ -710,6 +723,9 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	// [Symbol.asyncIterator] is iterated, and set to false when the component
 	// returns or yields.
 	private iterating = false;
+	// A flag which indicates that this node’s iterator has returned, as in, it
+	// produced an iteration whose done property is set to true.
+	private finished = false;
 	// A flag to make sure we aren’t stepping through generators multiple times
 	// synchronously. This can happen if a generator component yields some
 	// children, those children dispatch an event, and the currently yielding
@@ -863,7 +879,8 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		this.enqueuedResult = undefined;
 		if (this.componentType === AsyncGen && !this.finished && !this.unmounted) {
 			Promise.resolve(this.run()).catch((err) => {
-				// We catch and rethrow the error to trigger an unhandled promise rejection.
+				// We catch and rethrow the error to trigger an unhandled promise
+				// rejection.
 				if (!this.updating) {
 					throw err;
 				}
