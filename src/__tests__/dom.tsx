@@ -83,10 +83,12 @@ describe("render", () => {
 		]);
 		renderer.render(<div id="1" />, document.body);
 		expect(document.body.innerHTML).toEqual('<div id="1"></div>');
-		expect(observer.takeRecords()).toEqualMutationRecords([
+
+		const records = observer.takeRecords();
+		expect(records).toEqualMutationRecords([
 			{
 				target: document.body.firstChild,
-				removedNodes: [createHTML('<div id="2"><div id="3">Hi</div></div>')],
+				removedNodes: [createHTML('<div id="2" />')],
 			},
 		]);
 	});
@@ -118,7 +120,7 @@ describe("render", () => {
 		expect(observer.takeRecords()).toEqualMutationRecords([
 			{
 				target: document.body.firstChild,
-				removedNodes: [createHTML('<div id="2"><div id="3">Hi</div></div>')],
+				removedNodes: [createHTML('<div id="2" />')],
 			},
 		]);
 	});

@@ -76,7 +76,6 @@ function updateProps(
 function updateChildren(el: Element, newChildren: Array<Node | string>): void {
 	let oldChild = el.firstChild;
 	let ni = 0;
-	let newChildSet: Set<Node | string> | undefined;
 	while (oldChild !== null && ni < newChildren.length) {
 		const newChild = newChildren[ni];
 		if (oldChild === newChild) {
@@ -99,18 +98,8 @@ function updateChildren(el: Element, newChildren: Array<Node | string>): void {
 			el.removeChild(oldChild);
 			oldChild = nextSibling;
 		} else {
-			if (newChildSet === undefined) {
-				newChildSet = new Set(newChildren);
-			}
-
-			if (newChildSet.has(oldChild)) {
-				el.insertBefore(newChild, oldChild);
-				ni++;
-			} else {
-				const nextSibling = oldChild.nextSibling;
-				el.removeChild(oldChild);
-				oldChild = nextSibling;
-			}
+			el.insertBefore(newChild, oldChild);
+			ni++;
 		}
 	}
 
@@ -163,23 +152,29 @@ export const env: Environment<Element> = {
 			const node = document.createElement(tag);
 			let props: Record<string, any> = {};
 			let children: Array<Element | string> = [];
-			for (const nextProps of this) {
-				// We can’t use referential identity of props because we don’t have any
-				// restrictions like elements have to be immutable.
-				if (this.updating) {
-					updateProps(node, props, nextProps);
-					props = nextProps;
-				}
+			try {
+				for (const nextProps of this) {
+					// We can’t use referential identity of props because we don’t have any
+					// restrictions like elements have to be immutable.
+					if (this.propsDirty) {
+						updateProps(node, props, nextProps);
+						props = nextProps;
+					}
 
-				if (
-					!("innerHTML" in nextProps) &&
-					(children.length > 0 || nextProps.children.length > 0)
-				) {
-					updateChildren(node, nextProps.children);
-					children = nextProps.children;
-				}
+					if (
+						!("innerHTML" in nextProps) &&
+						(children.length > 0 || nextProps.children.length > 0)
+					) {
+						updateChildren(node, nextProps.children);
+						children = nextProps.children;
+					}
 
-				yield node;
+					yield node;
+				}
+			} finally {
+				if (node.parentNode !== null) {
+					node.parentNode.removeChild(node);
+				}
 			}
 		};
 	},

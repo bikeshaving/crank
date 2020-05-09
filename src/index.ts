@@ -189,24 +189,26 @@ class LeafNode<T> implements NodeBase<T> {
 	readonly internal = false;
 	readonly tag = undefined;
 	readonly key = undefined;
-	nextSibling: Node<T> | undefined = undefined;
-	previousSibling: Node<T> | undefined = undefined;
+	value: string | undefined = undefined;
 	clock: number = 0;
 	replacedBy: Node<T> | undefined = undefined;
-	value: string | undefined = undefined;
+	nextSibling: Node<T> | undefined = undefined;
+	previousSibling: Node<T> | undefined = undefined;
 }
 
 abstract class ParentNode<T> implements NodeBase<T> {
 	readonly internal = true;
 	abstract readonly tag: Tag;
 	readonly key: Key = undefined;
-	nextSibling: Node<T> | undefined = undefined;
-	previousSibling: Node<T> | undefined = undefined;
+	value: Array<T | string> | T | string | undefined = undefined;
+	protected childValues: Array<T | string> = [];
 	clock: number = 0;
 	replacedBy: Node<T> | undefined = undefined;
 	private firstChild: Node<T> | undefined = undefined;
 	private lastChild: Node<T> | undefined = undefined;
 	private keyedChildren: Map<unknown, Node<T>> | undefined = undefined;
+	nextSibling: Node<T> | undefined = undefined;
+	previousSibling: Node<T> | undefined = undefined;
 	abstract readonly renderer: Renderer<T>;
 	abstract parent: ParentNode<T> | undefined;
 	// When children update asynchronously, we race their result against the next
@@ -216,7 +218,6 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		| ((result?: Promise<undefined>) => unknown)
 		| undefined = undefined;
 	protected props: any = undefined;
-	value: Array<T | string> | T | string | undefined = undefined;
 	ctx: Context | undefined = undefined;
 	updating = false;
 	protected iterating = false;
@@ -281,12 +282,12 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		this.removeChild(reference);
 	}
 
-	protected getChildValues(): Array<T | string> {
+	protected prepare(): void {
 		let buffer: string | undefined;
-		const childValues: Array<T | string> = [];
+		let childValues: Array<T | string> = [];
 		for (
 			let child = this.firstChild;
-			child != null;
+			child !== undefined;
 			child = child.nextSibling
 		) {
 			if (typeof child.value === "string") {
@@ -309,7 +310,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 			childValues.push(buffer);
 		}
 
-		return childValues;
+		this.childValues = childValues;
 	}
 
 	// TODO: I bet we could simplify the algorithm further, perhaps by writing a
@@ -326,35 +327,36 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				tag = child.tag;
 				key = child.key;
 				if (nextKeyedChildren !== undefined && nextKeyedChildren.has(key)) {
+					// TODO: warn about a key collision
 					key = undefined;
 				}
 			}
 
 			if (key != null) {
-				let nextNode = this.keyedChildren && this.keyedChildren.get(key);
-				if (nextNode === undefined) {
+				let keyedNode = this.keyedChildren && this.keyedChildren.get(key);
+				if (keyedNode === undefined) {
 					if (tag !== Copy) {
-						nextNode = createNode(this, this.renderer, child);
+						keyedNode = createNode(this, this.renderer, child);
 					}
 				} else {
 					this.keyedChildren!.delete(key);
-					if (node !== nextNode) {
-						this.removeChild(nextNode);
+					if (node !== keyedNode) {
+						this.removeChild(keyedNode);
 					}
 				}
 
-				if (nextNode !== undefined) {
+				if (keyedNode !== undefined) {
 					if (node === undefined) {
-						this.appendChild(nextNode);
-					} else if (node !== nextNode) {
+						this.appendChild(keyedNode);
+					} else if (node !== keyedNode) {
 						if (node.key == null) {
-							this.insertBefore(nextNode, node);
+							this.insertBefore(keyedNode, node);
 						} else {
-							this.insertBefore(nextNode, node.nextSibling);
+							this.insertBefore(keyedNode, node.nextSibling);
 						}
 					}
 
-					node = nextNode;
+					node = keyedNode;
 					nextSibling = node.nextSibling;
 				}
 			} else if (node === undefined) {
@@ -392,15 +394,12 @@ abstract class ParentNode<T> implements NodeBase<T> {
 								updates.push(update);
 							}
 						} else if (typeof child === "string") {
-							node.value = this.renderer.text(child);
+							const text = this.renderer.text(child);
+							node.value = text;
 						} else {
 							node.value = undefined;
 						}
 					} else {
-						// TODO: async unmount for keyed nodes
-						if (node.internal) {
-							node.unmount();
-						}
 						const nextNode = createNode(this, this.renderer, child);
 						nextNode.clock = node.clock++;
 						let update: MaybePromise<undefined>;
@@ -413,6 +412,10 @@ abstract class ParentNode<T> implements NodeBase<T> {
 						}
 
 						if (update === undefined) {
+							if (node.internal) {
+								node.unmount();
+							}
+
 							this.replaceChild(nextNode, node);
 							node.replacedBy = nextNode;
 						} else {
@@ -420,11 +423,10 @@ abstract class ParentNode<T> implements NodeBase<T> {
 								updates = [];
 							}
 
-							updates.push(update);
 							// node is reassigned so we need to capture its current value in
 							// node for the sake of the callback’s closure.
 							const node1 = node;
-							update.then(() => {
+							update = update.then(() => {
 								if (node1.replacedBy === undefined) {
 									this.replaceChild(nextNode, node1);
 									node1.replacedBy = nextNode;
@@ -435,7 +437,15 @@ abstract class ParentNode<T> implements NodeBase<T> {
 									this.replaceChild(nextNode, node1.replacedBy);
 									node1.replacedBy = nextNode;
 								}
+
+								if (node1.internal) {
+									node1.unmount();
+								}
+
+								return undefined; // void :(
 							});
+
+							updates.push(update);
 						}
 					}
 				}
@@ -552,10 +562,10 @@ class FragmentNode<T> extends ParentNode<T> {
 	}
 
 	commit(): undefined {
-		const childValues = this.getChildValues();
-		this.value = childValues.length > 1 ? childValues : childValues[0];
+		this.prepare();
+		this.value =
+			this.childValues.length > 1 ? this.childValues : this.childValues[0];
 		if (!this.updating) {
-			// TODO: batch this per microtask
 			this.parent.commit();
 		}
 
@@ -579,10 +589,9 @@ class HostNode<T> extends ParentNode<T> {
 	readonly parent: ParentNode<T> | undefined;
 	readonly renderer: Renderer<T>;
 	value: T | undefined;
-	private childValues: Array<T | string> = [];
 	private readonly intrinsic: Intrinsic<T>;
-	private iterator: Iterator<T> | undefined = undefined;
 	private readonly hostCtx: HostContext<T>;
+	private iterator: Iterator<T> | undefined = undefined;
 	constructor(
 		parent: ParentNode<T> | undefined,
 		renderer: Renderer<T>,
@@ -600,7 +609,7 @@ class HostNode<T> extends ParentNode<T> {
 	}
 
 	commit(): MaybePromise<undefined> {
-		this.childValues = this.getChildValues();
+		this.prepare();
 		try {
 			if (this.iterator === undefined) {
 				const value = this.intrinsic.call(this.hostCtx, {
@@ -636,7 +645,7 @@ class HostNode<T> extends ParentNode<T> {
 	unmount(): MaybePromise<undefined> {
 		if (this.unmounted) {
 			return;
-		} else if (this.finished) {
+		} else if (!this.finished) {
 			if (this.iterator !== undefined && this.iterator.return) {
 				try {
 					this.iterator.return();
@@ -801,7 +810,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 				const result = iteration.then((iteration) => {
 					const result = this.updateChildren(iteration.value);
 					if (isPromiseLike(result)) {
-						this.previousResult = result.catch(() => undefined); // void
+						this.previousResult = result.catch(() => undefined); // void :(
 					}
 
 					return result;
@@ -855,11 +864,11 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	}
 
 	commit(): undefined {
-		const childValues = this.getChildValues();
-		this.ctx.setDelegates(childValues);
-		this.value = childValues.length > 1 ? childValues : childValues[0];
+		this.prepare();
+		this.ctx.setDelegates(this.childValues);
+		this.value =
+			this.childValues.length > 1 ? this.childValues : this.childValues[0];
 		if (!this.updating) {
-			// TODO: batch this per macrotask
 			this.parent.commit();
 		}
 
@@ -872,9 +881,6 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			return;
 		}
 
-		this.updating = false;
-		this.unmounted = true;
-		this.ctx.clearEventListeners();
 		if (!this.finished) {
 			this.finished = true;
 			// helps avoid deadlocks
@@ -893,6 +899,9 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			}
 		}
 
+		this.updating = false;
+		this.unmounted = true;
+		this.ctx.clearEventListeners();
 		this.unmountChildren();
 	}
 
@@ -930,6 +939,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			host = host.parent
 		) {
 			if (
+				// TODO: get rid of this instanceof
 				host instanceof ComponentNode &&
 				host.provisions !== undefined &&
 				host.provisions.has(name)
@@ -1010,7 +1020,7 @@ export class HostContext<T = any> {
 		return hostNodes.get(this)![Symbol.iterator]();
 	}
 
-	get updating(): boolean {
+	get propsDirty(): boolean {
 		return hostNodes.get(this)!.updating;
 	}
 }
@@ -1060,7 +1070,7 @@ export const Text = Symbol.for("crank.Text");
 export type Text = typeof Text;
 
 export interface Environment<T> {
-	[Default](tag: string): Intrinsic<T>;
+	[Default]?(tag: string): Intrinsic<T>;
 	[Text]?(text: string): string;
 	[tag: string]: Intrinsic<T>;
 	// TODO: uncomment
@@ -1084,49 +1094,49 @@ export class Renderer<T> {
 	private cache = new WeakMap<object, HostNode<T>>();
 	private env: Environment<T> = {...defaultEnv};
 	constructor(env?: Environment<T>) {
-		if (env) {
-			this.extend(env);
-		}
+		this.extend(env);
 	}
 
-	extend(env: Partial<Environment<T>>): void {
-		for (const sym of Object.getOwnPropertySymbols(env)) {
-			if (env[sym as any] != null) {
-				this.env[sym as any] = env[sym as any]!;
+	extend(env?: Environment<T>): void {
+		if (env !== undefined) {
+			for (const sym of Object.getOwnPropertySymbols(env)) {
+				if (env[sym as any] != null) {
+					this.env[sym as any] = env[sym as any]!;
+				}
 			}
-		}
 
-		for (const tag of Object.keys(env)) {
-			if (env[tag] != null) {
-				this.env[tag] = env[tag]!;
+			for (const tag of Object.keys(env)) {
+				if (env[tag] != null) {
+					this.env[tag] = env[tag]!;
+				}
 			}
 		}
 	}
 
 	render(children: Children, root?: object): MaybePromise<T> {
-		let portal: Element<Portal>;
 		const child: Child = isNonStringIterable(children)
 			? createElement(Fragment, null, children)
 			: children;
-		if (isElement(child) && child.tag === Portal) {
-			portal = child;
-		} else {
-			portal = createElement(Portal, {root}, child);
-		}
+		const portal: Element<Portal> =
+			isElement(child) && child.tag === Portal
+				? child
+				: createElement(Portal, {root}, child);
 
 		let rootNode: HostNode<T> | undefined =
 			root != null ? this.cache.get(root) : undefined;
 
 		if (rootNode === undefined) {
 			rootNode = new HostNode(undefined, this, portal.tag);
-			if (root !== undefined) {
+			if (root !== undefined && child != null) {
 				this.cache.set(root, rootNode);
 			}
+		} else if (root != null && child == null) {
+			this.cache.delete(root);
 		}
 
 		return Pledge.resolve(rootNode.update(portal.props))
 			.then(() => {
-				if (root === undefined) {
+				if (portal.props.root == null) {
 					rootNode!.unmount();
 				}
 
@@ -1141,10 +1151,10 @@ export class Renderer<T> {
 		if (this.env[tag as any]) {
 			return this.env[tag as any];
 		} else if (typeof tag === "string") {
-			return this.env[Default](tag);
-		} else {
-			throw new Error(`Unknown tag: ${tag.toString()}`);
+			return this.env[Default]!(tag);
 		}
+
+		throw new Error(`Unknown tag: ${tag.toString()}`);
 	}
 
 	text(text: string): string {
