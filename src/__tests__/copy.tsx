@@ -18,6 +18,114 @@ describe("Copy", () => {
 		expect(document.body.innerHTML).toEqual("");
 	});
 
+	test("copy of nothing between elements", () => {
+		renderer.render(
+			<div>
+				<span>1</span>
+				<span>2</span>
+			</div>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span></div>",
+		);
+
+		renderer.render(
+			<div>
+				<span>1</span>
+				<Copy />
+				<span>2</span>
+			</div>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span><span>2</span></div>",
+		);
+	});
+
+	test("copy of nothing keyed between elements", () => {
+		renderer.render(
+			<div>
+				<span>1</span>
+				<span>2</span>
+			</div>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span></div>",
+		);
+
+		renderer.render(
+			<div>
+				<span>1</span>
+				<Copy crank-key="key" />
+				<span>2</span>
+			</div>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span></div>",
+		);
+	});
+
+	test("elements replaced with copies", () => {
+		renderer.render(
+			<div>
+				<span>1</span>
+				<span>2</span>
+				<span>3</span>
+			</div>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span><span>3</span></div>",
+		);
+
+		renderer.render(
+			<div>
+				<Copy />
+				<Copy />
+				<Copy />
+			</div>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span><span>3</span></div>",
+		);
+	});
+
+	test("elements replaced with keyed copies", () => {
+		renderer.render(
+			<div>
+				<span>1</span>
+				<span>2</span>
+				<span>3</span>
+			</div>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span><span>3</span></div>",
+		);
+
+		renderer.render(
+			<div>
+				<Copy crank-key="1" />
+				<Copy crank-key="2" />
+				<Copy crank-key="3" />
+			</div>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual("<div></div>");
+	});
+
 	test("copy intrinsic", () => {
 		renderer.render(<div>Hello</div>, document.body);
 		expect(document.body.innerHTML).toEqual("<div>Hello</div>");
@@ -25,7 +133,7 @@ describe("Copy", () => {
 		expect(document.body.innerHTML).toEqual("<div>Hello</div>");
 	});
 
-	test("cpoy component", () => {
+	test("copy component", () => {
 		function Component({message}: {message: string}): Element {
 			return <span>{message}</span>;
 		}
