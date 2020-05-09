@@ -318,7 +318,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	protected updateChildren(children: Children): MaybePromise<undefined> {
 		let node = this.firstChild;
 		let nextSibling = node && node.nextSibling;
-		let nextKeyedChildren: Map<unknown, Node<T>> | undefined;
+		let newKeyedChildren: Map<unknown, Node<T>> | undefined;
 		let updates: Array<Promise<unknown>> | undefined;
 		for (const child of flatten(children)) {
 			let tag: Tag | undefined;
@@ -326,7 +326,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 			if (isElement(child)) {
 				tag = child.tag;
 				key = child.key;
-				if (nextKeyedChildren !== undefined && nextKeyedChildren.has(key)) {
+				if (newKeyedChildren !== undefined && newKeyedChildren.has(key)) {
 					// TODO: warn about a key collision
 					key = undefined;
 				}
@@ -451,11 +451,11 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				}
 
 				if (key !== undefined) {
-					if (nextKeyedChildren === undefined) {
-						nextKeyedChildren = new Map();
+					if (newKeyedChildren === undefined) {
+						newKeyedChildren = new Map();
 					}
 
-					nextKeyedChildren.set(key, node);
+					newKeyedChildren.set(key, node);
 				}
 			}
 
@@ -488,7 +488,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 			}
 		}
 
-		this.keyedChildren = nextKeyedChildren;
+		this.keyedChildren = newKeyedChildren;
 		if (updates === undefined) {
 			this.commit();
 			if (this.onNextResult !== undefined) {
