@@ -88,7 +88,7 @@ describe("render", () => {
 		expect(records).toEqualMutationRecords([
 			{
 				target: document.body.firstChild,
-				removedNodes: [createHTML('<div id="2" />')],
+				removedNodes: [createHTML('<div id="2"><div id="3">Hi</div></div>')],
 			},
 		]);
 	});
@@ -120,7 +120,7 @@ describe("render", () => {
 		expect(observer.takeRecords()).toEqualMutationRecords([
 			{
 				target: document.body.firstChild,
-				removedNodes: [createHTML('<div id="2" />')],
+				removedNodes: [createHTML('<div id="2"><div id="3">Hi</div></div>')],
 			},
 		]);
 	});

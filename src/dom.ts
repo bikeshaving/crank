@@ -111,7 +111,7 @@ function updateChildren(el: Element, newChildren: Array<Node | string>): void {
 
 	let el1: Element | undefined;
 	// TODO: figure out the magic number when fragments are actually better
-	if (newChildren.length - ni > 20) {
+	if (newChildren.length - ni > 100) {
 		el1 = el;
 		el = document.createDocumentFragment() as any;
 	}
@@ -210,9 +210,11 @@ export const env: Environment<Element> = {
 				if (root !== newRoot) {
 					updateChildren(root, []);
 					root = newRoot;
+					updateChildren(root, children);
+				} else if (this.dirtyChildren) {
+					updateChildren(root, children);
 				}
 
-				updateChildren(root, children);
 				yield root;
 			}
 		} finally {

@@ -7,6 +7,7 @@ import {
 	MaybePromiseLike,
 	upgradePromiseLike,
 } from "./utils";
+
 // re-exporting EventMap for user extensions
 export {EventMap} from "./events";
 
@@ -303,7 +304,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				}
 
 				if (Array.isArray(child.value)) {
-					childValues.push(...child.value);
+					childValues = childValues.concat(child.value);
 				} else if (child.value !== undefined) {
 					childValues.push(child.value);
 				}
@@ -544,14 +545,14 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		}
 	}
 
-	protected unmountChildren(): void {
+	protected unmountChildren(dirty: boolean): void {
 		for (
 			let node = this.firstChild;
 			node !== undefined;
 			node = node.nextSibling
 		) {
 			if (node.internal) {
-				node.unmount();
+				node.unmount(dirty);
 			}
 		}
 	}
@@ -572,7 +573,11 @@ abstract class ParentNode<T> implements NodeBase<T> {
 
 	abstract commit(): MaybePromise<undefined>;
 
-	abstract unmount(): MaybePromise<undefined>;
+	// dirty is a boolean flag to indicate whether the unmount is part of a
+	// parent host node being removed. This is passed down so that renderers do
+	// not have to remove children which have already been removed higher up in
+	// the DOM
+	abstract unmount(dirty?: boolean): MaybePromise<undefined>;
 
 	catch(reason: any): MaybePromise<undefined> {
 		if (this.parent === undefined) {
@@ -608,13 +613,13 @@ class FragmentNode<T> extends ParentNode<T> {
 		return; // void :(
 	}
 
-	unmount(): undefined {
+	unmount(dirty = true): undefined {
 		if (this.unmounted) {
 			return;
 		}
 
 		this.unmounted = true;
-		this.unmountChildren();
+		this.unmountChildren(dirty);
 	}
 }
 
@@ -627,16 +632,16 @@ class HostNode<T> extends ParentNode<T> {
 	private readonly intrinsic: Intrinsic<T>;
 	private readonly hostCtx: HostContext<T>;
 	private iterator: Iterator<T> | undefined = undefined;
-	// A flag to make sure the HostContext node isn’t stepped through multiple
-	// times without a yield. It is set to true when the [Symbol.iterator] is
-	// iterated, and set to false when the intrinsic returns or yields.
+	// A flag to make sure the HostContext isn’t iterated multiple times without a yield.
 	private iterating = false;
 	// A flag which indicates that this node’s iterator has returned, as in, it
 	// produced an iteration whose done property is set to true.
 	private finished = false;
-	dirtyProps = false;
+	dirtyProps = true;
 	dirtyChildren = true;
 	dirtyRemoval = true;
+	dirtyStart: number | undefined = undefined;
+	dirtyEnd: number | undefined = undefined;
 	constructor(
 		parent: ParentNode<T> | undefined,
 		renderer: Renderer<T>,
@@ -698,25 +703,28 @@ class HostNode<T> extends ParentNode<T> {
 		}
 	}
 
-	unmount(): MaybePromise<undefined> {
+	unmount(dirty = true): MaybePromise<undefined> {
 		if (this.unmounted) {
 			return;
 		} else if (!this.finished) {
+			this.dirtyRemoval = dirty;
 			if (this.iterator !== undefined && this.iterator.return) {
 				try {
 					this.iterator.return();
 				} catch (err) {
-					if (this.parent !== undefined) {
-						return this.parent.catch(err);
+					if (this.parent === undefined) {
+						throw err;
 					}
 
-					throw err;
+					return this.parent.catch(err);
 				}
 			}
+
+			this.finished = true;
 		}
 
 		this.unmounted = true;
-		this.unmountChildren();
+		this.unmountChildren(this.tag === Portal);
 	}
 
 	*[Symbol.iterator]() {
@@ -752,10 +760,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	readonly renderer: Renderer<T>;
 	readonly ctx: Context<TProps>;
 	private iterator: ChildIterator | undefined = undefined;
-	// A flag to make sure the Context isn’t stepped through multiple times
-	// without a yield. It is set to true when the [Symbol.iterator] or
-	// [Symbol.asyncIterator] is iterated, and set to false when the component
-	// returns or yields.
+	// A flag to make sure the Context isn’t iterated multiple times without a yield.
 	private iterating = false;
 	// A flag which indicates that this node’s iterator has returned, as in, it
 	// produced an iteration whose done property is set to true.
@@ -968,7 +973,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		return; // void :(
 	}
 
-	unmount(): MaybePromise<undefined> {
+	unmount(dirty = true): MaybePromise<undefined> {
 		if (this.unmounted) {
 			return;
 		}
@@ -994,13 +999,13 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 
 				if (isPromiseLike(iteration)) {
 					return iteration.then(
-						() => void this.unmountChildren(), // void :(
+						() => void this.unmountChildren(dirty), // void :(
 						(err) => this.parent.catch(err),
 					);
 				}
 			}
 
-			this.unmountChildren();
+			this.unmountChildren(dirty);
 		}
 	}
 
@@ -1144,16 +1149,16 @@ export class HostContext<T = any> {
 		return hostNodes.get(this)!.dirtyChildren;
 	}
 
+	get dirtyRemoval(): boolean {
+		return hostNodes.get(this)!.dirtyRemoval;
+	}
+
 	get dirtyStart(): number | undefined {
 		return undefined;
 	}
 
 	get dirtyEnd(): number | undefined {
 		return undefined;
-	}
-
-	get dirtyRemoval(): boolean {
-		return hostNodes.get(this)!.dirtyRemoval;
 	}
 }
 
