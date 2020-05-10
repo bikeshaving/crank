@@ -634,9 +634,9 @@ class HostNode<T> extends ParentNode<T> {
 	// A flag which indicates that this node’s iterator has returned, as in, it
 	// produced an iteration whose done property is set to true.
 	private finished = false;
-	// A flag which is exposed to the host context to indicate that props may
-	// have changed.
-	propsDirty = false;
+	dirtyProps = false;
+	dirtyChildren = true;
+	dirtyRemoval = true;
 	constructor(
 		parent: ParentNode<T> | undefined,
 		renderer: Renderer<T>,
@@ -654,7 +654,7 @@ class HostNode<T> extends ParentNode<T> {
 	}
 
 	commit(): MaybePromise<undefined> {
-		this.propsDirty = this.updating;
+		this.dirtyProps = this.updating;
 		this.updating = false;
 		this.prepareCommit();
 		if (this.iterator === undefined) {
@@ -773,13 +773,13 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	// boolean flag.
 	private available = false;
 	private publish: ((props: TProps) => unknown) | undefined = undefined;
+	private oldResult: MaybePromise<undefined> = undefined;
 	private componentType: ComponentType | undefined = undefined;
 	// TODO: explain these properties
 	private inflightPending: MaybePromise<undefined> = undefined;
 	private enqueuedPending: MaybePromise<undefined> = undefined;
 	private inflightResult: MaybePromise<undefined> = undefined;
 	private enqueuedResult: MaybePromise<undefined> = undefined;
-	private oldResult: MaybePromise<undefined> = undefined;
 	private provisions: Map<unknown, any> | undefined = undefined;
 	constructor(
 		parent: ParentNode<T>,
@@ -994,7 +994,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 
 				if (isPromiseLike(iteration)) {
 					return iteration.then(
-						() => void this.unmountChildren(),
+						() => void this.unmountChildren(), // void :(
 						(err) => this.parent.catch(err),
 					);
 				}
@@ -1136,8 +1136,24 @@ export class HostContext<T = any> {
 		return hostNodes.get(this)![Symbol.iterator]();
 	}
 
-	get propsDirty(): boolean {
-		return hostNodes.get(this)!.propsDirty;
+	get dirtyProps(): boolean {
+		return hostNodes.get(this)!.dirtyProps;
+	}
+
+	get dirtyChildren(): boolean {
+		return hostNodes.get(this)!.dirtyChildren;
+	}
+
+	get dirtyStart(): number | undefined {
+		return undefined;
+	}
+
+	get dirtyEnd(): number | undefined {
+		return undefined;
+	}
+
+	get dirtyRemoval(): boolean {
+		return hostNodes.get(this)!.dirtyRemoval;
 	}
 }
 
