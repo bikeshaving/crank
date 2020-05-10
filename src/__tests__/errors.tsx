@@ -65,6 +65,7 @@ describe("errors", () => {
 	});
 
 	// TODO: figure out how to test for an unhandled promise rejection
+	// When run this test should fail rather than timing out.
 	// eslint-disable-next-line
 	test.skip("async generator throws independently", async () => {
 		const error = new Error("async generator throws independently");
@@ -80,6 +81,7 @@ describe("errors", () => {
 	});
 
 	test("async generator throws in async generator", async () => {
+		const mock = jest.fn();
 		const error = new Error("async generator throws in async generator");
 		/* eslint-disable require-yield */
 		async function* Thrower() {
@@ -88,14 +90,57 @@ describe("errors", () => {
 		/* eslint-enable require-yield */
 
 		async function* Component(this: Context) {
-			for await (const _ of this) {
-				yield <Thrower />;
+			try {
+				for await (const _ of this) {
+					yield <Thrower />;
+				}
+			} catch (err) {
+				mock();
+				throw err;
 			}
 		}
 
 		await expect(renderer.render(<Component />, document.body)).rejects.toBe(
 			error,
 		);
+		expect(mock).toHaveBeenCalledTimes(1);
+	});
+
+	// TODO: figure out why this test causes an unhandled rejection
+	// eslint-disable-next-line
+	test.skip("async generator throws in async generator after yield", async () => {
+		const mock = jest.fn();
+		const error = new Error(
+			"async generator throws in async generator after yield",
+		);
+		async function* Thrower(this: Context) {
+			yield 1;
+			for await (const _ of this) {
+				throw error;
+			}
+		}
+
+		async function* Component(this: Context) {
+			try {
+				for await (const _ of this) {
+					yield <Thrower />;
+				}
+			} catch (err) {
+				mock();
+				console.log(err);
+				throw err;
+			}
+		}
+
+		await expect(renderer.render(<Component />, document.body)).resolves.toBe(
+			document.body,
+		);
+		await renderer.render(<Component />, document.body);
+		//await expect(renderer.render(<Component />, document.body)).rejects.toBe(
+		//	error,
+		//);
+		expect(mock).toHaveBeenCalledTimes(1);
+		await new Promise(() => {});
 	});
 
 	test("sync function throws, sync generator catches", () => {
