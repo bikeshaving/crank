@@ -156,23 +156,24 @@ export const env: Environment<Element> = {
 				for (const nextProps of this) {
 					// We can’t use referential identity of props because we don’t have any
 					// restrictions like elements have to be immutable.
-					if (this.propsDirty) {
+					if (this.dirtyProps) {
 						updateProps(node, props, nextProps);
-						props = nextProps;
 					}
 
 					if (
+						this.dirtyChildren &&
 						!("innerHTML" in nextProps) &&
 						(children.length > 0 || nextProps.children.length > 0)
 					) {
 						updateChildren(node, nextProps.children);
-						children = nextProps.children;
 					}
 
 					yield node;
+					props = nextProps;
+					children = nextProps.children;
 				}
 			} finally {
-				if (node.parentNode !== null) {
+				if (this.dirtyRemoval && node.parentNode !== null) {
 					node.parentNode.removeChild(node);
 				}
 			}
