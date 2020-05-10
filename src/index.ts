@@ -127,8 +127,9 @@ export function createElement<TTag extends Tag>(
 	props?: TagProps<TTag> | null,
 ): Element<TTag> {
 	const props1 = Object.assign({}, props);
-	const key = props1["crank-key"];
-	if (key != null) {
+	let key;
+	if (props1["crank-key"] != null) {
+		key = props1["crank-key"];
 		delete props1["crank-key"];
 	}
 
@@ -338,7 +339,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 			}
 
 			if (tag === Copy) {
-				if (key == null) {
+				if (key === undefined) {
 					node = nextSibling;
 					nextSibling = node && node.nextSibling;
 				} else {
@@ -353,7 +354,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 						if (node === undefined) {
 							this.appendChild(keyedNode);
 						} else if (node !== keyedNode) {
-							if (node.key == null) {
+							if (node.key === undefined) {
 								this.insertBefore(keyedNode, node);
 							} else {
 								this.insertBefore(keyedNode, node.nextSibling);
@@ -384,7 +385,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 					if (node === undefined) {
 						this.appendChild(keyedNode);
 					} else if (node !== keyedNode) {
-						if (node.key == null) {
+						if (node.key === undefined) {
 							this.insertBefore(keyedNode, node);
 						} else {
 							this.insertBefore(keyedNode, node.nextSibling);
@@ -500,7 +501,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 			node !== undefined;
 			node = nextSibling, nextSibling = node && node.nextSibling
 		) {
-			if (node.key == null) {
+			if (node.key === undefined) {
 				if (node.internal) {
 					node.unmount();
 				}
