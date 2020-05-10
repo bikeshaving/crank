@@ -1,5 +1,12 @@
 import {CrankEventTarget} from "./events";
-import {isPromiseLike, MaybePromise, MaybePromiseLike, Pledge} from "./pledge";
+import {
+	isIteratorOrAsyncIterator,
+	isNonStringIterable,
+	isPromiseLike,
+	MaybePromise,
+	MaybePromiseLike,
+	upgradePromiseLike,
+} from "./utils";
 // re-exporting EventMap for user extensions
 export {EventMap} from "./events";
 
@@ -13,22 +20,6 @@ declare global {
 			children: {};
 		}
 	}
-}
-
-type NonStringIterable<T> = Iterable<T> & object;
-
-function isIterable(value: any): value is Iterable<any> {
-	return value != null && typeof value[Symbol.iterator] === "function";
-}
-
-function isNonStringIterable(value: any): value is NonStringIterable<any> {
-	return typeof value !== "string" && isIterable(value);
-}
-
-function isIteratorOrAsyncIterator(
-	value: any,
-): value is Iterator<any> | AsyncIterator<any> {
-	return value != null && typeof value.next === "function";
 }
 
 export type Tag<TProps = any> = Component<TProps> | string | symbol;
@@ -435,7 +426,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				} else {
 					const newNode = createNode(this, this.renderer, child);
 					newNode.clock = node.clock++;
-					let update: Promise<unknown> | undefined;
+					let update: Promise<undefined> | undefined;
 					if (newNode.internal) {
 						update = newNode.update((child as Element).props);
 					} else if (typeof child === "string") {
@@ -484,6 +475,8 @@ abstract class ParentNode<T> implements NodeBase<T> {
 									node1.unmount();
 								}
 							}
+
+							return undefined; // void :(
 						});
 
 						updates.push(update);
@@ -540,6 +533,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 			const newResult = new Promise<undefined>(
 				(resolve) => (this.onNewResult = resolve),
 			);
+
 			return Promise.race([result, newResult]);
 		}
 	}
@@ -779,7 +773,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	private enqueuedPending: MaybePromise<undefined> = undefined;
 	private inflightResult: MaybePromise<undefined> = undefined;
 	private enqueuedResult: MaybePromise<undefined> = undefined;
-	private previousResult: MaybePromise<undefined> = undefined;
+	private oldResult: MaybePromise<undefined> = undefined;
 	private provisions: Map<unknown, any> | undefined = undefined;
 	constructor(
 		parent: ParentNode<T>,
@@ -837,19 +831,27 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		this.stepping = true;
 		if (this.iterator === undefined) {
 			this.ctx.clearEventListeners();
-			const value = new Pledge(() => this.tag.call(this.ctx, this.props!))
-				.catch((err) => this.parent.catch(err))
-				// type assertion because we shouldn’t get a promise of an iterator
-				.execute() as ChildIterator | Promise<Child> | Child;
+			let value: ChildIterator | PromiseLike<Child> | Child;
+			try {
+				value = this.tag.call(this.ctx, this.props!);
+			} catch (err) {
+				const caught = this.parent.catch(err);
+				return [undefined, caught];
+			}
+
 			if (isIteratorOrAsyncIterator(value)) {
 				this.iterator = value;
 			} else if (isPromiseLike(value)) {
+				const value1 = upgradePromiseLike(value);
 				this.componentType = AsyncFn;
-				const pending = value.then(
+				const pending = value1.then(
 					() => undefined,
 					() => undefined,
 				); // void :(
-				const result = value.then((child) => this.updateChildren(child));
+				const result = value1.then(
+					(child) => this.updateChildren(child),
+					(err) => this.parent.catch(err),
+				);
 				this.stepping = false;
 				return [pending, result];
 			} else {
@@ -860,52 +862,59 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			}
 		}
 
-		const previousValue = Pledge.resolve(this.previousResult)
-			.then(() => this.value)
-			.execute();
-		const iteration = new Pledge(() => this.iterator!.next(previousValue))
-			.catch((err) => {
-				// TODO: figure out why this is written like this
-				return Pledge.resolve(this.parent.catch(err))
-					.then(() => ({value: undefined, done: true}))
-					.execute();
-			})
-			.execute();
+		const oldValue =
+			this.oldResult === undefined
+				? this.value
+				: this.oldResult.then(() => this.value);
+		this.oldResult = undefined;
+		let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
+		try {
+			iteration = this.iterator.next(oldValue);
+		} catch (err) {
+			const caught = this.parent.catch(err);
+			return [caught, caught];
+		}
+
+		this.stepping = false;
 		if (isPromiseLike(iteration)) {
 			this.componentType = AsyncGen;
-			const pending = iteration.then(
-				(iteration) => {
-					this.iterating = false;
-					if (iteration.done) {
-						this.finished = true;
-					}
+			iteration = iteration.catch((err) => {
+				const p = this.parent.catch(err);
+				if (p === undefined) {
+					return {value: undefined, done: true};
+				}
 
-					return undefined; // void :(
-				},
-				() => undefined, // void :(
-			);
+				return p.then(() => ({value: undefined, done: true}));
+			});
+			const pending = iteration.then(
+				() => undefined,
+				() => undefined,
+			); // void :(
 			const result = iteration.then((iteration) => {
+				this.iterating = false;
+				if (iteration.done) {
+					this.finished = true;
+				}
+
 				const result = this.updateChildren(iteration.value);
 				if (isPromiseLike(result)) {
-					this.previousResult = result.catch(() => undefined); // void :(
+					this.oldResult = result.catch(() => undefined); // void :(
 				}
 
 				return result;
 			});
 
-			this.stepping = false;
 			return [pending, result];
-		} else {
-			this.iterating = false;
-			this.componentType = SyncGen;
-			if (iteration.done) {
-				this.finished = true;
-			}
-
-			const result = this.updateChildren(iteration.value);
-			this.stepping = false;
-			return [result, result];
 		}
+
+		this.iterating = false;
+		this.componentType = SyncGen;
+		if (iteration.done) {
+			this.finished = true;
+		}
+
+		const result = this.updateChildren(iteration.value);
+		return [result, result];
 	}
 
 	private advance(): void {
@@ -913,7 +922,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		this.inflightResult = this.enqueuedResult;
 		this.enqueuedPending = undefined;
 		this.enqueuedResult = undefined;
-		if (this.componentType === AsyncGen && !this.finished && !this.unmounted) {
+		if (this.componentType === AsyncGen && !this.finished) {
 			Promise.resolve(this.run()).catch((err) => {
 				// We catch and rethrow the error to trigger an unhandled promise
 				// rejection.
@@ -958,6 +967,9 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			return;
 		}
 
+		this.updating = false;
+		this.unmounted = true;
+		this.ctx.clearEventListeners();
 		if (!this.finished) {
 			this.finished = true;
 			// helps avoid deadlocks
@@ -967,19 +979,23 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			}
 
 			if (this.iterator !== undefined && this.iterator.return) {
-				return new Pledge(() => this.iterator!.return!())
-					.then(
-						() => void this.unmountChildren(), // void :(
-						(err) => this.parent.catch(err),
-					)
-					.execute();
-			}
-		}
+				let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
+				try {
+					iteration = this.iterator.return();
+				} catch (err) {
+					return this.parent.catch(err);
+				}
 
-		this.updating = false;
-		this.unmounted = true;
-		this.ctx.clearEventListeners();
-		this.unmountChildren();
+				if (isPromiseLike(iteration)) {
+					return iteration.then(
+						() => void this.unmountChildren(),
+						(err) => this.parent.catch(err),
+					);
+				}
+			}
+
+			this.unmountChildren();
+		}
 	}
 
 	catch(reason: any): MaybePromise<undefined> {
@@ -989,24 +1005,41 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			this.finished
 		) {
 			return super.catch(reason);
-		} else {
-			// helps avoid deadlocks
-			if (this.publish !== undefined) {
-				this.publish(this.props!);
-				this.publish = undefined;
-			}
+		}
 
-			return new Pledge(() => this.iterator!.throw!(reason))
-				.then((iteration) => {
+		// helps avoid deadlocks
+		if (this.publish !== undefined) {
+			this.publish(this.props!);
+			this.publish = undefined;
+		}
+
+		let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
+		try {
+			iteration = this.iterator.throw(reason);
+		} catch (err) {
+			return this.parent.catch(err);
+		}
+
+		if (isPromiseLike(iteration)) {
+			const result = iteration.then(
+				(iteration) => {
 					if (iteration.done) {
 						this.finished = true;
 					}
 
 					return this.updateChildren(iteration.value);
-				})
-				.catch((err) => this.parent.catch(err))
-				.execute();
+				},
+				(err) => this.parent.catch(err),
+			);
+
+			return result;
 		}
+
+		if (iteration.done) {
+			this.finished = true;
+		}
+
+		return this.updateChildren(iteration.value);
 	}
 
 	get(name: unknown): any {
@@ -1211,15 +1244,22 @@ export class Renderer<T> {
 			this.cache.delete(root);
 		}
 
-		return Pledge.resolve(rootNode.update(portal.props))
-			.then(() => {
+		const result = rootNode.update(portal.props);
+		if (isPromiseLike(result)) {
+			return result.then(() => {
 				if (portal.props.root == null) {
 					rootNode!.unmount();
 				}
 
 				return rootNode!.value!;
-			})
-			.execute();
+			});
+		}
+
+		if (portal.props.root == null) {
+			rootNode.unmount();
+		}
+
+		return rootNode.value!;
 	}
 
 	// TODO: Ideally, the intrinsic and text methods should not be exposed
