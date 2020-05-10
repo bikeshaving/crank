@@ -136,7 +136,12 @@ export function createElement<TTag extends Tag>(
 type NormalizedChild = Element | string | undefined;
 
 function normalize(child: Child): NormalizedChild {
-	if (child == null || typeof child === "boolean") {
+	if (
+		child === true ||
+		child === false ||
+		child === null ||
+		child === undefined
+	) {
 		return undefined;
 	} else if (typeof child === "string" || isElement(child)) {
 		return child;
@@ -148,18 +153,19 @@ function normalize(child: Child): NormalizedChild {
 function* flatten(children: Children): Generator<NormalizedChild> {
 	if (children == null) {
 		return;
-	} else if (!isNonStringIterable(children)) {
-		yield normalize(children);
+	} else if (isNonStringIterable(children)) {
+		for (const child of children) {
+			if (isNonStringIterable(child)) {
+				yield createElement(Fragment, null, child);
+			} else {
+				yield normalize(child);
+			}
+		}
+
 		return;
 	}
 
-	for (const child of children) {
-		if (isNonStringIterable(child)) {
-			yield createElement(Fragment, null, child);
-		} else {
-			yield normalize(child);
-		}
-	}
+	yield normalize(children);
 }
 
 // This union exists because we needed to discriminate between leaf and parent
@@ -280,7 +286,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		this.removeChild(reference);
 	}
 
-	protected prepare(): void {
+	protected prepareCommit(): void {
 		let buffer: string | undefined;
 		let childValues: Array<T | string> = [];
 		for (
@@ -591,7 +597,7 @@ class FragmentNode<T> extends ParentNode<T> {
 	}
 
 	commit(): undefined {
-		this.prepare();
+		this.prepareCommit();
 		this.value =
 			this.childValues.length > 1 ? this.childValues : this.childValues[0];
 		if (!this.updating) {
@@ -650,7 +656,7 @@ class HostNode<T> extends ParentNode<T> {
 	commit(): MaybePromise<undefined> {
 		this.propsDirty = this.updating;
 		this.updating = false;
-		this.prepare();
+		this.prepareCommit();
 		if (this.iterator === undefined) {
 			let value: Iterator<T> | T;
 			try {
@@ -950,7 +956,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	}
 
 	commit(): undefined {
-		this.prepare();
+		this.prepareCommit();
 		this.ctx.setDelegates(this.childValues);
 		this.value =
 			this.childValues.length > 1 ? this.childValues : this.childValues[0];
