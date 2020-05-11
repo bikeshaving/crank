@@ -24,6 +24,7 @@
   ],
   "rules": {
     "no-unused-vars": 0,
+    "no-console": 1,
     "@typescript-eslint/no-unused-vars": [
       "error",
       {"varsIgnorePattern": "^_"}

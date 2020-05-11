@@ -8,6 +8,7 @@ import MiniCssExtractPlugin from "mini-css-extract-plugin";
 import postcssPresetEnv from "postcss-preset-env";
 // @ts-ignore
 import postcssNested from "postcss-nested";
+/* eslint-disable no-console */
 
 const config: webpack.Configuration = {
 	mode: "development",

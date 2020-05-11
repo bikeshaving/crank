@@ -127,7 +127,6 @@ describe("errors", () => {
 				}
 			} catch (err) {
 				mock();
-				console.log(err);
 				throw err;
 			}
 		}
