@@ -73,9 +73,16 @@ function updateProps(
 	}
 }
 
-function updateChildren(el: Element, newChildren: Array<Node | string>): void {
-	let oldChild = el.firstChild;
-	let ni = 0;
+function updateChildren(
+	el: Element,
+	newChildren: Array<Node | string>,
+	dirtyStart?: number,
+): void {
+	let oldChild: Node | null =
+		newChildren[dirtyStart!] === undefined
+			? el.firstChild
+			: (newChildren[dirtyStart!] as Node);
+	let ni = dirtyStart || 0;
 	while (oldChild !== null && ni < newChildren.length) {
 		const newChild = newChildren[ni];
 		if (oldChild === newChild) {
@@ -165,7 +172,7 @@ export const env: Environment<Element> = {
 						!("innerHTML" in nextProps) &&
 						(children.length > 0 || nextProps.children.length > 0)
 					) {
-						updateChildren(node, nextProps.children);
+						updateChildren(node, nextProps.children, this.dirtyStart);
 					}
 
 					yield node;
