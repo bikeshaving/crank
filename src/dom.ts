@@ -21,10 +21,6 @@ function updateProps(
 	for (const name in {...props, ...newProps}) {
 		const value = props[name];
 		const newValue = newProps[name];
-		if (value === newValue) {
-			continue;
-		}
-
 		switch (name) {
 			case "children":
 				break;
