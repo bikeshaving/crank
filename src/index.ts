@@ -205,6 +205,8 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	value: Array<T | string> | T | string | undefined = undefined;
 	dirty = true;
 	moved = false;
+	dirtyStart: number | undefined = undefined;
+	dirtyEnd: number | undefined = undefined;
 	protected childValues: Array<T | string> = [];
 	clock: number = 0;
 	replacedBy: Node<T> | undefined = undefined;
@@ -300,10 +302,31 @@ abstract class ParentNode<T> implements NodeBase<T> {
 			child = child.nextSibling
 		) {
 			if (child.dirty || (child.internal && child.moved)) {
-				this.dirty = true;
+				if (this.dirty) {
+					// TODO: do some stuff to set dirtyEnd
+				} else {
+					this.dirty = true;
+					if (
+						child.internal &&
+						!child.moved &&
+						child.dirtyStart !== undefined
+					) {
+						this.dirtyStart = childValues.length + child.dirtyStart;
+					} else {
+						for (let i = childValues.length - 1; i >= 0; i--) {
+							if (typeof childValues[i] !== "string") {
+								this.dirtyStart = i;
+								break;
+							}
+						}
+					}
+				}
+
 				child.dirty = false;
 				if (child.internal) {
 					child.moved = false;
+					child.dirtyStart = undefined;
+					child.dirtyEnd = undefined;
 				}
 			}
 
@@ -679,8 +702,6 @@ class HostNode<T> extends ParentNode<T> {
 	dirtyProps = true;
 	dirtyChildren = true;
 	dirtyRemoval = true;
-	dirtyStart: number | undefined = undefined;
-	dirtyEnd: number | undefined = undefined;
 	constructor(
 		parent: ParentNode<T> | undefined,
 		renderer: Renderer<T>,
@@ -1196,11 +1217,11 @@ export class HostContext<T = any> {
 	}
 
 	get dirtyStart(): number | undefined {
-		return undefined;
+		return hostNodes.get(this)!.dirtyStart;
 	}
 
 	get dirtyEnd(): number | undefined {
-		return undefined;
+		return hostNodes.get(this)!.dirtyEnd;
 	}
 }
 
