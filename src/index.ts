@@ -321,13 +321,13 @@ abstract class ParentNode<T> implements NodeBase<T> {
 						}
 					}
 				}
+			}
 
-				child.dirty = false;
-				if (child.internal) {
-					child.moved = false;
-					child.dirtyStart = undefined;
-					child.dirtyEnd = undefined;
-				}
+			child.dirty = false;
+			if (child.internal) {
+				child.moved = false;
+				child.dirtyStart = undefined;
+				child.dirtyEnd = undefined;
 			}
 
 			if (typeof child.value === "string") {
