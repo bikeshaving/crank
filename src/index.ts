@@ -1300,6 +1300,7 @@ const defaultEnv: Environment<any> = {
 
 export class Renderer<T> {
 	private cache = new WeakMap<object, HostNode<T>>();
+	private defaultIntrinsics: Record<string, Intrinsic<T>> = {};
 	private env: Environment<T> = {...defaultEnv};
 	constructor(env?: Environment<T>) {
 		this.extend(env);
@@ -1366,7 +1367,13 @@ export class Renderer<T> {
 		if (this.env[tag as any]) {
 			return this.env[tag as any];
 		} else if (typeof tag === "string") {
-			return this.env[Default]!(tag);
+			if (this.defaultIntrinsics[tag] !== undefined) {
+				return this.defaultIntrinsics[tag];
+			}
+
+			const intrinsic = this.env[Default]!(tag);
+			this.defaultIntrinsics[tag] = intrinsic;
+			return intrinsic;
 		}
 
 		throw new Error(`Unknown tag: ${tag.toString()}`);
