@@ -294,6 +294,19 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	}
 
 	protected prepareCommit(): void {
+		if (this.firstChild !== undefined && this.firstChild === this.lastChild) {
+			this.dirty = true;
+			if (Array.isArray(this.firstChild.value)) {
+				this.childValues = this.firstChild.value;
+			} else if (this.firstChild.value !== undefined) {
+				this.childValues = [this.firstChild.value];
+			} else {
+				this.childValues = [];
+			}
+
+			return;
+		}
+
 		let buffer: string | undefined;
 		let childValues: Array<T | string> = [];
 		let oldLength = 0;
