@@ -85,7 +85,7 @@ export type Component<TProps = any> = (
 ) => ChildIterator | MaybePromiseLike<Child>;
 
 export type Intrinsic<T> = (
-	this: HostContext,
+	this: HostNode<T>,
 	props: IntrinsicProps<T>,
 ) => Iterator<T> | T;
 
@@ -713,7 +713,6 @@ class HostNode<T> extends ParentNode<T> {
 	readonly renderer: Renderer<T>;
 	value: T | undefined;
 	private readonly intrinsic: Intrinsic<T>;
-	private readonly hostCtx: HostContext<T>;
 	private iterator: Iterator<T> | undefined = undefined;
 	// A flag to make sure the HostContext isn’t iterated multiple times without a yield.
 	private iterating = false;
@@ -736,7 +735,6 @@ class HostNode<T> extends ParentNode<T> {
 		this.renderer = renderer;
 		this.intrinsic = renderer.intrinsic(tag);
 		this.ctx = parent && parent.ctx;
-		this.hostCtx = new HostContext(this);
 	}
 
 	commit(): MaybePromise<undefined> {
@@ -747,7 +745,7 @@ class HostNode<T> extends ParentNode<T> {
 		if (this.iterator === undefined) {
 			let value: Iterator<T> | T;
 			try {
-				value = this.intrinsic.call(this.hostCtx, {
+				value = this.intrinsic.call(this, {
 					...this.props,
 					children: this.childValues,
 				});
@@ -822,6 +820,8 @@ class HostNode<T> extends ParentNode<T> {
 		}
 	}
 }
+
+export type HostContext = HostNode<any>;
 
 const SyncFn = 0;
 type SyncFn = typeof SyncFn;
@@ -1212,37 +1212,6 @@ function createNode<T>(
 		return new ComponentNode(parent, renderer, child.tag, child.key);
 	} else {
 		return new HostNode(parent, renderer, child.tag, child.key);
-	}
-}
-
-const hostNodes = new WeakMap<HostContext<any>, HostNode<any>>();
-export class HostContext<T = any> {
-	constructor(host: HostNode<T>) {
-		hostNodes.set(this, host);
-	}
-
-	[Symbol.iterator](): Generator<IntrinsicProps<T>> {
-		return hostNodes.get(this)![Symbol.iterator]();
-	}
-
-	get dirtyProps(): boolean {
-		return hostNodes.get(this)!.dirtyProps;
-	}
-
-	get dirtyChildren(): boolean {
-		return hostNodes.get(this)!.dirtyChildren;
-	}
-
-	get dirtyRemoval(): boolean {
-		return hostNodes.get(this)!.dirtyRemoval;
-	}
-
-	get dirtyStart(): number | undefined {
-		return hostNodes.get(this)!.dirtyStart;
-	}
-
-	get dirtyEnd(): number | undefined {
-		return hostNodes.get(this)!.dirtyEnd;
 	}
 }
 
