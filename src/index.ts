@@ -204,7 +204,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	readonly key: Key = undefined;
 	value: Array<T | string> | T | string | undefined = undefined;
 	dirty = true;
-	moved = false;
+	moved = true;
 	dirtyStart: number | undefined = undefined;
 	dirtyEnd: number | undefined = undefined;
 	protected childValues: Array<T | string> = [];
@@ -296,38 +296,28 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	protected prepareCommit(): void {
 		let buffer: string | undefined;
 		let childValues: Array<T | string> = [];
+		let oldLength = 0;
+		let dirtyEnd = Infinity;
+		let dirtyEndExact = false;
 		for (
 			let child = this.firstChild;
 			child !== undefined;
 			child = child.nextSibling
 		) {
-			if (child.dirty || (child.internal && child.moved)) {
-				if (this.dirty) {
-					// TODO: do some stuff to set dirtyEnd
+			const dirty = child.dirty || (child.internal && child.moved);
+			if (dirty && !this.dirty) {
+				if (child.internal && !child.moved && child.dirtyStart !== undefined) {
+					this.dirtyStart = childValues.length + child.dirtyStart;
 				} else {
-					this.dirty = true;
-					if (
-						child.internal &&
-						!child.moved &&
-						child.dirtyStart !== undefined
-					) {
-						this.dirtyStart = childValues.length + child.dirtyStart;
-					} else {
-						for (let i = childValues.length - 1; i >= 0; i--) {
-							if (typeof childValues[i] !== "string") {
-								this.dirtyStart = i;
-								break;
-							}
+					for (let i = childValues.length - 1; i >= 0; i--) {
+						if (typeof childValues[i] !== "string") {
+							this.dirtyStart = i;
+							break;
 						}
 					}
 				}
-			}
 
-			child.dirty = false;
-			if (child.internal) {
-				child.moved = false;
-				child.dirtyStart = undefined;
-				child.dirtyEnd = undefined;
+				this.dirty = true;
 			}
 
 			if (typeof child.value === "string") {
@@ -344,10 +334,40 @@ abstract class ParentNode<T> implements NodeBase<T> {
 					childValues.push(child.value);
 				}
 			}
+
+			if (dirty) {
+				if (child.internal && !child.moved && child.dirtyEnd !== undefined) {
+					dirtyEnd = oldLength + child.dirtyEnd;
+					dirtyEndExact = true;
+				} else {
+					dirtyEnd = childValues.length;
+					dirtyEndExact = false;
+				}
+			}
+
+			child.dirty = false;
+			if (child.internal) {
+				child.moved = false;
+				child.dirtyStart = undefined;
+				child.dirtyEnd = undefined;
+			}
+
+			oldLength = childValues.length;
 		}
 
 		if (buffer !== undefined) {
 			childValues.push(buffer);
+		}
+
+		if (dirtyEndExact) {
+			this.dirtyEnd = dirtyEnd;
+		} else {
+			for (let i = dirtyEnd; i < childValues.length; i++) {
+				if (typeof childValues[i] !== "string") {
+					this.dirtyEnd = i;
+					break;
+				}
+			}
 		}
 
 		this.childValues = childValues;
@@ -378,9 +398,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				} else {
 					// TODO: deduplicate logic with keyed node logic below
 					const keyedNode = this.keyedChildren && this.keyedChildren.get(key);
-
 					if (keyedNode !== undefined) {
-						this.keyedChildren!.delete(key);
 						while (
 							node !== undefined &&
 							node.key !== undefined &&
@@ -391,25 +409,21 @@ abstract class ParentNode<T> implements NodeBase<T> {
 						}
 
 						if (node !== keyedNode) {
+							(keyedNode as ParentNode<T>).moved = true;
 							this.removeChild(keyedNode);
 						}
 
 						if (node === undefined) {
-							(keyedNode as ParentNode<T>).moved = true;
 							this.appendChild(keyedNode);
 						} else if (node !== keyedNode) {
-							(keyedNode as ParentNode<T>).moved = true;
-							if (node.key === undefined) {
-								this.insertBefore(keyedNode, node);
-							} else {
-								this.insertBefore(keyedNode, node.nextSibling);
-							}
+							this.insertBefore(keyedNode, node);
 						}
 
 						if (newKeyedChildren === undefined) {
 							newKeyedChildren = new Map();
 						}
 
+						this.keyedChildren!.delete(key);
 						newKeyedChildren.set(key, keyedNode);
 						node = keyedNode.nextSibling;
 						nextSibling = node && node.nextSibling;
@@ -421,7 +435,6 @@ abstract class ParentNode<T> implements NodeBase<T> {
 					if (keyedNode === undefined) {
 						keyedNode = createNode(this, this.renderer, child);
 					} else {
-						this.keyedChildren!.delete(key);
 						while (
 							node !== undefined &&
 							node.key !== undefined &&
@@ -431,23 +444,18 @@ abstract class ParentNode<T> implements NodeBase<T> {
 							nextSibling = node && node.nextSibling;
 						}
 
-						// TODO: this has to go here because calling removeChild on a newly
-						// created node messes up
 						if (node !== keyedNode) {
+							(keyedNode as ParentNode<T>).moved = true;
 							this.removeChild(keyedNode);
 						}
+
+						this.keyedChildren!.delete(key);
 					}
 
 					if (node === undefined) {
-						(keyedNode as ParentNode<T>).moved = true;
 						this.appendChild(keyedNode);
 					} else if (node !== keyedNode) {
-						(keyedNode as ParentNode<T>).moved = true;
-						if (node.key === undefined) {
-							this.insertBefore(keyedNode, node);
-						} else {
-							this.insertBefore(keyedNode, node.nextSibling);
-						}
+						this.insertBefore(keyedNode, node);
 					}
 
 					if (newKeyedChildren === undefined) {
