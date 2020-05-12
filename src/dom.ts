@@ -1,7 +1,7 @@
 import {
-	HostContext,
 	Default,
 	Environment,
+	HostContext,
 	Intrinsic,
 	Raw,
 	Renderer,
@@ -148,13 +148,13 @@ function createDocumentFragmentFromHTML(html: string): DocumentFragment {
 	}
 }
 
-// TODO: Element should be ParentNode maybe?
+// TODO: Environment type should probably be Element | DocumentFragment
 export const env: Environment<Element> = {
 	[Default](tag: string): Intrinsic<Element> {
 		return function* defaultDOM(this: HostContext): Generator<Element> {
 			const node = document.createElement(tag);
 			let props: Record<string, any> = {};
-			let children: Array<Element | string> = [];
+			let oldLength = 0;
 			try {
 				for (const nextProps of this) {
 					// We can’t use referential identity of props because we don’t have any
@@ -165,15 +165,15 @@ export const env: Environment<Element> = {
 
 					if (
 						this.dirtyChildren &&
-						!("innerHTML" in nextProps) &&
-						(children.length > 0 || nextProps.children.length > 0)
+						nextProps.innerHTML === undefined &&
+						(oldLength > 0 || nextProps.children.length > 0)
 					) {
 						updateChildren(node, nextProps.children, this.dirtyStart);
 					}
 
-					yield node;
 					props = nextProps;
-					children = nextProps.children;
+					oldLength = nextProps.children.length;
+					yield node;
 				}
 			} finally {
 				if (this.dirtyRemoval && node.parentNode !== null) {
