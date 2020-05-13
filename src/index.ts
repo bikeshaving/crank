@@ -1,4 +1,4 @@
-import {CrankEventTarget} from "./events";
+import {CrankEventTarget, isEventTarget} from "./events";
 import {
 	isIteratorOrAsyncIterator,
 	isNonStringIterable,
@@ -137,12 +137,7 @@ export function createElement<TTag extends Tag>(
 type NormalizedChild = Element | string | undefined;
 
 function normalize(child: Child): NormalizedChild {
-	if (
-		child === true ||
-		child === false ||
-		child === null ||
-		child === undefined
-	) {
+	if (child == null || typeof child === "boolean") {
 		return undefined;
 	} else if (typeof child === "string" || isElement(child)) {
 		return child;
@@ -1046,9 +1041,14 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 
 	commit(): undefined {
 		this.prepareCommit();
-		this.ctx.setDelegates(this.childValues);
 		this.value =
 			this.childValues.length > 1 ? this.childValues : this.childValues[0];
+		if (isEventTarget(this.value)) {
+			this.ctx.setDelegate(this.value);
+		} else if (this.childValues.length > 1) {
+			this.ctx.setDelegates(this.childValues);
+		}
+
 		if (!this.updating && this.dirty) {
 			this.parent.commit();
 		}
