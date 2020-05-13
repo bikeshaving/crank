@@ -200,6 +200,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	value: Array<T | string> | T | string | undefined = undefined;
 	dirty = true;
 	moved = true;
+	copied = false;
 	dirtyStart: number | undefined = undefined;
 	dirtyEnd: number | undefined = undefined;
 	protected childValues: Array<T | string> = [];
@@ -314,12 +315,17 @@ abstract class ParentNode<T> implements NodeBase<T> {
 
 			if (tag === Copy) {
 				if (key === undefined) {
+					if (node !== undefined && node.internal) {
+						node.copied = true;
+					}
+
 					node = nextSibling;
 					nextSibling = node && node.nextSibling;
 				} else {
 					// TODO: deduplicate logic with keyed node logic below
 					const keyedNode = this.keyedChildren && this.keyedChildren.get(key);
 					if (keyedNode !== undefined) {
+						(keyedNode as ParentNode<T>).copied = true;
 						while (
 							node !== undefined &&
 							node.key !== undefined &&
@@ -515,26 +521,43 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		}
 
 		if (result !== undefined) {
-			result = result.then(() => this.commit());
 			const newResult = new Promise<undefined>(
 				(resolve) => (this.onNewResult = resolve),
 			);
 
 			return Promise.race([result, newResult]);
 		}
-
-		this.commit();
 	}
 
-	abstract commit(): MaybePromise<undefined>;
+	abstract commit(requester?: ParentNode<T>): MaybePromise<undefined>;
 
-	protected commitChildren(): void {
+	protected commitChildren(requester?: ParentNode<T>): void {
+		// optimizations for a single child
 		if (this.firstChild !== undefined && this.firstChild === this.lastChild) {
-			this.dirty = true;
-			if (Array.isArray(this.firstChild.value)) {
-				this.childValues = this.firstChild.value;
-			} else if (this.firstChild.value !== undefined) {
-				this.childValues = [this.firstChild.value];
+			// requester should equal the firstChild
+			const child = this.firstChild;
+			if (child.internal) {
+				if (requester === undefined && !child.copied) {
+					child.commit();
+				}
+
+				this.dirty = true;
+				this.dirtyStart = child.dirtyStart;
+				this.dirtyEnd = child.dirtyEnd;
+				child.copied = false;
+				child.dirty = false;
+				child.moved = false;
+				child.dirtyStart = undefined;
+				child.dirtyEnd = undefined;
+			} else {
+				this.dirty = child.dirty;
+				child.dirty = false;
+			}
+
+			if (Array.isArray(child.value)) {
+				this.childValues = child.value;
+			} else if (child.value !== undefined) {
+				this.childValues = [child.value];
 			} else {
 				this.childValues = [];
 			}
@@ -552,8 +575,13 @@ abstract class ParentNode<T> implements NodeBase<T> {
 			child !== undefined;
 			child = child.nextSibling
 		) {
-			const dirty = child.dirty || (child.internal && child.moved);
-			if (dirty && !this.dirty) {
+			// TODO: come up with a better algorithm if a requester is passed in
+			if (requester === undefined && child.internal && !child.copied) {
+				child.commit();
+			}
+
+			const childDirty = child.dirty || (child.internal && child.moved);
+			if (childDirty && !this.dirty) {
 				if (child.internal && !child.moved && child.dirtyStart !== undefined) {
 					this.dirtyStart = childValues.length + child.dirtyStart;
 				} else {
@@ -583,7 +611,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				}
 			}
 
-			if (dirty) {
+			if (childDirty) {
 				if (child.internal && !child.moved && child.dirtyEnd !== undefined) {
 					dirtyEnd = oldLength + child.dirtyEnd;
 					dirtyEndExact = true;
@@ -595,6 +623,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 
 			child.dirty = false;
 			if (child.internal) {
+				child.copied = false;
 				child.moved = false;
 				child.dirtyStart = undefined;
 				child.dirtyEnd = undefined;
@@ -610,9 +639,9 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		if (dirtyEndExact) {
 			this.dirtyEnd = dirtyEnd;
 		} else {
-			for (let i = dirtyEnd; i < childValues.length; i++) {
-				if (typeof childValues[i] !== "string") {
-					this.dirtyEnd = i;
+			for (; dirtyEnd < childValues.length; dirtyEnd++) {
+				if (typeof childValues[dirtyEnd] !== "string") {
+					this.dirtyEnd = dirtyEnd;
 					break;
 				}
 			}
@@ -661,12 +690,12 @@ class FragmentNode<T> extends ParentNode<T> {
 		this.ctx = parent.ctx;
 	}
 
-	commit(): undefined {
-		this.commitChildren();
+	commit(requester?: ParentNode<T>): undefined {
+		this.commitChildren(requester);
 		this.value =
 			this.childValues.length > 1 ? this.childValues : this.childValues[0];
-		if (!this.updating && this.dirty) {
-			this.parent.commit();
+		if (requester !== undefined) {
+			this.parent.commit(requester);
 		}
 
 		this.updating = false;
@@ -714,11 +743,15 @@ class HostNode<T> extends ParentNode<T> {
 		this.ctx = parent && parent.ctx;
 	}
 
-	commit(): MaybePromise<undefined> {
-		this.commitChildren();
-		this.dirtyProps = this.updating;
+	commit(requester?: ParentNode<T>): MaybePromise<undefined> {
+		this.commitChildren(requester);
+		this.dirtyProps = requester === undefined;
 		this.dirtyChildren = this.dirty;
 		this.updating = false;
+		return this.commitSelf();
+	}
+
+	commitSelf(): MaybePromise<undefined> {
 		if (this.iterator === undefined) {
 			let value: Iterator<T> | T;
 			try {
@@ -875,13 +908,27 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			this.publish = undefined;
 		}
 
-		return this.run();
+		const result = this.run();
+		if (result === undefined) {
+			this.commit();
+			return;
+		}
+
+		return result.then(() => this.commit());
 	}
 
 	update(props: TProps): MaybePromise<undefined> {
 		this.props = props;
 		this.updating = true;
-		return this.refresh();
+
+		if (this.publish === undefined) {
+			this.available = true;
+		} else {
+			this.publish(this.props!);
+			this.publish = undefined;
+		}
+
+		return this.run();
 	}
 
 	protected updateChildren(children: Children): MaybePromise<undefined> {
@@ -991,7 +1038,15 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 					this.finished = true;
 				}
 
-				const result = this.updateChildren(iteration.value);
+				let result = this.updateChildren(iteration.value);
+				// TODO: we commit async generator components because there’s a race
+				// condition with advance when we don’t commit for some reason
+				if (result === undefined) {
+					this.commit();
+				} else {
+					result = result.then(() => this.commit());
+				}
+
 				if (isPromiseLike(result)) {
 					this.oldResult = result.catch(() => undefined); // void :(
 				}
@@ -1018,7 +1073,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		this.enqueuedPending = undefined;
 		this.enqueuedResult = undefined;
 		if (this.componentType === AsyncGen && !this.finished) {
-			Promise.resolve(this.run()).catch((err) => {
+			this.run()!.catch((err) => {
 				// We catch and rethrow the error to trigger an unhandled promise
 				// rejection.
 				if (!this.updating) {
@@ -1028,8 +1083,8 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		}
 	}
 
-	commit(): undefined {
-		this.commitChildren();
+	commit(requester?: ParentNode<T>): undefined {
+		this.commitChildren(requester);
 		this.value =
 			this.childValues.length > 1 ? this.childValues : this.childValues[0];
 		if (isEventTarget(this.value)) {
@@ -1039,7 +1094,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		}
 
 		if (!this.updating && this.dirty) {
-			this.parent.commit();
+			this.parent.commit(this);
 		}
 
 		this.updating = false;
@@ -1317,6 +1372,7 @@ export class Renderer<T> {
 		const result = rootNode.update(portal.props);
 		if (isPromiseLike(result)) {
 			return result.then(() => {
+				rootNode!.commit();
 				if (portal.props.root == null) {
 					rootNode!.unmount();
 				}
@@ -1325,6 +1381,7 @@ export class Renderer<T> {
 			});
 		}
 
+		rootNode.commit();
 		if (portal.props.root == null) {
 			rootNode.unmount();
 		}
