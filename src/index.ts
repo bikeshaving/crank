@@ -288,97 +288,21 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		this.removeChild(reference);
 	}
 
-	protected prepareCommit(): void {
-		if (this.firstChild !== undefined && this.firstChild === this.lastChild) {
-			this.dirty = true;
-			if (Array.isArray(this.firstChild.value)) {
-				this.childValues = this.firstChild.value;
-			} else if (this.firstChild.value !== undefined) {
-				this.childValues = [this.firstChild.value];
-			} else {
-				this.childValues = [];
-			}
-
+	// TODO: this method should exclusively be on ComponentNode. It doesn’t
+	// really make sense to add it FragmentNodes or HostNodes insofar as they
+	// cannot be independently refreshed.
+	refresh(): MaybePromise<undefined> {
+		if (this.unmounted) {
 			return;
 		}
 
-		let buffer: string | undefined;
-		let childValues: Array<T | string> = [];
-		let oldLength = 0;
-		let dirtyEnd = Infinity;
-		let dirtyEndExact = false;
-		for (
-			let child = this.firstChild;
-			child !== undefined;
-			child = child.nextSibling
-		) {
-			const dirty = child.dirty || (child.internal && child.moved);
-			if (dirty && !this.dirty) {
-				if (child.internal && !child.moved && child.dirtyStart !== undefined) {
-					this.dirtyStart = childValues.length + child.dirtyStart;
-				} else {
-					for (let i = childValues.length - 1; i >= 0; i--) {
-						if (typeof childValues[i] !== "string") {
-							this.dirtyStart = i;
-							break;
-						}
-					}
-				}
+		return this.updateChildren(this.props && this.props.children);
+	}
 
-				this.dirty = true;
-			}
-
-			if (typeof child.value === "string") {
-				buffer = buffer === undefined ? child.value : buffer + child.value;
-			} else if (child.tag !== Portal) {
-				if (buffer !== undefined) {
-					childValues.push(buffer);
-					buffer = undefined;
-				}
-
-				if (Array.isArray(child.value)) {
-					childValues = childValues.concat(child.value);
-				} else if (child.value !== undefined) {
-					childValues.push(child.value);
-				}
-			}
-
-			if (dirty) {
-				if (child.internal && !child.moved && child.dirtyEnd !== undefined) {
-					dirtyEnd = oldLength + child.dirtyEnd;
-					dirtyEndExact = true;
-				} else {
-					dirtyEnd = childValues.length;
-					dirtyEndExact = false;
-				}
-			}
-
-			child.dirty = false;
-			if (child.internal) {
-				child.moved = false;
-				child.dirtyStart = undefined;
-				child.dirtyEnd = undefined;
-			}
-
-			oldLength = childValues.length;
-		}
-
-		if (buffer !== undefined) {
-			childValues.push(buffer);
-		}
-
-		if (dirtyEndExact) {
-			this.dirtyEnd = dirtyEnd;
-		} else {
-			for (let i = dirtyEnd; i < childValues.length; i++) {
-				if (typeof childValues[i] !== "string") {
-					this.dirtyEnd = i;
-					break;
-				}
-			}
-		}
-
-		this.childValues = childValues;
+	update(props: any): MaybePromise<undefined> {
+		this.props = props;
+		this.updating = true;
+		return this.refresh();
 	}
 
 	// TODO: reduce duplication and complexity of this method :P
@@ -623,6 +547,107 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		}
 	}
 
+	abstract commit(): MaybePromise<undefined>;
+
+	protected commitChildren(): void {
+		if (this.firstChild !== undefined && this.firstChild === this.lastChild) {
+			this.dirty = true;
+			if (Array.isArray(this.firstChild.value)) {
+				this.childValues = this.firstChild.value;
+			} else if (this.firstChild.value !== undefined) {
+				this.childValues = [this.firstChild.value];
+			} else {
+				this.childValues = [];
+			}
+
+			return;
+		}
+
+		let buffer: string | undefined;
+		let childValues: Array<T | string> = [];
+		let oldLength = 0;
+		let dirtyEnd = Infinity;
+		let dirtyEndExact = false;
+		for (
+			let child = this.firstChild;
+			child !== undefined;
+			child = child.nextSibling
+		) {
+			const dirty = child.dirty || (child.internal && child.moved);
+			if (dirty && !this.dirty) {
+				if (child.internal && !child.moved && child.dirtyStart !== undefined) {
+					this.dirtyStart = childValues.length + child.dirtyStart;
+				} else {
+					for (let i = childValues.length - 1; i >= 0; i--) {
+						if (typeof childValues[i] !== "string") {
+							this.dirtyStart = i;
+							break;
+						}
+					}
+				}
+
+				this.dirty = true;
+			}
+
+			if (typeof child.value === "string") {
+				buffer = buffer === undefined ? child.value : buffer + child.value;
+			} else if (child.tag !== Portal) {
+				if (buffer !== undefined) {
+					childValues.push(buffer);
+					buffer = undefined;
+				}
+
+				if (Array.isArray(child.value)) {
+					childValues = childValues.concat(child.value);
+				} else if (child.value !== undefined) {
+					childValues.push(child.value);
+				}
+			}
+
+			if (dirty) {
+				if (child.internal && !child.moved && child.dirtyEnd !== undefined) {
+					dirtyEnd = oldLength + child.dirtyEnd;
+					dirtyEndExact = true;
+				} else {
+					dirtyEnd = childValues.length;
+					dirtyEndExact = false;
+				}
+			}
+
+			child.dirty = false;
+			if (child.internal) {
+				child.moved = false;
+				child.dirtyStart = undefined;
+				child.dirtyEnd = undefined;
+			}
+
+			oldLength = childValues.length;
+		}
+
+		if (buffer !== undefined) {
+			childValues.push(buffer);
+		}
+
+		if (dirtyEndExact) {
+			this.dirtyEnd = dirtyEnd;
+		} else {
+			for (let i = dirtyEnd; i < childValues.length; i++) {
+				if (typeof childValues[i] !== "string") {
+					this.dirtyEnd = i;
+					break;
+				}
+			}
+		}
+
+		this.childValues = childValues;
+	}
+
+	// dirty is a boolean flag to indicate whether the unmount is part of a
+	// parent host node being removed. This is passed down so that renderers do
+	// not have to remove children which have already been removed higher up in
+	// the DOM
+	abstract unmount(dirty?: boolean): MaybePromise<undefined>;
+
 	protected unmountChildren(dirty: boolean): void {
 		for (
 			let node = this.firstChild;
@@ -634,28 +659,6 @@ abstract class ParentNode<T> implements NodeBase<T> {
 			}
 		}
 	}
-
-	update(props: any): MaybePromise<undefined> {
-		this.props = props;
-		this.updating = true;
-		return this.refresh();
-	}
-
-	refresh(): MaybePromise<undefined> {
-		if (this.unmounted) {
-			return;
-		}
-
-		return this.updateChildren(this.props && this.props.children);
-	}
-
-	abstract commit(): MaybePromise<undefined>;
-
-	// dirty is a boolean flag to indicate whether the unmount is part of a
-	// parent host node being removed. This is passed down so that renderers do
-	// not have to remove children which have already been removed higher up in
-	// the DOM
-	abstract unmount(dirty?: boolean): MaybePromise<undefined>;
 
 	catch(reason: any): MaybePromise<undefined> {
 		if (this.parent === undefined) {
@@ -680,7 +683,7 @@ class FragmentNode<T> extends ParentNode<T> {
 	}
 
 	commit(): undefined {
-		this.prepareCommit();
+		this.commitChildren();
 		this.value =
 			this.childValues.length > 1 ? this.childValues : this.childValues[0];
 		if (!this.updating && this.dirty) {
@@ -733,7 +736,7 @@ class HostNode<T> extends ParentNode<T> {
 	}
 
 	commit(): MaybePromise<undefined> {
-		this.prepareCommit();
+		this.commitChildren();
 		this.dirtyProps = this.updating;
 		this.dirtyChildren = this.dirty;
 		this.updating = false;
@@ -877,6 +880,22 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		this.tag = tag;
 		this.key = key;
 		this.ctx = new Context(this, parent.ctx);
+	}
+
+	refresh(): MaybePromise<undefined> {
+		if (this.stepping || this.unmounted) {
+			// TODO: we may want to log warnings when stuff like this happens
+			return;
+		}
+
+		if (this.publish === undefined) {
+			this.available = true;
+		} else {
+			this.publish(this.props!);
+			this.publish = undefined;
+		}
+
+		return this.run();
 	}
 
 	protected updateChildren(children: Children): MaybePromise<undefined> {
@@ -1023,24 +1042,8 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		}
 	}
 
-	refresh(): MaybePromise<undefined> {
-		if (this.stepping || this.unmounted) {
-			// TODO: we may want to log warnings when stuff like this happens
-			return;
-		}
-
-		if (this.publish === undefined) {
-			this.available = true;
-		} else {
-			this.publish(this.props!);
-			this.publish = undefined;
-		}
-
-		return this.run();
-	}
-
 	commit(): undefined {
-		this.prepareCommit();
+		this.commitChildren();
 		this.value =
 			this.childValues.length > 1 ? this.childValues : this.childValues[0];
 		if (isEventTarget(this.value)) {
