@@ -296,7 +296,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 
 	// TODO: reduce duplication and complexity of this method :P
 	protected updateChildren(children: Children): MaybePromise<undefined> {
-		let updates: Array<Promise<unknown>> | undefined;
+		let result: Promise<undefined> | undefined;
 		let newKeyedChildren: Map<unknown, Node<T>> | undefined;
 		let node = this.firstChild;
 		let nextSibling = node && node.nextSibling;
@@ -405,13 +405,10 @@ abstract class ParentNode<T> implements NodeBase<T> {
 
 				if (node.tag === tag && !(node.internal && node.fragile)) {
 					if (node.internal) {
-						const update = node.update((child as Element).props);
-						if (update !== undefined) {
-							if (updates === undefined) {
-								updates = [];
-							}
-
-							updates.push(update);
+						const result1 = node.update((child as Element).props);
+						if (result1 !== undefined) {
+							result =
+								result === undefined ? result1 : result.then(() => result1);
 						}
 					} else if (typeof child === "string") {
 						const text = this.renderer.text(child);
@@ -424,16 +421,16 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				} else {
 					const newNode = createNode(this, this.renderer, child);
 					newNode.clock = node.clock++;
-					let update: Promise<undefined> | undefined;
+					let result1: Promise<undefined> | undefined;
 					if (newNode.internal) {
-						update = newNode.update((child as Element).props);
+						result1 = newNode.update((child as Element).props);
 					} else if (typeof child === "string") {
 						newNode.value = this.renderer.text(child);
 					} else {
 						newNode.value = undefined;
 					}
 
-					if (update === undefined) {
+					if (result1 === undefined) {
 						if (node.internal) {
 							node.unmount();
 						}
@@ -441,20 +438,16 @@ abstract class ParentNode<T> implements NodeBase<T> {
 						this.replaceChild(newNode, node);
 						node.replacedBy = newNode;
 					} else {
-						if (updates === undefined) {
-							updates = [];
-						}
-
 						if (node.internal) {
 							// we mark the current node as fragile so that it can be replaced
-							// by future updates even if the tags match
+							// by future updates even if tags/keys match
 							node.fragile = true;
 						}
 
 						// The node variable is reassigned so we need to capture its
 						// current value in node1 for the sake of the callback’s closure.
 						const node1 = node;
-						update = update.then(() => {
+						result1 = result1.then(() => {
 							if (node1.replacedBy === undefined) {
 								this.replaceChild(newNode, node1);
 								node1.replacedBy = newNode;
@@ -477,7 +470,8 @@ abstract class ParentNode<T> implements NodeBase<T> {
 							return undefined; // void :(
 						});
 
-						updates.push(update);
+						result =
+							result === undefined ? result1 : result.then(() => result1);
 					}
 				}
 
@@ -515,25 +509,21 @@ abstract class ParentNode<T> implements NodeBase<T> {
 
 		this.keyedChildren = newKeyedChildren;
 
-		if (updates === undefined) {
-			this.commit();
-			if (this.onNewResult !== undefined) {
-				this.onNewResult();
-				this.onNewResult = undefined;
-			}
-		} else {
-			const result = Promise.all(updates).then(() => this.commit());
-			if (this.onNewResult !== undefined) {
-				this.onNewResult(result.catch(() => undefined)); // void :(
-				this.onNewResult = undefined;
-			}
+		if (this.onNewResult !== undefined) {
+			this.onNewResult(result);
+			this.onNewResult = undefined;
+		}
 
+		if (result !== undefined) {
+			result = result.then(() => this.commit());
 			const newResult = new Promise<undefined>(
 				(resolve) => (this.onNewResult = resolve),
 			);
 
 			return Promise.race([result, newResult]);
 		}
+
+		this.commit();
 	}
 
 	abstract commit(): MaybePromise<undefined>;
