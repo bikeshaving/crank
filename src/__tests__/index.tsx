@@ -506,6 +506,64 @@ describe("sync generator component", () => {
 		);
 	});
 
+	test("refresh with different child", () => {
+		let ctx!: Context;
+		function* Component(this: Context): Generator<Child> {
+			ctx = this;
+			yield <span>1</span>;
+			yield <div>2</div>;
+			yield <span>3</span>;
+		}
+
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual("<div><div>2</div></div>");
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual("<div><span>3</span></div>");
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual("<div></div>");
+	});
+
+	test("refresh with different child and siblings", () => {
+		let ctx!: Context;
+		function* Component(this: Context): Generator<Child> {
+			if (ctx === undefined) {
+				ctx = this;
+			}
+
+			yield <span>Hello</span>;
+			yield <div>Hello</div>;
+			yield <span>Hello</span>;
+		}
+
+		renderer.render(
+			<div>
+				<Component />
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>Hello</span><span>Hello</span></div>",
+		);
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual(
+			"<div><div>Hello</div><span>Hello</span></div>",
+		);
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>Hello</span><span>Hello</span></div>",
+		);
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+	});
+
 	test("refresh fragment", () => {
 		let ctx!: Context;
 		function* Component(this: Context): Generator<Child> {
