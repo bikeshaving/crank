@@ -31,8 +31,7 @@ function normalizeOptions(
 
 export function isEventTarget(value: any): value is EventTarget {
 	return (
-		value !== null &&
-		typeof value === "object" &&
+		value != null &&
 		typeof value.addEventListener === "function" &&
 		// TODO: maybe we don’t need these checks
 		typeof value.removeEventListener === "function" &&
@@ -45,38 +44,95 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 	// we need a map from:
 	// type -> capture -> listener record
 	// for efficient querying
-	private listeners: EventListenerRecord[] = [];
-	private delegates: Set<EventTarget> = new Set();
+	private listeners: EventListenerRecord[] | undefined = undefined;
+	private delegate: EventTarget | undefined = undefined;
+	private delegates: Set<EventTarget> | undefined = undefined;
 	constructor(private parent?: CrankEventTarget) {
 		super();
 	}
 
-	setDelegates(delegates: Iterable<unknown>) {
-		const delegates1 = new Set(Array.from(delegates).filter(isEventTarget));
-		const removed = new Set(
-			Array.from(this.delegates).filter((d) => !delegates1.has(d)),
-		);
-		const added = new Set(
-			Array.from(delegates1).filter((d) => !this.delegates.has(d)),
-		);
-
-		for (const delegate of removed) {
-			for (const listener of this.listeners) {
-				delegate.removeEventListener(
-					listener.type,
-					listener.callback,
-					listener.options,
-				);
+	setDelegate(delegate: EventTarget) {
+		if (this.delegates !== undefined) {
+			if (this.listeners !== undefined) {
+				for (const delegate of this.delegates) {
+					for (const listener of this.listeners) {
+						delegate.removeEventListener(
+							listener.type,
+							listener.callback,
+							listener.options,
+						);
+					}
+				}
 			}
+
+			this.delegates = undefined;
 		}
 
-		for (const delegate of added) {
-			for (const listener of this.listeners) {
-				delegate.addEventListener(
-					listener.type,
-					listener.callback,
-					listener.options,
+		if (this.delegate !== delegate) {
+			if (this.listeners !== undefined) {
+				if (this.delegate !== undefined) {
+					for (const listener of this.listeners) {
+						this.delegate.removeEventListener(
+							listener.type,
+							listener.callback,
+							listener.options,
+						);
+					}
+				}
+
+				for (const listener of this.listeners) {
+					delegate.addEventListener(
+						listener.type,
+						listener.callback,
+						listener.options,
+					);
+				}
+			}
+
+			this.delegate = delegate;
+		}
+	}
+
+	setDelegates(delegates: Iterable<unknown>) {
+		if (this.delegate !== undefined) {
+			this.delegates = new Set([this.delegate]);
+			this.delegate = undefined;
+		}
+
+		const delegates1 = new Set(Array.from(delegates).filter(isEventTarget));
+		if (this.listeners !== undefined) {
+			let removed: Set<EventTarget>;
+			let added: Set<EventTarget>;
+			if (this.delegates === undefined) {
+				removed = new Set();
+				added = delegates1;
+			} else {
+				removed = new Set(
+					Array.from(this.delegates).filter((d) => !delegates1.has(d)),
 				);
+				added = new Set(
+					Array.from(delegates1).filter((d) => !this.delegates!.has(d)),
+				);
+			}
+
+			for (const delegate of removed) {
+				for (const listener of this.listeners) {
+					delegate.removeEventListener(
+						listener.type,
+						listener.callback,
+						listener.options,
+					);
+				}
+			}
+
+			for (const delegate of added) {
+				for (const listener of this.listeners) {
+					delegate.addEventListener(
+						listener.type,
+						listener.callback,
+						listener.options,
+					);
+				}
 			}
 		}
 
@@ -87,11 +143,13 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 		type: T,
 		callback: MappedEventListener<T> | null,
 		options?: boolean | AddEventListenerOptions,
-	): unknown {
+	): void {
 		if (callback == null) {
 			return;
 		} else if (typeof callback === "object") {
 			throw new Error("Listener objects are not supported");
+		} else if (this.listeners === undefined) {
+			this.listeners = [];
 		}
 
 		options = normalizeOptions(options);
@@ -105,22 +163,24 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 			};
 		}
 
-		if (record.type.slice(0, 6) !== "crank.") {
-			const idx = this.listeners.findIndex((record1) => {
-				return (
-					record.type === record1.type &&
-					record.callback === record1.callback &&
-					record.options.capture === record1.options.capture
-				);
-			});
+		const idx = this.listeners.findIndex((record1) => {
+			return (
+				record.type === record1.type &&
+				record.callback === record1.callback &&
+				record.options.capture === record1.options.capture
+			);
+		});
 
-			if (idx <= -1) {
-				this.listeners.push(record);
-			}
+		if (idx <= -1) {
+			this.listeners.push(record);
 		}
 
-		for (const delegate of this.delegates) {
-			delegate.addEventListener(type, callback, options);
+		if (this.delegate !== undefined) {
+			this.delegate.addEventListener(type, callback, options);
+		} else if (this.delegates !== undefined) {
+			for (const delegate of this.delegates) {
+				delegate.addEventListener(type, callback, options);
+			}
 		}
 
 		return super.addEventListener(type, callback, options);
@@ -131,7 +191,7 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 		callback: MappedEventListener<T> | null,
 		options?: EventListenerOptions | boolean,
 	): void {
-		if (callback == null) {
+		if (callback == null || this.listeners === undefined) {
 			return;
 		}
 
@@ -148,20 +208,29 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 		if (record !== undefined) {
 			this.listeners.splice(idx, 1);
 		}
-		for (const delegate of this.delegates) {
-			delegate.removeEventListener(type, callback, options);
+
+		if (this.delegate !== undefined) {
+			this.delegate.removeEventListener(type, callback, options);
+		} else if (this.delegates !== undefined) {
+			for (const delegate of this.delegates) {
+				delegate.removeEventListener(type, callback, options);
+			}
 		}
 
 		return super.removeEventListener(type, callback, options);
 	}
 
 	clearEventListeners(): void {
-		for (const listener of this.listeners.slice()) {
-			this.removeEventListener(
-				listener.type,
-				listener.callback,
-				listener.options,
-			);
+		if (this.listeners !== undefined) {
+			// we slice this.listeners to create a shallow copy because
+			// this.removeEventListener will mutate the listeners array
+			for (const listener of this.listeners.slice()) {
+				this.removeEventListener(
+					listener.type,
+					listener.callback,
+					listener.options,
+				);
+			}
 		}
 	}
 
