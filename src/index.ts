@@ -288,21 +288,10 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		this.removeChild(reference);
 	}
 
-	// TODO: this method should exclusively be on ComponentNode. It doesn’t
-	// really make sense to add it FragmentNodes or HostNodes insofar as they
-	// cannot be independently refreshed.
-	refresh(): MaybePromise<undefined> {
-		if (this.unmounted) {
-			return;
-		}
-
-		return this.updateChildren(this.props && this.props.children);
-	}
-
 	update(props: any): MaybePromise<undefined> {
 		this.props = props;
 		this.updating = true;
-		return this.refresh();
+		return this.updateChildren(this.props && this.props.children);
 	}
 
 	// TODO: reduce duplication and complexity of this method :P
@@ -838,6 +827,7 @@ type ComponentType = SyncFn | AsyncFn | SyncGen | AsyncGen;
 class ComponentNode<T, TProps> extends ParentNode<T> {
 	readonly tag: Component<TProps>;
 	readonly key: Key;
+	protected props: TProps | undefined = undefined;
 	readonly parent: ParentNode<T>;
 	readonly renderer: Renderer<T>;
 	readonly ctx: Context<TProps>;
@@ -896,6 +886,12 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		}
 
 		return this.run();
+	}
+
+	update(props: TProps): MaybePromise<undefined> {
+		this.props = props;
+		this.updating = true;
+		return this.refresh();
 	}
 
 	protected updateChildren(children: Children): MaybePromise<undefined> {
