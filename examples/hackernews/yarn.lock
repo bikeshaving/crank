@@ -793,9 +793,11 @@
     to-fast-properties "^2.0.0"
 
 "@bikeshaving/crank@*":
-  version "0.1.0-beta.9"
-  resolved "https://registry.yarnpkg.com/@bikeshaving/crank/-/crank-0.1.0-beta.9.tgz#418e6476c03c6a4a9f137cf48f58dee6b460b96f"
-  integrity sha512-Sq28rOcnCzJgcRCG0g7PTYq3lY7UboFz3CBdcaObMfVJxt57HrrwnnjD4f7EcXc2jI6FFl9s5WN0zAVwhlqG0A==
+  version "0.1.3"
+  resolved "https://registry.yarnpkg.com/@bikeshaving/crank/-/crank-0.1.3.tgz#58a579b3a95728e515bf35ad164c60fb59400610"
+  integrity sha512-EZ+UupSyk+VmVMDul6ij7EaNAXYCSAxj63056cy8HmmkO62hwJMzXI4r+D9bAMDnPo6oAZg8sA2gg2tky9grYg==
+  dependencies:
+    event-target-shim "^5.0.1"
 
 "@iarna/toml@^2.2.0":
   version "2.2.3"
@@ -2122,6 +2124,11 @@ etag@~1.8.1:
   version "1.8.1"
   resolved "https://registry.yarnpkg.com/etag/-/etag-1.8.1.tgz#41ae2eeb65efa62268aebfea83ac7d79299b0887"
   integrity sha1-Qa4u62XvpiJorr/qg6x9eSmbCIc=
+
+event-target-shim@^5.0.1:
+  version "5.0.1"
+  resolved "https://registry.yarnpkg.com/event-target-shim/-/event-target-shim-5.0.1.tgz#5d4d3ebdf9583d63a5333ce2deb7480ab2b05789"
+  integrity sha512-i/2XbnSz/uxRCU6+NdVJgKWDTM427+MqYbkQzD321DuCQJUqOuJKIA0IM2+W2xtYHdKOmZ4dR6fExsd4SXL+WQ==
 
 events@^3.0.0:
   version "3.1.0"
