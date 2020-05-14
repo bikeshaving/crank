@@ -112,13 +112,6 @@ function updateChildren(
 		oldChild = nextSibling;
 	}
 
-	let el1: Element | undefined;
-	// TODO: figure out the magic number when fragments are actually better
-	if (newChildren.length - ni > 100) {
-		el1 = el;
-		el = document.createDocumentFragment() as any;
-	}
-
 	for (; ni < newChildren.length; ni++) {
 		const newChild = newChildren[ni];
 		el.appendChild(
@@ -126,10 +119,6 @@ function updateChildren(
 				? document.createTextNode(newChild)
 				: newChild,
 		);
-	}
-
-	if (el1 !== undefined) {
-		el1.appendChild(el);
 	}
 }
 
