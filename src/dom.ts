@@ -69,17 +69,24 @@ function updateProps(
 	}
 }
 
-// TODO: use dirtyEnd
 function updateChildren(
 	el: Element,
 	newChildren: Array<Node | string>,
 	dirtyStart?: number,
+	// TODO: use dirtyEnd
 ): void {
 	if (newChildren.length === 0) {
 		el.textContent = "";
 		return;
 	} else if (newChildren.length === 1 && typeof newChildren[0] === "string") {
-		el.textContent = newChildren[0];
+		if (
+			el.firstChild === null ||
+			(el.firstChild as any).splitText === undefined
+		) {
+			el.textContent = newChildren[0];
+		} else {
+			el.firstChild.nodeValue = newChildren[0];
+		}
 		return;
 	}
 	let oldChild: Node | null =
@@ -93,18 +100,15 @@ function updateChildren(
 			oldChild = oldChild.nextSibling;
 			ni++;
 		} else if (typeof newChild === "string") {
-			if (oldChild.nodeType === Node.TEXT_NODE) {
-				if (oldChild.nodeValue !== newChild) {
-					oldChild.nodeValue = newChild;
-				}
-
+			if ((oldChild as any).splitText !== undefined) {
+				oldChild.nodeValue = newChild;
 				oldChild = oldChild.nextSibling;
 			} else {
 				el.insertBefore(document.createTextNode(newChild), oldChild);
 			}
 
 			ni++;
-		} else if (oldChild.nodeType === Node.TEXT_NODE) {
+		} else if ((oldChild as any).splitText !== undefined) {
 			const nextSibling = oldChild.nextSibling;
 			el.removeChild(oldChild);
 			oldChild = nextSibling;
