@@ -536,11 +536,11 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		if (this.firstChild !== undefined && this.firstChild === this.lastChild) {
 			// requester should equal the firstChild
 			const child = this.firstChild;
-			if (child.internal) {
-				if (requester === undefined && !child.copied) {
-					child.commit();
-				}
+			if (requester === undefined && child.internal && !child.copied) {
+				child.commit();
+			}
 
+			if (child.internal) {
 				this.dirty = true;
 				this.dirtyStart = child.dirtyStart;
 				this.dirtyEnd = child.dirtyEnd;
@@ -554,7 +554,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				child.dirty = false;
 			}
 
-			if (child.value === undefined) {
+			if (child.value === undefined || child.internal && child.tag === Portal) {
 				return [];
 			} else if (Array.isArray(child.value)) {
 				return child.value;
