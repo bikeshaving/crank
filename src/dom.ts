@@ -151,8 +151,13 @@ function createDocumentFragmentFromHTML(html: string): DocumentFragment {
 // TODO: Environment type should probably be Element | DocumentFragment
 export const env: Environment<Element> = {
 	[Default](tag: string): Intrinsic<Element> {
+		let cachedEl: Element | undefined;
 		return function* defaultDOM(this: HostContext): Generator<Element> {
-			const node = document.createElement(tag);
+			if (cachedEl === undefined) {
+				cachedEl = document.createElement(tag);
+			}
+
+			const el = cachedEl.cloneNode() as Element;
 			let props: Record<string, any> = {};
 			let oldLength = 0;
 			try {
@@ -160,7 +165,7 @@ export const env: Environment<Element> = {
 					// We can’t use referential identity of props because we don’t have any
 					// restrictions like elements have to be immutable.
 					if (this.dirtyProps) {
-						updateProps(node, props, nextProps);
+						updateProps(el, props, nextProps);
 					}
 
 					if (
@@ -168,16 +173,16 @@ export const env: Environment<Element> = {
 						nextProps.innerHTML === undefined &&
 						(oldLength > 0 || nextProps.children.length > 0)
 					) {
-						updateChildren(node, nextProps.children, this.dirtyStart);
+						updateChildren(el, nextProps.children, this.dirtyStart);
 					}
 
 					props = nextProps;
 					oldLength = nextProps.children.length;
-					yield node;
+					yield el;
 				}
 			} finally {
-				if (this.dirtyRemoval && node.parentNode !== null) {
-					node.parentNode.removeChild(node);
+				if (this.dirtyRemoval && el.parentNode !== null) {
+					el.parentNode.removeChild(el);
 				}
 			}
 		};
