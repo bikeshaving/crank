@@ -357,6 +357,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				}
 			} else {
 				if (key !== undefined) {
+					// TODO: there has to be a simpler way to do this
 					let keyedNode = this.keyedChildren && this.keyedChildren.get(key);
 					if (keyedNode === undefined) {
 						keyedNode = createNode(this, this.renderer, child);
@@ -577,22 +578,6 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				child.commit();
 			}
 
-			const childDirty = child.dirty || (child.internal && child.moved);
-			if (childDirty && !this.dirty) {
-				if (child.internal && !child.moved && child.dirtyStart !== undefined) {
-					this.dirtyStart = childValues.length + child.dirtyStart;
-				} else {
-					for (let i = childValues.length - 1; i >= 0; i--) {
-						if (typeof childValues[i] !== "string") {
-							this.dirtyStart = i;
-							break;
-						}
-					}
-				}
-
-				this.dirty = true;
-			}
-
 			if (typeof child.value === "string") {
 				buffer = buffer === undefined ? child.value : buffer + child.value;
 			} else if (child.tag !== Portal) {
@@ -608,7 +593,30 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				}
 			}
 
-			if (childDirty) {
+			if (child.dirty || (child.internal && child.moved)) {
+				if (!this.dirty) {
+					if (
+						child.internal &&
+						!child.moved &&
+						child.dirtyStart !== undefined
+					) {
+						this.dirtyStart = oldLength + child.dirtyStart;
+					} else {
+						for (
+							let dirtyStart = oldLength - 1;
+							dirtyStart >= 0;
+							dirtyStart--
+						) {
+							if (typeof childValues[dirtyStart] !== "string") {
+								this.dirtyStart = dirtyStart;
+								break;
+							}
+						}
+					}
+
+					this.dirty = true;
+				}
+
 				if (child.internal && !child.moved && child.dirtyEnd !== undefined) {
 					dirtyEnd = oldLength + child.dirtyEnd;
 					dirtyEndExact = true;
@@ -647,10 +655,11 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		return childValues;
 	}
 
+	// TODO: better name for dirty flag
 	// dirty is a boolean flag to indicate whether the unmount is part of a
 	// parent host node being removed. This is passed down so that renderers do
 	// not have to remove children which have already been removed higher up in
-	// the DOM
+	// the tree.
 	abstract unmount(dirty?: boolean): MaybePromise<undefined>;
 
 	protected unmountChildren(dirty: boolean): void {
@@ -1037,7 +1046,9 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 
 				let result = this.updateChildren(iteration.value);
 				// TODO: we commit async generator components because there’s a race
-				// condition with advance when we don’t commit for some reason
+				// condition with advance when we don’t commit for some reason. We
+				// can’t call next on the generator by commit because the generator
+				// must resume with the commit/promise representing commit.
 				if (result === undefined) {
 					this.commit();
 				} else {
