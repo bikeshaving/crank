@@ -74,6 +74,13 @@ function updateChildren(
 	newChildren: Array<Node | string>,
 	dirtyStart?: number,
 ): void {
+	if (newChildren.length === 0) {
+		el.textContent = "";
+		return;
+	} else if (newChildren.length === 1 && typeof newChildren[0] === "string") {
+		el.textContent = newChildren[0];
+		return;
+	}
 	let oldChild: Node | null =
 		newChildren[dirtyStart!] === undefined
 			? el.firstChild
