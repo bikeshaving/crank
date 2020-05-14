@@ -203,7 +203,6 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	copied = false;
 	dirtyStart: number | undefined = undefined;
 	dirtyEnd: number | undefined = undefined;
-	protected childValues: Array<T | string> = [];
 	clock: number = 0;
 	replacedBy: Node<T> | undefined = undefined;
 	private firstChild: Node<T> | undefined = undefined;
@@ -531,7 +530,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 
 	abstract commit(requester?: ParentNode<T>): MaybePromise<undefined>;
 
-	protected commitChildren(requester?: ParentNode<T>): void {
+	protected commitChildren(requester?: ParentNode<T>): Array<T | string> {
 		// optimizations for a single child
 		if (this.firstChild !== undefined && this.firstChild === this.lastChild) {
 			// requester should equal the firstChild
@@ -554,15 +553,13 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				child.dirty = false;
 			}
 
-			if (Array.isArray(child.value)) {
-				this.childValues = child.value;
-			} else if (child.value !== undefined) {
-				this.childValues = [child.value];
-			} else {
-				this.childValues = [];
+			if (child.value === undefined) {
+				return [];
+			} else if (Array.isArray(child.value)) {
+				return child.value;
 			}
 
-			return;
+			return [child.value];
 		}
 
 		let buffer: string | undefined;
@@ -647,7 +644,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 			}
 		}
 
-		this.childValues = childValues;
+		return childValues;
 	}
 
 	// dirty is a boolean flag to indicate whether the unmount is part of a
@@ -691,9 +688,8 @@ class FragmentNode<T> extends ParentNode<T> {
 	}
 
 	commit(requester?: ParentNode<T>): undefined {
-		this.commitChildren(requester);
-		this.value =
-			this.childValues.length > 1 ? this.childValues : this.childValues[0];
+		const childValues = this.commitChildren(requester);
+		this.value = childValues.length > 1 ? childValues : childValues[0];
 		if (requester !== undefined) {
 			this.parent.commit(requester);
 		}
@@ -725,6 +721,7 @@ class HostNode<T> extends ParentNode<T> {
 	// A flag which indicates that this node’s iterator has returned, as in, it
 	// produced an iteration whose done property is set to true.
 	private finished = false;
+	private childValues: Array<T | string> = [];
 	dirtyProps = true;
 	dirtyChildren = true;
 	dirtyRemoval = true;
@@ -744,7 +741,7 @@ class HostNode<T> extends ParentNode<T> {
 	}
 
 	commit(requester?: ParentNode<T>): MaybePromise<undefined> {
-		this.commitChildren(requester);
+		this.childValues = this.commitChildren(requester);
 		this.dirtyProps = requester === undefined;
 		this.dirtyChildren = this.dirty;
 		this.updating = false;
@@ -1084,13 +1081,12 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	}
 
 	commit(requester?: ParentNode<T>): undefined {
-		this.commitChildren(requester);
-		this.value =
-			this.childValues.length > 1 ? this.childValues : this.childValues[0];
+		const childValues = this.commitChildren(requester);
+		this.value = childValues.length > 1 ? childValues : childValues[0];
 		if (isEventTarget(this.value)) {
 			this.ctx.setDelegate(this.value);
-		} else if (this.childValues.length > 1) {
-			this.ctx.setDelegates(this.childValues);
+		} else if (childValues.length > 1) {
+			this.ctx.setDelegates(childValues);
 		}
 
 		if (!this.updating && this.dirty) {
