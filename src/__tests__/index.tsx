@@ -1,5 +1,4 @@
 /** @jsx createElement */
-import "core-js";
 import {
 	createElement,
 	Child,
