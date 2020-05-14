@@ -103,6 +103,15 @@ function updateChildren(
 		} else {
 			el.insertBefore(newChild, oldChild);
 			ni++;
+			// TODO: we skip to the nextSibling in case this is a swap between two
+			// siblings (js-frameworks-benchmark) but I wonder if this just makes
+			// other reordering situations worse.
+			// TODO: some of the async tests were failing if we didn’t remove
+			// the oldChild, but technically the oldChild should have been
+			// deleted by child intrinsics returning. Investigate further.
+			const nextSibling = oldChild.nextSibling;
+			el.removeChild(oldChild);
+			oldChild = nextSibling;
 		}
 	}
 
