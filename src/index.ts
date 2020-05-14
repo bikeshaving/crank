@@ -873,12 +873,12 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	// silently when this occurs, though we may in the future log a warning.
 	private stepping = false;
 	// A flag used by the [Symbol.asyncIterator] method of component nodes to
-	// indicate when props are available. this.publish is the resolve function of
+	// indicate when props are available. this.onProps is the resolve function of
 	// the promise which resolves when props are made available.
-	// TODO: maybe we can use the existence/absence of this.publish instead of
+	// TODO: maybe we can use the existence/absence of this.onProps instead of
 	// boolean flag.
 	private available = false;
-	private publish: ((props: TProps) => unknown) | undefined = undefined;
+	private onProps: ((props: TProps) => unknown) | undefined = undefined;
 	private oldResult: MaybePromise<undefined> = undefined;
 	private componentType: ComponentType | undefined = undefined;
 	// TODO: explain these properties
@@ -907,11 +907,11 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			return;
 		}
 
-		if (this.publish === undefined) {
+		if (this.onProps === undefined) {
 			this.available = true;
 		} else {
-			this.publish(this.props!);
-			this.publish = undefined;
+			this.onProps(this.props!);
+			this.onProps = undefined;
 		}
 
 		const result = this.run();
@@ -927,11 +927,11 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		this.props = props;
 		this.updating = true;
 
-		if (this.publish === undefined) {
+		if (this.onProps === undefined) {
 			this.available = true;
 		} else {
-			this.publish(this.props!);
-			this.publish = undefined;
+			this.onProps(this.props!);
+			this.onProps = undefined;
 		}
 
 		return this.run();
@@ -1119,9 +1119,9 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		if (!this.finished) {
 			this.finished = true;
 			// helps avoid deadlocks
-			if (this.publish !== undefined) {
-				this.publish(this.props!);
-				this.publish = undefined;
+			if (this.onProps !== undefined) {
+				this.onProps(this.props!);
+				this.onProps = undefined;
 			}
 
 			if (this.iterator !== undefined && this.iterator.return) {
@@ -1154,9 +1154,9 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		}
 
 		// helps avoid deadlocks
-		if (this.publish !== undefined) {
-			this.publish(this.props!);
-			this.publish = undefined;
+		if (this.onProps !== undefined) {
+			this.onProps(this.props!);
+			this.onProps = undefined;
 		}
 
 		let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
@@ -1240,7 +1240,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 				yield this.props!;
 			} else {
 				const props = await new Promise<TProps>(
-					(resolve) => (this.publish = resolve),
+					(resolve) => (this.onProps = resolve),
 				);
 				if (!this.unmounted) {
 					yield props;
