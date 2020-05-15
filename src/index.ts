@@ -176,7 +176,6 @@ interface NodeBase<T> {
 	value: Array<T | string> | T | string | undefined;
 	dirty: boolean;
 	nextSibling: Node<T> | undefined;
-	previousSibling: Node<T> | undefined;
 	alternate: Node<T> | undefined;
 }
 
@@ -187,7 +186,6 @@ class LeafNode<T> implements NodeBase<T> {
 	value: string | undefined = undefined;
 	dirty = true;
 	nextSibling: Node<T> | undefined = undefined;
-	previousSibling: Node<T> | undefined = undefined;
 	alternate: undefined;
 }
 
@@ -202,11 +200,9 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	dirtyStart: number | undefined = undefined;
 	dirtyEnd: number | undefined = undefined;
 	private firstChild: Node<T> | undefined = undefined;
-	private lastChild: Node<T> | undefined = undefined;
-	private keyedChildren: Map<unknown, Node<T>> | undefined = undefined;
-	alternate: Node<T> | undefined = undefined;
+	private keyedChildren: Map<unknown, ParentNode<T>> | undefined = undefined;
 	nextSibling: Node<T> | undefined = undefined;
-	previousSibling: Node<T> | undefined = undefined;
+	alternate: Node<T> | undefined = undefined;
 	abstract readonly renderer: Renderer<T>;
 	abstract parent: ParentNode<T> | undefined;
 	// When children update asynchronously, we race their result against the next
@@ -222,68 +218,8 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	// when the node is refreshing or committing, this means that the work was
 	// initiated by the current node or its descendants.
 	protected updating = false;
-	// A flag which means the current node can be blown away.
-	protected fragile = false;
 	// A flag which means the current node is unmounted.
 	protected unmounted = false;
-	private appendChild(child: Node<T>): void {
-		if (this.lastChild === undefined) {
-			this.firstChild = child;
-			this.lastChild = child;
-			child.previousSibling = undefined;
-			child.nextSibling = undefined;
-		} else {
-			child.previousSibling = this.lastChild;
-			child.nextSibling = undefined;
-			this.lastChild.nextSibling = child;
-			this.lastChild = child;
-		}
-	}
-
-	private insertBefore(
-		child: Node<T>,
-		reference: Node<T> | null | undefined,
-	): void {
-		if (reference == null) {
-			this.appendChild(child);
-			return;
-		} else if (child === reference) {
-			return;
-		}
-
-		child.nextSibling = reference;
-		if (reference.previousSibling === undefined) {
-			child.previousSibling = undefined;
-			this.firstChild = child;
-		} else {
-			child.previousSibling = reference.previousSibling;
-			reference.previousSibling.nextSibling = child;
-		}
-
-		reference.previousSibling = child;
-	}
-
-	private removeChild(child: Node<T>): void {
-		if (child.previousSibling === undefined) {
-			this.firstChild = child.nextSibling;
-		} else {
-			child.previousSibling.nextSibling = child.nextSibling;
-		}
-
-		if (child.nextSibling === undefined) {
-			this.lastChild = child.previousSibling;
-		} else {
-			child.nextSibling.previousSibling = child.previousSibling;
-		}
-
-		child.previousSibling = undefined;
-		child.nextSibling = undefined;
-	}
-
-	private replaceChild(child: Node<T>, reference: Node<T>): void {
-		this.insertBefore(child, reference);
-		this.removeChild(reference);
-	}
 
 	update(props: any): MaybePromise<undefined> {
 		this.props = props;
@@ -292,117 +228,220 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	}
 
 	// TODO: reduce duplication and complexity of this method :P
+	// This is quite likely the most complex method call you will ever see in
+	// your whole life. Yes it has to be this way. No you should not attempt to
+	// refactor it unless you have a week to spare. Are you feeling lucky, punk?
 	protected updateChildren(children: Children): MaybePromise<undefined> {
 		let result: Promise<undefined> | undefined;
-		let keys: Set<unknown> | undefined;
+		let keyedChildren: Map<unknown, ParentNode<T>> | undefined;
+		let previousSibling: Node<T> | undefined;
 		let node = this.firstChild;
-		let nextSibling = node && node.nextSibling;
+		const skipped = new Set<unknown>();
 		for (const child of flatten(children)) {
 			const tag: Tag | undefined =
 				typeof child === "object" ? child.tag : undefined;
 			let key: unknown = typeof child === "object" ? child.key : undefined;
-			if (keys !== undefined && keys.has(key)) {
+			if (
+				key !== undefined &&
+				keyedChildren !== undefined &&
+				keyedChildren.has(key)
+			) {
 				// TODO: warn about a key collision
 				key = undefined;
 			}
 
 			if (tag === Copy) {
 				if (key === undefined) {
-					if (node !== undefined && node.internal) {
-						node.copied = true;
-					}
-
-					node = nextSibling;
-					nextSibling = node && node.nextSibling;
-				} else {
-					if (node !== undefined && node.key === key) {
-						(node as ParentNode<T>).copied = true;
-						node = nextSibling;
-						nextSibling = node && node.nextSibling;
-					} else {
-						// TODO: deduplicate logic with keyed node logic below
-						const keyedNode = this.keyedChildren && this.keyedChildren.get(key);
-						if (keyedNode !== undefined) {
-							this.removeChild(keyedNode);
-							(keyedNode as ParentNode<T>).copied = true;
-							(keyedNode as ParentNode<T>).moved = true;
-							this.insertBefore(keyedNode, node);
+					if (node !== undefined) {
+						if (node.internal) {
+							node.copied = true;
 						}
-					}
 
-					if (keys === undefined) {
-						keys = new Set();
+						previousSibling = node;
+						node = node.nextSibling;
 					}
+				} else {
+					const keyedNode = this.keyedChildren && this.keyedChildren.get(key);
+					if (keyedNode !== undefined) {
+						this.keyedChildren!.delete(key);
+						keyedNode.copied = true;
+						if (node === keyedNode) {
+							previousSibling = node;
+							node = node.nextSibling;
+						} else {
+							keyedNode.moved = true;
+							// TODO: deduplicate with code below
+							if (node === undefined || skipped.has(key)) {
+								keyedNode.nextSibling = node;
+								if (previousSibling === undefined) {
+									this.firstChild = keyedNode;
+								} else {
+									previousSibling.nextSibling = keyedNode;
+								}
+							} else {
+								let unkeyedStart: Node<T> | undefined;
+								let unkeyedEnd: Node<T> | undefined;
+								for (
+									let nextSibling = node.nextSibling;
+									node !== undefined && node.key !== key;
+									node = nextSibling, nextSibling = node && node.nextSibling
+								) {
+									if (node.key === undefined) {
+										if (unkeyedStart === undefined) {
+											unkeyedStart = node;
+											unkeyedEnd = node;
+										} else {
+											unkeyedEnd!.nextSibling = node;
+											unkeyedEnd = node;
+										}
+									} else {
+										skipped.add(node.key);
+										node.nextSibling = undefined;
+									}
+								}
 
-					keys.add(key);
+								if (node !== keyedNode) {
+									// We should never see this error
+									throw new Error("Keyed node is missing");
+								}
+
+								if (previousSibling === undefined) {
+									this.firstChild = keyedNode;
+								} else {
+									previousSibling.nextSibling = keyedNode;
+								}
+
+								if (unkeyedStart !== undefined) {
+									unkeyedEnd!.nextSibling = keyedNode.nextSibling;
+									keyedNode.nextSibling = unkeyedStart;
+								}
+							}
+
+							previousSibling = keyedNode;
+							node = keyedNode.nextSibling;
+						}
+
+						if (keyedChildren === undefined) {
+							keyedChildren = new Map();
+						}
+
+						keyedChildren.set(key, keyedNode);
+					}
 				}
 			} else {
 				if (node === undefined) {
 					if (key === undefined) {
 						node = createNode(this, this.renderer, child);
-						this.appendChild(node);
-					} else {
-						let keyedNode = this.keyedChildren && this.keyedChildren.get(key);
-						if (keyedNode === undefined) {
-							keyedNode = createNode(this, this.renderer, child);
-							if (this.keyedChildren === undefined) {
-								this.keyedChildren = new Map();
-							}
-
-							this.keyedChildren.set(key, keyedNode);
+						if (previousSibling === undefined) {
+							this.firstChild = node;
 						} else {
-							(keyedNode as ParentNode<T>).moved = true;
-							this.removeChild(keyedNode);
+							previousSibling.nextSibling = node;
+						}
+					} else {
+						node = this.keyedChildren && this.keyedChildren.get(key);
+						if (node === undefined) {
+							node = createNode(this, this.renderer, child) as ParentNode<T>;
+						} else {
+							this.keyedChildren!.delete(key);
+							node.moved = true;
 						}
 
-						if (keys === undefined) {
-							keys = new Set();
+						if (previousSibling === undefined) {
+							this.firstChild = node;
+						} else {
+							previousSibling.nextSibling = node;
 						}
-
-						keys.add(key);
-						this.appendChild(keyedNode);
-						node = keyedNode;
 					}
 				} else if (key !== undefined) {
-					if (node.key !== key) {
-						let keyedNode = this.keyedChildren && this.keyedChildren.get(key);
-						if (keyedNode === undefined) {
-							keyedNode = createNode(this, this.renderer, child);
-							if (this.keyedChildren === undefined) {
-								this.keyedChildren = new Map();
-							}
-
-							this.keyedChildren.set(key, keyedNode);
+					let keyedNode = this.keyedChildren && this.keyedChildren.get(key);
+					if (keyedNode === undefined) {
+						keyedNode = createNode(this, this.renderer, child) as ParentNode<T>;
+						if (previousSibling === undefined) {
+							keyedNode.nextSibling = node;
+							this.firstChild = keyedNode;
 						} else {
-							(keyedNode as ParentNode<T>).moved = true;
-							this.removeChild(keyedNode);
+							previousSibling.nextSibling = keyedNode;
 						}
 
-						this.insertBefore(keyedNode, node);
 						node = keyedNode;
-						nextSibling = node && node.nextSibling;
-					}
+					} else if (node !== keyedNode) {
+						this.keyedChildren!.delete(key);
+						keyedNode.moved = true;
+						if (skipped.has(key)) {
+							keyedNode.nextSibling = node;
+							if (previousSibling === undefined) {
+								this.firstChild = keyedNode;
+							} else {
+								previousSibling.nextSibling = keyedNode;
+							}
 
-					if (keys === undefined) {
-						keys = new Set();
-					}
+							node = keyedNode;
+						} else {
+							// fastforward through nodes until we reach the keyed node
+							let unkeyedStart: Node<T> | undefined;
+							let unkeyedEnd: Node<T> | undefined;
+							for (
+								let nextSibling = node.nextSibling;
+								node !== undefined && node.key !== key;
+								node = nextSibling, nextSibling = node && node.nextSibling
+							) {
+								if (node.key === undefined) {
+									if (unkeyedStart === undefined) {
+										unkeyedStart = node;
+										unkeyedEnd = node;
+									} else {
+										unkeyedEnd!.nextSibling = node;
+										unkeyedEnd = node;
+									}
+								} else {
+									skipped.add(node.key);
+									node.nextSibling = undefined;
+								}
+							}
 
-					keys.add(key);
+							if (node !== keyedNode) {
+								// We should never see this error
+								throw new Error("Keyed node is missing");
+							}
+
+							if (previousSibling === undefined) {
+								this.firstChild = keyedNode;
+							} else {
+								previousSibling.nextSibling = keyedNode;
+							}
+
+							if (unkeyedStart !== undefined) {
+								unkeyedEnd!.nextSibling = keyedNode.nextSibling;
+								keyedNode.nextSibling = unkeyedStart;
+							}
+						}
+					} else {
+						this.keyedChildren!.delete(key);
+					}
 				} else if (node.key !== undefined) {
+					// new child is unkeyed but old node is keyed
 					for (
-						;
+						let nextSibling = node.nextSibling;
 						node !== undefined && node.key !== undefined;
 						node = nextSibling, nextSibling = node && node.nextSibling
-					);
+					) {
+						skipped.add(node.key);
+						node.nextSibling = undefined;
+					}
 
 					if (node === undefined) {
 						node = createNode(this, this.renderer, child);
-						this.appendChild(node);
+					}
+
+					if (previousSibling === undefined) {
+						this.firstChild = node;
+					} else {
+						previousSibling.nextSibling = node;
 					}
 				}
 
 				// compare nodes by tag
-				if (node.tag === tag && !(node.internal && node.fragile)) {
+				if (node.tag === tag) {
 					if (node.internal) {
 						const result1 = node.update((child as Element).props);
 						if (result1 !== undefined) {
@@ -418,6 +457,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 						node.value = undefined;
 					}
 				} else {
+					// replace current node
 					const newNode = createNode(this, this.renderer, child);
 					let result1: Promise<undefined> | undefined;
 					if (newNode.internal) {
@@ -435,6 +475,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 					} else {
 						newNode.alternate = node;
 						result1 = result1.then(() => {
+							// TODO: do we need to unmount all alternates along the chain?
 							for (
 								let node = newNode.alternate;
 								node !== undefined;
@@ -453,26 +494,43 @@ abstract class ParentNode<T> implements NodeBase<T> {
 							result === undefined ? result1 : result.then(() => result1);
 					}
 
-					this.replaceChild(newNode, node);
+					newNode.nextSibling = node.nextSibling;
+					node.nextSibling = undefined;
+					if (previousSibling === undefined) {
+						this.firstChild = newNode;
+					} else {
+						previousSibling.nextSibling = newNode;
+					}
+
+					node = newNode;
 				}
 
-				node = nextSibling;
-				nextSibling = node && node.nextSibling;
+				if (key !== undefined) {
+					if (keyedChildren === undefined) {
+						keyedChildren = new Map();
+					}
+
+					keyedChildren.set(key, node as ParentNode<T>);
+				}
+
+				previousSibling = node;
+				node = node.nextSibling;
 			}
 		}
 
-		// unmount excess children
 		for (
 			;
 			node !== undefined;
-			node = nextSibling, nextSibling = node && node.nextSibling
+			previousSibling = node, node = node.nextSibling
 		) {
-			if (node.key === undefined) {
-				if (node.internal) {
-					node.unmount();
-				}
+			if (node.internal) {
+				node.unmount();
+			}
 
-				this.removeChild(node);
+			if (previousSibling === undefined) {
+				this.firstChild = undefined;
+			} else {
+				previousSibling.nextSibling = undefined;
 			}
 		}
 
@@ -480,13 +538,12 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		// TODO: this is likely where the logic for asynchronous unmounting would go
 		if (this.keyedChildren !== undefined) {
 			for (const [key, node] of this.keyedChildren) {
-				if (!keys || !keys.has(key)) {
-					(node as ParentNode<T>).unmount();
-					this.removeChild(node);
-					this.keyedChildren.delete(key);
-				}
+				(node as ParentNode<T>).unmount();
+				this.keyedChildren.delete(key);
 			}
 		}
+
+		this.keyedChildren = keyedChildren;
 
 		if (this.onNewResult !== undefined) {
 			this.onNewResult(result);
