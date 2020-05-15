@@ -526,37 +526,6 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	abstract commit(requester?: ParentNode<T>): MaybePromise<undefined>;
 
 	protected commitChildren(requester?: ParentNode<T>): Array<T | string> {
-		// optimizations for a single child
-		if (this.firstChild !== undefined && this.firstChild === this.lastChild) {
-			// requester should equal the firstChild
-			const child = this.firstChild;
-			if (requester === undefined && child.internal && !child.copied) {
-				child.commit();
-			}
-
-			if (child.internal) {
-				this.dirty = true;
-				this.dirtyStart = child.dirtyStart;
-				this.dirtyEnd = child.dirtyEnd;
-				child.copied = false;
-				child.dirty = false;
-				child.moved = false;
-				child.dirtyStart = undefined;
-				child.dirtyEnd = undefined;
-			} else {
-				this.dirty = child.dirty;
-				child.dirty = false;
-			}
-
-			if (child.value === undefined || child.internal && child.tag === Portal) {
-				return [];
-			} else if (Array.isArray(child.value)) {
-				return child.value;
-			}
-
-			return [child.value];
-		}
-
 		let buffer: string | undefined;
 		let childValues: Array<T | string> = [];
 		let oldLength = 0;
