@@ -177,8 +177,7 @@ interface NodeBase<T> {
 	dirty: boolean;
 	nextSibling: Node<T> | undefined;
 	previousSibling: Node<T> | undefined;
-	clock: number;
-	replacedBy: Node<T> | undefined;
+	alternate: Node<T> | undefined;
 }
 
 class LeafNode<T> implements NodeBase<T> {
@@ -187,10 +186,9 @@ class LeafNode<T> implements NodeBase<T> {
 	readonly key = undefined;
 	value: string | undefined = undefined;
 	dirty = true;
-	clock: number = 0;
-	replacedBy: Node<T> | undefined = undefined;
 	nextSibling: Node<T> | undefined = undefined;
 	previousSibling: Node<T> | undefined = undefined;
+	alternate: undefined;
 }
 
 abstract class ParentNode<T> implements NodeBase<T> {
@@ -203,11 +201,10 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	copied = false;
 	dirtyStart: number | undefined = undefined;
 	dirtyEnd: number | undefined = undefined;
-	clock: number = 0;
-	replacedBy: Node<T> | undefined = undefined;
 	private firstChild: Node<T> | undefined = undefined;
 	private lastChild: Node<T> | undefined = undefined;
 	private keyedChildren: Map<unknown, Node<T>> | undefined = undefined;
+	alternate: Node<T> | undefined = undefined;
 	nextSibling: Node<T> | undefined = undefined;
 	previousSibling: Node<T> | undefined = undefined;
 	abstract readonly renderer: Renderer<T>;
@@ -422,7 +419,6 @@ abstract class ParentNode<T> implements NodeBase<T> {
 					}
 				} else {
 					const newNode = createNode(this, this.renderer, child);
-					newNode.clock = node.clock++;
 					let result1: Promise<undefined> | undefined;
 					if (newNode.internal) {
 						result1 = newNode.update((child as Element).props);
@@ -436,45 +432,28 @@ abstract class ParentNode<T> implements NodeBase<T> {
 						if (node.internal) {
 							node.unmount();
 						}
-
-						this.replaceChild(newNode, node);
-						node.replacedBy = newNode;
 					} else {
-						if (node.internal) {
-							// we mark the current node as fragile so that it can be replaced
-							// by future updates even if tags/keys match
-							node.fragile = true;
-						}
-
-						// The node variable is reassigned so we need to capture its
-						// current value in node1 for the sake of the callback’s closure.
-						const node1 = node;
+						newNode.alternate = node;
 						result1 = result1.then(() => {
-							if (node1.replacedBy === undefined) {
-								this.replaceChild(newNode, node1);
-								node1.replacedBy = newNode;
-
-								if (node1.internal) {
-									node1.unmount();
-								}
-							} else if (
-								node1.replacedBy.replacedBy === undefined &&
-								node1.replacedBy.clock < newNode.clock
+							for (
+								let node = newNode.alternate;
+								node !== undefined;
+								node = node.alternate
 							) {
-								this.replaceChild(newNode, node1.replacedBy);
-								node1.replacedBy = newNode;
-
-								if (node1.internal) {
-									node1.unmount();
+								if (node.internal) {
+									node.unmount();
 								}
 							}
 
+							newNode.alternate = undefined;
 							return undefined; // void :(
 						});
 
 						result =
 							result === undefined ? result1 : result.then(() => result1);
 					}
+
+					this.replaceChild(newNode, node);
 				}
 
 				node = nextSibling;
@@ -532,10 +511,14 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		let dirtyEnd = Infinity;
 		let dirtyEndExact = false;
 		for (
-			let child = this.firstChild;
+			let child = this.firstChild, nextSibling = child && child.nextSibling;
 			child !== undefined;
-			child = child.nextSibling
+			child = nextSibling, nextSibling = child && child.nextSibling
 		) {
+			while (child.alternate !== undefined) {
+				child = child.alternate;
+			}
+
 			// TODO: come up with a better algorithm if a requester is passed in
 			if (requester === undefined && child.internal && !child.copied) {
 				child.commit();
