@@ -117,18 +117,26 @@ export function createElement<TTag extends Tag>(
 export function createElement<TTag extends Tag>(
 	tag: TTag,
 	props?: TagProps<TTag> | null,
+	children?: unknown,
 ): Element<TTag> {
+	let key: unknown;
 	const props1 = Object.assign({}, props);
-	let key;
 	if (props1["crank-key"] != null) {
 		key = props1["crank-key"];
-		delete props1["crank-key"];
 	}
 
-	if (arguments.length > 3) {
-		props1.children = Array.from(arguments).slice(2);
-	} else if (arguments.length > 2) {
-		props1.children = arguments[2];
+	props1["crank-key"] = undefined;
+
+	let length = arguments.length;
+	if (length > 3) {
+		const children1: Array<unknown> = [];
+		while (length-- > 2) {
+			children1[length - 2] = arguments[length];
+		}
+
+		props1.children = children1;
+	} else if (length > 2) {
+		props1.children = children;
 	}
 
 	return {[ElementSigil]: true, tag, props: props1, key};
