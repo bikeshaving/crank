@@ -221,7 +221,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	readonly key: Key = undefined;
 	value: Array<T | string> | T | string | undefined = undefined;
 	dirtyStart: number | undefined = undefined;
-	dirtyEnd: number | undefined = undefined;
+	// TODO: implement dirtyEnd
 	private keyedChildren: Map<unknown, ParentNode<T>> | undefined = undefined;
 	private firstChild: Node<T> | undefined = undefined;
 	private lastChild: Node<T> | undefined = undefined;
@@ -501,8 +501,6 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		let buffer: string | undefined;
 		let childValues: Array<T | string> = [];
 		let oldLength = 0;
-		let dirtyEnd = Infinity;
-		let dirtyEndExact = false;
 		for (
 			let child = this.firstChild;
 			child !== undefined;
@@ -559,14 +557,6 @@ abstract class ParentNode<T> implements NodeBase<T> {
 
 					this.dirty = true;
 				}
-
-				if (child.internal && !child.moved && child.dirtyEnd !== undefined) {
-					dirtyEnd = oldLength + child.dirtyEnd;
-					dirtyEndExact = true;
-				} else {
-					dirtyEnd = childValues.length;
-					dirtyEndExact = false;
-				}
 			}
 
 			child.dirty = false;
@@ -574,7 +564,6 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				child.copied = false;
 				child.moved = false;
 				child.dirtyStart = undefined;
-				child.dirtyEnd = undefined;
 			}
 
 			oldLength = childValues.length;
@@ -585,17 +574,6 @@ abstract class ParentNode<T> implements NodeBase<T> {
 
 		if (buffer !== undefined) {
 			childValues.push(buffer);
-		}
-
-		if (dirtyEndExact) {
-			this.dirtyEnd = dirtyEnd;
-		} else {
-			for (; dirtyEnd < childValues.length; dirtyEnd++) {
-				if (typeof childValues[dirtyEnd] !== "string") {
-					this.dirtyEnd = dirtyEnd;
-					break;
-				}
-			}
 		}
 
 		return childValues;
