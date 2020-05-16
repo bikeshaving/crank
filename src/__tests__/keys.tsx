@@ -38,6 +38,45 @@ describe("keys", () => {
 		);
 	});
 
+	test("no shared keys", () => {
+		renderer.render(
+			<div>
+				<span crank-key="1">1</span>
+				<span crank-key="2">2</span>
+				<span crank-key="3">3</span>
+				<span crank-key="4">4</span>
+				<span crank-key="5">5</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span></div>",
+		);
+		const span1 = document.body.firstChild!.childNodes[0];
+		const span2 = document.body.firstChild!.childNodes[1];
+		const span3 = document.body.firstChild!.childNodes[2];
+		const span4 = document.body.firstChild!.childNodes[3];
+		const span5 = document.body.firstChild!.childNodes[4];
+		renderer.render(
+			<div>
+				<span crank-key="6">6</span>
+				<span crank-key="7">7</span>
+				<span crank-key="8">8</span>
+				<span crank-key="9">9</span>
+				<span crank-key="10">10</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span></div>",
+		);
+		expect(span1).not.toBe(document.body.firstChild!.childNodes[0]);
+		expect(span2).not.toBe(document.body.firstChild!.childNodes[1]);
+		expect(span3).not.toBe(document.body.firstChild!.childNodes[2]);
+		expect(span4).not.toBe(document.body.firstChild!.childNodes[3]);
+		expect(span5).not.toBe(document.body.firstChild!.childNodes[4]);
+	});
+
 	test("keyed child moves forward", () => {
 		renderer.render(
 			<div>
