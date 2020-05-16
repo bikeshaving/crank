@@ -211,6 +211,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	// to false once the node has committed, and if this.updating is not true
 	// when the node is refreshing or committing, this means that the work was
 	// initiated by the current node or its descendants.
+	// TODO: with the addition of passing a requester to parents when we want them to commit, maybe we shouldn’t have this flag at all
 	protected updating = false;
 	// A flag which means the current node is unmounted.
 	protected unmounted = false;
@@ -699,24 +700,27 @@ class HostNode<T> extends ParentNode<T> {
 		this.dirtyProps = requester === undefined;
 		this.dirtyChildren = this.dirty;
 		this.updating = false;
-		return this.commitSelf();
+		try {
+			this.commitSelf();
+		} catch (err) {
+			if (this.parent === undefined) {
+				throw err;
+			}
+
+			return this.parent.catch(err);
+		}
+
+		if (this.dirty && requester !== undefined && this.parent !== undefined) {
+			this.parent.commit(this);
+		}
 	}
 
-	commitSelf(): MaybePromise<undefined> {
+	commitSelf(): void {
 		if (this.iterator === undefined) {
-			let value: Iterator<T> | T;
-			try {
-				value = this.intrinsic.call(this, {
-					...this.props,
-					children: this.childValues,
-				});
-			} catch (err) {
-				if (this.parent === undefined) {
-					throw err;
-				}
-
-				return this.parent.catch(err);
-			}
+			const value = this.intrinsic.call(this, {
+				...this.props,
+				children: this.childValues,
+			});
 
 			if (isIteratorOrAsyncIterator(value)) {
 				this.iterator = value;
@@ -727,17 +731,7 @@ class HostNode<T> extends ParentNode<T> {
 			}
 		}
 
-		let iteration: IteratorResult<T>;
-		try {
-			iteration = this.iterator.next();
-		} catch (err) {
-			if (this.parent === undefined) {
-				throw err;
-			}
-
-			return this.parent.catch(err);
-		}
-
+		const iteration = this.iterator.next();
 		this.dirty = this.value !== iteration.value;
 		this.value = iteration.value;
 		this.iterating = false;
