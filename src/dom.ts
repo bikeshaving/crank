@@ -78,17 +78,8 @@ function updateChildren(
 	if (newChildren.length === 0) {
 		el.textContent = "";
 		return;
-	} else if (newChildren.length === 1 && typeof newChildren[0] === "string") {
-		if (
-			el.firstChild === null ||
-			(el.firstChild as any).splitText === undefined
-		) {
-			el.textContent = newChildren[0];
-		} else {
-			el.firstChild.nodeValue = newChildren[0];
-		}
-		return;
 	}
+
 	let oldChild: Node | null =
 		newChildren[dirtyStart!] === undefined
 			? el.firstChild

@@ -121,11 +121,14 @@ export function createElement<TTag extends Tag>(
 ): Element<TTag> {
 	let key: unknown;
 	const props1 = Object.assign({}, props);
-	if (props1["crank-key"] != null) {
-		key = props1["crank-key"];
+	if ("crank-key" in props1) {
+		if (props1["crank-key"] != null) {
+			key = props1["crank-key"];
+		}
+
+		delete props1["crank-key"];
 	}
 
-	delete props1["crank-key"];
 	let length = arguments.length;
 	if (length > 3) {
 		const children1: Array<unknown> = [];
@@ -177,35 +180,44 @@ type Node<T> = LeafNode<T> | ParentNode<T>;
 
 // The shared properties between LeafNode and ParentNode
 interface NodeBase<T> {
+	dirty: boolean;
 	readonly internal: boolean;
 	readonly tag: Tag | undefined;
 	readonly key: Key;
 	value: Array<T | string> | T | string | undefined;
-	dirty: boolean;
 	previousSibling: Node<T> | undefined;
 	nextSibling: Node<T> | undefined;
 	alternate: Node<T> | undefined;
 }
 
 class LeafNode<T> implements NodeBase<T> {
+	// flags
+	dirty = true;
 	readonly internal = false;
 	readonly tag = undefined;
 	readonly key = undefined;
 	value: string | undefined = undefined;
-	dirty = true;
 	previousSibling: Node<T> | undefined = undefined;
 	nextSibling: Node<T> | undefined = undefined;
 	alternate: undefined;
 }
 
 abstract class ParentNode<T> implements NodeBase<T> {
+	// flags
+	dirty = true;
+	moved = true;
+	copied = false;
+	// A flag which means that the parent has updated the current node. It is set
+	// to false once the node has committed, and if this.updating is not true
+	// when the node is refreshing or committing, this means that the work was
+	// initiated by the current node or its descendants.
+	protected updating = false;
+	// A flag which means the current node is unmounted.
+	protected unmounted = false;
 	readonly internal = true;
 	abstract readonly tag: Tag;
 	readonly key: Key = undefined;
 	value: Array<T | string> | T | string | undefined = undefined;
-	dirty = true;
-	moved = true;
-	copied = false;
 	dirtyStart: number | undefined = undefined;
 	dirtyEnd: number | undefined = undefined;
 	private keyedChildren: Map<unknown, ParentNode<T>> | undefined = undefined;
@@ -224,13 +236,6 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		| undefined = undefined;
 	protected props: any = undefined;
 	ctx: Context | undefined = undefined;
-	// A flag which means that the parent has updated the current node. It is set
-	// to false once the node has committed, and if this.updating is not true
-	// when the node is refreshing or committing, this means that the work was
-	// initiated by the current node or its descendants.
-	protected updating = false;
-	// A flag which means the current node is unmounted.
-	protected unmounted = false;
 
 	private appendChild(child: Node<T>): void {
 		if (this.lastChild === undefined) {
@@ -298,9 +303,6 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	}
 
 	// TODO: reduce duplication and complexity of this method :P
-	// This is quite likely the most complex method call you will ever see in
-	// your whole life. Yes it has to be this way. No you should not attempt to
-	// refactor it unless you have a week to spare. Are you feeling lucky, punk?
 	protected updateChildren(children: Children): MaybePromise<undefined> {
 		let result: Promise<undefined> | undefined;
 		let keyedChildren: Map<unknown, ParentNode<T>> | undefined;
@@ -466,7 +468,6 @@ abstract class ParentNode<T> implements NodeBase<T> {
 			}
 		}
 
-
 		// unmount excess keyed children
 		// TODO: this is likely where the logic for asynchronous unmounting would go
 		if (this.keyedChildren !== undefined) {
@@ -501,12 +502,16 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		let dirtyEnd = Infinity;
 		let dirtyEndExact = false;
 		for (
-			let child = this.firstChild, nextSibling = child && child.nextSibling;
+			let child = this.firstChild;
 			child !== undefined;
-			child = nextSibling, nextSibling = child && child.nextSibling
+			child = child.nextSibling
 		) {
-			while (child.alternate !== undefined) {
-				child = child.alternate;
+			let child1: Node<T> | undefined;
+			if (child.alternate !== undefined) {
+				child1 = child;
+				while (child.alternate !== undefined) {
+					child = child.alternate;
+				}
 			}
 
 			// TODO: come up with a better algorithm if a requester is passed in
@@ -571,6 +576,9 @@ abstract class ParentNode<T> implements NodeBase<T> {
 			}
 
 			oldLength = childValues.length;
+			if (child1 !== undefined) {
+				child = child1;
+			}
 		}
 
 		if (buffer !== undefined) {
@@ -654,6 +662,15 @@ class FragmentNode<T> extends ParentNode<T> {
 }
 
 class HostNode<T> extends ParentNode<T> {
+	// flags
+	dirtyProps = true;
+	dirtyChildren = true;
+	dirtyRemoval = true;
+	// A flag to make sure the HostContext isn’t iterated multiple times without a yield.
+	private iterating = false;
+	// A flag which indicates that this node’s iterator has returned, as in, it
+	// produced an iteration whose done property is set to true.
+	private finished = false;
 	readonly tag: string | symbol;
 	readonly key: Key;
 	readonly parent: ParentNode<T> | undefined;
@@ -661,15 +678,7 @@ class HostNode<T> extends ParentNode<T> {
 	value: T | undefined;
 	private readonly intrinsic: Intrinsic<T>;
 	private iterator: Iterator<T> | undefined = undefined;
-	// A flag to make sure the HostContext isn’t iterated multiple times without a yield.
-	private iterating = false;
-	// A flag which indicates that this node’s iterator has returned, as in, it
-	// produced an iteration whose done property is set to true.
-	private finished = false;
 	private childValues: Array<T | string> = [];
-	dirtyProps = true;
-	dirtyChildren = true;
-	dirtyRemoval = true;
 	constructor(
 		parent: ParentNode<T> | undefined,
 		renderer: Renderer<T>,
@@ -790,13 +799,6 @@ type AsyncGen = typeof AsyncGen;
 type ComponentType = SyncFn | AsyncFn | SyncGen | AsyncGen;
 
 class ComponentNode<T, TProps> extends ParentNode<T> {
-	readonly tag: Component<TProps>;
-	readonly key: Key;
-	protected props: TProps | undefined = undefined;
-	readonly parent: ParentNode<T>;
-	readonly renderer: Renderer<T>;
-	readonly ctx: Context<TProps>;
-	private iterator: ChildIterator | undefined = undefined;
 	// A flag to make sure the Context isn’t iterated multiple times without a yield.
 	private iterating = false;
 	// A flag which indicates that this node’s iterator has returned, as in, it
@@ -814,7 +816,13 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	// TODO: maybe we can use the existence/absence of this.onProps instead of
 	// boolean flag.
 	private available = false;
-	private onProps: ((props: TProps) => unknown) | undefined = undefined;
+	readonly tag: Component<TProps>;
+	readonly key: Key;
+	protected props: TProps | undefined = undefined;
+	readonly parent: ParentNode<T>;
+	readonly renderer: Renderer<T>;
+	readonly ctx: Context<TProps>;
+	private iterator: ChildIterator | undefined = undefined;
 	private oldResult: MaybePromise<undefined> = undefined;
 	private componentType: ComponentType | undefined = undefined;
 	// TODO: explain these properties
@@ -822,6 +830,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	private enqueuedPending: MaybePromise<undefined> = undefined;
 	private inflightResult: MaybePromise<undefined> = undefined;
 	private enqueuedResult: MaybePromise<undefined> = undefined;
+	private onProps: ((props: TProps) => unknown) | undefined = undefined;
 	private provisions: Map<unknown, any> | undefined = undefined;
 	constructor(
 		parent: ParentNode<T>,
@@ -982,9 +991,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 
 				let result = this.updateChildren(iteration.value);
 				// TODO: we commit async generator components because there’s a race
-				// condition with advance when we don’t commit for some reason. We
-				// can’t call next on the generator by commit because the generator
-				// must resume with the commit/promise representing commit.
+				// condition with advance when we don’t commit for some reason.
 				if (result === undefined) {
 					this.commit();
 				} else {
