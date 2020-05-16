@@ -52,10 +52,10 @@ export interface IntrinsicProps<T> {
 const ElementSigil: unique symbol = Symbol.for("crank.ElementSigil");
 
 export interface Element<TTag extends Tag = Tag> {
-	[ElementSigil]: true;
+	__sigil__: typeof ElementSigil;
 	readonly tag: TTag;
+	readonly key: unknown;
 	props: TagProps<TTag>;
-	key?: unknown;
 }
 
 export type FunctionComponent<TProps = any> = (
@@ -106,7 +106,7 @@ export const Raw = Symbol.for("crank.Raw") as any;
 export type Raw = typeof Raw;
 
 export function isElement(value: any): value is Element {
-	return value != null && value[ElementSigil];
+	return value != null && value.__sigil__ === ElementSigil;
 }
 
 export function createElement<TTag extends Tag>(
@@ -119,14 +119,15 @@ export function createElement<TTag extends Tag>(
 	props?: TagProps<TTag> | null,
 	children?: unknown,
 ): Element<TTag> {
-	let key: unknown;
-	const props1 = Object.assign({}, props);
-	if ("crank-key" in props1) {
-		if (props1["crank-key"] != null) {
-			key = props1["crank-key"];
+	const key =
+		props != null && props["crank-key"] != null
+			? props["crank-key"]
+			: undefined;
+	const props1: any = {};
+	for (const key in props) {
+		if (key !== "crank-key") {
+			props1[key] = props[key];
 		}
-
-		delete props1["crank-key"];
 	}
 
 	let length = arguments.length;
@@ -141,7 +142,7 @@ export function createElement<TTag extends Tag>(
 		props1.children = children;
 	}
 
-	return {[ElementSigil]: true, tag, props: props1, key};
+	return {__sigil__: ElementSigil, tag, props: props1, key};
 }
 
 type NormalizedChild = Element | string | undefined;
