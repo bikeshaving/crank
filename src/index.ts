@@ -125,8 +125,7 @@ export function createElement<TTag extends Tag>(
 		key = props1["crank-key"];
 	}
 
-	props1["crank-key"] = undefined;
-
+	delete props1["crank-key"];
 	let length = arguments.length;
 	if (length > 3) {
 		const children1: Array<unknown> = [];
