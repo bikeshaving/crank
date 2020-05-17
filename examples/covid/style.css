@@ -1,0 +1,57 @@
+html,
+body {
+  background: yellow;
+  margin: 0;
+  padding: 0;
+}
+
+* {
+  font-size: 100%;
+  font-family: "Comic Sans MS";
+}
+
+/* CountryLits */
+.country-list {
+  max-height: 100vh;
+  overflow: auto;
+  padding: 20px;
+}
+
+.country-list .country {
+  cursor: pointer;
+}
+
+.country-list .selected {
+  font-weight: bold;
+}
+
+/* Statistic */
+.statistic {
+  outline: 1px solid black;
+  width: 200px;
+  height: 200px;
+  margin: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+
+  -webkit-box-shadow: 10px 9px 5px -5px rgba(0, 0, 0, 0.2);
+  -moz-box-shadow: 10px 9px 5px -5px rgba(0, 0, 0, 0.2);
+  box-shadow: 10px 9px 5px -5px rgba(0, 0, 0, 0.2);
+}
+
+.statistic .number {
+  font-weight: bold;
+  font-size: 2em;
+}
+
+.statistic .description {
+  font-size: 0.9em;
+}
+
+/* Title */
+.title {
+  font-size: 2.5em;
+  font-weight: bold;
+}
