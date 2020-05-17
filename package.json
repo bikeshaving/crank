@@ -2,30 +2,64 @@
   "name": "@bikeshaving/crank",
   "version": "0.1.4",
   "description": "JSX-based components with functions, promises and generators.",
+  "homepage": "https://crank.js.org",
+  "bugs": {
+    "url": "https://github.com/bikeshaving/crank/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bikeshaving/crank.git"
+  },
   "license": "MIT",
   "files": [
     "cjs",
     "esm",
+    "umd",
     "dom.d.ts",
     "dom.js",
     "html.d.ts",
     "html.js"
   ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./esm/index.js",
+      "require": "./cjs/index.js"
+    },
+    "./cjs": {
+      "require": "./cjs/index.js"
+    },
+    "./cjs/dom": {
+      "require": "./cjs/dom.js"
+    },
+    "./cjs/dom.js": {
+      "require": "./cjs/dom.js"
+    },
+    "./cjs/html": {
+      "require": "./cjs/html.js"
+    },
+    "./cjs/html.js": {
+      "require": "./cjs/html.js"
+    },
+    "./cjs/index.js": {
+      "require": "./cjs/index.js"
+    },
+    "./dom": {
+      "import": "./esm/dom.js",
+      "require": "./cjs/dom.js"
+    },
+    "./html": {
+      "import": "./esm/html.js",
+      "require": "./cjs/html.js"
+    }
+  },
   "main": "cjs/index.js",
   "module": "esm/index.js",
   "types": "esm/index.d.ts",
-  "homepage": "https://crank.js.org",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/bikeshaving/crank.git"
-  },
-  "bugs": {
-    "url": "https://github.com/bikeshaving/crank/issues"
-  },
   "scripts": {
     "prebuild": "yarn run clean",
     "build": "rollup -c rollup.config.js",
-    "clean": "shx rm -rf ./cjs ./esm",
+    "clean": "shx rm -rf ./cjs ./esm ./umd",
     "debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "prepublishOnly": "yarn run test && yarn run build",
