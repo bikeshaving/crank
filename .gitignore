@@ -2,10 +2,10 @@ node_modules
 index.js
 dom.js
 html.js
-umd.js
 *.d.ts
 *.js.map
 cjs
+umd
 lib
 dist
 .cache

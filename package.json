@@ -12,13 +12,13 @@
   },
   "license": "MIT",
   "files": [
-    "umd.js",
     "index.js",
-    "cjs",
-    "*.d.ts",
-    "*.js.map",
     "dom.js",
-    "html.js"
+    "html.js",
+    "cjs",
+    "umd",
+    "*.d.ts",
+    "*.js.map"
   ],
   "type": "module",
   "exports": {
@@ -66,6 +66,12 @@
     "./index.js": {
       "import": "./index.js",
       "require": "./cjs/index.js"
+    },
+    "./umd": {
+      "require": "./umd/index.js"
+    },
+    "./umd/index.js": {
+      "require": "./umd/index.js"
     }
   },
   "main": "cjs/index.js",

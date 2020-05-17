@@ -7,12 +7,15 @@ import pkg from "./package.json";
 function packageCJS() {
 	return {
 		name: "packageCJS",
-		writeBundle(options) {
-			const dir = options.dir;
+		writeBundle({dir, format}) {
 			fs.writeFileSync(
 				path.join(__dirname, dir, "package.json"),
 				JSON.stringify(
-					{...pkg, name: pkg.name + "-cjs", type: "commonjs", private: true},
+					{
+						name: `${pkg.name}-${format}`,
+						type: "commonjs",
+						private: true,
+					},
 					null,
 					2,
 				),
@@ -48,13 +51,14 @@ export default [
 		input: "umd.ts",
 		output: {
 			format: "umd",
-			file: "umd.js",
+			dir: "umd",
 			sourcemap: true,
 			name: "Crank",
 		},
 		plugins: [
 			ts({tsconfig: (tsconfig) => ({...tsconfig, target: "ES6"})}),
 			resolve(),
+			packageCJS(),
 		],
 	},
 ];
