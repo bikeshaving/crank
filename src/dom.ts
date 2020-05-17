@@ -167,9 +167,9 @@ export const env: Environment<Element> = {
 
 		let cachedEl: Element | undefined;
 		return function* defaultDOM(this: HostContext): Generator<Element> {
+			const ns =
+				tag === "svg" ? SVG_NAMESPACE : (this.scope as string | undefined);
 			if (cachedEl === undefined) {
-				const ns =
-					tag === "svg" ? SVG_NAMESPACE : (this.scope as string | undefined);
 				if (ns == null) {
 					cachedEl = document.createElement(tag);
 				} else {
@@ -185,7 +185,7 @@ export const env: Environment<Element> = {
 					// We can’t use referential identity of props because we don’t have any
 					// restrictions like elements have to be immutable.
 					if (this.dirtyProps) {
-						updateProps(el, props, nextProps);
+						updateProps(el, props, nextProps, ns);
 					}
 
 					if (
