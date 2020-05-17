@@ -87,7 +87,11 @@ const voidTags = new Set([
 ]);
 
 export const env: Environment<string> = {
-	[Default](tag: string): Intrinsic<string> {
+	[Default](tag: string | symbol): Intrinsic<string> {
+		if (typeof tag !== "string") {
+			throw new Error(`Unknown tag: ${tag.toString()}`);
+		}
+
 		return function defaultString(props: IntrinsicProps<string>): string {
 			const attrs = printAttrs(props);
 			const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
