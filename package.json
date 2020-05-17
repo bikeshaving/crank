@@ -1,7 +1,7 @@
 {
   "name": "@bikeshaving/crank",
   "version": "0.1.4",
-  "description": "JSX-based components with functions, promises and generators.",
+  "description": "Write JSX-driven components with functions, promises and generators.",
   "homepage": "https://crank.js.org",
   "bugs": {
     "url": "https://github.com/bikeshaving/crank/issues"
@@ -63,10 +63,15 @@
       "import": "./html.js",
       "require": "./cjs/html.js"
     },
+    "./index": {
+      "import": "./index.js",
+      "require": "./cjs/index.js"
+    },
     "./index.js": {
       "import": "./index.js",
       "require": "./cjs/index.js"
     },
+    "./package.json": "./package.json",
     "./umd": {
       "require": "./umd/index.js"
     },
