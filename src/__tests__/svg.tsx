@@ -1,6 +1,10 @@
 /** @jsx createElement */
 import {createElement} from "../index";
 import {renderer} from "../dom";
+
+// TODO: jsdom doesn’t seem to export the entire SVG class hierarchy so these
+// tests are going to be mostly incomplete for now
+// https://github.com/jsdom/jsdom/issues/2128
 describe("render", () => {
 	afterEach(() => {
 		document.body.innerHTML = "";
@@ -34,7 +38,6 @@ describe("render", () => {
 			document.body,
 		);
 		expect(document.body.firstChild).toBeInstanceOf(SVGElement);
-		// TODO: jsdom :/ https://github.com/jsdom/jsdom/issues/2128
 		for (const child of Array.from(document.body.firstChild!.childNodes)) {
 			expect(child).toBeInstanceOf(SVGElement);
 		}
