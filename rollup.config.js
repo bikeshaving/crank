@@ -1,7 +1,8 @@
 import resolve from "@rollup/plugin-node-resolve";
-import typescript from "rollup-plugin-typescript2";
+import ts from "@wessberg/rollup-plugin-ts";
 import * as fs from "fs";
 import * as path from "path";
+import pkg from "./package.json";
 
 function packageCJS() {
 	return {
@@ -10,7 +11,11 @@ function packageCJS() {
 			const dir = options.dir;
 			fs.writeFileSync(
 				path.join(__dirname, dir, "package.json"),
-				JSON.stringify({type: "commonjs"}),
+				JSON.stringify(
+					{...pkg, name: pkg.name + "-cjs", type: "commonjs", private: true},
+					null,
+					2,
+				),
 			);
 		},
 	};
@@ -21,10 +26,10 @@ export default [
 		input: ["src/index.ts", "src/dom.ts", "src/html.ts"],
 		output: {
 			format: "esm",
-			dir: "esm",
+			dir: "./",
 			sourcemap: true,
 		},
-		plugins: [typescript(), resolve()],
+		plugins: [ts(), resolve()],
 	},
 	{
 		input: ["src/index.ts", "src/dom.ts", "src/html.ts"],
@@ -34,7 +39,7 @@ export default [
 			sourcemap: true,
 		},
 		plugins: [
-			typescript({tsconfigOverride: {compilerOptions: {target: "ES6"}}}),
+			ts({tsconfig: (tsconfig) => ({...tsconfig, target: "ES6"})}),
 			resolve(),
 			packageCJS(),
 		],
@@ -43,12 +48,12 @@ export default [
 		input: "umd.ts",
 		output: {
 			format: "umd",
-			dir: "umd",
+			file: "umd.js",
 			sourcemap: true,
 			name: "Crank",
 		},
 		plugins: [
-			typescript({tsconfigOverride: {compilerOptions: {target: "ES6"}}}),
+			ts({tsconfig: (tsconfig) => ({...tsconfig, target: "ES6"})}),
 			resolve(),
 		],
 	},
