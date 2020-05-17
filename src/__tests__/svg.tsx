@@ -58,4 +58,21 @@ describe("render", () => {
 			HTMLElement,
 		);
 	});
+
+	test("classes", () => {
+		renderer.render(
+			<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+				<rect class="rectClass" x="10" y="10" width="100" height="100" />
+				<circle class="circleClass" cx="40" cy="50" r="26" />
+			</svg>,
+			document.body,
+		);
+
+		const rect = document.body.firstChild!.firstChild!;
+		const circle = rect.nextSibling;
+		expect(rect).toBeInstanceOf(SVGElement);
+		expect(circle).toBeInstanceOf(SVGElement);
+		expect((rect as SVGElement).getAttribute("class")).toBe("rectClass");
+		expect((circle as SVGElement).getAttribute("class")).toBe("circleClass");
+	});
 });
