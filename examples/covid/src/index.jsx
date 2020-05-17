@@ -13,10 +13,10 @@ function* CovidApp() {
   while (true) {
     yield (
       <div style="display:flex">
-        <div style="width: 20%">
+        <div class="section" style="width: 20%">
           <CountryList onClick={onClick} selected={selected} />
         </div>
-        <div style="width: 80%">
+        <div class="section" style="width: 80%">
           {selected ? <Country country={selected} /> : "No country selected."}
         </div>
       </div>

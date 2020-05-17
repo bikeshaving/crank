@@ -14,7 +14,6 @@ body {
 .country-list {
   max-height: 100vh;
   overflow: auto;
-  padding: 20px;
 }
 
 .country-list .country {
@@ -23,6 +22,11 @@ body {
 
 .country-list .selected {
   font-weight: bold;
+}
+
+/* Section */
+.section {
+  padding: 20px;
 }
 
 /* Statistic */

@@ -4,10 +4,23 @@ import { last } from "lodash-es";
 import { distanceInWordsToNow } from "date-fns";
 
 import { Statistic, Title } from "./";
+import { api } from "../utils";
+import { LoadingIndicator } from "./loading-indicator";
+import { Suspense } from "./suspense";
 
 export async function Country({ country }) {
+  return (
+    <Suspense fallback={<LoadingIndicator />}>
+      <CountryRenderer country={country} />
+    </Suspense>
+  );
+}
+
+export async function CountryRenderer({ country }) {
   const { Slug } = country;
-  const data = await fetch(`https://api.covid19api.com/live/country/${Slug}`)
+  const data = await api(`https://api.covid19api.com/live/country/${Slug}`, {
+    slow: false,
+  })
     .then((response) => response.json())
     .catch((error) => console.log("error", error));
 
