@@ -5,6 +5,7 @@ import {
 	Intrinsic,
 	Raw,
 	Renderer,
+	Scopes,
 	Portal,
 } from "./index";
 
@@ -12,21 +13,30 @@ declare module "./index" {
 	interface EventMap extends GlobalEventHandlersEventMap {}
 }
 
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+
 // TODO: create an allowlist/blocklist of props
 function updateProps(
 	el: Element,
 	props: Record<string, any>,
 	newProps: Record<string, any>,
+	namespace?: string,
 ): void {
 	for (const name in {...props, ...newProps}) {
 		const value = props[name];
 		const newValue = newProps[name];
+
 		switch (name) {
 			case "children":
 				break;
 			case "class":
 			case "className": {
-				el.className = newValue;
+				if (namespace === SVG_NAMESPACE) {
+					el.setAttribute("class", newValue);
+				} else {
+					el.className = newValue;
+				}
+
 				break;
 			}
 			case "style": {
@@ -150,11 +160,21 @@ function createDocumentFragmentFromHTML(html: string): DocumentFragment {
 
 // TODO: Environment type should probably be Element | DocumentFragment
 export const env: Environment<Element> = {
-	[Default](tag: string): Intrinsic<Element> {
+	[Default](tag: string | symbol): Intrinsic<Element> {
+		if (typeof tag !== "string") {
+			throw new Error(`Unknown tag: ${tag.toString()}`);
+		}
+
 		let cachedEl: Element | undefined;
 		return function* defaultDOM(this: HostContext): Generator<Element> {
 			if (cachedEl === undefined) {
-				cachedEl = document.createElement(tag);
+				const ns =
+					tag === "svg" ? SVG_NAMESPACE : (this.scope as string | undefined);
+				if (ns == null) {
+					cachedEl = document.createElement(tag);
+				} else {
+					cachedEl = document.createElementNS(ns, tag);
+				}
 			}
 
 			const el = cachedEl.cloneNode() as Element;
@@ -228,6 +248,10 @@ export const env: Environment<Element> = {
 		} finally {
 			updateChildren(root, []);
 		}
+	},
+	[Scopes]: {
+		svg: SVG_NAMESPACE,
+		foreignObject: undefined,
 	},
 };
 

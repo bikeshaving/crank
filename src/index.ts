@@ -236,8 +236,10 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	private onNewResult:
 		| ((result?: Promise<undefined>) => unknown)
 		| undefined = undefined;
-	protected props: any = undefined;
+	protected props: any;
 	ctx: Context | undefined = undefined;
+	scope: unknown = undefined;
+	childScope: unknown = undefined;
 
 	private appendChild(child: Node<T>): void {
 		if (this.lastChild === undefined) {
@@ -618,6 +620,7 @@ class FragmentNode<T> extends ParentNode<T> {
 		this.parent = parent;
 		this.renderer = renderer;
 		this.ctx = parent.ctx;
+		this.scope = parent.childScope;
 	}
 
 	commit(requester?: ParentNode<T>): undefined {
@@ -655,7 +658,7 @@ class HostNode<T> extends ParentNode<T> {
 	readonly key: Key;
 	readonly parent: ParentNode<T> | undefined;
 	readonly renderer: Renderer<T>;
-	value: T | undefined;
+	value: T | undefined = undefined;
 	private readonly intrinsic: Intrinsic<T>;
 	private iterator: Iterator<T> | undefined = undefined;
 	private childValues: Array<T | string> = [];
@@ -663,7 +666,8 @@ class HostNode<T> extends ParentNode<T> {
 		parent: ParentNode<T> | undefined,
 		renderer: Renderer<T>,
 		tag: string | symbol,
-		key?: unknown,
+		key: unknown,
+		props: any,
 	) {
 		super();
 		this.tag = tag;
@@ -672,6 +676,8 @@ class HostNode<T> extends ParentNode<T> {
 		this.renderer = renderer;
 		this.intrinsic = renderer.intrinsic(tag);
 		this.ctx = parent && parent.ctx;
+		this.scope = parent && parent.childScope;
+		this.childScope = renderer.scope(tag, props);
 	}
 
 	commit(requester?: ParentNode<T>): MaybePromise<undefined> {
@@ -791,7 +797,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	private available = false;
 	readonly tag: Component<TProps>;
 	readonly key: Key;
-	protected props: TProps | undefined = undefined;
+	protected props: TProps;
 	readonly parent: ParentNode<T>;
 	readonly renderer: Renderer<T>;
 	readonly ctx: Context<TProps>;
@@ -810,13 +816,16 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		renderer: Renderer<T>,
 		tag: Component,
 		key: Key,
+		props: TProps,
 	) {
 		super();
 		this.parent = parent;
 		this.renderer = renderer;
 		this.tag = tag;
 		this.key = key;
+		this.props = props;
 		this.ctx = new Context(this, parent.ctx);
+		this.scope = parent.childScope;
 	}
 
 	refresh(): MaybePromise<undefined> {
@@ -1176,9 +1185,15 @@ function createNode<T>(
 	} else if (child.tag === Fragment) {
 		return new FragmentNode(parent, renderer, child.key);
 	} else if (typeof child.tag === "function") {
-		return new ComponentNode(parent, renderer, child.tag, child.key);
+		return new ComponentNode(
+			parent,
+			renderer,
+			child.tag,
+			child.key,
+			child.props,
+		);
 	} else {
-		return new HostNode(parent, renderer, child.tag, child.key);
+		return new HostNode(parent, renderer, child.tag, child.key, child.props);
 	}
 }
 
@@ -1226,9 +1241,17 @@ export const Text = Symbol.for("crank.Text");
 
 export type Text = typeof Text;
 
+export const Scopes = Symbol.for("crank.Scopes");
+
+export interface Scoper {
+	[Default]?(tag: string | symbol, props: any): unknown;
+	[tag: string]: unknown;
+}
+
 export interface Environment<T> {
-	[Default]?(tag: string): Intrinsic<T>;
+	[Default]?(tag: string | symbol): Intrinsic<T>;
 	[Text]?(text: string): string;
+	[Scopes]?: Scoper;
 	[tag: string]: Intrinsic<T>;
 	// TODO: uncomment
 	// [Portal]?: Intrinsic<T>;
@@ -1251,21 +1274,39 @@ export class Renderer<T> {
 	private cache = new WeakMap<object, HostNode<T>>();
 	private defaultIntrinsics: Record<string, Intrinsic<T>> = {};
 	private env: Environment<T> = {...defaultEnv};
+	private scoper: Scoper = {};
 	constructor(env?: Environment<T>) {
 		this.extend(env);
 	}
 
 	extend(env?: Environment<T>): void {
-		if (env !== undefined) {
-			for (const sym of Object.getOwnPropertySymbols(env)) {
-				if (env[sym as any] != null) {
-					this.env[sym as any] = env[sym as any]!;
+		if (env == null) {
+			return;
+		}
+
+		for (const tag of Object.keys(env)) {
+			if (env[tag] != null) {
+				this.env[tag] = env[tag]!;
+			}
+		}
+
+		for (const tag of Object.getOwnPropertySymbols(env)) {
+			if (env[tag as any] != null && tag !== Scopes) {
+				this.env[tag as any] = env[tag as any]!;
+			}
+		}
+
+		if (env[Scopes] != null) {
+			const scoper = env[Scopes]!;
+			for (const tag of Object.keys(scoper)) {
+				if (scoper[tag] != null) {
+					this.scoper[tag] = scoper[tag]!;
 				}
 			}
 
-			for (const tag of Object.keys(env)) {
-				if (env[tag] != null) {
-					this.env[tag] = env[tag]!;
+			for (const tag of Object.getOwnPropertySymbols(env)) {
+				if (scoper[tag as any] != null) {
+					this.scoper[tag as any] = scoper[tag as any]!;
 				}
 			}
 		}
@@ -1284,7 +1325,13 @@ export class Renderer<T> {
 			root != null ? this.cache.get(root) : undefined;
 
 		if (rootNode === undefined) {
-			rootNode = new HostNode(undefined, this, portal.tag);
+			rootNode = new HostNode(
+				undefined,
+				this,
+				portal.tag,
+				undefined,
+				portal.props,
+			);
 			if (root !== undefined && child != null) {
 				this.cache.set(root, rootNode);
 			}
@@ -1312,22 +1359,29 @@ export class Renderer<T> {
 		return rootNode.value!;
 	}
 
-	// TODO: Ideally, the intrinsic and text methods should not be exposed
-	// outside this module
+	// TODO: Ideally, the following methods should not be exposed outside this module
 	intrinsic(tag: string | symbol): Intrinsic<T> {
 		if (this.env[tag as any]) {
 			return this.env[tag as any];
-		} else if (typeof tag === "string") {
-			if (this.defaultIntrinsics[tag] !== undefined) {
-				return this.defaultIntrinsics[tag];
-			}
-
-			const intrinsic = this.env[Default]!(tag);
-			this.defaultIntrinsics[tag] = intrinsic;
-			return intrinsic;
+		} else if (this.defaultIntrinsics[tag as any] !== undefined) {
+			return this.defaultIntrinsics[tag as any];
 		}
 
-		throw new Error(`Unknown tag: ${tag.toString()}`);
+		const intrinsic = this.env[Default]!(tag);
+		this.defaultIntrinsics[tag as any] = intrinsic;
+		return intrinsic;
+	}
+
+	scope(tag: string | symbol, props: any): unknown {
+		if (tag in this.scoper) {
+			if (typeof this.scoper[tag as any] === "function") {
+				return (this.scoper[tag as any] as Function)(props);
+			}
+
+			return this.scoper[tag as any];
+		} else if (typeof this.scoper[Default] === "function") {
+			return this.scoper[Default]!(tag, props);
+		}
 	}
 
 	text(text: string): string {
