@@ -1,10 +1,14 @@
 node_modules
+index.js
+dom.js
+html.js
+umd.js
+*.d.ts
+*.js.map
 cjs
-esm
-umd
 lib
 dist
+.cache
 coverage
 yarn-debug.log*
 yarn-error.log*
-.cache

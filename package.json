@@ -12,18 +12,18 @@
   },
   "license": "MIT",
   "files": [
+    "umd.js",
+    "index.js",
     "cjs",
-    "esm",
-    "umd",
-    "dom.d.ts",
+    "*.d.ts",
+    "*.js.map",
     "dom.js",
-    "html.d.ts",
     "html.js"
   ],
   "type": "module",
   "exports": {
     ".": {
-      "import": "./esm/index.js",
+      "import": "./index.js",
       "require": "./cjs/index.js"
     },
     "./cjs": {
@@ -41,29 +41,45 @@
     "./cjs/html.js": {
       "require": "./cjs/html.js"
     },
+    "./cjs/index": {
+      "require": "./cjs/index.js"
+    },
     "./cjs/index.js": {
       "require": "./cjs/index.js"
     },
     "./dom": {
-      "import": "./esm/dom.js",
+      "import": "./dom.js",
+      "require": "./cjs/dom.js"
+    },
+    "./dom.js": {
+      "import": "./dom.js",
       "require": "./cjs/dom.js"
     },
     "./html": {
-      "import": "./esm/html.js",
+      "import": "./html.js",
       "require": "./cjs/html.js"
+    },
+    "./html.js": {
+      "import": "./html.js",
+      "require": "./cjs/html.js"
+    },
+    "./index.js": {
+      "import": "./index.js",
+      "require": "./cjs/index.js"
     }
   },
   "main": "cjs/index.js",
-  "module": "esm/index.js",
-  "types": "esm/index.d.ts",
+  "module": "index.js",
+  "types": "index.d.ts",
   "scripts": {
     "prebuild": "yarn run clean",
     "build": "rollup -c rollup.config.js",
-    "clean": "shx rm -rf ./cjs ./esm ./umd",
+    "clean": "shx rm -rf cjs umd.js index.js dom.js html.js *.d.ts *.js.map",
     "debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "prepublishOnly": "yarn run test && yarn run build",
-    "test": "jest --config jest.config.js --color --no-cache"
+    "test": "jest --config jest.config.js --color --no-cache",
+    "typecheck": "tsc --noEmit"
   },
   "husky": {
     "hooks": {
@@ -83,6 +99,7 @@
     "@types/jest": "^25.2.1",
     "@typescript-eslint/eslint-plugin": "^2.28.0",
     "@typescript-eslint/parser": "^2.28.0",
+    "@wessberg/rollup-plugin-ts": "^1.2.24",
     "core-js": "^3.6.5",
     "eslint": "^6.8.0",
     "eslint-config-prettier": "^6.10.1",
@@ -94,7 +111,6 @@
     "lint-staged": "^10.0.8",
     "prettier": "^2.0.4",
     "rollup": "^2.6.1",
-    "rollup-plugin-typescript2": "^0.27.0",
     "shx": "^0.3.2",
     "ts-jest": "^25.3.1",
     "typescript": "3.9.1-rc"
