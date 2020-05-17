@@ -89,7 +89,7 @@
     "debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "prepublishOnly": "yarn run test && yarn run build",
-    "test": "jest --config jest.config.js --color --no-cache",
+    "test": "jest --config jest.config.cjs --color --no-cache",
     "typecheck": "tsc --noEmit"
   },
   "husky": {
