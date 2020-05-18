@@ -1,4 +1,13 @@
 # Changelog
+## [0.1.4] - 2020-05-17
+### Fixed
+- Added support for SVG elements in the DOM renderer #110
+- **basic performance improvements, you want to upgrade to at least 0.1.4 and probably 0.2 when it is released**
+### Changed
+- got rid of the HostContext class in favor of exposing the HostNode directly to intrinsics
+- added a way to pass information in a preorder traversal to child host nodes (search for Scoper/Scopes in the codebase)
+- added new flags for intrinsics to optimize performance (search for dirty in the codebase)
+
 ## [0.1.3] - 2020-05-05
 ### Fixed
 - Made event-target-shim a direct dependency so TypeScript doesn’t error #95
