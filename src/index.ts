@@ -1052,6 +1052,14 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		this.updating = false;
 		this.unmounted = true;
 		this.ctx.clearEventListeners();
+		if (this.cleanups !== undefined) {
+			for (const cleanup of this.cleanups) {
+				cleanup(this.value);
+			}
+
+			this.cleanups = undefined;
+		}
+
 		if (!this.finished) {
 			this.finished = true;
 			// helps avoid deadlocks
@@ -1193,6 +1201,15 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 
 		this.schedules.add(callback);
 	}
+
+	private cleanups: Set<(value: unknown) => unknown> | undefined;
+	cleanup(callback: (value: unknown) => unknown): void {
+		if (this.cleanups === undefined) {
+			this.cleanups = new Set();
+		}
+
+		this.cleanups.add(callback);
+	}
 }
 
 function createNode<T>(
@@ -1254,6 +1271,10 @@ export class Context<TProps = any> extends CrankEventTarget {
 
 	schedule(callback: (value: unknown) => unknown): void {
 		return componentNodes.get(this)!.schedule(callback);
+	}
+
+	cleanup(callback: (value: unknown) => unknown): void {
+		return componentNodes.get(this)!.cleanup(callback);
 	}
 }
 
