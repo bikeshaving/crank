@@ -25,12 +25,7 @@ describe("cleanup", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 		expect(fn).toHaveBeenCalledTimes(0);
 		const span = document.body.firstChild!.firstChild;
-		renderer.render(
-			<div>
-				<Component />
-			</div>,
-			document.body,
-		);
+
 		renderer.render(<div />, document.body);
 		expect(fn).toHaveBeenCalledTimes(1);
 		expect(fn).toHaveBeenCalledWith(span);
@@ -54,6 +49,7 @@ describe("cleanup", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 		expect(fn).toHaveBeenCalledTimes(0);
 		const span = document.body.firstChild!.firstChild;
+
 		renderer.render(<div />, document.body);
 		expect(document.body.innerHTML).toEqual("<div></div>");
 		expect(fn).toHaveBeenCalledTimes(1);
@@ -78,6 +74,7 @@ describe("cleanup", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 		expect(fn).toHaveBeenCalledTimes(0);
 		const span = document.body.firstChild!.firstChild;
+
 		await renderer.render(<div />, document.body);
 		expect(document.body.innerHTML).toEqual("<div></div>");
 		expect(fn).toHaveBeenCalledTimes(1);
@@ -104,6 +101,7 @@ describe("cleanup", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 		expect(fn).toHaveBeenCalledTimes(0);
 		const span = document.body.firstChild!.firstChild;
+
 		await renderer.render(<div />, document.body);
 		// TODO: why is this setTimeout necessary???
 		await new Promise((resolve) => setTimeout(resolve, 0));
@@ -131,6 +129,7 @@ describe("cleanup", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 		expect(fn).toHaveBeenCalledTimes(0);
 		const span = document.body.firstChild!.firstChild;
+
 		renderer.render(<div />, document.body);
 		expect(document.body.innerHTML).toEqual("<div></div>");
 		expect(fn).toHaveBeenCalledTimes(1);
@@ -159,6 +158,7 @@ describe("cleanup", () => {
 		expect(fn1).toHaveBeenCalledTimes(0);
 		expect(fn2).toHaveBeenCalledTimes(0);
 		const span = document.body.firstChild!.firstChild;
+
 		renderer.render(<div />, document.body);
 		expect(document.body.innerHTML).toEqual("<div></div>");
 		expect(fn1).toHaveBeenCalledTimes(1);
@@ -252,6 +252,7 @@ describe("cleanup", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 		expect(fn).toHaveBeenCalledTimes(0);
 		const span = document.body.firstChild!.firstChild;
+
 		renderer.render(<div />, document.body);
 		expect(document.body.innerHTML).toEqual("<div></div>");
 		expect(fn).toHaveBeenCalledTimes(1);
@@ -281,6 +282,7 @@ describe("cleanup", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 		expect(fn).toHaveBeenCalledTimes(0);
 		const span = document.body.firstChild!.firstChild;
+
 		renderer.render(<div />, document.body);
 		expect(document.body.innerHTML).toEqual("<div></div>");
 		expect(fn).toHaveBeenCalledTimes(1);
@@ -333,7 +335,7 @@ describe("cleanup", () => {
 			}
 		}
 
-		renderer.render(
+		const p = renderer.render(
 			<div>
 				<Component />
 			</div>,
@@ -345,6 +347,9 @@ describe("cleanup", () => {
 		expect(document.body.innerHTML).toEqual("");
 		renderer.render(<div />, document.body);
 		expect(document.body.innerHTML).toEqual("<div></div>");
+		expect(fn).toHaveBeenCalledTimes(1);
+		expect(fn).toHaveBeenCalledWith(undefined);
+		await p;
 		expect(fn).toHaveBeenCalledTimes(1);
 		expect(fn).toHaveBeenCalledWith(undefined);
 	});

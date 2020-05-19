@@ -35,6 +35,7 @@ describe("schedule", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>0</span></div>");
 		expect(fn).toHaveBeenCalledWith(document.body.firstChild!.firstChild);
 		expect(fn).toHaveBeenCalledTimes(1);
+
 		renderer.render(
 			<div>
 				<Component />
@@ -43,6 +44,7 @@ describe("schedule", () => {
 		);
 
 		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
+		expect(fn).toHaveBeenCalledWith(document.body.firstChild!.firstChild);
 		expect(fn).toHaveBeenCalledTimes(1);
 	});
 
@@ -93,6 +95,7 @@ describe("schedule", () => {
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>0</span></div>");
 		expect(fn).toHaveBeenCalledTimes(1);
+
 		renderer.render(
 			<div>
 				<Component />
@@ -119,6 +122,7 @@ describe("schedule", () => {
 			</div>,
 			document.body,
 		);
+
 		expect(document.body.innerHTML).toEqual("<div><span>0</span></div>");
 		expect(fn).toHaveBeenCalledWith(document.body.firstChild!.firstChild);
 		expect(fn).toHaveBeenCalledTimes(1);
@@ -156,6 +160,7 @@ describe("schedule", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>0</span></div>");
 		expect(fn).toHaveBeenCalledWith(document.body.firstChild!.firstChild);
 		expect(fn).toHaveBeenCalledTimes(1);
+
 		await renderer.render(
 			<div>
 				<Component />
@@ -185,6 +190,7 @@ describe("schedule", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>0</span></div>");
 		expect(fn).toHaveBeenCalledWith(document.body.firstChild!.firstChild);
 		expect(fn).toHaveBeenCalledTimes(1);
+
 		await renderer.render(
 			<div>
 				<Component />
@@ -213,6 +219,7 @@ describe("schedule", () => {
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>0</span></div>");
 		expect(fn).toHaveBeenCalledTimes(1);
+
 		await renderer.render(
 			<div>
 				<Component />
@@ -252,6 +259,108 @@ describe("schedule", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
 		expect(fn).toHaveBeenCalledWith(document.body.firstChild!.firstChild);
 		expect(fn).toHaveBeenCalledTimes(2);
+	});
+
+	test("multiple calls, same fn", () => {
+		const fn = jest.fn();
+		function* Component(this: Context): Generator<Element> {
+			this.schedule(fn);
+			this.schedule(fn);
+			while (true) {
+				yield <span>Hello</span>;
+			}
+		}
+
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+		const span = document.body.firstChild!.firstChild;
+		expect(fn).toHaveBeenCalledTimes(1);
+		expect(fn).toHaveBeenCalledWith(span);
+	});
+
+	test("multiple calls, different fns", () => {
+		const fn1 = jest.fn();
+		const fn2 = jest.fn();
+		function* Component(this: Context): Generator<Element> {
+			this.schedule(fn1);
+			this.schedule(fn2);
+			while (true) {
+				yield <span>Hello</span>;
+			}
+		}
+
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+		const span = document.body.firstChild!.firstChild;
+		expect(fn1).toHaveBeenCalledTimes(1);
+		expect(fn2).toHaveBeenCalledTimes(1);
+	});
+
+	test("multiple calls across updates", () => {
+		const fn1 = jest.fn();
+		const fn2 = jest.fn();
+		function* Component(this: Context): Generator<Element> {
+			let i = 0;
+			while (true) {
+				this.schedule(fn1);
+				this.schedule(fn2);
+				this.schedule(fn2);
+				yield <span>{i++}</span>;
+			}
+		}
+
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual("<div><span>0</span></div>");
+		const span = document.body.firstChild!.firstChild;
+
+		expect(fn1).toHaveBeenCalledTimes(1);
+		expect(fn2).toHaveBeenCalledTimes(1);
+		expect(fn1).toHaveBeenCalledWith(span);
+		expect(fn2).toHaveBeenCalledWith(span);
+
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
+		expect(fn1).toHaveBeenCalledTimes(2);
+		expect(fn2).toHaveBeenCalledTimes(2);
+		expect(fn1).toHaveBeenCalledWith(span);
+		expect(fn2).toHaveBeenCalledWith(span);
+
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual("<div><span>2</span></div>");
+		expect(fn1).toHaveBeenCalledTimes(3);
+		expect(fn2).toHaveBeenCalledTimes(3);
+		expect(fn1).toHaveBeenCalledWith(span);
+		expect(fn2).toHaveBeenCalledWith(span);
 	});
 
 	test("refresh copy", () => {
@@ -299,13 +408,40 @@ describe("schedule", () => {
 			</div>,
 			document.body,
 		);
+
 		expect(document.body.innerHTML).toEqual(
 			'<div><span class="manual">0</span></div>',
 		);
 	});
 
+	test("component child", () => {
+		const fn = jest.fn();
+		function Child(): Element {
+			return <span>Hello</span>;
+		}
+
+		function* Component(this: Context): Generator<Element> {
+			this.schedule(fn);
+			while (true) {
+				yield <Child />;
+			}
+		}
+
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+
+		expect(fn).toHaveBeenCalledTimes(1);
+		expect(fn).toHaveBeenCalledWith(document.body.firstChild!.firstChild);
+	});
+
 	test("fragment child", () => {
-		let fn = jest.fn();
+		const fn = jest.fn();
 		function* Component(this: Context): Generator<Element> {
 			this.schedule(fn);
 			while (true) {
@@ -330,13 +466,14 @@ describe("schedule", () => {
 			"<div><span>1</span><span>2</span><span>3</span></div>",
 		);
 
+		expect(fn).toHaveBeenCalledTimes(1);
 		expect(fn).toHaveBeenCalledWith(
 			Array.from(document.body.firstChild!.childNodes),
 		);
 	});
 
 	test("async children once", async () => {
-		let fn = jest.fn();
+		const fn = jest.fn();
 		async function Child({children}: {children: Children}): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 5));
 			return <span>{children}</span>;
@@ -363,7 +500,7 @@ describe("schedule", () => {
 	});
 
 	test("async children every", async () => {
-		let fn = jest.fn();
+		const fn = jest.fn();
 		async function Child({children}: {children: Children}): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 5));
 			return <span>{children}</span>;
@@ -399,5 +536,36 @@ describe("schedule", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>async 1</span></div>");
 		expect(fn).toHaveBeenCalledWith(document.body.firstChild!.firstChild);
 		expect(fn).toHaveBeenCalledTimes(2);
+	});
+
+	test("hanging child", async () => {
+		const fn = jest.fn();
+		async function Hanging(): Promise<never> {
+			await new Promise(() => {});
+			throw new Error("This should never be reached");
+		}
+
+		function* Component(this: Context): Generator<Element> {
+			this.schedule(fn);
+			while (true) {
+				yield <Hanging />;
+			}
+		}
+
+		const p = renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(fn).toHaveBeenCalledTimes(0);
+		expect(document.body.innerHTML).toEqual("");
+		renderer.render(<div />, document.body);
+		expect(document.body.innerHTML).toEqual("<div></div>");
+		expect(fn).toHaveBeenCalledTimes(0);
+		await p;
+		expect(fn).toHaveBeenCalledTimes(0);
 	});
 });
