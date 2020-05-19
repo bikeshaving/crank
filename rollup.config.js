@@ -41,11 +41,7 @@ export default [
 			dir: "cjs",
 			sourcemap: true,
 		},
-		plugins: [
-			ts({tsconfig: (tsconfig) => ({...tsconfig, target: "ES6"})}),
-			resolve(),
-			packageCJS(),
-		],
+		plugins: [ts(), resolve(), packageCJS()],
 	},
 	{
 		input: "umd.ts",
@@ -55,10 +51,6 @@ export default [
 			sourcemap: true,
 			name: "Crank",
 		},
-		plugins: [
-			ts({tsconfig: (tsconfig) => ({...tsconfig, target: "ES6"})}),
-			resolve(),
-			packageCJS(),
-		],
+		plugins: [ts(), resolve(), packageCJS()],
 	},
 ];
