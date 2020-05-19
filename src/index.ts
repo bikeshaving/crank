@@ -1025,6 +1025,17 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			this.ctx.setDelegates(childValues);
 		}
 
+		if (this.schedules !== undefined && this.schedules.size > 0) {
+			// We have to clear the schedules set before calling each callback,
+			// because otherwise a callback which refreshes the component would cause
+			// a stack overflow.
+			const callbacks = Array.from(this.schedules);
+			this.schedules.clear();
+			for (const callback of callbacks) {
+				callback(this.value);
+			}
+		}
+
 		if (!this.updating && this.dirty) {
 			this.parent.commit(this);
 		}
@@ -1173,6 +1184,15 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			}
 		} while (!this.unmounted);
 	}
+
+	private schedules: Set<(value: unknown) => unknown> | undefined;
+	schedule(callback: (value: unknown) => unknown): void {
+		if (this.schedules === undefined) {
+			this.schedules = new Set();
+		}
+
+		this.schedules.add(callback);
+	}
 }
 
 function createNode<T>(
@@ -1230,6 +1250,10 @@ export class Context<TProps = any> extends CrankEventTarget {
 
 	refresh(): MaybePromise<undefined> {
 		return componentNodes.get(this)!.refresh();
+	}
+
+	schedule(callback: (value: unknown) => unknown): void {
+		return componentNodes.get(this)!.schedule(callback);
 	}
 }
 
