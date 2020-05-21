@@ -1,4 +1,3 @@
-import {CrankEventTarget, isEventTarget} from "./events";
 import {
 	isIteratorOrAsyncIterator,
 	isNonStringIterable,
@@ -7,9 +6,8 @@ import {
 	MaybePromiseLike,
 	upgradePromiseLike,
 } from "./utils";
-
-// re-exporting EventMap for user extensions
-export {EventMap} from "./events";
+import {Context} from "./context";
+import {EventTarget} from "event-target-shim";
 
 declare global {
 	module JSX {
@@ -804,7 +802,17 @@ type AsyncGen = typeof AsyncGen;
 
 type ComponentType = SyncFn | AsyncFn | SyncGen | AsyncGen;
 
-class ComponentNode<T, TProps> extends ParentNode<T> {
+function isEventTarget(value: any): value is EventTarget {
+	return (
+		value != null &&
+		typeof value.addEventListener === "function" &&
+		// TODO: maybe we don’t need these checks
+		typeof value.removeEventListener === "function" &&
+		typeof value.dispatchEvent === "function"
+	);
+}
+
+export class ComponentNode<T, TProps> extends ParentNode<T> {
 	// A flag to make sure the Context isn’t iterated multiple times without a yield.
 	private iterating = false;
 	// A flag which indicates that this node’s iterator has returned, as in, it
@@ -838,6 +846,8 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	private enqueuedResult: MaybePromise<undefined> = undefined;
 	private onProps: ((props: TProps) => unknown) | undefined = undefined;
 	private provisions: Map<unknown, any> | undefined = undefined;
+	delegate: EventTarget | undefined = undefined;
+	delegates: Set<EventTarget> | undefined = undefined;
 	constructor(
 		parent: ParentNode<T>,
 		renderer: Renderer<T>,
@@ -1043,14 +1053,101 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			});
 		}
 	}
+	setDelegate(delegate: EventTarget) {
+		if (this.delegates !== undefined) {
+			if (this.ctx.listeners !== undefined) {
+				for (const delegate of this.delegates) {
+					for (const listener of this.ctx.listeners) {
+						delegate.removeEventListener(
+							listener.type,
+							listener.callback,
+							listener.options,
+						);
+					}
+				}
+			}
+
+			this.delegates = undefined;
+		}
+
+		if (this.delegate !== delegate) {
+			if (this.ctx.listeners !== undefined) {
+				if (this.delegate !== undefined) {
+					for (const listener of this.ctx.listeners) {
+						this.delegate.removeEventListener(
+							listener.type,
+							listener.callback,
+							listener.options,
+						);
+					}
+				}
+
+				for (const listener of this.ctx.listeners) {
+					delegate.addEventListener(
+						listener.type,
+						listener.callback,
+						listener.options,
+					);
+				}
+			}
+
+			this.delegate = delegate;
+		}
+	}
+
+	setDelegates(delegates: Iterable<unknown>) {
+		if (this.delegate !== undefined) {
+			this.delegates = new Set([this.delegate]);
+			this.delegate = undefined;
+		}
+
+		const delegates1 = new Set(Array.from(delegates).filter(isEventTarget));
+		if (this.ctx.listeners !== undefined) {
+			let removed: Set<EventTarget>;
+			let added: Set<EventTarget>;
+			if (this.delegates === undefined) {
+				removed = new Set();
+				added = delegates1;
+			} else {
+				removed = new Set(
+					Array.from(this.delegates).filter((d) => !delegates1.has(d)),
+				);
+				added = new Set(
+					Array.from(delegates1).filter((d) => !this.delegates!.has(d)),
+				);
+			}
+
+			for (const delegate of removed) {
+				for (const listener of this.ctx.listeners) {
+					delegate.removeEventListener(
+						listener.type,
+						listener.callback,
+						listener.options,
+					);
+				}
+			}
+
+			for (const delegate of added) {
+				for (const listener of this.ctx.listeners) {
+					delegate.addEventListener(
+						listener.type,
+						listener.callback,
+						listener.options,
+					);
+				}
+			}
+		}
+
+		this.delegates = delegates1;
+	}
 
 	commit(requester?: ParentNode<T>): undefined {
 		const childValues = this.commitChildren(requester);
 		this.value = childValues.length > 1 ? childValues : childValues[0];
 		if (isEventTarget(this.value)) {
-			this.ctx.setDelegate(this.value);
+			this.setDelegate(this.value);
 		} else if (childValues.length > 1) {
-			this.ctx.setDelegates(childValues);
+			this.setDelegates(childValues);
 		}
 
 		if (this.schedules !== undefined && this.schedules.size > 0) {
@@ -1263,58 +1360,6 @@ function createNode<T>(
 		);
 	} else {
 		return new HostNode(parent, renderer, child.tag, child.key, child.props);
-	}
-}
-
-export interface ProvisionMap {}
-
-const componentNodes = new WeakMap<Context<any>, ComponentNode<any, any>>();
-export class Context<TProps = any> extends CrankEventTarget {
-	constructor(host: ComponentNode<any, TProps>, parent?: Context<TProps>) {
-		super(parent);
-		componentNodes.set(this, host);
-	}
-
-	/* eslint-disable no-dupe-class-members */
-	get<T extends keyof ProvisionMap>(name: T): ProvisionMap[T];
-	get(name: any): any;
-	get(name: any) {
-		return componentNodes.get(this)!.get(name);
-	}
-
-	set<T extends keyof ProvisionMap>(name: T, value: ProvisionMap[T]): void;
-	set(name: any, value: any): void;
-	set(name: any, value: any) {
-		componentNodes.get(this)!.set(name, value);
-	}
-	/* eslint-enable no-dupe-class-members */
-
-	get props(): TProps {
-		return componentNodes.get(this)!.props;
-	}
-
-	get value(): unknown {
-		return componentNodes.get(this)!.value;
-	}
-
-	[Symbol.iterator](): Generator<TProps> {
-		return componentNodes.get(this)![Symbol.iterator]();
-	}
-
-	[Symbol.asyncIterator](): AsyncGenerator<TProps> {
-		return componentNodes.get(this)![Symbol.asyncIterator]();
-	}
-
-	refresh(): Promise<undefined> | undefined {
-		return componentNodes.get(this)!.refresh();
-	}
-
-	schedule(callback: (value: unknown) => unknown): void {
-		return componentNodes.get(this)!.schedule(callback);
-	}
-
-	cleanup(callback: (value: unknown) => unknown): void {
-		return componentNodes.get(this)!.cleanup(callback);
 	}
 }
 
