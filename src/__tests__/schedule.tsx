@@ -1,12 +1,6 @@
 /** @jsx createElement */
-import {
-	createElement,
-	Children,
-	Context,
-	Copy,
-	Element,
-	Fragment,
-} from "../index";
+import {createElement, Children, Copy, Element, Fragment} from "../index";
+import {Context} from "../context";
 import {renderer} from "../dom";
 
 describe("schedule", () => {

@@ -4,9 +4,9 @@ import {
 	createElement,
 	Component,
 	FunctionComponent,
-	Context,
 	GeneratorComponent,
 } from "..";
+import {Context} from "../context";
 
 declare global {
 	module JSX {

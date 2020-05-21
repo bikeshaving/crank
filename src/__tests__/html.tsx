@@ -1,5 +1,6 @@
 /** @jsx createElement */
-import {Context, createElement, Fragment, Raw} from "../index";
+import {createElement, Fragment, Raw} from "../index";
+import {Context} from "../context";
 import {renderer} from "../html";
 
 describe("render", () => {

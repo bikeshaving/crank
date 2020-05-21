@@ -1,5 +1,6 @@
 /** @jsx createElement */
-import {createElement, Child, Context} from "../index";
+import {createElement, Child} from "../index";
+import {Context} from "../context";
 import {renderer} from "../dom";
 
 describe("errors", () => {

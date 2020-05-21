@@ -1,5 +1,6 @@
 /** @jsx createElement */
-import {Children, Context, createElement, Element, Fragment} from "../index";
+import {Children, createElement, Element, Fragment} from "../index";
+import {Context} from "../context";
 import {renderer} from "../dom";
 
 // TODO: write generative tests for this stuff

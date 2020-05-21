@@ -1,9 +1,11 @@
 import {ComponentNode} from "./index";
 import {MaybePromise} from "./utils";
+import {EventTarget} from "event-target-shim";
 
 export interface ProvisionMap {}
 
 const componentNodes = new WeakMap<Context<any>, ComponentNode<any, any>>();
+const eventTargets = new WeakMap<Context<any>, EventTarget>();
 
 export interface EventMap {
 	[type: string]: Event;
@@ -38,10 +40,10 @@ export class Context<TProps = any> {
 	parent: Context | undefined;
 	constructor(host: ComponentNode<any, TProps>, parent: Context | undefined) {
 		this.parent = parent;
+		eventTargets.set(this, new EventTarget());
 		componentNodes.set(this, host);
 	}
 
-	private eventTarget = new EventTarget();
 	listeners: EventListenerRecord[] | undefined = undefined;
 
 	/* eslint-disable no-dupe-class-members */
@@ -114,8 +116,8 @@ export class Context<TProps = any> {
 			this.listeners.push(record);
 		}
 
-		const delegate = componentNodes.get(this)?.delegate;
-		const delegates = componentNodes.get(this)?.delegates;
+		const delegate = componentNodes.get(this)!.delegate;
+		const delegates = componentNodes.get(this)!.delegates;
 		if (delegate !== undefined) {
 			delegate.addEventListener(type, callback, options);
 		} else if (delegates !== undefined) {
@@ -123,8 +125,8 @@ export class Context<TProps = any> {
 				delegate.addEventListener(type, callback, options);
 			}
 		}
-
-		return this.eventTarget.addEventListener(type, callback, options);
+		const eventTarget = eventTargets.get(this);
+		return eventTarget!.addEventListener(type, callback, options);
 	}
 
 	removeEventListener<T extends string>(
@@ -150,8 +152,8 @@ export class Context<TProps = any> {
 			this.listeners.splice(idx, 1);
 		}
 
-		const delegate = componentNodes.get(this)?.delegate;
-		const delegates = componentNodes.get(this)?.delegates;
+		const delegate = componentNodes.get(this)!.delegate;
+		const delegates = componentNodes.get(this)!.delegates;
 
 		if (delegate !== undefined) {
 			delegate.removeEventListener(type, callback, options);
@@ -160,8 +162,8 @@ export class Context<TProps = any> {
 				delegate.removeEventListener(type, callback, options);
 			}
 		}
-
-		return this.eventTarget.removeEventListener(type, callback, options);
+		const eventTarget = eventTargets.get(this);
+		return eventTarget!.removeEventListener(type, callback, options);
 	}
 
 	clearEventListeners(): void {
@@ -180,7 +182,8 @@ export class Context<TProps = any> {
 
 	// TODO: ev is any because event-target-shim has a weird dispatchEvent type
 	dispatchEvent(ev: any): boolean {
-		let continued = this.eventTarget.dispatchEvent(ev);
+		const eventTarget = eventTargets.get(this);
+		let continued = eventTarget!.dispatchEvent(ev);
 		if (continued && ev.bubbles && this.parent !== undefined) {
 			// TODO: implement event capturing
 			continued = this.parent.dispatchEvent(ev);

@@ -1,5 +1,6 @@
 /** @jsx createElement */
-import {createElement, Context} from "../index";
+import {createElement} from "../index";
+import {Context} from "../context";
 import {renderer} from "../dom";
 
 describe("parent-child refresh cascades", () => {

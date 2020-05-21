@@ -1,5 +1,6 @@
 /** @jsx createElement */
-import {createElement, Child, Context, Element} from "../index";
+import {createElement, Child, Element} from "../index";
+import {Context} from "../context";
 import {renderer} from "../dom";
 
 describe("races", () => {

@@ -1,5 +1,6 @@
 /** @jsx createElement */
-import {createElement, Context, Element, Fragment} from "../index";
+import {createElement, Element, Fragment} from "../index";
+import {Context} from "../context";
 import {renderer} from "../dom";
 
 describe("cleanup", () => {

@@ -1,12 +1,6 @@
 /** @jsx createElement */
-import {
-	createElement,
-	Child,
-	Children,
-	Context,
-	Element,
-	Fragment,
-} from "../index";
+import {createElement, Child, Children, Element, Fragment} from "../index";
+import {Context} from "../context";
 import {renderer} from "../dom";
 
 // TODO: start splitting out these tests into separate files

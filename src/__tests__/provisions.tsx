@@ -1,5 +1,6 @@
 /** @jsx createElement */
-import {createElement, Children, Context, Element, Fragment} from "../index";
+import {createElement, Children, Element, Fragment} from "../index";
+import {Context} from "../context";
 import {renderer} from "../dom";
 
 // TODO: test typings
