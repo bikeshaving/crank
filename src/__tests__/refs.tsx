@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import {Context, createElement, Element, Fragment} from "../index";
+import {Children, Context, createElement, Element, Fragment} from "../index";
 import {renderer} from "../dom";
 
 // TODO: write generative tests for this stuff
@@ -128,6 +128,55 @@ describe("keys", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 		// TODO: this should be 1 when we figure out async generators
 		expect(fn).toHaveBeenCalledTimes(2);
+		expect(fn).toHaveBeenCalledWith(document.body.firstChild!.firstChild);
+	});
+
+	test("transcluded in sync component", async () => {
+		function Child({children}: {children: Children}): Children {
+			return children;
+		}
+
+		const fn = jest.fn();
+		function Parent(): Element {
+			return (
+				<div>
+					<Child>
+						<span crank-ref={fn}>Hello</span>
+					</Child>
+				</div>
+			);
+		}
+
+		renderer.render(<Parent />, document.body);
+
+		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+		expect(fn).toHaveBeenCalledTimes(1);
+		expect(fn).toHaveBeenCalledWith(document.body.firstChild!.firstChild);
+	});
+
+	test("transcluded in async component", async () => {
+		async function Child({children}: {children: Children}): Promise<Children> {
+			await new Promise((resolve) => setTimeout(resolve, 1));
+			return children;
+		}
+
+		const fn = jest.fn();
+		function Parent(): Element {
+			return (
+				<div>
+					<Child>
+						<span crank-ref={fn}>Hello</span>
+					</Child>
+				</div>
+			);
+		}
+
+		const p = renderer.render(<Parent />, document.body);
+
+		expect(fn).toHaveBeenCalledTimes(0);
+		await p;
+		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+		expect(fn).toHaveBeenCalledTimes(1);
 		expect(fn).toHaveBeenCalledWith(document.body.firstChild!.firstChild);
 	});
 });
