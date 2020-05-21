@@ -824,7 +824,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	private available = false;
 	readonly tag: Component<TProps>;
 	readonly key: Key;
-	protected props: TProps;
+	props: TProps;
 	readonly parent: ParentNode<T>;
 	readonly renderer: Renderer<T>;
 	readonly ctx: Context<TProps>;
@@ -1289,6 +1289,14 @@ export class Context<TProps = any> extends CrankEventTarget {
 	}
 	/* eslint-enable no-dupe-class-members */
 
+	get props(): TProps {
+		return componentNodes.get(this)!.props;
+	}
+
+	get value(): unknown {
+		return componentNodes.get(this)!.value;
+	}
+
 	[Symbol.iterator](): Generator<TProps> {
 		return componentNodes.get(this)![Symbol.iterator]();
 	}
@@ -1297,7 +1305,7 @@ export class Context<TProps = any> extends CrankEventTarget {
 		return componentNodes.get(this)![Symbol.asyncIterator]();
 	}
 
-	refresh(): MaybePromise<undefined> {
+	refresh(): Promise<undefined> | undefined {
 		return componentNodes.get(this)!.refresh();
 	}
 
