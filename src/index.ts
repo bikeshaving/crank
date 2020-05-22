@@ -186,6 +186,82 @@ function* flatten(children: Children): Generator<NormalizedChild> {
 	yield normalize(children);
 }
 
+export class Node1<T> {
+	// TODO: replace boolean properties with a bitmask
+	dirty = true;
+	// dirty flags
+	dirtyProps = true;
+	dirtyChildren = true;
+	dirtyRemoval = false;
+	// whether the node was moved
+	moved = true;
+	// true if the current node was copied from the previous render
+	copied = false;
+	// true if the update was requested by the parent
+	updating = false;
+	// true if the component context has pulled a value from props
+	iterating = false;
+	// true if the iterator related to the current component is currently executing
+	stepping = false;
+	// true if the iterator has returned
+	finished = false;
+	// TODO: can this be inferred by existence absence of onProps
+	// whether the async generator can yield a value immediately
+	available = true;
+	// whether or not the component is unmounted
+	unmounted = false;
+	// this should probably be a flag
+	componentType: ComponentType | undefined;
+	// regular props
+	element: Element;
+	// TODO: can we remove the renderer reference from nodes
+	renderer: Renderer<T>;
+	// TODO: can we remove this reference somehow???:
+	parent: Node1<T> | undefined;
+	dirtyStart: number | undefined;
+	value: Array<T | string> | T | string | undefined;
+	ctx: Context<T> | undefined;
+	children:
+		| Array<Node1<T> | string | undefined>
+		| Node1<T>
+		| string
+		| undefined;
+	keyedChildren: Map<unknown, Node1<T>> | undefined;
+	// TODO: can we reduce this to a single property
+	scope: unknown;
+	// promise related props
+	onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
+	oldResult: Promise<undefined> | undefined;
+	// component promise related props
+	// TODO: explain these properties
+	inflightPending: Promise<undefined> | undefined;
+	enqueuedPending: Promise<undefined> | undefined;
+	inflightResult: Promise<undefined> | undefined;
+	enqueuedResult: Promise<undefined> | undefined;
+	onProps: ((props: any) => unknown) | undefined;
+	provisions: Map<unknown, any> | undefined;
+	constructor(element: Element, renderer: Renderer<T>, parent?: Node1<T>) {
+		this.element = element;
+		this.renderer = renderer;
+		this.parent = parent;
+	}
+}
+
+// TODO: planned functions for the big refactor
+// create
+// TODO: part of me thinks we should rename update. maybe render?
+// update
+// updateSelf (component node only, run/step)
+// updateChildren
+// TODO: does separating update and commit actually make things faster?
+// commit
+// commitSelf (host node only)
+// commitChildren
+// unmount
+// unmountChildren
+// catch
+// catchSelf (component node only)
+
 // This union exists because we needed to discriminate between leaf and parent
 // nodes using a property (node.internal).
 type Node<T> = LeafNode<T> | ParentNode<T>;
