@@ -25,6 +25,7 @@ declare global {
 
 export type Tag<TProps = any> = Component<TProps> | string | symbol;
 
+// TODO: do we have to add children, crank-key, crank-ref props here?
 type TagProps<TTag extends Tag> = TTag extends Component<infer TProps>
 	? TProps
 	: TTag extends string
@@ -41,6 +42,7 @@ export type Children = Child | ChildIterable;
 
 export interface Props {
 	"crank-key"?: Key;
+	"crank-ref"?: Function;
 	children?: Children;
 }
 
@@ -55,6 +57,7 @@ export interface Element<TTag extends Tag = Tag> {
 	__sigil__: typeof ElementSigil;
 	readonly tag: TTag;
 	readonly key: unknown;
+	readonly ref: Function | undefined;
 	props: TagProps<TTag>;
 }
 
@@ -119,14 +122,22 @@ export function createElement<TTag extends Tag>(
 	props?: TagProps<TTag> | null,
 	children?: unknown,
 ): Element<TTag> {
-	const key =
-		props != null && props["crank-key"] != null
-			? props["crank-key"]
-			: undefined;
 	const props1: any = {};
-	for (const key in props) {
-		if (key !== "crank-key") {
-			props1[key] = props[key];
+	let key: unknown;
+	let ref: Function | undefined;
+	if (props != null) {
+		if (props["crank-key"] != null) {
+			key = props["crank-key"];
+		}
+
+		if (typeof props["crank-ref"] === "function") {
+			ref = props["crank-ref"];
+		}
+
+		for (const key in props) {
+			if (key !== "crank-key" && key !== "crank-ref") {
+				props1[key] = props[key];
+			}
 		}
 	}
 
@@ -142,7 +153,7 @@ export function createElement<TTag extends Tag>(
 		props1.children = children;
 	}
 
-	return {__sigil__: ElementSigil, tag, props: props1, key};
+	return {__sigil__: ElementSigil, tag, props: props1, key, ref};
 }
 
 type NormalizedChild = Element | string | undefined;
@@ -220,6 +231,7 @@ abstract class ParentNode<T> implements NodeBase<T> {
 	abstract readonly tag: Tag;
 	readonly key: Key = undefined;
 	value: Array<T | string> | T | string | undefined = undefined;
+	ref: Function | undefined = undefined;
 	dirtyStart: number | undefined = undefined;
 	// TODO: implement dirtyEnd
 	private keyedChildren: Map<unknown, ParentNode<T>> | undefined = undefined;
@@ -300,8 +312,9 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		this.removeChild(reference);
 	}
 
-	update(props: any): MaybePromise<undefined> {
+	update(props: any, ref?: Function): MaybePromise<undefined> {
 		this.props = props;
+		this.ref = ref;
 		this.updating = true;
 		return this.updateChildren(this.props && this.props.children);
 	}
@@ -393,7 +406,10 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				}
 			} else if (node.tag === tag) {
 				if (node.internal) {
-					const result1 = node.update((child as Element).props);
+					const result1 = node.update(
+						(child as Element).props,
+						(child as Element).ref,
+					);
 					if (result1 !== undefined) {
 						result =
 							result === undefined ? result1 : result.then(() => result1);
@@ -411,7 +427,10 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				const newNode = createNode(this, this.renderer, child);
 				let result1: Promise<undefined> | undefined;
 				if (newNode.internal) {
-					result1 = newNode.update((child as Element).props);
+					result1 = newNode.update(
+						(child as Element).props,
+						(child as Element).ref,
+					);
 				} else if (typeof child === "string") {
 					newNode.value = this.renderer.text(child);
 				} else {
@@ -626,6 +645,10 @@ class FragmentNode<T> extends ParentNode<T> {
 	commit(requester?: ParentNode<T>): undefined {
 		const childValues = this.commitChildren(requester);
 		this.value = childValues.length > 1 ? childValues : childValues[0];
+		if (this.ref !== undefined) {
+			this.ref(this.value);
+		}
+
 		if (requester !== undefined) {
 			this.parent.commit(requester);
 		}
@@ -693,6 +716,10 @@ class HostNode<T> extends ParentNode<T> {
 			}
 
 			return this.parent.catch(err);
+		}
+
+		if (this.ref !== undefined) {
+			this.ref(this.value);
 		}
 
 		if (this.dirty && requester !== undefined && this.parent !== undefined) {
@@ -797,7 +824,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	private available = false;
 	readonly tag: Component<TProps>;
 	readonly key: Key;
-	protected props: TProps;
+	props: TProps;
 	readonly parent: ParentNode<T>;
 	readonly renderer: Renderer<T>;
 	readonly ctx: Context<TProps>;
@@ -850,8 +877,9 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		return result.then(() => this.commit());
 	}
 
-	update(props: TProps): MaybePromise<undefined> {
+	update(props: TProps, ref?: Function): MaybePromise<undefined> {
 		this.props = props;
+		this.ref = ref;
 		this.updating = true;
 
 		if (this.onProps === undefined) {
@@ -1025,6 +1053,21 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			this.ctx.setDelegates(childValues);
 		}
 
+		if (this.schedules !== undefined && this.schedules.size > 0) {
+			// We have to clear the schedules set before calling each callback,
+			// because otherwise a callback which refreshes the component would cause
+			// a stack overflow.
+			const callbacks = Array.from(this.schedules);
+			this.schedules.clear();
+			for (const callback of callbacks) {
+				callback(this.value);
+			}
+		}
+
+		if (this.ref !== undefined) {
+			this.ref(this.value);
+		}
+
 		if (!this.updating && this.dirty) {
 			this.parent.commit(this);
 		}
@@ -1041,6 +1084,14 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		this.updating = false;
 		this.unmounted = true;
 		this.ctx.clearEventListeners();
+		if (this.cleanups !== undefined) {
+			for (const cleanup of this.cleanups) {
+				cleanup(this.value);
+			}
+
+			this.cleanups = undefined;
+		}
+
 		if (!this.finished) {
 			this.finished = true;
 			// helps avoid deadlocks
@@ -1173,6 +1224,24 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			}
 		} while (!this.unmounted);
 	}
+
+	private schedules: Set<(value: unknown) => unknown> | undefined;
+	schedule(callback: (value: unknown) => unknown): void {
+		if (this.schedules === undefined) {
+			this.schedules = new Set();
+		}
+
+		this.schedules.add(callback);
+	}
+
+	private cleanups: Set<(value: unknown) => unknown> | undefined;
+	cleanup(callback: (value: unknown) => unknown): void {
+		if (this.cleanups === undefined) {
+			this.cleanups = new Set();
+		}
+
+		this.cleanups.add(callback);
+	}
 }
 
 function createNode<T>(
@@ -1220,6 +1289,14 @@ export class Context<TProps = any> extends CrankEventTarget {
 	}
 	/* eslint-enable no-dupe-class-members */
 
+	get props(): TProps {
+		return componentNodes.get(this)!.props;
+	}
+
+	get value(): unknown {
+		return componentNodes.get(this)!.value;
+	}
+
 	[Symbol.iterator](): Generator<TProps> {
 		return componentNodes.get(this)![Symbol.iterator]();
 	}
@@ -1228,8 +1305,16 @@ export class Context<TProps = any> extends CrankEventTarget {
 		return componentNodes.get(this)![Symbol.asyncIterator]();
 	}
 
-	refresh(): MaybePromise<undefined> {
+	refresh(): Promise<undefined> | undefined {
 		return componentNodes.get(this)!.refresh();
+	}
+
+	schedule(callback: (value: unknown) => unknown): void {
+		return componentNodes.get(this)!.schedule(callback);
+	}
+
+	cleanup(callback: (value: unknown) => unknown): void {
+		return componentNodes.get(this)!.cleanup(callback);
 	}
 }
 
