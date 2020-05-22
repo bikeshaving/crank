@@ -15,12 +15,17 @@ declare module "./index" {
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
+// TODO: refine/explain the NO_TOUCH set
+// Gleaned from:
+// https://github.com/preactjs/preact/blob/05e5d2c0d2d92c5478eeffdbd96681c96500d29f/src/diff/props.js#L111-L117
+const NO_TOUCH = new Set(["form", "list", "type", "size"]);
+
 // TODO: create an allowlist/blocklist of props
 function updateProps(
 	el: Element,
 	props: Record<string, any>,
 	newProps: Record<string, any>,
-	namespace?: string,
+	namespace: string | undefined,
 ): void {
 	for (const name in {...props, ...newProps}) {
 		const value = props[name];
@@ -31,10 +36,10 @@ function updateProps(
 				break;
 			case "class":
 			case "className": {
-				if (namespace === SVG_NAMESPACE) {
-					el.setAttribute("class", newValue);
-				} else {
+				if (namespace === undefined) {
 					el.className = newValue;
+				} else {
+					el.setAttribute("class", newValue);
 				}
 
 				break;
@@ -62,7 +67,7 @@ function updateProps(
 				break;
 			}
 			default: {
-				if (name in el) {
+				if (namespace === undefined && name in el && !NO_TOUCH.has(name)) {
 					(el as any)[name] = newValue;
 					break;
 				} else if (newValue === true) {
