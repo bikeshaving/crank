@@ -1,4 +1,6 @@
 # Changelog
+## [0.1.5] - 2020-05-21
+- Fixed SVG attributes causing readonly errors #119
 ## [0.1.4] - 2020-05-17
 ### Fixed
 - Added support for SVG elements in the DOM renderer #110
