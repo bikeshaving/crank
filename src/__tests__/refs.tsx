@@ -126,8 +126,7 @@ describe("keys", () => {
 		);
 
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
-		// TODO: this should be 1 when we figure out async generators
-		expect(fn).toHaveBeenCalledTimes(2);
+		expect(fn).toHaveBeenCalledTimes(1);
 		expect(fn).toHaveBeenCalledWith(document.body.firstChild!.firstChild);
 	});
 
