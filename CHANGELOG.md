@@ -1,4 +1,6 @@
 # Changelog
+## [0.1.6] - 2020-05-25
+- Backed out of a performance optimization where async generator components caused siblings to remain in the DOM
 ## [0.1.5] - 2020-05-21
 - Fixed SVG attributes causing readonly errors #119
 ## [0.1.4] - 2020-05-17
