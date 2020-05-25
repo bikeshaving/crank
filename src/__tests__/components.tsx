@@ -1219,6 +1219,47 @@ describe("async generator component", () => {
 		expect(mock).toHaveBeenCalledTimes(1);
 	});
 
+	test("unmount edge case", async () => {
+		function Switch({children, active}: {children: Children; active: boolean}) {
+			if (!active) {
+				return null;
+			}
+
+			return children;
+		}
+
+		async function* AsyncGen(this: Context) {
+			for await (const _ of this) {
+				yield <span>true</span>;
+			}
+		}
+
+		function* Component() {
+			let toggle = true;
+			while (true) {
+				yield (
+					<div>
+						<Switch active={toggle}>
+							<AsyncGen />
+						</Switch>
+						<Switch active={!toggle}>
+							<span>false</span>
+						</Switch>
+					</div>
+				);
+
+				toggle = !toggle;
+			}
+		}
+
+		await renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div><span>true</span></div>");
+		await renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div><span>false</span></div>");
+		await renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div><span>true</span></div>");
+	});
+
 	test("multiple iterations without a yield throw", async () => {
 		let i = 0;
 		async function* Component(this: Context) {
