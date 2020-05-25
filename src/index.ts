@@ -489,17 +489,22 @@ abstract class ParentNode<T> implements NodeBase<T> {
 		}
 
 		if (result !== undefined) {
+			result = result.then(() => this.commit());
 			const newResult = new Promise<undefined>(
 				(resolve) => (this.onNewResult = resolve),
 			);
 
 			return Promise.race([result, newResult]);
 		}
+
+		this.commit();
 	}
 
-	abstract commit(requester?: ParentNode<T>): MaybePromise<undefined>;
+	abstract commit(): MaybePromise<undefined>;
 
-	protected commitChildren(requester?: ParentNode<T>): Array<T | string> {
+	// TODO: this is an inaccurate name for what this method does but changing it
+	// will make rebases harder
+	protected commitChildren(): Array<T | string> {
 		let buffer: string | undefined;
 		let childValues: Array<T | string> = [];
 		let oldLength = 0;
@@ -514,11 +519,6 @@ abstract class ParentNode<T> implements NodeBase<T> {
 				while (child.alternate !== undefined) {
 					child = child.alternate;
 				}
-			}
-
-			// TODO: come up with a better algorithm if a requester is passed in
-			if (requester === undefined && child.internal && !child.copied) {
-				child.commit();
 			}
 
 			if (typeof child.value === "string") {
@@ -578,6 +578,10 @@ abstract class ParentNode<T> implements NodeBase<T> {
 			childValues.push(buffer);
 		}
 
+		if (this.firstChild === undefined) {
+			this.dirty = true;
+		}
+
 		return childValues;
 	}
 
@@ -623,11 +627,11 @@ class FragmentNode<T> extends ParentNode<T> {
 		this.scope = parent.childScope;
 	}
 
-	commit(requester?: ParentNode<T>): undefined {
-		const childValues = this.commitChildren(requester);
+	commit(): undefined {
+		const childValues = this.commitChildren();
 		this.value = childValues.length > 1 ? childValues : childValues[0];
-		if (requester !== undefined) {
-			this.parent.commit(requester);
+		if (!this.updating && this.dirty) {
+			this.parent.commit();
 		}
 
 		this.updating = false;
@@ -680,11 +684,10 @@ class HostNode<T> extends ParentNode<T> {
 		this.childScope = renderer.scope(tag, props);
 	}
 
-	commit(requester?: ParentNode<T>): MaybePromise<undefined> {
-		this.childValues = this.commitChildren(requester);
-		this.dirtyProps = requester === undefined;
+	commit(): MaybePromise<undefined> {
+		this.childValues = this.commitChildren();
+		this.dirtyProps = this.updating;
 		this.dirtyChildren = this.dirty;
-		this.updating = false;
 		try {
 			this.commitSelf();
 		} catch (err) {
@@ -695,9 +698,11 @@ class HostNode<T> extends ParentNode<T> {
 			return this.parent.catch(err);
 		}
 
-		if (this.dirty && requester !== undefined && this.parent !== undefined) {
-			this.parent.commit(this);
+		if (!this.updating && this.dirty && this.parent !== undefined) {
+			this.parent.commit();
 		}
+
+		this.updating = false;
 	}
 
 	commitSelf(): void {
@@ -972,14 +977,6 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 				}
 
 				let result = this.updateChildren(iteration.value);
-				// TODO: we commit async generator components because there’s a race
-				// condition with advance when we don’t commit for some reason.
-				if (result === undefined) {
-					this.commit();
-				} else {
-					result = result.then(() => this.commit());
-				}
-
 				if (isPromiseLike(result)) {
 					this.oldResult = result.catch(() => undefined); // void :(
 				}
@@ -1016,8 +1013,8 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		}
 	}
 
-	commit(requester?: ParentNode<T>): undefined {
-		const childValues = this.commitChildren(requester);
+	commit(): undefined {
+		const childValues = this.commitChildren();
 		this.value = childValues.length > 1 ? childValues : childValues[0];
 		if (isEventTarget(this.value)) {
 			this.ctx.setDelegate(this.value);
@@ -1026,7 +1023,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		}
 
 		if (!this.updating && this.dirty) {
-			this.parent.commit(this);
+			this.parent.commit();
 		}
 
 		this.updating = false;
