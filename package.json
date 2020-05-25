@@ -1,35 +1,96 @@
 {
   "name": "@bikeshaving/crank",
   "version": "0.1.6",
-  "description": "JSX-based components with functions, promises and generators.",
-  "license": "MIT",
-  "files": [
-    "cjs",
-    "esm",
-    "dom.d.ts",
-    "dom.js",
-    "html.d.ts",
-    "html.js"
-  ],
-  "main": "cjs/index.js",
-  "module": "esm/index.js",
-  "types": "esm/index.d.ts",
+  "description": "Write JSX-driven components with functions, promises and generators.",
   "homepage": "https://crank.js.org",
+  "bugs": {
+    "url": "https://github.com/bikeshaving/crank/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/bikeshaving/crank.git"
   },
-  "bugs": {
-    "url": "https://github.com/bikeshaving/crank/issues"
+  "license": "MIT",
+  "files": [
+    "index.js",
+    "dom.js",
+    "html.js",
+    "cjs",
+    "umd",
+    "*.d.ts",
+    "*.js.map"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "require": "./cjs/index.js"
+    },
+    "./cjs": {
+      "require": "./cjs/index.js"
+    },
+    "./cjs/dom": {
+      "require": "./cjs/dom.js"
+    },
+    "./cjs/dom.js": {
+      "require": "./cjs/dom.js"
+    },
+    "./cjs/html": {
+      "require": "./cjs/html.js"
+    },
+    "./cjs/html.js": {
+      "require": "./cjs/html.js"
+    },
+    "./cjs/index": {
+      "require": "./cjs/index.js"
+    },
+    "./cjs/index.js": {
+      "require": "./cjs/index.js"
+    },
+    "./dom": {
+      "import": "./dom.js",
+      "require": "./cjs/dom.js"
+    },
+    "./dom.js": {
+      "import": "./dom.js",
+      "require": "./cjs/dom.js"
+    },
+    "./html": {
+      "import": "./html.js",
+      "require": "./cjs/html.js"
+    },
+    "./html.js": {
+      "import": "./html.js",
+      "require": "./cjs/html.js"
+    },
+    "./index": {
+      "import": "./index.js",
+      "require": "./cjs/index.js"
+    },
+    "./index.js": {
+      "import": "./index.js",
+      "require": "./cjs/index.js"
+    },
+    "./package.json": "./package.json",
+    "./umd": {
+      "require": "./umd/index.js"
+    },
+    "./umd/index.js": {
+      "require": "./umd/index.js"
+    }
   },
+  "main": "cjs/index.js",
+  "module": "index.js",
+  "types": "index.d.ts",
   "scripts": {
     "prebuild": "yarn run clean",
     "build": "rollup -c rollup.config.js",
-    "clean": "shx rm -rf ./cjs ./esm",
+    "clean": "shx rm -rf cjs umd.js index.js dom.js html.js *.d.ts *.js.map",
     "debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "prepublishOnly": "yarn run test && yarn run build",
-    "test": "jest --config jest.config.js --color --no-cache"
+    "test": "jest --config jest.config.cjs --color --no-cache",
+    "typecheck": "tsc --noEmit"
   },
   "husky": {
     "hooks": {
@@ -46,24 +107,24 @@
   },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^7.1.3",
-    "@types/jest": "^25.2.1",
-    "@typescript-eslint/eslint-plugin": "^2.28.0",
-    "@typescript-eslint/parser": "^2.28.0",
+    "@types/jest": "^25.2.2",
+    "@typescript-eslint/eslint-plugin": "^2.33.0",
+    "@typescript-eslint/parser": "^2.33.0",
+    "@wessberg/rollup-plugin-ts": "^1.2.24",
     "core-js": "^3.6.5",
-    "eslint": "^6.8.0",
+    "eslint": "^7.0.0",
     "eslint-config-prettier": "^6.10.1",
-    "eslint-plugin-jest": "^23.8.2",
+    "eslint-plugin-jest": "^23.13.1",
     "eslint-plugin-prettier": "^3.1.3",
-    "eslint-plugin-react": "^7.19.0",
-    "husky": "^3.1.0",
-    "jest": "^25.3.0",
+    "eslint-plugin-react": "^7.20.0",
+    "husky": "^4.2.5",
+    "jest": "^26.0.1",
     "lint-staged": "^10.0.8",
     "prettier": "^2.0.4",
-    "rollup": "^2.6.1",
-    "rollup-plugin-typescript2": "^0.27.0",
+    "rollup": "^2.10.2",
     "shx": "^0.3.2",
-    "ts-jest": "^25.3.1",
-    "typescript": "3.9.1-rc"
+    "ts-jest": "^26.0.0",
+    "typescript": "^3.9.2"
   },
   "publishConfig": {
     "access": "public"
