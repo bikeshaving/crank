@@ -296,9 +296,7 @@ abstract class ParentNode<T> {
 	// When children update asynchronously, we race their result against the next
 	// update of children. The onNewResult property is set to the resolve
 	// function of the promise which the current update is raced against.
-	private onNewResult:
-		| ((result?: Promise<undefined>) => unknown)
-		| undefined = undefined;
+	private onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
 	protected props: any;
 	ctx: Context | undefined = undefined;
 	scope: unknown = undefined;
@@ -349,7 +347,7 @@ abstract class ParentNode<T> {
 					}
 
 					if (typeof child === "object") {
-						node = createNode(this, this.renderer, child);
+						node = createNode(child, this.renderer, this);
 					} else {
 						node = child;
 					}
@@ -361,7 +359,7 @@ abstract class ParentNode<T> {
 							continue;
 						}
 
-						node = createNode(this, this.renderer, child as Element);
+						node = createNode(child as Element, this.renderer, this);
 					} else {
 						this.keyedChildren!.delete(key);
 						node.moved = true;
@@ -375,7 +373,7 @@ abstract class ParentNode<T> {
 						continue;
 					}
 
-					keyedNode = createNode(this, this.renderer, child as Element);
+					keyedNode = createNode(child as Element, this.renderer, this);
 					i--;
 				} else {
 					this.keyedChildren!.delete(key);
@@ -396,7 +394,7 @@ abstract class ParentNode<T> {
 						newChildren.push(undefined);
 						continue;
 					} else if (typeof child === "object") {
-						node = createNode(this, this.renderer, child);
+						node = createNode(child, this.renderer, this);
 					} else {
 						node = child;
 					}
@@ -430,7 +428,7 @@ abstract class ParentNode<T> {
 				let result1: Promise<undefined> | undefined;
 				let newNode: ParentNode<T> | string | undefined;
 				if (typeof child === "object") {
-					newNode = createNode(this, this.renderer, child);
+					newNode = createNode(child, this.renderer, this);
 					result1 = newNode.update(
 						(child as Element).props,
 						(child as Element).ref,
@@ -634,7 +632,13 @@ class FragmentNode<T> extends ParentNode<T> {
 	readonly key: Key;
 	readonly parent: ParentNode<T>;
 	readonly renderer: Renderer<T>;
-	constructor(parent: ParentNode<T>, renderer: Renderer<T>, key: unknown) {
+	constructor(
+		tag: Fragment,
+		props: null,
+		renderer: Renderer<T>,
+		parent: ParentNode<T>,
+		key: unknown,
+	) {
 		super();
 		this.key = key;
 		this.parent = parent;
@@ -697,11 +701,11 @@ class HostNode<T> extends ParentNode<T> {
 	private iterator: Iterator<T> | undefined = undefined;
 	private childValues: Array<T | string> = [];
 	constructor(
-		parent: ParentNode<T> | undefined,
-		renderer: Renderer<T>,
 		tag: string | symbol,
-		key: unknown,
 		props: any,
+		renderer: Renderer<T>,
+		parent: ParentNode<T> | undefined,
+		key: unknown,
 	) {
 		super();
 		this.tag = tag;
@@ -862,11 +866,11 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	private onProps: ((props: TProps) => unknown) | undefined = undefined;
 	private provisions: Map<unknown, any> | undefined = undefined;
 	constructor(
-		parent: ParentNode<T>,
-		renderer: Renderer<T>,
 		tag: Component,
-		key: Key,
 		props: TProps,
+		renderer: Renderer<T>,
+		parent: ParentNode<T>,
+		key: Key,
 	) {
 		super();
 		this.parent = parent;
@@ -1253,22 +1257,29 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 }
 
 function createNode<T>(
-	parent: ParentNode<T>,
-	renderer: Renderer<T>,
 	child: Element,
+	renderer: Renderer<T>,
+	parent?: ParentNode<T>,
 ): ParentNode<T> {
 	if (child.tag === Fragment) {
-		return new FragmentNode(parent, renderer, child.key);
+		return new FragmentNode(child.tag, null, renderer, parent!, child.key);
 	} else if (typeof child.tag === "function") {
 		return new ComponentNode(
-			parent,
-			renderer,
 			child.tag,
-			child.key,
 			child.props,
+			renderer,
+			parent!,
+			child.key,
 		);
 	} else {
-		return new HostNode(parent, renderer, child.tag, child.key, child.props);
+		return new HostNode(
+			//
+			child.tag,
+			child.props,
+			renderer,
+			parent,
+			child.key,
+		);
 	}
 }
 
@@ -1416,13 +1427,7 @@ export class Renderer<T> {
 			root != null ? this.cache.get(root) : undefined;
 
 		if (rootNode === undefined) {
-			rootNode = new HostNode(
-				undefined,
-				this,
-				portal.tag,
-				undefined,
-				portal.props,
-			);
+			rootNode = createNode(portal, this) as HostNode<T>;
 			if (root !== undefined && child != null) {
 				this.cache.set(root, rootNode);
 			}
