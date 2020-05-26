@@ -273,7 +273,6 @@ abstract class ParentNode<T> {
 	// to false once the node has committed, and if this.updating is not true
 	// when the node is refreshing or committing, this means that the work was
 	// initiated by the current node or its descendants.
-	// TODO: with the addition of passing a requester to parents when we want them to commit, maybe we shouldn’t have this flag at all
 	protected updating = false;
 	// A flag which means the current node is unmounted.
 	protected unmounted = false;
