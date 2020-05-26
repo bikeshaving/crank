@@ -198,8 +198,6 @@ export class Node1<T> {
 	// dirtyRemoval = false;
 	// // whether the node was moved
 	// moved = true;
-	// // true if the current node was copied from the previous render
-	// copied = false;
 	// // true if the update was requested by the parent
 	// updating = false;
 	// // true if the component context has pulled a value from props
@@ -274,7 +272,6 @@ abstract class ParentNode<T> {
 	// flags
 	dirty = true;
 	moved = true;
-	copied = false;
 	// A flag which means that the parent has updated the current node. It is set
 	// to false once the node has committed, and if this.updating is not true
 	// when the node is refreshing or committing, this means that the work was
@@ -448,9 +445,7 @@ abstract class ParentNode<T> {
 
 			// Updating
 			if (tag === Copy) {
-				if (typeof node === "object") {
-					node.copied = true;
-				}
+				// no need to update
 				// TODO: forgive me Anders for I have sinned.
 			} else if (((node || {}) as any).tag === tag) {
 				if (typeof node === "object") {
@@ -640,7 +635,6 @@ abstract class ParentNode<T> {
 
 			if (typeof child === "object") {
 				child.dirty = false;
-				child.copied = false;
 				child.moved = false;
 				child.dirtyStart = undefined;
 			}
