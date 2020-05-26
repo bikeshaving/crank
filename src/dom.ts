@@ -186,23 +186,23 @@ export const env: Environment<Element> = {
 			let props: Record<string, any> = {};
 			let oldLength = 0;
 			try {
-				for (const nextProps of this) {
+				while (true) {
 					// We can’t use referential identity of props because we don’t have any
 					// restrictions like elements have to be immutable.
 					if (this.dirtyProps) {
-						updateProps(el, props, nextProps, ns);
+						updateProps(el, props, this.props, ns);
 					}
 
 					if (
 						this.dirtyChildren &&
-						nextProps.innerHTML === undefined &&
-						(oldLength > 0 || nextProps.children.length > 0)
+						this.props.innerHTML === undefined &&
+						(oldLength > 0 || this.childValues.length > 0)
 					) {
-						updateChildren(el, nextProps.children, this.dirtyStart);
+						updateChildren(el, this.childValues, this.dirtyStart);
 					}
 
-					props = nextProps;
-					oldLength = nextProps.children.length;
+					props = this.props;
+					oldLength = this.childValues.length;
 					yield el;
 				}
 			} finally {
@@ -212,30 +212,23 @@ export const env: Environment<Element> = {
 			}
 		};
 	},
-	*[Raw]({value}): Generator<Element> {
-		let fragment: DocumentFragment | undefined;
-		for (const {value: newValue} of this) {
+	*[Raw](this: HostContext): Generator<Element> {
+		while (true) {
+			const {value} = this.props;
 			if (typeof value === "string") {
-				if (fragment === undefined || value !== newValue) {
-					fragment = createDocumentFragmentFromHTML(value);
-					value = newValue;
-				}
-
+				const fragment = createDocumentFragmentFromHTML(value);
 				// TODO: figure out what the type of this Environment actually is
 				yield (fragment as unknown) as Element;
 			} else {
-				fragment = undefined;
 				yield value;
 			}
 		}
 	},
-	*[Portal](this: HostContext, {root}): Generator<Element> {
-		if (root == null) {
-			throw new TypeError("Portal element is missing root node");
-		}
-
+	*[Portal](this: HostContext): Generator<Element> {
+		let {root} = this.props;
 		try {
-			for (const {root: newRoot, children} of this) {
+			while (true) {
+				const {root: newRoot} = this.props;
 				if (newRoot == null) {
 					throw new TypeError("Portal element is missing root node");
 				}
@@ -243,9 +236,10 @@ export const env: Environment<Element> = {
 				if (root !== newRoot) {
 					updateChildren(root, []);
 					root = newRoot;
-					updateChildren(root, children);
-				} else if (this.dirtyChildren) {
-					updateChildren(root, children);
+				}
+
+				if (this.dirtyChildren) {
+					updateChildren(root, this.childValues);
 				}
 
 				yield root;

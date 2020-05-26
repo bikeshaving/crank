@@ -87,10 +87,7 @@ export type Component<TProps = any> = (
 	props: TProps,
 ) => ChildIterator | MaybePromiseLike<Child>;
 
-export type Intrinsic<T> = (
-	this: HostNode<T>,
-	props: IntrinsicProps<T>,
-) => Iterator<T> | T;
+export type Intrinsic<T> = (this: HostNode<T>) => Iterator<T> | T;
 
 // Special Intrinsic Tags
 // TODO: We assert symbol tags as any because typescript support for symbol
@@ -298,7 +295,7 @@ abstract class ParentNode<T> {
 	// update of children. The onNewResult property is set to the resolve
 	// function of the promise which the current update is raced against.
 	private onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
-	protected props: any;
+	props: any;
 	ctx: Context | undefined;
 	scope: unknown;
 	childScope: unknown;
@@ -752,8 +749,6 @@ class HostNode<T> extends ParentNode<T> {
 	dirtyProps = true;
 	dirtyChildren = true;
 	dirtyRemoval = true;
-	// A flag to make sure the HostContext isn’t iterated multiple times without a yield.
-	private iterating = false;
 	// A flag which indicates that this node’s iterator has returned, as in, it
 	// produced an iteration whose done property is set to true.
 	private finished = false;
@@ -764,7 +759,7 @@ class HostNode<T> extends ParentNode<T> {
 	value: T | undefined;
 	private readonly intrinsic: Intrinsic<T>;
 	private iterator: Iterator<T> | undefined;
-	private childValues: Array<T | string> = [];
+	childValues: Array<T | string> = [];
 	constructor(
 		tag: string | symbol,
 		props: any,
@@ -821,10 +816,7 @@ class HostNode<T> extends ParentNode<T> {
 
 	commitSelf(): void {
 		if (this.iterator === undefined) {
-			const value = this.intrinsic.call(this, {
-				...this.props,
-				children: this.childValues,
-			});
+			const value = this.intrinsic.call(this);
 
 			if (isIteratorOrAsyncIterator(value)) {
 				this.iterator = value;
@@ -838,7 +830,6 @@ class HostNode<T> extends ParentNode<T> {
 		const iteration = this.iterator.next();
 		this.dirty = this.value !== iteration.value;
 		this.value = iteration.value;
-		this.iterating = false;
 		if (iteration.done) {
 			this.finished = true;
 		}
@@ -866,17 +857,6 @@ class HostNode<T> extends ParentNode<T> {
 
 		this.unmounted = true;
 		this.unmountChildren(this.tag === Portal);
-	}
-
-	*[Symbol.iterator]() {
-		while (!this.unmounted) {
-			if (this.iterating) {
-				throw new Error("You must yield for each iteration of this.");
-			}
-
-			this.iterating = true;
-			yield {...this.props, children: this.childValues};
-		}
 	}
 }
 
@@ -1432,8 +1412,8 @@ const defaultEnv: Environment<any> = {
 	[Portal](): never {
 		throw new Error("Environment did not provide an intrinsic for Portal");
 	},
-	[Raw]({value}): any {
-		return value;
+	[Raw](this: HostContext): any {
+		return this.props.value;
 	},
 };
 
