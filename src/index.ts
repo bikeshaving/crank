@@ -284,10 +284,10 @@ abstract class ParentNode<T> {
 	// A flag which means the current node is unmounted.
 	protected unmounted = false;
 	abstract readonly tag: Tag;
-	readonly key: Key = undefined;
-	value: Array<T | string> | T | string | undefined = undefined;
-	ref: Function | undefined = undefined;
-	dirtyStart: number | undefined = undefined;
+	readonly key: Key;
+	value: Array<T | string> | T | string | undefined;
+	ref: Function | undefined;
+	dirtyStart: number | undefined;
 	// TODO: implement dirtyEnd
 	abstract parent: ParentNode<T> | undefined;
 	private children:
@@ -295,16 +295,16 @@ abstract class ParentNode<T> {
 		| ParentNode<T>
 		| string
 		| undefined;
-	private keyedChildren: Map<unknown, ParentNode<T>> | undefined = undefined;
+	private keyedChildren: Map<unknown, ParentNode<T>> | undefined;
 	abstract readonly renderer: Renderer<T>;
 	// When children update asynchronously, we race their result against the next
 	// update of children. The onNewResult property is set to the resolve
 	// function of the promise which the current update is raced against.
 	private onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
 	protected props: any;
-	ctx: Context | undefined = undefined;
-	scope: unknown = undefined;
-	childScope: unknown = undefined;
+	ctx: Context | undefined;
+	scope: unknown;
+	childScope: unknown;
 	update(props: any, ref?: Function): MaybePromise<undefined> {
 		this.props = props;
 		this.ref = ref;
@@ -767,9 +767,9 @@ class HostNode<T> extends ParentNode<T> {
 	readonly key: Key;
 	readonly parent: ParentNode<T> | undefined;
 	readonly renderer: Renderer<T>;
-	value: T | undefined = undefined;
+	value: T | undefined;
 	private readonly intrinsic: Intrinsic<T>;
-	private iterator: Iterator<T> | undefined = undefined;
+	private iterator: Iterator<T> | undefined;
 	private childValues: Array<T | string> = [];
 	constructor(
 		tag: string | symbol,
@@ -926,16 +926,16 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	readonly parent: ParentNode<T>;
 	readonly renderer: Renderer<T>;
 	readonly ctx: Context<TProps>;
-	private iterator: ChildIterator | undefined = undefined;
-	private oldResult: MaybePromise<undefined> = undefined;
-	private componentType: ComponentType | undefined = undefined;
+	private iterator: ChildIterator | undefined;
+	private oldResult: MaybePromise<undefined>;
+	private componentType: ComponentType | undefined;
 	// TODO: explain these properties
-	private inflightPending: MaybePromise<undefined> = undefined;
-	private enqueuedPending: MaybePromise<undefined> = undefined;
-	private inflightResult: MaybePromise<undefined> = undefined;
-	private enqueuedResult: MaybePromise<undefined> = undefined;
-	private onProps: ((props: TProps) => unknown) | undefined = undefined;
-	private provisions: Map<unknown, any> | undefined = undefined;
+	private inflightPending: MaybePromise<undefined>;
+	private enqueuedPending: MaybePromise<undefined>;
+	private inflightResult: MaybePromise<undefined>;
+	private enqueuedResult: MaybePromise<undefined>;
+	private onProps: ((props: TProps) => unknown) | undefined;
+	private provisions: Map<unknown, any> | undefined;
 	constructor(
 		tag: Component,
 		props: TProps,
