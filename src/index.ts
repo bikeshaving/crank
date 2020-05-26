@@ -288,9 +288,13 @@ abstract class ParentNode<T> {
 	value: Array<T | string> | T | string | undefined = undefined;
 	ref: Function | undefined = undefined;
 	dirtyStart: number | undefined = undefined;
-	abstract parent: ParentNode<T> | undefined;
 	// TODO: implement dirtyEnd
-	private children: Array<ParentNode<T> | string | undefined> = [];
+	abstract parent: ParentNode<T> | undefined;
+	private children:
+		| Array<ParentNode<T> | string | undefined>
+		| ParentNode<T>
+		| string
+		| undefined;
 	private keyedChildren: Map<unknown, ParentNode<T>> | undefined = undefined;
 	abstract readonly renderer: Renderer<T>;
 	// When children update asynchronously, we race their result against the next
@@ -316,17 +320,28 @@ abstract class ParentNode<T> {
 
 	// TODO: reduce duplication and complexity of this method :P
 	protected updateChildren(children: Children): MaybePromise<undefined> {
+		// TODO: get rid of this check
 		const clock = this.clock++;
 		let result: Promise<undefined> | undefined;
-		let newChildren: Array<ParentNode<T> | string | undefined> = [];
+		let newChildren:
+			| Array<ParentNode<T> | string | undefined>
+			| ParentNode<T>
+			| string
+			| undefined;
 		let keyedChildren: Map<unknown, ParentNode<T>> | undefined;
 		// TODO: split this algorithm into two stages.
 		// Stage 1: Alignment
 		// Stage 2: Updating
 		let i = 0;
 		for (const child of flatten(children)) {
-			let node = this.children[i];
 			// Alignment
+			let node: ParentNode<T> | string | undefined;
+			if (Array.isArray(this.children)) {
+				node = this.children[i];
+			} else if (i === 0) {
+				node = this.children;
+			}
+
 			const tag: Tag | undefined =
 				typeof child === "object" ? child.tag : undefined;
 			let key: unknown = typeof child === "object" ? child.key : undefined;
@@ -342,6 +357,12 @@ abstract class ParentNode<T> {
 			if (node === undefined) {
 				if (key === undefined) {
 					if (tag === Copy) {
+						if (newChildren === undefined) {
+							newChildren = [undefined];
+						} else if (!Array.isArray(newChildren)) {
+							newChildren = [newChildren];
+						}
+
 						newChildren.push(undefined);
 						continue;
 					}
@@ -355,6 +376,12 @@ abstract class ParentNode<T> {
 					node = this.keyedChildren && this.keyedChildren.get(key);
 					if (node === undefined) {
 						if (tag === Copy) {
+							if (newChildren === undefined) {
+								newChildren = [undefined];
+							} else if (!Array.isArray(newChildren)) {
+								newChildren = [newChildren];
+							}
+
 							newChildren.push(undefined);
 							continue;
 						}
@@ -369,6 +396,12 @@ abstract class ParentNode<T> {
 				let keyedNode = this.keyedChildren && this.keyedChildren.get(key);
 				if (keyedNode === undefined) {
 					if (tag === Copy) {
+						if (newChildren === undefined) {
+							newChildren = [undefined];
+						} else if (!Array.isArray(newChildren)) {
+							newChildren = [newChildren];
+						}
+
 						newChildren.push(undefined);
 						continue;
 					}
@@ -385,12 +418,24 @@ abstract class ParentNode<T> {
 
 				node = keyedNode;
 			} else if (typeof node === "object" && node.key !== undefined) {
-				while (typeof node === "object" && node.key !== undefined) {
-					node = this.children[++i];
+				if (Array.isArray(this.children)) {
+					while (typeof node === "object" && node.key !== undefined) {
+						i++;
+						node = this.children[i];
+					}
+				} else {
+					node = undefined;
+					i++;
 				}
 
 				if (node === undefined) {
 					if (tag === Copy) {
+						if (newChildren === undefined) {
+							newChildren = [undefined];
+						} else if (!Array.isArray(newChildren)) {
+							newChildren = [newChildren];
+						}
+
 						newChildren.push(undefined);
 						continue;
 					} else if (typeof child === "object") {
@@ -407,7 +452,7 @@ abstract class ParentNode<T> {
 					node.copied = true;
 				}
 				// TODO: forgive me Anders for I have sinned.
-			} else if (((node as any) || ({} as any)).tag === tag) {
+			} else if (((node || {}) as any).tag === tag) {
 				if (typeof node === "object") {
 					const result1 = node.update(
 						(child as Element).props,
@@ -476,18 +521,32 @@ abstract class ParentNode<T> {
 				keyedChildren.set(key, node as ParentNode<T>);
 			}
 
-			newChildren.push(node);
 			i++;
+			if (newChildren === undefined) {
+				newChildren = node;
+				continue;
+			} else if (!Array.isArray(newChildren)) {
+				newChildren = [newChildren];
+			}
+
+			newChildren.push(node);
 		}
 
+		// TODO: get rid of this check
 		if (this.clock !== clock + 1) {
 			return;
 		}
 
-		for (; i < this.children.length; i++) {
-			const node = this.children[i];
-			if (typeof node === "object" && node.key === undefined) {
-				node.unmount();
+		if (this.children !== undefined) {
+			if (Array.isArray(this.children)) {
+				for (; i < this.children.length; i++) {
+					const node = this.children[i];
+					if (typeof node === "object" && node.key === undefined) {
+						node.unmount();
+					}
+				}
+			} else if (typeof this.children === "object" && i === 0) {
+				this.children.unmount();
 			}
 		}
 
@@ -527,7 +586,13 @@ abstract class ParentNode<T> {
 		let buffer: string | undefined;
 		let childValues: Array<T | string> = [];
 		let oldLength = 0;
-		for (const child of this.children) {
+		const children =
+			this.children === "undefined"
+				? []
+				: Array.isArray(this.children)
+				? this.children
+				: [this.children];
+		for (const child of children) {
 			if (typeof child === "object" && child.tag === Portal) {
 				continue;
 			}
@@ -602,7 +667,13 @@ abstract class ParentNode<T> {
 	abstract unmount(dirty?: boolean): MaybePromise<undefined>;
 
 	protected unmountChildren(dirty: boolean): void {
-		for (const child of this.children) {
+		const children =
+			this.children === "undefined"
+				? []
+				: Array.isArray(this.children)
+				? this.children
+				: [this.children];
+		for (const child of children) {
 			if (typeof child === "object") {
 				child.unmount(dirty);
 			}
