@@ -305,11 +305,12 @@ abstract class ParentNode<T> {
 	// updateChildren returns earlier than the currently executing
 	// updateChildren. Figure out a way to not need it.
 	private clock = 0;
+
 	// TODO: reduce duplication and complexity of this method :P
 	protected updateChildren(children: Children): MaybePromise<undefined> {
 		const clock = this.clock++;
 		let result: Promise<undefined> | undefined;
-		const newChildren: Array<ParentNode<T> | string | undefined> = [];
+		let newChildren: Array<ParentNode<T> | string | undefined> = [];
 		let keyedChildren: Map<unknown, ParentNode<T>> | undefined;
 		// TODO: split this algorithm into two stages.
 		// Stage 1: Alignment
@@ -365,11 +366,11 @@ abstract class ParentNode<T> {
 					}
 
 					keyedNode = createNode(this, this.renderer, child as Element);
+					i--;
 				} else {
 					this.keyedChildren!.delete(key);
 					if (node !== keyedNode) {
 						keyedNode.moved = true;
-						// decrement so next i is the same as current i
 						i--;
 					}
 				}
@@ -486,7 +487,7 @@ abstract class ParentNode<T> {
 		// TODO: this is likely where the logic for asynchronous unmounting would go
 		if (this.keyedChildren !== undefined) {
 			for (const node of this.keyedChildren.values()) {
-				(node as ParentNode<T>).unmount();
+				node.unmount();
 			}
 		}
 

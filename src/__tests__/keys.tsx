@@ -127,6 +127,32 @@ describe("keys", () => {
 		expect(document.body.firstChild!.firstChild).toBe(span2);
 	});
 
+	test("keyed child added between unkeyed children", () => {
+		renderer.render(
+			<div>
+				<span>1</span>
+				<span>3</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toBe(
+			"<div><span>1</span><span>3</span></div>",
+		);
+		const span3 = document.body.firstChild!.childNodes[1];
+		renderer.render(
+			<div>
+				<span>1</span>
+				<span crank-key="2">2</span>
+				<span>3</span>
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toBe(
+			"<div><span>1</span><span>2</span><span>3</span></div>",
+		);
+		expect(document.body.firstChild!.childNodes[2]).toBe(span3);
+	});
+
 	test("keyed array", () => {
 		const spans = [
 			<span crank-key="2">2</span>,
