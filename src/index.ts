@@ -186,51 +186,61 @@ function* flatten(children: Children): Generator<NormalizedChild> {
 	yield normalize(children);
 }
 
+// this class is a planned optimization where we replace all nodes (elements?)
+// with a single type
 export class Node1<T> {
+	flags = 0;
 	// TODO: replace boolean properties with a bitmask
-	dirty = true;
-	// dirty flags
-	dirtyProps = true;
-	dirtyChildren = true;
-	dirtyRemoval = false;
-	// whether the node was moved
-	moved = true;
-	// true if the current node was copied from the previous render
-	copied = false;
-	// true if the update was requested by the parent
-	updating = false;
-	// true if the component context has pulled a value from props
-	iterating = false;
-	// true if the iterator related to the current component is currently executing
-	stepping = false;
-	// true if the iterator has returned
-	finished = false;
-	// TODO: can this be inferred by existence absence of onProps
-	// whether the async generator can yield a value immediately
-	available = true;
-	// whether or not the component is unmounted
-	unmounted = false;
-	// this should probably be a flag
-	componentType: ComponentType | undefined;
+	// dirty = true;
+	// // dirty flags
+	// dirtyProps = true;
+	// dirtyChildren = true;
+	// dirtyRemoval = false;
+	// // whether the node was moved
+	// moved = true;
+	// // true if the current node was copied from the previous render
+	// copied = false;
+	// // true if the update was requested by the parent
+	// updating = false;
+	// // true if the component context has pulled a value from props
+	// iterating = false;
+	// // true if the iterator related to the current component is currently executing
+	// stepping = false;
+	// // true if the iterator has returned
+	// finished = false;
+	// // TODO: can this be inferred by existence absence of onProps
+	// // whether the async generator can yield a value immediately
+	// available = true;
+	// // whether or not the component is unmounted
+	// unmounted = false;
+	// // this should probably be a flag
+	// componentType: ComponentType | undefined;
 	// regular props
 	element: Element;
 	// TODO: can we remove the renderer reference from nodes
 	renderer: Renderer<T>;
 	// TODO: can we remove this reference somehow???:
 	parent: Node1<T> | undefined;
-	dirtyStart: number | undefined;
 	value: Array<T | string> | T | string | undefined;
 	ctx: Context<T> | undefined;
-	// TODO: optimization where we don’t allocate an array if there are 0 or 1 children
-	children: Array<Node1<T> | string | undefined>;
+	children:
+		| Array<Node1<T> | string | undefined>
+		| Node1<T>
+		| string
+		| undefined;
 	keyedChildren: Map<unknown, Node1<T>> | undefined;
-	// TODO: can we reduce this to a single property
 	scope: unknown;
+	// host node related
+	dirtyStart: number | undefined;
+	dirtyEnd: number | undefined;
+	intrinsic: Intrinsic<T> | undefined;
+	hostIterator: Iterator<T> | undefined;
+	// component node related
+	childIterator: ChildIterator | undefined;
 	// promise related props
 	onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
-	oldResult: Promise<undefined> | undefined;
 	// component promise related props
-	// TODO: explain these properties
+	oldResult: Promise<undefined> | undefined;
 	inflightPending: Promise<undefined> | undefined;
 	enqueuedPending: Promise<undefined> | undefined;
 	inflightResult: Promise<undefined> | undefined;
