@@ -206,10 +206,7 @@ export class Node1<T> {
 	// host node related
 	// dirtyStart: number | undefined;
 	// dirtyEnd: number | undefined;
-	intrinsic: Intrinsic<T> | undefined;
-	hostIterator: Iterator<T> | undefined;
-	// component node related
-	childIterator: ChildIterator | undefined;
+	iterator: Iterator<T> | ChildIterator | undefined;
 	// promise related props
 	onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
 	// component promise related props
@@ -245,13 +242,6 @@ export class Node1<T> {
 abstract class ParentNode<T> {
 	// flags
 	flags = flags.Initial;
-	// TODO: intrinsics can use flags.Updating
-	dirtyProps = true;
-	// TODO: intrinsics can use flags.Dirty
-	dirtyChildren = true;
-	// TODO: come up with a better name and set dirtyRemoval if the node doesn’t
-	// share any common children with the previous render
-	dirtyRemoval = false;
 	// TODO: reimplement these
 	// dirtyStart: number | undefined;
 	// dirtyEnd: number | undefined;
@@ -608,14 +598,9 @@ abstract class ParentNode<T> {
 		return childValues;
 	}
 
-	// TODO: better name for dirty flag
-	// dirty is a boolean flag to indicate whether the unmount is part of a
-	// parent host node being removed. This is passed down so that renderers do
-	// not have to remove children which have already been removed higher up in
-	// the tree.
-	abstract unmount(dirty?: boolean): MaybePromise<undefined>;
+	abstract unmount(redundant?: boolean): MaybePromise<undefined>;
 
-	protected unmountChildren(dirty: boolean): void {
+	protected unmountChildren(redundant: boolean): void {
 		const children =
 			this.children === "undefined"
 				? []
@@ -624,7 +609,7 @@ abstract class ParentNode<T> {
 				: [this.children];
 		for (const child of children) {
 			if (typeof child === "object") {
-				child.unmount(dirty);
+				child.unmount(redundant);
 			}
 		}
 	}
@@ -701,13 +686,13 @@ class FragmentNode<T> extends ParentNode<T> {
 		return; // void :(
 	}
 
-	unmount(dirty = true): undefined {
+	unmount(redundant = true): undefined {
 		if (this.flags & flags.Unmounted) {
 			return;
 		}
 
 		this.flags |= flags.Unmounted;
-		this.unmountChildren(dirty);
+		this.unmountChildren(redundant);
 	}
 }
 
@@ -738,8 +723,6 @@ class HostNode<T> extends ParentNode<T> {
 
 	commit(): MaybePromise<undefined> {
 		this.childValues = this.commitChildren();
-		this.dirtyProps = !!(this.flags & flags.Updating);
-		this.dirtyChildren = !!(this.flags & flags.Dirty);
 		try {
 			this.commitSelf();
 		} catch (err) {
@@ -806,11 +789,16 @@ class HostNode<T> extends ParentNode<T> {
 		}
 	}
 
-	unmount(dirty = true): MaybePromise<undefined> {
+	unmount(redundant = true): MaybePromise<undefined> {
 		if (this.flags & flags.Unmounted) {
 			return;
 		} else if (!(this.flags & flags.Finished)) {
-			this.dirtyRemoval = dirty;
+			if (redundant) {
+				this.flags |= flags.Redundant;
+			} else {
+				this.flags &= ~flags.Redundant;
+			}
+
 			if (this.iterator !== undefined && this.iterator.return) {
 				try {
 					this.iterator.return();
@@ -822,11 +810,9 @@ class HostNode<T> extends ParentNode<T> {
 					return this.parent.catch(err);
 				}
 			}
-
-			this.flags |= flags.Finished;
 		}
 
-		this.flags |= flags.Unmounted;
+		this.flags |= flags.Finished | flags.Unmounted;
 		this.unmountChildren(this.tag === Portal);
 	}
 }
@@ -1077,7 +1063,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		return; // void :(
 	}
 
-	unmount(dirty = true): MaybePromise<undefined> {
+	unmount(redundant = true): MaybePromise<undefined> {
 		if (this.flags & flags.Unmounted) {
 			return;
 		}
@@ -1110,14 +1096,14 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 
 				if (isPromiseLike(iteration)) {
 					return iteration.then(
-						() => void this.unmountChildren(dirty), // void :(
+						() => void this.unmountChildren(redundant), // void :(
 						(err) => this.parent.catch(err),
 					);
 				}
 			}
 
 			this.flags |= flags.Finished;
-			this.unmountChildren(dirty);
+			this.unmountChildren(redundant);
 		}
 	}
 
