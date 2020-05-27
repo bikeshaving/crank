@@ -1,7 +1,7 @@
 import {
 	Default,
 	Environment,
-	HostContext,
+	HostNode,
 	Intrinsic,
 	IntrinsicProps,
 	Portal,
@@ -93,26 +93,26 @@ export const env: Environment<string> = {
 			throw new Error(`Unknown tag: ${tag.toString()}`);
 		}
 
-		return function defaultString(this: HostContext): string {
-			const attrs = printAttrs(this.props);
+		return function defaultString(node: HostNode<string>): string {
+			const attrs = printAttrs(node.props);
 			const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
 			if (voidTags.has(tag)) {
 				return open;
 			}
 
 			const close = `</${tag}>`;
-			if ("innerHTML" in this.props) {
-				return `${open}${this.props["innerHTML"]}${close}`;
+			if ("innerHTML" in node.props) {
+				return `${open}${node.props["innerHTML"]}${close}`;
 			}
 
-			return `${open}${this.childValues.join("")}${close}`;
+			return `${open}${node.childValues.join("")}${close}`;
 		};
 	},
 	[Text](text: string): string {
 		return escapeText(text);
 	},
-	[Portal](this: HostContext): string {
-		return this.childValues.join("");
+	[Portal](node: HostNode<string>): string {
+		return node.childValues.join("");
 	},
 };
 
