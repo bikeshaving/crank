@@ -265,18 +265,35 @@ export class Node1<T> {
 // catch
 // catchSelf (component node only)
 
+const SyncFn = 0;
+type SyncFn = typeof SyncFn;
+
+const AsyncFn = 1;
+type AsyncFn = typeof AsyncFn;
+
+const SyncGen = 2;
+type SyncGen = typeof SyncGen;
+
+const AsyncGen = 3;
+type AsyncGen = typeof AsyncGen;
+
+type ComponentType = SyncFn | AsyncFn | SyncGen | AsyncGen;
 abstract class ParentNode<T> {
 	// flags
 	dirty = true;
 	moved = true;
-	// A flag which means that the parent has updated the current node. It is set
-	// to false once the node has committed, and if this.updating is not true
-	// when the node is refreshing or committing, this means that the work was
-	// initiated by the current node or its descendants.
-	protected updating = false;
-	// A flag which means the current node is unmounted.
-	protected unmounted = false;
+	updating = false;
+	stepping = false;
+	iterating = false;
+	available = false;
+	finished = false;
+	unmounted = false;
+	dirtyProps = true;
+	dirtyChildren = true;
+	dirtyRemoval = true;
+	componentType: ComponentType | undefined;
 	abstract readonly tag: Tag;
+	props: any;
 	readonly key: Key;
 	value: Array<T | string> | T | string | undefined;
 	ref: Function | undefined;
@@ -294,22 +311,22 @@ abstract class ParentNode<T> {
 	// update of children. The onNewResult property is set to the resolve
 	// function of the promise which the current update is raced against.
 	private onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
-	props: any;
 	ctx: Context | undefined;
 	scope: unknown;
 	childScope: unknown;
+	schedules: Set<(value: unknown) => unknown> | undefined;
+	cleanups: Set<(value: unknown) => unknown> | undefined;
+	// TODO: this is a propery that exists bcause of the rare edge case where a
+	// child throws and triggers another updateChildren on this node, but that
+	// updateChildren returns earlier than the currently executing
+	// updateChildren. Figure out a way to not need it.
+	private clock = 0;
 	update(props: any, ref?: Function): MaybePromise<undefined> {
 		this.props = props;
 		this.ref = ref;
 		this.updating = true;
 		return this.updateChildren(this.props && this.props.children);
 	}
-
-	// TODO: this is a propery that exists bcause of the rare edge case where a
-	// child throws and triggers another updateChildren on this node, but that
-	// updateChildren returns earlier than the currently executing
-	// updateChildren. Figure out a way to not need it.
-	private clock = 0;
 
 	// TODO: reduce duplication and complexity of this method :P
 	protected updateChildren(children: Children): MaybePromise<undefined> {
@@ -678,7 +695,6 @@ abstract class ParentNode<T> {
 		return this.parent.catch(reason);
 	}
 
-	protected schedules: Set<(value: unknown) => unknown> | undefined;
 	schedule(callback: (value: unknown) => unknown): void {
 		if (this.schedules === undefined) {
 			this.schedules = new Set();
@@ -686,13 +702,21 @@ abstract class ParentNode<T> {
 
 		this.schedules.add(callback);
 	}
+
+	cleanup(callback: (value: unknown) => unknown): void {
+		if (this.cleanups === undefined) {
+			this.cleanups = new Set();
+		}
+
+		this.cleanups.add(callback);
+	}
 }
 
 class FragmentNode<T> extends ParentNode<T> {
 	readonly tag: Fragment = Fragment;
-	readonly key: Key;
-	readonly parent: ParentNode<T>;
 	readonly renderer: Renderer<T>;
+	readonly parent: ParentNode<T>;
+	readonly key: Key;
 	constructor(
 		tag: Fragment,
 		props: null,
@@ -744,17 +768,10 @@ class FragmentNode<T> extends ParentNode<T> {
 }
 
 class HostNode<T> extends ParentNode<T> {
-	// flags
-	dirtyProps = true;
-	dirtyChildren = true;
-	dirtyRemoval = true;
-	// A flag which indicates that this node’s iterator has returned, as in, it
-	// produced an iteration whose done property is set to true.
-	private finished = false;
 	readonly tag: string | symbol;
-	readonly key: Key;
-	readonly parent: ParentNode<T> | undefined;
 	readonly renderer: Renderer<T>;
+	readonly parent: ParentNode<T> | undefined;
+	readonly key: Key;
 	value: T | undefined;
 	private readonly intrinsic: Intrinsic<T>;
 	private iterator: Iterator<T> | undefined;
@@ -861,47 +878,15 @@ class HostNode<T> extends ParentNode<T> {
 
 export type HostContext = HostNode<any>;
 
-const SyncFn = 0;
-type SyncFn = typeof SyncFn;
-
-const AsyncFn = 1;
-type AsyncFn = typeof AsyncFn;
-
-const SyncGen = 2;
-type SyncGen = typeof SyncGen;
-
-const AsyncGen = 3;
-type AsyncGen = typeof AsyncGen;
-
-type ComponentType = SyncFn | AsyncFn | SyncGen | AsyncGen;
-
 class ComponentNode<T, TProps> extends ParentNode<T> {
-	// A flag to make sure the Context isn’t iterated multiple times without a yield.
-	private iterating = false;
-	// A flag which indicates that this node’s iterator has returned, as in, it
-	// produced an iteration whose done property is set to true.
-	private finished = false;
-	// A flag to make sure we aren’t stepping through generators multiple times
-	// synchronously. This can happen if a generator component yields some
-	// children, those children dispatch an event, and the currently yielding
-	// node listens to the event and dispatches another event. We simply fail
-	// silently when this occurs, though we may in the future log a warning.
-	private stepping = false;
-	// A flag used by the [Symbol.asyncIterator] method of component nodes to
-	// indicate when props are available. this.onProps is the resolve function of
-	// the promise which resolves when props are made available.
-	// TODO: maybe we can use the existence/absence of this.onProps instead of
-	// boolean flag.
-	private available = false;
 	readonly tag: Component<TProps>;
-	readonly key: Key;
 	props: TProps;
-	readonly parent: ParentNode<T>;
 	readonly renderer: Renderer<T>;
+	readonly parent: ParentNode<T>;
+	readonly key: Key;
 	readonly ctx: Context<TProps>;
 	private iterator: ChildIterator | undefined;
 	private oldResult: MaybePromise<undefined>;
-	private componentType: ComponentType | undefined;
 	// TODO: explain these properties
 	private inflightPending: MaybePromise<undefined>;
 	private enqueuedPending: MaybePromise<undefined>;
@@ -1286,17 +1271,6 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 				}
 			}
 		} while (!this.unmounted);
-	}
-
-	// TODO: all of these will be merged in a single node object just leaving
-	// this here for now
-	private cleanups: Set<(value: unknown) => unknown> | undefined;
-	cleanup(callback: (value: unknown) => unknown): void {
-		if (this.cleanups === undefined) {
-			this.cleanups = new Set();
-		}
-
-		this.cleanups.add(callback);
 	}
 }
 
