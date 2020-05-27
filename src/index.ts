@@ -259,6 +259,7 @@ abstract class ParentNode<T> {
 	props: any;
 	readonly key: Key;
 	value: Array<T | string> | T | string | undefined;
+	scope: unknown;
 	ref: Function | undefined;
 	abstract parent: ParentNode<T> | undefined;
 	private children:
@@ -273,8 +274,6 @@ abstract class ParentNode<T> {
 	// function of the promise which the current update is raced against.
 	private onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
 	ctx: Context | undefined;
-	scope: unknown;
-	childScope: unknown;
 	schedules: Set<(value: unknown) => unknown> | undefined;
 	cleanups: Set<(value: unknown) => unknown> | undefined;
 	// TODO: this is a propery that exists bcause of the rare edge case where a
@@ -293,6 +292,11 @@ abstract class ParentNode<T> {
 	protected updateChildren(children: Children): MaybePromise<undefined> {
 		// TODO: get rid of this
 		const clock = this.clock++;
+		let scope: unknown;
+		if (typeof this.tag !== "function") {
+			scope = this.renderer.scope(this.tag, this.props);
+		}
+
 		let result: Promise<undefined> | undefined;
 		let newChildren:
 			| Array<ParentNode<T> | string | undefined>
@@ -339,7 +343,7 @@ abstract class ParentNode<T> {
 					}
 
 					if (typeof child === "object") {
-						node = createNode(child, this.renderer, this);
+						node = createNode(child, this.renderer, this, scope);
 					} else {
 						node = child;
 					}
@@ -357,7 +361,7 @@ abstract class ParentNode<T> {
 							continue;
 						}
 
-						node = createNode(child as Element, this.renderer, this);
+						node = createNode(child as Element, this.renderer, this, scope);
 					} else {
 						this.keyedChildren!.delete(key);
 						node.flags |= flags.Moved;
@@ -377,7 +381,7 @@ abstract class ParentNode<T> {
 						continue;
 					}
 
-					keyedNode = createNode(child as Element, this.renderer, this);
+					keyedNode = createNode(child as Element, this.renderer, this, scope);
 					i--;
 				} else {
 					this.keyedChildren!.delete(key);
@@ -410,7 +414,7 @@ abstract class ParentNode<T> {
 						newChildren.push(undefined);
 						continue;
 					} else if (typeof child === "object") {
-						node = createNode(child, this.renderer, this);
+						node = createNode(child, this.renderer, this, scope);
 					} else {
 						node = child;
 					}
@@ -442,7 +446,7 @@ abstract class ParentNode<T> {
 				let result1: Promise<undefined> | undefined;
 				let newNode: ParentNode<T> | string | undefined;
 				if (typeof child === "object") {
-					newNode = createNode(child, this.renderer, this);
+					newNode = createNode(child, this.renderer, this, scope);
 					result1 = newNode.update(
 						(child as Element).props,
 						(child as Element).ref,
@@ -661,13 +665,14 @@ class FragmentNode<T> extends ParentNode<T> {
 		renderer: Renderer<T>,
 		parent: ParentNode<T>,
 		key: unknown,
+		scope: unknown,
 	) {
 		super();
 		this.key = key;
 		this.parent = parent;
 		this.renderer = renderer;
 		this.ctx = parent.ctx;
-		this.scope = parent.childScope;
+		this.scope = scope;
 	}
 
 	commit(): undefined {
@@ -712,7 +717,6 @@ class HostNode<T> extends ParentNode<T> {
 	readonly parent: ParentNode<T> | undefined;
 	readonly key: Key;
 	value: T | undefined;
-	private readonly intrinsic: Intrinsic<T>;
 	private iterator: Iterator<T> | undefined;
 	childValues: Array<T | string> = [];
 	constructor(
@@ -721,16 +725,15 @@ class HostNode<T> extends ParentNode<T> {
 		renderer: Renderer<T>,
 		parent: ParentNode<T> | undefined,
 		key: unknown,
+		scope: unknown,
 	) {
 		super();
 		this.tag = tag;
 		this.key = key;
 		this.parent = parent;
 		this.renderer = renderer;
-		this.intrinsic = renderer.intrinsic(tag);
 		this.ctx = parent && parent.ctx;
-		this.scope = parent && parent.childScope;
-		this.childScope = renderer.scope(tag, props);
+		this.scope = scope;
 	}
 
 	commit(): MaybePromise<undefined> {
@@ -775,8 +778,7 @@ class HostNode<T> extends ParentNode<T> {
 
 	commitSelf(): void {
 		if (this.iterator === undefined) {
-			const value = this.intrinsic.call(this);
-
+			const value = this.renderer.intrinsic(this.tag).call(this);
 			if (isIteratorOrAsyncIterator(value)) {
 				this.iterator = value;
 			} else {
@@ -853,6 +855,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		renderer: Renderer<T>,
 		parent: ParentNode<T>,
 		key: Key,
+		scope: unknown,
 	) {
 		super();
 		this.parent = parent;
@@ -861,7 +864,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		this.key = key;
 		this.props = props;
 		this.ctx = new Context(this, parent.ctx);
-		this.scope = parent.childScope;
+		this.scope = scope;
 	}
 
 	refresh(): MaybePromise<undefined> {
@@ -1228,15 +1231,16 @@ function createNode<T>(
 	element: Element,
 	renderer: Renderer<T>,
 	parent?: ParentNode<T>,
+	scope?: unknown,
 ): ParentNode<T> {
 	if (element.tag === Fragment) {
 		return new FragmentNode(
-			//
 			element.tag,
 			null,
 			renderer,
 			parent!,
 			element.key,
+			scope,
 		);
 	} else if (typeof element.tag === "function") {
 		return new ComponentNode(
@@ -1245,6 +1249,7 @@ function createNode<T>(
 			renderer,
 			parent!,
 			element.key,
+			scope,
 		);
 	} else {
 		return new HostNode(
@@ -1253,6 +1258,7 @@ function createNode<T>(
 			renderer,
 			parent,
 			element.key,
+			scope,
 		);
 	}
 }
