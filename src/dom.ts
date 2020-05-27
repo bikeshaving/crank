@@ -87,19 +87,15 @@ function updateProps(
 function updateChildren(
 	el: Element,
 	newChildren: Array<Node | string>,
-	dirtyStart?: number,
-	// TODO: use dirtyEnd
+	// TODO: use dirtyStart and dirtyEnd
 ): void {
 	if (newChildren.length === 0) {
 		el.textContent = "";
 		return;
 	}
 
-	let oldChild: Node | null =
-		newChildren[dirtyStart!] === undefined
-			? el.firstChild
-			: (newChildren[dirtyStart!] as Node);
-	let ni = dirtyStart || 0;
+	let oldChild = el.firstChild;
+	let ni = 0;
 	while (oldChild !== null && ni < newChildren.length) {
 		const newChild = newChildren[ni];
 		if (oldChild === newChild) {
@@ -198,7 +194,7 @@ export const env: Environment<Element> = {
 						this.props.innerHTML === undefined &&
 						(oldLength > 0 || this.childValues.length > 0)
 					) {
-						updateChildren(el, this.childValues, this.dirtyStart);
+						updateChildren(el, this.childValues);
 					}
 
 					props = this.props;

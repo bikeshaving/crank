@@ -7,6 +7,8 @@ import {
 	MaybePromiseLike,
 	upgradePromiseLike,
 } from "./utils";
+import * as flags from "./flags";
+export * as flags from "./flags";
 
 // re-exporting EventMap for user extensions
 export {EventMap} from "./events";
@@ -186,31 +188,7 @@ function* flatten(children: Children): Generator<NormalizedChild> {
 // this class is a planned optimization where we replace all nodes (elements?)
 // with a single type
 export class Node1<T> {
-	flags = 0;
-	// TODO: replace boolean properties with a bitmask
-	// dirty = true;
-	// // dirty flags
-	// dirtyProps = true;
-	// dirtyChildren = true;
-	// dirtyRemoval = false;
-	// // whether the node was moved
-	// moved = true;
-	// // true if the update was requested by the parent
-	// updating = false;
-	// // true if the component context has pulled a value from props
-	// iterating = false;
-	// // true if the iterator related to the current component is currently executing
-	// stepping = false;
-	// // true if the iterator has returned
-	// finished = false;
-	// // TODO: can this be inferred by existence absence of onProps
-	// // whether the async generator can yield a value immediately
-	// available = true;
-	// // whether or not the component is unmounted
-	// unmounted = false;
-	// // this should probably be a flag
-	// componentType: ComponentType | undefined;
-	// regular props
+	flags = flags.Initial;
 	element: Element;
 	// TODO: can we remove the renderer reference from nodes
 	renderer: Renderer<T>;
@@ -226,8 +204,8 @@ export class Node1<T> {
 	keyedChildren: Map<unknown, Node1<T>> | undefined;
 	scope: unknown;
 	// host node related
-	dirtyStart: number | undefined;
-	dirtyEnd: number | undefined;
+	// dirtyStart: number | undefined;
+	// dirtyEnd: number | undefined;
 	intrinsic: Intrinsic<T> | undefined;
 	hostIterator: Iterator<T> | undefined;
 	// component node related
@@ -264,41 +242,24 @@ export class Node1<T> {
 // unmountChildren
 // catch
 // catchSelf (component node only)
-
-const SyncFn = 0;
-type SyncFn = typeof SyncFn;
-
-const AsyncFn = 1;
-type AsyncFn = typeof AsyncFn;
-
-const SyncGen = 2;
-type SyncGen = typeof SyncGen;
-
-const AsyncGen = 3;
-type AsyncGen = typeof AsyncGen;
-
-type ComponentType = SyncFn | AsyncFn | SyncGen | AsyncGen;
 abstract class ParentNode<T> {
 	// flags
-	dirty = true;
-	moved = true;
-	updating = false;
-	stepping = false;
-	iterating = false;
-	available = false;
-	finished = false;
-	unmounted = false;
+	flags = flags.Initial;
+	// TODO: intrinsics can use flags.Updating
 	dirtyProps = true;
+	// TODO: intrinsics can use flags.Dirty
 	dirtyChildren = true;
-	dirtyRemoval = true;
-	componentType: ComponentType | undefined;
+	// TODO: come up with a better name and set dirtyRemoval if the node doesn’t
+	// share any common children with the previous render
+	dirtyRemoval = false;
+	// TODO: reimplement these
+	// dirtyStart: number | undefined;
+	// dirtyEnd: number | undefined;
 	abstract readonly tag: Tag;
 	props: any;
 	readonly key: Key;
 	value: Array<T | string> | T | string | undefined;
 	ref: Function | undefined;
-	dirtyStart: number | undefined;
-	// TODO: implement dirtyEnd
 	abstract parent: ParentNode<T> | undefined;
 	private children:
 		| Array<ParentNode<T> | string | undefined>
@@ -324,13 +285,13 @@ abstract class ParentNode<T> {
 	update(props: any, ref?: Function): MaybePromise<undefined> {
 		this.props = props;
 		this.ref = ref;
-		this.updating = true;
+		this.flags |= flags.Updating;
 		return this.updateChildren(this.props && this.props.children);
 	}
 
 	// TODO: reduce duplication and complexity of this method :P
 	protected updateChildren(children: Children): MaybePromise<undefined> {
-		// TODO: get rid of this check
+		// TODO: get rid of this
 		const clock = this.clock++;
 		let result: Promise<undefined> | undefined;
 		let newChildren:
@@ -399,7 +360,7 @@ abstract class ParentNode<T> {
 						node = createNode(child as Element, this.renderer, this);
 					} else {
 						this.keyedChildren!.delete(key);
-						node.moved = true;
+						node.flags |= flags.Moved;
 					}
 				}
 			} else if (key !== undefined) {
@@ -421,7 +382,7 @@ abstract class ParentNode<T> {
 				} else {
 					this.keyedChildren!.delete(key);
 					if (node !== keyedNode) {
-						keyedNode.moved = true;
+						keyedNode.flags |= flags.Moved;
 						i--;
 					}
 				}
@@ -593,7 +554,7 @@ abstract class ParentNode<T> {
 	protected commitChildren(): Array<T | string> {
 		let buffer: string | undefined;
 		let childValues: Array<T | string> = [];
-		let oldLength = 0;
+		// TODO: put this behind a getter or something
 		const children =
 			this.children === "undefined"
 				? []
@@ -621,38 +582,15 @@ abstract class ParentNode<T> {
 				}
 			}
 
-			if (typeof child !== "object" || child.dirty || child.moved) {
-				if (!this.dirty) {
-					if (
-						typeof child === "object" &&
-						!child.moved &&
-						child.dirtyStart !== undefined
-					) {
-						this.dirtyStart = oldLength + child.dirtyStart;
-					} else {
-						for (
-							let dirtyStart = oldLength - 1;
-							dirtyStart >= 0;
-							dirtyStart--
-						) {
-							if (typeof childValues[dirtyStart] !== "string") {
-								this.dirtyStart = dirtyStart;
-								break;
-							}
-						}
-					}
-
-					this.dirty = true;
-				}
-			}
-
 			if (typeof child === "object") {
-				child.dirty = false;
-				child.moved = false;
-				child.dirtyStart = undefined;
-			}
+				if (child.flags & (flags.Dirty | flags.Moved)) {
+					this.flags |= flags.Dirty;
+				}
 
-			oldLength = childValues.length;
+				child.flags &= ~(flags.Dirty | flags.Moved);
+			} else {
+				this.flags |= flags.Dirty;
+			}
 		}
 
 		if (buffer !== undefined) {
@@ -660,7 +598,7 @@ abstract class ParentNode<T> {
 		}
 
 		if (childValues.length === 0) {
-			this.dirty = true;
+			this.flags |= flags.Dirty;
 		}
 
 		return childValues;
@@ -750,19 +688,20 @@ class FragmentNode<T> extends ParentNode<T> {
 			this.ref(this.value);
 		}
 
-		if (!this.updating && this.dirty) {
+		if (!(this.flags & flags.Updating) && this.flags & flags.Dirty) {
 			this.parent.commit();
 		}
-		this.updating = false;
+
+		this.flags &= ~flags.Updating;
 		return; // void :(
 	}
 
 	unmount(dirty = true): undefined {
-		if (this.unmounted) {
+		if (this.flags & flags.Unmounted) {
 			return;
 		}
 
-		this.unmounted = true;
+		this.flags |= flags.Unmounted;
 		this.unmountChildren(dirty);
 	}
 }
@@ -796,8 +735,8 @@ class HostNode<T> extends ParentNode<T> {
 
 	commit(): MaybePromise<undefined> {
 		this.childValues = this.commitChildren();
-		this.dirtyProps = this.updating;
-		this.dirtyChildren = this.dirty;
+		this.dirtyProps = !!(this.flags & flags.Updating);
+		this.dirtyChildren = !!(this.flags & flags.Dirty);
 		try {
 			this.commitSelf();
 		} catch (err) {
@@ -823,11 +762,15 @@ class HostNode<T> extends ParentNode<T> {
 			this.ref(this.value);
 		}
 
-		if (!this.updating && this.dirty && this.parent !== undefined) {
+		if (
+			!(this.flags & flags.Updating) &&
+			this.flags & flags.Dirty &&
+			this.parent !== undefined
+		) {
 			this.parent.commit();
 		}
 
-		this.updating = false;
+		this.flags &= ~flags.Updating;
 	}
 
 	commitSelf(): void {
@@ -837,24 +780,34 @@ class HostNode<T> extends ParentNode<T> {
 			if (isIteratorOrAsyncIterator(value)) {
 				this.iterator = value;
 			} else {
-				this.dirty = this.value !== value;
+				if (this.value === value) {
+					this.flags &= ~flags.Dirty;
+				} else {
+					this.flags |= flags.Dirty;
+				}
+
 				this.value = value;
 				return;
 			}
 		}
 
 		const iteration = this.iterator.next();
-		this.dirty = this.value !== iteration.value;
+		if (this.value === iteration.value) {
+			this.flags &= ~flags.Dirty;
+		} else {
+			this.flags |= flags.Dirty;
+		}
+
 		this.value = iteration.value;
 		if (iteration.done) {
-			this.finished = true;
+			this.flags |= flags.Finished;
 		}
 	}
 
 	unmount(dirty = true): MaybePromise<undefined> {
-		if (this.unmounted) {
+		if (this.flags & flags.Unmounted) {
 			return;
-		} else if (!this.finished) {
+		} else if (!(this.flags & flags.Finished)) {
 			this.dirtyRemoval = dirty;
 			if (this.iterator !== undefined && this.iterator.return) {
 				try {
@@ -868,10 +821,10 @@ class HostNode<T> extends ParentNode<T> {
 				}
 			}
 
-			this.finished = true;
+			this.flags |= flags.Finished;
 		}
 
-		this.unmounted = true;
+		this.flags |= flags.Unmounted;
 		this.unmountChildren(this.tag === Portal);
 	}
 }
@@ -912,13 +865,13 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	}
 
 	refresh(): MaybePromise<undefined> {
-		if (this.stepping || this.unmounted) {
+		if (this.flags & (flags.Stepping | flags.Unmounted)) {
 			// TODO: we may want to log warnings when stuff like this happens
 			return;
 		}
 
 		if (this.onProps === undefined) {
-			this.available = true;
+			this.flags |= flags.Available;
 		} else {
 			this.onProps(this.props!);
 			this.onProps = undefined;
@@ -936,10 +889,9 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	update(props: TProps, ref?: Function): MaybePromise<undefined> {
 		this.props = props;
 		this.ref = ref;
-		this.updating = true;
-
+		this.flags |= flags.Updating;
 		if (this.onProps === undefined) {
-			this.available = true;
+			this.flags |= flags.Available;
 		} else {
 			this.onProps(this.props!);
 			this.onProps = undefined;
@@ -965,7 +917,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 
 			this.inflightResult = result;
 			return this.inflightResult;
-		} else if (this.componentType === AsyncGen) {
+		} else if (this.flags & flags.AsyncGen) {
 			return this.inflightResult;
 		} else if (this.enqueuedPending === undefined) {
 			let resolve: (value: MaybePromise<undefined>) => unknown;
@@ -983,11 +935,11 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	}
 
 	private step(): [MaybePromise<undefined>, MaybePromise<undefined>] {
-		if (this.finished) {
+		if (this.flags & flags.Finished) {
 			return [undefined, undefined];
 		}
 
-		this.stepping = true;
+		this.flags |= flags.Stepping;
 		if (this.iterator === undefined) {
 			this.ctx.clearEventListeners();
 			let value: ChildIterator | PromiseLike<Child> | Child;
@@ -1002,7 +954,6 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 				this.iterator = value;
 			} else if (isPromiseLike(value)) {
 				const value1 = upgradePromiseLike(value);
-				this.componentType = AsyncFn;
 				const pending = value1.then(
 					() => undefined,
 					() => undefined,
@@ -1011,12 +962,11 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 					(child) => this.updateChildren(child),
 					(err) => this.parent.catch(err),
 				);
-				this.stepping = false;
+				this.flags &= ~flags.Stepping;
 				return [pending, result];
 			} else {
-				this.componentType = SyncFn;
 				const result = this.updateChildren(value);
-				this.stepping = false;
+				this.flags &= ~flags.Stepping;
 				return [undefined, result];
 			}
 		}
@@ -1034,9 +984,9 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			return [caught, caught];
 		}
 
-		this.stepping = false;
+		this.flags &= ~flags.Stepping;
 		if (isPromiseLike(iteration)) {
-			this.componentType = AsyncGen;
+			this.flags |= flags.AsyncGen;
 			iteration = iteration.catch((err) => {
 				const p = this.parent.catch(err);
 				if (p === undefined) {
@@ -1050,9 +1000,9 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 				() => undefined,
 			); // void :(
 			const result = iteration.then((iteration) => {
-				this.iterating = false;
+				this.flags &= ~flags.Iterating;
 				if (iteration.done) {
-					this.finished = true;
+					this.flags |= flags.Finished;
 				}
 
 				let result = this.updateChildren(iteration.value);
@@ -1066,10 +1016,10 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			return [pending, result];
 		}
 
-		this.iterating = false;
-		this.componentType = SyncGen;
+		this.flags &= ~flags.Iterating;
+		this.flags |= flags.SyncGen;
 		if (iteration.done) {
-			this.finished = true;
+			this.flags |= flags.Finished;
 		}
 
 		const result = this.updateChildren(iteration.value);
@@ -1081,11 +1031,11 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		this.inflightResult = this.enqueuedResult;
 		this.enqueuedPending = undefined;
 		this.enqueuedResult = undefined;
-		if (this.componentType === AsyncGen && !this.finished) {
+		if (this.flags & flags.AsyncGen && !(this.flags & flags.Finished)) {
 			this.run()!.catch((err) => {
 				// We catch and rethrow the error to trigger an unhandled promise
 				// rejection.
-				if (!this.updating) {
+				if (!(this.flags & flags.Updating)) {
 					throw err;
 				}
 			});
@@ -1116,21 +1066,21 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			this.ref(this.value);
 		}
 
-		if (!this.updating && this.dirty) {
+		if (!(this.flags & flags.Updating) && this.flags & flags.Dirty) {
 			this.parent.commit();
 		}
 
-		this.updating = false;
+		this.flags &= ~flags.Updating;
 		return; // void :(
 	}
 
 	unmount(dirty = true): MaybePromise<undefined> {
-		if (this.unmounted) {
+		if (this.flags & flags.Unmounted) {
 			return;
 		}
 
-		this.updating = false;
-		this.unmounted = true;
+		this.flags &= ~flags.Updating;
+		this.flags |= flags.Unmounted;
 		this.ctx.clearEventListeners();
 		if (this.cleanups !== undefined) {
 			for (const cleanup of this.cleanups) {
@@ -1140,8 +1090,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			this.cleanups = undefined;
 		}
 
-		if (!this.finished) {
-			this.finished = true;
+		if (!(this.flags & flags.Finished)) {
 			// helps avoid deadlocks
 			if (this.onProps !== undefined) {
 				this.onProps(this.props!);
@@ -1164,6 +1113,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 				}
 			}
 
+			this.flags |= flags.Finished;
 			this.unmountChildren(dirty);
 		}
 	}
@@ -1172,7 +1122,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		if (
 			this.iterator === undefined ||
 			this.iterator.throw === undefined ||
-			this.finished
+			this.flags & flags.Finished
 		) {
 			return super.catch(reason);
 		}
@@ -1194,7 +1144,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			const result = iteration.then(
 				(iteration) => {
 					if (iteration.done) {
-						this.finished = true;
+						this.flags |= flags.Finished;
 					}
 
 					return this.updateChildren(iteration.value);
@@ -1206,7 +1156,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		}
 
 		if (iteration.done) {
-			this.finished = true;
+			this.flags |= flags.Finished;
 		}
 
 		return this.updateChildren(iteration.value);
@@ -1238,39 +1188,39 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 	}
 
 	*[Symbol.iterator](): Generator<TProps> {
-		while (!this.unmounted) {
-			if (this.iterating) {
+		while (!(this.flags & flags.Unmounted)) {
+			if (this.flags & flags.Iterating) {
 				throw new Error("You must yield for each iteration of this.");
-			} else if (this.componentType === AsyncGen) {
+			} else if (this.flags & flags.AsyncGen) {
 				throw new Error("Use for await...of in async generator components.");
 			}
 
-			this.iterating = true;
+			this.flags |= flags.Iterating;
 			yield this.props!;
 		}
 	}
 
 	async *[Symbol.asyncIterator](): AsyncGenerator<TProps> {
 		do {
-			if (this.iterating) {
+			if (this.flags & flags.Iterating) {
 				throw new Error("You must yield for each iteration of this.");
-			} else if (this.componentType === SyncGen) {
+			} else if (this.flags & flags.SyncGen) {
 				throw new Error("Use for...of in sync generator components.");
 			}
 
-			this.iterating = true;
-			if (this.available) {
-				this.available = false;
+			this.flags |= flags.Iterating;
+			if (this.flags & flags.Available) {
+				this.flags &= ~flags.Available;
 				yield this.props!;
 			} else {
 				const props = await new Promise<TProps>(
 					(resolve) => (this.onProps = resolve),
 				);
-				if (!this.unmounted) {
+				if (!(this.flags & flags.Unmounted)) {
 					yield props;
 				}
 			}
-		} while (!this.unmounted);
+		} while (!(this.flags & flags.Unmounted));
 	}
 }
 
