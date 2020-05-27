@@ -2,7 +2,7 @@ import {
 	Default,
 	Environment,
 	flags,
-	HostContext,
+	HostNode,
 	Intrinsic,
 	Raw,
 	Renderer,
@@ -169,9 +169,9 @@ export const env: Environment<Element> = {
 		}
 
 		let cachedEl: Element | undefined;
-		return function* defaultDOM(this: HostContext): Generator<Element> {
+		return function* defaultDOM(node: HostNode<Element>): Generator<Element> {
 			const ns =
-				tag === "svg" ? SVG_NAMESPACE : (this.scope as string | undefined);
+				tag === "svg" ? SVG_NAMESPACE : (node.scope as string | undefined);
 			if (cachedEl === undefined) {
 				if (ns == null) {
 					cachedEl = document.createElement(tag);
@@ -187,32 +187,33 @@ export const env: Environment<Element> = {
 				while (true) {
 					// We can’t use referential identity of props because we don’t have any
 					// restrictions like elements have to be immutable.
-					if (this.flags & flags.Updating) {
-						updateProps(el, props, this.props, ns);
+					if (node.flags & flags.Updating) {
+						updateProps(el, props, node.props, ns);
 					}
 
 					if (
-						this.flags & flags.Dirty &&
-						this.props.innerHTML === undefined &&
-						(oldLength > 0 || this.childValues.length > 0)
+						node.flags & flags.Dirty &&
+						node.props.innerHTML === undefined &&
+						(oldLength > 0 || node.childValues.length > 0)
 					) {
-						updateChildren(el, this.childValues);
+						updateChildren(el, node.childValues);
 					}
 
-					props = this.props;
-					oldLength = this.childValues.length;
+					props = node.props;
+					oldLength = node.childValues.length;
 					yield el;
 				}
 			} finally {
-				if (this.flags & flags.Redundant && el.parentNode !== null) {
+				if (node.flags & flags.Redundant && el.parentNode !== null) {
 					el.parentNode.removeChild(el);
 				}
 			}
 		};
 	},
-	*[Raw](this: HostContext): Generator<Element> {
+	*[Raw](node: HostNode<Element>): Generator<Element> {
 		while (true) {
-			const {value} = this.props;
+			// TODO: cache fragment for two equal strings
+			const value = node.props.value;
 			if (typeof value === "string") {
 				const fragment = createDocumentFragmentFromHTML(value);
 				// TODO: figure out what the type of this Environment actually is
@@ -222,11 +223,11 @@ export const env: Environment<Element> = {
 			}
 		}
 	},
-	*[Portal](this: HostContext): Generator<Element> {
-		let {root} = this.props;
+	*[Portal](node: HostNode<Element>): Generator<Element> {
+		let root = node.props.root;
 		try {
 			while (true) {
-				const {root: newRoot} = this.props;
+				const newRoot = node.props.root;
 				if (newRoot == null) {
 					throw new TypeError("Portal element is missing root node");
 				}
@@ -236,8 +237,8 @@ export const env: Environment<Element> = {
 					root = newRoot;
 				}
 
-				if (this.flags & flags.Dirty) {
-					updateChildren(root, this.childValues);
+				if (node.flags & flags.Dirty) {
+					updateChildren(root, node.childValues);
 				}
 
 				yield root;

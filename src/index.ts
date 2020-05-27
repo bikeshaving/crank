@@ -89,7 +89,7 @@ export type Component<TProps = any> = (
 	props: TProps,
 ) => ChildIterator | MaybePromiseLike<Child>;
 
-export type Intrinsic<T> = (this: HostNode<T>) => Iterator<T> | T;
+export type Intrinsic<T> = (node: HostNode<T>) => Iterator<T> | T;
 
 // Special Intrinsic Tags
 // TODO: We assert symbol tags as any because typescript support for symbol
@@ -696,7 +696,7 @@ class FragmentNode<T> extends ParentNode<T> {
 	}
 }
 
-class HostNode<T> extends ParentNode<T> {
+export class HostNode<T> extends ParentNode<T> {
 	readonly tag: string | symbol;
 	readonly renderer: Renderer<T>;
 	readonly parent: ParentNode<T> | undefined;
@@ -761,10 +761,8 @@ class HostNode<T> extends ParentNode<T> {
 
 	commitSelf(): void {
 		if (this.iterator === undefined) {
-			const value = this.renderer.intrinsic(this.tag).call(this);
-			if (isIteratorOrAsyncIterator(value)) {
-				this.iterator = value;
-			} else {
+			const value = this.renderer.intrinsic(this.tag)(this);
+			if (!isIteratorOrAsyncIterator(value)) {
 				if (this.value === value) {
 					this.flags &= ~flags.Dirty;
 				} else {
@@ -774,6 +772,8 @@ class HostNode<T> extends ParentNode<T> {
 				this.value = value;
 				return;
 			}
+
+			this.iterator = value;
 		}
 
 		const iteration = this.iterator.next();
@@ -816,8 +816,6 @@ class HostNode<T> extends ParentNode<T> {
 		this.unmountChildren(this.tag === Portal);
 	}
 }
-
-export type HostContext = HostNode<any>;
 
 class ComponentNode<T, TProps> extends ParentNode<T> {
 	readonly tag: Component<TProps>;
@@ -1333,8 +1331,8 @@ const defaultEnv: Environment<any> = {
 	[Portal](): never {
 		throw new Error("Environment did not provide an intrinsic for Portal");
 	},
-	[Raw](this: HostContext): any {
-		return this.props.value;
+	[Raw](node: HostNode<any>): any {
+		return node.props.value;
 	},
 };
 
