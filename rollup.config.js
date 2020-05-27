@@ -30,6 +30,7 @@ export default [
 		output: {
 			format: "esm",
 			dir: "./",
+			chunkFileNames: "dist/[hash].js",
 			sourcemap: true,
 		},
 		plugins: [ts(), resolve()],
