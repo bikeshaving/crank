@@ -1,6 +1,7 @@
 import {
 	Default,
 	Environment,
+	flags,
 	HostContext,
 	Intrinsic,
 	Raw,
@@ -52,6 +53,7 @@ function updateProps(
 					} else if (typeof newValue === "string") {
 						style.cssText = newValue;
 					} else {
+						// TODO: stop checking old style value
 						for (const styleName in {...value, ...newValue}) {
 							const styleValue = value && value[styleName];
 							const newStyleValue = newValue && newValue[styleName];
@@ -185,12 +187,12 @@ export const env: Environment<Element> = {
 				while (true) {
 					// We can’t use referential identity of props because we don’t have any
 					// restrictions like elements have to be immutable.
-					if (this.dirtyProps) {
+					if (this.flags & flags.Updating) {
 						updateProps(el, props, this.props, ns);
 					}
 
 					if (
-						this.dirtyChildren &&
+						this.flags & flags.Dirty &&
 						this.props.innerHTML === undefined &&
 						(oldLength > 0 || this.childValues.length > 0)
 					) {
@@ -202,7 +204,7 @@ export const env: Environment<Element> = {
 					yield el;
 				}
 			} finally {
-				if (this.dirtyRemoval && el.parentNode !== null) {
+				if (this.flags & flags.Redundant && el.parentNode !== null) {
 					el.parentNode.removeChild(el);
 				}
 			}
@@ -234,7 +236,7 @@ export const env: Environment<Element> = {
 					root = newRoot;
 				}
 
-				if (this.dirtyChildren) {
+				if (this.flags & flags.Dirty) {
 					updateChildren(root, this.childValues);
 				}
 
