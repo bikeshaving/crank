@@ -1301,28 +1301,34 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 }
 
 function createNode<T>(
-	child: Element,
+	element: Element,
 	renderer: Renderer<T>,
 	parent?: ParentNode<T>,
 ): ParentNode<T> {
-	if (child.tag === Fragment) {
-		return new FragmentNode(child.tag, null, renderer, parent!, child.key);
-	} else if (typeof child.tag === "function") {
-		return new ComponentNode(
-			child.tag,
-			child.props,
+	if (element.tag === Fragment) {
+		return new FragmentNode(
+			//
+			element.tag,
+			null,
 			renderer,
 			parent!,
-			child.key,
+			element.key,
+		);
+	} else if (typeof element.tag === "function") {
+		return new ComponentNode(
+			element.tag,
+			element.props,
+			renderer,
+			parent!,
+			element.key,
 		);
 	} else {
 		return new HostNode(
-			//
-			child.tag,
-			child.props,
+			element.tag,
+			element.props,
 			renderer,
 			parent,
-			child.key,
+			element.key,
 		);
 	}
 }
