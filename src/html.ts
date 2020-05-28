@@ -1,9 +1,9 @@
 import {
 	Default,
 	Environment,
-	HostNode,
 	Intrinsic,
 	IntrinsicProps,
+	Node,
 	Portal,
 	Renderer,
 	Text,
@@ -93,7 +93,7 @@ export const env: Environment<string> = {
 			throw new Error(`Unknown tag: ${tag.toString()}`);
 		}
 
-		return function defaultString(node: HostNode<string>): string {
+		return function defaultString(node: Node<string>): string {
 			const attrs = printAttrs(node.props);
 			const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
 			if (voidTags.has(tag)) {
@@ -111,7 +111,7 @@ export const env: Environment<string> = {
 	[Text](text: string): string {
 		return escapeText(text);
 	},
-	[Portal](node: HostNode<string>): string {
+	[Portal](node: Node<string>): string {
 		return node.childValues.join("");
 	},
 };

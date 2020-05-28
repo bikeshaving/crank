@@ -8,8 +8,9 @@ import {
 	upgradePromiseLike,
 } from "./utils";
 import * as flags from "./flags";
-export * as flags from "./flags";
 
+// exporting flags for custom renderers
+export {flags};
 // re-exporting EventMap for user extensions
 export {EventMap} from "./events";
 
@@ -89,7 +90,7 @@ export type Component<TProps = any> = (
 	props: TProps,
 ) => ChildIterator | MaybePromiseLike<Child>;
 
-export type Intrinsic<T> = (node: HostNode<T>) => Iterator<T> | T;
+export type Intrinsic<T> = (node: Node<T>) => Iterator<T> | T;
 
 // Special Intrinsic Tags
 // TODO: We assert symbol tags as any because typescript support for symbol
@@ -159,7 +160,7 @@ type NormalizedChild = Element | string | undefined;
 
 function normalize(child: Child): NormalizedChild {
 	if (child == null || typeof child === "boolean") {
-		return undefined;
+		return;
 	} else if (typeof child === "string" || isElement(child)) {
 		return child;
 	} else {
@@ -185,101 +186,79 @@ function* flatten(children: Children): Generator<NormalizedChild> {
 	yield normalize(children);
 }
 
-// this class is a planned optimization where we replace all nodes (elements?)
-// with a single type
-export class Node1<T> {
+export class Node<T> {
 	flags = flags.Initial;
-	element: Element;
-	// TODO: can we remove the renderer reference from nodes
-	renderer: Renderer<T>;
-	// TODO: can we remove this reference somehow???:
-	parent: Node1<T> | undefined;
-	value: Array<T | string> | T | string | undefined;
-	ctx: Context<T> | undefined;
-	children:
-		| Array<Node1<T> | string | undefined>
-		| Node1<T>
-		| string
-		| undefined;
-	keyedChildren: Map<unknown, Node1<T>> | undefined;
-	scope: unknown;
-	// host node related
-	// dirtyStart: number | undefined;
-	// dirtyEnd: number | undefined;
-	iterator: Iterator<T> | ChildIterator | undefined;
-	// promise related props
-	onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
-	// component promise related props
-	oldResult: Promise<undefined> | undefined;
-	inflightPending: Promise<undefined> | undefined;
-	enqueuedPending: Promise<undefined> | undefined;
-	inflightResult: Promise<undefined> | undefined;
-	enqueuedResult: Promise<undefined> | undefined;
-	onProps: ((props: any) => unknown) | undefined;
-	provisions: Map<unknown, any> | undefined;
-	constructor(element: Element, renderer: Renderer<T>, parent?: Node1<T>) {
-		this.element = element;
-		this.renderer = renderer;
-		this.parent = parent;
-		this.children = [];
-	}
-}
-
-// TODO: planned functions for the big refactor
-// create
-// TODO: part of me thinks we should rename update. maybe render?
-// update
-// updateSelf (component node only, run/step)
-// updateChildren
-// TODO: does separating update and commit actually make things faster?
-// commit
-// commitSelf (host node only)
-// commitChildren
-// unmount
-// unmountChildren
-// catch
-// catchSelf (component node only)
-abstract class ParentNode<T> {
-	// flags
-	flags = flags.Initial;
-	// TODO: reimplement these
-	// dirtyStart: number | undefined;
-	// dirtyEnd: number | undefined;
-	abstract readonly tag: Tag;
+	tag: Tag;
 	props: any;
-	readonly key: Key;
+	key: Key;
 	value: Array<T | string> | T | string | undefined;
+	// TODO: delete this property?
+	childValues: Array<T | string> = [];
 	scope: unknown;
 	ref: Function | undefined;
-	abstract parent: ParentNode<T> | undefined;
-	private children:
-		| Array<ParentNode<T> | string | undefined>
-		| ParentNode<T>
-		| string
-		| undefined;
-	private keyedChildren: Map<unknown, ParentNode<T>> | undefined;
-	abstract readonly renderer: Renderer<T>;
-	// When children update asynchronously, we race their result against the next
-	// update of children. The onNewResult property is set to the resolve
-	// function of the promise which the current update is raced against.
-	private onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
+	parent: Node<T> | undefined;
+	children: Array<Node<T> | string | undefined> | Node<T> | string | undefined;
+	keyedChildren: Map<unknown, Node<T>> | undefined;
+	renderer!: Renderer<T>;
+	onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
 	ctx: Context | undefined;
 	schedules: Set<(value: unknown) => unknown> | undefined;
 	cleanups: Set<(value: unknown) => unknown> | undefined;
-	// TODO: this is a propery that exists bcause of the rare edge case where a
-	// child throws and triggers another updateChildren on this node, but that
-	// updateChildren returns earlier than the currently executing
-	// updateChildren. Figure out a way to not need it.
-	private clock = 0;
+	iterator: Iterator<T> | ChildIterator | undefined;
+	// component specific
+	oldResult: MaybePromise<undefined>;
+	inflightPending: MaybePromise<undefined>;
+	enqueuedPending: MaybePromise<undefined>;
+	inflightResult: MaybePromise<undefined>;
+	enqueuedResult: MaybePromise<undefined>;
+	onProps: ((props: any) => unknown) | undefined;
+	provisions: Map<unknown, any> | undefined;
+	// TODO: delete this
+	clock = 0;
+	constructor(
+		tag: Tag,
+		props: any,
+		renderer: Renderer<T>,
+		parent: Node<T> | undefined,
+		key: unknown,
+		scope: unknown,
+	) {
+		this.tag = tag;
+		this.key = key;
+		this.parent = parent;
+		this.renderer = renderer;
+		if (typeof tag === "function") {
+			this.ctx = new Context(this as any, parent!.ctx);
+		} else {
+			this.ctx = parent && parent.ctx;
+		}
+		this.scope = scope;
+	}
+
 	update(props: any, ref?: Function): MaybePromise<undefined> {
 		this.props = props;
 		this.ref = ref;
 		this.flags |= flags.Updating;
+		if (typeof this.tag === "function") {
+			if (this.onProps === undefined) {
+				this.flags |= flags.Available;
+			} else {
+				this.onProps(this.props!);
+				this.onProps = undefined;
+			}
+
+			return this.run();
+		}
+
 		return this.updateChildren(this.props && this.props.children);
 	}
 
 	// TODO: reduce duplication and complexity of this method :P
-	protected updateChildren(children: Children): MaybePromise<undefined> {
+	updateChildren(children: Children): MaybePromise<undefined> {
+		if (typeof this.tag === "function" && isNonStringIterable(children)) {
+			return this.updateChildren(createElement(Fragment, null, children));
+		}
+
 		// TODO: get rid of this
 		const clock = this.clock++;
 		let scope: unknown;
@@ -289,18 +268,18 @@ abstract class ParentNode<T> {
 
 		let result: Promise<undefined> | undefined;
 		let newChildren:
-			| Array<ParentNode<T> | string | undefined>
-			| ParentNode<T>
+			| Array<Node<T> | string | undefined>
+			| Node<T>
 			| string
 			| undefined;
-		let keyedChildren: Map<unknown, ParentNode<T>> | undefined;
+		let keyedChildren: Map<unknown, Node<T>> | undefined;
 		// TODO: split this algorithm into two stages.
 		// Stage 1: Alignment
 		// Stage 2: Updating
 		let i = 0;
 		for (const child of flatten(children)) {
 			// Alignment
-			let node: ParentNode<T> | string | undefined;
+			let node: Node<T> | string | undefined;
 			if (Array.isArray(this.children)) {
 				node = this.children[i];
 			} else if (i === 0) {
@@ -434,7 +413,7 @@ abstract class ParentNode<T> {
 			} else {
 				// replace current node
 				let result1: Promise<undefined> | undefined;
-				let newNode: ParentNode<T> | string | undefined;
+				let newNode: Node<T> | string | undefined;
 				if (typeof child === "object") {
 					newNode = createNode(child, this.renderer, this, scope);
 					result1 = newNode.update(
@@ -454,12 +433,12 @@ abstract class ParentNode<T> {
 				} else {
 					const node1 = node;
 					if (typeof node1 === "object") {
-						(newNode as ParentNode<T>).value = node1.value;
+						(newNode as Node<T>).value = node1.value;
 						node1.schedule((value: any) => {
-							(newNode as ParentNode<T>).value = value;
+							(newNode as Node<T>).value = value;
 						});
 					} else {
-						(newNode as ParentNode<T>).value = node1;
+						(newNode as Node<T>).value = node1;
 					}
 
 					result1 = result1.then(() => {
@@ -481,7 +460,7 @@ abstract class ParentNode<T> {
 					keyedChildren = new Map();
 				}
 
-				keyedChildren.set(key, node as ParentNode<T>);
+				keyedChildren.set(key, node as Node<T>);
 			}
 
 			i++;
@@ -541,11 +520,89 @@ abstract class ParentNode<T> {
 		this.commit();
 	}
 
-	abstract commit(): MaybePromise<undefined>;
+	commit(): MaybePromise<undefined> {
+		const childValues = this.commitChildren();
+		if (this.tag === Fragment || typeof this.tag === "function") {
+			this.value = childValues.length > 1 ? childValues : childValues[0];
+			if (this.tag !== Fragment) {
+				if (isEventTarget(this.value)) {
+					this.ctx!.setDelegate(this.value);
+				} else if (childValues.length > 1) {
+					this.ctx!.setDelegates(childValues);
+				}
+			}
+		} else {
+			this.childValues = childValues;
+			try {
+				this.commitSelf();
+			} catch (err) {
+				if (this.parent === undefined) {
+					throw err;
+				}
+
+				return this.parent.catch(err);
+			}
+		}
+
+		if (this.schedules !== undefined && this.schedules.size > 0) {
+			// We have to clear the schedules set before calling each callback,
+			// because otherwise a callback which refreshes the component would cause
+			// a stack overflow.
+			const callbacks = Array.from(this.schedules);
+			this.schedules.clear();
+			for (const callback of callbacks) {
+				callback(this.value);
+			}
+		}
+
+		if (this.ref !== undefined) {
+			this.ref(this.value);
+		}
+
+		if (
+			!(this.flags & flags.Updating) &&
+			this.flags & flags.Dirty &&
+			this.parent !== undefined
+		) {
+			this.parent.commit();
+		}
+
+		this.flags &= ~flags.Updating;
+	}
+
+	commitSelf(): void {
+		if (this.iterator === undefined) {
+			const value = this.renderer.intrinsic(this.tag as string | symbol)(this);
+			if (!isIteratorOrAsyncIterator(value)) {
+				if (this.value === value) {
+					this.flags &= ~flags.Dirty;
+				} else {
+					this.flags |= flags.Dirty;
+				}
+
+				this.value = value;
+				return;
+			}
+
+			this.iterator = value;
+		}
+
+		const iteration = (this.iterator as Iterator<T>).next();
+		if (this.value === iteration.value) {
+			this.flags &= ~flags.Dirty;
+		} else {
+			this.flags |= flags.Dirty;
+		}
+
+		this.value = iteration.value;
+		if (iteration.done) {
+			this.flags |= flags.Finished;
+		}
+	}
 
 	// TODO: this is an inaccurate name for what this method does but changing it
 	// will make rebases harder
-	protected commitChildren(): Array<T | string> {
+	commitChildren(): Array<T | string> {
 		let buffer: string | undefined;
 		let childValues: Array<T | string> = [];
 		// TODO: put this behind a getter or something
@@ -598,9 +655,78 @@ abstract class ParentNode<T> {
 		return childValues;
 	}
 
-	abstract unmount(redundant?: boolean): MaybePromise<undefined>;
+	unmount(redundant = true): MaybePromise<undefined> {
+		if (this.cleanups !== undefined) {
+			for (const cleanup of this.cleanups) {
+				cleanup(this.value);
+			}
 
-	protected unmountChildren(redundant: boolean): void {
+			this.cleanups = undefined;
+		}
+
+		if (this.flags & flags.Unmounted) {
+			return;
+		}
+
+		// TODO: investigate why setting this flag after this block causes a test in races to fail
+		this.flags |= flags.Unmounted;
+		if (!(this.flags & flags.Finished)) {
+			this.flags |= flags.Finished;
+			if (this.tag === Fragment) {
+				// pass
+			} else if (typeof this.tag === "function") {
+				if (this.onProps !== undefined) {
+					this.onProps(this.props!);
+					this.onProps = undefined;
+				}
+
+				this.ctx!.clearEventListeners();
+				if (this.iterator !== undefined && this.iterator.return) {
+					let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
+					try {
+						iteration = (this.iterator as ChildIterator).return!();
+					} catch (err) {
+						return this.parent!.catch(err);
+					}
+
+					if (isPromiseLike(iteration)) {
+						return iteration.then(
+							() => {
+								this.flags &= ~flags.Updating;
+								this.unmountChildren(redundant);
+								return undefined; // void :(
+							},
+							(err) => this.parent!.catch(err),
+						);
+					}
+				}
+			} else {
+				if (redundant) {
+					this.flags |= flags.Redundant;
+				} else {
+					this.flags &= ~flags.Redundant;
+				}
+
+				redundant = this.tag === Portal;
+				if (this.iterator !== undefined && this.iterator.return) {
+					try {
+						this.iterator.return();
+					} catch (err) {
+						if (this.parent === undefined) {
+							throw err;
+						}
+
+						return this.parent.catch(err);
+					}
+				}
+			}
+		}
+
+		this.flags &= ~flags.Updating;
+		this.unmountChildren(redundant);
+	}
+
+	unmountChildren(redundant: boolean): void {
 		const children =
 			this.children === "undefined"
 				? []
@@ -617,9 +743,48 @@ abstract class ParentNode<T> {
 	catch(reason: any): MaybePromise<undefined> {
 		if (this.parent === undefined) {
 			throw reason;
+		} else if (
+			typeof this.tag !== "function" ||
+			this.iterator === undefined ||
+			this.iterator.throw === undefined ||
+			this.flags & flags.Finished
+		) {
+			return this.parent.catch(reason);
 		}
 
-		return this.parent.catch(reason);
+		// helps avoid deadlocks
+		if (this.onProps !== undefined) {
+			this.onProps(this.props!);
+			this.onProps = undefined;
+		}
+
+		let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
+		try {
+			iteration = (this.iterator as ChildIterator).throw!(reason);
+		} catch (err) {
+			return this.parent!.catch(err);
+		}
+
+		if (isPromiseLike(iteration)) {
+			const result = iteration.then(
+				(iteration) => {
+					if (iteration.done) {
+						this.flags |= flags.Finished;
+					}
+
+					return this.updateChildren(iteration.value);
+				},
+				(err) => this.parent!.catch(err),
+			);
+
+			return result;
+		}
+
+		if (iteration.done) {
+			this.flags |= flags.Finished;
+		}
+
+		return this.updateChildren(iteration.value);
 	}
 
 	schedule(callback: (value: unknown) => unknown): void {
@@ -637,220 +802,8 @@ abstract class ParentNode<T> {
 
 		this.cleanups.add(callback);
 	}
-}
 
-class FragmentNode<T> extends ParentNode<T> {
-	readonly tag: Fragment = Fragment;
-	readonly renderer: Renderer<T>;
-	readonly parent: ParentNode<T>;
-	readonly key: Key;
-	constructor(
-		tag: Fragment,
-		props: null,
-		renderer: Renderer<T>,
-		parent: ParentNode<T>,
-		key: unknown,
-		scope: unknown,
-	) {
-		super();
-		this.key = key;
-		this.parent = parent;
-		this.renderer = renderer;
-		this.ctx = parent.ctx;
-		this.scope = scope;
-	}
-
-	commit(): undefined {
-		const childValues = this.commitChildren();
-		this.value = childValues.length > 1 ? childValues : childValues[0];
-		if (this.schedules !== undefined && this.schedules.size > 0) {
-			// We have to clear the schedules set before calling each callback,
-			// because otherwise a callback which refreshes the component would cause
-			// a stack overflow.
-			const callbacks = Array.from(this.schedules);
-			this.schedules.clear();
-			for (const callback of callbacks) {
-				callback(this.value);
-			}
-		}
-
-		if (this.ref !== undefined) {
-			this.ref(this.value);
-		}
-
-		if (!(this.flags & flags.Updating) && this.flags & flags.Dirty) {
-			this.parent.commit();
-		}
-
-		this.flags &= ~flags.Updating;
-		return; // void :(
-	}
-
-	unmount(redundant = true): undefined {
-		if (this.flags & flags.Unmounted) {
-			return;
-		}
-
-		this.flags |= flags.Unmounted;
-		this.unmountChildren(redundant);
-	}
-}
-
-export class HostNode<T> extends ParentNode<T> {
-	readonly tag: string | symbol;
-	readonly renderer: Renderer<T>;
-	readonly parent: ParentNode<T> | undefined;
-	readonly key: Key;
-	value: T | undefined;
-	private iterator: Iterator<T> | undefined;
-	childValues: Array<T | string> = [];
-	constructor(
-		tag: string | symbol,
-		props: any,
-		renderer: Renderer<T>,
-		parent: ParentNode<T> | undefined,
-		key: unknown,
-		scope: unknown,
-	) {
-		super();
-		this.tag = tag;
-		this.key = key;
-		this.parent = parent;
-		this.renderer = renderer;
-		this.ctx = parent && parent.ctx;
-		this.scope = scope;
-	}
-
-	commit(): MaybePromise<undefined> {
-		this.childValues = this.commitChildren();
-		try {
-			this.commitSelf();
-		} catch (err) {
-			if (this.parent === undefined) {
-				throw err;
-			}
-
-			return this.parent.catch(err);
-		}
-
-		if (this.schedules !== undefined && this.schedules.size > 0) {
-			// We have to clear the schedules set before calling each callback,
-			// because otherwise a callback which refreshes the component would cause
-			// a stack overflow.
-			const callbacks = Array.from(this.schedules);
-			this.schedules.clear();
-			for (const callback of callbacks) {
-				callback(this.value);
-			}
-		}
-
-		if (this.ref !== undefined) {
-			this.ref(this.value);
-		}
-
-		if (
-			!(this.flags & flags.Updating) &&
-			this.flags & flags.Dirty &&
-			this.parent !== undefined
-		) {
-			this.parent.commit();
-		}
-
-		this.flags &= ~flags.Updating;
-	}
-
-	commitSelf(): void {
-		if (this.iterator === undefined) {
-			const value = this.renderer.intrinsic(this.tag)(this);
-			if (!isIteratorOrAsyncIterator(value)) {
-				if (this.value === value) {
-					this.flags &= ~flags.Dirty;
-				} else {
-					this.flags |= flags.Dirty;
-				}
-
-				this.value = value;
-				return;
-			}
-
-			this.iterator = value;
-		}
-
-		const iteration = this.iterator.next();
-		if (this.value === iteration.value) {
-			this.flags &= ~flags.Dirty;
-		} else {
-			this.flags |= flags.Dirty;
-		}
-
-		this.value = iteration.value;
-		if (iteration.done) {
-			this.flags |= flags.Finished;
-		}
-	}
-
-	unmount(redundant = true): MaybePromise<undefined> {
-		if (this.flags & flags.Unmounted) {
-			return;
-		} else if (!(this.flags & flags.Finished)) {
-			if (redundant) {
-				this.flags |= flags.Redundant;
-			} else {
-				this.flags &= ~flags.Redundant;
-			}
-
-			if (this.iterator !== undefined && this.iterator.return) {
-				try {
-					this.iterator.return();
-				} catch (err) {
-					if (this.parent === undefined) {
-						throw err;
-					}
-
-					return this.parent.catch(err);
-				}
-			}
-		}
-
-		this.flags |= flags.Finished | flags.Unmounted;
-		this.unmountChildren(this.tag === Portal);
-	}
-}
-
-class ComponentNode<T, TProps> extends ParentNode<T> {
-	readonly tag: Component<TProps>;
-	props: TProps;
-	readonly renderer: Renderer<T>;
-	readonly parent: ParentNode<T>;
-	readonly key: Key;
-	readonly ctx: Context<TProps>;
-	private iterator: ChildIterator | undefined;
-	private oldResult: MaybePromise<undefined>;
-	// TODO: explain these properties
-	private inflightPending: MaybePromise<undefined>;
-	private enqueuedPending: MaybePromise<undefined>;
-	private inflightResult: MaybePromise<undefined>;
-	private enqueuedResult: MaybePromise<undefined>;
-	private onProps: ((props: TProps) => unknown) | undefined;
-	private provisions: Map<unknown, any> | undefined;
-	constructor(
-		tag: Component,
-		props: TProps,
-		renderer: Renderer<T>,
-		parent: ParentNode<T>,
-		key: Key,
-		scope: unknown,
-	) {
-		super();
-		this.parent = parent;
-		this.renderer = renderer;
-		this.tag = tag;
-		this.key = key;
-		this.props = props;
-		this.ctx = new Context(this, parent.ctx);
-		this.scope = scope;
-	}
-
+	// Component Only METHODS
 	refresh(): MaybePromise<undefined> {
 		if (this.flags & (flags.Stepping | flags.Unmounted)) {
 			// TODO: we may want to log warnings when stuff like this happens
@@ -864,38 +817,10 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			this.onProps = undefined;
 		}
 
-		const result = this.run();
-		if (result === undefined) {
-			this.commit();
-			return;
-		}
-
-		return result.then(() => this.commit());
-	}
-
-	update(props: TProps, ref?: Function): MaybePromise<undefined> {
-		this.props = props;
-		this.ref = ref;
-		this.flags |= flags.Updating;
-		if (this.onProps === undefined) {
-			this.flags |= flags.Available;
-		} else {
-			this.onProps(this.props!);
-			this.onProps = undefined;
-		}
-
 		return this.run();
 	}
 
-	protected updateChildren(children: Children): MaybePromise<undefined> {
-		if (isNonStringIterable(children)) {
-			children = createElement(Fragment, null, children);
-		}
-
-		return super.updateChildren(children);
-	}
-
-	private run(): MaybePromise<undefined> {
+	run(): MaybePromise<undefined> {
 		if (this.inflightPending === undefined) {
 			const [pending, result] = this.step();
 			if (isPromiseLike(pending)) {
@@ -921,19 +846,19 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		return this.enqueuedResult;
 	}
 
-	private step(): [MaybePromise<undefined>, MaybePromise<undefined>] {
+	step(): [MaybePromise<undefined>, MaybePromise<undefined>] {
 		if (this.flags & flags.Finished) {
 			return [undefined, undefined];
 		}
 
 		this.flags |= flags.Stepping;
 		if (this.iterator === undefined) {
-			this.ctx.clearEventListeners();
+			this.ctx!.clearEventListeners();
 			let value: ChildIterator | PromiseLike<Child> | Child;
 			try {
-				value = this.tag.call(this.ctx, this.props!);
+				value = (this.tag as Component).call(this.ctx!, this.props!);
 			} catch (err) {
-				const caught = this.parent.catch(err);
+				const caught = this.parent!.catch(err);
 				return [undefined, caught];
 			}
 
@@ -947,7 +872,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 				); // void :(
 				const result = value1.then(
 					(child) => this.updateChildren(child),
-					(err) => this.parent.catch(err),
+					(err) => this.parent!.catch(err),
 				);
 				this.flags &= ~flags.Stepping;
 				return [pending, result];
@@ -965,9 +890,9 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		this.oldResult = undefined;
 		let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
 		try {
-			iteration = this.iterator.next(oldValue);
+			iteration = (this.iterator as ChildIterator).next(oldValue);
 		} catch (err) {
-			const caught = this.parent.catch(err);
+			const caught = this.parent!.catch(err);
 			return [caught, caught];
 		}
 
@@ -975,7 +900,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		if (isPromiseLike(iteration)) {
 			this.flags |= flags.AsyncGen;
 			iteration = iteration.catch((err) => {
-				const p = this.parent.catch(err);
+				const p = this.parent!.catch(err);
 				if (p === undefined) {
 					return {value: undefined, done: true};
 				}
@@ -1013,7 +938,7 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 		return [result, result];
 	}
 
-	private advance(): void {
+	advance(): void {
 		this.inflightPending = this.enqueuedPending;
 		this.inflightResult = this.enqueuedResult;
 		this.enqueuedPending = undefined;
@@ -1028,247 +953,56 @@ class ComponentNode<T, TProps> extends ParentNode<T> {
 			});
 		}
 	}
-
-	commit(): undefined {
-		const childValues = this.commitChildren();
-		this.value = childValues.length > 1 ? childValues : childValues[0];
-		if (this.schedules !== undefined && this.schedules.size > 0) {
-			// We have to clear the schedules set before calling each callback,
-			// because otherwise a callback which refreshes the component would cause
-			// a stack overflow.
-			const callbacks = Array.from(this.schedules);
-			this.schedules.clear();
-			for (const callback of callbacks) {
-				callback(this.value);
-			}
-		}
-
-		if (isEventTarget(this.value)) {
-			this.ctx.setDelegate(this.value);
-		} else if (childValues.length > 1) {
-			this.ctx.setDelegates(childValues);
-		}
-
-		if (this.ref !== undefined) {
-			this.ref(this.value);
-		}
-
-		if (!(this.flags & flags.Updating) && this.flags & flags.Dirty) {
-			this.parent.commit();
-		}
-
-		this.flags &= ~flags.Updating;
-		return; // void :(
-	}
-
-	unmount(redundant = true): MaybePromise<undefined> {
-		if (this.flags & flags.Unmounted) {
-			return;
-		}
-
-		this.flags &= ~flags.Updating;
-		this.flags |= flags.Unmounted;
-		this.ctx.clearEventListeners();
-		if (this.cleanups !== undefined) {
-			for (const cleanup of this.cleanups) {
-				cleanup(this.value);
-			}
-
-			this.cleanups = undefined;
-		}
-
-		if (!(this.flags & flags.Finished)) {
-			// helps avoid deadlocks
-			if (this.onProps !== undefined) {
-				this.onProps(this.props!);
-				this.onProps = undefined;
-			}
-
-			if (this.iterator !== undefined && this.iterator.return) {
-				let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
-				try {
-					iteration = this.iterator.return();
-				} catch (err) {
-					return this.parent.catch(err);
-				}
-
-				if (isPromiseLike(iteration)) {
-					return iteration.then(
-						() => void this.unmountChildren(redundant), // void :(
-						(err) => this.parent.catch(err),
-					);
-				}
-			}
-
-			this.flags |= flags.Finished;
-			this.unmountChildren(redundant);
-		}
-	}
-
-	catch(reason: any): MaybePromise<undefined> {
-		if (
-			this.iterator === undefined ||
-			this.iterator.throw === undefined ||
-			this.flags & flags.Finished
-		) {
-			return super.catch(reason);
-		}
-
-		// helps avoid deadlocks
-		if (this.onProps !== undefined) {
-			this.onProps(this.props!);
-			this.onProps = undefined;
-		}
-
-		let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
-		try {
-			iteration = this.iterator.throw(reason);
-		} catch (err) {
-			return this.parent.catch(err);
-		}
-
-		if (isPromiseLike(iteration)) {
-			const result = iteration.then(
-				(iteration) => {
-					if (iteration.done) {
-						this.flags |= flags.Finished;
-					}
-
-					return this.updateChildren(iteration.value);
-				},
-				(err) => this.parent.catch(err),
-			);
-
-			return result;
-		}
-
-		if (iteration.done) {
-			this.flags |= flags.Finished;
-		}
-
-		return this.updateChildren(iteration.value);
-	}
-
-	get(name: unknown): any {
-		for (
-			let parent: ParentNode<T> | undefined = this.parent;
-			parent !== undefined;
-			parent = parent.parent
-		) {
-			if (
-				// TODO: get rid of this instanceof
-				parent instanceof ComponentNode &&
-				parent.provisions !== undefined &&
-				parent.provisions.has(name)
-			) {
-				return parent.provisions.get(name);
-			}
-		}
-	}
-
-	set(name: unknown, value: any): void {
-		if (this.provisions === undefined) {
-			this.provisions = new Map();
-		}
-
-		this.provisions.set(name, value);
-	}
-
-	*[Symbol.iterator](): Generator<TProps> {
-		while (!(this.flags & flags.Unmounted)) {
-			if (this.flags & flags.Iterating) {
-				throw new Error("You must yield for each iteration of this.");
-			} else if (this.flags & flags.AsyncGen) {
-				throw new Error("Use for await...of in async generator components.");
-			}
-
-			this.flags |= flags.Iterating;
-			yield this.props!;
-		}
-	}
-
-	async *[Symbol.asyncIterator](): AsyncGenerator<TProps> {
-		do {
-			if (this.flags & flags.Iterating) {
-				throw new Error("You must yield for each iteration of this.");
-			} else if (this.flags & flags.SyncGen) {
-				throw new Error("Use for...of in sync generator components.");
-			}
-
-			this.flags |= flags.Iterating;
-			if (this.flags & flags.Available) {
-				this.flags &= ~flags.Available;
-				yield this.props!;
-			} else {
-				const props = await new Promise<TProps>(
-					(resolve) => (this.onProps = resolve),
-				);
-				if (!(this.flags & flags.Unmounted)) {
-					yield props;
-				}
-			}
-		} while (!(this.flags & flags.Unmounted));
-	}
 }
 
 function createNode<T>(
 	element: Element,
 	renderer: Renderer<T>,
-	parent?: ParentNode<T>,
+	parent?: Node<T>,
 	scope?: unknown,
-): ParentNode<T> {
-	if (element.tag === Fragment) {
-		return new FragmentNode(
-			element.tag,
-			null,
-			renderer,
-			parent!,
-			element.key,
-			scope,
-		);
-	} else if (typeof element.tag === "function") {
-		return new ComponentNode(
-			element.tag,
-			element.props,
-			renderer,
-			parent!,
-			element.key,
-			scope,
-		);
-	} else {
-		return new HostNode(
-			element.tag,
-			element.props,
-			renderer,
-			parent,
-			element.key,
-			scope,
-		);
-	}
+): Node<T> {
+	return new Node(
+		element.tag,
+		element.props,
+		renderer,
+		parent,
+		element.key,
+		scope,
+	);
 }
 
 export interface ProvisionMap {}
 
-const componentNodes = new WeakMap<Context<any>, ComponentNode<any, any>>();
+const componentNodes = new WeakMap<Context<any>, Node<any>>();
 export class Context<TProps = any> extends CrankEventTarget {
-	constructor(host: ComponentNode<any, TProps>, parent?: Context<TProps>) {
+	constructor(node: Node<any>, parent?: Context<TProps>) {
 		super(parent);
-		componentNodes.set(this, host);
+		componentNodes.set(this, node);
 	}
 
-	/* eslint-disable no-dupe-class-members */
-	get<T extends keyof ProvisionMap>(name: T): ProvisionMap[T];
-	get(name: any): any;
-	get(name: any) {
-		return componentNodes.get(this)!.get(name);
+	get<T extends keyof ProvisionMap>(key: T): ProvisionMap[T];
+	get(key: unknown): any {
+		const node = componentNodes.get(this)!;
+		for (
+			let parent: Node<any> | undefined = node.parent;
+			parent !== undefined;
+			parent = parent.parent
+		) {
+			if (parent.provisions !== undefined && parent.provisions.has(key)) {
+				return parent.provisions.get(key)!;
+			}
+		}
 	}
 
-	set<T extends keyof ProvisionMap>(name: T, value: ProvisionMap[T]): void;
-	set(name: any, value: any): void;
-	set(name: any, value: any) {
-		componentNodes.get(this)!.set(name, value);
+	set<T extends keyof ProvisionMap>(key: T, value: ProvisionMap[T]): void;
+	set(key: unknown, value: any): void {
+		const node = componentNodes.get(this)!;
+		if (node.provisions === undefined) {
+			node.provisions = new Map();
+		}
+
+		node.provisions.set(key, value);
 	}
-	/* eslint-enable no-dupe-class-members */
 
 	get props(): TProps {
 		return componentNodes.get(this)!.props;
@@ -1278,12 +1012,42 @@ export class Context<TProps = any> extends CrankEventTarget {
 		return componentNodes.get(this)!.value;
 	}
 
-	[Symbol.iterator](): Generator<TProps> {
-		return componentNodes.get(this)![Symbol.iterator]();
+	*[Symbol.iterator](): Generator<TProps> {
+		const node = componentNodes.get(this)!;
+		while (!(node.flags & flags.Unmounted)) {
+			if (node.flags & flags.Iterating) {
+				throw new Error("You must yield for each iteration of this.");
+			} else if (node.flags & flags.AsyncGen) {
+				throw new Error("Use for await...of in async generator components.");
+			}
+
+			node.flags |= flags.Iterating;
+			yield node.props!;
+		}
 	}
 
-	[Symbol.asyncIterator](): AsyncGenerator<TProps> {
-		return componentNodes.get(this)![Symbol.asyncIterator]();
+	async *[Symbol.asyncIterator](): AsyncGenerator<TProps> {
+		const node = componentNodes.get(this)!;
+		do {
+			if (node.flags & flags.Iterating) {
+				throw new Error("You must yield for each iteration of this.");
+			} else if (node.flags & flags.SyncGen) {
+				throw new Error("Use for...of in sync generator components.");
+			}
+
+			node.flags |= flags.Iterating;
+			if (node.flags & flags.Available) {
+				node.flags &= ~flags.Available;
+				yield node.props!;
+			} else {
+				const props = await new Promise<any>(
+					(resolve) => (node.onProps = resolve),
+				);
+				if (!(node.flags & flags.Unmounted)) {
+					yield props;
+				}
+			}
+		} while (!(node.flags & flags.Unmounted));
 	}
 
 	refresh(): Promise<undefined> | undefined {
@@ -1331,13 +1095,13 @@ const defaultEnv: Environment<any> = {
 	[Portal](): never {
 		throw new Error("Environment did not provide an intrinsic for Portal");
 	},
-	[Raw](node: HostNode<any>): any {
+	[Raw](node: Node<any>): any {
 		return node.props.value;
 	},
 };
 
 export class Renderer<T> {
-	private cache = new WeakMap<object, HostNode<T>>();
+	private cache = new WeakMap<object, Node<T>>();
 	private defaultIntrinsics: Record<string, Intrinsic<T>> = {};
 	private env: Environment<T> = {...defaultEnv};
 	private scoper: Scoper = {};
@@ -1387,11 +1151,11 @@ export class Renderer<T> {
 				? child
 				: createElement(Portal, {root}, child);
 
-		let rootNode: HostNode<T> | undefined =
+		let rootNode: Node<T> | undefined =
 			root != null ? this.cache.get(root) : undefined;
 
 		if (rootNode === undefined) {
-			rootNode = createNode(portal, this) as HostNode<T>;
+			rootNode = createNode(portal, this);
 			if (root !== undefined && child != null) {
 				this.cache.set(root, rootNode);
 			}
@@ -1407,7 +1171,7 @@ export class Renderer<T> {
 					rootNode!.unmount();
 				}
 
-				return rootNode!.value!;
+				return rootNode!.value! as MaybePromise<T>;
 			});
 		}
 
@@ -1416,7 +1180,7 @@ export class Renderer<T> {
 			rootNode.unmount();
 		}
 
-		return rootNode.value!;
+		return rootNode.value! as MaybePromise<T>;
 	}
 
 	// TODO: Ideally, the following methods should not be exposed outside this module
