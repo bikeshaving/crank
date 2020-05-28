@@ -2,8 +2,8 @@ import {
 	Default,
 	Environment,
 	flags,
-	HostNode,
 	Intrinsic,
+	Node as CrankNode,
 	Raw,
 	Renderer,
 	Scopes,
@@ -169,7 +169,7 @@ export const env: Environment<Element> = {
 		}
 
 		let cachedEl: Element | undefined;
-		return function* defaultDOM(node: HostNode<Element>): Generator<Element> {
+		return function* defaultDOM(node: CrankNode<Element>): Generator<Element> {
 			const ns =
 				tag === "svg" ? SVG_NAMESPACE : (node.scope as string | undefined);
 			if (cachedEl === undefined) {
@@ -210,7 +210,7 @@ export const env: Environment<Element> = {
 			}
 		};
 	},
-	*[Raw](node: HostNode<Element>): Generator<Element> {
+	*[Raw](node: CrankNode<Element>): Generator<Element> {
 		while (true) {
 			// TODO: cache fragment for two equal strings
 			const value = node.props.value;
@@ -223,7 +223,7 @@ export const env: Environment<Element> = {
 			}
 		}
 	},
-	*[Portal](node: HostNode<Element>): Generator<Element> {
+	*[Portal](node: CrankNode<Element>): Generator<Element> {
 		let root = node.props.root;
 		try {
 			while (true) {
