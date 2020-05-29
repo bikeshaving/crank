@@ -193,9 +193,9 @@ export class Node<TValue = any> {
 	key: Key;
 	ref: Function | undefined;
 	renderer: Renderer<TValue>;
+	parent: Node<TValue> | undefined;
 	scope: unknown;
 	value: Array<TValue | string> | TValue | string | undefined;
-	parent: Node<TValue> | undefined;
 	children:
 		| Array<Node<TValue> | string | undefined>
 		| Node<TValue>
@@ -290,7 +290,7 @@ function updateChildren(
 			children = createElement(Fragment, null, children);
 		}
 	} else if (node.tag !== Fragment) {
-		scope = node.renderer.scope(node.tag, node.props);
+		scope = getScope(node.renderer, node.tag, node.props);
 	}
 
 	let result: Promise<undefined> | undefined;
@@ -428,7 +428,7 @@ function updateChildren(
 					result = result === undefined ? result1 : result.then(() => result1);
 				}
 			} else if (typeof child === "string") {
-				const text = node.renderer.text(child);
+				const text = getText(node.renderer, child);
 				oldChild = text;
 			} else {
 				oldChild = undefined;
@@ -445,7 +445,7 @@ function updateChildren(
 					(child as Element).ref,
 				);
 			} else if (typeof child === "string") {
-				newChild = node.renderer.text(child);
+				newChild = getText(node.renderer, child);
 			} else {
 				newChild = undefined;
 			}
@@ -555,9 +555,10 @@ function commit<TValue>(node: Node<TValue>): MaybePromise<undefined> {
 	} else if (node.tag !== Fragment) {
 		try {
 			if (node.iterator === undefined) {
-				const value = node.renderer.intrinsic(node.tag as string | symbol)(
-					node,
-				);
+				const value = getIntrinsic(
+					node.renderer,
+					node.tag as string | symbol,
+				)(node);
 				if (!isIteratorOrAsyncIterator(value)) {
 					if (oldValue === value) {
 						node.flags &= ~flags.Dirty;
@@ -1214,37 +1215,44 @@ export class Renderer<TValue> {
 
 		return rootNode.value! as MaybePromise<TValue>;
 	}
+}
 
-	// TODO: Ideally, the following methods should not be exposed outside this module
-	intrinsic(tag: string | symbol): Intrinsic<TValue> {
-		if (this.__env__[tag as any]) {
-			return this.__env__[tag as any];
-		} else if (this.__defaults__[tag as any] !== undefined) {
-			return this.__defaults__[tag as any];
-		}
-
-		const intrinsic = this.__env__[Default]!(tag);
-		this.__defaults__[tag as any] = intrinsic;
-		return intrinsic;
+// TODO: Ideally, the following methods should not be exposed outside this module
+function getIntrinsic<TValue>(
+	renderer: Renderer<TValue>,
+	tag: string | symbol,
+): Intrinsic<TValue> {
+	if (renderer.__env__[tag as any]) {
+		return renderer.__env__[tag as any];
+	} else if (renderer.__defaults__[tag as any] !== undefined) {
+		return renderer.__defaults__[tag as any];
 	}
 
-	scope(tag: string | symbol, props: any): unknown {
-		if (tag in this.__scoper__) {
-			if (typeof this.__scoper__[tag as any] === "function") {
-				return (this.__scoper__[tag as any] as Function)(props);
-			}
+	const intrinsic = renderer.__env__[Default]!(tag);
+	renderer.__defaults__[tag as any] = intrinsic;
+	return intrinsic;
+}
 
-			return this.__scoper__[tag as any];
-		} else if (typeof this.__scoper__[Default] === "function") {
-			return this.__scoper__[Default]!(tag, props);
-		}
+function getText(renderer: Renderer<any>, text: string): string {
+	if (renderer.__env__[Text] !== undefined) {
+		return renderer.__env__[Text]!(text);
 	}
 
-	text(text: string): string {
-		if (this.__env__[Text] !== undefined) {
-			return this.__env__[Text]!(text);
+	return text;
+}
+
+function getScope(
+	renderer: Renderer<any>,
+	tag: string | symbol,
+	props: any,
+): unknown {
+	if (tag in renderer.__scoper__) {
+		if (typeof renderer.__scoper__[tag as any] === "function") {
+			return (renderer.__scoper__[tag as any] as Function)(props);
 		}
 
-		return text;
+		return renderer.__scoper__[tag as any];
+	} else if (typeof renderer.__scoper__[Default] === "function") {
+		return renderer.__scoper__[Default]!(tag, props);
 	}
 }
