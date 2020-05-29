@@ -186,19 +186,23 @@ function* flatten(children: Children): Generator<NormalizedChild> {
 	yield normalize(children);
 }
 
-export class Node<T = any> {
+export class Node<TValue = any> {
 	flags = flags.Initial;
 	tag: Tag;
 	props: any;
 	key: Key;
 	ref: Function | undefined;
-	renderer: Renderer<T>;
+	renderer: Renderer<TValue>;
 	scope: unknown;
-	value: Array<T | string> | T | string | undefined;
-	parent: Node<T> | undefined;
-	children: Array<Node<T> | string | undefined> | Node<T> | string | undefined;
-	keyedChildren: Map<unknown, Node<T>> | undefined;
-	iterator: Iterator<T> | ChildIterator | undefined;
+	value: Array<TValue | string> | TValue | string | undefined;
+	parent: Node<TValue> | undefined;
+	children:
+		| Array<Node<TValue> | string | undefined>
+		| Node<TValue>
+		| string
+		| undefined;
+	keyedChildren: Map<unknown, Node<TValue>> | undefined;
+	iterator: Iterator<TValue> | ChildIterator | undefined;
 	onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
 	ctx: Context | undefined;
 	schedules: Set<(value: unknown) => unknown> | undefined;
@@ -215,8 +219,8 @@ export class Node<T = any> {
 	enqueuedResult: MaybePromise<undefined>;
 	constructor(
 		element: Element,
-		renderer: Renderer<T>,
-		parent?: Node<T> | undefined,
+		renderer: Renderer<TValue>,
+		parent?: Node<TValue> | undefined,
 		scope?: unknown,
 	) {
 		this.tag = element.tag;
@@ -248,7 +252,7 @@ export class Node<T = any> {
 		// this.onProps = undefined;
 	}
 
-	get childValues(): Array<T | string> {
+	get childValues(): Array<TValue | string> {
 		if (this.value === undefined) {
 			return [];
 		} else if (Array.isArray(this.value)) {
@@ -268,7 +272,7 @@ function update(
 	node.ref = ref;
 	node.flags |= flags.Updating;
 	if (typeof node.tag === "function") {
-		return refresh(node);
+		return updateComponent(node);
 	}
 
 	return updateChildren(node, props.children);
@@ -279,13 +283,13 @@ function updateChildren(
 	node: Node,
 	children: Children,
 ): MaybePromise<undefined> {
-	if (typeof node.tag === "function" && isNonStringIterable(children)) {
-		return updateChildren(node, createElement(Fragment, null, children));
-	}
-
 	const clock = node.clock++;
 	let scope: unknown;
-	if (typeof node.tag !== "function") {
+	if (typeof node.tag === "function") {
+		if (isNonStringIterable(children)) {
+			children = createElement(Fragment, null, children);
+		}
+	} else if (node.tag !== Fragment) {
 		scope = node.renderer.scope(node.tag, node.props);
 	}
 
@@ -539,7 +543,7 @@ function updateChildren(
 	commit(node);
 }
 
-function commit<T>(node: Node<T>): MaybePromise<undefined> {
+function commit<TValue>(node: Node<TValue>): MaybePromise<undefined> {
 	const oldValue = node.value;
 	prepare(node);
 	if (typeof node.tag === "function") {
@@ -568,7 +572,7 @@ function commit<T>(node: Node<T>): MaybePromise<undefined> {
 				node.iterator = value;
 			}
 
-			const iteration = (node.iterator as Iterator<T>).next();
+			const iteration = (node.iterator as Iterator<TValue>).next();
 			if (oldValue === iteration.value) {
 				node.flags &= ~flags.Dirty;
 			} else {
@@ -614,7 +618,7 @@ function commit<T>(node: Node<T>): MaybePromise<undefined> {
 	node.flags &= ~flags.Updating;
 }
 
-function prepare<T>(node: Node<T>): void {
+function prepare<TValue>(node: Node<TValue>): void {
 	if (node.children === undefined) {
 		node.flags |= flags.Dirty;
 		node.value = undefined;
@@ -645,7 +649,7 @@ function prepare<T>(node: Node<T>): void {
 	}
 
 	let buffer: string | undefined;
-	let values: Array<T | string> = [];
+	let values: Array<TValue | string> = [];
 	for (const child of node.children) {
 		if (typeof child === "object") {
 			if (child.flags & (flags.Dirty | flags.Moved)) {
@@ -840,7 +844,7 @@ function cleanup(node: Node, callback: (value: unknown) => unknown): void {
 	node.cleanups.add(callback);
 }
 
-function refresh(node: Node): MaybePromise<undefined> {
+function updateComponent(node: Node): MaybePromise<undefined> {
 	if (node.flags & (flags.Stepping | flags.Unmounted)) {
 		// TODO: we may want to log warnings when stuff like node happens
 		return;
@@ -882,8 +886,8 @@ function run(node: Node): MaybePromise<undefined> {
 	return node.enqueuedResult;
 }
 
-function step<T>(
-	node: Node<T>,
+function step<TValue>(
+	node: Node<TValue>,
 ): [MaybePromise<undefined>, MaybePromise<undefined>] {
 	if (node.flags & flags.Finished) {
 		return [undefined, undefined];
@@ -921,7 +925,9 @@ function step<T>(
 		}
 	}
 
-	let oldValue: MaybePromise<Array<T | string> | T | string | undefined>;
+	let oldValue: MaybePromise<
+		Array<TValue | string> | TValue | string | undefined
+	>;
 	if (node.oldResult === undefined) {
 		oldValue = node.value;
 	} else {
@@ -1004,7 +1010,7 @@ export class Context<TProps = any> extends CrankEventTarget {
 		componentNodes.set(this, node);
 	}
 
-	get<T extends keyof ProvisionMap>(key: T): ProvisionMap[T];
+	get<TKey extends keyof ProvisionMap>(key: TKey): ProvisionMap[TKey];
 	get(key: unknown): any {
 		const node = componentNodes.get(this)!;
 		for (
@@ -1018,7 +1024,10 @@ export class Context<TProps = any> extends CrankEventTarget {
 		}
 	}
 
-	set<T extends keyof ProvisionMap>(key: T, value: ProvisionMap[T]): void;
+	set<TKey extends keyof ProvisionMap>(
+		key: TKey,
+		value: ProvisionMap[TKey],
+	): void;
 	set(key: unknown, value: any): void {
 		const node = componentNodes.get(this)!;
 		if (node.provisions === undefined) {
@@ -1076,7 +1085,7 @@ export class Context<TProps = any> extends CrankEventTarget {
 
 	refresh(): Promise<undefined> | undefined {
 		const node = componentNodes.get(this)!;
-		return refresh(node);
+		return updateComponent(node);
 	}
 
 	schedule(callback: (value: unknown) => unknown): void {
@@ -1101,14 +1110,14 @@ export interface Scoper {
 	[tag: string]: unknown;
 }
 
-export interface Environment<T> {
-	[Default]?(tag: string | symbol): Intrinsic<T>;
+export interface Environment<TValue> {
+	[Default]?(tag: string | symbol): Intrinsic<TValue>;
 	[Text]?(text: string): string;
 	[Scopes]?: Scoper;
-	[tag: string]: Intrinsic<T>;
+	[tag: string]: Intrinsic<TValue>;
 	// TODO: uncomment
-	// [Portal]?: Intrinsic<T>;
-	// [Raw]?: Intrinsic<T>;
+	// [Portal]?: Intrinsic<TValue>;
+	// [Raw]?: Intrinsic<TValue>;
 }
 
 const defaultEnv: Environment<any> = {
@@ -1123,29 +1132,29 @@ const defaultEnv: Environment<any> = {
 	},
 };
 
-export class Renderer<T> {
-	private cache = new WeakMap<object, Node<T>>();
-	private defaultIntrinsics: Record<string, Intrinsic<T>> = {};
-	private env: Environment<T> = {...defaultEnv};
-	private scoper: Scoper = {};
-	constructor(env?: Environment<T>) {
+export class Renderer<TValue> {
+	__cache__ = new WeakMap<object, Node<TValue>>();
+	__defaults__: Record<string, Intrinsic<TValue>> = {};
+	__env__: Environment<TValue> = {...defaultEnv};
+	__scoper__: Scoper = {};
+	constructor(env?: Environment<TValue>) {
 		this.extend(env);
 	}
 
-	extend(env?: Environment<T>): void {
+	extend(env?: Environment<TValue>): void {
 		if (env == null) {
 			return;
 		}
 
 		for (const tag of Object.keys(env)) {
 			if (env[tag] != null) {
-				this.env[tag] = env[tag]!;
+				this.__env__[tag] = env[tag]!;
 			}
 		}
 
 		for (const tag of Object.getOwnPropertySymbols(env)) {
 			if (env[tag as any] != null && tag !== Scopes) {
-				this.env[tag as any] = env[tag as any]!;
+				this.__env__[tag as any] = env[tag as any]!;
 			}
 		}
 
@@ -1153,19 +1162,19 @@ export class Renderer<T> {
 			const scoper = env[Scopes]!;
 			for (const tag of Object.keys(scoper)) {
 				if (scoper[tag] != null) {
-					this.scoper[tag] = scoper[tag]!;
+					this.__scoper__[tag] = scoper[tag]!;
 				}
 			}
 
 			for (const tag of Object.getOwnPropertySymbols(env)) {
 				if (scoper[tag as any] != null) {
-					this.scoper[tag as any] = scoper[tag as any]!;
+					this.__scoper__[tag as any] = scoper[tag as any]!;
 				}
 			}
 		}
 	}
 
-	render(children: Children, root?: object): MaybePromise<T> {
+	render(children: Children, root?: object): MaybePromise<TValue> {
 		const child: Child = isNonStringIterable(children)
 			? createElement(Fragment, null, children)
 			: children;
@@ -1174,16 +1183,16 @@ export class Renderer<T> {
 				? child
 				: createElement(Portal, {root}, child);
 
-		let rootNode: Node<T> | undefined =
-			root != null ? this.cache.get(root) : undefined;
+		let rootNode: Node<TValue> | undefined =
+			root != null ? this.__cache__.get(root) : undefined;
 
 		if (rootNode === undefined) {
 			rootNode = new Node(portal, this);
 			if (root !== undefined && child != null) {
-				this.cache.set(root, rootNode);
+				this.__cache__.set(root, rootNode);
 			}
 		} else if (root != null && child == null) {
-			this.cache.delete(root);
+			this.__cache__.delete(root);
 		}
 
 		const result = update(rootNode, portal.props);
@@ -1194,7 +1203,7 @@ export class Renderer<T> {
 					unmount(rootNode!);
 				}
 
-				return rootNode!.value! as MaybePromise<T>;
+				return rootNode!.value! as MaybePromise<TValue>;
 			});
 		}
 
@@ -1203,37 +1212,37 @@ export class Renderer<T> {
 			unmount(rootNode);
 		}
 
-		return rootNode.value! as MaybePromise<T>;
+		return rootNode.value! as MaybePromise<TValue>;
 	}
 
 	// TODO: Ideally, the following methods should not be exposed outside this module
-	intrinsic(tag: string | symbol): Intrinsic<T> {
-		if (this.env[tag as any]) {
-			return this.env[tag as any];
-		} else if (this.defaultIntrinsics[tag as any] !== undefined) {
-			return this.defaultIntrinsics[tag as any];
+	intrinsic(tag: string | symbol): Intrinsic<TValue> {
+		if (this.__env__[tag as any]) {
+			return this.__env__[tag as any];
+		} else if (this.__defaults__[tag as any] !== undefined) {
+			return this.__defaults__[tag as any];
 		}
 
-		const intrinsic = this.env[Default]!(tag);
-		this.defaultIntrinsics[tag as any] = intrinsic;
+		const intrinsic = this.__env__[Default]!(tag);
+		this.__defaults__[tag as any] = intrinsic;
 		return intrinsic;
 	}
 
 	scope(tag: string | symbol, props: any): unknown {
-		if (tag in this.scoper) {
-			if (typeof this.scoper[tag as any] === "function") {
-				return (this.scoper[tag as any] as Function)(props);
+		if (tag in this.__scoper__) {
+			if (typeof this.__scoper__[tag as any] === "function") {
+				return (this.__scoper__[tag as any] as Function)(props);
 			}
 
-			return this.scoper[tag as any];
-		} else if (typeof this.scoper[Default] === "function") {
-			return this.scoper[Default]!(tag, props);
+			return this.__scoper__[tag as any];
+		} else if (typeof this.__scoper__[Default] === "function") {
+			return this.__scoper__[Default]!(tag, props);
 		}
 	}
 
 	text(text: string): string {
-		if (this.env[Text] !== undefined) {
-			return this.env[Text]!(text);
+		if (this.__env__[Text] !== undefined) {
+			return this.__env__[Text]!(text);
 		}
 
 		return text;
