@@ -191,21 +191,21 @@ export class Node<T> {
 	tag: Tag;
 	props: any;
 	key: Key;
-	value: Array<T | string> | T | string | undefined;
-	// TODO: delete this property?
-	childValues: Array<T | string> = [];
-	scope: unknown;
 	ref: Function | undefined;
+	renderer: Renderer<T>;
+	scope: unknown;
+	value: Array<T | string> | T | string | undefined;
 	parent: Node<T> | undefined;
 	children: Array<Node<T> | string | undefined> | Node<T> | string | undefined;
 	keyedChildren: Map<unknown, Node<T>> | undefined;
-	renderer!: Renderer<T>;
+	iterator: Iterator<T> | ChildIterator | undefined;
 	onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
 	ctx: Context | undefined;
 	schedules: Set<(value: unknown) => unknown> | undefined;
 	cleanups: Set<(value: unknown) => unknown> | undefined;
-	iterator: Iterator<T> | ChildIterator | undefined;
-	// component specific
+	// TODO: delete this
+	clock: number;
+	// TODO: component specific. Move to Context or helper object?
 	oldResult: MaybePromise<undefined>;
 	inflightPending: MaybePromise<undefined>;
 	enqueuedPending: MaybePromise<undefined>;
@@ -213,26 +213,39 @@ export class Node<T> {
 	enqueuedResult: MaybePromise<undefined>;
 	onProps: ((props: any) => unknown) | undefined;
 	provisions: Map<unknown, any> | undefined;
-	// TODO: delete this
-	clock = 0;
 	constructor(
-		tag: Tag,
-		props: any,
+		element: Element,
 		renderer: Renderer<T>,
-		parent: Node<T> | undefined,
-		key: unknown,
-		scope: unknown,
+		parent?: Node<T> | undefined,
+		scope?: unknown,
 	) {
-		this.tag = tag;
-		this.key = key;
+		this.tag = element.tag;
+		this.key = element.key;
 		this.parent = parent;
 		this.renderer = renderer;
-		if (typeof tag === "function") {
+		if (typeof this.tag === "function") {
 			this.ctx = new Context(this as any, parent!.ctx);
 		} else {
 			this.ctx = parent && parent.ctx;
 		}
+
 		this.scope = scope;
+		this.value = undefined;
+		this.children = undefined;
+		this.keyedChildren = undefined;
+		this.iterator = undefined;
+		this.clock = 0;
+		// TODO: group these properties or something
+		// this.onNewResult = undefined;
+		// this.schedules = undefined;
+		// this.cleanups = undefined;
+		// this.provisions = undefined;
+		// this.inflightPending = undefined;
+		// this.inflightResult = undefined;
+		// this.enqueuedPending = undefined;
+		// this.enqueuedResult = undefined;
+		// this.oldResult = undefined;
+		// this.onProps = undefined;
 	}
 
 	update(props: any, ref?: Function): MaybePromise<undefined> {
@@ -240,14 +253,7 @@ export class Node<T> {
 		this.ref = ref;
 		this.flags |= flags.Updating;
 		if (typeof this.tag === "function") {
-			if (this.onProps === undefined) {
-				this.flags |= flags.Available;
-			} else {
-				this.onProps(this.props!);
-				this.onProps = undefined;
-			}
-
-			return this.run();
+			return this.refresh();
 		}
 
 		return this.updateChildren(this.props && this.props.children);
@@ -312,7 +318,7 @@ export class Node<T> {
 					}
 
 					if (typeof child === "object") {
-						node = createNode(child, this.renderer, this, scope);
+						node = new Node(child, this.renderer, this, scope);
 					} else {
 						node = child;
 					}
@@ -330,7 +336,7 @@ export class Node<T> {
 							continue;
 						}
 
-						node = createNode(child as Element, this.renderer, this, scope);
+						node = new Node(child as Element, this.renderer, this, scope);
 					} else {
 						this.keyedChildren!.delete(key);
 						node.flags |= flags.Moved;
@@ -350,7 +356,7 @@ export class Node<T> {
 						continue;
 					}
 
-					keyedNode = createNode(child as Element, this.renderer, this, scope);
+					keyedNode = new Node(child as Element, this.renderer, this, scope);
 					i--;
 				} else {
 					this.keyedChildren!.delete(key);
@@ -383,7 +389,7 @@ export class Node<T> {
 						newChildren.push(undefined);
 						continue;
 					} else if (typeof child === "object") {
-						node = createNode(child, this.renderer, this, scope);
+						node = new Node(child, this.renderer, this, scope);
 					} else {
 						node = child;
 					}
@@ -415,7 +421,7 @@ export class Node<T> {
 				let result1: Promise<undefined> | undefined;
 				let newNode: Node<T> | string | undefined;
 				if (typeof child === "object") {
-					newNode = createNode(child, this.renderer, this, scope);
+					newNode = new Node(child, this.renderer, this, scope);
 					result1 = newNode.update(
 						(child as Element).props,
 						(child as Element).ref,
@@ -520,21 +526,56 @@ export class Node<T> {
 		this.commit();
 	}
 
-	commit(): MaybePromise<undefined> {
-		const childValues = this.commitChildren();
-		if (this.tag === Fragment || typeof this.tag === "function") {
-			this.value = childValues.length > 1 ? childValues : childValues[0];
-			if (this.tag !== Fragment) {
-				if (isEventTarget(this.value)) {
-					this.ctx!.setDelegate(this.value);
-				} else if (childValues.length > 1) {
-					this.ctx!.setDelegates(childValues);
-				}
-			}
+	get childValues(): Array<T | string> {
+		if (this.value === undefined) {
+			return [];
+		} else if (Array.isArray(this.value)) {
+			return this.value;
 		} else {
-			this.childValues = childValues;
+			return [this.value];
+		}
+	}
+
+	commit(): MaybePromise<undefined> {
+		const oldValue = this.value;
+		this.prepare();
+		if (typeof this.tag === "function") {
+			if (isEventTarget(this.value)) {
+				this.ctx!.setDelegate(this.value);
+			} else if (Array.isArray(this.value)) {
+				this.ctx!.setDelegates(this.value);
+			}
+		} else if (this.tag !== Fragment) {
 			try {
-				this.commitSelf();
+				if (this.iterator === undefined) {
+					const value = this.renderer.intrinsic(this.tag as string | symbol)(
+						this,
+					);
+					if (!isIteratorOrAsyncIterator(value)) {
+						if (oldValue === value) {
+							this.flags &= ~flags.Dirty;
+						} else {
+							this.flags |= flags.Dirty;
+						}
+
+						this.value = value;
+						return;
+					}
+
+					this.iterator = value;
+				}
+
+				const iteration = (this.iterator as Iterator<T>).next();
+				if (oldValue === iteration.value) {
+					this.flags &= ~flags.Dirty;
+				} else {
+					this.flags |= flags.Dirty;
+				}
+
+				this.value = iteration.value;
+				if (iteration.done) {
+					this.flags |= flags.Finished;
+				}
 			} catch (err) {
 				if (this.parent === undefined) {
 					throw err;
@@ -570,69 +611,13 @@ export class Node<T> {
 		this.flags &= ~flags.Updating;
 	}
 
-	commitSelf(): void {
-		if (this.iterator === undefined) {
-			const value = this.renderer.intrinsic(this.tag as string | symbol)(this);
-			if (!isIteratorOrAsyncIterator(value)) {
-				if (this.value === value) {
-					this.flags &= ~flags.Dirty;
-				} else {
-					this.flags |= flags.Dirty;
-				}
-
-				this.value = value;
-				return;
-			}
-
-			this.iterator = value;
-		}
-
-		const iteration = (this.iterator as Iterator<T>).next();
-		if (this.value === iteration.value) {
-			this.flags &= ~flags.Dirty;
-		} else {
+	prepare(): void {
+		if (this.children === undefined) {
 			this.flags |= flags.Dirty;
-		}
-
-		this.value = iteration.value;
-		if (iteration.done) {
-			this.flags |= flags.Finished;
-		}
-	}
-
-	// TODO: this is an inaccurate name for what this method does but changing it
-	// will make rebases harder
-	commitChildren(): Array<T | string> {
-		let buffer: string | undefined;
-		let childValues: Array<T | string> = [];
-		// TODO: put this behind a getter or something
-		const children =
-			this.children === "undefined"
-				? []
-				: Array.isArray(this.children)
-				? this.children
-				: [this.children];
-		for (const child of children) {
-			if (typeof child === "object" && child.tag === Portal) {
-				continue;
-			}
-
-			const value = typeof child === "object" ? child.value : child;
-			if (typeof value === "string") {
-				buffer = buffer === undefined ? value : buffer + value;
-			} else {
-				if (buffer !== undefined) {
-					childValues.push(buffer);
-					buffer = undefined;
-				}
-
-				if (Array.isArray(value)) {
-					childValues = childValues.concat(value);
-				} else if (value !== undefined) {
-					childValues.push(value);
-				}
-			}
-
+			this.value = undefined;
+			return;
+		} else if (!Array.isArray(this.children)) {
+			const child = this.children;
 			if (typeof child === "object") {
 				if (child.flags & (flags.Dirty | flags.Moved)) {
 					this.flags |= flags.Dirty;
@@ -642,17 +627,66 @@ export class Node<T> {
 			} else {
 				this.flags |= flags.Dirty;
 			}
+
+			if (typeof child === "object") {
+				if (child.tag === Portal) {
+					this.value = undefined;
+				} else {
+					this.value = child.value;
+				}
+			} else {
+				this.value = child;
+			}
+
+			return;
+		}
+
+		let buffer: string | undefined;
+		let values: Array<T | string> = [];
+		for (const child of this.children) {
+			if (typeof child === "object") {
+				if (child.flags & (flags.Dirty | flags.Moved)) {
+					this.flags |= flags.Dirty;
+				}
+
+				child.flags &= ~(flags.Dirty | flags.Moved);
+			} else {
+				this.flags |= flags.Dirty;
+			}
+
+			if (typeof child === "object" && child.tag === Portal) {
+				continue;
+			}
+
+			const value = typeof child === "object" ? child.value : child;
+			if (typeof value === "string") {
+				buffer = buffer === undefined ? value : buffer + value;
+			} else {
+				if (buffer !== undefined) {
+					values.push(buffer);
+					buffer = undefined;
+				}
+
+				if (Array.isArray(value)) {
+					values = values.concat(value);
+				} else if (value !== undefined) {
+					values.push(value);
+				}
+			}
 		}
 
 		if (buffer !== undefined) {
-			childValues.push(buffer);
+			values.push(buffer);
 		}
 
-		if (childValues.length === 0) {
+		if (values.length === 0) {
 			this.flags |= flags.Dirty;
+			this.value = undefined;
+		} else if (values.length === 1) {
+			this.value = values[0];
+		} else {
+			this.value = values;
 		}
-
-		return childValues;
 	}
 
 	unmount(redundant = true): MaybePromise<undefined> {
@@ -740,7 +774,7 @@ export class Node<T> {
 		}
 	}
 
-	catch(reason: any): MaybePromise<undefined> {
+	catch(reason: unknown): MaybePromise<undefined> {
 		if (this.parent === undefined) {
 			throw reason;
 		} else if (
@@ -883,11 +917,14 @@ export class Node<T> {
 			}
 		}
 
-		const oldValue =
-			this.oldResult === undefined
-				? this.value
-				: this.oldResult.then(() => this.value);
-		this.oldResult = undefined;
+		let oldValue: MaybePromise<Array<T | string> | T | string | undefined>;
+		if (this.oldResult === undefined) {
+			oldValue = this.value;
+		} else {
+			oldValue = this.oldResult.then(() => this.value);
+			this.oldResult = undefined;
+		}
+
 		let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
 		try {
 			iteration = (this.iterator as ChildIterator).next(oldValue);
@@ -953,22 +990,6 @@ export class Node<T> {
 			});
 		}
 	}
-}
-
-function createNode<T>(
-	element: Element,
-	renderer: Renderer<T>,
-	parent?: Node<T>,
-	scope?: unknown,
-): Node<T> {
-	return new Node(
-		element.tag,
-		element.props,
-		renderer,
-		parent,
-		element.key,
-		scope,
-	);
 }
 
 export interface ProvisionMap {}
@@ -1155,7 +1176,7 @@ export class Renderer<T> {
 			root != null ? this.cache.get(root) : undefined;
 
 		if (rootNode === undefined) {
-			rootNode = createNode(portal, this);
+			rootNode = new Node(portal, this);
 			if (root !== undefined && child != null) {
 				this.cache.set(root, rootNode);
 			}
