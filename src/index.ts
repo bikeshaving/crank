@@ -1217,7 +1217,6 @@ export class Renderer<TValue> {
 	}
 }
 
-// TODO: Ideally, the following methods should not be exposed outside this module
 function getIntrinsic<TValue>(
 	renderer: Renderer<TValue>,
 	tag: string | symbol,
