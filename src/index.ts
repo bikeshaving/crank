@@ -187,12 +187,13 @@ function* flatten(children: Children): Generator<NormalizedChild> {
 }
 
 export class Node<TValue = any> {
-	flags = flags.Initial;
+	flags: number;
 	tag: Tag;
 	props: any;
 	key: Key;
 	ref: Function | undefined;
-	renderer: Renderer<TValue>;
+	// TODO: DELETE ME
+	renderer!: Renderer<TValue>;
 	parent: Node<TValue> | undefined;
 	scope: unknown;
 	value: Array<TValue | string> | TValue | string | undefined;
@@ -201,13 +202,13 @@ export class Node<TValue = any> {
 		| Node<TValue>
 		| string
 		| undefined;
-	keyedChildren: Map<unknown, Node<TValue>> | undefined;
+	keyedChildren: Map<Key, Node<TValue>> | undefined;
 	iterator: Iterator<TValue> | ChildIterator | undefined;
 	onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
 	ctx: Context | undefined;
 	schedules: Set<(value: unknown) => unknown> | undefined;
 	cleanups: Set<(value: unknown) => unknown> | undefined;
-	// TODO: delete this
+	// TODO: DELETE ME
 	clock: number;
 	// TODO: component specific. Move to Context or helper object?
 	provisions: Map<unknown, any> | undefined;
@@ -217,28 +218,18 @@ export class Node<TValue = any> {
 	enqueuedPending: MaybePromise<undefined>;
 	inflightResult: MaybePromise<undefined>;
 	enqueuedResult: MaybePromise<undefined>;
-	constructor(
-		element: Element,
-		renderer: Renderer<TValue>,
-		parent?: Node<TValue> | undefined,
-		scope?: unknown,
-	) {
+	constructor(element: Element) {
+		this.flags = flags.Initial;
 		this.tag = element.tag;
+		this.props = element.props;
 		this.key = element.key;
-		this.parent = parent;
-		this.renderer = renderer;
-		if (typeof this.tag === "function") {
-			this.ctx = new Context(this as any, parent!.ctx);
-		} else {
-			this.ctx = parent && parent.ctx;
-		}
-
-		this.scope = scope;
-		this.value = undefined;
-		this.children = undefined;
-		this.keyedChildren = undefined;
-		this.iterator = undefined;
+		this.ref = element.ref;
 		this.clock = 0;
+		// this.scope = scope;
+		// this.value = undefined;
+		// this.children = undefined;
+		// this.keyedChildren = undefined;
+		// this.iterator = undefined;
 		// this.onNewResult = undefined;
 		// this.schedules = undefined;
 		// this.cleanups = undefined;
@@ -261,6 +252,23 @@ export class Node<TValue = any> {
 			return [this.value];
 		}
 	}
+}
+
+function mount<T>(
+	node: Node<T>,
+	renderer: Renderer<T>,
+	scope?: unknown,
+	parent?: Node<T>,
+): void {
+	node.renderer = renderer;
+	node.parent = parent;
+	if (typeof node.tag === "function") {
+		node.ctx = new Context(node, parent && parent.ctx);
+	} else {
+		node.ctx = parent && parent.ctx;
+	}
+
+	node.scope = scope;
 }
 
 function update(
@@ -335,7 +343,8 @@ function updateChildren(
 				}
 
 				if (typeof child === "object") {
-					oldChild = new Node(child, node.renderer, node, scope);
+					oldChild = new Node(child);
+					mount(oldChild, node.renderer, scope, node);
 				} else {
 					oldChild = child;
 				}
@@ -353,7 +362,8 @@ function updateChildren(
 						continue;
 					}
 
-					oldChild = new Node(child as Element, node.renderer, node, scope);
+					oldChild = new Node(child as Element);
+					mount(oldChild, node.renderer, scope, node);
 				} else {
 					node.keyedChildren!.delete(key);
 					oldChild.flags |= flags.Moved;
@@ -373,7 +383,8 @@ function updateChildren(
 					continue;
 				}
 
-				keyedChild = new Node(child as Element, node.renderer, node, scope);
+				keyedChild = new Node(child as Element);
+				mount(keyedChild, node.renderer, scope, node);
 				i--;
 			} else {
 				node.keyedChildren!.delete(key);
@@ -406,7 +417,8 @@ function updateChildren(
 					newChildren.push(undefined);
 					continue;
 				} else if (typeof child === "object") {
-					oldChild = new Node(child, node.renderer, node, scope);
+					oldChild = new Node(child);
+					mount(oldChild, node.renderer, scope, node);
 				} else {
 					oldChild = child;
 				}
@@ -438,7 +450,8 @@ function updateChildren(
 			let result1: Promise<undefined> | undefined;
 			let newChild: Node | string | undefined;
 			if (typeof child === "object") {
-				newChild = new Node(child, node.renderer, node, scope);
+				newChild = new Node(child);
+				mount(newChild, node.renderer, scope, node);
 				result1 = update(
 					newChild,
 					(child as Element).props,
@@ -1188,7 +1201,8 @@ export class Renderer<TValue> {
 			root != null ? this.__cache__.get(root) : undefined;
 
 		if (rootNode === undefined) {
-			rootNode = new Node(portal, this);
+			rootNode = new Node(portal);
+			mount(rootNode, this);
 			if (root !== undefined && child != null) {
 				this.__cache__.set(root, rootNode);
 			}
