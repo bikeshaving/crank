@@ -1,11 +1,12 @@
 import {
 	Default,
+	Element,
 	Environment,
 	Intrinsic,
 	IntrinsicProps,
-	Node,
 	Portal,
 	Renderer,
+	Tag,
 	Text,
 } from "./index";
 
@@ -93,26 +94,26 @@ export const env: Environment<string> = {
 			throw new Error(`Unknown tag: ${tag.toString()}`);
 		}
 
-		return function defaultString(node: Node<string>): string {
-			const attrs = printAttrs(node.props);
+		return function defaultString(elem: Element<Tag, string>): string {
+			const attrs = printAttrs(elem.props);
 			const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
 			if (voidTags.has(tag)) {
 				return open;
 			}
 
 			const close = `</${tag}>`;
-			if ("innerHTML" in node.props) {
-				return `${open}${node.props["innerHTML"]}${close}`;
+			if ("innerHTML" in elem.props) {
+				return `${open}${elem.props["innerHTML"]}${close}`;
 			}
 
-			return `${open}${node.childValues.join("")}${close}`;
+			return `${open}${elem.childValues.join("")}${close}`;
 		};
 	},
 	[Text](text: string): string {
 		return escapeText(text);
 	},
-	[Portal](node: Node<string>): string {
-		return node.childValues.join("");
+	[Portal](elem: Element<Tag, string>): string {
+		return elem.childValues.join("");
 	},
 };
 
