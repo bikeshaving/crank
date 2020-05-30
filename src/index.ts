@@ -40,6 +40,9 @@ interface ChildIterable extends Iterable<Child | ChildIterable> {}
 
 export type Children = Child | ChildIterable;
 
+type NormalizedChild = Element | string | undefined;
+
+// TODO: should this be exported?
 export interface Props {
 	"crank-key"?: Key;
 	"crank-ref"?: Function;
@@ -70,7 +73,7 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 		| Element<Tag, TValue>
 		| string
 		| undefined;
-	keyedChildren: Map<Key, Element<Tag, TValue>> | undefined;
+	childrenByKey: Map<Key, Element<Tag, TValue>> | undefined;
 	iterator: Iterator<TValue> | ChildIterator | undefined;
 	onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
 	ctx: Context | undefined;
@@ -139,8 +142,7 @@ export type GeneratorComponent<TProps = any> = (
 	props: TProps,
 ) => ChildIterator;
 
-// TODO: Component cannot be a union of FunctionComponent | GeneratorComponent
-// because this breaks Function.prototype methods.
+// TODO: Component cannot be a union of FunctionComponent | GeneratorComponent because this breaks Function.prototype methods.
 // https://github.com/microsoft/TypeScript/issues/33815
 export type Component<TProps = any> = (
 	this: Context<TProps>,
@@ -152,8 +154,7 @@ export type Intrinsic<TValue> = (
 ) => Iterator<TValue> | TValue;
 
 // Special Intrinsic Tags
-// TODO: We assert symbol tags as any because typescript support for symbol
-// tags in JSX does not exist yet.
+// TODO: We assert symbol tags as any because typescript support for symbol tags in JSX does not exist yet.
 // https://github.com/microsoft/TypeScript/issues/38367
 export const Fragment = Symbol.for("crank.Fragment") as any;
 export type Fragment = typeof Fragment;
@@ -185,17 +186,15 @@ export function createElement<TTag extends Tag>(
 	let key: unknown;
 	let ref: Function | undefined;
 	if (props != null) {
-		if (props["crank-key"] != null) {
-			key = props["crank-key"];
-		}
-
-		if (typeof props["crank-ref"] === "function") {
-			ref = props["crank-ref"];
-		}
-
-		for (const key in props) {
-			if (key !== "crank-key" && key !== "crank-ref") {
-				props1[key] = props[key];
+		for (const name in props) {
+			if (name === "crank-key") {
+				key = props[name];
+			} else if (name === "crank-ref") {
+				if (typeof props["crank-ref"] === "function") {
+					ref = props[name];
+				}
+			} else {
+				props1[name] = props[name];
 			}
 		}
 	}
@@ -215,6 +214,7 @@ export function createElement<TTag extends Tag>(
 	return new Element(tag, props1, key, ref);
 }
 
+// TODO: there should be a fast path where we avoid updateChildren for the initial render
 function mount<TTag extends Tag, TValue>(
 	elem: Element<TTag, TValue>,
 	renderer: Renderer<TValue>,
@@ -238,6 +238,8 @@ function mount<TTag extends Tag, TValue>(
 	return elem;
 }
 
+// TODO: put the logic in updateChildren here (specifically the old and new matching)
+// the problem is we need to return the node synchronously, but build the subtree asynchronously.
 function update(
 	elem: Element,
 	props: any,
@@ -252,8 +254,6 @@ function update(
 
 	return updateChildren(elem, elem.props.children);
 }
-
-type NormalizedChild = Element | string | undefined;
 
 function normalize(child: Child): NormalizedChild {
 	if (child == null || typeof child === "boolean") {
@@ -283,7 +283,7 @@ function* flatten(children: Children): Generator<NormalizedChild> {
 	yield normalize(children);
 }
 
-// TODO: reduce complexity of this method :P
+// TODO: reduce complexity of this function :P
 function updateChildren(
 	elem: Element,
 	children: Children,
@@ -304,7 +304,7 @@ function updateChildren(
 		| Element
 		| string
 		| undefined;
-	let keyedChildren: Map<unknown, Element> | undefined;
+	let childrenByKey: Map<unknown, Element> | undefined;
 	let i = 0;
 	for (const child of flatten(children)) {
 		let oldChild: Element | string | undefined;
@@ -319,8 +319,8 @@ function updateChildren(
 		let key: unknown = typeof child === "object" ? child.key : undefined;
 		if (
 			key !== undefined &&
-			keyedChildren !== undefined &&
-			keyedChildren.has(key)
+			childrenByKey !== undefined &&
+			childrenByKey.has(key)
 		) {
 			key = undefined;
 		}
@@ -343,7 +343,7 @@ function updateChildren(
 					oldChild = mount(oldChild, elem.renderer, scope, elem);
 				}
 			} else {
-				oldChild = elem.keyedChildren && elem.keyedChildren.get(key);
+				oldChild = elem.childrenByKey && elem.childrenByKey.get(key);
 				if (oldChild === undefined) {
 					if (tag === Copy) {
 						if (newChildren === undefined) {
@@ -358,12 +358,12 @@ function updateChildren(
 
 					oldChild = mount(child as Element, elem.renderer, scope, elem);
 				} else {
-					elem.keyedChildren!.delete(key);
+					elem.childrenByKey!.delete(key);
 					oldChild.flags |= flags.Moved;
 				}
 			}
 		} else if (key !== undefined) {
-			let keyedChild = elem.keyedChildren && elem.keyedChildren.get(key);
+			let keyedChild = elem.childrenByKey && elem.childrenByKey.get(key);
 			if (keyedChild === undefined) {
 				if (tag === Copy) {
 					if (newChildren === undefined) {
@@ -379,7 +379,7 @@ function updateChildren(
 				keyedChild = mount(child as Element, elem.renderer, scope, elem);
 				i--;
 			} else {
-				elem.keyedChildren!.delete(key);
+				elem.childrenByKey!.delete(key);
 				if (oldChild !== keyedChild) {
 					keyedChild.flags |= flags.Moved;
 					i--;
@@ -476,11 +476,11 @@ function updateChildren(
 		}
 
 		if (key !== undefined) {
-			if (keyedChildren === undefined) {
-				keyedChildren = new Map();
+			if (childrenByKey === undefined) {
+				childrenByKey = new Map();
 			}
 
-			keyedChildren.set(key, oldChild as Element);
+			childrenByKey.set(key, oldChild as Element);
 		}
 
 		i++;
@@ -516,13 +516,13 @@ function updateChildren(
 	elem.children = newChildren;
 
 	// TODO: likely where logic for asynchronous unmounting will go
-	if (elem.keyedChildren !== undefined) {
-		for (const oldChild of elem.keyedChildren.values()) {
+	if (elem.childrenByKey !== undefined) {
+		for (const oldChild of elem.childrenByKey.values()) {
 			unmount(oldChild);
 		}
 	}
 
-	elem.keyedChildren = keyedChildren;
+	elem.childrenByKey = childrenByKey;
 
 	if (elem.onNewResult !== undefined) {
 		elem.onNewResult(result);
@@ -864,11 +864,14 @@ function updateComponent(elem: Element): MaybePromise<undefined> {
 function run(elem: Element): MaybePromise<undefined> {
 	if (elem.inflightPending === undefined) {
 		const [pending, result] = step(elem);
-		if (isPromiseLike(pending)) {
+		if (pending !== undefined) {
 			elem.inflightPending = pending.finally(() => advance(elem));
 		}
 
-		elem.inflightResult = result;
+		if (result !== undefined) {
+			elem.inflightResult = result;
+		}
+
 		return elem.inflightResult;
 	} else if (elem.flags & flags.AsyncGen) {
 		return elem.inflightResult;
@@ -993,8 +996,7 @@ function advance(elem: Element): void {
 	elem.enqueuedResult = undefined;
 	if (elem.flags & flags.AsyncGen && !(elem.flags & flags.Finished)) {
 		run(elem)!.catch((err) => {
-			// We catch and rethrow the error to trigger an unhandled promise
-			// rejection.
+			// We catch and rethrow the error to trigger an unhandled promise rejection.
 			if (!(elem.flags & flags.Updating)) {
 				throw err;
 			}
