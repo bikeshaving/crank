@@ -1,13 +1,13 @@
 import {
 	Default,
+	Element as CrankElement,
 	Environment,
-	flags,
 	Intrinsic,
-	Node as CrankNode,
+	Portal,
 	Raw,
 	Renderer,
 	Scopes,
-	Portal,
+	Tag,
 } from "./index";
 
 declare module "./index" {
@@ -169,9 +169,11 @@ export const env: Environment<Element> = {
 		}
 
 		let cachedEl: Element | undefined;
-		return function* defaultDOM(node: CrankNode<Element>): Generator<Element> {
+		return function* defaultDOM(
+			elem: CrankElement<Tag, Element>,
+		): Generator<Element> {
 			const ns =
-				tag === "svg" ? SVG_NAMESPACE : (node.scope as string | undefined);
+				tag === "svg" ? SVG_NAMESPACE : (elem.scope as string | undefined);
 			if (cachedEl === undefined) {
 				if (ns == null) {
 					cachedEl = document.createElement(tag);
@@ -187,33 +189,33 @@ export const env: Environment<Element> = {
 				while (true) {
 					// We can’t use referential identity of props because we don’t have any
 					// restrictions like elements have to be immutable.
-					if (node.flags & flags.Updating) {
-						updateProps(el, props, node.props, ns);
+					if (elem.dirtyProps) {
+						updateProps(el, props, elem.props, ns);
 					}
 
 					if (
-						node.flags & flags.Dirty &&
-						node.props.innerHTML === undefined &&
-						(oldLength > 0 || node.childValues.length > 0)
+						elem.dirtyChildren &&
+						elem.props.innerHTML === undefined &&
+						(oldLength > 0 || elem.childValues.length > 0)
 					) {
-						updateChildren(el, node.childValues);
+						updateChildren(el, elem.childValues);
 					}
 
-					props = node.props;
-					oldLength = node.childValues.length;
+					props = elem.props;
+					oldLength = elem.childValues.length;
 					yield el;
 				}
 			} finally {
-				if (node.flags & flags.Redundant && el.parentNode !== null) {
+				if (elem.dirtyRemoval && el.parentNode !== null) {
 					el.parentNode.removeChild(el);
 				}
 			}
 		};
 	},
-	*[Raw](node: CrankNode<Element>): Generator<Element> {
+	*[Raw](elem: CrankElement<Tag, Element>): Generator<Element> {
 		while (true) {
 			// TODO: cache fragment for two equal strings
-			const value = node.props.value;
+			const value = elem.props.value;
 			if (typeof value === "string") {
 				const fragment = createDocumentFragmentFromHTML(value);
 				// TODO: figure out what the type of this Environment actually is
@@ -223,13 +225,13 @@ export const env: Environment<Element> = {
 			}
 		}
 	},
-	*[Portal](node: CrankNode<Element>): Generator<Element> {
-		let root = node.props.root;
+	*[Portal](elem: CrankElement<Tag, Element>): Generator<Element> {
+		let root = elem.props.root;
 		try {
 			while (true) {
-				const newRoot = node.props.root;
+				const newRoot = elem.props.root;
 				if (newRoot == null) {
-					throw new TypeError("Portal element is missing root node");
+					throw new TypeError("Portal element is missing root");
 				}
 
 				if (root !== newRoot) {
@@ -237,8 +239,8 @@ export const env: Environment<Element> = {
 					root = newRoot;
 				}
 
-				if (node.flags & flags.Dirty) {
-					updateChildren(root, node.childValues);
+				if (elem.dirtyChildren) {
+					updateChildren(root, elem.childValues);
 				}
 
 				yield root;
