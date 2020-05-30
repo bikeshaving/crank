@@ -143,7 +143,7 @@ describe("errors", () => {
 	});
 
 	test("sync function throws, sync generator catches", () => {
-		function Thrower(): Promise<never> {
+		function Thrower(): never {
 			throw new Error("sync function throws, sync generator catches");
 		}
 
