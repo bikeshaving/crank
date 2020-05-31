@@ -1,4 +1,5 @@
 import {CrankEventTarget, isEventTarget} from "./events";
+
 import {
 	isIteratorOrAsyncIterator,
 	isNonStringIterable,
@@ -32,7 +33,9 @@ export type TagProps<TTag extends Tag> = TTag extends Component<infer TProps>
 	? JSX.IntrinsicElements[TTag]
 	: unknown;
 
-export type Key = unknown;
+type Key = unknown;
+
+type Scope = unknown;
 
 export type Child = Element | string | number | boolean | null | undefined;
 
@@ -60,13 +63,13 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 	__sigil__: typeof ElementSigil;
 	tag: TTag;
 	props: TagProps<TTag>;
-	key: unknown;
+	key: Key;
 	ref: Function | undefined;
 	flags: number;
 	// TODO: DELETE ME
 	renderer!: Renderer<TValue>;
 	parent: Element<Tag, TValue> | undefined;
-	scope: unknown;
+	scope: Scope;
 	value: Array<TValue | string> | TValue | string | undefined;
 	children:
 		| Array<Element<Tag, TValue> | string | undefined>
@@ -90,7 +93,7 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 	constructor(
 		tag: TTag,
 		props: TagProps<TTag>,
-		key: unknown,
+		key: Key,
 		ref: Function | undefined,
 	) {
 		this.__sigil__ = ElementSigil;
@@ -183,7 +186,7 @@ export function createElement<TTag extends Tag>(
 	children?: unknown,
 ): Element<TTag> {
 	const props1: any = {};
-	let key: unknown;
+	let key: Key;
 	let ref: Function | undefined;
 	if (props != null) {
 		for (const name in props) {
@@ -287,7 +290,7 @@ function updateChildren(
 	elem: Element,
 	children: Children,
 ): MaybePromise<undefined> {
-	let childScope: unknown;
+	let childScope: Scope;
 	if (typeof elem.tag === "function") {
 		if (isNonStringIterable(children)) {
 			children = createElement(Fragment, null, children);
@@ -298,12 +301,8 @@ function updateChildren(
 
 	const handling = !!(elem.flags & flags.Handling);
 	let result: Promise<undefined> | undefined;
-	let newChildren:
-		| Array<Element | string | undefined>
-		| Element
-		| string
-		| undefined;
-	let childrenByKey: Map<unknown, Element> | undefined;
+	let newChildren: Array<NormalizedChild> | NormalizedChild;
+	let childrenByKey: Map<Key, Element> | undefined;
 	let i = 0;
 	for (const child of flatten(children)) {
 		let oldChild: Element | string | undefined;
@@ -315,7 +314,7 @@ function updateChildren(
 
 		const tag: Tag | undefined =
 			typeof child === "object" ? child.tag : undefined;
-		let key: unknown = typeof child === "object" ? child.key : undefined;
+		let key: Key = typeof child === "object" ? child.key : undefined;
 		if (
 			key !== undefined &&
 			childrenByKey !== undefined &&
@@ -1100,8 +1099,8 @@ export const Text = Symbol.for("crank.Text");
 export const Scopes = Symbol.for("crank.Scopes");
 
 export interface Scoper {
-	[Default]?(tag: string | symbol, props: any): unknown;
-	[tag: string]: unknown;
+	[Default]?(tag: string | symbol, props: any): Scope;
+	[tag: string]: Scope;
 }
 
 export interface Environment<TValue> {
@@ -1239,7 +1238,7 @@ function getScope(
 	renderer: Renderer<any>,
 	tag: string | symbol,
 	props: any,
-): unknown {
+): Scope {
 	if (tag in renderer.__scoper__) {
 		if (typeof renderer.__scoper__[tag as any] === "function") {
 			return (renderer.__scoper__[tag as any] as Function)(props);
