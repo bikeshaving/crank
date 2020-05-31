@@ -214,6 +214,16 @@ export function createElement<TTag extends Tag>(
 	return new Element(tag, props1, key, ref);
 }
 
+function normalize(child: Child): NormalizedChild {
+	if (child == null || typeof child === "boolean") {
+		return;
+	} else if (typeof child === "string" || isElement(child)) {
+		return child;
+	} else {
+		return child.toString();
+	}
+}
+
 // TODO: there should be a fast path where we avoid updateChildren for the initial render
 function mount<TTag extends Tag, TValue>(
 	elem: Element<TTag, TValue>,
@@ -227,6 +237,7 @@ function mount<TTag extends Tag, TValue>(
 
 	elem.flags |= flags.Mounted;
 	elem.renderer = renderer;
+	elem.scope = scope;
 	elem.parent = parent;
 	if (typeof elem.tag === "function") {
 		elem.ctx = new Context(elem, parent && parent.ctx);
@@ -234,12 +245,10 @@ function mount<TTag extends Tag, TValue>(
 		elem.ctx = parent && parent.ctx;
 	}
 
-	elem.scope = scope;
 	return elem;
 }
 
-// TODO: put the logic in updateChildren here (specifically the old and new matching)
-// the problem is we need to return the node synchronously, but build the subtree asynchronously.
+// TODO: put more logic from updateComponent here.
 function update(
 	elem: Element,
 	props: any,
@@ -253,16 +262,6 @@ function update(
 	}
 
 	return updateChildren(elem, elem.props.children);
-}
-
-function normalize(child: Child): NormalizedChild {
-	if (child == null || typeof child === "boolean") {
-		return;
-	} else if (typeof child === "string" || isElement(child)) {
-		return child;
-	} else {
-		return child.toString();
-	}
 }
 
 function* flatten(children: Children): Generator<NormalizedChild> {
@@ -288,13 +287,13 @@ function updateChildren(
 	elem: Element,
 	children: Children,
 ): MaybePromise<undefined> {
-	let scope: unknown;
+	let childScope: unknown;
 	if (typeof elem.tag === "function") {
 		if (isNonStringIterable(children)) {
 			children = createElement(Fragment, null, children);
 		}
 	} else if (elem.tag !== Fragment) {
-		scope = getScope(elem.renderer, elem.tag, elem.props);
+		childScope = getScope(elem.renderer, elem.tag, elem.props);
 	}
 
 	const handling = !!(elem.flags & flags.Handling);
@@ -340,7 +339,7 @@ function updateChildren(
 
 				oldChild = child;
 				if (typeof oldChild === "object") {
-					oldChild = mount(oldChild, elem.renderer, scope, elem);
+					oldChild = mount(oldChild, elem.renderer, childScope, elem);
 				}
 			} else {
 				oldChild = elem.childrenByKey && elem.childrenByKey.get(key);
@@ -356,7 +355,7 @@ function updateChildren(
 						continue;
 					}
 
-					oldChild = mount(child as Element, elem.renderer, scope, elem);
+					oldChild = mount(child as Element, elem.renderer, childScope, elem);
 				} else {
 					elem.childrenByKey!.delete(key);
 					oldChild.flags |= flags.Moved;
@@ -376,7 +375,7 @@ function updateChildren(
 					continue;
 				}
 
-				keyedChild = mount(child as Element, elem.renderer, scope, elem);
+				keyedChild = mount(child as Element, elem.renderer, childScope, elem);
 				i--;
 			} else {
 				elem.childrenByKey!.delete(key);
@@ -409,7 +408,7 @@ function updateChildren(
 					newChildren.push(undefined);
 					continue;
 				} else if (typeof child === "object") {
-					oldChild = mount(child as Element, elem.renderer, scope, elem);
+					oldChild = mount(child as Element, elem.renderer, childScope, elem);
 				} else {
 					oldChild = child;
 				}
@@ -438,7 +437,7 @@ function updateChildren(
 			let result1: Promise<undefined> | undefined;
 			let newChild: Element | string | undefined;
 			if (typeof child === "object") {
-				newChild = mount(child, elem.renderer, scope, elem);
+				newChild = mount(child, elem.renderer, childScope, elem);
 				result1 = update(newChild, newChild.props, newChild.ref);
 			} else if (typeof child === "string") {
 				newChild = getText(elem.renderer, child);
@@ -541,7 +540,7 @@ function updateChildren(
 	commit(elem);
 }
 
-function prepare<TValue>(elem: Element<Tag, TValue>): void {
+function prepareCommit<TValue>(elem: Element<Tag, TValue>): void {
 	if (elem.children === undefined) {
 		elem.flags |= flags.Dirty;
 		elem.value = undefined;
@@ -622,7 +621,7 @@ function prepare<TValue>(elem: Element<Tag, TValue>): void {
 
 function commit<TValue>(elem: Element<any, TValue>): MaybePromise<undefined> {
 	const oldValue = elem.value;
-	prepare(elem);
+	prepareCommit(elem);
 	if (typeof elem.tag === "function") {
 		if (isEventTarget(elem.value)) {
 			elem.ctx!.setDelegate(elem.value);
@@ -632,10 +631,7 @@ function commit<TValue>(elem: Element<any, TValue>): MaybePromise<undefined> {
 	} else if (elem.tag !== Fragment) {
 		try {
 			if (elem.iterator === undefined) {
-				const value = getIntrinsic(
-					elem.renderer,
-					elem.tag as string | symbol,
-				)(elem);
+				const value = getIntrinsic(elem.renderer, elem.tag)(elem);
 				if (!isIteratorOrAsyncIterator(value)) {
 					if (oldValue === value) {
 						elem.flags &= ~flags.Dirty;
@@ -696,7 +692,7 @@ function commit<TValue>(elem: Element<any, TValue>): MaybePromise<undefined> {
 	elem.flags &= ~flags.Updating;
 }
 
-function unmount(elem: Element, redundant = true): MaybePromise<undefined> {
+function unmount(elem: Element, dirty = true): MaybePromise<undefined> {
 	if (elem.cleanups !== undefined) {
 		for (const cleanup of elem.cleanups) {
 			cleanup(elem.value);
@@ -734,7 +730,7 @@ function unmount(elem: Element, redundant = true): MaybePromise<undefined> {
 					return iteration.then(
 						() => {
 							elem.flags &= ~flags.Updating;
-							unmountChildren(elem, redundant);
+							unmountChildren(elem, dirty);
 							return undefined; // void :(
 						},
 						(err) => handle(elem.parent!, err),
@@ -742,13 +738,13 @@ function unmount(elem: Element, redundant = true): MaybePromise<undefined> {
 				}
 			}
 		} else {
-			if (redundant) {
+			if (dirty) {
 				elem.flags |= flags.Removing;
 			} else {
 				elem.flags &= ~flags.Removing;
 			}
 
-			redundant = elem.tag === Portal;
+			dirty = elem.tag === Portal;
 			if (elem.iterator !== undefined && elem.iterator.return) {
 				try {
 					elem.iterator.return();
@@ -764,10 +760,10 @@ function unmount(elem: Element, redundant = true): MaybePromise<undefined> {
 	}
 
 	elem.flags &= ~flags.Updating;
-	unmountChildren(elem, redundant);
+	unmountChildren(elem, dirty);
 }
 
-function unmountChildren(elem: Element, redundant: boolean): void {
+function unmountChildren(elem: Element, dirty: boolean): void {
 	const children =
 		elem.children === "undefined"
 			? []
@@ -776,7 +772,7 @@ function unmountChildren(elem: Element, redundant: boolean): void {
 			: [elem.children];
 	for (const child of children) {
 		if (typeof child === "object") {
-			unmount(child, redundant);
+			unmount(child, dirty);
 		}
 	}
 }
@@ -827,22 +823,6 @@ function handle(elem: Element, reason: unknown): MaybePromise<undefined> {
 	}
 
 	return handle(elem.parent, reason);
-}
-
-function schedule(elem: Element, callback: (value: unknown) => unknown): void {
-	if (elem.schedules === undefined) {
-		elem.schedules = new Set();
-	}
-
-	elem.schedules.add(callback);
-}
-
-function cleanup(elem: Element, callback: (value: unknown) => unknown): void {
-	if (elem.cleanups === undefined) {
-		elem.cleanups = new Set();
-	}
-
-	elem.cleanups.add(callback);
 }
 
 function updateComponent(elem: Element): MaybePromise<undefined> {
@@ -1002,6 +982,22 @@ function advance(elem: Element): void {
 			}
 		});
 	}
+}
+
+function schedule(elem: Element, callback: (value: unknown) => unknown): void {
+	if (elem.schedules === undefined) {
+		elem.schedules = new Set();
+	}
+
+	elem.schedules.add(callback);
+}
+
+function cleanup(elem: Element, callback: (value: unknown) => unknown): void {
+	if (elem.cleanups === undefined) {
+		elem.cleanups = new Set();
+	}
+
+	elem.cleanups.add(callback);
 }
 
 export interface ProvisionMap {}
