@@ -44,6 +44,8 @@ export type Children = Child | ChildIterable;
 
 type NormalizedChild = Element | string | undefined;
 
+type NormalizedChildren = Array<NormalizedChild> | NormalizedChild;
+
 // TODO: should this be exported?
 export interface Props {
 	"crank-key"?: Key;
@@ -69,7 +71,7 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 	iterator: Iterator<TValue> | ChildIterator | undefined;
 	parent: Element<Tag, TValue> | undefined;
 	value: Array<TValue | string> | TValue | string | undefined;
-	children: Array<NormalizedChild> | NormalizedChild;
+	children: NormalizedChildren;
 	childrenByKey: Map<Key, Element> | undefined;
 	// TODO: DELETE ME
 	renderer!: Renderer<TValue>;
@@ -215,7 +217,7 @@ export function createElement<TTag extends Tag>(
 
 function normalize(child: Child): NormalizedChild {
 	if (child == null || typeof child === "boolean") {
-		return;
+		return undefined;
 	} else if (typeof child === "string" || isElement(child)) {
 		return child;
 	} else {
@@ -262,25 +264,6 @@ function update(
 	return updateChildren(elem, elem.props.children);
 }
 
-function* flatten(children: Children): Generator<NormalizedChild> {
-	if (children == null) {
-		return;
-	} else if (isNonStringIterable(children)) {
-		for (const child of children) {
-			if (isNonStringIterable(child)) {
-				yield createElement(Fragment, null, child);
-			} else {
-				yield normalize(child);
-			}
-		}
-
-		return;
-	}
-
-	yield normalize(children);
-}
-
-// TODO: reduce complexity of this function :P
 function updateChildren(
 	elem: Element,
 	children: Children,
@@ -294,201 +277,132 @@ function updateChildren(
 		childScope = getScope(elem.renderer, elem.tag, elem.props);
 	}
 
-	const handling = !!(elem.flags & flags.Handling);
+	const handling = elem.flags & flags.Handling;
 	let result: Promise<undefined> | undefined;
-	let newChildren: Array<NormalizedChild> | NormalizedChild;
+	let children1: NormalizedChildren;
 	let childrenByKey: Map<Key, Element> | undefined;
 	let i = 0;
-	for (const child of flatten(children)) {
-		let oldChild: Element | string | undefined;
+	if (!isNonStringIterable(children)) {
+		if (children === undefined) {
+			children = [];
+		} else {
+			children = [children];
+		}
+	}
+
+	for (let newChild of children) {
+		let oldChild: NormalizedChild;
 		if (Array.isArray(elem.children)) {
 			oldChild = elem.children[i];
 		} else if (i === 0) {
 			oldChild = elem.children;
 		}
 
-		const tag: Tag | undefined =
-			typeof child === "object" ? child.tag : undefined;
-		let key: Key = typeof child === "object" ? child.key : undefined;
-		if (
-			key !== undefined &&
-			childrenByKey !== undefined &&
-			childrenByKey.has(key)
-		) {
-			key = undefined;
+		// TODO: reassigning newChild does not narrow to NormalizedChild
+		let newChild1: NormalizedChild;
+		if (isNonStringIterable(newChild)) {
+			newChild1 = createElement(Fragment, null, newChild);
+		} else {
+			newChild1 = normalize(newChild);
 		}
 
-		if (oldChild === undefined) {
-			if (key === undefined) {
-				if (tag === Copy) {
-					if (newChildren === undefined) {
-						newChildren = [undefined];
-					} else if (!Array.isArray(newChildren)) {
-						newChildren = [newChildren];
-					}
-
-					newChildren.push(undefined);
-					continue;
-				}
-
-				oldChild = child;
-				if (typeof oldChild === "object") {
-					oldChild = mount(oldChild, elem.renderer, childScope, elem);
-				}
+		if (typeof newChild1 === "object" && newChild1.key !== undefined) {
+			const oldChild1 =
+				elem.childrenByKey && elem.childrenByKey.get(newChild1.key);
+			if (oldChild1 === undefined) {
+				oldChild = undefined;
 			} else {
-				oldChild = elem.childrenByKey && elem.childrenByKey.get(key);
-				if (oldChild === undefined) {
-					if (tag === Copy) {
-						if (newChildren === undefined) {
-							newChildren = [undefined];
-						} else if (!Array.isArray(newChildren)) {
-							newChildren = [newChildren];
-						}
-
-						newChildren.push(undefined);
-						continue;
-					}
-
-					oldChild = mount(child as Element, elem.renderer, childScope, elem);
+				elem.childrenByKey!.delete(newChild1.key);
+				if (oldChild === oldChild1) {
+					i++;
 				} else {
-					elem.childrenByKey!.delete(key);
+					oldChild = oldChild1;
 					oldChild.flags |= flags.Moved;
 				}
 			}
-		} else if (key !== undefined) {
-			let keyedChild = elem.childrenByKey && elem.childrenByKey.get(key);
-			if (keyedChild === undefined) {
-				if (tag === Copy) {
-					if (newChildren === undefined) {
-						newChildren = [undefined];
-					} else if (!Array.isArray(newChildren)) {
-						newChildren = [newChildren];
+		} else {
+			if (typeof oldChild === "object" && oldChild.key !== undefined) {
+				if (Array.isArray(elem.children)) {
+					while (typeof oldChild === "object" && oldChild.key !== undefined) {
+						i++;
+						oldChild = elem.children[i];
 					}
-
-					newChildren.push(undefined);
-					continue;
-				}
-
-				keyedChild = mount(child as Element, elem.renderer, childScope, elem);
-				i--;
-			} else {
-				elem.childrenByKey!.delete(key);
-				if (oldChild !== keyedChild) {
-					keyedChild.flags |= flags.Moved;
-					i--;
-				}
-			}
-
-			oldChild = keyedChild;
-		} else if (typeof oldChild === "object" && oldChild.key !== undefined) {
-			if (Array.isArray(elem.children)) {
-				while (typeof oldChild === "object" && oldChild.key !== undefined) {
-					i++;
-					oldChild = elem.children[i];
-				}
-			} else {
-				oldChild = undefined;
-				i++;
-			}
-
-			if (oldChild === undefined) {
-				if (tag === Copy) {
-					if (newChildren === undefined) {
-						newChildren = [undefined];
-					} else if (!Array.isArray(newChildren)) {
-						newChildren = [newChildren];
-					}
-
-					newChildren.push(undefined);
-					continue;
-				} else if (typeof child === "object") {
-					oldChild = mount(child as Element, elem.renderer, childScope, elem);
 				} else {
-					oldChild = child;
+					oldChild = undefined;
 				}
 			}
+
+			i++;
 		}
 
-		if (tag === Copy) {
-			// no need to update
-		} else if (((oldChild || {}) as any).tag === tag) {
-			if (typeof oldChild === "object") {
-				const result1 = update(
-					oldChild,
-					(child as Element).props,
-					(child as Element).ref,
-				);
-				if (result1 !== undefined) {
-					result = result === undefined ? result1 : result.then(() => result1);
-				}
-			} else if (typeof child === "string") {
-				const text = getText(elem.renderer, child);
-				oldChild = text;
-			} else {
-				oldChild = undefined;
-			}
-		} else {
+		if (typeof newChild1 === "object") {
 			let result1: Promise<undefined> | undefined;
-			let newChild: Element | string | undefined;
-			if (typeof child === "object") {
-				newChild = mount(child, elem.renderer, childScope, elem);
-				result1 = update(newChild, newChild.props, newChild.ref);
-			} else if (typeof child === "string") {
-				newChild = getText(elem.renderer, child);
+			if (newChild1.tag === Copy) {
+				newChild1 = oldChild;
+				// TODO: handle refs?
+			} else if (typeof oldChild === "object") {
+				if (oldChild.tag === newChild1.tag) {
+					// TODO: handle case of reuse
+					result1 = update(oldChild, newChild1.props, newChild1.ref);
+					newChild1 = oldChild;
+				} else {
+					newChild1 = mount(newChild1, elem.renderer, childScope, elem);
+					result1 = update(newChild1, newChild1.props, newChild1.ref);
+					if (result1 === undefined) {
+						unmount(oldChild);
+					} else {
+						const oldChild1 = oldChild;
+						const newChild2 = newChild1;
+						newChild1.value = oldChild.value;
+						schedule(oldChild, (value) => (newChild2.value = value));
+						result1.then(() => unmount(oldChild1));
+					}
+				}
 			} else {
-				newChild = undefined;
+				newChild1 = mount(newChild1, elem.renderer, childScope, elem);
+				result1 = update(newChild1, newChild1.props, newChild1.ref);
+				if (result1 !== undefined) {
+					newChild1.value = oldChild;
+				}
 			}
 
-			if (result1 === undefined) {
-				if (typeof oldChild === "object") {
-					unmount(oldChild);
-				}
-			} else {
-				const oldChild1 = oldChild;
-				if (typeof oldChild1 === "object") {
-					(newChild as Element).value = oldChild1.value;
-					schedule(oldChild1, (value: any) => {
-						(newChild as Element).value = value;
-					});
-				} else {
-					(newChild as Element).value = oldChild1;
-				}
-
-				result1 = result1.then(() => {
-					if (typeof oldChild1 === "object") {
-						unmount(oldChild1);
-					}
-
-					return undefined; // void :(
-				});
-
+			if (result1 !== undefined) {
 				result = result === undefined ? result1 : result.then(() => result1);
 			}
+		} else {
+			if (typeof oldChild === "object") {
+				unmount(oldChild);
+			}
 
-			oldChild = newChild;
+			if (typeof newChild1 === "string") {
+				newChild1 = getText(elem.renderer, newChild1);
+			}
 		}
 
-		if (key !== undefined) {
+		// push to children1
+		if (children1 === undefined) {
+			children1 = newChild1;
+		} else {
+			if (!Array.isArray(children1)) {
+				children1 = [children1];
+			}
+
+			children1.push(newChild1);
+		}
+
+		// add to childrenByKey
+		if (typeof newChild1 === "object" && newChild1.key !== undefined) {
 			if (childrenByKey === undefined) {
 				childrenByKey = new Map();
 			}
 
-			childrenByKey.set(key, oldChild as Element);
-		}
-
-		i++;
-		if (newChildren === undefined) {
-			newChildren = oldChild;
-		} else {
-			if (!Array.isArray(newChildren)) {
-				newChildren = [newChildren];
+			if (!childrenByKey.has(newChild1.key)) {
+				childrenByKey.set(newChild1.key, newChild1);
 			}
-
-			newChildren.push(oldChild);
 		}
 	}
 
-	if (!!(elem.flags & flags.Handling) !== handling) {
+	if (handling !== (elem.flags & flags.Handling)) {
 		elem.flags &= ~flags.Handling;
 		return;
 	}
@@ -501,20 +415,23 @@ function updateChildren(
 					unmount(oldChild);
 				}
 			}
-		} else if (typeof elem.children === "object" && i === 0) {
+		} else if (
+			i === 0 &&
+			typeof elem.children === "object" &&
+			elem.children.key === undefined
+		) {
 			unmount(elem.children);
 		}
 	}
 
-	elem.children = newChildren;
-
 	// TODO: likely where logic for asynchronous unmounting will go
 	if (elem.childrenByKey !== undefined) {
-		for (const oldChild of elem.childrenByKey.values()) {
-			unmount(oldChild);
+		for (const child of elem.childrenByKey.values()) {
+			unmount(child);
 		}
 	}
 
+	elem.children = children1;
 	elem.childrenByKey = childrenByKey;
 
 	if (elem.onNewResult !== undefined) {
