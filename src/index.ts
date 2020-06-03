@@ -1,5 +1,5 @@
 import {CrankEventTarget, isEventTarget} from "./events";
-
+import * as flags from "./flags";
 import {
 	isIteratorOrAsyncIterator,
 	isNonStringIterable,
@@ -8,7 +8,6 @@ import {
 	MaybePromiseLike,
 	upgradePromiseLike,
 } from "./utils";
-import * as flags from "./flags";
 
 // re-exporting EventMap for user extensions
 export {EventMap} from "./events";
@@ -61,25 +60,22 @@ const ElementSigil: unique symbol = Symbol.for("crank.ElementSigil");
 
 export class Element<TTag extends Tag = Tag, TValue = any> {
 	__sigil__: typeof ElementSigil;
+	flags: number;
 	tag: TTag;
 	props: TagProps<TTag>;
 	key: Key;
 	ref: Function | undefined;
-	flags: number;
+	scope: Scope;
+	iterator: Iterator<TValue> | ChildIterator | undefined;
+	parent: Element<Tag, TValue> | undefined;
+	value: Array<TValue | string> | TValue | string | undefined;
+	children: Array<NormalizedChild> | NormalizedChild;
+	childrenByKey: Map<Key, Element> | undefined;
 	// TODO: DELETE ME
 	renderer!: Renderer<TValue>;
-	parent: Element<Tag, TValue> | undefined;
-	scope: Scope;
-	value: Array<TValue | string> | TValue | string | undefined;
-	children:
-		| Array<Element<Tag, TValue> | string | undefined>
-		| Element<Tag, TValue>
-		| string
-		| undefined;
-	childrenByKey: Map<Key, Element<Tag, TValue>> | undefined;
-	iterator: Iterator<TValue> | ChildIterator | undefined;
-	onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
+	// TODO: DELETE ME
 	ctx: Context | undefined;
+	onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
 	schedules: Set<(value: unknown) => unknown> | undefined;
 	cleanups: Set<(value: unknown) => unknown> | undefined;
 	// TODO: component specific. Move to Context or helper object?
@@ -243,7 +239,7 @@ function mount<TTag extends Tag, TValue>(
 	elem.scope = scope;
 	elem.parent = parent;
 	if (typeof elem.tag === "function") {
-		elem.ctx = new Context(elem, parent && parent.ctx);
+		elem.ctx = new Context(elem as Element<Component>, parent && parent.ctx);
 	} else {
 		elem.ctx = parent && parent.ctx;
 	}
@@ -251,7 +247,6 @@ function mount<TTag extends Tag, TValue>(
 	return elem;
 }
 
-// TODO: put more logic from updateComponent here.
 function update(
 	elem: Element,
 	props: any,
@@ -261,7 +256,7 @@ function update(
 	elem.ref = ref;
 	elem.flags |= flags.Updating;
 	if (typeof elem.tag === "function") {
-		return updateComponent(elem);
+		return refresh(elem as Element<Component>);
 	}
 
 	return updateChildren(elem, elem.props.children);
@@ -824,7 +819,7 @@ function handle(elem: Element, reason: unknown): MaybePromise<undefined> {
 	return handle(elem.parent, reason);
 }
 
-function updateComponent(elem: Element): MaybePromise<undefined> {
+function refresh(elem: Element<Component>): MaybePromise<undefined> {
 	if (elem.flags & (flags.Stepping | flags.Unmounted)) {
 		// TODO: we may want to log warnings when stuff like elem happens
 		return;
@@ -1002,8 +997,11 @@ function cleanup(elem: Element, callback: (value: unknown) => unknown): void {
 export interface ProvisionMap {}
 
 export class Context<TProps = any> extends CrankEventTarget {
-	__elem__: Element;
-	constructor(elem: Element, parent: Context<TProps> | undefined) {
+	__elem__: Element<Component, TProps>;
+	constructor(
+		elem: Element<Component, TProps>,
+		parent: Context<TProps> | undefined,
+	) {
 		super(parent);
 		this.__elem__ = elem;
 	}
@@ -1080,7 +1078,7 @@ export class Context<TProps = any> extends CrankEventTarget {
 	}
 
 	refresh(): Promise<undefined> | undefined {
-		return updateComponent(this.__elem__);
+		return refresh(this.__elem__);
 	}
 
 	schedule(callback: (value: unknown) => unknown): void {
