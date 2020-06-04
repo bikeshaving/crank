@@ -73,7 +73,6 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 	onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
 	schedules: Set<(value: unknown) => unknown> | undefined;
 	cleanups: Set<(value: unknown) => unknown> | undefined;
-
 	// TODO: component specific. Move to Context or helper object?
 	provisions: Map<unknown, unknown> | undefined;
 	onProps: ((props: any) => unknown) | undefined;
@@ -947,7 +946,7 @@ function cleanup(elem: Element, callback: (value: unknown) => unknown): void {
 export interface ProvisionMap {}
 
 export class Context<TProps = any, TValue = any> extends CrankEventTarget {
-	__renderer__: Renderer<TValue>;
+	renderer: Renderer<TValue>;
 	__elem__: Element<Component, TProps>;
 	constructor(
 		renderer: Renderer<TValue>,
@@ -955,7 +954,7 @@ export class Context<TProps = any, TValue = any> extends CrankEventTarget {
 		parent: Context<TProps> | undefined,
 	) {
 		super(parent);
-		this.__renderer__ = renderer;
+		this.renderer = renderer;
 		this.__elem__ = elem;
 	}
 
@@ -1031,7 +1030,7 @@ export class Context<TProps = any, TValue = any> extends CrankEventTarget {
 	}
 
 	refresh(): Promise<undefined> | undefined {
-		return refresh(this.__renderer__, this.__elem__);
+		return refresh(this.renderer, this.__elem__);
 	}
 
 	schedule(callback: (value: unknown) => unknown): void {
