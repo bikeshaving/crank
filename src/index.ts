@@ -1127,43 +1127,50 @@ export class Renderer<TValue> {
 		}
 	}
 
-	// TODO: clean this method up
 	render(children: Children, root?: object): MaybePromise<TValue> {
 		const clearing = children == null;
-		const portal: Element<Portal> =
+		let newChild: Element<Portal, TValue> =
 			isElement(children) && children.tag === Portal
 				? children
 				: createElement(Portal, {root}, children);
-		let elem: Element<Portal, TValue> | undefined =
+
+		const oldChild: Element<Portal, TValue> | undefined =
 			root != null ? this.__cache__.get(root) : undefined;
 
-		if (elem === undefined) {
-			elem = mount(this, portal, this);
-			if (root != null && !clearing) {
-				this.__cache__.set(root, elem);
+		// TODO: what if the we pass two portals with different keys?
+		if (oldChild === undefined) {
+			mount(this, newChild, this);
+			if (!clearing && root !== null && typeof root === "object") {
+				this.__cache__.set(root, newChild);
 			}
-		} else if (root != null && clearing) {
-			this.__cache__.delete(root);
+		} else {
+			if (oldChild !== newChild) {
+				oldChild.props = newChild.props;
+				oldChild.ref = newChild.ref;
+				newChild = oldChild;
+			}
+
+			if (clearing && root !== null && typeof root === "object") {
+				this.__cache__.delete(root);
+			}
 		}
 
-		elem.props = portal.props;
-		elem.ref = portal.ref;
-		const result = update(this, elem);
+		const result = update(this, newChild);
 		if (isPromiseLike(result)) {
 			return result.then(() => {
-				if (portal.props.root == null) {
-					unmount(this, elem!);
+				if (newChild.props.root == null) {
+					unmount(this, newChild);
 				}
 
-				return elem!.value! as MaybePromise<TValue>;
+				return newChild.value as TValue;
 			});
 		}
 
-		if (portal.props.root == null) {
-			unmount(this, elem);
+		if (newChild.props.root == null) {
+			unmount(this, newChild);
 		}
 
-		return elem.value! as MaybePromise<TValue>;
+		return newChild.value as TValue;
 	}
 }
 
