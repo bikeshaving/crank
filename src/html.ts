@@ -3,7 +3,6 @@ import {
 	Element,
 	Environment,
 	Intrinsic,
-	IntrinsicProps,
 	Portal,
 	Renderer,
 	Tag,
@@ -44,7 +43,7 @@ function printStyle(style: Record<string, string>): string {
 	return cssStrings.join("");
 }
 
-function printAttrs(props: IntrinsicProps<string>): string {
+function printAttrs(props: Record<string, any>): string {
 	const attrs: string[] = [];
 	for (const [name, value] of Object.entries(props)) {
 		switch (true) {
