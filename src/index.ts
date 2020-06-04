@@ -95,11 +95,11 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 		ref: Function | undefined,
 	) {
 		this.__sigil__ = ElementSigil;
-		this.flags = flags.Initial;
 		this.tag = tag;
 		this.props = props;
 		this.key = key;
 		this.ref = ref;
+		this.flags = flags.Initial;
 	}
 
 	get childValues(): Array<TValue | string> {
@@ -189,7 +189,9 @@ export function createElement<TTag extends Tag>(
 	if (props != null) {
 		for (const name in props) {
 			if (name === "crank-key") {
-				key = props[name];
+				if (props[name] != null) {
+					key = props[name];
+				}
 			} else if (name === "crank-ref") {
 				if (typeof props["crank-ref"] === "function") {
 					ref = props[name];
@@ -448,7 +450,7 @@ function updateChildren(
 		return Promise.race([result, newResult]);
 	}
 
-	commit(elem);
+	return commit(elem);
 }
 
 function prepareCommit<TValue>(elem: Element<Tag, TValue>): void {
@@ -1082,6 +1084,7 @@ export class Renderer<TValue> {
 		}
 	}
 
+	// TODO: clean this method up
 	render(children: Children, root?: object): MaybePromise<TValue> {
 		const clearing = children == null;
 		if (isNonStringIterable(children)) {
@@ -1092,7 +1095,6 @@ export class Renderer<TValue> {
 			isElement(children) && children.tag === Portal
 				? children
 				: createElement(Portal, {root}, children);
-
 		let elem: Element<Portal, TValue> | undefined =
 			root != null ? this.__cache__.get(root) : undefined;
 
