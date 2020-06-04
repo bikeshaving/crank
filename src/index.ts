@@ -227,7 +227,6 @@ function normalize(child: Child): NormalizedChild {
 	}
 }
 
-// TODO: there should be a fast path where we avoid updateChildren for the initial render
 function mount<TTag extends Tag, TValue>(
 	elem: Element<TTag, TValue>,
 	renderer: Renderer<TValue>,
@@ -251,13 +250,7 @@ function mount<TTag extends Tag, TValue>(
 	return elem;
 }
 
-function update(
-	elem: Element,
-	props: any,
-	ref?: Function,
-): MaybePromise<undefined> {
-	elem.props = props;
-	elem.ref = ref;
+function update(elem: Element): MaybePromise<undefined> {
 	elem.flags |= flags.Updating;
 	if (typeof elem.tag === "function") {
 		return refresh(elem as Element<Component>);
@@ -293,6 +286,7 @@ function updateChildren(
 	}
 
 	for (let newChild of children) {
+		// alignment
 		let oldChild: NormalizedChild;
 		if (Array.isArray(elem.children)) {
 			oldChild = elem.children[i];
@@ -337,22 +331,28 @@ function updateChildren(
 			i++;
 		}
 
+		// updating
 		if (typeof newChild1 === "object") {
 			let result1: Promise<undefined> | undefined;
 			if (newChild1.tag === Copy) {
+				// TODO: do refs make sense for copies?
 				newChild1 = oldChild;
-				// TODO: handle refs?
 			} else if (typeof oldChild === "object") {
 				if (oldChild.tag === newChild1.tag) {
-					// TODO: handle case of reuse
-					result1 = update(oldChild, newChild1.props, newChild1.ref);
-					newChild1 = oldChild;
+					if (oldChild !== newChild) {
+						oldChild.props = newChild1.props;
+						oldChild.ref = newChild1.ref;
+						newChild1 = oldChild;
+					}
+
+					result1 = update(newChild1);
 				} else {
 					newChild1 = mount(newChild1, elem.renderer, childScope, elem);
-					result1 = update(newChild1, newChild1.props, newChild1.ref);
+					result1 = update(newChild1);
 					if (result1 === undefined) {
 						unmount(oldChild);
 					} else {
+						// storing variables for callback closures
 						const oldChild1 = oldChild;
 						const newChild2 = newChild1;
 						newChild1.value = oldChild.value;
@@ -362,7 +362,7 @@ function updateChildren(
 				}
 			} else {
 				newChild1 = mount(newChild1, elem.renderer, childScope, elem);
-				result1 = update(newChild1, newChild1.props, newChild1.ref);
+				result1 = update(newChild1);
 				if (result1 !== undefined) {
 					newChild1.value = oldChild;
 				}
@@ -1107,7 +1107,9 @@ export class Renderer<TValue> {
 			this.__cache__.delete(root);
 		}
 
-		const result = update(elem, portal.props);
+		elem.props = portal.props;
+		elem.ref = portal.ref;
+		const result = update(elem);
 		if (isPromiseLike(result)) {
 			return result.then(() => {
 				commit(elem!);
