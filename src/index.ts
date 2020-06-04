@@ -359,11 +359,19 @@ function updateChildren<TValue>(
 						unmount(renderer, oldChild);
 					} else {
 						// storing variables for callback closures
+						newChild1.value = oldChild.value;
 						const oldChild1 = oldChild;
 						const newChild2 = newChild1;
-						newChild1.value = oldChild.value;
-						schedule(oldChild, (value) => (newChild2.value = value));
-						result1.then(() => unmount(renderer, oldChild1));
+						let fulfilled = false;
+						result1.then(() => {
+							fulfilled = true;
+							unmount(renderer, oldChild1);
+						});
+						schedule(oldChild, (value) => {
+							if (!fulfilled) {
+								newChild2.value = value;
+							}
+						});
 					}
 				}
 			} else {
@@ -1122,10 +1130,6 @@ export class Renderer<TValue> {
 	// TODO: clean this method up
 	render(children: Children, root?: object): MaybePromise<TValue> {
 		const clearing = children == null;
-		if (isNonStringIterable(children)) {
-			children = createElement(Fragment, null, children);
-		}
-
 		const portal: Element<Portal> =
 			isElement(children) && children.tag === Portal
 				? children
@@ -1145,10 +1149,8 @@ export class Renderer<TValue> {
 		elem.props = portal.props;
 		elem.ref = portal.ref;
 		const result = update(this, elem);
-		// TODO: why do we commit here?????
 		if (isPromiseLike(result)) {
 			return result.then(() => {
-				commit(this, elem!);
 				if (portal.props.root == null) {
 					unmount(this, elem!);
 				}
@@ -1157,7 +1159,6 @@ export class Renderer<TValue> {
 			});
 		}
 
-		commit(this, elem);
 		if (portal.props.root == null) {
 			unmount(this, elem);
 		}
@@ -1170,9 +1171,9 @@ function getIntrinsic<TValue>(
 	renderer: Renderer<TValue>,
 	tag: string | symbol,
 ): Intrinsic<TValue> {
-	if (renderer.__env__[tag as any]) {
+	if (typeof renderer.__env__[tag as any] === "function") {
 		return renderer.__env__[tag as any];
-	} else if (renderer.__defaults__[tag as any] !== undefined) {
+	} else if (typeof renderer.__defaults__[tag as any] === "function") {
 		return renderer.__defaults__[tag as any];
 	}
 
