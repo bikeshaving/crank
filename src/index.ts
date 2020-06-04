@@ -53,11 +53,6 @@ export interface Props {
 	children?: Children;
 }
 
-export interface IntrinsicProps<T> {
-	children: Array<T | string>;
-	[name: string]: any;
-}
-
 const ElementSigil: unique symbol = Symbol.for("crank.ElementSigil");
 
 export class Element<TTag extends Tag = Tag, TValue = any> {
