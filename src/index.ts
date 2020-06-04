@@ -74,12 +74,11 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 	children: NormalizedChildren;
 	childrenByKey: Map<Key, Element> | undefined;
 	// TODO: DELETE ME
-	renderer!: Renderer<TValue>;
-	// TODO: DELETE ME
 	ctx: Context | undefined;
 	onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
 	schedules: Set<(value: unknown) => unknown> | undefined;
 	cleanups: Set<(value: unknown) => unknown> | undefined;
+
 	// TODO: component specific. Move to Context or helper object?
 	provisions: Map<unknown, unknown> | undefined;
 	onProps: ((props: any) => unknown) | undefined;
@@ -228,8 +227,8 @@ function normalize(child: Child): NormalizedChild {
 }
 
 function mount<TTag extends Tag, TValue>(
-	elem: Element<TTag, TValue>,
 	renderer: Renderer<TValue>,
+	elem: Element<TTag, TValue>,
 	scope?: unknown,
 	parent?: Element<Tag, TValue>,
 ): Element<TTag, TValue> {
@@ -238,11 +237,14 @@ function mount<TTag extends Tag, TValue>(
 	}
 
 	elem.flags |= flags.Mounted;
-	elem.renderer = renderer;
 	elem.scope = scope;
 	elem.parent = parent;
 	if (typeof elem.tag === "function") {
-		elem.ctx = new Context(elem as Element<Component>, parent && parent.ctx);
+		elem.ctx = new Context(
+			renderer,
+			elem as Element<Component>,
+			parent && parent.ctx,
+		);
 	} else {
 		elem.ctx = parent && parent.ctx;
 	}
@@ -250,17 +252,21 @@ function mount<TTag extends Tag, TValue>(
 	return elem;
 }
 
-function update(elem: Element): MaybePromise<undefined> {
+function update<TValue>(
+	renderer: Renderer<TValue>,
+	elem: Element<Tag, TValue>,
+): MaybePromise<undefined> {
 	elem.flags |= flags.Updating;
 	if (typeof elem.tag === "function") {
-		return refresh(elem as Element<Component>);
+		return refresh(renderer, elem as Element<Component>);
 	}
 
-	return updateChildren(elem, elem.props.children);
+	return updateChildren(renderer, elem, elem.props.children);
 }
 
-function updateChildren(
-	elem: Element,
+function updateChildren<TValue>(
+	renderer: Renderer<TValue>,
+	elem: Element<Tag, TValue>,
 	children: Children,
 ): MaybePromise<undefined> {
 	let childScope: Scope;
@@ -269,7 +275,7 @@ function updateChildren(
 			children = createElement(Fragment, null, children);
 		}
 	} else if (elem.tag !== Fragment) {
-		childScope = getScope(elem.renderer, elem.tag, elem.props);
+		childScope = getScope(renderer, elem.tag, elem.props);
 	}
 
 	const handling = elem.flags & flags.Handling;
@@ -345,24 +351,24 @@ function updateChildren(
 						newChild1 = oldChild;
 					}
 
-					result1 = update(newChild1);
+					result1 = update(renderer, newChild1);
 				} else {
-					newChild1 = mount(newChild1, elem.renderer, childScope, elem);
-					result1 = update(newChild1);
+					newChild1 = mount(renderer, newChild1, childScope, elem);
+					result1 = update(renderer, newChild1);
 					if (result1 === undefined) {
-						unmount(oldChild);
+						unmount(renderer, oldChild);
 					} else {
 						// storing variables for callback closures
 						const oldChild1 = oldChild;
 						const newChild2 = newChild1;
 						newChild1.value = oldChild.value;
 						schedule(oldChild, (value) => (newChild2.value = value));
-						result1.then(() => unmount(oldChild1));
+						result1.then(() => unmount(renderer, oldChild1));
 					}
 				}
 			} else {
-				newChild1 = mount(newChild1, elem.renderer, childScope, elem);
-				result1 = update(newChild1);
+				newChild1 = mount(renderer, newChild1, childScope, elem);
+				result1 = update(renderer, newChild1);
 				if (result1 !== undefined) {
 					newChild1.value = oldChild;
 				}
@@ -373,11 +379,11 @@ function updateChildren(
 			}
 		} else {
 			if (typeof oldChild === "object") {
-				unmount(oldChild);
+				unmount(renderer, oldChild);
 			}
 
 			if (typeof newChild1 === "string") {
-				newChild1 = getText(elem.renderer, newChild1);
+				newChild1 = getText(renderer, newChild1);
 			}
 		}
 
@@ -414,7 +420,7 @@ function updateChildren(
 			for (; i < elem.children.length; i++) {
 				const oldChild = elem.children[i];
 				if (typeof oldChild === "object" && oldChild.key === undefined) {
-					unmount(oldChild);
+					unmount(renderer, oldChild);
 				}
 			}
 		} else if (
@@ -422,14 +428,14 @@ function updateChildren(
 			typeof elem.children === "object" &&
 			elem.children.key === undefined
 		) {
-			unmount(elem.children);
+			unmount(renderer, elem.children);
 		}
 	}
 
 	// TODO: likely where logic for asynchronous unmounting will go
 	if (elem.childrenByKey !== undefined) {
 		for (const child of elem.childrenByKey.values()) {
-			unmount(child);
+			unmount(renderer, child);
 		}
 	}
 
@@ -442,7 +448,7 @@ function updateChildren(
 	}
 
 	if (result !== undefined) {
-		result = result.then(() => commit(elem));
+		result = result.then(() => commit(renderer, elem));
 		const newResult = new Promise<undefined>(
 			(resolve) => (elem.onNewResult = resolve),
 		);
@@ -450,7 +456,7 @@ function updateChildren(
 		return Promise.race([result, newResult]);
 	}
 
-	return commit(elem);
+	return commit(renderer, elem);
 }
 
 function prepareCommit<TValue>(elem: Element<Tag, TValue>): void {
@@ -532,7 +538,10 @@ function prepareCommit<TValue>(elem: Element<Tag, TValue>): void {
 	}
 }
 
-function commit<TValue>(elem: Element<any, TValue>): MaybePromise<undefined> {
+function commit<TValue>(
+	renderer: Renderer<TValue>,
+	elem: Element<any, TValue>,
+): Promise<undefined> | undefined {
 	const oldValue = elem.value;
 	prepareCommit(elem);
 	if (typeof elem.tag === "function") {
@@ -544,7 +553,7 @@ function commit<TValue>(elem: Element<any, TValue>): MaybePromise<undefined> {
 	} else if (elem.tag !== Fragment) {
 		try {
 			if (elem.iterator === undefined) {
-				const value = getIntrinsic(elem.renderer, elem.tag)(elem);
+				const value = getIntrinsic(renderer, elem.tag)(elem);
 				if (!isIteratorOrAsyncIterator(value)) {
 					if (oldValue === value) {
 						elem.flags &= ~flags.Dirty;
@@ -575,7 +584,7 @@ function commit<TValue>(elem: Element<any, TValue>): MaybePromise<undefined> {
 				throw err;
 			}
 
-			return handle(elem.parent, err);
+			return handle(renderer, elem.parent, err);
 		}
 	}
 
@@ -599,13 +608,17 @@ function commit<TValue>(elem: Element<any, TValue>): MaybePromise<undefined> {
 		elem.flags & flags.Dirty &&
 		elem.parent !== undefined
 	) {
-		commit(elem.parent);
+		commit(renderer, elem.parent);
 	}
 
 	elem.flags &= ~flags.Updating;
 }
 
-function unmount(elem: Element, dirty = true): MaybePromise<undefined> {
+function unmount<TValue>(
+	renderer: Renderer<TValue>,
+	elem: Element,
+	dirty = true,
+): MaybePromise<undefined> {
 	if (elem.cleanups !== undefined) {
 		for (const cleanup of elem.cleanups) {
 			cleanup(elem.value);
@@ -636,17 +649,17 @@ function unmount(elem: Element, dirty = true): MaybePromise<undefined> {
 				try {
 					iteration = (elem.iterator as ChildIterator).return!();
 				} catch (err) {
-					return handle(elem.parent!, err);
+					return handle(renderer, elem.parent!, err);
 				}
 
 				if (isPromiseLike(iteration)) {
 					return iteration.then(
 						() => {
 							elem.flags &= ~flags.Updating;
-							unmountChildren(elem, dirty);
+							unmountChildren(renderer, elem, dirty);
 							return undefined; // void :(
 						},
-						(err) => handle(elem.parent!, err),
+						(err) => handle(renderer, elem.parent!, err),
 					);
 				}
 			}
@@ -666,17 +679,21 @@ function unmount(elem: Element, dirty = true): MaybePromise<undefined> {
 						throw err;
 					}
 
-					return handle(elem.parent, err);
+					return handle(renderer, elem.parent, err);
 				}
 			}
 		}
 	}
 
 	elem.flags &= ~flags.Updating;
-	unmountChildren(elem, dirty);
+	unmountChildren(renderer, elem, dirty);
 }
 
-function unmountChildren(elem: Element, dirty: boolean): void {
+function unmountChildren<TValue>(
+	renderer: Renderer<TValue>,
+	elem: Element,
+	dirty: boolean,
+): void {
 	const children =
 		elem.children === "undefined"
 			? []
@@ -685,12 +702,16 @@ function unmountChildren(elem: Element, dirty: boolean): void {
 			: [elem.children];
 	for (const child of children) {
 		if (typeof child === "object") {
-			unmount(child, dirty);
+			unmount(renderer, child, dirty);
 		}
 	}
 }
 
-function handle(elem: Element, reason: unknown): MaybePromise<undefined> {
+function handle<TValue>(
+	renderer: Renderer<TValue>,
+	elem: Element,
+	reason: unknown,
+): MaybePromise<undefined> {
 	elem.flags |= flags.Handling;
 	// helps avoid deadlocks
 	if (elem.onProps !== undefined) {
@@ -708,7 +729,7 @@ function handle(elem: Element, reason: unknown): MaybePromise<undefined> {
 		try {
 			iteration = (elem.iterator as ChildIterator).throw!(reason);
 		} catch (err) {
-			return handle(elem.parent!, err);
+			return handle(renderer, elem.parent!, err);
 		}
 
 		if (isPromiseLike(iteration)) {
@@ -718,10 +739,10 @@ function handle(elem: Element, reason: unknown): MaybePromise<undefined> {
 						elem.flags |= flags.Finished;
 					}
 
-					return updateChildren(elem, iteration.value);
+					return updateChildren(renderer, elem, iteration.value);
 				},
 				(err) => {
-					return handle(elem.parent!, err);
+					return handle(renderer, elem.parent!, err);
 				},
 			);
 		}
@@ -730,15 +751,18 @@ function handle(elem: Element, reason: unknown): MaybePromise<undefined> {
 			elem.flags |= flags.Finished;
 		}
 
-		return updateChildren(elem, iteration.value);
+		return updateChildren(renderer, elem, iteration.value);
 	} else if (elem.parent === undefined) {
 		throw reason;
 	}
 
-	return handle(elem.parent, reason);
+	return handle(renderer, elem.parent, reason);
 }
 
-function refresh(elem: Element<Component>): MaybePromise<undefined> {
+function refresh<TValue>(
+	renderer: Renderer<TValue>,
+	elem: Element<Component>,
+): MaybePromise<undefined> {
 	if (elem.flags & (flags.Stepping | flags.Unmounted)) {
 		// TODO: we may want to log warnings when stuff like elem happens
 		return;
@@ -751,14 +775,17 @@ function refresh(elem: Element<Component>): MaybePromise<undefined> {
 		elem.onProps = undefined;
 	}
 
-	return run(elem);
+	return run(renderer, elem);
 }
 
-function run(elem: Element): MaybePromise<undefined> {
+function run<TValue>(
+	renderer: Renderer<TValue>,
+	elem: Element,
+): MaybePromise<undefined> {
 	if (elem.inflightPending === undefined) {
-		const [pending, result] = step(elem);
+		const [pending, result] = step(renderer, elem);
 		if (pending !== undefined) {
-			elem.inflightPending = pending.finally(() => advance(elem));
+			elem.inflightPending = pending.finally(() => advance(renderer, elem));
 		}
 
 		if (result !== undefined) {
@@ -772,11 +799,11 @@ function run(elem: Element): MaybePromise<undefined> {
 		let resolve: (value: MaybePromise<undefined>) => unknown;
 		elem.enqueuedPending = elem.inflightPending
 			.then(() => {
-				const [pending, result] = step(elem);
+				const [pending, result] = step(renderer, elem);
 				resolve(result);
 				return pending;
 			})
-			.finally(() => advance(elem));
+			.finally(() => advance(renderer, elem));
 		elem.enqueuedResult = new Promise((resolve1) => (resolve = resolve1));
 	}
 
@@ -784,6 +811,7 @@ function run(elem: Element): MaybePromise<undefined> {
 }
 
 function step<TValue>(
+	renderer: Renderer<TValue>,
 	elem: Element<any, TValue>,
 ): [MaybePromise<undefined>, MaybePromise<undefined>] {
 	if (elem.flags & flags.Finished) {
@@ -797,7 +825,7 @@ function step<TValue>(
 		try {
 			value = (elem.tag as Component).call(elem.ctx!, elem.props!);
 		} catch (err) {
-			const caught = handle(elem.parent!, err);
+			const caught = handle(renderer, elem.parent!, err);
 			return [undefined, caught];
 		}
 
@@ -810,13 +838,13 @@ function step<TValue>(
 				() => undefined,
 			); // void :(
 			const result = value1.then(
-				(child) => updateChildren(elem, child),
-				(err) => handle(elem.parent!, err),
+				(child) => updateChildren(renderer, elem, child),
+				(err) => handle(renderer, elem.parent!, err),
 			);
 			elem.flags &= ~flags.Stepping;
 			return [pending, result];
 		} else {
-			const result = updateChildren(elem, value);
+			const result = updateChildren(renderer, elem, value);
 			elem.flags &= ~flags.Stepping;
 			return [undefined, result];
 		}
@@ -836,7 +864,7 @@ function step<TValue>(
 	try {
 		iteration = (elem.iterator as ChildIterator).next(oldValue);
 	} catch (err) {
-		const caught = handle(elem.parent!, err);
+		const caught = handle(renderer, elem.parent!, err);
 		return [caught, caught];
 	}
 
@@ -844,7 +872,7 @@ function step<TValue>(
 	if (isPromiseLike(iteration)) {
 		elem.flags |= flags.AsyncGen;
 		iteration = iteration.catch((err) => {
-			const caught = handle(elem.parent!, err);
+			const caught = handle(renderer, elem.parent!, err);
 			if (caught === undefined) {
 				return {value: undefined, done: true};
 			}
@@ -861,7 +889,7 @@ function step<TValue>(
 				elem.flags |= flags.Finished;
 			}
 
-			let result = updateChildren(elem, iteration.value);
+			let result = updateChildren(renderer, elem, iteration.value);
 			if (isPromiseLike(result)) {
 				elem.oldResult = result.catch(() => undefined); // void :(
 			}
@@ -878,17 +906,17 @@ function step<TValue>(
 		elem.flags |= flags.Finished;
 	}
 
-	const result = updateChildren(elem, iteration.value);
+	const result = updateChildren(renderer, elem, iteration.value);
 	return [result, result];
 }
 
-function advance(elem: Element): void {
+function advance<TValue>(renderer: Renderer<TValue>, elem: Element): void {
 	elem.inflightPending = elem.enqueuedPending;
 	elem.inflightResult = elem.enqueuedResult;
 	elem.enqueuedPending = undefined;
 	elem.enqueuedResult = undefined;
 	if (elem.flags & flags.AsyncGen && !(elem.flags & flags.Finished)) {
-		run(elem)!.catch((err) => {
+		run(renderer, elem)!.catch((err) => {
 			// We catch and rethrow the error to trigger an unhandled promise rejection.
 			if (!(elem.flags & flags.Updating)) {
 				throw err;
@@ -915,13 +943,16 @@ function cleanup(elem: Element, callback: (value: unknown) => unknown): void {
 
 export interface ProvisionMap {}
 
-export class Context<TProps = any> extends CrankEventTarget {
+export class Context<TProps = any, TValue = any> extends CrankEventTarget {
+	__renderer__: Renderer<TValue>;
 	__elem__: Element<Component, TProps>;
 	constructor(
+		renderer: Renderer<TValue>,
 		elem: Element<Component, TProps>,
 		parent: Context<TProps> | undefined,
 	) {
 		super(parent);
+		this.__renderer__ = renderer;
 		this.__elem__ = elem;
 	}
 
@@ -997,7 +1028,7 @@ export class Context<TProps = any> extends CrankEventTarget {
 	}
 
 	refresh(): Promise<undefined> | undefined {
-		return refresh(this.__elem__);
+		return refresh(this.__renderer__, this.__elem__);
 	}
 
 	schedule(callback: (value: unknown) => unknown): void {
@@ -1021,13 +1052,13 @@ export interface Scoper {
 }
 
 export interface Environment<TValue> {
-	[Default]?(tag: string | symbol): Intrinsic<TValue>;
+	[Default](tag: string | symbol): Intrinsic<TValue>;
 	[Text]?(text: string): string;
-	[Scopes]?: Scoper;
-	[tag: string]: Intrinsic<TValue>;
 	// TODO: uncomment
 	// [Portal]?: Intrinsic<TValue>;
 	// [Raw]?: Intrinsic<TValue>;
+	[Scopes]?: Scoper;
+	[tag: string]: Intrinsic<TValue>;
 }
 
 const defaultEnv: Environment<any> = {
@@ -1043,15 +1074,19 @@ const defaultEnv: Environment<any> = {
 };
 
 export class Renderer<TValue> {
-	__cache__ = new WeakMap<object, Element<any, TValue>>();
-	__defaults__: Record<string, Intrinsic<TValue>> = {};
-	__env__: Environment<TValue> = {...defaultEnv};
-	__scoper__: Scoper = {};
-	constructor(env?: Environment<TValue>) {
+	__env__: Environment<TValue>;
+	__defaults__: Record<string, Intrinsic<TValue>>;
+	__scoper__: Scoper;
+	__cache__: WeakMap<object, Element<any, TValue>>;
+	constructor(env?: Partial<Environment<TValue>>) {
+		this.__env__ = Object.assign({}, defaultEnv);
+		this.__defaults__ = {};
+		this.__scoper__ = {};
+		this.__cache__ = new WeakMap();
 		this.extend(env);
 	}
 
-	extend(env?: Environment<TValue>): void {
+	extend(env?: Partial<Environment<TValue>>): void {
 		if (env == null) {
 			return;
 		}
@@ -1099,7 +1134,7 @@ export class Renderer<TValue> {
 			root != null ? this.__cache__.get(root) : undefined;
 
 		if (elem === undefined) {
-			elem = mount(portal, this);
+			elem = mount(this, portal, this);
 			if (root != null && !clearing) {
 				this.__cache__.set(root, elem);
 			}
@@ -1109,21 +1144,22 @@ export class Renderer<TValue> {
 
 		elem.props = portal.props;
 		elem.ref = portal.ref;
-		const result = update(elem);
+		const result = update(this, elem);
+		// TODO: why do we commit here?????
 		if (isPromiseLike(result)) {
 			return result.then(() => {
-				commit(elem!);
+				commit(this, elem!);
 				if (portal.props.root == null) {
-					unmount(elem!);
+					unmount(this, elem!);
 				}
 
 				return elem!.value! as MaybePromise<TValue>;
 			});
 		}
 
-		commit(elem!);
+		commit(this, elem);
 		if (portal.props.root == null) {
-			unmount(elem);
+			unmount(this, elem);
 		}
 
 		return elem.value! as MaybePromise<TValue>;
@@ -1146,7 +1182,7 @@ function getIntrinsic<TValue>(
 }
 
 function getText(renderer: Renderer<any>, text: string): string {
-	if (renderer.__env__[Text] !== undefined) {
+	if (typeof renderer.__env__[Text] === "function") {
 		return renderer.__env__[Text]!(text);
 	}
 
