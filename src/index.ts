@@ -63,11 +63,11 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 	ref: Function | undefined;
 	scope: Scope;
 	parent: Element<Tag, TValue> | undefined;
+	ctx: Context | undefined;
 	iterator: Iterator<TValue> | ChildIterator | undefined;
 	value: Array<TValue | string> | TValue | string | undefined;
 	children: NormalizedChildren;
 	childrenByKey: Map<Key, Element> | undefined;
-	ctx: Context | undefined;
 	onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
 	schedules: Set<(value: unknown) => unknown> | undefined;
 	cleanups: Set<(value: unknown) => unknown> | undefined;
@@ -221,8 +221,9 @@ function normalize(child: Child): NormalizedChild {
 function mount<TTag extends Tag, TValue>(
 	renderer: Renderer<TValue>,
 	elem: Element<TTag, TValue>,
-	scope?: unknown,
-	parent?: Element<Tag, TValue>,
+	scope: Scope,
+	parent: Element<Tag, TValue> | undefined,
+	ctx: Context<TagProps<TTag>, TValue> | undefined,
 ): Element<TTag, TValue> {
 	if (elem.flags & flags.Mounted) {
 		elem = new Element(elem.tag, elem.props, elem.key, elem.ref);
@@ -232,13 +233,7 @@ function mount<TTag extends Tag, TValue>(
 	elem.scope = scope;
 	elem.parent = parent;
 	if (typeof elem.tag === "function") {
-		elem.ctx = new Context(
-			renderer,
-			elem as Element<Component>,
-			parent && parent.ctx,
-		);
-	} else {
-		elem.ctx = parent && parent.ctx;
+		elem.ctx = new Context(renderer, elem as Element<Component>, ctx);
 	}
 
 	return elem;
@@ -247,19 +242,21 @@ function mount<TTag extends Tag, TValue>(
 function update<TValue>(
 	renderer: Renderer<TValue>,
 	elem: Element<Tag, TValue>,
+	ctx: Context<any, TValue> | undefined,
 ): MaybePromise<undefined> {
 	elem.flags |= flags.Updating;
 	if (typeof elem.tag === "function") {
-		return refresh(renderer, elem as Element<Component>);
+		return refresh(elem as Element<Component>);
 	}
 
-	return updateChildren(renderer, elem, elem.props.children);
+	return updateChildren(renderer, elem, elem.props.children, ctx);
 }
 
 function updateChildren<TValue>(
 	renderer: Renderer<TValue>,
 	elem: Element<Tag, TValue>,
 	children: Children,
+	ctx: Context<any, TValue> | undefined,
 ): MaybePromise<undefined> {
 	let childScope: Scope;
 	if (typeof elem.tag === "function") {
@@ -343,10 +340,10 @@ function updateChildren<TValue>(
 						newChild1 = oldChild;
 					}
 
-					result1 = update(renderer, newChild1);
+					result1 = update(renderer, newChild1, ctx);
 				} else {
-					newChild1 = mount(renderer, newChild1, childScope, elem);
-					result1 = update(renderer, newChild1);
+					newChild1 = mount(renderer, newChild1, childScope, elem, ctx);
+					result1 = update(renderer, newChild1, ctx);
 					if (result1 === undefined) {
 						unmount(renderer, oldChild);
 					} else {
@@ -367,8 +364,8 @@ function updateChildren<TValue>(
 					}
 				}
 			} else {
-				newChild1 = mount(renderer, newChild1, childScope, elem);
-				result1 = update(renderer, newChild1);
+				newChild1 = mount(renderer, newChild1, childScope, elem, ctx);
+				result1 = update(renderer, newChild1, ctx);
 				if (result1 !== undefined) {
 					newChild1.value = oldChild;
 				}
@@ -739,7 +736,7 @@ function handle<TValue>(
 						elem.flags |= flags.Finished;
 					}
 
-					return updateChildren(renderer, elem, iteration.value);
+					return updateChildren(renderer, elem, iteration.value, elem.ctx);
 				},
 				(err) => {
 					return handle(renderer, elem.parent!, err);
@@ -751,7 +748,7 @@ function handle<TValue>(
 			elem.flags |= flags.Finished;
 		}
 
-		return updateChildren(renderer, elem, iteration.value);
+		return updateChildren(renderer, elem, iteration.value, elem.ctx);
 	} else if (elem.parent === undefined) {
 		throw reason;
 	}
@@ -776,10 +773,7 @@ function cleanup(elem: Element, callback: (value: unknown) => unknown): void {
 }
 
 // Component functions
-function refresh<TValue>(
-	renderer: Renderer<TValue>,
-	elem: Element<Component>,
-): MaybePromise<undefined> {
+function refresh(elem: Element<Component>): MaybePromise<undefined> {
 	if (elem.flags & (flags.Stepping | flags.Unmounted)) {
 		// TODO: we may want to log warnings when stuff like elem happens
 		return;
@@ -792,23 +786,17 @@ function refresh<TValue>(
 		elem.onProps = undefined;
 	}
 
-	return run(renderer, elem);
+	return run(elem);
 }
 
-function run<TValue>(
-	renderer: Renderer<TValue>,
-	elem: Element,
-): MaybePromise<undefined> {
+function run(elem: Element<Component>): MaybePromise<undefined> {
 	if (elem.inflightPending === undefined) {
-		const [pending, result] = step(renderer, elem);
+		const [pending, result] = step(elem);
 		if (pending !== undefined) {
-			elem.inflightPending = pending.finally(() => advance(renderer, elem));
+			elem.inflightPending = pending.finally(() => advance(elem));
 		}
 
-		if (result !== undefined) {
-			elem.inflightResult = result;
-		}
-
+		elem.inflightResult = result;
 		return elem.inflightResult;
 	} else if (elem.flags & flags.AsyncGen) {
 		return elem.inflightResult;
@@ -816,11 +804,11 @@ function run<TValue>(
 		let resolve: (value: MaybePromise<undefined>) => unknown;
 		elem.enqueuedPending = elem.inflightPending
 			.then(() => {
-				const [pending, result] = step(renderer, elem);
+				const [pending, result] = step(elem);
 				resolve(result);
 				return pending;
 			})
-			.finally(() => advance(renderer, elem));
+			.finally(() => advance(elem));
 		elem.enqueuedResult = new Promise((resolve1) => (resolve = resolve1));
 	}
 
@@ -828,8 +816,7 @@ function run<TValue>(
 }
 
 function step<TValue>(
-	renderer: Renderer<TValue>,
-	elem: Element<any, TValue>,
+	elem: Element<Component, TValue>,
 ): [MaybePromise<undefined>, MaybePromise<undefined>] {
 	if (elem.flags & flags.Finished) {
 		return [undefined, undefined];
@@ -840,9 +827,9 @@ function step<TValue>(
 		elem.ctx!.clearEventListeners();
 		let value: ChildIterator | PromiseLike<Child> | Child;
 		try {
-			value = (elem.tag as Component).call(elem.ctx!, elem.props!);
+			value = elem.tag.call(elem.ctx!, elem.props!);
 		} catch (err) {
-			const caught = handle(renderer, elem.parent!, err);
+			const caught = handle(elem.ctx!.renderer, elem.parent!, err);
 			return [undefined, caught];
 		}
 
@@ -855,13 +842,13 @@ function step<TValue>(
 				() => undefined,
 			); // void :(
 			const result = value1.then(
-				(child) => updateChildren(renderer, elem, child),
-				(err) => handle(renderer, elem.parent!, err),
+				(child) => updateChildren(elem.ctx!.renderer, elem, child, elem.ctx),
+				(err) => handle(elem.ctx!.renderer, elem.parent!, err),
 			);
 			elem.flags &= ~flags.Stepping;
 			return [pending, result];
 		} else {
-			const result = updateChildren(renderer, elem, value);
+			const result = updateChildren(elem.ctx!.renderer, elem, value, elem.ctx);
 			elem.flags &= ~flags.Stepping;
 			return [undefined, result];
 		}
@@ -881,7 +868,7 @@ function step<TValue>(
 	try {
 		iteration = (elem.iterator as ChildIterator).next(oldValue);
 	} catch (err) {
-		const caught = handle(renderer, elem.parent!, err);
+		const caught = handle(elem.ctx!.renderer, elem.parent!, err);
 		return [caught, caught];
 	}
 
@@ -889,7 +876,7 @@ function step<TValue>(
 	if (isPromiseLike(iteration)) {
 		elem.flags |= flags.AsyncGen;
 		iteration = iteration.catch((err) => {
-			const caught = handle(renderer, elem.parent!, err);
+			const caught = handle(elem.ctx!.renderer, elem.parent!, err);
 			if (caught === undefined) {
 				return {value: undefined, done: true};
 			}
@@ -906,7 +893,12 @@ function step<TValue>(
 				elem.flags |= flags.Finished;
 			}
 
-			let result = updateChildren(renderer, elem, iteration.value);
+			let result = updateChildren(
+				elem.ctx!.renderer,
+				elem,
+				iteration.value,
+				elem.ctx,
+			);
 			if (isPromiseLike(result)) {
 				elem.oldResult = result.catch(() => undefined); // void :(
 			}
@@ -923,17 +915,22 @@ function step<TValue>(
 		elem.flags |= flags.Finished;
 	}
 
-	const result = updateChildren(renderer, elem, iteration.value);
+	const result = updateChildren(
+		elem.ctx!.renderer,
+		elem,
+		iteration.value,
+		elem.ctx,
+	);
 	return [result, result];
 }
 
-function advance<TValue>(renderer: Renderer<TValue>, elem: Element): void {
+function advance(elem: Element<Component>): void {
 	elem.inflightPending = elem.enqueuedPending;
 	elem.inflightResult = elem.enqueuedResult;
 	elem.enqueuedPending = undefined;
 	elem.enqueuedResult = undefined;
 	if (elem.flags & flags.AsyncGen && !(elem.flags & flags.Finished)) {
-		run(renderer, elem)!.catch((err) => {
+		run(elem)!.catch((err) => {
 			// We catch and rethrow the error to trigger an unhandled promise rejection.
 			if (!(elem.flags & flags.Updating)) {
 				throw err;
@@ -1029,7 +1026,7 @@ export class Context<TProps = any, TValue = any> extends CrankEventTarget {
 	}
 
 	refresh(): Promise<undefined> | undefined {
-		return refresh(this.renderer, this.__elem__);
+		return refresh(this.__elem__);
 	}
 
 	schedule(callback: (value: unknown) => unknown): void {
@@ -1132,7 +1129,7 @@ export class Renderer<TValue> {
 
 		// TODO: what if the we pass two portals with different keys?
 		if (oldChild === undefined) {
-			mount(this, newChild, this);
+			mount(this, newChild, undefined, undefined, undefined);
 			if (!clearing && root !== null && typeof root === "object") {
 				this.__cache__.set(root, newChild);
 			}
@@ -1148,7 +1145,7 @@ export class Renderer<TValue> {
 			}
 		}
 
-		const result = update(this, newChild);
+		const result = update(this, newChild, undefined);
 		if (isPromiseLike(result)) {
 			return result.then(() => {
 				if (newChild.props.root == null) {
