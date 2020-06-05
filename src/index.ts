@@ -66,7 +66,7 @@ export type Component<TProps = any> = (
 ) => ChildIterator | PromiseLike<Child> | Child;
 
 export type Intrinsic<TValue> = (
-	elem: Element<any, TValue>,
+	el: Element<any, TValue>,
 ) => Iterator<TValue> | TValue;
 
 type Key = unknown;
@@ -205,8 +205,8 @@ const defaultEnv: Environment<any> = {
 	[Portal](): never {
 		throw new Error("Environment did not provide an intrinsic for Portal");
 	},
-	[Raw](elem: Element<any, any>): any {
-		return elem.props.value;
+	[Raw](el: Element<any, any>): any {
+		return el.props.value;
 	},
 };
 
@@ -354,54 +354,54 @@ function normalize(child: Child): NormalizedChild {
 
 function mount<TTag extends Tag, TValue>(
 	renderer: Renderer<TValue>,
-	elem: Element<TTag, TValue>,
+	el: Element<TTag, TValue>,
 	scope: Scope,
 	parent: Element<Tag, TValue> | undefined,
 	ctx: Context<TagProps<TTag>, TValue> | undefined,
 ): Element<TTag, TValue> {
-	if (elem.flags & flags.Mounted) {
-		elem = new Element(elem.tag, elem.props, elem.key, elem.ref);
+	if (el.flags & flags.Mounted) {
+		el = new Element(el.tag, el.props, el.key, el.ref);
 	}
 
-	elem.flags |= flags.Mounted;
-	elem.scope = scope;
-	elem.parent = parent;
-	if (typeof elem.tag === "function") {
-		elem.ctx = new Context(renderer, elem as Element<Component>, ctx);
+	el.flags |= flags.Mounted;
+	el.scope = scope;
+	el.parent = parent;
+	if (typeof el.tag === "function") {
+		el.ctx = new Context(renderer, el as Element<Component>, ctx);
 	}
 
-	return elem;
+	return el;
 }
 
 function update<TValue>(
 	renderer: Renderer<TValue>,
-	elem: Element<Tag, TValue>,
+	el: Element<Tag, TValue>,
 	ctx: Context<any, TValue> | undefined,
 ): Promise<undefined> | undefined {
-	elem.flags |= flags.Updating;
-	if (typeof elem.ctx === "object") {
-		return elem.ctx.refresh();
+	el.flags |= flags.Updating;
+	if (typeof el.ctx === "object") {
+		return el.ctx.refresh();
 	}
 
-	return updateChildren(renderer, elem, elem.props.children, ctx);
+	return updateChildren(renderer, el, el.props.children, ctx);
 }
 
 function updateChildren<TValue>(
 	renderer: Renderer<TValue>,
-	elem: Element<Tag, TValue>,
+	el: Element<Tag, TValue>,
 	children: Children,
 	ctx: Context<any, TValue> | undefined,
 ): Promise<undefined> | undefined {
 	let childScope: Scope;
-	if (typeof elem.tag === "function") {
+	if (typeof el.tag === "function") {
 		if (isNonStringIterable(children)) {
 			children = createElement(Fragment, null, children);
 		}
-	} else if (elem.tag !== Fragment) {
-		childScope = getScope(renderer, elem.tag, elem.props);
+	} else if (el.tag !== Fragment) {
+		childScope = getScope(renderer, el.tag, el.props);
 	}
 
-	const handling = elem.flags & flags.Handling;
+	const handling = el.flags & flags.Handling;
 	let result: Promise<undefined> | undefined;
 	let children1: NormalizedChildren;
 	let childrenByKey: Map<Key, Element> | undefined;
@@ -418,10 +418,10 @@ function updateChildren<TValue>(
 	for (let newChild of children) {
 		// alignment
 		let oldChild: NormalizedChild;
-		if (Array.isArray(elem.children)) {
-			oldChild = elem.children[i];
+		if (Array.isArray(el.children)) {
+			oldChild = el.children[i];
 		} else if (i === 0) {
-			oldChild = elem.children;
+			oldChild = el.children;
 		}
 
 		// TODO: reassigning newChild does not narrow to NormalizedChild
@@ -433,12 +433,11 @@ function updateChildren<TValue>(
 		}
 
 		if (typeof newChild1 === "object" && newChild1.key !== undefined) {
-			const oldChild1 =
-				elem.childrenByKey && elem.childrenByKey.get(newChild1.key);
+			const oldChild1 = el.childrenByKey && el.childrenByKey.get(newChild1.key);
 			if (oldChild1 === undefined) {
 				oldChild = undefined;
 			} else {
-				elem.childrenByKey!.delete(newChild1.key);
+				el.childrenByKey!.delete(newChild1.key);
 				if (oldChild === oldChild1) {
 					i++;
 				} else {
@@ -448,10 +447,10 @@ function updateChildren<TValue>(
 			}
 		} else {
 			if (typeof oldChild === "object" && oldChild.key !== undefined) {
-				if (Array.isArray(elem.children)) {
+				if (Array.isArray(el.children)) {
 					while (typeof oldChild === "object" && oldChild.key !== undefined) {
 						i++;
-						oldChild = elem.children[i];
+						oldChild = el.children[i];
 					}
 				} else {
 					oldChild = undefined;
@@ -477,7 +476,7 @@ function updateChildren<TValue>(
 
 					result1 = update(renderer, newChild1, ctx);
 				} else {
-					newChild1 = mount(renderer, newChild1, childScope, elem, ctx);
+					newChild1 = mount(renderer, newChild1, childScope, el, ctx);
 					result1 = update(renderer, newChild1, ctx);
 					if (result1 === undefined) {
 						unmount(renderer, oldChild);
@@ -499,7 +498,7 @@ function updateChildren<TValue>(
 					}
 				}
 			} else {
-				newChild1 = mount(renderer, newChild1, childScope, elem, ctx);
+				newChild1 = mount(renderer, newChild1, childScope, el, ctx);
 				result1 = update(renderer, newChild1, ctx);
 				if (result1 !== undefined) {
 					newChild1.value = oldChild;
@@ -542,80 +541,80 @@ function updateChildren<TValue>(
 		}
 	}
 
-	if (handling !== (elem.flags & flags.Handling)) {
-		elem.flags &= ~flags.Handling;
+	if (handling !== (el.flags & flags.Handling)) {
+		el.flags &= ~flags.Handling;
 		return;
 	}
 
-	if (elem.children !== undefined) {
-		if (Array.isArray(elem.children)) {
-			for (; i < elem.children.length; i++) {
-				const oldChild = elem.children[i];
+	if (el.children !== undefined) {
+		if (Array.isArray(el.children)) {
+			for (; i < el.children.length; i++) {
+				const oldChild = el.children[i];
 				if (typeof oldChild === "object" && oldChild.key === undefined) {
 					unmount(renderer, oldChild);
 				}
 			}
 		} else if (
 			i === 0 &&
-			typeof elem.children === "object" &&
-			elem.children.key === undefined
+			typeof el.children === "object" &&
+			el.children.key === undefined
 		) {
-			unmount(renderer, elem.children);
+			unmount(renderer, el.children);
 		}
 	}
 
 	// TODO: likely where logic for asynchronous unmounting will go
-	if (elem.childrenByKey !== undefined) {
-		for (const child of elem.childrenByKey.values()) {
+	if (el.childrenByKey !== undefined) {
+		for (const child of el.childrenByKey.values()) {
 			unmount(renderer, child);
 		}
 	}
 
-	elem.children = children1;
-	elem.childrenByKey = childrenByKey;
+	el.children = children1;
+	el.childrenByKey = childrenByKey;
 
-	if (elem.onNewResult !== undefined) {
-		elem.onNewResult(result);
-		elem.onNewResult = undefined;
+	if (el.onNewResult !== undefined) {
+		el.onNewResult(result);
+		el.onNewResult = undefined;
 	}
 
 	if (result !== undefined) {
-		result = result.then(() => commit(renderer, elem));
+		result = result.then(() => commit(renderer, el));
 		const newResult = new Promise<undefined>(
-			(resolve) => (elem.onNewResult = resolve),
+			(resolve) => (el.onNewResult = resolve),
 		);
 
 		return Promise.race([result, newResult]);
 	}
 
-	return commit(renderer, elem);
+	return commit(renderer, el);
 }
 
-function prepareCommit<TValue>(elem: Element<Tag, TValue>): void {
-	if (elem.children === undefined) {
-		elem.flags |= flags.Dirty;
-		elem.value = undefined;
+function prepareCommit<TValue>(el: Element<Tag, TValue>): void {
+	if (el.children === undefined) {
+		el.flags |= flags.Dirty;
+		el.value = undefined;
 		return;
-	} else if (!Array.isArray(elem.children)) {
-		const child = elem.children;
+	} else if (!Array.isArray(el.children)) {
+		const child = el.children;
 		if (typeof child === "object") {
 			if (child.flags & (flags.Dirty | flags.Moved)) {
-				elem.flags |= flags.Dirty;
+				el.flags |= flags.Dirty;
 			}
 
 			child.flags &= ~(flags.Dirty | flags.Moved);
 		} else {
-			elem.flags |= flags.Dirty;
+			el.flags |= flags.Dirty;
 		}
 
 		if (typeof child === "object") {
 			if (child.tag === Portal) {
-				elem.value = undefined;
+				el.value = undefined;
 			} else {
-				elem.value = child.value;
+				el.value = child.value;
 			}
 		} else {
-			elem.value = child;
+			el.value = child;
 		}
 
 		return;
@@ -623,16 +622,16 @@ function prepareCommit<TValue>(elem: Element<Tag, TValue>): void {
 
 	let buffer: string | undefined;
 	let values: Array<TValue | string> = [];
-	for (let i = 0; i < elem.children.length; i++) {
-		const child = elem.children[i];
+	for (let i = 0; i < el.children.length; i++) {
+		const child = el.children[i];
 		if (typeof child === "object") {
 			if (child.flags & (flags.Dirty | flags.Moved)) {
-				elem.flags |= flags.Dirty;
+				el.flags |= flags.Dirty;
 			}
 
 			child.flags &= ~(flags.Dirty | flags.Moved);
 		} else {
-			elem.flags |= flags.Dirty;
+			el.flags |= flags.Dirty;
 		}
 
 		if (typeof child === "object" && child.tag === Portal) {
@@ -661,178 +660,178 @@ function prepareCommit<TValue>(elem: Element<Tag, TValue>): void {
 	}
 
 	if (values.length === 0) {
-		elem.flags |= flags.Dirty;
-		elem.value = undefined;
+		el.flags |= flags.Dirty;
+		el.value = undefined;
 	} else if (values.length === 1) {
-		elem.value = values[0];
+		el.value = values[0];
 	} else {
-		elem.value = values;
+		el.value = values;
 	}
 }
 
 function commit<TValue>(
 	renderer: Renderer<TValue>,
-	elem: Element<any, TValue>,
+	el: Element<any, TValue>,
 ): Promise<undefined> | undefined {
-	const oldValue = elem.value;
-	prepareCommit(elem);
-	if (typeof elem.tag === "function") {
-		if (isEventTarget(elem.value)) {
-			elem.ctx!.setDelegate(elem.value);
-		} else if (Array.isArray(elem.value)) {
-			elem.ctx!.setDelegates(elem.value);
+	const oldValue = el.value;
+	prepareCommit(el);
+	if (typeof el.tag === "function") {
+		if (isEventTarget(el.value)) {
+			el.ctx!.setDelegate(el.value);
+		} else if (Array.isArray(el.value)) {
+			el.ctx!.setDelegates(el.value);
 		}
-	} else if (elem.tag !== Fragment) {
+	} else if (el.tag !== Fragment) {
 		try {
-			if (elem.iterator === undefined) {
-				const value = getIntrinsic(renderer, elem.tag)(elem);
+			if (el.iterator === undefined) {
+				const value = getIntrinsic(renderer, el.tag)(el);
 				if (!isIteratorOrAsyncIterator(value)) {
 					if (oldValue === value) {
-						elem.flags &= ~flags.Dirty;
+						el.flags &= ~flags.Dirty;
 					} else {
-						elem.flags |= flags.Dirty;
+						el.flags |= flags.Dirty;
 					}
 
-					elem.value = value;
+					el.value = value;
 					return;
 				}
 
-				elem.iterator = value;
+				el.iterator = value;
 			}
 
-			const iteration = (elem.iterator as Iterator<TValue>).next();
+			const iteration = (el.iterator as Iterator<TValue>).next();
 			if (oldValue === iteration.value) {
-				elem.flags &= ~flags.Dirty;
+				el.flags &= ~flags.Dirty;
 			} else {
-				elem.flags |= flags.Dirty;
+				el.flags |= flags.Dirty;
 			}
 
-			elem.value = iteration.value;
+			el.value = iteration.value;
 			if (iteration.done) {
-				elem.flags |= flags.Finished;
+				el.flags |= flags.Finished;
 			}
 		} catch (err) {
-			if (elem.parent === undefined) {
+			if (el.parent === undefined) {
 				throw err;
 			}
 
-			return handle(renderer, elem.parent, err);
+			return handle(renderer, el.parent, err);
 		}
 	}
 
-	if (elem.schedules !== undefined && elem.schedules.size > 0) {
+	if (el.schedules !== undefined && el.schedules.size > 0) {
 		// We have to clear the schedules set before calling each callback,
 		// because otherwise a callback which refreshes the component would cause
 		// a stack overflow.
-		const callbacks = Array.from(elem.schedules);
-		elem.schedules.clear();
+		const callbacks = Array.from(el.schedules);
+		el.schedules.clear();
 		for (const callback of callbacks) {
-			callback(elem.value);
+			callback(el.value);
 		}
 	}
 
-	if (elem.ref !== undefined) {
-		elem.ref(elem.value);
+	if (el.ref !== undefined) {
+		el.ref(el.value);
 	}
 
 	if (
-		!(elem.flags & flags.Updating) &&
-		elem.flags & flags.Dirty &&
-		elem.parent !== undefined
+		!(el.flags & flags.Updating) &&
+		el.flags & flags.Dirty &&
+		el.parent !== undefined
 	) {
-		commit(renderer, elem.parent);
+		commit(renderer, el.parent);
 	}
 
-	elem.flags &= ~flags.Updating;
+	el.flags &= ~flags.Updating;
 }
 
 function unmount<TValue>(
 	renderer: Renderer<TValue>,
-	elem: Element,
+	el: Element,
 	dirty = true,
 ): Promise<undefined> | undefined {
-	if (elem.cleanups !== undefined) {
-		for (const cleanup of elem.cleanups) {
-			cleanup(elem.value);
+	if (el.cleanups !== undefined) {
+		for (const cleanup of el.cleanups) {
+			cleanup(el.value);
 		}
 
-		elem.cleanups = undefined;
+		el.cleanups = undefined;
 	}
 
-	if (elem.flags & flags.Unmounted) {
+	if (el.flags & flags.Unmounted) {
 		return;
 	}
 
 	// setting unmounted flag here is necessary because of some kind of race condition
-	elem.flags |= flags.Unmounted;
-	if (!(elem.flags & flags.Finished)) {
-		elem.flags |= flags.Finished;
-		if (typeof elem.ctx === "object") {
-			elem.ctx.clearEventListeners();
-			if (typeof elem.ctx._onProps === "function") {
-				elem.ctx._onProps(elem.props);
-				elem.ctx._onProps = undefined;
+	el.flags |= flags.Unmounted;
+	if (!(el.flags & flags.Finished)) {
+		el.flags |= flags.Finished;
+		if (typeof el.ctx === "object") {
+			el.ctx.clearEventListeners();
+			if (typeof el.ctx._onProps === "function") {
+				el.ctx._onProps(el.props);
+				el.ctx._onProps = undefined;
 			}
 		}
-		if (elem.tag === Fragment) {
+		if (el.tag === Fragment) {
 			// pass
-		} else if (typeof elem.tag === "function") {
-			if (elem.iterator !== undefined && elem.iterator.return) {
+		} else if (typeof el.tag === "function") {
+			if (el.iterator !== undefined && el.iterator.return) {
 				let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
 				try {
-					iteration = (elem.iterator as ChildIterator).return!();
+					iteration = (el.iterator as ChildIterator).return!();
 				} catch (err) {
-					return handle(renderer, elem.parent!, err);
+					return handle(renderer, el.parent!, err);
 				}
 
 				if (isPromiseLike(iteration)) {
 					return iteration.then(
 						() => {
-							elem.flags &= ~flags.Updating;
-							unmountChildren(renderer, elem, dirty);
+							el.flags &= ~flags.Updating;
+							unmountChildren(renderer, el, dirty);
 							return undefined; // void :(
 						},
-						(err) => handle(renderer, elem.parent!, err),
+						(err) => handle(renderer, el.parent!, err),
 					);
 				}
 			}
 		} else {
 			if (dirty) {
-				elem.flags |= flags.Removing;
+				el.flags |= flags.Removing;
 			} else {
-				elem.flags &= ~flags.Removing;
+				el.flags &= ~flags.Removing;
 			}
 
-			dirty = elem.tag === Portal;
-			if (elem.iterator !== undefined && elem.iterator.return) {
+			dirty = el.tag === Portal;
+			if (el.iterator !== undefined && el.iterator.return) {
 				try {
-					elem.iterator.return();
+					el.iterator.return();
 				} catch (err) {
-					if (elem.parent === undefined) {
+					if (el.parent === undefined) {
 						throw err;
 					}
 
-					return handle(renderer, elem.parent, err);
+					return handle(renderer, el.parent, err);
 				}
 			}
 		}
 	}
 
-	elem.flags &= ~flags.Updating;
-	unmountChildren(renderer, elem, dirty);
+	el.flags &= ~flags.Updating;
+	unmountChildren(renderer, el, dirty);
 }
 
 function unmountChildren<TValue>(
 	renderer: Renderer<TValue>,
-	elem: Element,
+	el: Element,
 	dirty: boolean,
 ): void {
 	const children =
-		elem.children === "undefined"
+		el.children === "undefined"
 			? []
-			: Array.isArray(elem.children)
-			? elem.children
-			: [elem.children];
+			: Array.isArray(el.children)
+			? el.children
+			: [el.children];
 	for (const child of children) {
 		if (typeof child === "object") {
 			unmount(renderer, child, dirty);
@@ -843,70 +842,70 @@ function unmountChildren<TValue>(
 // TODO: this could be a ctx function
 function handle<TValue>(
 	renderer: Renderer<TValue>,
-	elem: Element,
+	el: Element,
 	reason: unknown,
 ): Promise<undefined> | undefined {
-	elem.flags |= flags.Handling;
+	el.flags |= flags.Handling;
 	// helps avoid deadlocks
-	if (typeof elem.ctx === "object" && typeof elem.ctx._onProps === "function") {
-		elem.ctx._onProps(elem.props!);
-		elem.ctx._onProps = undefined;
+	if (typeof el.ctx === "object" && typeof el.ctx._onProps === "function") {
+		el.ctx._onProps(el.props!);
+		el.ctx._onProps = undefined;
 	}
 
 	if (
-		typeof elem.tag === "function" &&
-		elem.iterator !== undefined &&
-		elem.iterator.throw !== undefined &&
-		!(elem.flags & flags.Finished)
+		typeof el.tag === "function" &&
+		el.iterator !== undefined &&
+		el.iterator.throw !== undefined &&
+		!(el.flags & flags.Finished)
 	) {
 		let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
 		try {
-			iteration = (elem.iterator as ChildIterator).throw!(reason);
+			iteration = (el.iterator as ChildIterator).throw!(reason);
 		} catch (err) {
-			return handle(renderer, elem.parent!, err);
+			return handle(renderer, el.parent!, err);
 		}
 
 		if (isPromiseLike(iteration)) {
 			return iteration.then(
 				(iteration) => {
 					if (iteration.done) {
-						elem.flags |= flags.Finished;
+						el.flags |= flags.Finished;
 					}
 
-					return updateChildren(renderer, elem, iteration.value, elem.ctx);
+					return updateChildren(renderer, el, iteration.value, el.ctx);
 				},
 				(err) => {
-					return handle(renderer, elem.parent!, err);
+					return handle(renderer, el.parent!, err);
 				},
 			);
 		}
 
 		if (iteration.done) {
-			elem.flags |= flags.Finished;
+			el.flags |= flags.Finished;
 		}
 
-		return updateChildren(renderer, elem, iteration.value, elem.ctx);
-	} else if (elem.parent === undefined) {
+		return updateChildren(renderer, el, iteration.value, el.ctx);
+	} else if (el.parent === undefined) {
 		throw reason;
 	}
 
-	return handle(renderer, elem.parent, reason);
+	return handle(renderer, el.parent, reason);
 }
 
-function schedule(elem: Element, callback: (value: unknown) => unknown): void {
-	if (elem.schedules === undefined) {
-		elem.schedules = new Set();
+function schedule(el: Element, callback: (value: unknown) => unknown): void {
+	if (el.schedules === undefined) {
+		el.schedules = new Set();
 	}
 
-	elem.schedules.add(callback);
+	el.schedules.add(callback);
 }
 
-function cleanup(elem: Element, callback: (value: unknown) => unknown): void {
-	if (elem.cleanups === undefined) {
-		elem.cleanups = new Set();
+function cleanup(el: Element, callback: (value: unknown) => unknown): void {
+	if (el.cleanups === undefined) {
+		el.cleanups = new Set();
 	}
 
-	elem.cleanups.add(callback);
+	el.cleanups.add(callback);
 }
 
 export interface ProvisionMap {}
@@ -967,55 +966,55 @@ export class Context<TProps = any, TValue = any> extends CrankEventTarget {
 	}
 
 	*[Symbol.iterator](): Generator<TProps> {
-		const elem = this._el;
-		while (!(elem.flags & flags.Unmounted)) {
-			if (elem.flags & flags.Iterating) {
+		const el = this._el;
+		while (!(el.flags & flags.Unmounted)) {
+			if (el.flags & flags.Iterating) {
 				throw new Error("You must yield for each iteration of this.");
-			} else if (elem.flags & flags.AsyncGen) {
+			} else if (el.flags & flags.AsyncGen) {
 				throw new Error("Use for await...of in async generator components.");
 			}
 
-			elem.flags |= flags.Iterating;
-			yield elem.props!;
+			el.flags |= flags.Iterating;
+			yield el.props!;
 		}
 	}
 
 	async *[Symbol.asyncIterator](): AsyncGenerator<TProps> {
-		const elem = this._el;
+		const el = this._el;
 		do {
-			if (elem.flags & flags.Iterating) {
+			if (el.flags & flags.Iterating) {
 				throw new Error("You must yield for each iteration of this.");
-			} else if (elem.flags & flags.SyncGen) {
+			} else if (el.flags & flags.SyncGen) {
 				throw new Error("Use for...of in sync generator components.");
 			}
 
-			elem.flags |= flags.Iterating;
-			if (elem.flags & flags.Available) {
-				elem.flags &= ~flags.Available;
-				yield elem.props;
+			el.flags |= flags.Iterating;
+			if (el.flags & flags.Available) {
+				el.flags &= ~flags.Available;
+				yield el.props;
 			} else {
 				const props = await new Promise<TProps>(
 					(resolve) => (this._onProps = resolve),
 				);
-				if (!(elem.flags & flags.Unmounted)) {
+				if (!(el.flags & flags.Unmounted)) {
 					yield props;
 				}
 			}
-		} while (!(elem.flags & flags.Unmounted));
+		} while (!(el.flags & flags.Unmounted));
 	}
 
 	refresh(): Promise<undefined> | undefined {
-		const elem = this._el;
-		if (elem.flags & (flags.Stepping | flags.Unmounted)) {
-			// TODO: we may want to log warnings when stuff like elem happens
+		const el = this._el;
+		if (el.flags & (flags.Stepping | flags.Unmounted)) {
+			// TODO: we may want to log warnings when stuff like el happens
 			return;
 		}
 
 		if (typeof this._onProps === "function") {
-			this._onProps(elem.props!);
+			this._onProps(el.props!);
 			this._onProps = undefined;
 		} else {
-			elem.flags |= flags.Available;
+			el.flags |= flags.Available;
 		}
 
 		return run(this);
@@ -1031,7 +1030,7 @@ export class Context<TProps = any, TValue = any> extends CrankEventTarget {
 }
 
 function run(ctx: Context): Promise<undefined> | undefined {
-	const elem = ctx._el;
+	const el = ctx._el;
 	if (ctx._inflightPending === undefined) {
 		const [pending, result] = step(ctx);
 		if (pending !== undefined) {
@@ -1043,7 +1042,7 @@ function run(ctx: Context): Promise<undefined> | undefined {
 		}
 
 		return result;
-	} else if (elem.flags & flags.AsyncGen) {
+	} else if (el.flags & flags.AsyncGen) {
 		return ctx._inflightResult;
 	} else if (ctx._enqueuedPending === undefined) {
 		let resolve: (value: Promise<undefined> | undefined) => unknown;
@@ -1063,24 +1062,24 @@ function run(ctx: Context): Promise<undefined> | undefined {
 function step<TValue>(
 	ctx: Context<any, TValue>,
 ): [Promise<undefined> | undefined, Promise<undefined> | undefined] {
-	const elem = ctx._el;
-	if (elem.flags & flags.Finished) {
+	const el = ctx._el;
+	if (el.flags & flags.Finished) {
 		return [undefined, undefined];
 	}
 
-	elem.flags |= flags.Stepping;
-	if (elem.iterator === undefined) {
+	el.flags |= flags.Stepping;
+	if (el.iterator === undefined) {
 		ctx.clearEventListeners();
 		let value: ChildIterator | PromiseLike<Child> | Child;
 		try {
-			value = elem.tag.call(ctx, elem.props!);
+			value = el.tag.call(ctx, el.props!);
 		} catch (err) {
-			const caught = handle(ctx.renderer, elem.parent!, err);
+			const caught = handle(ctx.renderer, el.parent!, err);
 			return [undefined, caught];
 		}
 
 		if (isIteratorOrAsyncIterator(value)) {
-			elem.iterator = value;
+			el.iterator = value;
 		} else if (isPromiseLike(value)) {
 			const value1 = upgradePromiseLike(value);
 			const pending = value1.then(
@@ -1088,14 +1087,14 @@ function step<TValue>(
 				() => undefined,
 			); // void :(
 			const result = value1.then(
-				(child) => updateChildren(ctx.renderer, elem, child, ctx),
-				(err) => handle(ctx.renderer, elem.parent!, err),
+				(child) => updateChildren(ctx.renderer, el, child, ctx),
+				(err) => handle(ctx.renderer, el.parent!, err),
 			);
-			elem.flags &= ~flags.Stepping;
+			el.flags &= ~flags.Stepping;
 			return [pending, result];
 		} else {
-			const result = updateChildren(ctx.renderer, elem, value, ctx);
-			elem.flags &= ~flags.Stepping;
+			const result = updateChildren(ctx.renderer, el, value, ctx);
+			el.flags &= ~flags.Stepping;
 			return [undefined, result];
 		}
 	}
@@ -1107,25 +1106,25 @@ function step<TValue>(
 		| string
 		| undefined;
 	if (typeof ctx._oldResult === "object") {
-		oldValue = ctx._oldResult.then(() => elem.value);
+		oldValue = ctx._oldResult.then(() => el.value);
 		ctx._oldResult = undefined;
 	} else {
-		oldValue = elem.value;
+		oldValue = el.value;
 	}
 
 	let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
 	try {
-		iteration = (elem.iterator as ChildIterator).next(oldValue);
+		iteration = (el.iterator as ChildIterator).next(oldValue);
 	} catch (err) {
-		const caught = handle(ctx.renderer, elem.parent!, err);
+		const caught = handle(ctx.renderer, el.parent!, err);
 		return [caught, caught];
 	}
 
-	elem.flags &= ~flags.Stepping;
+	el.flags &= ~flags.Stepping;
 	if (isPromiseLike(iteration)) {
-		elem.flags |= flags.AsyncGen;
+		el.flags |= flags.AsyncGen;
 		iteration = iteration.catch((err) => {
-			const caught = handle(ctx.renderer, elem.parent!, err);
+			const caught = handle(ctx.renderer, el.parent!, err);
 			if (caught === undefined) {
 				return {value: undefined, done: true};
 			}
@@ -1137,12 +1136,12 @@ function step<TValue>(
 			() => undefined,
 		); // void :(
 		const result = iteration.then((iteration) => {
-			elem.flags &= ~flags.Iterating;
+			el.flags &= ~flags.Iterating;
 			if (iteration.done) {
-				elem.flags |= flags.Finished;
+				el.flags |= flags.Finished;
 			}
 
-			let result = updateChildren(ctx.renderer, elem, iteration.value, ctx);
+			let result = updateChildren(ctx.renderer, el, iteration.value, ctx);
 			if (isPromiseLike(result)) {
 				ctx._oldResult = result.catch(() => undefined); // void :(
 			}
@@ -1153,26 +1152,26 @@ function step<TValue>(
 		return [pending, result];
 	}
 
-	elem.flags &= ~flags.Iterating;
-	elem.flags |= flags.SyncGen;
+	el.flags &= ~flags.Iterating;
+	el.flags |= flags.SyncGen;
 	if (iteration.done) {
-		elem.flags |= flags.Finished;
+		el.flags |= flags.Finished;
 	}
 
-	const result = updateChildren(ctx.renderer, elem, iteration.value, ctx);
+	const result = updateChildren(ctx.renderer, el, iteration.value, ctx);
 	return [result, result];
 }
 
 function advance(ctx: Context): void {
-	const elem = ctx._el;
+	const el = ctx._el;
 	ctx._inflightPending = ctx._enqueuedPending;
 	ctx._inflightResult = ctx._enqueuedResult;
 	ctx._enqueuedPending = undefined;
 	ctx._enqueuedResult = undefined;
-	if (elem.flags & flags.AsyncGen && !(elem.flags & flags.Finished)) {
+	if (el.flags & flags.AsyncGen && !(el.flags & flags.Finished)) {
 		run(ctx)!.catch((err) => {
 			// We catch and rethrow the error to trigger an unhandled promise rejection.
-			if (!(elem.flags & flags.Updating)) {
+			if (!(el.flags & flags.Updating)) {
 				throw err;
 			}
 		});
