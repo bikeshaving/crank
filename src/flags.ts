@@ -8,9 +8,8 @@ export const Removing = 1 << 5;
 export const Finished = 1 << 6;
 export const Unmounted = 1 << 7;
 // Context-only Flags
-export const Iterating = 1 << 8;
-export const Stepping = 1 << 9;
+export const Stepping = 1 << 8;
+export const Iterating = 1 << 9;
 export const Available = 1 << 10;
 export const SyncGen = 1 << 11;
 export const AsyncGen = 1 << 12;
-export const Initial = Dirty | Moved;

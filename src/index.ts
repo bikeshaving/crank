@@ -101,7 +101,7 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 		this.props = props;
 		this.key = key;
 		this.ref = ref;
-		this.flags = flags.Initial;
+		this.flags = flags.Dirty | flags.Moved;
 	}
 
 	get childValues(): Array<TValue | string> {
