@@ -65,10 +65,6 @@ export type Component<TProps = any> = (
 	props: TProps,
 ) => ChildIterator | PromiseLike<Child> | Child;
 
-export type Intrinsic<TValue> = (
-	el: Element<any, TValue>,
-) => Iterator<TValue> | TValue;
-
 type Key = unknown;
 
 type Scope = unknown;
@@ -82,9 +78,11 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 	key: Key;
 	ref: Function | undefined;
 	flags: number;
+	// private
 	scope: Scope;
 	parent: Element<Tag, TValue> | undefined;
 	ctx: Context | undefined;
+	// TODO: move ChildIterators to ctx
 	iterator: Iterator<TValue> | ChildIterator | undefined;
 	value: Array<TValue | string> | TValue | string | undefined;
 	children: NormalizedChildren;
@@ -177,11 +175,25 @@ export function createElement<TTag extends Tag>(
 	return new Element(tag, props1, key, ref);
 }
 
+function normalize(child: Child): NormalizedChild {
+	if (child == null || typeof child === "boolean") {
+		return undefined;
+	} else if (typeof child === "string" || isElement(child)) {
+		return child;
+	} else {
+		return child.toString();
+	}
+}
+
 export const Default = Symbol.for("crank.Default");
 
 export const Text = Symbol.for("crank.Text");
 
 export const Scopes = Symbol.for("crank.Scopes");
+
+export type Intrinsic<TValue> = (
+	el: Element<any, TValue>,
+) => Iterator<TValue> | TValue;
 
 export interface Scoper {
 	[Default]?(tag: string | symbol, props: any): Scope;
@@ -211,15 +223,15 @@ const defaultEnv: Environment<any> = {
 };
 
 export class Renderer<TValue> {
-	__env__: Environment<TValue>;
-	__defaults__: Record<string, Intrinsic<TValue>>;
-	__scoper__: Scoper;
-	__cache__: WeakMap<object, Element<any, TValue>>;
+	_env: Environment<TValue>;
+	_defaults: Record<string, Intrinsic<TValue>>;
+	_scoper: Scoper;
+	_cache: WeakMap<object, Element<any, TValue>>;
 	constructor(env?: Partial<Environment<TValue>>) {
-		this.__env__ = Object.assign({}, defaultEnv);
-		this.__defaults__ = {};
-		this.__scoper__ = {};
-		this.__cache__ = new WeakMap();
+		this._env = Object.assign({}, defaultEnv);
+		this._defaults = {};
+		this._scoper = {};
+		this._cache = new WeakMap();
 		this.extend(env);
 	}
 
@@ -230,13 +242,13 @@ export class Renderer<TValue> {
 
 		for (const tag of Object.keys(env)) {
 			if (env[tag] != null) {
-				this.__env__[tag] = env[tag]!;
+				this._env[tag] = env[tag]!;
 			}
 		}
 
 		for (const tag of Object.getOwnPropertySymbols(env)) {
 			if (env[tag as any] != null && tag !== Scopes) {
-				this.__env__[tag as any] = env[tag as any]!;
+				this._env[tag as any] = env[tag as any]!;
 			}
 		}
 
@@ -244,13 +256,13 @@ export class Renderer<TValue> {
 			const scoper = env[Scopes]!;
 			for (const tag of Object.keys(scoper)) {
 				if (scoper[tag] != null) {
-					this.__scoper__[tag] = scoper[tag]!;
+					this._scoper[tag] = scoper[tag]!;
 				}
 			}
 
 			for (const tag of Object.getOwnPropertySymbols(env)) {
 				if (scoper[tag as any] != null) {
-					this.__scoper__[tag as any] = scoper[tag as any]!;
+					this._scoper[tag as any] = scoper[tag as any]!;
 				}
 			}
 		}
@@ -264,13 +276,13 @@ export class Renderer<TValue> {
 				: createElement(Portal, {root}, children);
 
 		const oldChild: Element<Portal, TValue> | undefined =
-			root != null ? this.__cache__.get(root) : undefined;
+			root != null ? this._cache.get(root) : undefined;
 
 		// TODO: what if the we pass two portals with different keys?
 		if (oldChild === undefined) {
 			mount(this, newChild, undefined, undefined, undefined);
 			if (!clearing && root !== null && typeof root === "object") {
-				this.__cache__.set(root, newChild);
+				this._cache.set(root, newChild);
 			}
 		} else {
 			if (oldChild !== newChild) {
@@ -280,7 +292,7 @@ export class Renderer<TValue> {
 			}
 
 			if (clearing && root !== null && typeof root === "object") {
-				this.__cache__.delete(root);
+				this._cache.delete(root);
 			}
 		}
 
@@ -307,20 +319,20 @@ function getIntrinsic<TValue>(
 	renderer: Renderer<TValue>,
 	tag: string | symbol,
 ): Intrinsic<TValue> {
-	if (typeof renderer.__env__[tag as any] === "function") {
-		return renderer.__env__[tag as any];
-	} else if (typeof renderer.__defaults__[tag as any] === "function") {
-		return renderer.__defaults__[tag as any];
+	if (typeof renderer._env[tag as any] === "function") {
+		return renderer._env[tag as any];
+	} else if (typeof renderer._defaults[tag as any] === "function") {
+		return renderer._defaults[tag as any];
 	}
 
-	const intrinsic = renderer.__env__[Default]!(tag);
-	renderer.__defaults__[tag as any] = intrinsic;
+	const intrinsic = renderer._env[Default]!(tag);
+	renderer._defaults[tag as any] = intrinsic;
 	return intrinsic;
 }
 
 function getText(renderer: Renderer<any>, text: string): string {
-	if (typeof renderer.__env__[Text] === "function") {
-		return renderer.__env__[Text]!(text);
+	if (typeof renderer._env[Text] === "function") {
+		return renderer._env[Text]!(text);
 	}
 
 	return text;
@@ -331,24 +343,14 @@ function getScope(
 	tag: string | symbol,
 	props: any,
 ): Scope {
-	if (tag in renderer.__scoper__) {
-		if (typeof renderer.__scoper__[tag as any] === "function") {
-			return (renderer.__scoper__[tag as any] as Function)(props);
+	if (tag in renderer._scoper) {
+		if (typeof renderer._scoper[tag as any] === "function") {
+			return (renderer._scoper[tag as any] as Function)(props);
 		}
 
-		return renderer.__scoper__[tag as any];
-	} else if (typeof renderer.__scoper__[Default] === "function") {
-		return renderer.__scoper__[Default]!(tag, props);
-	}
-}
-
-function normalize(child: Child): NormalizedChild {
-	if (child == null || typeof child === "boolean") {
-		return undefined;
-	} else if (typeof child === "string" || isElement(child)) {
-		return child;
-	} else {
-		return child.toString();
+		return renderer._scoper[tag as any];
+	} else if (typeof renderer._scoper[Default] === "function") {
+		return renderer._scoper[Default]!(tag, props);
 	}
 }
 
