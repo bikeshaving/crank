@@ -1,16 +1,14 @@
 import {CrankEventTarget, isEventTarget} from "./events";
+export {EventMap} from "./events";
 import * as flags from "./flags";
+import {Copy, Fragment, Portal, Raw} from "./tags";
+export {Copy, Fragment, Portal, Raw};
 import {
 	isIteratorOrAsyncIterator,
 	isNonStringIterable,
 	isPromiseLike,
-	MaybePromise,
-	MaybePromiseLike,
 	upgradePromiseLike,
 } from "./utils";
-
-// re-exporting EventMap for user extensions
-export {EventMap} from "./events";
 
 declare global {
 	module JSX {
@@ -74,11 +72,11 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 	// TODO: component specific. Move to Context or helper object?
 	provisions: Map<unknown, unknown> | undefined;
 	onProps: ((props: any) => unknown) | undefined;
-	oldResult: MaybePromise<undefined>;
-	inflightPending: MaybePromise<undefined>;
-	enqueuedPending: MaybePromise<undefined>;
-	inflightResult: MaybePromise<undefined>;
-	enqueuedResult: MaybePromise<undefined>;
+	oldResult: Promise<undefined> | undefined;
+	inflightPending: Promise<undefined> | undefined;
+	enqueuedPending: Promise<undefined> | undefined;
+	inflightResult: Promise<undefined> | undefined;
+	enqueuedResult: Promise<undefined> | undefined;
 	constructor(
 		tag: TTag,
 		props: TagProps<TTag>,
@@ -119,7 +117,7 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 export type FunctionComponent<TProps = any> = (
 	this: Context<TProps>,
 	props: TProps,
-) => MaybePromiseLike<Child>;
+) => PromiseLike<Child> | Child;
 
 export type ChildIterator<TNext = any> =
 	| Iterator<Child, Child, TNext>
@@ -139,26 +137,11 @@ export type GeneratorComponent<TProps = any> = (
 export type Component<TProps = any> = (
 	this: Context<TProps>,
 	props: TProps,
-) => ChildIterator | MaybePromiseLike<Child>;
+) => ChildIterator | PromiseLike<Child> | Child;
 
 export type Intrinsic<TValue> = (
 	elem: Element<any, TValue>,
 ) => Iterator<TValue> | TValue;
-
-// Special Intrinsic Tags
-// TODO: We assert symbol tags as any because typescript support for symbol tags in JSX does not exist yet.
-// https://github.com/microsoft/TypeScript/issues/38367
-export const Fragment = Symbol.for("crank.Fragment") as any;
-export type Fragment = typeof Fragment;
-
-export const Copy = Symbol.for("crank.Copy") as any;
-export type Copy = typeof Copy;
-
-export const Portal = Symbol.for("crank.Portal") as any;
-export type Portal = typeof Portal;
-
-export const Raw = Symbol.for("crank.Raw") as any;
-export type Raw = typeof Raw;
 
 export function isElement(value: any): value is Element {
 	return value != null && value.__sigil__ === ElementSigil;
@@ -243,7 +226,7 @@ function update<TValue>(
 	renderer: Renderer<TValue>,
 	elem: Element<Tag, TValue>,
 	ctx: Context<any, TValue> | undefined,
-): MaybePromise<undefined> {
+): Promise<undefined> | undefined {
 	elem.flags |= flags.Updating;
 	if (typeof elem.tag === "function") {
 		return refresh(elem as Element<Component>);
@@ -257,7 +240,7 @@ function updateChildren<TValue>(
 	elem: Element<Tag, TValue>,
 	children: Children,
 	ctx: Context<any, TValue> | undefined,
-): MaybePromise<undefined> {
+): Promise<undefined> | undefined {
 	let childScope: Scope;
 	if (typeof elem.tag === "function") {
 		if (isNonStringIterable(children)) {
@@ -615,7 +598,7 @@ function unmount<TValue>(
 	renderer: Renderer<TValue>,
 	elem: Element,
 	dirty = true,
-): MaybePromise<undefined> {
+): Promise<undefined> | undefined {
 	if (elem.cleanups !== undefined) {
 		for (const cleanup of elem.cleanups) {
 			cleanup(elem.value);
@@ -708,7 +691,7 @@ function handle<TValue>(
 	renderer: Renderer<TValue>,
 	elem: Element,
 	reason: unknown,
-): MaybePromise<undefined> {
+): Promise<undefined> | undefined {
 	elem.flags |= flags.Handling;
 	// helps avoid deadlocks
 	if (elem.onProps !== undefined) {
@@ -773,7 +756,7 @@ function cleanup(elem: Element, callback: (value: unknown) => unknown): void {
 }
 
 // Component functions
-function refresh(elem: Element<Component>): MaybePromise<undefined> {
+function refresh(elem: Element<Component>): Promise<undefined> | undefined {
 	if (elem.flags & (flags.Stepping | flags.Unmounted)) {
 		// TODO: we may want to log warnings when stuff like elem happens
 		return;
@@ -789,7 +772,7 @@ function refresh(elem: Element<Component>): MaybePromise<undefined> {
 	return run(elem);
 }
 
-function run(elem: Element<Component>): MaybePromise<undefined> {
+function run(elem: Element<Component>): Promise<undefined> | undefined {
 	if (elem.inflightPending === undefined) {
 		const [pending, result] = step(elem);
 		if (pending !== undefined) {
@@ -801,7 +784,7 @@ function run(elem: Element<Component>): MaybePromise<undefined> {
 	} else if (elem.flags & flags.AsyncGen) {
 		return elem.inflightResult;
 	} else if (elem.enqueuedPending === undefined) {
-		let resolve: (value: MaybePromise<undefined>) => unknown;
+		let resolve: (value: Promise<undefined> | undefined) => unknown;
 		elem.enqueuedPending = elem.inflightPending
 			.then(() => {
 				const [pending, result] = step(elem);
@@ -817,7 +800,7 @@ function run(elem: Element<Component>): MaybePromise<undefined> {
 
 function step<TValue>(
 	elem: Element<Component, TValue>,
-): [MaybePromise<undefined>, MaybePromise<undefined>] {
+): [Promise<undefined> | undefined, Promise<undefined> | undefined] {
 	if (elem.flags & flags.Finished) {
 		return [undefined, undefined];
 	}
@@ -854,9 +837,12 @@ function step<TValue>(
 		}
 	}
 
-	let oldValue: MaybePromise<
-		Array<TValue | string> | TValue | string | undefined
-	>;
+	let oldValue:
+		| Promise<Array<TValue | string> | TValue | string | undefined>
+		| Array<TValue | string>
+		| TValue
+		| string
+		| undefined;
 	if (elem.oldResult === undefined) {
 		oldValue = elem.value;
 	} else {
@@ -1117,7 +1103,7 @@ export class Renderer<TValue> {
 		}
 	}
 
-	render(children: Children, root?: object): MaybePromise<TValue> {
+	render(children: Children, root?: object): Promise<TValue> | TValue {
 		const clearing = children == null;
 		let newChild: Element<Portal, TValue> =
 			isElement(children) && children.tag === Portal

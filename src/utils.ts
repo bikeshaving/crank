@@ -1,7 +1,3 @@
-export type MaybePromise<T> = Promise<T> | T;
-
-export type MaybePromiseLike<T> = PromiseLike<T> | T;
-
 export function isPromiseLike(value: any): value is PromiseLike<any> {
 	return value != null && typeof value.then === "function";
 }
