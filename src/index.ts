@@ -77,18 +77,17 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 	props: TagProps<TTag>;
 	key: Key;
 	ref: Function | undefined;
-	flags: number;
-	// private
 	scope: Scope;
+	flags: number;
 	parent: Element<Tag, TValue> | undefined;
-	ctx: Context | undefined;
+	_value: Array<TValue | string> | TValue | string | undefined;
+	_children: NormalizedChildren;
+	_childrenByKey: Map<Key, Element> | undefined;
+	_ctx: Context | undefined;
 	_iterator: Iterator<TValue> | undefined;
-	value: Array<TValue | string> | TValue | string | undefined;
-	children: NormalizedChildren;
-	childrenByKey: Map<Key, Element> | undefined;
-	onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
-	schedules: Set<(value: unknown) => unknown> | undefined;
-	cleanups: Set<(value: unknown) => unknown> | undefined;
+	_onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
+	_schedules: Set<(value: unknown) => unknown> | undefined;
+	_cleanups: Set<(value: unknown) => unknown> | undefined;
 	constructor(
 		tag: TTag,
 		props: TagProps<TTag>,
@@ -104,12 +103,12 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 	}
 
 	get childValues(): Array<TValue | string> {
-		if (this.value === undefined) {
+		if (this._value === undefined) {
 			return [];
-		} else if (Array.isArray(this.value)) {
-			return this.value;
+		} else if (Array.isArray(this._value)) {
+			return this._value;
 		} else {
-			return [this.value];
+			return [this._value];
 		}
 	}
 
@@ -182,6 +181,22 @@ function normalize(child: Child): NormalizedChild {
 	} else {
 		return child.toString();
 	}
+}
+
+function schedule(el: Element, callback: (value: unknown) => unknown): void {
+	if (typeof el._schedules === "undefined") {
+		el._schedules = new Set();
+	}
+
+	el._schedules.add(callback);
+}
+
+function cleanup(el: Element, callback: (value: unknown) => unknown): void {
+	if (typeof el._cleanups === "undefined") {
+		el._cleanups = new Set();
+	}
+
+	el._cleanups.add(callback);
 }
 
 export const Default = Symbol.for("crank.Default");
@@ -280,18 +295,19 @@ export class Renderer<TValue> {
 		// TODO: what if the we pass two portals with different keys?
 		if (oldChild === undefined) {
 			mount(this, newChild, undefined, undefined, undefined);
-			if (!clearing && root !== null && typeof root === "object") {
-				this._cache.set(root, newChild);
-			}
 		} else {
 			if (oldChild !== newChild) {
 				oldChild.props = newChild.props;
 				oldChild.ref = newChild.ref;
 				newChild = oldChild;
 			}
+		}
 
-			if (clearing && root !== null && typeof root === "object") {
+		if (root !== null && typeof root === "object") {
+			if (clearing) {
 				this._cache.delete(root);
+			} else {
+				this._cache.set(root, newChild);
 			}
 		}
 
@@ -302,7 +318,7 @@ export class Renderer<TValue> {
 					unmount(this, newChild);
 				}
 
-				return newChild.value as TValue;
+				return newChild._value as TValue;
 			});
 		}
 
@@ -310,7 +326,7 @@ export class Renderer<TValue> {
 			unmount(this, newChild);
 		}
 
-		return newChild.value as TValue;
+		return newChild._value as TValue;
 	}
 }
 
@@ -356,8 +372,8 @@ function getScope(
 function mount<TTag extends Tag, TValue>(
 	renderer: Renderer<TValue>,
 	el: Element<TTag, TValue>,
-	scope: Scope,
 	parent: Element<Tag, TValue> | undefined,
+	scope: Scope,
 	ctx: Context<TagProps<TTag>, TValue> | undefined,
 ): Element<TTag, TValue> {
 	if (el.flags & flags.Mounted) {
@@ -365,10 +381,10 @@ function mount<TTag extends Tag, TValue>(
 	}
 
 	el.flags |= flags.Mounted;
-	el.scope = scope;
 	el.parent = parent;
+	el.scope = scope;
 	if (typeof el.tag === "function") {
-		el.ctx = new Context(renderer, el as Element<Component>, ctx);
+		el._ctx = new Context(renderer, el as Element<Component>, ctx);
 	}
 
 	return el;
@@ -380,8 +396,8 @@ function update<TValue>(
 	ctx: Context<any, TValue> | undefined,
 ): Promise<undefined> | undefined {
 	el.flags |= flags.Updating;
-	if (typeof el.ctx === "object") {
-		return el.ctx.refresh();
+	if (typeof el._ctx === "object") {
+		return el._ctx.refresh();
 	}
 
 	return updateChildren(renderer, el, el.props.children, ctx);
@@ -419,10 +435,10 @@ function updateChildren<TValue>(
 	for (let newChild of children) {
 		// alignment
 		let oldChild: NormalizedChild;
-		if (Array.isArray(el.children)) {
-			oldChild = el.children[i];
+		if (Array.isArray(el._children)) {
+			oldChild = el._children[i];
 		} else if (i === 0) {
-			oldChild = el.children;
+			oldChild = el._children;
 		}
 
 		// TODO: reassigning newChild does not narrow to NormalizedChild
@@ -434,11 +450,12 @@ function updateChildren<TValue>(
 		}
 
 		if (typeof newChild1 === "object" && newChild1.key !== undefined) {
-			const oldChild1 = el.childrenByKey && el.childrenByKey.get(newChild1.key);
+			const oldChild1 =
+				el._childrenByKey && el._childrenByKey.get(newChild1.key);
 			if (oldChild1 === undefined) {
 				oldChild = undefined;
 			} else {
-				el.childrenByKey!.delete(newChild1.key);
+				el._childrenByKey!.delete(newChild1.key);
 				if (oldChild === oldChild1) {
 					i++;
 				} else {
@@ -448,10 +465,10 @@ function updateChildren<TValue>(
 			}
 		} else {
 			if (typeof oldChild === "object" && oldChild.key !== undefined) {
-				if (Array.isArray(el.children)) {
+				if (Array.isArray(el._children)) {
 					while (typeof oldChild === "object" && oldChild.key !== undefined) {
 						i++;
-						oldChild = el.children[i];
+						oldChild = el._children[i];
 					}
 				} else {
 					oldChild = undefined;
@@ -477,13 +494,13 @@ function updateChildren<TValue>(
 
 					result1 = update(renderer, newChild1, ctx);
 				} else {
-					newChild1 = mount(renderer, newChild1, childScope, el, ctx);
+					newChild1 = mount(renderer, newChild1, el, childScope, ctx);
 					result1 = update(renderer, newChild1, ctx);
 					if (result1 === undefined) {
 						unmount(renderer, oldChild);
 					} else {
 						// storing variables for callback closures
-						newChild1.value = oldChild.value;
+						newChild1._value = oldChild._value;
 						const oldChild1 = oldChild;
 						const newChild2 = newChild1;
 						let fulfilled = false;
@@ -493,16 +510,16 @@ function updateChildren<TValue>(
 						});
 						schedule(oldChild, (value) => {
 							if (!fulfilled) {
-								newChild2.value = value;
+								newChild2._value = value;
 							}
 						});
 					}
 				}
 			} else {
-				newChild1 = mount(renderer, newChild1, childScope, el, ctx);
+				newChild1 = mount(renderer, newChild1, el, childScope, ctx);
 				result1 = update(renderer, newChild1, ctx);
 				if (result1 !== undefined) {
-					newChild1.value = oldChild;
+					newChild1._value = oldChild;
 				}
 			}
 
@@ -547,42 +564,42 @@ function updateChildren<TValue>(
 		return;
 	}
 
-	if (el.children !== undefined) {
-		if (Array.isArray(el.children)) {
-			for (; i < el.children.length; i++) {
-				const oldChild = el.children[i];
+	if (el._children !== undefined) {
+		if (Array.isArray(el._children)) {
+			for (; i < el._children.length; i++) {
+				const oldChild = el._children[i];
 				if (typeof oldChild === "object" && oldChild.key === undefined) {
 					unmount(renderer, oldChild);
 				}
 			}
 		} else if (
 			i === 0 &&
-			typeof el.children === "object" &&
-			el.children.key === undefined
+			typeof el._children === "object" &&
+			el._children.key === undefined
 		) {
-			unmount(renderer, el.children);
+			unmount(renderer, el._children);
 		}
 	}
 
 	// TODO: likely where logic for asynchronous unmounting will go
-	if (el.childrenByKey !== undefined) {
-		for (const child of el.childrenByKey.values()) {
+	if (el._childrenByKey !== undefined) {
+		for (const child of el._childrenByKey.values()) {
 			unmount(renderer, child);
 		}
 	}
 
-	el.children = children1;
-	el.childrenByKey = childrenByKey;
+	el._children = children1;
+	el._childrenByKey = childrenByKey;
 
-	if (el.onNewResult !== undefined) {
-		el.onNewResult(result);
-		el.onNewResult = undefined;
+	if (typeof el._onNewResult === "function") {
+		el._onNewResult(result);
+		el._onNewResult = undefined;
 	}
 
 	if (result !== undefined) {
 		result = result.then(() => commit(renderer, el));
 		const newResult = new Promise<undefined>(
-			(resolve) => (el.onNewResult = resolve),
+			(resolve) => (el._onNewResult = resolve),
 		);
 
 		return Promise.race([result, newResult]);
@@ -592,12 +609,12 @@ function updateChildren<TValue>(
 }
 
 function prepareCommit<TValue>(el: Element<Tag, TValue>): void {
-	if (el.children === undefined) {
+	if (el._children === undefined) {
 		el.flags |= flags.Dirty;
-		el.value = undefined;
+		el._value = undefined;
 		return;
-	} else if (!Array.isArray(el.children)) {
-		const child = el.children;
+	} else if (!Array.isArray(el._children)) {
+		const child = el._children;
 		if (typeof child === "object") {
 			if (child.flags & (flags.Dirty | flags.Moved)) {
 				el.flags |= flags.Dirty;
@@ -610,12 +627,12 @@ function prepareCommit<TValue>(el: Element<Tag, TValue>): void {
 
 		if (typeof child === "object") {
 			if (child.tag === Portal) {
-				el.value = undefined;
+				el._value = undefined;
 			} else {
-				el.value = child.value;
+				el._value = child._value;
 			}
 		} else {
-			el.value = child;
+			el._value = child;
 		}
 
 		return;
@@ -623,8 +640,8 @@ function prepareCommit<TValue>(el: Element<Tag, TValue>): void {
 
 	let buffer: string | undefined;
 	let values: Array<TValue | string> = [];
-	for (let i = 0; i < el.children.length; i++) {
-		const child = el.children[i];
+	for (let i = 0; i < el._children.length; i++) {
+		const child = el._children[i];
 		if (typeof child === "object") {
 			if (child.flags & (flags.Dirty | flags.Moved)) {
 				el.flags |= flags.Dirty;
@@ -639,7 +656,7 @@ function prepareCommit<TValue>(el: Element<Tag, TValue>): void {
 			continue;
 		}
 
-		const value = typeof child === "object" ? child.value : child;
+		const value = typeof child === "object" ? child._value : child;
 		if (typeof value === "string") {
 			buffer = buffer === undefined ? value : buffer + value;
 		} else {
@@ -662,11 +679,11 @@ function prepareCommit<TValue>(el: Element<Tag, TValue>): void {
 
 	if (values.length === 0) {
 		el.flags |= flags.Dirty;
-		el.value = undefined;
+		el._value = undefined;
 	} else if (values.length === 1) {
-		el.value = values[0];
+		el._value = values[0];
 	} else {
-		el.value = values;
+		el._value = values;
 	}
 }
 
@@ -674,13 +691,13 @@ function commit<TValue>(
 	renderer: Renderer<TValue>,
 	el: Element<any, TValue>,
 ): Promise<undefined> | undefined {
-	const oldValue = el.value;
+	const oldValue = el._value;
 	prepareCommit(el);
-	if (typeof el.ctx === "object") {
-		if (isEventTarget(el.value)) {
-			el.ctx.setDelegate(el.value);
-		} else if (Array.isArray(el.value)) {
-			el.ctx.setDelegates(el.value);
+	if (typeof el._ctx === "object") {
+		if (isEventTarget(el._value)) {
+			el._ctx.setDelegate(el._value);
+		} else if (Array.isArray(el._value)) {
+			el._ctx.setDelegates(el._value);
 		}
 	} else if (el.tag !== Fragment) {
 		try {
@@ -693,7 +710,7 @@ function commit<TValue>(
 						el.flags |= flags.Dirty;
 					}
 
-					el.value = value;
+					el._value = value;
 					return;
 				}
 
@@ -707,7 +724,7 @@ function commit<TValue>(
 				el.flags |= flags.Dirty;
 			}
 
-			el.value = iteration.value;
+			el._value = iteration.value;
 			if (iteration.done) {
 				el.flags |= flags.Finished;
 			}
@@ -720,19 +737,19 @@ function commit<TValue>(
 		}
 	}
 
-	if (el.schedules !== undefined && el.schedules.size > 0) {
+	if (typeof el._schedules === "object" && el._schedules.size > 0) {
 		// We have to clear the schedules set before calling each callback,
 		// because otherwise a callback which refreshes the component would cause
 		// a stack overflow.
-		const callbacks = Array.from(el.schedules);
-		el.schedules.clear();
+		const callbacks = Array.from(el._schedules);
+		el._schedules.clear();
 		for (const callback of callbacks) {
-			callback(el.value);
+			callback(el._value);
 		}
 	}
 
 	if (el.ref !== undefined) {
-		el.ref(el.value);
+		el.ref(el._value);
 	}
 
 	if (
@@ -751,12 +768,12 @@ function unmount<TValue>(
 	el: Element,
 	dirty = true,
 ): Promise<undefined> | undefined {
-	if (el.cleanups !== undefined) {
-		for (const cleanup of el.cleanups) {
-			cleanup(el.value);
+	if (typeof el._cleanups === "object") {
+		for (const cleanup of el._cleanups) {
+			cleanup(el._value);
 		}
 
-		el.cleanups = undefined;
+		el._cleanups = undefined;
 	}
 
 	if (el.flags & flags.Unmounted) {
@@ -767,20 +784,20 @@ function unmount<TValue>(
 	el.flags |= flags.Unmounted;
 	if (!(el.flags & flags.Finished)) {
 		el.flags |= flags.Finished;
-		if (typeof el.ctx === "object") {
-			el.ctx.clearEventListeners();
-			if (typeof el.ctx._onProps === "function") {
-				el.ctx._onProps(el.props);
-				el.ctx._onProps = undefined;
+		if (typeof el._ctx === "object") {
+			el._ctx.clearEventListeners();
+			if (typeof el._ctx._onProps === "function") {
+				el._ctx._onProps(el.props);
+				el._ctx._onProps = undefined;
 			}
 
 			if (
-				typeof el.ctx._iterator === "object" &&
-				typeof el.ctx._iterator.return === "function"
+				typeof el._ctx._iterator === "object" &&
+				typeof el._ctx._iterator.return === "function"
 			) {
 				let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
 				try {
-					iteration = el.ctx._iterator.return();
+					iteration = el._ctx._iterator.return();
 				} catch (err) {
 					return handle(renderer, el.parent!, err);
 				}
@@ -831,11 +848,11 @@ function unmountChildren<TValue>(
 	dirty: boolean,
 ): void {
 	const children =
-		el.children === "undefined"
+		el._children === "undefined"
 			? []
-			: Array.isArray(el.children)
-			? el.children
-			: [el.children];
+			: Array.isArray(el._children)
+			? el._children
+			: [el._children];
 	for (const child of children) {
 		if (typeof child === "object") {
 			unmount(renderer, child, dirty);
@@ -851,20 +868,20 @@ function handle<TValue>(
 ): Promise<undefined> | undefined {
 	el.flags |= flags.Handling;
 	// helps avoid deadlocks
-	if (typeof el.ctx === "object" && typeof el.ctx._onProps === "function") {
-		el.ctx._onProps(el.props!);
-		el.ctx._onProps = undefined;
+	if (typeof el._ctx === "object" && typeof el._ctx._onProps === "function") {
+		el._ctx._onProps(el.props!);
+		el._ctx._onProps = undefined;
 	}
 
 	if (
 		!(el.flags & flags.Finished) &&
-		typeof el.ctx === "object" &&
-		typeof el.ctx._iterator === "object" &&
-		typeof el.ctx._iterator.throw === "function"
+		typeof el._ctx === "object" &&
+		typeof el._ctx._iterator === "object" &&
+		typeof el._ctx._iterator.throw === "function"
 	) {
 		let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
 		try {
-			iteration = el.ctx._iterator.throw!(reason);
+			iteration = el._ctx._iterator.throw!(reason);
 		} catch (err) {
 			return handle(renderer, el.parent!, err);
 		}
@@ -876,7 +893,7 @@ function handle<TValue>(
 						el.flags |= flags.Finished;
 					}
 
-					return updateChildren(renderer, el, iteration.value, el.ctx);
+					return updateChildren(renderer, el, iteration.value, el._ctx);
 				},
 				(err) => {
 					return handle(renderer, el.parent!, err);
@@ -888,28 +905,12 @@ function handle<TValue>(
 			el.flags |= flags.Finished;
 		}
 
-		return updateChildren(renderer, el, iteration.value, el.ctx);
+		return updateChildren(renderer, el, iteration.value, el._ctx);
 	} else if (el.parent === undefined) {
 		throw reason;
 	}
 
 	return handle(renderer, el.parent, reason);
-}
-
-function schedule(el: Element, callback: (value: unknown) => unknown): void {
-	if (el.schedules === undefined) {
-		el.schedules = new Set();
-	}
-
-	el.schedules.add(callback);
-}
-
-function cleanup(el: Element, callback: (value: unknown) => unknown): void {
-	if (el.cleanups === undefined) {
-		el.cleanups = new Set();
-	}
-
-	el.cleanups.add(callback);
 }
 
 export interface ProvisionMap {}
@@ -967,7 +968,7 @@ export class Context<TProps = any, TValue = any> extends CrankEventTarget {
 	}
 
 	get value(): unknown {
-		return this._el.value;
+		return this._el._value;
 	}
 
 	*[Symbol.iterator](): Generator<TProps> {
@@ -1112,12 +1113,12 @@ function step<TValue>(
 		| undefined;
 	if (typeof ctx._oldResult === "object") {
 		oldValue = ctx._oldResult.then(
-			() => el.value,
-			() => el.value,
+			() => el._value,
+			() => el._value,
 		);
 		ctx._oldResult = undefined;
 	} else {
-		oldValue = el.value;
+		oldValue = el._value;
 	}
 
 	let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
