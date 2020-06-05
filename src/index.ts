@@ -24,15 +24,11 @@ declare global {
 
 export type Tag<TProps = any> = Component<TProps> | string | symbol;
 
-export type TagProps<TTag extends Tag> = TTag extends Component<infer TProps>
-	? TProps
-	: TTag extends string
+export type TagProps<TTag extends Tag> = TTag extends string
 	? JSX.IntrinsicElements[TTag]
+	: TTag extends Component<infer TProps>
+	? TProps
 	: unknown;
-
-type Key = unknown;
-
-type Scope = unknown;
 
 export type Child = Element | string | number | boolean | null | undefined;
 
@@ -43,76 +39,6 @@ export type Children = Child | ChildIterable;
 type NormalizedChild = Element | string | undefined;
 
 type NormalizedChildren = Array<NormalizedChild> | NormalizedChild;
-
-export interface Props {
-	"crank-key"?: Key;
-	"crank-ref"?: Function;
-	children?: Children;
-}
-
-const ElementSigil = Symbol.for("crank.ElementSigil");
-
-export class Element<TTag extends Tag = Tag, TValue = any> {
-	__sigil__: typeof ElementSigil;
-	flags: number;
-	tag: TTag;
-	props: TagProps<TTag>;
-	key: Key;
-	ref: Function | undefined;
-	scope: Scope;
-	parent: Element<Tag, TValue> | undefined;
-	ctx: Context | undefined;
-	iterator: Iterator<TValue> | ChildIterator | undefined;
-	value: Array<TValue | string> | TValue | string | undefined;
-	children: NormalizedChildren;
-	childrenByKey: Map<Key, Element> | undefined;
-	onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
-	schedules: Set<(value: unknown) => unknown> | undefined;
-	cleanups: Set<(value: unknown) => unknown> | undefined;
-	// TODO: component specific. Move to Context or helper object?
-	provisions: Map<unknown, unknown> | undefined;
-	onProps: ((props: any) => unknown) | undefined;
-	oldResult: Promise<undefined> | undefined;
-	inflightPending: Promise<undefined> | undefined;
-	enqueuedPending: Promise<undefined> | undefined;
-	inflightResult: Promise<undefined> | undefined;
-	enqueuedResult: Promise<undefined> | undefined;
-	constructor(
-		tag: TTag,
-		props: TagProps<TTag>,
-		key: Key,
-		ref: Function | undefined,
-	) {
-		this.__sigil__ = ElementSigil;
-		this.tag = tag;
-		this.props = props;
-		this.key = key;
-		this.ref = ref;
-		this.flags = flags.Initial;
-	}
-
-	get childValues(): Array<TValue | string> {
-		if (this.value === undefined) {
-			return [];
-		} else if (Array.isArray(this.value)) {
-			return this.value;
-		} else {
-			return [this.value];
-		}
-	}
-
-	get dirtyProps(): boolean {
-		return (this.flags & flags.Updating) !== 0;
-	}
-
-	get dirtyChildren(): boolean {
-		return (this.flags & flags.Dirty) !== 0;
-	}
-
-	get dirtyRemoval(): boolean {
-		return (this.flags & flags.Removing) !== 0;
-	}
-}
 
 export type FunctionComponent<TProps = any> = (
 	this: Context<TProps>,
@@ -143,8 +69,76 @@ export type Intrinsic<TValue> = (
 	elem: Element<any, TValue>,
 ) => Iterator<TValue> | TValue;
 
+type Key = unknown;
+
+type Scope = unknown;
+
+const ElementSigil = Symbol.for("crank.ElementSigil");
+
+export class Element<TTag extends Tag = Tag, TValue = any> {
+	$sigil: typeof ElementSigil;
+	tag: TTag;
+	props: TagProps<TTag>;
+	key: Key;
+	ref: Function | undefined;
+	flags: number;
+	scope: Scope;
+	parent: Element<Tag, TValue> | undefined;
+	ctx: Context | undefined;
+	iterator: Iterator<TValue> | ChildIterator | undefined;
+	value: Array<TValue | string> | TValue | string | undefined;
+	children: NormalizedChildren;
+	childrenByKey: Map<Key, Element> | undefined;
+	onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
+	schedules: Set<(value: unknown) => unknown> | undefined;
+	cleanups: Set<(value: unknown) => unknown> | undefined;
+	// TODO: component specific. Move to Context or helper object?
+	provisions: Map<unknown, unknown> | undefined;
+	onProps: ((props: any) => unknown) | undefined;
+	oldResult: Promise<undefined> | undefined;
+	inflightPending: Promise<undefined> | undefined;
+	enqueuedPending: Promise<undefined> | undefined;
+	inflightResult: Promise<undefined> | undefined;
+	enqueuedResult: Promise<undefined> | undefined;
+	constructor(
+		tag: TTag,
+		props: TagProps<TTag>,
+		key: Key,
+		ref: Function | undefined,
+	) {
+		this.$sigil = ElementSigil;
+		this.tag = tag;
+		this.props = props;
+		this.key = key;
+		this.ref = ref;
+		this.flags = flags.Initial;
+	}
+
+	get childValues(): Array<TValue | string> {
+		if (this.value === undefined) {
+			return [];
+		} else if (Array.isArray(this.value)) {
+			return this.value;
+		} else {
+			return [this.value];
+		}
+	}
+
+	get dirtyProps(): boolean {
+		return (this.flags & flags.Updating) !== 0;
+	}
+
+	get dirtyChildren(): boolean {
+		return (this.flags & flags.Dirty) !== 0;
+	}
+
+	get dirtyRemoval(): boolean {
+		return (this.flags & flags.Removing) !== 0;
+	}
+}
+
 export function isElement(value: any): value is Element {
-	return value != null && value.__sigil__ === ElementSigil;
+	return value != null && value.$sigil === ElementSigil;
 }
 
 export function createElement<TTag extends Tag>(
@@ -189,6 +183,171 @@ export function createElement<TTag extends Tag>(
 	}
 
 	return new Element(tag, props1, key, ref);
+}
+
+export const Default = Symbol.for("crank.Default");
+
+export const Text = Symbol.for("crank.Text");
+
+export const Scopes = Symbol.for("crank.Scopes");
+
+export interface Scoper {
+	[Default]?(tag: string | symbol, props: any): Scope;
+	[tag: string]: Scope;
+}
+
+export interface Environment<TValue> {
+	[Default](tag: string | symbol): Intrinsic<TValue>;
+	[Text]?(text: string): string;
+	// TODO: uncomment
+	// [Portal]?: Intrinsic<TValue>;
+	// [Raw]?: Intrinsic<TValue>;
+	[Scopes]?: Scoper;
+	[tag: string]: Intrinsic<TValue>;
+}
+
+const defaultEnv: Environment<any> = {
+	[Default](tag: string): never {
+		throw new Error(`Environment did not provide an intrinsic for tag: ${tag}`);
+	},
+	[Portal](): never {
+		throw new Error("Environment did not provide an intrinsic for Portal");
+	},
+	[Raw](elem: Element<any, any>): any {
+		return elem.props.value;
+	},
+};
+
+export class Renderer<TValue> {
+	__env__: Environment<TValue>;
+	__defaults__: Record<string, Intrinsic<TValue>>;
+	__scoper__: Scoper;
+	__cache__: WeakMap<object, Element<any, TValue>>;
+	constructor(env?: Partial<Environment<TValue>>) {
+		this.__env__ = Object.assign({}, defaultEnv);
+		this.__defaults__ = {};
+		this.__scoper__ = {};
+		this.__cache__ = new WeakMap();
+		this.extend(env);
+	}
+
+	extend(env?: Partial<Environment<TValue>>): void {
+		if (env == null) {
+			return;
+		}
+
+		for (const tag of Object.keys(env)) {
+			if (env[tag] != null) {
+				this.__env__[tag] = env[tag]!;
+			}
+		}
+
+		for (const tag of Object.getOwnPropertySymbols(env)) {
+			if (env[tag as any] != null && tag !== Scopes) {
+				this.__env__[tag as any] = env[tag as any]!;
+			}
+		}
+
+		if (env[Scopes] != null) {
+			const scoper = env[Scopes]!;
+			for (const tag of Object.keys(scoper)) {
+				if (scoper[tag] != null) {
+					this.__scoper__[tag] = scoper[tag]!;
+				}
+			}
+
+			for (const tag of Object.getOwnPropertySymbols(env)) {
+				if (scoper[tag as any] != null) {
+					this.__scoper__[tag as any] = scoper[tag as any]!;
+				}
+			}
+		}
+	}
+
+	render(children: Children, root?: object): Promise<TValue> | TValue {
+		const clearing = children == null;
+		let newChild: Element<Portal, TValue> =
+			isElement(children) && children.tag === Portal
+				? children
+				: createElement(Portal, {root}, children);
+
+		const oldChild: Element<Portal, TValue> | undefined =
+			root != null ? this.__cache__.get(root) : undefined;
+
+		// TODO: what if the we pass two portals with different keys?
+		if (oldChild === undefined) {
+			mount(this, newChild, undefined, undefined, undefined);
+			if (!clearing && root !== null && typeof root === "object") {
+				this.__cache__.set(root, newChild);
+			}
+		} else {
+			if (oldChild !== newChild) {
+				oldChild.props = newChild.props;
+				oldChild.ref = newChild.ref;
+				newChild = oldChild;
+			}
+
+			if (clearing && root !== null && typeof root === "object") {
+				this.__cache__.delete(root);
+			}
+		}
+
+		const result = update(this, newChild, undefined);
+		if (isPromiseLike(result)) {
+			return result.then(() => {
+				if (newChild.props.root == null) {
+					unmount(this, newChild);
+				}
+
+				return newChild.value as TValue;
+			});
+		}
+
+		if (newChild.props.root == null) {
+			unmount(this, newChild);
+		}
+
+		return newChild.value as TValue;
+	}
+}
+
+function getIntrinsic<TValue>(
+	renderer: Renderer<TValue>,
+	tag: string | symbol,
+): Intrinsic<TValue> {
+	if (typeof renderer.__env__[tag as any] === "function") {
+		return renderer.__env__[tag as any];
+	} else if (typeof renderer.__defaults__[tag as any] === "function") {
+		return renderer.__defaults__[tag as any];
+	}
+
+	const intrinsic = renderer.__env__[Default]!(tag);
+	renderer.__defaults__[tag as any] = intrinsic;
+	return intrinsic;
+}
+
+function getText(renderer: Renderer<any>, text: string): string {
+	if (typeof renderer.__env__[Text] === "function") {
+		return renderer.__env__[Text]!(text);
+	}
+
+	return text;
+}
+
+function getScope(
+	renderer: Renderer<any>,
+	tag: string | symbol,
+	props: any,
+): Scope {
+	if (tag in renderer.__scoper__) {
+		if (typeof renderer.__scoper__[tag as any] === "function") {
+			return (renderer.__scoper__[tag as any] as Function)(props);
+		}
+
+		return renderer.__scoper__[tag as any];
+	} else if (typeof renderer.__scoper__[Default] === "function") {
+		return renderer.__scoper__[Default]!(tag, props);
+	}
 }
 
 function normalize(child: Child): NormalizedChild {
@@ -255,6 +414,7 @@ function updateChildren<TValue>(
 	let children1: NormalizedChildren;
 	let childrenByKey: Map<Key, Element> | undefined;
 	let i = 0;
+	// TODO: is this array allocation important?
 	if (!isNonStringIterable(children)) {
 		if (children === undefined) {
 			children = [];
@@ -755,6 +915,105 @@ function cleanup(elem: Element, callback: (value: unknown) => unknown): void {
 	elem.cleanups.add(callback);
 }
 
+export interface ProvisionMap {}
+
+export class Context<TProps = any, TValue = any> extends CrankEventTarget {
+	renderer: Renderer<TValue>;
+	__elem__: Element<Component, TProps>;
+	constructor(
+		renderer: Renderer<TValue>,
+		elem: Element<Component, TProps>,
+		parent: Context<TProps> | undefined,
+	) {
+		super(parent);
+		this.renderer = renderer;
+		this.__elem__ = elem;
+	}
+
+	get<TKey extends keyof ProvisionMap>(key: TKey): ProvisionMap[TKey];
+	get(key: unknown): any {
+		for (
+			let parent: Element<any> | undefined = this.__elem__.parent;
+			parent !== undefined;
+			parent = parent.parent
+		) {
+			if (parent.provisions !== undefined && parent.provisions.has(key)) {
+				return parent.provisions.get(key)!;
+			}
+		}
+	}
+
+	set<TKey extends keyof ProvisionMap>(
+		key: TKey,
+		value: ProvisionMap[TKey],
+	): void;
+	set(key: unknown, value: any): void {
+		if (this.__elem__.provisions === undefined) {
+			this.__elem__.provisions = new Map();
+		}
+
+		this.__elem__.provisions.set(key, value);
+	}
+
+	get props(): TProps {
+		return this.__elem__.props;
+	}
+
+	get value(): unknown {
+		return this.__elem__.value;
+	}
+
+	*[Symbol.iterator](): Generator<TProps> {
+		const elem = this.__elem__;
+		while (!(elem.flags & flags.Unmounted)) {
+			if (elem.flags & flags.Iterating) {
+				throw new Error("You must yield for each iteration of this.");
+			} else if (elem.flags & flags.AsyncGen) {
+				throw new Error("Use for await...of in async generator components.");
+			}
+
+			elem.flags |= flags.Iterating;
+			yield elem.props!;
+		}
+	}
+
+	async *[Symbol.asyncIterator](): AsyncGenerator<TProps> {
+		const elem = this.__elem__;
+		do {
+			if (elem.flags & flags.Iterating) {
+				throw new Error("You must yield for each iteration of this.");
+			} else if (elem.flags & flags.SyncGen) {
+				throw new Error("Use for...of in sync generator components.");
+			}
+
+			elem.flags |= flags.Iterating;
+			if (elem.flags & flags.Available) {
+				elem.flags &= ~flags.Available;
+				yield elem.props!;
+			} else {
+				const props = await new Promise<any>(
+					(resolve) => (elem.onProps = resolve),
+				);
+				if (!(elem.flags & flags.Unmounted)) {
+					yield props;
+				}
+			}
+		} while (!(elem.flags & flags.Unmounted));
+	}
+
+	refresh(): Promise<undefined> | undefined {
+		return refresh(this.__elem__);
+	}
+
+	schedule(callback: (value: unknown) => unknown): void {
+		return schedule(this.__elem__, callback);
+	}
+
+	cleanup(callback: (value: unknown) => unknown): void {
+		return cleanup(this.__elem__, callback);
+	}
+}
+
 // Component functions
 function refresh(elem: Element<Component>): Promise<undefined> | undefined {
 	if (elem.flags & (flags.Stepping | flags.Unmounted)) {
@@ -779,8 +1038,11 @@ function run(elem: Element<Component>): Promise<undefined> | undefined {
 			elem.inflightPending = pending.finally(() => advance(elem));
 		}
 
-		elem.inflightResult = result;
-		return elem.inflightResult;
+		if (result !== undefined) {
+			elem.inflightResult = result;
+		}
+
+		return result;
 	} else if (elem.flags & flags.AsyncGen) {
 		return elem.inflightResult;
 	} else if (elem.enqueuedPending === undefined) {
@@ -922,269 +1184,5 @@ function advance(elem: Element<Component>): void {
 				throw err;
 			}
 		});
-	}
-}
-
-export interface ProvisionMap {}
-
-export class Context<TProps = any, TValue = any> extends CrankEventTarget {
-	renderer: Renderer<TValue>;
-	__elem__: Element<Component, TProps>;
-	constructor(
-		renderer: Renderer<TValue>,
-		elem: Element<Component, TProps>,
-		parent: Context<TProps> | undefined,
-	) {
-		super(parent);
-		this.renderer = renderer;
-		this.__elem__ = elem;
-	}
-
-	get<TKey extends keyof ProvisionMap>(key: TKey): ProvisionMap[TKey];
-	get(key: unknown): any {
-		for (
-			let parent: Element<any> | undefined = this.__elem__.parent;
-			parent !== undefined;
-			parent = parent.parent
-		) {
-			if (parent.provisions !== undefined && parent.provisions.has(key)) {
-				return parent.provisions.get(key)!;
-			}
-		}
-	}
-
-	set<TKey extends keyof ProvisionMap>(
-		key: TKey,
-		value: ProvisionMap[TKey],
-	): void;
-	set(key: unknown, value: any): void {
-		if (this.__elem__.provisions === undefined) {
-			this.__elem__.provisions = new Map();
-		}
-
-		this.__elem__.provisions.set(key, value);
-	}
-
-	get props(): TProps {
-		return this.__elem__.props;
-	}
-
-	get value(): unknown {
-		return this.__elem__.value;
-	}
-
-	*[Symbol.iterator](): Generator<TProps> {
-		const elem = this.__elem__;
-		while (!(elem.flags & flags.Unmounted)) {
-			if (elem.flags & flags.Iterating) {
-				throw new Error("You must yield for each iteration of this.");
-			} else if (elem.flags & flags.AsyncGen) {
-				throw new Error("Use for await...of in async generator components.");
-			}
-
-			elem.flags |= flags.Iterating;
-			yield elem.props!;
-		}
-	}
-
-	async *[Symbol.asyncIterator](): AsyncGenerator<TProps> {
-		const elem = this.__elem__;
-		do {
-			if (elem.flags & flags.Iterating) {
-				throw new Error("You must yield for each iteration of this.");
-			} else if (elem.flags & flags.SyncGen) {
-				throw new Error("Use for...of in sync generator components.");
-			}
-
-			elem.flags |= flags.Iterating;
-			if (elem.flags & flags.Available) {
-				elem.flags &= ~flags.Available;
-				yield elem.props!;
-			} else {
-				const props = await new Promise<any>(
-					(resolve) => (elem.onProps = resolve),
-				);
-				if (!(elem.flags & flags.Unmounted)) {
-					yield props;
-				}
-			}
-		} while (!(elem.flags & flags.Unmounted));
-	}
-
-	refresh(): Promise<undefined> | undefined {
-		return refresh(this.__elem__);
-	}
-
-	schedule(callback: (value: unknown) => unknown): void {
-		return schedule(this.__elem__, callback);
-	}
-
-	cleanup(callback: (value: unknown) => unknown): void {
-		return cleanup(this.__elem__, callback);
-	}
-}
-
-export const Default = Symbol.for("crank.Default");
-
-export const Text = Symbol.for("crank.Text");
-
-export const Scopes = Symbol.for("crank.Scopes");
-
-export interface Scoper {
-	[Default]?(tag: string | symbol, props: any): Scope;
-	[tag: string]: Scope;
-}
-
-export interface Environment<TValue> {
-	[Default](tag: string | symbol): Intrinsic<TValue>;
-	[Text]?(text: string): string;
-	// TODO: uncomment
-	// [Portal]?: Intrinsic<TValue>;
-	// [Raw]?: Intrinsic<TValue>;
-	[Scopes]?: Scoper;
-	[tag: string]: Intrinsic<TValue>;
-}
-
-const defaultEnv: Environment<any> = {
-	[Default](tag: string): never {
-		throw new Error(`Environment did not provide an intrinsic for tag: ${tag}`);
-	},
-	[Portal](): never {
-		throw new Error("Environment did not provide an intrinsic for Portal");
-	},
-	[Raw](elem: Element<any, any>): any {
-		return elem.props.value;
-	},
-};
-
-export class Renderer<TValue> {
-	__env__: Environment<TValue>;
-	__defaults__: Record<string, Intrinsic<TValue>>;
-	__scoper__: Scoper;
-	__cache__: WeakMap<object, Element<any, TValue>>;
-	constructor(env?: Partial<Environment<TValue>>) {
-		this.__env__ = Object.assign({}, defaultEnv);
-		this.__defaults__ = {};
-		this.__scoper__ = {};
-		this.__cache__ = new WeakMap();
-		this.extend(env);
-	}
-
-	extend(env?: Partial<Environment<TValue>>): void {
-		if (env == null) {
-			return;
-		}
-
-		for (const tag of Object.keys(env)) {
-			if (env[tag] != null) {
-				this.__env__[tag] = env[tag]!;
-			}
-		}
-
-		for (const tag of Object.getOwnPropertySymbols(env)) {
-			if (env[tag as any] != null && tag !== Scopes) {
-				this.__env__[tag as any] = env[tag as any]!;
-			}
-		}
-
-		if (env[Scopes] != null) {
-			const scoper = env[Scopes]!;
-			for (const tag of Object.keys(scoper)) {
-				if (scoper[tag] != null) {
-					this.__scoper__[tag] = scoper[tag]!;
-				}
-			}
-
-			for (const tag of Object.getOwnPropertySymbols(env)) {
-				if (scoper[tag as any] != null) {
-					this.__scoper__[tag as any] = scoper[tag as any]!;
-				}
-			}
-		}
-	}
-
-	render(children: Children, root?: object): Promise<TValue> | TValue {
-		const clearing = children == null;
-		let newChild: Element<Portal, TValue> =
-			isElement(children) && children.tag === Portal
-				? children
-				: createElement(Portal, {root}, children);
-
-		const oldChild: Element<Portal, TValue> | undefined =
-			root != null ? this.__cache__.get(root) : undefined;
-
-		// TODO: what if the we pass two portals with different keys?
-		if (oldChild === undefined) {
-			mount(this, newChild, undefined, undefined, undefined);
-			if (!clearing && root !== null && typeof root === "object") {
-				this.__cache__.set(root, newChild);
-			}
-		} else {
-			if (oldChild !== newChild) {
-				oldChild.props = newChild.props;
-				oldChild.ref = newChild.ref;
-				newChild = oldChild;
-			}
-
-			if (clearing && root !== null && typeof root === "object") {
-				this.__cache__.delete(root);
-			}
-		}
-
-		const result = update(this, newChild, undefined);
-		if (isPromiseLike(result)) {
-			return result.then(() => {
-				if (newChild.props.root == null) {
-					unmount(this, newChild);
-				}
-
-				return newChild.value as TValue;
-			});
-		}
-
-		if (newChild.props.root == null) {
-			unmount(this, newChild);
-		}
-
-		return newChild.value as TValue;
-	}
-}
-
-function getIntrinsic<TValue>(
-	renderer: Renderer<TValue>,
-	tag: string | symbol,
-): Intrinsic<TValue> {
-	if (typeof renderer.__env__[tag as any] === "function") {
-		return renderer.__env__[tag as any];
-	} else if (typeof renderer.__defaults__[tag as any] === "function") {
-		return renderer.__defaults__[tag as any];
-	}
-
-	const intrinsic = renderer.__env__[Default]!(tag);
-	renderer.__defaults__[tag as any] = intrinsic;
-	return intrinsic;
-}
-
-function getText(renderer: Renderer<any>, text: string): string {
-	if (typeof renderer.__env__[Text] === "function") {
-		return renderer.__env__[Text]!(text);
-	}
-
-	return text;
-}
-
-function getScope(
-	renderer: Renderer<any>,
-	tag: string | symbol,
-	props: any,
-): Scope {
-	if (tag in renderer.__scoper__) {
-		if (typeof renderer.__scoper__[tag as any] === "function") {
-			return (renderer.__scoper__[tag as any] as Function)(props);
-		}
-
-		return renderer.__scoper__[tag as any];
-	} else if (typeof renderer.__scoper__[Default] === "function") {
-		return renderer.__scoper__[Default]!(tag, props);
 	}
 }
