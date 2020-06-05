@@ -82,8 +82,7 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 	scope: Scope;
 	parent: Element<Tag, TValue> | undefined;
 	ctx: Context | undefined;
-	// TODO: move ChildIterators to ctx
-	iterator: Iterator<TValue> | ChildIterator | undefined;
+	_iterator: Iterator<TValue> | undefined;
 	value: Array<TValue | string> | TValue | string | undefined;
 	children: NormalizedChildren;
 	childrenByKey: Map<Key, Element> | undefined;
@@ -677,15 +676,15 @@ function commit<TValue>(
 ): Promise<undefined> | undefined {
 	const oldValue = el.value;
 	prepareCommit(el);
-	if (typeof el.tag === "function") {
+	if (typeof el.ctx === "object") {
 		if (isEventTarget(el.value)) {
-			el.ctx!.setDelegate(el.value);
+			el.ctx.setDelegate(el.value);
 		} else if (Array.isArray(el.value)) {
-			el.ctx!.setDelegates(el.value);
+			el.ctx.setDelegates(el.value);
 		}
 	} else if (el.tag !== Fragment) {
 		try {
-			if (el.iterator === undefined) {
+			if (el._iterator === undefined) {
 				const value = getIntrinsic(renderer, el.tag)(el);
 				if (!isIteratorOrAsyncIterator(value)) {
 					if (oldValue === value) {
@@ -698,10 +697,10 @@ function commit<TValue>(
 					return;
 				}
 
-				el.iterator = value;
+				el._iterator = value;
 			}
 
-			const iteration = (el.iterator as Iterator<TValue>).next();
+			const iteration = el._iterator.next();
 			if (oldValue === iteration.value) {
 				el.flags &= ~flags.Dirty;
 			} else {
@@ -774,14 +773,14 @@ function unmount<TValue>(
 				el.ctx._onProps(el.props);
 				el.ctx._onProps = undefined;
 			}
-		}
-		if (el.tag === Fragment) {
-			// pass
-		} else if (typeof el.tag === "function") {
-			if (el.iterator !== undefined && el.iterator.return) {
+
+			if (
+				typeof el.ctx._iterator === "object" &&
+				typeof el.ctx._iterator.return === "function"
+			) {
 				let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
 				try {
-					iteration = (el.iterator as ChildIterator).return!();
+					iteration = el.ctx._iterator.return();
 				} catch (err) {
 					return handle(renderer, el.parent!, err);
 				}
@@ -797,7 +796,7 @@ function unmount<TValue>(
 					);
 				}
 			}
-		} else {
+		} else if (el.tag !== Fragment) {
 			if (dirty) {
 				el.flags |= flags.Removing;
 			} else {
@@ -805,9 +804,12 @@ function unmount<TValue>(
 			}
 
 			dirty = el.tag === Portal;
-			if (el.iterator !== undefined && el.iterator.return) {
+			if (
+				typeof el._iterator === "object" &&
+				typeof el._iterator.return === "function"
+			) {
 				try {
-					el.iterator.return();
+					el._iterator.return();
 				} catch (err) {
 					if (el.parent === undefined) {
 						throw err;
@@ -841,7 +843,7 @@ function unmountChildren<TValue>(
 	}
 }
 
-// TODO: this could be a ctx function
+// TODO: do handling at the level of Context
 function handle<TValue>(
 	renderer: Renderer<TValue>,
 	el: Element,
@@ -855,14 +857,14 @@ function handle<TValue>(
 	}
 
 	if (
-		typeof el.tag === "function" &&
-		el.iterator !== undefined &&
-		el.iterator.throw !== undefined &&
-		!(el.flags & flags.Finished)
+		!(el.flags & flags.Finished) &&
+		typeof el.ctx === "object" &&
+		typeof el.ctx._iterator === "object" &&
+		typeof el.ctx._iterator.throw === "function"
 	) {
 		let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
 		try {
-			iteration = (el.iterator as ChildIterator).throw!(reason);
+			iteration = el.ctx._iterator.throw!(reason);
 		} catch (err) {
 			return handle(renderer, el.parent!, err);
 		}
@@ -916,6 +918,7 @@ export class Context<TProps = any, TValue = any> extends CrankEventTarget {
 	protected parent: Context<any, TValue> | undefined;
 	renderer: Renderer<TValue>;
 	_el: Element<Component, TProps>;
+	_iterator: ChildIterator | undefined;
 	_provisions: Map<unknown, unknown> | undefined;
 	_onProps: ((props: any) => unknown) | undefined;
 	_oldResult: Promise<undefined> | undefined;
@@ -1070,7 +1073,7 @@ function step<TValue>(
 	}
 
 	el.flags |= flags.Stepping;
-	if (el.iterator === undefined) {
+	if (ctx._iterator === undefined) {
 		ctx.clearEventListeners();
 		let value: ChildIterator | PromiseLike<Child> | Child;
 		try {
@@ -1081,7 +1084,7 @@ function step<TValue>(
 		}
 
 		if (isIteratorOrAsyncIterator(value)) {
-			el.iterator = value;
+			ctx._iterator = value;
 		} else if (isPromiseLike(value)) {
 			const value1 = upgradePromiseLike(value);
 			const pending = value1.then(
@@ -1108,7 +1111,10 @@ function step<TValue>(
 		| string
 		| undefined;
 	if (typeof ctx._oldResult === "object") {
-		oldValue = ctx._oldResult.then(() => el.value);
+		oldValue = ctx._oldResult.then(
+			() => el.value,
+			() => el.value,
+		);
 		ctx._oldResult = undefined;
 	} else {
 		oldValue = el.value;
@@ -1116,7 +1122,7 @@ function step<TValue>(
 
 	let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
 	try {
-		iteration = (el.iterator as ChildIterator).next(oldValue);
+		iteration = ctx._iterator.next(oldValue);
 	} catch (err) {
 		const caught = handle(ctx.renderer, el.parent!, err);
 		return [caught, caught];
@@ -1144,8 +1150,8 @@ function step<TValue>(
 			}
 
 			let result = updateChildren(ctx.renderer, el, iteration.value, ctx);
-			if (isPromiseLike(result)) {
-				ctx._oldResult = result.catch(() => undefined); // void :(
+			if (result !== undefined) {
+				ctx._oldResult = result;
 			}
 
 			return result;
