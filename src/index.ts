@@ -103,7 +103,7 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 	}
 
 	get childValues(): Array<TValue | string> {
-		if (this._value === undefined) {
+		if (typeof this._value === "undefined") {
 			return [];
 		} else if (Array.isArray(this._value)) {
 			return this._value;
@@ -449,7 +449,7 @@ function updateChildren<TValue>(
 			newChild1 = normalize(newChild);
 		}
 
-		if (typeof newChild1 === "object" && newChild1.key !== undefined) {
+		if (typeof newChild1 === "object" && typeof newChild1.key !== "undefined") {
 			const oldChild1 =
 				el._childrenByKey && el._childrenByKey.get(newChild1.key);
 			if (oldChild1 === undefined) {
@@ -464,9 +464,12 @@ function updateChildren<TValue>(
 				}
 			}
 		} else {
-			if (typeof oldChild === "object" && oldChild.key !== undefined) {
+			if (typeof oldChild === "object" && typeof oldChild.key !== "undefined") {
 				if (Array.isArray(el._children)) {
-					while (typeof oldChild === "object" && oldChild.key !== undefined) {
+					while (
+						typeof oldChild === "object" &&
+						typeof oldChild.key !== "undefined"
+					) {
 						i++;
 						oldChild = el._children[i];
 					}
@@ -548,7 +551,7 @@ function updateChildren<TValue>(
 		}
 
 		// add to childrenByKey
-		if (typeof newChild1 === "object" && newChild1.key !== undefined) {
+		if (typeof newChild1 === "object" && typeof newChild1.key !== "undefined") {
 			if (childrenByKey === undefined) {
 				childrenByKey = new Map();
 			}
@@ -564,25 +567,28 @@ function updateChildren<TValue>(
 		return;
 	}
 
-	if (el._children !== undefined) {
+	if (typeof el._children !== "undefined") {
 		if (Array.isArray(el._children)) {
 			for (; i < el._children.length; i++) {
 				const oldChild = el._children[i];
-				if (typeof oldChild === "object" && oldChild.key === undefined) {
+				if (
+					typeof oldChild === "object" &&
+					typeof oldChild.key === "undefined"
+				) {
 					unmount(renderer, oldChild);
 				}
 			}
 		} else if (
 			i === 0 &&
 			typeof el._children === "object" &&
-			el._children.key === undefined
+			typeof el._children.key === "undefined"
 		) {
 			unmount(renderer, el._children);
 		}
 	}
 
 	// TODO: likely where logic for asynchronous unmounting will go
-	if (el._childrenByKey !== undefined) {
+	if (typeof el._childrenByKey === "object") {
 		for (const child of el._childrenByKey.values()) {
 			unmount(renderer, child);
 		}
@@ -609,7 +615,7 @@ function updateChildren<TValue>(
 }
 
 function prepareCommit<TValue>(el: Element<Tag, TValue>): void {
-	if (el._children === undefined) {
+	if (typeof el._children === "undefined") {
 		el.flags |= flags.Dirty;
 		el._value = undefined;
 		return;
@@ -701,7 +707,7 @@ function commit<TValue>(
 		}
 	} else if (el.tag !== Fragment) {
 		try {
-			if (el._iterator === undefined) {
+			if (typeof el._iterator === "undefined") {
 				const value = getIntrinsic(renderer, el.tag)(el);
 				if (!isIteratorOrAsyncIterator(value)) {
 					if (oldValue === value) {
@@ -729,7 +735,7 @@ function commit<TValue>(
 				el.flags |= flags.Finished;
 			}
 		} catch (err) {
-			if (el.parent === undefined) {
+			if (typeof el.parent === "undefined") {
 				throw err;
 			}
 
@@ -828,7 +834,7 @@ function unmount<TValue>(
 				try {
 					el._iterator.return();
 				} catch (err) {
-					if (el.parent === undefined) {
+					if (typeof el.parent === "undefined") {
 						throw err;
 					}
 
@@ -906,7 +912,7 @@ function handle<TValue>(
 		}
 
 		return updateChildren(renderer, el, iteration.value, el._ctx);
-	} else if (el.parent === undefined) {
+	} else if (typeof el.parent === "undefined") {
 		throw reason;
 	}
 
@@ -945,7 +951,10 @@ export class Context<TProps = any, TValue = any> extends CrankEventTarget {
 			parent !== undefined;
 			parent = parent.parent
 		) {
-			if (parent._provisions !== undefined && parent._provisions.has(key)) {
+			if (
+				typeof parent._provisions === "object" &&
+				parent._provisions.has(key)
+			) {
 				return parent._provisions.get(key)!;
 			}
 		}
@@ -956,7 +965,7 @@ export class Context<TProps = any, TValue = any> extends CrankEventTarget {
 		value: ProvisionMap[TKey],
 	): void;
 	set(key: unknown, value: any): void {
-		if (this._provisions === undefined) {
+		if (typeof this._provisions === "undefined") {
 			this._provisions = new Map();
 		}
 
@@ -1037,7 +1046,7 @@ export class Context<TProps = any, TValue = any> extends CrankEventTarget {
 
 function run(ctx: Context): Promise<undefined> | undefined {
 	const el = ctx._el;
-	if (ctx._inflightPending === undefined) {
+	if (typeof ctx._inflightPending === "undefined") {
 		const [pending, result] = step(ctx);
 		if (pending !== undefined) {
 			ctx._inflightPending = pending.finally(() => advance(ctx));
@@ -1050,7 +1059,7 @@ function run(ctx: Context): Promise<undefined> | undefined {
 		return result;
 	} else if (el.flags & flags.AsyncGen) {
 		return ctx._inflightResult;
-	} else if (ctx._enqueuedPending === undefined) {
+	} else if (typeof ctx._enqueuedPending === "undefined") {
 		let resolve: (value: Promise<undefined> | undefined) => unknown;
 		ctx._enqueuedPending = ctx._inflightPending
 			.then(() => {
@@ -1074,7 +1083,7 @@ function step<TValue>(
 	}
 
 	el.flags |= flags.Stepping;
-	if (ctx._iterator === undefined) {
+	if (typeof ctx._iterator === "undefined") {
 		ctx.clearEventListeners();
 		let value: ChildIterator | PromiseLike<Child> | Child;
 		try {
