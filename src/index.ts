@@ -46,14 +46,13 @@ type NormalizedChild = Element | string | undefined;
 
 type NormalizedChildren = Array<NormalizedChild> | NormalizedChild;
 
-// TODO: should this be exported?
 export interface Props {
 	"crank-key"?: Key;
 	"crank-ref"?: Function;
 	children?: Children;
 }
 
-const ElementSigil: unique symbol = Symbol.for("crank.ElementSigil");
+const ElementSigil = Symbol.for("crank.ElementSigil");
 
 export class Element<TTag extends Tag = Tag, TValue = any> {
 	__sigil__: typeof ElementSigil;
@@ -63,12 +62,11 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 	key: Key;
 	ref: Function | undefined;
 	scope: Scope;
-	iterator: Iterator<TValue> | ChildIterator | undefined;
 	parent: Element<Tag, TValue> | undefined;
+	iterator: Iterator<TValue> | ChildIterator | undefined;
 	value: Array<TValue | string> | TValue | string | undefined;
 	children: NormalizedChildren;
 	childrenByKey: Map<Key, Element> | undefined;
-	// TODO: DELETE ME
 	ctx: Context | undefined;
 	onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
 	schedules: Set<(value: unknown) => unknown> | undefined;
@@ -761,6 +759,23 @@ function handle<TValue>(
 	return handle(renderer, elem.parent, reason);
 }
 
+function schedule(elem: Element, callback: (value: unknown) => unknown): void {
+	if (elem.schedules === undefined) {
+		elem.schedules = new Set();
+	}
+
+	elem.schedules.add(callback);
+}
+
+function cleanup(elem: Element, callback: (value: unknown) => unknown): void {
+	if (elem.cleanups === undefined) {
+		elem.cleanups = new Set();
+	}
+
+	elem.cleanups.add(callback);
+}
+
+// Component functions
 function refresh<TValue>(
 	renderer: Renderer<TValue>,
 	elem: Element<Component>,
@@ -925,22 +940,6 @@ function advance<TValue>(renderer: Renderer<TValue>, elem: Element): void {
 			}
 		});
 	}
-}
-
-function schedule(elem: Element, callback: (value: unknown) => unknown): void {
-	if (elem.schedules === undefined) {
-		elem.schedules = new Set();
-	}
-
-	elem.schedules.add(callback);
-}
-
-function cleanup(elem: Element, callback: (value: unknown) => unknown): void {
-	if (elem.cleanups === undefined) {
-		elem.cleanups = new Set();
-	}
-
-	elem.cleanups.add(callback);
 }
 
 export interface ProvisionMap {}
