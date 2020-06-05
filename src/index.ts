@@ -193,7 +193,7 @@ export const Scopes = Symbol.for("crank.Scopes");
 
 export interface Scoper {
 	[Default]?(tag: string | symbol, props: any): Scope;
-	[tag: string]: Scope;
+	[tag: string]: Scope | ((props: any) => Scope);
 }
 
 export interface Environment<TValue> {
