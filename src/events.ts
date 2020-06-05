@@ -47,7 +47,7 @@ export class CrankEventTarget extends EventTargetShim implements EventTarget {
 	private listeners: EventListenerRecord[] | undefined = undefined;
 	private delegate: EventTarget | undefined = undefined;
 	private delegates: Set<EventTarget> | undefined = undefined;
-	constructor(private parent?: CrankEventTarget) {
+	constructor(protected parent: CrankEventTarget | undefined) {
 		super();
 	}
 

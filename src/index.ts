@@ -92,14 +92,6 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 	onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
 	schedules: Set<(value: unknown) => unknown> | undefined;
 	cleanups: Set<(value: unknown) => unknown> | undefined;
-	// TODO: component specific. Move to Context or helper object?
-	provisions: Map<unknown, unknown> | undefined;
-	onProps: ((props: any) => unknown) | undefined;
-	oldResult: Promise<undefined> | undefined;
-	inflightPending: Promise<undefined> | undefined;
-	enqueuedPending: Promise<undefined> | undefined;
-	inflightResult: Promise<undefined> | undefined;
-	enqueuedResult: Promise<undefined> | undefined;
 	constructor(
 		tag: TTag,
 		props: TagProps<TTag>,
@@ -387,8 +379,8 @@ function update<TValue>(
 	ctx: Context<any, TValue> | undefined,
 ): Promise<undefined> | undefined {
 	elem.flags |= flags.Updating;
-	if (typeof elem.tag === "function") {
-		return refresh(elem as Element<Component>);
+	if (typeof elem.ctx === "object") {
+		return elem.ctx.refresh();
 	}
 
 	return updateChildren(renderer, elem, elem.props.children, ctx);
@@ -775,15 +767,16 @@ function unmount<TValue>(
 	elem.flags |= flags.Unmounted;
 	if (!(elem.flags & flags.Finished)) {
 		elem.flags |= flags.Finished;
+		if (typeof elem.ctx === "object") {
+			elem.ctx.clearEventListeners();
+			if (typeof elem.ctx._onProps === "function") {
+				elem.ctx._onProps(elem.props);
+				elem.ctx._onProps = undefined;
+			}
+		}
 		if (elem.tag === Fragment) {
 			// pass
 		} else if (typeof elem.tag === "function") {
-			if (elem.onProps !== undefined) {
-				elem.onProps(elem.props!);
-				elem.onProps = undefined;
-			}
-
-			elem.ctx!.clearEventListeners();
 			if (elem.iterator !== undefined && elem.iterator.return) {
 				let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
 				try {
@@ -847,6 +840,7 @@ function unmountChildren<TValue>(
 	}
 }
 
+// TODO: this could be a ctx function
 function handle<TValue>(
 	renderer: Renderer<TValue>,
 	elem: Element,
@@ -854,9 +848,9 @@ function handle<TValue>(
 ): Promise<undefined> | undefined {
 	elem.flags |= flags.Handling;
 	// helps avoid deadlocks
-	if (elem.onProps !== undefined) {
-		elem.onProps(elem.props!);
-		elem.onProps = undefined;
+	if (typeof elem.ctx === "object" && typeof elem.ctx._onProps === "function") {
+		elem.ctx._onProps(elem.props!);
+		elem.ctx._onProps = undefined;
 	}
 
 	if (
@@ -918,27 +912,36 @@ function cleanup(elem: Element, callback: (value: unknown) => unknown): void {
 export interface ProvisionMap {}
 
 export class Context<TProps = any, TValue = any> extends CrankEventTarget {
+	protected parent: Context<any, TValue> | undefined;
 	renderer: Renderer<TValue>;
-	__elem__: Element<Component, TProps>;
+	_el: Element<Component, TProps>;
+	_provisions: Map<unknown, unknown> | undefined;
+	_onProps: ((props: any) => unknown) | undefined;
+	_oldResult: Promise<undefined> | undefined;
+	_inflightPending: Promise<undefined> | undefined;
+	_enqueuedPending: Promise<undefined> | undefined;
+	_inflightResult: Promise<undefined> | undefined;
+	_enqueuedResult: Promise<undefined> | undefined;
 	constructor(
 		renderer: Renderer<TValue>,
-		elem: Element<Component, TProps>,
+		el: Element<Component, TProps>,
 		parent: Context<TProps> | undefined,
 	) {
 		super(parent);
+		this.parent = parent;
 		this.renderer = renderer;
-		this.__elem__ = elem;
+		this._el = el;
 	}
 
 	get<TKey extends keyof ProvisionMap>(key: TKey): ProvisionMap[TKey];
 	get(key: unknown): any {
 		for (
-			let parent: Element<any> | undefined = this.__elem__.parent;
+			let parent = this.parent;
 			parent !== undefined;
 			parent = parent.parent
 		) {
-			if (parent.provisions !== undefined && parent.provisions.has(key)) {
-				return parent.provisions.get(key)!;
+			if (parent._provisions !== undefined && parent._provisions.has(key)) {
+				return parent._provisions.get(key)!;
 			}
 		}
 	}
@@ -948,23 +951,23 @@ export class Context<TProps = any, TValue = any> extends CrankEventTarget {
 		value: ProvisionMap[TKey],
 	): void;
 	set(key: unknown, value: any): void {
-		if (this.__elem__.provisions === undefined) {
-			this.__elem__.provisions = new Map();
+		if (this._provisions === undefined) {
+			this._provisions = new Map();
 		}
 
-		this.__elem__.provisions.set(key, value);
+		this._provisions.set(key, value);
 	}
 
 	get props(): TProps {
-		return this.__elem__.props;
+		return this._el.props;
 	}
 
 	get value(): unknown {
-		return this.__elem__.value;
+		return this._el.value;
 	}
 
 	*[Symbol.iterator](): Generator<TProps> {
-		const elem = this.__elem__;
+		const elem = this._el;
 		while (!(elem.flags & flags.Unmounted)) {
 			if (elem.flags & flags.Iterating) {
 				throw new Error("You must yield for each iteration of this.");
@@ -978,7 +981,7 @@ export class Context<TProps = any, TValue = any> extends CrankEventTarget {
 	}
 
 	async *[Symbol.asyncIterator](): AsyncGenerator<TProps> {
-		const elem = this.__elem__;
+		const elem = this._el;
 		do {
 			if (elem.flags & flags.Iterating) {
 				throw new Error("You must yield for each iteration of this.");
@@ -989,10 +992,10 @@ export class Context<TProps = any, TValue = any> extends CrankEventTarget {
 			elem.flags |= flags.Iterating;
 			if (elem.flags & flags.Available) {
 				elem.flags &= ~flags.Available;
-				yield elem.props!;
+				yield elem.props;
 			} else {
-				const props = await new Promise<any>(
-					(resolve) => (elem.onProps = resolve),
+				const props = await new Promise<TProps>(
+					(resolve) => (this._onProps = resolve),
 				);
 				if (!(elem.flags & flags.Unmounted)) {
 					yield props;
@@ -1002,79 +1005,77 @@ export class Context<TProps = any, TValue = any> extends CrankEventTarget {
 	}
 
 	refresh(): Promise<undefined> | undefined {
-		return refresh(this.__elem__);
+		const elem = this._el;
+		if (elem.flags & (flags.Stepping | flags.Unmounted)) {
+			// TODO: we may want to log warnings when stuff like elem happens
+			return;
+		}
+
+		if (typeof this._onProps === "function") {
+			this._onProps(elem.props!);
+			this._onProps = undefined;
+		} else {
+			elem.flags |= flags.Available;
+		}
+
+		return run(this);
 	}
 
 	schedule(callback: (value: unknown) => unknown): void {
-		return schedule(this.__elem__, callback);
+		return schedule(this._el, callback);
 	}
 
 	cleanup(callback: (value: unknown) => unknown): void {
-		return cleanup(this.__elem__, callback);
+		return cleanup(this._el, callback);
 	}
 }
 
-// Component functions
-function refresh(elem: Element<Component>): Promise<undefined> | undefined {
-	if (elem.flags & (flags.Stepping | flags.Unmounted)) {
-		// TODO: we may want to log warnings when stuff like elem happens
-		return;
-	}
-
-	if (elem.onProps === undefined) {
-		elem.flags |= flags.Available;
-	} else {
-		elem.onProps(elem.props!);
-		elem.onProps = undefined;
-	}
-
-	return run(elem);
-}
-
-function run(elem: Element<Component>): Promise<undefined> | undefined {
-	if (elem.inflightPending === undefined) {
-		const [pending, result] = step(elem);
+function run(ctx: Context): Promise<undefined> | undefined {
+	const elem = ctx._el;
+	if (ctx._inflightPending === undefined) {
+		const [pending, result] = step(ctx);
 		if (pending !== undefined) {
-			elem.inflightPending = pending.finally(() => advance(elem));
+			ctx._inflightPending = pending.finally(() => advance(ctx));
 		}
 
 		if (result !== undefined) {
-			elem.inflightResult = result;
+			ctx._inflightResult = result;
 		}
 
 		return result;
 	} else if (elem.flags & flags.AsyncGen) {
-		return elem.inflightResult;
-	} else if (elem.enqueuedPending === undefined) {
+		return ctx._inflightResult;
+	} else if (ctx._enqueuedPending === undefined) {
 		let resolve: (value: Promise<undefined> | undefined) => unknown;
-		elem.enqueuedPending = elem.inflightPending
+		ctx._enqueuedPending = ctx._inflightPending
 			.then(() => {
-				const [pending, result] = step(elem);
+				const [pending, result] = step(ctx);
 				resolve(result);
 				return pending;
 			})
-			.finally(() => advance(elem));
-		elem.enqueuedResult = new Promise((resolve1) => (resolve = resolve1));
+			.finally(() => advance(ctx));
+		ctx._enqueuedResult = new Promise((resolve1) => (resolve = resolve1));
 	}
 
-	return elem.enqueuedResult;
+	return ctx._enqueuedResult;
 }
 
 function step<TValue>(
-	elem: Element<Component, TValue>,
+	ctx: Context<any, TValue>,
 ): [Promise<undefined> | undefined, Promise<undefined> | undefined] {
+	const elem = ctx._el;
 	if (elem.flags & flags.Finished) {
 		return [undefined, undefined];
 	}
 
 	elem.flags |= flags.Stepping;
 	if (elem.iterator === undefined) {
-		elem.ctx!.clearEventListeners();
+		ctx.clearEventListeners();
 		let value: ChildIterator | PromiseLike<Child> | Child;
 		try {
-			value = elem.tag.call(elem.ctx!, elem.props!);
+			value = elem.tag.call(ctx, elem.props!);
 		} catch (err) {
-			const caught = handle(elem.ctx!.renderer, elem.parent!, err);
+			const caught = handle(ctx.renderer, elem.parent!, err);
 			return [undefined, caught];
 		}
 
@@ -1087,13 +1088,13 @@ function step<TValue>(
 				() => undefined,
 			); // void :(
 			const result = value1.then(
-				(child) => updateChildren(elem.ctx!.renderer, elem, child, elem.ctx),
-				(err) => handle(elem.ctx!.renderer, elem.parent!, err),
+				(child) => updateChildren(ctx.renderer, elem, child, ctx),
+				(err) => handle(ctx.renderer, elem.parent!, err),
 			);
 			elem.flags &= ~flags.Stepping;
 			return [pending, result];
 		} else {
-			const result = updateChildren(elem.ctx!.renderer, elem, value, elem.ctx);
+			const result = updateChildren(ctx.renderer, elem, value, ctx);
 			elem.flags &= ~flags.Stepping;
 			return [undefined, result];
 		}
@@ -1105,18 +1106,18 @@ function step<TValue>(
 		| TValue
 		| string
 		| undefined;
-	if (elem.oldResult === undefined) {
-		oldValue = elem.value;
+	if (typeof ctx._oldResult === "object") {
+		oldValue = ctx._oldResult.then(() => elem.value);
+		ctx._oldResult = undefined;
 	} else {
-		oldValue = elem.oldResult.then(() => elem.value);
-		elem.oldResult = undefined;
+		oldValue = elem.value;
 	}
 
 	let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
 	try {
 		iteration = (elem.iterator as ChildIterator).next(oldValue);
 	} catch (err) {
-		const caught = handle(elem.ctx!.renderer, elem.parent!, err);
+		const caught = handle(ctx.renderer, elem.parent!, err);
 		return [caught, caught];
 	}
 
@@ -1124,7 +1125,7 @@ function step<TValue>(
 	if (isPromiseLike(iteration)) {
 		elem.flags |= flags.AsyncGen;
 		iteration = iteration.catch((err) => {
-			const caught = handle(elem.ctx!.renderer, elem.parent!, err);
+			const caught = handle(ctx.renderer, elem.parent!, err);
 			if (caught === undefined) {
 				return {value: undefined, done: true};
 			}
@@ -1141,14 +1142,9 @@ function step<TValue>(
 				elem.flags |= flags.Finished;
 			}
 
-			let result = updateChildren(
-				elem.ctx!.renderer,
-				elem,
-				iteration.value,
-				elem.ctx,
-			);
+			let result = updateChildren(ctx.renderer, elem, iteration.value, ctx);
 			if (isPromiseLike(result)) {
-				elem.oldResult = result.catch(() => undefined); // void :(
+				ctx._oldResult = result.catch(() => undefined); // void :(
 			}
 
 			return result;
@@ -1163,22 +1159,18 @@ function step<TValue>(
 		elem.flags |= flags.Finished;
 	}
 
-	const result = updateChildren(
-		elem.ctx!.renderer,
-		elem,
-		iteration.value,
-		elem.ctx,
-	);
+	const result = updateChildren(ctx.renderer, elem, iteration.value, ctx);
 	return [result, result];
 }
 
-function advance(elem: Element<Component>): void {
-	elem.inflightPending = elem.enqueuedPending;
-	elem.inflightResult = elem.enqueuedResult;
-	elem.enqueuedPending = undefined;
-	elem.enqueuedResult = undefined;
+function advance(ctx: Context): void {
+	const elem = ctx._el;
+	ctx._inflightPending = ctx._enqueuedPending;
+	ctx._inflightResult = ctx._enqueuedResult;
+	ctx._enqueuedPending = undefined;
+	ctx._enqueuedResult = undefined;
 	if (elem.flags & flags.AsyncGen && !(elem.flags & flags.Finished)) {
-		run(elem)!.catch((err) => {
+		run(ctx)!.catch((err) => {
 			// We catch and rethrow the error to trigger an unhandled promise rejection.
 			if (!(elem.flags & flags.Updating)) {
 				throw err;
