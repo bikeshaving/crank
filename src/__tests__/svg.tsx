@@ -2,8 +2,7 @@
 import {createElement} from "../index";
 import {renderer} from "../dom";
 
-// TODO: jsdom doesn’t seem to export the entire SVG class hierarchy so these
-// tests are going to be mostly incomplete for now
+// TODO: jsdom doesn’t seem to export the entire SVG class hierarchy so these tests are going to be mostly incomplete for now
 // https://github.com/jsdom/jsdom/issues/2128
 describe("render", () => {
 	afterEach(() => {

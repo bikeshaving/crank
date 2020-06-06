@@ -1,4 +1,4 @@
-import {CrankEventTarget} from "./events";
+import {clearEventListeners, CrankEventTarget, setDelegates} from "./events";
 export {EventMap} from "./events";
 import * as flags from "./flags";
 import {Copy, Fragment, Portal, Raw} from "./tags";
@@ -702,7 +702,7 @@ function commit<TValue>(
 	const oldValue = el._value;
 	prepareCommit(el);
 	if (typeof el._ctx === "object") {
-		el._ctx.setDelegates(Array.isArray(el._value) ? el._value : [el._value]);
+		setDelegates(el._ctx, Array.isArray(el._value) ? el._value : [el._value]);
 	} else if (el.tag !== Fragment) {
 		try {
 			if (typeof el._iterator === "undefined") {
@@ -794,7 +794,7 @@ function unmount<TValue>(
 	if (!(el.flags & flags.Finished)) {
 		el.flags |= flags.Finished;
 		if (typeof el._ctx === "object") {
-			el._ctx.clearEventListeners();
+			clearEventListeners(el._ctx);
 			if (typeof el._ctx._onProps === "function") {
 				el._ctx._onProps(el.props);
 				el._ctx._onProps = undefined;
@@ -925,7 +925,7 @@ function handle<TValue>(
 export interface ProvisionMap {}
 
 export class Context<TProps = any, TValue = any> extends CrankEventTarget {
-	protected parent: Context<any, TValue> | undefined;
+	parent: Context<any, TValue> | undefined;
 	renderer: Renderer<TValue>;
 	_el: Element<Component, TProps>;
 	_iterator: ChildIterator | undefined;
@@ -1087,7 +1087,7 @@ function step<TValue>(
 
 	el.flags |= flags.Stepping;
 	if (typeof ctx._iterator === "undefined") {
-		ctx.clearEventListeners();
+		clearEventListeners(ctx);
 		let value: ChildIterator | PromiseLike<Child> | Child;
 		try {
 			value = el.tag.call(ctx, el.props!);
