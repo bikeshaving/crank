@@ -85,7 +85,9 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 	_childrenByKey: Map<Key, Element> | undefined;
 	_ctx: Context | undefined;
 	_iterator: Iterator<TValue> | undefined;
+	_onNewValue: ((value: unknown) => unknown) | undefined;
 	_onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
+	// TODO: move these to context
 	_schedules: Set<(value: unknown) => unknown> | undefined;
 	_cleanups: Set<(value: unknown) => unknown> | undefined;
 	constructor(
@@ -511,11 +513,11 @@ function updateChildren<TValue>(
 							fulfilled = true;
 							unmount(renderer, oldChild1);
 						});
-						schedule(oldChild, (value) => {
+						oldChild._onNewValue = (value) => {
 							if (!fulfilled) {
 								newChild2._value = value;
 							}
-						});
+						};
 					}
 				}
 			} else {
@@ -737,6 +739,11 @@ function commit<TValue>(
 
 			return handle(renderer, el.parent, err);
 		}
+	}
+
+	if (typeof el._onNewValue === "function") {
+		el._onNewValue(el._value);
+		el._onNewValue = undefined;
 	}
 
 	if (typeof el._schedules === "object" && el._schedules.size > 0) {
