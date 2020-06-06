@@ -1,4 +1,4 @@
-import {CrankEventTarget, isEventTarget} from "./events";
+import {CrankEventTarget} from "./events";
 export {EventMap} from "./events";
 import * as flags from "./flags";
 import {Copy, Fragment, Portal, Raw} from "./tags";
@@ -700,11 +700,7 @@ function commit<TValue>(
 	const oldValue = el._value;
 	prepareCommit(el);
 	if (typeof el._ctx === "object") {
-		if (isEventTarget(el._value)) {
-			el._ctx.setDelegate(el._value);
-		} else if (Array.isArray(el._value)) {
-			el._ctx.setDelegates(el._value);
-		}
+		el._ctx.setDelegates(Array.isArray(el._value) ? el._value : [el._value]);
 	} else if (el.tag !== Fragment) {
 		try {
 			if (typeof el._iterator === "undefined") {
