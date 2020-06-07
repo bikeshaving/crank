@@ -177,21 +177,24 @@ describe("render", () => {
 	test("attrs", () => {
 		renderer.render(
 			<Fragment>
-				<input id="toggle" type="checkbox" checked data-checked />
+				<input id="toggle" type="checkbox" checked={true} data-checked={true} />
 				<label for="toggle" />
 			</Fragment>,
 			document.body,
 		);
-		// this expectation is based on non-standard jsdom innerHTML behavior
-		// jsdom doesn‘t seem to reflect checked property
+		// this expectation is based on non-standard jsdom innerHTML behavior jsdom doesn‘t seem to reflect checked property
 		expect(document.body.innerHTML).toEqual(
 			'<input id="toggle" type="checkbox" data-checked=""><label for="toggle"></label>',
 		);
 		expect((document.body.firstChild! as any).checked).toBe(true);
-		observe();
 		renderer.render(
 			<Fragment>
-				<input id="toggle" type="checkbox" />
+				<input
+					id="toggle"
+					type="checkbox"
+					checked={false}
+					data-checked={false}
+				/>
 				<label for="toggle" class="inactive" />
 			</Fragment>,
 			document.body,

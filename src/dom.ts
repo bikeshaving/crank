@@ -25,42 +25,42 @@ const NO_TOUCH = new Set(["form", "list", "type", "size"]);
 function updateProps(
 	el: Element,
 	props: Record<string, any>,
-	newProps: Record<string, any>,
 	namespace: string | undefined,
 ): void {
-	for (const name in {...props, ...newProps}) {
+	for (const name in props) {
 		const value = props[name];
-		const newValue = newProps[name];
-
 		switch (name) {
 			case "children":
 				break;
 			case "class":
 			case "className": {
-				if (namespace === undefined) {
-					el.className = newValue;
+				if (value == null) {
+					el.removeAttribute("class");
+				} else if (namespace === undefined) {
+					el.className = value;
 				} else {
-					el.setAttribute("class", newValue);
+					el.setAttribute("class", value);
 				}
 
 				break;
 			}
 			case "style": {
 				const style: CSSStyleDeclaration = (el as any).style;
-				if (style != null) {
-					if (newValue == null) {
+				if (style == null) {
+					el.setAttribute("style", value);
+				} else {
+					if (value == null) {
 						el.removeAttribute("style");
-					} else if (typeof newValue === "string") {
-						style.cssText = newValue;
+					} else if (typeof value === "string") {
+						style.cssText = value;
 					} else {
 						// TODO: stop checking old style value
-						for (const styleName in {...value, ...newValue}) {
+						for (const styleName in value) {
 							const styleValue = value && value[styleName];
-							const newStyleValue = newValue && newValue[styleName];
-							if (newStyleValue == null) {
+							if (styleValue == null) {
 								style.removeProperty(styleName);
-							} else if (styleValue !== newStyleValue) {
-								style.setProperty(styleName, newStyleValue);
+							} else {
+								style.setProperty(styleName, styleValue);
 							}
 						}
 					}
@@ -70,17 +70,14 @@ function updateProps(
 			}
 			default: {
 				if (namespace === undefined && name in el && !NO_TOUCH.has(name)) {
-					(el as any)[name] = newValue;
-					break;
-				} else if (newValue === true) {
+					(el as any)[name] = value;
+				} else if (value === true) {
 					el.setAttribute(name, "");
-				} else if (newValue === false || newValue == null) {
+				} else if (value === false || value == null) {
 					el.removeAttribute(name);
 				} else {
-					el.setAttribute(name, newValue);
+					el.setAttribute(name, value);
 				}
-
-				break;
 			}
 		}
 	}
@@ -183,14 +180,13 @@ export const env: Environment<Element> = {
 			}
 
 			const el = cachedEl.cloneNode() as Element;
-			let props: Record<string, any> = {};
 			let oldLength = 0;
 			try {
 				while (true) {
 					// We can’t use referential identity of props because we don’t have any
 					// restrictions like elements have to be immutable.
 					if (elem.dirtyProps) {
-						updateProps(el, props, elem.props, ns);
+						updateProps(el, elem.props, ns);
 					}
 
 					if (
@@ -201,7 +197,6 @@ export const env: Environment<Element> = {
 						updateChildren(el, elem.childValues);
 					}
 
-					props = elem.props;
 					oldLength = elem.childValues.length;
 					yield el;
 				}
