@@ -1,7 +1,7 @@
 // TODO: write an explanation for each of these flags
-export const Dirty = 1 << 0;
-export const Moved = 1 << 1;
-export const Mounted = 1 << 2;
+export const Mounted = 1 << 0;
+export const Dirty = 1 << 1;
+export const Moved = 1 << 2;
 export const Updating = 1 << 3;
 export const Handling = 1 << 4;
 export const Removing = 1 << 5;
