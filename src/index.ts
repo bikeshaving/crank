@@ -1367,6 +1367,7 @@ function advance(ctx: Context): void {
 	}
 }
 
+// event stuff
 const NONE = 0;
 const CAPTURING_PHASE = 1;
 const AT_TARGET = 2;
@@ -1500,6 +1501,16 @@ function setDelegates(ctx: Context, delegates: unknown): void {
 
 			ctx._delegates = delegates1;
 		} else {
+			if (typeof ctx._listeners !== "undefined") {
+				for (const record of ctx._listeners) {
+					ctx._delegates.removeEventListener(
+						record.type,
+						record.callback,
+						record.options,
+					);
+				}
+			}
+
 			ctx._delegates = undefined;
 		}
 	} else {
@@ -1532,6 +1543,7 @@ function setDelegates(ctx: Context, delegates: unknown): void {
 						record.options,
 					);
 				}
+
 				for (const delegate of added) {
 					delegate.addEventListener(
 						record.type,
