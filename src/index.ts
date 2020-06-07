@@ -75,13 +75,19 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 	props: TagProps<TTag>;
 	key: Key;
 	ref: Function | undefined;
+	// TODO: delete?
 	scope: Scope;
-	flags: number;
+	// TODO: delete???
 	parent: Element<Tag, TValue> | undefined;
+	// TODO: prefix with underscore
+	flags: number;
+	// TODO: delete for component/fragment elements
 	_value: Array<TValue | string> | TValue | string | undefined;
+	_ctx: Context<TagProps<TTag>, TValue> | undefined;
 	_children: NormalizedChildren;
+	// TODO: delete??????
 	_childrenByKey: Map<Key, Element> | undefined;
-	_ctx: Context | undefined;
+	// TODO: delete?????
 	_iterator: Iterator<TValue> | undefined;
 	_onNewValue: ((value: unknown) => unknown) | undefined;
 	_onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
@@ -893,18 +899,15 @@ function handle<TValue>(
 		}
 
 		if (isPromiseLike(iteration)) {
-			return iteration.then(
-				(iteration) => {
+			return iteration
+				.then((iteration) => {
 					if (iteration.done) {
 						el.flags |= flags.Finished;
 					}
 
 					return updateChildren(renderer, el, iteration.value, el._ctx);
-				},
-				(err) => {
-					return handle(renderer, el.parent!, err);
-				},
-			);
+				})
+				.catch((err) => handle(renderer, el.parent!, err));
 		}
 
 		if (iteration.done) {
