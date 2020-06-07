@@ -702,7 +702,7 @@ function commit<TValue>(
 	const oldValue = el._value;
 	prepareCommit(el);
 	if (typeof el._ctx === "object") {
-		setDelegates(el._ctx, Array.isArray(el._value) ? el._value : [el._value]);
+		setDelegates(el._ctx, el._value);
 	} else if (el.tag !== Fragment) {
 		try {
 			if (typeof el._iterator === "undefined") {
