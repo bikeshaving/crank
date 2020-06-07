@@ -77,4 +77,35 @@ describe("render", () => {
 		expect((rect as SVGElement).getAttribute("class")).toBe("rectClass");
 		expect((circle as SVGElement).getAttribute("class")).toBe("circleClass");
 	});
+
+	test("g", () => {
+		renderer.render(
+			<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+				<g fill="white" stroke="green" stroke-width="5">
+					<path d="M10 10" />
+					<path d="M 10 10 H 90 V 90 H 10 L 10 10" />
+				</g>
+			</svg>,
+			document.body,
+		);
+
+		const g = document.body.firstChild!.firstChild!;
+		expect(g).toBeInstanceOf(SVGElement);
+		expect(g.childNodes[0]).toBeInstanceOf(SVGElement);
+		expect(g.childNodes[1]).toBeInstanceOf(SVGElement);
+	});
+
+	test("nested", () => {
+		renderer.render(
+			<svg width="750" height="500" style="background: gray">
+				<svg x="200" y="200">
+					<circle cx="50" cy="50" r="50" style="fill: red" />
+				</svg>
+			</svg>,
+			document.body,
+		);
+		const nested = document.body.firstChild!.firstChild!;
+		expect(nested).toBeInstanceOf(SVGElement);
+		expect(nested.firstChild).toBeInstanceOf(SVGElement);
+	});
 });
