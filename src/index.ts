@@ -412,7 +412,7 @@ function updateChildren<TValue>(
 	renderer: Renderer<TValue>,
 	el: Element<Tag, TValue>,
 	children: Children,
-	ctx: Context<any, TValue> | undefined,
+	ctx: Context<unknown, TValue> | undefined,
 ): Promise<undefined> | undefined {
 	let childScope = el.scope;
 	if (typeof el.tag === "function") {
@@ -925,7 +925,7 @@ function handle<TValue>(
 export interface ProvisionMap {}
 
 export class Context<TProps = any, TValue = any> implements EventTarget {
-	parent: Context<any, TValue> | undefined;
+	parent: Context<unknown, TValue> | undefined;
 	renderer: Renderer<TValue>;
 	_el: Element<Component, TProps>;
 	_listeners: EventListenerRecord[] | undefined;
@@ -941,7 +941,7 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 	constructor(
 		renderer: Renderer<TValue>,
 		el: Element<Component, TProps>,
-		parent: Context<TProps> | undefined,
+		parent: Context<unknown, TValue> | undefined,
 	) {
 		this.parent = parent;
 		this.renderer = renderer;
@@ -1117,7 +1117,7 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 	}
 
 	dispatchEvent(ev: Event): boolean {
-		const path: Context[] = [];
+		const path: Context<unknown, TValue>[] = [];
 		for (
 			let parent = this.parent;
 			parent !== undefined;
