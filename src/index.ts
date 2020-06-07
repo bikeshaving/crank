@@ -91,9 +91,6 @@ export class Element<TTag extends Tag = Tag, TValue = any> {
 	_iterator: Iterator<TValue> | undefined;
 	_onNewValue: ((value: unknown) => unknown) | undefined;
 	_onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
-	// TODO: move these to context
-	_schedules: Set<(value: unknown) => unknown> | undefined;
-	_cleanups: Set<(value: unknown) => unknown> | undefined;
 	constructor(
 		tag: TTag,
 		props: TagProps<TTag>,
@@ -187,22 +184,6 @@ function normalize(child: Child): NormalizedChild {
 	} else {
 		return child.toString();
 	}
-}
-
-function schedule(el: Element, callback: (value: unknown) => unknown): void {
-	if (typeof el._schedules === "undefined") {
-		el._schedules = new Set();
-	}
-
-	el._schedules.add(callback);
-}
-
-function cleanup(el: Element, callback: (value: unknown) => unknown): void {
-	if (typeof el._cleanups === "undefined") {
-		el._cleanups = new Set();
-	}
-
-	el._cleanups.add(callback);
 }
 
 export const Default = Symbol.for("crank.Default");
@@ -749,12 +730,14 @@ function commit<TValue>(
 		el._onNewValue = undefined;
 	}
 
-	if (typeof el._schedules === "object" && el._schedules.size > 0) {
-		// We have to clear the schedules set before calling each callback,
-		// because otherwise a callback which refreshes the component would cause
-		// a stack overflow.
-		const callbacks = Array.from(el._schedules);
-		el._schedules.clear();
+	if (
+		typeof el._ctx === "object" &&
+		typeof el._ctx._schedules === "object" &&
+		el._ctx._schedules.size > 0
+	) {
+		// We have to clear the schedules set before calling each callback, because otherwise a callback which refreshes the component would cause a stack overflow.
+		const callbacks = Array.from(el._ctx._schedules);
+		el._ctx._schedules.clear();
 		for (const callback of callbacks) {
 			callback(el._value);
 		}
@@ -780,16 +763,16 @@ function unmount<TValue>(
 	el: Element,
 	dirty = true,
 ): Promise<undefined> | undefined {
-	if (typeof el._cleanups === "object") {
-		for (const cleanup of el._cleanups) {
+	if (el.flags & flags.Unmounted) {
+		return;
+	}
+
+	if (typeof el._ctx === "object" && typeof el._ctx._cleanups === "object") {
+		for (const cleanup of el._ctx._cleanups) {
 			cleanup(el._value);
 		}
 
-		el._cleanups = undefined;
-	}
-
-	if (el.flags & flags.Unmounted) {
-		return;
+		el._ctx._cleanups = undefined;
 	}
 
 	// setting unmounted flag here is necessary because of some kind of race condition
@@ -938,6 +921,8 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 	_enqueuedPending: Promise<undefined> | undefined;
 	_inflightResult: Promise<undefined> | undefined;
 	_enqueuedResult: Promise<undefined> | undefined;
+	_schedules: Set<(value: unknown) => unknown> | undefined;
+	_cleanups: Set<(value: unknown) => unknown> | undefined;
 	constructor(
 		renderer: Renderer<TValue>,
 		el: Element<Component, TProps>,
@@ -1040,11 +1025,19 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 	}
 
 	schedule(callback: (value: unknown) => unknown): void {
-		return schedule(this._el, callback);
+		if (typeof this._schedules === "undefined") {
+			this._schedules = new Set();
+		}
+
+		this._schedules.add(callback);
 	}
 
 	cleanup(callback: (value: unknown) => unknown): void {
-		return cleanup(this._el, callback);
+		if (typeof this._cleanups === "undefined") {
+			this._cleanups = new Set();
+		}
+
+		this._cleanups.add(callback);
 	}
 
 	addEventListener<T extends string>(
