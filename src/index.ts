@@ -210,8 +210,8 @@ export type Intrinsic<TValue> = (
 ) => Iterator<TValue> | TValue;
 
 export interface Scoper {
-	[Default]?(tag: string | symbol, props: any): Scope;
-	[tag: string]: Scope | ((props: any) => Scope);
+	[Default]?(tag: string | symbol, props: any, scope: Scope): Scope;
+	[tag: string]: Scope | ((props: any, scope: Scope) => Scope);
 }
 
 export interface Environment<TValue> {
@@ -269,15 +269,11 @@ export class Renderer<TValue> {
 		if (env[Scopes] != null) {
 			const scoper = env[Scopes]!;
 			for (const tag of Object.keys(scoper)) {
-				if (scoper[tag] != null) {
-					this._scoper[tag] = scoper[tag]!;
-				}
+				this._scoper[tag] = scoper[tag];
 			}
 
-			for (const tag of Object.getOwnPropertySymbols(env)) {
-				if (scoper[tag as any] != null) {
-					this._scoper[tag as any] = scoper[tag as any]!;
-				}
+			for (const tag of Object.getOwnPropertySymbols(scoper)) {
+				this._scoper[tag as any] = scoper[tag as any];
 			}
 		}
 	}
@@ -357,16 +353,19 @@ function getScope(
 	renderer: Renderer<any>,
 	tag: string | symbol,
 	props: any,
+	scope: Scope,
 ): Scope {
 	if (tag in renderer._scoper) {
 		if (typeof renderer._scoper[tag as any] === "function") {
-			return (renderer._scoper[tag as any] as Function)(props);
+			return (renderer._scoper[tag as any] as Function)(props, scope);
 		}
 
 		return renderer._scoper[tag as any];
 	} else if (typeof renderer._scoper[Default] === "function") {
-		return renderer._scoper[Default]!(tag, props);
+		return renderer._scoper[Default]!(tag, props, scope);
 	}
+
+	return scope;
 }
 
 function mount<TTag extends Tag, TValue>(
@@ -409,13 +408,13 @@ function updateChildren<TValue>(
 	children: Children,
 	ctx: Context<any, TValue> | undefined,
 ): Promise<undefined> | undefined {
-	let childScope: Scope;
+	let childScope = el.scope;
 	if (typeof el.tag === "function") {
 		if (isNonStringIterable(children)) {
 			children = createElement(Fragment, null, children);
 		}
 	} else if (el.tag !== Fragment) {
-		childScope = getScope(renderer, el.tag, el.props);
+		childScope = getScope(renderer, el.tag, el.props, el.scope);
 	}
 
 	const handling = el.flags & flags.Handling;
