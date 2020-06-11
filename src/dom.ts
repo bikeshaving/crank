@@ -1,14 +1,4 @@
-import {
-	Default,
-	Element as CrankElement,
-	Environment,
-	Intrinsic,
-	Portal,
-	Raw,
-	Renderer,
-	Scopes,
-	Tag,
-} from "./index";
+import {Renderer} from "./index";
 
 declare module "./index" {
 	interface EventMap extends GlobalEventHandlersEventMap {}
@@ -54,7 +44,6 @@ function updateProps(
 					} else if (typeof value === "string") {
 						style.cssText = value;
 					} else {
-						// TODO: stop checking old style value
 						for (const styleName in value) {
 							const styleValue = value && value[styleName];
 							if (styleValue == null) {
@@ -83,23 +72,19 @@ function updateProps(
 	}
 }
 
-function updateChildren(
-	el: Element,
-	newChildren: Array<Node | string>,
-	// TODO: use dirtyStart and dirtyEnd
-): void {
+function updateChildren(el: Element, newChildren: Array<Node | string>): void {
 	if (newChildren.length === 0) {
 		el.textContent = "";
 		return;
 	}
 
 	let oldChild = el.firstChild;
-	let ni = 0;
-	while (oldChild !== null && ni < newChildren.length) {
-		const newChild = newChildren[ni];
+	let i = 0;
+	while (oldChild !== null && i < newChildren.length) {
+		const newChild = newChildren[i];
 		if (oldChild === newChild) {
 			oldChild = oldChild.nextSibling;
-			ni++;
+			i++;
 		} else if (typeof newChild === "string") {
 			if ((oldChild as any).splitText !== undefined) {
 				oldChild.nodeValue = newChild;
@@ -108,18 +93,18 @@ function updateChildren(
 				el.insertBefore(document.createTextNode(newChild), oldChild);
 			}
 
-			ni++;
+			i++;
 		} else if ((oldChild as any).splitText !== undefined) {
 			const nextSibling = oldChild.nextSibling;
 			el.removeChild(oldChild);
 			oldChild = nextSibling;
 		} else {
 			el.insertBefore(newChild, oldChild);
-			ni++;
+			i++;
 			// TODO: this is an optimization for the js frameworks benchmark
 			// swap rows, but we need to think a little more about other
 			// pathological cases.
-			if (oldChild !== newChildren[ni]) {
+			if (oldChild !== newChildren[i]) {
 				const nextSibling = oldChild.nextSibling;
 				el.removeChild(oldChild);
 				oldChild = nextSibling;
@@ -133,8 +118,8 @@ function updateChildren(
 		oldChild = nextSibling;
 	}
 
-	for (; ni < newChildren.length; ni++) {
-		const newChild = newChildren[ni];
+	for (; i < newChildren.length; i++) {
+		const newChild = newChildren[i];
 		el.appendChild(
 			typeof newChild === "string"
 				? document.createTextNode(newChild)
@@ -143,7 +128,7 @@ function updateChildren(
 	}
 }
 
-function createDocumentFragmentFromHTML(html: string): DocumentFragment {
+function parseHTML(html: string): DocumentFragment {
 	if (typeof document.createRange === "function") {
 		return document.createRange().createContextualFragment(html);
 	} else {
@@ -158,101 +143,84 @@ function createDocumentFragmentFromHTML(html: string): DocumentFragment {
 	}
 }
 
-// TODO: Environment type should probably be Element | DocumentFragment
-export const env: Environment<Element> = {
-	[Default](tag: string | symbol): Intrinsic<Element> {
+export class DOMRenderer extends Renderer<
+	Element,
+	Node,
+	undefined,
+	string | undefined
+> {
+	create(
+		tag: string | symbol,
+		props: unknown,
+		children: unknown,
+		ns: string | undefined,
+	): Element {
 		if (typeof tag !== "string") {
 			throw new Error(`Unknown tag: ${tag.toString()}`);
 		}
 
-		let cachedEl: Element | undefined;
-		return function* defaultDOM(
-			elem: CrankElement<Tag, Element>,
-		): Generator<Element> {
-			const ns =
-				tag === "svg" ? SVG_NAMESPACE : (elem.scope as string | undefined);
-			if (cachedEl === undefined) {
-				if (ns == null) {
-					cachedEl = document.createElement(tag);
-				} else {
-					cachedEl = document.createElementNS(ns, tag);
-				}
-			}
-
-			const el = cachedEl.cloneNode() as Element;
-			let oldLength = 0;
-			try {
-				while (true) {
-					// We can’t use referential identity of props because we don’t have any
-					// restrictions like elements have to be immutable.
-					if (elem.dirtyProps) {
-						updateProps(el, elem.props, ns);
-					}
-
-					if (
-						elem.dirtyChildren &&
-						elem.props.innerHTML === undefined &&
-						(oldLength > 0 || elem.childValues.length > 0)
-					) {
-						updateChildren(el, elem.childValues);
-					}
-
-					oldLength = elem.childValues.length;
-					yield el;
-				}
-			} finally {
-				if (elem.dirtyRemoval && el.parentNode !== null) {
-					el.parentNode.removeChild(el);
-				}
-			}
-		};
-	},
-	*[Raw](elem: CrankElement<Tag, Element>): Generator<Element> {
-		while (true) {
-			// TODO: cache fragment for two equal strings
-			const value = elem.props.value;
-			if (typeof value === "string") {
-				const fragment = createDocumentFragmentFromHTML(value);
-				// TODO: figure out what the type of this Environment actually is
-				yield (fragment as unknown) as Element;
-			} else {
-				yield value;
-			}
+		if (tag === "svg") {
+			ns = SVG_NAMESPACE;
 		}
-	},
-	*[Portal](elem: CrankElement<Tag, Element>): Generator<Element> {
-		let root = elem.props.root;
-		try {
-			while (true) {
-				const newRoot = elem.props.root;
-				if (newRoot == null) {
-					throw new TypeError("Portal element is missing root");
-				}
 
-				if (root !== newRoot) {
-					updateChildren(root, []);
-					root = newRoot;
-				}
-
-				if (elem.dirtyChildren) {
-					updateChildren(root, elem.childValues);
-				}
-
-				yield root;
-			}
-		} finally {
-			updateChildren(root, []);
+		if (ns !== undefined) {
+			return document.createElementNS(ns, tag);
 		}
-	},
-	[Scopes]: {
-		svg: SVG_NAMESPACE,
-		foreignObject: undefined,
-	},
-};
 
-export class DOMRenderer extends Renderer<Element> {
-	constructor() {
-		super(env);
+		return document.createElement(tag);
+	}
+
+	patch<TTag extends string | symbol>(
+		el: Element,
+		props: Record<string, any>,
+		ns: string | undefined,
+	): void {
+		updateProps(el, props, ns);
+		(el as any).__crankInnerHTML = "innerHTML" in props;
+	}
+
+	arrange<TTag extends string | symbol>(
+		el: Element,
+		children: Array<Node | string>,
+	): undefined {
+		if (
+			!(el as any).__crankInnerHTML &&
+			(children.length !== 0 || (el as any).__crankArranged)
+		) {
+			updateChildren(el, children);
+			(el as any).__crankArranged = children.length > 0;
+		}
+
+		return undefined; // void :(
+	}
+
+	destroy(tag: string | symbol, el: Element) {
+		if (el.parentNode !== null) {
+			el.parentNode.removeChild(el);
+		}
+	}
+
+	scope<TTag extends string | symbol>(
+		tag: TTag,
+		props: Record<string, any>,
+		scope: string | undefined,
+	): string | undefined {
+		switch (tag) {
+			case "svg":
+				return SVG_NAMESPACE;
+			case "foreignObject":
+				return undefined;
+			default:
+				return scope;
+		}
+	}
+
+	escape(text: string): string {
+		return text;
+	}
+
+	parse(text: string): DocumentFragment {
+		return parseHTML(text);
 	}
 }
 

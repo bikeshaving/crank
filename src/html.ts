@@ -1,13 +1,4 @@
-import {
-	Default,
-	Element,
-	Environment,
-	Intrinsic,
-	Portal,
-	Renderer,
-	Tag,
-	Text,
-} from "./index";
+import {Renderer} from "./index";
 
 declare module "./index" {
 	interface EventMap extends GlobalEventHandlersEventMap {}
@@ -27,7 +18,7 @@ function escapeText(text: string): string {
 			case "'":
 				return "&#039;";
 			default:
-				throw new Error("Bad match");
+				return "";
 		}
 	});
 }
@@ -87,38 +78,53 @@ const voidTags = new Set([
 	"wbr",
 ]);
 
-export const env: Environment<string> = {
-	[Default](tag: string | symbol): Intrinsic<string> {
+export class StringRenderer extends Renderer<
+	string,
+	string,
+	string,
+	undefined
+> {
+	create(
+		tag: string | symbol,
+		props: Record<string, any>,
+		children: Array<string>,
+	): string {
 		if (typeof tag !== "string") {
 			throw new Error(`Unknown tag: ${tag.toString()}`);
 		}
 
-		return function defaultString(elem: Element<Tag, string>): string {
-			const attrs = printAttrs(elem.props);
-			const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
-			if (voidTags.has(tag)) {
-				return open;
-			}
+		const attrs = printAttrs(props);
+		const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
+		if (voidTags.has(tag)) {
+			return open;
+		}
 
-			const close = `</${tag}>`;
-			if ("innerHTML" in elem.props) {
-				return `${open}${elem.props["innerHTML"]}${close}`;
-			}
+		const close = `</${tag}>`;
+		if ("innerHTML" in props) {
+			return `${open}${props["innerHTML"]}${close}`;
+		}
 
-			return `${open}${elem.childValues.join("")}${close}`;
-		};
-	},
-	[Text](text: string): string {
+		return `${open}${children.join("")}${close}`;
+	}
+
+	patch(): void {}
+
+	arrange(_: unknown, children: Array<string>): string {
+		return children.join("");
+	}
+
+	destroy(): void {}
+
+	parse(text: string): string {
+		return text;
+	}
+
+	escape(text: string): string {
 		return escapeText(text);
-	},
-	[Portal](elem: Element<Tag, string>): string {
-		return elem.childValues.join("");
-	},
-};
+	}
 
-export class StringRenderer extends Renderer<string> {
-	constructor() {
-		super(env);
+	scope(): undefined {
+		return undefined;
 	}
 }
 
