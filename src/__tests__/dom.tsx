@@ -155,7 +155,8 @@ describe("render", () => {
 	test("root portal with changing root", () => {
 		const el1 = document.createElement("div");
 		const el2 = document.createElement("div");
-		const key = {};
+		// TODO: fix this?
+		const key: any = {};
 		renderer.render(
 			<Portal root={el1}>
 				<div>Hello world</div>
