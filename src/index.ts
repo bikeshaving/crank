@@ -159,6 +159,7 @@ function normalize(child: Child): NormalizedChild {
 
 // Special Intrinsic Tags
 // TODO: We assert symbol tags as any because typescript support for symbol tags in JSX does not exist yet.
+// TODO: Maybe we can just make these strings???
 // https://github.com/microsoft/TypeScript/issues/38367
 export const Fragment = Symbol.for("crank.Fragment") as any;
 export type Fragment = typeof Fragment;
@@ -213,7 +214,7 @@ export abstract class Renderer<TValue, TChild, TResult> {
 		if (isPromiseLike(result)) {
 			return result.then(() => {
 				if (newPortal.props.root == null) {
-					unmount(this, newPortal, undefined, undefined, true);
+					unmount(this, newPortal, undefined, true);
 				}
 
 				return newPortal._value;
@@ -221,7 +222,7 @@ export abstract class Renderer<TValue, TChild, TResult> {
 		}
 
 		if (newPortal.props.root == null) {
-			unmount(this, newPortal, undefined, undefined, true);
+			unmount(this, newPortal, undefined, true);
 		}
 
 		return newPortal._value;
@@ -266,7 +267,7 @@ function mount<TTag extends Tag, TValue>(
 	renderer: Renderer<TValue, any, any>,
 	el: Element<TTag>,
 	parent: Element | undefined,
-	parentCtx: Context<TagProps<TTag>, TValue> | undefined,
+	ctx: Context<TagProps<TTag>, TValue> | undefined,
 	scope: Scope,
 ): Element<TTag> {
 	if (typeof el._flags === "undefined" || el._flags & flags.Mounted) {
@@ -276,7 +277,7 @@ function mount<TTag extends Tag, TValue>(
 	el._flags |= flags.Mounted;
 	el.parent = parent;
 	if (typeof el.tag === "function") {
-		el._ctx = new Context(renderer, el as Element<Component>, parentCtx, scope);
+		el._ctx = new Context(renderer, el as Element<Component>, ctx, scope);
 	}
 
 	return el;
@@ -296,10 +297,10 @@ function update<TValue>(
 
 	const result = updateChildren(renderer, el, el.props.children, ctx, scope);
 	if (isPromiseLike(result)) {
-		return result.then(() => commit(renderer, el, ctx, scope));
+		return result.then(() => commit(renderer, el, scope));
 	}
 
-	return commit(renderer, el, ctx, scope);
+	return commit(renderer, el, scope);
 }
 
 function updateChildren<TValue>(
@@ -400,7 +401,7 @@ function updateChildren<TValue>(
 					newChild1 = mount(renderer, newChild1, el, ctx, scope);
 					result1 = update(renderer, newChild1, ctx, scope);
 					if (result1 === undefined) {
-						unmount(renderer, oldChild, ctx, scope, true);
+						unmount(renderer, oldChild, scope, true);
 					} else {
 						// storing variables for callback closures
 						newChild1._value = oldChild._value;
@@ -409,7 +410,7 @@ function updateChildren<TValue>(
 						let fulfilled = false;
 						result1.then(() => {
 							fulfilled = true;
-							unmount(renderer, oldChild1, ctx, scope, true);
+							unmount(renderer, oldChild1, scope, true);
 						});
 						oldChild._onNewValue = (value) => {
 							if (!fulfilled) {
@@ -431,7 +432,7 @@ function updateChildren<TValue>(
 			}
 		} else {
 			if (typeof oldChild === "object") {
-				unmount(renderer, oldChild, ctx, scope, true);
+				unmount(renderer, oldChild, scope, true);
 			}
 
 			if (typeof newChild1 === "string") {
@@ -468,7 +469,7 @@ function updateChildren<TValue>(
 					typeof oldChild === "object" &&
 					typeof oldChild.key === "undefined"
 				) {
-					unmount(renderer, oldChild, ctx, scope, true);
+					unmount(renderer, oldChild, scope, true);
 				}
 			}
 		} else if (
@@ -476,14 +477,14 @@ function updateChildren<TValue>(
 			typeof el._children === "object" &&
 			typeof el._children.key === "undefined"
 		) {
-			unmount(renderer, el._children, ctx, scope, true);
+			unmount(renderer, el._children, scope, true);
 		}
 	}
 
 	// TODO: likely where logic for asynchronous unmounting will go
 	if (typeof el._childrenByKey === "object") {
 		for (const child of el._childrenByKey.values()) {
-			unmount(renderer, child, ctx, scope, true);
+			unmount(renderer, child, scope, true);
 		}
 	}
 
@@ -591,61 +592,49 @@ function prepareCommit<TValue>(el: Element): any {
 	}
 }
 
+// TODO: maybe the return value can be the normalized form of the children?
 function commit<TValue>(
 	renderer: Renderer<TValue, any, any>,
 	el: Element,
-	ctx: Context<unknown, TValue> | undefined,
 	scope: Scope,
-): Promise<undefined> | undefined {
+): any /* void :( */ {
 	// TODO: pass children in
 	let value = prepareCommit(el);
 	const children =
 		value === undefined ? [] : Array.isArray(value) ? value : [value];
 	if (el.tag === Portal) {
-		try {
-			el._value = renderer.arrange(Portal, el.props.root, children, scope);
-		} catch (err) {
-			return handle(ctx, err);
-		}
+		el._value = renderer.arrange(Portal, el.props.root, children, scope);
 	} else if (el.tag === Raw) {
 		if (typeof el.props.value === "string") {
-			try {
-				el._value = renderer.parse(el.props.value, scope);
-			} catch (err) {
-				return handle(ctx, err);
-			}
+			el._value = renderer.parse(el.props.value, scope);
 		} else {
 			el._value = el.props.value;
 		}
 	} else if (el.tag === Fragment || typeof el.tag === "function") {
 		el._value = value;
 	} else {
-		try {
-			if ((el._flags & flags.Committed) === 0) {
-				el._value = renderer.create(
-					el.tag as string | symbol,
-					el.props,
-					children,
-					scope,
-				);
-				el._flags |= flags.Committed;
-			}
-
-			renderer.patch(
+		if (!(el._flags & flags.Committed)) {
+			el._value = renderer.create(
 				el.tag as string | symbol,
-				el._value as TValue,
 				el.props,
-				scope,
-			);
-			renderer.arrange(
-				el.tag as string | symbol,
-				el._value as TValue,
 				children,
 				scope,
 			);
-		} catch (err) {
-			return handle(ctx, err);
+			el._flags |= flags.Committed;
 		}
+
+		renderer.patch(
+			el.tag as string | symbol,
+			el._value as TValue,
+			el.props,
+			scope,
+		);
+		renderer.arrange(
+			el.tag as string | symbol,
+			el._value as TValue,
+			children,
+			scope,
+		);
 	}
 
 	if (typeof el._onNewValue === "function") {
@@ -675,7 +664,7 @@ function commit<TValue>(
 		el.parent !== undefined
 	) {
 		// TODO: this is an untested and dubious situation all around and I’m not sure ctx makes sense here
-		commit(renderer, el.parent, ctx, undefined);
+		commit(renderer, el.parent, undefined);
 	}
 
 	el._flags &= ~flags.Updating;
@@ -684,10 +673,9 @@ function commit<TValue>(
 function unmount<TValue>(
 	renderer: Renderer<TValue, any, any>,
 	el: Element,
-	ctx: Context<unknown, TValue> | undefined,
 	scope: Scope,
 	dirty: boolean,
-): Promise<undefined> | undefined {
+): any /* void :( */ {
 	if (el._flags & flags.Unmounted) {
 		return;
 	}
@@ -717,48 +705,31 @@ function unmount<TValue>(
 				typeof el._ctx._iterator.return === "function"
 			) {
 				let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
-				try {
-					iteration = el._ctx._iterator.return();
-				} catch (err) {
-					return handle(ctx, err);
-				}
-
+				iteration = el._ctx._iterator.return();
 				if (isPromiseLike(iteration)) {
-					return iteration
-						.then(() => {
-							unmountChildren(renderer, el, ctx, scope);
-							return undefined; // void :(
-						})
-						.catch((err) => handle(ctx, err));
+					return iteration.then(() => {
+						unmountChildren(renderer, el, scope);
+						return undefined; // void :(
+					});
 				}
 			}
 		} else if (el.tag !== Fragment) {
 			if (el.tag === Portal) {
 				renderer.arrange(Portal, el.props.root, [], scope);
 			} else if (dirty && el._flags & flags.Committed) {
-				try {
-					renderer.destroy(
-						el.tag as symbol | string,
-						el._value as TValue,
-						scope,
-					);
-				} catch (err) {
-					return handle(ctx, err);
-				}
+				renderer.destroy(el.tag as symbol | string, el._value as TValue, scope);
 			}
 		}
 	}
 
-	unmountChildren(renderer, el, ctx, scope);
+	unmountChildren(renderer, el, scope);
 }
 
 function unmountChildren<TValue>(
 	renderer: Renderer<TValue, any, any>,
 	el: Element,
-	ctx: Context | undefined,
 	scope: Scope,
 ): void {
-	ctx = el._ctx || ctx;
 	const children =
 		typeof el._children === "undefined"
 			? []
@@ -767,7 +738,7 @@ function unmountChildren<TValue>(
 			: [el._children];
 	for (const child of children) {
 		if (typeof child === "object") {
-			unmount(renderer, child, ctx, scope, false);
+			unmount(renderer, child, scope, false);
 		}
 	}
 }
@@ -1141,18 +1112,16 @@ function step<TValue>(
 				.then((child) =>
 					updateChildren(ctx.renderer, el, child, ctx, ctx._scope),
 				)
-				.then(() => commit(ctx.renderer, ctx._el, ctx, ctx._scope))
+				.then(() => commit(ctx.renderer, ctx._el, ctx._scope))
 				.catch((err) => handle(ctx, err));
 			el._flags &= ~flags.Stepping;
 			return [pending, result];
 		} else {
 			let result = updateChildren(ctx.renderer, el, value, ctx, ctx._scope);
 			if (isPromiseLike(result)) {
-				result = result.then(() =>
-					commit(ctx.renderer, ctx._el, ctx, ctx._scope),
-				);
+				result = result.then(() => commit(ctx.renderer, ctx._el, ctx._scope));
 			} else {
-				commit(ctx.renderer, ctx._el, ctx, ctx._scope);
+				commit(ctx.renderer, ctx._el, ctx._scope);
 			}
 
 			el._flags &= ~flags.Stepping;
@@ -1213,12 +1182,10 @@ function step<TValue>(
 				ctx._scope,
 			);
 			if (isPromiseLike(result)) {
-				result = result.then(() =>
-					commit(ctx.renderer, ctx._el, ctx, ctx._scope),
-				);
+				result = result.then(() => commit(ctx.renderer, ctx._el, ctx._scope));
 				ctx._oldResult = result;
 			} else {
-				commit(ctx.renderer, ctx._el, ctx, ctx._scope);
+				commit(ctx.renderer, ctx._el, ctx._scope);
 				ctx._oldResult = undefined;
 			}
 
@@ -1242,9 +1209,9 @@ function step<TValue>(
 	);
 
 	if (isPromiseLike(result)) {
-		result = result.then(() => commit(ctx.renderer, ctx._el, ctx, ctx._scope));
+		result = result.then(() => commit(ctx.renderer, ctx._el, ctx._scope));
 	} else {
-		commit(ctx.renderer, ctx._el, ctx, ctx._scope);
+		commit(ctx.renderer, ctx._el, ctx._scope);
 	}
 
 	return [result, result];
@@ -1257,13 +1224,7 @@ function advance(ctx: Context): void {
 	ctx._enqueuedPending = undefined;
 	ctx._enqueuedResult = undefined;
 	if (el._flags & flags.AsyncGen && !(el._flags & flags.Finished)) {
-		// TODO: Figure out a way to call refresh here instead...
-		run(ctx)!.catch((err) => {
-			// We catch and rethrow the error to trigger an unhandled promise rejection.
-			if (!(el._flags & flags.Updating)) {
-				throw err;
-			}
-		});
+		run(ctx);
 	}
 }
 
