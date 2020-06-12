@@ -1,6 +1,4 @@
 import * as flags from "./flags";
-import {Copy, Fragment, Portal, Raw} from "./tags";
-export {Copy, Fragment, Portal, Raw};
 import {
 	isIteratorOrAsyncIterator,
 	isNonStringIterable,
@@ -76,14 +74,15 @@ export class Element<TTag extends Tag = Tag> {
 	key: Key;
 	ref: Function | undefined;
 	_flags: number;
+	// TODO: delete for component and fragment nodes?
 	_value: any;
 	_ctx: Context<TagProps<TTag>, any> | undefined;
 	_children: NormalizedChildren;
 	_onNewValue: ((value: unknown) => unknown) | undefined;
 	_onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
-	// TODO: delete???
+	// TODO: delete???????
 	parent: Element<Tag> | undefined;
-	// TODO: delete??????
+	// TODO: delete?????????
 	_childrenByKey: Map<Key, Element> | undefined;
 	constructor(
 		tag: TTag,
@@ -167,7 +166,22 @@ function normalize(child: Child): NormalizedChild {
 	}
 }
 
-export abstract class Renderer<TValue, TChild, TResult, TScope> {
+// Special Intrinsic Tags
+// TODO: We assert symbol tags as any because typescript support for symbol tags in JSX does not exist yet.
+// https://github.com/microsoft/TypeScript/issues/38367
+export const Copy = Symbol.for("crank.Copy") as any;
+export type Copy = typeof Copy;
+
+export const Fragment = Symbol.for("crank.Fragment") as any;
+export type Fragment = typeof Fragment;
+
+export const Portal = Symbol.for("crank.Portal") as any;
+export type Portal = typeof Portal;
+
+export const Raw = Symbol.for("crank.Raw") as any;
+export type Raw = typeof Raw;
+
+export abstract class Renderer<TValue, TChild, TResult> {
 	_cache: WeakMap<object, Element<Portal>>;
 	constructor() {
 		this._cache = new WeakMap();
@@ -226,28 +240,30 @@ export abstract class Renderer<TValue, TChild, TResult, TScope> {
 		tag: string | symbol,
 		props: TagProps<TTag>,
 		children: Array<TChild | string>,
-		scope: TScope,
+		scope: Scope,
 	): TValue;
 
 	abstract patch<TTag extends string | symbol>(
+		tag: string | symbol,
 		value: TValue,
 		props: TagProps<TTag>,
-		scope: TScope,
+		scope: Scope,
 	): unknown;
 
 	abstract arrange<TTag extends string | symbol>(
-		value: TValue,
+		tag: string | symbol,
+		value: TValue | undefined,
 		children: Array<TChild | string>,
-		scope: TScope,
+		scope: Scope,
 	): TResult;
 
-	abstract destroy(tag: string | symbol, value: TValue, scope: TScope): unknown;
+	abstract destroy(tag: string | symbol, value: TValue, scope: Scope): unknown;
 
 	abstract scope<TTag extends string | symbol>(
 		tag: TTag,
 		props: TagProps<TTag>,
-		parentScope: TScope,
-	): TScope;
+		scope: Scope,
+	): Scope;
 
 	abstract escape(text: string, scope: Scope): string;
 
@@ -255,7 +271,7 @@ export abstract class Renderer<TValue, TChild, TResult, TScope> {
 }
 
 function mount<TTag extends Tag, TValue>(
-	renderer: Renderer<TValue, any, any, any>,
+	renderer: Renderer<TValue, any, any>,
 	el: Element<TTag>,
 	parent: Element<Tag> | undefined,
 	ctx: Context<TagProps<TTag>, TValue> | undefined,
@@ -275,7 +291,7 @@ function mount<TTag extends Tag, TValue>(
 }
 
 function update<TValue>(
-	renderer: Renderer<TValue, any, any, any>,
+	renderer: Renderer<TValue, any, any>,
 	el: Element<Tag>,
 	ctx: Context<any, TValue> | undefined,
 	scope: Scope,
@@ -289,7 +305,7 @@ function update<TValue>(
 }
 
 function updateChildren<TValue>(
-	renderer: Renderer<TValue, any, any, any>,
+	renderer: Renderer<TValue, any, any>,
 	el: Element<Tag>,
 	children: Children,
 	ctx: Context<unknown, TValue> | undefined,
@@ -588,7 +604,7 @@ function prepareCommit<TValue>(el: Element<Tag>): any {
 }
 
 function commit<TValue>(
-	renderer: Renderer<TValue, any, any, any>,
+	renderer: Renderer<TValue, any, any>,
 	el: Element,
 	ctx: Context<unknown, TValue> | undefined,
 	scope: Scope,
@@ -609,14 +625,24 @@ function commit<TValue>(
 					el._flags |= flags.Committed;
 				}
 
-				renderer.patch(el._value as TValue, el.props, scope);
-				renderer.arrange(el._value as TValue, children, scope);
+				renderer.patch(
+					el.tag as string | symbol,
+					el._value as TValue,
+					el.props,
+					scope,
+				);
+				renderer.arrange(
+					el.tag as string | symbol,
+					el._value as TValue,
+					children,
+					scope,
+				);
 			} catch (err) {
 				return handle(ctx, err);
 			}
 		} else if (el.tag === Portal) {
 			try {
-				el._value = renderer.arrange(el.props.root, children, scope);
+				el._value = renderer.arrange(Portal, el.props.root, children, scope);
 			} catch (err) {
 				return handle(ctx, err);
 			}
@@ -669,7 +695,7 @@ function commit<TValue>(
 }
 
 function unmount<TValue>(
-	renderer: Renderer<TValue, any, any, any>,
+	renderer: Renderer<TValue, any, any>,
 	el: Element,
 	ctx: Context<unknown, TValue> | undefined,
 	scope: Scope,
@@ -728,7 +754,7 @@ function unmount<TValue>(
 			}
 
 			if (el.tag === Portal) {
-				renderer.arrange(el.props.root, [], scope);
+				renderer.arrange(Portal, el.props.root, [], scope);
 			} else if (dirty && el._flags & flags.Committed) {
 				try {
 					renderer.destroy(
@@ -748,7 +774,7 @@ function unmount<TValue>(
 }
 
 function unmountChildren<TValue>(
-	renderer: Renderer<TValue, any, any, any>,
+	renderer: Renderer<TValue, any, any>,
 	el: Element,
 	ctx: Context | undefined,
 	scope: Scope,
@@ -770,11 +796,12 @@ function unmountChildren<TValue>(
 export interface ProvisionMap {}
 
 export class Context<TProps = any, TValue = any> implements EventTarget {
-	renderer: Renderer<TValue, any, any, any>;
+	renderer: Renderer<TValue, any, any>;
 	_parent: Context<unknown, TValue> | undefined;
 	_scope: Scope;
 	_el: Element<Component>;
 	_listeners: EventListenerRecord[] | undefined;
+	// TODO: delete????
 	_delegates: Set<EventTarget> | EventTarget | undefined;
 	_iterator: ChildIterator | undefined;
 	_provisions: Map<unknown, unknown> | undefined;
@@ -787,7 +814,7 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 	_schedules: Set<(value: unknown) => unknown> | undefined;
 	_cleanups: Set<(value: unknown) => unknown> | undefined;
 	constructor(
-		renderer: Renderer<TValue, any, any, any>,
+		renderer: Renderer<TValue, any, any>,
 		el: Element<Component>,
 		parent: Context<unknown, TValue> | undefined,
 		scope: Scope,

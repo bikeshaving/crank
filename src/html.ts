@@ -78,12 +78,7 @@ const voidTags = new Set([
 	"wbr",
 ]);
 
-export class StringRenderer extends Renderer<
-	string,
-	string,
-	string,
-	undefined
-> {
+export class StringRenderer extends Renderer<string, string, string> {
 	create(
 		tag: string | symbol,
 		props: Record<string, any>,
@@ -109,7 +104,7 @@ export class StringRenderer extends Renderer<
 
 	patch(): void {}
 
-	arrange(_: unknown, children: Array<string>): string {
+	arrange(tag: unknown, parent: unknown, children: Array<string>): string {
 		return children.join("");
 	}
 
