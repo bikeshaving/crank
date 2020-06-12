@@ -81,7 +81,7 @@ export class Element<TTag extends Tag = Tag> {
 	_onNewValue: ((value: unknown) => unknown) | undefined;
 	_onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
 	// TODO: delete???????
-	parent: Element<Tag> | undefined;
+	parent: Element | undefined;
 	// TODO: delete?????????
 	_childrenByKey: Map<Key, Element> | undefined;
 	constructor(
@@ -95,16 +95,7 @@ export class Element<TTag extends Tag = Tag> {
 		this.props = props;
 		this.key = key;
 		this.ref = ref;
-		if (typeof tag === "function") {
-			this._flags = flags.Dirty | flags.Moved | flags.Component;
-		} else if (
-			typeof tag === "string" ||
-			(tag !== Fragment && tag !== Portal && tag !== Raw)
-		) {
-			this._flags = flags.Dirty | flags.Moved | flags.Intrinsic;
-		} else {
-			this._flags = flags.Dirty | flags.Moved;
-		}
+		this._flags = flags.Dirty | flags.Moved;
 	}
 }
 
@@ -169,11 +160,11 @@ function normalize(child: Child): NormalizedChild {
 // Special Intrinsic Tags
 // TODO: We assert symbol tags as any because typescript support for symbol tags in JSX does not exist yet.
 // https://github.com/microsoft/TypeScript/issues/38367
-export const Copy = Symbol.for("crank.Copy") as any;
-export type Copy = typeof Copy;
-
 export const Fragment = Symbol.for("crank.Fragment") as any;
 export type Fragment = typeof Fragment;
+
+export const Copy = Symbol.for("crank.Copy") as any;
+export type Copy = typeof Copy;
 
 export const Portal = Symbol.for("crank.Portal") as any;
 export type Portal = typeof Portal;
@@ -270,10 +261,11 @@ export abstract class Renderer<TValue, TChild, TResult> {
 	abstract parse(text: string, scope: Scope): TChild;
 }
 
+// TODO: maybe it’s just better to have these be methods
 function mount<TTag extends Tag, TValue>(
 	renderer: Renderer<TValue, any, any>,
 	el: Element<TTag>,
-	parent: Element<Tag> | undefined,
+	parent: Element | undefined,
 	ctx: Context<TagProps<TTag>, TValue> | undefined,
 	scope: Scope,
 ): Element<TTag> {
@@ -283,16 +275,17 @@ function mount<TTag extends Tag, TValue>(
 
 	el._flags |= flags.Mounted;
 	el.parent = parent;
-	if (el._flags & flags.Component) {
+	if (typeof el.tag === "function") {
 		el._ctx = new Context(renderer, el as Element<Component>, ctx, scope);
 	}
 
 	return el;
 }
 
+// TODO: have update and updateChildren return childValues???
 function update<TValue>(
 	renderer: Renderer<TValue, any, any>,
-	el: Element<Tag>,
+	el: Element,
 	ctx: Context<any, TValue> | undefined,
 	scope: Scope,
 ): Promise<undefined> | undefined {
@@ -306,17 +299,20 @@ function update<TValue>(
 
 function updateChildren<TValue>(
 	renderer: Renderer<TValue, any, any>,
-	el: Element<Tag>,
+	el: Element,
 	children: Children,
 	ctx: Context<unknown, TValue> | undefined,
 	scope: Scope,
 ): Promise<undefined> | undefined {
 	let childScope = scope;
-	if (el._flags & flags.Component) {
+	if (typeof el.tag === "function") {
 		if (isNonStringIterable(children)) {
 			children = createElement(Fragment, null, children);
 		}
-	} else if (el._flags & flags.Intrinsic) {
+	} else if (
+		typeof el.tag === "string" ||
+		(el.tag !== Fragment && el.tag !== Portal && el.tag !== Raw)
+	) {
 		childScope = renderer.scope(el.tag as string | symbol, el.props, scope);
 	}
 
@@ -517,7 +513,8 @@ function updateChildren<TValue>(
 	return commit(renderer, el, ctx, scope);
 }
 
-function prepareCommit<TValue>(el: Element<Tag>): any {
+// TODO: delete this function????
+function prepareCommit<TValue>(el: Element): any {
 	if (typeof el._children === "undefined") {
 		el._flags |= flags.Dirty;
 		return undefined;
@@ -613,7 +610,25 @@ function commit<TValue>(
 	if (el._flags & flags.Dirty) {
 		const children =
 			value === undefined ? [] : Array.isArray(value) ? value : [value];
-		if (el._flags & flags.Intrinsic) {
+		if (el.tag === Portal) {
+			try {
+				el._value = renderer.arrange(Portal, el.props.root, children, scope);
+			} catch (err) {
+				return handle(ctx, err);
+			}
+		} else if (el.tag === Raw) {
+			if (typeof el.props.value === "string") {
+				try {
+					el._value = renderer.parse(el.props.value, scope);
+				} catch (err) {
+					return handle(ctx, err);
+				}
+			} else {
+				el._value = el.props.value;
+			}
+		} else if (el.tag === Fragment || typeof el.tag === "function") {
+			el._value = value;
+		} else {
 			try {
 				if ((el._flags & flags.Committed) === 0) {
 					el._value = renderer.create(
@@ -640,24 +655,6 @@ function commit<TValue>(
 			} catch (err) {
 				return handle(ctx, err);
 			}
-		} else if (el.tag === Portal) {
-			try {
-				el._value = renderer.arrange(Portal, el.props.root, children, scope);
-			} catch (err) {
-				return handle(ctx, err);
-			}
-		} else if (el.tag === Raw) {
-			if (typeof el.props.value === "string") {
-				try {
-					el._value = renderer.parse(el.props.value, scope);
-				} catch (err) {
-					return handle(ctx, err);
-				}
-			} else {
-				el._value = el.props.value;
-			}
-		} else {
-			el._value = value;
 		}
 	}
 
@@ -739,7 +736,6 @@ function unmount<TValue>(
 				if (isPromiseLike(iteration)) {
 					return iteration
 						.then(() => {
-							el._flags &= ~flags.Updating;
 							unmountChildren(renderer, el, ctx, scope);
 							return undefined; // void :(
 						})
@@ -747,12 +743,6 @@ function unmount<TValue>(
 				}
 			}
 		} else if (el.tag !== Fragment) {
-			if (dirty) {
-				el._flags |= flags.Removing;
-			} else {
-				el._flags &= ~flags.Removing;
-			}
-
 			if (el.tag === Portal) {
 				renderer.arrange(Portal, el.props.root, [], scope);
 			} else if (dirty && el._flags & flags.Committed) {
@@ -769,7 +759,6 @@ function unmount<TValue>(
 		}
 	}
 
-	el._flags &= ~flags.Updating;
 	unmountChildren(renderer, el, ctx, scope);
 }
 
@@ -781,7 +770,7 @@ function unmountChildren<TValue>(
 ): void {
 	ctx = el._ctx || ctx;
 	const children =
-		el._children === "undefined"
+		typeof el._children === "undefined"
 			? []
 			: Array.isArray(el._children)
 			? el._children
@@ -815,6 +804,7 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 	_cleanups: Set<(value: unknown) => unknown> | undefined;
 	constructor(
 		renderer: Renderer<TValue, any, any>,
+		// TODO: can we pass the Component directly rather than the element???
 		el: Element<Component>,
 		parent: Context<unknown, TValue> | undefined,
 		scope: Scope,
@@ -1255,6 +1245,7 @@ function advance(ctx: Context): void {
 	ctx._enqueuedPending = undefined;
 	ctx._enqueuedResult = undefined;
 	if (el._flags & flags.AsyncGen && !(el._flags & flags.Finished)) {
+		// TODO: Figure out a way to call refresh here instead...
 		run(ctx)!.catch((err) => {
 			// We catch and rethrow the error to trigger an unhandled promise rejection.
 			if (!(el._flags & flags.Updating)) {
