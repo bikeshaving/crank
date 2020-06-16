@@ -92,7 +92,12 @@ export class DOMRenderer extends Renderer<Element, Node, undefined> {
 				}
 			}
 		}
-		(el as any).__crankInnerHTML = "innerHTML" in props;
+
+		if ("innerHTML" in props) {
+			(el as any).__crankInnerHTML = "innerHTML" in props;
+		} else if ((el as any).__crankInnerHTML) {
+			(el as any).__crankInnerHTML = false;
+		}
 	}
 
 	arrange<TTag extends string | symbol>(

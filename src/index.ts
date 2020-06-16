@@ -6,6 +6,16 @@ import {
 	upgradePromiseLike,
 } from "./utils";
 
+function arrayify<T>(value: Array<T> | T | undefined): Array<T> {
+	if (value === undefined) {
+		return [];
+	} else if (Array.isArray(value)) {
+		return value;
+	} else {
+		return [value];
+	}
+}
+
 declare global {
 	module JSX {
 		interface IntrinsicElements {
@@ -68,20 +78,16 @@ type Scope = unknown;
 const ElementSigil = Symbol.for("crank.ElementSigil");
 
 export class Element<TTag extends Tag = Tag> {
-	$sigil: typeof ElementSigil;
 	tag: TTag;
 	props: TagProps<TTag>;
 	key: Key;
 	ref: Function | undefined;
+	$sigil: typeof ElementSigil;
 	_flags: number;
-	// TODO: delete for component and fragment nodes?
 	_value: any;
 	_ctx: Context<TagProps<TTag>> | undefined;
 	_children: NormalizedChildren;
-	_onNewValue: ((value: unknown) => unknown) | undefined;
-	_onNewResult: ((result?: Promise<undefined>) => unknown) | undefined;
-	// TODO: delete???????
-	parent: Element | undefined;
+	_onNewResults: Function | undefined;
 	// TODO: delete?????????
 	_childrenByKey: Map<Key, Element> | undefined;
 	constructor(
@@ -95,7 +101,7 @@ export class Element<TTag extends Tag = Tag> {
 		this.props = props;
 		this.key = key;
 		this.ref = ref;
-		this._flags = flags.Dirty | flags.Moved;
+		this._flags = 0;
 	}
 }
 
@@ -157,6 +163,84 @@ function normalize(child: Child): NormalizedChild {
 	}
 }
 
+function getChildValues<TValue>(el: Element): Array<TValue | string> {
+	let result: Array<TValue | string> = [];
+	for (const child of arrayify(el._children)) {
+		if (child === undefined) {
+			// pass
+		} else if (typeof child === "string") {
+			result.push(child);
+		} else if (typeof child.tag === "function" || child.tag === Fragment) {
+			result = result.concat(getChildValues(child));
+		} else if (child.tag !== Portal) {
+			result.push(child._value);
+		}
+	}
+
+	return result;
+}
+
+function getChildValueOrValues<TValue>(
+	child: NormalizedChild,
+): Array<TValue | string> | TValue | string | undefined {
+	if (typeof child === "undefined" || typeof child === "string") {
+		return child;
+	}
+
+	const el = child;
+	if (el._flags & flags.Committed) {
+		return el._value;
+	}
+
+	const childValues = getChildValues<TValue>(el);
+	return childValues.length > 1 ? childValues : childValues[0];
+}
+
+// TODO: better name for this function
+function flatten<TValue>(
+	values: Array<
+		Array<TValue | string | undefined> | TValue | string | undefined
+	>,
+): Array<TValue | string> {
+	const result: Array<TValue | string> = [];
+	let buffer: string | undefined;
+	for (const value of values) {
+		if (typeof value === "undefined") {
+			// pass
+		} else if (typeof value === "string") {
+			buffer = buffer === undefined ? value : buffer + value;
+		} else if (!Array.isArray(value)) {
+			if (buffer !== undefined) {
+				result.push(buffer);
+				buffer = undefined;
+			}
+
+			result.push(value);
+		} else {
+			for (const value1 of value) {
+				if (typeof value1 === "undefined") {
+					// pass
+				} else if (typeof value1 === "string") {
+					buffer = buffer === undefined ? value1 : buffer + value1;
+				} else {
+					if (buffer !== undefined) {
+						result.push(buffer);
+						buffer = undefined;
+					}
+
+					result.push(value1);
+				}
+			}
+		}
+	}
+
+	if (buffer !== undefined) {
+		result.push(buffer);
+	}
+
+	return result;
+}
+
 // Special Intrinsic Tags
 // TODO: We assert symbol tags as any because typescript support for symbol tags in JSX does not exist yet.
 // TODO: Maybe we can just make these strings???
@@ -173,7 +257,11 @@ export type Portal = typeof Portal;
 export const Raw = Symbol.for("crank.Raw") as any;
 export type Raw = typeof Raw;
 
-export abstract class Renderer<TValue, TChild, TResult> {
+export abstract class Renderer<
+	TValue extends TChild,
+	TChild = TValue,
+	TResult = any
+> {
 	_cache: WeakMap<object, Element<Portal>>;
 	constructor() {
 		this._cache = new WeakMap();
@@ -193,7 +281,7 @@ export abstract class Renderer<TValue, TChild, TResult> {
 
 		// TODO: what if the we pass two portals with different keys?
 		if (oldPortal === undefined) {
-			mount(this, newPortal, undefined, undefined, undefined);
+			mount(this, newPortal, undefined, undefined, newPortal);
 		} else {
 			if (oldPortal !== newPortal) {
 				oldPortal.props = newPortal.props;
@@ -210,9 +298,9 @@ export abstract class Renderer<TValue, TChild, TResult> {
 			}
 		}
 
-		const result = update(this, newPortal, undefined, undefined);
+		const result = update(this, newPortal, undefined, undefined, newPortal);
 		if (isPromiseLike(result)) {
-			return result.then(() => {
+			return (result as Promise<any>).then(() => {
 				if (newPortal.props.root == null) {
 					unmount(this, newPortal, undefined, true);
 				}
@@ -235,6 +323,11 @@ export abstract class Renderer<TValue, TChild, TResult> {
 		scope: Scope,
 	): TValue;
 
+	abstract escape(text: string, scope: Scope): string;
+
+	abstract parse(text: string, scope: Scope): TChild;
+
+	// TODO: remove scope??????
 	abstract patch<TTag extends string | symbol>(
 		tag: string | symbol,
 		value: TValue,
@@ -242,6 +335,7 @@ export abstract class Renderer<TValue, TChild, TResult> {
 		scope: Scope,
 	): unknown;
 
+	// TODO: remove scope
 	abstract arrange<TTag extends string | symbol>(
 		tag: string | symbol,
 		value: TValue | undefined,
@@ -249,6 +343,7 @@ export abstract class Renderer<TValue, TChild, TResult> {
 		scope: Scope,
 	): TResult;
 
+	// TODO: remove scope
 	abstract destroy(tag: string | symbol, value: TValue, scope: Scope): unknown;
 
 	abstract scope<TTag extends string | symbol>(
@@ -256,51 +351,47 @@ export abstract class Renderer<TValue, TChild, TResult> {
 		props: TagProps<TTag>,
 		scope: Scope,
 	): Scope;
-
-	abstract escape(text: string, scope: Scope): string;
-
-	abstract parse(text: string, scope: Scope): TChild;
 }
 
 // TODO: maybe it’s just better to have these be methods
 function mount<TTag extends Tag, TValue>(
 	renderer: Renderer<TValue, any, any>,
 	el: Element<TTag>,
-	parent: Element | undefined,
 	ctx: Context<TagProps<TTag>, TValue> | undefined,
 	scope: Scope,
+	arranger: Element<string | symbol>,
 ): Element<TTag> {
 	if (typeof el._flags === "undefined" || el._flags & flags.Mounted) {
 		el = new Element(el.tag, el.props, el.key, el.ref);
 	}
 
 	el._flags |= flags.Mounted;
-	el.parent = parent;
 	if (typeof el.tag === "function") {
-		el._ctx = new Context(renderer, el as Element<Component>, ctx, scope);
+		el._ctx = new Context(
+			renderer,
+			el as Element<Component>,
+			ctx,
+			scope,
+			arranger,
+		);
 	}
 
 	return el;
 }
 
-// TODO: have update and updateChildren return childValues???
 function update<TValue>(
 	renderer: Renderer<TValue, any, any>,
 	el: Element,
 	ctx: Context<any, TValue> | undefined,
 	scope: Scope,
-): Promise<undefined> | undefined {
+	arranger: Element<string | symbol>,
+): any {
 	el._flags |= flags.Updating;
 	if (typeof el._ctx === "object") {
 		return el._ctx.refresh();
 	}
 
-	const result = updateChildren(renderer, el, el.props.children, ctx, scope);
-	if (isPromiseLike(result)) {
-		return result.then(() => commit(renderer, el, scope));
-	}
-
-	return commit(renderer, el, scope);
+	return updateChildren(renderer, el, el.props.children, ctx, scope, arranger);
 }
 
 function updateChildren<TValue>(
@@ -309,7 +400,8 @@ function updateChildren<TValue>(
 	children: Children,
 	ctx: Context<unknown, TValue> | undefined,
 	scope: Scope,
-): Promise<undefined> | undefined {
+	arranger: Element<string | symbol>,
+): any {
 	if (typeof el.tag === "function") {
 		if (isNonStringIterable(children)) {
 			children = createElement(Fragment, null, children);
@@ -319,14 +411,15 @@ function updateChildren<TValue>(
 		(el.tag !== Fragment && el.tag !== Portal && el.tag !== Raw)
 	) {
 		scope = renderer.scope(el.tag as string | symbol, el.props, scope);
+		arranger = el as Element<string | symbol>;
 	}
 
+	let async = false;
+	const results: Array<Promise<unknown> | unknown> = [];
 	const handling = el._flags & flags.Handling;
-	let result: Promise<undefined> | undefined;
 	const children1: Array<NormalizedChild> = [];
 	let childrenByKey: Map<Key, Element> | undefined;
 	let i = 0;
-
 	if (children === undefined) {
 		children = [];
 	} else if (!isNonStringIterable(children)) {
@@ -361,7 +454,6 @@ function updateChildren<TValue>(
 					i++;
 				} else {
 					oldChild = oldChild1;
-					oldChild._flags |= flags.Moved;
 				}
 			}
 		} else {
@@ -384,10 +476,11 @@ function updateChildren<TValue>(
 
 		// updating
 		if (typeof newChild1 === "object") {
-			let result1: Promise<undefined> | undefined;
+			let result1: any;
 			if (newChild1.tag === Copy) {
 				// TODO: do refs make sense for copies?
 				newChild1 = oldChild;
+				result1 = getChildValueOrValues(oldChild);
 			} else if (typeof oldChild === "object") {
 				if (oldChild.tag === newChild1.tag) {
 					if (oldChild !== newChild) {
@@ -396,40 +489,28 @@ function updateChildren<TValue>(
 						newChild1 = oldChild;
 					}
 
-					result1 = update(renderer, newChild1, ctx, scope);
+					result1 = update(renderer, newChild1, ctx, scope, arranger);
 				} else {
-					newChild1 = mount(renderer, newChild1, el, ctx, scope);
-					result1 = update(renderer, newChild1, ctx, scope);
-					if (result1 === undefined) {
-						unmount(renderer, oldChild, scope, true);
+					newChild1 = mount(renderer, newChild1, ctx, scope, arranger);
+					result1 = update(renderer, newChild1, ctx, scope, arranger);
+					if (isPromiseLike(result1)) {
+						// // storing variables for callback closures
+						// const oldChild1 = oldChild;
+						// // TODO: unmount the oldChild after result1 settles
 					} else {
-						// storing variables for callback closures
-						newChild1._value = oldChild._value;
-						const oldChild1 = oldChild;
-						const newChild2 = newChild1;
-						let fulfilled = false;
-						result1.then(() => {
-							fulfilled = true;
-							unmount(renderer, oldChild1, scope, true);
-						});
-						oldChild._onNewValue = (value) => {
-							if (!fulfilled) {
-								newChild2._value = value;
-							}
-						};
+						unmount(renderer, oldChild, scope, true);
 					}
 				}
 			} else {
-				newChild1 = mount(renderer, newChild1, el, ctx, scope);
-				result1 = update(renderer, newChild1, ctx, scope);
-				if (result1 !== undefined) {
-					newChild1._value = oldChild;
-				}
+				newChild1 = mount(renderer, newChild1, ctx, scope, arranger);
+				result1 = update(renderer, newChild1, ctx, scope, arranger);
 			}
 
-			if (result1 !== undefined) {
-				result = result === undefined ? result1 : result.then(() => result1);
+			if (isPromiseLike(result1)) {
+				async = true;
 			}
+
+			results.push(result1);
 		} else {
 			if (typeof oldChild === "object") {
 				unmount(renderer, oldChild, scope, true);
@@ -438,6 +519,8 @@ function updateChildren<TValue>(
 			if (typeof newChild1 === "string") {
 				newChild1 = renderer.escape(newChild1, scope);
 			}
+
+			results.push(newChild1);
 		}
 
 		// push to children1
@@ -458,7 +541,7 @@ function updateChildren<TValue>(
 	// TODO: I hate this
 	if (handling !== (el._flags & flags.Handling)) {
 		el._flags &= ~flags.Handling;
-		return;
+		return getChildValueOrValues(el);
 	}
 
 	if (typeof el._children !== "undefined") {
@@ -490,106 +573,26 @@ function updateChildren<TValue>(
 
 	el._children = children1.length > 1 ? children1 : children1[0];
 	el._childrenByKey = childrenByKey;
+	if (async) {
+		let onNewResults!: Function;
+		const newResultsP = new Promise<any>((resolve) => (onNewResults = resolve));
+		const resultsP = Promise.race([Promise.all(results), newResultsP]);
+		if (typeof el._onNewResults === "function") {
+			el._onNewResults(resultsP);
+		}
 
-	if (typeof el._onNewResult === "function") {
-		el._onNewResult(result);
-		el._onNewResult = undefined;
-	}
-
-	if (isPromiseLike(result)) {
-		const newResult = new Promise<undefined>(
-			(resolve) => (el._onNewResult = resolve),
+		el._onNewResults = onNewResults;
+		return resultsP.then((results) =>
+			commit(renderer, el, scope, flatten(results)),
 		);
-
-		return Promise.race([result, newResult]);
-	}
-}
-
-// TODO: delete this function????
-function prepareCommit<TValue>(el: Element): any {
-	if (typeof el._children === "undefined") {
-		el._flags |= flags.Dirty;
-		return undefined;
-	} else if (!Array.isArray(el._children)) {
-		const child = el._children;
-		if (typeof child === "object") {
-			if (child._flags & (flags.Dirty | flags.Moved)) {
-				el._flags |= flags.Dirty;
-			}
-
-			child._flags &= ~(flags.Dirty | flags.Moved);
-		} else {
-			el._flags |= flags.Dirty;
-		}
-
-		if (typeof child === "object") {
-			if (child.tag === Portal) {
-				return undefined;
-			} else {
-				return child._value;
-			}
-		} else {
-			return child;
-		}
 	}
 
-	let buffer: string | undefined;
-	let values: Array<TValue | string> = [];
-	for (let i = 0; i < el._children.length; i++) {
-		const child = el._children[i];
-		if (typeof child === "object") {
-			if (child._flags & (flags.Dirty | flags.Moved)) {
-				el._flags |= flags.Dirty;
-			}
-
-			child._flags &= ~(flags.Dirty | flags.Moved);
-		} else {
-			el._flags |= flags.Dirty;
-		}
-
-		if (typeof child === "object" && child.tag === Portal) {
-			continue;
-		}
-
-		let value: any;
-		if (typeof child === "object") {
-			if (child.tag === Portal) {
-				value = undefined;
-			} else {
-				value = child._value;
-			}
-		} else {
-			value = child;
-		}
-
-		if (typeof value === "string") {
-			buffer = buffer === undefined ? value : buffer + value;
-		} else {
-			if (buffer !== undefined) {
-				values.push(buffer);
-				buffer = undefined;
-			}
-
-			if (Array.isArray(value)) {
-				values = values.concat(value);
-			} else if (value !== undefined) {
-				values.push(value);
-			}
-		}
+	if (typeof el._onNewResults === "function") {
+		el._onNewResults(results);
+		el._onNewResults = undefined;
 	}
 
-	if (buffer !== undefined) {
-		values.push(buffer);
-	}
-
-	if (values.length === 0) {
-		el._flags |= flags.Dirty;
-		return undefined;
-	} else if (values.length === 1) {
-		return values[0];
-	} else {
-		return values;
-	}
+	return commit(renderer, el, scope, flatten(results));
 }
 
 // TODO: maybe the return value can be the normalized form of the children?
@@ -597,21 +600,39 @@ function commit<TValue>(
 	renderer: Renderer<TValue, any, any>,
 	el: Element,
 	scope: Scope,
-): any /* void :( */ {
-	// TODO: pass children in
-	let value = prepareCommit(el);
-	const children =
-		value === undefined ? [] : Array.isArray(value) ? value : [value];
-	if (el.tag === Portal) {
+	children: Array<TValue | string>,
+): any {
+	const value = children.length > 1 ? children : children[0];
+	let result: any;
+	if (typeof el._ctx === "object") {
+		setDelegates(el._ctx, value);
+		if (typeof el._ctx._schedules === "object" && el._ctx._schedules.size > 0) {
+			// We have to clear the set of callbacks before calling them, because a callback which refreshes the component would otherwise cause a stack overflow.
+			const callbacks = Array.from(el._ctx._schedules);
+			el._ctx._schedules.clear();
+			for (const callback of callbacks) {
+				callback(value);
+			}
+		}
+
+		if (!(el._ctx._arranger._flags & flags.Updating)) {
+			rearrange(renderer, el._ctx._arranger);
+		}
+
+		result = value;
+	} else if (el.tag === Portal) {
 		el._value = renderer.arrange(Portal, el.props.root, children, scope);
+		result = undefined;
 	} else if (el.tag === Raw) {
 		if (typeof el.props.value === "string") {
 			el._value = renderer.parse(el.props.value, scope);
 		} else {
 			el._value = el.props.value;
 		}
-	} else if (el.tag === Fragment || typeof el.tag === "function") {
-		el._value = value;
+
+		result = el._value;
+	} else if (el.tag === Fragment) {
+		result = value;
 	} else {
 		if (!(el._flags & flags.Committed)) {
 			el._value = renderer.create(
@@ -623,51 +644,17 @@ function commit<TValue>(
 			el._flags |= flags.Committed;
 		}
 
-		renderer.patch(
-			el.tag as string | symbol,
-			el._value as TValue,
-			el.props,
-			scope,
-		);
-		renderer.arrange(
-			el.tag as string | symbol,
-			el._value as TValue,
-			children,
-			scope,
-		);
+		renderer.patch(el.tag as string | symbol, el._value, el.props, scope);
+		renderer.arrange(el.tag as string | symbol, el._value, children, scope);
+		result = el._value;
 	}
 
-	if (typeof el._onNewValue === "function") {
-		el._onNewValue(el._value);
-		el._onNewValue = undefined;
-	}
-
-	if (typeof el._ctx === "object") {
-		setDelegates(el._ctx, el._value);
-		if (typeof el._ctx._schedules === "object" && el._ctx._schedules.size > 0) {
-			// We have to clear the set of callbacks before calling them, because a callback which refreshes the component would otherwise cause a stack overflow.
-			const callbacks = Array.from(el._ctx._schedules);
-			el._ctx._schedules.clear();
-			for (const callback of callbacks) {
-				callback(el._value);
-			}
-		}
-	}
-
-	if (typeof el.ref !== "undefined") {
-		el.ref(el._value);
-	}
-
-	if (
-		!(el._flags & flags.Updating) &&
-		el._flags & flags.Dirty &&
-		el.parent !== undefined
-	) {
-		// TODO: this is an untested and dubious situation all around and I’m not sure ctx makes sense here
-		commit(renderer, el.parent, undefined);
+	if (typeof el.ref === "function") {
+		el.ref(result);
 	}
 
 	el._flags &= ~flags.Updating;
+	return result;
 }
 
 function unmount<TValue>(
@@ -675,14 +662,15 @@ function unmount<TValue>(
 	el: Element,
 	scope: Scope,
 	dirty: boolean,
-): any /* void :( */ {
+): any {
 	if (el._flags & flags.Unmounted) {
 		return;
 	}
 
 	if (typeof el._ctx === "object" && typeof el._ctx._cleanups === "object") {
+		const value = getChildValueOrValues(el);
 		for (const cleanup of el._ctx._cleanups) {
-			cleanup(el._value);
+			cleanup(value);
 		}
 
 		el._ctx._cleanups = undefined;
@@ -707,49 +695,53 @@ function unmount<TValue>(
 				let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
 				iteration = el._ctx._iterator.return();
 				if (isPromiseLike(iteration)) {
-					return iteration.then(() => {
-						unmountChildren(renderer, el, scope);
-						return undefined; // void :(
-					});
+					return iteration.then(() => unmountChildren(renderer, el, scope));
 				}
 			}
-		} else if (el.tag !== Fragment) {
-			if (el.tag === Portal) {
-				renderer.arrange(Portal, el.props.root, [], scope);
-			} else if (dirty && el._flags & flags.Committed) {
-				renderer.destroy(el.tag as symbol | string, el._value as TValue, scope);
-			}
+		} else if (el.tag === Portal) {
+			renderer.arrange(Portal, el.props.root, [], scope);
+		} else if (el.tag !== Fragment && dirty && el._flags & flags.Committed) {
+			renderer.destroy(el.tag as symbol | string, el._value, scope);
 		}
 	}
 
 	unmountChildren(renderer, el, scope);
 }
 
-function unmountChildren<TValue>(
-	renderer: Renderer<TValue, any, any>,
+function unmountChildren(
+	renderer: Renderer<any, any, any>,
 	el: Element,
 	scope: Scope,
-): void {
-	const children =
-		typeof el._children === "undefined"
-			? []
-			: Array.isArray(el._children)
-			? el._children
-			: [el._children];
-	for (const child of children) {
+): any /* void */ {
+	for (const child of arrayify(el._children)) {
 		if (typeof child === "object") {
 			unmount(renderer, child, scope, false);
 		}
 	}
 }
 
+// TODO: remove scope from arrange
+function rearrange(
+	renderer: Renderer<any, any, any>,
+	el: Element<string | symbol>,
+): void {
+	renderer.arrange(
+		el.tag,
+		el.tag === Portal ? el.props.root : el._value,
+		Array.from(getChildValues(el)),
+		// TODO: it is impossible to reconstruct the scope here
+		undefined,
+	);
+}
+
 export interface ProvisionMap {}
 
 export class Context<TProps = any, TValue = any> implements EventTarget {
 	renderer: Renderer<TValue, any, any>;
+	_el: Element<Component>;
 	_parent: Context<unknown, TValue> | undefined;
 	_scope: Scope;
-	_el: Element<Component>;
+	_arranger: Element<string | symbol>;
 	_listeners: EventListenerRecord[] | undefined;
 	// TODO: delete????
 	_delegates: Set<EventTarget> | EventTarget | undefined;
@@ -769,11 +761,13 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 		el: Element<Component>,
 		parent: Context<unknown, TValue> | undefined,
 		scope: Scope,
+		arranger: Element<string | symbol>,
 	) {
 		this.renderer = renderer;
 		this._el = el;
 		this._parent = parent;
 		this._scope = scope;
+		this._arranger = arranger;
 	}
 
 	get<TKey extends keyof ProvisionMap>(key: TKey): ProvisionMap[TKey];
@@ -809,7 +803,7 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 	}
 
 	get value(): unknown {
-		return this._el._value;
+		return getChildValueOrValues(this._el);
 	}
 
 	*[Symbol.iterator](): Generator<TProps> {
@@ -1055,12 +1049,14 @@ function run(ctx: Context): Promise<undefined> | undefined {
 	const el = ctx._el;
 	if (typeof ctx._inflightPending === "undefined") {
 		const [pending, result] = step(ctx);
-		if (pending !== undefined) {
-			ctx._inflightPending = pending.finally(() => advance(ctx));
+		if (isPromiseLike(pending)) {
+			ctx._inflightPending = (pending as Promise<any>).finally(() =>
+				advance(ctx),
+			);
 		}
 
-		if (result !== undefined) {
-			ctx._inflightResult = result;
+		if (isPromiseLike(result)) {
+			ctx._inflightResult = result as Promise<any>;
 		}
 
 		return result;
@@ -1081,12 +1077,10 @@ function run(ctx: Context): Promise<undefined> | undefined {
 	return ctx._enqueuedResult;
 }
 
-function step<TValue>(
-	ctx: Context<any, TValue>,
-): [Promise<undefined> | undefined, Promise<undefined> | undefined] {
+function step<TValue>(ctx: Context<any, TValue>): [any, any] {
 	const el = ctx._el;
 	if (el._flags & flags.Finished) {
-		return [undefined, undefined];
+		return [undefined, getChildValueOrValues(el)];
 	}
 
 	el._flags |= flags.Stepping;
@@ -1110,20 +1104,27 @@ function step<TValue>(
 			); // void :(
 			const result = value1
 				.then((child) =>
-					updateChildren(ctx.renderer, el, child, ctx, ctx._scope),
+					updateChildren(
+						ctx.renderer,
+						el,
+						child,
+						ctx,
+						ctx._scope,
+						ctx._arranger,
+					),
 				)
-				.then(() => commit(ctx.renderer, ctx._el, ctx._scope))
 				.catch((err) => handle(ctx, err));
 			el._flags &= ~flags.Stepping;
 			return [pending, result];
 		} else {
-			let result = updateChildren(ctx.renderer, el, value, ctx, ctx._scope);
-			if (isPromiseLike(result)) {
-				result = result.then(() => commit(ctx.renderer, ctx._el, ctx._scope));
-			} else {
-				commit(ctx.renderer, ctx._el, ctx._scope);
-			}
-
+			let result = updateChildren(
+				ctx.renderer,
+				el,
+				value,
+				ctx,
+				ctx._scope,
+				ctx._arranger,
+			);
 			el._flags &= ~flags.Stepping;
 			return [undefined, result];
 		}
@@ -1137,12 +1138,12 @@ function step<TValue>(
 		| undefined;
 	if (typeof ctx._oldResult === "object") {
 		oldValue = ctx._oldResult.then(
-			() => el._value,
-			() => el._value,
+			() => getChildValueOrValues<TValue>(el),
+			() => getChildValueOrValues<TValue>(el),
 		);
 		ctx._oldResult = undefined;
 	} else {
-		oldValue = el._value;
+		oldValue = getChildValueOrValues<TValue>(el);
 	}
 
 	let iteration: IteratorResult<Child> | Promise<IteratorResult<Child>>;
@@ -1158,11 +1159,14 @@ function step<TValue>(
 		el._flags |= flags.AsyncGen;
 		iteration = iteration.catch((err) => {
 			const caught = handle(ctx._parent, err);
-			if (caught === undefined) {
-				return {value: undefined, done: true};
+			if (isPromiseLike(caught)) {
+				return (caught as Promise<any>).then(() => ({
+					value: undefined,
+					done: true,
+				}));
 			}
 
-			return caught.then(() => ({value: undefined, done: true}));
+			return {value: undefined, done: true};
 		});
 		const pending = iteration.then(
 			() => undefined,
@@ -1180,13 +1184,11 @@ function step<TValue>(
 				iteration.value,
 				ctx,
 				ctx._scope,
+				ctx._arranger,
 			);
+
 			if (isPromiseLike(result)) {
-				result = result.then(() => commit(ctx.renderer, ctx._el, ctx._scope));
-				ctx._oldResult = result;
-			} else {
-				commit(ctx.renderer, ctx._el, ctx._scope);
-				ctx._oldResult = undefined;
+				ctx._oldResult = result as Promise<any>;
 			}
 
 			return result;
@@ -1206,13 +1208,8 @@ function step<TValue>(
 		iteration.value,
 		ctx,
 		ctx._scope,
+		ctx._arranger,
 	);
-
-	if (isPromiseLike(result)) {
-		result = result.then(() => commit(ctx.renderer, ctx._el, ctx._scope));
-	} else {
-		commit(ctx.renderer, ctx._el, ctx._scope);
-	}
 
 	return [result, result];
 }
@@ -1263,13 +1260,13 @@ function handle<TValue>(
 						el._flags |= flags.Finished;
 					}
 
-					// TODO: why does it not matter that we’re not committing here
 					return updateChildren(
 						ctx.renderer,
 						el,
 						iteration.value,
 						ctx,
 						ctx._scope,
+						ctx._arranger,
 					);
 				})
 				.catch((err) => handle(ctx._parent, err));
@@ -1279,8 +1276,14 @@ function handle<TValue>(
 			el._flags |= flags.Finished;
 		}
 
-		// TODO: why does it not matter that we’re not committing here
-		return updateChildren(ctx.renderer, el, iteration.value, ctx, ctx._scope);
+		return updateChildren(
+			ctx.renderer,
+			el,
+			iteration.value,
+			ctx,
+			ctx._scope,
+			ctx._arranger,
+		);
 	}
 
 	return handle(ctx._parent, reason);
