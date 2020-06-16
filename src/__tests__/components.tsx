@@ -1120,9 +1120,14 @@ describe("async generator component", () => {
 	});
 
 	test("concurrent unmount", async () => {
+		const mock = jest.fn();
 		async function* Component(this: Context): AsyncGenerator<Child> {
-			for await (const _ of this) {
-				yield "Hello world";
+			try {
+				for await (const _ of this) {
+					yield "Hello world";
+				}
+			} finally {
+				mock();
 			}
 		}
 
@@ -1140,7 +1145,13 @@ describe("async generator component", () => {
 		);
 		renderer.render(null, document.body);
 		expect(document.body.innerHTML).toEqual("");
+		expect(mock).toHaveBeenCalledTimes(0);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(document.body.innerHTML).toEqual("");
+		expect(mock).toHaveBeenCalledTimes(1);
 		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("");
+		expect(mock).toHaveBeenCalledTimes(1);
 	});
 
 	test("async generator returns", async () => {
