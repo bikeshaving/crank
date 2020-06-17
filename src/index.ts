@@ -75,6 +75,9 @@ type Key = unknown;
 
 type Scope = unknown;
 
+// TODO: DELETE ME
+type Value = any;
+
 const ElementSigil = Symbol.for("crank.ElementSigil");
 
 export class Element<TTag extends Tag = Tag> {
@@ -84,7 +87,7 @@ export class Element<TTag extends Tag = Tag> {
 	ref: Function | undefined;
 	$sigil: typeof ElementSigil;
 	_flags: number;
-	_value: any;
+	_value: Value;
 	_ctx: Context<TagProps<TTag>> | undefined;
 	_children: NormalizedChildren;
 	_onNewResults: Function | undefined;
@@ -257,6 +260,7 @@ export type Portal = typeof Portal;
 export const Raw = Symbol.for("crank.Raw") as any;
 export type Raw = typeof Raw;
 
+// TODO: think about these types and stuff
 export abstract class Renderer<
 	TValue extends TChild,
 	TChild = TValue,
@@ -385,7 +389,7 @@ function update<TValue>(
 	ctx: Context<any, TValue> | undefined,
 	scope: Scope,
 	arranger: Element<string | symbol>,
-): any {
+): Value {
 	el._flags |= flags.Updating;
 	if (typeof el._ctx === "object") {
 		return el._ctx.refresh();
@@ -401,7 +405,7 @@ function updateChildren<TValue>(
 	ctx: Context<unknown, TValue> | undefined,
 	scope: Scope,
 	arranger: Element<string | symbol>,
-): any {
+): Value {
 	if (typeof el.tag === "function") {
 		if (isNonStringIterable(children)) {
 			children = createElement(Fragment, null, children);
@@ -493,9 +497,11 @@ function updateChildren<TValue>(
 					newChild1 = mount(renderer, newChild1, ctx, scope, arranger);
 					result1 = update(renderer, newChild1, ctx, scope, arranger);
 					if (isPromiseLike(result1)) {
-						// // storing variables for callback closures
-						// const oldChild1 = oldChild;
-						// // TODO: unmount the oldChild after result1 settles
+						// storing variable for closure
+						const oldChild1 = oldChild;
+						result1 = (result1 as Promise<any>).finally(() => {
+							unmount(renderer, oldChild1, scope, true);
+						});
 					} else {
 						unmount(renderer, oldChild, scope, true);
 					}
@@ -595,7 +601,7 @@ function commit<TValue>(
 	el: Element,
 	scope: Scope,
 	children: Array<TValue | string>,
-): any {
+): Value {
 	const value = children.length > 1 ? children : children[0];
 	let result: any;
 	if (typeof el._ctx === "object") {
@@ -651,6 +657,7 @@ function commit<TValue>(
 	return result;
 }
 
+// TODO: fix catching of async generator return errors
 function unmount<TValue>(
 	renderer: Renderer<TValue, any, any>,
 	el: Element,
@@ -745,10 +752,10 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 	_inflightPending: Promise<unknown> | undefined;
 	_enqueuedPending: Promise<unknown> | undefined;
 	// TODO: fix these types
-	_inflightResult: any;
-	_enqueuedResult: any;
-	_schedules: Set<(value: unknown) => unknown> | undefined;
-	_cleanups: Set<(value: unknown) => unknown> | undefined;
+	_inflightResult: Value;
+	_enqueuedResult: Value;
+	_schedules: Set<(value: Value) => unknown> | undefined;
+	_cleanups: Set<(value: Value) => unknown> | undefined;
 	constructor(
 		renderer: Renderer<TValue, any, any>,
 		el: Element<Component>,
@@ -795,7 +802,7 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 		return this._el.props;
 	}
 
-	get value(): unknown {
+	get value(): Value {
 		return getChildValueOrValues(this._el);
 	}
 
@@ -1038,7 +1045,7 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 	}
 }
 
-function run(ctx: Context): Promise<undefined> | undefined {
+function run(ctx: Context): Value {
 	const el = ctx._el;
 	if (typeof ctx._inflightPending === "undefined") {
 		const [pending, result] = step(ctx);
@@ -1072,7 +1079,7 @@ function run(ctx: Context): Promise<undefined> | undefined {
 
 function step<TValue>(
 	ctx: Context<any, TValue>,
-): [Promise<unknown> | undefined, any] {
+): [Promise<unknown> | undefined, Value] {
 	const el = ctx._el;
 	if (el._flags & flags.Finished) {
 		return [undefined, getChildValueOrValues(el)];

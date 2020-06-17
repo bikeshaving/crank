@@ -659,14 +659,14 @@ describe("sync generator component", () => {
 		await renderP;
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 0</span></div>");
 		const refreshP = ctx.refresh();
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => setTimeout(resolve));
 		expect(mock).toHaveBeenCalledWith("<span>Hello 0</span>");
 		expect(mock).toHaveBeenCalledTimes(1);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 0</span></div>");
 		await refreshP;
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
 		ctx.refresh();
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => setTimeout(resolve));
 		expect(mock).toHaveBeenCalledWith("<span>Hello 1</span>");
 		expect(mock).toHaveBeenCalledTimes(2);
 	});
@@ -865,7 +865,7 @@ describe("sync generator component", () => {
 
 	test("unmount", () => {
 		const mock = jest.fn();
-		function* Component(): Generator<Child> {
+		function* Component(): Generator<Element> {
 			try {
 				let i = 0;
 				while (true) {
@@ -881,8 +881,35 @@ describe("sync generator component", () => {
 		renderer.render(<Component />, document.body);
 		expect(document.body.innerHTML).toEqual("<div>Hello 2</div>");
 		expect(mock).toHaveBeenCalledTimes(0);
-		renderer.render(<div />, document.body);
-		expect(document.body.innerHTML).toEqual("<div></div>");
+		renderer.render(<div>Goodbye</div>, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Goodbye</div>");
+		expect(mock).toHaveBeenCalledTimes(1);
+	});
+
+	test("unmount against async", async () => {
+		const mock = jest.fn();
+		function* Component(): Generator<Element> {
+			try {
+				let i = 0;
+				while (true) {
+					yield <div>Hello {i++}</div>;
+				}
+			} finally {
+				mock();
+			}
+		}
+
+		async function Async(): Promise<Element> {
+			return <div>Goodbye</div>;
+		}
+
+		renderer.render(<Component />, document.body);
+		renderer.render(<Component />, document.body);
+		renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Hello 2</div>");
+		expect(mock).toHaveBeenCalledTimes(0);
+		await renderer.render(<Async />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Goodbye</div>");
 		expect(mock).toHaveBeenCalledTimes(1);
 	});
 
@@ -949,7 +976,7 @@ describe("async generator component", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => setTimeout(resolve));
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
 		await renderer.render(
 			<div>
@@ -958,7 +985,7 @@ describe("async generator component", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => setTimeout(resolve));
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 2</span></div>");
 		await renderer.render(
 			<div>
@@ -967,7 +994,7 @@ describe("async generator component", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>Final</span></div>");
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => setTimeout(resolve));
 		expect(document.body.innerHTML).toEqual("<div><span>Final</span></div>");
 		expect(Component).toHaveBeenCalledTimes(1);
 	});
@@ -1146,7 +1173,7 @@ describe("async generator component", () => {
 		renderer.render(null, document.body);
 		expect(document.body.innerHTML).toEqual("");
 		expect(mock).toHaveBeenCalledTimes(0);
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => setTimeout(resolve));
 		expect(document.body.innerHTML).toEqual("");
 		expect(mock).toHaveBeenCalledTimes(1);
 		await new Promise((resolve) => setTimeout(resolve, 100));
