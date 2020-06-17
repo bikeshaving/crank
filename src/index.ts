@@ -75,9 +75,6 @@ type Key = unknown;
 
 type Scope = unknown;
 
-// TODO: DELETE ME
-type Value = any;
-
 const ElementSigil = Symbol.for("crank.ElementSigil");
 
 export class Element<TTag extends Tag = Tag> {
@@ -87,11 +84,16 @@ export class Element<TTag extends Tag = Tag> {
 	ref: Function | undefined;
 	$sigil: typeof ElementSigil;
 	_flags: number;
-	_value: Value;
 	_ctx: Context<TagProps<TTag>> | undefined;
+	_value: any;
 	_children: NormalizedChildren;
-	_onNewResults: Function | undefined;
-	// TODO: delete?????????
+	_onNewResults:
+		| ((
+				value: Promise<Array<ChildValue<unknown>>> | Array<ChildValue<unknown>>,
+		  ) => unknown)
+		| undefined;
+
+	// TODO: delete
 	_childrenByKey: Map<Key, Element> | undefined;
 	constructor(
 		tag: TTag,
@@ -122,9 +124,9 @@ export function createElement<TTag extends Tag>(
 	props?: TagProps<TTag> | null,
 	children?: unknown,
 ): Element<TTag> {
-	const props1 = {} as TagProps<TTag>;
 	let key: Key;
 	let ref: Function | undefined;
+	const props1 = {} as TagProps<TTag>;
 	if (props != null) {
 		for (const name in props) {
 			if (name === "crank-key") {
@@ -156,6 +158,7 @@ export function createElement<TTag extends Tag>(
 	return new Element(tag, props1, key, ref);
 }
 
+// TODO: rename this function
 function normalize(child: Child): NormalizedChild {
 	if (child == null || typeof child === "boolean") {
 		return undefined;
@@ -164,6 +167,22 @@ function normalize(child: Child): NormalizedChild {
 	} else {
 		return child.toString();
 	}
+}
+
+type ChildValue<TValue> = Array<TValue | string> | TValue | string | undefined;
+
+function getValue<TValue>(child: NormalizedChild): ChildValue<TValue> {
+	if (typeof child === "undefined" || typeof child === "string") {
+		return child;
+	}
+
+	const el = child;
+	if (el._flags & flags.Committed) {
+		return el._value;
+	}
+
+	const childValues = getChildValues<TValue>(el);
+	return childValues.length > 1 ? childValues : childValues[0];
 }
 
 function getChildValues<TValue>(el: Element): Array<TValue | string> {
@@ -183,27 +202,9 @@ function getChildValues<TValue>(el: Element): Array<TValue | string> {
 	return result;
 }
 
-function getChildValueOrValues<TValue>(
-	child: NormalizedChild,
-): Array<TValue | string> | TValue | string | undefined {
-	if (typeof child === "undefined" || typeof child === "string") {
-		return child;
-	}
-
-	const el = child;
-	if (el._flags & flags.Committed) {
-		return el._value;
-	}
-
-	const childValues = getChildValues<TValue>(el);
-	return childValues.length > 1 ? childValues : childValues[0];
-}
-
-// TODO: better name for this function
+// TODO: better name for this function. This function flattens an array, concatenates adjacent strings, and removes undefineds. tidy? normalize?
 function flatten<TValue>(
-	values: Array<
-		Array<TValue | string | undefined> | TValue | string | undefined
-	>,
+	values: Array<ChildValue<TValue>>,
 ): Array<TValue | string> {
 	const result: Array<TValue | string> = [];
 	let buffer: string | undefined;
@@ -271,6 +272,7 @@ export abstract class Renderer<
 		this._cache = new WeakMap();
 	}
 
+	// TODO: what is the type of root
 	render(children: Children, root?: TValue): Promise<TResult> | TResult {
 		const clearing = children == null;
 		let oldPortal: Element<Portal> | undefined;
@@ -304,7 +306,7 @@ export abstract class Renderer<
 
 		const result = update(this, newPortal, undefined, undefined, newPortal);
 		if (isPromiseLike(result)) {
-			return (result as Promise<any>).then(() => {
+			return result.then(() => {
 				if (newPortal.props.root == null) {
 					unmount(this, newPortal, undefined, true);
 				}
@@ -383,13 +385,14 @@ function mount<TTag extends Tag, TValue>(
 	return el;
 }
 
+// TODO: reorder the parameters
 function update<TValue>(
 	renderer: Renderer<TValue, any, any>,
 	el: Element,
 	ctx: Context<any, TValue> | undefined,
 	scope: Scope,
 	arranger: Element<string | symbol>,
-): Value {
+): Promise<ChildValue<TValue>> | ChildValue<TValue> {
 	el._flags |= flags.Updating;
 	if (typeof el._ctx === "object") {
 		return el._ctx.refresh();
@@ -405,7 +408,7 @@ function updateChildren<TValue>(
 	ctx: Context<unknown, TValue> | undefined,
 	scope: Scope,
 	arranger: Element<string | symbol>,
-): Value {
+): Promise<ChildValue<TValue>> | ChildValue<TValue> {
 	if (typeof el.tag === "function") {
 		if (isNonStringIterable(children)) {
 			children = createElement(Fragment, null, children);
@@ -419,7 +422,7 @@ function updateChildren<TValue>(
 	}
 
 	let async = false;
-	const results: Array<Promise<unknown> | unknown> = [];
+	const results: Array<Promise<ChildValue<TValue>> | ChildValue<TValue>> = [];
 	const children1: Array<NormalizedChild> = [];
 	let childrenByKey: Map<Key, Element> | undefined;
 	let i = 0;
@@ -479,11 +482,16 @@ function updateChildren<TValue>(
 
 		// updating
 		if (typeof newChild1 === "object") {
-			let result1: any;
+			let result1:
+				| Promise<Array<TValue | string> | TValue | string | undefined>
+				| Array<TValue | string>
+				| TValue
+				| string
+				| undefined;
 			if (newChild1.tag === Copy) {
 				// TODO: do refs make sense for copies?
 				newChild1 = oldChild;
-				result1 = getChildValueOrValues(oldChild);
+				result1 = getValue<TValue>(oldChild);
 			} else if (typeof oldChild === "object") {
 				if (oldChild.tag === newChild1.tag) {
 					if (oldChild !== newChild) {
@@ -498,8 +506,9 @@ function updateChildren<TValue>(
 					result1 = update(renderer, newChild1, ctx, scope, arranger);
 					if (isPromiseLike(result1)) {
 						// storing variable for closure
+						// TODO: unmount can return a promise... what do we do about that?
 						const oldChild1 = oldChild;
-						result1 = (result1 as Promise<any>).finally(() => {
+						result1 = result1.finally(() => {
 							unmount(renderer, oldChild1, scope, true);
 						});
 					} else {
@@ -573,7 +582,9 @@ function updateChildren<TValue>(
 	el._children = children1.length > 1 ? children1 : children1[0];
 	el._childrenByKey = childrenByKey;
 	if (async) {
-		let onNewResults!: Function;
+		let onNewResults: (
+			value: Promise<ChildValue<unknown>> | ChildValue<unknown>,
+		) => unknown;
 		let resultsP = Promise.all(results);
 		const newResultsP = new Promise<any>((resolve) => (onNewResults = resolve));
 		resultsP = Promise.race([resultsP, newResultsP]);
@@ -581,7 +592,7 @@ function updateChildren<TValue>(
 			el._onNewResults(resultsP);
 		}
 
-		el._onNewResults = onNewResults;
+		el._onNewResults = onNewResults!;
 		return resultsP.then((results) =>
 			commit(renderer, el, scope, flatten(results)),
 		);
@@ -592,18 +603,22 @@ function updateChildren<TValue>(
 		el._onNewResults = undefined;
 	}
 
-	return commit(renderer, el, scope, flatten(results));
+	return commit(
+		renderer,
+		el,
+		scope,
+		flatten(results as Array<ChildValue<TValue>>),
+	);
 }
 
-// TODO: maybe the return value can be the normalized form of the children?
 function commit<TValue>(
 	renderer: Renderer<TValue, any, any>,
 	el: Element,
 	scope: Scope,
 	children: Array<TValue | string>,
-): Value {
+): Array<TValue | string> | TValue | string | undefined {
+	let result: Array<TValue | string> | TValue | string | undefined;
 	const value = children.length > 1 ? children : children[0];
-	let result: any;
 	if (typeof el._ctx === "object") {
 		setDelegates(el._ctx, value);
 		if (typeof el._ctx._schedules === "object" && el._ctx._schedules.size > 0) {
@@ -615,6 +630,7 @@ function commit<TValue>(
 			}
 		}
 
+		// TODO: it makes more sense to put this directly in refresh
 		if (!(el._ctx._arranger._flags & flags.Updating)) {
 			rearrange(renderer, el._ctx._arranger);
 		}
@@ -669,7 +685,7 @@ function unmount<TValue>(
 	}
 
 	if (typeof el._ctx === "object" && typeof el._ctx._cleanups === "object") {
-		const value = getChildValueOrValues(el);
+		const value = getValue(el);
 		for (const cleanup of el._ctx._cleanups) {
 			cleanup(value);
 		}
@@ -681,8 +697,8 @@ function unmount<TValue>(
 	el._flags |= flags.Unmounted;
 	if (!(el._flags & flags.Finished)) {
 		el._flags |= flags.Finished;
+		// TODO: move this to contexts or something
 		if (typeof el._ctx === "object") {
-			// TODO: move this to contexts or something
 			clearEventListeners(el._ctx);
 			if (typeof el._ctx._onProps === "function") {
 				el._ctx._onProps(el.props);
@@ -743,19 +759,18 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 	_scope: Scope;
 	_arranger: Element<string | symbol>;
 	_listeners: EventListenerRecord[] | undefined;
-	// TODO: delete????
-	_delegates: Set<EventTarget> | EventTarget | undefined;
 	_iterator: ChildIterator | undefined;
 	_provisions: Map<unknown, unknown> | undefined;
 	_onProps: ((props: any) => unknown) | undefined;
-	_oldResult: Promise<undefined> | undefined;
+	_oldValue: Promise<ChildValue<TValue>> | undefined;
 	_inflightPending: Promise<unknown> | undefined;
 	_enqueuedPending: Promise<unknown> | undefined;
-	// TODO: fix these types
-	_inflightResult: Value;
-	_enqueuedResult: Value;
-	_schedules: Set<(value: Value) => unknown> | undefined;
-	_cleanups: Set<(value: Value) => unknown> | undefined;
+	_inflightResult: Promise<ChildValue<TValue>> | undefined;
+	_enqueuedResult: Promise<ChildValue<TValue>> | undefined;
+	_schedules: Set<(value: ChildValue<TValue>) => unknown> | undefined;
+	_cleanups: Set<(value: ChildValue<TValue>) => unknown> | undefined;
+	// TODO: delete????
+	_delegates: Set<EventTarget> | EventTarget | undefined;
 	constructor(
 		renderer: Renderer<TValue, any, any>,
 		el: Element<Component>,
@@ -802,8 +817,8 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 		return this._el.props;
 	}
 
-	get value(): Value {
-		return getChildValueOrValues(this._el);
+	get value(): ChildValue<TValue | string> {
+		return getValue<TValue>(this._el);
 	}
 
 	*[Symbol.iterator](): Generator<TProps> {
@@ -844,7 +859,7 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 		} while (!(el._flags & flags.Unmounted));
 	}
 
-	refresh(): Promise<undefined> | undefined {
+	refresh(): Promise<ChildValue<TValue>> | ChildValue<TValue> {
 		const el = this._el;
 		if (el._flags & (flags.Stepping | flags.Unmounted)) {
 			// TODO: we may want to log warnings when stuff like el happens
@@ -1045,25 +1060,28 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 	}
 }
 
-function run(ctx: Context): Value {
+// TODO: fix the type
+function run<TValue>(
+	ctx: Context<any, TValue>,
+): Promise<ChildValue<TValue>> | ChildValue<TValue> {
 	const el = ctx._el;
 	if (typeof ctx._inflightPending === "undefined") {
 		const [pending, result] = step(ctx);
 		if (isPromiseLike(pending)) {
-			ctx._inflightPending = (pending as Promise<any>).finally(() =>
-				advance(ctx),
-			);
+			ctx._inflightPending = pending.finally(() => advance(ctx));
 		}
 
 		if (isPromiseLike(result)) {
-			ctx._inflightResult = result as Promise<any>;
+			ctx._inflightResult = result;
 		}
 
 		return result;
 	} else if (el._flags & flags.AsyncGen) {
 		return ctx._inflightResult;
 	} else if (typeof ctx._enqueuedPending === "undefined") {
-		let resolve: (value: Promise<undefined> | undefined) => unknown;
+		let resolve: (
+			value: Promise<ChildValue<TValue>> | ChildValue<TValue>,
+		) => unknown;
 		ctx._enqueuedPending = ctx._inflightPending
 			.then(() => {
 				const [pending, result] = step(ctx);
@@ -1079,10 +1097,13 @@ function run(ctx: Context): Value {
 
 function step<TValue>(
 	ctx: Context<any, TValue>,
-): [Promise<unknown> | undefined, Value] {
+): [
+	Promise<unknown> | undefined,
+	Promise<ChildValue<TValue>> | ChildValue<TValue>,
+] {
 	const el = ctx._el;
 	if (el._flags & flags.Finished) {
-		return [undefined, getChildValueOrValues(el)];
+		return [undefined, getValue<TValue>(el)];
 	}
 
 	el._flags |= flags.Stepping;
@@ -1116,20 +1137,18 @@ function step<TValue>(
 		}
 	}
 
+	// TODO: we don’t need to get the oldValue for the initial render
 	let oldValue:
 		| Promise<Array<TValue | string> | TValue | string | undefined>
 		| Array<TValue | string>
 		| TValue
 		| string
 		| undefined;
-	if (typeof ctx._oldResult === "object") {
-		oldValue = ctx._oldResult.then(
-			() => getChildValueOrValues<TValue>(el),
-			() => getChildValueOrValues<TValue>(el),
-		);
-		ctx._oldResult = undefined;
+	if (typeof ctx._oldValue === "object") {
+		oldValue = ctx._oldValue;
+		ctx._oldValue = undefined;
 	} else {
-		oldValue = getChildValueOrValues<TValue>(el);
+		oldValue = getValue<TValue>(el);
 	}
 
 	// TODO: maybe clean up/deduplicate logic here
@@ -1154,12 +1173,12 @@ function step<TValue>(
 					ctx._arranger,
 				);
 				if (isPromiseLike(result)) {
-					ctx._oldResult = result as Promise<any>;
+					ctx._oldValue = result;
 					if (
 						!(el._flags & flags.Finished) &&
 						typeof ctx._iterator!.throw === "function"
 					) {
-						result = (result as Promise<unknown>).catch((err) => {
+						result = result.catch((err) => {
 							if (typeof ctx._onProps === "function") {
 								ctx._onProps(el.props!);
 								ctx._onProps = undefined;
@@ -1245,7 +1264,7 @@ function step<TValue>(
 				!(el._flags & flags.Finished) &&
 				typeof ctx._iterator.throw === "function"
 			) {
-				result = (result as Promise<unknown>).catch((err) => {
+				result = result.catch((err) => {
 					el._flags |= flags.Stepping;
 					const iteration = (ctx._iterator as Generator<
 						Children,
@@ -1266,7 +1285,7 @@ function step<TValue>(
 					);
 				});
 			}
-			const pending = (result as Promise<unknown>).catch(() => {});
+			const pending = result.catch(() => {});
 			return [pending, result];
 		}
 
@@ -1297,7 +1316,7 @@ function step<TValue>(
 			ctx._arranger,
 		);
 		if (isPromiseLike(result)) {
-			const pending = (result as Promise<unknown>).catch(() => {});
+			const pending = result.catch(() => {});
 			return [pending, result];
 		}
 
