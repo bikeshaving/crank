@@ -659,16 +659,16 @@ describe("sync generator component", () => {
 		await renderP;
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 0</span></div>");
 		const refreshP = ctx.refresh();
-		await Promise.resolve();
-		expect(mock).toHaveBeenCalledTimes(1);
+		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(mock).toHaveBeenCalledWith("<span>Hello 0</span>");
+		expect(mock).toHaveBeenCalledTimes(1);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 0</span></div>");
 		await refreshP;
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
 		ctx.refresh();
-		await Promise.resolve();
-		expect(mock).toHaveBeenCalledTimes(2);
+		await new Promise((resolve) => setTimeout(resolve, 0));
 		expect(mock).toHaveBeenCalledWith("<span>Hello 1</span>");
+		expect(mock).toHaveBeenCalledTimes(2);
 	});
 
 	test("refreshing doesn’t cause siblings to update", () => {

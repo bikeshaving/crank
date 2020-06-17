@@ -131,9 +131,8 @@ describe("errors", () => {
 			}
 		}
 
-		await expect(renderer.render(<Component />, document.body)).resolves.toBe(
-			document.body,
-		);
+		await renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("1");
 		await renderer.render(<Component />, document.body);
 		//await expect(renderer.render(<Component />, document.body)).rejects.toBe(
 		//	error,
