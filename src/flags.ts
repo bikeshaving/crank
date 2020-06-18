@@ -2,6 +2,7 @@
 export const Mounted = 1;
 export const Updating = 1 << 1;
 export const Committed = 1 << 2;
+// Context-only???
 export const Unmounted = 1 << 3;
 // Context-only Flags
 export const SyncGen = 1 << 4;
