@@ -1,4 +1,4 @@
-import {Renderer, TagProps} from "./index";
+import {Portal, Renderer, TagProps} from "./index";
 
 declare module "./index" {
 	interface EventMap extends GlobalEventHandlersEventMap {}
@@ -176,16 +176,17 @@ export class DOMRenderer extends Renderer<Element, Node, undefined> {
 		}
 	}
 
-	scope<TTag extends string | symbol>(
-		tag: TTag,
+	scope(
+		tag: string | symbol,
 		props: Record<string, any>,
 		scope: string | undefined,
 	): string | undefined {
 		switch (tag) {
-			case "svg":
-				return SVG_NAMESPACE;
+			case Portal:
 			case "foreignObject":
 				return undefined;
+			case "svg":
+				return SVG_NAMESPACE;
 			default:
 				return scope;
 		}

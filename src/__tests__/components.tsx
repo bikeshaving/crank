@@ -90,34 +90,6 @@ describe("sync function component", () => {
 		expect(document.body.innerHTML).toEqual("<div>Hello 8</div>");
 		expect(Child).toHaveBeenCalledTimes(4);
 	});
-
-	test("event listeners are cleaned up", () => {
-		let ctx!: Context;
-		function Component(this: Context) {
-			ctx = this;
-			return <span>Hello</span>;
-		}
-
-		renderer.render(
-			<div>
-				<Component />
-			</div>,
-			document.body,
-		);
-		const listener1 = jest.fn();
-		const listener2 = jest.fn();
-		ctx.addEventListener("foo", listener1);
-		ctx.addEventListener("bar", listener1);
-		ctx.dispatchEvent(new Event("foo"));
-		expect(listener1).toHaveBeenCalledTimes(1);
-		expect(listener2).toHaveBeenCalledTimes(0);
-		const removeEventListener = jest.spyOn(ctx, "removeEventListener");
-		renderer.render(null, document.body);
-		expect(removeEventListener).toHaveBeenCalledTimes(2);
-		ctx.dispatchEvent(new Event("foo"));
-		expect(listener1).toHaveBeenCalledTimes(1);
-		expect(listener2).toHaveBeenCalledTimes(0);
-	});
 });
 
 describe("async function component", () => {
@@ -593,38 +565,6 @@ describe("sync generator component", () => {
 		ctx.refresh();
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>1</span><span>2</span><span>3</span></div>",
-		);
-	});
-
-	test("events", () => {
-		function* Component(this: Context): Generator<Element> {
-			let count = 0;
-			this.addEventListener("click", (ev) => {
-				if ((ev.target as HTMLElement).id === "button") {
-					count++;
-					this.refresh();
-				}
-			});
-
-			for (const _ of this) {
-				yield (
-					<div>
-						<button id="button">Click me</button>
-						<span>Button has been clicked {count} times</span>
-					</div>
-				);
-			}
-		}
-
-		renderer.render(<Component />, document.body);
-		expect(document.body.innerHTML).toEqual(
-			'<div><button id="button">Click me</button><span>Button has been clicked 0 times</span></div>',
-		);
-
-		const button = document.getElementById("button")!;
-		button.click();
-		expect(document.body.innerHTML).toEqual(
-			'<div><button id="button">Click me</button><span>Button has been clicked 1 times</span></div>',
 		);
 	});
 

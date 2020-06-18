@@ -1,3 +1,15 @@
+declare global {
+	module JSX {
+		interface IntrinsicElements {
+			[tag: string]: any;
+		}
+
+		interface ElementChildrenAttribute {
+			children: {};
+		}
+	}
+}
+
 import * as flags from "./flags";
 import {
 	isIteratorOrAsyncIterator,
@@ -13,18 +25,6 @@ function arrayify<T>(value: Array<T> | T | undefined): Array<T> {
 		return value;
 	} else {
 		return [value];
-	}
-}
-
-declare global {
-	module JSX {
-		interface IntrinsicElements {
-			[tag: string]: any;
-		}
-
-		interface ElementChildrenAttribute {
-			children: {};
-		}
 	}
 }
 
@@ -78,20 +78,16 @@ type Scope = unknown;
 const ElementSigil = Symbol.for("crank.ElementSigil");
 
 export class Element<TTag extends Tag = Tag> {
+	$sigil: typeof ElementSigil;
 	tag: TTag;
 	props: TagProps<TTag>;
 	key: Key;
 	ref: Function | undefined;
-	$sigil: typeof ElementSigil;
 	_flags: number;
-	_ctx: Context<TagProps<TTag>> | undefined;
 	_value: any;
 	_children: NormalizedChildren;
-	_onNewResults:
-		| ((
-				value: Promise<Array<ChildValue<unknown>>> | Array<ChildValue<unknown>>,
-		  ) => unknown)
-		| undefined;
+	_ctx: Context<TagProps<TTag>> | undefined;
+	_onNewResults: Function | undefined;
 
 	// TODO: delete
 	_childrenByKey: Map<Key, Element> | undefined;
@@ -272,6 +268,7 @@ export abstract class Renderer<
 		this._cache = new WeakMap();
 	}
 
+	// TODO: we may not need to have portals at the root with the new arranger logic
 	// TODO: what is the type of root
 	render(children: Children, root?: TValue): Promise<TResult> | TResult {
 		const clearing = children == null;
@@ -308,7 +305,14 @@ export abstract class Renderer<
 		if (isPromiseLike(result)) {
 			return result.then(() => {
 				if (newPortal.props.root == null) {
-					unmount(this, newPortal, undefined, true);
+					unmount(
+						this,
+						newPortal,
+						undefined,
+						undefined,
+						newPortal.props.root,
+						true,
+					);
 				}
 
 				return newPortal._value;
@@ -316,11 +320,24 @@ export abstract class Renderer<
 		}
 
 		if (newPortal.props.root == null) {
-			unmount(this, newPortal, undefined, true);
+			unmount(
+				this,
+				newPortal,
+				undefined,
+				undefined,
+				newPortal.props.root,
+				true,
+			);
 		}
 
 		return newPortal._value;
 	}
+
+	abstract scope<TTag extends string | symbol>(
+		tag: TTag,
+		props: TagProps<TTag>,
+		scope: Scope | undefined,
+	): Scope;
 
 	abstract create<TTag extends string | symbol>(
 		tag: string | symbol,
@@ -333,7 +350,6 @@ export abstract class Renderer<
 
 	abstract parse(text: string, scope: Scope): TChild;
 
-	// TODO: remove scope??????
 	abstract patch<TTag extends string | symbol>(
 		tag: string | symbol,
 		value: TValue,
@@ -349,14 +365,8 @@ export abstract class Renderer<
 		scope: Scope,
 	): TResult;
 
-	// TODO: remove scope
+	// TODO: remove scope???
 	abstract destroy(tag: string | symbol, value: TValue, scope: Scope): unknown;
-
-	abstract scope<TTag extends string | symbol>(
-		tag: TTag,
-		props: TagProps<TTag>,
-		scope: Scope,
-	): Scope;
 }
 
 // TODO: maybe it’s just better to have these be methods
@@ -409,18 +419,17 @@ function updateChildren<TValue>(
 	scope: Scope,
 	arranger: Element<string | symbol>,
 ): Promise<ChildValue<TValue>> | ChildValue<TValue> {
+	// TODO: move this logic to a special component updateChildren
 	if (typeof el.tag === "function") {
 		if (isNonStringIterable(children)) {
 			children = createElement(Fragment, null, children);
 		}
-	} else if (
-		typeof el.tag === "string" ||
-		(el.tag !== Fragment && el.tag !== Portal && el.tag !== Raw)
-	) {
+	} else if (el.tag !== Fragment) {
 		scope = renderer.scope(el.tag as string | symbol, el.props, scope);
 		arranger = el as Element<string | symbol>;
 	}
 
+	// TODO: skip children stuff for Raw elements
 	let async = false;
 	const results: Array<Promise<ChildValue<TValue>> | ChildValue<TValue>> = [];
 	const children1: Array<NormalizedChild> = [];
@@ -509,10 +518,10 @@ function updateChildren<TValue>(
 						// TODO: unmount can return a promise... what do we do about that?
 						const oldChild1 = oldChild;
 						result1 = result1.finally(() => {
-							unmount(renderer, oldChild1, scope, true);
+							unmount(renderer, oldChild1, ctx, scope, arranger, true);
 						});
 					} else {
-						unmount(renderer, oldChild, scope, true);
+						unmount(renderer, oldChild, ctx, scope, arranger, true);
 					}
 				}
 			} else {
@@ -527,7 +536,7 @@ function updateChildren<TValue>(
 			results.push(result1);
 		} else {
 			if (typeof oldChild === "object") {
-				unmount(renderer, oldChild, scope, true);
+				unmount(renderer, oldChild, ctx, scope, arranger, true);
 			}
 
 			if (typeof newChild1 === "string") {
@@ -560,7 +569,7 @@ function updateChildren<TValue>(
 					typeof oldChild === "object" &&
 					typeof oldChild.key === "undefined"
 				) {
-					unmount(renderer, oldChild, scope, true);
+					unmount(renderer, oldChild, ctx, scope, arranger, true);
 				}
 			}
 		} else if (
@@ -568,23 +577,21 @@ function updateChildren<TValue>(
 			typeof el._children === "object" &&
 			typeof el._children.key === "undefined"
 		) {
-			unmount(renderer, el._children, scope, true);
+			unmount(renderer, el._children, ctx, scope, arranger, true);
 		}
 	}
 
 	// TODO: likely where logic for asynchronous unmounting will go
 	if (typeof el._childrenByKey === "object") {
 		for (const child of el._childrenByKey.values()) {
-			unmount(renderer, child, scope, true);
+			unmount(renderer, child, ctx, scope, arranger, true);
 		}
 	}
 
 	el._children = children1.length > 1 ? children1 : children1[0];
 	el._childrenByKey = childrenByKey;
 	if (async) {
-		let onNewResults: (
-			value: Promise<ChildValue<unknown>> | ChildValue<unknown>,
-		) => unknown;
+		let onNewResults: Function;
 		let resultsP = Promise.all(results);
 		const newResultsP = new Promise<any>((resolve) => (onNewResults = resolve));
 		resultsP = Promise.race([resultsP, newResultsP]);
@@ -617,28 +624,39 @@ function commit<TValue>(
 	scope: Scope,
 	children: Array<TValue | string>,
 ): Array<TValue | string> | TValue | string | undefined {
-	let result: Array<TValue | string> | TValue | string | undefined;
-	const value = children.length > 1 ? children : children[0];
-	if (typeof el._ctx === "object") {
-		setDelegates(el._ctx, value);
-		if (typeof el._ctx._schedules === "object" && el._ctx._schedules.size > 0) {
+	let value: ChildValue<TValue> = children.length > 1 ? children : children[0];
+	if (typeof el.tag === "function") {
+		const ctx = el._ctx!;
+		if (typeof ctx._schedules !== "undefined" && ctx._schedules.size > 0) {
 			// We have to clear the set of callbacks before calling them, because a callback which refreshes the component would otherwise cause a stack overflow.
-			const callbacks = Array.from(el._ctx._schedules);
-			el._ctx._schedules.clear();
+			const callbacks = Array.from(ctx._schedules);
+			ctx._schedules.clear();
 			for (const callback of callbacks) {
 				callback(value);
 			}
 		}
 
-		// TODO: it makes more sense to put this directly in refresh
-		if (!(el._ctx._arranger._flags & flags.Updating)) {
-			rearrange(renderer, el._ctx._arranger);
+		if (typeof ctx._listeners !== "undefined" && ctx._listeners.length > 0) {
+			for (const child of children) {
+				for (const record of ctx._listeners) {
+					if (isEventTarget(child)) {
+						child.addEventListener(
+							record.type,
+							record.callback,
+							record.options,
+						);
+					}
+				}
+			}
 		}
 
-		result = value;
+		// TODO: it makes more sense to put this directly in refresh and then we can delete the Updating flag
+		if (!(ctx._arranger._flags & flags.Updating)) {
+			rearrange(renderer, ctx._arranger);
+		}
 	} else if (el.tag === Portal) {
 		el._value = renderer.arrange(Portal, el.props.root, children, scope);
-		result = undefined;
+		value = undefined;
 	} else if (el.tag === Raw) {
 		if (typeof el.props.value === "string") {
 			el._value = renderer.parse(el.props.value, scope);
@@ -646,92 +664,108 @@ function commit<TValue>(
 			el._value = el.props.value;
 		}
 
-		result = el._value;
-	} else if (el.tag === Fragment) {
-		result = value;
-	} else {
+		value = el._value;
+	} else if (el.tag !== Fragment) {
 		if (!(el._flags & flags.Committed)) {
-			el._value = renderer.create(
-				el.tag as string | symbol,
-				el.props,
-				children,
-				scope,
-			);
+			el._value = renderer.create(el.tag, el.props, children, scope);
 			el._flags |= flags.Committed;
 		}
 
-		renderer.patch(el.tag as string | symbol, el._value, el.props, scope);
-		renderer.arrange(el.tag as string | symbol, el._value, children, scope);
-		result = el._value;
+		renderer.patch(el.tag, el._value, el.props, scope);
+		renderer.arrange(el.tag, el._value, children, scope);
+		value = el._value;
 	}
 
 	if (typeof el.ref === "function") {
-		el.ref(result);
+		el.ref(value);
 	}
 
 	el._flags &= ~flags.Updating;
-	return result;
+	return value;
 }
 
 // TODO: fix catching of async generator return errors
 function unmount<TValue>(
 	renderer: Renderer<TValue, any, any>,
 	el: Element,
+	ctx: Context<unknown, TValue> | undefined,
 	scope: Scope,
+	arranger: Element,
 	dirty: boolean,
-): any {
+): unknown {
 	if (el._flags & flags.Unmounted) {
 		return;
 	}
 
-	if (typeof el._ctx === "object" && typeof el._ctx._cleanups === "object") {
-		const value = getValue(el);
-		for (const cleanup of el._ctx._cleanups) {
-			cleanup(value);
-		}
-
-		el._ctx._cleanups = undefined;
-	}
-
 	// setting unmounted flag here is necessary because of some kind of race condition
 	el._flags |= flags.Unmounted;
-	if (!(el._flags & flags.Finished)) {
-		el._flags |= flags.Finished;
-		// TODO: move this to contexts or something
-		if (typeof el._ctx === "object") {
-			clearEventListeners(el._ctx);
-			if (typeof el._ctx._onProps === "function") {
-				el._ctx._onProps(el.props);
-				el._ctx._onProps = undefined;
+	if (typeof el.tag === "function") {
+		ctx = el._ctx!;
+		clearEventListeners(ctx);
+		if (typeof ctx._cleanups === "object") {
+			const value = getValue<TValue>(el);
+			for (const cleanup of ctx._cleanups) {
+				cleanup(value);
+			}
+
+			ctx._cleanups = undefined;
+		}
+
+		if (!(el._flags & flags.Finished)) {
+			el._flags |= flags.Finished;
+			if (typeof ctx._onProps === "function") {
+				ctx._onProps(el.props);
+				ctx._onProps = undefined;
 			}
 
 			if (
-				typeof el._ctx._iterator === "object" &&
-				typeof el._ctx._iterator.return === "function"
+				typeof ctx._iterator === "object" &&
+				typeof ctx._iterator.return === "function"
 			) {
-				const iteration = el._ctx._iterator.return();
+				const iteration = ctx._iterator.return();
 				if (isPromiseLike(iteration)) {
-					return iteration.then(() => unmountChildren(renderer, el, scope));
+					return iteration.then(() =>
+						unmountChildren(renderer, el, ctx, scope, arranger),
+					);
 				}
 			}
-		} else if (el.tag === Portal) {
-			renderer.arrange(Portal, el.props.root, [], scope);
-		} else if (el.tag !== Fragment && dirty && el._flags & flags.Committed) {
+		}
+	} else if (el.tag === Portal) {
+		arranger = el;
+		renderer.arrange(Portal, el.props.root, [], scope);
+	} else if (el.tag !== Fragment) {
+		const listeners = getListeners(ctx, arranger);
+		if (listeners !== undefined && listeners.length > 0) {
+			for (const record of listeners) {
+				if (isEventTarget(el._value)) {
+					el._value.removeEventListener(
+						record.type,
+						record.callback,
+						record.options,
+					);
+				}
+			}
+		}
+
+		arranger = el;
+		if (dirty && el._flags & flags.Committed) {
 			renderer.destroy(el.tag as symbol | string, el._value, scope);
 		}
 	}
 
-	unmountChildren(renderer, el, scope);
+	unmountChildren(renderer, el, ctx, scope, arranger);
 }
 
-function unmountChildren(
-	renderer: Renderer<any, any, any>,
+function unmountChildren<TValue>(
+	renderer: Renderer<TValue, any, any>,
 	el: Element,
+	ctx: Context<unknown, TValue> | undefined,
 	scope: Scope,
+	arranger: Element,
 ): any /* void */ {
 	for (const child of arrayify(el._children)) {
 		if (typeof child === "object") {
-			unmount(renderer, child, scope, false);
+			unmount(renderer, child, ctx, scope, arranger, false);
 		}
 	}
 }
@@ -744,7 +778,7 @@ function rearrange(
 	renderer.arrange(
 		el.tag,
 		el.tag === Portal ? el.props.root : el._value,
-		Array.from(getChildValues(el)),
+		getChildValues(el),
 		// TODO: it is impossible to reconstruct the scope here
 		undefined,
 	);
@@ -758,8 +792,8 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 	_parent: Context<unknown, TValue> | undefined;
 	_scope: Scope;
 	_arranger: Element<string | symbol>;
-	_listeners: EventListenerRecord[] | undefined;
 	_iterator: ChildIterator | undefined;
+	_listeners: EventListenerRecord[] | undefined;
 	_provisions: Map<unknown, unknown> | undefined;
 	_onProps: ((props: any) => unknown) | undefined;
 	_oldValue: Promise<ChildValue<TValue>> | undefined;
@@ -769,8 +803,6 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 	_enqueuedResult: Promise<ChildValue<TValue>> | undefined;
 	_schedules: Set<(value: ChildValue<TValue>) => unknown> | undefined;
 	_cleanups: Set<(value: ChildValue<TValue>) => unknown> | undefined;
-	// TODO: delete????
-	_delegates: Set<EventTarget> | EventTarget | undefined;
 	constructor(
 		renderer: Renderer<TValue, any, any>,
 		el: Element<Component>,
@@ -862,7 +894,7 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 	refresh(): Promise<ChildValue<TValue>> | ChildValue<TValue> {
 		const el = this._el;
 		if (el._flags & (flags.Stepping | flags.Unmounted)) {
-			// TODO: we may want to log warnings when stuff like el happens
+			// TODO: log errors here
 			return;
 		}
 
@@ -900,35 +932,42 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 		if (callback == null) {
 			return;
 		} else if (typeof callback === "object") {
-			// TODO: support handleEvent style listeners
-			throw new Error("EventListener objects not supported");
+			throw new Error("handleEvent objects not yet supported");
 		} else if (typeof this._listeners === "undefined") {
 			this._listeners = [];
 		}
 
 		options = normalizeOptions(options);
-		const record: EventListenerRecord = {type, callback, options};
-		if (this._listeners.some(recordsEqual.bind(null, record))) {
+		const record: EventListenerRecord = {
+			type,
+			callback,
+			options,
+			original: callback,
+		};
+
+		if (this._listeners.some(listenersEqual.bind(null, record))) {
 			return;
 		}
 
-		this._listeners.push(record);
 		if (options.once) {
 			const self = this;
-			callback = function (this: any, ev) {
-				const result = callback!.call(this, ev);
-				self.removeEventListener(record.type, record.callback, record.options);
-				return result;
+			record.callback = function () {
+				if (typeof self._listeners !== undefined) {
+					self._listeners = self._listeners!.filter(
+						(record1) => record !== record1,
+					);
+					if (self._listeners.length === 0) {
+						self._listeners = undefined;
+					}
+				}
+				return record.original.apply(this, arguments as any);
 			};
 		}
 
-		if (typeof this._delegates !== "undefined") {
-			if (isEventTarget(this._delegates)) {
-				this._delegates.addEventListener(type, callback, options);
-			} else {
-				for (const delegate of this._delegates) {
-					delegate.addEventListener(type, callback, options);
-				}
+		this._listeners.push(record);
+		for (const value of getChildValues(this._el)) {
+			if (isEventTarget(value)) {
+				value.addEventListener(record.type, record.callback, record.options);
 			}
 		}
 	}
@@ -943,21 +982,26 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 		}
 
 		options = normalizeOptions(options);
-		const record: EventListenerRecord = {type, callback, options};
-		const i = this._listeners.findIndex(recordsEqual.bind(null, record));
+		const record: EventListenerRecord = {
+			type,
+			callback,
+			options,
+			original: callback,
+		};
+		const i = this._listeners.findIndex(listenersEqual.bind(null, record));
 		if (i === -1) {
 			return;
 		}
 
 		this._listeners.splice(i, 1);
-		if (typeof this._delegates !== "undefined") {
-			if (isEventTarget(this._delegates)) {
-				this._delegates.removeEventListener(type, callback, options);
-			} else {
-				for (const delegate of this._delegates) {
-					delegate.removeEventListener(type, callback, options);
-				}
+		for (const value of getChildValues(this._el)) {
+			if (isEventTarget(value)) {
+				value.removeEventListener(record.type, record.callback, record.options);
 			}
+		}
+
+		if (this._listeners.length === 0) {
+			this._listeners = undefined;
 		}
 	}
 
@@ -1351,6 +1395,7 @@ interface EventListenerRecord {
 	type: string;
 	callback: MappedEventListener<any>;
 	options: AddEventListenerOptions;
+	original: MappedEventListener<any>;
 }
 
 function normalizeOptions(
@@ -1374,24 +1419,24 @@ function isEventTarget(value: any): value is EventTarget {
 	);
 }
 
-function recordsEqual(
+function listenersEqual(
 	record1: EventListenerRecord,
 	record2: EventListenerRecord,
 ): boolean {
 	return (
 		record1.type === record2.type &&
-		record1.callback === record2.callback &&
+		record1.original === record2.original &&
 		!record1.options.capture === !record2.options.capture
 	);
 }
 
+/* eslint-disable no-console */
 function logError(err: unknown): void {
-	/* eslint-disable no-console */
 	if (typeof console !== "undefined" && typeof console.error === "function") {
 		console.error(err);
 	}
-	/* eslint-enable no-console */
 }
+/* eslint-enable no-console */
 
 function setEventProperty<T extends keyof Event>(
 	ev: Event,
@@ -1401,119 +1446,12 @@ function setEventProperty<T extends keyof Event>(
 	Object.defineProperty(ev, key, {value, writable: false, configurable: true});
 }
 
-function setDelegates(ctx: Context, delegates: unknown): void {
-	if (typeof ctx._delegates === "undefined") {
-		if (isEventTarget(delegates)) {
-			ctx._delegates = delegates;
-			if (typeof ctx._listeners !== "undefined") {
+function clearEventListeners(ctx: Context): void {
+	if (typeof ctx._listeners !== "undefined" && ctx._listeners.length > 0) {
+		for (const value of getChildValues(ctx._el)) {
+			if (isEventTarget(value)) {
 				for (const record of ctx._listeners) {
-					ctx._delegates.addEventListener(
-						record.type,
-						record.callback,
-						record.options,
-					);
-				}
-			}
-		} else if (Array.isArray(delegates)) {
-			ctx._delegates = new Set(delegates.filter(isEventTarget));
-			if (typeof ctx._listeners !== "undefined") {
-				for (const record of ctx._listeners) {
-					for (const delegate of ctx._delegates) {
-						delegate.addEventListener(
-							record.type,
-							record.callback,
-							record.options,
-						);
-					}
-				}
-			}
-		}
-	} else if (isEventTarget(ctx._delegates)) {
-		if (isEventTarget(delegates)) {
-			if (ctx._delegates !== delegates) {
-				if (typeof ctx._listeners !== "undefined") {
-					for (const record of ctx._listeners) {
-						ctx._delegates.removeEventListener(
-							record.type,
-							record.callback,
-							record.options,
-						);
-						delegates.addEventListener(
-							record.type,
-							record.callback,
-							record.options,
-						);
-					}
-				}
-
-				ctx._delegates = delegates;
-			}
-		} else if (Array.isArray(delegates)) {
-			const delegates1 = new Set(delegates.filter(isEventTarget));
-			if (typeof ctx._listeners !== "undefined") {
-				for (const record of ctx._listeners) {
-					ctx._delegates.removeEventListener(
-						record.type,
-						record.callback,
-						record.options,
-					);
-					for (const delegate of delegates1) {
-						delegate.addEventListener(
-							record.type,
-							record.callback,
-							record.options,
-						);
-					}
-				}
-			}
-
-			ctx._delegates = delegates1;
-		} else {
-			if (typeof ctx._listeners !== "undefined") {
-				for (const record of ctx._listeners) {
-					ctx._delegates.removeEventListener(
-						record.type,
-						record.callback,
-						record.options,
-					);
-				}
-			}
-
-			ctx._delegates = undefined;
-		}
-	} else {
-		const delegates1 = ctx._delegates;
-		let delegates2: Set<EventTarget>;
-		if (isEventTarget(delegates)) {
-			delegates2 = new Set([delegates]);
-			ctx._delegates = delegates;
-		} else if (Array.isArray(delegates)) {
-			delegates2 = new Set(delegates.filter(isEventTarget));
-			ctx._delegates = delegates2;
-		} else {
-			delegates2 = new Set();
-			ctx._delegates = undefined;
-		}
-
-		if (typeof ctx._listeners !== "undefined") {
-			const removed = new Set(
-				Array.from(delegates1).filter((d) => !delegates2.has(d)),
-			);
-			const added = new Set(
-				Array.from(delegates2).filter((d) => !delegates1.has(d)),
-			);
-
-			for (const record of ctx._listeners) {
-				for (const delegate of removed) {
-					delegate.removeEventListener(
-						record.type,
-						record.callback,
-						record.options,
-					);
-				}
-
-				for (const delegate of added) {
-					delegate.addEventListener(
+					value.removeEventListener(
 						record.type,
 						record.callback,
 						record.options,
@@ -1521,15 +1459,26 @@ function setDelegates(ctx: Context, delegates: unknown): void {
 				}
 			}
 		}
+
+		ctx._listeners = undefined;
 	}
 }
 
-function clearEventListeners(ctx: Context): void {
-	if (typeof ctx._listeners !== "undefined") {
-		// We shallow copy _listeners because removeEventListener will mutate it.
-		const records = ctx._listeners.slice();
-		for (const record of records) {
-			ctx.removeEventListener(record.type, record.callback, record.options);
+function getListeners(
+	ctx: Context | undefined,
+	arranger: Element,
+): Array<EventListenerRecord> | undefined {
+	let listeners: Array<EventListenerRecord> | undefined;
+	while (ctx !== undefined && ctx._arranger === arranger) {
+		if (typeof ctx._listeners !== "undefined") {
+			listeners =
+				listeners === undefined
+					? ctx._listeners
+					: listeners.concat(ctx._listeners);
 		}
+
+		ctx = ctx._parent;
 	}
+
+	return listeners;
 }
