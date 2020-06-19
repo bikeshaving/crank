@@ -10,13 +10,49 @@ declare global {
 	}
 }
 
-import * as flags from "./flags";
-import {
-	isIteratorOrAsyncIterator,
-	isNonStringIterable,
-	isPromiseLike,
-	upgradePromiseLike,
-} from "./utils";
+// Flags
+// TODO: write an explanation for each of these flags
+const Mounted = 1;
+const Updating = 1 << 1;
+const Committed = 1 << 2;
+// Context-only???
+const Unmounted = 1 << 3;
+// Context-only Flags
+const SyncGen = 1 << 4;
+const AsyncGen = 1 << 5;
+const Stepping = 1 << 6;
+const Iterating = 1 << 7;
+const Available = 1 << 8;
+const Finished = 1 << 9;
+
+// Utils
+function isPromiseLike(value: any): value is PromiseLike<any> {
+	return value != null && typeof value.then === "function";
+}
+
+function upgradePromiseLike<T>(value: PromiseLike<T>): Promise<T> {
+	if (!(value instanceof Promise)) {
+		return Promise.resolve(value);
+	}
+
+	return value;
+}
+
+function isIterable(value: any): value is Iterable<any> {
+	return value != null && typeof value[Symbol.iterator] === "function";
+}
+
+type NonStringIterable<T> = Iterable<T> & object;
+
+function isNonStringIterable(value: any): value is NonStringIterable<any> {
+	return typeof value !== "string" && isIterable(value);
+}
+
+function isIteratorOrAsyncIterator(
+	value: any,
+): value is Iterator<any> | AsyncIterator<any> {
+	return value != null && typeof value.next === "function";
+}
 
 function arrayify<T>(value: Array<T> | T | undefined): Array<T> {
 	if (value === undefined) {
@@ -173,7 +209,7 @@ function getValue<TValue>(child: NormalizedChild): ChildValue<TValue> {
 	}
 
 	const el = child;
-	if (el._flags & flags.Committed) {
+	if (el._flags & Committed) {
 		return el._value;
 	}
 
@@ -377,11 +413,11 @@ function mount<TTag extends Tag, TValue>(
 	scope: Scope,
 	arranger: Element<string | symbol>,
 ): Element<TTag> {
-	if (typeof el._flags === "undefined" || el._flags & flags.Mounted) {
+	if (typeof el._flags === "undefined" || el._flags & Mounted) {
 		el = new Element(el.tag, el.props, el.key, el.ref);
 	}
 
-	el._flags |= flags.Mounted;
+	el._flags |= Mounted;
 	if (typeof el.tag === "function") {
 		el._ctx = new Context(
 			renderer,
@@ -403,7 +439,7 @@ function update<TValue>(
 	scope: Scope,
 	arranger: Element<string | symbol>,
 ): Promise<ChildValue<TValue>> | ChildValue<TValue> {
-	el._flags |= flags.Updating;
+	el._flags |= Updating;
 	if (typeof el._ctx === "object") {
 		return el._ctx.refresh();
 	}
@@ -622,6 +658,10 @@ function commit<TValue>(
 	let value: ChildValue<TValue> = children.length > 1 ? children : children[0];
 	if (typeof el.tag === "function") {
 		const ctx = el._ctx!;
+		if (!(ctx._arranger._flags & Updating)) {
+			rearrange(renderer, ctx._arranger);
+		}
+
 		if (typeof ctx._schedules !== "undefined" && ctx._schedules.size > 0) {
 			// We have to clear the set of callbacks before calling them, because a callback which refreshes the component would otherwise cause a stack overflow.
 			const callbacks = Array.from(ctx._schedules);
@@ -644,11 +684,6 @@ function commit<TValue>(
 				}
 			}
 		}
-
-		// TODO: it makes more sense to put this directly in refresh and then we can delete the Updating flag
-		if (!(ctx._arranger._flags & flags.Updating)) {
-			rearrange(renderer, ctx._arranger);
-		}
 	} else if (el.tag === Portal) {
 		el._value = renderer.arrange(Portal, el.props.root, children, scope);
 		value = undefined;
@@ -661,9 +696,9 @@ function commit<TValue>(
 
 		value = el._value;
 	} else if (el.tag !== Fragment) {
-		if (!(el._flags & flags.Committed)) {
+		if (!(el._flags & Committed)) {
 			el._value = renderer.create(el.tag, el.props, children, scope);
-			el._flags |= flags.Committed;
+			el._flags |= Committed;
 		}
 
 		renderer.patch(el.tag, el._value, el.props, scope);
@@ -675,7 +710,7 @@ function commit<TValue>(
 		el.ref(value);
 	}
 
-	el._flags &= ~flags.Updating;
+	el._flags &= ~Updating;
 	return value;
 }
 
@@ -688,12 +723,12 @@ function unmount<TValue>(
 	arranger: Element,
 	dirty: boolean,
 ): unknown {
-	if (el._flags & flags.Unmounted) {
+	if (el._flags & Unmounted) {
 		return;
 	}
 
 	// setting unmounted flag here is necessary because of some kind of race condition
-	el._flags |= flags.Unmounted;
+	el._flags |= Unmounted;
 	if (typeof el.tag === "function") {
 		ctx = el._ctx!;
 		clearEventListeners(ctx);
@@ -706,8 +741,8 @@ function unmount<TValue>(
 			ctx._cleanups = undefined;
 		}
 
-		if (!(el._flags & flags.Finished)) {
-			el._flags |= flags.Finished;
+		if (!(el._flags & Finished)) {
+			el._flags |= Finished;
 			if (typeof ctx._onProps === "function") {
 				ctx._onProps(el.props);
 				ctx._onProps = undefined;
@@ -743,7 +778,7 @@ function unmount<TValue>(
 		}
 
 		arranger = el;
-		if (dirty && el._flags & flags.Committed) {
+		if (dirty && el._flags & Committed) {
 			renderer.destroy(el.tag as symbol | string, el._value, scope);
 		}
 	}
@@ -850,14 +885,14 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 
 	*[Symbol.iterator](): Generator<TProps> {
 		const el = this._el;
-		while (!(el._flags & flags.Unmounted)) {
-			if (el._flags & flags.Iterating) {
+		while (!(el._flags & Unmounted)) {
+			if (el._flags & Iterating) {
 				throw new Error("You must yield for each iteration of this.");
-			} else if (el._flags & flags.AsyncGen) {
+			} else if (el._flags & AsyncGen) {
 				throw new Error("Use for await...of in async generator components.");
 			}
 
-			el._flags |= flags.Iterating;
+			el._flags |= Iterating;
 			yield el.props!;
 		}
 	}
@@ -865,30 +900,30 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 	async *[Symbol.asyncIterator](): AsyncGenerator<TProps> {
 		const el = this._el;
 		do {
-			if (el._flags & flags.Iterating) {
+			if (el._flags & Iterating) {
 				throw new Error("You must yield for each iteration of this.");
-			} else if (el._flags & flags.SyncGen) {
+			} else if (el._flags & SyncGen) {
 				throw new Error("Use for...of in sync generator components.");
 			}
 
-			el._flags |= flags.Iterating;
-			if (el._flags & flags.Available) {
-				el._flags &= ~flags.Available;
+			el._flags |= Iterating;
+			if (el._flags & Available) {
+				el._flags &= ~Available;
 				yield el.props;
 			} else {
 				const props = await new Promise<TProps>(
 					(resolve) => (this._onProps = resolve),
 				);
-				if (!(el._flags & flags.Unmounted)) {
+				if (!(el._flags & Unmounted)) {
 					yield props;
 				}
 			}
-		} while (!(el._flags & flags.Unmounted));
+		} while (!(el._flags & Unmounted));
 	}
 
 	refresh(): Promise<ChildValue<TValue>> | ChildValue<TValue> {
 		const el = this._el;
-		if (el._flags & (flags.Stepping | flags.Unmounted)) {
+		if (el._flags & (Stepping | Unmounted)) {
 			// TODO: log errors here
 			return;
 		}
@@ -897,7 +932,7 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 			this._onProps(el.props!);
 			this._onProps = undefined;
 		} else {
-			el._flags |= flags.Available;
+			el._flags |= Available;
 		}
 
 		return run(this);
@@ -1115,7 +1150,7 @@ function run<TValue>(
 		}
 
 		return result;
-	} else if (el._flags & flags.AsyncGen) {
+	} else if (el._flags & AsyncGen) {
 		return ctx._inflightResult;
 	} else if (typeof ctx._enqueuedPending === "undefined") {
 		let resolve: Function;
@@ -1139,11 +1174,11 @@ function step<TValue>(
 	Promise<ChildValue<TValue>> | ChildValue<TValue>,
 ] {
 	const el = ctx._el;
-	if (el._flags & flags.Finished) {
+	if (el._flags & Finished) {
 		return [undefined, getValue<TValue>(el)];
 	}
 
-	el._flags |= flags.Stepping;
+	el._flags |= Stepping;
 	if (typeof ctx._iterator === "undefined") {
 		clearEventListeners(ctx);
 		const value: ChildIterator | PromiseLike<Child> | Child = el.tag.call(
@@ -1158,11 +1193,11 @@ function step<TValue>(
 			const result = value1.then((value) =>
 				updateComponentChildren(ctx, value),
 			);
-			el._flags &= ~flags.Stepping;
+			el._flags &= ~Stepping;
 			return [pending, result];
 		} else {
 			const result = updateComponentChildren(ctx, value);
-			el._flags &= ~flags.Stepping;
+			el._flags &= ~Stepping;
 			return [undefined, result];
 		}
 	}
@@ -1183,14 +1218,14 @@ function step<TValue>(
 
 	// TODO: maybe clean up/deduplicate logic here
 	const iteration = ctx._iterator.next(oldValue);
-	el._flags &= ~flags.Stepping;
+	el._flags &= ~Stepping;
 	if (isPromiseLike(iteration)) {
-		el._flags |= flags.AsyncGen;
+		el._flags |= AsyncGen;
 		const pending = iteration.catch(() => {});
 		const result = iteration.then((iteration) => {
-			el._flags &= ~flags.Iterating;
+			el._flags &= ~Iterating;
 			if (iteration.done) {
-				el._flags |= flags.Finished;
+				el._flags |= Finished;
 			}
 
 			try {
@@ -1198,7 +1233,7 @@ function step<TValue>(
 				if (isPromiseLike(result)) {
 					ctx._oldValue = result;
 					if (
-						!(el._flags & flags.Finished) &&
+						!(el._flags & Finished) &&
 						typeof ctx._iterator!.throw === "function"
 					) {
 						result = result.catch((err) => {
@@ -1213,7 +1248,7 @@ function step<TValue>(
 							>).throw(err);
 							return iteration.then((iteration) => {
 								if (iteration.done) {
-									el._flags |= flags.Finished;
+									el._flags |= Finished;
 								}
 
 								return updateComponentChildren(ctx, iteration.value);
@@ -1225,7 +1260,7 @@ function step<TValue>(
 				return result;
 			} catch (err) {
 				if (
-					el._flags & flags.Finished ||
+					el._flags & Finished ||
 					typeof ctx._iterator!.throw !== "function"
 				) {
 					throw err;
@@ -1242,7 +1277,7 @@ function step<TValue>(
 				>).throw(err);
 				return iteration.then((iteration) => {
 					if (iteration.done) {
-						el._flags |= flags.Finished;
+						el._flags |= Finished;
 					}
 
 					return updateComponentChildren(ctx, iteration.value);
@@ -1253,28 +1288,28 @@ function step<TValue>(
 		return [pending, result];
 	}
 
-	el._flags &= ~flags.Iterating;
-	el._flags |= flags.SyncGen;
+	el._flags &= ~Iterating;
+	el._flags |= SyncGen;
 	if (iteration.done) {
-		el._flags |= flags.Finished;
+		el._flags |= Finished;
 	}
 
 	try {
 		let result = updateComponentChildren(ctx, iteration.value);
 		if (isPromiseLike(result)) {
 			if (
-				!(el._flags & flags.Finished) &&
+				!(el._flags & Finished) &&
 				typeof ctx._iterator.throw === "function"
 			) {
 				result = result.catch((err) => {
-					el._flags |= flags.Stepping;
+					el._flags |= Stepping;
 					const iteration = (ctx._iterator as Generator<
 						Children,
 						Children
 					>).throw(err);
-					el._flags &= ~flags.Stepping;
+					el._flags &= ~Stepping;
 					if (iteration.done) {
-						el._flags |= flags.Finished;
+						el._flags |= Finished;
 					}
 
 					return updateComponentChildren(ctx, iteration.value);
@@ -1286,20 +1321,17 @@ function step<TValue>(
 
 		return [undefined, result];
 	} catch (err) {
-		if (
-			el._flags & flags.Finished ||
-			typeof ctx._iterator.throw !== "function"
-		) {
+		if (el._flags & Finished || typeof ctx._iterator.throw !== "function") {
 			throw err;
 		}
 
-		el._flags |= flags.Stepping;
+		el._flags |= Stepping;
 		const iteration = (ctx._iterator as Generator<Children, Children>).throw(
 			err,
 		);
-		el._flags &= ~flags.Stepping;
+		el._flags &= ~Stepping;
 		if (iteration.done) {
-			el._flags |= flags.Finished;
+			el._flags |= Finished;
 		}
 
 		const result = updateComponentChildren(ctx, iteration.value);
@@ -1318,7 +1350,7 @@ function advance(ctx: Context): void {
 	ctx._inflightResult = ctx._enqueuedResult;
 	ctx._enqueuedPending = undefined;
 	ctx._enqueuedResult = undefined;
-	if (el._flags & flags.AsyncGen && !(el._flags & flags.Finished)) {
+	if (el._flags & AsyncGen && !(el._flags & Finished)) {
 		run(ctx);
 	}
 }
