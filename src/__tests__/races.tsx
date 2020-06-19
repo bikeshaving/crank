@@ -3,9 +3,9 @@ import {createElement, Child, Context, Element} from "../index";
 import {renderer} from "../dom";
 
 describe("races", () => {
-	afterEach(async () => {
+	afterEach(() => {
 		document.body.innerHTML = "";
-		await renderer.render(null, document.body);
+		renderer.render(null, document.body);
 	});
 
 	test("async fn vs value", async () => {
@@ -147,15 +147,19 @@ describe("races", () => {
 
 	test("slow vs fast in async generator updated via renderer.render", async () => {
 		const t = Date.now();
-		const Slow = jest.fn(async function Slow(): Promise<Element> {
+		const slowFn = jest.fn();
+		async function Slow(): Promise<Element> {
+			slowFn();
 			await new Promise((resolve) => setTimeout(resolve, 200));
 			return <div>Slow</div>;
-		});
+		}
 
-		const Fast = jest.fn(async function Fast(): Promise<Element> {
+		const fastFn = jest.fn();
+		async function Fast(): Promise<Element> {
+			fastFn();
 			await new Promise((resolve) => setTimeout(resolve, 100));
 			return <div>Fast</div>;
-		});
+		}
 
 		async function* Component(this: Context): AsyncGenerator<Child> {
 			let i = 0;
@@ -185,8 +189,8 @@ describe("races", () => {
 		expect(Date.now() - t).toBeCloseTo(400, -2);
 		await new Promise((resolve) => setTimeout(resolve, 200));
 		expect(document.body.innerHTML).toEqual("<div>Fast</div>");
-		expect(Slow).toHaveBeenCalledTimes(2);
-		expect(Fast).toHaveBeenCalledTimes(2);
+		expect(slowFn).toHaveBeenCalledTimes(2);
+		expect(fastFn).toHaveBeenCalledTimes(2);
 	});
 
 	test("slow vs fast in async generator updated via refresh", async () => {
@@ -235,12 +239,12 @@ describe("races", () => {
 	test("fast async function vs slow async function in async generator", async () => {
 		async function Fast({i}: {i: number}): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 100));
-			return <div>Fast {i}</div>;
+			return <span>Fast {i}</span>;
 		}
 
 		async function Slow({i}: {i: number}): Promise<Element> {
 			await new Promise((resolve) => setTimeout(resolve, 200));
-			return <div>Slow {i}</div>;
+			return <span>Slow {i}</span>;
 		}
 
 		async function* Component(this: Context): AsyncGenerator<Child, any, any> {
@@ -262,41 +266,43 @@ describe("races", () => {
 
 		await renderer.render(<Component />, document.body);
 		expect(document.body.innerHTML).toEqual(
-			"<div>Hello: <div>Fast 0</div></div>",
+			"<div>Hello: <span>Fast 0</span></div>",
 		);
 		await new Promise((resolve) => setTimeout(resolve, 300));
 		expect(document.body.innerHTML).toEqual(
-			"<div>Hello: <div>Slow 0</div></div>",
+			"<div>Hello: <span>Slow 0</span></div>",
 		);
 		await renderer.render(<Component />, document.body);
 		expect(document.body.innerHTML).toEqual(
-			"<div>Hello: <div>Fast 1</div></div>",
+			"<div>Hello: <span>Fast 1</span></div>",
 		);
 		await new Promise((resolve) => setTimeout(resolve, 300));
 		expect(document.body.innerHTML).toEqual(
-			"<div>Hello: <div>Slow 1</div></div>",
+			"<div>Hello: <span>Slow 1</span></div>",
 		);
 		await new Promise((resolve) => setTimeout(resolve, 300));
 		expect(document.body.innerHTML).toEqual(
-			"<div>Hello: <div>Slow 1</div></div>",
+			"<div>Hello: <span>Slow 1</span></div>",
 		);
 	});
 
 	test("fast async function vs slow async generator in async generator", async () => {
 		async function Fast({i}: {i: number}): Promise<Child> {
 			await new Promise((resolve) => setTimeout(resolve, 100));
-			return <div>Fast {i}</div>;
+			return <span>Fast {i}</span>;
 		}
 
-		const Slow = jest.fn(async function* Slow(
+		const slowFn = jest.fn();
+		async function* Slow(
 			this: Context,
 			{i}: {i: number},
 		): AsyncGenerator<Child> {
+			slowFn();
 			await new Promise((resolve) => setTimeout(resolve, 200));
 			for await (const _ of this) {
-				yield <div>Slow {i}</div>;
+				yield <span>Slow {i}</span>;
 			}
-		});
+		}
 
 		async function* Component(this: Context): AsyncGenerator<Child> {
 			let i = 0;
@@ -317,25 +323,25 @@ describe("races", () => {
 
 		await renderer.render(<Component />, document.body);
 		expect(document.body.innerHTML).toEqual(
-			"<div>Hello: <div>Fast 0</div></div>",
+			"<div>Hello: <span>Fast 0</span></div>",
 		);
 		await new Promise((resolve) => setTimeout(resolve, 300));
 		expect(document.body.innerHTML).toEqual(
-			"<div>Hello: <div>Slow 0</div></div>",
+			"<div>Hello: <span>Slow 0</span></div>",
 		);
 		await renderer.render(<Component />, document.body);
 		expect(document.body.innerHTML).toEqual(
-			"<div>Hello: <div>Fast 1</div></div>",
+			"<div>Hello: <span>Fast 1</span></div>",
 		);
 		await new Promise((resolve) => setTimeout(resolve, 300));
 		expect(document.body.innerHTML).toEqual(
-			"<div>Hello: <div>Slow 1</div></div>",
+			"<div>Hello: <span>Slow 1</span></div>",
 		);
 		await new Promise((resolve) => setTimeout(resolve, 300));
 		expect(document.body.innerHTML).toEqual(
-			"<div>Hello: <div>Slow 1</div></div>",
+			"<div>Hello: <span>Slow 1</span></div>",
 		);
-		expect(Slow).toHaveBeenCalledTimes(2);
+		expect(slowFn).toHaveBeenCalledTimes(2);
 	});
 
 	test("fast async generator vs slow async function", async () => {
