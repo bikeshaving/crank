@@ -419,12 +419,7 @@ function updateChildren<TValue>(
 	scope: Scope,
 	arranger: Element<string | symbol>,
 ): Promise<ChildValue<TValue>> | ChildValue<TValue> {
-	// TODO: move this logic to a special component updateChildren
-	if (typeof el.tag === "function") {
-		if (isNonStringIterable(children)) {
-			children = createElement(Fragment, null, children);
-		}
-	} else if (el.tag !== Fragment) {
+	if (typeof el.tag !== "function" && el.tag !== Fragment) {
 		scope = renderer.scope(el.tag as string | symbol, el.props, scope);
 		arranger = el as Element<string | symbol>;
 	}
@@ -1123,9 +1118,7 @@ function run<TValue>(
 	} else if (el._flags & flags.AsyncGen) {
 		return ctx._inflightResult;
 	} else if (typeof ctx._enqueuedPending === "undefined") {
-		let resolve: (
-			value: Promise<ChildValue<TValue>> | ChildValue<TValue>,
-		) => unknown;
+		let resolve: Function;
 		ctx._enqueuedPending = ctx._inflightPending
 			.then(() => {
 				const [pending, result] = step(ctx);
@@ -1163,19 +1156,12 @@ function step<TValue>(
 			const value1 = upgradePromiseLike(value);
 			const pending = value1.catch(() => undefined); // void :(
 			const result = value1.then((value) =>
-				updateChildren(ctx.renderer, el, value, ctx, ctx._scope, ctx._arranger),
+				updateComponentChildren(ctx, value),
 			);
 			el._flags &= ~flags.Stepping;
 			return [pending, result];
 		} else {
-			const result = updateChildren(
-				ctx.renderer,
-				el,
-				value,
-				ctx,
-				ctx._scope,
-				ctx._arranger,
-			);
+			const result = updateComponentChildren(ctx, value);
 			el._flags &= ~flags.Stepping;
 			return [undefined, result];
 		}
@@ -1208,14 +1194,7 @@ function step<TValue>(
 			}
 
 			try {
-				let result = updateChildren(
-					ctx.renderer,
-					el,
-					iteration.value,
-					ctx,
-					ctx._scope,
-					ctx._arranger,
-				);
+				let result = updateComponentChildren(ctx, iteration.value);
 				if (isPromiseLike(result)) {
 					ctx._oldValue = result;
 					if (
@@ -1237,14 +1216,7 @@ function step<TValue>(
 									el._flags |= flags.Finished;
 								}
 
-								return updateChildren(
-									ctx.renderer,
-									el,
-									iteration.value,
-									ctx,
-									ctx._scope,
-									ctx._arranger,
-								);
+								return updateComponentChildren(ctx, iteration.value);
 							});
 						});
 					}
@@ -1273,14 +1245,7 @@ function step<TValue>(
 						el._flags |= flags.Finished;
 					}
 
-					return updateChildren(
-						ctx.renderer,
-						el,
-						iteration.value,
-						ctx,
-						ctx._scope,
-						ctx._arranger,
-					);
+					return updateComponentChildren(ctx, iteration.value);
 				});
 			}
 		});
@@ -1295,14 +1260,7 @@ function step<TValue>(
 	}
 
 	try {
-		let result = updateChildren(
-			ctx.renderer,
-			el,
-			iteration.value,
-			ctx,
-			ctx._scope,
-			ctx._arranger,
-		);
+		let result = updateComponentChildren(ctx, iteration.value);
 		if (isPromiseLike(result)) {
 			if (
 				!(el._flags & flags.Finished) &&
@@ -1319,14 +1277,7 @@ function step<TValue>(
 						el._flags |= flags.Finished;
 					}
 
-					return updateChildren(
-						ctx.renderer,
-						el,
-						iteration.value,
-						ctx,
-						ctx._scope,
-						ctx._arranger,
-					);
+					return updateComponentChildren(ctx, iteration.value);
 				});
 			}
 			const pending = result.catch(() => {});
@@ -1351,14 +1302,7 @@ function step<TValue>(
 			el._flags |= flags.Finished;
 		}
 
-		const result = updateChildren(
-			ctx.renderer,
-			el,
-			iteration.value,
-			ctx,
-			ctx._scope,
-			ctx._arranger,
-		);
+		const result = updateComponentChildren(ctx, iteration.value);
 		if (isPromiseLike(result)) {
 			const pending = result.catch(() => {});
 			return [pending, result];
@@ -1377,6 +1321,24 @@ function advance(ctx: Context): void {
 	if (el._flags & flags.AsyncGen && !(el._flags & flags.Finished)) {
 		run(ctx);
 	}
+}
+
+function updateComponentChildren<TValue>(
+	ctx: Context<unknown, TValue>,
+	children: Children,
+): Promise<ChildValue<TValue>> | ChildValue<TValue> {
+	if (isNonStringIterable(children)) {
+		children = createElement(Fragment, null, children);
+	}
+
+	return updateChildren(
+		ctx.renderer,
+		ctx._el,
+		children,
+		ctx,
+		ctx._scope,
+		ctx._arranger,
+	);
 }
 
 // event stuff
