@@ -112,6 +112,7 @@ type Key = unknown;
 type Scope = unknown;
 
 const ElementSigil = Symbol.for("crank.ElementSigil");
+const RaceSigil = Symbol.for("crank.RaceSigil");
 
 export class Element<TTag extends Tag = Tag> {
 	$sigil: typeof ElementSigil;
@@ -119,11 +120,12 @@ export class Element<TTag extends Tag = Tag> {
 	props: TagProps<TTag>;
 	key: Key;
 	ref: Function | undefined;
+	// TODO: delete???????
 	_flags: number;
 	_value: any;
-	_children: NormalizedChildren;
 	_ctx: Context<TagProps<TTag>> | undefined;
-	_onNewResults: Function | undefined;
+	_children: NormalizedChildren;
+	_onNewValue: Function | undefined;
 
 	// TODO: delete
 	_childrenByKey: Map<Key, Element> | undefined;
@@ -546,10 +548,10 @@ function updateChildren<TValue>(
 					result1 = update(renderer, newChild1, ctx, scope, arranger);
 					if (isPromiseLike(result1)) {
 						// storing variable for closure
-						// TODO: unmount can return a promise... what do we do about that?
 						const oldChild1 = oldChild;
-						result1 = result1.finally(() => {
+						result1 = result1.then((value) => {
 							unmount(renderer, oldChild1, ctx, scope, arranger, true);
+							return value;
 						});
 					} else {
 						unmount(renderer, oldChild, ctx, scope, arranger, true);
@@ -622,31 +624,48 @@ function updateChildren<TValue>(
 	el._children = children1.length > 1 ? children1 : children1[0];
 	el._childrenByKey = childrenByKey;
 	if (async) {
-		let onNewResults: Function;
-		let resultsP = Promise.all(results);
-		const newResultsP = new Promise<any>((resolve) => (onNewResults = resolve));
-		resultsP = Promise.race([resultsP, newResultsP]);
-		if (typeof el._onNewResults === "function") {
-			el._onNewResults(resultsP);
+		let onNewValue: Function;
+		const newValueP = new Promise<any>((resolve) => (onNewValue = resolve));
+		const resultsP = Promise.race([
+			// returning Promise.reject instead of throwing a promise causes a race condition
+			newValueP.then(() => {
+				throw RaceSigil;
+			}),
+			Promise.all(results),
+		]);
+
+		const value = resultsP.then(
+			(results) => commit(renderer, el, scope, flatten(results)),
+			(err) => {
+				if (err === RaceSigil) {
+					return newValueP;
+				}
+
+				throw err;
+			},
+		);
+
+		if (typeof el._onNewValue === "function") {
+			el._onNewValue(value);
 		}
 
-		el._onNewResults = onNewResults!;
-		return resultsP.then((results) =>
-			commit(renderer, el, scope, flatten(results)),
-		);
+		el._onNewValue = onNewValue!;
+		return value;
 	}
 
-	if (typeof el._onNewResults === "function") {
-		el._onNewResults(results);
-		el._onNewResults = undefined;
-	}
-
-	return commit(
+	const value = commit(
 		renderer,
 		el,
 		scope,
 		flatten(results as Array<ChildValue<TValue>>),
 	);
+
+	if (typeof el._onNewValue === "function") {
+		el._onNewValue(value);
+		el._onNewValue = undefined;
+	}
+
+	return value;
 }
 
 function commit<TValue>(
