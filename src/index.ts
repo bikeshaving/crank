@@ -48,7 +48,7 @@ function isNonStringIterable(value: any): value is NonStringIterable<any> {
 	return typeof value !== "string" && isIterable(value);
 }
 
-function isIteratorOrAsyncIterator(
+function isIteratorLike(
 	value: any,
 ): value is Iterator<any> | AsyncIterator<any> {
 	return value != null && typeof value.next === "function";
@@ -1204,7 +1204,7 @@ function step<TValue>(
 			ctx,
 			el.props!,
 		);
-		if (isIteratorOrAsyncIterator(value)) {
+		if (isIteratorLike(value)) {
 			ctx._iterator = value;
 		} else if (isPromiseLike(value)) {
 			const value1 = upgradePromiseLike(value);
