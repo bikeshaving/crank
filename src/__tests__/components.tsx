@@ -1000,6 +1000,8 @@ describe("async generator component", () => {
 		expect(document.body.innerHTML).toEqual("");
 		await p;
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+		await new Promise((resolve) => setTimeout(resolve));
+		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 	});
 
 	test("Fragment parent", async () => {
