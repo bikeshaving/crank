@@ -942,10 +942,11 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 		if (options.once) {
 			const self = this;
 			record.callback = function () {
-				if (typeof self._listeners !== undefined) {
-					self._listeners = self._listeners!.filter(
+				if (typeof self._listeners !== "undefined") {
+					self._listeners = self._listeners.filter(
 						(record1) => record !== record1,
 					);
+
 					if (self._listeners.length === 0) {
 						self._listeners = undefined;
 					}
