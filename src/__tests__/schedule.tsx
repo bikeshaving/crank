@@ -370,7 +370,7 @@ describe("schedule", () => {
 			while (true) {
 				span.className = "manual";
 				span.textContent = "Hello world";
-				yield <span />;
+				yield <Copy />;
 			}
 		}
 
