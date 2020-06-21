@@ -12,18 +12,14 @@ declare global {
 
 // Flags
 // TODO: write an explanation for each of these flags
-const Mounted = 1;
-const Updating = 1 << 1;
-const Committed = 1 << 2;
-// Context-only???
-const Unmounted = 1 << 3;
-// Context-only Flags
-const SyncGen = 1 << 4;
-const AsyncGen = 1 << 5;
-const Stepping = 1 << 6;
-const Iterating = 1 << 7;
-const Available = 1 << 8;
-const Finished = 1 << 9;
+const Updating = 1 << 0;
+const Stepping = 1 << 1;
+const Iterating = 1 << 2;
+const Available = 1 << 3;
+const Finished = 1 << 4;
+const Unmounted = 1 << 5;
+const SyncGen = 1 << 6;
+const AsyncGen = 1 << 7;
 
 // Utils
 function isPromiseLike(value: any): value is PromiseLike<any> {
@@ -207,14 +203,11 @@ type ChildValue<TValue> = Array<TValue | string> | TValue | string | undefined;
 function getValue<TValue>(child: NormalizedChild): ChildValue<TValue> {
 	if (typeof child === "undefined" || typeof child === "string") {
 		return child;
+	} else if (typeof child.tag !== "function" && child.tag !== Fragment) {
+		return child._value;
 	}
 
-	const el = child;
-	if (typeof el.tag !== "function" && el.tag !== Fragment) {
-		return el._value;
-	}
-
-	const childValues = getChildValues<TValue>(el);
+	const childValues = getChildValues<TValue>(child);
 	return childValues.length > 1 ? childValues : childValues[0];
 }
 
@@ -305,7 +298,6 @@ export abstract class Renderer<
 		this._cache = new WeakMap();
 	}
 
-	// TODO: we may not need to have portals at the root with the new arranger logic
 	// TODO: what is the type of root
 	render(children: Children, root?: TValue): Promise<TResult> | TResult {
 		const clearing = children == null;
@@ -342,14 +334,7 @@ export abstract class Renderer<
 		if (isPromiseLike(result)) {
 			return result.then(() => {
 				if (newPortal.props.root == null) {
-					unmount(
-						this,
-						newPortal,
-						undefined,
-						undefined,
-						newPortal.props.root,
-						true,
-					);
+					unmount(this, newPortal, undefined, newPortal.props.root, true);
 				}
 
 				return newPortal._value;
@@ -357,14 +342,7 @@ export abstract class Renderer<
 		}
 
 		if (newPortal.props.root == null) {
-			unmount(
-				this,
-				newPortal,
-				undefined,
-				undefined,
-				newPortal.props.root,
-				true,
-			);
+			unmount(this, newPortal, undefined, newPortal.props.root, true);
 		}
 
 		return newPortal._value;
@@ -379,7 +357,6 @@ export abstract class Renderer<
 	abstract create<TTag extends string | symbol>(
 		tag: string | symbol,
 		props: TagProps<TTag>,
-		children: Array<TChild | string>,
 		scope: Scope,
 	): TValue;
 
@@ -394,16 +371,13 @@ export abstract class Renderer<
 		scope: Scope,
 	): unknown;
 
-	// TODO: remove scope
 	abstract arrange<TTag extends string | symbol>(
 		tag: string | symbol,
 		value: TValue | undefined,
-		children: Array<TChild | string>,
-		scope: Scope,
+		childValues: Array<TChild | string>,
 	): TResult;
 
-	// TODO: remove scope???
-	abstract destroy(tag: string | symbol, value: TValue, scope: Scope): unknown;
+	abstract destroy(tag: string | symbol, value: TValue): unknown;
 }
 
 // TODO: maybe it’s just better to have these be methods
@@ -414,11 +388,14 @@ function mount<TTag extends Tag, TValue>(
 	scope: Scope,
 	arranger: Element<string | symbol>,
 ): Element<TTag> {
-	if (typeof el._flags === "undefined" || el._flags & Mounted) {
+	if (
+		typeof el._value !== "undefined" ||
+		typeof el._ctx !== "undefined" ||
+		typeof el._children !== "undefined"
+	) {
 		el = new Element(el.tag, el.props, el.key, el.ref);
 	}
 
-	el._flags |= Mounted;
 	if (typeof el.tag === "function") {
 		el._ctx = new Context(
 			renderer,
@@ -427,6 +404,8 @@ function mount<TTag extends Tag, TValue>(
 			scope,
 			arranger,
 		);
+	} else if (el.tag !== Fragment && el.tag !== Portal && el.tag !== Raw) {
+		el._value = renderer.create(el.tag as any, el.props, scope);
 	}
 
 	return el;
@@ -448,7 +427,7 @@ function update<TValue>(
 	return updateChildren(renderer, el, el.props.children, ctx, scope, arranger);
 }
 
-const RaceSigil = Symbol.for("crank.RaceSigil");
+const RaceLostSigil = Symbol.for("crank.RaceLostSigil");
 
 function updateChildren<TValue>(
 	renderer: Renderer<TValue, any, any>,
@@ -620,21 +599,19 @@ function updateChildren<TValue>(
 		let onNewValue: Function;
 		const newValueP = new Promise<any>((resolve) => (onNewValue = resolve));
 		const resultsP = Promise.race([
-			// returning Promise.reject instead of throwing a promise causes a race condition
 			newValueP.then(() => {
-				throw RaceSigil;
+				// returning Promise.reject instead of throwing a promise causes a race condition
+				throw RaceLostSigil;
 			}),
 			Promise.all(results),
 		]).finally(() => {
-			graveyard.forEach((el) =>
-				unmount(renderer, el, ctx, scope, arranger, true),
-			);
+			graveyard.forEach((el) => unmount(renderer, el, ctx, arranger, true));
 		});
 
 		const value = resultsP.then(
 			(results) => commit(renderer, el, scope, flatten(results)),
 			(err) => {
-				if (err === RaceSigil) {
+				if (err === RaceLostSigil) {
 					return newValueP;
 				}
 
@@ -650,7 +627,7 @@ function updateChildren<TValue>(
 		return value;
 	}
 
-	graveyard.forEach((el) => unmount(renderer, el, ctx, scope, arranger, true));
+	graveyard.forEach((el) => unmount(renderer, el, ctx, arranger, true));
 	const value = commit(
 		renderer,
 		el,
@@ -675,7 +652,18 @@ function commit<TValue>(
 	let value: ChildValue<TValue> =
 		childValues.length > 1 ? childValues : childValues[0];
 	if (typeof el.tag === "function") {
+		// TODO: put this in ctx somehow...
 		const ctx = el._ctx!;
+		if (!(el._flags & Unmounted) && !(el._flags & Updating)) {
+			renderer.arrange(
+				ctx._arranger.tag,
+				ctx._arranger.tag === Portal
+					? ctx._arranger.props.root
+					: ctx._arranger._value,
+				getChildValues(ctx._arranger),
+			);
+		}
+
 		if (typeof ctx._schedules !== "undefined" && ctx._schedules.size > 0) {
 			// We have to clear the set of callbacks before calling them, because a callback which refreshes the component would otherwise cause a stack overflow.
 			const callbacks = Array.from(ctx._schedules);
@@ -698,20 +686,8 @@ function commit<TValue>(
 				}
 			}
 		}
-
-		// We have to check the flags on the arranger because of the edge case where a node is committed but the arranger has not had a chance to commit yet. This is likely the last flag after which we could move all flags directly to the Context class.
-		if (!(el._flags & Unmounted) && !(ctx._arranger._flags & Updating)) {
-			renderer.arrange(
-				ctx._arranger.tag,
-				ctx._arranger.tag === Portal
-					? ctx._arranger.props.root
-					: ctx._arranger._value,
-				getChildValues(ctx._arranger),
-				undefined,
-			);
-		}
 	} else if (el.tag === Portal) {
-		el._value = renderer.arrange(Portal, el.props.root, childValues, scope);
+		el._value = renderer.arrange(Portal, el.props.root, childValues);
 		value = undefined;
 	} else if (el.tag === Raw) {
 		if (typeof el.props.value === "string") {
@@ -722,13 +698,8 @@ function commit<TValue>(
 
 		value = el._value;
 	} else if (el.tag !== Fragment) {
-		if (!(el._flags & Committed)) {
-			el._value = renderer.create(el.tag, el.props, childValues, scope);
-			el._flags |= Committed;
-		}
-
 		renderer.patch(el.tag, el._value, el.props, scope);
-		renderer.arrange(el.tag, el._value, childValues, scope);
+		renderer.arrange(el.tag, el._value, childValues);
 		value = el._value;
 	}
 
@@ -745,7 +716,6 @@ function unmount<TValue>(
 	renderer: Renderer<TValue, any, any>,
 	el: Element,
 	ctx: Context<unknown, TValue> | undefined,
-	scope: Scope,
 	arranger: Element,
 	dirty: boolean,
 ): void {
@@ -753,9 +723,9 @@ function unmount<TValue>(
 		return;
 	}
 
-	// setting unmounted flag here is necessary because of some kind of race condition
-	el._flags |= Unmounted;
 	if (typeof el.tag === "function") {
+		// setting unmounted flag here is necessary because of some kind of race condition
+		el._flags |= Unmounted;
 		ctx = el._ctx!;
 		clearEventListeners(ctx);
 		if (typeof ctx._cleanups === "object") {
@@ -769,10 +739,7 @@ function unmount<TValue>(
 
 		if (!(el._flags & Finished)) {
 			el._flags |= Finished;
-			if (typeof ctx._onProps === "function") {
-				ctx._onProps(el.props);
-				ctx._onProps = undefined;
-			}
+			resume(ctx);
 
 			if (
 				typeof ctx._iterator === "object" &&
@@ -784,7 +751,7 @@ function unmount<TValue>(
 		}
 	} else if (el.tag === Portal) {
 		arranger = el;
-		renderer.arrange(Portal, el.props.root, [], scope);
+		renderer.arrange(Portal, el.props.root, []);
 	} else if (el.tag !== Fragment) {
 		const listeners = getListeners(ctx, arranger);
 		if (listeners !== undefined && listeners.length > 0) {
@@ -800,14 +767,14 @@ function unmount<TValue>(
 		}
 
 		arranger = el;
-		if (dirty && el._flags & Committed) {
-			renderer.destroy(el.tag as symbol | string, el._value, scope);
+		if (dirty) {
+			renderer.destroy(el.tag as symbol | string, el._value);
 		}
 	}
 
 	for (const child of arrayify(el._children)) {
 		if (typeof child === "object") {
-			unmount(renderer, child, ctx, scope, arranger, false);
+			unmount(renderer, child, ctx, arranger, false);
 		}
 	}
 }
@@ -919,6 +886,7 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 		} while (!(el._flags & Unmounted));
 	}
 
+	// TODO: should refresh return ChildValue or should it return undefined?
 	refresh(): Promise<ChildValue<TValue>> | ChildValue<TValue> {
 		const el = this._el;
 		if (el._flags & (Stepping | Unmounted)) {
@@ -926,13 +894,7 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 			return;
 		}
 
-		if (typeof this._onProps === "function") {
-			this._onProps(el.props!);
-			this._onProps = undefined;
-		} else {
-			el._flags |= Available;
-		}
-
+		resume(this);
 		return run(this);
 	}
 
@@ -1132,6 +1094,15 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 	}
 }
 
+function resume(ctx: Context) {
+	if (typeof ctx._onProps === "function") {
+		ctx._onProps(ctx._el.props!);
+		ctx._onProps = undefined;
+	} else {
+		ctx._el._flags |= Available;
+	}
+}
+
 // TODO: fix the type
 function run<TValue>(
 	ctx: Context<any, TValue>,
@@ -1230,11 +1201,7 @@ function step<TValue>(
 						typeof ctx._iterator!.throw === "function"
 					) {
 						result = result.catch((err) => {
-							if (typeof ctx._onProps === "function") {
-								ctx._onProps(el.props!);
-								ctx._onProps = undefined;
-							}
-
+							resume(ctx);
 							const iteration = (ctx._iterator as AsyncGenerator<
 								Children,
 								Children
@@ -1257,11 +1224,6 @@ function step<TValue>(
 					typeof ctx._iterator!.throw !== "function"
 				) {
 					throw err;
-				}
-
-				if (typeof ctx._onProps === "function") {
-					ctx._onProps(el.props!);
-					ctx._onProps = undefined;
 				}
 
 				const iteration = (ctx._iterator as AsyncGenerator<
@@ -1433,24 +1395,6 @@ function setEventProperty<T extends keyof Event>(
 	Object.defineProperty(ev, key, {value, writable: false, configurable: true});
 }
 
-function clearEventListeners(ctx: Context): void {
-	if (typeof ctx._listeners !== "undefined" && ctx._listeners.length > 0) {
-		for (const value of getChildValues(ctx._el)) {
-			if (isEventTarget(value)) {
-				for (const record of ctx._listeners) {
-					value.removeEventListener(
-						record.type,
-						record.callback,
-						record.options,
-					);
-				}
-			}
-		}
-
-		ctx._listeners = undefined;
-	}
-}
-
 function getListeners(
 	ctx: Context | undefined,
 	arranger: Element,
@@ -1468,4 +1412,22 @@ function getListeners(
 	}
 
 	return listeners;
+}
+
+function clearEventListeners(ctx: Context): void {
+	if (typeof ctx._listeners !== "undefined" && ctx._listeners.length > 0) {
+		for (const value of getChildValues(ctx._el)) {
+			if (isEventTarget(value)) {
+				for (const record of ctx._listeners) {
+					value.removeEventListener(
+						record.type,
+						record.callback,
+						record.options,
+					);
+				}
+			}
+		}
+
+		ctx._listeners = undefined;
+	}
 }

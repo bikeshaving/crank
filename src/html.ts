@@ -1,7 +1,13 @@
-import {Renderer} from "./index";
+import {Portal, Renderer} from "./index";
 
 declare module "./index" {
 	interface EventMap extends GlobalEventHandlersEventMap {}
+}
+
+interface Value {
+	tag: string;
+	props: Record<string, any>;
+	result?: string;
 }
 
 function escapeText(text: string): string {
@@ -78,34 +84,46 @@ const voidTags = new Set([
 	"wbr",
 ]);
 
-export class StringRenderer extends Renderer<string, string, string> {
-	create(
-		tag: string | symbol,
-		props: Record<string, any>,
-		children: Array<string>,
-	): string {
+export class StringRenderer extends Renderer<Value, Value | string, string> {
+	create(tag: string | symbol, props: Record<string, any>): Value {
 		if (typeof tag !== "string") {
 			throw new Error(`Unknown tag: ${tag.toString()}`);
 		}
 
-		const attrs = printAttrs(props);
-		const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
-		if (voidTags.has(tag)) {
-			return open;
-		}
-
-		const close = `</${tag}>`;
-		if ("innerHTML" in props) {
-			return `${open}${props["innerHTML"]}${close}`;
-		}
-
-		return `${open}${children.join("")}${close}`;
+		return {tag, props};
 	}
 
-	patch(): void {}
+	patch(tag: unknown, value: Value, props: Record<string, any>): void {
+		value.props = props;
+	}
 
-	arrange(tag: unknown, parent: unknown, children: Array<string>): string {
-		return children.join("");
+	arrange(tag: any, value: Value, childValues: Array<string | Value>): string {
+		if (tag === Portal) {
+			return childValues
+				.map((value) => (typeof value === "string" ? value : value.result))
+				.join("");
+		}
+
+		const attrs = printAttrs(value.props);
+		const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
+		let result: string;
+		if (voidTags.has(tag)) {
+			result = open;
+		} else {
+			const close = `</${tag}>`;
+			const contents =
+				"innerHTML" in value.props
+					? value.props["innerHTML"]
+					: childValues
+							.map((value) =>
+								typeof value === "string" ? value : value.result,
+							)
+							.join("");
+			result = `${open}${contents}${close}`;
+		}
+
+		value.result = result;
+		return result;
 	}
 
 	destroy(): void {}
@@ -118,9 +136,7 @@ export class StringRenderer extends Renderer<string, string, string> {
 		return escapeText(text);
 	}
 
-	scope(): undefined {
-		return undefined;
-	}
+	scope(): void {}
 }
 
 export const renderer = new StringRenderer();
