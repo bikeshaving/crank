@@ -13,9 +13,9 @@ import {renderer} from "../dom";
 
 /* eslint-disable no-unreachable */
 describe("sync function component", () => {
-	afterEach(async () => {
+	afterEach(() => {
 		document.body.innerHTML = "";
-		await renderer.render(null, document.body);
+		renderer.render(null, document.body);
 	});
 
 	test("basic", () => {
@@ -1011,15 +1011,20 @@ describe("async generator component", () => {
 				yield 2;
 			}
 		}
+
 		await renderer.render(
 			<Fragment>
 				<Component />
 			</Fragment>,
 			document.body,
 		);
+
 		expect(document.body.innerHTML).toEqual("1");
 		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("1");
 		resolve();
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("2");
 		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(document.body.innerHTML).toEqual("2");
 	});
