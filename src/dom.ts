@@ -15,7 +15,6 @@ export class DOMRenderer extends Renderer<Element, Node, undefined> {
 	create<TTag extends string | symbol>(
 		tag: TTag,
 		props: unknown,
-		children: unknown,
 		ns: string | undefined,
 	): Element {
 		if (typeof tag !== "string") {
