@@ -21,7 +21,6 @@ const Unmounted = 1 << 5;
 const SyncGen = 1 << 6;
 const AsyncGen = 1 << 7;
 
-// Utils
 function isPromiseLike(value: any): value is PromiseLike<any> {
 	return value != null && typeof value.then === "function";
 }
@@ -50,11 +49,13 @@ function isIteratorLike(
 	return value != null && typeof value.next === "function";
 }
 
-function arrayify<T>(value: Array<T> | T | undefined): Array<T> {
+function arrayify<T>(value: Iterable<T> | T | undefined): Array<T> {
 	if (value === undefined) {
 		return [];
 	} else if (Array.isArray(value)) {
 		return value;
+	} else if (isNonStringIterable(value)) {
+		return Array.from(value);
 	} else {
 		return [value];
 	}
@@ -115,13 +116,13 @@ export class Element<TTag extends Tag = Tag> {
 	props: TagProps<TTag>;
 	key: Key;
 	ref: Function | undefined;
-	// TODO: delete???????
-	_flags: number;
 	_value: any;
 	_ctx: Context<TagProps<TTag>> | undefined;
 	_children: NormalizedChildren;
 	_onNewValue: Function | undefined;
 
+	// TODO: delete
+	_flags: number;
 	// TODO: delete
 	_childrenByKey: Map<Key, Element> | undefined;
 	constructor(
@@ -1172,7 +1173,6 @@ function step<TValue>(
 		}
 	}
 
-	// TODO: we don’t need to get the oldValue for the initial render
 	let oldValue: Promise<ChildValue<TValue>> | ChildValue<TValue>;
 	if (typeof ctx._oldValue === "object") {
 		oldValue = ctx._oldValue;
