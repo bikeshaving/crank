@@ -789,7 +789,7 @@ export class Context<TProps = any, TValue = any> implements EventTarget {
 	_scope: Scope;
 	_arranger: Element<string | symbol>;
 	_iterator: ChildIterator | undefined;
-	_listeners: EventListenerRecord[] | undefined;
+	_listeners: Array<EventListenerRecord> | undefined;
 	_provisions: Map<unknown, unknown> | undefined;
 	_onProps: ((props: any) => unknown) | undefined;
 	_oldValue: Promise<ChildValue<TValue>> | undefined;
