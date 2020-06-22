@@ -1,3 +1,4 @@
+// TODO: is there a way to define this non globally?
 declare global {
 	module JSX {
 		interface IntrinsicElements {
@@ -17,7 +18,7 @@ const consoleError =
 		: () => {};
 /* eslint-enable no-console */
 
-// Flags
+// FLAGS
 // TODO: we can now move flags to the context???
 // TODO: write an explanation for each of these flags
 const Updating = 1 << 0;
@@ -29,6 +30,7 @@ const Unmounted = 1 << 5;
 const SyncGen = 1 << 6;
 const AsyncGen = 1 << 7;
 
+// UTILITY FUNCTIONS
 function isPromiseLike(value: any): value is PromiseLike<any> {
 	return value != null && typeof value.then === "function";
 }
@@ -110,24 +112,26 @@ export type Component<TProps = any> = (
 
 type Key = unknown;
 
-type Scope = unknown;
+// SPECIAL TAGS
+// TODO: We assert symbol tags as any because typescript support for symbol tags in JSX does not exist yet.
+// https://github.com/microsoft/TypeScript/issues/38367
+// TODO: Maybe we can just make these strings??? Fragment can be the empty string
+export const Fragment = Symbol.for("crank.Fragment") as any;
+export type Fragment = typeof Fragment;
+
+export const Copy = Symbol.for("crank.Copy") as any;
+export type Copy = typeof Copy;
+
+export const Portal = Symbol.for("crank.Portal") as any;
+export type Portal = typeof Portal;
+
+export const Raw = Symbol.for("crank.Raw") as any;
+export type Raw = typeof Raw;
 
 // WHAT ARE WE DOING TO THE CHILDREN
 type NarrowedChild = Element | string | undefined;
 
 type NarrowedChildren = Array<NarrowedChild> | NarrowedChild;
-
-function narrow(child: Children): NarrowedChild {
-	if (child == null || typeof child === "boolean") {
-		return undefined;
-	} else if (typeof child === "string" || isElement(child)) {
-		return child;
-	} else if (isIterable(child)) {
-		return createElement(Fragment, null, child);
-	} else {
-		return child.toString();
-	}
-}
 
 const ElementSymbol = Symbol.for("crank.Element");
 
@@ -158,6 +162,7 @@ export class Element<TTag extends Tag = Tag> {
 		this.props = props;
 		this.key = key;
 		this.ref = ref;
+		// TODO: delete
 		this._flags = 0;
 	}
 }
@@ -210,39 +215,16 @@ export function createElement<TTag extends Tag>(
 	return new Element(tag, props1, key, ref);
 }
 
-function getChildValues<T>(el: Element): Array<T | string> {
-	let result: Array<T | string> = [];
-	for (const child of arrayify(el._children)) {
-		if (child === undefined) {
-			// pass
-		} else if (typeof child === "string") {
-			result.push(child);
-		} else if (typeof child.tag === "function" || child.tag === Fragment) {
-			result = result.concat(getChildValues(child));
-		} else if (child.tag !== Portal) {
-			// Portals have a value but are opaque to their parents
-			result.push(child._value);
-		}
-	}
-
-	return result;
-}
-
-function getChildValueOrValues<T>(el: Element): ElementValue<T> {
-	const childValues = getChildValues<T>(el);
-	return childValues.length > 1 ? childValues : childValues[0];
-}
-
-export type ElementValue<T> = Array<T | string> | T | string | undefined;
-
-function getValue<T>(el: Element): ElementValue<T> {
-	if (typeof el.tag === Portal) {
+function narrow(child: Children): NarrowedChild {
+	if (child == null || typeof child === "boolean") {
 		return undefined;
-	} else if (typeof el.tag !== "function" && el.tag !== Fragment) {
-		return el._value;
+	} else if (typeof child === "string" || isElement(child)) {
+		return child;
+	} else if (isIterable(child)) {
+		return createElement(Fragment, null, child);
+	} else {
+		return child.toString();
 	}
-
-	return getChildValueOrValues(el);
 }
 
 function normalize<T>(values: Array<ElementValue<T>>): Array<T | string> {
@@ -285,21 +267,11 @@ function normalize<T>(values: Array<ElementValue<T>>): Array<T | string> {
 	return result;
 }
 
-// SPECIAL TAGS
-// TODO: We assert symbol tags as any because typescript support for symbol tags in JSX does not exist yet.
-// https://github.com/microsoft/TypeScript/issues/38367
-// TODO: Maybe we can just make these strings??? Fragment can be the empty string
-export const Fragment = Symbol.for("crank.Fragment") as any;
-export type Fragment = typeof Fragment;
+export type ElementValue<T> = Array<T | string> | T | string | undefined;
 
-export const Copy = Symbol.for("crank.Copy") as any;
-export type Copy = typeof Copy;
+type Scope = unknown;
 
-export const Portal = Symbol.for("crank.Portal") as any;
-export type Portal = typeof Portal;
-
-export const Raw = Symbol.for("crank.Raw") as any;
-export type Raw = typeof Raw;
+const RaceLostSymbol = Symbol.for("crank.RaceLost");
 
 // TODO: think about these types
 export abstract class Renderer<T, TResult = ElementValue<T>> {
@@ -398,6 +370,39 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 	// TODO: complete() a method which is called once at the end of every independent rendering or refresh or async generator component update
 }
 
+function getChildValues<T>(el: Element): Array<T | string> {
+	let result: Array<T | string> = [];
+	for (const child of arrayify(el._children)) {
+		if (child === undefined) {
+			// pass
+		} else if (typeof child === "string") {
+			result.push(child);
+		} else if (typeof child.tag === "function" || child.tag === Fragment) {
+			result = result.concat(getChildValues(child));
+		} else if (child.tag !== Portal) {
+			// Portals have a value but are opaque to their parents
+			result.push(child._value);
+		}
+	}
+
+	return result;
+}
+
+function getChildValueOrValues<T>(el: Element): ElementValue<T> {
+	const childValues = getChildValues<T>(el);
+	return childValues.length > 1 ? childValues : childValues[0];
+}
+
+function getValue<T>(el: Element): ElementValue<T> {
+	if (typeof el.tag === Portal) {
+		return undefined;
+	} else if (typeof el.tag !== "function" && el.tag !== Fragment) {
+		return el._value;
+	}
+
+	return getChildValueOrValues(el);
+}
+
 // TODO: maybe it’s just better to have these be methods
 function mount<TTag extends Tag, T>(
 	renderer: Renderer<T, any>,
@@ -449,8 +454,6 @@ function update<T>(
 
 	return updateChildren(renderer, el, el.props.children, ctx, scope, arranger);
 }
-
-const RaceLostSymbol = Symbol.for("crank.RaceLost");
 
 function updateChildren<T>(
 	renderer: Renderer<T, any>,
