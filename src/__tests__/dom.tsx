@@ -125,6 +125,7 @@ describe("render", () => {
 		]);
 	});
 
+	// TODO: move these tests to their own file
 	test("portal", () => {
 		const el1 = document.createElement("div");
 		const el2 = document.createElement("div");
@@ -144,19 +145,21 @@ describe("render", () => {
 	});
 
 	test("root portal", () => {
+		const key = {};
 		renderer.render(
 			<Portal root={document.body}>
 				<div>Hello world</div>
 			</Portal>,
+			key,
 		);
 		expect(document.body.innerHTML).toEqual("<div>Hello world</div>");
+		renderer.render(null, key);
 	});
 
 	test("root portal with changing root", () => {
 		const el1 = document.createElement("div");
 		const el2 = document.createElement("div");
-		// TODO: fix this?
-		const key: any = {};
+		const key = {};
 		renderer.render(
 			<Portal root={el1}>
 				<div>Hello world</div>
@@ -164,7 +167,6 @@ describe("render", () => {
 			key,
 		);
 		expect(el1.innerHTML).toEqual("<div>Hello world</div>");
-		expect(el2.innerHTML).toEqual("");
 		renderer.render(
 			<Portal root={el2}>
 				<div>Hello world</div>

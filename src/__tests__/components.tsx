@@ -51,14 +51,12 @@ describe("sync function component", () => {
 	});
 
 	test("async children enqueue", async () => {
-		const Child = jest.fn(async function Child({
-			message,
-		}: {
-			message: string;
-		}): Promise<Element> {
+		const fn = jest.fn();
+		async function Child({message}: {message: string}): Promise<Element> {
+			fn();
 			await new Promise((resolve) => setTimeout(resolve, 100));
 			return <div>{message}</div>;
-		});
+		}
 
 		function Parent({message}: {message: string}): Element {
 			return <Child message={message} />;
@@ -68,27 +66,27 @@ describe("sync function component", () => {
 		const p2 = renderer.render(<Parent message="Hello 2" />, document.body);
 		const p3 = renderer.render(<Parent message="Hello 3" />, document.body);
 		const p4 = renderer.render(<Parent message="Hello 4" />, document.body);
-		await expect(p1).resolves.toBe(undefined);
+		expect(await p1).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div>Hello 1</div>");
-		await expect(p2).resolves.toBe(undefined);
+		expect(await p2).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div>Hello 4</div>");
-		await expect(p3).resolves.toBe(undefined);
+		expect(await p3).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div>Hello 4</div>");
 		const p5 = renderer.render(<Parent message="Hello 5" />, document.body);
 		const p6 = renderer.render(<Parent message="Hello 6" />, document.body);
 		const p7 = renderer.render(<Parent message="Hello 7" />, document.body);
 		const p8 = renderer.render(<Parent message="Hello 8" />, document.body);
-		await expect(p4).resolves.toBe(undefined);
+		expect(await p4).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div>Hello 4</div>");
-		await expect(p5).resolves.toBe(undefined);
+		expect(await p5).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div>Hello 5</div>");
-		await expect(p6).resolves.toBe(undefined);
+		expect(await p6).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div>Hello 8</div>");
-		await expect(p7).resolves.toBe(undefined);
+		expect(await p7).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div>Hello 8</div>");
-		await expect(p8).resolves.toBe(undefined);
+		expect(await p8).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div>Hello 8</div>");
-		expect(Child).toHaveBeenCalledTimes(4);
+		expect(fn).toHaveBeenCalledTimes(4);
 	});
 });
 
@@ -111,19 +109,17 @@ describe("async function component", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("");
-		await expect(p).resolves.toBe(undefined);
+		expect(await p).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 	});
 
 	test("updates enqueue", async () => {
-		const Component = jest.fn(async function Component({
-			message,
-		}: {
-			message: string;
-		}): Promise<Element> {
+		const fn = jest.fn();
+		async function Component({message}: {message: string}): Promise<Element> {
+			fn();
 			await new Promise((resolve) => setTimeout(resolve, 25));
 			return <span>{message}</span>;
-		});
+		}
 
 		const p1 = renderer.render(
 			<div>
@@ -156,13 +152,13 @@ describe("async function component", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("");
-		await expect(p1).resolves.toBe(undefined);
+		expect(await p1).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 1</span></div>");
-		await expect(p2).resolves.toBe(undefined);
+		expect(await p2).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
-		await expect(p3).resolves.toBe(undefined);
+		expect(await p3).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
-		await expect(p4).resolves.toBe(undefined);
+		expect(await p4).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
 		const p6 = renderer.render(
 			<div>
@@ -194,19 +190,19 @@ describe("async function component", () => {
 			</div>,
 			document.body,
 		);
-		await expect(p5).resolves.toBe(undefined);
+		expect(await p5).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 5</span></div>");
-		await expect(p6).resolves.toBe(undefined);
+		expect(await p6).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 6</span></div>");
-		await expect(p7).resolves.toBe(undefined);
+		expect(await p7).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 10</span></div>");
-		await expect(p8).resolves.toBe(undefined);
+		expect(await p8).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 10</span></div>");
-		await expect(p9).resolves.toBe(undefined);
+		expect(await p9).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 10</span></div>");
-		await expect(p10).resolves.toBe(undefined);
+		expect(await p10).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello 10</span></div>");
-		expect(Component).toHaveBeenCalledTimes(4);
+		expect(fn).toHaveBeenCalledTimes(4);
 	});
 
 	test("update", async () => {
@@ -290,25 +286,25 @@ describe("async function component", () => {
 		const p2 = renderer.render(<Parent message="Hello 2" />, document.body);
 		const p3 = renderer.render(<Parent message="Hello 3" />, document.body);
 		const p4 = renderer.render(<Parent message="Hello 4" />, document.body);
-		await expect(p1).resolves.toBe(undefined);
+		expect(await p1).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div>Hello 1</div>");
-		await expect(p2).resolves.toBe(undefined);
+		expect(await p2).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div>Hello 4</div>");
-		await expect(p3).resolves.toBe(undefined);
+		expect(await p3).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div>Hello 4</div>");
 		const p5 = renderer.render(<Parent message="Hello 5" />, document.body);
 		const p6 = renderer.render(<Parent message="Hello 6" />, document.body);
 		const p7 = renderer.render(<Parent message="Hello 7" />, document.body);
 		const p8 = renderer.render(<Parent message="Hello 8" />, document.body);
-		await expect(p4).resolves.toBe(undefined);
+		expect(await p4).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div>Hello 4</div>");
-		await expect(p5).resolves.toBe(undefined);
+		expect(await p5).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div>Hello 5</div>");
-		await expect(p6).resolves.toBe(undefined);
+		expect(await p6).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div>Hello 8</div>");
-		await expect(p7).resolves.toBe(undefined);
+		expect(await p7).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div>Hello 8</div>");
-		await expect(p8).resolves.toBe(undefined);
+		expect(await p8).toBe(document.body.firstChild);
 		expect(document.body.innerHTML).toEqual("<div>Hello 8</div>");
 		expect(Child).toHaveBeenCalledTimes(4);
 	});

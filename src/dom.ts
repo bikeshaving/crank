@@ -11,13 +11,35 @@ const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 // https://github.com/preactjs/preact/blob/05e5d2c0d2d92c5478eeffdbd96681c96500d29f/src/diff/props.js#L111-L117
 const NO_TOUCH = new Set(["form", "list", "type", "size"]);
 
-export class DOMRenderer extends Renderer<Element, Node, undefined> {
+export class DOMRenderer extends Renderer<Node, undefined> {
+	scope(
+		tag: string | symbol,
+		props: Record<string, any>,
+		scope: string | undefined,
+	): string | undefined {
+		switch (tag) {
+			case Portal:
+			case "foreignObject":
+				return undefined;
+			case "svg":
+				return SVG_NAMESPACE;
+			default:
+				return scope;
+		}
+	}
+
 	create<TTag extends string | symbol>(
 		tag: TTag,
-		props: unknown,
+		props: Record<string, any>,
 		ns: string | undefined,
-	): Element {
-		if (typeof tag !== "string") {
+	): Node {
+		if (tag === Portal) {
+			if (!(props.root instanceof Node)) {
+				throw new Error("Portal must have a root of type Node");
+			}
+
+			return props.root;
+		} else if (typeof tag !== "string") {
 			throw new Error(`Unknown tag: ${tag.toString()}`);
 		}
 
@@ -101,23 +123,23 @@ export class DOMRenderer extends Renderer<Element, Node, undefined> {
 
 	arrange<TTag extends string | symbol>(
 		tag: TTag,
-		el: Element | undefined,
+		parent: Node,
 		children: Array<Node | string>,
-	): undefined {
-		if (el === undefined) {
+	): void {
+		if (parent === undefined) {
 			throw new Error("Missing root");
 		}
 
 		if (
-			!(el as any).__crankInnerHTML &&
-			(children.length !== 0 || (el as any).__crankArranged)
+			!(parent as any).__crankInnerHTML &&
+			(children.length !== 0 || (parent as any).__crankArranged)
 		) {
 			if (children.length === 0) {
-				el.textContent = "";
+				parent.textContent = "";
 				return;
 			}
 
-			let oldChild = el.firstChild;
+			let oldChild = parent.firstChild;
 			let i = 0;
 			while (oldChild !== null && i < children.length) {
 				const newChild = children[i];
@@ -129,21 +151,21 @@ export class DOMRenderer extends Renderer<Element, Node, undefined> {
 						oldChild.nodeValue = newChild;
 						oldChild = oldChild.nextSibling;
 					} else {
-						el.insertBefore(document.createTextNode(newChild), oldChild);
+						parent.insertBefore(document.createTextNode(newChild), oldChild);
 					}
 
 					i++;
 				} else if ((oldChild as any).splitText !== undefined) {
 					const nextSibling = oldChild.nextSibling;
-					el.removeChild(oldChild);
+					parent.removeChild(oldChild);
 					oldChild = nextSibling;
 				} else {
-					el.insertBefore(newChild, oldChild);
+					parent.insertBefore(newChild, oldChild);
 					i++;
 					// TODO: this is an optimization for the js frameworks benchmark swap rows, but we need to think a little more about other pathological cases.
 					if (oldChild !== children[i]) {
 						const nextSibling = oldChild.nextSibling;
-						el.removeChild(oldChild);
+						parent.removeChild(oldChild);
 						oldChild = nextSibling;
 					}
 				}
@@ -151,43 +173,25 @@ export class DOMRenderer extends Renderer<Element, Node, undefined> {
 
 			while (oldChild !== null) {
 				const nextSibling = oldChild.nextSibling;
-				el.removeChild(oldChild);
+				parent.removeChild(oldChild);
 				oldChild = nextSibling;
 			}
 
 			for (; i < children.length; i++) {
 				const newChild = children[i];
-				el.appendChild(
+				parent.appendChild(
 					typeof newChild === "string"
 						? document.createTextNode(newChild)
 						: newChild,
 				);
 			}
-			(el as any).__crankArranged = children.length > 0;
-		}
-
-		return undefined; // void :(
-	}
-
-	destroy(tag: string | symbol, el: Element) {
-		if (el.parentNode !== null) {
-			el.parentNode.removeChild(el);
+			(parent as any).__crankArranged = children.length > 0;
 		}
 	}
 
-	scope(
-		tag: string | symbol,
-		props: Record<string, any>,
-		scope: string | undefined,
-	): string | undefined {
-		switch (tag) {
-			case Portal:
-			case "foreignObject":
-				return undefined;
-			case "svg":
-				return SVG_NAMESPACE;
-			default:
-				return scope;
+	remove(tag: string | symbol, child: Element) {
+		if (child.parentNode !== null) {
+			child.parentNode.removeChild(child);
 		}
 	}
 
