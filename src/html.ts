@@ -1,18 +1,31 @@
-import {Portal, Renderer} from "./index";
+import {ElementValue, Portal, Renderer} from "./index";
 
 declare module "./index" {
 	interface EventMap extends GlobalEventHandlersEventMap {}
 }
 
-interface Value {
-	tag: string;
-	props: Record<string, any>;
-	result?: string;
-}
+const voidTags = new Set([
+	"area",
+	"base",
+	"br",
+	"col",
+	"command",
+	"embed",
+	"hr",
+	"img",
+	"input",
+	"keygen",
+	"link",
+	"meta",
+	"param",
+	"source",
+	"track",
+	"wbr",
+]);
 
-function escapeText(text: string): string {
-	return text.replace(/[&<>"']/g, (m) => {
-		switch (m) {
+function escape(text: string): string {
+	return text.replace(/[&<>"']/g, (match) => {
+		switch (match) {
 			case "&":
 				return "&amp;";
 			case "<":
@@ -48,16 +61,16 @@ function printAttrs(props: Record<string, any>): string {
 			case name === "innerHTML":
 				break;
 			case name === "style":
-				attrs.push(`style="${escapeText(printStyle(value))}"`);
+				attrs.push(`style="${escape(printStyle(value))}"`);
 				break;
 			case typeof value === "string":
-				attrs.push(`${escapeText(name)}="${escapeText(value)}"`);
+				attrs.push(`${escape(name)}="${escape(value)}"`);
 				break;
 			case typeof value === "number":
-				attrs.push(`${escapeText(name)}="${value}"`);
+				attrs.push(`${escape(name)}="${value}"`);
 				break;
 			case value === true:
-				attrs.push(`${escapeText(name)}`);
+				attrs.push(`${escape(name)}`);
 				break;
 		}
 	}
@@ -65,43 +78,50 @@ function printAttrs(props: Record<string, any>): string {
 	return attrs.join(" ");
 }
 
-const voidTags = new Set([
-	"area",
-	"base",
-	"br",
-	"col",
-	"command",
-	"embed",
-	"hr",
-	"img",
-	"input",
-	"keygen",
-	"link",
-	"meta",
-	"param",
-	"source",
-	"track",
-	"wbr",
-]);
+interface Value {
+	props: Record<string, any>;
+	result: string;
+}
 
-export class StringRenderer extends Renderer<Value, Value | string, string> {
-	create(tag: string | symbol, props: Record<string, any>): Value {
-		if (typeof tag !== "string") {
-			throw new Error(`Unknown tag: ${tag.toString()}`);
+function joinChildValues(values: Array<Value | string>): string {
+	let result = "";
+	for (const value of values) {
+		if (typeof value === "string") {
+			result += value;
+		} else {
+			result += value.result;
 		}
+	}
 
-		return {tag, props};
+	return result;
+}
+
+export class StringRenderer extends Renderer<Value | string, string> {
+	scope(): void {}
+
+	create(tag: unknown, props: Record<string, any>): Value {
+		return {props, result: ""};
+	}
+
+	read(value: ElementValue<Value>): string {
+		if (Array.isArray(value)) {
+			return joinChildValues(value);
+		} else if (typeof value === "undefined") {
+			return "";
+		} else if (typeof value === "string") {
+			return value;
+		} else {
+			return value.result;
+		}
 	}
 
 	patch(tag: unknown, value: Value, props: Record<string, any>): void {
 		value.props = props;
 	}
 
-	arrange(tag: any, value: Value, childValues: Array<string | Value>): string {
+	arrange(tag: any, value: Value, childValues: Array<Value | string>): void {
 		if (tag === Portal) {
-			return childValues
-				.map((value) => (typeof value === "string" ? value : value.result))
-				.join("");
+			return;
 		}
 
 		const attrs = printAttrs(value.props);
@@ -114,29 +134,22 @@ export class StringRenderer extends Renderer<Value, Value | string, string> {
 			const contents =
 				"innerHTML" in value.props
 					? value.props["innerHTML"]
-					: childValues
-							.map((value) =>
-								typeof value === "string" ? value : value.result,
-							)
-							.join("");
+					: joinChildValues(childValues);
 			result = `${open}${contents}${close}`;
 		}
 
 		value.result = result;
-		return result;
 	}
 
-	destroy(): void {}
+	remove(): void {}
 
 	parse(text: string): string {
 		return text;
 	}
 
 	escape(text: string): string {
-		return escapeText(text);
+		return escape(text);
 	}
-
-	scope(): void {}
 }
 
 export const renderer = new StringRenderer();
