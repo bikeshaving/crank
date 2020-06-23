@@ -270,8 +270,12 @@ type Scope = unknown;
 // TODO: explain
 const RaceLostSymbol = Symbol.for("crank.RaceLost");
 
-function keyOf(child: NarrowedChild): Key {
-	return typeof child === "object" ? child.key : undefined;
+function inUse(el: Element): boolean {
+	return (
+		typeof el._value === "undefined" &&
+		typeof el._ctx === "undefined" &&
+		typeof el._children === "undefined"
+	);
 }
 
 function getChildrenByKey(children: Array<NarrowedChild>): Map<Key, Element> {
@@ -410,18 +414,6 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		return this._getChildValueOrValues(el);
 	}
 
-	_reuse<TTag extends Tag>(el: Element<TTag>): Element<TTag> {
-		if (
-			typeof el._value === "undefined" &&
-			typeof el._ctx === "undefined" &&
-			typeof el._children === "undefined"
-		) {
-			return el;
-		}
-
-		return Element.clone(el);
-	}
-
 	_mount(
 		el: Element,
 		arranger: Element<string | symbol>,
@@ -469,7 +461,9 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 			let child = narrow(childArray[i]);
 			if (typeof child === "object") {
 				if (child.tag !== Copy) {
-					child = this._reuse(child);
+					if (inUse(child)) {
+						child = Element.clone(child);
+					}
 					const result = this._mount(child, arranger, ctx, scope);
 					if (!async && isPromiseLike(result)) {
 						async = true;
@@ -534,8 +528,8 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		for (let j = 0; j < newChildren.length; j++) {
 			let oldChild = oldChildren[i];
 			let newChild = narrow(newChildren[j]);
-			let oldKey = keyOf(oldChild);
-			let newKey = keyOf(newChild);
+			let oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
+			let newKey = typeof newChild === "object" ? newChild.key : undefined;
 			if (seenKeys !== undefined && seenKeys.has(newKey)) {
 				// TODO: warn about a duplicate key
 				newKey = undefined;
@@ -551,7 +545,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 					while (oldChild !== undefined && oldKey !== undefined) {
 						i++;
 						oldChild = oldChildren[i];
-						oldKey = keyOf(oldChild);
+						oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
 					}
 
 					i++;
@@ -568,17 +562,17 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 					seenKeys.add(newKey);
 				}
 			} else {
-				i++;
 				if (childrenByKey !== undefined && newKey !== undefined) {
 					childrenByKey.delete(newKey);
 				}
+
+				i++;
 			}
 
-			// REPLACEMENT
+			// UPDATING
 			let result: Promise<ElementValue<T>> | ElementValue<T>;
 			if (typeof newChild === "object") {
 				if (newChild.tag === Copy) {
-					// TODO: do refs make sense for copies?
 					// TODO: how do asynchronously updating elements work with copies?
 					newChild = oldChild;
 					if (typeof oldChild === "object") {
@@ -586,30 +580,31 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 					} else {
 						result = oldChild;
 					}
-				} else if (typeof oldChild === "object") {
-					if (oldChild.tag === newChild.tag) {
-						if (oldChild.tag === Portal) {
-							if (oldChild._value !== newChild.props.root) {
-								this.arrange(oldChild.tag as symbol, oldChild._value, []);
-								oldChild._value = newChild.props.root;
-							}
-						} else if (oldChild.tag === Raw) {
-							// TODO: implement parse caching here?
+				} else if (
+					typeof oldChild === "object" &&
+					oldChild.tag === newChild.tag
+				) {
+					if (oldChild.tag === Portal) {
+						if (oldChild._value !== newChild.props.root) {
+							this.arrange(oldChild.tag as symbol, oldChild._value, []);
+							oldChild._value = newChild.props.root;
 						}
-
-						if (oldChild !== newChild) {
-							oldChild.props = newChild.props;
-							oldChild.ref = newChild.ref;
-						}
-
-						newChild = oldChild;
-						result = this._update(newChild, arranger, ctx, scope);
-					} else {
-						newChild = this._reuse(newChild);
-						result = this._mount(newChild, arranger, ctx, scope);
+					} else if (oldChild.tag === Raw) {
+						// TODO: implement parse caching here?
 					}
+
+					if (oldChild !== newChild) {
+						oldChild.props = newChild.props;
+						oldChild.ref = newChild.ref;
+					}
+
+					newChild = oldChild;
+					result = this._update(newChild, arranger, ctx, scope);
 				} else {
-					newChild = this._reuse(newChild);
+					if (inUse(newChild)) {
+						newChild = Element.clone(newChild);
+					}
+
 					result = this._mount(newChild, arranger, ctx, scope);
 				}
 			} else {
@@ -633,6 +628,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 
 		el._children =
 			narrowedChildren.length > 1 ? narrowedChildren : narrowedChildren[0];
+
 		// cleanup
 		for (; i < oldChildren.length; i++) {
 			const oldChild = oldChildren[i];
