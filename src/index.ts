@@ -157,6 +157,10 @@ export class Element<TTag extends Tag = Tag> {
 		this.key = key;
 		this.ref = ref;
 	}
+
+	static clone<TTag extends Tag>(el: Element<TTag>): Element<TTag> {
+		return new Element(el.tag, el.props, el.key, el.ref);
+	}
 }
 
 export function isElement(value: any): value is Element {
@@ -409,21 +413,24 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		return this._getChildValueOrValues(el);
 	}
 
+	_reuse<TTag extends Tag>(el: Element<TTag>): Element<TTag> {
+		if (
+			typeof el._value === "undefined" &&
+			typeof el._ctx === "undefined" &&
+			typeof el._children === "undefined"
+		) {
+			return el;
+		}
+
+		return Element.clone(el);
+	}
+
 	_mount<TTag extends Tag>(
 		el: Element<TTag>,
 		arranger: Element<string | symbol>,
 		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
-	): Element {
-		// TODO: separate checking for reused elements from mounting
-		if (
-			typeof el._value !== "undefined" ||
-			typeof el._ctx !== "undefined" ||
-			typeof el._children !== "undefined"
-		) {
-			el = new Element(el.tag, el.props, el.key, el.ref);
-		}
-
+	): void {
 		if (typeof el.tag === "function") {
 			el._ctx = new Context(
 				this,
@@ -437,8 +444,6 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		} else if (el.tag !== Fragment && el.tag !== Raw) {
 			el._value = this.create(el.tag as any, el.props, scope);
 		}
-
-		return el;
 	}
 
 	_update(
@@ -548,10 +553,12 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 
 							newChild = oldChild;
 						} else {
-							newChild = this._mount(newChild, arranger, ctx, scope);
+							newChild = this._reuse(newChild);
+							this._mount(newChild, arranger, ctx, scope);
 						}
 					} else {
-						newChild = this._mount(newChild, arranger, ctx, scope);
+						newChild = this._reuse(newChild);
+						this._mount(newChild, arranger, ctx, scope);
 					}
 
 					result = this._update(newChild, arranger, ctx, scope);
