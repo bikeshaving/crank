@@ -274,6 +274,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		this._cache = new WeakMap();
 	}
 
+	// TODO: allow parent contexts from a different renderer to be passed into here
 	render(children: Children, root?: unknown): Promise<TResult> | TResult {
 		let portal: Element<Portal> | undefined;
 		if (typeof root === "object" && root !== null) {
@@ -282,6 +283,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 
 		if (portal === undefined) {
 			portal = createElement(Portal, {children, root});
+			// TODO: delete (not setting _value is causing a test to fail)
 			portal._value = root;
 			if (typeof root === "object" && root !== null && children != null) {
 				this._cache.set(root, portal);
@@ -293,14 +295,14 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 			}
 		}
 
-		const result = this._update(portal, undefined, undefined, portal) as
+		const result = this._update(portal, portal, undefined, undefined) as
 			| Promise<ElementValue<T>>
 			| ElementValue<T>;
 		if (isPromiseLike(result)) {
 			return result.then(() => {
 				const value = this.read(this._getChildValueOrValues(portal!));
 				if (root == null) {
-					this._unmount(portal!, undefined, portal!, true);
+					this._unmount(portal!, portal!, undefined, true);
 				}
 
 				return value;
@@ -309,7 +311,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 
 		const value = this.read(this._getChildValueOrValues(portal));
 		if (root == null) {
-			this._unmount(portal, undefined, portal, true);
+			this._unmount(portal, portal, undefined, true);
 		}
 
 		return value;
@@ -395,9 +397,9 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 
 	_mount<TTag extends Tag>(
 		el: Element<TTag>,
+		arranger: Element<string | symbol>,
 		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
-		arranger: Element<string | symbol>,
 	) {
 		if (
 			typeof el._value !== "undefined" ||
@@ -424,29 +426,28 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		return el;
 	}
 
-	// TODO: reorder parameters for this stuff
 	_update(
 		el: Element,
+		arranger: Element<string | symbol>,
 		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
-		arranger: Element<string | symbol>,
-	): Promise<ElementValue<unknown>> | ElementValue<unknown> {
+	): Promise<ElementValue<T>> | ElementValue<T> {
 		if (typeof el._ctx === "object") {
 			// TODO: call a separate function like updateComponent so that refresh can return something besides the actual value
-			return el._ctx._update();
+			return el._ctx._update() as Promise<ElementValue<T>> | ElementValue<T>;
 		} else if (el.tag === Raw) {
 			return this._commit(el, scope, []);
 		}
 
-		return this._updateChildren(el, el.props.children, ctx, scope, arranger);
+		return this._updateChildren(el, arranger, ctx, scope, el.props.children);
 	}
 
 	_updateChildren(
 		el: Element,
-		children: Children,
+		arranger: Element<string | symbol>,
 		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
-		arranger: Element<string | symbol>,
+		children: Children,
 	): Promise<ElementValue<T>> | ElementValue<T> {
 		if (typeof el.tag !== "function" && el.tag !== Fragment) {
 			arranger = el as Element<string | symbol>;
@@ -544,13 +545,13 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 
 							newChild = oldChild;
 						} else {
-							newChild = this._mount(newChild, ctx, scope, arranger);
+							newChild = this._mount(newChild, arranger, ctx, scope);
 						}
 					} else {
-						newChild = this._mount(newChild, ctx, scope, arranger);
+						newChild = this._mount(newChild, arranger, ctx, scope);
 					}
 
-					result = this._update(newChild, ctx, scope, arranger) as any;
+					result = this._update(newChild, arranger, ctx, scope);
 				}
 			} else {
 				if (typeof newChild === "string") {
@@ -620,7 +621,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 				}),
 				Promise.all(results),
 			]).finally(() => {
-				graveyard.forEach((el) => this._unmount(el, ctx, arranger, true));
+				graveyard.forEach((el) => this._unmount(el, arranger, ctx, true));
 			});
 
 			const value = resultsP.then(
@@ -642,7 +643,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 			return value;
 		}
 
-		graveyard.forEach((el) => this._unmount(el, ctx, arranger, true));
+		graveyard.forEach((el) => this._unmount(el, arranger, ctx, true));
 		const value = this._commit(
 			el,
 			scope,
@@ -726,9 +727,9 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 
 	_unmount(
 		el: Element,
-		ctx: Context<unknown, TResult> | undefined,
 		arranger: Element,
-		dirty: boolean,
+		ctx: Context<unknown, TResult> | undefined,
+		isRoot: boolean,
 	): void {
 		if (typeof el.tag === "function") {
 			// TODO: move this logic to a Context method
@@ -775,14 +776,14 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 			}
 
 			arranger = el;
-			if (dirty) {
+			if (isRoot) {
 				this.remove(el.tag as symbol | string, el._value);
 			}
 		}
 
 		for (const child of arrayify(el._children)) {
 			if (typeof child === "object") {
-				this._unmount(child, ctx, arranger, false);
+				this._unmount(child, arranger, ctx, false);
 			}
 		}
 
@@ -1347,10 +1348,10 @@ export class Context<TProps = any, T = any> implements EventTarget {
 
 		return this._renderer._updateChildren(
 			this._el,
-			children,
+			this._arranger,
 			this,
 			this._scope,
-			this._arranger,
+			children,
 		);
 	}
 }
