@@ -273,7 +273,6 @@ type Scope = unknown;
 
 const RaceLostSymbol = Symbol.for("crank.RaceLost");
 
-// TODO: think about these types
 export abstract class Renderer<T, TResult = ElementValue<T>> {
 	_cache: WeakMap<object, Element<Portal>>;
 	constructor() {
@@ -289,8 +288,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		// TODO: newPortal is any because replace return value isn’t restricted to the newChild type and type assertions don’t work with tuple destructuring
 		let newPortal: any = createElement(Portal, {root}, children);
 		let result: Promise<ElementValue<T>> | ElementValue<T>;
-		[newPortal, result] = replace(
-			this,
+		[newPortal, result] = this._replace(
 			oldPortal,
 			newPortal,
 			newPortal,
@@ -308,18 +306,18 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 
 		if (isPromiseLike(result)) {
 			return result.then(() => {
-				const value = getChildValueOrValues<T>(newPortal);
+				const value = this._getChildValueOrValues(newPortal);
 				if (root == null) {
-					unmount(this, newPortal, undefined, newPortal, true);
+					this._unmount(newPortal, undefined, newPortal, true);
 				}
 
 				return this.read(value);
 			});
 		}
 
-		const value = getChildValueOrValues<T>(newPortal);
+		const value = this._getChildValueOrValues(newPortal);
 		if (root == null) {
-			unmount(this, newPortal, undefined, newPortal, true);
+			this._unmount(newPortal, undefined, newPortal, true);
 		}
 
 		return this.read(value);
@@ -368,361 +366,432 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 	// TODO: destroy() a method which is called for every intrinsic when it is unmounted
 
 	// TODO: complete() a method which is called once at the end of every independent rendering or refresh or async generator component update
-}
 
-function getChildValues<T>(el: Element): Array<T | string> {
-	let result: Array<T | string> = [];
-	for (const child of arrayify(el._children)) {
-		if (child === undefined) {
-			// pass
-		} else if (typeof child === "string") {
-			result.push(child);
-		} else if (typeof child.tag === "function" || child.tag === Fragment) {
-			result = result.concat(getChildValues(child));
-		} else if (child.tag !== Portal) {
-			// Portals have a value but are opaque to their parents
-			result.push(child._value);
+	// PRIVATE METHODS
+	_getChildValues(el: Element): Array<T | string> {
+		let result: Array<T | string> = [];
+		for (const child of arrayify(el._children)) {
+			if (child === undefined) {
+				// pass
+			} else if (typeof child === "string") {
+				result.push(child);
+			} else if (typeof child.tag === "function" || child.tag === Fragment) {
+				result = result.concat(this._getChildValues(child));
+			} else if (child.tag !== Portal) {
+				// Portals have a value but are opaque to their parents
+				result.push(child._value);
+			}
 		}
+
+		return result;
 	}
 
-	return result;
-}
-
-function getChildValueOrValues<T>(el: Element): ElementValue<T> {
-	const childValues = getChildValues<T>(el);
-	return childValues.length > 1 ? childValues : childValues[0];
-}
-
-function getValue<T>(el: Element): ElementValue<T> {
-	if (typeof el.tag === Portal) {
-		return undefined;
-	} else if (typeof el.tag !== "function" && el.tag !== Fragment) {
-		return el._value;
+	_getChildValueOrValues(el: Element): ElementValue<T> {
+		const childValues = this._getChildValues(el);
+		return childValues.length > 1 ? childValues : childValues[0];
 	}
 
-	return getChildValueOrValues(el);
-}
+	_getValue(el: Element): ElementValue<T> {
+		if (typeof el.tag === Portal) {
+			return undefined;
+		} else if (typeof el.tag !== "function" && el.tag !== Fragment) {
+			return el._value;
+		}
 
-// TODO: maybe it’s just better to have these be methods
-function mount<TTag extends Tag, T>(
-	renderer: Renderer<T, any>,
-	el: Element<TTag>,
-	ctx: Context<TagProps<TTag>, T> | undefined,
-	scope: Scope,
-	arranger: Element<string | symbol>,
-): Element<TTag> {
-	if (
-		typeof el._value !== "undefined" ||
-		typeof el._ctx !== "undefined" ||
-		typeof el._children !== "undefined"
+		return this._getChildValueOrValues(el);
+	}
+
+	_mount<TTag extends Tag>(
+		el: Element<TTag>,
+		ctx: Context<unknown, T> | undefined,
+		scope: Scope,
+		arranger: Element<string | symbol>,
 	) {
-		el = new Element(el.tag, el.props, el.key, el.ref);
-	}
-
-	if (typeof el.tag === "function") {
-		el._ctx = new Context(
-			renderer,
-			el as Element<Component>,
-			ctx,
-			scope,
-			arranger,
-		);
-	} else if (el.tag === Portal) {
-		el._value = el.props.root;
-	} else if (el.tag !== Fragment && el.tag !== Raw) {
-		el._value = renderer.create(el.tag as any, el.props, scope);
-	}
-
-	return el;
-}
-
-// TODO: reorder parameters for this stuff
-function update<T>(
-	renderer: Renderer<T, unknown>,
-	el: Element,
-	ctx: Context<any, T> | undefined,
-	scope: Scope,
-	arranger: Element<string | symbol>,
-): Promise<ElementValue<T>> | ElementValue<T> {
-	el._flags |= Updating;
-	if (typeof el._ctx === "object") {
-		// TODO: call a separate function like updateComponent so that refresh can return something besides the actual value
-		return el._ctx.refresh();
-	} else if (el.tag === Raw) {
-		return commit(renderer, el, scope, []);
-	}
-
-	return updateChildren(renderer, el, el.props.children, ctx, scope, arranger);
-}
-
-function updateChildren<T>(
-	renderer: Renderer<T, any>,
-	el: Element,
-	children: Children,
-	ctx: Context<unknown, T> | undefined,
-	scope: Scope,
-	arranger: Element<string | symbol>,
-): Promise<ElementValue<T>> | ElementValue<T> {
-	if (typeof el.tag !== "function" && el.tag !== Fragment) {
-		arranger = el as Element<string | symbol>;
-		scope = renderer.scope(el.tag as string | symbol, el.props, scope);
-	}
-
-	if (children === undefined) {
-		children = [];
-	} else if (!isNonStringIterable(children)) {
-		children = [children];
-	}
-
-	let async = false;
-	const results: Array<Promise<ElementValue<T>> | ElementValue<T>> = [];
-	const children1: Array<NarrowedChild> = [];
-	const graveyard: Array<Element> = [];
-
-	let childrenByKey: Map<Key, Element> | undefined;
-	let i = 0;
-	// TODO: maybe convert old and new children to an array here
-	for (let newChild1 of children) {
-		let oldChild: NarrowedChild;
-		// TODO: let’s not do an Array.isArray check every iteration
-		if (Array.isArray(el._children)) {
-			oldChild = el._children[i];
-		} else if (i === 0) {
-			oldChild = el._children;
+		if (
+			typeof el._value !== "undefined" ||
+			typeof el._ctx !== "undefined" ||
+			typeof el._children !== "undefined"
+		) {
+			el = new Element(el.tag, el.props, el.key, el.ref);
 		}
 
-		// TODO: newChild does not correctly narrow here because typescript.
-		let newChild = narrow(newChild1);
-		// alignment
-		if (typeof newChild === "object" && typeof newChild.key !== "undefined") {
-			const oldChild1 =
-				el._childrenByKey && el._childrenByKey.get(newChild.key);
-			if (oldChild1 === undefined) {
-				oldChild = undefined;
-			} else {
-				el._childrenByKey!.delete(newChild.key);
-				if (oldChild === oldChild1) {
-					// TODO: does this make sense
-					i++;
-				} else {
-					oldChild = oldChild1;
-				}
+		if (typeof el.tag === "function") {
+			el._ctx = new Context(
+				this,
+				el as Element<Component>,
+				ctx,
+				scope,
+				arranger,
+			);
+		} else if (el.tag === Portal) {
+			el._value = el.props.root;
+		} else if (el.tag !== Fragment && el.tag !== Raw) {
+			el._value = this.create(el.tag as any, el.props, scope);
+		}
+
+		return el;
+	}
+
+	// TODO: reorder parameters for this stuff
+	_update(
+		el: Element,
+		ctx: Context<unknown, T> | undefined,
+		scope: Scope,
+		arranger: Element<string | symbol>,
+	): Promise<ElementValue<T>> | ElementValue<T> {
+		el._flags |= Updating;
+		if (typeof el._ctx === "object") {
+			// TODO: call a separate function like updateComponent so that refresh can return something besides the actual value
+			return el._ctx.refresh();
+		} else if (el.tag === Raw) {
+			return this._commit(el, scope, []);
+		}
+
+		return this._updateChildren(el, el.props.children, ctx, scope, arranger);
+	}
+
+	_updateChildren(
+		el: Element,
+		children: Children,
+		ctx: Context<unknown, T> | undefined,
+		scope: Scope,
+		arranger: Element<string | symbol>,
+	): Promise<ElementValue<T>> | ElementValue<T> {
+		if (typeof el.tag !== "function" && el.tag !== Fragment) {
+			arranger = el as Element<string | symbol>;
+			scope = this.scope(el.tag as string | symbol, el.props, scope);
+		}
+
+		if (children === undefined) {
+			children = [];
+		} else if (!isNonStringIterable(children)) {
+			children = [children];
+		}
+
+		let async = false;
+		const results: Array<Promise<ElementValue<T>> | ElementValue<T>> = [];
+		const children1: Array<NarrowedChild> = [];
+		const graveyard: Array<Element> = [];
+
+		let childrenByKey: Map<Key, Element> | undefined;
+		let i = 0;
+		// TODO: maybe convert old and new children to an array here
+		for (let newChild1 of children) {
+			let oldChild: NarrowedChild;
+			// TODO: let’s not do an Array.isArray check every iteration
+			if (Array.isArray(el._children)) {
+				oldChild = el._children[i];
+			} else if (i === 0) {
+				oldChild = el._children;
 			}
-		} else {
-			if (typeof oldChild === "object" && typeof oldChild.key !== "undefined") {
-				if (Array.isArray(el._children)) {
-					while (
-						typeof oldChild === "object" &&
-						typeof oldChild.key !== "undefined"
-					) {
-						i++;
-						oldChild = el._children[i];
-					}
-				} else {
+
+			// TODO: newChild does not correctly narrow here because typescript.
+			let newChild = narrow(newChild1);
+			// alignment
+			if (typeof newChild === "object" && typeof newChild.key !== "undefined") {
+				const oldChild1 =
+					el._childrenByKey && el._childrenByKey.get(newChild.key);
+				if (oldChild1 === undefined) {
 					oldChild = undefined;
+				} else {
+					el._childrenByKey!.delete(newChild.key);
+					if (oldChild === oldChild1) {
+						// TODO: does this make sense
+						i++;
+					} else {
+						oldChild = oldChild1;
+					}
 				}
-			}
-
-			i++;
-		}
-
-		let result: Promise<ElementValue<T>> | ElementValue<T>;
-		[newChild, result] = replace(
-			renderer,
-			oldChild,
-			newChild,
-			arranger,
-			ctx,
-			scope,
-		);
-		children1.push(newChild);
-		results.push(result);
-		if (typeof oldChild === "object" && oldChild !== newChild) {
-			graveyard.push(oldChild);
-		}
-
-		if (!async && isPromiseLike(result)) {
-			async = true;
-		}
-
-		// add to childrenByKey
-		if (typeof newChild === "object" && typeof newChild.key !== "undefined") {
-			if (childrenByKey === undefined) {
-				childrenByKey = new Map();
-			}
-
-			if (!childrenByKey.has(newChild.key)) {
-				childrenByKey.set(newChild.key, newChild);
-			}
-		}
-	}
-
-	// cleanup
-	if (typeof el._children !== "undefined") {
-		if (Array.isArray(el._children)) {
-			for (; i < el._children.length; i++) {
-				const oldChild = el._children[i];
+			} else {
 				if (
 					typeof oldChild === "object" &&
-					typeof oldChild.key === "undefined"
+					typeof oldChild.key !== "undefined"
 				) {
-					graveyard.push(oldChild);
+					if (Array.isArray(el._children)) {
+						while (
+							typeof oldChild === "object" &&
+							typeof oldChild.key !== "undefined"
+						) {
+							i++;
+							oldChild = el._children[i];
+						}
+					} else {
+						oldChild = undefined;
+					}
+				}
+
+				i++;
+			}
+
+			let result: Promise<ElementValue<T>> | ElementValue<T>;
+			[newChild, result] = this._replace(
+				oldChild,
+				newChild,
+				arranger,
+				ctx,
+				scope,
+			);
+			children1.push(newChild);
+			results.push(result);
+			if (typeof oldChild === "object" && oldChild !== newChild) {
+				graveyard.push(oldChild);
+			}
+
+			if (!async && isPromiseLike(result)) {
+				async = true;
+			}
+
+			// add to childrenByKey
+			if (typeof newChild === "object" && typeof newChild.key !== "undefined") {
+				if (childrenByKey === undefined) {
+					childrenByKey = new Map();
+				}
+
+				if (!childrenByKey.has(newChild.key)) {
+					childrenByKey.set(newChild.key, newChild);
 				}
 			}
-		} else if (
-			i === 0 &&
-			typeof el._children === "object" &&
-			typeof el._children.key === "undefined"
-		) {
-			graveyard.push(el._children);
 		}
-	}
 
-	// TODO: likely where logic for asynchronous unmounting will go
-	if (typeof el._childrenByKey === "object") {
-		graveyard.push(...el._childrenByKey.values());
-	}
-
-	el._children = children1.length > 1 ? children1 : children1[0];
-	el._childrenByKey = childrenByKey;
-	if (async) {
-		let onNewValue!: Function;
-		const newValueP = new Promise<any>((resolve) => (onNewValue = resolve));
-		const resultsP = Promise.race([
-			newValueP.then(() => {
-				// returning Promise.reject instead of throwing a promise causes a race condition
-				throw RaceLostSymbol;
-			}),
-			Promise.all(results),
-		]).finally(() => {
-			graveyard.forEach((el) => unmount(renderer, el, ctx, arranger, true));
-		});
-
-		const value = resultsP.then(
-			(results) => commit(renderer, el, scope, normalize(results)),
-			(err) => {
-				if (err === RaceLostSymbol) {
-					return newValueP;
+		// cleanup
+		if (typeof el._children !== "undefined") {
+			if (Array.isArray(el._children)) {
+				for (; i < el._children.length; i++) {
+					const oldChild = el._children[i];
+					if (
+						typeof oldChild === "object" &&
+						typeof oldChild.key === "undefined"
+					) {
+						graveyard.push(oldChild);
+					}
 				}
+			} else if (
+				i === 0 &&
+				typeof el._children === "object" &&
+				typeof el._children.key === "undefined"
+			) {
+				graveyard.push(el._children);
+			}
+		}
 
-				throw err;
-			},
+		// TODO: likely where logic for asynchronous unmounting will go
+		if (typeof el._childrenByKey === "object") {
+			graveyard.push(...el._childrenByKey.values());
+		}
+
+		el._children = children1.length > 1 ? children1 : children1[0];
+		el._childrenByKey = childrenByKey;
+		if (async) {
+			let onNewValue!: Function;
+			const newValueP = new Promise<any>((resolve) => (onNewValue = resolve));
+			const resultsP = Promise.race([
+				newValueP.then(() => {
+					// returning Promise.reject instead of throwing a promise causes a race condition
+					throw RaceLostSymbol;
+				}),
+				Promise.all(results),
+			]).finally(() => {
+				graveyard.forEach((el) => this._unmount(el, ctx, arranger, true));
+			});
+
+			const value = resultsP.then(
+				(results) => this._commit(el, scope, normalize(results)),
+				(err) => {
+					if (err === RaceLostSymbol) {
+						return newValueP;
+					}
+
+					throw err;
+				},
+			);
+
+			if (typeof el._onNewValue === "function") {
+				el._onNewValue(value);
+			}
+
+			el._onNewValue = onNewValue;
+			return value;
+		}
+
+		graveyard.forEach((el) => this._unmount(el, ctx, arranger, true));
+		const value = this._commit(
+			el,
+			scope,
+			normalize(results as Array<ElementValue<T>>),
 		);
 
 		if (typeof el._onNewValue === "function") {
 			el._onNewValue(value);
+			el._onNewValue = undefined;
 		}
 
-		el._onNewValue = onNewValue;
 		return value;
 	}
 
-	graveyard.forEach((el) => unmount(renderer, el, ctx, arranger, true));
-	const value = commit(
-		renderer,
-		el,
-		scope,
-		normalize(results as Array<ElementValue<T>>),
-	);
-
-	if (typeof el._onNewValue === "function") {
-		el._onNewValue(value);
-		el._onNewValue = undefined;
-	}
-
-	return value;
-}
-
-function replace<T>(
-	renderer: Renderer<T, unknown>,
-	oldChild: NarrowedChild,
-	newChild: NarrowedChild,
-	arranger: Element<string | symbol>,
-	ctx: Context | undefined,
-	scope: Scope,
-): [NarrowedChild, Promise<ElementValue<T>> | ElementValue<T>] {
-	let result: Promise<ElementValue<T>> | ElementValue<T>;
-	if (typeof newChild === "object") {
-		if (newChild.tag === Copy) {
-			// TODO: do refs make sense for copies?
-			newChild = oldChild;
-			if (typeof oldChild === "object") {
-				result = getValue<T>(oldChild);
-			} else {
-				result = oldChild;
-			}
-		} else {
-			if (typeof oldChild === "object") {
-				if (oldChild.tag === newChild.tag) {
-					if (oldChild.tag === Portal) {
-						if (oldChild._value !== newChild.props.root) {
-							renderer.arrange(oldChild.tag as symbol, oldChild._value, []);
-							oldChild._value = newChild.props.root;
-						}
-					} else if (oldChild.tag === Raw) {
-						// TODO:
-					}
-
-					if (oldChild !== newChild) {
-						oldChild.props = newChild.props;
-						oldChild.ref = newChild.ref;
-					}
-
-					newChild = oldChild;
+	_replace(
+		oldChild: NarrowedChild,
+		newChild: NarrowedChild,
+		arranger: Element<string | symbol>,
+		ctx: Context | undefined,
+		scope: Scope,
+	): [NarrowedChild, Promise<ElementValue<T>> | ElementValue<T>] {
+		let result: Promise<ElementValue<T>> | ElementValue<T>;
+		if (typeof newChild === "object") {
+			if (newChild.tag === Copy) {
+				// TODO: do refs make sense for copies?
+				// TODO: how do asynchronously updating elements work with copies?
+				newChild = oldChild;
+				if (typeof oldChild === "object") {
+					result = this._getValue(oldChild);
 				} else {
-					newChild = mount(renderer, newChild, ctx, scope, arranger);
+					result = oldChild;
 				}
 			} else {
-				newChild = mount(renderer, newChild, ctx, scope, arranger);
+				if (typeof oldChild === "object") {
+					if (oldChild.tag === newChild.tag) {
+						if (oldChild.tag === Portal) {
+							if (oldChild._value !== newChild.props.root) {
+								this.arrange(oldChild.tag as symbol, oldChild._value, []);
+								oldChild._value = newChild.props.root;
+							}
+						} else if (oldChild.tag === Raw) {
+							// TODO:
+						}
+
+						if (oldChild !== newChild) {
+							oldChild.props = newChild.props;
+							oldChild.ref = newChild.ref;
+						}
+
+						newChild = oldChild;
+					} else {
+						newChild = this._mount(newChild, ctx, scope, arranger);
+					}
+				} else {
+					newChild = this._mount(newChild, ctx, scope, arranger);
+				}
+
+				result = this._update(newChild, ctx, scope, arranger);
+			}
+		} else {
+			if (typeof newChild === "string") {
+				newChild = this.escape(newChild, scope);
 			}
 
-			result = update(renderer, newChild, ctx, scope, arranger);
-		}
-	} else {
-		if (typeof newChild === "string") {
-			newChild = renderer.escape(newChild, scope);
+			result = newChild;
 		}
 
-		result = newChild;
+		return [newChild, result];
 	}
 
-	return [newChild, result];
-}
-
-function commit<T>(
-	renderer: Renderer<T, any>,
-	el: Element,
-	scope: Scope,
-	childValues: Array<T | string>,
-): Array<T | string> | T | string | undefined {
-	let value: ElementValue<T> =
-		childValues.length > 1 ? childValues : childValues[0];
-	// TODO: put this in ctx somehow...
-	if (typeof el.tag === "function") {
-		const ctx = el._ctx!;
-		if (!(el._flags & Unmounted) && !(el._flags & Updating)) {
-			renderer.arrange(
-				ctx._arranger.tag,
-				ctx._arranger._value,
-				getChildValues(ctx._arranger),
-			);
-		}
-
-		if (typeof ctx._schedules !== "undefined" && ctx._schedules.size > 0) {
-			// We have to clear the set of callbacks before calling them, because a callback which refreshes the component would otherwise cause a stack overflow.
-			const callbacks = Array.from(ctx._schedules);
-			ctx._schedules.clear();
-			const value1 = renderer.read(value);
-			for (const callback of callbacks) {
-				callback(value1);
+	_commit(
+		el: Element,
+		scope: Scope,
+		childValues: Array<T | string>,
+	): Array<T | string> | T | string | undefined {
+		let value: ElementValue<T> =
+			childValues.length > 1 ? childValues : childValues[0];
+		// TODO: put this in ctx somehow...
+		if (typeof el.tag === "function") {
+			const ctx = el._ctx!;
+			if (!(el._flags & Unmounted) && !(el._flags & Updating)) {
+				this.arrange(
+					ctx._arranger.tag,
+					ctx._arranger._value,
+					this._getChildValues(ctx._arranger),
+				);
 			}
+
+			if (typeof ctx._schedules !== "undefined" && ctx._schedules.size > 0) {
+				// We have to clear the set of callbacks before calling them, because a callback which refreshes the component would otherwise cause a stack overflow.
+				const callbacks = Array.from(ctx._schedules);
+				ctx._schedules.clear();
+				const value1 = this.read(value);
+				for (const callback of callbacks) {
+					callback(value1);
+				}
+			}
+
+			if (typeof ctx._listeners !== "undefined" && ctx._listeners.length > 0) {
+				for (const child of childValues) {
+					for (const record of ctx._listeners) {
+						if (isEventTarget(child)) {
+							child.addEventListener(
+								record.type,
+								record.callback,
+								record.options,
+							);
+						}
+					}
+				}
+			}
+		} else if (el.tag === Portal) {
+			el._value = el.props.root;
+			this.arrange(Portal, el._value, childValues);
+			value = undefined;
+		} else if (el.tag === Raw) {
+			if (typeof el.props.value === "string") {
+				el._value = this.parse(el.props.value, scope);
+			} else {
+				el._value = el.props.value;
+			}
+
+			value = el._value;
+		} else if (el.tag !== Fragment) {
+			this.patch(el.tag, el._value, el.props, scope);
+			this.arrange(el.tag, el._value, childValues);
+			value = el._value;
 		}
 
-		if (typeof ctx._listeners !== "undefined" && ctx._listeners.length > 0) {
-			for (const child of childValues) {
-				for (const record of ctx._listeners) {
-					if (isEventTarget(child)) {
-						child.addEventListener(
+		if (typeof el.ref === "function") {
+			el.ref(this.read(value));
+		}
+
+		el._flags &= ~Updating;
+		return value;
+	}
+
+	_unmount(
+		el: Element,
+		ctx: Context<unknown, T> | undefined,
+		arranger: Element,
+		dirty: boolean,
+	): void {
+		if (typeof el.tag === "function") {
+			// setting unmounted flag here is necessary because of some kind of race condition
+			el._flags |= Unmounted;
+			ctx = el._ctx!;
+			clearEventListeners(ctx);
+			if (typeof ctx._cleanups === "object") {
+				const value = this.read(this._getValue(el));
+				for (const cleanup of ctx._cleanups) {
+					cleanup(value);
+				}
+
+				ctx._cleanups = undefined;
+			}
+
+			if (!(el._flags & Finished)) {
+				el._flags |= Finished;
+				resume(ctx);
+
+				if (
+					typeof ctx._iterator === "object" &&
+					typeof ctx._iterator.return === "function"
+				) {
+					// TODO: handle async generator rejections
+					ctx._iterator.return();
+				}
+			}
+		} else if (el.tag === Portal) {
+			arranger = el;
+			this.arrange(Portal, el._value, []);
+		} else if (el.tag !== Fragment) {
+			const listeners = getListeners(ctx, arranger);
+			if (listeners !== undefined && listeners.length > 0) {
+				for (const record of listeners) {
+					if (isEventTarget(el._value)) {
+						el._value.removeEventListener(
 							record.type,
 							record.callback,
 							record.options,
@@ -730,100 +799,24 @@ function commit<T>(
 					}
 				}
 			}
-		}
-	} else if (el.tag === Portal) {
-		el._value = el.props.root;
-		renderer.arrange(Portal, el._value, childValues);
-		value = undefined;
-	} else if (el.tag === Raw) {
-		if (typeof el.props.value === "string") {
-			el._value = renderer.parse(el.props.value, scope);
-		} else {
-			el._value = el.props.value;
-		}
 
-		value = el._value;
-	} else if (el.tag !== Fragment) {
-		renderer.patch(el.tag, el._value, el.props, scope);
-		renderer.arrange(el.tag, el._value, childValues);
-		value = el._value;
-	}
-
-	if (typeof el.ref === "function") {
-		el.ref(renderer.read(value));
-	}
-
-	el._flags &= ~Updating;
-	return value;
-}
-
-// TODO: fix catching of async generator return errors
-function unmount<T>(
-	renderer: Renderer<T, any>,
-	el: Element,
-	ctx: Context<unknown, T> | undefined,
-	arranger: Element,
-	dirty: boolean,
-): void {
-	if (typeof el.tag === "function") {
-		// setting unmounted flag here is necessary because of some kind of race condition
-		el._flags |= Unmounted;
-		ctx = el._ctx!;
-		clearEventListeners(ctx);
-		if (typeof ctx._cleanups === "object") {
-			const value = renderer.read(getValue<T>(el));
-			for (const cleanup of ctx._cleanups) {
-				cleanup(value);
-			}
-
-			ctx._cleanups = undefined;
-		}
-
-		if (!(el._flags & Finished)) {
-			el._flags |= Finished;
-			resume(ctx);
-
-			if (
-				typeof ctx._iterator === "object" &&
-				typeof ctx._iterator.return === "function"
-			) {
-				// TODO: handle async generator rejections
-				ctx._iterator.return();
-			}
-		}
-	} else if (el.tag === Portal) {
-		arranger = el;
-		renderer.arrange(Portal, el._value, []);
-	} else if (el.tag !== Fragment) {
-		const listeners = getListeners(ctx, arranger);
-		if (listeners !== undefined && listeners.length > 0) {
-			for (const record of listeners) {
-				if (isEventTarget(el._value)) {
-					el._value.removeEventListener(
-						record.type,
-						record.callback,
-						record.options,
-					);
-				}
+			arranger = el;
+			if (dirty) {
+				this.remove(el.tag as symbol | string, el._value);
 			}
 		}
 
-		arranger = el;
-		if (dirty) {
-			renderer.remove(el.tag as symbol | string, el._value);
+		for (const child of arrayify(el._children)) {
+			if (typeof child === "object") {
+				this._unmount(child, ctx, arranger, false);
+			}
 		}
-	}
 
-	for (const child of arrayify(el._children)) {
-		if (typeof child === "object") {
-			unmount(renderer, child, ctx, arranger, false);
-		}
+		el._value = undefined;
+		el._children = undefined;
+		// TODO: uncomment
+		// el._ctx = undefined;
 	}
-
-	el._value = undefined;
-	el._children = undefined;
-	// TODO: uncomment
-	// el._ctx = undefined;
 }
 
 export interface ProvisionMap {}
@@ -843,8 +836,8 @@ export class Context<TProps = any, T = any> implements EventTarget {
 	_enqueuedPending: Promise<unknown> | undefined;
 	_inflightResult: Promise<ElementValue<T>> | undefined;
 	_enqueuedResult: Promise<ElementValue<T>> | undefined;
-	_schedules: Set<(value: ElementValue<T>) => unknown> | undefined;
-	_cleanups: Set<(value: ElementValue<T>) => unknown> | undefined;
+	_schedules: Set<(value: unknown) => unknown> | undefined;
+	_cleanups: Set<(value: unknown) => unknown> | undefined;
 	constructor(
 		renderer: Renderer<T, any>,
 		el: Element<Component>,
@@ -892,7 +885,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 	}
 
 	get value(): ElementValue<T | string> {
-		return getValue<T>(this._el);
+		return this._renderer.read(this._renderer._getChildValueOrValues(this._el));
 	}
 
 	*[Symbol.iterator](): Generator<TProps> {
@@ -1002,7 +995,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 		}
 
 		this._listeners.push(record);
-		for (const value of getChildValues(this._el)) {
+		for (const value of this._renderer._getChildValues(this._el)) {
 			if (isEventTarget(value)) {
 				value.addEventListener(record.type, record.callback, record.options);
 			}
@@ -1031,7 +1024,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 		}
 
 		this._listeners.splice(i, 1);
-		for (const value of getChildValues(this._el)) {
+		for (const value of this._renderer._getChildValues(this._el)) {
 			if (isEventTarget(value)) {
 				value.removeEventListener(record.type, record.callback, record.options);
 			}
@@ -1188,7 +1181,7 @@ function step<T>(
 ): [Promise<unknown> | undefined, Promise<ElementValue<T>> | ElementValue<T>] {
 	const el = ctx._el;
 	if (el._flags & Finished) {
-		return [undefined, getValue<T>(el)];
+		return [undefined, ctx._renderer._getValue(el)];
 	}
 
 	let initial = false;
@@ -1224,7 +1217,7 @@ function step<T>(
 		oldValue = ctx._oldValue;
 		ctx._oldValue = undefined;
 	} else {
-		oldValue = getValue<T>(el);
+		oldValue = ctx._renderer._getValue(el);
 	}
 
 	// TODO: clean up/deduplicate logic here
@@ -1371,8 +1364,7 @@ function updateComponentChildren<T>(
 		children = createElement(Fragment, null, children);
 	}
 
-	return updateChildren(
-		ctx._renderer,
+	return ctx._renderer._updateChildren(
 		ctx._el,
 		children,
 		ctx,
@@ -1461,7 +1453,7 @@ function getListeners(
 
 function clearEventListeners(ctx: Context): void {
 	if (typeof ctx._listeners !== "undefined" && ctx._listeners.length > 0) {
-		for (const value of getChildValues(ctx._el)) {
+		for (const value of ctx._renderer._getChildValues(ctx._el)) {
 			if (isEventTarget(value)) {
 				for (const record of ctx._listeners) {
 					value.removeEventListener(
