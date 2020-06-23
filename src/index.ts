@@ -758,6 +758,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		dirty: boolean,
 	): void {
 		if (typeof el.tag === "function") {
+			// TODO: move this logic to a Context method
 			// setting unmounted flag here is necessary because of some kind of race condition
 			el._flags |= Unmounted;
 			ctx = el._ctx!;
@@ -773,7 +774,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 
 			if (!(el._flags & Finished)) {
 				el._flags |= Finished;
-				resume(ctx);
+				ctx._resume();
 
 				if (
 					typeof ctx._iterator === "object" &&
@@ -933,8 +934,8 @@ export class Context<TProps = any, T = any> implements EventTarget {
 			return;
 		}
 
-		resume(this);
-		return run(this);
+		this._resume();
+		return this._run();
 	}
 
 	schedule(callback: (value: unknown) => unknown): void {
@@ -1132,248 +1133,244 @@ export class Context<TProps = any, T = any> implements EventTarget {
 			setEventProperty(ev, "currentTarget", null);
 		}
 	}
-}
 
-function resume(ctx: Context) {
-	if (typeof ctx._onProps === "function") {
-		ctx._onProps(ctx._el.props!);
-		ctx._onProps = undefined;
-	} else {
-		ctx._el._flags |= Available;
-	}
-}
-
-// TODO: fix the type
-function run<T>(
-	ctx: Context<unknown, T>,
-): Promise<ElementValue<T>> | ElementValue<T> {
-	const el = ctx._el;
-	if (typeof ctx._inflightPending === "undefined") {
-		const [pending, result] = step(ctx);
-		if (isPromiseLike(pending)) {
-			ctx._inflightPending = pending.finally(() => advance(ctx));
-		}
-
-		if (isPromiseLike(result)) {
-			ctx._inflightResult = result;
-		}
-
-		return result;
-	} else if (el._flags & AsyncGen) {
-		return ctx._inflightResult;
-	} else if (typeof ctx._enqueuedPending === "undefined") {
-		let resolve: Function;
-		ctx._enqueuedPending = ctx._inflightPending
-			.then(() => {
-				const [pending, result] = step(ctx);
-				resolve(result);
-				return pending;
-			})
-			.finally(() => advance(ctx));
-		ctx._enqueuedResult = new Promise((resolve1) => (resolve = resolve1));
-	}
-
-	return ctx._enqueuedResult;
-}
-
-function step<T>(
-	ctx: Context<any, T>,
-): [Promise<unknown> | undefined, Promise<ElementValue<T>> | ElementValue<T>] {
-	const el = ctx._el;
-	if (el._flags & Finished) {
-		return [undefined, ctx._renderer._getValue(el)];
-	}
-
-	let initial = false;
-	el._flags |= Stepping;
-	if (typeof ctx._iterator === "undefined") {
-		initial = true;
-		clearEventListeners(ctx);
-		const value: ChildIterator | PromiseLike<Child> | Child = el.tag.call(
-			ctx,
-			el.props!,
-		);
-		if (isIteratorLike(value)) {
-			ctx._iterator = value;
-		} else if (isPromiseLike(value)) {
-			const value1 = upgradePromiseLike(value);
-			const pending = value1.catch(() => undefined); // void :(
-			const result = value1.then((value) =>
-				updateComponentChildren(ctx, value),
-			);
-			el._flags &= ~Stepping;
-			return [pending, result];
+	// PRIVATE METHODS
+	_resume() {
+		if (typeof this._onProps === "function") {
+			this._onProps(this._el.props!);
+			this._onProps = undefined;
 		} else {
-			const result = updateComponentChildren(ctx, value);
-			el._flags &= ~Stepping;
-			return [undefined, result];
+			this._el._flags |= Available;
 		}
 	}
 
-	let oldValue: Promise<ElementValue<T>> | ElementValue<T>;
-	if (initial) {
-		oldValue = undefined;
-	} else if (typeof ctx._oldValue === "object") {
-		oldValue = ctx._oldValue;
-		ctx._oldValue = undefined;
-	} else {
-		oldValue = ctx._renderer._getValue(el);
+	_run(): Promise<ElementValue<T>> | ElementValue<T> {
+		const el = this._el;
+		if (typeof this._inflightPending === "undefined") {
+			const [pending, result] = this._step();
+			if (isPromiseLike(pending)) {
+				this._inflightPending = pending.finally(() => this._advance());
+			}
+
+			if (isPromiseLike(result)) {
+				this._inflightResult = result;
+			}
+
+			return result;
+		} else if (el._flags & AsyncGen) {
+			return this._inflightResult;
+		} else if (typeof this._enqueuedPending === "undefined") {
+			let resolve: Function;
+			this._enqueuedPending = this._inflightPending
+				.then(() => {
+					const [pending, result] = this._step();
+					resolve(result);
+					return pending;
+				})
+				.finally(() => this._advance());
+			this._enqueuedResult = new Promise((resolve1) => (resolve = resolve1));
+		}
+
+		return this._enqueuedResult;
 	}
 
-	// TODO: clean up/deduplicate logic here
-	const iteration = ctx._iterator.next(oldValue);
-	el._flags &= ~Stepping;
-	if (isPromiseLike(iteration)) {
+	_step(): [
+		Promise<unknown> | undefined,
+		Promise<ElementValue<T>> | ElementValue<T>,
+	] {
+		const el = this._el;
+		if (el._flags & Finished) {
+			return [undefined, this._renderer._getValue(el)];
+		}
+
+		let initial = false;
+		el._flags |= Stepping;
+		if (typeof this._iterator === "undefined") {
+			initial = true;
+			clearEventListeners(this);
+			const value: ChildIterator | PromiseLike<Child> | Child = el.tag.call(
+				this,
+				el.props!,
+			);
+			if (isIteratorLike(value)) {
+				this._iterator = value;
+			} else if (isPromiseLike(value)) {
+				const value1 = upgradePromiseLike(value);
+				const pending = value1.catch(() => undefined); // void :(
+				const result = value1.then((value) => this._updateChildren(value));
+				el._flags &= ~Stepping;
+				return [pending, result];
+			} else {
+				const result = this._updateChildren(value);
+				el._flags &= ~Stepping;
+				return [undefined, result];
+			}
+		}
+
+		let oldValue: Promise<ElementValue<T>> | ElementValue<T>;
 		if (initial) {
-			el._flags |= AsyncGen;
+			oldValue = undefined;
+		} else if (typeof this._oldValue === "object") {
+			oldValue = this._oldValue;
+			this._oldValue = undefined;
+		} else {
+			oldValue = this._renderer._getValue(el);
 		}
 
-		const pending = iteration.catch(() => {});
-		const result = iteration.then((iteration) => {
-			el._flags &= ~Iterating;
-			if (iteration.done) {
-				el._flags |= Finished;
+		// TODO: clean up/deduplicate logic here
+		const iteration = this._iterator.next(oldValue);
+		el._flags &= ~Stepping;
+		if (isPromiseLike(iteration)) {
+			if (initial) {
+				el._flags |= AsyncGen;
 			}
 
-			try {
-				let result = updateComponentChildren(ctx, iteration.value);
-				if (isPromiseLike(result)) {
-					ctx._oldValue = result;
-					if (
-						!(el._flags & Finished) &&
-						typeof ctx._iterator!.throw === "function"
-					) {
-						result = result.catch((err) => {
-							resume(ctx);
-							const iteration = (ctx._iterator as AsyncGenerator<
-								Children,
-								Children
-							>).throw(err);
-							return iteration.then((iteration) => {
-								if (iteration.done) {
-									el._flags |= Finished;
-								}
+			const pending = iteration.catch(() => {});
+			const result = iteration.then((iteration) => {
+				el._flags &= ~Iterating;
+				if (iteration.done) {
+					el._flags |= Finished;
+				}
 
-								return updateComponentChildren(ctx, iteration.value);
+				try {
+					let result = this._updateChildren(iteration.value);
+					if (isPromiseLike(result)) {
+						this._oldValue = result;
+						if (
+							!(el._flags & Finished) &&
+							typeof this._iterator!.throw === "function"
+						) {
+							result = result.catch((err) => {
+								this._resume();
+								const iteration = (this._iterator as AsyncGenerator<
+									Children,
+									Children
+								>).throw(err);
+								return iteration.then((iteration) => {
+									if (iteration.done) {
+										el._flags |= Finished;
+									}
+
+									return this._updateChildren(iteration.value);
+								});
 							});
-						});
-					}
-				}
-
-				return result;
-			} catch (err) {
-				if (
-					el._flags & Finished ||
-					typeof ctx._iterator!.throw !== "function"
-				) {
-					throw err;
-				}
-
-				const iteration = (ctx._iterator as AsyncGenerator<
-					Children,
-					Children
-				>).throw(err);
-				return iteration.then((iteration) => {
-					if (iteration.done) {
-						el._flags |= Finished;
+						}
 					}
 
-					return updateComponentChildren(ctx, iteration.value);
-				});
-			}
-		});
+					return result;
+				} catch (err) {
+					if (
+						el._flags & Finished ||
+						typeof this._iterator!.throw !== "function"
+					) {
+						throw err;
+					}
 
-		return [pending, result];
-	}
-
-	el._flags &= ~Iterating;
-	if (initial) {
-		el._flags |= SyncGen;
-	}
-
-	if (iteration.done) {
-		el._flags |= Finished;
-	}
-
-	try {
-		let result = updateComponentChildren(ctx, iteration.value);
-		if (isPromiseLike(result)) {
-			if (
-				!(el._flags & Finished) &&
-				typeof ctx._iterator.throw === "function"
-			) {
-				result = result.catch((err) => {
-					el._flags |= Stepping;
-					const iteration = (ctx._iterator as Generator<
+					const iteration = (this._iterator as AsyncGenerator<
 						Children,
 						Children
 					>).throw(err);
-					el._flags &= ~Stepping;
-					if (iteration.done) {
-						el._flags |= Finished;
-					}
+					return iteration.then((iteration) => {
+						if (iteration.done) {
+							el._flags |= Finished;
+						}
 
-					return updateComponentChildren(ctx, iteration.value);
-				});
-			}
-			const pending = result.catch(() => {});
+						return this._updateChildren(iteration.value);
+					});
+				}
+			});
+
 			return [pending, result];
 		}
 
-		return [undefined, result];
-	} catch (err) {
-		if (el._flags & Finished || typeof ctx._iterator.throw !== "function") {
-			throw err;
+		el._flags &= ~Iterating;
+		if (initial) {
+			el._flags |= SyncGen;
 		}
 
-		el._flags |= Stepping;
-		const iteration = (ctx._iterator as Generator<Children, Children>).throw(
-			err,
-		);
-		el._flags &= ~Stepping;
 		if (iteration.done) {
 			el._flags |= Finished;
 		}
 
-		const result = updateComponentChildren(ctx, iteration.value);
-		if (isPromiseLike(result)) {
-			const pending = result.catch(() => {});
-			return [pending, result];
+		try {
+			let result = this._updateChildren(iteration.value);
+			if (isPromiseLike(result)) {
+				if (
+					!(el._flags & Finished) &&
+					typeof this._iterator.throw === "function"
+				) {
+					result = result.catch((err) => {
+						el._flags |= Stepping;
+						const iteration = (this._iterator as Generator<
+							Children,
+							Children
+						>).throw(err);
+						el._flags &= ~Stepping;
+						if (iteration.done) {
+							el._flags |= Finished;
+						}
+
+						return this._updateChildren(iteration.value);
+					});
+				}
+				const pending = result.catch(() => {});
+				return [pending, result];
+			}
+
+			return [undefined, result];
+		} catch (err) {
+			if (el._flags & Finished || typeof this._iterator.throw !== "function") {
+				throw err;
+			}
+
+			el._flags |= Stepping;
+			const iteration = (this._iterator as Generator<Children, Children>).throw(
+				err,
+			);
+			el._flags &= ~Stepping;
+			if (iteration.done) {
+				el._flags |= Finished;
+			}
+
+			const result = this._updateChildren(iteration.value);
+			if (isPromiseLike(result)) {
+				const pending = result.catch(() => {});
+				return [pending, result];
+			}
+
+			return [undefined, result];
+		}
+	}
+
+	_advance(): void {
+		const el = this._el;
+		this._inflightPending = this._enqueuedPending;
+		this._inflightResult = this._enqueuedResult;
+		this._enqueuedPending = undefined;
+		this._enqueuedResult = undefined;
+		if (el._flags & AsyncGen && !(el._flags & Finished)) {
+			this._run();
+		}
+	}
+
+	_updateChildren(
+		children: Children,
+	): Promise<ElementValue<T>> | ElementValue<T> {
+		if (isNonStringIterable(children)) {
+			children = createElement(Fragment, null, children);
 		}
 
-		return [undefined, result];
+		return this._renderer._updateChildren(
+			this._el,
+			children,
+			this,
+			this._scope,
+			this._arranger,
+		);
 	}
 }
 
-function advance(ctx: Context): void {
-	const el = ctx._el;
-	ctx._inflightPending = ctx._enqueuedPending;
-	ctx._inflightResult = ctx._enqueuedResult;
-	ctx._enqueuedPending = undefined;
-	ctx._enqueuedResult = undefined;
-	if (el._flags & AsyncGen && !(el._flags & Finished)) {
-		run(ctx);
-	}
-}
-
-function updateComponentChildren<T>(
-	ctx: Context<unknown, T>,
-	children: Children,
-): Promise<ElementValue<T>> | ElementValue<T> {
-	if (isNonStringIterable(children)) {
-		children = createElement(Fragment, null, children);
-	}
-
-	return ctx._renderer._updateChildren(
-		ctx._el,
-		children,
-		ctx,
-		ctx._scope,
-		ctx._arranger,
-	);
-}
-
-// event stuff
+// EVENT UTILITY FUNCTIONS
 const NONE = 0;
 const CAPTURING_PHASE = 1;
 const AT_TARGET = 2;
