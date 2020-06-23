@@ -298,24 +298,26 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 			}
 		}
 
-		const result = this._update(portal, undefined, undefined, portal);
+		const result = this._update(portal, undefined, undefined, portal) as
+			| Promise<ElementValue<T>>
+			| ElementValue<T>;
 		if (isPromiseLike(result)) {
 			return result.then(() => {
-				const value = this._getChildValueOrValues(portal!);
+				const value = this.read(this._getChildValueOrValues(portal!));
 				if (root == null) {
 					this._unmount(portal!, undefined, portal!, true);
 				}
 
-				return this.read(value);
+				return value;
 			});
 		}
 
-		const value = this._getChildValueOrValues(portal);
+		const value = this.read(this._getChildValueOrValues(portal));
 		if (root == null) {
 			this._unmount(portal, undefined, portal, true);
 		}
 
-		return this.read(value);
+		return value;
 	}
 
 	scope<TTag extends string | symbol>(
@@ -398,7 +400,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 
 	_mount<TTag extends Tag>(
 		el: Element<TTag>,
-		ctx: Context<unknown, T> | undefined,
+		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
 		arranger: Element<string | symbol>,
 	) {
@@ -430,14 +432,14 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 	// TODO: reorder parameters for this stuff
 	_update(
 		el: Element,
-		ctx: Context<unknown, T> | undefined,
+		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
 		arranger: Element<string | symbol>,
-	): Promise<ElementValue<T>> | ElementValue<T> {
+	): Promise<ElementValue<unknown>> | ElementValue<unknown> {
 		el._flags |= Updating;
 		if (typeof el._ctx === "object") {
 			// TODO: call a separate function like updateComponent so that refresh can return something besides the actual value
-			return el._ctx.refresh();
+			return el._ctx._update();
 		} else if (el.tag === Raw) {
 			return this._commit(el, scope, []);
 		}
@@ -448,7 +450,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 	_updateChildren(
 		el: Element,
 		children: Children,
-		ctx: Context<unknown, T> | undefined,
+		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
 		arranger: Element<string | symbol>,
 	): Promise<ElementValue<T>> | ElementValue<T> {
@@ -554,7 +556,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 						newChild = this._mount(newChild, ctx, scope, arranger);
 					}
 
-					result = this._update(newChild, ctx, scope, arranger);
+					result = this._update(newChild, ctx, scope, arranger) as any;
 				}
 			} else {
 				if (typeof newChild === "string") {
@@ -730,7 +732,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 
 	_unmount(
 		el: Element,
-		ctx: Context<unknown, T> | undefined,
+		ctx: Context<unknown, TResult> | undefined,
 		arranger: Element,
 		dirty: boolean,
 	): void {
@@ -800,7 +802,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 export interface ProvisionMap {}
 
 export class Context<TProps = any, T = any> implements EventTarget {
-	_renderer: Renderer<T, any>;
+	_renderer: Renderer<unknown, T>;
 	_el: Element<Component>;
 	_arranger: Element<string | symbol>;
 	_parent: Context<unknown, T> | undefined;
@@ -809,7 +811,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 	_listeners: Array<EventListenerRecord> | undefined;
 	_provisions: Map<unknown, unknown> | undefined;
 	_onProps: ((props: any) => unknown) | undefined;
-	_oldValue: Promise<ElementValue<T>> | undefined;
+	_oldValue: Promise<T> | undefined;
 	_inflightPending: Promise<unknown> | undefined;
 	_enqueuedPending: Promise<unknown> | undefined;
 	_inflightResult: Promise<ElementValue<T>> | undefined;
@@ -817,7 +819,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 	_schedules: Set<(value: unknown) => unknown> | undefined;
 	_cleanups: Set<(value: unknown) => unknown> | undefined;
 	constructor(
-		renderer: Renderer<T, any>,
+		renderer: Renderer<unknown, T>,
 		el: Element<Component>,
 		parent: Context<unknown, T> | undefined,
 		scope: Scope,
@@ -862,7 +864,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 		return this._el.props;
 	}
 
-	get value(): ElementValue<T | string> {
+	get value(): T {
 		return this._renderer.read(this._renderer._getChildValueOrValues(this._el));
 	}
 
@@ -904,15 +906,14 @@ export class Context<TProps = any, T = any> implements EventTarget {
 		} while (!(el._flags & Unmounted));
 	}
 
-	refresh(): Promise<ElementValue<T>> | ElementValue<T> {
+	refresh(): Promise<T> | T {
 		const el = this._el;
 		if (el._flags & (Stepping | Unmounted)) {
-			// TODO: log errors here
-			return;
+			return this._renderer.read(this._renderer._getValue(el));
 		}
 
 		this._resume();
-		return this._run();
+		return this._renderer.read(this._run());
 	}
 
 	schedule(callback: (value: unknown) => unknown): void {
@@ -1121,7 +1122,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 		}
 	}
 
-	_run(): Promise<ElementValue<T>> | ElementValue<T> {
+	_run(): Promise<ElementValue<unknown>> | ElementValue<unknown> {
 		const el = this._el;
 		if (typeof this._inflightPending === "undefined") {
 			const [pending, result] = this._step();
@@ -1130,7 +1131,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 			}
 
 			if (isPromiseLike(result)) {
-				this._inflightResult = result;
+				this._inflightResult = result as Promise<any>;
 			}
 
 			return result;
@@ -1153,7 +1154,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 
 	_step(): [
 		Promise<unknown> | undefined,
-		Promise<ElementValue<T>> | ElementValue<T>,
+		Promise<ElementValue<unknown>> | ElementValue<unknown>,
 	] {
 		const el = this._el;
 		if (el._flags & Finished) {
@@ -1184,14 +1185,14 @@ export class Context<TProps = any, T = any> implements EventTarget {
 			}
 		}
 
-		let oldValue: Promise<ElementValue<T>> | ElementValue<T>;
+		let oldValue: Promise<ElementValue<unknown>> | ElementValue<unknown>;
 		if (initial) {
-			oldValue = undefined;
+			oldValue = this._renderer.read(undefined);
 		} else if (typeof this._oldValue === "object") {
 			oldValue = this._oldValue;
 			this._oldValue = undefined;
 		} else {
-			oldValue = this._renderer._getValue(el);
+			oldValue = this._renderer.read(this._renderer._getValue(el));
 		}
 
 		// TODO: clean up/deduplicate logic here
@@ -1212,12 +1213,15 @@ export class Context<TProps = any, T = any> implements EventTarget {
 				try {
 					let result = this._updateChildren(iteration.value);
 					if (isPromiseLike(result)) {
-						this._oldValue = result;
+						this._oldValue = (result as Promise<any>).then(
+							(value) => this._renderer.read(value),
+							() => this._renderer.read(undefined),
+						);
 						if (
 							!(el._flags & Finished) &&
 							typeof this._iterator!.throw === "function"
 						) {
-							result = result.catch((err) => {
+							result = (result as Promise<any>).catch((err) => {
 								this._resume();
 								const iteration = (this._iterator as AsyncGenerator<
 									Children,
@@ -1276,7 +1280,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 					!(el._flags & Finished) &&
 					typeof this._iterator.throw === "function"
 				) {
-					result = result.catch((err) => {
+					result = (result as Promise<any>).catch((err) => {
 						el._flags |= Stepping;
 						const iteration = (this._iterator as Generator<
 							Children,
@@ -1290,7 +1294,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 						return this._updateChildren(iteration.value);
 					});
 				}
-				const pending = result.catch(() => {});
+				const pending = (result as Promise<any>).catch(() => {});
 				return [pending, result];
 			}
 
@@ -1311,7 +1315,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 
 			const result = this._updateChildren(iteration.value);
 			if (isPromiseLike(result)) {
-				const pending = result.catch(() => {});
+				const pending = (result as Promise<any>).catch(() => {});
 				return [pending, result];
 			}
 
@@ -1330,9 +1334,14 @@ export class Context<TProps = any, T = any> implements EventTarget {
 		}
 	}
 
+	_update(): Promise<ElementValue<unknown>> | ElementValue<unknown> {
+		this._resume();
+		return this._run();
+	}
+
 	_updateChildren(
 		children: Children,
-	): Promise<ElementValue<T>> | ElementValue<T> {
+	): Promise<ElementValue<unknown>> | ElementValue<unknown> {
 		if (isNonStringIterable(children)) {
 			children = createElement(Fragment, null, children);
 		}
