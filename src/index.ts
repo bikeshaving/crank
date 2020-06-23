@@ -290,7 +290,7 @@ function getChildrenByKey(children: Array<NarrowedChild>): Map<Key, Element> {
 	return childrenByKey;
 }
 
-export abstract class Renderer<T, TResult = ElementValue<T>> {
+export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 	_cache: WeakMap<object, Element<Portal>>;
 	constructor() {
 		this._cache = new WeakMap();
@@ -318,8 +318,8 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		}
 
 		const result = this._update(portal, portal, undefined, undefined) as
-			| Promise<ElementValue<T>>
-			| ElementValue<T>;
+			| Promise<ElementValue<TNode>>
+			| ElementValue<TNode>;
 		if (isPromiseLike(result)) {
 			return result.then(() => {
 				const value = this.read(this._getChildValueOrValues(portal!));
@@ -351,7 +351,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		return text;
 	}
 
-	read(value: ElementValue<T>): TResult {
+	read(value: ElementValue<TNode>): TResult {
 		return (value as unknown) as TResult;
 	}
 
@@ -359,21 +359,21 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		tag: TTag,
 		props: TagProps<TTag>,
 		scope: Scope,
-	): T;
+	): TNode;
 
-	abstract parse(_text: string, _scope: Scope): T;
+	abstract parse(_text: string, _scope: Scope): TNode;
 
 	abstract patch<TTag extends string | symbol>(
 		tag: TTag,
-		value: T,
+		value: TNode,
 		props: TagProps<TTag>,
 		scope: Scope,
 	): unknown;
 
 	abstract arrange(
 		tag: string | symbol,
-		parent: T,
-		childValues: Array<T | string>,
+		parent: TNode,
+		childValues: Array<TNode | string>,
 	): unknown;
 
 	// TODO: destroy() a method which is called for every host node when it is unmounted
@@ -381,8 +381,8 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 	// TODO: complete() a method which is called once at the end of every independent rendering or refresh or async generator component update
 
 	// PRIVATE METHODS
-	_getChildValues(el: Element): Array<T | string> {
-		let result: Array<T | string> = [];
+	_getChildValues(el: Element): Array<TNode | string> {
+		let result: Array<TNode | string> = [];
 		for (const child of arrayify(el._children)) {
 			if (child === undefined) {
 				// pass
@@ -399,12 +399,12 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		return result;
 	}
 
-	_getChildValueOrValues(el: Element): ElementValue<T> {
+	_getChildValueOrValues(el: Element): ElementValue<TNode> {
 		const childValues = this._getChildValues(el);
 		return childValues.length > 1 ? childValues : childValues[0];
 	}
 
-	_getValue(el: Element): ElementValue<T> {
+	_getValue(el: Element): ElementValue<TNode> {
 		if (typeof el.tag === Portal) {
 			return undefined;
 		} else if (typeof el.tag !== "function" && el.tag !== Fragment) {
@@ -419,7 +419,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		arranger: Element<string | symbol>,
 		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
-	): Promise<ElementValue<T>> | ElementValue<T> {
+	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 		if (typeof el.tag === "function") {
 			el._ctx = new Context(
 				this,
@@ -429,7 +429,9 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 				arranger,
 			);
 
-			return el._ctx._update() as Promise<ElementValue<T>> | ElementValue<T>;
+			return el._ctx._update() as
+				| Promise<ElementValue<TNode>>
+				| ElementValue<TNode>;
 		} else if (el.tag === Raw) {
 			return this._commit(el, scope, []);
 		} else if (el.tag === Portal) {
@@ -447,13 +449,15 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
 		children: Children,
-	): Promise<ElementValue<T>> | ElementValue<T> {
+	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 		if (typeof el.tag !== "function" && el.tag !== Fragment) {
 			arranger = el as Element<string | symbol>;
 			scope = this.scope(el.tag as string | symbol, el.props, scope);
 		}
 
-		const results: Array<Promise<ElementValue<T>> | ElementValue<T>> = [];
+		const results: Array<
+			Promise<ElementValue<TNode>> | ElementValue<TNode>
+		> = [];
 		let async = false;
 		const childArray = arrayify(children);
 		const narrowedChildren: Array<NarrowedChild> = [];
@@ -493,10 +497,12 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		arranger: Element<string | symbol>,
 		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
-	): Promise<ElementValue<T>> | ElementValue<T> {
+	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 		if (typeof el._ctx === "object") {
 			// TODO: call a separate function like updateComponent so that refresh can return something besides the actual value
-			return el._ctx._update() as Promise<ElementValue<T>> | ElementValue<T>;
+			return el._ctx._update() as
+				| Promise<ElementValue<TNode>>
+				| ElementValue<TNode>;
 		} else if (el.tag === Raw) {
 			return this._commit(el, scope, []);
 		}
@@ -510,14 +516,16 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
 		children: Children,
-	): Promise<ElementValue<T>> | ElementValue<T> {
+	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 		if (typeof el.tag !== "function" && el.tag !== Fragment) {
 			arranger = el as Element<string | symbol>;
 			scope = this.scope(el.tag as string | symbol, el.props, scope);
 		}
 
 		let async = false;
-		const results: Array<Promise<ElementValue<T>> | ElementValue<T>> = [];
+		const results: Array<
+			Promise<ElementValue<TNode>> | ElementValue<TNode>
+		> = [];
 		const oldChildren = arrayify(el._children);
 		const newChildren = arrayify(children);
 		const narrowedChildren: Array<NarrowedChild> = [];
@@ -570,7 +578,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 			}
 
 			// UPDATING
-			let result: Promise<ElementValue<T>> | ElementValue<T>;
+			let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 			if (typeof newChild === "object") {
 				if (newChild.tag === Copy) {
 					// TODO: how do asynchronously updating elements work with copies?
@@ -658,13 +666,13 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		arranger: Element<string | symbol>,
 		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
-		results: Array<Promise<ElementValue<T>> | ElementValue<T>>,
+		results: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>>,
 		graveyard: Array<Element>,
 		async: boolean,
-	): Promise<ElementValue<T>> | ElementValue<T> {
+	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 		if (async) {
 			let onNewValue!: Function;
-			const newValueP = new Promise<ElementValue<T>>(
+			const newValueP = new Promise<ElementValue<TNode>>(
 				(resolve) => (onNewValue = resolve),
 			);
 			const resultsP = Promise.race([
@@ -700,7 +708,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		const value = this._commit(
 			el,
 			scope,
-			normalize(results as Array<ElementValue<T>>),
+			normalize(results as Array<ElementValue<TNode>>),
 		);
 
 		if (typeof el._onNewValue === "function") {
@@ -714,9 +722,9 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 	_commit(
 		el: Element,
 		scope: Scope,
-		childValues: Array<T | string>,
-	): Array<T | string> | T | string | undefined {
-		let value: ElementValue<T> =
+		childValues: Array<TNode | string>,
+	): Array<TNode | string> | TNode | string | undefined {
+		let value: ElementValue<TNode> =
 			childValues.length > 1 ? childValues : childValues[0];
 		// TODO: put this in ctx somehow...
 		if (typeof el.tag === "function") {
