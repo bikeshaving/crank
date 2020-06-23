@@ -130,8 +130,7 @@ export type Raw = typeof Raw;
 // WHAT ARE WE DOING TO THE CHILDREN
 type NarrowedChild = Element | string | undefined;
 
-type NarrowedChildren = Array<NarrowedChild> | NarrowedChild;
-
+// https://overreacted.io/why-do-react-elements-have-typeof-property/
 const ElementSymbol = Symbol.for("crank.Element");
 
 export class Element<TTag extends Tag = Tag> {
@@ -143,8 +142,9 @@ export class Element<TTag extends Tag = Tag> {
 	ref: Function | undefined;
 	_value: any;
 	_ctx: Context<TagProps<TTag>> | undefined;
-	_children: NarrowedChildren;
+	_children: Array<NarrowedChild> | NarrowedChild;
 	_onNewValue: Function | undefined;
+	// TODO: we probably need to store commit promises on the element so that copies can access them
 
 	// TODO: delete
 	_childrenByKey: Map<Key, Element> | undefined;
@@ -266,6 +266,7 @@ export type ElementValue<T> = Array<T | string> | T | string | undefined;
 
 type Scope = unknown;
 
+// TODO: explain
 const RaceLostSymbol = Symbol.for("crank.RaceLost");
 
 export abstract class Renderer<T, TResult = ElementValue<T>> {
@@ -454,31 +455,16 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 			scope = this.scope(el.tag as string | symbol, el.props, scope);
 		}
 
-		if (children === undefined) {
-			children = [];
-		} else if (!isNonStringIterable(children)) {
-			children = [children];
-		}
-
 		let async = false;
 		const results: Array<Promise<ElementValue<T>> | ElementValue<T>> = [];
-		const children1: Array<NarrowedChild> = [];
-		const graveyard: Array<Element> = [];
-
 		let childrenByKey: Map<Key, Element> | undefined;
+		const oldChildren = arrayify(el._children);
+		const newChildren = arrayify(children).slice();
+		const graveyard: Array<Element> = [];
 		let i = 0;
-		// TODO: maybe convert old and new children to an array here
-		for (let newChild1 of children) {
-			let oldChild: NarrowedChild;
-			// TODO: let’s not do an Array.isArray check every iteration
-			if (Array.isArray(el._children)) {
-				oldChild = el._children[i];
-			} else if (i === 0) {
-				oldChild = el._children;
-			}
-
-			// TODO: newChild does not correctly narrow here because typescript.
-			let newChild = narrow(newChild1);
+		for (let j = 0; j < newChildren.length; j++) {
+			let oldChild = oldChildren[i];
+			let newChild = narrow(newChildren[j]);
 			// alignment
 			if (typeof newChild === "object" && typeof newChild.key !== "undefined") {
 				const oldChild1 =
@@ -561,14 +547,14 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 				result = newChild;
 			}
 
-			children1.push(newChild);
 			results.push(result);
-			if (typeof oldChild === "object" && oldChild !== newChild) {
-				graveyard.push(oldChild);
-			}
-
+			newChildren[j] = newChild;
 			if (!async && isPromiseLike(result)) {
 				async = true;
+			}
+
+			if (typeof oldChild === "object" && oldChild !== newChild) {
+				graveyard.push(oldChild);
 			}
 
 			// add to childrenByKey
@@ -584,23 +570,10 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		}
 
 		// cleanup
-		if (typeof el._children !== "undefined") {
-			if (Array.isArray(el._children)) {
-				for (; i < el._children.length; i++) {
-					const oldChild = el._children[i];
-					if (
-						typeof oldChild === "object" &&
-						typeof oldChild.key === "undefined"
-					) {
-						graveyard.push(oldChild);
-					}
-				}
-			} else if (
-				i === 0 &&
-				typeof el._children === "object" &&
-				typeof el._children.key === "undefined"
-			) {
-				graveyard.push(el._children);
+		for (; i < oldChildren.length; i++) {
+			const oldChild = oldChildren[i];
+			if (typeof oldChild === "object" && typeof oldChild.key === "undefined") {
+				graveyard.push(oldChild);
 			}
 		}
 
@@ -609,8 +582,11 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 			graveyard.push(...el._childrenByKey.values());
 		}
 
-		el._children = children1.length > 1 ? children1 : children1[0];
+		el._children = (newChildren.length > 1 ? newChildren : newChildren[0]) as
+			| Array<NarrowedChild>
+			| NarrowedChild;
 		el._childrenByKey = childrenByKey;
+
 		if (async) {
 			let onNewValue!: Function;
 			const newValueP = new Promise<any>((resolve) => (onNewValue = resolve));
