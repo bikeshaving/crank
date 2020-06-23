@@ -143,8 +143,8 @@ export class Element<TTag extends Tag = Tag> {
 	_value: any;
 	_ctx: Context<TagProps<TTag>> | undefined;
 	_children: Array<NarrowedChild> | NarrowedChild;
-	_onNewValue: Function | undefined;
 	// TODO: we probably need to store promises on the element so that Copy elements can access them and not return values before the element has committed
+	_onNewValue: Function | undefined;
 	constructor(
 		tag: TTag,
 		props: TagProps<TTag>,
@@ -425,12 +425,12 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		return Element.clone(el);
 	}
 
-	_mount<TTag extends Tag>(
-		el: Element<TTag>,
+	_mount(
+		el: Element,
 		arranger: Element<string | symbol>,
 		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
-	): void {
+	): Promise<ElementValue<T>> | ElementValue<T> {
 		if (typeof el.tag === "function") {
 			el._ctx = new Context(
 				this,
@@ -439,11 +439,62 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 				scope,
 				arranger,
 			);
+
+			return el._ctx._update() as Promise<ElementValue<T>> | ElementValue<T>;
+		} else if (el.tag === Raw) {
+			return this._commit(el, scope, []);
 		} else if (el.tag === Portal) {
 			el._value = el.props.root;
-		} else if (el.tag !== Fragment && el.tag !== Raw) {
+		} else if (el.tag !== Fragment) {
 			el._value = this.create(el.tag as any, el.props, scope);
 		}
+
+		return this._mountChildren(el, arranger, ctx, scope, el.props.children);
+	}
+
+	_mountChildren(
+		el: Element,
+		arranger: Element<string | symbol>,
+		ctx: Context<unknown, TResult> | undefined,
+		scope: Scope,
+		children: Children,
+	): Promise<ElementValue<T>> | ElementValue<T> {
+		if (typeof el.tag !== "function" && el.tag !== Fragment) {
+			arranger = el as Element<string | symbol>;
+			scope = this.scope(el.tag as string | symbol, el.props, scope);
+		}
+
+		const results: Array<Promise<ElementValue<T>> | ElementValue<T>> = [];
+		let async = false;
+		const childArray = arrayify(children);
+		const narrowedChildren: Array<NarrowedChild> = [];
+		for (let i = 0; i < childArray.length; i++) {
+			let child = narrow(childArray[i]);
+			if (typeof child === "object") {
+				if (child.tag !== Copy) {
+					child = this._reuse(child);
+					const result = this._mount(child, arranger, ctx, scope);
+					if (!async && isPromiseLike(result)) {
+						async = true;
+					}
+
+					results.push(result);
+				}
+			} else {
+				if (typeof child === "string") {
+					child = this.escape(child, scope);
+				}
+
+				results.push(child);
+			}
+
+			narrowedChildren.push(child);
+		}
+
+		el._children =
+			narrowedChildren.length > 1 ? narrowedChildren : narrowedChildren[0];
+
+		return this._commitResults(el, arranger, ctx, scope, results, [], async);
 	}
 
 	_update(
@@ -477,7 +528,8 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		let async = false;
 		const results: Array<Promise<ElementValue<T>> | ElementValue<T>> = [];
 		const oldChildren = arrayify(el._children);
-		const newChildren = arrayify(children).slice();
+		const newChildren = arrayify(children);
+		const narrowedChildren: Array<NarrowedChild> = [];
 		const graveyard: Array<Element> = [];
 		let i = 0;
 		let seenKeys: Set<Key> | undefined;
@@ -508,7 +560,10 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 					i++;
 				} else {
 					oldChild = childrenByKey.get(newKey);
-					childrenByKey.delete(newKey);
+					if (oldChild !== undefined) {
+						childrenByKey.delete(newKey);
+					}
+
 					if (seenKeys === undefined) {
 						seenKeys = new Set();
 					}
@@ -522,7 +577,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 				}
 			}
 
-			// replacement
+			// REPLACEMENT
 			let result: Promise<ElementValue<T>> | ElementValue<T>;
 			if (typeof newChild === "object") {
 				if (newChild.tag === Copy) {
@@ -534,34 +589,31 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 					} else {
 						result = oldChild;
 					}
-				} else {
-					if (typeof oldChild === "object") {
-						if (oldChild.tag === newChild.tag) {
-							if (oldChild.tag === Portal) {
-								if (oldChild._value !== newChild.props.root) {
-									this.arrange(oldChild.tag as symbol, oldChild._value, []);
-									oldChild._value = newChild.props.root;
-								}
-							} else if (oldChild.tag === Raw) {
-								// TODO: implement parse caching here?
+				} else if (typeof oldChild === "object") {
+					if (oldChild.tag === newChild.tag) {
+						if (oldChild.tag === Portal) {
+							if (oldChild._value !== newChild.props.root) {
+								this.arrange(oldChild.tag as symbol, oldChild._value, []);
+								oldChild._value = newChild.props.root;
 							}
-
-							if (oldChild !== newChild) {
-								oldChild.props = newChild.props;
-								oldChild.ref = newChild.ref;
-							}
-
-							newChild = oldChild;
-						} else {
-							newChild = this._reuse(newChild);
-							this._mount(newChild, arranger, ctx, scope);
+						} else if (oldChild.tag === Raw) {
+							// TODO: implement parse caching here?
 						}
+
+						if (oldChild !== newChild) {
+							oldChild.props = newChild.props;
+							oldChild.ref = newChild.ref;
+						}
+
+						newChild = oldChild;
+						result = this._update(newChild, arranger, ctx, scope);
 					} else {
 						newChild = this._reuse(newChild);
-						this._mount(newChild, arranger, ctx, scope);
+						result = this._mount(newChild, arranger, ctx, scope);
 					}
-
-					result = this._update(newChild, arranger, ctx, scope);
+				} else {
+					newChild = this._reuse(newChild);
+					result = this._mount(newChild, arranger, ctx, scope);
 				}
 			} else {
 				if (typeof newChild === "string") {
@@ -572,7 +624,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 			}
 
 			results.push(result);
-			newChildren[j] = newChild;
+			narrowedChildren.push(newChild);
 			if (!async && isPromiseLike(result)) {
 				async = true;
 			}
@@ -582,6 +634,8 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 			}
 		}
 
+		el._children =
+			narrowedChildren.length > 1 ? narrowedChildren : narrowedChildren[0];
 		// cleanup
 		for (; i < oldChildren.length; i++) {
 			const oldChild = oldChildren[i];
@@ -590,18 +644,36 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 			}
 		}
 
-		el._children = (newChildren.length > 1 ? newChildren : newChildren[0]) as
-			| Array<NarrowedChild>
-			| NarrowedChild;
-
 		// TODO: likely where logic for asynchronous unmounting will go
 		if (childrenByKey !== undefined && childrenByKey.size > 0) {
 			graveyard.push(...childrenByKey.values());
 		}
 
+		return this._commitResults(
+			el,
+			arranger,
+			ctx,
+			scope,
+			results,
+			graveyard,
+			async,
+		);
+	}
+
+	_commitResults(
+		el: Element,
+		arranger: Element<string | symbol>,
+		ctx: Context<unknown, TResult> | undefined,
+		scope: Scope,
+		results: Array<Promise<ElementValue<T>> | ElementValue<T>>,
+		graveyard: Array<Element>,
+		async: boolean,
+	): Promise<ElementValue<T>> | ElementValue<T> {
 		if (async) {
 			let onNewValue!: Function;
-			const newValueP = new Promise<any>((resolve) => (onNewValue = resolve));
+			const newValueP = new Promise<ElementValue<T>>(
+				(resolve) => (onNewValue = resolve),
+			);
 			const resultsP = Promise.race([
 				newValueP.then(() => {
 					// returning Promise.reject instead of throwing a promise causes a race condition
