@@ -280,44 +280,39 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 	}
 
 	render(children: Children, root?: unknown): Promise<TResult> | TResult {
-		let oldPortal: Element<Portal> | undefined;
+		let portal: Element<Portal> | undefined;
 		if (typeof root === "object" && root !== null) {
-			oldPortal = this._cache.get(root);
+			portal = this._cache.get(root);
 		}
 
-		// TODO: newPortal is any because replace return value isn’t restricted to the newChild type and type assertions don’t work with tuple destructuring
-		let newPortal: any = createElement(Portal, {root}, children);
-		let result: Promise<ElementValue<T>> | ElementValue<T>;
-		[newPortal, result] = this._replace(
-			oldPortal,
-			newPortal,
-			newPortal,
-			undefined,
-			undefined,
-		);
-
-		if (typeof root === "object" && root !== null) {
-			if (children == null) {
+		if (portal === undefined) {
+			portal = createElement(Portal, {children, root});
+			portal._value = root;
+			if (typeof root === "object" && root !== null && children != null) {
+				this._cache.set(root, portal);
+			}
+		} else {
+			portal.props = {children, root};
+			if (typeof root === "object" && root !== null && children == null) {
 				this._cache.delete(root);
-			} else {
-				this._cache.set(root, newPortal);
 			}
 		}
 
+		const result = this._update(portal, undefined, undefined, portal);
 		if (isPromiseLike(result)) {
 			return result.then(() => {
-				const value = this._getChildValueOrValues(newPortal);
+				const value = this._getChildValueOrValues(portal!);
 				if (root == null) {
-					this._unmount(newPortal, undefined, newPortal, true);
+					this._unmount(portal!, undefined, portal!, true);
 				}
 
 				return this.read(value);
 			});
 		}
 
-		const value = this._getChildValueOrValues(newPortal);
+		const value = this._getChildValueOrValues(portal);
 		if (root == null) {
-			this._unmount(newPortal, undefined, newPortal, true);
+			this._unmount(portal, undefined, portal, true);
 		}
 
 		return this.read(value);
@@ -524,13 +519,51 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 			}
 
 			let result: Promise<ElementValue<T>> | ElementValue<T>;
-			[newChild, result] = this._replace(
-				oldChild,
-				newChild,
-				arranger,
-				ctx,
-				scope,
-			);
+			if (typeof newChild === "object") {
+				if (newChild.tag === Copy) {
+					// TODO: do refs make sense for copies?
+					// TODO: how do asynchronously updating elements work with copies?
+					newChild = oldChild;
+					if (typeof oldChild === "object") {
+						result = this._getValue(oldChild);
+					} else {
+						result = oldChild;
+					}
+				} else {
+					if (typeof oldChild === "object") {
+						if (oldChild.tag === newChild.tag) {
+							if (oldChild.tag === Portal) {
+								if (oldChild._value !== newChild.props.root) {
+									this.arrange(oldChild.tag as symbol, oldChild._value, []);
+									oldChild._value = newChild.props.root;
+								}
+							} else if (oldChild.tag === Raw) {
+								// TODO:
+							}
+
+							if (oldChild !== newChild) {
+								oldChild.props = newChild.props;
+								oldChild.ref = newChild.ref;
+							}
+
+							newChild = oldChild;
+						} else {
+							newChild = this._mount(newChild, ctx, scope, arranger);
+						}
+					} else {
+						newChild = this._mount(newChild, ctx, scope, arranger);
+					}
+
+					result = this._update(newChild, ctx, scope, arranger);
+				}
+			} else {
+				if (typeof newChild === "string") {
+					newChild = this.escape(newChild, scope);
+				}
+
+				result = newChild;
+			}
+
 			children1.push(newChild);
 			results.push(result);
 			if (typeof oldChild === "object" && oldChild !== newChild) {
@@ -626,62 +659,6 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		}
 
 		return value;
-	}
-
-	_replace(
-		oldChild: NarrowedChild,
-		newChild: NarrowedChild,
-		arranger: Element<string | symbol>,
-		ctx: Context | undefined,
-		scope: Scope,
-	): [NarrowedChild, Promise<ElementValue<T>> | ElementValue<T>] {
-		let result: Promise<ElementValue<T>> | ElementValue<T>;
-		if (typeof newChild === "object") {
-			if (newChild.tag === Copy) {
-				// TODO: do refs make sense for copies?
-				// TODO: how do asynchronously updating elements work with copies?
-				newChild = oldChild;
-				if (typeof oldChild === "object") {
-					result = this._getValue(oldChild);
-				} else {
-					result = oldChild;
-				}
-			} else {
-				if (typeof oldChild === "object") {
-					if (oldChild.tag === newChild.tag) {
-						if (oldChild.tag === Portal) {
-							if (oldChild._value !== newChild.props.root) {
-								this.arrange(oldChild.tag as symbol, oldChild._value, []);
-								oldChild._value = newChild.props.root;
-							}
-						} else if (oldChild.tag === Raw) {
-							// TODO:
-						}
-
-						if (oldChild !== newChild) {
-							oldChild.props = newChild.props;
-							oldChild.ref = newChild.ref;
-						}
-
-						newChild = oldChild;
-					} else {
-						newChild = this._mount(newChild, ctx, scope, arranger);
-					}
-				} else {
-					newChild = this._mount(newChild, ctx, scope, arranger);
-				}
-
-				result = this._update(newChild, ctx, scope, arranger);
-			}
-		} else {
-			if (typeof newChild === "string") {
-				newChild = this.escape(newChild, scope);
-			}
-
-			result = newChild;
-		}
-
-		return [newChild, result];
 	}
 
 	_commit(
