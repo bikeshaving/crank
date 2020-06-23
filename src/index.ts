@@ -19,7 +19,6 @@ const consoleError =
 /* eslint-enable no-console */
 
 // FLAGS
-// TODO: we can now move flags to the context???
 // TODO: write an explanation for each of these flags
 const Updating = 1 << 0;
 const Stepping = 1 << 1;
@@ -148,8 +147,6 @@ export class Element<TTag extends Tag = Tag> {
 	_onNewValue: Function | undefined;
 
 	// TODO: delete
-	_flags: number;
-	// TODO: delete
 	_childrenByKey: Map<Key, Element> | undefined;
 	constructor(
 		tag: TTag,
@@ -162,8 +159,6 @@ export class Element<TTag extends Tag = Tag> {
 		this.props = props;
 		this.key = key;
 		this.ref = ref;
-		// TODO: delete
-		this._flags = 0;
 	}
 }
 
@@ -436,7 +431,6 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		scope: Scope,
 		arranger: Element<string | symbol>,
 	): Promise<ElementValue<unknown>> | ElementValue<unknown> {
-		el._flags |= Updating;
 		if (typeof el._ctx === "object") {
 			// TODO: call a separate function like updateComponent so that refresh can return something besides the actual value
 			return el._ctx._update();
@@ -673,7 +667,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		// TODO: put this in ctx somehow...
 		if (typeof el.tag === "function") {
 			const ctx = el._ctx!;
-			if (!(el._flags & Unmounted) && !(el._flags & Updating)) {
+			if (!(ctx._flags & Unmounted) && !(ctx._flags & Updating)) {
 				this.arrange(
 					ctx._arranger.tag,
 					ctx._arranger._value,
@@ -704,6 +698,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 					}
 				}
 			}
+			ctx._flags &= ~Updating;
 		} else if (el.tag === Portal) {
 			el._value = el.props.root;
 			this.arrange(Portal, el._value, childValues);
@@ -726,7 +721,6 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 			el.ref(this.read(value));
 		}
 
-		el._flags &= ~Updating;
 		return value;
 	}
 
@@ -739,8 +733,8 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		if (typeof el.tag === "function") {
 			// TODO: move this logic to a Context method
 			// setting unmounted flag here is necessary because of some kind of race condition
-			el._flags |= Unmounted;
 			ctx = el._ctx!;
+			ctx._flags |= Unmounted;
 			clearEventListeners(ctx);
 			if (typeof ctx._cleanups === "object") {
 				const value = this.read(this._getValue(el));
@@ -751,8 +745,8 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 				ctx._cleanups = undefined;
 			}
 
-			if (!(el._flags & Finished)) {
-				el._flags |= Finished;
+			if (!(ctx._flags & Finished)) {
+				ctx._flags |= Finished;
 				ctx._resume();
 
 				if (
@@ -807,6 +801,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 	_arranger: Element<string | symbol>;
 	_parent: Context<unknown, T> | undefined;
 	_scope: Scope;
+	_flags: number;
 	_iterator: ChildIterator | undefined;
 	_listeners: Array<EventListenerRecord> | undefined;
 	_provisions: Map<unknown, unknown> | undefined;
@@ -818,6 +813,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 	_enqueuedResult: Promise<ElementValue<T>> | undefined;
 	_schedules: Set<(value: unknown) => unknown> | undefined;
 	_cleanups: Set<(value: unknown) => unknown> | undefined;
+	// TODO: reorder the parameter list
 	constructor(
 		renderer: Renderer<unknown, T>,
 		el: Element<Component>,
@@ -830,6 +826,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 		this._parent = parent;
 		this._scope = scope;
 		this._arranger = arranger;
+		this._flags = 0;
 	}
 
 	get<TKey extends keyof ProvisionMap>(key: TKey): ProvisionMap[TKey];
@@ -870,14 +867,14 @@ export class Context<TProps = any, T = any> implements EventTarget {
 
 	*[Symbol.iterator](): Generator<TProps> {
 		const el = this._el;
-		while (!(el._flags & Unmounted)) {
-			if (el._flags & Iterating) {
+		while (!(this._flags & Unmounted)) {
+			if (this._flags & Iterating) {
 				throw new Error("You must yield for each iteration of this.");
-			} else if (el._flags & AsyncGen) {
+			} else if (this._flags & AsyncGen) {
 				throw new Error("Use for await...of in async generator components.");
 			}
 
-			el._flags |= Iterating;
+			this._flags |= Iterating;
 			yield el.props!;
 		}
 	}
@@ -885,31 +882,30 @@ export class Context<TProps = any, T = any> implements EventTarget {
 	async *[Symbol.asyncIterator](): AsyncGenerator<TProps> {
 		const el = this._el;
 		do {
-			if (el._flags & Iterating) {
+			if (this._flags & Iterating) {
 				throw new Error("You must yield for each iteration of this.");
-			} else if (el._flags & SyncGen) {
+			} else if (this._flags & SyncGen) {
 				throw new Error("Use for...of in sync generator components.");
 			}
 
-			el._flags |= Iterating;
-			if (el._flags & Available) {
-				el._flags &= ~Available;
+			this._flags |= Iterating;
+			if (this._flags & Available) {
+				this._flags &= ~Available;
 				yield el.props;
 			} else {
 				const props = await new Promise<TProps>(
 					(resolve) => (this._onProps = resolve),
 				);
-				if (!(el._flags & Unmounted)) {
+				if (!(this._flags & Unmounted)) {
 					yield props;
 				}
 			}
-		} while (!(el._flags & Unmounted));
+		} while (!(this._flags & Unmounted));
 	}
 
 	refresh(): Promise<T> | T {
-		const el = this._el;
-		if (el._flags & (Stepping | Unmounted)) {
-			return this._renderer.read(this._renderer._getValue(el));
+		if (this._flags & (Stepping | Unmounted)) {
+			return this._renderer.read(this._renderer._getValue(this._el));
 		}
 
 		this._resume();
@@ -1118,12 +1114,11 @@ export class Context<TProps = any, T = any> implements EventTarget {
 			this._onProps(this._el.props!);
 			this._onProps = undefined;
 		} else {
-			this._el._flags |= Available;
+			this._flags |= Available;
 		}
 	}
 
 	_run(): Promise<ElementValue<unknown>> | ElementValue<unknown> {
-		const el = this._el;
 		if (typeof this._inflightPending === "undefined") {
 			const [pending, result] = this._step();
 			if (isPromiseLike(pending)) {
@@ -1135,7 +1130,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 			}
 
 			return result;
-		} else if (el._flags & AsyncGen) {
+		} else if (this._flags & AsyncGen) {
 			return this._inflightResult;
 		} else if (typeof this._enqueuedPending === "undefined") {
 			let resolve: Function;
@@ -1157,12 +1152,12 @@ export class Context<TProps = any, T = any> implements EventTarget {
 		Promise<ElementValue<unknown>> | ElementValue<unknown>,
 	] {
 		const el = this._el;
-		if (el._flags & Finished) {
+		if (this._flags & Finished) {
 			return [undefined, this._renderer._getValue(el)];
 		}
 
 		let initial = false;
-		el._flags |= Stepping;
+		this._flags |= Stepping;
 		if (typeof this._iterator === "undefined") {
 			initial = true;
 			clearEventListeners(this);
@@ -1176,11 +1171,11 @@ export class Context<TProps = any, T = any> implements EventTarget {
 				const value1 = upgradePromiseLike(value);
 				const pending = value1.catch(() => undefined); // void :(
 				const result = value1.then((value) => this._updateChildren(value));
-				el._flags &= ~Stepping;
+				this._flags &= ~Stepping;
 				return [pending, result];
 			} else {
 				const result = this._updateChildren(value);
-				el._flags &= ~Stepping;
+				this._flags &= ~Stepping;
 				return [undefined, result];
 			}
 		}
@@ -1196,18 +1191,19 @@ export class Context<TProps = any, T = any> implements EventTarget {
 		}
 
 		// TODO: clean up/deduplicate logic here
+		// TODO: generator components which throw errors should be fragile, if rerendered they should be unmounted and remounted
 		const iteration = this._iterator.next(oldValue);
-		el._flags &= ~Stepping;
+		this._flags &= ~Stepping;
 		if (isPromiseLike(iteration)) {
 			if (initial) {
-				el._flags |= AsyncGen;
+				this._flags |= AsyncGen;
 			}
 
 			const pending = iteration.catch(() => {});
 			const result = iteration.then((iteration) => {
-				el._flags &= ~Iterating;
+				this._flags &= ~Iterating;
 				if (iteration.done) {
-					el._flags |= Finished;
+					this._flags |= Finished;
 				}
 
 				try {
@@ -1218,7 +1214,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 							() => this._renderer.read(undefined),
 						);
 						if (
-							!(el._flags & Finished) &&
+							!(this._flags & Finished) &&
 							typeof this._iterator!.throw === "function"
 						) {
 							result = (result as Promise<any>).catch((err) => {
@@ -1229,7 +1225,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 								>).throw(err);
 								return iteration.then((iteration) => {
 									if (iteration.done) {
-										el._flags |= Finished;
+										this._flags |= Finished;
 									}
 
 									return this._updateChildren(iteration.value);
@@ -1241,7 +1237,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 					return result;
 				} catch (err) {
 					if (
-						el._flags & Finished ||
+						this._flags & Finished ||
 						typeof this._iterator!.throw !== "function"
 					) {
 						throw err;
@@ -1253,7 +1249,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 					>).throw(err);
 					return iteration.then((iteration) => {
 						if (iteration.done) {
-							el._flags |= Finished;
+							this._flags |= Finished;
 						}
 
 						return this._updateChildren(iteration.value);
@@ -1264,31 +1260,31 @@ export class Context<TProps = any, T = any> implements EventTarget {
 			return [pending, result];
 		}
 
-		el._flags &= ~Iterating;
+		this._flags &= ~Iterating;
 		if (initial) {
-			el._flags |= SyncGen;
+			this._flags |= SyncGen;
 		}
 
 		if (iteration.done) {
-			el._flags |= Finished;
+			this._flags |= Finished;
 		}
 
 		try {
 			let result = this._updateChildren(iteration.value);
 			if (isPromiseLike(result)) {
 				if (
-					!(el._flags & Finished) &&
+					!(this._flags & Finished) &&
 					typeof this._iterator.throw === "function"
 				) {
 					result = (result as Promise<any>).catch((err) => {
-						el._flags |= Stepping;
+						this._flags |= Stepping;
 						const iteration = (this._iterator as Generator<
 							Children,
 							Children
 						>).throw(err);
-						el._flags &= ~Stepping;
+						this._flags &= ~Stepping;
 						if (iteration.done) {
-							el._flags |= Finished;
+							this._flags |= Finished;
 						}
 
 						return this._updateChildren(iteration.value);
@@ -1300,17 +1296,20 @@ export class Context<TProps = any, T = any> implements EventTarget {
 
 			return [undefined, result];
 		} catch (err) {
-			if (el._flags & Finished || typeof this._iterator.throw !== "function") {
+			if (
+				this._flags & Finished ||
+				typeof this._iterator.throw !== "function"
+			) {
 				throw err;
 			}
 
-			el._flags |= Stepping;
+			this._flags |= Stepping;
 			const iteration = (this._iterator as Generator<Children, Children>).throw(
 				err,
 			);
-			el._flags &= ~Stepping;
+			this._flags &= ~Stepping;
 			if (iteration.done) {
-				el._flags |= Finished;
+				this._flags |= Finished;
 			}
 
 			const result = this._updateChildren(iteration.value);
@@ -1324,17 +1323,17 @@ export class Context<TProps = any, T = any> implements EventTarget {
 	}
 
 	_advance(): void {
-		const el = this._el;
 		this._inflightPending = this._enqueuedPending;
 		this._inflightResult = this._enqueuedResult;
 		this._enqueuedPending = undefined;
 		this._enqueuedResult = undefined;
-		if (el._flags & AsyncGen && !(el._flags & Finished)) {
+		if (this._flags & AsyncGen && !(this._flags & Finished)) {
 			this._run();
 		}
 	}
 
 	_update(): Promise<ElementValue<unknown>> | ElementValue<unknown> {
+		this._flags |= Updating;
 		this._resume();
 		return this._run();
 	}
