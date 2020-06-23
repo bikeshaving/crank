@@ -141,8 +141,6 @@ export class StringRenderer extends Renderer<Value | string, string> {
 		value.result = result;
 	}
 
-	remove(): void {}
-
 	parse(text: string): string {
 		return text;
 	}

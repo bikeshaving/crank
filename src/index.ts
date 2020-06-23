@@ -320,7 +320,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 			return result.then(() => {
 				const value = this.read(this._getChildValueOrValues(portal!));
 				if (root == null) {
-					this._unmount(portal!, portal!, undefined, true);
+					this._unmount(portal!, portal!, undefined);
 				}
 
 				return value;
@@ -329,7 +329,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 
 		const value = this.read(this._getChildValueOrValues(portal));
 		if (root == null) {
-			this._unmount(portal, portal, undefined, true);
+			this._unmount(portal, portal, undefined);
 		}
 
 		return value;
@@ -372,10 +372,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		childValues: Array<T | string>,
 	): unknown;
 
-	// TODO: pass parent into this method
-	abstract remove(tag: string | symbol, child: T): unknown;
-
-	// TODO: destroy() a method which is called for every intrinsic when it is unmounted
+	// TODO: destroy() a method which is called for every host node when it is unmounted
 
 	// TODO: complete() a method which is called once at the end of every independent rendering or refresh or async generator component update
 
@@ -681,7 +678,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 				}),
 				Promise.all(results),
 			]).finally(() => {
-				graveyard.forEach((el) => this._unmount(el, arranger, ctx, true));
+				graveyard.forEach((el) => this._unmount(el, arranger, ctx));
 			});
 
 			const value = resultsP.then(
@@ -703,7 +700,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 			return value;
 		}
 
-		graveyard.forEach((el) => this._unmount(el, arranger, ctx, true));
+		graveyard.forEach((el) => this._unmount(el, arranger, ctx));
 		const value = this._commit(
 			el,
 			scope,
@@ -789,7 +786,6 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		el: Element,
 		arranger: Element,
 		ctx: Context<unknown, TResult> | undefined,
-		isRoot: boolean,
 	): void {
 		if (typeof el.tag === "function") {
 			// TODO: move this logic to a Context method
@@ -822,10 +818,10 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 			arranger = el;
 			this.arrange(Portal, el._value, []);
 		} else if (el.tag !== Fragment) {
-			const listeners = getListeners(ctx, arranger);
-			if (listeners !== undefined && listeners.length > 0) {
-				for (const record of listeners) {
-					if (isEventTarget(el._value)) {
+			if (isEventTarget(el._value)) {
+				const listeners = getListeners(ctx, arranger);
+				if (listeners !== undefined && listeners.length > 0) {
+					for (const record of listeners) {
 						el._value.removeEventListener(
 							record.type,
 							record.callback,
@@ -836,14 +832,11 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 			}
 
 			arranger = el;
-			if (isRoot) {
-				this.remove(el.tag as symbol | string, el._value);
-			}
 		}
 
 		for (const child of arrayify(el._children)) {
 			if (typeof child === "object") {
-				this._unmount(child, arranger, ctx, false);
+				this._unmount(child, arranger, ctx);
 			}
 		}
 
