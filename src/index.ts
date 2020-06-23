@@ -784,29 +784,29 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 
 export interface ProvisionMap {}
 
-export class Context<TProps = any, T = any> implements EventTarget {
-	_renderer: Renderer<unknown, T>;
+export class Context<TProps = any, TResult = any> implements EventTarget {
+	_renderer: Renderer<unknown, TResult>;
 	_el: Element<Component>;
 	_arranger: Element<string | symbol>;
-	_parent: Context<unknown, T> | undefined;
+	_parent: Context<unknown, TResult> | undefined;
 	_scope: Scope;
 	_flags: number;
 	_iterator: ChildIterator | undefined;
 	_listeners: Array<EventListenerRecord> | undefined;
 	_provisions: Map<unknown, unknown> | undefined;
 	_onProps: ((props: any) => unknown) | undefined;
-	_oldValue: Promise<T> | undefined;
+	_oldValue: Promise<TResult> | undefined;
 	_inflightPending: Promise<unknown> | undefined;
 	_enqueuedPending: Promise<unknown> | undefined;
-	_inflightResult: Promise<ElementValue<T>> | undefined;
-	_enqueuedResult: Promise<ElementValue<T>> | undefined;
+	_inflightResult: Promise<ElementValue<TResult>> | undefined;
+	_enqueuedResult: Promise<ElementValue<TResult>> | undefined;
 	_schedules: Set<(value: unknown) => unknown> | undefined;
 	_cleanups: Set<(value: unknown) => unknown> | undefined;
 	// TODO: reorder the parameter list
 	constructor(
-		renderer: Renderer<unknown, T>,
+		renderer: Renderer<unknown, TResult>,
 		el: Element<Component>,
-		parent: Context<unknown, T> | undefined,
+		parent: Context<unknown, TResult> | undefined,
 		scope: Scope,
 		arranger: Element<string | symbol>,
 	) {
@@ -850,7 +850,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 		return this._el.props;
 	}
 
-	get value(): T {
+	get value(): TResult {
 		return this._renderer.read(this._renderer._getChildValueOrValues(this._el));
 	}
 
@@ -892,7 +892,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 		} while (!(this._flags & Unmounted));
 	}
 
-	refresh(): Promise<T> | T {
+	refresh(): Promise<TResult> | TResult {
 		if (this._flags & (Stepping | Unmounted)) {
 			return this._renderer.read(this._renderer._getValue(this._el));
 		}
@@ -1000,7 +1000,7 @@ export class Context<TProps = any, T = any> implements EventTarget {
 	}
 
 	dispatchEvent(ev: Event): boolean {
-		const path: Context<unknown, T>[] = [];
+		const path: Context<unknown, TResult>[] = [];
 		for (
 			let parent = this._parent;
 			parent !== undefined;
