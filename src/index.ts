@@ -144,10 +144,7 @@ export class Element<TTag extends Tag = Tag> {
 	_ctx: Context<TagProps<TTag>> | undefined;
 	_children: Array<NarrowedChild> | NarrowedChild;
 	_onNewValue: Function | undefined;
-	// TODO: we probably need to store commit promises on the element so that copies can access them
-
-	// TODO: delete
-	_childrenByKey: Map<Key, Element> | undefined;
+	// TODO: we probably need to store promises on the element so that Copy elements can access them and not return values before the element has committed
 	constructor(
 		tag: TTag,
 		props: TagProps<TTag>,
@@ -268,6 +265,22 @@ type Scope = unknown;
 
 // TODO: explain
 const RaceLostSymbol = Symbol.for("crank.RaceLost");
+
+function keyOf(child: NarrowedChild): Key {
+	return typeof child === "object" ? child.key : undefined;
+}
+
+function getChildrenByKey(children: Array<NarrowedChild>): Map<Key, Element> {
+	const childrenByKey = new Map<Key, Element>();
+	for (let i = 0; i < children.length; i++) {
+		const child = children[i];
+		if (typeof child === "object" && typeof child.key !== "undefined") {
+			childrenByKey.set(child.key, child);
+		}
+	}
+
+	return childrenByKey;
+}
 
 export abstract class Renderer<T, TResult = ElementValue<T>> {
 	_cache: WeakMap<object, Element<Portal>>;
@@ -401,7 +414,8 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 		arranger: Element<string | symbol>,
 		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
-	) {
+	): Element {
+		// TODO: separate checking for reused elements from mounting
 		if (
 			typeof el._value !== "undefined" ||
 			typeof el._ctx !== "undefined" ||
@@ -457,50 +471,53 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 
 		let async = false;
 		const results: Array<Promise<ElementValue<T>> | ElementValue<T>> = [];
-		let childrenByKey: Map<Key, Element> | undefined;
 		const oldChildren = arrayify(el._children);
 		const newChildren = arrayify(children).slice();
 		const graveyard: Array<Element> = [];
 		let i = 0;
+		let seenKeys: Set<Key> | undefined;
+		let childrenByKey: Map<Key, Element> | undefined;
 		for (let j = 0; j < newChildren.length; j++) {
 			let oldChild = oldChildren[i];
 			let newChild = narrow(newChildren[j]);
-			// alignment
-			if (typeof newChild === "object" && typeof newChild.key !== "undefined") {
-				const oldChild1 =
-					el._childrenByKey && el._childrenByKey.get(newChild.key);
-				if (oldChild1 === undefined) {
-					oldChild = undefined;
-				} else {
-					el._childrenByKey!.delete(newChild.key);
-					if (oldChild === oldChild1) {
-						// TODO: does this make sense
-						i++;
-					} else {
-						oldChild = oldChild1;
-					}
-				}
-			} else {
-				if (
-					typeof oldChild === "object" &&
-					typeof oldChild.key !== "undefined"
-				) {
-					if (Array.isArray(el._children)) {
-						while (
-							typeof oldChild === "object" &&
-							typeof oldChild.key !== "undefined"
-						) {
-							i++;
-							oldChild = el._children[i];
-						}
-					} else {
-						oldChild = undefined;
-					}
-				}
-
-				i++;
+			let oldKey = keyOf(oldChild);
+			let newKey = keyOf(newChild);
+			if (seenKeys !== undefined && seenKeys.has(newKey)) {
+				// TODO: warn about a duplicate key
+				newKey = undefined;
 			}
 
+			// ALIGNMENT
+			if (oldKey !== newKey) {
+				if (childrenByKey === undefined) {
+					childrenByKey = getChildrenByKey(oldChildren.slice(i));
+				}
+
+				if (newKey === undefined) {
+					while (oldChild !== undefined && oldKey !== undefined) {
+						i++;
+						oldChild = oldChildren[i];
+						oldKey = keyOf(oldChild);
+					}
+
+					i++;
+				} else {
+					oldChild = childrenByKey.get(newKey);
+					childrenByKey.delete(newKey);
+					if (seenKeys === undefined) {
+						seenKeys = new Set();
+					}
+
+					seenKeys.add(newKey);
+				}
+			} else {
+				i++;
+				if (childrenByKey !== undefined && newKey !== undefined) {
+					childrenByKey.delete(newKey);
+				}
+			}
+
+			// replacement
 			let result: Promise<ElementValue<T>> | ElementValue<T>;
 			if (typeof newChild === "object") {
 				if (newChild.tag === Copy) {
@@ -521,7 +538,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 									oldChild._value = newChild.props.root;
 								}
 							} else if (oldChild.tag === Raw) {
-								// TODO:
+								// TODO: implement parse caching here?
 							}
 
 							if (oldChild !== newChild) {
@@ -556,17 +573,6 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 			if (typeof oldChild === "object" && oldChild !== newChild) {
 				graveyard.push(oldChild);
 			}
-
-			// add to childrenByKey
-			if (typeof newChild === "object" && typeof newChild.key !== "undefined") {
-				if (childrenByKey === undefined) {
-					childrenByKey = new Map();
-				}
-
-				if (!childrenByKey.has(newChild.key)) {
-					childrenByKey.set(newChild.key, newChild);
-				}
-			}
 		}
 
 		// cleanup
@@ -577,15 +583,14 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 			}
 		}
 
-		// TODO: likely where logic for asynchronous unmounting will go
-		if (typeof el._childrenByKey === "object") {
-			graveyard.push(...el._childrenByKey.values());
-		}
-
 		el._children = (newChildren.length > 1 ? newChildren : newChildren[0]) as
 			| Array<NarrowedChild>
 			| NarrowedChild;
-		el._childrenByKey = childrenByKey;
+
+		// TODO: likely where logic for asynchronous unmounting will go
+		if (childrenByKey !== undefined && childrenByKey.size > 0) {
+			graveyard.push(...childrenByKey.values());
+		}
 
 		if (async) {
 			let onNewValue!: Function;
@@ -765,7 +770,7 @@ export abstract class Renderer<T, TResult = ElementValue<T>> {
 
 		el._value = undefined;
 		el._children = undefined;
-		// TODO: uncomment
+		// TODO: uncomment and investigate why tests fail
 		// el._ctx = undefined;
 	}
 }
