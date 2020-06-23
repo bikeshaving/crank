@@ -189,12 +189,6 @@ export class DOMRenderer extends Renderer<Node, undefined> {
 		}
 	}
 
-	remove(tag: string | symbol, child: Element) {
-		if (child.parentNode !== null) {
-			child.parentNode.removeChild(child);
-		}
-	}
-
 	escape(text: string): string {
 		return text;
 	}
