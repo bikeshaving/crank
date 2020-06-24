@@ -147,7 +147,7 @@ export class DOMRenderer extends Renderer<Node, undefined> {
 					oldChild = oldChild.nextSibling;
 					i++;
 				} else if (typeof newChild === "string") {
-					if ((oldChild as any).splitText !== undefined) {
+					if (oldChild.nodeType === Node.TEXT_NODE) {
 						oldChild.nodeValue = newChild;
 						oldChild = oldChild.nextSibling;
 					} else {
@@ -155,14 +155,14 @@ export class DOMRenderer extends Renderer<Node, undefined> {
 					}
 
 					i++;
-				} else if ((oldChild as any).splitText !== undefined) {
+				} else if (oldChild.nodeType === Node.TEXT_NODE) {
 					const nextSibling = oldChild.nextSibling;
 					parent.removeChild(oldChild);
 					oldChild = nextSibling;
 				} else {
 					parent.insertBefore(newChild, oldChild);
 					i++;
-					// TODO: this is an optimization for the js frameworks benchmark swap rows, but we need to think a little more about other pathological cases.
+					// TODO: this is an optimization for the js frameworks benchmark swap rows, but we need to think a little more about other cases like prepending.
 					if (oldChild !== children[i]) {
 						const nextSibling = oldChild.nextSibling;
 						parent.removeChild(oldChild);
