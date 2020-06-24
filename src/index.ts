@@ -456,28 +456,19 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		let async = false;
 		const newChildren = arrayify(children).slice();
 		for (let i = 0; i < newChildren.length; i++) {
-			let child = narrow(newChildren[i]);
-			let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-			if (typeof child === "object") {
-				if (child.tag === Copy) {
-					child = undefined;
-				} else {
-					if (isInUse(child)) {
-						child = Element.clone(child);
-					}
+			const [child, result] = this._replace(
+				undefined,
+				narrow(newChildren[i]),
+				arranger,
+				parentCtx,
+				scope,
+			);
 
-					result = this._insert(child, arranger, parentCtx, scope);
-					if (!async && isPromiseLike(result)) {
-						async = true;
-					}
-				}
-			} else if (typeof child === "string") {
-				child = this.escape(child, scope);
-				result = child;
-			}
-
-			results.push(result);
 			newChildren[i] = child;
+			results.push(result);
+			if (!async && isPromiseLike(result)) {
+				async = true;
+			}
 		}
 
 		el._children = (newChildren.length > 1
@@ -594,56 +585,13 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 
 			// UPDATING
 			let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-			if (
-				typeof oldChild === "object" &&
-				typeof newChild === "object" &&
-				oldChild.tag === newChild.tag
-			) {
-				if (oldChild.tag === Portal) {
-					if (oldChild._value !== newChild.props.root) {
-						this.arrange(
-							oldChild.tag as symbol,
-							oldChild._value,
-							oldChild.props,
-							[],
-						);
-						oldChild._value = newChild.props.root;
-					}
-				} else if (oldChild.tag === Raw) {
-					// TODO: implement raw caching here
-				}
-
-				if (oldChild !== newChild) {
-					oldChild.props = newChild.props;
-					oldChild.ref = newChild.ref;
-					newChild = oldChild;
-				}
-
-				result = this._update(newChild, arranger, parentCtx, scope);
-			} else if (typeof newChild === "object") {
-				if (newChild.tag === Copy) {
-					newChild = oldChild;
-					// TODO: fix copies of async elements
-					// TODO: should we handle crank-ref?
-					if (typeof oldChild === "object") {
-						result = this._getValue(oldChild);
-					} else {
-						result = oldChild;
-					}
-				} else {
-					if (isInUse(newChild)) {
-						newChild = Element.clone(newChild);
-					}
-
-					result = this._insert(newChild, arranger, parentCtx, scope);
-					if (!async && isPromiseLike(result)) {
-						async = true;
-					}
-				}
-			} else if (typeof newChild === "string") {
-				newChild = this.escape(newChild, scope);
-				result = newChild;
-			}
+			[newChild, result] = this._replace(
+				oldChild,
+				newChild,
+				arranger,
+				parentCtx,
+				scope,
+			);
 
 			results.push(result);
 			newChildren[j] = newChild;
@@ -687,6 +635,65 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		}
 
 		return this._raceCommit(el, arranger, parentCtx, scope, results1);
+	}
+
+	_replace(
+		oldChild: NarrowedChild,
+		newChild: NarrowedChild,
+		arranger: Element<string | symbol>,
+		parentCtx: Context<unknown, TResult> | undefined,
+		scope: Scope,
+	): [NarrowedChild, Promise<ElementValue<TNode>> | ElementValue<TNode>] {
+		let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
+		if (
+			typeof oldChild === "object" &&
+			typeof newChild === "object" &&
+			oldChild.tag === newChild.tag
+		) {
+			if (oldChild.tag === Portal) {
+				if (oldChild._value !== newChild.props.root) {
+					this.arrange(
+						oldChild.tag as symbol,
+						oldChild._value,
+						oldChild.props,
+						[],
+					);
+					oldChild._value = newChild.props.root;
+				}
+			} else if (oldChild.tag === Raw) {
+				// TODO: implement raw caching here
+			}
+
+			if (oldChild !== newChild) {
+				oldChild.props = newChild.props;
+				oldChild.ref = newChild.ref;
+				newChild = oldChild;
+			}
+
+			result = this._update(newChild, arranger, parentCtx, scope);
+		} else if (typeof newChild === "object") {
+			if (newChild.tag === Copy) {
+				newChild = oldChild;
+				// TODO: fix copies of async elements
+				// TODO: should we handle crank-ref?
+				if (typeof oldChild === "object") {
+					result = this._getValue(oldChild);
+				} else {
+					result = oldChild;
+				}
+			} else {
+				if (isInUse(newChild)) {
+					newChild = Element.clone(newChild);
+				}
+
+				result = this._insert(newChild, arranger, parentCtx, scope);
+			}
+		} else if (typeof newChild === "string") {
+			newChild = this.escape(newChild, scope);
+			result = newChild;
+		}
+
+		return [newChild, result];
 	}
 
 	_raceCommit(
