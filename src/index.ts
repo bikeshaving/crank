@@ -748,7 +748,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		el: Element,
 		scope: Scope,
 		childValues: Array<TNode | string>,
-	): Array<TNode | string> | TNode | string | undefined {
+	): ElementValue<TNode> {
 		let value: ElementValue<TNode> =
 			childValues.length > 1 ? childValues : childValues[0];
 		if (typeof el.tag === "function") {
