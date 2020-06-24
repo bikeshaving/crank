@@ -256,7 +256,7 @@ type Scope = unknown;
 // TODO: explain
 const RaceLostSymbol = Symbol.for("crank.RaceLost");
 
-function inUse(el: Element): boolean {
+function isInUse(el: Element): boolean {
 	return (
 		typeof el._value === "undefined" &&
 		typeof el._ctx === "undefined" &&
@@ -356,6 +356,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		scope: Scope,
 	): unknown;
 
+	// TODO: I guess we could pass props into this function
 	abstract arrange(
 		tag: string | symbol,
 		parent: TNode,
@@ -453,33 +454,32 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			Promise<ElementValue<TNode>> | ElementValue<TNode>
 		> = [];
 		let async = false;
-		const children1 = arrayify(children);
-		const children2: Array<NarrowedChild> = [];
+		const children1 = arrayify(children).slice();
 		for (let i = 0; i < children1.length; i++) {
-			// TODO: can we deduplicate this logic with _updateChildren
 			let child = narrow(children1[i]);
+			let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 			if (typeof child === "object") {
 				if (child.tag !== Copy) {
-					if (inUse(child)) {
+					if (isInUse(child)) {
 						child = Element.clone(child);
 					}
 
-					const result = this._insert(child, arranger, parentCtx, scope);
+					result = this._insert(child, arranger, parentCtx, scope);
 					if (!async && isPromiseLike(result)) {
 						async = true;
 					}
-
-					results.push(result);
 				}
 			} else if (typeof child === "string") {
 				child = this.escape(child, scope);
-				results.push(child);
+				result = child;
 			}
 
-			children2.push(child);
+			results.push(result);
+			children1[i] = child;
 		}
 
-		el._children = children2.length > 1 ? children2 : children2[0];
+		el._children = (children1.length > 1 ? children1 : children1[0]) as any;
+
 		let results1:
 			| Promise<Array<ElementValue<TNode>>>
 			| Array<ElementValue<TNode>>;
@@ -523,6 +523,10 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		scope: Scope,
 		children: Children,
 	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+		if (typeof el._children === "undefined") {
+			return this._insertChildren(el, arranger, parentCtx, scope, children);
+		}
+
 		if (typeof el.tag !== "function" && el.tag !== Fragment) {
 			arranger = el as Element<string | symbol>;
 			scope = this.scope(el.tag as string | symbol, el.props, scope);
@@ -533,8 +537,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			Promise<ElementValue<TNode>> | ElementValue<TNode>
 		> = [];
 		const oldChildren = arrayify(el._children);
-		const newChildren = arrayify(children);
-		const newChildren1: Array<NarrowedChild> = [];
+		const newChildren = arrayify(children).slice();
 		const graveyard: Array<Element> = [];
 		let i = 0;
 		// TODO: switch to _insertChildren if there are no more old children
@@ -543,6 +546,8 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		for (let j = 0; j < newChildren.length; j++) {
 			let oldChild = oldChildren[i];
 			let newChild = narrow(newChildren[j]);
+
+			// ALIGNMENT
 			let oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
 			let newKey = typeof newChild === "object" ? newChild.key : undefined;
 			if (seen !== undefined && seen.has(newKey)) {
@@ -550,7 +555,6 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 				newKey = undefined;
 			}
 
-			// ALIGNMENT
 			if (oldKey !== newKey) {
 				if (childrenByKey === undefined) {
 					childrenByKey = getChildrenByKey(oldChildren.slice(i));
@@ -586,53 +590,52 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 
 			// UPDATING
 			let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-			if (typeof newChild === "object") {
+			if (
+				typeof oldChild === "object" &&
+				typeof newChild === "object" &&
+				oldChild.tag === newChild.tag
+			) {
+				if (oldChild.tag === Portal) {
+					if (oldChild._value !== newChild.props.root) {
+						this.arrange(oldChild.tag as symbol, oldChild._value, []);
+						oldChild._value = newChild.props.root;
+					}
+				} else if (oldChild.tag === Raw) {
+					// TODO: implement parse caching here?
+				}
+
+				if (oldChild !== newChild) {
+					oldChild.props = newChild.props;
+					oldChild.ref = newChild.ref;
+					newChild = oldChild;
+				}
+
+				result = this._update(newChild, arranger, parentCtx, scope);
+			} else if (typeof newChild === "object") {
 				if (newChild.tag === Copy) {
-					// TODO: should we handle refs here?
-					// TODO: how do asynchronously updating elements work with copies?
 					newChild = oldChild;
 					if (typeof oldChild === "object") {
 						result = this._getValue(oldChild);
 					} else {
 						result = oldChild;
 					}
-				} else if (
-					typeof oldChild === "object" &&
-					oldChild.tag === newChild.tag
-				) {
-					if (oldChild.tag === Portal) {
-						if (oldChild._value !== newChild.props.root) {
-							this.arrange(oldChild.tag as symbol, oldChild._value, []);
-							oldChild._value = newChild.props.root;
-						}
-					} else if (oldChild.tag === Raw) {
-						// TODO: implement parse caching here?
-					}
-
-					if (oldChild !== newChild) {
-						oldChild.props = newChild.props;
-						oldChild.ref = newChild.ref;
-					}
-
-					newChild = oldChild;
-					result = this._update(newChild, arranger, parentCtx, scope);
 				} else {
-					if (inUse(newChild)) {
+					if (isInUse(newChild)) {
 						newChild = Element.clone(newChild);
 					}
 
 					result = this._insert(newChild, arranger, parentCtx, scope);
+					if (!async && isPromiseLike(result)) {
+						async = true;
+					}
 				}
-			} else {
-				if (typeof newChild === "string") {
-					newChild = this.escape(newChild, scope);
-				}
-
+			} else if (typeof newChild === "string") {
+				newChild = this.escape(newChild, scope);
 				result = newChild;
 			}
 
 			results.push(result);
-			newChildren1.push(newChild);
+			newChildren[j] = newChild;
 			if (!async && isPromiseLike(result)) {
 				async = true;
 			}
@@ -642,7 +645,10 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			}
 		}
 
-		el._children = newChildren1.length > 1 ? newChildren1 : newChildren1[0];
+		el._children = (newChildren.length > 1
+			? newChildren
+			: newChildren[0]) as any;
+
 		// cleanup
 		for (; i < oldChildren.length; i++) {
 			const oldChild = oldChildren[i];
