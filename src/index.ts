@@ -459,7 +459,9 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			let child = narrow(children1[i]);
 			let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 			if (typeof child === "object") {
-				if (child.tag !== Copy) {
+				if (child.tag === Copy) {
+					child = undefined;
+				} else {
 					if (isInUse(child)) {
 						child = Element.clone(child);
 					}
@@ -601,7 +603,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 						oldChild._value = newChild.props.root;
 					}
 				} else if (oldChild.tag === Raw) {
-					// TODO: implement parse caching here?
+					// TODO: implement raw caching here
 				}
 
 				if (oldChild !== newChild) {
@@ -614,6 +616,8 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			} else if (typeof newChild === "object") {
 				if (newChild.tag === Copy) {
 					newChild = oldChild;
+					// TODO: fix copies of async elements
+					// TODO: should we handle crank-ref?
 					if (typeof oldChild === "object") {
 						result = this._getValue(oldChild);
 					} else {
