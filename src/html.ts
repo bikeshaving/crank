@@ -78,34 +78,30 @@ function printAttrs(props: Record<string, any>): string {
 	return attrs.join(" ");
 }
 
-interface Value {
-	props: Record<string, any>;
+interface Node {
 	result: string;
 }
 
-function joinChildValues(values: Array<Value | string>): string {
+function join(children: Array<Node | string>): string {
 	let result = "";
-	for (const value of values) {
-		if (typeof value === "string") {
-			result += value;
-		} else {
-			result += value.result;
-		}
+	for (let i = 0; i < children.length; i++) {
+		const child = children[i];
+		result += typeof child === "string" ? child : child.result;
 	}
 
 	return result;
 }
 
-export class StringRenderer extends Renderer<Value | string, string> {
+export class StringRenderer extends Renderer<Node | string, string> {
 	scope(): void {}
 
-	create(tag: unknown, props: Record<string, any>): Value {
-		return {props, result: ""};
+	create(): Node {
+		return {result: ""};
 	}
 
-	read(value: ElementValue<Value>): string {
+	read(value: ElementValue<Node>): string {
 		if (Array.isArray(value)) {
-			return joinChildValues(value);
+			return join(value);
 		} else if (typeof value === "undefined") {
 			return "";
 		} else if (typeof value === "string") {
@@ -115,16 +111,19 @@ export class StringRenderer extends Renderer<Value | string, string> {
 		}
 	}
 
-	patch(tag: unknown, value: Value, props: Record<string, any>): void {
-		value.props = props;
-	}
+	patch(): void {}
 
-	arrange(tag: any, value: Value, childValues: Array<Value | string>): void {
+	arrange(
+		tag: any,
+		node: Node,
+		props: Record<string, any>,
+		children: Array<Node | string>,
+	): void {
 		if (tag === Portal) {
 			return;
 		}
 
-		const attrs = printAttrs(value.props);
+		const attrs = printAttrs(props);
 		const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
 		let result: string;
 		if (voidTags.has(tag)) {
@@ -132,13 +131,11 @@ export class StringRenderer extends Renderer<Value | string, string> {
 		} else {
 			const close = `</${tag}>`;
 			const contents =
-				"innerHTML" in value.props
-					? value.props["innerHTML"]
-					: joinChildValues(childValues);
+				"innerHTML" in props ? props["innerHTML"] : join(children);
 			result = `${open}${contents}${close}`;
 		}
 
-		value.result = result;
+		node.result = result;
 	}
 
 	parse(text: string): string {
