@@ -356,10 +356,10 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		scope: Scope,
 	): unknown;
 
-	// TODO: I guess we could pass props into this function
-	abstract arrange(
-		tag: string | symbol,
+	abstract arrange<TTag extends string | symbol>(
+		tag: TTag,
 		parent: TNode,
+		props: TagProps<TTag>,
 		childValues: Array<TNode | string>,
 	): unknown;
 
@@ -454,9 +454,9 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			Promise<ElementValue<TNode>> | ElementValue<TNode>
 		> = [];
 		let async = false;
-		const children1 = arrayify(children).slice();
-		for (let i = 0; i < children1.length; i++) {
-			let child = narrow(children1[i]);
+		const newChildren = arrayify(children).slice();
+		for (let i = 0; i < newChildren.length; i++) {
+			let child = narrow(newChildren[i]);
 			let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 			if (typeof child === "object") {
 				if (child.tag === Copy) {
@@ -477,10 +477,12 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			}
 
 			results.push(result);
-			children1[i] = child;
+			newChildren[i] = child;
 		}
 
-		el._children = (children1.length > 1 ? children1 : children1[0]) as any;
+		el._children = (newChildren.length > 1
+			? newChildren
+			: newChildren[0]) as any;
 
 		let results1:
 			| Promise<Array<ElementValue<TNode>>>
@@ -599,7 +601,12 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			) {
 				if (oldChild.tag === Portal) {
 					if (oldChild._value !== newChild.props.root) {
-						this.arrange(oldChild.tag as symbol, oldChild._value, []);
+						this.arrange(
+							oldChild.tag as symbol,
+							oldChild._value,
+							oldChild.props,
+							[],
+						);
 						oldChild._value = newChild.props.root;
 					}
 				} else if (oldChild.tag === Raw) {
@@ -743,7 +750,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			}
 		} else if (el.tag === Portal) {
 			el._value = el.props.root;
-			this.arrange(Portal, el._value, childValues);
+			this.arrange(Portal, el._value, el.props, childValues);
 			value = undefined;
 		} else if (el.tag === Raw) {
 			if (typeof el.props.value === "string") {
@@ -755,7 +762,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			value = el._value;
 		} else if (el.tag !== Fragment) {
 			this.patch(el.tag, el._value, el.props, scope);
-			this.arrange(el.tag, el._value, childValues);
+			this.arrange(el.tag, el._value, el.props, childValues);
 			value = el._value;
 		}
 
@@ -779,7 +786,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			parentCtx = el._ctx;
 		} else if (el.tag === Portal) {
 			arranger = el;
-			this.arrange(Portal, el._value, []);
+			this.arrange(Portal, el._value, el.props, []);
 		} else if (el.tag !== Fragment) {
 			if (isEventTarget(el._value)) {
 				const listeners = getListeners(parentCtx, arranger);
@@ -1389,6 +1396,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			this._renderer.arrange(
 				this._arranger.tag,
 				this._arranger._value,
+				this._arranger.props,
 				this._renderer._getChildValues(this._arranger),
 			);
 		}

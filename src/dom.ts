@@ -113,17 +113,12 @@ export class DOMRenderer extends Renderer<Node, undefined> {
 				}
 			}
 		}
-
-		if ("innerHTML" in props) {
-			(el as any).__crankInnerHTML = "innerHTML" in props;
-		} else if ((el as any).__crankInnerHTML) {
-			(el as any).__crankInnerHTML = false;
-		}
 	}
 
 	arrange<TTag extends string | symbol>(
 		tag: TTag,
 		parent: Node,
+		props: Record<string, any>,
 		children: Array<Node | string>,
 	): void {
 		if (parent === undefined) {
@@ -131,7 +126,7 @@ export class DOMRenderer extends Renderer<Node, undefined> {
 		}
 
 		if (
-			!(parent as any).__crankInnerHTML &&
+			!("innerHTML" in props) &&
 			(children.length !== 0 || (parent as any).__crankArranged)
 		) {
 			if (children.length === 0) {
