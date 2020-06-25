@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import {Copy, createElement, Element} from "../index";
+import {Context, Copy, createElement, Element} from "../index";
 import {renderer} from "../dom";
 
 describe("Copy", () => {
@@ -238,5 +238,48 @@ describe("Copy", () => {
 		expect(document.body.firstChild!.childNodes[4]).toBe(span5);
 		expect(document.body.firstChild!.childNodes[5]).toBe(span6);
 		expect(document.body.firstChild!.childNodes[6]).toBe(span7);
+	});
+
+	test("copy async function", async () => {
+		async function Component() {
+			await new Promise((resolve) => setTimeout(resolve));
+			return <span>Hello</span>;
+		}
+
+		const p1 = renderer.render(<Component />, document.body);
+		const p2 = renderer.render(<Copy />, document.body);
+		expect(p2).toBeInstanceOf(Promise);
+		expect(await p1).toEqual(await p2);
+	});
+
+	test("copy async generator", async () => {
+		async function* Component(this: Context) {
+			for await (const _ of this) {
+				await new Promise((resolve) => setTimeout(resolve));
+				yield <span>Hello</span>;
+			}
+		}
+
+		const p1 = renderer.render(<Component />, document.body);
+		const p2 = renderer.render(<Copy />, document.body);
+		expect(p2).toBeInstanceOf(Promise);
+		expect(await p1).toEqual(await p2);
+	});
+
+	test("copy async element", async () => {
+		async function Component() {
+			await new Promise((resolve) => setTimeout(resolve));
+			return <span>Hello</span>;
+		}
+
+		const p1 = renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		const p2 = renderer.render(<Copy />, document.body);
+		expect(p2).toBeInstanceOf(Promise);
+		expect(await p1).toEqual(await p2);
 	});
 });

@@ -115,10 +115,10 @@ export class Element<TTag extends Tag = Tag> {
 	key: Key;
 	ref: Function | undefined;
 	_flags: number;
-	_value: any;
 	_ctx: Context<TagProps<TTag>> | undefined;
 	_children: Array<NarrowedChild> | NarrowedChild;
-	_valueP: Promise<unknown> | undefined;
+	_value: any;
+	_inflight: Promise<any> | undefined;
 	_onNewValue: Function | undefined;
 	constructor(
 		tag: TTag,
@@ -707,14 +707,13 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			result = this._update(newChild, arranger, ctx, scope);
 		} else if (typeof newChild === "object") {
 			if (newChild.tag === Copy) {
-				newChild = oldChild;
-				// TODO: fix copies of async elements
-				// TODO: should we handle crank-ref?
 				if (typeof oldChild === "object") {
-					result = this._getValue(oldChild);
+					result = oldChild._inflight || this._getValue(oldChild);
 				} else {
 					result = oldChild;
 				}
+
+				newChild = oldChild;
 			} else {
 				if (newChild._flags & InUse) {
 					newChild = Element.clone(newChild);
@@ -737,44 +736,45 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		scope: Scope,
 		results: Promise<Array<ElementValue<TNode>>> | Array<ElementValue<TNode>>,
 	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-		if (Array.isArray(results)) {
-			const value = this._commit(el, scope, normalize(results));
+		if (isPromiseLike(results)) {
+			let onNewValue!: Function;
+			const newValueP = new Promise<ElementValue<TNode>>(
+				(resolve) => (onNewValue = resolve),
+			);
+			const resultsP = Promise.race([
+				newValueP.then(() => {
+					// returning Promise.reject instead of throwing a promise causes a race condition
+					throw RaceLostSymbol;
+				}),
+				results,
+			]);
+
+			const value = resultsP.then(
+				(results) => this._commit(el, scope, normalize(results)),
+				(err) => {
+					if (err === RaceLostSymbol) {
+						return newValueP;
+					}
+
+					throw err;
+				},
+			);
+
 			if (typeof el._onNewValue === "function") {
 				el._onNewValue(value);
-				el._onNewValue = undefined;
 			}
 
+			el._onNewValue = onNewValue;
+			el._inflight = value;
 			return value;
 		}
 
-		let onNewValue!: Function;
-		const newValueP = new Promise<ElementValue<TNode>>(
-			(resolve) => (onNewValue = resolve),
-		);
-		const resultsP = Promise.race([
-			newValueP.then(() => {
-				// returning Promise.reject instead of throwing a promise causes a race condition
-				throw RaceLostSymbol;
-			}),
-			results,
-		]);
-
-		const value = resultsP.then(
-			(results) => this._commit(el, scope, normalize(results)),
-			(err) => {
-				if (err === RaceLostSymbol) {
-					return newValueP;
-				}
-
-				throw err;
-			},
-		);
-
+		const value = this._commit(el, scope, normalize(results));
 		if (typeof el._onNewValue === "function") {
 			el._onNewValue(value);
+			el._onNewValue = undefined;
 		}
 
-		el._onNewValue = onNewValue;
 		return value;
 	}
 
@@ -808,6 +808,10 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 
 		if (typeof el.ref === "function") {
 			el.ref(this.read(value));
+		}
+
+		if (typeof el._inflight === "object") {
+			el._inflight = undefined;
 		}
 
 		return value;
@@ -887,7 +891,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	_listeners: Array<EventListenerRecord> | undefined;
 	_provisions: Map<unknown, unknown> | undefined;
 	_onProps: ((props: any) => unknown) | undefined;
-	_oldValue: Promise<TResult> | undefined;
 	_inflightPending: Promise<unknown> | undefined;
 	_enqueuedPending: Promise<unknown> | undefined;
 	_inflightResult: Promise<ElementValue<TResult>> | undefined;
@@ -1250,6 +1253,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 				const value1 = upgradePromiseLike(value);
 				const pending = value1.catch(() => undefined); // void :(
 				const result = value1.then((value) => this._updateChildren(value));
+				el._inflight = result;
 				this._flags &= ~Stepping;
 				return [pending, result];
 			} else {
@@ -1260,11 +1264,10 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		}
 
 		let oldValue: Promise<TResult> | TResult;
-		if (initial) {
+		if (typeof this._el._inflight === "object") {
+			oldValue = this._renderer.read(this._el._inflight);
+		} else if (initial) {
 			oldValue = this._renderer.read(undefined);
-		} else if (typeof this._oldValue === "object") {
-			oldValue = this._oldValue;
-			this._oldValue = undefined;
 		} else {
 			oldValue = this._renderer.read(this._renderer._getValue(el));
 		}
@@ -1288,10 +1291,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 				try {
 					let result = this._updateChildren(iteration.value as Children); // void :(
 					if (isPromiseLike(result)) {
-						this._oldValue = (result as Promise<any>).then(
-							(value) => this._renderer.read(value),
-							() => this._renderer.read(undefined),
-						);
 						if (
 							!(this._flags & Finished) &&
 							typeof this._iterator!.throw === "function"
@@ -1336,6 +1335,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 				}
 			});
 
+			el._inflight = result;
 			return [pending, result];
 		}
 
