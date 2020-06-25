@@ -713,6 +713,14 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 					result = oldChild;
 				}
 
+				if (typeof newChild.ref === "function") {
+					if (isPromiseLike(result)) {
+						result.then(newChild.ref as any, () => {});
+					} else {
+						newChild.ref(result);
+					}
+				}
+
 				newChild = oldChild;
 			} else {
 				if (newChild._flags & InUse) {

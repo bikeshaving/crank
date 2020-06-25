@@ -282,4 +282,25 @@ describe("Copy", () => {
 		expect(p2).toBeInstanceOf(Promise);
 		expect(await p1).toEqual(await p2);
 	});
+
+	test("refs", () => {
+		renderer.render(<div>Hello</div>, document.body);
+		const mock = jest.fn();
+		renderer.render(<Copy crank-ref={mock} />, document.body);
+		expect(mock).toHaveBeenCalledWith(document.body.firstChild);
+	});
+
+	test("async refs", async () => {
+		async function Component() {
+			await new Promise((resolve) => setTimeout(resolve));
+			return <span>Hello</span>;
+		}
+
+		const p = renderer.render(<Component />, document.body);
+		const mock = jest.fn();
+		renderer.render(<Copy crank-ref={mock} />, document.body);
+		expect(mock).toHaveBeenCalledTimes(0);
+		await p;
+		expect(mock).toHaveBeenCalledWith(document.body.firstChild);
+	});
 });
