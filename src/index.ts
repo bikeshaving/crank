@@ -44,6 +44,10 @@ function arrayify<T>(value: Array<T> | T | undefined): Array<T> {
 	}
 }
 
+function unwrap<T>(arr: Array<T>): Array<T> | T | undefined {
+	return arr.length > 1 ? arr : arr[0];
+}
+
 export type Tag = Component<any> | string | symbol;
 
 export type TagProps<TTag extends Tag> = TTag extends string
@@ -51,6 +55,22 @@ export type TagProps<TTag extends Tag> = TTag extends string
 	: TTag extends Component<infer TProps>
 	? TProps
 	: unknown;
+
+// SPECIAL TAGS
+// TODO: We assert symbol tags as any because typescript support for symbol tags in JSX does not exist yet.
+// https://github.com/microsoft/TypeScript/issues/38367
+// TODO: Maybe we can just make these strings??? Fragment can be the empty string
+export const Fragment = Symbol.for("crank.Fragment") as any;
+export type Fragment = typeof Fragment;
+
+export const Copy = Symbol.for("crank.Copy") as any;
+export type Copy = typeof Copy;
+
+export const Portal = Symbol.for("crank.Portal") as any;
+export type Portal = typeof Portal;
+
+export const Raw = Symbol.for("crank.Raw") as any;
+export type Raw = typeof Raw;
 
 export type Child = Element | string | number | boolean | null | undefined;
 
@@ -69,27 +89,21 @@ export type Component<TProps = any> = (
 
 type Key = unknown;
 
-// SPECIAL TAGS
-// TODO: We assert symbol tags as any because typescript support for symbol tags in JSX does not exist yet.
-// https://github.com/microsoft/TypeScript/issues/38367
-// TODO: Maybe we can just make these strings??? Fragment can be the empty string
-export const Fragment = Symbol.for("crank.Fragment") as any;
-export type Fragment = typeof Fragment;
-
-export const Copy = Symbol.for("crank.Copy") as any;
-export type Copy = typeof Copy;
-
-export const Portal = Symbol.for("crank.Portal") as any;
-export type Portal = typeof Portal;
-
-export const Raw = Symbol.for("crank.Raw") as any;
-export type Raw = typeof Raw;
+// https://overreacted.io/why-do-react-elements-have-typeof-property/
+const ElementSymbol = Symbol.for("crank.Element");
 
 // WHAT ARE WE DOING TO THE CHILDREN
 type NarrowedChild = Element | string | undefined;
 
-// https://overreacted.io/why-do-react-elements-have-typeof-property/
-const ElementSymbol = Symbol.for("crank.Element");
+function narrow(child: Child): NarrowedChild {
+	if (child == null || typeof child === "boolean") {
+		return undefined;
+	} else if (typeof child === "string" || isElement(child)) {
+		return child;
+	} else {
+		return child.toString();
+	}
+}
 
 // ELEMENT FLAGS
 // NOTE: there will probably be more flags sooner than later
@@ -171,16 +185,6 @@ export function createElement<TTag extends Tag>(
 	}
 
 	return new Element(tag, props1, key, ref);
-}
-
-function narrow(child: Child): NarrowedChild {
-	if (child == null || typeof child === "boolean") {
-		return undefined;
-	} else if (typeof child === "string" || isElement(child)) {
-		return child;
-	} else {
-		return child.toString();
-	}
 }
 
 function normalize<T>(values: Array<ElementValue<T>>): Array<T | string> {
@@ -276,7 +280,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			| ElementValue<TNode>;
 		if (isPromiseLike(result)) {
 			return result.then(() => {
-				const value = this.read(this._getChildValueOrValues(portal!));
+				const value = this.read(unwrap(this._getChildValues(portal!)));
 				if (root == null) {
 					this._remove(portal!, portal!, undefined);
 				}
@@ -285,7 +289,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			});
 		}
 
-		const value = this.read(this._getChildValueOrValues(portal));
+		const value = this.read(unwrap(this._getChildValues(portal)));
 		if (root == null) {
 			this._remove(portal, portal, undefined);
 		}
@@ -356,11 +360,6 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		return result;
 	}
 
-	_getChildValueOrValues(el: Element): ElementValue<TNode> {
-		const childValues = this._getChildValues(el);
-		return childValues.length > 1 ? childValues : childValues[0];
-	}
-
 	_getValue(el: Element): ElementValue<TNode> {
 		if (typeof el.tag === Portal) {
 			return undefined;
@@ -368,7 +367,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			return el._value;
 		}
 
-		return this._getChildValueOrValues(el);
+		return unwrap(this._getChildValues(el));
 	}
 
 	_insert(
@@ -427,11 +426,11 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			scope,
 		);
 		el._children = newChild;
-		// TODO: allow single results to be passed to _raceCommit
+		// TODO: allow single results to be passed to _race
 		const results = isPromiseLike(result)
 			? result.then((result) => [result])
 			: [result];
-		return this._raceCommit(el, arranger, ctx, scope, results);
+		return this._race(el, arranger, ctx, scope, results);
 	}
 
 	_insertChildren(
@@ -463,9 +462,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			}
 		}
 
-		el._children = (newChildren.length > 1
-			? newChildren
-			: newChildren[0]) as any;
+		el._children = unwrap(newChildren) as Array<NarrowedChild> | NarrowedChild;
 
 		let results1:
 			| Promise<Array<ElementValue<TNode>>>
@@ -476,7 +473,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			results1 = results as Array<ElementValue<TNode>>;
 		}
 
-		return this._raceCommit(el, arranger, ctx, scope, results1);
+		return this._race(el, arranger, ctx, scope, results1);
 	}
 
 	_update(
@@ -542,11 +539,11 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		}
 
 		el._children = newChild;
-		// TODO: allow single results to be passed to _raceCommit
+		// TODO: allow single results to be passed to _race
 		const results = isPromiseLike(result)
 			? result.then((result) => [result])
 			: [result];
-		return this._raceCommit(el, arranger, ctx, scope, results);
+		return this._race(el, arranger, ctx, scope, results);
 	}
 
 	_updateChildren(
@@ -642,9 +639,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			}
 		}
 
-		el._children = (newChildren.length > 1
-			? newChildren
-			: newChildren[0]) as any;
+		el._children = unwrap(newChildren) as Array<NarrowedChild> | NarrowedChild;
 
 		// cleanup
 		for (; i < oldChildren.length; i++) {
@@ -672,7 +667,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			graveyard.forEach((el) => this._remove(el, arranger, ctx));
 		}
 
-		return this._raceCommit(el, arranger, ctx, scope, results1);
+		return this._race(el, arranger, ctx, scope, results1);
 	}
 
 	// TODO: better name
@@ -735,8 +730,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		return [newChild, result];
 	}
 
-	// TODO: better name
-	_raceCommit(
+	_race(
 		el: Element,
 		arranger: Element<string | symbol>,
 		ctx: Context<unknown, TResult> | undefined,
@@ -789,11 +783,10 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		scope: Scope,
 		childValues: Array<TNode | string>,
 	): ElementValue<TNode> {
-		let value: ElementValue<TNode> =
-			childValues.length > 1 ? childValues : childValues[0];
+		let value = unwrap(childValues);
 		if (typeof el.tag === "function") {
 			if (typeof el._ctx === "object") {
-				el._ctx._commit(childValues);
+				el._ctx._commit(value);
 			}
 		} else if (el.tag === Portal) {
 			el._value = el.props.root;
@@ -949,7 +942,9 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	}
 
 	get value(): TResult {
-		return this._renderer.read(this._renderer._getChildValueOrValues(this._el));
+		return this._renderer.read(
+			unwrap(this._renderer._getChildValues(this._el)),
+		);
 	}
 
 	*[Symbol.iterator](): Generator<TProps> {
@@ -1441,8 +1436,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		);
 	}
 
-	_commit(childValues: Array<ElementValue<unknown>>): void {
-		const value = childValues.length > 1 ? childValues : childValues[0];
+	_commit(value: ElementValue<unknown>): void {
 		if (!(this._flags & Removed) && !(this._flags & Updating)) {
 			this._renderer.arrange(
 				this._arranger.tag,
@@ -1463,7 +1457,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		}
 
 		if (typeof this._listeners !== "undefined" && this._listeners.length > 0) {
-			for (const child of childValues) {
+			for (const child of arrayify(value)) {
 				if (isEventTarget(child)) {
 					for (const record of this._listeners) {
 						child.addEventListener(
