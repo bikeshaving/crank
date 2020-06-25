@@ -22,21 +22,23 @@ function isIterable(value: any): value is Iterable<any> {
 	return value != null && typeof value[Symbol.iterator] === "function";
 }
 
+type NonStringIterable<T> = Iterable<T> & object;
+
+function isNonStringIterable(value: any): value is NonStringIterable<any> {
+	return typeof value !== "string" && isIterable(value);
+}
+
 function isIteratorLike(
 	value: any,
 ): value is Iterator<any> | AsyncIterator<any> {
 	return value != null && typeof value.next === "function";
 }
 
-function arrayify<T>(value: Iterable<T> | T | undefined): Array<T> {
+function arrayify<T>(value: Array<T> | T | undefined): Array<T> {
 	if (value === undefined) {
 		return [];
-	} else if (typeof value === "string") {
-		return [value];
 	} else if (Array.isArray(value)) {
 		return value;
-	} else if (isIterable(value)) {
-		return Array.from(value);
 	} else {
 		return [value];
 	}
@@ -59,7 +61,7 @@ export type Children = Child | ChildIterable;
 export type Component<TProps = any> = (
 	this: Context<TProps>,
 	props: TProps,
-) => // void is such a dumb type :(
+) => // void :(
 | Iterator<Children, Children | void, any>
 	| AsyncIterator<Children, Children | void, any>
 	| PromiseLike<Children>
@@ -89,16 +91,20 @@ type NarrowedChild = Element | string | undefined;
 // https://overreacted.io/why-do-react-elements-have-typeof-property/
 const ElementSymbol = Symbol.for("crank.Element");
 
+// ELEMENT FLAGS
+// NOTE: there will probably be more flags sooner than later
+const InUse = 1 << 0;
 export class Element<TTag extends Tag = Tag> {
 	$$typeof: typeof ElementSymbol;
 	tag: TTag;
 	props: TagProps<TTag>;
 	key: Key;
 	ref: Function | undefined;
+	_flags: number;
 	_value: any;
 	_ctx: Context<TagProps<TTag>> | undefined;
 	_children: Array<NarrowedChild> | NarrowedChild;
-	// TODO: we probably need to store promises on the element so that Copy elements can access them and not return values before the element has committed
+	_valueP: Promise<unknown> | undefined;
 	_onNewValue: Function | undefined;
 	constructor(
 		tag: TTag,
@@ -111,6 +117,7 @@ export class Element<TTag extends Tag = Tag> {
 		this.props = props;
 		this.key = key;
 		this.ref = ref;
+		this._flags = 0;
 	}
 
 	static clone<TTag extends Tag>(el: Element<TTag>): Element<TTag> {
@@ -166,13 +173,11 @@ export function createElement<TTag extends Tag>(
 	return new Element(tag, props1, key, ref);
 }
 
-function narrow(child: Children): NarrowedChild {
+function narrow(child: Child): NarrowedChild {
 	if (child == null || typeof child === "boolean") {
 		return undefined;
 	} else if (typeof child === "string" || isElement(child)) {
 		return child;
-	} else if (isIterable(child)) {
-		return createElement(Fragment, null, child);
 	} else {
 		return child.toString();
 	}
@@ -226,14 +231,6 @@ type Scope = unknown;
 
 // TODO: explain
 const RaceLostSymbol = Symbol.for("crank.RaceLost");
-
-function isInUse(el: Element): boolean {
-	return (
-		typeof el._value === "undefined" &&
-		typeof el._ctx === "undefined" &&
-		typeof el._children === "undefined"
-	);
-}
 
 function getChildrenByKey(children: Array<NarrowedChild>): Map<Key, Element> {
 	const childrenByKey = new Map<Key, Element>();
@@ -380,6 +377,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
 	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+		el._flags |= InUse;
 		if (typeof el.tag === "function") {
 			el._ctx = new Context(
 				this,
@@ -394,13 +392,46 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 				| ElementValue<TNode>;
 		} else if (el.tag === Raw) {
 			return this._commit(el, scope, []);
-		} else if (el.tag === Portal) {
-			el._value = el.props.root;
 		} else if (el.tag !== Fragment) {
-			el._value = this.create(el.tag as any, el.props, scope);
+			if (el.tag === Portal) {
+				el._value = el.props.root;
+			} else {
+				el._value = this.create(el.tag as any, el.props, scope);
+			}
+
+			arranger = el as Element<string | symbol>;
+			scope = this.scope(el.tag as string | symbol, el.props, scope);
 		}
 
-		return this._insertChildren(el, arranger, ctx, scope, el.props.children);
+		if (isNonStringIterable(el.props.children)) {
+			return this._insertChildren(el, arranger, ctx, scope, el.props.children);
+		}
+
+		return this._insertChild(el, arranger, ctx, scope, el.props.children);
+	}
+
+	_insertChild(
+		el: Element,
+		arranger: Element<string | symbol>,
+		ctx: Context<unknown, TResult> | undefined,
+		scope: Scope,
+		child: Child,
+	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+		let newChild = narrow(child);
+		let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
+		[newChild, result] = this._replace(
+			undefined,
+			newChild,
+			arranger,
+			ctx,
+			scope,
+		);
+		el._children = newChild;
+		// TODO: allow single results to be passed to _raceCommit
+		const results = isPromiseLike(result)
+			? result.then((result) => [result])
+			: [result];
+		return this._raceCommit(el, arranger, ctx, scope, results);
 	}
 
 	_insertChildren(
@@ -408,27 +439,23 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		arranger: Element<string | symbol>,
 		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
-		children: Children,
+		children: ChildIterable,
 	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-		if (typeof el.tag !== "function" && el.tag !== Fragment) {
-			arranger = el as Element<string | symbol>;
-			scope = this.scope(el.tag as string | symbol, el.props, scope);
-		}
-
 		const results: Array<
 			Promise<ElementValue<TNode>> | ElementValue<TNode>
 		> = [];
 		let async = false;
-		const newChildren = arrayify(children).slice();
+		const newChildren = Array.from(children);
 		for (let i = 0; i < newChildren.length; i++) {
-			const [child, result] = this._replace(
-				undefined,
-				narrow(newChildren[i]),
-				arranger,
-				ctx,
-				scope,
-			);
+			let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
+			let child = newChildren[i] as NarrowedChild;
+			if (isNonStringIterable(child)) {
+				child = createElement(Fragment, null, child);
+			} else {
+				child = narrow(child);
+			}
 
+			[child, result] = this._replace(undefined, child, arranger, ctx, scope);
 			newChildren[i] = child;
 			results.push(result);
 			if (!async && isPromiseLike(result)) {
@@ -458,16 +485,68 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
 	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-		if (typeof el._ctx === "object") {
-			// TODO: call a separate function like updateComponent so that refresh can return something besides the actual value
-			return el._ctx._update() as
-				| Promise<ElementValue<TNode>>
-				| ElementValue<TNode>;
+		if (typeof el.tag === "function") {
+			if (typeof el._ctx === "object") {
+				return el._ctx._update() as
+					| Promise<ElementValue<TNode>>
+					| ElementValue<TNode>;
+			}
+
+			return undefined;
 		} else if (el.tag === Raw) {
 			return this._commit(el, scope, []);
+		} else if (el.tag !== Fragment) {
+			arranger = el as Element<string | symbol>;
+			scope = this.scope(el.tag as string | symbol, el.props, scope);
 		}
 
-		return this._updateChildren(el, arranger, ctx, scope, el.props.children);
+		if (isNonStringIterable(el.props.children)) {
+			return this._updateChildren(el, arranger, ctx, scope, el.props.children);
+		} else if (Array.isArray(el._children)) {
+			return this._updateChildren(el, arranger, ctx, scope, [
+				el.props.children,
+			]);
+		}
+
+		return this._updateChild(el, arranger, ctx, scope, el.props.children);
+	}
+
+	_updateChild(
+		el: Element,
+		arranger: Element<string | symbol>,
+		ctx: Context<unknown, TResult> | undefined,
+		scope: Scope,
+		child: Child,
+	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+		let oldChild = el._children as NarrowedChild;
+		let newChild = narrow(child);
+		if (
+			typeof oldChild === "object" &&
+			typeof newChild === "object" &&
+			oldChild.key !== newChild.key
+		) {
+			oldChild = undefined;
+		}
+
+		let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
+		[newChild, result] = this._replace(
+			oldChild,
+			newChild,
+			arranger,
+			ctx,
+			scope,
+		);
+
+		if (typeof oldChild === "object" && oldChild !== newChild) {
+			this._remove(oldChild, arranger, ctx);
+		}
+
+		el._children = newChild;
+		// TODO: allow single results to be passed to _raceCommit
+		const results = isPromiseLike(result)
+			? result.then((result) => [result])
+			: [result];
+		return this._raceCommit(el, arranger, ctx, scope, results);
 	}
 
 	_updateChildren(
@@ -475,15 +554,10 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		arranger: Element<string | symbol>,
 		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
-		children: Children,
+		children: ChildIterable,
 	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 		if (typeof el._children === "undefined") {
 			return this._insertChildren(el, arranger, ctx, scope, children);
-		}
-
-		if (typeof el.tag !== "function" && el.tag !== Fragment) {
-			arranger = el as Element<string | symbol>;
-			scope = this.scope(el.tag as string | symbol, el.props, scope);
 		}
 
 		let async = false;
@@ -491,7 +565,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			Promise<ElementValue<TNode>> | ElementValue<TNode>
 		> = [];
 		const oldChildren = arrayify(el._children);
-		const newChildren = arrayify(children).slice();
+		const newChildren = Array.from(children);
 		const graveyard: Array<Element> = [];
 		let i = 0;
 		// TODO: switch to _insertChildren if there are no more old children
@@ -499,7 +573,12 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		let childrenByKey: Map<Key, Element> | undefined;
 		for (let j = 0; j < newChildren.length; j++) {
 			let oldChild = oldChildren[i];
-			let newChild = narrow(newChildren[j]);
+			let newChild = newChildren[j] as NarrowedChild;
+			if (isNonStringIterable(newChild)) {
+				newChild = createElement(Fragment, null, newChild);
+			} else {
+				newChild = narrow(newChild);
+			}
 
 			// ALIGNMENT
 			let oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
@@ -642,7 +721,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 					result = oldChild;
 				}
 			} else {
-				if (isInUse(newChild)) {
+				if (newChild._flags & InUse) {
 					newChild = Element.clone(newChild);
 				}
 
@@ -787,7 +866,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 	}
 }
 
-// FLAGS
+// CONTEXT FLAGS
 // TODO: write an explanation for each of these flags
 const Updating = 1 << 0;
 const Stepping = 1 << 1;
@@ -807,6 +886,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	_parent: Context<unknown, TResult> | undefined;
 	_scope: Scope;
 	_flags: number;
+	// void :(
 	_iterator:
 		| Iterator<Children, Children | void, unknown>
 		| AsyncIterator<Children, Children | void, unknown>
@@ -1345,16 +1425,19 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	_updateChildren(
 		children: Children,
 	): Promise<ElementValue<unknown>> | ElementValue<unknown> {
-		if (typeof children !== "string" && isIterable(children)) {
-			children = createElement(Fragment, null, children);
+		let child: Child;
+		if (isNonStringIterable(children)) {
+			child = createElement(Fragment, null, children);
+		} else {
+			child = children;
 		}
 
-		return this._renderer._updateChildren(
+		return this._renderer._updateChild(
 			this._el,
 			this._arranger,
 			this,
 			this._scope,
-			children,
+			child,
 		);
 	}
 
