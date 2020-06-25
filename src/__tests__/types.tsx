@@ -1,12 +1,6 @@
 /** @jsx createElement */
 /* eslint @typescript-eslint/no-unused-vars: "off", jest/expect-expect: "off" */
-import {
-	createElement,
-	Component,
-	FunctionComponent,
-	Context,
-	GeneratorComponent,
-} from "..";
+import {Component, Context, createElement} from "..";
 
 declare global {
 	module JSX {
@@ -17,6 +11,7 @@ declare global {
 		}
 	}
 }
+
 describe("types", () => {
 	type MyProps = {
 		message: string;
@@ -168,10 +163,7 @@ describe("types", () => {
 	});
 
 	test("FunctionComponent", () => {
-		const MyFunctionComponent: FunctionComponent<MyProps> = function (
-			this,
-			props,
-		) {
+		const MyFunctionComponent: Component<MyProps> = function (this, props) {
 			const ctx: Context<MyProps> = this;
 			let message: string = props.message;
 			// @ts-expect-error
@@ -183,7 +175,7 @@ describe("types", () => {
 		elem = <MyFunctionComponent />;
 		elem = <MyFunctionComponent message={"message"} />;
 
-		const MyAsyncFunctionComponent: FunctionComponent<MyProps> = async function (
+		const MyAsyncFunctionComponent: Component<MyProps> = async function (
 			this,
 			props,
 		) {
@@ -198,15 +190,7 @@ describe("types", () => {
 		elem = <MyAsyncFunctionComponent />;
 		elem = <MyAsyncFunctionComponent message={"message"} />;
 
-		// @ts-expect-error
-		const MyGeneratorComponent: FunctionComponent<MyProps> = function* (
-			this,
-			props,
-		) {
-			yield <div></div>;
-		};
-		// @ts-expect-error
-		const MyAsyncGeneratorComponent: FunctionComponent<MyProps> = async function* (
+		const MyAsyncGeneratorComponent: Component<MyProps> = async function* (
 			this,
 			props,
 		) {
@@ -215,7 +199,7 @@ describe("types", () => {
 	});
 
 	test("GeneratorComponent", () => {
-		const MyGeneratorComponent: GeneratorComponent<MyProps> = function* (
+		const MyGeneratorComponent: Component<MyProps> = function* (
 			this,
 			initialProps,
 		) {
@@ -237,7 +221,7 @@ describe("types", () => {
 		elem = <MyGeneratorComponent />;
 		elem = <MyGeneratorComponent message={"message"} />;
 
-		const MyAsyncGeneratorComponent: GeneratorComponent<MyProps> = async function* (
+		const MyAsyncGeneratorComponent: Component<MyProps> = async function* (
 			this,
 			initialProps,
 		) {
@@ -258,24 +242,6 @@ describe("types", () => {
 		// @ts-expect-error
 		elem = <MyAsyncGeneratorComponent />;
 		elem = <MyAsyncGeneratorComponent message={"message"} />;
-
-		// TODO: add ts-expect-error at some point in the future, I guess?
-		// This will not pass because the function is inferred as any, and any matches Iterator<any, any, any>.
-		// Hopefully a later typescript version fixes this :(
-		const MyFunctionComponent: GeneratorComponent<MyProps> = function (
-			this,
-			props,
-		) {
-			return <div></div>;
-		};
-
-		// @ts-expect-error
-		const MyAsyncFunctionComponent: GeneratorComponent<MyProps> = async function (
-			this,
-			props,
-		) {
-			return <div></div>;
-		};
 	});
 
 	test("loose typings", () => {
