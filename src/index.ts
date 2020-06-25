@@ -1,16 +1,3 @@
-// TODO: is there a way to define this non globally?
-declare global {
-	module JSX {
-		interface IntrinsicElements {
-			[tag: string]: any;
-		}
-
-		interface ElementChildrenAttribute {
-			children: {};
-		}
-	}
-}
-
 /* eslint-disable no-console */
 const consoleError =
 	typeof console !== "undefined" && typeof console.error === "function"
@@ -55,7 +42,7 @@ function arrayify<T>(value: Iterable<T> | T | undefined): Array<T> {
 	}
 }
 
-export type Tag<TProps = any> = Component<TProps> | string | symbol;
+export type Tag = Component<any> | string | symbol;
 
 export type TagProps<TTag extends Tag> = TTag extends string
 	? JSX.IntrinsicElements[TTag]
@@ -69,30 +56,14 @@ interface ChildIterable extends Iterable<Child | ChildIterable> {}
 
 export type Children = Child | ChildIterable;
 
-export type FunctionComponent<TProps = any> = (
-	this: Context<TProps>,
-	props: TProps,
-) => PromiseLike<Child> | Child;
-
-export type ChildIterator<TNext = any> =
-	| Iterator<Children, Children, TNext>
-	| AsyncIterator<Children, Children, TNext>;
-
-export type ChildGenerator<TNext = any> =
-	| Generator<Children, Children, TNext>
-	| AsyncGenerator<Children, Children, TNext>;
-
-export type GeneratorComponent<TProps = any> = (
-	this: Context<TProps>,
-	props: TProps,
-) => ChildIterator;
-
-// TODO: Component cannot be a union of FunctionComponent | GeneratorComponent because this breaks Function.prototype methods.
-// https://github.com/microsoft/TypeScript/issues/33815
 export type Component<TProps = any> = (
 	this: Context<TProps>,
 	props: TProps,
-) => ChildIterator | PromiseLike<Child> | Child;
+) => // void is such a dumb type :(
+| Iterator<Children, Children | void, any>
+	| AsyncIterator<Children, Children | void, any>
+	| PromiseLike<Children>
+	| Children;
 
 type Key = unknown;
 
@@ -406,7 +377,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 	_insert(
 		el: Element,
 		arranger: Element<string | symbol>,
-		parentCtx: Context<unknown, TResult> | undefined,
+		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
 	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 		if (typeof el.tag === "function") {
@@ -414,7 +385,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 				this,
 				el as Element<Component>,
 				arranger,
-				parentCtx,
+				ctx,
 				scope,
 			);
 
@@ -429,19 +400,13 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			el._value = this.create(el.tag as any, el.props, scope);
 		}
 
-		return this._insertChildren(
-			el,
-			arranger,
-			parentCtx,
-			scope,
-			el.props.children,
-		);
+		return this._insertChildren(el, arranger, ctx, scope, el.props.children);
 	}
 
 	_insertChildren(
 		el: Element,
 		arranger: Element<string | symbol>,
-		parentCtx: Context<unknown, TResult> | undefined,
+		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
 		children: Children,
 	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
@@ -460,7 +425,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 				undefined,
 				narrow(newChildren[i]),
 				arranger,
-				parentCtx,
+				ctx,
 				scope,
 			);
 
@@ -484,13 +449,13 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			results1 = results as Array<ElementValue<TNode>>;
 		}
 
-		return this._raceCommit(el, arranger, parentCtx, scope, results1);
+		return this._raceCommit(el, arranger, ctx, scope, results1);
 	}
 
 	_update(
 		el: Element,
 		arranger: Element<string | symbol>,
-		parentCtx: Context<unknown, TResult> | undefined,
+		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
 	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 		if (typeof el._ctx === "object") {
@@ -502,24 +467,18 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			return this._commit(el, scope, []);
 		}
 
-		return this._updateChildren(
-			el,
-			arranger,
-			parentCtx,
-			scope,
-			el.props.children,
-		);
+		return this._updateChildren(el, arranger, ctx, scope, el.props.children);
 	}
 
 	_updateChildren(
 		el: Element,
 		arranger: Element<string | symbol>,
-		parentCtx: Context<unknown, TResult> | undefined,
+		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
 		children: Children,
 	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 		if (typeof el._children === "undefined") {
-			return this._insertChildren(el, arranger, parentCtx, scope, children);
+			return this._insertChildren(el, arranger, ctx, scope, children);
 		}
 
 		if (typeof el.tag !== "function" && el.tag !== Fragment) {
@@ -589,7 +548,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 				oldChild,
 				newChild,
 				arranger,
-				parentCtx,
+				ctx,
 				scope,
 			);
 
@@ -627,21 +586,22 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 
 		if (async) {
 			results1 = Promise.all(results).finally(() =>
-				graveyard.forEach((el) => this._remove(el, arranger, parentCtx)),
+				graveyard.forEach((el) => this._remove(el, arranger, ctx)),
 			);
 		} else {
 			results1 = results as Array<ElementValue<TNode>>;
-			graveyard.forEach((el) => this._remove(el, arranger, parentCtx));
+			graveyard.forEach((el) => this._remove(el, arranger, ctx));
 		}
 
-		return this._raceCommit(el, arranger, parentCtx, scope, results1);
+		return this._raceCommit(el, arranger, ctx, scope, results1);
 	}
 
+	// TODO: better name
 	_replace(
 		oldChild: NarrowedChild,
 		newChild: NarrowedChild,
 		arranger: Element<string | symbol>,
-		parentCtx: Context<unknown, TResult> | undefined,
+		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
 	): [NarrowedChild, Promise<ElementValue<TNode>> | ElementValue<TNode>] {
 		let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
@@ -670,7 +630,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 				newChild = oldChild;
 			}
 
-			result = this._update(newChild, arranger, parentCtx, scope);
+			result = this._update(newChild, arranger, ctx, scope);
 		} else if (typeof newChild === "object") {
 			if (newChild.tag === Copy) {
 				newChild = oldChild;
@@ -686,7 +646,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 					newChild = Element.clone(newChild);
 				}
 
-				result = this._insert(newChild, arranger, parentCtx, scope);
+				result = this._insert(newChild, arranger, ctx, scope);
 			}
 		} else if (typeof newChild === "string") {
 			newChild = this.escape(newChild, scope);
@@ -696,10 +656,11 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		return [newChild, result];
 	}
 
+	// TODO: better name
 	_raceCommit(
 		el: Element,
 		arranger: Element<string | symbol>,
-		parentCtx: Context<unknown, TResult> | undefined,
+		ctx: Context<unknown, TResult> | undefined,
 		scope: Scope,
 		results: Promise<Array<ElementValue<TNode>>> | Array<ElementValue<TNode>>,
 	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
@@ -783,20 +744,20 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 	_remove(
 		el: Element,
 		arranger: Element,
-		parentCtx: Context<unknown, TResult> | undefined,
+		ctx: Context<unknown, TResult> | undefined,
 	): void {
 		if (typeof el.tag === "function") {
 			if (typeof el._ctx === "object") {
 				el._ctx._remove();
 			}
 
-			parentCtx = el._ctx;
+			ctx = el._ctx;
 		} else if (el.tag === Portal) {
 			arranger = el;
 			this.arrange(Portal, el._value, el.props, []);
 		} else if (el.tag !== Fragment) {
 			if (isEventTarget(el._value)) {
-				const listeners = getListeners(parentCtx, arranger);
+				const listeners = getListeners(ctx, arranger);
 				if (listeners !== undefined && listeners.length > 0) {
 					for (let i = 0; i < listeners.length; i++) {
 						const record = listeners[i];
@@ -816,7 +777,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		for (let i = 0; i < children.length; i++) {
 			const child = children[i];
 			if (typeof child === "object") {
-				this._remove(child, arranger, parentCtx);
+				this._remove(child, arranger, ctx);
 			}
 		}
 
@@ -825,8 +786,6 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		el._children = undefined;
 	}
 }
-
-export interface ProvisionMap {}
 
 // FLAGS
 // TODO: write an explanation for each of these flags
@@ -839,6 +798,8 @@ const Removed = 1 << 5;
 const SyncGen = 1 << 6;
 const AsyncGen = 1 << 7;
 
+export interface ProvisionMap {}
+
 export class Context<TProps = any, TResult = any> implements EventTarget {
 	_renderer: Renderer<unknown, TResult>;
 	_el: Element<Component>;
@@ -846,7 +807,10 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	_parent: Context<unknown, TResult> | undefined;
 	_scope: Scope;
 	_flags: number;
-	_iterator: ChildIterator | undefined;
+	_iterator:
+		| Iterator<Children, Children | void, unknown>
+		| AsyncIterator<Children, Children | void, unknown>
+		| undefined;
 	_listeners: Array<EventListenerRecord> | undefined;
 	_provisions: Map<unknown, unknown> | undefined;
 	_onProps: ((props: any) => unknown) | undefined;
@@ -1204,10 +1168,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		if (typeof this._iterator === "undefined") {
 			initial = true;
 			this._clearEventListeners();
-			const value: ChildIterator | PromiseLike<Child> | Child = el.tag.call(
-				this,
-				el.props!,
-			);
+			const value = el.tag.call(this, el.props);
 			if (isIteratorLike(value)) {
 				this._iterator = value;
 			} else if (isPromiseLike(value)) {
@@ -1223,7 +1184,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			}
 		}
 
-		let oldValue: Promise<ElementValue<unknown>> | ElementValue<unknown>;
+		let oldValue: Promise<TResult> | TResult;
 		if (initial) {
 			oldValue = this._renderer.read(undefined);
 		} else if (typeof this._oldValue === "object") {
@@ -1250,7 +1211,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 				}
 
 				try {
-					let result = this._updateChildren(iteration.value);
+					let result = this._updateChildren(iteration.value as Children); // void :(
 					if (isPromiseLike(result)) {
 						this._oldValue = (result as Promise<any>).then(
 							(value) => this._renderer.read(value),
@@ -1313,7 +1274,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		}
 
 		try {
-			let result = this._updateChildren(iteration.value);
+			let result = this._updateChildren(iteration.value as Children); // void :(
 			if (isPromiseLike(result)) {
 				if (
 					!(this._flags & Finished) &&
@@ -1556,4 +1517,18 @@ function getListeners(
 	}
 
 	return listeners;
+}
+
+declare global {
+	module JSX {
+		// TODO: JSX result types don’t work
+
+		interface IntrinsicElements {
+			[tag: string]: any;
+		}
+
+		interface ElementChildrenAttribute {
+			children: {};
+		}
+	}
 }
