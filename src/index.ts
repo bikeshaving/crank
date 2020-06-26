@@ -332,7 +332,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		tag: TTag,
 		parent: TNode,
 		props: TagProps<TTag>,
-		childValues: Array<TNode | string>,
+		children: Array<TNode | string>,
 	): unknown;
 
 	// TODO: dispose() a method which is called for every host node when it is removed
@@ -418,7 +418,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 		let newChild = narrow(child);
 		let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-		[newChild, result] = this._replace(
+		[newChild, result] = this._compare(
 			undefined,
 			newChild,
 			arranger,
@@ -454,7 +454,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 				child = narrow(child);
 			}
 
-			[child, result] = this._replace(undefined, child, arranger, ctx, scope);
+			[child, result] = this._compare(undefined, child, arranger, ctx, scope);
 			newChildren[i] = child;
 			results.push(result);
 			if (!async && isPromiseLike(result)) {
@@ -526,7 +526,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		}
 
 		let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-		[newChild, result] = this._replace(
+		[newChild, result] = this._compare(
 			oldChild,
 			newChild,
 			arranger,
@@ -557,7 +557,6 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			return this._mountChildren(el, arranger, ctx, scope, children);
 		}
 
-		let async = false;
 		const results: Array<
 			Promise<ElementValue<TNode>> | ElementValue<TNode>
 		> = [];
@@ -565,9 +564,11 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		const newChildren = Array.from(children);
 		const graveyard: Array<Element> = [];
 		let i = 0;
-		// TODO: switch to _mountChildren if there are no more old children
+		let async = false;
 		let seen: Set<Key> | undefined;
 		let childrenByKey: Map<Key, Element> | undefined;
+
+		// TODO: switch to _mountChildren if there are no more children
 		for (let j = 0; j < newChildren.length; j++) {
 			let oldChild = oldChildren[i];
 			let newChild = newChildren[j] as NarrowedChild;
@@ -620,7 +621,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 
 			// UPDATING
 			let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-			[newChild, result] = this._replace(
+			[newChild, result] = this._compare(
 				oldChild,
 				newChild,
 				arranger,
@@ -670,8 +671,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		return this._race(el, arranger, ctx, scope, results1);
 	}
 
-	// TODO: better name
-	_replace(
+	_compare(
 		oldChild: NarrowedChild,
 		newChild: NarrowedChild,
 		arranger: Element<string | symbol>,
@@ -789,17 +789,17 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 	_commit(
 		el: Element,
 		scope: Scope,
-		childValues: Array<TNode | string>,
+		results: Array<TNode | string>,
 	): ElementValue<TNode> {
-		let value = unwrap(childValues);
+		let result = unwrap(results);
 		if (typeof el.tag === "function") {
 			if (typeof el._ctx === "object") {
-				el._ctx._commit(value);
+				el._ctx._commit(result);
 			}
 		} else if (el.tag === Portal) {
 			el._value = el.props.root;
-			this.arrange(Portal, el._value, el.props, childValues);
-			value = undefined;
+			this.arrange(Portal, el._value, el.props, results);
+			result = undefined;
 		} else if (el.tag === Raw) {
 			if (typeof el.props.value === "string") {
 				el._value = this.parse(el.props.value, scope);
@@ -807,22 +807,22 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 				el._value = el.props.value;
 			}
 
-			value = el._value;
+			result = el._value;
 		} else if (el.tag !== Fragment) {
 			this.patch(el.tag, el._value, el.props, scope);
-			this.arrange(el.tag, el._value, el.props, childValues);
-			value = el._value;
+			this.arrange(el.tag, el._value, el.props, results);
+			result = el._value;
 		}
 
 		if (typeof el.ref === "function") {
-			el.ref(this.read(value));
+			el.ref(this.read(result));
 		}
 
 		if (typeof el._inflight === "object") {
 			el._inflight = undefined;
 		}
 
-		return value;
+		return result;
 	}
 
 	_unmount(
