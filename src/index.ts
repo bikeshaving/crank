@@ -264,8 +264,6 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 
 		if (portal === undefined) {
 			portal = createElement(Portal, {children, root});
-			// TODO: delete (not setting _value is causing a test to fail)
-			portal._value = root;
 			if (typeof root === "object" && root !== null && children != null) {
 				this._cache.set(root, portal);
 			}
@@ -391,9 +389,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		} else if (el.tag === Raw) {
 			return this._commit(scope, el, []);
 		} else if (el.tag !== Fragment) {
-			if (el.tag === Portal) {
-				el._value = el.props.root;
-			} else {
+			if (el.tag !== Portal) {
 				el._value = this.create(el.tag as any, el.props, scope);
 			}
 
@@ -684,14 +680,13 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			oldChild.tag === newChild.tag
 		) {
 			if (oldChild.tag === Portal) {
-				if (oldChild._value !== newChild.props.root) {
+				if (oldChild.props.root !== newChild.props.root) {
 					this.arrange(
 						oldChild.tag as symbol,
 						oldChild.props,
-						oldChild._value,
+						oldChild.props.root,
 						[],
 					);
-					oldChild._value = newChild.props.root;
 				}
 			} else if (oldChild.tag === Raw) {
 				// TODO: implement raw caching here
@@ -796,8 +791,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 				el._ctx._commit(result);
 			}
 		} else if (el.tag === Portal) {
-			el._value = el.props.root;
-			this.arrange(Portal, el.props, el._value, results);
+			this.arrange(Portal, el.props, el.props.root, results);
 			result = undefined;
 		} else if (el.tag === Raw) {
 			if (typeof el.props.value === "string") {
@@ -837,7 +831,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			ctx = el._ctx;
 		} else if (el.tag === Portal) {
 			arranger = el;
-			this.arrange(Portal, el.props, el._value, []);
+			this.arrange(Portal, el.props, el.props.root, []);
 		} else if (el.tag !== Fragment) {
 			if (isEventTarget(el._value)) {
 				const listeners = getListeners(ctx, arranger);
@@ -1546,7 +1540,9 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			this._renderer.arrange(
 				this._arranger.tag,
 				this._arranger.props,
-				this._arranger._value,
+				this._arranger.tag === Portal
+					? this._arranger.props.root
+					: this._arranger._value,
 				this._renderer._getChildValues(this._arranger),
 			);
 		}
