@@ -282,7 +282,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			return result.then(() => {
 				const value = this.read(unwrap(this._getChildValues(portal!)));
 				if (root == null) {
-					this._remove(portal!, portal!, undefined);
+					this._unmount(portal!, portal!, undefined);
 				}
 
 				return value;
@@ -291,7 +291,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 
 		const value = this.read(unwrap(this._getChildValues(portal)));
 		if (root == null) {
-			this._remove(portal, portal, undefined);
+			this._unmount(portal, portal, undefined);
 		}
 
 		return value;
@@ -370,7 +370,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		return unwrap(this._getChildValues(el));
 	}
 
-	_insert(
+	_mount(
 		el: Element,
 		arranger: Element<string | symbol>,
 		ctx: Context<unknown, TResult> | undefined,
@@ -403,13 +403,13 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		}
 
 		if (isNonStringIterable(el.props.children)) {
-			return this._insertChildren(el, arranger, ctx, scope, el.props.children);
+			return this._mountChildren(el, arranger, ctx, scope, el.props.children);
 		}
 
-		return this._insertChild(el, arranger, ctx, scope, el.props.children);
+		return this._mountChild(el, arranger, ctx, scope, el.props.children);
 	}
 
-	_insertChild(
+	_mountChild(
 		el: Element,
 		arranger: Element<string | symbol>,
 		ctx: Context<unknown, TResult> | undefined,
@@ -433,7 +433,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		return this._race(el, arranger, ctx, scope, results);
 	}
 
-	_insertChildren(
+	_mountChildren(
 		el: Element,
 		arranger: Element<string | symbol>,
 		ctx: Context<unknown, TResult> | undefined,
@@ -535,7 +535,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		);
 
 		if (typeof oldChild === "object" && oldChild !== newChild) {
-			this._remove(oldChild, arranger, ctx);
+			this._unmount(oldChild, arranger, ctx);
 		}
 
 		el._children = newChild;
@@ -554,7 +554,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		children: ChildIterable,
 	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 		if (typeof el._children === "undefined") {
-			return this._insertChildren(el, arranger, ctx, scope, children);
+			return this._mountChildren(el, arranger, ctx, scope, children);
 		}
 
 		let async = false;
@@ -565,7 +565,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		const newChildren = Array.from(children);
 		const graveyard: Array<Element> = [];
 		let i = 0;
-		// TODO: switch to _insertChildren if there are no more old children
+		// TODO: switch to _mountChildren if there are no more old children
 		let seen: Set<Key> | undefined;
 		let childrenByKey: Map<Key, Element> | undefined;
 		for (let j = 0; j < newChildren.length; j++) {
@@ -660,11 +660,11 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 
 		if (async) {
 			results1 = Promise.all(results).finally(() =>
-				graveyard.forEach((el) => this._remove(el, arranger, ctx)),
+				graveyard.forEach((el) => this._unmount(el, arranger, ctx)),
 			);
 		} else {
 			results1 = results as Array<ElementValue<TNode>>;
-			graveyard.forEach((el) => this._remove(el, arranger, ctx));
+			graveyard.forEach((el) => this._unmount(el, arranger, ctx));
 		}
 
 		return this._race(el, arranger, ctx, scope, results1);
@@ -727,7 +727,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 					newChild = Element.clone(newChild);
 				}
 
-				result = this._insert(newChild, arranger, ctx, scope);
+				result = this._mount(newChild, arranger, ctx, scope);
 			}
 		} else if (typeof newChild === "string") {
 			newChild = this.escape(newChild, scope);
@@ -825,14 +825,14 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		return value;
 	}
 
-	_remove(
+	_unmount(
 		el: Element,
 		arranger: Element,
 		ctx: Context<unknown, TResult> | undefined,
 	): void {
 		if (typeof el.tag === "function") {
 			if (typeof el._ctx === "object") {
-				el._ctx._remove();
+				el._ctx._unmount();
 			}
 
 			ctx = el._ctx;
@@ -861,7 +861,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		for (let i = 0; i < children.length; i++) {
 			const child = children[i];
 			if (typeof child === "object") {
-				this._remove(child, arranger, ctx);
+				this._unmount(child, arranger, ctx);
 			}
 		}
 
@@ -878,7 +878,7 @@ const Stepping = 1 << 1;
 const Iterating = 1 << 2;
 const Available = 1 << 3;
 const Finished = 1 << 4;
-const Removed = 1 << 5;
+const Unmounted = 1 << 5;
 const SyncGen = 1 << 6;
 const AsyncGen = 1 << 7;
 
@@ -1031,7 +1031,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	*[Symbol.iterator](): Generator<TProps> {
 		const el = this._el;
-		while (!(this._flags & Removed)) {
+		while (!(this._flags & Unmounted)) {
 			if (this._flags & Iterating) {
 				throw new Error("You must yield for each iteration of this.");
 			} else if (this._flags & AsyncGen) {
@@ -1060,15 +1060,15 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 				const props = await new Promise<TProps>(
 					(resolve) => (this._onProps = resolve),
 				);
-				if (!(this._flags & Removed)) {
+				if (!(this._flags & Unmounted)) {
 					yield props;
 				}
 			}
-		} while (!(this._flags & Removed));
+		} while (!(this._flags & Unmounted));
 	}
 
 	refresh(): Promise<TResult> | TResult {
-		if (this._flags & (Stepping | Removed)) {
+		if (this._flags & (Stepping | Unmounted)) {
 			return this._renderer.read(this._renderer._getValue(this._el));
 		}
 
@@ -1427,11 +1427,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			return [pending, result];
 		}
 
-		this._flags &= ~Iterating;
 		if (initial) {
 			this._flags |= SyncGen;
 		}
 
+		this._flags &= ~Iterating;
 		if (iteration.done) {
 			this._flags |= Finished;
 		}
@@ -1525,7 +1525,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	}
 
 	_commit(value: ElementValue<unknown>): void {
-		if (!(this._flags & Removed) && !(this._flags & Updating)) {
+		if (!(this._flags & Unmounted) && !(this._flags & Updating)) {
 			this._renderer.arrange(
 				this._arranger.tag,
 				this._arranger._value,
@@ -1561,8 +1561,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		this._flags &= ~Updating;
 	}
 
-	_remove(): void {
-		this._flags |= Removed;
+	_unmount(): void {
+		this._flags |= Unmounted;
 		this._clearEventListeners();
 		if (typeof this._cleanups === "object") {
 			const value = this._renderer.read(this._renderer._getValue(this._el));
