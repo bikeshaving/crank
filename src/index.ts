@@ -416,7 +416,7 @@ function mountChildren<TValue, TResult>(
 	arranger: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
-	el: Element,
+	parent: Element,
 	children: ChildIterable,
 ): Promise<ElementValue<TValue>> | ElementValue<TValue> {
 	const results: Array<
@@ -441,7 +441,7 @@ function mountChildren<TValue, TResult>(
 		}
 	}
 
-	el._ch = unwrap(newChildren) as Array<NarrowedChild> | NarrowedChild;
+	parent._ch = unwrap(newChildren) as Array<NarrowedChild> | NarrowedChild;
 
 	let results1:
 		| Promise<Array<ElementValue<TValue>>>
@@ -452,7 +452,7 @@ function mountChildren<TValue, TResult>(
 		results1 = results as Array<ElementValue<TValue>>;
 	}
 
-	return race(renderer, arranger, ctx, scope, el, results1);
+	return race(renderer, arranger, ctx, scope, parent, results1);
 }
 
 function update<TValue, TResult>(
@@ -498,10 +498,10 @@ function updateChild<TValue, TResult>(
 	arranger: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
-	el: Element,
+	parent: Element,
 	child: Child,
 ): Promise<ElementValue<TValue>> | ElementValue<TValue> {
-	let oldChild = el._ch as NarrowedChild;
+	let oldChild = parent._ch as NarrowedChild;
 	let newChild = narrow(child);
 	if (
 		typeof oldChild === "object" &&
@@ -525,12 +525,12 @@ function updateChild<TValue, TResult>(
 		unmount(renderer, arranger, ctx, oldChild);
 	}
 
-	el._ch = newChild;
+	parent._ch = newChild;
 	// TODO: allow single results to be passed to race
 	const results = isPromiseLike(result)
 		? result.then((result) => [result])
 		: [result];
-	return race(renderer, arranger, ctx, scope, el, results);
+	return race(renderer, arranger, ctx, scope, parent, results);
 }
 
 function updateChildren<TValue, TResult>(
@@ -538,17 +538,17 @@ function updateChildren<TValue, TResult>(
 	arranger: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
-	el: Element,
+	parent: Element,
 	children: ChildIterable,
 ): Promise<ElementValue<TValue>> | ElementValue<TValue> {
-	if (typeof el._ch === "undefined") {
-		return mountChildren(renderer, arranger, ctx, scope, el, children);
+	if (typeof parent._ch === "undefined") {
+		return mountChildren(renderer, arranger, ctx, scope, parent, children);
 	}
 
 	const results: Array<
 		Promise<ElementValue<TValue>> | ElementValue<TValue>
 	> = [];
-	const oldChildren = arrayify(el._ch);
+	const oldChildren = arrayify(parent._ch);
 	const newChildren = Array.from(children);
 	const graveyard: Array<Element> = [];
 	let i = 0;
@@ -629,7 +629,7 @@ function updateChildren<TValue, TResult>(
 		}
 	}
 
-	el._ch = unwrap(newChildren) as Array<NarrowedChild> | NarrowedChild;
+	parent._ch = unwrap(newChildren) as Array<NarrowedChild> | NarrowedChild;
 
 	// cleanup
 	for (; i < oldChildren.length; i++) {
@@ -650,14 +650,14 @@ function updateChildren<TValue, TResult>(
 
 	if (async) {
 		results1 = Promise.all(results).finally(() =>
-			graveyard.forEach((el) => unmount(renderer, arranger, ctx, el)),
+			graveyard.forEach((child) => unmount(renderer, arranger, ctx, child)),
 		);
 	} else {
 		results1 = results as Array<ElementValue<TValue>>;
-		graveyard.forEach((el) => unmount(renderer, arranger, ctx, el));
+		graveyard.forEach((child) => unmount(renderer, arranger, ctx, child));
 	}
 
-	return race(renderer, arranger, ctx, scope, el, results1);
+	return race(renderer, arranger, ctx, scope, parent, results1);
 }
 
 function compare<TValue, TResult>(
