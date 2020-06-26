@@ -78,11 +78,12 @@ interface ChildIterable extends Iterable<Child | ChildIterable> {}
 
 export type Children = Child | ChildIterable;
 
+// return type of iterators has to be void because typescript
 export type Component<TProps = any> = (
 	this: Context<TProps>,
 	props: TProps,
-) => // void :(
-| Iterator<Children, Children | void, any>
+) =>
+	| Iterator<Children, Children | void, any>
 	| AsyncIterator<Children, Children | void, any>
 	| PromiseLike<Children>
 	| Children;
@@ -249,7 +250,37 @@ function getChildrenByKey(children: Array<NarrowedChild>): Map<Key, Element> {
 	return childrenByKey;
 }
 
-export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
+function getChildValues<TValue>(el: Element): Array<TValue | string> {
+	let result: Array<TValue | string> = [];
+	const children = arrayify(el._children);
+	for (let i = 0; i < children.length; i++) {
+		const child = children[i];
+		if (child === undefined) {
+			// pass
+		} else if (typeof child === "string") {
+			result.push(child);
+		} else if (typeof child.tag === "function" || child.tag === Fragment) {
+			result = result.concat(getChildValues<TValue>(child));
+		} else if (child.tag !== Portal) {
+			// Portals have a value but are opaque to their parents
+			result.push(child._value);
+		}
+	}
+
+	return result;
+}
+
+function getValue<TValue>(el: Element): ElementValue<TValue> {
+	if (typeof el.tag === Portal) {
+		return undefined;
+	} else if (typeof el.tag !== "function" && el.tag !== Fragment) {
+		return el._value;
+	}
+
+	return unwrap(getChildValues<TValue>(el));
+}
+
+export abstract class Renderer<TValue, TResult = ElementValue<TValue>> {
 	_cache: WeakMap<object, Element<Portal>>;
 	constructor() {
 		this._cache = new WeakMap();
@@ -274,21 +305,21 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			}
 		}
 
-		const result = this._update(portal, undefined, undefined, portal);
+		const result = update(this, portal, undefined, undefined, portal);
 		if (isPromiseLike(result)) {
 			return result.then(() => {
-				const value = this.read(unwrap(this._getChildValues(portal!)));
+				const value = this.read(unwrap(getChildValues<TValue>(portal!)));
 				if (root == null) {
-					this._unmount(portal!, undefined, portal!);
+					unmount(this, portal!, undefined, portal!);
 				}
 
 				return value;
 			});
 		}
 
-		const value = this.read(unwrap(this._getChildValues(portal)));
+		const value = this.read(getChildValues<TValue>(portal));
 		if (root == null) {
-			this._unmount(portal, undefined, portal);
+			unmount(this, portal, undefined, portal);
 		}
 
 		return value;
@@ -306,7 +337,7 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		return text;
 	}
 
-	read(value: ElementValue<TNode>): TResult {
+	read(value: ElementValue<TValue>): TResult {
 		return (value as unknown) as TResult;
 	}
 
@@ -314,214 +345,292 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		tag: TTag,
 		props: TagProps<TTag>,
 		scope: Scope,
-	): TNode;
+	): TValue;
 
-	abstract parse(_text: string, _scope: Scope): TNode;
+	abstract parse(_text: string, _scope: Scope): TValue;
 
 	abstract patch<TTag extends string | symbol>(
 		tag: TTag,
 		props: TagProps<TTag>,
-		value: TNode,
+		value: TValue,
 		scope: Scope,
 	): unknown;
 
 	abstract arrange<TTag extends string | symbol>(
 		tag: TTag,
 		props: TagProps<TTag>,
-		parent: TNode,
-		children: Array<TNode | string>,
+		parent: TValue,
+		children: Array<TValue | string>,
 	): unknown;
 
 	// TODO: dispose() a method which is called for every host node when it is removed
 
 	// TODO: complete() a method which is called once at the end of every independent rendering or refresh or async generator component update
+}
 
-	// PRIVATE METHODS
-	_getChildValues(el: Element): Array<TNode | string> {
-		let result: Array<TNode | string> = [];
-		const children = arrayify(el._children);
-		for (let i = 0; i < children.length; i++) {
-			const child = children[i];
-			if (child === undefined) {
-				// pass
-			} else if (typeof child === "string") {
-				result.push(child);
-			} else if (typeof child.tag === "function" || child.tag === Fragment) {
-				result = result.concat(this._getChildValues(child));
-			} else if (child.tag !== Portal) {
-				// Portals have a value but are opaque to their parents
-				result.push(child._value);
-			}
-		}
-
-		return result;
-	}
-
-	_getValue(el: Element): ElementValue<TNode> {
-		if (typeof el.tag === Portal) {
-			return undefined;
-		} else if (typeof el.tag !== "function" && el.tag !== Fragment) {
-			return el._value;
-		}
-
-		return unwrap(this._getChildValues(el));
-	}
-
-	_mount(
-		arranger: Element<string | symbol>,
-		ctx: Context<unknown, TResult> | undefined,
-		scope: Scope,
-		el: Element,
-	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-		el._flags |= InUse;
-		if (typeof el.tag === "function") {
-			el._ctx = new Context(
-				this,
-				el as Element<Component>,
-				arranger,
-				ctx,
-				scope,
-			);
-
-			return el._ctx._update() as
-				| Promise<ElementValue<TNode>>
-				| ElementValue<TNode>;
-		} else if (el.tag === Raw) {
-			return this._commit(scope, el, []);
-		} else if (el.tag !== Fragment) {
-			if (el.tag !== Portal) {
-				el._value = this.create(el.tag as any, el.props, scope);
-			}
-
-			arranger = el as Element<string | symbol>;
-			scope = this.scope(el.tag as string | symbol, el.props, scope);
-		}
-
-		if (isNonStringIterable(el.props.children)) {
-			return this._mountChildren(arranger, ctx, scope, el, el.props.children);
-		}
-
-		return this._mountChild(arranger, ctx, scope, el, el.props.children);
-	}
-
-	_mountChild(
-		arranger: Element<string | symbol>,
-		ctx: Context<unknown, TResult> | undefined,
-		scope: Scope,
-		el: Element,
-		child: Child,
-	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-		let newChild = narrow(child);
-		let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-		[newChild, result] = this._compare(
+// PRIVATE RENDERER FUNCTIONS
+function mount<TValue, TResult>(
+	renderer: Renderer<TValue, TResult>,
+	arranger: Element<string | symbol>,
+	ctx: Context<unknown, TResult> | undefined,
+	scope: Scope,
+	el: Element,
+): Promise<ElementValue<TValue>> | ElementValue<TValue> {
+	el._flags |= InUse;
+	if (typeof el.tag === "function") {
+		el._ctx = new Context(
+			renderer,
+			el as Element<Component>,
 			arranger,
 			ctx,
 			scope,
-			undefined,
-			newChild,
 		);
-		el._children = newChild;
-		// TODO: allow single results to be passed to _race
-		const results = isPromiseLike(result)
-			? result.then((result) => [result])
-			: [result];
-		return this._race(arranger, ctx, scope, el, results);
-	}
 
-	_mountChildren(
-		arranger: Element<string | symbol>,
-		ctx: Context<unknown, TResult> | undefined,
-		scope: Scope,
-		el: Element,
-		children: ChildIterable,
-	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-		const results: Array<
-			Promise<ElementValue<TNode>> | ElementValue<TNode>
-		> = [];
-		let async = false;
-		const newChildren = Array.from(children);
-		for (let i = 0; i < newChildren.length; i++) {
-			let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-			let child = newChildren[i] as NarrowedChild;
-			if (isNonStringIterable(child)) {
-				child = createElement(Fragment, null, child);
-			} else {
-				child = narrow(child);
-			}
-
-			[child, result] = this._compare(arranger, ctx, scope, undefined, child);
-			newChildren[i] = child;
-			results.push(result);
-			if (!async && isPromiseLike(result)) {
-				async = true;
-			}
+		return updateCtx(el._ctx);
+	} else if (el.tag === Raw) {
+		return commit(renderer, scope, el, []);
+	} else if (el.tag !== Fragment) {
+		if (el.tag !== Portal) {
+			el._value = renderer.create(el.tag, el.props, scope);
 		}
 
-		el._children = unwrap(newChildren) as Array<NarrowedChild> | NarrowedChild;
+		arranger = el as Element<string | symbol>;
+		scope = renderer.scope(el.tag, el.props, scope);
+	}
 
-		let results1:
-			| Promise<Array<ElementValue<TNode>>>
-			| Array<ElementValue<TNode>>;
-		if (async) {
-			results1 = Promise.all(results);
+	if (isNonStringIterable(el.props.children)) {
+		return mountChildren(renderer, arranger, ctx, scope, el, el.props.children);
+	}
+
+	return mountChild(renderer, arranger, ctx, scope, el, el.props.children);
+}
+
+function mountChild<TValue, TResult>(
+	renderer: Renderer<TValue, TResult>,
+	arranger: Element<string | symbol>,
+	ctx: Context<unknown, TResult> | undefined,
+	scope: Scope,
+	el: Element,
+	child: Child,
+): Promise<ElementValue<TValue>> | ElementValue<TValue> {
+	let newChild = narrow(child);
+	let result: Promise<ElementValue<TValue>> | ElementValue<TValue>;
+	[newChild, result] = compare(
+		renderer,
+		arranger,
+		ctx,
+		scope,
+		undefined,
+		newChild,
+	);
+	el._children = newChild;
+	// TODO: allow single results to be passed to race
+	const results = isPromiseLike(result)
+		? result.then((result) => [result])
+		: [result];
+	return race(renderer, arranger, ctx, scope, el, results);
+}
+
+function mountChildren<TValue, TResult>(
+	renderer: Renderer<TValue, TResult>,
+	arranger: Element<string | symbol>,
+	ctx: Context<unknown, TResult> | undefined,
+	scope: Scope,
+	el: Element,
+	children: ChildIterable,
+): Promise<ElementValue<TValue>> | ElementValue<TValue> {
+	const results: Array<
+		Promise<ElementValue<TValue>> | ElementValue<TValue>
+	> = [];
+	const newChildren = Array.from(children);
+	let async = false;
+	for (let i = 0; i < newChildren.length; i++) {
+		let result: Promise<ElementValue<TValue>> | ElementValue<TValue>;
+		let child = newChildren[i] as NarrowedChild;
+		if (isNonStringIterable(child)) {
+			child = createElement(Fragment, null, child);
 		} else {
-			results1 = results as Array<ElementValue<TNode>>;
+			child = narrow(child);
 		}
 
-		return this._race(arranger, ctx, scope, el, results1);
+		[child, result] = compare(renderer, arranger, ctx, scope, undefined, child);
+		newChildren[i] = child;
+		results.push(result);
+		if (!async && isPromiseLike(result)) {
+			async = true;
+		}
 	}
 
-	_update(
-		arranger: Element<string | symbol>,
-		ctx: Context<unknown, TResult> | undefined,
-		scope: Scope,
-		el: Element,
-	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-		if (typeof el.tag === "function") {
-			if (typeof el._ctx === "object") {
-				return el._ctx._update() as
-					| Promise<ElementValue<TNode>>
-					| ElementValue<TNode>;
+	el._children = unwrap(newChildren) as Array<NarrowedChild> | NarrowedChild;
+
+	let results1:
+		| Promise<Array<ElementValue<TValue>>>
+		| Array<ElementValue<TValue>>;
+	if (async) {
+		results1 = Promise.all(results);
+	} else {
+		results1 = results as Array<ElementValue<TValue>>;
+	}
+
+	return race(renderer, arranger, ctx, scope, el, results1);
+}
+
+function update<TValue, TResult>(
+	renderer: Renderer<TValue, TResult>,
+	arranger: Element<string | symbol>,
+	ctx: Context<unknown, TResult> | undefined,
+	scope: Scope,
+	el: Element,
+): Promise<ElementValue<TValue>> | ElementValue<TValue> {
+	if (typeof el.tag === "function") {
+		if (typeof el._ctx === "object") {
+			return updateCtx(el._ctx);
+		}
+
+		return undefined;
+	} else if (el.tag === Raw) {
+		return commit(renderer, scope, el, []);
+	} else if (el.tag !== Fragment) {
+		arranger = el as Element<string | symbol>;
+		scope = renderer.scope(el.tag, el.props, scope);
+	}
+
+	if (isNonStringIterable(el.props.children)) {
+		return updateChildren(
+			renderer,
+			arranger,
+			ctx,
+			scope,
+			el,
+			el.props.children,
+		);
+	} else if (Array.isArray(el._children)) {
+		return updateChildren(renderer, arranger, ctx, scope, el, [
+			el.props.children,
+		]);
+	}
+
+	return updateChild(renderer, arranger, ctx, scope, el, el.props.children);
+}
+
+function updateChild<TValue, TResult>(
+	renderer: Renderer<TValue, TResult>,
+	arranger: Element<string | symbol>,
+	ctx: Context<unknown, TResult> | undefined,
+	scope: Scope,
+	el: Element,
+	child: Child,
+): Promise<ElementValue<TValue>> | ElementValue<TValue> {
+	let oldChild = el._children as NarrowedChild;
+	let newChild = narrow(child);
+	if (
+		typeof oldChild === "object" &&
+		typeof newChild === "object" &&
+		oldChild.key !== newChild.key
+	) {
+		oldChild = undefined;
+	}
+
+	let result: Promise<ElementValue<TValue>> | ElementValue<TValue>;
+	[newChild, result] = compare(
+		renderer,
+		arranger,
+		ctx,
+		scope,
+		oldChild,
+		newChild,
+	);
+
+	if (typeof oldChild === "object" && oldChild !== newChild) {
+		unmount(renderer, arranger, ctx, oldChild);
+	}
+
+	el._children = newChild;
+	// TODO: allow single results to be passed to race
+	const results = isPromiseLike(result)
+		? result.then((result) => [result])
+		: [result];
+	return race(renderer, arranger, ctx, scope, el, results);
+}
+
+function updateChildren<TValue, TResult>(
+	renderer: Renderer<TValue, TResult>,
+	arranger: Element<string | symbol>,
+	ctx: Context<unknown, TResult> | undefined,
+	scope: Scope,
+	el: Element,
+	children: ChildIterable,
+): Promise<ElementValue<TValue>> | ElementValue<TValue> {
+	if (typeof el._children === "undefined") {
+		return mountChildren(renderer, arranger, ctx, scope, el, children);
+	}
+
+	const results: Array<
+		Promise<ElementValue<TValue>> | ElementValue<TValue>
+	> = [];
+	const oldChildren = arrayify(el._children);
+	const newChildren = Array.from(children);
+	const graveyard: Array<Element> = [];
+	let i = 0;
+	let async = false;
+	let seen: Set<Key> | undefined;
+	let childrenByKey: Map<Key, Element> | undefined;
+
+	// TODO: switch to mountChildren if there are no more children
+	for (let j = 0; j < newChildren.length; j++) {
+		let oldChild = oldChildren[i];
+		let newChild = newChildren[j] as NarrowedChild;
+		if (isNonStringIterable(newChild)) {
+			newChild = createElement(Fragment, null, newChild);
+		} else {
+			newChild = narrow(newChild);
+		}
+
+		// ALIGNMENT
+		let oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
+		let newKey = typeof newChild === "object" ? newChild.key : undefined;
+		if (seen !== undefined && seen.has(newKey)) {
+			// TODO: warn about a duplicate key
+			newKey = undefined;
+		}
+
+		if (oldKey !== newKey) {
+			if (childrenByKey === undefined) {
+				childrenByKey = getChildrenByKey(oldChildren.slice(i));
 			}
 
-			return undefined;
-		} else if (el.tag === Raw) {
-			return this._commit(scope, el, []);
-		} else if (el.tag !== Fragment) {
-			arranger = el as Element<string | symbol>;
-			scope = this.scope(el.tag as string | symbol, el.props, scope);
+			if (newKey === undefined) {
+				while (oldChild !== undefined && oldKey !== undefined) {
+					i++;
+					oldChild = oldChildren[i];
+					oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
+				}
+
+				i++;
+			} else {
+				oldChild = childrenByKey.get(newKey);
+				if (oldChild !== undefined) {
+					childrenByKey.delete(newKey);
+				}
+
+				if (seen === undefined) {
+					seen = new Set();
+				}
+
+				seen.add(newKey);
+			}
+		} else {
+			if (childrenByKey !== undefined && newKey !== undefined) {
+				childrenByKey.delete(newKey);
+			}
+
+			i++;
 		}
 
-		if (isNonStringIterable(el.props.children)) {
-			return this._updateChildren(arranger, ctx, scope, el, el.props.children);
-		} else if (Array.isArray(el._children)) {
-			return this._updateChildren(arranger, ctx, scope, el, [
-				el.props.children,
-			]);
-		}
-
-		return this._updateChild(arranger, ctx, scope, el, el.props.children);
-	}
-
-	_updateChild(
-		arranger: Element<string | symbol>,
-		ctx: Context<unknown, TResult> | undefined,
-		scope: Scope,
-		el: Element,
-		child: Child,
-	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-		let oldChild = el._children as NarrowedChild;
-		let newChild = narrow(child);
-		if (
-			typeof oldChild === "object" &&
-			typeof newChild === "object" &&
-			oldChild.key !== newChild.key
-		) {
-			oldChild = undefined;
-		}
-
-		let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-		[newChild, result] = this._compare(
+		// UPDATING
+		let result: Promise<ElementValue<TValue>> | ElementValue<TValue>;
+		[newChild, result] = compare(
+			renderer,
 			arranger,
 			ctx,
 			scope,
@@ -529,339 +638,242 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 			newChild,
 		);
 
+		results.push(result);
+		newChildren[j] = newChild;
+		if (!async && isPromiseLike(result)) {
+			async = true;
+		}
+
 		if (typeof oldChild === "object" && oldChild !== newChild) {
-			this._unmount(arranger, ctx, oldChild);
+			graveyard.push(oldChild);
 		}
-
-		el._children = newChild;
-		// TODO: allow single results to be passed to _race
-		const results = isPromiseLike(result)
-			? result.then((result) => [result])
-			: [result];
-		return this._race(arranger, ctx, scope, el, results);
 	}
 
-	_updateChildren(
-		arranger: Element<string | symbol>,
-		ctx: Context<unknown, TResult> | undefined,
-		scope: Scope,
-		el: Element,
-		children: ChildIterable,
-	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-		if (typeof el._children === "undefined") {
-			return this._mountChildren(arranger, ctx, scope, el, children);
+	el._children = unwrap(newChildren) as Array<NarrowedChild> | NarrowedChild;
+
+	// cleanup
+	for (; i < oldChildren.length; i++) {
+		const oldChild = oldChildren[i];
+		if (typeof oldChild === "object" && typeof oldChild.key === "undefined") {
+			graveyard.push(oldChild);
+		}
+	}
+
+	// TODO: async removal of keyed nodes
+	if (childrenByKey !== undefined && childrenByKey.size > 0) {
+		graveyard.push(...childrenByKey.values());
+	}
+
+	let results1:
+		| Promise<Array<ElementValue<TValue>>>
+		| Array<ElementValue<TValue>>;
+
+	if (async) {
+		results1 = Promise.all(results).finally(() =>
+			graveyard.forEach((el) => unmount(renderer, arranger, ctx, el)),
+		);
+	} else {
+		results1 = results as Array<ElementValue<TValue>>;
+		graveyard.forEach((el) => unmount(renderer, arranger, ctx, el));
+	}
+
+	return race(renderer, arranger, ctx, scope, el, results1);
+}
+
+function compare<TValue, TResult>(
+	renderer: Renderer<TValue, TResult>,
+	arranger: Element<string | symbol>,
+	ctx: Context<unknown, TResult> | undefined,
+	scope: Scope,
+	oldChild: NarrowedChild,
+	newChild: NarrowedChild,
+): [NarrowedChild, Promise<ElementValue<TValue>> | ElementValue<TValue>] {
+	let result: Promise<ElementValue<TValue>> | ElementValue<TValue>;
+	if (
+		typeof oldChild === "object" &&
+		typeof newChild === "object" &&
+		oldChild.tag === newChild.tag
+	) {
+		if (oldChild.tag === Portal) {
+			if (oldChild.props.root !== newChild.props.root) {
+				renderer.arrange(Portal, oldChild.props, oldChild.props.root, []);
+			}
+		} else if (oldChild.tag === Raw) {
+			// TODO: implement raw caching here
 		}
 
-		const results: Array<
-			Promise<ElementValue<TNode>> | ElementValue<TNode>
-		> = [];
-		const oldChildren = arrayify(el._children);
-		const newChildren = Array.from(children);
-		const graveyard: Array<Element> = [];
-		let i = 0;
-		let async = false;
-		let seen: Set<Key> | undefined;
-		let childrenByKey: Map<Key, Element> | undefined;
+		if (oldChild !== newChild) {
+			oldChild.props = newChild.props;
+			oldChild.ref = newChild.ref;
+			newChild = oldChild;
+		}
 
-		// TODO: switch to _mountChildren if there are no more children
-		for (let j = 0; j < newChildren.length; j++) {
-			let oldChild = oldChildren[i];
-			let newChild = newChildren[j] as NarrowedChild;
-			if (isNonStringIterable(newChild)) {
-				newChild = createElement(Fragment, null, newChild);
+		result = update(renderer, arranger, ctx, scope, newChild);
+	} else if (typeof newChild === "object") {
+		if (newChild.tag === Copy) {
+			if (typeof oldChild === "object") {
+				result = oldChild._inflight || getValue<TValue>(oldChild);
 			} else {
-				newChild = narrow(newChild);
+				result = oldChild;
 			}
 
-			// ALIGNMENT
-			let oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
-			let newKey = typeof newChild === "object" ? newChild.key : undefined;
-			if (seen !== undefined && seen.has(newKey)) {
-				// TODO: warn about a duplicate key
-				newKey = undefined;
-			}
-
-			if (oldKey !== newKey) {
-				if (childrenByKey === undefined) {
-					childrenByKey = getChildrenByKey(oldChildren.slice(i));
-				}
-
-				if (newKey === undefined) {
-					while (oldChild !== undefined && oldKey !== undefined) {
-						i++;
-						oldChild = oldChildren[i];
-						oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
-					}
-
-					i++;
+			if (typeof newChild.ref === "function") {
+				if (isPromiseLike(result)) {
+					result.then(newChild.ref as any).catch(() => {});
 				} else {
-					oldChild = childrenByKey.get(newKey);
-					if (oldChild !== undefined) {
-						childrenByKey.delete(newKey);
-					}
-
-					if (seen === undefined) {
-						seen = new Set();
-					}
-
-					seen.add(newKey);
+					newChild.ref(result);
 				}
-			} else {
-				if (childrenByKey !== undefined && newKey !== undefined) {
-					childrenByKey.delete(newKey);
-				}
-
-				i++;
 			}
 
-			// UPDATING
-			let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-			[newChild, result] = this._compare(
-				arranger,
-				ctx,
-				scope,
-				oldChild,
-				newChild,
-			);
-
-			results.push(result);
-			newChildren[j] = newChild;
-			if (!async && isPromiseLike(result)) {
-				async = true;
-			}
-
-			if (typeof oldChild === "object" && oldChild !== newChild) {
-				graveyard.push(oldChild);
-			}
-		}
-
-		el._children = unwrap(newChildren) as Array<NarrowedChild> | NarrowedChild;
-
-		// cleanup
-		for (; i < oldChildren.length; i++) {
-			const oldChild = oldChildren[i];
-			if (typeof oldChild === "object" && typeof oldChild.key === "undefined") {
-				graveyard.push(oldChild);
-			}
-		}
-
-		// TODO: async removal of keyed nodes
-		if (childrenByKey !== undefined && childrenByKey.size > 0) {
-			graveyard.push(...childrenByKey.values());
-		}
-
-		let results1:
-			| Promise<Array<ElementValue<TNode>>>
-			| Array<ElementValue<TNode>>;
-
-		if (async) {
-			results1 = Promise.all(results).finally(() =>
-				graveyard.forEach((el) => this._unmount(arranger, ctx, el)),
-			);
+			newChild = oldChild;
 		} else {
-			results1 = results as Array<ElementValue<TNode>>;
-			graveyard.forEach((el) => this._unmount(arranger, ctx, el));
-		}
+			if (newChild._flags & InUse) {
+				newChild = Element.clone(newChild);
+			}
 
-		return this._race(arranger, ctx, scope, el, results1);
+			result = mount(renderer, arranger, ctx, scope, newChild);
+		}
+	} else if (typeof newChild === "string") {
+		newChild = renderer.escape(newChild, scope);
+		result = newChild;
 	}
 
-	_compare(
-		arranger: Element<string | symbol>,
-		ctx: Context<unknown, TResult> | undefined,
-		scope: Scope,
-		oldChild: NarrowedChild,
-		newChild: NarrowedChild,
-	): [NarrowedChild, Promise<ElementValue<TNode>> | ElementValue<TNode>] {
-		let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-		if (
-			typeof oldChild === "object" &&
-			typeof newChild === "object" &&
-			oldChild.tag === newChild.tag
-		) {
-			if (oldChild.tag === Portal) {
-				if (oldChild.props.root !== newChild.props.root) {
-					this.arrange(
-						oldChild.tag as symbol,
-						oldChild.props,
-						oldChild.props.root,
-						[],
-					);
-				}
-			} else if (oldChild.tag === Raw) {
-				// TODO: implement raw caching here
-			}
+	return [newChild, result];
+}
 
-			if (oldChild !== newChild) {
-				oldChild.props = newChild.props;
-				oldChild.ref = newChild.ref;
-				newChild = oldChild;
-			}
+function race<TValue, TResult>(
+	renderer: Renderer<TValue, TResult>,
+	arranger: Element<string | symbol>,
+	ctx: Context<unknown, TResult> | undefined,
+	scope: Scope,
+	el: Element,
+	results: Promise<Array<ElementValue<TValue>>> | Array<ElementValue<TValue>>,
+): Promise<ElementValue<TValue>> | ElementValue<TValue> {
+	if (isPromiseLike(results)) {
+		let onNewValue!: Function;
+		const newValueP = new Promise<ElementValue<TValue>>(
+			(resolve) => (onNewValue = resolve),
+		);
+		const resultsP = Promise.race([
+			newValueP.then(() => {
+				// returning Promise.reject instead of throwing a promise causes a race condition
+				throw RaceLostSymbol;
+			}),
+			results,
+		]);
 
-			result = this._update(arranger, ctx, scope, newChild);
-		} else if (typeof newChild === "object") {
-			if (newChild.tag === Copy) {
-				if (typeof oldChild === "object") {
-					result = oldChild._inflight || this._getValue(oldChild);
-				} else {
-					result = oldChild;
+		const value = resultsP.then(
+			(results) => commit(renderer, scope, el, normalize(results)),
+			(err) => {
+				if (err === RaceLostSymbol) {
+					return newValueP;
 				}
 
-				if (typeof newChild.ref === "function") {
-					if (isPromiseLike(result)) {
-						result.then(newChild.ref as any, () => {});
-					} else {
-						newChild.ref(result);
-					}
-				}
+				throw err;
+			},
+		);
 
-				newChild = oldChild;
-			} else {
-				if (newChild._flags & InUse) {
-					newChild = Element.clone(newChild);
-				}
-
-				result = this._mount(arranger, ctx, scope, newChild);
-			}
-		} else if (typeof newChild === "string") {
-			newChild = this.escape(newChild, scope);
-			result = newChild;
-		}
-
-		return [newChild, result];
-	}
-
-	_race(
-		arranger: Element<string | symbol>,
-		ctx: Context<unknown, TResult> | undefined,
-		scope: Scope,
-		el: Element,
-		results: Promise<Array<ElementValue<TNode>>> | Array<ElementValue<TNode>>,
-	): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-		if (isPromiseLike(results)) {
-			let onNewValue!: Function;
-			const newValueP = new Promise<ElementValue<TNode>>(
-				(resolve) => (onNewValue = resolve),
-			);
-			const resultsP = Promise.race([
-				newValueP.then(() => {
-					// returning Promise.reject instead of throwing a promise causes a race condition
-					throw RaceLostSymbol;
-				}),
-				results,
-			]);
-
-			const value = resultsP.then(
-				(results) => this._commit(scope, el, normalize(results)),
-				(err) => {
-					if (err === RaceLostSymbol) {
-						return newValueP;
-					}
-
-					throw err;
-				},
-			);
-
-			if (typeof el._onNewValue === "function") {
-				el._onNewValue(value);
-			}
-
-			el._onNewValue = onNewValue;
-			el._inflight = value;
-			return value;
-		}
-
-		const value = this._commit(scope, el, normalize(results));
 		if (typeof el._onNewValue === "function") {
 			el._onNewValue(value);
-			el._onNewValue = undefined;
 		}
 
+		el._onNewValue = onNewValue;
+		el._inflight = value;
 		return value;
 	}
 
-	_commit(
-		scope: Scope,
-		el: Element,
-		results: Array<TNode | string>,
-	): ElementValue<TNode> {
-		let result = unwrap(results);
-		if (typeof el.tag === "function") {
-			if (typeof el._ctx === "object") {
-				el._ctx._commit(result);
-			}
-		} else if (el.tag === Portal) {
-			this.arrange(Portal, el.props, el.props.root, results);
-			result = undefined;
-		} else if (el.tag === Raw) {
-			if (typeof el.props.value === "string") {
-				el._value = this.parse(el.props.value, scope);
-			} else {
-				el._value = el.props.value;
-			}
-
-			result = el._value;
-		} else if (el.tag !== Fragment) {
-			this.patch(el.tag, el.props, el._value, scope);
-			this.arrange(el.tag, el.props, el._value, results);
-			result = el._value;
-		}
-
-		if (typeof el.ref === "function") {
-			el.ref(this.read(result));
-		}
-
-		if (typeof el._inflight === "object") {
-			el._inflight = undefined;
-		}
-
-		return result;
+	const value = commit(renderer, scope, el, normalize(results));
+	if (typeof el._onNewValue === "function") {
+		el._onNewValue(value);
+		el._onNewValue = undefined;
 	}
 
-	_unmount(
-		arranger: Element,
-		ctx: Context<unknown, TResult> | undefined,
-		el: Element,
-	): void {
-		if (typeof el.tag === "function") {
-			if (typeof el._ctx === "object") {
-				el._ctx._unmount();
-			}
+	return value;
+}
 
-			ctx = el._ctx;
-		} else if (el.tag === Portal) {
-			arranger = el;
-			this.arrange(Portal, el.props, el.props.root, []);
-		} else if (el.tag !== Fragment) {
-			if (isEventTarget(el._value)) {
-				const listeners = getListeners(ctx, arranger);
-				if (listeners !== undefined && listeners.length > 0) {
-					for (let i = 0; i < listeners.length; i++) {
-						const record = listeners[i];
-						el._value.removeEventListener(
-							record.type,
-							record.callback,
-							record.options,
-						);
-					}
+function commit<TValue, TResult>(
+	renderer: Renderer<TValue, TResult>,
+	scope: Scope,
+	el: Element,
+	results: Array<TValue | string>,
+): ElementValue<TValue> {
+	let result = unwrap(results);
+	if (typeof el.tag === "function") {
+		if (typeof el._ctx === "object") {
+			commitCtx(el._ctx, result);
+		}
+	} else if (el.tag === Portal) {
+		renderer.arrange(Portal, el.props, el.props.root, results);
+		result = undefined;
+	} else if (el.tag === Raw) {
+		if (typeof el.props.value === "string") {
+			el._value = renderer.parse(el.props.value, scope);
+		} else {
+			el._value = el.props.value;
+		}
+
+		result = el._value;
+	} else if (el.tag !== Fragment) {
+		renderer.patch(el.tag, el.props, el._value, scope);
+		renderer.arrange(el.tag, el.props, el._value, results);
+		result = el._value;
+	}
+
+	if (typeof el.ref === "function") {
+		el.ref(renderer.read(result));
+	}
+
+	if (typeof el._inflight === "object") {
+		el._inflight = undefined;
+	}
+
+	return result;
+}
+
+function unmount<TValue, TResult>(
+	renderer: Renderer<TValue, TResult>,
+	arranger: Element,
+	ctx: Context<unknown, TResult> | undefined,
+	el: Element,
+): void {
+	if (typeof el.tag === "function") {
+		if (typeof el._ctx === "object") {
+			unmountCtx(el._ctx);
+		}
+
+		ctx = el._ctx;
+	} else if (el.tag === Portal) {
+		arranger = el;
+		renderer.arrange(Portal, el.props, el.props.root, []);
+	} else if (el.tag !== Fragment) {
+		if (isEventTarget(el._value)) {
+			const listeners = getListeners(ctx, arranger);
+			if (listeners !== undefined && listeners.length > 0) {
+				for (let i = 0; i < listeners.length; i++) {
+					const record = listeners[i];
+					el._value.removeEventListener(
+						record.type,
+						record.callback,
+						record.options,
+					);
 				}
 			}
-
-			arranger = el;
 		}
 
-		const children = arrayify(el._children);
-		for (let i = 0; i < children.length; i++) {
-			const child = children[i];
-			if (typeof child === "object") {
-				this._unmount(arranger, ctx, child);
-			}
-		}
-
-		el._value = undefined;
-		el._ctx = undefined;
-		el._children = undefined;
+		arranger = el;
 	}
+
+	const children = arrayify(el._children);
+	for (let i = 0; i < children.length; i++) {
+		const child = children[i];
+		if (typeof child === "object") {
+			unmount(renderer, arranger, ctx, child);
+		}
+	}
+
+	el._value = undefined;
+	el._ctx = undefined;
+	el._children = undefined;
 }
 
 // CONTEXT FLAGS
@@ -948,7 +960,7 @@ function getListeners(
 
 function clearEventListeners(ctx: Context): void {
 	if (typeof ctx._listeners !== "undefined" && ctx._listeners.length > 0) {
-		for (const value of ctx._renderer._getChildValues(ctx._el)) {
+		for (const value of getChildValues(ctx._el)) {
 			if (isEventTarget(value)) {
 				for (const record of ctx._listeners) {
 					value.removeEventListener(
@@ -983,8 +995,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	_onProps: ((props: any) => unknown) | undefined;
 	_inflightPending: Promise<unknown> | undefined;
 	_enqueuedPending: Promise<unknown> | undefined;
-	_inflightResult: Promise<ElementValue<TResult>> | undefined;
-	_enqueuedResult: Promise<ElementValue<TResult>> | undefined;
+	_inflightResult: Promise<ElementValue<any>> | undefined;
+	_enqueuedResult: Promise<ElementValue<any>> | undefined;
 	_schedules: Set<(value: TResult) => unknown> | undefined;
 	_cleanups: Set<(value: TResult) => unknown> | undefined;
 	constructor(
@@ -1035,9 +1047,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	}
 
 	get value(): TResult {
-		return this._renderer.read(
-			unwrap(this._renderer._getChildValues(this._el)),
-		);
+		return this._renderer.read(unwrap(getChildValues(this._el)));
 	}
 
 	*[Symbol.iterator](): Generator<TProps> {
@@ -1080,11 +1090,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	refresh(): Promise<TResult> | TResult {
 		if (this._flags & (Stepping | Unmounted)) {
-			return this._renderer.read(this._renderer._getValue(this._el));
+			return this._renderer.read(getValue(this._el));
 		}
 
-		this._resume();
-		return this._renderer.read(this._run());
+		resumeCtx(this);
+		return this._renderer.read(runCtx(this));
 	}
 
 	schedule(callback: (value: unknown) => unknown): void {
@@ -1153,7 +1163,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 		this._listeners.push(record);
 
-		for (const value of this._renderer._getChildValues(this._el)) {
+		for (const value of getChildValues(this._el)) {
 			if (isEventTarget(value)) {
 				value.addEventListener(record.type, record.callback, record.options);
 			}
@@ -1183,7 +1193,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 		const record = this._listeners[i];
 		this._listeners.splice(i, 1);
-		for (const value of this._renderer._getChildValues(this._el)) {
+		for (const value of getChildValues(this._el)) {
 			if (isEventTarget(value)) {
 				value.removeEventListener(record.type, record.callback, record.options);
 			}
@@ -1291,312 +1301,327 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			setEventProperty(ev, "currentTarget", null);
 		}
 	}
+}
 
-	// PRIVATE METHODS
-	_resume() {
-		if (typeof this._onProps === "function") {
-			this._onProps(this._el.props!);
-			this._onProps = undefined;
+// PRIVATE CONTEXT FUNCTIONS
+function resumeCtx(ctx: Context) {
+	if (typeof ctx._onProps === "function") {
+		ctx._onProps(ctx._el.props);
+		ctx._onProps = undefined;
+	} else {
+		ctx._flags |= Available;
+	}
+}
+
+function runCtx<TValue, TResult>(
+	ctx: Context<unknown, TResult>,
+): Promise<ElementValue<TValue>> | ElementValue<TValue> {
+	if (typeof ctx._inflightPending === "undefined") {
+		const [pending, result] = stepCtx<TValue, TResult>(ctx);
+		if (isPromiseLike(pending)) {
+			ctx._inflightPending = pending.finally(() => advanceCtx(ctx));
+		}
+
+		if (isPromiseLike(result)) {
+			ctx._inflightResult = result;
+		}
+
+		return result;
+	} else if (ctx._flags & AsyncGen) {
+		return ctx._inflightResult;
+	} else if (typeof ctx._enqueuedPending === "undefined") {
+		let resolve: Function;
+		ctx._enqueuedPending = ctx._inflightPending
+			.then(() => {
+				const [pending, result] = stepCtx<TValue, TResult>(ctx);
+				resolve(result);
+				return pending;
+			})
+			.finally(() => advanceCtx(ctx));
+		ctx._enqueuedResult = new Promise((resolve1) => (resolve = resolve1));
+	}
+
+	return ctx._enqueuedResult;
+}
+
+function stepCtx<TValue, TResult>(
+	ctx: Context<unknown, TResult>,
+): [
+	Promise<unknown> | undefined,
+	Promise<ElementValue<TValue>> | ElementValue<TValue>,
+] {
+	const el = ctx._el;
+	if (ctx._flags & Finished) {
+		return [undefined, getValue<TValue>(el)];
+	}
+
+	let initial = false;
+	ctx._flags |= Stepping;
+	if (typeof ctx._iterator === "undefined") {
+		initial = true;
+		clearEventListeners(ctx);
+		const value = el.tag.call(ctx, el.props);
+		if (isIteratorLike(value)) {
+			ctx._iterator = value;
+		} else if (isPromiseLike(value)) {
+			const value1 = upgradePromiseLike(value);
+			const pending = value1.catch(() => undefined); // void :(
+			const result = value1.then((value) =>
+				updateComponentChildren<TValue, TResult>(ctx, value),
+			);
+			el._inflight = result;
+			ctx._flags &= ~Stepping;
+			return [pending, result];
 		} else {
-			this._flags |= Available;
+			const result = updateComponentChildren<TValue, TResult>(ctx, value);
+			ctx._flags &= ~Stepping;
+			return [undefined, result];
 		}
 	}
 
-	_run(): Promise<ElementValue<unknown>> | ElementValue<unknown> {
-		if (typeof this._inflightPending === "undefined") {
-			const [pending, result] = this._step();
-			if (isPromiseLike(pending)) {
-				this._inflightPending = pending.finally(() => this._advance());
-			}
-
-			if (isPromiseLike(result)) {
-				this._inflightResult = result as Promise<any>;
-			}
-
-			return result;
-		} else if (this._flags & AsyncGen) {
-			return this._inflightResult;
-		} else if (typeof this._enqueuedPending === "undefined") {
-			let resolve: Function;
-			this._enqueuedPending = this._inflightPending
-				.then(() => {
-					const [pending, result] = this._step();
-					resolve(result);
-					return pending;
-				})
-				.finally(() => this._advance());
-			this._enqueuedResult = new Promise((resolve1) => (resolve = resolve1));
-		}
-
-		return this._enqueuedResult;
+	let oldValue: Promise<TResult> | TResult;
+	if (typeof ctx._el._inflight === "object") {
+		oldValue = ctx._renderer.read(ctx._el._inflight);
+	} else if (initial) {
+		oldValue = ctx._renderer.read(undefined);
+	} else {
+		oldValue = ctx._renderer.read(getValue(el));
 	}
 
-	_step(): [
-		Promise<unknown> | undefined,
-		Promise<ElementValue<unknown>> | ElementValue<unknown>,
-	] {
-		const el = this._el;
-		if (this._flags & Finished) {
-			return [undefined, this._renderer._getValue(el)];
+	// TODO: clean up/deduplicate logic here
+	// TODO: generator components which throw errors should be fragile, if rerendered they should be unmounted and remounted
+	const iteration = ctx._iterator.next(oldValue);
+	ctx._flags &= ~Stepping;
+	if (isPromiseLike(iteration)) {
+		if (initial) {
+			ctx._flags |= AsyncGen;
 		}
 
-		let initial = false;
-		this._flags |= Stepping;
-		if (typeof this._iterator === "undefined") {
-			initial = true;
-			clearEventListeners(this);
-			const value = el.tag.call(this, el.props);
-			if (isIteratorLike(value)) {
-				this._iterator = value;
-			} else if (isPromiseLike(value)) {
-				const value1 = upgradePromiseLike(value);
-				const pending = value1.catch(() => undefined); // void :(
-				const result = value1.then((value) => this._updateChildren(value));
-				el._inflight = result;
-				this._flags &= ~Stepping;
-				return [pending, result];
-			} else {
-				const result = this._updateChildren(value);
-				this._flags &= ~Stepping;
-				return [undefined, result];
-			}
-		}
-
-		let oldValue: Promise<TResult> | TResult;
-		if (typeof this._el._inflight === "object") {
-			oldValue = this._renderer.read(this._el._inflight);
-		} else if (initial) {
-			oldValue = this._renderer.read(undefined);
-		} else {
-			oldValue = this._renderer.read(this._renderer._getValue(el));
-		}
-
-		// TODO: clean up/deduplicate logic here
-		// TODO: generator components which throw errors should be fragile, if rerendered they should be unmounted and remounted
-		const iteration = this._iterator.next(oldValue);
-		this._flags &= ~Stepping;
-		if (isPromiseLike(iteration)) {
-			if (initial) {
-				this._flags |= AsyncGen;
+		const pending = iteration.catch(() => {});
+		const result = iteration.then((iteration) => {
+			ctx._flags &= ~Iterating;
+			if (iteration.done) {
+				ctx._flags |= Finished;
 			}
 
-			const pending = iteration.catch(() => {});
-			const result = iteration.then((iteration) => {
-				this._flags &= ~Iterating;
-				if (iteration.done) {
-					this._flags |= Finished;
+			try {
+				let result = updateComponentChildren<TValue, TResult>(
+					ctx,
+					iteration.value as Children,
+				); // void :(
+				if (isPromiseLike(result)) {
+					if (
+						!(ctx._flags & Finished) &&
+						typeof ctx._iterator!.throw === "function"
+					) {
+						result = result.catch((err) => {
+							resumeCtx(ctx);
+							const iteration = (ctx._iterator as AsyncGenerator<
+								Children,
+								Children
+							>).throw(err);
+							return iteration.then((iteration) => {
+								if (iteration.done) {
+									ctx._flags |= Finished;
+								}
+
+								return updateComponentChildren<TValue, TResult>(
+									ctx,
+									iteration.value,
+								);
+							});
+						});
+					}
 				}
 
-				try {
-					let result = this._updateChildren(iteration.value as Children); // void :(
-					if (isPromiseLike(result)) {
-						if (
-							!(this._flags & Finished) &&
-							typeof this._iterator!.throw === "function"
-						) {
-							result = (result as Promise<any>).catch((err) => {
-								this._resume();
-								const iteration = (this._iterator as AsyncGenerator<
-									Children,
-									Children
-								>).throw(err);
-								return iteration.then((iteration) => {
-									if (iteration.done) {
-										this._flags |= Finished;
-									}
+				return result;
+			} catch (err) {
+				if (
+					ctx._flags & Finished ||
+					typeof ctx._iterator!.throw !== "function"
+				) {
+					throw err;
+				}
 
-									return this._updateChildren(iteration.value);
-								});
-							});
-						}
+				const iteration = (ctx._iterator as AsyncGenerator<
+					Children,
+					Children
+				>).throw(err);
+				return iteration.then((iteration) => {
+					if (iteration.done) {
+						ctx._flags |= Finished;
 					}
 
-					return result;
-				} catch (err) {
-					if (
-						this._flags & Finished ||
-						typeof this._iterator!.throw !== "function"
-					) {
-						throw err;
-					}
+					return updateComponentChildren<TValue, TResult>(ctx, iteration.value);
+				});
+			}
+		});
 
-					const iteration = (this._iterator as AsyncGenerator<
+		el._inflight = result;
+		return [pending, result];
+	}
+
+	if (initial) {
+		ctx._flags |= SyncGen;
+	}
+
+	ctx._flags &= ~Iterating;
+	if (iteration.done) {
+		ctx._flags |= Finished;
+	}
+
+	try {
+		let result = updateComponentChildren<TValue, TResult>(
+			ctx,
+			iteration.value as Children,
+		); // void :(
+		if (isPromiseLike(result)) {
+			if (
+				!(ctx._flags & Finished) &&
+				typeof ctx._iterator.throw === "function"
+			) {
+				result = result.catch((err) => {
+					ctx._flags |= Stepping;
+					const iteration = (ctx._iterator as Generator<
 						Children,
 						Children
 					>).throw(err);
-					return iteration.then((iteration) => {
-						if (iteration.done) {
-							this._flags |= Finished;
-						}
+					ctx._flags &= ~Stepping;
+					if (iteration.done) {
+						ctx._flags |= Finished;
+					}
 
-						return this._updateChildren(iteration.value);
-					});
-				}
-			});
-
-			el._inflight = result;
+					return updateComponentChildren<TValue, TResult>(ctx, iteration.value);
+				});
+			}
+			const pending = result.catch(() => {});
 			return [pending, result];
 		}
 
-		if (initial) {
-			this._flags |= SyncGen;
+		return [undefined, result];
+	} catch (err) {
+		if (ctx._flags & Finished || typeof ctx._iterator.throw !== "function") {
+			throw err;
 		}
 
-		this._flags &= ~Iterating;
+		ctx._flags |= Stepping;
+		const iteration = (ctx._iterator as Generator<Children, Children>).throw(
+			err,
+		);
+		ctx._flags &= ~Stepping;
 		if (iteration.done) {
-			this._flags |= Finished;
+			ctx._flags |= Finished;
 		}
 
-		try {
-			let result = this._updateChildren(iteration.value as Children); // void :(
-			if (isPromiseLike(result)) {
-				if (
-					!(this._flags & Finished) &&
-					typeof this._iterator.throw === "function"
-				) {
-					result = (result as Promise<any>).catch((err) => {
-						this._flags |= Stepping;
-						const iteration = (this._iterator as Generator<
-							Children,
-							Children
-						>).throw(err);
-						this._flags &= ~Stepping;
-						if (iteration.done) {
-							this._flags |= Finished;
-						}
-
-						return this._updateChildren(iteration.value);
-					});
-				}
-				const pending = (result as Promise<any>).catch(() => {});
-				return [pending, result];
-			}
-
-			return [undefined, result];
-		} catch (err) {
-			if (
-				this._flags & Finished ||
-				typeof this._iterator.throw !== "function"
-			) {
-				throw err;
-			}
-
-			this._flags |= Stepping;
-			const iteration = (this._iterator as Generator<Children, Children>).throw(
-				err,
-			);
-			this._flags &= ~Stepping;
-			if (iteration.done) {
-				this._flags |= Finished;
-			}
-
-			const result = this._updateChildren(iteration.value);
-			if (isPromiseLike(result)) {
-				const pending = (result as Promise<any>).catch(() => {});
-				return [pending, result];
-			}
-
-			return [undefined, result];
+		const result = updateComponentChildren<TValue, TResult>(
+			ctx,
+			iteration.value,
+		);
+		if (isPromiseLike(result)) {
+			const pending = result.catch(() => {});
+			return [pending, result];
 		}
+
+		return [undefined, result];
+	}
+}
+
+function advanceCtx(ctx: Context): void {
+	ctx._inflightPending = ctx._enqueuedPending;
+	ctx._inflightResult = ctx._enqueuedResult;
+	ctx._enqueuedPending = undefined;
+	ctx._enqueuedResult = undefined;
+	if (ctx._flags & AsyncGen && !(ctx._flags & Finished)) {
+		runCtx(ctx);
+	}
+}
+
+function updateCtx<TValue>(
+	ctx: Context,
+): Promise<ElementValue<TValue>> | ElementValue<TValue> {
+	ctx._flags |= Updating;
+	resumeCtx(ctx);
+	return runCtx(ctx);
+}
+
+function updateComponentChildren<TValue, TResult>(
+	ctx: Context<unknown, TResult>,
+	children: Children,
+): Promise<ElementValue<TValue>> | ElementValue<TValue> {
+	let child: Child;
+	if (isNonStringIterable(children)) {
+		child = createElement(Fragment, null, children);
+	} else {
+		child = children;
 	}
 
-	_advance(): void {
-		this._inflightPending = this._enqueuedPending;
-		this._inflightResult = this._enqueuedResult;
-		this._enqueuedPending = undefined;
-		this._enqueuedResult = undefined;
-		if (this._flags & AsyncGen && !(this._flags & Finished)) {
-			this._run();
-		}
-	}
+	return updateChild<TValue, TResult>(
+		ctx._renderer as Renderer<TValue, TResult>,
+		ctx._arranger,
+		ctx,
+		ctx._scope,
+		ctx._el,
+		child,
+	);
+}
 
-	_update(): Promise<ElementValue<unknown>> | ElementValue<unknown> {
-		this._flags |= Updating;
-		this._resume();
-		return this._run();
-	}
-
-	_updateChildren(
-		children: Children,
-	): Promise<ElementValue<unknown>> | ElementValue<unknown> {
-		let child: Child;
-		if (isNonStringIterable(children)) {
-			child = createElement(Fragment, null, children);
-		} else {
-			child = children;
-		}
-
-		return this._renderer._updateChild(
-			this._arranger,
-			this,
-			this._scope,
-			this._el,
-			child,
+function commitCtx<TValue>(ctx: Context, value: ElementValue<TValue>): void {
+	if (!(ctx._flags & Unmounted) && !(ctx._flags & Updating)) {
+		ctx._renderer.arrange(
+			ctx._arranger.tag,
+			ctx._arranger.props,
+			ctx._arranger.tag === Portal
+				? ctx._arranger.props.root
+				: ctx._arranger._value,
+			getChildValues(ctx._arranger),
 		);
 	}
 
-	_commit(value: ElementValue<unknown>): void {
-		if (!(this._flags & Unmounted) && !(this._flags & Updating)) {
-			this._renderer.arrange(
-				this._arranger.tag,
-				this._arranger.props,
-				this._arranger.tag === Portal
-					? this._arranger.props.root
-					: this._arranger._value,
-				this._renderer._getChildValues(this._arranger),
-			);
+	if (typeof ctx._schedules !== "undefined" && ctx._schedules.size > 0) {
+		// We have to clear the set of callbacks before calling them, because a callback which refreshes the component would otherwise cause a stack overflow.
+		const callbacks = Array.from(ctx._schedules);
+		ctx._schedules.clear();
+		const value1 = ctx._renderer.read(value);
+		for (const callback of callbacks) {
+			callback(value1);
 		}
+	}
 
-		if (typeof this._schedules !== "undefined" && this._schedules.size > 0) {
-			// We have to clear the set of callbacks before calling them, because a callback which refreshes the component would otherwise cause a stack overflow.
-			const callbacks = Array.from(this._schedules);
-			this._schedules.clear();
-			const value1 = this._renderer.read(value);
-			for (const callback of callbacks) {
-				callback(value1);
-			}
-		}
-
-		if (typeof this._listeners !== "undefined" && this._listeners.length > 0) {
-			for (const child of arrayify(value)) {
-				if (isEventTarget(child)) {
-					for (const record of this._listeners) {
-						child.addEventListener(
-							record.type,
-							record.callback,
-							record.options,
-						);
-					}
+	if (typeof ctx._listeners !== "undefined" && ctx._listeners.length > 0) {
+		for (const child of arrayify(value)) {
+			if (isEventTarget(child)) {
+				for (const record of ctx._listeners) {
+					child.addEventListener(record.type, record.callback, record.options);
 				}
 			}
 		}
-
-		this._flags &= ~Updating;
 	}
 
-	_unmount(): void {
-		this._flags |= Unmounted;
-		clearEventListeners(this);
-		if (typeof this._cleanups === "object") {
-			const value = this._renderer.read(this._renderer._getValue(this._el));
-			for (const cleanup of this._cleanups) {
-				cleanup(value);
-			}
+	ctx._flags &= ~Updating;
+}
 
-			this._cleanups = undefined;
+function unmountCtx(ctx: Context): void {
+	ctx._flags |= Unmounted;
+	clearEventListeners(ctx);
+	if (typeof ctx._cleanups === "object") {
+		const value = ctx._renderer.read(getValue(ctx._el));
+		for (const cleanup of ctx._cleanups) {
+			cleanup(value);
 		}
 
-		if (!(this._flags & Finished)) {
-			this._flags |= Finished;
-			this._resume();
+		ctx._cleanups = undefined;
+	}
 
-			if (
-				typeof this._iterator === "object" &&
-				typeof this._iterator.return === "function"
-			) {
-				// TODO: handle async generator rejections
-				this._iterator.return();
-			}
+	if (!(ctx._flags & Finished)) {
+		ctx._flags |= Finished;
+		resumeCtx(ctx);
+
+		if (
+			typeof ctx._iterator === "object" &&
+			typeof ctx._iterator.return === "function"
+		) {
+			// TODO: handle async generator rejections
+			ctx._iterator.return();
 		}
 	}
 }
