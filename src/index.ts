@@ -1532,11 +1532,13 @@ function updateComponentChildren<TValue, TResult>(
 
 function commitCtx<TValue>(ctx: Context, value: ElementValue<TValue>): void {
 	if (!(ctx._f & Unmounted) && !(ctx._f & Updating)) {
+		// TODO: async generator components which resume immediately will over-arrange the arranger. Maybe we can defer arrangement in that case.
+		const arranger = ctx._a;
 		ctx._r.arrange(
-			ctx._a.tag,
-			ctx._a.props,
-			ctx._a.tag === Portal ? ctx._a.props.root : ctx._a._v,
-			getChildValues(ctx._a),
+			arranger.tag,
+			arranger.props,
+			arranger.tag === Portal ? arranger.props.root : arranger._v,
+			getChildValues(arranger),
 		);
 	}
 
