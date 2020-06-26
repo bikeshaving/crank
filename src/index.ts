@@ -408,33 +408,7 @@ function mount<TValue, TResult>(
 		return mountChildren(renderer, arranger, ctx, scope, el, el.props.children);
 	}
 
-	return mountChild(renderer, arranger, ctx, scope, el, el.props.children);
-}
-
-function mountChild<TValue, TResult>(
-	renderer: Renderer<TValue, TResult>,
-	arranger: Element<string | symbol>,
-	ctx: Context<unknown, TResult> | undefined,
-	scope: Scope,
-	el: Element,
-	child: Child,
-): Promise<ElementValue<TValue>> | ElementValue<TValue> {
-	let newChild = narrow(child);
-	let result: Promise<ElementValue<TValue>> | ElementValue<TValue>;
-	[newChild, result] = compare(
-		renderer,
-		arranger,
-		ctx,
-		scope,
-		undefined,
-		newChild,
-	);
-	el._ch = newChild;
-	// TODO: allow single results to be passed to race
-	const results = isPromiseLike(result)
-		? result.then((result) => [result])
-		: [result];
-	return race(renderer, arranger, ctx, scope, el, results);
+	return updateChild(renderer, arranger, ctx, scope, el, el.props.children);
 }
 
 function mountChildren<TValue, TResult>(
