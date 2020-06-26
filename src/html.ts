@@ -115,8 +115,8 @@ export class StringRenderer extends Renderer<Node | string, string> {
 
 	arrange(
 		tag: any,
-		node: Node,
 		props: Record<string, any>,
+		node: Node,
 		children: Array<Node | string>,
 	): void {
 		if (tag === Portal) {

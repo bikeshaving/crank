@@ -56,8 +56,8 @@ export class DOMRenderer extends Renderer<Node, undefined> {
 
 	patch<TTag extends string | symbol>(
 		tag: TTag,
-		el: Element,
 		props: TagProps<TTag>,
+		el: Element,
 		ns: string | undefined,
 	): void {
 		for (const name in props) {
@@ -117,8 +117,8 @@ export class DOMRenderer extends Renderer<Node, undefined> {
 
 	arrange<TTag extends string | symbol>(
 		tag: TTag,
-		parent: Node,
 		props: Record<string, any>,
+		parent: Node,
 		children: Array<Node | string>,
 	): void {
 		if (parent === undefined) {
