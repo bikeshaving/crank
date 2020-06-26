@@ -1563,6 +1563,18 @@ function commitCtx<TValue>(ctx: Context, value: ElementValue<TValue>): void {
 			arranger.tag === Portal ? arranger.props.root : arranger._v,
 			getChildValues(arranger),
 		);
+
+		const listeners = getListeners(ctx._p, ctx._a);
+		if (listeners !== undefined && listeners.length > 0) {
+			for (let i = 0; i < listeners.length; i++) {
+				const record = listeners[i];
+				for (const v of arrayify(value)) {
+					if (isEventTarget(v)) {
+						v.addEventListener(record.type, record.callback, record.options);
+					}
+				}
+			}
+		}
 	}
 
 	if (typeof ctx._ss !== "undefined" && ctx._ss.size > 0) {
