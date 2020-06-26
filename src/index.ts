@@ -882,6 +882,77 @@ const Removed = 1 << 5;
 const SyncGen = 1 << 6;
 const AsyncGen = 1 << 7;
 
+// EVENT UTILITY FUNCTIONS
+const NONE = 0;
+const CAPTURING_PHASE = 1;
+const AT_TARGET = 2;
+const BUBBLING_PHASE = 3;
+
+export interface EventMap {
+	[type: string]: Event;
+}
+
+type MappedEventListener<T extends string> = (ev: EventMap[T]) => unknown;
+
+type MappedEventListenerOrEventListenerObject<T extends string> =
+	| MappedEventListener<T>
+	| {handleEvent: (ev: EventMap[T]) => unknown};
+
+interface EventListenerRecord {
+	type: string;
+	listener: MappedEventListenerOrEventListenerObject<any>;
+	callback: MappedEventListener<any>;
+	options: AddEventListenerOptions;
+}
+
+function normalizeOptions(
+	options: AddEventListenerOptions | boolean | null | undefined,
+): AddEventListenerOptions {
+	if (typeof options === "boolean") {
+		return {capture: options};
+	} else if (options == null) {
+		return {};
+	} else {
+		return options;
+	}
+}
+
+function isEventTarget(value: any): value is EventTarget {
+	return (
+		value != null &&
+		typeof value.addEventListener === "function" &&
+		typeof value.removeEventListener === "function" &&
+		typeof value.dispatchEvent === "function"
+	);
+}
+
+function setEventProperty<T extends keyof Event>(
+	ev: Event,
+	key: T,
+	value: Event[T],
+): void {
+	Object.defineProperty(ev, key, {value, writable: false, configurable: true});
+}
+
+function getListeners(
+	ctx: Context | undefined,
+	arranger: Element,
+): Array<EventListenerRecord> | undefined {
+	let listeners: Array<EventListenerRecord> | undefined;
+	while (ctx !== undefined && ctx._arranger === arranger) {
+		if (typeof ctx._listeners !== "undefined") {
+			listeners =
+				listeners === undefined
+					? ctx._listeners
+					: listeners.concat(ctx._listeners);
+		}
+
+		ctx = ctx._parent;
+	}
+
+	return listeners;
+}
+
 export interface ProvisionMap {}
 
 export class Context<TProps = any, TResult = any> implements EventTarget {
@@ -1023,32 +1094,27 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	addEventListener<T extends string>(
 		type: T,
-		callback: MappedEventListener<T> | null,
+		listener: MappedEventListenerOrEventListenerObject<T> | null,
 		options?: boolean | AddEventListenerOptions,
 	): void {
-		if (callback == null) {
+		if (listener == null) {
 			return;
-		} else if (typeof callback === "object") {
-			throw new Error("handleEvent objects not yet supported");
 		} else if (typeof this._listeners === "undefined") {
 			this._listeners = [];
 		}
 
 		options = normalizeOptions(options);
-		const record: EventListenerRecord = {
-			type,
-			callback,
-			options,
-			original: callback,
-		};
-
-		if (this._listeners.some(listenersEqual.bind(null, record))) {
-			return;
+		let callback: MappedEventListener<T>;
+		if (typeof listener === "object") {
+			callback = () => listener.handleEvent.apply(listener, arguments as any);
+		} else {
+			callback = listener;
 		}
 
+		const record: EventListenerRecord = {type, callback, listener, options};
 		if (options.once) {
 			const self = this;
-			record.callback = function () {
+			record.callback = function (this: any) {
 				if (typeof self._listeners !== "undefined") {
 					self._listeners = self._listeners.filter(
 						(record1) => record !== record1,
@@ -1058,11 +1124,24 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 						self._listeners = undefined;
 					}
 				}
-				return record.original.apply(this, arguments as any);
+
+				return callback.apply(this, arguments as any);
 			};
 		}
 
+		if (
+			this._listeners.some(
+				(record1) =>
+					record.type === record1.type &&
+					record.listener === record1.listener &&
+					!record.options.capture === !record1.options.capture,
+			)
+		) {
+			return;
+		}
+
 		this._listeners.push(record);
+
 		for (const value of this._renderer._getChildValues(this._el)) {
 			if (isEventTarget(value)) {
 				value.addEventListener(record.type, record.callback, record.options);
@@ -1072,25 +1151,26 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	removeEventListener<T extends string>(
 		type: T,
-		callback: MappedEventListener<T> | null,
+		listener: MappedEventListenerOrEventListenerObject<T> | null,
 		options?: EventListenerOptions | boolean,
 	): void {
-		if (callback == null || typeof this._listeners === "undefined") {
+		if (listener == null || typeof this._listeners === "undefined") {
 			return;
 		}
 
 		options = normalizeOptions(options);
-		const record: EventListenerRecord = {
-			type,
-			callback,
-			options,
-			original: callback,
-		};
-		const i = this._listeners.findIndex(listenersEqual.bind(null, record));
+		const i = this._listeners.findIndex(
+			(record) =>
+				record.type === type &&
+				record.listener === listener &&
+				!record.options.capture === !(options as EventListenerOptions).capture,
+		);
+
 		if (i === -1) {
 			return;
 		}
 
+		const record = this._listeners[i];
 		this._listeners.splice(i, 1);
 		for (const value of this._renderer._getChildValues(this._el)) {
 			if (isEventTarget(value)) {
@@ -1524,84 +1604,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			this._listeners = undefined;
 		}
 	}
-}
-
-// EVENT UTILITY FUNCTIONS
-const NONE = 0;
-const CAPTURING_PHASE = 1;
-const AT_TARGET = 2;
-const BUBBLING_PHASE = 3;
-
-export interface EventMap {
-	[type: string]: Event;
-}
-
-type MappedEventListener<T extends string> = (ev: EventMap[T]) => unknown;
-
-interface EventListenerRecord {
-	type: string;
-	callback: MappedEventListener<any>;
-	options: AddEventListenerOptions;
-	original: MappedEventListener<any>;
-}
-
-function normalizeOptions(
-	options: AddEventListenerOptions | boolean | null | undefined,
-): AddEventListenerOptions {
-	if (typeof options === "boolean") {
-		return {capture: options};
-	} else if (options == null) {
-		return {};
-	} else {
-		return options;
-	}
-}
-
-function isEventTarget(value: any): value is EventTarget {
-	return (
-		value != null &&
-		typeof value.addEventListener === "function" &&
-		typeof value.removeEventListener === "function" &&
-		typeof value.dispatchEvent === "function"
-	);
-}
-
-function listenersEqual(
-	record1: EventListenerRecord,
-	record2: EventListenerRecord,
-): boolean {
-	return (
-		record1.type === record2.type &&
-		record1.original === record2.original &&
-		!record1.options.capture === !record2.options.capture
-	);
-}
-
-function setEventProperty<T extends keyof Event>(
-	ev: Event,
-	key: T,
-	value: Event[T],
-): void {
-	Object.defineProperty(ev, key, {value, writable: false, configurable: true});
-}
-
-function getListeners(
-	ctx: Context | undefined,
-	arranger: Element,
-): Array<EventListenerRecord> | undefined {
-	let listeners: Array<EventListenerRecord> | undefined;
-	while (ctx !== undefined && ctx._arranger === arranger) {
-		if (typeof ctx._listeners !== "undefined") {
-			listeners =
-				listeners === undefined
-					? ctx._listeners
-					: listeners.concat(ctx._listeners);
-		}
-
-		ctx = ctx._parent;
-	}
-
-	return listeners;
 }
 
 declare global {
