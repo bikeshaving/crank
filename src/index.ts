@@ -1,10 +1,3 @@
-/* eslint-disable no-console */
-const consoleError =
-	typeof console !== "undefined" && typeof console.error === "function"
-		? console.error.bind(console)
-		: () => {};
-/* eslint-enable no-console */
-
 // UTILITY FUNCTIONS
 function isPromiseLike(value: any): value is PromiseLike<any> {
 	return value != null && typeof value.then === "function";
@@ -122,10 +115,10 @@ export class Element<TTag extends Tag = Tag> {
 	_ch: Array<NarrowedChild> | NarrowedChild;
 	// value
 	_v: any;
-	// fallback
-	_fb: any;
 	// inflight promise
 	_if: Promise<any> | undefined;
+	// fallback
+	_fb: any;
 	// onNewValue
 	_onv: Function | undefined;
 	tag: TTag;
@@ -1237,7 +1230,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 							try {
 								record.callback.call(this, ev);
 							} catch (err) {
-								consoleError(err);
+								// eslint-disable-next-line no-console
+								console.error(err);
 							}
 
 							if (stopped) {
@@ -1260,7 +1254,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 						try {
 							record.callback.call(this, ev);
 						} catch (err) {
-							consoleError(err);
+							// eslint-disable-next-line no-console
+							console.error(err);
 						}
 
 						if (stopped) {
@@ -1284,7 +1279,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 								try {
 									record.callback.call(this, ev);
 								} catch (err) {
-									consoleError(err);
+									// eslint-disable-next-line no-console
+									console.error(err);
 								}
 
 								if (stopped) {
