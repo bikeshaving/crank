@@ -48,6 +48,10 @@ function unwrap<T>(arr: Array<T>): Array<T> | T | undefined {
 	return arr.length > 1 ? arr : arr[0];
 }
 
+function squelch<T>(p: Promise<T>): Promise<T | undefined> {
+	return p.catch(() => undefined); // void :(
+}
+
 export type Tag = Component<any> | string | symbol;
 
 export type TagProps<TTag extends Tag> = TTag extends string
@@ -107,9 +111,8 @@ function narrow(child: Child): NarrowedChild {
 }
 
 // ELEMENT FLAGS
-// NOTE: there will probably be more flags sooner than later
 const InUse = 1 << 0;
-
+const Committed = 1 << 1;
 export class Element<TTag extends Tag = Tag> {
 	$$typeof: typeof ElementSymbol;
 	// flags
@@ -119,8 +122,10 @@ export class Element<TTag extends Tag = Tag> {
 	_ch: Array<NarrowedChild> | NarrowedChild;
 	// value
 	_v: any;
+	// fallback
+	_fb: any;
 	// inflight promise
-	_i: Promise<any> | undefined;
+	_if: Promise<any> | undefined;
 	// onNewValue
 	_onv: Function | undefined;
 	tag: TTag;
@@ -256,27 +261,31 @@ function getChildrenByKey(children: Array<NarrowedChild>): Map<Key, Element> {
 }
 
 function getChildValues<TValue>(el: Element): Array<TValue | string> {
-	let result: Array<TValue | string> = [];
+	let values: Array<TValue | string> = [];
 	const children = arrayify(el._ch);
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i];
 		if (child === undefined) {
 			// pass
 		} else if (typeof child === "string") {
-			result.push(child);
+			values.push(child);
+		} else if (typeof child._fb !== "undefined") {
+			values = values.concat(arrayify(child._fb));
 		} else if (typeof child.tag === "function" || child.tag === Fragment) {
-			result = result.concat(getChildValues<TValue>(child));
+			values = values.concat(getChildValues<TValue>(child));
 		} else if (child.tag !== Portal) {
 			// Portals have a value but are opaque to their parents
-			result.push(child._v);
+			values.push(child._v);
 		}
 	}
 
-	return result;
+	return values;
 }
 
 function getValue<TValue>(el: Element): ElementValue<TValue> {
-	if (typeof el.tag === Portal) {
+	if (typeof el._fb !== "undefined") {
+		return el._fb;
+	} else if (typeof el.tag === Portal) {
 		return undefined;
 	} else if (typeof el.tag !== "function" && el.tag !== Fragment) {
 		return el._v;
@@ -692,14 +701,14 @@ function compare<TValue, TResult>(
 	} else if (typeof newChild === "object") {
 		if (newChild.tag === Copy) {
 			if (typeof oldChild === "object") {
-				result = oldChild._i || getValue<TValue>(oldChild);
+				result = oldChild._if || getValue<TValue>(oldChild);
 			} else {
 				result = oldChild;
 			}
 
 			if (typeof newChild.ref === "function") {
 				if (isPromiseLike(result)) {
-					result.then(newChild.ref as any).catch(() => {});
+					squelch(result.then(newChild.ref as any));
 				} else {
 					newChild.ref(result);
 				}
@@ -709,6 +718,19 @@ function compare<TValue, TResult>(
 		} else {
 			if (newChild._f & InUse) {
 				newChild = Element.clone(newChild);
+			}
+
+			if (typeof oldChild === "object") {
+				newChild._fb = oldChild._v;
+				if (typeof oldChild._if === "object") {
+					squelch(
+						oldChild._if.then((value) => {
+							if (!((newChild as Element)._f & Committed)) {
+								(newChild as Element)._fb = value;
+							}
+						}),
+					);
+				}
 			}
 
 			result = mount(renderer, arranger, ctx, scope, newChild);
@@ -758,7 +780,7 @@ function race<TValue, TResult>(
 		}
 
 		el._onv = onNewValue;
-		el._i = value;
+		el._if = value;
 		return value;
 	}
 
@@ -777,6 +799,11 @@ function commit<TValue, TResult>(
 	el: Element,
 	results: Array<TValue | string>,
 ): ElementValue<TValue> {
+	el._f |= Committed;
+	if (typeof el._fb !== "undefined") {
+		el._fb = undefined;
+	}
+
 	let result = unwrap(results);
 	if (typeof el.tag === "function") {
 		if (typeof el._ctx === "object") {
@@ -803,8 +830,8 @@ function commit<TValue, TResult>(
 		el.ref(renderer.read(result));
 	}
 
-	if (typeof el._i === "object") {
-		el._i = undefined;
+	if (typeof el._if === "object") {
+		el._if = undefined;
 	}
 
 	return result;
@@ -1343,11 +1370,11 @@ function stepCtx<TValue, TResult>(
 			ctx._it = value;
 		} else if (isPromiseLike(value)) {
 			const value1 = upgradePromiseLike(value);
-			const pending = value1.catch(() => undefined); // void :(
+			const pending = squelch(value1);
 			const result = value1.then((value) =>
 				updateComponentChildren<TValue, TResult>(ctx, value),
 			);
-			el._i = result;
+			el._if = result;
 			ctx._f &= ~Stepping;
 			return [pending, result];
 		} else {
@@ -1358,8 +1385,8 @@ function stepCtx<TValue, TResult>(
 	}
 
 	let oldValue: Promise<TResult> | TResult;
-	if (typeof ctx._el._i === "object") {
-		oldValue = ctx._r.read(ctx._el._i);
+	if (typeof ctx._el._if === "object") {
+		oldValue = ctx._r.read(ctx._el._if);
 	} else if (initial) {
 		oldValue = ctx._r.read(undefined);
 	} else {
@@ -1375,7 +1402,7 @@ function stepCtx<TValue, TResult>(
 			ctx._f |= AsyncGen;
 		}
 
-		const pending = iteration.catch(() => {});
+		const pending = squelch(iteration);
 		const result = iteration.then((iteration) => {
 			ctx._f &= ~Iterating;
 			if (iteration.done) {
@@ -1428,7 +1455,7 @@ function stepCtx<TValue, TResult>(
 			}
 		});
 
-		el._i = result;
+		el._if = result;
 		return [pending, result];
 	}
 
@@ -1461,7 +1488,7 @@ function stepCtx<TValue, TResult>(
 					return updateComponentChildren<TValue, TResult>(ctx, iteration.value);
 				});
 			}
-			const pending = result.catch(() => {});
+			const pending = squelch(result);
 			return [pending, result];
 		}
 
@@ -1483,7 +1510,7 @@ function stepCtx<TValue, TResult>(
 			iteration.value,
 		);
 		if (isPromiseLike(result)) {
-			const pending = result.catch(() => {});
+			const pending = squelch(result);
 			return [pending, result];
 		}
 
