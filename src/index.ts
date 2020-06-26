@@ -104,7 +104,7 @@ function narrow(child: Child): NarrowedChild {
 }
 
 // ELEMENT FLAGS
-const InUse = 1 << 0;
+const Mounted = 1 << 0;
 const Committed = 1 << 1;
 export class Element<TTag extends Tag = Tag> {
 	$$typeof: typeof ElementSymbol;
@@ -384,7 +384,7 @@ function mount<TValue, TResult>(
 	scope: Scope,
 	el: Element,
 ): Promise<ElementValue<TValue>> | ElementValue<TValue> {
-	el._f |= InUse;
+	el._f |= Mounted;
 	if (typeof el.tag === "function") {
 		el._ctx = new Context(
 			renderer,
@@ -709,7 +709,7 @@ function compare<TValue, TResult>(
 
 			newChild = oldChild;
 		} else {
-			if (newChild._f & InUse) {
+			if (newChild._f & Mounted) {
 				newChild = Element.clone(newChild);
 			}
 
