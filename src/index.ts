@@ -41,7 +41,7 @@ function upgradePromiseLike<T>(value: PromiseLike<T>): Promise<T> {
 	return value;
 }
 
-function squelch<T>(p: Promise<T>): Promise<T | void> {
+function squelch(p: Promise<unknown>): Promise<unknown> {
 	return p.catch(() => {});
 }
 
