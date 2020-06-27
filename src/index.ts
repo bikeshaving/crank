@@ -114,8 +114,8 @@ export class Element<TTag extends Tag = Tag> {
 	_ctx: Context<TagProps<TTag>> | undefined;
 	// children
 	_ch: Array<NarrowedChild> | NarrowedChild;
-	// value
-	_v: any;
+	// node
+	_n: any;
 	// inflight promise
 	_if: Promise<any> | undefined;
 	// fallback
@@ -238,25 +238,25 @@ function normalize<T>(values: Array<ElementValue<T>>): Array<T | string> {
 export type ElementValue<T> = Array<T | string> | T | string | undefined;
 
 function getChildNodes<TNode>(el: Element): Array<TNode | string> {
-	let values: Array<TNode | string> = [];
+	let nodes: Array<TNode | string> = [];
 	const children = arrayify(el._ch);
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i];
 		if (child === undefined) {
 			// pass
 		} else if (typeof child === "string") {
-			values.push(child);
+			nodes.push(child);
 		} else if (typeof child._fb !== "undefined") {
-			values = values.concat(arrayify(child._fb));
+			nodes = nodes.concat(arrayify(child._fb));
 		} else if (typeof child.tag === "function" || child.tag === Fragment) {
-			values = values.concat(getChildNodes<TNode>(child));
+			nodes = nodes.concat(getChildNodes<TNode>(child));
 		} else if (child.tag !== Portal) {
 			// Portals have a value but are opaque to their parents
-			values.push(child._v);
+			nodes.push(child._n);
 		}
 	}
 
-	return values;
+	return nodes;
 }
 
 function getValue<TNode>(el: Element): ElementValue<TNode> {
@@ -265,7 +265,7 @@ function getValue<TNode>(el: Element): ElementValue<TNode> {
 	} else if (typeof el.tag === Portal) {
 		return undefined;
 	} else if (typeof el.tag !== "function" && el.tag !== Fragment) {
-		return el._v;
+		return el._n;
 	}
 
 	return unwrap(getChildNodes<TNode>(el));
@@ -395,7 +395,7 @@ function mount<TNode, TResult>(
 		return commit(renderer, scope, el, []);
 	} else if (el.tag !== Fragment) {
 		if (el.tag !== Portal) {
-			el._v = renderer.create(el.tag, el.props, scope);
+			el._n = renderer.create(el.tag, el.props, scope);
 		}
 
 		arranger = el as Element<string | symbol>;
@@ -714,7 +714,7 @@ function compare<TNode, TResult>(
 			}
 
 			if (typeof oldChild === "object") {
-				newChild._fb = oldChild._v;
+				newChild._fb = oldChild._n;
 				if (typeof oldChild._if === "object") {
 					squelch(
 						oldChild._if.then((value) => {
@@ -794,16 +794,16 @@ function commit<TNode, TResult>(
 		value = undefined;
 	} else if (el.tag === Raw) {
 		if (typeof el.props.value === "string") {
-			el._v = renderer.parse(el.props.value, scope);
+			el._n = renderer.parse(el.props.value, scope);
 		} else {
-			el._v = el.props.value;
+			el._n = el.props.value;
 		}
 
-		value = el._v;
+		value = el._n;
 	} else if (el.tag !== Fragment) {
-		renderer.patch(el.tag, el.props, el._v, scope);
-		renderer.arrange(el.tag, el.props, el._v, nodes);
-		value = el._v;
+		renderer.patch(el.tag, el.props, el._n, scope);
+		renderer.arrange(el.tag, el.props, el._n, nodes);
+		value = el._n;
 	}
 
 	if (typeof el.ref === "function") {
@@ -833,12 +833,12 @@ function unmount<TNode, TResult>(
 		arranger = el;
 		renderer.arrange(Portal, el.props, el.props.root, []);
 	} else if (el.tag !== Fragment) {
-		if (isEventTarget(el._v)) {
+		if (isEventTarget(el._n)) {
 			const listeners = getListeners(ctx, arranger);
 			if (listeners !== undefined && listeners.length > 0) {
 				for (let i = 0; i < listeners.length; i++) {
 					const record = listeners[i];
-					el._v.removeEventListener(
+					el._n.removeEventListener(
 						record.type,
 						record.callback,
 						record.options,
@@ -859,9 +859,13 @@ function unmount<TNode, TResult>(
 		}
 	}
 
-	el._v = undefined;
+	el._f = 0;
 	el._ctx = undefined;
 	el._ch = undefined;
+	el._n = undefined;
+	el._if = undefined;
+	el._fb = undefined;
+	el._onv = undefined;
 }
 
 // EVENT UTILITY FUNCTIONS
@@ -934,10 +938,10 @@ function getListeners(
 
 function clearEventListeners(ctx: Context): void {
 	if (typeof ctx._ls !== "undefined" && ctx._ls.length > 0) {
-		for (const value of getChildNodes(ctx._el)) {
-			if (isEventTarget(value)) {
+		for (const node of getChildNodes(ctx._el)) {
+			if (isEventTarget(node)) {
 				for (const record of ctx._ls) {
-					value.removeEventListener(
+					node.removeEventListener(
 						record.type,
 						record.callback,
 						record.options,
@@ -1153,9 +1157,9 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 		this._ls.push(record);
 
-		for (const value of getChildNodes(this._el)) {
-			if (isEventTarget(value)) {
-				value.addEventListener(record.type, record.callback, record.options);
+		for (const node of getChildNodes(this._el)) {
+			if (isEventTarget(node)) {
+				node.addEventListener(record.type, record.callback, record.options);
 			}
 		}
 	}
@@ -1183,9 +1187,9 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 		const record = this._ls[i];
 		this._ls.splice(i, 1);
-		for (const value of getChildNodes(this._el)) {
-			if (isEventTarget(value)) {
-				value.removeEventListener(record.type, record.callback, record.options);
+		for (const node of getChildNodes(this._el)) {
+			if (isEventTarget(node)) {
+				node.removeEventListener(record.type, record.callback, record.options);
 			}
 		}
 
@@ -1556,7 +1560,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 		ctx._r.arrange(
 			arranger.tag,
 			arranger.props,
-			arranger.tag === Portal ? arranger.props.root : arranger._v,
+			arranger.tag === Portal ? arranger.props.root : arranger._n,
 			getChildNodes(arranger),
 		);
 
