@@ -121,7 +121,7 @@ export class Element<TTag extends Tag = Tag> {
 	// fallback
 	_fb: any;
 	// onNewResults
-	_onr: Function | undefined;
+	_onv: Function | undefined;
 	tag: TTag;
 	props: TagProps<TTag>;
 	key: Key;
@@ -237,8 +237,8 @@ function normalize<T>(values: Array<ElementValue<T>>): Array<T | string> {
 
 export type ElementValue<T> = Array<T | string> | T | string | undefined;
 
-function getChildValues<TValue>(el: Element): Array<TValue | string> {
-	let values: Array<TValue | string> = [];
+function getChildNodes<TNode>(el: Element): Array<TNode | string> {
+	let values: Array<TNode | string> = [];
 	const children = arrayify(el._ch);
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i];
@@ -249,7 +249,7 @@ function getChildValues<TValue>(el: Element): Array<TValue | string> {
 		} else if (typeof child._fb !== "undefined") {
 			values = values.concat(arrayify(child._fb));
 		} else if (typeof child.tag === "function" || child.tag === Fragment) {
-			values = values.concat(getChildValues<TValue>(child));
+			values = values.concat(getChildNodes<TNode>(child));
 		} else if (child.tag !== Portal) {
 			// Portals have a value but are opaque to their parents
 			values.push(child._v);
@@ -259,7 +259,7 @@ function getChildValues<TValue>(el: Element): Array<TValue | string> {
 	return values;
 }
 
-function getValue<TValue>(el: Element): ElementValue<TValue> {
+function getValue<TNode>(el: Element): ElementValue<TNode> {
 	if (typeof el._fb !== "undefined") {
 		return el._fb;
 	} else if (typeof el.tag === Portal) {
@@ -268,12 +268,12 @@ function getValue<TValue>(el: Element): ElementValue<TValue> {
 		return el._v;
 	}
 
-	return unwrap(getChildValues<TValue>(el));
+	return unwrap(getChildNodes<TNode>(el));
 }
 
 type Scope = unknown;
 
-export abstract class Renderer<TValue, TResult = ElementValue<TValue>> {
+export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 	_cache: WeakMap<object, Element<Portal>>;
 	constructor() {
 		this._cache = new WeakMap();
@@ -298,24 +298,24 @@ export abstract class Renderer<TValue, TResult = ElementValue<TValue>> {
 			}
 		}
 
-		const result = update(this, portal, undefined, undefined, portal);
-		if (isPromiseLike(result)) {
-			return result.then(() => {
-				const value = this.read(unwrap(getChildValues<TValue>(portal!)));
+		const value = update(this, portal, undefined, undefined, portal);
+		if (isPromiseLike(value)) {
+			return value.then(() => {
+				const result = this.read(unwrap(getChildNodes<TNode>(portal!)));
 				if (root == null) {
 					unmount(this, portal!, undefined, portal!);
 				}
 
-				return value;
+				return result;
 			});
 		}
 
-		const value = this.read(getChildValues<TValue>(portal));
+		const result = this.read(getChildNodes<TNode>(portal));
 		if (root == null) {
 			unmount(this, portal, undefined, portal);
 		}
 
-		return value;
+		return result;
 	}
 
 	scope<TTag extends string | symbol>(
@@ -330,7 +330,7 @@ export abstract class Renderer<TValue, TResult = ElementValue<TValue>> {
 		return text;
 	}
 
-	read(value: ElementValue<TValue>): TResult {
+	read(value: ElementValue<TNode>): TResult {
 		return (value as unknown) as TResult;
 	}
 
@@ -338,22 +338,22 @@ export abstract class Renderer<TValue, TResult = ElementValue<TValue>> {
 		tag: TTag,
 		props: TagProps<TTag>,
 		scope: Scope,
-	): TValue;
+	): TNode;
 
-	abstract parse(_text: string, _scope: Scope): TValue;
+	abstract parse(_text: string, _scope: Scope): TNode;
 
 	abstract patch<TTag extends string | symbol>(
 		tag: TTag,
 		props: TagProps<TTag>,
-		node: TValue,
+		node: TNode,
 		scope: Scope,
 	): unknown;
 
 	abstract arrange<TTag extends string | symbol>(
 		tag: TTag,
 		props: TagProps<TTag>,
-		parent: TValue,
-		children: Array<TValue | string>,
+		parent: TNode,
+		children: Array<TNode | string>,
 	): unknown;
 
 	// TODO: dispose() a method which is called for every host node when it is removed
@@ -362,13 +362,13 @@ export abstract class Renderer<TValue, TResult = ElementValue<TValue>> {
 }
 
 // PRIVATE RENDERER FUNCTIONS
-function mount<TValue, TResult>(
-	renderer: Renderer<TValue, TResult>,
+function mount<TNode, TResult>(
+	renderer: Renderer<TNode, TResult>,
 	arranger: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
 	el: Element,
-): Promise<ElementValue<TValue>> | ElementValue<TValue> {
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	el._f |= Mounted;
 	if (typeof el.tag === "function") {
 		el._ctx = new Context(
@@ -398,21 +398,19 @@ function mount<TValue, TResult>(
 	return updateChild(renderer, arranger, ctx, scope, el, el.props.children);
 }
 
-function mountChildren<TValue, TResult>(
-	renderer: Renderer<TValue, TResult>,
+function mountChildren<TNode, TResult>(
+	renderer: Renderer<TNode, TResult>,
 	arranger: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
 	parent: Element,
 	children: ChildIterable,
-): Promise<ElementValue<TValue>> | ElementValue<TValue> {
-	const results: Array<
-		Promise<ElementValue<TValue>> | ElementValue<TValue>
-	> = [];
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
 	const newChildren = Array.from(children);
 	let async = false;
 	for (let i = 0; i < newChildren.length; i++) {
-		let result: Promise<ElementValue<TValue>> | ElementValue<TValue>;
+		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 		let child = newChildren[i] as NarrowedChild;
 		if (isNonStringIterable(child)) {
 			child = createElement(Fragment, null, child);
@@ -420,35 +418,33 @@ function mountChildren<TValue, TResult>(
 			child = narrow(child);
 		}
 
-		[child, result] = compare(renderer, arranger, ctx, scope, undefined, child);
+		[child, value] = compare(renderer, arranger, ctx, scope, undefined, child);
 		newChildren[i] = child;
-		results.push(result);
-		if (!async && isPromiseLike(result)) {
+		values.push(value);
+		if (!async && isPromiseLike(value)) {
 			async = true;
 		}
 	}
 
 	parent._ch = unwrap(newChildren) as Array<NarrowedChild> | NarrowedChild;
 
-	let results1:
-		| Promise<Array<ElementValue<TValue>>>
-		| Array<ElementValue<TValue>>;
+	let values1: Promise<Array<ElementValue<TNode>>> | Array<ElementValue<TNode>>;
 	if (async) {
-		results1 = Promise.all(results);
+		values1 = Promise.all(values);
 	} else {
-		results1 = results as Array<ElementValue<TValue>>;
+		values1 = values as Array<ElementValue<TNode>>;
 	}
 
-	return race(renderer, arranger, ctx, scope, parent, results1);
+	return race(renderer, arranger, ctx, scope, parent, values1);
 }
 
-function update<TValue, TResult>(
-	renderer: Renderer<TValue, TResult>,
+function update<TNode, TResult>(
+	renderer: Renderer<TNode, TResult>,
 	arranger: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
 	el: Element,
-): Promise<ElementValue<TValue>> | ElementValue<TValue> {
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (typeof el.tag === "function") {
 		if (typeof el._ctx === "object") {
 			return updateCtx(el._ctx);
@@ -480,14 +476,14 @@ function update<TValue, TResult>(
 	return updateChild(renderer, arranger, ctx, scope, el, el.props.children);
 }
 
-function updateChild<TValue, TResult>(
-	renderer: Renderer<TValue, TResult>,
+function updateChild<TNode, TResult>(
+	renderer: Renderer<TNode, TResult>,
 	arranger: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
 	parent: Element,
 	child: Child,
-): Promise<ElementValue<TValue>> | ElementValue<TValue> {
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	let oldChild = parent._ch as NarrowedChild;
 	let newChild = narrow(child);
 	if (
@@ -498,8 +494,8 @@ function updateChild<TValue, TResult>(
 		oldChild = undefined;
 	}
 
-	let result: Promise<ElementValue<TValue>> | ElementValue<TValue>;
-	[newChild, result] = compare(
+	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
+	[newChild, value] = compare(
 		renderer,
 		arranger,
 		ctx,
@@ -513,11 +509,11 @@ function updateChild<TValue, TResult>(
 	}
 
 	parent._ch = newChild;
-	// TODO: allow single results to be passed to race
-	const results = isPromiseLike(result)
-		? result.then((result) => [result])
-		: [result];
-	return race(renderer, arranger, ctx, scope, parent, results);
+	// TODO: allow single values to be passed to race
+	const values = isPromiseLike(value)
+		? value.then((value) => [value])
+		: [value];
+	return race(renderer, arranger, ctx, scope, parent, values);
 }
 
 function mapChildrenByKey(children: Array<NarrowedChild>): Map<Key, Element> {
@@ -532,21 +528,19 @@ function mapChildrenByKey(children: Array<NarrowedChild>): Map<Key, Element> {
 	return childrenByKey;
 }
 
-function updateChildren<TValue, TResult>(
-	renderer: Renderer<TValue, TResult>,
+function updateChildren<TNode, TResult>(
+	renderer: Renderer<TNode, TResult>,
 	arranger: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
 	parent: Element,
 	children: ChildIterable,
-): Promise<ElementValue<TValue>> | ElementValue<TValue> {
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (typeof parent._ch === "undefined") {
 		return mountChildren(renderer, arranger, ctx, scope, parent, children);
 	}
 
-	const results: Array<
-		Promise<ElementValue<TValue>> | ElementValue<TValue>
-	> = [];
+	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
 	const oldChildren = arrayify(parent._ch);
 	const newChildren = Array.from(children);
 	const graveyard: Array<Element> = [];
@@ -607,8 +601,8 @@ function updateChildren<TValue, TResult>(
 		}
 
 		// UPDATING
-		let result: Promise<ElementValue<TValue>> | ElementValue<TValue>;
-		[newChild, result] = compare(
+		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
+		[newChild, value] = compare(
 			renderer,
 			arranger,
 			ctx,
@@ -617,9 +611,9 @@ function updateChildren<TValue, TResult>(
 			newChild,
 		);
 
-		results.push(result);
+		values.push(value);
 		newChildren[j] = newChild;
-		if (!async && isPromiseLike(result)) {
+		if (!async && isPromiseLike(value)) {
 			async = true;
 		}
 
@@ -643,31 +637,29 @@ function updateChildren<TValue, TResult>(
 		graveyard.push(...childrenByKey.values());
 	}
 
-	let results1:
-		| Promise<Array<ElementValue<TValue>>>
-		| Array<ElementValue<TValue>>;
+	let values1: Promise<Array<ElementValue<TNode>>> | Array<ElementValue<TNode>>;
 
 	if (async) {
-		results1 = Promise.all(results).finally(() =>
+		values1 = Promise.all(values).finally(() =>
 			graveyard.forEach((child) => unmount(renderer, arranger, ctx, child)),
 		);
 	} else {
-		results1 = results as Array<ElementValue<TValue>>;
+		values1 = values as Array<ElementValue<TNode>>;
 		graveyard.forEach((child) => unmount(renderer, arranger, ctx, child));
 	}
 
-	return race(renderer, arranger, ctx, scope, parent, results1);
+	return race(renderer, arranger, ctx, scope, parent, values1);
 }
 
-function compare<TValue, TResult>(
-	renderer: Renderer<TValue, TResult>,
+function compare<TNode, TResult>(
+	renderer: Renderer<TNode, TResult>,
 	arranger: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
 	oldChild: NarrowedChild,
 	newChild: NarrowedChild,
-): [NarrowedChild, Promise<ElementValue<TValue>> | ElementValue<TValue>] {
-	let result: Promise<ElementValue<TValue>> | ElementValue<TValue>;
+): [NarrowedChild, Promise<ElementValue<TNode>> | ElementValue<TNode>] {
+	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 	if (
 		typeof oldChild === "object" &&
 		typeof newChild === "object" &&
@@ -687,20 +679,20 @@ function compare<TValue, TResult>(
 			newChild = oldChild;
 		}
 
-		result = update(renderer, arranger, ctx, scope, newChild);
+		value = update(renderer, arranger, ctx, scope, newChild);
 	} else if (typeof newChild === "object") {
 		if (newChild.tag === Copy) {
 			if (typeof oldChild === "object") {
-				result = oldChild._if || getValue<TValue>(oldChild);
+				value = oldChild._if || getValue<TNode>(oldChild);
 			} else {
-				result = oldChild;
+				value = oldChild;
 			}
 
 			if (typeof newChild.ref === "function") {
-				if (isPromiseLike(result)) {
-					squelch(result.then(newChild.ref as any));
+				if (isPromiseLike(value)) {
+					squelch(value.then(newChild.ref as any));
 				} else {
-					newChild.ref(result);
+					newChild.ref(value);
 				}
 			}
 
@@ -723,72 +715,72 @@ function compare<TValue, TResult>(
 				}
 			}
 
-			result = mount(renderer, arranger, ctx, scope, newChild);
+			value = mount(renderer, arranger, ctx, scope, newChild);
 		}
 	} else if (typeof newChild === "string") {
 		newChild = renderer.escape(newChild, scope);
-		result = newChild;
+		value = newChild;
 	}
 
-	return [newChild, result];
+	return [newChild, value];
 }
 
-function race<TValue, TResult>(
-	renderer: Renderer<TValue, TResult>,
+function race<TNode, TResult>(
+	renderer: Renderer<TNode, TResult>,
 	arranger: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
 	el: Element,
-	results: Promise<Array<ElementValue<TValue>>> | Array<ElementValue<TValue>>,
-): Promise<ElementValue<TValue>> | ElementValue<TValue> {
-	if (isPromiseLike(results)) {
-		let onNewResults!: Function;
-		const newResults = new Promise<Array<ElementValue<TValue>>>(
-			(resolve) => (onNewResults = resolve),
+	values: Promise<Array<ElementValue<TNode>>> | Array<ElementValue<TNode>>,
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+	if (isPromiseLike(values)) {
+		let onNewValues!: Function;
+		const newValues = new Promise<Array<ElementValue<TNode>>>(
+			(resolve) => (onNewValues = resolve),
 		);
 
-		const resultsP = Promise.race([results, newResults]);
-		if (typeof el._onr === "function") {
-			el._onr(resultsP);
+		const valuesP = Promise.race([values, newValues]);
+		if (typeof el._onv === "function") {
+			el._onv(valuesP);
 		}
 
-		el._onr = onNewResults;
-		const value = resultsP.then((results) =>
-			commit(renderer, scope, el, normalize(results)),
+		el._onv = onNewValues;
+
+		const value = valuesP.then((values) =>
+			commit(renderer, scope, el, normalize(values)),
 		);
 
 		el._if = value;
 		return value;
 	}
 
-	const value = commit(renderer, scope, el, normalize(results));
-	if (typeof el._onr === "function") {
-		el._onr(results);
-		el._onr = undefined;
+	if (typeof el._onv === "function") {
+		el._onv(values);
+		el._onv = undefined;
 	}
 
-	return value;
+	return commit(renderer, scope, el, normalize(values));
 }
 
-function commit<TValue, TResult>(
-	renderer: Renderer<TValue, TResult>,
+function commit<TNode, TResult>(
+	renderer: Renderer<TNode, TResult>,
 	scope: Scope,
 	el: Element,
-	results: Array<TValue | string>,
-): ElementValue<TValue> {
+	nodes: Array<TNode | string>,
+): ElementValue<TNode> {
 	el._f |= Committed;
 	if (typeof el._fb !== "undefined") {
 		el._fb = undefined;
 	}
 
-	let result = unwrap(results);
+	let value = unwrap(nodes);
 	if (typeof el.tag === "function") {
 		if (typeof el._ctx === "object") {
-			commitCtx(el._ctx, result);
+			commitCtx(el._ctx, value);
 		}
 	} else if (el.tag === Portal) {
-		renderer.arrange(Portal, el.props, el.props.root, results);
-		result = undefined;
+		renderer.arrange(Portal, el.props, el.props.root, nodes);
+		value = undefined;
 	} else if (el.tag === Raw) {
 		if (typeof el.props.value === "string") {
 			el._v = renderer.parse(el.props.value, scope);
@@ -796,26 +788,26 @@ function commit<TValue, TResult>(
 			el._v = el.props.value;
 		}
 
-		result = el._v;
+		value = el._v;
 	} else if (el.tag !== Fragment) {
 		renderer.patch(el.tag, el.props, el._v, scope);
-		renderer.arrange(el.tag, el.props, el._v, results);
-		result = el._v;
+		renderer.arrange(el.tag, el.props, el._v, nodes);
+		value = el._v;
 	}
 
 	if (typeof el.ref === "function") {
-		el.ref(renderer.read(result));
+		el.ref(renderer.read(value));
 	}
 
 	if (typeof el._if === "object") {
 		el._if = undefined;
 	}
 
-	return result;
+	return value;
 }
 
-function unmount<TValue, TResult>(
-	renderer: Renderer<TValue, TResult>,
+function unmount<TNode, TResult>(
+	renderer: Renderer<TNode, TResult>,
 	arranger: Element,
 	ctx: Context<unknown, TResult> | undefined,
 	el: Element,
@@ -941,7 +933,7 @@ function getListeners(
 
 function clearEventListeners(ctx: Context): void {
 	if (typeof ctx._ls !== "undefined" && ctx._ls.length > 0) {
-		for (const value of getChildValues(ctx._el)) {
+		for (const value of getChildNodes(ctx._el)) {
 			if (isEventTarget(value)) {
 				for (const record of ctx._ls) {
 					value.removeEventListener(
@@ -984,10 +976,10 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	_ip: Promise<unknown> | undefined;
 	// enqueued pending
 	_ep: Promise<unknown> | undefined;
-	// inflight result
-	_ir: Promise<ElementValue<any>> | undefined;
-	// enqueued result
-	_er: Promise<ElementValue<any>> | undefined;
+	// inflight value
+	_iv: Promise<ElementValue<any>> | undefined;
+	// enqueued value
+	_ev: Promise<ElementValue<any>> | undefined;
 	// provisions
 	_ps: Map<unknown, unknown> | undefined;
 	// schedule callbacks
@@ -1035,7 +1027,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	}
 
 	get value(): TResult {
-		return this._r.read(unwrap(getChildValues(this._el)));
+		return this._r.read(unwrap(getChildNodes(this._el)));
 	}
 
 	*[Symbol.iterator](): Generator<TProps> {
@@ -1149,7 +1141,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 		this._ls.push(record);
 
-		for (const value of getChildValues(this._el)) {
+		for (const value of getChildNodes(this._el)) {
 			if (isEventTarget(value)) {
 				value.addEventListener(record.type, record.callback, record.options);
 			}
@@ -1179,7 +1171,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 		const record = this._ls[i];
 		this._ls.splice(i, 1);
-		for (const value of getChildValues(this._el)) {
+		for (const value of getChildNodes(this._el)) {
 			if (isEventTarget(value)) {
 				value.removeEventListener(record.type, record.callback, record.options);
 			}
@@ -1298,46 +1290,46 @@ function resumeCtx(ctx: Context) {
 	}
 }
 
-function runCtx<TValue, TResult>(
+function runCtx<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
-): Promise<ElementValue<TValue>> | ElementValue<TValue> {
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (typeof ctx._ip === "undefined") {
-		const [pending, result] = stepCtx<TValue, TResult>(ctx);
+		const [pending, value] = stepCtx<TNode, TResult>(ctx);
 		if (isPromiseLike(pending)) {
 			ctx._ip = pending.finally(() => advanceCtx(ctx));
 		}
 
-		if (isPromiseLike(result)) {
-			ctx._ir = result;
+		if (isPromiseLike(value)) {
+			ctx._iv = value;
 		}
 
-		return result;
+		return value;
 	} else if (ctx._f & AsyncGen) {
-		return ctx._ir;
+		return ctx._iv;
 	} else if (typeof ctx._ep === "undefined") {
 		let resolve: Function;
 		ctx._ep = ctx._ip
 			.then(() => {
-				const [pending, result] = stepCtx<TValue, TResult>(ctx);
-				resolve(result);
+				const [pending, value] = stepCtx<TNode, TResult>(ctx);
+				resolve(value);
 				return pending;
 			})
 			.finally(() => advanceCtx(ctx));
-		ctx._er = new Promise((resolve1) => (resolve = resolve1));
+		ctx._ev = new Promise((resolve1) => (resolve = resolve1));
 	}
 
-	return ctx._er;
+	return ctx._ev;
 }
 
-function stepCtx<TValue, TResult>(
+function stepCtx<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
 ): [
 	Promise<unknown> | undefined,
-	Promise<ElementValue<TValue>> | ElementValue<TValue>,
+	Promise<ElementValue<TNode>> | ElementValue<TNode>,
 ] {
 	const el = ctx._el;
 	if (ctx._f & Finished) {
-		return [undefined, getValue<TValue>(el)];
+		return [undefined, getValue<TNode>(el)];
 	}
 
 	let initial = false;
@@ -1345,22 +1337,22 @@ function stepCtx<TValue, TResult>(
 	if (typeof ctx._it === "undefined") {
 		initial = true;
 		clearEventListeners(ctx);
-		const value = el.tag.call(ctx, el.props);
-		if (isIteratorLike(value)) {
-			ctx._it = value;
-		} else if (isPromiseLike(value)) {
-			const value1 = upgradePromiseLike(value);
-			const pending = squelch(value1);
-			const result = value1.then((value) =>
-				updateComponentChildren<TValue, TResult>(ctx, value),
+		const result = el.tag.call(ctx, el.props);
+		if (isIteratorLike(result)) {
+			ctx._it = result;
+		} else if (isPromiseLike(result)) {
+			const value = upgradePromiseLike(result);
+			const pending = squelch(value);
+			const value1 = value.then((value) =>
+				updateComponentChildren<TNode, TResult>(ctx, value),
 			);
-			el._if = result;
+			el._if = value1;
 			ctx._f &= ~Stepping;
-			return [pending, result];
+			return [pending, value1];
 		} else {
-			const result = updateComponentChildren<TValue, TResult>(ctx, value);
+			const value = updateComponentChildren<TNode, TResult>(ctx, result);
 			ctx._f &= ~Stepping;
-			return [undefined, result];
+			return [undefined, value];
 		}
 	}
 
@@ -1383,20 +1375,20 @@ function stepCtx<TValue, TResult>(
 		}
 
 		const pending = squelch(iteration);
-		const result = iteration.then((iteration) => {
+		const value = iteration.then((iteration) => {
 			ctx._f &= ~Iterating;
 			if (iteration.done) {
 				ctx._f |= Finished;
 			}
 
 			try {
-				let result = updateComponentChildren<TValue, TResult>(
+				let value = updateComponentChildren<TNode, TResult>(
 					ctx,
 					iteration.value as Children,
 				); // void :(
-				if (isPromiseLike(result)) {
+				if (isPromiseLike(value)) {
 					if (!(ctx._f & Finished) && typeof ctx._it!.throw === "function") {
-						result = result.catch((err) => {
+						value = value.catch((err) => {
 							resumeCtx(ctx);
 							const iteration = (ctx._it as AsyncGenerator<
 								Children,
@@ -1407,7 +1399,7 @@ function stepCtx<TValue, TResult>(
 									ctx._f |= Finished;
 								}
 
-								return updateComponentChildren<TValue, TResult>(
+								return updateComponentChildren<TNode, TResult>(
 									ctx,
 									iteration.value,
 								);
@@ -1416,7 +1408,7 @@ function stepCtx<TValue, TResult>(
 					}
 				}
 
-				return result;
+				return value;
 			} catch (err) {
 				if (ctx._f & Finished || typeof ctx._it!.throw !== "function") {
 					throw err;
@@ -1430,13 +1422,13 @@ function stepCtx<TValue, TResult>(
 						ctx._f |= Finished;
 					}
 
-					return updateComponentChildren<TValue, TResult>(ctx, iteration.value);
+					return updateComponentChildren<TNode, TResult>(ctx, iteration.value);
 				});
 			}
 		});
 
-		el._if = result;
-		return [pending, result];
+		el._if = value;
+		return [pending, value];
 	}
 
 	if (initial) {
@@ -1449,13 +1441,13 @@ function stepCtx<TValue, TResult>(
 	}
 
 	try {
-		let result = updateComponentChildren<TValue, TResult>(
+		let value = updateComponentChildren<TNode, TResult>(
 			ctx,
 			iteration.value as Children,
 		); // void :(
-		if (isPromiseLike(result)) {
+		if (isPromiseLike(value)) {
 			if (!(ctx._f & Finished) && typeof ctx._it.throw === "function") {
-				result = result.catch((err) => {
+				value = value.catch((err) => {
 					ctx._f |= Stepping;
 					const iteration = (ctx._it as Generator<Children, Children>).throw(
 						err,
@@ -1465,14 +1457,14 @@ function stepCtx<TValue, TResult>(
 						ctx._f |= Finished;
 					}
 
-					return updateComponentChildren<TValue, TResult>(ctx, iteration.value);
+					return updateComponentChildren<TNode, TResult>(ctx, iteration.value);
 				});
 			}
-			const pending = squelch(result);
-			return [pending, result];
+			const pending = squelch(value);
+			return [pending, value];
 		}
 
-		return [undefined, result];
+		return [undefined, value];
 	} catch (err) {
 		if (ctx._f & Finished || typeof ctx._it.throw !== "function") {
 			throw err;
@@ -1485,41 +1477,38 @@ function stepCtx<TValue, TResult>(
 			ctx._f |= Finished;
 		}
 
-		const result = updateComponentChildren<TValue, TResult>(
-			ctx,
-			iteration.value,
-		);
-		if (isPromiseLike(result)) {
-			const pending = squelch(result);
-			return [pending, result];
+		const value = updateComponentChildren<TNode, TResult>(ctx, iteration.value);
+		if (isPromiseLike(value)) {
+			const pending = squelch(value);
+			return [pending, value];
 		}
 
-		return [undefined, result];
+		return [undefined, value];
 	}
 }
 
 function advanceCtx(ctx: Context): void {
 	ctx._ip = ctx._ep;
-	ctx._ir = ctx._er;
+	ctx._iv = ctx._ev;
 	ctx._ep = undefined;
-	ctx._er = undefined;
+	ctx._ev = undefined;
 	if (ctx._f & AsyncGen && !(ctx._f & Finished)) {
 		runCtx(ctx);
 	}
 }
 
-function updateCtx<TValue>(
+function updateCtx<TNode>(
 	ctx: Context,
-): Promise<ElementValue<TValue>> | ElementValue<TValue> {
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	ctx._f |= Updating;
 	resumeCtx(ctx);
 	return runCtx(ctx);
 }
 
-function updateComponentChildren<TValue, TResult>(
+function updateComponentChildren<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
 	children: Children,
-): Promise<ElementValue<TValue>> | ElementValue<TValue> {
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	let child: Child;
 	if (isNonStringIterable(children)) {
 		child = createElement(Fragment, null, children);
@@ -1527,8 +1516,8 @@ function updateComponentChildren<TValue, TResult>(
 		child = children;
 	}
 
-	return updateChild<TValue, TResult>(
-		ctx._r as Renderer<TValue, TResult>,
+	return updateChild<TNode, TResult>(
+		ctx._r as Renderer<TNode, TResult>,
 		ctx._a,
 		ctx,
 		ctx._s,
@@ -1537,7 +1526,7 @@ function updateComponentChildren<TValue, TResult>(
 	);
 }
 
-function commitCtx<TValue>(ctx: Context, value: ElementValue<TValue>): void {
+function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 	if (!(ctx._f & Unmounted) && !(ctx._f & Updating)) {
 		// TODO: async generator components which resume immediately will over-arrange the arranger. Maybe we can defer arrangement in that case.
 		const arranger = ctx._a;
@@ -1545,7 +1534,7 @@ function commitCtx<TValue>(ctx: Context, value: ElementValue<TValue>): void {
 			arranger.tag,
 			arranger.props,
 			arranger.tag === Portal ? arranger.props.root : arranger._v,
-			getChildValues(arranger),
+			getChildNodes(arranger),
 		);
 
 		const listeners = getListeners(ctx._p, ctx._a);
@@ -1609,7 +1598,7 @@ function unmountCtx(ctx: Context): void {
 
 declare global {
 	module JSX {
-		// TODO: JSX result types don’t work
+		// TODO: JSX interface doesn’t work
 
 		interface IntrinsicElements {
 			[tag: string]: any;
