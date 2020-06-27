@@ -837,6 +837,7 @@ function unmount<TNode, TResult>(
 		}
 
 		arranger = el;
+		// TODO: call renderer.dispose
 	}
 
 	const children = arrayify(el._ch);
@@ -1527,7 +1528,21 @@ function updateComponentChildren<TNode, TResult>(
 }
 
 function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
-	if (!(ctx._f & Unmounted) && !(ctx._f & Updating)) {
+	if (ctx._f & Unmounted) {
+		return;
+	}
+
+	if (typeof ctx._ls !== "undefined" && ctx._ls.length > 0) {
+		for (const child of arrayify(value)) {
+			if (isEventTarget(child)) {
+				for (const record of ctx._ls) {
+					child.addEventListener(record.type, record.callback, record.options);
+				}
+			}
+		}
+	}
+
+	if (!(ctx._f & Updating)) {
 		// TODO: async generator components which resume immediately will over-arrange the arranger. Maybe we can defer arrangement in that case.
 		const arranger = ctx._a;
 		ctx._r.arrange(
@@ -1548,8 +1563,11 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 				}
 			}
 		}
+
+		// TODO: call renderer.complete here
 	}
 
+	ctx._f &= ~Updating;
 	if (typeof ctx._ss !== "undefined" && ctx._ss.size > 0) {
 		// We have to clear the set of callbacks before calling them, because a callback which refreshes the component would otherwise cause a stack overflow.
 		const callbacks = Array.from(ctx._ss);
@@ -1559,18 +1577,6 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 			callback(value1);
 		}
 	}
-
-	if (typeof ctx._ls !== "undefined" && ctx._ls.length > 0) {
-		for (const child of arrayify(value)) {
-			if (isEventTarget(child)) {
-				for (const record of ctx._ls) {
-					child.addEventListener(record.type, record.callback, record.options);
-				}
-			}
-		}
-	}
-
-	ctx._f &= ~Updating;
 }
 
 function unmountCtx(ctx: Context): void {
