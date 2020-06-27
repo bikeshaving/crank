@@ -273,7 +273,7 @@ function getValue<TNode>(el: Element): ElementValue<TNode> {
 
 type Scope = unknown;
 
-export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
+export class Renderer<TNode, TResult = ElementValue<TNode>> {
 	_cache: WeakMap<object, Element<Portal>>;
 	constructor() {
 		this._cache = new WeakMap();
@@ -326,39 +326,50 @@ export abstract class Renderer<TNode, TResult = ElementValue<TNode>> {
 		return scope;
 	}
 
-	escape(text: string, _scope: Scope): string {
-		return text;
+	create<TTag extends string | symbol>(
+		_tag: TTag,
+		_props: TagProps<TTag>,
+		_scope: Scope,
+	): TNode {
+		throw new Error("Not implemented");
 	}
 
 	read(value: ElementValue<TNode>): TResult {
 		return (value as unknown) as TResult;
 	}
 
-	abstract create<TTag extends string | symbol>(
-		tag: TTag,
-		props: TagProps<TTag>,
-		scope: Scope,
-	): TNode;
+	escape(text: string, _scope: Scope): string {
+		return text;
+	}
 
-	abstract parse(_text: string, _scope: Scope): TNode;
+	parse(text: string, _scope: Scope): TNode | string {
+		return text;
+	}
 
-	abstract patch<TTag extends string | symbol>(
-		tag: TTag,
-		props: TagProps<TTag>,
-		node: TNode,
-		scope: Scope,
-	): unknown;
+	patch<TTag extends string | symbol>(
+		_tag: TTag,
+		_props: TagProps<TTag>,
+		_node: TNode,
+		_scope: Scope,
+	): unknown {
+		return;
+	}
 
-	abstract arrange<TTag extends string | symbol>(
-		tag: TTag,
-		props: TagProps<TTag>,
-		parent: TNode,
-		children: Array<TNode | string>,
-	): unknown;
+	// TODO: pass hints into arrange about where the changed children start and end
+	arrange<TTag extends string | symbol>(
+		_tag: TTag,
+		_props: TagProps<TTag>,
+		_parent: TNode,
+		_children: Array<TNode | string>,
+	): unknown {
+		return;
+	}
 
-	// TODO: dispose() a method which is called for every host node when it is removed
+	// TODO: remove: a method which is called to remove a child from a parent to optimize arrange
 
-	// TODO: complete() a method which is called once at the end of every independent rendering or refresh or async generator component update
+	// TODO: dispose: a method which is called for every host node when it is removed
+
+	// TODO: complete: a method which is called once at the end of every independent rendering or refresh or async generator component update
 }
 
 // PRIVATE RENDERER FUNCTIONS
