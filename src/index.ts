@@ -958,7 +958,7 @@ export interface ProvisionMap {}
 
 // CONTEXT FLAGS
 // TODO: write an explanation for each of these flags
-const Updating = 1 << 0;
+const Independent = 1 << 0;
 const Stepping = 1 << 1;
 const Iterating = 1 << 2;
 const Available = 1 << 3;
@@ -1086,9 +1086,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	refresh(): Promise<TResult> | TResult {
 		if (this._f & (Stepping | Unmounted)) {
-			return this._r.read(getValue(this._el));
+			// TODO: log an error
+			return this._r.read(undefined);
 		}
 
+		this._f |= Independent;
 		resumeCtx(this);
 		return this._r.read(runCtx(this));
 	}
@@ -1506,6 +1508,7 @@ function advanceCtx(ctx: Context): void {
 	ctx._ep = undefined;
 	ctx._ev = undefined;
 	if (ctx._f & AsyncGen && !(ctx._f & Finished)) {
+		ctx._f |= Independent;
 		runCtx(ctx);
 	}
 }
@@ -1513,7 +1516,10 @@ function advanceCtx(ctx: Context): void {
 function updateCtx<TNode>(
 	ctx: Context,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	ctx._f |= Updating;
+	if (ctx._f & AsyncGen) {
+		ctx._f &= ~Independent;
+	}
+
 	resumeCtx(ctx);
 	return runCtx(ctx);
 }
@@ -1554,8 +1560,9 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 		}
 	}
 
-	if (!(ctx._f & Updating)) {
-		// TODO: async generator components which resume immediately will over-arrange the arranger. Maybe we can defer arrangement in that case.
+	if (ctx._f & Independent) {
+		// TODO: async generator components which yield multiple children synchronously will over-arrange the arranger. Maybe we can defer arrangement in that case.
+		// TODO: we don’t need to call arrange if none of the nodes have changed or moved (dirty/moved optimizations)
 		const arranger = ctx._a;
 		ctx._r.arrange(
 			arranger.tag,
@@ -1577,9 +1584,9 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 		}
 
 		// TODO: call renderer.complete here
+		ctx._f &= ~Independent;
 	}
 
-	ctx._f &= ~Updating;
 	if (typeof ctx._ss !== "undefined" && ctx._ss.size > 0) {
 		// We have to clear the set of callbacks before calling them, because a callback which refreshes the component would otherwise cause a stack overflow.
 		const callbacks = Array.from(ctx._ss);
