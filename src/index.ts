@@ -1634,8 +1634,8 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 	}
 
 	if (ctx._f & Independent) {
-		// TODO: async generator components which yield multiple children synchronously will over-arrange the arranger. Maybe we can defer arrangement in that case.
-		// TODO: we don’t need to call arrange if none of the nodes have changed or moved (dirty/moved optimizations)
+		// TODO: async generator components which yield multiple children synchronously will over-arrange the arranger. Maybe we can defer arrangement for this case.
+		// TODO: we don’t need to call arrange if none of the nodes have changed or moved
 		const arranger = ctx._ar;
 		ctx._re.arrange(
 			arranger.tag,
