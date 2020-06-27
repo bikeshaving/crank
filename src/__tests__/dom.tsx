@@ -145,34 +145,35 @@ describe("render", () => {
 	});
 
 	test("root portal", () => {
-		const key = {};
+		const div = document.createElement("div");
 		renderer.render(
-			<Portal root={document.body}>
+			<Portal root={div}>
 				<div>Hello world</div>
 			</Portal>,
-			key,
+			document.body,
 		);
-		expect(document.body.innerHTML).toEqual("<div>Hello world</div>");
-		renderer.render(null, key);
+		expect(document.body.innerHTML).toEqual("");
+		expect(div.innerHTML).toEqual("<div>Hello world</div>");
 	});
 
 	test("root portal with changing root", () => {
 		const el1 = document.createElement("div");
 		const el2 = document.createElement("div");
-		const key = {};
 		renderer.render(
 			<Portal root={el1}>
 				<div>Hello world</div>
 			</Portal>,
-			key,
+			document.body,
 		);
+		expect(document.body.innerHTML).toEqual("");
 		expect(el1.innerHTML).toEqual("<div>Hello world</div>");
 		renderer.render(
 			<Portal root={el2}>
 				<div>Hello world</div>
 			</Portal>,
-			key,
+			document.body,
 		);
+		expect(document.body.innerHTML).toEqual("");
 		expect(el1.innerHTML).toEqual("");
 		expect(el2.innerHTML).toEqual("<div>Hello world</div>");
 	});
