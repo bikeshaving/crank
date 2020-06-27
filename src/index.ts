@@ -41,8 +41,8 @@ function unwrap<T>(arr: Array<T>): Array<T> | T | undefined {
 	return arr.length > 1 ? arr : arr[0];
 }
 
-function squelch<T>(p: Promise<T>): Promise<T | undefined> {
-	return p.catch(() => undefined); // void :(
+function squelch<T>(p: Promise<T>): Promise<T | void> {
+	return p.catch(() => {});
 }
 
 export type Tag = Component<any> | string | symbol;
@@ -1356,13 +1356,13 @@ function stepCtx<TNode, TResult>(
 			const value = upgradePromiseLike(result);
 			const pending = squelch(value);
 			const value1 = value.then((value) =>
-				updateComponentChildren<TNode, TResult>(ctx, value),
+				updateCtxChildren<TNode, TResult>(ctx, value),
 			);
 			el._if = value1;
 			ctx._f &= ~Stepping;
 			return [pending, value1];
 		} else {
-			const value = updateComponentChildren<TNode, TResult>(ctx, result);
+			const value = updateCtxChildren<TNode, TResult>(ctx, result);
 			ctx._f &= ~Stepping;
 			return [undefined, value];
 		}
@@ -1394,7 +1394,7 @@ function stepCtx<TNode, TResult>(
 			}
 
 			try {
-				let value = updateComponentChildren<TNode, TResult>(
+				let value = updateCtxChildren<TNode, TResult>(
 					ctx,
 					iteration.value as Children,
 				); // void :(
@@ -1411,10 +1411,7 @@ function stepCtx<TNode, TResult>(
 									ctx._f |= Finished;
 								}
 
-								return updateComponentChildren<TNode, TResult>(
-									ctx,
-									iteration.value,
-								);
+								return updateCtxChildren<TNode, TResult>(ctx, iteration.value);
 							});
 						});
 					}
@@ -1434,7 +1431,7 @@ function stepCtx<TNode, TResult>(
 						ctx._f |= Finished;
 					}
 
-					return updateComponentChildren<TNode, TResult>(ctx, iteration.value);
+					return updateCtxChildren<TNode, TResult>(ctx, iteration.value);
 				});
 			}
 		});
@@ -1453,7 +1450,7 @@ function stepCtx<TNode, TResult>(
 	}
 
 	try {
-		let value = updateComponentChildren<TNode, TResult>(
+		let value = updateCtxChildren<TNode, TResult>(
 			ctx,
 			iteration.value as Children,
 		); // void :(
@@ -1469,7 +1466,7 @@ function stepCtx<TNode, TResult>(
 						ctx._f |= Finished;
 					}
 
-					return updateComponentChildren<TNode, TResult>(ctx, iteration.value);
+					return updateCtxChildren<TNode, TResult>(ctx, iteration.value);
 				});
 			}
 			const pending = squelch(value);
@@ -1489,7 +1486,7 @@ function stepCtx<TNode, TResult>(
 			ctx._f |= Finished;
 		}
 
-		const value = updateComponentChildren<TNode, TResult>(ctx, iteration.value);
+		const value = updateCtxChildren<TNode, TResult>(ctx, iteration.value);
 		if (isPromiseLike(value)) {
 			const pending = squelch(value);
 			return [pending, value];
@@ -1517,7 +1514,7 @@ function updateCtx<TNode>(
 	return runCtx(ctx);
 }
 
-function updateComponentChildren<TNode, TResult>(
+function updateCtxChildren<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
 	children: Children,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
