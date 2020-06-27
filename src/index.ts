@@ -106,6 +106,7 @@ function narrow(child: Child): NarrowedChild {
 // ELEMENT FLAGS
 const Mounted = 1 << 0;
 const Committed = 1 << 1;
+
 export class Element<TTag extends Tag = Tag> {
 	$$typeof: typeof ElementSymbol;
 	// flags
@@ -236,20 +237,6 @@ function normalize<T>(values: Array<ElementValue<T>>): Array<T | string> {
 
 export type ElementValue<T> = Array<T | string> | T | string | undefined;
 
-type Scope = unknown;
-
-function getChildrenByKey(children: Array<NarrowedChild>): Map<Key, Element> {
-	const childrenByKey = new Map<Key, Element>();
-	for (let i = 0; i < children.length; i++) {
-		const child = children[i];
-		if (typeof child === "object" && typeof child.key !== "undefined") {
-			childrenByKey.set(child.key, child);
-		}
-	}
-
-	return childrenByKey;
-}
-
 function getChildValues<TValue>(el: Element): Array<TValue | string> {
 	let values: Array<TValue | string> = [];
 	const children = arrayify(el._ch);
@@ -284,29 +271,30 @@ function getValue<TValue>(el: Element): ElementValue<TValue> {
 	return unwrap(getChildValues<TValue>(el));
 }
 
+type Scope = unknown;
+
 export abstract class Renderer<TValue, TResult = ElementValue<TValue>> {
-	// cache
-	_ca: WeakMap<object, Element<Portal>>;
+	_cache: WeakMap<object, Element<Portal>>;
 	constructor() {
-		this._ca = new WeakMap();
+		this._cache = new WeakMap();
 	}
 
 	// TODO: allow parent contexts from a different renderer to be passed into here
 	render(children: Children, root?: unknown): Promise<TResult> | TResult {
 		let portal: Element<Portal> | undefined;
 		if (typeof root === "object" && root !== null) {
-			portal = this._ca.get(root);
+			portal = this._cache.get(root);
 		}
 
 		if (portal === undefined) {
 			portal = createElement(Portal, {children, root});
 			if (typeof root === "object" && root !== null && children != null) {
-				this._ca.set(root, portal);
+				this._cache.set(root, portal);
 			}
 		} else {
 			portal.props = {children, root};
 			if (typeof root === "object" && root !== null && children == null) {
-				this._ca.delete(root);
+				this._cache.delete(root);
 			}
 		}
 
@@ -357,7 +345,7 @@ export abstract class Renderer<TValue, TResult = ElementValue<TValue>> {
 	abstract patch<TTag extends string | symbol>(
 		tag: TTag,
 		props: TagProps<TTag>,
-		value: TValue,
+		node: TValue,
 		scope: Scope,
 	): unknown;
 
@@ -532,6 +520,18 @@ function updateChild<TValue, TResult>(
 	return race(renderer, arranger, ctx, scope, parent, results);
 }
 
+function mapChildrenByKey(children: Array<NarrowedChild>): Map<Key, Element> {
+	const childrenByKey = new Map<Key, Element>();
+	for (let i = 0; i < children.length; i++) {
+		const child = children[i];
+		if (typeof child === "object" && typeof child.key !== "undefined") {
+			childrenByKey.set(child.key, child);
+		}
+	}
+
+	return childrenByKey;
+}
+
 function updateChildren<TValue, TResult>(
 	renderer: Renderer<TValue, TResult>,
 	arranger: Element<string | symbol>,
@@ -575,7 +575,7 @@ function updateChildren<TValue, TResult>(
 
 		if (oldKey !== newKey) {
 			if (childrenByKey === undefined) {
-				childrenByKey = getChildrenByKey(oldChildren.slice(i));
+				childrenByKey = mapChildrenByKey(oldChildren.slice(i));
 			}
 
 			if (newKey === undefined) {
