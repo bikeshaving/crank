@@ -367,7 +367,9 @@ export class Renderer<TNode, TResult = ElementValue<TNode>> {
 
 	// TODO: remove: a method which is called to remove a child from a parent to optimize arrange
 
-	// TODO: dispose: a method which is called for every host node when it is removed
+	dispose(_tag: string | symbol, _node: TNode): unknown {
+		return;
+	}
 
 	// TODO: complete: a method which is called once at the end of every independent rendering or refresh or async generator component update
 }
@@ -849,7 +851,7 @@ function unmount<TNode, TResult>(
 		}
 
 		arranger = el;
-		// TODO: call renderer.dispose
+		renderer.dispose(el.tag, el._n);
 	}
 
 	const children = arrayify(el._ch);
