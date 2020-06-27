@@ -6,12 +6,7 @@ declare module "./index" {
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
-// TODO: refine/explain the NO_TOUCH set
-// Gleaned from:
-// https://github.com/preactjs/preact/blob/05e5d2c0d2d92c5478eeffdbd96681c96500d29f/src/diff/props.js#L111-L117
-const NO_TOUCH = new Set(["form", "list", "type", "size"]);
-
-export class DOMRenderer extends Renderer<Node, undefined> {
+export class DOMRenderer extends Renderer<Node> {
 	scope(
 		tag: string | symbol,
 		props: Record<string, any>,
@@ -28,18 +23,13 @@ export class DOMRenderer extends Renderer<Node, undefined> {
 		}
 	}
 
+	// TODO: cache createElement calls and use cloneNode
 	create<TTag extends string | symbol>(
 		tag: TTag,
 		props: Record<string, any>,
 		ns: string | undefined,
 	): Node {
-		if (tag === Portal) {
-			if (!(props.root instanceof Node)) {
-				throw new Error("Portal must have a root of type Node");
-			}
-
-			return props.root;
-		} else if (typeof tag !== "string") {
+		if (typeof tag !== "string") {
 			throw new Error(`Unknown tag: ${tag.toString()}`);
 		}
 
@@ -60,23 +50,12 @@ export class DOMRenderer extends Renderer<Node, undefined> {
 		el: Element,
 		ns: string | undefined,
 	): void {
-		for (const name in props) {
+		for (let name in props) {
+			let forceAttribute = false;
 			const value = props[name];
 			switch (name) {
 				case "children":
 					break;
-				case "class":
-				case "className": {
-					if (value == null) {
-						el.removeAttribute("class");
-					} else if (ns === undefined) {
-						el.className = value;
-					} else {
-						el.setAttribute("class", value);
-					}
-
-					break;
-				}
 				case "style": {
 					const style: CSSStyleDeclaration = (el as any).style;
 					if (style == null) {
@@ -100,12 +79,35 @@ export class DOMRenderer extends Renderer<Node, undefined> {
 
 					break;
 				}
+				case "class":
+				case "className":
+					if (value === true) {
+						el.setAttribute("class", "");
+					} else if (value === false || value == null) {
+						el.removeAttribute("class");
+					} else if (ns === undefined) {
+						(el as any)["className"] = value;
+					} else {
+						el.setAttribute("class", value);
+					}
+					break;
+				// Gleaned from:
+				// https://github.com/preactjs/preact/blob/05e5d2c0d2d92c5478eeffdbd96681c96500d29f/src/diff/props.js#L111-L117
+				// TODO: figure out why we use setAttribute for each of these
+				case "form":
+				case "list":
+				case "type":
+				case "size":
+					forceAttribute = true;
+				// fallthrough
 				default: {
-					if (ns === undefined && name in el && !NO_TOUCH.has(name)) {
+					if (value == null) {
+						el.removeAttribute(name);
+					} else if (ns === undefined && !forceAttribute && name in el) {
 						(el as any)[name] = value;
 					} else if (value === true) {
 						el.setAttribute(name, "");
-					} else if (value === false || value == null) {
+					} else if (value === false) {
 						el.removeAttribute(name);
 					} else {
 						el.setAttribute(name, value);
@@ -121,13 +123,13 @@ export class DOMRenderer extends Renderer<Node, undefined> {
 		parent: Node,
 		children: Array<Node | string>,
 	): void {
-		if (parent === undefined) {
-			throw new Error("Missing root");
+		if (tag === Portal && !(parent instanceof Node)) {
+			throw new Error("Portal must have a root of type Node");
 		}
 
 		if (
 			!("innerHTML" in props) &&
-			(children.length !== 0 || (parent as any).__crankArranged)
+			(children.length !== 0 || (parent as any).__cranky)
 		) {
 			if (children.length === 0) {
 				parent.textContent = "";
@@ -180,12 +182,13 @@ export class DOMRenderer extends Renderer<Node, undefined> {
 						: newChild,
 				);
 			}
-			(parent as any).__crankArranged = children.length > 0;
-		}
-	}
 
-	escape(text: string): string {
-		return text;
+			if (children.length > 0) {
+				(parent as any).__cranky = true;
+			} else if ((parent as any).__cranky) {
+				(parent as any).__cranky = false;
+			}
+		}
 	}
 
 	parse(text: string): DocumentFragment {
