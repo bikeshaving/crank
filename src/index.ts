@@ -298,14 +298,8 @@ export class Renderer<TNode, TRoot = TNode, TResult = ElementValue<TNode>> {
 			}
 		}
 
-		const value = update(
-			this,
-			portal.props.root,
-			portal,
-			undefined,
-			undefined,
-			portal,
-		);
+		const value = update(this, root, portal, undefined, undefined, portal);
+
 		if (isPromiseLike(value)) {
 			return value.then(() => {
 				const result = this.read(unwrap(getChildNodes<TNode>(portal!)));
@@ -858,6 +852,7 @@ function commit<TNode, TRoot, TResult>(
 		}
 	} else if (el.tag === Portal) {
 		renderer.arrange(Portal, el.props, el.props.root, nodes);
+		renderer.complete(el.props.root);
 		value = undefined;
 	} else if (el.tag === Raw) {
 		if (typeof el.props.value === "string") {
@@ -899,6 +894,7 @@ function unmount<TNode, TRoot, TResult>(
 	} else if (el.tag === Portal) {
 		arranger = el;
 		renderer.arrange(Portal, el.props, el.props.root, []);
+		renderer.complete(el.props.root);
 	} else if (el.tag !== Fragment) {
 		if (isEventTarget(el._n)) {
 			const listeners = getListeners(ctx, arranger);
@@ -1634,16 +1630,6 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 	}
 
 	if (ctx._f & Independent) {
-		// TODO: async generator components which yield multiple children synchronously will over-arrange the arranger. Maybe we can defer arrangement for this case.
-		// TODO: we don’t need to call arrange if none of the nodes have changed or moved
-		const arranger = ctx._ar;
-		ctx._re.arrange(
-			arranger.tag,
-			arranger.props,
-			arranger.tag === Portal ? arranger.props.root : arranger._n,
-			getChildNodes(arranger),
-		);
-
 		const listeners = getListeners(ctx._pa, ctx._ar);
 		if (listeners !== undefined && listeners.length > 0) {
 			for (let i = 0; i < listeners.length; i++) {
@@ -1656,6 +1642,15 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 			}
 		}
 
+		// TODO: async generator components which yield multiple children synchronously will over-arrange the arranger. Maybe we can defer arrangement for this case.
+		// TODO: we don’t need to call arrange if none of the nodes have changed or moved
+		const arranger = ctx._ar;
+		ctx._re.arrange(
+			arranger.tag,
+			arranger.props,
+			arranger.tag === Portal ? arranger.props.root : arranger._n,
+			getChildNodes(arranger),
+		);
 		ctx._re.complete(ctx._ro);
 		ctx._f &= ~Independent;
 	}
