@@ -93,10 +93,12 @@ function join(children: Array<Node | string>): string {
 }
 
 export class StringRenderer extends Renderer<Node | string, string> {
-	scope(): void {}
-
 	create(): Node {
 		return {result: ""};
+	}
+
+	escape(text: string): string {
+		return escape(text);
 	}
 
 	read(value: ElementValue<Node>): string {
@@ -110,8 +112,6 @@ export class StringRenderer extends Renderer<Node | string, string> {
 			return value.result;
 		}
 	}
-
-	patch(): void {}
 
 	arrange(
 		tag: any,
@@ -136,14 +136,6 @@ export class StringRenderer extends Renderer<Node | string, string> {
 		}
 
 		node.result = result;
-	}
-
-	parse(text: string): string {
-		return text;
-	}
-
-	escape(text: string): string {
-		return escape(text);
 	}
 }
 

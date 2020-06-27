@@ -44,6 +44,21 @@ export class DOMRenderer extends Renderer<Node> {
 		return document.createElement(tag);
 	}
 
+	parse(text: string): DocumentFragment {
+		if (typeof document.createRange === "function") {
+			return document.createRange().createContextualFragment(text);
+		} else {
+			const fragment = document.createDocumentFragment();
+			const childNodes = new DOMParser().parseFromString(text, "text/html").body
+				.childNodes;
+			for (let i = 0; i < childNodes.length; i++) {
+				fragment.appendChild(childNodes[i]);
+			}
+
+			return fragment;
+		}
+	}
+
 	patch<TTag extends string | symbol>(
 		tag: TTag,
 		props: TagProps<TTag>,
@@ -188,21 +203,6 @@ export class DOMRenderer extends Renderer<Node> {
 			} else if ((parent as any).__cranky) {
 				(parent as any).__cranky = false;
 			}
-		}
-	}
-
-	parse(text: string): DocumentFragment {
-		if (typeof document.createRange === "function") {
-			return document.createRange().createContextualFragment(text);
-		} else {
-			const fragment = document.createDocumentFragment();
-			const childNodes = new DOMParser().parseFromString(text, "text/html").body
-				.childNodes;
-			for (let i = 0; i < childNodes.length; i++) {
-				fragment.appendChild(childNodes[i]);
-			}
-
-			return fragment;
 		}
 	}
 }
