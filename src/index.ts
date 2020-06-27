@@ -1,16 +1,4 @@
 // UTILITY FUNCTIONS
-function isPromiseLike(value: any): value is PromiseLike<any> {
-	return value != null && typeof value.then === "function";
-}
-
-function upgradePromiseLike<T>(value: PromiseLike<T>): Promise<T> {
-	if (!(value instanceof Promise)) {
-		return Promise.resolve(value);
-	}
-
-	return value;
-}
-
 function isIterable(value: any): value is Iterable<any> {
 	return value != null && typeof value[Symbol.iterator] === "function";
 }
@@ -39,6 +27,18 @@ function arrayify<T>(value: Array<T> | T | undefined): Array<T> {
 
 function unwrap<T>(arr: Array<T>): Array<T> | T | undefined {
 	return arr.length > 1 ? arr : arr[0];
+}
+
+function isPromiseLike(value: any): value is PromiseLike<any> {
+	return value != null && typeof value.then === "function";
+}
+
+function upgradePromiseLike<T>(value: PromiseLike<T>): Promise<T> {
+	if (!(value instanceof Promise)) {
+		return Promise.resolve(value);
+	}
+
+	return value;
 }
 
 function squelch<T>(p: Promise<T>): Promise<T | void> {
@@ -355,7 +355,7 @@ export class Renderer<TNode, TResult = ElementValue<TNode>> {
 		return;
 	}
 
-	// TODO: pass hints into arrange about where the changed children start and end
+	// TODO: pass hints into arrange about where the dirty children start and end
 	arrange<TTag extends string | symbol>(
 		_tag: TTag,
 		_props: TagProps<TTag>,
@@ -864,17 +864,6 @@ function unmount<TNode, TResult>(
 	el._ch = undefined;
 }
 
-// CONTEXT FLAGS
-// TODO: write an explanation for each of these flags
-const Updating = 1 << 0;
-const Stepping = 1 << 1;
-const Iterating = 1 << 2;
-const Available = 1 << 3;
-const Finished = 1 << 4;
-const Unmounted = 1 << 5;
-const SyncGen = 1 << 6;
-const AsyncGen = 1 << 7;
-
 // EVENT UTILITY FUNCTIONS
 const NONE = 0;
 const CAPTURING_PHASE = 1;
@@ -963,6 +952,17 @@ function clearEventListeners(ctx: Context): void {
 
 export interface ProvisionMap {}
 
+// CONTEXT FLAGS
+// TODO: write an explanation for each of these flags
+const Updating = 1 << 0;
+const Stepping = 1 << 1;
+const Iterating = 1 << 2;
+const Available = 1 << 3;
+const Finished = 1 << 4;
+const Unmounted = 1 << 5;
+const SyncGen = 1 << 6;
+const AsyncGen = 1 << 7;
+
 export class Context<TProps = any, TResult = any> implements EventTarget {
 	// flags
 	_f: number;
@@ -971,7 +971,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	_el: Element<Component>;
 	// arranger
 	_a: Element<string | symbol>;
-	// parent
+	// parent context
 	_p: Context<unknown, TResult> | undefined;
 	// scope
 	_s: Scope;
@@ -980,8 +980,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		| Iterator<Children, Children | void, unknown>
 		| AsyncIterator<Children, Children | void, unknown>
 		| undefined;
-	// listeners
-	_ls: Array<EventListenerRecord> | undefined;
 	// onProps
 	_op: ((props: any) => unknown) | undefined;
 	// inflight pending
@@ -992,6 +990,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	_iv: Promise<ElementValue<any>> | undefined;
 	// enqueued value
 	_ev: Promise<ElementValue<any>> | undefined;
+	// listeners
+	_ls: Array<EventListenerRecord> | undefined;
 	// provisions
 	_ps: Map<unknown, unknown> | undefined;
 	// schedule callbacks
