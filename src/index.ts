@@ -119,8 +119,8 @@ export class Element<TTag extends Tag = Tag> {
 	_if: Promise<any> | undefined;
 	// fallback
 	_fb: any;
-	// onNewValue
-	_onv: Function | undefined;
+	// onNewResults
+	_onr: Function | undefined;
 	tag: TTag;
 	props: TagProps<TTag>;
 	key: Key;
@@ -237,9 +237,6 @@ function normalize<T>(values: Array<ElementValue<T>>): Array<T | string> {
 export type ElementValue<T> = Array<T | string> | T | string | undefined;
 
 type Scope = unknown;
-
-// TODO: explain
-const RaceLostSymbol = Symbol.for("crank.RaceLost");
 
 function getChildrenByKey(children: Array<NarrowedChild>): Map<Key, Element> {
 	const childrenByKey = new Map<Key, Element>();
@@ -745,42 +742,29 @@ function race<TValue, TResult>(
 	results: Promise<Array<ElementValue<TValue>>> | Array<ElementValue<TValue>>,
 ): Promise<ElementValue<TValue>> | ElementValue<TValue> {
 	if (isPromiseLike(results)) {
-		let onNewValue!: Function;
-		const newValueP = new Promise<ElementValue<TValue>>(
-			(resolve) => (onNewValue = resolve),
-		);
-		const resultsP = Promise.race([
-			newValueP.then(() => {
-				// returning Promise.reject instead of throwing a promise causes a race condition
-				throw RaceLostSymbol;
-			}),
-			results,
-		]);
-
-		const value = resultsP.then(
-			(results) => commit(renderer, scope, el, normalize(results)),
-			(err) => {
-				if (err === RaceLostSymbol) {
-					return newValueP;
-				}
-
-				throw err;
-			},
+		let onNewResults!: Function;
+		const newResults = new Promise<Array<ElementValue<TValue>>>(
+			(resolve) => (onNewResults = resolve),
 		);
 
-		if (typeof el._onv === "function") {
-			el._onv(value);
+		const resultsP = Promise.race([results, newResults]);
+		if (typeof el._onr === "function") {
+			el._onr(resultsP);
 		}
 
-		el._onv = onNewValue;
+		el._onr = onNewResults;
+		const value = resultsP.then((results) =>
+			commit(renderer, scope, el, normalize(results)),
+		);
+
 		el._if = value;
 		return value;
 	}
 
 	const value = commit(renderer, scope, el, normalize(results));
-	if (typeof el._onv === "function") {
-		el._onv(value);
-		el._onv = undefined;
+	if (typeof el._onr === "function") {
+		el._onr(results);
+		el._onr = undefined;
 	}
 
 	return value;
