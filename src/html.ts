@@ -79,22 +79,23 @@ function printAttrs(props: Record<string, any>): string {
 }
 
 interface Node {
-	result: string;
+	value: string;
 }
 
 function join(children: Array<Node | string>): string {
 	let result = "";
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i];
-		result += typeof child === "string" ? child : child.result;
+		result += typeof child === "string" ? child : child.value;
 	}
 
 	return result;
 }
 
-export class StringRenderer extends Renderer<Node | string, string> {
+// NOTE: using void for the root type allows render to be called with only one argument
+export class StringRenderer extends Renderer<Node | string, void, string> {
 	create(): Node {
-		return {result: ""};
+		return {value: ""};
 	}
 
 	escape(text: string): string {
@@ -109,7 +110,7 @@ export class StringRenderer extends Renderer<Node | string, string> {
 		} else if (typeof value === "string") {
 			return value;
 		} else {
-			return value.result;
+			return value.value;
 		}
 	}
 
@@ -135,7 +136,7 @@ export class StringRenderer extends Renderer<Node | string, string> {
 			result = `${open}${contents}${close}`;
 		}
 
-		node.result = result;
+		node.value = result;
 	}
 }
 

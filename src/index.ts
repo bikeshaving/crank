@@ -273,32 +273,39 @@ function getValue<TNode>(el: Element): ElementValue<TNode> {
 
 type Scope = unknown;
 
-export class Renderer<TNode, TResult = ElementValue<TNode>> {
+export class Renderer<TNode, TRoot = TNode, TResult = ElementValue<TNode>> {
 	_cache: WeakMap<object, Element<Portal>>;
 	constructor() {
 		this._cache = new WeakMap();
 	}
 
 	// TODO: allow parent contexts from a different renderer to be passed into here
-	render(children: Children, root?: unknown): Promise<TResult> | TResult {
+	render(children: Children, root: TRoot): Promise<TResult> | TResult {
 		let portal: Element<Portal> | undefined;
 		if (typeof root === "object" && root !== null) {
-			portal = this._cache.get(root);
+			portal = this._cache.get((root as unknown) as object);
 		}
 
 		if (portal === undefined) {
 			portal = createElement(Portal, {children, root});
 			if (typeof root === "object" && root !== null && children != null) {
-				this._cache.set(root, portal);
+				this._cache.set((root as unknown) as object, portal);
 			}
 		} else {
 			portal.props = {children, root};
 			if (typeof root === "object" && root !== null && children == null) {
-				this._cache.delete(root);
+				this._cache.delete((root as unknown) as object);
 			}
 		}
 
-		const value = update(this, portal, undefined, undefined, portal);
+		const value = update(
+			this,
+			portal.props.root,
+			portal,
+			undefined,
+			undefined,
+			portal,
+		);
 		if (isPromiseLike(value)) {
 			return value.then(() => {
 				const result = this.read(unwrap(getChildNodes<TNode>(portal!)));
@@ -359,7 +366,7 @@ export class Renderer<TNode, TResult = ElementValue<TNode>> {
 	arrange<TTag extends string | symbol>(
 		_tag: TTag,
 		_props: TagProps<TTag>,
-		_parent: TNode,
+		_parent: TNode | TRoot,
 		_children: Array<TNode | string>,
 	): unknown {
 		return;
@@ -371,12 +378,15 @@ export class Renderer<TNode, TResult = ElementValue<TNode>> {
 		return;
 	}
 
-	// TODO: complete: a method which is called once at the end of every independent rendering or refresh or async generator component update
+	complete(_root: TRoot): unknown {
+		return;
+	}
 }
 
 // PRIVATE RENDERER FUNCTIONS
-function mount<TNode, TResult>(
-	renderer: Renderer<TNode, TResult>,
+function mount<TNode, TRoot, TResult>(
+	renderer: Renderer<TNode, TRoot, TResult>,
+	root: TRoot,
 	arranger: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
@@ -386,10 +396,11 @@ function mount<TNode, TResult>(
 	if (typeof el.tag === "function") {
 		el._ctx = new Context(
 			renderer,
-			el as Element<Component>,
+			root,
 			arranger,
 			ctx,
 			scope,
+			el as Element<Component>,
 		);
 
 		return updateCtx(el._ctx);
@@ -399,6 +410,8 @@ function mount<TNode, TResult>(
 		if (el.tag !== Portal) {
 			// TODO: maybe we can defer create calls to when the element is committing
 			el._n = renderer.create(el.tag, el.props, scope);
+		} else {
+			root = el.props.root;
 		}
 
 		arranger = el as Element<string | symbol>;
@@ -406,14 +419,31 @@ function mount<TNode, TResult>(
 	}
 
 	if (isNonStringIterable(el.props.children)) {
-		return mountChildren(renderer, arranger, ctx, scope, el, el.props.children);
+		return mountChildren(
+			renderer,
+			root,
+			arranger,
+			ctx,
+			scope,
+			el,
+			el.props.children,
+		);
 	}
 
-	return updateChild(renderer, arranger, ctx, scope, el, el.props.children);
+	return updateChild(
+		renderer,
+		root,
+		arranger,
+		ctx,
+		scope,
+		el,
+		el.props.children,
+	);
 }
 
-function mountChildren<TNode, TResult>(
-	renderer: Renderer<TNode, TResult>,
+function mountChildren<TNode, TRoot, TResult>(
+	renderer: Renderer<TNode, TRoot, TResult>,
+	root: TRoot,
 	arranger: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
@@ -432,7 +462,15 @@ function mountChildren<TNode, TResult>(
 			child = narrow(child);
 		}
 
-		[child, value] = compare(renderer, arranger, ctx, scope, undefined, child);
+		[child, value] = compare(
+			renderer,
+			root,
+			arranger,
+			ctx,
+			scope,
+			undefined,
+			child,
+		);
 		newChildren[i] = child;
 		values.push(value);
 		if (!async && isPromiseLike(value)) {
@@ -452,8 +490,9 @@ function mountChildren<TNode, TResult>(
 	return race(renderer, arranger, ctx, scope, parent, values1);
 }
 
-function update<TNode, TResult>(
-	renderer: Renderer<TNode, TResult>,
+function update<TNode, TRoot, TResult>(
+	renderer: Renderer<TNode, TRoot, TResult>,
+	root: TRoot,
 	arranger: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
@@ -470,11 +509,15 @@ function update<TNode, TResult>(
 	} else if (el.tag !== Fragment) {
 		arranger = el as Element<string | symbol>;
 		scope = renderer.scope(el.tag, el.props, scope);
+		if (el.tag === Portal) {
+			root = el.props.root;
+		}
 	}
 
 	if (isNonStringIterable(el.props.children)) {
 		return updateChildren(
 			renderer,
+			root,
 			arranger,
 			ctx,
 			scope,
@@ -482,16 +525,25 @@ function update<TNode, TResult>(
 			el.props.children,
 		);
 	} else if (Array.isArray(el._ch)) {
-		return updateChildren(renderer, arranger, ctx, scope, el, [
+		return updateChildren(renderer, root, arranger, ctx, scope, el, [
 			el.props.children,
 		]);
 	}
 
-	return updateChild(renderer, arranger, ctx, scope, el, el.props.children);
+	return updateChild(
+		renderer,
+		root,
+		arranger,
+		ctx,
+		scope,
+		el,
+		el.props.children,
+	);
 }
 
-function updateChild<TNode, TResult>(
-	renderer: Renderer<TNode, TResult>,
+function updateChild<TNode, TRoot, TResult>(
+	renderer: Renderer<TNode, TRoot, TResult>,
+	root: TRoot,
 	arranger: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
@@ -511,6 +563,7 @@ function updateChild<TNode, TResult>(
 	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 	[newChild, value] = compare(
 		renderer,
+		root,
 		arranger,
 		ctx,
 		scope,
@@ -542,8 +595,9 @@ function mapChildrenByKey(children: Array<NarrowedChild>): Map<Key, Element> {
 	return childrenByKey;
 }
 
-function updateChildren<TNode, TResult>(
-	renderer: Renderer<TNode, TResult>,
+function updateChildren<TNode, TRoot, TResult>(
+	renderer: Renderer<TNode, TRoot, TResult>,
+	root: TRoot,
 	arranger: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
@@ -551,7 +605,15 @@ function updateChildren<TNode, TResult>(
 	children: ChildIterable,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (typeof parent._ch === "undefined") {
-		return mountChildren(renderer, arranger, ctx, scope, parent, children);
+		return mountChildren(
+			renderer,
+			root,
+			arranger,
+			ctx,
+			scope,
+			parent,
+			children,
+		);
 	}
 
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
@@ -618,6 +680,7 @@ function updateChildren<TNode, TResult>(
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 		[newChild, value] = compare(
 			renderer,
+			root,
 			arranger,
 			ctx,
 			scope,
@@ -665,8 +728,9 @@ function updateChildren<TNode, TResult>(
 	return race(renderer, arranger, ctx, scope, parent, values1);
 }
 
-function compare<TNode, TResult>(
-	renderer: Renderer<TNode, TResult>,
+function compare<TNode, TRoot, TResult>(
+	renderer: Renderer<TNode, TRoot, TResult>,
+	root: TRoot,
 	arranger: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
@@ -683,9 +747,9 @@ function compare<TNode, TResult>(
 			if (oldChild.props.root !== newChild.props.root) {
 				renderer.arrange(Portal, oldChild.props, oldChild.props.root, []);
 			}
-		} else if (oldChild.tag === Raw) {
-			// TODO: implement raw caching here
 		}
+
+		// TODO: implement Raw element parse caching
 
 		if (oldChild !== newChild) {
 			oldChild.props = newChild.props;
@@ -693,7 +757,7 @@ function compare<TNode, TResult>(
 			newChild = oldChild;
 		}
 
-		value = update(renderer, arranger, ctx, scope, newChild);
+		value = update(renderer, root, arranger, ctx, scope, newChild);
 	} else if (typeof newChild === "object") {
 		if (newChild.tag === Copy) {
 			if (typeof oldChild === "object") {
@@ -729,7 +793,7 @@ function compare<TNode, TResult>(
 				}
 			}
 
-			value = mount(renderer, arranger, ctx, scope, newChild);
+			value = mount(renderer, root, arranger, ctx, scope, newChild);
 		}
 	} else if (typeof newChild === "string") {
 		newChild = renderer.escape(newChild, scope);
@@ -739,8 +803,8 @@ function compare<TNode, TResult>(
 	return [newChild, value];
 }
 
-function race<TNode, TResult>(
-	renderer: Renderer<TNode, TResult>,
+function race<TNode, TRoot, TResult>(
+	renderer: Renderer<TNode, TRoot, TResult>,
 	arranger: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
@@ -776,8 +840,8 @@ function race<TNode, TResult>(
 	return commit(renderer, scope, el, normalize(values));
 }
 
-function commit<TNode, TResult>(
-	renderer: Renderer<TNode, TResult>,
+function commit<TNode, TRoot, TResult>(
+	renderer: Renderer<TNode, TRoot, TResult>,
 	scope: Scope,
 	el: Element,
 	nodes: Array<TNode | string>,
@@ -820,8 +884,8 @@ function commit<TNode, TResult>(
 	return value;
 }
 
-function unmount<TNode, TResult>(
-	renderer: Renderer<TNode, TResult>,
+function unmount<TNode, TRoot, TResult>(
+	renderer: Renderer<TNode, TRoot, TResult>,
 	arranger: Element,
 	ctx: Context<unknown, TResult> | undefined,
 	el: Element,
@@ -974,14 +1038,17 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	// flags
 	_f: number;
 	// renderer
-	_re: Renderer<any, TResult>;
-	_el: Element<Component>;
+	_re: Renderer<unknown, unknown, TResult>;
+	// root
+	_ro: unknown;
 	// arranger
 	_ar: Element<string | symbol>;
 	// parent context
 	_pa: Context<unknown, TResult> | undefined;
 	// scope
 	_sc: Scope;
+	// element
+	_el: Element<Component>;
 	// iterator
 	_it:
 		| Iterator<Children, Children | void, unknown>
@@ -1006,18 +1073,20 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	// cleanup callbacks
 	_cs: Set<(value: TResult) => unknown> | undefined;
 	constructor(
-		renderer: Renderer<unknown, TResult>,
-		el: Element<Component>,
+		renderer: Renderer<unknown, unknown, TResult>,
+		root: unknown,
 		arranger: Element<string | symbol>,
 		parent: Context<unknown, TResult> | undefined,
 		scope: Scope,
+		el: Element<Component>,
 	) {
 		this._f = 0;
 		this._re = renderer;
-		this._el = el;
+		this._ro = root;
 		this._ar = arranger;
 		this._pa = parent;
 		this._sc = scope;
+		this._el = el;
 	}
 
 	get<TKey extends keyof ProvisionMap>(key: TKey): ProvisionMap[TKey];
@@ -1538,8 +1607,9 @@ function updateCtxChildren<TNode, TResult>(
 		child = children;
 	}
 
-	return updateChild<TNode, TResult>(
-		ctx._re,
+	return updateChild<TNode, unknown, TResult>(
+		ctx._re as any,
+		ctx._ro,
 		ctx._ar,
 		ctx,
 		ctx._sc,
@@ -1586,7 +1656,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 			}
 		}
 
-		// TODO: call renderer.complete here
+		ctx._re.complete(ctx._ro);
 		ctx._f &= ~Independent;
 	}
 
