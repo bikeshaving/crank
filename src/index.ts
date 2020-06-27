@@ -395,6 +395,7 @@ function mount<TNode, TResult>(
 		return commit(renderer, scope, el, []);
 	} else if (el.tag !== Fragment) {
 		if (el.tag !== Portal) {
+			// TODO: maybe we can defer create calls to when the element is committing
 			el._n = renderer.create(el.tag, el.props, scope);
 		}
 
@@ -925,12 +926,12 @@ function getListeners(
 	arranger: Element,
 ): Array<EventListenerRecord> | undefined {
 	let listeners: Array<EventListenerRecord> | undefined;
-	while (ctx !== undefined && ctx._a === arranger) {
+	while (ctx !== undefined && ctx._ar === arranger) {
 		if (typeof ctx._ls !== "undefined") {
 			listeners = listeners === undefined ? ctx._ls : listeners.concat(ctx._ls);
 		}
 
-		ctx = ctx._p;
+		ctx = ctx._pa;
 	}
 
 	return listeners;
@@ -971,14 +972,14 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	// flags
 	_f: number;
 	// renderer
-	_r: Renderer<unknown, TResult>;
+	_re: Renderer<any, TResult>;
 	_el: Element<Component>;
 	// arranger
-	_a: Element<string | symbol>;
+	_ar: Element<string | symbol>;
 	// parent context
-	_p: Context<unknown, TResult> | undefined;
+	_pa: Context<unknown, TResult> | undefined;
 	// scope
-	_s: Scope;
+	_sc: Scope;
 	// iterator
 	_it:
 		| Iterator<Children, Children | void, unknown>
@@ -1010,16 +1011,16 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		scope: Scope,
 	) {
 		this._f = 0;
-		this._r = renderer;
+		this._re = renderer;
 		this._el = el;
-		this._a = arranger;
-		this._p = parent;
-		this._s = scope;
+		this._ar = arranger;
+		this._pa = parent;
+		this._sc = scope;
 	}
 
 	get<TKey extends keyof ProvisionMap>(key: TKey): ProvisionMap[TKey];
 	get(key: unknown): any {
-		for (let parent = this._p; parent !== undefined; parent = parent._p) {
+		for (let parent = this._pa; parent !== undefined; parent = parent._pa) {
 			if (typeof parent._ps === "object" && parent._ps.has(key)) {
 				return parent._ps.get(key)!;
 			}
@@ -1043,7 +1044,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	}
 
 	get value(): TResult {
-		return this._r.read(unwrap(getChildNodes(this._el)));
+		return this._re.read(unwrap(getChildNodes(this._el)));
 	}
 
 	*[Symbol.iterator](): Generator<TProps> {
@@ -1087,12 +1088,12 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	refresh(): Promise<TResult> | TResult {
 		if (this._f & (Stepping | Unmounted)) {
 			// TODO: log an error
-			return this._r.read(undefined);
+			return this._re.read(undefined);
 		}
 
 		this._f |= Independent;
 		resumeCtx(this);
-		return this._r.read(runCtx(this));
+		return this._re.read(runCtx(this));
 	}
 
 	schedule(callback: (value: unknown) => unknown): void {
@@ -1202,7 +1203,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	dispatchEvent(ev: Event): boolean {
 		const path: Context<unknown, TResult>[] = [];
-		for (let parent = this._p; parent !== undefined; parent = parent._p) {
+		for (let parent = this._pa; parent !== undefined; parent = parent._pa) {
 			path.push(parent);
 		}
 
@@ -1376,11 +1377,11 @@ function stepCtx<TNode, TResult>(
 
 	let oldValue: Promise<TResult> | TResult;
 	if (typeof ctx._el._if === "object") {
-		oldValue = ctx._r.read(ctx._el._if);
+		oldValue = ctx._re.read(ctx._el._if);
 	} else if (initial) {
-		oldValue = ctx._r.read(undefined);
+		oldValue = ctx._re.read(undefined);
 	} else {
-		oldValue = ctx._r.read(getValue(el));
+		oldValue = ctx._re.read(getValue(el));
 	}
 
 	// TODO: clean up/deduplicate logic here
@@ -1536,10 +1537,10 @@ function updateCtxChildren<TNode, TResult>(
 	}
 
 	return updateChild<TNode, TResult>(
-		ctx._r as Renderer<TNode, TResult>,
-		ctx._a,
+		ctx._re,
+		ctx._ar,
 		ctx,
-		ctx._s,
+		ctx._sc,
 		ctx._el,
 		child,
 	);
@@ -1563,15 +1564,15 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 	if (ctx._f & Independent) {
 		// TODO: async generator components which yield multiple children synchronously will over-arrange the arranger. Maybe we can defer arrangement in that case.
 		// TODO: we don’t need to call arrange if none of the nodes have changed or moved (dirty/moved optimizations)
-		const arranger = ctx._a;
-		ctx._r.arrange(
+		const arranger = ctx._ar;
+		ctx._re.arrange(
 			arranger.tag,
 			arranger.props,
 			arranger.tag === Portal ? arranger.props.root : arranger._n,
 			getChildNodes(arranger),
 		);
 
-		const listeners = getListeners(ctx._p, ctx._a);
+		const listeners = getListeners(ctx._pa, ctx._ar);
 		if (listeners !== undefined && listeners.length > 0) {
 			for (let i = 0; i < listeners.length; i++) {
 				const record = listeners[i];
@@ -1591,7 +1592,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 		// We have to clear the set of callbacks before calling them, because a callback which refreshes the component would otherwise cause a stack overflow.
 		const callbacks = Array.from(ctx._ss);
 		ctx._ss.clear();
-		const value1 = ctx._r.read(value);
+		const value1 = ctx._re.read(value);
 		for (const callback of callbacks) {
 			callback(value1);
 		}
@@ -1602,7 +1603,7 @@ function unmountCtx(ctx: Context): void {
 	ctx._f |= Unmounted;
 	clearEventListeners(ctx);
 	if (typeof ctx._cs === "object") {
-		const value = ctx._r.read(getValue(ctx._el));
+		const value = ctx._re.read(getValue(ctx._el));
 		for (const cleanup of ctx._cs) {
 			cleanup(value);
 		}
