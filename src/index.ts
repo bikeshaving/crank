@@ -120,7 +120,7 @@ export class Element<TTag extends Tag = Tag> {
 	_if: Promise<any> | undefined;
 	// fallback
 	_fb: any;
-	// onNewResults
+	// onNewValues
 	_onv: Function | undefined;
 	tag: TTag;
 	props: TagProps<TTag>;
