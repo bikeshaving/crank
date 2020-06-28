@@ -85,11 +85,6 @@ export type Component<TProps = any> = (
 	| PromiseLike<Children>
 	| Children;
 
-type Key = unknown;
-
-// https://overreacted.io/why-do-react-elements-have-typeof-property/
-const ElementSymbol = Symbol.for("crank.Element");
-
 // WHAT ARE WE DOING TO THE CHILDREN
 type NarrowedChild = Element | string | undefined;
 
@@ -102,6 +97,11 @@ function narrow(child: Child): NarrowedChild {
 		return child.toString();
 	}
 }
+
+type Key = unknown;
+
+// https://overreacted.io/why-do-react-elements-have-typeof-property/
+const ElementSymbol = Symbol.for("crank.Element");
 
 // ELEMENT FLAGS
 const Mounted = 1 << 0;
@@ -117,7 +117,7 @@ export class Element<TTag extends Tag = Tag> {
 	// node
 	_n: any;
 	// inflight promise
-	_if: Promise<any> | undefined;
+	_ip: Promise<any> | undefined;
 	// fallback
 	_fb: any;
 	// onNewValues
@@ -366,7 +366,7 @@ export class Renderer<TNode, TRoot = TNode, TResult = ElementValue<TNode>> {
 		return;
 	}
 
-	// TODO: remove: a method which is called to remove a child from a parent to optimize arrange
+	// TODO: remove(): a method which is called to remove a child from a parent to optimize arrange
 
 	dispose(_tag: string | symbol, _node: TNode): unknown {
 		return;
@@ -731,7 +731,7 @@ function compare<TNode, TRoot, TResult>(
 	} else if (typeof newChild === "object") {
 		if (newChild.tag === Copy) {
 			if (typeof oldChild === "object") {
-				value = oldChild._if || getValue<TNode>(oldChild);
+				value = oldChild._ip || getValue<TNode>(oldChild);
 			} else {
 				value = oldChild;
 			}
@@ -752,9 +752,9 @@ function compare<TNode, TRoot, TResult>(
 
 			if (typeof oldChild === "object") {
 				newChild._fb = oldChild._n;
-				if (typeof oldChild._if === "object") {
+				if (typeof oldChild._ip === "object") {
 					squelch(
-						oldChild._if.then((value) => {
+						oldChild._ip.then((value) => {
 							if (!((newChild as Element)._f & Committed)) {
 								(newChild as Element)._fb = value;
 							}
@@ -798,7 +798,7 @@ function race<TNode, TRoot, TResult>(
 			commit(renderer, scope, el, normalize(values)),
 		);
 
-		el._if = value;
+		el._ip = value;
 		return value;
 	}
 
@@ -848,8 +848,8 @@ function commit<TNode, TRoot, TResult>(
 		el.ref(renderer.read(value));
 	}
 
-	if (typeof el._if === "object") {
-		el._if = undefined;
+	if (typeof el._ip === "object") {
+		el._ip = undefined;
 	}
 
 	return value;
@@ -902,7 +902,7 @@ function unmount<TNode, TRoot, TResult>(
 	el._ctx = undefined;
 	el._ch = undefined;
 	el._n = undefined;
-	el._if = undefined;
+	el._ip = undefined;
 	el._fb = undefined;
 	el._onv = undefined;
 }
@@ -1012,7 +1012,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	// renderer
 	_re: Renderer<unknown, unknown, TResult>;
 	// root
-	_ro: unknown;
+	_rt: unknown;
 	// host element
 	_ho: Element<string | symbol>;
 	// parent context
@@ -1054,7 +1054,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	) {
 		this._f = 0;
 		this._re = renderer;
-		this._ro = root;
+		this._rt = root;
 		this._ho = host;
 		this._pa = parent;
 		this._sc = scope;
@@ -1408,7 +1408,7 @@ function stepCtx<TNode, TResult>(
 			const value1 = value.then((value) =>
 				updateCtxChildren<TNode, TResult>(ctx, value),
 			);
-			el._if = value1;
+			el._ip = value1;
 			ctx._f &= ~Stepping;
 			return [pending, value1];
 		} else {
@@ -1419,8 +1419,8 @@ function stepCtx<TNode, TResult>(
 	}
 
 	let oldValue: Promise<TResult> | TResult;
-	if (typeof ctx._el._if === "object") {
-		oldValue = ctx._re.read(ctx._el._if);
+	if (typeof ctx._el._ip === "object") {
+		oldValue = ctx._re.read(ctx._el._ip);
 	} else if (initial) {
 		oldValue = ctx._re.read(undefined);
 	} else {
@@ -1486,7 +1486,7 @@ function stepCtx<TNode, TResult>(
 			}
 		});
 
-		el._if = value;
+		el._ip = value;
 		return [pending, value];
 	}
 
@@ -1581,7 +1581,7 @@ function updateCtxChildren<TNode, TResult>(
 
 	return updateChild<TNode, unknown, TResult>(
 		ctx._re as any,
-		ctx._ro,
+		ctx._rt,
 		ctx._ho,
 		ctx,
 		ctx._sc,
@@ -1627,7 +1627,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 			host.tag === Portal ? host.props.root : host._n,
 			getChildNodes(host),
 		);
-		ctx._re.complete(ctx._ro);
+		ctx._re.complete(ctx._rt);
 		ctx._f &= ~Independent;
 	}
 
