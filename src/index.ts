@@ -54,11 +54,11 @@ export type TagProps<TTag extends Tag> = TTag extends string
 	: unknown;
 
 // SPECIAL TAGS
-// TODO: We assert symbol tags as any because typescript support for symbol tags in JSX does not exist yet.
-// https://github.com/microsoft/TypeScript/issues/38367
-// TODO: Maybe we can just make these strings??? Fragment can be the empty string
-export const Fragment = Symbol.for("crank.Fragment") as any;
+export const Fragment = "";
 export type Fragment = typeof Fragment;
+
+// TODO: We assert symbol tags to be any because typescript support for symbol tags in JSX does not exist yet.
+// https://github.com/microsoft/TypeScript/issues/38367
 
 export const Copy = Symbol.for("crank.Copy") as any;
 export type Copy = typeof Copy;
