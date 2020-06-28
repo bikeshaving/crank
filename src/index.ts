@@ -381,7 +381,7 @@ export class Renderer<TNode, TRoot = TNode, TResult = ElementValue<TNode>> {
 function mount<TNode, TRoot, TResult>(
 	renderer: Renderer<TNode, TRoot, TResult>,
 	root: TRoot,
-	arranger: Element<string | symbol>,
+	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
 	el: Element,
@@ -391,7 +391,7 @@ function mount<TNode, TRoot, TResult>(
 		el._ctx = new Context(
 			renderer,
 			root,
-			arranger,
+			host,
 			ctx,
 			scope,
 			el as Element<Component>,
@@ -408,7 +408,7 @@ function mount<TNode, TRoot, TResult>(
 			root = el.props.root;
 		}
 
-		arranger = el as Element<string | symbol>;
+		host = el as Element<string | symbol>;
 		scope = renderer.scope(el.tag, el.props, scope);
 	}
 
@@ -416,7 +416,7 @@ function mount<TNode, TRoot, TResult>(
 		return mountChildren(
 			renderer,
 			root,
-			arranger,
+			host,
 			ctx,
 			scope,
 			el,
@@ -424,21 +424,13 @@ function mount<TNode, TRoot, TResult>(
 		);
 	}
 
-	return updateChild(
-		renderer,
-		root,
-		arranger,
-		ctx,
-		scope,
-		el,
-		el.props.children,
-	);
+	return updateChild(renderer, root, host, ctx, scope, el, el.props.children);
 }
 
 function mountChildren<TNode, TRoot, TResult>(
 	renderer: Renderer<TNode, TRoot, TResult>,
 	root: TRoot,
-	arranger: Element<string | symbol>,
+	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
 	parent: Element,
@@ -459,7 +451,7 @@ function mountChildren<TNode, TRoot, TResult>(
 		[child, value] = compare(
 			renderer,
 			root,
-			arranger,
+			host,
 			ctx,
 			scope,
 			undefined,
@@ -481,13 +473,13 @@ function mountChildren<TNode, TRoot, TResult>(
 		values1 = values as Array<ElementValue<TNode>>;
 	}
 
-	return race(renderer, arranger, ctx, scope, parent, values1);
+	return race(renderer, host, ctx, scope, parent, values1);
 }
 
 function update<TNode, TRoot, TResult>(
 	renderer: Renderer<TNode, TRoot, TResult>,
 	root: TRoot,
-	arranger: Element<string | symbol>,
+	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
 	el: Element,
@@ -501,7 +493,7 @@ function update<TNode, TRoot, TResult>(
 	} else if (el.tag === Raw) {
 		return commit(renderer, scope, el, []);
 	} else if (el.tag !== Fragment) {
-		arranger = el as Element<string | symbol>;
+		host = el as Element<string | symbol>;
 		scope = renderer.scope(el.tag, el.props, scope);
 		if (el.tag === Portal) {
 			root = el.props.root;
@@ -512,33 +504,25 @@ function update<TNode, TRoot, TResult>(
 		return updateChildren(
 			renderer,
 			root,
-			arranger,
+			host,
 			ctx,
 			scope,
 			el,
 			el.props.children,
 		);
 	} else if (Array.isArray(el._ch)) {
-		return updateChildren(renderer, root, arranger, ctx, scope, el, [
+		return updateChildren(renderer, root, host, ctx, scope, el, [
 			el.props.children,
 		]);
 	}
 
-	return updateChild(
-		renderer,
-		root,
-		arranger,
-		ctx,
-		scope,
-		el,
-		el.props.children,
-	);
+	return updateChild(renderer, root, host, ctx, scope, el, el.props.children);
 }
 
 function updateChild<TNode, TRoot, TResult>(
 	renderer: Renderer<TNode, TRoot, TResult>,
 	root: TRoot,
-	arranger: Element<string | symbol>,
+	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
 	parent: Element,
@@ -558,7 +542,7 @@ function updateChild<TNode, TRoot, TResult>(
 	[newChild, value] = compare(
 		renderer,
 		root,
-		arranger,
+		host,
 		ctx,
 		scope,
 		oldChild,
@@ -566,7 +550,7 @@ function updateChild<TNode, TRoot, TResult>(
 	);
 
 	if (typeof oldChild === "object" && oldChild !== newChild) {
-		unmount(renderer, arranger, ctx, oldChild);
+		unmount(renderer, host, ctx, oldChild);
 	}
 
 	parent._ch = newChild;
@@ -574,7 +558,7 @@ function updateChild<TNode, TRoot, TResult>(
 	const values = isPromiseLike(value)
 		? value.then((value) => [value])
 		: [value];
-	return race(renderer, arranger, ctx, scope, parent, values);
+	return race(renderer, host, ctx, scope, parent, values);
 }
 
 function mapChildrenByKey(children: Array<NarrowedChild>): Map<Key, Element> {
@@ -592,22 +576,14 @@ function mapChildrenByKey(children: Array<NarrowedChild>): Map<Key, Element> {
 function updateChildren<TNode, TRoot, TResult>(
 	renderer: Renderer<TNode, TRoot, TResult>,
 	root: TRoot,
-	arranger: Element<string | symbol>,
+	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
 	parent: Element,
 	children: ChildIterable,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (typeof parent._ch === "undefined") {
-		return mountChildren(
-			renderer,
-			root,
-			arranger,
-			ctx,
-			scope,
-			parent,
-			children,
-		);
+		return mountChildren(renderer, root, host, ctx, scope, parent, children);
 	}
 
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
@@ -675,7 +651,7 @@ function updateChildren<TNode, TRoot, TResult>(
 		[newChild, value] = compare(
 			renderer,
 			root,
-			arranger,
+			host,
 			ctx,
 			scope,
 			oldChild,
@@ -712,20 +688,20 @@ function updateChildren<TNode, TRoot, TResult>(
 
 	if (async) {
 		values1 = Promise.all(values).finally(() =>
-			graveyard.forEach((child) => unmount(renderer, arranger, ctx, child)),
+			graveyard.forEach((child) => unmount(renderer, host, ctx, child)),
 		);
 	} else {
 		values1 = values as Array<ElementValue<TNode>>;
-		graveyard.forEach((child) => unmount(renderer, arranger, ctx, child));
+		graveyard.forEach((child) => unmount(renderer, host, ctx, child));
 	}
 
-	return race(renderer, arranger, ctx, scope, parent, values1);
+	return race(renderer, host, ctx, scope, parent, values1);
 }
 
 function compare<TNode, TRoot, TResult>(
 	renderer: Renderer<TNode, TRoot, TResult>,
 	root: TRoot,
-	arranger: Element<string | symbol>,
+	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
 	oldChild: NarrowedChild,
@@ -751,7 +727,7 @@ function compare<TNode, TRoot, TResult>(
 			newChild = oldChild;
 		}
 
-		value = update(renderer, root, arranger, ctx, scope, newChild);
+		value = update(renderer, root, host, ctx, scope, newChild);
 	} else if (typeof newChild === "object") {
 		if (newChild.tag === Copy) {
 			if (typeof oldChild === "object") {
@@ -787,7 +763,7 @@ function compare<TNode, TRoot, TResult>(
 				}
 			}
 
-			value = mount(renderer, root, arranger, ctx, scope, newChild);
+			value = mount(renderer, root, host, ctx, scope, newChild);
 		}
 	} else if (typeof newChild === "string") {
 		newChild = renderer.escape(newChild, scope);
@@ -799,7 +775,7 @@ function compare<TNode, TRoot, TResult>(
 
 function race<TNode, TRoot, TResult>(
 	renderer: Renderer<TNode, TRoot, TResult>,
-	arranger: Element<string | symbol>,
+	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: Scope,
 	el: Element,
@@ -881,7 +857,7 @@ function commit<TNode, TRoot, TResult>(
 
 function unmount<TNode, TRoot, TResult>(
 	renderer: Renderer<TNode, TRoot, TResult>,
-	arranger: Element,
+	host: Element,
 	ctx: Context<unknown, TResult> | undefined,
 	el: Element,
 ): void {
@@ -892,12 +868,12 @@ function unmount<TNode, TRoot, TResult>(
 
 		ctx = el._ctx;
 	} else if (el.tag === Portal) {
-		arranger = el;
+		host = el;
 		renderer.arrange(Portal, el.props, el.props.root, []);
 		renderer.complete(el.props.root);
 	} else if (el.tag !== Fragment) {
 		if (isEventTarget(el._n)) {
-			const listeners = getListeners(ctx, arranger);
+			const listeners = getListeners(ctx, host);
 			if (listeners !== undefined && listeners.length > 0) {
 				for (let i = 0; i < listeners.length; i++) {
 					const record = listeners[i];
@@ -910,7 +886,7 @@ function unmount<TNode, TRoot, TResult>(
 			}
 		}
 
-		arranger = el;
+		host = el;
 		renderer.dispose(el.tag, el._n);
 	}
 
@@ -918,7 +894,7 @@ function unmount<TNode, TRoot, TResult>(
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i];
 		if (typeof child === "object") {
-			unmount(renderer, arranger, ctx, child);
+			unmount(renderer, host, ctx, child);
 		}
 	}
 
@@ -985,10 +961,10 @@ function setEventProperty<T extends keyof Event>(
 
 function getListeners(
 	ctx: Context | undefined,
-	arranger: Element,
+	host: Element,
 ): Array<EventListenerRecord> | undefined {
 	let listeners: Array<EventListenerRecord> | undefined;
-	while (ctx !== undefined && ctx._ar === arranger) {
+	while (ctx !== undefined && ctx._ho === host) {
 		if (typeof ctx._ls !== "undefined") {
 			listeners = listeners === undefined ? ctx._ls : listeners.concat(ctx._ls);
 		}
@@ -1037,8 +1013,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	_re: Renderer<unknown, unknown, TResult>;
 	// root
 	_ro: unknown;
-	// arranger
-	_ar: Element<string | symbol>;
+	// host element
+	_ho: Element<string | symbol>;
 	// parent context
 	_pa: Context<unknown, TResult> | undefined;
 	// scope
@@ -1071,7 +1047,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	constructor(
 		renderer: Renderer<unknown, unknown, TResult>,
 		root: unknown,
-		arranger: Element<string | symbol>,
+		host: Element<string | symbol>,
 		parent: Context<unknown, TResult> | undefined,
 		scope: Scope,
 		el: Element<Component>,
@@ -1079,7 +1055,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		this._f = 0;
 		this._re = renderer;
 		this._ro = root;
-		this._ar = arranger;
+		this._ho = host;
 		this._pa = parent;
 		this._sc = scope;
 		this._el = el;
@@ -1606,7 +1582,7 @@ function updateCtxChildren<TNode, TResult>(
 	return updateChild<TNode, unknown, TResult>(
 		ctx._re as any,
 		ctx._ro,
-		ctx._ar,
+		ctx._ho,
 		ctx,
 		ctx._sc,
 		ctx._el,
@@ -1630,7 +1606,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 	}
 
 	if (ctx._f & Independent) {
-		const listeners = getListeners(ctx._pa, ctx._ar);
+		const listeners = getListeners(ctx._pa, ctx._ho);
 		if (listeners !== undefined && listeners.length > 0) {
 			for (let i = 0; i < listeners.length; i++) {
 				const record = listeners[i];
@@ -1642,14 +1618,14 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 			}
 		}
 
-		// TODO: async generator components which yield multiple children synchronously will over-arrange the arranger. Maybe we can defer arrangement for this case.
+		// TODO: async generator components which yield multiple children synchronously will over-arrange the host. Maybe we can defer arrangement for this case.
 		// TODO: we don’t need to call arrange if none of the nodes have changed or moved
-		const arranger = ctx._ar;
+		const host = ctx._ho;
 		ctx._re.arrange(
-			arranger.tag,
-			arranger.props,
-			arranger.tag === Portal ? arranger.props.root : arranger._n,
-			getChildNodes(arranger),
+			host.tag,
+			host.props,
+			host.tag === Portal ? host.props.root : host._n,
+			getChildNodes(host),
 		);
 		ctx._re.complete(ctx._ro);
 		ctx._f &= ~Independent;
