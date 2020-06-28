@@ -6,6 +6,7 @@ declare module "./index" {
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
+// TODO: override render to provide a better error message when a node is not passed in as the second argument
 export class DOMRenderer extends Renderer<Node> {
 	scope(
 		tag: string | symbol,
