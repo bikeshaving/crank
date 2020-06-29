@@ -313,6 +313,18 @@ export class Renderer<TNode, TRoot = TNode, TResult = ElementValue<TNode>> {
 		return result;
 	}
 
+	read(value: ElementValue<TNode>): TResult {
+		return (value as unknown) as TResult;
+	}
+
+	escape(text: string, _scope: Scope): string {
+		return text;
+	}
+
+	parse(text: string, _scope: Scope): TNode | string {
+		return text;
+	}
+
 	scope<TTag extends string | symbol>(
 		_tag: TTag,
 		_props: TagProps<TTag>,
@@ -327,18 +339,6 @@ export class Renderer<TNode, TRoot = TNode, TResult = ElementValue<TNode>> {
 		_scope: Scope,
 	): TNode {
 		throw new Error("Not implemented");
-	}
-
-	read(value: ElementValue<TNode>): TResult {
-		return (value as unknown) as TResult;
-	}
-
-	escape(text: string, _scope: Scope): string {
-		return text;
-	}
-
-	parse(text: string, _scope: Scope): TNode | string {
-		return text;
 	}
 
 	patch<TTag extends string | symbol>(
@@ -362,7 +362,11 @@ export class Renderer<TNode, TRoot = TNode, TResult = ElementValue<TNode>> {
 
 	// TODO: remove(): a method which is called to remove a child from a parent to optimize arrange
 
-	dispose(_tag: string | symbol, _node: TNode): unknown {
+	dispose<TTag extends string | symbol>(
+		_tag: TTag,
+		_props: TagProps<TTag>,
+		_node: TNode,
+	): unknown {
 		return;
 	}
 
@@ -458,7 +462,7 @@ function mountChildren<TNode, TRoot, TResult>(
 		}
 	}
 
-	parent._ch = unwrap(newChildren) as Array<NarrowedChild> | NarrowedChild;
+	parent._ch = unwrap(newChildren as Array<NarrowedChild>);
 
 	let values1: Promise<Array<ElementValue<TNode>>> | Array<ElementValue<TNode>>;
 	if (async) {
@@ -663,7 +667,7 @@ function updateChildren<TNode, TRoot, TResult>(
 		}
 	}
 
-	parent._ch = unwrap(newChildren) as Array<NarrowedChild> | NarrowedChild;
+	parent._ch = unwrap(newChildren as Array<NarrowedChild>);
 
 	// cleanup
 	for (; i < oldChildren.length; i++) {
@@ -881,7 +885,7 @@ function unmount<TNode, TRoot, TResult>(
 		}
 
 		host = el;
-		renderer.dispose(el.tag, el._n);
+		renderer.dispose(el.tag, el.props, el._n);
 	}
 
 	const children = arrayify(el._ch);
