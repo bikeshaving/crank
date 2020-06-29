@@ -64,6 +64,45 @@ describe("errors", () => {
 		);
 	});
 
+	test("sync generator throws independently", () => {
+		const error = new Error("sync generator throws independently");
+		let ctx!: Context;
+		function* Thrower(this: Context) {
+			ctx = this;
+			yield 1;
+			yield 2;
+			yield 3;
+			throw error;
+		}
+
+		const mock = jest.fn();
+		function* Component(this: Context) {
+			try {
+				while (true) {
+					yield (
+						<div>
+							<Thrower />
+						</div>
+					);
+				}
+			} catch (err) {
+				mock(err);
+				throw err;
+			}
+		}
+
+		renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>1</div>");
+		ctx.refresh();
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual("<div>3</div>");
+		expect(() => {
+			ctx.refresh();
+		}).toThrow(error);
+		expect(mock).toHaveBeenCalledTimes(1);
+		expect(mock).toHaveBeenCalledWith(error);
+	});
+
 	// TODO: figure out how to test for an unhandled promise rejection
 	// When run this test should fail rather than timing out.
 	// eslint-disable-next-line
@@ -76,8 +115,7 @@ describe("errors", () => {
 			throw error;
 		}
 
-		renderer.render(<Thrower />, document.body);
-		await new Promise(() => {});
+		await renderer.render(<Thrower />, document.body);
 	});
 
 	test("async generator throws in async generator", async () => {
@@ -134,9 +172,9 @@ describe("errors", () => {
 		await renderer.render(<Component />, document.body);
 		expect(document.body.innerHTML).toEqual("1");
 		await renderer.render(<Component />, document.body);
-		//await expect(renderer.render(<Component />, document.body)).rejects.toBe(
-		//	error,
-		//);
+		await expect(renderer.render(<Component />, document.body)).rejects.toBe(
+			error,
+		);
 		expect(mock).toHaveBeenCalledTimes(1);
 		await new Promise(() => {});
 	});
@@ -181,5 +219,47 @@ describe("errors", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Error</span></div>");
 		await new Promise((resolve) => setTimeout(resolve, 20));
 		expect(document.body.innerHTML).toEqual("<div><span>Error</span></div>");
+	});
+
+	// TODO: figure out what’s going on here
+	// eslint-disable-next-line
+	test.skip("restart", () => {
+		const error = new Error("restart");
+		function* Thrower() {
+			yield 1;
+			yield 2;
+			yield 3;
+			throw error;
+		}
+
+		const mock = jest.fn();
+		function* Component(this: Context) {
+			while (true) {
+				try {
+					yield (
+						<div>
+							<Thrower />
+						</div>
+					);
+				} catch (err) {
+					mock(err);
+					this.schedule(() => this.refresh());
+					yield null;
+				}
+			}
+		}
+
+		renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>1</div>");
+		renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>2</div>");
+		renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>3</div>");
+		renderer.render(<Component />, document.body);
+		expect(mock).toHaveBeenCalledTimes(1);
+		expect(mock).toHaveBeenCalledWith(error);
+		expect(document.body.innerHTML).toEqual("");
+		renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>1</div>");
 	});
 });

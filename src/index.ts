@@ -35,10 +35,6 @@ function upgradePromiseLike<T>(value: PromiseLike<T>): Promise<T> {
 	return value;
 }
 
-function squelch(p: Promise<unknown>): Promise<unknown> {
-	return p.catch(() => {});
-}
-
 export type Tag = Component<any> | string | symbol;
 
 export type TagProps<TTag extends Tag> = TTag extends string
@@ -111,7 +107,7 @@ export class Element<TTag extends Tag = Tag> {
 	// node
 	_n: any;
 	// inflight promise
-	_ip: Promise<any> | undefined;
+	_inf: Promise<any> | undefined;
 	// fallback
 	_fb: any;
 	// onNewValues
@@ -718,7 +714,6 @@ function compare<TNode, TRoot, TResult>(
 		}
 
 		// TODO: implement Raw element parse caching
-
 		if (oldChild !== newChild) {
 			oldChild.props = newChild.props;
 			oldChild.ref = newChild.ref;
@@ -729,14 +724,14 @@ function compare<TNode, TRoot, TResult>(
 	} else if (typeof newChild === "object") {
 		if (newChild.tag === Copy) {
 			if (typeof oldChild === "object") {
-				value = oldChild._ip || getValue<TNode>(oldChild);
+				value = oldChild._inf || getValue<TNode>(oldChild);
 			} else {
 				value = oldChild;
 			}
 
 			if (typeof newChild.ref === "function") {
 				if (isPromiseLike(value)) {
-					squelch(value.then(newChild.ref as any));
+					value.then(newChild.ref as any).catch(() => {});
 				} else {
 					newChild.ref(value);
 				}
@@ -750,14 +745,14 @@ function compare<TNode, TRoot, TResult>(
 
 			if (typeof oldChild === "object") {
 				newChild._fb = oldChild._n;
-				if (typeof oldChild._ip === "object") {
-					squelch(
-						oldChild._ip.then((value) => {
+				if (typeof oldChild._inf === "object") {
+					oldChild._inf
+						.then((value) => {
 							if (!((newChild as Element)._f & Committed)) {
 								(newChild as Element)._fb = value;
 							}
-						}),
-					);
+						})
+						.catch(() => {});
 				}
 			}
 
@@ -796,7 +791,7 @@ function race<TNode, TRoot, TResult>(
 			commit(renderer, scope, el, normalize(values)),
 		);
 
-		el._ip = value;
+		el._inf = value;
 		return value;
 	}
 
@@ -846,8 +841,8 @@ function commit<TNode, TRoot, TResult>(
 		el.ref(renderer.read(value));
 	}
 
-	if (typeof el._ip === "object") {
-		el._ip = undefined;
+	if (typeof el._inf === "object") {
+		el._inf = undefined;
 	}
 
 	return value;
@@ -900,7 +895,7 @@ function unmount<TNode, TRoot, TResult>(
 	el._ctx = undefined;
 	el._ch = undefined;
 	el._n = undefined;
-	el._ip = undefined;
+	el._inf = undefined;
 	el._fb = undefined;
 	el._onv = undefined;
 }
@@ -1133,8 +1128,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		}
 
 		this._f |= Independent;
-		resumeCtx(this);
-		return this._re.read(runCtx(this));
+		resume(this);
+		return this._re.read(run(this));
 	}
 
 	schedule(callback: (value: unknown) => unknown): void {
@@ -1341,7 +1336,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 }
 
 // PRIVATE CONTEXT FUNCTIONS
-function resumeCtx(ctx: Context) {
+function resume(ctx: Context) {
 	if (typeof ctx._op === "function") {
 		ctx._op(ctx._el.props);
 		ctx._op = undefined;
@@ -1350,38 +1345,69 @@ function resumeCtx(ctx: Context) {
 	}
 }
 
-function runCtx<TNode, TResult>(
+function run<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (typeof ctx._ip === "undefined") {
-		const [pending, value] = stepCtx<TNode, TResult>(ctx);
-		if (isPromiseLike(pending)) {
-			ctx._ip = pending.finally(() => advanceCtx(ctx));
-		}
+		try {
+			let [pending, value] = step<TNode, TResult>(ctx);
+			if (isPromiseLike(pending)) {
+				ctx._ip = pending
+					.catch((err) => {
+						if (ctx._f & Independent) {
+							return propagateError(ctx._pa, err);
+						}
+					})
+					.finally(() => advance(ctx));
+			}
 
-		if (isPromiseLike(value)) {
-			ctx._iv = value;
-		}
+			if (isPromiseLike(value)) {
+				ctx._iv = value;
+				ctx._el._inf = value;
+			}
 
-		return value;
+			return value;
+		} catch (err) {
+			if (ctx._f & Independent) {
+				return propagateError(ctx._pa, err);
+			}
+
+			throw err;
+		}
 	} else if (ctx._f & AsyncGen) {
 		return ctx._iv;
 	} else if (typeof ctx._ep === "undefined") {
 		let resolve: Function;
 		ctx._ep = ctx._ip
 			.then(() => {
-				const [pending, value] = stepCtx<TNode, TResult>(ctx);
-				resolve(value);
-				return pending;
+				try {
+					const [pending, value] = step<TNode, TResult>(ctx);
+					resolve(value);
+					if (isPromiseLike(value)) {
+						ctx._el._inf = value;
+					}
+
+					if (isPromiseLike(pending)) {
+						return pending.catch((err) => {
+							if (ctx._f & Independent) {
+								return propagateError(ctx._pa, err);
+							}
+						});
+					}
+				} catch (err) {
+					if (ctx._f & Independent) {
+						return propagateError(ctx._pa, err);
+					}
+				}
 			})
-			.finally(() => advanceCtx(ctx));
+			.finally(() => advance(ctx));
 		ctx._ev = new Promise((resolve1) => (resolve = resolve1));
 	}
 
 	return ctx._ev;
 }
 
-function stepCtx<TNode, TResult>(
+function step<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
 ): [
 	Promise<unknown> | undefined,
@@ -1401,12 +1427,11 @@ function stepCtx<TNode, TResult>(
 		if (isIteratorLike(result)) {
 			ctx._it = result;
 		} else if (isPromiseLike(result)) {
-			const value = upgradePromiseLike(result);
-			const pending = squelch(value);
-			const value1 = value.then((value) =>
-				updateCtxChildren<TNode, TResult>(ctx, value),
+			const result1 = upgradePromiseLike(result);
+			const pending = result1;
+			const value1 = result1.then((result) =>
+				updateCtxChildren<TNode, TResult>(ctx, result),
 			);
-			el._ip = value1;
 			ctx._f &= ~Stepping;
 			return [pending, value1];
 		} else {
@@ -1417,8 +1442,11 @@ function stepCtx<TNode, TResult>(
 	}
 
 	let oldValue: Promise<TResult> | TResult;
-	if (typeof ctx._el._ip === "object") {
-		oldValue = ctx._re.read(ctx._el._ip);
+	if (typeof ctx._el._inf === "object") {
+		oldValue = ctx._el._inf.then(
+			(value) => ctx._re.read(value),
+			() => ctx._re.read(undefined),
+		);
 	} else if (initial) {
 		oldValue = ctx._re.read(undefined);
 	} else {
@@ -1430,11 +1458,12 @@ function stepCtx<TNode, TResult>(
 	const iteration = ctx._it.next(oldValue);
 	ctx._f &= ~Stepping;
 	if (isPromiseLike(iteration)) {
+		// async generator component
 		if (initial) {
 			ctx._f |= AsyncGen;
 		}
 
-		const pending = squelch(iteration);
+		const pending = iteration;
 		const value = iteration.then((iteration) => {
 			ctx._f &= ~Iterating;
 			if (iteration.done) {
@@ -1445,15 +1474,14 @@ function stepCtx<TNode, TResult>(
 				let value = updateCtxChildren<TNode, TResult>(
 					ctx,
 					iteration.value as Children,
-				); // void :(
+				);
 				if (isPromiseLike(value)) {
 					if (!(ctx._f & Finished) && typeof ctx._it!.throw === "function") {
 						value = value.catch((err) => {
-							resumeCtx(ctx);
-							const iteration = (ctx._it as AsyncGenerator<
-								Children,
-								Children
-							>).throw(err);
+							resume(ctx);
+							const iteration = ctx._it!.throw!(err) as Promise<
+								IteratorResult<Children, Children>
+							>;
 							return iteration.then((iteration) => {
 								if (iteration.done) {
 									ctx._f |= Finished;
@@ -1471,9 +1499,9 @@ function stepCtx<TNode, TResult>(
 					throw err;
 				}
 
-				const iteration = (ctx._it as AsyncGenerator<Children, Children>).throw(
-					err,
-				);
+				const iteration = ctx._it!.throw(err) as Promise<
+					IteratorResult<Children, Children>
+				>;
 				return iteration.then((iteration) => {
 					if (iteration.done) {
 						ctx._f |= Finished;
@@ -1483,75 +1511,99 @@ function stepCtx<TNode, TResult>(
 				});
 			}
 		});
-
-		el._ip = value;
 		return [pending, value];
-	}
-
-	if (initial) {
-		ctx._f |= SyncGen;
-	}
-
-	ctx._f &= ~Iterating;
-	if (iteration.done) {
-		ctx._f |= Finished;
-	}
-
-	try {
-		let value = updateCtxChildren<TNode, TResult>(
-			ctx,
-			iteration.value as Children,
-		); // void :(
-		if (isPromiseLike(value)) {
-			if (!(ctx._f & Finished) && typeof ctx._it.throw === "function") {
-				value = value.catch((err) => {
-					ctx._f |= Stepping;
-					const iteration = (ctx._it as Generator<Children, Children>).throw(
-						err,
-					);
-					ctx._f &= ~Stepping;
-					if (iteration.done) {
-						ctx._f |= Finished;
-					}
-
-					return updateCtxChildren<TNode, TResult>(ctx, iteration.value);
-				});
-			}
-			const pending = squelch(value);
-			return [pending, value];
+	} else {
+		// sync generator component
+		if (initial) {
+			ctx._f |= SyncGen;
 		}
 
-		return [undefined, value];
-	} catch (err) {
-		if (ctx._f & Finished || typeof ctx._it.throw !== "function") {
-			throw err;
-		}
-
-		ctx._f |= Stepping;
-		const iteration = (ctx._it as Generator<Children, Children>).throw(err);
-		ctx._f &= ~Stepping;
+		ctx._f &= ~Iterating;
 		if (iteration.done) {
 			ctx._f |= Finished;
 		}
 
-		const value = updateCtxChildren<TNode, TResult>(ctx, iteration.value);
-		if (isPromiseLike(value)) {
-			const pending = squelch(value);
-			return [pending, value];
+		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
+		try {
+			value = updateCtxChildren<TNode, TResult>(
+				ctx,
+				iteration.value as Children,
+			);
+
+			if (isPromiseLike(value)) {
+				if (!(ctx._f & Finished) && typeof ctx._it.throw === "function") {
+					value = value.catch((err) => {
+						ctx._f |= Stepping;
+						const iteration = ctx._it!.throw!(err) as IteratorResult<
+							Children,
+							Children
+						>;
+						ctx._f &= ~Stepping;
+						if (iteration.done) {
+							ctx._f |= Finished;
+						}
+
+						return updateCtxChildren<TNode, TResult>(ctx, iteration.value);
+					});
+				}
+
+				const pending = value.catch(() => {});
+				return [pending, value];
+			}
+		} catch (err) {
+			if (ctx._f & Finished || typeof ctx._it.throw !== "function") {
+				throw err;
+			}
+
+			ctx._f |= Stepping;
+			const iteration = (ctx._it as Generator<Children, Children>).throw(err);
+			ctx._f &= ~Stepping;
+			if (iteration.done) {
+				ctx._f |= Finished;
+			}
+
+			const value = updateCtxChildren<TNode, TResult>(ctx, iteration.value);
+			if (isPromiseLike(value)) {
+				const pending = value.catch(() => {});
+				return [pending, value];
+			}
+
+			return [undefined, value];
 		}
 
 		return [undefined, value];
 	}
 }
 
-function advanceCtx(ctx: Context): void {
+function advance(ctx: Context): void {
 	ctx._ip = ctx._ep;
 	ctx._iv = ctx._ev;
 	ctx._ep = undefined;
 	ctx._ev = undefined;
 	if (ctx._f & AsyncGen && !(ctx._f & Finished)) {
 		ctx._f |= Independent;
-		runCtx(ctx);
+		run(ctx);
+	}
+}
+
+function propagateError(
+	ctx: Context | undefined,
+	err: unknown,
+): Promise<undefined> | undefined {
+	if (ctx === undefined || ctx._f & Finished || !ctx._it || !ctx._it.throw) {
+		throw err;
+	}
+
+	try {
+		resume(ctx);
+		const result = ctx._it.throw(err);
+		if (isPromiseLike(result)) {
+			return result
+				.catch((err) => propagateError(ctx._pa, err))
+				.then(() => undefined);
+		}
+	} catch (err) {
+		return propagateError(ctx._pa, err);
 	}
 }
 
@@ -1562,8 +1614,8 @@ function updateCtx<TNode>(
 		ctx._f &= ~Independent;
 	}
 
-	resumeCtx(ctx);
-	return runCtx(ctx);
+	resume(ctx);
+	return run(ctx);
 }
 
 function updateCtxChildren<TNode, TResult>(
@@ -1654,7 +1706,7 @@ function unmountCtx(ctx: Context): void {
 
 	if (!(ctx._f & Finished)) {
 		ctx._f |= Finished;
-		resumeCtx(ctx);
+		resume(ctx);
 
 		if (typeof ctx._it === "object" && typeof ctx._it.return === "function") {
 			// TODO: handle async generator rejections
