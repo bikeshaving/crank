@@ -363,6 +363,43 @@ describe("schedule", () => {
 		expect(fn2).toHaveBeenCalledWith(span);
 	});
 
+	test("refresh", () => {
+		const mock = jest.fn();
+		function* Component(this: Context): Generator<Element> {
+			let i = 0;
+			while (true) {
+				mock();
+				if (i % 2 === 0) {
+					this.schedule(() => this.refresh());
+				}
+				yield <span>{i++}</span>;
+			}
+		}
+
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>3</span></div>");
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>5</span></div>");
+		expect(mock).toHaveBeenCalledTimes(6);
+	});
+
 	test("refresh copy", () => {
 		function* Component(this: Context): Generator<Element> {
 			this.schedule(() => this.refresh());
