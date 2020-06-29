@@ -49,7 +49,6 @@ export type Fragment = typeof Fragment;
 
 // TODO: We assert symbol tags to be any because typescript support for symbol tags in JSX does not exist yet.
 // https://github.com/microsoft/TypeScript/issues/38367
-
 export const Copy = Symbol.for("crank.Copy") as any;
 export type Copy = typeof Copy;
 
@@ -129,10 +128,6 @@ export class Element<TTag extends Tag = Tag> {
 		this.key = key;
 		this.ref = ref;
 	}
-
-	static clone<TTag extends Tag>(el: Element<TTag>): Element<TTag> {
-		return new Element(el.tag, el.props, el.key, el.ref);
-	}
 }
 
 export function isElement(value: any): value is Element {
@@ -183,17 +178,27 @@ export function createElement<TTag extends Tag>(
 	return new Element(tag, props1, key, ref);
 }
 
+export function cloneElement<TTag extends Tag>(
+	el: Element<TTag>,
+): Element<TTag> {
+	if (!isElement(el)) {
+		throw new TypeError("Cannot clone non-element");
+	}
+
+	return new Element(el.tag, el.props, el.key, el.ref);
+}
+
 function normalize<T>(values: Array<ElementValue<T>>): Array<T | string> {
 	const result: Array<T | string> = [];
 	let buffer: string | undefined;
 	for (let i = 0; i < values.length; i++) {
 		const value = values[i];
-		if (value === undefined) {
+		if (!value) {
 			// pass
 		} else if (typeof value === "string") {
-			buffer = buffer === undefined ? value : buffer + value;
+			buffer = (buffer || "") + value;
 		} else if (!Array.isArray(value)) {
-			if (buffer !== undefined) {
+			if (buffer) {
 				result.push(buffer);
 				buffer = undefined;
 			}
@@ -202,10 +207,10 @@ function normalize<T>(values: Array<ElementValue<T>>): Array<T | string> {
 		} else {
 			for (let j = 0; j < value.length; j++) {
 				const value1 = value[j];
-				if (value1 === undefined) {
+				if (!value1) {
 					// pass
 				} else if (typeof value1 === "string") {
-					buffer = buffer === undefined ? value1 : buffer + value1;
+					buffer = (buffer || "") + value1;
 				} else {
 					if (buffer !== undefined) {
 						result.push(buffer);
@@ -218,7 +223,7 @@ function normalize<T>(values: Array<ElementValue<T>>): Array<T | string> {
 		}
 	}
 
-	if (buffer !== undefined) {
+	if (buffer) {
 		result.push(buffer);
 	}
 
@@ -232,7 +237,7 @@ function getChildNodes<TNode>(el: Element): Array<TNode | string> {
 	const children = arrayify(el._ch);
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i];
-		if (child === undefined) {
+		if (!child) {
 			// pass
 		} else if (typeof child === "string") {
 			nodes.push(child);
@@ -276,7 +281,7 @@ export class Renderer<TNode, TRoot = TNode, TResult = ElementValue<TNode>> {
 			portal = this._cache.get((root as unknown) as object);
 		}
 
-		if (portal === undefined) {
+		if (!portal) {
 			portal = createElement(Portal, {children, root});
 			if (typeof root === "object" && root !== null && children != null) {
 				this._cache.set((root as unknown) as object, portal);
@@ -608,11 +613,11 @@ function updateChildren<TNode, TRoot, TResult>(
 		}
 
 		if (oldKey !== newKey) {
-			if (childrenByKey === undefined) {
+			if (!childrenByKey) {
 				childrenByKey = mapChildrenByKey(oldChildren.slice(i));
 			}
 
-			if (newKey === undefined) {
+			if (typeof newKey === "undefined") {
 				while (oldChild !== undefined && oldKey !== undefined) {
 					i++;
 					oldChild = oldChildren[i];
@@ -626,7 +631,7 @@ function updateChildren<TNode, TRoot, TResult>(
 					childrenByKey.delete(newKey);
 				}
 
-				if (seen === undefined) {
+				if (!seen) {
 					seen = new Set();
 				}
 
@@ -740,12 +745,13 @@ function compare<TNode, TRoot, TResult>(
 			newChild = oldChild;
 		} else {
 			if (newChild._f & Mounted) {
-				newChild = Element.clone(newChild);
+				newChild = cloneElement(newChild);
 			}
 
 			if (typeof oldChild === "object") {
 				newChild._fb = oldChild._n;
 				if (typeof oldChild._inf === "object") {
+					// TODO: figure out if this branch is actually necessary
 					oldChild._inf
 						.then((value) => {
 							if (!((newChild as Element)._f & Committed)) {
@@ -890,14 +896,6 @@ function unmount<TNode, TRoot, TResult>(
 			unmount(renderer, host, ctx, child);
 		}
 	}
-
-	el._f = 0;
-	el._ctx = undefined;
-	el._ch = undefined;
-	el._n = undefined;
-	el._inf = undefined;
-	el._fb = undefined;
-	el._onv = undefined;
 }
 
 // EVENT UTILITY FUNCTIONS
@@ -959,7 +957,7 @@ function getListeners(
 	let listeners: Array<EventListenerRecord> | undefined;
 	while (ctx !== undefined && ctx._ho === host) {
 		if (typeof ctx._ls !== "undefined") {
-			listeners = listeners === undefined ? ctx._ls : listeners.concat(ctx._ls);
+			listeners = (listeners || []).concat(ctx._ls);
 		}
 
 		ctx = ctx._pa;
@@ -1590,7 +1588,12 @@ function propagateError(
 	ctx: Context | undefined,
 	err: unknown,
 ): Promise<undefined> | undefined {
-	if (ctx === undefined || ctx._f & Finished || !ctx._it || !ctx._it.throw) {
+	if (
+		!ctx ||
+		ctx._f & Finished ||
+		typeof ctx._it !== "object" ||
+		typeof ctx._it.throw !== "function"
+	) {
 		throw err;
 	}
 
