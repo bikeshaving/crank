@@ -16,13 +16,7 @@ function isIteratorLike(
 }
 
 function arrayify<T>(value: Array<T> | T | undefined): Array<T> {
-	if (value === undefined) {
-		return [];
-	} else if (Array.isArray(value)) {
-		return value;
-	} else {
-		return [value];
-	}
+	return !value ? [] : Array.isArray(value) ? value : [value];
 }
 
 function unwrap<T>(arr: Array<T>): Array<T> | T | undefined {
