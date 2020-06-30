@@ -64,7 +64,7 @@ interface ChildIterable extends Iterable<Child | ChildIterable> {}
 
 export type Children = Child | ChildIterable;
 
-// return type of iterators has to be void because typescript
+// NOTE: The return type of iterators has to be void because typescript will infer most generators as having a void return type.
 export type Component<TProps = any> = (
 	this: Context<TProps>,
 	props: TProps,
@@ -105,10 +105,10 @@ export class Element<TTag extends Tag = Tag> {
 	_ch: Array<NarrowedChild> | NarrowedChild;
 	// node
 	_n: any;
-	// inflight promise
-	_inf: Promise<any> | undefined;
 	// fallback
 	_fb: any;
+	// inflight promise
+	_inf: Promise<any> | undefined;
 	// onNewValues
 	_onv: Function | undefined;
 	tag: TTag;
@@ -401,7 +401,7 @@ function mount<TNode, TRoot, TResult>(
 		return commit(renderer, scope, el, []);
 	} else if (el.tag !== Fragment) {
 		if (el.tag !== Portal) {
-			// TODO: maybe we can defer create calls to when the element is committing
+			// TODO: maybe we can defer create calls to commit time
 			el._n = renderer.create(el.tag, el.props, scope);
 		} else {
 			root = el.props.root;
@@ -678,7 +678,7 @@ function updateChildren<TNode, TRoot, TResult>(
 		}
 	}
 
-	// TODO: async removal of keyed nodes
+	// TODO: async unmounting
 	if (childrenByKey !== undefined && childrenByKey.size > 0) {
 		graveyard.push(...childrenByKey.values());
 	}
@@ -712,13 +712,13 @@ function compare<TNode, TRoot, TResult>(
 		typeof newChild === "object" &&
 		oldChild.tag === newChild.tag
 	) {
+		// TODO: implement Raw element parse caching
 		if (oldChild.tag === Portal) {
 			if (oldChild.props.root !== newChild.props.root) {
 				renderer.arrange(Portal, oldChild.props, oldChild.props.root, []);
 			}
 		}
 
-		// TODO: implement Raw element parse caching
 		if (oldChild !== newChild) {
 			oldChild.props = newChild.props;
 			oldChild.ref = newChild.ref;
@@ -751,7 +751,6 @@ function compare<TNode, TRoot, TResult>(
 			if (typeof oldChild === "object") {
 				newChild._fb = oldChild._n;
 				if (typeof oldChild._inf === "object") {
-					// TODO: figure out if this branch is actually necessary
 					oldChild._inf
 						.then((value) => {
 							if (!((newChild as Element)._f & Committed)) {
@@ -1667,7 +1666,6 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 			}
 		}
 
-		// TODO: async generator components which yield multiple children synchronously will over-arrange the host. Maybe we can defer arrangement for this case.
 		// TODO: we don’t need to call arrange if none of the nodes have changed or moved
 		const host = ctx._ho;
 		ctx._re.arrange(
@@ -1681,7 +1679,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 
 	ctx._f &= ~Updating;
 	if (typeof ctx._ss !== "undefined" && ctx._ss.size > 0) {
-		// We have to clear the set of callbacks before calling them, because a callback which refreshes the component would otherwise cause a stack overflow.
+		// NOTE: We have to clear the set of callbacks before calling them, because a callback which refreshes the component would otherwise cause a stack overflow.
 		const callbacks = Array.from(ctx._ss);
 		ctx._ss.clear();
 		const value1 = ctx._re.read(value);
@@ -1717,9 +1715,11 @@ function unmountCtx(ctx: Context): void {
 	}
 }
 
+// type CrankElement = Element;
 declare global {
 	module JSX {
-		// TODO: JSX interface doesn’t work
+		// TODO: JSX result types don’t work because TypeScript demands that all Components return JSX elements
+		// interface Element extends CrankElement {}
 
 		interface IntrinsicElements {
 			[tag: string]: any;
