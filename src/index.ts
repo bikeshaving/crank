@@ -1691,6 +1691,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 	}
 }
 
+// TODO: async unmounting
 function unmountCtx(ctx: Context): void {
 	ctx._f |= Unmounted;
 	clearEventListeners(ctx);
@@ -1708,8 +1709,10 @@ function unmountCtx(ctx: Context): void {
 		resume(ctx);
 
 		if (typeof ctx._it === "object" && typeof ctx._it.return === "function") {
-			// TODO: handle async generator rejections
-			ctx._it.return();
+			const iteration = ctx._it.return();
+			if (isPromiseLike(iteration)) {
+				iteration.catch((err) => propagateError(ctx._pa, err));
+			}
 		}
 	}
 }
