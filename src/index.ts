@@ -988,7 +988,7 @@ export interface ProvisionMap {}
 
 // CONTEXT FLAGS
 // TODO: write an explanation for each of these flags
-const Independent = 1 << 0;
+const Updating = 1 << 0;
 const Stepping = 1 << 1;
 const Iterating = 1 << 2;
 const Available = 1 << 3;
@@ -1125,7 +1125,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			return this._re.read(undefined);
 		}
 
-		this._f |= Independent;
+		this._f &= ~Updating;
 		resume(this);
 		return this._re.read(run(this));
 	}
@@ -1352,7 +1352,7 @@ function run<TNode, TResult>(
 			if (isPromiseLike(pending)) {
 				ctx._ip = pending
 					.catch((err) => {
-						if (ctx._f & Independent) {
+						if (!(ctx._f & Updating)) {
 							return propagateError(ctx._pa, err);
 						}
 					})
@@ -1366,7 +1366,7 @@ function run<TNode, TResult>(
 
 			return value;
 		} catch (err) {
-			if (ctx._f & Independent) {
+			if (!(ctx._f & Updating)) {
 				return propagateError(ctx._pa, err);
 			}
 
@@ -1387,13 +1387,13 @@ function run<TNode, TResult>(
 
 					if (isPromiseLike(pending)) {
 						return pending.catch((err) => {
-							if (ctx._f & Independent) {
+							if (!(ctx._f & Updating)) {
 								return propagateError(ctx._pa, err);
 							}
 						});
 					}
 				} catch (err) {
-					if (ctx._f & Independent) {
+					if (!(ctx._f & Updating)) {
 						return propagateError(ctx._pa, err);
 					}
 				}
@@ -1579,7 +1579,6 @@ function advance(ctx: Context): void {
 	ctx._ep = undefined;
 	ctx._ev = undefined;
 	if (ctx._f & AsyncGen && !(ctx._f & Finished)) {
-		ctx._f |= Independent;
 		run(ctx);
 	}
 }
@@ -1613,10 +1612,7 @@ function propagateError(
 function updateCtx<TNode>(
 	ctx: Context,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (ctx._f & AsyncGen) {
-		ctx._f &= ~Independent;
-	}
-
+	ctx._f |= Updating;
 	resume(ctx);
 	return run(ctx);
 }
@@ -1658,7 +1654,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 		}
 	}
 
-	if (ctx._f & Independent) {
+	if (!(ctx._f & Updating)) {
 		const listeners = getListeners(ctx._pa, ctx._ho);
 		if (listeners !== undefined && listeners.length > 0) {
 			for (let i = 0; i < listeners.length; i++) {
@@ -1681,9 +1677,9 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 			getChildNodes(host),
 		);
 		ctx._re.complete(ctx._rt);
-		ctx._f &= ~Independent;
 	}
 
+	ctx._f &= ~Updating;
 	if (typeof ctx._ss !== "undefined" && ctx._ss.size > 0) {
 		// We have to clear the set of callbacks before calling them, because a callback which refreshes the component would otherwise cause a stack overflow.
 		const callbacks = Array.from(ctx._ss);

@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import {createElement, Child, Context, Element} from "../index";
+import {createElement, Child, Children, Context, Element} from "../index";
 import {renderer} from "../dom";
 
 describe("races", () => {
@@ -475,5 +475,70 @@ describe("races", () => {
 		expect(document.body.innerHTML).toEqual("<span>Fast</span>");
 		await p2;
 		expect(document.body.innerHTML).toEqual("<div><span>Slow</span></div>");
+	});
+
+	test("suspense", async () => {
+		async function Fallback({
+			children,
+			timeout,
+		}: {
+			children: Children;
+			timeout: number;
+		}): Promise<Children> {
+			await new Promise((resolve) => setTimeout(resolve, timeout));
+			return children;
+		}
+
+		async function* Suspense(
+			this: Context,
+			{
+				children,
+				fallback,
+				timeout = 100,
+			}: {children: Children; fallback: Children; timeout?: number},
+		): AsyncGenerator<Children> {
+			for await ({children, fallback, timeout = 1000} of this) {
+				yield <Fallback timeout={timeout}>{fallback}</Fallback>;
+				yield children;
+			}
+		}
+
+		async function Component({timeout}: {timeout?: number}): Promise<Element> {
+			await new Promise((resolve) => setTimeout(resolve, timeout));
+			return <span>Component</span>;
+		}
+
+		await renderer.render(
+			<Suspense fallback={<span>Loading...</span>} timeout={100}>
+				<Component timeout={200} />
+			</Suspense>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual("<span>Loading...</span>");
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		expect(document.body.innerHTML).toEqual("<span>Component</span>");
+
+		await renderer.render(
+			<Suspense fallback={<span>Loading...</span>} timeout={100}>
+				<Component timeout={200} />
+			</Suspense>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual("<span>Loading...</span>");
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		expect(document.body.innerHTML).toEqual("<span>Component</span>");
+
+		await renderer.render(
+			<Suspense fallback={<span>Loading...</span>} timeout={100}>
+				<Component timeout={0} />
+			</Suspense>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual("<span>Component</span>");
+		await new Promise((resolve) => setTimeout(resolve, 500));
+		expect(document.body.innerHTML).toEqual("<span>Component</span>");
 	});
 });
