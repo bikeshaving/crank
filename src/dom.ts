@@ -1,4 +1,11 @@
-import {Portal, Renderer, TagProps} from "./index";
+import {
+	Children,
+	Context,
+	ElementValue,
+	Portal,
+	Renderer,
+	TagProps,
+} from "./index";
 
 declare module "./index" {
 	interface EventMap extends GlobalEventHandlersEventMap {}
@@ -6,8 +13,34 @@ declare module "./index" {
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
-// TODO: override render to provide a better error message when a node is not passed in as the second argument
 export class DOMRenderer extends Renderer<Node> {
+	render(
+		children: Children,
+		root: Node,
+		ctx?: Context,
+	): Promise<ElementValue<Node>> | ElementValue<Node> {
+		if (!(root instanceof Node)) {
+			throw new TypeError("root is not a node");
+		}
+
+		return super.render(children, root, ctx);
+	}
+
+	parse(text: string): DocumentFragment {
+		if (typeof document.createRange === "function") {
+			return document.createRange().createContextualFragment(text);
+		} else {
+			const fragment = document.createDocumentFragment();
+			const childNodes = new DOMParser().parseFromString(text, "text/html").body
+				.childNodes;
+			for (let i = 0; i < childNodes.length; i++) {
+				fragment.appendChild(childNodes[i]);
+			}
+
+			return fragment;
+		}
+	}
+
 	scope(
 		tag: string | symbol,
 		props: Record<string, any>,
@@ -43,21 +76,6 @@ export class DOMRenderer extends Renderer<Node> {
 		}
 
 		return document.createElement(tag);
-	}
-
-	parse(text: string): DocumentFragment {
-		if (typeof document.createRange === "function") {
-			return document.createRange().createContextualFragment(text);
-		} else {
-			const fragment = document.createDocumentFragment();
-			const childNodes = new DOMParser().parseFromString(text, "text/html").body
-				.childNodes;
-			for (let i = 0; i < childNodes.length; i++) {
-				fragment.appendChild(childNodes[i]);
-			}
-
-			return fragment;
-		}
 	}
 
 	patch<TTag extends string | symbol>(
@@ -119,7 +137,7 @@ export class DOMRenderer extends Renderer<Node> {
 				default: {
 					if (value == null) {
 						el.removeAttribute(name);
-					} else if (ns === undefined && !forceAttribute && name in el) {
+					} else if (!forceAttribute && ns === undefined && name in el) {
 						(el as any)[name] = value;
 					} else if (value === true) {
 						el.setAttribute(name, "");
@@ -140,7 +158,7 @@ export class DOMRenderer extends Renderer<Node> {
 		children: Array<Node | string>,
 	): void {
 		if (tag === Portal && !(parent instanceof Node)) {
-			throw new Error("Portal must have a root of type Node");
+			throw new TypeError("Portal root is not a node");
 		}
 
 		if (
