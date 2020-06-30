@@ -274,8 +274,11 @@ export class Renderer<TNode, TRoot = TNode, TResult = ElementValue<TNode>> {
 		this._cache = new WeakMap();
 	}
 
-	// TODO: allow parent contexts from a different renderer to be passed into here
-	render(children: Children, root: TRoot): Promise<TResult> | TResult {
+	render(
+		children: Children,
+		root?: TRoot | undefined,
+		ctx?: Context | undefined,
+	): Promise<TResult> | TResult {
 		let portal: Element<Portal> | undefined;
 		if (typeof root === "object" && root !== null) {
 			portal = this._cache.get((root as unknown) as object);
@@ -283,18 +286,23 @@ export class Renderer<TNode, TRoot = TNode, TResult = ElementValue<TNode>> {
 
 		if (!portal) {
 			portal = createElement(Portal, {children, root});
+			portal._ctx = ctx;
 			if (typeof root === "object" && root !== null && children != null) {
 				this._cache.set((root as unknown) as object, portal);
 			}
 		} else {
+			if (portal._ctx !== ctx) {
+				throw new Error("render must be called with the same context per root");
+			}
+
 			portal.props = {children, root};
 			if (typeof root === "object" && root !== null && children == null) {
 				this._cache.delete((root as unknown) as object);
 			}
 		}
 
-		const value = update(this, root, portal, undefined, undefined, portal);
-
+		const scope = undefined;
+		const value = update(this, root, portal, ctx, scope, portal);
 		if (isPromiseLike(value)) {
 			return value.then(() => {
 				const result = this.read(unwrap(getChildNodes<TNode>(portal!)));
