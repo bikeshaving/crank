@@ -480,7 +480,7 @@ function mountChildren<TNode, TRoot, TResult>(
 		values1 = values as Array<ElementValue<TNode>>;
 	}
 
-	return race(renderer, host, ctx, scope, parent, values1);
+	return chase(renderer, host, ctx, scope, parent, values1);
 }
 
 function update<TNode, TRoot, TResult>(
@@ -561,11 +561,11 @@ function updateChild<TNode, TRoot, TResult>(
 	}
 
 	parent._ch = newChild;
-	// TODO: allow single values to be passed to race
+	// TODO: allow single values to be passed to chase
 	const values = isPromiseLike(value)
 		? value.then((value) => [value])
 		: [value];
-	return race(renderer, host, ctx, scope, parent, values);
+	return chase(renderer, host, ctx, scope, parent, values);
 }
 
 function mapChildrenByKey(children: Array<NarrowedChild>): Map<Key, Element> {
@@ -702,7 +702,7 @@ function updateChildren<TNode, TRoot, TResult>(
 		graveyard.forEach((child) => unmount(renderer, host, ctx, child));
 	}
 
-	return race(renderer, host, ctx, scope, parent, values1);
+	return chase(renderer, host, ctx, scope, parent, values1);
 }
 
 function compare<TNode, TRoot, TResult>(
@@ -779,7 +779,8 @@ function compare<TNode, TRoot, TResult>(
 	return [newChild, value];
 }
 
-function race<TNode, TRoot, TResult>(
+// NOTE: When an element’s children update asynchronously, we race this result with the next update of the element’s children. This ensures that if any later update of the element’s children fulfill before the current pending update, the current update will fulfill as well.
+function chase<TNode, TRoot, TResult>(
 	renderer: Renderer<TNode, TRoot, TResult>,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
@@ -1432,6 +1433,7 @@ function step<TNode, TResult>(
 		if (isIteratorLike(result)) {
 			ctx._it = result;
 		} else if (isPromiseLike(result)) {
+			// async function component
 			const result1 = upgradePromiseLike(result);
 			const pending = result1;
 			const value1 = result1.then((result) =>
@@ -1440,6 +1442,7 @@ function step<TNode, TResult>(
 			ctx._f &= ~Stepping;
 			return [pending, value1];
 		} else {
+			// sync function component
 			const value = updateCtxChildren<TNode, TResult>(ctx, result);
 			ctx._f &= ~Stepping;
 			return [undefined, value];
@@ -1458,8 +1461,7 @@ function step<TNode, TResult>(
 		oldValue = ctx._re.read(getValue(el));
 	}
 
-	// TODO: clean up/deduplicate logic here
-	// TODO: generator components which throw errors should be fragile, if rerendered they should be unmounted and remounted
+	// TODO: generator components which throw errors should be recoverable
 	const iteration = ctx._it.next(oldValue);
 	ctx._f &= ~Stepping;
 	if (isPromiseLike(iteration)) {
@@ -1469,115 +1471,57 @@ function step<TNode, TResult>(
 		}
 
 		const pending = iteration;
-		const value = iteration.then((iteration) => {
+		const value: Promise<ElementValue<TNode>> = iteration.then((iteration) => {
 			ctx._f &= ~Iterating;
 			if (iteration.done) {
 				ctx._f |= Finished;
 			}
 
 			try {
-				let value = updateCtxChildren<TNode, TResult>(
+				const value = updateCtxChildren<TNode, TResult>(
 					ctx,
 					iteration.value as Children,
 				);
-				if (isPromiseLike(value)) {
-					if (!(ctx._f & Finished) && typeof ctx._it!.throw === "function") {
-						value = value.catch((err) => {
-							resume(ctx);
-							const iteration = ctx._it!.throw!(err) as Promise<
-								IteratorResult<Children, Children>
-							>;
-							return iteration.then((iteration) => {
-								if (iteration.done) {
-									ctx._f |= Finished;
-								}
 
-								return updateCtxChildren<TNode, TResult>(ctx, iteration.value);
-							});
-						});
-					}
+				if (isPromiseLike(value)) {
+					return value.catch((err) => handleChildError(ctx, err));
 				}
 
 				return value;
 			} catch (err) {
-				if (ctx._f & Finished || typeof ctx._it!.throw !== "function") {
-					throw err;
-				}
-
-				const iteration = ctx._it!.throw(err) as Promise<
-					IteratorResult<Children, Children>
-				>;
-				return iteration.then((iteration) => {
-					if (iteration.done) {
-						ctx._f |= Finished;
-					}
-
-					return updateCtxChildren<TNode, TResult>(ctx, iteration.value);
-				});
+				return handleChildError(ctx, err);
 			}
 		});
+
 		return [pending, value];
-	} else {
-		// sync generator component
-		if (initial) {
-			ctx._f |= SyncGen;
-		}
-
-		ctx._f &= ~Iterating;
-		if (iteration.done) {
-			ctx._f |= Finished;
-		}
-
-		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-		try {
-			value = updateCtxChildren<TNode, TResult>(
-				ctx,
-				iteration.value as Children,
-			);
-
-			if (isPromiseLike(value)) {
-				if (!(ctx._f & Finished) && typeof ctx._it.throw === "function") {
-					value = value.catch((err) => {
-						ctx._f |= Stepping;
-						const iteration = ctx._it!.throw!(err) as IteratorResult<
-							Children,
-							Children
-						>;
-						ctx._f &= ~Stepping;
-						if (iteration.done) {
-							ctx._f |= Finished;
-						}
-
-						return updateCtxChildren<TNode, TResult>(ctx, iteration.value);
-					});
-				}
-
-				const pending = value.catch(() => {});
-				return [pending, value];
-			}
-		} catch (err) {
-			if (ctx._f & Finished || typeof ctx._it.throw !== "function") {
-				throw err;
-			}
-
-			ctx._f |= Stepping;
-			const iteration = (ctx._it as Generator<Children, Children>).throw(err);
-			ctx._f &= ~Stepping;
-			if (iteration.done) {
-				ctx._f |= Finished;
-			}
-
-			const value = updateCtxChildren<TNode, TResult>(ctx, iteration.value);
-			if (isPromiseLike(value)) {
-				const pending = value.catch(() => {});
-				return [pending, value];
-			}
-
-			return [undefined, value];
-		}
-
-		return [undefined, value];
 	}
+
+	// sync generator component
+	if (initial) {
+		ctx._f |= SyncGen;
+	}
+
+	ctx._f &= ~Iterating;
+	if (iteration.done) {
+		ctx._f |= Finished;
+	}
+
+	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
+	try {
+		value = updateCtxChildren<TNode, TResult>(ctx, iteration.value as Children);
+
+		if (isPromiseLike(value)) {
+			value = value.catch((err) => handleChildError(ctx, err));
+		}
+	} catch (err) {
+		value = handleChildError(ctx, err);
+	}
+
+	if (isPromiseLike(value)) {
+		return [value.catch(() => {}), value];
+	}
+
+	return [undefined, value];
 }
 
 function advance(ctx: Context): void {
@@ -1590,6 +1534,35 @@ function advance(ctx: Context): void {
 	}
 }
 
+function handleChildError<TNode>(
+	ctx: Context,
+	err: unknown,
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+	if (ctx._f & Finished || !ctx._it || typeof ctx._it.throw !== "function") {
+		throw err;
+	}
+
+	resume(ctx);
+	ctx._f |= Stepping;
+	const iteration = ctx._it.throw(err);
+	ctx._f &= ~Stepping;
+	if (isPromiseLike(iteration)) {
+		return iteration.then((iteration) => {
+			if (iteration.done) {
+				ctx._f |= Finished;
+			}
+
+			return updateCtxChildren(ctx, iteration.value as Children);
+		});
+	} else {
+		if (iteration.done) {
+			ctx._f |= Finished;
+		}
+
+		return updateCtxChildren(ctx, iteration.value as Children);
+	}
+}
+
 function propagateError(
 	ctx: Context | undefined,
 	err: unknown,
@@ -1597,7 +1570,7 @@ function propagateError(
 	if (
 		!ctx ||
 		ctx._f & Finished ||
-		typeof ctx._it !== "object" ||
+		!ctx._it ||
 		typeof ctx._it.throw !== "function"
 	) {
 		throw err;
