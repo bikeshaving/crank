@@ -198,4 +198,25 @@ describe("render", () => {
 		await new Promise((resolve) => setTimeout(resolve));
 		expect(mock).toHaveBeenCalledTimes(2);
 	});
+
+	test("stateful", () => {
+		const mock = jest.fn();
+		function* Component() {
+			let i = 0;
+			try {
+				while (true) {
+					yield <div>{i++}</div>;
+				}
+			} finally {
+				mock();
+			}
+		}
+
+		const key = {};
+		expect(renderer.render(<Component />, key)).toEqual("<div>0</div>");
+		expect(renderer.render(<Component />, key)).toEqual("<div>1</div>");
+		expect(mock).toHaveBeenCalledTimes(0);
+		expect(renderer.render(null, key)).toEqual("");
+		expect(mock).toHaveBeenCalledTimes(1);
+	});
 });
