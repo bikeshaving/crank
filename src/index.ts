@@ -458,9 +458,10 @@ function getValue<TNode>(el: Element): ElementValue<TNode> {
 /**
  * An abstract class which is subclassed to render to different target environments. This class is responsible for kicking off the rendering process, caching previous trees by root, and creating/mutating/disposing the nodes of the target environment.
  *
- * @typeparam TNode - The type of the node for a specific rendering environment. It is the type of the return value of Renderer.prototype.create and Renderer.prototype.parse.
- * @typeparam TRoot - The type of the root for a specific rendering environment. It is the type of the second parameter passed to Renderer.prototype.render, as well as the expected type of the root portal.
- * @typeparam TResult - The type of the exposed values. It is the return value of Renderer.prototype.read, and revealed at various points of the renderer/element API.
+ * @typeparam TNode - The type of the node for a specific rendering environment.
+ * @typeparam TScope - Data which is passed down the tree.
+ * @typeparam TRoot - The type of the root for a specific rendering environment.
+ * @typeparam TResult - The type of the exposed values.
  */
 export class Renderer<
 	TNode,
@@ -513,8 +514,7 @@ export class Renderer<
 			}
 		}
 
-		const scope = undefined;
-		const value = update(this, root, portal, ctx, scope, portal);
+		const value = update(this, root, portal, ctx, undefined, portal);
 		// NOTE: we return the read child values of the portal because portals themselves have no readable value.
 		if (isPromiseLike(value)) {
 			return value.then(() => {
@@ -1362,7 +1362,7 @@ const SyncGen = 1 << 6;
 const AsyncGen = 1 << 7;
 
 /**
- * A class which is instantiated and passed to every component as its this value. In addition to the element tree, contexts also form a tree. Components can use this context tree to communicate data upwards via events and downwards via provisions.
+ * A class which is instantiated and passed to every component as its this value. Contexts form a tree just like elements and all components in the element tree are connected via contexts. Components can use this tree to communicate data upwards via events and downwards via provisions.
  * @typeparam TProps - The expected shape of the props passed to the component. Used to strongly type the Context iterator methods.
  * @typeparam TResult - The readable element value type. It is used in places such as the return value of refresh and the argument passed to schedule/cleanup callbacks.
  */
