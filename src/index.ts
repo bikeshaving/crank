@@ -456,18 +456,18 @@ function getValue<TNode>(el: Element): ElementValue<TNode> {
 }
 
 /**
- * A type which represents data passed down the tree by host elements. This type is created by Renderer.prototype.scope and passed into Renderer.prototype.create and Renderer.prototype.patch. It is currently unparameterized.
- */
-type Scope = unknown;
-
-/**
  * An abstract class which is subclassed to render to different target environments. This class is responsible for kicking off the rendering process, caching previous trees by root, and creating/mutating/disposing the nodes of the target environment.
  *
  * @typeparam TNode - The type of the node for a specific rendering environment. It is the type of the return value of Renderer.prototype.create and Renderer.prototype.parse.
  * @typeparam TRoot - The type of the root for a specific rendering environment. It is the type of the second parameter passed to Renderer.prototype.render, as well as the expected type of the root portal.
  * @typeparam TResult - The type of the exposed values. It is the return value of Renderer.prototype.read, and revealed at various points of the renderer/element API.
  */
-export class Renderer<TNode, TRoot = TNode, TResult = ElementValue<TNode>> {
+export class Renderer<
+	TNode,
+	TScope,
+	TRoot = TNode,
+	TResult = ElementValue<TNode>
+> {
 	/**
 	 * @internal
 	 * A weakmap which stores element trees by root.
@@ -567,9 +567,9 @@ export class Renderer<TNode, TRoot = TNode, TResult = ElementValue<TNode>> {
 	scope<TTag extends string | symbol>(
 		_tag: TTag,
 		_props: TagProps<TTag>,
-		scope: Scope | undefined,
-	): Scope | undefined {
-		return scope;
+		scope: TScope | undefined,
+	): TScope {
+		return scope as TScope;
 	}
 
 	/**
@@ -583,7 +583,7 @@ export class Renderer<TNode, TRoot = TNode, TResult = ElementValue<TNode>> {
 	 * @remarks
 	 * Rather than returning text nodes for whatever environment we’re rendering to, we defer that step for Renderer.prototype.arrange. We do this so that adjacent strings can be concatenated and the actual element tree can be rendered in a normalized form.
 	 */
-	escape(text: string, _scope: Scope): string {
+	escape(text: string, _scope: TScope): string {
 		return text;
 	}
 
@@ -595,7 +595,7 @@ export class Renderer<TNode, TRoot = TNode, TResult = ElementValue<TNode>> {
 	 *
 	 * @returns The parsed node or string.
 	 */
-	parse(text: string, _scope: Scope): TNode | string {
+	parse(text: string, _scope: TScope): TNode | string {
 		return text;
 	}
 
@@ -611,7 +611,7 @@ export class Renderer<TNode, TRoot = TNode, TResult = ElementValue<TNode>> {
 	create<TTag extends string | symbol>(
 		_tag: TTag,
 		_props: TagProps<TTag>,
-		_scope: Scope,
+		_scope: TScope,
 	): TNode {
 		throw new Error("Not implemented");
 	}
@@ -633,7 +633,7 @@ export class Renderer<TNode, TRoot = TNode, TResult = ElementValue<TNode>> {
 		_tag: TTag,
 		_props: TagProps<TTag>,
 		_node: TNode,
-		_scope: Scope,
+		_scope: TScope | undefined,
 	): unknown {
 		return;
 	}
@@ -693,13 +693,13 @@ export class Renderer<TNode, TRoot = TNode, TResult = ElementValue<TNode>> {
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
-
-function mount<TNode, TRoot, TResult>(
-	renderer: Renderer<TNode, TRoot, TResult>,
+// NOTE: to aid in the mangling of this module, we use functions rather than methods for internal logic.
+function mount<TNode, TScope, TRoot, TResult>(
+	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
-	scope: Scope,
+	scope: TScope,
 	el: Element,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	el._f |= Mounted;
@@ -725,6 +725,7 @@ function mount<TNode, TRoot, TResult>(
 		scope = renderer.scope(el.tag, el.props, scope);
 	}
 
+	// NOTE: The primary benefit of having a separate codepath for mounting is that it’s slightly faster because we don’t have to align and diff children against old children. But for singular child values, updateChild is sufficient.
 	if (isNonStringIterable(el.props.children)) {
 		return mountChildren(
 			renderer,
@@ -740,12 +741,12 @@ function mount<TNode, TRoot, TResult>(
 	return updateChild(renderer, root, host, ctx, scope, el, el.props.children);
 }
 
-function mountChildren<TNode, TRoot, TResult>(
-	renderer: Renderer<TNode, TRoot, TResult>,
+function mountChildren<TNode, TScope, TRoot, TResult>(
+	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
-	scope: Scope,
+	scope: TScope,
 	parent: Element,
 	children: ChildIterable,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
@@ -789,12 +790,12 @@ function mountChildren<TNode, TRoot, TResult>(
 	return chase(renderer, host, ctx, scope, parent, values1);
 }
 
-function update<TNode, TRoot, TResult>(
-	renderer: Renderer<TNode, TRoot, TResult>,
+function update<TNode, TScope, TRoot, TResult>(
+	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
-	scope: Scope,
+	scope: TScope,
 	el: Element,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (typeof el.tag === "function") {
@@ -832,12 +833,12 @@ function update<TNode, TRoot, TResult>(
 	return updateChild(renderer, root, host, ctx, scope, el, el.props.children);
 }
 
-function updateChild<TNode, TRoot, TResult>(
-	renderer: Renderer<TNode, TRoot, TResult>,
+function updateChild<TNode, TScope, TRoot, TResult>(
+	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
-	scope: Scope,
+	scope: TScope,
 	parent: Element,
 	child: Child,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
@@ -884,12 +885,12 @@ function mapChildrenByKey(children: Array<NarrowedChild>): Map<Key, Element> {
 	return childrenByKey;
 }
 
-function updateChildren<TNode, TRoot, TResult>(
-	renderer: Renderer<TNode, TRoot, TResult>,
+function updateChildren<TNode, TScope, TRoot, TResult>(
+	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
-	scope: Scope,
+	scope: TScope,
 	parent: Element,
 	children: ChildIterable,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
@@ -1007,12 +1008,12 @@ function updateChildren<TNode, TRoot, TResult>(
 	return chase(renderer, host, ctx, scope, parent, values1);
 }
 
-function diff<TNode, TRoot, TResult>(
-	renderer: Renderer<TNode, TRoot, TResult>,
+function diff<TNode, TScope, TRoot, TResult>(
+	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
-	scope: Scope,
+	scope: TScope,
 	oldChild: NarrowedChild,
 	newChild: NarrowedChild,
 ): [NarrowedChild, Promise<ElementValue<TNode>> | ElementValue<TNode>] {
@@ -1087,11 +1088,11 @@ function diff<TNode, TRoot, TResult>(
  * @remarks
  * When an element’s children update asynchronously, we race the resulting promise with the next update of the element’s children. By induction, this ensures that when any update to an element settles, all past updates to that same element will have settled as well. This prevents deadlocks and unnecessary awaiting when an element’s children have been cleared, for instance.
  */
-function chase<TNode, TRoot, TResult>(
-	renderer: Renderer<TNode, TRoot, TResult>,
+function chase<TNode, TScope, TRoot, TResult>(
+	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
-	scope: Scope,
+	scope: TScope,
 	el: Element,
 	values: Promise<Array<ElementValue<TNode>>> | Array<ElementValue<TNode>>,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
@@ -1124,9 +1125,9 @@ function chase<TNode, TRoot, TResult>(
 	return commit(renderer, scope, el, normalize(values));
 }
 
-function commit<TNode, TRoot, TResult>(
-	renderer: Renderer<TNode, TRoot, TResult>,
-	scope: Scope,
+function commit<TNode, TScope, TRoot, TResult>(
+	renderer: Renderer<TNode, TScope, TRoot, TResult>,
+	scope: TScope,
 	el: Element,
 	values: Array<TNode | string>,
 ): ElementValue<TNode> {
@@ -1173,8 +1174,8 @@ function commit<TNode, TRoot, TResult>(
 	return value;
 }
 
-function unmount<TNode, TRoot, TResult>(
-	renderer: Renderer<TNode, TRoot, TResult>,
+function unmount<TNode, TScope, TRoot, TResult>(
+	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	el: Element,
@@ -1376,7 +1377,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * @internal
 	 * renderer - The renderer which created this context.
 	 */
-	_re: Renderer<unknown, unknown, TResult>;
+	_re: Renderer<unknown, unknown, unknown, TResult>;
 
 	/**
 	 * @internal
@@ -1478,11 +1479,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * @internal
 	 */
 	constructor(
-		renderer: Renderer<unknown, unknown, TResult>,
+		renderer: Renderer<unknown, unknown, unknown, TResult>,
 		root: unknown,
 		host: Element<string | symbol>,
 		parent: Context<unknown, TResult> | undefined,
-		scope: Scope,
+		scope: unknown,
 		el: Element<Component>,
 	) {
 		this._f = 0;
@@ -2123,8 +2124,8 @@ function updateCtxChildren<TNode, TResult>(
 		child = children;
 	}
 
-	return updateChild<TNode, unknown, TResult>(
-		ctx._re as Renderer<TNode, unknown, TResult>,
+	return updateChild<TNode, unknown, unknown, TResult>(
+		ctx._re as Renderer<TNode, unknown, unknown, TResult>,
 		ctx._rt, // root
 		ctx._ho, // host
 		ctx,
