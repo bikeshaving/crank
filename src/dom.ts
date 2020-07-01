@@ -57,7 +57,6 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 		}
 	}
 
-	// TODO: cache createElement calls and use cloneNode
 	create<TTag extends string | symbol>(
 		tag: TTag,
 		props: Record<string, any>,
@@ -71,11 +70,7 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 			ns = SVG_NAMESPACE;
 		}
 
-		if (ns !== undefined) {
-			return document.createElementNS(ns, tag);
-		}
-
-		return document.createElement(tag);
+		return ns ? document.createElementNS(ns, tag) : document.createElement(tag);
 	}
 
 	patch<TTag extends string | symbol>(
@@ -117,9 +112,9 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 				case "className":
 					if (value === true) {
 						el.setAttribute("class", "");
-					} else if (value === false || value == null) {
+					} else if (!value) {
 						el.removeAttribute("class");
-					} else if (ns === undefined) {
+					} else if (!ns) {
 						(el as any)["className"] = value;
 					} else {
 						el.setAttribute("class", value);
@@ -137,7 +132,7 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 				default: {
 					if (value == null) {
 						el.removeAttribute(name);
-					} else if (!forceAttribute && ns === undefined && name in el) {
+					} else if (!forceAttribute && !ns && name in el) {
 						(el as any)[name] = value;
 					} else if (value === true) {
 						el.setAttribute(name, "");

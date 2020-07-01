@@ -1,10 +1,10 @@
 /*** UTILITIES ***/
-function unwrap<T>(arr: Array<T>): Array<T> | T | undefined {
-	return arr.length > 1 ? arr : arr[0];
+function wrap<T>(value: Array<T> | T | undefined): Array<T> {
+	return !value ? [] : Array.isArray(value) ? value : [value];
 }
 
-function arrayify<T>(value: Array<T> | T | undefined): Array<T> {
-	return !value ? [] : Array.isArray(value) ? value : [value];
+function unwrap<T>(arr: Array<T>): Array<T> | T | undefined {
+	return arr.length > 1 ? arr : arr[0];
 }
 
 function isIterable(value: any): value is Iterable<any> {
@@ -426,7 +426,7 @@ function normalize<TNode>(
  */
 function getChildValues<TNode>(el: Element): Array<TNode | string> {
 	const values: Array<ElementValue<TNode>> = [];
-	const children = arrayify(el._ch);
+	const children = wrap(el._ch);
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i];
 		if (typeof child === "string") {
@@ -869,7 +869,7 @@ function updateChild<TNode, TScope, TRoot, TResult>(
 
 	parent._ch = newChild;
 	// TODO: allow single values to be passed to chase
-	const values = isPromiseLike(value) ? value.then(arrayify) : arrayify(value);
+	const values = isPromiseLike(value) ? value.then(wrap) : wrap(value);
 	return chase(renderer, host, ctx, scope, parent, values);
 }
 
@@ -899,7 +899,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	}
 
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
-	const oldChildren = arrayify(parent._ch);
+	const oldChildren = wrap(parent._ch);
 	const newChildren = Array.from(children);
 	const graveyard: Array<Element> = [];
 	let i = 0;
@@ -1209,7 +1209,7 @@ function unmount<TNode, TScope, TRoot, TResult>(
 		renderer.dispose(el.tag, el.props, el._n);
 	}
 
-	const children = arrayify(el._ch);
+	const children = wrap(el._ch);
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i];
 		if (typeof child === "object") {
@@ -2141,7 +2141,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 	}
 
 	if (typeof ctx._ls !== "undefined" && ctx._ls.length > 0) {
-		for (const child of arrayify(value)) {
+		for (const child of wrap(value)) {
 			if (isEventTarget(child)) {
 				for (const record of ctx._ls) {
 					child.addEventListener(record.type, record.callback, record.options);
@@ -2155,7 +2155,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 		if (listeners !== undefined && listeners.length > 0) {
 			for (let i = 0; i < listeners.length; i++) {
 				const record = listeners[i];
-				for (const v of arrayify(value)) {
+				for (const v of wrap(value)) {
 					if (isEventTarget(v)) {
 						v.addEventListener(record.type, record.callback, record.options);
 					}
