@@ -996,7 +996,14 @@ describe("async generator component", () => {
 		expect(document.body.innerHTML).toEqual("");
 		await p;
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
-		await new Promise((resolve) => setTimeout(resolve));
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+		await renderer.render(
+			<div>
+				<Component message="Hello" />
+			</div>,
+			document.body,
+		);
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 	});
 
