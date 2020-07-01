@@ -1,4 +1,28 @@
 # Changelog
+## [0.2.0] - 2020-07-01
+### Added
+- UMD build
+- crank-ref
+- Context.prototype.schedule
+- Context.prototype.cleanup
+- Context.prototype.props
+- Context.prototype.value
+- Context dispatchEvent capturing
+### Changed
+- props are no longer rememebered between renders. For instance, rendering `<input checked />` and then `<input />` will not cause the checked prop to be deleted on the actual element.
+- The internal Renderer API has been changed to use inheritance and away from the intrinsic generator API.
+- Renderer.prototype.render and Context.prototype.refresh now return rendered values rather than undefined.
+- The library is no longer transpiled.
+- The esm directory in the package has been deleted. Refer to index, dom and html in the root of the package instead.
+- Some types have been simplified
+  - Tag no longer takes a type parameter.
+  - The types Props, FunctionComponent, GeneratorComponent, IntrinsicProps, ChildIterator, ChildGenerator and Key have been deleted.
+### Fixed
+- Performance improvements in terms of execution time, runtime memory costs, and library size.
+- Fixed Context.prototype.dispatchEvent not using stopPropagation and stopImmediatePropagation.
+- Fixed nested SVG elements not rendering SVGElements in some cases.
+- Improved error throwing to work with the call stack.
+
 ## [0.1.6] - 2020-05-25
 - Backed out of a performance optimization where async generator components caused siblings to remain in the DOM
 ## [0.1.5] - 2020-05-21
