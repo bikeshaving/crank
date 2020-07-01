@@ -13,7 +13,7 @@ declare module "./index" {
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
-export class DOMRenderer extends Renderer<Node> {
+export class DOMRenderer extends Renderer<Node, string | undefined> {
 	render(
 		children: Children,
 		root: Node,

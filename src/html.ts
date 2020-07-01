@@ -92,8 +92,12 @@ function join(children: Array<Node | string>): string {
 	return result;
 }
 
-// NOTE: using void for the root type allows render to be called with only one argument
-export class StringRenderer extends Renderer<Node | string, void, string> {
+export class StringRenderer extends Renderer<
+	Node | string,
+	undefined,
+	unknown,
+	string
+> {
 	create(): Node {
 		return {value: ""};
 	}
