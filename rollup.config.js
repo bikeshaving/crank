@@ -1,5 +1,5 @@
 import resolve from "@rollup/plugin-node-resolve";
-import ts from "@wessberg/rollup-plugin-ts";
+import typescript from "rollup-plugin-typescript2";
 import * as fs from "fs";
 import * as path from "path";
 import pkg from "./package.json";
@@ -33,7 +33,7 @@ export default [
 			chunkFileNames: "dist/[hash].js",
 			sourcemap: true,
 		},
-		plugins: [ts(), resolve()],
+		plugins: [typescript(), resolve()],
 	},
 	{
 		input: ["src/index.ts", "src/dom.ts", "src/html.ts"],
@@ -42,7 +42,7 @@ export default [
 			dir: "cjs",
 			sourcemap: true,
 		},
-		plugins: [ts(), resolve(), packageCJS()],
+		plugins: [typescript(), resolve(), packageCJS()],
 	},
 	{
 		input: "umd.ts",
@@ -52,6 +52,6 @@ export default [
 			sourcemap: true,
 			name: "Crank",
 		},
-		plugins: [ts(), resolve(), packageCJS()],
+		plugins: [typescript(), resolve(), packageCJS()],
 	},
 ];
