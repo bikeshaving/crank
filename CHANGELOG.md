@@ -1,4 +1,7 @@
 # Changelog
+## [0.2.1] - 2020-07-02
+### Fixed
+- Fixed overloads of Context.prototype.set and Context.prototype.get not appearing in the d.ts file.
 ## [0.2.0] - 2020-07-01
 ### Added
 - UMD build
