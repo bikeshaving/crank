@@ -302,6 +302,11 @@ export function createElement<TTag extends Tag>(
 	tag: TTag,
 	props?: TagProps<TTag> | null | undefined,
 	children?: unknown,
+): Element<TTag>;
+export function createElement<TTag extends Tag>(
+	tag: TTag,
+	props?: TagProps<TTag> | null | undefined,
+	children?: unknown,
 ): Element<TTag> {
 	let key: Key;
 	let ref: Function | undefined;
@@ -1496,6 +1501,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	}
 
 	get<TKey extends keyof ProvisionMap>(key: TKey): ProvisionMap[TKey];
+	get(key: unknown): any;
 	get(key: unknown): any {
 		for (let parent = this._pa; parent !== undefined; parent = parent._pa) {
 			if (typeof parent._ps === "object" && parent._ps.has(key)) {
@@ -1508,6 +1514,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		key: TKey,
 		value: ProvisionMap[TKey],
 	): void;
+	set(key: unknown, value: any): void;
 	set(key: unknown, value: any): void {
 		if (typeof this._ps === "undefined") {
 			this._ps = new Map();
