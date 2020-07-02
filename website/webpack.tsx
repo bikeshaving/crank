@@ -12,7 +12,8 @@ import postcssNested from "postcss-nested";
 
 const config: webpack.Configuration = {
 	mode: "development",
-	plugins: [new MiniCssExtractPlugin({filename: "[name].css"})],
+	// WHY TYPESCRIPT
+	plugins: [new MiniCssExtractPlugin({filename: "[name].css"}) as any],
 	module: {
 		rules: [
 			{
@@ -190,7 +191,7 @@ export class Storage {
 	}
 }
 
-const StorageKey = Symbol("webpack.StorageKey");
+const StorageKey = Symbol.for("CrankWebpackStorageKey");
 
 export interface PageProps {
 	storage: Storage;
