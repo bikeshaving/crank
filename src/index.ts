@@ -1,6 +1,6 @@
 /*** UTILITIES ***/
 function wrap<T>(value: Array<T> | T | undefined): Array<T> {
-	return !value ? [] : Array.isArray(value) ? value : [value];
+	return value === undefined ? [] : Array.isArray(value) ? value : [value];
 }
 
 function unwrap<T>(arr: Array<T>): Array<T> | T | undefined {
@@ -178,6 +178,19 @@ const Committed = 1 << 1;
  */
 export class Element<TTag extends Tag = Tag> {
 	/**
+	 * @internal
+	 * A unique symbol to identify elements as elements across versions and realms, and to protect against basic injection attacks.
+	 * https://overreacted.io/why-do-react-elements-have-typeof-property/
+	 */
+	$$typeof: typeof ElementSymbol;
+
+	/**
+	 * @internal
+	 * flags - A bitmask. See ELEMENT FLAGS.
+	 */
+	_f: number;
+
+	/**
 	 * The tag of the element. Can be a function, string or symbol depending on the kind of element.
 	 */
 	tag: TTag;
@@ -208,28 +221,6 @@ export class Element<TTag extends Tag = Tag> {
 
 	/**
 	 * @internal
-	 * A unique symbol to identify elements as elements across versions and realms, and to protect against basic injection attacks.
-	 * https://overreacted.io/why-do-react-elements-have-typeof-property/
-	 */
-	$$typeof: typeof ElementSymbol;
-
-	/**
-	 * @internal
-	 * flags - A bitmask. See ELEMENT FLAGS.
-	 */
-	_f: number;
-
-	/**
-	 * @internal
-	 * context - The Context object associated with this element.
-	 *
-	 * @remarks
-	 * Created and assigned by the Renderer for component elements when it mounts the element tree.
-	 */
-	_ctx: Context<TagProps<TTag>> | undefined;
-
-	/**
-	 * @internal
 	 * children - The rendered children of the element.
 	 */
 	_ch: Array<NarrowedChild> | NarrowedChild;
@@ -242,6 +233,15 @@ export class Element<TTag extends Tag = Tag> {
 	 * Set by Renderer.prototype.create when the component is mounted. This property will only be set for host elements.
 	 */
 	_n: any;
+
+	/**
+	 * @internal
+	 * context - The Context object associated with this element.
+	 *
+	 * @remarks
+	 * Created and assigned by the Renderer for component elements when it mounts the element tree.
+	 */
+	_ctx: Context<TagProps<TTag>> | undefined;
 
 	/**
 	 * @internal
@@ -275,11 +275,13 @@ export class Element<TTag extends Tag = Tag> {
 	) {
 		this.$$typeof = ElementSymbol;
 		this._f = 0;
-
 		this.tag = tag;
 		this.props = props;
 		this.key = key;
 		this.ref = ref;
+		this._ch = undefined;
+		this._n = undefined;
+		this._ctx = undefined;
 	}
 }
 
@@ -436,7 +438,7 @@ function getChildValues<TNode>(el: Element): Array<TNode | string> {
 		const child = children[i];
 		if (typeof child === "string") {
 			values.push(child);
-		} else if (typeof child === "object") {
+		} else if (typeof child !== "undefined") {
 			values.push(getValue(child));
 		}
 	}
@@ -502,7 +504,7 @@ export class Renderer<
 			portal = this._cache.get((root as unknown) as object);
 		}
 
-		if (!portal) {
+		if (portal === undefined) {
 			portal = createElement(Portal, {children, root});
 			portal._ctx = ctx;
 			if (typeof root === "object" && root !== null && children != null) {
@@ -934,7 +936,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 				childrenByKey = mapChildrenByKey(oldChildren.slice(i));
 			}
 
-			if (typeof newKey === "undefined") {
+			if (newKey === undefined) {
 				while (oldChild !== undefined && oldKey !== undefined) {
 					i++;
 					oldChild = oldChildren[i];
@@ -1164,15 +1166,15 @@ function commit<TNode, TScope, TRoot, TResult>(
 	}
 
 	el._f |= Committed;
-	if (el.ref) {
+	if (typeof el.ref === "function") {
 		el.ref(renderer.read(value));
 	}
 
-	if (el._inf) {
+	if (typeof el._inf !== "undefined") {
 		el._inf = undefined;
 	}
 
-	if (el._fb) {
+	if (typeof el._fb !== "undefined") {
 		el._fb = undefined;
 	}
 
@@ -1386,18 +1388,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	/**
 	 * @internal
-	 * el - The associated component element.
-	 */
-	_el: Element<Component>;
-
-	/**
-	 * @internal
-	 * parent - The parent context.
-	 */
-	_pa: Context<unknown, TResult> | undefined;
-
-	/**
-	 * @internal
 	 * root - The root node set by an ancestor’s Portal prop.
 	 */
 	_rt: unknown;
@@ -1412,9 +1402,21 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	/**
 	 * @internal
+	 * parent - The parent context.
+	 */
+	_pa: Context<unknown, TResult> | undefined;
+
+	/**
+	 * @internal
 	 * scope - The value of the scope at the point of element’s creation.
 	 */
 	_sc: unknown;
+
+	/**
+	 * @internal
+	 * el - The associated component element.
+	 */
+	_el: Element<Component>;
 
 	/**
 	 * @internal
@@ -2019,7 +2021,6 @@ function step<TNode, TResult>(
 	}
 
 	if (isPromiseLike(value)) {
-		// Because
 		return [value.catch(() => {}), value];
 	}
 
@@ -2049,7 +2050,11 @@ function handleChildError<TNode>(
 	ctx: Context,
 	err: unknown,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (ctx._f & Finished || !ctx._it || typeof ctx._it.throw !== "function") {
+	if (
+		ctx._f & Finished ||
+		typeof ctx._it !== "object" ||
+		typeof ctx._it.throw !== "function"
+	) {
 		throw err;
 	}
 
@@ -2086,7 +2091,7 @@ function propagateError(
 	if (
 		!ctx ||
 		ctx._f & Finished ||
-		!ctx._it ||
+		typeof ctx._it !== "object" ||
 		typeof ctx._it.throw !== "function"
 	) {
 		throw err;
@@ -2185,7 +2190,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 	}
 
 	ctx._f &= ~Updating;
-	if (!!ctx._ss && ctx._ss.size > 0) {
+	if (typeof ctx._ss === "object" && ctx._ss.size > 0) {
 		// NOTE: We have to clear the set of callbacks before calling them, because a callback which refreshes the component would otherwise cause a stack overflow.
 		const callbacks = Array.from(ctx._ss);
 		ctx._ss.clear();
@@ -2200,7 +2205,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 function unmountCtx(ctx: Context): void {
 	ctx._f |= Unmounted;
 	clearEventListeners(ctx);
-	if (ctx._cs) {
+	if (typeof ctx._cs === "object") {
 		const value = ctx._re.read(getValue(ctx._el));
 		for (const cleanup of ctx._cs) {
 			cleanup(value);
@@ -2213,7 +2218,7 @@ function unmountCtx(ctx: Context): void {
 		ctx._f |= Finished;
 		resume(ctx);
 
-		if (!!ctx._it && typeof ctx._it.return === "function") {
+		if (typeof ctx._it === "object" && typeof ctx._it.return === "function") {
 			let iteration: ChildrenIteration;
 			try {
 				ctx._f |= Stepping;
