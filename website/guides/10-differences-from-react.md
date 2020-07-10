@@ -1,6 +1,5 @@
 ---
 title: Differences from React
-publish: false
 ---
 
 Though Crank is very much inspired by and similar to React, exact compatibility is a non-goal, and we’ve used this as opportunity to “fix” a lot of pain points with React which bothered us over the years. The following is a list of differences with React, as well as justifications for why we chose to implement features differently.
