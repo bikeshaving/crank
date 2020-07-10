@@ -110,7 +110,7 @@ console.log(document.body.innerHTML); // "<div>123 abc</div>"
 ```
 
 ## Element diffing
-Crank uses the same “virtual DOM diffing” algorithm made popular by React, where elements of the tree are compared by tag and position between renders, and subtrees whose root tags don’t match are thrown away. This allows you to write declarative code which focuses on producing the right element tree, while Crank does the dirty work of managing state and mutating the DOM.
+Crank uses the same “virtual DOM diffing” algorithm made popular by React, where DOM operations and component state is determined by the element’s tag and position in the tree. This approach allows you to write declarative code which focuses on producing the right elements, while Crank does the dirty work of managing stateful components and mutating the DOM.
 
 ```jsx
 renderer.render(

@@ -4,7 +4,9 @@ title: Special Props and Tags
 
 The element diffing algorithm used by Crank is both declarative and efficient, but there are times when you might want to tweak the way it works. Crank provides special props and tags which produce different rendering behaviors.
 
-## Special Props
+## Special Crank Props
+### children
+
 ### crank-key
 By default, Crank will use an element’s tag and position to determine if it represents an update or a change to the tree. Because elements often represent stateful DOM nodes or components, it can be useful to *key* the children of an element to hint to renderers that an element has been added, moved or removed. In Crank, we do this with the special prop `crank-key`:
 
@@ -70,6 +72,19 @@ console.log(document.body.innerHTML);
 
 console.log(document.firstChild.firstChild === span); // true
 ```
+
+### crank-ref
+TKTKTKTKTKTKTKTKTKTKTKTK 
+
+## Special DOM Props
+### style
+
+### innerHTML
+
+### onevent
+
+### class/className
+
 
 ## Special Tags
 Crank provides several element tags which have special meaning when rendering. In actuality, these tags are symbols and behave similarly to string tags, except they affect the diffing algorithm and output.

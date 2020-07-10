@@ -96,7 +96,7 @@ function Greeting ({name, children}: {name: string, children: Children}) {
 ```
 
 ## Typing event listeners
-If you dispatch custom events, you’re going to want parent event listeners to be typed with the event you bubbled automatically. To do so, you can extend a global `EventMap` type provided by Crank.
+If you dispatch custom events, you may want parent event listeners to be typed with the event you bubbled automatically. To do so, you can use module augmentation to extend the `EventMap` interface provided by Crank.
 
 ```tsx
 declare global {
@@ -121,3 +121,7 @@ function MyButton (props) {
   );
 }
 ```
+
+## Typing provisions
+By default, calls to `Context.prototype.get` and `Context.prototype.set` will be loosely typed. If you want stricter typings of these methods, you can use module augmentation to extend the `ProvisionMap` interface provided by Crank.
+
