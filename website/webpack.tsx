@@ -181,7 +181,7 @@ export class Storage {
 			.resolve(this.dir, name)
 			.replace(new RegExp("^" + this.dir + "/"), "");
 		this.files = {...this.files, [name]: "./" + name};
-		const stats = await this.run();
+		const stats = await this.run1();
 		let assets = stats.assetsByChunkName![name];
 		if (!Array.isArray(assets)) {
 			assets = [assets];
