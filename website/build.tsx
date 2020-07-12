@@ -205,7 +205,7 @@ function Home(): Element {
 						</p>
 					</div>
 					<div class="feature">
-						<h3>Just JavaScript™</h3>
+						<h3>Just Functions</h3>
 						<p>
 							All components in Crank are just functions or generator functions.
 							No classes, hooks, proxies or template languages are needed.

@@ -4,15 +4,23 @@ Write JSX-driven components with functions, promises and generators.
 Documentation is available at [crank.js.org](https://crank.js.org). Crank.js is in a beta phase, and some APIs may change. To read more about the motivations for this library, you can read the [introductory blog post](https://crank.js.org/blog/introducing-crank).
 
 ## Features
-### Declarative components 
-Crank uses the same JSX syntax and diffing algorithm popularized by React, allowing you to write HTML-like code directly in your JavaScript.
+### Declarative
+Crank uses the same JSX syntax and diffing algorithm popularized by React, allowing you to write HTML-like syntax directly in your JavaScript.
 
-
-### Just JavaScript™
+### Just Functions
 All components in Crank are just functions or generator functions. No classes, hooks, proxies or template languages are needed.
 
-### Promises today
-Crank provides first-class support for promises. You can use async/await directly in components, and race components to display fallback UIs.
+### Promise-fluent
+Crank provides first-class support for promises. You can use async/await directly in components, and race async components to display fallback UIs.
+
+### Lightweight
+Crank has no dependencies, and its core is a single file. It currently measures at [4.5KB minified and gzipped](https://bundlephobia.com/result?p=@bikeshaving/crank).
+
+### Performant
+[According to synthetic benchmarks](https://krausest.github.io/js-framework-benchmark/current.html), Crank beats React in terms of execution time and memory usage. It‘s current performance is comparable to Preact and Vue.
+
+### Extensible
+TKTKTK WRITE ABOUT LIBRARY PATTERNS AND CUSTOM RENDERERS.
 
 ## Installation
 Crank is available on [NPM](https://npmjs.org/@bikeshaving/crank) in the ESModule and CommonJS formats.
