@@ -10,7 +10,7 @@ Crank uses the same JSX syntax and diffing algorithm popularized by React, allow
 ### Just Functions
 All components in Crank are just functions or generator functions. No classes, hooks, proxies or template languages are needed.
 
-### Promise-fluent
+### Native Promise Support
 Crank provides first-class support for promises. You can use async/await directly in components, and race async components to display fallback UIs.
 
 ### Lightweight

@@ -124,4 +124,3 @@ function MyButton (props) {
 
 ## Typing provisions
 By default, calls to `Context.prototype.get` and `Context.prototype.set` will be loosely typed. If you want stricter typings of these methods, you can use module augmentation to extend the `ProvisionMap` interface provided by Crank.
-

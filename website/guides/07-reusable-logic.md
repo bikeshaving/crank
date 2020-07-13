@@ -250,7 +250,7 @@ async function *Counter() {
 - Uniform logic to dispose of resources.
 
 **Cons:**
-- Promises and async iterators can be prone to race conditions and deadlocks.
+- Promises and async iterators can cause race conditions and deadlocks, without any language-level features to help you debug them.
 
 **Use cases:**
-If you use async iterators/generators already, Crank is the perfect fit for your application.
+If you use async iterators/generators already, Crank is the perfect framework for your application.

@@ -4,10 +4,6 @@ title: Lifecycles
 
 Crank uses generator functions rather than hooks or classes to define component lifecycles. Internally, this is achieved by calling the `next`, `return` and `throw` methods of the generator object as components are inserted, updated and removed from the element tree. As a developer, you can use the `yield`, `return`, `try`, `catch`, and `finally` keywords within your generator components to take full advantage of the generator’s natural lifecycle.
 
-## A review of generator functions
-
-TODO
-
 ## Returning from a generator
 
 Usually, you’ll yield in generator components so that they can continue to respond to updates, but you may want to also `return` a final state. Unlike function components, which are called and returned once for each update, once a generator component returns, it will never update again.

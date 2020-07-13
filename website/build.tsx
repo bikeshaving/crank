@@ -197,7 +197,7 @@ function Home(): Element {
 				</header>
 				<main class="features">
 					<div class="feature">
-						<h3>Declarative components</h3>
+						<h3>Declarative Components</h3>
 						<p>
 							Crank uses the same JSX syntax and diffing algorithm popularized
 							by React, allowing you to write HTML-like code directly in your
@@ -212,11 +212,11 @@ function Home(): Element {
 						</p>
 					</div>
 					<div class="feature">
-						<h3>Promises today</h3>
+						<h3>Native Promise Support</h3>
 						<p>
-							Crank provides first-class support for promises. You can use
-							async/await directly in components, and race components to display
-							fallback UIs.
+							Crank provides first-class support for promises. You can use async
+							functions as components, and race components to display fallback
+							UIs.
 						</p>
 					</div>
 				</main>
