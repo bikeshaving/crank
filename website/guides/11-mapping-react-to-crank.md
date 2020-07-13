@@ -1,6 +1,5 @@
 ---
 title: Mapping React to Crank
-unpublished: true
 ---
 
 Though Crank is inspired by React, compatibility is a non-goal, and certain concepts may be implemented using different, non-compatible APIs. The following is a reference for React developers to help them map React concepts APIs to their equivalents in Crank.
@@ -49,7 +48,7 @@ Components themselves do not provide a way to prevent updates to themselves. Ins
 ### `componentWillMount` and `componentDidMount`
 Setup code can simply be written at the top of a generator component.
 
-### getDerivedStateFromProps`, `componentWillUpdate` and `getSnapshotBeforeUpdate`
+### `getDerivedStateFromProps`, `componentWillUpdate` and `getSnapshotBeforeUpdate`
 Code which compares old and new props or state and performs side-effects can be written directly in your components. See the section on [`prop updates`](#TK) for examples of comparing old and new props. Additionally, check out the [`Context.prototoype.schedule`](#TKTKTK), which takes a callback which is called whenever the component commits.
 
 ### `componentWillUnmount`
@@ -70,7 +69,7 @@ Crank uses generator functions and local variables for local state. Refer to [th
 ### `useEffect` and `useLayoutEffect`
 Crank does not have any requirements that rendering should be “pure.” In other words, you can trigger side-effects directly while rendering because Crank does not execute components more times than you might expect. 
 
-### `useMemo`/`useCallback`
+### `useMemo` and `useCallback`
 TTKTK
 
 ### `useImperativeHandle`
@@ -125,7 +124,9 @@ function memo(Component) {
 
 See [the guide on component elements](#TKTKTKTK) for more information.
 
-## DOM props
+## DOM element props
+The following are a list of the differences in APIs when passings props to DOM elements.
+
 ### `htmlFor` and `className`
 Crank does not place any restrictions on the names of props. This means that you can write JSX like `<label class="my-label" for="my-id">Label</label>`.
 
@@ -140,7 +141,7 @@ The `style` prop value can be a `cssText` string, or an object, similar to React
 Crank provides `onevent` props, but they work using the DOM `onevent` props. Crank also provides an `EventTarget` API for components which adds and removes event listeners from the top-level nodes of each component. In both cases, Crank does not use a synthetic event API or shim events. See [the guide on events for more information](#TKTKTKTKTK).
 
 ### Controlled and Uncontrolled Props
-Crank does not have a concept of controlled or uncontrolled props, and does not have `defaultValue` props. 
+Crank does not have a concept of controlled or uncontrolled props, and does not provide `defaultValue`-style props for DOM elements. Instead, Crank renderers adopt the convention that renderers only mutate the props specified in the . For instance
 
 ### `dangerouslySetInnerHTML`
 Crank elements accept an `innerHTML` prop. Alternatively, you can use the special `Raw` tag to insert arbitrary HTML strings or even nodes in the tree. [See the guide on the `Raw` element](#TKTK) for more information.
@@ -154,4 +155,3 @@ Keys work similarly to the way they do in React. The main difference is that Cra
 Crank provides the callback ref API from React via the `crank-ref` prop. Crank does not TKTKTKT
 
 ## React Contexts
-TKTKTKTKT
