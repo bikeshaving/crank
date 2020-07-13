@@ -247,19 +247,20 @@ li {
 
 pre {
 	padding: .8em;
-	background: #e1e4ea;
 	margin: 1.5em 0;
 	font-size: .9rem;
+	background: #e1e4ea;
 	color: #0b2f5b;
 	overflow: auto;
 	tab-size: 2;
 }
 
 :not(pre) > code {
-	background: #2b303c;
 	padding: 0 .1em;
 	margin: 0;
 	display: inline;
+	background: #e1e4ea;
+	color: #0b2f5b;
 }
 
 .token.comment,
