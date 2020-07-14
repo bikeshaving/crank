@@ -5,7 +5,7 @@ title: JSX, Elements and Renderers
 
 **Note for React developers:** If you’re familiar with how JSX and elements work in React, you may want to skip ahead to the section on components. Elements in Crank work almost exactly as they do in React.
 
-Crank is best used with [JSX](https://facebook.github.io/jsx/), an XML-like syntax extension to JavaScript. It is designed to work with transpilers like Babel and TypeScript out-of-box; all you need to do is enable JSX parsing, import the `createElement` function, and include a `@jsx` comment directive (`/** @jsx createElement */`). The parser will then transpile JSX into `createElement` calls. For example, in the code below, the JSX expression assigned to `el` transpiles to the `createElement` call assigned to `el1`.
+Crank is best used with [JSX](https://facebook.github.io/jsx/), an XML-like syntax extension to JavaScript. It is designed to work with transpilers like Babel and TypeScript out-of-box; all you need to do is enable JSX parsing, import the `createElement` function, and include a `@jsx` comment directive (`/** @jsx createElement */`). The parser will then transpile JSX into `createElement` calls. For example, in the following code, the JSX expression assigned to `el` transpiles to the `createElement` call assigned to `el1`.
 
 ```jsx
 /** @jsx createElement */

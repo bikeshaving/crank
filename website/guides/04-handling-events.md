@@ -2,11 +2,10 @@
 title: Handling Events
 ---
 
-## Interactive components
-Components produce children, which are rendered as DOM nodes by the default DOM renderer. Most applications require event listeners to be attached to these nodes so that application state can be updated according to user input. To facilitate this, Crank provides two APIs for listening to events on rendered children.
+Most DOM applications require some measure of interactivity, where application state updates according to user input. To facilitate this, Crank provides two APIs for listening to events on rendered DOM nodes.
 
-### onevent props
-Crank allows you to attach event callbacks directly to host element using onevent props. For the DOM renderer, these props start with `on`, are all lowercase, and correspond exactly to the properties specified by the DOM’s [GlobalEventHandlers mixin](https://developer.mozilla.org/en-US/docs/Web/API/GlobalEventHandlers). By combining event props, local variables and `this.refresh`, you can write interactive components:
+## onevent props
+You can attach event callbacks to host element directly using onevent props. These props start with `on`, are all lowercase, and correspond exactly to the properties as specified according to the DOM’s [GlobalEventHandlers mixin API](https://developer.mozilla.org/en-US/docs/Web/API/GlobalEventHandlers). By combining event props, local variables and `this.refresh`, you can write interactive components.
 
 ```jsx
 function *Clicker() {
@@ -27,7 +26,7 @@ function *Clicker() {
 }
 ```
 
-### The EventTarget interface
+## The EventTarget interface
 As an alternative to the `onevent` API, Crank contexts also implement the same `EventTarget` interface used by the DOM. The `addEventListener` method attaches a listener to a component’s rendered DOM elements.
 
 ```jsx
@@ -84,7 +83,7 @@ On the other hand, using `this.addEventListener` allows you to take full advanta
 
 Crank supports both API styles for convenience and flexibility.
 
-### Dispatching events
+## Dispatching events
 Crank contexts implement the full EventTarget interface, meaning you can use the `dispatchEvent` method and the [`CustomEvent`](https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent) constructor to bubble events to parent components:
 
 ```jsx

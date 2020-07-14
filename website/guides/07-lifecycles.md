@@ -137,6 +137,6 @@ async function *MyInput(props) {
 }
 ```
 
-The above component focuses every time it is rerendered. You might notice that we use an async generator component here. That’s because async generators continuously resume, and rely on the `for await` loop to await new updates.
+The `MyInput` component focuses every time it is rerendered. You might notice that we use an async generator component here. That’s because async generators continuously resume, and rely on the `for await` loop to await new updates.
 
 **TODO: Design APIs/Document them for working with yield expressions in sync generators.**

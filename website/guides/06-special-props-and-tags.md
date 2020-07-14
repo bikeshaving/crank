@@ -166,7 +166,7 @@ function memo(Component) {
 }
 ```
 
-In the example above, `memo` is a higher-order component, a function which takes a component and returns a component which compares new and old props and yields a `Copy` element if old and new props are shallowly equal. A `Copy` element can appear anywhere in an element tree to prevent rerenderings, and the only prop `Copy` elements take is the `crank-key` prop, allowing you to copy elements by key rather than position.
+In this example, `memo` is a higher-order component, a function which takes a component and returns a component which compares new and old props and yields a `Copy` element if old and new props are shallowly equal. A `Copy` element can appear anywhere in an element tree to prevent rerenderings, and the only prop `Copy` elements take is the `crank-key` prop, allowing you to copy elements by key rather than position.
 
 ### Raw
 Sometimes, you may want to insert raw HTML or actual DOM nodes directly into the element tree. Crank allows you to do this with the `Raw` element. The `Raw` element takes a `value` prop which is interpreted by the renderer. For the DOM renderer, if `value` is an HTML string, the renderer will parse and insert the resulting DOM nodes, and if it’s already a DOM node Crank will insert them in place. Be careful when using `Raw` elements, as passing unsanitized text inputs can lead to security vulnerabilities.
