@@ -16,7 +16,7 @@ const el = <div id="element">An element</div>;
 const el1 = createElement("div", {id: "element"}, "An element");
 ```
 
-The `createElement` function returns an *element*, a JavaScript object. Elements on their own don’t do anything special; rather, Crank provides special classes called *renderers* which interpret elements to produce and manage DOM nodes, HTML strings, canvas scene graphs, or whatever else you can think of. Crank ships with two renderers for web development: one for managing DOM nodes, available through the module `@bikeshaving/crank/dom`, and one for creating HTML strings, available through the module `@bikeshaving/crank/html`. You can use these modules to render interactive user interfaces in the browser and HTML responses on the server.
+The `createElement` function returns an *element*, a JavaScript object. Elements on their own don’t do anything special; instead, Crank provides special classes called *renderers* which interpret elements to produce and manage DOM nodes, HTML strings, canvas scene graphs, or whatever else you can think of. Crank ships with two renderers for web development: one for managing DOM nodes, available through the module `@bikeshaving/crank/dom`, and one for creating HTML strings, available through the module `@bikeshaving/crank/html`. You can use these modules to render interactive user interfaces in the browser and HTML responses on the server.
 
 ```jsx
 /** @jsx createElement */
@@ -35,9 +35,11 @@ console.log(HTMLRenderer.render(el)); // <div id="element">Hello world</div>
 
 ![Image of a JSX element](../static/parts-of-jsx.svg)
 
-An element can be thought of as having three main parts: a *tag*, *props* and *children*. These roughly correspond to tags, attributes and content in HTML, and for the most part, you can copy-paste HTML into JavaScript and have things work as you would expect. The main difference is that JSX has to be well-balanced like XML, so void tags must have a closing slash (`<input />` not `<input>`). Also, if you forget to close an element or mismatch opening and closing tags, the parser will throw an error, whereas HTML can contain unbalanced or malformed contents and mostly still work. The advantage of using JSX is that it allows you to interpolate JavaScript expressions as its tag, props or children.
+An element can be thought of as having three main parts: a *tag*, *props* and *children*. These roughly correspond to tags, attributes and content in HTML, and for the most part, you can copy-paste HTML into JavaScript and have things work as you would expect. The main difference is that JSX has to be well-balanced like XML, so void tags must have a closing slash (`<hr />` not `<hr>`). Also, if you forget to close an element or mismatch opening and closing tags, the parser will throw an error, whereas HTML can contain unbalanced or malformed contents and mostly still work. The advantage of using JSX is that it allows you to interpolate arbitrary JavaScript expressions as an element’s tag, props or children.
 
 ### Tags
+Tags are the first part of an element expression, and can be thought of as the “name” or “type” of the element. JSX parsers will transpile the tag name as the first argument of a `createElement` call. 
+
 ```jsx
 const intrinsicEl = <div />;
 // transpiles to:
@@ -48,11 +50,11 @@ const componentEl = <Component />;
 const componentEl1 = createElement(Component, null);
 ```
 
-Tags are the first part of an element expression, and can be thought of as the “name” or “type” of the element. It is transpiled to the first argument of a `createElement` call. By convention, JSX parsers treat lower-cased tags as strings and capitalized tags as variables. When a tag is a string, this signifies that the element will be handled by the renderer. In Crank, we call elements with string tags *intrinsic* elements, and for both of the web renderers, these elements correspond to actual HTML elements like `div` or `input`. As we’ll see later, elements can also have function tags, in which case the behavior of the element is defined by the execution of the referenced function and not the renderer. Elements with functions for tags are called *component elements*.
+By convention, JSX parsers treat lower-cased tags as strings and capitalized tags as variables. When a tag is a string, this signifies that the element will be handled by the renderer. We call elements with string tags *host* or *intrinsic* elements, and for both of the web renderers, these elements correspond to actual HTML elements like `div` or `input`. As we’ll see later, elements can also have function tags, in which case the behavior of the element is defined by the execution of the referenced function and not the renderer. Elements with function tags are called *component elements*.
 
 
 ### Props
-The attribute-like `key="value"` syntax in JSX is transpiled to a single object for each element, and is passed as the second argument to the resulting `createElement` call. We call this object the *props* object, short for “properties.” The value of each prop is a string if the string-like syntax is used (`key="value"`), or it can be an interpolated JavaScript value if the value is placed within curly brackets (`key={value}`). Props are used by both intrinsic and component elements to “pass” values into them, similar to how you might pass values into functions as arguments when invoking them.
+JSX parsers coalesce the attribute-like `key="value"` syntax to a single object for each element, and pass this object as the second argument to the resulting `createElement` call.
 
 ```jsx
 const myClass = "my-class";
@@ -62,6 +64,8 @@ const el1 = createElement("div", {id: "my-id", "class": myClass});
 
 console.log(el.props); // {id: "my-id", "class": "my-class"}
 ```
+
+We call this object the *props* object, short for “properties.” The value of each prop is a string if the string-like syntax is used (`key="value"`), or it can be an interpolated JavaScript value if the value is placed within curly brackets (`key={value}`). You can use props to “pass” values into host and component elements, similar to how you might pass arguments into functions when invoking them.
 
 If you already have an object that you want to use as props, you can use the special JSX `...` syntax to “spread” it into an element. This works similarly to [ES6 spread syntax](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax).
 
@@ -91,7 +95,7 @@ const list1 = createElement("ul", null,
 console.log(list.props.children.length); // 2
 ```
 
-As you can see in the example, the contents of elements which are not themselves part of element expressions are interpreted as strings. However, just as with props, you can use curly brackets to interpolate JavaScript expressions into an element’s children. Besides elements and strings, almost every value in JavaScript can participate in an element tree. Numbers are rendered as strings, and the values `null`, `undefined`, `true` and `false` are erased, allowing you to render things conditionally with boolean expressions.
+As you can see in the example, JSX parsers interpret the contents of an element which fall outside elements as strings. However, just as with props, you can use curly brackets to interpolate JavaScript expressions into an element’s children. Besides elements and strings, almost every value in JavaScript can participate in an element tree. Numbers are rendered as strings, and the values `null`, `undefined`, `true` and `false` are erased, allowing you to render things conditionally with boolean expressions.
 
 ```jsx
 const el = <div>{"a"}{1 + 1}{true}{false}{null}{undefined}</div>;
@@ -133,3 +137,5 @@ renderer.render(
 console.log(document.body.firstChild === div); // true
 console.log(document.body.firstChild.firstChild === span); // true
 ```
+
+**NOTE:** We usually avoid using the term “virtual DOM” in Crank, insofar as the Crank renderer can render to multiple environments; instead, we use the term “element diffing” to mean mostly the same thing.
