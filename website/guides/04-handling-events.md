@@ -2,7 +2,7 @@
 title: Handling Events
 ---
 
-Most DOM applications require some measure of interactivity, where application state updates according to user input. To facilitate this, Crank provides two APIs for listening to events on rendered DOM nodes.
+Most DOM applications require some measure of interactivity, where the user interface updates according to user input. To facilitate this, Crank provides two APIs for listening to events on rendered DOM nodes.
 
 ## onevent props
 You can attach event callbacks to host element directly using onevent props. These props start with `on`, are all lowercase, and correspond exactly to the properties as specified according to the DOM’s [GlobalEventHandlers mixin API](https://developer.mozilla.org/en-US/docs/Web/API/GlobalEventHandlers). By combining event props, local variables and `this.refresh`, you can write interactive components.
@@ -27,7 +27,7 @@ function *Clicker() {
 ```
 
 ## The EventTarget interface
-As an alternative to the `onevent` API, Crank contexts also implement the same `EventTarget` interface used by the DOM. The `addEventListener` method attaches a listener to a component’s rendered DOM elements.
+As an alternative to the `onevent` API, Crank contexts also implement the same `EventTarget` interface used by the DOM. The `addEventListener` method attaches a listener to a component’s rendered DOM.
 
 ```jsx
 function *Clicker() {
@@ -74,12 +74,12 @@ function *Clicker() {
 }
 ```
 
-Because the event listener is attached to the outer `div`, we have to filter events by `ev.target.tagName` in the listener to make sure we’re not incrementing `count` based on clicks which don’t target the `button`.
+Because the event listener is attached to the outer `div`, we have to filter events by `ev.target.tagName` in the listener to make sure we’re not incrementing `count` based on clicks which don’t target the `button` element.
 
 ## When to use onevent props and the EventTarget API
-The props-based onevent API and the context-based EventTarget API both have their advantages. On the one hand, using onevent props means you don’t have to filter events by target, and can register them on the exact element you’d like to listen to.
+The props-based onevent API and the context-based EventTarget API both have their advantages. On the one hand, using onevent props means you don’t have to filter events by target, and you can register them on the exact element you’d like to listen to.
 
-On the other hand, using `this.addEventListener` allows you to take full advantage of the EventTarget API, including registering `passive` events or events which are dispatched during the `capture` phase. Additionally, the EventTarget API can be used without referencing or accessing the child elements which a component renders, meaning you can use it to listen to components whose children are passed in, or in utility functions which don’t have access to the rendered elements at all.
+On the other hand, using `this.addEventListener` allows you to take full advantage of the EventTarget API, including registering passive event listeners or events which are dispatched during the capture phase. Additionally, the EventTarget API can be used without referencing or accessing the child elements which a component renders, meaning you can use it to listen to components whose children are passed in, or in utility functions which don’t have access to the produced elements.
 
 Crank supports both API styles for convenience and flexibility.
 
@@ -126,4 +126,4 @@ function *MyApp() {
 }
 ```
 
-`MyButton` is a function component which wraps a `button` element. It bubbles a `CustomEvent` whose type is `"mybuttonclick"` when it is pressed, and whose `detail` property contains data about the id of the clicked button. This event is not bubbled to parent DOM nodes but to parent component contexts, and in the example, it propagates to the context of `MyApp`, which listens for the event using the `addEventListener` method. Using custom events and event bubbling allows you to encapsulate state transitions within component hierarchies without the need for complex state management solutions used in other frameworks like Redux or VueX.
+`MyButton` is a function component which wraps a `button` element. It dispatches a `CustomEvent` whose type is `"mybuttonclick"` when it is pressed, and whose `detail` property contains data about the id of the clicked button. This event is not triggered or bubbled on the underlying DOM nodes; instead, it can be listened for by parent component contexts using event bubbling, and in the example, the event propagates and is handled by the `MyApp` component. Using custom events and event bubbling allows you to encapsulate state transitions within component hierarchies without the need for complex state management solutions used in other frameworks like Redux or VueX.

@@ -16,7 +16,7 @@ renderer.render(<Greeting name="World" />, document.body);
 console.log(document.body.innerHTML); // "<div>Hello World</div>"
 ```
 
-Component elements can be passed children just as host elements can. The `createElement` function will add children to the props object under the name `children`, and it is up to the component to place the children somewhere in the returned element tree. If you don’t use the `children` prop, the `children` passed in will be ignored.
+Component elements can be passed children just as host elements can. The `createElement` function will add children to the props object under the name `children`, and it is up to the component to place the children somewhere in the returned element tree. If you don’t use the `children` prop, it will be ignored.
 
 ```js
 function Greeting({name, children}) {
@@ -37,7 +37,7 @@ renderer.render(
 console.log(document.body.innerHTML); // "<div>Message for Nemo: <span>Howdy</span></div>"
 ```
 
-You may have noticed in the preceding examples that we used [object destructuring](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment#Object_destructuring) on the props parameter for convenience. You can further assign default values to each prop using JavaScript’s default value syntax.
+You may have noticed in the preceding examples that we used [object destructuring](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment#Object_destructuring) on the props parameter for convenience. You can further assign default values to a specific prop by using JavaScript’s default value syntax.
 
 ```js
 function Greeting({name="World"}) {
@@ -48,7 +48,7 @@ renderer.render(<Greeting />, document.body); // "<div>Hello World</div>"
 ```
 
 ## Stateful Components
-Eventually, you’re going to want to write components with local state. In Crank, we use [generator functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*) to do so.
+Eventually, you’re going to want to write components with local state. In Crank, we use [generator functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*) to do so. These types of components are referred to as *sync generator components*.
 
 ```jsx
 function *Counter() {
@@ -85,7 +85,7 @@ console.log(document.body.innerHTML);
 Because we’re now yielding elements rather than returning them, we can make components stateful using variables in the local scope. Every time the component is updated, Crank resumes the generator, pausing at the next `yield`. The yielded expressions, usually elements, are then recursively rendered, just as if it were returned in a sync function component. Furthermore, Crank uses the same diffing algorithm which reuses DOM nodes to reuse generator objects, so that the execution of the generator is preserved between renders. This allows local state to be encapsulated within the generator’s scope.
 
 ### Contexts
-In the preceding example, the `Counter` component’s local state only changes when it is rerendered, but we may want to write components which update themselves based on timers or events. Crank allows components to control themselves by passing in a custom object called a *context* as the `this` value of each component. These contexts provide several utility methods, most important of which is `this.refresh`, which tells Crank to update the related component in place. For generator components, Crank resumes the generator component so it can yield another value.
+In the preceding example, the `Counter` component’s local state only changes when it is rerendered, but we may want to write components which update themselves based on timers or events. Crank allows components to control themselves by passing in a custom object called a *context* as the `this` keyword of each component. Contexts provide several utility methods, most important of which is the `refresh` method, which tells Crank to update the related component in place.
 
 ```jsx
 function *Timer() {
@@ -107,7 +107,7 @@ function *Timer() {
 }
 ```
 
-This `Timer` component is similar to the `Counter` one, except now the state (the local variable `seconds`) is updated in the callback passed to `setInterval`, rather than when the component is rerendered. The `this.refresh` method is called to ensure that the generator is stepped through each interval, so that the rendered DOM actually reflects the updated `seconds` variable.
+This `Timer` component is similar to the `Counter` one, except now the state (the local variable `seconds`) is updated in the callback passed to `setInterval`, rather than when the component is rerendered. Additionally, `refresh` method is called to ensure that the generator is stepped through each interval, so that the rendered DOM actually reflects the updated `seconds` variable.
 
 One important detail about the `Timer` example is that it cleans up after itself with `clearInterval`. Crank will call the `return` method on generator components when the element is removed from the tree, so that the finally block executes and `clearInterval` is called. In this way, you can use the natural lifecycle of a generator to write setup and teardown logic for components, all within the same scope.
 
@@ -127,6 +127,7 @@ renderer.render(<LabeledCounter message="The count is now:" />, document.body);
 console.log(document.body.innerHTML); // "<div>The count is now: 1</div>"
 renderer.render(<LabeledCounter message="The count is now:" />, document.body);
 console.log(document.body.innerHTML); // "<div>The count is now: 2</div>"
+
 renderer.render(<LabeledCounter message="What if I update the message:" />, document.body);
 // WOOPS!
 console.log(document.body.innerHTML); // "<div>The count is now: 3</div>"
@@ -153,7 +154,7 @@ console.log(document.body.innerHTML); // "<div>What if I update the message: 2</
 
 By replacing the `while (true)` loop with a `for…of` loop which iterates over `this`, you can get the latest props each time the generator is resumed. This is possible because contexts are an iterable of the latest props passed to elements.
 
-One idiom we see in the preceding example is that we overwrite the variables declared via the generator’s parameters (`message`) with the `for…of` loop. This allows those variables to always remain in sync with the current props passed to each component. However, there is no reason you have to always overwrite old props in the `for` expression, meaning you can assign new props to a different variable and compare them against the old ones:
+One idiom we see in the preceding example is that we overwrite the variables declared via the generator’s parameters (`message`) with the destructuring expression in the `for…of` statement. This is an easy way to make sure those variables stay in sync with the current props of the component. However, there is no requirement that you must always overwrite old props in the `for` expression, meaning you can assign new props to a different variable and compare them against the old ones:
 
 ```jsx
 function *Greeting({name}) {

@@ -198,7 +198,7 @@ function Home(): Element {
 				<h2>Features</h2>
 				<main class="features">
 					<div class="feature">
-						<h3>Declarative Components</h3>
+						<h3>Declarative</h3>
 						<p>
 							Crank uses the same JSX syntax and diffing algorithm popularized
 							by React, allowing you to write HTML-like code directly in
@@ -215,8 +215,8 @@ function Home(): Element {
 					<div class="feature">
 						<h3>Promise-friendly</h3>
 						<p>
-							Crank provides first-class support for promises. You can use
-							async/await directly in components, and race components to display
+							Crank provides first-class support for promises. You can define
+							components as async functions and race renderings to display
 							fallback UIs.
 						</p>
 					</div>
@@ -238,7 +238,7 @@ function Home(): Element {
 								According to benchmarks
 							</a>
 							, Crank beats React in terms of speed and memory usage, and is
-							comparable to that of Preact or Vue.
+							currently comparable to Preact or Vue.
 						</p>
 					</div>
 					<div class="feature">
