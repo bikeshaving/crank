@@ -37,7 +37,7 @@ renderer.render(
 console.log(document.body.innerHTML); // "<div>Message for Nemo: <span>Howdy</span></div>"
 ```
 
-As seen in the examples above, you can use [object destructuring](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment#Object_destructuring) on the props parameter for convenience. This means you can assign default values to each prop using JavaScript’s default value syntax:
+You may have noticed in the preceding examples that we used [object destructuring](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment#Object_destructuring) on the props parameter for convenience. You can further assign default values to each prop using JavaScript’s default value syntax.
 
 ```js
 function Greeting({name="World"}) {
@@ -85,7 +85,7 @@ console.log(document.body.innerHTML);
 Because we’re now yielding elements rather than returning them, we can make components stateful using variables in the local scope. Every time the component is updated, Crank resumes the generator, pausing at the next `yield`. The yielded expressions, usually elements, are then recursively rendered, just as if it were returned in a sync function component. Furthermore, Crank uses the same diffing algorithm which reuses DOM nodes to reuse generator objects, so that the execution of the generator is preserved between renders. This allows local state to be encapsulated within the generator’s scope.
 
 ### Contexts
-In the above example, the `Counter` component’s local state only changes when it is rerendered, but we may want to write components which update themselves based on timers or events. Crank allows components to control themselves by passing in a custom object called a *context* as the `this` value of each component. These contexts provide several utility methods, most important of which is `this.refresh`, which tells Crank to update the related component in place. For generator components, Crank resumes the generator component so it can yield another value.
+In the preceding example, the `Counter` component’s local state only changes when it is rerendered, but we may want to write components which update themselves based on timers or events. Crank allows components to control themselves by passing in a custom object called a *context* as the `this` value of each component. These contexts provide several utility methods, most important of which is `this.refresh`, which tells Crank to update the related component in place. For generator components, Crank resumes the generator component so it can yield another value.
 
 ```jsx
 function *Timer() {
@@ -153,7 +153,7 @@ console.log(document.body.innerHTML); // "<div>What if I update the message: 2</
 
 By replacing the `while (true)` loop with a `for…of` loop which iterates over `this`, you can get the latest props each time the generator is resumed. This is possible because contexts are an iterable of the latest props passed to elements.
 
-One idiom we see in the example above is that we overwrite the variables declared via the generator’s parameters (`message`) with the `for…of` loop. This allows those variables to always remain in sync with the current props passed to each component. However, there is no reason you have to always overwrite old props in the `for` expression, meaning you can assign new props to a different variable and compare them against the old ones:
+One idiom we see in the preceding example is that we overwrite the variables declared via the generator’s parameters (`message`) with the `for…of` loop. This allows those variables to always remain in sync with the current props passed to each component. However, there is no reason you have to always overwrite old props in the `for` expression, meaning you can assign new props to a different variable and compare them against the old ones:
 
 ```jsx
 function *Greeting({name}) {
