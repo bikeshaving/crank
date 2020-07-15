@@ -41,6 +41,20 @@ interface DocInfo {
 	publishDate?: Date;
 }
 
+const markedRenderer: Partial<marked.Renderer> = {
+	heading(text, level, raw, slugger) {
+		const slug = slugger.slug(raw);
+		if (level <= 3) {
+			return `<h${level}>
+				<a class="anchor" name="${slug}" href="#${slug}">${text}</a>
+			</h${level}>`;
+		}
+		return `<h${level}>${text}</h${level}>`;
+	},
+};
+
+marked.use({renderer: markedRenderer as marked.Renderer});
+
 async function parseDocs(
 	name: string,
 	root: string = name,
