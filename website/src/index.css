@@ -25,11 +25,16 @@ img {
 h1, h2, h3, h4, h5, h6 {
 	padding: 0;
 	margin: 1.4em 0;
+	a {
+		color: inherit;
+		text-decoration: none;
+	}
 }
 
 h1, h2, h3 {
 	color: #dbb368;
 }
+
 
 blockquote {
 	border-left: 2px solid #dbb368;
@@ -43,11 +48,21 @@ blockquote {
 
 a {
 	color: inherit;
+	&.current {
+		color: #dbb368;
+	}
+
+	&.anchor {
+		outline: none;
+		&::before {
+			content: "";
+			display: inline-block;
+			margin-top: -5em;
+			padding-top: 5em;
+		}
+	}
 }
 
-a.current {
-	color: #dbb368;
-}
 
 li {
 	margin: 0 0 1em;
@@ -172,11 +187,11 @@ li {
 .content {
 	margin: 0 auto;
 	padding: 2rem 1rem;
-	:first-child {
+	> :first-child {
 		margin-top: 0;
 	}
 
-	:last-child {
+	> :last-child {
 		margin-bottom: 0;
 	}
 
