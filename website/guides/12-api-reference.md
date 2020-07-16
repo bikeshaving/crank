@@ -209,10 +209,10 @@ An abstract class which is subclassed to render to different target environments
 - `TResult`
 
 #### Methods
-- [`constructor`](#Renderer.constructor)
+- `constructor`
   Creates a new Renderer. The base `Renderer` constructor accepts no parameters.
 
-- [`render`](#Renderer.render)
+- `render`
   **Parameters:**
   - `children: Children`
   - `root?: TRoot`
@@ -232,13 +232,13 @@ A class which is instantiated and passed to every component function as its `thi
 - `value` - **Readonly** The current rendered value of the component.
 
 #### Methods
-- [`[Symbol.iterator]`](#Context[Symbol.iterator])
-- [`[Symbol.asyncIterator]`](#Context[Symbol.asyncIterator])
-- [`get`](#Context.get)
-- [`set`](#Context.set)
-- [`refresh`](#Context.refresh)
-- [`schedule`](#Context.schedule)
-- [`cleanup`](#Context.cleanup)
-- [`addEventListener`](#Context.addEventListener)
-- [`removeEventListener`](#Context.removeEventListener)
-- [`dispatchEvent`](#Context.dispatchEvent)
+- `[Symbol.iterator]`
+- `[Symbol.asyncIterator]`
+- `get`
+- `set`
+- `refresh`
+- `schedule`
+- `cleanup`
+- `addEventListener`
+- `removeEventListener`
+- `dispatchEvent`
