@@ -4,7 +4,7 @@ title: Special Props and Tags
 
 ## Special Props
 
-The following are props which can be used with all elements, regardless of tag or renderer.
+The following props apply to all elements, regardless of tag or renderer.
 
 ### `crank-key`
 By default, Crank will use an element’s tag and position to determine if it represents an update or a change to the tree. Because elements often represent stateful DOM nodes or components, it can be useful to *key* the children of an element to hint to renderers that an element has been added, moved or removed. In Crank, we do this with the special prop `crank-key`:
@@ -42,7 +42,7 @@ console.log(document.body.innerHTML);
 // "<div><span>Id: 3</span><span>Id: 2</span><span>Id: 1</span><div>"
 ```
 
-Keys are scoped to an element’s children. When rendering iterables, it’s useful to key elements of the iterable, because in this case it’s common for elements to be added, removed or rearranged. Both host and component elements can be keyed with `crank-key`.
+Keys are scoped to an element’s children, and can be any JavaScript value. When rendering iterables, it’s useful to key elements of the iterable, because it’s common for the contents of rendered iterables to added, moved or removed. All elements in the element tree can be keyed.
 
 ```jsx
 function *Shuffler() {
@@ -72,8 +72,8 @@ console.log(document.body.innerHTML);
 console.log(document.firstChild.firstChild === span); // true
 ```
 
-### crank-ref
-Sometimes, you may want to access the rendered value of a specific element in the element tree. To do this, you can use the `crank-ref` prop, which takes a callback which is fired when the element is actually rendered.
+### `crank-ref`
+Sometimes, you may want to access the rendered value of a specific element in the element tree. To do this, you can pass a callback as the `crank-ref` prop. This callback is called with the rendered value of the element when the element has committed.
 
 ```tsx
 function *MyPlayer() {
@@ -96,11 +96,11 @@ function *MyPlayer() {
 Refs can be attached to any element in the element tree, and the value passed to the callback will vary according the type of the element and the renderer.
 
 ### `children`
-The `children` prop passed to components is special because it is not usually set with JSX’s `key="value"` prop syntax, but by the contents between the opening and closing tags. Crank places no limitations on the types of values that can be passed into components as children, but patterns like [render props](https://reactjs.org/docs/render-props.html), where a callback is passed as the child of a component should be avoided.
+The `children` prop passed to components is special because it is not usually set with JSX’s `key="value"` prop syntax, but by the contents between the opening and closing tags. Crank places no limitations on the types of values that can be passed into components as children, but patterns like [render props](https://reactjs.org/docs/render-props.html) from the React community, where a callback is passed as the child of a component, should be avoided.
 
-The actual type of the `children` prop will vary according to the number of children passed in. If a component element has no children (`<Component />`), the `children` prop will be undefined, if it has one child (`<Component><Child /></Component>`), the `children` prop will be set to that child, and if it has multiple children (`<Component><Child /><Child /></Component>`), the `children` prop will be set to an array of those children. The reason we do this is to avoid an array allocation. All props have to be retained between renders, and avoiding allocating an extra array for every element in the tree can reduce the runtime memory costs of the framework dramatically.
+The actual type of the `children` prop will vary according to the number of children passed in. If a component element has no children (`<Component />`), the `children` prop will be undefined, if it has one child (`<Component><Child /></Component>`), the `children` prop will be set to that child, and if it has multiple children (`<Component><Child /><Child /></Component>`), the `children` prop will be set to an array of those children. We do this to avoid an array allocation; all props have to be retained between renders, and avoiding allocating an extra array for every element in the tree can noticeably reduce the runtime memory costs of applications.
 
-Therefore, the `children` prop should be treated as a black box, only to be rendered somewhere within a component’s returned or yielded children. Attempting to iterate over or manipulate the passed in children of a component is an anti-pattern, and you should use [event bubbling](#TKTKTKT) or [provisions](#TTKTKTK) to coordinate ancestor/descendant components.
+Therefore, the `children` prop should be treated as a black box, only to be rendered somewhere within a component’s returned or yielded children. Attempting to iterate over or manipulate the passed in children of a component is an anti-pattern, and you should use [event bubbling](#TKTKTKT) or [provisions](#TTKTKTK) to coordinate ancestor and descendant components.
 
 ## Special DOM Props
 
@@ -113,7 +113,7 @@ The style prop can be used to add inline styles to an element. It can either be 
 <div style="color: red"><span style={{"font-size": "16px"}}>Hello</span></div>
 ```
 
-Unlike other JSX frameworks, Crank does not camel-case style properties or add pixel units to numbers.
+**Note:** Unlike other JSX frameworks, Crank does not camel-case style names or add pixel units to numbers.
 
 ### innerHTML
 The innerHTML prop can be used to set the `innerHTML` of an element.

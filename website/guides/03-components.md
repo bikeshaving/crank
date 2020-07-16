@@ -5,7 +5,7 @@ title: Components
 So far, we’ve only seen and used host elements, but eventually, we’ll want to group parts of the element tree into reusable *components.* In Crank, all components are functions; there is no class-based component API.
 
 ## Basic Components
-The simplest kind of component you can write is a *sync function component*. When rendered, the function is invoked with the props object of the element as its first argument, and the return value of the function is recursively rendered as the element’s children.
+The simplest kind of component is a *function component*. When rendered, the function is invoked with the props of the element as its first argument, and the return value of the function is recursively rendered as the element’s children.
 
 ```js
 function Greeting({name}) {
@@ -37,18 +37,8 @@ renderer.render(
 console.log(document.body.innerHTML); // "<div>Message for Nemo: <span>Howdy</span></div>"
 ```
 
-You may have noticed in the preceding examples that we used [object destructuring](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment#Object_destructuring) on the props parameter for convenience. You can further assign default values to a specific prop by using JavaScript’s default value syntax.
-
-```js
-function Greeting({name="World"}) {
-  return <div>Hello, {name}</div>;
-}
-
-renderer.render(<Greeting />, document.body); // "<div>Hello World</div>"
-```
-
 ## Stateful Components
-Eventually, you’re going to want to write components with local state. In Crank, we use [generator functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*) to do so. These types of components are referred to as *sync generator components*.
+Eventually, youre going to want to write components with local state. In Crank, we use [generator functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*) to do so. These types of components are referred to as *generator components*.
 
 ```jsx
 function *Counter() {
@@ -82,10 +72,10 @@ console.log(document.body.innerHTML);
 // "<div>You have updated this component 1 time</div>"
 ```
 
-Because we’re now yielding elements rather than returning them, we can make components stateful using variables in the local scope. Every time the component is updated, Crank resumes the generator, pausing at the next `yield`. The yielded expressions, usually elements, are then recursively rendered, just as if it were returned in a sync function component. Furthermore, Crank uses the same diffing algorithm which reuses DOM nodes to reuse generator objects, so that the execution of the generator is preserved between renders. This allows local state to be encapsulated within the generator’s scope.
+By yielding elements rather than returning them, we can make components stateful using variables in the generator’s local scope. Every time the component is updated, Crank resumes the generator, pausing at the next `yield`. The yielded expressions, usually elements, are then recursively rendered, just as if they were returned from a function component. Furthermore, Crank uses the same diffing algorithm which reuses DOM nodes to reuse generator objects, so that the execution of generator components are preserved between renders.
 
 ### Contexts
-In the preceding example, the `Counter` component’s local state only changes when it is rerendered, but we may want to write components which update themselves based on timers or events. Crank allows components to control themselves by passing in a custom object called a *context* as the `this` keyword of each component. Contexts provide several utility methods, most important of which is the `refresh` method, which tells Crank to update the related component in place.
+In the preceding example, the `Counter` component’s local state changes when it is rerendered, but we may want to write components which update themselves instead according to timers or events. Crank allows components to control themselves by passing in an object called a *context* as the `this` keyword of each component. Contexts provide several utility methods, most important of which is the `refresh` method, which tells Crank to update the related component instance in place.
 
 ```jsx
 function *Timer() {
@@ -111,7 +101,7 @@ This `Timer` component is similar to the `Counter` one, except now the state (th
 
 One important detail about the `Timer` example is that it cleans up after itself with `clearInterval`. Crank will call the `return` method on generator components when the element is removed from the tree, so that the finally block executes and `clearInterval` is called. In this way, you can use the natural lifecycle of a generator to write setup and teardown logic for components, all within the same scope.
 
-### Prop updates
+### Props Updates
 The generator components we’ve seen so far haven’t used props. Generator components can accept props as its first parameter just like regular function components.
 
 ```jsx
@@ -183,3 +173,26 @@ console.log(document.body.innerHTML); // "<div>Hello again Bob</div>"
 ```
 
 The fact that state is just local variables allows us to blur the lines between props and state, in a way that is easy to understand and without lifecycle methods like `componentWillUpdate` from React. With generators and `for` loops, comparing old and new props is as easy as comparing adjacent elements of an array.
+
+## Default Props
+You may have noticed in the preceding examples that we used [object destructuring](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment#Object_destructuring) on the props parameter for convenience. You can further assign default values to a specific prop by using JavaScript’s default value syntax.
+
+```jsx
+function Greeting({name="World"}) {
+  return <div>Hello, {name}</div>;
+}
+
+renderer.render(<Greeting />, document.body); // "<div>Hello World</div>"
+```
+
+This works well for function components, but for generator components, you should make sure that you use the same default in both the parameter list and the `for` statement.
+
+```jsx
+function *Greeting({name="World"}) {
+  for ({name="World"} of this) {
+    yield <div>Hello, {name}</div>;
+  }
+}
+```
+
+Components which mismatch default props between these two positions can cause surprising behavior.
