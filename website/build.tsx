@@ -100,8 +100,8 @@ function Root({title, children, url}: RootProps): Element {
 	return (
 		<Fragment>
 			<Raw value="<!DOCTYPE html>" />
-			<html lang="en">
-				<Page storage={storage}>
+			<Page storage={storage}>
+				<html lang="en">
 					<head>
 						<meta charset="UTF-8" />
 						<meta name="viewport" content="width=device-width" />
@@ -114,8 +114,8 @@ function Root({title, children, url}: RootProps): Element {
 						{children}
 						<Script src="index.tsx" />
 					</body>
-				</Page>
-			</html>
+				</html>
+			</Page>
 		</Fragment>
 	);
 }

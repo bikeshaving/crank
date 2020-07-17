@@ -6,7 +6,7 @@ The core Crank module provides an abstract `Renderer` class which can be extende
 
 **Warning:** The custom renderer API is currently unstable both because of its performance-sensitive nature and because the exact complications of rendering to a wide variety of environments are not yet fully known. If you maintain a Crank renderer, you *will* have to deal with breaking changes as Crank is optimized and as new renderer requirements are discovered.
 
-## The lifecycle of an element
+## The Lifecycle of an Element
 
 Crank does not provide lifecycle methods or hooks as part of its public interface, instead opting to rely on the natural lifecycle of generator functions. However, we use common lifecycle terms like *mounting*, *updating*, *unmounting* and *committing* internally to conceptualize the process of rendering.
 
@@ -14,7 +14,7 @@ Rendering is essentially a depth-first walk of an element tree, where we recursi
 
 “Committing” is the part of rendering process where we actually perform the operations which create, mutate and dispose of nodes. Elements are committed in a *post-order traversal* of the tree, meaning that by the time a specific element is committed, all of its children will have already committed as well. This is done so that rendering side-effects happen all at once, even if there are async components in the tree, which leads to a more consistent and performant user experience. By contrast, components can be thought of as executing in a *pre-order traversal* of the tree, because the only way to get the children of a component element is to execute its component.
 
-## Types associated with the Renderer class
+## Renderer Type Parameters
 
 **Note:** Renderer development is considerably more abstract than application development, and using the TypeScript types provided by Crank can make this process much easier to understand. Therefore, this guide both assumes familiarity with TypeScript and uses TypeScript syntax in its examples.
 

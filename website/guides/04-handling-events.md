@@ -133,7 +133,7 @@ The preceding example also demonstrates a slight difference in the way the `addE
 ## Controlled and Uncontrolled Props
 Form elements like inputs and textareas are stateful and by default update themselves automatically according to user input. JSX libraries like React and Inferno handle these types of elements by allowing their virtual representations to be “controlled” or “uncontrolled,” where being controlled means that the internal DOM node’s state is synced to the virtual representation’s props.
 
-Crank’s philosophy with regard to this issue is slightly different, in that we do not view the virtual elements as the “source of truth” for the underlying DOM node. In practice, this design decision means that renderers do not retain the previously rendered props for host elements. For instance, Crank will not compare old and new props between renders to avoid mutating props which have not changed, and instead attempt to update every prop specified in the element props when it is committed.
+Crank’s philosophy with regard to this issue is slightly different, in that we do not view the virtual elements as the “source of truth” for the underlying DOM node. In practice, this design decision means that renderers do not retain the previously rendered props for host elements. For instance, Crank will not compare old and new props between renders to avoid mutating props which have not changed, and instead attempt to update every prop specified in an element’s props when it is rerendered.
 
 Another consequence is that we don’t delete props which were present in one rendering and absent in the next. For instance, in the following example, the checkbox will not be unchecked if you press the button.
 
