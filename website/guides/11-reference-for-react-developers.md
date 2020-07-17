@@ -1,5 +1,5 @@
 ---
-title: Mapping React to Crank
+title: Reference for React Developers
 ---
 
 Though Crank is inspired by React, compatibility is a non-goal, and certain concepts may be implemented using different, non-compatible APIs. The following is a reference for React developers to help them map React concepts APIs to their equivalents in Crank.
@@ -155,3 +155,4 @@ Keys work similarly to the way they do in React. The main difference is that Cra
 Crank provides the callback ref API from React via the `crank-ref` prop. Crank does not TKTKTKT
 
 ## React Contexts
+Because we refer to the `this` keyword as the component’s “context,” we refer to the equivalent concept of [React Contexts](#TK) as “provisions” instead.
