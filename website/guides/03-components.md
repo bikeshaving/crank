@@ -97,9 +97,9 @@ function *Timer() {
 }
 ```
 
-This `Timer` component is similar to the `Counter` one, except now the state (the local variable `seconds`) is updated in the callback passed to `setInterval`, rather than when the component is rerendered. Additionally, `refresh` method is called to ensure that the generator is stepped through each interval, so that the rendered DOM actually reflects the updated `seconds` variable.
+This `Timer` component is similar to the `Counter` one, except now the state (the local variable `seconds`) is updated in the callback passed to `setInterval`, rather than when the component is rerendered. Additionally, the `refresh` method is called to ensure that the generator is stepped through each interval, so that the rendered DOM actually reflects the updated `seconds` variable.
 
-One important detail about the `Timer` example is that it cleans up after itself with `clearInterval`. Crank will call the `return` method on generator components when the element is removed from the tree, so that the finally block executes and `clearInterval` is called. In this way, you can use the natural lifecycle of a generator to write setup and teardown logic for components, all within the same scope.
+One important detail about the `Timer` example is that it cleans up after itself with `clearInterval`. Crank will call the `return` method on generator components when the element is unmounted, so that the finally block executes and `clearInterval` is called. In this way, you can use the natural lifecycle of a generator to write setup and teardown logic for components, all within the same scope.
 
 ### Props Updates
 The generator components we’ve seen so far haven’t used props. Generator components can accept props as its first parameter just like regular function components.
@@ -185,7 +185,7 @@ function Greeting({name="World"}) {
 renderer.render(<Greeting />, document.body); // "<div>Hello World</div>"
 ```
 
-This works well for function components, but for generator components, you should make sure that you use the same default in both the parameter list and the `for` statement.
+This works well for function components, but for generator components, you should make sure that you use the same default value in both the parameter list and the `for` statement.
 
 ```jsx
 function *Greeting({name="World"}) {
@@ -195,4 +195,4 @@ function *Greeting({name="World"}) {
 }
 ```
 
-Components which mismatch default props between these two positions can cause surprising behavior.
+A mismatch in default values for a prop between these two positions may cause surprising behavior.

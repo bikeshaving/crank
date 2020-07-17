@@ -47,7 +47,7 @@ function *Clicker() {
 
 The local state `count` is now updated in the event listener, which triggers when the rendered button is actually clicked.
 
-**NOTE:** When using the `addEventListener` method, you do not have to call the `removeEventListener` method if you merely need to remove event listeners when the component is unmounted. This is done automatically.
+**NOTE:** When using the `addEventListener` method, you do not have to call the `removeEventListener` method if you merely want to remove event listeners when the component is unmounted. This is done automatically.
 
 ## Event Delegation
 
@@ -77,14 +77,14 @@ function *Clicker() {
 Because the event listener is attached to the outer `div`, we have to filter events by `ev.target.tagName` in the listener to make sure we’re not incrementing `count` based on clicks which don’t target the `button` element.
 
 ## `onevent` vs `EventTarget`
-The props-based `onevent` API and the context-based `EventTarget` API both have their advantages. On the one hand, using `onevent` props means you don’t have to filter events by target, and you can register them on the exact element you’d like to listen to.
+The props-based `onevent` API and the context-based `EventTarget` API both have their advantages. On the one hand, using `onevent` props means you don’t have to filter events by target, and you can register them on exactly the element you’d like to listen to.
 
 On the other, using the `addEventListener` method allows you to take full advantage of the EventTarget API, including registering passive event listeners or events which are dispatched during the capture phase. Additionally, the EventTarget API can be used without referencing or accessing the child elements which a component renders, meaning you can use it to listen to components whose children are passed in, or in utility functions which don’t have access to produced elements.
 
 Crank supports both API styles for convenience and flexibility.
 
 ## Dispatching events
-Crank contexts implement the full EventTarget interface, meaning you can use the `dispatchEvent` method and the [`CustomEvent`](https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent) constructor to bubble events to parent components:
+Crank contexts implement the full EventTarget interface, meaning you can use the `dispatchEvent` method and the [`CustomEvent`](https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent) constructor to dispatch events to ancestor components:
 
 ```jsx
 function MyButton(props) {
@@ -126,29 +126,28 @@ function *MyApp() {
 }
 ```
 
-`MyButton` is a function component which wraps a `button` element. It dispatches a `CustomEvent` whose type is `"mybuttonclick"` when it is pressed, and whose `detail` property contains data about the id of the clicked button. This event is not triggered or bubbled on the underlying DOM nodes; instead, it can be listened for by parent component contexts using event bubbling, and in the example, the event propagates and is handled by the `MyApp` component. Using custom events and event bubbling allows you to encapsulate state transitions within component hierarchies without the need for complex state management solutions used in other frameworks like Redux or VueX.
+`MyButton` is a function component which wraps a `button` element. It dispatches a `CustomEvent` whose type is `"mybuttonclick"` when it is pressed, and whose `detail` property contains data about the ID of the clicked button. This event is not triggered or bubbled on the underlying DOM nodes; instead, it can be listened for by parent component contexts using event bubbling, and in the example, the event propagates and is handled by the `MyApp` component. Using custom events and event bubbling allows you to encapsulate state transitions within component hierarchies without the need for complex state management solutions used in other frameworks like Redux or VueX.
+
+The preceding example also demonstrates a slight difference in the way the `addEventListener` method works in function components compared to generator components. With generator components, listeners stick between renders, and will continue to fire until the component is unmounted. However, with function components, because the `addEventListener` call would be invoked every time the component is rerendered, we remove and add listeners for every render. This allows function components to remain stateless while still listening for and dispatching events to their parents.
 
 ## Controlled and Uncontrolled Props
-Form elements like `<input>`, `<textarea>` and `<select>` are internally stateful and by default update automatically according to user input. JSX libraries like React and Inferno handle these types of elements by allowing their virtual representations to be “controlled” or “uncontrolled,” where being controlled means that the internal DOM node’s state is always synced to the virtual representation’s props. 
+Form elements like inputs and textareas are stateful and by default update themselves automatically according to user input. JSX libraries like React and Inferno handle these types of elements by allowing their virtual representations to be “controlled” or “uncontrolled,” where being controlled means that the internal DOM node’s state is synced to the virtual representation’s props.
 
-Crank’s philosophy with regard to this issue is slightly different, in that we do not view the virtual elements as the “source of truth” for the underlying DOM node. In practice, this design decision means that renderers do not retain the previously rendered props for host elements. For instance, Crank will not compare old and new props between renders to avoid mutating props which have not changed. Instead, the DOM renderer will always update every prop when the element is committed.
+Crank’s philosophy with regard to this issue is slightly different, in that we do not view the virtual elements as the “source of truth” for the underlying DOM node. In practice, this design decision means that renderers do not retain the previously rendered props for host elements. For instance, Crank will not compare old and new props between renders to avoid mutating props which have not changed, and instead attempt to update every prop specified in the element props when it is committed.
 
 Another consequence is that we don’t delete props which were present in one rendering and absent in the next. For instance, in the following example, the checkbox will not be unchecked if you press the button.
 
 ```jsx
 function *App() {
   let checked = false;
-  this.addEventListener("input", () => {
-    checked = !checked;
-    this.refresh();
-  });
-
   this.addEventListener("click", (ev) => {
     if (ev.target.tagName === "BUTTON") {
       checked = !checked;
       this.refresh();
     }
   });
+
+  this.addEventListener("input", (ev) => ev.preventDefault());
 
   while (true) {
     if (checked) {
@@ -170,22 +169,19 @@ function *App() {
 }
 ```
 
-While frameworks like React notice the absence of the boolean `checked` prop between renders and mutate the input element, Crank does not. This means that the input can only be checked or unchecked by clicking on it directly, whereas clicking the button will only ever set the input to checked, and will never uncheck it. To fix the above example, you would need to make sure the `checked` prop is always passed to the `input` element.
+While frameworks like React notice the absence of the boolean `checked` prop between renders and mutate the input element, Crank does not. This means that the input element can only ever go from unchecked to checked, and not the other way around. To fix the above example, you would need to make sure the `checked` prop is always passed to the `input` element.
 
 ```jsx
 function *App() {
   let checked = false;
-  this.addEventListener("input", () => {
-    checked = !checked;
-    this.refresh();
-  });
-
   this.addEventListener("click", (ev) => {
     if (ev.target.tagName === "BUTTON") {
       checked = !checked;
       this.refresh();
     }
   });
+
+  this.addEventListener("input", (ev) => ev.preventDefault());
 
   while (true) {
     yield (
@@ -198,7 +194,7 @@ function *App() {
 }
 ```
 
-This design decision means that we can both leave form elements “uncontrolled” and “control” them via updates when necessary. Here, for instance is an input element which is uncontrolled, except that it resets when the button is clicked.
+This design decision means that we can both leave form elements “uncontrolled” while still “controlling” them via normal rendering when necessary. Here, for instance is an input element which is uncontrolled, except that it resets when the button is clicked.
 
 ```jsx
 function* ResettingInput() {
@@ -223,4 +219,4 @@ function* ResettingInput() {
 }
 ```
 
-We use the `reset` flag to check whether we need to set the `value` of the underlying input DOM element, and we omit the `value` prop when we aren’t performing a reset. This approach means we can let the browser deal with user inputs, without rerendering the component.
+We use the `reset` flag to check whether we need to set the `value` of the underlying input DOM element, and we omit the `value` prop when we aren’t performing a reset. This means that for the most part, we can let the browser deal with the input element without rerendering the component.

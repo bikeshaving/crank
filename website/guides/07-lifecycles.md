@@ -46,7 +46,7 @@ renderer.render(<Numbers />, document.body);
 console.log(document.body.innerHTML); // "1"
 ```
 
-## Cleaning up after your components are removed
+## Cleaning up after your components are unmounted
 
 When a generator component is removed from the tree, Crank calls the `return` method on the generator object. You can think of it as whatever `yield` expression your component was suspended on being replaced by a `return` statement. This means any loops your component was in when the generator was suspended are broken out of, and code after the yield does not execute. You can take advantage of this behavior by wrapping your `yield` loops in a `try`/`finally` to release any resources that your component may have used.
 
@@ -128,7 +128,7 @@ Note that you can’t catch or recover from errors thrown from within the genera
 Sometimes, the declarative rendering of DOM nodes is not enough, and you’ll want to access the actual DOM nodes you’ve rendered, to make measurements or call imperative methods like `el.focus()`, for instance. To facilitate this, Crank will pass rendered DOM nodes back into the generator using the `next` method, so `yield` expressions can be read and assigned to access the actual rendered DOM nodes.
 
 ```jsx
-async function *MyInput(props) {
+async function *FocusingInput(props) {
   let input; 
   for await (props of this) {
     input = yield <input {...props}/>;
@@ -137,6 +137,28 @@ async function *MyInput(props) {
 }
 ```
 
-The `MyInput` component focuses every time it is rerendered. You might notice that we use an async generator component here. That’s because async generators continuously resume, and rely on the `for await` loop to await new updates.
+The `MyInput` component focuses every time it is rerendered. We use an async generator component here because async generators continuously resume, and rely on the `for await` loop to await new updates, so the `input.focus` call happens directly after the component is rendered. While we also pass rendered nodes into sync generator components as well, attempting to access them directly after the `yield` may lead to surprising results.
 
-**TODO: Design APIs/Document them for working with yield expressions in sync generators.**
+```jsx
+function *FocusingInput(props) {
+  let input; 
+  for (props of this) {
+    input = yield <input {...props}/>;
+    // This line does not execute until the component is rerendered.
+    input.focus();
+  }
+}
+```
+
+The problem is that sync generator components suspend at the point of yield expressions and only resume when updated by the parent or by a call to the `refresh` method. This means that if you were to try to access the rendered value via a `yield` expression, your code would not execute until the moment the component rerenders.
+
+To solve this problem, Crank provides an additional method on the context called `schedule`, which takes a callback and renders after the component executes.
+
+```jsx
+function *FocusingInput(props) {
+  for (props of this) {
+    this.schedule((input) => input.focus());
+    yield <input {...props}/>;
+  }
+}
+```
