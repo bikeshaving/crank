@@ -98,7 +98,7 @@ const list1 = createElement("ul", null,
 console.log(list.props.children.length); // 2
 ```
 
-As seen in the example, JSX parsers interpret the contents of elements which are not themselves elements as strings. However, just as with props, you can use curly brackets to interpolate JavaScript expressions into an element’s children. Besides elements and strings, almost every value in JavaScript can participate in an element tree. Numbers are rendered as strings, and the values `null`, `undefined`, `true` and `false` are erased, allowing you to render things conditionally with boolean expressions.
+JSX parsers interpret the contents of elements which are not themselves elements as strings. However, just as with props, you can use curly brackets to interpolate JavaScript expressions into an element’s children. Besides elements and strings, almost every value in JavaScript can participate in an element tree. Numbers are rendered as strings, and the values `null`, `undefined`, `true` and `false` are erased, allowing you to render things conditionally using boolean expressions.
 
 ```jsx
 const el = <div>{"a"}{1 + 1}{true}{false}{null}{undefined}</div>;

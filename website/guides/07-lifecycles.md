@@ -2,7 +2,7 @@
 title: Lifecycles
 ---
 
-Crank uses generator functions rather than hooks or classes to define component lifecycles. Internally, this is achieved by calling the `next`, `return` and `throw` methods of the generator object as components are inserted, updated and removed from the element tree. As a developer, you can use the `yield`, `return`, `try`, `catch`, and `finally` keywords within your generator components to take full advantage of the generator’s natural lifecycle.
+Crank uses generator functions rather than hooks or classes to define component lifecycles. Internally, this is achieved by calling the `next`, `return` and `throw` methods of the generator object as components are mounted, updated and unmounted from the element tree. As a developer, you can use the `yield`, `return`, `try`, `catch`, and `finally` keywords within your generator components to take full advantage of the generator’s natural lifecycle.
 
 ## Returning from a generator
 

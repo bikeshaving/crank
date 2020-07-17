@@ -212,4 +212,4 @@ async function *Suspense({timeout, fallback, children}) {
 })();
 ```
 
-As you can see, no special tags are needed for async loading states, and the functionality to write this complex logic is implemented using the same element diffing algorithm that governs synchronous components. Additionally, this approach is more flexible in the sense that you can extend it, for instance, to include a second fallback state which fulfills after ten seconds, which might inform the user that something went wrong or that servers are slow to respond.
+No special tags are needed for async loading states, and the functionality to write this complex logic is implemented using the same element diffing algorithm that governs synchronous components. Additionally, this approach is more flexible in the sense that you can extend it, for instance, to include a second fallback state which fulfills after ten seconds, which might inform the user that something went wrong or that servers are slow to respond.
