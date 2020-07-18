@@ -166,6 +166,19 @@ interface SidebarProps {
 	title: string;
 }
 
+function Footer(): Element {
+	return (
+		<footer class="footer">
+			Copyright © 2020 Brian Kim. Crank is distributed under the{" "}
+			<a href="https://github.com/bikeshaving/crank/blob/master/LICENSE">
+				MIT License
+			</a>
+			. Logo by <a href="https://wstone.io">Will Stone</a> and{" "}
+			<a href="https://github.com/pjdon">Paul Don</a>.
+		</footer>
+	);
+}
+
 function Sidebar({docs, title, url}: SidebarProps): Element {
 	const links: Array<Element> = [];
 	for (const doc of docs) {
@@ -265,6 +278,7 @@ function Home(): Element {
 					</div>
 				</main>
 			</div>
+			<Footer />
 		</Root>
 	);
 }
@@ -325,6 +339,7 @@ function BlogIndexPage({docs, url}: BlogIndexPageProps): Element {
 			<Sidebar docs={docs} url={url} title="Recent Posts" />
 			<div class="main">
 				<BlogPreview docs={docs} />
+				<Footer />
 			</div>
 		</Root>
 	);
@@ -352,6 +367,7 @@ function BlogPage({
 				<div class="content">
 					<BlogContent title={title} html={html} publishDate={publishDate} />
 				</div>
+				<Footer />
 			</div>
 		</Root>
 	);
@@ -373,6 +389,7 @@ function GuidePage({title, html, docs, url}: GuidePageProps): Element {
 					<h1>{title}</h1>
 					<Raw value={html} />
 				</div>
+				<Footer />
 			</div>
 		</Root>
 	);

@@ -68,6 +68,13 @@ li {
 	margin: 0 0 1em;
 }
 
+.footer {
+	margin: 3em auto 0;
+	border-top: 1px solid white;
+	padding: 3em 0;
+	text-align: center;
+}
+
 .navbar {
 	position: fixed;
 	top: 0;
