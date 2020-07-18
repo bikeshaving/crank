@@ -337,10 +337,10 @@ function BlogIndexPage({docs, url}: BlogIndexPageProps): Element {
 	return (
 		<Root title="Crank.js | Blog" url={url}>
 			<Sidebar docs={docs} url={url} title="Recent Posts" />
-			<div class="main">
+			<main class="main">
 				<BlogPreview docs={docs} />
 				<Footer />
-			</div>
+			</main>
 		</Root>
 	);
 }
@@ -363,12 +363,12 @@ function BlogPage({
 	return (
 		<Root title={`Crank.js | ${title}`} url={url}>
 			<Sidebar docs={docs} url={url} title="Recent Posts" />
-			<div class="main">
+			<main class="main">
 				<div class="content">
 					<BlogContent title={title} html={html} publishDate={publishDate} />
 				</div>
 				<Footer />
-			</div>
+			</main>
 		</Root>
 	);
 }
@@ -384,13 +384,13 @@ function GuidePage({title, html, docs, url}: GuidePageProps): Element {
 	return (
 		<Root title={`Crank.js | ${title}`} url={url}>
 			<Sidebar docs={docs} url={url} title="Guides" />
-			<div class="main">
+			<main class="main">
 				<div class="content">
 					<h1>{title}</h1>
 					<Raw value={html} />
 				</div>
 				<Footer />
-			</div>
+			</main>
 		</Root>
 	);
 }

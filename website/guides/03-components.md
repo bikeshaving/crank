@@ -38,7 +38,7 @@ console.log(document.body.innerHTML); // "<div>Message for Nemo: <span>Howdy</sp
 ```
 
 ## Stateful Components
-Eventually, youre going to want to write components with local state. In Crank, we use [generator functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*) to do so. These types of components are referred to as *generator components*.
+Eventually, you’ll want to write components with local state. In Crank, we use [generator functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*) to do so. These types of components are referred to as *generator components*.
 
 ```jsx
 function *Counter() {
@@ -118,7 +118,11 @@ console.log(document.body.innerHTML); // "<div>The count is now: 1</div>"
 renderer.render(<LabeledCounter message="The count is now:" />, document.body);
 console.log(document.body.innerHTML); // "<div>The count is now: 2</div>"
 
-renderer.render(<LabeledCounter message="What if I update the message:" />, document.body);
+renderer.render(
+  <LabeledCounter message="What if I update the message:" />,
+  document.body,
+);
+
 // WOOPS!
 console.log(document.body.innerHTML); // "<div>The count is now: 3</div>"
 ```
@@ -195,4 +199,4 @@ function *Greeting({name="World"}) {
 }
 ```
 
-A mismatch in default values for a prop between these two positions may cause surprising behavior.
+A mismatch in the default values for a prop between these two positions may cause surprising behavior.

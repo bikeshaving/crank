@@ -3,11 +3,11 @@ id: elements
 title: JSX, Elements and Renderers
 ---
 
-**Note:** If you’re familiar with how JSX and elements work in React, you may want to skip ahead to [the guide for components](./components). Elements in Crank work almost exactly as they do in React.
+**Note:** If you’re familiar with how JSX and elements work in React, you may want to skip ahead to [the guide on components](./components). Elements in Crank work almost exactly as they do in React.
 
-## Elements
+## JSX 
 
-Crank is best used with [JSX](https://facebook.github.io/jsx/), an XML-like syntax extension to JavaScript. It is designed to work with transpilers like Babel and TypeScript out-of-box. JSX transpilers work by transforming JSX expressions into `createElement` factory function calls. For example, in the following code, the JSX expression assigned to `el` transpiles to the `createElement` call assigned to `el1`.
+Crank is best used with [JSX](https://facebook.github.io/jsx/), an XML-like syntax extension to JavaScript. It is designed to work with transpilers like Babel and TypeScript out-of-box. JSX transpilers work by transforming JSX expressions into `createElement` function calls. For example, in the following code, the JSX expression assigned to `el` transpiles to the `createElement` call assigned to `el1`.
 
 ```jsx
 /** @jsx createElement */
@@ -39,10 +39,10 @@ console.log(HTMLRenderer.render(el)); // <div id="element">Hello world</div>
 
 ![Image of a JSX element](../static/parts-of-jsx.svg)
 
-An element can be thought of as having three main parts: a *tag*, *props* and *children*. These roughly correspond to the syntax for tags, attributes and content in HTML, and for the most part, you can copy-paste HTML into JSX-flavored JavaScript and have things work as you would expect. The main difference is that JSX has to be well-balanced like XML, so void tags must have a closing slash (`<hr />` not `<hr>`). Also, if you forget to close an element or mismatch opening and closing tags, the parser will throw an error, whereas HTML can be unbalanced or malformed and mostly still work. The advantage of using JSX is that it allows you to interpolate arbitrary JavaScript expressions as an element’s tag, props or children.
+An element can be thought of as having three main parts: a *tag*, *props* and *children*. These roughly correspond to the syntax for tags, attributes and content in HTML, and for the most part, you can copy-paste HTML into JSX-flavored JavaScript and have things work as you would expect. The main difference is that JSX has to be well-balanced like XML, so void tags must have a closing slash (`<hr/>` not `<hr>`). Also, if you forget to close an element or mismatch opening and closing tags, the parser will throw an error, whereas HTML can be unbalanced or malformed and mostly still work. The advantage of using JSX is that it allows you to interpolate arbitrary JavaScript expressions as an element’s tag, props or children.
 
 ### Tags
-Tags are the first part of a JSX element expression, and can be thought of as the “name” or “type” of the element. JSX parsers will transpile the tag name as the first argument of a `createElement` call. 
+Tags are the first part of a JSX element expression, and can be thought of as the “name” or “type” of the element. JSX transpilers pass the tag of an element to the resulting `createElement` call as its first argument.
 
 ```jsx
 const intrinsicEl = <div />;
@@ -68,7 +68,7 @@ const el1 = createElement("div", {id: "my-id", "class": myClass});
 console.log(el.props); // {id: "my-id", "class": "my-class"}
 ```
 
-We call this object the *props* object, short for “properties.” The value of each prop is a string if the string-like syntax is used (`key="value"`), or it can be an interpolated JavaScript expression by placing the value in curly brackets (`key={value}`). You can use props to “pass” values into host and component elements, similar to how you might pass arguments into functions when invoking them.
+We call this object the *props* object, short for “properties.” The value of each prop is a string if the string-like syntax is used (`key="value"`), or it can be an interpolated JavaScript expression by placing the value in curly brackets (`key={value}`). You can use props to “pass” values into host and component elements, similar to how we “pass” arguments into functions when invoking them.
 
 If you already have an object that you want to use as props, you can use the special JSX `...` syntax to “spread” it into an element. This works similarly to [ES6 spread syntax](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax).
 
@@ -107,7 +107,7 @@ renderer.render(el, document.body);
 console.log(document.body.innerHTML); // <div>a2</div>
 ```
 
-Crank also allows arbitrarily nested iterables of values to be inserted, so, for instance, you can interpolate an array or a set of values into an element tree.
+Crank also allows arbitrarily nested iterables of values to be interpolated as children, so, for instance, you can insert an array or a set of values into element trees.
 
 ```jsx
 const arr = [1, 2, 3];
@@ -117,7 +117,7 @@ console.log(document.body.innerHTML); // "<div>123 abc</div>"
 ```
 
 ## Element Diffing
-Crank uses the same “virtual DOM” diffing algorithm made popular by React, where we compare elements by tag and position to reduce DOM mutations and reuse nodes. This approach allows us to write declarative code which focuses on producing the right tree, while Crank does the dirty work of managing state and mutating the DOM.
+Crank uses the same “virtual DOM” diffing algorithm made popular by React, where we compare elements by tag and position to reduce DOM mutations and reuse nodes. This approach allows you to write declarative code which focuses on producing the right tree, while the framework does the dirty work of managing state and mutating the DOM.
 
 ```jsx
 renderer.render(
