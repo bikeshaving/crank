@@ -2,7 +2,7 @@
 title: Custom Renderers
 ---
 
-The core Crank module provides an abstract `Renderer` class which can be extended to produce more than just DOM nodes or HTML strings, allowing you to target alternative environments such as WebGL-based canvas libraries, terminals, smartphones or smart TVs. This guide provides an overview of the concepts and internal methods which you will need to know when implementing a custom renderer yourself. Alternatively, you can read through the [DOM](https://github.com/bikeshaving/crank/blob/master/src/dom.ts?ts=2) and [HTML](https://github.com/bikeshaving/crank/blob/master/src/html.ts?ts=2) renderer implementations to learn by example.
+The core Crank module provides an abstract `Renderer` class which can be extended to produce more than just DOM nodes or HTML strings, allowing you to target alternative environments such as WebGL-based libraries, terminals, smartphones or smart TVs. This guide provides an overview of the concepts and internal methods which you will need to know when implementing a custom renderer yourself. Alternatively, you can read through the [DOM](https://github.com/bikeshaving/crank/blob/master/src/dom.ts?ts=2) and [HTML](https://github.com/bikeshaving/crank/blob/master/src/html.ts?ts=2) renderer implementations to learn by example.
 
 **Warning:** The custom renderer API is currently unstable both because of its performance-sensitive nature and because the exact complications of rendering to a wide variety of environments are not yet fully known. If you maintain a Crank renderer, you *will* have to deal with breaking changes as Crank is optimized and as new renderer requirements are discovered.
 
@@ -10,9 +10,9 @@ The core Crank module provides an abstract `Renderer` class which can be extende
 
 Crank does not provide lifecycle methods or hooks as part of its public interface, instead opting to rely on the natural lifecycle of generator functions. However, we use common lifecycle terms like *mounting*, *updating*, *unmounting* and *committing* internally to conceptualize the process of rendering.
 
-Rendering is essentially a depth-first walk of an element tree, where we recursively compare new elements to what was previously rendered. When elements are new to the tree, we “mount” the element, when elements have been seen before, we “update” the element, and when elements no longer exist in the tree, they are “unmounted.”
+Rendering is essentially a depth-first walk of an element tree, where we recursively compare new elements to what was previously rendered. When elements are new to the tree, we *mount* the element, when elements have been seen before, we *update* the element, and when elements no longer exist in the tree, they are *unmounted.*
 
-“Committing” is the part of rendering process where we actually perform the operations which create, mutate and dispose of nodes. Elements are committed in a *post-order traversal* of the tree, meaning that by the time a specific element is committed, all of its children will have already committed as well. This is done so that rendering side-effects happen all at once, even if there are async components in the tree, which leads to a more consistent and performant user experience. By contrast, components can be thought of as executing in a *pre-order traversal* of the tree, because the only way to get the children of a component element is to execute its component.
+*Committing* is the part of the rendering process where we actually perform the operations which create, mutate and dispose of nodes. Elements are committed in a *post-order traversal* of the tree, meaning that by the time a specific element is committed, all of its children will have already committed as well. This is done so that rendering side-effects happen all at once, even if there are async components in the tree, leading to a more consistent and performant user experience. By contrast, components can be thought of as executing in a *pre-order traversal* of the tree, because the only way to get the children of a component element is to execute the component.
 
 ## Renderer Type Parameters
 
@@ -50,8 +50,6 @@ The `create` method is called for each host element the first time the element i
 
 By default, this method will throw a `Not Implemented` error, so custom renderers should always implement this method.
 
-By default, escape returns the same string that was passed in.
-
 ### Renderer.prototype.patch
 ```ts
 patch(
@@ -61,7 +59,7 @@ patch(
 
 The `patch` method is called for each host element whenever it is committed. The tag and props are the tag and props of the associated host element, the node is the value produced by the `create` method when the value was mounted, and the scope is the current scope of the element.
 
-This method is useful for mutating nodes whenever the host element is committedk. It is optional and its return value is ignored.
+This method is useful for mutating nodes whenever the host element is committed. Implementation is optional and its return value is ignored.
 
 ### Renderer.prototype.arrange
 ```ts
@@ -70,11 +68,9 @@ arrange(
 ): unknown;
 ```
 
-The `arrange` method is called for each host element whenever it is committed. The tag and props are the tag and props of the associated host element, the parent is the value created by the create method for a host node. The `arrange` is also called for every root/portal element, so parent can be the second parameter passed to `Renderer.render`, or the `root` prop passed to `Portal` elements. The `children` of `arrange` is always an array of nodes and strings, which are determined by the related parent element’s children.
+The `arrange` method is called whenever an element’s children have changed. The tag and props are the tag and props of the associated host element, the parent is the value created by the create method for a host node and the `children` are the child values of all the element’s direct children. The `arrange` is also called for every root/portal element, so the parent can be of type `TRoot` as well as `TNode`.
 
-In addition to being called when a host or portal element is committed, the `arrange` method can also be called as the last step of a component `refresh`. Because the component’s children may have changed, the nearest ancestor host or portal element has to be rearranged so that the parent node can handle the new children.
-
-This method is where the magic happens, and is useful for connecting the nodes of your target environment in tree form. If your target environment has a separate It is optional and the return value is ignored.
+This method is where the magic happens, and is useful for connecting the nodes of your target environment as an internal tree.
 
 ### Renderer.prototype.scope
 ```ts
@@ -83,14 +79,14 @@ scope(
 ): TScope;
 ```
 
-The `scope` method is called for each host or portal element as elements are mounted or updated. Unlike the other custom renderer methods, the `scope` method is called during the pre-order traversal of the tree, much like components are. The `scope` method is passed the tag and props of the relevant host element, as well as the current scope, and the return value becomes the scope which is passed to the `create` and `scope` methods which are called for child elements.
+The `scope` method is called for each host or portal element as elements are mounted or updated. Unlike the other custom renderer methods, the `scope` method is called during the pre-order traversal of the tree, much as components are. The `scope` method is passed the tag and props of the relevant host element, as well as the current scope, and the return value becomes the scope argument passed to the `create` and `scope` method calls for child host elements.
 
 ### Renderer.prototype.escape
 ```ts
 escape(text: string, scope: TScope): string;
 ```
 
-The `escape` method is called whenever a string is encountered in the element tree. It is mainly useful when creating string-based renderers like HTML or XML string renderers, because most rendering targets like the DOM provide text node interfaces which sanitize inputs by default. One important detail is that `escape` should not return text nodes or anything besides a string. We defer this step to the `arrange` method because this allows us to normalize a host element’s children by concatenating adjacent strings before it is passed to `arrange`.
+The `escape` method is called whenever a string is encountered in the element tree. It is mainly useful when creating string-based renderers like HTML or XML renderers, because most rendering targets like the DOM provide text node interfaces which sanitize inputs by default. One important detail is that `escape` should not return text nodes or anything besides a string. We defer this step to the `arrange` method because this allows the renderer to normalize a host element’s children by concatenating adjacent strings before it is passed to `arrange`.
 
 By default, the `escape` method returns the string which was passed in.
 
@@ -110,7 +106,7 @@ dispose(
 ): unknown
 ```
 
-When a host element is unmounted, we call the `dispose` method with the related host element’s tag, props and node. This method is useful if you need to manually release a node or remove event listeners from it for garbage collection purposes.
+When a host element is unmounted, we call the `dispose` method with the related host element’s tag, props and node. This method is useful if you need to manually release a node or clean up event listeners for garbage collection purposes.
 
 This method is optional and its return value is ignored.
 
@@ -119,7 +115,7 @@ This method is optional and its return value is ignored.
 complete(root: TRoot): unknown;
 ```
 
-The `complete` method is called at the end of every render execution, when all elements have been committed and all other renderer methods have been called. It is useful, if your rendering target needs to be manually rerendered before any node mutations or rearrangements take effect.
+The `complete` method is called at the end of every render execution, when all elements have been committed and all other renderer methods have been called. It is useful, if your rendering target needs to be manually rerendered before any mutations take effect.
 
 This method is optional and its return value is ignored.
 
@@ -128,15 +124,15 @@ This method is optional and its return value is ignored.
 read(value: Array<TNode | string> | TNode | string | undefined): TResult;
 ```
 
-The renderer will expose rendered values in the following places:
+The renderer exposes rendered values in the following places:
 
 - As the return value of `Renderer.prototype.render`
 - As the return value of `Context.prototype.refresh`
 - As the argument passed to `crank-ref` props
 - As the argument passed to `Context.prototype.schedule` and `Context.prototype.cleanup`
-- Via the `Context.prototype.value` getter
+- Via the `Context.prototype.value` getter method
 - As the yield value of generator components
 
-When an element or elements are read in this way, we call the `read` method to give renderers a chance to manipulate what is exposed so as to hide internal implementation details and return something which makes sense for the target environment. The parameter passed to read can be a node, a string, undefined, or an array of nodes and strings. The return value is what is actually exposed.
+When an element or elements are read in this way, we call the `read` method to give renderers a chance to manipulate what is exposed, so as to hide internal implementation details and return something which makes sense for the target environment. The parameter passed to read can be a node, a string, an array of nodes and strings, or undefined. The return value is what is actually exposed.
 
 This method is optional. By default, read is an identity function which returns the value passed in.

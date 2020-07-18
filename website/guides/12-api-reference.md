@@ -147,14 +147,15 @@ declare global {
 ### `Fragment`
 A special element tag for grouping multiple children within a parent.
 
+### `Copy`
+A special element tag which copies whatever child appeared previously in the element’s position.
+
 ### `Portal`
 A special element tag for creating a new element subtree with a different root, passed via the root prop.
 
 **Props:**
-- root - TODO
+- root - A root to render into.
 
-### `Copy`
-A special element tag which copies whatever child appeared previously in the element’s position.
 
 ### `Raw`
 A special element tag for injecting raw nodes into an element tree via its value prop.
@@ -191,10 +192,10 @@ Throws a `TypeError` if the value passed in is not an element.
 Elements are the basic building blocks of Crank applications. They are JavaScript objects which are interpreted by renderers to produce and manage stateful nodes.
 
 #### Properties
-- `tag`
-- `props`
-- `key`
-- `ref`
+- `tag: Tag` - The tag of the element.
+- `props: Record<string, any>` - The props of the element.
+- `key: unknown` - A key by which to identify the element during the element diffing process.
+- `ref: Function` - A callback which fires whenever the element is rendered.
 
 #### Methods
 - [`constructor`](#Element.constructor)
@@ -214,9 +215,9 @@ An abstract class which is subclassed to render to different target environments
 
 - `render`
   **Parameters:**
-  - `children: Children`
-  - `root?: TRoot`
-  - `ctx?: Context`
+  - `children: Children` - The element tree to render.
+  - `root?: TRoot` - The renderer specific root to render into.
+  - `ctx?: Context` - A context which will parent the contexts of all top-level components in the element tree.
 
 **NOTE:** The internal Crank renderer methods documented in the [guide on custom renderers.](./custom-renderers)
 
@@ -233,12 +234,46 @@ A class which is instantiated and passed to every component function as its `thi
 
 #### Methods
 - `[Symbol.iterator]`
+  Returns an iterator of the props passed to the component. Only used in generator components.
 - `[Symbol.asyncIterator]`
+  Returns an async iterator of the props passed to the component. Only used in generator
 - `get`
 - `set`
 - `refresh`
+  Updates the component in place.
 - `schedule`
+  Executes the passed in callback when the component renders. The `schedule` method will only fire once for each call and callback.
+  **Parameters:**
+  - `callback: Function` - The callback to be executed.
 - `cleanup`
+  Executes the passed in callback when the component unmounts. The `cleanup` method will only fire once for each call and callback.
+  **Parameters:**
+  - `callback: Function` - The callback to be executed.
+
 - `addEventListener`
+  Adds an event listener to the context. The `addEventListener` method will also attach event listeners to the underlying top-level node or nodes which were created for the component.
+  - `options: Object | boolean` - An object of boolean options which can be set to change the characteristics of the listener. If the options object is a boolean, then that value is used to set the `capture` option for the listener.
+    - `capture: boolean` - Indicates the listener should execute during [the capture phase](https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#Event_bubbling_and_capture) of event dispatch.
+  **Parameters:**
+  - `type: string` - The type of the event.
+  - `listener: Function` - The listener callback.
+  - `options: Object | boolean` - An object of boolean options which can be set to change the characteristics of the listener. If the options object is a boolean, then that value is used to set the `capture` option for the listener.
+    - `capture: boolean` - If true, the event listener will fire during [the capture phase](https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#Event_bubbling_and_capture) of event dispatch.
+    - `once: boolean` -  If true, the event listener will fire at most once before being removed.
+    - `passive: boolean` - If true, calling the `preventDefault` method on the event will have no effect. Using this flag can increase performance. It is most useful for event types like `scroll` which fire frequently and are rarely cancelled.
+
 - `removeEventListener`
+  **Parameters:**
+  - `type: string` - The type of the event.
+  - `listener: Function` - The listener callback.
+  - `options: Object | boolean` - An object of boolean options which can be set to change the characteristics of the listener. If the options object is a boolean, then that value is used to set the `capture` option for the listener.
+    - `capture: boolean` - If true, will remove listeners which use the capture option.
 - `dispatchEvent`
+  Dispatches an event on the context. Will propagate to parent contexts according to the same event bubbling and capture algorithms used by the DOM.
+
+  **Parameters:**
+  - `ev: Event` - An Event object.
+
+  **Return Value:**
+
+  The return value is `false` if the event is cancelable and an event listener calls the `preventDefault` method on the event, and `true` otherwise.

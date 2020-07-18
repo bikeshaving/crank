@@ -3,7 +3,7 @@ title: Async Components
 ---
 
 ## Async function components
-So far, every component we’ve seen has worked synchronously, and Crank will respect this as an intentional decision by keeping the entire process of rendering synchronous from start to finish. However, modern JavaScript includes promises and `async`/`await`, which allows you to write concurrently executing code as if it were synchronous. To facilitate this style of code, Crank allows components to be asynchronous functions as well.
+So far, every component we’ve seen has worked synchronously, and Crank will respect this as an intentional decision by the developer by keeping the entire process of rendering synchronous from start to finish. However, modern JavaScript includes promises and `async`/`await`, which allow you to write concurrently executing code as if it were synchronous. To facilitate this style of code, Crank allows components to be asynchronous functions as well.
 
 ```jsx
 async function IPAddress () {
@@ -18,7 +18,7 @@ async function IPAddress () {
 })();
 ```
 
-When a Crank renderer runs a component which returns a promise, the rendering process becomes asynchronous as well. Concretely, this means that `renderer.render` call will return a promise which fulfills when all async components in the element tree have fulfilled at least once, and that no actual DOM updates will be triggered until this happens.
+When a Crank renderer runs a component which returns a promise, the rendering process becomes asynchronous as well. Concretely, this means that `renderer.render` calls with async components in the tree will return a promise which fulfills when all async components in the element tree have fulfilled, and no actual DOM updates will be triggered until this happens.
 
 ### Concurrent updates
 Because async function components can be rerendered while they are still pending, Crank implements a couple rules to make concurrent updates predictable and performant:
@@ -51,9 +51,9 @@ async function Delay ({message}) {
 })();
 ```
 
-In the preceding example, at no point is there more than one simultaneous call to the `Delay` component, despite the fact that it is rerendered concurrently for its second through fourth renders. And because these renderings happen synchronously, only the second and fourth renderings have any effect. This is because the element is busy with the second render by the time the third and fourth renderings are requested, and then, only the fourth rendering is enqueued because third rendering’s props are obsolete by the time the component is ready to update again. This behavior allows async components to always be kept up-to-date without producing excess calls to async functions.
+In the preceding example, at no point is there more than one simultaneous call to the `Delay` component, despite the fact that it is rerendered concurrently for its second through fourth renders. And because these renderings are enqueued, only the second and fourth renderings have any effect. This is because the element is busy with the second render by the time the third and fourth renderings are requested, and then, only the fourth rendering is actually executed because third rendering’s props are obsolete by the time the component is ready to update again. This behavior allows async components to always be kept up-to-date without producing excess calls to async functions.
 
-2. If two different async components are rendered in the same position, the components are raced. If the earlier component fulfills first, it shows until the later component fulfills. If the later component fulfills first, the earlier component is never rendered. This ratcheting effect becomes useful for rendering fallback states for async components, as we’ll see later.
+2. If two different async components are rendered in the same position, the components are raced. If the earlier component fulfills first, it shows until the later component fulfills. If the later component fulfills first, the earlier component is never rendered.
 
 ```jsx
 async function Fast() {
@@ -88,6 +88,8 @@ async function Slow() {
   console.log(document.body.innerHTML); // "<div><span>Fast</span></div>"
 })();
 ```
+
+As we’ll see later, this ratcheting effect becomes useful for rendering fallback states for async components.
 
 <!--
 TODO: this section is too hard to understand and requires code examples so we’re removing it for now.
@@ -129,7 +131,7 @@ async function *AsyncLabeledCounter ({message}) {
 })();
 ```
 
-`AsyncLabeledCounter` is an async version of the `LabeledCounter` example introduced in [the section on sync generator components](#TK). This example demonstrates several key differences between sync and async generator components. Firstly, rather than using `while` or `for…of` loops as with sync generator components, we now use a `for await…of` loop. This is possible because Crank contexts are not just an *iterable* of props, but also an *async iterable* of props as well. Secondly, you’ll notice that the async generator yields multiple times per iteration over `this`, once to show a loading message and once to show the actual count. While it is possible for sync generators to yield multiple times per iteration over `this`, it wouldn’t necessarily make sense to do so because generators suspend at each yield, and upon resuming a second time within the same loop, the props would be stale. In contrast, async generator components are continuously resumed; Rather than suspending at each yield, we rely on the `for await…of` loop, which suspends at the bottom of its block until the next update.
+`AsyncLabeledCounter` is an async version of the `LabeledCounter` example introduced in [the section on props updates](./components#props-updates). This example demonstrates several key differences between sync and async generator components. Firstly, rather than using `while` or `for…of` loops as with sync generator components, we now use a `for await…of` loop. This is possible because Crank contexts are not just an *iterable* of props, but also an *async iterable* of props as well. Secondly, you’ll notice that the async generator yields multiple times per iteration over `this`, once to show a loading message and once to show the actual count. While it is possible for sync generators to yield multiple times per iteration over `this`, it wouldn’t necessarily make sense to do so because generators suspend at each yield, and upon resuming a second time within the same loop, the props would be stale. In contrast, async generator components are continuously resumed. Rather than suspending at each yield, we rely on the `for await…of` loop, which suspends at the bottom of the loop until the next update.
 
 ## Responsive Loading Indicators
 The async components we’ve seen so far have been all or nothing, in the sense that Crank can’t show anything until all components in the tree have fulfilled. This can be a problem when you have an async call which takes longer than expected. It would be nice if parts of the element tree could be shown without waiting, to create responsive user experiences. However, because loading indicators which show immediately can paradoxically make your app seem less responsive, we can use the async rules described previously along with async generator functions to show loading indicators which appear only when certain promises take too long to settle.
@@ -185,9 +187,9 @@ function *RandomDogApp() {
 renderer.render(<RandomDogApp />, document.body);
 ```
 
-In this example, the `RandomDogLoader` component is an async generator component which races the `LoadingIndicator` component with the `RandomDog` component. Because the async generator component resumes continuously, both components are rendered, and according to the second rule of async components, the loading indicator only shows if `RandomDog` component takes longer than a second to fulfill.
+In this example, the `RandomDogLoader` component is an async generator component which races the `LoadingIndicator` component with the `RandomDog` component. Because the async generator component resumes continuously, both components are rendered, and according to the second rule of async components, the loading indicator only shows if the `RandomDog` component takes longer than a second to fulfill.
 
-The preceding example hints at how we could abstract this pattern to implement a `Suspense` component, an API in React which allows for async components with fallback states:
+The preceding example hints at how we could abstract this pattern to implement the `Suspense` component from React.
 
 ```jsx
 async function Fallback({timeout = 1000, children}) {
@@ -212,4 +214,4 @@ async function *Suspense({timeout, fallback, children}) {
 })();
 ```
 
-No special tags are needed for async loading states, and the functionality to write this complex logic is implemented using the same element diffing algorithm that governs synchronous components. Additionally, this approach is more flexible in the sense that you can extend it, for instance, to include a second fallback state which fulfills after ten seconds, which might inform the user that something went wrong or that servers are slow to respond.
+No special tags are needed for async loading states, and the functionality to write this complex logic is implemented using the same element diffing algorithm that governs synchronous components. Additionally, this approach is more flexible in the sense that you can extend it; for instance, you can add another yield to the `for await…of` loop to show a second fallback state which waits ten seconds, to inform the user that something went wrong or that servers are slow to respond.

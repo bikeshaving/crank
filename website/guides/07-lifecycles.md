@@ -21,7 +21,7 @@ renderer.render(<Stuck message="Passing in new props is useless" />, document.bo
 console.log(document.body.innerHTML); // "<div>Hello</div>"
 ```
 
-You should be careful when writing generator components to make sure that you always place your `yield` operators in a `for` or `while` loop. If you forget and implicitly return from the generator, it will stop updating, nothing will be rendered, and the only way to restart the component will be to remove it from the element tree and add it again.
+You should be careful when writing generator components to make sure that you always place your `yield` operators in a `for` or `while` loop. If you forget and implicitly return from the generator, it will stop updating, nothing will be rendered, and the only way to restart the component will be to unmount and remount the component into the element tree.
 
 ```jsx
 function *Numbers() {
@@ -48,7 +48,9 @@ console.log(document.body.innerHTML); // "1"
 
 ## Cleaning up after your components are unmounted
 
-When a generator component is removed from the tree, Crank calls the `return` method on the generator object. You can think of it as whatever `yield` expression your component was suspended on being replaced by a `return` statement. This means any loops your component was in when the generator was suspended are broken out of, and code after the yield does not execute. You can take advantage of this behavior by wrapping your `yield` loops in a `try`/`finally` to release any resources that your component may have used.
+When a generator component is removed from the tree, Crank calls the `return` method on the generator object. You can think of it as whatever `yield` expression your component was suspended on being replaced by a `return` statement. This means any loops your component was in when the generator was suspended are broken out of, and code after the yield does not execute.
+
+You can take advantage of this behavior by wrapping your `yield` loops in a `try`/`finally` block to release any resources that your component may have used.
 
 ```jsx
 function *Cleanup() {
@@ -71,7 +73,9 @@ console.log(document.body); // ""
 [The same best practices](https://eslint.org/docs/rules/no-unsafe-finally) which apply to try/finally blocks in regular functions apply to generator components. In short, you should not yield or return anything in the `finally` block. Crank will not use the produced values and doing so might cause your components to inadvertently swallow errors or suspend in an unexpected location.
 
 ## Catching errors thrown by children 
-We all make mistakes, and it can be useful to catch errors in our components so that we can show the user something or notify error-logging services. To facilitate this, Crank will catch errors thrown when rendering child elements and throw them back into parent generator components by calling the `throw` method on the generator object. You can imagine that the most recently suspended `yield` expression is replaced with a `throw` statement with the error set to whatever was thrown during rendering. You can take advantage of this behavior by wrapping your `yield` operations in a `try`/`catch` block to catch errors caused by children.
+We all make mistakes, and it can be useful to catch errors in our components so that we can show the user something or notify error-logging services. To facilitate this, Crank will catch errors thrown when rendering child elements and throw them back into parent generator components by calling the `throw` method on the generator object. You can think of it as whatever `yield` expression your component was suspended on being replaced with a `throw` statement with the error set to whatever was thrown by children.
+
+You can take advantage of this behavior by wrapping your `yield` operations in a `try`/`catch` block to catch errors caused by children.
  
 ```jsx
 function Thrower() { 
@@ -94,7 +98,7 @@ renderer.render(<Catcher />, document.body);
 console.log(document.body.innerHTML); // "<div>Error: Hmmm</div>"
 ```
 
-This component “sticks” at the return so that error message is shown until the component is unmounted. However, you may also want to recover from errors as well, and you can do this by ignoring or handling the error.
+This component “sticks” at the return so that the same error message is shown until the component is unmounted. However, you may also want to recover from errors as well, and you can do this by ignoring or handling the error.
 
 ```jsx
 function T1000() { 
@@ -125,7 +129,7 @@ console.log(document.body.innerHTML); // "<div>I’ll be back</div>"
 Note that you can’t catch or recover from errors thrown from within the generator themselves, the yield operator only throws errors which were thrown in the course of rendering child elements.
 
 ## Accessing rendered values
-Sometimes, the declarative rendering of DOM nodes is not enough, and you’ll want to access the actual DOM nodes you’ve rendered, to make measurements or call imperative methods like `el.focus()`, for instance. To facilitate this, Crank will pass rendered DOM nodes back into the generator using the `next` method, so `yield` expressions can be read and assigned to access the actual rendered DOM nodes.
+Sometimes, the declarative rendering of DOM nodes is not enough, and you’ll want to access the actual DOM nodes you’ve rendered, to make measurements or call imperative methods like the `focus` method for form elements, or the `play` method for media elements. To facilitate this, Crank will pass rendered DOM nodes back into the generator using the `next` method, so `yield` expressions can be read and assigned to access the actual rendered DOM nodes.
 
 ```jsx
 async function *FocusingInput(props) {
@@ -137,7 +141,7 @@ async function *FocusingInput(props) {
 }
 ```
 
-The `MyInput` component focuses every time it is rerendered. We use an async generator component here because async generators continuously resume, and rely on the `for await` loop to await new updates, so the `input.focus` call happens directly after the component is rendered. While we also pass rendered nodes into sync generator components as well, attempting to access them directly after the `yield` may lead to surprising results.
+The `MyInput` component focuses every time it is rerendered. We use an async generator component here because async generators continuously resume, so the `input.focus` call happens directly after the component is rendered. While we also pass rendered nodes into sync generator components as well, attempting to access them directly after the `yield` may lead to surprising results.
 
 ```jsx
 function *FocusingInput(props) {
@@ -152,7 +156,7 @@ function *FocusingInput(props) {
 
 The problem is that sync generator components suspend at the point of yield expressions and only resume when updated by the parent or by a call to the `refresh` method. This means that if you were to try to access the rendered value via a `yield` expression, your code would not execute until the moment the component rerenders.
 
-To solve this problem, Crank provides an additional method on the context called `schedule`, which takes a callback and renders after the component executes.
+To solve this problem, Crank provides an additional method on the context called `schedule`, which takes a callback and calls it with the rendered value after the component executes.
 
 ```jsx
 function *FocusingInput(props) {
