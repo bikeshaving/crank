@@ -1839,7 +1839,7 @@ function run<TNode, TResult>(
 				ctx._ip = pending
 					.catch((err) => {
 						if (!(ctx._f & Updating)) {
-							return propagateError(ctx._pa, err);
+							return propagateError<TNode>(ctx._pa, err);
 						}
 					})
 					.finally(() => advance(ctx));
@@ -1853,7 +1853,7 @@ function run<TNode, TResult>(
 			return value;
 		} catch (err) {
 			if (!(ctx._f & Updating)) {
-				return propagateError(ctx._pa, err);
+				return propagateError<TNode>(ctx._pa, err);
 			}
 
 			throw err;
@@ -1874,13 +1874,13 @@ function run<TNode, TResult>(
 					if (isPromiseLike(pending)) {
 						return pending.catch((err) => {
 							if (!(ctx._f & Updating)) {
-								return propagateError(ctx._pa, err);
+								return propagateError<TNode>(ctx._pa, err);
 							}
 						});
 					}
 				} catch (err) {
 					if (!(ctx._f & Updating)) {
-						return propagateError(ctx._pa, err);
+						return propagateError<TNode>(ctx._pa, err);
 					}
 				}
 			})
@@ -1931,6 +1931,7 @@ function step<TNode, TResult>(
 			if (isIteratorLike(result)) {
 				ctx._it = result;
 			} else if (isPromiseLike(result)) {
+				// async function component
 				const result1 =
 					result instanceof Promise ? result : Promise.resolve(result);
 				const pending = result1;
@@ -2084,17 +2085,18 @@ function handleChildError<TNode>(
 	return updateCtxChildren(ctx, iteration.value as Children);
 }
 
-function propagateError(
+function propagateError<TNode>(
 	ctx: Context | undefined,
 	err: unknown,
-): Promise<undefined> | undefined {
-	if (
-		!ctx ||
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+	if (ctx === undefined) {
+		throw err;
+	} else if (
 		ctx._f & Finished ||
 		typeof ctx._it !== "object" ||
 		typeof ctx._it.throw !== "function"
 	) {
-		throw err;
+		return propagateError<TNode>(ctx._pa, err);
 	}
 
 	try {
@@ -2109,11 +2111,26 @@ function propagateError(
 
 		if (isPromiseLike(iteration)) {
 			return iteration
-				.then(() => undefined)
-				.catch((err) => propagateError(ctx._pa, err));
+				.then((iteration) => {
+					if (iteration.done) {
+						ctx._f |= Finished;
+					}
+
+					return updateCtxChildren<TNode, unknown>(
+						ctx,
+						iteration.value as Children,
+					);
+				})
+				.catch((err) => propagateError<TNode>(ctx._pa, err));
 		}
+
+		if (iteration.done) {
+			ctx._f |= Finished;
+		}
+
+		return updateCtxChildren(ctx, iteration.value as Children);
 	} catch (err) {
-		return propagateError(ctx._pa, err);
+		return propagateError<TNode>(ctx._pa, err);
 	}
 }
 
@@ -2228,7 +2245,7 @@ function unmountCtx(ctx: Context): void {
 			}
 
 			if (isPromiseLike(iteration)) {
-				iteration.catch((err) => propagateError(ctx._pa, err));
+				iteration.catch((err) => propagateError<unknown>(ctx._pa, err));
 			}
 		}
 	}

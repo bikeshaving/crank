@@ -196,6 +196,55 @@ describe("errors", () => {
 		expect(document.body.innerHTML).toEqual("<span>Error</span>");
 	});
 
+	test("nested sync functions", () => {
+		function Thrower(): never {
+			throw new Error("nested sync functions");
+		}
+
+		function PassThrough() {
+			return <Thrower />;
+		}
+
+		function* Component(): Generator<Child> {
+			try {
+				yield <PassThrough />;
+			} catch (err) {
+				return <span>Error</span>;
+			}
+		}
+
+		renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<span>Error</span>");
+	});
+
+	test("nested functions throw independently", () => {
+		let ctx!: Context;
+		function* Thrower(this: Context): Generator<Child> {
+			ctx = this;
+			yield <div>Hello</div>;
+			throw new Error("nested functions throw independently");
+		}
+
+		function PassThrough() {
+			return <Thrower />;
+		}
+
+		function* Component(): Generator<Child> {
+			while (true) {
+				try {
+					yield <PassThrough />;
+				} catch (err) {
+					return <span>Error</span>;
+				}
+			}
+		}
+
+		renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Hello</div>");
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual("<span>Error</span>");
+	});
+
 	test("async function throws, sync generator catches", async () => {
 		async function Thrower(): Promise<never> {
 			throw new Error("async function throws, sync generator catches");
@@ -221,9 +270,7 @@ describe("errors", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Error</span></div>");
 	});
 
-	// TODO: figure out what’s going on here
-	// eslint-disable-next-line
-	test.skip("restart", () => {
+	test("restart", () => {
 		const error = new Error("restart");
 		function* Thrower() {
 			yield 1;
@@ -243,8 +290,7 @@ describe("errors", () => {
 					);
 				} catch (err) {
 					mock(err);
-					this.schedule(() => this.refresh());
-					yield null;
+					yield <div>Restarting</div>;
 				}
 			}
 		}
@@ -258,7 +304,7 @@ describe("errors", () => {
 		renderer.render(<Component />, document.body);
 		expect(mock).toHaveBeenCalledTimes(1);
 		expect(mock).toHaveBeenCalledWith(error);
-		expect(document.body.innerHTML).toEqual("");
+		expect(document.body.innerHTML).toEqual("<div>Restarting</div>");
 		renderer.render(<Component />, document.body);
 		expect(document.body.innerHTML).toEqual("<div>1</div>");
 	});
