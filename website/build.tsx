@@ -169,12 +169,18 @@ interface SidebarProps {
 function Footer(): Element {
 	return (
 		<footer class="footer">
-			Copyright © 2020 Brian Kim. Crank is distributed under the{" "}
-			<a href="https://github.com/bikeshaving/crank/blob/master/LICENSE">
-				MIT License
-			</a>
-			. Logo by <a href="https://wstone.io">Will Stone</a> and{" "}
-			<a href="https://github.com/pjdon">Paul Don</a>.
+			<div>Copyright © 2020 Brian Kim.</div>
+			<div>
+				Distributed under the{" "}
+				<a href="https://github.com/bikeshaving/crank/blob/master/LICENSE">
+					MIT License
+				</a>
+				.
+			</div>
+			<div>
+				Logo by <a href="https://wstone.io">Will Stone</a> and{" "}
+				<a href="https://github.com/pjdon">Paul Don</a>.
+			</div>
 		</footer>
 	);
 }

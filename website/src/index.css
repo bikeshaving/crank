@@ -4,6 +4,10 @@
 	box-sizing: border-box;
 }
 
+html {
+	scroll-behavior: smooth;
+}
+
 body {
 	background-color: #0c1227;
 	color: #f5f9ff;
@@ -52,6 +56,7 @@ a {
 	}
 
 	&.anchor {
+		scroll-margin-top: 5em;
 		outline: none;
 		&::before {
 			content: "";
@@ -210,6 +215,7 @@ li {
 .footer {
 	margin: 8em auto 0;
 	padding: 3em 0;
+	line-height: 1.4em;
 	border-top: 1px solid #f5f9ff;
 	color: #bdc2c7;
 	text-align: center;

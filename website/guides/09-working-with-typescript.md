@@ -4,7 +4,7 @@ title: Working with TypeScript
 
 Crank is written in TypeScript, and provides some types out of box so you can type-check your components and elements.
 
-## Typing `this` in components
+## Typing `this` in Components
 Trying to reference `this` in a component without a `this` type annotation will throw a type error in TypeScript‘s strict mode (you’ll see a message like `'this' implicitly has type 'any' because it does not have a type annotation`). Crank exports the `Context` class so you can annotate your components `this` as `Context`:
 
 ```tsx
@@ -25,7 +25,7 @@ function *Timer (this: Context) {
 }
 ```
 
-## Typing the return types of components
+## Typing Component Return Values
 You’ll often want to add a return type to your components. Crank exports custom types to help you type the return types of components:
 
 ```tsx
@@ -68,7 +68,7 @@ function *SyncGen(): Generator<Child> {
 
 Anything assignable to `Child` can be part of the element tree, and almost anything can be assigned to `Child`.
 
-## Typing props
+## Typing Props
 You can type the props object passed to components. This allows JSX elements which use your component as a tag to be type-checked.
 
 ```tsx
@@ -95,7 +95,7 @@ function Greeting ({name, children}: {name: string, children: Children}) {
 }
 ```
 
-## Typing event listeners
+## Typing Event Listeners
 If you dispatch custom events, you may want parent event listeners to be typed with the event you bubbled automatically. To do so, you can use module augmentation to extend the `EventMap` interface provided by Crank.
 
 ```tsx
@@ -122,5 +122,5 @@ function MyButton (props) {
 }
 ```
 
-## Typing provisions
+## Typing Provisions
 By default, calls to `Context.prototype.get` and `Context.prototype.set` will be loosely typed. If you want stricter typings of these methods, you can use module augmentation to extend the `ProvisionMap` interface provided by Crank.
