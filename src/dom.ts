@@ -1,10 +1,10 @@
 import {
 	Children,
 	Context,
+	Element as CrankElement,
 	ElementValue,
 	Portal,
 	Renderer,
-	TagProps,
 } from "./index";
 
 declare module "./index" {
@@ -42,11 +42,10 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 	}
 
 	scope(
-		tag: string | symbol,
-		props: Record<string, any>,
+		el: CrankElement<string | symbol>,
 		scope: string | undefined,
 	): string | undefined {
-		switch (tag) {
+		switch (el.tag) {
 			case Portal:
 			case "foreignObject":
 				return undefined;
@@ -57,41 +56,38 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 		}
 	}
 
-	create<TTag extends string | symbol>(
-		tag: TTag,
-		props: Record<string, any>,
-		ns: string | undefined,
-	): Node {
-		if (typeof tag !== "string") {
-			throw new Error(`Unknown tag: ${tag.toString()}`);
+	create(el: CrankElement<string | symbol>, ns: string | undefined): Node {
+		if (typeof el.tag !== "string") {
+			throw new Error(`Unknown tag: ${el.tag.toString()}`);
 		}
 
-		if (tag === "svg") {
+		if (el.tag === "svg") {
 			ns = SVG_NAMESPACE;
 		}
 
-		return ns ? document.createElementNS(ns, tag) : document.createElement(tag);
+		return ns
+			? document.createElementNS(ns, el.tag)
+			: document.createElement(el.tag);
 	}
 
-	patch<TTag extends string | symbol>(
-		tag: TTag,
-		props: TagProps<TTag>,
-		el: Element,
+	patch(
+		el: CrankElement<string | symbol>,
+		node: Element,
 		ns: string | undefined,
 	): void {
-		for (let name in props) {
+		for (let name in el.props) {
 			let forceAttribute = false;
-			const value = props[name];
+			const value = el.props[name];
 			switch (name) {
 				case "children":
 					break;
 				case "style": {
-					const style: CSSStyleDeclaration = (el as any).style;
+					const style: CSSStyleDeclaration = (node as any).style;
 					if (style == null) {
-						el.setAttribute("style", value);
+						node.setAttribute("style", value);
 					} else {
 						if (value == null) {
-							el.removeAttribute("style");
+							node.removeAttribute("style");
 						} else if (typeof value === "string") {
 							style.cssText = value;
 						} else {
@@ -111,13 +107,13 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 				case "class":
 				case "className":
 					if (value === true) {
-						el.setAttribute("class", "");
+						node.setAttribute("class", "");
 					} else if (!value) {
-						el.removeAttribute("class");
+						node.removeAttribute("class");
 					} else if (!ns) {
-						(el as any)["className"] = value;
+						(node as any)["className"] = value;
 					} else {
-						el.setAttribute("class", value);
+						node.setAttribute("class", value);
 					}
 					break;
 				// Gleaned from:
@@ -131,33 +127,32 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 				// fallthrough
 				default: {
 					if (value == null) {
-						el.removeAttribute(name);
-					} else if (!forceAttribute && !ns && name in el) {
-						(el as any)[name] = value;
+						node.removeAttribute(name);
+					} else if (!forceAttribute && !ns && name in node) {
+						(node as any)[name] = value;
 					} else if (value === true) {
-						el.setAttribute(name, "");
+						node.setAttribute(name, "");
 					} else if (value === false) {
-						el.removeAttribute(name);
+						node.removeAttribute(name);
 					} else {
-						el.setAttribute(name, value);
+						node.setAttribute(name, value);
 					}
 				}
 			}
 		}
 	}
 
-	arrange<TTag extends string | symbol>(
-		tag: TTag,
-		props: Record<string, any>,
+	arrange(
+		el: CrankElement<string | symbol>,
 		parent: Node,
 		children: Array<Node | string>,
 	): void {
-		if (tag === Portal && !(parent instanceof Node)) {
+		if (el.tag === Portal && !(parent instanceof Node)) {
 			throw new TypeError("Portal root is not a node");
 		}
 
 		if (
-			!("innerHTML" in props) &&
+			!("innerHTML" in el.props) &&
 			(children.length !== 0 || (parent as any).__cranky)
 		) {
 			if (children.length === 0) {

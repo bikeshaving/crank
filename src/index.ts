@@ -562,20 +562,15 @@ export class Renderer<
 	 * @remarks
 	 * Useful for passing data down the element tree. For instance, the DOM renderer uses this method to keep track of whether we’re in an SVG subtree.
 	 *
-	 * @param tag - The tag of the host element.
-	 * @param props - The props of the host element.
+	 * @param el - The host element.
 	 * @param scope - The current scope.
 	 *
-	 * @returns The scope to be passed to create and patch for child host elements.
+	 * @returns The scope to be passed to create and scope for child host elements.
 	 *
 	 * @remarks
 	 * This method sets the scope for child host elements, not the current host element.
 	 */
-	scope<TTag extends string | symbol>(
-		_tag: TTag,
-		_props: TagProps<TTag>,
-		scope: TScope | undefined,
-	): TScope {
+	scope(el: Element<string | symbol>, scope: TScope | undefined): TScope {
 		return scope as TScope;
 	}
 
@@ -609,25 +604,19 @@ export class Renderer<
 	/**
 	 * Called for each host element when it is committed for the first time.
 	 *
-	 * @param tag - The tag of the host element.
-	 * @param props - The props of the host element.
+	 * @param el - The host element.
 	 * @param scope - The current scope.
 	 *
 	 * @returns A “node” which determines the value of the host element.
 	 */
-	create<TTag extends string | symbol>(
-		_tag: TTag,
-		_props: TagProps<TTag>,
-		_scope: TScope,
-	): TNode {
+	create(_el: Element<string | symbol>, _scope: TScope): TNode {
 		throw new Error("Not implemented");
 	}
 
 	/**
 	 * Called for each host element when it is committed.
 	 *
-	 * @param tag - The tag of the host element.
-	 * @param props - The props of the host element.
+	 * @param el - The host element.
 	 * @param node - The node associated with the host element.
 	 * @param scope - The current scope.
 	 *
@@ -636,9 +625,8 @@ export class Renderer<
 	 * @remarks
 	 * Used to mutate the node associated with an element when new props are passed.
 	 */
-	patch<TTag extends string | symbol>(
-		_tag: TTag,
-		_props: TagProps<TTag>,
+	patch(
+		_el: Element<string | symbol>,
 		_node: TNode,
 		_scope: TScope | undefined,
 	): unknown {
@@ -649,8 +637,7 @@ export class Renderer<
 	/**
 	 * Called for each host element after its children have committed with the actual values of the children.
 	 *
-	 * @param tag - The tag of the host element.
-	 * @param props - The props of the host element.
+	 * @param el - The host element.
 	 * @param node - The node associated with the host element.
 	 * @param children - An array of nodes and strings from child elements.
 	 *
@@ -659,9 +646,8 @@ export class Renderer<
 	 * @remarks
 	 * This method is also called by child components contexts as the last step of a refresh.
 	 */
-	arrange<TTag extends string | symbol>(
-		_tag: TTag,
-		_props: TagProps<TTag>,
+	arrange(
+		_el: Element<string | symbol>,
 		_parent: TNode | TRoot,
 		_children: Array<TNode | string>,
 	): unknown {
@@ -679,11 +665,7 @@ export class Renderer<
 	 *
 	 * @returns The return value is ignored.
 	 */
-	dispose<TTag extends string | symbol>(
-		_tag: TTag,
-		_props: TagProps<TTag>,
-		_node: TNode,
-	): unknown {
+	dispose(_el: Element<string | symbol>, _node: TNode): unknown {
 		return;
 	}
 
@@ -729,7 +711,7 @@ function mount<TNode, TScope, TRoot, TResult>(
 		}
 
 		host = el as Element<string | symbol>;
-		scope = renderer.scope(el.tag, el.props, scope);
+		scope = renderer.scope(host, scope);
 	}
 
 	// NOTE: The primary benefit of having a separate codepath for mounting is that it’s slightly faster because we don’t have to align and diff children against old children. But for singular child values, updateChild is sufficient.
@@ -815,7 +797,7 @@ function update<TNode, TScope, TRoot, TResult>(
 		return commit(renderer, scope, el, []);
 	} else if (el.tag !== Fragment) {
 		host = el as Element<string | symbol>;
-		scope = renderer.scope(el.tag, el.props, scope);
+		scope = renderer.scope(host, scope);
 		if (el.tag === Portal) {
 			root = el.props.root;
 		}
@@ -1033,7 +1015,7 @@ function diff<TNode, TScope, TRoot, TResult>(
 		// TODO: implement Raw element parse caching
 		if (oldChild.tag === Portal) {
 			if (oldChild.props.root !== newChild.props.root) {
-				renderer.arrange(Portal, oldChild.props, oldChild.props.root, []);
+				renderer.arrange(oldChild as Element<Portal>, oldChild.props.root, []);
 			}
 		}
 
@@ -1144,7 +1126,7 @@ function commit<TNode, TScope, TRoot, TResult>(
 			commitCtx(el._ctx, value);
 		}
 	} else if (el.tag === Portal) {
-		renderer.arrange(Portal, el.props, el.props.root, values);
+		renderer.arrange(el as Element<Portal>, el.props.root, values);
 		renderer.complete(el.props.root);
 		value = undefined;
 	} else if (el.tag === Raw) {
@@ -1157,11 +1139,11 @@ function commit<TNode, TScope, TRoot, TResult>(
 		value = el._n;
 	} else if (el.tag !== Fragment) {
 		if (!(el._f & Committed)) {
-			el._n = renderer.create(el.tag, el.props, scope);
+			el._n = renderer.create(el as Element<string | symbol>, scope);
 		}
 
-		renderer.patch(el.tag, el.props, el._n, scope);
-		renderer.arrange(el.tag, el.props, el._n, values);
+		renderer.patch(el as Element<string | symbol>, el._n, scope);
+		renderer.arrange(el as Element<string | symbol>, el._n, values);
 		value = el._n;
 	}
 
@@ -1195,7 +1177,7 @@ function unmount<TNode, TScope, TRoot, TResult>(
 		ctx = el._ctx;
 	} else if (el.tag === Portal) {
 		host = el as Element<symbol>;
-		renderer.arrange(Portal, el.props, el.props.root, []);
+		renderer.arrange(host, host.props.root, []);
 		renderer.complete(el.props.root);
 	} else if (el.tag !== Fragment) {
 		if (isEventTarget(el._n)) {
@@ -1213,7 +1195,7 @@ function unmount<TNode, TScope, TRoot, TResult>(
 		}
 
 		host = el as Element<string | symbol>;
-		renderer.dispose(el.tag, el.props, el._n);
+		renderer.dispose(host, host._n);
 	}
 
 	const children = wrap(el._ch);
@@ -2187,8 +2169,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 		const host = ctx._ho;
 		if (host._f & Committed) {
 			ctx._re.arrange(
-				host.tag,
-				host.props,
+				host,
 				host.tag === Portal ? host.props.root : host._n,
 				getChildValues(host),
 			);

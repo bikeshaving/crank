@@ -1,4 +1,4 @@
-import {ElementValue, Portal, Renderer} from "./index";
+import {Element, ElementValue, Portal, Renderer} from "./index";
 
 declare module "./index" {
 	interface EventMap extends GlobalEventHandlersEventMap {}
@@ -119,24 +119,25 @@ export class StringRenderer extends Renderer<
 	}
 
 	arrange(
-		tag: any,
-		props: Record<string, any>,
+		el: Element<string | symbol>,
 		node: Node,
 		children: Array<Node | string>,
 	): void {
-		if (tag === Portal) {
+		if (el.tag === Portal) {
 			return;
+		} else if (typeof el.tag !== "string") {
+			throw new Error(`Unknown tag: ${el.tag.toString()}`);
 		}
 
-		const attrs = printAttrs(props);
-		const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
+		const attrs = printAttrs(el.props);
+		const open = `<${el.tag}${attrs.length ? " " : ""}${attrs}>`;
 		let result: string;
-		if (voidTags.has(tag)) {
+		if (voidTags.has(el.tag)) {
 			result = open;
 		} else {
-			const close = `</${tag}>`;
+			const close = `</${el.tag}>`;
 			const contents =
-				"innerHTML" in props ? props["innerHTML"] : join(children);
+				"innerHTML" in el.props ? el.props["innerHTML"] : join(children);
 			result = `${open}${contents}${close}`;
 		}
 
