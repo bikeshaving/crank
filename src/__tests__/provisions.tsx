@@ -13,7 +13,7 @@ describe("context", () => {
 	function* Provider(this: Context): Generator<Element> {
 		let i = 1;
 		for (const {children, message = "Hello "} of this) {
-			this.set("greeting", message + i++);
+			this.provide("greeting", message + i++);
 			yield <Fragment>{children}</Fragment>;
 		}
 	}
@@ -30,7 +30,7 @@ describe("context", () => {
 	}
 
 	function Consumer(this: Context): Element {
-		const greeting = this.get("greeting");
+		const greeting = this.consume("greeting");
 		return <div>{greeting}</div>;
 	}
 
