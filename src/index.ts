@@ -254,7 +254,7 @@ export class Element<TTag extends Tag = Tag> {
 
 	/**
 	 * @internal
-	 * inflightPromise - The current pending async run of the element.
+	 * inflightPromise - The current async run of the element.
 	 *
 	 * @remarks
 	 * This value is used to make sure element copies do not fulfill immediately, to set the fallback of the next element when the previous element commits, and as the yield value of async generator components with async children. It is unset when the element is committed.
@@ -1411,12 +1411,12 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 */
 	_op: ((props: any) => unknown) | undefined;
 
-	// See the run/step/advance functions for more notes on inflight/enqueued pending/value.
+	// See the run/step/advance functions for more notes on inflight/enqueued block/value.
 	/**
 	 * @internal
-	 * inflightPending
+	 * inflightBlock
 	 */
-	_ip: Promise<unknown> | undefined;
+	_ib: Promise<unknown> | undefined;
 
 	/**
 	 * @internal
@@ -1426,9 +1426,9 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	/**
 	 * @internal
-	 * enqueuedPending
+	 * enqueuedBlock
 	 */
-	_ep: Promise<unknown> | undefined;
+	_eb: Promise<unknown> | undefined;
 
 	/**
 	 * @internal
@@ -1802,7 +1802,7 @@ function resume(ctx: Context): void {
 	}
 }
 
-// NOTE: The functions run, step and advance work together to implement the async queueing behavior of components. The run function calls the step function, which returns two results in a tuple. The first result, called “pending,” is a possible promise which settles when the component can accept new updates, and represents the duration during which the component is blocked from accepting new updates. The second result, called “value,” is the actual result of the update. The run function caches pending/value from the step function on the context, according to whether the component is currently blocked. The “inflight” pending/value properties are the currently executing update, and the “enqueued” pending/value properties are promises which represent the next step. Lastly, the run function calls the advance function in a Promise.prototype.finally callback to allow new steps to be enqueued.
+// NOTE: The functions run, step and advance work together to implement the async queueing behavior of components. The run function calls the step function, which returns two results in a tuple. The first result, called “block,” is a possible promise which settles when the component can accept new updates, and represents the duration during which the component is blocked from accepting new updates. The second result, called “value,” is the actual result of the update. The run function caches block/value from the step function on the context, according to whether the component is currently blocked. The “inflight” block/value properties are the currently executing update, and the “enqueued” block/value properties are promises which represent the next step. Lastly, the run function calls the advance function in a Promise.prototype.finally callback to allow new steps to be enqueued.
 
 /**
  * Enqueues and executes the component associated with the context.
@@ -1810,11 +1810,11 @@ function resume(ctx: Context): void {
 function run<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (typeof ctx._ip === "undefined") {
+	if (typeof ctx._ib === "undefined") {
 		try {
-			let [pending, value] = step<TNode, TResult>(ctx);
-			if (isPromiseLike(pending)) {
-				ctx._ip = pending
+			let [block, value] = step<TNode, TResult>(ctx);
+			if (isPromiseLike(block)) {
+				ctx._ib = block
 					.catch((err) => {
 						if (!(ctx._f & Updating)) {
 							return propagateError<TNode>(ctx._pa, err);
@@ -1838,19 +1838,19 @@ function run<TNode, TResult>(
 		}
 	} else if (ctx._f & AsyncGen) {
 		return ctx._iv;
-	} else if (typeof ctx._ep === "undefined") {
+	} else if (typeof ctx._eb === "undefined") {
 		let resolve: Function;
-		ctx._ep = ctx._ip
+		ctx._eb = ctx._ib
 			.then(() => {
 				try {
-					const [pending, value] = step<TNode, TResult>(ctx);
+					const [block, value] = step<TNode, TResult>(ctx);
 					resolve(value);
 					if (isPromiseLike(value)) {
 						ctx._el._inf = value;
 					}
 
-					if (isPromiseLike(pending)) {
-						return pending.catch((err) => {
+					if (isPromiseLike(block)) {
+						return block.catch((err) => {
 							if (!(ctx._f & Updating)) {
 								return propagateError<TNode>(ctx._pa, err);
 							}
@@ -1876,17 +1876,15 @@ type ChildrenIteration =
 /**
  * The step function is responsible for executing the component and handling all the different component types.
  *
- * @returns A tuple [pending, value]
- * pending - A possible promise which represents the duration during which the component is blocked from updating.
+ * @returns A tuple [block, value]
+ * block - A possible promise which represents the duration during which the component is blocked from updating.
  * value - The actual rendered value of the children.
  *
  * @remarks
  * Each component type will block/unblock according to the type of the component.
  * Sync function components never block and will transparently pass updates to children.
  * Async function components and async generator components block while executing itself, but will not block for async children.
- * Sync generator components block while any children are pending.
- *
- * The reason sync generator components block while their children are pending is that they are expected to only resume when they’ve actually rendered. Additionally, they have no mechanism for awaiting async children.
+ * Sync generator components block while any children are executing, because they are expected to only resume when they’ve actually rendered. Additionally, they have no mechanism for awaiting async children.
  */
 function step<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
@@ -1912,11 +1910,11 @@ function step<TNode, TResult>(
 				// async function component
 				const result1 =
 					result instanceof Promise ? result : Promise.resolve(result);
-				const pending = result1;
+				const block = result1;
 				const value = result1.then((result) =>
 					updateCtxChildren<TNode, TResult>(ctx, result),
 				);
-				return [pending, value];
+				return [block, value];
 			} else {
 				// sync function component
 				return [undefined, updateCtxChildren<TNode, TResult>(ctx, result)];
@@ -1955,7 +1953,7 @@ function step<TNode, TResult>(
 			ctx._f |= AsyncGen;
 		}
 
-		const pending = iteration;
+		const block = iteration;
 		const value: Promise<ElementValue<TNode>> = iteration.then(
 			(iteration) => {
 				ctx._f &= ~Iterating;
@@ -1984,7 +1982,7 @@ function step<TNode, TResult>(
 			},
 		);
 
-		return [pending, value];
+		return [block, value];
 	}
 
 	// sync generator component
@@ -2017,16 +2015,16 @@ function step<TNode, TResult>(
 
 /**
  * @remarks
- * Called when the inflight pending promise settles.
+ * Called when the inflight block promise settles.
  */
 function advance(ctx: Context): void {
-	// _ip: inflightPending
+	// _ib: inflightBlock
 	// _iv: inflightValue
-	// _ep: enqueuedPending
+	// _eb: enqueuedBlock
 	// _ev: enqueuedValue
-	ctx._ip = ctx._ep;
+	ctx._ib = ctx._eb;
 	ctx._iv = ctx._ev;
-	ctx._ep = undefined;
+	ctx._eb = undefined;
 	ctx._ev = undefined;
 	if (ctx._f & AsyncGen && !(ctx._f & Finished)) {
 		run(ctx);
