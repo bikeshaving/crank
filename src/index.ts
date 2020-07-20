@@ -625,11 +625,7 @@ export class Renderer<
 	 * @remarks
 	 * Used to mutate the node associated with an element when new props are passed.
 	 */
-	patch(
-		_el: Element<string | symbol>,
-		_node: TNode,
-		_scope: TScope | undefined,
-	): unknown {
+	patch(_el: Element<string | symbol>, _node: TNode): unknown {
 		return;
 	}
 
@@ -1142,7 +1138,7 @@ function commit<TNode, TScope, TRoot, TResult>(
 			el._n = renderer.create(el as Element<string | symbol>, scope);
 		}
 
-		renderer.patch(el as Element<string | symbol>, el._n, scope);
+		renderer.patch(el as Element<string | symbol>, el._n);
 		renderer.arrange(el as Element<string | symbol>, el._n, values);
 		value = el._n;
 	}

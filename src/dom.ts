@@ -70,11 +70,8 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 			: document.createElement(el.tag);
 	}
 
-	patch(
-		el: CrankElement<string | symbol>,
-		node: Element,
-		ns: string | undefined,
-	): void {
+	patch(el: CrankElement<string | symbol>, node: Element): void {
+		const isSvg = node instanceof SVGElement;
 		for (let name in el.props) {
 			let forceAttribute = false;
 			const value = el.props[name];
@@ -110,7 +107,7 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 						node.setAttribute("class", "");
 					} else if (!value) {
 						node.removeAttribute("class");
-					} else if (!ns) {
+					} else if (!isSvg) {
 						(node as any)["className"] = value;
 					} else {
 						node.setAttribute("class", value);
@@ -128,7 +125,7 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 				default: {
 					if (value == null) {
 						node.removeAttribute(name);
-					} else if (!forceAttribute && !ns && name in node) {
+					} else if (!forceAttribute && !isSvg && name in node) {
 						(node as any)[name] = value;
 					} else if (value === true) {
 						node.setAttribute(name, "");
