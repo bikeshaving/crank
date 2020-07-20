@@ -16,7 +16,7 @@ renderer.render(<Greeting name="World" />, document.body);
 console.log(document.body.innerHTML); // "<div>Hello World</div>"
 ```
 
-Component elements can be passed children just as host elements can. The `createElement` function will add children to the props object under the name `children`, and it is up to the component to place the children somewhere in the returned element tree. If you don’t use the `children` prop, it will be ignored.
+Component elements can be passed children just as host elements can. The `createElement` function will add children to the props object under the name `children`, and it is up to the component to place these children somewhere in the returned element tree. If you don’t use the `children` prop, it will not appear in the rendered output.
 
 ```js
 function Greeting({name, children}) {
@@ -72,7 +72,7 @@ console.log(document.body.innerHTML);
 // "<div>You have updated this component 1 time</div>"
 ```
 
-By yielding elements rather than returning them, we can make components stateful using variables in the generator’s local scope. Every time the component is updated, Crank resumes the generator, pausing at the next `yield`. The yielded expressions, usually elements, are then recursively rendered, just as if they were returned from a function component. Furthermore, Crank uses the same diffing algorithm which reuses DOM nodes to reuse generator objects, so that the execution of generator components are preserved between renders.
+By yielding elements rather than returning them, we can make components stateful using variables in the generator’s local scope. Every time a generator component is rendered, Crank resumes the generator, pausing at the next `yield`. The yielded expression, usually an element, is then recursively rendered, just as if it were returned from a function component. Furthermore, Crank uses the same diffing algorithm which reuses DOM nodes to reuse generator objects, so that the execution of generator components are preserved between renders.
 
 ### Contexts
 In the preceding example, the `Counter` component’s local state changes when it is rerendered, but we may want to write components which update themselves instead according to timers or events. Crank allows components to control themselves by passing in an object called a *context* as the `this` keyword of each component. Contexts provide several utility methods, most important of which is the `refresh` method, which tells Crank to update the related component instance in place.
@@ -97,7 +97,7 @@ function *Timer() {
 }
 ```
 
-This `Timer` component is similar to the `Counter` one, except now the state (the local variable `seconds`) is updated in the callback passed to `setInterval`, rather than when the component is rerendered. Additionally, the `refresh` method is called to ensure that the generator is stepped through each interval, so that the rendered DOM actually reflects the updated `seconds` variable.
+This `Timer` component is similar to the `Counter` one, except now the state (the local variable `seconds`) is updated in the callback passed to `setInterval`, rather than when the component is rerendered. Additionally, the `refresh` method is called to ensure that the generator is stepped through whenever the `setInterval` callback fires, so that the rendered DOM actually reflects the updated `seconds` variable.
 
 One important detail about the `Timer` example is that it cleans up after itself with `clearInterval`. Crank will call the `return` method on generator components when the element is unmounted, so that the finally block executes and `clearInterval` is called. In this way, you can use the natural lifecycle of a generator to write setup and teardown logic for components, all within the same scope.
 
@@ -142,13 +142,19 @@ function *Counter({message}) {
 
 renderer.render(<Counter message="The count is now:" />, document.body);
 console.log(document.body.innerHTML); // "<div>The count is now: 1</div>"
-renderer.render(<Counter message="What if I update the message:" />, document.body);
-console.log(document.body.innerHTML); // "<div>What if I update the message: 2</div>"
+renderer.render(
+  <Counter message="What if I update the message:" />,
+  document.body,
+);
+console.log(document.body.innerHTML);
+// "<div>What if I update the message: 2</div>"
 ```
 
-By replacing the `while (true)` loop with a `for…of` loop which iterates over `this`, you can get the latest props each time the generator is resumed. This is possible because contexts are an iterable of the latest props passed to elements.
+By replacing the `while` loop with a `for…of` loop which iterates over `this`, you can get the latest props each time the generator is resumed. This is possible because contexts are an iterable of the latest props passed to elements.
 
-One idiom we see in the preceding example is that we overwrite the variables declared via the generator’s parameters (`message`) with the destructuring expression in the `for…of` statement. This is an easy way to make sure those variables stay in sync with the current props of the component. However, there is no requirement that you must always overwrite old props in the `for` expression, meaning you can assign new props to a different variable and compare them against the old ones:
+### Comparing Old and New Props
+
+One idiom we see in the preceding example is that we overwrite the variables declared via the generator’s parameters with the destructuring expression in the `for…of` statement. This is an easy way to make sure those variables stay in sync with the current props of the component. However, there is no requirement that you must always overwrite old props in the `for` expression, meaning you can assign new props to a different variable and compare them against the old ones:
 
 ```jsx
 function *Greeting({name}) {

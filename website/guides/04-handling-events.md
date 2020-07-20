@@ -126,16 +126,17 @@ function *MyApp() {
 }
 ```
 
-`MyButton` is a function component which wraps a `button` element. It dispatches a `CustomEvent` whose type is `"mybuttonclick"` when it is pressed, and whose `detail` property contains data about the ID of the clicked button. This event is not triggered on the underlying DOM nodes; instead, it can be listened for by parent component contexts using event bubbling, and in the example, the event propagates and is handled by the `MyApp` component. Using custom events and event bubbling allows you to encapsulate state transitions within component hierarchies without the need for complex state management solutions used in other frameworks like Redux or VueX.
+`MyButton` is a function component which wraps a `button` element. It dispatches a `CustomEvent` whose type is `"mybuttonclick"` when it is pressed, and whose `detail` property contains data about the ID of the clicked button. This event is not triggered on the underlying DOM nodes; instead, it can be listened for by parent component contexts using event capturing and bubbling, and in the example, the event propagates and is handled by the `MyApp` component. Using custom events and event bubbling allows you to encapsulate state transitions within component hierarchies without the need for complex state management solutions used in other frameworks like Redux or VueX.
 
-The preceding example also demonstrates a slight difference in the way the `addEventListener` method works in function components compared to generator components. With generator components, listeners stick between renders, and will continue to fire until the component is unmounted. However, with function components, because the `addEventListener` call would be invoked every time the component is rerendered, we remove and add listeners for every render. This allows function components to remain stateless while still listening for and dispatching events to their parents.
+The preceding example also demonstrates a slight difference in the way the `addEventListener` method works in function components compared to generator components. With generator components, listeners stick between renders, and will continue to fire until the component is unmounted. However, with function components, because the `addEventListener` call would be invoked every time the component is rerendered, we remove and add listeners for each render. This allows function components to remain stateless while still listening for and dispatching events.
 
-## Controlled and Uncontrolled Props
+## Form Elements
+
 Form elements like inputs and textareas are stateful and by default update themselves automatically according to user input. JSX libraries like React and Inferno handle these types of elements by allowing their virtual representations to be “controlled” or “uncontrolled,” where being controlled means that the internal DOM node’s state is synced to the virtual representation’s props.
 
 Crank’s philosophy with regard to this issue is slightly different, in that we do not view the virtual elements as the “source of truth” for the underlying DOM node. In practice, this design decision means that renderers do not retain the previously rendered props for host elements. For instance, Crank will not compare old and new props between renders to avoid mutating props which have not changed, and instead attempt to update every prop in props when it is rerendered.
 
-Another consequence is that we don’t delete props which were present in one rendering and absent in the next. For instance, in the following example, the checkbox will not be unchecked if you press the button.
+Another consequence is that we don’t delete props which were present in one rendering and absent in the next. In the following example, the checkbox will not be unchecked if you press the button.
 
 ```jsx
 function *App() {
@@ -194,7 +195,7 @@ function *App() {
 }
 ```
 
-This design decision means that we can both leave form elements “uncontrolled” while still “controlling” them via normal rendering when necessary. Here, for instance is an input element which is uncontrolled, except that it resets when the button is clicked.
+This design decision means that we now have a way to have form elements be “uncontrolled” and “controlled” within the same component. Here, for instance, is an input element which is uncontrolled, except that it resets when the button is clicked.
 
 ```jsx
 function* ResettingInput() {
@@ -219,4 +220,4 @@ function* ResettingInput() {
 }
 ```
 
-We use the `reset` flag to check whether we need to set the `value` of the underlying input DOM element, and we omit the `value` prop when we aren’t performing a reset. This design decision means we can let the browser deal with form elements without rerendering or managing state, while still allowing them to be rerendered as necessary.
+We use the `reset` flag to check whether we need to set the `value` of the underlying input DOM element, and we omit the `value` prop when we aren’t performing a reset. The input is therefore both uncontrolled in that we do not track its value, but also controllable via normal rendering when we want to reset its `value` to the empty string.

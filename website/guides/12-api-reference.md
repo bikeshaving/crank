@@ -154,38 +154,46 @@ A special element tag which copies whatever child appeared previously in the ele
 A special element tag for creating a new element subtree with a different root, passed via the root prop.
 
 **Props:**
-- root - A root to render into.
+- `root: TRoot` - A root to render into.
 
 
 ### `Raw`
 A special element tag for injecting raw nodes into an element tree via its value prop.
 
 **Props:**
-- value - TODO
+- `value: TNode | string` - A string or a node. If the value is a node, it will be inserted directly into the tree. If the value is a string, the renderer will parse the string and insert the parsed result into the tree.
 
 ## Functions
 ### `createElement`
-**Parameters:**
-- `tag: string | symbol | Component` - TODO
-- `props: Record<string, any>` - TODO
-- `...children: Children` - TODO
-
 Creates an element with the specified tag, props and children. This function is typically used as a target for JSX transpilers, rather than called directly.
 
+**Parameters:**
+- `tag: string | symbol | Component`
+- `props: Record<string, any>`
+- `...children: Children`
+
+**Return Value:**
+
+An element.
+
 ### `isElement`
+
 **Parameters:**
 - `value: unknown` - The value to be tested.
 
-Returns true if the value passed in is a Crank Element.
+**Return Value:**
+
+A boolean which indicates the value passed in is a Crank Element.
 
 ### `cloneElement`
+Clones the passed in element. Throws a `TypeError` if the value passed in is not an element.
+
 **Parameters:**
 - `element: Element` - The Element to be cloned.
 
-Clones the passed in element.
+**Return Value:**
 
-**Remarks:**
-Throws a `TypeError` if the value passed in is not an element.
+A copy of the element passed in.
 
 ## Classes
 ### `Element`
@@ -195,13 +203,15 @@ Elements are the basic building blocks of Crank applications. They are JavaScrip
 - `tag: Tag` - The tag of the element.
 - `props: Record<string, any>` - The props of the element.
 - `key: unknown` - A key by which to identify the element during the element diffing process.
-- `ref: Function` - A callback which fires whenever the element is rendered.
+- `ref: Function` - A callback which fires with the element’s rendered value whenever the element is rendered.
 
 #### Methods
 - [`constructor`](#Element.constructor)
 
 ### `Renderer`
 An abstract class which is subclassed to render to different target environments. This class is responsible for kicking off the rendering process, caching previous trees by root, and creating/mutating/disposing the nodes of the target environment.
+
+**NOTE:** The internal Crank renderer methods documented in the [guide on custom renderers.](./custom-renderers)
 
 **Type Parameters:**
 - `TNode`
@@ -219,8 +229,6 @@ An abstract class which is subclassed to render to different target environments
   - `root?: TRoot` - The renderer specific root to render into.
   - `ctx?: Context` - A context which will parent the contexts of all top-level components in the element tree.
 
-**NOTE:** The internal Crank renderer methods documented in the [guide on custom renderers.](./custom-renderers)
-
 ### `Context`
 A class which is instantiated and passed to every component function as its `this` value.
 
@@ -229,22 +237,24 @@ A class which is instantiated and passed to every component function as its `thi
 - `TResult` - The expected result from rendering the component.
 
 #### Properties
-- `props` - **Readonly** The current props of the component.
-- `value` - **Readonly** The current rendered value of the component.
+- `props` - The current props of the component. **Readonly**
+- `value` - The current rendered value of the component. **Readonly**
 
 #### Methods
 - `[Symbol.iterator]`
   Returns an iterator of the props passed to the component. Only used in generator components.
+
 - `[Symbol.asyncIterator]`
   Returns an async iterator of the props passed to the component. Only used in generator
-- `get`
-- `set`
+
 - `refresh`
   Updates the component in place.
+
 - `schedule`
   Executes the passed in callback when the component renders. The `schedule` method will only fire once for each call and callback.
   **Parameters:**
   - `callback: Function` - The callback to be executed.
+
 - `cleanup`
   Executes the passed in callback when the component unmounts. The `cleanup` method will only fire once for each call and callback.
   **Parameters:**
@@ -263,11 +273,14 @@ A class which is instantiated and passed to every component function as its `thi
     - `passive: boolean` - If true, calling the `preventDefault` method on the event will have no effect. Using this flag can increase performance. It is most useful for event types like `scroll` which fire frequently and are rarely cancelled.
 
 - `removeEventListener`
+  Removes an event listener by type, listener and capture option.
+
   **Parameters:**
   - `type: string` - The type of the event.
   - `listener: Function` - The listener callback.
   - `options: Object | boolean` - An object of boolean options which can be set to change the characteristics of the listener. If the options object is a boolean, then that value is used to set the `capture` option for the listener.
     - `capture: boolean` - If true, will remove listeners which use the capture option.
+
 - `dispatchEvent`
   Dispatches an event on the context. Will propagate to parent contexts according to the same event bubbling and capture algorithms used by the DOM.
 
@@ -277,3 +290,20 @@ A class which is instantiated and passed to every component function as its `thi
   **Return Value:**
 
   The return value is `false` if the event is cancelable and an event listener calls the `preventDefault` method on the event, and `true` otherwise.
+
+- `get`
+  Retrieves a provision set by an ancestor by key.
+
+  **Parameters:**
+  - `key: unknown` - The key of the provision.
+
+  **Return Value:**
+
+  The provision by key, or undefined if no provision is found.
+
+- `set`
+  Sets a provision by key for descendant components.
+
+  **Parameters:**
+  - `key: unknown` - The key of the provision.
+  - `value: unknown` - The value of the provision.

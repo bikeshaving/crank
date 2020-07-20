@@ -4,16 +4,16 @@ title: Reusable Logic
 
 This guide describes additional APIs as well as design patterns for developers who wish to reuse logic between components or write Crank-specific libraries.
 
-## Additional Context methods and properties 
-Crank provides several additional methods and properties via the `Context` API to help you share logic between components. Most of the APIs demonstrated here are for library authors and should not be used in the course of typical application development.
+## Additional Context Methods and Properties 
+Crank provides several additional methods and properties via the `Context` API to help you share logic between components. Some of the APIs demonstrated here are for library authors and should not be used in the course of typical application development.
 
 ### `context.props`
-The current props of a component can be accessed via the readonly context property `props`. We recommended that you access props within components via component function’s parameters or via context iterators if you’re using generator components, but the `props` property can be useful when you need to access a component’s current props from within a plugin or extension.
+The current props of a component can be accessed via the readonly context property `props`. We recommended that you access props within components via its parameters or context iterators when writing components. The `props` property can be useful when you need to access a component’s current props from within an extension or helper function.
  
 ### `context.value`
-Similarly, the most recently rendered value of a component is accessible via the readonly context property `value`. Again, we recommended that you access rendered values via the many methods described in [the guide on accessing rendered values](./lifecycles#accessing-rendered-values), but it can be useful to access the current value synchronously when writing helper context methods.
+Similarly, the most recently rendered value of a component is accessible via the readonly context property `value`. Again, we recommend that you access rendered values via the many methods described in [the guide on accessing rendered values](./lifecycles#accessing-rendered-values) or via [the `crank-ref` prop](./special-props-and-tags#crank-ref), but it can be useful to access the current value synchronously when writing helper context methods.
 
-Depending on what a component renders, the accessed value can be an node, a string, an array of nodes and strings, or `undefined`.
+Depending on the state of the component, the accessed value can be an node, a string, an array of nodes and strings, or `undefined`.
 
 ### Provisions
 **Warning:** This API is more unstable than others, and the method names and behavior of components which use this method may change.
@@ -51,14 +51,12 @@ console.log(document.body); // "<div><p>Hello, Brian</p></div>"
 
 Provisions allow libraries to define components which interact with their descendants without rigidly defined component hierarchies or requiring the developer to pass data manually between components as props. This makes them useful, for instance, when writing multiple components which communicate with each other, like custom `select` and `option` form elements, or drag-and-drop components.
 
-Anything can be passed as a key to the `get` and `set` methods, so you can use a symbol to ensure that the provision you pass between components are private and do not collide with contexts set by others.
+Anything can be passed as a key to the `get` and `set` methods, so you can use a symbol to ensure that the provision you pass between your components are private and do not collide with provisions set by others.
 
-**Note:** Crank does not link “providers” and “consumers” in any way, and doesn’t automatically refresh components when `set` is called, so it’s up to you to make sure consumers update when providers update.
+**Note:** Crank does not link “providers” and “consumers” in any way, and doesn’t automatically refresh consumer components when `set` is called, so it’s up to you to make sure consumers update when providers update.
 
 ### `context.schedule`
-You can pass a callback to the `schedule` method to listen for when the component commits. This can be deferred if the component runs asynchronously or has async children.
-
-Callbacks passed to `schedule` fire synchronously after the component commits, with the rendered value of the component as its only parameter. They only fire once per call and callback function (think `requestAnimationFrame`, not `setInterval`). This means you have to continuously call the `schedule` method for each update if you want to execute some code every time your component commits.
+You can pass a callback to the `schedule` method to listen for when the component renders. Callbacks passed to `schedule` fire synchronously after the component commits, with the rendered value of the component as its only parameter. They only fire once per call and callback function (think `requestAnimationFrame`, not `setInterval`). This means you have to continuously call the `schedule` method for each update if you want to execute some code every time your component commits.
 
 ### `context.cleanup`
 Similarly, you can pass a callback to the `cleanup` method to listen for when the component unmounts.
@@ -112,7 +110,7 @@ function *Counter() {
 }
 ```
 
-In this example, we define the methods `setInterval` and `clearInterval` directly the `Context` prototype. The example also demonstrates caching intervals on a set which is hidden on context instances using an unexported symbol.
+In this example, we define the methods `setInterval` and `clearInterval` directly the `Context` prototype. The `setInterval` and `clearInterval` methods will now be available to all components.
 
 **Pros:**
 - Methods are available to every component automatically.
@@ -159,11 +157,11 @@ function *Counter() {
 - Naming these functions can be difficult.
 - No way to respond to props updates.
 
-Context helper utilities are useful when you want to write locally-scoped utilities, and are especially well-suited for use-cases which requires setup logic. Possible use-cases include context-aware state management utilities or wrappers around stateful APIs like [mutation observers](https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver) or [HTML drag and drop](https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API).
+Context helper utilities are useful when you want to write locally-scoped utilities, and are especially well-suited for use-cases which requires setup logic. Possible use-cases include wrappers around stateful APIs like [mutation observers](https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver) or [HTML drag and drop](https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API).
 
-### Higher-order components
+### Higher-order Components
 
-Because Crank components are just functions, you can write functions which both take components as parameters and return wrapped component functions.
+Because Crank components are just functions, we can write functions which both take components as parameters and return wrapped component functions.
 
 ```ts
 function interval(Component) {
@@ -186,7 +184,7 @@ function interval(Component) {
 const Counter = interval((props) => <div>Seconds: {props.seconds}</div>);
 ```
 
-The interval function takes a component function and returns a component which passes the number of seconds as a prop, as well as refreshing the component whenever the interval is fired.
+The interval function takes a component function and returns a component which passes the number of seconds as a prop. Additionally, it refreshes the returned component whenever the interval is fired.
 
 **Pros:**
 - Locally scoped.
@@ -196,12 +194,12 @@ The interval function takes a component function and returns a component which p
 **Cons:**
 - Naming higher-order functions can be difficult.
 - JavaScript doesn’t provide an easy syntax for decorating functions.
-- Props that the higher-order component pass in may clash with the component’s own expected props.
+- Props passed into the component by the wrapper may clash with the component’s own expected props.
 
-The main advantage of higher-order components is that you can respond to props in your utilities just like you would with a component. Higher-order components are most useful when you need reusable logic which responds to prop updates or set only well-known props. Possible use-cases include styled component or animation libraries.
+The main advantage of higher-order components is that you can respond to props in your utilities just like you would with a component. Higher-order components are most useful when you need reusable logic which responds to prop updates or sets only well-known props. Possible use-cases include styled component or animation libraries.
 
-### Async iterators
-Because components can be written as async generator functions, you can integrate utility functions which return async iterators seamlessly with Crank.
+### Async Iterators
+Because components can be written as async generator functions, you can integrate utility functions which return async iterators seamlessly with Crank. Async iterators are a great way to model resources because they define a standard way for releasing resources when they’re no longer needed by returning the iterator.
 
 ```ts
 async function *createInterval(delay) {
@@ -240,8 +238,8 @@ async function *Counter() {
 ```
 
 **Pros:**
-- The utilities you write are framework-agnostic.
-- Uniform logic to dispose of resources.
+- Async iterator utilities are framework-agnostic.
+- Uniform way to hold and release resources.
 
 **Cons:**
 - Promises and async iterators can cause race conditions and deadlocks, without any language-level features to help you debug them.
