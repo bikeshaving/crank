@@ -179,7 +179,7 @@ function Footer(): Element {
 			</div>
 			<div>
 				Logo by <a href="https://wstone.io">Will Stone</a> and{" "}
-				<a href="https://github.com/pjdon">Paul Don</a>.
+				<a href="https://github.com/pjdon">Paul Donchenko</a>.
 			</div>
 		</footer>
 	);
