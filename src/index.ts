@@ -1964,6 +1964,9 @@ function step<TNode, TResult>(
 	try {
 		ctx._f |= Stepping;
 		iteration = ctx._it.next(oldValue);
+	} catch (err) {
+		ctx._f |= Finished;
+		throw err;
 	} finally {
 		ctx._f &= ~Stepping;
 	}
@@ -1975,27 +1978,33 @@ function step<TNode, TResult>(
 		}
 
 		const pending = iteration;
-		const value: Promise<ElementValue<TNode>> = iteration.then((iteration) => {
-			ctx._f &= ~Iterating;
-			if (iteration.done) {
-				ctx._f |= Finished;
-			}
-
-			try {
-				const value = updateCtxChildren<TNode, TResult>(
-					ctx,
-					iteration.value as Children,
-				);
-
-				if (isPromiseLike(value)) {
-					return value.catch((err) => handleChildError(ctx, err));
+		const value: Promise<ElementValue<TNode>> = iteration.then(
+			(iteration) => {
+				ctx._f &= ~Iterating;
+				if (iteration.done) {
+					ctx._f |= Finished;
 				}
 
-				return value;
-			} catch (err) {
-				return handleChildError(ctx, err);
-			}
-		});
+				try {
+					const value = updateCtxChildren<TNode, TResult>(
+						ctx,
+						iteration.value as Children,
+					);
+
+					if (isPromiseLike(value)) {
+						return value.catch((err) => handleChildError(ctx, err));
+					}
+
+					return value;
+				} catch (err) {
+					return handleChildError(ctx, err);
+				}
+			},
+			(err) => {
+				ctx._f |= Finished;
+				throw err;
+			},
+		);
 
 		return [pending, value];
 	}
@@ -2064,18 +2073,27 @@ function handleChildError<TNode>(
 	try {
 		ctx._f |= Stepping;
 		iteration = ctx._it.throw(err) as any;
+	} catch (err) {
+		ctx._f |= Finished;
+		throw err;
 	} finally {
 		ctx._f &= ~Stepping;
 	}
 
 	if (isPromiseLike(iteration)) {
-		return iteration.then((iteration) => {
-			if (iteration.done) {
-				ctx._f |= Finished;
-			}
+		return iteration.then(
+			(iteration) => {
+				if (iteration.done) {
+					ctx._f |= Finished;
+				}
 
-			return updateCtxChildren(ctx, iteration.value as Children);
-		});
+				return updateCtxChildren(ctx, iteration.value as Children);
+			},
+			(err) => {
+				ctx._f |= Finished;
+				throw err;
+			},
+		);
 	}
 
 	if (iteration.done) {
@@ -2091,47 +2109,20 @@ function propagateError<TNode>(
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (ctx === undefined) {
 		throw err;
-	} else if (
-		ctx._f & Finished ||
-		typeof ctx._it !== "object" ||
-		typeof ctx._it.throw !== "function"
-	) {
-		return propagateError<TNode>(ctx._pa, err);
 	}
 
+	let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 	try {
-		resume(ctx);
-		let iteration: ChildrenIteration;
-		try {
-			ctx._f |= Stepping;
-			iteration = ctx._it.throw(err);
-		} finally {
-			ctx._f &= ~Stepping;
-		}
-
-		if (isPromiseLike(iteration)) {
-			return iteration
-				.then((iteration) => {
-					if (iteration.done) {
-						ctx._f |= Finished;
-					}
-
-					return updateCtxChildren<TNode, unknown>(
-						ctx,
-						iteration.value as Children,
-					);
-				})
-				.catch((err) => propagateError<TNode>(ctx._pa, err));
-		}
-
-		if (iteration.done) {
-			ctx._f |= Finished;
-		}
-
-		return updateCtxChildren(ctx, iteration.value as Children);
+		result = handleChildError(ctx, err);
 	} catch (err) {
 		return propagateError<TNode>(ctx._pa, err);
 	}
+
+	if (isPromiseLike(result)) {
+		return result.catch((err) => propagateError<TNode>(ctx._pa, err));
+	}
+
+	return result;
 }
 
 function updateCtx<TNode>(
