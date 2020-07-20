@@ -1480,9 +1480,9 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		this._el = el;
 	}
 
-	get<TKey extends keyof ProvisionMap>(key: TKey): ProvisionMap[TKey];
-	get(key: unknown): any;
-	get(key: unknown): any {
+	consume<TKey extends keyof ProvisionMap>(key: TKey): ProvisionMap[TKey];
+	consume(key: unknown): any;
+	consume(key: unknown): any {
 		for (let parent = this._pa; parent !== undefined; parent = parent._pa) {
 			if (typeof parent._ps === "object" && parent._ps.has(key)) {
 				return parent._ps.get(key)!;
@@ -1490,12 +1490,12 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		}
 	}
 
-	set<TKey extends keyof ProvisionMap>(
+	provide<TKey extends keyof ProvisionMap>(
 		key: TKey,
 		value: ProvisionMap[TKey],
 	): void;
-	set(key: unknown, value: any): void;
-	set(key: unknown, value: any): void {
+	provide(key: unknown, value: any): void;
+	provide(key: unknown, value: any): void {
 		if (typeof this._ps === "undefined") {
 			this._ps = new Map();
 		}
