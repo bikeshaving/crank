@@ -228,13 +228,7 @@ Constructs an element. Typicially, you would use the `createElement` function ra
 
 An abstract class which is subclassed to render to different target environments. This class is responsible for kicking off the rendering process, caching previous trees by root, and creating/mutating/disposing the nodes of the target environment.
 
-**NOTE:** The internal Crank renderer methods documented in the [guide on custom renderers.](./custom-renderers)
-
-**Type Parameters:**
-- `TNode`
-- `TScope`
-- `TRoot`
-- `TResult`
+**NOTE:** The internal Crank renderer methods and type parameters are documented in the [guide on custom renderers.](./custom-renderers)
 
 #### Methods
 #### `constructor`
@@ -294,6 +288,7 @@ Adds an event listener to the context. The `addEventListener` method will also a
 - `type: string` - The type of the event.
 - `listener: Function` - The listener callback.
 - `options: Object | boolean` - An object of boolean options which can be set to change the characteristics of the listener. If the options object is a boolean, then that value is used to set the `capture` option for the listener.
+
   - `capture: boolean` - If true, the event listener will fire during [the capture phase](https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#Event_bubbling_and_capture) of event dispatch.
   - `once: boolean` -  If true, the event listener will fire at most once before being removed.
   - `passive: boolean` - If true, calling the `preventDefault` method on the event will have no effect. Using this flag can increase performance. It is most useful for event types like `scroll` which fire frequently and are rarely cancelled.
@@ -306,6 +301,7 @@ Removes an event listener by type, listener and capture option.
 - `type: string` - The type of the event.
 - `listener: Function` - The listener callback.
 - `options: Object | boolean` - An object of boolean options which can be set to change the characteristics of the listener. If the options object is a boolean, then that value is used to set the `capture` option for the listener.
+
   - `capture: boolean` - If true, will remove listeners which use the capture option.
 
 #### `dispatchEvent`
