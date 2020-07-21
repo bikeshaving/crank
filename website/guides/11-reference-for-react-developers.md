@@ -139,4 +139,4 @@ Crank provides the callback-style ref API from React via the `crank-ref` prop. U
 You can also access values many other ways. See the [guide on accessing rendered values](./lifecycles#accessing-rendered-values) for more information.
 
 ## React Contexts
-Because we refer to the `this` keyword of components as “the component’s context” (“controller” would have been three more characters), we refer to the equivalent concept of [React’s Context API](https://reactjs.org/docs/context.html) as “provisions” instead. We use the methods `get` and `set` to define provisions between components. See [the guide on provisions](./reusable-logic#provisions) for more information.
+Because we refer to the `this` keyword of components as “the component’s context” (“controller” would have been three more characters), we refer to the equivalent concept of [React’s Context API](https://reactjs.org/docs/context.html) as “provisions” instead. We use the context methods `provide` and `consume` to define provisions between ancestor and descendant components. See [the guide on provisions](./reusable-logic#provisions) for more information.
