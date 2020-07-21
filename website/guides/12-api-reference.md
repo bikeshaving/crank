@@ -137,7 +137,7 @@ declare global {
 
 ### `ProvisionMap`
 
-An interface which can be extended to provide strongly typed provisions. See `Context.prototype.get` and `Context.prototype.set`.
+An interface which can be extended to provide strongly typed provisions. See `Context.prototype.provide` and `Context.prototype.consume`.
 
 **Example:**
 ```ts
@@ -319,7 +319,7 @@ Dispatches an event on the context. Will propagate to parent contexts according 
 
 The return value is `false` if the event is cancelable and an event listener calls the `preventDefault` method on the event, and `true` otherwise.
 
-#### `get`
+#### `consume`
 
 Retrieves a provision set by an ancestor by key.
 
@@ -330,7 +330,7 @@ Retrieves a provision set by an ancestor by key.
 
 The provision by key, or undefined if no provision is found.
 
-#### `set`
+#### `provide`
 
 Sets a provision by key for descendant components.
 

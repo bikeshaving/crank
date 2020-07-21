@@ -18,16 +18,16 @@ Depending on the state of the component, the accessed value can be an node, a st
 ### Provisions
 **Warning:** This API is more unstable than others, and the method names and behavior of components which use this method may change.
 
-Crank allows you to provide data to all of a component’s descendants via the methods `get` and `set`. The `set` method sets a “provision” under a specific key, and the `get` method retrieves the value set under a specific key by the nearest ancestor.
+Crank allows you to provide data to all of a component’s descendants via the methods `provide` and `consume`. The `provide` method sets a “provision” under a specific key, and the `consume` method retrieves the value set under a specific key by the nearest ancestor.
 
 ```ts
 function GreetingProvider({greeting, children}) {
-  this.set("greeting", greeting);
+  this.provide("greeting", greeting);
   return children;
 }
 
 function Greeting({name}) {
-  const greeting = this.get("greeting");
+  const greeting = this.consume("greeting");
   return <p>{greeting}, {name}</p>;
 }
 
@@ -51,9 +51,9 @@ console.log(document.body); // "<div><p>Hello, Brian</p></div>"
 
 Provisions allow libraries to define components which interact with their descendants without rigidly defined component hierarchies or requiring the developer to pass data manually between components as props. This makes them useful, for instance, when writing multiple components which communicate with each other, like custom `select` and `option` form elements, or drag-and-drop components.
 
-Anything can be passed as a key to the `get` and `set` methods, so you can use a symbol to ensure that the provision you pass between your components are private and do not collide with provisions set by others.
+Anything can be passed as a key to the `provide` and `consume` methods, so you can use a symbol to ensure that the provision you pass between your components are private and do not collide with provisions set by others.
 
-**Note:** Crank does not link “providers” and “consumers” in any way, and doesn’t automatically refresh consumer components when `set` is called, so it’s up to you to make sure consumers update when providers update.
+**Note:** Crank does not link “providers” and “consumers” in any way, and doesn’t automatically refresh consumer components when `provide` is called, so it’s up to you to make sure consumers update when providers update.
 
 ### `context.schedule`
 You can pass a callback to the `schedule` method to listen for when the component renders. Callbacks passed to `schedule` fire synchronously after the component commits, with the rendered value of the component as its only parameter. They only fire once per call and callback function (think `requestAnimationFrame`, not `setInterval`). This means you have to continuously call the `schedule` method for each update if you want to execute some code every time your component commits.
