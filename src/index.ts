@@ -141,18 +141,27 @@ function narrow(child: Child): NarrowedChild {
 
 type Key = unknown;
 
+function keyOf(child: NarrowedChild): Key {
+	return typeof child === "object" ? child.key : undefined;
+}
+
 const ElementSymbol = Symbol.for("crank.Element");
 
 /*** ELEMENT FLAGS ***/
 /**
- * A flag which is set when the component has been mounted. Used mainly to detect whether an element is being reused so that it can be cloned.
+ * A flag which is set when the element has been mounted. Used mainly to detect whether an element is being reused so that it can be cloned.
  */
 const Mounted = 1 << 0;
 
 /**
- * A flag which is set when the component has committed at least once.
+ * A flag which is set when the element has committed at least once.
  */
 const Committed = 1 << 1;
+
+/**
+ * A flag which is set when the element is being removed asynchronously
+ */
+const Removing = 1 << 2;
 
 // NOTE: To save on filesize, we mangle the internal properties of Crank classes by hand. These internal properties are prefixed with an underscore. Refer to their definitions to see their unabbreviated names.
 
@@ -527,7 +536,7 @@ export class Renderer<
 			return value.then(() => {
 				const result = this.read(unwrap(getChildValues<TNode>(portal!)));
 				if (root == null) {
-					unmount(this, portal!, undefined, portal!);
+					remove(this, portal!, undefined, portal!);
 				}
 
 				return result;
@@ -536,7 +545,7 @@ export class Renderer<
 
 		const result = this.read(unwrap(getChildValues<TNode>(portal)));
 		if (root == null) {
-			unmount(this, portal, undefined, portal);
+			remove(this, portal, undefined, portal);
 		}
 
 		return result;
@@ -650,7 +659,13 @@ export class Renderer<
 		return;
 	}
 
-	// TODO: remove(): a method which is called to remove a child from a parent to optimize arrange
+	remove(
+		_el: Element<string | symbol>,
+		_parent: TNode | TRoot,
+		_child: TNode,
+	): unknown {
+		return;
+	}
 
 	/**
 	 * Called for each host element when it is unmounted.
@@ -829,14 +844,6 @@ function updateChild<TNode, TScope, TRoot, TResult>(
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	let oldChild = parent._ch as NarrowedChild;
 	let newChild = narrow(child);
-	if (
-		typeof oldChild === "object" &&
-		typeof newChild === "object" &&
-		oldChild.key !== newChild.key
-	) {
-		oldChild = undefined;
-	}
-
 	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 	[newChild, value] = diff(
 		renderer,
@@ -844,12 +851,12 @@ function updateChild<TNode, TScope, TRoot, TResult>(
 		host,
 		ctx,
 		scope,
-		oldChild,
+		keyOf(oldChild) === keyOf(newChild) ? oldChild : undefined,
 		newChild,
 	);
 
 	if (typeof oldChild === "object" && oldChild !== newChild) {
-		unmount(renderer, host, ctx, oldChild);
+		remove(renderer, host, ctx, oldChild);
 	}
 
 	parent._ch = newChild;
@@ -862,8 +869,9 @@ function mapChildrenByKey(children: Array<NarrowedChild>): Map<Key, Element> {
 	const childrenByKey = new Map<Key, Element>();
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i];
-		if (typeof child === "object" && typeof child.key !== "undefined") {
-			childrenByKey.set(child.key, child);
+		const key = keyOf(child);
+		if (key !== undefined) {
+			childrenByKey.set(key, child as Element);
 		}
 	}
 
@@ -886,15 +894,16 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
 	const oldChildren = wrap(parent._ch);
 	const newChildren = Array.from(children);
-	const graveyard: Array<Element> = [];
-	let i = 0;
+	let oi = 0; // oldIndex
+	let ni = 0; // newIndex
 	let async = false;
-	let seen: Set<Key> | undefined;
+	const graveyard: Map<Element, number> = new Map();
+	let seenKeys: Set<Key> | undefined;
 	let childrenByKey: Map<Key, Element> | undefined;
 	// TODO: switch to mountChildren if there are no more children
-	for (let j = 0; j < newChildren.length; j++) {
-		let oldChild = oldChildren[i];
-		let newChild = newChildren[j] as NarrowedChild;
+	for (; ni < newChildren.length; ni++) {
+		let oldChild = oldChildren[oi];
+		let newChild = newChildren[ni] as NarrowedChild;
 		if (isNonStringIterable(newChild)) {
 			newChild = createElement(Fragment, null, newChild);
 		} else {
@@ -902,44 +911,53 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		}
 
 		// ALIGNMENT
-		let oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
-		let newKey = typeof newChild === "object" ? newChild.key : undefined;
-		if (seen !== undefined && seen.has(newKey)) {
+		let oldKey = keyOf(oldChild);
+		let newKey = keyOf(newChild);
+		if (seenKeys !== undefined && seenKeys.has(newKey)) {
 			// TODO: warn about a duplicate key
 			newKey = undefined;
 		}
 
-		if (oldKey !== newKey) {
-			if (!childrenByKey) {
-				childrenByKey = mapChildrenByKey(oldChildren.slice(i));
+		if (oldKey === newKey) {
+			if (childrenByKey !== undefined && oldKey !== undefined) {
+				childrenByKey.delete(oldKey);
+			}
+
+			oi++;
+		} else {
+			if (childrenByKey === undefined) {
+				childrenByKey = mapChildrenByKey(oldChildren.slice(oi));
 			}
 
 			if (newKey === undefined) {
 				while (oldChild !== undefined && oldKey !== undefined) {
-					i++;
-					oldChild = oldChildren[i];
-					oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
+					if (typeof oldChild === "object") {
+						graveyard.set(oldChild, ni);
+					}
+
+					oi++;
+					oldChild = oldChildren[oi];
+					oldKey = keyOf(oldChild);
 				}
 
-				i++;
+				oi++;
 			} else {
+				if (typeof oldChild === "object") {
+					graveyard.set(oldChild, ni);
+				}
+
 				oldChild = childrenByKey.get(newKey);
 				if (oldChild !== undefined) {
 					childrenByKey.delete(newKey);
+					graveyard.delete(oldChild);
 				}
 
-				if (!seen) {
-					seen = new Set();
+				if (!seenKeys) {
+					seenKeys = new Set();
 				}
 
-				seen.add(newKey);
+				seenKeys.add(newKey);
 			}
-		} else {
-			if (childrenByKey !== undefined && newKey !== undefined) {
-				childrenByKey.delete(newKey);
-			}
-
-			i++;
 		}
 
 		// UPDATING
@@ -955,39 +973,63 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		);
 
 		values.push(value);
-		newChildren[j] = newChild;
+		newChildren[ni] = newChild;
 		if (!async && isPromiseLike(value)) {
 			async = true;
 		}
 
 		if (typeof oldChild === "object" && oldChild !== newChild) {
-			graveyard.push(oldChild);
+			graveyard.set(oldChild, ni);
 		}
 	}
 
 	parent._ch = unwrap(newChildren as Array<NarrowedChild>);
 
-	// cleanup
-	for (; i < oldChildren.length; i++) {
-		const oldChild = oldChildren[i];
-		if (typeof oldChild === "object" && typeof oldChild.key === "undefined") {
-			graveyard.push(oldChild);
+	for (; oi < oldChildren.length; oi++) {
+		const oldChild = oldChildren[oi];
+		if (
+			typeof oldChild === "object" &&
+			(seenKeys === undefined || !seenKeys.has(oldChild.key))
+		) {
+			graveyard.set(oldChild, ni);
 		}
 	}
 
-	// TODO: async unmounting
-	if (childrenByKey !== undefined && childrenByKey.size > 0) {
-		graveyard.push(...childrenByKey.values());
-	}
-
 	let values1: Promise<Array<ElementValue<TNode>>> | Array<ElementValue<TNode>>;
+	// WHAT ARE WE DOING TO THE CHILDREN
 	if (async) {
-		values1 = Promise.all(values).finally(() =>
-			graveyard.forEach((child) => unmount(renderer, host, ctx, child)),
-		);
+		values1 = Promise.all(values).then((values1) => {
+			let offset = 0;
+			for (const [child, i] of graveyard) {
+				const result = remove(renderer, host, ctx, child);
+				if (result !== undefined) {
+					child._f |= Removing;
+					// TODO: SPLICE THE VALUE BACK INTO CHILDREN
+					values1.splice(i + offset, 0, getValue(child));
+					offset++;
+					result.finally(() => {
+						console.log("TODO");
+					});
+				}
+			}
+
+			return values1;
+		});
 	} else {
 		values1 = values as Array<ElementValue<TNode>>;
-		graveyard.forEach((child) => unmount(renderer, host, ctx, child));
+		let offset = 0;
+		for (const [child, i] of graveyard) {
+			const result = remove(renderer, host, ctx, child);
+			if (result !== undefined) {
+				child._f |= Removing;
+				// TODO: SPLICE THE VALUE BACK INTO CHILDREN
+				values1.splice(i + offset, 0, getValue(child));
+				offset++;
+				result.finally(() => {
+					console.log("TODO");
+				});
+			}
+		}
 	}
 
 	return chase(renderer, host, ctx, scope, parent, values1);
@@ -1159,21 +1201,58 @@ function commit<TNode, TScope, TRoot, TResult>(
 	return value;
 }
 
-function unmount<TNode, TScope, TRoot, TResult>(
-	renderer: Renderer<TNode, TScope, TRoot, TResult>,
+function remove<TResult>(
+	renderer: Renderer<unknown, unknown, unknown, TResult>,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	el: Element,
-): void {
+): Promise<undefined> | undefined {
+	let result = unmount(renderer, host, ctx, el);
+	const parent = host.tag === Portal ? host.props.root : host._n;
+	if (result !== undefined) {
+		return result.finally(() => {
+			if (typeof el.tag !== "function" && el.tag !== Fragment) {
+				if (el.tag !== Portal) {
+					renderer.remove(host, parent, el._n);
+				}
+
+				host = el as Element<string | symbol>;
+			}
+
+			if (el.tag !== Raw) {
+				unmountChildren(renderer, host, ctx, el);
+			}
+		});
+	}
+
+	if (typeof el.tag !== "function" && el.tag !== Fragment) {
+		if (el.tag !== Portal) {
+			renderer.remove(host, parent, el._n);
+		}
+
+		host = el as Element<string | symbol>;
+	}
+
+	if (el.tag !== Raw) {
+		unmountChildren(renderer, host, ctx, el);
+	}
+}
+
+function unmount<TResult>(
+	renderer: Renderer<unknown, unknown, unknown, TResult>,
+	host: Element<string | symbol>,
+	ctx: Context<unknown, TResult> | undefined,
+	el: Element,
+): Promise<undefined> | undefined {
+	let result: Promise<undefined> | undefined;
 	if (typeof el.tag === "function") {
 		if (typeof el._ctx === "object") {
-			unmountCtx(el._ctx);
+			result = unmountCtx(el._ctx);
 		}
 
 		ctx = el._ctx;
 	} else if (el.tag === Portal) {
-		host = el as Element<symbol>;
-		renderer.arrange(host, host.props.root, []);
+		renderer.arrange(el as Element<Portal>, el.props.root, []);
 		renderer.complete(el.props.root);
 	} else if (el.tag !== Fragment) {
 		if (isEventTarget(el._n)) {
@@ -1190,15 +1269,32 @@ function unmount<TNode, TScope, TRoot, TResult>(
 			}
 		}
 
-		host = el as Element<string | symbol>;
-		renderer.dispose(host, host._n);
+		renderer.dispose(el as Element<string | symbol>, el._n);
 	}
 
-	const children = wrap(el._ch);
+	return result;
+}
+
+function unmountChildren<TResult>(
+	renderer: Renderer<unknown, unknown, unknown, TResult>,
+	host: Element<string | symbol>,
+	ctx: Context<unknown, TResult> | undefined,
+	parent: Element,
+): void {
+	const children = wrap(parent._ch);
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i];
 		if (typeof child === "object") {
 			unmount(renderer, host, ctx, child);
+
+			if (typeof child.tag !== Raw) {
+				let host1 = host;
+				if (typeof child.tag !== "function" && child.tag !== Fragment) {
+					host1 = child as Element<string | symbol>;
+				}
+
+				unmountChildren(renderer, host1, ctx, child);
+			}
 		}
 	}
 }
@@ -2189,13 +2285,17 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 }
 
 // TODO: async unmounting
-function unmountCtx(ctx: Context): void {
+function unmountCtx(ctx: Context): Promise<undefined> | undefined {
 	ctx._f |= Unmounted;
 	clearEventListeners(ctx);
+	let results: Array<PromiseLike<unknown>> = [];
 	if (typeof ctx._cs === "object") {
 		const value = ctx._re.read(getValue(ctx._el));
 		for (const cleanup of ctx._cs) {
-			cleanup(value);
+			const result = cleanup(value);
+			if (isPromiseLike(result)) {
+				results.push(result);
+			}
 		}
 
 		ctx._cs = undefined;
@@ -2216,9 +2316,14 @@ function unmountCtx(ctx: Context): void {
 
 			if (isPromiseLike(iteration)) {
 				iteration.catch((err) => propagateError<unknown>(ctx._pa, err));
+				results.push(iteration);
 			}
 		}
 	}
+
+	return results.length > 0
+		? Promise.all(results).then(() => undefined)
+		: undefined;
 }
 
 // TODO: uncomment and use in the Element interface below
