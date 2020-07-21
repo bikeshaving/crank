@@ -114,11 +114,12 @@ li {
 }
 
 .navbar-logo {
+	width: 1.9em;
+	height: 1.9em;
 	background-color: transparent;
 	display: inline-block;
-	height: 30px;
 	margin-top: -2px;
-	margin-right: 0.5rem;
+	margin-right: 0.5em;
 }
 
 .home {
