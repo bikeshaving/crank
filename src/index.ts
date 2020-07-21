@@ -903,6 +903,11 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	// TODO: switch to mountChildren if there are no more children
 	for (; ni < newChildren.length; ni++) {
 		let oldChild = oldChildren[oi];
+		while (typeof oldChild === "object" && oldChild._f & Removing) {
+			oi++;
+			oldChild = oldChildren[oi];
+		}
+
 		let newChild = newChildren[ni] as NarrowedChild;
 		if (isNonStringIterable(newChild)) {
 			newChild = createElement(Fragment, null, newChild);
@@ -1004,11 +1009,20 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 				const result = remove(renderer, host, ctx, child);
 				if (result !== undefined) {
 					child._f |= Removing;
+					newChildren.splice(i + offset, 0, child);
 					// TODO: SPLICE THE VALUE BACK INTO CHILDREN
 					values1.splice(i + offset, 0, getValue(child));
 					offset++;
 					result.finally(() => {
-						console.log("TODO");
+						const children = wrap(parent._ch).filter(
+							(child1) => child !== child1,
+						);
+						parent._ch = unwrap(children);
+						renderer.arrange(
+							host,
+							host.tag === Portal ? host.props.root : host._n,
+							getChildValues(host),
+						);
 					});
 				}
 			}
@@ -1022,11 +1036,19 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 			const result = remove(renderer, host, ctx, child);
 			if (result !== undefined) {
 				child._f |= Removing;
-				// TODO: SPLICE THE VALUE BACK INTO CHILDREN
+				newChildren.splice(i + offset, 0, child);
 				values1.splice(i + offset, 0, getValue(child));
 				offset++;
 				result.finally(() => {
-					console.log("TODO");
+					const children = wrap(parent._ch).filter(
+						(child1) => child !== child1,
+					);
+					parent._ch = unwrap(children);
+					renderer.arrange(
+						host,
+						host.tag === Portal ? host.props.root : host._n,
+						getChildValues(host),
+					);
 				});
 			}
 		}
