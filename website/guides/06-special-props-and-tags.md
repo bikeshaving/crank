@@ -138,7 +138,7 @@ You can still use the `className` and `htmlFor` props as well, but using the for
 
 Crank provides four element tags which have special meaning to the renderer, and affect element diffing and rendering output in various ways.
 
-### Fragment
+### `Fragment`
 Crank provides a `Fragment` tag, which allows you to render multiple children into a parent without wrapping them in another DOM node. Under the hood, iterables which appear in the element tree are also implicitly wrapped in a `Fragment` element by the renderer.
 
 ```jsx
@@ -158,7 +158,7 @@ console.log(document.body.innerHTML);
 // "<div>Sibling 1</div><div>Sibling 2</div>"
 ```
 
-### Copy
+### `Copy`
 It‘s often fine to rerender Crank components, because elements are diffed, persistent between renders, and unnecessary mutations usually avoided. However, you might want to prevent a child from updating when the parent rerenders, perhaps because a certain prop hasn’t changed, because you want to batch updates from the parent, or as a performance optimization. To do this, you can use the `Copy` tag to indicate to Crank that you don’t want to update a previously rendered element in that same position.
 
 ```jsx
@@ -190,7 +190,7 @@ function memo(Component) {
 
 In this example, `memo` is a higher-order component, a function which takes a component and returns a component. This wrapper component compares old and new props and yields a `Copy` element if every prop is shallowly equal. A `Copy` element can appear anywhere in an element tree to prevent rerenderings, and the only props `Copy` elements take are the `crank-key` and `crank-ref` props, which work as expected.
 
-### Portal
+### `Portal`
 Sometimes you may want to render into a DOM node which isn’t the current parent element, or even a part of the currently rendered DOM tree. You can do this with the `Portal` tag, passing in a DOM node as its `root` prop. The Portal’s children will be rendered into the specified root element, just as if Renderer.render was called with the root value as its second argument.
 
 ```jsx
@@ -219,7 +219,7 @@ console.log(root2.innerHTML);
 
 This tag is useful for creating modals or tooltips, which usually need to be rendered into separate DOM elements at the bottom of the page for visibility reasons. Events dispatched from a `Portal` element‘s child components via the `dispatchEvent` method will still bubble into parent components.
 
-### Raw
+### `Raw`
 Sometimes, you may want to insert raw HTML or actual DOM nodes directly into the element tree. Crank allows you to do this with the `Raw` element. The `Raw` element takes a `value` prop which is interpreted by the renderer. For the DOM renderer, if `value` is an HTML string, the renderer will parse and insert the resulting DOM nodes. If the value is already a DOM node, Crank will insert them in place.
 
 ```jsx
