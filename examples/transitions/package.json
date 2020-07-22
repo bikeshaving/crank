@@ -1,0 +1,27 @@
+{
+  "name": "transitions",
+  "private": true,
+  "version": "1.0.0",
+  "main": "index.html",
+  "scripts": {
+    "start": "parcel index.html --open",
+    "build": "parcel build index.html"
+  },
+  "eslint": {
+    "settings": {
+      "react": {
+        "pragma": "createElement"
+      }
+    }
+  },
+  "dependencies": {
+    "@bikeshaving/crank": "0.2.1"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.0.0-0",
+    "@babel/preset-react": "^7.10.4",
+    "parcel-bundler": "^1.6.1"
+  },
+  "keywords": [],
+  "browserslist": ["last 1 Chrome versions"]
+}
