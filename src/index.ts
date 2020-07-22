@@ -1956,6 +1956,10 @@ function step<TNode, TResult>(
 		const block = iteration;
 		const value: Promise<ElementValue<TNode>> = iteration.then(
 			(iteration) => {
+				if (!(ctx._f & Iterating)) {
+					ctx._f &= ~Available;
+				}
+
 				ctx._f &= ~Iterating;
 				if (iteration.done) {
 					ctx._f |= Finished;
