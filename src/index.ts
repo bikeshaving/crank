@@ -928,6 +928,10 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 				childrenByKey.delete(oldKey);
 			}
 
+			if (typeof oldChild === "object") {
+				graveyard.delete(oldChild);
+			}
+
 			oi++;
 		} else {
 			if (childrenByKey === undefined) {
@@ -947,8 +951,14 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 
 				oi++;
 			} else {
-				if (typeof oldChild === "object") {
+				if (
+					typeof oldChild === "object" &&
+					(seenKeys === undefined || !seenKeys.has(oldKey))
+				) {
 					graveyard.set(oldChild, ni);
+					if (typeof oldChild.key !== "undefined") {
+						oi++;
+					}
 				}
 
 				oldChild = childrenByKey.get(newKey);
