@@ -1096,6 +1096,23 @@ describe("async generator component", () => {
 		expect(Async).toHaveBeenCalledTimes(3);
 	});
 
+	test("yield before for await loop", async () => {
+		async function* Component(this: Context) {
+			let i = 0;
+			yield <div>{i++}</div>;
+			for await (const _ of this) {
+				yield <div>{i++}</div>;
+			}
+		}
+
+		await renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>0</div>");
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("<div>0</div>");
+		await renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>1</div>");
+	});
+
 	test("concurrent unmount", async () => {
 		const mock = jest.fn();
 		async function* Component(this: Context): AsyncGenerator<Child> {
