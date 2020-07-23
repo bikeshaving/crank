@@ -27,8 +27,7 @@ async function* Letter({letter, index}) {
 			transition: "transform 750ms, opacity 750ms",
 		};
 
-		node = yield <span style={style}>{letter}</span>;
-		node.style.color = "green";
+		node = yield <span style={{...style, color: "green"}}>{letter}</span>;
 		node.style.transform = `translate(${index * 1.2}em, -20px)`;
 		node.style.opacity = 0;
 		requestAnimationFrame(() => {
@@ -37,15 +36,14 @@ async function* Letter({letter, index}) {
 		});
 
 		for await ({letter, index} of this) {
-			yield <span style={style}>{letter}</span>;
-			node.style.color = "black";
+			node = yield <span style={{...style, color: "black"}}>{letter}</span>;
 			requestAnimationFrame(() => {
 				node.style.transform = `translate(${index * 1.2}em, 0)`;
 			});
 		}
 	} finally {
-		node.style.color = "red";
 		requestAnimationFrame(() => {
+			node.style.color = "red";
 			node.style.transform = `translate(${index * 1.2}em, 20px)`;
 			node.style.opacity = 0;
 		});
