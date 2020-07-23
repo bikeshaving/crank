@@ -855,14 +855,30 @@ function updateChild<TNode, TScope, TRoot, TResult>(
 		newChild,
 	);
 
+	let newChildren: Array<NarrowedChild> = [newChild];
+	let values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [
+		value,
+	];
 	if (typeof oldChild === "object" && oldChild !== newChild) {
-		remove(renderer, host, ctx, oldChild);
+		const result = remove(renderer, host, ctx, oldChild);
+		if (result !== undefined) {
+			oldChild._f |= Removing;
+			newChildren = [oldChild, newChild];
+			values = [getValue<TNode>(oldChild), value];
+			result.finally(() => {
+				const children = wrap(parent._ch).filter((child) => child !== oldChild);
+				parent._ch = unwrap(children);
+				const hostNode = host.tag === Portal ? host.props.root : host._n;
+				renderer.arrange(host, hostNode, getChildValues(host));
+			});
+		}
 	}
 
-	parent._ch = newChild;
-	// TODO: allow single values to be passed to chase
-	const values = isPromiseLike(value) ? value.then(wrap) : wrap(value);
-	return chase(renderer, host, ctx, scope, parent, values);
+	parent._ch = unwrap(newChildren);
+	const values1 = (isPromiseLike(value) ? Promise.all(values) : values) as
+		| Promise<Array<ElementValue<TNode>>>
+		| Array<ElementValue<TNode>>;
+	return chase(renderer, host, ctx, scope, parent, values1);
 }
 
 function mapChildrenByKey(children: Array<NarrowedChild>): Map<Key, Element> {
@@ -1012,6 +1028,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 
 	let values1: Promise<Array<ElementValue<TNode>>> | Array<ElementValue<TNode>>;
 	// WHAT ARE WE DOING TO THE CHILDREN
+	// TODO: abstract the reinsertion of delayed children
 	if (async) {
 		values1 = Promise.all(values).then((values1) => {
 			let offset = 0;
@@ -1020,7 +1037,6 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 				if (result !== undefined) {
 					child._f |= Removing;
 					newChildren.splice(i + offset, 0, child);
-					// TODO: SPLICE THE VALUE BACK INTO CHILDREN
 					values1.splice(i + offset, 0, getValue(child));
 					offset++;
 					result.finally(() => {
@@ -1028,11 +1044,8 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 							(child1) => child !== child1,
 						);
 						parent._ch = unwrap(children);
-						renderer.arrange(
-							host,
-							host.tag === Portal ? host.props.root : host._n,
-							getChildValues(host),
-						);
+						const hostNode = host.tag === Portal ? host.props.root : host._n;
+						renderer.arrange(host, hostNode, getChildValues(host));
 					});
 				}
 			}
@@ -1054,11 +1067,8 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 						(child1) => child !== child1,
 					);
 					parent._ch = unwrap(children);
-					renderer.arrange(
-						host,
-						host.tag === Portal ? host.props.root : host._n,
-						getChildValues(host),
-					);
+					const hostNode = host.tag === Portal ? host.props.root : host._n;
+					renderer.arrange(host, hostNode, getChildValues(host));
 				});
 			}
 		}
