@@ -1,34 +1,8 @@
 ---
-title: Getting Started
+title: Learn by Example
 ---
 
-## Installation
-Crank is available on [NPM](https://npmjs.org/@bikeshaving/crank) in the ESModule and CommonJS formats.
-
-```shell
-$ npm install @bikeshaving/crank
-```
-
-```jsx
-/** @jsx createElement */
-import {createElement} from "@bikeshaving/crank";
-import {renderer} from "@bikeshaving/crank/dom";
-
-renderer.render(<div id="hello">Hello world</div>, document.body);
-```
-
-If your environment does not support ESModules (you’ll probably see a message like `SyntaxError: Unexpected token export`), you can import the CommonJS versions of the library under the `cjs` directory.
-
-```jsx
-/** @jsx createElement */
-import {createElement} from "@bikeshaving/crank/cjs";
-import {renderer} from "@bikeshaving/crank/cjs/dom";
-
-renderer.render(<div id="hello">Hello world</div>, document.body);
-```
-
-## Key Examples
-### A Simple Component
+## A Simple Component
 ```jsx
 /** @jsx createElement */
 import {createElement} from "@bikeshaving/crank";
@@ -45,7 +19,7 @@ renderer.render(<Greeting />, document.body);
 
 [Try on CodeSandbox](https://codesandbox.io/s/a-simple-crank-component-mhciu)
 
-### A Stateful Component
+## A Stateful Component
 ```jsx
 /** @jsx createElement */
 import {createElement} from "@bikeshaving/crank";
@@ -71,7 +45,7 @@ renderer.render(<Timer />, document.body);
 
 [Try on CodeSandbox](https://codesandbox.io/s/a-stateful-crank-component-hh8zx)
 
-### An Async Component
+## An Async Component
 ```jsx
 /** @jsx createElement */
 import {createElement} from "@bikeshaving/crank";
@@ -92,7 +66,7 @@ renderer.render(<QuoteOfTheDay />, document.body);
 
 [Try on CodeSandbox](https://codesandbox.io/s/an-async-crank-component-ru02q)
 
-### A Loading Component
+## A Loading Component
 ```jsx
 /** @jsx createElement */
 import {createElement, Fragment} from "@bikeshaving/crank";
