@@ -779,7 +779,6 @@ function mountChildren<TNode, TScope, TRoot, TResult>(
 	}
 
 	parent._ch = unwrap(newChildren as Array<NarrowedChild>);
-
 	let values1: Promise<Array<ElementValue<TNode>>> | Array<ElementValue<TNode>>;
 	if (async) {
 		values1 = Promise.all(values);
@@ -833,6 +832,7 @@ function update<TNode, TScope, TRoot, TResult>(
 	return updateChild(renderer, root, host, ctx, scope, el, el.props.children);
 }
 
+// TODO: is this actually necessary
 function updateChild<TNode, TScope, TRoot, TResult>(
 	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
@@ -860,6 +860,7 @@ function updateChild<TNode, TScope, TRoot, TResult>(
 		value,
 	];
 	if (typeof oldChild === "object" && oldChild !== newChild) {
+		// TODO: abstract async removal subroutine
 		const result = remove(renderer, host, ctx, oldChild);
 		if (result !== undefined) {
 			oldChild._f |= Removing;
@@ -1033,6 +1034,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		values1 = Promise.all(values).then((values1) => {
 			let offset = 0;
 			for (const [child, i] of graveyard) {
+				// TODO: abstract async removal subroutine
 				const result = remove(renderer, host, ctx, child);
 				if (result !== undefined) {
 					child._f |= Removing;
@@ -1056,6 +1058,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		values1 = values as Array<ElementValue<TNode>>;
 		let offset = 0;
 		for (const [child, i] of graveyard) {
+			// TODO: abstract async removal subroutine
 			const result = remove(renderer, host, ctx, child);
 			if (result !== undefined) {
 				child._f |= Removing;
@@ -1251,7 +1254,7 @@ function remove<TResult>(
 ): Promise<undefined> | undefined {
 	let result = unmount(renderer, host, ctx, el);
 	const parent = host.tag === Portal ? host.props.root : host._n;
-	if (result !== undefined) {
+	if (typeof el.key !== "undefined" && result !== undefined) {
 		return result.finally(() => {
 			if (typeof el.tag !== "function" && el.tag !== Fragment) {
 				if (el.tag !== Portal) {
