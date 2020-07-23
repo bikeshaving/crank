@@ -211,6 +211,13 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 			}
 		}
 	}
+
+	remove(el: CrankElement<string | symbol>, parent: Node, child: Node): void {
+		// Attempting to remove a node which isn’t a direct child of the parent will throw an error, so we add this guard here.
+		if (child.parentNode === parent) {
+			parent.removeChild(child);
+		}
+	}
 }
 
 export const renderer = new DOMRenderer();

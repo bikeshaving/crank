@@ -159,9 +159,9 @@ const Mounted = 1 << 0;
 const Committed = 1 << 1;
 
 /**
- * A flag which is set when the element is being removed asynchronously
+ * A flag which is set when the element is being unmounted asynchronously
  */
-const Removing = 1 << 2;
+const Unmounting = 1 << 2;
 
 // NOTE: To save on filesize, we mangle the internal properties of Crank classes by hand. These internal properties are prefixed with an underscore. Refer to their definitions to see their unabbreviated names.
 
@@ -536,7 +536,7 @@ export class Renderer<
 			return value.then(() => {
 				const result = this.read(unwrap(getChildValues<TNode>(portal!)));
 				if (root == null) {
-					remove(this, portal!, undefined, portal!);
+					unmount(this, portal!, undefined, portal!);
 				}
 
 				return result;
@@ -545,7 +545,7 @@ export class Renderer<
 
 		const result = this.read(unwrap(getChildValues<TNode>(portal)));
 		if (root == null) {
-			remove(this, portal, undefined, portal);
+			unmount(this, portal, undefined, portal);
 		}
 
 		return result;
@@ -725,20 +725,7 @@ function mount<TNode, TScope, TRoot, TResult>(
 		scope = renderer.scope(host, scope);
 	}
 
-	// NOTE: The primary benefit of having a separate codepath for mounting is that it’s slightly faster because we don’t have to align and diff children against old children. But for singular child values, updateChild is sufficient.
-	if (isNonStringIterable(el.props.children)) {
-		return mountChildren(
-			renderer,
-			root,
-			host,
-			ctx,
-			scope,
-			el,
-			el.props.children,
-		);
-	}
-
-	return updateChild(renderer, root, host, ctx, scope, el, el.props.children);
+	return mountChildren(renderer, root, host, ctx, scope, el, el.props.children);
 }
 
 function mountChildren<TNode, TScope, TRoot, TResult>(
@@ -748,10 +735,15 @@ function mountChildren<TNode, TScope, TRoot, TResult>(
 	ctx: Context<unknown, TResult> | undefined,
 	scope: TScope,
 	parent: Element,
-	children: ChildIterable,
+	children: Children,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
-	const newChildren = Array.from(children);
+	const newChildren =
+		children === undefined
+			? []
+			: isNonStringIterable(children)
+			? Array.from(children)
+			: [children];
 	let async = false;
 	for (let i = 0; i < newChildren.length; i++) {
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
@@ -813,73 +805,15 @@ function update<TNode, TScope, TRoot, TResult>(
 		}
 	}
 
-	if (isNonStringIterable(el.props.children)) {
-		return updateChildren(
-			renderer,
-			root,
-			host,
-			ctx,
-			scope,
-			el,
-			el.props.children,
-		);
-	} else if (Array.isArray(el._ch)) {
-		return updateChildren(renderer, root, host, ctx, scope, el, [
-			el.props.children,
-		]);
-	}
-
-	return updateChild(renderer, root, host, ctx, scope, el, el.props.children);
-}
-
-// TODO: is this actually necessary
-function updateChild<TNode, TScope, TRoot, TResult>(
-	renderer: Renderer<TNode, TScope, TRoot, TResult>,
-	root: TRoot,
-	host: Element<string | symbol>,
-	ctx: Context<unknown, TResult> | undefined,
-	scope: TScope,
-	parent: Element,
-	child: Child,
-): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	let oldChild = parent._ch as NarrowedChild;
-	let newChild = narrow(child);
-	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-	[newChild, value] = diff(
+	return updateChildren(
 		renderer,
 		root,
 		host,
 		ctx,
 		scope,
-		keyOf(oldChild) === keyOf(newChild) ? oldChild : undefined,
-		newChild,
+		el,
+		el.props.children,
 	);
-
-	let newChildren: Array<NarrowedChild> = [newChild];
-	let values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [
-		value,
-	];
-	if (typeof oldChild === "object" && oldChild !== newChild) {
-		// TODO: abstract async removal subroutine
-		const result = remove(renderer, host, ctx, oldChild);
-		if (result !== undefined) {
-			oldChild._f |= Removing;
-			newChildren = [oldChild, newChild];
-			values = [getValue<TNode>(oldChild), value];
-			result.finally(() => {
-				const children = wrap(parent._ch).filter((child) => child !== oldChild);
-				parent._ch = unwrap(children);
-				const hostNode = host.tag === Portal ? host.props.root : host._n;
-				renderer.arrange(host, hostNode, getChildValues(host));
-			});
-		}
-	}
-
-	parent._ch = unwrap(newChildren);
-	const values1 = (isPromiseLike(value) ? Promise.all(values) : values) as
-		| Promise<Array<ElementValue<TNode>>>
-		| Array<ElementValue<TNode>>;
-	return chase(renderer, host, ctx, scope, parent, values1);
 }
 
 function mapChildrenByKey(children: Array<NarrowedChild>): Map<Key, Element> {
@@ -902,7 +836,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	ctx: Context<unknown, TResult> | undefined,
 	scope: TScope,
 	parent: Element,
-	children: ChildIterable,
+	children: Children,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (typeof parent._ch === "undefined") {
 		return mountChildren(renderer, root, host, ctx, scope, parent, children);
@@ -910,7 +844,12 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
 	const oldChildren = wrap(parent._ch);
-	const newChildren = Array.from(children);
+	const newChildren =
+		children === undefined
+			? []
+			: isNonStringIterable(children)
+			? Array.from(children)
+			: [children];
 	let oi = 0; // oldIndex
 	let ni = 0; // newIndex
 	let async = false;
@@ -920,7 +859,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	// TODO: switch to mountChildren if there are no more children
 	for (; ni < newChildren.length; ni++) {
 		let oldChild = oldChildren[oi];
-		while (typeof oldChild === "object" && oldChild._f & Removing) {
+		while (typeof oldChild === "object" && oldChild._f & Unmounting) {
 			oi++;
 			oldChild = oldChildren[oi];
 		}
@@ -1035,9 +974,8 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 			let offset = 0;
 			for (const [child, i] of graveyard) {
 				// TODO: abstract async removal subroutine
-				const result = remove(renderer, host, ctx, child);
+				const result = unmount(renderer, host, ctx, child);
 				if (result !== undefined) {
-					child._f |= Removing;
 					newChildren.splice(i + offset, 0, child);
 					values1.splice(i + offset, 0, getValue(child));
 					offset++;
@@ -1059,9 +997,8 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		let offset = 0;
 		for (const [child, i] of graveyard) {
 			// TODO: abstract async removal subroutine
-			const result = remove(renderer, host, ctx, child);
+			const result = unmount(renderer, host, ctx, child);
 			if (result !== undefined) {
-				child._f |= Removing;
 				newChildren.splice(i + offset, 0, child);
 				values1.splice(i + offset, 0, getValue(child));
 				offset++;
@@ -1246,19 +1183,21 @@ function commit<TNode, TScope, TRoot, TResult>(
 	return value;
 }
 
-function remove<TResult>(
+// TODO: don’t call renderer.remove if the parent is arranging its children
+function unmount<TResult>(
 	renderer: Renderer<unknown, unknown, unknown, TResult>,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	el: Element,
 ): Promise<undefined> | undefined {
-	let result = unmount(renderer, host, ctx, el);
-	const parent = host.tag === Portal ? host.props.root : host._n;
+	let result = unmountSelf(renderer, host, ctx, el);
 	if (typeof el.key !== "undefined" && result !== undefined) {
+		el._f |= Unmounting;
 		return result.finally(() => {
 			if (typeof el.tag !== "function" && el.tag !== Fragment) {
-				if (el.tag !== Portal) {
-					renderer.remove(host, parent, el._n);
+				if (el.tag !== Portal && el._f & Committed) {
+					const hostNode = host.tag === Portal ? host.props.root : host._n;
+					renderer.remove(host, hostNode, el._n);
 				}
 
 				host = el as Element<string | symbol>;
@@ -1271,8 +1210,9 @@ function remove<TResult>(
 	}
 
 	if (typeof el.tag !== "function" && el.tag !== Fragment) {
-		if (el.tag !== Portal) {
-			renderer.remove(host, parent, el._n);
+		if (el.tag !== Portal && el._f & Committed) {
+			const hostNode = host.tag === Portal ? host.props.root : host._n;
+			renderer.remove(host, hostNode, el._n);
 		}
 
 		host = el as Element<string | symbol>;
@@ -1283,7 +1223,7 @@ function remove<TResult>(
 	}
 }
 
-function unmount<TResult>(
+function unmountSelf<TResult>(
 	renderer: Renderer<unknown, unknown, unknown, TResult>,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
@@ -1330,7 +1270,7 @@ function unmountChildren<TResult>(
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i];
 		if (typeof child === "object") {
-			unmount(renderer, host, ctx, child);
+			unmountSelf(renderer, host, ctx, child);
 
 			if (typeof child.tag !== Raw) {
 				let host1 = host;
@@ -2265,7 +2205,7 @@ function updateCtxChildren<TNode, TResult>(
 		child = children;
 	}
 
-	return updateChild<TNode, unknown, unknown, TResult>(
+	return updateChildren<TNode, unknown, unknown, TResult>(
 		ctx._re as Renderer<TNode, unknown, unknown, TResult>,
 		ctx._rt, // root
 		ctx._ho, // host
