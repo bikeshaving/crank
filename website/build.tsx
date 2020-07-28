@@ -108,6 +108,19 @@ function Root({title, children, url}: RootProps): Element {
 						<title>{title}</title>
 						<Link rel="stylesheet" type="text/css" href="./index.css" />
 						<link rel="shortcut icon" href="/static/favicon.ico" />
+						<script
+							async
+							src="https://www.googletagmanager.com/gtag/js?id=UA-20910936-4"
+						/>
+						<script
+							innerHTML={`
+								window.dataLayer = window.dataLayer || [];
+								function gtag(){dataLayer.push(arguments);}
+								gtag('js', new Date());
+
+								gtag('config', 'UA-20910936-4');
+							`}
+						/>
 					</head>
 					<body>
 						<Navbar url={url} />
