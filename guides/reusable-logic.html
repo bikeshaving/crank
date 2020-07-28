@@ -12,7 +12,7 @@
 				<a class="anchor" name="contextprops" href="#contextprops"><code>context.props</code></a>
 			</h3><p>The current props of a component can be accessed via the readonly context property <code>props</code>. We recommended that you access props within components via its parameters or context iterators when writing components. The <code>props</code> property can be useful when you need to access a component’s current props from within an extension or helper function.</p>
 <h3>
-				<a class="anchor" name="contextprototypevalue" href="#contextprototypevalue"><code>Context.prototype.value</code></a>
+				<a class="anchor" name="contextvalue" href="#contextvalue"><code>context.value</code></a>
 			</h3><p>Similarly, the most recently rendered value of a component is accessible via the readonly context property <code>value</code>. Again, we recommend that you access rendered values via the many methods described in <a href="./lifecycles#accessing-rendered-values">the guide on accessing rendered values</a> or via <a href="./special-props-and-tags#crank-ref">the <code>crank-ref</code> prop</a>, but it can be useful to access the current value synchronously when writing helper context methods.</p>
 <p>Depending on the state of the component, the accessed value can be an node, a string, an array of nodes and strings, or <code>undefined</code>.</p>
 <h3>
