@@ -10,7 +10,7 @@ Crank provides several additional methods and properties via the `Context` API t
 ### `context.props`
 The current props of a component can be accessed via the readonly context property `props`. We recommended that you access props within components via its parameters or context iterators when writing components. The `props` property can be useful when you need to access a component’s current props from within an extension or helper function.
  
-### `Context.prototype.value`
+### `context.value`
 Similarly, the most recently rendered value of a component is accessible via the readonly context property `value`. Again, we recommend that you access rendered values via the many methods described in [the guide on accessing rendered values](./lifecycles#accessing-rendered-values) or via [the `crank-ref` prop](./special-props-and-tags#crank-ref), but it can be useful to access the current value synchronously when writing helper context methods.
 
 Depending on the state of the component, the accessed value can be an node, a string, an array of nodes and strings, or `undefined`.
