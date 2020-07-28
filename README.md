@@ -14,7 +14,7 @@ All components in Crank are just functions or generator functions. No classes, h
 Crank provides first-class support for promises. You can define components as async functions and race renderings to display fallback UIs.
 
 ### Lightweight
-Crank has no dependencies, and its core is a single file. It currently measures at [4.5KB minified and gzipped]("https://bundlephobia.com/result?p=@bikeshaving/crank").
+Crank has no dependencies, and its core is a single file. It currently measures at [4.5KB minified and gzipped](https://bundlephobia.com/result?p=@bikeshaving/crank).
 
 ### Performant
 [According to benchmarks](https://github.com/krausest/js-framework-benchmark), Crank beats React in terms of speed and memory usage, and is currently comparable to Preact or Vue.
