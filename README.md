@@ -5,19 +5,19 @@ Documentation is available at [crank.js.org](https://crank.js.org). Crank.js is 
 
 ## Features
 ### Declarative
-Crank uses the same JSX syntax and diffing algorithm popularized by React, allowing you to write HTML-like syntax directly in your JavaScript.
+Crank uses the same JSX syntax and diffing algorithm popularized by React, allowing you to write HTML-like code directly in JavaScript.
 
 ### Just Functions
 All components in Crank are just functions or generator functions. No classes, hooks, proxies or template languages are needed.
 
 ### Promise-friendly
-Crank provides first-class support for promises. You can use async/await directly in components, and race async components to display fallback UIs.
+Crank provides first-class support for promises. You can define components as async functions and race renderings to display fallback UIs.
 
 ### Lightweight
-Crank has no dependencies, and its core is a single file. It currently measures at [4.5KB minified and gzipped](https://bundlephobia.com/result?p=@bikeshaving/crank).
+Crank has no dependencies, and its core is a single file. It currently measures at [4.5KB minified and gzipped]("https://bundlephobia.com/result?p=@bikeshaving/crank").
 
 ### Performant
-[According to a standard benchmark](https://krausest.github.io/js-framework-benchmark/current.html), Crank’s performance beats React’s, and is comparable to that of Preact’s and Vue’s.
+[According to benchmarks](https://github.com/krausest/js-framework-benchmark), Crank beats React in terms of speed and memory usage, and is currently comparable to Preact or Vue.
 
 ### Extensible
 The core renderer can be extended to target alternative environments such as WebGL libraries, terminals, smartphones or smart TVs.
@@ -37,7 +37,7 @@ import {renderer} from "@bikeshaving/crank/dom";
 renderer.render(<div id="hello">Hello world</div>, document.body);
 ```
 
-If your environment does not support ESModules (you’ll probably see a message like `SyntaxError: Unexpected token export`), you can import the CommonJS versions of the library under the `cjs` directory.
+If your environment does not support ESModules (you may see a message like `SyntaxError: Unexpected token export`), you can import the CommonJS versions of the library under the `cjs` directory.
 
 ```jsx
 /** @jsx createElement */
