@@ -2,7 +2,7 @@
 title: Special Props and Tags
 ---
 
-Crank provides certain APIs in the form of special props or element tags.
+Crank provides certain APIs in the form of special props or element tags. The following is an overview of these props and tags.
 
 ## Special Props
 The following props apply to all elements, regardless of tag or renderer.

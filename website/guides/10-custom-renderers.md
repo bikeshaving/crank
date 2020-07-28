@@ -47,9 +47,9 @@ class Renderer<
 For example, the HTML string renderer has an internal node representation, but converts these nodes to strings before they’re exposed to consumers. This is because the internal nodes must be a referentially unique object which is mutated during rendering, while JavaScript strings are referentially transparent and immutable. Therefore, the `TResult` type of the HTML renderer is `string`.
 
 ## Methods
-The following is a description of the signatures of internal renderer methods and when they’re executed.
+The following is a description of the signatures of internal renderer methods and when they’re executed. When creating a custom renderer, you are expected to override these methods via inheritance.
 
-### Renderer.prototype.create
+### `Renderer.prototype.create`
 
 ```ts
 create(
@@ -57,11 +57,12 @@ create(
 ): TNode;
 ```
 
-The `create` method is called for each host element the first time the element is committed. This method is passed the current host element and scope, and should return the node which will be associated with the host element. This node will remain constant for an element for the duration that the element is mounted in the tree.
+The `create` method is called for each host element the first time the element is committed. This method is passed the current host element and scope, and should return the node which will be associated with the host element. This node will remain constant for an element for as long as the element is rendered.
 
 By default, this method will throw a `Not Implemented` error, so custom renderers should always implement this method.
 
-### Renderer.prototype.read
+### `Renderer.prototype.read`
+
 ```ts
 read(value: Array<TNode | string> | TNode | string | undefined): TResult;
 ```
@@ -75,22 +76,22 @@ The renderer exposes rendered values in the following places:
 - Via the context’s `value` getter method
 - As the yield value of generator components
 
-When an element or elements are read in this way, we call the `read` method to give renderers a chance to manipulate what is exposed, so as to hide internal implementation details and return something which makes sense for the target environment. The parameter passed to read can be a node, a string, an array of nodes and strings, or undefined. The return value is what is actually exposed.
+When an element or elements are read in this way, we call the `read` method to give renderers a final chance to manipulate what is exposed, so as to hide internal implementation details and return something which makes sense for the target environment. The parameter passed to the `read` method can be a node, a string, an array of nodes and strings, or `undefined`. The return value is what is actually exposed.
 
 This method is optional. By default, read is an identity function which returns the value passed in.
 
-### Renderer.prototype.patch
+### `Renderer.prototype.patch`
+
 ```ts
-patch(
-  el: Element<string | symbol>, node: TNode,
-): unknown;
+patch(el: Element<string | symbol>, node: TNode): unknown;
 ```
 
-The `patch` method is called for each host element whenever it is committed. This method is passed the current host element and its related node, and its return value is ignored. This method is usually where you would mutate the properties of the internal node according to the props of the host element.
+The `patch` method is called for each host element whenever it is committed. This method is passed the current host element and its related node, and its return value is ignored. This method is usually where you would mutate the internal node according to the props of the host element.
 
 Implementation of this method is optional for renderers.
 
-### Renderer.prototype.arrange
+### `Renderer.prototype.arrange`
+
 ```ts
 arrange(
   el: Element<string | symbol>,
@@ -99,22 +100,22 @@ arrange(
 ): unknown;
 ```
 
-The `arrange` method is called whenever an element’s children have changed. It is called with the current host element, the host element’s related node, and the rendered values of all the element’s descendants as an array. In addition to when a host element commits, the `arrange` method may also be called when a child refreshes or otherwise causes the host element’s rendered children to change. Because the `arrange` method is called for every root/portal element, the parent can be of type `TRoot` as well as `TNode`.
+The `arrange` method is called whenever an element’s children have changed. It is called with the current host element, the host element’s related node, and the rendered values of all the element’s descendants as an array. In addition to when a host element commits, the `arrange` method may also be called when a child refreshes or otherwise causes a host element’s rendered children to change. Because the `arrange` method is called for every root/portal element, the parent can be of type `TRoot` as well as `TNode`.
 
-This method is where the magic happens, and is where you connect the nodes of your target environment as an internal tree.
+This method is where the magic happens, and is where you connect the nodes of your target environment into an internal tree.
 
-### Renderer.prototype.scope
+### `Renderer.prototype.scope`
+
 ```ts
-scope(
-  el: Element<string | symbol>, scope: TScope | undefined
-): TScope;
+scope(el: Element<string | symbol>, scope: TScope | undefined): TScope;
 ```
 
-The `scope` method is called for each host or portal element as elements are mounted or updated. Unlike the other custom renderer methods, the `scope` method is called during the pre-order traversal of the tree, much as components are. The `scope` method is passed the current host element and scope, and the return value becomes the scope argument passed to the `create` and `scope` method calls for child host elements.
+The `scope` method is called for each host or portal element as elements are mounted or updated. Unlike the other custom renderer methods, the `scope` method is called during the pre-order traversal of the tree, much as components are. The `scope` method is passed the current host element and scope as parameters, and the return value becomes the scope argument passed to the `create` and `scope` method calls for descendant host elements.
 
-By default, the scope method returns `undefined`, meaning the scope will be `undefined` throughout your application.
+By default, the `scope` method returns `undefined`, meaning the scope will be `undefined` throughout your application.
 
-### Renderer.prototype.escape
+### `Renderer.prototype.escape`
+
 ```ts
 escape(text: string, scope: TScope): string;
 ```
@@ -125,7 +126,8 @@ One important detail is that `escape` should not return text nodes or anything b
 
 By default, the `escape` method returns the string which was passed in.
 
-### Renderer.prototype.parse
+### `Renderer.prototype.parse`
+
 ```ts
 parse(text: string, scope: TScope): TNode | string;
 ```
@@ -134,7 +136,8 @@ When the renderer encounters a `Raw` element whose `value` prop is a string, it 
 
 By default, the `parse` method returns the string which was passed in.
 
-### Renderer.prototype.dispose
+### `Renderer.prototype.dispose`
+
 ```ts
 dispose(el: Element<string | symbol>, node: TNode): unknown
 ```
@@ -143,11 +146,12 @@ The `dispose` method is called whenever a host element is unmounted. It is calle
 
 This method is optional and its return value is ignored.
 
-### Renderer.prototype.complete
+### `Renderer.prototype.complete`
+
 ```ts
 complete(root: TRoot): unknown;
 ```
 
-The `complete` method is called at the end of every render execution, when all elements have been committed and all other renderer methods have been called. It is useful, if your rendering target needs some final render method to be executed before any mutations take effect.
+The `complete` method is called at the end of every render execution, when all elements have been committed and all other renderer methods have been called. It is useful, for instance, if your rendering target needs some final code to execute before any mutations take effect.
 
 This method is optional and its return value is ignored.
