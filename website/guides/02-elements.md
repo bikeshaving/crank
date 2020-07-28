@@ -18,7 +18,7 @@ const el = <div id="element">An element</div>;
 const el1 = createElement("div", {id: "element"}, "An element");
 ```
 
-The `createElement` function returns an *element*, a JavaScript object. Elements on their own don’t do anything special; instead, Crank provides special classes called *renderers* which interpret elements to produce DOM nodes, HTML strings, WebGL scene graphs, or whatever else you can think of.
+The `createElement` function provided by Crank returns an *element*, a JavaScript object. Elements on their own don’t do anything special; instead, we use special classes called *renderers* to interpret elements and produce DOM nodes, HTML strings, WebGL-backed scene graphs, or whatever else you can think of.
 
 Crank ships with two renderer subclasses for web development: one for managing DOM nodes, available through the module `@bikeshaving/crank/dom`, and one for creating HTML strings, available through the module `@bikeshaving/crank/html`. You can use these modules to render interactive user interfaces in the browser and HTML responses on the server.
 
@@ -68,7 +68,7 @@ const el1 = createElement("div", {id: "my-id", "class": myClass});
 console.log(el.props); // {id: "my-id", "class": "my-class"}
 ```
 
-We call this object the *props* object, short for “properties.” The value of each prop is a string if the string-like syntax is used (`key="value"`), or it can be an interpolated JavaScript expression by placing the value in curly brackets (`key={value}`). You can use props to “pass” values into host and component elements, similar to how we “pass” arguments into functions when invoking them.
+We call this object the *props* object, short for “properties.” The value of each prop is a string if the string-like syntax is used (`key="value"`), or it can be an interpolated JavaScript expression by placing the value in curly brackets (`key={value}`). You can use props to “pass” values into host and component elements, similar to how you “pass” arguments into functions when invoking them.
 
 If you already have an object that you want to use as props, you can use the special JSX `...` syntax to “spread” it into an element. This works similarly to [ES6 spread syntax](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax).
 
@@ -107,7 +107,7 @@ renderer.render(el, document.body);
 console.log(document.body.innerHTML); // <div>a2</div>
 ```
 
-Crank also allows arbitrarily nested iterables of values to be interpolated as children, so, for instance, you can insert an array or a set of values into element trees.
+Crank also allows arbitrarily nested iterables of values to be interpolated as children, so, for instance, you can insert arrays or sets of elements into element trees.
 
 ```jsx
 const arr = [1, 2, 3];
@@ -141,4 +141,4 @@ console.log(document.body.firstChild === div); // true
 console.log(document.body.firstChild.firstChild === span); // true
 ```
 
-**Note:** We usually avoid using the term “virtual DOM” in Crank, insofar as the core renderer can be extended to target multiple environments; instead, we use the term “element diffing” to mean mostly the same thing.
+**Note:** The documentation avoids the terms “virtual DOM” or “DOM diffing” insofar as the core renderer can be extended to target multiple environments; instead, we use the terms “virtual elements” and “element diffing” to mean mostly the same thing.

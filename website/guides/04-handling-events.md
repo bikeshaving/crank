@@ -2,7 +2,7 @@
 title: Handling Events
 ---
 
-Most web applications require some measure of interactivity, where the user interface updates according to user input. To facilitate this, Crank provides two APIs for listening to events on rendered DOM nodes.
+Most web applications require some measure of interactivity, where the user interface updates according to input. To facilitate this, Crank provides two APIs for listening to events on rendered DOM nodes.
 
 ## DOM onevent Props
 You can attach event callbacks to host element directly using onevent props. These props start with `on`, are all lowercase, and correspond to the properties as specified according to the DOM’s [GlobalEventHandlers mixin API](https://developer.mozilla.org/en-US/docs/Web/API/GlobalEventHandlers). By combining event props, local variables and `this.refresh`, you can write interactive components.
@@ -49,9 +49,7 @@ The local state `count` is now updated in the event listener, which triggers whe
 
 **NOTE:** When using the context’s `addEventListener` method, you do not have to call the `removeEventListener` method if you merely want to remove event listeners when the component is unmounted. This is done automatically.
 
-## Event Delegation
-
-The context’s `addEventListener` method only attaches to the top-level node or nodes which each component renders, so if you want to listen to events on a nested node, you must use event delegation:
+The context’s `addEventListener` method only attaches to the top-level node or nodes which each component renders, so if you want to listen to events on a nested node, you must use event delegation.
 
 ```jsx
 function *Clicker() {
@@ -77,14 +75,14 @@ function *Clicker() {
 Because the event listener is attached to the outer `div`, we have to filter events by `ev.target.tagName` in the listener to make sure we’re not incrementing `count` based on clicks which don’t target the `button` element.
 
 ## onevent vs EventTarget
-The props-based onevent API and the context-based EventTarget API both have their advantages. On the one hand, using onevent props means you don’t have to filter events by target, and you can register them on exactly the element you’d like to listen to.
+The props-based onevent API and the context-based EventTarget API both have their advantages. On the one hand, using onevent props means you don’t have to filter events by target. You register them on exactly the element you’d like to listen to.
 
-On the other, using the `addEventListener` method allows you to take full advantage of the EventTarget API, including registering passive event listeners or events which are dispatched during the capture phase. Additionally, the EventTarget API can be used without referencing or accessing the child elements which a component renders, meaning you can use it to listen to components whose children are passed in, or in utility functions which don’t have access to produced elements.
+On the other, using the `addEventListener` method allows you to take full advantage of the EventTarget API, which includes registering passive event listeners or listeners which are dispatched during the capture phase. Additionally, the EventTarget API can be used without referencing or accessing the child elements which a component renders, meaning you can use it to listen to components which are passed children, or in utility functions which don’t have access to produced elements.
 
 Crank supports both API styles for convenience and flexibility.
 
-## Dispatching events
-Crank contexts implement the full EventTarget interface, meaning you can use the `dispatchEvent` method and the [`CustomEvent`](https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent) class to dispatch events to ancestor components:
+## Dispatching Events
+Crank contexts implement the full EventTarget interface, meaning you can use [the `dispatchEvent` method](https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/dispatchEvent) and [the `CustomEvent` class](https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent) to dispatch custom events to ancestor components:
 
 ```jsx
 function MyButton(props) {
@@ -132,11 +130,11 @@ The preceding example also demonstrates a slight difference in the way the `addE
 
 ## Form Elements
 
-Form elements like inputs and textareas are stateful and by default update themselves automatically according to user input. JSX libraries like React and Inferno handle these types of elements by allowing their virtual representations to be “controlled” or “uncontrolled,” where being controlled means that the internal DOM node’s state is synced to the virtual representation’s props.
+Form elements like inputs and textareas are stateful and by default update themselves automatically according to user input. JSX libraries like React and Inferno handle these types of elements by allowing their virtual representations to be “controlled” or “uncontrolled,” where being controlled means that the internal DOM node’s state is synced to the virtual representation’s props. These APIs manifest as special “uncontrolled” versions of props like `defaultValue` and `defaultChecked`.
 
-Crank’s philosophy with regard to this issue is slightly different, in that we do not view the virtual elements as the “source of truth” for the underlying DOM node. In practice, this design decision means that renderers do not retain the previously rendered props for host elements. For instance, Crank will not compare old and new props between renders to avoid mutating props which have not changed, and instead attempt to update every prop in props when it is rerendered.
+Crank’s approach to this issue is slightly different, in that we do not view the virtual elements as the “source of truth” for the underlying DOM nodes. In practice, this design decision means that renderers do not retain the previously rendered props for host elements. For instance, Crank will not compare old and new props between renders to avoid mutating props which have not changed, and instead attempt to update every prop found in props.
 
-Another consequence is that we don’t delete props which were present in one rendering and absent in the next. In the following example, the checkbox will not be unchecked if you press the button.
+Another consequence is that we don’t delete props which were present in one rendering and absent in the next. In the following example, the checkbox will never uncheck itself.
 
 ```jsx
 function *App() {
@@ -195,7 +193,7 @@ function *App() {
 }
 ```
 
-This design decision means that we now have a way to have form elements be “uncontrolled” and “controlled” within the same component. Here, for instance, is an input element which is uncontrolled, except that it resets when the button is clicked.
+This design decision means that we now have a way to make the same element prop both “uncontrolled” and “controlled” for an element. Here, for instance, is an input element which is uncontrolled, except that it resets when the button is clicked.
 
 ```jsx
 function* ResettingInput() {
@@ -220,4 +218,4 @@ function* ResettingInput() {
 }
 ```
 
-We use the `reset` flag to check whether we need to set the `value` of the underlying input DOM element, and we omit the `value` prop when we aren’t performing a reset. The input is therefore both uncontrolled in that we do not track its value, but also controllable via normal rendering when we want to reset its `value` to the empty string.
+In the above example, we use the `reset` flag to check whether we need to set the `value` prop of the underlying input DOM element, and we omit the `value` prop when we aren’t performing a reset. Because the prop is not cleared when absent from the virtual element’s props, Crank leaves it alone. Crank’s approach means we do not need special alternative props for uncontrolled behavior, and we can continue to use virtual element rendering over raw DOM mutations in those circumstances where we do need control.

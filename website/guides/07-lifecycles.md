@@ -4,9 +4,9 @@ title: Lifecycles
 
 Crank uses generator functions rather than hooks or classes to define component lifecycles. Internally, this is achieved by calling the `next`, `return` and `throw` methods of the returned generator object as components are mounted, updated and unmounted from the element tree. As a developer, you can use the `yield`, `return`, `try`, `catch`, and `finally` keywords within your generator components to take full advantage of the generator’s natural lifecycle.
 
-## Returning
+## Returning Values
 
-Usually, you’ll yield in generator components so that they can continue to respond to updates, but you may want to also `return` a final state. Unlike function components, which are called and returned once for each update, once a generator component returns, it will never update again.
+In most generator components, you will yield children within a loop so that they can continue to respond to updates. However, you may also want to return a final state. Unlike function components, which are called and returned once for each update, once a generator component returns, its rendered value is final, and the component will never update again.
 
 ```jsx
 function *Stuck({message}) {
@@ -21,7 +21,7 @@ renderer.render(<Stuck message="Passing in new props is useless" />, document.bo
 console.log(document.body.innerHTML); // "<div>Hello</div>"
 ```
 
-You should be careful when writing generator components to make sure that you always place your `yield` operators in a `for` or `while` loop. If you forget and implicitly return from the generator, it will stop updating, nothing will be rendered, and the only way to restart the component will be to unmount and remount the component into the element tree.
+You should be careful when writing generator components to make sure that you always place your `yield` operators in a `for` or `while` loop. If you forget and implicitly return from the generator, it will stop updating and nothing will be rendered ever again.
 
 ```jsx
 function *Numbers() {
@@ -40,15 +40,11 @@ renderer.render(<Numbers />, document.body);
 console.log(document.body.innerHTML); // ""
 renderer.render(<Numbers />, document.body);
 console.log(document.body.innerHTML); // ""
-
-renderer.render(null, document.body);
-renderer.render(<Numbers />, document.body);
-console.log(document.body.innerHTML); // "1"
 ```
 
 ## Cleaning Up
 
-When a generator component is removed from the tree, Crank calls the `return` method on the generator object. You can think of it as whatever `yield` expression your component was suspended on being replaced by a `return` statement. This means any loops your component was in when the generator suspended are broken out of, and code after the yield does not execute.
+When a generator component is removed from the tree, Crank calls the `return` method on the component’s generator object. You can think of it as whatever `yield` expression your component was suspended on being replaced by a `return` statement. This means any loops your component was in when the generator suspended are broken out of, and code after the yield does not execute.
 
 You can take advantage of this behavior by wrapping your `yield` loops in a `try`/`finally` block to release any resources that your component may have used.
 
@@ -70,10 +66,10 @@ renderer.render(null, document.body);
 console.log(document.body); // ""
 ```
 
-[The same best practices](https://eslint.org/docs/rules/no-unsafe-finally) which apply to `try`/`finally` blocks in regular functions apply to generator components. In short, you should not yield or return anything in the `finally` block. Crank will not use the produced values and doing so might cause your components to inadvertently swallow errors or suspend in an unexpected location.
+[The same best practices](https://eslint.org/docs/rules/no-unsafe-finally) which apply to `try`/`finally` statements in regular functions apply to generator components. In short, you should not yield or return anything in the `finally` block. Crank will not use the yielded or returned values and doing so might cause your components to inadvertently swallow errors or suspend in unexpected locations.
 
 ## Catching Errors
-We all make mistakes, and it can be useful to catch errors in our components so that we can show the user something or notify error-logging services. To facilitate this, Crank will catch errors thrown when rendering child elements and throw them back into parent generator components by calling the `throw` method on the generator object. You can think of it as whatever `yield` expression your component was suspended on being replaced with a `throw` statement with the error set to whatever was thrown by the component’s children.
+We all make mistakes, and it can be useful to catch errors thrown by our components so that we can show the user something or notify error-logging services. To facilitate this, Crank will catch errors thrown when rendering child elements and throw them back into parent generator components using the `throw` method on the component’s generator object. You can think of it as whatever `yield` expression your component was suspended on being replaced with a `throw` statement with the error set to whatever was thrown by the component’s children.
 
 You can take advantage of this behavior by wrapping your `yield` operations in a `try`/`catch` block to catch errors caused by children.
  
@@ -98,7 +94,7 @@ renderer.render(<Catcher />, document.body);
 console.log(document.body.innerHTML); // "<div>Error: Hmmm</div>"
 ```
 
-This component “sticks” at the return so that the same error message is shown until the component is unmounted. However, you may also want to recover from errors as well, and you can do this by ignoring or handling the error.
+As explained previously, this component “sticks” because it uses a return statement, so that the same error message is shown until the component is unmounted. However, you may also want to recover from errors as well, and you can do this by ignoring or handling the error.
 
 ```jsx
 function T1000() { 
@@ -117,13 +113,17 @@ function *Terminator() {
 }
 
 renderer.render(<Terminator />, document.body);
-console.log(document.body.innerHTML); // "<div>Come with me if you want to live</div>"
+console.log(document.body.innerHTML);
+// "<div>Come with me if you want to live</div>"
 renderer.render(<Terminator />, document.body);
-console.log(document.body.innerHTML); // "<div>I’ll be back</div>"
+console.log(document.body.innerHTML);
+// "<div>I’ll be back</div>"
 renderer.render(<Terminator />, document.body);
-console.log(document.body.innerHTML); // "<div>Come with me if you want to live</div>"
+console.log(document.body.innerHTML);
+// "<div>Come with me if you want to live</div>"
 renderer.render(<Terminator />, document.body);
-console.log(document.body.innerHTML); // "<div>I’ll be back</div>"
+console.log(document.body.innerHTML);
+// "<div>I’ll be back</div>"
 ```
 
 ## Accessing Rendered Values
