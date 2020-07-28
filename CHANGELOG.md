@@ -1,66 +1,75 @@
 # Changelog
+## [0.3.0] - 2020-07-28
+### Changed
+- The context methods `get` and `set` are now named `provide` and `consume`.
+- Changes to the internal renderer APIs in preparation for initial documentation.
+  - Elements are passed in directly, rather than their tag and props.
+  - The scope is now no longer passed to the patch method.
+### Fixed
+- Fixed errors not propagating from function component children.
+- The context async iterator now suspends at its start if you yield before iterating over it (#137).
 ## [0.2.1] - 2020-07-02
 ### Fixed
 - Fixed overloads of Context.prototype.set and Context.prototype.get not appearing in the d.ts file.
 ## [0.2.0] - 2020-07-01
-### Added
-- UMD build
-- crank-ref
-- Context.prototype.schedule
-- Context.prototype.cleanup
-- Context.prototype.props
-- Context.prototype.value
-- Context dispatchEvent capturing
 ### Changed
-- props are no longer rememebered between renders. For instance, rendering `<input checked />` and then `<input />` will not cause the checked prop to be deleted on the actual element.
+- Props are no longer rememebered between renders. For instance, rendering `<input checked />` and then `<input />` will not cause the checked prop to be deleted on the actual element.
 - The internal Renderer API has been changed to use inheritance and away from the intrinsic generator API.
-- Renderer.prototype.render and Context.prototype.refresh now return rendered values rather than undefined.
+- `Renderer.prototype.render` and `Context.prototype.refresh` now return rendered values rather than undefined.
 - The library is no longer transpiled.
 - The esm directory in the package has been deleted. Refer to index, dom and html in the root of the package instead.
 - Some types have been simplified
   - Tag no longer takes a type parameter.
-  - The types Props, FunctionComponent, GeneratorComponent, IntrinsicProps, ChildIterator, ChildGenerator and Key have been deleted.
+  - The types `Props`, `FunctionComponent`, `GeneratorComponent`, `IntrinsicProps`, `ChildIterator`, `ChildGenerator` and `Key` have been removed from the public API.
+### Added
+- UMD build.
+- `crank-ref` props.
+- `Context.prototype.schedule`.
+- `Context.prototype.cleanup`.
+- `Context.prototype.props`.
+- `Context.prototype.value`.
+- `dispatchEvent` now does bubbling and capturing correctly.
 ### Fixed
 - Performance improvements in terms of execution time, runtime memory costs, and library size.
-- Fixed Context.prototype.dispatchEvent not using stopPropagation and stopImmediatePropagation.
+- Fixed `Context.prototype.dispatchEvent` not responding to `stopPropagation` and `stopImmediatePropagation`.
 - Fixed nested SVG elements not rendering SVGElements in some cases.
-- Improved error throwing to work with the call stack.
+- Improved error handling.
 
 ## [0.1.6] - 2020-05-25
-- Backed out of a performance optimization where async generator components caused siblings to remain in the DOM
+- Backed out of a performance optimization where async generator components caused siblings to remain in the DOM.
 ## [0.1.5] - 2020-05-21
-- Fixed SVG attributes causing readonly errors #119
+- Fixed SVG attributes causing readonly errors (#119).
 ## [0.1.4] - 2020-05-17
 ### Fixed
-- Added support for SVG elements in the DOM renderer #110
+- Added support for SVG elements in the DOM renderer (#110).
 - **basic performance improvements, you want to upgrade to at least 0.1.4 and probably 0.2 when it is released**
 ### Changed
-- got rid of the HostContext class in favor of exposing the HostNode directly to intrinsics
-- added a way to pass information in a preorder traversal to child host nodes (search for Scoper/Scopes in the codebase)
-- added new flags for intrinsics to optimize performance (search for dirty in the codebase)
+- Got rid of the `HostContext` class in favor of exposing the HostNode directly to intrinsics.
+- Added a way to pass information in a preorder traversal to child host nodes (search for Scoper/Scopes in the codebase).
+- Added new flags for intrinsics to optimize performance (search for dirty in the codebase).
 
 ## [0.1.3] - 2020-05-05
 ### Fixed
-- Made event-target-shim a direct dependency so TypeScript doesn’t error #95
+- Made `event-target-shim` a direct dependency so TypeScript doesn’t error (#95).
 ### Changed
-- Updated the types of Component and Context to take explicit prop types #51
-- Allow createElement to be passed anything as Children #97
-- Allow arbitrary elements to be passed to renderer.render #97
+- Updated the types of `Component` and `Context` to take explicit prop types (#51).
+- Allow createElement to be passed anything as `Children` (#97).
+- Allow arbitrary elements to be passed to `Renderer.prototype.render` (#97).
 
 ## [0.1.2] - 2020-04-29
 ### Fixed
-- Fixed Copy element tag not using Symbol.for #69
-- Fixed event listeners not being properly removed when component is unmounted #70
-- Prevented child components from causing parent components to rerender while it is already rerendering #70
-- Fixed keyed element logic when an unkeyed element is placed before multiple keyed elements previously rendered
-- Fixed a deadlock when errors are thrown back into async generator components: #77
+- Fixed `Copy` element tag not using `Symbol.for` (#69).
+- Fixed event listeners not being properly removed when component is unmounted (#70).
+- Prevented child components from causing parent components to rerender while it is already rerendering (#70).
+- Fixed keyed element logic when an unkeyed element is placed before multiple keyed elements previously rendered.
+- Fixed a deadlock when errors are thrown back into async generator components (#77).
 
 ## [0.1.1] - 2020-04-25
 ### Fixed
-- Corrected boolean props not working correctly in html renderer #44
-- Guarded against potential xss in style objects #44
-- Wrapped non-string iterables in an implicit Fragment element #63
-- Made sure stateless renders are unmounted #63
+- Corrected boolean props not working correctly in html renderer (#44).
+- Guarded against potential xss in style objects (#44).
+- Wrapped non-string iterables in an implicit Fragment element (#63).
+- Made sure stateless renders are unmounted (#63).
 
 ## [0.1.0] - 2020-04-14
 ### Added
