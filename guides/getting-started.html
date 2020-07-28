@@ -1,20 +1,29 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Crank.js | Getting Started</title><link rel="stylesheet" href="/index.css.css"></head><body><nav id="navbar" class="navbar"><div class="navbar-group"><div class="navbar-item"><a class href="/">Crank.js</a></div><div class="navbar-item"><a class="current" href="/guides/getting-started">Docs</a></div><div class="navbar-item"><a class href="/blog/">Blog</a></div></div><div class="navbar-group"><div class="navbar-item"><a href="https://github.com/bikeshaving/crank">GitHub</a></div><div class="navbar-item"><a href="http://npm.im/@bikeshaving/crank">NPM</a></div></div></nav><div id="sidebar" class="sidebar"><h3>Guides</h3><div class="sidebar-item"><a href="/guides/getting-started" class="current">Getting Started</a></div><div class="sidebar-item"><a href="/guides/elements" class="">JSX, Elements and Renderers</a></div><div class="sidebar-item"><a href="/guides/components" class="">Components</a></div><div class="sidebar-item"><a href="/guides/async-components" class="">Async Components</a></div><div class="sidebar-item"><a href="/guides/special-tags-and-props" class="">Special Props and Tags</a></div><div class="sidebar-item"><a href="/guides/lifecycles" class="">Lifecycles</a></div><div class="sidebar-item"><a href="/guides/working-with-typescript" class="">Working with TypeScript</a></div></div><div class="main"><div class="content"><h1>Getting Started</h1><h2 id="installation">Installation</h2>
-<p>Crank is available on <a href="https://npmjs.org/@bikeshaving/crank">NPM</a> in the ESModule and CommonJS formats.</p>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Crank.js | Getting Started</title><link rel="stylesheet" href="/index.css.css"><link rel="shortcut icon" href="/static/favicon.ico"><script async src="https://www.googletagmanager.com/gtag/js?id=UA-20910936-4"></script><script>
+								window.dataLayer = window.dataLayer || [];
+								function gtag(){dataLayer.push(arguments);}
+								gtag('js', new Date());
+
+								gtag('config', 'UA-20910936-4');
+							</script></head><body><nav id="navbar" class="navbar"><div class="navbar-group"><div class="navbar-item"><a class="navbar-title-link false" href="/"><img class="navbar-logo" src="/static/logo.svg" alt=""><span>Crank.js</span></a></div><div class="navbar-item"><a class="current" href="/guides/getting-started">Docs</a></div><div class="navbar-item"><a href="/blog/">Blog</a></div></div><div class="navbar-group"><div class="navbar-item"><a href="https://github.com/bikeshaving/crank">GitHub</a></div><div class="navbar-item"><a href="http://npm.im/@bikeshaving/crank">NPM</a></div></div></nav><div id="sidebar" class="sidebar"><h3>Guides</h3><div class="sidebar-item"><a href="/guides/getting-started" class="current">Getting Started</a></div><div class="sidebar-item"><a href="/guides/elements" class="">JSX, Elements and Renderers</a></div><div class="sidebar-item"><a href="/guides/components" class="">Components</a></div><div class="sidebar-item"><a href="/guides/handling-events" class="">Handling Events</a></div><div class="sidebar-item"><a href="/guides/async-components" class="">Async Components</a></div><div class="sidebar-item"><a href="/guides/special-props-and-tags" class="">Special Props and Tags</a></div><div class="sidebar-item"><a href="/guides/lifecycles" class="">Lifecycles</a></div><div class="sidebar-item"><a href="/guides/reusable-logic" class="">Reusable Logic</a></div><div class="sidebar-item"><a href="/guides/working-with-typescript" class="">Working with TypeScript</a></div><div class="sidebar-item"><a href="/guides/custom-renderers" class="">Custom Renderers</a></div><div class="sidebar-item"><a href="/guides/reference-for-react-developers" class="">Reference for React Developers</a></div><div class="sidebar-item"><a href="/guides/api-reference" class="">API Reference</a></div></div><main class="main"><div class="content"><h1>Getting Started</h1><h2>
+				<a class="anchor" name="installation" href="#installation">Installation</a>
+			</h2><p>Crank is available on <a href="https://npmjs.org/@bikeshaving/crank">NPM</a> in the ESModule and CommonJS formats.</p>
 <pre><code class="language-shell">$ npm install @bikeshaving/crank</code></pre>
 <pre><code class="language-jsx">/** @jsx createElement */
 import {createElement} from &quot;@bikeshaving/crank&quot;;
 import {renderer} from &quot;@bikeshaving/crank/dom&quot;;
 
 renderer.render(&lt;div id=&quot;hello&quot;&gt;Hello world&lt;/div&gt;, document.body);</code></pre>
-<p>If your environment does not support ESModules (you’ll probably see a message like <code>SyntaxError: Unexpected token export</code>), you can import the CommonJS versions of the library under the <code>cjs</code> directory.</p>
+<p>If your environment does not support ESModules (you may see a message like <code>SyntaxError: Unexpected token export</code>), you can import the CommonJS versions of the library under the <code>cjs</code> directory.</p>
 <pre><code class="language-jsx">/** @jsx createElement */
 import {createElement} from &quot;@bikeshaving/crank/cjs&quot;;
 import {renderer} from &quot;@bikeshaving/crank/cjs/dom&quot;;
 
 renderer.render(&lt;div id=&quot;hello&quot;&gt;Hello world&lt;/div&gt;, document.body);</code></pre>
-<h2 id="key-examples">Key Examples</h2>
-<h3 id="a-simple-component">A Simple Component</h3>
-<pre><code class="language-jsx">/** @jsx createElement */
+<h2>
+				<a class="anchor" name="key-examples" href="#key-examples">Key Examples</a>
+			</h2><h3>
+				<a class="anchor" name="a-simple-component" href="#a-simple-component">A Simple Component</a>
+			</h3><pre><code class="language-jsx">/** @jsx createElement */
 import {createElement} from &quot;@bikeshaving/crank&quot;;
 import {renderer} from &quot;@bikeshaving/crank/dom&quot;;
 
@@ -26,8 +35,9 @@ function Greeting({name = &quot;World&quot;}) {
 
 renderer.render(&lt;Greeting /&gt;, document.body);</code></pre>
 <p><a href="https://codesandbox.io/s/a-simple-crank-component-mhciu">Try on CodeSandbox</a></p>
-<h3 id="a-stateful-component">A Stateful Component</h3>
-<pre><code class="language-jsx">/** @jsx createElement */
+<h3>
+				<a class="anchor" name="a-stateful-component" href="#a-stateful-component">A Stateful Component</a>
+			</h3><pre><code class="language-jsx">/** @jsx createElement */
 import {createElement} from &quot;@bikeshaving/crank&quot;;
 import {renderer} from &quot;@bikeshaving/crank/dom&quot;;
 
@@ -48,8 +58,9 @@ function *Timer() {
 
 renderer.render(&lt;Timer /&gt;, document.body);</code></pre>
 <p><a href="https://codesandbox.io/s/a-stateful-crank-component-hh8zx">Try on CodeSandbox</a></p>
-<h3 id="an-async-component">An Async Component</h3>
-<pre><code class="language-jsx">/** @jsx createElement */
+<h3>
+				<a class="anchor" name="an-async-component" href="#an-async-component">An Async Component</a>
+			</h3><pre><code class="language-jsx">/** @jsx createElement */
 import {createElement} from &quot;@bikeshaving/crank&quot;;
 import {renderer} from &quot;@bikeshaving/crank/dom&quot;;
 
@@ -65,8 +76,9 @@ async function QuoteOfTheDay() {
 
 renderer.render(&lt;QuoteOfTheDay /&gt;, document.body);</code></pre>
 <p><a href="https://codesandbox.io/s/an-async-crank-component-ru02q">Try on CodeSandbox</a></p>
-<h3 id="a-loading-component">A Loading Component</h3>
-<pre><code class="language-jsx">/** @jsx createElement */
+<h3>
+				<a class="anchor" name="a-loading-component" href="#a-loading-component">A Loading Component</a>
+			</h3><pre><code class="language-jsx">/** @jsx createElement */
 import {createElement, Fragment} from &quot;@bikeshaving/crank&quot;;
 import {renderer} from &quot;@bikeshaving/crank/dom&quot;;
 
@@ -119,4 +131,4 @@ function *RandomDogApp() {
 
 renderer.render(&lt;RandomDogApp /&gt;, document.body);</code></pre>
 <p><a href="https://codesandbox.io/s/a-loading-crank-component-pci9d">Try on CodeSandbox</a></p>
-</div></div><script src="/index.tsx.js"></script></body></html>
+</div><footer class="footer"><div>Copyright © 2020 Brian Kim.</div><div>Distributed under the <a href="https://github.com/bikeshaving/crank/blob/master/LICENSE">MIT License</a>.</div><div>Logo by <a href="https://wstone.io">Will Stone</a> and <a href="https://github.com/pjdon">Paul Donchenko</a>.</div></footer></main><script src="/index.tsx.js"></script></body></html>

@@ -1,0 +1,201 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Crank.js | Special Props and Tags</title><link rel="stylesheet" href="/index.css.css"><link rel="shortcut icon" href="/static/favicon.ico"><script async src="https://www.googletagmanager.com/gtag/js?id=UA-20910936-4"></script><script>
+								window.dataLayer = window.dataLayer || [];
+								function gtag(){dataLayer.push(arguments);}
+								gtag('js', new Date());
+
+								gtag('config', 'UA-20910936-4');
+							</script></head><body><nav id="navbar" class="navbar"><div class="navbar-group"><div class="navbar-item"><a class="navbar-title-link false" href="/"><img class="navbar-logo" src="/static/logo.svg" alt=""><span>Crank.js</span></a></div><div class="navbar-item"><a class="current" href="/guides/getting-started">Docs</a></div><div class="navbar-item"><a href="/blog/">Blog</a></div></div><div class="navbar-group"><div class="navbar-item"><a href="https://github.com/bikeshaving/crank">GitHub</a></div><div class="navbar-item"><a href="http://npm.im/@bikeshaving/crank">NPM</a></div></div></nav><div id="sidebar" class="sidebar"><h3>Guides</h3><div class="sidebar-item"><a href="/guides/getting-started" class="">Getting Started</a></div><div class="sidebar-item"><a href="/guides/elements" class="">JSX, Elements and Renderers</a></div><div class="sidebar-item"><a href="/guides/components" class="">Components</a></div><div class="sidebar-item"><a href="/guides/handling-events" class="">Handling Events</a></div><div class="sidebar-item"><a href="/guides/async-components" class="">Async Components</a></div><div class="sidebar-item"><a href="/guides/special-props-and-tags" class="current">Special Props and Tags</a></div><div class="sidebar-item"><a href="/guides/lifecycles" class="">Lifecycles</a></div><div class="sidebar-item"><a href="/guides/reusable-logic" class="">Reusable Logic</a></div><div class="sidebar-item"><a href="/guides/working-with-typescript" class="">Working with TypeScript</a></div><div class="sidebar-item"><a href="/guides/custom-renderers" class="">Custom Renderers</a></div><div class="sidebar-item"><a href="/guides/reference-for-react-developers" class="">Reference for React Developers</a></div><div class="sidebar-item"><a href="/guides/api-reference" class="">API Reference</a></div></div><main class="main"><div class="content"><h1>Special Props and Tags</h1><p>Crank provides certain APIs in the form of special props or element tags. The following is an overview of these props and tags.</p>
+<h2>
+				<a class="anchor" name="special-props" href="#special-props">Special Props</a>
+			</h2><p>The following props apply to all elements, regardless of tag or renderer.</p>
+<h3>
+				<a class="anchor" name="crank-key" href="#crank-key"><code>crank-key</code></a>
+			</h3><p>By default, Crank uses an element’s tag and position to determine if it represents an update or a change to the tree. Because elements often represent stateful DOM nodes or components, it can be useful to <em>key</em> the children of an element to hint to the renderer that an element has been added, moved or removed from a parent. In Crank, we do this with the special prop <code>crank-key</code>:</p>
+<pre><code class="language-jsx">let nextId = 0;
+function *ID() {
+  const id = nextId++;
+  while (true) {
+    yield &lt;span&gt;Id: {id}&lt;/span&gt;;
+  }
+}
+
+renderer.render(
+  &lt;div&gt;
+    &lt;ID crank-key=&quot;a&quot; /&gt;
+    &lt;ID crank-key=&quot;b&quot; /&gt;
+    &lt;ID crank-key=&quot;c&quot; /&gt;
+  &lt;/div&gt;,
+  document.body,
+);
+console.log(document.body.innerHTML);
+// &quot;&lt;div&gt;&lt;span&gt;Id: 1&lt;/span&gt;&lt;span&gt;Id: 2&lt;/span&gt;&lt;span&gt;Id: 3&lt;/span&gt;&lt;div&gt;&quot;
+
+renderer.render(
+  &lt;div&gt;
+    &lt;ID crank-key=&quot;c&quot; /&gt;
+    &lt;ID crank-key=&quot;b&quot; /&gt;
+    &lt;ID crank-key=&quot;a&quot; /&gt;
+  &lt;/div&gt;,
+  document.body,
+);
+
+console.log(document.body.innerHTML);
+// &quot;&lt;div&gt;&lt;span&gt;Id: 3&lt;/span&gt;&lt;span&gt;Id: 2&lt;/span&gt;&lt;span&gt;Id: 1&lt;/span&gt;&lt;div&gt;&quot;</code></pre>
+<p>Keys are scoped to an element’s children, and can be any JavaScript value. When rendering iterables, it’s useful to key elements of the iterable, because it’s common for the values of rendered iterables to added, moved or removed.</p>
+<pre><code class="language-jsx">function *Shuffler() {
+  let nextId = 0;
+  const els = Array.from({length: 4}, (_, i) =&gt; &lt;span crank-key={i}&gt;{i}&lt;/span&gt;);
+  while (true) {
+    yield &lt;div&gt;{els}&lt;/div&gt;;
+    els.reverse();
+  }
+}
+
+renderer.render(&lt;Shuffler /&gt;, document.body);
+console.log(document.body.innerHTML);
+// &quot;&lt;div&gt;&lt;span&gt;0&lt;/span&gt;&lt;span&gt;1&lt;/span&gt;&lt;span&gt;2&lt;/span&gt;&lt;span&gt;3&lt;/span&gt;&lt;/div&gt;&quot;;
+
+const span = document.body.firstChild.firstChild;
+
+renderer.render(&lt;Shuffler /&gt;, document.body);
+console.log(document.body.innerHTML);
+// &quot;&lt;div&gt;&lt;span&gt;3&lt;/span&gt;&lt;span&gt;2&lt;/span&gt;&lt;span&gt;1&lt;/span&gt;&lt;span&gt;0&lt;/span&gt;&lt;/div&gt;&quot;;
+
+console.log(document.firstChild.lastChild === span); // true
+renderer.render(&lt;Shuffler /&gt;, document.body);
+console.log(document.body.innerHTML);
+// &quot;&lt;div&gt;&lt;span&gt;0&lt;/span&gt;&lt;span&gt;1&lt;/span&gt;&lt;span&gt;2&lt;/span&gt;&lt;span&gt;3&lt;/span&gt;&lt;/div&gt;&quot;;
+
+console.log(document.firstChild.firstChild === span); // true</code></pre>
+<p>All elements in the element tree can be keyed. If the element is a component element, the <code>crank-key</code> prop is erased from the props object passed to the component.</p>
+<h3>
+				<a class="anchor" name="crank-ref" href="#crank-ref"><code>crank-ref</code></a>
+			</h3><p>Sometimes, you may want to access the rendered value of a specific element in the element tree. To do this, you can pass a callback as the <code>crank-ref</code> prop. This callback is called with the rendered value of the element when the element has committed.</p>
+<pre><code class="language-tsx">function *MyPlayer() {
+  let audio;
+  while (true) {
+    yield (
+      &lt;div&gt;
+        &lt;button onclick={() =&gt; audio.play()}&gt;Play sound&lt;/button&gt;
+        &lt;audio
+          src=&quot;https://interactive-examples.mdn.mozilla.net/media/examples/t-rex-roar.mp3&quot;
+          controls={false}
+          crank-ref={(el) =&gt; (audio = el)}
+        /&gt;
+      &lt;/div&gt;
+    );
+  }
+}</code></pre>
+<p>Refs can be attached to any element in the element tree, and the value passed to the callback will vary according the type of the element and the specific renderer.</p>
+<h3>
+				<a class="anchor" name="children" href="#children"><code>children</code></a>
+			</h3><p>The <code>children</code> prop passed to components is special because it is not usually set with JSX’s <code>key=&quot;value&quot;</code> prop syntax, but by the contents between the opening and closing tags. Crank places no limitations on the types of values that can be passed into components as children, but patterns like <a href="https://reactjs.org/docs/render-props.html">render props</a> from the React community, where a callback is passed as the child of a component, should be avoided.</p>
+<p>The actual type of the <code>children</code> prop will vary according to the number of children passed in. If a component element has no children (<code>&lt;Component/&gt;</code>), the <code>children</code> prop will be undefined, if it has one child (<code>&lt;Component&gt;&lt;Child/&gt;&lt;/Component&gt;</code>), the <code>children</code> prop will be set to that child, and if it has multiple children (<code>&lt;Component&gt;&lt;Child/&gt;&lt;Child/&gt;&lt;/Component&gt;</code>), the <code>children</code> prop will be set to an array of those children. We do this to reduce runtime memory costs. All props have to be retained between renders, and most elements contain only zero or one child, so avoiding the allocation of an extra array for every element in the tree can noticeably reduce memory requirements.</p>
+<p>Therefore, the <code>children</code> prop should be treated as a black box, only to be rendered somewhere within a component’s returned or yielded children. Attempting to iterate over or manipulate the passed in children of a component is an anti-pattern, and you should use <a href="./handling-events#dispatching-events">event dispatch</a> or <a href="./reusable-logic#provisions">provisions</a> to coordinate ancestor and descendant components.</p>
+<h2>
+				<a class="anchor" name="special-dom-props" href="#special-dom-props">Special DOM Props</a>
+			</h2><p>The following props are specific to host elements for the HTML and DOM renderers.</p>
+<h3>
+				<a class="anchor" name="style" href="#style"><code>style</code></a>
+			</h3><p>The style prop can be used to add inline styles to an element. It can either be a CSS string, in which case it works exactly as it does in HTML, or it can also be an object, in which case CSS properties can be set individually.</p>
+<pre><code class="language-jsx">&lt;div style=&quot;color: red&quot;&gt;&lt;span style={{&quot;font-size&quot;: &quot;16px&quot;}}&gt;Hello&lt;/span&gt;&lt;/div&gt;</code></pre>
+<p><strong>Note:</strong> Unlike other JSX frameworks, Crank does not camel-case style names or add pixel units to numbers.</p>
+<h3>
+				<a class="anchor" name="innerhtml" href="#innerhtml"><code>innerHTML</code></a>
+			</h3><p>The <code>innerHTML</code> prop can be used to set the element’s children with an HTML string.</p>
+<p>Be careful when using the <code>innerHTML</code> prop, as passing unsanitized text inputs can lead to security vulnerabilities.</p>
+<p>As an alternative, you can also use <a href="#raw">the special <code>Raw</code> element tag</a>, which allows to inject raw HTML or even actual DOM nodes into the element tree, without requiring a parent host element.</p>
+<h3>
+				<a class="anchor" name="prop-naming-conventions" href="#prop-naming-conventions">Prop Naming Conventions</a>
+			</h3><p>Crank strives to make copying and pasting HTML into your components as easy as possible, and to this extent it allows you to use <code>class</code> and <code>for</code> as props in your elements instead of <code>className</code> and <code>htmlFor</code>.</p>
+<pre><code class="language-jsx">&lt;label class=&quot;my-label&quot; for=&quot;my-id&quot;&gt;Label&lt;/label&gt;</code></pre>
+<p>You can still use the <code>className</code> and <code>htmlFor</code> props as well, but using the former names is preferred. This philosophy also extends to SVG elements, and you can use props like <code>clip-path</code> and <code>stroke-width</code> without having to camel case them.</p>
+<h2>
+				<a class="anchor" name="special-tags" href="#special-tags">Special Tags</a>
+			</h2><p>Crank provides four element tags which have special meaning to the renderer, and affect element diffing and rendering output in various ways.</p>
+<h3>
+				<a class="anchor" name="fragment" href="#fragment"><code>Fragment</code></a>
+			</h3><p>Crank provides a <code>Fragment</code> tag, which allows you to render multiple children into a parent without wrapping them in another DOM node. Under the hood, iterables which appear in the element tree are also implicitly wrapped in a <code>Fragment</code> element by the renderer.</p>
+<pre><code class="language-jsx">import {createElement, Fragment} from &quot;@bikeshaving/crank&quot;;
+import {renderer} from &quot;@bikeshaving/crank/dom&quot;;
+function Siblings() {
+  return (
+    &lt;Fragment&gt;
+      &lt;div&gt;Sibling 1&lt;/div&gt;
+      &lt;div&gt;Sibling 2&lt;/div&gt;
+    &lt;/Fragment&gt;
+  );
+}
+
+renderer.render(&lt;Siblings /&gt;, document.body);
+console.log(document.body.innerHTML);
+// &quot;&lt;div&gt;Sibling 1&lt;/div&gt;&lt;div&gt;Sibling 2&lt;/div&gt;&quot;</code></pre>
+<h3>
+				<a class="anchor" name="copy" href="#copy"><code>Copy</code></a>
+			</h3><p>It‘s often fine to rerender Crank components, because elements are diffed, persistent between renders, and unnecessary mutations usually avoided. However, you might want to prevent a child from updating when the parent rerenders, perhaps because a certain prop hasn’t changed, because you want to batch updates from the parent, or as a performance optimization. To do this, you can use the <code>Copy</code> tag to indicate to Crank that you don’t want to update a previously rendered element in that same position.</p>
+<pre><code class="language-jsx">function equals(props, newProps) {
+  for (const name in {...props, ...newProps}) {
+    if (props[name] !== newProps[name]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function memo(Component) {
+  return function *Wrapped({props}) {
+    yield &lt;Component {...props} /&gt;;
+    for (const newProps of this) {
+      if (equals(props, newProps)) {
+        yield &lt;Copy /&gt;;
+      } else {
+        yield &lt;Component {...newProps} /&gt;;
+      }
+
+      props = newProps;
+    }
+  };
+}</code></pre>
+<p>In this example, <code>memo</code> is a higher-order component, a function which takes a component and returns a component. This wrapper component compares old and new props and yields a <code>Copy</code> element if every prop is shallowly equal. A <code>Copy</code> element can appear anywhere in an element tree to prevent rerenderings, and the only props <code>Copy</code> elements take are the <code>crank-key</code> and <code>crank-ref</code> props, which work as expected.</p>
+<h3>
+				<a class="anchor" name="portal" href="#portal"><code>Portal</code></a>
+			</h3><p>Sometimes you may want to render into a DOM node which isn’t the current parent element, or even a part of the currently rendered DOM tree. You can do this with the <code>Portal</code> tag, passing in a DOM node as its <code>root</code> prop. The Portal’s children will be rendered into the specified root element, just as if Renderer.render was called with the root value as its second argument.</p>
+<pre><code class="language-jsx">/** @jsx createElement */
+import {createElement, Portal} from &quot;@bikeshaving/crank&quot;;
+import {renderer} from &quot;@bikeshaving/crank/dom&quot;;
+const root1 = document.createElement(&quot;div&quot;);
+const root2 = document.createElement(&quot;div&quot;);
+function MyComponent() {
+  return (
+    &lt;div&gt;
+      &lt;div&gt;This div is rendered into root1&lt;/div&gt;
+      &lt;Portal root={root2}&gt;
+        &lt;div&gt;This div is rendered into root2&lt;/div&gt;
+      &lt;/Portal&gt;
+    &lt;/div&gt;
+  );
+}
+
+renderer.render(&lt;MyComponent /&gt;, root1);
+console.log(root1.innerHTML);
+// &quot;&lt;div&gt;&lt;div&gt;This div is rendered into root1&lt;/div&gt;&lt;/div&gt;&quot;
+console.log(root2.innerHTML);
+// &quot;&lt;div&gt;This div is rendered into root2&lt;/div&gt;&quot;</code></pre>
+<p>This tag is useful for creating modals or tooltips, which usually need to be rendered into separate DOM elements at the bottom of the page for visibility reasons. Events dispatched from a <code>Portal</code> element‘s child components via the <code>dispatchEvent</code> method will still bubble into parent components.</p>
+<h3>
+				<a class="anchor" name="raw" href="#raw"><code>Raw</code></a>
+			</h3><p>Sometimes, you may want to insert raw HTML or actual DOM nodes directly into the element tree. Crank allows you to do this with the <code>Raw</code> element. The <code>Raw</code> element takes a <code>value</code> prop which is interpreted by the renderer. For the DOM renderer, if <code>value</code> is an HTML string, the renderer will parse and insert the resulting DOM nodes. If the value is already a DOM node, Crank will insert them in place.</p>
+<pre><code class="language-jsx">/** @jsx createElement */
+import {createElement, Raw} from &quot;@bikeshaving/crank&quot;;
+import marked from &quot;marked&quot;;
+function MarkdownViewer({markdown=&quot;&quot;}) {
+  const html = marked(markdown);
+  return (
+    &lt;div&gt;
+      &lt;Raw value={html} /&gt;
+    &lt;/div&gt;
+  );
+}</code></pre>
+<p>Be careful when using <code>Raw</code> elements, as passing unsanitized text inputs can lead to security vulnerabilities.</p>
+</div><footer class="footer"><div>Copyright © 2020 Brian Kim.</div><div>Distributed under the <a href="https://github.com/bikeshaving/crank/blob/master/LICENSE">MIT License</a>.</div><div>Logo by <a href="https://wstone.io">Will Stone</a> and <a href="https://github.com/pjdon">Paul Donchenko</a>.</div></footer></main><script src="/index.tsx.js"></script></body></html>

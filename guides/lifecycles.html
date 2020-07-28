@@ -1,6 +1,13 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Crank.js | Lifecycles</title><link rel="stylesheet" href="/index.css.css"></head><body><nav id="navbar" class="navbar"><div class="navbar-group"><div class="navbar-item"><a class href="/">Crank.js</a></div><div class="navbar-item"><a class="current" href="/guides/getting-started">Docs</a></div><div class="navbar-item"><a class href="/blog/">Blog</a></div></div><div class="navbar-group"><div class="navbar-item"><a href="https://github.com/bikeshaving/crank">GitHub</a></div><div class="navbar-item"><a href="http://npm.im/@bikeshaving/crank">NPM</a></div></div></nav><div id="sidebar" class="sidebar"><h3>Guides</h3><div class="sidebar-item"><a href="/guides/getting-started" class="">Getting Started</a></div><div class="sidebar-item"><a href="/guides/elements" class="">JSX, Elements and Renderers</a></div><div class="sidebar-item"><a href="/guides/components" class="">Components</a></div><div class="sidebar-item"><a href="/guides/async-components" class="">Async Components</a></div><div class="sidebar-item"><a href="/guides/special-tags-and-props" class="">Special Props and Tags</a></div><div class="sidebar-item"><a href="/guides/lifecycles" class="current">Lifecycles</a></div><div class="sidebar-item"><a href="/guides/working-with-typescript" class="">Working with TypeScript</a></div></div><div class="main"><div class="content"><h1>Lifecycles</h1><p>Crank uses the full power and expressiveness of generator functions to encapsulate the notion of lifecycles within the same variable scope. Internally, Crank achieves this by calling the <code>next</code>, <code>return</code> and <code>throw</code> methods of the generator object as components are inserted, updated and removed from the element tree. As a developer, you can use the <code>yield</code>, <code>return</code>, <code>try</code>, <code>catch</code>, and <code>finally</code> keywords within your generator components to take full advantage of the generator’s natural lifecycle.</p>
-<h2 id="returning-from-a-generator">Returning from a generator</h2>
-<p>Usually, you’ll yield in generator components so that they can continue to respond to updates, but you may want to also <code>return</code> a final state. Unlike function components, which are called and returned once for each update, once a generator component returns, it will never update again.</p>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Crank.js | Lifecycles</title><link rel="stylesheet" href="/index.css.css"><link rel="shortcut icon" href="/static/favicon.ico"><script async src="https://www.googletagmanager.com/gtag/js?id=UA-20910936-4"></script><script>
+								window.dataLayer = window.dataLayer || [];
+								function gtag(){dataLayer.push(arguments);}
+								gtag('js', new Date());
+
+								gtag('config', 'UA-20910936-4');
+							</script></head><body><nav id="navbar" class="navbar"><div class="navbar-group"><div class="navbar-item"><a class="navbar-title-link false" href="/"><img class="navbar-logo" src="/static/logo.svg" alt=""><span>Crank.js</span></a></div><div class="navbar-item"><a class="current" href="/guides/getting-started">Docs</a></div><div class="navbar-item"><a href="/blog/">Blog</a></div></div><div class="navbar-group"><div class="navbar-item"><a href="https://github.com/bikeshaving/crank">GitHub</a></div><div class="navbar-item"><a href="http://npm.im/@bikeshaving/crank">NPM</a></div></div></nav><div id="sidebar" class="sidebar"><h3>Guides</h3><div class="sidebar-item"><a href="/guides/getting-started" class="">Getting Started</a></div><div class="sidebar-item"><a href="/guides/elements" class="">JSX, Elements and Renderers</a></div><div class="sidebar-item"><a href="/guides/components" class="">Components</a></div><div class="sidebar-item"><a href="/guides/handling-events" class="">Handling Events</a></div><div class="sidebar-item"><a href="/guides/async-components" class="">Async Components</a></div><div class="sidebar-item"><a href="/guides/special-props-and-tags" class="">Special Props and Tags</a></div><div class="sidebar-item"><a href="/guides/lifecycles" class="current">Lifecycles</a></div><div class="sidebar-item"><a href="/guides/reusable-logic" class="">Reusable Logic</a></div><div class="sidebar-item"><a href="/guides/working-with-typescript" class="">Working with TypeScript</a></div><div class="sidebar-item"><a href="/guides/custom-renderers" class="">Custom Renderers</a></div><div class="sidebar-item"><a href="/guides/reference-for-react-developers" class="">Reference for React Developers</a></div><div class="sidebar-item"><a href="/guides/api-reference" class="">API Reference</a></div></div><main class="main"><div class="content"><h1>Lifecycles</h1><p>Crank uses generator functions rather than hooks or classes to define component lifecycles. Internally, this is achieved by calling the <code>next</code>, <code>return</code> and <code>throw</code> methods of the returned generator object as components are mounted, updated and unmounted from the element tree. As a developer, you can use the <code>yield</code>, <code>return</code>, <code>try</code>, <code>catch</code>, and <code>finally</code> keywords within your generator components to take full advantage of the generator’s natural lifecycle.</p>
+<h2>
+				<a class="anchor" name="returning-values" href="#returning-values">Returning Values</a>
+			</h2><p>In most generator components, you will yield children within a loop so that they can continue to respond to updates. However, you may also want to return a final state. Unlike function components, which are called and returned once for each update, once a generator component returns, its rendered value is final, and the component will never update again.</p>
 <pre><code class="language-jsx">function *Stuck({message}) {
   return &lt;div&gt;{message}&lt;/div&gt;;
 }
@@ -11,7 +18,7 @@ renderer.render(&lt;Stuck message=&quot;Goodbye&quot; /&gt;, document.body);
 console.log(document.body.innerHTML); // &quot;&lt;div&gt;Hello&lt;/div&gt;&quot;
 renderer.render(&lt;Stuck message=&quot;Passing in new props is useless&quot; /&gt;, document.body);
 console.log(document.body.innerHTML); // &quot;&lt;div&gt;Hello&lt;/div&gt;&quot;</code></pre>
-<p>You should be careful when writing generator components to make sure that you always place your <code>yield</code> operators in a <code>for</code> or <code>while</code> loop. If you forget and implicitly return from the generator, it will stop updating, nothing will be rendered, and the only way to restart the component will be to remove it from the element tree and add it again.</p>
+<p>You should be careful when writing generator components to make sure that you always place your <code>yield</code> operators in a <code>for</code> or <code>while</code> loop. If you forget and implicitly return from the generator, it will stop updating and nothing will be rendered ever again.</p>
 <pre><code class="language-jsx">function *Numbers() {
   yield 1;
   yield 2;
@@ -27,13 +34,11 @@ console.log(document.body.innerHTML); // &quot;3&quot;
 renderer.render(&lt;Numbers /&gt;, document.body);
 console.log(document.body.innerHTML); // &quot;&quot;
 renderer.render(&lt;Numbers /&gt;, document.body);
-console.log(document.body.innerHTML); // &quot;&quot;
-
-renderer.render(null, document.body);
-renderer.render(&lt;Numbers /&gt;, document.body);
-console.log(document.body.innerHTML); // &quot;1&quot;</code></pre>
-<h2 id="cleaning-up-after-your-components-are-removed">Cleaning up after your components are removed</h2>
-<p>When a generator component is removed from the tree, Crank calls the <code>return</code> method on the generator object. You can think of it as whatever <code>yield</code> expression your component was suspended on being replaced by a <code>return</code> statement. This means any loops your component was in when the generator was suspended are broken out of, and code after the yield does not execute. You can take advantage of this behavior by wrapping your <code>yield</code> loops in a <code>try</code>/<code>finally</code> to release any resources that your component may have used.</p>
+console.log(document.body.innerHTML); // &quot;&quot;</code></pre>
+<h2>
+				<a class="anchor" name="cleaning-up" href="#cleaning-up">Cleaning Up</a>
+			</h2><p>When a generator component is removed from the tree, Crank calls the <code>return</code> method on the component’s generator object. You can think of it as whatever <code>yield</code> expression your component was suspended on being replaced by a <code>return</code> statement. This means any loops your component was in when the generator suspended are broken out of, and code after the yield does not execute.</p>
+<p>You can take advantage of this behavior by wrapping your <code>yield</code> loops in a <code>try</code>/<code>finally</code> block to release any resources that your component may have used.</p>
 <pre><code class="language-jsx">function *Cleanup() {
   try {
     while (true) {
@@ -49,9 +54,11 @@ console.log(document.body); // &quot;Hi&quot;
 renderer.render(null, document.body);
 // &quot;finally block executed&quot;
 console.log(document.body); // &quot;&quot;</code></pre>
-<p><a href="https://eslint.org/docs/rules/no-unsafe-finally">The same best practices</a> which apply to try/finally blocks in regular functions apply to generator components. In short, you should not yield or return anything in the <code>finally</code> block. Crank will not use the produced values and doing so might cause your components to inadvertently swallow errors or suspend in an unexpected location.</p>
-<h2 id="catching-errors-thrown-by-children">Catching errors thrown by children</h2>
-<p>We all make mistakes, and it can be useful to catch errors in our components so that we can show the user something or notify error-logging services. To facilitate this, Crank will catch errors thrown when rendering child elements and throw them back into parent generator components by calling the <code>throw</code> method on the generator object. You can imagine that the most recently suspended <code>yield</code> expression is replaced with a <code>throw</code> statement with the error set to whatever was thrown during rendering. You can take advantage of this behavior by wrapping your <code>yield</code> operations in a <code>try</code>/<code>catch</code> block to catch errors caused by children.</p>
+<p><a href="https://eslint.org/docs/rules/no-unsafe-finally">The same best practices</a> which apply to <code>try</code>/<code>finally</code> statements in regular functions apply to generator components. In short, you should not yield or return anything in the <code>finally</code> block. Crank will not use the yielded or returned values and doing so might cause your components to inadvertently swallow errors or suspend in unexpected locations.</p>
+<h2>
+				<a class="anchor" name="catching-errors" href="#catching-errors">Catching Errors</a>
+			</h2><p>We all make mistakes, and it can be useful to catch errors thrown by our components so that we can show the user something or notify error-logging services. To facilitate this, Crank will catch errors thrown when rendering child elements and throw them back into parent generator components using the <code>throw</code> method on the component’s generator object. You can think of it as whatever <code>yield</code> expression your component was suspended on being replaced with a <code>throw</code> statement with the error set to whatever was thrown by the component’s children.</p>
+<p>You can take advantage of this behavior by wrapping your <code>yield</code> operations in a <code>try</code>/<code>catch</code> block to catch errors caused by children.</p>
 <pre><code class="language-jsx">function Thrower() { 
   throw new Error(&quot;Hmmm&quot;);
 }
@@ -70,7 +77,7 @@ renderer.render(&lt;Catcher /&gt;, document.body);
 renderer.render(&lt;Catcher /&gt;, document.body);
 renderer.render(&lt;Catcher /&gt;, document.body);
 console.log(document.body.innerHTML); // &quot;&lt;div&gt;Error: Hmmm&lt;/div&gt;&quot;</code></pre>
-<p>This component “sticks” at the return so that error message is shown until the component is unmounted. However, you may also want to recover from errors as well, and you can do this by ignoring or handling the error.</p>
+<p>As explained previously, this component “sticks” because it uses a return statement, so that the same error message is shown until the component is unmounted. However, you may also want to recover from errors as well, and you can do this by ignoring or handling the error.</p>
 <pre><code class="language-jsx">function T1000() { 
   throw new Error(&quot;Die!!!&quot;);
 }
@@ -87,23 +94,50 @@ function *Terminator() {
 }
 
 renderer.render(&lt;Terminator /&gt;, document.body);
-console.log(document.body.innerHTML); // &quot;&lt;div&gt;Come with me if you want to live&lt;/div&gt;&quot;
+console.log(document.body.innerHTML);
+// &quot;&lt;div&gt;Come with me if you want to live&lt;/div&gt;&quot;
 renderer.render(&lt;Terminator /&gt;, document.body);
-console.log(document.body.innerHTML); // &quot;&lt;div&gt;I’ll be back&lt;/div&gt;&quot;
+console.log(document.body.innerHTML);
+// &quot;&lt;div&gt;I’ll be back&lt;/div&gt;&quot;
 renderer.render(&lt;Terminator /&gt;, document.body);
-console.log(document.body.innerHTML); // &quot;&lt;div&gt;Come with me if you want to live&lt;/div&gt;&quot;
+console.log(document.body.innerHTML);
+// &quot;&lt;div&gt;Come with me if you want to live&lt;/div&gt;&quot;
 renderer.render(&lt;Terminator /&gt;, document.body);
-console.log(document.body.innerHTML); // &quot;&lt;div&gt;I’ll be back&lt;/div&gt;&quot;</code></pre>
-<p>Note that you can’t catch or recover from errors thrown from within the generator themselves, the yield operator only throws errors which were thrown in the course of rendering child elements.</p>
-<h2 id="accessing-rendered-values">Accessing rendered values</h2>
-<p>Sometimes, the declarative rendering of DOM nodes is not enough, and you’ll want to access the actual DOM nodes you’ve rendered, to make measurements or call imperative methods like <code>el.focus()</code>, for instance. To facilitate this, Crank will pass rendered DOM nodes back into the generator using the <code>next</code> method, so <code>yield</code> expressions can be read and assigned to access the actual rendered DOM nodes.</p>
-<pre><code class="language-jsx">async function *MyInput(props) {
-  let input; 
+console.log(document.body.innerHTML);
+// &quot;&lt;div&gt;I’ll be back&lt;/div&gt;&quot;</code></pre>
+<h2>
+				<a class="anchor" name="accessing-rendered-values" href="#accessing-rendered-values">Accessing Rendered Values</a>
+			</h2><p>Sometimes, declarative rendering is not enough, and you’ll want to access the actual DOM nodes you’ve rendered, to make measurements or call imperative methods like the <code>focus</code> method for form elements, or the <code>play</code> method for media elements. To facilitate this, Crank will pass rendered DOM nodes back into the generator using the <code>next</code> method. This means that as a developer, you can read <code>yield</code> expressions to access the actual rendered DOM nodes.</p>
+<pre><code class="language-jsx">async function *FocusingInput(props) {
   for await (props of this) {
-    input = yield &lt;input {...props}/&gt;;
+    const input = yield &lt;input {...props}/&gt;;
     input.focus();
   }
 }</code></pre>
-<p>The above component focuses every time it is rerendered. You might notice that we use an async generator component here. That’s because async generators continuously resume, and rely on the <code>for await</code> loop to await new updates.</p>
-<p><strong>TODO: Design APIs/Document them for working with yield expressions in sync generators.</strong></p>
-</div></div><script src="/index.tsx.js"></script></body></html>
+<p>The <code>MyInput</code> component focuses every time it is rerendered. We use an async generator component here because async generators continuously resume, so the <code>input.focus</code> call happens directly after the component is rendered. While we also pass rendered nodes into sync generator components as well, attempting to access them directly after the <code>yield</code> may lead to surprising results.</p>
+<pre><code class="language-jsx">function *FocusingInput(props) {
+  for (props of this) {
+    const input = yield &lt;input {...props}/&gt;;
+    // This line does not execute until the component is rerendered.
+    input.focus();
+  }
+}</code></pre>
+<p>The problem is that sync generator components suspend at the point of yield expressions and only resume when updated by the parent or by a call to the <code>refresh</code> method. This means that if you were to try to access the rendered value via a <code>yield</code> expression, your code would not execute until the moment the component rerenders. You can imagine this as the generator function above suspended exactly before the <code>yield</code> expression is assigned to the <code>input</code> variable.</p>
+<p>To solve this problem, Crank provides an additional method on the context called <code>schedule</code>, which takes a callback and calls it with the rendered value after the component executes.</p>
+<pre><code class="language-jsx">function *FocusingInput(props) {
+  for (props of this) {
+    this.schedule((input) =&gt; input.focus());
+    yield &lt;input {...props}/&gt;;
+  }
+}</code></pre>
+<p>The <code>schedule</code> method fires the passed in callback synchronously when component finally renders. However, one unfortunate consequence of using a callback is that we lose the sequential execution of code which makes generator components so elegant and easy to understand. We can recover some of this linearity by using the <code>schedule</code> method with the <code>refresh</code> method.</p>
+<pre><code class="language-jsx">function *FocusingInput(props) {
+  this.schedule(() =&gt; this.refresh());
+  const input = yield &lt;input {...props} /&gt;;
+  for (props of this) {
+    input.focus();
+    yield &lt;input {...props} /&gt;;
+  }
+}</code></pre>
+<p>The focusing input now focuses before the children are yielded, but because the same input is yielded, the result is mostly the same. The <code>schedule</code> method is designed to work with the <code>refresh</code> method so that sync generator components can schedule multiple rendering passes which work synchronously.</p>
+</div><footer class="footer"><div>Copyright © 2020 Brian Kim.</div><div>Distributed under the <a href="https://github.com/bikeshaving/crank/blob/master/LICENSE">MIT License</a>.</div><div>Logo by <a href="https://wstone.io">Will Stone</a> and <a href="https://github.com/pjdon">Paul Donchenko</a>.</div></footer></main><script src="/index.tsx.js"></script></body></html>

@@ -1,6 +1,13 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Crank.js | Working with TypeScript</title><link rel="stylesheet" href="/index.css.css"></head><body><nav id="navbar" class="navbar"><div class="navbar-group"><div class="navbar-item"><a class href="/">Crank.js</a></div><div class="navbar-item"><a class="current" href="/guides/getting-started">Docs</a></div><div class="navbar-item"><a class href="/blog/">Blog</a></div></div><div class="navbar-group"><div class="navbar-item"><a href="https://github.com/bikeshaving/crank">GitHub</a></div><div class="navbar-item"><a href="http://npm.im/@bikeshaving/crank">NPM</a></div></div></nav><div id="sidebar" class="sidebar"><h3>Guides</h3><div class="sidebar-item"><a href="/guides/getting-started" class="">Getting Started</a></div><div class="sidebar-item"><a href="/guides/elements" class="">JSX, Elements and Renderers</a></div><div class="sidebar-item"><a href="/guides/components" class="">Components</a></div><div class="sidebar-item"><a href="/guides/async-components" class="">Async Components</a></div><div class="sidebar-item"><a href="/guides/special-tags-and-props" class="">Special Props and Tags</a></div><div class="sidebar-item"><a href="/guides/lifecycles" class="">Lifecycles</a></div><div class="sidebar-item"><a href="/guides/working-with-typescript" class="current">Working with TypeScript</a></div></div><div class="main"><div class="content"><h1>Working with TypeScript</h1><p>Crank is written in TypeScript, and provides some types out of box so you can type-check your components and elements.</p>
-<h2 id="typing-this-in-components">Typing <code>this</code> in components</h2>
-<p>Trying to reference <code>this</code> in a component without a <code>this</code> type annotation will throw a type error in TypeScript‘s strict mode (you’ll see a message like <code>&#39;this&#39; implicitly has type &#39;any&#39; because it does not have a type annotation</code>). Crank exports the <code>Context</code> class so you can annotate your components <code>this</code> as <code>Context</code>:</p>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Crank.js | Working with TypeScript</title><link rel="stylesheet" href="/index.css.css"><link rel="shortcut icon" href="/static/favicon.ico"><script async src="https://www.googletagmanager.com/gtag/js?id=UA-20910936-4"></script><script>
+								window.dataLayer = window.dataLayer || [];
+								function gtag(){dataLayer.push(arguments);}
+								gtag('js', new Date());
+
+								gtag('config', 'UA-20910936-4');
+							</script></head><body><nav id="navbar" class="navbar"><div class="navbar-group"><div class="navbar-item"><a class="navbar-title-link false" href="/"><img class="navbar-logo" src="/static/logo.svg" alt=""><span>Crank.js</span></a></div><div class="navbar-item"><a class="current" href="/guides/getting-started">Docs</a></div><div class="navbar-item"><a href="/blog/">Blog</a></div></div><div class="navbar-group"><div class="navbar-item"><a href="https://github.com/bikeshaving/crank">GitHub</a></div><div class="navbar-item"><a href="http://npm.im/@bikeshaving/crank">NPM</a></div></div></nav><div id="sidebar" class="sidebar"><h3>Guides</h3><div class="sidebar-item"><a href="/guides/getting-started" class="">Getting Started</a></div><div class="sidebar-item"><a href="/guides/elements" class="">JSX, Elements and Renderers</a></div><div class="sidebar-item"><a href="/guides/components" class="">Components</a></div><div class="sidebar-item"><a href="/guides/handling-events" class="">Handling Events</a></div><div class="sidebar-item"><a href="/guides/async-components" class="">Async Components</a></div><div class="sidebar-item"><a href="/guides/special-props-and-tags" class="">Special Props and Tags</a></div><div class="sidebar-item"><a href="/guides/lifecycles" class="">Lifecycles</a></div><div class="sidebar-item"><a href="/guides/reusable-logic" class="">Reusable Logic</a></div><div class="sidebar-item"><a href="/guides/working-with-typescript" class="current">Working with TypeScript</a></div><div class="sidebar-item"><a href="/guides/custom-renderers" class="">Custom Renderers</a></div><div class="sidebar-item"><a href="/guides/reference-for-react-developers" class="">Reference for React Developers</a></div><div class="sidebar-item"><a href="/guides/api-reference" class="">API Reference</a></div></div><main class="main"><div class="content"><h1>Working with TypeScript</h1><p>Crank is written in TypeScript, and provides some types out of box so you can type-check your components and elements.</p>
+<h2>
+				<a class="anchor" name="typing-this-in-components" href="#typing-this-in-components">Typing <code>this</code> in Components</a>
+			</h2><p>Trying to reference <code>this</code> in a component without a <code>this</code> type annotation will throw a type error in TypeScript‘s strict mode (you’ll see a message like <code>&#39;this&#39; implicitly has type &#39;any&#39; because it does not have a type annotation</code>). Crank exports the <code>Context</code> class so you can annotate your components <code>this</code> as <code>Context</code>:</p>
 <pre><code class="language-tsx">import {Context} from &quot;@bikeshaving/crank&quot;;
 function *Timer (this: Context) {
   let seconds = 0;
@@ -16,8 +23,9 @@ function *Timer (this: Context) {
     clearInterval(interval);
   }
 }</code></pre>
-<h2 id="typing-the-return-types-of-components">Typing the return types of components</h2>
-<p>You’ll often want to add a return type to your components. Crank exports custom types to help you type the return types of components:</p>
+<h2>
+				<a class="anchor" name="typing-component-return-values" href="#typing-component-return-values">Typing Component Return Values</a>
+			</h2><p>You’ll often want to add a return type to your components. Crank exports custom types to help you type the return types of components:</p>
 <pre><code class="language-tsx">import {Element} from &quot;@bikeshaving/crank&quot;;
 function SyncFn(): Element {
   return &lt;div&gt;Hello world&lt;/div&gt;;
@@ -50,8 +58,9 @@ async function *AsyncGen(): AsyncGenerator&lt;Element&gt; {
   yield &lt;div&gt;Hello world&lt;/div&gt;;
 }</code></pre>
 <p>Anything assignable to <code>Child</code> can be part of the element tree, and almost anything can be assigned to <code>Child</code>.</p>
-<h2 id="typing-props">Typing props</h2>
-<p>You can type the props object passed to components. This allows JSX elements which use your component as a tag to be type-checked.</p>
+<h2>
+				<a class="anchor" name="typing-props" href="#typing-props">Typing Props</a>
+			</h2><p>You can type the props object passed to components. This allows JSX elements which use your component as a tag to be type-checked.</p>
 <pre><code class="language-tsx">function Greeting ({name}: {name: string}) {
   return (
     &lt;div&gt;Hello {name}&lt;/div&gt;
@@ -69,8 +78,9 @@ function Greeting ({name, children}: {name: string, children: Children}) {
     &lt;/div&gt;
   );
 }</code></pre>
-<h2 id="typing-event-listeners">Typing event listeners</h2>
-<p>If you dispatch custom events, you’re going to want parent event listeners to be typed with the event you bubbled automatically. To do so, you can extend a global <code>EventMap</code> type provided by Crank.</p>
+<h2>
+				<a class="anchor" name="typing-event-listeners" href="#typing-event-listeners">Typing Event Listeners</a>
+			</h2><p>If you dispatch custom events, you may want parent event listeners to be typed with the event you bubbled automatically. To do so, you can use module augmentation to extend the <code>EventMap</code> interface provided by Crank.</p>
 <pre><code class="language-tsx">declare global {
   module &quot;@bikeshaving/crank&quot; {
     interface EventMap {
@@ -92,4 +102,7 @@ function MyButton (props) {
     &lt;button {...props} /&gt;
   );
 }</code></pre>
-</div></div><script src="/index.tsx.js"></script></body></html>
+<h2>
+				<a class="anchor" name="typing-provisions" href="#typing-provisions">Typing Provisions</a>
+			</h2><p>By default, calls to the context’s <code>provide</code> and <code>consume</code> methods will be loosely typed. If you want stricter typings of these methods, you can use module augmentation to extend the <code>ProvisionMap</code> interface provided by Crank.</p>
+</div><footer class="footer"><div>Copyright © 2020 Brian Kim.</div><div>Distributed under the <a href="https://github.com/bikeshaving/crank/blob/master/LICENSE">MIT License</a>.</div><div>Logo by <a href="https://wstone.io">Will Stone</a> and <a href="https://github.com/pjdon">Paul Donchenko</a>.</div></footer></main><script src="/index.tsx.js"></script></body></html>
