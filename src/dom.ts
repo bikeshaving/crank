@@ -7,10 +7,6 @@ import {
 	Renderer,
 } from "./index";
 
-declare module "./index" {
-	interface EventMap extends GlobalEventHandlersEventMap {}
-}
-
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
 export class DOMRenderer extends Renderer<Node, string | undefined> {
@@ -214,3 +210,9 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 }
 
 export const renderer = new DOMRenderer();
+
+declare global {
+	module Crank {
+		interface EventMap extends GlobalEventHandlersEventMap {}
+	}
+}

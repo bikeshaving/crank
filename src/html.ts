@@ -1,9 +1,5 @@
 import {Element, ElementValue, Portal, Renderer} from "./index";
 
-declare module "./index" {
-	interface EventMap extends GlobalEventHandlersEventMap {}
-}
-
 const voidTags = new Set([
 	"area",
 	"base",
@@ -146,3 +142,9 @@ export class StringRenderer extends Renderer<
 }
 
 export const renderer = new StringRenderer();
+
+declare global {
+	module Crank {
+		interface EventMap extends GlobalEventHandlersEventMap {}
+	}
+}

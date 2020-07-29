@@ -1214,7 +1214,7 @@ const BUBBLING_PHASE = 3;
 /**
  * A map of event type strings to Event subclasses. Can be extended via TypeScript module augmentation to have strongly typed event listeners.
  */
-export interface EventMap {
+export interface EventMap extends Crank.EventMap {
 	[type: string]: Event;
 }
 
@@ -1303,7 +1303,7 @@ function clearEventListeners(ctx: Context): void {
 /**
  * An interface which can be extended to provide strongly typed provisions (see Context.prototype.get and Context.prototype.set)
  */
-export interface ProvisionMap {}
+export interface ProvisionMap extends Crank.ProvisionMap {}
 
 // CONTEXT FLAGS
 /**
@@ -1789,6 +1789,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	}
 }
 
+export interface Context extends Crank.Context {}
+
 /*** PRIVATE CONTEXT FUNCTIONS ***/
 /**
  * Called to make props available to the Context async iterator for async generator components.
@@ -2224,6 +2226,14 @@ function unmountCtx(ctx: Context): void {
 // TODO: uncomment and use in the Element interface below
 // type CrankElement = Element;
 declare global {
+	module Crank {
+		interface EventMap {}
+
+		interface ProvisionMap {}
+
+		interface Context {}
+	}
+
 	module JSX {
 		// TODO: JSX Element type (the result of JSX expressions) don’t work because TypeScript demands that all Components return JSX elements for some reason.
 		// interface Element extends CrankElement {}
