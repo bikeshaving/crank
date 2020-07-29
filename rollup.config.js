@@ -1,7 +1,9 @@
-import resolve from "@rollup/plugin-node-resolve";
-import typescript from "rollup-plugin-typescript2";
 import * as fs from "fs";
 import * as path from "path";
+
+import resolve from "@rollup/plugin-node-resolve";
+import ts from "rollup-plugin-typescript2";
+import MagicString from "magic-string";
 import pkg from "./package.json";
 
 function packageCJS() {
@@ -24,6 +26,28 @@ function packageCJS() {
 	};
 }
 
+/**
+ * A quick plugin to add triple-slash references to sibling d.ts files for deno.
+ */
+function prependDTSReference() {
+	return {
+		name: "prependDTSReference",
+		renderChunk(code, info) {
+			if (info.isEntry) {
+				const dts = "./" + info.fileName.replace(/js$/, "d.ts");
+				const ms = new MagicString(code);
+				ms.prepend(`/// <reference types="${dts}" />\n`);
+				return {
+					code: ms.toString(),
+					map: ms.generateMap({hires: true}),
+				};
+			}
+
+			return code;
+		},
+	};
+}
+
 export default [
 	{
 		input: ["src/index.ts", "src/dom.ts", "src/html.ts"],
@@ -33,7 +57,7 @@ export default [
 			chunkFileNames: "dist/[hash].js",
 			sourcemap: true,
 		},
-		plugins: [typescript(), resolve()],
+		plugins: [ts(), resolve(), prependDTSReference()],
 	},
 	{
 		input: ["src/index.ts", "src/dom.ts", "src/html.ts"],
@@ -42,7 +66,7 @@ export default [
 			dir: "cjs",
 			sourcemap: true,
 		},
-		plugins: [typescript(), resolve(), packageCJS()],
+		plugins: [ts(), resolve(), packageCJS()],
 	},
 	{
 		input: "umd.ts",
@@ -52,6 +76,6 @@ export default [
 			sourcemap: true,
 			name: "Crank",
 		},
-		plugins: [typescript(), resolve(), packageCJS()],
+		plugins: [ts(), resolve(), packageCJS()],
 	},
 ];
