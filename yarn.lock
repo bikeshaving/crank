@@ -4464,6 +4464,13 @@ ts-jest@^26.1.1:
     semver "7.x"
     yargs-parser "18.x"
 
+ts-transform-import-path-rewrite@^0.2.1:
+  version "0.2.1"
+  resolved "https://registry.yarnpkg.com/ts-transform-import-path-rewrite/-/ts-transform-import-path-rewrite-0.2.1.tgz#ca38fd47731bd8e8ef6175eccd5058ab44ed5713"
+  integrity sha512-9MJ66a4cSbQLLsY3ZGBXjsFbjm3B/bJ9Or08sDChiN1BQGDFBJGopjtp648rCixlvePovDY5lQRZcoWpJDN4Ww==
+  dependencies:
+    typescript "3"
+
 tslib@1.11.2:
   version "1.11.2"
   resolved "https://registry.yarnpkg.com/tslib/-/tslib-1.11.2.tgz#9c79d83272c9a7aaf166f73915c9667ecdde3cc9"
@@ -4534,7 +4541,7 @@ typedarray-to-buffer@^3.1.5:
   dependencies:
     is-typedarray "^1.0.0"
 
-typescript@^3.9.6:
+typescript@3, typescript@^3.9.6:
   version "3.9.7"
   resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.9.7.tgz#98d600a5ebdc38f40cb277522f12dc800e9e25fa"
   integrity sha512-BLbiRkiBzAwsjut4x/dsibSTB6yWpwT5qWmC2OfuCg3GgVQCSgMs4vEctYPhsaGtd0AeuuHMkjZ2h2WG8MSzRw==

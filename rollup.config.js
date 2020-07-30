@@ -5,6 +5,7 @@ import resolve from "@rollup/plugin-node-resolve";
 import ts from "rollup-plugin-typescript2";
 import MagicString from "magic-string";
 import pkg from "./package.json";
+import {transform} from "ts-transform-import-path-rewrite";
 
 function packageCJS() {
 	return {
@@ -29,23 +30,32 @@ function packageCJS() {
 /**
  * A quick plugin to add triple-slash references to sibling d.ts files for deno.
  */
-function prependDTSReference() {
+function dtsReference() {
 	return {
-		name: "prependDTSReference",
+		name: "dtsReference",
 		renderChunk(code, info) {
 			if (info.isEntry) {
 				const dts = "./" + info.fileName.replace(/js$/, "d.ts");
 				const ms = new MagicString(code);
 				ms.prepend(`/// <reference types="${dts}" />\n`);
-				return {
-					code: ms.toString(),
-					map: ms.generateMap({hires: true}),
-				};
+				code = ms.toString();
+				const map = ms.generateMap({hires: true});
+				return {code, map};
 			}
 
 			return code;
 		},
 	};
+}
+
+function transformer() {
+	const rewritePath = transform({
+		rewrite(importPath) {
+			return importPath + ".js";
+		},
+	});
+
+	return {afterDeclarations: [rewritePath]};
 }
 
 export default [
@@ -54,10 +64,13 @@ export default [
 		output: {
 			format: "esm",
 			dir: "./",
-			chunkFileNames: "dist/[hash].js",
 			sourcemap: true,
 		},
-		plugins: [ts(), resolve(), prependDTSReference()],
+		plugins: [
+			ts({clean: true, transformers: [transformer]}),
+			resolve(),
+			dtsReference(),
+		],
 	},
 	{
 		input: ["src/index.ts", "src/dom.ts", "src/html.ts"],

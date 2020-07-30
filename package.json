@@ -123,6 +123,7 @@
     "rollup-plugin-typescript2": "^0.27.1",
     "shx": "^0.3.2",
     "ts-jest": "^26.1.1",
+    "ts-transform-import-path-rewrite": "^0.2.1",
     "typescript": "^3.9.6"
   },
   "publishConfig": {
