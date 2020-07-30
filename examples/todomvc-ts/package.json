@@ -1,7 +1,8 @@
 {
   "private": true,
   "scripts": {
-    "start": "parcel index.html"
+    "start": "parcel index.html",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@bikeshaving/crank": "*",
