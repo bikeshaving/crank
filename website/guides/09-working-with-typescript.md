@@ -96,11 +96,11 @@ function Greeting ({name, children}: {name: string, children: Children}) {
 ```
 
 ## Typing Event Listeners
-If you dispatch custom events, you may want parent event listeners to be typed with the event you bubbled automatically. To do so, you can use module augmentation to extend the `EventMap` interface provided by Crank.
+If you dispatch custom events, you may want parent event listeners to be typed with the event you bubbled automatically. To do so, you can use module augmentation to extend the `EventMap` interface from the global `Crank` module.
 
 ```tsx
 declare global {
-  module "@bikeshaving/crank" {
+  module Crank {
     interface EventMap {
       "mybutton.click": CustomEvent<{id: string}>;
     }
@@ -122,5 +122,29 @@ function MyButton (props) {
 }
 ```
 
+When importing the DOM or HTML renderers, the `EventMap` will be extended with [the `GlobalEventHandlersMap` interface](https://github.com/microsoft/TypeScript/blob/master/lib/lib.dom.d.ts#L5682).
+
 ## Typing Provisions
-By default, calls to the context’s `provide` and `consume` methods will be loosely typed. If you want stricter typings of these methods, you can use module augmentation to extend the `ProvisionMap` interface provided by Crank.
+By default, calls to the context’s `provide` and `consume` methods will be loosely typed. If you want stricter typings of these methods, you can use module augmentation to extend the `ProvisionMap` interface from the global `Crank` module.
+
+```tsx
+declare global {
+  module Crank {
+    interface ProvisionMap {
+      greeting: string;
+    }
+  }
+}
+
+function GreetingProvider(
+  {greeting, children}: {greeting: string, children?: unknown},
+) {
+  this.provide("greeting", greeting);
+  return children;
+}
+
+function Greeting({name}: {name: string}) {
+  const greeting = this.consume("greeting");
+  return <p>{greeting}, {name}</p>;
+}
+```
