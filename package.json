@@ -12,8 +12,9 @@
   },
   "license": "MIT",
   "files": [
-    "index.js",
+    "crank.js",
     "dom.js",
+    "index.js",
     "html.js",
     "cjs",
     "dist",
@@ -29,6 +30,12 @@
     },
     "./cjs": {
       "require": "./cjs/index.js"
+    },
+    "./cjs/crank": {
+      "require": "./cjs/crank.js"
+    },
+    "./cjs/crank.js": {
+      "require": "./cjs/crank.js"
     },
     "./cjs/dom": {
       "require": "./cjs/dom.js"
@@ -47,6 +54,14 @@
     },
     "./cjs/index.js": {
       "require": "./cjs/index.js"
+    },
+    "./crank": {
+      "import": "./crank.js",
+      "require": "./cjs/crank.js"
+    },
+    "./crank.js": {
+      "import": "./crank.js",
+      "require": "./cjs/crank.js"
     },
     "./dom": {
       "import": "./dom.js",
