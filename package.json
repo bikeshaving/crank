@@ -104,7 +104,6 @@
     ]
   },
   "devDependencies": {
-    "@rollup/plugin-node-resolve": "^8.1.0",
     "@types/jest": "^26.0.3",
     "@typescript-eslint/eslint-plugin": "^3.5.0",
     "@typescript-eslint/parser": "^3.5.0",
