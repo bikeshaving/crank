@@ -65,16 +65,17 @@ function transformer() {
 
 export default [
 	{
-		input: ["src/index.ts", "src/dom.ts", "src/html.ts"],
+		input: ["src/index.ts", "src/crank.ts", "src/dom.ts", "src/html.ts"],
 		output: {
 			format: "esm",
 			dir: "./",
 			sourcemap: true,
+			chunkFileNames: "dist/[hash].js",
 		},
 		plugins: [ts({clean: true, transformers: [transformer]}), dts()],
 	},
 	{
-		input: ["src/index.ts", "src/dom.ts", "src/html.ts"],
+		input: ["src/index.ts", "src/crank.ts", "src/dom.ts", "src/html.ts"],
 		output: {
 			format: "cjs",
 			dir: "cjs",
