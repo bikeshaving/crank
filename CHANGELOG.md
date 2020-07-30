@@ -1,4 +1,11 @@
 # Changelog
+## [0.3.1] - 2020-07-30
+### Added
+- Added official support for Deno. ESM build files now include a triple-slash reference to sibling d.ts files, and the d.ts files have been checked to work in deno.
+- The core file has been moved from `index.js` to `crank.js`, following deno best practices. The `index.js` export is now an alias file.
+- Module Augmentation is now available via a global `Crank` module.
+### Deprecated
+- The class `StringRenderer` in the html module has been renamed to `HTMLRenderer`. The `StringRenderer` export is now an alias and will be removed in the next breaking release.
 ## [0.3.0] - 2020-07-28
 ### Changed
 - The context methods `get` and `set` are now named `provide` and `consume`.
