@@ -88,7 +88,7 @@ function join(children: Array<Node | string>): string {
 	return result;
 }
 
-export class StringRenderer extends Renderer<
+export class HTMLRenderer extends Renderer<
 	Node | string,
 	undefined,
 	unknown,
@@ -141,7 +141,12 @@ export class StringRenderer extends Renderer<
 	}
 }
 
-export const renderer = new StringRenderer();
+export const renderer = new HTMLRenderer();
+
+/**
+ * @deprecated
+ */
+export const StringRenderer = HTMLRenderer;
 
 declare global {
 	module Crank {
