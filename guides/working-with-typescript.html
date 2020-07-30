@@ -80,9 +80,9 @@ function Greeting ({name, children}: {name: string, children: Children}) {
 }</code></pre>
 <h2>
 				<a class="anchor" name="typing-event-listeners" href="#typing-event-listeners">Typing Event Listeners</a>
-			</h2><p>If you dispatch custom events, you may want parent event listeners to be typed with the event you bubbled automatically. To do so, you can use module augmentation to extend the <code>EventMap</code> interface provided by Crank.</p>
+			</h2><p>If you dispatch custom events, you may want parent event listeners to be typed with the event you bubbled automatically. To do so, you can use module augmentation to extend the <code>EventMap</code> interface from the global <code>Crank</code> module.</p>
 <pre><code class="language-tsx">declare global {
-  module &quot;@bikeshaving/crank&quot; {
+  module Crank {
     interface EventMap {
       &quot;mybutton.click&quot;: CustomEvent&lt;{id: string}&gt;;
     }
@@ -102,7 +102,27 @@ function MyButton (props) {
     &lt;button {...props} /&gt;
   );
 }</code></pre>
+<p>When importing the DOM or HTML renderers, the <code>EventMap</code> will be extended with <a href="https://github.com/microsoft/TypeScript/blob/master/lib/lib.dom.d.ts#L5682">the <code>GlobalEventHandlersMap</code> interface</a>.</p>
 <h2>
 				<a class="anchor" name="typing-provisions" href="#typing-provisions">Typing Provisions</a>
-			</h2><p>By default, calls to the context’s <code>provide</code> and <code>consume</code> methods will be loosely typed. If you want stricter typings of these methods, you can use module augmentation to extend the <code>ProvisionMap</code> interface provided by Crank.</p>
+			</h2><p>By default, calls to the context’s <code>provide</code> and <code>consume</code> methods will be loosely typed. If you want stricter typings of these methods, you can use module augmentation to extend the <code>ProvisionMap</code> interface from the global <code>Crank</code> module.</p>
+<pre><code class="language-tsx">declare global {
+  module Crank {
+    interface ProvisionMap {
+      greeting: string;
+    }
+  }
+}
+
+function GreetingProvider(
+  {greeting, children}: {greeting: string, children?: unknown},
+) {
+  this.provide(&quot;greeting&quot;, greeting);
+  return children;
+}
+
+function Greeting({name}: {name: string}) {
+  const greeting = this.consume(&quot;greeting&quot;);
+  return &lt;p&gt;{greeting}, {name}&lt;/p&gt;;
+}</code></pre>
 </div><footer class="footer"><div>Copyright © 2020 Brian Kim.</div><div>Distributed under the <a href="https://github.com/bikeshaving/crank/blob/master/LICENSE">MIT License</a>.</div><div>Logo by <a href="https://wstone.io">Will Stone</a> and <a href="https://github.com/pjdon">Paul Donchenko</a>.</div></footer></main><script src="/index.tsx.js"></script></body></html>
