@@ -1,4 +1,8 @@
 # Changelog
+## [0.3.2] - 2020-08-06
+### Changed
+- Duplicate keys and calling refresh on an unmounted or already executing component will now log errors to the console.
+- Changes to some of the error messages thrown by Crank.
 ## [0.3.1] - 2020-07-30
 ### Added
 - Added official support for Deno. ESM build files now include a triple-slash reference to sibling d.ts files, and the d.ts files have been checked to work in deno.
