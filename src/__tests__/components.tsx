@@ -88,6 +88,24 @@ describe("sync function component", () => {
 		expect(document.body.innerHTML).toEqual("<div>Hello 8</div>");
 		expect(fn).toHaveBeenCalledTimes(4);
 	});
+
+	test("refresh called on unmounted component", () => {
+		let ctx!: Context;
+		function Component(this: Context) {
+			ctx = this;
+		}
+
+		renderer.render(<Component />, document.body);
+		renderer.render(null, document.body);
+		const mock = jest.spyOn(console, "error").mockImplementation();
+		try {
+			ctx.refresh();
+			ctx.refresh();
+			expect(mock).toHaveBeenCalledTimes(2);
+		} finally {
+			mock.mockRestore();
+		}
+	});
 });
 
 describe("async function component", () => {
@@ -864,7 +882,7 @@ describe("sync generator component", () => {
 		}
 
 		expect(() => renderer.render(<Component />, document.body)).toThrow(
-			"You must yield",
+			"Context iterated twice",
 		);
 		expect(i).toBe(1);
 	});
@@ -879,7 +897,7 @@ describe("sync generator component", () => {
 
 		renderer.render(<Component />, document.body);
 		await expect((() => ctx![Symbol.asyncIterator]().next())()).rejects.toThrow(
-			"Use for...of",
+			"Use for…of",
 		);
 	});
 });
@@ -1280,7 +1298,7 @@ describe("async generator component", () => {
 		}
 
 		await expect(renderer.render(<Component />, document.body)).rejects.toThrow(
-			"You must yield",
+			"Context iterated twice",
 		);
 		expect(i).toBe(1);
 	});
@@ -1294,6 +1312,6 @@ describe("async generator component", () => {
 		}
 
 		await renderer.render(<Component />, document.body);
-		expect(() => ctx[Symbol.iterator]().next()).toThrow("Use for await...of");
+		expect(() => ctx[Symbol.iterator]().next()).toThrow("Use for await…of");
 	});
 });

@@ -16,7 +16,9 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 		ctx?: Context,
 	): Promise<ElementValue<Node>> | ElementValue<Node> {
 		if (!(root instanceof Node)) {
-			throw new TypeError("root is not a node");
+			throw new TypeError(
+				`root (${root && (root as any).toString()}) is not a node`,
+			);
 		}
 
 		return super.render(children, root, ctx);
