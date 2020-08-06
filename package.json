@@ -101,7 +101,7 @@
   "scripts": {
     "prebuild": "yarn run clean",
     "build": "rollup -c rollup.config.js",
-    "clean": "shx rm -rf cjs dist umd index.js dom.js html.js *.d.ts *.js.map",
+    "clean": "shx rm -rf cjs dist umd index.js crank.js dom.js html.js *.d.ts *.js.map",
     "debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "prepublishOnly": "yarn run test && yarn run build",
