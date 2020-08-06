@@ -514,7 +514,7 @@ export class Renderer<
 			}
 		} else {
 			if (portal._ctx !== ctx) {
-				throw new Error("Context mismatch.");
+				throw new Error("Context mismatch");
 			}
 
 			portal.props = {children, root};
@@ -1544,9 +1544,9 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		const el = this._el;
 		while (!(this._f & Unmounted)) {
 			if (this._f & Iterating) {
-				throw new Error("You must yield for each iteration of this.");
+				throw new Error("Context iterated twice without a yield");
 			} else if (this._f & IsAsyncGen) {
-				throw new Error("Use for await...of in async generator components.");
+				throw new Error("Use for await…of in async generator components");
 			}
 
 			this._f |= Iterating;
@@ -1558,9 +1558,9 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		const el = this._el;
 		do {
 			if (this._f & Iterating) {
-				throw new Error("You must yield for each iteration of this.");
+				throw new Error("Context iterated twice without a yield");
 			} else if (this._f & IsSyncGen) {
-				throw new Error("Use for...of in sync generator components.");
+				throw new Error("Use for…of in sync generator components");
 			}
 
 			this._f |= Iterating;
@@ -1589,11 +1589,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	refresh(): Promise<TResult> | TResult {
 		if (this._f & Unmounted) {
 			// eslint-disable-next-line no-console
-			console.error("Component is unmounted.");
+			console.error("Component is unmounted");
 			return this._re.read(undefined);
 		} else if (this._f & Executing) {
 			// eslint-disable-next-line no-console
-			console.error("Component is already executing.");
+			console.error("Component is already executing");
 			return this._re.read(undefined);
 		}
 
@@ -1902,7 +1902,7 @@ type ChildrenIteration =
  *
  * @returns A tuple [block, value]
  * block - A possible promise which represents the duration during which the component is blocked from updating.
- * value - The actual rendered value of the children.
+ * value - A possible promise resolving to the rendered value of children.
  *
  * @remarks
  * Each component type will block/unblock according to the type of the component.
