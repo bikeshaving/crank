@@ -1,4 +1,6 @@
 /*** UTILITIES ***/
+const NOOP = () => {};
+
 function wrap<T>(value: Array<T> | T | undefined): Array<T> {
 	return value === undefined ? [] : Array.isArray(value) ? value : [value];
 }
@@ -512,7 +514,7 @@ export class Renderer<
 			}
 		} else {
 			if (portal._ctx !== ctx) {
-				throw new Error("render must be called with the same context per root");
+				throw new Error("Context mismatch.");
 			}
 
 			portal.props = {children, root};
@@ -738,6 +740,7 @@ function mountChildren<TNode, TScope, TRoot, TResult>(
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
 	const newChildren = Array.from(children);
 	let async = false;
+	let seen: Set<Key> | undefined;
 	for (let i = 0; i < newChildren.length; i++) {
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 		let child = newChildren[i] as NarrowedChild;
@@ -745,6 +748,19 @@ function mountChildren<TNode, TScope, TRoot, TResult>(
 			child = createElement(Fragment, null, child);
 		} else {
 			child = narrow(child);
+		}
+
+		if (typeof child === "object" && typeof child.key !== "undefined") {
+			if (seen === undefined) {
+				seen = new Set();
+			} else {
+				if (seen.has(child.key)) {
+					// eslint-disable-next-line no-console
+					console.error("Duplicate key", child.key);
+				}
+			}
+
+			seen.add(child.key);
 		}
 
 		[child, value] = diff(
@@ -905,7 +921,8 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		let oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
 		let newKey = typeof newChild === "object" ? newChild.key : undefined;
 		if (seen !== undefined && seen.has(newKey)) {
-			// TODO: warn about a duplicate key
+			// eslint-disable-next-line no-console
+			console.error("Duplicate key", newKey);
 			newKey = undefined;
 		}
 
@@ -1032,7 +1049,7 @@ function diff<TNode, TScope, TRoot, TResult>(
 
 			if (typeof newChild.ref === "function") {
 				if (isPromiseLike(value)) {
-					value.then(newChild.ref as any).catch(() => {});
+					value.then(newChild.ref as any).catch(NOOP);
 				} else {
 					newChild.ref(value);
 				}
@@ -1053,7 +1070,7 @@ function diff<TNode, TScope, TRoot, TResult>(
 								(newChild as Element)._fb = value;
 							}
 						})
-						.catch(() => {});
+						.catch(NOOP);
 				}
 			}
 
@@ -1312,9 +1329,9 @@ export interface ProvisionMap extends Crank.ProvisionMap {}
 const Updating = 1 << 0;
 
 /**
- * A flag which is set when the component is called or stepped through. It is used to ensure that a component which synchronously triggers a second update in the course of rendering does not cause an infinite loop or a generator error.
+ * A flag which is set when the component function is called or the component generator is resumed. This flags is used to ensure that a component which synchronously triggers a second update in the course of rendering does not cause an stack overflow or a generator error.
  */
-const Stepping = 1 << 1;
+const Executing = 1 << 1;
 
 /**
  * A flag used to make sure multiple values are not pulled from context prop iterators without a yield.
@@ -1339,12 +1356,12 @@ const Unmounted = 1 << 5;
 /**
  * A flag which indicates that the component is a sync generator component.
  */
-const SyncGen = 1 << 6;
+const IsSyncGen = 1 << 6;
 
 /**
  * A flag which indicates that the component is an async generator component.
  */
-const AsyncGen = 1 << 7;
+const IsAsyncGen = 1 << 7;
 
 /**
  * A class which is instantiated and passed to every component as its this value. Contexts form a tree just like elements and all components in the element tree are connected via contexts. Components can use this tree to communicate data upwards via events and downwards via provisions.
@@ -1528,7 +1545,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		while (!(this._f & Unmounted)) {
 			if (this._f & Iterating) {
 				throw new Error("You must yield for each iteration of this.");
-			} else if (this._f & AsyncGen) {
+			} else if (this._f & IsAsyncGen) {
 				throw new Error("Use for await...of in async generator components.");
 			}
 
@@ -1542,7 +1559,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		do {
 			if (this._f & Iterating) {
 				throw new Error("You must yield for each iteration of this.");
-			} else if (this._f & SyncGen) {
+			} else if (this._f & IsSyncGen) {
 				throw new Error("Use for...of in sync generator components.");
 			}
 
@@ -1570,8 +1587,13 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * The refresh method works a little differently for async generator components, in that it will resume the Context async iterator rather than resuming execution. This is because async generator components are perpetually resumed independent of updates/refresh.
 	 */
 	refresh(): Promise<TResult> | TResult {
-		if (this._f & (Stepping | Unmounted)) {
-			// TODO: log an error
+		if (this._f & Unmounted) {
+			// eslint-disable-next-line no-console
+			console.error("Component is unmounted.");
+			return this._re.read(undefined);
+		} else if (this._f & Executing) {
+			// eslint-disable-next-line no-console
+			console.error("Component is already executing.");
 			return this._re.read(undefined);
 		}
 
@@ -1838,7 +1860,7 @@ function run<TNode, TResult>(
 
 			throw err;
 		}
-	} else if (ctx._f & AsyncGen) {
+	} else if (ctx._f & IsAsyncGen) {
 		return ctx._iv;
 	} else if (typeof ctx._eb === "undefined") {
 		let resolve: Function;
@@ -1901,7 +1923,7 @@ function step<TNode, TResult>(
 
 	let initial = false;
 	try {
-		ctx._f |= Stepping;
+		ctx._f |= Executing;
 		if (typeof ctx._it === "undefined") {
 			initial = true;
 			clearEventListeners(ctx);
@@ -1923,7 +1945,7 @@ function step<TNode, TResult>(
 			}
 		}
 	} finally {
-		ctx._f &= ~Stepping;
+		ctx._f &= ~Executing;
 	}
 
 	let oldValue: Promise<TResult> | TResult;
@@ -1940,19 +1962,19 @@ function step<TNode, TResult>(
 
 	let iteration: ChildrenIteration;
 	try {
-		ctx._f |= Stepping;
+		ctx._f |= Executing;
 		iteration = ctx._it.next(oldValue);
 	} catch (err) {
 		ctx._f |= Finished;
 		throw err;
 	} finally {
-		ctx._f &= ~Stepping;
+		ctx._f &= ~Executing;
 	}
 
 	if (isPromiseLike(iteration)) {
 		// async generator component
 		if (initial) {
-			ctx._f |= AsyncGen;
+			ctx._f |= IsAsyncGen;
 		}
 
 		const block = iteration;
@@ -1993,7 +2015,7 @@ function step<TNode, TResult>(
 
 	// sync generator component
 	if (initial) {
-		ctx._f |= SyncGen;
+		ctx._f |= IsSyncGen;
 	}
 
 	ctx._f &= ~Iterating;
@@ -2013,7 +2035,7 @@ function step<TNode, TResult>(
 	}
 
 	if (isPromiseLike(value)) {
-		return [value.catch(() => {}), value];
+		return [value.catch(NOOP), value];
 	}
 
 	return [undefined, value];
@@ -2032,7 +2054,7 @@ function advance(ctx: Context): void {
 	ctx._iv = ctx._ev;
 	ctx._eb = undefined;
 	ctx._ev = undefined;
-	if (ctx._f & AsyncGen && !(ctx._f & Finished)) {
+	if (ctx._f & IsAsyncGen && !(ctx._f & Finished)) {
 		run(ctx);
 	}
 }
@@ -2053,13 +2075,13 @@ function handleChildError<TNode>(
 	resume(ctx);
 	let iteration: ChildrenIteration;
 	try {
-		ctx._f |= Stepping;
+		ctx._f |= Executing;
 		iteration = ctx._it.throw(err) as any;
 	} catch (err) {
 		ctx._f |= Finished;
 		throw err;
 	} finally {
-		ctx._f &= ~Stepping;
+		ctx._f &= ~Executing;
 	}
 
 	if (isPromiseLike(iteration)) {
@@ -2210,10 +2232,10 @@ function unmountCtx(ctx: Context): void {
 		if (typeof ctx._it === "object" && typeof ctx._it.return === "function") {
 			let iteration: ChildrenIteration;
 			try {
-				ctx._f |= Stepping;
+				ctx._f |= Executing;
 				iteration = ctx._it.return();
 			} finally {
-				ctx._f &= ~Stepping;
+				ctx._f &= ~Executing;
 			}
 
 			if (isPromiseLike(iteration)) {

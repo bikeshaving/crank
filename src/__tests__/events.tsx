@@ -284,4 +284,32 @@ describe("events", () => {
 		expect(listener1).toHaveBeenCalledTimes(1);
 		expect(listener2).toHaveBeenCalledTimes(0);
 	});
+
+	test("error thrown in listener and dispatchEvent", () => {
+		let ctx!: Context;
+		function Component(this: Context) {
+			ctx = this;
+			return <span>Hello</span>;
+		}
+
+		const mock = jest.spyOn(console, "error").mockImplementation();
+		try {
+			renderer.render(
+				<div>
+					<Component />
+				</div>,
+				document.body,
+			);
+
+			const error = new Error("error thrown in listener and dispatchEvent");
+			const listener = () => {
+				throw error;
+			};
+			ctx.addEventListener("foo", listener);
+			ctx.dispatchEvent(new Event("foo"));
+			expect(mock).toHaveBeenCalledWith(error);
+		} finally {
+			mock.mockRestore();
+		}
+	});
 });

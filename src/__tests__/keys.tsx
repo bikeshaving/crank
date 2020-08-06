@@ -692,4 +692,38 @@ describe("keys", () => {
 		expect(span5).toBe(document.body.firstChild!.childNodes[4]);
 		expect(span6).toBe(document.body.firstChild!.childNodes[5]);
 	});
+
+	test("duplicate keys", () => {
+		const mock = jest.spyOn(console, "error").mockImplementation();
+		try {
+			renderer.render(
+				<div>
+					<span crank-key="1">1</span>
+					<span crank-key="1">2</span>
+					<span crank-key="1">3</span>
+				</div>,
+				document.body,
+			);
+			expect(document.body.innerHTML).toEqual(
+				"<div><span>1</span><span>2</span><span>3</span></div>",
+			);
+
+			expect(mock).toHaveBeenCalledTimes(2);
+			renderer.render(
+				<div>
+					<span crank-key="2">1</span>
+					<span crank-key="1">2</span>
+					<span crank-key="2">3</span>
+				</div>,
+				document.body,
+			);
+			expect(document.body.innerHTML).toEqual(
+				"<div><span>1</span><span>2</span><span>3</span></div>",
+			);
+
+			expect(mock).toHaveBeenCalledTimes(3);
+		} finally {
+			mock.mockRestore();
+		}
+	});
 });
