@@ -15,7 +15,7 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 		root: Node,
 		ctx?: Context,
 	): Promise<ElementValue<Node>> | ElementValue<Node> {
-		if (!(root instanceof Node)) {
+		if (!root.nodeName) {
 			throw new TypeError(
 				`root (${root && (root as any).toString()}) is not a node`,
 			);
@@ -69,7 +69,7 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 	}
 
 	patch(el: CrankElement<string | symbol>, node: Element): void {
-		const isSvg = node instanceof SVGElement;
+		const isSvg = node.toString() === "[object SVGElement]";
 		for (let name in el.props) {
 			let forceAttribute = false;
 			const value = el.props[name];
@@ -142,7 +142,7 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 		parent: Node,
 		children: Array<Node | string>,
 	): void {
-		if (el.tag === Portal && !(parent instanceof Node)) {
+		if (el.tag === Portal && !parent.nodeName) {
 			throw new TypeError("Portal root is not a node");
 		}
 
