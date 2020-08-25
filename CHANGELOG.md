@@ -1,4 +1,7 @@
 # Changelog
+## [0.3.3] - 2020-08-25
+### Fixed
+- Use ducktyping rather than instanceof checks for cross realm use-cases like nw.js (#147).
 ## [0.3.2] - 2020-08-06
 ### Changed
 - Duplicate keys and calling refresh on an unmounted or already executing component will now log errors to the console.
