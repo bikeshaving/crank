@@ -5,8 +5,8 @@ import {renderer} from "../dom";
 // TODO: write generative tests for this stuff
 describe("keys", () => {
 	afterEach(() => {
-		document.body.innerHTML = "";
 		renderer.render(null, document.body);
+		document.body.innerHTML = "";
 	});
 
 	test("basic", () => {

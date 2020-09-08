@@ -4,8 +4,8 @@ import {renderer} from "../dom";
 
 describe("element reuse", () => {
 	afterEach(() => {
-		document.body.innerHTML = "";
 		renderer.render(null, document.body);
+		document.body.innerHTML = "";
 	});
 
 	test("reused intrinsic", () => {

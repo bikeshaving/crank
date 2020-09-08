@@ -6,8 +6,8 @@ import {renderer} from "../dom";
 // https://github.com/jsdom/jsdom/issues/2128
 describe("render", () => {
 	afterEach(() => {
-		document.body.innerHTML = "";
 		renderer.render(null, document.body);
+		document.body.innerHTML = "";
 	});
 
 	test("simple", () => {

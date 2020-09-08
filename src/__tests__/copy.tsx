@@ -3,9 +3,9 @@ import {Context, Copy, createElement, Element} from "../index";
 import {renderer} from "../dom";
 
 describe("Copy", () => {
-	afterEach(async () => {
+	afterEach(() => {
 		document.body.innerHTML = "";
-		await renderer.render(null, document.body);
+		renderer.render(null, document.body);
 	});
 
 	test("copy of nothing", () => {

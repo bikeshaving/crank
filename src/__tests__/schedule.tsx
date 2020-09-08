@@ -10,9 +10,9 @@ import {
 import {renderer} from "../dom";
 
 describe("schedule", () => {
-	afterEach(async () => {
+	afterEach(() => {
+		renderer.render(null, document.body);
 		document.body.innerHTML = "";
-		await renderer.render(null, document.body);
 	});
 
 	test("function once", () => {
