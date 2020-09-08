@@ -455,7 +455,7 @@ function getChildValues<TNode>(el: Element): Array<TNode | string> {
 function getValue<TNode>(el: Element): ElementValue<TNode> {
 	if (typeof el._fb !== "undefined") {
 		return el._fb;
-	} else if (typeof el.tag === Portal) {
+	} else if (el.tag === Portal) {
 		return undefined;
 	} else if (typeof el.tag !== "function" && el.tag !== Fragment) {
 		return el._n;
