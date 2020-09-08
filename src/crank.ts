@@ -96,7 +96,7 @@ export type Raw = typeof Raw;
  * Describes all valid singular values of an element tree.
  *
  * @remarks
- * Arbitrary objects can also be safely rendered but they will be converted to a string using the toString method. We exclude them from this type to catch potential type errors.
+ * Arbitrary objects can also be safely rendered but they will be converted to a string using the toString method. We exclude them from this type to catch potential errors.
  */
 export type Child = Element | string | number | boolean | null | undefined;
 
@@ -107,23 +107,6 @@ interface ChildIterable extends Iterable<Child | ChildIterable> {}
  * Describes all valid values of an element tree, including arbitrarily nested iterables of such values.
  */
 export type Children = Child | ChildIterable;
-
-/**
- * Represents all functions which can be used as a component.
- *
- * @typeparam TProps - The expected props for the component.
- *
- * @remarks
- * The return type of iterator objects returned from components has to be void because typescript will infer most generators as having a void return type.
- */
-export type Component<TProps = any> = (
-	this: Context<TProps>,
-	props: TProps,
-) =>
-	| Children
-	| PromiseLike<Children>
-	| Iterator<Children, Children | void, any>
-	| AsyncIterator<Children, Children | void, any>;
 
 // WHAT ARE WE DOING TO THE CHILDREN???
 /**
@@ -140,6 +123,21 @@ function narrow(child: Child): NarrowedChild {
 		return child.toString();
 	}
 }
+
+/**
+ * Represents all functions which can be used as a component.
+ *
+ * @typeparam TProps - The expected props for the component.
+ */
+export type Component<TProps = any> = (
+	this: Context<TProps>,
+	props: TProps,
+) =>
+	| Children
+	| PromiseLike<Children>
+	// The return type of iterators must include void because typescript will infer most generators as having a void return type.
+	| Iterator<Children, Children | void, any>
+	| AsyncIterator<Children, Children | void, any>;
 
 type Key = unknown;
 
