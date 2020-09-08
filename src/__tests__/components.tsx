@@ -14,8 +14,8 @@ import {renderer} from "../dom";
 /* eslint-disable no-unreachable */
 describe("sync function component", () => {
 	afterEach(() => {
-		document.body.innerHTML = "";
 		renderer.render(null, document.body);
+		document.body.innerHTML = "";
 	});
 
 	test("basic", () => {
@@ -109,9 +109,9 @@ describe("sync function component", () => {
 });
 
 describe("async function component", () => {
-	afterEach(async () => {
+	afterEach(() => {
+		renderer.render(null, document.body);
 		document.body.innerHTML = "";
-		await renderer.render(null, document.body);
 	});
 
 	test("basic", async () => {
@@ -329,9 +329,9 @@ describe("async function component", () => {
 });
 
 describe("sync generator component", () => {
-	afterEach(async () => {
+	afterEach(() => {
+		renderer.render(null, document.body);
 		document.body.innerHTML = "";
-		await renderer.render(null, document.body);
 	});
 
 	test("basic", () => {
@@ -904,8 +904,8 @@ describe("sync generator component", () => {
 
 describe("async generator component", () => {
 	afterEach(() => {
-		document.body.innerHTML = "";
 		renderer.render(null, document.body);
+		document.body.innerHTML = "";
 	});
 
 	test("basic", async () => {

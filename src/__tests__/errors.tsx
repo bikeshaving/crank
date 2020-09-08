@@ -3,9 +3,9 @@ import {createElement, Child, Context} from "../index";
 import {renderer} from "../dom";
 
 describe("errors", () => {
-	afterEach(async () => {
+	afterEach(() => {
+		renderer.render(null, document.body);
 		document.body.innerHTML = "";
-		await renderer.render(null, document.body);
 	});
 
 	test("sync function throws", () => {

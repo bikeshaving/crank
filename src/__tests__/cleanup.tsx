@@ -3,9 +3,9 @@ import {createElement, Context, Element, Fragment} from "../index";
 import {renderer} from "../dom";
 
 describe("cleanup", () => {
-	afterEach(async () => {
+	afterEach(() => {
+		renderer.render(null, document.body);
 		document.body.innerHTML = "";
-		await renderer.render(null, document.body);
 	});
 
 	test("function", () => {

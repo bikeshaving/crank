@@ -20,9 +20,9 @@ describe("render", () => {
 	});
 
 	afterEach(() => {
-		document.body.innerHTML = "";
-		renderer.render(null, document.body);
 		observer.disconnect();
+		renderer.render(null, document.body);
+		document.body.innerHTML = "";
 	});
 
 	test("simple", () => {

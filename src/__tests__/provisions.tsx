@@ -35,8 +35,8 @@ describe("context", () => {
 	}
 
 	afterEach(() => {
-		document.body.innerHTML = "";
 		renderer.render(null, document.body);
+		document.body.innerHTML = "";
 	});
 
 	test("basic", () => {

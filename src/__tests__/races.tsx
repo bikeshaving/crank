@@ -4,8 +4,8 @@ import {renderer} from "../dom";
 
 describe("races", () => {
 	afterEach(() => {
-		document.body.innerHTML = "";
 		renderer.render(null, document.body);
+		document.body.innerHTML = "";
 	});
 
 	test("async fn vs value", async () => {

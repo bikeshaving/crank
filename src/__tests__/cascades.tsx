@@ -4,8 +4,8 @@ import {renderer} from "../dom";
 
 describe("parent-child refresh cascades", () => {
 	afterEach(() => {
-		document.body.innerHTML = "";
 		renderer.render(null, document.body);
+		document.body.innerHTML = "";
 	});
 
 	test("sync function calls refresh directly", () => {
