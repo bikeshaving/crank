@@ -29,16 +29,16 @@ async function* Suspense(
 
 async function Child({timeout}: {timeout?: number}): Promise<Element> {
 	await new Promise((resolve) => setTimeout(resolve, timeout));
-	return <span>Child</span>;
+	return <span>Child {timeout}</span>;
 }
 
-describe("races", () => {
+describe("suspense", () => {
 	afterEach(() => {
 		renderer.render(null, document.body);
 		document.body.innerHTML = "";
 	});
 
-	test("suspense", async () => {
+	test("basic", async () => {
 		await renderer.render(
 			<Suspense fallback={<span>Loading...</span>} timeout={100}>
 				<Child timeout={200} />
@@ -48,7 +48,7 @@ describe("races", () => {
 
 		expect(document.body.innerHTML).toEqual("<span>Loading...</span>");
 		await new Promise((resolve) => setTimeout(resolve, 200));
-		expect(document.body.innerHTML).toEqual("<span>Child</span>");
+		expect(document.body.innerHTML).toEqual("<span>Child 200</span>");
 
 		await renderer.render(
 			<Suspense fallback={<span>Loading...</span>} timeout={100}>
@@ -59,8 +59,10 @@ describe("races", () => {
 
 		expect(document.body.innerHTML).toEqual("<span>Loading...</span>");
 		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual("<span>Child</span>");
+		expect(document.body.innerHTML).toEqual("<span>Child 200</span>");
+	});
 
+	test("no loading", async () => {
 		await renderer.render(
 			<Suspense fallback={<span>Loading...</span>} timeout={100}>
 				<Child timeout={0} />
@@ -68,9 +70,9 @@ describe("races", () => {
 			document.body,
 		);
 
-		expect(document.body.innerHTML).toEqual("<span>Child</span>");
+		expect(document.body.innerHTML).toEqual("<span>Child 0</span>");
 		await new Promise((resolve) => setTimeout(resolve, 500));
-		expect(document.body.innerHTML).toEqual("<span>Child</span>");
+		expect(document.body.innerHTML).toEqual("<span>Child 0</span>");
 	});
 
 	test("suspense with refresh", async () => {
@@ -90,11 +92,11 @@ describe("races", () => {
 
 		expect(document.body.innerHTML).toEqual("<span>Loading...</span>");
 		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual("<span>Child</span>");
+		expect(document.body.innerHTML).toEqual("<span>Child 200</span>");
 		await ctx.refresh();
 		expect(document.body.innerHTML).toEqual("<span>Loading...</span>");
 		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual("<span>Child</span>");
+		expect(document.body.innerHTML).toEqual("<span>Child 200</span>");
 	});
 
 	test("suspense with concurrent refresh", async () => {
@@ -114,13 +116,13 @@ describe("races", () => {
 
 		expect(document.body.innerHTML).toEqual("<span>Loading...</span>");
 		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual("<span>Child</span>");
+		expect(document.body.innerHTML).toEqual("<span>Child 200</span>");
 		const refreshP = ctx.refresh();
 		ctx.refresh();
 		await refreshP;
 		expect(document.body.innerHTML).toEqual("<span>Loading...</span>");
 		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual("<span>Child</span>");
+		expect(document.body.innerHTML).toEqual("<span>Child 200</span>");
 	});
 
 	test("suspense with concurrent refresh in timeout", async () => {
@@ -140,13 +142,13 @@ describe("races", () => {
 
 		expect(document.body.innerHTML).toEqual("<span>Loading...</span>");
 		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual("<span>Child</span>");
+		expect(document.body.innerHTML).toEqual("<span>Child 200</span>");
 		const refreshP = ctx.refresh();
 		setTimeout(() => ctx.refresh());
 		await refreshP;
 		expect(document.body.innerHTML).toEqual("<span>Loading...</span>");
-		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual("<span>Child</span>");
+		await new Promise((resolve) => setTimeout(resolve, 110));
+		expect(document.body.innerHTML).toEqual("<span>Child 200</span>");
 	});
 
 	test("suspense with concurrent refresh after refresh fulfills", async () => {
@@ -166,12 +168,12 @@ describe("races", () => {
 
 		expect(document.body.innerHTML).toEqual("<span>Loading...</span>");
 		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual("<span>Child</span>");
+		expect(document.body.innerHTML).toEqual("<span>Child 200</span>");
 		const refreshP = ctx.refresh();
 		ctx.refresh();
 		await refreshP;
 		expect(document.body.innerHTML).toEqual("<span>Loading...</span>");
-		await new Promise((resolve) => setTimeout(resolve, 100));
-		expect(document.body.innerHTML).toEqual("<span>Child</span>");
+		await new Promise((resolve) => setTimeout(resolve, 110));
+		expect(document.body.innerHTML).toEqual("<span>Child 200</span>");
 	});
 });
