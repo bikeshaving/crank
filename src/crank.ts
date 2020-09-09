@@ -245,19 +245,19 @@ export class Element<TTag extends Tag = Tag> {
 
 	/**
 	 * @internal
-	 * fallback - The value of the element while it has never committed.
+	 * fallback - The element which this element is replacing.
 	 *
 	 * @remarks
-	 * If an element takes place of a previously rendered value but renders asynchronously, this property is set to the previously rendered value until the element commits. This allows asynchronously updating element trees to show something while pending.
+	 * Until an element commits for the first time, we show any previously rendered values in its place.
 	 */
-	_fb: any;
+	_fb: Element | undefined;
 
 	/**
 	 * @internal
 	 * inflightPromise - The current async run of the element.
 	 *
 	 * @remarks
-	 * This value is used to make sure element copies do not fulfill immediately, to set the fallback of the next element when the previous element commits, and as the yield value of async generator components with async children. It is unset when the element is committed.
+	 * This value is used to make sure Copy element refs  and as the yield value of async generator components with async children. It is unset when the element is committed.
 	 */
 	_inf: Promise<any> | undefined;
 
@@ -428,6 +428,22 @@ function normalize<TNode>(
 }
 
 /**
+ * Finds the value of the element according to its type.
+ * @returns The value of the element.
+ */
+function getValue<TNode>(el: Element): ElementValue<TNode> {
+	if (typeof el._fb !== "undefined") {
+		return getValue<TNode>(el._fb);
+	} else if (el.tag === Portal) {
+		return undefined;
+	} else if (typeof el.tag !== "function" && el.tag !== Fragment) {
+		return el._n;
+	}
+
+	return unwrap(getChildValues<TNode>(el));
+}
+
+/**
  * Walks an element’s children to find its child values.
  * @returns A normalized array of nodes and strings.
  */
@@ -444,22 +460,6 @@ function getChildValues<TNode>(el: Element): Array<TNode | string> {
 	}
 
 	return normalize(values);
-}
-
-/**
- * Finds the value of the element according to its type.
- * @returns The value of the element.
- */
-function getValue<TNode>(el: Element): ElementValue<TNode> {
-	if (typeof el._fb !== "undefined") {
-		return el._fb;
-	} else if (el.tag === Portal) {
-		return undefined;
-	} else if (typeof el.tag !== "function" && el.tag !== Fragment) {
-		return el._n;
-	}
-
-	return unwrap(getChildValues<TNode>(el));
 }
 
 /**
@@ -678,7 +678,6 @@ export class Renderer<
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
-// NOTE: to aid in the mangling of this module, we use functions rather than methods for internal logic.
 function mount<TNode, TScope, TRoot, TResult>(
 	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
@@ -1060,16 +1059,7 @@ function diff<TNode, TScope, TRoot, TResult>(
 			}
 
 			if (typeof oldChild === "object") {
-				newChild._fb = oldChild._n;
-				if (typeof oldChild._inf === "object") {
-					oldChild._inf
-						.then((value) => {
-							if (!((newChild as Element)._f & Committed)) {
-								(newChild as Element)._fb = value;
-							}
-						})
-						.catch(NOOP);
-				}
+				newChild._fb = oldChild;
 			}
 
 			value = mount(renderer, root, host, ctx, scope, newChild);

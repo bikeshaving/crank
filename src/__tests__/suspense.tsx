@@ -149,7 +149,7 @@ describe("races", () => {
 		expect(document.body.innerHTML).toEqual("<span>Child</span>");
 	});
 
-	test("suspense with refresh after loading", async () => {
+	test("suspense with concurrent refresh after refresh fulfills", async () => {
 		let ctx!: Context;
 		async function* App(this: Context) {
 			ctx = this;
@@ -167,9 +167,10 @@ describe("races", () => {
 		expect(document.body.innerHTML).toEqual("<span>Loading...</span>");
 		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(document.body.innerHTML).toEqual("<span>Child</span>");
-		await ctx.refresh();
-		expect(document.body.innerHTML).toEqual("<span>Loading...</span>");
+		const refreshP = ctx.refresh();
 		ctx.refresh();
+		await refreshP;
+		expect(document.body.innerHTML).toEqual("<span>Loading...</span>");
 		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(document.body.innerHTML).toEqual("<span>Child</span>");
 	});
