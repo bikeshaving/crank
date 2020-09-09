@@ -1,4 +1,7 @@
 # Changelog
+## [0.3.4] - 2020-09-09
+### Fixed
+- Fix some edge cases with async generator component rendering.
 ## [0.3.3] - 2020-08-25
 ### Fixed
 - Use ducktyping rather than instanceof checks for cross realm use-cases like nw.js (#147).
