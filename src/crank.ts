@@ -1058,11 +1058,11 @@ function diff<TNode, TScope, TRoot, TResult>(
 				newChild = cloneElement(newChild);
 			}
 
-			if (typeof oldChild === "object") {
+			value = mount(renderer, root, host, ctx, scope, newChild);
+
+			if (typeof oldChild === "object" && isPromiseLike(value)) {
 				newChild._fb = oldChild;
 			}
-
-			value = mount(renderer, root, host, ctx, scope, newChild);
 		}
 	} else if (typeof newChild === "string") {
 		newChild = renderer.escape(newChild, scope);
