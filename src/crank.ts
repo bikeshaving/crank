@@ -93,14 +93,14 @@ export const Raw = Symbol.for("crank.Raw") as any;
 export type Raw = typeof Raw;
 
 /**
- * Describes all valid singular values of an element tree.
+ * Describes all valid values of an element tree, excluding iterables.
  *
  * @remarks
- * Arbitrary objects can also be safely rendered but they will be converted to a string using the toString method. We exclude them from this type to catch potential errors.
+ * Arbitrary objects can also be safely rendered but they will be converted to a string using the toString method. We exclude them from this type to catch potential mistakes.
  */
 export type Child = Element | string | number | boolean | null | undefined;
 
-// NOTE: we use a recursive interface rather than making the Children type directly recursive because recursive type aliases were only added in TypeScript 3.7.
+// NOTE: we use a recursive interface rather than making the Children type directly recursive because recursive type aliases were added in TypeScript 3.7.
 interface ChildIterable extends Iterable<Child | ChildIterable> {}
 
 /**
@@ -110,12 +110,12 @@ export type Children = Child | ChildIterable;
 
 // WHAT ARE WE DOING TO THE CHILDREN???
 /**
- * All nodes in the element tree are narrowed from the union in Child to NarrowedChild. This greatly simplifies element diffing.
+ * All values in the element tree are narrowed from the union in Child to NarrowedChild during rendering. This greatly simplifies element diffing.
  */
 type NarrowedChild = Element | string | undefined;
 
 function narrow(child: Child): NarrowedChild {
-	if (child == null || typeof child === "boolean") {
+	if (typeof child === "boolean" || child == null) {
 		return undefined;
 	} else if (typeof child === "string" || isElement(child)) {
 		return child;
@@ -135,7 +135,7 @@ export type Component<TProps = any> = (
 ) =>
 	| Children
 	| PromiseLike<Children>
-	// The return type of iterators must include void because typescript will infer most generators as having a void return type.
+	// The return type of iterators must include void because typescript will infer generators with an implicit return value as having a void return type.
 	| Iterator<Children, Children | void, any>
 	| AsyncIterator<Children, Children | void, any>;
 
@@ -282,6 +282,7 @@ export class Element<TTag extends Tag = Tag> {
 		this._ch = undefined;
 		this._n = undefined;
 		this._ctx = undefined;
+		// We don’t assign fallback (_fb), inflightPromise (_inf) or onNewValues (_onv) in the constructor to save on the shallow size of elements. This saves a couple bytes per element, especially when we aren’t rendering asynchronous components. This may or may not be a good idea.
 	}
 }
 
@@ -293,7 +294,7 @@ export function isElement(value: any): value is Element {
  * Creates an element with the specified tag, props and children.
  *
  * @remarks
- * This function is usually used as a transpilation target for JSX transpilers, but it can also be called directly. It additionally extracts the crank-key and crank-ref props so they aren’t accessible to the renderer methods or components, and assigns the children prop according to the remaining arguments passed to the function.
+ * This function is usually used as a transpilation target for JSX transpilers, but it can also be called directly. It additionally extracts the crank-key and crank-ref props so they aren’t accessible to renderer methods or components, and assigns the children prop according to the arguments passed to the function.
  */
 export function createElement<TTag extends Tag>(
 	tag: TTag,
@@ -346,10 +347,10 @@ export function createElement<TTag extends Tag>(
 }
 
 /**
- * Clones a given element.
+ * Clones a given element. Will also shallow copy the props object.
  *
  * @remarks
- * Mainly used internally to make sure we don’t accidentally reuse elements in an element tree, because elements are directly mutated by the renderer.
+ * Mainly used internally to make sure we don’t accidentally reuse elements in an element tree, because element have internal properties which are directly mutated by the renderer.
  */
 export function cloneElement<TTag extends Tag>(
 	el: Element<TTag>,
@@ -369,7 +370,7 @@ export function cloneElement<TTag extends Tag>(
  * @typeparam TNode - The node type for the element assigned by the renderer.
  *
  * @remarks
- * When asking the question, what is the value of a specific element, the answer varies depending on the type of the element. For host or Raw elements, the answer is simply the nodes (DOM nodes in the case of the DOM renderer) created for the element. For fragments, the values are usually an array of nodes. For portals, the value is undefined, because a Portal element’s root and children are opaque to parents. For components, the value can be any of the above, because the value of a component is determined by its children. Rendered values can also be strings or arrays of nodes and strings, in the case of a component or fragment with strings for children. All of these possible values are reflected in this utility type.
+ * When asking the question, what is the value of a specific element, the answer varies depending on the tag of the element. For host or Raw elements, the answer is simply the nodes (DOM nodes in the case of the DOM renderer) created for the element. For fragments, the values are usually an array of nodes. For portals, the value is undefined, because a Portal element’s root and children are opaque to its parent. For components, the value can be any of the above, because the value of a component is determined by its children. Rendered values can also be strings or arrays of nodes and strings, in the case of component or fragment elements with strings for children. All of these possible values are reflected in this utility type.
  */
 export type ElementValue<TNode> =
 	| Array<TNode | string>
@@ -380,8 +381,9 @@ export type ElementValue<TNode> =
 /**
  * Takes an array of element values and normalizes the output as an array of nodes and strings.
  *
+ * @returns Normalized array of nodes and/or strings.
  * @remarks
- * Normalize will flatten only one level of nested arrays, because it is designed to be called once at each level of the tree. It will also concatenate adjacent strings and remove all undefineds.
+ * Normalize will flatten only one level of nested arrays, because it is designed to be called once at each level of the tree. It will also concatenate adjacent strings and remove all undefined values.
  */
 function normalize<TNode>(
 	values: Array<ElementValue<TNode>>,
@@ -394,14 +396,8 @@ function normalize<TNode>(
 			// pass
 		} else if (typeof value === "string") {
 			buffer = (buffer || "") + value;
-		} else if (!Array.isArray(value)) {
-			if (buffer) {
-				result.push(buffer);
-				buffer = undefined;
-			}
-
-			result.push(value);
-		} else {
+		} else if (Array.isArray(value)) {
+			// We could use recursion here but it’s just easier to do it inline.
 			for (let j = 0; j < value.length; j++) {
 				const value1 = value[j];
 				if (!value1) {
@@ -417,6 +413,14 @@ function normalize<TNode>(
 					result.push(value1);
 				}
 			}
+		} else {
+			// value is of type TNode
+			if (buffer) {
+				result.push(buffer);
+				buffer = undefined;
+			}
+
+			result.push(value);
 		}
 	}
 
@@ -1332,9 +1336,9 @@ const Iterating = 1 << 2;
 const Available = 1 << 3;
 
 /**
- * A flag which is set when generator components return. Set whenever an iterator returns an iteration with the done property set to true. Finished components will stick to their last rendered value and ignore further updates.
+ * A flag which is set when generator components return. Set whenever an iterator returns an iteration with the done property set to true or throws. Done components will stick to their last rendered value and ignore further updates.
  */
-const Finished = 1 << 4;
+const Done = 1 << 4;
 
 /**
  * A flag which is set when the component is unmounted. Unmounted components are no longer in the element tree, and cannot run or refresh.
@@ -1814,7 +1818,7 @@ function resume(ctx: Context): void {
 	}
 }
 
-// NOTE: The functions run, step and advance work together to implement the async queueing behavior of components. The run function calls the step function, which returns two results in a tuple. The first result, called “block,” is a possible promise which settles when the component can accept new updates, and represents the duration during which the component is blocked from accepting new updates. The second result, called “value,” is the actual result of the update. The run function caches block/value from the step function on the context, according to whether the component is currently blocked. The “inflight” block/value properties are the currently executing update, and the “enqueued” block/value properties are promises which represent the next step. Lastly, the run function calls the advance function in a Promise.prototype.finally callback to allow new steps to be enqueued.
+// NOTE: The functions run, step and advance work together to implement the async queueing behavior of components. The run function calls the step function, which returns two results in a tuple. The first result, called “block,” is a possible promise which represents the duration for which the component is blocked from accepting new updates. The second result, called “value,” is the actual result of the update. The run function caches block/value from the step function on the context, according to whether the component is currently blocked. The “inflight” block/value properties are the currently executing update, and the “enqueued” block/value properties represent an enqueued next step. Enqueued steps are dequeed in a finally callback on the inflight block.
 
 /**
  * Enqueues and executes the component associated with the context.
@@ -1905,7 +1909,7 @@ function step<TNode, TResult>(
 	Promise<ElementValue<TNode>> | ElementValue<TNode>,
 ] {
 	const el = ctx._el;
-	if (ctx._f & Finished) {
+	if (ctx._f & Done) {
 		return [undefined, getValue<TNode>(el)];
 	}
 
@@ -1953,7 +1957,7 @@ function step<TNode, TResult>(
 		ctx._f |= Executing;
 		iteration = ctx._it.next(oldValue);
 	} catch (err) {
-		ctx._f |= Finished;
+		ctx._f |= Done;
 		throw err;
 	} finally {
 		ctx._f &= ~Executing;
@@ -1974,7 +1978,7 @@ function step<TNode, TResult>(
 
 				ctx._f &= ~Iterating;
 				if (iteration.done) {
-					ctx._f |= Finished;
+					ctx._f |= Done;
 				}
 
 				try {
@@ -1993,7 +1997,7 @@ function step<TNode, TResult>(
 				}
 			},
 			(err) => {
-				ctx._f |= Finished;
+				ctx._f |= Done;
 				throw err;
 			},
 		);
@@ -2008,7 +2012,7 @@ function step<TNode, TResult>(
 
 	ctx._f &= ~Iterating;
 	if (iteration.done) {
-		ctx._f |= Finished;
+		ctx._f |= Done;
 	}
 
 	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
@@ -2042,7 +2046,7 @@ function advance(ctx: Context): void {
 	ctx._iv = ctx._ev;
 	ctx._eb = undefined;
 	ctx._ev = undefined;
-	if (ctx._f & IsAsyncGen && !(ctx._f & Finished)) {
+	if (ctx._f & IsAsyncGen && !(ctx._f & Done)) {
 		run(ctx);
 	}
 }
@@ -2053,7 +2057,7 @@ function handleChildError<TNode>(
 	err: unknown,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (
-		ctx._f & Finished ||
+		ctx._f & Done ||
 		typeof ctx._it !== "object" ||
 		typeof ctx._it.throw !== "function"
 	) {
@@ -2066,7 +2070,7 @@ function handleChildError<TNode>(
 		ctx._f |= Executing;
 		iteration = ctx._it.throw(err) as any;
 	} catch (err) {
-		ctx._f |= Finished;
+		ctx._f |= Done;
 		throw err;
 	} finally {
 		ctx._f &= ~Executing;
@@ -2076,20 +2080,20 @@ function handleChildError<TNode>(
 		return iteration.then(
 			(iteration) => {
 				if (iteration.done) {
-					ctx._f |= Finished;
+					ctx._f |= Done;
 				}
 
 				return updateCtxChildren(ctx, iteration.value as Children);
 			},
 			(err) => {
-				ctx._f |= Finished;
+				ctx._f |= Done;
 				throw err;
 			},
 		);
 	}
 
 	if (iteration.done) {
-		ctx._f |= Finished;
+		ctx._f |= Done;
 	}
 
 	return updateCtxChildren(ctx, iteration.value as Children);
@@ -2213,8 +2217,8 @@ function unmountCtx(ctx: Context): void {
 		ctx._cs = undefined;
 	}
 
-	if (!(ctx._f & Finished)) {
-		ctx._f |= Finished;
+	if (!(ctx._f & Done)) {
+		ctx._f |= Done;
 		resume(ctx);
 
 		if (typeof ctx._it === "object" && typeof ctx._it.return === "function") {
