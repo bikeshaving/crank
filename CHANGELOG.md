@@ -1,4 +1,7 @@
 # Changelog
+## [0.3.5] - 2020-09-17
+### Fixed
+- Added ChildIterable type to exports to deal with TypeScript errors (#156).
 ## [0.3.4] - 2020-09-09
 ### Fixed
 - Fix some edge cases with async generator component rendering.
