@@ -101,7 +101,7 @@ export type Raw = typeof Raw;
 export type Child = Element | string | number | boolean | null | undefined;
 
 // NOTE: we use a recursive interface rather than making the Children type directly recursive because recursive type aliases were added in TypeScript 3.7.
-interface ChildIterable extends Iterable<Child | ChildIterable> {}
+export interface ChildIterable extends Iterable<Child | ChildIterable> {}
 
 /**
  * Describes all valid values of an element tree, including arbitrarily nested iterables of such values.
