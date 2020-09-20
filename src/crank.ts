@@ -756,7 +756,6 @@ function mountChildren<TNode, TScope, TRoot, TResult>(
 				seen = new Set();
 			} else {
 				if (seen.has(child.key)) {
-					// eslint-disable-next-line no-console
 					console.error("Duplicate key", child.key);
 				}
 			}
@@ -922,7 +921,6 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		let oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
 		let newKey = typeof newChild === "object" ? newChild.key : undefined;
 		if (seen !== undefined && seen.has(newKey)) {
-			// eslint-disable-next-line no-console
 			console.error("Duplicate key", newKey);
 			newKey = undefined;
 		}
@@ -1580,11 +1578,9 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 */
 	refresh(): Promise<TResult> | TResult {
 		if (this._f & Unmounted) {
-			// eslint-disable-next-line no-console
 			console.error("Component is unmounted");
 			return this._re.read(undefined);
 		} else if (this._f & Executing) {
-			// eslint-disable-next-line no-console
 			console.error("Component is already executing");
 			return this._re.read(undefined);
 		}
@@ -1728,7 +1724,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 							try {
 								record.callback.call(this, ev);
 							} catch (err) {
-								// eslint-disable-next-line no-console
 								console.error(err);
 							}
 
@@ -1752,7 +1747,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 						try {
 							record.callback.call(this, ev);
 						} catch (err) {
-							// eslint-disable-next-line no-console
 							console.error(err);
 						}
 
@@ -1777,7 +1771,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 								try {
 									record.callback.call(this, ev);
 								} catch (err) {
-									// eslint-disable-next-line no-console
 									console.error(err);
 								}
 
