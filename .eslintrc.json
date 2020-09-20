@@ -23,7 +23,12 @@
     "prettier/@typescript-eslint"
   ],
   "rules": {
-    "no-console": 1,
+    "no-console": [
+      "error",
+      {
+        "allow": ["error"]
+      }
+    ],
     "no-unused-vars": 0,
     "@typescript-eslint/no-unused-vars": [
       "error",
