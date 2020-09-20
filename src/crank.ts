@@ -1589,7 +1589,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			return this._re.read(undefined);
 		}
 
-		this._f &= ~Updating;
 		resume(this);
 		return this._re.read(run(this));
 	}
