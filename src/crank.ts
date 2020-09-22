@@ -1693,14 +1693,15 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 		const record = this._ls[i];
 		this._ls.splice(i, 1);
+
+		if (this._ls.length === 0) {
+			this._ls = undefined;
+		}
+
 		for (const value of getChildValues(this._el)) {
 			if (isEventTarget(value)) {
 				value.removeEventListener(record.type, record.callback, record.options);
 			}
-		}
-
-		if (this._ls.length === 0) {
-			this._ls = undefined;
 		}
 	}
 
@@ -1710,91 +1711,86 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			path.push(parent);
 		}
 
-		let stopped = false;
+		// We patch the stopImmediatePropagation method because ev.cancelBubble
+		// only informs us if stopPropagation was called.
+		let immediateCancelBubble = false;
 		const stopImmediatePropagation = ev.stopImmediatePropagation;
 		setEventProperty(ev, "stopImmediatePropagation", () => {
-			stopped = true;
+			immediateCancelBubble = true;
 			return stopImmediatePropagation.call(ev);
 		});
 		setEventProperty(ev, "target", this);
-		setEventProperty(ev, "eventPhase", CAPTURING_PHASE);
+
+		// The only possible errors in this block are errors thrown by listener
+		// callbacks, and dispatchEvent will only log the error rather than
+		// rethrowing it. We return true because the return value is overridden in
+		// the finally block but TypeScript (justifiably) does not recognize the
+		// unsafe return statement.
 		try {
+			setEventProperty(ev, "eventPhase", CAPTURING_PHASE);
 			for (let i = path.length - 1; i >= 0; i--) {
 				const et = path[i];
-				if (typeof et._ls !== "undefined") {
+				if (et._ls) {
 					setEventProperty(ev, "currentTarget", et);
 					for (const record of et._ls) {
 						if (record.type === ev.type && record.options.capture) {
-							try {
-								record.callback.call(this, ev);
-							} catch (err) {
-								console.error(err);
-							}
-
-							if (stopped) {
-								break;
+							record.callback.call(this, ev);
+							if (immediateCancelBubble) {
+								return true;
 							}
 						}
 					}
 				}
 
-				if (stopped || ev.cancelBubble) {
-					return !ev.defaultPrevented;
+				if (ev.cancelBubble) {
+					return true;
 				}
 			}
 
-			if (typeof this._ls !== "undefined") {
+			if (this._ls) {
 				setEventProperty(ev, "eventPhase", AT_TARGET);
 				setEventProperty(ev, "currentTarget", this);
 				for (const record of this._ls) {
 					if (record.type === ev.type) {
-						try {
-							record.callback.call(this, ev);
-						} catch (err) {
-							console.error(err);
-						}
-
-						if (stopped) {
-							break;
+						record.callback.call(this, ev);
+						if (immediateCancelBubble) {
+							return true;
 						}
 					}
 				}
 
-				if (stopped || ev.cancelBubble) {
-					return !ev.defaultPrevented;
+				if (ev.cancelBubble) {
+					return true;
 				}
 			}
 
 			if (ev.bubbles) {
 				setEventProperty(ev, "eventPhase", BUBBLING_PHASE);
 				for (const et of path) {
-					if (typeof et._ls !== "undefined") {
+					if (et._ls) {
 						setEventProperty(ev, "currentTarget", et);
 						for (const record of et._ls) {
 							if (record.type === ev.type && !record.options.capture) {
-								try {
-									record.callback.call(this, ev);
-								} catch (err) {
-									console.error(err);
-								}
-
-								if (stopped) {
-									break;
+								record.callback.call(this, ev);
+								if (immediateCancelBubble) {
+									return true;
 								}
 							}
 						}
 					}
 
-					if (stopped || ev.cancelBubble) {
-						return !ev.defaultPrevented;
+					if (ev.cancelBubble) {
+						return true;
 					}
 				}
 			}
-
-			return !ev.defaultPrevented;
+		} catch (err) {
+			console.error(err);
 		} finally {
 			setEventProperty(ev, "eventPhase", NONE);
 			setEventProperty(ev, "currentTarget", null);
+			// eslint-disable-next-line no-unsafe-finally
+			return !ev.defaultPrevented;
 		}
 	}
 }
