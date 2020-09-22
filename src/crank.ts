@@ -1333,7 +1333,7 @@ const Executing = 1 << 1;
 const Iterating = 1 << 2;
 
 /**
- * A flag used by async generator components in conjunction with the onProps functions (_op) to mark whether new props can be pulled via the context iterator methods.
+ * A flag used by async generator components in conjunction with the onAvailable (_oa) callback to mark whether new props can be pulled via the context async iterator.
  */
 const Available = 1 << 3;
 
@@ -1418,9 +1418,9 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	/**
 	 * @internal
-	 * onProps - A callback used in conjunction with the Available flag to implement the props async iterator. See the Symbol.asyncIterator method and the resume function.
+	 * onAvailable - A callback used in conjunction with the Available flag to implement the props async iterator. See the Symbol.asyncIterator method and the resume function.
 	 */
-	_op: ((props: any) => unknown) | undefined;
+	_oa: (() => unknown) | undefined;
 
 	// See the run/step/advance functions for more notes on inflight/enqueued block/value.
 	/**
@@ -1535,7 +1535,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	}
 
 	*[Symbol.iterator](): Generator<TProps> {
-		const el = this._el;
 		while (!(this._f & Unmounted)) {
 			if (this._f & Iterating) {
 				throw new Error("Context iterated twice without a yield");
@@ -1544,31 +1543,31 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			}
 
 			this._f |= Iterating;
-			yield el.props!;
+			yield this._el.props!;
 		}
 	}
 
 	async *[Symbol.asyncIterator](): AsyncGenerator<TProps> {
-		const el = this._el;
+		// We use a do while loop rather than a while loop to handle a race
+		// condition where an async generator component is mounted and
+		// unmounted synchronously.
 		do {
 			if (this._f & Iterating) {
 				throw new Error("Context iterated twice without a yield");
 			} else if (this._f & IsSyncGen) {
 				throw new Error("Use for…of in sync generator components");
 			}
-
 			this._f |= Iterating;
 			if (this._f & Available) {
 				this._f &= ~Available;
-				yield el.props;
 			} else {
-				const props = await new Promise<TProps>(
-					(resolve) => (this._op = resolve),
-				);
-				if (!(this._f & Unmounted)) {
-					yield props;
+				await new Promise((resolve) => (this._oa = resolve));
+				if (this._f & Unmounted) {
+					break;
 				}
 			}
+
+			yield this._el.props;
 		} while (!(this._f & Unmounted));
 	}
 
@@ -1802,9 +1801,9 @@ export interface Context extends Crank.Context {}
  * Called to make props available to the Context async iterator for async generator components.
  */
 function resume(ctx: Context): void {
-	if (typeof ctx._op === "function") {
-		ctx._op(ctx._el.props);
-		ctx._op = undefined;
+	if (typeof ctx._oa === "function") {
+		ctx._oa();
+		ctx._oa = undefined;
 	} else {
 		ctx._f |= Available;
 	}
