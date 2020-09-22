@@ -139,6 +139,10 @@ export type Component<TProps = any> = (
 	| Iterator<Children, Children | void, any>
 	| AsyncIterator<Children, Children | void, any>;
 
+type ChildrenIteration =
+	| Promise<IteratorResult<Children, Children | void>>
+	| IteratorResult<Children, Children | void>;
+
 type Key = unknown;
 
 const ElementSymbol = Symbol.for("crank.Element");
@@ -1876,10 +1880,6 @@ function run<TNode, TResult>(
 
 	return ctx._ev;
 }
-
-type ChildrenIteration =
-	| IteratorResult<Children, Children | void>
-	| Promise<IteratorResult<Children, Children | void>>;
 
 /**
  * The step function is responsible for executing the component and handling all the different component types.
