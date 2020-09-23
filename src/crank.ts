@@ -440,7 +440,7 @@ function normalize<TNode>(
  * @returns The value of the element.
  */
 function getValue<TNode>(el: Element): ElementValue<TNode> {
-	if (typeof el._fb !== "undefined") {
+	if (el._fb) {
 		return getValue<TNode>(el._fb);
 	} else if (el.tag === Portal) {
 		return undefined;
@@ -460,10 +460,8 @@ function getChildValues<TNode>(el: Element): Array<TNode | string> {
 	const children = wrap(el._ch);
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i];
-		if (typeof child === "string") {
-			values.push(child);
-		} else if (typeof child !== "undefined") {
-			values.push(getValue(child));
+		if (child) {
+			values.push(typeof child === "string" ? child : getValue(child));
 		}
 	}
 
@@ -1503,7 +1501,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	): void;
 	provide(key: unknown, value: any): void;
 	provide(key: unknown, value: any): void {
-		if (typeof this._ps === "undefined") {
+		if (!this._ps) {
 			this._ps = new Map();
 		}
 
@@ -1592,7 +1590,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * Registers a callback which fires when the component commits. Will only fire once per callback and update.
 	 */
 	schedule(callback: (value: TResult) => unknown): void {
-		if (typeof this._ss === "undefined") {
+		if (!this._ss) {
 			this._ss = new Set();
 		}
 
@@ -1603,7 +1601,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * Registers a callback which fires when the component unmounts. Will only fire once per callback.
 	 */
 	cleanup(callback: (value: TResult) => unknown): void {
-		if (typeof this._cs === "undefined") {
+		if (!this._cs) {
 			this._cs = new Set();
 		}
 
@@ -1813,7 +1811,7 @@ function resume(ctx: Context): void {
 function run<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (typeof ctx._ib === "undefined") {
+	if (!ctx._ib) {
 		try {
 			let [block, value] = step<TNode, TResult>(ctx);
 			if (isPromiseLike(block)) {
@@ -1841,7 +1839,7 @@ function run<TNode, TResult>(
 		}
 	} else if (ctx._f & IsAsyncGen) {
 		return ctx._iv;
-	} else if (typeof ctx._eb === "undefined") {
+	} else if (!ctx._eb) {
 		let resolve: Function;
 		ctx._eb = ctx._ib
 			.then(() => {
@@ -1896,11 +1894,10 @@ function step<TNode, TResult>(
 		return [undefined, getValue<TNode>(el)];
 	}
 
-	let initial = false;
+	const initial = !ctx._it;
 	try {
 		ctx._f |= Executing;
-		if (typeof ctx._it === "undefined") {
-			initial = true;
+		if (initial) {
 			clearEventListeners(ctx);
 			const result = el.tag.call(ctx, el.props);
 			if (isIteratorLike(result)) {
@@ -1938,7 +1935,7 @@ function step<TNode, TResult>(
 	let iteration: ChildrenIteration;
 	try {
 		ctx._f |= Executing;
-		iteration = ctx._it.next(oldValue);
+		iteration = ctx._it!.next(oldValue);
 	} catch (err) {
 		ctx._f |= Done;
 		throw err;
