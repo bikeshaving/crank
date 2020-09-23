@@ -9,14 +9,14 @@ function unwrap<T>(arr: Array<T>): Array<T> | T | undefined {
 	return arr.length > 1 ? arr : arr[0];
 }
 
-function isIterable(value: any): value is Iterable<any> {
-	return value != null && typeof value[Symbol.iterator] === "function";
-}
-
 type NonStringIterable<T> = Iterable<T> & object;
 
 function isNonStringIterable(value: any): value is NonStringIterable<any> {
-	return typeof value !== "string" && isIterable(value);
+	return (
+		value != null &&
+		typeof value !== "string" &&
+		typeof value[Symbol.iterator] === "function"
+	);
 }
 
 function isIteratorLike(
