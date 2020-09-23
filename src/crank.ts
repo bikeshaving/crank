@@ -151,12 +151,12 @@ const ElementSymbol = Symbol.for("crank.Element");
 /**
  * A flag which is set when the component has been mounted. Used mainly to detect whether an element is being reused so that it can be cloned.
  */
-const Mounted = 1 << 0;
+const IsMounted = 1 << 0;
 
 /**
  * A flag which is set when the component has committed at least once.
  */
-const Committed = 1 << 1;
+const IsCommitted = 1 << 1;
 
 // NOTE: To save on filesize, we mangle the internal properties of Crank classes by hand. These internal properties are prefixed with an underscore. Refer to their definitions to see their unabbreviated names.
 
@@ -716,7 +716,7 @@ function diff<TNode, TScope, TRoot, TResult>(
 
 			newChild = oldChild;
 		} else {
-			if (newChild._f & Mounted) {
+			if (newChild._f & IsMounted) {
 				newChild = cloneElement(newChild);
 			}
 
@@ -742,7 +742,7 @@ function mount<TNode, TScope, TRoot, TResult>(
 	scope: TScope,
 	el: Element,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	el._f |= Mounted;
+	el._f |= IsMounted;
 	if (typeof el.tag === "function") {
 		el._ctx = new Context(
 			renderer,
@@ -1061,6 +1061,10 @@ function commit<TNode, TScope, TRoot, TResult>(
 			commitCtx(el._ctx, value);
 		}
 	} else if (el.tag === Portal) {
+		if (!(el._f & IsCommitted)) {
+			el._f |= IsCommitted;
+		}
+
 		renderer.arrange(el as Element<Portal>, el.props.root, values);
 		renderer.complete(el.props.root);
 		value = undefined;
@@ -1073,17 +1077,14 @@ function commit<TNode, TScope, TRoot, TResult>(
 
 		value = el._n;
 	} else if (el.tag !== Fragment) {
-		if (!(el._f & Committed)) {
+		if (!(el._f & IsCommitted)) {
 			el._n = renderer.create(el as Element<string | symbol>, scope);
+			el._f |= IsCommitted;
 		}
 
 		renderer.patch(el as Element<string | symbol>, el._n);
 		renderer.arrange(el as Element<string | symbol>, el._n, values);
 		value = el._n;
-	}
-
-	if (!(el._f & Committed)) {
-		el._f |= Committed;
 	}
 
 	if (el.ref) {
@@ -1247,32 +1248,32 @@ export interface ProvisionMap extends Crank.ProvisionMap {}
 /**
  * A flag which is set when the component is being updated by the parent and cleared when the component has committed. Used to determine whether the nearest host ancestor needs to be rearranged.
  */
-const Updating = 1 << 0;
+const IsUpdating = 1 << 0;
 
 /**
  * A flag which is set when the component function is called or the component generator is resumed. This flags is used to ensure that a component which synchronously triggers a second update in the course of rendering does not cause an stack overflow or a generator error.
  */
-const Executing = 1 << 1;
+const IsExecuting = 1 << 1;
 
 /**
  * A flag used to make sure multiple values are not pulled from context prop iterators without a yield.
  */
-const Iterating = 1 << 2;
+const IsIterating = 1 << 2;
 
 /**
- * A flag used by async generator components in conjunction with the onAvailable (_oa) callback to mark whether new props can be pulled via the context async iterator.
+ * A flag used by async generator components in conjunction with the onIsAvailable (_oa) callback to mark whether new props can be pulled via the context async iterator.
  */
-const Available = 1 << 3;
+const IsAvailable = 1 << 3;
 
 /**
  * A flag which is set when generator components return. Set whenever an iterator returns an iteration with the done property set to true or throws. Done components will stick to their last rendered value and ignore further updates.
  */
-const Done = 1 << 4;
+const IsDone = 1 << 4;
 
 /**
  * A flag which is set when the component is unmounted. Unmounted components are no longer in the element tree, and cannot run or refresh.
  */
-const Unmounted = 1 << 5;
+const IsUnmounted = 1 << 5;
 
 /**
  * A flag which indicates that the component is a sync generator component.
@@ -1345,7 +1346,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	/**
 	 * @internal
-	 * onAvailable - A callback used in conjunction with the Available flag to implement the props async iterator. See the Symbol.asyncIterator method and the resumeCtx function.
+	 * onAvailable - A callback used in conjunction with the IsAvailable flag to implement the props async iterator. See the Symbol.asyncIterator method and the resumeCtx function.
 	 */
 	_oa: (() => unknown) | undefined;
 
@@ -1462,14 +1463,14 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	}
 
 	*[Symbol.iterator](): Generator<TProps> {
-		while (!(this._f & Unmounted)) {
-			if (this._f & Iterating) {
+		while (!(this._f & IsUnmounted)) {
+			if (this._f & IsIterating) {
 				throw new Error("Context iterated twice without a yield");
 			} else if (this._f & IsAsyncGen) {
 				throw new Error("Use for await…of in async generator components");
 			}
 
-			this._f |= Iterating;
+			this._f |= IsIterating;
 			yield this._el.props!;
 		}
 	}
@@ -1479,23 +1480,23 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		// condition where an async generator component is mounted and
 		// unmounted synchronously.
 		do {
-			if (this._f & Iterating) {
+			if (this._f & IsIterating) {
 				throw new Error("Context iterated twice without a yield");
 			} else if (this._f & IsSyncGen) {
 				throw new Error("Use for…of in sync generator components");
 			}
-			this._f |= Iterating;
-			if (this._f & Available) {
-				this._f &= ~Available;
+			this._f |= IsIterating;
+			if (this._f & IsAvailable) {
+				this._f &= ~IsAvailable;
 			} else {
 				await new Promise((resolve) => (this._oa = resolve));
-				if (this._f & Unmounted) {
+				if (this._f & IsUnmounted) {
 					break;
 				}
 			}
 
 			yield this._el.props;
-		} while (!(this._f & Unmounted));
+		} while (!(this._f & IsUnmounted));
 	}
 
 	/**
@@ -1507,10 +1508,10 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * The refresh method works a little differently for async generator components, in that it will resume the Context async iterator rather than resuming execution. This is because async generator components are perpetually resumed independent of updates/refresh.
 	 */
 	refresh(): Promise<TResult> | TResult {
-		if (this._f & Unmounted) {
+		if (this._f & IsUnmounted) {
 			console.error("Component is unmounted");
 			return this._re.read(undefined);
-		} else if (this._f & Executing) {
+		} else if (this._f & IsExecuting) {
 			console.error("Component is already executing");
 			return this._re.read(undefined);
 		}
@@ -1732,7 +1733,7 @@ function resumeCtx(ctx: Context): void {
 		ctx._oa();
 		ctx._oa = undefined;
 	} else {
-		ctx._f |= Available;
+		ctx._f |= IsAvailable;
 	}
 }
 
@@ -1750,7 +1751,7 @@ function runCtx<TNode, TResult>(
 			if (isPromiseLike(block)) {
 				ctx._ib = block
 					.catch((err) => {
-						if (!(ctx._f & Updating)) {
+						if (!(ctx._f & IsUpdating)) {
 							return propagateError<TNode>(ctx._pa, err);
 						}
 					})
@@ -1764,7 +1765,7 @@ function runCtx<TNode, TResult>(
 
 			return value;
 		} catch (err) {
-			if (!(ctx._f & Updating)) {
+			if (!(ctx._f & IsUpdating)) {
 				return propagateError<TNode>(ctx._pa, err);
 			}
 
@@ -1785,13 +1786,13 @@ function runCtx<TNode, TResult>(
 
 					if (isPromiseLike(block)) {
 						return block.catch((err) => {
-							if (!(ctx._f & Updating)) {
+							if (!(ctx._f & IsUpdating)) {
 								return propagateError<TNode>(ctx._pa, err);
 							}
 						});
 					}
 				} catch (err) {
-					if (!(ctx._f & Updating)) {
+					if (!(ctx._f & IsUpdating)) {
 						return propagateError<TNode>(ctx._pa, err);
 					}
 				}
@@ -1823,13 +1824,13 @@ function stepCtx<TNode, TResult>(
 	Promise<ElementValue<TNode>> | ElementValue<TNode>,
 ] {
 	const el = ctx._el;
-	if (ctx._f & Done) {
+	if (ctx._f & IsDone) {
 		return [undefined, getValue<TNode>(el)];
 	}
 
 	const initial = !ctx._it;
 	try {
-		ctx._f |= Executing;
+		ctx._f |= IsExecuting;
 		if (initial) {
 			clearEventListeners(ctx);
 			const result = el.tag.call(ctx, el.props);
@@ -1850,7 +1851,7 @@ function stepCtx<TNode, TResult>(
 			}
 		}
 	} finally {
-		ctx._f &= ~Executing;
+		ctx._f &= ~IsExecuting;
 	}
 
 	let oldValue: Promise<TResult> | TResult;
@@ -1867,13 +1868,13 @@ function stepCtx<TNode, TResult>(
 
 	let iteration: ChildrenIteration;
 	try {
-		ctx._f |= Executing;
+		ctx._f |= IsExecuting;
 		iteration = ctx._it!.next(oldValue);
 	} catch (err) {
-		ctx._f |= Done;
+		ctx._f |= IsDone;
 		throw err;
 	} finally {
-		ctx._f &= ~Executing;
+		ctx._f &= ~IsExecuting;
 	}
 
 	if (isPromiseLike(iteration)) {
@@ -1885,13 +1886,13 @@ function stepCtx<TNode, TResult>(
 		const block = iteration;
 		const value: Promise<ElementValue<TNode>> = iteration.then(
 			(iteration) => {
-				if (!(ctx._f & Iterating)) {
-					ctx._f &= ~Available;
+				if (!(ctx._f & IsIterating)) {
+					ctx._f &= ~IsAvailable;
 				}
 
-				ctx._f &= ~Iterating;
+				ctx._f &= ~IsIterating;
 				if (iteration.done) {
-					ctx._f |= Done;
+					ctx._f |= IsDone;
 				}
 
 				try {
@@ -1910,7 +1911,7 @@ function stepCtx<TNode, TResult>(
 				}
 			},
 			(err) => {
-				ctx._f |= Done;
+				ctx._f |= IsDone;
 				throw err;
 			},
 		);
@@ -1923,9 +1924,9 @@ function stepCtx<TNode, TResult>(
 		ctx._f |= IsSyncGen;
 	}
 
-	ctx._f &= ~Iterating;
+	ctx._f &= ~IsIterating;
 	if (iteration.done) {
-		ctx._f |= Done;
+		ctx._f |= IsDone;
 	}
 
 	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
@@ -1959,7 +1960,7 @@ function advanceCtx(ctx: Context): void {
 	ctx._iv = ctx._ev;
 	ctx._eb = undefined;
 	ctx._ev = undefined;
-	if (ctx._f & IsAsyncGen && !(ctx._f & Done)) {
+	if (ctx._f & IsAsyncGen && !(ctx._f & IsDone)) {
 		runCtx(ctx);
 	}
 }
@@ -1967,7 +1968,7 @@ function advanceCtx(ctx: Context): void {
 function updateCtx<TNode>(
 	ctx: Context,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	ctx._f |= Updating;
+	ctx._f |= IsUpdating;
 	resumeCtx(ctx);
 	return runCtx(ctx);
 }
@@ -1992,7 +1993,7 @@ function updateCtxChildren<TNode, TResult>(
 }
 
 function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
-	if (ctx._f & Unmounted) {
+	if (ctx._f & IsUnmounted) {
 		return;
 	}
 
@@ -2006,7 +2007,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 		}
 	}
 
-	if (!(ctx._f & Updating)) {
+	if (!(ctx._f & IsUpdating)) {
 		const listeners = getListeners(ctx._pa, ctx._ho);
 		if (listeners !== undefined && listeners.length > 0) {
 			for (let i = 0; i < listeners.length; i++) {
@@ -2021,7 +2022,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 
 		// TODO: we don’t need to call arrange if none of the nodes have changed or moved
 		const host = ctx._ho;
-		if (host._f & Committed) {
+		if (host._f & IsCommitted) {
 			ctx._re.arrange(
 				host,
 				host.tag === Portal ? host.props.root : host._n,
@@ -2032,7 +2033,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 		ctx._re.complete(ctx._rt);
 	}
 
-	ctx._f &= ~Updating;
+	ctx._f &= ~IsUpdating;
 	if (typeof ctx._ss === "object" && ctx._ss.size > 0) {
 		// NOTE: We have to clear the set of callbacks before calling them, because a callback which refreshes the component would otherwise cause a stack overflow.
 		const callbacks = Array.from(ctx._ss);
@@ -2046,7 +2047,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 
 // TODO: async unmounting
 function unmountCtx(ctx: Context): void {
-	ctx._f |= Unmounted;
+	ctx._f |= IsUnmounted;
 	clearEventListeners(ctx);
 	if (typeof ctx._cs === "object") {
 		const value = ctx._re.read(getValue(ctx._el));
@@ -2057,17 +2058,17 @@ function unmountCtx(ctx: Context): void {
 		ctx._cs = undefined;
 	}
 
-	if (!(ctx._f & Done)) {
-		ctx._f |= Done;
+	if (!(ctx._f & IsDone)) {
+		ctx._f |= IsDone;
 		resumeCtx(ctx);
 
 		if (typeof ctx._it === "object" && typeof ctx._it.return === "function") {
 			let iteration: ChildrenIteration;
 			try {
-				ctx._f |= Executing;
+				ctx._f |= IsExecuting;
 				iteration = ctx._it.return();
 			} finally {
-				ctx._f &= ~Executing;
+				ctx._f &= ~IsExecuting;
 			}
 
 			if (isPromiseLike(iteration)) {
@@ -2083,7 +2084,7 @@ function handleChildError<TNode>(
 	err: unknown,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (
-		ctx._f & Done ||
+		ctx._f & IsDone ||
 		typeof ctx._it !== "object" ||
 		typeof ctx._it.throw !== "function"
 	) {
@@ -2093,33 +2094,33 @@ function handleChildError<TNode>(
 	resumeCtx(ctx);
 	let iteration: ChildrenIteration;
 	try {
-		ctx._f |= Executing;
+		ctx._f |= IsExecuting;
 		iteration = ctx._it.throw(err) as any;
 	} catch (err) {
-		ctx._f |= Done;
+		ctx._f |= IsDone;
 		throw err;
 	} finally {
-		ctx._f &= ~Executing;
+		ctx._f &= ~IsExecuting;
 	}
 
 	if (isPromiseLike(iteration)) {
 		return iteration.then(
 			(iteration) => {
 				if (iteration.done) {
-					ctx._f |= Done;
+					ctx._f |= IsDone;
 				}
 
 				return updateCtxChildren(ctx, iteration.value as Children);
 			},
 			(err) => {
-				ctx._f |= Done;
+				ctx._f |= IsDone;
 				throw err;
 			},
 		);
 	}
 
 	if (iteration.done) {
-		ctx._f |= Done;
+		ctx._f |= IsDone;
 	}
 
 	return updateCtxChildren(ctx, iteration.value as Children);
