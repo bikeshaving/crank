@@ -304,16 +304,6 @@ export function createElement<TTag extends Tag>(
 	tag: TTag,
 	props?: TagProps<TTag> | null | undefined,
 	...children: Array<unknown>
-): Element<TTag>;
-export function createElement<TTag extends Tag>(
-	tag: TTag,
-	props?: TagProps<TTag> | null | undefined,
-	children?: unknown,
-): Element<TTag>;
-export function createElement<TTag extends Tag>(
-	tag: TTag,
-	props?: TagProps<TTag> | null | undefined,
-	children?: unknown,
 ): Element<TTag> {
 	let key: Key;
 	let ref: Function | undefined;
@@ -335,16 +325,10 @@ export function createElement<TTag extends Tag>(
 		}
 	}
 
-	let length = arguments.length;
-	if (length > 3) {
-		const children1: Array<unknown> = [];
-		while (length-- > 2) {
-			children1[length - 2] = arguments[length];
-		}
-
-		props1.children = children1;
-	} else if (length > 2) {
+	if (children.length > 1) {
 		props1.children = children;
+	} else if (children.length === 1) {
+		props1.children = children[0];
 	}
 
 	return new Element(tag, props1, key, ref);
