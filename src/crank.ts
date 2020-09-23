@@ -1345,11 +1345,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	/**
 	 * @internal
-	 * onAvailable - A callback used in conjunction with the Available flag to implement the props async iterator. See the Symbol.asyncIterator method and the resume function.
+	 * onAvailable - A callback used in conjunction with the Available flag to implement the props async iterator. See the Symbol.asyncIterator method and the resumeCtx function.
 	 */
 	_oa: (() => unknown) | undefined;
 
-	// See the run/step/advance functions for more notes on inflight/enqueued block/value.
+	// See the runCtx/stepCtx/advanceCtx functions for more notes on inflight/enqueued block/value.
 	/**
 	 * @internal
 	 * inflightBlock
@@ -1515,8 +1515,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			return this._re.read(undefined);
 		}
 
-		resume(this);
-		return this._re.read(run(this));
+		resumeCtx(this);
+		return this._re.read(runCtx(this));
 	}
 
 	/**
@@ -1727,8 +1727,8 @@ export interface Context extends Crank.Context {}
 /**
  * Called to make props available to the Context async iterator for async generator components.
  */
-function resume(ctx: Context): void {
-	if (typeof ctx._oa === "function") {
+function resumeCtx(ctx: Context): void {
+	if (ctx._oa) {
 		ctx._oa();
 		ctx._oa = undefined;
 	} else {
@@ -1736,17 +1736,17 @@ function resume(ctx: Context): void {
 	}
 }
 
-// NOTE: The functions run, step and advance work together to implement the async queueing behavior of components. The run function calls the step function, which returns two results in a tuple. The first result, called “block,” is a possible promise which represents the duration for which the component is blocked from accepting new updates. The second result, called “value,” is the actual result of the update. The run function caches block/value from the step function on the context, according to whether the component is currently blocked. The “inflight” block/value properties are the currently executing update, and the “enqueued” block/value properties represent an enqueued next step. Enqueued steps are dequeed in a finally callback on the inflight block.
+// NOTE: The functions runCtx, stepCtx and advanceCtx work together to implement the async queueing behavior of components. The runCtx function calls the stepCtx function, which returns two results in a tuple. The first result, called “block,” is a possible promise which represents the duration for which the component is blocked from accepting new updates. The second result, called “value,” is the actual result of the update. The runCtx function caches block/value from the stepCtx function on the context, according to whether the component is currently blocked. The “inflight” block/value properties are the currently executing update, and the “enqueued” block/value properties represent an enqueued next stepCtx. Enqueued steps are dequeed in a finally callback on the inflight block.
 
 /**
  * Enqueues and executes the component associated with the context.
  */
-function run<TNode, TResult>(
+function runCtx<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (!ctx._ib) {
 		try {
-			let [block, value] = step<TNode, TResult>(ctx);
+			let [block, value] = stepCtx<TNode, TResult>(ctx);
 			if (isPromiseLike(block)) {
 				ctx._ib = block
 					.catch((err) => {
@@ -1754,7 +1754,7 @@ function run<TNode, TResult>(
 							return propagateError<TNode>(ctx._pa, err);
 						}
 					})
-					.finally(() => advance(ctx));
+					.finally(() => advanceCtx(ctx));
 			}
 
 			if (isPromiseLike(value)) {
@@ -1777,7 +1777,7 @@ function run<TNode, TResult>(
 		ctx._eb = ctx._ib
 			.then(() => {
 				try {
-					const [block, value] = step<TNode, TResult>(ctx);
+					const [block, value] = stepCtx<TNode, TResult>(ctx);
 					resolve(value);
 					if (isPromiseLike(value)) {
 						ctx._el._inf = value;
@@ -1796,7 +1796,7 @@ function run<TNode, TResult>(
 					}
 				}
 			})
-			.finally(() => advance(ctx));
+			.finally(() => advanceCtx(ctx));
 		ctx._ev = new Promise((resolve1) => (resolve = resolve1));
 	}
 
@@ -1804,7 +1804,7 @@ function run<TNode, TResult>(
 }
 
 /**
- * The step function is responsible for executing the component and handling all the different component types.
+ * The stepCtx function is responsible for executing the component and handling all the different component types.
  *
  * @returns A tuple [block, value]
  * block - A possible promise which represents the duration during which the component is blocked from updating.
@@ -1816,7 +1816,7 @@ function run<TNode, TResult>(
  * Async function components and async generator components block while executing itself, but will not block for async children.
  * Sync generator components block while any children are executing, because they are expected to only resume when they’ve actually rendered. Additionally, they have no mechanism for awaiting async children.
  */
-function step<TNode, TResult>(
+function stepCtx<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
 ): [
 	Promise<unknown> | undefined,
@@ -1950,7 +1950,7 @@ function step<TNode, TResult>(
  * @remarks
  * Called when the inflight block promise settles.
  */
-function advance(ctx: Context): void {
+function advanceCtx(ctx: Context): void {
 	// _ib: inflightBlock
 	// _iv: inflightValue
 	// _eb: enqueuedBlock
@@ -1960,7 +1960,7 @@ function advance(ctx: Context): void {
 	ctx._eb = undefined;
 	ctx._ev = undefined;
 	if (ctx._f & IsAsyncGen && !(ctx._f & Done)) {
-		run(ctx);
+		runCtx(ctx);
 	}
 }
 
@@ -1968,8 +1968,8 @@ function updateCtx<TNode>(
 	ctx: Context,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	ctx._f |= Updating;
-	resume(ctx);
-	return run(ctx);
+	resumeCtx(ctx);
+	return runCtx(ctx);
 }
 
 function updateCtxChildren<TNode, TResult>(
@@ -2059,7 +2059,7 @@ function unmountCtx(ctx: Context): void {
 
 	if (!(ctx._f & Done)) {
 		ctx._f |= Done;
-		resume(ctx);
+		resumeCtx(ctx);
 
 		if (typeof ctx._it === "object" && typeof ctx._it.return === "function") {
 			let iteration: ChildrenIteration;
@@ -2090,7 +2090,7 @@ function handleChildError<TNode>(
 		throw err;
 	}
 
-	resume(ctx);
+	resumeCtx(ctx);
 	let iteration: ChildrenIteration;
 	try {
 		ctx._f |= Executing;
