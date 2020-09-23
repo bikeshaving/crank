@@ -781,20 +781,7 @@ function mount<TNode, TScope, TRoot, TResult>(
 		scope = renderer.scope(host, scope);
 	}
 
-	// NOTE: The primary benefit of having a separate codepath for mounting is that it’s slightly faster because we don’t have to align and diff children against old children. But for singular child values, updateChild is sufficient.
-	if (isNonStringIterable(el.props.children)) {
-		return mountChildren(
-			renderer,
-			root,
-			host,
-			ctx,
-			scope,
-			el,
-			el.props.children,
-		);
-	}
-
-	return updateChild(renderer, root, host, ctx, scope, el, el.props.children);
+	return mountChildren(renderer, root, host, ctx, scope, el, el.props.children);
 }
 
 function mountChildren<TNode, TScope, TRoot, TResult>(
@@ -804,10 +791,12 @@ function mountChildren<TNode, TScope, TRoot, TResult>(
 	ctx: Context<unknown, TResult> | undefined,
 	scope: TScope,
 	parent: Element,
-	children: ChildIterable,
+	children: Children,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
-	const newChildren = Array.from(children);
+	const newChildren = isNonStringIterable(children)
+		? Array.from(children)
+		: wrap(children).slice();
 	let async = false;
 	let seen: Set<Key> | undefined;
 	for (let i = 0; i < newChildren.length; i++) {
@@ -883,66 +872,20 @@ function update<TNode, TScope, TRoot, TResult>(
 		}
 	}
 
-	if (isNonStringIterable(el.props.children)) {
-		return updateChildren(
-			renderer,
-			root,
-			host,
-			ctx,
-			scope,
-			el,
-			el.props.children,
-		);
-	} else if (Array.isArray(el._ch)) {
-		return updateChildren(renderer, root, host, ctx, scope, el, [
-			el.props.children,
-		]);
-	}
-
-	return updateChild(renderer, root, host, ctx, scope, el, el.props.children);
-}
-
-function updateChild<TNode, TScope, TRoot, TResult>(
-	renderer: Renderer<TNode, TScope, TRoot, TResult>,
-	root: TRoot,
-	host: Element<string | symbol>,
-	ctx: Context<unknown, TResult> | undefined,
-	scope: TScope,
-	parent: Element,
-	child: Child,
-): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	let oldChild = parent._ch as NarrowedChild;
-	let newChild = narrow(child);
-	if (
-		typeof oldChild === "object" &&
-		typeof newChild === "object" &&
-		oldChild.key !== newChild.key
-	) {
-		oldChild = undefined;
-	}
-
-	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-	[newChild, value] = diff(
+	return updateChildren(
 		renderer,
 		root,
 		host,
 		ctx,
 		scope,
-		oldChild,
-		newChild,
+		el,
+		el.props.children,
 	);
-
-	if (typeof oldChild === "object" && oldChild !== newChild) {
-		unmount(renderer, host, ctx, oldChild);
-	}
-
-	parent._ch = newChild;
-	// TODO: allow single values to be passed to chase
-	const values = isPromiseLike(value) ? value.then(wrap) : wrap(value);
-	return chase(renderer, host, ctx, scope, parent, values);
 }
 
-function mapChildrenByKey(children: Array<NarrowedChild>): Map<Key, Element> {
+function createChildrenByKey(
+	children: Array<NarrowedChild>,
+): Map<Key, Element> {
 	const childrenByKey = new Map<Key, Element>();
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i];
@@ -961,7 +904,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	ctx: Context<unknown, TResult> | undefined,
 	scope: TScope,
 	parent: Element,
-	children: ChildIterable,
+	children: Children,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (typeof parent._ch === "undefined") {
 		return mountChildren(renderer, root, host, ctx, scope, parent, children);
@@ -969,7 +912,9 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
 	const oldChildren = wrap(parent._ch);
-	const newChildren = Array.from(children);
+	const newChildren = isNonStringIterable(children)
+		? Array.from(children)
+		: wrap(children).slice();
 	const graveyard: Array<Element> = [];
 	let i = 0;
 	let async = false;
@@ -995,7 +940,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 
 		if (oldKey !== newKey) {
 			if (!childrenByKey) {
-				childrenByKey = mapChildrenByKey(oldChildren.slice(i));
+				childrenByKey = createChildrenByKey(oldChildren.slice(i));
 			}
 
 			if (newKey === undefined) {
@@ -2044,21 +1989,18 @@ function updateCtxChildren<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
 	children: Children,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	let child: Child;
 	if (isNonStringIterable(children)) {
-		child = createElement(Fragment, null, children);
-	} else {
-		child = children;
+		children = createElement(Fragment, null, children);
 	}
 
-	return updateChild<TNode, unknown, unknown, TResult>(
+	return updateChildren<TNode, unknown, unknown, TResult>(
 		ctx._re as Renderer<TNode, unknown, unknown, TResult>,
 		ctx._rt, // root
 		ctx._ho, // host
 		ctx,
 		ctx._sc, // scope
 		ctx._el, // element
-		child,
+		children,
 	);
 }
 
