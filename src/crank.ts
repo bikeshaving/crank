@@ -684,6 +684,72 @@ export class Renderer<
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
+
+function diff<TNode, TScope, TRoot, TResult>(
+	renderer: Renderer<TNode, TScope, TRoot, TResult>,
+	root: TRoot,
+	host: Element<string | symbol>,
+	ctx: Context<unknown, TResult> | undefined,
+	scope: TScope,
+	oldChild: NarrowedChild,
+	newChild: NarrowedChild,
+): [NarrowedChild, Promise<ElementValue<TNode>> | ElementValue<TNode>] {
+	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
+	if (
+		typeof oldChild === "object" &&
+		typeof newChild === "object" &&
+		oldChild.tag === newChild.tag
+	) {
+		// TODO: implement Raw element parse caching
+		if (oldChild.tag === Portal) {
+			if (oldChild.props.root !== newChild.props.root) {
+				renderer.arrange(oldChild as Element<Portal>, oldChild.props.root, []);
+			}
+		}
+
+		if (oldChild !== newChild) {
+			oldChild.props = newChild.props;
+			oldChild.ref = newChild.ref;
+			newChild = oldChild;
+		}
+
+		value = update(renderer, root, host, ctx, scope, newChild);
+	} else if (typeof newChild === "object") {
+		if (newChild.tag === Copy) {
+			if (typeof oldChild === "object") {
+				value = oldChild._inf || getValue<TNode>(oldChild);
+			} else {
+				value = oldChild;
+			}
+
+			if (typeof newChild.ref === "function") {
+				if (isPromiseLike(value)) {
+					value.then(newChild.ref as any).catch(NOOP);
+				} else {
+					newChild.ref(value);
+				}
+			}
+
+			newChild = oldChild;
+		} else {
+			if (newChild._f & Mounted) {
+				newChild = cloneElement(newChild);
+			}
+
+			value = mount(renderer, root, host, ctx, scope, newChild);
+
+			if (typeof oldChild === "object" && isPromiseLike(value)) {
+				newChild._fb = oldChild;
+			}
+		}
+	} else if (typeof newChild === "string") {
+		newChild = renderer.escape(newChild, scope);
+		value = newChild;
+	}
+
+	return [newChild, value];
+}
+
 function mount<TNode, TScope, TRoot, TResult>(
 	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
@@ -1009,71 +1075,6 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	}
 
 	return chase(renderer, host, ctx, scope, parent, values1);
-}
-
-function diff<TNode, TScope, TRoot, TResult>(
-	renderer: Renderer<TNode, TScope, TRoot, TResult>,
-	root: TRoot,
-	host: Element<string | symbol>,
-	ctx: Context<unknown, TResult> | undefined,
-	scope: TScope,
-	oldChild: NarrowedChild,
-	newChild: NarrowedChild,
-): [NarrowedChild, Promise<ElementValue<TNode>> | ElementValue<TNode>] {
-	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-	if (
-		typeof oldChild === "object" &&
-		typeof newChild === "object" &&
-		oldChild.tag === newChild.tag
-	) {
-		// TODO: implement Raw element parse caching
-		if (oldChild.tag === Portal) {
-			if (oldChild.props.root !== newChild.props.root) {
-				renderer.arrange(oldChild as Element<Portal>, oldChild.props.root, []);
-			}
-		}
-
-		if (oldChild !== newChild) {
-			oldChild.props = newChild.props;
-			oldChild.ref = newChild.ref;
-			newChild = oldChild;
-		}
-
-		value = update(renderer, root, host, ctx, scope, newChild);
-	} else if (typeof newChild === "object") {
-		if (newChild.tag === Copy) {
-			if (typeof oldChild === "object") {
-				value = oldChild._inf || getValue<TNode>(oldChild);
-			} else {
-				value = oldChild;
-			}
-
-			if (typeof newChild.ref === "function") {
-				if (isPromiseLike(value)) {
-					value.then(newChild.ref as any).catch(NOOP);
-				} else {
-					newChild.ref(value);
-				}
-			}
-
-			newChild = oldChild;
-		} else {
-			if (newChild._f & Mounted) {
-				newChild = cloneElement(newChild);
-			}
-
-			value = mount(renderer, root, host, ctx, scope, newChild);
-
-			if (typeof oldChild === "object" && isPromiseLike(value)) {
-				newChild._fb = oldChild;
-			}
-		}
-	} else if (typeof newChild === "string") {
-		newChild = renderer.escape(newChild, scope);
-		value = newChild;
-	}
-
-	return [newChild, value];
 }
 
 /**
