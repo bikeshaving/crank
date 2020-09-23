@@ -119,9 +119,9 @@ function narrow(child: Child): NarrowedChild {
 		return undefined;
 	} else if (typeof child === "string" || isElement(child)) {
 		return child;
-	} else {
-		return child.toString();
 	}
+
+	return child.toString();
 }
 
 /**
