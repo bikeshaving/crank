@@ -141,30 +141,30 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 
 	arrange(
 		el: CrankElement<string | symbol>,
-		parent: Node,
+		node: Node,
 		children: Array<Node | string>,
 	): void {
 		if (
 			el.tag === Portal &&
-			(parent == null || typeof parent.nodeType !== "number")
+			(node == null || typeof node.nodeType !== "number")
 		) {
 			throw new TypeError(
 				`Portal root is not a node. Received: ${JSON.stringify(
-					parent && parent.toString(),
+					node && node.toString(),
 				)}`,
 			);
 		}
 
 		if (
 			!("innerHTML" in el.props) &&
-			(children.length !== 0 || (parent as any).__cranky)
+			(children.length !== 0 || (node as any).__cranky)
 		) {
 			if (children.length === 0) {
-				parent.textContent = "";
+				node.textContent = "";
 				return;
 			}
 
-			let oldChild = parent.firstChild;
+			let oldChild = node.firstChild;
 			let i = 0;
 			while (oldChild !== null && i < children.length) {
 				const newChild = children[i];
@@ -176,21 +176,21 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 						oldChild.nodeValue = newChild;
 						oldChild = oldChild.nextSibling;
 					} else {
-						parent.insertBefore(document.createTextNode(newChild), oldChild);
+						node.insertBefore(document.createTextNode(newChild), oldChild);
 					}
 
 					i++;
 				} else if (oldChild.nodeType === Node.TEXT_NODE) {
 					const nextSibling = oldChild.nextSibling;
-					parent.removeChild(oldChild);
+					node.removeChild(oldChild);
 					oldChild = nextSibling;
 				} else {
-					parent.insertBefore(newChild, oldChild);
+					node.insertBefore(newChild, oldChild);
 					i++;
 					// TODO: this is an optimization for the js frameworks benchmark swap rows, but we need to think a little more about other cases like prepending.
 					if (oldChild !== children[i]) {
 						const nextSibling = oldChild.nextSibling;
-						parent.removeChild(oldChild);
+						node.removeChild(oldChild);
 						oldChild = nextSibling;
 					}
 				}
@@ -198,13 +198,13 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 
 			while (oldChild !== null) {
 				const nextSibling = oldChild.nextSibling;
-				parent.removeChild(oldChild);
+				node.removeChild(oldChild);
 				oldChild = nextSibling;
 			}
 
 			for (; i < children.length; i++) {
 				const newChild = children[i];
-				parent.appendChild(
+				node.appendChild(
 					typeof newChild === "string"
 						? document.createTextNode(newChild)
 						: newChild,
@@ -212,9 +212,9 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 			}
 
 			if (children.length > 0) {
-				(parent as any).__cranky = true;
-			} else if ((parent as any).__cranky) {
-				(parent as any).__cranky = false;
+				(node as any).__cranky = true;
+			} else if ((node as any).__cranky) {
+				(node as any).__cranky = false;
 			}
 		}
 	}

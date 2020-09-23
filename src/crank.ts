@@ -650,7 +650,7 @@ export class Renderer<
 	 */
 	arrange(
 		_el: Element<string | symbol>,
-		_parent: TNode | TRoot,
+		_node: TNode | TRoot,
 		_children: Array<TNode | string>,
 	): unknown {
 		return;
@@ -790,7 +790,7 @@ function mountChildren<TNode, TScope, TRoot, TResult>(
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: TScope,
-	parent: Element,
+	el: Element,
 	children: Children,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
@@ -836,7 +836,7 @@ function mountChildren<TNode, TScope, TRoot, TResult>(
 		}
 	}
 
-	parent._ch = unwrap(newChildren as Array<NarrowedChild>);
+	el._ch = unwrap(newChildren as Array<NarrowedChild>);
 
 	if (async) {
 		let onvalues!: Function;
@@ -845,26 +845,26 @@ function mountChildren<TNode, TScope, TRoot, TResult>(
 			new Promise<any>((resolve) => (onvalues = resolve)),
 		]);
 
-		if (parent._onv) {
-			parent._onv(values1);
+		if (el._onv) {
+			el._onv(values1);
 		}
 
-		parent._onv = onvalues;
-		parent._inf = values1.then((values) =>
-			commit(renderer, scope, parent, normalize(values)),
+		el._onv = onvalues;
+		el._inf = values1.then((values) =>
+			commit(renderer, scope, el, normalize(values)),
 		);
-		return parent._inf;
+		return el._inf;
 	}
 
-	if (parent._onv) {
-		parent._onv(values);
-		parent._onv = undefined;
+	if (el._onv) {
+		el._onv(values);
+		el._onv = undefined;
 	}
 
 	return commit(
 		renderer,
 		scope,
-		parent,
+		el,
 		normalize(values as Array<ElementValue<TNode>>),
 	);
 }
@@ -924,15 +924,15 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: TScope,
-	parent: Element,
+	el: Element,
 	children: Children,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (typeof parent._ch === "undefined") {
-		return mountChildren(renderer, root, host, ctx, scope, parent, children);
+	if (typeof el._ch === "undefined") {
+		return mountChildren(renderer, root, host, ctx, scope, el, children);
 	}
 
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
-	const oldChildren = wrap(parent._ch);
+	const oldChildren = wrap(el._ch);
 	const newChildren = isNonStringIterable(children)
 		? Array.from(children)
 		: wrap(children).slice();
@@ -1015,7 +1015,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		}
 	}
 
-	parent._ch = unwrap(newChildren as Array<NarrowedChild>);
+	el._ch = unwrap(newChildren as Array<NarrowedChild>);
 
 	// cleanup
 	for (; i < oldChildren.length; i++) {
@@ -1040,27 +1040,27 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 			new Promise<any>((resolve) => (onvalues = resolve)),
 		]);
 
-		if (parent._onv) {
-			parent._onv(values1);
+		if (el._onv) {
+			el._onv(values1);
 		}
 
-		parent._onv = onvalues;
-		parent._inf = values1.then((values) =>
-			commit(renderer, scope, parent, normalize(values)),
+		el._onv = onvalues;
+		el._inf = values1.then((values) =>
+			commit(renderer, scope, el, normalize(values)),
 		);
-		return parent._inf;
+		return el._inf;
 	}
 
 	graveyard.forEach((child) => unmount(renderer, host, ctx, child));
-	if (parent._onv) {
-		parent._onv(values);
-		parent._onv = undefined;
+	if (el._onv) {
+		el._onv(values);
+		el._onv = undefined;
 	}
 
 	return commit(
 		renderer,
 		scope,
-		parent,
+		el,
 		normalize(values as Array<ElementValue<TNode>>),
 	);
 }
