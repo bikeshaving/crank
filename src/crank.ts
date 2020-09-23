@@ -2032,76 +2032,6 @@ function advance(ctx: Context): void {
 	}
 }
 
-// TODO: generator components which throw errors should be recoverable
-function handleChildError<TNode>(
-	ctx: Context,
-	err: unknown,
-): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (
-		ctx._f & Done ||
-		typeof ctx._it !== "object" ||
-		typeof ctx._it.throw !== "function"
-	) {
-		throw err;
-	}
-
-	resume(ctx);
-	let iteration: ChildrenIteration;
-	try {
-		ctx._f |= Executing;
-		iteration = ctx._it.throw(err) as any;
-	} catch (err) {
-		ctx._f |= Done;
-		throw err;
-	} finally {
-		ctx._f &= ~Executing;
-	}
-
-	if (isPromiseLike(iteration)) {
-		return iteration.then(
-			(iteration) => {
-				if (iteration.done) {
-					ctx._f |= Done;
-				}
-
-				return updateCtxChildren(ctx, iteration.value as Children);
-			},
-			(err) => {
-				ctx._f |= Done;
-				throw err;
-			},
-		);
-	}
-
-	if (iteration.done) {
-		ctx._f |= Done;
-	}
-
-	return updateCtxChildren(ctx, iteration.value as Children);
-}
-
-function propagateError<TNode>(
-	ctx: Context | undefined,
-	err: unknown,
-): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (ctx === undefined) {
-		throw err;
-	}
-
-	let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-	try {
-		result = handleChildError(ctx, err);
-	} catch (err) {
-		return propagateError<TNode>(ctx._pa, err);
-	}
-
-	if (isPromiseLike(result)) {
-		return result.catch((err) => propagateError<TNode>(ctx._pa, err));
-	}
-
-	return result;
-}
-
 function updateCtx<TNode>(
 	ctx: Context,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
@@ -2216,6 +2146,76 @@ function unmountCtx(ctx: Context): void {
 			}
 		}
 	}
+}
+
+// TODO: generator components which throw errors should be recoverable
+function handleChildError<TNode>(
+	ctx: Context,
+	err: unknown,
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+	if (
+		ctx._f & Done ||
+		typeof ctx._it !== "object" ||
+		typeof ctx._it.throw !== "function"
+	) {
+		throw err;
+	}
+
+	resume(ctx);
+	let iteration: ChildrenIteration;
+	try {
+		ctx._f |= Executing;
+		iteration = ctx._it.throw(err) as any;
+	} catch (err) {
+		ctx._f |= Done;
+		throw err;
+	} finally {
+		ctx._f &= ~Executing;
+	}
+
+	if (isPromiseLike(iteration)) {
+		return iteration.then(
+			(iteration) => {
+				if (iteration.done) {
+					ctx._f |= Done;
+				}
+
+				return updateCtxChildren(ctx, iteration.value as Children);
+			},
+			(err) => {
+				ctx._f |= Done;
+				throw err;
+			},
+		);
+	}
+
+	if (iteration.done) {
+		ctx._f |= Done;
+	}
+
+	return updateCtxChildren(ctx, iteration.value as Children);
+}
+
+function propagateError<TNode>(
+	ctx: Context | undefined,
+	err: unknown,
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+	if (ctx === undefined) {
+		throw err;
+	}
+
+	let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
+	try {
+		result = handleChildError(ctx, err);
+	} catch (err) {
+		return propagateError<TNode>(ctx._pa, err);
+	}
+
+	if (isPromiseLike(result)) {
+		return result.catch((err) => propagateError<TNode>(ctx._pa, err));
+	}
+
+	return result;
 }
 
 // TODO: uncomment and use in the Element interface below
