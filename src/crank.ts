@@ -1294,15 +1294,11 @@ function getListeners(
 }
 
 function clearEventListeners(ctx: Context): void {
-	if (typeof ctx._ls !== "undefined" && ctx._ls.length > 0) {
+	if (ctx._ls && ctx._ls.length > 0) {
 		for (const value of getChildValues(ctx._el)) {
 			if (isEventTarget(value)) {
-				for (const record of ctx._ls) {
-					value.removeEventListener(
-						record.type,
-						record.callback,
-						record.options,
-					);
+				for (const {type, callback, options} of ctx._ls) {
+					value.removeEventListener(type, callback, options);
 				}
 			}
 		}
@@ -1621,7 +1617,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	): void {
 		if (listener == null) {
 			return;
-		} else if (typeof this._ls === "undefined") {
+		} else if (!this._ls) {
 			this._ls = [];
 		}
 
@@ -1637,7 +1633,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		if (options.once) {
 			const self = this;
 			record.callback = function (this: any) {
-				if (typeof self._ls !== "undefined") {
+				if (self._ls) {
 					self._ls = self._ls.filter((record1) => record !== record1);
 
 					if (self._ls.length === 0) {
@@ -1674,7 +1670,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		listener: MappedEventListenerOrEventListenerObject<T> | null,
 		options?: EventListenerOptions | boolean,
 	): void {
-		if (listener == null || typeof this._ls === "undefined") {
+		if (listener == null || !this._ls) {
 			return;
 		}
 
