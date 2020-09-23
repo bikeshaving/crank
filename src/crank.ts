@@ -267,7 +267,7 @@ export class Element<TTag extends Tag = Tag> {
 
 	/**
 	 * @internal
-	 * onNewValues - the resolve function of a promise which represents the next child result. See the chase function for more info.
+	 * onvalues - the resolve function of a promise which represents the next child result.
 	 */
 	_onv: Function | undefined;
 
@@ -838,14 +838,35 @@ function mountChildren<TNode, TScope, TRoot, TResult>(
 
 	parent._ch = unwrap(newChildren as Array<NarrowedChild>);
 
-	let values1: Promise<Array<ElementValue<TNode>>> | Array<ElementValue<TNode>>;
 	if (async) {
-		values1 = Promise.all(values);
-	} else {
-		values1 = values as Array<ElementValue<TNode>>;
+		let onvalues!: Function;
+		const values1: Promise<Array<ElementValue<TNode>>> = Promise.race([
+			Promise.all(values),
+			new Promise<any>((resolve) => (onvalues = resolve)),
+		]);
+
+		if (parent._onv) {
+			parent._onv(values1);
+		}
+
+		parent._onv = onvalues;
+		parent._inf = values1.then((values) =>
+			commit(renderer, scope, parent, normalize(values)),
+		);
+		return parent._inf;
 	}
 
-	return chase(renderer, host, ctx, scope, parent, values1);
+	if (parent._onv) {
+		parent._onv(values);
+		parent._onv = undefined;
+	}
+
+	return commit(
+		renderer,
+		scope,
+		parent,
+		normalize(values as Array<ElementValue<TNode>>),
+	);
 }
 
 function update<TNode, TScope, TRoot, TResult>(
@@ -1009,60 +1030,39 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		graveyard.push(...childrenByKey.values());
 	}
 
-	let values1: Promise<Array<ElementValue<TNode>>> | Array<ElementValue<TNode>>;
 	if (async) {
-		values1 = Promise.all(values).finally(() =>
+		let values1 = Promise.all(values).finally(() =>
 			graveyard.forEach((child) => unmount(renderer, host, ctx, child)),
 		);
-	} else {
-		values1 = values as Array<ElementValue<TNode>>;
-		graveyard.forEach((child) => unmount(renderer, host, ctx, child));
-	}
+		let onvalues!: Function;
+		values1 = Promise.race([
+			values1,
+			new Promise<any>((resolve) => (onvalues = resolve)),
+		]);
 
-	return chase(renderer, host, ctx, scope, parent, values1);
-}
-
-/**
- * A function to race current child values with future child values.
- *
- * @remarks
- * When an element’s children update asynchronously, we race the resulting promise with the next update of the element’s children. By induction, this ensures that when any update to an element settles, all past updates to that same element will have settled as well. This prevents deadlocks and unnecessary awaiting when an element’s children have been cleared, for instance.
- */
-function chase<TNode, TScope, TRoot, TResult>(
-	renderer: Renderer<TNode, TScope, TRoot, TResult>,
-	host: Element<string | symbol>,
-	ctx: Context<unknown, TResult> | undefined,
-	scope: TScope,
-	el: Element,
-	values: Promise<Array<ElementValue<TNode>>> | Array<ElementValue<TNode>>,
-): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (isPromiseLike(values)) {
-		let onNewValues!: Function;
-		const newValues = new Promise<Array<ElementValue<TNode>>>(
-			(resolve) => (onNewValues = resolve),
-		);
-
-		const valuesP = Promise.race([values, newValues]);
-		if (typeof el._onv === "function") {
-			el._onv(valuesP);
+		if (parent._onv) {
+			parent._onv(values1);
 		}
 
-		el._onv = onNewValues;
-
-		const value = valuesP.then((values) =>
-			commit(renderer, scope, el, normalize(values)),
+		parent._onv = onvalues;
+		parent._inf = values1.then((values) =>
+			commit(renderer, scope, parent, normalize(values)),
 		);
-
-		el._inf = value;
-		return value;
+		return parent._inf;
 	}
 
-	if (typeof el._onv === "function") {
-		el._onv(values);
-		el._onv = undefined;
+	graveyard.forEach((child) => unmount(renderer, host, ctx, child));
+	if (parent._onv) {
+		parent._onv(values);
+		parent._onv = undefined;
 	}
 
-	return commit(renderer, scope, el, normalize(values));
+	return commit(
+		renderer,
+		scope,
+		parent,
+		normalize(values as Array<ElementValue<TNode>>),
+	);
 }
 
 function commit<TNode, TScope, TRoot, TResult>(
