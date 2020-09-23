@@ -1098,16 +1098,19 @@ function commit<TNode, TScope, TRoot, TResult>(
 		value = el._n;
 	}
 
-	el._f |= Committed;
-	if (typeof el.ref === "function") {
+	if (!(el._f & Committed)) {
+		el._f |= Committed;
+	}
+
+	if (el.ref) {
 		el.ref(renderer.read(value));
 	}
 
-	if (typeof el._inf !== "undefined") {
+	if (el._inf) {
 		el._inf = undefined;
 	}
 
-	if (typeof el._fb !== "undefined") {
+	if (el._fb) {
 		el._fb = undefined;
 	}
 
