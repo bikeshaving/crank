@@ -780,7 +780,9 @@ function mountChildren<TNode, TScope, TRoot, TResult>(
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
 	const newChildren = isNonStringIterable(children)
 		? Array.from(children)
-		: wrap(children).slice();
+		: children === undefined
+		? []
+		: [children];
 	let async = false;
 	let seen: Set<Key> | undefined;
 	for (let i = 0; i < newChildren.length; i++) {
@@ -919,7 +921,9 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	const oldChildren = wrap(el._ch);
 	const newChildren = isNonStringIterable(children)
 		? Array.from(children)
-		: wrap(children).slice();
+		: children === undefined
+		? []
+		: [children];
 	const graveyard: Array<Element> = [];
 	let i = 0;
 	let async = false;
@@ -1181,9 +1185,9 @@ function normalizeOptions(
 		return {capture: options};
 	} else if (options == null) {
 		return {};
-	} else {
-		return options;
 	}
+
+	return options;
 }
 
 function isEventTarget(value: any): value is EventTarget {
