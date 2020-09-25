@@ -1549,29 +1549,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		this._el = el;
 	}
 
-	consume<TKey extends keyof ProvisionMap>(key: TKey): ProvisionMap[TKey];
-	consume(key: unknown): any;
-	consume(key: unknown): any {
-		for (let parent = this._pa; parent !== undefined; parent = parent._pa) {
-			if (parent._ps && parent._ps.has(key)) {
-				return parent._ps.get(key)!;
-			}
-		}
-	}
-
-	provide<TKey extends keyof ProvisionMap>(
-		key: TKey,
-		value: ProvisionMap[TKey],
-	): void;
-	provide(key: unknown, value: any): void;
-	provide(key: unknown, value: any): void {
-		if (!this._ps) {
-			this._ps = new Map();
-		}
-
-		this._ps.set(key, value);
-	}
-
 	/**
 	 * The current props of the associated element.
 	 *
@@ -1681,6 +1658,29 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		}
 
 		this._cs.add(callback);
+	}
+
+	consume<TKey extends keyof ProvisionMap>(key: TKey): ProvisionMap[TKey];
+	consume(key: unknown): any;
+	consume(key: unknown): any {
+		for (let parent = this._pa; parent !== undefined; parent = parent._pa) {
+			if (parent._ps && parent._ps.has(key)) {
+				return parent._ps.get(key)!;
+			}
+		}
+	}
+
+	provide<TKey extends keyof ProvisionMap>(
+		key: TKey,
+		value: ProvisionMap[TKey],
+	): void;
+	provide(key: unknown, value: any): void;
+	provide(key: unknown, value: any): void {
+		if (!this._ps) {
+			this._ps = new Map();
+		}
+
+		this._ps.set(key, value);
 	}
 
 	addEventListener<T extends string>(
