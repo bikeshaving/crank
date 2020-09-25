@@ -1239,105 +1239,6 @@ function unmount<TNode, TScope, TRoot, TResult>(
 	}
 }
 
-/*** EVENT UTILITIES ***/
-
-// EVENT PHASE CONSTANTS
-// https://developer.mozilla.org/en-US/docs/Web/API/Event/eventPhase
-const NONE = 0;
-const CAPTURING_PHASE = 1;
-const AT_TARGET = 2;
-const BUBBLING_PHASE = 3;
-
-/**
- * A map of event type strings to Event subclasses. Can be extended via
- * TypeScript module augmentation to have strongly typed event listeners.
- */
-export interface EventMap extends Crank.EventMap {
-	[type: string]: Event;
-}
-
-type MappedEventListener<T extends string> = (ev: EventMap[T]) => unknown;
-
-type MappedEventListenerOrEventListenerObject<T extends string> =
-	| MappedEventListener<T>
-	| {handleEvent: MappedEventListener<T>};
-
-interface EventListenerRecord {
-	type: string;
-	listener: MappedEventListenerOrEventListenerObject<any>;
-	callback: MappedEventListener<any>;
-	options: AddEventListenerOptions;
-}
-
-function normalizeOptions(
-	options: AddEventListenerOptions | boolean | null | undefined,
-): AddEventListenerOptions {
-	if (typeof options === "boolean") {
-		return {capture: options};
-	} else if (options == null) {
-		return {};
-	}
-
-	return options;
-}
-
-function isEventTarget(value: any): value is EventTarget {
-	return (
-		value != null &&
-		typeof value.addEventListener === "function" &&
-		typeof value.removeEventListener === "function" &&
-		typeof value.dispatchEvent === "function"
-	);
-}
-
-function setEventProperty<T extends keyof Event>(
-	ev: Event,
-	key: T,
-	value: Event[T],
-): void {
-	Object.defineProperty(ev, key, {value, writable: false, configurable: true});
-}
-
-/**
- * A function to reconstruct an array of every listener given a context and a
- * host element.
- *
- * @remarks
- * This function exploits the fact that contexts retain their nearest ancestor
- * host element. We can determine all the contexts which are directly listening
- * to an element by traversing up the context tree and checking that the host
- * element passed in matches the context’s host property.
- */
-function getListeners(
-	ctx: Context | undefined,
-	host: Element<string | symbol>,
-): Array<EventListenerRecord> | undefined {
-	let listeners: Array<EventListenerRecord> | undefined;
-	while (ctx !== undefined && ctx._ho === host) {
-		if (typeof ctx._ls !== "undefined") {
-			listeners = (listeners || []).concat(ctx._ls);
-		}
-
-		ctx = ctx._pa;
-	}
-
-	return listeners;
-}
-
-function clearEventListeners(ctx: Context): void {
-	if (ctx._ls && ctx._ls.length > 0) {
-		for (const value of getChildValues(ctx._el)) {
-			if (isEventTarget(value)) {
-				for (const {type, callback, options} of ctx._ls) {
-					value.removeEventListener(type, callback, options);
-				}
-			}
-		}
-
-		ctx._ls = undefined;
-	}
-}
-
 // CONTEXT FLAGS
 /**
  * A flag which is set when the component is being updated by the parent and
@@ -2236,6 +2137,105 @@ function unmountCtx(ctx: Context): void {
 				iteration.catch((err) => propagateError<unknown>(ctx._pa, err));
 			}
 		}
+	}
+}
+
+/*** EVENT TARGET UTILITIES ***/
+
+// EVENT PHASE CONSTANTS
+// https://developer.mozilla.org/en-US/docs/Web/API/Event/eventPhase
+const NONE = 0;
+const CAPTURING_PHASE = 1;
+const AT_TARGET = 2;
+const BUBBLING_PHASE = 3;
+
+/**
+ * A map of event type strings to Event subclasses. Can be extended via
+ * TypeScript module augmentation to have strongly typed event listeners.
+ */
+export interface EventMap extends Crank.EventMap {
+	[type: string]: Event;
+}
+
+type MappedEventListener<T extends string> = (ev: EventMap[T]) => unknown;
+
+type MappedEventListenerOrEventListenerObject<T extends string> =
+	| MappedEventListener<T>
+	| {handleEvent: MappedEventListener<T>};
+
+interface EventListenerRecord {
+	type: string;
+	listener: MappedEventListenerOrEventListenerObject<any>;
+	callback: MappedEventListener<any>;
+	options: AddEventListenerOptions;
+}
+
+function normalizeOptions(
+	options: AddEventListenerOptions | boolean | null | undefined,
+): AddEventListenerOptions {
+	if (typeof options === "boolean") {
+		return {capture: options};
+	} else if (options == null) {
+		return {};
+	}
+
+	return options;
+}
+
+function isEventTarget(value: any): value is EventTarget {
+	return (
+		value != null &&
+		typeof value.addEventListener === "function" &&
+		typeof value.removeEventListener === "function" &&
+		typeof value.dispatchEvent === "function"
+	);
+}
+
+function setEventProperty<T extends keyof Event>(
+	ev: Event,
+	key: T,
+	value: Event[T],
+): void {
+	Object.defineProperty(ev, key, {value, writable: false, configurable: true});
+}
+
+/**
+ * A function to reconstruct an array of every listener given a context and a
+ * host element.
+ *
+ * @remarks
+ * This function exploits the fact that contexts retain their nearest ancestor
+ * host element. We can determine all the contexts which are directly listening
+ * to an element by traversing up the context tree and checking that the host
+ * element passed in matches the context’s host property.
+ */
+function getListeners(
+	ctx: Context | undefined,
+	host: Element<string | symbol>,
+): Array<EventListenerRecord> | undefined {
+	let listeners: Array<EventListenerRecord> | undefined;
+	while (ctx !== undefined && ctx._ho === host) {
+		if (typeof ctx._ls !== "undefined") {
+			listeners = (listeners || []).concat(ctx._ls);
+		}
+
+		ctx = ctx._pa;
+	}
+
+	return listeners;
+}
+
+function clearEventListeners(ctx: Context): void {
+	if (ctx._ls && ctx._ls.length > 0) {
+		for (const value of getChildValues(ctx._el)) {
+			if (isEventTarget(value)) {
+				for (const {type, callback, options} of ctx._ls) {
+					value.removeEventListener(type, callback, options);
+				}
+			}
+		}
+
+		ctx._ls = undefined;
 	}
 }
 
