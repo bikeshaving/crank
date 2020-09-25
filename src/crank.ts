@@ -142,7 +142,7 @@ export type Children = Child | ChildIterable;
 // WHAT ARE WE DOING TO THE CHILDREN???
 /**
  * All values in the element tree are narrowed from the union in Child to
- * NarrowedChild during rendering. This greatly simplifies element diffing.
+ * NarrowedChild during rendering, to simplify element diffing.
  */
 type NarrowedChild = Element | string | undefined;
 
@@ -957,11 +957,8 @@ function update<TNode, TScope, TRoot, TResult>(
 	el: Element,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (typeof el.tag === "function") {
-		if (typeof el._ctx === "object") {
-			return updateCtx(el._ctx);
-		}
-
-		return undefined;
+		// el._ctx should probably never be undefined here
+		return el._ctx ? updateCtx(el._ctx) : undefined;
 	} else if (el.tag === Raw) {
 		return commit(renderer, scope, el, []);
 	} else if (el.tag !== Fragment) {
