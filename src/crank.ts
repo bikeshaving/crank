@@ -9,12 +9,22 @@ function unwrap<T>(arr: Array<T>): Array<T> | T | undefined {
 	return arr.length > 1 ? arr : arr[0];
 }
 
-function isNonStringIterable(value: any): value is Iterable<unknown> & object {
+type NonStringIterable<T> = Iterable<T> & object;
+
+function isNonStringIterable(value: any): value is NonStringIterable<unknown> {
 	return (
 		value != null &&
 		typeof value !== "string" &&
 		typeof value[Symbol.iterator] === "function"
 	);
+}
+
+function arrayify<T>(value: NonStringIterable<T> | T | undefined): Array<T> {
+	return value === undefined
+		? []
+		: isNonStringIterable(value)
+		? Array.from(value)
+		: [value];
 }
 
 function isIteratorLike(
@@ -864,9 +874,7 @@ function mountChildren<TNode, TScope, TRoot, TResult>(
 	el: Element,
 	children: Children,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	const newChildren = isNonStringIterable(children)
-		? Array.from(children)
-		: wrap(children);
+	const newChildren = arrayify(children);
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
 	let async = false;
 	let seen: Set<Key> | undefined;
@@ -1003,9 +1011,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	}
 
 	const oldChildren = wrap(el._ch);
-	const newChildren = isNonStringIterable(children)
-		? Array.from(children)
-		: wrap(children);
+	const newChildren = arrayify(children);
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
 	const graveyard: Array<Element> = [];
 	let i = 0;
