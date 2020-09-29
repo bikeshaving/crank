@@ -19,8 +19,10 @@ function isNonStringIterable(value: any): value is NonStringIterable<unknown> {
 	);
 }
 
-function arrayify<T>(value: NonStringIterable<T> | T | undefined): Array<T> {
-	return value === undefined
+function arrayify<T>(
+	value: NonStringIterable<T> | T | null | undefined,
+): Array<T> {
+	return value == null
 		? []
 		: isNonStringIterable(value)
 		? Array.from(value)
@@ -824,8 +826,7 @@ function diff<TNode, TScope, TRoot, TResult>(
 			}
 		}
 	} else if (typeof newChild === "string") {
-		newChild = renderer.escape(newChild, scope);
-		value = newChild;
+		value = renderer.escape(newChild, scope);
 	}
 
 	return [newChild, value];
