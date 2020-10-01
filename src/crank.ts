@@ -1208,7 +1208,7 @@ function unmount<TNode, TScope, TRoot, TResult>(
 	} else if (el.tag === Portal) {
 		host = el as Element<symbol>;
 		renderer.arrange(host, host.props.root, []);
-		renderer.complete(el.props.root);
+		renderer.complete(host.props.root);
 	} else if (el.tag !== Fragment) {
 		if (isEventTarget(el._n)) {
 			const listeners = getListeners(ctx, host);
