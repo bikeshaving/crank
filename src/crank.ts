@@ -1473,7 +1473,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	}
 
 	*[Symbol.iterator](): Generator<TProps> {
-		while (!(this._f & IsUnmounted)) {
+		while (!(this._f & IsDone)) {
 			if (this._f & IsIterating) {
 				throw new Error("Context iterated twice without a yield");
 			} else if (this._f & IsAsyncGen) {
@@ -1486,9 +1486,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	}
 
 	async *[Symbol.asyncIterator](): AsyncGenerator<TProps> {
-		// We use a do while loop rather than a while loop to handle a race
-		// condition where an async generator component is mounted and
-		// unmounted synchronously.
+		// We use a do while loop rather than a while loop to handle an edge case
+		// where an async generator component is unmounted synchronously.
 		do {
 			if (this._f & IsIterating) {
 				throw new Error("Context iterated twice without a yield");
@@ -1501,13 +1500,13 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 				this._f &= ~IsAvailable;
 			} else {
 				await new Promise((resolve) => (this._oa = resolve));
-				if (this._f & IsUnmounted) {
+				if (this._f & IsDone) {
 					break;
 				}
 			}
 
 			yield this._el.props;
-		} while (!(this._f & IsUnmounted));
+		} while (!(this._f & IsDone));
 	}
 
 	/**
