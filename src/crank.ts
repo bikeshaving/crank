@@ -1374,7 +1374,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 */
 	_oa: (() => unknown) | undefined;
 
-	// See the runCtx/stepCtx/advanceCtx functions for more notes on
+	// See the stepCtx/advanceCtx/runCtx functions for more notes on
 	// inflight/enqueued block/value.
 	/**
 	 * @internal
@@ -1763,21 +1763,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 /*** PRIVATE CONTEXT FUNCTIONS ***/
 
-/**
- * Called to make props available to the Context async iterator for async
- * generator components.
- */
-function resumeCtx(ctx: Context): void {
-	if (ctx._oa) {
-		ctx._oa();
-		ctx._oa = undefined;
-	} else {
-		ctx._f |= IsAvailable;
-	}
-}
-
 /*
- * NOTE: The functions runCtx, stepCtx and advanceCtx work together to
+ * NOTE: The functions stepCtx, advanceCtx and runCtx work together to
  * implement the async queueing behavior of components. The runCtx function
  * calls the stepCtx function, which returns two results in a tuple. The first
  * result, called the “block,” is a possible promise which represents the
@@ -1787,78 +1774,12 @@ function resumeCtx(ctx: Context): void {
  * according to whether the component is currently blocked. The “inflight”
  * block/value properties are the currently executing update, and the
  * “enqueued” block/value properties represent an enqueued next stepCtx.
- * Enqueued steps are dequeued in a finally callback on the current blocking
- * promise.
+ * Enqueued steps are dequeued in a finally callback on the blocking promise.
  */
 
 /**
- * Enqueues and executes the component associated with the context.
- */
-function runCtx<TNode, TResult>(
-	ctx: Context<unknown, TResult>,
-): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (!ctx._ib) {
-		try {
-			let [block, value] = stepCtx<TNode, TResult>(ctx);
-			if (isPromiseLike(block)) {
-				ctx._ib = block
-					.catch((err) => {
-						if (!(ctx._f & IsUpdating)) {
-							return propagateError<TNode>(ctx._pa, err);
-						}
-					})
-					.finally(() => advanceCtx(ctx));
-			}
-
-			if (isPromiseLike(value)) {
-				ctx._iv = value;
-				ctx._el._inf = value;
-			}
-
-			return value;
-		} catch (err) {
-			if (!(ctx._f & IsUpdating)) {
-				return propagateError<TNode>(ctx._pa, err);
-			}
-
-			throw err;
-		}
-	} else if (ctx._f & IsAsyncGen) {
-		return ctx._iv;
-	} else if (!ctx._eb) {
-		let resolve: Function;
-		ctx._eb = ctx._ib
-			.then(() => {
-				try {
-					const [block, value] = stepCtx<TNode, TResult>(ctx);
-					resolve(value);
-					if (isPromiseLike(value)) {
-						ctx._el._inf = value;
-					}
-
-					if (isPromiseLike(block)) {
-						return block.catch((err) => {
-							if (!(ctx._f & IsUpdating)) {
-								return propagateError<TNode>(ctx._pa, err);
-							}
-						});
-					}
-				} catch (err) {
-					if (!(ctx._f & IsUpdating)) {
-						return propagateError<TNode>(ctx._pa, err);
-					}
-				}
-			})
-			.finally(() => advanceCtx(ctx));
-		ctx._ev = new Promise((resolve1) => (resolve = resolve1));
-	}
-
-	return ctx._ev;
-}
-
-/**
- * The stepCtx function is responsible for executing the component and handling
- * all the different component types.
+ * This function is responsible for executing the component and handling all
+ * the different component types.
  *
  * @returns A tuple [block, value]
  * block - A possible promise which represents the duration during which the
@@ -2020,6 +1941,84 @@ function advanceCtx(ctx: Context): void {
 	ctx._ev = undefined;
 	if (ctx._f & IsAsyncGen && !(ctx._f & IsDone)) {
 		runCtx(ctx);
+	}
+}
+
+/**
+ * Enqueues and executes the component associated with the context.
+ */
+function runCtx<TNode, TResult>(
+	ctx: Context<unknown, TResult>,
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+	if (!ctx._ib) {
+		try {
+			let [block, value] = stepCtx<TNode, TResult>(ctx);
+			if (isPromiseLike(block)) {
+				ctx._ib = block
+					.catch((err) => {
+						if (!(ctx._f & IsUpdating)) {
+							return propagateError<TNode>(ctx._pa, err);
+						}
+					})
+					.finally(() => advanceCtx(ctx));
+			}
+
+			if (isPromiseLike(value)) {
+				ctx._iv = value;
+				ctx._el._inf = value;
+			}
+
+			return value;
+		} catch (err) {
+			if (!(ctx._f & IsUpdating)) {
+				return propagateError<TNode>(ctx._pa, err);
+			}
+
+			throw err;
+		}
+	} else if (ctx._f & IsAsyncGen) {
+		return ctx._iv;
+	} else if (!ctx._eb) {
+		let resolve: Function;
+		ctx._eb = ctx._ib
+			.then(() => {
+				try {
+					const [block, value] = stepCtx<TNode, TResult>(ctx);
+					resolve(value);
+					if (isPromiseLike(value)) {
+						ctx._el._inf = value;
+					}
+
+					if (isPromiseLike(block)) {
+						return block.catch((err) => {
+							if (!(ctx._f & IsUpdating)) {
+								return propagateError<TNode>(ctx._pa, err);
+							}
+						});
+					}
+				} catch (err) {
+					if (!(ctx._f & IsUpdating)) {
+						return propagateError<TNode>(ctx._pa, err);
+					}
+				}
+			})
+			.finally(() => advanceCtx(ctx));
+		ctx._ev = new Promise((resolve1) => (resolve = resolve1));
+	}
+
+	return ctx._ev;
+}
+
+/**
+ * Called to make props available to the Context async iterator for async
+ * generator components.
+ */
+function resumeCtx(ctx: Context): void {
+	if (ctx._oa) {
+		ctx._oa();
+		ctx._oa = undefined;
+	} else {
+		ctx._f |= IsAvailable;
 	}
 }
 
