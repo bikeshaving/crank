@@ -11,22 +11,15 @@ function unwrap<T>(arr: Array<T>): Array<T> | T | undefined {
 
 type NonStringIterable<T> = Iterable<T> & object;
 
-function isNonStringIterable(value: any): value is NonStringIterable<unknown> {
-	return (
-		value != null &&
-		typeof value !== "string" &&
-		typeof value[Symbol.iterator] === "function"
-	);
-}
-
 function arrayify<T>(
 	value: NonStringIterable<T> | T | null | undefined,
 ): Array<T> {
 	return value == null
 		? []
-		: isNonStringIterable(value)
-		? Array.from(value)
-		: [value];
+		: typeof value !== "string" &&
+		  typeof (value as any)[Symbol.iterator] === "function"
+		? Array.from(value as any)
+		: [value as any];
 }
 
 function isIteratorLike(
@@ -148,14 +141,16 @@ export type Children = Child | ChildIterable;
  */
 type NarrowedChild = Element | string | undefined;
 
-function narrow(child: Child): NarrowedChild {
-	if (typeof child === "boolean" || child == null) {
+function narrow(value: Children): NarrowedChild {
+	if (typeof value === "boolean" || value == null) {
 		return undefined;
-	} else if (typeof child === "string" || isElement(child)) {
-		return child;
+	} else if (typeof value === "string" || isElement(value)) {
+		return value;
+	} else if (typeof (value as any)[Symbol.iterator] === "function") {
+		return createElement(Fragment, null, value);
 	}
 
-	return child.toString();
+	return value.toString();
 }
 
 /**
@@ -883,13 +878,7 @@ function mountChildren<TNode, TScope, TRoot, TResult>(
 	let async = false;
 	let seen: Set<Key> | undefined;
 	for (let i = 0; i < newChildren.length; i++) {
-		let child = newChildren[i] as NarrowedChild;
-		if (isNonStringIterable(child)) {
-			child = createElement(Fragment, null, child);
-		} else {
-			child = narrow(child);
-		}
-
+		let child = narrow(newChildren[i]);
 		if (typeof child === "object" && typeof child.key !== "undefined") {
 			if (seen === undefined) {
 				seen = new Set();
@@ -1022,13 +1011,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	// TODO: switch to mountChildren if there are no more children
 	for (let j = 0; j < newChildren.length; j++) {
 		let oldChild = oldChildren[i];
-		let newChild = newChildren[j] as NarrowedChild;
-		if (isNonStringIterable(newChild)) {
-			newChild = createElement(Fragment, null, newChild);
-		} else {
-			newChild = narrow(newChild);
-		}
-
+		let newChild = narrow(newChildren[j]);
 		// ALIGNMENT
 		let oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
 		let newKey = typeof newChild === "object" ? newChild.key : undefined;
@@ -2037,10 +2020,6 @@ function updateCtxChildren<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
 	children: Children,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (isNonStringIterable(children)) {
-		children = createElement(Fragment, null, children);
-	}
-
 	return updateChildren<TNode, unknown, unknown, TResult>(
 		ctx._re as Renderer<TNode, unknown, unknown, TResult>,
 		ctx._rt, // root
@@ -2048,7 +2027,7 @@ function updateCtxChildren<TNode, TResult>(
 		ctx,
 		ctx._sc, // scope
 		ctx._el, // element
-		children,
+		narrow(children),
 	);
 }
 
