@@ -371,12 +371,12 @@ export function createElement<TTag extends Tag>(
 			if (name === "crank-key") {
 				// NOTE: We have to make sure we don’t assign null to the key because
 				// we don’t check for null keys in the diffing functions.
-				if (props[name] != null) {
-					key = props[name];
+				if (props["crank-key"] != null) {
+					key = props["crank-key"];
 				}
 			} else if (name === "crank-ref") {
 				if (typeof props["crank-ref"] === "function") {
-					ref = props[name];
+					ref = props["crank-ref"];
 				}
 			} else {
 				props1[name] = props[name];
@@ -458,7 +458,14 @@ function normalize<TNode>(
 			// pass
 		} else if (typeof value === "string") {
 			buffer = (buffer || "") + value;
-		} else if (Array.isArray(value)) {
+		} else if (!Array.isArray(value)) {
+			if (buffer) {
+				result.push(buffer);
+				buffer = undefined;
+			}
+
+			result.push(value);
+		} else {
 			// We could use recursion here but it’s just easier to do it inline.
 			for (let j = 0; j < value.length; j++) {
 				const value1 = value[j];
@@ -475,13 +482,6 @@ function normalize<TNode>(
 					result.push(value1);
 				}
 			}
-		} else {
-			if (buffer) {
-				result.push(buffer);
-				buffer = undefined;
-			}
-
-			result.push(value);
 		}
 	}
 
@@ -1834,7 +1834,7 @@ function stepCtx<TNode, TResult>(
 	}
 
 	let oldValue: Promise<TResult> | TResult;
-	if (typeof ctx._el._inf === "object") {
+	if (ctx._el._inf) {
 		oldValue = ctx._el._inf.then(
 			(value) => ctx._re.read(value),
 			() => ctx._re.read(undefined),
@@ -2091,7 +2091,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 	}
 
 	ctx._f &= ~IsUpdating;
-	if (typeof ctx._ss === "object" && ctx._ss.size > 0) {
+	if (ctx._ss && ctx._ss.size > 0) {
 		// NOTE: We have to clear the set of callbacks before calling them, because
 		// a callback which refreshes the component would otherwise cause a stack
 		// overflow.
@@ -2108,7 +2108,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 function unmountCtx(ctx: Context): void {
 	ctx._f |= IsUnmounted;
 	clearEventListeners(ctx);
-	if (typeof ctx._cs === "object") {
+	if (ctx._cs) {
 		const value = ctx._re.read(getValue(ctx._el));
 		for (const cleanup of ctx._cs) {
 			cleanup(value);
@@ -2120,7 +2120,7 @@ function unmountCtx(ctx: Context): void {
 	if (!(ctx._f & IsDone)) {
 		ctx._f |= IsDone;
 		resumeCtx(ctx);
-		if (typeof ctx._it === "object" && typeof ctx._it.return === "function") {
+		if (ctx._it && typeof ctx._it.return === "function") {
 			let iteration: ChildrenIteration;
 			try {
 				ctx._f |= IsExecuting;
