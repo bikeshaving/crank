@@ -302,7 +302,7 @@ export class Element<TTag extends Tag = Tag> {
 	 * rendered values in its place. This is mainly important when the nearest
 	 * host is rearranged concurrently.
 	 */
-	_fb: Element | undefined;
+	_fb: NarrowedChild;
 
 	/**
 	 * @internal
@@ -498,7 +498,11 @@ function normalize<TNode>(
  */
 function getValue<TNode>(el: Element): ElementValue<TNode> {
 	if (el._fb) {
-		return getValue<TNode>(el._fb);
+		if (typeof el._fb === "object") {
+			return getValue<TNode>(el._fb);
+		}
+
+		return el._fb;
 	} else if (el.tag === Portal) {
 		return undefined;
 	} else if (typeof el.tag !== "function" && el.tag !== Fragment) {
@@ -820,8 +824,7 @@ function diff<TNode, TScope, TRoot, TResult>(
 			}
 
 			value = mount(renderer, root, host, ctx, scope, newChild);
-
-			if (typeof oldChild === "object" && isPromiseLike(value)) {
+			if (isPromiseLike(value)) {
 				newChild._fb = oldChild;
 			}
 		}
