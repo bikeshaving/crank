@@ -1,8 +1,12 @@
-# Writing Crank.js from Scratch
+---
+title: Writing Crank from Scratch
+publishDate: 2020-10-10
+---
 
 One of my goals when authoring Crank.js was to create a framework which was so simple that any intermediate JavaScript developer could conceivably write it from scratch without reference. What I think makes this uniquely achievable for Crank is that its component model is built on top of JavaScript’s two main control flow abstractions, iterators and promises, allowing developers to write components exclusively with sync and async functions and generator functions.
 
 The following is an attempt to prove that I’ve met this goal by rewriting the bulk of Crank’s core logic as a series of additive commits, with explanations of what I’m doing at each step.
+<!-- truncate -->
 
 Even if you don’t plan on using Crank, this essay may yet prove informative in that it will demonstrate the basics of how virtual DOM libraries work, and show you some advanced techniques for working with iterators and promises. I will also use this essay to justify some of the design decisions I made along the way, as I make them. Moreover, the end result won’t just be a toy library, but something which looks very similar to Crank’s actual source code, making the jump from reading this essay to contributing to the project much easier, should you be so inclined.
 
@@ -12,20 +16,20 @@ At each step, we’ll edit a single file which serves as the Crank module, and p
 <!DOCTYPE HTML>
 <html>
 <head>
-<meta http-equiv="content-type" content="text/html; charset=utf-8">
-<title>Crank from Scratch</title>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script>
-Babel.registerPreset("crank", {
-  presets: [
-    [Babel.availablePresets.react, {
-      runtime: "classic",
-      pragma: "createElement",
-      pragmaFrag: "''",
-    }],
-  ],
-});
-</script>
+  <meta charset="utf-8"/>
+  <title>Crank from Scratch</title>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script>
+  Babel.registerPreset("crank", {
+    presets: [
+      [Babel.availablePresets.react, {
+        runtime: "classic",
+        pragma: "createElement",
+        pragmaFrag: "''",
+      }],
+    ],
+  });
+  </script>
 </head>
 <body>
   <div id="app"></div>
@@ -48,8 +52,8 @@ This HTML file uses the [Babel standalone transpiler](https://babeljs.io/docs/en
 <!DOCTYPE HTML>
 <html>
 <head>
-  <meta http-equiv="content-type" content="text/html; charset=utf-8">
-  <title>Crank from scratch</title>
+  <meta charset="utf-8"/>
+  <title>Crank from Scratch</title>
 </head>
 <body>
   <div id="app"></div>
@@ -879,7 +883,7 @@ After Crank’s release, multiple people objected to this unusual usage of `this
 
 3. **Components are a special construct which are somewhere between a class and a function.** While all components in Crank are defined with functions, we need a way to define “instance” methods and properties like `refresh()` and have them available within component declarations. I like to reference [this tweet thread](https://twitter.com/dan_abramov/status/1093694465917751298) by React maintainer Dan Abramov, about components as an abstraction. He writes:
 
-   > … React is traditionally described either in FP terms (pure functions) or in OOP terms (stateful classes). Both are only approximations … Why are these models insufficient to describe React? “Pure function” model doesn’t describe local state which is an essential React feature. “Class” model doesn’t explain pure-ish render, disawoving inheritance, lack of direct instantiation, and “receiving” props …
+   > React is traditionally described either in FP terms (pure functions) or in OOP terms (stateful classes). Both are only approximations … Why are these models insufficient to describe React? “Pure function” model doesn’t describe local state which is an essential React feature. “Class” model doesn’t explain pure-ish render, disawoving inheritance, lack of direct instantiation, and “receiving” props …
    >
    > What is a component? … It’s a thing of its own. A stateful function with effects. Your language just doesn’t have a primitive to express it.
 
