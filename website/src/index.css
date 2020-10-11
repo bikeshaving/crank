@@ -194,7 +194,6 @@ li {
 .content {
 	margin: 0 auto;
 	padding: 2rem 1rem;
-	min-height: 75vh;
 	> :first-child {
 		margin-top: 0;
 	}
@@ -279,7 +278,7 @@ li {
 pre {
 	padding: .8em;
 	margin: 1.5em 0;
-	font-size: .9rem;
+	font-size: .9em;
 	background: #e1e4ea;
 	color: #0b2f5b;
 	overflow: auto;
@@ -289,9 +288,9 @@ pre {
 :not(pre) > code {
 	padding: 0 .1em;
 	margin: 0;
+	font-size: .9em;
 	display: inline;
-	background: #e1e4ea;
-	color: #0b2f5b;
+	background: #0b2f5b;
 }
 
 .token.comment,
@@ -315,17 +314,23 @@ pre {
 .token.boolean,
 .token.number,
 .token.constant,
-.token.symbol,
-.token.deleted {
+.token.symbol {
 	color: #3399ff;
 }
 
 .token.selector,
 .token.attr-name,
 .token.char,
-.token.builtin,
-.token.inserted {
+.token.builtin {
 	color: #0b2f5b;
+}
+
+.token.deleted {
+	color: #c80003;
+}
+
+.token.inserted {
+	color: #3a9423;
 }
 
 .token.operator,

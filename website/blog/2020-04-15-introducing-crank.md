@@ -1,6 +1,6 @@
 ---
 title: Introducing Crank
-publishDate: 2020-04-15T19:18:41.371Z
+publishDate: 2020-04-15
 ---
 
 After months of development, I’m happy to introduce Crank.js, a new framework for creating JSX-driven components with functions, promises and generators. And I know what you’re thinking: *oh no, not another web framework.* There are already so many of them out there and each carries a non-negligible cost in terms of learning it and building an ecosystem to surround it, so it makes sense that you would reject newcomers if only to avoid the deep sense of exhaustion which has come to be known amongst front-end developers as “JavaScript fatigue.” Therefore, this post is both an introduction to Crank as well as an apology: I’m sorry for creating yet another framework, and I hope that by explaining the circumstances which led me to do so, you will forgive me.

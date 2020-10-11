@@ -315,6 +315,7 @@ function BlogContent({title, html, publishDate}: BlogContentProps) {
 			month: "long",
 			year: "numeric",
 			day: "numeric",
+			timeZone: "UTC",
 		});
 	return (
 		<Fragment>
@@ -420,6 +421,7 @@ function GuidePage({title, html, docs, url}: GuidePageProps): Element {
 	await fs.emptyDir(dist);
 	const docs = await parseDocs(path.join(__dirname, "guides"));
 	const posts = await parseDocs(path.join(__dirname, "blog"));
+	posts.reverse();
 	await fs.copy(path.join(__dirname, "static"), path.join(dist, "static"));
 	await fs.writeFile(
 		path.join(dist, "index.html"),
