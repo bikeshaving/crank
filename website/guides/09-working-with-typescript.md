@@ -4,7 +4,7 @@ title: Working with TypeScript
 
 Crank is written in TypeScript, and provides some types out of box so you can type-check your components and elements.
 
-## Typing `this` in Components
+## Typing this in Components
 Trying to reference `this` in a component without a `this` type annotation will throw a type error in TypeScript‘s strict mode (you’ll see a message like `'this' implicitly has type 'any' because it does not have a type annotation`). Crank exports the `Context` class so you can annotate your components `this` as `Context`:
 
 ```tsx
@@ -37,7 +37,7 @@ function SyncFn(): Element {
 function *SyncGen(): Generator<Element> {
   while (true) {
     yield <div>Hello world</div>;
-  } 
+  }
 }
 
 async function AsyncFn(): Promise<Element> {
@@ -47,7 +47,7 @@ async function AsyncFn(): Promise<Element> {
 async function *AsyncGen(): AsyncGenerator<Element> {
   while (true) {
     yield <div>Hello world</div>;
-  } 
+  }
 }
 ```
 

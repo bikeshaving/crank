@@ -5,7 +5,7 @@ title: JSX, Elements and Renderers
 
 **Note:** If you’re familiar with how JSX and elements work in React, you may want to skip ahead to [the guide on components](./components). Elements in Crank work almost exactly as they do in React.
 
-## JSX 
+## JSX
 
 Crank is best used with [JSX](https://facebook.github.io/jsx/), an XML-like syntax extension to JavaScript. It is designed to work with transpilers like Babel and TypeScript out-of-box. JSX transpilers work by transforming JSX expressions into `createElement` function calls. For example, in the following code, the JSX expression assigned to `el` transpiles to the `createElement` call assigned to `el1`.
 

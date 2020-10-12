@@ -7,7 +7,7 @@ Crank provides certain APIs in the form of special props or element tags. The fo
 ## Special Props
 The following props apply to all elements, regardless of tag or renderer.
 
-### `crank-key`
+### crank-key
 By default, Crank uses an element’s tag and position to determine if it represents an update or a change to the tree. Because elements often represent stateful DOM nodes or components, it can be useful to *key* the children of an element to hint to the renderer that an element has been added, moved or removed from a parent. In Crank, we do this with the special prop `crank-key`:
 
 ```jsx
@@ -75,7 +75,7 @@ console.log(document.firstChild.firstChild === span); // true
 
 All elements in the element tree can be keyed. If the element is a component element, the `crank-key` prop is erased from the props object passed to the component.
 
-### `crank-ref`
+### crank-ref
 Sometimes, you may want to access the rendered value of a specific element in the element tree. To do this, you can pass a callback as the `crank-ref` prop. This callback is called with the rendered value of the element when the element has committed.
 
 ```tsx
@@ -98,7 +98,7 @@ function *MyPlayer() {
 
 Refs can be attached to any element in the element tree, and the value passed to the callback will vary according the type of the element and the specific renderer.
 
-### `children`
+### children
 The `children` prop passed to components is special because it is not usually set with JSX’s `key="value"` prop syntax, but by the contents between the opening and closing tags. Crank places no limitations on the types of values that can be passed into components as children, but patterns like [render props](https://reactjs.org/docs/render-props.html) from the React community, where a callback is passed as the child of a component, should be avoided.
 
 The actual type of the `children` prop will vary according to the number of children passed in. If a component element has no children (`<Component/>`), the `children` prop will be undefined, if it has one child (`<Component><Child/></Component>`), the `children` prop will be set to that child, and if it has multiple children (`<Component><Child/><Child/></Component>`), the `children` prop will be set to an array of those children. We do this to reduce runtime memory costs. All props have to be retained between renders, and most elements contain only zero or one child, so avoiding the allocation of an extra array for every element in the tree can noticeably reduce memory requirements.
@@ -109,7 +109,7 @@ Therefore, the `children` prop should be treated as a black box, only to be rend
 
 The following props are specific to host elements for the HTML and DOM renderers.
 
-### `style`
+### style
 The style prop can be used to add inline styles to an element. It can either be a CSS string, in which case it works exactly as it does in HTML, or it can also be an object, in which case CSS properties can be set individually.
 
 ```jsx
@@ -118,7 +118,7 @@ The style prop can be used to add inline styles to an element. It can either be 
 
 **Note:** Unlike other JSX frameworks, Crank does not camel-case style names or add pixel units to numbers.
 
-### `innerHTML`
+### innerHTML
 The `innerHTML` prop can be used to set the element’s children with an HTML string.
 
 Be careful when using the `innerHTML` prop, as passing unsanitized text inputs can lead to security vulnerabilities.
@@ -138,7 +138,7 @@ You can still use the `className` and `htmlFor` props as well, but using the for
 
 Crank provides four element tags which have special meaning to the renderer, and affect element diffing and rendering output in various ways.
 
-### `Fragment`
+### Fragment
 Crank provides a `Fragment` tag, which allows you to render multiple children into a parent without wrapping them in another DOM node. Under the hood, iterables which appear in the element tree are also implicitly wrapped in a `Fragment` element by the renderer.
 
 ```jsx
@@ -158,7 +158,7 @@ console.log(document.body.innerHTML);
 // "<div>Sibling 1</div><div>Sibling 2</div>"
 ```
 
-### `Copy`
+### Copy
 It‘s often fine to rerender Crank components, because elements are diffed, persistent between renders, and unnecessary mutations usually avoided. However, you might want to prevent a child from updating when the parent rerenders, perhaps because a certain prop hasn’t changed, because you want to batch updates from the parent, or as a performance optimization. To do this, you can use the `Copy` tag to indicate to Crank that you don’t want to update a previously rendered element in that same position.
 
 ```jsx
@@ -190,7 +190,7 @@ function memo(Component) {
 
 In this example, `memo` is a higher-order component, a function which takes a component and returns a component. This wrapper component compares old and new props and yields a `Copy` element if every prop is shallowly equal. A `Copy` element can appear anywhere in an element tree to prevent rerenderings, and the only props `Copy` elements take are the `crank-key` and `crank-ref` props, which work as expected.
 
-### `Portal`
+### Portal
 Sometimes you may want to render into a DOM node which isn’t the current parent element, or even a part of the currently rendered DOM tree. You can do this with the `Portal` tag, passing in a DOM node as its `root` prop. The Portal’s children will be rendered into the specified root element, just as if Renderer.render was called with the root value as its second argument.
 
 ```jsx
@@ -219,7 +219,7 @@ console.log(root2.innerHTML);
 
 This tag is useful for creating modals or tooltips, which usually need to be rendered into separate DOM elements at the bottom of the page for visibility reasons. Events dispatched from a `Portal` element‘s child components via the `dispatchEvent` method will still bubble into parent components.
 
-### `Raw`
+### Raw
 Sometimes, you may want to insert raw HTML or actual DOM nodes directly into the element tree. Crank allows you to do this with the `Raw` element. The `Raw` element takes a `value` prop which is interpreted by the renderer. For the DOM renderer, if `value` is an HTML string, the renderer will parse and insert the resulting DOM nodes. If the value is already a DOM node, Crank will insert them in place.
 
 ```jsx
