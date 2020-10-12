@@ -4,18 +4,18 @@ title: Reusable Logic
 
 This guide describes additional APIs as well as design patterns for developers who wish to reuse logic between components or write Crank-specific libraries.
 
-## Additional Context Methods and Properties 
+## Additional Context Methods and Properties
 Crank provides several additional methods and properties via the `Context` API to help you share logic between components. Some of the APIs demonstrated here are for library authors and should not be used in the course of typical application development.
 
-### `context.props`
+### context.props
 The current props of a component can be accessed via the readonly context property `props`. We recommended that you access props within components via its parameters or context iterators when writing components. The `props` property can be useful when you need to access a component’s current props from within an extension or helper function.
- 
-### `context.value`
+
+### context.value
 Similarly, the most recently rendered value of a component is accessible via the readonly context property `value`. Again, we recommend that you access rendered values via the many methods described in [the guide on accessing rendered values](./lifecycles#accessing-rendered-values) or via [the `crank-ref` prop](./special-props-and-tags#crank-ref), but it can be useful to access the current value synchronously when writing helper context methods.
 
 Depending on the state of the component, the accessed value can be an node, a string, an array of nodes and strings, or `undefined`.
 
-### `context.provide` and `context.consume`
+### context.provide and context.consume
 **Warning:** This API is more unstable than others, and the method names and behavior of components which use this method may change.
 
 Crank allows you to provide data to all of a component’s descendants via the methods `provide` and `consume`. The `provide` method sets a “provision” under a specific key, and the `consume` method retrieves the value set under a specific key by the nearest ancestor.
@@ -55,10 +55,10 @@ Anything can be passed as a key to the `provide` and `consume` methods, so you c
 
 **Note:** Crank does not link “providers” and “consumers” in any way, and doesn’t automatically refresh consumer components when the `provide` method is called. It’s up to you to ensure consumers update when providers update.
 
-### `context.schedule`
+### context.schedule
 You can pass a callback to the `schedule` method to listen for when the component renders. Callbacks passed to `schedule` fire synchronously after the component commits, with the rendered value of the component as its only argument. Scheduled callbacks fire once per call and callback function (think `requestAnimationFrame`, not `setInterval`). This means you have to continuously call the `schedule` method for each update if you want to execute some code every time your component commits.
 
-### `context.cleanup`
+### context.cleanup
 Similarly, you can pass a callback to the `cleanup` method to listen for when the component unmounts. Callbacks passed to `cleanup` fire synchronously when the component is unmounted. Each registered callback fires only once. The callback is called with the last rendered value of the component as its only argument.
 
 ## Strategies for Reusing Logic
@@ -87,7 +87,7 @@ Context.prototype.setInterval = function(callback, delay, ...args) {
   this[ContextIntervalSymbol].add(interval);
 };
 
-Context.prototype.clearInterval = function(interval) { 
+Context.prototype.clearInterval = function(interval) {
   if (typeof this[ContextIntervalSymbol] !== "undefined") {
     this[ContextIntervalSymbol].delete(interval);
   }
@@ -212,11 +212,11 @@ async function *createInterval(delay) {
     }
   }, delay);
 
-  try { 
+  try {
     while (true) {
       if (available) {
         available = false;
-        yield Date.now(); 
+        yield Date.now();
       } else {
         yield new Promise((resolve1) => (resolve = resolve1));
       }

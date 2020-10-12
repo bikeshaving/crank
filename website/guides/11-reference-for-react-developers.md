@@ -35,30 +35,30 @@ This example is pseudocode which demonstrates where React’s class methods woul
 
 The following are specific equivalents for React methods.
 
-### `setState` and `forceUpdate`
+### setState and forceUpdate
 Crank uses generator functions and local variables for local state. Refer to [the section on stateful components](./guides/components#stateful-components).
 
 Crank is not “reactive” in the same sense as React, in that it does not track your component’s local state and rerender when it detects a change. You can either use the context’s `refresh` to manually refresh the component, similar to React’s `forceUpdate` method, or you can use async generator components, which refresh automatically whenever the returned async generator yields.
 
-### `defaultProps`
+### defaultProps
 Crank doesn’t have a `defaultProps` implementation. Instead, you can provide default values when destructuring props. [See the guide on default props](./components#default-props).
 
-### `componentWillMount` and `componentDidMount`
+### componentWillMount and componentDidMount
 Setup code for components can be written at the top of generator components. It will not execute until the component is mounted in the tree.
 
-### `shouldComponentUpdate`
+### shouldComponentUpdate
 As an alternative to React’s `shouldComponentUpdate` method, you can use `Copy` elements to prevent the rerendering of a specific subtree. Refer to [the description of `Copy` elements](./special-props-and-tags#copy) for more information.
 
-### `getDerivedStateFromProps`, `componentWillUpdate` and `getSnapshotBeforeUpdate`
+### getDerivedStateFromProps, componentWillUpdate and getSnapshotBeforeUpdate
 Code which compares old and new props or state can be written directly in your components. See the section on [prop updates](./components#comparing-old-and-new-props) for an example of a component which compares old and new props.
 
-### `componentDidUpdate`
+### componentDidUpdate
 To execute code after rendering, you can use async generator components or [the `schedule` method](./api-reference#schedule). See [the guide on accessing rendered values](./lifecycles#accessing-rendered-values) for more information.
 
-### `componentWillUnmount`
+### componentWillUnmount
 You can use a `try`/`finally` block to run code when a component is unmounted. You can also use [the `cleanup` method](./api-reference#cleanup) if you’re writing extensions which don’t run in the main execution of the component.
 
-### `componentDidCatch`
+### componentDidCatch
 To catch errors which occur in child components, you can use generator components and wrap `yield` operations in a `try`/`catch` block. Refer to [the relevant guide on catching errors](./lifecycles#catching-errors).
 
 ## Hooks
@@ -66,16 +66,16 @@ Crank does not implement any APIs similar to React Hooks. The main appeal of hoo
 
 The following are alternatives to specific hooks.
 
-### `useState` and `useReducer`
+### useState and useReducer
 Crank uses generator functions and local variables for local state. Refer to [the section on stateful components](./components#stateful-components).
 
-### `useEffect` and `useLayoutEffect`
+### useEffect and useLayoutEffect
 Crank does not have any requirements that rendering should be “pure.” In other words, you can trigger side-effects directly while rendering because Crank does not execute components more times than you might expect. Refer to [the guide on accessing rendered values](./lifecycles#accessing-rendered-values) for more information on code which executes after rendering.
 
-### `useMemo` and `useCallback`
+### useMemo and useCallback
 Because the execution of generator components is preserved, there is no need to “memoize” or “cache” callbacks or other values. You can simply assign them to a constant variable.
 
-### `useImperativeHandle`
+### useImperativeHandle
 Crank does not have a way to access component instances, and parent components should not access child components directly. A web component wrapper for defining custom elements with imperative APIs is planned.
 
 ## Suspense and Concurrent Mode
@@ -90,20 +90,20 @@ Crank does not restrict children in JSX elements to just arrays. You can interpo
 ## Fragments
 The [`Fragment` element](./special-props-and-tags#fragment) works almost exactly as it does in React, except that in Crank you can also use a callback ref to access its contents.
 
-## `React.cloneElement`
+## React.cloneElement
 You can clone elements using [the `cloneElement` function](./api-reference#cloneelement).
 
-## `ReactDOM.createPortal`
+## ReactDOM.createPortal
 The `createPortal` function is replaced by the special `Portal` element, whose behavior and expected props varies according to the target rendering environment. Refer to [the guide on the `Portal` element](./special-props-and-tags#portal) for more information.
 
-## `React.memo`
+## React.memo
 See [the guide on `Copy` tags](./special-props-and-tags#copy) for a demonstration of how you can use `Copy` elements to implement `React.memo` in user space.
 
 ## DOM element props
 The following are a list of the differences in props APIs for DOM elements.
 
-### `className` and `htmlFor`
-Crank prefers attribute names rather than the JS property DOM equivalents when these names are mismatched. 
+### className and htmlFor
+Crank prefers attribute names rather than the JS property DOM equivalents when these names are mismatched.
 
 ```jsx
 <label class="my-label" for="my-id">Label</label>
@@ -111,7 +111,7 @@ Crank prefers attribute names rather than the JS property DOM equivalents when t
 
 In short, Crank is optimized for easy copy-pasting, which using props like `className` and `htmlFor` does not encourage. See [the section on prop naming conventions](./special-props-and-tags#prop-naming-conventions) for more information.
 
-### `style`
+### style
 The `style` prop can be an object of CSS declarations. However, unlike React, CSS property names match the case of their CSS equivalents, and we do not add units to numbers. Additionally, Crank allows the style prop to be a CSS string as well.
 
 ```jsx
@@ -126,7 +126,7 @@ Host elements can be listened to using `onevent` props, but the prop name will b
 ### Controlled and Uncontrolled Props
 Crank does not have a concept of controlled or uncontrolled props, and does not provide `defaultValue`-style props for DOM elements. See [the section on form elements](./handling-events#form-elements) for a detailed description of how Crank handles stateful form elements.
 
-### `dangerouslySetInnerHTML`
+### dangerouslySetInnerHTML
 Host DOM elements accept an `innerHTML` prop; Crank does not provide the `dangerouslySetInnerHTML={{__html}}` API like React. Alternatively, you can use the special `Raw` tag to insert HTML strings or even DOM nodes directly into an element tree without a parent. Refer to the sections [on the `innerHTML` prop](./special-props-and-tags#innerhtml) and [on the `Raw` tag](./special-props-and-tags#raw) for more information.
 
 ## Keys

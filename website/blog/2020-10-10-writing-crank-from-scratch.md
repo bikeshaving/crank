@@ -20,15 +20,15 @@ At each step, we’ll edit a single file which serves as the Crank module, and p
   <title>Crank from Scratch</title>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script>
-  Babel.registerPreset("crank", {
-    presets: [
-      [Babel.availablePresets.react, {
-        runtime: "classic",
-        pragma: "createElement",
-        pragmaFrag: "''",
-      }],
-    ],
-  });
+Babel.registerPreset("crank", {
+  presets: [
+    [Babel.availablePresets.react, {
+      runtime: "classic",
+      pragma: "createElement",
+      pragmaFrag: "''",
+    }],
+  ],
+});
   </script>
 </head>
 <body>

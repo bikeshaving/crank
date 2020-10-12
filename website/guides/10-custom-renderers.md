@@ -29,18 +29,18 @@ class Renderer<
 >
 ```
 
-### `TNode`
+### TNode
 
 `TNode` is the most important type: it is the type of the node associated with each host element. For instance, for the basic DOM renderer, TNode is the [DOM Node interface](https://developer.mozilla.org/en-US/docs/Web/API/Node).
 
-### `TScope`
+### TScope
 
 `TScope` is the type of the *scope*, a renderer-specific concept for arbitrary data which is passed down the tree between host elements. Scopes are useful for passing contextual information down the tree to be used when nodes are created; for instance, the DOM renderer uses the scope to pass down information about whether we’re currently rendering in an SVG element.
 
-### `TRoot`
+### TRoot
 `TRoot` is the type of the root node. This is the type of the second parameter passed to the `Renderer.render` method, and the `root` prop passed to `Portal` elements. It is usually the same type as `TNode` but can vary according to renderer requirements.
 
-### `TResult`
+### TResult
 
 `TResult` describes the type of values made visible to renderer consumers. Any time Crank exposes an internal node, for instance, via the `crank-ref` callback, or as the result of yield expressions in generator components, the renderer can intercept this access and provide something other than the internal nodes, allowing renderers to hide implementation details and provide results which make more sense for a specific environment.
 
@@ -49,7 +49,7 @@ For example, the HTML string renderer has an internal node representation, but c
 ## Methods
 The following is a description of the signatures of internal renderer methods and when they’re executed. When creating a custom renderer, you are expected to override these methods via inheritance.
 
-### `Renderer.prototype.create`
+### Renderer.prototype.create
 
 ```ts
 create(
@@ -61,7 +61,7 @@ The `create` method is called for each host element the first time the element i
 
 By default, this method will throw a `Not Implemented` error, so custom renderers should always implement this method.
 
-### `Renderer.prototype.read`
+### Renderer.prototype.read
 
 ```ts
 read(value: Array<TNode | string> | TNode | string | undefined): TResult;
@@ -80,7 +80,7 @@ When an element or elements are read in this way, we call the `read` method to g
 
 This method is optional. By default, read is an identity function which returns the value passed in.
 
-### `Renderer.prototype.patch`
+### Renderer.prototype.patch
 
 ```ts
 patch(el: Element<string | symbol>, node: TNode): unknown;
@@ -90,7 +90,7 @@ The `patch` method is called for each host element whenever it is committed. Thi
 
 Implementation of this method is optional for renderers.
 
-### `Renderer.prototype.arrange`
+### Renderer.prototype.arrange
 
 ```ts
 arrange(
@@ -104,7 +104,7 @@ The `arrange` method is called whenever an element’s children have changed. It
 
 This method is where the magic happens, and is where you connect the nodes of your target environment into an internal tree.
 
-### `Renderer.prototype.scope`
+### Renderer.prototype.scope
 
 ```ts
 scope(el: Element<string | symbol>, scope: TScope | undefined): TScope;
@@ -114,7 +114,7 @@ The `scope` method is called for each host or portal element as elements are mou
 
 By default, the `scope` method returns `undefined`, meaning the scope will be `undefined` throughout your application.
 
-### `Renderer.prototype.escape`
+### Renderer.prototype.escape
 
 ```ts
 escape(text: string, scope: TScope): string;
@@ -126,7 +126,7 @@ One important detail is that `escape` should not return text nodes or anything b
 
 By default, the `escape` method returns the string which was passed in.
 
-### `Renderer.prototype.parse`
+### Renderer.prototype.parse
 
 ```ts
 parse(text: string, scope: TScope): TNode | string;
@@ -136,7 +136,7 @@ When the renderer encounters a `Raw` element whose `value` prop is a string, it 
 
 By default, the `parse` method returns the string which was passed in.
 
-### `Renderer.prototype.dispose`
+### Renderer.prototype.dispose
 
 ```ts
 dispose(el: Element<string | symbol>, node: TNode): unknown
@@ -146,7 +146,7 @@ The `dispose` method is called whenever a host element is unmounted. It is calle
 
 This method is optional and its return value is ignored.
 
-### `Renderer.prototype.complete`
+### Renderer.prototype.complete
 
 ```ts
 complete(root: TRoot): unknown;
