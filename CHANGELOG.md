@@ -1,4 +1,7 @@
 # Changelog
+## [0.3.6] - 2020-10-13
+### Fixed
+- Changed the algorithm of patch slightly so that `setAttribute` is never used with object/function values.
 ## [0.3.5] - 2020-09-17
 ### Fixed
 - Added ChildIterable type to exports to deal with TypeScript errors (#156).
