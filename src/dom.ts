@@ -125,6 +125,8 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 				default: {
 					if (value == null) {
 						node.removeAttribute(name);
+					} else if (typeof value === "function" || typeof value === "object") {
+						(node as any)[name] = value;
 					} else if (!forceAttribute && !isSVG && name in node) {
 						(node as any)[name] = value;
 					} else if (value === true) {
