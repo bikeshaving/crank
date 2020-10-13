@@ -134,25 +134,6 @@ export interface ChildIterable extends Iterable<Child | ChildIterable> {}
  */
 export type Children = Child | ChildIterable;
 
-// WHAT ARE WE DOING TO THE CHILDREN???
-/**
- * All values in the element tree are narrowed from the union in Child to
- * NarrowedChild during rendering, to simplify element diffing.
- */
-type NarrowedChild = Element | string | undefined;
-
-function narrow(value: Children): NarrowedChild {
-	if (typeof value === "boolean" || value == null) {
-		return undefined;
-	} else if (typeof value === "string" || isElement(value)) {
-		return value;
-	} else if (typeof (value as any)[Symbol.iterator] === "function") {
-		return createElement(Fragment, null, value);
-	}
-
-	return value.toString();
-}
-
 /**
  * Represents all functions which can be used as a component.
  *
@@ -406,7 +387,26 @@ export function cloneElement<TTag extends Tag>(
 	return new Element(el.tag, {...el.props}, el.key, el.ref);
 }
 
-/*** ELEMENT VALUE UTILITIES ***/
+/*** ELEMENT UTILITIES ***/
+
+// WHAT ARE WE DOING TO THE CHILDREN???
+/**
+ * All values in the element tree are narrowed from the union in Child to
+ * NarrowedChild during rendering, to simplify element diffing.
+ */
+type NarrowedChild = Element | string | undefined;
+
+function narrow(value: Children): NarrowedChild {
+	if (typeof value === "boolean" || value == null) {
+		return undefined;
+	} else if (typeof value === "string" || isElement(value)) {
+		return value;
+	} else if (typeof (value as any)[Symbol.iterator] === "function") {
+		return createElement(Fragment, null, value);
+	}
+
+	return value.toString();
+}
 
 /**
  * A helper type which repesents all the possible rendered values of an element.
