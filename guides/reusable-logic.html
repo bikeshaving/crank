@@ -9,14 +9,14 @@
 				<a class="anchor" name="additional-context-methods-and-properties" href="#additional-context-methods-and-properties">Additional Context Methods and Properties</a>
 			</h2><p>Crank provides several additional methods and properties via the <code>Context</code> API to help you share logic between components. Some of the APIs demonstrated here are for library authors and should not be used in the course of typical application development.</p>
 <h3>
-				<a class="anchor" name="contextprops" href="#contextprops"><code>context.props</code></a>
+				<a class="anchor" name="contextprops" href="#contextprops">context.props</a>
 			</h3><p>The current props of a component can be accessed via the readonly context property <code>props</code>. We recommended that you access props within components via its parameters or context iterators when writing components. The <code>props</code> property can be useful when you need to access a component’s current props from within an extension or helper function.</p>
 <h3>
-				<a class="anchor" name="contextvalue" href="#contextvalue"><code>context.value</code></a>
+				<a class="anchor" name="contextvalue" href="#contextvalue">context.value</a>
 			</h3><p>Similarly, the most recently rendered value of a component is accessible via the readonly context property <code>value</code>. Again, we recommend that you access rendered values via the many methods described in <a href="./lifecycles#accessing-rendered-values">the guide on accessing rendered values</a> or via <a href="./special-props-and-tags#crank-ref">the <code>crank-ref</code> prop</a>, but it can be useful to access the current value synchronously when writing helper context methods.</p>
 <p>Depending on the state of the component, the accessed value can be an node, a string, an array of nodes and strings, or <code>undefined</code>.</p>
 <h3>
-				<a class="anchor" name="contextprovide-and-contextconsume" href="#contextprovide-and-contextconsume"><code>context.provide</code> and <code>context.consume</code></a>
+				<a class="anchor" name="contextprovide-and-contextconsume" href="#contextprovide-and-contextconsume">context.provide and context.consume</a>
 			</h3><p><strong>Warning:</strong> This API is more unstable than others, and the method names and behavior of components which use this method may change.</p>
 <p>Crank allows you to provide data to all of a component’s descendants via the methods <code>provide</code> and <code>consume</code>. The <code>provide</code> method sets a “provision” under a specific key, and the <code>consume</code> method retrieves the value set under a specific key by the nearest ancestor.</p>
 <pre><code class="language-ts">function GreetingProvider({greeting, children}) {
@@ -49,10 +49,10 @@ console.log(document.body); // &quot;&lt;div&gt;&lt;p&gt;Hello, Brian&lt;/p&gt;&
 <p>Anything can be passed as a key to the <code>provide</code> and <code>consume</code> methods, so you can use a symbol to ensure that the provision you pass between your components are private and do not collide with provisions set by others.</p>
 <p><strong>Note:</strong> Crank does not link “providers” and “consumers” in any way, and doesn’t automatically refresh consumer components when the <code>provide</code> method is called. It’s up to you to ensure consumers update when providers update.</p>
 <h3>
-				<a class="anchor" name="contextschedule" href="#contextschedule"><code>context.schedule</code></a>
+				<a class="anchor" name="contextschedule" href="#contextschedule">context.schedule</a>
 			</h3><p>You can pass a callback to the <code>schedule</code> method to listen for when the component renders. Callbacks passed to <code>schedule</code> fire synchronously after the component commits, with the rendered value of the component as its only argument. Scheduled callbacks fire once per call and callback function (think <code>requestAnimationFrame</code>, not <code>setInterval</code>). This means you have to continuously call the <code>schedule</code> method for each update if you want to execute some code every time your component commits.</p>
 <h3>
-				<a class="anchor" name="contextcleanup" href="#contextcleanup"><code>context.cleanup</code></a>
+				<a class="anchor" name="contextcleanup" href="#contextcleanup">context.cleanup</a>
 			</h3><p>Similarly, you can pass a callback to the <code>cleanup</code> method to listen for when the component unmounts. Callbacks passed to <code>cleanup</code> fire synchronously when the component is unmounted. Each registered callback fires only once. The callback is called with the last rendered value of the component as its only argument.</p>
 <h2>
 				<a class="anchor" name="strategies-for-reusing-logic" href="#strategies-for-reusing-logic">Strategies for Reusing Logic</a>
@@ -78,7 +78,7 @@ Context.prototype.setInterval = function(callback, delay, ...args) {
   this[ContextIntervalSymbol].add(interval);
 };
 
-Context.prototype.clearInterval = function(interval) { 
+Context.prototype.clearInterval = function(interval) {
   if (typeof this[ContextIntervalSymbol] !== &quot;undefined&quot;) {
     this[ContextIntervalSymbol].delete(interval);
   }
@@ -193,11 +193,11 @@ const Counter = interval((props) =&gt; &lt;div&gt;Seconds: {props.seconds}&lt;/d
     }
   }, delay);
 
-  try { 
+  try {
     while (true) {
       if (available) {
         available = false;
-        yield Date.now(); 
+        yield Date.now();
       } else {
         yield new Promise((resolve1) =&gt; (resolve = resolve1));
       }

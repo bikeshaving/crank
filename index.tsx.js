@@ -97,6 +97,17 @@ eval("(function(Prism) {\n\t// $ set | grep '^[A-Z][^[:space:]]*=' | cut -d= -f1
 
 /***/ }),
 
+/***/ "../node_modules/prismjs/components/prism-diff.js":
+/*!********************************************************!*\
+  !*** ../node_modules/prismjs/components/prism-diff.js ***!
+  \********************************************************/
+/*! no static exports found */
+/***/ (function(module, exports) {
+
+eval("(function (Prism) {\n\n\tPrism.languages.diff = {\n\t\t'coord': [\n\t\t\t// Match all kinds of coord lines (prefixed by \"+++\", \"---\" or \"***\").\n\t\t\t/^(?:\\*{3}|-{3}|\\+{3}).*$/m,\n\t\t\t// Match \"@@ ... @@\" coord lines in unified diff.\n\t\t\t/^@@.*@@$/m,\n\t\t\t// Match coord lines in normal diff (starts with a number).\n\t\t\t/^\\d+.*$/m\n\t\t]\n\n\t\t// deleted, inserted, unchanged, diff\n\t};\n\n\t/**\n\t * A map from the name of a block to its line prefix.\n\t *\n\t * @type {Object<string, string>}\n\t */\n\tvar PREFIXES = {\n\t\t'deleted-sign': '-',\n\t\t'deleted-arrow': '<',\n\t\t'inserted-sign': '+',\n\t\t'inserted-arrow': '>',\n\t\t'unchanged': ' ',\n\t\t'diff': '!',\n\t};\n\n\t// add a token for each prefix\n\tObject.keys(PREFIXES).forEach(function (name) {\n\t\tvar prefix = PREFIXES[name];\n\n\t\tvar alias = [];\n\t\tif (!/^\\w+$/.test(name)) { // \"deleted-sign\" -> \"deleted\"\n\t\t\talias.push(/\\w+/.exec(name)[0]);\n\t\t}\n\t\tif (name === \"diff\") {\n\t\t\talias.push(\"bold\");\n\t\t}\n\n\t\tPrism.languages.diff[name] = {\n\t\t\t// pattern: /^(?:[_].*(?:\\r\\n?|\\n|(?![\\s\\S])))+/m\n\t\t\tpattern: RegExp('^(?:[' + prefix + '].*(?:\\r\\n?|\\n|(?![\\\\s\\\\S])))+', 'm'),\n\t\t\talias: alias\n\t\t};\n\t});\n\n\t// make prefixes available to Diff plugin\n\tObject.defineProperty(Prism.languages.diff, 'PREFIXES', {\n\t\tvalue: PREFIXES\n\t});\n\n}(Prism));\n\n\n//# sourceURL=webpack:///../node_modules/prismjs/components/prism-diff.js?");
+
+/***/ }),
+
 /***/ "../node_modules/prismjs/components/prism-javascript.js":
 /*!**************************************************************!*\
   !*** ../node_modules/prismjs/components/prism-javascript.js ***!
@@ -171,7 +182,7 @@ eval("var g;\n\n// This works in non-strict mode\ng = (function() {\n\treturn th
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
-eval("\nvar __importDefault = (this && this.__importDefault) || function (mod) {\n    return (mod && mod.__esModule) ? mod : { \"default\": mod };\n};\nObject.defineProperty(exports, \"__esModule\", { value: true });\nconst prismjs_1 = __importDefault(__webpack_require__(/*! prismjs */ \"../node_modules/prismjs/prism.js\"));\n__webpack_require__(/*! prismjs/components/prism-javascript */ \"../node_modules/prismjs/components/prism-javascript.js\");\n__webpack_require__(/*! prismjs/components/prism-jsx */ \"../node_modules/prismjs/components/prism-jsx.js\");\n__webpack_require__(/*! prismjs/components/prism-typescript */ \"../node_modules/prismjs/components/prism-typescript.js\");\n__webpack_require__(/*! prismjs/components/prism-tsx */ \"../node_modules/prismjs/components/prism-tsx.js\");\n__webpack_require__(/*! prismjs/components/prism-bash */ \"../node_modules/prismjs/components/prism-bash.js\");\nprismjs_1.default.highlightAll();\n\n\n//# sourceURL=webpack:///./index.tsx?");
+eval("\nvar __importDefault = (this && this.__importDefault) || function (mod) {\n    return (mod && mod.__esModule) ? mod : { \"default\": mod };\n};\nObject.defineProperty(exports, \"__esModule\", { value: true });\nconst prismjs_1 = __importDefault(__webpack_require__(/*! prismjs */ \"../node_modules/prismjs/prism.js\"));\n__webpack_require__(/*! prismjs/components/prism-javascript */ \"../node_modules/prismjs/components/prism-javascript.js\");\n__webpack_require__(/*! prismjs/components/prism-jsx */ \"../node_modules/prismjs/components/prism-jsx.js\");\n__webpack_require__(/*! prismjs/components/prism-typescript */ \"../node_modules/prismjs/components/prism-typescript.js\");\n__webpack_require__(/*! prismjs/components/prism-tsx */ \"../node_modules/prismjs/components/prism-tsx.js\");\n__webpack_require__(/*! prismjs/components/prism-diff */ \"../node_modules/prismjs/components/prism-diff.js\");\n__webpack_require__(/*! prismjs/components/prism-bash */ \"../node_modules/prismjs/components/prism-bash.js\");\nprismjs_1.default.highlightAll();\n\n\n//# sourceURL=webpack:///./index.tsx?");
 
 /***/ })
 

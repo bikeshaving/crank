@@ -5,9 +5,166 @@
 
 								gtag('config', 'UA-20910936-4');
 							</script></head><body><nav id="navbar" class="navbar"><div class="navbar-group"><div class="navbar-item"><a class="navbar-title-link false" href="/"><img class="navbar-logo" src="/static/logo.svg" alt=""><span>Crank.js</span></a></div><div class="navbar-item"><a class="current" href="/guides/getting-started">Docs</a></div><div class="navbar-item"><a href="/blog/">Blog</a></div></div><div class="navbar-group"><div class="navbar-item"><a href="https://github.com/bikeshaving/crank">GitHub</a></div><div class="navbar-item"><a href="http://npm.im/@bikeshaving/crank">NPM</a></div></div></nav><div id="sidebar" class="sidebar"><h3>Guides</h3><div class="sidebar-item"><a href="/guides/getting-started" class="">Getting Started</a></div><div class="sidebar-item"><a href="/guides/elements" class="">JSX, Elements and Renderers</a></div><div class="sidebar-item"><a href="/guides/components" class="">Components</a></div><div class="sidebar-item"><a href="/guides/handling-events" class="">Handling Events</a></div><div class="sidebar-item"><a href="/guides/async-components" class="">Async Components</a></div><div class="sidebar-item"><a href="/guides/special-props-and-tags" class="">Special Props and Tags</a></div><div class="sidebar-item"><a href="/guides/lifecycles" class="">Lifecycles</a></div><div class="sidebar-item"><a href="/guides/reusable-logic" class="">Reusable Logic</a></div><div class="sidebar-item"><a href="/guides/working-with-typescript" class="">Working with TypeScript</a></div><div class="sidebar-item"><a href="/guides/custom-renderers" class="">Custom Renderers</a></div><div class="sidebar-item"><a href="/guides/reference-for-react-developers" class="">Reference for React Developers</a></div><div class="sidebar-item"><a href="/guides/api-reference" class="current">API Reference</a></div></div><main class="main"><div class="content"><h1>API Reference</h1><h2>
+				<a class="anchor" name="functions" href="#functions">Functions</a>
+			</h2><h3>
+				<a class="anchor" name="createelement" href="#createelement">createElement</a>
+			</h3><p>Creates an element with the specified tag, props and children. This function is typically used as a target for JSX transpilers, rather than called directly.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>tag: string | symbol | Component</code></li>
+<li><code>props: Record&lt;string, any&gt;</code></li>
+<li><code>...children: Children</code></li>
+</ul>
+<p><strong>Return Value:</strong></p>
+<p>An element.</p>
+<h3>
+				<a class="anchor" name="iselement" href="#iselement">isElement</a>
+			</h3><p><strong>Parameters:</strong></p>
+<ul>
+<li><code>value: unknown</code> - The value to be tested.</li>
+</ul>
+<p><strong>Return Value:</strong></p>
+<p>A boolean which indicates the value passed in is a Crank Element.</p>
+<h3>
+				<a class="anchor" name="cloneelement" href="#cloneelement">cloneElement</a>
+			</h3><p>Clones the passed in element. Throws a <code>TypeError</code> if the value passed in is not an element.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>element: Element</code> - The Element to be cloned.</li>
+</ul>
+<p><strong>Return Value:</strong></p>
+<p>A copy of the element passed in.</p>
+<h2>
+				<a class="anchor" name="classes" href="#classes">Classes</a>
+			</h2><h3>
+				<a class="anchor" name="element" href="#element">Element</a>
+			</h3><p>Elements are the basic building blocks of Crank applications. They are JavaScript objects which are interpreted by renderers to produce and manage stateful nodes.</p>
+<p><strong>Methods:</strong></p>
+<h3>
+				<a class="anchor" name="constructor" href="#constructor">constructor</a>
+			</h3><p>Constructs an element. Typicially, you would use the <code>createElement</code> function rather than calling this constructor directly.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>tag: Tag</code> - The tag of the element.</li>
+<li><code>props: Record&lt;string, any&gt;</code> - The props of the element.</li>
+<li><code>key: unknown</code> - A key by which to identify the element during the element diffing process.</li>
+<li><code>ref: Function</code> - A callback which fires with the element’s rendered value whenever the element is rendered.</li>
+</ul>
+<h3>
+				<a class="anchor" name="renderer" href="#renderer">Renderer</a>
+			</h3><p>An abstract class which is subclassed to render to different target environments. This class is responsible for kicking off the rendering process, caching previous trees by root, and creating/mutating/disposing the nodes of the target environment.</p>
+<p><strong>NOTE:</strong> The internal Crank renderer methods and type parameters are documented in the <a href="./custom-renderers">guide on custom renderers.</a></p>
+<p><strong>Methods:</strong></p>
+<h3>
+				<a class="anchor" name="constructor-1" href="#constructor-1">constructor</a>
+			</h3><p>Creates a new Renderer. The base <code>Renderer</code> constructor accepts no parameters.</p>
+<h3>
+				<a class="anchor" name="rendererprototyperender" href="#rendererprototyperender">Renderer.prototype.render</a>
+			</h3><p><strong>Parameters:</strong></p>
+<ul>
+<li><code>children: Children</code> - The element tree to render.</li>
+<li><code>root?: TRoot</code> - The renderer specific root to render into.</li>
+<li><code>ctx?: Context</code> - A context which will parent the contexts of all top-level components in the element tree.</li>
+</ul>
+<h3>
+				<a class="anchor" name="context" href="#context">Context</a>
+			</h3><p>A class which is instantiated and passed to every component function as its <code>this</code> value.</p>
+<p><strong>Type Parameters:</strong></p>
+<ul>
+<li><code>TProps</code> - The expected props of the related component.</li>
+<li><code>TResult</code> - The expected result from rendering the component.</li>
+</ul>
+<p><strong>Properties:</strong></p>
+<ul>
+<li><code>props</code> - The current props of the component. <strong>Readonly</strong></li>
+<li><code>value</code> - The current rendered value of the component. <strong>Readonly</strong></li>
+</ul>
+<p><strong>Methods:</strong></p>
+<h3>
+				<a class="anchor" name="contextprototypesymboliterator" href="#contextprototypesymboliterator">Context.prototype[Symbol.iterator]</a>
+			</h3><p>Returns an iterator of the props passed to the component. Only used in generator components.</p>
+<h3>
+				<a class="anchor" name="contextprototypesymbolasynciterator" href="#contextprototypesymbolasynciterator">Context.prototype[Symbol.asyncIterator]</a>
+			</h3><p>Returns an async iterator of the props passed to the component. Only used in generator</p>
+<h3>
+				<a class="anchor" name="contextprototyperefresh" href="#contextprototyperefresh">Context.prototype.refresh</a>
+			</h3><p>Updates the component in place.</p>
+<h3>
+				<a class="anchor" name="contextprototypeschedule" href="#contextprototypeschedule">Context.prototype.schedule</a>
+			</h3><p>Executes the passed in callback when the component renders. The <code>schedule</code> method will only fire once for each call and callback.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>callback: Function</code> - The callback to be executed.</li>
+</ul>
+<h3>
+				<a class="anchor" name="contextprototypecleanup" href="#contextprototypecleanup">Context.prototype.cleanup</a>
+			</h3><p>Executes the passed in callback when the component unmounts. The <code>cleanup</code> method will only fire once for each call and callback.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>callback: Function</code> - The callback to be executed.</li>
+</ul>
+<h3>
+				<a class="anchor" name="contextprototypeaddeventlistener" href="#contextprototypeaddeventlistener">Context.prototype.addEventListener</a>
+			</h3><p>Adds an event listener to the context. The <code>addEventListener</code> method will also attach event listeners to the underlying top-level node or nodes which were created for the component.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><p><code>type: string</code> - The type of the event.</p>
+</li>
+<li><p><code>listener: Function</code> - The listener callback.</p>
+</li>
+<li><p><code>options: Object | boolean</code> - An object of boolean options which can be set to change the characteristics of the listener. If the options object is a boolean, then that value is used to set the <code>capture</code> option for the listener.</p>
+<ul>
+<li><code>capture: boolean</code> - If true, the event listener will fire during <a href="https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#Event_bubbling_and_capture">the capture phase</a> of event dispatch.</li>
+<li><code>once: boolean</code> -  If true, the event listener will fire at most once before being removed.</li>
+<li><code>passive: boolean</code> - If true, calling the <code>preventDefault</code> method on the event will have no effect. Using this flag can increase performance. It is most useful for event types like <code>scroll</code> which fire frequently and are rarely cancelled.</li>
+</ul>
+</li>
+</ul>
+<h3>
+				<a class="anchor" name="contextprototyperemoveeventlistener" href="#contextprototyperemoveeventlistener">Context.prototype.removeEventListener</a>
+			</h3><p>Removes an event listener by type, listener and capture option.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><p><code>type: string</code> - The type of the event.</p>
+</li>
+<li><p><code>listener: Function</code> - The listener callback.</p>
+</li>
+<li><p><code>options: Object | boolean</code> - An object of boolean options which can be set to change the characteristics of the listener. If the options object is a boolean, then that value is used to set the <code>capture</code> option for the listener.</p>
+<ul>
+<li><code>capture: boolean</code> - If true, will remove listeners which use the capture option.</li>
+</ul>
+</li>
+</ul>
+<h3>
+				<a class="anchor" name="contextprototypedispatchevent" href="#contextprototypedispatchevent">Context.prototype.dispatchEvent</a>
+			</h3><p>Dispatches an event on the context. Will propagate to parent contexts according to the same event bubbling and capture algorithms used by the DOM.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>ev: Event</code> - An Event object.</li>
+</ul>
+<p><strong>Return Value:</strong></p>
+<p>The return value is <code>false</code> if the event is cancelable and an event listener calls the <code>preventDefault</code> method on the event, and <code>true</code> otherwise.</p>
+<h3>
+				<a class="anchor" name="contextprototypeconsume" href="#contextprototypeconsume">Context.prototype.consume</a>
+			</h3><p>Retrieves a provision set by an ancestor by key.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>key: unknown</code> - The key of the provision.</li>
+</ul>
+<p><strong>Return Value:</strong></p>
+<p>The provision by key, or undefined if no provision is found.</p>
+<h3>
+				<a class="anchor" name="contextprototypeprovide" href="#contextprototypeprovide">Context.prototype.provide</a>
+			</h3><p>Sets a provision by key for descendant components.</p>
+<p><strong>Parameters:</strong></p>
+<ul>
+<li><code>key: unknown</code> - The key of the provision.</li>
+<li><code>value: unknown</code> - The value of the provision.</li>
+</ul>
+<h2>
 				<a class="anchor" name="types" href="#types">Types</a>
 			</h2><h3>
-				<a class="anchor" name="tag" href="#tag"><code>Tag</code></a>
+				<a class="anchor" name="tag" href="#tag">Tag</a>
 			</h3><p>A type which represents all valid values which can be used for the tag of an element.</p>
 <p><strong>Example:</strong></p>
 <pre><code class="language-ts">let tag: Tag;
@@ -25,7 +182,7 @@ tag = 1;
 // @ts-expect-error
 tag = {};</code></pre>
 <h3>
-				<a class="anchor" name="tagprops" href="#tagprops"><code>TagProps</code></a>
+				<a class="anchor" name="tagprops" href="#tagprops">TagProps</a>
 			</h3><p>A helper type to map the tag of an element to its expected props.</p>
 <p><strong>Type Parameters:</strong></p>
 <ul>
@@ -45,7 +202,7 @@ props = {name: &quot;Alice&quot;};
 // @ts-expect-error
 props = {name: 1000};</code></pre>
 <h3>
-				<a class="anchor" name="child" href="#child"><code>Child</code></a>
+				<a class="anchor" name="child" href="#child">Child</a>
 			</h3><p>A type which describes all valid singular values of an element tree.</p>
 <p><strong>Example:</strong></p>
 <pre><code class="language-ts">let child: Child;
@@ -71,12 +228,12 @@ child = new RegExp(&quot;Hello&quot;);
 // @ts-expect-error
 child = Symbol(&quot;Hello&quot;);</code></pre>
 <h3>
-				<a class="anchor" name="children" href="#children"><code>Children</code></a>
+				<a class="anchor" name="children" href="#children">Children</a>
 			</h3><p>A type which describes all valid values of an element tree, including arbitrarily nested iterables of such values.</p>
 <p><strong>Example:</strong></p>
 <pre><code class="language-ts">let children: Children;
 
-// VALID ASSIGNMENTS 
+// VALID ASSIGNMENTS
 children = &quot;hello&quot;;
 children = 1;
 children = true;
@@ -87,7 +244,7 @@ children = &lt;div&gt;Hello&lt;/div&gt;;
 children = [&lt;div&gt;Hello&lt;/div&gt;, &lt;div&gt;World&lt;/div&gt;];
 children = new Set([&lt;div&gt;Hello&lt;/div&gt;, &lt;div&gt;World&lt;/div&gt;]);
 
-// INVALID ASSIGNMENTS 
+// INVALID ASSIGNMENTS
 // @ts-expect-error
 children = {};
 // @ts-expect-error
@@ -95,21 +252,21 @@ children = new RegExp(&quot;Hello&quot;);
 // @ts-expect-error
 children = Symbol(&quot;Hello&quot;);</code></pre>
 <h3>
-				<a class="anchor" name="component" href="#component"><code>Component</code></a>
+				<a class="anchor" name="component" href="#component">Component</a>
 			</h3><p>A type which represents all functions which can be used as a component.</p>
 <p><strong>Type Parameters:</strong></p>
 <ul>
 <li><code>TProps</code> - The expected props of the component</li>
 </ul>
 <h3>
-				<a class="anchor" name="elementvalue" href="#elementvalue"><code>ElementValue</code></a>
+				<a class="anchor" name="elementvalue" href="#elementvalue">ElementValue</a>
 			</h3><p>A helper type which repesents all the possible rendered values of an element.</p>
 <p><strong>Type Parameters:</strong></p>
 <ul>
 <li><code>TNode</code> - The node type for the element as created by the renderer.</li>
 </ul>
 <h3>
-				<a class="anchor" name="eventmap" href="#eventmap"><code>EventMap</code></a>
+				<a class="anchor" name="eventmap" href="#eventmap">EventMap</a>
 			</h3><p>An interface which maps Event type strings to event subclasses. Can be extended via TypeScript module augmentation for strongly typed event listeners.</p>
 <p><strong>Example:</strong></p>
 <pre><code class="language-ts">declare global {
@@ -120,7 +277,7 @@ children = Symbol(&quot;Hello&quot;);</code></pre>
   }
 }</code></pre>
 <h3>
-				<a class="anchor" name="provisionmap" href="#provisionmap"><code>ProvisionMap</code></a>
+				<a class="anchor" name="provisionmap" href="#provisionmap">ProvisionMap</a>
 			</h3><p>An interface which can be extended to provide strongly typed provisions. See <code>Context.prototype.provide</code> and <code>Context.prototype.consume</code>.</p>
 <p><strong>Example:</strong></p>
 <pre><code class="language-ts">declare global {
@@ -133,150 +290,23 @@ children = Symbol(&quot;Hello&quot;);</code></pre>
 <h2>
 				<a class="anchor" name="special-tags" href="#special-tags">Special Tags</a>
 			</h2><h3>
-				<a class="anchor" name="fragment" href="#fragment"><code>Fragment</code></a>
+				<a class="anchor" name="fragment" href="#fragment">Fragment</a>
 			</h3><p>A special element tag for grouping multiple children within a parent.</p>
 <h3>
-				<a class="anchor" name="copy" href="#copy"><code>Copy</code></a>
+				<a class="anchor" name="copy" href="#copy">Copy</a>
 			</h3><p>A special element tag which copies whatever child appeared previously in the element’s position.</p>
 <h3>
-				<a class="anchor" name="portal" href="#portal"><code>Portal</code></a>
+				<a class="anchor" name="portal" href="#portal">Portal</a>
 			</h3><p>A special element tag for creating a new element subtree with a different root, passed via the root prop.</p>
 <p><strong>Props:</strong></p>
 <ul>
 <li><code>root: TRoot</code> - A root to render into. It should be of the same type as the second argument passed to the <code>render</code> method.</li>
 </ul>
 <h3>
-				<a class="anchor" name="raw" href="#raw"><code>Raw</code></a>
+				<a class="anchor" name="raw" href="#raw">Raw</a>
 			</h3><p>A special element tag for injecting raw nodes into an element tree via its value prop.</p>
 <p><strong>Props:</strong></p>
 <ul>
 <li><code>value: TNode | string</code> - A string or a node. If the value is a node, it will be inserted directly into the tree. If the value is a string, the renderer will parse the string and insert the parsed result into the tree.</li>
-</ul>
-<h2>
-				<a class="anchor" name="functions" href="#functions">Functions</a>
-			</h2><h3>
-				<a class="anchor" name="createelement" href="#createelement"><code>createElement</code></a>
-			</h3><p>Creates an element with the specified tag, props and children. This function is typically used as a target for JSX transpilers, rather than called directly.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>tag: string | symbol | Component</code></li>
-<li><code>props: Record&lt;string, any&gt;</code></li>
-<li><code>...children: Children</code></li>
-</ul>
-<p><strong>Return Value:</strong></p>
-<p>An element.</p>
-<h3>
-				<a class="anchor" name="iselement" href="#iselement"><code>isElement</code></a>
-			</h3><p><strong>Parameters:</strong></p>
-<ul>
-<li><code>value: unknown</code> - The value to be tested.</li>
-</ul>
-<p><strong>Return Value:</strong></p>
-<p>A boolean which indicates the value passed in is a Crank Element.</p>
-<h3>
-				<a class="anchor" name="cloneelement" href="#cloneelement"><code>cloneElement</code></a>
-			</h3><p>Clones the passed in element. Throws a <code>TypeError</code> if the value passed in is not an element.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>element: Element</code> - The Element to be cloned.</li>
-</ul>
-<p><strong>Return Value:</strong></p>
-<p>A copy of the element passed in.</p>
-<h2>
-				<a class="anchor" name="classes" href="#classes">Classes</a>
-			</h2><h3>
-				<a class="anchor" name="element" href="#element"><code>Element</code></a>
-			</h3><p>Elements are the basic building blocks of Crank applications. They are JavaScript objects which are interpreted by renderers to produce and manage stateful nodes.</p>
-<h4>Methods</h4><h4><code>constructor</code></h4><p>Constructs an element. Typicially, you would use the <code>createElement</code> function rather than calling this constructor directly.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>tag: Tag</code> - The tag of the element.</li>
-<li><code>props: Record&lt;string, any&gt;</code> - The props of the element.</li>
-<li><code>key: unknown</code> - A key by which to identify the element during the element diffing process.</li>
-<li><code>ref: Function</code> - A callback which fires with the element’s rendered value whenever the element is rendered.</li>
-</ul>
-<h3>
-				<a class="anchor" name="renderer" href="#renderer"><code>Renderer</code></a>
-			</h3><p>An abstract class which is subclassed to render to different target environments. This class is responsible for kicking off the rendering process, caching previous trees by root, and creating/mutating/disposing the nodes of the target environment.</p>
-<p><strong>NOTE:</strong> The internal Crank renderer methods and type parameters are documented in the <a href="./custom-renderers">guide on custom renderers.</a></p>
-<h4>Methods</h4><h4><code>constructor</code></h4><p>Creates a new Renderer. The base <code>Renderer</code> constructor accepts no parameters.</p>
-<h4><code>render</code></h4><p><strong>Parameters:</strong></p>
-<ul>
-<li><code>children: Children</code> - The element tree to render.</li>
-<li><code>root?: TRoot</code> - The renderer specific root to render into.</li>
-<li><code>ctx?: Context</code> - A context which will parent the contexts of all top-level components in the element tree.</li>
-</ul>
-<h3>
-				<a class="anchor" name="context" href="#context"><code>Context</code></a>
-			</h3><p>A class which is instantiated and passed to every component function as its <code>this</code> value.</p>
-<p><strong>Type Parameters:</strong></p>
-<ul>
-<li><code>TProps</code> - The expected props of the related component.</li>
-<li><code>TResult</code> - The expected result from rendering the component.</li>
-</ul>
-<h4>Properties</h4><ul>
-<li><code>props</code> - The current props of the component. <strong>Readonly</strong></li>
-<li><code>value</code> - The current rendered value of the component. <strong>Readonly</strong></li>
-</ul>
-<h4>Methods</h4><h4><code>[Symbol.iterator]</code></h4><p>Returns an iterator of the props passed to the component. Only used in generator components.</p>
-<h4><code>[Symbol.asyncIterator]</code></h4><p>Returns an async iterator of the props passed to the component. Only used in generator</p>
-<h4><code>refresh</code></h4><p>Updates the component in place.</p>
-<h4><code>schedule</code></h4><p>Executes the passed in callback when the component renders. The <code>schedule</code> method will only fire once for each call and callback.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>callback: Function</code> - The callback to be executed.</li>
-</ul>
-<h4><code>cleanup</code></h4><p>Executes the passed in callback when the component unmounts. The <code>cleanup</code> method will only fire once for each call and callback.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>callback: Function</code> - The callback to be executed.</li>
-</ul>
-<h4><code>addEventListener</code></h4><p>Adds an event listener to the context. The <code>addEventListener</code> method will also attach event listeners to the underlying top-level node or nodes which were created for the component.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><p><code>type: string</code> - The type of the event.</p>
-</li>
-<li><p><code>listener: Function</code> - The listener callback.</p>
-</li>
-<li><p><code>options: Object | boolean</code> - An object of boolean options which can be set to change the characteristics of the listener. If the options object is a boolean, then that value is used to set the <code>capture</code> option for the listener.</p>
-<ul>
-<li><code>capture: boolean</code> - If true, the event listener will fire during <a href="https://developer.mozilla.org/en-US/docs/Learn/JavaScript/Building_blocks/Events#Event_bubbling_and_capture">the capture phase</a> of event dispatch.</li>
-<li><code>once: boolean</code> -  If true, the event listener will fire at most once before being removed.</li>
-<li><code>passive: boolean</code> - If true, calling the <code>preventDefault</code> method on the event will have no effect. Using this flag can increase performance. It is most useful for event types like <code>scroll</code> which fire frequently and are rarely cancelled.</li>
-</ul>
-</li>
-</ul>
-<h4><code>removeEventListener</code></h4><p>Removes an event listener by type, listener and capture option.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><p><code>type: string</code> - The type of the event.</p>
-</li>
-<li><p><code>listener: Function</code> - The listener callback.</p>
-</li>
-<li><p><code>options: Object | boolean</code> - An object of boolean options which can be set to change the characteristics of the listener. If the options object is a boolean, then that value is used to set the <code>capture</code> option for the listener.</p>
-<ul>
-<li><code>capture: boolean</code> - If true, will remove listeners which use the capture option.</li>
-</ul>
-</li>
-</ul>
-<h4><code>dispatchEvent</code></h4><p>Dispatches an event on the context. Will propagate to parent contexts according to the same event bubbling and capture algorithms used by the DOM.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>ev: Event</code> - An Event object.</li>
-</ul>
-<p><strong>Return Value:</strong></p>
-<p>The return value is <code>false</code> if the event is cancelable and an event listener calls the <code>preventDefault</code> method on the event, and <code>true</code> otherwise.</p>
-<h4><code>consume</code></h4><p>Retrieves a provision set by an ancestor by key.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>key: unknown</code> - The key of the provision.</li>
-</ul>
-<p><strong>Return Value:</strong></p>
-<p>The provision by key, or undefined if no provision is found.</p>
-<h4><code>provide</code></h4><p>Sets a provision by key for descendant components.</p>
-<p><strong>Parameters:</strong></p>
-<ul>
-<li><code>key: unknown</code> - The key of the provision.</li>
-<li><code>value: unknown</code> - The value of the provision.</li>
 </ul>
 </div><footer class="footer"><div>Copyright © 2020 Brian Kim.</div><div>Distributed under the <a href="https://github.com/bikeshaving/crank/blob/master/LICENSE">MIT License</a>.</div><div>Logo by <a href="https://wstone.io">Will Stone</a> and <a href="https://github.com/pjdon">Paul Donchenko</a>.</div></footer></main><script src="/index.tsx.js"></script></body></html>

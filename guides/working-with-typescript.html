@@ -6,7 +6,7 @@
 								gtag('config', 'UA-20910936-4');
 							</script></head><body><nav id="navbar" class="navbar"><div class="navbar-group"><div class="navbar-item"><a class="navbar-title-link false" href="/"><img class="navbar-logo" src="/static/logo.svg" alt=""><span>Crank.js</span></a></div><div class="navbar-item"><a class="current" href="/guides/getting-started">Docs</a></div><div class="navbar-item"><a href="/blog/">Blog</a></div></div><div class="navbar-group"><div class="navbar-item"><a href="https://github.com/bikeshaving/crank">GitHub</a></div><div class="navbar-item"><a href="http://npm.im/@bikeshaving/crank">NPM</a></div></div></nav><div id="sidebar" class="sidebar"><h3>Guides</h3><div class="sidebar-item"><a href="/guides/getting-started" class="">Getting Started</a></div><div class="sidebar-item"><a href="/guides/elements" class="">JSX, Elements and Renderers</a></div><div class="sidebar-item"><a href="/guides/components" class="">Components</a></div><div class="sidebar-item"><a href="/guides/handling-events" class="">Handling Events</a></div><div class="sidebar-item"><a href="/guides/async-components" class="">Async Components</a></div><div class="sidebar-item"><a href="/guides/special-props-and-tags" class="">Special Props and Tags</a></div><div class="sidebar-item"><a href="/guides/lifecycles" class="">Lifecycles</a></div><div class="sidebar-item"><a href="/guides/reusable-logic" class="">Reusable Logic</a></div><div class="sidebar-item"><a href="/guides/working-with-typescript" class="current">Working with TypeScript</a></div><div class="sidebar-item"><a href="/guides/custom-renderers" class="">Custom Renderers</a></div><div class="sidebar-item"><a href="/guides/reference-for-react-developers" class="">Reference for React Developers</a></div><div class="sidebar-item"><a href="/guides/api-reference" class="">API Reference</a></div></div><main class="main"><div class="content"><h1>Working with TypeScript</h1><p>Crank is written in TypeScript, and provides some types out of box so you can type-check your components and elements.</p>
 <h2>
-				<a class="anchor" name="typing-this-in-components" href="#typing-this-in-components">Typing <code>this</code> in Components</a>
+				<a class="anchor" name="typing-this-in-components" href="#typing-this-in-components">Typing this in Components</a>
 			</h2><p>Trying to reference <code>this</code> in a component without a <code>this</code> type annotation will throw a type error in TypeScript‘s strict mode (you’ll see a message like <code>&#39;this&#39; implicitly has type &#39;any&#39; because it does not have a type annotation</code>). Crank exports the <code>Context</code> class so you can annotate your components <code>this</code> as <code>Context</code>:</p>
 <pre><code class="language-tsx">import {Context} from &quot;@bikeshaving/crank&quot;;
 function *Timer (this: Context) {
@@ -34,7 +34,7 @@ function SyncFn(): Element {
 function *SyncGen(): Generator&lt;Element&gt; {
   while (true) {
     yield &lt;div&gt;Hello world&lt;/div&gt;;
-  } 
+  }
 }
 
 async function AsyncFn(): Promise&lt;Element&gt; {
@@ -44,7 +44,7 @@ async function AsyncFn(): Promise&lt;Element&gt; {
 async function *AsyncGen(): AsyncGenerator&lt;Element&gt; {
   while (true) {
     yield &lt;div&gt;Hello world&lt;/div&gt;;
-  } 
+  }
 }</code></pre>
 <p><code>Element</code> is just the type returned by JSX expressions/<code>createElement</code>. As you can see, you still have to modify the return type of functions based on whether the function is async or a generator. You can also use the type <code>Child</code> which represents any valid value in an element tree.</p>
 <pre><code class="language-tsx">function *SyncGen(): Generator&lt;Child&gt; {
