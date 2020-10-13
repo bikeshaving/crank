@@ -2000,14 +2000,14 @@ async function LoadingIndicator() {
 }
 
 async function RandomDelayGreeting({name}) {
-	await new Promise((resolve) => setTimeout(resolve, Math.random() * 4000));
+  await new Promise((resolve) => setTimeout(resolve, Math.random() * 4000));
   return <div>Hello <span style="color: red">{name}</span></div>;
 }
 
 async function *LoadingGreeting({name}) {
-	for await ({name} of this) {
+  for await ({name} of this) {
     yield <LoadingIndicator />;
-		yield <RandomDelayGreeting name={name} />;
+    yield <RandomDelayGreeting name={name} />;
   }
 }
 ```
@@ -2173,15 +2173,15 @@ Second, we have to make concurrent renderings work with the rearranging logic we
 
 ```jsx
 async function *LoadingGreeting({name}) {
-	// Calling this.refresh called after LoadingIndicator settles
+  // Calling this.refresh called after LoadingIndicator settles
   // but before DelayedGreeting settles.
-	setTimeout(async () => {
-		await this.refresh();
-		console.log(app.innerHTML);
-		// Expected: "<div>Loading…</div>"
-		// Actual: ""
-	}, 1500);
-	for await ({name} of this) {
+  setTimeout(async () => {
+    await this.refresh();
+    console.log(app.innerHTML);
+    // Expected: "<div>Loading…</div>"
+    // Actual: ""
+  }, 1500);
+  for await ({name} of this) {
     yield <LoadingIndicator />;
     yield <DelayedGreeting name={name} />;
   }
