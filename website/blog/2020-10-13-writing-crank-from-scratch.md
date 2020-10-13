@@ -5,7 +5,7 @@ publishDate: 2020-10-13
 
 One of my goals when authoring Crank.js was to create a framework which was so simple that any intermediate JavaScript developer could conceivably write it from scratch without reference. What I think makes this uniquely achievable for Crank is that its component model is built on top of JavaScript’s two main control flow abstractions, iterators and promises, allowing developers to write components exclusively with sync and async functions and generator functions.
 
-The following is an attempt to prove that I’ve met this goal by rewriting the bulk of Crank’s core logic as a series of additive commits, with explanations of what I’m doing at each step.
+The following is an attempt to prove that I’ve met this goal by rewriting the bulk of Crank’s core logic as a series of additive commits, with explanations for what I’m doing at each step.
 <!-- truncate -->
 
 Even if you don’t plan on using Crank, this essay may yet prove informative in that it will demonstrate the basics of how virtual DOM libraries work, and show you some advanced techniques for working with iterators and promises. I will also attempt to justify some of the design decisions I made along the way, as I make them. Moreover, the end result won’t just be a toy library, but something which looks very similar to Crank’s actual source code, making the jump from reading this essay to contributing to the project much easier, should you be so inclined.
@@ -46,7 +46,7 @@ renderer.render(
 </html>
 ```
 
-This file uses the [Babel standalone transpiler](https://babeljs.io/docs/en/babel-standalone) to transpile [JSX](https://facebook.github.io/jsx/), an XML-like syntax extension to JavaScript, on the fly. We don’t transpile modern ECMAScript features, so you will need to open the file from an up-to-date browser. Alternatively, if you don’t want to use JSX, you can use the [HTM template tag](https://github.com/developit/htm), which requires no transpilation. The examples in this essay will use JSX, but you are free to use HTM or any other alternative.
+This file uses the [Babel standalone transpiler](https://babeljs.io/docs/en/babel-standalone) to transpile [JSX](https://facebook.github.io/jsx/) on the fly. We don’t transpile modern ECMAScript features, so you will need to open the file from an up-to-date browser. Alternatively, if you don’t want to use JSX, you can use the [HTM template tag](https://github.com/developit/htm), which requires no transpilation. The examples in this essay will use JSX, but you are free to use HTM or any other alternative.
 
 ```html
 <!DOCTYPE HTML>
@@ -213,6 +213,8 @@ renderer.render(
 +  return node;
 +}
 ```
+[Diff](https://github.com/brainkim/crank-from-scratch/commit/80683e84ac529022c898fdaa72c47d6c26a2cef2) [File](https://github.com/brainkim/crank-from-scratch/blob/80683e84ac529022c898fdaa72c47d6c26a2cef2/crank.js)
+
 
 The `createElement()` function creates an `Element` instance which has two members, `tag` and `props`. The `createElement()` function’s main responsibility is to create an object for the element’s `props` if none are passed in, and to collect any remaining arguments under the name “children” on the `props` object.
 
@@ -368,6 +370,7 @@ We can diff entire trees efficiently because of an observation first made by the
 +  return el._node;
  }
 ```
+[Diff](https://github.com/brainkim/crank-from-scratch/commit/c5299409736081d37a66de9a91b1db0e2883bc46) [File](https://github.com/brainkim/crank-from-scratch/blob/c5299409736081d37a66de9a91b1db0e2883bc46/crank.js)
 
 To diff old and new trees, we need to retain old elements and DOM nodes so that we can make comparisons. At the renderer level, we use [a weakmap](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap) to store the `Portal` elements we created in `render()` by the DOM node which we rendered into. At the element level, we store an element’s previously rendered children directly on the element under its `_children` property, and an element’s previously created DOM nodes under its `_node` property. We use leading underscores to indicate that these properties should be private to the module.
 
@@ -442,6 +445,7 @@ We use PascalCase when defining components because JSX transpilation is determin
      return undefined;
    } else if (!el._node) {
 ```
+[Diff](https://github.com/brainkim/crank-from-scratch/commit/af10d458baf4f504eff9a0b821e05c4b5cebe2fd) [File](https://github.com/brainkim/crank-from-scratch/blob/af10d458baf4f504eff9a0b821e05c4b5cebe2fd/crank.js)
 
 As you can see, implementing function components is relatively easy; when encountering tags which are functions, rather than recursing over the element’s `children` prop, we invoke the function with the element’s props and use the return value as the element’s children instead. This is why we will often refer to the return value of a function component as the component element’s “children.” As an additional note on terminology, we can now distinguish elements based on the type of their tag: we refer to elements with function tags as *component elements*, while we refer to elements which correspond to DOM nodes as *host elements*.
 
@@ -607,6 +611,7 @@ console.log(document.body.innerHTML); // "<div>1</div><div>2</div>"
    } else if (el.tag === Portal) {
      renderer.arrange(el, el.props.root, values);
 ```
+[Diff](https://github.com/brainkim/crank-from-scratch/commit/90091832ee9558d3eec5f8bbee566c55e82b3e41) [File](https://github.com/brainkim/crank-from-scratch/blob/90091832ee9558d3eec5f8bbee566c55e82b3e41/crank.js)
 
 To implement fragments, we adjust the `narrow` function so that any time a non-string iterable is detected we wrap it in a `createElement` call. We need to be careful to exclude strings from our iterable detection logic. Strings are iterable but we don’t want to iterate over them because we would end up diffing each string found in the element tree character by character, which would be inefficient.
 
@@ -796,6 +801,7 @@ With that cleared up, here is the code which implements generator components.
 +  return updateChildren(ctx._renderer, ctx._el, narrow(children));
 +}
 ```
+[Diff](https://github.com/brainkim/crank-from-scratch/commit/d89c229f2492817d26c6b96237bc5087c15bf5e9) [File](https://github.com/brainkim/crank-from-scratch/blob/d89c229f2492817d26c6b96237bc5087c15bf5e9/crank.js)
 
 In this step, we’ve encapsulated the execution of components in a helper class called the `Context`. This will be where we store all state which is required to execute component functions from now on. So far, we’ve stored the renderer, the element, and any iterator returned by the component, directly on this context class.
 
@@ -862,6 +868,7 @@ We’ve already implemented basic event handling thanks to the DOM’s [`onevent
        ctx._iter = value;
      } else {
 ```
+[Diff](https://github.com/brainkim/crank-from-scratch/commit/cfd60c84ebd38549d3bbf4829c28c0e8f96847ec) [File](https://github.com/brainkim/crank-from-scratch/blob/cfd60c84ebd38549d3bbf4829c28c0e8f96847ec/crank.js)
 
 After Crank’s release, multiple people objected to this unusual usage of `this`. As an alternative to using `this`, some suggested passing the context in directly as a parameter. There are many reasons why I think using `this` is the best choice for component API design, and I’ll outline a few of them here.
 
@@ -1098,6 +1105,7 @@ If you run this component, you’ll notice that clicking on the header doesn’t
 +  return unwrap(values);
  }
 ```
+[Diff](https://github.com/brainkim/crank-from-scratch/commit/ce8a6b8a6cbc55e04b761b556c6e10f084fbc555) [File](https://github.com/brainkim/crank-from-scratch/blob/ce8a6b8a6cbc55e04b761b556c6e10f084fbc555/crank.js)
 
 This diff is larger because we have to adjust the signatures of many of the recursive renderer functions we’ve defined, adding a parameter for the current host element and passing it down the tree. With this data available, we can now retain it on component contexts, so that it can be accessed by context methods and functions. We also add an `_isUpdating` boolean flag to contexts, to help us determine whether a component is being updated by a parent or doing a self-initiated refresh. Finally, we create a `commitCtx()` function, analogous to the `commit()` renderer function, which calls `arrange()` on a component’s nearest ancestor host element if the component is detected as refreshing.
 
@@ -1228,6 +1236,7 @@ Currently, the `clearInterval()` call will never be reached, and would cause a m
 +  }
 +}
 ```
+[Diff](https://github.com/brainkim/crank-from-scratch/commit/274b9142fced2b366bedb62ca668e96a64e7c39a) [File](https://github.com/brainkim/crank-from-scratch/blob/274b9142fced2b366bedb62ca668e96a64e7c39a/crank.js)
 
 We’ve added another renderer function, `unmount`, along with its analogous context function, `unmountCtx`. It is important to make the `unmount` function recursive, because there can be component elements deeply nested in the element tree which expect to be returned.
 
@@ -1319,6 +1328,7 @@ Ultimately, I didn’t want to diverge too much from the typical function compon
      ctx._isDone = true;
    }
 ```
+[Diff](https://github.com/brainkim/crank-from-scratch/commit/79e12981b3bbb65ffd912cdf3fd4b11b19862da4) [File](https://github.com/brainkim/crank-from-scratch/blob/79e12981b3bbb65ffd912cdf3fd4b11b19862da4/crank.js)
 
 **Notes:**
 
@@ -1487,6 +1497,7 @@ Second, we’ll also change the return value of the `render()` method slightly s
 
  function unmountCtx(ctx) {
 ```
+[Diff](https://github.com/brainkim/crank-from-scratch/commit/cb6789ba7bb76966826dee83df2771bfd0e87c30) [File](https://github.com/brainkim/crank-from-scratch/blob/cb6789ba7bb76966826dee83df2771bfd0e87c30/crank.js)
 
 **Notes:**
 
@@ -1581,6 +1592,7 @@ async function DelayedGreeting({name}) {
        return updateCtxChildren(ctx, value);
      }
 ```
+[Diff](https://github.com/brainkim/crank-from-scratch/commit/72cdc766f14951ccda676df887eac6f5968c5fdc) [File](https://github.com/brainkim/crank-from-scratch/blob/72cdc766f14951ccda676df887eac6f5968c5fdc/crank.js)
 
 Async components are “contagious” in that they make ancestor components update and commit asynchronously as well. Additionally, any `refresh()` or `render()` calls which attempt to render async components will now return promises, and all DOM mutations are deferred until the async components have settled. This logic is implemented in the `updateChildren()` function, where we return a promise of the `commit()` call if any child values are detected to be promise-like.
 
@@ -1743,6 +1755,7 @@ In this diagram, because `B` and `C` are created while `A` is pending, we enqueu
 
  function updateCtxChildren(ctx, children) {
 ```
+[Diff](https://github.com/brainkim/crank-from-scratch/commit/66a9459bd2fc11a2a3bd7bae9818394ad3902e67) [File](https://github.com/brainkim/crank-from-scratch/blob/66a9459bd2fc11a2a3bd7bae9818394ad3902e67/crank.js)
 
 We define another context function `runCtx()`, which is where the enqueuing behavior is implemented, and call this function instead of `stepCtx()` in the `refresh()` method and the `updateCtx()` function. Rather than implementing this behavior with a higher-order function, we store the inflight and enqueued promises directly on component context. We do this because we’ll need to modify the enqueuing algorithm in various ways for later steps.
 
@@ -1849,6 +1862,7 @@ To implement this behavior, we’ll need to update the `stepCtx()` function so t
 
  function updateCtx(ctx) {
 ```
+[Diff](https://github.com/brainkim/crank-from-scratch/commit/caf7632e27d89236b06855a5c63b8e812c060a66) [File](https://github.com/brainkim/crank-from-scratch/blob/caf7632e27d89236b06855a5c63b8e812c060a66/crank.js)
 
 We keep the inflight/enqueued pattern from the previous step, except now we advance the queue based on the blocking portion of the render. A promise diagram for this algorithm might look like this.
 
@@ -1949,6 +1963,7 @@ We use this chasing strategy in Crank by chasing the pending child values of an 
    return commit(renderer, el, normalize(values));
  }
 ```
+[Diff](https://github.com/brainkim/crank-from-scratch/commit/f4ab9d5a2738026ce52c5bc4b82de3529aad34bc) [File](https://github.com/brainkim/crank-from-scratch/blob/f4ab9d5a2738026ce52c5bc4b82de3529aad34bc/crank.js)
 
 Once again we don’t use a higher-order function, but retain the `resolve()` function of future child values directly on elements under the property `onvalues`. We set `onvalues` whenever we detect async rendering to have occurred below the current element.
 
@@ -2124,6 +2139,7 @@ Because this async generator component resumes continuously, it will concurrentl
        ctx._iterator.return();
      }
 ```
+[Diff](https://github.com/brainkim/crank-from-scratch/commit/208a71ff2d82fd202c6a4331d85b1493f8a09605) [File](https://github.com/brainkim/crank-from-scratch/blob/208a71ff2d82fd202c6a4331d85b1493f8a09605/crank.js)
 
 To implement the continuous resuming behavior of async generator components, we call `runCtx()` in the `advanceCtx()` function. This continuous resuming behavior does not mesh well with the standard enqueuing behavior in `runCtx()`, so we use the hitching strategy described previously for async generator components rather than the enqueuing strategy for async generator components.
 
@@ -2275,6 +2291,7 @@ What we want is for whatever was previously rendered in a pending async element�
      ctx._renderer.arrange(
        ctx._host,
 ```
+[Diff](https://github.com/brainkim/crank-from-scratch/commit/567363adbb546d69e6726de7360595b910960ef2) [File](https://github.com/brainkim/crank-from-scratch/blob/567363adbb546d69e6726de7360595b910960ef2/crank.js)
 
 **Notes:**
 
