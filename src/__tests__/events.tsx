@@ -3,6 +3,33 @@ import {Context, createElement, Element, Fragment} from "../index";
 import {renderer} from "../dom";
 
 describe("events", () => {
+	afterEach(() => {
+		renderer.render(null, document.body);
+		document.body.innerHTML = "";
+	});
+
+	test("onevent", () => {
+		const mock = jest.fn();
+		renderer.render(<button onclick={mock}>Click me</button>, document.body);
+
+		const button = document.body.firstChild as HTMLButtonElement;
+		button.click()!;
+		button.click()!;
+		button.click()!;
+		expect(mock).toHaveBeenCalledTimes(3);
+	});
+
+	test("onevent SVG", () => {
+		const mock = jest.fn();
+		renderer.render(<svg onclick={mock} />, document.body);
+
+		const svg = document.body.firstChild as SVGSVGElement;
+		svg.dispatchEvent(new Event("click"));
+		svg.dispatchEvent(new Event("click"));
+		svg.dispatchEvent(new Event("click"));
+		expect(mock).toHaveBeenCalledTimes(3);
+	});
+
 	test("function component", () => {
 		const mock = jest.fn();
 		function Button(this: Context) {
