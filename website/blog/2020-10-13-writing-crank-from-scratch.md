@@ -3,14 +3,16 @@ title: Writing Crank from Scratch
 publishDate: 2020-10-13
 ---
 
-One of my goals when authoring Crank.js was to create a framework which was so simple that any intermediate JavaScript developer could conceivably write it from scratch without reference. What I think makes this uniquely achievable for Crank is that its component model is built on top of JavaScript’s two main control flow abstractions, iterators and promises, allowing developers to write components exclusively with sync and async functions and generator functions.
+One of my goals when authoring Crank.js was to create a framework which was so simple that any intermediate JavaScript developer could conceivably write it from scratch. What I think makes this uniquely achievable for Crank is that its component model is built on top of JavaScript’s two main control flow abstractions, iterators and promises, allowing developers to write components exclusively with sync and async functions and generator functions.
 
 The following is an attempt to prove that I’ve met this goal by rewriting the bulk of Crank’s core logic as a series of additive commits, with explanations for what I’m doing at each step.
 <!-- truncate -->
 
 Even if you don’t plan on using Crank, this essay may yet prove informative in that it will demonstrate the basics of how virtual DOM libraries work, and show you some advanced techniques for working with iterators and promises. I will also attempt to justify some of the design decisions I made along the way, as I make them. Moreover, the end result won’t just be a toy library, but something which looks very similar to Crank’s actual source code, making the jump from reading this essay to contributing to the project much easier, should you be so inclined.
 
-At each step, we’ll edit a single file which serves as the Crank module, and present a unified diff of the changes. You can try out this module by referencing it from the following HTML file.
+At each step, we’ll edit a single file which serves as the Crank module, and present a unified diff of the changes. We’ll also provide a link to the relevant commit and snapshot for each step in [this companion repository](https://github.com/brainkim/crank-from-scratch).
+
+You can try out the module we create by referencing it from the following HTML file.
 
 ```html
 <!DOCTYPE HTML>
@@ -72,11 +74,11 @@ renderer.render(
 </html>
 ```
 
-Each step will include links to the relevant commit in [this companion repository](https://github.com/brainkim/crank-from-scratch). This essay assumes an intermediate level of JavaScript experience, as well as some experience with a virtual DOM framework like React.
+This essay assumes an intermediate level of JavaScript experience, as well as some experience with a virtual DOM framework like React.
 
 ## Step 1: Creating DOM Nodes
 
-The first thing we’ll need to do is to implement a `createElement()` function, so that the module works with JSX. While the React team is [working on an alterative JSX transform](https://reactjs.org/blog/2020/09/22/introducing-the-new-jsx-transform.html), we’ll stick to its original transpilation, where JSX element expressions are transpiled to `createElement()` calls, with the *tag*, *props* and *children* of the syntax transpiled to the first, second, and remaining arguments of the `createElement()` call respectively.
+The first thing we’ll need to do is to implement a `createElement()` function, so that the module works with JSX. While the React team is [working on an alterative JSX output](https://reactjs.org/blog/2020/09/22/introducing-the-new-jsx-transform.html), we’ll stick to its original transpilation, where JSX element expressions are transpiled to `createElement()` calls, with the *tag*, *props* and *children* of the syntax transpiled to the first, second, and remaining arguments of the `createElement()` call respectively.
 
 ```jsx
 const el = (
@@ -213,6 +215,7 @@ renderer.render(
 +  return node;
 +}
 ```
+
 [Diff](https://github.com/brainkim/crank-from-scratch/commit/80683e84ac529022c898fdaa72c47d6c26a2cef2) [File](https://github.com/brainkim/crank-from-scratch/blob/80683e84ac529022c898fdaa72c47d6c26a2cef2/crank.js)
 
 
@@ -220,7 +223,7 @@ The `createElement()` function creates an `Element` instance which has two membe
 
 The `Element` class should not be confused with the [`Element` base class](https://developer.mozilla.org/en-US/docs/Web/API/Element) provided by the DOM. It’s an unfortunate name collision, but I also couldn’t bring myself to name the return value of a function named “createElement” anything else. These virtual elements are more or less plain JavaScript objects, and we only use a class to keep track of the element’s properties in one place. When referring to actual DOM nodes, we’ll use the term “node” in identifiers and properties instead.
 
-As far as rendering goes, we’ve divided the process into the methods `create()`, `patch()` and `arrange()`, and the functions `update()` and `commit()`. Currently, we could probably inline all of this logic as a single function, but using the power of hindsight I’ve structured the code so that we’ll mostly add to these functions as we implement more features.
+As far as rendering goes, we’ve divided the process into the methods `create()`, `patch()` and `arrange()`, and the functions `update()` and `commit()`. Currently, we could probably inline all of this logic as a single function, but by using the power of hindsight I’ve structured the code so that we’ll mostly add to these functions as we implement more features.
 
 The `create()`, `patch()` and `arrange()` methods are the only places in the module where we perform actual DOM operations. The `create()` method creates DOM nodes, the `patch()` method updates their properties and attributes, and the `arrange()` method manages the insertion and removal of DOM nodes. These methods are defined on the `Renderer` class because it’s possible that we might want to subclass it for custom DOM behavior, or to render to environments besides the DOM.
 
@@ -231,14 +234,13 @@ The `update()` and `commit()` functions represent the two phases of walking the 
 **Notes:**
 
 1. In the `render()` method, we create a special `Portal` element to serve as the root of the element tree. In Crank, a `Portal` is a special element tag which can be used to render into multiple user-provided DOM nodes at the same time. This can be helpful for use-cases such as tooltips or modals, and mirrors a [similar API in React](https://reactjs.org/docs/portals.html). Here, we mainly use it as a way to identify the root element so that we can call the `arrange()` method but not the `create()` or `patch()` methods. The latter two methods wouldn’t make sense at the root.
-
 2. In the `createElement()` function, we unwrap the children array if it has a length of one, and don’t assign it if it has a length of zero. This is a theme we’ll see throughout the implementation, where we unwrap arrays of length zero or one just before we retain them in memory. The reason we do this is that if you look at a typical JSX tree, most of the elements in the tree will have zero or one children, so by not retaining this extra array we can save on runtime memory costs. When we need to actually iterate over the `children` prop, we call the utility function `wrap()` to create an array on the fly, so we don’t have to explicitly handle elements with zero or one children.
 
 ## Step 2: Element Diffing
 
-Our renderer works, but will recreate every DOM node in the tree for every render. This is not only inefficient, but also incorrect, as the renderer will reset stateful DOM nodes like form or media elements. We need to diff old and new element trees when rendering to preserve as much of the DOM as possible.
+Our renderer works, but will recreate every DOM node in the tree for every render. Not only is this inefficient but also incorrect, insofar as the renderer will reset stateful DOM nodes like form or media elements. We need a way to somehow preserve as much of the DOM as possible between renders.
 
-We can diff entire trees efficiently because of an observation first made by the React authors, which is that for any two element subtrees, different root tags will usually indicate different substructures. For instance, a `table` element will almost certainly have different children as compared to a `ul` element. Therefore, we use an algorithm which recursively compares element tags at each level of the tree and throws away subtrees whose root tags don’t match.
+Thankfully, we can diff entire trees efficiently because of an observation first made by the React authors, which is that for any two element subtrees, different root tags will usually indicate different substructures. For instance, a `table` element will almost certainly have different children as compared to a `ul` element. Therefore, we use an algorithm which recursively compares element tags at each level of the tree and throws away subtrees whose root tags don’t match.
 
 ### Implementation
 
@@ -266,7 +268,7 @@ We can diff entire trees efficiently because of an observation first made by the
    }
  }
 
-@@ -22,9 +32,30 @@ export function createElement(tag, props, ...children) {
+@@ -22,78 +32,133 @@ export function createElement(tag, props, ...children) {
    return new Element(tag, props);
  }
 
@@ -298,7 +300,48 @@ We can diff entire trees efficiently because of an observation first made by the
      return update(this, portal);
    }
 
-@@ -73,16 +104,49 @@ export class Renderer {
+   create(el) {
+     return document.createElement(el.tag);
+   }
+
+   patch(el, node) {
+     for (let [name, value] of Object.entries(el.props)) {
+       if (name === "children") {
+         continue;
+       } else if (name === "class") {
+         name = "className";
+       }
+
+       if (name in node) {
+         node[name] = value;
+       } else {
+         node.setAttribute(name, value);
+       }
+     }
+   }
+
+   arrange(el, node, children) {
+     let child = node.firstChild;
+     for (const newChild of children) {
+       if (child === newChild) {
+         child = child.nextSibling;
+       } else if (typeof newChild === "string") {
+         if (child !== null && child.nodeType === Node.TEXT_NODE) {
+           child.nodeValue = newChild;
+           child = child.nextSibling;
+         } else {
+           node.insertBefore(document.createTextNode(newChild), child);
+         }
+       } else {
+         node.insertBefore(newChild, child);
+       }
+     }
+
+     while (child !== null) {
+       const nextSibling = child.nextSibling;
+       node.removeChild(child);
+       child = child.nextSibling;
+     }
    }
  }
 
@@ -353,7 +396,7 @@ We can diff entire trees efficiently because of an observation first made by the
    return commit(renderer, el, values);
  }
 
-@@ -90,10 +154,11 @@ function commit(renderer, el, values) {
+ function commit(renderer, el, values) {
    if (el.tag === Portal) {
      renderer.arrange(el, el.props.root, values);
      return undefined;
@@ -370,9 +413,10 @@ We can diff entire trees efficiently because of an observation first made by the
 +  return el._node;
  }
 ```
+
 [Diff](https://github.com/brainkim/crank-from-scratch/commit/c5299409736081d37a66de9a91b1db0e2883bc46) [File](https://github.com/brainkim/crank-from-scratch/blob/c5299409736081d37a66de9a91b1db0e2883bc46/crank.js)
 
-To diff old and new trees, we need to retain old elements and DOM nodes so that we can make comparisons. At the renderer level, we use [a weakmap](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap) to store the `Portal` elements we created in `render()` by the DOM node which we rendered into. At the element level, we store an element’s previously rendered children directly on the element under its `_children` property, and an element’s previously created DOM nodes under its `_node` property. We use leading underscores to indicate that these properties should be private to the module.
+To diff old and new trees, we need to retain old elements and DOM nodes so that we can make comparisons. At the renderer level, we use [a weakmap](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap) to store the `Portal` elements we created in `render()` by the DOM node which we rendered into. At the element level, we store an element’s previously rendered children directly on the element under its `_children` property, and an element’s previously created DOM node under its `_node` property. We use leading underscores to indicate that these properties should be private to the module.
 
 The `diff()` function compares old and new children by position, and if elements appear in the same position with the same tag, we simply copy the new element’s props over to the old element. Finally, in the `commit()` function, we check to see if an element has a DOM node defined on it before creating new ones.
 
@@ -417,7 +461,10 @@ We use PascalCase when defining components because JSX transpilation is determin
 ```diff
 --- a/crank.js
 +++ b/crank.js
-@@ -132,7 +132,14 @@ function update(renderer, el) {
+@@ -129,36 +129,45 @@ function diff(renderer, oldChild, newChild) {
+ function update(renderer, el) {
+   if (el._isMounted) {
+     el = createElement(el, {...el.props});
    }
 
    const oldChildren = wrap(el._children);
@@ -433,7 +480,18 @@ We use PascalCase when defining components because JSX transpilation is determin
    const children = [];
    const values = [];
    const length = Math.max(oldChildren.length, newChildren.length);
-@@ -151,7 +158,9 @@ function update(renderer, el) {
+   for (let i = 0; i < length; i++) {
+     const oldChild = oldChildren[i];
+     const newChild = narrow(newChildren[i]);
+     const [child, value] = diff(renderer, oldChild, newChild);
+     children.push(child);
+     if (value) {
+       values.push(value);
+     }
+   }
+
+   el._children = unwrap(children);
+   return commit(renderer, el, values);
  }
 
  function commit(renderer, el, values) {
@@ -444,7 +502,15 @@ We use PascalCase when defining components because JSX transpilation is determin
      renderer.arrange(el, el.props.root, values);
      return undefined;
    } else if (!el._node) {
+     el._node = renderer.create(el);
+   }
+
+   renderer.patch(el, el._node);
+   renderer.arrange(el, el._node, values);
+   return el._node;
+ }
 ```
+
 [Diff](https://github.com/brainkim/crank-from-scratch/commit/af10d458baf4f504eff9a0b821e05c4b5cebe2fd) [File](https://github.com/brainkim/crank-from-scratch/blob/af10d458baf4f504eff9a0b821e05c4b5cebe2fd/crank.js)
 
 As you can see, implementing function components is relatively easy; when encountering tags which are functions, rather than recursing over the element’s `children` prop, we invoke the function with the element’s props and use the return value as the element’s children instead. This is why we will often refer to the return value of a function component as the component element’s “children.” As an additional note on terminology, we can now distinguish elements based on the type of their tag: we refer to elements with function tags as *component elements*, while we refer to elements which correspond to DOM nodes as *host elements*.
@@ -526,7 +592,9 @@ console.log(document.body.innerHTML); // "<div>1</div><div>2</div>"
  export function createElement(tag, props, ...children) {
    props = Object.assign({}, props);
    if (children.length === 1) {
-@@ -37,11 +47,53 @@ function narrow(value) {
+@@ -35,13 +45,55 @@ export function createElement(tag, props, ...children) {
+ function narrow(value) {
+   if (typeof value === "boolean" || value == null) {
      return undefined;
    } else if (typeof value === "string" || value instanceof Element) {
      return value;
@@ -580,7 +648,17 @@ console.log(document.body.innerHTML); // "<div>1</div><div>2</div>"
  export class Renderer {
    constructor() {
      this._cache = new WeakMap();
-@@ -139,13 +191,13 @@ function update(renderer, el) {
+@@ -129,45 +181,45 @@ function diff(renderer, oldChild, newChild) {
+ function update(renderer, el) {
+   if (el._isMounted) {
+     el = createElement(el, {...el.props});
+   }
+
+   const oldChildren = wrap(el._children);
+   let newChildren;
+   if (typeof el.tag === "function") {
+     newChildren = el.tag(el.props);
+   } else {
      newChildren = el.props.children;
    }
 
@@ -596,7 +674,8 @@ console.log(document.body.innerHTML); // "<div>1</div><div>2</div>"
      const [child, value] = diff(renderer, oldChild, newChild);
      children.push(child);
      if (value) {
-@@ -154,11 +206,11 @@ function update(renderer, el) {
+       values.push(value);
+     }
    }
 
    el._children = unwrap(children);
@@ -610,15 +689,25 @@ console.log(document.body.innerHTML); // "<div>1</div><div>2</div>"
      return unwrap(values);
    } else if (el.tag === Portal) {
      renderer.arrange(el, el.props.root, values);
+     return undefined;
+   } else if (!el._node) {
+     el._node = renderer.create(el);
+   }
+
+   renderer.patch(el, el._node);
+   renderer.arrange(el, el._node, values);
+   return el._node;
+ }
 ```
+
 [Diff](https://github.com/brainkim/crank-from-scratch/commit/90091832ee9558d3eec5f8bbee566c55e82b3e41) [File](https://github.com/brainkim/crank-from-scratch/blob/90091832ee9558d3eec5f8bbee566c55e82b3e41/crank.js)
 
 To implement fragments, we adjust the `narrow` function so that any time a non-string iterable is detected we wrap it in a `createElement` call. We need to be careful to exclude strings from our iterable detection logic. Strings are iterable but we don’t want to iterate over them because we would end up diffing each string found in the element tree character by character, which would be inefficient.
 
 **Notes:**
 
-2. We define another helper function, `normalize()`, which is similar to the DOM’s [`Node.prototype.normalize()`](https://developer.mozilla.org/en-US/docs/Web/API/Node/normalize) method. It is called on the `values` array in the `update()` function, and will shallowly flatten the array, as well as concatenate adjacent strings and remove any `undefined` values. This is what allows arrays of values to be returned from the `update()` and `commit()` functions, as would happen in the case of `Fragment` elements. We only need to flatten the array shallowly because `normalize()` is called at each level of the element tree.
-2. We define another helper function `arrayify()`, which basically does the same thing as `wrap()` but handles iterables.
+1. We define the helper function `normalize()`, which is similar to the DOM’s [`Node.prototype.normalize()`](https://developer.mozilla.org/en-US/docs/Web/API/Node/normalize) method. It is called on the `values` array in the `update()` function, and will shallowly flatten the array, as well as concatenate adjacent strings and remove any `undefined` values. This is what allows arrays of values to be returned from the `update()` and `commit()` functions, as would happen in the case of `Fragment` elements. We only need to flatten the array shallowly because `normalize()` is called at each level of the element tree.
+2. We also define another helper function `arrayify()`, which basically does the same thing as `wrap()` but handles iterables.
 3. In Crank, the `Fragment` tag is actually just the empty string. I believe that every JSX framework/library could make their `Fragment` equivalent the empty string without any major changes to their codebase or API. The empty string makes the most sense as the default for JSX fragment syntax, and adopting this convention would lessen configuration overhead for developers.
 
 ## Step 5: Generator Components
@@ -657,7 +746,7 @@ This example, which defines and calls a [fibonacci number](https://en.wikipedia.
 
 3. **Generator functions can hold internal state.** The `current` and `next` variables are local to the generator function’s scope, and are preserved between iterations.
 
-Crank takes advantage of all three of these features by allowing components to be written as generator functions which *yield* element trees. By retaining the generator object just like we retained DOM nodes and children, we can preserve the local scope of the generator for components.
+Crank takes advantage of all three of these features by allowing components to be written as generator functions which *yield* element trees. By retaining generator objects just like we retained DOM nodes and children, we can preserve the local scope of the generator for component elements.
 
 ```jsx
 function *Counter() {
@@ -719,14 +808,12 @@ try {
 
 Generator objects implement both the iterable and iterator interfaces; in other words, generator objects are *iterable iterators.* This means you can both use generator objects in `for…of` loops, and also call the iterator methods directly. We’ll do the latter, because this approach is more flexible.
 
-With that cleared up, here is the code which implements generator components.
-
 ### Implementation
 
 ```diff
 --- a/crank.js
 +++ b/crank.js
-@@ -14,6 +14,10 @@ function arrayify(value) {
+@@ -14,15 +14,20 @@ function arrayify(value) {
      : [value];
  }
 
@@ -737,7 +824,7 @@ With that cleared up, here is the code which implements generator components.
  class Element {
    constructor(tag, props) {
      this.tag = tag;
-@@ -21,6 +25,7 @@ class Element {
+     this.props = props;
 
      this._node = undefined;
      this._children = undefined;
@@ -745,7 +832,11 @@ With that cleared up, here is the code which implements generator components.
 
      // flags
      this._isMounted = false;
-@@ -183,14 +188,19 @@ function update(renderer, el) {
+   }
+ }
+@@ -181,30 +186,35 @@ function diff(renderer, oldChild, newChild) {
+ function update(renderer, el) {
+   if (el._isMounted) {
      el = createElement(el, {...el.props});
    }
 
@@ -770,6 +861,20 @@ With that cleared up, here is the code which implements generator components.
    newChildren = arrayify(newChildren);
    const children = [];
    const values = [];
+   const length = Math.max(oldChildren.length, newChildren.length);
+   for (let i = 0; i < length; i++) {
+     const oldChild = oldChildren[i];
+     let newChild = narrow(newChildren[i]);
+     const [child, value] = diff(renderer, oldChild, newChild);
+     children.push(child);
+     if (value) {
+       values.push(value);
+     }
+   }
+
+   el._children = unwrap(children);
+   return commit(renderer, el, normalize(values));
+ }
 @@ -223,3 +233,29 @@ function commit(renderer, el, values) {
    renderer.arrange(el, el._node, values);
    return el._node;
@@ -801,6 +906,7 @@ With that cleared up, here is the code which implements generator components.
 +  return updateChildren(ctx._renderer, ctx._el, narrow(children));
 +}
 ```
+
 [Diff](https://github.com/brainkim/crank-from-scratch/commit/d89c229f2492817d26c6b96237bc5087c15bf5e9) [File](https://github.com/brainkim/crank-from-scratch/blob/d89c229f2492817d26c6b96237bc5087c15bf5e9/crank.js)
 
 In this step, we’ve encapsulated the execution of components in a helper class called the `Context`. This will be where we store all state which is required to execute component functions from now on. So far, we’ve stored the renderer, the element, and any iterator returned by the component, directly on this context class.
@@ -819,7 +925,7 @@ While there may be ways to distinguish generator functions from normal functions
 
 **Notes:**
 
-4. We divided the `update()` function into `update()` and `updateChildren()`, and created analogous functions `updateCtx()` and `updateCtxChildren()` for component contexts. These functions use the “private method” pattern described previously. The `updateCtxChildren()` function is primarily used to detect component functions which yield or return iterables, so that we can wrap their children in a `narrow()` call for diffing purposes.
+1. We divided the `update()` function into `update()` and `updateChildren()`, and created analogous functions `updateCtx()` and `updateCtxChildren()` for component contexts. These functions use the “private method” pattern described previously. The `updateCtxChildren()` function is primarily used so that we can wrap yielded/returned children in a `narrow()` call for diffing purposes.
 
 ## Step 6: Refreshing
 
@@ -850,7 +956,10 @@ We’ve already implemented basic event handling thanks to the DOM’s [`onevent
 ```diff
 --- a/crank.js
 +++ b/crank.js
-@@ -240,11 +240,15 @@ class Context {
+@@ -237,21 +237,25 @@ function commit(renderer, el, values) {
+ class Context {
+   constructor(renderer, el) {
+     this._renderer = renderer;
      this._el = el;
      this._iter = undefined;
    }
@@ -867,6 +976,13 @@ We’ve already implemented basic event handling thanks to the DOM’s [`onevent
      if (isIteratorLike(value)) {
        ctx._iter = value;
      } else {
+       return updateCtxChildren(ctx, value);
+     }
+   }
+
+   const iteration = ctx._iter.next();
+   return updateCtxChildren(ctx, iteration.value);
+ }
 ```
 [Diff](https://github.com/brainkim/crank-from-scratch/commit/cfd60c84ebd38549d3bbf4829c28c0e8f96847ec) [File](https://github.com/brainkim/crank-from-scratch/blob/cfd60c84ebd38549d3bbf4829c28c0e8f96847ec/crank.js)
 
@@ -945,7 +1061,7 @@ If you run this component, you’ll notice that clicking on the header doesn’t
 ```diff
 --- a/crank.js
 +++ b/crank.js
-@@ -99,6 +99,29 @@ function normalize(values) {
+@@ -99,167 +99,216 @@ function normalize(values) {
    return values1;
  }
 
@@ -975,7 +1091,14 @@ If you run this component, you’ll notice that clicking on the header doesn’t
  export class Renderer {
    constructor() {
      this._cache = new WeakMap();
-@@ -113,7 +136,7 @@ export class Renderer {
+   }
+
+   render(children, root) {
+     let portal = this._cache.get(root);
+     if (portal) {
+       portal.props = {root, children};
+     } else {
+       portal = createElement(Portal, {root, children});
        this._cache.set(root, portal);
      }
 
@@ -984,7 +1107,47 @@ If you run this component, you’ll notice that clicking on the header doesn’t
    }
 
    create(el) {
-@@ -161,7 +184,7 @@ export class Renderer {
+     return document.createElement(el.tag);
+   }
+
+   patch(el, node) {
+     for (let [name, value] of Object.entries(el.props)) {
+       if (name === "children") {
+         continue;
+       } else if (name === "class") {
+         name = "className";
+       }
+
+       if (name in node) {
+         node[name] = value;
+       } else {
+         node.setAttribute(name, value);
+       }
+     }
+   }
+
+   arrange(el, node, children) {
+     let child = node.firstChild;
+     for (const newChild of children) {
+       if (child === newChild) {
+         child = child.nextSibling;
+       } else if (typeof newChild === "string") {
+         if (child !== null && child.nodeType === Node.TEXT_NODE) {
+           child.nodeValue = newChild;
+           child = child.nextSibling;
+         } else {
+           node.insertBefore(document.createTextNode(newChild), child);
+         }
+       } else {
+         node.insertBefore(newChild, child);
+       }
+     }
+
+     while (child !== null) {
+       const nextSibling = child.nextSibling;
+       node.removeChild(child);
+       child = child.nextSibling;
+     }
    }
  }
 
@@ -993,7 +1156,13 @@ If you run this component, you’ll notice that clicking on the header doesn’t
    if (
      oldChild instanceof Element &&
      newChild instanceof Element &&
-@@ -175,7 +198,7 @@ function diff(renderer, oldChild, newChild) {
+     oldChild.tag === newChild.tag
+   ) {
+     if (oldChild !== newChild) {
+       oldChild.props = newChild.props;
+       newChild = oldChild;
+     }
+   }
 
    let value;
    if (newChild instanceof Element) {
@@ -1002,7 +1171,7 @@ If you run this component, you’ll notice that clicking on the header doesn’t
    } else {
      value = newChild;
    }
-@@ -183,23 +206,25 @@ function diff(renderer, oldChild, newChild) {
+
    return [newChild, value];
  }
 
@@ -1032,7 +1201,8 @@ If you run this component, you’ll notice that clicking on the header doesn’t
    const oldChildren = wrap(el._children);
    newChildren = arrayify(newChildren);
    const children = [];
-@@ -208,7 +233,7 @@ function updateChildren(renderer, el, newChildren) {
+   const values = [];
+   const length = Math.max(oldChildren.length, newChildren.length);
    for (let i = 0; i < length; i++) {
      const oldChild = oldChildren[i];
      let newChild = narrow(newChildren[i]);
@@ -1041,7 +1211,11 @@ If you run this component, you’ll notice that clicking on the header doesn’t
      children.push(child);
      if (value) {
        values.push(value);
-@@ -220,7 +245,9 @@ function updateChildren(renderer, el, newChildren) {
+     }
+   }
+
+   el._children = unwrap(children);
+   return commit(renderer, el, normalize(values));
  }
 
  function commit(renderer, el, values) {
@@ -1052,7 +1226,14 @@ If you run this component, you’ll notice that clicking on the header doesn’t
      return unwrap(values);
    } else if (el.tag === Portal) {
      renderer.arrange(el, el.props.root, values);
-@@ -235,18 +262,22 @@ function commit(renderer, el, values) {
+     return undefined;
+   } else if (!el._node) {
+     el._node = renderer.create(el);
+   }
+
+   renderer.patch(el, el._node);
+   renderer.arrange(el, el._node, values);
+   return el._node;
  }
 
  class Context {
@@ -1078,7 +1259,13 @@ If you run this component, you’ll notice that clicking on the header doesn’t
    if (!ctx._iter) {
      const value = ctx._el.tag.call(ctx, ctx._el.props);
      if (isIteratorLike(value)) {
-@@ -260,6 +291,24 @@ function updateCtx(ctx) {
+       ctx._iter = value;
+     } else {
+       return updateCtxChildren(ctx, value);
+     }
+   }
+
+   const iteration = ctx._iter.next();
    return updateCtxChildren(ctx, iteration.value);
  }
 
@@ -1105,6 +1292,7 @@ If you run this component, you’ll notice that clicking on the header doesn’t
 +  return unwrap(values);
  }
 ```
+
 [Diff](https://github.com/brainkim/crank-from-scratch/commit/ce8a6b8a6cbc55e04b761b556c6e10f084fbc555) [File](https://github.com/brainkim/crank-from-scratch/blob/ce8a6b8a6cbc55e04b761b556c6e10f084fbc555/crank.js)
 
 This diff is larger because we have to adjust the signatures of many of the recursive renderer functions we’ve defined, adding a parameter for the current host element and passing it down the tree. With this data available, we can now retain it on component contexts, so that it can be accessed by context methods and functions. We also add an `_isUpdating` boolean flag to contexts, to help us determine whether a component is being updated by a parent or doing a self-initiated refresh. Finally, we create a `commitCtx()` function, analogous to the `commit()` renderer function, which calls `arrange()` on a component’s nearest ancestor host element if the component is detected as refreshing.
@@ -1115,7 +1303,7 @@ This diff is larger because we have to adjust the signatures of many of the recu
 
    We were previously using the return values of the `update()` and `commit()` functions to pass element values upwards, but when we rearrange a host element, we don’t have access to the host element’s child values, because that host element may have other children besides the component which is refreshing. Therefore, we use `getChildValues` to compute a host element’s child values on the fly when rearranging to save on memory.
 
-2. We’ve moved most of the logic in the `updateCtx()` function to the `stepCtx()` function. Both `updateCtx()` and the `refresh()` method call `stepCtx()` , but only `updateCtx()` sets the `_isUpdating` flag. We could also have named the flag `_isRefreshing` and set it in the `refresh()` method, but setting the flag by updates is more convenient for when we deal with concurrent async rendering situations later on.
+2. We’ve moved most of the logic in the `updateCtx()` function to the `stepCtx()` function. Both `updateCtx()` and the `refresh()` method call `stepCtx()` , but only `updateCtx()` sets the `_isUpdating` flag. We could also have named the flag “_isRefreshing” and set it in the `refresh()` method, but setting the flag by updates is more convenient for when we deal with concurrent async rendering situations later on.
 
 ## Step 8: Returning and Unmounting
 
@@ -1149,7 +1337,14 @@ Currently, the `clearInterval()` call will never be reached, and would cause a m
 ```diff
 --- a/crank.js
 +++ b/crank.js
-@@ -234,6 +234,10 @@ function updateChildren(renderer, host, el, newChildren) {
+@@ -227,20 +227,30 @@ function update(renderer, host, el) {
+ function updateChildren(renderer, host, el, newChildren) {
+   const oldChildren = wrap(el._children);
+   newChildren = arrayify(newChildren);
+   const children = [];
+   const values = [];
+   const length = Math.max(oldChildren.length, newChildren.length);
+   for (let i = 0; i < length; i++) {
      const oldChild = oldChildren[i];
      let newChild = narrow(newChildren[i]);
      const [child, value] = diff(renderer, host, oldChild, newChild);
@@ -1160,7 +1355,7 @@ Currently, the `clearInterval()` call will never be reached, and would cause a m
      children.push(child);
      if (value) {
        values.push(value);
-@@ -241,6 +245,12 @@ function updateChildren(renderer, host, el, newChildren) {
+     }
    }
 
    el._children = unwrap(children);
@@ -1173,7 +1368,7 @@ Currently, the `clearInterval()` call will never be reached, and would cause a m
    return commit(renderer, el, normalize(values));
  }
 
-@@ -261,6 +271,18 @@ function commit(renderer, el, values) {
+@@ -261,33 +271,52 @@ function commit(renderer, el, values) {
    return el._node;
  }
 
@@ -1192,7 +1387,9 @@ Currently, the `clearInterval()` call will never be reached, and would cause a m
  class Context {
    constructor(renderer, host, el) {
      this._renderer = renderer;
-@@ -270,6 +292,7 @@ class Context {
+     this._host = host;
+     this._el = el;
+     this._iter = undefined;
 
      // flags
      this._isUpdating = false;
@@ -1200,7 +1397,8 @@ Currently, the `clearInterval()` call will never be reached, and would cause a m
    }
 
    refresh() {
-@@ -278,7 +301,9 @@ class Context {
+     return stepCtx(this);
+   }
  }
 
  function stepCtx(ctx) {
@@ -1211,7 +1409,9 @@ Currently, the `clearInterval()` call will never be reached, and would cause a m
      const value = ctx._el.tag.call(ctx, ctx._el.props);
      if (isIteratorLike(value)) {
        ctx._iter = value;
-@@ -288,6 +313,10 @@ function stepCtx(ctx) {
+     } else {
+       return updateCtxChildren(ctx, value);
+     }
    }
 
    const iteration = ctx._iter.next();
@@ -1236,6 +1436,7 @@ Currently, the `clearInterval()` call will never be reached, and would cause a m
 +  }
 +}
 ```
+
 [Diff](https://github.com/brainkim/crank-from-scratch/commit/274b9142fced2b366bedb62ca668e96a64e7c39a) [File](https://github.com/brainkim/crank-from-scratch/blob/274b9142fced2b366bedb62ca668e96a64e7c39a/crank.js)
 
 We’ve added another renderer function, `unmount`, along with its analogous context function, `unmountCtx`. It is important to make the `unmount` function recursive, because there can be component elements deeply nested in the element tree which expect to be returned.
@@ -1294,7 +1495,13 @@ Ultimately, I didn’t want to diverge too much from the typical function compon
 ```diff
 --- a/crank.js
 +++ b/crank.js
-@@ -292,12 +292,24 @@ class Context {
+@@ -286,36 +286,49 @@ function unmount(renderer, el) {
+ class Context {
+   constructor(renderer, host, el) {
+     this._renderer = renderer;
+     this._host = host;
+     this._el = el;
+     this._iter = undefined;
 
      // flags
      this._isUpdating = false;
@@ -1319,7 +1526,15 @@ Ultimately, I didn’t want to diverge too much from the typical function compon
  }
 
  function stepCtx(ctx) {
-@@ -313,6 +325,7 @@ function stepCtx(ctx) {
+   if (ctx._isDone) {
+     return getValue(ctx._el);
+   } else if (!ctx._iter) {
+     const value = ctx._el.tag.call(ctx, ctx._el.props);
+     if (isIteratorLike(value)) {
+       ctx._iter = value;
+     } else {
+       return updateCtxChildren(ctx, value);
+     }
    }
 
    const iteration = ctx._iter.next();
@@ -1327,7 +1542,11 @@ Ultimately, I didn’t want to diverge too much from the typical function compon
    if (iteration.done) {
      ctx._isDone = true;
    }
+
+   return updateCtxChildren(ctx, iteration.value);
+ }
 ```
+
 [Diff](https://github.com/brainkim/crank-from-scratch/commit/79e12981b3bbb65ffd912cdf3fd4b11b19862da4) [File](https://github.com/brainkim/crank-from-scratch/blob/79e12981b3bbb65ffd912cdf3fd4b11b19862da4/crank.js)
 
 **Notes:**
@@ -1337,7 +1556,7 @@ Ultimately, I didn’t want to diverge too much from the typical function compon
 
 ## Step 10: Accessing DOM Nodes
 
-You may have noticed that the `refresh()` method already returns the actual DOM node or nodes which components render. One of the goals of Crank is to be a framework which makes it easy to do raw DOM operations; for many use-cases, it’s just easier to get your hands dirty and mutate the DOM by hand, even if you still want to use components and virtual elements for most situations. To that extent, we’ll add some more ways for users to access DOM nodes.
+You may have noticed that the `refresh()` method already returns the actual DOM node or nodes which components render. One of the goals of Crank is to be a framework which makes it easy to do raw DOM operations. For many use-cases, it’s just easier to get your hands dirty and mutate the DOM by hand, even if you still want to use components and virtual elements for most situations. To that extent, we’ll add some more ways for users to access DOM nodes.
 
 First, we’ll take advantage of an advanced feature of generator functions. The `next()` method of generator objects can optionally take an argument which will be “passed into” the generator as the result of the `yield` operation. For example, we can elaborate on the fibonacci number generator we saw previously by allowing the caller to pass in a truthy value to reset the sequence.
 
@@ -1428,7 +1647,18 @@ Second, we’ll also change the return value of the `render()` method slightly s
 ```diff
 --- a/crank.js
 +++ b/crank.js
-@@ -136,7 +136,8 @@ export class Renderer {
+@@ -125,61 +125,62 @@ function getChildValues(el) {
+ export class Renderer {
+   constructor() {
+     this._cache = new WeakMap();
+   }
+
+   render(children, root) {
+     let portal = this._cache.get(root);
+     if (portal) {
+       portal.props = {root, children};
+     } else {
+       portal = createElement(Portal, {root, children});
        this._cache.set(root, portal);
      }
 
@@ -1438,7 +1668,53 @@ Second, we’ll also change the return value of the `render()` method slightly s
    }
 
    create(el) {
-@@ -289,6 +290,7 @@ class Context {
+     return document.createElement(el.tag);
+   }
+
+   patch(el, node) {
+     for (let [name, value] of Object.entries(el.props)) {
+       if (name === "children") {
+         continue;
+       } else if (name === "class") {
+         name = "className";
+       }
+
+       if (name in node) {
+         node[name] = value;
+       } else {
+         node.setAttribute(name, value);
+       }
+     }
+   }
+
+   arrange(el, node, children) {
+     let child = node.firstChild;
+     for (const newChild of children) {
+       if (child === newChild) {
+         child = child.nextSibling;
+       } else if (typeof newChild === "string") {
+         if (child !== null && child.nodeType === Node.TEXT_NODE) {
+           child.nodeValue = newChild;
+           child = child.nextSibling;
+         } else {
+           node.insertBefore(document.createTextNode(newChild), child);
+         }
+       } else {
+         node.insertBefore(newChild, child);
+       }
+     }
+
+     while (child !== null) {
+       const nextSibling = child.nextSibling;
+       node.removeChild(child);
+       child = child.nextSibling;
+     }
+   }
+ }
+@@ -286,49 +287,56 @@ function unmount(renderer, el) {
+ class Context {
+   constructor(renderer, host, el) {
+     this._renderer = renderer;
      this._host = host;
      this._el = el;
      this._iter = undefined;
@@ -1446,7 +1722,11 @@ Second, we’ll also change the return value of the `render()` method slightly s
 
      // flags
      this._isUpdating = false;
-@@ -300,6 +302,10 @@ class Context {
+     this._isIterating = false;
+     this._isDone = false;
+   }
+
+   refresh() {
      return stepCtx(this);
    }
 
@@ -1457,7 +1737,13 @@ Second, we’ll also change the return value of the `render()` method slightly s
    *[Symbol.iterator]() {
      while (!this._isDone) {
        if (this._isIterating) {
-@@ -313,9 +319,10 @@ class Context {
+         throw new Error("Context iterated twice without a yield");
+       }
+
+       this._isIterating = true;
+       yield this._el.props;
+     }
+   }
  }
 
  function stepCtx(ctx) {
@@ -1469,7 +1755,8 @@ Second, we’ll also change the return value of the `render()` method slightly s
      const value = ctx._el.tag.call(ctx, ctx._el.props);
      if (isIteratorLike(value)) {
        ctx._iter = value;
-@@ -324,7 +331,8 @@ function stepCtx(ctx) {
+     } else {
+       return updateCtxChildren(ctx, value);
      }
    }
 
@@ -1479,7 +1766,17 @@ Second, we’ll also change the return value of the `render()` method slightly s
    ctx._isIterating = false;
    if (iteration.done) {
      ctx._isDone = true;
-@@ -351,8 +359,15 @@ function commitCtx(ctx, values) {
+   }
+
+   return updateCtxChildren(ctx, iteration.value);
+ }
+@@ -345,14 +353,21 @@ function updateCtxChildren(ctx, children) {
+ function commitCtx(ctx, values) {
+   if (!ctx._isUpdating) {
+     ctx._renderer.arrange(
+       ctx._host,
+       ctx._host.tag === Portal ? ctx._host.props.root : ctx._host._node,
+       getChildValues(ctx._host),
      );
    }
 
@@ -1497,6 +1794,7 @@ Second, we’ll also change the return value of the `render()` method slightly s
 
  function unmountCtx(ctx) {
 ```
+
 [Diff](https://github.com/brainkim/crank-from-scratch/commit/cb6789ba7bb76966826dee83df2771bfd0e87c30) [File](https://github.com/brainkim/crank-from-scratch/blob/cb6789ba7bb76966826dee83df2771bfd0e87c30/crank.js)
 
 **Notes:**
@@ -1509,7 +1807,7 @@ At this point, we’ve implemented most of the logic for synchronous components 
 
 Nevertheless, we will inevitably start to wonder: if we can use sync generator functions to write components, why can’t we use async functions and async generator functions to define components as well? The next steps will implement async components using these function syntaxes.
 
-If you were already familiar with iterators, iterables and generators, you probably would not have had too much difficulty understanding the code and techniques we’ve seen so far. However, because we are now diving into concurrent code which makes heavy use of promises, things are about to get a little more difficult. This is a natural place to take a break, or to [review the code]() we’ve written so far before continuing.
+If you were already familiar with iterators, iterables and generators, you probably would not have had too much difficulty understanding the code and techniques we’ve seen so far. However, because we are now diving into concurrent code which makes heavy use of promises, things are about to get a little more difficult. This is a natural place to take a break, or to [review the code](https://github.com/brainkim/crank-from-scratch/blob/cb6789ba7bb76966826dee83df2771bfd0e87c30/crank.js) we’ve written so far before continuing.
 
 ## Step 11: Async Function Components
 
@@ -1540,7 +1838,18 @@ async function DelayedGreeting({name}) {
  class Element {
    constructor(tag, props) {
      this.tag = tag;
-@@ -136,7 +140,11 @@ export class Renderer {
+@@ -125,62 +129,66 @@ function getChildValues(el) {
+ export class Renderer {
+   constructor() {
+     this._cache = new WeakMap();
+   }
+
+   render(children, root) {
+     let portal = this._cache.get(root);
+     if (portal) {
+       portal.props = {root, children};
+     } else {
+       portal = createElement(Portal, {root, children});
        this._cache.set(root, portal);
      }
 
@@ -1553,7 +1862,52 @@ async function DelayedGreeting({name}) {
      return getChildValues(portal);
    }
 
-@@ -229,7 +237,7 @@ function updateChildren(renderer, host, el, newChildren) {
+   create(el) {
+     return document.createElement(el.tag);
+   }
+
+   patch(el, node) {
+     for (let [name, value] of Object.entries(el.props)) {
+       if (name === "children") {
+         continue;
+       } else if (name === "class") {
+         name = "className";
+       }
+
+       if (name in node) {
+         node[name] = value;
+       } else {
+         node.setAttribute(name, value);
+       }
+     }
+   }
+
+   arrange(el, node, children) {
+     let child = node.firstChild;
+     for (const newChild of children) {
+       if (child === newChild) {
+         child = child.nextSibling;
+       } else if (typeof newChild === "string") {
+         if (child !== null && child.nodeType === Node.TEXT_NODE) {
+           child.nodeValue = newChild;
+           child = child.nextSibling;
+         } else {
+           node.insertBefore(document.createTextNode(newChild), child);
+         }
+       } else {
+         node.insertBefore(newChild, child);
+       }
+     }
+
+     while (child !== null) {
+       const nextSibling = child.nextSibling;
+       node.removeChild(child);
+       child = child.nextSibling;
+     }
+   }
+ }
+@@ -228,29 +236,41 @@ function update(renderer, host, el) {
+ function updateChildren(renderer, host, el, newChildren) {
    const oldChildren = wrap(el._children);
    newChildren = arrayify(newChildren);
    const children = [];
@@ -1562,7 +1916,16 @@ async function DelayedGreeting({name}) {
    const length = Math.max(oldChildren.length, newChildren.length);
    for (let i = 0; i < length; i++) {
      const oldChild = oldChildren[i];
-@@ -246,6 +254,18 @@ function updateChildren(renderer, host, el, newChildren) {
+     let newChild = narrow(newChildren[i]);
+     const [child, value] = diff(renderer, host, oldChild, newChild);
+     if (oldChild instanceof Element && child !== oldChild) {
+       unmount(renderer, oldChild);
+     }
+
+     children.push(child);
+     if (value) {
+       values.push(value);
+     }
    }
 
    el._children = unwrap(children);
@@ -1581,7 +1944,17 @@ async function DelayedGreeting({name}) {
    for (const oldChild of oldChildren.slice(length)) {
      if (oldChild instanceof Element) {
        unmount(renderer, oldChild);
-@@ -326,6 +346,9 @@ function stepCtx(ctx) {
+     }
+   }
+
+   return commit(renderer, el, normalize(values));
+ }
+@@ -321,22 +341,25 @@ class Context {
+ function stepCtx(ctx) {
+   let initial = !ctx._iter;
+   if (ctx._isDone) {
+     return getValue(ctx._el);
+   } else if (initial) {
      const value = ctx._el.tag.call(ctx, ctx._el.props);
      if (isIteratorLike(value)) {
        ctx._iter = value;
@@ -1591,12 +1964,24 @@ async function DelayedGreeting({name}) {
      } else {
        return updateCtxChildren(ctx, value);
      }
+   }
+
+   const oldValue = initial ? undefined : getValue(ctx._el);
+   const iteration = ctx._iter.next(oldValue);
+   ctx._isIterating = false;
+   if (iteration.done) {
+     ctx._isDone = true;
+   }
+
+   return updateCtxChildren(ctx, iteration.value);
+ }
 ```
+
 [Diff](https://github.com/brainkim/crank-from-scratch/commit/72cdc766f14951ccda676df887eac6f5968c5fdc) [File](https://github.com/brainkim/crank-from-scratch/blob/72cdc766f14951ccda676df887eac6f5968c5fdc/crank.js)
 
-Async components are “contagious” in that they make ancestor components update and commit asynchronously as well. Additionally, any `refresh()` or `render()` calls which attempt to render async components will now return promises, and all DOM mutations are deferred until the async components have settled. This logic is implemented in the `updateChildren()` function, where we return a promise of the `commit()` call if any child values are detected to be promise-like.
+Just as in the implementation of generator components, we detect async components in `stepCtx()` solely by the return value of the component call. While there may be ways to identify async functions without calling them, this would again be an anti-pattern, insofar as it would prevent functions which returned promises but did not use async syntax from being used as async components.
 
-Just as in the implementation of generator components, we detect async components solely by the return value of the component call. While there may be ways to identify async functions without calling them, this would again be an anti-pattern, insofar as it would prevent functions which returned promises but did not use async syntax from being used as async components.
+Async components are “contagious” in that they make ancestor components update and commit asynchronously as well. Additionally, any `refresh()` or `render()` calls which attempt to render async components will now return promises, and all DOM mutations are deferred until the async components have settled. This logic is implemented in the `updateChildren()` function, where we return a promise of the `commit()` call if any child values are detected to be promise-like.
 
 ## Step 12: Enqueuing
 
@@ -1639,7 +2024,7 @@ This strategy would transform the previous diagram to the following one.
 
 ![Hitching](../static/hitching.png)
 
-The promises `B` and `C` resolve to the promise `A`, because they are created while `A` is still pending. We use a dotted line to indicate that the promise doesn’t actually perform any work, but resolves to some other call. The red trailing edge is another indicator that a promise has resolved to some other promise. Because `D` starts after `A` finishes, it is its own independent promise.
+The promises `B` and `C` resolve to the promise `A`, because they are created while `A` is still pending. We use a dotted line to indicate that these promises don’t actually perform any work, and we use the red trailing edge to indicate that these promises have resolved to some other call. Because `D` starts after `A` finishes, it is its own independent promise.
 
 We can demonstrate the algorithm for this strategy by implementing it as a higher-order function which takes an async function and returns a modified function which exhibits this hitching behavior.
 
@@ -1659,9 +2044,9 @@ function hitch(fn) {
 }
 ```
 
-The `hitch()` function defines an `inflight` variable in the closure of the returned wrapper function. When called, the wrapper function checks the inflight variable, and if it is not set, assigns to it a promise which resolves to a call to the original function. The wrapper function returns this inflight promise, regardless of whether or not it was set by the call. Finally, we use [`Promise.prototype.finally()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/finally) to clean up the inflight promise when it settles, so that new calls can be made.
+The `hitch()` function defines an `inflight` variable in the closure of the returned wrapper function. When called, the wrapper function checks the inflight variable, and if it is not set, assigns to it a promise which resolves to a call to the original function. The wrapper function returns this inflight promise, regardless of whether or not it was set by the call. Finally, we use [`Promise.prototype.finally()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/finally) to clean up the inflight promise when it settles, so that new calls to the original function can be made.
 
-While this approach reduces the number of concurrent runs of the async function to one, it wouldn’t be correct to use for our use-case, insofar as by the time all promises settled, we might not yet have had an async run with the latest props for each async component. We need a strategy which *enqueues* new runs of async component functions so that when all promises settle, the element tree and rendered values reflect the latest props and state. We can tweak the `hitch()` function above as the alternative higher-order function `enqueue()` to demonstrate the logic we want.
+While this approach reduces the number of concurrent runs of an async function to one, it wouldn’t be correct for our use-case, insofar as by the time all promises settled, we might not yet have had an async run with the latest props for each component. Instead, we need a strategy which *enqueues* runs of async component functions so that when all promises settle, the element tree and rendered values reflect the latest props and state. We can tweak the `hitch()` function above as the alternative higher-order function `enqueue()` to demonstrate the logic we want.
 
 ```js
 function enqueue(fn) {
@@ -1689,20 +2074,26 @@ function enqueue(fn) {
 }
 ```
 
-We’ve added two more variables to the wrapper function’s scope, `enqueued` and `latestArgs` . The returned wrapper function first checks if there is an inflight promise, and creates and returns this inflight promise if none exists. If an inflight promise does exist, the wrapper function checks if there is an *enqueued* promise of the original function, and creates it if none exists. This enqueued run first waits for the `inflight` run to fulfill before calling the function again, and calls the function with `latestArgs`, which we set to the wrapper function’s arguments whenever the wrapper fuction is called. The enqueued promise is returned regardless of whether the current call created it. Finally, we use `Promise.prototype.finally()` on both the inflight and enqueued promises to advance and clear the queue.
+We’ve added two more variables to the wrapper function’s scope, `enqueued` and `latestArgs` . The returned wrapper function first checks if there is an inflight promise, and creates and returns this inflight promise if none exists. If an inflight promise does exist, the wrapper function checks if there is an *enqueued* promise of the original function, and creates it if it doesn’t exists. This enqueued run first waits for the `inflight` run to fulfill before calling the function again, and calls the function with `latestArgs`, which we set to the latest call’s arguments whenever the wrapper fuction is called. We return the enqueued promise whether or not the current wrapper call had created it. Finally, we use `Promise.prototype.finally()` on both the inflight and enqueued promises to advance and clear the queue.
 
 This strategy can be expressed as the following promise diagram.
 
 ![Enqueuing](../static/enqueuing.png)
 
-In this diagram, because `B` and `C` are created while `A` is pending, we enqueue another run. However, only `C` actually does work, because by the time `A` finishes, we only re-invoke the function with `C`’s arguments, while `B`’s arguments would have been overwritten. This is a useful behavior for async components because in virtual DOM frameworks, we don’t really care about obsolete props or element trees. Lastly, `D` starts while `C` is pending, so we schedule another run for `D`. Note that the original function is not invoked until the current run settles, so we again have a situation where there is only one concurrent run of the original function at a time.
+In this diagram, because `B` and `C` are created while `A` is pending, we enqueue another run. However, only `C` actually does work, because by the time `A` finishes, we only re-invoke the function with `C`’s arguments, while `B`’s arguments would have been overwritten. This is a useful behavior for async components, because we don’t really care about obsolete props or element trees. Lastly, `D` starts while `C` is pending, so we schedule another run for `D`. Note that the original function is not invoked until the current run settles, so we again have a situation where there is only one concurrent run of the original function at a time.
 
 ### Implementation
+
+Here is the implementation of this enqueuing strategy for components.
 
 ```diff
 --- a/crank.js
 +++ b/crank.js
-@@ -311,6 +311,8 @@ class Context {
+@@ -307,33 +307,35 @@ function unmount(renderer, el) {
+ class Context {
+   constructor(renderer, host, el) {
+     this._renderer = renderer;
+     this._host = host;
      this._el = el;
      this._iter = undefined;
      this._schedules = new Set();
@@ -1711,7 +2102,8 @@ In this diagram, because `B` and `C` are created while `A` is pending, we enqueu
 
      // flags
      this._isUpdating = false;
-@@ -319,7 +321,7 @@ class Context {
+     this._isIterating = false;
+     this._isDone = false;
    }
 
    refresh() {
@@ -1720,6 +2112,20 @@ In this diagram, because `B` and `C` are created while `A` is pending, we enqueu
    }
 
    schedule(callback) {
+     this._schedules.add(callback);
+   }
+
+   *[Symbol.iterator]() {
+     while (!this._isDone) {
+       if (this._isIterating) {
+         throw new Error("Context iterated twice without a yield");
+       }
+
+       this._isIterating = true;
+       yield this._el.props;
+     }
+   }
+ }
 @@ -364,9 +366,32 @@ function stepCtx(ctx) {
    return updateCtxChildren(ctx, iteration.value);
  }
@@ -1755,28 +2161,33 @@ In this diagram, because `B` and `C` are created while `A` is pending, we enqueu
 
  function updateCtxChildren(ctx, children) {
 ```
+
 [Diff](https://github.com/brainkim/crank-from-scratch/commit/66a9459bd2fc11a2a3bd7bae9818394ad3902e67) [File](https://github.com/brainkim/crank-from-scratch/blob/66a9459bd2fc11a2a3bd7bae9818394ad3902e67/crank.js)
 
-We define another context function `runCtx()`, which is where the enqueuing behavior is implemented, and call this function instead of `stepCtx()` in the `refresh()` method and the `updateCtx()` function. Rather than implementing this behavior with a higher-order function, we store the inflight and enqueued promises directly on component context. We do this because we’ll need to modify the enqueuing algorithm in various ways for later steps.
+We define another context function `runCtx()`, which is where the enqueuing behavior is implemented, and call this function instead of `stepCtx()` in the `refresh()` method and the `updateCtx()` function. Rather than implementing the enqueuing algorithm with a higher-order function, we store the inflight and enqueued promises directly on component context. We do this because we’ll need to modify the algorithm in various ways for later steps.
 
-Because the enqueuing state is stored on contexts, enqueuing only happens for components which are rerendered. If a different element is rendered into an old component element’s position, the old context is blown away, so no enqueuing would occur. This means that element enqueuing happens based on the same element diffing algorithm which governs DOM node re-use and stateful components.
+Because the enqueuing state is stored on contexts, enqueuing only happens for components which are rerendered. If a different element is rendered into an old component element’s position, the old context is blown away, so no async enqueuing would occur. This means that element enqueuing happens based on the same element diffing algorithm which governs DOM node re-use and stateful components.
 
 ## Step 13: Async Children
 
-Another way to think about the enqueuing behavior in the previous step is that components are “blocked” from updates while they’re pending. However, the enqueuing algorithm we’ve implemented so far might “over-block,” in the sense that components currently block not only for their own async executions, but also for their children’s async executions as well. This enqueuing behavior will, for instance, cause a synchronous function component with async children to block for the duration of its children’s async rendering time, even though there really isn’t any need for sync function components to block at all.
+Another way to think about the enqueuing behavior in the previous step is that components are “blocked” from updates while they’re pending. However, the enqueuing algorithm we’ve implemented so far might “over-block,” in the sense that components currently block not only for their own async executions, but also for their children’s async executions as well. This enqueuing behavior will, for instance, cause a synchronous function component with async children to block for the duration of its children’s async rendering time, even though there really isn’t a need for sync function components to block at all.
 
-Therefore, we need a way to distinguish a component’s own execution time from the rendering time of its children, and block the component accordingly. For maximal concurrency, a sync function component should never block for any reason, while an async function component should only block while the component function itself is executing, but not for the rendering of its children.
+Therefore, we need a way to distinguish a component’s own execution time from the rendering time of its children, and block the component accordingly. For maximal concurrency, a sync function component should never block for any reason, while an async function component should only block while the async function itself is executing, but not for the rendering of its children.
 
-On the other hand, the API we created for sync generator components in a previous step, where we pass the rendered value of the generator component back in as is yield result, creates an expectation that sync generator components only resume when the previous children have fully rendered. If we broke this expectation, the value passed back in might be unexpected or even `undefined`, as the generator component’s children might still be pending. Therefore, we make sync generator components block while their children are asynchronously rendering.
-
-To implement this behavior, we’ll need to update the `stepCtx()` function so that it returns a tuple: the first member is a possible promise which indicates the amount of time the component should “block” for, and the second is the actual value for the current render of the component.
+On the other hand, the API we created for sync generator components in a previous step, where we pass the rendered value of the generator component back in as its yield result, creates an expectation that sync generator components only resume when the previous children have fully rendered. If we broke this expectation, the value passed back in might be `undefined`, as the generator component’s children might still be pending. Therefore, we make sync generator components block while their children are asynchronously rendering.
 
 ### Implementation
+
+To implement this behavior, we’ll need to update the `stepCtx()` function so that it returns a tuple: the first member is a possible promise which indicates the amount of time the component should “block” for, and the second is the actual value for the current render of the component.
 
 ```diff
 --- a/crank.js
 +++ b/crank.js
-@@ -311,8 +311,10 @@ class Context {
+@@ -307,35 +307,37 @@ function unmount(renderer, el) {
+ class Context {
+   constructor(renderer, host, el) {
+     this._renderer = renderer;
+     this._host = host;
      this._el = el;
      this._iter = undefined;
      this._schedules = new Set();
@@ -1789,7 +2200,36 @@ To implement this behavior, we’ll need to update the `stepCtx()` function so t
 
      // flags
      this._isUpdating = false;
-@@ -349,10 +351,13 @@ function stepCtx(ctx) {
+     this._isIterating = false;
+     this._isDone = false;
+   }
+
+   refresh() {
+     return runCtx(this);
+   }
+
+   schedule(callback) {
+     this._schedules.add(callback);
+   }
+
+   *[Symbol.iterator]() {
+     while (!this._isDone) {
+       if (this._isIterating) {
+         throw new Error("Context iterated twice without a yield");
+       }
+
+       this._isIterating = true;
+       yield this._el.props;
+     }
+   }
+ }
+@@ -343,50 +345,66 @@ class Context {
+ function stepCtx(ctx) {
+   let initial = !ctx._iter;
+   if (ctx._isDone) {
+     return getValue(ctx._el);
+   } else if (initial) {
+     const value = ctx._el.tag.call(ctx, ctx._el.props);
      if (isIteratorLike(value)) {
        ctx._iter = value;
      } else if (isPromiseLike(value)) {
@@ -1806,7 +2246,10 @@ To implement this behavior, we’ll need to update the `stepCtx()` function so t
      }
    }
 
-@@ -363,30 +368,43 @@ function stepCtx(ctx) {
+   const oldValue = initial ? undefined : getValue(ctx._el);
+   const iteration = ctx._iter.next(oldValue);
+   ctx._isIterating = false;
+   if (iteration.done) {
      ctx._isDone = true;
    }
 
@@ -1862,6 +2305,7 @@ To implement this behavior, we’ll need to update the `stepCtx()` function so t
 
  function updateCtx(ctx) {
 ```
+
 [Diff](https://github.com/brainkim/crank-from-scratch/commit/caf7632e27d89236b06855a5c63b8e812c060a66) [File](https://github.com/brainkim/crank-from-scratch/blob/caf7632e27d89236b06855a5c63b8e812c060a66/crank.js)
 
 We keep the inflight/enqueued pattern from the previous step, except now we advance the queue based on the blocking portion of the render. A promise diagram for this algorithm might look like this.
@@ -1890,11 +2334,11 @@ console.log(app.innerHTML);
 
 ```
 
-We want rendering to ignore outdated element trees just as async component enqueuing ignores outdated props and children. To achieve this, we use another promise technique which we’ll call *chasing.* Chasing involves racing the current call of an async function with the next call, for every call. Visually, we can represent chasing like so.
+We want rendering to ignore outdated renders just as async component enqueuing ignores outdated props and children. To achieve this, we use another promise technique called *chasing.* Chasing involves racing the current call of an async function with the next call, for every call. Visually, we can represent chasing like so.
 
 ![Chasing](../static/chasing.png)
 
-In the diagram the `B` promise takes longer to settle than the `C` promise, so the `B` promise is cut off and made to resolve to the `C` promise. We can represent this algorithm as the following higher-order function.
+In the diagram, the `B` promise takes longer to settle than the `C` promise, so the `B` promise is cut off and made to resolve to the `C` promise. We can represent this algorithm as the following higher-order function.
 
 ```js
 function chase(fn) {
@@ -1921,14 +2365,19 @@ The cool part about this strategy is that it chains, so that when any call settl
 
 Proving that this algorithm works to settle all previous promises is as simple as drawing a vertical line upwards from the end of any promise in any promise diagram.
 
-We use this chasing strategy in Crank by chasing the pending child values of an element with future child values for the element. We do this for every element, regardless of whether it is a host or component element.
-
 ### Implementation
+
+We use this chasing strategy in Crank by chasing the pending child values of an element with future child values for the element. We do this for every element, regardless of whether it is a host or component element.
 
 ```diff
 --- a/crank.js
 +++ b/crank.js
-@@ -30,6 +30,7 @@ class Element {
+@@ -25,13 +25,14 @@ function isPromiseLike(value) {
+ class Element {
+   constructor(tag, props) {
+     this.tag = tag;
+     this.props = props;
+
      this._node = undefined;
      this._children = undefined;
      this._ctx = undefined;
@@ -1936,7 +2385,36 @@ We use this chasing strategy in Crank by chasing the pending child values of an 
 
      // flags
      this._isMounted = false;
-@@ -263,6 +264,14 @@ function updateChildren(renderer, host, el, newChildren) {
+   }
+ }
+@@ -236,42 +237,55 @@ function update(renderer, host, el) {
+ function updateChildren(renderer, host, el, newChildren) {
+   const oldChildren = wrap(el._children);
+   newChildren = arrayify(newChildren);
+   const children = [];
+   let values = [];
+   const length = Math.max(oldChildren.length, newChildren.length);
+   for (let i = 0; i < length; i++) {
+     const oldChild = oldChildren[i];
+     let newChild = narrow(newChildren[i]);
+     const [child, value] = diff(renderer, host, oldChild, newChild);
+     if (oldChild instanceof Element && child !== oldChild) {
+       unmount(renderer, oldChild);
+     }
+
+     children.push(child);
+     if (value) {
+       values.push(value);
+     }
+   }
+
+   el._children = unwrap(children);
+   if (values.some((value) => isPromiseLike(value))) {
+     values = Promise.all(values).finally(() => {
+       for (const oldChild of oldChildren.slice(length)) {
+         if (oldChild instanceof Element) {
+           unmount(renderer, oldChild);
+         }
        }
      });
 
@@ -1951,7 +2429,9 @@ We use this chasing strategy in Crank by chasing the pending child values of an 
      return values.then((values) => commit(renderer, el, normalize(values)));
    }
 
-@@ -272,6 +281,11 @@ function updateChildren(renderer, host, el, newChildren) {
+   for (const oldChild of oldChildren.slice(length)) {
+     if (oldChild instanceof Element) {
+       unmount(renderer, oldChild);
      }
    }
 
@@ -1963,9 +2443,10 @@ We use this chasing strategy in Crank by chasing the pending child values of an 
    return commit(renderer, el, normalize(values));
  }
 ```
+
 [Diff](https://github.com/brainkim/crank-from-scratch/commit/f4ab9d5a2738026ce52c5bc4b82de3529aad34bc) [File](https://github.com/brainkim/crank-from-scratch/blob/f4ab9d5a2738026ce52c5bc4b82de3529aad34bc/crank.js)
 
-Once again we don’t use a higher-order function, but retain the `resolve()` function of future child values directly on elements under the property `onvalues`. We set `onvalues` whenever we detect async rendering to have occurred below the current element.
+Once again we don’t use a higher-order function, but retain the `resolve()` function of future child values directly on elements under the property `onvalues`. We set `onvalues` whenever we detect async rendering to have occurred below the element, and call it whenever the element has new child values.
 
 **Notes:**
 
@@ -1977,7 +2458,7 @@ The examples of concurrent rendering which we’ve seen so far have all worked b
 
 To review, an async generator function is another function syntax which combines both the `*` token from generator functions, and the `async` keyword from async functions (`async function *`). This allows us to both `yield` and `await` in the same function. Async generators also come with async equivalents of iterators, iterables and `for…of` syntax. Async generators are *async iterators* in that they implement the `next()`, `return()` and `throw()` methods, except instead of returning iterations as with sync iterators, these methods now return promises which resolve to iterations. Additionally, async generators are *async iterable* insofar as it implements the `[Symbol.asyncIterator]()` method. Finally, async iterables can be iterated using `for await…of`, a special for loop syntax which awaits each iteration of an async iterator. This syntax may only be used in async functions, just like `await`.
 
-By writing async generator functions which yield element trees, we can combine both the statefulness of generator functions and the convenience of async/await in the same component. Additionally, we’ll make the context an async iterable of props, so that async generator components can respond to updates with `for await…of` loops. Importantly, this allows us to resume async generator components continuously, so that rather than suspending exactly on each yield, we can write code both before and after the yields of element trees.
+By writing async generator functions which yield element trees, we can combine both the statefulness of generator functions and the convenience of async/await in the same component. Additionally, we’ll make component contexts *async iterables* of props, so that async generator components can respond to updates asynchronously with a `for await…of` loops. Importantly, this allows us to resume async generator components continuously, so that rather than suspending on each yield, we can write code both before and after the yields of element trees.
 
 ```jsx
 async function* ContinuousGreeting({name}) {
@@ -1989,7 +2470,7 @@ async function* ContinuousGreeting({name}) {
 }
 ```
 
-For each render of `ContinuousGreeting`, both the pre- and post- ` console.log` calls execute. Note that assigning the yield operation (here to the variable `div`) becomes more useful in async generator components than for sync generator components. The `for await ({} of this)` is how we can have the async generator continuously resume but still suspend when there are no new updates or refreshes.
+For each render of `ContinuousGreeting`, both the pre- and post- ` console.log` calls execute. Note that assigning the yield operation (here to the variable `div`) becomes more useful than it was for sync generator components. The `for await ({} of this)` is how we can have the async generator continuously resume but still suspend when there are no new updates or refreshes.
 
 Async generator components are the most powerful component syntax, because they can await promises, respond to updates as async values themselves, and even yield multiple element trees concurrently. This allows us to write code like the following.
 
@@ -2012,14 +2493,18 @@ async function *LoadingGreeting({name}) {
 }
 ```
 
-Because this async generator component resumes continuously, it will concurrently attempt to render both the `LoadingIndicator` component, which fulfills after one second, and the `RandomDelayGreeting` component, which fulfills randomly between zero and four seconds, as its children. If the `RandomDelayGreeting` component takes longer than a second, we’ll see the loading indicator after a second, and if it takes less than a second, we’ll never see the loading indicator. This is because of the chasing behavior of elements which we defined previously.
+Because this async generator component resumes continuously, it will concurrently attempt to render both the `LoadingIndicator` component, which fulfills after one second, and the `RandomDelayGreeting` component, which fulfills randomly between zero and four seconds, as its children. If the `RandomDelayGreeting` component takes longer than a second, we’ll see the loading indicator after a second, and if it takes less than a second, we’ll never see the loading indicator. This is because of the chasing behavior of elements which we defined in the previous step.
 
 ### Implementation
 
 ```diff
 --- a/crank.js
 +++ b/crank.js
-@@ -325,6 +325,7 @@ class Context {
+@@ -321,67 +321,109 @@ function unmount(renderer, el) {
+ class Context {
+   constructor(renderer, host, el) {
+     this._renderer = renderer;
+     this._host = host;
      this._el = el;
      this._iter = undefined;
      this._schedules = new Set();
@@ -2027,7 +2512,9 @@ Because this async generator component resumes continuously, it will concurrentl
      this._inflightBlock = undefined;
      this._inflightValue = undefined;
      this._enqueuedBlock = undefined;
-@@ -334,9 +335,12 @@ class Context {
+     this._enqueuedValue = undefined;
+
+     // flags
      this._isUpdating = false;
      this._isIterating = false;
      this._isDone = false;
@@ -2040,7 +2527,17 @@ Because this async generator component resumes continuously, it will concurrentl
      return runCtx(this);
    }
 
-@@ -354,6 +358,26 @@ class Context {
+   schedule(callback) {
+     this._schedules.add(callback);
+   }
+
+   *[Symbol.iterator]() {
+     while (!this._isDone) {
+       if (this._isIterating) {
+         throw new Error("Context iterated twice without a yield");
+       }
+
+       this._isIterating = true;
        yield this._el.props;
      }
    }
@@ -2067,7 +2564,23 @@ Because this async generator component resumes continuously, it will concurrentl
  }
 
  function stepCtx(ctx) {
-@@ -377,6 +401,24 @@ function stepCtx(ctx) {
+   let initial = !ctx._iter;
+   if (ctx._isDone) {
+     return getValue(ctx._el);
+   } else if (initial) {
+     const value = ctx._el.tag.call(ctx, ctx._el.props);
+     if (isIteratorLike(value)) {
+       ctx._iter = value;
+     } else if (isPromiseLike(value)) {
+       const block = Promise.resolve(value);
+       return [
+         block,
+         block.then((value) => updateCtxChildren(ctx, value)),
+       ];
+     } else {
+       return [undefined, updateCtxChildren(ctx, value)];
+     }
+   }
 
    const oldValue = initial ? undefined : getValue(ctx._el);
    const iteration = ctx._iter.next(oldValue);
@@ -2092,7 +2605,14 @@ Because this async generator component resumes continuously, it will concurrentl
    ctx._isIterating = false;
    if (iteration.done) {
      ctx._isDone = true;
-@@ -391,6 +433,9 @@ function advanceCtx(ctx) {
+   }
+
+   const value = updateCtxChildren(ctx, iteration.value);
+   return [value, value];
+ }
+@@ -389,40 +431,55 @@ function stepCtx(ctx) {
+ function advanceCtx(ctx) {
+   ctx._inflightBlock = ctx._enqueuedBlock;
    ctx._inflightValue = ctx._enqueuedValue;
    ctx._enqueuedBlock = undefined;
    ctx._enqueuedValue = undefined;
@@ -2102,7 +2622,15 @@ Because this async generator component resumes continuously, it will concurrentl
  }
 
  function runCtx(ctx) {
-@@ -406,6 +451,8 @@ function runCtx(ctx) {
+   if (!ctx._inflightBlock) {
+     let [block, value] = stepCtx(ctx);
+     if (isPromiseLike(block)) {
+       block = block.finally(() => advanceCtx(ctx));
+       ctx._inflightBlock = block;
+     }
+
+     if (isPromiseLike(value)) {
+       ctx._inflightValue = value;
      }
 
      return value;
@@ -2111,7 +2639,15 @@ Because this async generator component resumes continuously, it will concurrentl
    } else if (!ctx._enqueuedBlock) {
      let resolve;
      ctx._enqueuedBlock = ctx._inflightBlock
-@@ -421,8 +468,18 @@ function runCtx(ctx) {
+       .then(() => {
+         const [block, value] = stepCtx(ctx);
+         resolve(value);
+         return block;
+       })
+       .finally(() => advanceCtx(ctx));
+     ctx._enqueuedValue = new Promise((resolve1) => (resolve = resolve1));
+   }
+
    return ctx._enqueuedValue;
  }
 
@@ -2130,7 +2666,7 @@ Because this async generator component resumes continuously, it will concurrentl
    return runCtx(ctx);
  }
 
-@@ -453,6 +510,7 @@ function commitCtx(ctx, values) {
+@@ -453,8 +510,9 @@ function commitCtx(ctx, values) {
  function unmountCtx(ctx) {
    if (!ctx._isDone) {
      ctx._isDone = true;
@@ -2138,20 +2674,23 @@ Because this async generator component resumes continuously, it will concurrentl
      if (ctx._iterator && typeof ctx._iterator.return === "function") {
        ctx._iterator.return();
      }
+   }
+ }
 ```
+
 [Diff](https://github.com/brainkim/crank-from-scratch/commit/208a71ff2d82fd202c6a4331d85b1493f8a09605) [File](https://github.com/brainkim/crank-from-scratch/blob/208a71ff2d82fd202c6a4331d85b1493f8a09605/crank.js)
 
-To implement the continuous resuming behavior of async generator components, we call `runCtx()` in the `advanceCtx()` function. This continuous resuming behavior does not mesh well with the standard enqueuing behavior in `runCtx()`, so we use the hitching strategy described previously for async generator components rather than the enqueuing strategy for async generator components.
+To implement the continuous resuming behavior of async generator components, we call `runCtx()` in the `advanceCtx()` function. This continuous resuming behavior does not mesh well with the standard enqueuing behavior in `runCtx()`, so we use the hitching strategy described previously rather than the enqueuing strategy for async generator components.
 
-To implement the context’s props async iterator, we define a  `resumeCtx()` function and a `[Symbol.asyncIterator]()` async generator method. The `resumeCtx()` function is called by both `refresh()` and `updateCtx()` to ensure the `for await…of` loop over `this` resumes when the component is ready to rerender. It’s important to note that if there are concurrent renderings of an async generator component, earlier props will be overwritten, just as with regular async function components; the context async iterator always yields the latest props available.
+To implement the context’s props async iterator, we define a  `resumeCtx()` function and a `[Symbol.asyncIterator]()` async generator method. The `resumeCtx()` function is called by both `refresh()` and `updateCtx()` to ensure the `for await…of` loop over `this` resumes when the component is ready to rerender. It’s important to note that if there are concurrent renderings of an async generator component, earlier props will be overwritten, just as with regular async function components. The context async iterator always yields the latest props available.
 
-We again distinguish async generator components from other components by return types exclusively. An async generator component can be determined by the fact that the function returns an iterator, and can be distinguished from sync generator components by the fact that calls to the iterator’s `next()` method returns a promise.
+We again distinguish async generator components from other components by return types exclusively. An async generator component can be determined by the fact that the function returns an iterator, and can furthermore be distinguished from sync generator components by the fact that calls to the iterator’s `next()` method returns a promise.
 
 ## Step 16: Async Values and Fallbacks
 
 Before we conclude, we’ll fix two tricky bugs related to async components and concurrent rendering.
 
-First, we need to deal with async generator components which have async children. Because they resume continuously, an async generator component which yields async children may have `undefined` passed back into the generator. The most natural behavior in this situation would be for a promise to be passed back in which resolves to the rendered DOM nodes. This would allow async generator components to await the rendering of their own children just like any other promise.
+First, we need to deal with async generator components which have async children. Because they resume continuously, an async generator component which yields async children may have `undefined` passed back into the generator. This feels incorrect, and the most natural behavior in this situation would be for a promise to be passed back in which resolves to the rendered DOM nodes. This would allow async generator components to await the rendering of their own children just like any other promise.
 
 ```jsx
 async function DelayedGreeting({name}) {
@@ -2188,14 +2727,20 @@ async function *LoadingGreeting({name}) {
 }
 ```
 
-What we want is for whatever was previously rendered in a pending async element’s position to continue to be rendered until the element has fully rendered at least once.
+What we want is for whatever was previously rendered in a pending async element’s position to continue to be rendered until the element has rendered at least once.
 
 ### Implementation
 
 ```diff
 --- a/crank.js
 +++ b/crank.js
-@@ -31,6 +31,7 @@ class Element {
+@@ -25,14 +25,15 @@ function isPromiseLike(value) {
+ class Element {
+   constructor(tag, props) {
+     this.tag = tag;
+     this.props = props;
+
+     this._node = undefined;
      this._children = undefined;
      this._ctx = undefined;
      this._onvalues = undefined;
@@ -2203,7 +2748,9 @@ What we want is for whatever was previously rendered in a pending async element�
 
      // flags
      this._isMounted = false;
-@@ -105,7 +106,13 @@ function normalize(values) {
+   }
+ }
+@@ -105,11 +106,17 @@ function normalize(values) {
  }
 
  function getValue(el) {
@@ -2218,7 +2765,22 @@ What we want is for whatever was previously rendered in a pending async element�
      return undefined;
    } else if (typeof el.tag !== "function" && el.tag !== Fragment) {
      return el._node;
-@@ -208,7 +215,11 @@ function diff(renderer, host, oldChild, newChild) {
+   }
+
+   return unwrap(getChildValues(el));
+ }
+@@ -197,21 +204,25 @@ export class Renderer {
+ function diff(renderer, host, oldChild, newChild) {
+   if (
+     oldChild instanceof Element &&
+     newChild instanceof Element &&
+     oldChild.tag === newChild.tag
+   ) {
+     if (oldChild !== newChild) {
+       oldChild.props = newChild.props;
+       newChild = oldChild;
+     }
+   }
 
    let value;
    if (newChild instanceof Element) {
@@ -2230,7 +2792,10 @@ What we want is for whatever was previously rendered in a pending async element�
    } else {
      value = newChild;
    }
-@@ -290,6 +301,7 @@ function updateChildren(renderer, host, el, newChildren) {
+
+   return [newChild, value];
+ }
+@@ -290,18 +301,19 @@ function updateChildren(renderer, host, el, newChildren) {
  }
 
  function commit(renderer, el, values) {
@@ -2238,7 +2803,28 @@ What we want is for whatever was previously rendered in a pending async element�
    if (typeof el.tag === "function") {
      return commitCtx(el._ctx, values);
    } else if (el.tag === Fragment) {
-@@ -330,6 +342,7 @@ class Context {
+     return unwrap(values);
+   } else if (el.tag === Portal) {
+     renderer.arrange(el, el.props.root, values);
+     return undefined;
+   } else if (!el._node) {
+     el._node = renderer.create(el);
+   }
+
+   renderer.patch(el, el._node);
+   renderer.arrange(el, el._node, values);
+   return el._node;
+ }
+@@ -321,61 +333,62 @@ function unmount(renderer, el) {
+ class Context {
+   constructor(renderer, host, el) {
+     this._renderer = renderer;
+     this._host = host;
+     this._el = el;
+     this._iter = undefined;
+     this._schedules = new Set();
+     this._onavailable = undefined;
+     this._inflightBlock = undefined;
      this._inflightValue = undefined;
      this._enqueuedBlock = undefined;
      this._enqueuedValue = undefined;
@@ -2246,7 +2832,69 @@ What we want is for whatever was previously rendered in a pending async element�
 
      // flags
      this._isUpdating = false;
-@@ -399,7 +412,15 @@ function stepCtx(ctx) {
+     this._isIterating = false;
+     this._isDone = false;
+     this._isAvailable = false;
+     this._isAsyncIterator = false;
+   }
+
+   refresh() {
+     resumeCtx(this);
+     return runCtx(this);
+   }
+
+   schedule(callback) {
+     this._schedules.add(callback);
+   }
+
+   *[Symbol.iterator]() {
+     while (!this._isDone) {
+       if (this._isIterating) {
+         throw new Error("Context iterated twice without a yield");
+       }
+
+       this._isIterating = true;
+       yield this._el.props;
+     }
+   }
+
+   async *[Symbol.asyncIterator]() {
+     do {
+       if (this._isIterating) {
+         throw new Error("Context iterated twice without a yield");
+       }
+
+       this._isIterating = true;
+       if (this._isAvailable) {
+         this._isAvailable = false;
+       } else {
+         await new Promise((resolve) => (this._onavailable = resolve));
+         if (this._unmounted) {
+           break;
+         }
+       }
+
+       yield this._el.props;
+     } while (!this._isUnmounted);
+   }
+ }
+@@ -383,47 +396,55 @@ class Context {
+ function stepCtx(ctx) {
+   let initial = !ctx._iter;
+   if (ctx._isDone) {
+     return getValue(ctx._el);
+   } else if (initial) {
+     const value = ctx._el.tag.call(ctx, ctx._el.props);
+     if (isIteratorLike(value)) {
+       ctx._iter = value;
+     } else if (isPromiseLike(value)) {
+       const block = Promise.resolve(value);
+       return [
+         block,
+         block.then((value) => updateCtxChildren(ctx, value)),
+       ];
+     } else {
+       return [undefined, updateCtxChildren(ctx, value)];
      }
    }
 
@@ -2263,7 +2911,38 @@ What we want is for whatever was previously rendered in a pending async element�
    const iteration = ctx._iter.next(oldValue);
    if (isPromiseLike(iteration)) {
      if (initial) {
-@@ -448,6 +469,7 @@ function runCtx(ctx) {
+       ctx._isAsyncIterator = true;
+     }
+
+     const block = iteration;
+     const value = iteration.then((iteration) => {
+       ctx._isIterating = false;
+       if (iteration.done) {
+         ctx._done = true;
+       }
+
+       return updateCtxChildren(ctx, iteration.value);
+     });
+
+     return [block, value];
+   }
+
+   ctx._isIterating = false;
+   if (iteration.done) {
+     ctx._isDone = true;
+   }
+
+   const value = updateCtxChildren(ctx, iteration.value);
+   return [value, value];
+ }
+@@ -441,29 +462,34 @@ function advanceCtx(ctx) {
+ function runCtx(ctx) {
+   if (!ctx._inflightBlock) {
+     let [block, value] = stepCtx(ctx);
+     if (isPromiseLike(block)) {
+       block = block.finally(() => advanceCtx(ctx));
+       ctx._inflightBlock = block;
+     }
 
      if (isPromiseLike(value)) {
        ctx._inflightValue = value;
@@ -2271,7 +2950,11 @@ What we want is for whatever was previously rendered in a pending async element�
      }
 
      return value;
-@@ -459,6 +481,10 @@ function runCtx(ctx) {
+   } else if (ctx._isAsyncIterator) {
+     return ctx._inflightValue;
+   } else if (!ctx._enqueuedBlock) {
+     let resolve;
+     ctx._enqueuedBlock = ctx._inflightBlock
        .then(() => {
          const [block, value] = stepCtx(ctx);
          resolve(value);
@@ -2282,7 +2965,12 @@ What we want is for whatever was previously rendered in a pending async element�
          return block;
        })
        .finally(() => advanceCtx(ctx));
-@@ -488,6 +514,7 @@ function updateCtxChildren(ctx, children) {
+     ctx._enqueuedValue = new Promise((resolve1) => (resolve = resolve1));
+   }
+
+   return ctx._enqueuedValue;
+ }
+@@ -488,21 +514,22 @@ function updateCtxChildren(ctx, children) {
  }
 
  function commitCtx(ctx, values) {
@@ -2290,21 +2978,38 @@ What we want is for whatever was previously rendered in a pending async element�
    if (!ctx._isUpdating) {
      ctx._renderer.arrange(
        ctx._host,
+       ctx._host.tag === Portal ? ctx._host.props.root : ctx._host._node,
+       getChildValues(ctx._host),
+     );
+   }
+
+   const value = unwrap(values);
+   const schedules = Array.from(ctx._schedules);
+   ctx._schedules.clear();
+   for (const schedule of schedules) {
+     schedule(value);
+   }
+
+   ctx._isUpdating = false;
+   return value;
+ }
 ```
+
 [Diff](https://github.com/brainkim/crank-from-scratch/commit/567363adbb546d69e6726de7360595b910960ef2) [File](https://github.com/brainkim/crank-from-scratch/blob/567363adbb546d69e6726de7360595b910960ef2/crank.js)
 
 **Notes:**
 
-1. We define the property `_previousValue` on contexts, assign it in `runCtx()` whenever async runs are detected, and unassign it in `commitCtx()`. We can’t use `_inflightValue` for this purposes because it gets assigned/unassigned at different points of the rendering process. In the actual Crank.js implementation we move this promise to elements for some advanced use-cases.
+1. We define the property `_previousValue` on contexts, assign it in `runCtx()` whenever async runs are detected, and unassign it in `commitCtx()`. We can’t use `_inflightValue` for this purpose because it gets assigned/unassigned at different points of the rendering process. In the actual Crank.js implementation we move this promise to elements for some advanced use-cases.
 2. We define the property `_fallback` on elements, and assign it in the `diff()` function whenever a new element is detected as rendering asynchronously. If multiple asynchronous element trees were rendered in the same position, the elements would form a linked list via the `_fallback` property. We unset any element’s `_fallback` in the `commit()` function, breaking any fallback chains and making `getValue()` work as expected once the element has rendered.
 
 ## Conclusion
 
-If you’ve made it this far, congratulations! You can now call yourself a framework author. Of course, the actual Crank.js codebase implements a few more features which we haven’t had a chance to get to; for instance, the real Crank framework implements SVG elements, server-side HTML rendering, error handling, `Copy` elements, an additional `EventTarget`-based event system, and keyed element diffing. However, we’ve still implemented and explained a lot of the hard stuff, and I think at this point you’re in a great position to read through [the actual Crank source code](https://github.com/bikeshaving/crank/tree/master/src) to see how these features are implemented for yourself.
+If you’ve made it this far, congratulations! You can now call yourself a framework author. You should be able to understand every line of [the final version of the module we created](https://github.com/brainkim/crank-from-scratch/blob/567363adbb546d69e6726de7360595b910960ef2/crank.js).
+
+Of course, the actual Crank.js codebase implements a few more features which we haven’t had a chance to get to; for instance, the real Crank framework implements SVG elements, server-side rendering, error handling, `Copy` elements, an additional `EventTarget`-based event system, and keyed element diffing. However, we’ve still implemented and explained a lot of the hard stuff, and I think at this point you’re in a great position to read through [the actual Crank source code](https://github.com/bikeshaving/crank/tree/master/src) to see how these features are implemented for yourself.
 
 If you were on the fence about using Crank, I can tell you from personal experience that it is deeply satisfying to know how your web framework works, down to the level of DOM mutations. It means that your mental model for how your code executes is not just some story which you were told in some documentation or by a more experienced developer, but something which you can reason through and confirm for yourself.
 
-The last couple of years, a common theme in web framework development has been the idea that somehow, the JavaScript runtime on its own is not enough to express a component framework. For example, both [React](https://overreacted.io/react-as-a-ui-runtime/) and [Svelte](https://gist.github.com/Rich-Harris/0f910048478c2a6505d1c32185b61934) maintainers have expressed some version of this idea. This idea is then used to justify the great lengths these frameworks go to add what they consider the missing parts of JavaScript. What I hope to have shown in this essay is that JavaScript already provides some powerful primitives, namely async and generator functions, and by combining these primitives with basic virtual DOM techniques, we’ve created a component framework which is both easy to understand and implement on your own.
+The last couple of years, a common theme in web framework development has been the idea that somehow, the JavaScript runtime on its own is not enough to express a component framework. For example, both [React](https://overreacted.io/react-as-a-ui-runtime/) and [Svelte](https://gist.github.com/Rich-Harris/0f910048478c2a6505d1c32185b61934) maintainers have expressed some version of this idea. This idea is then used to justify the great lengths these frameworks go to add what they consider the missing parts. What I hope to have shown in this essay is that JavaScript already provides some powerful primitives, namely async and generator functions. By combining these primitives with basic virtual DOM techniques, we can create a component framework which is easy to implement on your own.
 
 If you have any questions, feel free to reach out via GitHub or email. I will make an effort to update this essay based on feedback about what people found unclear. Thank you for reading.
-
