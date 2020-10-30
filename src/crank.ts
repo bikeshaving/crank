@@ -6,7 +6,7 @@ function wrap<T>(value: Array<T> | T | undefined): Array<T> {
 }
 
 function unwrap<T>(arr: Array<T>): Array<T> | T | undefined {
-	return arr.length > 1 ? arr : arr[0];
+	return arr.length === 0 ? undefined : arr.length === 1 ? arr[0] : arr;
 }
 
 type NonStringIterable<T> = Iterable<T> & object;
