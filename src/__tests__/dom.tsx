@@ -631,4 +631,17 @@ describe("render", () => {
 			"30px",
 		);
 	});
+
+	test("clearing mutations", () => {
+		renderer.render(<div />, document.body);
+
+		const div = document.body.firstChild as HTMLDivElement;
+		div.innerHTML = "<span>child</span>";
+		renderer.render(<div />, document.body);
+
+		expect(document.body.innerHTML).toEqual("<div><span>child</span></div>");
+		renderer.render(<div>{[]}</div>, document.body);
+
+		expect(document.body.innerHTML).toEqual("<div></div>");
+	});
 });
