@@ -18,7 +18,7 @@ describe("parent-child refresh cascades", () => {
 		try {
 			renderer.render(<Component />, document.body);
 			expect(document.body.innerHTML).toEqual("<div>Hello</div>");
-			expect(mock).toHaveBeenCalledTimes(1);
+			expect(mock).toHaveBeenCalled();
 		} finally {
 			mock.mockRestore();
 		}
@@ -34,7 +34,7 @@ describe("parent-child refresh cascades", () => {
 		try {
 			await renderer.render(<Component />, document.body);
 			expect(document.body.innerHTML).toEqual("<div>Hello</div>");
-			expect(mock).toHaveBeenCalledTimes(1);
+			expect(mock).toHaveBeenCalled();
 		} finally {
 			mock.mockRestore();
 		}
@@ -52,7 +52,7 @@ describe("parent-child refresh cascades", () => {
 		try {
 			renderer.render(<Component />, document.body);
 			expect(document.body.innerHTML).toEqual("<div>Hello</div>");
-			expect(mock).toHaveBeenCalledTimes(1);
+			expect(mock).toHaveBeenCalled();
 		} finally {
 			mock.mockRestore();
 		}
@@ -73,126 +73,131 @@ describe("parent-child refresh cascades", () => {
 			expect(document.body.innerHTML).toEqual("<span>Hello</span>");
 			await new Promise((resolve) => setTimeout(resolve, 0));
 			expect(document.body.innerHTML).toEqual("<span>Hello</span>");
-			expect(mock).toHaveBeenCalledTimes(1);
+			expect(mock).toHaveBeenCalled();
 		} finally {
 			mock.mockRestore();
 		}
 	});
 
 	test("sync function parent and sync function child", () => {
-		return new Promise((done) => {
-			function Child(this: Context) {
-				this.dispatchEvent(new Event("test", {bubbles: true}));
-				return <span>child</span>;
-			}
+		function Child(this: Context) {
+			this.dispatchEvent(new Event("test", {bubbles: true}));
+			return <span>child</span>;
+		}
 
-			function Parent(this: Context) {
-				this.addEventListener("test", () => {
-					try {
-						this.refresh();
-						done();
-					} catch (err) {
-						done(err);
-					}
-				});
+		function Parent(this: Context) {
+			this.addEventListener("test", () => {
+				this.refresh();
+			});
 
-				return (
+			return (
+				<div>
+					<Child />
+				</div>
+			);
+		}
+
+		const mock = jest.spyOn(console, "error").mockImplementation();
+		try {
+			renderer.render(<Parent />, document.body);
+			expect(document.body.innerHTML).toEqual("<div><span>child</span></div>");
+		} finally {
+			mock.mockRestore();
+		}
+	});
+
+	test("sync generator parent and sync function child", () => {
+		function Child(this: Context) {
+			this.dispatchEvent(new Event("test", {bubbles: true}));
+			return <span>child</span>;
+		}
+
+		function* Parent(this: Context) {
+			this.addEventListener("test", () => {
+				this.refresh();
+			});
+
+			while (true) {
+				yield (
 					<div>
 						<Child />
 					</div>
 				);
 			}
+		}
 
-			const mock = jest.spyOn(console, "error").mockImplementation();
-			try {
-				renderer.render(<Parent />, document.body);
-				expect(document.body.innerHTML).toEqual(
-					"<div><span>child</span></div>",
-				);
-				expect(mock).toHaveBeenCalledTimes(1);
-			} finally {
-				mock.mockRestore();
-			}
-		});
-	});
-
-	test("sync generator parent and sync function child", () => {
-		return new Promise((done) => {
-			function Child(this: Context) {
-				this.dispatchEvent(new Event("test", {bubbles: true}));
-				return <span>child</span>;
-			}
-
-			function* Parent(this: Context) {
-				this.addEventListener("test", () => {
-					try {
-						this.refresh();
-						done();
-					} catch (err) {
-						done(err);
-					}
-				});
-
-				while (true) {
-					yield (
-						<div>
-							<Child />
-						</div>
-					);
-				}
-			}
-
-			const mock = jest.spyOn(console, "error").mockImplementation();
-			try {
-				renderer.render(<Parent />, document.body);
-				expect(document.body.innerHTML).toEqual(
-					"<div><span>child</span></div>",
-				);
-				expect(mock).toHaveBeenCalledTimes(1);
-			} finally {
-				mock.mockRestore();
-			}
-		});
+		const mock = jest.spyOn(console, "error").mockImplementation();
+		try {
+			renderer.render(<Parent />, document.body);
+			expect(document.body.innerHTML).toEqual("<div><span>child</span></div>");
+			expect(mock).toHaveBeenCalled();
+		} finally {
+			mock.mockRestore();
+		}
 	});
 
 	test("sync generator parent and sync generator child", () => {
-		return new Promise((done) => {
-			function* Child(this: Context) {
-				while (true) {
-					this.dispatchEvent(new Event("test", {bubbles: true}));
-					yield <span>child</span>;
-				}
+		function* Child(this: Context) {
+			this.dispatchEvent(new Event("test", {bubbles: true}));
+			while (true) {
+				yield <span>child</span>;
 			}
+		}
 
-			function* Parent(this: Context) {
-				this.addEventListener("test", () => {
-					try {
-						this.refresh();
-						done();
-					} catch (err) {
-						done(err);
-					}
-				});
+		function* Parent(this: Context) {
+			this.addEventListener("test", () => {
+				this.refresh();
+			});
 
-				while (true) {
-					yield (
-						<div>
-							<Child />
-						</div>
-					);
-				}
-			}
-
-			const mock = jest.spyOn(console, "error").mockImplementation();
-			try {
-				renderer.render(<Parent />, document.body);
-				expect(document.body.innerHTML).toEqual(
-					"<div><span>child</span></div>",
+			while (true) {
+				yield (
+					<div>
+						<Child />
+					</div>
 				);
-				expect(mock).toHaveBeenCalledTimes(1);
-			} finally {
-				mock.mockRestore();
 			}
-		});
+		}
+
+		const mock = jest.spyOn(console, "error").mockImplementation();
+		try {
+			renderer.render(<Parent />, document.body);
+			expect(document.body.innerHTML).toEqual("<div><span>child</span></div>");
+			expect(mock).toHaveBeenCalled();
+		} finally {
+			mock.mockRestore();
+		}
+	});
+
+	test("dispatchEvent in initial schedule callback", () => {
+		function* Child(this: Context) {
+			this.schedule(() => {
+				this.dispatchEvent(new Event("test", {bubbles: true}));
+			});
+
+			while (true) {
+				yield <span>child</span>;
+			}
+		}
+
+		function Parent(this: Context) {
+			this.addEventListener("test", () => {
+				this.refresh();
+			});
+
+			return (
+				<div>
+					<Child />
+				</div>
+			);
+		}
+
+		const mock = jest.spyOn(console, "error").mockImplementation();
+		try {
+			renderer.render(<Parent />, document.body);
+			expect(document.body.innerHTML).toEqual("<div><span>child</span></div>");
+			expect(mock).toHaveBeenCalled();
+		} finally {
+			mock.mockRestore();
+		}
 	});
 });
