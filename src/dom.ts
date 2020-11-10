@@ -9,6 +9,9 @@ import {
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
+// TODO: maybe the HasChildren flag can be defined on (Crank) Element flags...
+const HasChildren = Symbol.for("crank.HasChildren");
+
 export class DOMRenderer extends Renderer<Node, string | undefined> {
 	render(
 		children: Children,
@@ -156,71 +159,69 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 				)}`,
 			);
 		}
-
 		if (
-			!("innerHTML" in el.props) &&
-			(children.length !== 0 || (node as any).__cranky)
+			("children" in el.props || (node as any)[HasChildren]) &&
+			!("innerHTML" in el.props)
 		) {
 			if (children.length === 0) {
 				node.textContent = "";
-				return;
-			}
+			} else {
+				let oldChild = node.firstChild;
+				let i = 0;
+				while (oldChild !== null && i < children.length) {
+					const newChild = children[i];
+					if (oldChild === newChild) {
+						oldChild = oldChild.nextSibling;
+						i++;
+					} else if (typeof newChild === "string") {
+						if (oldChild.nodeType === Node.TEXT_NODE) {
+							if ((oldChild as Text).data !== newChild) {
+								(oldChild as Text).data = newChild;
+							}
 
-			let oldChild = node.firstChild;
-			let i = 0;
-			while (oldChild !== null && i < children.length) {
-				const newChild = children[i];
-				if (oldChild === newChild) {
-					oldChild = oldChild.nextSibling;
-					i++;
-				} else if (typeof newChild === "string") {
-					if (oldChild.nodeType === Node.TEXT_NODE) {
-						if ((oldChild as Text).data !== newChild) {
-							(oldChild as Text).data = newChild;
+							oldChild = oldChild.nextSibling;
+						} else {
+							node.insertBefore(document.createTextNode(newChild), oldChild);
 						}
 
-						oldChild = oldChild.nextSibling;
-					} else {
-						node.insertBefore(document.createTextNode(newChild), oldChild);
-					}
-
-					i++;
-				} else if (oldChild.nodeType === Node.TEXT_NODE) {
-					const nextSibling = oldChild.nextSibling;
-					node.removeChild(oldChild);
-					oldChild = nextSibling;
-				} else {
-					node.insertBefore(newChild, oldChild);
-					i++;
-					// TODO: this is an optimization for the js frameworks benchmark swap rows, but we need to think a little more about other cases like prepending.
-					if (oldChild !== children[i]) {
+						i++;
+					} else if (oldChild.nodeType === Node.TEXT_NODE) {
 						const nextSibling = oldChild.nextSibling;
 						node.removeChild(oldChild);
 						oldChild = nextSibling;
+					} else {
+						node.insertBefore(newChild, oldChild);
+						i++;
+						// TODO: This is an optimization but we need to think a little more about other cases like prepending.
+						if (oldChild !== children[i]) {
+							const nextSibling = oldChild.nextSibling;
+							node.removeChild(oldChild);
+							oldChild = nextSibling;
+						}
 					}
 				}
-			}
 
-			while (oldChild !== null) {
-				const nextSibling = oldChild.nextSibling;
-				node.removeChild(oldChild);
-				oldChild = nextSibling;
-			}
+				while (oldChild !== null) {
+					const nextSibling = oldChild.nextSibling;
+					node.removeChild(oldChild);
+					oldChild = nextSibling;
+				}
 
-			for (; i < children.length; i++) {
-				const newChild = children[i];
-				node.appendChild(
-					typeof newChild === "string"
-						? document.createTextNode(newChild)
-						: newChild,
-				);
+				for (; i < children.length; i++) {
+					const newChild = children[i];
+					node.appendChild(
+						typeof newChild === "string"
+							? document.createTextNode(newChild)
+							: newChild,
+					);
+				}
 			}
+		}
 
-			if (children.length > 0) {
-				(node as any).__cranky = true;
-			} else if ((node as any).__cranky) {
-				(node as any).__cranky = false;
-			}
+		if (children.length > 0) {
+			(node as any)[HasChildren] = true;
+		} else if ((node as any)[HasChildren]) {
+			(node as any)[HasChildren] = false;
 		}
 	}
 }
