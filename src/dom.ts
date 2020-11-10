@@ -175,7 +175,10 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 					i++;
 				} else if (typeof newChild === "string") {
 					if (oldChild.nodeType === Node.TEXT_NODE) {
-						oldChild.nodeValue = newChild;
+						if ((oldChild as Text).data !== newChild) {
+							(oldChild as Text).data = newChild;
+						}
+
 						oldChild = oldChild.nextSibling;
 					} else {
 						node.insertBefore(document.createTextNode(newChild), oldChild);
