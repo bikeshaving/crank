@@ -11,15 +11,23 @@ function unwrap<T>(arr: Array<T>): Array<T> | T | undefined {
 
 type NonStringIterable<T> = Iterable<T> & object;
 
+/**
+ * Ensures a value is an array. This function shallowly clones arrays and turns
+ * iterables into arrays. It pretty much does the same thing as wrap above
+ * except it handles more cases so it is appropriate for wrapping user-provided
+ * data.
+ */
 function arrayify<T>(
 	value: NonStringIterable<T> | T | null | undefined,
 ): Array<T> {
 	return value == null
 		? []
-		: typeof value !== "string" &&
-		  typeof (value as any)[Symbol.iterator] === "function"
-		? Array.from(value as any)
-		: [value as any];
+		: Array.isArray(value)
+		? value.slice()
+		: typeof value === "string" ||
+		  typeof (value as any)[Symbol.iterator] === "undefined"
+		? [value]
+		: [...(value as NonStringIterable<T>)];
 }
 
 function isIteratorLike(
