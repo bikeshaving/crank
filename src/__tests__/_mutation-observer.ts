@@ -7,6 +7,7 @@ import "./_mutation-observer-shim";
 declare global {
 	// eslint-disable-next-line no-redeclare
 	module jest {
+		// eslint-disable-next-line
 		interface Matchers<R, T> {
 			toEqualMutationRecords: (expected: any[]) => R;
 		}

@@ -39,6 +39,8 @@
     ],
     "no-dupe-class-members": 0,
     "@typescript-eslint/no-dupe-class-members": 1,
+    "no-undef": 0,
+    "no-redeclare": 0,
     "prettier/prettier": [
       "error",
       {
