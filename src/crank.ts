@@ -954,9 +954,8 @@ function update<TNode, TScope, TRoot, TResult>(
 	scope: TScope,
 	el: Element,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (typeof el.tag === "function") {
-		// el._ctx should probably never be undefined here
-		return el._ctx ? updateCtx(el._ctx) : undefined;
+	if (el._ctx) {
+		return updateCtx(el._ctx);
 	} else if (el.tag === Raw) {
 		return commit(renderer, scope, el, []);
 	} else if (el.tag !== Fragment) {
@@ -1186,11 +1185,8 @@ function unmount<TNode, TScope, TRoot, TResult>(
 	ctx: Context<unknown, TResult> | undefined,
 	el: Element,
 ): void {
-	if (typeof el.tag === "function") {
-		if (typeof el._ctx === "object") {
-			unmountCtx(el._ctx);
-		}
-
+	if (el._ctx) {
+		unmountCtx(el._ctx);
 		ctx = el._ctx;
 	} else if (el.tag === Portal) {
 		host = el as Element<symbol>;
