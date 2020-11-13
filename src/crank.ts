@@ -885,17 +885,16 @@ function mountChildren<TNode, TScope, TRoot, TResult>(
 	const newChildren = arrayify(children);
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
 	let isAsync = false;
-	let seen: Set<Key> | undefined;
+	let seen = new Set<Key>();
 	for (let i = 0; i < newChildren.length; i++) {
 		let child = narrow(newChildren[i]);
-		if (typeof child === "object" && typeof child.key !== "undefined") {
-			if (seen === undefined) {
-				seen = new Set();
-			} else if (seen.has(child.key)) {
-				console.error("Duplicate key", child.key);
+		const key = child && (child as any).key;
+		if (key !== undefined) {
+			if (seen.has(key)) {
+				console.error("Duplicate key", key);
 			}
 
-			seen.add(child.key);
+			seen.add(key);
 		}
 
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
@@ -1010,16 +1009,16 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	const graveyard: Array<Element> = [];
 	let i = 0;
 	let isAsync = false;
-	let seen: Set<Key> | undefined;
+	let seen = new Set<Key>();
 	let childrenByKey: Map<Key, Element> | undefined;
 	// TODO: switch to mountChildren if there are no more children
 	for (let j = 0; j < newChildren.length; j++) {
 		let oldChild = oldChildren[i];
 		let newChild = narrow(newChildren[j]);
 		// ALIGNMENT
-		let oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
-		let newKey = typeof newChild === "object" ? newChild.key : undefined;
-		if (seen !== undefined && seen.has(newKey)) {
+		let oldKey = oldChild && (oldChild as any).key;
+		let newKey = newChild && (newChild as any).key;
+		if (newKey !== undefined && seen.has(newKey)) {
 			console.error("Duplicate key", newKey);
 			newKey = undefined;
 		}
@@ -1041,10 +1040,6 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 				oldChild = childrenByKey.get(newKey);
 				if (oldChild !== undefined) {
 					childrenByKey.delete(newKey);
-				}
-
-				if (!seen) {
-					seen = new Set();
 				}
 
 				seen.add(newKey);
