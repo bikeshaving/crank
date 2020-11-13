@@ -1,41 +1,20 @@
 /** @jsx createElement */
 import {createElement, Fragment, Portal, Raw} from "../index";
 import {renderer} from "../dom";
-import "./_mutation-observer";
 import {createHTML} from "./_utils";
 
 describe("render", () => {
-	let observer: MutationObserver;
-	function observe() {
-		observer.observe(document.body, {
-			childList: true,
-			attributes: true,
-			characterData: true,
-			subtree: true,
-		});
-	}
-
-	beforeEach(() => {
-		observer = new MutationObserver(() => {});
-	});
-
 	afterEach(() => {
-		observer.disconnect();
 		renderer.render(null, document.body);
 		document.body.innerHTML = "";
 	});
 
 	test("simple", () => {
-		observe();
 		renderer.render(<h1>Hello world</h1>, document.body);
 		expect(document.body.innerHTML).toEqual("<h1>Hello world</h1>");
-		expect(observer.takeRecords()).toEqualMutationRecords([
-			{addedNodes: [createHTML("<h1>Hello world</h1>")]},
-		]);
 	});
 
 	test("multiple children", () => {
-		observe();
 		renderer.render(
 			<div>
 				<span>1</span>
@@ -45,22 +24,13 @@ describe("render", () => {
 			</div>,
 			document.body,
 		);
+
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>1</span><span>2</span><span>3</span><span>4</span></div>",
 		);
-		expect(observer.takeRecords()).toEqualMutationRecords([
-			{
-				addedNodes: [
-					createHTML(
-						"<div><span>1</span><span>2</span><span>3</span><span>4</span></div>",
-					),
-				],
-			},
-		]);
 	});
 
 	test("nested children", () => {
-		observe();
 		renderer.render(
 			<div id="1">
 				<div id="2">
@@ -69,32 +39,18 @@ describe("render", () => {
 			</div>,
 			document.body,
 		);
+
 		expect(document.body.innerHTML).toEqual(
 			'<div id="1"><div id="2"><div id="3">Hi</div></div></div>',
 		);
-		expect(observer.takeRecords()).toEqualMutationRecords([
-			{
-				addedNodes: [
-					createHTML(
-						'<div id="1"><div id="2"><div id="3">Hi</div></div></div>',
-					),
-				],
-			},
-		]);
+
+		const div1 = document.getElementById("1")!;
 		renderer.render(<div id="1" />, document.body);
 		expect(document.body.innerHTML).toEqual('<div id="1"></div>');
-
-		const records = observer.takeRecords();
-		expect(records).toEqualMutationRecords([
-			{
-				target: document.body.firstChild,
-				removedNodes: [createHTML('<div id="2"><div id="3">Hi</div></div>')],
-			},
-		]);
+		expect(document.body.firstChild).toBe(div1);
 	});
 
 	test("boolean replaces nested children", () => {
-		observe();
 		renderer.render(
 			<div id="1">
 				<div id="2">
@@ -103,26 +59,25 @@ describe("render", () => {
 			</div>,
 			document.body,
 		);
+
 		expect(document.body.innerHTML).toEqual(
 			'<div id="1"><div id="2"><div id="3">Hi</div></div></div>',
 		);
-		expect(observer.takeRecords()).toEqualMutationRecords([
-			{
-				addedNodes: [
-					createHTML(
-						'<div id="1"><div id="2"><div id="3">Hi</div></div></div>',
-					),
-				],
-			},
-		]);
-		renderer.render(<div id="1">{true}</div>, document.body);
-		expect(document.body.innerHTML).toEqual('<div id="1"></div>');
-		expect(observer.takeRecords()).toEqualMutationRecords([
-			{
-				target: document.body.firstChild,
-				removedNodes: [createHTML('<div id="2"><div id="3">Hi</div></div>')],
-			},
-		]);
+
+		const div1 = document.getElementById("1")!;
+		const div2 = document.getElementById("2")!;
+		renderer.render(
+			<div id="1">
+				<div id="2">{true}</div>
+			</div>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual(
+			'<div id="1"><div id="2"></div></div>',
+		);
+		expect(document.body.firstChild).toBe(div1);
+		expect(document.body.firstChild!.firstChild).toBe(div2);
 	});
 
 	// TODO: move these tests to their own file
@@ -142,9 +97,14 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual("<div>Hello world</div>");
 		expect(el1.innerHTML).toEqual("Hello from a portal");
 		expect(el2.innerHTML).toEqual("<div>Hello from another portal</div>");
+
+		renderer.render(null, document.body);
+		expect(document.body.innerHTML).toEqual("");
+		expect(el1.innerHTML).toEqual("");
+		expect(el2.innerHTML).toEqual("");
 	});
 
-	test("root portal", () => {
+	test("portal at root", () => {
 		const div = document.createElement("div");
 		renderer.render(
 			<Portal root={div}>
@@ -154,9 +114,12 @@ describe("render", () => {
 		);
 		expect(document.body.innerHTML).toEqual("");
 		expect(div.innerHTML).toEqual("<div>Hello world</div>");
+		renderer.render(null, document.body);
+		expect(document.body.innerHTML).toEqual("");
+		expect(div.innerHTML).toEqual("");
 	});
 
-	test("root portal with changing root", () => {
+	test("changing root", () => {
 		const el1 = document.createElement("div");
 		const el2 = document.createElement("div");
 		renderer.render(
@@ -225,25 +188,16 @@ describe("render", () => {
 	test("rerender text", () => {
 		renderer.render(<h1>Hello world 1</h1>, document.body);
 		expect(document.body.innerHTML).toEqual("<h1>Hello world 1</h1>");
-		observe();
+		const h1 = document.body.firstChild!;
+		const text = h1.firstChild!;
 		renderer.render(<h1>Hello {"world"} 2</h1>, document.body);
 		expect(document.body.innerHTML).toEqual("<h1>Hello world 2</h1>");
-		expect(observer.takeRecords()).toEqualMutationRecords([
-			{
-				type: "characterData",
-				target: createHTML("Hello world 2"),
-				oldValue: "Hello world 1",
-			},
-		]);
+		expect(document.body.firstChild!).toBe(h1);
+		expect(document.body.firstChild!.firstChild!).toBe(text);
 		renderer.render(<h1>Hello world {3}</h1>, document.body);
 		expect(document.body.innerHTML).toEqual("<h1>Hello world 3</h1>");
-		expect(observer.takeRecords()).toEqualMutationRecords([
-			{
-				type: "characterData",
-				target: createHTML("Hello world 3"),
-				oldValue: "Hello world 2",
-			},
-		]);
+		expect(document.body.firstChild!).toBe(h1);
+		expect(document.body.firstChild!.firstChild!).toBe(text);
 	});
 
 	test("rerender different child", () => {
@@ -254,7 +208,7 @@ describe("render", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><h1>Hello world</h1></div>");
-		observe();
+		const div = document.body.firstChild!;
 		renderer.render(
 			<div>
 				<h2>Hello world</h2>
@@ -262,22 +216,13 @@ describe("render", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><h2>Hello world</h2></div>");
-		expect(observer.takeRecords()).toEqualMutationRecords([
-			{
-				target: document.body.firstChild,
-				addedNodes: [createHTML("<h2>Hello world</h2>")],
-			},
-			{
-				target: document.body.firstChild,
-				removedNodes: [createHTML("<h1>Hello world</h1>")],
-			},
-		]);
+		expect(document.body.firstChild!).toBe(div);
 	});
 
 	test("rerender text with children", () => {
 		renderer.render(<div>Hello world</div>, document.body);
 		expect(document.body.innerHTML).toEqual("<div>Hello world</div>");
-		observe();
+		const div = document.body.firstChild!;
 		renderer.render(
 			<div>
 				<span>1</span>
@@ -288,21 +233,7 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>1</span><span>2</span></div>",
 		);
-		expect(observer.takeRecords()).toEqualMutationRecords([
-			{
-				target: document.body.firstChild,
-				addedNodes: [createHTML("<span>1</span>")],
-			},
-			{
-				target: createHTML("<div><span>1</span><span>2</span></div>"),
-				removedNodes: [createHTML("Hello world")],
-			},
-			{
-				target: document.body.firstChild,
-				addedNodes: [createHTML("<span>2</span>")],
-				previousSibling: createHTML("<span>1</span>"),
-			},
-		]);
+		expect(document.body.firstChild!).toBe(div);
 	});
 
 	test("rerender children with text", () => {
@@ -316,23 +247,10 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>1</span><span>2</span></div>",
 		);
-		observe();
+		const div = document.body.firstChild!;
 		renderer.render(<div>Hello world</div>, document.body);
 		expect(document.body.innerHTML).toEqual("<div>Hello world</div>");
-		expect(observer.takeRecords()).toEqualMutationRecords([
-			{
-				target: document.body.firstChild,
-				addedNodes: [createHTML("Hello world")],
-			},
-			{
-				target: document.body.firstChild,
-				removedNodes: [createHTML("<span>1</span>")],
-			},
-			{
-				target: document.body.firstChild,
-				removedNodes: [createHTML("<span>2</span>")],
-			},
-		]);
+		expect(document.body.firstChild!).toBe(div);
 	});
 
 	test("rerender more children", () => {
@@ -343,7 +261,8 @@ describe("render", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
-		observe();
+		const div = document.body.firstChild!;
+		const span = div.firstChild!;
 		renderer.render(
 			<div>
 				<span>1</span>
@@ -356,20 +275,8 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>1</span><span>2</span><span>3</span><span>4</span></div>",
 		);
-		expect(observer.takeRecords()).toEqualMutationRecords([
-			{
-				target: document.body.firstChild,
-				addedNodes: [createHTML("<span>2</span>")],
-			},
-			{
-				target: document.body.firstChild,
-				addedNodes: [createHTML("<span>3</span>")],
-			},
-			{
-				target: document.body.firstChild,
-				addedNodes: [createHTML("<span>4</span>")],
-			},
-		]);
+		expect(document.body.firstChild!).toBe(div);
+		expect(document.body.firstChild!.firstChild).toBe(span);
 	});
 
 	test("rerender fewer children", () => {
@@ -385,7 +292,8 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>1</span><span>2</span><span>3</span><span>4</span></div>",
 		);
-		observe();
+		const div = document.body.firstChild!;
+		const span = div.firstChild!;
 		renderer.render(
 			<div>
 				<span>1</span>
@@ -393,41 +301,19 @@ describe("render", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
-		expect(observer.takeRecords()).toEqualMutationRecords([
-			{
-				target: document.body.firstChild,
-				removedNodes: [createHTML("<span>2</span>")],
-			},
-			{
-				target: document.body.firstChild,
-				removedNodes: [createHTML("<span>3</span>")],
-			},
-			{
-				target: document.body.firstChild,
-				removedNodes: [createHTML("<span>4</span>")],
-			},
-		]);
+		expect(document.body.firstChild!).toBe(div);
+		expect(document.body.firstChild!.firstChild).toBe(span);
 	});
 
-	test("render null", () => {
+	test("null and undefined", () => {
 		renderer.render(<h1>Hello world</h1>, document.body);
 		expect(document.body.innerHTML).toEqual("<h1>Hello world</h1>");
-		observe();
 		renderer.render(null, document.body);
 		expect(document.body.innerHTML).toEqual("");
-		expect(observer.takeRecords()).toEqualMutationRecords([
-			{removedNodes: [createHTML("<h1>Hello world</h1>")]},
-		]);
 		renderer.render(<h1>Hello again</h1>, document.body);
 		expect(document.body.innerHTML).toEqual("<h1>Hello again</h1>");
-		expect(observer.takeRecords()).toEqualMutationRecords([
-			{addedNodes: [createHTML("<h1>Hello again</h1>")]},
-		]);
-		renderer.render(null, document.body);
+		renderer.render(undefined, document.body);
 		expect(document.body.innerHTML).toEqual("");
-		expect(observer.takeRecords()).toEqualMutationRecords([
-			{removedNodes: [createHTML("<h1>Hello again</h1>")]},
-		]);
 	});
 
 	test("fragment", () => {
@@ -439,7 +325,8 @@ describe("render", () => {
 			document.body,
 		);
 		expect(document.body.innerHTML).toEqual("<span>1</span><span>2</span>");
-		observe();
+		const span1 = document.body.childNodes[0];
+		const span2 = document.body.childNodes[1];
 		renderer.render(
 			<Fragment>
 				<span>1</span>
@@ -451,18 +338,14 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<span>1</span><span>2</span><span>3</span>",
 		);
-		expect(observer.takeRecords()).toEqualMutationRecords([
-			{
-				target: document.body,
-				addedNodes: [createHTML("<span>3</span>")],
-			},
-		]);
+		expect(document.body.childNodes[0]).toBe(span1);
+		expect(document.body.childNodes[1]).toBe(span2);
 	});
 
-	test("rerendering fragment", () => {
+	test("fragment with null and undefined", () => {
 		renderer.render(
 			<Fragment>
-				{undefined}
+				{null}
 				{undefined}
 			</Fragment>,
 			document.body,
@@ -497,7 +380,7 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>1</span><span>2</span><span>3</span><span>4</span></div>",
 		);
-		observe();
+		const span1 = document.body.firstChild!.childNodes[0];
 		const span4 = document.body.firstChild!.childNodes[3];
 		renderer.render(
 			<div>
@@ -510,22 +393,7 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>1</span><span>4</span></div>",
 		);
-		expect(observer.takeRecords()).toEqualMutationRecords([
-			{
-				target: document.body.firstChild,
-				removedNodes: [createHTML("<span>2</span>")],
-			},
-			{
-				target: document.body.firstChild,
-				removedNodes: [createHTML("<span>3</span>")],
-			},
-			// current algorithm will move existing nodes before the to-be-removed nodes
-			{
-				target: document.body.firstChild,
-				addedNodes: [createHTML("<span>4</span>")],
-				removedNodes: [createHTML("<span>4</span>")],
-			},
-		]);
+		expect(document.body.firstChild!.childNodes[0]).toBe(span1);
 		expect(document.body.firstChild!.childNodes[1]).toBe(span4);
 	});
 
@@ -541,7 +409,9 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>",
 		);
-		observe();
+		const span1 = document.body.firstChild!.childNodes[0];
+		const span2 = document.body.firstChild!.childNodes[1];
+		const span3 = document.body.firstChild!.childNodes[2];
 		const span6 = document.body.firstChild!.childNodes[5];
 		renderer.render(
 			<div>
@@ -554,27 +424,9 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>1</span><span>2</span><span>4</span><span>6</span></div>",
 		);
-		expect(observer.takeRecords()).toEqualMutationRecords([
-			{
-				target: createHTML("4"),
-				oldValue: "3",
-				type: "characterData",
-			},
-			{
-				target: document.body.firstChild,
-				removedNodes: [createHTML("<span>4</span>")],
-			},
-			{
-				target: document.body.firstChild,
-				removedNodes: [createHTML("<span>5</span>")],
-			},
-			// current algorithm will move existing nodes before the to-be-removed nodes
-			{
-				target: document.body.firstChild,
-				addedNodes: [createHTML("<span>6</span>")],
-				removedNodes: [createHTML("<span>6</span>")],
-			},
-		]);
+		expect(document.body.firstChild!.childNodes[0]).toBe(span1);
+		expect(document.body.firstChild!.childNodes[1]).toBe(span2);
+		expect(document.body.firstChild!.childNodes[2]).toBe(span3);
 		expect(document.body.firstChild!.childNodes[3]).toBe(span6);
 	});
 
@@ -611,7 +463,7 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual(
 			'<div style="display: none;"></div>',
 		);
-		expect((document.body.firstChild! as HTMLElement).style.display).toEqual(
+		expect((document.body.firstChild as HTMLElement).style.display).toEqual(
 			"none",
 		);
 	});
@@ -624,10 +476,10 @@ describe("render", () => {
 		expect(document.body.innerHTML).toEqual(
 			'<div style="display: none; margin-top: 30px;"></div>',
 		);
-		expect((document.body.firstChild! as HTMLElement).style.display).toEqual(
+		expect((document.body.firstChild as HTMLElement).style.display).toEqual(
 			"none",
 		);
-		expect((document.body.firstChild! as HTMLElement).style.marginTop).toEqual(
+		expect((document.body.firstChild as HTMLElement).style.marginTop).toEqual(
 			"30px",
 		);
 	});
