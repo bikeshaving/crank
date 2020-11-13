@@ -1,7 +1,6 @@
 /** @jsx createElement */
 import {createElement, Fragment, Portal, Raw} from "../index";
 import {renderer} from "../dom";
-import {createHTML} from "./_utils";
 
 describe("render", () => {
 	afterEach(() => {
@@ -445,10 +444,12 @@ describe("render", () => {
 	});
 
 	test("raw node", () => {
-		const el = createHTML('<span id="raw">Hi</span>');
+		var template = document.createElement("template");
+		template.innerHTML = '<span id="raw">Hi</span>';
+		const span = template.content.firstChild!;
 		renderer.render(
 			<div>
-				Raw: <Raw value={el} />
+				Raw: <Raw value={span} />
 			</div>,
 			document.body,
 		);
