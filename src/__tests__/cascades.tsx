@@ -2,7 +2,8 @@
 import {createElement, Context} from "../index";
 import {renderer} from "../dom";
 
-describe("parent-child refresh cascades", () => {
+// TODO: I’m not sure these tests are fully isolated in terms of console.error mock calls.
+describe("cascades", () => {
 	afterEach(() => {
 		renderer.render(null, document.body);
 		document.body.innerHTML = "";
