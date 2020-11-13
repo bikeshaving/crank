@@ -12,10 +12,9 @@ function unwrap<T>(arr: Array<T>): Array<T> | T | undefined {
 type NonStringIterable<T> = Iterable<T> & object;
 
 /**
- * Ensures a value is an array. This function shallowly clones arrays and turns
- * iterables into arrays. It pretty much does the same thing as wrap above
- * except it handles more cases so it is appropriate for wrapping user-provided
- * data.
+ * Ensures a value is an array. This function pretty much does the same thing
+ * as wrap above except it handles iterables and shallowly clones arrays so it
+ * is appropriate for wrapping user-provided element children.
  */
 function arrayify<T>(
 	value: NonStringIterable<T> | T | null | undefined,
