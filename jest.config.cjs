@@ -60,7 +60,7 @@ module.exports = {
 	// A set of global variables that need to be available in all test environments
 	globals: {
 		"ts-jest": {
-			tsConfig: {
+			tsconfig: {
 				target: "esnext",
 			},
 			diagnostics: {
@@ -181,14 +181,14 @@ module.exports = {
 
 	// An array of regexp patterns that are matched against all source file paths before re-running tests in watch mode
 	watchPathIgnorePatterns: [
-    "index.js",
-    "dom.js",
-    "html.js",
-    "cjs",
-    "dist",
-    "umd",
-    ".d.ts",
-    ".js.map"
+		"index.js",
+		"dom.js",
+		"html.js",
+		"cjs",
+		"dist",
+		"umd",
+		".d.ts",
+		".js.map"
 	],
 
 	// Whether to use watchman for file crawling
