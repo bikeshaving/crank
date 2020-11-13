@@ -790,13 +790,15 @@ function diff<TNode, TScope, TRoot, TResult>(
 		typeof newChild === "object" &&
 		oldChild.tag === newChild.tag
 	) {
-		// TODO: implement Raw element parse caching
-		if (oldChild.tag === Portal) {
-			if (oldChild.props.root !== newChild.props.root) {
-				renderer.arrange(oldChild as Element<Portal>, oldChild.props.root, []);
-			}
+		if (
+			oldChild.tag === Portal &&
+			oldChild.props.root !== newChild.props.root
+		) {
+			renderer.arrange(oldChild as Element<Portal>, oldChild.props.root, []);
+			// TODO: we should probably call renderer.complete here.
 		}
 
+		// TODO: implement Raw element parse caching
 		if (oldChild !== newChild) {
 			oldChild.props = newChild.props;
 			oldChild.ref = newChild.ref;
@@ -890,10 +892,8 @@ function mountChildren<TNode, TScope, TRoot, TResult>(
 		if (typeof child === "object" && typeof child.key !== "undefined") {
 			if (seen === undefined) {
 				seen = new Set();
-			} else {
-				if (seen.has(child.key)) {
-					console.error("Duplicate key", child.key);
-				}
+			} else if (seen.has(child.key)) {
+				console.error("Duplicate key", child.key);
 			}
 
 			seen.add(child.key);
