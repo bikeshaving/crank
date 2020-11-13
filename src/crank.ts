@@ -885,7 +885,7 @@ function mountChildren<TNode, TScope, TRoot, TResult>(
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	const newChildren = arrayify(children);
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
-	let async = false;
+	let isAsync = false;
 	let seen: Set<Key> | undefined;
 	for (let i = 0; i < newChildren.length; i++) {
 		let child = narrow(newChildren[i]);
@@ -911,14 +911,14 @@ function mountChildren<TNode, TScope, TRoot, TResult>(
 		);
 		newChildren[i] = child;
 		values.push(value);
-		if (!async && isPromiseLike(value)) {
-			async = true;
+		if (!isAsync) {
+			isAsync = isPromiseLike(value);
 		}
 	}
 
 	el._ch = unwrap(newChildren as Array<NarrowedChild>);
 
-	if (async) {
+	if (isAsync) {
 		let onvalues!: Function;
 		const values1: Promise<Array<ElementValue<TNode>>> = Promise.race([
 			Promise.all(values),
@@ -1013,7 +1013,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
 	const graveyard: Array<Element> = [];
 	let i = 0;
-	let async = false;
+	let isAsync = false;
 	let seen: Set<Key> | undefined;
 	let childrenByKey: Map<Key, Element> | undefined;
 	// TODO: switch to mountChildren if there are no more children
@@ -1075,8 +1075,8 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 
 		values.push(value);
 		newChildren[j] = newChild;
-		if (!async && isPromiseLike(value)) {
-			async = true;
+		if (!isAsync) {
+			isAsync = isPromiseLike(value);
 		}
 
 		if (typeof oldChild === "object" && oldChild !== newChild) {
@@ -1099,7 +1099,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		graveyard.push(...childrenByKey.values());
 	}
 
-	if (async) {
+	if (isAsync) {
 		let values1 = Promise.all(values).finally(() => {
 			graveyard.forEach((child) => unmount(renderer, host, ctx, child));
 		});
@@ -1813,11 +1813,10 @@ function stepCtx<TNode, TResult>(
 				// async function component
 				const result1 =
 					result instanceof Promise ? result : Promise.resolve(result);
-				const block = result1;
 				const value = result1.then((result) =>
 					updateCtxChildren<TNode, TResult>(ctx, result),
 				);
-				return [block, value];
+				return [result1, value];
 			} else {
 				// sync function component
 				return [undefined, updateCtxChildren<TNode, TResult>(ctx, result)];
@@ -1856,7 +1855,6 @@ function stepCtx<TNode, TResult>(
 			ctx._f |= IsAsyncGen;
 		}
 
-		const block = iteration;
 		const value: Promise<ElementValue<TNode>> = iteration.then(
 			(iteration) => {
 				if (!(ctx._f & IsIterating)) {
@@ -1889,7 +1887,7 @@ function stepCtx<TNode, TResult>(
 			},
 		);
 
-		return [block, value];
+		return [iteration, value];
 	}
 
 	// sync generator component
@@ -1947,7 +1945,7 @@ function runCtx<TNode, TResult>(
 	if (!ctx._ib) {
 		try {
 			let [block, value] = stepCtx<TNode, TResult>(ctx);
-			if (isPromiseLike(block)) {
+			if (block) {
 				ctx._ib = block
 					.catch((err) => {
 						if (!(ctx._f & IsUpdating)) {
@@ -1983,7 +1981,7 @@ function runCtx<TNode, TResult>(
 						ctx._el._inf = value;
 					}
 
-					if (isPromiseLike(block)) {
+					if (block) {
 						return block.catch((err) => {
 							if (!(ctx._f & IsUpdating)) {
 								return propagateError<TNode>(ctx._pa, err);
