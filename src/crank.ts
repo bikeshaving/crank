@@ -911,9 +911,7 @@ function mountChildren<TNode, TScope, TRoot, TResult>(
 		);
 		newChildren[i] = child;
 		values.push(value);
-		if (!isAsync) {
-			isAsync = isPromiseLike(value);
-		}
+		isAsync = isAsync || isPromiseLike(value);
 	}
 
 	el._ch = unwrap(newChildren as Array<NarrowedChild>);
@@ -1075,10 +1073,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 
 		values.push(value);
 		newChildren[j] = newChild;
-		if (!isAsync) {
-			isAsync = isPromiseLike(value);
-		}
-
+		isAsync = isAsync || isPromiseLike(value);
 		if (typeof oldChild === "object" && oldChild !== newChild) {
 			graveyard.push(oldChild);
 		}
@@ -1140,11 +1135,17 @@ function commit<TNode, TScope, TRoot, TResult>(
 	el: Element,
 	values: Array<TNode | string>,
 ): ElementValue<TNode> {
-	let value = unwrap(values);
-	if (typeof el.tag === "function") {
-		if (typeof el._ctx === "object") {
-			commitCtx(el._ctx, value);
-		}
+	if (el._inf) {
+		el._inf = undefined;
+	}
+
+	if (el._fb) {
+		el._fb = undefined;
+	}
+
+	let value: ElementValue<TNode>;
+	if (el._ctx) {
+		value = commitCtx(el._ctx, values);
 	} else if (el.tag === Portal) {
 		if (!(el._f & IsCommitted)) {
 			el._f |= IsCommitted;
@@ -1152,7 +1153,6 @@ function commit<TNode, TScope, TRoot, TResult>(
 
 		renderer.arrange(el as Element<Portal>, el.props.root, values);
 		renderer.complete(el.props.root);
-		value = undefined;
 	} else if (el.tag === Raw) {
 		if (typeof el.props.value === "string") {
 			el._n = renderer.parse(el.props.value, scope);
@@ -1161,7 +1161,9 @@ function commit<TNode, TScope, TRoot, TResult>(
 		}
 
 		value = el._n;
-	} else if (el.tag !== Fragment) {
+	} else if (el.tag === Fragment) {
+		value = unwrap(values);
+	} else {
 		if (!(el._f & IsCommitted)) {
 			el._n = renderer.create(el as Element<string | symbol>, scope);
 			el._f |= IsCommitted;
@@ -1174,14 +1176,6 @@ function commit<TNode, TScope, TRoot, TResult>(
 
 	if (el.ref) {
 		el.ref(renderer.read(value));
-	}
-
-	if (el._inf) {
-		el._inf = undefined;
-	}
-
-	if (el._fb) {
-		el._fb = undefined;
 	}
 
 	return value;
@@ -2037,16 +2031,19 @@ function updateCtxChildren<TNode, TResult>(
 	);
 }
 
-function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
+function commitCtx<TNode>(
+	ctx: Context,
+	values: Array<TNode | string>,
+): ElementValue<TNode> {
 	if (ctx._f & IsUnmounted) {
 		return;
 	}
 
 	if (typeof ctx._ls !== "undefined" && ctx._ls.length > 0) {
-		for (const child of wrap(value)) {
-			if (isEventTarget(child)) {
+		for (const v of values) {
+			if (isEventTarget(v)) {
 				for (const record of ctx._ls) {
-					child.addEventListener(record.type, record.callback, record.options);
+					v.addEventListener(record.type, record.callback, record.options);
 				}
 			}
 		}
@@ -2057,7 +2054,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 		if (listeners !== undefined && listeners.length > 0) {
 			for (let i = 0; i < listeners.length; i++) {
 				const record = listeners[i];
-				for (const v of wrap(value)) {
+				for (const v of values) {
 					if (isEventTarget(v)) {
 						v.addEventListener(record.type, record.callback, record.options);
 					}
@@ -2079,6 +2076,7 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 	}
 
 	ctx._f &= ~IsUpdating;
+	const value = unwrap(values);
 	if (ctx._ss && ctx._ss.size > 0) {
 		// NOTE: We have to clear the set of callbacks before calling them, because
 		// a callback which refreshes the component would otherwise cause a stack
@@ -2090,6 +2088,8 @@ function commitCtx<TNode>(ctx: Context, value: ElementValue<TNode>): void {
 			callback(value1);
 		}
 	}
+
+	return value;
 }
 
 // TODO: async unmounting
