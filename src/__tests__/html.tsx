@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import {Context, createElement, Fragment, Raw} from "../index";
+import {Context, Copy, createElement, Fragment, Raw} from "../index";
 import {renderer} from "../html";
 
 describe("render", () => {
@@ -139,10 +139,26 @@ describe("render", () => {
 		);
 	});
 
-	test("escaped children", () => {
+	test("escaped text", () => {
 		expect(renderer.render(<div>{"< > & \" '"}</div>)).toEqual(
 			"<div>&lt; &gt; &amp; &quot; &#039;</div>",
 		);
+	});
+
+	test("copied escaped text", () => {
+		const key = {};
+		expect(renderer.render(<div>{"< > & \" '"}</div>, key)).toEqual(
+			"<div>&lt; &gt; &amp; &quot; &#039;</div>",
+		);
+
+		expect(
+			renderer.render(
+				<div>
+					<Copy />
+				</div>,
+				key,
+			),
+		).toEqual("<div>&lt; &gt; &amp; &quot; &#039;</div>");
 	});
 
 	test("raw html", () => {

@@ -833,7 +833,7 @@ function diff<TNode, TScope, TRoot, TResult>(
 			}
 		}
 	} else if (typeof newChild === "string") {
-		value = renderer.escape(newChild, scope);
+		newChild = value = renderer.escape(newChild, scope);
 	}
 
 	return [newChild, value];
