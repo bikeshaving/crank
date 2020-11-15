@@ -114,7 +114,7 @@ console.log(document.body.innerHTML);
     input.focus();
   }
 }</code></pre>
-<p>The <code>MyInput</code> component focuses every time it is rerendered. We use an async generator component here because async generators continuously resume, so the <code>input.focus</code> call happens directly after the component is rendered. While we also pass rendered nodes into sync generator components as well, attempting to access them directly after the <code>yield</code> may lead to surprising results.</p>
+<p>The <code>FocusingInput</code> component focuses every time it is rerendered. We use an async generator component here because async generators continuously resume, so the <code>input.focus</code> call happens directly after the component is rendered. While we also pass rendered nodes into sync generator components as well, attempting to access them directly after the <code>yield</code> may lead to surprising results.</p>
 <pre><code class="language-jsx">function *FocusingInput(props) {
   for (props of this) {
     const input = yield &lt;input {...props}/&gt;;
