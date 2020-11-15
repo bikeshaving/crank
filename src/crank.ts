@@ -794,7 +794,7 @@ function diff<TNode, TScope, TRoot, TResult>(
 			oldChild.props.root !== newChild.props.root
 		) {
 			renderer.arrange(oldChild as Element<Portal>, oldChild.props.root, []);
-			// TODO: we should probably call renderer.complete here.
+			renderer.complete(oldChild.props.root);
 		}
 
 		// TODO: implement Raw element parse caching
