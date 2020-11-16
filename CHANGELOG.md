@@ -1,4 +1,10 @@
 # Changelog
+## [0.3.7] - 2020-11-16
+Mostly some changes when trying to get Crank to play nicely with contenteditables
+### Fixed
+- Fixed TypeScript sourcemaps not being generated in builds (#165).
+- Fixed empty arrays or otherwise non-empty element children not clearing out non-Crank DOM mutations (#167).
+- Fixed rerenderings updating DOM Text nodes even when the contents have not changed (#169).
 ## [0.3.6] - 2020-10-13
 ### Fixed
 - Changed the algorithm of patch slightly so that `setAttribute` is never used with object/function values.
