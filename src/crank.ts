@@ -1,4 +1,3 @@
-/*** UTILITIES ***/
 const NOOP = () => {};
 
 function wrap<T>(value: Array<T> | T | undefined): Array<T> {
@@ -12,9 +11,12 @@ function unwrap<T>(arr: Array<T>): Array<T> | T | undefined {
 type NonStringIterable<T> = Iterable<T> & object;
 
 /**
- * Ensures a value is an array. This function pretty much does the same thing
- * as wrap above except it handles iterables and shallowly clones arrays so it
- * is appropriate for wrapping user-provided element children.
+ * Ensures a value is an array.
+ *
+ * @remarks
+ * This function pretty much does the same thing as wrap above except it
+ * handles nulls and iterables, and shallowly clones arrays, so it is
+ * appropriate for wrapping user-provided children from el.props.
  */
 function arrayify<T>(
 	value: NonStringIterable<T> | T | null | undefined,
@@ -24,7 +26,7 @@ function arrayify<T>(
 		: Array.isArray(value)
 		? value.slice()
 		: typeof value === "string" ||
-		  typeof (value as any)[Symbol.iterator] === "undefined"
+		  typeof (value as any)[Symbol.iterator] !== "function"
 		? [value]
 		: [...(value as NonStringIterable<T>)];
 }
@@ -45,7 +47,7 @@ function isPromiseLike(value: any): value is PromiseLike<unknown> {
  * @remarks
  * Elements whose tags are strings or symbols are called “host” or “intrinsic”
  * elements, and their behavior is determined by the renderer, while elements
- * whose tags are components are called “component” elements, and their
+ * whose tags are functions are called “component” elements, and their
  * behavior is determined by the execution of the component.
  */
 export type Tag = string | symbol | Component;
@@ -74,7 +76,7 @@ export type TagProps<TTag extends Tag> = TTag extends string
  * All iterables which appear in the element tree are implicitly wrapped in a
  * fragment element.
  *
- * The tag is just the empty string, and you can use the empty string in
+ * This tag is just the empty string, and you can use the empty string in
  * createElement calls or transpiler options to avoid having to reference this
  * export directly.
  */
@@ -167,13 +169,13 @@ const ElementSymbol = Symbol.for("crank.Element");
 
 /*** ELEMENT FLAGS ***/
 /**
- * A flag which is set when the component has been mounted. Used mainly to
+ * A flag which is set when the element has been mounted. Used mainly to
  * detect whether an element is being reused so that we clone it.
  */
 const IsMounted = 1 << 0;
 
 /**
- * A flag which is set when the component has committed at least once.
+ * A flag which is set when the element has committed at least once.
  */
 const IsCommitted = 1 << 1;
 
@@ -182,8 +184,7 @@ const IsCommitted = 1 << 1;
 // Refer to their definitions to see their unabbreviated names.
 
 // NOTE: to maximize compatibility between Crank versions, starting with 0.2.0,
-// any change to the $$typeof property or public properties will be considered
-// a breaking change.
+// any change to Element’s properties will be considered a breaking change.
 
 /**
  * Elements are the basic building blocks of Crank applications. They are
@@ -228,17 +229,16 @@ export class Element<TTag extends Tag = Tag> {
 
 	/**
 	 * An object containing the “properties” of an element. These correspond to
-	 * the “attributes” of an element when using JSX syntax.
+	 * the attribute syntax from JSX.
 	 */
 	props: TagProps<TTag>;
 
 	/**
 	 * A value which uniquely identifies an element from its siblings so that it
-	 * can be added/updated/moved/removed by the identity of the key rather than
-	 * its position within the parent.
+	 * can be added/updated/moved/removed by key rather than position.
 	 *
 	 * @remarks
-	 * Passed to the element as the prop "crank-key".
+	 * Passed in createElement() as the prop "crank-key".
 	 */
 	key: Key;
 
@@ -246,7 +246,7 @@ export class Element<TTag extends Tag = Tag> {
 	 * A callback which is called with the element’s result when it is committed.
 	 *
 	 * @remarks
-	 * Passed to the element as the prop "crank-ref".
+	 * Passed in createElement() as the prop "crank-ref".
 	 */
 	ref: ((value: unknown) => unknown) | undefined;
 
@@ -282,8 +282,8 @@ export class Element<TTag extends Tag = Tag> {
 	 *
 	 * @remarks
 	 * Until an element commits for the first time, we show any previously
-	 * rendered values in its place. This is mainly important when the nearest
-	 * host is rearranged concurrently.
+	 * rendered values in its place. This allows the nearest host to be
+	 * rearranged concurrently.
 	 */
 	_fb: NarrowedChild;
 
@@ -324,6 +324,9 @@ export class Element<TTag extends Tag = Tag> {
 		// in the constructor to save on the shallow size of elements. This saves a
 		// couple bytes per element, especially when we aren’t rendering
 		// asynchronous components. This may or may not be a good idea.
+		//this._fb = undefined;
+		//this._inf = undefined;
+		//this._onv = undefined;
 	}
 }
 
@@ -1082,7 +1085,6 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		}
 	}
 
-	// TODO: async unmounting
 	if (childrenByKey !== undefined && childrenByKey.size > 0) {
 		graveyard.push(...childrenByKey.values());
 	}
@@ -1956,6 +1958,7 @@ function runCtx<TNode, TResult>(
 		return ctx._iv;
 	} else if (!ctx._eb) {
 		let resolve: Function;
+		ctx._ev = new Promise((resolve1) => (resolve = resolve1));
 		ctx._eb = ctx._ib
 			.then(() => {
 				try {
@@ -1979,7 +1982,6 @@ function runCtx<TNode, TResult>(
 				}
 			})
 			.finally(() => advanceCtx(ctx));
-		ctx._ev = new Promise((resolve1) => (resolve = resolve1));
 	}
 
 	return ctx._ev;
