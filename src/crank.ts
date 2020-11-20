@@ -1352,7 +1352,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * implement the props async iterator. See the Symbol.asyncIterator method
 	 * and the resumeCtx function.
 	 */
-	_oa: (() => unknown) | undefined;
+	_oa: Function | undefined;
 
 	// See the stepCtx/advanceCtx/runCtx functions for more notes on
 	// inflight/enqueued block/value.
@@ -1801,7 +1801,7 @@ function stepCtx<TNode, TResult>(
 					result instanceof Promise ? result : Promise.resolve(result);
 				const value = result1.then((result) =>
 					updateCtxChildren<TNode, TResult>(ctx, result),
-				);
+				) as Promise<ElementValue<TNode>>;
 				return [result1, value];
 			} else {
 				// sync function component
