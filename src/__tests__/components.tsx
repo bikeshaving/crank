@@ -224,7 +224,7 @@ describe("async function component", () => {
 	});
 
 	test("update", async () => {
-		const resolves: (() => unknown)[] = [];
+		const resolves: Array<Function> = [];
 		async function Component({message}: {message: string}): Promise<Element> {
 			await new Promise((resolve) => resolves.push(resolve));
 			return <span>{message}</span>;
@@ -954,7 +954,7 @@ describe("async generator component", () => {
 	});
 
 	test("multiple yields per update", async () => {
-		let resolve: undefined | (() => unknown);
+		let resolve: undefined | Function;
 		async function* Component(
 			this: Context,
 			{message}: {message: string},
@@ -1026,7 +1026,7 @@ describe("async generator component", () => {
 	});
 
 	test("Fragment parent", async () => {
-		let resolve!: () => unknown;
+		let resolve!: Function;
 		async function* Component(this: Context) {
 			for await (const _ of this) {
 				yield 1;
