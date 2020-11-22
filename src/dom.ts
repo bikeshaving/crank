@@ -62,9 +62,7 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 	create(el: CrankElement<string | symbol>, ns: string | undefined): Node {
 		if (typeof el.tag !== "string") {
 			throw new Error(`Unknown tag: ${el.tag.toString()}`);
-		}
-
-		if (el.tag === "svg") {
+		} else if (el.tag === "svg") {
 			ns = SVG_NAMESPACE;
 		}
 
