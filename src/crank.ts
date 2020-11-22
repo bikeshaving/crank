@@ -886,16 +886,23 @@ function mountChildren<TNode, TScope, TRoot, TResult>(
 	const newChildren = arrayify(children);
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
 	let isAsync = false;
-	let seen = new Set<Key>();
+	let seenKeys: Set<Key> | undefined;
 	for (let i = 0; i < newChildren.length; i++) {
 		let child = narrow(newChildren[i]);
-		const key = child && (child as any).key;
+		let key = typeof child === "object" ? child.key : undefined;
 		if (key !== undefined) {
-			if (seen.has(key)) {
-				console.error("Duplicate key", key);
+			if (seenKeys) {
+				if (seenKeys.has(key)) {
+					console.error("Duplicate key", key);
+					key = undefined;
+				}
+			} else {
+				seenKeys = new Set();
 			}
 
-			seen.add(key);
+			if (key !== undefined) {
+				seenKeys.add(key);
+			}
 		}
 
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
@@ -1010,19 +1017,19 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	const oldChildren = wrap(el._ch);
 	const newChildren = arrayify(children);
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
-	const graveyard: Array<Element> = [];
 	let i = 0;
 	let isAsync = false;
-	let seen = new Set<Key>();
+	let graveyard: Array<Element> | undefined;
+	let seenKeys: Set<Key> | undefined;
 	let childrenByKey: Map<Key, Element> | undefined;
 	// TODO: switch to mountChildren if there are no more children
 	for (let j = 0; j < newChildren.length; j++) {
 		let oldChild = oldChildren[i];
 		let newChild = narrow(newChildren[j]);
 		// ALIGNMENT
-		let oldKey = oldChild && (oldChild as any).key;
-		let newKey = newChild && (newChild as any).key;
-		if (newKey !== undefined && seen.has(newKey)) {
+		let oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
+		let newKey = typeof newChild === "object" ? newChild.key : undefined;
+		if (newKey !== undefined && seenKeys && seenKeys.has(newKey)) {
 			console.error("Duplicate key", newKey);
 			newKey = undefined;
 		}
@@ -1046,7 +1053,11 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 					childrenByKey.delete(newKey);
 				}
 
-				seen.add(newKey);
+				if (!seenKeys) {
+					seenKeys = new Set();
+				}
+
+				seenKeys.add(newKey);
 			}
 		} else {
 			if (childrenByKey !== undefined && newKey !== undefined) {
@@ -1072,6 +1083,10 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		newChildren[j] = newChild;
 		isAsync = isAsync || isPromiseLike(value);
 		if (typeof oldChild === "object" && oldChild !== newChild) {
+			if (!graveyard) {
+				graveyard = [];
+			}
+
 			graveyard.push(oldChild);
 		}
 	}
@@ -1082,17 +1097,26 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	for (; i < oldChildren.length; i++) {
 		const oldChild = oldChildren[i];
 		if (typeof oldChild === "object" && typeof oldChild.key === "undefined") {
+			if (!graveyard) {
+				graveyard = [];
+			}
+
 			graveyard.push(oldChild);
 		}
 	}
 
 	if (childrenByKey !== undefined && childrenByKey.size > 0) {
+		if (!graveyard) {
+			graveyard = [];
+		}
+
 		graveyard.push(...childrenByKey.values());
 	}
 
 	if (isAsync) {
 		let values1 = Promise.all(values).finally(() => {
-			graveyard.forEach((child) => unmount(renderer, host, ctx, child));
+			graveyard &&
+				graveyard.forEach((child) => unmount(renderer, host, ctx, child));
 		});
 		let onvalues!: Function;
 		values1 = Promise.race([
@@ -1111,7 +1135,8 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		return el._inf;
 	}
 
-	graveyard.forEach((child) => unmount(renderer, host, ctx, child));
+	graveyard &&
+		graveyard.forEach((child) => unmount(renderer, host, ctx, child));
 	if (el._onv) {
 		el._onv(values);
 		el._onv = undefined;
