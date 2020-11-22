@@ -174,11 +174,6 @@ const ElementSymbol = Symbol.for("crank.Element");
  */
 const IsMounted = 1 << 0;
 
-/**
- * A flag which is set when the element has committed at least once.
- */
-const IsCommitted = 1 << 1;
-
 // NOTE: To save on filesize, we mangle the internal properties of Crank
 // classes by hand. These internal properties are prefixed with an underscore.
 // Refer to their definitions to see their unabbreviated names.
@@ -867,6 +862,9 @@ function mount<TNode, TScope, TRoot, TResult>(
 	} else if (el.tag !== Fragment) {
 		if (el.tag === Portal) {
 			root = el.props.root;
+		} else {
+			el._n = renderer.create(el as Element<string | symbol>, scope);
+			renderer.patch(el as Element<string | symbol>, el._n);
 		}
 
 		host = el as Element<string | symbol>;
@@ -961,11 +959,14 @@ function update<TNode, TScope, TRoot, TResult>(
 	} else if (el.tag === Raw) {
 		return commit(renderer, scope, el, []);
 	} else if (el.tag !== Fragment) {
-		host = el as Element<string | symbol>;
-		scope = renderer.scope(host, scope);
 		if (el.tag === Portal) {
 			root = el.props.root;
+		} else {
+			renderer.patch(el as Element<string | symbol>, el._n);
 		}
+
+		host = el as Element<string | symbol>;
+		scope = renderer.scope(host, scope);
 	}
 
 	return updateChildren(
@@ -1142,10 +1143,6 @@ function commit<TNode, TScope, TRoot, TResult>(
 	if (el._ctx) {
 		value = commitCtx(el._ctx, values);
 	} else if (el.tag === Portal) {
-		if (!(el._f & IsCommitted)) {
-			el._f |= IsCommitted;
-		}
-
 		renderer.arrange(el as Element<Portal>, el.props.root, values);
 		renderer.complete(el.props.root);
 	} else if (el.tag === Raw) {
@@ -1159,12 +1156,6 @@ function commit<TNode, TScope, TRoot, TResult>(
 	} else if (el.tag === Fragment) {
 		value = unwrap(values);
 	} else {
-		if (!(el._f & IsCommitted)) {
-			el._n = renderer.create(el as Element<string | symbol>, scope);
-			el._f |= IsCommitted;
-		}
-
-		renderer.patch(el as Element<string | symbol>, el._n);
 		renderer.arrange(el as Element<string | symbol>, el._n, values);
 		value = el._n;
 	}
@@ -2056,14 +2047,11 @@ function commitCtx<TNode>(
 
 		// TODO: avoid calling arrange if none of the nodes have changed or moved
 		const host = ctx._ho;
-		if (host._f & IsCommitted) {
-			ctx._re.arrange(
-				host,
-				host.tag === Portal ? host.props.root : host._n,
-				getChildValues(host),
-			);
-		}
-
+		ctx._re.arrange(
+			host,
+			host.tag === Portal ? host.props.root : host._n,
+			getChildValues(host),
+		);
 		ctx._re.complete(ctx._rt);
 	}
 
