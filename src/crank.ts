@@ -171,6 +171,9 @@ const ElementSymbol = Symbol.for("crank.Element");
 /**
  * A flag which is set when the element has been mounted. Used mainly to
  * detect whether an element is being reused so that we clone it.
+ *
+ * NOTE: Changing this flag value would likely be a breaking changes in terms of
+ * interop between elements created between different versions of Crank.
  */
 const IsMounted = 1 << 0;
 
@@ -349,18 +352,21 @@ export function createElement<TTag extends Tag>(
 	const props1 = {} as TagProps<TTag>;
 	if (props != null) {
 		for (const name in props) {
-			if (name === "crank-key") {
-				// NOTE: We have to make sure we don’t assign null to the key because
-				// we don’t check for null keys in the diffing functions.
-				if (props["crank-key"] != null) {
-					key = props["crank-key"];
-				}
-			} else if (name === "crank-ref") {
-				if (typeof props["crank-ref"] === "function") {
-					ref = props["crank-ref"];
-				}
-			} else {
-				props1[name] = props[name];
+			switch (name) {
+				case "crank-key":
+					// NOTE: We have to make sure we don’t assign null to the key because
+					// we don’t check for null keys in the diffing functions.
+					if (props["crank-key"] != null) {
+						key = props["crank-key"];
+					}
+					break;
+				case "crank-ref":
+					if (typeof props["crank-ref"] === "function") {
+						ref = props["crank-ref"];
+					}
+					break;
+				default:
+					props1[name] = props[name];
 			}
 		}
 	}
@@ -1017,12 +1023,11 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	const oldChildren = wrap(el._ch);
 	const newChildren = arrayify(children);
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
-	let i = 0;
-	let isAsync = false;
 	let graveyard: Array<Element> | undefined;
 	let seenKeys: Set<Key> | undefined;
 	let childrenByKey: Map<Key, Element> | undefined;
-	// TODO: switch to mountChildren if there are no more children
+	let isAsync = false;
+	let i = 0;
 	for (let j = 0; j < newChildren.length; j++) {
 		let oldChild = oldChildren[i];
 		let newChild = narrow(newChildren[j]);
@@ -1034,7 +1039,13 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 			newKey = undefined;
 		}
 
-		if (oldKey !== newKey) {
+		if (oldKey === newKey) {
+			if (childrenByKey !== undefined && newKey !== undefined) {
+				childrenByKey.delete(newKey);
+			}
+
+			i++;
+		} else {
 			if (!childrenByKey) {
 				childrenByKey = createChildrenByKey(oldChildren.slice(i));
 			}
@@ -1059,12 +1070,6 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 
 				seenKeys.add(newKey);
 			}
-		} else {
-			if (childrenByKey !== undefined && newKey !== undefined) {
-				childrenByKey.delete(newKey);
-			}
-
-			i++;
 		}
 
 		// UPDATING
