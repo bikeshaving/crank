@@ -276,6 +276,17 @@ export class Element<TTag extends Tag = Tag> {
 
 	/**
 	 * @internal
+	 * inflight - The current async run of the element’s children.
+	 *
+	 * @remarks
+	 * This value is used to make sure Copy element refs fire at the correct
+	 * time, and is also used as the yield value of async generator components
+	 * with async children. It is unset when the element is committed.
+	 */
+	_inf: Promise<any> | undefined;
+
+	/**
+	 * @internal
 	 * fallback - The element which this element is replacing.
 	 *
 	 * @remarks
@@ -287,19 +298,8 @@ export class Element<TTag extends Tag = Tag> {
 
 	/**
 	 * @internal
-	 * inflight - The current async run of the element.
-	 *
-	 * @remarks
-	 * This value is used to make sure Copy element refs fire at the correct
-	 * time, and is also used as the yield value of async generator components
-	 * with async children. It is unset when the element is committed.
-	 */
-	_inf: Promise<any> | undefined;
-
-	/**
-	 * @internal
-	 * onvalues - The resolve function of a promise which represents the next
-	 * children result.
+	 * onvalue(s) - The resolve function of a promise which represents the next
+	 * children.
 	 */
 	_onv: Function | undefined;
 
@@ -318,12 +318,12 @@ export class Element<TTag extends Tag = Tag> {
 		this._ch = undefined;
 		this._n = undefined;
 		this._ctx = undefined;
-		// NOTE: We don’t assign fallback (_fb), inflight (_inf) or onvalues (_onv)
-		// in the constructor to save on the shallow size of elements. This saves a
-		// couple bytes per element, especially when we aren’t rendering
-		// asynchronous components. This may or may not be a good idea.
-		//this._fb = undefined;
+		// NOTE: We don’t assign inflight, fallback or onvalues in the constructor
+		// to save on the shallow size of elements. This saves a couple bytes per
+		// element, especially when we aren’t rendering asynchronous components.
+		// This may or may not be a good idea.
 		//this._inf = undefined;
+		//this._fb = undefined;
 		//this._onv = undefined;
 	}
 }
@@ -518,6 +518,11 @@ function getValue<TNode>(el: Element): ElementValue<TNode> {
 	return unwrap(getChildValues<TNode>(el));
 }
 
+function getInflightValue<TNode>(
+	el: Element,
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+	return (el._ctx && el._ctx._iv) || el._inf || getValue<TNode>(el);
+}
 /**
  * Walks an element’s children to find its child values.
  *
@@ -811,12 +816,10 @@ function diff<TNode, TScope, TRoot, TResult>(
 		value = update(renderer, root, host, ctx, scope, newChild);
 	} else if (typeof newChild === "object") {
 		if (newChild.tag === Copy) {
-			if (typeof oldChild === "object") {
-				value = oldChild._inf || getValue<TNode>(oldChild);
-			} else {
-				value = oldChild;
-			}
-
+			value =
+				typeof oldChild === "object"
+					? getInflightValue<TNode>(oldChild)
+					: oldChild;
 			if (typeof newChild.ref === "function") {
 				if (isPromiseLike(value)) {
 					value.then(newChild.ref).catch(NOOP);
@@ -1835,10 +1838,7 @@ function stepCtx<TNode, TResult>(
 
 	let oldValue: Promise<TResult> | TResult;
 	if (ctx._el._inf) {
-		oldValue = ctx._el._inf.then(
-			(value) => ctx._re.read(value),
-			() => ctx._re.read(undefined),
-		);
+		oldValue = ctx._el._inf.then(ctx._re.read, () => ctx._re.read(undefined));
 	} else if (initial) {
 		oldValue = ctx._re.read(undefined);
 	} else {
@@ -1964,7 +1964,6 @@ function runCtx<TNode, TResult>(
 
 			if (isPromiseLike(value)) {
 				ctx._iv = value;
-				ctx._el._inf = value;
 			}
 
 			return value;
@@ -1985,10 +1984,6 @@ function runCtx<TNode, TResult>(
 				try {
 					const [block, value] = stepCtx<TNode, TResult>(ctx);
 					resolve(value);
-					if (isPromiseLike(value)) {
-						ctx._el._inf = value;
-					}
-
 					if (block) {
 						return block.catch((err) => {
 							if (!(ctx._f & IsUpdating)) {
