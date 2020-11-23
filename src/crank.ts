@@ -2033,15 +2033,62 @@ function updateCtxChildren<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
 	children: Children,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	return updateChildren<TNode, unknown, unknown, TResult>(
-		ctx._re as Renderer<TNode, unknown, unknown, TResult>,
-		ctx._rt, // root
-		ctx._ho, // host
+	const renderer = ctx._re as Renderer<TNode, unknown, unknown, TResult>;
+	const root = ctx._rt;
+	const host = ctx._ho;
+	const scope = ctx._sc;
+	const el = ctx._el;
+	const oldChild = el._ch as NarrowedChild;
+	let newChild = narrow(children);
+	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
+	[newChild, value] = diff<TNode, unknown, unknown, TResult>(
+		renderer,
+		root,
+		host,
 		ctx,
-		ctx._sc, // scope
-		ctx._el, // element
-		narrow(children),
+		scope,
+		typeof oldChild === "object" &&
+			typeof newChild === "object" &&
+			oldChild.key !== newChild.key
+			? undefined
+			: oldChild,
+		newChild,
 	);
+
+	el._ch = newChild;
+	if (isPromiseLike(value)) {
+		let onvalue!: Function;
+		let value1: Promise<ElementValue<TNode>> = Promise.race([
+			value,
+			new Promise<any>((resolve) => (onvalue = resolve)),
+		]);
+
+		if (el._onv) {
+			el._onv(value1);
+		}
+
+		if (typeof oldChild === "object" && oldChild !== newChild) {
+			value1 = value1.finally(() => unmount(renderer, host, ctx, oldChild));
+		}
+
+		el._onv = onvalue;
+		el._inf = value1.then((value) =>
+			commit(renderer, scope, el, normalize(wrap(value))),
+		);
+
+		return el._inf;
+	}
+
+	if (typeof oldChild === "object" && oldChild !== newChild) {
+		unmount(renderer, host, ctx, oldChild);
+	}
+
+	if (el._onv) {
+		el._onv(value);
+		el._onv = undefined;
+	}
+
+	return commit(renderer, scope, el, normalize(wrap(value)));
 }
 
 function commitCtx<TNode>(
