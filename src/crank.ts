@@ -670,7 +670,7 @@ export class Renderer<
 	 * This method sets the scope for child host elements, not the current host
 	 * element.
 	 */
-	scope(el: Element<string | symbol>, scope: TScope | undefined): TScope {
+	scope(_el: Element<string | symbol>, scope: TScope | undefined): TScope {
 		return scope as TScope;
 	}
 
