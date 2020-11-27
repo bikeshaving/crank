@@ -783,69 +783,6 @@ export class Renderer<
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
 
-function diff<TNode, TScope, TRoot, TResult>(
-	renderer: Renderer<TNode, TScope, TRoot, TResult>,
-	root: TRoot,
-	host: Element<string | symbol>,
-	ctx: Context<unknown, TResult> | undefined,
-	scope: TScope,
-	oldChild: NarrowedChild,
-	newChild: NarrowedChild,
-): [NarrowedChild, Promise<ElementValue<TNode>> | ElementValue<TNode>] {
-	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-	if (
-		typeof oldChild === "object" &&
-		typeof newChild === "object" &&
-		oldChild.tag === newChild.tag
-	) {
-		if (
-			oldChild.tag === Portal &&
-			oldChild.props.root !== newChild.props.root
-		) {
-			renderer.arrange(oldChild as Element<Portal>, oldChild.props.root, []);
-			renderer.complete(oldChild.props.root);
-		}
-
-		// TODO: implement Raw element parse caching
-		if (oldChild !== newChild) {
-			oldChild.props = newChild.props;
-			oldChild.ref = newChild.ref;
-			newChild = oldChild;
-		}
-
-		value = update(renderer, root, host, ctx, scope, newChild);
-	} else if (typeof newChild === "object") {
-		if (newChild.tag === Copy) {
-			value =
-				typeof oldChild === "object"
-					? getInflightValue<TNode>(oldChild)
-					: oldChild;
-			if (typeof newChild.ref === "function") {
-				if (isPromiseLike(value)) {
-					value.then(newChild.ref).catch(NOOP);
-				} else {
-					newChild.ref(value);
-				}
-			}
-
-			newChild = oldChild;
-		} else {
-			if (newChild._f & IsMounted) {
-				newChild = cloneElement(newChild);
-			}
-
-			value = mount(renderer, root, host, ctx, scope, newChild);
-			if (isPromiseLike(value)) {
-				newChild._fb = oldChild;
-			}
-		}
-	} else if (typeof newChild === "string") {
-		newChild = value = renderer.escape(newChild, scope);
-	}
-
-	return [newChild, value];
-}
-
 function mount<TNode, TScope, TRoot, TResult>(
 	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
@@ -915,15 +852,24 @@ function mountChildren<TNode, TScope, TRoot, TResult>(
 		}
 
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-		[child, value] = diff(
-			renderer,
-			root,
-			host,
-			ctx,
-			scope,
-			undefined, // oldChild
-			child,
-		);
+		if (typeof child === "object") {
+			if (child.tag === Copy) {
+				if (typeof child.ref === "function") {
+					child.ref(renderer.read(undefined));
+				}
+
+				child = value = undefined;
+			} else {
+				if (child._f & IsMounted) {
+					child = cloneElement(child);
+				}
+
+				value = mount(renderer, root, host, ctx, scope, child);
+			}
+		} else if (typeof child === "string") {
+			child = value = renderer.escape(child, scope);
+		}
+
 		newChildren[i] = child;
 		values.push(value);
 		isAsync = isAsync || isPromiseLike(value);
@@ -994,6 +940,69 @@ function update<TNode, TScope, TRoot, TResult>(
 		el,
 		el.props.children,
 	);
+}
+
+function diff<TNode, TScope, TRoot, TResult>(
+	renderer: Renderer<TNode, TScope, TRoot, TResult>,
+	root: TRoot,
+	host: Element<string | symbol>,
+	ctx: Context<unknown, TResult> | undefined,
+	scope: TScope,
+	oldChild: NarrowedChild,
+	newChild: NarrowedChild,
+): [NarrowedChild, Promise<ElementValue<TNode>> | ElementValue<TNode>] {
+	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
+	if (
+		typeof oldChild === "object" &&
+		typeof newChild === "object" &&
+		oldChild.tag === newChild.tag
+	) {
+		if (
+			oldChild.tag === Portal &&
+			oldChild.props.root !== newChild.props.root
+		) {
+			renderer.arrange(oldChild as Element<Portal>, oldChild.props.root, []);
+			renderer.complete(oldChild.props.root);
+		}
+
+		// TODO: implement Raw element parse caching
+		if (oldChild !== newChild) {
+			oldChild.props = newChild.props;
+			oldChild.ref = newChild.ref;
+			newChild = oldChild;
+		}
+
+		value = update(renderer, root, host, ctx, scope, newChild);
+	} else if (typeof newChild === "object") {
+		if (newChild.tag === Copy) {
+			value =
+				typeof oldChild === "object"
+					? getInflightValue<TNode>(oldChild)
+					: oldChild;
+			if (typeof newChild.ref === "function") {
+				if (isPromiseLike(value)) {
+					value.then(newChild.ref).catch(NOOP);
+				} else {
+					newChild.ref(value);
+				}
+			}
+
+			newChild = oldChild;
+		} else {
+			if (newChild._f & IsMounted) {
+				newChild = cloneElement(newChild);
+			}
+
+			value = mount(renderer, root, host, ctx, scope, newChild);
+			if (isPromiseLike(value)) {
+				newChild._fb = oldChild;
+			}
+		}
+	} else if (typeof newChild === "string") {
+		newChild = value = renderer.escape(newChild, scope);
+	}
+
+	return [newChild, value];
 }
 
 function createChildrenByKey(
