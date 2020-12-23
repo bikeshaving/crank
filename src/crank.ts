@@ -256,23 +256,22 @@ export class Element<TTag extends Tag = Tag> {
 
 	/**
 	 * @internal
-	 * node - The node associated with the element.
+	 * node - The node or context associated with the element.
 	 *
 	 * @remarks
-	 * Set by Renderer.prototype.create when the component is mounted.
-	 * This property will only be set for host elements.
+	 * For host elements, this property is set to the return value of
+	 * Renderer.prototype.create when the component is mounted. For the DOM
+	 * renderer, this means DOM nodes.
+	 *
+	 * For component elements, this property is set to a Context instance
+	 * (Context<TagProps<TTag>>).
+	 *
+	 * We assign both of these to the same property because they are mutually
+	 * exclusive. We use any because the Element type has no knowledge of
+	 * renderer nodes, and because once set, this property is never changed or
+	 * removed for the lifetime of the element.
 	 */
 	_n: any;
-
-	/**
-	 * @internal
-	 * context - The Context object associated with this element.
-	 *
-	 * @remarks
-	 * Created and assigned by the Renderer for component elements when it mounts
-	 * the element tree.
-	 */
-	_ctx: Context<TagProps<TTag>> | undefined;
 
 	/**
 	 * @internal
@@ -317,7 +316,6 @@ export class Element<TTag extends Tag = Tag> {
 		this.ref = ref;
 		this._ch = undefined;
 		this._n = undefined;
-		this._ctx = undefined;
 		// NOTE: We don’t assign inflight, fallback or onvalues in the constructor
 		// to save on the shallow size of elements. This saves a couple bytes per
 		// element, especially when we aren’t rendering asynchronous components.
@@ -521,7 +519,11 @@ function getValue<TNode>(el: Element): ElementValue<TNode> {
 function getInflightValue<TNode>(
 	el: Element,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	return (el._ctx && el._ctx._iv) || el._inf || getValue<TNode>(el);
+	return (
+		(typeof el.tag === "function" && el._n._iv) ||
+		el._inf ||
+		getValue<TNode>(el)
+	);
 }
 /**
  * Walks an element’s children to find its child values.
@@ -594,12 +596,12 @@ export class Renderer<
 
 		if (portal === undefined) {
 			portal = createElement(Portal, {children, root});
-			portal._ctx = ctx;
+			portal._n = ctx;
 			if (typeof root === "object" && root !== null && children != null) {
 				this._cache.set(root as any, portal);
 			}
 		} else {
-			if (portal._ctx !== ctx) {
+			if (portal._n !== ctx) {
 				throw new Error("Context mismatch");
 			}
 
@@ -793,7 +795,7 @@ function mount<TNode, TScope, TRoot, TResult>(
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	el._f |= IsMounted;
 	if (typeof el.tag === "function") {
-		el._ctx = new Context(
+		el._n = new Context(
 			renderer,
 			root,
 			host,
@@ -802,7 +804,7 @@ function mount<TNode, TScope, TRoot, TResult>(
 			el as Element<Component>,
 		);
 
-		return updateCtx(el._ctx);
+		return updateCtx(el._n);
 	} else if (el.tag === Raw) {
 		return commit(renderer, scope, el, []);
 	} else if (el.tag !== Fragment) {
@@ -909,8 +911,8 @@ function update<TNode, TScope, TRoot, TResult>(
 	scope: TScope,
 	el: Element,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (el._ctx) {
-		return updateCtx(el._ctx);
+	if (typeof el.tag === "function") {
+		return updateCtx(el._n);
 	} else if (el.tag === Raw) {
 		return commit(renderer, scope, el, []);
 	} else if (el.tag !== Fragment) {
@@ -1152,8 +1154,8 @@ function commit<TNode, TScope, TRoot, TResult>(
 	}
 
 	let value: ElementValue<TNode>;
-	if (el._ctx) {
-		value = commitCtx(el._ctx, values);
+	if (typeof el.tag === "function") {
+		value = commitCtx(el._n, values);
 	} else if (el.tag === Portal) {
 		renderer.arrange(el as Element<Portal>, el.props.root, values);
 		renderer.complete(el.props.root);
@@ -1185,9 +1187,9 @@ function unmount<TNode, TScope, TRoot, TResult>(
 	ctx: Context<unknown, TResult> | undefined,
 	el: Element,
 ): void {
-	if (el._ctx) {
-		unmountCtx(el._ctx);
-		ctx = el._ctx;
+	if (typeof el.tag === "function") {
+		unmountCtx(el._n);
+		ctx = el._n;
 	} else if (el.tag === Portal) {
 		host = el as Element<symbol>;
 		renderer.arrange(host, host.props.root, []);
@@ -2137,7 +2139,6 @@ function commitCtx<TNode>(
 			}
 		}
 
-		// TODO: avoid calling arrange if none of the nodes have changed or moved
 		const host = ctx._ho;
 		ctx._re.arrange(
 			host,
