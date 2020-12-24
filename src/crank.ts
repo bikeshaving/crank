@@ -13,10 +13,9 @@ type NonStringIterable<T> = Iterable<T> & object;
 /**
  * Ensures a value is an array.
  *
- * @remarks
  * This function pretty much does the same thing as wrap above except it
- * handles nulls and iterables, and shallowly clones arrays, so it is
- * appropriate for wrapping user-provided children from el.props.
+ * handles nulls and iterables, so it is appropriate for wrapping input
+ * children from props.
  */
 function arrayify<T>(
 	value: NonStringIterable<T> | T | null | undefined,
@@ -24,7 +23,7 @@ function arrayify<T>(
 	return value == null
 		? []
 		: Array.isArray(value)
-		? value.slice()
+		? (value as any)
 		: typeof value === "string" ||
 		  typeof (value as any)[Symbol.iterator] !== "function"
 		? [value]
@@ -44,7 +43,6 @@ function isPromiseLike(value: any): value is PromiseLike<unknown> {
 /**
  * Represents all valid values which can be used for the tag of an element.
  *
- * @remarks
  * Elements whose tags are strings or symbols are called “host” or “intrinsic”
  * elements, and their behavior is determined by the renderer, while elements
  * whose tags are functions are called “component” elements, and their
@@ -72,7 +70,6 @@ export type TagProps<TTag extends Tag> = TTag extends string
 /**
  * A special tag for grouping multiple children within a parent.
  *
- * @remarks
  * All iterables which appear in the element tree are implicitly wrapped in a
  * fragment element.
  *
@@ -90,7 +87,6 @@ export type Fragment = typeof Fragment;
 /**
  * A special tag for rendering into a root node passed via a root prop.
  *
- * @remarks
  * This tag is useful for creating element trees with multiple roots, for
  * things like modals or tooltips.
  *
@@ -104,7 +100,6 @@ export type Portal = typeof Portal;
  * A special tag which preserves whatever was previously rendered in the
  * element’s position.
  *
- * @remarks
  * Copy elements are useful for when you want to prevent a subtree from
  * rerendering as a performance optimization. Copy elements can also be keyed,
  * in which case the previously rendered keyed element will be preserved.
@@ -115,7 +110,6 @@ export type Copy = typeof Copy;
 /**
  * A special element tag for injecting raw nodes or strings via a value prop.
  *
- * @remarks
  * If the value prop is a string, Renderer.prototype.parse will be called on
  * the string and the result of that method will be inserted.
  */
@@ -125,7 +119,6 @@ export type Raw = typeof Raw;
 /**
  * Describes all valid values of an element tree, excluding iterables.
  *
- * @remarks
  * Arbitrary objects can also be safely rendered, but will be converted to a
  * string using the toString method. We exclude them from this type to catch
  * potential mistakes.
@@ -182,7 +175,10 @@ const IsMounted = 1 << 0;
 // Refer to their definitions to see their unabbreviated names.
 
 // NOTE: to maximize compatibility between Crank versions, starting with 0.2.0,
-// any change to Element’s properties will be considered a breaking change.
+// any change to the following Element’s properties  will be considered a
+// breaking change.
+//
+// $$typeof, tag, props, key, ref, _f
 
 /**
  * Elements are the basic building blocks of Crank applications. They are
@@ -201,7 +197,6 @@ const IsMounted = 1 << 0;
  * let host: Element<string | symbol>;
  * let component: Element<Component>;
  *
- * @remarks
  * Typically, you use the createElement function to create elements rather than
  * instatiating this class directly.
  */
@@ -211,14 +206,11 @@ export class Element<TTag extends Tag = Tag> {
 	 * A unique symbol to identify elements as elements across versions and
 	 * realms, and to protect against basic injection attacks.
 	 * https://overreacted.io/why-do-react-elements-have-typeof-property/
+	 *
+	 * This property is defined on the element prototype rather than per
+	 * instance, because it is the same for every Element.
 	 */
-	$$typeof: typeof ElementSymbol;
-
-	/**
-	 * @internal
-	 * flags - A bitmask. See ELEMENT FLAGS.
-	 */
-	_f: number;
+	$$typeof!: typeof ElementSymbol;
 
 	/**
 	 * The tag of the element. Can be a string, symbol or function.
@@ -235,7 +227,6 @@ export class Element<TTag extends Tag = Tag> {
 	 * A value which uniquely identifies an element from its siblings so that it
 	 * can be added/updated/moved/removed by key rather than position.
 	 *
-	 * @remarks
 	 * Passed in createElement() as the prop "crank-key".
 	 */
 	key: Key;
@@ -243,10 +234,15 @@ export class Element<TTag extends Tag = Tag> {
 	/**
 	 * A callback which is called with the element’s result when it is committed.
 	 *
-	 * @remarks
 	 * Passed in createElement() as the prop "crank-ref".
 	 */
 	ref: ((value: unknown) => unknown) | undefined;
+
+	/**
+	 * @internal
+	 * flags - A bitmask. See ELEMENT FLAGS.
+	 */
+	_f: number;
 
 	/**
 	 * @internal
@@ -258,18 +254,16 @@ export class Element<TTag extends Tag = Tag> {
 	 * @internal
 	 * node - The node or context associated with the element.
 	 *
-	 * @remarks
 	 * For host elements, this property is set to the return value of
-	 * Renderer.prototype.create when the component is mounted. For the DOM
-	 * renderer, this means DOM nodes.
+	 * Renderer.prototype.create when the component is mounted, i.e. DOM nodes
+	 * for the DOM renderer.
 	 *
 	 * For component elements, this property is set to a Context instance
 	 * (Context<TagProps<TTag>>).
 	 *
 	 * We assign both of these to the same property because they are mutually
 	 * exclusive. We use any because the Element type has no knowledge of
-	 * renderer nodes, and because once set, this property is never changed or
-	 * removed for the lifetime of the element.
+	 * renderer nodes.
 	 */
 	_n: any;
 
@@ -277,7 +271,6 @@ export class Element<TTag extends Tag = Tag> {
 	 * @internal
 	 * inflight - The current async run of the element’s children.
 	 *
-	 * @remarks
 	 * This value is used to make sure Copy element refs fire at the correct
 	 * time, and is also used as the yield value of async generator components
 	 * with async children. It is unset when the element is committed.
@@ -288,7 +281,6 @@ export class Element<TTag extends Tag = Tag> {
 	 * @internal
 	 * fallback - The element which this element is replacing.
 	 *
-	 * @remarks
 	 * Until an element commits for the first time, we show any previously
 	 * rendered values in its place. This allows the nearest host to be
 	 * rearranged concurrently.
@@ -308,23 +300,22 @@ export class Element<TTag extends Tag = Tag> {
 		key: Key,
 		ref: ((value: unknown) => unknown) | undefined,
 	) {
-		this.$$typeof = ElementSymbol;
-		this._f = 0;
 		this.tag = tag;
 		this.props = props;
 		this.key = key;
 		this.ref = ref;
+		this._f = 0;
 		this._ch = undefined;
 		this._n = undefined;
-		// NOTE: We don’t assign inflight, fallback or onvalues in the constructor
-		// to save on the shallow size of elements. This saves a couple bytes per
-		// element, especially when we aren’t rendering asynchronous components.
-		// This may or may not be a good idea.
-		//this._inf = undefined;
-		//this._fb = undefined;
-		//this._onv = undefined;
+
+		// async stuff
+		// this._inf = undefined;
+		// this._fb = undefined;
+		// this._onv = undefined;
 	}
 }
+
+Element.prototype.$$typeof = ElementSymbol;
 
 export function isElement(value: any): value is Element {
 	return value != null && value.$$typeof === ElementSymbol;
@@ -333,7 +324,6 @@ export function isElement(value: any): value is Element {
 /**
  * Creates an element with the specified tag, props and children.
  *
- * @remarks
  * This function is usually used as a transpilation target for JSX transpilers,
  * but it can also be called directly. It additionally extracts the crank-key
  * and crank-ref props so they aren’t accessible to renderer methods or
@@ -381,7 +371,6 @@ export function createElement<TTag extends Tag>(
 /**
  * Clones a given element. Will also shallow copy the props object.
  *
- * @remarks
  * Mainly used internally to make sure we don’t accidentally reuse elements in
  * an element tree, because element have internal properties which are directly
  * mutated by the renderer.
@@ -422,7 +411,6 @@ function narrow(value: Children): NarrowedChild {
  *
  * @typeparam TNode - The node type for the element assigned by the renderer.
  *
- * @remarks
  * When asking the question, what is the value of a specific element, the
  * answer varies depending on its tag. For host or Raw elements, the answer is
  * simply the nodes created for the element. For fragments, the values are
@@ -446,7 +434,6 @@ export type ElementValue<TNode> =
  *
  * @returns Normalized array of nodes and/or strings.
  *
- * @remarks
  * Normalize will flatten only one level of nested arrays, because it is
  * designed to be called once at each level of the tree. It will also
  * concatenate adjacent strings and remove all undefined values.
@@ -525,6 +512,7 @@ function getInflightValue<TNode>(
 		getValue<TNode>(el)
 	);
 }
+
 /**
  * Walks an element’s children to find its child values.
  *
@@ -644,7 +632,6 @@ export class Renderer<
 	 * @returns Varies according to the specific renderer subclass. By default,
 	 * it exposes the element’s value.
 	 *
-	 * @remarks
 	 * This is useful for renderers which don’t want to expose their internal
 	 * nodes. For instance, the HTML renderer will convert all internal nodes to
 	 * strings.
@@ -657,7 +644,6 @@ export class Renderer<
 	/**
 	 * Called in a preorder traversal for each host element.
 	 *
-	 * @remarks
 	 * Useful for passing data down the element tree. For instance, the DOM
 	 * renderer uses this method to keep track of whether we’re in an SVG
 	 * subtree.
@@ -668,7 +654,6 @@ export class Renderer<
 	 * @returns The scope to be passed to create and scope for child host
 	 * elements.
 	 *
-	 * @remarks
 	 * This method sets the scope for child host elements, not the current host
 	 * element.
 	 */
@@ -684,7 +669,6 @@ export class Renderer<
 	 *
 	 * @returns The escaped string.
 	 *
-	 * @remarks
 	 * Rather than returning text nodes for whatever environment we’re rendering
 	 * to, we defer that step for Renderer.prototype.arrange. We do this so that
 	 * adjacent strings can be concatenated and the actual element tree can be
@@ -726,7 +710,6 @@ export class Renderer<
 	 *
 	 * @returns The return value is ignored.
 	 *
-	 * @remarks
 	 * Used to mutate the node associated with an element when new props are
 	 * passed.
 	 */
@@ -744,7 +727,6 @@ export class Renderer<
 	 *
 	 * @returns The return value is ignored.
 	 *
-	 * @remarks
 	 * This method is also called by child components contexts as the last step
 	 * of a refresh.
 	 */
@@ -819,87 +801,14 @@ function mount<TNode, TScope, TRoot, TResult>(
 		scope = renderer.scope(host, scope);
 	}
 
-	return mountChildren(renderer, root, host, ctx, scope, el, el.props.children);
-}
-
-function mountChildren<TNode, TScope, TRoot, TResult>(
-	renderer: Renderer<TNode, TScope, TRoot, TResult>,
-	root: TRoot,
-	host: Element<string | symbol>,
-	ctx: Context<unknown, TResult> | undefined,
-	scope: TScope,
-	el: Element,
-	children: Children,
-): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	const newChildren = arrayify(children);
-	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
-	let isAsync = false;
-	let seenKeys: Set<Key> | undefined;
-	for (let i = 0; i < newChildren.length; i++) {
-		let child = narrow(newChildren[i]);
-		let key = typeof child === "object" ? child.key : undefined;
-		if (key !== undefined) {
-			if (seenKeys) {
-				if (seenKeys.has(key)) {
-					console.error("Duplicate key", key);
-					key = undefined;
-				}
-			} else {
-				seenKeys = new Set();
-			}
-
-			if (key !== undefined) {
-				seenKeys.add(key);
-			}
-		}
-
-		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-		if (typeof child === "object") {
-			if (child.tag === Copy) {
-				if (typeof child.ref === "function") {
-					child.ref(renderer.read(undefined));
-				}
-
-				child = value = undefined;
-			} else {
-				if (child._f & IsMounted) {
-					child = cloneElement(child);
-				}
-
-				value = mount(renderer, root, host, ctx, scope, child);
-			}
-		} else if (typeof child === "string") {
-			child = value = renderer.escape(child, scope);
-		}
-
-		newChildren[i] = child;
-		values.push(value);
-		isAsync = isAsync || isPromiseLike(value);
-	}
-
-	el._ch = unwrap(newChildren as Array<NarrowedChild>);
-
-	if (isAsync) {
-		const values1: Promise<Array<ElementValue<TNode>>> = Promise.race([
-			Promise.all(values),
-			new Promise<any>((resolve) => (el._onv = resolve)),
-		]);
-		el._inf = values1.then((values) =>
-			commit(renderer, scope, el, normalize(values)),
-		);
-		return el._inf;
-	}
-
-	if (el._onv) {
-		el._onv(values);
-		el._onv = undefined;
-	}
-
-	return commit(
+	return updateChildren(
 		renderer,
+		root,
+		host,
+		ctx,
 		scope,
 		el,
-		normalize(values as Array<ElementValue<TNode>>),
+		el.props.children,
 	);
 }
 
@@ -960,20 +869,21 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	el: Element,
 	children: Children,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (typeof el._ch === "undefined") {
-		return mountChildren(renderer, root, host, ctx, scope, el, children);
-	}
-
 	const oldChildren = wrap(el._ch);
 	const newChildren = arrayify(children);
+	const newChildren1: Array<NarrowedChild> = [];
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
 	let graveyard: Array<Element> | undefined;
 	let seenKeys: Set<Key> | undefined;
 	let childrenByKey: Map<Key, Element> | undefined;
 	let isAsync = false;
 	let i = 0;
-	for (let j = 0; j < newChildren.length; j++) {
-		let oldChild = oldChildren[i];
+	for (
+		let j = 0, il = oldChildren.length, jl = newChildren.length;
+		j < jl;
+		j++
+	) {
+		let oldChild = i >= il ? undefined : oldChildren[i];
 		let newChild = narrow(newChildren[j]);
 		// ALIGNMENT
 		let oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
@@ -1068,8 +978,8 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 			newChild = value = renderer.escape(newChild, scope);
 		}
 
-		values.push(value);
-		newChildren[j] = newChild;
+		newChildren1[j] = newChild;
+		values[j] = value;
 		isAsync = isAsync || isPromiseLike(value);
 		if (typeof oldChild === "object" && oldChild !== newChild) {
 			if (!graveyard) {
@@ -1080,7 +990,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		}
 	}
 
-	el._ch = unwrap(newChildren as Array<NarrowedChild>);
+	el._ch = unwrap(newChildren1);
 
 	// cleanup
 	for (; i < oldChildren.length; i++) {
@@ -1317,7 +1227,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	/**
 	 * @internal
 	 * host - The nearest ancestor host element.
-	 * @remarks
+	 *
 	 * When refresh is called, the host element will be arranged as the last step
 	 * of the commit, to make sure the parent’s children properly reflects the
 	 * components’s children.
@@ -1431,12 +1341,24 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		this._pa = parent;
 		this._sc = scope;
 		this._el = el;
+		this._it = undefined;
+		// provisions
+		// this._ps = undefined;
+		// promise stuff
+		// this._oa = undefined;
+		// this._ib = undefined;
+		// this._iv = undefined;
+		// this._eb = undefined;
+		// this._ev = undefined;
+		// callbacks
+		// this._ls = undefined;
+		// this._ss = undefined;
+		// this._cs = undefined;
 	}
 
 	/**
 	 * The current props of the associated element.
 	 *
-	 * @remarks
 	 * Typically, you should read props either via the first parameter of the
 	 * component or via the context iterator methods. This property is mainly for
 	 * plugins or utilities which wrap contexts.
@@ -1448,7 +1370,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	/**
 	 * The current value of the associated element.
 	 *
-	 * @remarks
 	 * Typically, you should read values via refs, generator yield expressions,
 	 * or the refresh, schedule or cleanup methods. This property is mainly for
 	 * plugins or utilities which wrap contexts.
@@ -1500,7 +1421,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * @returns The rendered value of the component or a promise of the rendered
 	 * value if the component or its children execute asynchronously.
 	 *
-	 * @remarks
 	 * The refresh method works a little differently for async generator
 	 * components, in that it will resume the Context async iterator rather than
 	 * resuming execution. This is because async generator components are
@@ -1587,13 +1507,13 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 		const record: EventListenerRecord = {type, callback, listener, options};
 		if (options.once) {
-			const self = this;
+			const this1 = this;
 			record.callback = function (this: any) {
-				if (self._ls) {
-					self._ls = self._ls.filter((record1) => record !== record1);
+				if (this1._ls) {
+					this1._ls = this1._ls.filter((record1) => record !== record1);
 
-					if (self._ls.length === 0) {
-						self._ls = undefined;
+					if (this1._ls.length === 0) {
+						this1._ls = undefined;
 					}
 				}
 
@@ -1771,7 +1691,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
  * component is blocked from updating.
  * value - A possible promise resolving to the rendered value of children.
  *
- * @remarks
  * Each component type will block according to the type of the component.
  * Sync function components never block and will transparently pass updates to
  * children.
@@ -1907,7 +1826,6 @@ function stepCtx<TNode, TResult>(
 }
 
 /**
- * @remarks
  * Called when the inflight block promise settles.
  */
 function advanceCtx(ctx: Context): void {
@@ -2009,103 +1927,15 @@ function updateCtxChildren<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
 	children: Children,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	const renderer = ctx._re as Renderer<TNode, unknown, unknown, TResult>;
-	const root = ctx._rt;
-	const host = ctx._ho;
-	const scope = ctx._sc;
-	const el = ctx._el;
-	const oldChild = el._ch as NarrowedChild;
-	let newChild = narrow(children);
-	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-	if (
-		typeof oldChild === "object" &&
-		typeof newChild === "object" &&
-		oldChild.tag === newChild.tag &&
-		oldChild.key === newChild.key
-	) {
-		if (
-			oldChild.tag === Portal &&
-			oldChild.props.root !== newChild.props.root
-		) {
-			renderer.arrange(oldChild as Element<Portal>, oldChild.props.root, []);
-			renderer.complete(oldChild.props.root);
-		}
-
-		// TODO: implement Raw element parse caching
-		if (oldChild !== newChild) {
-			oldChild.props = newChild.props;
-			oldChild.ref = newChild.ref;
-			newChild = oldChild;
-		}
-
-		value = update(renderer, root, host, ctx, scope, newChild);
-	} else if (typeof newChild === "object") {
-		if (newChild.tag === Copy) {
-			if (newChild.key === (oldChild && (oldChild as any).key)) {
-				value =
-					typeof oldChild === "object"
-						? getInflightValue<TNode>(oldChild)
-						: oldChild;
-				if (typeof newChild.ref === "function") {
-					if (isPromiseLike(value)) {
-						value.then(newChild.ref).catch(NOOP);
-					} else {
-						newChild.ref(value);
-					}
-				}
-
-				newChild = oldChild;
-			} else {
-				newChild = value = undefined;
-			}
-		} else {
-			if (newChild._f & IsMounted) {
-				newChild = cloneElement(newChild);
-			}
-
-			value = mount(renderer, root, host, ctx, scope, newChild);
-			if (isPromiseLike(value)) {
-				newChild._fb = oldChild;
-			}
-		}
-	} else if (typeof newChild === "string") {
-		newChild = value = renderer.escape(newChild, scope);
-	}
-
-	el._ch = newChild;
-	if (isPromiseLike(value)) {
-		let onvalue!: Function;
-		let value1: Promise<ElementValue<TNode>> = Promise.race([
-			value,
-			new Promise<any>((resolve) => (onvalue = resolve)),
-		]);
-
-		if (el._onv) {
-			el._onv(value1);
-		}
-
-		el._onv = onvalue;
-		if (typeof oldChild === "object" && oldChild !== newChild) {
-			value1 = value1.finally(() => unmount(renderer, host, ctx, oldChild));
-		}
-
-		el._inf = value1.then((value) =>
-			commit(renderer, scope, el, normalize(wrap(value))),
-		);
-
-		return el._inf;
-	}
-
-	if (typeof oldChild === "object" && oldChild !== newChild) {
-		unmount(renderer, host, ctx, oldChild);
-	}
-
-	if (el._onv) {
-		el._onv(value);
-		el._onv = undefined;
-	}
-
-	return commit(renderer, scope, el, normalize(wrap(value)));
+	return updateChildren<TNode, unknown, unknown, TResult>(
+		ctx._re as Renderer<TNode, unknown, unknown, TResult>,
+		ctx._rt,
+		ctx._ho,
+		ctx,
+		ctx._sc,
+		ctx._el,
+		narrow(children),
+	);
 }
 
 function commitCtx<TNode>(
@@ -2116,7 +1946,7 @@ function commitCtx<TNode>(
 		return;
 	}
 
-	if (typeof ctx._ls !== "undefined" && ctx._ls.length > 0) {
+	if (ctx._ls && ctx._ls.length > 0) {
 		for (const v of values) {
 			if (isEventTarget(v)) {
 				for (const record of ctx._ls) {
@@ -2260,7 +2090,6 @@ function setEventProperty<T extends keyof Event>(
  * A function to reconstruct an array of every listener given a context and a
  * host element.
  *
- * @remarks
  * This function exploits the fact that contexts retain their nearest ancestor
  * host element. We can determine all the contexts which are directly listening
  * to an element by traversing up the context tree and checking that the host
@@ -2272,7 +2101,7 @@ function getListeners(
 ): Array<EventListenerRecord> | undefined {
 	let listeners: Array<EventListenerRecord> | undefined;
 	while (ctx !== undefined && ctx._ho === host) {
-		if (typeof ctx._ls !== "undefined") {
+		if (ctx._ls) {
 			listeners = (listeners || []).concat(ctx._ls);
 		}
 
