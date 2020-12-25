@@ -991,7 +991,6 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	}
 
 	el._ch = unwrap(newChildren1);
-
 	// cleanup
 	for (; i < oldChildren.length; i++) {
 		const oldChild = oldChildren[i];
@@ -1515,14 +1514,10 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 		const record: EventListenerRecord = {type, callback, listener, options};
 		if (options.once) {
-			const this1 = this;
 			record.callback = function (this: any) {
-				const listeners = listenersMap.get(this1);
-				if (listeners && listeners.length) {
-					const i = listeners.indexOf(record);
-					if (i !== -1) {
-						listeners.splice(i, 1);
-					}
+				const i = listeners.indexOf(record);
+				if (i !== -1) {
+					listeners.splice(i, 1);
 				}
 
 				return callback.apply(this, arguments as any);
@@ -1647,7 +1642,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 			if (ev.bubbles) {
 				setEventProperty(ev, "eventPhase", BUBBLING_PHASE);
-				for (const target of path) {
+				for (let i = 0; i < path.length; i++) {
+					const target = path[i];
 					const listeners = listenersMap.get(target);
 					if (listeners) {
 						setEventProperty(ev, "currentTarget", target);
@@ -1723,9 +1719,9 @@ function stepCtx<TNode, TResult>(
 	}
 
 	const initial = !ctx._it;
-	try {
-		ctx._f |= IsExecuting;
-		if (initial) {
+	if (initial) {
+		try {
+			ctx._f |= IsExecuting;
 			clearEventListeners(ctx);
 			const result = el.tag.call(ctx, el.props);
 			if (isIteratorLike(result)) {
@@ -1742,9 +1738,9 @@ function stepCtx<TNode, TResult>(
 				// sync function component
 				return [undefined, updateCtxChildren<TNode, TResult>(ctx, result)];
 			}
+		} finally {
+			ctx._f &= ~IsExecuting;
 		}
-	} finally {
-		ctx._f &= ~IsExecuting;
 	}
 
 	let oldValue: Promise<TResult> | TResult;
@@ -1861,7 +1857,7 @@ function runCtx<TNode, TResult>(
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (!ctx._ib) {
 		try {
-			let [block, value] = stepCtx<TNode, TResult>(ctx);
+			const [block, value] = stepCtx<TNode, TResult>(ctx);
 			if (block) {
 				ctx._ib = block
 					.catch((err) => {
@@ -2024,16 +2020,14 @@ function unmountCtx(ctx: Context): void {
 		ctx._f |= IsDone;
 		resumeCtx(ctx);
 		if (ctx._it && typeof ctx._it.return === "function") {
-			let iteration: ChildrenIteration;
 			try {
 				ctx._f |= IsExecuting;
-				iteration = ctx._it.return();
+				const iteration = ctx._it.return();
+				if (isPromiseLike(iteration)) {
+					iteration.catch((err) => propagateError<unknown>(ctx._pa, err));
+				}
 			} finally {
 				ctx._f &= ~IsExecuting;
-			}
-
-			if (isPromiseLike(iteration)) {
-				iteration.catch((err) => propagateError<unknown>(ctx._pa, err));
 			}
 		}
 	}
