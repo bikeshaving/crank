@@ -1014,9 +1014,13 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 
 	if (isAsync) {
 		let values1 = Promise.all(values).finally(() => {
-			graveyard &&
-				graveyard.forEach((child) => unmount(renderer, host, ctx, child));
+			if (graveyard) {
+				for (let i = 0; i < graveyard.length; i++) {
+					unmount(renderer, host, ctx, graveyard[i]);
+				}
+			}
 		});
+
 		let onvalues!: Function;
 		values1 = Promise.race([
 			values1,
@@ -1031,11 +1035,16 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		el._inf = values1.then((values) =>
 			commit(renderer, scope, el, normalize(values)),
 		);
+
 		return el._inf;
 	}
 
-	graveyard &&
-		graveyard.forEach((child) => unmount(renderer, host, ctx, child));
+	if (graveyard) {
+		for (let i = 0; i < graveyard.length; i++) {
+			unmount(renderer, host, ctx, graveyard[i]);
+		}
+	}
+
 	if (el._onv) {
 		el._onv(values);
 		el._onv = undefined;
@@ -1263,6 +1272,27 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	/**
 	 * @internal
+	 * provisions - A map of values which can be set via Context.prototype.set
+	 * and read from child contexts via Context.prototype.get
+	 */
+	_ps: Map<unknown, unknown> | undefined;
+
+	/**
+	 * @internal
+	 * schedules - a set of callbacks registered via Context.prototype.schedule,
+	 * which fire when the component has committed.
+	 */
+	_ss: Set<(value: TResult) => unknown> | undefined;
+
+	/**
+	 * @internal
+	 * cleanups - a set of callbacks registered via Context.prototype.cleanup,
+	 * which fire when the component has unmounted.
+	 */
+	_cs: Set<(value: TResult) => unknown> | undefined;
+
+	/**
+	 * @internal
 	 * onavailable - A callback used in conjunction with the IsAvailable flag to
 	 * implement the props async iterator. See the Symbol.asyncIterator method
 	 * and the resumeCtx function.
@@ -1297,34 +1327,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	/**
 	 * @internal
-	 * listeners - An array of event listeners added to the context via
-	 * Context.prototype.addEventListener
-	 */
-	_ls: Array<EventListenerRecord> | undefined;
-
-	/**
-	 * @internal
-	 * provisions - A map of values which can be set via Context.prototype.set
-	 * and read from child contexts via Context.prototype.get
-	 */
-	_ps: Map<unknown, unknown> | undefined;
-
-	/**
-	 * @internal
-	 * schedules - a set of callbacks registered via Context.prototype.schedule,
-	 * which fire when the component has committed.
-	 */
-	_ss: Set<(value: TResult) => unknown> | undefined;
-
-	/**
-	 * @internal
-	 * cleanups - a set of callbacks registered via Context.prototype.cleanup,
-	 * which fire when the component has unmounted.
-	 */
-	_cs: Set<(value: TResult) => unknown> | undefined;
-
-	/**
-	 * @internal
 	 */
 	constructor(
 		renderer: Renderer<unknown, unknown, unknown, TResult>,
@@ -1351,7 +1353,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		// this._eb = undefined;
 		// this._ev = undefined;
 		// callbacks
-		// this._ls = undefined;
 		// this._ss = undefined;
 		// this._cs = undefined;
 	}
@@ -1491,10 +1492,17 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		listener: MappedEventListenerOrEventListenerObject<T> | null,
 		options?: boolean | AddEventListenerOptions,
 	): void {
+		let listeners: Array<EventListenerRecord>;
 		if (listener == null) {
 			return;
-		} else if (!this._ls) {
-			this._ls = [];
+		} else {
+			const listeners1 = listenersMap.get(this);
+			if (listeners1) {
+				listeners = listeners1;
+			} else {
+				listeners = [];
+				listenersMap.set(this, listeners);
+			}
 		}
 
 		options = normalizeOptions(options);
@@ -1509,11 +1517,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		if (options.once) {
 			const this1 = this;
 			record.callback = function (this: any) {
-				if (this1._ls) {
-					this1._ls = this1._ls.filter((record1) => record !== record1);
-
-					if (this1._ls.length === 0) {
-						this1._ls = undefined;
+				const listeners = listenersMap.get(this1);
+				if (listeners && listeners.length) {
+					const i = listeners.indexOf(record);
+					if (i !== -1) {
+						listeners.splice(i, 1);
 					}
 				}
 
@@ -1522,7 +1530,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		}
 
 		if (
-			this._ls.some(
+			listeners.some(
 				(record1) =>
 					record.type === record1.type &&
 					record.listener === record1.listener &&
@@ -1532,8 +1540,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			return;
 		}
 
-		this._ls.push(record);
-
+		listeners.push(record);
 		for (const value of getChildValues(this._el)) {
 			if (isEventTarget(value)) {
 				value.addEventListener(record.type, record.callback, record.options);
@@ -1546,12 +1553,13 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		listener: MappedEventListenerOrEventListenerObject<T> | null,
 		options?: EventListenerOptions | boolean,
 	): void {
-		if (listener == null || !this._ls) {
+		const listeners = listenersMap.get(this);
+		if (listener == null || listeners == null) {
 			return;
 		}
 
 		const options1 = normalizeOptions(options);
-		const i = this._ls.findIndex(
+		const i = listeners.findIndex(
 			(record) =>
 				record.type === type &&
 				record.listener === listener &&
@@ -1562,13 +1570,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			return;
 		}
 
-		const record = this._ls[i];
-		this._ls.splice(i, 1);
-
-		if (this._ls.length === 0) {
-			this._ls = undefined;
-		}
-
+		const record = listeners[i];
+		listeners.splice(i, 1);
 		for (const value of getChildValues(this._el)) {
 			if (isEventTarget(value)) {
 				value.removeEventListener(record.type, record.callback, record.options);
@@ -1593,17 +1596,21 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		setEventProperty(ev, "target", this);
 
 		// The only possible errors in this block are errors thrown by listener
-		// callbacks, and dispatchEvent will only log the error rather than
-		// rethrowing it. We return true because the return value is overridden in
-		// the finally block but TypeScript (justifiably) does not recognize the
-		// unsafe return statement.
+		// callbacks, and dispatchEvent will log errors rather than throwing them.
+		// Therefore, we use an unsafe return statement in the finally block, and
+		// catch and log errors in the catch block.
+		//
+		// We return true during normal execution because the return value is
+		// overridden in the finally block but TypeScript (justifiably) does not
+		// recognize the unsafe return statement.
 		try {
 			setEventProperty(ev, "eventPhase", CAPTURING_PHASE);
 			for (let i = path.length - 1; i >= 0; i--) {
-				const et = path[i];
-				if (et._ls) {
-					setEventProperty(ev, "currentTarget", et);
-					for (const record of et._ls) {
+				const target = path[i];
+				const listeners = listenersMap.get(target);
+				if (listeners) {
+					setEventProperty(ev, "currentTarget", target);
+					for (const record of listeners) {
 						if (record.type === ev.type && record.options.capture) {
 							record.callback.call(this, ev);
 							if (immediateCancelBubble) {
@@ -1618,29 +1625,33 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 				}
 			}
 
-			if (this._ls) {
-				setEventProperty(ev, "eventPhase", AT_TARGET);
-				setEventProperty(ev, "currentTarget", this);
-				for (const record of this._ls) {
-					if (record.type === ev.type) {
-						record.callback.call(this, ev);
-						if (immediateCancelBubble) {
-							return true;
+			{
+				const listeners = listenersMap.get(this);
+				if (listeners) {
+					setEventProperty(ev, "eventPhase", AT_TARGET);
+					setEventProperty(ev, "currentTarget", this);
+					for (const record of listeners) {
+						if (record.type === ev.type) {
+							record.callback.call(this, ev);
+							if (immediateCancelBubble) {
+								return true;
+							}
 						}
 					}
-				}
 
-				if (ev.cancelBubble) {
-					return true;
+					if (ev.cancelBubble) {
+						return true;
+					}
 				}
 			}
 
 			if (ev.bubbles) {
 				setEventProperty(ev, "eventPhase", BUBBLING_PHASE);
-				for (const et of path) {
-					if (et._ls) {
-						setEventProperty(ev, "currentTarget", et);
-						for (const record of et._ls) {
+				for (const target of path) {
+					const listeners = listenersMap.get(target);
+					if (listeners) {
+						setEventProperty(ev, "currentTarget", target);
+						for (const record of listeners) {
 							if (record.type === ev.type && !record.options.capture) {
 								record.callback.call(this, ev);
 								if (immediateCancelBubble) {
@@ -1946,10 +1957,11 @@ function commitCtx<TNode>(
 		return;
 	}
 
-	if (ctx._ls && ctx._ls.length > 0) {
+	const listeners = listenersMap.get(ctx);
+	if (listeners && listeners.length) {
 		for (const v of values) {
 			if (isEventTarget(v)) {
-				for (const record of ctx._ls) {
+				for (const record of listeners) {
 					v.addEventListener(record.type, record.callback, record.options);
 				}
 			}
@@ -2052,10 +2064,12 @@ type MappedEventListenerOrEventListenerObject<T extends string> =
 
 interface EventListenerRecord {
 	type: string;
-	listener: MappedEventListenerOrEventListenerObject<any>;
 	callback: MappedEventListener<any>;
+	listener: MappedEventListenerOrEventListenerObject<any>;
 	options: AddEventListenerOptions;
 }
+
+const listenersMap = new WeakMap<Context, Array<EventListenerRecord>>();
 
 function normalizeOptions(
 	options: AddEventListenerOptions | boolean | null | undefined,
@@ -2101,8 +2115,9 @@ function getListeners(
 ): Array<EventListenerRecord> | undefined {
 	let listeners: Array<EventListenerRecord> | undefined;
 	while (ctx !== undefined && ctx._ho === host) {
-		if (ctx._ls) {
-			listeners = (listeners || []).concat(ctx._ls);
+		const listeners1 = listenersMap.get(ctx);
+		if (listeners1) {
+			listeners = (listeners || []).concat(listeners1);
 		}
 
 		ctx = ctx._pa;
@@ -2112,16 +2127,17 @@ function getListeners(
 }
 
 function clearEventListeners(ctx: Context): void {
-	if (ctx._ls && ctx._ls.length > 0) {
+	const listeners = listenersMap.get(ctx);
+	if (listeners && listeners.length) {
 		for (const value of getChildValues(ctx._el)) {
 			if (isEventTarget(value)) {
-				for (const {type, callback, options} of ctx._ls) {
+				for (const {type, callback, options} of listeners) {
 					value.removeEventListener(type, callback, options);
 				}
 			}
 		}
 
-		ctx._ls = undefined;
+		listeners.length = 0;
 	}
 }
 
