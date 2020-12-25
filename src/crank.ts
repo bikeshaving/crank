@@ -168,7 +168,13 @@ const ElementSymbol = Symbol.for("crank.Element");
  * NOTE: Changing this flag value would likely be a breaking changes in terms of
  * interop between elements created between different versions of Crank.
  */
-const IsMounted = 1 << 0;
+const IsInUse = 1 << 0;
+
+/**
+ * A flag which tracks whether the element has previously rendered children. We
+ * may deprecate this and leave elements which don’t add children undefined.
+ */
+const HadChildren = 1 << 1;
 
 // NOTE: To save on filesize, we mangle the internal properties of Crank
 // classes by hand. These internal properties are prefixed with an underscore.
@@ -267,6 +273,7 @@ export class Element<TTag extends Tag = Tag> {
 	 */
 	_n: any;
 
+	// TODO: figure out how to transition sync elements to async while keeping a consistent hidden class.
 	/**
 	 * @internal
 	 * inflight - The current async run of the element’s children.
@@ -279,6 +286,13 @@ export class Element<TTag extends Tag = Tag> {
 
 	/**
 	 * @internal
+	 * onvalue(s) - The resolve function of a promise which represents the next
+	 * children.
+	 */
+	_onv: Function | undefined;
+
+	/**
+	 * @internal
 	 * fallback - The element which this element is replacing.
 	 *
 	 * Until an element commits for the first time, we show any previously
@@ -286,13 +300,6 @@ export class Element<TTag extends Tag = Tag> {
 	 * rearranged concurrently.
 	 */
 	_fb: NarrowedChild;
-
-	/**
-	 * @internal
-	 * onvalue(s) - The resolve function of a promise which represents the next
-	 * children.
-	 */
-	_onv: Function | undefined;
 
 	constructor(
 		tag: TTag,
@@ -307,11 +314,14 @@ export class Element<TTag extends Tag = Tag> {
 		this._f = 0;
 		this._ch = undefined;
 		this._n = undefined;
-
 		// async stuff
 		// this._inf = undefined;
-		// this._fb = undefined;
 		// this._onv = undefined;
+		// this._fb = undefined;
+	}
+
+	get hadChildren(): boolean {
+		return (this._f & HadChildren) !== 0;
 	}
 }
 
@@ -488,12 +498,8 @@ function normalize<TNode>(
  * @returns The value of the element.
  */
 function getValue<TNode>(el: Element): ElementValue<TNode> {
-	if (el._fb) {
-		if (typeof el._fb === "object") {
-			return getValue<TNode>(el._fb);
-		}
-
-		return el._fb;
+	if (typeof el._fb !== "undefined") {
+		return typeof el._fb === "object" ? getValue<TNode>(el._fb) : el._fb;
 	} else if (el.tag === Portal) {
 		return undefined;
 	} else if (typeof el.tag !== "function" && el.tag !== Fragment) {
@@ -775,7 +781,7 @@ function mount<TNode, TScope, TRoot, TResult>(
 	scope: TScope,
 	el: Element,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	el._f |= IsMounted;
+	el._f |= IsInUse;
 	if (typeof el.tag === "function") {
 		el._n = new Context(
 			renderer,
@@ -965,7 +971,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 
 				newChild = oldChild;
 			} else {
-				if (newChild._f & IsMounted) {
+				if (newChild._f & IsInUse) {
 					newChild = cloneElement(newChild);
 				}
 
@@ -1030,11 +1036,11 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 			el._onv(values1);
 		}
 
-		el._onv = onvalues;
 		el._inf = values1.then((values) =>
 			commit(renderer, scope, el, normalize(values)),
 		);
 
+		el._onv = onvalues;
 		return el._inf;
 	}
 
@@ -1074,9 +1080,6 @@ function commit<TNode, TScope, TRoot, TResult>(
 	let value: ElementValue<TNode>;
 	if (typeof el.tag === "function") {
 		value = commitCtx(el._n, values);
-	} else if (el.tag === Portal) {
-		renderer.arrange(el as Element<Portal>, el.props.root, values);
-		renderer.complete(el.props.root);
 	} else if (el.tag === Raw) {
 		if (typeof el.props.value === "string") {
 			el._n = renderer.parse(el.props.value, scope);
@@ -1088,8 +1091,19 @@ function commit<TNode, TScope, TRoot, TResult>(
 	} else if (el.tag === Fragment) {
 		value = unwrap(values);
 	} else {
-		renderer.arrange(el as Element<string | symbol>, el._n, values);
+		if (el.tag === Portal) {
+			renderer.arrange(el as Element<Portal>, el.props.root, values);
+			renderer.complete(el.props.root);
+		} else {
+			renderer.arrange(el as Element<string | symbol>, el._n, values);
+		}
+
 		value = el._n;
+		if (values.length) {
+			el._f |= HadChildren;
+		} else {
+			el._f &= ~HadChildren;
+		}
 	}
 
 	if (el.ref) {
@@ -1955,10 +1969,12 @@ function commitCtx<TNode>(
 
 	const listeners = listenersMap.get(ctx);
 	if (listeners && listeners.length) {
-		for (const v of values) {
-			if (isEventTarget(v)) {
-				for (const record of listeners) {
-					v.addEventListener(record.type, record.callback, record.options);
+		for (let i = 0; i < values.length; i++) {
+			const value = values[i];
+			if (isEventTarget(value)) {
+				for (let j = 0; j < listeners.length; j++) {
+					const record = listeners[j];
+					value.addEventListener(record.type, record.callback, record.options);
 				}
 			}
 		}
@@ -1966,23 +1982,36 @@ function commitCtx<TNode>(
 
 	if (!(ctx._f & IsUpdating)) {
 		const listeners = getListeners(ctx._pa, ctx._ho);
-		if (listeners !== undefined && listeners.length > 0) {
-			for (let i = 0; i < listeners.length; i++) {
-				const record = listeners[i];
-				for (const v of values) {
-					if (isEventTarget(v)) {
-						v.addEventListener(record.type, record.callback, record.options);
+		if (listeners && listeners.length) {
+			for (let i = 0; i < values.length; i++) {
+				const value = values[i];
+				if (isEventTarget(value)) {
+					for (let j = 0; j < listeners.length; j++) {
+						const record = listeners[j];
+						value.addEventListener(
+							record.type,
+							record.callback,
+							record.options,
+						);
 					}
 				}
 			}
 		}
 
 		const host = ctx._ho;
+		const hostValues = getChildValues(host);
 		ctx._re.arrange(
 			host,
 			host.tag === Portal ? host.props.root : host._n,
-			getChildValues(host),
+			hostValues,
 		);
+
+		if (hostValues.length) {
+			host._f |= HadChildren;
+		} else {
+			host._f &= ~HadChildren;
+		}
+
 		ctx._re.complete(ctx._rt);
 	}
 
@@ -2125,8 +2154,12 @@ function clearEventListeners(ctx: Context): void {
 	if (listeners && listeners.length) {
 		for (const value of getChildValues(ctx._el)) {
 			if (isEventTarget(value)) {
-				for (const {type, callback, options} of listeners) {
-					value.removeEventListener(type, callback, options);
+				for (const record of listeners) {
+					value.removeEventListener(
+						record.type,
+						record.callback,
+						record.options,
+					);
 				}
 			}
 		}
