@@ -9,9 +9,6 @@ import {
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
-// TODO: maybe the HasChildren flag can be defined on (Crank) Element flags...
-const HasChildren = Symbol.for("crank.HasChildren");
-
 export class DOMRenderer extends Renderer<Node, string | undefined> {
 	render(
 		children: Children,
@@ -87,13 +84,15 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 						if (value == null) {
 							node.removeAttribute("style");
 						} else if (typeof value === "string") {
-							style.cssText = value;
+							if (style.cssText !== value) {
+								style.cssText = value;
+							}
 						} else {
 							for (const styleName in value) {
 								const styleValue = value && value[styleName];
 								if (styleValue == null) {
 									style.removeProperty(styleName);
-								} else {
+								} else if (style.getPropertyValue(styleName) !== styleValue) {
 									style.setProperty(styleName, styleValue);
 								}
 							}
@@ -109,8 +108,10 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 					} else if (!value) {
 						node.removeAttribute("class");
 					} else if (!isSVG) {
-						(node as any)["className"] = value;
-					} else {
+						if (node.className !== value) {
+							(node as any)["className"] = value;
+						}
+					} else if (node.getAttribute("class") !== value) {
 						node.setAttribute("class", value);
 					}
 					break;
@@ -126,15 +127,19 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 				default: {
 					if (value == null) {
 						node.removeAttribute(name);
-					} else if (typeof value === "function" || typeof value === "object") {
-						(node as any)[name] = value;
-					} else if (!forceAttribute && !isSVG && name in node) {
-						(node as any)[name] = value;
+					} else if (
+						typeof value === "function" ||
+						typeof value === "object" ||
+						(!forceAttribute && !isSVG && name in node)
+					) {
+						if ((node as any)[name] !== value) {
+							(node as any)[name] = value;
+						}
 					} else if (value === true) {
 						node.setAttribute(name, "");
 					} else if (value === false) {
 						node.removeAttribute(name);
-					} else {
+					} else if (node.getAttribute(name) !== value) {
 						node.setAttribute(name, value);
 					}
 				}
@@ -157,9 +162,10 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 				)}`,
 			);
 		}
+
 		if (
-			("children" in el.props || (node as any)[HasChildren]) &&
-			!("innerHTML" in el.props)
+			!("innerHTML" in el.props) &&
+			("children" in el.props || el.hadChildren)
 		) {
 			if (children.length === 0) {
 				node.textContent = "";
@@ -214,12 +220,6 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 					);
 				}
 			}
-		}
-
-		if (children.length > 0) {
-			(node as any)[HasChildren] = true;
-		} else if ((node as any)[HasChildren]) {
-			(node as any)[HasChildren] = false;
 		}
 	}
 }
