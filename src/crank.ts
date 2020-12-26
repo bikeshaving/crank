@@ -273,7 +273,6 @@ export class Element<TTag extends Tag = Tag> {
 	 */
 	_n: any;
 
-	// TODO: figure out how to transition sync elements to async while keeping a consistent hidden class.
 	/**
 	 * @internal
 	 * inflight - The current async run of the element’s children.
@@ -307,14 +306,18 @@ export class Element<TTag extends Tag = Tag> {
 		key: Key,
 		ref: ((value: unknown) => unknown) | undefined,
 	) {
+		this._f = 0;
 		this.tag = tag;
 		this.props = props;
 		this.key = key;
 		this.ref = ref;
-		this._f = 0;
 		this._ch = undefined;
 		this._n = undefined;
-		// async stuff
+		// TODO: figure out how to transition sync elements to async while keeping
+		// a consistent hidden class. Pre-initializing these properties costs a lot
+		// in terns of memory. Figure out the first time we know an element is
+		// async and assign these properties all at once.
+		// async
 		// this._inf = undefined;
 		// this._onv = undefined;
 		// this._fb = undefined;
@@ -1129,15 +1132,9 @@ function unmount<TNode, TScope, TRoot, TResult>(
 	} else if (el.tag !== Fragment) {
 		if (isEventTarget(el._n)) {
 			const listeners = getListeners(ctx, host);
-			if (listeners !== undefined && listeners.length > 0) {
-				for (let i = 0; i < listeners.length; i++) {
-					const record = listeners[i];
-					el._n.removeEventListener(
-						record.type,
-						record.callback,
-						record.options,
-					);
-				}
+			for (let i = 0; i < listeners.length; i++) {
+				const record = listeners[i];
+				el._n.removeEventListener(record.type, record.callback, record.options);
 			}
 		}
 
@@ -1207,13 +1204,15 @@ const IsSyncGen = 1 << 6;
  */
 const IsAsyncGen = 1 << 7;
 
+export interface Context extends Crank.Context {}
+
 /**
  * An interface which can be extended to provide strongly typed provisions (see
- * Context.prototype.get and Context.prototype.set)
+ * Context.prototype.consume and Context.prototype.provide)
  */
 export interface ProvisionMap extends Crank.ProvisionMap {}
 
-export interface Context extends Crank.Context {}
+const provisionMaps = new WeakMap<Context, Map<unknown, unknown>>();
 
 /**
  * A class which is instantiated and passed to every component as its this
@@ -1285,13 +1284,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	/**
 	 * @internal
-	 * provisions - A map of values which can be set via Context.prototype.set
-	 * and read from child contexts via Context.prototype.get
-	 */
-	_ps: Map<unknown, unknown> | undefined;
-
-	/**
-	 * @internal
 	 * schedules - a set of callbacks registered via Context.prototype.schedule,
 	 * which fire when the component has committed.
 	 */
@@ -1357,17 +1349,19 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		this._sc = scope;
 		this._el = el;
 		this._it = undefined;
-		// provisions
-		// this._ps = undefined;
-		// promise stuff
-		// this._oa = undefined;
+		// TODO: figure out how to preserve hidden classes
+		//
+		// callbacks
+		// TODO: maybe we can use the EventTarget interface so we don’t have to
+		// define additional properties/weakmaps for this stuff.
+		// this._ss = undefined;
+		// this._cs = undefined;
+		// async
 		// this._ib = undefined;
 		// this._iv = undefined;
 		// this._eb = undefined;
 		// this._ev = undefined;
-		// callbacks
-		// this._ss = undefined;
-		// this._cs = undefined;
+		// this._oa = undefined;
 	}
 
 	/**
@@ -1481,8 +1475,9 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	consume(key: unknown): any;
 	consume(key: unknown): any {
 		for (let parent = this._pa; parent !== undefined; parent = parent._pa) {
-			if (parent._ps && parent._ps.has(key)) {
-				return parent._ps.get(key)!;
+			const provisions = provisionMaps.get(parent);
+			if (provisions && provisions.has(key)) {
+				return provisions.get(key)!;
 			}
 		}
 	}
@@ -1493,11 +1488,13 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	): void;
 	provide(key: unknown, value: any): void;
 	provide(key: unknown, value: any): void {
-		if (!this._ps) {
-			this._ps = new Map();
+		let provisions = provisionMaps.get(this);
+		if (!provisions) {
+			provisions = new Map();
+			provisionMaps.set(this, provisions);
 		}
 
-		this._ps.set(key, value);
+		provisions.set(key, value);
 	}
 
 	addEventListener<T extends string>(
@@ -1589,7 +1586,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	}
 
 	dispatchEvent(ev: Event): boolean {
-		const path: Array<Context<unknown, TResult>> = [];
+		const path: Array<Context> = [];
 		for (let parent = this._pa; parent !== undefined; parent = parent._pa) {
 			path.push(parent);
 		}
@@ -1982,7 +1979,7 @@ function commitCtx<TNode>(
 
 	if (!(ctx._f & IsUpdating)) {
 		const listeners = getListeners(ctx._pa, ctx._ho);
-		if (listeners && listeners.length) {
+		if (listeners.length) {
 			for (let i = 0; i < values.length; i++) {
 				const value = values[i];
 				if (isEventTarget(value)) {
@@ -2135,12 +2132,12 @@ function setEventProperty<T extends keyof Event>(
 function getListeners(
 	ctx: Context | undefined,
 	host: Element<string | symbol>,
-): Array<EventListenerRecord> | undefined {
-	let listeners: Array<EventListenerRecord> | undefined;
+): Array<EventListenerRecord> {
+	let listeners: Array<EventListenerRecord> = [];
 	while (ctx !== undefined && ctx._ho === host) {
 		const listeners1 = listenersMap.get(ctx);
 		if (listeners1) {
-			listeners = (listeners || []).concat(listeners1);
+			listeners = listeners.concat(listeners1);
 		}
 
 		ctx = ctx._pa;
