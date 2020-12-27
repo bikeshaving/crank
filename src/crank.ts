@@ -172,7 +172,7 @@ const IsInUse = 1 << 0;
 
 /**
  * A flag which tracks whether the element has previously rendered children. We
- * may deprecate this and leave elements which don’t add children undefined.
+ * may deprecate this and leave elements which don’t add children uncontrolled.
  */
 const HadChildren = 1 << 1;
 
@@ -314,9 +314,11 @@ export class Element<TTag extends Tag = Tag> {
 		this._ch = undefined;
 		this._n = undefined;
 		// TODO: figure out how to transition sync elements to async while keeping
-		// a consistent hidden class. Pre-initializing these properties costs a lot
-		// in terns of memory. Figure out the first time we know an element is
-		// async and assign these properties all at once.
+		// a consistent hidden class. Pre-initializing all three of these
+		// properties costs a lot in terns of memory. Figure out the first time we
+		// know an element is async and assign these properties all at once, so
+		// that there are at most two element classes.
+		//
 		// async
 		// this._inf = undefined;
 		// this._onv = undefined;
