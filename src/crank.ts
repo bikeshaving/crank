@@ -13,9 +13,8 @@ type NonStringIterable<T> = Iterable<T> & object;
 /**
  * Ensures a value is an array.
  *
- * This function pretty much does the same thing as wrap above except it
- * handles nulls and iterables, so it is appropriate for wrapping input
- * children from props.
+ * This function does the same thing as wrap above except it handles nulls and
+ * iterables, so it is appropriate for wrapping user-provided children.
  */
 function arrayify<T>(
 	value: NonStringIterable<T> | T | null | undefined,
@@ -51,7 +50,7 @@ function isPromiseLike(value: any): value is PromiseLike<unknown> {
 export type Tag = string | symbol | Component;
 
 /**
- * Maps the tag of an element to its expected props.
+ * A helper type to map the tag of an element to its expected props.
  *
  * @typeparam TTag - The element’s tag.
  */
@@ -171,8 +170,10 @@ const ElementSymbol = Symbol.for("crank.Element");
 const IsInUse = 1 << 0;
 
 /**
- * A flag which tracks whether the element has previously rendered children. We
- * may deprecate this and leave elements which don’t add children uncontrolled.
+ * A flag which tracks whether the element has previously rendered children,
+ * used to clear elements which no longer render children in the next render.
+ * We may deprecate this and make elements without explicit children
+ * uncontrolled.
  */
 const HadChildren = 1 << 1;
 
@@ -275,20 +276,20 @@ export class Element<TTag extends Tag = Tag> {
 
 	/**
 	 * @internal
-	 * inflight - The current async run of the element’s children.
+	 * inflightChildren - The current async run of the element’s children.
 	 *
 	 * This value is used to make sure Copy element refs fire at the correct
-	 * time, and is also used as the yield value of async generator components
-	 * with async children. It is unset when the element is committed.
+	 * time, and is also used to create yield values for async generator
+	 * components with async children. It is unset when the element is committed.
 	 */
-	_inf: Promise<any> | undefined;
+	_ic: Promise<any> | undefined;
 
 	/**
 	 * @internal
 	 * onvalue(s) - The resolve function of a promise which represents the next
 	 * children.
 	 */
-	_onv: Function | undefined;
+	_ov: Function | undefined;
 
 	/**
 	 * @internal
@@ -313,16 +314,9 @@ export class Element<TTag extends Tag = Tag> {
 		this.ref = ref;
 		this._ch = undefined;
 		this._n = undefined;
-		// TODO: figure out how to transition sync elements to async while keeping
-		// a consistent hidden class. Pre-initializing all three of these
-		// properties costs a lot in terns of memory. Figure out the first time we
-		// know an element is async and assign these properties all at once, so
-		// that there are at most two element classes.
-		//
-		// async
-		// this._inf = undefined;
-		// this._onv = undefined;
-		// this._fb = undefined;
+		this._ic = undefined;
+		this._ov = undefined;
+		this._fb = undefined;
 	}
 
 	get hadChildren(): boolean {
@@ -518,9 +512,7 @@ function getInflightValue<TNode>(
 	el: Element,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	return (
-		(typeof el.tag === "function" && el._n._iv) ||
-		el._inf ||
-		getValue<TNode>(el)
+		(typeof el.tag === "function" && el._n._iv) || el._ic || getValue<TNode>(el)
 	);
 }
 
@@ -1037,16 +1029,16 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 			new Promise<any>((resolve) => (onvalues = resolve)),
 		]);
 
-		if (el._onv) {
-			el._onv(values1);
+		if (el._ov) {
+			el._ov(values1);
 		}
 
-		el._inf = values1.then((values) =>
+		el._ic = values1.then((values) =>
 			commit(renderer, scope, el, normalize(values)),
 		);
 
-		el._onv = onvalues;
-		return el._inf;
+		el._ov = onvalues;
+		return el._ic;
 	}
 
 	if (graveyard) {
@@ -1055,9 +1047,9 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		}
 	}
 
-	if (el._onv) {
-		el._onv(values);
-		el._onv = undefined;
+	if (el._ov) {
+		el._ov(values);
+		el._ov = undefined;
 	}
 
 	return commit(
@@ -1074,8 +1066,8 @@ function commit<TNode, TScope, TRoot, TResult>(
 	el: Element,
 	values: Array<TNode | string>,
 ): ElementValue<TNode> {
-	if (el._inf) {
-		el._inf = undefined;
+	if (el._ic) {
+		el._ic = undefined;
 	}
 
 	if (el._fb) {
@@ -1153,7 +1145,7 @@ function unmount<TNode, TScope, TRoot, TResult>(
 	}
 }
 
-// CONTEXT FLAGS
+/*** CONTEXT FLAGS ***/
 /**
  * A flag which is set when the component is being updated by the parent and
  * cleared when the component has committed. Used to determine whether the
@@ -1162,10 +1154,10 @@ function unmount<TNode, TScope, TRoot, TResult>(
 const IsUpdating = 1 << 0;
 
 /**
- * A flag which is set when the component function is called or the component
- * generator is resumed. This flags is used to ensure that a component which
- * synchronously triggers a second update in the course of rendering does not
- * cause an stack overflow or a generator error.
+ * A flag which is set when the component function or generator is
+ * synchronously executing. This flags is used to ensure that a component which
+ * triggers a second update in the course of rendering does not cause an stack
+ * overflow or a generator error.
  */
 const IsExecuting = 1 << 1;
 
@@ -1177,22 +1169,22 @@ const IsIterating = 1 << 2;
 
 /**
  * A flag used by async generator components in conjunction with the
- * onIsAvailable (_oa) callback to mark whether new props can be pulled via the
- * context async iterator.
+ * onavailable (_oa) callback to mark whether new props can be pulled via the
+ * context async iterator. See the Symbol.asyncIterator method and the
+ * resumeCtx function.
  */
 const IsAvailable = 1 << 3;
 
 /**
- * A flag which is set when generator components return. Set whenever an
- * iterator returns an iteration with the done property set to true or throws.
- * Done components will stick to their last rendered value and ignore further
- * updates.
+ * A flag which is set when a generator components returns, i.e. the done
+ * property on the generator is set to true or throws. Done components will
+ * stick to their last rendered value and ignore further updates.
  */
 const IsDone = 1 << 4;
 
 /**
  * A flag which is set when the component is unmounted. Unmounted components
- * are no longer in the element tree, and cannot run or refresh.
+ * are no longer in the element tree and cannot refresh or rerender.
  */
 const IsUnmounted = 1 << 5;
 
@@ -1215,6 +1207,10 @@ export interface Context extends Crank.Context {}
 export interface ProvisionMap extends Crank.ProvisionMap {}
 
 const provisionMaps = new WeakMap<Context, Map<unknown, unknown>>();
+
+const scheduleMap = new WeakMap<Context, Set<Function>>();
+
+const cleanupMap = new WeakMap<Context, Set<Function>>();
 
 /**
  * A class which is instantiated and passed to every component as its this
@@ -1284,20 +1280,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		| AsyncIterator<Children, Children | void, unknown>
 		| undefined;
 
-	/**
-	 * @internal
-	 * schedules - a set of callbacks registered via Context.prototype.schedule,
-	 * which fire when the component has committed.
-	 */
-	_ss: Set<(value: TResult) => unknown> | undefined;
-
-	/**
-	 * @internal
-	 * cleanups - a set of callbacks registered via Context.prototype.cleanup,
-	 * which fire when the component has unmounted.
-	 */
-	_cs: Set<(value: TResult) => unknown> | undefined;
-
+	// async properties
 	/**
 	 * @internal
 	 * onavailable - A callback used in conjunction with the IsAvailable flag to
@@ -1351,19 +1334,12 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		this._sc = scope;
 		this._el = el;
 		this._it = undefined;
-		// TODO: figure out how to preserve hidden classes
-		//
-		// callbacks
-		// TODO: maybe we can use the EventTarget interface so we don’t have to
-		// define additional properties/weakmaps for this stuff.
-		// this._ss = undefined;
-		// this._cs = undefined;
-		// async
-		// this._ib = undefined;
-		// this._iv = undefined;
-		// this._eb = undefined;
-		// this._ev = undefined;
-		// this._oa = undefined;
+		// These properties are set the first time an async component is detected.
+		this._oa = undefined;
+		this._ib = undefined;
+		this._iv = undefined;
+		this._eb = undefined;
+		this._ev = undefined;
 	}
 
 	/**
@@ -1454,11 +1430,13 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * fire once per callback and update.
 	 */
 	schedule(callback: (value: TResult) => unknown): void {
-		if (!this._ss) {
-			this._ss = new Set();
+		let callbacks = scheduleMap.get(this);
+		if (!callbacks) {
+			callbacks = new Set<Function>();
+			scheduleMap.set(this, callbacks);
 		}
 
-		this._ss.add(callback);
+		callbacks.add(callback);
 	}
 
 	/**
@@ -1466,11 +1444,13 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * fire once per callback.
 	 */
 	cleanup(callback: (value: TResult) => unknown): void {
-		if (!this._cs) {
-			this._cs = new Set();
+		let callbacks = cleanupMap.get(this);
+		if (!callbacks) {
+			callbacks = new Set<Function>();
+			cleanupMap.set(this, callbacks);
 		}
 
-		this._cs.add(callback);
+		callbacks.add(callback);
 	}
 
 	consume<TKey extends keyof ProvisionMap>(key: TKey): ProvisionMap[TKey];
@@ -1594,7 +1574,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		}
 
 		// We patch the stopImmediatePropagation method because ev.cancelBubble
-		// only informs us if stopPropagation was called.
+		// only informs us if stopPropagation was called and there are no
+		// properties which inform us if stopImmediatePropagation was called.
 		let immediateCancelBubble = false;
 		const stopImmediatePropagation = ev.stopImmediatePropagation;
 		setEventProperty(ev, "stopImmediatePropagation", () => {
@@ -1603,14 +1584,15 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		});
 		setEventProperty(ev, "target", this);
 
-		// The only possible errors in this block are errors thrown by listener
-		// callbacks, and dispatchEvent will log errors rather than throwing them.
+		// The only possible errors in this block are errors thrown in callbacks,
+		// and dispatchEvent will log these errors rather than throwing them.
 		// Therefore, we use an unsafe return statement in the finally block, and
 		// catch and log errors in the catch block.
 		//
-		// We return true during normal execution because the return value is
-		// overridden in the finally block but TypeScript (justifiably) does not
-		// recognize the unsafe return statement.
+		// We return true within the try block because while the return value is
+		// overridden in the finally block, TypeScript (justifiably) does not
+		// recognize the unsafe return statement overriding the safe early return
+		// statements.
 		try {
 			setEventProperty(ev, "eventPhase", CAPTURING_PHASE);
 			for (let i = path.length - 1; i >= 0; i--) {
@@ -1688,20 +1670,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 /*** PRIVATE CONTEXT FUNCTIONS ***/
 
-/*
- * NOTE: The functions stepCtx, advanceCtx and runCtx work together to
- * implement the async queueing behavior of components. The runCtx function
- * calls the stepCtx function, which returns two results in a tuple. The first
- * result, called the “block,” is a possible promise which represents the
- * duration for which the component is blocked from accepting new updates. The
- * second result, called the “value,” is the actual result of the update. The
- * runCtx function caches block/value from the stepCtx function on the context,
- * according to whether the component is currently blocked. The “inflight”
- * block/value properties are the currently executing update, and the
- * “enqueued” block/value properties represent an enqueued next stepCtx.
- * Enqueued steps are dequeued in a finally callback on the blocking promise.
- */
-
 /**
  * This function is responsible for executing the component and handling all
  * the different component types.
@@ -1757,8 +1725,8 @@ function stepCtx<TNode, TResult>(
 	}
 
 	let oldValue: Promise<TResult> | TResult;
-	if (ctx._el._inf) {
-		oldValue = ctx._el._inf.then(ctx._re.read, () => ctx._re.read(undefined));
+	if (ctx._el._ic) {
+		oldValue = ctx._el._ic.then(ctx._re.read, () => ctx._re.read(undefined));
 	} else if (initial) {
 		oldValue = ctx._re.read(undefined);
 	} else {
@@ -1849,10 +1817,10 @@ function stepCtx<TNode, TResult>(
  * Called when the inflight block promise settles.
  */
 function advanceCtx(ctx: Context): void {
-	// _ib: inflightBlock
-	// _iv: inflightValue
-	// _eb: enqueuedBlock
-	// _ev: enqueuedValue
+	// _ib - inflightBlock
+	// _iv - inflightValue
+	// _eb - enqueuedBlock
+	// _ev - enqueuedValue
 	ctx._ib = ctx._eb;
 	ctx._iv = ctx._ev;
 	ctx._eb = undefined;
@@ -1864,6 +1832,18 @@ function advanceCtx(ctx: Context): void {
 
 /**
  * Enqueues and executes the component associated with the context.
+ *
+ * The functions stepCtx, advanceCtx and runCtx work together to implement the
+ * async queueing behavior of components. The runCtx function calls the stepCtx
+ * function, which returns two results in a tuple. The first result, called the
+ * “block,” is a possible promise which represents the duration for which the
+ * component is blocked from accepting new updates. The second result, called
+ * the “value,” is the actual result of the update. The runCtx function caches
+ * block/value from the stepCtx function on the context, according to whether
+ * the component blocks. The “inflight” block/value properties are the
+ * currently executing update, and the “enqueued” block/value properties
+ * represent an enqueued next stepCtx. Enqueued steps are dequeued every time
+ * the current block promise settles.
  */
 function runCtx<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
@@ -1879,10 +1859,8 @@ function runCtx<TNode, TResult>(
 						}
 					})
 					.finally(() => advanceCtx(ctx));
-			}
-
-			if (isPromiseLike(value)) {
-				ctx._iv = value;
+				// stepCtx will only return a block if the value is asynchronous
+				ctx._iv = value as Promise<ElementValue<TNode>>;
 			}
 
 			return value;
@@ -2016,14 +1994,15 @@ function commitCtx<TNode>(
 
 	ctx._f &= ~IsUpdating;
 	const value = unwrap(values);
-	if (ctx._ss && ctx._ss.size > 0) {
+	const callbacks = scheduleMap.get(ctx);
+	if (callbacks && callbacks.size) {
 		// NOTE: We have to clear the set of callbacks before calling them, because
 		// a callback which refreshes the component would otherwise cause a stack
 		// overflow.
-		const callbacks = Array.from(ctx._ss);
-		ctx._ss.clear();
+		const callbacks1 = Array.from(callbacks);
+		callbacks.clear();
 		const value1 = ctx._re.read(value);
-		for (const callback of callbacks) {
+		for (const callback of callbacks1) {
 			callback(value1);
 		}
 	}
@@ -2035,13 +2014,14 @@ function commitCtx<TNode>(
 function unmountCtx(ctx: Context): void {
 	ctx._f |= IsUnmounted;
 	clearEventListeners(ctx);
-	if (ctx._cs) {
+	const callbacks = cleanupMap.get(ctx);
+	if (callbacks && callbacks.size) {
 		const value = ctx._re.read(getValue(ctx._el));
-		for (const cleanup of ctx._cs) {
+		for (const cleanup of callbacks) {
 			cleanup(value);
 		}
 
-		ctx._cs = undefined;
+		callbacks.clear();
 	}
 
 	if (!(ctx._f & IsDone)) {
