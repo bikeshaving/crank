@@ -13,8 +13,8 @@ type NonStringIterable<T> = Iterable<T> & object;
 /**
  * Ensures a value is an array.
  *
- * This function does the same thing as wrap above except it handles nulls and
- * iterables, so it is appropriate for wrapping user-provided children.
+ * This function does the same thing as wrap() above except it handles nulls
+ * and iterables, so it is appropriate for wrapping user-provided children.
  */
 function arrayify<T>(
 	value: NonStringIterable<T> | T | null | undefined,
@@ -40,7 +40,7 @@ function isPromiseLike(value: any): value is PromiseLike<unknown> {
 }
 
 /**
- * Represents all valid values which can be used for the tag of an element.
+ * A type which represents all valid values that can be the tag of an element.
  *
  * Elements whose tags are strings or symbols are called “host” or “intrinsic”
  * elements, and their behavior is determined by the renderer, while elements
@@ -52,7 +52,7 @@ export type Tag = string | symbol | Component;
 /**
  * A helper type to map the tag of an element to its expected props.
  *
- * @typeparam TTag - The element’s tag.
+ * @template TTag - The element’s tag.
  */
 export type TagProps<TTag extends Tag> = TTag extends string
 	? JSX.IntrinsicElements[TTag]
@@ -67,10 +67,10 @@ export type TagProps<TTag extends Tag> = TTag extends string
  ***/
 
 /**
- * A special tag for grouping multiple children within a parent.
+ * A special tag for grouping multiple children within the same parent.
  *
- * All iterables which appear in the element tree are implicitly wrapped in a
- * fragment element.
+ * All non-string iterables which appear in the element tree are implicitly
+ * wrapped in a fragment element.
  *
  * This tag is just the empty string, and you can use the empty string in
  * createElement calls or transpiler options to avoid having to reference this
@@ -79,8 +79,8 @@ export type TagProps<TTag extends Tag> = TTag extends string
 export const Fragment = "";
 export type Fragment = typeof Fragment;
 
-// NOTE: We assert the following symbol tags as any because typescript support
-// for symbol tags in JSX does not exist yet.
+// TODO: We assert the following symbol tags as any because typescript support
+// for symbol tags in JSX doesn’t exist yet.
 // https://github.com/microsoft/TypeScript/issues/38367
 
 /**
@@ -89,8 +89,8 @@ export type Fragment = typeof Fragment;
  * This tag is useful for creating element trees with multiple roots, for
  * things like modals or tooltips.
  *
- * Renderer.prototype.render will implicitly wrap the passed in element tree in
- * an implicit Portal element.
+ * Renderer.prototype.render will implicitly wrap passed in element trees in an
+ * implicit Portal element.
  */
 export const Portal = Symbol.for("crank.Portal") as any;
 export type Portal = typeof Portal;
@@ -107,9 +107,9 @@ export const Copy = Symbol.for("crank.Copy") as any;
 export type Copy = typeof Copy;
 
 /**
- * A special element tag for injecting raw nodes or strings via a value prop.
+ * A special tag for injecting raw nodes or strings via a value prop.
  *
- * If the value prop is a string, Renderer.prototype.parse will be called on
+ * If the value prop is a string, Renderer.prototype.parse() will be called on
  * the string and the result of that method will be inserted.
  */
 export const Raw = Symbol.for("crank.Raw") as any;
@@ -124,9 +124,8 @@ export type Raw = typeof Raw;
  */
 export type Child = Element | string | number | boolean | null | undefined;
 
-// NOTE: we use a recursive interface rather than making the Children type
-// directly recursive because recursive type aliases were added in TypeScript
-// 3.7.
+// We use a recursive interface rather than making the Children type directly
+// recursive because recursive type aliases were added in TypeScript 3.7.
 export interface ChildIterable extends Iterable<Child | ChildIterable> {}
 
 /**
@@ -138,7 +137,7 @@ export type Children = Child | ChildIterable;
 /**
  * Represents all functions which can be used as a component.
  *
- * @typeparam TProps - The expected props for the component.
+ * @template [TProps=*] - The expected props for the component.
  */
 export type Component<TProps = any> = (
 	this: Context<TProps>,
@@ -161,11 +160,12 @@ const ElementSymbol = Symbol.for("crank.Element");
 
 /*** ELEMENT FLAGS ***/
 /**
- * A flag which is set when the element has been mounted. Used mainly to
- * detect whether an element is being reused so that we clone it.
+ * A flag which is set when the element is mounted, used to detect whether an
+ * element is being reused so that we clone it rather than accidentally
+ * overwriting its state.
  *
- * NOTE: Changing this flag value would likely be a breaking changes in terms of
- * interop between elements created between different versions of Crank.
+ * IMPORTANT: Changing this flag value would likely be a breaking changes in terms
+ * of interop between elements created by different versions of Crank.
  */
 const IsInUse = 1 << 0;
 
@@ -177,22 +177,16 @@ const IsInUse = 1 << 0;
  */
 const HadChildren = 1 << 1;
 
-// NOTE: To save on filesize, we mangle the internal properties of Crank
-// classes by hand. These internal properties are prefixed with an underscore.
-// Refer to their definitions to see their unabbreviated names.
-
-// NOTE: to maximize compatibility between Crank versions, starting with 0.2.0,
-// any change to the following Element’s properties  will be considered a
-// breaking change.
-//
-// $$typeof, tag, props, key, ref, _f
+// To save on filesize, we mangle the internal properties of Crank classes by
+// hand. These internal properties are prefixed with an underscore. Refer to
+// their definitions to see their unabbreviated names.
 
 /**
  * Elements are the basic building blocks of Crank applications. They are
  * JavaScript objects which are interpreted by special classes called renderers
  * to produce and manage stateful nodes.
  *
- * @typeparam TTag - The type of the tag of the element.
+ * @template {Tag} [TTag=Tag] - The type of the tag of the element.
  *
  * @example
  * // specific element types
@@ -204,10 +198,13 @@ const HadChildren = 1 << 1;
  * let host: Element<string | symbol>;
  * let component: Element<Component>;
  *
- * Typically, you use the createElement function to create elements rather than
- * instatiating this class directly.
+ * Typically, you use a helper function like createElement to create elements
+ * rather than instatiating this class directly.
  */
 export class Element<TTag extends Tag = Tag> {
+	// To maximize compatibility between Crank versions, starting with 0.2.0, any
+	// changes to the following properties will be considered a breaking change:
+	// $$typeof, tag, props, key, ref, _f
 	/**
 	 * @internal
 	 * A unique symbol to identify elements as elements across versions and
@@ -276,9 +273,19 @@ export class Element<TTag extends Tag = Tag> {
 
 	/**
 	 * @internal
+	 * fallback - The element which this element is replacing.
+	 *
+	 * If an element renders asynchronously, we show any previously rendered
+	 * values in its place until it has committed for the first time. This
+	 * property is set to the previously rendered child.
+	 */
+	_fb: NarrowedChild;
+
+	/**
+	 * @internal
 	 * inflightChildren - The current async run of the element’s children.
 	 *
-	 * This value is used to make sure Copy element refs fire at the correct
+	 * This property is used to make sure Copy element refs fire at the correct
 	 * time, and is also used to create yield values for async generator
 	 * components with async children. It is unset when the element is committed.
 	 */
@@ -286,20 +293,10 @@ export class Element<TTag extends Tag = Tag> {
 
 	/**
 	 * @internal
-	 * onvalue(s) - The resolve function of a promise which represents the next
-	 * children.
+	 * onvalue(s) - This property is set to the resolve function of a promise
+	 * which represents the next children, so that renderings can be raced.
 	 */
 	_ov: Function | undefined;
-
-	/**
-	 * @internal
-	 * fallback - The element which this element is replacing.
-	 *
-	 * Until an element commits for the first time, we show any previously
-	 * rendered values in its place. This allows the nearest host to be
-	 * rearranged concurrently.
-	 */
-	_fb: NarrowedChild;
 
 	constructor(
 		tag: TTag,
@@ -314,9 +311,9 @@ export class Element<TTag extends Tag = Tag> {
 		this.ref = ref;
 		this._ch = undefined;
 		this._n = undefined;
+		this._fb = undefined;
 		this._ic = undefined;
 		this._ov = undefined;
-		this._fb = undefined;
 	}
 
 	get hadChildren(): boolean {
@@ -336,8 +333,8 @@ export function isElement(value: any): value is Element {
  * This function is usually used as a transpilation target for JSX transpilers,
  * but it can also be called directly. It additionally extracts the crank-key
  * and crank-ref props so they aren’t accessible to renderer methods or
- * components, and assigns the children prop according to the arguments passed
- * to the function.
+ * components, and assigns the children prop according to any additional
+ * arguments passed to the function.
  */
 export function createElement<TTag extends Tag>(
 	tag: TTag,
@@ -351,8 +348,8 @@ export function createElement<TTag extends Tag>(
 		for (const name in props) {
 			switch (name) {
 				case "crank-key":
-					// NOTE: We have to make sure we don’t assign null to the key because
-					// we don’t check for null keys in the diffing functions.
+					// We have to make sure we don’t assign null to the key because we
+					// don’t check for null keys in the diffing functions.
 					if (props["crank-key"] != null) {
 						key = props["crank-key"];
 					}
@@ -378,11 +375,10 @@ export function createElement<TTag extends Tag>(
 }
 
 /**
- * Clones a given element. Will also shallow copy the props object.
+ * Clones a given element, shallowly copying the props object.
  *
- * Mainly used internally to make sure we don’t accidentally reuse elements in
- * an element tree, because element have internal properties which are directly
- * mutated by the renderer.
+ * Used internally to make sure we don’t accidentally reuse elements when
+ * rendering.
  */
 export function cloneElement<TTag extends Tag>(
 	el: Element<TTag>,
@@ -418,7 +414,7 @@ function narrow(value: Children): NarrowedChild {
 /**
  * A helper type which repesents all the possible rendered values of an element.
  *
- * @typeparam TNode - The node type for the element assigned by the renderer.
+ * @template TNode - The node type for the element assigned by the renderer.
  *
  * When asking the question, what is the value of a specific element, the
  * answer varies depending on its tag. For host or Raw elements, the answer is
@@ -540,10 +536,10 @@ function getChildValues<TNode>(el: Element): Array<TNode | string> {
  * process, caching previous trees by root, and creating, mutating and
  * disposing of nodes.
  *
- * @typeparam TNode - The type of the node for a rendering environment.
- * @typeparam TScope - Data which is passed down the tree.
- * @typeparam TRoot - The type of the root for a rendering environment.
- * @typeparam TResult - The type of exposed values.
+ * @template TNode - The type of the node for a rendering environment.
+ * @template TScope - Data which is passed down the tree.
+ * @template TRoot - The type of the root for a rendering environment.
+ * @template TResult - The type of exposed values.
  */
 export class Renderer<
 	TNode,
@@ -603,7 +599,7 @@ export class Renderer<
 		}
 
 		const value = update(this, root, portal, ctx, undefined, portal);
-		// NOTE: We return the child values of the portal because portal elements
+		// We return the child values of the portal because portal elements
 		// themselves have no readable value.
 		if (isPromiseLike(value)) {
 			return value.then(() => {
@@ -1218,11 +1214,11 @@ const cleanupMap = new WeakMap<Context, Set<Function>>();
  * element tree are connected via contexts. Components can use this tree to
  * communicate data upwards via events and downwards via provisions.
  *
- * @typeparam TProps - The expected shape of the props passed to the component.
- * Used to strongly type the Context iterator methods.
- * @typeparam TResult - The readable element value type. It is used in places
- * such as the return value of refresh and the argument passed to
- * schedule/cleanup callbacks.
+ * @template [TProps=*] - The expected shape of the props passed to the
+ * component. Used to strongly type the Context iterator methods.
+ * @template [TResult=*] - The readable element value type. It is used in
+ * places such as the return value of refresh and the argument passed to
+ * schedule and cleanup callbacks.
  */
 export class Context<TProps = any, TResult = any> implements EventTarget {
 	/**
@@ -1280,7 +1276,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		| AsyncIterator<Children, Children | void, unknown>
 		| undefined;
 
-	// async properties
+	/*** async properties ***/
 	/**
 	 * @internal
 	 * onavailable - A callback used in conjunction with the IsAvailable flag to
@@ -1289,8 +1285,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 */
 	_oa: Function | undefined;
 
-	// See the stepCtx/advanceCtx/runCtx functions for more notes on
-	// inflight/enqueued block/value.
+	// See the stepCtx/advanceCtx/runCtx functions for more notes on the
+	// inflight/enqueued block/value properties.
 	/**
 	 * @internal
 	 * inflightBlock
@@ -1317,6 +1313,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	/**
 	 * @internal
+	 * Contexts should never be instantiated directly.
 	 */
 	constructor(
 		renderer: Renderer<unknown, unknown, unknown, TResult>,
@@ -1334,7 +1331,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		this._sc = scope;
 		this._el = el;
 		this._it = undefined;
-		// These properties are set the first time an async component is detected.
 		this._oa = undefined;
 		this._ib = undefined;
 		this._iv = undefined;
@@ -1402,15 +1398,16 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	}
 
 	/**
-	 * Re-executes the component.
+	 * Re-executes a component.
 	 *
-	 * @returns The rendered value of the component or a promise of the rendered
-	 * value if the component or its children execute asynchronously.
+	 * @returns The rendered value of the component or a promise thereof if the
+	 * component or its children execute asynchronously.
 	 *
 	 * The refresh method works a little differently for async generator
-	 * components, in that it will resume the Context async iterator rather than
-	 * resuming execution. This is because async generator components are
-	 * perpetually resumed independent of updates/refresh.
+	 * components, in that it will resume the Context’s props async iterator
+	 * rather than resuming execution. This is because async generator components
+	 * are perpetually resumed independent of updates, and rely on the props
+	 * async iterator to suspend.
 	 */
 	refresh(): Promise<TResult> | TResult {
 		if (this._f & IsUnmounted) {
@@ -1585,14 +1582,13 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		setEventProperty(ev, "target", this);
 
 		// The only possible errors in this block are errors thrown in callbacks,
-		// and dispatchEvent will log these errors rather than throwing them.
-		// Therefore, we use an unsafe return statement in the finally block, and
-		// catch and log errors in the catch block.
+		// and dispatchEvent is designed to only these errors rather than throwing
+		// them. Therefore, we place all code in a try block, log errors in the
+		// catch block use unsafe return statement in the finally block.
 		//
-		// We return true within the try block because while the return value is
-		// overridden in the finally block, TypeScript (justifiably) does not
-		// recognize the unsafe return statement overriding the safe early return
-		// statements.
+		// Each early return within the try block returns true because while the
+		// return value is overridden in the finally block, TypeScript
+		// (justifiably) does not recognize the unsafe return statement.
 		try {
 			setEventProperty(ev, "eventPhase", CAPTURING_PHASE);
 			for (let i = path.length - 1; i >= 0; i--) {
@@ -1674,19 +1670,18 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
  * This function is responsible for executing the component and handling all
  * the different component types.
  *
- * @returns A tuple [block, value]
+ * @returns {[block, value]} A tuple where
  * block - A possible promise which represents the duration during which the
  * component is blocked from updating.
  * value - A possible promise resolving to the rendered value of children.
  *
  * Each component type will block according to the type of the component.
- * Sync function components never block and will transparently pass updates to
- * children.
- * Async function components and async generator components block while
+ * - Sync function components never block and will transparently pass updates
+ * to children.
+ * - Async function components and async generator components block while
  * executing itself, but will not block for async children.
- * Sync generator components block while any children are executing, because
+ * - Sync generator components block while any children are executing, because
  * they are expected to only resume when they’ve actually rendered.
- * Additionally, they have no mechanism for awaiting async children.
  */
 function stepCtx<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
@@ -1724,11 +1719,16 @@ function stepCtx<TNode, TResult>(
 		}
 	}
 
+	// The value passed back into the generator as the argument to the next
+	// method is a promise if an async generator component has async children.
+	// Sync generator components only resume when their children have fulfilled
+	// so ctx._el._ic (the element’s inflight children) will never be defined.
 	let oldValue: Promise<TResult> | TResult;
-	if (ctx._el._ic) {
+	if (initial) {
+		// The argument passed to the first call to next is ignored.
+		oldValue = undefined as any;
+	} else if (ctx._el._ic) {
 		oldValue = ctx._el._ic.then(ctx._re.read, () => ctx._re.read(undefined));
-	} else if (initial) {
-		oldValue = ctx._re.read(undefined);
 	} else {
 		oldValue = ctx._re.read(getValue(el));
 	}
@@ -1875,7 +1875,6 @@ function runCtx<TNode, TResult>(
 		return ctx._iv;
 	} else if (!ctx._eb) {
 		let resolve: Function;
-		ctx._ev = new Promise((resolve1) => (resolve = resolve1));
 		ctx._eb = ctx._ib
 			.then(() => {
 				try {
@@ -1895,13 +1894,14 @@ function runCtx<TNode, TResult>(
 				}
 			})
 			.finally(() => advanceCtx(ctx));
+		ctx._ev = new Promise((resolve1) => (resolve = resolve1));
 	}
 
 	return ctx._ev;
 }
 
 /**
- * Called to make props available to the Context async iterator for async
+ * Called to make props available to the props async iterator for async
  * generator components.
  */
 function resumeCtx(ctx: Context): void {
@@ -1996,8 +1996,8 @@ function commitCtx<TNode>(
 	const value = unwrap(values);
 	const callbacks = scheduleMap.get(ctx);
 	if (callbacks && callbacks.size) {
-		// NOTE: We have to clear the set of callbacks before calling them, because
-		// a callback which refreshes the component would otherwise cause a stack
+		// We must clear the set of callbacks before calling them, because a
+		// callback which refreshes the component would otherwise cause a stack
 		// overflow.
 		const callbacks1 = Array.from(callbacks);
 		callbacks.clear();
@@ -2109,7 +2109,10 @@ function setEventProperty<T extends keyof Event>(
  * This function exploits the fact that contexts retain their nearest ancestor
  * host element. We can determine all the contexts which are directly listening
  * to an element by traversing up the context tree and checking that the host
- * element passed in matches the context’s host property.
+ * element passed in matches the parent context’s host element.
+ *
+ * TODO: Maybe we can pass in the current context directly, rather than
+ * starting from the parent?
  */
 function getListeners(
 	ctx: Context | undefined,
