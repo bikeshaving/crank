@@ -1,4 +1,9 @@
 # Changelog
+## [0.3.8] - 2020-12-27
+Various performance improvements.
+### Changed
+- `create()` and `patch()` calls have been moved to a pre-order traversal of the tree.
+- The DOM renderer now checks properties and attributes before mutating them.
 ## [0.3.7] - 2020-11-16
 Mostly some changes when trying to get Crank to play nicely with contenteditables
 ### Fixed
