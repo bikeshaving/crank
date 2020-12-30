@@ -1065,7 +1065,8 @@ function commit<TNode, TScope, TRoot, TResult>(
 		el._ic = undefined;
 	}
 
-	if (el._fb) {
+	// Need to handle (_fb) fallback being the empty string.
+	if (typeof el._fb !== "undefined") {
 		el._fb = undefined;
 	}
 
