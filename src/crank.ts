@@ -621,8 +621,8 @@ export class Renderer<
 	}
 
 	/**
-	 * Called when an element’s value is exposed via render, schedule, refresh,
-	 * refs, or generator yield expressions.
+	 * Called when an element’s rendered value is exposed via render, schedule,
+	 * refresh, refs, or generator yield expressions.
 	 *
 	 * @param value - The value of the element being read. Can be a node, a
 	 * string, undefined, or an array of nodes and strings, depending on the
@@ -634,7 +634,6 @@ export class Renderer<
 	 * This is useful for renderers which don’t want to expose their internal
 	 * nodes. For instance, the HTML renderer will convert all internal nodes to
 	 * strings.
-	 *
 	 */
 	read(value: ElementValue<TNode>): TResult {
 		return (value as unknown) as TResult;
@@ -1581,10 +1580,10 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		});
 		setEventProperty(ev, "target", this);
 
-		// The only possible errors in this block are errors thrown in callbacks,
-		// and dispatchEvent is designed to only these errors rather than throwing
+		// The only possible errors in this block are errors thrown by callbacks,
+		// and dispatchEvent will only log these errors rather than throwing
 		// them. Therefore, we place all code in a try block, log errors in the
-		// catch block use unsafe return statement in the finally block.
+		// catch block, and use an unsafe return statement in the finally block.
 		//
 		// Each early return within the try block returns true because while the
 		// return value is overridden in the finally block, TypeScript
