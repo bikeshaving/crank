@@ -213,10 +213,10 @@ function Sidebar({docs, title, url}: SidebarProps): Element {
 	}
 
 	return (
-		<div id="sidebar" class="sidebar">
+		<aside id="sidebar">
 			<h3>{title}</h3>
 			{links}
-		</div>
+		</aside>
 	);
 }
 
@@ -338,12 +338,12 @@ function BlogPreview({docs}: BlogPreviewProps): Array<Element> {
 		}
 
 		return (
-			<div class="content">
+			<article>
 				<BlogContent {...doc} html={html} />
 				<div>
 					<a href={doc.url}>Read more…</a>
 				</div>
-			</div>
+			</article>
 		);
 	});
 }
@@ -356,11 +356,13 @@ interface BlogIndexPageProps {
 function BlogIndexPage({docs, url}: BlogIndexPageProps): Element {
 	return (
 		<Root title="Crank.js | Blog" url={url}>
-			<Sidebar docs={docs} url={url} title="Recent Posts" />
-			<main class="main">
-				<BlogPreview docs={docs} />
-				<Footer />
-			</main>
+			<div class="main-content">
+				<Sidebar docs={docs} url={url} title="Recent Posts" />
+				<main class="main">
+					<BlogPreview docs={docs} />
+					<Footer />
+				</main>
+			</div>
 		</Root>
 	);
 }
@@ -382,13 +384,15 @@ function BlogPage({
 }: BlogPageProps): Element {
 	return (
 		<Root title={`Crank.js | ${title}`} url={url}>
-			<Sidebar docs={docs} url={url} title="Recent Posts" />
-			<main class="main">
-				<div class="content">
-					<BlogContent title={title} html={html} publishDate={publishDate} />
-				</div>
-				<Footer />
-			</main>
+			<div class="main-content">
+				<Sidebar docs={docs} url={url} title="Recent Posts" />
+				<main class="main">
+					<article>
+						<BlogContent title={title} html={html} publishDate={publishDate} />
+					</article>
+					<Footer />
+				</main>
+			</div>
 		</Root>
 	);
 }
@@ -403,14 +407,16 @@ interface GuidePageProps {
 function GuidePage({title, html, docs, url}: GuidePageProps): Element {
 	return (
 		<Root title={`Crank.js | ${title}`} url={url}>
-			<Sidebar docs={docs} url={url} title="Guides" />
-			<main class="main">
-				<div class="content">
-					<h1>{title}</h1>
-					<Raw value={html} />
-				</div>
-				<Footer />
-			</main>
+			<div class="main-content">
+				<Sidebar docs={docs} url={url} title="Guides" />
+				<main class="main">
+					<article>
+						<h1>{title}</h1>
+						<Raw value={html} />
+					</article>
+					<Footer />
+				</main>
+			</div>
 		</Root>
 	);
 }

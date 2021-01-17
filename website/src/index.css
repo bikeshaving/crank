@@ -9,14 +9,30 @@ html {
 }
 
 body {
-	background-color: #0c1227;
+	background-color: #131622;
 	color: #f5f9ff;
 	font-family: sans-serif;
+	font-size: 1.05em;
+	
+	/* for the nav */
+	padding-top: 60px;
+}
+.main-content {
+	display: grid;
+	grid-template-columns: auto 1fr;
+}
+@media screen and (max-width: 800px) {
+	.main-content {
+		grid-template-columns: 1fr;
+		grid-template-rows: auto 1fr;
+	}
 }
 
 p {
-	line-height: 1.4;
+	line-height: 160%;
 	margin: 1.5em 0;
+	font-family: 'Sitka Text', Georgia, Cambria, Calibri;
+	font-size: 114%;
 }
 
 img {
@@ -74,9 +90,8 @@ li {
 
 .navbar {
 	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
+	top: 0; left: 0; right: 0;
+
 	height: 3.5rem;
 	background-color: inherit;
 	border-bottom: 1px solid #f5f9ff;
@@ -134,17 +149,12 @@ li {
 	}
 }
 
-.sidebar {
+aside {
 	background-color: inherit;
-	margin-top: 3.5rem;
 	padding: 2rem 1rem;
 	border-bottom: 1px solid #f5f9ff;
 	color: #f5f9ff;
 	@media screen and (min-width: 800px) {
-		position: fixed;
-		top: 3.5rem;
-		left: 0;
-		bottom: 0;
 		border-bottom: none;
 		border-right: 1px solid #f5f9ff;
 		overflow-x: hidden;
@@ -180,18 +190,7 @@ li {
 	margin: 10px 0;
 }
 
-.main {
-	@media screen and (min-width: 800px) {
-		margin-top: 3.5rem;
-		margin-left: 15rem;
-	}
-
-	@media screen and (min-width: 1100px) {
-		margin-left: 20rem;
-	}
-}
-
-.content {
+article {
 	margin: 0 auto;
 	padding: 2rem 1rem;
 	> :first-child {
@@ -204,11 +203,15 @@ li {
 
 	@media screen and (min-width: 800px) {
 		padding: 2rem 1rem;
-		max-width: 800px;
+		max-width: 50rem;
 	}
 
 	@media screen and (min-width: 1100px) {
 		padding: 3rem 2rem;
+	}
+
+	p a {
+		color: #0072C9;
 	}
 }
 
@@ -279,18 +282,20 @@ pre {
 	padding: .8em;
 	margin: 1.5em 0;
 	font-size: .9em;
-	background: #e1e4ea;
-	color: #0b2f5b;
+	background: #151414;
+	color: #d0ca8b;
 	overflow: auto;
+	max-width: 100vw;
 	tab-size: 2;
 }
 
 :not(pre) > code {
-	padding: 0 .1em;
+	padding: .2em .5em;
+	border-radius: 4px;
 	margin: 0;
 	font-size: .9em;
 	display: inline;
-	background: #0b2f5b;
+	background: #2a2c43;
 }
 
 .token.comment,
@@ -306,7 +311,7 @@ pre {
 
 .token.string,
 .token.attr-value {
-	color: #12498e;
+	color: #e78735;
 }
 
 .token.property,
@@ -322,7 +327,7 @@ pre {
 .token.attr-name,
 .token.char,
 .token.builtin {
-	color: #0b2f5b;
+	color: #7fa7ff;
 }
 
 .token.deleted {
