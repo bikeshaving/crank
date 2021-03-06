@@ -38,7 +38,7 @@ function escape(text: string): string {
 	});
 }
 
-function printStyle(style: Record<string, string>): string {
+function printStyleObject(style: Record<string, string>): string {
 	const cssStrings = [];
 	for (const [name, value] of Object.entries(style)) {
 		if (value != null) {
@@ -57,7 +57,11 @@ function printAttrs(props: Record<string, any>): string {
 			case name === "innerHTML":
 				break;
 			case name === "style":
-				attrs.push(`style="${escape(printStyle(value))}"`);
+				if (typeof value === "string") {
+					attrs.push(`style="${escape(value)}"`);
+				} else {
+					attrs.push(`style="${escape(printStyleObject(value))}"`);
+				}
 				break;
 			case typeof value === "string":
 				attrs.push(`${escape(name)}="${escape(value)}"`);
