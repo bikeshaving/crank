@@ -1,4 +1,7 @@
 # Changelog
+## [0.3.9] - 2020-03-05
+### Fixed
+- Fixed style strings being incorrectly rendered by the HTMLRenderer (#191).
 ## [0.3.8] - 2020-12-27
 Various performance improvements.
 ### Changed

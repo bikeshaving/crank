@@ -1,6 +1,6 @@
 {
   "name": "@bikeshaving/crank",
-  "version": "0.3.8",
+  "version": "0.3.9",
   "description": "Write JSX-driven components with functions, promises and generators.",
   "homepage": "https://crank.js.org",
   "bugs": {
