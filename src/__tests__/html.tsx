@@ -77,6 +77,12 @@ describe("render", () => {
 		);
 	});
 
+	test("styles string", () => {
+		expect(renderer.render(<div style="color: red;" />)).toEqual(
+			'<div style="color: red;"></div>',
+		);
+	});
+
 	test("null", () => {
 		expect(renderer.render(null)).toEqual("");
 	});
