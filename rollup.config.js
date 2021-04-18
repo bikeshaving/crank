@@ -10,8 +10,9 @@ const output = (type) => ({
 	format: type,
 	dir: `dist/${type}`,
 	sourcemap: true,
+	preserveModules: type !== "umd",
+	preserveModulesRoot: "src",
 	name: "Crank",
-	chunkFileNames: "core/index.js",
 });
 
 export default [
