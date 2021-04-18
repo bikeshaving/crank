@@ -6,12 +6,4 @@ yarn-debug.log*
 yarn-error.log*
 
 # build artifacts
-crank.js
-dom.js
-html.js
-index.js
-*.d.ts
-*.js.map
-cjs
-umd
 dist
