@@ -297,7 +297,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * are perpetually resumed independent of updates, and rely on the props
 	 * async iterator to suspend.
 	 */
-	refresh(): Promise<TResult> | TResult {
+	refresh(): Promise<TResult> | TResult | undefined {
 		if (this._f & IsUnmounted) {
 			console.error("Component is unmounted");
 			return this._re.read(undefined);
@@ -611,7 +611,7 @@ function stepCtx<TNode, TResult>(
 	// method is a promise if an async generator component has async children.
 	// Sync generator components only resume when their children have fulfilled
 	// so ctx._el._ic (the element’s inflight children) will never be defined.
-	let oldValue: Promise<TResult> | TResult;
+	let oldValue: Promise<TResult | undefined> | TResult | undefined;
 	if (initial) {
 		// The argument passed to the first call to next is ignored.
 		oldValue = undefined as any;
