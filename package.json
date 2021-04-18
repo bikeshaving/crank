@@ -10,6 +10,7 @@
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
+  "unpkg": "dist/umd/umd.js",
   "scripts": {
     "prebuild": "yarn run clean",
     "build": "rollup -c rollup.config.js",
