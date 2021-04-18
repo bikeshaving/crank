@@ -2,106 +2,18 @@
   "name": "@bikeshaving/crank",
   "version": "0.3.9",
   "description": "Write JSX-driven components with functions, promises and generators.",
-  "homepage": "https://crank.js.org",
-  "bugs": {
-    "url": "https://github.com/bikeshaving/crank/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/bikeshaving/crank.git"
-  },
-  "license": "MIT",
+  "sideEffects": false,
   "files": [
-    "crank.js",
-    "dom.js",
-    "index.js",
-    "html.js",
-    "cjs",
-    "dist",
-    "umd",
-    "*.d.ts",
-    "*.js.map"
+    "dist"
   ],
   "type": "module",
-  "exports": {
-    ".": {
-      "import": "./index.js",
-      "require": "./cjs/index.js"
-    },
-    "./cjs": {
-      "require": "./cjs/index.js"
-    },
-    "./cjs/crank": {
-      "require": "./cjs/crank.js"
-    },
-    "./cjs/crank.js": {
-      "require": "./cjs/crank.js"
-    },
-    "./cjs/dom": {
-      "require": "./cjs/dom.js"
-    },
-    "./cjs/dom.js": {
-      "require": "./cjs/dom.js"
-    },
-    "./cjs/html": {
-      "require": "./cjs/html.js"
-    },
-    "./cjs/html.js": {
-      "require": "./cjs/html.js"
-    },
-    "./cjs/index": {
-      "require": "./cjs/index.js"
-    },
-    "./cjs/index.js": {
-      "require": "./cjs/index.js"
-    },
-    "./crank": {
-      "import": "./crank.js",
-      "require": "./cjs/crank.js"
-    },
-    "./crank.js": {
-      "import": "./crank.js",
-      "require": "./cjs/crank.js"
-    },
-    "./dom": {
-      "import": "./dom.js",
-      "require": "./cjs/dom.js"
-    },
-    "./dom.js": {
-      "import": "./dom.js",
-      "require": "./cjs/dom.js"
-    },
-    "./html": {
-      "import": "./html.js",
-      "require": "./cjs/html.js"
-    },
-    "./html.js": {
-      "import": "./html.js",
-      "require": "./cjs/html.js"
-    },
-    "./index": {
-      "import": "./index.js",
-      "require": "./cjs/index.js"
-    },
-    "./index.js": {
-      "import": "./index.js",
-      "require": "./cjs/index.js"
-    },
-    "./package.json": "./package.json",
-    "./umd": {
-      "require": "./umd/index.js"
-    },
-    "./umd/index.js": {
-      "require": "./umd/index.js"
-    }
-  },
-  "main": "cjs/index.js",
-  "module": "index.js",
-  "types": "index.d.ts",
+  "main": "dist/cjs/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/esm/index.d.ts",
   "scripts": {
     "prebuild": "yarn run clean",
     "build": "rollup -c rollup.config.js",
-    "clean": "shx rm -rf cjs dist umd index.js crank.js dom.js html.js *.d.ts *.js.map",
+    "clean": "shx rm -rf dist",
     "debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "prepublishOnly": "yarn run test && yarn run build",
@@ -118,6 +30,87 @@
       "eslint"
     ]
   },
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./cjs": {
+      "require": "./dist/cjs/index.js"
+    },
+    "./cjs/crank": {
+      "require": "./dist/cjs/core/index.js"
+    },
+    "./cjs/crank.js": {
+      "require": "./dist/cjs/core/index.js"
+    },
+    "./cjs/dom": {
+      "require": "./dist/cjs/dom.js"
+    },
+    "./cjs/dom.js": {
+      "require": "./dist/cjs/dom.js"
+    },
+    "./cjs/html": {
+      "require": "./dist/cjs/html.js"
+    },
+    "./cjs/html.js": {
+      "require": "./dist/cjs/html.js"
+    },
+    "./cjs/index": {
+      "require": "./dist/cjs/index.js"
+    },
+    "./cjs/index.js": {
+      "require": "./dist/cjs/index.js"
+    },
+    "./crank": {
+      "import": "./dist/esm/core/index.js",
+      "require": "./dist/cjs/core/index.js"
+    },
+    "./crank.js": {
+      "import": "./dist/esm/core/index.js",
+      "require": "./dist/cjs/core/index.js"
+    },
+    "./dom": {
+      "import": "./dist/esm/dom.js",
+      "require": "./dist/cjs/dom.js"
+    },
+    "./dom.js": {
+      "import": "./dist/esm/dom.js",
+      "require": "./dist/cjs/dom.js"
+    },
+    "./html": {
+      "import": "./dist/esm/html.js",
+      "require": "./dist/cjs/html.js"
+    },
+    "./html.js": {
+      "import": "./dist/esm/html.js",
+      "require": "./dist/cjs/html.js"
+    },
+    "./index": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./index.js": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./package.json": "./package.json",
+    "./umd": {
+      "require": "./dist/umd/index.js"
+    },
+    "./umd/index.js": {
+      "require": "./dist/umd/index.js"
+    }
+  },
+  "homepage": "https://crank.js.org",
+  "bugs": {
+    "url": "https://github.com/bikeshaving/crank/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bikeshaving/crank.git"
+  },
+  "license": "MIT",
   "devDependencies": {
     "@types/jest": "^26.0.19",
     "@typescript-eslint/eslint-plugin": "^4.11.0",

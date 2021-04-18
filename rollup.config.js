@@ -6,6 +6,32 @@ import MagicString from "magic-string";
 import pkg from "./package.json";
 import {transform} from "ts-transform-import-path-rewrite";
 
+const output = (type) => ({
+	format: type,
+	dir: `dist/${type}`,
+	sourcemap: true,
+	name: "Crank",
+	chunkFileNames: "core/index.js",
+});
+
+export default [
+	{
+		input: ["src/index.ts", "src/dom.ts", "src/html.ts"],
+		output: output("esm"),
+		plugins: [ts({clean: true, transformers: [transformer]}), dts()],
+	},
+	{
+		input: ["src/index.ts", "src/dom.ts", "src/html.ts"],
+		output: output("cjs"),
+		plugins: [ts(), cjs()],
+	},
+	{
+		input: "umd.ts",
+		output: output("umd"),
+		plugins: [ts(), cjs()],
+	},
+];
+
 /**
  * A hack to provide package.json files with "type": "commonjs" in cjs/umd subdirectories.
  */
@@ -56,41 +82,13 @@ function dts() {
 function transformer() {
 	const rewritePath = transform({
 		rewrite(importPath) {
-			return importPath + ".js";
+			const relPath = path.join("./src", importPath);
+
+			return fs.existsSync(relPath) && fs.lstatSync(relPath).isDirectory()
+				? importPath + "/index.js"
+				: importPath + ".js";
 		},
 	});
 
 	return {afterDeclarations: [rewritePath]};
 }
-
-export default [
-	{
-		input: ["src/index.ts", "src/crank.ts", "src/dom.ts", "src/html.ts"],
-		output: {
-			format: "esm",
-			dir: "./",
-			sourcemap: true,
-			chunkFileNames: "dist/[hash].js",
-		},
-		plugins: [ts({clean: true, transformers: [transformer]}), dts()],
-	},
-	{
-		input: ["src/index.ts", "src/crank.ts", "src/dom.ts", "src/html.ts"],
-		output: {
-			format: "cjs",
-			dir: "cjs",
-			sourcemap: true,
-		},
-		plugins: [ts(), cjs()],
-	},
-	{
-		input: "umd.ts",
-		output: {
-			format: "umd",
-			dir: "umd",
-			sourcemap: true,
-			name: "Crank",
-		},
-		plugins: [ts(), cjs()],
-	},
-];
