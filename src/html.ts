@@ -1,4 +1,4 @@
-import {Element, ElementValue, Portal, Renderer} from "./crank";
+import {Element, ElementValue, Portal, Renderer} from "./core";
 
 const voidTags = new Set([
 	"area",
