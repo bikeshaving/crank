@@ -40,19 +40,19 @@ function isPromiseLike(value: any): value is PromiseLike<unknown> {
 }
 
 /**
- * A type which represents all valid values that can be the tag of an element.
+ * A type which represents all valid values for an element tag.
  *
  * Elements whose tags are strings or symbols are called “host” or “intrinsic”
  * elements, and their behavior is determined by the renderer, while elements
  * whose tags are functions are called “component” elements, and their
- * behavior is determined by the execution of the component.
+ * behavior is determined by the execution of the component function.
  */
 export type Tag = string | symbol | Component;
 
 /**
  * A helper type to map the tag of an element to its expected props.
  *
- * @template TTag - The element’s tag.
+ * @template TTag - The tag of the element.
  */
 export type TagProps<TTag extends Tag> = TTag extends string
 	? JSX.IntrinsicElements[TTag]
@@ -84,13 +84,13 @@ export type Fragment = typeof Fragment;
 // https://github.com/microsoft/TypeScript/issues/38367
 
 /**
- * A special tag for rendering into a root node passed via a root prop.
+ * A special tag for rendering into a new root node via a root prop.
  *
  * This tag is useful for creating element trees with multiple roots, for
  * things like modals or tooltips.
  *
- * Renderer.prototype.render will implicitly wrap passed in element trees in an
- * implicit Portal element.
+ * Renderer.prototype.render() will implicitly wrap top-level element trees in
+ * a Portal element.
  */
 export const Portal = Symbol.for("crank.Portal") as any;
 export type Portal = typeof Portal;
@@ -101,7 +101,7 @@ export type Portal = typeof Portal;
  *
  * Copy elements are useful for when you want to prevent a subtree from
  * rerendering as a performance optimization. Copy elements can also be keyed,
- * in which case the previously rendered keyed element will be preserved.
+ * in which case the previously rendered keyed element will be copied.
  */
 export const Copy = Symbol.for("crank.Copy") as any;
 export type Copy = typeof Copy;
@@ -110,7 +110,7 @@ export type Copy = typeof Copy;
  * A special tag for injecting raw nodes or strings via a value prop.
  *
  * If the value prop is a string, Renderer.prototype.parse() will be called on
- * the string and the result of that method will be inserted.
+ * the string and the result will be set to the element’s value.
  */
 export const Raw = Symbol.for("crank.Raw") as any;
 export type Raw = typeof Raw;
@@ -119,13 +119,21 @@ export type Raw = typeof Raw;
  * Describes all valid values of an element tree, excluding iterables.
  *
  * Arbitrary objects can also be safely rendered, but will be converted to a
- * string using the toString method. We exclude them from this type to catch
+ * string using the toString() method. We exclude them from this type to catch
  * potential mistakes.
  */
 export type Child = Element | string | number | boolean | null | undefined;
 
-// We use a recursive interface rather than making the Children type directly
-// recursive because recursive type aliases were added in TypeScript 3.7.
+/**
+ * An arbitrarily nested iterable of Child values.
+ *
+ * We use a recursive interface here rather than making the Children type
+ * directly recursive because recursive type aliases were added in TypeScript
+ * 3.7.
+ *
+ * You should avoid referencing this type directly, as it is mainly exported to
+ * prevent TypeScript errors.
+ */
 export interface ChildIterable extends Iterable<Child | ChildIterable> {}
 
 /**
@@ -146,7 +154,7 @@ export type Component<TProps = any> = (
 	| Children
 	| PromiseLike<Children>
 	// The return type of iterators must include void because typescript will
-	// infer generators which returns implicitly as having a void return type.
+	// infer generators which return implicitly as having a void return type.
 	| Iterator<Children, Children | void, any>
 	| AsyncIterator<Children, Children | void, any>;
 
@@ -164,22 +172,22 @@ const ElementSymbol = Symbol.for("crank.Element");
  * element is being reused so that we clone it rather than accidentally
  * overwriting its state.
  *
- * IMPORTANT: Changing this flag value would likely be a breaking changes in terms
- * of interop between elements created by different versions of Crank.
+ * Changing this flag value would likely be a breaking changes in terms of
+ * interop between elements and renderers of different versions of Crank.
  */
 const IsInUse = 1 << 0;
 
 /**
  * A flag which tracks whether the element has previously rendered children,
  * used to clear elements which no longer render children in the next render.
- * We may deprecate this and make elements without explicit children
+ * We may deprecate this behavior and make elements without explicit children
  * uncontrolled.
  */
 const HadChildren = 1 << 1;
 
 // To save on filesize, we mangle the internal properties of Crank classes by
-// hand. These internal properties are prefixed with an underscore. Refer to
-// their definitions to see their unabbreviated names.
+// hand. These internal properties are prefixed with an underscore.
+// Refer to their definitions to see their unabbreviated names.
 
 /**
  * Elements are the basic building blocks of Crank applications. They are
@@ -416,16 +424,23 @@ function narrow(value: Children): NarrowedChild {
  *
  * @template TNode - The node type for the element assigned by the renderer.
  *
- * When asking the question, what is the value of a specific element, the
- * answer varies depending on its tag. For host or Raw elements, the answer is
- * simply the nodes created for the element. For fragments, the values are
- * usually an array of nodes. For portals, the value is undefined, because a
- * Portal element’s root and children are opaque to its parent. For components,
- * the value can be any of the above, because the value of a component is
- * determined by its immediate children. Rendered values can also be strings or
- * arrays of nodes and strings, in the case of component or fragment elements
- * with strings for children. All of these possible values are reflected in
- * this utility type.
+ * When asking the question, what is the “value” of a specific element, the
+ * answer varies depending on the tag:
+ *
+ * For host elements, the value is the nodes created for the element.
+ *
+ * For fragments, the value is usually an array of nodes.
+ *
+ * For portals, the value is undefined, because a Portal element’s root and
+ * children are opaque to its parent.
+ *
+ * For components, the value can be any of the above, because the value of a
+ * component is determined by its immediate children.
+ *
+ * Rendered values can also be strings or arrays of nodes and strings, in the
+ * case of component or fragment elements with strings or multiple children.
+ *
+ * All of these possible values are reflected in this utility type.
  */
 export type ElementValue<TNode> =
 	| Array<TNode | string>
@@ -490,6 +505,7 @@ function normalize<TNode>(
 
 /**
  * Finds the value of the element according to its type.
+ *
  * @returns The value of the element.
  */
 function getValue<TNode>(el: Element): ElementValue<TNode> {
