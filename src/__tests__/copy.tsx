@@ -240,32 +240,6 @@ describe("Copy", () => {
 		expect(document.body.firstChild!.childNodes[6]).toBe(span7);
 	});
 
-	test("copy async function", async () => {
-		async function Component() {
-			await new Promise((resolve) => setTimeout(resolve));
-			return <span>Hello</span>;
-		}
-
-		const p1 = renderer.render(<Component />, document.body);
-		const p2 = renderer.render(<Copy />, document.body);
-		expect(p2).toBeInstanceOf(Promise);
-		expect(await p1).toEqual(await p2);
-	});
-
-	test("copy async generator", async () => {
-		async function* Component(this: Context) {
-			for await (const _ of this) {
-				await new Promise((resolve) => setTimeout(resolve));
-				yield <span>Hello</span>;
-			}
-		}
-
-		const p1 = renderer.render(<Component />, document.body);
-		const p2 = renderer.render(<Copy />, document.body);
-		expect(p2).toBeInstanceOf(Promise);
-		expect(await p1).toEqual(await p2);
-	});
-
 	test("copy async element", async () => {
 		async function Component() {
 			await new Promise((resolve) => setTimeout(resolve));
@@ -281,6 +255,72 @@ describe("Copy", () => {
 		const p2 = renderer.render(<Copy />, document.body);
 		expect(p2).toBeInstanceOf(Promise);
 		expect(await p1).toEqual(await p2);
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+	});
+
+	test("copy async function", async () => {
+		async function Component() {
+			await new Promise((resolve) => setTimeout(resolve));
+			return <span>Hello</span>;
+		}
+
+		const p1 = renderer.render(<Component />, document.body);
+		const p2 = renderer.render(<Copy />, document.body);
+		expect(p2).toBeInstanceOf(Promise);
+		expect(await p1).toEqual(await p2);
+
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("<span>Hello</span>");
+	});
+
+	test("copy async generator", async () => {
+		async function* Component(this: Context) {
+			for await (const _ of this) {
+				await new Promise((resolve) => setTimeout(resolve));
+				yield <span>Hello</span>;
+			}
+		}
+
+		const p1 = renderer.render(<Component />, document.body);
+		const p2 = renderer.render(<Copy />, document.body);
+		expect(p2).toBeInstanceOf(Promise);
+		expect(await p1).toEqual(await p2);
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("<span>Hello</span>");
+	});
+
+	// https://github.com/bikeshaving/crank/issues/196
+	test("copy async generator siblings with refresh", async () => {
+		async function* Component(this: Context) {
+			let i = 0;
+			for await (const _ of this) {
+				await new Promise((resolve) => setTimeout(resolve));
+				yield <span>{i}</span>;
+				i++;
+			}
+		}
+
+		let refresh!: () => unknown;
+		function* Parent(this: Context) {
+			refresh = this.refresh.bind(this);
+			let i = 1;
+			for (const _ of this) {
+				const children = Array.from({length: i}, (_, j) =>
+					i === j + 1 ? <Component /> : <Copy />,
+				);
+
+				yield <div>{children}</div>;
+				i++;
+			}
+		}
+
+		await renderer.render(<Parent />, document.body);
+		expect(document.body.innerHTML).toEqual("<div><span>0</span></div>");
+		await refresh();
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>0</span><span>0</span></div>",
+		);
 	});
 
 	test("refs", () => {
