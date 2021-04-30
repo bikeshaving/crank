@@ -1,5 +1,8 @@
 # Changelog
-## [0.3.9] - 2020-03-05
+## [0.3.10] - 2021-04-30
+### Fixed
+- Fixed Copy elements of async generator components causing parents to hang (#197).
+## [0.3.9] - 2021-03-05
 ### Fixed
 - Fixed style strings being incorrectly rendered by the HTMLRenderer (#191).
 ## [0.3.8] - 2020-12-27
