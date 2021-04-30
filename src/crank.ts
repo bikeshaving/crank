@@ -520,12 +520,22 @@ function getValue<TNode>(el: Element): ElementValue<TNode> {
 	return unwrap(getChildValues<TNode>(el));
 }
 
+/**
+ * This function is only used to make sure <Copy /> elements wait for the
+ * current run of async elements, but it’s somewhat complex so I put it here.
+ */
 function getInflightValue<TNode>(
 	el: Element,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	return (
-		(typeof el.tag === "function" && el._n._iv) || el._ic || getValue<TNode>(el)
-	);
+	const ctx: Context | undefined =
+		typeof el.tag === "function" ? el._n : undefined;
+	if (ctx && ctx._f & IsUpdating && ctx._iv) {
+		return ctx._iv; // inflightValue
+	} else if (el._ic) {
+		return el._ic; // inflightChildren
+	}
+
+	return getValue<TNode>(el);
 }
 
 /**
@@ -1044,12 +1054,11 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 			el._ov(values1);
 		}
 
-		el._ic = values1.then((values) =>
-			commit(renderer, scope, el, normalize(values)),
-		);
-
 		el._ov = onvalues;
-		return el._ic;
+		const children = (el._ic = values1.then((values) =>
+			commit(renderer, scope, el, normalize(values)),
+		));
+		return children;
 	}
 
 	if (graveyard) {
@@ -1157,6 +1166,7 @@ function unmount<TNode, TScope, TRoot, TResult>(
 	}
 }
 
+// TODO: Now that we have element flags again, we should probably merge these flags.
 /*** CONTEXT FLAGS ***/
 /**
  * A flag which is set when the component is being updated by the parent and
@@ -1213,8 +1223,8 @@ const IsAsyncGen = 1 << 7;
 export interface Context extends Crank.Context {}
 
 /**
- * An interface which can be extended to provide strongly typed provisions (see
- * Context.prototype.consume and Context.prototype.provide)
+ * An interface which can be extended to provide strongly typed provisions.
+ * See Context.prototype.consume and Context.prototype.provide.
  */
 export interface ProvisionMap extends Crank.ProvisionMap {}
 
