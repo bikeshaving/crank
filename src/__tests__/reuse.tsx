@@ -84,4 +84,24 @@ describe("element reuse", () => {
 		);
 		expect(fn).toHaveBeenCalledTimes(2);
 	});
+
+	test("toggle reused element", () => {
+		function* Component() {
+			let toggle = true;
+			const el = <span>1</span>;
+			while (true) {
+				yield toggle ? el : <span>2</span>;
+				toggle = !toggle;
+			}
+		}
+
+		renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<span>1</span>");
+		renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<span>2</span>");
+		renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<span>1</span>");
+		renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<span>2</span>");
+	});
 });
