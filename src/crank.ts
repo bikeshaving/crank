@@ -1835,7 +1835,6 @@ function stepCtx<TNode, TResult>(
 	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 	try {
 		value = updateCtxChildren<TNode, TResult>(ctx, iteration.value as Children);
-
 		if (isPromiseLike(value)) {
 			value = value.catch((err) => handleChildError(ctx, err));
 		}
@@ -1862,7 +1861,7 @@ function advanceCtx(ctx: Context): void {
 	ctx._iv = ctx._ev;
 	ctx._eb = undefined;
 	ctx._ev = undefined;
-	if (ctx._f & IsAsyncGen && !(ctx._f & IsDone)) {
+	if (ctx._f & IsAsyncGen && !(ctx._f & IsDone) && !(ctx._f & IsUnmounted)) {
 		runCtx(ctx);
 	}
 }
@@ -1962,6 +1961,14 @@ function updateCtxChildren<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
 	children: Children,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+	if (ctx._f & IsUnmounted) {
+		return;
+	} else if (children === undefined) {
+		console.error(
+			"A component has returned or yielded undefined. If this was intentional, return or yield null instead.",
+		);
+	}
+
 	return updateChildren<TNode, unknown, unknown, TResult>(
 		ctx._re as Renderer<TNode, unknown, unknown, TResult>,
 		ctx._rt,
@@ -2208,7 +2215,6 @@ function clearEventListeners(ctx: Context): void {
 }
 
 /*** ERROR HANDLING UTILITIES ***/
-
 // TODO: generator components which throw errors should be recoverable
 function handleChildError<TNode>(
 	ctx: Context,
