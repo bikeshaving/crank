@@ -101,13 +101,15 @@ describe("events", () => {
 
 	test("delegation with unmounting children", () => {
 		let ctx!: Context;
-		function* Component(this: Context): Generator<Element> {
+		function* Component(this: Context): Generator<Element | null> {
 			ctx = this;
 			yield (
 				<div>
 					<button>Click me</button>
 				</div>
 			);
+
+			yield null;
 		}
 
 		renderer.render(<Component />, document.body);

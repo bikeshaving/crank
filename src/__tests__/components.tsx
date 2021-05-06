@@ -93,6 +93,7 @@ describe("sync function component", () => {
 		let ctx!: Context;
 		function Component(this: Context) {
 			ctx = this;
+			return null;
 		}
 
 		renderer.render(<Component />, document.body);
@@ -498,6 +499,7 @@ describe("sync generator component", () => {
 			yield <span>1</span>;
 			yield <div>2</div>;
 			yield <span>3</span>;
+			yield null;
 		}
 
 		renderer.render(
@@ -525,6 +527,7 @@ describe("sync generator component", () => {
 			yield <span>Hello</span>;
 			yield <div>Hello</div>;
 			yield <span>Hello</span>;
+			yield null;
 		}
 
 		renderer.render(
