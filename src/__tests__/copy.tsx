@@ -301,9 +301,9 @@ describe("Copy", () => {
 			}
 		}
 
-		let refresh!: () => unknown;
+		let ctx!: Context;
 		function* Parent(this: Context) {
-			refresh = this.refresh.bind(this);
+			ctx = this;
 			let i = 1;
 			for (const _ of this) {
 				const children = Array.from({length: i}, (_, j) =>
@@ -317,7 +317,11 @@ describe("Copy", () => {
 
 		await renderer.render(<Parent />, document.body);
 		expect(document.body.innerHTML).toEqual("<div><span>0</span></div>");
-		await refresh();
+		await ctx.refresh();
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>0</span><span>0</span></div>",
+		);
+		await new Promise((resolve) => setTimeout(resolve, 100));
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>0</span><span>0</span></div>",
 		);
