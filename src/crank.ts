@@ -174,6 +174,8 @@ const ElementSymbol = Symbol.for("crank.Element");
  *
  * Changing this flag value would likely be a breaking changes in terms of
  * interop between elements and renderers of different versions of Crank.
+ *
+ * TODO: Consider deleting this flag because we’re not using it anymore.
  */
 const IsInUse = 1 << 0;
 
@@ -966,12 +968,9 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 			}
 
 			// TODO: implement Raw element parse caching
-			if (oldChild !== newChild) {
-				oldChild.props = newChild.props;
-				oldChild.ref = newChild.ref;
-				newChild = oldChild;
-			}
-
+			oldChild.props = newChild.props;
+			oldChild.ref = newChild.ref;
+			newChild = oldChild;
 			value = update(renderer, root, host, ctx, scope, newChild);
 		} else if (typeof newChild === "object") {
 			if (newChild.tag === Copy) {
@@ -989,10 +988,12 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 
 				newChild = oldChild;
 			} else {
-				if (newChild._f & IsInUse) {
-					newChild = cloneElement(newChild);
-				}
-
+				newChild = new Element(
+					newChild.tag,
+					newChild.props,
+					newChild.key,
+					newChild.ref,
+				);
 				value = mount(renderer, root, host, ctx, scope, newChild);
 				if (isPromiseLike(value)) {
 					newChild._fb = oldChild;
