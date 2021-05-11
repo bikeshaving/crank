@@ -1221,6 +1221,16 @@ const IsSyncGen = 1 << 6;
  */
 const IsAsyncGen = 1 << 7;
 
+/**
+ * A flag which is set while schedule callbacks are called.
+ */
+const IsScheduling = 1 << 8;
+
+/**
+ * A flag which is set when a schedule callback calls refresh.
+ */
+const IsSchedulingRefresh = 1 << 9;
+
 export interface Context extends Crank.Context {}
 
 /**
@@ -1984,7 +1994,10 @@ function commitCtx<TNode>(
 		}
 	}
 
-	if (!(ctx._f & IsUpdating)) {
+	if (ctx._f & IsScheduling) {
+		ctx._f |= IsSchedulingRefresh;
+	} else if (!(ctx._f & IsUpdating)) {
+		// Rearrange the host.
 		const listeners = getListeners(ctx._pa, ctx._ho);
 		if (listeners.length) {
 			for (let i = 0; i < values.length; i++) {
@@ -2019,21 +2032,33 @@ function commitCtx<TNode>(
 		ctx._re.complete(ctx._rt);
 	}
 
-	ctx._f &= ~IsUpdating;
-	const value = unwrap(values);
+	let value = unwrap(values);
 	const callbacks = scheduleMap.get(ctx);
 	if (callbacks && callbacks.size) {
+		const callbacks1 = Array.from(callbacks);
 		// We must clear the set of callbacks before calling them, because a
 		// callback which refreshes the component would otherwise cause a stack
 		// overflow.
-		const callbacks1 = Array.from(callbacks);
 		callbacks.clear();
 		const value1 = ctx._re.read(value);
+		ctx._f |= IsScheduling;
 		for (const callback of callbacks1) {
-			callback(value1);
+			try {
+				callback(value1);
+			} catch (err) {
+				// TODO: handle schedule callback errors in a better way.
+				console.error(err);
+			}
+		}
+
+		ctx._f &= ~IsScheduling;
+		if (ctx._f & IsSchedulingRefresh) {
+			ctx._f &= ~IsSchedulingRefresh;
+			value = getValue(ctx._el);
 		}
 	}
 
+	ctx._f &= ~IsUpdating;
 	return value;
 }
 
@@ -2043,12 +2068,17 @@ function unmountCtx(ctx: Context): void {
 	clearEventListeners(ctx);
 	const callbacks = cleanupMap.get(ctx);
 	if (callbacks && callbacks.size) {
-		const value = ctx._re.read(getValue(ctx._el));
-		for (const cleanup of callbacks) {
-			cleanup(value);
-		}
-
+		const callbacks1 = Array.from(callbacks);
 		callbacks.clear();
+		const value = ctx._re.read(getValue(ctx._el));
+		for (const callback of callbacks1) {
+			try {
+				callback(value);
+			} catch (err) {
+				// TODO: handle cleanup callback errors in a better way.
+				console.error(err);
+			}
+		}
 	}
 
 	if (!(ctx._f & IsDone)) {
