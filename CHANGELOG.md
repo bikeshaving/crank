@@ -1,4 +1,9 @@
 # Changelog
+## [0.3.11] - 2021-05-11
+### Fixed
+- Crank will now always create new elements for internal nodes to prevent subtle aliasing bugs (#198).
+- Fixed an edge case where a scheduled refresh failed to update the component when the produced child was a component (#199).
+- Optimized multiple components scheduling a refresh synchronously (#155).
 ## [0.3.10] - 2021-04-30
 ### Fixed
 - Fixed Copy elements of async generator components causing parents to hang (#197).
@@ -6,7 +11,8 @@
 ### Fixed
 - Fixed style strings being incorrectly rendered by the HTMLRenderer (#191).
 ## [0.3.8] - 2020-12-27
-Various performance improvements.
+### Fixed
+- Various performance improvements.
 ### Changed
 - `create()` and `patch()` calls have been moved to a pre-order traversal of the tree.
 - The DOM renderer now checks properties and attributes before mutating them.
