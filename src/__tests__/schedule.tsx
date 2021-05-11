@@ -605,4 +605,20 @@ describe("schedule", () => {
 		await p;
 		expect(fn).toHaveBeenCalledTimes(0);
 	});
+
+	// https://github.com/bikeshaving/crank/issues/199
+	test("refresh with component", () => {
+		function Component({children}: {children: Children}) {
+			return <p>{children}</p>;
+		}
+
+		function* Parent(this: Context) {
+			this.schedule(() => this.refresh());
+			yield <p>Render 1</p>;
+			yield <Component>Render 2</Component>;
+		}
+
+		renderer.render(<Parent />, document.body);
+		expect(document.body.innerHTML).toEqual("<p>Render 2</p>");
+	});
 });
