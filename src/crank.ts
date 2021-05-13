@@ -2231,6 +2231,7 @@ function handleChildError<TNode>(
 		iteration = ctx._it.throw(err);
 	} catch (err) {
 		ctx._f |= IsDone;
+		ctx._f |= IsUnmounted;
 		throw err;
 	} finally {
 		ctx._f &= ~IsExecuting;
@@ -2247,6 +2248,7 @@ function handleChildError<TNode>(
 			},
 			(err) => {
 				ctx._f |= IsDone;
+				ctx._f |= IsUnmounted;
 				throw err;
 			},
 		);
