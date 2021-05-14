@@ -1200,36 +1200,47 @@ const IsAvailable = 1 << 3;
 
 /**
  * A flag which is set when a generator components returns, i.e. the done
- * property on the generator is set to true or throws. Done components will
- * stick to their last rendered value and ignore further updates.
+ * property on the iteration is set to true. Generator components will stick to
+ * their last rendered value and ignore further updates.
  */
 const IsDone = 1 << 4;
+
+/**
+ * A flag which is set when a generator component errors.
+ *
+ * NOTE: This is mainly used to prevent some false positives in component
+ * yields or returns undefined warnings. The reason we’re using this versus
+ * IsUnmounted is a very troubling jest test (cascades sync generator parent
+ * and sync generator child) where synchronous code causes a stack overflow
+ * error in a non-deterministic way. Deeply disturbing stuff.
+ */
+const IsErrored = 1 << 5;
 
 /**
  * A flag which is set when the component is unmounted. Unmounted components
  * are no longer in the element tree and cannot refresh or rerender.
  */
-const IsUnmounted = 1 << 5;
+const IsUnmounted = 1 << 6;
 
 /**
  * A flag which indicates that the component is a sync generator component.
  */
-const IsSyncGen = 1 << 6;
+const IsSyncGen = 1 << 7;
 
 /**
  * A flag which indicates that the component is an async generator component.
  */
-const IsAsyncGen = 1 << 7;
+const IsAsyncGen = 1 << 8;
 
 /**
  * A flag which is set while schedule callbacks are called.
  */
-const IsScheduling = 1 << 8;
+const IsScheduling = 1 << 9;
 
 /**
  * A flag which is set when a schedule callback calls refresh.
  */
-const IsSchedulingRefresh = 1 << 9;
+const IsSchedulingRefresh = 1 << 10;
 
 export interface Context extends Crank.Context {}
 
@@ -1961,7 +1972,7 @@ function updateCtxChildren<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
 	children: Children,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (ctx._f & IsUnmounted) {
+	if (ctx._f & IsUnmounted || ctx._f & IsErrored) {
 		return;
 	} else if (children === undefined) {
 		console.error(
@@ -2230,8 +2241,7 @@ function handleChildError<TNode>(
 		ctx._f |= IsExecuting;
 		iteration = ctx._it.throw(err);
 	} catch (err) {
-		ctx._f |= IsDone;
-		ctx._f |= IsUnmounted;
+		ctx._f |= IsDone | IsErrored;
 		throw err;
 	} finally {
 		ctx._f &= ~IsExecuting;
@@ -2247,8 +2257,7 @@ function handleChildError<TNode>(
 				return updateCtxChildren(ctx, iteration.value as Children);
 			},
 			(err) => {
-				ctx._f |= IsDone;
-				ctx._f |= IsUnmounted;
+				ctx._f |= IsDone | IsErrored;
 				throw err;
 			},
 		);
