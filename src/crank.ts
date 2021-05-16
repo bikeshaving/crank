@@ -1754,14 +1754,21 @@ function stepCtx<TNode, TResult>(
 				// async function component
 				const result1 =
 					result instanceof Promise ? result : Promise.resolve(result);
-				const value = result1.then((result) =>
-					updateCtxChildren<TNode, TResult>(ctx, result),
+				const value = result1.then(
+					(result) => updateCtxChildren<TNode, TResult>(ctx, result),
+					(err) => {
+						ctx._f |= IsErrored;
+						throw err;
+					},
 				) as Promise<ElementValue<TNode>>;
 				return [result1, value];
 			} else {
 				// sync function component
 				return [undefined, updateCtxChildren<TNode, TResult>(ctx, result)];
 			}
+		} catch (err) {
+			ctx._f |= IsErrored;
+			throw err;
 		} finally {
 			ctx._f &= ~IsExecuting;
 		}
