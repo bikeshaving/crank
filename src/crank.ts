@@ -1637,6 +1637,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		// Each early return within the try block returns true because while the
 		// return value is overridden in the finally block, TypeScript
 		// (justifiably) does not recognize the unsafe return statement.
+		//
+		// TODO: Run all callbacks even if one of them errors
 		try {
 			setEventProperty(ev, "eventPhase", CAPTURING_PHASE);
 			for (let i = path.length - 1; i >= 0; i--) {
@@ -1744,33 +1746,35 @@ function stepCtx<TNode, TResult>(
 
 	const initial = !ctx._it;
 	if (initial) {
+		ctx._f |= IsExecuting;
+		clearEventListeners(ctx);
+		let result: ReturnType<Component>;
 		try {
-			ctx._f |= IsExecuting;
-			clearEventListeners(ctx);
-			const result = el.tag.call(ctx, el.props);
-			if (isIteratorLike(result)) {
-				ctx._it = result;
-			} else if (isPromiseLike(result)) {
-				// async function component
-				const result1 =
-					result instanceof Promise ? result : Promise.resolve(result);
-				const value = result1.then(
-					(result) => updateCtxChildren<TNode, TResult>(ctx, result),
-					(err) => {
-						ctx._f |= IsErrored;
-						throw err;
-					},
-				) as Promise<ElementValue<TNode>>;
-				return [result1, value];
-			} else {
-				// sync function component
-				return [undefined, updateCtxChildren<TNode, TResult>(ctx, result)];
-			}
+			result = el.tag.call(ctx, el.props);
 		} catch (err) {
 			ctx._f |= IsErrored;
 			throw err;
 		} finally {
 			ctx._f &= ~IsExecuting;
+		}
+
+		if (isIteratorLike(result)) {
+			ctx._it = result;
+		} else if (isPromiseLike(result)) {
+			// async function component
+			const result1 =
+				result instanceof Promise ? result : Promise.resolve(result);
+			const value = result1.then(
+				(result) => updateCtxChildren<TNode, TResult>(ctx, result),
+				(err) => {
+					ctx._f |= IsErrored;
+					throw err;
+				},
+			) as Promise<ElementValue<TNode>>;
+			return [result1, value];
+		} else {
+			// sync function component
+			return [undefined, updateCtxChildren<TNode, TResult>(ctx, result)];
 		}
 	}
 
@@ -1788,12 +1792,12 @@ function stepCtx<TNode, TResult>(
 		oldValue = ctx._re.read(getValue(el));
 	}
 
+	ctx._f |= IsExecuting;
 	let iteration: ChildrenIteration;
 	try {
-		ctx._f |= IsExecuting;
 		iteration = ctx._it!.next(oldValue);
 	} catch (err) {
-		ctx._f |= IsDone;
+		ctx._f |= IsDone | IsErrored;
 		throw err;
 	} finally {
 		ctx._f &= ~IsExecuting;
@@ -1832,7 +1836,7 @@ function stepCtx<TNode, TResult>(
 				}
 			},
 			(err) => {
-				ctx._f |= IsDone;
+				ctx._f |= IsDone | IsErrored;
 				throw err;
 			},
 		);
@@ -2110,8 +2114,8 @@ function unmountCtx(ctx: Context): void {
 		ctx._f |= IsDone;
 		resumeCtx(ctx);
 		if (ctx._it && typeof ctx._it.return === "function") {
+			ctx._f |= IsExecuting;
 			try {
-				ctx._f |= IsExecuting;
 				const iteration = ctx._it.return();
 				if (isPromiseLike(iteration)) {
 					iteration.catch((err) => propagateError<unknown>(ctx._pa, err));
