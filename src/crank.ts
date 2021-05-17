@@ -792,7 +792,6 @@ export class Renderer<
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
-
 function mount<TNode, TScope, TRoot, TResult>(
 	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
@@ -964,7 +963,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 				oldChild.props.root !== newChild.props.root
 			) {
 				renderer.arrange(oldChild as Element<Portal>, oldChild.props.root, []);
-				renderer.complete(oldChild.props.root);
+				complete(renderer, oldChild.props.root);
 			}
 
 			// TODO: implement Raw element parse caching
@@ -1112,7 +1111,7 @@ function commit<TNode, TScope, TRoot, TResult>(
 	} else {
 		if (el.tag === Portal) {
 			renderer.arrange(el as Element<Portal>, el.props.root, values);
-			renderer.complete(el.props.root);
+			complete(renderer, el.props.root);
 		} else {
 			renderer.arrange(el as Element<string | symbol>, el._n, values);
 		}
@@ -1132,6 +1131,20 @@ function commit<TNode, TScope, TRoot, TResult>(
 	return value;
 }
 
+function complete<TRoot>(renderer: Renderer<unknown, TRoot>, root: TRoot) {
+	renderer.complete(root);
+	const callbacksMap = completeMap.get(renderer);
+	if (callbacksMap) {
+		completeMap.delete(renderer);
+		for (const [ctx, callbacks] of callbacksMap) {
+			const value = renderer.read(getValue(ctx._el));
+			for (const callback of callbacks) {
+				callback(value);
+			}
+		}
+	}
+}
+
 function unmount<TNode, TScope, TRoot, TResult>(
 	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	host: Element<string | symbol>,
@@ -1144,7 +1157,7 @@ function unmount<TNode, TScope, TRoot, TResult>(
 	} else if (el.tag === Portal) {
 		host = el as Element<symbol>;
 		renderer.arrange(host, host.props.root, []);
-		renderer.complete(host.props.root);
+		complete(renderer, host.props.root);
 	} else if (el.tag !== Fragment) {
 		if (isEventTarget(el._n)) {
 			const listeners = getListeners(ctx, host);
@@ -1255,6 +1268,11 @@ const provisionMaps = new WeakMap<Context, Map<unknown, unknown>>();
 const scheduleMap = new WeakMap<Context, Set<Function>>();
 
 const cleanupMap = new WeakMap<Context, Set<Function>>();
+
+const completeMap = new WeakMap<
+	Renderer<any, any>,
+	Map<Context, Set<Function>>
+>();
 
 /**
  * A class which is instantiated and passed to every component as its this
@@ -1479,6 +1497,26 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		if (!callbacks) {
 			callbacks = new Set<Function>();
 			scheduleMap.set(this, callbacks);
+		}
+
+		callbacks.add(callback);
+	}
+
+	/**
+	 * Registers a callback which fires when the component’s children are
+	 * rendered. Will only fire once per callback and update.
+	 */
+	complete(callback: (value: TResult) => unknown): void {
+		let callbackMap = completeMap.get(this._re);
+		if (!callbackMap) {
+			callbackMap = new Map<Context, Set<Function>>();
+			completeMap.set(this._re, callbackMap);
+		}
+
+		let callbacks = callbackMap.get(this);
+		if (!callbacks) {
+			callbacks = new Set<Function>();
+			callbackMap.set(this, callbacks);
 		}
 
 		callbacks.add(callback);
@@ -2046,41 +2084,32 @@ function commitCtx<TNode>(
 
 		const host = ctx._ho;
 		const hostValues = getChildValues(host);
-		ctx._re.arrange(
-			host,
-			host.tag === Portal ? host.props.root : host._n,
-			hostValues,
-		);
-
 		if (hostValues.length) {
 			host._f |= HadChildren;
 		} else {
 			host._f &= ~HadChildren;
 		}
 
-		ctx._re.complete(ctx._rt);
+		ctx._re.arrange(
+			host,
+			host.tag === Portal ? host.props.root : host._n,
+			hostValues,
+		);
+		complete(ctx._re, ctx._rt);
 	}
 
 	let value = unwrap(values);
 	const callbacks = scheduleMap.get(ctx);
-	if (callbacks && callbacks.size) {
-		const callbacks1 = Array.from(callbacks);
-		// We must clear the set of callbacks before calling them, because a
-		// callback which refreshes the component would otherwise cause a stack
-		// overflow.
-		callbacks.clear();
-		const value1 = ctx._re.read(value);
+	if (callbacks) {
+		scheduleMap.delete(ctx);
 		ctx._f |= IsScheduling;
-		for (const callback of callbacks1) {
-			try {
-				callback(value1);
-			} catch (err) {
-				// TODO: handle schedule callback errors in a better way.
-				console.error(err);
-			}
+		const value1 = ctx._re.read(value);
+		for (const callback of callbacks) {
+			callback(value1);
 		}
 
 		ctx._f &= ~IsScheduling;
+		// Handles an edge case where refresh() is called during a schedule().
 		if (ctx._f & IsSchedulingRefresh) {
 			ctx._f &= ~IsSchedulingRefresh;
 			value = getValue(ctx._el);
@@ -2096,17 +2125,11 @@ function unmountCtx(ctx: Context): void {
 	ctx._f |= IsUnmounted;
 	clearEventListeners(ctx);
 	const callbacks = cleanupMap.get(ctx);
-	if (callbacks && callbacks.size) {
-		const callbacks1 = Array.from(callbacks);
-		callbacks.clear();
+	if (callbacks) {
+		cleanupMap.delete(ctx);
 		const value = ctx._re.read(getValue(ctx._el));
-		for (const callback of callbacks1) {
-			try {
-				callback(value);
-			} catch (err) {
-				// TODO: handle cleanup callback errors in a better way.
-				console.error(err);
-			}
+		for (const callback of callbacks) {
+			callback(value);
 		}
 	}
 
