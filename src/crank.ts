@@ -319,11 +319,11 @@ export class Element<TTag extends Tag = Tag> {
 		this.props = props;
 		this.key = key;
 		this.ref = ref;
-		this._ch = undefined;
-		this._n = undefined;
-		this._fb = undefined;
-		this._ic = undefined;
-		this._ov = undefined;
+		this._ch = undefined; // children
+		this._n = undefined; // node
+		this._fb = undefined; // fallback
+		this._ic = undefined; // inflightChildren
+		this._ov = undefined; // onValue
 	}
 
 	get hadChildren(): boolean {
@@ -1396,12 +1396,12 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		this._pa = parent;
 		this._sc = scope;
 		this._el = el;
-		this._it = undefined;
-		this._oa = undefined;
-		this._ib = undefined;
-		this._iv = undefined;
-		this._eb = undefined;
-		this._ev = undefined;
+		this._it = undefined; // iterator
+		this._oa = undefined; // onavailable
+		this._ib = undefined; // inflightBlock
+		this._iv = undefined; // inflightValue
+		this._eb = undefined; // enqueuedBlock
+		this._ev = undefined; // enqueuedValue
 	}
 
 	/**
