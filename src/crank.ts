@@ -1133,9 +1133,13 @@ function commit<TNode, TScope, TRoot, TResult>(
 
 function complete<TRoot>(renderer: Renderer<unknown, TRoot>, root: TRoot) {
 	renderer.complete(root);
-	const callbacksMap = completeMap.get(renderer);
+	if (typeof root !== "object" || root === null) {
+		return;
+	}
+
+	const callbacksMap = completeMap.get((root as unknown) as object);
 	if (callbacksMap) {
-		completeMap.delete(renderer);
+		completeMap.delete((root as unknown) as object);
 		for (const [ctx, callbacks] of callbacksMap) {
 			const value = renderer.read(getValue(ctx._el));
 			for (const callback of callbacks) {
@@ -1270,7 +1274,7 @@ const scheduleMap = new WeakMap<Context, Set<Function>>();
 const cleanupMap = new WeakMap<Context, Set<Function>>();
 
 const completeMap = new WeakMap<
-	Renderer<any, any>,
+	object, // TRoot
 	Map<Context, Set<Function>>
 >();
 
@@ -1507,10 +1511,14 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * rendered. Will only fire once per callback and update.
 	 */
 	complete(callback: (value: TResult) => unknown): void {
-		let callbackMap = completeMap.get(this._re);
+		if (typeof this._rt !== "object" || this._rt === null) {
+			return;
+		}
+
+		let callbackMap = completeMap.get(this._rt);
 		if (!callbackMap) {
 			callbackMap = new Map<Context, Set<Function>>();
-			completeMap.set(this._re, callbackMap);
+			completeMap.set(this._rt, callbackMap);
 		}
 
 		let callbacks = callbackMap.get(this);
