@@ -2,7 +2,7 @@
 import {createElement, Context, Element} from "../index";
 import {renderer} from "../dom";
 
-describe("complete", () => {
+describe("flush", () => {
 	afterEach(() => {
 		renderer.render(null, document.body);
 		document.body.innerHTML = "";
@@ -14,7 +14,7 @@ describe("complete", () => {
 			fn(document.body.contains(el));
 		};
 		function Component(this: Context): Element {
-			this.complete(callback);
+			this.flush(callback);
 			return <span>Hello</span>;
 		}
 
@@ -29,7 +29,7 @@ describe("complete", () => {
 		const fn = jest.fn();
 		function Component(this: Context): Element {
 			if (i === 0) {
-				this.complete(fn);
+				this.flush(fn);
 			}
 
 			return <span>{i++}</span>;
@@ -61,7 +61,7 @@ describe("complete", () => {
 		let i = 0;
 		const fn = jest.fn();
 		function Component(this: Context): Element {
-			this.complete(fn);
+			this.flush(fn);
 			return <span>{i++}</span>;
 		}
 
@@ -92,7 +92,7 @@ describe("complete", () => {
 		let i = 0;
 		const fn = jest.fn();
 		function* Component(this: Context): Generator<Element> {
-			this.complete(fn);
+			this.flush(fn);
 			for (const _ of this) {
 				yield <span>{i++}</span>;
 			}
@@ -126,7 +126,7 @@ describe("complete", () => {
 		const fn = jest.fn();
 		function* Component(this: Context): Generator<Element> {
 			for (const _ of this) {
-				this.complete(fn);
+				this.flush(fn);
 				yield <span>{i++}</span>;
 			}
 		}
@@ -159,7 +159,7 @@ describe("complete", () => {
 		const fn = jest.fn();
 		async function Component(this: Context) {
 			if (i === 0) {
-				this.complete(fn);
+				this.flush(fn);
 			}
 
 			return <span>{i++}</span>;
@@ -191,7 +191,7 @@ describe("complete", () => {
 		let i = 0;
 		const fn = jest.fn();
 		async function Component(this: Context) {
-			this.complete(fn);
+			this.flush(fn);
 			return <span>{i++}</span>;
 		}
 
@@ -222,7 +222,7 @@ describe("complete", () => {
 		let i = 0;
 		const fn = jest.fn();
 		async function* Component(this: Context) {
-			this.complete(fn);
+			this.flush(fn);
 			for await (const _ of this) {
 				yield <span>{i++}</span>;
 			}
@@ -256,7 +256,7 @@ describe("complete", () => {
 		const fn = jest.fn();
 		async function* Component(this: Context) {
 			for await (const _ of this) {
-				this.complete(fn);
+				this.flush(fn);
 				yield <span>{i++}</span>;
 			}
 		}
