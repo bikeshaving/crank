@@ -786,7 +786,7 @@ export class Renderer<
 	 *
 	 * @returns The return value is ignored.
 	 */
-	complete(_root: TRoot): unknown {
+	flush(_root: TRoot): unknown {
 		return;
 	}
 }
@@ -1132,14 +1132,15 @@ function commit<TNode, TScope, TRoot, TResult>(
 }
 
 function complete<TRoot>(renderer: Renderer<unknown, TRoot>, root: TRoot) {
-	renderer.complete(root);
+	renderer.flush(root);
 	if (typeof root !== "object" || root === null) {
 		return;
 	}
 
-	const callbacksMap = completeMap.get((root as unknown) as object);
+	// TODO: Delete assertion when TypeScript fixes narrowing of type parameters
+	const callbacksMap = flushMap.get(root as unknown as object);
 	if (callbacksMap) {
-		completeMap.delete((root as unknown) as object);
+		flushMap.delete(root as unknown as object);
 		for (const [ctx, callbacks] of callbacksMap) {
 			const value = renderer.read(getValue(ctx._el));
 			for (const callback of callbacks) {
@@ -1273,7 +1274,7 @@ const scheduleMap = new WeakMap<Context, Set<Function>>();
 
 const cleanupMap = new WeakMap<Context, Set<Function>>();
 
-const completeMap = new WeakMap<
+const flushMap = new WeakMap<
 	object, // TRoot
 	Map<Context, Set<Function>>
 >();
@@ -1508,17 +1509,17 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	/**
 	 * Registers a callback which fires when the component’s children are
-	 * rendered. Will only fire once per callback and update.
+	 * rendered into the root. Will only fire once per callback and update.
 	 */
-	complete(callback: (value: TResult) => unknown): void {
+	flush(callback: (value: TResult) => unknown): void {
 		if (typeof this._rt !== "object" || this._rt === null) {
 			return;
 		}
 
-		let callbackMap = completeMap.get(this._rt);
+		let callbackMap = flushMap.get(this._rt);
 		if (!callbackMap) {
 			callbackMap = new Map<Context, Set<Function>>();
-			completeMap.set(this._rt, callbackMap);
+			flushMap.set(this._rt, callbackMap);
 		}
 
 		let callbacks = callbackMap.get(this);
