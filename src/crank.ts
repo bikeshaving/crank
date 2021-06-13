@@ -224,18 +224,18 @@ export class Element<TTag extends Tag = Tag> {
 	 * This property is defined on the element prototype rather than per
 	 * instance, because it is the same for every Element.
 	 */
-	$$typeof!: typeof ElementSymbol;
+	declare $$typeof: typeof ElementSymbol;
 
 	/**
 	 * The tag of the element. Can be a string, symbol or function.
 	 */
-	tag: TTag;
+	declare tag: TTag;
 
 	/**
 	 * An object containing the “properties” of an element. These correspond to
 	 * the attribute syntax from JSX.
 	 */
-	props: TagProps<TTag>;
+	declare props: TagProps<TTag>;
 
 	/**
 	 * A value which uniquely identifies an element from its siblings so that it
@@ -243,26 +243,26 @@ export class Element<TTag extends Tag = Tag> {
 	 *
 	 * Passed in createElement() as the prop "crank-key".
 	 */
-	key: Key;
+	declare key: Key;
 
 	/**
 	 * A callback which is called with the element’s result when it is committed.
 	 *
 	 * Passed in createElement() as the prop "crank-ref".
 	 */
-	ref: ((value: unknown) => unknown) | undefined;
+	declare ref: ((value: unknown) => unknown) | undefined;
 
 	/**
 	 * @internal
 	 * flags - A bitmask. See ELEMENT FLAGS.
 	 */
-	_f: number;
+	declare _f: number;
 
 	/**
 	 * @internal
 	 * children - The rendered children of the element.
 	 */
-	_ch: Array<NarrowedChild> | NarrowedChild;
+	declare _ch: Array<NarrowedChild> | NarrowedChild;
 
 	/**
 	 * @internal
@@ -279,7 +279,7 @@ export class Element<TTag extends Tag = Tag> {
 	 * exclusive. We use any because the Element type has no knowledge of
 	 * renderer nodes.
 	 */
-	_n: any;
+	declare _n: any;
 
 	/**
 	 * @internal
@@ -289,7 +289,7 @@ export class Element<TTag extends Tag = Tag> {
 	 * values in its place until it has committed for the first time. This
 	 * property is set to the previously rendered child.
 	 */
-	_fb: NarrowedChild;
+	declare _fb: NarrowedChild;
 
 	/**
 	 * @internal
@@ -299,14 +299,14 @@ export class Element<TTag extends Tag = Tag> {
 	 * time, and is also used to create yield values for async generator
 	 * components with async children. It is unset when the element is committed.
 	 */
-	_ic: Promise<any> | undefined;
+	declare _ic: Promise<any> | undefined;
 
 	/**
 	 * @internal
 	 * onvalue(s) - This property is set to the resolve function of a promise
 	 * which represents the next children, so that renderings can be raced.
 	 */
-	_ov: Function | undefined;
+	declare _ov: Function | undefined;
 
 	constructor(
 		tag: TTag,
@@ -573,13 +573,13 @@ export class Renderer<
 	TNode,
 	TScope,
 	TRoot = TNode,
-	TResult = ElementValue<TNode>
+	TResult = ElementValue<TNode>,
 > {
 	/**
 	 * @internal
 	 * A weakmap which stores element trees by root.
 	 */
-	_cache: WeakMap<object, Element<Portal>>;
+	declare _cache: WeakMap<object, Element<Portal>>;
 	constructor() {
 		this._cache = new WeakMap();
 	}
@@ -622,7 +622,7 @@ export class Renderer<
 
 			portal.props = {children, root};
 			if (typeof root === "object" && root !== null && children == null) {
-				this._cache.delete((root as unknown) as object);
+				this._cache.delete(root as unknown as object);
 			}
 		}
 
@@ -664,7 +664,7 @@ export class Renderer<
 	 * strings.
 	 */
 	read(value: ElementValue<TNode>): TResult {
-		return (value as unknown) as TResult;
+		return value as unknown as TResult;
 	}
 
 	/**

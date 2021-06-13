@@ -1057,7 +1057,7 @@ describe("async generator component", () => {
 		async function* Component(this: Context) {
 			let i = 0;
 			for await (const _ of this) {
-				const node: any = yield <div id={i}>{i}</div>;
+				const node: HTMLElement = yield <div id={i}>{i}</div>;
 				html = node.outerHTML;
 				i++;
 			}
@@ -1092,7 +1092,7 @@ describe("async generator component", () => {
 		async function* Component(this: Context) {
 			let i = 0;
 			for await (const _ of this) {
-				const node: any = yield <Async id={i} />;
+				const node: Promise<HTMLElement> = yield <Async id={i} />;
 				html = node.then((node: HTMLElement) => node.outerHTML);
 				await node;
 				i++;
