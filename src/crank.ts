@@ -677,31 +677,11 @@ export class Renderer<
 		return value as unknown as TResult;
 	}
 
-	/**
-	 * Called in a preorder traversal for each host element.
-	 *
-	 * Useful for passing data down the element tree. For instance, the DOM
-	 * renderer uses this method to keep track of whether we’re in an SVG
-	 * subtree.
-	 *
-	 * @param el - The host element.
-	 * @param scope - The current scope.
-	 *
-	 * @returns The scope to be passed to create and scope for child host
-	 * elements.
-	 *
-	 * This method sets the scope for child host elements, not the current host
-	 * element.
-	 */
-	scope(_el: Element<string | symbol>, scope: TScope | undefined): TScope {
-		return scope as TScope;
-	}
-
-	scope1<TTag extends HostTag>(
+	scope<TTag extends HostTag>(
 		_tag: TTag,
 		_props: TagProps<TTag>,
 		scope: TScope | undefined,
-	): TScope {
+	): TScope | undefined {
 		return scope as TScope;
 	}
 
@@ -742,14 +722,14 @@ export class Renderer<
 	 *
 	 * @returns A “node” which determines the value of the host element.
 	 */
-	create(_el: Element<string | symbol>, _scope: TScope): TNode {
+	create(_el: Element<string | symbol>, _scope: TScope | undefined): TNode {
 		throw new Error("Not implemented");
 	}
 
 	create1<TTag extends Tag>(
 		_tag: TTag,
 		_props: TagProps<TTag>,
-		_scope: TScope,
+		_scope: TScope | undefined,
 	): TNode {
 		throw new Error("Not implemented");
 	}
@@ -774,7 +754,7 @@ export class Renderer<
 		_tag: TTag,
 		_props: TagProps<TTag>,
 		_oldProps: TagProps<TTag> | undefined,
-		_scope: TScope,
+		_scope: TScope | undefined,
 	): unknown {
 		return;
 	}
@@ -807,7 +787,7 @@ export class Renderer<
 		_children: Array<TNode | string>,
 		_oldProps: TagProps<TTag> | undefined,
 		_oldChildren: Array<TNode | string> | undefined,
-		_scope: TScope,
+		_scope: TScope | undefined,
 	): unknown {
 		return;
 	}
@@ -829,7 +809,7 @@ export class Renderer<
 		_tag: TTag,
 		_props: TagProps<TTag>,
 		_children: Array<TNode | string>,
-		_scope: TScope,
+		_scope: TScope | undefined,
 	): unknown {
 		return;
 	}
@@ -852,7 +832,7 @@ function mount<TNode, TScope, TRoot, TResult>(
 	root: TRoot,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
-	scope: TScope,
+	scope: TScope | undefined,
 	el: Element,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	el._f |= IsInUse;
@@ -878,7 +858,7 @@ function mount<TNode, TScope, TRoot, TResult>(
 		}
 
 		host = el as Element<string | symbol>;
-		scope = renderer.scope(host, scope);
+		scope = renderer.scope(host.tag, host.props, scope);
 	}
 
 	return updateChildren(
@@ -897,7 +877,7 @@ function update<TNode, TScope, TRoot, TResult>(
 	root: TRoot,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
-	scope: TScope,
+	scope: TScope | undefined,
 	el: Element,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (typeof el.tag === "function") {
@@ -912,7 +892,7 @@ function update<TNode, TScope, TRoot, TResult>(
 		}
 
 		host = el as Element<string | symbol>;
-		scope = renderer.scope(host, scope);
+		scope = renderer.scope(host.tag, host.props, scope);
 	}
 
 	return updateChildren(
