@@ -191,6 +191,48 @@ const HadChildren = 1 << 1;
 // hand. These internal properties are prefixed with an underscore.
 // Refer to their definitions to see their unabbreviated names.
 
+export interface Element<TTag extends Tag = Tag> {
+	// To maximize compatibility between Crank versions, starting with 0.2.0, any
+	// changes to the following properties will be considered a breaking change:
+	// $$typeof, tag, props, key, ref, _f
+	/**
+	 * @internal
+	 * A unique symbol to identify elements as elements across versions and
+	 * realms, and to protect against basic injection attacks.
+	 * https://overreacted.io/why-do-react-elements-have-typeof-property/
+	 *
+	 * This property is defined on the element prototype rather than per
+	 * instance, because it is the same for every Element.
+	 */
+	$$typeof: typeof ElementSymbol;
+
+	/**
+	 * The tag of the element. Can be a string, symbol or function.
+	 */
+	tag: TTag;
+
+	/**
+	 * An object containing the “properties” of an element. These correspond to
+	 * the attribute syntax from JSX.
+	 */
+	props: TagProps<TTag>;
+
+	/**
+	 * A value which uniquely identifies an element from its siblings so that it
+	 * can be added/updated/moved/removed by key rather than position.
+	 *
+	 * Passed in createElement() as the prop "crank-key".
+	 */
+	key: Key;
+
+	/**
+	 * A callback which is called with the element’s result when it is committed.
+	 *
+	 * Passed in createElement() as the prop "crank-ref".
+	 */
+	ref: ((value: unknown) => unknown) | undefined;
+}
+
 /**
  * Elements are the basic building blocks of Crank applications. They are
  * JavaScript objects which are interpreted by special classes called renderers
@@ -212,46 +254,6 @@ const HadChildren = 1 << 1;
  * rather than instatiating this class directly.
  */
 export class Element<TTag extends Tag = Tag> {
-	// To maximize compatibility between Crank versions, starting with 0.2.0, any
-	// changes to the following properties will be considered a breaking change:
-	// $$typeof, tag, props, key, ref, _f
-	/**
-	 * @internal
-	 * A unique symbol to identify elements as elements across versions and
-	 * realms, and to protect against basic injection attacks.
-	 * https://overreacted.io/why-do-react-elements-have-typeof-property/
-	 *
-	 * This property is defined on the element prototype rather than per
-	 * instance, because it is the same for every Element.
-	 */
-	declare $$typeof: typeof ElementSymbol;
-
-	/**
-	 * The tag of the element. Can be a string, symbol or function.
-	 */
-	declare tag: TTag;
-
-	/**
-	 * An object containing the “properties” of an element. These correspond to
-	 * the attribute syntax from JSX.
-	 */
-	declare props: TagProps<TTag>;
-
-	/**
-	 * A value which uniquely identifies an element from its siblings so that it
-	 * can be added/updated/moved/removed by key rather than position.
-	 *
-	 * Passed in createElement() as the prop "crank-key".
-	 */
-	declare key: Key;
-
-	/**
-	 * A callback which is called with the element’s result when it is committed.
-	 *
-	 * Passed in createElement() as the prop "crank-ref".
-	 */
-	declare ref: ((value: unknown) => unknown) | undefined;
-
 	/**
 	 * @internal
 	 * flags - A bitmask. See ELEMENT FLAGS.
@@ -1296,19 +1298,19 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * @internal
 	 * flags - A bitmask. See CONTEXT FLAGS above.
 	 */
-	_f: number;
+	declare _f: number;
 
 	/**
 	 * @internal
 	 * renderer - The renderer which created this context.
 	 */
-	_re: Renderer<unknown, unknown, unknown, TResult>;
+	declare _re: Renderer<unknown, unknown, unknown, TResult>;
 
 	/**
 	 * @internal
 	 * root - The root node as set by the nearest ancestor portal.
 	 */
-	_rt: unknown;
+	declare _rt: unknown;
 
 	/**
 	 * @internal
@@ -1318,31 +1320,31 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * of the commit, to make sure the parent’s children properly reflects the
 	 * components’s children.
 	 */
-	_ho: Element<string | symbol>;
+	declare _ho: Element<string | symbol>;
 
 	/**
 	 * @internal
 	 * parent - The parent context.
 	 */
-	_pa: Context<unknown, TResult> | undefined;
+	declare _pa: Context<unknown, TResult> | undefined;
 
 	/**
 	 * @internal
 	 * scope - The value of the scope at the point of element’s creation.
 	 */
-	_sc: unknown;
+	declare _sc: unknown;
 
 	/**
 	 * @internal
 	 * el - The associated component element.
 	 */
-	_el: Element<Component>;
+	declare _el: Element<Component>;
 
 	/**
 	 * @internal
 	 * iterator - The iterator returned by the component function.
 	 */
-	_it:
+	declare _it:
 		| Iterator<Children, Children | void, unknown>
 		| AsyncIterator<Children, Children | void, unknown>
 		| undefined;
@@ -1354,7 +1356,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * implement the props async iterator. See the Symbol.asyncIterator method
 	 * and the resumeCtx function.
 	 */
-	_oa: Function | undefined;
+	declare _oa: Function | undefined;
 
 	// See the stepCtx/advanceCtx/runCtx functions for more notes on the
 	// inflight/enqueued block/value properties.
@@ -1362,25 +1364,25 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * @internal
 	 * inflightBlock
 	 */
-	_ib: Promise<unknown> | undefined;
+	declare _ib: Promise<unknown> | undefined;
 
 	/**
 	 * @internal
 	 * inflightValue
 	 */
-	_iv: Promise<ElementValue<any>> | undefined;
+	declare _iv: Promise<ElementValue<any>> | undefined;
 
 	/**
 	 * @internal
 	 * enqueuedBlock
 	 */
-	_eb: Promise<unknown> | undefined;
+	declare _eb: Promise<unknown> | undefined;
 
 	/**
 	 * @internal
 	 * enqueuedValue
 	 */
-	_ev: Promise<ElementValue<any>> | undefined;
+	declare _ev: Promise<ElementValue<any>> | undefined;
 
 	/**
 	 * @internal
