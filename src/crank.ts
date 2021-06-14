@@ -1138,10 +1138,10 @@ function complete<TRoot>(renderer: Renderer<unknown, TRoot>, root: TRoot) {
 	}
 
 	// TODO: Delete assertion when TypeScript fixes narrowing of type parameters
-	const callbacksMap = flushMap.get(root as unknown as object);
-	if (callbacksMap) {
-		flushMap.delete(root as unknown as object);
-		for (const [ctx, callbacks] of callbacksMap) {
+	const flushMap = rootMap.get(root as unknown as object);
+	if (flushMap) {
+		rootMap.delete(root as unknown as object);
+		for (const [ctx, callbacks] of flushMap) {
 			const value = renderer.read(getValue(ctx._el));
 			for (const callback of callbacks) {
 				callback(value);
@@ -1274,7 +1274,7 @@ const scheduleMap = new WeakMap<Context, Set<Function>>();
 
 const cleanupMap = new WeakMap<Context, Set<Function>>();
 
-const flushMap = new WeakMap<
+const rootMap = new WeakMap<
 	object, // TRoot
 	Map<Context, Set<Function>>
 >();
@@ -1509,23 +1509,23 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	/**
 	 * Registers a callback which fires when the component’s children are
-	 * rendered into the root. Will only fire once per callback and update.
+	 * rendered into the root. Will only fire once per callback and render.
 	 */
 	flush(callback: (value: TResult) => unknown): void {
 		if (typeof this._rt !== "object" || this._rt === null) {
 			return;
 		}
 
-		let callbackMap = flushMap.get(this._rt);
-		if (!callbackMap) {
-			callbackMap = new Map<Context, Set<Function>>();
-			flushMap.set(this._rt, callbackMap);
+		let flushMap = rootMap.get(this._rt);
+		if (!flushMap) {
+			flushMap = new Map<Context, Set<Function>>();
+			rootMap.set(this._rt, flushMap);
 		}
 
-		let callbacks = callbackMap.get(this);
+		let callbacks = flushMap.get(this);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
-			callbackMap.set(this, callbacks);
+			flushMap.set(this, callbacks);
 		}
 
 		callbacks.add(callback);
