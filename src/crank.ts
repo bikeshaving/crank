@@ -619,6 +619,7 @@ export class Renderer<
 			portal = this._cache.get(root as any);
 		}
 
+		let oldProps: any;
 		if (portal === undefined) {
 			portal = createElement(Portal, {children, root});
 			portal._n = ctx;
@@ -630,13 +631,14 @@ export class Renderer<
 				throw new Error("Context mismatch");
 			}
 
+			oldProps = portal.props;
 			portal.props = {children, root};
 			if (typeof root === "object" && root !== null && children == null) {
 				this._cache.delete(root as unknown as object);
 			}
 		}
 
-		const value = update(this, root, portal, ctx, undefined, portal);
+		const value = update(this, root, portal, ctx, undefined, portal, oldProps);
 		// We return the child values of the portal because portal elements
 		// themselves have no readable value.
 		if (isPromiseLike(value)) {
@@ -722,22 +724,7 @@ export class Renderer<
 		throw new Error("Not implemented");
 	}
 
-	/**
-	 * Called for each host element when it is committed.
-	 *
-	 * @param el - The host element.
-	 * @param node - The node associated with the host element.
-	 *
-	 * @returns The return value is ignored.
-	 *
-	 * Used to mutate the node associated with an element when new props are
-	 * passed.
-	 */
-	patch(_el: Element<string | symbol>, _node: TNode): unknown {
-		return;
-	}
-
-	patch1<TTag extends HostTag>(
+	patch<TTag extends HostTag>(
 		_node: TNode,
 		_tag: TTag,
 		_props: TagProps<TTag>,
@@ -842,7 +829,7 @@ function mount<TNode, TScope, TRoot, TResult>(
 			root = el.props.root;
 		} else {
 			el._n = renderer.create(el.tag, el.props, scope);
-			renderer.patch(el as Element<string | symbol>, el._n);
+			renderer.patch(el._n, el.tag, el.props, undefined, scope);
 		}
 
 		host = el as Element<string | symbol>;
@@ -867,6 +854,8 @@ function update<TNode, TScope, TRoot, TResult>(
 	ctx: Context<unknown, TResult> | undefined,
 	scope: TScope | undefined,
 	el: Element,
+	// FIXME
+	oldProps: any,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (typeof el.tag === "function") {
 		return updateCtx(el._n);
@@ -876,7 +865,7 @@ function update<TNode, TScope, TRoot, TResult>(
 		if (el.tag === Portal) {
 			root = el.props.root;
 		} else {
-			renderer.patch(el as Element<string | symbol>, el._n);
+			renderer.patch(el._n, el.tag, el.props, oldProps, scope);
 		}
 
 		host = el as Element<string | symbol>;
@@ -990,10 +979,11 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 			}
 
 			// TODO: implement Raw element parse caching
+			const oldProps = oldChild.props;
 			oldChild.props = newChild.props;
 			oldChild.ref = newChild.ref;
 			newChild = oldChild;
-			value = update(renderer, root, host, ctx, scope, newChild);
+			value = update(renderer, root, host, ctx, scope, newChild, oldProps);
 		} else if (typeof newChild === "object") {
 			if (newChild.tag === Copy) {
 				value =

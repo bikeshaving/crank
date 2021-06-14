@@ -58,7 +58,7 @@ export class DOMRenderer extends Renderer<Node, string> {
 		}
 	}
 
-	create(tag: string | symbol, props: unknown, ns: string | undefined): Node {
+	create(tag: string | symbol, _props: unknown, ns: string | undefined): Node {
 		if (typeof tag !== "string") {
 			throw new Error(`Unknown tag: ${tag.toString()}`);
 		} else if (tag === "svg") {
@@ -68,11 +68,15 @@ export class DOMRenderer extends Renderer<Node, string> {
 		return ns ? document.createElementNS(ns, tag) : document.createElement(tag);
 	}
 
-	patch(el: CrankElement<string | symbol>, node: Element): void {
+	patch(
+		node: Element,
+		_tag: string | symbol,
+		props: Record<string, any>,
+	): void {
 		const isSVG = node.namespaceURI === SVG_NAMESPACE;
-		for (let name in el.props) {
+		for (let name in props) {
 			let forceAttribute = false;
-			const value = el.props[name];
+			const value = props[name];
 			switch (name) {
 				case "children":
 					break;
