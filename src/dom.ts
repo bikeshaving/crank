@@ -9,7 +9,7 @@ import {
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
-export class DOMRenderer extends Renderer<Node, string | undefined> {
+export class DOMRenderer extends Renderer<Node, string> {
 	render(
 		children: Children,
 		root: Node,
@@ -42,10 +42,12 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 	}
 
 	scope(
-		el: CrankElement<string | symbol>,
-		scope: string | undefined,
+		tag: string | symbol,
+		_props: unknown,
+		scope: string,
 	): string | undefined {
-		switch (el.tag) {
+		// TODO: Should we handle xmlns?
+		switch (tag) {
 			case Portal:
 			case "foreignObject":
 				return undefined;
