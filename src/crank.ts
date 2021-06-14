@@ -40,14 +40,19 @@ function isPromiseLike(value: any): value is PromiseLike<unknown> {
 }
 
 /**
- * A type which represents all valid values for an element tag.
+ * A type which represents valid values for host elements.
  *
  * Elements whose tags are strings or symbols are called “host” or “intrinsic”
  * elements, and their behavior is determined by the renderer, while elements
  * whose tags are functions are called “component” elements, and their
  * behavior is determined by the execution of the component function.
  */
-export type Tag = string | symbol | Component;
+export type HostTag = string | symbol;
+
+/**
+ * A type which represents all valid values for an element tag.
+ */
+export type Tag = HostTag | Component;
 
 /**
  * A helper type to map the tag of an element to its expected props.
@@ -167,6 +172,7 @@ type Key = unknown;
 const ElementSymbol = Symbol.for("crank.Element");
 
 /*** ELEMENT FLAGS ***/
+// TODO: remove these flags
 /**
  * A flag which is set when the element is mounted, used to detect whether an
  * element is being reused so that we clone it rather than accidentally
@@ -254,6 +260,7 @@ export interface Element<TTag extends Tag = Tag> {
  * rather than instatiating this class directly.
  */
 export class Element<TTag extends Tag = Tag> {
+	// TODO: Remove this property?
 	/**
 	 * @internal
 	 * flags - A bitmask. See ELEMENT FLAGS.
@@ -328,6 +335,7 @@ export class Element<TTag extends Tag = Tag> {
 		this._ov = undefined; // onValue
 	}
 
+	// TODO: remove this method
 	get hadChildren(): boolean {
 		return (this._f & HadChildren) !== 0;
 	}
@@ -689,6 +697,14 @@ export class Renderer<
 		return scope as TScope;
 	}
 
+	scope1<TTag extends HostTag>(
+		_tag: TTag,
+		_props: TagProps<TTag>,
+		scope: TScope | undefined,
+	): TScope {
+		return scope as TScope;
+	}
+
 	/**
 	 * Called for each string in an element tree.
 	 *
@@ -730,6 +746,14 @@ export class Renderer<
 		throw new Error("Not implemented");
 	}
 
+	create1<TTag extends Tag>(
+		_tag: TTag,
+		_props: TagProps<TTag>,
+		_scope: TScope,
+	): TNode {
+		throw new Error("Not implemented");
+	}
+
 	/**
 	 * Called for each host element when it is committed.
 	 *
@@ -742,6 +766,16 @@ export class Renderer<
 	 * passed.
 	 */
 	patch(_el: Element<string | symbol>, _node: TNode): unknown {
+		return;
+	}
+
+	patch1<TTag extends Tag>(
+		_node: TNode,
+		_tag: TTag,
+		_props: TagProps<TTag>,
+		_oldProps: TagProps<TTag> | undefined,
+		_scope: TScope,
+	): unknown {
 		return;
 	}
 
@@ -766,11 +800,20 @@ export class Renderer<
 		return;
 	}
 
-	// TODO: remove(): a method which is called to remove a child from a parent
-	// to optimize arrange
+	arrange1<TTag extends Tag>(
+		_node: TNode,
+		_tag: TTag,
+		_props: TagProps<TTag>,
+		_children: Array<TNode | string>,
+		_oldProps: TagProps<TTag> | undefined,
+		_oldChildren: Array<TNode | string> | undefined,
+		_scope: TScope,
+	): unknown {
+		return;
+	}
 
 	/**
-	 * Called for each host element when it is unmounted.
+	 * Called for each host element when it is removed from the tree.
 	 *
 	 * @param el - The host element.
 	 * @param node - The node associated with the host element.
@@ -778,6 +821,16 @@ export class Renderer<
 	 * @returns The return value is ignored.
 	 */
 	dispose(_el: Element<string | symbol>, _node: TNode): unknown {
+		return;
+	}
+
+	dispose1<TTag extends Tag>(
+		_node: TNode,
+		_tag: TTag,
+		_props: TagProps<TTag>,
+		_children: Array<TNode | string>,
+		_scope: TScope,
+	): unknown {
 		return;
 	}
 
