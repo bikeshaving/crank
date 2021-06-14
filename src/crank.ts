@@ -677,14 +677,6 @@ export class Renderer<
 		return value as unknown as TResult;
 	}
 
-	scope<TTag extends HostTag>(
-		_tag: TTag,
-		_props: TagProps<TTag>,
-		scope: TScope | undefined,
-	): TScope | undefined {
-		return scope as TScope;
-	}
-
 	/**
 	 * Called for each string in an element tree.
 	 *
@@ -714,19 +706,15 @@ export class Renderer<
 		return text;
 	}
 
-	/**
-	 * Called for each host element when it is committed for the first time.
-	 *
-	 * @param el - The host element.
-	 * @param scope - The current scope.
-	 *
-	 * @returns A “node” which determines the value of the host element.
-	 */
-	create(_el: Element<string | symbol>, _scope: TScope | undefined): TNode {
-		throw new Error("Not implemented");
+	scope<TTag extends HostTag>(
+		_tag: TTag,
+		_props: TagProps<TTag>,
+		scope: TScope | undefined,
+	): TScope | undefined {
+		return scope as TScope;
 	}
 
-	create1<TTag extends Tag>(
+	create<TTag extends HostTag>(
 		_tag: TTag,
 		_props: TagProps<TTag>,
 		_scope: TScope | undefined,
@@ -749,7 +737,7 @@ export class Renderer<
 		return;
 	}
 
-	patch1<TTag extends Tag>(
+	patch1<TTag extends HostTag>(
 		_node: TNode,
 		_tag: TTag,
 		_props: TagProps<TTag>,
@@ -780,7 +768,7 @@ export class Renderer<
 		return;
 	}
 
-	arrange1<TTag extends Tag>(
+	arrange1<TTag extends HostTag>(
 		_node: TNode,
 		_tag: TTag,
 		_props: TagProps<TTag>,
@@ -804,7 +792,7 @@ export class Renderer<
 		return;
 	}
 
-	dispose1<TTag extends Tag>(
+	dispose1<TTag extends HostTag>(
 		_node: TNode,
 		_tag: TTag,
 		_props: TagProps<TTag>,
@@ -853,7 +841,7 @@ function mount<TNode, TScope, TRoot, TResult>(
 		if (el.tag === Portal) {
 			root = el.props.root;
 		} else {
-			el._n = renderer.create(el as Element<string | symbol>, scope);
+			el._n = renderer.create(el.tag, el.props, scope);
 			renderer.patch(el as Element<string | symbol>, el._n);
 		}
 

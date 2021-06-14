@@ -58,16 +58,14 @@ export class DOMRenderer extends Renderer<Node, string> {
 		}
 	}
 
-	create(el: CrankElement<string | symbol>, ns: string | undefined): Node {
-		if (typeof el.tag !== "string") {
-			throw new Error(`Unknown tag: ${el.tag.toString()}`);
-		} else if (el.tag === "svg") {
+	create(tag: string | symbol, props: unknown, ns: string | undefined): Node {
+		if (typeof tag !== "string") {
+			throw new Error(`Unknown tag: ${tag.toString()}`);
+		} else if (tag === "svg") {
 			ns = SVG_NAMESPACE;
 		}
 
-		return ns
-			? document.createElementNS(ns, el.tag)
-			: document.createElement(el.tag);
+		return ns ? document.createElementNS(ns, tag) : document.createElement(tag);
 	}
 
 	patch(el: CrankElement<string | symbol>, node: Element): void {
