@@ -22,7 +22,7 @@ function arrayify<T>(
 	return value == null
 		? []
 		: Array.isArray(value)
-		? (value as any)
+		? value
 		: typeof value === "string" ||
 		  typeof (value as any)[Symbol.iterator] !== "function"
 		? [value]
@@ -40,19 +40,9 @@ function isPromiseLike(value: any): value is PromiseLike<unknown> {
 }
 
 /**
- * A type which represents valid values for host elements.
- *
- * Elements whose tags are strings or symbols are called “host” or “intrinsic”
- * elements, and their behavior is determined by the renderer, while elements
- * whose tags are functions are called “component” elements, and their
- * behavior is determined by the execution of the component function.
- */
-export type HostTag = string | symbol;
-
-/**
  * A type which represents all valid values for an element tag.
  */
-export type Tag = HostTag | Component;
+export type Tag = string | symbol | Component;
 
 /**
  * A helper type to map the tag of an element to its expected props.
@@ -269,12 +259,6 @@ export class Element<TTag extends Tag = Tag> {
 
 	/**
 	 * @internal
-	 * children - The rendered children of the element.
-	 */
-	declare _ch: Array<NarrowedChild> | NarrowedChild;
-
-	/**
-	 * @internal
 	 * node - The node or context associated with the element.
 	 *
 	 * For host elements, this property is set to the return value of
@@ -286,9 +270,15 @@ export class Element<TTag extends Tag = Tag> {
 	 *
 	 * We assign both of these to the same property because they are mutually
 	 * exclusive. We use any because the Element type has no knowledge of
-	 * renderer nodes.
+	 * what renderer nodes will be.
 	 */
 	declare _n: any;
+
+	/**
+	 * @internal
+	 * children - The rendered children of the element.
+	 */
+	declare _ch: Array<NarrowedChild> | NarrowedChild;
 
 	/**
 	 * @internal
@@ -302,7 +292,7 @@ export class Element<TTag extends Tag = Tag> {
 
 	/**
 	 * @internal
-	 * inflightChildren - The current async run of the element’s children.
+	 * inflightChildValues - The current async run of the element’s child values.
 	 *
 	 * This property is used to make sure Copy element refs fire at the correct
 	 * time, and is also used to create yield values for async generator
@@ -314,6 +304,9 @@ export class Element<TTag extends Tag = Tag> {
 	 * @internal
 	 * onvalue(s) - This property is set to the resolve function of a promise
 	 * which represents the next children, so that renderings can be raced.
+	 *
+	 * We use Function because the Element type has no knowledge of what renderer
+	 * nodes will be.
 	 */
 	declare _ov: Function | undefined;
 
@@ -323,13 +316,13 @@ export class Element<TTag extends Tag = Tag> {
 		key: Key,
 		ref: ((value: unknown) => unknown) | undefined,
 	) {
-		this._f = 0;
 		this.tag = tag;
 		this.props = props;
 		this.key = key;
 		this.ref = ref;
-		this._ch = undefined; // children
+		this._f = 0;
 		this._n = undefined; // node
+		this._ch = undefined; // children
 		this._fb = undefined; // fallback
 		this._ic = undefined; // inflightChildren
 		this._ov = undefined; // onValue
@@ -533,8 +526,9 @@ function getValue<TNode>(el: Element): ElementValue<TNode> {
 }
 
 /**
- * This function is only used to make sure <Copy /> elements wait for the
- * current run of async elements, but it’s somewhat complex so I put it here.
+ * This function is only really used to make sure <Copy /> elements wait for
+ * the current async run before resolving, but it’s somewhat complex so I put
+ * it here.
  */
 function getInflightValue<TNode>(
 	el: Element,
@@ -544,7 +538,7 @@ function getInflightValue<TNode>(
 	if (ctx && ctx._f & IsUpdating && ctx._iv) {
 		return ctx._iv; // inflightValue
 	} else if (el._ic) {
-		return el._ic; // inflightChildren
+		return el._ic; // inflightChildValues
 	}
 
 	return getValue<TNode>(el);
@@ -708,7 +702,7 @@ export class Renderer<
 		return text;
 	}
 
-	scope<TTag extends HostTag>(
+	scope<TTag extends string | symbol>(
 		_tag: TTag,
 		_props: TagProps<TTag>,
 		scope: TScope | undefined,
@@ -716,7 +710,7 @@ export class Renderer<
 		return scope as TScope;
 	}
 
-	create<TTag extends HostTag>(
+	create<TTag extends string | symbol>(
 		_tag: TTag,
 		_props: TagProps<TTag>,
 		_scope: TScope | undefined,
@@ -724,7 +718,7 @@ export class Renderer<
 		throw new Error("Not implemented");
 	}
 
-	patch<TTag extends HostTag>(
+	patch<TTag extends string | symbol>(
 		_node: TNode,
 		_tag: TTag,
 		_props: TagProps<TTag>,
@@ -734,7 +728,6 @@ export class Renderer<
 		return;
 	}
 
-	// TODO: pass hints into arrange about where the dirty children start and end
 	/**
 	 * Called for each host element so that elements can be arranged into a tree.
 	 *
@@ -755,7 +748,7 @@ export class Renderer<
 		return;
 	}
 
-	arrange1<TTag extends HostTag>(
+	arrange1<TTag extends string | symbol>(
 		_node: TNode,
 		_tag: TTag,
 		_props: TagProps<TTag>,
@@ -779,7 +772,7 @@ export class Renderer<
 		return;
 	}
 
-	dispose1<TTag extends HostTag>(
+	dispose1<TTag extends string | symbol>(
 		_node: TNode,
 		_tag: TTag,
 		_props: TagProps<TTag>,
@@ -885,9 +878,10 @@ function update<TNode, TScope, TRoot, TResult>(
 
 function createChildrenByKey(
 	children: Array<NarrowedChild>,
+	offset: number,
 ): Map<Key, Element> {
 	const childrenByKey = new Map<Key, Element>();
-	for (let i = 0; i < children.length; i++) {
+	for (let i = offset; i < children.length; i++) {
 		const child = children[i];
 		if (typeof child === "object" && typeof child.key !== "undefined") {
 			childrenByKey.set(child.key, child);
@@ -908,7 +902,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	const oldChildren = wrap(el._ch);
 	const newChildren = arrayify(children);
-	const newChildren1: Array<NarrowedChild> = [];
+	const narrowedNewChildren: Array<NarrowedChild> = [];
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
 	let graveyard: Array<Element> | undefined;
 	let seenKeys: Set<Key> | undefined;
@@ -938,7 +932,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 			i++;
 		} else {
 			if (!childrenByKey) {
-				childrenByKey = createChildrenByKey(oldChildren.slice(i));
+				childrenByKey = createChildrenByKey(oldChildren, i);
 			}
 
 			if (newKey === undefined) {
@@ -1015,9 +1009,10 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 			newChild = value = renderer.escape(newChild, scope);
 		}
 
-		newChildren1[j] = newChild;
+		narrowedNewChildren[j] = newChild;
 		values[j] = value;
 		isAsync = isAsync || isPromiseLike(value);
+		// TODO: Can we shoehorn this logic into the previous branch?
 		if (typeof oldChild === "object" && oldChild !== newChild) {
 			if (!graveyard) {
 				graveyard = [];
@@ -1027,29 +1022,25 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		}
 	}
 
-	el._ch = unwrap(newChildren1);
 	// cleanup
 	for (; i < oldChildren.length; i++) {
 		const oldChild = oldChildren[i];
 		if (typeof oldChild === "object" && typeof oldChild.key === "undefined") {
-			if (!graveyard) {
-				graveyard = [];
-			}
-
+			graveyard = graveyard || [];
 			graveyard.push(oldChild);
 		}
 	}
 
 	if (childrenByKey !== undefined && childrenByKey.size > 0) {
-		if (!graveyard) {
-			graveyard = [];
-		}
-
+		graveyard = graveyard || [];
 		graveyard.push(...childrenByKey.values());
 	}
 
+	// committing
+	el._ch = unwrap(narrowedNewChildren);
 	if (isAsync) {
 		let values1 = Promise.all(values).finally(() => {
+			// cleanup
 			if (graveyard) {
 				for (let i = 0; i < graveyard.length; i++) {
 					unmount(renderer, host, ctx, graveyard[i]);
@@ -1068,10 +1059,9 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		}
 
 		el._ov = onvalues;
-		const children = (el._ic = values1.then((values) =>
+		return (el._ic = values1.then((values) =>
 			commit(renderer, scope, el, normalize(values)),
 		));
-		return children;
 	}
 
 	if (graveyard) {
@@ -1089,6 +1079,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		renderer,
 		scope,
 		el,
+		// If isAsync is false we can assume there are no promises in the array.
 		normalize(values as Array<ElementValue<TNode>>),
 	);
 }
@@ -1103,7 +1094,7 @@ function commit<TNode, TScope, TRoot, TResult>(
 		el._ic = undefined;
 	}
 
-	// Need to handle (_fb) fallback being the empty string.
+	// We use typeof because we need to handle fallback being the empty string.
 	if (typeof el._fb !== "undefined") {
 		el._fb = undefined;
 	}
@@ -1838,22 +1829,23 @@ function stepCtx<TNode, TResult>(
 		}
 	}
 
-	// The value passed back into the generator as the argument to the next
-	// method is a promise if an async generator component has async children.
-	// Sync generator components only resume when their children have fulfilled
-	// so ctx._el._ic (the element’s inflight children) will never be defined.
 	let oldValue: Promise<TResult> | TResult;
 	if (initial) {
 		// The argument passed to the first call to next is ignored.
 		oldValue = undefined as any;
 	} else if (ctx._el._ic) {
+		// The value passed back into the generator as the argument to the next
+		// method is a promise if an async generator component has async children.
+		// Sync generator components only resume when their children have fulfilled
+		// so ctx._el._ic (the element’s inflight child values) will never be
+		// defined.
 		oldValue = ctx._el._ic.then(ctx._re.read, () => ctx._re.read(undefined));
 	} else {
 		oldValue = ctx._re.read(getValue(el));
 	}
 
-	ctx._f |= IsExecuting;
 	let iteration: ChildrenIteration;
+	ctx._f |= IsExecuting;
 	try {
 		iteration = ctx._it!.next(oldValue);
 	} catch (err) {
