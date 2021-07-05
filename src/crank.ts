@@ -280,6 +280,13 @@ export class Element<TTag extends Tag = Tag> {
 	 */
 	declare _ch: Array<NarrowedChild> | NarrowedChild;
 
+	// TODO: This type is meaningless.
+	/**
+	 * @internal
+	 * childValues - The rendered child values of the element.
+	 */
+	declare _cv: ElementValue<unknown>;
+
 	/**
 	 * @internal
 	 * fallback - The element which this element is replacing.
@@ -323,8 +330,9 @@ export class Element<TTag extends Tag = Tag> {
 		this._f = 0;
 		this._n = undefined; // node
 		this._ch = undefined; // children
+		this._cv = undefined; // childValues
 		this._fb = undefined; // fallback
-		this._ic = undefined; // inflightChildren
+		this._ic = undefined; // inflightChildValues
 		this._ov = undefined; // onValue
 	}
 
@@ -968,8 +976,20 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 				oldChild.tag === Portal &&
 				oldChild.props.root !== newChild.props.root
 			) {
+				// Example 1. This arrange is used to clear out the children of a
+				// portal element when its root prop has changed.
 				renderer.arrange(oldChild as Element<Portal>, oldChild.props.root, []);
-				complete(renderer, oldChild.props.root);
+				renderer.arrange1(
+					oldChild.props.root,
+					Portal,
+					newChild.props,
+					[],
+					oldChild.props,
+					// FIXME
+					undefined,
+					undefined,
+				);
+				flush(renderer, oldChild.props.root);
 			}
 
 			// TODO: implement Raw element parse caching
@@ -1094,7 +1114,8 @@ function commit<TNode, TScope, TRoot, TResult>(
 		el._ic = undefined;
 	}
 
-	// We use typeof because we need to handle fallback being the empty string.
+	// We use typeof === "undefined" because we need to handle fallback being the
+	// empty string.
 	if (typeof el._fb !== "undefined") {
 		el._fb = undefined;
 	}
@@ -1113,11 +1134,25 @@ function commit<TNode, TScope, TRoot, TResult>(
 	} else if (el.tag === Fragment) {
 		value = unwrap(values);
 	} else {
+		// Example 2. We arrange on each host element during a commit.
+		renderer.arrange(
+			el as Element<string | symbol>,
+			el.tag === Portal ? el.props.root : el._n,
+			values,
+		);
+		renderer.arrange1(
+			el.tag === Portal ? el.props.root : el._n,
+			el.tag,
+			el.props,
+			values,
+			// FIXME
+			undefined,
+			undefined,
+			scope,
+		);
+
 		if (el.tag === Portal) {
-			renderer.arrange(el as Element<Portal>, el.props.root, values);
-			complete(renderer, el.props.root);
-		} else {
-			renderer.arrange(el as Element<string | symbol>, el._n, values);
+			flush(renderer, el.props.root);
 		}
 
 		value = el._n;
@@ -1135,7 +1170,7 @@ function commit<TNode, TScope, TRoot, TResult>(
 	return value;
 }
 
-function complete<TRoot>(renderer: Renderer<unknown, TRoot>, root: TRoot) {
+function flush<TRoot>(renderer: Renderer<unknown, TRoot>, root: TRoot) {
 	renderer.flush(root);
 	if (typeof root !== "object" || root === null) {
 		return;
@@ -1165,8 +1200,20 @@ function unmount<TNode, TScope, TRoot, TResult>(
 		ctx = el._n;
 	} else if (el.tag === Portal) {
 		host = el as Element<symbol>;
+		// Example 3. When a portal element is unmounted, we call arrange with an
+		// empty array.
 		renderer.arrange(host, host.props.root, []);
-		complete(renderer, host.props.root);
+		renderer.arrange1(
+			host.props.root,
+			Portal,
+			host.props,
+			[],
+			// FIXME
+			undefined,
+			undefined,
+			undefined,
+		);
+		flush(renderer, host.props.root);
 	} else if (el.tag !== Fragment) {
 		if (isEventTarget(el._n)) {
 			const listeners = getListeners(ctx, host);
@@ -1796,7 +1843,7 @@ function stepCtx<TNode, TResult>(
 	}
 
 	const initial = !ctx._it;
-	if (initial) {
+	if (!ctx._it) {
 		ctx._f |= IsExecuting;
 		clearEventListeners(ctx);
 		let result: ReturnType<Component>;
@@ -1821,7 +1868,7 @@ function stepCtx<TNode, TResult>(
 					ctx._f |= IsErrored;
 					throw err;
 				},
-			) as Promise<ElementValue<TNode>>;
+			);
 			return [result1, value];
 		} else {
 			// sync function component
@@ -1847,7 +1894,7 @@ function stepCtx<TNode, TResult>(
 	let iteration: ChildrenIteration;
 	ctx._f |= IsExecuting;
 	try {
-		iteration = ctx._it!.next(oldValue);
+		iteration = ctx._it.next(oldValue);
 	} catch (err) {
 		ctx._f |= IsDone | IsErrored;
 		throw err;
@@ -2078,7 +2125,6 @@ function commitCtx<TNode>(
 	if (ctx._f & IsScheduling) {
 		ctx._f |= IsSchedulingRefresh;
 	} else if (!(ctx._f & IsUpdating)) {
-		// Rearrange the host.
 		const listeners = getListeners(ctx._pa, ctx._ho);
 		if (listeners.length) {
 			for (let i = 0; i < values.length; i++) {
@@ -2096,6 +2142,7 @@ function commitCtx<TNode>(
 			}
 		}
 
+		// Rearrange the host.
 		const host = ctx._ho;
 		const hostValues = getChildValues(host);
 		if (hostValues.length) {
@@ -2104,12 +2151,24 @@ function commitCtx<TNode>(
 			host._f &= ~HadChildren;
 		}
 
+		// Example 4. When a component updates, we have to call arrange on its host
+		// in case its children have changed.
 		ctx._re.arrange(
 			host,
 			host.tag === Portal ? host.props.root : host._n,
 			hostValues,
 		);
-		complete(ctx._re, ctx._rt);
+		ctx._re.arrange1(
+			host.tag === Portal ? host.props.root : host._n,
+			host.tag,
+			host.props,
+			hostValues,
+			host.props,
+			// FIXME
+			undefined,
+			ctx._sc,
+		);
+		flush(ctx._re, ctx._rt);
 	}
 
 	let value = unwrap(values);
