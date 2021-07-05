@@ -170,8 +170,6 @@ const ElementSymbol = Symbol.for("crank.Element");
  *
  * Changing this flag value would likely be a breaking changes in terms of
  * interop between elements and renderers of different versions of Crank.
- *
- * TODO: Consider deleting this flag because we’re not using it anymore.
  */
 const IsInUse = 1 << 0;
 
@@ -259,7 +257,7 @@ export class Element<TTag extends Tag = Tag> {
 
 	/**
 	 * @internal
-	 * node - The node or context associated with the element.
+	 * nodeOrContext - The node or context associated with the element.
 	 *
 	 * For host elements, this property is set to the return value of
 	 * Renderer.prototype.create when the component is mounted, i.e. DOM nodes
@@ -305,7 +303,7 @@ export class Element<TTag extends Tag = Tag> {
 	 * time, and is also used to create yield values for async generator
 	 * components with async children. It is unset when the element is committed.
 	 */
-	declare _ic: Promise<any> | undefined;
+	declare _icv: Promise<any> | undefined;
 
 	/**
 	 * @internal
@@ -315,7 +313,7 @@ export class Element<TTag extends Tag = Tag> {
 	 * We use Function because the Element type has no knowledge of what renderer
 	 * nodes will be.
 	 */
-	declare _ov: Function | undefined;
+	declare _onv: Function | undefined;
 
 	constructor(
 		tag: TTag,
@@ -327,13 +325,14 @@ export class Element<TTag extends Tag = Tag> {
 		this.props = props;
 		this.key = key;
 		this.ref = ref;
+
 		this._f = 0;
-		this._n = undefined; // node
+		this._n = undefined; // nodeOrContext
 		this._ch = undefined; // children
 		this._cv = undefined; // childValues
 		this._fb = undefined; // fallback
-		this._ic = undefined; // inflightChildValues
-		this._ov = undefined; // onValue
+		this._icv = undefined; // inflightChildValues
+		this._onv = undefined; // onValue
 	}
 
 	// TODO: remove this method
@@ -433,9 +432,9 @@ function narrow(value: Children): NarrowedChild {
 }
 
 /**
- * A helper type which repesents all the possible rendered values of an element.
+ * A helper type which repesents all possible rendered values of an element.
  *
- * @template TNode - The node type for the element assigned by the renderer.
+ * @template TNode - The node type for the element provided by the renderer.
  *
  * When asking the question, what is the “value” of a specific element, the
  * answer varies depending on the tag:
@@ -545,8 +544,8 @@ function getInflightValue<TNode>(
 		typeof el.tag === "function" ? el._n : undefined;
 	if (ctx && ctx._f & IsUpdating && ctx._iv) {
 		return ctx._iv; // inflightValue
-	} else if (el._ic) {
-		return el._ic; // inflightChildValues
+	} else if (el._icv) {
+		return el._icv; // inflightChildValues
 	}
 
 	return getValue<TNode>(el);
@@ -803,6 +802,7 @@ export class Renderer<
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
+
 function mount<TNode, TScope, TRoot, TResult>(
 	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
@@ -824,6 +824,7 @@ function mount<TNode, TScope, TRoot, TResult>(
 
 		return updateCtx(el._n);
 	} else if (el.tag === Raw) {
+		// TODO: Should we let raw elements commit?
 		return commit(renderer, scope, el, []);
 	} else if (el.tag !== Fragment) {
 		if (el.tag === Portal) {
@@ -861,6 +862,7 @@ function update<TNode, TScope, TRoot, TResult>(
 	if (typeof el.tag === "function") {
 		return updateCtx(el._n);
 	} else if (el.tag === Raw) {
+		// TODO: Should we let raw elements commit?
 		return commit(renderer, scope, el, []);
 	} else if (el.tag !== Fragment) {
 		if (el.tag === Portal) {
@@ -911,7 +913,8 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	const oldChildren = wrap(el._ch);
 	const newChildren = arrayify(children);
 	const narrowedNewChildren: Array<NarrowedChild> = [];
-	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
+	const childValues: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> =
+		[];
 	let graveyard: Array<Element> | undefined;
 	let seenKeys: Set<Key> | undefined;
 	let childrenByKey: Map<Key, Element> | undefined;
@@ -1030,7 +1033,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		}
 
 		narrowedNewChildren[j] = newChild;
-		values[j] = value;
+		childValues[j] = value;
 		isAsync = isAsync || isPromiseLike(value);
 		// TODO: Can we shoehorn this logic into the previous branch?
 		if (typeof oldChild === "object" && oldChild !== newChild) {
@@ -1059,7 +1062,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	// committing
 	el._ch = unwrap(narrowedNewChildren);
 	if (isAsync) {
-		let values1 = Promise.all(values).finally(() => {
+		let childValues1 = Promise.all(childValues).finally(() => {
 			// cleanup
 			if (graveyard) {
 				for (let i = 0; i < graveyard.length; i++) {
@@ -1069,17 +1072,17 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		});
 
 		let onvalues!: Function;
-		values1 = Promise.race([
-			values1,
+		childValues1 = Promise.race([
+			childValues1,
 			new Promise<any>((resolve) => (onvalues = resolve)),
 		]);
 
-		if (el._ov) {
-			el._ov(values1);
+		if (el._onv) {
+			el._onv(childValues1);
 		}
 
-		el._ov = onvalues;
-		return (el._ic = values1.then((values) =>
+		el._onv = onvalues;
+		return (el._icv = childValues1.then((values) =>
 			commit(renderer, scope, el, normalize(values)),
 		));
 	}
@@ -1090,9 +1093,9 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		}
 	}
 
-	if (el._ov) {
-		el._ov(values);
-		el._ov = undefined;
+	if (el._onv) {
+		el._onv(childValues);
+		el._onv = undefined;
 	}
 
 	return commit(
@@ -1100,7 +1103,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		scope,
 		el,
 		// If isAsync is false we can assume there are no promises in the array.
-		normalize(values as Array<ElementValue<TNode>>),
+		normalize(childValues as Array<ElementValue<TNode>>),
 	);
 }
 
@@ -1108,13 +1111,13 @@ function commit<TNode, TScope, TRoot, TResult>(
 	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	scope: TScope,
 	el: Element,
-	values: Array<TNode | string>,
+	childValues: Array<TNode | string>,
 ): ElementValue<TNode> {
-	if (el._ic) {
-		el._ic = undefined;
+	if (el._icv) {
+		el._icv = undefined;
 	}
 
-	// We use typeof === "undefined" because we need to handle fallback being the
+	// We use an undefined check because we need to handle fallback being the
 	// empty string.
 	if (typeof el._fb !== "undefined") {
 		el._fb = undefined;
@@ -1122,7 +1125,7 @@ function commit<TNode, TScope, TRoot, TResult>(
 
 	let value: ElementValue<TNode>;
 	if (typeof el.tag === "function") {
-		value = commitCtx(el._n, values);
+		value = commitCtx(el._n, childValues);
 	} else if (el.tag === Raw) {
 		if (typeof el.props.value === "string") {
 			el._n = renderer.parse(el.props.value, scope);
@@ -1132,19 +1135,19 @@ function commit<TNode, TScope, TRoot, TResult>(
 
 		value = el._n;
 	} else if (el.tag === Fragment) {
-		value = unwrap(values);
+		value = unwrap(childValues);
 	} else {
 		// Example 2. We arrange on each host element during a commit.
 		renderer.arrange(
 			el as Element<string | symbol>,
 			el.tag === Portal ? el.props.root : el._n,
-			values,
+			childValues,
 		);
 		renderer.arrange1(
 			el.tag === Portal ? el.props.root : el._n,
 			el.tag,
 			el.props,
-			values,
+			childValues,
 			// FIXME
 			undefined,
 			undefined,
@@ -1156,7 +1159,7 @@ function commit<TNode, TScope, TRoot, TResult>(
 		}
 
 		value = el._n;
-		if (values.length) {
+		if (childValues.length) {
 			el._f |= HadChildren;
 		} else {
 			el._f &= ~HadChildren;
@@ -1880,13 +1883,12 @@ function stepCtx<TNode, TResult>(
 	if (initial) {
 		// The argument passed to the first call to next is ignored.
 		oldValue = undefined as any;
-	} else if (ctx._el._ic) {
+	} else if (ctx._el._icv) {
 		// The value passed back into the generator as the argument to the next
 		// method is a promise if an async generator component has async children.
 		// Sync generator components only resume when their children have fulfilled
-		// so ctx._el._ic (the element’s inflight child values) will never be
-		// defined.
-		oldValue = ctx._el._ic.then(ctx._re.read, () => ctx._re.read(undefined));
+		// so the element’s inflight child values will never be defined.
+		oldValue = ctx._el._icv.then(ctx._re.read, () => ctx._re.read(undefined));
 	} else {
 		oldValue = ctx._re.read(getValue(el));
 	}
