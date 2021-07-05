@@ -829,13 +829,14 @@ function mount<TNode, TScope, TRoot, TResult>(
 	} else if (el.tag !== Fragment) {
 		if (el.tag === Portal) {
 			root = el.props.root;
+			scope = undefined;
 		} else {
 			el._n = renderer.create(el.tag, el.props, scope);
 			renderer.patch(el._n, el.tag, el.props, undefined, scope);
+			scope = renderer.scope(el.tag, el.props, scope);
 		}
 
 		host = el as Element<string | symbol>;
-		scope = renderer.scope(host.tag, host.props, scope);
 	}
 
 	return updateChildren(
@@ -867,12 +868,13 @@ function update<TNode, TScope, TRoot, TResult>(
 	} else if (el.tag !== Fragment) {
 		if (el.tag === Portal) {
 			root = el.props.root;
+			scope = undefined;
 		} else {
 			renderer.patch(el._n, el.tag, el.props, oldProps, scope);
+			scope = renderer.scope(el.tag, el.props, scope);
 		}
 
 		host = el as Element<string | symbol>;
-		scope = renderer.scope(host.tag, host.props, scope);
 	}
 
 	return updateChildren(
