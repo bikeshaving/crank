@@ -573,9 +573,9 @@ export class Renderer<
 	 * @param root - The node to be rendered into. The renderer will cache
 	 * element trees per root.
 	 * @param ctx - An optional context that will be the ancestor context of all
-	 * elements in the tree. Useful for connecting renderers which call each
-	 * other so that events/provisions properly propagate. The context for a
-	 * given root must be the same or an error will be thrown.
+	 * elements in the tree. Useful for connecting different renderers so that
+	 * events/provisions properly propagate. The context for a given root must be
+	 * the same or an error will be thrown.
 	 *
 	 * @returns The result of rendering the children, or a possible promise of
 	 * the result if the element tree renders asynchronously.
@@ -835,6 +835,8 @@ function createChildrenByKey(
 	return childrenByKey;
 }
 
+// TODO: Move the commit stuff out of this method so we don’t have to pass
+// oldProps in.
 function updateChildren<TNode, TScope, TRoot, TResult>(
 	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
@@ -1041,6 +1043,20 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	);
 }
 
+function reset(el: Element): void {
+	if (el._icv) {
+		// inflightChildValue(s)
+		el._icv = undefined;
+	}
+
+	// We use an undefined check because we need to handle fallback being the
+	// empty string.
+	if (typeof el._fb !== "undefined") {
+		// fallback
+		el._fb = undefined;
+	}
+}
+
 function commit<TNode, TScope, TRoot, TResult>(
 	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	scope: TScope,
@@ -1049,19 +1065,12 @@ function commit<TNode, TScope, TRoot, TResult>(
 	// TODO: refine type
 	oldProps: any,
 ): ElementValue<TNode> {
-	if (el._icv) {
-		el._icv = undefined;
-	}
-
-	// We use an undefined check because we need to handle fallback being the
-	// empty string.
-	if (typeof el._fb !== "undefined") {
-		el._fb = undefined;
-	}
-
+	// TODO: Move this function out of commit.
+	reset(el);
 	let value: ElementValue<TNode>;
 	if (typeof el.tag === "function") {
-		value = el._cv = commitCtx(el._n, childValues);
+		// TODO: Move this code out of commit
+		value = commitCtx(el._n, childValues);
 	} else if (el.tag === Raw) {
 		// TODO: Move this code out of commit
 		if (typeof el.props.value === "string") {
@@ -1072,22 +1081,24 @@ function commit<TNode, TScope, TRoot, TResult>(
 
 		value = el._n;
 	} else if (el.tag === Fragment) {
-		value = el._cv = unwrap(childValues);
+		value = unwrap(childValues);
 	} else {
+		// element is a host/portal element
 		renderer.arrange(
 			el.tag === Portal ? el.props.root : el._n,
 			el.tag,
 			el.props,
 			childValues,
 			oldProps,
-			wrap(el._cv) as Array<any>,
+			wrap(el._cv) as Array<TNode | string>,
 		);
 
 		if (el.tag === Portal) {
 			flush(renderer, el.props.root);
+		} else {
+			value = el._n;
 		}
 
-		value = el._n;
 		el._cv = unwrap(childValues);
 	}
 
@@ -1134,7 +1145,7 @@ function unmount<TNode, TScope, TRoot, TResult>(
 			host.props,
 			[],
 			host.props,
-			wrap(host._cv) as Array<any>,
+			wrap(host._cv) as Array<TNode | string>,
 		);
 		flush(renderer, host.props.root);
 	} else if (el.tag !== Fragment) {
@@ -2066,7 +2077,9 @@ function commitCtx<TNode>(
 			}
 		}
 
-		// Rearrange the host.
+		// rearranging the nearest ancestor host element
+		// TODO: If we’re retaining the oldChildValues, we can do a quick check to
+		// make sure this work isn’t necessary as a performance optimization.
 		const host = ctx._ho;
 		const hostValues = getChildValues(host);
 		ctx._re.arrange(
@@ -2074,10 +2087,11 @@ function commitCtx<TNode>(
 			host.tag,
 			host.props,
 			hostValues,
-			// props and oldProps are the same because we are rearranging the host.
+			// props and oldProps are the same because the host isn’t updated.
 			host.props,
 			wrap(host._cv),
 		);
+
 		host._cv = hostValues;
 		flush(ctx._re, ctx._rt);
 	}
