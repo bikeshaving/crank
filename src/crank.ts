@@ -824,8 +824,8 @@ function mount<TNode, TScope, TRoot, TResult>(
 
 		return updateCtx(el._n);
 	} else if (el.tag === Raw) {
-		// TODO: Should we let raw elements commit?
-		return commit(renderer, scope, el, []);
+		// TODO: Don’t pass raw elements to commit.
+		return commit(renderer, scope, el, [], undefined);
 	} else if (el.tag !== Fragment) {
 		if (el.tag === Portal) {
 			root = el.props.root;
@@ -847,6 +847,7 @@ function mount<TNode, TScope, TRoot, TResult>(
 		scope,
 		el,
 		el.props.children,
+		undefined,
 	);
 }
 
@@ -857,14 +858,14 @@ function update<TNode, TScope, TRoot, TResult>(
 	ctx: Context<unknown, TResult> | undefined,
 	scope: TScope | undefined,
 	el: Element,
-	// FIXME
+	// TODO: refine type
 	oldProps: any,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (typeof el.tag === "function") {
 		return updateCtx(el._n);
 	} else if (el.tag === Raw) {
-		// TODO: Should we let raw elements commit?
-		return commit(renderer, scope, el, []);
+		// TODO: Don’t pass raw elements to commit.
+		return commit(renderer, scope, el, [], undefined);
 	} else if (el.tag !== Fragment) {
 		if (el.tag === Portal) {
 			root = el.props.root;
@@ -885,6 +886,7 @@ function update<TNode, TScope, TRoot, TResult>(
 		scope,
 		el,
 		el.props.children,
+		oldProps,
 	);
 }
 
@@ -911,6 +913,8 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	scope: TScope,
 	el: Element,
 	children: Children,
+	// TODO: refine type
+	oldProps: any,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	const oldChildren = wrap(el._ch);
 	const newChildren = arrayify(children);
@@ -977,6 +981,11 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 			typeof newChild === "object" &&
 			oldChild.tag === newChild.tag
 		) {
+			const oldProps1 = oldChild.props;
+			// TODO: implement Raw element parse caching
+			oldChild.props = newChild.props;
+			oldChild.ref = newChild.ref;
+			newChild = oldChild;
 			if (
 				oldChild.tag === Portal &&
 				oldChild.props.root !== newChild.props.root
@@ -987,22 +996,16 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 				renderer.arrange1(
 					oldChild.props.root,
 					Portal,
-					newChild.props,
-					[],
 					oldChild.props,
-					// FIXME
-					undefined,
-					undefined,
+					[],
+					oldProps1,
+					wrap(oldChild._cv) as Array<any>,
+					scope,
 				);
 				flush(renderer, oldChild.props.root);
 			}
 
-			// TODO: implement Raw element parse caching
-			const oldProps = oldChild.props;
-			oldChild.props = newChild.props;
-			oldChild.ref = newChild.ref;
-			newChild = oldChild;
-			value = update(renderer, root, host, ctx, scope, newChild, oldProps);
+			value = update(renderer, root, host, ctx, scope, newChild, oldProps1);
 		} else if (typeof newChild === "object") {
 			if (newChild.tag === Copy) {
 				value =
@@ -1085,7 +1088,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 
 		el._onv = onvalues;
 		return (el._icv = childValues1.then((values) =>
-			commit(renderer, scope, el, normalize(values)),
+			commit(renderer, scope, el, normalize(values), oldProps),
 		));
 	}
 
@@ -1106,6 +1109,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		el,
 		// If isAsync is false we can assume there are no promises in the array.
 		normalize(childValues as Array<ElementValue<TNode>>),
+		oldProps,
 	);
 }
 
@@ -1114,6 +1118,8 @@ function commit<TNode, TScope, TRoot, TResult>(
 	scope: TScope,
 	el: Element,
 	childValues: Array<TNode | string>,
+	// TODO: refine type
+	oldProps: any,
 ): ElementValue<TNode> {
 	if (el._icv) {
 		el._icv = undefined;
@@ -1127,8 +1133,9 @@ function commit<TNode, TScope, TRoot, TResult>(
 
 	let value: ElementValue<TNode>;
 	if (typeof el.tag === "function") {
-		value = commitCtx(el._n, childValues);
+		value = el._cv = commitCtx(el._n, childValues);
 	} else if (el.tag === Raw) {
+		// TODO: Move this code out of commit
 		if (typeof el.props.value === "string") {
 			el._n = renderer.parse(el.props.value, scope);
 		} else {
@@ -1137,7 +1144,7 @@ function commit<TNode, TScope, TRoot, TResult>(
 
 		value = el._n;
 	} else if (el.tag === Fragment) {
-		value = unwrap(childValues);
+		value = el._cv = unwrap(childValues);
 	} else {
 		// Example 2. We arrange on each host element during a commit.
 		renderer.arrange(
@@ -1150,9 +1157,8 @@ function commit<TNode, TScope, TRoot, TResult>(
 			el.tag,
 			el.props,
 			childValues,
-			// FIXME
-			undefined,
-			undefined,
+			oldProps,
+			wrap(el._cv) as Array<any>,
 			scope,
 		);
 
@@ -1161,6 +1167,7 @@ function commit<TNode, TScope, TRoot, TResult>(
 		}
 
 		value = el._n;
+		el._cv = unwrap(childValues);
 		if (childValues.length) {
 			el._f |= HadChildren;
 		} else {
@@ -1213,9 +1220,8 @@ function unmount<TNode, TScope, TRoot, TResult>(
 			Portal,
 			host.props,
 			[],
-			// FIXME
-			undefined,
-			undefined,
+			host.props,
+			wrap(host._cv) as Array<any>,
 			undefined,
 		);
 		flush(renderer, host.props.root);
@@ -2102,6 +2108,8 @@ function updateCtxChildren<TNode, TResult>(
 		ctx._sc,
 		ctx._el,
 		narrow(children),
+		// TODO: this argument makes no sense for updateCtxChildren
+		undefined,
 	);
 }
 
@@ -2168,7 +2176,6 @@ function commitCtx<TNode>(
 			host.props,
 			hostValues,
 			host.props,
-			// FIXME
 			undefined,
 			ctx._sc,
 		);
