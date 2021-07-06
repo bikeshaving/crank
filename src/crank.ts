@@ -597,11 +597,9 @@ export class Renderer<
 			if (typeof root === "object" && root !== null && children != null) {
 				this._cache.set(root as any, portal);
 			}
+		} else if (portal._n !== ctx) {
+			throw new Error("Context mismatch");
 		} else {
-			if (portal._n !== ctx) {
-				throw new Error("Context mismatch");
-			}
-
 			oldProps = portal.props;
 			portal.props = {children, root};
 			if (typeof root === "object" && root !== null && children == null) {
