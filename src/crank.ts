@@ -2093,6 +2093,10 @@ function commitCtx<TNode>(
 		);
 
 		host._cv = hostValues;
+		// TODO: Is this behavior correct? Do we want to flush all flush callbacks,
+		// or just those which occur under the component? Intuitively, it does not
+		// seem like we should be flushing unrelated callbacks in a different part
+		// of the tree.
 		flush(ctx._re, ctx._rt);
 	}
 
