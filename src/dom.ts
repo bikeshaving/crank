@@ -1,11 +1,4 @@
-import {
-	Children,
-	Context,
-	Element as CrankElement,
-	ElementValue,
-	Portal,
-	Renderer,
-} from "./crank";
+import {Children, Context, ElementValue, Portal, Renderer} from "./crank";
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
@@ -151,15 +144,15 @@ export class DOMRenderer extends Renderer<Node, string> {
 		}
 	}
 
-	arrange(
-		el: CrankElement<string | symbol>,
-		node: Node,
-		children: Array<Node | string>,
+	arrange<TTag extends string | symbol>(
+		node: Element,
+		tag: TTag,
+		props: Record<string, any>,
+		children: Array<Element | string>,
+		_oldProps: Record<string, any> | undefined,
+		oldChildren: Array<Element | string> | undefined,
 	): void {
-		if (
-			el.tag === Portal &&
-			(node == null || typeof node.nodeType !== "number")
-		) {
+		if (tag === Portal && (node == null || typeof node.nodeType !== "number")) {
 			throw new TypeError(
 				`Portal root is not a node. Received: ${JSON.stringify(
 					node && node.toString(),
@@ -168,8 +161,8 @@ export class DOMRenderer extends Renderer<Node, string> {
 		}
 
 		if (
-			!("innerHTML" in el.props) &&
-			("children" in el.props || el.hadChildren)
+			!("innerHTML" in props) &&
+			("children" in props || (oldChildren && oldChildren.length))
 		) {
 			if (children.length === 0) {
 				node.textContent = "";
