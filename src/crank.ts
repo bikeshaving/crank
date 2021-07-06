@@ -715,23 +715,10 @@ export class Renderer<
 		return;
 	}
 
-	/**
-	 * Called for each host element when it is removed from the tree.
-	 *
-	 * @param el - The host element.
-	 * @param node - The node associated with the host element.
-	 *
-	 * @returns The return value is ignored.
-	 */
-	dispose(_el: Element<string | symbol>, _node: TNode): unknown {
-		return;
-	}
-
-	dispose1<TTag extends string | symbol>(
+	dispose<TTag extends string | symbol>(
 		_node: TNode,
 		_tag: TTag,
 		_props: TagProps<TTag>,
-		_children: Array<TNode | string>,
 	): unknown {
 		return;
 	}
@@ -1161,8 +1148,8 @@ function unmount<TNode, TScope, TRoot, TResult>(
 			}
 		}
 
+		renderer.dispose(el._n, el.tag, el.props);
 		host = el as Element<string | symbol>;
-		renderer.dispose(host, host._n);
 	}
 
 	const children = wrap(el._ch);
