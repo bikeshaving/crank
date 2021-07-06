@@ -698,7 +698,6 @@ export class Renderer<
 		_tag: TTag,
 		_props: TagProps<TTag>,
 		_oldProps: TagProps<TTag> | undefined,
-		_scope: TScope | undefined,
 	): unknown {
 		return;
 	}
@@ -778,7 +777,7 @@ function mount<TNode, TScope, TRoot, TResult>(
 			scope = undefined;
 		} else {
 			el._n = renderer.create(el.tag, el.props, scope);
-			renderer.patch(el._n, el.tag, el.props, undefined, scope);
+			renderer.patch(el._n, el.tag, el.props, undefined);
 			scope = renderer.scope(el.tag, el.props, scope);
 		}
 
@@ -817,7 +816,7 @@ function update<TNode, TScope, TRoot, TResult>(
 			root = el.props.root;
 			scope = undefined;
 		} else {
-			renderer.patch(el._n, el.tag, el.props, oldProps, scope);
+			renderer.patch(el._n, el.tag, el.props, oldProps);
 			scope = renderer.scope(el.tag, el.props, scope);
 		}
 
