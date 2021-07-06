@@ -162,26 +162,6 @@ type Key = unknown;
 
 const ElementSymbol = Symbol.for("crank.Element");
 
-/*** ELEMENT FLAGS ***/
-// TODO: remove these flags
-/**
- * A flag which is set when the element is mounted, used to detect whether an
- * element is being reused so that we clone it rather than accidentally
- * overwriting its state.
- *
- * Changing this flag value would likely be a breaking changes in terms of
- * interop between elements and renderers of different versions of Crank.
- */
-const IsInUse = 1 << 0;
-
-/**
- * A flag which tracks whether the element has previously rendered children,
- * used to clear elements which no longer render children in the next render.
- * We may deprecate this behavior and make elements without explicit children
- * uncontrolled.
- */
-const HadChildren = 1 << 1;
-
 // To save on filesize, we mangle the internal properties of Crank classes by
 // hand. These internal properties are prefixed with an underscore.
 // Refer to their definitions to see their unabbreviated names.
@@ -249,13 +229,6 @@ export interface Element<TTag extends Tag = Tag> {
  * rather than instatiating this class directly.
  */
 export class Element<TTag extends Tag = Tag> {
-	// TODO: Remove this property?
-	/**
-	 * @internal
-	 * flags - A bitmask. See ELEMENT FLAGS.
-	 */
-	declare _f: number;
-
 	/**
 	 * @internal
 	 * nodeOrContext - The node or context associated with the element.
@@ -327,18 +300,12 @@ export class Element<TTag extends Tag = Tag> {
 		this.key = key;
 		this.ref = ref;
 
-		this._f = 0;
 		this._n = undefined; // nodeOrContext
 		this._ch = undefined; // children
 		this._cv = undefined; // childValues
 		this._fb = undefined; // fallback
 		this._icv = undefined; // inflightChildValues
 		this._onv = undefined; // onValue
-	}
-
-	// TODO: remove this method
-	get hadChildren(): boolean {
-		return (this._f & HadChildren) !== 0;
 	}
 }
 
@@ -791,7 +758,6 @@ function mount<TNode, TScope, TRoot, TResult>(
 	scope: TScope | undefined,
 	el: Element,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	el._f |= IsInUse;
 	if (typeof el.tag === "function") {
 		el._n = new Context(
 			renderer,
