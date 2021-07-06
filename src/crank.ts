@@ -163,13 +163,13 @@ type Key = unknown;
 const ElementSymbol = Symbol.for("crank.Element");
 
 // To save on filesize, we mangle the internal properties of Crank classes by
-// hand. These internal properties are prefixed with an underscore.
-// Refer to their definitions to see their unabbreviated names.
+// hand. These internal properties are prefixed with an underscore. Refer to
+// their definitions to see their unabbreviated names.
 
 export interface Element<TTag extends Tag = Tag> {
 	// To maximize compatibility between Crank versions, starting with 0.2.0, any
 	// changes to the following properties will be considered a breaking change:
-	// $$typeof, tag, props, key, ref, _f
+	// $$typeof, tag, props, key, ref
 	/**
 	 * @internal
 	 * A unique symbol to identify elements as elements across versions and
@@ -229,6 +229,8 @@ export interface Element<TTag extends Tag = Tag> {
  * rather than instatiating this class directly.
  */
 export class Element<TTag extends Tag = Tag> {
+	// TODO: Move these internal properties to their own class, now that we’re
+	// cloning elements.
 	/**
 	 * @internal
 	 * nodeOrContext - The node or context associated with the element.
@@ -248,6 +250,16 @@ export class Element<TTag extends Tag = Tag> {
 
 	/**
 	 * @internal
+	 * fallback - The element which this element is replacing.
+	 *
+	 * If an element renders asynchronously, we show any previously rendered
+	 * values in its place until it has committed for the first time. This
+	 * property is set to the previously rendered child.
+	 */
+	declare _fb: NarrowedChild;
+
+	/**
+	 * @internal
 	 * children - The rendered children of the element.
 	 */
 	declare _ch: Array<NarrowedChild> | NarrowedChild;
@@ -258,16 +270,6 @@ export class Element<TTag extends Tag = Tag> {
 	 * childValues - The rendered child values of the element.
 	 */
 	declare _cv: ElementValue<unknown>;
-
-	/**
-	 * @internal
-	 * fallback - The element which this element is replacing.
-	 *
-	 * If an element renders asynchronously, we show any previously rendered
-	 * values in its place until it has committed for the first time. This
-	 * property is set to the previously rendered child.
-	 */
-	declare _fb: NarrowedChild;
 
 	/**
 	 * @internal
@@ -301,11 +303,11 @@ export class Element<TTag extends Tag = Tag> {
 		this.ref = ref;
 
 		this._n = undefined; // nodeOrContext
-		this._ch = undefined; // children
-		this._cv = undefined; // childValues
 		this._fb = undefined; // fallback
-		this._icv = undefined; // inflightChildValues
-		this._onv = undefined; // onValue
+		this._ch = undefined; // children
+		this._cv = undefined; // childValue(s)
+		this._icv = undefined; // inflightChildValue(s)
+		this._onv = undefined; // onValue(s)
 	}
 }
 
@@ -682,7 +684,7 @@ export class Renderer<
 		_props: TagProps<TTag>,
 		scope: TScope | undefined,
 	): TScope | undefined {
-		return scope as TScope;
+		return scope;
 	}
 
 	create<TTag extends string | symbol>(
@@ -730,7 +732,6 @@ export class Renderer<
 		_tag: TTag,
 		_props: TagProps<TTag>,
 		_children: Array<TNode | string>,
-		_scope: TScope | undefined,
 	): unknown {
 		return;
 	}
@@ -748,7 +749,6 @@ export class Renderer<
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
-
 function mount<TNode, TScope, TRoot, TResult>(
 	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
