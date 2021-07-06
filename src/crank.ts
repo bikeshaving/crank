@@ -2087,9 +2087,11 @@ function commitCtx<TNode>(
 			host.tag,
 			host.props,
 			hostValues,
+			// props and oldProps are the same because we are rearranging the host.
 			host.props,
 			wrap(host._cv),
 		);
+		host._cv = hostValues;
 		flush(ctx._re, ctx._rt);
 	}
 
