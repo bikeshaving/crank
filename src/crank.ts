@@ -289,7 +289,7 @@ export class Element<TTag extends Tag = Tag> {
 	 * We use Function because the Element type has no knowledge of what renderer
 	 * nodes will be.
 	 */
-	declare _onv: Function | undefined;
+	declare _oncv: Function | undefined;
 
 	constructor(
 		tag: TTag,
@@ -307,7 +307,7 @@ export class Element<TTag extends Tag = Tag> {
 		this._ch = undefined; // children
 		this._cv = undefined; // childValue(s)
 		this._icv = undefined; // inflightChildValue(s)
-		this._onv = undefined; // onValue(s)
+		this._oncv = undefined; // onChildValue(s)
 	}
 }
 
@@ -1017,20 +1017,22 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 			}
 		});
 
-		let onvalues!: Function;
+		let onChildValues!: Function;
 		childValues1 = Promise.race([
 			childValues1,
-			new Promise<any>((resolve) => (onvalues = resolve)),
+			new Promise<any>((resolve) => (onChildValues = resolve)),
 		]);
 
-		if (el._onv) {
-			el._onv(childValues1);
+		if (el._oncv) {
+			el._oncv(childValues1);
 		}
 
-		el._onv = onvalues;
-		return (el._icv = childValues1.then((values) =>
+		el._oncv = onChildValues;
+		el._icv = childValues1.then((values) =>
 			commit(renderer, scope, el, normalize(values), oldProps),
-		));
+		);
+
+		return el._icv;
 	}
 
 	if (graveyard) {
@@ -1039,9 +1041,9 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		}
 	}
 
-	if (el._onv) {
-		el._onv(childValues);
-		el._onv = undefined;
+	if (el._oncv) {
+		el._oncv(childValues);
+		el._oncv = undefined;
 	}
 
 	return commit(
