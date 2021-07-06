@@ -1221,9 +1221,9 @@ function unmount<TNode, TScope, TRoot, TResult>(
 		flush(renderer, host.props.root);
 	} else if (el.tag !== Fragment) {
 		if (isEventTarget(el._n)) {
-			const listeners = getListeners(ctx, host);
-			for (let i = 0; i < listeners.length; i++) {
-				const record = listeners[i];
+			const records = getListenerRecords(ctx, host);
+			for (let i = 0; i < records.length; i++) {
+				const record = records[i];
 				el._n.removeEventListener(record.type, record.callback, record.options);
 			}
 		}
@@ -1645,7 +1645,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			}
 		}
 
-		options = normalizeOptions(options);
+		options = normalizeListenerOptions(options);
 		let callback: MappedEventListener<T>;
 		if (typeof listener === "object") {
 			callback = () => listener.handleEvent.apply(listener, arguments as any);
@@ -1694,7 +1694,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			return;
 		}
 
-		const options1 = normalizeOptions(options);
+		const options1 = normalizeListenerOptions(options);
 		const i = listeners.findIndex(
 			(record) =>
 				record.type === type &&
@@ -2129,13 +2129,13 @@ function commitCtx<TNode>(
 	if (ctx._f & IsScheduling) {
 		ctx._f |= IsSchedulingRefresh;
 	} else if (!(ctx._f & IsUpdating)) {
-		const listeners = getListeners(ctx._pa, ctx._ho);
-		if (listeners.length) {
+		const records = getListenerRecords(ctx._pa, ctx._ho);
+		if (records.length) {
 			for (let i = 0; i < values.length; i++) {
 				const value = values[i];
 				if (isEventTarget(value)) {
-					for (let j = 0; j < listeners.length; j++) {
-						const record = listeners[j];
+					for (let j = 0; j < records.length; j++) {
+						const record = records[j];
 						value.addEventListener(
 							record.type,
 							record.callback,
@@ -2259,7 +2259,7 @@ interface EventListenerRecord {
 
 const listenersMap = new WeakMap<Context, Array<EventListenerRecord>>();
 
-function normalizeOptions(
+function normalizeListenerOptions(
 	options: AddEventListenerOptions | boolean | null | undefined,
 ): AddEventListenerOptions {
 	if (typeof options === "boolean") {
@@ -2300,7 +2300,7 @@ function setEventProperty<T extends keyof Event>(
  * TODO: Maybe we can pass in the current context directly, rather than
  * starting from the parent?
  */
-function getListeners(
+function getListenerRecords(
 	ctx: Context | undefined,
 	host: Element<string | symbol>,
 ): Array<EventListenerRecord> {
