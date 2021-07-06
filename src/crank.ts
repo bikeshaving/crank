@@ -53,7 +53,8 @@ export type TagProps<TTag extends Tag> = TTag extends string
 	? JSX.IntrinsicElements[TTag]
 	: TTag extends Component<infer TProps>
 	? TProps
-	: unknown;
+	: // TODO: should the most generic type be object or {}
+	  unknown;
 
 /***
  * SPECIAL TAGS
@@ -735,34 +736,13 @@ export class Renderer<
 		return;
 	}
 
-	/**
-	 * Called for each host element so that elements can be arranged into a tree.
-	 *
-	 * @param el - The host element.
-	 * @param node - The node associated with the host element.
-	 * @param children - An array of nodes and strings from child elements.
-	 *
-	 * @returns The return value is ignored.
-	 *
-	 * This method is also called by child components contexts as the last step
-	 * of a refresh.
-	 */
-	arrange(
-		_el: Element<string | symbol>,
-		_node: TNode | TRoot,
-		_children: Array<TNode | string>,
-	): unknown {
-		return;
-	}
-
-	arrange1<TTag extends string | symbol>(
+	arrange<TTag extends string | symbol>(
 		_node: TNode,
 		_tag: TTag,
 		_props: TagProps<TTag>,
 		_children: Array<TNode | string>,
 		_oldProps: TagProps<TTag> | undefined,
 		_oldChildren: Array<TNode | string> | undefined,
-		_scope: TScope | undefined,
 	): unknown {
 		return;
 	}
@@ -990,17 +970,13 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 				oldChild.tag === Portal &&
 				oldChild.props.root !== newChild.props.root
 			) {
-				// Example 1. This arrange is used to clear out the children of a
-				// portal element when its root prop has changed.
-				renderer.arrange(oldChild as Element<Portal>, oldChild.props.root, []);
-				renderer.arrange1(
+				renderer.arrange(
 					oldChild.props.root,
 					Portal,
 					oldChild.props,
 					[],
 					oldProps1,
 					wrap(oldChild._cv) as Array<any>,
-					scope,
 				);
 				flush(renderer, oldChild.props.root);
 			}
@@ -1146,20 +1122,13 @@ function commit<TNode, TScope, TRoot, TResult>(
 	} else if (el.tag === Fragment) {
 		value = el._cv = unwrap(childValues);
 	} else {
-		// Example 2. We arrange on each host element during a commit.
 		renderer.arrange(
-			el as Element<string | symbol>,
-			el.tag === Portal ? el.props.root : el._n,
-			childValues,
-		);
-		renderer.arrange1(
 			el.tag === Portal ? el.props.root : el._n,
 			el.tag,
 			el.props,
 			childValues,
 			oldProps,
 			wrap(el._cv) as Array<any>,
-			scope,
 		);
 
 		if (el.tag === Portal) {
@@ -1168,11 +1137,6 @@ function commit<TNode, TScope, TRoot, TResult>(
 
 		value = el._n;
 		el._cv = unwrap(childValues);
-		if (childValues.length) {
-			el._f |= HadChildren;
-		} else {
-			el._f &= ~HadChildren;
-		}
 	}
 
 	if (el.ref) {
@@ -1212,17 +1176,13 @@ function unmount<TNode, TScope, TRoot, TResult>(
 		ctx = el._n;
 	} else if (el.tag === Portal) {
 		host = el as Element<symbol>;
-		// Example 3. When a portal element is unmounted, we call arrange with an
-		// empty array.
-		renderer.arrange(host, host.props.root, []);
-		renderer.arrange1(
+		renderer.arrange(
 			host.props.root,
 			Portal,
 			host.props,
 			[],
 			host.props,
 			wrap(host._cv) as Array<any>,
-			undefined,
 		);
 		flush(renderer, host.props.root);
 	} else if (el.tag !== Fragment) {
@@ -2157,27 +2117,13 @@ function commitCtx<TNode>(
 		// Rearrange the host.
 		const host = ctx._ho;
 		const hostValues = getChildValues(host);
-		if (hostValues.length) {
-			host._f |= HadChildren;
-		} else {
-			host._f &= ~HadChildren;
-		}
-
-		// Example 4. When a component updates, we have to call arrange on its host
-		// in case its children have changed.
 		ctx._re.arrange(
-			host,
-			host.tag === Portal ? host.props.root : host._n,
-			hostValues,
-		);
-		ctx._re.arrange1(
 			host.tag === Portal ? host.props.root : host._n,
 			host.tag,
 			host.props,
 			hostValues,
 			host.props,
-			undefined,
-			ctx._sc,
+			wrap(host._cv),
 		);
 		flush(ctx._re, ctx._rt);
 	}
