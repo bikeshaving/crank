@@ -835,6 +835,35 @@ function createChildrenByKey(
 	return childrenByKey;
 }
 
+// TODO: Better name for this function maybe.
+function flushMe<TRoot>(
+	renderer: Renderer<unknown, TRoot>,
+	root: TRoot,
+	ctx?: Context,
+) {
+	renderer.flush(root);
+	if (typeof root !== "object" || root === null) {
+		return;
+	}
+
+	const flushMap = rootMap.get(root as unknown as object);
+	if (flushMap) {
+		if (ctx) {
+			// TODO: Filter contexts so that only those which are under the updating
+			// context are flushed.
+			rootMap.delete(root as unknown as object);
+		} else {
+			rootMap.delete(root as unknown as object);
+		}
+		for (const [ctx, callbacks] of flushMap) {
+			const value = renderer.read(getValue(ctx._el));
+			for (const callback of callbacks) {
+				callback(value);
+			}
+		}
+	}
+}
+
 // TODO: Move the commit stuff out of this method so we don’t have to pass
 // oldProps in.
 function updateChildren<TNode, TScope, TRoot, TResult>(
@@ -930,7 +959,8 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 					oldProps1,
 					wrap(oldChild._cv) as Array<any>,
 				);
-				flush(renderer, oldChild.props.root);
+				// Example 1: A Portal element has a different root.
+				flushMe(renderer, oldChild.props.root);
 			}
 
 			value = update(renderer, root, host, ctx, scope, newChild, oldProps1);
@@ -1094,7 +1124,8 @@ function commit<TNode, TScope, TRoot, TResult>(
 		);
 
 		if (el.tag === Portal) {
-			flush(renderer, el.props.root);
+			// Example 2: A Portal element is committed.
+			flushMe(renderer, el.props.root);
 		} else {
 			value = el._n;
 		}
@@ -1109,25 +1140,6 @@ function commit<TNode, TScope, TRoot, TResult>(
 	return value;
 }
 
-function flush<TRoot>(renderer: Renderer<unknown, TRoot>, root: TRoot) {
-	renderer.flush(root);
-	if (typeof root !== "object" || root === null) {
-		return;
-	}
-
-	// TODO: Delete assertion when TypeScript fixes narrowing of type parameters
-	const flushMap = rootMap.get(root as unknown as object);
-	if (flushMap) {
-		rootMap.delete(root as unknown as object);
-		for (const [ctx, callbacks] of flushMap) {
-			const value = renderer.read(getValue(ctx._el));
-			for (const callback of callbacks) {
-				callback(value);
-			}
-		}
-	}
-}
-
 function unmount<TNode, TScope, TRoot, TResult>(
 	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	host: Element<string | symbol>,
@@ -1138,7 +1150,7 @@ function unmount<TNode, TScope, TRoot, TResult>(
 		unmountCtx(el._n);
 		ctx = el._n;
 	} else if (el.tag === Portal) {
-		host = el as Element<symbol>;
+		host = el as Element<Portal>;
 		renderer.arrange(
 			host.props.root,
 			Portal,
@@ -1147,7 +1159,8 @@ function unmount<TNode, TScope, TRoot, TResult>(
 			host.props,
 			wrap(host._cv) as Array<TNode | string>,
 		);
-		flush(renderer, host.props.root);
+		// Example 3: A Portal element is unmounted.
+		flushMe(renderer, host.props.root);
 	} else if (el.tag !== Fragment) {
 		if (isEventTarget(el._n)) {
 			const records = getListenerRecords(ctx, host);
@@ -2060,6 +2073,9 @@ function commitCtx<TNode>(
 	if (ctx._f & IsScheduling) {
 		ctx._f |= IsSchedulingRefresh;
 	} else if (!(ctx._f & IsUpdating)) {
+		// If we’re not updating, the component, which happens when components are
+		// refreshed, or when async generator components iterate, we have to do a
+		// little bit housekeeping.
 		const records = getListenerRecords(ctx._pa, ctx._ho);
 		if (records.length) {
 			for (let i = 0; i < values.length; i++) {
@@ -2097,7 +2113,8 @@ function commitCtx<TNode>(
 		// or just those which occur under the component? Intuitively, it does not
 		// seem like we should be flushing unrelated callbacks in a different part
 		// of the tree.
-		flush(ctx._re, ctx._rt);
+		// Example 4: A component has committed and is not updating.
+		flushMe(ctx._re, ctx._rt, ctx);
 	}
 
 	let value = unwrap(values);
