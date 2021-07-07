@@ -835,11 +835,10 @@ function createChildrenByKey(
 	return childrenByKey;
 }
 
-// TODO: Better name for this function maybe.
-function flushMe<TRoot>(
+function completeRender<TRoot>(
 	renderer: Renderer<unknown, TRoot>,
 	root: TRoot,
-	ctx?: Context,
+	initiatingCtx?: Context,
 ) {
 	renderer.flush(root);
 	if (typeof root !== "object" || root === null) {
@@ -848,13 +847,24 @@ function flushMe<TRoot>(
 
 	const flushMap = rootMap.get(root as unknown as object);
 	if (flushMap) {
-		if (ctx) {
-			// TODO: Filter contexts so that only those which are under the updating
-			// context are flushed.
-			rootMap.delete(root as unknown as object);
+		if (initiatingCtx) {
+			const flushMap1 = new Map<Context, Set<Function>>();
+			for (let [ctx1, callbacks] of flushMap) {
+				if (!ctxContains(initiatingCtx, ctx1)) {
+					flushMap.delete(ctx1);
+					flushMap1.set(ctx1, callbacks);
+				}
+			}
+
+			if (flushMap1.size) {
+				rootMap.set(root as unknown as object, flushMap1);
+			} else {
+				rootMap.delete(root as unknown as object);
+			}
 		} else {
 			rootMap.delete(root as unknown as object);
 		}
+
 		for (const [ctx, callbacks] of flushMap) {
 			const value = renderer.read(getValue(ctx._el));
 			for (const callback of callbacks) {
@@ -959,8 +969,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 					oldProps1,
 					wrap(oldChild._cv) as Array<any>,
 				);
-				// Example 1: A Portal element has a different root.
-				flushMe(renderer, oldChild.props.root);
+				completeRender(renderer, oldChild.props.root);
 			}
 
 			value = update(renderer, root, host, ctx, scope, newChild, oldProps1);
@@ -1124,8 +1133,7 @@ function commit<TNode, TScope, TRoot, TResult>(
 		);
 
 		if (el.tag === Portal) {
-			// Example 2: A Portal element is committed.
-			flushMe(renderer, el.props.root);
+			completeRender(renderer, el.props.root);
 		} else {
 			value = el._n;
 		}
@@ -1159,8 +1167,7 @@ function unmount<TNode, TScope, TRoot, TResult>(
 			host.props,
 			wrap(host._cv) as Array<TNode | string>,
 		);
-		// Example 3: A Portal element is unmounted.
-		flushMe(renderer, host.props.root);
+		completeRender(renderer, host.props.root);
 	} else if (el.tag !== Fragment) {
 		if (isEventTarget(el._n)) {
 			const records = getListenerRecords(ctx, host);
@@ -1760,6 +1767,19 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 }
 
 /*** PRIVATE CONTEXT FUNCTIONS ***/
+function ctxContains(parent: Context, child: Context): boolean {
+	for (
+		let current: Context | undefined = child;
+		current !== undefined;
+		current = current._pa
+	) {
+		if (current === parent) {
+			return true;
+		}
+	}
+
+	return false;
+}
 
 /**
  * This function is responsible for executing the component and handling all
@@ -2109,12 +2129,7 @@ function commitCtx<TNode>(
 		);
 
 		host._cv = hostValues;
-		// TODO: Is this behavior correct? Do we want to flush all flush callbacks,
-		// or just those which occur under the component? Intuitively, it does not
-		// seem like we should be flushing unrelated callbacks in a different part
-		// of the tree.
-		// Example 4: A component has committed and is not updating.
-		flushMe(ctx._re, ctx._rt, ctx);
+		completeRender(ctx._re, ctx._rt, ctx);
 	}
 
 	let value = unwrap(values);
