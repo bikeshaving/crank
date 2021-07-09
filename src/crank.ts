@@ -273,7 +273,8 @@ export class Element<TTag extends Tag = Tag> {
 
 	/**
 	 * @internal
-	 * inflightChildValues - The current async run of the element’s child values.
+	 * TODO: This name is actually incorrect
+	 * inflightValue - The current async run of the element’s child values.
 	 *
 	 * This property is used to make sure Copy element refs fire at the correct
 	 * time, and is also used to create yield values for async generator
@@ -874,9 +875,7 @@ function completeRender<TRoot>(
 	}
 }
 
-// TODO: Move the commit stuff out of this method so we don’t have to pass
-// oldProps in.
-function updateChildren<TNode, TScope, TRoot, TResult>(
+function diffChildren<TNode, TScope, TRoot, TResult>(
 	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
 	host: Element<string | symbol>,
@@ -884,9 +883,7 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	scope: TScope,
 	el: Element,
 	children: Children,
-	// TODO: refine type
-	oldProps: any,
-): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+): Promise<Array<TNode | string>> | Array<TNode | string> {
 	const oldChildren = wrap(el._ch);
 	const newChildren = arrayify(children);
 	const narrowedNewChildren: Array<NarrowedChild> = [];
@@ -1035,7 +1032,6 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	el._ch = unwrap(narrowedNewChildren);
 	if (isAsync) {
 		let childValues1 = Promise.all(childValues).finally(() => {
-			// cleanup
 			if (graveyard) {
 				for (let i = 0; i < graveyard.length; i++) {
 					unmount(renderer, host, ctx, graveyard[i]);
@@ -1054,11 +1050,10 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		}
 
 		el._oncv = onChildValues;
-		el._icv = childValues1.then((values) =>
-			commit(renderer, scope, el, normalize(values), oldProps),
-		);
-
-		return el._icv;
+		return childValues1.then((childValues) => {
+			reset(el);
+			return normalize(childValues);
+		});
 	}
 
 	if (graveyard) {
@@ -1072,14 +1067,40 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		el._oncv = undefined;
 	}
 
-	return commit(
+	reset(el);
+	// We can assert there are no promises in the array because isAsync is false
+	return normalize(childValues as Array<ElementValue<TNode>>);
+}
+
+function updateChildren<TNode, TScope, TRoot, TResult>(
+	renderer: Renderer<TNode, TScope, TRoot, TResult>,
+	root: TRoot,
+	host: Element<string | symbol>,
+	ctx: Context<unknown, TResult> | undefined,
+	scope: TScope,
+	el: Element,
+	children: Children,
+	// TODO: refine type
+	oldProps: any,
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+	const childValues = diffChildren(
 		renderer,
+		root,
+		host,
+		ctx,
 		scope,
 		el,
-		// If isAsync is false we can assume there are no promises in the array.
-		normalize(childValues as Array<ElementValue<TNode>>),
-		oldProps,
+		children,
 	);
+
+	if (isPromiseLike(childValues)) {
+		el._icv = childValues.then((childValues) =>
+			commit(renderer, scope, el, childValues, oldProps),
+		);
+		return el._icv;
+	}
+
+	return commit(renderer, scope, el, childValues, oldProps);
 }
 
 function reset(el: Element): void {
@@ -1104,8 +1125,6 @@ function commit<TNode, TScope, TRoot, TResult>(
 	// TODO: refine type
 	oldProps: any,
 ): ElementValue<TNode> {
-	// TODO: Move this function out of commit.
-	reset(el);
 	let value: ElementValue<TNode>;
 	if (typeof el.tag === "function") {
 		// TODO: Move this code out of commit
@@ -1141,6 +1160,7 @@ function commit<TNode, TScope, TRoot, TResult>(
 		el._cv = unwrap(childValues);
 	}
 
+	// TODO: Move this out of here.
 	if (el.ref) {
 		el.ref(renderer.read(value));
 	}
