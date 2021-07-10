@@ -838,10 +838,10 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: TScope,
-	el: Element,
+	parent: Element,
 	children: Children,
 ): Promise<Array<TNode | string>> | Array<TNode | string> {
-	const oldChildren = wrap(el._ch);
+	const oldChildren = wrap(parent._ch);
 	const newChildren = arrayify(children);
 	const narrowedNewChildren: Array<NarrowedChild> = [];
 	const childValues: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> =
@@ -1049,8 +1049,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 		graveyard.push(...childrenByKey.values());
 	}
 
-	// committing
-	el._ch = unwrap(narrowedNewChildren);
+	parent._ch = unwrap(narrowedNewChildren);
 	if (isAsync) {
 		let childValues1 = Promise.all(childValues).finally(() => {
 			if (graveyard) {
@@ -1066,13 +1065,13 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 			new Promise<any>((resolve) => (onChildValues = resolve)),
 		]);
 
-		if (el._oncv) {
-			el._oncv(childValues1);
+		if (parent._oncv) {
+			parent._oncv(childValues1);
 		}
 
-		el._oncv = onChildValues;
+		parent._oncv = onChildValues;
 		return childValues1.then((childValues) => {
-			reset(el);
+			reset(parent);
 			return normalize(childValues);
 		});
 	}
@@ -1083,12 +1082,12 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 		}
 	}
 
-	if (el._oncv) {
-		el._oncv(childValues);
-		el._oncv = undefined;
+	if (parent._oncv) {
+		parent._oncv(childValues);
+		parent._oncv = undefined;
 	}
 
-	reset(el);
+	reset(parent);
 	// We can assert there are no promises in the array because isAsync is false
 	return normalize(childValues as Array<ElementValue<TNode>>);
 }
