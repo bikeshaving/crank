@@ -68,7 +68,7 @@ describe("refs", () => {
 		);
 
 		expect(fn).toHaveBeenCalledTimes(1);
-		expect(fn).toHaveBeenCalledWith(document.body.firstChild);
+		expect(fn.mock.calls[0][0]).toBeInstanceOf(DocumentFragment);
 	});
 
 	test("function component", () => {

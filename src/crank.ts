@@ -936,6 +936,9 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 				}
 
 				value = newChild._n;
+				if (newChild.ref) {
+					newChild.ref(value);
+				}
 			} else {
 				value = update(renderer, root, host, ctx, scope, newChild, oldProps1);
 			}
@@ -982,6 +985,9 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 						}
 
 						value = newChild._n;
+						if (newChild.ref) {
+							newChild.ref(value);
+						}
 					} else if (newChild.tag !== Portal && newChild.tag !== Fragment) {
 						newChild._n = renderer.create(newChild.tag, newChild.props, scope);
 						value = update(
