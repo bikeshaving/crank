@@ -753,8 +753,7 @@ function update<TNode, TScope, TRoot, TResult>(
 	if (typeof el.tag === "function") {
 		throw new Error("TODO: THIS SHOULD NO LONGER HAPPEN");
 	} else if (el.tag === Raw) {
-		// TODO: Don’t pass raw elements to commit.
-		return commit(renderer, scope, el, [], undefined);
+		throw new Error("TODO: THIS SHOULD NO LONGER HAPPEN");
 	} else if (el.tag !== Fragment) {
 		if (el.tag === Portal) {
 			root = el.props.root;
@@ -908,7 +907,6 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 			oldChild.tag === newChild.tag
 		) {
 			const oldProps1 = oldChild.props;
-			// TODO: implement Raw element parse caching
 			oldChild.props = newChild.props;
 			oldChild.ref = newChild.ref;
 			newChild = oldChild;
@@ -928,6 +926,16 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 				value = update(renderer, root, host, ctx, scope, newChild, oldProps1);
 			} else if (typeof oldChild.tag === "function") {
 				value = updateCtx(oldChild._n);
+			} else if (oldChild.tag === Raw) {
+				if (typeof newChild.props.value === "string") {
+					if (oldProps1.value !== newChild.props.value) {
+						oldChild._n = renderer.parse(newChild.props.value, scope);
+					}
+				} else {
+					oldChild._n = newChild.props.value;
+				}
+
+				value = newChild._n;
 			} else {
 				value = update(renderer, root, host, ctx, scope, newChild, oldProps1);
 			}
@@ -966,15 +974,36 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 
 					value = updateCtx(newChild._n);
 				} else {
-					if (
-						newChild.tag !== Portal &&
-						newChild.tag !== Fragment &&
-						newChild.tag !== Raw
-					) {
-						newChild._n = renderer.create(newChild.tag, newChild.props, scope);
-					}
+					if (newChild.tag === Raw) {
+						if (typeof newChild.props.value === "string") {
+							newChild._n = renderer.parse(newChild.props.value, scope);
+						} else {
+							newChild._n = newChild.props.value;
+						}
 
-					value = update(renderer, root, host, ctx, scope, newChild, undefined);
+						value = newChild._n;
+					} else if (newChild.tag !== Portal && newChild.tag !== Fragment) {
+						newChild._n = renderer.create(newChild.tag, newChild.props, scope);
+						value = update(
+							renderer,
+							root,
+							host,
+							ctx,
+							scope,
+							newChild,
+							undefined,
+						);
+					} else {
+						value = update(
+							renderer,
+							root,
+							host,
+							ctx,
+							scope,
+							newChild,
+							undefined,
+						);
+					}
 				}
 
 				if (isPromiseLike(value)) {
@@ -1114,14 +1143,7 @@ function commit<TNode, TScope, TRoot, TResult>(
 	if (typeof el.tag === "function") {
 		throw new Error("TODO: THIS SHOULD NO LONGER HAPPEN");
 	} else if (el.tag === Raw) {
-		// TODO: Move this code out of commit
-		if (typeof el.props.value === "string") {
-			el._n = renderer.parse(el.props.value, scope);
-		} else {
-			el._n = el.props.value;
-		}
-
-		value = el._n;
+		throw new Error("TODO: THIS SHOULD NO LONGER HAPPEN");
 	} else if (el.tag === Fragment) {
 		value = unwrap(childValues);
 	} else {
