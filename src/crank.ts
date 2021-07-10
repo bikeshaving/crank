@@ -1127,8 +1127,7 @@ function commit<TNode, TScope, TRoot, TResult>(
 ): ElementValue<TNode> {
 	let value: ElementValue<TNode>;
 	if (typeof el.tag === "function") {
-		// TODO: Move this code out of commit
-		value = commitCtx(el._n, childValues);
+		throw new Error("TODO: THIS SHOULD NO LONGER HAPPEN");
 	} else if (el.tag === Raw) {
 		// TODO: Move this code out of commit
 		if (typeof el.props.value === "string") {
@@ -2075,8 +2074,7 @@ function updateCtxChildren<TNode, TResult>(
 			"A component has returned or yielded undefined. If this was intentional, return or yield null instead.",
 		);
 	}
-
-	return updateChildren<TNode, unknown, unknown, TResult>(
+	const childValues = diffChildren(
 		ctx._re as Renderer<TNode, unknown, unknown, TResult>,
 		ctx._rt,
 		ctx._ho,
@@ -2084,9 +2082,16 @@ function updateCtxChildren<TNode, TResult>(
 		ctx._sc,
 		ctx._el,
 		narrow(children),
-		// TODO: this argument makes no sense for updateCtxChildren
-		undefined,
 	);
+
+	if (isPromiseLike(childValues)) {
+		ctx._el._icv = childValues.then((childValues) =>
+			commitCtx(ctx, childValues),
+		);
+		return ctx._el._icv;
+	}
+
+	return commitCtx(ctx, childValues);
 }
 
 function commitCtx<TNode>(
@@ -2171,6 +2176,11 @@ function commitCtx<TNode>(
 	}
 
 	ctx._f &= ~IsUpdating;
+
+	if (typeof ctx._el.ref === "function") {
+		ctx._el.ref(value);
+	}
+
 	return value;
 }
 
