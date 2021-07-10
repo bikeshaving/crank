@@ -766,7 +766,7 @@ function update<TNode, TScope, TRoot, TResult>(
 		host = el as Element<string | symbol>;
 	}
 
-	return updateChildren(
+	const childValues = diffChildren(
 		renderer,
 		root,
 		host,
@@ -774,8 +774,16 @@ function update<TNode, TScope, TRoot, TResult>(
 		scope,
 		el,
 		el.props.children,
-		oldProps,
 	);
+
+	if (isPromiseLike(childValues)) {
+		el._inf = childValues.then((childValues) =>
+			commit(renderer, el, childValues, oldProps),
+		);
+		return el._inf;
+	}
+
+	return commit(renderer, el, childValues, oldProps);
 }
 
 function createChildrenByKey(
@@ -1022,9 +1030,6 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 			newChild = value = renderer.escape(newChild, scope);
 		}
 
-		narrowedNewChildren[j] = newChild;
-		childValues[j] = value;
-		isAsync = isAsync || isPromiseLike(value);
 		// TODO: Can we shoehorn this logic into the previous branch?
 		if (typeof oldChild === "object" && oldChild !== newChild) {
 			if (!graveyard) {
@@ -1033,6 +1038,10 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 
 			graveyard.push(oldChild);
 		}
+
+		isAsync = isAsync || isPromiseLike(value);
+		narrowedNewChildren[j] = newChild;
+		childValues[j] = value;
 	}
 
 	// cleanup
@@ -1090,38 +1099,6 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 	reset(parent);
 	// We can assert there are no promises in the array because isAsync is false
 	return normalize(childValues as Array<ElementValue<TNode>>);
-}
-
-// TODO: delete
-function updateChildren<TNode, TScope, TRoot, TResult>(
-	renderer: Renderer<TNode, TScope, TRoot, TResult>,
-	root: TRoot,
-	host: Element<string | symbol>,
-	ctx: Context<unknown, TResult> | undefined,
-	scope: TScope,
-	el: Element,
-	children: Children,
-	// TODO: refine type
-	oldProps: any,
-): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	const childValues = diffChildren(
-		renderer,
-		root,
-		host,
-		ctx,
-		scope,
-		el,
-		children,
-	);
-
-	if (isPromiseLike(childValues)) {
-		el._inf = childValues.then((childValues) =>
-			commit(renderer, el, childValues, oldProps),
-		);
-		return el._inf;
-	}
-
-	return commit(renderer, el, childValues, oldProps);
 }
 
 function reset(el: Element): void {
