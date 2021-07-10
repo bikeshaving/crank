@@ -959,10 +959,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 			oldChild.props = newChild.props;
 			oldChild.ref = newChild.ref;
 			newChild = oldChild;
-			if (
-				oldChild.tag === Portal &&
-				oldChild.props.root !== newChild.props.root
-			) {
+			if (oldChild.tag === Portal && oldProps1.root !== newChild.props.root) {
 				renderer.arrange(
 					oldChild.props.root,
 					Portal,
