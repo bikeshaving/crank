@@ -749,16 +749,7 @@ function mount<TNode, TScope, TRoot, TResult>(
 	el: Element,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (typeof el.tag === "function") {
-		el._n = new Context(
-			renderer,
-			root,
-			host,
-			ctx,
-			scope,
-			el as Element<Component>,
-		);
-
-		return updateCtx(el._n);
+		throw new Error("TODO: THIS SHOULD NO LONGER HAPPEN");
 	} else if (el.tag === Raw) {
 		// TODO: Don’t pass raw elements to commit.
 		return commit(renderer, scope, el, [], undefined);
@@ -798,7 +789,7 @@ function update<TNode, TScope, TRoot, TResult>(
 	oldProps: any,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (typeof el.tag === "function") {
-		return updateCtx(el._n);
+		throw new Error("TODO: THIS SHOULD NO LONGER HAPPEN");
 	} else if (el.tag === Raw) {
 		// TODO: Don’t pass raw elements to commit.
 		return commit(renderer, scope, el, [], undefined);
@@ -971,7 +962,11 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 				completeRender(renderer, oldChild.props.root);
 			}
 
-			value = update(renderer, root, host, ctx, scope, newChild, oldProps1);
+			if (typeof oldChild.tag === "function") {
+				value = updateCtx(oldChild._n);
+			} else {
+				value = update(renderer, root, host, ctx, scope, newChild, oldProps1);
+			}
 		} else if (typeof newChild === "object") {
 			if (newChild.tag === Copy) {
 				value =
@@ -994,7 +989,21 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 					newChild.key,
 					newChild.ref,
 				);
-				value = mount(renderer, root, host, ctx, scope, newChild);
+				if (typeof newChild.tag === "function") {
+					newChild._n = new Context(
+						renderer,
+						root,
+						host,
+						ctx,
+						scope,
+						newChild as Element<Component>,
+					);
+
+					value = updateCtx(newChild._n);
+				} else {
+					value = mount(renderer, root, host, ctx, scope, newChild);
+				}
+
 				if (isPromiseLike(value)) {
 					newChild._fb = oldChild;
 				}
