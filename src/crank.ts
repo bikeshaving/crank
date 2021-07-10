@@ -609,6 +609,7 @@ export class Renderer<
 			}
 		}
 
+		// Example 1: updating a portal element stored at the root
 		const value = update(this, root, portal, ctx, undefined, portal, oldProps);
 		// We return the child values of the portal because portal elements
 		// themselves have no readable value.
@@ -740,6 +741,7 @@ export class Renderer<
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
+// TODO: delete, split out Fragment/Portal/host use-cases
 function update<TNode, TScope, TRoot, TResult>(
 	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
@@ -999,6 +1001,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 					completeRender(renderer, oldChild.props.root);
 				}
 
+				// Example 2: updating an existing host/portal element
 				value = update(
 					renderer,
 					root,
@@ -1064,6 +1067,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 							);
 						}
 
+						// Example 3: updating a new host/portal element
 						value = update(
 							renderer,
 							root,
