@@ -1115,12 +1115,12 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 
 	if (isPromiseLike(childValues)) {
 		el._inf = childValues.then((childValues) =>
-			commit(renderer, scope, el, childValues, oldProps),
+			commit(renderer, el, childValues, oldProps),
 		);
 		return el._inf;
 	}
 
-	return commit(renderer, scope, el, childValues, oldProps);
+	return commit(renderer, el, childValues, oldProps);
 }
 
 function reset(el: Element): void {
@@ -1139,7 +1139,6 @@ function reset(el: Element): void {
 
 function commit<TNode, TScope, TRoot, TResult>(
 	renderer: Renderer<TNode, TScope, TRoot, TResult>,
-	scope: TScope,
 	el: Element,
 	childValues: Array<TNode | string>,
 	// TODO: refine type
