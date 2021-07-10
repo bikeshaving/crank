@@ -1,9 +1,15 @@
 /** @jsx createElement */
-import {Children, Context, createElement, Element, Fragment} from "../index";
+import {
+	Children,
+	Context,
+	createElement,
+	Element,
+	Fragment,
+	Raw,
+} from "../index";
 import {renderer} from "../dom";
 
-// TODO: write generative tests for this stuff
-describe("keys", () => {
+describe("refs", () => {
 	afterEach(() => {
 		renderer.render(null, document.body);
 		document.body.innerHTML = "";
@@ -32,7 +38,7 @@ describe("keys", () => {
 		expect(fn).toHaveBeenCalledWith(document.body.firstChild!.firstChild);
 	});
 
-	test("fragment", () => {
+	test("Fragment element", () => {
 		const fn = jest.fn();
 		renderer.render(
 			<div>
@@ -54,7 +60,18 @@ describe("keys", () => {
 		);
 	});
 
-	test("function", () => {
+	test("Raw element", () => {
+		const fn = jest.fn();
+		renderer.render(
+			<Raw value="<div>Hello world</div>" crank-ref={fn} />,
+			document.body,
+		);
+
+		expect(fn).toHaveBeenCalledTimes(1);
+		expect(fn).toHaveBeenCalledWith(document.body.firstChild);
+	});
+
+	test("function component", () => {
 		const fn = jest.fn();
 		function Component(): Element {
 			return <span>Hello</span>;
@@ -72,7 +89,7 @@ describe("keys", () => {
 		expect(fn).toHaveBeenCalledWith(document.body.firstChild!.firstChild);
 	});
 
-	test("generator", () => {
+	test("generator component", () => {
 		const fn = jest.fn();
 		function* Component(): Generator<Element> {
 			while (true) {
@@ -92,7 +109,7 @@ describe("keys", () => {
 		expect(fn).toHaveBeenCalledWith(document.body.firstChild!.firstChild);
 	});
 
-	test("async function", async () => {
+	test("async function component", async () => {
 		const fn = jest.fn();
 		async function Component(): Promise<Element> {
 			return <span>Hello</span>;
@@ -110,7 +127,7 @@ describe("keys", () => {
 		expect(fn).toHaveBeenCalledWith(document.body.firstChild!.firstChild);
 	});
 
-	test("async generator", async () => {
+	test("async generator component", async () => {
 		const fn = jest.fn();
 		async function* Component(this: Context): AsyncGenerator<Element> {
 			for await (const _ of this) {
@@ -130,7 +147,7 @@ describe("keys", () => {
 		expect(fn).toHaveBeenCalledWith(document.body.firstChild!.firstChild);
 	});
 
-	test("transcluded in sync component", async () => {
+	test("transcluded in function component", async () => {
 		function Child({children}: {children: Children}): Children {
 			return children;
 		}
@@ -153,7 +170,7 @@ describe("keys", () => {
 		expect(fn).toHaveBeenCalledWith(document.body.firstChild!.firstChild);
 	});
 
-	test("transcluded in async component", async () => {
+	test("transcluded in async function component", async () => {
 		async function Child({children}: {children: Children}): Promise<Children> {
 			await new Promise((resolve) => setTimeout(resolve, 1));
 			return children;
