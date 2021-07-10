@@ -273,14 +273,13 @@ export class Element<TTag extends Tag = Tag> {
 
 	/**
 	 * @internal
-	 * TODO: This name is actually incorrect
-	 * inflightValue - The current async run of the element’s child values.
+	 * inflightValue(s) - The current async run of the element.
 	 *
 	 * This property is used to make sure Copy element refs fire at the correct
 	 * time, and is also used to create yield values for async generator
-	 * components with async children. It is unset when the element is committed.
+	 * components with async children.
 	 */
-	declare _icv: Promise<any> | undefined;
+	declare _inf: Promise<any> | undefined;
 
 	/**
 	 * @internal
@@ -303,11 +302,13 @@ export class Element<TTag extends Tag = Tag> {
 		this.key = key;
 		this.ref = ref;
 
+		// TODO: If we’re no longer reusing elements, it’s time to move these
+		// properties back onto a hidden class of some sort.
 		this._n = undefined; // nodeOrContext
 		this._fb = undefined; // fallback
 		this._ch = undefined; // children
 		this._cv = undefined; // childValue(s)
-		this._icv = undefined; // inflightChildValue(s)
+		this._inf = undefined; // inflightValue(s)
 		this._oncv = undefined; // onChildValue(s)
 	}
 }
@@ -367,9 +368,6 @@ export function createElement<TTag extends Tag>(
 
 /**
  * Clones a given element, shallowly copying the props object.
- *
- * Used internally to make sure we don’t accidentally reuse elements when
- * rendering.
  */
 export function cloneElement<TTag extends Tag>(
 	el: Element<TTag>,
@@ -515,13 +513,16 @@ function getInflightValue<TNode>(
 		typeof el.tag === "function" ? el._n : undefined;
 	if (ctx && ctx._f & IsUpdating && ctx._iv) {
 		return ctx._iv; // inflightValue
-	} else if (el._icv) {
-		return el._icv; // inflightChildValues
+	} else if (el._inf) {
+		return el._inf; // inflightValue
 	}
 
 	return getValue<TNode>(el);
 }
 
+// TODO: Now that we’re caching child values for host elements (el._cv), we
+// might reconsider using/invalidating these cached values in this function
+// again.
 /**
  * Walks an element’s children to find its child values.
  *
@@ -629,6 +630,10 @@ export class Renderer<
 
 		return result;
 	}
+
+	// TODO: Maybe we can move these methods to a “RendererImpl” interface which
+	// is passed to the constructor of the renderer by inheritors, so that these
+	// methods aren’t available to renderer users.
 
 	/**
 	 * Called when an element’s rendered value is exposed via render, schedule,
@@ -901,7 +906,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 	) {
 		let oldChild = i >= il ? undefined : oldChildren[i];
 		let newChild = narrow(newChildren[j]);
-		// ALIGNMENT
+		// Aligning based on key
 		let oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
 		let newKey = typeof newChild === "object" ? newChild.key : undefined;
 		if (newKey !== undefined && seenKeys && seenKeys.has(newKey)) {
@@ -942,7 +947,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 			}
 		}
 
-		// UPDATING
+		// Updating
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 		if (
 			typeof oldChild === "object" &&
@@ -1072,6 +1077,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 	return normalize(childValues as Array<ElementValue<TNode>>);
 }
 
+// TODO: delete
 function updateChildren<TNode, TScope, TRoot, TResult>(
 	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
@@ -1094,19 +1100,19 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 	);
 
 	if (isPromiseLike(childValues)) {
-		el._icv = childValues.then((childValues) =>
+		el._inf = childValues.then((childValues) =>
 			commit(renderer, scope, el, childValues, oldProps),
 		);
-		return el._icv;
+		return el._inf;
 	}
 
 	return commit(renderer, scope, el, childValues, oldProps);
 }
 
 function reset(el: Element): void {
-	if (el._icv) {
-		// inflightChildValue(s)
-		el._icv = undefined;
+	if (el._inf) {
+		// inflightValue(s)
+		el._inf = undefined;
 	}
 
 	// We use an undefined check because we need to handle fallback being the
@@ -1388,6 +1394,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 */
 	declare _ib: Promise<unknown> | undefined;
 
+	// TODO: Can we combine this with element.inflightValue somehow please.
 	/**
 	 * @internal
 	 * inflightValue
@@ -1866,12 +1873,12 @@ function stepCtx<TNode, TResult>(
 	if (initial) {
 		// The argument passed to the first call to next is ignored.
 		oldValue = undefined as any;
-	} else if (ctx._el._icv) {
+	} else if (ctx._el._inf) {
 		// The value passed back into the generator as the argument to the next
 		// method is a promise if an async generator component has async children.
 		// Sync generator components only resume when their children have fulfilled
 		// so the element’s inflight child values will never be defined.
-		oldValue = ctx._el._icv.then(ctx._re.read, () => ctx._re.read(undefined));
+		oldValue = ctx._el._inf.then(ctx._re.read, () => ctx._re.read(undefined));
 	} else {
 		oldValue = ctx._re.read(getValue(el));
 	}
@@ -2085,10 +2092,10 @@ function updateCtxChildren<TNode, TResult>(
 	);
 
 	if (isPromiseLike(childValues)) {
-		ctx._el._icv = childValues.then((childValues) =>
+		ctx._el._inf = childValues.then((childValues) =>
 			commitCtx(ctx, childValues),
 		);
-		return ctx._el._icv;
+		return ctx._el._inf;
 	}
 
 	return commitCtx(ctx, childValues);
@@ -2275,6 +2282,8 @@ function setEventProperty<T extends keyof Event>(
 	Object.defineProperty(ev, key, {value, writable: false, configurable: true});
 }
 
+// TODO: Maybe we can pass in the current context directly, rather than
+// starting from the parent?
 /**
  * A function to reconstruct an array of every listener given a context and a
  * host element.
@@ -2283,9 +2292,6 @@ function setEventProperty<T extends keyof Event>(
  * host element. We can determine all the contexts which are directly listening
  * to an element by traversing up the context tree and checking that the host
  * element passed in matches the parent context’s host element.
- *
- * TODO: Maybe we can pass in the current context directly, rather than
- * starting from the parent?
  */
 function getListenerRecords(
 	ctx: Context | undefined,
