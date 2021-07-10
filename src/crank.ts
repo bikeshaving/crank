@@ -900,12 +900,14 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 		}
 
 		// Updating
+		// TODO: There should be a way to combine the update/mount branches
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 		if (
 			typeof oldChild === "object" &&
 			typeof newChild === "object" &&
 			oldChild.tag === newChild.tag
 		) {
+			// update of matching element
 			const oldProps1 = oldChild.props;
 			oldChild.props = newChild.props;
 			oldChild.ref = newChild.ref;
@@ -943,7 +945,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 				value = update(renderer, root, host, ctx, scope, newChild, oldProps1);
 			}
 		} else if (typeof newChild === "object") {
-			// This is a new element
+			// mount of a new element
 			if (newChild.tag === Copy) {
 				value =
 					typeof oldChild === "object"
