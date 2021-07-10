@@ -740,44 +740,6 @@ export class Renderer<
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
-function mount<TNode, TScope, TRoot, TResult>(
-	renderer: Renderer<TNode, TScope, TRoot, TResult>,
-	root: TRoot,
-	host: Element<string | symbol>,
-	ctx: Context<unknown, TResult> | undefined,
-	scope: TScope | undefined,
-	el: Element,
-): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (typeof el.tag === "function") {
-		throw new Error("TODO: THIS SHOULD NO LONGER HAPPEN");
-	} else if (el.tag === Raw) {
-		// TODO: Don’t pass raw elements to commit.
-		return commit(renderer, scope, el, [], undefined);
-	} else if (el.tag !== Fragment) {
-		if (el.tag === Portal) {
-			root = el.props.root;
-			scope = undefined;
-		} else {
-			el._n = renderer.create(el.tag, el.props, scope);
-			renderer.patch(el._n, el.tag, el.props, undefined);
-			scope = renderer.scope(el.tag, el.props, scope);
-		}
-
-		host = el as Element<string | symbol>;
-	}
-
-	return updateChildren(
-		renderer,
-		root,
-		host,
-		ctx,
-		scope,
-		el,
-		el.props.children,
-		undefined,
-	);
-}
-
 function update<TNode, TScope, TRoot, TResult>(
 	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
@@ -1001,7 +963,15 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 
 					value = updateCtx(newChild._n);
 				} else {
-					value = mount(renderer, root, host, ctx, scope, newChild);
+					if (
+						newChild.tag !== Portal &&
+						newChild.tag !== Fragment &&
+						newChild.tag !== Raw
+					) {
+						newChild._n = renderer.create(newChild.tag, newChild.props, scope);
+					}
+
+					value = update(renderer, root, host, ctx, scope, newChild, undefined);
 				}
 
 				if (isPromiseLike(value)) {
