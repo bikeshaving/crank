@@ -746,15 +746,11 @@ function update<TNode, TScope, TRoot, TResult>(
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: TScope | undefined,
-	el: Element,
+	el: Element<string | symbol>,
 	// TODO: refine type
 	oldProps: any,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (typeof el.tag === "function") {
-		throw new Error("TODO: THIS SHOULD NO LONGER HAPPEN");
-	} else if (el.tag === Raw) {
-		throw new Error("TODO: THIS SHOULD NO LONGER HAPPEN");
-	} else if (el.tag !== Fragment) {
+	if (el.tag !== Fragment) {
 		if (el.tag === Portal) {
 			root = el.props.root;
 			scope = undefined;
@@ -777,13 +773,68 @@ function update<TNode, TScope, TRoot, TResult>(
 	);
 
 	if (isPromiseLike(childValues)) {
-		el._inf = childValues.then((childValues) =>
-			commit(renderer, el, childValues, oldProps),
-		);
+		el._inf = childValues.then((childValues) => {
+			let value: ElementValue<TNode>;
+			if (el.tag === Fragment) {
+				value = unwrap(childValues);
+			} else {
+				// element is a host or portal element
+				renderer.arrange(
+					el.tag === Portal ? el.props.root : el._n,
+					el.tag,
+					el.props,
+					childValues,
+					oldProps,
+					wrap(el._cv) as Array<TNode | string>,
+				);
+
+				if (el.tag === Portal) {
+					completeRender(renderer, el.props.root);
+				} else {
+					value = el._n;
+				}
+
+				el._cv = unwrap(childValues);
+			}
+
+			if (el.ref) {
+				el.ref(renderer.read(value));
+			}
+
+			return value;
+		});
+
 		return el._inf;
 	}
 
-	return commit(renderer, el, childValues, oldProps);
+	let value: ElementValue<TNode>;
+	if (el.tag === Fragment) {
+		value = unwrap(childValues);
+	} else {
+		// element is a host or portal element
+		renderer.arrange(
+			el.tag === Portal ? el.props.root : el._n,
+			el.tag,
+			el.props,
+			childValues,
+			oldProps,
+			wrap(el._cv) as Array<TNode | string>,
+		);
+
+		if (el.tag === Portal) {
+			completeRender(renderer, el.props.root);
+		} else {
+			value = el._n;
+		}
+
+		el._cv = unwrap(childValues);
+	}
+
+	if (el.ref) {
+		el.ref(renderer.read(value));
+	}
+
+	return value;
 }
 
 function createChildrenByKey(
@@ -933,7 +984,15 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 					completeRender(renderer, oldChild.props.root);
 				}
 
-				value = update(renderer, root, host, ctx, scope, newChild, oldProps1);
+				value = update(
+					renderer,
+					root,
+					host,
+					ctx,
+					scope,
+					newChild as Element<string | symbol>,
+					oldProps1,
+				);
 			} else if (typeof oldChild.tag === "function") {
 				value = updateCtx(oldChild._n);
 			} else if (oldChild.tag === Raw) {
@@ -950,7 +1009,15 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 					newChild.ref(value);
 				}
 			} else {
-				value = update(renderer, root, host, ctx, scope, newChild, oldProps1);
+				value = update(
+					renderer,
+					root,
+					host,
+					ctx,
+					scope,
+					newChild as Element<string | symbol>,
+					oldProps1,
+				);
 			}
 		} else if (typeof newChild === "object") {
 			// mount of a new element
@@ -1006,7 +1073,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 							host,
 							ctx,
 							scope,
-							newChild,
+							newChild as Element<string | symbol>,
 							undefined,
 						);
 					} else {
@@ -1016,7 +1083,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 							host,
 							ctx,
 							scope,
-							newChild,
+							newChild as Element<string | symbol>,
 							undefined,
 						);
 					}
@@ -1027,7 +1094,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 				}
 			}
 		} else if (typeof newChild === "string") {
-			newChild = value = renderer.escape(newChild, scope);
+			value = newChild = renderer.escape(newChild, scope);
 		}
 
 		// TODO: Can we shoehorn this logic into the previous branch?
@@ -1113,48 +1180,6 @@ function reset(el: Element): void {
 		// fallback
 		el._fb = undefined;
 	}
-}
-
-function commit<TNode, TScope, TRoot, TResult>(
-	renderer: Renderer<TNode, TScope, TRoot, TResult>,
-	el: Element,
-	childValues: Array<TNode | string>,
-	// TODO: refine type
-	oldProps: any,
-): ElementValue<TNode> {
-	let value: ElementValue<TNode>;
-	if (typeof el.tag === "function") {
-		throw new Error("TODO: THIS SHOULD NO LONGER HAPPEN");
-	} else if (el.tag === Raw) {
-		throw new Error("TODO: THIS SHOULD NO LONGER HAPPEN");
-	} else if (el.tag === Fragment) {
-		value = unwrap(childValues);
-	} else {
-		// element is a host or portal element
-		renderer.arrange(
-			el.tag === Portal ? el.props.root : el._n,
-			el.tag,
-			el.props,
-			childValues,
-			oldProps,
-			wrap(el._cv) as Array<TNode | string>,
-		);
-
-		if (el.tag === Portal) {
-			completeRender(renderer, el.props.root);
-		} else {
-			value = el._n;
-		}
-
-		el._cv = unwrap(childValues);
-	}
-
-	// TODO: Move this out of here.
-	if (el.ref) {
-		el.ref(renderer.read(value));
-	}
-
-	return value;
 }
 
 function unmount<TNode, TScope, TRoot, TResult>(
