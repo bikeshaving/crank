@@ -912,24 +912,27 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 			oldChild.props = newChild.props;
 			oldChild.ref = newChild.ref;
 			newChild = oldChild;
-			if (oldChild.tag === Portal && oldProps1.root !== newChild.props.root) {
-				renderer.arrange(
-					oldChild.props.root,
-					Portal,
-					oldChild.props,
-					[],
-					oldProps1,
-					wrap(oldChild._cv) as Array<any>,
-				);
-				completeRender(renderer, oldChild.props.root);
-			}
+			if (oldChild.tag === Portal) {
+				if (oldProps1.root !== newChild.props.root) {
+					renderer.arrange(
+						oldChild.props.root,
+						Portal,
+						oldChild.props,
+						[],
+						oldProps1,
+						wrap(oldChild._cv) as Array<any>,
+					);
+					completeRender(renderer, oldChild.props.root);
+				}
 
-			if (typeof oldChild.tag === "function") {
+				value = update(renderer, root, host, ctx, scope, newChild, oldProps1);
+			} else if (typeof oldChild.tag === "function") {
 				value = updateCtx(oldChild._n);
 			} else {
 				value = update(renderer, root, host, ctx, scope, newChild, oldProps1);
 			}
 		} else if (typeof newChild === "object") {
+			// This is a new element
 			if (newChild.tag === Copy) {
 				value =
 					typeof oldChild === "object"
@@ -1122,7 +1125,7 @@ function commit<TNode, TScope, TRoot, TResult>(
 	} else if (el.tag === Fragment) {
 		value = unwrap(childValues);
 	} else {
-		// element is a host/portal element
+		// element is a host or portal element
 		renderer.arrange(
 			el.tag === Portal ? el.props.root : el._n,
 			el.tag,
