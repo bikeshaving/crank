@@ -971,8 +971,23 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 			oldChild.props = newChild.props;
 			oldChild.ref = newChild.ref;
 			newChild = oldChild;
-			if (oldChild.tag === Portal) {
-				if (oldProps1.root !== newChild.props.root) {
+			if (typeof oldChild.tag === "function") {
+				value = updateCtx(oldChild._n);
+			} else if (oldChild.tag === Raw) {
+				if (typeof newChild.props.value === "string") {
+					if (oldProps1.value !== newChild.props.value) {
+						oldChild._n = renderer.parse(newChild.props.value, scope);
+					}
+				} else {
+					oldChild._n = newChild.props.value;
+				}
+
+				value = newChild._n;
+				if (newChild.ref) {
+					newChild.ref(value);
+				}
+			} else {
+				if (oldChild.tag === Portal && oldProps1.root !== newChild.props.root) {
 					renderer.arrange(
 						oldChild.props.root,
 						Portal,
@@ -990,32 +1005,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 					host,
 					ctx,
 					scope,
-					newChild as Element<string | symbol>,
-					oldProps1,
-				);
-			} else if (typeof oldChild.tag === "function") {
-				value = updateCtx(oldChild._n);
-			} else if (oldChild.tag === Raw) {
-				if (typeof newChild.props.value === "string") {
-					if (oldProps1.value !== newChild.props.value) {
-						oldChild._n = renderer.parse(newChild.props.value, scope);
-					}
-				} else {
-					oldChild._n = newChild.props.value;
-				}
-
-				value = newChild._n;
-				if (newChild.ref) {
-					newChild.ref(value);
-				}
-			} else {
-				value = update(
-					renderer,
-					root,
-					host,
-					ctx,
-					scope,
-					newChild as Element<string | symbol>,
+					oldChild as Element<string | symbol>,
 					oldProps1,
 				);
 			}
@@ -1065,18 +1055,15 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 						if (newChild.ref) {
 							newChild.ref(value);
 						}
-					} else if (newChild.tag !== Portal && newChild.tag !== Fragment) {
-						newChild._n = renderer.create(newChild.tag, newChild.props, scope);
-						value = update(
-							renderer,
-							root,
-							host,
-							ctx,
-							scope,
-							newChild as Element<string | symbol>,
-							undefined,
-						);
 					} else {
+						if (newChild.tag !== Portal && newChild.tag !== Fragment) {
+							newChild._n = renderer.create(
+								newChild.tag,
+								newChild.props,
+								scope,
+							);
+						}
+
 						value = update(
 							renderer,
 							root,
