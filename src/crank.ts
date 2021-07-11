@@ -706,7 +706,7 @@ export class Renderer<
 	 * adjacent strings can be concatenated and the actual element tree can be
 	 * rendered in a normalized form.
 	 */
-	escape(text: string, _scope: TScope): string {
+	escape(text: string, _scope: TScope | undefined): string {
 		return text;
 	}
 
@@ -718,7 +718,7 @@ export class Renderer<
 	 *
 	 * @returns The parsed node or string.
 	 */
-	parse(text: string, _scope: TScope): TNode | string {
+	parse(text: string, _scope: TScope | undefined): TNode | string {
 		return text;
 	}
 
