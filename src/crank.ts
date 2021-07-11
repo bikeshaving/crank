@@ -989,7 +989,21 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 		// Updating
 		// TODO: There should be a way to combine the update/mount branches
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-		if (
+		if (typeof newChild === "object" && newChild.tag === Copy) {
+			value =
+				typeof oldChild === "object"
+					? getInflightValue<TNode>(oldChild)
+					: oldChild;
+			if (typeof newChild.ref === "function") {
+				if (isPromiseLike(value)) {
+					value.then(newChild.ref).catch(NOOP);
+				} else {
+					newChild.ref(value);
+				}
+			}
+
+			newChild = oldChild;
+		} else if (
 			typeof oldChild === "object" &&
 			typeof newChild === "object" &&
 			oldChild.tag === newChild.tag
@@ -1052,82 +1066,61 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 			}
 		} else if (typeof newChild === "object") {
 			// mount of a new element
-			if (newChild.tag === Copy) {
-				value =
-					typeof oldChild === "object"
-						? getInflightValue<TNode>(oldChild)
-						: oldChild;
-				if (typeof newChild.ref === "function") {
-					if (isPromiseLike(value)) {
-						value.then(newChild.ref).catch(NOOP);
-					} else {
-						newChild.ref(value);
-					}
-				}
+			newChild = new Element(
+				newChild.tag,
+				newChild.props,
+				newChild.key,
+				newChild.ref,
+			);
 
-				newChild = oldChild;
-			} else {
-				newChild = new Element(
-					newChild.tag,
-					newChild.props,
-					newChild.key,
-					newChild.ref,
+			if (typeof newChild.tag === "function") {
+				newChild._n = new Context(
+					renderer,
+					root,
+					host,
+					ctx,
+					scope,
+					newChild as Element<Component>,
 				);
 
-				if (typeof newChild.tag === "function") {
-					newChild._n = new Context(
-						renderer,
-						root,
-						host,
-						ctx,
-						scope,
-						newChild as Element<Component>,
-					);
-
-					value = updateCtx(newChild._n);
-				} else if (newChild.tag === Raw) {
-					if (typeof newChild.props.value === "string") {
-						newChild._n = renderer.parse(newChild.props.value, scope);
-					} else {
-						newChild._n = newChild.props.value;
-					}
-
-					value = newChild._n;
-					if (newChild.ref) {
-						newChild.ref(value);
-					}
+				value = updateCtx(newChild._n);
+			} else if (newChild.tag === Raw) {
+				if (typeof newChild.props.value === "string") {
+					newChild._n = renderer.parse(newChild.props.value, scope);
 				} else {
-					if (newChild.tag === Portal) {
-						root = newChild.props.root;
-						scope = undefined;
-						host = newChild as Element<Portal>;
-					} else if (newChild.tag !== Fragment) {
-						newChild._n = renderer.create(newChild.tag, newChild.props, scope);
-						renderer.patch(
-							newChild._n,
-							newChild.tag,
-							newChild.props,
-							undefined,
-						);
-						scope = renderer.scope(newChild.tag, newChild.props, scope);
-						host = newChild as Element<string | symbol>;
-					}
-
-					// Example 3: updating a new host/portal element
-					value = update(
-						renderer,
-						root,
-						host,
-						ctx,
-						scope,
-						newChild as Element<string | symbol>,
-						undefined,
-					);
+					newChild._n = newChild.props.value;
 				}
 
-				if (isPromiseLike(value)) {
-					newChild._fb = oldChild;
+				value = newChild._n;
+				if (newChild.ref) {
+					newChild.ref(value);
 				}
+			} else {
+				if (newChild.tag === Portal) {
+					root = newChild.props.root;
+					scope = undefined;
+					host = newChild as Element<Portal>;
+				} else if (newChild.tag !== Fragment) {
+					newChild._n = renderer.create(newChild.tag, newChild.props, scope);
+					renderer.patch(newChild._n, newChild.tag, newChild.props, undefined);
+					scope = renderer.scope(newChild.tag, newChild.props, scope);
+					host = newChild as Element<string | symbol>;
+				}
+
+				// Example 3: updating a new host/portal element
+				value = update(
+					renderer,
+					root,
+					host,
+					ctx,
+					scope,
+					newChild as Element<string | symbol>,
+					undefined,
+				);
+			}
+
+			if (isPromiseLike(value)) {
+				newChild._fb = oldChild;
 			}
 		} else if (typeof newChild === "string") {
 			value = newChild = renderer.escape(newChild, scope);
