@@ -790,15 +790,9 @@ function update<TNode, TScope, TRoot, TResult>(
 	// TODO: refine type
 	oldProps: any,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (el.tag !== Fragment) {
-		if (el.tag === Portal) {
-			root = el.props.root;
-			scope = undefined;
-		} else {
-			renderer.patch(el._n, el.tag, el.props, oldProps);
-			scope = renderer.scope(el.tag, el.props, scope);
-		}
-
+	if (el.tag !== Fragment && el.tag !== Portal) {
+		renderer.patch(el._n, el.tag, el.props, oldProps);
+		scope = renderer.scope(el.tag, el.props, scope);
 		host = el as Element<string | symbol>;
 	}
 
@@ -936,7 +930,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 	root: TRoot,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
-	scope: TScope,
+	scope: TScope | undefined,
 	parent: Element,
 	children: Children,
 ): Promise<Array<TNode | string>> | Array<TNode | string> {
@@ -1027,18 +1021,24 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 					newChild.ref(value);
 				}
 			} else {
-				if (oldChild.tag === Portal && oldProps1.root !== newChild.props.root) {
-					// root has changed, so we call arrange and completeRender with the
-					// old root
-					renderer.arrange(
-						oldChild.props.root,
-						Portal,
-						oldChild.props,
-						[],
-						oldProps1,
-						wrap(oldChild._cv) as Array<any>,
-					);
-					completeRender(renderer, oldChild.props.root);
+				if (oldChild.tag === Portal) {
+					if (oldProps1.root !== newChild.props.root) {
+						// root has changed, so we call arrange and completeRender with the
+						// old root
+						renderer.arrange(
+							oldChild.props.root,
+							Portal,
+							oldChild.props,
+							[],
+							oldProps1,
+							wrap(oldChild._cv) as Array<any>,
+						);
+						completeRender(renderer, oldChild.props.root);
+					}
+
+					root = newChild.props.root;
+					scope = undefined;
+					host = newChild as Element<Portal>;
 				}
 
 				// Example 2: updating an existing host/portal element
@@ -1099,7 +1099,11 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 							newChild.ref(value);
 						}
 					} else {
-						if (newChild.tag !== Portal && newChild.tag !== Fragment) {
+						if (newChild.tag === Portal) {
+							root = newChild.props.root;
+							scope = undefined;
+							host = newChild as Element<Portal>;
+						} else if (newChild.tag !== Fragment) {
 							newChild._n = renderer.create(
 								newChild.tag,
 								newChild.props,
