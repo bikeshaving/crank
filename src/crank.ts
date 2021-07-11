@@ -585,7 +585,7 @@ export class Renderer<
 	render(
 		children: Children,
 		root?: TRoot | undefined,
-		ctx?: Context | undefined,
+		bridgeCtx?: Context | undefined,
 	): Promise<TResult> | TResult {
 		let portal: Element<Portal> | undefined;
 		if (typeof root === "object" && root !== null) {
@@ -595,11 +595,11 @@ export class Renderer<
 		let oldProps: any;
 		if (portal === undefined) {
 			portal = createElement(Portal, {children, root});
-			portal._n = ctx;
+			portal._n = bridgeCtx;
 			if (typeof root === "object" && root !== null && children != null) {
 				this._cache.set(root as any, portal);
 			}
-		} else if (portal._n !== ctx) {
+		} else if (portal._n !== bridgeCtx) {
 			throw new Error("Context mismatch");
 		} else {
 			oldProps = portal.props;
@@ -609,13 +609,36 @@ export class Renderer<
 			}
 		}
 
-		// Example 1: updating a portal element stored at the root
-		const value = update(this, root, portal, ctx, undefined, portal, oldProps);
+		const childValues = diffChildren(
+			this,
+			root,
+			portal,
+			bridgeCtx,
+			undefined,
+			portal,
+			children,
+		);
+
 		// We return the child values of the portal because portal elements
 		// themselves have no readable value.
-		if (isPromiseLike(value)) {
-			return value.then(() => {
-				const result = this.read(unwrap(getChildValues<TNode>(portal!)));
+		if (isPromiseLike(childValues)) {
+			return childValues.then((childValues) => {
+				// element is a host or portal element
+				if (root !== undefined) {
+					this.arrange(
+						// TODO: Maybe we can constract root a little more
+						root as any,
+						Portal,
+						portal!.props,
+						childValues,
+						oldProps,
+						wrap(portal!._cv) as Array<TNode | string>,
+					);
+					completeRender(this, root as any);
+				}
+
+				portal!._cv = unwrap(childValues);
+				const result = this.read(unwrap(childValues));
 				if (root == null) {
 					unmount(this, portal!, undefined, portal!);
 				}
@@ -624,7 +647,22 @@ export class Renderer<
 			});
 		}
 
-		const result = this.read(unwrap(getChildValues<TNode>(portal)));
+		// element is a host or portal element
+		if (root !== undefined) {
+			this.arrange(
+				// TODO: Maybe we can constract root a little more
+				root as any,
+				Portal,
+				portal!.props,
+				childValues,
+				oldProps,
+				wrap(portal!._cv) as Array<TNode | string>,
+			);
+			completeRender(this, root as any);
+		}
+
+		portal!._cv = unwrap(childValues);
+		const result = this.read(unwrap(childValues));
 		if (root == null) {
 			unmount(this, portal, undefined, portal);
 		}
@@ -990,6 +1028,8 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 				}
 			} else {
 				if (oldChild.tag === Portal && oldProps1.root !== newChild.props.root) {
+					// root has changed, so we call arrange and completeRender with the
+					// old root
 					renderer.arrange(
 						oldChild.props.root,
 						Portal,
