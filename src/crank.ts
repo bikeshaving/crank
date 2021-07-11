@@ -790,12 +790,6 @@ function update<TNode, TScope, TRoot, TResult>(
 	// TODO: refine type
 	oldProps: any,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (el.tag !== Fragment && el.tag !== Portal) {
-		renderer.patch(el._n, el.tag, el.props, oldProps);
-		scope = renderer.scope(el.tag, el.props, scope);
-		host = el as Element<string | symbol>;
-	}
-
 	const childValues = diffChildren(
 		renderer,
 		root,
@@ -1039,6 +1033,10 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 					root = newChild.props.root;
 					scope = undefined;
 					host = newChild as Element<Portal>;
+				} else if (oldChild.tag !== Fragment) {
+					renderer.patch(oldChild._n, oldChild.tag, oldChild.props, oldProps1);
+					scope = renderer.scope(oldChild.tag, oldChild.props, scope);
+					host = oldChild as Element<string | symbol>;
 				}
 
 				// Example 2: updating an existing host/portal element
@@ -1105,6 +1103,14 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 						host = newChild as Element<Portal>;
 					} else if (newChild.tag !== Fragment) {
 						newChild._n = renderer.create(newChild.tag, newChild.props, scope);
+						renderer.patch(
+							newChild._n,
+							newChild.tag,
+							newChild.props,
+							undefined,
+						);
+						scope = renderer.scope(newChild.tag, newChild.props, scope);
+						host = newChild as Element<string | symbol>;
 					}
 
 					// Example 3: updating a new host/portal element
