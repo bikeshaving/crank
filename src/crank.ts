@@ -1075,6 +1075,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 					newChild.key,
 					newChild.ref,
 				);
+
 				if (typeof newChild.tag === "function") {
 					newChild._n = new Context(
 						renderer,
@@ -1086,42 +1087,36 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 					);
 
 					value = updateCtx(newChild._n);
-				} else {
-					if (newChild.tag === Raw) {
-						if (typeof newChild.props.value === "string") {
-							newChild._n = renderer.parse(newChild.props.value, scope);
-						} else {
-							newChild._n = newChild.props.value;
-						}
-
-						value = newChild._n;
-						if (newChild.ref) {
-							newChild.ref(value);
-						}
+				} else if (newChild.tag === Raw) {
+					if (typeof newChild.props.value === "string") {
+						newChild._n = renderer.parse(newChild.props.value, scope);
 					} else {
-						if (newChild.tag === Portal) {
-							root = newChild.props.root;
-							scope = undefined;
-							host = newChild as Element<Portal>;
-						} else if (newChild.tag !== Fragment) {
-							newChild._n = renderer.create(
-								newChild.tag,
-								newChild.props,
-								scope,
-							);
-						}
-
-						// Example 3: updating a new host/portal element
-						value = update(
-							renderer,
-							root,
-							host,
-							ctx,
-							scope,
-							newChild as Element<string | symbol>,
-							undefined,
-						);
+						newChild._n = newChild.props.value;
 					}
+
+					value = newChild._n;
+					if (newChild.ref) {
+						newChild.ref(value);
+					}
+				} else {
+					if (newChild.tag === Portal) {
+						root = newChild.props.root;
+						scope = undefined;
+						host = newChild as Element<Portal>;
+					} else if (newChild.tag !== Fragment) {
+						newChild._n = renderer.create(newChild.tag, newChild.props, scope);
+					}
+
+					// Example 3: updating a new host/portal element
+					value = update(
+						renderer,
+						root,
+						host,
+						ctx,
+						scope,
+						newChild as Element<string | symbol>,
+						undefined,
+					);
 				}
 
 				if (isPromiseLike(value)) {
