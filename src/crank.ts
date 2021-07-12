@@ -541,6 +541,119 @@ function getInflightValue<TNode>(
 	return getValue<TNode>(el);
 }
 
+// TODO: Document the interface and methods
+export interface RendererImpl<
+	TNode,
+	TScope,
+	TRoot = TNode,
+	TResult = ElementValue<TNode>,
+> {
+	/**
+	 * Called when an element’s rendered value is exposed via render, schedule,
+	 * refresh, refs, or generator yield expressions.
+	 *
+	 * @param value - The value of the element being read. Can be a node, a
+	 * string, undefined, or an array of nodes and strings, depending on the
+	 * element.
+	 *
+	 * @returns Varies according to the specific renderer subclass. By default,
+	 * it exposes the element’s value.
+	 *
+	 * This is useful for renderers which don’t want to expose their internal
+	 * nodes. For instance, the HTML renderer will convert all internal nodes to
+	 * strings.
+	 */
+	read(value: ElementValue<TNode>): TResult;
+
+	/**
+	 * Called for each string in an element tree.
+	 *
+	 * @param text - The string child.
+	 * @param scope - The current scope.
+	 *
+	 * @returns The escaped string.
+	 *
+	 * Rather than returning text nodes for whatever environment we’re rendering
+	 * to, we defer that step for Renderer.prototype.arrange. We do this so that
+	 * adjacent strings can be concatenated and the actual element tree can be
+	 * rendered in a normalized form.
+	 */
+	escape(text: string, scope: TScope | undefined): string;
+
+	/**
+	 * Called for each Raw element whose value prop is a string.
+	 *
+	 * @param text - The string child.
+	 * @param scope - The current scope.
+	 *
+	 * @returns The parsed node or string.
+	 */
+	parse(text: string, scope: TScope | undefined): TNode | string;
+
+	scope<TTag extends string | symbol>(
+		tag: TTag,
+		props: TagProps<TTag>,
+		cope: TScope | undefined,
+	): TScope | undefined;
+
+	create<TTag extends string | symbol>(
+		tag: TTag,
+		props: TagProps<TTag>,
+		scope: TScope | undefined,
+	): TNode;
+
+	patch<TTag extends string | symbol>(
+		node: TNode,
+		tag: TTag,
+		props: TagProps<TTag>,
+		oldProps: TagProps<TTag> | undefined,
+	): unknown;
+
+	arrange<TTag extends string | symbol>(
+		node: TNode,
+		tag: TTag,
+		props: TagProps<TTag>,
+		children: Array<TNode | string>,
+		oldProps: TagProps<TTag> | undefined,
+		oldChildren: Array<TNode | string> | undefined,
+	): unknown;
+
+	dispose<TTag extends string | symbol>(
+		node: TNode,
+		tag: TTag,
+		props: TagProps<TTag>,
+	): unknown;
+
+	flush(root: TRoot): unknown;
+}
+
+const defaultRendererImpl: RendererImpl<unknown, unknown, unknown, unknown> = {
+	read(value) {
+		return value;
+	},
+
+	escape(text: string): string {
+		return text;
+	},
+
+	parse(text: string): unknown {
+		return text;
+	},
+
+	scope(_tag: unknown, _props: unknown, scope: unknown): unknown {
+		return scope;
+	},
+
+	create() {
+		throw new Error("Not implemented");
+	},
+
+	patch: NOOP,
+	arrange: NOOP,
+	dispose: NOOP,
+	flush: NOOP,
+};
+
 /**
  * An abstract class which is subclassed to render to different target
  * environments. This class is responsible for kicking off the rendering
@@ -563,8 +676,13 @@ export class Renderer<
 	 * A weakmap which stores element trees by root.
 	 */
 	declare _cache: WeakMap<object, Element<Portal>>;
-	constructor() {
+	declare impl: RendererImpl<TNode, TScope, TRoot, TResult>;
+	constructor(impl: Partial<RendererImpl<TNode, TScope, TRoot, TResult>>) {
 		this._cache = new WeakMap();
+		this.impl = {
+			...(defaultRendererImpl as RendererImpl<TNode, TScope, TRoot, TResult>),
+			...impl,
+		};
 	}
 
 	/**
@@ -610,7 +728,7 @@ export class Renderer<
 		}
 
 		const childValues = diffChildren(
-			this,
+			this.impl,
 			root,
 			portal,
 			bridgeCtx,
@@ -625,7 +743,7 @@ export class Renderer<
 			return childValues.then((childValues) => {
 				// element is a host or portal element
 				if (root !== undefined) {
-					this.arrange(
+					this.impl.arrange(
 						// TODO: Maybe we can constract root a little more
 						root as any,
 						Portal,
@@ -634,13 +752,13 @@ export class Renderer<
 						oldProps,
 						wrap(portal!._cv) as Array<TNode | string>,
 					);
-					completeRender(this, root as any);
+					completeRender(this.impl, root as any);
 				}
 
 				portal!._cv = unwrap(childValues);
-				const result = this.read(unwrap(childValues));
+				const result = this.impl.read(unwrap(childValues));
 				if (root == null) {
-					unmount(this, portal!, undefined, portal!);
+					unmount(this.impl, portal!, undefined, portal!);
 				}
 
 				return result;
@@ -649,7 +767,7 @@ export class Renderer<
 
 		// element is a host or portal element
 		if (root !== undefined) {
-			this.arrange(
+			this.impl.arrange(
 				// TODO: Maybe we can constract root a little more
 				root as any,
 				Portal,
@@ -658,122 +776,23 @@ export class Renderer<
 				oldProps,
 				wrap(portal!._cv) as Array<TNode | string>,
 			);
-			completeRender(this, root as any);
+			completeRender(this.impl, root as any);
 		}
 
 		portal!._cv = unwrap(childValues);
-		const result = this.read(unwrap(childValues));
+		const result = this.impl.read(unwrap(childValues));
 		if (root == null) {
-			unmount(this, portal, undefined, portal);
+			unmount(this.impl, portal, undefined, portal);
 		}
 
 		return result;
 	}
-
-	// TODO: Maybe we can move these methods to a “RendererImpl” interface which
-	// is passed to the constructor of the renderer by inheritors, so that these
-	// methods aren’t available to renderer users.
-
-	/**
-	 * Called when an element’s rendered value is exposed via render, schedule,
-	 * refresh, refs, or generator yield expressions.
-	 *
-	 * @param value - The value of the element being read. Can be a node, a
-	 * string, undefined, or an array of nodes and strings, depending on the
-	 * element.
-	 *
-	 * @returns Varies according to the specific renderer subclass. By default,
-	 * it exposes the element’s value.
-	 *
-	 * This is useful for renderers which don’t want to expose their internal
-	 * nodes. For instance, the HTML renderer will convert all internal nodes to
-	 * strings.
-	 */
-	read(value: ElementValue<TNode>): TResult {
-		return value as unknown as TResult;
-	}
-
-	/**
-	 * Called for each string in an element tree.
-	 *
-	 * @param text - The string child.
-	 * @param scope - The current scope.
-	 *
-	 * @returns The escaped string.
-	 *
-	 * Rather than returning text nodes for whatever environment we’re rendering
-	 * to, we defer that step for Renderer.prototype.arrange. We do this so that
-	 * adjacent strings can be concatenated and the actual element tree can be
-	 * rendered in a normalized form.
-	 */
-	escape(text: string, _scope: TScope | undefined): string {
-		return text;
-	}
-
-	/**
-	 * Called for each Raw element whose value prop is a string.
-	 *
-	 * @param text - The string child.
-	 * @param scope - The current scope.
-	 *
-	 * @returns The parsed node or string.
-	 */
-	parse(text: string, _scope: TScope | undefined): TNode | string {
-		return text;
-	}
-
-	scope<TTag extends string | symbol>(
-		_tag: TTag,
-		_props: TagProps<TTag>,
-		scope: TScope | undefined,
-	): TScope | undefined {
-		return scope;
-	}
-
-	create<TTag extends string | symbol>(
-		_tag: TTag,
-		_props: TagProps<TTag>,
-		_scope: TScope | undefined,
-	): TNode {
-		throw new Error("Not implemented");
-	}
-
-	patch<TTag extends string | symbol>(
-		_node: TNode,
-		_tag: TTag,
-		_props: TagProps<TTag>,
-		_oldProps: TagProps<TTag> | undefined,
-	): unknown {
-		return;
-	}
-
-	arrange<TTag extends string | symbol>(
-		_node: TNode,
-		_tag: TTag,
-		_props: TagProps<TTag>,
-		_children: Array<TNode | string>,
-		_oldProps: TagProps<TTag> | undefined,
-		_oldChildren: Array<TNode | string> | undefined,
-	): unknown {
-		return;
-	}
-
-	dispose<TTag extends string | symbol>(
-		_node: TNode,
-		_tag: TTag,
-		_props: TagProps<TTag>,
-	): unknown {
-		return;
-	}
-
-	flush(_root: TRoot): unknown {
-		return;
-	}
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
+// TODO: Move Fragmnet stuff out of here?
 function update<TNode, TScope, TRoot, TResult>(
-	renderer: Renderer<TNode, TScope, TRoot, TResult>,
+	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
@@ -873,7 +892,7 @@ function createChildrenByKey(
 }
 
 function completeRender<TRoot>(
-	renderer: Renderer<unknown, TRoot>,
+	renderer: RendererImpl<unknown, TRoot>,
 	root: TRoot,
 	initiatingCtx?: Context,
 ) {
@@ -912,7 +931,7 @@ function completeRender<TRoot>(
 }
 
 function diffChildren<TNode, TScope, TRoot, TResult>(
-	renderer: Renderer<TNode, TScope, TRoot, TResult>,
+	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
@@ -1192,7 +1211,7 @@ function reset(el: Element): void {
 }
 
 function unmount<TNode, TScope, TRoot, TResult>(
-	renderer: Renderer<TNode, TScope, TRoot, TResult>,
+	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	el: Element,
@@ -1350,7 +1369,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * @internal
 	 * renderer - The renderer which created this context.
 	 */
-	declare _re: Renderer<unknown, unknown, unknown, TResult>;
+	declare _re: RendererImpl<unknown, unknown, unknown, TResult>;
 
 	/**
 	 * @internal
@@ -1436,7 +1455,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * Contexts should never be instantiated directly.
 	 */
 	constructor(
-		renderer: Renderer<unknown, unknown, unknown, TResult>,
+		renderer: RendererImpl<unknown, unknown, unknown, TResult>,
 		root: unknown,
 		host: Element<string | symbol>,
 		parent: Context<unknown, TResult> | undefined,
@@ -2100,7 +2119,7 @@ function updateCtxChildren<TNode, TResult>(
 		);
 	}
 	const childValues = diffChildren(
-		ctx._re as Renderer<TNode, unknown, unknown, TResult>,
+		ctx._re as RendererImpl<TNode, unknown, unknown, TResult>,
 		ctx._rt,
 		ctx._ho,
 		ctx,

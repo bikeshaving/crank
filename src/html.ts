@@ -1,4 +1,4 @@
-import {ElementValue, Portal, Renderer} from "./crank";
+import {ElementValue, Portal, Renderer, RendererImpl} from "./crank";
 
 const voidTags = new Set([
 	"area",
@@ -92,19 +92,14 @@ function join(children: Array<Node | string>): string {
 	return result;
 }
 
-export class HTMLRenderer extends Renderer<
-	Node | string,
-	undefined,
-	unknown,
-	string
-> {
+const impl: Partial<RendererImpl<Node | string, undefined, unknown, string>> = {
 	create(): Node {
 		return {value: ""};
-	}
+	},
 
 	escape(text: string): string {
 		return escape(text);
-	}
+	},
 
 	read(value: ElementValue<Node>): string {
 		if (Array.isArray(value)) {
@@ -116,7 +111,7 @@ export class HTMLRenderer extends Renderer<
 		} else {
 			return value.value;
 		}
-	}
+	},
 
 	arrange<TTag extends string | symbol>(
 		node: Node,
@@ -143,6 +138,17 @@ export class HTMLRenderer extends Renderer<
 		}
 
 		node.value = result;
+	},
+};
+
+export class HTMLRenderer extends Renderer<
+	Node | string,
+	undefined,
+	unknown,
+	string
+> {
+	constructor() {
+		super(impl);
 	}
 }
 

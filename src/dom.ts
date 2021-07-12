@@ -1,24 +1,15 @@
-import {Children, Context, ElementValue, Portal, Renderer} from "./crank";
+import {
+	Children,
+	Context,
+	ElementValue,
+	Portal,
+	Renderer,
+	RendererImpl,
+} from "./crank";
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
-export class DOMRenderer extends Renderer<Node, string> {
-	render(
-		children: Children,
-		root: Node,
-		ctx?: Context,
-	): Promise<ElementValue<Node>> | ElementValue<Node> {
-		if (root == null || typeof root.nodeType !== "number") {
-			throw new TypeError(
-				`Render root is not a node. Received: ${JSON.stringify(
-					root && root.toString(),
-				)}`,
-			);
-		}
-
-		return super.render(children, root, ctx);
-	}
-
+const impl: Partial<RendererImpl<Node, string>> = {
 	parse(text: string): DocumentFragment {
 		if (typeof document.createRange === "function") {
 			return document.createRange().createContextualFragment(text);
@@ -32,7 +23,7 @@ export class DOMRenderer extends Renderer<Node, string> {
 
 			return fragment;
 		}
-	}
+	},
 
 	scope(
 		tag: string | symbol,
@@ -49,7 +40,7 @@ export class DOMRenderer extends Renderer<Node, string> {
 			default:
 				return scope;
 		}
-	}
+	},
 
 	create(tag: string | symbol, _props: unknown, ns: string | undefined): Node {
 		if (typeof tag !== "string") {
@@ -59,7 +50,7 @@ export class DOMRenderer extends Renderer<Node, string> {
 		}
 
 		return ns ? document.createElementNS(ns, tag) : document.createElement(tag);
-	}
+	},
 
 	patch(
 		node: Element,
@@ -142,7 +133,7 @@ export class DOMRenderer extends Renderer<Node, string> {
 				}
 			}
 		}
-	}
+	},
 
 	arrange<TTag extends string | symbol>(
 		node: Element,
@@ -218,6 +209,28 @@ export class DOMRenderer extends Renderer<Node, string> {
 				}
 			}
 		}
+	},
+};
+
+export class DOMRenderer extends Renderer<Node, string> {
+	constructor() {
+		super(impl);
+	}
+
+	render(
+		children: Children,
+		root: Node,
+		ctx?: Context,
+	): Promise<ElementValue<Node>> | ElementValue<Node> {
+		if (root == null || typeof root.nodeType !== "number") {
+			throw new TypeError(
+				`Render root is not a node. Received: ${JSON.stringify(
+					root && root.toString(),
+				)}`,
+			);
+		}
+
+		return super.render(children, root, ctx);
 	}
 }
 
