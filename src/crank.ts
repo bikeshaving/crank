@@ -943,46 +943,49 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 		j < jl;
 		j++
 	) {
+		// Making sure we don’t access indices out of bounds
 		let oldChild = i >= il ? undefined : oldChildren[i];
 		let newChild = narrow(newChildren[j]);
-		// Aligning based on key
-		let oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
-		let newKey = typeof newChild === "object" ? newChild.key : undefined;
-		if (newKey !== undefined && seenKeys && seenKeys.has(newKey)) {
-			console.error("Duplicate key", newKey);
-			newKey = undefined;
-		}
-
-		if (oldKey === newKey) {
-			if (childrenByKey !== undefined && newKey !== undefined) {
-				childrenByKey.delete(newKey);
+		{
+			// Aligning based on key
+			let oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
+			let newKey = typeof newChild === "object" ? newChild.key : undefined;
+			if (newKey !== undefined && seenKeys && seenKeys.has(newKey)) {
+				console.error("Duplicate key", newKey);
+				newKey = undefined;
 			}
 
-			i++;
-		} else {
-			if (!childrenByKey) {
-				childrenByKey = createChildrenByKey(oldChildren, i);
-			}
-
-			if (newKey === undefined) {
-				while (oldChild !== undefined && oldKey !== undefined) {
-					i++;
-					oldChild = oldChildren[i];
-					oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
+			if (oldKey === newKey) {
+				if (childrenByKey !== undefined && newKey !== undefined) {
+					childrenByKey.delete(newKey);
 				}
 
 				i++;
 			} else {
-				oldChild = childrenByKey.get(newKey);
-				if (oldChild !== undefined) {
-					childrenByKey.delete(newKey);
+				if (!childrenByKey) {
+					childrenByKey = createChildrenByKey(oldChildren, i);
 				}
 
-				if (!seenKeys) {
-					seenKeys = new Set();
-				}
+				if (newKey === undefined) {
+					while (oldChild !== undefined && oldKey !== undefined) {
+						i++;
+						oldChild = oldChildren[i];
+						oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
+					}
 
-				seenKeys.add(newKey);
+					i++;
+				} else {
+					oldChild = childrenByKey.get(newKey);
+					if (oldChild !== undefined) {
+						childrenByKey.delete(newKey);
+					}
+
+					if (!seenKeys) {
+						seenKeys = new Set();
+					}
+
+					seenKeys.add(newKey);
+				}
 			}
 		}
 
