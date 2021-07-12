@@ -501,25 +501,6 @@ function getValue<TNode>(el: Element): ElementValue<TNode> {
 	return unwrap(getChildValues<TNode>(el));
 }
 
-/**
- * This function is only really used to make sure <Copy /> elements wait for
- * the current async run before resolving, but it’s somewhat complex so I put
- * it here.
- */
-function getInflightValue<TNode>(
-	el: Element,
-): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	const ctx: Context | undefined =
-		typeof el.tag === "function" ? el._n : undefined;
-	if (ctx && ctx._f & IsUpdating && ctx._iv) {
-		return ctx._iv; // inflightValue
-	} else if (el._inf) {
-		return el._inf; // inflightValue
-	}
-
-	return getValue<TNode>(el);
-}
-
 // TODO: Now that we’re caching child values for host elements (el._cv), we
 // might reconsider using/invalidating these cached values in this function
 // again.
@@ -539,6 +520,25 @@ function getChildValues<TNode>(el: Element): Array<TNode | string> {
 	}
 
 	return normalize(values);
+}
+
+/**
+ * This function is only really used to make sure <Copy /> elements wait for
+ * the current async run before resolving, but it’s somewhat complex so I put
+ * it here.
+ */
+function getInflightValue<TNode>(
+	el: Element,
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+	const ctx: Context | undefined =
+		typeof el.tag === "function" ? el._n : undefined;
+	if (ctx && ctx._f & IsUpdating && ctx._iv) {
+		return ctx._iv; // inflightValue
+	} else if (el._inf) {
+		return el._inf; // inflightValue
+	}
+
+	return getValue<TNode>(el);
 }
 
 /**
