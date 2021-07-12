@@ -766,20 +766,12 @@ export class Renderer<
 		return;
 	}
 
-	/**
-	 * Called at the end of the rendering process for each root of the tree.
-	 *
-	 * @param root - The root prop passed to portals or the render method.
-	 *
-	 * @returns The return value is ignored.
-	 */
 	flush(_root: TRoot): unknown {
 		return;
 	}
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
-// TODO: delete, split out Fragment/Portal/host use-cases
 function update<TNode, TScope, TRoot, TResult>(
 	renderer: Renderer<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
@@ -787,7 +779,7 @@ function update<TNode, TScope, TRoot, TResult>(
 	ctx: Context<unknown, TResult> | undefined,
 	scope: TScope | undefined,
 	el: Element<string | symbol>,
-	// TODO: refine type
+	// TODO: refine this type?
 	oldProps: any,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	const childValues = diffChildren(
@@ -989,6 +981,8 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 			}
 		}
 
+		// TODO: Can this block be put into its own function?
+		// Return value would have to be a tuple of [value, newChild]
 		// Updating
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 		switch (typeof newChild) {
@@ -1102,6 +1096,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 					}
 
 					if (!matches && isPromiseLike(value)) {
+						// Setting the fallback so elements can display a fallback.
 						newChild._fb = oldChild;
 					}
 				}
