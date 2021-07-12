@@ -22,7 +22,7 @@ function arrayify<T>(
 	return value == null
 		? []
 		: Array.isArray(value)
-		? (value as any)
+		? value
 		: typeof value === "string" ||
 		  typeof (value as any)[Symbol.iterator] !== "function"
 		? [value]
@@ -41,11 +41,6 @@ function isPromiseLike(value: any): value is PromiseLike<unknown> {
 
 /**
  * A type which represents all valid values for an element tag.
- *
- * Elements whose tags are strings or symbols are called “host” or “intrinsic”
- * elements, and their behavior is determined by the renderer, while elements
- * whose tags are functions are called “component” elements, and their
- * behavior is determined by the execution of the component function.
  */
 export type Tag = string | symbol | Component;
 
@@ -58,7 +53,8 @@ export type TagProps<TTag extends Tag> = TTag extends string
 	? JSX.IntrinsicElements[TTag]
 	: TTag extends Component<infer TProps>
 	? TProps
-	: unknown;
+	: // TODO: should the most generic type be object or {}
+	  unknown;
 
 /***
  * SPECIAL TAGS
@@ -166,30 +162,51 @@ type Key = unknown;
 
 const ElementSymbol = Symbol.for("crank.Element");
 
-/*** ELEMENT FLAGS ***/
-/**
- * A flag which is set when the element is mounted, used to detect whether an
- * element is being reused so that we clone it rather than accidentally
- * overwriting its state.
- *
- * Changing this flag value would likely be a breaking changes in terms of
- * interop between elements and renderers of different versions of Crank.
- *
- * TODO: Consider deleting this flag because we’re not using it anymore.
- */
-const IsInUse = 1 << 0;
-
-/**
- * A flag which tracks whether the element has previously rendered children,
- * used to clear elements which no longer render children in the next render.
- * We may deprecate this behavior and make elements without explicit children
- * uncontrolled.
- */
-const HadChildren = 1 << 1;
-
 // To save on filesize, we mangle the internal properties of Crank classes by
-// hand. These internal properties are prefixed with an underscore.
-// Refer to their definitions to see their unabbreviated names.
+// hand. These internal properties are prefixed with an underscore. Refer to
+// their definitions to see their unabbreviated names.
+
+export interface Element<TTag extends Tag = Tag> {
+	// To maximize compatibility between Crank versions, starting with 0.2.0, any
+	// changes to the following properties will be considered a breaking change:
+	// $$typeof, tag, props, key, ref
+	/**
+	 * @internal
+	 * A unique symbol to identify elements as elements across versions and
+	 * realms, and to protect against basic injection attacks.
+	 * https://overreacted.io/why-do-react-elements-have-typeof-property/
+	 *
+	 * This property is defined on the element prototype rather than per
+	 * instance, because it is the same for every Element.
+	 */
+	$$typeof: typeof ElementSymbol;
+
+	/**
+	 * The tag of the element. Can be a string, symbol or function.
+	 */
+	tag: TTag;
+
+	/**
+	 * An object containing the “properties” of an element. These correspond to
+	 * the attribute syntax from JSX.
+	 */
+	props: TagProps<TTag>;
+
+	/**
+	 * A value which uniquely identifies an element from its siblings so that it
+	 * can be added/updated/moved/removed by key rather than position.
+	 *
+	 * Passed in createElement() as the prop "crank-key".
+	 */
+	key: Key;
+
+	/**
+	 * A callback which is called with the element’s result when it is committed.
+	 *
+	 * Passed in createElement() as the prop "crank-ref".
+	 */
+	ref: ((value: unknown) => unknown) | undefined;
+}
 
 /**
  * Elements are the basic building blocks of Crank applications. They are
@@ -212,74 +229,15 @@ const HadChildren = 1 << 1;
  * rather than instatiating this class directly.
  */
 export class Element<TTag extends Tag = Tag> {
-	// To maximize compatibility between Crank versions, starting with 0.2.0, any
-	// changes to the following properties will be considered a breaking change:
-	// $$typeof, tag, props, key, ref, _f
-	/**
-	 * @internal
-	 * A unique symbol to identify elements as elements across versions and
-	 * realms, and to protect against basic injection attacks.
-	 * https://overreacted.io/why-do-react-elements-have-typeof-property/
-	 *
-	 * This property is defined on the element prototype rather than per
-	 * instance, because it is the same for every Element.
-	 */
-	declare $$typeof: typeof ElementSymbol;
-
-	/**
-	 * The tag of the element. Can be a string, symbol or function.
-	 */
-	declare tag: TTag;
-
-	/**
-	 * An object containing the “properties” of an element. These correspond to
-	 * the attribute syntax from JSX.
-	 */
-	declare props: TagProps<TTag>;
-
-	/**
-	 * A value which uniquely identifies an element from its siblings so that it
-	 * can be added/updated/moved/removed by key rather than position.
-	 *
-	 * Passed in createElement() as the prop "crank-key".
-	 */
-	declare key: Key;
-
-	/**
-	 * A callback which is called with the element’s result when it is committed.
-	 *
-	 * Passed in createElement() as the prop "crank-ref".
-	 */
-	declare ref: ((value: unknown) => unknown) | undefined;
-
-	/**
-	 * @internal
-	 * flags - A bitmask. See ELEMENT FLAGS.
-	 */
-	declare _f: number;
-
-	/**
-	 * @internal
-	 * children - The rendered children of the element.
-	 */
-	declare _ch: Array<NarrowedChild> | NarrowedChild;
-
+	// TODO: Move these internal properties to their own class, now that we’re
+	// cloning elements.
 	/**
 	 * @internal
 	 * node - The node or context associated with the element.
-	 *
-	 * For host elements, this property is set to the return value of
-	 * Renderer.prototype.create when the component is mounted, i.e. DOM nodes
-	 * for the DOM renderer.
-	 *
-	 * For component elements, this property is set to a Context instance
-	 * (Context<TagProps<TTag>>).
-	 *
-	 * We assign both of these to the same property because they are mutually
-	 * exclusive. We use any because the Element type has no knowledge of
-	 * renderer nodes.
 	 */
-	declare _n: any;
+	declare _n: any; // TNode
+
+	declare _ctx: Context | undefined;
 
 	/**
 	 * @internal
@@ -293,20 +251,36 @@ export class Element<TTag extends Tag = Tag> {
 
 	/**
 	 * @internal
-	 * inflightChildren - The current async run of the element’s children.
+	 * children - The rendered children of the element.
+	 */
+	declare _ch: Array<NarrowedChild> | NarrowedChild;
+
+	// TODO: This type is meaningless.
+	/**
+	 * @internal
+	 * childValues - The rendered child values of the element.
+	 */
+	declare _cv: ElementValue<unknown>;
+
+	/**
+	 * @internal
+	 * inflightValue(s) - The current async run of the element.
 	 *
 	 * This property is used to make sure Copy element refs fire at the correct
 	 * time, and is also used to create yield values for async generator
-	 * components with async children. It is unset when the element is committed.
+	 * components with async children.
 	 */
-	declare _ic: Promise<any> | undefined;
+	declare _inf: Promise<any> | undefined;
 
 	/**
 	 * @internal
 	 * onvalue(s) - This property is set to the resolve function of a promise
 	 * which represents the next children, so that renderings can be raced.
+	 *
+	 * We use Function because the Element type has no knowledge of what renderer
+	 * nodes will be.
 	 */
-	declare _ov: Function | undefined;
+	declare _oncv: Function | undefined;
 
 	constructor(
 		tag: TTag,
@@ -314,20 +288,20 @@ export class Element<TTag extends Tag = Tag> {
 		key: Key,
 		ref: ((value: unknown) => unknown) | undefined,
 	) {
-		this._f = 0;
 		this.tag = tag;
 		this.props = props;
 		this.key = key;
 		this.ref = ref;
-		this._ch = undefined;
-		this._n = undefined;
-		this._fb = undefined;
-		this._ic = undefined;
-		this._ov = undefined;
-	}
 
-	get hadChildren(): boolean {
-		return (this._f & HadChildren) !== 0;
+		// TODO: If we’re no longer reusing elements, it’s time to move these
+		// properties back onto a hidden class of some sort.
+		this._n = undefined; // node
+		this._ctx = undefined; // context
+		this._fb = undefined; // fallback
+		this._ch = undefined; // children
+		this._cv = undefined; // childValue(s)
+		this._inf = undefined; // inflightValue(s)
+		this._oncv = undefined; // onChildValue(s)
 	}
 }
 
@@ -386,9 +360,6 @@ export function createElement<TTag extends Tag>(
 
 /**
  * Clones a given element, shallowly copying the props object.
- *
- * Used internally to make sure we don’t accidentally reuse elements when
- * rendering.
  */
 export function cloneElement<TTag extends Tag>(
 	el: Element<TTag>,
@@ -422,9 +393,9 @@ function narrow(value: Children): NarrowedChild {
 }
 
 /**
- * A helper type which repesents all the possible rendered values of an element.
+ * A helper type which repesents all possible rendered values of an element.
  *
- * @template TNode - The node type for the element assigned by the renderer.
+ * @template TNode - The node type for the element provided by the renderer.
  *
  * When asking the question, what is the “value” of a specific element, the
  * answer varies depending on the tag:
@@ -522,24 +493,9 @@ function getValue<TNode>(el: Element): ElementValue<TNode> {
 	return unwrap(getChildValues<TNode>(el));
 }
 
-/**
- * This function is only used to make sure <Copy /> elements wait for the
- * current run of async elements, but it’s somewhat complex so I put it here.
- */
-function getInflightValue<TNode>(
-	el: Element,
-): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	const ctx: Context | undefined =
-		typeof el.tag === "function" ? el._n : undefined;
-	if (ctx && ctx._f & IsUpdating && ctx._iv) {
-		return ctx._iv; // inflightValue
-	} else if (el._ic) {
-		return el._ic; // inflightChildren
-	}
-
-	return getValue<TNode>(el);
-}
-
+// TODO: Now that we’re caching child values for host elements (el._cv), we
+// might reconsider using/invalidating these cached values in this function
+// again.
 /**
  * Walks an element’s children to find its child values.
  *
@@ -557,6 +513,138 @@ function getChildValues<TNode>(el: Element): Array<TNode | string> {
 
 	return normalize(values);
 }
+
+/**
+ * This function is only really used to make sure <Copy /> elements wait for
+ * the current async run before resolving, but it’s somewhat complex so I put
+ * it here.
+ */
+function getInflightValue<TNode>(
+	el: Element,
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+	const ctx: Context | undefined =
+		typeof el.tag === "function" ? el._ctx : undefined;
+	if (ctx && ctx._f & IsUpdating && ctx._iv) {
+		return ctx._iv; // inflightValue
+	} else if (el._inf) {
+		return el._inf; // inflightValue
+	}
+
+	return getValue<TNode>(el);
+}
+
+// TODO: Document the interface and methods
+export interface RendererImpl<
+	TNode,
+	TScope,
+	TRoot = TNode,
+	TResult = ElementValue<TNode>,
+> {
+	/**
+	 * Called when an element’s rendered value is exposed via render, schedule,
+	 * refresh, refs, or generator yield expressions.
+	 *
+	 * @param value - The value of the element being read. Can be a node, a
+	 * string, undefined, or an array of nodes and strings, depending on the
+	 * element.
+	 *
+	 * @returns Varies according to the specific renderer subclass. By default,
+	 * it exposes the element’s value.
+	 *
+	 * This is useful for renderers which don’t want to expose their internal
+	 * nodes. For instance, the HTML renderer will convert all internal nodes to
+	 * strings.
+	 */
+	read(value: ElementValue<TNode>): TResult;
+
+	/**
+	 * Called for each string in an element tree.
+	 *
+	 * @param text - The string child.
+	 * @param scope - The current scope.
+	 *
+	 * @returns The escaped string.
+	 *
+	 * Rather than returning text nodes for whatever environment we’re rendering
+	 * to, we defer that step for Renderer.prototype.arrange. We do this so that
+	 * adjacent strings can be concatenated and the actual element tree can be
+	 * rendered in a normalized form.
+	 */
+	escape(text: string, scope: TScope | undefined): string;
+
+	/**
+	 * Called for each Raw element whose value prop is a string.
+	 *
+	 * @param text - The string child.
+	 * @param scope - The current scope.
+	 *
+	 * @returns The parsed node or string.
+	 */
+	parse(text: string, scope: TScope | undefined): TNode | string;
+
+	scope<TTag extends string | symbol>(
+		tag: TTag,
+		props: TagProps<TTag>,
+		cope: TScope | undefined,
+	): TScope | undefined;
+
+	create<TTag extends string | symbol>(
+		tag: TTag,
+		props: TagProps<TTag>,
+		scope: TScope | undefined,
+	): TNode;
+
+	patch<TTag extends string | symbol>(
+		node: TNode,
+		tag: TTag,
+		props: TagProps<TTag>,
+		oldProps: TagProps<TTag> | undefined,
+	): unknown;
+
+	arrange<TTag extends string | symbol>(
+		node: TNode,
+		tag: TTag,
+		props: TagProps<TTag>,
+		children: Array<TNode | string>,
+		oldProps: TagProps<TTag> | undefined,
+		oldChildren: Array<TNode | string> | undefined,
+	): unknown;
+
+	dispose<TTag extends string | symbol>(
+		node: TNode,
+		tag: TTag,
+		props: TagProps<TTag>,
+	): unknown;
+
+	flush(root: TRoot): unknown;
+}
+
+const defaultRendererImpl: RendererImpl<unknown, unknown, unknown, unknown> = {
+	read(value) {
+		return value;
+	},
+
+	escape(text: string): string {
+		return text;
+	},
+
+	parse(text: string): unknown {
+		return text;
+	},
+
+	scope(_tag: unknown, _props: unknown, scope: unknown): unknown {
+		return scope;
+	},
+
+	create() {
+		throw new Error("Not implemented");
+	},
+
+	patch: NOOP,
+	arrange: NOOP,
+	dispose: NOOP,
+	flush: NOOP,
+};
 
 /**
  * An abstract class which is subclassed to render to different target
@@ -580,8 +668,13 @@ export class Renderer<
 	 * A weakmap which stores element trees by root.
 	 */
 	declare _cache: WeakMap<object, Element<Portal>>;
-	constructor() {
+	declare impl: RendererImpl<TNode, TScope, TRoot, TResult>;
+	constructor(impl: Partial<RendererImpl<TNode, TScope, TRoot, TResult>>) {
 		this._cache = new WeakMap();
+		this.impl = {
+			...(defaultRendererImpl as RendererImpl<TNode, TScope, TRoot, TResult>),
+			...impl,
+		};
 	}
 
 	/**
@@ -592,9 +685,9 @@ export class Renderer<
 	 * @param root - The node to be rendered into. The renderer will cache
 	 * element trees per root.
 	 * @param ctx - An optional context that will be the ancestor context of all
-	 * elements in the tree. Useful for connecting renderers which call each
-	 * other so that events/provisions properly propagate. The context for a
-	 * given root must be the same or an error will be thrown.
+	 * elements in the tree. Useful for connecting different renderers so that
+	 * events/provisions properly propagate. The context for a given root must be
+	 * the same or an error will be thrown.
 	 *
 	 * @returns The result of rendering the children, or a possible promise of
 	 * the result if the element tree renders asynchronously.
@@ -602,280 +695,185 @@ export class Renderer<
 	render(
 		children: Children,
 		root?: TRoot | undefined,
-		ctx?: Context | undefined,
+		bridgeCtx?: Context | undefined,
 	): Promise<TResult> | TResult {
 		let portal: Element<Portal> | undefined;
 		if (typeof root === "object" && root !== null) {
 			portal = this._cache.get(root as any);
 		}
 
+		let oldProps: any;
 		if (portal === undefined) {
 			portal = createElement(Portal, {children, root});
-			portal._n = ctx;
+			portal._n = bridgeCtx;
 			if (typeof root === "object" && root !== null && children != null) {
 				this._cache.set(root as any, portal);
 			}
+		} else if (portal._n !== bridgeCtx) {
+			throw new Error("Context mismatch");
 		} else {
-			if (portal._n !== ctx) {
-				throw new Error("Context mismatch");
-			}
-
+			oldProps = portal.props;
 			portal.props = {children, root};
 			if (typeof root === "object" && root !== null && children == null) {
 				this._cache.delete(root as unknown as object);
 			}
 		}
 
-		const value = update(this, root, portal, ctx, undefined, portal);
+		const childValues = diffChildren(
+			this.impl,
+			root,
+			portal,
+			bridgeCtx,
+			undefined,
+			portal,
+			children,
+		);
+
 		// We return the child values of the portal because portal elements
 		// themselves have no readable value.
-		if (isPromiseLike(value)) {
-			return value.then(() => {
-				const result = this.read(unwrap(getChildValues<TNode>(portal!)));
+		if (isPromiseLike(childValues)) {
+			return childValues.then((childValues) => {
+				// element is a host or portal element
+				if (root !== undefined) {
+					this.impl.arrange(
+						// TODO: Maybe we can constract root a little more
+						root as any,
+						Portal,
+						portal!.props,
+						childValues,
+						oldProps,
+						wrap(portal!._cv) as Array<TNode | string>,
+					);
+					completeRender(this.impl, root as any);
+				}
+
+				portal!._cv = unwrap(childValues);
+				const result = this.impl.read(unwrap(childValues));
 				if (root == null) {
-					unmount(this, portal!, undefined, portal!);
+					unmount(this.impl, portal!, undefined, portal!);
 				}
 
 				return result;
 			});
 		}
 
-		const result = this.read(unwrap(getChildValues<TNode>(portal)));
+		// element is a host or portal element
+		if (root !== undefined) {
+			this.impl.arrange(
+				// TODO: Maybe we can constract root a little more
+				root as any,
+				Portal,
+				portal!.props,
+				childValues,
+				oldProps,
+				wrap(portal!._cv) as Array<TNode | string>,
+			);
+			completeRender(this.impl, root as any);
+		}
+
+		portal!._cv = unwrap(childValues);
+		const result = this.impl.read(unwrap(childValues));
 		if (root == null) {
-			unmount(this, portal, undefined, portal);
+			unmount(this.impl, portal, undefined, portal);
 		}
 
 		return result;
 	}
-
-	/**
-	 * Called when an element’s rendered value is exposed via render, schedule,
-	 * refresh, refs, or generator yield expressions.
-	 *
-	 * @param value - The value of the element being read. Can be a node, a
-	 * string, undefined, or an array of nodes and strings, depending on the
-	 * element.
-	 *
-	 * @returns Varies according to the specific renderer subclass. By default,
-	 * it exposes the element’s value.
-	 *
-	 * This is useful for renderers which don’t want to expose their internal
-	 * nodes. For instance, the HTML renderer will convert all internal nodes to
-	 * strings.
-	 */
-	read(value: ElementValue<TNode>): TResult {
-		return value as unknown as TResult;
-	}
-
-	/**
-	 * Called in a preorder traversal for each host element.
-	 *
-	 * Useful for passing data down the element tree. For instance, the DOM
-	 * renderer uses this method to keep track of whether we’re in an SVG
-	 * subtree.
-	 *
-	 * @param el - The host element.
-	 * @param scope - The current scope.
-	 *
-	 * @returns The scope to be passed to create and scope for child host
-	 * elements.
-	 *
-	 * This method sets the scope for child host elements, not the current host
-	 * element.
-	 */
-	scope(_el: Element<string | symbol>, scope: TScope | undefined): TScope {
-		return scope as TScope;
-	}
-
-	/**
-	 * Called for each string in an element tree.
-	 *
-	 * @param text - The string child.
-	 * @param scope - The current scope.
-	 *
-	 * @returns The escaped string.
-	 *
-	 * Rather than returning text nodes for whatever environment we’re rendering
-	 * to, we defer that step for Renderer.prototype.arrange. We do this so that
-	 * adjacent strings can be concatenated and the actual element tree can be
-	 * rendered in a normalized form.
-	 */
-	escape(text: string, _scope: TScope): string {
-		return text;
-	}
-
-	/**
-	 * Called for each Raw element whose value prop is a string.
-	 *
-	 * @param text - The string child.
-	 * @param scope - The current scope.
-	 *
-	 * @returns The parsed node or string.
-	 */
-	parse(text: string, _scope: TScope): TNode | string {
-		return text;
-	}
-
-	/**
-	 * Called for each host element when it is committed for the first time.
-	 *
-	 * @param el - The host element.
-	 * @param scope - The current scope.
-	 *
-	 * @returns A “node” which determines the value of the host element.
-	 */
-	create(_el: Element<string | symbol>, _scope: TScope): TNode {
-		throw new Error("Not implemented");
-	}
-
-	/**
-	 * Called for each host element when it is committed.
-	 *
-	 * @param el - The host element.
-	 * @param node - The node associated with the host element.
-	 *
-	 * @returns The return value is ignored.
-	 *
-	 * Used to mutate the node associated with an element when new props are
-	 * passed.
-	 */
-	patch(_el: Element<string | symbol>, _node: TNode): unknown {
-		return;
-	}
-
-	// TODO: pass hints into arrange about where the dirty children start and end
-	/**
-	 * Called for each host element so that elements can be arranged into a tree.
-	 *
-	 * @param el - The host element.
-	 * @param node - The node associated with the host element.
-	 * @param children - An array of nodes and strings from child elements.
-	 *
-	 * @returns The return value is ignored.
-	 *
-	 * This method is also called by child components contexts as the last step
-	 * of a refresh.
-	 */
-	arrange(
-		_el: Element<string | symbol>,
-		_node: TNode | TRoot,
-		_children: Array<TNode | string>,
-	): unknown {
-		return;
-	}
-
-	// TODO: remove(): a method which is called to remove a child from a parent
-	// to optimize arrange
-
-	/**
-	 * Called for each host element when it is unmounted.
-	 *
-	 * @param el - The host element.
-	 * @param node - The node associated with the host element.
-	 *
-	 * @returns The return value is ignored.
-	 */
-	dispose(_el: Element<string | symbol>, _node: TNode): unknown {
-		return;
-	}
-
-	/**
-	 * Called at the end of the rendering process for each root of the tree.
-	 *
-	 * @param root - The root prop passed to portals or the render method.
-	 *
-	 * @returns The return value is ignored.
-	 */
-	complete(_root: TRoot): unknown {
-		return;
-	}
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
-function mount<TNode, TScope, TRoot, TResult>(
-	renderer: Renderer<TNode, TScope, TRoot, TResult>,
+// TODO: Move Fragmnet stuff out of here?
+function update<TNode, TScope, TRoot, TResult>(
+	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
-	scope: TScope,
-	el: Element,
+	scope: TScope | undefined,
+	el: Element<string | symbol>,
+	// TODO: refine this type?
+	oldProps: any,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	el._f |= IsInUse;
-	if (typeof el.tag === "function") {
-		el._n = new Context(
-			renderer,
-			root,
-			host,
-			ctx,
-			scope,
-			el as Element<Component>,
+	const childValues = diffChildren(
+		renderer,
+		root,
+		host,
+		ctx,
+		scope,
+		el,
+		el.props.children,
+	);
+
+	if (isPromiseLike(childValues)) {
+		el._inf = childValues.then((childValues) => {
+			let value: ElementValue<TNode>;
+			if (el.tag === Fragment) {
+				value = unwrap(childValues);
+			} else {
+				// element is a host or portal element
+				renderer.arrange(
+					el.tag === Portal ? el.props.root : el._n,
+					el.tag,
+					el.props,
+					childValues,
+					oldProps,
+					wrap(el._cv) as Array<TNode | string>,
+				);
+
+				if (el.tag === Portal) {
+					completeRender(renderer, el.props.root);
+				} else {
+					value = el._n;
+				}
+
+				el._cv = unwrap(childValues);
+			}
+
+			if (el.ref) {
+				el.ref(renderer.read(value));
+			}
+
+			return value;
+		});
+
+		return el._inf;
+	}
+
+	let value: ElementValue<TNode>;
+	if (el.tag === Fragment) {
+		value = unwrap(childValues);
+	} else {
+		// element is a host or portal element
+		renderer.arrange(
+			el.tag === Portal ? el.props.root : el._n,
+			el.tag,
+			el.props,
+			childValues,
+			oldProps,
+			wrap(el._cv) as Array<TNode | string>,
 		);
 
-		return updateCtx(el._n);
-	} else if (el.tag === Raw) {
-		return commit(renderer, scope, el, []);
-	} else if (el.tag !== Fragment) {
 		if (el.tag === Portal) {
-			root = el.props.root;
+			completeRender(renderer, el.props.root);
 		} else {
-			el._n = renderer.create(el as Element<string | symbol>, scope);
-			renderer.patch(el as Element<string | symbol>, el._n);
+			value = el._n;
 		}
 
-		host = el as Element<string | symbol>;
-		scope = renderer.scope(host, scope);
+		el._cv = unwrap(childValues);
 	}
 
-	return updateChildren(
-		renderer,
-		root,
-		host,
-		ctx,
-		scope,
-		el,
-		el.props.children,
-	);
-}
-
-function update<TNode, TScope, TRoot, TResult>(
-	renderer: Renderer<TNode, TScope, TRoot, TResult>,
-	root: TRoot,
-	host: Element<string | symbol>,
-	ctx: Context<unknown, TResult> | undefined,
-	scope: TScope,
-	el: Element,
-): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (typeof el.tag === "function") {
-		return updateCtx(el._n);
-	} else if (el.tag === Raw) {
-		return commit(renderer, scope, el, []);
-	} else if (el.tag !== Fragment) {
-		if (el.tag === Portal) {
-			root = el.props.root;
-		} else {
-			renderer.patch(el as Element<string | symbol>, el._n);
-		}
-
-		host = el as Element<string | symbol>;
-		scope = renderer.scope(host, scope);
+	if (el.ref) {
+		el.ref(renderer.read(value));
 	}
 
-	return updateChildren(
-		renderer,
-		root,
-		host,
-		ctx,
-		scope,
-		el,
-		el.props.children,
-	);
+	return value;
 }
 
 function createChildrenByKey(
 	children: Array<NarrowedChild>,
+	offset: number,
 ): Map<Key, Element> {
 	const childrenByKey = new Map<Key, Element>();
-	for (let i = 0; i < children.length; i++) {
+	for (let i = offset; i < children.length; i++) {
 		const child = children[i];
 		if (typeof child === "object" && typeof child.key !== "undefined") {
 			childrenByKey.set(child.key, child);
@@ -885,19 +883,59 @@ function createChildrenByKey(
 	return childrenByKey;
 }
 
-function updateChildren<TNode, TScope, TRoot, TResult>(
-	renderer: Renderer<TNode, TScope, TRoot, TResult>,
+function completeRender<TRoot>(
+	renderer: RendererImpl<unknown, TRoot>,
+	root: TRoot,
+	initiatingCtx?: Context,
+) {
+	renderer.flush(root);
+	if (typeof root !== "object" || root === null) {
+		return;
+	}
+
+	const flushMap = rootMap.get(root as unknown as object);
+	if (flushMap) {
+		if (initiatingCtx) {
+			const flushMap1 = new Map<Context, Set<Function>>();
+			for (let [ctx1, callbacks] of flushMap) {
+				if (!ctxContains(initiatingCtx, ctx1)) {
+					flushMap.delete(ctx1);
+					flushMap1.set(ctx1, callbacks);
+				}
+			}
+
+			if (flushMap1.size) {
+				rootMap.set(root as unknown as object, flushMap1);
+			} else {
+				rootMap.delete(root as unknown as object);
+			}
+		} else {
+			rootMap.delete(root as unknown as object);
+		}
+
+		for (const [ctx, callbacks] of flushMap) {
+			const value = renderer.read(getValue(ctx._el));
+			for (const callback of callbacks) {
+				callback(value);
+			}
+		}
+	}
+}
+
+function diffChildren<TNode, TScope, TRoot, TResult>(
+	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 	root: TRoot,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
-	scope: TScope,
-	el: Element,
+	scope: TScope | undefined,
+	parent: Element,
 	children: Children,
-): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	const oldChildren = wrap(el._ch);
+): Promise<Array<TNode | string>> | Array<TNode | string> {
+	const oldChildren = wrap(parent._ch);
 	const newChildren = arrayify(children);
-	const newChildren1: Array<NarrowedChild> = [];
-	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
+	const narrowedNewChildren: Array<NarrowedChild> = [];
+	const childValues: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> =
+		[];
 	let graveyard: Array<Element> | undefined;
 	let seenKeys: Set<Key> | undefined;
 	let childrenByKey: Map<Key, Element> | undefined;
@@ -908,103 +946,178 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		j < jl;
 		j++
 	) {
+		// Making sure we don’t access indices out of bounds
 		let oldChild = i >= il ? undefined : oldChildren[i];
 		let newChild = narrow(newChildren[j]);
-		// ALIGNMENT
-		let oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
-		let newKey = typeof newChild === "object" ? newChild.key : undefined;
-		if (newKey !== undefined && seenKeys && seenKeys.has(newKey)) {
-			console.error("Duplicate key", newKey);
-			newKey = undefined;
-		}
-
-		if (oldKey === newKey) {
-			if (childrenByKey !== undefined && newKey !== undefined) {
-				childrenByKey.delete(newKey);
+		{
+			// Aligning based on key
+			let oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
+			let newKey = typeof newChild === "object" ? newChild.key : undefined;
+			if (newKey !== undefined && seenKeys && seenKeys.has(newKey)) {
+				console.error("Duplicate key", newKey);
+				newKey = undefined;
 			}
 
-			i++;
-		} else {
-			if (!childrenByKey) {
-				childrenByKey = createChildrenByKey(oldChildren.slice(i));
-			}
-
-			if (newKey === undefined) {
-				while (oldChild !== undefined && oldKey !== undefined) {
-					i++;
-					oldChild = oldChildren[i];
-					oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
+			if (oldKey === newKey) {
+				if (childrenByKey !== undefined && newKey !== undefined) {
+					childrenByKey.delete(newKey);
 				}
 
 				i++;
 			} else {
-				oldChild = childrenByKey.get(newKey);
-				if (oldChild !== undefined) {
-					childrenByKey.delete(newKey);
+				if (!childrenByKey) {
+					childrenByKey = createChildrenByKey(oldChildren, i);
 				}
 
-				if (!seenKeys) {
-					seenKeys = new Set();
-				}
+				if (newKey === undefined) {
+					while (oldChild !== undefined && oldKey !== undefined) {
+						i++;
+						oldChild = oldChildren[i];
+						oldKey = typeof oldChild === "object" ? oldChild.key : undefined;
+					}
 
-				seenKeys.add(newKey);
+					i++;
+				} else {
+					oldChild = childrenByKey.get(newKey);
+					if (oldChild !== undefined) {
+						childrenByKey.delete(newKey);
+					}
+
+					if (!seenKeys) {
+						seenKeys = new Set();
+					}
+
+					seenKeys.add(newKey);
+				}
 			}
 		}
 
-		// UPDATING
+		// TODO: Can this block be put into its own function?
+		// Return value would have to be a tuple of [value, newChild]
+		// Updating
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-		if (
-			typeof oldChild === "object" &&
-			typeof newChild === "object" &&
-			oldChild.tag === newChild.tag
-		) {
-			if (
-				oldChild.tag === Portal &&
-				oldChild.props.root !== newChild.props.root
-			) {
-				renderer.arrange(oldChild as Element<Portal>, oldChild.props.root, []);
-				complete(renderer, oldChild.props.root);
-			}
+		switch (typeof newChild) {
+			case "object":
+				if (newChild.tag === Copy) {
+					value =
+						typeof oldChild === "object"
+							? getInflightValue<TNode>(oldChild)
+							: oldChild;
+					if (typeof newChild.ref === "function") {
+						if (isPromiseLike(value)) {
+							value.then(newChild.ref).catch(NOOP);
+						} else {
+							newChild.ref(value);
+						}
+					}
 
-			// TODO: implement Raw element parse caching
-			oldChild.props = newChild.props;
-			oldChild.ref = newChild.ref;
-			newChild = oldChild;
-			value = update(renderer, root, host, ctx, scope, newChild);
-		} else if (typeof newChild === "object") {
-			if (newChild.tag === Copy) {
-				value =
-					typeof oldChild === "object"
-						? getInflightValue<TNode>(oldChild)
-						: oldChild;
-				if (typeof newChild.ref === "function") {
-					if (isPromiseLike(value)) {
-						value.then(newChild.ref).catch(NOOP);
+					newChild = oldChild;
+				} else {
+					const matches =
+						typeof oldChild === "object" && oldChild.tag === newChild.tag;
+					let oldProps: any;
+					if (matches) {
+						// TODO: Figure out why the new conditional expression alias
+						// analysis in TypeScript 4.4. isn’t working
+						oldProps = (oldChild as Element).props;
+						(oldChild as Element).props = newChild.props;
+						(oldChild as Element).ref = newChild.ref;
+						newChild = oldChild as Element;
 					} else {
-						newChild.ref(value);
+						newChild = new Element(
+							newChild.tag,
+							newChild.props,
+							newChild.key,
+							newChild.ref,
+						);
+					}
+
+					if (typeof newChild.tag === "function") {
+						if (!matches) {
+							newChild._ctx = new Context(
+								renderer,
+								root,
+								host,
+								ctx,
+								scope,
+								newChild as Element<Component>,
+							);
+						}
+
+						value = updateCtx(newChild._ctx!);
+					} else if (newChild.tag === Raw) {
+						if (typeof newChild.props.value === "string") {
+							if (!oldProps || oldProps.value !== newChild.props.value) {
+								newChild._n = renderer.parse(newChild.props.value, scope);
+							}
+						} else {
+							newChild._n = newChild.props.value;
+						}
+
+						value = newChild._n;
+						if (newChild.ref) {
+							newChild.ref(value);
+						}
+					} else {
+						if (newChild.tag === Portal) {
+							if (matches && oldProps.root !== newChild.props.root) {
+								// root prop has changed for a Portal element
+								renderer.arrange(
+									(oldChild as Element).props.root,
+									Portal,
+									(oldChild as Element).props,
+									[],
+									oldProps,
+									wrap((oldChild as Element)._cv) as Array<any>,
+								);
+								completeRender(renderer, (oldChild as Element).props.root);
+							}
+
+							root = newChild.props.root;
+							scope = undefined;
+							host = newChild as Element<Portal>;
+						} else if (newChild.tag !== Fragment) {
+							if (!matches) {
+								newChild._n = renderer.create(
+									newChild.tag,
+									newChild.props,
+									scope,
+								);
+							}
+
+							renderer.patch(
+								newChild._n,
+								newChild.tag,
+								newChild.props,
+								undefined,
+							);
+							scope = renderer.scope(newChild.tag, newChild.props, scope);
+							host = newChild as Element<string | symbol>;
+						}
+
+						value = update(
+							renderer,
+							root,
+							host,
+							ctx,
+							scope,
+							newChild as Element<string | symbol>,
+							oldProps,
+						);
+					}
+
+					if (!matches && isPromiseLike(value)) {
+						// Setting the fallback so elements can display a fallback.
+						newChild._fb = oldChild;
 					}
 				}
 
-				newChild = oldChild;
-			} else {
-				newChild = new Element(
-					newChild.tag,
-					newChild.props,
-					newChild.key,
-					newChild.ref,
-				);
-				value = mount(renderer, root, host, ctx, scope, newChild);
-				if (isPromiseLike(value)) {
-					newChild._fb = oldChild;
-				}
-			}
-		} else if (typeof newChild === "string") {
-			newChild = value = renderer.escape(newChild, scope);
+				break;
+			case "string":
+				value = newChild = renderer.escape(newChild, scope);
+				break;
 		}
 
-		newChildren1[j] = newChild;
-		values[j] = value;
-		isAsync = isAsync || isPromiseLike(value);
 		if (typeof oldChild === "object" && oldChild !== newChild) {
 			if (!graveyard) {
 				graveyard = [];
@@ -1012,31 +1125,29 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 
 			graveyard.push(oldChild);
 		}
+
+		isAsync = isAsync || isPromiseLike(value);
+		narrowedNewChildren[j] = newChild;
+		childValues[j] = value;
 	}
 
-	el._ch = unwrap(newChildren1);
 	// cleanup
 	for (; i < oldChildren.length; i++) {
 		const oldChild = oldChildren[i];
 		if (typeof oldChild === "object" && typeof oldChild.key === "undefined") {
-			if (!graveyard) {
-				graveyard = [];
-			}
-
+			graveyard = graveyard || [];
 			graveyard.push(oldChild);
 		}
 	}
 
 	if (childrenByKey !== undefined && childrenByKey.size > 0) {
-		if (!graveyard) {
-			graveyard = [];
-		}
-
+		graveyard = graveyard || [];
 		graveyard.push(...childrenByKey.values());
 	}
 
+	parent._ch = unwrap(narrowedNewChildren);
 	if (isAsync) {
-		let values1 = Promise.all(values).finally(() => {
+		let childValues1 = Promise.all(childValues).finally(() => {
 			if (graveyard) {
 				for (let i = 0; i < graveyard.length; i++) {
 					unmount(renderer, host, ctx, graveyard[i]);
@@ -1044,21 +1155,21 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 			}
 		});
 
-		let onvalues!: Function;
-		values1 = Promise.race([
-			values1,
-			new Promise<any>((resolve) => (onvalues = resolve)),
+		let onChildValues!: Function;
+		childValues1 = Promise.race([
+			childValues1,
+			new Promise<any>((resolve) => (onChildValues = resolve)),
 		]);
 
-		if (el._ov) {
-			el._ov(values1);
+		if (parent._oncv) {
+			parent._oncv(childValues1);
 		}
 
-		el._ov = onvalues;
-		const children = (el._ic = values1.then((values) =>
-			commit(renderer, scope, el, normalize(values)),
-		));
-		return children;
+		parent._oncv = onChildValues;
+		return childValues1.then((childValues) => {
+			reset(parent);
+			return normalize(childValues);
+		});
 	}
 
 	if (graveyard) {
@@ -1067,108 +1178,61 @@ function updateChildren<TNode, TScope, TRoot, TResult>(
 		}
 	}
 
-	if (el._ov) {
-		el._ov(values);
-		el._ov = undefined;
+	if (parent._oncv) {
+		parent._oncv(childValues);
+		parent._oncv = undefined;
 	}
 
-	return commit(
-		renderer,
-		scope,
-		el,
-		normalize(values as Array<ElementValue<TNode>>),
-	);
+	reset(parent);
+	// We can assert there are no promises in the array because isAsync is false
+	return normalize(childValues as Array<ElementValue<TNode>>);
 }
 
-function commit<TNode, TScope, TRoot, TResult>(
-	renderer: Renderer<TNode, TScope, TRoot, TResult>,
-	scope: TScope,
-	el: Element,
-	values: Array<TNode | string>,
-): ElementValue<TNode> {
-	if (el._ic) {
-		el._ic = undefined;
+function reset(el: Element): void {
+	if (el._inf) {
+		// inflightValue(s)
+		el._inf = undefined;
 	}
 
-	// Need to handle (_fb) fallback being the empty string.
+	// We use an undefined check because we need to handle fallback being the
+	// empty string.
 	if (typeof el._fb !== "undefined") {
+		// fallback
 		el._fb = undefined;
-	}
-
-	let value: ElementValue<TNode>;
-	if (typeof el.tag === "function") {
-		value = commitCtx(el._n, values);
-	} else if (el.tag === Raw) {
-		if (typeof el.props.value === "string") {
-			el._n = renderer.parse(el.props.value, scope);
-		} else {
-			el._n = el.props.value;
-		}
-
-		value = el._n;
-	} else if (el.tag === Fragment) {
-		value = unwrap(values);
-	} else {
-		if (el.tag === Portal) {
-			renderer.arrange(el as Element<Portal>, el.props.root, values);
-			complete(renderer, el.props.root);
-		} else {
-			renderer.arrange(el as Element<string | symbol>, el._n, values);
-		}
-
-		value = el._n;
-		if (values.length) {
-			el._f |= HadChildren;
-		} else {
-			el._f &= ~HadChildren;
-		}
-	}
-
-	if (el.ref) {
-		el.ref(renderer.read(value));
-	}
-
-	return value;
-}
-
-function complete<TRoot>(renderer: Renderer<unknown, TRoot>, root: TRoot) {
-	renderer.complete(root);
-	const callbacksMap = completeMap.get(renderer);
-	if (callbacksMap) {
-		completeMap.delete(renderer);
-		for (const [ctx, callbacks] of callbacksMap) {
-			const value = renderer.read(getValue(ctx._el));
-			for (const callback of callbacks) {
-				callback(value);
-			}
-		}
 	}
 }
 
 function unmount<TNode, TScope, TRoot, TResult>(
-	renderer: Renderer<TNode, TScope, TRoot, TResult>,
+	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 	host: Element<string | symbol>,
 	ctx: Context<unknown, TResult> | undefined,
 	el: Element,
 ): void {
 	if (typeof el.tag === "function") {
-		unmountCtx(el._n);
-		ctx = el._n;
+		unmountCtx(el._ctx!);
+		ctx = el._ctx!;
 	} else if (el.tag === Portal) {
-		host = el as Element<symbol>;
-		renderer.arrange(host, host.props.root, []);
-		complete(renderer, host.props.root);
+		host = el as Element<Portal>;
+		renderer.arrange(
+			host.props.root,
+			Portal,
+			host.props,
+			[],
+			host.props,
+			wrap(host._cv) as Array<TNode | string>,
+		);
+		completeRender(renderer, host.props.root);
 	} else if (el.tag !== Fragment) {
 		if (isEventTarget(el._n)) {
-			const listeners = getListeners(ctx, host);
-			for (let i = 0; i < listeners.length; i++) {
-				const record = listeners[i];
+			const records = getListenerRecords(ctx, host);
+			for (let i = 0; i < records.length; i++) {
+				const record = records[i];
 				el._n.removeEventListener(record.type, record.callback, record.options);
 			}
 		}
 
+		renderer.dispose(el._n, el.tag, el.props);
 		host = el as Element<string | symbol>;
-		renderer.dispose(host, host._n);
 	}
 
 	const children = wrap(el._ch);
@@ -1269,8 +1333,8 @@ const scheduleMap = new WeakMap<Context, Set<Function>>();
 
 const cleanupMap = new WeakMap<Context, Set<Function>>();
 
-const completeMap = new WeakMap<
-	Renderer<any, any>,
+const rootMap = new WeakMap<
+	object, // TRoot
 	Map<Context, Set<Function>>
 >();
 
@@ -1291,19 +1355,19 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * @internal
 	 * flags - A bitmask. See CONTEXT FLAGS above.
 	 */
-	_f: number;
+	declare _f: number;
 
 	/**
 	 * @internal
 	 * renderer - The renderer which created this context.
 	 */
-	_re: Renderer<unknown, unknown, unknown, TResult>;
+	declare _re: RendererImpl<unknown, unknown, unknown, TResult>;
 
 	/**
 	 * @internal
 	 * root - The root node as set by the nearest ancestor portal.
 	 */
-	_rt: unknown;
+	declare _rt: unknown;
 
 	/**
 	 * @internal
@@ -1313,31 +1377,31 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * of the commit, to make sure the parent’s children properly reflects the
 	 * components’s children.
 	 */
-	_ho: Element<string | symbol>;
+	declare _ho: Element<string | symbol>;
 
 	/**
 	 * @internal
 	 * parent - The parent context.
 	 */
-	_pa: Context<unknown, TResult> | undefined;
+	declare _pa: Context<unknown, TResult> | undefined;
 
 	/**
 	 * @internal
 	 * scope - The value of the scope at the point of element’s creation.
 	 */
-	_sc: unknown;
+	declare _sc: unknown;
 
 	/**
 	 * @internal
 	 * el - The associated component element.
 	 */
-	_el: Element<Component>;
+	declare _el: Element<Component>;
 
 	/**
 	 * @internal
 	 * iterator - The iterator returned by the component function.
 	 */
-	_it:
+	declare _it:
 		| Iterator<Children, Children | void, unknown>
 		| AsyncIterator<Children, Children | void, unknown>
 		| undefined;
@@ -1349,7 +1413,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * implement the props async iterator. See the Symbol.asyncIterator method
 	 * and the resumeCtx function.
 	 */
-	_oa: Function | undefined;
+	declare _oa: Function | undefined;
 
 	// See the stepCtx/advanceCtx/runCtx functions for more notes on the
 	// inflight/enqueued block/value properties.
@@ -1357,32 +1421,33 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * @internal
 	 * inflightBlock
 	 */
-	_ib: Promise<unknown> | undefined;
+	declare _ib: Promise<unknown> | undefined;
 
+	// TODO: Can we combine this with element.inflightValue somehow please.
 	/**
 	 * @internal
 	 * inflightValue
 	 */
-	_iv: Promise<ElementValue<any>> | undefined;
+	declare _iv: Promise<ElementValue<any>> | undefined;
 
 	/**
 	 * @internal
 	 * enqueuedBlock
 	 */
-	_eb: Promise<unknown> | undefined;
+	declare _eb: Promise<unknown> | undefined;
 
 	/**
 	 * @internal
 	 * enqueuedValue
 	 */
-	_ev: Promise<ElementValue<any>> | undefined;
+	declare _ev: Promise<ElementValue<any>> | undefined;
 
 	/**
 	 * @internal
 	 * Contexts should never be instantiated directly.
 	 */
 	constructor(
-		renderer: Renderer<unknown, unknown, unknown, TResult>,
+		renderer: RendererImpl<unknown, unknown, unknown, TResult>,
 		root: unknown,
 		host: Element<string | symbol>,
 		parent: Context<unknown, TResult> | undefined,
@@ -1396,12 +1461,12 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		this._pa = parent;
 		this._sc = scope;
 		this._el = el;
-		this._it = undefined;
-		this._oa = undefined;
-		this._ib = undefined;
-		this._iv = undefined;
-		this._eb = undefined;
-		this._ev = undefined;
+		this._it = undefined; // iterator
+		this._oa = undefined; // onavailable
+		this._ib = undefined; // inflightBlock
+		this._iv = undefined; // inflightValue
+		this._eb = undefined; // enqueuedBlock
+		this._ev = undefined; // enqueuedValue
 	}
 
 	/**
@@ -1504,19 +1569,23 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	/**
 	 * Registers a callback which fires when the component’s children are
-	 * rendered. Will only fire once per callback and update.
+	 * rendered into the root. Will only fire once per callback and render.
 	 */
-	complete(callback: (value: TResult) => unknown): void {
-		let callbackMap = completeMap.get(this._re);
-		if (!callbackMap) {
-			callbackMap = new Map<Context, Set<Function>>();
-			completeMap.set(this._re, callbackMap);
+	flush(callback: (value: TResult) => unknown): void {
+		if (typeof this._rt !== "object" || this._rt === null) {
+			return;
 		}
 
-		let callbacks = callbackMap.get(this);
+		let flushMap = rootMap.get(this._rt);
+		if (!flushMap) {
+			flushMap = new Map<Context, Set<Function>>();
+			rootMap.set(this._rt, flushMap);
+		}
+
+		let callbacks = flushMap.get(this);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
-			callbackMap.set(this, callbacks);
+			flushMap.set(this, callbacks);
 		}
 
 		callbacks.add(callback);
@@ -1580,7 +1649,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			}
 		}
 
-		options = normalizeOptions(options);
+		options = normalizeListenerOptions(options);
 		let callback: MappedEventListener<T>;
 		if (typeof listener === "object") {
 			callback = () => listener.handleEvent.apply(listener, arguments as any);
@@ -1629,7 +1698,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			return;
 		}
 
-		const options1 = normalizeOptions(options);
+		const options1 = normalizeListenerOptions(options);
 		const i = listeners.findIndex(
 			(record) =>
 				record.type === type &&
@@ -1753,6 +1822,19 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 }
 
 /*** PRIVATE CONTEXT FUNCTIONS ***/
+function ctxContains(parent: Context, child: Context): boolean {
+	for (
+		let current: Context | undefined = child;
+		current !== undefined;
+		current = current._pa
+	) {
+		if (current === parent) {
+			return true;
+		}
+	}
+
+	return false;
+}
 
 /**
  * This function is responsible for executing the component and handling all
@@ -1808,7 +1890,7 @@ function stepCtx<TNode, TResult>(
 					ctx._f |= IsErrored;
 					throw err;
 				},
-			) as Promise<ElementValue<TNode>>;
+			);
 			return [result1, value];
 		} else {
 			// sync function component
@@ -1816,22 +1898,22 @@ function stepCtx<TNode, TResult>(
 		}
 	}
 
-	// The value passed back into the generator as the argument to the next
-	// method is a promise if an async generator component has async children.
-	// Sync generator components only resume when their children have fulfilled
-	// so ctx._el._ic (the element’s inflight children) will never be defined.
 	let oldValue: Promise<TResult> | TResult;
 	if (initial) {
 		// The argument passed to the first call to next is ignored.
 		oldValue = undefined as any;
-	} else if (ctx._el._ic) {
-		oldValue = ctx._el._ic.then(ctx._re.read, () => ctx._re.read(undefined));
+	} else if (ctx._el._inf) {
+		// The value passed back into the generator as the argument to the next
+		// method is a promise if an async generator component has async children.
+		// Sync generator components only resume when their children have fulfilled
+		// so the element’s inflight child values will never be defined.
+		oldValue = ctx._el._inf.then(ctx._re.read, () => ctx._re.read(undefined));
 	} else {
 		oldValue = ctx._re.read(getValue(el));
 	}
 
-	ctx._f |= IsExecuting;
 	let iteration: ChildrenIteration;
+	ctx._f |= IsExecuting;
 	try {
 		iteration = ctx._it!.next(oldValue);
 	} catch (err) {
@@ -2028,9 +2110,8 @@ function updateCtxChildren<TNode, TResult>(
 			"A component has returned or yielded undefined. If this was intentional, return or yield null instead.",
 		);
 	}
-
-	return updateChildren<TNode, unknown, unknown, TResult>(
-		ctx._re as Renderer<TNode, unknown, unknown, TResult>,
+	const childValues = diffChildren(
+		ctx._re as RendererImpl<TNode, unknown, unknown, TResult>,
 		ctx._rt,
 		ctx._ho,
 		ctx,
@@ -2038,6 +2119,15 @@ function updateCtxChildren<TNode, TResult>(
 		ctx._el,
 		narrow(children),
 	);
+
+	if (isPromiseLike(childValues)) {
+		ctx._el._inf = childValues.then((childValues) =>
+			commitCtx(ctx, childValues),
+		);
+		return ctx._el._inf;
+	}
+
+	return commitCtx(ctx, childValues);
 }
 
 function commitCtx<TNode>(
@@ -2064,14 +2154,16 @@ function commitCtx<TNode>(
 	if (ctx._f & IsScheduling) {
 		ctx._f |= IsSchedulingRefresh;
 	} else if (!(ctx._f & IsUpdating)) {
-		// Rearrange the host.
-		const listeners = getListeners(ctx._pa, ctx._ho);
-		if (listeners.length) {
+		// If we’re not updating, the component, which happens when components are
+		// refreshed, or when async generator components iterate, we have to do a
+		// little bit housekeeping.
+		const records = getListenerRecords(ctx._pa, ctx._ho);
+		if (records.length) {
 			for (let i = 0; i < values.length; i++) {
 				const value = values[i];
 				if (isEventTarget(value)) {
-					for (let j = 0; j < listeners.length; j++) {
-						const record = listeners[j];
+					for (let j = 0; j < records.length; j++) {
+						const record = records[j];
 						value.addEventListener(
 							record.type,
 							record.callback,
@@ -2082,20 +2174,23 @@ function commitCtx<TNode>(
 			}
 		}
 
+		// rearranging the nearest ancestor host element
+		// TODO: If we’re retaining the oldChildValues, we can do a quick check to
+		// make sure this work isn’t necessary as a performance optimization.
 		const host = ctx._ho;
 		const hostValues = getChildValues(host);
-		if (hostValues.length) {
-			host._f |= HadChildren;
-		} else {
-			host._f &= ~HadChildren;
-		}
-
 		ctx._re.arrange(
-			host,
 			host.tag === Portal ? host.props.root : host._n,
+			host.tag,
+			host.props,
 			hostValues,
+			// props and oldProps are the same because the host isn’t updated.
+			host.props,
+			wrap(host._cv),
 		);
-		complete(ctx._re, ctx._rt);
+
+		host._cv = hostValues;
+		completeRender(ctx._re, ctx._rt, ctx);
 	}
 
 	let value = unwrap(values);
@@ -2117,6 +2212,11 @@ function commitCtx<TNode>(
 	}
 
 	ctx._f &= ~IsUpdating;
+
+	if (typeof ctx._el.ref === "function") {
+		ctx._el.ref(value);
+	}
+
 	return value;
 }
 
@@ -2182,7 +2282,7 @@ interface EventListenerRecord {
 
 const listenersMap = new WeakMap<Context, Array<EventListenerRecord>>();
 
-function normalizeOptions(
+function normalizeListenerOptions(
 	options: AddEventListenerOptions | boolean | null | undefined,
 ): AddEventListenerOptions {
 	if (typeof options === "boolean") {
@@ -2211,6 +2311,8 @@ function setEventProperty<T extends keyof Event>(
 	Object.defineProperty(ev, key, {value, writable: false, configurable: true});
 }
 
+// TODO: Maybe we can pass in the current context directly, rather than
+// starting from the parent?
 /**
  * A function to reconstruct an array of every listener given a context and a
  * host element.
@@ -2219,11 +2321,8 @@ function setEventProperty<T extends keyof Event>(
  * host element. We can determine all the contexts which are directly listening
  * to an element by traversing up the context tree and checking that the host
  * element passed in matches the parent context’s host element.
- *
- * TODO: Maybe we can pass in the current context directly, rather than
- * starting from the parent?
  */
-function getListeners(
+function getListenerRecords(
 	ctx: Context | undefined,
 	host: Element<string | symbol>,
 ): Array<EventListenerRecord> {

@@ -1,31 +1,15 @@
 import {
 	Children,
 	Context,
-	Element as CrankElement,
 	ElementValue,
 	Portal,
 	Renderer,
+	RendererImpl,
 } from "./crank";
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
-export class DOMRenderer extends Renderer<Node, string | undefined> {
-	render(
-		children: Children,
-		root: Node,
-		ctx?: Context,
-	): Promise<ElementValue<Node>> | ElementValue<Node> {
-		if (root == null || typeof root.nodeType !== "number") {
-			throw new TypeError(
-				`Render root is not a node. Received: ${JSON.stringify(
-					root && root.toString(),
-				)}`,
-			);
-		}
-
-		return super.render(children, root, ctx);
-	}
-
+const impl: Partial<RendererImpl<Node, string>> = {
 	parse(text: string): DocumentFragment {
 		if (typeof document.createRange === "function") {
 			return document.createRange().createContextualFragment(text);
@@ -39,13 +23,15 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 
 			return fragment;
 		}
-	}
+	},
 
 	scope(
-		el: CrankElement<string | symbol>,
-		scope: string | undefined,
+		tag: string | symbol,
+		_props: unknown,
+		scope: string,
 	): string | undefined {
-		switch (el.tag) {
+		// TODO: Should we handle xmlns?
+		switch (tag) {
 			case Portal:
 			case "foreignObject":
 				return undefined;
@@ -54,25 +40,27 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 			default:
 				return scope;
 		}
-	}
+	},
 
-	create(el: CrankElement<string | symbol>, ns: string | undefined): Node {
-		if (typeof el.tag !== "string") {
-			throw new Error(`Unknown tag: ${el.tag.toString()}`);
-		} else if (el.tag === "svg") {
+	create(tag: string | symbol, _props: unknown, ns: string | undefined): Node {
+		if (typeof tag !== "string") {
+			throw new Error(`Unknown tag: ${tag.toString()}`);
+		} else if (tag === "svg") {
 			ns = SVG_NAMESPACE;
 		}
 
-		return ns
-			? document.createElementNS(ns, el.tag)
-			: document.createElement(el.tag);
-	}
+		return ns ? document.createElementNS(ns, tag) : document.createElement(tag);
+	},
 
-	patch(el: CrankElement<string | symbol>, node: Element): void {
+	patch(
+		node: Element,
+		_tag: string | symbol,
+		props: Record<string, any>,
+	): void {
 		const isSVG = node.namespaceURI === SVG_NAMESPACE;
-		for (let name in el.props) {
+		for (let name in props) {
 			let forceAttribute = false;
-			const value = el.props[name];
+			const value = props[name];
 			switch (name) {
 				case "children":
 					break;
@@ -145,17 +133,17 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 				}
 			}
 		}
-	}
+	},
 
-	arrange(
-		el: CrankElement<string | symbol>,
-		node: Node,
-		children: Array<Node | string>,
+	arrange<TTag extends string | symbol>(
+		node: Element,
+		tag: TTag,
+		props: Record<string, any>,
+		children: Array<Element | string>,
+		_oldProps: Record<string, any> | undefined,
+		oldChildren: Array<Element | string> | undefined,
 	): void {
-		if (
-			el.tag === Portal &&
-			(node == null || typeof node.nodeType !== "number")
-		) {
+		if (tag === Portal && (node == null || typeof node.nodeType !== "number")) {
 			throw new TypeError(
 				`Portal root is not a node. Received: ${JSON.stringify(
 					node && node.toString(),
@@ -164,8 +152,8 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 		}
 
 		if (
-			!("innerHTML" in el.props) &&
-			("children" in el.props || el.hadChildren)
+			!("innerHTML" in props) &&
+			("children" in props || (oldChildren && oldChildren.length))
 		) {
 			if (children.length === 0) {
 				node.textContent = "";
@@ -221,6 +209,28 @@ export class DOMRenderer extends Renderer<Node, string | undefined> {
 				}
 			}
 		}
+	},
+};
+
+export class DOMRenderer extends Renderer<Node, string> {
+	constructor() {
+		super(impl);
+	}
+
+	render(
+		children: Children,
+		root: Node,
+		ctx?: Context,
+	): Promise<ElementValue<Node>> | ElementValue<Node> {
+		if (root == null || typeof root.nodeType !== "number") {
+			throw new TypeError(
+				`Render root is not a node. Received: ${JSON.stringify(
+					root && root.toString(),
+				)}`,
+			);
+		}
+
+		return super.render(children, root, ctx);
 	}
 }
 

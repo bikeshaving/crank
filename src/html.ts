@@ -1,4 +1,4 @@
-import {Element, ElementValue, Portal, Renderer} from "./crank";
+import {ElementValue, Portal, Renderer, RendererImpl} from "./crank";
 
 const voidTags = new Set([
 	"area",
@@ -92,19 +92,14 @@ function join(children: Array<Node | string>): string {
 	return result;
 }
 
-export class HTMLRenderer extends Renderer<
-	Node | string,
-	undefined,
-	unknown,
-	string
-> {
+const impl: Partial<RendererImpl<Node | string, undefined, unknown, string>> = {
 	create(): Node {
 		return {value: ""};
-	}
+	},
 
 	escape(text: string): string {
 		return escape(text);
-	}
+	},
 
 	read(value: ElementValue<Node>): string {
 		if (Array.isArray(value)) {
@@ -116,32 +111,44 @@ export class HTMLRenderer extends Renderer<
 		} else {
 			return value.value;
 		}
-	}
+	},
 
-	arrange(
-		el: Element<string | symbol>,
+	arrange<TTag extends string | symbol>(
 		node: Node,
+		tag: TTag,
+		props: Record<string, any>,
 		children: Array<Node | string>,
 	): void {
-		if (el.tag === Portal) {
+		if (tag === Portal) {
 			return;
-		} else if (typeof el.tag !== "string") {
-			throw new Error(`Unknown tag: ${el.tag.toString()}`);
+		} else if (typeof tag !== "string") {
+			throw new Error(`Unknown tag: ${tag.toString()}`);
 		}
 
-		const attrs = printAttrs(el.props);
-		const open = `<${el.tag}${attrs.length ? " " : ""}${attrs}>`;
+		const attrs = printAttrs(props);
+		const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
 		let result: string;
-		if (voidTags.has(el.tag)) {
+		if (voidTags.has(tag)) {
 			result = open;
 		} else {
-			const close = `</${el.tag}>`;
+			const close = `</${tag}>`;
 			const contents =
-				"innerHTML" in el.props ? el.props["innerHTML"] : join(children);
+				"innerHTML" in props ? props["innerHTML"] : join(children);
 			result = `${open}${contents}${close}`;
 		}
 
 		node.value = result;
+	},
+};
+
+export class HTMLRenderer extends Renderer<
+	Node | string,
+	undefined,
+	unknown,
+	string
+> {
+	constructor() {
+		super(impl);
 	}
 }
 

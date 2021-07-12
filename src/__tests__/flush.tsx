@@ -2,7 +2,7 @@
 import {createElement, Context, Element} from "../index";
 import {renderer} from "../dom";
 
-describe("complete", () => {
+describe("flush", () => {
 	afterEach(() => {
 		renderer.render(null, document.body);
 		document.body.innerHTML = "";
@@ -10,11 +10,9 @@ describe("complete", () => {
 
 	test("callback called after insertion into the DOM", () => {
 		const fn = jest.fn();
-		const callback = (el: HTMLElement) => {
-			fn(document.body.contains(el));
-		};
+		const callback = (el: HTMLElement) => fn(document.body.contains(el));
 		function Component(this: Context): Element {
-			this.complete(callback);
+			this.flush(callback);
 			return <span>Hello</span>;
 		}
 
@@ -29,7 +27,7 @@ describe("complete", () => {
 		const fn = jest.fn();
 		function Component(this: Context): Element {
 			if (i === 0) {
-				this.complete(fn);
+				this.flush(fn);
 			}
 
 			return <span>{i++}</span>;
@@ -61,7 +59,7 @@ describe("complete", () => {
 		let i = 0;
 		const fn = jest.fn();
 		function Component(this: Context): Element {
-			this.complete(fn);
+			this.flush(fn);
 			return <span>{i++}</span>;
 		}
 
@@ -89,10 +87,10 @@ describe("complete", () => {
 	});
 
 	test("called called once in a generator", () => {
-		let i = 0;
 		const fn = jest.fn();
 		function* Component(this: Context): Generator<Element> {
-			this.complete(fn);
+			let i = 0;
+			this.flush(fn);
 			for (const _ of this) {
 				yield <span>{i++}</span>;
 			}
@@ -122,11 +120,11 @@ describe("complete", () => {
 	});
 
 	test("callback called every time in a generator", () => {
-		let i = 0;
 		const fn = jest.fn();
 		function* Component(this: Context): Generator<Element> {
+			let i = 0;
 			for (const _ of this) {
-				this.complete(fn);
+				this.flush(fn);
 				yield <span>{i++}</span>;
 			}
 		}
@@ -159,7 +157,7 @@ describe("complete", () => {
 		const fn = jest.fn();
 		async function Component(this: Context) {
 			if (i === 0) {
-				this.complete(fn);
+				this.flush(fn);
 			}
 
 			return <span>{i++}</span>;
@@ -191,7 +189,7 @@ describe("complete", () => {
 		let i = 0;
 		const fn = jest.fn();
 		async function Component(this: Context) {
-			this.complete(fn);
+			this.flush(fn);
 			return <span>{i++}</span>;
 		}
 
@@ -219,10 +217,10 @@ describe("complete", () => {
 	});
 
 	test("callback called once in an async generator", async () => {
-		let i = 0;
 		const fn = jest.fn();
 		async function* Component(this: Context) {
-			this.complete(fn);
+			let i = 0;
+			this.flush(fn);
 			for await (const _ of this) {
 				yield <span>{i++}</span>;
 			}
@@ -252,11 +250,11 @@ describe("complete", () => {
 	});
 
 	test("callback called every time in an async generator", async () => {
-		let i = 0;
 		const fn = jest.fn();
 		async function* Component(this: Context) {
+			let i = 0;
 			for await (const _ of this) {
-				this.complete(fn);
+				this.flush(fn);
 				yield <span>{i++}</span>;
 			}
 		}
@@ -282,5 +280,53 @@ describe("complete", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
 		expect(fn).toHaveBeenCalledTimes(2);
 		expect(fn).toHaveBeenCalledWith(document.body.firstChild!.firstChild);
+	});
+
+	test("callback isn’t called when sibling is refreshed", () => {
+		const fn1 = jest.fn();
+		const fn2 = jest.fn();
+		let ctx1!: Context;
+		let ctx2!: Context;
+		function* Component(this: Context): Generator<Element> {
+			ctx1 = this;
+			let i = 0;
+			for (const _ of this) {
+				this.flush(fn1);
+				yield <span>{i++}</span>;
+			}
+		}
+
+		function* Sibling(this: Context) {
+			let i = 0;
+			ctx2 = this;
+			for (const _ of this) {
+				this.flush(fn2);
+				yield <span>sibling {i++}</span>;
+			}
+		}
+
+		renderer.render(
+			<div>
+				<Component />
+				<Sibling />
+			</div>,
+			document.body,
+		);
+
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>0</span><span>sibling 0</span></div>",
+		);
+		expect(fn1).toHaveBeenCalledTimes(1);
+		expect(fn2).toHaveBeenCalledTimes(1);
+		expect(fn1).toHaveBeenCalledWith(document.body.firstChild!.childNodes[0]);
+		expect(fn2).toHaveBeenCalledWith(document.body.firstChild!.childNodes[1]);
+		ctx1.flush(fn1);
+		ctx2.refresh();
+		expect(document.body.innerHTML).toEqual(
+			"<div><span>0</span><span>sibling 1</span></div>",
+		);
+		expect(fn1).toHaveBeenCalledTimes(1);
+		expect(fn2).toHaveBeenCalledTimes(2);
+		expect(fn2).toHaveBeenCalledWith(document.body.firstChild!.childNodes[1]);
 	});
 });
