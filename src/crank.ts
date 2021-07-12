@@ -233,20 +233,11 @@ export class Element<TTag extends Tag = Tag> {
 	// cloning elements.
 	/**
 	 * @internal
-	 * nodeOrContext - The node or context associated with the element.
-	 *
-	 * For host elements, this property is set to the return value of
-	 * Renderer.prototype.create when the component is mounted, i.e. DOM nodes
-	 * for the DOM renderer.
-	 *
-	 * For component elements, this property is set to a Context instance
-	 * (Context<TagProps<TTag>>).
-	 *
-	 * We assign both of these to the same property because they are mutually
-	 * exclusive. We use any because the Element type has no knowledge of
-	 * what renderer nodes will be.
+	 * node - The node or context associated with the element.
 	 */
-	declare _n: any;
+	declare _n: any; // TNode
+
+	declare _ctx: Context | undefined;
 
 	/**
 	 * @internal
@@ -304,7 +295,8 @@ export class Element<TTag extends Tag = Tag> {
 
 		// TODO: If we’re no longer reusing elements, it’s time to move these
 		// properties back onto a hidden class of some sort.
-		this._n = undefined; // nodeOrContext
+		this._n = undefined; // node
+		this._ctx = undefined; // context
 		this._fb = undefined; // fallback
 		this._ch = undefined; // children
 		this._cv = undefined; // childValue(s)
@@ -531,7 +523,7 @@ function getInflightValue<TNode>(
 	el: Element,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	const ctx: Context | undefined =
-		typeof el.tag === "function" ? el._n : undefined;
+		typeof el.tag === "function" ? el._ctx : undefined;
 	if (ctx && ctx._f & IsUpdating && ctx._iv) {
 		return ctx._iv; // inflightValue
 	} else if (el._inf) {
@@ -1042,7 +1034,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 
 					if (typeof newChild.tag === "function") {
 						if (!matches) {
-							newChild._n = new Context(
+							newChild._ctx = new Context(
 								renderer,
 								root,
 								host,
@@ -1052,7 +1044,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 							);
 						}
 
-						value = updateCtx(newChild._n);
+						value = updateCtx(newChild._ctx!);
 					} else if (newChild.tag === Raw) {
 						if (typeof newChild.props.value === "string") {
 							if (!oldProps || oldProps.value !== newChild.props.value) {
@@ -1217,8 +1209,8 @@ function unmount<TNode, TScope, TRoot, TResult>(
 	el: Element,
 ): void {
 	if (typeof el.tag === "function") {
-		unmountCtx(el._n);
-		ctx = el._n;
+		unmountCtx(el._ctx!);
+		ctx = el._ctx!;
 	} else if (el.tag === Portal) {
 		host = el as Element<Portal>;
 		renderer.arrange(
