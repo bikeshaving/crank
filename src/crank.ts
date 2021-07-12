@@ -990,146 +990,128 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 		}
 
 		// Updating
-		// TODO: There should be a way to combine the update/mount branches
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-		if (typeof newChild === "object" && newChild.tag === Copy) {
-			value =
-				typeof oldChild === "object"
-					? getInflightValue<TNode>(oldChild)
-					: oldChild;
-			if (typeof newChild.ref === "function") {
-				if (isPromiseLike(value)) {
-					value.then(newChild.ref).catch(NOOP);
-				} else {
-					newChild.ref(value);
-				}
-			}
-
-			newChild = oldChild;
-		} else if (
-			typeof oldChild === "object" &&
-			typeof newChild === "object" &&
-			oldChild.tag === newChild.tag
-		) {
-			// update of matching element
-			const oldProps1 = oldChild.props;
-			oldChild.props = newChild.props;
-			oldChild.ref = newChild.ref;
-			newChild = oldChild;
-			if (typeof oldChild.tag === "function") {
-				value = updateCtx(oldChild._n);
-			} else if (oldChild.tag === Raw) {
-				if (typeof newChild.props.value === "string") {
-					if (oldProps1.value !== newChild.props.value) {
-						oldChild._n = renderer.parse(newChild.props.value, scope);
+		switch (typeof newChild) {
+			case "object":
+				if (newChild.tag === Copy) {
+					value =
+						typeof oldChild === "object"
+							? getInflightValue<TNode>(oldChild)
+							: oldChild;
+					if (typeof newChild.ref === "function") {
+						if (isPromiseLike(value)) {
+							value.then(newChild.ref).catch(NOOP);
+						} else {
+							newChild.ref(value);
+						}
 					}
-				} else {
-					oldChild._n = newChild.props.value;
-				}
 
-				value = newChild._n;
-				if (newChild.ref) {
-					newChild.ref(value);
-				}
-			} else {
-				if (oldChild.tag === Portal) {
-					if (oldProps1.root !== newChild.props.root) {
-						// root has changed, so we call arrange and completeRender with the
-						// old root
-						renderer.arrange(
-							oldChild.props.root,
-							Portal,
-							oldChild.props,
-							[],
-							oldProps1,
-							wrap(oldChild._cv) as Array<any>,
+					newChild = oldChild;
+				} else {
+					const matches =
+						typeof oldChild === "object" && oldChild.tag === newChild.tag;
+					let oldProps: any;
+					if (matches) {
+						// TODO: Figure out why the new conditional expression alias
+						// analysis in TypeScript 4.4. isn’t working
+						oldProps = (oldChild as Element).props;
+						(oldChild as Element).props = newChild.props;
+						(oldChild as Element).ref = newChild.ref;
+						newChild = oldChild as Element;
+					} else {
+						newChild = new Element(
+							newChild.tag,
+							newChild.props,
+							newChild.key,
+							newChild.ref,
 						);
-						completeRender(renderer, oldChild.props.root);
 					}
 
-					root = newChild.props.root;
-					scope = undefined;
-					host = newChild as Element<Portal>;
-				} else if (oldChild.tag !== Fragment) {
-					renderer.patch(oldChild._n, oldChild.tag, oldChild.props, oldProps1);
-					scope = renderer.scope(oldChild.tag, oldChild.props, scope);
-					host = oldChild as Element<string | symbol>;
+					if (typeof newChild.tag === "function") {
+						if (!matches) {
+							newChild._n = new Context(
+								renderer,
+								root,
+								host,
+								ctx,
+								scope,
+								newChild as Element<Component>,
+							);
+						}
+
+						value = updateCtx(newChild._n);
+					} else if (newChild.tag === Raw) {
+						if (typeof newChild.props.value === "string") {
+							if (!oldProps || oldProps.value !== newChild.props.value) {
+								newChild._n = renderer.parse(newChild.props.value, scope);
+							}
+						} else {
+							newChild._n = newChild.props.value;
+						}
+
+						value = newChild._n;
+						if (newChild.ref) {
+							newChild.ref(value);
+						}
+					} else {
+						if (newChild.tag === Portal) {
+							if (matches && oldProps.root !== newChild.props.root) {
+								// root prop has changed for a Portal element
+								renderer.arrange(
+									(oldChild as Element).props.root,
+									Portal,
+									(oldChild as Element).props,
+									[],
+									oldProps,
+									wrap((oldChild as Element)._cv) as Array<any>,
+								);
+								completeRender(renderer, (oldChild as Element).props.root);
+							}
+
+							root = newChild.props.root;
+							scope = undefined;
+							host = newChild as Element<Portal>;
+						} else if (newChild.tag !== Fragment) {
+							if (!matches) {
+								newChild._n = renderer.create(
+									newChild.tag,
+									newChild.props,
+									scope,
+								);
+							}
+
+							renderer.patch(
+								newChild._n,
+								newChild.tag,
+								newChild.props,
+								undefined,
+							);
+							scope = renderer.scope(newChild.tag, newChild.props, scope);
+							host = newChild as Element<string | symbol>;
+						}
+
+						value = update(
+							renderer,
+							root,
+							host,
+							ctx,
+							scope,
+							newChild as Element<string | symbol>,
+							oldProps,
+						);
+					}
+
+					if (!matches && isPromiseLike(value)) {
+						newChild._fb = oldChild;
+					}
 				}
 
-				// Example 2: updating an existing host/portal element
-				value = update(
-					renderer,
-					root,
-					host,
-					ctx,
-					scope,
-					oldChild as Element<string | symbol>,
-					oldProps1,
-				);
-			}
-		} else if (typeof newChild === "object") {
-			// mount of a new element
-			newChild = new Element(
-				newChild.tag,
-				newChild.props,
-				newChild.key,
-				newChild.ref,
-			);
-
-			if (typeof newChild.tag === "function") {
-				newChild._n = new Context(
-					renderer,
-					root,
-					host,
-					ctx,
-					scope,
-					newChild as Element<Component>,
-				);
-
-				value = updateCtx(newChild._n);
-			} else if (newChild.tag === Raw) {
-				if (typeof newChild.props.value === "string") {
-					newChild._n = renderer.parse(newChild.props.value, scope);
-				} else {
-					newChild._n = newChild.props.value;
-				}
-
-				value = newChild._n;
-				if (newChild.ref) {
-					newChild.ref(value);
-				}
-			} else {
-				if (newChild.tag === Portal) {
-					root = newChild.props.root;
-					scope = undefined;
-					host = newChild as Element<Portal>;
-				} else if (newChild.tag !== Fragment) {
-					newChild._n = renderer.create(newChild.tag, newChild.props, scope);
-					renderer.patch(newChild._n, newChild.tag, newChild.props, undefined);
-					scope = renderer.scope(newChild.tag, newChild.props, scope);
-					host = newChild as Element<string | symbol>;
-				}
-
-				// Example 3: updating a new host/portal element
-				value = update(
-					renderer,
-					root,
-					host,
-					ctx,
-					scope,
-					newChild as Element<string | symbol>,
-					undefined,
-				);
-			}
-
-			if (isPromiseLike(value)) {
-				newChild._fb = oldChild;
-			}
-		} else if (typeof newChild === "string") {
-			value = newChild = renderer.escape(newChild, scope);
+				break;
+			case "string":
+				value = newChild = renderer.escape(newChild, scope);
+				break;
 		}
 
-		// TODO: Can we shoehorn this logic into the previous branch?
 		if (typeof oldChild === "object" && oldChild !== newChild) {
 			if (!graveyard) {
 				graveyard = [];
@@ -1877,7 +1859,7 @@ function stepCtx<TNode, TResult>(
 	}
 
 	const initial = !ctx._it;
-	if (!ctx._it) {
+	if (initial) {
 		ctx._f |= IsExecuting;
 		clearEventListeners(ctx);
 		let result: ReturnType<Component>;
@@ -1927,7 +1909,7 @@ function stepCtx<TNode, TResult>(
 	let iteration: ChildrenIteration;
 	ctx._f |= IsExecuting;
 	try {
-		iteration = ctx._it.next(oldValue);
+		iteration = ctx._it!.next(oldValue);
 	} catch (err) {
 		ctx._f |= IsDone | IsErrored;
 		throw err;
