@@ -753,7 +753,7 @@ function update<TNode, TScope, TRoot, TResult>(
 		ret.inflightChildValues = childValues.then((childValues) => {
 			let value: ElementValue<TNode>;
 			if (ret.el.tag === Fragment) {
-				value = unwrap(childValues);
+				throw new Error("This should no longer happen");
 			} else {
 				// element is a host or portal element
 				renderer.arrange(
@@ -786,7 +786,7 @@ function update<TNode, TScope, TRoot, TResult>(
 
 	let value: ElementValue<TNode>;
 	if (ret.el.tag === Fragment) {
-		value = unwrap(childValues);
+		throw new Error("This should no longer happen");
 	} else {
 		// element is a host or portal element
 		renderer.arrange(
@@ -989,6 +989,29 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 						if (child.ref) {
 							child.ref(value);
 						}
+					} else if (child.tag === Fragment) {
+						const childValues = diffChildren(
+							renderer,
+							root,
+							arranger,
+							ctx,
+							scope,
+							ret,
+							ret.el.props.children,
+						);
+
+						if (isPromiseLike(childValues)) {
+							parent.inflightChildValues = childValues.then((childValues) =>
+								unwrap(childValues),
+							);
+							value = parent.inflightChildValues;
+						} else {
+							value = unwrap(childValues);
+						}
+
+						if (child.ref) {
+							child.ref(value);
+						}
 					} else {
 						if (child.tag === Portal) {
 							if (matches && oldProps.root !== child.props.root) {
@@ -1007,7 +1030,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 							root = child.props.root;
 							scope = undefined;
 							arranger = ret;
-						} else if (child.tag !== Fragment) {
+						} else {
 							if (!matches) {
 								ret.value = renderer.create(child.tag, child.props, scope);
 							}
