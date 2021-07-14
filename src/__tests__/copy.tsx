@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import {Context, Copy, createElement, Element} from "../index";
+import {Context, Copy, createElement, Element, Fragment} from "../index";
 import {renderer} from "../dom";
 
 describe("Copy", () => {
@@ -283,6 +283,25 @@ describe("Copy", () => {
 		}
 
 		const p1 = renderer.render(<Component />, document.body);
+		const p2 = renderer.render(<Copy />, document.body);
+		expect(p2).toBeInstanceOf(Promise);
+		expect(await p1).toEqual(await p2);
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(document.body.innerHTML).toEqual("<span>Hello</span>");
+	});
+
+	test("copy async fragment", async () => {
+		async function Component() {
+			return <span>Hello</span>;
+		}
+
+		const p1 = renderer.render(
+			<Fragment>
+				<Component />
+			</Fragment>,
+			document.body,
+		);
+
 		const p2 = renderer.render(<Copy />, document.body);
 		expect(p2).toBeInstanceOf(Promise);
 		expect(await p1).toEqual(await p2);
