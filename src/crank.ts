@@ -416,7 +416,6 @@ class Retainer<TNode> {
 	declare ctx: Context | undefined;
 	declare fallback: RetainerChild<TNode>;
 	declare children: Array<RetainerChild<TNode>> | RetainerChild<TNode>;
-	// RendererImpl.parse can make the internal node a string.
 	declare value: TNode | string | undefined;
 	declare childValues: ElementValue<TNode>;
 	declare inflightChildValues: Promise<ElementValue<TNode>> | undefined;
@@ -728,92 +727,6 @@ export class Renderer<
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
-// TODO: Move Fragment stuff out of here?
-function update<TNode, TScope, TRoot, TResult>(
-	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
-	root: TRoot,
-	arranger: Retainer<TNode>,
-	ctx: Context<unknown, TResult> | undefined,
-	scope: TScope | undefined,
-	ret: Retainer<TNode>,
-	// TODO: refine this type?
-	oldProps: any,
-): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	const childValues = diffChildren(
-		renderer,
-		root,
-		arranger,
-		ctx,
-		scope,
-		ret,
-		ret.el.props.children,
-	);
-
-	if (isPromiseLike(childValues)) {
-		ret.inflightChildValues = childValues.then((childValues) => {
-			let value: ElementValue<TNode>;
-			if (ret.el.tag === Fragment) {
-				throw new Error("This should no longer happen");
-			} else {
-				// element is a host or portal element
-				renderer.arrange(
-					ret.el.tag === Portal ? ret.el.props.root : ret.value,
-					ret.el.tag as string | symbol,
-					ret.el.props,
-					childValues,
-					oldProps,
-					wrap(ret.childValues) as Array<TNode | string>,
-				);
-
-				if (ret.el.tag === Portal) {
-					completeRender(renderer, ret.el.props.root);
-				} else {
-					value = ret.value;
-				}
-
-				ret.childValues = unwrap(childValues);
-			}
-
-			if (ret.el.ref) {
-				ret.el.ref(renderer.read(value));
-			}
-
-			return value;
-		});
-
-		return ret.inflightChildValues;
-	}
-
-	let value: ElementValue<TNode>;
-	if (ret.el.tag === Fragment) {
-		throw new Error("This should no longer happen");
-	} else {
-		// element is a host or portal element
-		renderer.arrange(
-			ret.el.tag === Portal ? ret.el.props.root : ret.value,
-			ret.el.tag as string | symbol,
-			ret.el.props,
-			childValues,
-			oldProps,
-			wrap(ret.childValues) as Array<TNode | string>,
-		);
-
-		if (ret.el.tag === Portal) {
-			completeRender(renderer, ret.el.props.root);
-		} else {
-			value = ret.value;
-		}
-
-		ret.childValues = unwrap(childValues);
-	}
-
-	if (ret.el.ref) {
-		ret.el.ref(renderer.read(value));
-	}
-
-	return value;
-}
-
 function createChildrenByKey<TNode>(
 	children: Array<RetainerChild<TNode>>,
 	offset: number,
@@ -879,7 +792,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 ): Promise<Array<TNode | string>> | Array<TNode | string> {
 	const oldChildren = wrap(parent.children);
 	const newChildren = arrayify(children);
-	const narrowedNewChildren: Array<RetainerChild<TNode>> = [];
+	const newRetainerChildren: Array<RetainerChild<TNode>> = [];
 	const childValues: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> =
 		[];
 	let graveyard: Array<Retainer<TNode>> | undefined;
@@ -947,11 +860,10 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 		switch (typeof child) {
 			case "object":
 				if (child.tag === Copy) {
-					value = typeof ret === "object" ? getInflightValue<TNode>(ret) : ret;
+					value = typeof ret === "object" ? getInflightValue(ret) : ret;
 					if (typeof child.ref === "function") {
 						if (isPromiseLike(value)) {
-							// TODO: How do we want to handle errors from ref functions
-							value.then(child.ref).catch(NOOP);
+							value.then(child.ref, NOOP);
 						} else {
 							child.ref(value);
 						}
@@ -1001,16 +913,20 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 						);
 
 						if (isPromiseLike(childValues)) {
-							parent.inflightChildValues = childValues.then((childValues) =>
-								unwrap(childValues),
-							);
+							parent.inflightChildValues = childValues.then((childValues) => {
+								value = unwrap(childValues);
+								if ((child as Element).ref) {
+									(child as Element).ref!(value);
+								}
+
+								return value;
+							});
 							value = parent.inflightChildValues;
 						} else {
 							value = unwrap(childValues);
-						}
-
-						if (child.ref) {
-							child.ref(value);
+							if (child.ref) {
+								child.ref(value);
+							}
 						}
 					} else {
 						if (child.tag === Portal) {
@@ -1045,7 +961,68 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 							arranger = ret;
 						}
 
-						value = update(renderer, root, arranger, ctx, scope, ret, oldProps);
+						const childValues = diffChildren(
+							renderer,
+							root,
+							arranger,
+							ctx,
+							scope,
+							ret,
+							ret.el.props.children,
+						);
+
+						if (isPromiseLike(childValues)) {
+							const ret1: Retainer<TNode> = ret;
+							ret.inflightChildValues = childValues.then((childValues) => {
+								let value: ElementValue<TNode>;
+								// element is a host or portal element
+								renderer.arrange(
+									ret1.el.tag === Portal ? ret1.el.props.root : ret1.value,
+									ret1.el.tag as string | symbol,
+									ret1.el.props,
+									childValues,
+									oldProps,
+									wrap(ret1.childValues) as Array<TNode | string>,
+								);
+
+								if (ret1.el.tag === Portal) {
+									completeRender(renderer, ret1.el.props.root);
+								} else {
+									value = ret1.value;
+								}
+
+								ret1.childValues = unwrap(childValues);
+
+								if (ret1.el.ref) {
+									ret1.el.ref(renderer.read(value));
+								}
+
+								return value;
+							});
+
+							value = ret.inflightChildValues;
+						} else {
+							// element is a host or portal element
+							renderer.arrange(
+								ret.el.tag === Portal ? ret.el.props.root : ret.value,
+								ret.el.tag as string | symbol,
+								ret.el.props,
+								childValues,
+								oldProps,
+								wrap(ret.childValues) as Array<TNode | string>,
+							);
+
+							if (ret.el.tag === Portal) {
+								completeRender(renderer, ret.el.props.root);
+							} else {
+								value = ret.value;
+							}
+
+							ret.childValues = unwrap(childValues);
+							if (ret.el.ref) {
+								ret.el.ref(renderer.read(value as ElementValue<TNode>));
+							}
+						}
 					}
 
 					if (!matches && isPromiseLike(value)) {
@@ -1069,8 +1046,8 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 		}
 
 		isAsync = isAsync || isPromiseLike(value);
-		narrowedNewChildren[j] = ret;
 		childValues[j] = value;
+		newRetainerChildren[j] = ret;
 	}
 
 	// cleanup
@@ -1087,7 +1064,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 		graveyard.push(...childrenByKey.values());
 	}
 
-	parent.children = unwrap(narrowedNewChildren);
+	parent.children = unwrap(newRetainerChildren);
 	if (isAsync) {
 		let childValues1 = Promise.all(childValues).finally(() => {
 			if (graveyard) {
