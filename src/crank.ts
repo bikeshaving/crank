@@ -1024,10 +1024,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 		}
 
 		if (!matches && typeof oldRet === "object") {
-			if (!graveyard) {
-				graveyard = [];
-			}
-
+			graveyard = graveyard || [];
 			graveyard.push(oldRet);
 		}
 
@@ -1035,7 +1032,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 		newRetainerChildren[j] = ret;
 	}
 
-	// cleanup
+	// cleanup remaining retainers
 	for (; i < oldRetainerChildren.length; i++) {
 		const ret = oldRetainerChildren[i];
 		if (typeof ret === "object" && typeof ret.el.key === "undefined") {
