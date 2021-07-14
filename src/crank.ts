@@ -414,21 +414,21 @@ type RetainerChild<TNode> = Retainer<TNode> | string | undefined;
 class Retainer<TNode> {
 	declare el: Element;
 	declare ctx: Context | undefined;
-	declare fallback: RetainerChild<TNode>;
 	declare children: Array<RetainerChild<TNode>> | RetainerChild<TNode>;
 	declare value: TNode | string | undefined;
 	declare childValues: ElementValue<TNode>;
-	declare inflightChildValues: Promise<ElementValue<TNode>> | undefined;
 	declare onChildValues: Function | undefined;
+	declare fallback: RetainerChild<TNode>;
+	declare inflight: Promise<ElementValue<TNode>> | undefined;
 	constructor(el: Element) {
 		this.el = el;
 		this.value = undefined;
 		this.ctx = undefined;
-		this.fallback = undefined;
 		this.children = undefined;
 		this.childValues = undefined;
-		this.inflightChildValues = undefined;
 		this.onChildValues = undefined;
+		this.fallback = undefined;
+		this.inflight = undefined;
 	}
 }
 
@@ -483,9 +483,9 @@ function getInflightValue<TNode>(
 	const ctx: Context | undefined =
 		typeof ret.el.tag === "function" ? ret.ctx : undefined;
 	if (ctx && ctx._f & IsUpdating && ctx._iv) {
-		return ctx._iv; // inflightValue
-	} else if (ret.inflightChildValues) {
-		return ret.inflightChildValues; // inflightValue
+		return ctx._iv;
+	} else if (ret.inflight) {
+		return ret.inflight;
 	}
 
 	return getValue(ret);
@@ -796,8 +796,8 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 		[];
 	const newChildren = arrayify(children);
 	let graveyard: Array<Retainer<TNode>> | undefined;
-	let seenKeys: Set<Key> | undefined;
 	let childrenByKey: Map<Key, Retainer<TNode>> | undefined;
+	let seenKeys: Set<Key> | undefined;
 	let isAsync = false;
 	let i = 0;
 	for (
@@ -824,10 +824,8 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 
 				i++;
 			} else {
-				if (!childrenByKey) {
-					childrenByKey = createChildrenByKey(oldRetainerChildren, i);
-				}
-
+				childrenByKey =
+					childrenByKey || createChildrenByKey(oldRetainerChildren, i);
 				if (newKey === undefined) {
 					while (ret !== undefined && oldKey !== undefined) {
 						i++;
@@ -842,11 +840,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 						childrenByKey.delete(newKey);
 					}
 
-					if (!seenKeys) {
-						seenKeys = new Set();
-					}
-
-					seenKeys.add(newKey);
+					(seenKeys = seenKeys || new Set()).add(newKey);
 				}
 			}
 		}
@@ -903,10 +897,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 						);
 
 						if (isPromiseLike(childValues)) {
-							parent.inflightChildValues = childValues.then((childValues) =>
-								unwrap(childValues),
-							);
-							value = parent.inflightChildValues;
+							value = childValues.then((childValues) => unwrap(childValues));
 						} else {
 							value = unwrap(childValues);
 						}
@@ -955,9 +946,8 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 
 						if (isPromiseLike(childValues)) {
 							const ret1: Retainer<TNode> = ret;
-							ret.inflightChildValues = childValues.then((childValues) => {
+							value = ret.inflight = childValues.then((childValues) => {
 								let value: ElementValue<TNode>;
-								// element is a host or portal element
 								renderer.arrange(
 									ret1.el.tag === Portal ? ret1.el.props.root : ret1.value,
 									ret1.el.tag as string | symbol,
@@ -976,10 +966,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 								ret1.childValues = unwrap(childValues);
 								return value;
 							});
-
-							value = ret.inflightChildValues;
 						} else {
-							// element is a host or portal element
 							renderer.arrange(
 								ret.el.tag === Portal ? ret.el.props.root : ret.value,
 								ret.el.tag as string | symbol,
@@ -1024,26 +1011,25 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 		}
 
 		if (!matches && typeof oldRet === "object") {
-			graveyard = graveyard || [];
-			graveyard.push(oldRet);
+			(graveyard = graveyard || []).push(oldRet);
 		}
 
 		childValues[j] = value;
 		newRetainerChildren[j] = ret;
 	}
 
-	// cleanup remaining retainers
-	for (; i < oldRetainerChildren.length; i++) {
-		const ret = oldRetainerChildren[i];
-		if (typeof ret === "object" && typeof ret.el.key === "undefined") {
-			graveyard = graveyard || [];
-			graveyard.push(ret);
+	{
+		// cleanup remaining retainers
+		for (; i < oldRetainerChildren.length; i++) {
+			const ret = oldRetainerChildren[i];
+			if (typeof ret === "object" && typeof ret.el.key === "undefined") {
+				(graveyard = graveyard || []).push(ret);
+			}
 		}
-	}
 
-	if (childrenByKey !== undefined && childrenByKey.size > 0) {
-		graveyard = graveyard || [];
-		graveyard.push(...childrenByKey.values());
+		if (childrenByKey !== undefined && childrenByKey.size > 0) {
+			(graveyard = graveyard || []).push(...childrenByKey.values());
+		}
 	}
 
 	parent.children = unwrap(newRetainerChildren);
@@ -1090,9 +1076,8 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 }
 
 function reset(ret: Retainer<unknown>): void {
-	if (ret.inflightChildValues) {
-		// inflightValue(s)
-		ret.inflightChildValues = undefined;
+	if (ret.inflight) {
+		ret.inflight = undefined;
 	}
 
 	// We use an undefined check because we need to handle fallback being the
@@ -1806,12 +1791,12 @@ function stepCtx<TNode, TResult>(
 	if (initial) {
 		// The argument passed to the first call to next is ignored.
 		oldValue = undefined as any;
-	} else if (ctx._ret.inflightChildValues) {
+	} else if (ctx._ret.inflight) {
 		// The value passed back into the generator as the argument to the next
 		// method is a promise if an async generator component has async children.
 		// Sync generator components only resume when their children have fulfilled
 		// so the element’s inflight child values will never be defined.
-		oldValue = ctx._ret.inflightChildValues.then(ctx._re.read, () =>
+		oldValue = ctx._ret.inflight.then(ctx._re.read, () =>
 			ctx._re.read(undefined),
 		);
 	} else {
@@ -2028,10 +2013,10 @@ function updateCtxChildren<TNode, TResult>(
 	);
 
 	if (isPromiseLike(childValues)) {
-		ctx._ret.inflightChildValues = childValues.then((childValues) =>
+		ctx._ret.inflight = childValues.then((childValues) =>
 			commitCtx(ctx, childValues),
 		);
-		return (ctx._ret as Retainer<TNode>).inflightChildValues;
+		return (ctx._ret as Retainer<TNode>).inflight;
 	}
 
 	return commitCtx(ctx, childValues);
