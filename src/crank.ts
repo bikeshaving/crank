@@ -897,7 +897,9 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 						);
 
 						if (isPromiseLike(childValues)) {
-							value = childValues.then((childValues) => unwrap(childValues));
+							value = ret.inflight = childValues.then((childValues) =>
+								unwrap(childValues),
+							);
 						} else {
 							value = unwrap(childValues);
 						}
