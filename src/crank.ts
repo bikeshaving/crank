@@ -413,16 +413,17 @@ type RetainerChild<TNode> = Retainer<TNode> | string | undefined;
 
 class Retainer<TNode> {
 	declare el: Element;
-	declare node: TNode | string | undefined;
 	declare ctx: Context | undefined;
 	declare fallback: RetainerChild<TNode>;
 	declare children: Array<RetainerChild<TNode>> | RetainerChild<TNode>;
+	// RendererImpl.parse can make the internal node a string.
+	declare value: TNode | string | undefined;
 	declare childValues: ElementValue<TNode>;
 	declare inflightChildValues: Promise<ElementValue<TNode>> | undefined;
 	declare onChildValues: Function | undefined;
 	constructor(el: Element) {
 		this.el = el;
-		this.node = undefined;
+		this.value = undefined;
 		this.ctx = undefined;
 		this.fallback = undefined;
 		this.children = undefined;
@@ -445,7 +446,7 @@ function getValue<TNode>(ret: Retainer<TNode>): ElementValue<TNode> {
 	} else if (ret.el.tag === Portal) {
 		return undefined;
 	} else if (typeof ret.el.tag !== "function" && ret.el.tag !== Fragment) {
-		return ret.node;
+		return ret.value;
 	}
 
 	return unwrap(getChildValues(ret));
@@ -654,7 +655,7 @@ export class Renderer<
 			if (typeof root === "object" && root !== null && children != null) {
 				this._cache.set(root as any, ret);
 			}
-		} else if (ret.node !== bridgeCtx) {
+		} else if (ret.value !== bridgeCtx) {
 			throw new Error("Context mismatch");
 		} else {
 			oldProps = ret.el.props;
@@ -756,7 +757,7 @@ function update<TNode, TScope, TRoot, TResult>(
 			} else {
 				// element is a host or portal element
 				renderer.arrange(
-					ret.el.tag === Portal ? ret.el.props.root : ret.node,
+					ret.el.tag === Portal ? ret.el.props.root : ret.value,
 					ret.el.tag as string | symbol,
 					ret.el.props,
 					childValues,
@@ -767,7 +768,7 @@ function update<TNode, TScope, TRoot, TResult>(
 				if (ret.el.tag === Portal) {
 					completeRender(renderer, ret.el.props.root);
 				} else {
-					value = ret.node;
+					value = ret.value;
 				}
 
 				ret.childValues = unwrap(childValues);
@@ -789,7 +790,7 @@ function update<TNode, TScope, TRoot, TResult>(
 	} else {
 		// element is a host or portal element
 		renderer.arrange(
-			ret.el.tag === Portal ? ret.el.props.root : ret.node,
+			ret.el.tag === Portal ? ret.el.props.root : ret.value,
 			ret.el.tag as string | symbol,
 			ret.el.props,
 			childValues,
@@ -800,7 +801,7 @@ function update<TNode, TScope, TRoot, TResult>(
 		if (ret.el.tag === Portal) {
 			completeRender(renderer, ret.el.props.root);
 		} else {
-			value = ret.node;
+			value = ret.value;
 		}
 
 		ret.childValues = unwrap(childValues);
@@ -978,13 +979,13 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 					} else if (child.tag === Raw) {
 						if (typeof child.props.value === "string") {
 							if (!oldProps || oldProps.value !== child.props.value) {
-								ret.node = renderer.parse(child.props.value, scope);
+								ret.value = renderer.parse(child.props.value, scope);
 							}
 						} else {
-							ret.node = child.props.value;
+							ret.value = child.props.value;
 						}
 
-						value = ret.node;
+						value = ret.value;
 						if (child.ref) {
 							child.ref(value);
 						}
@@ -1008,11 +1009,11 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 							arranger = ret;
 						} else if (child.tag !== Fragment) {
 							if (!matches) {
-								ret.node = renderer.create(child.tag, child.props, scope);
+								ret.value = renderer.create(child.tag, child.props, scope);
 							}
 
 							renderer.patch(
-								ret.node as TNode,
+								ret.value as TNode,
 								child.tag,
 								child.props,
 								undefined,
@@ -1141,11 +1142,11 @@ function unmount<TNode, TScope, TRoot, TResult>(
 		);
 		completeRender(renderer, arranger.el.props.root);
 	} else if (ret.el.tag !== Fragment) {
-		if (isEventTarget(ret.node)) {
+		if (isEventTarget(ret.value)) {
 			const records = getListenerRecords(ctx, arranger);
 			for (let i = 0; i < records.length; i++) {
 				const record = records[i];
-				ret.node.removeEventListener(
+				ret.value.removeEventListener(
 					record.type,
 					record.callback,
 					record.options,
@@ -1153,7 +1154,7 @@ function unmount<TNode, TScope, TRoot, TResult>(
 			}
 		}
 
-		renderer.dispose(ret.node as TNode, ret.el.tag, ret.el.props);
+		renderer.dispose(ret.value as TNode, ret.el.tag, ret.el.props);
 		arranger = ret;
 	}
 
@@ -2104,7 +2105,7 @@ function commitCtx<TNode>(
 		const host = ctx._ho as Retainer<TNode>;
 		const hostValues = getChildValues(host);
 		ctx._re.arrange(
-			host.el.tag === Portal ? host.el.props.root : host.node,
+			host.el.tag === Portal ? host.el.props.root : host.value,
 			host.el.tag as string | symbol,
 			host.el.props,
 			hostValues,
