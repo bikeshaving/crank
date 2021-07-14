@@ -790,23 +790,23 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 	parent: Retainer<TNode>,
 	children: Children,
 ): Promise<Array<TNode | string>> | Array<TNode | string> {
-	const oldChildren = wrap(parent.children);
-	const newChildren = arrayify(children);
+	const oldRetainerChildren = wrap(parent.children);
 	const newRetainerChildren: Array<RetainerChild<TNode>> = [];
 	const childValues: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> =
 		[];
+	const newChildren = arrayify(children);
 	let graveyard: Array<Retainer<TNode>> | undefined;
 	let seenKeys: Set<Key> | undefined;
 	let childrenByKey: Map<Key, Retainer<TNode>> | undefined;
 	let isAsync = false;
 	let i = 0;
 	for (
-		let j = 0, il = oldChildren.length, jl = newChildren.length;
+		let j = 0, il = oldRetainerChildren.length, jl = newChildren.length;
 		j < jl;
 		j++
 	) {
-		// Making sure we don’t access indices out of bounds
-		let ret = i >= il ? undefined : oldChildren[i];
+		// We make sure we don’t access indices out of bounds
+		let ret = i >= il ? undefined : oldRetainerChildren[i];
 		let child = narrow(newChildren[j]);
 		{
 			// Aligning based on key
@@ -825,13 +825,13 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 				i++;
 			} else {
 				if (!childrenByKey) {
-					childrenByKey = createChildrenByKey(oldChildren, i);
+					childrenByKey = createChildrenByKey(oldRetainerChildren, i);
 				}
 
 				if (newKey === undefined) {
 					while (ret !== undefined && oldKey !== undefined) {
 						i++;
-						ret = oldChildren[i];
+						ret = oldRetainerChildren[i];
 						oldKey = typeof ret === "object" ? ret.el.key : undefined;
 					}
 
@@ -861,13 +861,6 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 			case "object":
 				if (child.tag === Copy) {
 					value = typeof ret === "object" ? getInflightValue(ret) : ret;
-					if (typeof child.ref === "function") {
-						if (isPromiseLike(value)) {
-							value.then(child.ref, NOOP);
-						} else {
-							child.ref(value);
-						}
-					}
 				} else {
 					let oldProps: any;
 					// TODO: Figure out why the new conditional expression alias analysis
@@ -898,9 +891,6 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 						}
 
 						value = ret.value;
-						if (child.ref) {
-							child.ref(value);
-						}
 					} else if (child.tag === Fragment) {
 						const childValues = diffChildren(
 							renderer,
@@ -913,20 +903,12 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 						);
 
 						if (isPromiseLike(childValues)) {
-							parent.inflightChildValues = childValues.then((childValues) => {
-								value = unwrap(childValues);
-								if ((child as Element).ref) {
-									(child as Element).ref!(value);
-								}
-
-								return value;
-							});
+							parent.inflightChildValues = childValues.then((childValues) =>
+								unwrap(childValues),
+							);
 							value = parent.inflightChildValues;
 						} else {
 							value = unwrap(childValues);
-							if (child.ref) {
-								child.ref(value);
-							}
 						}
 					} else {
 						if (child.tag === Portal) {
@@ -992,11 +974,6 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 								}
 
 								ret1.childValues = unwrap(childValues);
-
-								if (ret1.el.ref) {
-									ret1.el.ref(renderer.read(value));
-								}
-
 								return value;
 							});
 
@@ -1019,9 +996,6 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 							}
 
 							ret.childValues = unwrap(childValues);
-							if (ret.el.ref) {
-								ret.el.ref(renderer.read(value as ElementValue<TNode>));
-							}
 						}
 					}
 
@@ -1029,6 +1003,18 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 						// Setting the fallback so elements can display a fallback.
 						ret.fallback = oldRet;
 					}
+				}
+
+				if (isPromiseLike(value)) {
+					isAsync = true;
+					if (typeof child.ref === "function") {
+						value = value.then((value) => {
+							(child as Element).ref!(renderer.read(value));
+							return value;
+						});
+					}
+				} else if (typeof child.ref === "function") {
+					child.ref(value);
 				}
 
 				break;
@@ -1045,14 +1031,13 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 			graveyard.push(oldRet);
 		}
 
-		isAsync = isAsync || isPromiseLike(value);
 		childValues[j] = value;
 		newRetainerChildren[j] = ret;
 	}
 
 	// cleanup
-	for (; i < oldChildren.length; i++) {
-		const ret = oldChildren[i];
+	for (; i < oldRetainerChildren.length; i++) {
+		const ret = oldRetainerChildren[i];
 		if (typeof ret === "object" && typeof ret.el.key === "undefined") {
 			graveyard = graveyard || [];
 			graveyard.push(ret);
@@ -2137,11 +2122,6 @@ function commitCtx<TNode>(
 	}
 
 	ctx._f &= ~IsUpdating;
-
-	if (typeof ctx._ret.el.ref === "function") {
-		ctx._ret.el.ref(value);
-	}
-
 	return value;
 }
 
