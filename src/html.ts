@@ -92,7 +92,7 @@ function join(children: Array<Node | string>): string {
 	return result;
 }
 
-const impl: Partial<RendererImpl<Node | string, undefined, unknown, string>> = {
+const impl: Partial<RendererImpl<Node, undefined, any, string>> = {
 	create(): Node {
 		return {value: ""};
 	},
@@ -113,9 +113,9 @@ const impl: Partial<RendererImpl<Node | string, undefined, unknown, string>> = {
 		}
 	},
 
-	arrange<TTag extends string | symbol>(
+	arrange(
 		node: Node,
-		tag: TTag,
+		tag: string | symbol,
 		props: Record<string, any>,
 		children: Array<Node | string>,
 	): void {
@@ -141,12 +141,7 @@ const impl: Partial<RendererImpl<Node | string, undefined, unknown, string>> = {
 	},
 };
 
-export class HTMLRenderer extends Renderer<
-	Node | string,
-	undefined,
-	unknown,
-	string
-> {
+export class HTMLRenderer extends Renderer<Node, undefined, any, string> {
 	constructor() {
 		super(impl);
 	}
