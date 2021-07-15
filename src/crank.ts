@@ -847,13 +847,12 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		// Return value would have to be a tuple of [value, newChild]
 		// Updating
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-		let matches = false;
-		let oldRet: RetainerChild<TNode>;
 		switch (typeof child) {
 			case "object":
 				if (child.tag === Copy) {
 					value = typeof ret === "object" ? getInflightValue(ret) : ret;
 				} else {
+					let matches = false;
 					let oldProps: any;
 					// TODO: Figure out why the new conditional expression alias analysis
 					// in TypeScript 4.4. isn’t working. Moving this condition into
@@ -863,8 +862,13 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 						oldProps = ret.el.props;
 						ret.el = child;
 					} else {
-						oldRet = ret;
+						if (typeof ret === "object") {
+							(graveyard = graveyard || []).push(ret);
+						}
+
+						const fallback = ret;
 						ret = new Retainer<TNode>(child);
+						ret.fallback = fallback;
 					}
 
 					if (typeof child.tag === "function") {
@@ -986,11 +990,6 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 							ret.cached = unwrap(childValues);
 						}
 					}
-
-					if (!matches && isPromiseLike(value)) {
-						// Setting the fallback so elements can display a fallback.
-						ret.fallback = oldRet;
-					}
 				}
 
 				if (isPromiseLike(value)) {
@@ -1009,10 +1008,6 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			case "string":
 				value = ret = renderer.escape(child, scope);
 				break;
-		}
-
-		if (!matches && typeof oldRet === "object") {
-			(graveyard = graveyard || []).push(oldRet);
 		}
 
 		childValues[j] = value;
@@ -2034,7 +2029,7 @@ function commitCtx<TNode>(
 	if (ctx._f & IsScheduling) {
 		ctx._f |= IsSchedulingRefresh;
 	} else if (!(ctx._f & IsUpdating)) {
-		// If we’re not updating, the component, which happens when components are
+		// If we’re not updating the component, which happens when components are
 		// refreshed, or when async generator components iterate, we have to do a
 		// little bit housekeeping.
 		const records = getListenerRecords(ctx._pa, ctx._ho);
