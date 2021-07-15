@@ -1055,7 +1055,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 
 		parent.onCommit = onChildValues;
 		return childValues1.then((childValues) => {
-			reset(parent);
+			parent.inflight = parent.fallback = undefined;
 			return normalize(childValues);
 		});
 	}
@@ -1071,22 +1071,9 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		parent.onCommit = undefined;
 	}
 
-	reset(parent);
+	parent.inflight = parent.fallback = undefined;
 	// We can assert there are no promises in the array because isAsync is false
 	return normalize(childValues as Array<ElementValue<TNode>>);
-}
-
-function reset(ret: Retainer<unknown>): void {
-	if (ret.inflight) {
-		ret.inflight = undefined;
-	}
-
-	// We use an undefined check because we need to handle fallback being the
-	// empty string.
-	if (typeof ret.fallback !== "undefined") {
-		// fallback
-		ret.fallback = undefined;
-	}
 }
 
 function unmount<TNode, TScope, TRoot extends TNode, TResult>(
