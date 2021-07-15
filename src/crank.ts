@@ -416,19 +416,19 @@ class Retainer<TNode> {
 	declare ctx: Context | undefined;
 	declare children: Array<RetainerChild<TNode>> | RetainerChild<TNode>;
 	declare value: TNode | string | undefined;
-	declare childValues: ElementValue<TNode>;
-	declare onChildValues: Function | undefined;
+	declare cached: ElementValue<TNode>;
 	declare fallback: RetainerChild<TNode>;
 	declare inflight: Promise<ElementValue<TNode>> | undefined;
+	declare onCommit: Function | undefined;
 	constructor(el: Element) {
 		this.el = el;
 		this.value = undefined;
 		this.ctx = undefined;
 		this.children = undefined;
-		this.childValues = undefined;
-		this.onChildValues = undefined;
+		this.cached = undefined;
 		this.fallback = undefined;
 		this.inflight = undefined;
+		this.onCommit = undefined;
 	}
 }
 
@@ -681,21 +681,20 @@ export class Renderer<
 				// element is a host or portal element
 				if (root !== undefined) {
 					this.impl.arrange(
-						// TODO: Maybe we can constract root a little more
-						root as any,
+						root,
 						Portal,
 						ret!.el.props,
 						childValues,
 						oldProps,
-						wrap(ret!.childValues) as Array<TNode | string>,
+						wrap(ret!.cached),
 					);
-					completeRender(this.impl, root as any);
+					completeRender(this.impl, root);
 				}
 
-				ret!.childValues = unwrap(childValues);
-				const result = this.impl.read(ret!.childValues);
+				ret!.cached = unwrap(childValues);
+				const result = this.impl.read(ret!.cached);
 				if (root == null) {
-					unmount(this.impl, ret!, undefined, ret!);
+					unmount(this.impl, ret!, bridgeCtx, ret!);
 				}
 
 				return result;
@@ -705,21 +704,20 @@ export class Renderer<
 		// element is a host or portal element
 		if (root !== undefined) {
 			this.impl.arrange(
-				// TODO: Maybe we can constract root a little more
-				root as any,
+				root,
 				Portal,
 				ret.el.props,
 				childValues,
 				oldProps,
-				wrap(ret.childValues) as Array<TNode | string>,
+				wrap(ret.cached),
 			);
-			completeRender(this.impl, root as any);
+			completeRender(this.impl, root);
 		}
 
-		ret.childValues = unwrap(childValues);
-		const result = this.impl.read(ret.childValues);
+		ret.cached = unwrap(childValues);
+		const result = this.impl.read(ret.cached);
 		if (root == null) {
-			unmount(this.impl, ret, undefined, ret);
+			unmount(this.impl, ret, bridgeCtx, ret);
 		}
 
 		return result;
@@ -913,7 +911,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 									ret.el.props,
 									[],
 									oldProps,
-									wrap(ret.childValues),
+									wrap(ret.cached),
 								);
 								completeRender(renderer, ret.el.props.root);
 							}
@@ -957,7 +955,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 									ret1.el.props,
 									childValues,
 									oldProps,
-									wrap(ret1.childValues) as Array<TNode | string>,
+									wrap(ret1.cached) as Array<TNode | string>,
 								);
 
 								if (ret1.el.tag === Portal) {
@@ -966,7 +964,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 									value = ret1.value;
 								}
 
-								ret1.childValues = unwrap(childValues);
+								ret1.cached = unwrap(childValues);
 								return value;
 							});
 						} else {
@@ -976,7 +974,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 								ret.el.props,
 								childValues,
 								oldProps,
-								wrap(ret.childValues) as Array<TNode | string>,
+								wrap(ret.cached) as Array<TNode | string>,
 							);
 
 							if (ret.el.tag === Portal) {
@@ -985,7 +983,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 								value = ret.value;
 							}
 
-							ret.childValues = unwrap(childValues);
+							ret.cached = unwrap(childValues);
 						}
 					}
 
@@ -1051,11 +1049,11 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			new Promise<any>((resolve) => (onChildValues = resolve)),
 		]);
 
-		if (parent.onChildValues) {
-			parent.onChildValues(childValues1);
+		if (parent.onCommit) {
+			parent.onCommit(childValues1);
 		}
 
-		parent.onChildValues = onChildValues;
+		parent.onCommit = onChildValues;
 		return childValues1.then((childValues) => {
 			reset(parent);
 			return normalize(childValues);
@@ -1068,9 +1066,9 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		}
 	}
 
-	if (parent.onChildValues) {
-		parent.onChildValues(childValues);
-		parent.onChildValues = undefined;
+	if (parent.onCommit) {
+		parent.onCommit(childValues);
+		parent.onCommit = undefined;
 	}
 
 	reset(parent);
@@ -1098,8 +1096,8 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 	ret: Retainer<TNode>,
 ): void {
 	if (typeof ret.el.tag === "function") {
-		unmountCtx(ret.ctx!);
 		ctx = ret.ctx!;
+		unmountCtx(ctx);
 	} else if (ret.el.tag === Portal) {
 		arranger = ret;
 		renderer.arrange(
@@ -1108,7 +1106,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 			arranger.el.props,
 			[],
 			arranger.el.props,
-			wrap(arranger.childValues) as Array<TNode | string>,
+			wrap(arranger.cached) as Array<TNode | string>,
 		);
 		completeRender(renderer, arranger.el.props.root);
 	} else if (ret.el.tag !== Fragment) {
@@ -2081,10 +2079,10 @@ function commitCtx<TNode>(
 			hostValues,
 			// props and oldProps are the same because the host isn’t updated.
 			host.el.props,
-			wrap(host.childValues),
+			wrap(host.cached),
 		);
 
-		host.childValues = hostValues;
+		host.cached = hostValues;
 		completeRender(ctx._re, ctx._rt, ctx);
 	}
 
