@@ -495,7 +495,7 @@ function getInflightValue<TNode>(
 export interface RendererImpl<
 	TNode,
 	TScope,
-	TRoot = TNode,
+	TRoot extends TNode = TNode,
 	TResult = ElementValue<TNode>,
 > {
 	create<TTag extends string | symbol>(
@@ -604,7 +604,7 @@ const defaultRendererImpl: RendererImpl<unknown, unknown, unknown, unknown> = {
 export class Renderer<
 	TNode,
 	TScope,
-	TRoot = TNode,
+	TRoot extends TNode = TNode,
 	TResult = ElementValue<TNode>,
 > {
 	/**
@@ -743,7 +743,7 @@ function createChildrenByKey<TNode>(
 }
 
 function completeRender<TRoot>(
-	renderer: RendererImpl<unknown, TRoot>,
+	renderer: RendererImpl<unknown, unknown, TRoot>,
 	root: TRoot,
 	initiatingCtx?: Context,
 ) {
@@ -781,9 +781,9 @@ function completeRender<TRoot>(
 	}
 }
 
-function diffChildren<TNode, TScope, TRoot, TResult>(
+function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
-	root: TRoot,
+	root: TRoot | undefined,
 	arranger: Retainer<TNode>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: TScope | undefined,
@@ -947,6 +947,7 @@ function diffChildren<TNode, TScope, TRoot, TResult>(
 						);
 
 						if (isPromiseLike(childValues)) {
+							// aliasing because the callback scope resets ret to original type
 							const ret1: Retainer<TNode> = ret;
 							value = ret.inflight = childValues.then((childValues) => {
 								let value: ElementValue<TNode>;
@@ -1090,7 +1091,7 @@ function reset(ret: Retainer<unknown>): void {
 	}
 }
 
-function unmount<TNode, TScope, TRoot, TResult>(
+function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 	arranger: Retainer<TNode>,
 	ctx: Context<unknown, TResult> | undefined,
@@ -2004,9 +2005,9 @@ function updateCtxChildren<TNode, TResult>(
 		);
 	}
 
-	const childValues = diffChildren<TNode, unknown, unknown, TResult>(
-		ctx._re as RendererImpl<TNode, unknown, unknown, TResult>,
-		ctx._rt,
+	const childValues = diffChildren<TNode, unknown, TNode, TResult>(
+		ctx._re as RendererImpl<TNode, unknown, TNode, TResult>,
+		ctx._rt as TNode,
 		ctx._ho as Retainer<TNode>,
 		ctx,
 		ctx._sc,
