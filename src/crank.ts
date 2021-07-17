@@ -158,6 +158,10 @@ type ChildrenIteration =
 	| Promise<IteratorResult<Children, Children | void>>
 	| IteratorResult<Children, Children | void>;
 
+/**
+ * A type to keep track of keys. Any value can be a key, though null and
+ * undefined are ignored.
+ */
 type Key = unknown;
 
 const ElementSymbol = Symbol.for("crank.Element");
@@ -474,21 +478,24 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode | string> {
 
 /**
  * This function is only really used to make sure <Copy /> elements wait for
- * the current async run before resolving, but it’s somewhat complex so I put
- * it here.
+ * the current async run before settling.
  */
-function getInflightValue<TNode>(
-	ret: Retainer<TNode>,
+function getCopyValue<TNode>(
+	child: RetainerChild<TNode>,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	const ctx: Context | undefined =
-		typeof ret.el.tag === "function" ? ret.ctx : undefined;
-	if (ctx && ctx._f & IsUpdating && ctx._iv) {
-		return ctx._iv;
-	} else if (ret.inflight) {
-		return ret.inflight;
+	if (typeof child !== "object") {
+		return child;
 	}
 
-	return getValue(ret);
+	const ctx: Context | undefined =
+		typeof child.el.tag === "function" ? child.ctx : undefined;
+	if (ctx && ctx._f & IsUpdating && ctx._iv) {
+		return ctx._iv;
+	} else if (child.inflight) {
+		return child.inflight;
+	}
+
+	return getValue(child);
 }
 
 // TODO: Document the interface and methods
@@ -611,11 +618,11 @@ export class Renderer<
 	 * @internal
 	 * A weakmap which stores element trees by root.
 	 */
-	declare _cache: WeakMap<object, Retainer<TNode>>;
+	declare cache: WeakMap<object, Retainer<TNode>>;
 
 	declare impl: RendererImpl<TNode, TScope, TRoot, TResult>;
 	constructor(impl: Partial<RendererImpl<TNode, TScope, TRoot, TResult>>) {
-		this._cache = new WeakMap();
+		this.cache = new WeakMap();
 		this.impl = {
 			...(defaultRendererImpl as RendererImpl<TNode, TScope, TRoot, TResult>),
 			...impl,
@@ -644,7 +651,7 @@ export class Renderer<
 	): Promise<TResult> | TResult {
 		let ret: Retainer<TNode> | undefined;
 		if (typeof root === "object" && root !== null) {
-			ret = this._cache.get(root as any);
+			ret = this.cache.get(root as any);
 		}
 
 		let oldProps: any;
@@ -652,15 +659,15 @@ export class Renderer<
 			ret = new Retainer(createElement(Portal, {children, root}));
 			ret.ctx = bridgeCtx;
 			if (typeof root === "object" && root !== null && children != null) {
-				this._cache.set(root as any, ret);
+				this.cache.set(root as any, ret);
 			}
-		} else if (ret.value !== bridgeCtx) {
+		} else if (ret.ctx !== bridgeCtx) {
 			throw new Error("Context mismatch");
 		} else {
 			oldProps = ret.el.props;
 			ret.el = createElement(Portal, {children, root});
 			if (typeof root === "object" && root !== null && children == null) {
-				this._cache.delete(root as unknown as object);
+				this.cache.delete(root as unknown as object);
 			}
 		}
 
@@ -843,14 +850,12 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			}
 		}
 
-		// TODO: Can this block be put into its own function?
-		// Return value would have to be a tuple of [value, newChild]
 		// Updating
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 		switch (typeof child) {
 			case "object":
 				if (child.tag === Copy) {
-					value = typeof ret === "object" ? getInflightValue(ret) : ret;
+					value = getCopyValue(ret);
 				} else {
 					let matches = false;
 					let oldProps: any;
@@ -1001,7 +1006,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 						});
 					}
 				} else if (typeof child.ref === "function") {
-					child.ref(value);
+					child.ref(renderer.read(value));
 				}
 
 				break;
@@ -1243,13 +1248,13 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	/**
 	 * @internal
-	 * host - The nearest ancestor host element.
+	 * arranger - The nearest host or portal retainer.
 	 *
 	 * When refresh is called, the host element will be arranged as the last step
 	 * of the commit, to make sure the parent’s children properly reflects the
 	 * components’s children.
 	 */
-	declare _ho: Retainer<unknown>;
+	declare _arr: Retainer<unknown>;
 
 	/**
 	 * @internal
@@ -1295,7 +1300,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 */
 	declare _ib: Promise<unknown> | undefined;
 
-	// TODO: Can we combine this with element.inflightValue somehow please.
+	// TODO: Can we combine this with retainer.inflight somehow please.
 	/**
 	 * @internal
 	 * inflightValue
@@ -1329,7 +1334,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		this._f = 0;
 		this._re = renderer;
 		this._rt = root;
-		this._ho = host;
+		this._arr = host;
 		this._pa = parent;
 		this._sc = scope;
 		this._ret = ret;
@@ -1988,7 +1993,7 @@ function updateCtxChildren<TNode, TResult>(
 	const childValues = diffChildren<TNode, unknown, TNode, TResult>(
 		ctx._re as RendererImpl<TNode, unknown, TNode, TResult>,
 		ctx._rt as TNode,
-		ctx._ho as Retainer<TNode>,
+		ctx._arr as Retainer<TNode>,
 		ctx,
 		ctx._sc,
 		ctx._ret as Retainer<TNode>,
@@ -2032,7 +2037,7 @@ function commitCtx<TNode>(
 		// If we’re not updating the component, which happens when components are
 		// refreshed, or when async generator components iterate, we have to do a
 		// little bit housekeeping.
-		const records = getListenerRecords(ctx._pa, ctx._ho);
+		const records = getListenerRecords(ctx._pa, ctx._arr);
 		if (records.length) {
 			for (let i = 0; i < values.length; i++) {
 				const value = values[i];
@@ -2052,7 +2057,7 @@ function commitCtx<TNode>(
 		// rearranging the nearest ancestor host element
 		// TODO: If we’re retaining the oldChildValues, we can do a quick check to
 		// make sure this work isn’t necessary as a performance optimization.
-		const host = ctx._ho as Retainer<TNode>;
+		const host = ctx._arr as Retainer<TNode>;
 		const hostValues = getChildValues(host);
 		ctx._re.arrange(
 			host.el.tag === Portal ? host.el.props.root : host.value,
@@ -2196,7 +2201,7 @@ function getListenerRecords(
 	ret: Retainer<unknown>,
 ): Array<EventListenerRecord> {
 	let listeners: Array<EventListenerRecord> = [];
-	while (ctx !== undefined && ctx._ho === ret) {
+	while (ctx !== undefined && ctx._arr === ret) {
 		const listeners1 = listenersMap.get(ctx);
 		if (listeners1) {
 			listeners = listeners.concat(listeners1);
