@@ -843,6 +843,50 @@ describe("sync generator component", () => {
 		expect(mock).toHaveBeenCalledTimes(1);
 	});
 
+	test("unmount against string", () => {
+		const mock = jest.fn();
+		function* Component(): Generator<Element> {
+			try {
+				let i = 0;
+				while (true) {
+					yield <div>Hello {i++}</div>;
+				}
+			} finally {
+				mock();
+			}
+		}
+		renderer.render(<Component />, document.body);
+		renderer.render(<Component />, document.body);
+		renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Hello 2</div>");
+		expect(mock).toHaveBeenCalledTimes(0);
+		renderer.render(["Goodbye", null], document.body);
+		expect(document.body.innerHTML).toEqual("Goodbye");
+		expect(mock).toHaveBeenCalledTimes(1);
+	});
+
+	test("unmount against null", () => {
+		const mock = jest.fn();
+		function* Component(): Generator<Element> {
+			try {
+				let i = 0;
+				while (true) {
+					yield <div>Hello {i++}</div>;
+				}
+			} finally {
+				mock();
+			}
+		}
+		renderer.render(<Component />, document.body);
+		renderer.render(<Component />, document.body);
+		renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Hello 2</div>");
+		expect(mock).toHaveBeenCalledTimes(0);
+		renderer.render([null, "Goodbye"], document.body);
+		expect(document.body.innerHTML).toEqual("Goodbye");
+		expect(mock).toHaveBeenCalledTimes(1);
+	});
+
 	test("unmount against async", async () => {
 		const mock = jest.fn();
 		function* Component(): Generator<Element> {
