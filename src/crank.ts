@@ -168,8 +168,7 @@ const ElementSymbol = Symbol.for("crank.Element");
 
 export interface Element<TTag extends Tag = Tag> {
 	// To maximize compatibility between Crank versions, starting with 0.2.0, any
-	// changes to the following properties will be considered a breaking change:
-	// $$typeof, tag, props, key, ref
+	// changes to the Element properties will be considered a breaking change.
 	/**
 	 * @internal
 	 * A unique symbol to identify elements as elements across versions and
@@ -852,167 +851,169 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 
 		// Updating
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-		switch (typeof child) {
-			case "object":
-				if (child.tag === Copy) {
-					value = getCopyValue(ret);
+		if (typeof child === "object") {
+			if (child.tag === Copy) {
+				value = getCopyValue(ret);
+			} else {
+				let matches = false;
+				let oldProps: any;
+				// TODO: Figure out why the new conditional expression alias analysis
+				// in TypeScript 4.4. isn’t working. Moving this condition into
+				// matches doesn’t seem to work.
+				if (typeof ret === "object" && ret.el.tag === child.tag) {
+					matches = true;
+					oldProps = ret.el.props;
+					ret.el = child;
 				} else {
-					let matches = false;
-					let oldProps: any;
-					// TODO: Figure out why the new conditional expression alias analysis
-					// in TypeScript 4.4. isn’t working. Moving this condition into
-					// matches doesn’t seem to work.
-					if (typeof ret === "object" && ret.el.tag === child.tag) {
-						matches = true;
-						oldProps = ret.el.props;
-						ret.el = child;
-					} else {
-						if (typeof ret === "object") {
-							(graveyard = graveyard || []).push(ret);
-						}
-
-						const fallback = ret;
-						ret = new Retainer<TNode>(child);
-						ret.fallback = fallback;
+					if (typeof ret === "object") {
+						(graveyard = graveyard || []).push(ret);
 					}
 
-					if (typeof child.tag === "function") {
-						if (!matches) {
-							ret.ctx = new Context(renderer, root, arranger, ctx, scope, ret);
-						}
+					const fallback = ret;
+					ret = new Retainer<TNode>(child);
+					ret.fallback = fallback;
+				}
 
-						value = updateCtx(ret.ctx!);
-					} else if (child.tag === Raw) {
-						if (typeof child.props.value === "string") {
-							if (!oldProps || oldProps.value !== child.props.value) {
-								ret.value = renderer.parse(child.props.value, scope);
-							}
-						} else {
-							ret.value = child.props.value;
-						}
+				if (typeof child.tag === "function") {
+					if (!matches) {
+						ret.ctx = new Context(renderer, root, arranger, ctx, scope, ret);
+					}
 
-						value = ret.value;
-					} else if (child.tag === Fragment) {
-						const childValues = diffChildren(
-							renderer,
-							root,
-							arranger,
-							ctx,
-							scope,
-							ret,
-							ret.el.props.children,
-						);
-
-						if (isPromiseLike(childValues)) {
-							value = ret.inflight = childValues.then((childValues) =>
-								unwrap(childValues),
-							);
-						} else {
-							value = unwrap(childValues);
+					value = updateCtx(ret.ctx!);
+				} else if (child.tag === Raw) {
+					if (typeof child.props.value === "string") {
+						if (!oldProps || oldProps.value !== child.props.value) {
+							ret.value = renderer.parse(child.props.value, scope);
 						}
 					} else {
-						if (child.tag === Portal) {
-							if (matches && oldProps.root !== child.props.root) {
-								// root prop has changed for a Portal element
-								renderer.arrange(
-									ret.el.props.root,
-									Portal,
-									ret.el.props,
-									[],
-									oldProps,
-									wrap(ret.cached),
-								);
-								completeRender(renderer, ret.el.props.root);
-							}
+						ret.value = child.props.value;
+					}
 
-							root = child.props.root;
-							scope = undefined;
-							arranger = ret;
-						} else {
-							if (!matches) {
-								ret.value = renderer.create(child.tag, child.props, scope);
-							}
+					value = ret.value;
+				} else if (child.tag === Fragment) {
+					const childValues = diffChildren(
+						renderer,
+						root,
+						arranger,
+						ctx,
+						scope,
+						ret,
+						ret.el.props.children,
+					);
 
-							renderer.patch(
-								ret.value as TNode,
-								child.tag,
-								child.props,
-								undefined,
+					if (isPromiseLike(childValues)) {
+						value = ret.inflight = childValues.then((childValues) =>
+							unwrap(childValues),
+						);
+					} else {
+						value = unwrap(childValues);
+					}
+				} else {
+					if (child.tag === Portal) {
+						if (matches && oldProps.root !== child.props.root) {
+							// root prop has changed for a Portal element
+							renderer.arrange(
+								ret.el.props.root,
+								Portal,
+								ret.el.props,
+								[],
+								oldProps,
+								wrap(ret.cached),
 							);
-							scope = renderer.scope(child.tag, child.props, scope);
-							arranger = ret;
+							completeRender(renderer, ret.el.props.root);
 						}
 
-						const childValues = diffChildren(
-							renderer,
-							root,
-							arranger,
-							ctx,
-							scope,
-							ret,
-							ret.el.props.children,
+						root = child.props.root;
+						scope = undefined;
+						arranger = ret;
+					} else {
+						if (!matches) {
+							ret.value = renderer.create(child.tag, child.props, scope);
+						}
+
+						renderer.patch(
+							ret.value as TNode,
+							child.tag,
+							child.props,
+							undefined,
 						);
+						scope = renderer.scope(child.tag, child.props, scope);
+						arranger = ret;
+					}
 
-						if (isPromiseLike(childValues)) {
-							// aliasing because the callback scope resets ret to original type
-							const ret1: Retainer<TNode> = ret;
-							value = ret.inflight = childValues.then((childValues) => {
-								let value: ElementValue<TNode>;
-								renderer.arrange(
-									ret1.el.tag === Portal ? ret1.el.props.root : ret1.value,
-									ret1.el.tag as string | symbol,
-									ret1.el.props,
-									childValues,
-									oldProps,
-									wrap(ret1.cached) as Array<TNode | string>,
-								);
+					const childValues = diffChildren(
+						renderer,
+						root,
+						arranger,
+						ctx,
+						scope,
+						ret,
+						ret.el.props.children,
+					);
 
-								if (ret1.el.tag === Portal) {
-									completeRender(renderer, ret1.el.props.root);
-								} else {
-									value = ret1.value;
-								}
-
-								ret1.cached = unwrap(childValues);
-								return value;
-							});
-						} else {
+					if (isPromiseLike(childValues)) {
+						// aliasing because the callback scope resets ret to original type
+						const ret1: Retainer<TNode> = ret;
+						value = ret.inflight = childValues.then((childValues) => {
+							let value: ElementValue<TNode>;
 							renderer.arrange(
-								ret.el.tag === Portal ? ret.el.props.root : ret.value,
-								ret.el.tag as string | symbol,
-								ret.el.props,
+								ret1.el.tag === Portal ? ret1.el.props.root : ret1.value,
+								ret1.el.tag as string | symbol,
+								ret1.el.props,
 								childValues,
 								oldProps,
-								wrap(ret.cached) as Array<TNode | string>,
+								wrap(ret1.cached) as Array<TNode | string>,
 							);
 
-							if (ret.el.tag === Portal) {
-								completeRender(renderer, ret.el.props.root);
+							if (ret1.el.tag === Portal) {
+								completeRender(renderer, ret1.el.props.root);
 							} else {
-								value = ret.value;
+								value = ret1.value;
 							}
 
-							ret.cached = unwrap(childValues);
-						}
-					}
-				}
-
-				if (isPromiseLike(value)) {
-					isAsync = true;
-					if (typeof child.ref === "function") {
-						value = value.then((value) => {
-							(child as Element).ref!(renderer.read(value));
+							ret1.cached = unwrap(childValues);
 							return value;
 						});
-					}
-				} else if (typeof child.ref === "function") {
-					child.ref(renderer.read(value));
-				}
+					} else {
+						renderer.arrange(
+							ret.el.tag === Portal ? ret.el.props.root : ret.value,
+							ret.el.tag as string | symbol,
+							ret.el.props,
+							childValues,
+							oldProps,
+							wrap(ret.cached) as Array<TNode | string>,
+						);
 
-				break;
-			case "string":
+						if (ret.el.tag === Portal) {
+							completeRender(renderer, ret.el.props.root);
+						} else {
+							value = ret.value;
+						}
+
+						ret.cached = unwrap(childValues);
+					}
+				}
+			}
+
+			if (isPromiseLike(value)) {
+				isAsync = true;
+				if (typeof child.ref === "function") {
+					value = value.then((value) => {
+						(child as Element).ref!(renderer.read(value));
+						return value;
+					});
+				}
+			} else if (typeof child.ref === "function") {
+				child.ref(renderer.read(value));
+			}
+		} else {
+			if (typeof ret === "object") {
+				(graveyard = graveyard || []).push(ret);
+			}
+
+			if (typeof child === "string") {
 				value = ret = renderer.escape(child, scope);
-				break;
+			}
 		}
 
 		childValues[j] = value;
