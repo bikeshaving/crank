@@ -796,9 +796,9 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 ): Promise<Array<TNode | string>> | Array<TNode | string> {
 	const oldRetainerChildren = wrap(parent.children);
 	const newRetainerChildren: Array<RetainerChild<TNode>> = [];
+	const newChildren = arrayify(children);
 	const childValues: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> =
 		[];
-	const newChildren = arrayify(children);
 	let graveyard: Array<Retainer<TNode>> | undefined;
 	let childrenByKey: Map<Key, Retainer<TNode>> | undefined;
 	let seenKeys: Set<Key> | undefined;
