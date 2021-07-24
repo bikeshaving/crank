@@ -446,7 +446,7 @@ function getValue<TNode>(ret: Retainer<TNode>): ElementValue<TNode> {
 			? getValue(ret.fallback)
 			: ret.fallback;
 	} else if (ret.el.tag === Portal) {
-		return undefined;
+		return;
 	} else if (typeof ret.el.tag !== "function" && ret.el.tag !== Fragment) {
 		return ret.value;
 	}
@@ -656,6 +656,7 @@ export class Renderer<
 		let oldProps: any;
 		if (ret === undefined) {
 			ret = new Retainer(createElement(Portal, {children, root}));
+			ret.value = root;
 			ret.ctx = bridgeCtx;
 			if (typeof root === "object" && root !== null && children != null) {
 				this.cache.set(root as any, ret);
@@ -910,20 +911,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					}
 				} else {
 					if (child.tag === Portal) {
-						if (matches && oldProps.root !== child.props.root) {
-							// root prop has changed for a Portal element
-							renderer.arrange(
-								ret.el.props.root,
-								Portal,
-								ret.el.props,
-								[],
-								oldProps,
-								wrap(ret.cached),
-							);
-							completeRender(renderer, ret.el.props.root);
-						}
-
-						root = child.props.root;
+						root = ret.value = child.props.root;
 						scope = undefined;
 						arranger = ret;
 					} else {
@@ -957,7 +945,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 						value = ret.inflight = childValues.then((childValues) => {
 							let value: ElementValue<TNode>;
 							renderer.arrange(
-								ret1.el.tag === Portal ? ret1.el.props.root : ret1.value,
+								ret1.value as TNode,
 								ret1.el.tag as string | symbol,
 								ret1.el.props,
 								childValues,
@@ -976,7 +964,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 						});
 					} else {
 						renderer.arrange(
-							ret.el.tag === Portal ? ret.el.props.root : ret.value,
+							ret.value as TNode,
 							ret.el.tag as string | symbol,
 							ret.el.props,
 							childValues,
@@ -1089,7 +1077,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 	} else if (ret.el.tag === Portal) {
 		arranger = ret;
 		renderer.arrange(
-			arranger.el.props.root,
+			arranger.value as TNode,
 			Portal,
 			arranger.el.props,
 			[],
@@ -2061,7 +2049,7 @@ function commitCtx<TNode>(
 		const host = ctx._arr as Retainer<TNode>;
 		const hostValues = getChildValues(host);
 		ctx._re.arrange(
-			host.el.tag === Portal ? host.el.props.root : host.value,
+			host.value,
 			host.el.tag as string | symbol,
 			host.el.props,
 			hostValues,
