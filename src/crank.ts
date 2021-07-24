@@ -166,9 +166,9 @@ type Key = unknown;
 
 const ElementSymbol = Symbol.for("crank.Element");
 
+// To maximize compatibility between Crank versions, starting with 0.2.0, any
+// changes to the Element properties will be considered a breaking change.
 export interface Element<TTag extends Tag = Tag> {
-	// To maximize compatibility between Crank versions, starting with 0.2.0, any
-	// changes to the Element properties will be considered a breaking change.
 	/**
 	 * @internal
 	 * A unique symbol to identify elements as elements across versions and
@@ -454,9 +454,8 @@ function getValue<TNode>(ret: Retainer<TNode>): ElementValue<TNode> {
 	return unwrap(getChildValues(ret));
 }
 
-// TODO: Now that we’re caching child values for host elements (el._cv), we
-// might reconsider using/invalidating these cached values in this function
-// again.
+// TODO: Now that we’re caching child values for host elements, we might
+// reconsider using/invalidating these cached values in this function again.
 /**
  * Walks an element’s children to find its child values.
  *
@@ -473,28 +472,6 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode | string> {
 	}
 
 	return normalize(values);
-}
-
-/**
- * This function is only really used to make sure <Copy /> elements wait for
- * the current async run before settling.
- */
-function getCopyValue<TNode>(
-	child: RetainerChild<TNode>,
-): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (typeof child !== "object") {
-		return child;
-	}
-
-	const ctx: Context | undefined =
-		typeof child.el.tag === "function" ? child.ctx : undefined;
-	if (ctx && ctx._f & IsUpdating && ctx._iv) {
-		return ctx._iv;
-	} else if (child.inflight) {
-		return child.inflight;
-	}
-
-	return getValue(child);
 }
 
 // TODO: Document the interface and methods
@@ -695,7 +672,7 @@ export class Renderer<
 						oldProps,
 						wrap(ret!.cached),
 					);
-					completeRender(this.impl, root);
+					flush(this.impl, root);
 				}
 
 				ret!.cached = unwrap(childValues);
@@ -717,7 +694,7 @@ export class Renderer<
 				oldProps,
 				wrap(ret.cached),
 			);
-			completeRender(this.impl, root);
+			flush(this.impl, root);
 		}
 
 		ret.cached = unwrap(childValues);
@@ -745,71 +722,31 @@ function createChildrenByKey<TNode>(
 	return childrenByKey;
 }
 
-function completeRender<TRoot>(
-	renderer: RendererImpl<unknown, unknown, TRoot>,
-	root: TRoot,
-	initiatingCtx?: Context,
-) {
-	renderer.flush(root);
-	if (typeof root !== "object" || root === null) {
-		return;
-	}
-
-	const flushMap = rootMap.get(root as unknown as object);
-	if (flushMap) {
-		if (initiatingCtx) {
-			const flushMap1 = new Map<Context, Set<Function>>();
-			for (let [ctx1, callbacks] of flushMap) {
-				if (!ctxContains(initiatingCtx, ctx1)) {
-					flushMap.delete(ctx1);
-					flushMap1.set(ctx1, callbacks);
-				}
-			}
-
-			if (flushMap1.size) {
-				rootMap.set(root as unknown as object, flushMap1);
-			} else {
-				rootMap.delete(root as unknown as object);
-			}
-		} else {
-			rootMap.delete(root as unknown as object);
-		}
-
-		for (const [ctx, callbacks] of flushMap) {
-			const value = renderer.read(getValue(ctx._ret));
-			for (const callback of callbacks) {
-				callback(value);
-			}
-		}
-	}
-}
-
 function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
-	arranger: Retainer<TNode>,
+	host: Retainer<TNode>,
 	ctx: Context<unknown, TResult> | undefined,
 	scope: TScope | undefined,
 	parent: Retainer<TNode>,
 	children: Children,
 ): Promise<Array<TNode | string>> | Array<TNode | string> {
-	const oldRetainerChildren = wrap(parent.children);
-	const newRetainerChildren: Array<RetainerChild<TNode>> = [];
+	const oldRetains = wrap(parent.children);
+	const newRetains: Array<RetainerChild<TNode>> = [];
 	const newChildren = arrayify(children);
-	const childValues: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> =
-		[];
+	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
 	let graveyard: Array<Retainer<TNode>> | undefined;
 	let childrenByKey: Map<Key, Retainer<TNode>> | undefined;
 	let seenKeys: Set<Key> | undefined;
 	let isAsync = false;
 	let i = 0;
 	for (
-		let j = 0, il = oldRetainerChildren.length, jl = newChildren.length;
+		let j = 0, il = oldRetains.length, jl = newChildren.length;
 		j < jl;
 		j++
 	) {
 		// We make sure we don’t access indices out of bounds
-		let ret = i >= il ? undefined : oldRetainerChildren[i];
+		let ret = i >= il ? undefined : oldRetains[i];
 		let child = narrow(newChildren[j]);
 		{
 			// Aligning based on key
@@ -827,12 +764,11 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 
 				i++;
 			} else {
-				childrenByKey =
-					childrenByKey || createChildrenByKey(oldRetainerChildren, i);
+				childrenByKey = childrenByKey || createChildrenByKey(oldRetains, i);
 				if (newKey === undefined) {
 					while (ret !== undefined && oldKey !== undefined) {
 						i++;
-						ret = oldRetainerChildren[i];
+						ret = oldRetains[i];
 						oldKey = typeof ret === "object" ? ret.el.key : undefined;
 					}
 
@@ -852,7 +788,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 		if (typeof child === "object") {
 			if (child.tag === Copy) {
-				value = getCopyValue(ret);
+				value = copy(ret);
 			} else {
 				let matches = false;
 				let oldProps: any;
@@ -875,11 +811,12 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 
 				if (typeof child.tag === "function") {
 					if (!matches) {
-						ret.ctx = new Context(renderer, root, arranger, ctx, scope, ret);
+						ret.ctx = new Context(renderer, root, host, ctx, scope, ret);
 					}
 
 					value = updateCtx(ret.ctx!);
 				} else if (child.tag === Raw) {
+					// value = raw(renderer, ret, props, oldProps);
 					if (typeof child.props.value === "string") {
 						if (!oldProps || oldProps.value !== child.props.value) {
 							ret.value = renderer.parse(child.props.value, scope);
@@ -890,10 +827,11 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 
 					value = ret.value;
 				} else if (child.tag === Fragment) {
+					// value = fragment(renderer, root, host, ctx, scope, ret);
 					const childValues = diffChildren(
 						renderer,
 						root,
-						arranger,
+						host,
 						ctx,
 						scope,
 						ret,
@@ -911,7 +849,6 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					if (child.tag === Portal) {
 						root = ret.value = child.props.root;
 						scope = undefined;
-						arranger = ret;
 					} else {
 						if (!matches) {
 							ret.value = renderer.create(child.tag, child.props, scope);
@@ -921,16 +858,17 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 							ret.value as TNode,
 							child.tag,
 							child.props,
-							undefined,
+							oldProps,
 						);
 						scope = renderer.scope(child.tag, child.props, scope);
-						arranger = ret;
 					}
 
+					host = ret;
+					// value = host(renderer, root, host, ctx, scope, ret, oldProps);
 					const childValues = diffChildren(
 						renderer,
 						root,
-						arranger,
+						host,
 						ctx,
 						scope,
 						ret,
@@ -952,7 +890,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 							);
 
 							if (ret1.el.tag === Portal) {
-								completeRender(renderer, ret1.el.props.root);
+								flush(renderer, ret1.el.props.root);
 							} else {
 								value = ret1.value;
 							}
@@ -971,7 +909,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 						);
 
 						if (ret.el.tag === Portal) {
-							completeRender(renderer, ret.el.props.root);
+							flush(renderer, ret.el.props.root);
 						} else {
 							value = ret.value;
 						}
@@ -993,6 +931,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				child.ref(renderer.read(value));
 			}
 		} else {
+			// child is a string or undefined
 			if (typeof ret === "object") {
 				(graveyard = graveyard || []).push(ret);
 			}
@@ -1002,14 +941,14 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			}
 		}
 
-		childValues[j] = value;
-		newRetainerChildren[j] = ret;
+		values[j] = value;
+		newRetains[j] = ret;
 	}
 
 	{
 		// cleanup remaining retainers
-		for (; i < oldRetainerChildren.length; i++) {
-			const ret = oldRetainerChildren[i];
+		for (; i < oldRetains.length; i++) {
+			const ret = oldRetains[i];
 			if (typeof ret === "object" && typeof ret.el.key === "undefined") {
 				(graveyard = graveyard || []).push(ret);
 			}
@@ -1020,12 +959,12 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		}
 	}
 
-	parent.children = unwrap(newRetainerChildren);
+	parent.children = unwrap(newRetains);
 	if (isAsync) {
-		let childValues1 = Promise.all(childValues).finally(() => {
+		let childValues1 = Promise.all(values).finally(() => {
 			if (graveyard) {
 				for (let i = 0; i < graveyard.length; i++) {
-					unmount(renderer, arranger, ctx, graveyard[i]);
+					unmount(renderer, host, ctx, graveyard[i]);
 				}
 			}
 		});
@@ -1049,23 +988,80 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 
 	if (graveyard) {
 		for (let i = 0; i < graveyard.length; i++) {
-			unmount(renderer, arranger, ctx, graveyard[i]);
+			unmount(renderer, host, ctx, graveyard[i]);
 		}
 	}
 
 	if (parent.onCommit) {
-		parent.onCommit(childValues);
+		parent.onCommit(values);
 		parent.onCommit = undefined;
 	}
 
 	parent.inflight = parent.fallback = undefined;
 	// We can assert there are no promises in the array because isAsync is false
-	return normalize(childValues as Array<ElementValue<TNode>>);
+	return normalize(values as Array<ElementValue<TNode>>);
+}
+
+function copy<TNode>(
+	child: RetainerChild<TNode>,
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+	if (typeof child !== "object") {
+		return child;
+	}
+
+	const ctx: Context | undefined =
+		typeof child.el.tag === "function" ? child.ctx : undefined;
+	if (ctx && ctx.f & IsUpdating && ctx.inflightValue) {
+		return ctx.inflightValue;
+	} else if (child.inflight) {
+		return child.inflight;
+	}
+
+	return getValue(child);
+}
+
+function flush<TRoot>(
+	renderer: RendererImpl<unknown, unknown, TRoot>,
+	root: TRoot,
+	initiatingCtx?: Context,
+) {
+	renderer.flush(root);
+	if (typeof root !== "object" || root === null) {
+		return;
+	}
+
+	const flushMap = flushMaps.get(root as unknown as object);
+	if (flushMap) {
+		if (initiatingCtx) {
+			const flushMap1 = new Map<Context, Set<Function>>();
+			for (let [ctx1, callbacks] of flushMap) {
+				if (!ctxContains(initiatingCtx, ctx1)) {
+					flushMap.delete(ctx1);
+					flushMap1.set(ctx1, callbacks);
+				}
+			}
+
+			if (flushMap1.size) {
+				flushMaps.set(root as unknown as object, flushMap1);
+			} else {
+				flushMaps.delete(root as unknown as object);
+			}
+		} else {
+			flushMaps.delete(root as unknown as object);
+		}
+
+		for (const [ctx, callbacks] of flushMap) {
+			const value = renderer.read(getValue(ctx.ret));
+			for (const callback of callbacks) {
+				callback(value);
+			}
+		}
+	}
 }
 
 function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
-	arranger: Retainer<TNode>,
+	host: Retainer<TNode>,
 	ctx: Context<unknown, TResult> | undefined,
 	ret: Retainer<TNode>,
 ): void {
@@ -1073,19 +1069,19 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 		ctx = ret.ctx!;
 		unmountCtx(ctx);
 	} else if (ret.el.tag === Portal) {
-		arranger = ret;
+		host = ret;
 		renderer.arrange(
-			arranger.value as TNode,
+			host.value as TNode,
 			Portal,
-			arranger.el.props,
+			host.el.props,
 			[],
-			arranger.el.props,
-			wrap(arranger.cached) as Array<TNode | string>,
+			host.el.props,
+			wrap(host.cached) as Array<TNode | string>,
 		);
-		completeRender(renderer, arranger.el.props.root);
+		flush(renderer, host.el.props.root);
 	} else if (ret.el.tag !== Fragment) {
 		if (isEventTarget(ret.value)) {
-			const records = getListenerRecords(ctx, arranger);
+			const records = getListenerRecords(ctx, host);
 			for (let i = 0; i < records.length; i++) {
 				const record = records[i];
 				ret.value.removeEventListener(
@@ -1097,14 +1093,14 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 		}
 
 		renderer.dispose(ret.value as TNode, ret.el.tag, ret.el.props);
-		arranger = ret;
+		host = ret;
 	}
 
 	const children = wrap(ret.children);
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i];
 		if (typeof child === "object") {
-			unmount(renderer, arranger, ctx, child);
+			unmount(renderer, host, ctx, child);
 		}
 	}
 }
@@ -1197,10 +1193,8 @@ const scheduleMap = new WeakMap<Context, Set<Function>>();
 
 const cleanupMap = new WeakMap<Context, Set<Function>>();
 
-const rootMap = new WeakMap<
-	object, // TRoot
-	Map<Context, Set<Function>>
->();
+// keys are roots
+const flushMaps = new WeakMap<object, Map<Context, Set<Function>>>();
 
 /**
  * A class which is instantiated and passed to every component as its this
@@ -1219,92 +1213,92 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * @internal
 	 * flags - A bitmask. See CONTEXT FLAGS above.
 	 */
-	declare _f: number;
+	declare f: number;
 
 	/**
 	 * @internal
 	 * renderer - The renderer which created this context.
 	 */
-	declare _re: RendererImpl<unknown, unknown, unknown, TResult>;
+	declare renderer: RendererImpl<unknown, unknown, unknown, TResult>;
 
 	/**
 	 * @internal
 	 * root - The root node as set by the nearest ancestor portal.
 	 */
-	declare _rt: unknown;
+	declare root: unknown;
 
 	/**
 	 * @internal
-	 * arranger - The nearest host or portal retainer.
+	 * host - The nearest host or portal retainer.
 	 *
 	 * When refresh is called, the host element will be arranged as the last step
 	 * of the commit, to make sure the parent’s children properly reflects the
 	 * components’s children.
 	 */
-	declare _arr: Retainer<unknown>;
+	declare host: Retainer<unknown>;
 
 	/**
 	 * @internal
 	 * parent - The parent context.
 	 */
-	declare _pa: Context<unknown, TResult> | undefined;
+	declare parent: Context<unknown, TResult> | undefined;
 
 	/**
 	 * @internal
 	 * scope - The value of the scope at the point of element’s creation.
 	 */
-	declare _sc: unknown;
+	declare scope: unknown;
 
 	/**
 	 * @internal
 	 * retainer - The internal node associated with this context.
 	 */
-	declare _ret: Retainer<unknown>;
+	declare ret: Retainer<unknown>;
 
 	/**
 	 * @internal
 	 * iterator - The iterator returned by the component function.
 	 */
-	declare _it:
+	declare iterator:
 		| Iterator<Children, Children | void, unknown>
 		| AsyncIterator<Children, Children | void, unknown>
 		| undefined;
 
 	/*** async properties ***/
-	/**
-	 * @internal
-	 * onavailable - A callback used in conjunction with the IsAvailable flag to
-	 * implement the props async iterator. See the Symbol.asyncIterator method
-	 * and the resumeCtx function.
-	 */
-	declare _oa: Function | undefined;
-
 	// See the stepCtx/advanceCtx/runCtx functions for more notes on the
 	// inflight/enqueued block/value properties.
 	/**
 	 * @internal
 	 * inflightBlock
 	 */
-	declare _ib: Promise<unknown> | undefined;
+	declare inflightBlock: Promise<unknown> | undefined;
 
 	// TODO: Can we combine this with retainer.inflight somehow please.
 	/**
 	 * @internal
 	 * inflightValue
 	 */
-	declare _iv: Promise<ElementValue<any>> | undefined;
+	declare inflightValue: Promise<ElementValue<any>> | undefined;
 
 	/**
 	 * @internal
 	 * enqueuedBlock
 	 */
-	declare _eb: Promise<unknown> | undefined;
+	declare enqueuedBlock: Promise<unknown> | undefined;
 
 	/**
 	 * @internal
 	 * enqueuedValue
 	 */
-	declare _ev: Promise<ElementValue<any>> | undefined;
+	declare enqueuedValue: Promise<ElementValue<any>> | undefined;
+
+	/**
+	 * @internal
+	 * onavailable - A callback used in conjunction with the IsAvailable flag to
+	 * implement the props async iterator. See the Symbol.asyncIterator method
+	 * and the resumeCtx function.
+	 */
+	declare onAvailable: Function | undefined;
 
 	/**
 	 * @internal
@@ -1318,19 +1312,19 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		scope: unknown,
 		ret: Retainer<unknown>,
 	) {
-		this._f = 0;
-		this._re = renderer;
-		this._rt = root;
-		this._arr = host;
-		this._pa = parent;
-		this._sc = scope;
-		this._ret = ret;
-		this._it = undefined; // iterator
-		this._oa = undefined; // onavailable
-		this._ib = undefined; // inflightBlock
-		this._iv = undefined; // inflightValue
-		this._eb = undefined; // enqueuedBlock
-		this._ev = undefined; // enqueuedValue
+		this.f = 0;
+		this.renderer = renderer;
+		this.root = root;
+		this.host = host;
+		this.parent = parent;
+		this.scope = scope;
+		this.ret = ret;
+		this.iterator = undefined;
+		this.inflightBlock = undefined;
+		this.inflightValue = undefined;
+		this.enqueuedBlock = undefined;
+		this.enqueuedValue = undefined;
+		this.onAvailable = undefined;
 	}
 
 	/**
@@ -1341,7 +1335,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * plugins or utilities which wrap contexts.
 	 */
 	get props(): TProps {
-		return this._ret.el.props;
+		return this.ret.el.props;
 	}
 
 	/**
@@ -1352,44 +1346,45 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * plugins or utilities which wrap contexts.
 	 */
 	get value(): TResult {
-		return this._re.read(getValue(this._ret));
+		return this.renderer.read(getValue(this.ret));
 	}
 
 	*[Symbol.iterator](): Generator<TProps> {
-		while (!(this._f & IsDone)) {
-			if (this._f & IsIterating) {
+		while (!(this.f & IsDone)) {
+			if (this.f & IsIterating) {
 				throw new Error("Context iterated twice without a yield");
-			} else if (this._f & IsAsyncGen) {
+			} else if (this.f & IsAsyncGen) {
 				throw new Error("Use for await…of in async generator components");
 			}
 
-			this._f |= IsIterating;
-			yield this._ret.el.props!;
+			this.f |= IsIterating;
+			yield this.ret.el.props!;
 		}
 	}
 
 	async *[Symbol.asyncIterator](): AsyncGenerator<TProps> {
 		// We use a do while loop rather than a while loop to handle an edge case
-		// where an async generator component is unmounted synchronously.
+		// where an async generator component is unmounted synchronously and
+		// therefore “done” before it starts iterating over the context.
 		do {
-			if (this._f & IsIterating) {
+			if (this.f & IsIterating) {
 				throw new Error("Context iterated twice without a yield");
-			} else if (this._f & IsSyncGen) {
+			} else if (this.f & IsSyncGen) {
 				throw new Error("Use for…of in sync generator components");
 			}
 
-			this._f |= IsIterating;
-			if (this._f & IsAvailable) {
-				this._f &= ~IsAvailable;
+			this.f |= IsIterating;
+			if (this.f & IsAvailable) {
+				this.f &= ~IsAvailable;
 			} else {
-				await new Promise((resolve) => (this._oa = resolve));
-				if (this._f & IsDone) {
+				await new Promise((resolve) => (this.onAvailable = resolve));
+				if (this.f & IsDone) {
 					break;
 				}
 			}
 
-			yield this._ret.el.props;
-		} while (!(this._f & IsDone));
+			yield this.ret.el.props;
+		} while (!(this.f & IsDone));
 	}
 
 	/**
@@ -1405,21 +1400,21 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * async iterator to suspend.
 	 */
 	refresh(): Promise<TResult> | TResult {
-		if (this._f & IsUnmounted) {
+		if (this.f & IsUnmounted) {
 			console.error("Component is unmounted");
-			return this._re.read(undefined);
-		} else if (this._f & IsExecuting) {
+			return this.renderer.read(undefined);
+		} else if (this.f & IsExecuting) {
 			console.error("Component is already executing");
-			return this._re.read(undefined);
+			return this.renderer.read(undefined);
 		}
 
 		resumeCtx(this);
 		const value = runCtx(this);
 		if (isPromiseLike(value)) {
-			return (value as Promise<any>).then((value) => this._re.read(value));
+			return (value as Promise<any>).then((value) => this.renderer.read(value));
 		}
 
-		return this._re.read(value);
+		return this.renderer.read(value);
 	}
 
 	/**
@@ -1441,14 +1436,14 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * rendered into the root. Will only fire once per callback and render.
 	 */
 	flush(callback: (value: TResult) => unknown): void {
-		if (typeof this._rt !== "object" || this._rt === null) {
+		if (typeof this.root !== "object" || this.root === null) {
 			return;
 		}
 
-		let flushMap = rootMap.get(this._rt);
+		let flushMap = flushMaps.get(this.root);
 		if (!flushMap) {
 			flushMap = new Map<Context, Set<Function>>();
-			rootMap.set(this._rt, flushMap);
+			flushMaps.set(this.root, flushMap);
 		}
 
 		let callbacks = flushMap.get(this);
@@ -1477,7 +1472,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	consume<TKey extends keyof ProvisionMap>(key: TKey): ProvisionMap[TKey];
 	consume(key: unknown): any;
 	consume(key: unknown): any {
-		for (let parent = this._pa; parent !== undefined; parent = parent._pa) {
+		for (
+			let parent = this.parent;
+			parent !== undefined;
+			parent = parent.parent
+		) {
 			const provisions = provisionMaps.get(parent);
 			if (provisions && provisions.has(key)) {
 				return provisions.get(key)!;
@@ -1550,7 +1549,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		}
 
 		listeners.push(record);
-		for (const value of getChildValues(this._ret)) {
+		for (const value of getChildValues(this.ret)) {
 			if (isEventTarget(value)) {
 				value.addEventListener(record.type, record.callback, record.options);
 			}
@@ -1581,7 +1580,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 		const record = listeners[i];
 		listeners.splice(i, 1);
-		for (const value of getChildValues(this._ret)) {
+		for (const value of getChildValues(this.ret)) {
 			if (isEventTarget(value)) {
 				value.removeEventListener(record.type, record.callback, record.options);
 			}
@@ -1590,7 +1589,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	dispatchEvent(ev: Event): boolean {
 		const path: Array<Context> = [];
-		for (let parent = this._pa; parent !== undefined; parent = parent._pa) {
+		for (
+			let parent = this.parent;
+			parent !== undefined;
+			parent = parent.parent
+		) {
 			path.push(parent);
 		}
 
@@ -1695,7 +1698,7 @@ function ctxContains(parent: Context, child: Context): boolean {
 	for (
 		let current: Context | undefined = child;
 		current !== undefined;
-		current = current._pa
+		current = current.parent
 	) {
 		if (current === parent) {
 			return true;
@@ -1728,27 +1731,27 @@ function stepCtx<TNode, TResult>(
 	Promise<unknown> | undefined,
 	Promise<ElementValue<TNode>> | ElementValue<TNode>,
 ] {
-	const ret = ctx._ret as Retainer<TNode>;
-	if (ctx._f & IsDone) {
+	const ret = ctx.ret as Retainer<TNode>;
+	if (ctx.f & IsDone) {
 		return [undefined, getValue<TNode>(ret)];
 	}
 
-	const initial = !ctx._it;
+	const initial = !ctx.iterator;
 	if (initial) {
-		ctx._f |= IsExecuting;
+		ctx.f |= IsExecuting;
 		clearEventListeners(ctx);
 		let result: ReturnType<Component>;
 		try {
 			result = (ret.el.tag as Component).call(ctx, ret.el.props);
 		} catch (err) {
-			ctx._f |= IsErrored;
+			ctx.f |= IsErrored;
 			throw err;
 		} finally {
-			ctx._f &= ~IsExecuting;
+			ctx.f &= ~IsExecuting;
 		}
 
 		if (isIteratorLike(result)) {
-			ctx._it = result;
+			ctx.iterator = result;
 		} else if (isPromiseLike(result)) {
 			// async function component
 			const result1 =
@@ -1756,7 +1759,7 @@ function stepCtx<TNode, TResult>(
 			const value = result1.then(
 				(result) => updateCtxChildren<TNode, TResult>(ctx, result),
 				(err) => {
-					ctx._f |= IsErrored;
+					ctx.f |= IsErrored;
 					throw err;
 				},
 			);
@@ -1771,45 +1774,45 @@ function stepCtx<TNode, TResult>(
 	if (initial) {
 		// The argument passed to the first call to next is ignored.
 		oldValue = undefined as any;
-	} else if (ctx._ret.inflight) {
+	} else if (ctx.ret.inflight) {
 		// The value passed back into the generator as the argument to the next
 		// method is a promise if an async generator component has async children.
 		// Sync generator components only resume when their children have fulfilled
 		// so the element’s inflight child values will never be defined.
-		oldValue = ctx._ret.inflight.then(
-			(value) => ctx._re.read(value),
-			() => ctx._re.read(undefined),
+		oldValue = ctx.ret.inflight.then(
+			(value) => ctx.renderer.read(value),
+			() => ctx.renderer.read(undefined),
 		);
 	} else {
-		oldValue = ctx._re.read(getValue(ret));
+		oldValue = ctx.renderer.read(getValue(ret));
 	}
 
 	let iteration: ChildrenIteration;
-	ctx._f |= IsExecuting;
+	ctx.f |= IsExecuting;
 	try {
-		iteration = ctx._it!.next(oldValue);
+		iteration = ctx.iterator!.next(oldValue);
 	} catch (err) {
-		ctx._f |= IsDone | IsErrored;
+		ctx.f |= IsDone | IsErrored;
 		throw err;
 	} finally {
-		ctx._f &= ~IsExecuting;
+		ctx.f &= ~IsExecuting;
 	}
 
 	if (isPromiseLike(iteration)) {
 		// async generator component
 		if (initial) {
-			ctx._f |= IsAsyncGen;
+			ctx.f |= IsAsyncGen;
 		}
 
 		const value: Promise<ElementValue<TNode>> = iteration.then(
 			(iteration) => {
-				if (!(ctx._f & IsIterating)) {
-					ctx._f &= ~IsAvailable;
+				if (!(ctx.f & IsIterating)) {
+					ctx.f &= ~IsAvailable;
 				}
 
-				ctx._f &= ~IsIterating;
+				ctx.f &= ~IsIterating;
 				if (iteration.done) {
-					ctx._f |= IsDone;
+					ctx.f |= IsDone;
 				}
 
 				try {
@@ -1828,7 +1831,7 @@ function stepCtx<TNode, TResult>(
 				}
 			},
 			(err) => {
-				ctx._f |= IsDone | IsErrored;
+				ctx.f |= IsDone | IsErrored;
 				throw err;
 			},
 		);
@@ -1838,12 +1841,12 @@ function stepCtx<TNode, TResult>(
 
 	// sync generator component
 	if (initial) {
-		ctx._f |= IsSyncGen;
+		ctx.f |= IsSyncGen;
 	}
 
-	ctx._f &= ~IsIterating;
+	ctx.f &= ~IsIterating;
 	if (iteration.done) {
-		ctx._f |= IsDone;
+		ctx.f |= IsDone;
 	}
 
 	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
@@ -1867,15 +1870,11 @@ function stepCtx<TNode, TResult>(
  * Called when the inflight block promise settles.
  */
 function advanceCtx(ctx: Context): void {
-	// _ib - inflightBlock
-	// _iv - inflightValue
-	// _eb - enqueuedBlock
-	// _ev - enqueuedValue
-	ctx._ib = ctx._eb;
-	ctx._iv = ctx._ev;
-	ctx._eb = undefined;
-	ctx._ev = undefined;
-	if (ctx._f & IsAsyncGen && !(ctx._f & IsDone) && !(ctx._f & IsUnmounted)) {
+	ctx.inflightBlock = ctx.enqueuedBlock;
+	ctx.inflightValue = ctx.enqueuedValue;
+	ctx.enqueuedBlock = undefined;
+	ctx.enqueuedValue = undefined;
+	if (ctx.f & IsAsyncGen && !(ctx.f & IsDone) && !(ctx.f & IsUnmounted)) {
 		runCtx(ctx);
 	}
 }
@@ -1898,56 +1897,56 @@ function advanceCtx(ctx: Context): void {
 function runCtx<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (!ctx._ib) {
+	if (!ctx.inflightBlock) {
 		try {
 			const [block, value] = stepCtx<TNode, TResult>(ctx);
 			if (block) {
-				ctx._ib = block
+				ctx.inflightBlock = block
 					.catch((err) => {
-						if (!(ctx._f & IsUpdating)) {
-							return propagateError<TNode>(ctx._pa, err);
+						if (!(ctx.f & IsUpdating)) {
+							return propagateError<TNode>(ctx.parent, err);
 						}
 					})
 					.finally(() => advanceCtx(ctx));
 				// stepCtx will only return a block if the value is asynchronous
-				ctx._iv = value as Promise<ElementValue<TNode>>;
+				ctx.inflightValue = value as Promise<ElementValue<TNode>>;
 			}
 
 			return value;
 		} catch (err) {
-			if (!(ctx._f & IsUpdating)) {
-				return propagateError<TNode>(ctx._pa, err);
+			if (!(ctx.f & IsUpdating)) {
+				return propagateError<TNode>(ctx.parent, err);
 			}
 
 			throw err;
 		}
-	} else if (ctx._f & IsAsyncGen) {
-		return ctx._iv;
-	} else if (!ctx._eb) {
+	} else if (ctx.f & IsAsyncGen) {
+		return ctx.inflightValue;
+	} else if (!ctx.enqueuedBlock) {
 		let resolve: Function;
-		ctx._eb = ctx._ib
+		ctx.enqueuedBlock = ctx.inflightBlock
 			.then(() => {
 				try {
 					const [block, value] = stepCtx<TNode, TResult>(ctx);
 					resolve(value);
 					if (block) {
 						return block.catch((err) => {
-							if (!(ctx._f & IsUpdating)) {
-								return propagateError<TNode>(ctx._pa, err);
+							if (!(ctx.f & IsUpdating)) {
+								return propagateError<TNode>(ctx.parent, err);
 							}
 						});
 					}
 				} catch (err) {
-					if (!(ctx._f & IsUpdating)) {
-						return propagateError<TNode>(ctx._pa, err);
+					if (!(ctx.f & IsUpdating)) {
+						return propagateError<TNode>(ctx.parent, err);
 					}
 				}
 			})
 			.finally(() => advanceCtx(ctx));
-		ctx._ev = new Promise((resolve1) => (resolve = resolve1));
+		ctx.enqueuedValue = new Promise((resolve1) => (resolve = resolve1));
 	}
 
-	return ctx._ev;
+	return ctx.enqueuedValue;
 }
 
 /**
@@ -1955,18 +1954,18 @@ function runCtx<TNode, TResult>(
  * generator components.
  */
 function resumeCtx(ctx: Context): void {
-	if (ctx._oa) {
-		ctx._oa();
-		ctx._oa = undefined;
+	if (ctx.onAvailable) {
+		ctx.onAvailable();
+		ctx.onAvailable = undefined;
 	} else {
-		ctx._f |= IsAvailable;
+		ctx.f |= IsAvailable;
 	}
 }
 
 function updateCtx<TNode>(
 	ctx: Context,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	ctx._f |= IsUpdating;
+	ctx.f |= IsUpdating;
 	resumeCtx(ctx);
 	return runCtx(ctx);
 }
@@ -1975,7 +1974,7 @@ function updateCtxChildren<TNode, TResult>(
 	ctx: Context<unknown, TResult>,
 	children: Children,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (ctx._f & IsUnmounted || ctx._f & IsErrored) {
+	if (ctx.f & IsUnmounted || ctx.f & IsErrored) {
 		return;
 	} else if (children === undefined) {
 		console.error(
@@ -1984,20 +1983,20 @@ function updateCtxChildren<TNode, TResult>(
 	}
 
 	const childValues = diffChildren<TNode, unknown, TNode, TResult>(
-		ctx._re as RendererImpl<TNode, unknown, TNode, TResult>,
-		ctx._rt as TNode,
-		ctx._arr as Retainer<TNode>,
+		ctx.renderer as RendererImpl<TNode, unknown, TNode, TResult>,
+		ctx.root as TNode,
+		ctx.host as Retainer<TNode>,
 		ctx,
-		ctx._sc,
-		ctx._ret as Retainer<TNode>,
+		ctx.scope,
+		ctx.ret as Retainer<TNode>,
 		narrow(children),
 	);
 
 	if (isPromiseLike(childValues)) {
-		ctx._ret.inflight = childValues.then((childValues) =>
+		ctx.ret.inflight = childValues.then((childValues) =>
 			commitCtx(ctx, childValues),
 		);
-		return (ctx._ret as Retainer<TNode>).inflight;
+		return (ctx.ret as Retainer<TNode>).inflight;
 	}
 
 	return commitCtx(ctx, childValues);
@@ -2007,7 +2006,7 @@ function commitCtx<TNode>(
 	ctx: Context,
 	values: Array<TNode | string>,
 ): ElementValue<TNode> {
-	if (ctx._f & IsUnmounted) {
+	if (ctx.f & IsUnmounted) {
 		return;
 	}
 
@@ -2024,13 +2023,13 @@ function commitCtx<TNode>(
 		}
 	}
 
-	if (ctx._f & IsScheduling) {
-		ctx._f |= IsSchedulingRefresh;
-	} else if (!(ctx._f & IsUpdating)) {
+	if (ctx.f & IsScheduling) {
+		ctx.f |= IsSchedulingRefresh;
+	} else if (!(ctx.f & IsUpdating)) {
 		// If we’re not updating the component, which happens when components are
 		// refreshed, or when async generator components iterate, we have to do a
 		// little bit housekeeping.
-		const records = getListenerRecords(ctx._pa, ctx._arr);
+		const records = getListenerRecords(ctx.parent, ctx.host);
 		if (records.length) {
 			for (let i = 0; i < values.length; i++) {
 				const value = values[i];
@@ -2050,9 +2049,9 @@ function commitCtx<TNode>(
 		// rearranging the nearest ancestor host element
 		// TODO: If we’re retaining the oldChildValues, we can do a quick check to
 		// make sure this work isn’t necessary as a performance optimization.
-		const host = ctx._arr as Retainer<TNode>;
+		const host = ctx.host as Retainer<TNode>;
 		const hostValues = getChildValues(host);
-		ctx._re.arrange(
+		ctx.renderer.arrange(
 			host.value,
 			host.el.tag as string | symbol,
 			host.el.props,
@@ -2063,56 +2062,56 @@ function commitCtx<TNode>(
 		);
 
 		host.cached = hostValues;
-		completeRender(ctx._re, ctx._rt, ctx);
+		flush(ctx.renderer, ctx.root, ctx);
 	}
 
 	let value = unwrap(values);
 	const callbacks = scheduleMap.get(ctx);
 	if (callbacks) {
 		scheduleMap.delete(ctx);
-		ctx._f |= IsScheduling;
-		const value1 = ctx._re.read(value);
+		ctx.f |= IsScheduling;
+		const value1 = ctx.renderer.read(value);
 		for (const callback of callbacks) {
 			callback(value1);
 		}
 
-		ctx._f &= ~IsScheduling;
+		ctx.f &= ~IsScheduling;
 		// Handles an edge case where refresh() is called during a schedule().
-		if (ctx._f & IsSchedulingRefresh) {
-			ctx._f &= ~IsSchedulingRefresh;
-			value = getValue(ctx._ret as Retainer<TNode>);
+		if (ctx.f & IsSchedulingRefresh) {
+			ctx.f &= ~IsSchedulingRefresh;
+			value = getValue(ctx.ret as Retainer<TNode>);
 		}
 	}
 
-	ctx._f &= ~IsUpdating;
+	ctx.f &= ~IsUpdating;
 	return value;
 }
 
 // TODO: async unmounting
 function unmountCtx(ctx: Context): void {
-	ctx._f |= IsUnmounted;
+	ctx.f |= IsUnmounted;
 	clearEventListeners(ctx);
 	const callbacks = cleanupMap.get(ctx);
 	if (callbacks) {
 		cleanupMap.delete(ctx);
-		const value = ctx._re.read(getValue(ctx._ret));
+		const value = ctx.renderer.read(getValue(ctx.ret));
 		for (const callback of callbacks) {
 			callback(value);
 		}
 	}
 
-	if (!(ctx._f & IsDone)) {
-		ctx._f |= IsDone;
+	if (!(ctx.f & IsDone)) {
+		ctx.f |= IsDone;
 		resumeCtx(ctx);
-		if (ctx._it && typeof ctx._it.return === "function") {
-			ctx._f |= IsExecuting;
+		if (ctx.iterator && typeof ctx.iterator.return === "function") {
+			ctx.f |= IsExecuting;
 			try {
-				const iteration = ctx._it.return();
+				const iteration = ctx.iterator.return();
 				if (isPromiseLike(iteration)) {
-					iteration.catch((err) => propagateError<unknown>(ctx._pa, err));
+					iteration.catch((err) => propagateError<unknown>(ctx.parent, err));
 				}
 			} finally {
-				ctx._f &= ~IsExecuting;
+				ctx.f &= ~IsExecuting;
 			}
 		}
 	}
@@ -2194,13 +2193,13 @@ function getListenerRecords(
 	ret: Retainer<unknown>,
 ): Array<EventListenerRecord> {
 	let listeners: Array<EventListenerRecord> = [];
-	while (ctx !== undefined && ctx._arr === ret) {
+	while (ctx !== undefined && ctx.host === ret) {
 		const listeners1 = listenersMap.get(ctx);
 		if (listeners1) {
 			listeners = listeners.concat(listeners1);
 		}
 
-		ctx = ctx._pa;
+		ctx = ctx.parent;
 	}
 
 	return listeners;
@@ -2209,7 +2208,7 @@ function getListenerRecords(
 function clearEventListeners(ctx: Context): void {
 	const listeners = listenersMap.get(ctx);
 	if (listeners && listeners.length) {
-		for (const value of getChildValues(ctx._ret)) {
+		for (const value of getChildValues(ctx.ret)) {
 			if (isEventTarget(value)) {
 				for (const record of listeners) {
 					value.removeEventListener(
@@ -2231,40 +2230,44 @@ function handleChildError<TNode>(
 	ctx: Context,
 	err: unknown,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (ctx._f & IsDone || !ctx._it || typeof ctx._it.throw !== "function") {
+	if (
+		ctx.f & IsDone ||
+		!ctx.iterator ||
+		typeof ctx.iterator.throw !== "function"
+	) {
 		throw err;
 	}
 
 	resumeCtx(ctx);
 	let iteration: ChildrenIteration;
 	try {
-		ctx._f |= IsExecuting;
-		iteration = ctx._it.throw(err);
+		ctx.f |= IsExecuting;
+		iteration = ctx.iterator.throw(err);
 	} catch (err) {
-		ctx._f |= IsDone | IsErrored;
+		ctx.f |= IsDone | IsErrored;
 		throw err;
 	} finally {
-		ctx._f &= ~IsExecuting;
+		ctx.f &= ~IsExecuting;
 	}
 
 	if (isPromiseLike(iteration)) {
 		return iteration.then(
 			(iteration) => {
 				if (iteration.done) {
-					ctx._f |= IsDone;
+					ctx.f |= IsDone;
 				}
 
 				return updateCtxChildren(ctx, iteration.value as Children);
 			},
 			(err) => {
-				ctx._f |= IsDone | IsErrored;
+				ctx.f |= IsDone | IsErrored;
 				throw err;
 			},
 		);
 	}
 
 	if (iteration.done) {
-		ctx._f |= IsDone;
+		ctx.f |= IsDone;
 	}
 
 	return updateCtxChildren(ctx, iteration.value as Children);
@@ -2282,11 +2285,11 @@ function propagateError<TNode>(
 	try {
 		result = handleChildError(ctx, err);
 	} catch (err) {
-		return propagateError<TNode>(ctx._pa, err);
+		return propagateError<TNode>(ctx.parent, err);
 	}
 
 	if (isPromiseLike(result)) {
-		return result.catch((err) => propagateError<TNode>(ctx._pa, err));
+		return result.catch((err) => propagateError<TNode>(ctx.parent, err));
 	}
 
 	return result;
