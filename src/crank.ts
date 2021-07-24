@@ -699,12 +699,11 @@ export class Renderer<
 				}
 
 				ret!.cached = unwrap(childValues);
-				const result = this.impl.read(ret!.cached);
 				if (root == null) {
 					unmount(this.impl, ret!, bridgeCtx, ret!);
 				}
 
-				return result;
+				return this.impl.read(ret!.cached);
 			});
 		}
 
@@ -722,12 +721,11 @@ export class Renderer<
 		}
 
 		ret.cached = unwrap(childValues);
-		const result = this.impl.read(ret.cached);
 		if (root == null) {
 			unmount(this.impl, ret, bridgeCtx, ret);
 		}
 
-		return result;
+		return this.impl.read(ret.cached);
 	}
 }
 
@@ -1778,8 +1776,9 @@ function stepCtx<TNode, TResult>(
 		// method is a promise if an async generator component has async children.
 		// Sync generator components only resume when their children have fulfilled
 		// so the element’s inflight child values will never be defined.
-		oldValue = ctx._ret.inflight.then(ctx._re.read, () =>
-			ctx._re.read(undefined),
+		oldValue = ctx._ret.inflight.then(
+			(value) => ctx._re.read(value),
+			() => ctx._re.read(undefined),
 		);
 	} else {
 		oldValue = ctx._re.read(getValue(ret));
