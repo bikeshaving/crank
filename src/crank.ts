@@ -1416,7 +1416,12 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		}
 
 		resumeCtx(this);
-		return this._re.read(runCtx(this));
+		const value = runCtx(this);
+		if (isPromiseLike(value)) {
+			return (value as Promise<any>).then((value) => this._re.read(value));
+		}
+
+		return this._re.read(value);
 	}
 
 	/**
