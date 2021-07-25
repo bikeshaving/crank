@@ -416,7 +416,7 @@ type RetainerChild<TNode> = Retainer<TNode> | string | undefined;
 
 class Retainer<TNode> {
 	declare el: Element;
-	declare ctrl: Controller<TNode> | undefined;
+	declare ctx: ContextInternals<TNode> | undefined;
 	declare children: Array<RetainerChild<TNode>> | RetainerChild<TNode>;
 	declare value: TNode | string | undefined;
 	declare cached: ElementValue<TNode>;
@@ -426,7 +426,7 @@ class Retainer<TNode> {
 	constructor(el: Element) {
 		this.el = el;
 		this.value = undefined;
-		this.ctrl = undefined;
+		this.ctx = undefined;
 		this.children = undefined;
 		this.cached = undefined;
 		this.fallback = undefined;
@@ -623,10 +623,11 @@ export class Renderer<
 	render(
 		children: Children,
 		root?: TRoot | undefined,
-		bridgeCtx?: Context | undefined,
+		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
 		let ret: Retainer<TNode> | undefined;
-		const ctrl = bridgeCtx && (bridgeCtx[ControllerSymbol] as Controller<any>);
+		const ctx =
+			bridge && (bridge[ContextInternalsSymbol] as ContextInternals<any>);
 		if (typeof root === "object" && root !== null) {
 			ret = this.cache.get(root as any);
 		}
@@ -635,11 +636,11 @@ export class Renderer<
 		if (ret === undefined) {
 			ret = new Retainer(createElement(Portal, {children, root}));
 			ret.value = root;
-			ret.ctrl = ctrl;
+			ret.ctx = ctx;
 			if (typeof root === "object" && root !== null && children != null) {
 				this.cache.set(root as any, ret);
 			}
-		} else if (ret.ctrl !== ctrl) {
+		} else if (ret.ctx !== ctx) {
 			throw new Error("Context mismatch");
 		} else {
 			oldProps = ret.el.props;
@@ -653,7 +654,7 @@ export class Renderer<
 			this.impl,
 			root,
 			ret,
-			ctrl,
+			ctx,
 			undefined,
 			ret,
 			children,
@@ -678,7 +679,7 @@ export class Renderer<
 
 				ret!.cached = unwrap(childValues);
 				if (root == null) {
-					unmount(this.impl, ret!, ctrl, ret!);
+					unmount(this.impl, ret!, ctx, ret!);
 				}
 
 				return this.impl.read(ret!.cached);
@@ -700,7 +701,7 @@ export class Renderer<
 
 		ret.cached = unwrap(childValues);
 		if (root == null) {
-			unmount(this.impl, ret, ctrl, ret);
+			unmount(this.impl, ret, ctx, ret);
 		}
 
 		return this.impl.read(ret.cached);
@@ -727,7 +728,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
 	host: Retainer<TNode>,
-	ctrl: Controller<TNode, TScope, TRoot, TResult> | undefined,
+	ctx: ContextInternals<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope | undefined,
 	parent: Retainer<TNode>,
 	children: Children,
@@ -812,10 +813,17 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 
 				if (typeof child.tag === "function") {
 					if (!matches) {
-						ret.ctrl = new Controller(renderer, root, host, ctrl, scope, ret);
+						ret.ctx = new ContextInternals(
+							renderer,
+							root,
+							host,
+							ctx,
+							scope,
+							ret,
+						);
 					}
 
-					value = updateCtx(ret.ctrl!);
+					value = updateCtx(ret.ctx!);
 				} else if (child.tag === Raw) {
 					// value = raw(renderer, ret, props, oldProps);
 					if (typeof child.props.value === "string") {
@@ -833,7 +841,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 						renderer,
 						root,
 						host,
-						ctrl,
+						ctx,
 						scope,
 						ret,
 						ret.el.props.children,
@@ -870,7 +878,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 						renderer,
 						root,
 						host,
-						ctrl,
+						ctx,
 						scope,
 						ret,
 						ret.el.props.children,
@@ -965,7 +973,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		let childValues1 = Promise.all(values).finally(() => {
 			if (graveyard) {
 				for (let i = 0; i < graveyard.length; i++) {
-					unmount(renderer, host, ctrl, graveyard[i]);
+					unmount(renderer, host, ctx, graveyard[i]);
 				}
 			}
 		});
@@ -989,7 +997,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 
 	if (graveyard) {
 		for (let i = 0; i < graveyard.length; i++) {
-			unmount(renderer, host, ctrl, graveyard[i]);
+			unmount(renderer, host, ctx, graveyard[i]);
 		}
 	}
 
@@ -1010,10 +1018,10 @@ function copy<TNode>(
 		return child;
 	}
 
-	const ctrl: Controller<TNode> | undefined =
-		typeof child.el.tag === "function" ? child.ctrl : undefined;
-	if (ctrl && ctrl.f & IsUpdating && ctrl.inflightValue) {
-		return ctrl.inflightValue;
+	const ctx: ContextInternals<TNode> | undefined =
+		typeof child.el.tag === "function" ? child.ctx : undefined;
+	if (ctx && ctx.f & IsUpdating && ctx.inflightValue) {
+		return ctx.inflightValue;
 	} else if (child.inflight) {
 		return child.inflight;
 	}
@@ -1024,7 +1032,7 @@ function copy<TNode>(
 function flush<TRoot>(
 	renderer: RendererImpl<unknown, unknown, TRoot>,
 	root: TRoot,
-	initiator?: Controller,
+	initiator?: ContextInternals,
 ) {
 	renderer.flush(root);
 	if (typeof root !== "object" || root === null) {
@@ -1034,11 +1042,11 @@ function flush<TRoot>(
 	const flushMap = flushMaps.get(root as unknown as object);
 	if (flushMap) {
 		if (initiator) {
-			const flushMap1 = new Map<Controller, Set<Function>>();
-			for (let [ctrl, callbacks] of flushMap) {
-				if (!ctrlContains(initiator, ctrl)) {
-					flushMap.delete(ctrl);
-					flushMap1.set(ctrl, callbacks);
+			const flushMap1 = new Map<ContextInternals, Set<Function>>();
+			for (let [ctx, callbacks] of flushMap) {
+				if (!ctxContains(initiator, ctx)) {
+					flushMap.delete(ctx);
+					flushMap1.set(ctx, callbacks);
 				}
 			}
 
@@ -1051,8 +1059,8 @@ function flush<TRoot>(
 			flushMaps.delete(root as unknown as object);
 		}
 
-		for (const [ctrl, callbacks] of flushMap) {
-			const value = renderer.read(getValue(ctrl.ret));
+		for (const [ctx, callbacks] of flushMap) {
+			const value = renderer.read(getValue(ctx.ret));
 			for (const callback of callbacks) {
 				callback(value);
 			}
@@ -1063,12 +1071,12 @@ function flush<TRoot>(
 function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 	host: Retainer<TNode>,
-	ctrl: Controller<TNode, TScope, TRoot, TResult> | undefined,
+	ctx: ContextInternals<TNode, TScope, TRoot, TResult> | undefined,
 	ret: Retainer<TNode>,
 ): void {
 	if (typeof ret.el.tag === "function") {
-		ctrl = ret.ctrl! as Controller<TNode, TScope, TRoot, TResult>;
-		unmountCtx(ctrl);
+		ctx = ret.ctx! as ContextInternals<TNode, TScope, TRoot, TResult>;
+		unmountCtx(ctx);
 	} else if (ret.el.tag === Portal) {
 		host = ret;
 		renderer.arrange(
@@ -1082,7 +1090,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 		flush(renderer, host.el.props.root);
 	} else if (ret.el.tag !== Fragment) {
 		if (isEventTarget(ret.value)) {
-			const records = getListenerRecords(ctrl && ctrl.ctx, host);
+			const records = getListenerRecords(ctx && ctx.facade, host);
 			for (let i = 0; i < records.length; i++) {
 				const record = records[i];
 				ret.value.removeEventListener(
@@ -1101,7 +1109,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i];
 		if (typeof child === "object") {
-			unmount(renderer, host, ctrl, child);
+			unmount(renderer, host, ctx, child);
 		}
 	}
 }
@@ -1188,19 +1196,19 @@ export interface Context extends Crank.Context {}
  */
 export interface ProvisionMap extends Crank.ProvisionMap {}
 
-const provisionMaps = new WeakMap<Controller, Map<unknown, unknown>>();
+const provisionMaps = new WeakMap<ContextInternals, Map<unknown, unknown>>();
 
-const scheduleMap = new WeakMap<Controller, Set<Function>>();
+const scheduleMap = new WeakMap<ContextInternals, Set<Function>>();
 
-const cleanupMap = new WeakMap<Controller, Set<Function>>();
+const cleanupMap = new WeakMap<ContextInternals, Set<Function>>();
 
 // keys are roots
-const flushMaps = new WeakMap<object, Map<Controller, Set<Function>>>();
+const flushMaps = new WeakMap<object, Map<ContextInternals, Set<Function>>>();
 
 /**
  * @internal
  */
-class Controller<
+class ContextInternals<
 	TNode = unknown,
 	TScope = unknown,
 	TRoot extends TNode = TNode,
@@ -1212,9 +1220,9 @@ class Controller<
 	declare f: number;
 
 	/**
-	 * context - The actual object passed as this to components
+	 * facade - The actual object passed as this to components.
 	 */
-	declare ctx: Context<unknown, TResult>;
+	declare facade: Context<unknown, TResult>;
 
 	/**
 	 * renderer - The renderer which created this context.
@@ -1238,7 +1246,7 @@ class Controller<
 	/**
 	 * parent - The parent context.
 	 */
-	declare parent: Controller<TNode, TScope, TRoot, TResult> | undefined;
+	declare parent: ContextInternals<TNode, TScope, TRoot, TResult> | undefined;
 
 	/**
 	 * scope - The value of the scope at the point of element’s creation.
@@ -1293,12 +1301,12 @@ class Controller<
 		renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 		root: TRoot | undefined,
 		host: Retainer<TNode>,
-		parent: Controller<TNode, TScope, TRoot, TResult> | undefined,
+		parent: ContextInternals<TNode, TScope, TRoot, TResult> | undefined,
 		scope: TScope | undefined,
 		ret: Retainer<TNode>,
 	) {
 		this.f = 0;
-		this.ctx = new Context(this);
+		this.facade = new Context(this);
 		this.renderer = renderer;
 		this.root = root;
 		this.host = host;
@@ -1314,7 +1322,7 @@ class Controller<
 	}
 }
 
-export const ControllerSymbol = Symbol.for("Crank.Controller");
+export const ContextInternalsSymbol = Symbol.for("Crank.ContextInternals");
 
 /**
  * A class which is instantiated and passed to every component as its this
@@ -1332,10 +1340,15 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	/**
 	 * @internal
 	 */
-	declare [ControllerSymbol]: Controller<unknown, unknown, unknown, TResult>;
+	declare [ContextInternalsSymbol]: ContextInternals<
+		unknown,
+		unknown,
+		unknown,
+		TResult
+	>;
 
-	constructor(ctrl: Controller<unknown, unknown, unknown, TResult>) {
-		this[ControllerSymbol] = ctrl;
+	constructor(internals: ContextInternals<unknown, unknown, unknown, TResult>) {
+		this[ContextInternalsSymbol] = internals;
 	}
 
 	/**
@@ -1346,7 +1359,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * plugins or utilities which wrap contexts.
 	 */
 	get props(): TProps {
-		return this[ControllerSymbol].ret.el.props;
+		return this[ContextInternalsSymbol].ret.el.props;
 	}
 
 	// TODO: Should we rename this???
@@ -1358,22 +1371,22 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * mainly for plugins or utilities which wrap contexts.
 	 */
 	get value(): TResult {
-		return this[ControllerSymbol].renderer.read(
-			getValue(this[ControllerSymbol].ret),
+		return this[ContextInternalsSymbol].renderer.read(
+			getValue(this[ContextInternalsSymbol].ret),
 		);
 	}
 
 	*[Symbol.iterator](): Generator<TProps> {
-		const ctrl = this[ControllerSymbol];
-		while (!(ctrl.f & IsDone)) {
-			if (ctrl.f & IsIterating) {
+		const internals = this[ContextInternalsSymbol];
+		while (!(internals.f & IsDone)) {
+			if (internals.f & IsIterating) {
 				throw new Error("Context iterated twice without a yield");
-			} else if (ctrl.f & IsAsyncGen) {
+			} else if (internals.f & IsAsyncGen) {
 				throw new Error("Use for await…of in async generator components");
 			}
 
-			ctrl.f |= IsIterating;
-			yield ctrl.ret.el.props!;
+			internals.f |= IsIterating;
+			yield internals.ret.el.props!;
 		}
 	}
 
@@ -1381,26 +1394,26 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		// We use a do while loop rather than a while loop to handle an edge case
 		// where an async generator component is unmounted synchronously and
 		// therefore “done” before it starts iterating over the context.
-		const ctrl = this[ControllerSymbol];
+		const internals = this[ContextInternalsSymbol];
 		do {
-			if (ctrl.f & IsIterating) {
+			if (internals.f & IsIterating) {
 				throw new Error("Context iterated twice without a yield");
-			} else if (ctrl.f & IsSyncGen) {
+			} else if (internals.f & IsSyncGen) {
 				throw new Error("Use for…of in sync generator components");
 			}
 
-			ctrl.f |= IsIterating;
-			if (ctrl.f & IsAvailable) {
-				ctrl.f &= ~IsAvailable;
+			internals.f |= IsIterating;
+			if (internals.f & IsAvailable) {
+				internals.f &= ~IsAvailable;
 			} else {
-				await new Promise((resolve) => (ctrl.onAvailable = resolve));
-				if (ctrl.f & IsDone) {
+				await new Promise((resolve) => (internals.onAvailable = resolve));
+				if (internals.f & IsDone) {
 					break;
 				}
 			}
 
-			yield ctrl.ret.el.props;
-		} while (!(ctrl.f & IsDone));
+			yield internals.ret.el.props;
+		} while (!(internals.f & IsDone));
 	}
 
 	/**
@@ -1416,22 +1429,24 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * async iterator to suspend.
 	 */
 	refresh(): Promise<TResult> | TResult {
-		const ctrl = this[ControllerSymbol];
-		if (ctrl.f & IsUnmounted) {
+		const internals = this[ContextInternalsSymbol];
+		if (internals.f & IsUnmounted) {
 			console.error("Component is unmounted");
-			return ctrl.renderer.read(undefined);
-		} else if (ctrl.f & IsExecuting) {
+			return internals.renderer.read(undefined);
+		} else if (internals.f & IsExecuting) {
 			console.error("Component is already executing");
-			return ctrl.renderer.read(undefined);
+			return internals.renderer.read(undefined);
 		}
 
-		resumeCtx(ctrl);
-		const value = runCtx(ctrl);
+		resumeCtx(internals);
+		const value = runCtx(internals);
 		if (isPromiseLike(value)) {
-			return (value as Promise<any>).then((value) => ctrl.renderer.read(value));
+			return (value as Promise<any>).then((value) =>
+				internals.renderer.read(value),
+			);
 		}
 
-		return ctrl.renderer.read(value);
+		return internals.renderer.read(value);
 	}
 
 	/**
@@ -1439,11 +1454,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * fire once per callback and update.
 	 */
 	schedule(callback: (value: TResult) => unknown): void {
-		const ctrl = this[ControllerSymbol];
-		let callbacks = scheduleMap.get(ctrl);
+		const internals = this[ContextInternalsSymbol];
+		let callbacks = scheduleMap.get(internals);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
-			scheduleMap.set(ctrl, callbacks);
+			scheduleMap.set(internals, callbacks);
 		}
 
 		callbacks.add(callback);
@@ -1454,21 +1469,21 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * rendered into the root. Will only fire once per callback and render.
 	 */
 	flush(callback: (value: TResult) => unknown): void {
-		const ctrl = this[ControllerSymbol];
-		if (typeof ctrl.root !== "object" || ctrl.root === null) {
+		const internals = this[ContextInternalsSymbol];
+		if (typeof internals.root !== "object" || internals.root === null) {
 			return;
 		}
 
-		let flushMap = flushMaps.get(ctrl.root);
+		let flushMap = flushMaps.get(internals.root);
 		if (!flushMap) {
-			flushMap = new Map<Controller, Set<Function>>();
-			flushMaps.set(ctrl.root, flushMap);
+			flushMap = new Map<ContextInternals, Set<Function>>();
+			flushMaps.set(internals.root, flushMap);
 		}
 
-		let callbacks = flushMap.get(ctrl);
+		let callbacks = flushMap.get(internals);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
-			flushMap.set(ctrl, callbacks);
+			flushMap.set(internals, callbacks);
 		}
 
 		callbacks.add(callback);
@@ -1479,11 +1494,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * fire once per callback.
 	 */
 	cleanup(callback: (value: TResult) => unknown): void {
-		const ctrl = this[ControllerSymbol];
-		let callbacks = cleanupMap.get(ctrl);
+		const internals = this[ContextInternalsSymbol];
+		let callbacks = cleanupMap.get(internals);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
-			cleanupMap.set(ctrl, callbacks);
+			cleanupMap.set(internals, callbacks);
 		}
 
 		callbacks.add(callback);
@@ -1493,7 +1508,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	consume(key: unknown): any;
 	consume(key: unknown): any {
 		for (
-			let parent = this[ControllerSymbol].parent;
+			let parent = this[ContextInternalsSymbol].parent;
 			parent !== undefined;
 			parent = parent.parent
 		) {
@@ -1510,11 +1525,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	): void;
 	provide(key: unknown, value: any): void;
 	provide(key: unknown, value: any): void {
-		const ctrl = this[ControllerSymbol];
-		let provisions = provisionMaps.get(ctrl);
+		const internals = this[ContextInternalsSymbol];
+		let provisions = provisionMaps.get(internals);
 		if (!provisions) {
 			provisions = new Map();
-			provisionMaps.set(ctrl, provisions);
+			provisionMaps.set(internals, provisions);
 		}
 
 		provisions.set(key, value);
@@ -1570,7 +1585,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		}
 
 		listeners.push(record);
-		for (const value of getChildValues(this[ControllerSymbol].ret)) {
+		for (const value of getChildValues(this[ContextInternalsSymbol].ret)) {
 			if (isEventTarget(value)) {
 				value.addEventListener(record.type, record.callback, record.options);
 			}
@@ -1601,7 +1616,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 		const record = listeners[i];
 		listeners.splice(i, 1);
-		for (const value of getChildValues(this[ControllerSymbol].ret)) {
+		for (const value of getChildValues(this[ContextInternalsSymbol].ret)) {
 			if (isEventTarget(value)) {
 				value.removeEventListener(record.type, record.callback, record.options);
 			}
@@ -1611,11 +1626,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	dispatchEvent(ev: Event): boolean {
 		const path: Array<Context> = [];
 		for (
-			let parent = this[ControllerSymbol].parent;
+			let parent = this[ContextInternalsSymbol].parent;
 			parent !== undefined;
 			parent = parent.parent
 		) {
-			path.push(parent.ctx);
+			path.push(parent.facade);
 		}
 
 		// We patch the stopImmediatePropagation method because ev.cancelBubble
@@ -1715,9 +1730,12 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 }
 
 /*** PRIVATE CONTEXT FUNCTIONS ***/
-function ctrlContains(parent: Controller, child: Controller): boolean {
+function ctxContains(
+	parent: ContextInternals,
+	child: ContextInternals,
+): boolean {
 	for (
-		let current: Controller | undefined = child;
+		let current: ContextInternals | undefined = child;
 		current !== undefined;
 		current = current.parent
 	) {
@@ -1747,47 +1765,47 @@ function ctrlContains(parent: Controller, child: Controller): boolean {
  * they are expected to only resume when they’ve actually rendered.
  */
 function stepCtx<TNode, TResult>(
-	ctrl: Controller<TNode, unknown, TNode, TResult>,
+	ctx: ContextInternals<TNode, unknown, TNode, TResult>,
 ): [
 	Promise<unknown> | undefined,
 	Promise<ElementValue<TNode>> | ElementValue<TNode>,
 ] {
-	const ret = ctrl.ret as Retainer<TNode>;
-	if (ctrl.f & IsDone) {
+	const ret = ctx.ret as Retainer<TNode>;
+	if (ctx.f & IsDone) {
 		return [undefined, getValue<TNode>(ret)];
 	}
 
-	const initial = !ctrl.iterator;
+	const initial = !ctx.iterator;
 	if (initial) {
-		ctrl.f |= IsExecuting;
-		clearEventListeners(ctrl.ctx);
+		ctx.f |= IsExecuting;
+		clearEventListeners(ctx.facade);
 		let result: ReturnType<Component>;
 		try {
-			result = (ret.el.tag as Component).call(ctrl.ctx, ret.el.props);
+			result = (ret.el.tag as Component).call(ctx.facade, ret.el.props);
 		} catch (err) {
-			ctrl.f |= IsErrored;
+			ctx.f |= IsErrored;
 			throw err;
 		} finally {
-			ctrl.f &= ~IsExecuting;
+			ctx.f &= ~IsExecuting;
 		}
 
 		if (isIteratorLike(result)) {
-			ctrl.iterator = result;
+			ctx.iterator = result;
 		} else if (isPromiseLike(result)) {
 			// async function component
 			const result1 =
 				result instanceof Promise ? result : Promise.resolve(result);
 			const value = result1.then(
-				(result) => updateCtxChildren<TNode, TResult>(ctrl, result),
+				(result) => updateCtxChildren<TNode, TResult>(ctx, result),
 				(err) => {
-					ctrl.f |= IsErrored;
+					ctx.f |= IsErrored;
 					throw err;
 				},
 			);
 			return [result1, value];
 		} else {
 			// sync function component
-			return [undefined, updateCtxChildren<TNode, TResult>(ctrl, result)];
+			return [undefined, updateCtxChildren<TNode, TResult>(ctx, result)];
 		}
 	}
 
@@ -1795,64 +1813,64 @@ function stepCtx<TNode, TResult>(
 	if (initial) {
 		// The argument passed to the first call to next is ignored.
 		oldValue = undefined as any;
-	} else if (ctrl.ret.inflight) {
+	} else if (ctx.ret.inflight) {
 		// The value passed back into the generator as the argument to the next
 		// method is a promise if an async generator component has async children.
 		// Sync generator components only resume when their children have fulfilled
 		// so the element’s inflight child values will never be defined.
-		oldValue = ctrl.ret.inflight.then(
-			(value) => ctrl.renderer.read(value),
-			() => ctrl.renderer.read(undefined),
+		oldValue = ctx.ret.inflight.then(
+			(value) => ctx.renderer.read(value),
+			() => ctx.renderer.read(undefined),
 		);
 	} else {
-		oldValue = ctrl.renderer.read(getValue(ret));
+		oldValue = ctx.renderer.read(getValue(ret));
 	}
 
 	let iteration: ChildrenIteration;
-	ctrl.f |= IsExecuting;
+	ctx.f |= IsExecuting;
 	try {
-		iteration = ctrl.iterator!.next(oldValue);
+		iteration = ctx.iterator!.next(oldValue);
 	} catch (err) {
-		ctrl.f |= IsDone | IsErrored;
+		ctx.f |= IsDone | IsErrored;
 		throw err;
 	} finally {
-		ctrl.f &= ~IsExecuting;
+		ctx.f &= ~IsExecuting;
 	}
 
 	if (isPromiseLike(iteration)) {
 		// async generator component
 		if (initial) {
-			ctrl.f |= IsAsyncGen;
+			ctx.f |= IsAsyncGen;
 		}
 
 		const value: Promise<ElementValue<TNode>> = iteration.then(
 			(iteration) => {
-				if (!(ctrl.f & IsIterating)) {
-					ctrl.f &= ~IsAvailable;
+				if (!(ctx.f & IsIterating)) {
+					ctx.f &= ~IsAvailable;
 				}
 
-				ctrl.f &= ~IsIterating;
+				ctx.f &= ~IsIterating;
 				if (iteration.done) {
-					ctrl.f |= IsDone;
+					ctx.f |= IsDone;
 				}
 
 				try {
 					const value = updateCtxChildren<TNode, TResult>(
-						ctrl,
+						ctx,
 						iteration.value as Children,
 					);
 
 					if (isPromiseLike(value)) {
-						return value.catch((err) => handleChildError(ctrl, err));
+						return value.catch((err) => handleChildError(ctx, err));
 					}
 
 					return value;
 				} catch (err) {
-					return handleChildError(ctrl, err);
+					return handleChildError(ctx, err);
 				}
 			},
 			(err) => {
-				ctrl.f |= IsDone | IsErrored;
+				ctx.f |= IsDone | IsErrored;
 				throw err;
 			},
 		);
@@ -1862,25 +1880,22 @@ function stepCtx<TNode, TResult>(
 
 	// sync generator component
 	if (initial) {
-		ctrl.f |= IsSyncGen;
+		ctx.f |= IsSyncGen;
 	}
 
-	ctrl.f &= ~IsIterating;
+	ctx.f &= ~IsIterating;
 	if (iteration.done) {
-		ctrl.f |= IsDone;
+		ctx.f |= IsDone;
 	}
 
 	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 	try {
-		value = updateCtxChildren<TNode, TResult>(
-			ctrl,
-			iteration.value as Children,
-		);
+		value = updateCtxChildren<TNode, TResult>(ctx, iteration.value as Children);
 		if (isPromiseLike(value)) {
-			value = value.catch((err) => handleChildError(ctrl, err));
+			value = value.catch((err) => handleChildError(ctx, err));
 		}
 	} catch (err) {
-		value = handleChildError(ctrl, err);
+		value = handleChildError(ctx, err);
 	}
 
 	if (isPromiseLike(value)) {
@@ -1893,13 +1908,13 @@ function stepCtx<TNode, TResult>(
 /**
  * Called when the inflight block promise settles.
  */
-function advanceCtx(ctrl: Controller): void {
-	ctrl.inflightBlock = ctrl.enqueuedBlock;
-	ctrl.inflightValue = ctrl.enqueuedValue;
-	ctrl.enqueuedBlock = undefined;
-	ctrl.enqueuedValue = undefined;
-	if (ctrl.f & IsAsyncGen && !(ctrl.f & IsDone) && !(ctrl.f & IsUnmounted)) {
-		runCtx(ctrl);
+function advanceCtx(ctx: ContextInternals): void {
+	ctx.inflightBlock = ctx.enqueuedBlock;
+	ctx.inflightValue = ctx.enqueuedValue;
+	ctx.enqueuedBlock = undefined;
+	ctx.enqueuedValue = undefined;
+	if (ctx.f & IsAsyncGen && !(ctx.f & IsDone) && !(ctx.f & IsUnmounted)) {
+		runCtx(ctx);
 	}
 }
 
@@ -1919,86 +1934,86 @@ function advanceCtx(ctrl: Controller): void {
  * the current block promise settles.
  */
 function runCtx<TNode, TResult>(
-	ctrl: Controller<TNode, unknown, TNode, TResult>,
+	ctx: ContextInternals<TNode, unknown, TNode, TResult>,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (!ctrl.inflightBlock) {
+	if (!ctx.inflightBlock) {
 		try {
-			const [block, value] = stepCtx<TNode, TResult>(ctrl);
+			const [block, value] = stepCtx<TNode, TResult>(ctx);
 			if (block) {
-				ctrl.inflightBlock = block
+				ctx.inflightBlock = block
 					.catch((err) => {
-						if (!(ctrl.f & IsUpdating)) {
-							return propagateError<TNode>(ctrl.parent, err);
+						if (!(ctx.f & IsUpdating)) {
+							return propagateError<TNode>(ctx.parent, err);
 						}
 					})
-					.finally(() => advanceCtx(ctrl));
+					.finally(() => advanceCtx(ctx));
 				// stepCtx will only return a block if the value is asynchronous
-				ctrl.inflightValue = value as Promise<ElementValue<TNode>>;
+				ctx.inflightValue = value as Promise<ElementValue<TNode>>;
 			}
 
 			return value;
 		} catch (err) {
-			if (!(ctrl.f & IsUpdating)) {
-				return propagateError<TNode>(ctrl.parent, err);
+			if (!(ctx.f & IsUpdating)) {
+				return propagateError<TNode>(ctx.parent, err);
 			}
 
 			throw err;
 		}
-	} else if (ctrl.f & IsAsyncGen) {
-		return ctrl.inflightValue;
-	} else if (!ctrl.enqueuedBlock) {
+	} else if (ctx.f & IsAsyncGen) {
+		return ctx.inflightValue;
+	} else if (!ctx.enqueuedBlock) {
 		let resolve: Function;
-		ctrl.enqueuedBlock = ctrl.inflightBlock
+		ctx.enqueuedBlock = ctx.inflightBlock
 			.then(() => {
 				try {
-					const [block, value] = stepCtx<TNode, TResult>(ctrl);
+					const [block, value] = stepCtx<TNode, TResult>(ctx);
 					resolve(value);
 					if (block) {
 						return block.catch((err) => {
-							if (!(ctrl.f & IsUpdating)) {
-								return propagateError<TNode>(ctrl.parent, err);
+							if (!(ctx.f & IsUpdating)) {
+								return propagateError<TNode>(ctx.parent, err);
 							}
 						});
 					}
 				} catch (err) {
-					if (!(ctrl.f & IsUpdating)) {
-						return propagateError<TNode>(ctrl.parent, err);
+					if (!(ctx.f & IsUpdating)) {
+						return propagateError<TNode>(ctx.parent, err);
 					}
 				}
 			})
-			.finally(() => advanceCtx(ctrl));
-		ctrl.enqueuedValue = new Promise((resolve1) => (resolve = resolve1));
+			.finally(() => advanceCtx(ctx));
+		ctx.enqueuedValue = new Promise((resolve1) => (resolve = resolve1));
 	}
 
-	return ctrl.enqueuedValue;
+	return ctx.enqueuedValue;
 }
 
 /**
  * Called to make props available to the props async iterator for async
  * generator components.
  */
-function resumeCtx(ctrl: Controller): void {
-	if (ctrl.onAvailable) {
-		ctrl.onAvailable();
-		ctrl.onAvailable = undefined;
+function resumeCtx(ctx: ContextInternals): void {
+	if (ctx.onAvailable) {
+		ctx.onAvailable();
+		ctx.onAvailable = undefined;
 	} else {
-		ctrl.f |= IsAvailable;
+		ctx.f |= IsAvailable;
 	}
 }
 
 function updateCtx<TNode>(
-	ctrl: Controller<TNode>,
+	ctx: ContextInternals<TNode>,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	ctrl.f |= IsUpdating;
-	resumeCtx(ctrl);
-	return runCtx(ctrl);
+	ctx.f |= IsUpdating;
+	resumeCtx(ctx);
+	return runCtx(ctx);
 }
 
 function updateCtxChildren<TNode, TResult>(
-	ctrl: Controller<TNode, unknown, TNode, TResult>,
+	ctx: ContextInternals<TNode, unknown, TNode, TResult>,
 	children: Children,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (ctrl.f & IsUnmounted || ctrl.f & IsErrored) {
+	if (ctx.f & IsUnmounted || ctx.f & IsErrored) {
 		return;
 	} else if (children === undefined) {
 		console.error(
@@ -2007,34 +2022,34 @@ function updateCtxChildren<TNode, TResult>(
 	}
 
 	const childValues = diffChildren<TNode, unknown, TNode, TResult>(
-		ctrl.renderer as RendererImpl<TNode, unknown, TNode, TResult>,
-		ctrl.root as TNode,
-		ctrl.host as Retainer<TNode>,
-		ctrl,
-		ctrl.scope,
-		ctrl.ret as Retainer<TNode>,
+		ctx.renderer as RendererImpl<TNode, unknown, TNode, TResult>,
+		ctx.root as TNode,
+		ctx.host as Retainer<TNode>,
+		ctx,
+		ctx.scope,
+		ctx.ret as Retainer<TNode>,
 		narrow(children),
 	);
 
 	if (isPromiseLike(childValues)) {
-		ctrl.ret.inflight = childValues.then((childValues) =>
-			commitCtx(ctrl, childValues),
+		ctx.ret.inflight = childValues.then((childValues) =>
+			commitCtx(ctx, childValues),
 		);
-		return (ctrl.ret as Retainer<TNode>).inflight;
+		return (ctx.ret as Retainer<TNode>).inflight;
 	}
 
-	return commitCtx(ctrl, childValues);
+	return commitCtx(ctx, childValues);
 }
 
 function commitCtx<TNode>(
-	ctrl: Controller<TNode, unknown, TNode>,
+	ctx: ContextInternals<TNode, unknown, TNode>,
 	values: Array<TNode | string>,
 ): ElementValue<TNode> {
-	if (ctrl.f & IsUnmounted) {
+	if (ctx.f & IsUnmounted) {
 		return;
 	}
 
-	const listeners = listenersMap.get(ctrl.ctx);
+	const listeners = listenersMap.get(ctx.facade);
 	if (listeners && listeners.length) {
 		for (let i = 0; i < values.length; i++) {
 			const value = values[i];
@@ -2047,15 +2062,15 @@ function commitCtx<TNode>(
 		}
 	}
 
-	if (ctrl.f & IsScheduling) {
-		ctrl.f |= IsSchedulingRefresh;
-	} else if (!(ctrl.f & IsUpdating)) {
+	if (ctx.f & IsScheduling) {
+		ctx.f |= IsSchedulingRefresh;
+	} else if (!(ctx.f & IsUpdating)) {
 		// If we’re not updating the component, which happens when components are
 		// refreshed, or when async generator components iterate, we have to do a
 		// little bit housekeeping.
 		const records = getListenerRecords(
-			ctrl.parent && ctrl.parent.ctx,
-			ctrl.host,
+			ctx.parent && ctx.parent.facade,
+			ctx.host,
 		);
 		if (records.length) {
 			for (let i = 0; i < values.length; i++) {
@@ -2076,9 +2091,9 @@ function commitCtx<TNode>(
 		// rearranging the nearest ancestor host element
 		// TODO: If we’re retaining the oldChildValues, we can do a quick check to
 		// make sure this work isn’t necessary as a performance optimization.
-		const host = ctrl.host as Retainer<TNode>;
+		const host = ctx.host as Retainer<TNode>;
 		const hostValues = getChildValues(host);
-		ctrl.renderer.arrange(
+		ctx.renderer.arrange(
 			host.value as TNode,
 			host.el.tag as string | symbol,
 			host.el.props,
@@ -2089,56 +2104,56 @@ function commitCtx<TNode>(
 		);
 
 		host.cached = hostValues;
-		flush(ctrl.renderer, ctrl.root, ctrl);
+		flush(ctx.renderer, ctx.root, ctx);
 	}
 
 	let value = unwrap(values);
-	const callbacks = scheduleMap.get(ctrl);
+	const callbacks = scheduleMap.get(ctx);
 	if (callbacks) {
-		scheduleMap.delete(ctrl);
-		ctrl.f |= IsScheduling;
-		const value1 = ctrl.renderer.read(value);
+		scheduleMap.delete(ctx);
+		ctx.f |= IsScheduling;
+		const value1 = ctx.renderer.read(value);
 		for (const callback of callbacks) {
 			callback(value1);
 		}
 
-		ctrl.f &= ~IsScheduling;
+		ctx.f &= ~IsScheduling;
 		// Handles an edge case where refresh() is called during a schedule().
-		if (ctrl.f & IsSchedulingRefresh) {
-			ctrl.f &= ~IsSchedulingRefresh;
-			value = getValue(ctrl.ret as Retainer<TNode>);
+		if (ctx.f & IsSchedulingRefresh) {
+			ctx.f &= ~IsSchedulingRefresh;
+			value = getValue(ctx.ret as Retainer<TNode>);
 		}
 	}
 
-	ctrl.f &= ~IsUpdating;
+	ctx.f &= ~IsUpdating;
 	return value;
 }
 
 // TODO: async unmounting
-function unmountCtx(ctrl: Controller): void {
-	ctrl.f |= IsUnmounted;
-	clearEventListeners(ctrl.ctx);
-	const callbacks = cleanupMap.get(ctrl);
+function unmountCtx(ctx: ContextInternals): void {
+	ctx.f |= IsUnmounted;
+	clearEventListeners(ctx.facade);
+	const callbacks = cleanupMap.get(ctx);
 	if (callbacks) {
-		cleanupMap.delete(ctrl);
-		const value = ctrl.renderer.read(getValue(ctrl.ret));
+		cleanupMap.delete(ctx);
+		const value = ctx.renderer.read(getValue(ctx.ret));
 		for (const callback of callbacks) {
 			callback(value);
 		}
 	}
 
-	if (!(ctrl.f & IsDone)) {
-		ctrl.f |= IsDone;
-		resumeCtx(ctrl);
-		if (ctrl.iterator && typeof ctrl.iterator.return === "function") {
-			ctrl.f |= IsExecuting;
+	if (!(ctx.f & IsDone)) {
+		ctx.f |= IsDone;
+		resumeCtx(ctx);
+		if (ctx.iterator && typeof ctx.iterator.return === "function") {
+			ctx.f |= IsExecuting;
 			try {
-				const iteration = ctrl.iterator.return();
+				const iteration = ctx.iterator.return();
 				if (isPromiseLike(iteration)) {
-					iteration.catch((err) => propagateError<unknown>(ctrl.parent, err));
+					iteration.catch((err) => propagateError<unknown>(ctx.parent, err));
 				}
 			} finally {
-				ctrl.f &= ~IsExecuting;
+				ctx.f &= ~IsExecuting;
 			}
 		}
 	}
@@ -2220,14 +2235,14 @@ function getListenerRecords(
 	ret: Retainer<unknown>,
 ): Array<EventListenerRecord> {
 	let listeners: Array<EventListenerRecord> = [];
-	let ctrl = ctx && ctx[ControllerSymbol];
-	while (ctrl !== undefined && ctrl.host === ret) {
-		const listeners1 = listenersMap.get(ctrl.ctx);
+	let internals = ctx && ctx[ContextInternalsSymbol];
+	while (internals !== undefined && internals.host === ret) {
+		const listeners1 = listenersMap.get(internals.facade);
 		if (listeners1) {
 			listeners = listeners.concat(listeners1);
 		}
 
-		ctrl = ctrl.parent;
+		internals = internals.parent;
 	}
 
 	return listeners;
@@ -2236,7 +2251,7 @@ function getListenerRecords(
 function clearEventListeners(ctx: Context): void {
 	const listeners = listenersMap.get(ctx);
 	if (listeners && listeners.length) {
-		for (const value of getChildValues(ctx[ControllerSymbol].ret)) {
+		for (const value of getChildValues(ctx[ContextInternalsSymbol].ret)) {
 			if (isEventTarget(value)) {
 				for (const record of listeners) {
 					value.removeEventListener(
@@ -2255,69 +2270,69 @@ function clearEventListeners(ctx: Context): void {
 /*** ERROR HANDLING UTILITIES ***/
 // TODO: generator components which throw errors should be recoverable
 function handleChildError<TNode>(
-	ctrl: Controller<TNode, unknown, TNode>,
+	ctx: ContextInternals<TNode, unknown, TNode>,
 	err: unknown,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (
-		ctrl.f & IsDone ||
-		!ctrl.iterator ||
-		typeof ctrl.iterator.throw !== "function"
+		ctx.f & IsDone ||
+		!ctx.iterator ||
+		typeof ctx.iterator.throw !== "function"
 	) {
 		throw err;
 	}
 
-	resumeCtx(ctrl);
+	resumeCtx(ctx);
 	let iteration: ChildrenIteration;
 	try {
-		ctrl.f |= IsExecuting;
-		iteration = ctrl.iterator.throw(err);
+		ctx.f |= IsExecuting;
+		iteration = ctx.iterator.throw(err);
 	} catch (err) {
-		ctrl.f |= IsDone | IsErrored;
+		ctx.f |= IsDone | IsErrored;
 		throw err;
 	} finally {
-		ctrl.f &= ~IsExecuting;
+		ctx.f &= ~IsExecuting;
 	}
 
 	if (isPromiseLike(iteration)) {
 		return iteration.then(
 			(iteration) => {
 				if (iteration.done) {
-					ctrl.f |= IsDone;
+					ctx.f |= IsDone;
 				}
 
-				return updateCtxChildren(ctrl, iteration.value as Children);
+				return updateCtxChildren(ctx, iteration.value as Children);
 			},
 			(err) => {
-				ctrl.f |= IsDone | IsErrored;
+				ctx.f |= IsDone | IsErrored;
 				throw err;
 			},
 		);
 	}
 
 	if (iteration.done) {
-		ctrl.f |= IsDone;
+		ctx.f |= IsDone;
 	}
 
-	return updateCtxChildren(ctrl, iteration.value as Children);
+	return updateCtxChildren(ctx, iteration.value as Children);
 }
 
 function propagateError<TNode>(
-	ctrl: Controller<TNode, unknown, TNode> | undefined,
+	ctx: ContextInternals<TNode, unknown, TNode> | undefined,
 	err: unknown,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (ctrl === undefined) {
+	if (ctx === undefined) {
 		throw err;
 	}
 
 	let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 	try {
-		result = handleChildError(ctrl, err);
+		result = handleChildError(ctx, err);
 	} catch (err) {
-		return propagateError<TNode>(ctrl.parent, err);
+		return propagateError<TNode>(ctx.parent, err);
 	}
 
 	if (isPromiseLike(result)) {
-		return result.catch((err) => propagateError<TNode>(ctrl.parent, err));
+		return result.catch((err) => propagateError<TNode>(ctx.parent, err));
 	}
 
 	return result;
