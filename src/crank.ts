@@ -987,14 +987,6 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 			ret.value = renderer.create(el.tag as string | symbol, el.props, scope);
 		}
 
-		// TODO: It probably makes more sense to do this in the commit phase
-		renderer.patch(
-			ret.value as TNode,
-			el.tag as string | symbol,
-			el.props,
-			oldProps,
-		);
-
 		scope = renderer.scope(el.tag as string | symbol, el.props, scope);
 	}
 
@@ -1026,6 +1018,13 @@ function commitHost<TNode>(
 	oldProps: any,
 ): ElementValue<TNode> {
 	let value: ElementValue<TNode>;
+	renderer.patch(
+		ret.value as TNode,
+		ret.el.tag as string | symbol,
+		ret.el.props,
+		oldProps,
+	);
+
 	renderer.arrange(
 		ret.value as TNode,
 		ret.el.tag as string | symbol,
