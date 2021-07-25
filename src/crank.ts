@@ -1024,7 +1024,7 @@ function copy<TNode>(
 function flush<TRoot>(
 	renderer: RendererImpl<unknown, unknown, TRoot>,
 	root: TRoot,
-	initiatingCtx?: Context,
+	initiator?: Controller,
 ) {
 	renderer.flush(root);
 	if (typeof root !== "object" || root === null) {
@@ -1033,14 +1033,12 @@ function flush<TRoot>(
 
 	const flushMap = flushMaps.get(root as unknown as object);
 	if (flushMap) {
-		if (initiatingCtx) {
-			const flushMap1 = new Map<Context, Set<Function>>();
-			for (let [ctx1, callbacks] of flushMap) {
-				if (
-					!ctrlContains(initiatingCtx[ControllerSymbol], ctx1[ControllerSymbol])
-				) {
-					flushMap.delete(ctx1);
-					flushMap1.set(ctx1, callbacks);
+		if (initiator) {
+			const flushMap1 = new Map<Controller, Set<Function>>();
+			for (let [ctrl, callbacks] of flushMap) {
+				if (!ctrlContains(initiator, ctrl)) {
+					flushMap.delete(ctrl);
+					flushMap1.set(ctrl, callbacks);
 				}
 			}
 
@@ -1053,8 +1051,8 @@ function flush<TRoot>(
 			flushMaps.delete(root as unknown as object);
 		}
 
-		for (const [ctx, callbacks] of flushMap) {
-			const value = renderer.read(getValue(ctx[ControllerSymbol].ret));
+		for (const [ctrl, callbacks] of flushMap) {
+			const value = renderer.read(getValue(ctrl.ret));
 			for (const callback of callbacks) {
 				callback(value);
 			}
@@ -1190,14 +1188,14 @@ export interface Context extends Crank.Context {}
  */
 export interface ProvisionMap extends Crank.ProvisionMap {}
 
-const provisionMaps = new WeakMap<Context, Map<unknown, unknown>>();
+const provisionMaps = new WeakMap<Controller, Map<unknown, unknown>>();
 
-const scheduleMap = new WeakMap<Context, Set<Function>>();
+const scheduleMap = new WeakMap<Controller, Set<Function>>();
 
-const cleanupMap = new WeakMap<Context, Set<Function>>();
+const cleanupMap = new WeakMap<Controller, Set<Function>>();
 
 // keys are roots
-const flushMaps = new WeakMap<object, Map<Context, Set<Function>>>();
+const flushMaps = new WeakMap<object, Map<Controller, Set<Function>>>();
 
 /**
  * @internal
@@ -1441,10 +1439,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * fire once per callback and update.
 	 */
 	schedule(callback: (value: TResult) => unknown): void {
-		let callbacks = scheduleMap.get(this);
+		const ctrl = this[ControllerSymbol];
+		let callbacks = scheduleMap.get(ctrl);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
-			scheduleMap.set(this, callbacks);
+			scheduleMap.set(ctrl, callbacks);
 		}
 
 		callbacks.add(callback);
@@ -1462,14 +1461,14 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 		let flushMap = flushMaps.get(ctrl.root);
 		if (!flushMap) {
-			flushMap = new Map<Context, Set<Function>>();
+			flushMap = new Map<Controller, Set<Function>>();
 			flushMaps.set(ctrl.root, flushMap);
 		}
 
-		let callbacks = flushMap.get(this);
+		let callbacks = flushMap.get(ctrl);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
-			flushMap.set(this, callbacks);
+			flushMap.set(ctrl, callbacks);
 		}
 
 		callbacks.add(callback);
@@ -1480,10 +1479,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * fire once per callback.
 	 */
 	cleanup(callback: (value: TResult) => unknown): void {
-		let callbacks = cleanupMap.get(this);
+		const ctrl = this[ControllerSymbol];
+		let callbacks = cleanupMap.get(ctrl);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
-			cleanupMap.set(this, callbacks);
+			cleanupMap.set(ctrl, callbacks);
 		}
 
 		callbacks.add(callback);
@@ -1497,7 +1497,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			parent !== undefined;
 			parent = parent.parent
 		) {
-			const provisions = provisionMaps.get(parent.ctx);
+			const provisions = provisionMaps.get(parent);
 			if (provisions && provisions.has(key)) {
 				return provisions.get(key)!;
 			}
@@ -1510,10 +1510,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	): void;
 	provide(key: unknown, value: any): void;
 	provide(key: unknown, value: any): void {
-		let provisions = provisionMaps.get(this);
+		const ctrl = this[ControllerSymbol];
+		let provisions = provisionMaps.get(ctrl);
 		if (!provisions) {
 			provisions = new Map();
-			provisionMaps.set(this, provisions);
+			provisionMaps.set(ctrl, provisions);
 		}
 
 		provisions.set(key, value);
@@ -2088,13 +2089,13 @@ function commitCtx<TNode>(
 		);
 
 		host.cached = hostValues;
-		flush(ctrl.renderer, ctrl.root, ctrl.ctx);
+		flush(ctrl.renderer, ctrl.root, ctrl);
 	}
 
 	let value = unwrap(values);
-	const callbacks = scheduleMap.get(ctrl.ctx);
+	const callbacks = scheduleMap.get(ctrl);
 	if (callbacks) {
-		scheduleMap.delete(ctrl.ctx);
+		scheduleMap.delete(ctrl);
 		ctrl.f |= IsScheduling;
 		const value1 = ctrl.renderer.read(value);
 		for (const callback of callbacks) {
@@ -2117,9 +2118,9 @@ function commitCtx<TNode>(
 function unmountCtx(ctrl: Controller): void {
 	ctrl.f |= IsUnmounted;
 	clearEventListeners(ctrl.ctx);
-	const callbacks = cleanupMap.get(ctrl.ctx);
+	const callbacks = cleanupMap.get(ctrl);
 	if (callbacks) {
-		cleanupMap.delete(ctrl.ctx);
+		cleanupMap.delete(ctrl);
 		const value = ctrl.renderer.read(getValue(ctrl.ret));
 		for (const callback of callbacks) {
 			callback(value);
