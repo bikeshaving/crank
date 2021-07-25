@@ -808,9 +808,9 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				}
 
 				if (child.tag === Raw) {
-					value = updateRaw(renderer, ret, oldProps, scope);
+					value = updateRaw(renderer, ret, scope, oldProps);
 				} else if (child.tag === Fragment) {
-					value = updateFragment(renderer, root, host, ctx, ret, scope);
+					value = updateFragment(renderer, root, host, ctx, scope, ret);
 				} else if (typeof child.tag === "function") {
 					value = updateComponent(
 						renderer,
@@ -822,7 +822,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 						oldProps,
 					);
 				} else {
-					value = updateHost(renderer, root, ctx, ret, oldProps, scope);
+					value = updateHost(renderer, root, ctx, scope, ret, oldProps);
 				}
 			}
 
@@ -930,8 +930,8 @@ function updateCopy<TNode>(
 function updateRaw<TNode, TScope>(
 	renderer: RendererImpl<TNode, TScope, TNode, unknown>,
 	ret: Retainer<TNode>,
-	oldProps: {value: TNode} | undefined,
 	scope: TScope | undefined,
+	oldProps: {value: TNode} | undefined,
 ): ElementValue<TNode> {
 	const props = ret.el.props;
 	if (typeof props.value === "string") {
@@ -950,8 +950,8 @@ function updateFragment<TNode, TScope, TRoot extends TNode>(
 	root: TRoot | undefined,
 	host: Retainer<TNode>,
 	ctx: ContextInternals<TNode, TScope, TRoot> | undefined,
-	ret: Retainer<TNode>,
 	scope: TScope | undefined,
+	ret: Retainer<TNode>,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	const childValues = diffChildren(
 		renderer,
@@ -975,9 +975,9 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 	renderer: RendererImpl<TNode, TScope, TRoot, unknown>,
 	root: TRoot | undefined,
 	ctx: ContextInternals<TNode, TScope, TRoot> | undefined,
+	scope: TScope | undefined,
 	ret: Retainer<TNode>,
 	oldProps: any,
-	scope: TScope | undefined,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	const el = ret.el;
 	if (el.tag === Portal) {
