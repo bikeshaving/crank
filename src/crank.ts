@@ -1540,56 +1540,12 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		listener: MappedEventListenerOrEventListenerObject<T> | null,
 		options?: boolean | AddEventListenerOptions,
 	): void {
-		let listeners: Array<EventListenerRecord>;
-		if (listener == null) {
-			return;
-		} else {
-			const listeners1 = listenersMap.get(this);
-			if (listeners1) {
-				listeners = listeners1;
-			} else {
-				listeners = [];
-				listenersMap.set(this, listeners);
-			}
-		}
-
-		options = normalizeListenerOptions(options);
-		let callback: MappedEventListener<T>;
-		if (typeof listener === "object") {
-			callback = () => listener.handleEvent.apply(listener, arguments as any);
-		} else {
-			callback = listener;
-		}
-
-		const record: EventListenerRecord = {type, callback, listener, options};
-		if (options.once) {
-			record.callback = function (this: any) {
-				const i = listeners.indexOf(record);
-				if (i !== -1) {
-					listeners.splice(i, 1);
-				}
-
-				return callback.apply(this, arguments as any);
-			};
-		}
-
-		if (
-			listeners.some(
-				(record1) =>
-					record.type === record1.type &&
-					record.listener === record1.listener &&
-					!record.options.capture === !record1.options.capture,
-			)
-		) {
-			return;
-		}
-
-		listeners.push(record);
-		for (const value of getChildValues(this[ContextInternalsSymbol].ret)) {
-			if (isEventTarget(value)) {
-				value.addEventListener(record.type, record.callback, record.options);
-			}
-		}
+		return addEventListener(
+			this[ContextInternalsSymbol],
+			type,
+			listener,
+			options,
+		);
 	}
 
 	removeEventListener<T extends string>(
@@ -1597,135 +1553,16 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		listener: MappedEventListenerOrEventListenerObject<T> | null,
 		options?: EventListenerOptions | boolean,
 	): void {
-		const listeners = listenersMap.get(this);
-		if (listener == null || listeners == null) {
-			return;
-		}
-
-		const options1 = normalizeListenerOptions(options);
-		const i = listeners.findIndex(
-			(record) =>
-				record.type === type &&
-				record.listener === listener &&
-				!record.options.capture === !options1.capture,
+		return removeEventListener(
+			this[ContextInternalsSymbol],
+			type,
+			listener,
+			options,
 		);
-
-		if (i === -1) {
-			return;
-		}
-
-		const record = listeners[i];
-		listeners.splice(i, 1);
-		for (const value of getChildValues(this[ContextInternalsSymbol].ret)) {
-			if (isEventTarget(value)) {
-				value.removeEventListener(record.type, record.callback, record.options);
-			}
-		}
 	}
 
 	dispatchEvent(ev: Event): boolean {
-		const path: Array<Context> = [];
-		for (
-			let parent = this[ContextInternalsSymbol].parent;
-			parent !== undefined;
-			parent = parent.parent
-		) {
-			path.push(parent.facade);
-		}
-
-		// We patch the stopImmediatePropagation method because ev.cancelBubble
-		// only informs us if stopPropagation was called and there are no
-		// properties which inform us if stopImmediatePropagation was called.
-		let immediateCancelBubble = false;
-		const stopImmediatePropagation = ev.stopImmediatePropagation;
-		setEventProperty(ev, "stopImmediatePropagation", () => {
-			immediateCancelBubble = true;
-			return stopImmediatePropagation.call(ev);
-		});
-		setEventProperty(ev, "target", this);
-
-		// The only possible errors in this block are errors thrown by callbacks,
-		// and dispatchEvent will only log these errors rather than throwing
-		// them. Therefore, we place all code in a try block, log errors in the
-		// catch block, and use an unsafe return statement in the finally block.
-		//
-		// Each early return within the try block returns true because while the
-		// return value is overridden in the finally block, TypeScript
-		// (justifiably) does not recognize the unsafe return statement.
-		//
-		// TODO: Run all callbacks even if one of them errors
-		try {
-			setEventProperty(ev, "eventPhase", CAPTURING_PHASE);
-			for (let i = path.length - 1; i >= 0; i--) {
-				const target = path[i];
-				const listeners = listenersMap.get(target);
-				if (listeners) {
-					setEventProperty(ev, "currentTarget", target);
-					for (const record of listeners) {
-						if (record.type === ev.type && record.options.capture) {
-							record.callback.call(this, ev);
-							if (immediateCancelBubble) {
-								return true;
-							}
-						}
-					}
-				}
-
-				if (ev.cancelBubble) {
-					return true;
-				}
-			}
-
-			{
-				const listeners = listenersMap.get(this);
-				if (listeners) {
-					setEventProperty(ev, "eventPhase", AT_TARGET);
-					setEventProperty(ev, "currentTarget", this);
-					for (const record of listeners) {
-						if (record.type === ev.type) {
-							record.callback.call(this, ev);
-							if (immediateCancelBubble) {
-								return true;
-							}
-						}
-					}
-
-					if (ev.cancelBubble) {
-						return true;
-					}
-				}
-			}
-
-			if (ev.bubbles) {
-				setEventProperty(ev, "eventPhase", BUBBLING_PHASE);
-				for (let i = 0; i < path.length; i++) {
-					const target = path[i];
-					const listeners = listenersMap.get(target);
-					if (listeners) {
-						setEventProperty(ev, "currentTarget", target);
-						for (const record of listeners) {
-							if (record.type === ev.type && !record.options.capture) {
-								record.callback.call(this, ev);
-								if (immediateCancelBubble) {
-									return true;
-								}
-							}
-						}
-					}
-
-					if (ev.cancelBubble) {
-						return true;
-					}
-				}
-			}
-		} catch (err) {
-			console.error(err);
-		} finally {
-			setEventProperty(ev, "eventPhase", NONE);
-			setEventProperty(ev, "currentTarget", null);
-			// eslint-disable-next-line no-unsafe-finally
-			return !ev.defaultPrevented;
-		}
+		return dispatchEvent(this[ContextInternalsSymbol], ev);
 	}
 }
 
@@ -1778,7 +1615,7 @@ function stepCtx<TNode, TResult>(
 	const initial = !ctx.iterator;
 	if (initial) {
 		ctx.f |= IsExecuting;
-		clearEventListeners(ctx.facade);
+		clearEventListeners(ctx);
 		let result: ReturnType<Component>;
 		try {
 			result = (ret.el.tag as Component).call(ctx.facade, ret.el.props);
@@ -2049,7 +1886,7 @@ function commitCtx<TNode>(
 		return;
 	}
 
-	const listeners = listenersMap.get(ctx.facade);
+	const listeners = listenersMap.get(ctx);
 	if (listeners && listeners.length) {
 		for (let i = 0; i < values.length; i++) {
 			const value = values[i];
@@ -2132,7 +1969,7 @@ function commitCtx<TNode>(
 // TODO: async unmounting
 function unmountCtx(ctx: ContextInternals): void {
 	ctx.f |= IsUnmounted;
-	clearEventListeners(ctx.facade);
+	clearEventListeners(ctx);
 	const callbacks = cleanupMap.get(ctx);
 	if (callbacks) {
 		cleanupMap.delete(ctx);
@@ -2167,6 +2004,10 @@ const CAPTURING_PHASE = 1;
 const AT_TARGET = 2;
 const BUBBLING_PHASE = 3;
 
+const listenersMap = new WeakMap<
+	ContextInternals,
+	Array<EventListenerRecord>
+>();
 /**
  * A map of event type strings to Event subclasses. Can be extended via
  * TypeScript module augmentation to have strongly typed event listeners.
@@ -2188,7 +2029,202 @@ interface EventListenerRecord {
 	options: AddEventListenerOptions;
 }
 
-const listenersMap = new WeakMap<Context, Array<EventListenerRecord>>();
+function addEventListener<T extends string>(
+	ctx: ContextInternals,
+	type: T,
+	listener: MappedEventListenerOrEventListenerObject<T> | null,
+	options?: boolean | AddEventListenerOptions,
+): void {
+	let listeners: Array<EventListenerRecord>;
+	if (listener == null) {
+		return;
+	} else {
+		const listeners1 = listenersMap.get(ctx);
+		if (listeners1) {
+			listeners = listeners1;
+		} else {
+			listeners = [];
+			listenersMap.set(ctx, listeners);
+		}
+	}
+
+	options = normalizeListenerOptions(options);
+	let callback: MappedEventListener<T>;
+	if (typeof listener === "object") {
+		callback = () => listener.handleEvent.apply(listener, arguments as any);
+	} else {
+		callback = listener;
+	}
+
+	const record: EventListenerRecord = {type, callback, listener, options};
+	if (options.once) {
+		record.callback = function (this: any) {
+			const i = listeners.indexOf(record);
+			if (i !== -1) {
+				listeners.splice(i, 1);
+			}
+
+			return callback.apply(this, arguments as any);
+		};
+	}
+
+	if (
+		listeners.some(
+			(record1) =>
+				record.type === record1.type &&
+				record.listener === record1.listener &&
+				!record.options.capture === !record1.options.capture,
+		)
+	) {
+		return;
+	}
+
+	listeners.push(record);
+
+	// TODO: is it possible to separate out the delegate logic
+	// add to delegates
+	for (const value of getChildValues(ctx.ret)) {
+		if (isEventTarget(value)) {
+			value.addEventListener(record.type, record.callback, record.options);
+		}
+	}
+}
+
+function removeEventListener<T extends string>(
+	ctx: ContextInternals,
+	type: T,
+	listener: MappedEventListenerOrEventListenerObject<T> | null,
+	options?: EventListenerOptions | boolean,
+): void {
+	const listeners = listenersMap.get(ctx);
+	if (listener == null || listeners == null) {
+		return;
+	}
+
+	const options1 = normalizeListenerOptions(options);
+	const i = listeners.findIndex(
+		(record) =>
+			record.type === type &&
+			record.listener === listener &&
+			!record.options.capture === !options1.capture,
+	);
+
+	if (i === -1) {
+		return;
+	}
+
+	const record = listeners[i];
+	listeners.splice(i, 1);
+
+	// TODO: is it possible to separate out the delegate logic
+	// remove from delegates
+	for (const value of getChildValues(ctx.ret)) {
+		if (isEventTarget(value)) {
+			value.removeEventListener(record.type, record.callback, record.options);
+		}
+	}
+}
+
+function dispatchEvent(ctx: ContextInternals, ev: Event): boolean {
+	const path: Array<ContextInternals> = [];
+	for (let parent = ctx.parent; parent !== undefined; parent = parent.parent) {
+		path.push(parent);
+	}
+
+	// We patch the stopImmediatePropagation method because ev.cancelBubble
+	// only informs us if stopPropagation was called and there are no
+	// properties which inform us if stopImmediatePropagation was called.
+	let immediateCancelBubble = false;
+	const stopImmediatePropagation = ev.stopImmediatePropagation;
+	setEventProperty(ev, "stopImmediatePropagation", () => {
+		immediateCancelBubble = true;
+		return stopImmediatePropagation.call(ev);
+	});
+	setEventProperty(ev, "target", ctx.facade);
+
+	// The only possible errors in this block are errors thrown by callbacks,
+	// and dispatchEvent will only log these errors rather than throwing
+	// them. Therefore, we place all code in a try block, log errors in the
+	// catch block, and use an unsafe return statement in the finally block.
+	//
+	// Each early return within the try block returns true because while the
+	// return value is overridden in the finally block, TypeScript
+	// (justifiably) does not recognize the unsafe return statement.
+	//
+	// TODO: Run all callbacks even if one of them errors
+	try {
+		setEventProperty(ev, "eventPhase", CAPTURING_PHASE);
+		for (let i = path.length - 1; i >= 0; i--) {
+			const target = path[i];
+			const listeners = listenersMap.get(target);
+			if (listeners) {
+				setEventProperty(ev, "currentTarget", target.facade);
+				for (const record of listeners) {
+					if (record.type === ev.type && record.options.capture) {
+						record.callback.call(target.facade, ev);
+						if (immediateCancelBubble) {
+							return true;
+						}
+					}
+				}
+			}
+
+			if (ev.cancelBubble) {
+				return true;
+			}
+		}
+
+		{
+			const listeners = listenersMap.get(ctx);
+			if (listeners) {
+				setEventProperty(ev, "eventPhase", AT_TARGET);
+				setEventProperty(ev, "currentTarget", ctx.facade);
+				for (const record of listeners) {
+					if (record.type === ev.type) {
+						record.callback.call(ctx.facade, ev);
+						if (immediateCancelBubble) {
+							return true;
+						}
+					}
+				}
+
+				if (ev.cancelBubble) {
+					return true;
+				}
+			}
+		}
+
+		if (ev.bubbles) {
+			setEventProperty(ev, "eventPhase", BUBBLING_PHASE);
+			for (let i = 0; i < path.length; i++) {
+				const target = path[i];
+				const listeners = listenersMap.get(target);
+				if (listeners) {
+					setEventProperty(ev, "currentTarget", target.facade);
+					for (const record of listeners) {
+						if (record.type === ev.type && !record.options.capture) {
+							record.callback.call(target.facade, ev);
+							if (immediateCancelBubble) {
+								return true;
+							}
+						}
+					}
+				}
+
+				if (ev.cancelBubble) {
+					return true;
+				}
+			}
+		}
+	} catch (err) {
+		console.error(err);
+	} finally {
+		setEventProperty(ev, "eventPhase", NONE);
+		setEventProperty(ev, "currentTarget", null);
+		// eslint-disable-next-line no-unsafe-finally
+		return !ev.defaultPrevented;
+	}
+}
 
 function normalizeListenerOptions(
 	options: AddEventListenerOptions | boolean | null | undefined,
@@ -2237,7 +2273,7 @@ function getListenerRecords(
 	let listeners: Array<EventListenerRecord> = [];
 	let internals = ctx && ctx[ContextInternalsSymbol];
 	while (internals !== undefined && internals.host === ret) {
-		const listeners1 = listenersMap.get(internals.facade);
+		const listeners1 = listenersMap.get(internals);
 		if (listeners1) {
 			listeners = listeners.concat(listeners1);
 		}
@@ -2248,10 +2284,10 @@ function getListenerRecords(
 	return listeners;
 }
 
-function clearEventListeners(ctx: Context): void {
+function clearEventListeners(ctx: ContextInternals): void {
 	const listeners = listenersMap.get(ctx);
 	if (listeners && listeners.length) {
-		for (const value of getChildValues(ctx[ContextInternalsSymbol].ret)) {
+		for (const value of getChildValues(ctx.ret)) {
 			if (isEventTarget(value)) {
 				for (const record of listeners) {
 					value.removeEventListener(
