@@ -790,15 +790,15 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 		if (typeof child === "object") {
 			if (child.tag === Copy) {
-				value = copy(ret);
+				value = updateCopy(ret);
 			} else {
-				let matches = false;
+				let isNew = true;
 				let oldProps: any;
 				// TODO: Figure out why the new conditional expression alias analysis
 				// in TypeScript 4.4. isn’t working. Moving this condition into
 				// matches doesn’t seem to work.
 				if (typeof ret === "object" && ret.el.tag === child.tag) {
-					matches = true;
+					isNew = false;
 					oldProps = ret.el.props;
 					ret.el = child;
 				} else {
@@ -811,8 +811,12 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					ret.fallback = fallback;
 				}
 
-				if (typeof child.tag === "function") {
-					if (!matches) {
+				if (child.tag === Raw) {
+					value = updateRaw(renderer, ret, oldProps, scope);
+				} else if (child.tag === Fragment) {
+					value = updateFragment(renderer, root, host, ctx, ret, scope);
+				} else if (typeof child.tag === "function") {
+					if (isNew) {
 						ret.ctx = new ContextInternals(
 							renderer,
 							root,
@@ -824,42 +828,14 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					}
 
 					value = updateCtx(ret.ctx!);
-				} else if (child.tag === Raw) {
-					// value = raw(renderer, ret, props, oldProps);
-					if (typeof child.props.value === "string") {
-						if (!oldProps || oldProps.value !== child.props.value) {
-							ret.value = renderer.parse(child.props.value, scope);
-						}
-					} else {
-						ret.value = child.props.value;
-					}
-
-					value = ret.value;
-				} else if (child.tag === Fragment) {
-					// value = fragment(renderer, root, host, ctx, scope, ret);
-					const childValues = diffChildren(
-						renderer,
-						root,
-						host,
-						ctx,
-						scope,
-						ret,
-						ret.el.props.children,
-					);
-
-					if (isPromiseLike(childValues)) {
-						value = ret.inflight = childValues.then((childValues) =>
-							unwrap(childValues),
-						);
-					} else {
-						value = unwrap(childValues);
-					}
 				} else {
+					// value is a host
+					host = ret;
 					if (child.tag === Portal) {
 						root = ret.value = child.props.root;
 						scope = undefined;
 					} else {
-						if (!matches) {
+						if (isNew) {
 							ret.value = renderer.create(child.tag, child.props, scope);
 						}
 
@@ -872,7 +848,6 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 						scope = renderer.scope(child.tag, child.props, scope);
 					}
 
-					host = ret;
 					// value = host(renderer, root, host, ctx, scope, ret, oldProps);
 					const childValues = diffChildren(
 						renderer,
@@ -1011,7 +986,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	return normalize(values as Array<ElementValue<TNode>>);
 }
 
-function copy<TNode>(
+function updateCopy<TNode>(
 	child: RetainerChild<TNode>,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (typeof child !== "object") {
@@ -1027,6 +1002,50 @@ function copy<TNode>(
 	}
 
 	return getValue(child);
+}
+
+function updateRaw<TNode, TScope>(
+	renderer: RendererImpl<TNode, TScope, TNode, unknown>,
+	ret: Retainer<TNode>,
+	oldProps: {value: TNode} | undefined,
+	scope: TScope,
+): ElementValue<TNode> {
+	const props = ret.el.props;
+	if (typeof props.value === "string") {
+		if (!oldProps || oldProps.value !== props.value) {
+			ret.value = renderer.parse(props.value, scope);
+		}
+	} else {
+		ret.value = props.value;
+	}
+
+	return ret.value;
+}
+
+function updateFragment<TNode, TScope, TRoot extends TNode>(
+	renderer: RendererImpl<TNode, TScope, TRoot, unknown>,
+	root: TRoot | undefined,
+	host: Retainer<TNode>,
+	ctx: ContextInternals<TNode, TScope, TRoot> | undefined,
+	ret: Retainer<TNode>,
+	scope: TScope,
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+	const childValues = diffChildren(
+		renderer,
+		root,
+		host,
+		ctx,
+		scope,
+		ret,
+		ret.el.props.children,
+	);
+
+	if (isPromiseLike(childValues)) {
+		ret.inflight = childValues.then((childValues) => unwrap(childValues));
+		return ret.inflight;
+	}
+
+	return unwrap(childValues);
 }
 
 function flush<TRoot>(
@@ -1858,13 +1877,13 @@ function updateCtxChildren<TNode, TResult>(
 		);
 	}
 
-	const childValues = diffChildren<TNode, unknown, TNode, TResult>(
-		ctx.renderer as RendererImpl<TNode, unknown, TNode, TResult>,
-		ctx.root as TNode,
-		ctx.host as Retainer<TNode>,
+	const childValues = diffChildren(
+		ctx.renderer,
+		ctx.root,
+		ctx.host,
 		ctx,
 		ctx.scope,
-		ctx.ret as Retainer<TNode>,
+		ctx.ret,
 		narrow(children),
 	);
 
