@@ -44,16 +44,7 @@ function* Letter({letter, index}) {
 		return new Promise((resolve) => setTimeout(resolve, 750));
 	});
 
-	yield (
-		<span
-			style={{
-				...style,
-				color: "green",
-			}}
-		>
-			{letter}
-		</span>
-	);
+	yield <span style={{...style, color: "green"}}>{letter}</span>;
 
 	for ({letter, index} of this) {
 		this.schedule((node) => {
