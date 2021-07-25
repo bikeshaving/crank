@@ -1314,7 +1314,7 @@ class Controller<
 	}
 }
 
-export const ControllerSymbol = Symbol.for("Crank.ControllerSymbol");
+export const ControllerSymbol = Symbol.for("Crank.Controller");
 
 /**
  * A class which is instantiated and passed to every component as its this
