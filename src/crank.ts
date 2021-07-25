@@ -733,23 +733,24 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	parent: Retainer<TNode>,
 	children: Children,
 ): Promise<Array<TNode | string>> | Array<TNode | string> {
-	const oldRetains = wrap(parent.children);
-	const newRetains: Array<RetainerChild<TNode>> = [];
+	const oldRetained = wrap(parent.children);
+	const newRetained: typeof oldRetained = [];
 	const newChildren = arrayify(children);
 	const values: Array<Promise<ElementValue<TNode>> | ElementValue<TNode>> = [];
 	let graveyard: Array<Retainer<TNode>> | undefined;
 	let childrenByKey: Map<Key, Retainer<TNode>> | undefined;
 	let seenKeys: Set<Key> | undefined;
 	let isAsync = false;
-	let i = 0;
+	let oi = 0;
 	for (
-		let j = 0, il = oldRetains.length, jl = newChildren.length;
-		j < jl;
-		j++
+		let ni = 0, oldLength = oldRetained.length, newLength = newChildren.length;
+		ni < newLength;
+		ni++
 	) {
-		// We make sure we don’t access indices out of bounds
-		let ret = i >= il ? undefined : oldRetains[i];
-		let child = narrow(newChildren[j]);
+		// We make sure we don’t access indices out of bounds to prevent
+		// deoptimizations.
+		let ret = oi >= oldLength ? undefined : oldRetained[oi];
+		let child = narrow(newChildren[ni]);
 		{
 			// Aligning based on key
 			let oldKey = typeof ret === "object" ? ret.el.key : undefined;
@@ -764,17 +765,17 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					childrenByKey.delete(newKey);
 				}
 
-				i++;
+				oi++;
 			} else {
-				childrenByKey = childrenByKey || createChildrenByKey(oldRetains, i);
+				childrenByKey = childrenByKey || createChildrenByKey(oldRetained, oi);
 				if (newKey === undefined) {
 					while (ret !== undefined && oldKey !== undefined) {
-						i++;
-						ret = oldRetains[i];
+						oi++;
+						ret = oldRetained[oi];
 						oldKey = typeof ret === "object" ? ret.el.key : undefined;
 					}
 
-					i++;
+					oi++;
 				} else {
 					ret = childrenByKey.get(newKey);
 					if (ret !== undefined) {
@@ -847,14 +848,14 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			}
 		}
 
-		values[j] = value;
-		newRetains[j] = ret;
+		values[ni] = value;
+		newRetained[ni] = ret;
 	}
 
 	{
 		// cleanup remaining retainers
-		for (; i < oldRetains.length; i++) {
-			const ret = oldRetains[i];
+		for (; oi < oldRetained.length; oi++) {
+			const ret = oldRetained[oi];
 			if (typeof ret === "object" && typeof ret.el.key === "undefined") {
 				(graveyard = graveyard || []).push(ret);
 			}
@@ -865,7 +866,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		}
 	}
 
-	parent.children = unwrap(newRetains);
+	parent.children = unwrap(newRetained);
 	if (isAsync) {
 		let childValues1 = Promise.all(values).finally(() => {
 			if (graveyard) {
