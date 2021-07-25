@@ -24,31 +24,45 @@ const style = {
 	transition: "transform 750ms, opacity 750ms",
 };
 
+function deferTransitionStyles(callback) {
+	requestAnimationFrame(() => {
+		requestAnimationFrame(callback);
+	});
+}
+
 function* Letter({letter, index}) {
-	this.schedule((node) => {
-		node.style.transform = `translate(${index * 1.1}em, -20px)`;
-		node.style.opacity = 0;
-		requestAnimationFrame(() => {
+	this.flush((node) => {
+		deferTransitionStyles(() => {
 			node.style.transform = `translate(${index * 1.1}em, 0)`;
 			node.style.opacity = 1;
 		});
 	});
 
 	this.cleanup((node) => {
-		requestAnimationFrame(() => {
+		deferTransitionStyles(() => {
 			node.style.color = "red";
 			node.style.transform = `translate(${index * 1.1}em, 20px)`;
 			node.style.opacity = 0;
 		});
-
 		return new Promise((resolve) => setTimeout(resolve, 750));
 	});
 
-	yield <span style={{...style, color: "green"}}>{letter}</span>;
+	yield (
+		<span
+			style={{
+				...style,
+				transform: `translate(${index * 1.1}em, -20px)`,
+				opacity: 0,
+				color: "green",
+			}}
+		>
+			{letter}
+		</span>
+	);
 
 	for ({letter, index} of this) {
-		this.schedule((node) => {
-			requestAnimationFrame(() => {
+		this.flush((node) => {
+			deferTransitionStyles(() => {
 				node.style.transform = `translate(${index * 1.1}em, 0)`;
 			});
 		});
