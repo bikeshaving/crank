@@ -792,13 +792,8 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			if (child.tag === Copy) {
 				value = updateCopy(ret);
 			} else {
-				let isNew = true;
 				let oldProps: any;
-				// TODO: Figure out why the new conditional expression alias analysis
-				// in TypeScript 4.4. isn’t working. Moving this condition into
-				// matches doesn’t seem to work.
 				if (typeof ret === "object" && ret.el.tag === child.tag) {
-					isNew = false;
 					oldProps = ret.el.props;
 					ret.el = child;
 				} else {
@@ -816,90 +811,17 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				} else if (child.tag === Fragment) {
 					value = updateFragment(renderer, root, host, ctx, ret, scope);
 				} else if (typeof child.tag === "function") {
-					if (isNew) {
-						ret.ctx = new ContextInternals(
-							renderer,
-							root,
-							host,
-							ctx,
-							scope,
-							ret,
-						);
-					}
-
-					value = updateCtx(ret.ctx!);
-				} else {
-					// value is a host
-					host = ret;
-					if (child.tag === Portal) {
-						root = ret.value = child.props.root;
-						scope = undefined;
-					} else {
-						if (isNew) {
-							ret.value = renderer.create(child.tag, child.props, scope);
-						}
-
-						renderer.patch(
-							ret.value as TNode,
-							child.tag,
-							child.props,
-							oldProps,
-						);
-						scope = renderer.scope(child.tag, child.props, scope);
-					}
-
-					// value = host(renderer, root, host, ctx, scope, ret, oldProps);
-					const childValues = diffChildren(
+					value = updateComponent(
 						renderer,
 						root,
 						host,
 						ctx,
 						scope,
 						ret,
-						ret.el.props.children,
+						oldProps,
 					);
-
-					if (isPromiseLike(childValues)) {
-						// aliasing because the callback scope resets ret to original type
-						const ret1: Retainer<TNode> = ret;
-						value = ret.inflight = childValues.then((childValues) => {
-							let value: ElementValue<TNode>;
-							renderer.arrange(
-								ret1.value as TNode,
-								ret1.el.tag as string | symbol,
-								ret1.el.props,
-								childValues,
-								oldProps,
-								wrap(ret1.cached) as Array<TNode | string>,
-							);
-
-							if (ret1.el.tag === Portal) {
-								flush(renderer, ret1.el.props.root);
-							} else {
-								value = ret1.value;
-							}
-
-							ret1.cached = unwrap(childValues);
-							return value;
-						});
-					} else {
-						renderer.arrange(
-							ret.value as TNode,
-							ret.el.tag as string | symbol,
-							ret.el.props,
-							childValues,
-							oldProps,
-							wrap(ret.cached) as Array<TNode | string>,
-						);
-
-						if (ret.el.tag === Portal) {
-							flush(renderer, ret.el.props.root);
-						} else {
-							value = ret.value;
-						}
-
-						ret.cached = unwrap(childValues);
-					}
+				} else {
+					value = updateHost(renderer, root, ctx, ret, oldProps, scope);
 				}
 			}
 
@@ -1008,7 +930,7 @@ function updateRaw<TNode, TScope>(
 	renderer: RendererImpl<TNode, TScope, TNode, unknown>,
 	ret: Retainer<TNode>,
 	oldProps: {value: TNode} | undefined,
-	scope: TScope,
+	scope: TScope | undefined,
 ): ElementValue<TNode> {
 	const props = ret.el.props;
 	if (typeof props.value === "string") {
@@ -1028,7 +950,7 @@ function updateFragment<TNode, TScope, TRoot extends TNode>(
 	host: Retainer<TNode>,
 	ctx: ContextInternals<TNode, TScope, TRoot> | undefined,
 	ret: Retainer<TNode>,
-	scope: TScope,
+	scope: TScope | undefined,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	const childValues = diffChildren(
 		renderer,
@@ -1046,6 +968,81 @@ function updateFragment<TNode, TScope, TRoot extends TNode>(
 	}
 
 	return unwrap(childValues);
+}
+
+function updateHost<TNode, TScope, TRoot extends TNode>(
+	renderer: RendererImpl<TNode, TScope, TRoot, unknown>,
+	root: TRoot | undefined,
+	ctx: ContextInternals<TNode, TScope, TRoot> | undefined,
+	ret: Retainer<TNode>,
+	oldProps: any,
+	scope: TScope | undefined,
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+	const el = ret.el;
+	if (el.tag === Portal) {
+		root = ret.value = el.props.root;
+		scope = undefined;
+	} else {
+		if (!oldProps) {
+			ret.value = renderer.create(el.tag as string | symbol, el.props, scope);
+		}
+
+		// TODO: It probably makes more sense to do this in the commit phase
+		renderer.patch(
+			ret.value as TNode,
+			el.tag as string | symbol,
+			el.props,
+			oldProps,
+		);
+
+		scope = renderer.scope(el.tag as string | symbol, el.props, scope);
+	}
+
+	const childValues = diffChildren(
+		renderer,
+		root,
+		ret,
+		ctx,
+		scope,
+		ret,
+		ret.el.props.children,
+	);
+
+	if (isPromiseLike(childValues)) {
+		ret.inflight = childValues.then((childValues) =>
+			commitHost(renderer, ret, childValues, oldProps),
+		);
+
+		return ret.inflight;
+	}
+
+	return commitHost(renderer, ret, childValues, oldProps);
+}
+
+function commitHost<TNode>(
+	renderer: RendererImpl<TNode, unknown, TNode, unknown>,
+	ret: Retainer<TNode>,
+	childValues: Array<TNode | string>,
+	oldProps: any,
+): ElementValue<TNode> {
+	let value: ElementValue<TNode>;
+	renderer.arrange(
+		ret.value as TNode,
+		ret.el.tag as string | symbol,
+		ret.el.props,
+		childValues,
+		oldProps,
+		wrap(ret.cached) as Array<TNode | string>,
+	);
+
+	if (ret.el.tag === Portal) {
+		flush(renderer, ret.el.props.root);
+	} else {
+		value = ret.value;
+	}
+
+	ret.cached = unwrap(childValues);
+	return value;
 }
 
 function flush<TRoot>(
@@ -1857,9 +1854,29 @@ function resumeCtx(ctx: ContextInternals): void {
 	}
 }
 
-function updateCtx<TNode>(
-	ctx: ContextInternals<TNode>,
+function updateComponent<TNode, TScope, TRoot extends TNode, TResult>(
+	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
+	root: TRoot | undefined,
+	host: Retainer<TNode>,
+	parent: ContextInternals<TNode, TScope, TRoot, TResult> | undefined,
+	scope: TScope | undefined,
+	ret: Retainer<TNode>,
+	oldProps: any,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+	let ctx: ContextInternals<TNode, TScope, TRoot, TResult>;
+	if (oldProps) {
+		ctx = ret.ctx as ContextInternals<TNode, TScope, TRoot, TResult>;
+	} else {
+		ctx = ret.ctx = new ContextInternals(
+			renderer,
+			root,
+			host,
+			parent,
+			scope,
+			ret,
+		);
+	}
+
 	ctx.f |= IsUpdating;
 	resumeCtx(ctx);
 	return runCtx(ctx);
