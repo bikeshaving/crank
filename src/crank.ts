@@ -54,8 +54,7 @@ export type TagProps<TTag extends Tag> = TTag extends string
 	? JSX.IntrinsicElements[TTag]
 	: TTag extends Component<infer TProps>
 	? TProps
-	: // TODO: should the most generic type be object or {}
-	  unknown;
+	: Record<string, unknown>;
 
 /***
  * SPECIAL TAGS
@@ -144,7 +143,7 @@ export type Children = Child | ChildIterable;
  *
  * @template [TProps=*] - The expected props for the component.
  */
-export type Component<TProps = any> = (
+export type Component<TProps extends Record<string, unknown> = any> = (
 	this: Context<TProps>,
 	props: TProps,
 ) =>
