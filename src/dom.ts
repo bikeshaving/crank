@@ -26,9 +26,9 @@ const impl: Partial<RendererImpl<Node, string>> = {
 	},
 
 	scope(
+		scope: string,
 		tag: string | symbol,
 		_props: unknown,
-		scope: string,
 	): string | undefined {
 		// TODO: Should we handle xmlns?
 		switch (tag) {
@@ -53,8 +53,8 @@ const impl: Partial<RendererImpl<Node, string>> = {
 	},
 
 	patch(
-		node: Element,
 		_tag: string | symbol,
+		node: Element,
 		props: Record<string, any>,
 	): void {
 		const isSVG = node.namespaceURI === SVG_NAMESPACE;
@@ -136,8 +136,8 @@ const impl: Partial<RendererImpl<Node, string>> = {
 	},
 
 	arrange<TTag extends string | symbol>(
-		node: Element,
 		tag: TTag,
+		node: Element,
 		props: Record<string, any>,
 		children: Array<Element | string>,
 		_oldProps: Record<string, any> | undefined,
