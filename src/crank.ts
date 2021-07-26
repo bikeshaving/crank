@@ -1092,7 +1092,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 ): void {
 	if (typeof ret.el.tag === "function") {
 		ctx = ret.ctx as ContextInternals<TNode, TScope, TRoot, TResult>;
-		unmountCtx(ctx);
+		unmountComponent(ctx);
 	} else if (ret.el.tag === Portal) {
 		host = ret;
 		renderer.arrange(
@@ -1156,7 +1156,7 @@ const IsIterating = 1 << 2;
  * A flag used by async generator components in conjunction with the
  * onavailable (_oa) callback to mark whether new props can be pulled via the
  * context async iterator. See the Symbol.asyncIterator method and the
- * resumeCtx function.
+ * resumeCtxIterator function.
  */
 const IsAvailable = 1 << 3;
 
@@ -1283,8 +1283,8 @@ class ContextInternals<
 		| undefined;
 
 	/*** async properties ***/
-	// See the stepCtx/advanceCtx/runCtx functions for more notes on the
-	// inflight/enqueued block/value properties.
+	// See the runComponent/stepComponent/advanceComponent functions for more
+	// notes on the inflight/enqueued block/value properties.
 	/**
 	 * inflightBlock
 	 */
@@ -1309,7 +1309,7 @@ class ContextInternals<
 	/**
 	 * onavailable - A callback used in conjunction with the IsAvailable flag to
 	 * implement the props async iterator. See the Symbol.asyncIterator method
-	 * and the resumeCtx function.
+	 * and the resumeCtxIterator function.
 	 */
 	declare onAvailable: Function | undefined;
 
@@ -1454,8 +1454,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			return internals.renderer.read(undefined);
 		}
 
-		resumeCtx(internals);
-		const value = runCtx(internals);
+		resumeCtxIterator(internals);
+		const value = runComponent(internals);
 		if (isPromiseLike(value)) {
 			return (value as Promise<any>).then((value) =>
 				internals.renderer.read(value),
@@ -1624,11 +1624,11 @@ function updateComponent<TNode, TScope, TRoot extends TNode, TResult>(
 	}
 
 	ctx.f |= IsUpdating;
-	resumeCtx(ctx);
-	return runCtx(ctx);
+	resumeCtxIterator(ctx);
+	return runComponent(ctx);
 }
 
-function updateCtxChildren<TNode, TResult>(
+function updateComponentChildren<TNode, TResult>(
 	ctx: ContextInternals<TNode, unknown, TNode, TResult>,
 	children: Children,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
@@ -1652,15 +1652,15 @@ function updateCtxChildren<TNode, TResult>(
 
 	if (isPromiseLike(childValues)) {
 		ctx.ret.inflight = childValues.then((childValues) =>
-			commitCtx(ctx, childValues),
+			commitComponent(ctx, childValues),
 		);
 		return (ctx.ret as Retainer<TNode>).inflight;
 	}
 
-	return commitCtx(ctx, childValues);
+	return commitComponent(ctx, childValues);
 }
 
-function commitCtx<TNode>(
+function commitComponent<TNode>(
 	ctx: ContextInternals<TNode, unknown, TNode>,
 	values: Array<TNode | string>,
 ): ElementValue<TNode> {
@@ -1748,24 +1748,25 @@ function commitCtx<TNode>(
 /**
  * Enqueues and executes the component associated with the context.
  *
- * The functions stepCtx, advanceCtx and runCtx work together to implement the
- * async queueing behavior of components. The runCtx function calls the stepCtx
- * function, which returns two results in a tuple. The first result, called the
- * “block,” is a possible promise which represents the duration for which the
- * component is blocked from accepting new updates. The second result, called
- * the “value,” is the actual result of the update. The runCtx function caches
- * block/value from the stepCtx function on the context, according to whether
- * the component blocks. The “inflight” block/value properties are the
- * currently executing update, and the “enqueued” block/value properties
- * represent an enqueued next stepCtx. Enqueued steps are dequeued every time
- * the current block promise settles.
+ * The functions stepComponent and runComponent work together
+ * to implement the async queueing behavior of components. The runComponent
+ * function calls the stepComponent function, which returns two results in a
+ * tuple. The first result, called the “block,” is a possible promise which
+ * represents the duration for which the component is blocked from accepting
+ * new updates. The second result, called the “value,” is the actual result of
+ * the update. The runComponent function caches block/value from the
+ * stepComponent function on the context, according to whether the component
+ * blocks. The “inflight” block/value properties are the currently executing
+ * update, and the “enqueued” block/value properties represent an enqueued next
+ * stepComponent. Enqueued steps are dequeued every time the current block
+ * promise settles.
  */
-function runCtx<TNode, TResult>(
+function runComponent<TNode, TResult>(
 	ctx: ContextInternals<TNode, unknown, TNode, TResult>,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (!ctx.inflightBlock) {
 		try {
-			const [block, value] = stepCtx<TNode, TResult>(ctx);
+			const [block, value] = stepComponent<TNode, TResult>(ctx);
 			if (block) {
 				ctx.inflightBlock = block
 					.catch((err) => {
@@ -1773,8 +1774,8 @@ function runCtx<TNode, TResult>(
 							return propagateError<TNode>(ctx.parent, err);
 						}
 					})
-					.finally(() => advanceCtx(ctx));
-				// stepCtx will only return a block if the value is asynchronous
+					.finally(() => advanceComponent(ctx));
+				// stepComponent will only return a block if the value is asynchronous
 				ctx.inflightValue = value as Promise<ElementValue<TNode>>;
 			}
 
@@ -1793,7 +1794,7 @@ function runCtx<TNode, TResult>(
 		ctx.enqueuedBlock = ctx.inflightBlock
 			.then(() => {
 				try {
-					const [block, value] = stepCtx<TNode, TResult>(ctx);
+					const [block, value] = stepComponent<TNode, TResult>(ctx);
 					resolve(value);
 					if (block) {
 						return block.catch((err) => {
@@ -1808,7 +1809,7 @@ function runCtx<TNode, TResult>(
 					}
 				}
 			})
-			.finally(() => advanceCtx(ctx));
+			.finally(() => advanceComponent(ctx));
 		ctx.enqueuedValue = new Promise((resolve1) => (resolve = resolve1));
 	}
 
@@ -1832,7 +1833,7 @@ function runCtx<TNode, TResult>(
  * - Sync generator components block while any children are executing, because
  * they are expected to only resume when they’ve actually rendered.
  */
-function stepCtx<TNode, TResult>(
+function stepComponent<TNode, TResult>(
 	ctx: ContextInternals<TNode, unknown, TNode, TResult>,
 ): [
 	Promise<unknown> | undefined,
@@ -1864,7 +1865,7 @@ function stepCtx<TNode, TResult>(
 			const result1 =
 				result instanceof Promise ? result : Promise.resolve(result);
 			const value = result1.then(
-				(result) => updateCtxChildren<TNode, TResult>(ctx, result),
+				(result) => updateComponentChildren<TNode, TResult>(ctx, result),
 				(err) => {
 					ctx.f |= IsErrored;
 					throw err;
@@ -1873,7 +1874,7 @@ function stepCtx<TNode, TResult>(
 			return [result1, value];
 		} else {
 			// sync function component
-			return [undefined, updateCtxChildren<TNode, TResult>(ctx, result)];
+			return [undefined, updateComponentChildren<TNode, TResult>(ctx, result)];
 		}
 	}
 
@@ -1923,7 +1924,7 @@ function stepCtx<TNode, TResult>(
 				}
 
 				try {
-					const value = updateCtxChildren<TNode, TResult>(
+					const value = updateComponentChildren<TNode, TResult>(
 						ctx,
 						iteration.value as Children,
 					);
@@ -1958,7 +1959,10 @@ function stepCtx<TNode, TResult>(
 
 	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 	try {
-		value = updateCtxChildren<TNode, TResult>(ctx, iteration.value as Children);
+		value = updateComponentChildren<TNode, TResult>(
+			ctx,
+			iteration.value as Children,
+		);
 		if (isPromiseLike(value)) {
 			value = value.catch((err) => handleChildError(ctx, err));
 		}
@@ -1976,13 +1980,13 @@ function stepCtx<TNode, TResult>(
 /**
  * Called when the inflight block promise settles.
  */
-function advanceCtx(ctx: ContextInternals): void {
+function advanceComponent(ctx: ContextInternals): void {
 	ctx.inflightBlock = ctx.enqueuedBlock;
 	ctx.inflightValue = ctx.enqueuedValue;
 	ctx.enqueuedBlock = undefined;
 	ctx.enqueuedValue = undefined;
 	if (ctx.f & IsAsyncGen && !(ctx.f & IsDone) && !(ctx.f & IsUnmounted)) {
-		runCtx(ctx);
+		runComponent(ctx);
 	}
 }
 
@@ -1990,7 +1994,7 @@ function advanceCtx(ctx: ContextInternals): void {
  * Called to make props available to the props async iterator for async
  * generator components.
  */
-function resumeCtx(ctx: ContextInternals): void {
+function resumeCtxIterator(ctx: ContextInternals): void {
 	if (ctx.onAvailable) {
 		ctx.onAvailable();
 		ctx.onAvailable = undefined;
@@ -2000,7 +2004,7 @@ function resumeCtx(ctx: ContextInternals): void {
 }
 
 // TODO: async unmounting
-function unmountCtx(ctx: ContextInternals): void {
+function unmountComponent(ctx: ContextInternals): void {
 	ctx.f |= IsUnmounted;
 	clearEventListeners(ctx);
 	const callbacks = cleanupMap.get(ctx);
@@ -2014,7 +2018,7 @@ function unmountCtx(ctx: ContextInternals): void {
 
 	if (!(ctx.f & IsDone)) {
 		ctx.f |= IsDone;
-		resumeCtx(ctx);
+		resumeCtxIterator(ctx);
 		if (ctx.iterator && typeof ctx.iterator.return === "function") {
 			ctx.f |= IsExecuting;
 			try {
@@ -2349,7 +2353,7 @@ function handleChildError<TNode>(
 		throw err;
 	}
 
-	resumeCtx(ctx);
+	resumeCtxIterator(ctx);
 	let iteration: ChildrenIteration;
 	try {
 		ctx.f |= IsExecuting;
@@ -2368,7 +2372,7 @@ function handleChildError<TNode>(
 					ctx.f |= IsDone;
 				}
 
-				return updateCtxChildren(ctx, iteration.value as Children);
+				return updateComponentChildren(ctx, iteration.value as Children);
 			},
 			(err) => {
 				ctx.f |= IsDone | IsErrored;
@@ -2381,7 +2385,7 @@ function handleChildError<TNode>(
 		ctx.f |= IsDone;
 	}
 
-	return updateCtxChildren(ctx, iteration.value as Children);
+	return updateComponentChildren(ctx, iteration.value as Children);
 }
 
 function propagateError<TNode>(
