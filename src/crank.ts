@@ -1106,7 +1106,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 		flush(renderer, host.el.props.root);
 	} else if (ret.el.tag !== Fragment) {
 		if (isEventTarget(ret.value)) {
-			const records = getListenerRecords(ctx && ctx.facade, host);
+			const records = getListenerRecords(ctx, host);
 			for (let i = 0; i < records.length; i++) {
 				const record = records[i];
 				ret.value.removeEventListener(
@@ -1687,10 +1687,7 @@ function commitCtx<TNode>(
 		// If we’re not updating the component, which happens when components are
 		// refreshed, or when async generator components iterate, we have to do a
 		// little bit housekeeping.
-		const records = getListenerRecords(
-			ctx.parent && ctx.parent.facade,
-			ctx.host,
-		);
+		const records = getListenerRecords(ctx.parent, ctx.host);
 		if (records.length) {
 			for (let i = 0; i < values.length; i++) {
 				const value = values[i];
@@ -2303,18 +2300,17 @@ function setEventProperty<T extends keyof Event>(
  * element passed in matches the parent context’s host element.
  */
 function getListenerRecords(
-	ctx: Context | undefined,
+	ctx: ContextInternals | undefined,
 	ret: Retainer<unknown>,
 ): Array<EventListenerRecord> {
 	let listeners: Array<EventListenerRecord> = [];
-	let internals = ctx && ctx[ContextInternalsSymbol];
-	while (internals !== undefined && internals.host === ret) {
-		const listeners1 = listenersMap.get(internals);
+	while (ctx !== undefined && ctx.host === ret) {
+		const listeners1 = listenersMap.get(ctx);
 		if (listeners1) {
 			listeners = listeners.concat(listeners1);
 		}
 
-		internals = internals.parent;
+		ctx = ctx.parent;
 	}
 
 	return listeners;
