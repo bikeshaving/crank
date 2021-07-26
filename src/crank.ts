@@ -710,21 +710,6 @@ export class Renderer<
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
-function createChildrenByKey<TNode>(
-	children: Array<RetainerChild<TNode>>,
-	offset: number,
-): Map<Key, Retainer<TNode>> {
-	const childrenByKey = new Map<Key, Retainer<TNode>>();
-	for (let i = offset; i < children.length; i++) {
-		const child = children[i];
-		if (typeof child === "object" && typeof child.el.key !== "undefined") {
-			childrenByKey.set(child.el.key, child);
-		}
-	}
-
-	return childrenByKey;
-}
-
 function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
@@ -742,12 +727,9 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	let childrenByKey: Map<Key, Retainer<TNode>> | undefined;
 	let seenKeys: Set<Key> | undefined;
 	let isAsync = false;
-	let oi = 0;
-	for (
-		let ni = 0, oldLength = oldRetained.length, newLength = newChildren.length;
-		ni < newLength;
-		ni++
-	) {
+	let oi = 0,
+		oldLength = oldRetained.length;
+	for (let ni = 0, newLength = newChildren.length; ni < newLength; ni++) {
 		// We make sure we don’t access indices out of bounds to prevent
 		// deoptimizations.
 		let ret = oi >= oldLength ? undefined : oldRetained[oi];
@@ -856,7 +838,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 
 	{
 		// cleanup remaining retainers
-		for (; oi < oldRetained.length; oi++) {
+		for (; oi < oldLength; oi++) {
 			const ret = oldRetained[oi];
 			if (typeof ret === "object" && typeof ret.el.key === "undefined") {
 				(graveyard = graveyard || []).push(ret);
@@ -909,6 +891,21 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	parent.inflight = parent.fallback = undefined;
 	// We can assert there are no promises in the array because isAsync is false
 	return normalize(values as Array<ElementValue<TNode>>);
+}
+
+function createChildrenByKey<TNode>(
+	children: Array<RetainerChild<TNode>>,
+	offset: number,
+): Map<Key, Retainer<TNode>> {
+	const childrenByKey = new Map<Key, Retainer<TNode>>();
+	for (let i = offset; i < children.length; i++) {
+		const child = children[i];
+		if (typeof child === "object" && typeof child.el.key !== "undefined") {
+			childrenByKey.set(child.el.key, child);
+		}
+	}
+
+	return childrenByKey;
 }
 
 function updateCopy<TNode>(
@@ -1603,6 +1600,224 @@ function ctxContains(
 	return false;
 }
 
+function updateComponent<TNode, TScope, TRoot extends TNode, TResult>(
+	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
+	root: TRoot | undefined,
+	host: Retainer<TNode>,
+	parent: ContextInternals<TNode, TScope, TRoot, TResult> | undefined,
+	scope: TScope | undefined,
+	ret: Retainer<TNode>,
+	oldProps: any,
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+	let ctx: ContextInternals<TNode, TScope, TRoot, TResult>;
+	if (oldProps) {
+		ctx = ret.ctx as ContextInternals<TNode, TScope, TRoot, TResult>;
+	} else {
+		ctx = ret.ctx = new ContextInternals(
+			renderer,
+			root,
+			host,
+			parent,
+			scope,
+			ret,
+		);
+	}
+
+	ctx.f |= IsUpdating;
+	resumeCtx(ctx);
+	return runCtx(ctx);
+}
+
+function updateCtxChildren<TNode, TResult>(
+	ctx: ContextInternals<TNode, unknown, TNode, TResult>,
+	children: Children,
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+	if (ctx.f & IsUnmounted || ctx.f & IsErrored) {
+		return;
+	} else if (children === undefined) {
+		console.error(
+			"A component has returned or yielded undefined. If this was intentional, return or yield null instead.",
+		);
+	}
+
+	const childValues = diffChildren(
+		ctx.renderer,
+		ctx.root,
+		ctx.host,
+		ctx,
+		ctx.scope,
+		ctx.ret,
+		narrow(children),
+	);
+
+	if (isPromiseLike(childValues)) {
+		ctx.ret.inflight = childValues.then((childValues) =>
+			commitCtx(ctx, childValues),
+		);
+		return (ctx.ret as Retainer<TNode>).inflight;
+	}
+
+	return commitCtx(ctx, childValues);
+}
+
+function commitCtx<TNode>(
+	ctx: ContextInternals<TNode, unknown, TNode>,
+	values: Array<TNode | string>,
+): ElementValue<TNode> {
+	if (ctx.f & IsUnmounted) {
+		return;
+	}
+
+	const listeners = listenersMap.get(ctx);
+	if (listeners && listeners.length) {
+		for (let i = 0; i < values.length; i++) {
+			const value = values[i];
+			if (isEventTarget(value)) {
+				for (let j = 0; j < listeners.length; j++) {
+					const record = listeners[j];
+					value.addEventListener(record.type, record.callback, record.options);
+				}
+			}
+		}
+	}
+
+	if (ctx.f & IsScheduling) {
+		ctx.f |= IsSchedulingRefresh;
+	} else if (!(ctx.f & IsUpdating)) {
+		// If we’re not updating the component, which happens when components are
+		// refreshed, or when async generator components iterate, we have to do a
+		// little bit housekeeping.
+		const records = getListenerRecords(
+			ctx.parent && ctx.parent.facade,
+			ctx.host,
+		);
+		if (records.length) {
+			for (let i = 0; i < values.length; i++) {
+				const value = values[i];
+				if (isEventTarget(value)) {
+					for (let j = 0; j < records.length; j++) {
+						const record = records[j];
+						value.addEventListener(
+							record.type,
+							record.callback,
+							record.options,
+						);
+					}
+				}
+			}
+		}
+
+		// rearranging the nearest ancestor host element
+		// TODO: If we’re retaining the oldChildValues, we can do a quick check to
+		// make sure this work isn’t necessary as a performance optimization.
+		const host = ctx.host as Retainer<TNode>;
+		const hostValues = getChildValues(host);
+		ctx.renderer.arrange(
+			host.el.tag as string | symbol,
+			host.value as TNode,
+			host.el.props,
+			hostValues,
+			// props and oldProps are the same because the host isn’t updated.
+			host.el.props,
+			wrap(host.cached),
+		);
+
+		host.cached = hostValues;
+		flush(ctx.renderer, ctx.root, ctx);
+	}
+
+	let value = unwrap(values);
+	const callbacks = scheduleMap.get(ctx);
+	if (callbacks) {
+		scheduleMap.delete(ctx);
+		ctx.f |= IsScheduling;
+		const value1 = ctx.renderer.read(value);
+		for (const callback of callbacks) {
+			callback(value1);
+		}
+
+		ctx.f &= ~IsScheduling;
+		// Handles an edge case where refresh() is called during a schedule().
+		if (ctx.f & IsSchedulingRefresh) {
+			ctx.f &= ~IsSchedulingRefresh;
+			value = getValue(ctx.ret as Retainer<TNode>);
+		}
+	}
+
+	ctx.f &= ~IsUpdating;
+	return value;
+}
+
+/**
+ * Enqueues and executes the component associated with the context.
+ *
+ * The functions stepCtx, advanceCtx and runCtx work together to implement the
+ * async queueing behavior of components. The runCtx function calls the stepCtx
+ * function, which returns two results in a tuple. The first result, called the
+ * “block,” is a possible promise which represents the duration for which the
+ * component is blocked from accepting new updates. The second result, called
+ * the “value,” is the actual result of the update. The runCtx function caches
+ * block/value from the stepCtx function on the context, according to whether
+ * the component blocks. The “inflight” block/value properties are the
+ * currently executing update, and the “enqueued” block/value properties
+ * represent an enqueued next stepCtx. Enqueued steps are dequeued every time
+ * the current block promise settles.
+ */
+function runCtx<TNode, TResult>(
+	ctx: ContextInternals<TNode, unknown, TNode, TResult>,
+): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+	if (!ctx.inflightBlock) {
+		try {
+			const [block, value] = stepCtx<TNode, TResult>(ctx);
+			if (block) {
+				ctx.inflightBlock = block
+					.catch((err) => {
+						if (!(ctx.f & IsUpdating)) {
+							return propagateError<TNode>(ctx.parent, err);
+						}
+					})
+					.finally(() => advanceCtx(ctx));
+				// stepCtx will only return a block if the value is asynchronous
+				ctx.inflightValue = value as Promise<ElementValue<TNode>>;
+			}
+
+			return value;
+		} catch (err) {
+			if (!(ctx.f & IsUpdating)) {
+				return propagateError<TNode>(ctx.parent, err);
+			}
+
+			throw err;
+		}
+	} else if (ctx.f & IsAsyncGen) {
+		return ctx.inflightValue;
+	} else if (!ctx.enqueuedBlock) {
+		let resolve: Function;
+		ctx.enqueuedBlock = ctx.inflightBlock
+			.then(() => {
+				try {
+					const [block, value] = stepCtx<TNode, TResult>(ctx);
+					resolve(value);
+					if (block) {
+						return block.catch((err) => {
+							if (!(ctx.f & IsUpdating)) {
+								return propagateError<TNode>(ctx.parent, err);
+							}
+						});
+					}
+				} catch (err) {
+					if (!(ctx.f & IsUpdating)) {
+						return propagateError<TNode>(ctx.parent, err);
+					}
+				}
+			})
+			.finally(() => advanceCtx(ctx));
+		ctx.enqueuedValue = new Promise((resolve1) => (resolve = resolve1));
+	}
+
+	return ctx.enqueuedValue;
+}
+
 /**
  * This function is responsible for executing the component and handling all
  * the different component types.
@@ -1775,76 +1990,6 @@ function advanceCtx(ctx: ContextInternals): void {
 }
 
 /**
- * Enqueues and executes the component associated with the context.
- *
- * The functions stepCtx, advanceCtx and runCtx work together to implement the
- * async queueing behavior of components. The runCtx function calls the stepCtx
- * function, which returns two results in a tuple. The first result, called the
- * “block,” is a possible promise which represents the duration for which the
- * component is blocked from accepting new updates. The second result, called
- * the “value,” is the actual result of the update. The runCtx function caches
- * block/value from the stepCtx function on the context, according to whether
- * the component blocks. The “inflight” block/value properties are the
- * currently executing update, and the “enqueued” block/value properties
- * represent an enqueued next stepCtx. Enqueued steps are dequeued every time
- * the current block promise settles.
- */
-function runCtx<TNode, TResult>(
-	ctx: ContextInternals<TNode, unknown, TNode, TResult>,
-): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (!ctx.inflightBlock) {
-		try {
-			const [block, value] = stepCtx<TNode, TResult>(ctx);
-			if (block) {
-				ctx.inflightBlock = block
-					.catch((err) => {
-						if (!(ctx.f & IsUpdating)) {
-							return propagateError<TNode>(ctx.parent, err);
-						}
-					})
-					.finally(() => advanceCtx(ctx));
-				// stepCtx will only return a block if the value is asynchronous
-				ctx.inflightValue = value as Promise<ElementValue<TNode>>;
-			}
-
-			return value;
-		} catch (err) {
-			if (!(ctx.f & IsUpdating)) {
-				return propagateError<TNode>(ctx.parent, err);
-			}
-
-			throw err;
-		}
-	} else if (ctx.f & IsAsyncGen) {
-		return ctx.inflightValue;
-	} else if (!ctx.enqueuedBlock) {
-		let resolve: Function;
-		ctx.enqueuedBlock = ctx.inflightBlock
-			.then(() => {
-				try {
-					const [block, value] = stepCtx<TNode, TResult>(ctx);
-					resolve(value);
-					if (block) {
-						return block.catch((err) => {
-							if (!(ctx.f & IsUpdating)) {
-								return propagateError<TNode>(ctx.parent, err);
-							}
-						});
-					}
-				} catch (err) {
-					if (!(ctx.f & IsUpdating)) {
-						return propagateError<TNode>(ctx.parent, err);
-					}
-				}
-			})
-			.finally(() => advanceCtx(ctx));
-		ctx.enqueuedValue = new Promise((resolve1) => (resolve = resolve1));
-	}
-
-	return ctx.enqueuedValue;
-}
-
-/**
  * Called to make props available to the props async iterator for async
  * generator components.
  */
@@ -1855,154 +2000,6 @@ function resumeCtx(ctx: ContextInternals): void {
 	} else {
 		ctx.f |= IsAvailable;
 	}
-}
-
-function updateComponent<TNode, TScope, TRoot extends TNode, TResult>(
-	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
-	root: TRoot | undefined,
-	host: Retainer<TNode>,
-	parent: ContextInternals<TNode, TScope, TRoot, TResult> | undefined,
-	scope: TScope | undefined,
-	ret: Retainer<TNode>,
-	oldProps: any,
-): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	let ctx: ContextInternals<TNode, TScope, TRoot, TResult>;
-	if (oldProps) {
-		ctx = ret.ctx as ContextInternals<TNode, TScope, TRoot, TResult>;
-	} else {
-		ctx = ret.ctx = new ContextInternals(
-			renderer,
-			root,
-			host,
-			parent,
-			scope,
-			ret,
-		);
-	}
-
-	ctx.f |= IsUpdating;
-	resumeCtx(ctx);
-	return runCtx(ctx);
-}
-
-function updateCtxChildren<TNode, TResult>(
-	ctx: ContextInternals<TNode, unknown, TNode, TResult>,
-	children: Children,
-): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (ctx.f & IsUnmounted || ctx.f & IsErrored) {
-		return;
-	} else if (children === undefined) {
-		console.error(
-			"A component has returned or yielded undefined. If this was intentional, return or yield null instead.",
-		);
-	}
-
-	const childValues = diffChildren(
-		ctx.renderer,
-		ctx.root,
-		ctx.host,
-		ctx,
-		ctx.scope,
-		ctx.ret,
-		narrow(children),
-	);
-
-	if (isPromiseLike(childValues)) {
-		ctx.ret.inflight = childValues.then((childValues) =>
-			commitCtx(ctx, childValues),
-		);
-		return (ctx.ret as Retainer<TNode>).inflight;
-	}
-
-	return commitCtx(ctx, childValues);
-}
-
-function commitCtx<TNode>(
-	ctx: ContextInternals<TNode, unknown, TNode>,
-	values: Array<TNode | string>,
-): ElementValue<TNode> {
-	if (ctx.f & IsUnmounted) {
-		return;
-	}
-
-	const listeners = listenersMap.get(ctx);
-	if (listeners && listeners.length) {
-		for (let i = 0; i < values.length; i++) {
-			const value = values[i];
-			if (isEventTarget(value)) {
-				for (let j = 0; j < listeners.length; j++) {
-					const record = listeners[j];
-					value.addEventListener(record.type, record.callback, record.options);
-				}
-			}
-		}
-	}
-
-	if (ctx.f & IsScheduling) {
-		ctx.f |= IsSchedulingRefresh;
-	} else if (!(ctx.f & IsUpdating)) {
-		// If we’re not updating the component, which happens when components are
-		// refreshed, or when async generator components iterate, we have to do a
-		// little bit housekeeping.
-		const records = getListenerRecords(
-			ctx.parent && ctx.parent.facade,
-			ctx.host,
-		);
-		if (records.length) {
-			for (let i = 0; i < values.length; i++) {
-				const value = values[i];
-				if (isEventTarget(value)) {
-					for (let j = 0; j < records.length; j++) {
-						const record = records[j];
-						value.addEventListener(
-							record.type,
-							record.callback,
-							record.options,
-						);
-					}
-				}
-			}
-		}
-
-		// rearranging the nearest ancestor host element
-		// TODO: If we’re retaining the oldChildValues, we can do a quick check to
-		// make sure this work isn’t necessary as a performance optimization.
-		const host = ctx.host as Retainer<TNode>;
-		const hostValues = getChildValues(host);
-		ctx.renderer.arrange(
-			host.el.tag as string | symbol,
-			host.value as TNode,
-			host.el.props,
-			hostValues,
-			// props and oldProps are the same because the host isn’t updated.
-			host.el.props,
-			wrap(host.cached),
-		);
-
-		host.cached = hostValues;
-		flush(ctx.renderer, ctx.root, ctx);
-	}
-
-	let value = unwrap(values);
-	const callbacks = scheduleMap.get(ctx);
-	if (callbacks) {
-		scheduleMap.delete(ctx);
-		ctx.f |= IsScheduling;
-		const value1 = ctx.renderer.read(value);
-		for (const callback of callbacks) {
-			callback(value1);
-		}
-
-		ctx.f &= ~IsScheduling;
-		// Handles an edge case where refresh() is called during a schedule().
-		if (ctx.f & IsSchedulingRefresh) {
-			ctx.f &= ~IsSchedulingRefresh;
-			value = getValue(ctx.ret as Retainer<TNode>);
-		}
-	}
-
-	ctx.f &= ~IsUpdating;
-	return value;
 }
 
 // TODO: async unmounting
