@@ -1,4 +1,5 @@
 const NOOP = () => {};
+const IDENTITY = <T>(value: T): T => value;
 
 function wrap<T>(value: Array<T> | T | undefined): Array<T> {
 	return value === undefined ? [] : Array.isArray(value) ? value : [value];
@@ -481,17 +482,17 @@ export interface RendererImpl<
 	TRoot extends TNode = TNode,
 	TResult = ElementValue<TNode>,
 > {
+	scope<TTag extends string | symbol>(
+		scope: TScope | undefined,
+		tag: TTag,
+		props: TagProps<TTag>,
+	): TScope | undefined;
+
 	create<TTag extends string | symbol>(
 		tag: TTag,
 		props: TagProps<TTag>,
 		scope: TScope | undefined,
 	): TNode;
-
-	scope<TTag extends string | symbol>(
-		tag: TTag,
-		props: TagProps<TTag>,
-		scope: TScope | undefined,
-	): TScope | undefined;
 
 	/**
 	 * Called when an element’s rendered value is exposed via render, schedule,
@@ -536,15 +537,15 @@ export interface RendererImpl<
 	parse(text: string, scope: TScope | undefined): TNode | string;
 
 	patch<TTag extends string | symbol>(
-		node: TNode,
 		tag: TTag,
+		node: TNode,
 		props: TagProps<TTag>,
 		oldProps: TagProps<TTag> | undefined,
 	): unknown;
 
 	arrange<TTag extends string | symbol>(
-		node: TNode,
 		tag: TTag,
+		node: TNode,
 		props: TagProps<TTag>,
 		children: Array<TNode | string>,
 		oldProps: TagProps<TTag> | undefined,
@@ -552,8 +553,8 @@ export interface RendererImpl<
 	): unknown;
 
 	dispose<TTag extends string | symbol>(
-		node: TNode,
 		tag: TTag,
+		node: TNode,
 		props: TagProps<TTag>,
 	): unknown;
 
@@ -564,10 +565,10 @@ const defaultRendererImpl: RendererImpl<unknown, unknown, unknown, unknown> = {
 	create() {
 		throw new Error("Not implemented");
 	},
-	scope: (_tag, _props, scope) => scope,
-	read: (value) => value,
-	escape: (text) => text,
-	parse: (text) => text,
+	scope: IDENTITY,
+	read: IDENTITY,
+	escape: IDENTITY,
+	parse: IDENTITY,
 	patch: NOOP,
 	arrange: NOOP,
 	dispose: NOOP,
@@ -585,8 +586,8 @@ const defaultRendererImpl: RendererImpl<unknown, unknown, unknown, unknown> = {
  * @template TResult - The type of exposed values.
  */
 export class Renderer<
-	TNode,
-	TScope,
+	TNode extends object = object,
+	TScope = unknown,
 	TRoot extends TNode = TNode,
 	TResult = ElementValue<TNode>,
 > {
@@ -627,7 +628,7 @@ export class Renderer<
 	): Promise<TResult> | TResult {
 		let ret: Retainer<TNode> | undefined;
 		const ctx =
-			bridge && (bridge[ContextInternalsSymbol] as ContextInternals<any>);
+			bridge && (bridge[ContextInternalsSymbol] as ContextInternals<TNode>);
 		if (typeof root === "object" && root !== null) {
 			ret = this.cache.get(root as any);
 		}
@@ -646,7 +647,7 @@ export class Renderer<
 			oldProps = ret.el.props;
 			ret.el = createElement(Portal, {children, root});
 			if (typeof root === "object" && root !== null && children == null) {
-				this.cache.delete(root as unknown as object);
+				this.cache.delete(root as any);
 			}
 		}
 
@@ -667,8 +668,8 @@ export class Renderer<
 				// element is a host or portal element
 				if (root !== undefined) {
 					this.impl.arrange(
-						root,
 						Portal,
+						root,
 						ret!.el.props,
 						childValues,
 						oldProps,
@@ -689,8 +690,8 @@ export class Renderer<
 		// element is a host or portal element
 		if (root !== undefined) {
 			this.impl.arrange(
-				root,
 				Portal,
+				root,
 				ret.el.props,
 				childValues,
 				oldProps,
@@ -826,16 +827,17 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				}
 			}
 
+			const ref = child.ref;
 			if (isPromiseLike(value)) {
 				isAsync = true;
-				if (typeof child.ref === "function") {
+				if (typeof ref === "function") {
 					value = value.then((value) => {
-						(child as Element).ref!(renderer.read(value));
+						ref(renderer.read(value));
 						return value;
 					});
 				}
-			} else if (typeof child.ref === "function") {
-				child.ref(renderer.read(value));
+			} else if (typeof ref === "function") {
+				ref(renderer.read(value));
 			}
 		} else {
 			// child is a string or undefined
@@ -931,7 +933,7 @@ function updateRaw<TNode, TScope>(
 	renderer: RendererImpl<TNode, TScope, TNode, unknown>,
 	ret: Retainer<TNode>,
 	scope: TScope | undefined,
-	oldProps: {value: TNode} | undefined,
+	oldProps: any,
 ): ElementValue<TNode> {
 	const props = ret.el.props;
 	if (typeof props.value === "string") {
@@ -980,15 +982,16 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 	oldProps: any,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	const el = ret.el;
+	const tag = el.tag as string | symbol;
 	if (el.tag === Portal) {
 		root = ret.value = el.props.root;
 		scope = undefined;
 	} else {
 		if (!oldProps) {
-			ret.value = renderer.create(el.tag as string | symbol, el.props, scope);
+			ret.value = renderer.create(tag, el.props, scope);
 		}
 
-		scope = renderer.scope(el.tag as string | symbol, el.props, scope);
+		scope = renderer.scope(scope, tag, el.props);
 	}
 
 	const childValues = diffChildren(
@@ -1020,19 +1023,19 @@ function commitHost<TNode>(
 ): ElementValue<TNode> {
 	let value: ElementValue<TNode>;
 	renderer.patch(
-		ret.value as TNode,
 		ret.el.tag as string | symbol,
+		ret.value as TNode,
 		ret.el.props,
 		oldProps,
 	);
 
 	renderer.arrange(
-		ret.value as TNode,
 		ret.el.tag as string | symbol,
+		ret.value as TNode,
 		ret.el.props,
 		childValues,
 		oldProps,
-		wrap(ret.cached) as Array<TNode | string>,
+		wrap(ret.cached),
 	);
 
 	if (ret.el.tag === Portal) {
@@ -1055,7 +1058,7 @@ function flush<TRoot>(
 		return;
 	}
 
-	const flushMap = flushMaps.get(root as unknown as object);
+	const flushMap = flushMaps.get(root as any);
 	if (flushMap) {
 		if (initiator) {
 			const flushMap1 = new Map<ContextInternals, Set<Function>>();
@@ -1067,12 +1070,12 @@ function flush<TRoot>(
 			}
 
 			if (flushMap1.size) {
-				flushMaps.set(root as unknown as object, flushMap1);
+				flushMaps.set(root as any, flushMap1);
 			} else {
-				flushMaps.delete(root as unknown as object);
+				flushMaps.delete(root as any);
 			}
 		} else {
-			flushMaps.delete(root as unknown as object);
+			flushMaps.delete(root as any);
 		}
 
 		for (const [ctx, callbacks] of flushMap) {
@@ -1091,17 +1094,17 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 	ret: Retainer<TNode>,
 ): void {
 	if (typeof ret.el.tag === "function") {
-		ctx = ret.ctx! as ContextInternals<TNode, TScope, TRoot, TResult>;
+		ctx = ret.ctx as ContextInternals<TNode, TScope, TRoot, TResult>;
 		unmountCtx(ctx);
 	} else if (ret.el.tag === Portal) {
 		host = ret;
 		renderer.arrange(
-			host.value as TNode,
 			Portal,
+			host.value as TNode,
 			host.el.props,
 			[],
 			host.el.props,
-			wrap(host.cached) as Array<TNode | string>,
+			wrap(host.cached),
 		);
 		flush(renderer, host.el.props.root);
 	} else if (ret.el.tag !== Fragment) {
@@ -1117,7 +1120,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 			}
 		}
 
-		renderer.dispose(ret.value as TNode, ret.el.tag, ret.el.props);
+		renderer.dispose(ret.el.tag, ret.value as TNode, ret.el.props);
 		host = ret;
 	}
 
@@ -1967,8 +1970,8 @@ function commitCtx<TNode>(
 		const host = ctx.host as Retainer<TNode>;
 		const hostValues = getChildValues(host);
 		ctx.renderer.arrange(
-			host.value as TNode,
 			host.el.tag as string | symbol,
+			host.value as TNode,
 			host.el.props,
 			hostValues,
 			// props and oldProps are the same because the host isn’t updated.

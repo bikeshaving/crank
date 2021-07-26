@@ -114,8 +114,8 @@ const impl: Partial<RendererImpl<Node, undefined, any, string>> = {
 	},
 
 	arrange(
-		node: Node,
 		tag: string | symbol,
+		node: Node,
 		props: Record<string, any>,
 		children: Array<Node | string>,
 	): void {
