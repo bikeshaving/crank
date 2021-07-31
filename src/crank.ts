@@ -663,52 +663,45 @@ export class Renderer<
 		// We return the child values of the portal because portal elements
 		// themselves have no readable value.
 		if (isPromiseLike(childValues)) {
-			return childValues.then((childValues) => {
-				// element is a host or portal element
-				if (root !== undefined) {
-					this.impl.arrange(
-						Portal,
-						root,
-						ret!.el.props,
-						childValues,
-						oldProps,
-						wrap(ret!.cached),
-					);
-					flush(this.impl, root);
-				}
-
-				ret!.cached = unwrap(childValues);
-				if (root == null) {
-					unmount(this.impl, ret!, ctx, ret!);
-				}
-
-				return this.impl.read(ret!.cached);
-			});
-		}
-
-		// element is a host or portal element
-		if (root !== undefined) {
-			this.impl.arrange(
-				Portal,
-				root,
-				ret.el.props,
-				childValues,
-				oldProps,
-				wrap(ret.cached),
+			return childValues.then((childValues) =>
+				commitRootRender(this.impl, root, ctx, ret!, childValues, oldProps),
 			);
-			flush(this.impl, root);
 		}
 
-		ret.cached = unwrap(childValues);
-		if (root == null) {
-			unmount(this.impl, ret, ctx, ret);
-		}
-
-		return this.impl.read(ret.cached);
+		return commitRootRender(this.impl, root, ctx, ret, childValues, oldProps);
 	}
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
+function commitRootRender<TNode, TRoot extends TNode, TResult>(
+	renderer: RendererImpl<TNode, unknown, TRoot, TResult>,
+	root: TRoot | undefined,
+	ctx: ContextInternals<TNode> | undefined,
+	ret: Retainer<TNode>,
+	childValues: Array<TNode | string>,
+	oldProps: any,
+): TResult {
+	// element is a host or portal element
+	if (root !== undefined) {
+		renderer.arrange(
+			Portal,
+			root,
+			ret.el.props,
+			childValues,
+			oldProps,
+			wrap(ret.cached),
+		);
+		flush(renderer, root);
+	}
+
+	ret.cached = unwrap(childValues);
+	if (root == null) {
+		unmount(renderer, ret, ctx, ret);
+	}
+
+	return renderer.read(ret.cached);
+}
+
 function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
@@ -835,18 +828,16 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		newRetained[ni] = ret;
 	}
 
-	{
-		// cleanup remaining retainers
-		for (; oi < oldLength; oi++) {
-			const ret = oldRetained[oi];
-			if (typeof ret === "object" && typeof ret.el.key === "undefined") {
-				(graveyard = graveyard || []).push(ret);
-			}
+	// cleanup remaining retainers
+	for (; oi < oldLength; oi++) {
+		const ret = oldRetained[oi];
+		if (typeof ret === "object" && typeof ret.el.key === "undefined") {
+			(graveyard = graveyard || []).push(ret);
 		}
+	}
 
-		if (childrenByKey !== undefined && childrenByKey.size > 0) {
-			(graveyard = graveyard || []).push(...childrenByKey.values());
-		}
+	if (childrenByKey !== undefined && childrenByKey.size > 0) {
+		(graveyard = graveyard || []).push(...childrenByKey.values());
 	}
 
 	parent.children = unwrap(newRetained);
