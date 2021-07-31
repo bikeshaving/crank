@@ -462,6 +462,10 @@ function getValue<TNode>(ret: Retainer<TNode>): ElementValue<TNode> {
  * @returns A normalized array of nodes and strings.
  */
 function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode | string> {
+	if (ret.cached) {
+		return wrap(ret.cached);
+	}
+
 	const values: Array<ElementValue<TNode>> = [];
 	const children = wrap(ret.children);
 	for (let i = 0; i < children.length; i++) {
@@ -471,7 +475,9 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode | string> {
 		}
 	}
 
-	return normalize(values);
+	const values1 = normalize(values);
+	ret.cached = unwrap(values1);
+	return values1;
 }
 
 // TODO: Document the interface and methods
@@ -727,7 +733,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		let ret = oi >= oldLength ? undefined : oldRetained[oi];
 		let child = narrow(newChildren[ni]);
 		{
-			// Aligning based on key
+			// Aligning new children with old retainers
 			let oldKey = typeof ret === "object" ? ret.el.key : undefined;
 			let newKey = typeof child === "object" ? child.key : undefined;
 			if (newKey !== undefined && seenKeys && seenKeys.has(newKey)) {
@@ -1644,7 +1650,8 @@ function updateComponentChildren<TNode, TResult>(
 		ctx.ret.inflight = childValues.then((childValues) =>
 			commitComponent(ctx, childValues),
 		);
-		return (ctx.ret as Retainer<TNode>).inflight;
+
+		return ctx.ret.inflight;
 	}
 
 	return commitComponent(ctx, childValues);
@@ -1671,49 +1678,53 @@ function commitComponent<TNode>(
 		}
 	}
 
+	const oldValues = wrap(ctx.ret.cached);
+	let value = (ctx.ret.cached = unwrap(values));
 	if (ctx.f & IsScheduling) {
 		ctx.f |= IsSchedulingRefresh;
 	} else if (!(ctx.f & IsUpdating)) {
 		// If we’re not updating the component, which happens when components are
 		// refreshed, or when async generator components iterate, we have to do a
-		// little bit housekeeping.
-		const records = getListenerRecords(ctx.parent, ctx.host);
-		if (records.length) {
-			for (let i = 0; i < values.length; i++) {
-				const value = values[i];
-				if (isEventTarget(value)) {
-					for (let j = 0; j < records.length; j++) {
-						const record = records[j];
-						value.addEventListener(
-							record.type,
-							record.callback,
-							record.options,
-						);
+		// little bit housekeeping when a component’s child values have changed.
+		if (!valuesEqual(oldValues, values)) {
+			const records = getListenerRecords(ctx.parent, ctx.host);
+			if (records.length) {
+				for (let i = 0; i < values.length; i++) {
+					const value = values[i];
+					if (isEventTarget(value)) {
+						for (let j = 0; j < records.length; j++) {
+							const record = records[j];
+							value.addEventListener(
+								record.type,
+								record.callback,
+								record.options,
+							);
+						}
 					}
 				}
 			}
+
+			// rearranging the nearest ancestor host element
+			// TODO: If we’re retaining the oldChildValues, we can do a quick check to
+			// make sure this work isn’t necessary as a performance optimization.
+			const host = ctx.host as Retainer<TNode>;
+			const oldHostValues = wrap(host.cached);
+			invalidate(ctx, host);
+			const hostValues = getChildValues(host);
+			ctx.renderer.arrange(
+				host.el.tag as string | symbol,
+				host.value as TNode,
+				host.el.props,
+				hostValues,
+				// props and oldProps are the same because the host isn’t updated.
+				host.el.props,
+				oldHostValues,
+			);
 		}
 
-		// rearranging the nearest ancestor host element
-		// TODO: If we’re retaining the oldChildValues, we can do a quick check to
-		// make sure this work isn’t necessary as a performance optimization.
-		const host = ctx.host as Retainer<TNode>;
-		const hostValues = getChildValues(host);
-		ctx.renderer.arrange(
-			host.el.tag as string | symbol,
-			host.value as TNode,
-			host.el.props,
-			hostValues,
-			// props and oldProps are the same because the host isn’t updated.
-			host.el.props,
-			wrap(host.cached),
-		);
-
-		host.cached = hostValues;
 		flush(ctx.renderer, ctx.root, ctx);
 	}
 
-	let value = unwrap(values);
 	const callbacks = scheduleMap.get(ctx);
 	if (callbacks) {
 		scheduleMap.delete(ctx);
@@ -1733,6 +1744,36 @@ function commitComponent<TNode>(
 
 	ctx.f &= ~IsUpdating;
 	return value;
+}
+
+function invalidate(ctx: ContextInternals, host: Retainer<unknown>): void {
+	for (
+		let parent = ctx.parent;
+		parent !== undefined && parent.host === host;
+		parent = parent.parent
+	) {
+		parent.ret.cached = undefined;
+	}
+
+	host.cached = undefined;
+}
+
+function valuesEqual<TNode>(
+	values1: Array<TNode | string>,
+	values2: Array<TNode | string>,
+): boolean {
+	if (values1.length !== values2.length) {
+		return false;
+	}
+	for (let i = 0; i < values1.length; i++) {
+		const value1 = values1[i];
+		const value2 = values2[i];
+		if (value1 !== value2) {
+			return false;
+		}
+	}
+
+	return true;
 }
 
 /**
@@ -2108,8 +2149,7 @@ function addEventListener<T extends string>(
 
 	listeners.push(record);
 
-	// TODO: is it possible to separate out the delegate logic
-	// add to delegates
+	// TODO: is it possible to separate out the EventTarget delegation logic
 	for (const value of getChildValues(ctx.ret)) {
 		if (isEventTarget(value)) {
 			value.addEventListener(record.type, record.callback, record.options);
@@ -2143,8 +2183,7 @@ function removeEventListener<T extends string>(
 	const record = listeners[i];
 	listeners.splice(i, 1);
 
-	// TODO: is it possible to separate out the delegate logic
-	// remove from delegates
+	// TODO: is it possible to separate out the EventTarget delegation logic
 	for (const value of getChildValues(ctx.ret)) {
 		if (isEventTarget(value)) {
 			value.removeEventListener(record.type, record.callback, record.options);
@@ -2244,6 +2283,7 @@ function dispatchEvent(ctx: ContextInternals, ev: Event): boolean {
 			}
 		}
 	} catch (err) {
+		// TODO: Use setTimeout to rethrow the error.
 		console.error(err);
 	} finally {
 		setEventProperty(ev, "eventPhase", NONE);
