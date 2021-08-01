@@ -1,3 +1,4 @@
+/// <ref lib="dom" />
 /** @jsx createElement */
 import {createElement, Fragment, Portal, Raw} from "../index";
 import {renderer} from "../dom";
@@ -496,5 +497,31 @@ describe("render", () => {
 		renderer.render(<div>{[]}</div>, document.body);
 
 		expect(document.body.innerHTML).toEqual("<div></div>");
+	});
+
+	test("removing attrs", () => {
+		const input = renderer.render(
+			<input dir="rtl" autofocus={true} value="hello" />,
+			document.body,
+		) as any;
+
+		expect(input.dir).toBe("rtl");
+		expect(input.autofocus).toBe(true);
+		renderer.render(<input />, document.body);
+		expect(input.dir).toBe("");
+		expect(input.autofocus).toBe(false);
+	});
+
+	test("removing styles", () => {
+		const div = renderer.render(
+			<div style={{color: "red", "background-color": "blue"}} />,
+			document.body,
+		) as any;
+
+		expect(div.style.color).toBe("red");
+		expect(div.style.backgroundColor).toBe("blue");
+		renderer.render(<div style={{color: "red"}} />, document.body) as any;
+		expect(div.style.color).toBe("red");
+		expect(div.style.backgroundColor).toBe("");
 	});
 });

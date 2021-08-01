@@ -25,11 +25,7 @@ const impl: Partial<RendererImpl<Node, string>> = {
 		}
 	},
 
-	scope(
-		scope: string,
-		tag: string | symbol,
-		_props: unknown,
-	): string | undefined {
+	scope(scope: string, tag: string | symbol): string | undefined {
 		// TODO: Should we handle xmlns?
 		switch (tag) {
 			case Portal:
@@ -56,33 +52,34 @@ const impl: Partial<RendererImpl<Node, string>> = {
 		_tag: string | symbol,
 		node: Element,
 		props: Record<string, any>,
+		oldProps: Record<string, any> = {},
 	): void {
 		const isSVG = node.namespaceURI === SVG_NAMESPACE;
-		for (let name in props) {
+		for (let name in {...oldProps, ...props}) {
 			let forceAttribute = false;
 			const value = props[name];
 			switch (name) {
 				case "children":
 					break;
 				case "style": {
-					const style: CSSStyleDeclaration = (node as any).style;
+					const style: CSSStyleDeclaration = (node as HTMLElement | SVGElement)
+						.style;
 					if (style == null) {
 						node.setAttribute("style", value);
+					} else if (value == null) {
+						node.removeAttribute("style");
+					} else if (typeof value === "string") {
+						if (style.cssText !== value) {
+							style.cssText = value;
+						}
 					} else {
-						if (value == null) {
-							node.removeAttribute("style");
-						} else if (typeof value === "string") {
-							if (style.cssText !== value) {
-								style.cssText = value;
-							}
-						} else {
-							for (const styleName in value) {
-								const styleValue = value && value[styleName];
-								if (styleValue == null) {
-									style.removeProperty(styleName);
-								} else if (style.getPropertyValue(styleName) !== styleValue) {
-									style.setProperty(styleName, styleValue);
-								}
+						const oldValue = oldProps.style;
+						for (const styleName in {...oldValue, ...value}) {
+							const styleValue = value && value[styleName];
+							if (styleValue == null) {
+								style.removeProperty(styleName);
+							} else if (style.getPropertyValue(styleName) !== styleValue) {
+								style.setProperty(styleName, styleValue);
 							}
 						}
 					}
@@ -135,9 +132,9 @@ const impl: Partial<RendererImpl<Node, string>> = {
 		}
 	},
 
-	arrange<TTag extends string | symbol>(
-		tag: TTag,
-		node: Element,
+	arrange(
+		tag: string | symbol,
+		node: Node,
 		props: Record<string, any>,
 		children: Array<Element | string>,
 		_oldProps: Record<string, any> | undefined,
