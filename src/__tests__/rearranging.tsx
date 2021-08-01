@@ -150,7 +150,30 @@ describe("rearranging", () => {
 		expect(document.body.innerHTML).toEqual("<h4>3</h4>");
 	});
 
-	test("changing children with a sibling", () => {
+	test("arrange doesn’t get called when the children don’t change", () => {
+		let ctx!: Context;
+		function* Component(this: Context) {
+			ctx = this;
+			for (const _ of this) {
+				yield "unchanging";
+			}
+		}
+
+		const spy = jest.spyOn(renderer.impl, "arrange");
+		renderer.render(<Component />, document.body);
+		expect(spy).toHaveBeenCalledTimes(1);
+		expect(document.body.innerHTML).toEqual("unchanging");
+		ctx!.refresh();
+		expect(document.body.innerHTML).toEqual("unchanging");
+		ctx!.refresh();
+		expect(document.body.innerHTML).toEqual("unchanging");
+		ctx!.refresh();
+		expect(document.body.innerHTML).toEqual("unchanging");
+		expect(spy).toHaveBeenCalledTimes(1);
+		spy.mockClear();
+	});
+
+	test("changing children with a sibling in a fragment", () => {
 		function Sibling() {
 			return <p>Sibling</p>;
 		}
