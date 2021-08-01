@@ -454,8 +454,6 @@ function getValue<TNode>(ret: Retainer<TNode>): ElementValue<TNode> {
 	return unwrap(getChildValues(ret));
 }
 
-// TODO: Now that we’re caching child values for host elements, we might
-// reconsider using/invalidating these cached values in this function again.
 /**
  * Walks an element’s children to find its child values.
  *
@@ -635,7 +633,7 @@ export class Renderer<
 		const ctx =
 			bridge && (bridge[ContextInternalsSymbol] as ContextInternals<TNode>);
 		if (typeof root === "object" && root !== null) {
-			ret = this.cache.get(root as any);
+			ret = this.cache.get(root);
 		}
 
 		let oldProps: any;
@@ -644,7 +642,7 @@ export class Renderer<
 			ret.value = root;
 			ret.ctx = ctx;
 			if (typeof root === "object" && root !== null && children != null) {
-				this.cache.set(root as any, ret);
+				this.cache.set(root, ret);
 			}
 		} else if (ret.ctx !== ctx) {
 			throw new Error("Context mismatch");
@@ -652,7 +650,7 @@ export class Renderer<
 			oldProps = ret.el.props;
 			ret.el = createElement(Portal, {children, root});
 			if (typeof root === "object" && root !== null && children == null) {
-				this.cache.delete(root as any);
+				this.cache.delete(root);
 			}
 		}
 
@@ -1705,9 +1703,7 @@ function commitComponent<TNode>(
 			}
 
 			// rearranging the nearest ancestor host element
-			// TODO: If we’re retaining the oldChildValues, we can do a quick check to
-			// make sure this work isn’t necessary as a performance optimization.
-			const host = ctx.host as Retainer<TNode>;
+			const host = ctx.host;
 			const oldHostValues = wrap(host.cached);
 			invalidate(ctx, host);
 			const hostValues = getChildValues(host);
@@ -1738,7 +1734,7 @@ function commitComponent<TNode>(
 		// Handles an edge case where refresh() is called during a schedule().
 		if (ctx.f & IsSchedulingRefresh) {
 			ctx.f &= ~IsSchedulingRefresh;
-			value = getValue(ctx.ret as Retainer<TNode>);
+			value = getValue(ctx.ret);
 		}
 	}
 
@@ -1765,6 +1761,7 @@ function valuesEqual<TNode>(
 	if (values1.length !== values2.length) {
 		return false;
 	}
+
 	for (let i = 0; i < values1.length; i++) {
 		const value1 = values1[i];
 		const value2 = values2[i];
@@ -1870,9 +1867,9 @@ function stepComponent<TNode, TResult>(
 	Promise<unknown> | undefined,
 	Promise<ElementValue<TNode>> | ElementValue<TNode>,
 ] {
-	const ret = ctx.ret as Retainer<TNode>;
+	const ret = ctx.ret;
 	if (ctx.f & IsDone) {
-		return [undefined, getValue<TNode>(ret)];
+		return [undefined, getValue(ret)];
 	}
 
 	const initial = !ctx.iterator;
