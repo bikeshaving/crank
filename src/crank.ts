@@ -474,7 +474,10 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode | string> {
 	}
 
 	const values1 = normalize(values);
-	ret.cached = unwrap(values1);
+	const tag = ret.el.tag;
+	if (typeof tag === "function" || (tag !== Fragment && tag !== Raw)) {
+		ret.cached = unwrap(values1);
+	}
 	return values1;
 }
 
