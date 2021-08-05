@@ -1,6 +1,6 @@
 /// <ref lib="dom" />
 /** @jsx createElement */
-import {createElement, Fragment, Portal, Raw} from "../index";
+import {Copy, createElement, Fragment, Portal, Raw} from "../index";
 import {renderer} from "../dom";
 
 describe("render", () => {
@@ -497,9 +497,11 @@ describe("render", () => {
 		renderer.render(<div>{[]}</div>, document.body);
 
 		expect(document.body.innerHTML).toEqual("<div></div>");
+		div.innerHTML = "<span>child</span>";
+		renderer.render(<div>{null}</div>, document.body);
 	});
 
-	test("removing attrs", () => {
+	test("removing props", () => {
 		const input = renderer.render(
 			<input dir="rtl" autofocus={true} value="hello" />,
 			document.body,
@@ -523,5 +525,17 @@ describe("render", () => {
 		renderer.render(<div style={{color: "red"}} />, document.body) as any;
 		expect(div.style.color).toBe("red");
 		expect(div.style.backgroundColor).toBe("");
+	});
+
+	test("uncontrolled props", () => {
+		const input = renderer.render(
+			<input value="hello" />,
+			document.body,
+		) as any;
+		expect(input).toBeInstanceOf(HTMLInputElement);
+		expect(input.value).toBe("hello");
+		input.value = "world";
+		expect(input.value).toBe("world");
+		renderer.render(<input value={Copy} />, document.body);
 	});
 });
