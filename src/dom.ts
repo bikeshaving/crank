@@ -26,7 +26,7 @@ const impl: Partial<RendererImpl<Node, string>> = {
 	},
 
 	scope(scope: string, tag: string | symbol): string | undefined {
-		// TODO: Should we handle xmlns?
+		// TODO: Should we handle xmlns???
 		switch (tag) {
 			case Portal:
 			case "foreignObject":
@@ -50,83 +50,82 @@ const impl: Partial<RendererImpl<Node, string>> = {
 
 	patch(
 		_tag: string | symbol,
-		node: Element,
-		props: Record<string, any>,
-		oldProps: Record<string, any> = {},
+		// TODO: Why does this assignment work?
+		node: HTMLElement | SVGElement,
+		name: string,
+		// TODO: Stricter typings?
+		value: unknown,
+		oldValue: unknown,
 	): void {
+		// TODO: infer this from scope/tag name
 		const isSVG = node.namespaceURI === SVG_NAMESPACE;
-		for (let name in {...oldProps, ...props}) {
-			let forceAttribute = false;
-			const value = props[name];
-			switch (name) {
-				case "children":
-					break;
-				case "style": {
-					const style: CSSStyleDeclaration = (node as HTMLElement | SVGElement)
-						.style;
-					if (style == null) {
-						node.setAttribute("style", value);
-					} else if (value == null) {
-						node.removeAttribute("style");
-					} else if (typeof value === "string") {
-						if (style.cssText !== value) {
-							style.cssText = value;
-						}
-					} else {
-						const oldValue = oldProps.style;
-						for (const styleName in {...oldValue, ...value}) {
-							const styleValue = value && value[styleName];
-							if (styleValue == null) {
-								style.removeProperty(styleName);
-							} else if (style.getPropertyValue(styleName) !== styleValue) {
-								style.setProperty(styleName, styleValue);
-							}
+		let forceAttribute = false;
+		switch (name) {
+			case "children":
+				break;
+			case "style": {
+				const style: CSSStyleDeclaration = node.style;
+				if (style == null) {
+					node.setAttribute("style", value as string);
+				} else if (value == null) {
+					node.removeAttribute("style");
+				} else if (typeof value === "string") {
+					if (style.cssText !== value) {
+						style.cssText = value;
+					}
+				} else {
+					for (const styleName in {...(oldValue as {}), ...(value as {})}) {
+						const styleValue = value && (value as any)[styleName];
+						if (styleValue == null) {
+							style.removeProperty(styleName);
+						} else if (style.getPropertyValue(styleName) !== styleValue) {
+							style.setProperty(styleName, styleValue);
 						}
 					}
-
-					break;
 				}
-				case "class":
-				case "className":
-					if (value === true) {
-						node.setAttribute("class", "");
-					} else if (!value) {
-						node.removeAttribute("class");
-					} else if (!isSVG) {
-						if (node.className !== value) {
-							(node as any)["className"] = value;
-						}
-					} else if (node.getAttribute("class") !== value) {
-						node.setAttribute("class", value);
+
+				break;
+			}
+			case "class":
+			case "className":
+				if (value === true) {
+					node.setAttribute("class", "");
+				} else if (!value) {
+					node.removeAttribute("class");
+				} else if (!isSVG) {
+					if (node.className !== value) {
+						(node as any)["className"] = value;
 					}
-					break;
-				// Gleaned from:
-				// https://github.com/preactjs/preact/blob/05e5d2c0d2d92c5478eeffdbd96681c96500d29f/src/diff/props.js#L111-L117
-				// TODO: figure out why we use setAttribute for each of these
-				case "form":
-				case "list":
-				case "type":
-				case "size":
-					forceAttribute = true;
-				// fallthrough
-				default: {
-					if (value == null) {
-						node.removeAttribute(name);
-					} else if (
-						typeof value === "function" ||
-						typeof value === "object" ||
-						(!forceAttribute && !isSVG && name in node)
-					) {
-						if ((node as any)[name] !== value) {
-							(node as any)[name] = value;
-						}
-					} else if (value === true) {
-						node.setAttribute(name, "");
-					} else if (value === false) {
-						node.removeAttribute(name);
-					} else if (node.getAttribute(name) !== value) {
-						node.setAttribute(name, value);
+				} else if (node.getAttribute("class") !== value) {
+					node.setAttribute("class", value as string);
+				}
+				break;
+			// Gleaned from:
+			// https://github.com/preactjs/preact/blob/05e5d2c0d2d92c5478eeffdbd96681c96500d29f/src/diff/props.js#L111-L117
+			// TODO: figure out why we use setAttribute for each of these
+			case "form":
+			case "list":
+			case "type":
+			case "size":
+				forceAttribute = true;
+			// fallthrough
+			default: {
+				if (value == null) {
+					node.removeAttribute(name);
+				} else if (
+					typeof value === "function" ||
+					typeof value === "object" ||
+					(!forceAttribute && !isSVG && name in node)
+				) {
+					if ((node as any)[name] !== value) {
+						(node as any)[name] = value;
 					}
+				} else if (value === true) {
+					node.setAttribute(name, "");
+				} else if (value === false) {
+					node.removeAttribute(name);
+				} else if (node.getAttribute(name) !== value) {
+					node.setAttribute(name, value as string);
 				}
 			}
 		}
@@ -150,6 +149,12 @@ const impl: Partial<RendererImpl<Node, string>> = {
 
 		if (
 			!("innerHTML" in props) &&
+			// We don’t want to update elements without explicit children (<div/>),
+			// because these elements sometimes have child nodes added via raw
+			// DOM manipulations.
+			// However, if an element has previously rendered children, we clear the
+			// them because it would be surprising not to clear Crank managed
+			// children, even if the new element does not have explicit children.
 			("children" in props || (oldChildren && oldChildren.length))
 		) {
 			if (children.length === 0) {
@@ -190,12 +195,14 @@ const impl: Partial<RendererImpl<Node, string>> = {
 					}
 				}
 
+				// remove excess DOM nodes
 				while (oldChild !== null) {
 					const nextSibling = oldChild.nextSibling;
 					node.removeChild(oldChild);
 					oldChild = nextSibling;
 				}
 
+				// append excess children
 				for (; i < children.length; i++) {
 					const newChild = children[i];
 					node.appendChild(

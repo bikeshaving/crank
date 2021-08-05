@@ -542,11 +542,12 @@ export interface RendererImpl<
 	 */
 	parse(text: string, scope: TScope | undefined): TNode | string;
 
-	patch<TTag extends string | symbol>(
+	patch<TTag extends string | symbol, TName extends string>(
 		tag: TTag,
 		node: TNode,
-		props: TagProps<TTag>,
-		oldProps: TagProps<TTag> | undefined,
+		name: TName,
+		value: TagProps<TTag>[TName],
+		oldValue: TagProps<TTag>[TName] | undefined,
 	): unknown;
 
 	arrange<TTag extends string | symbol>(
@@ -775,7 +776,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			if (child.tag === Copy) {
 				value = updateCopy(ret);
 			} else {
-				let oldProps: any;
+				let oldProps: Record<string, any> | undefined;
 				if (typeof ret === "object" && ret.el.tag === child.tag) {
 					oldProps = ret.el.props;
 					ret.el = child;
@@ -927,7 +928,7 @@ function updateRaw<TNode, TScope>(
 	renderer: RendererImpl<TNode, TScope, TNode, unknown>,
 	ret: Retainer<TNode>,
 	scope: TScope | undefined,
-	oldProps: any,
+	oldProps: Record<string, any> | undefined,
 ): ElementValue<TNode> {
 	const props = ret.el.props;
 	if (typeof props.value === "string") {
@@ -973,7 +974,7 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 	ctx: ContextInternals<TNode, TScope, TRoot> | undefined,
 	scope: TScope | undefined,
 	ret: Retainer<TNode>,
-	oldProps: any,
+	oldProps: Record<string, any> | undefined,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	const el = ret.el;
 	const tag = el.tag as string | symbol;
@@ -982,6 +983,8 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 		scope = undefined;
 	} else {
 		if (!oldProps) {
+			// We use the truthiness of oldProps to determine if we need to create
+			// the node.
 			ret.value = renderer.create(tag, el.props, scope);
 		}
 
@@ -1013,32 +1016,46 @@ function commitHost<TNode>(
 	renderer: RendererImpl<TNode, unknown, TNode, unknown>,
 	ret: Retainer<TNode>,
 	childValues: Array<TNode | string>,
-	oldProps: any,
+	oldProps: Record<string, any> | undefined,
 ): ElementValue<TNode> {
-	let value: ElementValue<TNode>;
-	renderer.patch(
-		ret.el.tag as string | symbol,
-		ret.value as TNode,
-		ret.el.props,
-		oldProps,
-	);
-
-	renderer.arrange(
-		ret.el.tag as string | symbol,
-		ret.value as TNode,
-		ret.el.props,
-		childValues,
-		oldProps,
-		wrap(ret.cached),
-	);
-
-	if (ret.el.tag === Portal) {
-		flush(renderer, ret.el.props.root);
-	} else {
-		value = ret.value;
+	const tag = ret.el.tag as string | symbol;
+	const value = ret.value as TNode;
+	let props = ret.el.props;
+	let copied: Set<string> | undefined;
+	if (tag !== Portal) {
+		for (const propName in {...oldProps, ...props}) {
+			const propValue = props[propName];
+			if (propValue === Copy) {
+				(copied = copied || new Set()).add(propName);
+			} else {
+				renderer.patch(
+					tag,
+					value,
+					propName,
+					propValue,
+					oldProps && oldProps[propName],
+				);
+			}
+		}
 	}
 
+	if (copied && copied.size) {
+		props = {...ret.el.props};
+		for (const name of copied) {
+			props[name] = oldProps && oldProps[name];
+		}
+
+		ret.el = new Element(tag, props, ret.el.key, ret.el.ref);
+	}
+
+	renderer.arrange(tag, value, props, childValues, oldProps, wrap(ret.cached));
+
 	ret.cached = unwrap(childValues);
+	if (tag === Portal) {
+		flush(renderer, ret.el.props.root);
+		return;
+	}
+
 	return value;
 }
 
@@ -1604,7 +1621,7 @@ function updateComponent<TNode, TScope, TRoot extends TNode, TResult>(
 	parent: ContextInternals<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope | undefined,
 	ret: Retainer<TNode>,
-	oldProps: any,
+	oldProps: Record<string, any> | undefined,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	let ctx: ContextInternals<TNode, TScope, TRoot, TResult>;
 	if (oldProps) {
