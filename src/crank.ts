@@ -548,6 +548,7 @@ export interface RendererImpl<
 		name: TName,
 		value: TagProps<TTag>[TName],
 		oldValue: TagProps<TTag>[TName] | undefined,
+		scope: TScope,
 	): unknown;
 
 	arrange<TTag extends string | symbol>(
@@ -658,12 +659,13 @@ export class Renderer<
 			}
 		}
 
+		const scope = this.impl.scope(undefined, Portal, ret.el.props);
 		const childValues = diffChildren(
 			this.impl,
 			root,
 			ret,
 			ctx,
-			undefined,
+			scope,
 			ret,
 			children,
 		);
@@ -980,17 +982,12 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 	const tag = el.tag as string | symbol;
 	if (el.tag === Portal) {
 		root = ret.value = el.props.root;
-		scope = undefined;
-	} else {
-		if (!oldProps) {
-			// We use the truthiness of oldProps to determine if we need to create
-			// the node.
-			ret.value = renderer.create(tag, el.props, scope);
-		}
-
-		scope = renderer.scope(scope, tag, el.props);
+	} else if (!oldProps) {
+		// We use the truthiness of oldProps to determine if this the first render.
+		ret.value = renderer.create(tag, el.props, scope);
 	}
 
+	scope = renderer.scope(scope, tag, el.props);
 	const childValues = diffChildren(
 		renderer,
 		root,
@@ -1003,17 +1000,18 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 
 	if (isPromiseLike(childValues)) {
 		ret.inflight = childValues.then((childValues) =>
-			commitHost(renderer, ret, childValues, oldProps),
+			commitHost(renderer, scope, ret, childValues, oldProps),
 		);
 
 		return ret.inflight;
 	}
 
-	return commitHost(renderer, ret, childValues, oldProps);
+	return commitHost(renderer, scope, ret, childValues, oldProps);
 }
 
-function commitHost<TNode>(
-	renderer: RendererImpl<TNode, unknown, TNode, unknown>,
+function commitHost<TNode, TScope>(
+	renderer: RendererImpl<TNode, TScope, TNode, unknown>,
+	scope: TScope,
 	ret: Retainer<TNode>,
 	childValues: Array<TNode | string>,
 	oldProps: Record<string, any> | undefined,
@@ -1034,6 +1032,7 @@ function commitHost<TNode>(
 					propName,
 					propValue,
 					oldProps && oldProps[propName],
+					scope,
 				);
 			}
 		}
