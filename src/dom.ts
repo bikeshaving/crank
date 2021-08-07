@@ -41,7 +41,7 @@ const impl: Partial<RendererImpl<Node, string>> = {
 	create(tag: string | symbol, _props: unknown, ns: string | undefined): Node {
 		if (typeof tag !== "string") {
 			throw new Error(`Unknown tag: ${tag.toString()}`);
-		} else if (tag === "svg") {
+		} else if (tag.toLowerCase() === "svg") {
 			ns = SVG_NAMESPACE;
 		}
 
@@ -56,9 +56,9 @@ const impl: Partial<RendererImpl<Node, string>> = {
 		// TODO: Stricter typings?
 		value: unknown,
 		oldValue: unknown,
+		scope: string | undefined,
 	): void {
-		// TODO: infer this from scope/tag name
-		const isSVG = node.namespaceURI === SVG_NAMESPACE;
+		const isSVG = scope === SVG_NAMESPACE;
 		let forceAttribute = false;
 		switch (name) {
 			case "children":
