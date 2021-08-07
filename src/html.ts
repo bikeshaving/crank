@@ -38,7 +38,7 @@ function escape(text: string): string {
 	});
 }
 
-function printStyleObject(style: Record<string, string>): string {
+function printStyleObject(style: Record<string, any>): string {
 	const cssStrings = [];
 	for (const [name, value] of Object.entries(style)) {
 		if (value != null) {
