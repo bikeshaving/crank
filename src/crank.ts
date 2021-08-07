@@ -640,7 +640,7 @@ export class Renderer<
 			ret = this.cache.get(root);
 		}
 
-		let oldProps: any;
+		let oldProps: Record<string, any> | undefined;
 		if (ret === undefined) {
 			ret = new Retainer(createElement(Portal, {children, root}));
 			ret.value = root;
@@ -687,7 +687,7 @@ function commitRootRender<TNode, TRoot extends TNode, TResult>(
 	ctx: ContextInternals<TNode> | undefined,
 	ret: Retainer<TNode>,
 	childValues: Array<TNode | string>,
-	oldProps: any,
+	oldProps: Record<string, any> | undefined,
 ): TResult {
 	// element is a host or portal element
 	if (root !== undefined) {
@@ -1039,7 +1039,7 @@ function commitHost<TNode>(
 		}
 	}
 
-	if (copied && copied.size) {
+	if (copied) {
 		props = {...ret.el.props};
 		for (const name of copied) {
 			props[name] = oldProps && oldProps[name];
@@ -1049,7 +1049,6 @@ function commitHost<TNode>(
 	}
 
 	renderer.arrange(tag, value, props, childValues, oldProps, wrap(ret.cached));
-
 	ret.cached = unwrap(childValues);
 	if (tag === Portal) {
 		flush(renderer, ret.el.props.root);
