@@ -1050,7 +1050,7 @@ function commitHost<TNode, TScope>(
 	renderer.arrange(tag, value, props, childValues, oldProps, wrap(ret.cached));
 	ret.cached = unwrap(childValues);
 	if (tag === Portal) {
-		flush(renderer, ret.el.props.root);
+		flush(renderer, ret.value);
 		return;
 	}
 
@@ -1115,7 +1115,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 			host.el.props,
 			wrap(host.cached),
 		);
-		flush(renderer, host.el.props.root);
+		flush(renderer, host.value);
 	} else if (ret.el.tag !== Fragment) {
 		if (isEventTarget(ret.value)) {
 			const records = getListenerRecords(ctx, host);
