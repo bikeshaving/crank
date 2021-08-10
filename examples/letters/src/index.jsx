@@ -2,7 +2,6 @@
 import {createElement} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
 
-const alphabet = "abcdefghijklmnopqrstuvwxyz".split("");
 function shuffle(arr) {
 	for (let i = arr.length - 1; i > 0; i--) {
 		const j = Math.floor(Math.random() * (i + 1));
@@ -13,8 +12,9 @@ function shuffle(arr) {
 }
 
 function getRandomLetters() {
-	return shuffle(alphabet.slice())
-		.slice(0, Math.floor(Math.random() * 26))
+	const alphabet = [..."abcdefghijklmnopqrstuvwxyz"];
+	return shuffle(alphabet)
+		.slice(0, Math.floor(Math.random() * alphabet.length))
 		.sort();
 }
 
@@ -32,6 +32,8 @@ function deferTransitionStyles(callback) {
 
 function* Letter({letter, index}) {
 	this.flush((node) => {
+		node.style.transform = `translate(${index * 1.1}em, -20px)`;
+		node.style.opacity = 0;
 		deferTransitionStyles(() => {
 			node.style.transform = `translate(${index * 1.1}em, 0)`;
 			node.style.opacity = 1;
@@ -51,8 +53,6 @@ function* Letter({letter, index}) {
 		<span
 			style={{
 				...style,
-				transform: `translate(${index * 1.1}em, -20px)`,
-				opacity: 0,
 				color: "green",
 			}}
 		>
