@@ -250,6 +250,27 @@ describe("sync generator component", () => {
 					<span>3</span>
 				</Fragment>
 			);
+			yield (
+				<Fragment>
+					<span>1</span>
+					{null}
+					{null}
+				</Fragment>
+			);
+			yield (
+				<Fragment>
+					{null}
+					{null}
+					<span>3</span>
+				</Fragment>
+			);
+			yield (
+				<Fragment>
+					{true}
+					{false}
+					{undefined}
+				</Fragment>
+			);
 		}
 
 		renderer.render(
@@ -263,6 +284,12 @@ describe("sync generator component", () => {
 		expect(document.body.innerHTML).toEqual(
 			"<div><span>1</span><span>2</span><span>3</span></div>",
 		);
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual("<div><span>1</span></div>");
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual("<div><span>3</span></div>");
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual("<div></div>");
 	});
 
 	test("async children", async () => {
