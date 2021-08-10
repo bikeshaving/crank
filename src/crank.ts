@@ -831,6 +831,8 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 
 			if (typeof child === "string") {
 				value = ret = renderer.escape(child, scope);
+			} else {
+				ret = undefined;
 			}
 		}
 
