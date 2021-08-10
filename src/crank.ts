@@ -1025,7 +1025,7 @@ function commitHost<TNode, TScope>(
 			const propValue = props[propName];
 			if (propValue === Copy) {
 				(copied = copied || new Set()).add(propName);
-			} else {
+			} else if (propName !== "children") {
 				renderer.patch(
 					tag,
 					value,
