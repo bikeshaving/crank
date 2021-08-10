@@ -59,16 +59,15 @@ const impl: Partial<RendererImpl<Node, string>> = {
 		scope: string | undefined,
 	): void {
 		const isSVG = scope === SVG_NAMESPACE;
-		let forceAttribute = false;
 		switch (name) {
-			case "children":
-				break;
 			case "style": {
 				const style: CSSStyleDeclaration = node.style;
 				if (style == null) {
 					node.setAttribute("style", value as string);
-				} else if (value == null) {
+				} else if (value == null || value === false) {
 					node.removeAttribute("style");
+				} else if (value === true) {
+					node.setAttribute("style", "");
 				} else if (typeof value === "string") {
 					if (style.cssText !== value) {
 						style.cssText = value;
@@ -90,7 +89,7 @@ const impl: Partial<RendererImpl<Node, string>> = {
 			case "className":
 				if (value === true) {
 					node.setAttribute("class", "");
-				} else if (!value) {
+				} else if (value == null) {
 					node.removeAttribute("class");
 				} else if (!isSVG) {
 					if (node.className !== value) {
@@ -100,32 +99,38 @@ const impl: Partial<RendererImpl<Node, string>> = {
 					node.setAttribute("class", value as string);
 				}
 				break;
-			// Gleaned from:
-			// https://github.com/preactjs/preact/blob/05e5d2c0d2d92c5478eeffdbd96681c96500d29f/src/diff/props.js#L111-L117
-			// TODO: figure out why we use setAttribute for each of these
-			case "form":
-			case "list":
-			case "type":
-			case "size":
-				forceAttribute = true;
-			// fallthrough
 			default: {
-				if (value == null) {
-					node.removeAttribute(name);
-				} else if (
-					typeof value === "function" ||
-					typeof value === "object" ||
-					(!forceAttribute && !isSVG && name in node)
+				if (
+					name in node &&
+					// boolean properties will coerce strings, but sometimes they map to
+					// enumerated attributes, where truthy strings ("false", "no") map to
+					// falsy properties, so we use attributes in this case.
+					!(
+						typeof value === "string" &&
+						typeof (node as any)[name] === "boolean"
+					)
 				) {
-					if ((node as any)[name] !== value) {
-						(node as any)[name] = value;
+					try {
+						if ((node as any)[name] !== value) {
+							(node as any)[name] = value;
+						}
+
+						return;
+					} catch (err) {
+						// some properties are readonly so we fallback to setting them as
+						// attributes
 					}
-				} else if (value === true) {
-					node.setAttribute(name, "");
-				} else if (value === false) {
+				}
+
+				if (value === true) {
+					value = "";
+				} else if (value == null || value === false) {
 					node.removeAttribute(name);
-				} else if (node.getAttribute(name) !== value) {
-					node.setAttribute(name, value as string);
+					return;
+				}
+
+				if (node.getAttribute(name) !== value) {
+					node.setAttribute(name, value as any);
 				}
 			}
 		}
