@@ -205,6 +205,8 @@ export interface Element<TTag extends Tag = Tag> {
 	 * Passed in createElement() as the prop "crank-ref".
 	 */
 	ref: ((value: unknown) => unknown) | undefined;
+
+	static_: boolean | undefined;
 }
 
 /**
@@ -232,12 +234,14 @@ export class Element<TTag extends Tag = Tag> {
 		tag: TTag,
 		props: TagProps<TTag>,
 		key: Key,
-		ref: ((value: unknown) => unknown) | undefined,
+		ref?: ((value: unknown) => unknown) | undefined,
+		static_?: boolean | undefined,
 	) {
 		this.tag = tag;
 		this.props = props;
 		this.key = key;
 		this.ref = ref;
+		this.static_ = static_;
 	}
 }
 
@@ -263,6 +267,7 @@ export function createElement<TTag extends Tag>(
 ): Element<TTag> {
 	let key: Key;
 	let ref: ((value: unknown) => unknown) | undefined;
+	let static_ = false;
 	const props1 = {} as TagProps<TTag>;
 	if (props != null) {
 		for (const name in props) {
@@ -279,6 +284,9 @@ export function createElement<TTag extends Tag>(
 						ref = props["crank-ref"];
 					}
 					break;
+				case "crank-static":
+					static_ = !!props["crank-static"];
+					break;
 				default:
 					props1[name] = props[name];
 			}
@@ -291,7 +299,7 @@ export function createElement<TTag extends Tag>(
 		props1.children = children[0];
 	}
 
-	return new Element(tag, props1, key, ref);
+	return new Element(tag, props1, key, ref, static_);
 }
 
 /**
@@ -775,8 +783,11 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		// Updating
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 		if (typeof child === "object") {
-			if (child.tag === Copy) {
-				value = updateCopy(ret);
+			if (typeof ret === "object" && child.static_) {
+				ret.el = child;
+				value = getInflightValue(ret);
+			} else if (child.tag === Copy) {
+				value = getInflightValue(ret);
 			} else {
 				let oldProps: Record<string, any> | undefined;
 				if (typeof ret === "object" && ret.el.tag === child.tag) {
@@ -910,7 +921,7 @@ function createChildrenByKey<TNode>(
 	return childrenByKey;
 }
 
-function updateCopy<TNode>(
+function getInflightValue<TNode>(
 	child: RetainerChild<TNode>,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (typeof child !== "object") {
