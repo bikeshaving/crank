@@ -1785,9 +1785,9 @@ function invalidate(ctx: ContextInternals, host: Retainer<unknown>): void {
 	host.cached = undefined;
 }
 
-function valuesEqual<TNode>(
-	values1: Array<TNode | string>,
-	values2: Array<TNode | string>,
+function valuesEqual<TValue>(
+	values1: Array<TValue>,
+	values2: Array<TValue>,
 ): boolean {
 	if (values1.length !== values2.length) {
 		return false;
