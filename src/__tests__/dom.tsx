@@ -486,6 +486,20 @@ describe("render", () => {
 		);
 	});
 
+	test("style text to object", () => {
+		renderer.render(<div style="font-weight: bold" />, document.body);
+
+		expect(document.body.innerHTML).toEqual(
+			'<div style="font-weight: bold;"></div>',
+		);
+
+		renderer.render(<div style={{color: "goldenrod"}} />, document.body);
+
+		expect(document.body.innerHTML).toEqual(
+			'<div style="color: goldenrod;"></div>',
+		);
+	});
+
 	test("clearing mutations", () => {
 		renderer.render(<div />, document.body);
 

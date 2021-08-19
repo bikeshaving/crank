@@ -73,6 +73,10 @@ const impl: Partial<RendererImpl<Node, string>> = {
 						style.cssText = value;
 					}
 				} else {
+					if (typeof oldValue === "string") {
+						style.cssText = "";
+					}
+
 					for (const styleName in {...(oldValue as {}), ...(value as {})}) {
 						const styleValue = value && (value as any)[styleName];
 						if (styleValue == null) {
