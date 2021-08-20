@@ -1,4 +1,24 @@
 # Changelog
+## [0.4.0] - 2021-08-19
+### Added
+- The `Context.prototype.flush()` method has been added. It behaves similarly to `Context.prototype.schedule()`, with the exception that it runs after a component’s children is definitely in the DOM. This is important for things like focusing after render. See #180 for motivation.
+- The `crank-skip` prop has been added as an alternative to `<Copy />` elements. See #173 for motivation and `src/__tests__/static.tsx` for examples.
+### Changed
+- Properties and styles which are missing will now be removed.
+  Crank 0.3 tried to implement uncontrolled properties by saying missing props were uncontrolled. For instance, `<div class="class" />` rerendered as `<div />` would preserve the class property even though it was removed. Starting in 0.4, missing props and styles will be removed from DOM elements between renders.
+- Crank will now log a console error when `undefined` is yielded or returned from a component. To squash these warnings, yield or return `null` instead.
+- The internal Renderer API has been overhauled yet again.
+  - All internal methods which are implemented by the various renderers (`create()`, `patch()`, `arrange()`) have been removed from the base renderer class. Instead, you will now have to pass in these methods via a call to `super()` in the constructor. See `src/dom.ts` or `src/html.ts` for examples.
+  - The `complete()` method has been renamed to `flush()`.
+  - `patch()` now runs per prop as opposed to passing all props.
+  - `patch()` now runs in a post-order call of the tree (yet again).
+  - The signatures of all of the methods have been changed, mainly to avoid passing elements into the renderer, and allow for previous values to be inspected and used.
+- The default type for `TagProps` is now `Record<string, unknown>` as opposed to `unknown`.
+- Crank will no longer attempt to reuse or modify elements. Motivated by #198.
+- Internal context properties have been hidden using a symbol.
+### Fixed
+- Assigning to `boolean` properties with strings like `spellcheck="true"` will
+now work as expected. See #175 for motivation.
 ## [0.3.11] - 2021-05-11
 ### Fixed
 - Crank will now always create new elements for internal nodes to prevent subtle aliasing bugs (#198).
