@@ -15,7 +15,8 @@ type NonStringIterable<T> = Iterable<T> & object;
  * Ensures a value is an array.
  *
  * This function does the same thing as wrap() above except it handles nulls
- * and iterables, so it is appropriate for wrapping user-provided children.
+ * and iterables, so it is appropriate for wrapping user-provided element
+ * children.
  */
 function arrayify<T>(
 	value: NonStringIterable<T> | T | null | undefined,
@@ -644,7 +645,7 @@ export class Renderer<
 	): Promise<TResult> | TResult {
 		let ret: Retainer<TNode> | undefined;
 		const ctx =
-			bridge && (bridge[ContextInternalsSymbol] as ContextInternals<TNode>);
+			bridge && (bridge[$ContextInternals] as ContextInternals<TNode>);
 		if (typeof root === "object" && root !== null) {
 			ret = this.cache.get(root);
 		}
@@ -1363,7 +1364,7 @@ class ContextInternals<
 	}
 }
 
-export const ContextInternalsSymbol = Symbol.for("Crank.ContextInternals");
+export const $ContextInternals = Symbol.for("crank.ContextInternals");
 
 /**
  * A class which is instantiated and passed to every component as its this
@@ -1381,7 +1382,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	/**
 	 * @internal
 	 */
-	declare [ContextInternalsSymbol]: ContextInternals<
+	declare [$ContextInternals]: ContextInternals<
 		unknown,
 		unknown,
 		unknown,
@@ -1389,7 +1390,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	>;
 
 	constructor(internals: ContextInternals<unknown, unknown, unknown, TResult>) {
-		this[ContextInternalsSymbol] = internals;
+		this[$ContextInternals] = internals;
 	}
 
 	/**
@@ -1400,7 +1401,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * plugins or utilities which wrap contexts.
 	 */
 	get props(): TProps {
-		return this[ContextInternalsSymbol].ret.el.props;
+		return this[$ContextInternals].ret.el.props;
 	}
 
 	// TODO: Should we rename this???
@@ -1412,13 +1413,13 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * mainly for plugins or utilities which wrap contexts.
 	 */
 	get value(): TResult {
-		return this[ContextInternalsSymbol].renderer.read(
-			getValue(this[ContextInternalsSymbol].ret),
+		return this[$ContextInternals].renderer.read(
+			getValue(this[$ContextInternals].ret),
 		);
 	}
 
 	*[Symbol.iterator](): Generator<TProps> {
-		const internals = this[ContextInternalsSymbol];
+		const internals = this[$ContextInternals];
 		while (!(internals.f & IsDone)) {
 			if (internals.f & IsIterating) {
 				throw new Error("Context iterated twice without a yield");
@@ -1435,7 +1436,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		// We use a do while loop rather than a while loop to handle an edge case
 		// where an async generator component is unmounted synchronously and
 		// therefore “done” before it starts iterating over the context.
-		const internals = this[ContextInternalsSymbol];
+		const internals = this[$ContextInternals];
 		do {
 			if (internals.f & IsIterating) {
 				throw new Error("Context iterated twice without a yield");
@@ -1470,7 +1471,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * async iterator to suspend.
 	 */
 	refresh(): Promise<TResult> | TResult {
-		const internals = this[ContextInternalsSymbol];
+		const internals = this[$ContextInternals];
 		if (internals.f & IsUnmounted) {
 			console.error("Component is unmounted");
 			return internals.renderer.read(undefined);
@@ -1495,7 +1496,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * fire once per callback and update.
 	 */
 	schedule(callback: (value: TResult) => unknown): void {
-		const internals = this[ContextInternalsSymbol];
+		const internals = this[$ContextInternals];
 		let callbacks = scheduleMap.get(internals);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
@@ -1510,7 +1511,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * rendered into the root. Will only fire once per callback and render.
 	 */
 	flush(callback: (value: TResult) => unknown): void {
-		const internals = this[ContextInternalsSymbol];
+		const internals = this[$ContextInternals];
 		if (typeof internals.root !== "object" || internals.root === null) {
 			return;
 		}
@@ -1535,7 +1536,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * fire once per callback.
 	 */
 	cleanup(callback: (value: TResult) => unknown): void {
-		const internals = this[ContextInternalsSymbol];
+		const internals = this[$ContextInternals];
 		let callbacks = cleanupMap.get(internals);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
@@ -1549,7 +1550,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	consume(key: unknown): any;
 	consume(key: unknown): any {
 		for (
-			let parent = this[ContextInternalsSymbol].parent;
+			let parent = this[$ContextInternals].parent;
 			parent !== undefined;
 			parent = parent.parent
 		) {
@@ -1566,7 +1567,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	): void;
 	provide(key: unknown, value: any): void;
 	provide(key: unknown, value: any): void {
-		const internals = this[ContextInternalsSymbol];
+		const internals = this[$ContextInternals];
 		let provisions = provisionMaps.get(internals);
 		if (!provisions) {
 			provisions = new Map();
@@ -1581,12 +1582,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		listener: MappedEventListenerOrEventListenerObject<T> | null,
 		options?: boolean | AddEventListenerOptions,
 	): void {
-		return addEventListener(
-			this[ContextInternalsSymbol],
-			type,
-			listener,
-			options,
-		);
+		return addEventListener(this[$ContextInternals], type, listener, options);
 	}
 
 	removeEventListener<T extends string>(
@@ -1595,7 +1591,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		options?: EventListenerOptions | boolean,
 	): void {
 		return removeEventListener(
-			this[ContextInternalsSymbol],
+			this[$ContextInternals],
 			type,
 			listener,
 			options,
@@ -1603,7 +1599,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	}
 
 	dispatchEvent(ev: Event): boolean {
-		return dispatchEvent(this[ContextInternalsSymbol], ev);
+		return dispatchEvent(this[$ContextInternals], ev);
 	}
 }
 
