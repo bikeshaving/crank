@@ -1,7 +1,12 @@
 # Changelog
-## [0.4.0] - 2021-08-19
+## [0.4.0-beta.2] - 2021-08-23
 ### Added
-- The `Context.prototype.flush()` method has been added. It behaves similarly to `Context.prototype.schedule()`, with the exception that it runs after a component’s children is definitely in the DOM. This is important for things like focusing after render. See #180 for motivation.
+- Special props `crank-key`, `crank-ref`, `crank-static` now have shorthand equivalents `c-key`, `c-ref`, and `c-static` to save on typing.
+### Changed
+- `innerHTML` now checks against the old prop value rather than reading from the DOM.
+## [0.4.0-beta.1] - 2021-08-19
+### Added
+- The `Context.prototype.flush()` method has been added. It behaves similarly to `Context.prototype.schedule()`, with the exception that it runs after a component’s children is in the DOM. This is important for things like focusing after render. See #180 for motivation.
 - The `crank-skip` prop has been added as an alternative to `<Copy />` elements. See #173 for motivation and `src/__tests__/static.tsx` for examples.
 ### Changed
 - Properties and styles which are missing will now be removed.
