@@ -305,7 +305,9 @@ describe("schedule", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 		const span = document.body.firstChild!.firstChild;
 		expect(fn1).toHaveBeenCalledTimes(1);
+		expect(fn1).toHaveBeenCalledWith(span);
 		expect(fn2).toHaveBeenCalledTimes(1);
+		expect(fn2).toHaveBeenCalledWith(span);
 	});
 
 	test("multiple calls across updates", () => {
