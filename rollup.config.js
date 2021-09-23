@@ -68,7 +68,7 @@ export default [
 		input: ["src/index.ts", "src/crank.ts", "src/dom.ts", "src/html.ts"],
 		output: {
 			format: "esm",
-			dir: "./",
+			dir: "dist",
 			sourcemap: true,
 			chunkFileNames: "dist/[hash].js",
 		},
@@ -78,7 +78,7 @@ export default [
 		input: ["src/index.ts", "src/crank.ts", "src/dom.ts", "src/html.ts"],
 		output: {
 			format: "cjs",
-			dir: "cjs",
+			dir: "dist/cjs",
 			sourcemap: true,
 		},
 		plugins: [ts(), cjs()],
@@ -87,7 +87,7 @@ export default [
 		input: "umd.ts",
 		output: {
 			format: "umd",
-			dir: "umd",
+			dir: "dist/umd",
 			sourcemap: true,
 			name: "Crank",
 		},
