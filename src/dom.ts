@@ -103,6 +103,12 @@ const impl: Partial<RendererImpl<Node, string>> = {
 					node.setAttribute("class", value as string);
 				}
 				break;
+			case "innerHTML":
+				if (value !== oldValue) {
+					node.innerHTML = value as any;
+				}
+
+				break;
 			default: {
 				if (
 					name in node &&
