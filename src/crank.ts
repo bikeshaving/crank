@@ -1170,7 +1170,7 @@ const IsUpdating = 1 << 0;
 /**
  * A flag which is set when the component function or generator is
  * synchronously executing. This flags is used to ensure that a component which
- * triggers a second update in the course of rendering does not cause an stack
+ * triggers a second update in the course of rendering does not cause a stack
  * overflow or a generator error.
  */
 const IsExecuting = 1 << 1;
@@ -1480,7 +1480,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			return internals.renderer.read(undefined);
 		} else if (internals.f & IsExecuting) {
 			console.error("Component is already executing");
-			return internals.renderer.read(undefined);
+			return this.value;
 		}
 
 		resumeCtxIterator(internals);
@@ -1664,15 +1664,23 @@ function updateComponentChildren<TNode, TResult>(
 		);
 	}
 
-	const childValues = diffChildren(
-		ctx.renderer,
-		ctx.root,
-		ctx.host,
-		ctx,
-		ctx.scope,
-		ctx.ret,
-		narrow(children),
-	);
+	let childValues: Promise<Array<string | TNode>> | Array<string | TNode>;
+	// We set the isExecuting flag in case a child component dispatches an event
+	// which bubbles to this component and causes a synchronous refresh().
+	ctx.f |= IsExecuting;
+	try {
+		childValues = diffChildren(
+			ctx.renderer,
+			ctx.root,
+			ctx.host,
+			ctx,
+			ctx.scope,
+			ctx.ret,
+			narrow(children),
+		);
+	} finally {
+		ctx.f &= ~IsExecuting;
+	}
 
 	if (isPromiseLike(childValues)) {
 		ctx.ret.inflight = childValues.then((childValues) =>
