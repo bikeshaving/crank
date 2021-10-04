@@ -1,9 +1,12 @@
 # Changelog
-## [0.4.0-beta.2] - 2021-08-23
+## [0.4.0-beta.2] - 2021-10-04
 ### Added
 - Special props `crank-key`, `crank-ref`, `crank-static` now have shorthand equivalents `c-key`, `c-ref`, and `c-static` to save on typing.
 ### Changed
 - `innerHTML` now checks against the old prop value rather than reading from the DOM.
+### Fixed
+- Fixed some edge cases where event bubbling would result in `"Generator is already executing.
+"` errors.
 ## [0.4.0-beta.1] - 2021-08-19
 ### Added
 - The `Context.prototype.flush()` method has been added. It behaves similarly to `Context.prototype.schedule()`, with the exception that it runs after a component’s children is in the DOM. This is important for things like focusing after render. See #180 for motivation.
