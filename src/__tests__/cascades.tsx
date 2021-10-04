@@ -2,11 +2,16 @@
 import {createElement, Context} from "../index";
 import {renderer} from "../dom";
 
-// TODO: I’m not sure these tests are fully isolated in terms of console.error mock calls.
 describe("cascades", () => {
+	let mock: any;
+	beforeEach(() => {
+		mock = jest.spyOn(console, "error").mockImplementation();
+	});
+
 	afterEach(() => {
 		renderer.render(null, document.body);
 		document.body.innerHTML = "";
+		mock.mockRestore();
 	});
 
 	test("sync function calls refresh directly", () => {
@@ -15,14 +20,9 @@ describe("cascades", () => {
 			return <div>Hello</div>;
 		}
 
-		const mock = jest.spyOn(console, "error").mockImplementation();
-		try {
-			renderer.render(<Component />, document.body);
-			expect(document.body.innerHTML).toEqual("<div>Hello</div>");
-			expect(mock).toHaveBeenCalled();
-		} finally {
-			mock.mockRestore();
-		}
+		renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Hello</div>");
+		expect(mock).toHaveBeenCalledTimes(1);
 	});
 
 	test("async function calls refresh directly", async () => {
@@ -31,14 +31,9 @@ describe("cascades", () => {
 			return <div>Hello</div>;
 		}
 
-		const mock = jest.spyOn(console, "error").mockImplementation();
-		try {
-			await renderer.render(<Component />, document.body);
-			expect(document.body.innerHTML).toEqual("<div>Hello</div>");
-			expect(mock).toHaveBeenCalled();
-		} finally {
-			mock.mockRestore();
-		}
+		await renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Hello</div>");
+		expect(mock).toHaveBeenCalledTimes(1);
 	});
 
 	test("sync generator calls refresh directly", () => {
@@ -49,14 +44,9 @@ describe("cascades", () => {
 			}
 		}
 
-		const mock = jest.spyOn(console, "error").mockImplementation();
-		try {
-			renderer.render(<Component />, document.body);
-			expect(document.body.innerHTML).toEqual("<div>Hello</div>");
-			expect(mock).toHaveBeenCalled();
-		} finally {
-			mock.mockRestore();
-		}
+		renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<div>Hello</div>");
+		expect(mock).toHaveBeenCalledTimes(1);
 	});
 
 	test("async generator calls refresh directly", async () => {
@@ -68,16 +58,11 @@ describe("cascades", () => {
 			}
 		}
 
-		const mock = jest.spyOn(console, "error").mockImplementation();
-		try {
-			await renderer.render(<Component />, document.body);
-			expect(document.body.innerHTML).toEqual("<span>Hello</span>");
-			await new Promise((resolve) => setTimeout(resolve, 0));
-			expect(document.body.innerHTML).toEqual("<span>Hello</span>");
-			expect(mock).toHaveBeenCalled();
-		} finally {
-			mock.mockRestore();
-		}
+		await renderer.render(<Component />, document.body);
+		expect(document.body.innerHTML).toEqual("<span>Hello</span>");
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(document.body.innerHTML).toEqual("<span>Hello</span>");
+		expect(mock).toHaveBeenCalledTimes(1);
 	});
 
 	test("sync function parent and sync function child", () => {
@@ -98,13 +83,9 @@ describe("cascades", () => {
 			);
 		}
 
-		const mock = jest.spyOn(console, "error").mockImplementation();
-		try {
-			renderer.render(<Parent />, document.body);
-			expect(document.body.innerHTML).toEqual("<div><span>child</span></div>");
-		} finally {
-			mock.mockRestore();
-		}
+		renderer.render(<Parent />, document.body);
+		expect(document.body.innerHTML).toEqual("<div><span>child</span></div>");
+		expect(mock).toHaveBeenCalledTimes(1);
 	});
 
 	test("sync generator parent and sync function child", () => {
@@ -127,17 +108,12 @@ describe("cascades", () => {
 			}
 		}
 
-		const mock = jest.spyOn(console, "error").mockImplementation();
-		try {
-			renderer.render(<Parent />, document.body);
-			expect(document.body.innerHTML).toEqual("<div><span>child</span></div>");
-			expect(mock).toHaveBeenCalled();
-		} finally {
-			mock.mockRestore();
-		}
+		renderer.render(<Parent />, document.body);
+		expect(document.body.innerHTML).toEqual("<div><span>child</span></div>");
+		expect(mock).toHaveBeenCalledTimes(1);
 	});
 
-	test("sync generator parent and sync generator child", () => {
+	test("sync generator parent and sync generator child", async () => {
 		function* Child(this: Context) {
 			this.dispatchEvent(new Event("test", {bubbles: true}));
 			while (true) {
@@ -159,14 +135,9 @@ describe("cascades", () => {
 			}
 		}
 
-		const mock = jest.spyOn(console, "error").mockImplementation();
-		try {
-			renderer.render(<Parent />, document.body);
-			expect(document.body.innerHTML).toEqual("<div><span>child</span></div>");
-			expect(mock).toHaveBeenCalled();
-		} finally {
-			mock.mockRestore();
-		}
+		renderer.render(<Parent />, document.body);
+		expect(document.body.innerHTML).toEqual("<div><span>child</span></div>");
+		expect(mock).toHaveBeenCalledTimes(1);
 	});
 
 	test("dispatchEvent in initial schedule callback", () => {
@@ -192,13 +163,8 @@ describe("cascades", () => {
 			);
 		}
 
-		const mock = jest.spyOn(console, "error").mockImplementation();
-		try {
-			renderer.render(<Parent />, document.body);
-			expect(document.body.innerHTML).toEqual("<div><span>child</span></div>");
-			expect(mock).toHaveBeenCalled();
-		} finally {
-			mock.mockRestore();
-		}
+		renderer.render(<Parent />, document.body);
+		expect(document.body.innerHTML).toEqual("<div><span>child</span></div>");
+		expect(mock).toHaveBeenCalledTimes(1);
 	});
 });
