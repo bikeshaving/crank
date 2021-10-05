@@ -1636,6 +1636,10 @@ function updateComponent<TNode, TScope, TRoot extends TNode, TResult>(
 	let ctx: ContextInternals<TNode, TScope, TRoot, TResult>;
 	if (oldProps) {
 		ctx = ret.ctx as ContextInternals<TNode, TScope, TRoot, TResult>;
+		if (ctx.f & IsExecuting) {
+			console.error("Component is already executing");
+			return ret.cached;
+		}
 	} else {
 		ctx = ret.ctx = new ContextInternals(
 			renderer,
