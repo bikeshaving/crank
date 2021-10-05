@@ -277,19 +277,19 @@ export function createElement<TTag extends Tag>(
 				case "c-key":
 					// We have to make sure we don’t assign null to the key because we
 					// don’t check for null keys in the diffing functions.
-					if (props["crank-key"] != null) {
-						key = props["crank-key"];
+					if (props[name] != null) {
+						key = props[name];
 					}
 					break;
 				case "crank-ref":
 				case "c-ref":
-					if (typeof props["crank-ref"] === "function") {
-						ref = props["crank-ref"];
+					if (typeof props[name] === "function") {
+						ref = props[name];
 					}
 					break;
 				case "crank-static":
 				case "c-static":
-					static_ = !!props["crank-static"];
+					static_ = !!props[name];
 					break;
 				default:
 					props1[name] = props[name];
