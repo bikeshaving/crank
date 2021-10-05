@@ -1,5 +1,6 @@
 {
   "name": "@bikeshaving/crank",
+  "private": true,
   "version": "0.4.0-beta.2",
   "description": "Write JSX-driven components with functions, promises and generators.",
   "homepage": "https://crank.js.org",
@@ -11,92 +12,63 @@
     "url": "https://github.com/bikeshaving/crank.git"
   },
   "license": "MIT",
-  "files": [
-    "dist"
-  ],
   "type": "module",
   "exports": {
+    "./": "./",
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/cjs/index.js"
-    },
-    "./cjs": {
-      "require": "./dist/cjs/index.js"
-    },
-    "./cjs/crank": {
-      "require": "./dist/cjs/crank.js"
-    },
-    "./cjs/crank.js": {
-      "require": "./dist/cjs/crank.js"
-    },
-    "./cjs/dom": {
-      "require": "./dist/cjs/dom.js"
-    },
-    "./cjs/dom.js": {
-      "require": "./dist/cjs/dom.js"
-    },
-    "./cjs/html": {
-      "require": "./dist/cjs/html.js"
-    },
-    "./cjs/html.js": {
-      "require": "./dist/cjs/html.js"
-    },
-    "./cjs/index": {
-      "require": "./dist/cjs/index.js"
-    },
-    "./cjs/index.js": {
-      "require": "./dist/cjs/index.js"
+      "import": "./index.js",
+      "require": "./index.cjs"
     },
     "./crank": {
-      "import": "./dist/crank.js",
-      "require": "./dist/cjs/crank.js"
+      "import": "./crank.js",
+      "require": "./crank.cjs"
     },
     "./crank.js": {
-      "import": "./dist/crank.js",
-      "require": "./dist/cjs/crank.js"
+      "import": "./crank.js",
+      "require": "./crank.cjs"
     },
     "./dom": {
-      "import": "./dist/dom.js",
-      "require": "./dist/cjs/dom.js"
+      "import": "./dom.js",
+      "require": "./dom.cjs"
     },
     "./dom.js": {
-      "import": "./dist/dom.js",
-      "require": "./dist/cjs/dom.js"
+      "import": "./dom.js",
+      "require": "./dom.cjs"
     },
     "./html": {
-      "import": "./dist/html.js",
-      "require": "./dist/cjs/html.js"
+      "import": "./html.js",
+      "require": "./html.cjs"
     },
     "./html.js": {
-      "import": "./dist/html.js",
-      "require": "./dist/cjs/html.js"
+      "import": "./html.js",
+      "require": "./html.cjs"
     },
     "./index": {
-      "import": "./dist/index.js",
-      "require": "./dist/cjs/index.js"
+      "import": "./index.js",
+      "require": "./index.cjs"
     },
     "./index.js": {
       "import": "./index.js",
-      "require": "./cjs/index.js"
+      "require": "./index.cjs"
     },
     "./package.json": "./package.json",
     "./umd": {
-      "require": "./dist/umd/index.js"
+      "require": "./umd.js"
     },
-    "./umd/index.js": {
-      "require": "./dist/umd/index.js"
+    "./umd.js": {
+      "require": "./umd.js"
     }
   },
-  "main": "dist/cjs/index.js",
-  "module": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "index.cjs",
+  "module": "index.js",
+  "types": "index.d.ts",
   "scripts": {
     "prebuild": "yarn run clean",
     "build": "rollup -c rollup.config.js",
     "clean": "shx rm -rf dist",
     "debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
-    "prepublishOnly": "yarn run test && yarn run build",
+    "prepublishOnly": "yarn run test && yarn run build && cd dist",
     "test": "jest --config jest.config.cjs --color --no-cache",
     "typecheck": "tsc --noEmit"
   },

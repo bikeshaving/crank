@@ -7,29 +7,6 @@ import pkg from "./package.json";
 import {transform} from "ts-transform-import-path-rewrite";
 
 /**
- * A hack to provide package.json files with "type": "commonjs" in cjs/umd subdirectories.
- */
-function cjs() {
-	return {
-		name: "cjs",
-		writeBundle({dir, format}) {
-			fs.writeFileSync(
-				path.join(__dirname, dir, "package.json"),
-				JSON.stringify(
-					{
-						name: `${pkg.name}-${format}`,
-						type: "commonjs",
-						private: true,
-					},
-					null,
-					2,
-				),
-			);
-		},
-	};
-}
-
-/**
  * A hack to add triple-slash references to sibling d.ts files for deno.
  */
 function dts() {
@@ -37,7 +14,7 @@ function dts() {
 		name: "dts",
 		renderChunk(code, info) {
 			if (info.isEntry) {
-				const dts = "./" + info.fileName.replace(/js$/, "d.ts");
+				const dts = path.join("./", info.fileName.replace(/js$/, "d.ts"));
 				const ms = new MagicString(code);
 				ms.prepend(`/// <reference types="${dts}" />\n`);
 				code = ms.toString();
@@ -63,34 +40,54 @@ function transformer() {
 	return {afterDeclarations: [rewritePath]};
 }
 
+function copyPackage() {
+	return {
+		name: "copy-package",
+		writeBundle() {
+			const pkg1 = {...pkg};
+			delete pkg1.private;
+			fs.writeFileSync("dist/package.json", JSON.stringify(pkg1, null, 2));
+		},
+	};
+}
+
+const input = ["src/index.ts", "src/crank.ts", "src/dom.ts", "src/html.ts"];
+
 export default [
 	{
-		input: ["src/index.ts", "src/crank.ts", "src/dom.ts", "src/html.ts"],
+		input,
 		output: {
 			format: "esm",
 			dir: "dist",
+			chunkFileNames: "[hash].js",
 			sourcemap: true,
-			chunkFileNames: "dist/[hash].js",
 		},
-		plugins: [ts({clean: true, transformers: [transformer]}), dts()],
+		plugins: [
+			ts({clean: true, transformers: [transformer]}),
+			dts(),
+			copyPackage(),
+		],
 	},
 	{
-		input: ["src/index.ts", "src/crank.ts", "src/dom.ts", "src/html.ts"],
+		input,
 		output: {
 			format: "cjs",
-			dir: "dist/cjs",
+			dir: "dist",
+			chunkFileNames: "[hash].cjs",
+			entryFileNames: "[name].cjs",
 			sourcemap: true,
 		},
-		plugins: [ts(), cjs()],
+		plugins: [ts()],
 	},
 	{
-		input: "umd.ts",
+		input: "src/umd.ts",
 		output: {
 			format: "umd",
-			dir: "dist/umd",
-			sourcemap: true,
+			dir: "dist",
 			name: "Crank",
+			preserveModules: false,
+			sourcemap: true,
 		},
-		plugins: [ts(), cjs()],
+		plugins: [ts()],
 	},
 ];
