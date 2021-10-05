@@ -1,4 +1,11 @@
 # Changelog
+## [0.4.0-beta.3] - 2021-10-05
+### Fixed
+- Fixed shorthand special props `c-key`, `c-ref`, `c-static` not working.
+- Fixed TypeScript not understanding published directory structure.
+- Fixed executing checks not catching updating components which are rerendered.
+### Changed
+- I gave up and we now use `.cjs` files instead of `/cjs` directories for commonjs fallbacks.
 ## [0.4.0-beta.2] - 2021-10-04
 ### Added
 - Special props `crank-key`, `crank-ref`, `crank-static` now have shorthand equivalents `c-key`, `c-ref`, and `c-static` to save on typing.
