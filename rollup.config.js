@@ -46,7 +46,9 @@ function copyPackage() {
 		writeBundle() {
 			const pkg1 = {...pkg};
 			delete pkg1.private;
-			fs.writeFileSync("dist/package.json", JSON.stringify(pkg1, null, 2));
+			delete pkg1.scripts;
+			fs.writeFileSync("./dist/package.json", JSON.stringify(pkg1, null, 2));
+			fs.copyFileSync("./README.md", "./dist/README.md");
 		},
 	};
 }
