@@ -49,7 +49,8 @@ export type Tag = string | symbol | Component;
 /**
  * A helper type to map the tag of an element to its expected props.
  *
- * @template TTag - The tag of the element.
+ * @template TTag - The tag associated with the props. Can be a string, symbol
+ * or a component function.
  */
 export type TagProps<TTag extends Tag> = TTag extends string
 	? JSX.IntrinsicElements[TTag]
@@ -70,13 +71,13 @@ export type TagProps<TTag extends Tag> = TTag extends string
  * wrapped in a fragment element.
  *
  * This tag is just the empty string, and you can use the empty string in
- * createElement calls or transpiler options to avoid having to reference this
- * export directly.
+ * createElement calls or transpiler options directly to avoid having to
+ * reference this export.
  */
 export const Fragment = "";
 export type Fragment = typeof Fragment;
 
-// TODO: We assert the following symbol tags as any because typescript support
+// TODO: We assert the following symbol tags as any because TypeScript support
 // for symbol tags in JSX doesn’t exist yet.
 // https://github.com/microsoft/TypeScript/issues/38367
 
@@ -107,7 +108,7 @@ export type Copy = typeof Copy;
  * A special tag for injecting raw nodes or strings via a value prop.
  *
  * If the value prop is a string, Renderer.prototype.parse() will be called on
- * the string and the result will be set to the element’s value.
+ * the string and the result will be set as the element’s value.
  */
 export const Raw = Symbol.for("crank.Raw") as any;
 export type Raw = typeof Raw;
@@ -150,7 +151,7 @@ export type Component<TProps extends Record<string, unknown> = any> = (
 ) =>
 	| Children
 	| PromiseLike<Children>
-	// The return type of iterators must include void because typescript will
+	// The return type of iterators must include void because TypeScript will
 	// infer generators which return implicitly as having a void return type.
 	| Iterator<Children, Children | void, any>
 	| AsyncIterator<Children, Children | void, any>;
@@ -196,17 +197,23 @@ export interface Element<TTag extends Tag = Tag> {
 	 * A value which uniquely identifies an element from its siblings so that it
 	 * can be added/updated/moved/removed by key rather than position.
 	 *
-	 * Passed in createElement() as the prop "crank-key".
+	 * Passed in createElement() as the prop "c-key".
 	 */
 	key: Key;
 
 	/**
 	 * A callback which is called with the element’s result when it is committed.
 	 *
-	 * Passed in createElement() as the prop "crank-ref".
+	 * Passed in createElement() as the prop "c-ref".
 	 */
 	ref: ((value: unknown) => unknown) | undefined;
 
+	/**
+	 * A possible boolean which indicates that element should NOT be rerendered.
+	 * If the element has never been rendered, this property has no effect.
+	 *
+	 * Passed in createElement() as the prop "c-static".
+	 */
 	static_: boolean | undefined;
 }
 
@@ -256,10 +263,9 @@ export function isElement(value: any): value is Element {
  * Creates an element with the specified tag, props and children.
  *
  * This function is usually used as a transpilation target for JSX transpilers,
- * but it can also be called directly. It additionally extracts the crank-key
- * and crank-ref props so they aren’t accessible to renderer methods or
- * components, and assigns the children prop according to any additional
- * arguments passed to the function.
+ * but it can also be called directly. It additionally extracts special props so
+ * they aren’t accessible to renderer methods or components, and assigns the
+ * children prop according to any additional arguments passed to the function.
  */
 export function createElement<TTag extends Tag>(
 	tag: TTag,
@@ -271,6 +277,7 @@ export function createElement<TTag extends Tag>(
 	let static_ = false;
 	const props1 = {} as TagProps<TTag>;
 	if (props != null) {
+		// TODO: deprecate crank-whatever props
 		for (const name in props) {
 			switch (name) {
 				case "crank-key":
@@ -424,14 +431,41 @@ function normalize<TNode>(
 	return result;
 }
 
-type RetainerChild<TNode> = Retainer<TNode> | string | undefined;
-
+/**
+ * @internal
+ * The internal nodes which are cached and diffed against new elements when
+ * rendering element trees.
+ */
 class Retainer<TNode> {
+	/**
+	 * The element associated with this retainer.
+	 */
 	declare el: Element;
-	declare ctx: ContextInternals<TNode> | undefined;
+	/**
+	 * The context associated with this element. Will only be defined for
+	 * component elements.
+	 */
+	declare ctx: ContextImpl<TNode> | undefined;
+	/**
+	 * The retainer children of this element. Retainers form a tree which mirrors
+	 * elements. Can be a single child or undefined as a memory optimization.
+	 */
 	declare children: Array<RetainerChild<TNode>> | RetainerChild<TNode>;
+	/**
+	 * The value associated with this element.
+	 */
 	declare value: TNode | string | undefined;
+	/**
+	 * The cached child values of this element. Only host and component elements
+	 * will use this property.
+	 */
 	declare cached: ElementValue<TNode>;
+	/**
+	 * The child which this retainer replaces. This property is used when an
+	 * async retainer tree replaces previously rendered elements, so that the
+	 * previously rendered elements can remain visible until the async tree
+	 * fulfills. Will be set to undefined once this subtree fully renders.
+	 */
 	declare fallback: RetainerChild<TNode>;
 	declare inflight: Promise<ElementValue<TNode>> | undefined;
 	declare onCommit: Function | undefined;
@@ -446,6 +480,11 @@ class Retainer<TNode> {
 		this.onCommit = undefined;
 	}
 }
+
+/**
+ * The retainer equivalent of ElementValue
+ */
+type RetainerChild<TNode> = Retainer<TNode> | string | undefined;
 
 /**
  * Finds the value of the element according to its type.
@@ -647,8 +686,7 @@ export class Renderer<
 		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
 		let ret: Retainer<TNode> | undefined;
-		const ctx =
-			bridge && (bridge[$ContextInternals] as ContextInternals<TNode>);
+		const ctx = bridge && (bridge[$ContextImpl] as ContextImpl<TNode>);
 		if (typeof root === "object" && root !== null) {
 			ret = this.cache.get(root);
 		}
@@ -698,7 +736,7 @@ export class Renderer<
 function commitRootRender<TNode, TRoot extends TNode, TResult>(
 	renderer: RendererImpl<TNode, unknown, TRoot, TResult>,
 	root: TRoot | undefined,
-	ctx: ContextInternals<TNode> | undefined,
+	ctx: ContextImpl<TNode> | undefined,
 	ret: Retainer<TNode>,
 	childValues: Array<TNode | string>,
 	oldProps: Record<string, any> | undefined,
@@ -728,7 +766,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
 	host: Retainer<TNode>,
-	ctx: ContextInternals<TNode, TScope, TRoot, TResult> | undefined,
+	ctx: ContextImpl<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope | undefined,
 	parent: Retainer<TNode>,
 	children: Children,
@@ -932,7 +970,7 @@ function getInflightValue<TNode>(
 		return child;
 	}
 
-	const ctx: ContextInternals<TNode> | undefined =
+	const ctx: ContextImpl<TNode> | undefined =
 		typeof child.el.tag === "function" ? child.ctx : undefined;
 	if (ctx && ctx.f & IsUpdating && ctx.inflightValue) {
 		return ctx.inflightValue;
@@ -965,7 +1003,7 @@ function updateFragment<TNode, TScope, TRoot extends TNode>(
 	renderer: RendererImpl<TNode, TScope, TRoot, unknown>,
 	root: TRoot | undefined,
 	host: Retainer<TNode>,
-	ctx: ContextInternals<TNode, TScope, TRoot> | undefined,
+	ctx: ContextImpl<TNode, TScope, TRoot> | undefined,
 	scope: TScope | undefined,
 	ret: Retainer<TNode>,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
@@ -990,7 +1028,7 @@ function updateFragment<TNode, TScope, TRoot extends TNode>(
 function updateHost<TNode, TScope, TRoot extends TNode>(
 	renderer: RendererImpl<TNode, TScope, TRoot, unknown>,
 	root: TRoot | undefined,
-	ctx: ContextInternals<TNode, TScope, TRoot> | undefined,
+	ctx: ContextImpl<TNode, TScope, TRoot> | undefined,
 	scope: TScope | undefined,
 	ret: Retainer<TNode>,
 	oldProps: Record<string, any> | undefined,
@@ -1077,7 +1115,7 @@ function commitHost<TNode, TScope>(
 function flush<TRoot>(
 	renderer: RendererImpl<unknown, unknown, TRoot>,
 	root: TRoot,
-	initiator?: ContextInternals,
+	initiator?: ContextImpl,
 ) {
 	renderer.flush(root);
 	if (typeof root !== "object" || root === null) {
@@ -1087,7 +1125,7 @@ function flush<TRoot>(
 	const flushMap = flushMaps.get(root as any);
 	if (flushMap) {
 		if (initiator) {
-			const flushMap1 = new Map<ContextInternals, Set<Function>>();
+			const flushMap1 = new Map<ContextImpl, Set<Function>>();
 			for (let [ctx, callbacks] of flushMap) {
 				if (!ctxContains(initiator, ctx)) {
 					flushMap.delete(ctx);
@@ -1116,11 +1154,11 @@ function flush<TRoot>(
 function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 	host: Retainer<TNode>,
-	ctx: ContextInternals<TNode, TScope, TRoot, TResult> | undefined,
+	ctx: ContextImpl<TNode, TScope, TRoot, TResult> | undefined,
 	ret: Retainer<TNode>,
 ): void {
 	if (typeof ret.el.tag === "function") {
-		ctx = ret.ctx as ContextInternals<TNode, TScope, TRoot, TResult>;
+		ctx = ret.ctx as ContextImpl<TNode, TScope, TRoot, TResult>;
 		unmountComponent(ctx);
 	} else if (ret.el.tag === Portal) {
 		host = ret;
@@ -1241,19 +1279,20 @@ export interface Context extends Crank.Context {}
  */
 export interface ProvisionMap extends Crank.ProvisionMap {}
 
-const provisionMaps = new WeakMap<ContextInternals, Map<unknown, unknown>>();
+const provisionMaps = new WeakMap<ContextImpl, Map<unknown, unknown>>();
 
-const scheduleMap = new WeakMap<ContextInternals, Set<Function>>();
+const scheduleMap = new WeakMap<ContextImpl, Set<Function>>();
 
-const cleanupMap = new WeakMap<ContextInternals, Set<Function>>();
+const cleanupMap = new WeakMap<ContextImpl, Set<Function>>();
 
 // keys are roots
-const flushMaps = new WeakMap<object, Map<ContextInternals, Set<Function>>>();
+const flushMaps = new WeakMap<object, Map<ContextImpl, Set<Function>>>();
 
 /**
  * @internal
+ * The internal class which holds all context data.
  */
-class ContextInternals<
+class ContextImpl<
 	TNode = unknown,
 	TScope = unknown,
 	TRoot extends TNode = TNode,
@@ -1265,9 +1304,9 @@ class ContextInternals<
 	declare f: number;
 
 	/**
-	 * facade - The actual object passed as this to components.
+	 * ctx - The actual object passed as this to components.
 	 */
-	declare facade: Context<unknown, TResult>;
+	declare ctx: Context<unknown, TResult>;
 
 	/**
 	 * renderer - The renderer which created this context.
@@ -1291,7 +1330,7 @@ class ContextInternals<
 	/**
 	 * parent - The parent context.
 	 */
-	declare parent: ContextInternals<TNode, TScope, TRoot, TResult> | undefined;
+	declare parent: ContextImpl<TNode, TScope, TRoot, TResult> | undefined;
 
 	/**
 	 * scope - The value of the scope at the point of element’s creation.
@@ -1346,12 +1385,12 @@ class ContextInternals<
 		renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 		root: TRoot | undefined,
 		host: Retainer<TNode>,
-		parent: ContextInternals<TNode, TScope, TRoot, TResult> | undefined,
+		parent: ContextImpl<TNode, TScope, TRoot, TResult> | undefined,
 		scope: TScope | undefined,
 		ret: Retainer<TNode>,
 	) {
 		this.f = 0;
-		this.facade = new Context(this);
+		this.ctx = new Context(this);
 		this.renderer = renderer;
 		this.root = root;
 		this.host = host;
@@ -1367,7 +1406,7 @@ class ContextInternals<
 	}
 }
 
-export const $ContextInternals = Symbol.for("crank.ContextInternals");
+const $ContextImpl = Symbol.for("crank.ContextImpl");
 
 /**
  * A class which is instantiated and passed to every component as its this
@@ -1385,15 +1424,10 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	/**
 	 * @internal
 	 */
-	declare [$ContextInternals]: ContextInternals<
-		unknown,
-		unknown,
-		unknown,
-		TResult
-	>;
+	declare [$ContextImpl]: ContextImpl<unknown, unknown, unknown, TResult>;
 
-	constructor(internals: ContextInternals<unknown, unknown, unknown, TResult>) {
-		this[$ContextInternals] = internals;
+	constructor(impl: ContextImpl<unknown, unknown, unknown, TResult>) {
+		this[$ContextImpl] = impl;
 	}
 
 	/**
@@ -1404,7 +1438,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * plugins or utilities which wrap contexts.
 	 */
 	get props(): TProps {
-		return this[$ContextInternals].ret.el.props;
+		return this[$ContextImpl].ret.el.props;
 	}
 
 	// TODO: Should we rename this???
@@ -1416,22 +1450,20 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * mainly for plugins or utilities which wrap contexts.
 	 */
 	get value(): TResult {
-		return this[$ContextInternals].renderer.read(
-			getValue(this[$ContextInternals].ret),
-		);
+		return this[$ContextImpl].renderer.read(getValue(this[$ContextImpl].ret));
 	}
 
 	*[Symbol.iterator](): Generator<TProps> {
-		const internals = this[$ContextInternals];
-		while (!(internals.f & IsDone)) {
-			if (internals.f & IsIterating) {
+		const impl = this[$ContextImpl];
+		while (!(impl.f & IsDone)) {
+			if (impl.f & IsIterating) {
 				throw new Error("Context iterated twice without a yield");
-			} else if (internals.f & IsAsyncGen) {
+			} else if (impl.f & IsAsyncGen) {
 				throw new Error("Use for await…of in async generator components");
 			}
 
-			internals.f |= IsIterating;
-			yield internals.ret.el.props!;
+			impl.f |= IsIterating;
+			yield impl.ret.el.props!;
 		}
 	}
 
@@ -1439,26 +1471,26 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		// We use a do while loop rather than a while loop to handle an edge case
 		// where an async generator component is unmounted synchronously and
 		// therefore “done” before it starts iterating over the context.
-		const internals = this[$ContextInternals];
+		const impl = this[$ContextImpl];
 		do {
-			if (internals.f & IsIterating) {
+			if (impl.f & IsIterating) {
 				throw new Error("Context iterated twice without a yield");
-			} else if (internals.f & IsSyncGen) {
+			} else if (impl.f & IsSyncGen) {
 				throw new Error("Use for…of in sync generator components");
 			}
 
-			internals.f |= IsIterating;
-			if (internals.f & IsAvailable) {
-				internals.f &= ~IsAvailable;
+			impl.f |= IsIterating;
+			if (impl.f & IsAvailable) {
+				impl.f &= ~IsAvailable;
 			} else {
-				await new Promise((resolve) => (internals.onAvailable = resolve));
-				if (internals.f & IsDone) {
+				await new Promise((resolve) => (impl.onAvailable = resolve));
+				if (impl.f & IsDone) {
 					break;
 				}
 			}
 
-			yield internals.ret.el.props;
-		} while (!(internals.f & IsDone));
+			yield impl.ret.el.props;
+		} while (!(impl.f & IsDone));
 	}
 
 	/**
@@ -1474,24 +1506,22 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * async iterator to suspend.
 	 */
 	refresh(): Promise<TResult> | TResult {
-		const internals = this[$ContextInternals];
-		if (internals.f & IsUnmounted) {
+		const impl = this[$ContextImpl];
+		if (impl.f & IsUnmounted) {
 			console.error("Component is unmounted");
-			return internals.renderer.read(undefined);
-		} else if (internals.f & IsExecuting) {
+			return impl.renderer.read(undefined);
+		} else if (impl.f & IsExecuting) {
 			console.error("Component is already executing");
 			return this.value;
 		}
 
-		resumeCtxIterator(internals);
-		const value = runComponent(internals);
+		resumeCtxIterator(impl);
+		const value = runComponent(impl);
 		if (isPromiseLike(value)) {
-			return (value as Promise<any>).then((value) =>
-				internals.renderer.read(value),
-			);
+			return (value as Promise<any>).then((value) => impl.renderer.read(value));
 		}
 
-		return internals.renderer.read(value);
+		return impl.renderer.read(value);
 	}
 
 	/**
@@ -1499,11 +1529,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * fire once per callback and update.
 	 */
 	schedule(callback: (value: TResult) => unknown): void {
-		const internals = this[$ContextInternals];
-		let callbacks = scheduleMap.get(internals);
+		const impl = this[$ContextImpl];
+		let callbacks = scheduleMap.get(impl);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
-			scheduleMap.set(internals, callbacks);
+			scheduleMap.set(impl, callbacks);
 		}
 
 		callbacks.add(callback);
@@ -1514,21 +1544,21 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * rendered into the root. Will only fire once per callback and render.
 	 */
 	flush(callback: (value: TResult) => unknown): void {
-		const internals = this[$ContextInternals];
-		if (typeof internals.root !== "object" || internals.root === null) {
+		const impl = this[$ContextImpl];
+		if (typeof impl.root !== "object" || impl.root === null) {
 			return;
 		}
 
-		let flushMap = flushMaps.get(internals.root);
+		let flushMap = flushMaps.get(impl.root);
 		if (!flushMap) {
-			flushMap = new Map<ContextInternals, Set<Function>>();
-			flushMaps.set(internals.root, flushMap);
+			flushMap = new Map<ContextImpl, Set<Function>>();
+			flushMaps.set(impl.root, flushMap);
 		}
 
-		let callbacks = flushMap.get(internals);
+		let callbacks = flushMap.get(impl);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
-			flushMap.set(internals, callbacks);
+			flushMap.set(impl, callbacks);
 		}
 
 		callbacks.add(callback);
@@ -1539,11 +1569,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * fire once per callback.
 	 */
 	cleanup(callback: (value: TResult) => unknown): void {
-		const internals = this[$ContextInternals];
-		let callbacks = cleanupMap.get(internals);
+		const impl = this[$ContextImpl];
+		let callbacks = cleanupMap.get(impl);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
-			cleanupMap.set(internals, callbacks);
+			cleanupMap.set(impl, callbacks);
 		}
 
 		callbacks.add(callback);
@@ -1553,7 +1583,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	consume(key: unknown): any;
 	consume(key: unknown): any {
 		for (
-			let parent = this[$ContextInternals].parent;
+			let parent = this[$ContextImpl].parent;
 			parent !== undefined;
 			parent = parent.parent
 		) {
@@ -1570,11 +1600,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	): void;
 	provide(key: unknown, value: any): void;
 	provide(key: unknown, value: any): void {
-		const internals = this[$ContextInternals];
-		let provisions = provisionMaps.get(internals);
+		const impl = this[$ContextImpl];
+		let provisions = provisionMaps.get(impl);
 		if (!provisions) {
 			provisions = new Map();
-			provisionMaps.set(internals, provisions);
+			provisionMaps.set(impl, provisions);
 		}
 
 		provisions.set(key, value);
@@ -1585,7 +1615,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		listener: MappedEventListenerOrEventListenerObject<T> | null,
 		options?: boolean | AddEventListenerOptions,
 	): void {
-		return addEventListener(this[$ContextInternals], type, listener, options);
+		return addEventListener(this[$ContextImpl], type, listener, options);
 	}
 
 	removeEventListener<T extends string>(
@@ -1593,26 +1623,18 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		listener: MappedEventListenerOrEventListenerObject<T> | null,
 		options?: EventListenerOptions | boolean,
 	): void {
-		return removeEventListener(
-			this[$ContextInternals],
-			type,
-			listener,
-			options,
-		);
+		return removeEventListener(this[$ContextImpl], type, listener, options);
 	}
 
 	dispatchEvent(ev: Event): boolean {
-		return dispatchEvent(this[$ContextInternals], ev);
+		return dispatchEvent(this[$ContextImpl], ev);
 	}
 }
 
 /*** PRIVATE CONTEXT FUNCTIONS ***/
-function ctxContains(
-	parent: ContextInternals,
-	child: ContextInternals,
-): boolean {
+function ctxContains(parent: ContextImpl, child: ContextImpl): boolean {
 	for (
-		let current: ContextInternals | undefined = child;
+		let current: ContextImpl | undefined = child;
 		current !== undefined;
 		current = current.parent
 	) {
@@ -1628,27 +1650,20 @@ function updateComponent<TNode, TScope, TRoot extends TNode, TResult>(
 	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
 	host: Retainer<TNode>,
-	parent: ContextInternals<TNode, TScope, TRoot, TResult> | undefined,
+	parent: ContextImpl<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope | undefined,
 	ret: Retainer<TNode>,
 	oldProps: Record<string, any> | undefined,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	let ctx: ContextInternals<TNode, TScope, TRoot, TResult>;
+	let ctx: ContextImpl<TNode, TScope, TRoot, TResult>;
 	if (oldProps) {
-		ctx = ret.ctx as ContextInternals<TNode, TScope, TRoot, TResult>;
+		ctx = ret.ctx as ContextImpl<TNode, TScope, TRoot, TResult>;
 		if (ctx.f & IsExecuting) {
 			console.error("Component is already executing");
 			return ret.cached;
 		}
 	} else {
-		ctx = ret.ctx = new ContextInternals(
-			renderer,
-			root,
-			host,
-			parent,
-			scope,
-			ret,
-		);
+		ctx = ret.ctx = new ContextImpl(renderer, root, host, parent, scope, ret);
 	}
 
 	ctx.f |= IsUpdating;
@@ -1657,7 +1672,7 @@ function updateComponent<TNode, TScope, TRoot extends TNode, TResult>(
 }
 
 function updateComponentChildren<TNode, TResult>(
-	ctx: ContextInternals<TNode, unknown, TNode, TResult>,
+	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
 	children: Children,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (ctx.f & IsUnmounted || ctx.f & IsErrored) {
@@ -1698,7 +1713,7 @@ function updateComponentChildren<TNode, TResult>(
 }
 
 function commitComponent<TNode>(
-	ctx: ContextInternals<TNode, unknown, TNode>,
+	ctx: ContextImpl<TNode, unknown, TNode>,
 	values: Array<TNode | string>,
 ): ElementValue<TNode> {
 	if (ctx.f & IsUnmounted) {
@@ -1784,7 +1799,7 @@ function commitComponent<TNode>(
 	return value;
 }
 
-function invalidate(ctx: ContextInternals, host: Retainer<unknown>): void {
+function invalidate(ctx: ContextImpl, host: Retainer<unknown>): void {
 	for (
 		let parent = ctx.parent;
 		parent !== undefined && parent.host === host;
@@ -1832,7 +1847,7 @@ function valuesEqual<TValue>(
  * promise settles.
  */
 function runComponent<TNode, TResult>(
-	ctx: ContextInternals<TNode, unknown, TNode, TResult>,
+	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (!ctx.inflightBlock) {
 		try {
@@ -1904,7 +1919,7 @@ function runComponent<TNode, TResult>(
  * they are expected to only resume when they’ve actually rendered.
  */
 function stepComponent<TNode, TResult>(
-	ctx: ContextInternals<TNode, unknown, TNode, TResult>,
+	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
 ): [
 	Promise<unknown> | undefined,
 	Promise<ElementValue<TNode>> | ElementValue<TNode>,
@@ -1920,7 +1935,7 @@ function stepComponent<TNode, TResult>(
 		clearEventListeners(ctx);
 		let result: ReturnType<Component>;
 		try {
-			result = (ret.el.tag as Component).call(ctx.facade, ret.el.props);
+			result = (ret.el.tag as Component).call(ctx.ctx, ret.el.props);
 		} catch (err) {
 			ctx.f |= IsErrored;
 			throw err;
@@ -2050,7 +2065,7 @@ function stepComponent<TNode, TResult>(
 /**
  * Called when the inflight block promise settles.
  */
-function advanceComponent(ctx: ContextInternals): void {
+function advanceComponent(ctx: ContextImpl): void {
 	ctx.inflightBlock = ctx.enqueuedBlock;
 	ctx.inflightValue = ctx.enqueuedValue;
 	ctx.enqueuedBlock = undefined;
@@ -2064,7 +2079,7 @@ function advanceComponent(ctx: ContextInternals): void {
  * Called to make props available to the props async iterator for async
  * generator components.
  */
-function resumeCtxIterator(ctx: ContextInternals): void {
+function resumeCtxIterator(ctx: ContextImpl): void {
 	if (ctx.onAvailable) {
 		ctx.onAvailable();
 		ctx.onAvailable = undefined;
@@ -2074,7 +2089,7 @@ function resumeCtxIterator(ctx: ContextInternals): void {
 }
 
 // TODO: async unmounting
-function unmountComponent(ctx: ContextInternals): void {
+function unmountComponent(ctx: ContextImpl): void {
 	ctx.f |= IsUnmounted;
 	clearEventListeners(ctx);
 	const callbacks = cleanupMap.get(ctx);
@@ -2111,10 +2126,7 @@ const CAPTURING_PHASE = 1;
 const AT_TARGET = 2;
 const BUBBLING_PHASE = 3;
 
-const listenersMap = new WeakMap<
-	ContextInternals,
-	Array<EventListenerRecord>
->();
+const listenersMap = new WeakMap<ContextImpl, Array<EventListenerRecord>>();
 /**
  * A map of event type strings to Event subclasses. Can be extended via
  * TypeScript module augmentation to have strongly typed event listeners.
@@ -2137,7 +2149,7 @@ interface EventListenerRecord {
 }
 
 function addEventListener<T extends string>(
-	ctx: ContextInternals,
+	ctx: ContextImpl,
 	type: T,
 	listener: MappedEventListenerOrEventListenerObject<T> | null,
 	options?: boolean | AddEventListenerOptions,
@@ -2197,7 +2209,7 @@ function addEventListener<T extends string>(
 }
 
 function removeEventListener<T extends string>(
-	ctx: ContextInternals,
+	ctx: ContextImpl,
 	type: T,
 	listener: MappedEventListenerOrEventListenerObject<T> | null,
 	options?: EventListenerOptions | boolean,
@@ -2230,8 +2242,8 @@ function removeEventListener<T extends string>(
 	}
 }
 
-function dispatchEvent(ctx: ContextInternals, ev: Event): boolean {
-	const path: Array<ContextInternals> = [];
+function dispatchEvent(ctx: ContextImpl, ev: Event): boolean {
+	const path: Array<ContextImpl> = [];
 	for (let parent = ctx.parent; parent !== undefined; parent = parent.parent) {
 		path.push(parent);
 	}
@@ -2245,7 +2257,7 @@ function dispatchEvent(ctx: ContextInternals, ev: Event): boolean {
 		immediateCancelBubble = true;
 		return stopImmediatePropagation.call(ev);
 	});
-	setEventProperty(ev, "target", ctx.facade);
+	setEventProperty(ev, "target", ctx.ctx);
 
 	// The only possible errors in this block are errors thrown by callbacks,
 	// and dispatchEvent will only log these errors rather than throwing
@@ -2263,10 +2275,10 @@ function dispatchEvent(ctx: ContextInternals, ev: Event): boolean {
 			const target = path[i];
 			const listeners = listenersMap.get(target);
 			if (listeners) {
-				setEventProperty(ev, "currentTarget", target.facade);
+				setEventProperty(ev, "currentTarget", target.ctx);
 				for (const record of listeners) {
 					if (record.type === ev.type && record.options.capture) {
-						record.callback.call(target.facade, ev);
+						record.callback.call(target.ctx, ev);
 						if (immediateCancelBubble) {
 							return true;
 						}
@@ -2283,10 +2295,10 @@ function dispatchEvent(ctx: ContextInternals, ev: Event): boolean {
 			const listeners = listenersMap.get(ctx);
 			if (listeners) {
 				setEventProperty(ev, "eventPhase", AT_TARGET);
-				setEventProperty(ev, "currentTarget", ctx.facade);
+				setEventProperty(ev, "currentTarget", ctx.ctx);
 				for (const record of listeners) {
 					if (record.type === ev.type) {
-						record.callback.call(ctx.facade, ev);
+						record.callback.call(ctx.ctx, ev);
 						if (immediateCancelBubble) {
 							return true;
 						}
@@ -2305,10 +2317,10 @@ function dispatchEvent(ctx: ContextInternals, ev: Event): boolean {
 				const target = path[i];
 				const listeners = listenersMap.get(target);
 				if (listeners) {
-					setEventProperty(ev, "currentTarget", target.facade);
+					setEventProperty(ev, "currentTarget", target.ctx);
 					for (const record of listeners) {
 						if (record.type === ev.type && !record.options.capture) {
-							record.callback.call(target.facade, ev);
+							record.callback.call(target.ctx, ev);
 							if (immediateCancelBubble) {
 								return true;
 							}
@@ -2373,7 +2385,7 @@ function setEventProperty<T extends keyof Event>(
  * element passed in matches the parent context’s host element.
  */
 function getListenerRecords(
-	ctx: ContextInternals | undefined,
+	ctx: ContextImpl | undefined,
 	ret: Retainer<unknown>,
 ): Array<EventListenerRecord> {
 	let listeners: Array<EventListenerRecord> = [];
@@ -2389,7 +2401,7 @@ function getListenerRecords(
 	return listeners;
 }
 
-function clearEventListeners(ctx: ContextInternals): void {
+function clearEventListeners(ctx: ContextImpl): void {
 	const listeners = listenersMap.get(ctx);
 	if (listeners && listeners.length) {
 		for (const value of getChildValues(ctx.ret)) {
@@ -2411,7 +2423,7 @@ function clearEventListeners(ctx: ContextInternals): void {
 /*** ERROR HANDLING UTILITIES ***/
 // TODO: generator components which throw errors should be recoverable
 function handleChildError<TNode>(
-	ctx: ContextInternals<TNode, unknown, TNode>,
+	ctx: ContextImpl<TNode, unknown, TNode>,
 	err: unknown,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (
@@ -2458,7 +2470,7 @@ function handleChildError<TNode>(
 }
 
 function propagateError<TNode>(
-	ctx: ContextInternals<TNode, unknown, TNode> | undefined,
+	ctx: ContextImpl<TNode, unknown, TNode> | undefined,
 	err: unknown,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (ctx === undefined) {
@@ -2483,24 +2495,24 @@ function propagateError<TNode>(
 // type CrankElement = Element;
 declare global {
 	module Crank {
-		interface EventMap {}
+		export interface EventMap {}
 
-		interface ProvisionMap {}
+		export interface ProvisionMap {}
 
-		interface Context {}
+		export interface Context {}
 	}
 
-	module JSX {
+	namespace JSX {
 		// TODO: JSX Element type (the result of JSX expressions) don’t work
 		// because TypeScript demands that all Components return JSX elements for
 		// some reason.
 		// interface Element extends CrankElement {}
 
-		interface IntrinsicElements {
+		export interface IntrinsicElements {
 			[tag: string]: any;
 		}
 
-		interface ElementChildrenAttribute {
+		export interface ElementChildrenAttribute {
 			children: {};
 		}
 	}
