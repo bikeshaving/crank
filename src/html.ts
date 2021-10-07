@@ -149,11 +149,6 @@ export class HTMLRenderer extends Renderer<Node, undefined, any, string> {
 
 export const renderer = new HTMLRenderer();
 
-/**
- * @deprecated
- */
-export const StringRenderer = HTMLRenderer;
-
 declare global {
 	module Crank {
 		interface EventMap extends GlobalEventHandlersEventMap {}
