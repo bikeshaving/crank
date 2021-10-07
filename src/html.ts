@@ -92,7 +92,7 @@ function join(children: Array<Node | string>): string {
 	return result;
 }
 
-const impl: Partial<RendererImpl<Node, undefined, any, string>> = {
+export const impl: Partial<RendererImpl<Node, undefined, any, string>> = {
 	create(): Node {
 		return {value: ""};
 	},

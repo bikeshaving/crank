@@ -9,7 +9,7 @@ import {
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
-const impl: Partial<RendererImpl<Node, string>> = {
+export const impl: Partial<RendererImpl<Node, string>> = {
 	parse(text: string): DocumentFragment {
 		if (typeof document.createRange === "function") {
 			return document.createRange().createContextualFragment(text);

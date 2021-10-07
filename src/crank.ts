@@ -634,6 +634,7 @@ const defaultRendererImpl: RendererImpl<unknown, unknown, unknown, unknown> = {
 	flush: NOOP,
 };
 
+const $RendererImpl = Symbol.for("crank.RendererImpl");
 /**
  * An abstract class which is subclassed to render to different target
  * environments. This class is responsible for kicking off the rendering
@@ -656,10 +657,10 @@ export class Renderer<
 	 */
 	declare cache: WeakMap<object, Retainer<TNode>>;
 
-	declare impl: RendererImpl<TNode, TScope, TRoot, TResult>;
+	declare [$RendererImpl]: RendererImpl<TNode, TScope, TRoot, TResult>;
 	constructor(impl: Partial<RendererImpl<TNode, TScope, TRoot, TResult>>) {
 		this.cache = new WeakMap();
-		this.impl = {
+		this[$RendererImpl] = {
 			...(defaultRendererImpl as RendererImpl<TNode, TScope, TRoot, TResult>),
 			...impl,
 		};
@@ -709,13 +710,13 @@ export class Renderer<
 			}
 		}
 
-		const scope = this.impl.scope(undefined, Portal, ret.el.props);
+		const impl = this[$RendererImpl];
 		const childValues = diffChildren(
-			this.impl,
+			impl,
 			root,
 			ret,
 			ctx,
-			scope,
+			impl.scope(undefined, Portal, ret.el.props),
 			ret,
 			children,
 		);
@@ -724,11 +725,11 @@ export class Renderer<
 		// themselves have no readable value.
 		if (isPromiseLike(childValues)) {
 			return childValues.then((childValues) =>
-				commitRootRender(this.impl, root, ctx, ret!, childValues, oldProps),
+				commitRootRender(impl, root, ctx, ret!, childValues, oldProps),
 			);
 		}
 
-		return commitRootRender(this.impl, root, ctx, ret, childValues, oldProps);
+		return commitRootRender(impl, root, ctx, ret, childValues, oldProps);
 	}
 }
 
