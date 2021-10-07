@@ -159,7 +159,10 @@ describe("rearranging", () => {
 			}
 		}
 
-		const spy = jest.spyOn(renderer.impl, "arrange");
+		const spy = jest.spyOn(
+			(renderer as any)[Symbol.for("crank.RendererImpl")],
+			"arrange",
+		);
 		renderer.render(<Component />, document.body);
 		expect(spy).toHaveBeenCalledTimes(1);
 		expect(document.body.innerHTML).toEqual("unchanging");
