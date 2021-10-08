@@ -1,39 +1,28 @@
 # Changelog
-## [0.4.0-beta.3] - 2021-10-05
-### Fixed
-- Fixed shorthand special props `c-key`, `c-ref`, `c-static` not working.
-- Fixed TypeScript not understanding published directory structure.
-- Fixed executing checks not catching updating components which are rerendered.
-### Changed
-- I gave up and we now use `.cjs` files instead of `/cjs` directories for commonjs fallbacks.
-## [0.4.0-beta.2] - 2021-10-04
+## [0.4.0] - 2021-10-08
 ### Added
 - Special props `crank-key`, `crank-ref`, `crank-static` now have shorthand equivalents `c-key`, `c-ref`, and `c-static` to save on typing.
-### Changed
-- `innerHTML` now checks against the old prop value rather than reading from the DOM.
-### Fixed
-- Fixed some edge cases where event bubbling would result in `"Generator is already executing.
-"` errors.
-## [0.4.0-beta.1] - 2021-08-19
-### Added
 - The `Context.prototype.flush()` method has been added. It behaves similarly to `Context.prototype.schedule()`, with the exception that it runs after a component’s children is in the DOM. This is important for things like focusing after render. See #180 for motivation.
 - The `crank-skip` prop has been added as an alternative to `<Copy />` elements. See #173 for motivation and `src/__tests__/static.tsx` for examples.
 ### Changed
-- Properties and styles which are missing will now be removed.
+- I gave up and we now use `.cjs` files instead of `/cjs` directories for commonjs fallbacks.
+- `innerHTML` now checks against the old prop value rather than reading from the DOM.
+- Properties and styles which are missing from DOM element props will now be removed.
   Crank 0.3 tried to implement uncontrolled properties by saying missing props were uncontrolled. For instance, `<div class="class" />` rerendered as `<div />` would preserve the class property even though it was removed. Starting in 0.4, missing props and styles will be removed from DOM elements between renders.
 - Crank will now log a console error when `undefined` is yielded or returned from a component. To squash these warnings, yield or return `null` instead.
+- The default type for `TagProps` is now `Record<string, unknown>` as opposed to `unknown`.
+- Crank will no longer attempt to reuse or modify elements. Motivated by #198.
+- Internal context properties have been hidden using a symbol.
 - The internal Renderer API has been overhauled yet again.
   - All internal methods which are implemented by the various renderers (`create()`, `patch()`, `arrange()`) have been removed from the base renderer class. Instead, you will now have to pass in these methods via a call to `super()` in the constructor. See `src/dom.ts` or `src/html.ts` for examples.
   - The `complete()` method has been renamed to `flush()`.
   - `patch()` now runs per prop as opposed to passing all props.
   - `patch()` now runs in a post-order call of the tree (yet again).
   - The signatures of all of the methods have been changed, mainly to avoid passing elements into the renderer, and allow for previous values to be inspected and used.
-- The default type for `TagProps` is now `Record<string, unknown>` as opposed to `unknown`.
-- Crank will no longer attempt to reuse or modify elements. Motivated by #198.
-- Internal context properties have been hidden using a symbol.
 ### Fixed
-- Assigning to `boolean` properties with strings like `spellcheck="true"` will
-now work as expected. See #175 for motivation.
+- Fixed some edge cases where event bubbling would result in `"Generator is already executing.
+- Assigning to `boolean` properties with strings like `spellcheck="true"` will now work as expected. See #175 for motivation.
+"` errors.
 ## [0.3.11] - 2021-05-11
 ### Fixed
 - Crank will now always create new elements for internal nodes to prevent subtle aliasing bugs (#198).
