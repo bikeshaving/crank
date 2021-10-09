@@ -68,7 +68,8 @@
     "clean": "shx rm -rf dist",
     "debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
-    "prepublishOnly": "yarn run test && yarn run build && cd dist",
+    "preshipit": "yarn run test && yarn run build",
+    "shipit": "cd dist && yarn publish && ./scripts/rename-pkg.js && yarn publish",
     "test": "jest --config jest.config.cjs --color --no-cache",
     "typecheck": "tsc --noEmit"
   },
