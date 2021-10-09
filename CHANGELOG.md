@@ -3,7 +3,7 @@
 ### Added
 - Special props `crank-key`, `crank-ref`, `crank-static` now have shorthand equivalents `c-key`, `c-ref`, and `c-static` to save on typing.
 - The `Context.prototype.flush()` method has been added. It behaves similarly to `Context.prototype.schedule()`, with the exception that it runs after a component’s children is in the DOM. This is important for things like focusing after render. See #180 for motivation.
-- The `crank-skip` prop has been added as an alternative to `<Copy />` elements. See #173 for motivation and `src/__tests__/static.tsx` for examples.
+- The `c-skip` (`crank-skip`) prop has been added as an alternative to `<Copy />` elements. See #173 for motivation and `src/__tests__/static.tsx` for examples.
 ### Changed
 - I gave up and we now use `.cjs` files instead of `/cjs` directories for commonjs fallbacks.
 - `innerHTML` now checks against the old prop value rather than reading from the DOM.
