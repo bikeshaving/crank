@@ -2495,7 +2495,7 @@ function propagateError<TNode>(
 // TODO: uncomment and use in the Element interface below
 // type CrankElement = Element;
 declare global {
-	module Crank {
+	namespace Crank {
 		export interface EventMap {}
 
 		export interface ProvisionMap {}
