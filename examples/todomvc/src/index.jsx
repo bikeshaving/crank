@@ -18,7 +18,7 @@ function* Header() {
 				const title1 = title.trim();
 				title = "";
 				this.dispatchEvent(
-					new CustomEvent("todo.create", {
+					new CustomEvent("todocreate", {
 						bubbles: true,
 						detail: {title: title1},
 					}),
@@ -27,7 +27,7 @@ function* Header() {
 		}
 	});
 
-	while (true) {
+	for ({} of this) {
 		yield (
 			<header class="header">
 				<h1>todos</h1>
@@ -48,14 +48,14 @@ function* TodoItem({todo}) {
 	this.addEventListener("click", (ev) => {
 		if (ev.target.className === "toggle") {
 			this.dispatchEvent(
-				new CustomEvent("todo.toggle", {
+				new CustomEvent("todotoggle", {
 					bubbles: true,
 					detail: {id: todo.id, completed: !todo.completed},
 				}),
 			);
 		} else if (ev.target.className === "destroy") {
 			this.dispatchEvent(
-				new CustomEvent("todo.destroy", {
+				new CustomEvent("tododestroy", {
 					bubbles: true,
 					detail: {id: todo.id},
 				}),
@@ -78,26 +78,29 @@ function* TodoItem({todo}) {
 	});
 
 	this.addEventListener("keydown", (ev) => {
-		if (
-			ev.target.className === "edit" &&
-			(ev.keyCode === ENTER_KEY || ev.keyCode === ESC_KEY)
-		) {
-			active = false;
-			title = title.trim();
-			if (title) {
-				this.dispatchEvent(
-					new CustomEvent("todo.edit", {
-						bubbles: true,
-						detail: {id: todo.id, title},
-					}),
-				);
-			} else {
-				this.dispatchEvent(
-					new CustomEvent("todo.destroy", {
-						bubbles: true,
-						detail: {id: todo.id},
-					}),
-				);
+		if (ev.target.className === "edit") {
+			if (ev.keyCode === ENTER_KEY) {
+				active = false;
+				title = title.trim();
+				if (title) {
+					this.dispatchEvent(
+						new CustomEvent("todoedit", {
+							bubbles: true,
+							detail: {id: todo.id, title},
+						}),
+					);
+				} else {
+					this.dispatchEvent(
+						new CustomEvent("tododestroy", {
+							bubbles: true,
+							detail: {id: todo.id},
+						}),
+					);
+				}
+			} else if (ev.keyCode === ESC_KEY) {
+				active = false;
+				title = todo.title;
+				this.refresh();
 			}
 		}
 	});
@@ -109,14 +112,14 @@ function* TodoItem({todo}) {
 				active = false;
 				if (title) {
 					this.dispatchEvent(
-						new CustomEvent("todo.edit", {
+						new CustomEvent("todoedit", {
 							bubbles: true,
 							detail: {id: todo.id, title},
 						}),
 					);
 				} else {
 					this.dispatchEvent(
-						new CustomEvent("todo.destroy", {
+						new CustomEvent("tododestroy", {
 							bubbles: true,
 							detail: {id: todo.id},
 						}),
@@ -154,7 +157,7 @@ function Main({todos, filter}) {
 	this.addEventListener("click", (ev) => {
 		if (ev.target.className === "toggle-all") {
 			this.dispatchEvent(
-				new CustomEvent("todo.toggleAll", {
+				new CustomEvent("todotoggleall", {
 					bubbles: true,
 					detail: {completed: !completed},
 				}),
@@ -213,7 +216,7 @@ function Footer({todos, filter}) {
 	const remaining = todos.length - completed;
 	this.addEventListener("click", (ev) => {
 		if (ev.target.className === "clear-completed") {
-			this.dispatchEvent(new Event("todo.clearCompleted", {bubbles: true}));
+			this.dispatchEvent(new Event("todoclearcompleted", {bubbles: true}));
 		}
 	});
 
@@ -249,39 +252,39 @@ function* App() {
 	}
 
 	let filter = "";
-	this.addEventListener("todo.create", (ev) => {
+	this.addEventListener("todocreate", (ev) => {
 		todos.push({id: nextTodoId++, title: ev.detail.title, completed: false});
 		this.refresh();
 		save(todos);
 	});
 
-	this.addEventListener("todo.edit", (ev) => {
+	this.addEventListener("todoedit", (ev) => {
 		const i = todos.findIndex((todo) => todo.id === ev.detail.id);
 		todos[i].title = ev.detail.title;
 		this.refresh();
 		save(todos);
 	});
 
-	this.addEventListener("todo.toggle", (ev) => {
+	this.addEventListener("todotoggle", (ev) => {
 		const i = todos.findIndex((todo) => todo.id === ev.detail.id);
 		todos[i].completed = ev.detail.completed;
 		this.refresh();
 		save(todos);
 	});
 
-	this.addEventListener("todo.toggleAll", (ev) => {
+	this.addEventListener("todotoggleall", (ev) => {
 		todos = todos.map((todo) => ({...todo, completed: ev.detail.completed}));
 		this.refresh();
 		save(todos);
 	});
 
-	this.addEventListener("todo.clearCompleted", () => {
+	this.addEventListener("todoclearcompleted", () => {
 		todos = todos.filter((todo) => !todo.completed);
 		this.refresh();
 		save(todos);
 	});
 
-	this.addEventListener("todo.destroy", (ev) => {
+	this.addEventListener("tododestroy", (ev) => {
 		todos = todos.filter((todo) => todo.id !== ev.detail.id);
 		this.refresh();
 		save(todos);
@@ -315,7 +318,7 @@ function* App() {
 	route();
 	window.addEventListener("hashchange", route);
 	try {
-		while (true) {
+		for ({} of this) {
 			yield (
 				<Fragment>
 					<Header />
