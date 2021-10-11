@@ -36,6 +36,7 @@
         "argsIgnorePattern": "^_"
       }
     ],
+    "no-empty-pattern": 0,
     "no-dupe-class-members": 0,
     "@typescript-eslint/no-dupe-class-members": 1,
     "no-undef": 0,
