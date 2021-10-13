@@ -1,6 +1,6 @@
 name: Crank CI Workflow
 
-on:  
+on:
   pull_request:
   push:
     branches:
@@ -18,8 +18,8 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
-    - run: yarn install --frozen-lockfile
-    - run: yarn typecheck
-    - run: yarn build
-    - run: yarn test
-    - run: yarn lint
+    - run: npm install --frozen-lockfile
+    - run: npm run typecheck
+    - run: npm run lint
+    - run: npm run build
+    - run: npm run test
