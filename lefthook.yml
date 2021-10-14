@@ -7,4 +7,4 @@ pre-commit:
   commands:
     eslint:
       glob: "*.{js,ts}"
-      run: yarn lint {staged_files}
+      run: npm run lint {staged_files}
