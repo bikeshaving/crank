@@ -1,6 +1,6 @@
 /** @jsx createElement */
-import {Context, createElement, Fragment} from "@bikeshaving/crank";
-import {renderer} from "@bikeshaving/crank/dom";
+import {Context, createElement, Fragment} from "@b9g/crank";
+import {renderer} from "@b9g/crank/dom";
 import CodeMirror from "codemirror";
 import * as Babel from "@babel/standalone";
 import "codemirror/lib/codemirror.css";

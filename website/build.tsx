@@ -5,8 +5,8 @@ import {
 	Element,
 	Fragment,
 	Raw,
-} from "@bikeshaving/crank";
-import {renderer} from "@bikeshaving/crank/html";
+} from "@b9g/crank/crank.js";
+import {renderer} from "@b9g/crank/html.js";
 import fs from "fs-extra";
 import type {Stats} from "fs";
 import * as path from "path";

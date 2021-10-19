@@ -2,8 +2,8 @@
 import {promises as fs} from "fs";
 import * as path from "path";
 import * as ESBuild from "esbuild";
-import {createElement} from "@bikeshaving/crank/crank.js";
-import type {Children, Context} from "@bikeshaving/crank/crank.js";
+import {createElement} from "@b9g/crank/crank.js";
+import type {Children, Context} from "@b9g/crank/crank.js";
 import postcssPlugin from "./postcss-plugin";
 import postcssPresetEnv from "postcss-preset-env";
 import postcssNested from "postcss-nested";

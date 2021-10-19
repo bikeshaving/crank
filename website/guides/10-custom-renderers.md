@@ -2,6 +2,8 @@
 title: Custom Renderers
 ---
 
+## THIS INFORMATION IS OUT OF DATE
+
 The core Crank module provides an abstract `Renderer` class which can be extended to produce more than just DOM nodes or HTML strings, allowing you to target alternative environments such as WebGL libraries like Three.js or Pixi.js, terminals, smartphones or smart TVs. This guide provides an overview of the concepts and internal methods which you will need to know when implementing a custom renderer yourself. Alternatively, you can read through the [DOM](https://github.com/bikeshaving/crank/blob/master/src/dom.ts?ts=2) and [HTML](https://github.com/bikeshaving/crank/blob/master/src/html.ts?ts=2) renderer implementations to learn by example.
 
 **Warning:** The custom renderer API is currently unstable both because of its performance-sensitive nature and because the exact complications of rendering to a wide variety of environments are not yet fully known. If you maintain a Crank renderer, you *will* have to deal with breaking changes as Crank is optimized and as new renderer requirements are discovered.
