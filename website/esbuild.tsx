@@ -54,7 +54,7 @@ export class Storage {
 			allowOverwrite: true,
 			outbase: this.dirname,
 			outdir: this.dirname,
-			sourcemap: "inline",
+			sourcemap: true,
 			plugins: [
 				postcssPlugin({plugins: [postcssPresetEnv(), postcssNested()]}),
 			],
