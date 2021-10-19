@@ -287,8 +287,9 @@ pre {
 }
 
 :not(pre) > code {
-	padding: 0 .2em;
+	padding: .1em .2em;
 	margin: 0;
 	font-size: .9em;
 	display: inline;
+	background: #281f12;
 }
