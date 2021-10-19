@@ -25,6 +25,7 @@
     "normalize.css": "^8.0.1",
     "postcss-nested": "^5.0.6",
     "postcss-preset-env": "^6.7.0",
+    "prism-themes": "^1.9.0",
     "prismjs": "^1.25.0",
     "truncate-html": "^1.0.4",
     "tsm": "^2.1.2",
