@@ -103,7 +103,7 @@ export class Storage {
 		);
 	}
 
-	dispose(): void {
+	clear(): void {
 		for (const result of this.cache.values()) {
 			result.stop!();
 		}
