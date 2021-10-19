@@ -17,6 +17,7 @@ type CachedResult = ESBuild.BuildResult & {
 	outputFiles: Array<ESBuild.OutputFile>;
 };
 
+// TODO: better names for these options
 export interface StorageOptions {
 	dirname: string;
 	publicPath?: string | undefined;
@@ -51,6 +52,7 @@ export class Storage {
 			entryNames: "[name]-[hash]",
 			bundle: true,
 			write: false,
+			minify: true,
 			allowOverwrite: true,
 			outbase: this.dirname,
 			outdir: this.dirname,
@@ -73,7 +75,7 @@ export class Storage {
 		return result.outputFiles;
 	}
 
-	async url(filename: string, extension: string): Promise<string | undefined> {
+	async url(filename: string, extension: string): Promise<string> {
 		const outputs = await this.build(filename);
 		const output = outputs.find((output) => output.path.endsWith(extension));
 		if (!output) {
@@ -91,6 +93,7 @@ export class Storage {
 		const outputs = Array.from(this.cache.values()).flatMap(
 			(result) => result.outputFiles,
 		);
+
 		await Promise.all(
 			outputs.map(async (output) => {
 				const filename = path.join(
@@ -111,6 +114,13 @@ export class Storage {
 }
 
 const StorageKey = Symbol.for("esbuild.StorageKey");
+declare global {
+	namespace Crank {
+		interface ProvisionMap {
+			[StorageKey]: Storage;
+		}
+	}
+}
 
 export interface PageProps {
 	storage: Storage;
@@ -131,22 +141,26 @@ export function* Page(this: Context, {storage, children}: PageProps) {
 }
 
 export async function Script(this: Context, props: Record<string, any>) {
-	const storage: Storage = this.consume(StorageKey);
+	const storage = this.consume(StorageKey);
 	if (storage == null) {
 		throw new Error("Storage not found");
 	}
 
-	let {src, ...props1} = props;
+	let src: string;
+	({src, ...props} = props);
 	src = await storage.url(src, ".js");
-	return <script src={src} {...props1} />;
+	return <script src={src} {...props} />;
 }
 
 export async function Link(this: Context, props: Record<string, any>) {
-	const storage: Storage = this.consume(StorageKey);
+	const storage = this.consume(StorageKey);
 	if (storage == null) {
 		throw new Error("Storage not found");
 	}
 
-	const url = await storage.url(props.href, ".css");
-	return <link rel="stylesheet" href={url} />;
+	let href: string;
+	let rel: string;
+	({href, rel = "stylesheet", ...props} = props);
+	href = await storage.url(href, ".css");
+	return <link href={href} rel={rel} {...props} />;
 }
