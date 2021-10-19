@@ -432,6 +432,7 @@ function GuidePage({title, html, docs, url}: GuidePageProps): Element {
 		path.join(dist, "index.html"),
 		await renderer.render(<Home />),
 	);
+
 	await Promise.all(
 		docs.map(async ({title, html, url, publish}) => {
 			if (!publish) {
@@ -479,5 +480,5 @@ function GuidePage({title, html, docs, url}: GuidePageProps): Element {
 	);
 
 	await storage.write(path.join(dist, "static/"));
-	storage.dispose();
+	storage.clear();
 })();
