@@ -6,13 +6,15 @@ import {
 	Fragment,
 	Raw,
 } from "@bikeshaving/crank";
-import {renderer} from "@bikeshaving/crank/cjs/html";
-import {Stats} from "fs";
-import * as fs from "fs-extra";
+import {renderer} from "@bikeshaving/crank/html";
+import fs from "fs-extra";
+import type {Stats} from "fs";
 import * as path from "path";
 import frontmatter from "front-matter";
 import marked from "marked";
-import {Page, Link, Script, Storage} from "./webpack";
+import {Page, Link, Script, Storage} from "./esbuild";
+
+const __dirname = new URL(".", import.meta.url).pathname;
 
 interface WalkInfo {
 	filename: string;
@@ -88,7 +90,10 @@ async function parseDocs(
 	return docs;
 }
 
-const storage = new Storage(path.join(__dirname, "src"));
+const storage = new Storage({
+	dirname: path.join(__dirname, "src"),
+});
+
 interface RootProps {
 	title: string;
 	children: Children;
@@ -449,6 +454,7 @@ function GuidePage({title, html, docs, url}: GuidePageProps): Element {
 		path.join(dist, "blog/index.html"),
 		await renderer.render(<BlogIndexPage docs={posts} url="/blog" />),
 	);
+
 	await Promise.all(
 		posts.map(async ({title, html, url, publish, publishDate}) => {
 			if (!publish) {
@@ -471,4 +477,7 @@ function GuidePage({title, html, docs, url}: GuidePageProps): Element {
 			);
 		}),
 	);
+
+	await storage.write(path.join(dist, "static/"));
+	storage.dispose();
 })();
