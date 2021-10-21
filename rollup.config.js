@@ -63,6 +63,7 @@ export default [
 			dir: "dist",
 			chunkFileNames: "[hash].js",
 			sourcemap: true,
+			exports: "named",
 		},
 		plugins: [
 			ts({clean: true, transformers: [transformer]}),
@@ -78,6 +79,7 @@ export default [
 			chunkFileNames: "[hash].cjs",
 			entryFileNames: "[name].cjs",
 			sourcemap: true,
+			exports: "named",
 		},
 		plugins: [ts()],
 	},
@@ -89,6 +91,7 @@ export default [
 			name: "Crank",
 			preserveModules: false,
 			sourcemap: true,
+			exports: "named",
 		},
 		plugins: [ts()],
 	},
