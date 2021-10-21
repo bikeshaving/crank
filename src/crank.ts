@@ -277,7 +277,6 @@ export function createElement<TTag extends Tag>(
 	let static_ = false;
 	const props1 = {} as TagProps<TTag>;
 	if (props != null) {
-		// TODO: deprecate crank-whatever props
 		for (const name in props) {
 			switch (name) {
 				case "crank-key":
@@ -2518,3 +2517,9 @@ declare global {
 		}
 	}
 }
+
+/**
+ * Some JSX transpilation tools expect these functions to be defined on the
+ * default export. Prefer named exports when importing directly.
+ */
+export default {createElement, Fragment};
