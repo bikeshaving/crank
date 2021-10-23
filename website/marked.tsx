@@ -261,7 +261,7 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 
 	image({token}) {
 		const {href, title, text} = token as Tokens.Image;
-		return <img href={href} title={title} alt={text} />
+		return <img src={href} title={title} alt={text} />
 	},
 
 	strong({children}) {
