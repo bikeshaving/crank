@@ -52,7 +52,7 @@ export class Storage {
 			entryNames: "[name]-[hash]",
 			bundle: true,
 			write: false,
-			minify: true,
+			minify: false,
 			allowOverwrite: true,
 			outbase: this.dirname,
 			outdir: this.dirname,

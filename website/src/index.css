@@ -283,10 +283,11 @@ pre {
 	background: #111b27;
 	color: #e3eaf2;
 	overflow: auto;
+	line-height: 1.4;
 	tab-size: 2;
 }
 
-:not(pre) > code {
+code.inline {
 	padding: .1em .2em;
 	margin: 0;
 	font-size: .9em;

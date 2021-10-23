@@ -53,6 +53,9 @@ const markedRenderer: Partial<marked.Renderer> = {
 		}
 		return `<h${level}>${text}</h${level}>`;
 	},
+	codespan(text) {
+		return `<code class="inline">${text}</code>`;
+	},
 };
 
 marked.use({renderer: markedRenderer as marked.Renderer});
