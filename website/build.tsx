@@ -12,6 +12,8 @@ import type {Stats} from "fs";
 import * as path from "path";
 import frontmatter from "front-matter";
 import marked from "marked";
+import {createComponent} from "./marked";
+
 import {Page, Link, Script, Storage} from "./esbuild";
 
 const __dirname = new URL(".", import.meta.url).pathname;
@@ -39,6 +41,7 @@ interface DocInfo {
 	title: string;
 	filename: string;
 	html: string;
+	Body: ReturnType<typeof createComponent>;
 	publish: boolean;
 	publishDate?: Date;
 }
@@ -73,6 +76,7 @@ async function parseDocs(
 				body,
 			} = frontmatter(md);
 			const html = marked(body);
+			const Body = createComponent(body);
 			const urlRoot = path.relative(__dirname, name);
 			const url = path.join(
 				"/",
@@ -86,7 +90,7 @@ async function parseDocs(
 				publishDate = new Date(publishDate);
 			}
 
-			docs.push({url, filename, html, title, publish, publishDate});
+			docs.push({url, filename, html, Body, title, publish, publishDate});
 		}
 	}
 
@@ -312,11 +316,11 @@ function Home(): Element {
 
 interface BlogContentProps {
 	title: string;
-	html: string;
 	publishDate?: Date;
+	children: Children;
 }
 
-function BlogContent({title, html, publishDate}: BlogContentProps) {
+function BlogContent({title, publishDate, children}: BlogContentProps) {
 	const formattedDate =
 		publishDate &&
 		publishDate.toLocaleString("en-US", {
@@ -329,7 +333,7 @@ function BlogContent({title, html, publishDate}: BlogContentProps) {
 		<Fragment>
 			<h1>{title}</h1>
 			{formattedDate && <p>{formattedDate}</p>}
-			<Raw value={html} />
+			{children}
 		</Fragment>
 	);
 }
@@ -347,7 +351,9 @@ function BlogPreview({docs}: BlogPreviewProps): Array<Element> {
 
 		return (
 			<div class="content">
-				<BlogContent {...doc} html={html} />
+				<BlogContent {...doc}>
+					<Raw value={html} />
+				</BlogContent>
 				<div>
 					<a href={doc.url}>Read more…</a>
 				</div>
@@ -374,17 +380,17 @@ function BlogIndexPage({docs, url}: BlogIndexPageProps): Element {
 }
 
 interface BlogPageProps {
-	html: string;
 	title: string;
 	url: string;
 	publishDate?: Date;
 	docs: Array<DocInfo>;
+	children: Children;
 }
 
 function BlogPage({
 	title,
 	docs,
-	html,
+	children,
 	publishDate,
 	url,
 }: BlogPageProps): Element {
@@ -393,7 +399,9 @@ function BlogPage({
 			<Sidebar docs={docs} url={url} title="Recent Posts" />
 			<main class="main">
 				<div class="content">
-					<BlogContent title={title} html={html} publishDate={publishDate} />
+					<BlogContent title={title} publishDate={publishDate}>
+						{children}
+					</BlogContent>
 				</div>
 				<Footer />
 			</main>
@@ -402,20 +410,20 @@ function BlogPage({
 }
 
 interface GuidePageProps {
-	html: string;
 	title: string;
 	url: string;
 	docs: Array<DocInfo>;
+	children: Children;
 }
 
-function GuidePage({title, html, docs, url}: GuidePageProps): Element {
+function GuidePage({title, docs, url, children}: GuidePageProps): Element {
 	return (
 		<Root title={`Crank.js | ${title}`} url={url}>
 			<Sidebar docs={docs} url={url} title="Guides" />
 			<main class="main">
 				<div class="content">
 					<h1>{title}</h1>
-					<Raw value={html} />
+					{children}
 				</div>
 				<Footer />
 			</main>
@@ -437,7 +445,7 @@ function GuidePage({title, html, docs, url}: GuidePageProps): Element {
 	);
 
 	await Promise.all(
-		docs.map(async ({title, html, url, publish}) => {
+		docs.map(async ({title, url, publish, Body}) => {
 			if (!publish) {
 				return;
 			}
@@ -447,7 +455,9 @@ function GuidePage({title, html, docs, url}: GuidePageProps): Element {
 			return fs.writeFile(
 				filename,
 				await renderer.render(
-					<GuidePage title={title} html={html} docs={docs} url={url} />,
+					<GuidePage title={title} docs={docs} url={url}>
+						<Body />
+					</GuidePage>,
 				),
 			);
 		}),
@@ -472,11 +482,12 @@ function GuidePage({title, html, docs, url}: GuidePageProps): Element {
 				await renderer.render(
 					<BlogPage
 						title={title}
-						html={html}
 						docs={posts}
 						url={url}
 						publishDate={publishDate}
-					/>,
+					>
+						<Raw value={html} />
+					</BlogPage>
 				),
 			);
 		}),
