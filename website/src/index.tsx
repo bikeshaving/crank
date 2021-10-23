@@ -166,6 +166,8 @@ function CodeBlock({code, language}: {code: string; language: string}) {
 	return <div contenteditable="true">{printLines(tokens, language)}</div>;
 }
 
+console.log(document.querySelectorAll(selector));
+
 for (const el of Array.from(document.querySelectorAll(selector))) {
 	const language = getLanguage(el);
 	// Set language on the element, if not present
