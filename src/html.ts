@@ -63,6 +63,11 @@ function printAttrs(props: Record<string, any>): string {
 					attrs.push(`style="${escape(printStyleObject(value))}"`);
 				}
 				break;
+			case name === "className":
+				if (!("class" in props)) {
+					attrs.push(`class="${escape(value)}"`);
+				}
+				break;
 			case typeof value === "string":
 				attrs.push(`${escape(name)}="${escape(value)}"`);
 				break;
