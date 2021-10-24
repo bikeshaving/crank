@@ -1,5 +1,5 @@
 /** @jsx createElement */
-import {createElement, Fragment} from "@b9g/crank";
+import {createElement, Fragment, Raw} from "@b9g/crank";
 import type {Children, Component, Element} from "@b9g/crank";
 import marked from "marked";
 // TODO: Allow Token to be extended somehow
@@ -183,7 +183,7 @@ export interface TokenProps {
 //}
 
 export interface Checkmark {
-	type: 'checkmark';
+	type: "checkmark";
 	raw: string;
 	checked: boolean;
 }
@@ -208,7 +208,7 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 		return <Tag>{children}</Tag>;
 	},
 
-// TODO: type: 'table';
+	// TODO: type: 'table';
 
 	hr: () => <hr />,
 
@@ -220,9 +220,7 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 		const {ordered, start} = token as Tokens.List;
 		const Tag = ordered ? "ol" : "ul";
 
-		return (
-			<Tag start={start && start !== 1 ? start : null}>{children}</Tag>
-		);
+		return <Tag start={start && start !== 1 ? start : null}>{children}</Tag>;
 	},
 
 	list_item({children}) {
@@ -239,6 +237,10 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 	},
 
 	// TODO: type: 'html';
+	html({token}) {
+		const {text} = token as Tokens.HTML;
+		return <Raw value={text} />;
+	},
 
 	// TODO: type: 'def';
 
@@ -247,12 +249,16 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 	link({token, children}) {
 		const {href, title} = token as Tokens.Link;
 		// TODO: url sanitization?
-		return <a href={href} title={title}>{children}</a>;
+		return (
+			<a href={href} title={title}>
+				{children}
+			</a>
+		);
 	},
 
 	image({token}) {
 		const {href, title, text} = token as Tokens.Image;
-		return <img src={href} title={title} alt={text} />
+		return <img src={href} title={title} alt={text} />;
 	},
 
 	strong({children}) {
@@ -264,7 +270,7 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 	},
 
 	codespan({token}) {
-		const {text} = token as Tokens.Code;
+		const {text} = token as Tokens.Codespan;
 		return <code>{text}</code>;
 	},
 
@@ -294,7 +300,7 @@ function build(
 				if (tokens && tokens.length) {
 					if (top) {
 						token = {
-							type: 'paragraph',
+							type: "paragraph",
 							// TODO: populate these properties
 							raw: "",
 							text: "",
@@ -312,6 +318,7 @@ function build(
 
 				break;
 			}
+
 			case "table": {
 				throw new Error("TODO");
 			}
@@ -335,7 +342,11 @@ function build(
 						checked: !!token.checked,
 					};
 
-					if (token.tokens[0] && (token.tokens[0] as any).tokens && (token.tokens[0] as any).tokens.length) {
+					if (
+						token.tokens[0] &&
+						(token.tokens[0] as any).tokens &&
+						(token.tokens[0] as any).tokens.length
+					) {
 						(token.tokens[0] as any).tokens.unshift(checkmark);
 					} else {
 						tokens.unshift(checkmark as unknown as Token);
@@ -346,6 +357,20 @@ function build(
 				break;
 			}
 
+			case "codespan": {
+				// The marked Lexer escapes codespans but escaping is handled by the
+				// renderer.
+				let text = token.raw.replace(/^`+/, "").replace(/`+$/, "");
+				const hasNonSpaceChars = /[^ ]/.test(text);
+				const hasSpaceCharsOnBothEnds = /^ /.test(text) && / $/.test(text);
+				if (hasNonSpaceChars && hasSpaceCharsOnBothEnds) {
+					text = text.substring(1, text.length - 1);
+				}
+
+				token.text = text;
+				break;
+			}
+
 			default: {
 				if ("tokens" in token && token.tokens.length) {
 					children = build(token.tokens, props);
@@ -353,7 +378,11 @@ function build(
 			}
 		}
 
-		const Tag = props.components![token.type] || "unknown";
+		const Tag = props.components![token.type];
+		if (Tag == null) {
+			throw new Error(`Unknown tag "${token.type}"`);
+		}
+
 		result.push(createElement(Tag, {token, rootProps: props, children}));
 	}
 
