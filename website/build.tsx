@@ -11,6 +11,7 @@ import fs from "fs-extra";
 import type {Stats} from "fs";
 import * as path from "path";
 import frontmatter from "front-matter";
+
 import marked from "marked";
 import {createComponent} from "./marked";
 
@@ -75,6 +76,7 @@ async function parseDocs(
 				attributes: {title, publish = true, publishDate},
 				body,
 			} = frontmatter(md);
+			// TODO: get rid of this
 			const html = marked(body);
 			const Body = createComponent(body);
 			const urlRoot = path.relative(__dirname, name);
@@ -233,6 +235,7 @@ function Sidebar({docs, title, url}: SidebarProps): Element {
 }
 
 function Home(): Element {
+	// TODO: Move home content to a document.
 	return (
 		<Root title="Crank.js" url="/">
 			<div class="home">
@@ -441,15 +444,13 @@ const components = {
 	const dist = path.join(__dirname, "./dist");
 	await fs.ensureDir(dist);
 	await fs.emptyDir(dist);
-	const docs = await parseDocs(path.join(__dirname, "guides"));
-	const posts = await parseDocs(path.join(__dirname, "blog"));
-	posts.reverse();
 	await fs.copy(path.join(__dirname, "static"), path.join(dist, "static"));
 	await fs.writeFile(
 		path.join(dist, "index.html"),
 		await renderer.render(<Home />),
 	);
 
+	const docs = await parseDocs(path.join(__dirname, "guides"));
 	await Promise.all(
 		docs.map(async ({title, url, publish, Body}) => {
 			if (!publish) {
@@ -469,6 +470,8 @@ const components = {
 		}),
 	);
 
+	const posts = await parseDocs(path.join(__dirname, "blog"));
+	posts.reverse();
 	await fs.ensureDir(path.join(dist, "blog"));
 	await fs.writeFile(
 		path.join(dist, "blog/index.html"),
@@ -476,7 +479,7 @@ const components = {
 	);
 
 	await Promise.all(
-		posts.map(async ({title, html, url, publish, publishDate}) => {
+		posts.map(async ({title, Body, url, publish, publishDate}) => {
 			if (!publish) {
 				return;
 			}
@@ -492,7 +495,7 @@ const components = {
 						url={url}
 						publishDate={publishDate}
 					>
-						<Raw value={html} />
+						<Body components={components} />
 					</BlogPage>,
 				),
 			);
