@@ -1,7 +1,8 @@
 /** @jsx createElement */
-import {createElement, Fragment, isElement} from "@b9g/crank";
+import {createElement, Fragment} from "@b9g/crank";
 import type {Children, Component, Element} from "@b9g/crank";
 import marked from "marked";
+// TODO: Allow Token to be extended somehow
 import type {Token, Tokens} from "marked";
 
 export interface MarkedProps {
@@ -180,6 +181,13 @@ export interface TokenProps {
 // raw: string;
 // tokens?: Token[] | undefined;
 //}
+
+export interface Checkmark {
+	type: 'checkmark';
+	raw: string;
+	checked: boolean;
+}
+
 export const defaultComponents: Record<string, Component<TokenProps>> = {
 	space: () => null,
 
@@ -217,30 +225,13 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 		);
 	},
 
-	list_item({token, children}) {
-		const {task, checked, loose} = token as Tokens.ListItem;
-		let checkmark: Element | undefined;
-		if (task) {
-			checkmark = <input checked={checked} disabled="" type="checkbox" />;
-			if (loose) {
-				// A hack to get the checkmark inside the paragraph in loose lists
-				// children should probably always be an array here.
-				const childArr = Array.isArray(children) ? children.slice() : [children];
-				const firstChild = childArr[0];
-				if (isElement(firstChild)) {
-					childArr[0] = createElement(
-						firstChild.tag,
-						firstChild.props,
-						createElement(Fragment, null, [checkmark, firstChild.props.children]),
-					);
-				}
+	list_item({children}) {
+		return <li>{children}</li>;
+	},
 
-				children = childArr;
-				return <li>{childArr}</li>;
-			}
-		}
-
-		return <li>{checkmark}{children}</li>;
+	checkmark({token}) {
+		const {checked} = token as unknown as Checkmark;
+		return <input checked={checked} disabled="" type="checkbox" />;
 	},
 
 	paragraph({children}) {
@@ -302,24 +293,14 @@ function build(
 				const {tokens} = token as Tokens.Text;
 				if (tokens && tokens.length) {
 					if (top) {
-						let raw = token.raw;
-						let text = token.text;
-						const tokens1: Array<Tokens.Text> = [token as Tokens.Text];
-						// TODO: collect adjacent text tokens
-						for (; tokens[i + 1] && tokens[i + 1].type === "text"; i++) {
-							const token1 = tokens[i + 1] as Tokens.Text;
-							tokens1.push(token1);
-							raw += token1.raw;
-							text += token1.text;
-						}
-
 						token = {
 							type: 'paragraph',
-							raw,
-							text,
-							tokens: tokens1,
+							// TODO: populate these properties
+							raw: "",
+							text: "",
+							tokens: tokens,
 						};
-						children = build(tokens1, props);
+						children = build(tokens, props);
 					} else {
 						result.push(...build(tokens, props));
 						continue;
@@ -345,7 +326,23 @@ function build(
 			}
 
 			case "list_item": {
-				children = build(token.tokens, props, top);
+				// A hack to get a checkmark token inside the paragraph for loose lists.
+				if (token.task) {
+					const checkmark: Checkmark = {
+						type: "checkmark",
+						// TODO: fill this in with the raw value?
+						raw: "",
+						checked: !!token.checked,
+					};
+
+					if (token.tokens[0] && (token.tokens[0] as any).tokens && (token.tokens[0] as any).tokens.length) {
+						(token.tokens[0] as any).tokens.unshift(checkmark);
+					} else {
+						tokens.unshift(checkmark as unknown as Token);
+					}
+				}
+
+				children = build(token.tokens, props, token.loose);
 				break;
 			}
 
@@ -363,9 +360,7 @@ function build(
 	return result;
 }
 
-export function createComponent(
-	markdown: string,
-): Component<MarkedProps> {
+export function createComponent(markdown: string): Component<MarkedProps> {
 	const tokens = marked.Lexer.lex(markdown);
 	return function Marked(props: MarkedProps) {
 		props = {
@@ -377,3 +372,14 @@ export function createComponent(
 		return createElement(Fragment, {children});
 	};
 }
+
+//import {renderer} from "@b9g/crank/html";
+//{
+//	const Marked = createComponent(`
+//- [ ] hello
+//- [ ] world
+//
+//all the items
+//`.trimStart());
+//	console.log(renderer.render(<Marked />));
+//}
