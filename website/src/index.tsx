@@ -166,22 +166,9 @@ function CodeBlock({code, language}: {code: string; language: string}) {
 	return <div contenteditable="true">{printLines(tokens, language)}</div>;
 }
 
-console.log(document.querySelectorAll(selector));
-
 for (const el of Array.from(document.querySelectorAll(selector))) {
-	const language = getLanguage(el);
-	// Set language on the element, if not present
-	//	el.className = el.className.replace(language, '').replace(/\s+/g, ' ') + ' language-' + language;
-	//
-	// This is causing an FOUC for some reason.
-	// Set language on the parent, for styling
-	//const parent = el.parentElement;
-	//if (parent && parent.nodeName.toLowerCase() === 'pre') {
-	//	parent.className = parent.className.replace(language, '').replace(/\s+/g, ' ') + ' language-' + language;
-	//}
-
 	renderer.render(
-		<CodeBlock code={el.textContent || ""} language={language} />,
+		<CodeBlock code={el.textContent || ""} language={getLanguage(el)} />,
 		el.parentNode!,
 	);
 }
