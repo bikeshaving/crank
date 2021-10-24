@@ -15,6 +15,15 @@ import frontmatter from "front-matter";
 import marked from "marked";
 import {createComponent} from "./marked";
 
+// TODO: lazily import these?
+import "prismjs";
+import "prismjs/components/prism-javascript.js";
+import "prismjs/components/prism-jsx.js";
+import "prismjs/components/prism-typescript.js";
+import "prismjs/components/prism-tsx.js";
+import "prismjs/components/prism-diff.js";
+import "prismjs/components/prism-bash.js";
+import {CodeBlock} from "../shared/prism";
 import {Page, Link, Script, Storage} from "./esbuild";
 
 const rootDirname = new URL("..", import.meta.url).pathname;
@@ -430,6 +439,15 @@ function GuidePage({title, docs, url, children}: GuidePageProps): Element {
 const components = {
 	codespan({token}: any) {
 		return <code class="inline">{token.text}</code>;
+	},
+
+	code({token}: any) {
+		const {text: code, lang} = token;
+		return (
+			<div class="codeblock" data-code={code} data-lang={lang}>
+				<CodeBlock code={code} lang={lang} />
+			</div>
+		);
 	},
 };
 
