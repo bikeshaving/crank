@@ -193,10 +193,10 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 
 	code({token}) {
 		const {text, lang} = token as Tokens.Code;
-		const className = lang ? `language-${lang}` : null;
+		const langClassName = lang ? `language-${lang}` : null;
 		return (
-			<pre className={className}>
-				<code className={className}>{text}</code>
+			<pre className={langClassName}>
+				<code className={langClassName}>{text}</code>
 			</pre>
 		);
 	},
@@ -284,7 +284,7 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 function build(
 	tokens: Array<Token>,
 	props: MarkedProps,
-	top = false,
+	blockLevel = false,
 ): Array<Element | string> {
 	const result: Array<Element | string> = [];
 	for (let i = 0; i < tokens.length; i++) {
@@ -298,19 +298,23 @@ function build(
 			}
 
 			case "text": {
-				const {tokens} = token as Tokens.Text;
-				if (tokens && tokens.length) {
-					if (top) {
+				const {tokens: tokens1} = token as Tokens.Text;
+				if (tokens1 && tokens1.length) {
+					if (blockLevel) {
+						for (; tokens[i + 1] && tokens[i + 1].type === "text"; i++) {
+							tokens1.push(tokens[i + 1]);
+						}
+
 						token = {
 							type: "paragraph",
 							// TODO: populate these properties
 							raw: "",
 							text: "",
-							tokens: tokens,
+							tokens: tokens1,
 						};
-						children = build(tokens, props);
+						children = build(tokens1, props);
 					} else {
-						result.push(...build(tokens, props));
+						result.push(...build(tokens1, props));
 						continue;
 					}
 				} else {
@@ -397,6 +401,7 @@ function build(
 	return result;
 }
 
+// TODO: Should the components be passed into the outer function?
 export function createComponent(markdown: string): Component<MarkedProps> {
 	const tokens = marked.Lexer.lex(markdown);
 	return function Marked(props: MarkedProps) {
@@ -413,8 +418,14 @@ export function createComponent(markdown: string): Component<MarkedProps> {
 //import {renderer} from "@b9g/crank/html";
 //import {promises as fs} from "node:fs";
 //(async () => {
-//	const blog = await fs.readFile("./blog/2020-04-15-introducing-crank.md", "utf-8");
-//	const Marked = createComponent(blog);
+//	//const blog = await fs.readFile("./blog/2020-04-15-introducing-crank.md", "utf-8");
+//	//const Marked = createComponent(blog);
+//	const Marked = createComponent(`
+//- hello
+//
+//	uhhh
+//
+//- world`);
 //	const html = renderer.render(<Marked />);
-//	//console.log(html);
+//	console.log(html);
 //})();

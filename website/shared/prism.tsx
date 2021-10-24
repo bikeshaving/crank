@@ -1,20 +1,9 @@
 /** @jsx createElement */
+import {createElement} from "@b9g/crank";
+
 import Prism from "prismjs";
 import type {Token} from "prismjs";
-import {createElement} from "@b9g/crank";
-import type {Element} from "@b9g/crank";
-import {renderer} from "@b9g/crank/dom.js";
 
-// TODO: lazily import these?
-import "prismjs/components/prism-javascript";
-import "prismjs/components/prism-jsx";
-import "prismjs/components/prism-typescript";
-import "prismjs/components/prism-tsx";
-import "prismjs/components/prism-diff";
-import "prismjs/components/prism-bash";
-
-// @ts-ignore
-Prism.manual = true;
 function wrapContent(
 	content: Array<Token | string> | Token | string,
 ): Array<Token | string> {
@@ -92,21 +81,6 @@ function splitLines(
 	return lines;
 }
 
-// https://github.com/PrismJS/prism/blob/a80a68ba507dae20f007a0817d9812f8eebcc5ce/components/prism-core.js#L22
-const lang = /\blang(?:uage)?-([\w-]+)\b/i;
-// TOOD: type el
-function getLanguage(el: any): string {
-	while (el && !lang.test(el.className)) {
-		el = el.parentElement;
-	}
-
-	if (el) {
-		return (el.className.match(lang) || [null, "none"])[1].toLowerCase();
-	}
-
-	return "none";
-}
-
 function tokenize(
 	text: string,
 	language: string,
@@ -156,19 +130,7 @@ function printLines(
 		);
 	});
 }
-
-// https://github.com/PrismJS/prism/blob/a80a68ba507dae20f007a0817d9812f8eebcc5ce/components/prism-core.js#L502
-const selector =
-	'code[class*="language-"], [class*="language-"] code, code[class*="lang-"], [class*="lang-"] code';
-
-function CodeBlock({code, language}: {code: string; language: string}) {
-	const tokens = tokenize(code, language);
-	return <div contenteditable="true">{printLines(tokens, language)}</div>;
-}
-
-for (const el of Array.from(document.querySelectorAll(selector))) {
-	renderer.render(
-		<CodeBlock code={el.textContent || ""} language={getLanguage(el)} />,
-		el.parentNode!,
-	);
+export function CodeBlock({code, lang}: {code: string; lang: string}) {
+	const tokens = tokenize(code, lang);
+	return <div contenteditable="true">{printLines(tokens, lang)}</div>;
 }

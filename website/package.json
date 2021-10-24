@@ -2,8 +2,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsm build.tsx && echo crank.js.org > dist/CNAME",
-    "predeploy": "yarn build",
+    "build": "tsm server/build.tsx && echo crank.js.org > dist/CNAME",
+    "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {

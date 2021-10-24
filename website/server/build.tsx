@@ -17,7 +17,7 @@ import {createComponent} from "./marked";
 
 import {Page, Link, Script, Storage} from "./esbuild";
 
-const __dirname = new URL(".", import.meta.url).pathname;
+const rootDirname = new URL("..", import.meta.url).pathname;
 
 interface WalkInfo {
 	filename: string;
@@ -64,10 +64,8 @@ const markedRenderer: Partial<marked.Renderer> = {
 
 marked.use({renderer: markedRenderer as marked.Renderer});
 
-async function parseDocs(
-	name: string,
-	root: string = name,
-): Promise<Array<DocInfo>> {
+async function parseDocs(name: string): Promise<Array<DocInfo>> {
+	const root = path.join(rootDirname, "documents");
 	let docs: Array<DocInfo> = [];
 	for await (const {filename} of walk(name)) {
 		if (filename.endsWith(".md")) {
@@ -79,15 +77,10 @@ async function parseDocs(
 			// TODO: get rid of this
 			const html = marked(body);
 			const Body = createComponent(body);
-			const urlRoot = path.relative(__dirname, name);
-			const url = path.join(
-				"/",
-				urlRoot,
-				path
-					.relative(root, filename)
-					.replace(/\.md$/, "")
-					.replace(/([0-9]+-)*/, ""),
-			);
+			const url = path
+				.join("/", path.relative(root, filename))
+				.replace(/\.md$/, "")
+				.replace(/([0-9]+-)+/, "");
 			if (publishDate != null) {
 				publishDate = new Date(publishDate);
 			}
@@ -100,7 +93,7 @@ async function parseDocs(
 }
 
 const storage = new Storage({
-	dirname: path.join(__dirname, "src"),
+	dirname: rootDirname,
 });
 
 interface RootProps {
@@ -120,7 +113,7 @@ function Root({title, children, url}: RootProps): Element {
 						<meta charset="UTF-8" />
 						<meta name="viewport" content="width=device-width" />
 						<title>{title}</title>
-						<Link rel="stylesheet" type="text/css" href="./index.css" />
+						<Link rel="stylesheet" type="text/css" href="client/index.css" />
 						<link rel="shortcut icon" href="/static/favicon.ico" />
 						<script
 							async
@@ -139,7 +132,7 @@ function Root({title, children, url}: RootProps): Element {
 					<body>
 						<Navbar url={url} />
 						{children}
-						<Script src="index.tsx" />
+						<Script src="client/index.tsx" />
 					</body>
 				</html>
 			</Page>
@@ -441,16 +434,16 @@ const components = {
 };
 
 (async () => {
-	const dist = path.join(__dirname, "./dist");
+	const dist = path.join(rootDirname, "./dist");
 	await fs.ensureDir(dist);
 	await fs.emptyDir(dist);
-	await fs.copy(path.join(__dirname, "static"), path.join(dist, "static"));
+	await fs.copy(path.join(rootDirname, "static"), path.join(dist, "static"));
 	await fs.writeFile(
 		path.join(dist, "index.html"),
 		await renderer.render(<Home />),
 	);
 
-	const docs = await parseDocs(path.join(__dirname, "guides"));
+	const docs = await parseDocs(path.join(rootDirname, "documents/guides"));
 	await Promise.all(
 		docs.map(async ({title, url, publish, Body}) => {
 			if (!publish) {
@@ -470,7 +463,7 @@ const components = {
 		}),
 	);
 
-	const posts = await parseDocs(path.join(__dirname, "blog"));
+	const posts = await parseDocs(path.join(rootDirname, "documents/blog"));
 	posts.reverse();
 	await fs.ensureDir(path.join(dist, "blog"));
 	await fs.writeFile(
