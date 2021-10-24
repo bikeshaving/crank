@@ -431,6 +431,12 @@ function GuidePage({title, docs, url, children}: GuidePageProps): Element {
 	);
 }
 
+const components = {
+	codespan({token}: any) {
+		return <code class="inline">{token.text}</code>;
+	},
+};
+
 (async () => {
 	const dist = path.join(__dirname, "./dist");
 	await fs.ensureDir(dist);
@@ -456,7 +462,7 @@ function GuidePage({title, docs, url, children}: GuidePageProps): Element {
 				filename,
 				await renderer.render(
 					<GuidePage title={title} docs={docs} url={url}>
-						<Body />
+						<Body components={components} />
 					</GuidePage>,
 				),
 			);
@@ -487,7 +493,7 @@ function GuidePage({title, docs, url, children}: GuidePageProps): Element {
 						publishDate={publishDate}
 					>
 						<Raw value={html} />
-					</BlogPage>
+					</BlogPage>,
 				),
 			);
 		}),
