@@ -85,7 +85,8 @@ function tokenize(
 	text: string,
 	language: string,
 ): Array<Array<Token | string>> {
-	return splitLines(Prism.tokenize(text, Prism.languages[language]));
+	const tokens = Prism.tokenize(text, Prism.languages[language]);
+	return splitLines(tokens);
 }
 
 function printTokens(tokens: Array<Token | string>): Array<Element | string> {
@@ -114,7 +115,7 @@ function printTokens(tokens: Array<Token | string>): Array<Element | string> {
 
 function printLines(
 	lines: Array<Array<Token | string>>,
-	language: string,
+	className: string | null,
 	//keyer: Keyer,
 ): Array<Element> {
 	//let cursor = 0;
@@ -123,7 +124,7 @@ function printLines(
 		//const length = line.reduce((l, t) => l + t.length, 0);
 		//cursor += length + 1;
 		return (
-			<div class={`language-${language}`}>
+			<div class={className}>
 				<code>{printTokens(line)}</code>
 				<br />
 			</div>
@@ -132,5 +133,10 @@ function printLines(
 }
 export function CodeBlock({code, lang}: {code: string; lang: string}) {
 	const tokens = tokenize(code, lang);
-	return <div contenteditable="true">{printLines(tokens, lang)}</div>;
+	const langClassName = lang ? `language-${lang}` : null;
+	return (
+		<pre contenteditable={true} className={langClassName}>
+			{printLines(tokens, langClassName)}
+		</pre>
+	);
 }
