@@ -236,15 +236,17 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 		return <p>{children}</p>;
 	},
 
-	// TODO: type: 'html';
 	html({token}) {
+		// TODO: Is this all that’s necessary?
 		const {text} = token as Tokens.HTML;
 		return <Raw value={text} />;
 	},
 
 	// TODO: type: 'def';
+	// This token type does not seem to be used by marked.
 
 	// TODO: type: 'text' | 'html';
+	// This is for tag tokens, which might not be a thing.
 
 	link({token, children}) {
 		const {href, title} = token as Tokens.Link;
@@ -317,6 +319,12 @@ function build(
 				}
 
 				break;
+			}
+
+			case "html": {
+				// TODO:
+				//console.log(token);
+				continue;
 			}
 
 			case "table": {
@@ -403,12 +411,10 @@ export function createComponent(markdown: string): Component<MarkedProps> {
 }
 
 //import {renderer} from "@b9g/crank/html";
-//{
-//	const Marked = createComponent(`
-//- [ ] hello
-//- [ ] world
-//
-//all the items
-//`.trimStart());
-//	console.log(renderer.render(<Marked />));
-//}
+//import {promises as fs} from "node:fs";
+//(async () => {
+//	const blog = await fs.readFile("./blog/2020-04-15-introducing-crank.md", "utf-8");
+//	const Marked = createComponent(blog);
+//	const html = renderer.render(<Marked />);
+//	//console.log(html);
+//})();
