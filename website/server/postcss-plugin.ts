@@ -1,11 +1,12 @@
 import {promises as fs} from "fs";
-import postcss from "postcss";
 import type {Plugin} from "esbuild";
+import postcss from "postcss";
+import type {AcceptedPlugin} from "postcss";
 
 export default function postcssPlugin({
 	plugins,
 }: {
-	plugins: Array<postcss.AcceptedPlugin>;
+	plugins: Array<AcceptedPlugin>;
 }): Plugin {
 	return {
 		name: "postcss",
