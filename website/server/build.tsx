@@ -7,13 +7,11 @@ import {
 	Raw,
 } from "@b9g/crank/crank.js";
 import {renderer} from "@b9g/crank/html.js";
+
 import fs from "fs-extra";
 import type {Stats} from "fs";
 import * as path from "path";
 import frontmatter from "front-matter";
-
-import marked from "marked";
-import {createComponent} from "./marked";
 
 // TODO: lazily import these?
 import "prismjs";
@@ -23,6 +21,8 @@ import "prismjs/components/prism-typescript.js";
 import "prismjs/components/prism-tsx.js";
 import "prismjs/components/prism-diff.js";
 import "prismjs/components/prism-bash.js";
+
+import {createComponent} from "./marked";
 import {CodeBlock} from "../shared/prism";
 import {Page, Link, Script, Storage} from "./esbuild";
 
@@ -47,54 +47,33 @@ async function* walk(dir: string): AsyncGenerator<WalkInfo> {
 }
 
 interface DocInfo {
+	attributes: {
+		title: string;
+		publish: boolean;
+		publishDate?: Date;
+	};
 	url: string;
-	title: string;
 	filename: string;
-	html: string;
-	Body: ReturnType<typeof createComponent>;
-	publish: boolean;
-	publishDate?: Date;
+	body: string;
 }
 
-const markedRenderer: Partial<marked.Renderer> = {
-	heading(text, level, raw, slugger) {
-		const slug = slugger.slug(raw);
-		if (level <= 3) {
-			return `<h${level}>
-				<a class="anchor" name="${slug}" href="#${slug}">${text}</a>
-			</h${level}>`;
-		}
-		return `<h${level}>${text}</h${level}>`;
-	},
-	codespan(text) {
-		return `<code class="inline">${text}</code>`;
-	},
-};
-
-marked.use({renderer: markedRenderer as marked.Renderer});
-
-async function parseDocs(name: string): Promise<Array<DocInfo>> {
+async function collectDocuments(name: string): Promise<Array<DocInfo>> {
 	const root = path.join(rootDirname, "documents");
 	let docs: Array<DocInfo> = [];
 	for await (const {filename} of walk(name)) {
 		if (filename.endsWith(".md")) {
 			const md = await fs.readFile(filename, {encoding: "utf8"});
-			let {
-				attributes: {title, publish = true, publishDate},
-				body,
-			} = frontmatter(md);
-			// TODO: get rid of this
-			const html = marked(body);
-			const Body = createComponent(body);
+			let {attributes, body} = frontmatter(md) as unknown as DocInfo;
+			attributes.publish = attributes.publish == null ? true : attributes.publish;
+			if (attributes.publishDate != null) {
+				attributes.publishDate = new Date(attributes.publishDate);
+			}
+
 			const url = path
 				.join("/", path.relative(root, filename))
 				.replace(/\.md$/, "")
 				.replace(/([0-9]+-)+/, "");
-			if (publishDate != null) {
-				publishDate = new Date(publishDate);
-			}
-
-			docs.push({url, filename, html, Body, title, publish, publishDate});
+			docs.push({url, filename, body, attributes});
 		}
 	}
 
@@ -217,11 +196,11 @@ function Footer(): Element {
 function Sidebar({docs, title, url}: SidebarProps): Element {
 	const links: Array<Element> = [];
 	for (const doc of docs) {
-		if (doc.publish) {
+		if (doc.attributes.publish) {
 			links.push(
 				<div class="sidebar-item">
 					<a href={doc.url} class={doc.url === url ? "current" : ""}>
-						{doc.title}
+						{doc.attributes.title}
 					</a>
 				</div>,
 			);
@@ -349,15 +328,31 @@ interface BlogPreviewProps {
 
 function BlogPreview({docs}: BlogPreviewProps): Array<Element> {
 	return docs.map((doc) => {
-		let html = doc.html;
-		if (html.match("<!-- truncate -->")) {
-			[html] = html.split("<!-- truncate -->");
+		let {body} = doc;
+		if (body.match("<!-- endpreview -->")) {
+			body = body.split("<!-- endpreview -->")[0];
+		} else {
+			const lines = body.split(/\r\n|\r|\n/);
+			body = "";
+			let count = 0;
+			for (const line of lines) {
+				body += line + "\n";
+				if (line.trim()) {
+					count++;
+				}
+
+				if (count > 2) {
+					break;
+				}
+			}
 		}
 
+		const {title, publishDate} = doc.attributes;
+		const Body = createComponent(body);
 		return (
 			<div class="content">
-				<BlogContent {...doc}>
-					<Raw value={html} />
+				<BlogContent title={title} publishDate={publishDate}>
+					<Body components={components} />
 				</BlogContent>
 				<div>
 					<a href={doc.url}>Read more…</a>
@@ -461,57 +456,68 @@ const components = {
 		await renderer.render(<Home />),
 	);
 
-	const docs = await parseDocs(path.join(rootDirname, "documents/guides"));
-	await Promise.all(
-		docs.map(async ({title, url, publish, Body}) => {
-			if (!publish) {
-				return;
-			}
+	{
+		const docs = await collectDocuments(path.join(rootDirname, "documents/guides"));
+		await Promise.all(
+			docs.map(async ({attributes: {title, publish}, url, body}) => {
+				if (!publish) {
+					return;
+				}
 
-			const filename = path.join(dist, url + ".html");
-			await fs.ensureDir(path.dirname(filename));
-			return fs.writeFile(
-				filename,
-				await renderer.render(
-					<GuidePage title={title} docs={docs} url={url}>
-						<Body components={components} />
-					</GuidePage>,
-				),
-			);
-		}),
-	);
+				const Body = createComponent(body);
+				const filename = path.join(dist, url + ".html");
+				await fs.ensureDir(path.dirname(filename));
+				return fs.writeFile(
+					filename,
+					await renderer.render(
+						<GuidePage title={title} docs={docs} url={url}>
+							<Body components={components} />
+						</GuidePage>,
+					),
+				);
+			}),
+		);
+	}
 
-	const posts = await parseDocs(path.join(rootDirname, "documents/blog"));
-	posts.reverse();
-	await fs.ensureDir(path.join(dist, "blog"));
-	await fs.writeFile(
-		path.join(dist, "blog/index.html"),
-		await renderer.render(<BlogIndexPage docs={posts} url="/blog" />),
-	);
+	{
+		const posts = await collectDocuments(path.join(rootDirname, "documents/blog"));
+		posts.reverse();
 
-	await Promise.all(
-		posts.map(async ({title, Body, url, publish, publishDate}) => {
-			if (!publish) {
-				return;
-			}
+		await fs.ensureDir(path.join(dist, "blog"));
+		await fs.writeFile(
+			path.join(dist, "blog/index.html"),
+			await renderer.render(<BlogIndexPage docs={posts} url="/blog" />),
+		);
 
-			const filename = path.join(dist, url + ".html");
-			await fs.ensureDir(path.dirname(filename));
-			return fs.writeFile(
-				filename,
-				await renderer.render(
-					<BlogPage
-						title={title}
-						docs={posts}
-						url={url}
-						publishDate={publishDate}
-					>
-						<Body components={components} />
-					</BlogPage>,
-				),
-			);
-		}),
-	);
+		await Promise.all(
+			posts.map(async ({
+				attributes: {title, publish, publishDate},
+				url,
+				body,
+			}) => {
+				if (!publish) {
+					return;
+				}
+
+				const Body = createComponent(body);
+				const filename = path.join(dist, url + ".html");
+				await fs.ensureDir(path.dirname(filename));
+				return fs.writeFile(
+					filename,
+					await renderer.render(
+						<BlogPage
+							title={title}
+							docs={posts}
+							url={url}
+							publishDate={publishDate}
+						>
+							<Body components={components} />
+						</BlogPage>,
+					),
+				);
+			}),
+		);
+	}
 
 	await storage.write(path.join(dist, "static/"));
 	storage.clear();

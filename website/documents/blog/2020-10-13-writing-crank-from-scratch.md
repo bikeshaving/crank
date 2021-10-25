@@ -6,7 +6,7 @@ publishDate: 2020-10-13
 One of my goals when authoring Crank.js was to create a framework which was so simple that any intermediate JavaScript developer could conceivably write it from scratch. What I think makes this uniquely achievable for Crank is that its component model is built on top of JavaScript’s two main control flow abstractions, iterators and promises, allowing developers to write components exclusively with sync and async functions and generator functions.
 
 The following is an attempt to prove that I’ve met this goal by rewriting the bulk of Crank’s core logic as a series of additive commits, with explanations for what I’m doing at each step.
-<!-- truncate -->
+<!-- endpreview -->
 
 Even if you don’t plan on using Crank, this essay may yet prove informative in that it will demonstrate the basics of how virtual DOM libraries work, and show you some advanced techniques for working with iterators and promises. I will also attempt to justify some of the design decisions I made along the way, as I make them. Moreover, the end result won’t just be a toy library, but something which looks very similar to Crank’s actual source code, making the jump from reading this essay to contributing to the project much easier, should you be so inclined.
 

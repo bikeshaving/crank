@@ -29,7 +29,7 @@ renderer.render(<div id="hello">Hello world</div>, document.body);
 
 ## Key Examples
 ### A Simple Component
-```jsx
+```jsx live
 /** @jsx createElement */
 import {createElement} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
