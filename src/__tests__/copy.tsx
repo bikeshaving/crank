@@ -1,6 +1,5 @@
-/** @jsx createElement */
-import {Context, Copy, createElement, Element, Fragment} from "../index";
-import {renderer} from "../dom";
+import {Context, Copy, createElement, Element, Fragment} from "../crank.js";
+import {renderer} from "../dom.js";
 
 describe("Copy", () => {
 	afterEach(() => {

@@ -1,6 +1,5 @@
-/** @jsx createElement */
-import {createElement, Element} from "../index";
-import {renderer} from "../dom";
+import {createElement, Element} from "../crank.js";
+import {renderer} from "../dom.js";
 
 describe("async function component", () => {
 	afterEach(() => {

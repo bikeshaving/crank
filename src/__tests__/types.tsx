@@ -1,6 +1,5 @@
-/** @jsx createElement */
 /* eslint @typescript-eslint/no-unused-vars: "off", jest/expect-expect: "off" */
-import {Component, Context, createElement} from "..";
+import {Component, Context, createElement} from "../crank.js";
 
 declare global {
 	module JSX {

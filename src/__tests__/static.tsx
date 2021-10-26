@@ -1,7 +1,6 @@
 /// <ref lib="dom" />
-/** @jsx createElement */
-import {createElement, Context} from "../index";
-import {renderer} from "../dom";
+import {createElement, Context} from "../crank.js";
+import {renderer} from "../dom.js";
 
 describe("static", () => {
 	afterEach(() => {

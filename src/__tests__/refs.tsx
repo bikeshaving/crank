@@ -1,4 +1,3 @@
-/** @jsx createElement */
 import {
 	Children,
 	Context,
@@ -6,8 +5,8 @@ import {
 	Element,
 	Fragment,
 	Raw,
-} from "../index";
-import {renderer} from "../dom";
+} from "../crank.js";
+import {renderer} from "../dom.js";
 
 describe("refs", () => {
 	afterEach(() => {

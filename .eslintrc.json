@@ -21,6 +21,13 @@
     "plugin:jest/recommended",
     "plugin:prettier/recommended"
   ],
+
+  "settings": {
+    "react": {
+      "pragma": "createElement",
+      "fragment": "Fragment"
+    }
+  },
   "rules": {
     "no-console": [
       "error",

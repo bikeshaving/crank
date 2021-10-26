@@ -1,6 +1,5 @@
-/** @jsx createElement */
-import {Context, Copy, createElement, Fragment, Raw} from "../index";
-import {renderer} from "../html";
+import {Context, Copy, createElement, Fragment, Raw} from "../crank.js";
+import {renderer} from "../html.js";
 
 describe("render", () => {
 	test("simple", () => {

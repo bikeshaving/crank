@@ -4,7 +4,6 @@ import * as path from "path";
 import ts from "rollup-plugin-typescript2";
 import MagicString from "magic-string";
 import pkg from "./package.json";
-import {transform} from "ts-transform-import-path-rewrite";
 
 /**
  * A hack to add triple-slash references to sibling d.ts files for deno.
@@ -25,19 +24,6 @@ function dts() {
 			return code;
 		},
 	};
-}
-
-/**
- * A hack to rewrite import paths in d.ts files for deno.
- */
-function transformer() {
-	const rewritePath = transform({
-		rewrite(importPath) {
-			return importPath + ".js";
-		},
-	});
-
-	return {afterDeclarations: [rewritePath]};
 }
 
 function copyPackage() {
@@ -65,11 +51,7 @@ export default [
 			sourcemap: true,
 			exports: "named",
 		},
-		plugins: [
-			ts({clean: true, transformers: [transformer]}),
-			dts(),
-			copyPackage(),
-		],
+		plugins: [ts({clean: true}), dts(), copyPackage()],
 	},
 	{
 		input,
