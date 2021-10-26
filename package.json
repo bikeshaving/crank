@@ -18,7 +18,6 @@
       "import": "./crank.js",
       "require": "./crank.cjs"
     },
-    "./": "./",
     "./crank": {
       "import": "./crank.js",
       "require": "./crank.cjs"
