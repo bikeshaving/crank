@@ -67,7 +67,7 @@
     "clean": "shx rm -rf dist",
     "debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
-    "preshipit": "npm run test && npm run build",
+    "preshipit": "npm run typecheck && npm run test && npm run build",
     "shipit": "cd dist && npm publish && ./scripts/rename-pkg.js && npm publish",
     "test": "jest --config jest.config.cjs --color --no-cache",
     "typecheck": "tsc --noEmit"
@@ -92,11 +92,6 @@
     "ts-jest-resolver": "^2.0.0",
     "typescript": "^4.4.3"
   },
-  "workspaces": [
-    ".",
-    "examples",
-    "website"
-  ],
   "publishConfig": {
     "access": "public"
   }

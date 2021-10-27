@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import ts from "rollup-plugin-typescript2";
+import typescript2 from "rollup-plugin-typescript2";
 import MagicString from "magic-string";
 import pkg from "./package.json";
 
@@ -40,6 +40,12 @@ function copyPackage() {
 }
 
 const input = ["src/index.ts", "src/crank.ts", "src/dom.ts", "src/html.ts"];
+const ts = typescript2({
+	clean: true,
+	tsconfigOverride: {
+		exclude: ["src/__tests__"],
+	},
+});
 
 export default [
 	{
@@ -51,7 +57,7 @@ export default [
 			sourcemap: true,
 			exports: "named",
 		},
-		plugins: [ts({clean: true}), dts(), copyPackage()],
+		plugins: [ts, dts(), copyPackage()],
 	},
 	{
 		input,
@@ -63,7 +69,7 @@ export default [
 			sourcemap: true,
 			exports: "named",
 		},
-		plugins: [ts()],
+		plugins: [ts],
 	},
 	{
 		input: "src/umd.ts",
@@ -75,6 +81,6 @@ export default [
 			sourcemap: true,
 			exports: "named",
 		},
-		plugins: [ts()],
+		plugins: [ts],
 	},
 ];
