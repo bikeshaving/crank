@@ -846,7 +846,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				}
 
 				if (child.tag === Raw) {
-					value = updateRaw(renderer, ret, scope, oldProps);
+					value = updateRaw(renderer, ret, scope);
 				} else if (child.tag === Fragment) {
 					value = updateFragment(renderer, root, host, ctx, scope, ret);
 				} else if (typeof child.tag === "function") {
@@ -985,13 +985,10 @@ function updateRaw<TNode, TScope>(
 	renderer: RendererImpl<TNode, TScope, TNode, unknown>,
 	ret: Retainer<TNode>,
 	scope: TScope | undefined,
-	oldProps: Record<string, any> | undefined,
 ): ElementValue<TNode> {
 	const props = ret.el.props;
 	if (typeof props.value === "string") {
-		if (!oldProps || oldProps.value !== props.value) {
-			ret.value = renderer.parse(props.value, scope);
-		}
+		ret.value = renderer.parse(props.value, scope);
 	} else {
 		ret.value = props.value;
 	}
