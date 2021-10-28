@@ -1,6 +1,5 @@
-/** @jsx createElement */
-import {createElement, Child, Context} from "../index";
-import {renderer} from "../dom";
+import {createElement, Child, Context} from "../crank.js";
+import {renderer} from "../dom.js";
 
 describe("errors", () => {
 	afterEach(() => {

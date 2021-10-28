@@ -1,6 +1,5 @@
-/** @jsx createElement */
-import {createElement, Context, Element, Fragment} from "../index";
-import {renderer} from "../dom";
+import {createElement, Context, Element, Fragment} from "../crank.js";
+import {renderer} from "../dom.js";
 
 describe("cleanup", () => {
 	afterEach(() => {

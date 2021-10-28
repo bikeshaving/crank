@@ -1,6 +1,5 @@
-/** @jsx createElement */
-import {createElement, Context, Fragment} from "../index";
-import {renderer} from "../dom";
+import {createElement, Context, Fragment} from "../crank.js";
+import {renderer} from "../dom.js";
 
 describe("rearranging", () => {
 	let headerCtx: Context | undefined;

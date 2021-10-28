@@ -1,4 +1,3 @@
-/** @jsx createElement */
 import {
 	createElement,
 	Children,
@@ -6,8 +5,8 @@ import {
 	Copy,
 	Element,
 	Fragment,
-} from "../index";
-import {renderer} from "../dom";
+} from "../crank.js";
+import {renderer} from "../dom.js";
 
 describe("schedule", () => {
 	afterEach(() => {

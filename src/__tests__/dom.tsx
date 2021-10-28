@@ -1,7 +1,6 @@
 /// <ref lib="dom" />
-/** @jsx createElement */
-import {Copy, createElement, Fragment, Portal, Raw} from "../index";
-import {renderer} from "../dom";
+import {Copy, createElement, Fragment, Portal, Raw} from "../crank.js";
+import {renderer} from "../dom.js";
 
 describe("render", () => {
 	afterEach(() => {

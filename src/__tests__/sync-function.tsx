@@ -1,7 +1,5 @@
-/** @jsx createElement */
-import {createElement, Context, Element} from "../index";
-
-import {renderer} from "../dom";
+import {createElement, Context, Element} from "../crank.js";
+import {renderer} from "../dom.js";
 
 describe("sync function component", () => {
 	afterEach(() => {

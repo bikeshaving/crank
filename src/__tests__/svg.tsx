@@ -1,6 +1,5 @@
-/** @jsx createElement */
-import {createElement} from "../index";
-import {renderer} from "../dom";
+import {createElement} from "../crank.js";
+import {renderer} from "../dom.js";
 
 // TODO: jsdom doesn’t seem to export the entire SVG class hierarchy so these tests are going to be mostly incomplete for now
 // https://github.com/jsdom/jsdom/issues/2128

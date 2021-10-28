@@ -1,6 +1,5 @@
-/** @jsx createElement */
-import {createElement, Context} from "../index";
-import {renderer} from "../dom";
+import {createElement, Context} from "../crank.js";
+import {renderer} from "../dom.js";
 
 describe("cascades", () => {
 	let mock: any;

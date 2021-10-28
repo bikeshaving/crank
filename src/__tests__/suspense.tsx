@@ -1,6 +1,5 @@
-/** @jsx createElement */
-import {createElement, Children, Context, Element} from "../index";
-import {renderer} from "../dom";
+import {createElement, Children, Context, Element} from "../crank.js";
+import {renderer} from "../dom.js";
 
 async function Fallback({
 	children,
