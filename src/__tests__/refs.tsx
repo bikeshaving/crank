@@ -68,7 +68,11 @@ describe("refs", () => {
 		);
 
 		expect(fn).toHaveBeenCalledTimes(1);
-		expect(fn.mock.calls[0][0]).toBeInstanceOf(DocumentFragment);
+
+		const refArg = fn.mock.calls[0][0];
+		expect(Array.isArray(refArg)).toBe(true);
+		expect(refArg.length).toBe(1);
+		expect(refArg[0]).toBeInstanceOf(Node);
 	});
 
 	test("function component", () => {

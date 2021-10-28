@@ -10,18 +10,14 @@ import {
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
 export const impl: Partial<RendererImpl<Node, string>> = {
-	parse(text: string): DocumentFragment {
+	parse(text: string): ElementValue<Node> {
 		if (typeof document.createRange === "function") {
-			return document.createRange().createContextualFragment(text);
+			const fragment = document.createRange().createContextualFragment(text);
+			return Array.from(fragment.childNodes);
 		} else {
-			const fragment = document.createDocumentFragment();
 			const childNodes = new DOMParser().parseFromString(text, "text/html").body
 				.childNodes;
-			for (let i = 0; i < childNodes.length; i++) {
-				fragment.appendChild(childNodes[i]);
-			}
-
-			return fragment;
+			return Array.from(childNodes);
 		}
 	},
 
