@@ -1,10 +1,9 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import ts from "rollup-plugin-typescript2";
+import typescript2 from "rollup-plugin-typescript2";
 import MagicString from "magic-string";
 import pkg from "./package.json";
-import {transform} from "ts-transform-import-path-rewrite";
 
 /**
  * A hack to add triple-slash references to sibling d.ts files for deno.
@@ -27,19 +26,6 @@ function dts() {
 	};
 }
 
-/**
- * A hack to rewrite import paths in d.ts files for deno.
- */
-function transformer() {
-	const rewritePath = transform({
-		rewrite(importPath) {
-			return importPath + ".js";
-		},
-	});
-
-	return {afterDeclarations: [rewritePath]};
-}
-
 function copyPackage() {
 	return {
 		name: "copy-package",
@@ -54,6 +40,12 @@ function copyPackage() {
 }
 
 const input = ["src/index.ts", "src/crank.ts", "src/dom.ts", "src/html.ts"];
+const ts = typescript2({
+	clean: true,
+	tsconfigOverride: {
+		exclude: ["src/__tests__"],
+	},
+});
 
 export default [
 	{
@@ -65,11 +57,7 @@ export default [
 			sourcemap: true,
 			exports: "named",
 		},
-		plugins: [
-			ts({clean: true, transformers: [transformer]}),
-			dts(),
-			copyPackage(),
-		],
+		plugins: [ts, dts(), copyPackage()],
 	},
 	{
 		input,
@@ -81,7 +69,7 @@ export default [
 			sourcemap: true,
 			exports: "named",
 		},
-		plugins: [ts()],
+		plugins: [ts],
 	},
 	{
 		input: "src/umd.ts",
@@ -93,6 +81,6 @@ export default [
 			sourcemap: true,
 			exports: "named",
 		},
-		plugins: [ts()],
+		plugins: [ts],
 	},
 ];

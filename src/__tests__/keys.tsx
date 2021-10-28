@@ -1,6 +1,5 @@
-/** @jsx createElement */
-import {createElement} from "../index";
-import {renderer} from "../dom";
+import {createElement} from "../crank.js";
+import {renderer} from "../dom.js";
 
 // TODO: write generative tests for this stuff
 describe("keys", () => {

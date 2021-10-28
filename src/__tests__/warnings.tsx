@@ -1,6 +1,6 @@
 /** @jsx createElement */
-import {createElement} from "../crank";
-import {renderer} from "../dom";
+import {createElement} from "../crank.js";
+import {renderer} from "../dom.js";
 
 describe("warnings", () => {
 	afterEach(() => {

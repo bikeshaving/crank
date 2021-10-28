@@ -1,6 +1,5 @@
-/** @jsx createElement */
-import {Context, Copy, createElement, Fragment, Raw} from "../index";
-import {renderer} from "../html";
+import {Context, Copy, createElement, Fragment, Raw} from "../crank.js";
+import {renderer} from "../html.js";
 
 describe("render", () => {
 	test("simple", () => {
@@ -80,6 +79,21 @@ describe("render", () => {
 	test("styles string", () => {
 		expect(renderer.render(<div style="color: red;" />)).toEqual(
 			'<div style="color: red;"></div>',
+		);
+	});
+
+	test("class and className", () => {
+		expect(
+			renderer.render(
+				<Fragment>
+					<div class="class1 class2" />
+					<div className="class1 class2" />
+					<div className="hidden" class="override" />
+					<div class="override" className="hidden" />
+				</Fragment>,
+			),
+		).toEqual(
+			'<div class="class1 class2"></div><div class="class1 class2"></div><div class="override"></div><div class="override"></div>',
 		);
 	});
 

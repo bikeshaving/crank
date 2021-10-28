@@ -1,4 +1,3 @@
-/** @jsx createElement */
 import {
 	createElement,
 	Child,
@@ -6,8 +5,8 @@ import {
 	Context,
 	Element,
 	Fragment,
-} from "../index";
-import {renderer} from "../dom";
+} from "../crank.js";
+import {renderer} from "../dom.js";
 
 describe("async generator component", () => {
 	afterEach(() => {

@@ -1,4 +1,4 @@
-import {ElementValue, Portal, Renderer, RendererImpl} from "./crank";
+import {ElementValue, Portal, Renderer, RendererImpl} from "./crank.js";
 
 const voidTags = new Set([
 	"area",
@@ -61,6 +61,11 @@ function printAttrs(props: Record<string, any>): string {
 					attrs.push(`style="${escape(value)}"`);
 				} else {
 					attrs.push(`style="${escape(printStyleObject(value))}"`);
+				}
+				break;
+			case name === "className":
+				if (!("class" in props)) {
+					attrs.push(`class="${escape(value)}"`);
 				}
 				break;
 			case typeof value === "string":
