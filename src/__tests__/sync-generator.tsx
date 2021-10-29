@@ -5,6 +5,7 @@ import {
 	Context,
 	Element,
 	Fragment,
+	Raw,
 } from "../crank.js";
 import {renderer} from "../dom.js";
 
@@ -289,6 +290,30 @@ describe("sync generator component", () => {
 		expect(document.body.innerHTML).toEqual("<div><span>3</span></div>");
 		ctx.refresh();
 		expect(document.body.innerHTML).toEqual("<div></div>");
+	});
+
+	test("refresh component yielding raw with static content", () => {
+		let ctx!: Context;
+		function* Component(this: Context): Generator<Child> {
+			ctx = this;
+			while (true) {
+				yield (
+					<span>
+						<Raw value="Hello" />
+					</span>
+				);
+			}
+		}
+
+		renderer.render(
+			<div>
+				<Component />
+			</div>,
+			document.body,
+		);
+		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
+		ctx.refresh();
+		expect(document.body.innerHTML).toEqual("<div><span>Hello</span></div>");
 	});
 
 	test("async children", async () => {

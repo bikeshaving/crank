@@ -453,7 +453,7 @@ class Retainer<TNode> {
 	/**
 	 * The value associated with this element.
 	 */
-	declare value: TNode | string | undefined;
+	declare value: ElementValue<TNode>;
 	/**
 	 * The cached child values of this element. Only host and component elements
 	 * will use this property.
@@ -590,7 +590,7 @@ export interface RendererImpl<
 	 *
 	 * @returns The parsed node or string.
 	 */
-	parse(text: string, scope: TScope | undefined): TNode | string;
+	parse(text: string, scope: TScope | undefined): ElementValue<TNode>;
 
 	patch<TTag extends string | symbol, TName extends string>(
 		tag: TTag,
