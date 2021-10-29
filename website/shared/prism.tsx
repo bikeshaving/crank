@@ -81,10 +81,7 @@ function splitLines(
 	return lines;
 }
 
-function tokenize(
-	text: string,
-	lang: string,
-): Array<Array<Token | string>> {
+function tokenize(text: string, lang: string): Array<Array<Token | string>> {
 	const grammar = Prism.languages[lang];
 	if (grammar == null) {
 		return text.split(/\r\n|\r|\n/).map((text) => [text]);
