@@ -1,7 +1,18 @@
 # Changelog
+## [0.4.1] - 2021-10-29
+### Added
+- `createElement` and `Fragment` have been added to default module exports, to work with more JSX tools (#219).
+### Fixed
+- The HTMLRenderer will now correctly render `className` props (#221).
+- Fixed a bug where `<Raw />` elements with parsed string values would lose their contents when rerendered (#224).
+### Changed
+- As part of #224, the internal `RendererImpl.parse()` method can now take any `ElementValue<TNode>` instead of `TNode`.
+- The `./` export which was added in 0.4 was removed from package.json.
+- The `main` and `module` fields will now point to crank.js.
 ## [0.4.0] - 2021-10-08
 ### Added
 - Special props `crank-key`, `crank-ref`, `crank-static` now have shorthand equivalents `c-key`, `c-ref`, and `c-static` to save on typing.
+- Crank is now published under the NPM package `@b9g/crank`, as well as the old `@bikeshaving/crank`. Again, this saves on typing.
 - The `Context.prototype.flush()` method has been added. It behaves similarly to `Context.prototype.schedule()`, with the exception that it runs after a component’s children is in the DOM. This is important for things like focusing after render. See #180 for motivation.
 - The `c-skip` (`crank-skip`) prop has been added as an alternative to `<Copy />` elements. See #173 for motivation and `src/__tests__/static.tsx` for examples.
 ### Changed
