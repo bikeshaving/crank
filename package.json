@@ -1,6 +1,6 @@
 {
   "name": "@b9g/crank",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "Write JSX-driven components with functions, promises and generators.",
   "homepage": "https://crank.js.org",
@@ -68,7 +68,7 @@
     "debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "preshipit": "npm run typecheck && npm run test && npm run build",
-    "shipit": "cd dist && npm publish && ./scripts/rename-pkg.js && npm publish",
+    "shipit": "cd dist && npm publish && cd - && ./scripts/rename-pkg.js && cd - && npm publish",
     "test": "jest --config jest.config.cjs --color --no-cache",
     "typecheck": "tsc --noEmit"
   },
