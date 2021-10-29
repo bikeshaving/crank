@@ -64,7 +64,8 @@ async function collectDocuments(name: string): Promise<Array<DocInfo>> {
 		if (filename.endsWith(".md")) {
 			const md = await fs.readFile(filename, {encoding: "utf8"});
 			let {attributes, body} = frontmatter(md) as unknown as DocInfo;
-			attributes.publish = attributes.publish == null ? true : attributes.publish;
+			attributes.publish =
+				attributes.publish == null ? true : attributes.publish;
 			if (attributes.publishDate != null) {
 				attributes.publishDate = new Date(attributes.publishDate);
 			}
@@ -457,7 +458,9 @@ const components = {
 	);
 
 	{
-		const docs = await collectDocuments(path.join(rootDirname, "documents/guides"));
+		const docs = await collectDocuments(
+			path.join(rootDirname, "documents/guides"),
+		);
 		await Promise.all(
 			docs.map(async ({attributes: {title, publish}, url, body}) => {
 				if (!publish) {
@@ -480,7 +483,9 @@ const components = {
 	}
 
 	{
-		const posts = await collectDocuments(path.join(rootDirname, "documents/blog"));
+		const posts = await collectDocuments(
+			path.join(rootDirname, "documents/blog"),
+		);
 		posts.reverse();
 
 		await fs.ensureDir(path.join(dist, "blog"));
@@ -490,32 +495,30 @@ const components = {
 		);
 
 		await Promise.all(
-			posts.map(async ({
-				attributes: {title, publish, publishDate},
-				url,
-				body,
-			}) => {
-				if (!publish) {
-					return;
-				}
+			posts.map(
+				async ({attributes: {title, publish, publishDate}, url, body}) => {
+					if (!publish) {
+						return;
+					}
 
-				const Body = createComponent(body);
-				const filename = path.join(dist, url + ".html");
-				await fs.ensureDir(path.dirname(filename));
-				return fs.writeFile(
-					filename,
-					await renderer.render(
-						<BlogPage
-							title={title}
-							docs={posts}
-							url={url}
-							publishDate={publishDate}
-						>
-							<Body components={components} />
-						</BlogPage>,
-					),
-				);
-			}),
+					const Body = createComponent(body);
+					const filename = path.join(dist, url + ".html");
+					await fs.ensureDir(path.dirname(filename));
+					return fs.writeFile(
+						filename,
+						await renderer.render(
+							<BlogPage
+								title={title}
+								docs={posts}
+								url={url}
+								publishDate={publishDate}
+							>
+								<Body components={components} />
+							</BlogPage>,
+						),
+					);
+				},
+			),
 		);
 	}
 
