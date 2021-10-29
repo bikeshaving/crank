@@ -68,7 +68,7 @@
     "debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "preshipit": "npm run typecheck && npm run test && npm run build",
-    "shipit": "cd dist && npm publish && cd - && ./scripts/rename-pkg.js && cd - && npm publish",
+    "shipit": "cd dist && npm publish && cd .. && ./scripts/rename-pkg.js && cd dist && npm publish",
     "test": "jest --config jest.config.cjs --color --no-cache",
     "typecheck": "tsc --noEmit"
   },
