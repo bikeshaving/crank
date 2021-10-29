@@ -14,7 +14,7 @@ All components in Crank are just functions or generator functions. No classes, h
 Crank provides first-class support for promises. You can define components as async functions and race renderings to display fallback UIs.
 
 ### Lightweight
-Crank has no dependencies, and its core is a single file. It currently measures at [4.5KB minified and gzipped](https://bundlephobia.com/result?p=@bikeshaving/crank).
+Crank has no dependencies, and its core is a single file. It currently measures at [5KB minified and gzipped](https://bundlephobia.com/result?p=@b9g/crank).
 
 ### Performant
 [According to benchmarks](https://github.com/krausest/js-framework-benchmark), Crank beats React in terms of speed and memory usage, and is currently comparable to Preact or Vue.
@@ -23,16 +23,16 @@ Crank has no dependencies, and its core is a single file. It currently measures 
 The core renderer can be extended to target alternative environments such as WebGL libraries, terminals, smartphones or smart TVs.
 
 ## Installation
-Crank is available on [NPM](https://npmjs.org/@bikeshaving/crank) in the ESModule and CommonJS formats.
+Crank is available on [NPM](https://npmjs.org/@b9g/crank) in the ESModule and CommonJS formats.
 
 ```shell
-$ npm install @bikeshaving/crank
+$ npm install @b9g/crank
 ```
 
 ```jsx
 /** @jsx createElement */
-import {createElement} from "@bikeshaving/crank";
-import {renderer} from "@bikeshaving/crank/dom";
+import {createElement} from "@b9g/crank";
+import {renderer} from "@b9g/crank/dom";
 
 renderer.render(<div id="hello">Hello world</div>, document.body);
 ```
@@ -41,8 +41,8 @@ If your environment does not support ESModules (you may see a message like `Synt
 
 ```jsx
 /** @jsx createElement */
-import {createElement} from "@bikeshaving/crank/cjs";
-import {renderer} from "@bikeshaving/crank/cjs/dom";
+import {createElement} from "@b9g/crank/cjs";
+import {renderer} from "@b9g/crank/cjs/dom";
 
 renderer.render(<div id="hello">Hello world</div>, document.body);
 ```
@@ -51,8 +51,8 @@ renderer.render(<div id="hello">Hello world</div>, document.body);
 ### A Simple Component
 ```jsx
 /** @jsx createElement */
-import {createElement} from "@bikeshaving/crank";
-import {renderer} from "@bikeshaving/crank/dom";
+import {createElement} from "@b9g/crank";
+import {renderer} from "@b9g/crank/dom";
 
 function Greeting({name = "World"}) {
   return (
@@ -68,8 +68,8 @@ renderer.render(<Greeting />, document.body);
 ### A Stateful Component
 ```jsx
 /** @jsx createElement */
-import {createElement} from "@bikeshaving/crank";
-import {renderer} from "@bikeshaving/crank/dom";
+import {createElement} from "@b9g/crank";
+import {renderer} from "@b9g/crank/dom";
 
 function *Timer() {
   let seconds = 0;
@@ -94,8 +94,8 @@ renderer.render(<Timer />, document.body);
 ### An Async Component
 ```jsx
 /** @jsx createElement */
-import {createElement} from "@bikeshaving/crank";
-import {renderer} from "@bikeshaving/crank/dom";
+import {createElement} from "@b9g/crank";
+import {renderer} from "@b9g/crank/dom";
 
 async function QuoteOfTheDay() {
   const res = await fetch("https://favqs.com/api/qotd");
@@ -115,8 +115,8 @@ renderer.render(<QuoteOfTheDay />, document.body);
 ### A Loading Component
 ```jsx
 /** @jsx createElement */
-import {createElement, Fragment} from "@bikeshaving/crank";
-import {renderer} from "@bikeshaving/crank/dom";
+import {createElement, Fragment} from "@b9g/crank";
+import {renderer} from "@b9g/crank/dom";
 
 async function LoadingIndicator() {
   await new Promise(resolve => setTimeout(resolve, 1000));
