@@ -9,7 +9,7 @@ Crank is available on [NPM](https://npmjs.org/@bikeshaving/crank) in the ESModul
 $ npm install @bikeshaving/crank
 ```
 
-```jsx live
+```jsx
 /** @jsx createElement */
 import {createElement} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
@@ -19,7 +19,7 @@ renderer.render(<div id="hello">Hello world</div>, document.body);
 
 If your environment does not support ESModules (you may see a message like `SyntaxError: Unexpected token export`), you can import the CommonJS versions of the library under the `cjs` directory.
 
-```jsx live
+```jsx
 /** @jsx createElement */
 import {createElement} from "@bikeshaving/crank/cjs";
 import {renderer} from "@bikeshaving/crank/cjs/dom";

@@ -71,12 +71,3 @@ declare global {
 		}
 	}
 }
-
-if (typeof document !== "undefined") {
-	(async () => {
-		const {ContentAreaElement} = await import("@b9g/revise/contentarea.js");
-		if (window && !window.customElements.get("content-area")) {
-			window.customElements.define("content-area", ContentAreaElement);
-		}
-	})();
-}

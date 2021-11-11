@@ -4,6 +4,10 @@ import type {Context, Element} from "@b9g/crank/crank.js";
 import {Edit} from "@b9g/revise/edit.js";
 import {Keyer} from "@b9g/revise/keyer.js";
 import {EditHistory} from "@b9g/revise/history.js";
+import type {
+	ContentAreaElement,
+	SelectionRange,
+} from "@b9g/revise/contentarea.js";
 
 import Prism from "prismjs";
 import type {Token} from "prismjs";
@@ -116,12 +120,32 @@ function printTokens(tokens: Array<Token | string>): Array<Element | string> {
 
 export function ContentBody(
 	this: Context,
-	{value, keyer}: {value: string; keyer: Keyer},
+	{value, lang, keyer}: {value: string; lang: string; keyer: Keyer},
 ) {
-	const lines = splitLines(Prism.tokenize(value || "", Prism.languages.typescript));
+	let rest: string;
+	{
+		const i = lang.indexOf(" ");
+		if (i === -1) {
+			rest = "";
+		} else {
+			[lang, rest] = [lang.slice(0, i), lang.slice(i + 1)];
+		}
+	}
+
+	const grammar = Prism.languages[lang];
+	let lines: Array<Array<string | Token>>;
+	if (grammar == null) {
+		lines = [];
+	} else {
+		lines = splitLines(Prism.tokenize(value || "", grammar));
+	}
 	let cursor = 0;
 	return (
-		<pre class="editable" contenteditable="true" spellcheck="false">
+		<pre
+			class="editable"
+			spellcheck="false"
+			contenteditable={typeof document !== "undefined" && rest === "live"}
+		>
 			{lines.map((line) => {
 				const key = keyer.keyAt(cursor);
 				const length = line.reduce((l, t) => l + t.length, 0);
@@ -139,17 +163,16 @@ export function ContentBody(
 
 export interface CodeBlockProps {
 	value: string;
-
+	lang: string;
 }
 
-export function *CodeBlock(this: Context, {value}: CodeBlockProps) {
+export function* CodeBlock(this: Context, {value, lang}: CodeBlockProps) {
 	let selectionRange: SelectionRange | undefined;
 	let area: ContentAreaElement;
 	let renderSource: string | undefined;
 	const editHistory = new EditHistory();
 	const keyer = new Keyer();
 	this.addEventListener("contentchange", (ev: any) => {
-		console.log("HELLO?");
 		const {edit, source} = ev.detail;
 		keyer.transform(edit);
 		if (source === "render") {
@@ -275,11 +298,13 @@ export function *CodeBlock(this: Context, {value}: CodeBlockProps) {
 	});
 
 	checkpointEditHistoryBySelection(this, editHistory);
-	for ({} of this) {
+	for ({lang} of this) {
 		this.schedule(() => {
 			selectionRange = undefined;
 			renderSource = undefined;
 		});
+
+		value = value.match(/(?:\r|\n|\r\n)$/) ? value : value + "\n";
 		yield (
 			<ContentArea
 				c-ref={(area1: any) => (area = area1)}
@@ -287,7 +312,7 @@ export function *CodeBlock(this: Context, {value}: CodeBlockProps) {
 				renderSource={renderSource}
 				selectionRange={selectionRange}
 			>
-				<ContentBody value={value} keyer={keyer} />
+				<ContentBody value={value} lang={lang} keyer={keyer} />
 			</ContentArea>
 		);
 	}
