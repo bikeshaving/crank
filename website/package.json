@@ -3,6 +3,7 @@
   "type": "module",
   "scripts": {
     "build": "tsm server/build.tsx && echo crank.js.org > dist/CNAME",
+    "watch": "nodemon --exec npm run build --ignore dist --ext md,json,js,jsx,ts,tsx,css",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
