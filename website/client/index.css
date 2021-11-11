@@ -184,11 +184,11 @@ li {
 .main {
 	@media screen and (min-width: 800px) {
 		margin-top: 3.5rem;
-		margin-left: 15rem;
+		margine-left: 3rem;
 	}
 
 	@media screen and (min-width: 1100px) {
-		margin-left: 20rem;
+		margine-left: 6rem;
 	}
 }
 
