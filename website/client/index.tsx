@@ -16,6 +16,9 @@ import {CodeBlock} from "../shared/prism";
 Prism.manual = true;
 
 for (const el of Array.from(document.querySelectorAll(".codeblock"))) {
+	console.log(el);
 	const {code, lang} = (el as HTMLElement).dataset;
-	renderer.render(<CodeBlock code={code!} lang={lang!} />, el);
+	if (code != null && lang != null) {
+		renderer.render(<CodeBlock value={code} lang={lang} />, el);
+	}
 }

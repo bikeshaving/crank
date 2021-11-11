@@ -9,7 +9,7 @@ Crank is available on [NPM](https://npmjs.org/@bikeshaving/crank) in the ESModul
 $ npm install @bikeshaving/crank
 ```
 
-```jsx
+```jsx live
 /** @jsx createElement */
 import {createElement} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
@@ -19,7 +19,7 @@ renderer.render(<div id="hello">Hello world</div>, document.body);
 
 If your environment does not support ESModules (you may see a message like `SyntaxError: Unexpected token export`), you can import the CommonJS versions of the library under the `cjs` directory.
 
-```jsx
+```jsx live
 /** @jsx createElement */
 import {createElement} from "@bikeshaving/crank/cjs";
 import {renderer} from "@bikeshaving/crank/cjs/dom";
@@ -46,7 +46,7 @@ renderer.render(<Greeting />, document.body);
 [Try on CodeSandbox](https://codesandbox.io/s/a-simple-crank-component-mhciu)
 
 ### A Stateful Component
-```jsx
+```jsx live
 /** @jsx createElement */
 import {createElement} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
@@ -72,7 +72,7 @@ renderer.render(<Timer />, document.body);
 [Try on CodeSandbox](https://codesandbox.io/s/a-stateful-crank-component-hh8zx)
 
 ### An Async Component
-```jsx
+```jsx live
 /** @jsx createElement */
 import {createElement} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
@@ -93,7 +93,7 @@ renderer.render(<QuoteOfTheDay />, document.body);
 [Try on CodeSandbox](https://codesandbox.io/s/an-async-crank-component-ru02q)
 
 ### A Loading Component
-```jsx
+```jsx live
 /** @jsx createElement */
 import {createElement, Fragment} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";

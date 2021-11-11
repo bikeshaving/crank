@@ -285,6 +285,7 @@ pre {
 	overflow: auto;
 	line-height: 1.4;
 	tab-size: 2;
+	outline: none;
 }
 
 code.inline {
