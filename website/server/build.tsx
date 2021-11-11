@@ -441,7 +441,7 @@ const components = {
 		const {text: code, lang} = token;
 		return (
 			<div class="codeblock" data-code={code} data-lang={lang}>
-				<CodeBlock code={code} lang={lang} />
+				<CodeBlock value={code} lang={lang} />
 			</div>
 		);
 	},
