@@ -139,12 +139,13 @@ export function ContentBody(
 	} else {
 		lines = splitLines(Prism.tokenize(value || "", grammar));
 	}
+	const live = typeof document !== "undefined" && rest === "live";
 	let cursor = 0;
 	return (
 		<pre
 			class="editable"
 			spellcheck="false"
-			contenteditable={typeof document !== "undefined" && rest === "live"}
+			contenteditable={live}
 		>
 			{lines.map((line) => {
 				const key = keyer.keyAt(cursor);
@@ -298,6 +299,17 @@ export function* CodeBlock(this: Context, {value, lang}: CodeBlockProps) {
 	});
 
 	checkpointEditHistoryBySelection(this, editHistory);
+	let rest: string;
+	{
+		const i = lang.indexOf(" ");
+		if (i === -1) {
+			rest = "";
+		} else {
+			[lang, rest] = [lang.slice(0, i), lang.slice(i + 1)];
+		}
+	}
+
+	const live = typeof document !== "undefined" && rest === "live";
 	for ({lang} of this) {
 		this.schedule(() => {
 			selectionRange = undefined;
@@ -306,16 +318,29 @@ export function* CodeBlock(this: Context, {value, lang}: CodeBlockProps) {
 
 		value = value.match(/(?:\r|\n|\r\n)$/) ? value : value + "\n";
 		yield (
-			<ContentArea
-				c-ref={(area1: any) => (area = area1)}
-				value={value}
-				renderSource={renderSource}
-				selectionRange={selectionRange}
-			>
-				<ContentBody value={value} lang={lang} keyer={keyer} />
-			</ContentArea>
+			<div class="playground">
+				<ContentArea
+					c-ref={(area1: any) => (area = area1)}
+					value={value}
+					renderSource={renderSource}
+					selectionRange={selectionRange}
+				>
+					<ContentBody value={value} lang={lang} keyer={keyer} />
+				</ContentArea>
+				{live && <Preview value={value} />}
+			</div>
 		);
 	}
+}
+
+function Preview(this: Context, {value}: {value: string}) {
+	this.flush((iframe) => {
+		const document1 = iframe.contentDocument;
+		document1.write(`<script type="module">${value}</script>`);
+		document1.close();
+	});
+
+	return <iframe src="about:blank" />;
 }
 
 function checkpointEditHistoryBySelection(
