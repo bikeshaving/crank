@@ -204,12 +204,15 @@ li {
 	}
 
 	@media screen and (min-width: 800px) {
+		margin-left: 250px;
 		padding: 2rem 1rem;
 		max-width: 800px;
 	}
 
 	@media screen and (min-width: 1100px) {
+		margin-left: 320px;
 		padding: 3rem 2rem;
+		max-width: 1100px;
 	}
 }
 
@@ -294,4 +297,22 @@ code.inline {
 	font-size: .9em;
 	display: inline;
 	background: #281f12;
+}
+
+.playground {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+	border: 1px dotted green;
+}
+
+.editable {
+	flex: 0 1 auto;
+	width: 60%;
+}
+
+.preview {
+	flex: 0 1 auto;
+	margin: 1.5em 0;
+	width: 35%;
 }
