@@ -31,25 +31,23 @@ renderer.render(<div id="hello">Hello world</div>, document.body);
 ### A Simple Component
 ```jsx live
 /** @jsx createElement */
-import {createElement} from "@bikeshaving/crank";
-import {renderer} from "@bikeshaving/crank/dom";
+import {createElement} from "https://unpkg.com/@b9g/crank/crank";
+import {renderer} from "https://unpkg.com/@b9g/crank/dom";
 
 function Greeting({name = "World"}) {
   return (
-    <div>Hello {name}</div>
+    createElement("div", null, `Hello ${name}`)
   );
 }
 
-renderer.render(<Greeting />, document.body);
+renderer.render(createElement(Greeting), document.body);
 ```
-
-[Try on CodeSandbox](https://codesandbox.io/s/a-simple-crank-component-mhciu)
 
 ### A Stateful Component
 ```jsx live
 /** @jsx createElement */
-import {createElement} from "@bikeshaving/crank";
-import {renderer} from "@bikeshaving/crank/dom";
+import {createElement as h} from "https://unpkg.com/@b9g/crank/crank";
+import {renderer} from "https://unpkg.com/@b9g/crank/dom";
 
 function *Timer() {
   let seconds = 0;
@@ -59,48 +57,43 @@ function *Timer() {
   }, 1000);
   try {
     while (true) {
-      yield <div>Seconds: {seconds}</div>;
+      yield h("div", null, `Seconds: ${seconds}`);
     }
   } finally {
     clearInterval(interval);
   }
 }
 
-renderer.render(<Timer />, document.body);
+renderer.render(h(Timer), document.body);
 ```
-
-[Try on CodeSandbox](https://codesandbox.io/s/a-stateful-crank-component-hh8zx)
 
 ### An Async Component
 ```jsx live
 /** @jsx createElement */
-import {createElement} from "@bikeshaving/crank";
-import {renderer} from "@bikeshaving/crank/dom";
+import {createElement as h} from "https://unpkg.com/@b9g/crank/crank";
+import {renderer} from "https://unpkg.com/@b9g/crank/dom";
 
 async function QuoteOfTheDay() {
   const res = await fetch("https://favqs.com/api/qotd");
   const {quote} = await res.json();
-  return (
-    <p>
-      “{quote.body}” – <a href={quote.url}>{quote.author}</a>
-    </p>
+  return h("p", {onclick: () => this.refresh()} ,
+    `“${quote.body}” – `,
+    h("a", {href: quote.url}, quote.author),
   );
 }
 
-renderer.render(<QuoteOfTheDay />, document.body);
+renderer.render(h(QuoteOfTheDay), document.body);
 ```
-
-[Try on CodeSandbox](https://codesandbox.io/s/an-async-crank-component-ru02q)
 
 ### A Loading Component
 ```jsx live
 /** @jsx createElement */
-import {createElement, Fragment} from "@bikeshaving/crank";
-import {renderer} from "@bikeshaving/crank/dom";
+import {createElement as h, Fragment} from "https://unpkg.com/@b9g/crank/crank";
+import {renderer} from "https://unpkg.com/@b9g/crank/dom";
 
 async function LoadingIndicator() {
   await new Promise(resolve => setTimeout(resolve, 1000));
-  return <div>Fetching a good boy...</div>;
+  return h("div", null, "Fetching a good boy...");
 }
 
 async function RandomDog({throttle = false}) {
@@ -110,17 +103,15 @@ async function RandomDog({throttle = false}) {
     await new Promise(resolve => setTimeout(resolve, 2000));
   }
 
-  return (
-    <a href={data.message}>
-      <img src={data.message} alt="A Random Dog" width="300" />
-    </a>
+  return h("a", {href: data.message},
+    h("img", {src: data.message, alt: "A Random Dog", width: "300"}),
   );
 }
 
 async function *RandomDogLoader({throttle}) {
   for await ({throttle} of this) {
-    yield <LoadingIndicator />;
-    yield <RandomDog throttle={throttle} />;
+    yield h(LoadingIndicator);
+    yield h(RandomDog, {throttle});
   }
 }
 
@@ -134,18 +125,14 @@ function *RandomDogApp() {
   });
 
   while (true) {
-    yield (
-      <Fragment>
-        <div>
-          <button>Show me another dog.</button>
-        </div>
-        <RandomDogLoader throttle={throttle} />
-      </Fragment>
+    yield h(Fragment, null,
+      h("div", null,
+        h("button", null, "Show me another dog."),
+      ),
+      h(RandomDogLoader, {throttle})
     );
   }
 }
 
-renderer.render(<RandomDogApp />, document.body);
+renderer.render(h(RandomDogApp), document.body);
 ```
-
-[Try on CodeSandbox](https://codesandbox.io/s/a-loading-crank-component-pci9d)

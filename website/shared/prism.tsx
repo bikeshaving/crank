@@ -336,11 +336,18 @@ export function* CodeBlock(this: Context, {value, lang}: CodeBlockProps) {
 function Preview(this: Context, {value}: {value: string}) {
 	this.flush((iframe) => {
 		const document1 = iframe.contentDocument;
+		document1.write(`
+			<style>
+				body {
+					color: white;
+				}
+			</style>
+		`);
 		document1.write(`<script type="module">${value}</script>`);
 		document1.close();
 	});
 
-	return <iframe src="about:blank" />;
+	return <iframe class="preview" src="about:blank" />;
 }
 
 function checkpointEditHistoryBySelection(
