@@ -303,7 +303,9 @@ code.inline {
 	display: flex;
 	flex-direction: row;
 	justify-content: space-between;
-	border: 1px dotted green;
+}
+
+.playground iframe {
 }
 
 .editable {
@@ -314,5 +316,5 @@ code.inline {
 .preview {
 	flex: 0 1 auto;
 	margin: 1.5em 0;
-	width: 35%;
+	width: 40%;
 }
