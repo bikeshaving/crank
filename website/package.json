@@ -18,7 +18,6 @@
     "@types/postcss-preset-env": "^6.7.3",
     "@types/prismjs": "^1.16.6",
     "esbuild": "^0.13.8",
-    "esbuild-plugin-postcss2": "^0.1.0",
     "esbuild-wasm": "^0.13.13",
     "front-matter": "^4.0.2",
     "fs-extra": "^10.0.0",
