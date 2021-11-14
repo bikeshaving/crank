@@ -142,11 +142,7 @@ export function ContentBody(
 	const live = typeof document !== "undefined" && rest === "live";
 	let cursor = 0;
 	return (
-		<pre
-			class="editable"
-			spellcheck="false"
-			contenteditable={live}
-		>
+		<pre class="editable" spellcheck="false" contenteditable={live}>
 			{lines.map((line) => {
 				const key = keyer.keyAt(cursor);
 				const length = line.reduce((l, t) => l + t.length, 0);
@@ -336,10 +332,14 @@ export function* CodeBlock(this: Context, {value, lang}: CodeBlockProps) {
 function Preview(this: Context, {value}: {value: string}) {
 	this.flush((iframe) => {
 		const document1 = iframe.contentDocument;
+		if (document1 == null) {
+			return;
+		}
+
 		document1.write(`
 			<style>
 				body {
-					color: white;
+					color: #f5f9ff;
 				}
 			</style>
 		`);
