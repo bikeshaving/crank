@@ -10,7 +10,10 @@ The following props apply to all elements, regardless of tag or renderer.
 ### crank-key
 By default, Crank uses an element’s tag and position to determine if it represents an update or a change to the tree. Because elements often represent stateful DOM nodes or components, it can be useful to *key* the children of an element to hint to the renderer that an element has been added, moved or removed from a parent. In Crank, we do this with the special prop `crank-key`:
 
-```jsx
+```jsx live
+import {createElement} from "https://unpkg.com/@b9g/crank/crank";
+import {renderer} from "https://unpkg.com/@b9g/crank/dom";
+
 let nextId = 0;
 function *ID() {
   const id = nextId++;
@@ -45,7 +48,10 @@ console.log(document.body.innerHTML);
 
 Keys are scoped to an element’s children, and can be any JavaScript value. When rendering iterables, it’s useful to key elements of the iterable, because it’s common for the values of rendered iterables to added, moved or removed.
 
-```jsx
+```jsx live
+import {createElement} from "https://unpkg.com/@b9g/crank/crank";
+import {renderer} from "https://unpkg.com/@b9g/crank/dom";
+
 function *Shuffler() {
   let nextId = 0;
   const els = Array.from({length: 4}, (_, i) => <span crank-key={i}>{i}</span>);
@@ -78,22 +84,27 @@ All elements in the element tree can be keyed. If the element is a component ele
 ### crank-ref
 Sometimes, you may want to access the rendered value of a specific element in the element tree. To do this, you can pass a callback as the `crank-ref` prop. This callback is called with the rendered value of the element when the element has committed.
 
-```tsx
+```jsx live
+import {createElement} from "https://unpkg.com/@b9g/crank/crank";
+import {renderer} from "https://unpkg.com/@b9g/crank/dom";
+
 function *MyPlayer() {
   let audio;
-  while (true) {
+  for ({} of this) {
     yield (
       <div>
         <button onclick={() => audio.play()}>Play sound</button>
         <audio
-          src="https://interactive-examples.mdn.mozilla.net/media/examples/t-rex-roar.mp3"
+          src="/static/t-rex-roar.mp3"
           controls={false}
-          crank-ref={(el) => (audio = el)}
+          c-ref={(el) => (audio = el)}
         />
       </div>
     );
   }
 }
+
+renderer.render(<MyPlayer />, document.body);
 ```
 
 Refs can be attached to any element in the element tree, and the value passed to the callback will vary according the type of the element and the specific renderer.

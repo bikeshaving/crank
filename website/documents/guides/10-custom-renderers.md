@@ -1,5 +1,6 @@
 ---
 title: Custom Renderers
+publish: false
 ---
 
 ## THIS INFORMATION IS OUT OF DATE

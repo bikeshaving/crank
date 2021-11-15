@@ -30,23 +30,19 @@ renderer.render(<div id="hello">Hello world</div>, document.body);
 ## Key Examples
 ### A Simple Component
 ```jsx live
-/** @jsx createElement */
 import {createElement} from "https://unpkg.com/@b9g/crank/crank";
 import {renderer} from "https://unpkg.com/@b9g/crank/dom";
 
 function Greeting({name = "World"}) {
-  return (
-    createElement("div", null, `Hello ${name}`)
-  );
+  return <div>Hello {name}</div>;
 }
 
-renderer.render(createElement(Greeting), document.body);
+renderer.render(<Greeting />, document.body);
 ```
 
 ### A Stateful Component
 ```jsx live
-/** @jsx createElement */
-import {createElement as h} from "https://unpkg.com/@b9g/crank/crank";
+import {createElement} from "https://unpkg.com/@b9g/crank/crank";
 import {renderer} from "https://unpkg.com/@b9g/crank/dom";
 
 function *Timer() {
@@ -56,44 +52,42 @@ function *Timer() {
     this.refresh();
   }, 1000);
   try {
-    while (true) {
-      yield h("div", null, `Seconds: ${seconds}`);
+    for ({} of this) {
+      yield <div>Seconds: {seconds}</div>;
     }
   } finally {
     clearInterval(interval);
   }
 }
 
-renderer.render(h(Timer), document.body);
+renderer.render(<Timer />, document.body);
 ```
 
 ### An Async Component
 ```jsx live
-/** @jsx createElement */
-import {createElement as h} from "https://unpkg.com/@b9g/crank/crank";
+import {createElement} from "https://unpkg.com/@b9g/crank/crank";
 import {renderer} from "https://unpkg.com/@b9g/crank/dom";
 
 async function QuoteOfTheDay() {
   const res = await fetch("https://favqs.com/api/qotd");
   const {quote} = await res.json();
-  return h("p", {onclick: () => this.refresh()} ,
-    `“${quote.body}” – `,
-    h("a", {href: quote.url}, quote.author),
+  return (
+    <p>“{quote.body}” – <a href={quote.url}>{quote.author}</a></p>
   );
 }
 
-renderer.render(h(QuoteOfTheDay), document.body);
+renderer.render(<QuoteOfTheDay />, document.body);
 ```
 
 ### A Loading Component
 ```jsx live
 /** @jsx createElement */
-import {createElement as h, Fragment} from "https://unpkg.com/@b9g/crank/crank";
+import {createElement} from "https://unpkg.com/@b9g/crank/crank";
 import {renderer} from "https://unpkg.com/@b9g/crank/dom";
 
 async function LoadingIndicator() {
   await new Promise(resolve => setTimeout(resolve, 1000));
-  return h("div", null, "Fetching a good boy...");
+  return <div>Fetching a good boy...</div>;
 }
 
 async function RandomDog({throttle = false}) {
@@ -103,15 +97,17 @@ async function RandomDog({throttle = false}) {
     await new Promise(resolve => setTimeout(resolve, 2000));
   }
 
-  return h("a", {href: data.message},
-    h("img", {src: data.message, alt: "A Random Dog", width: "300"}),
+  return (
+    <a href={data.message}>
+      <img src={data.message} alt="A Random Dog" width="300" />
+    </a>
   );
 }
 
 async function *RandomDogLoader({throttle}) {
   for await ({throttle} of this) {
-    yield h(LoadingIndicator);
-    yield h(RandomDog, {throttle});
+    yield <LoadingIndicator />;
+    yield <RandomDog throttle={throttle} />;
   }
 }
 
@@ -124,15 +120,17 @@ function *RandomDogApp() {
     }
   });
 
-  while (true) {
-    yield h(Fragment, null,
-      h("div", null,
-        h("button", null, "Show me another dog."),
-      ),
-      h(RandomDogLoader, {throttle})
+  for ({} of this) {
+    yield (
+      <>
+        <div>
+          <button>Show me another dog.</button>
+        </div>
+        <RandomDogLoader throttle={throttle} />
+      </>
     );
   }
 }
 
-renderer.render(h(RandomDogApp), document.body);
+renderer.render(<RandomDogApp />, document.body);
 ```

@@ -118,7 +118,7 @@ function printTokens(tokens: Array<Token | string>): Array<Element | string> {
 	return result;
 }
 
-export function ContentBody(
+export async function ContentBody(
 	this: Context,
 	{value, lang, keyer}: {value: string; lang: string; keyer: Keyer},
 ) {
@@ -139,10 +139,16 @@ export function ContentBody(
 	} else {
 		lines = splitLines(Prism.tokenize(value || "", grammar));
 	}
-	const live = typeof document !== "undefined" && rest === "live";
+	const isClient = typeof document !== "undefined";
+	const isLive = rest === "live";
 	let cursor = 0;
 	return (
-		<pre class="editable" spellcheck="false" contenteditable={live}>
+		<pre
+			style={{width: isLive ? "60%" : "800px"}}
+			class="editable"
+			spellcheck="false"
+			contenteditable={isClient && isLive}
+		>
 			{lines.map((line) => {
 				const key = keyer.keyAt(cursor);
 				const length = line.reduce((l, t) => l + t.length, 0);
@@ -305,7 +311,6 @@ export function* CodeBlock(this: Context, {value, lang}: CodeBlockProps) {
 		}
 	}
 
-	const live = typeof document !== "undefined" && rest === "live";
 	for ({lang} of this) {
 		this.schedule(() => {
 			selectionRange = undefined;
@@ -323,31 +328,63 @@ export function* CodeBlock(this: Context, {value, lang}: CodeBlockProps) {
 				>
 					<ContentBody value={value} lang={lang} keyer={keyer} />
 				</ContentArea>
-				{live && <Preview value={value} />}
+				{
+					typeof document !== "undefined" && rest === "live" &&
+					<Preview value={value} />
+				}
 			</div>
 		);
 	}
 }
 
-function Preview(this: Context, {value}: {value: string}) {
-	this.flush((iframe) => {
-		const document1 = iframe.contentDocument;
-		if (document1 == null) {
-			return;
+let esbuild: any;
+function* Preview(
+	this: Context,
+	{value}: {value: string},
+): Generator<any, any, any> {
+	if (typeof document !== "undefined") {
+		if (esbuild == null) {
+			esbuild = import("esbuild-wasm").then(async (esbuild) => {
+				await esbuild.initialize({wasmURL: "/static/esbuild.wasm"});
+				return esbuild;
+			});
 		}
+	}
 
-		document1.write(`
-			<style>
-				body {
-					color: #f5f9ff;
-				}
-			</style>
-		`);
-		document1.write(`<script type="module">${value}</script>`);
-		document1.close();
-	});
+	for ({value} of this) {
+		this.flush(async (iframe) => {
+			const document1 = iframe.contentDocument;
+			if (document1 == null) {
+				return;
+			}
 
-	return <iframe class="preview" src="about:blank" />;
+			const {transform} = await esbuild;
+			try {
+				const parsed = await transform(value, {
+					loader: "jsx",
+					target: "es2020",
+					format: "esm",
+					jsx: "transform",
+					jsxFactory: "createElement",
+					jsxFragment: "''",
+				});
+
+				document1.write(`
+					<style>
+						body {
+							color: #f5f9ff;
+						}
+					</style>
+				`);
+				document1.write(`<script type="module">${parsed.code}</script>`);
+				document1.close();
+			} catch (err) {
+				// TODO: show errors
+				console.error(err);
+			}
+		});
+		yield <iframe class="preview" src="about:blank" />;
+	}
 }
 
 function checkpointEditHistoryBySelection(
