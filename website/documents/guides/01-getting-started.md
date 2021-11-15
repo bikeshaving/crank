@@ -98,9 +98,7 @@ async function RandomDog({throttle = false}) {
   }
 
   return (
-    <a href={data.message}>
-      <img src={data.message} alt="A Random Dog" width="300" />
-    </a>
+    <img src={data.message} alt="A Random Dog" width="300" />
   );
 }
 

@@ -328,10 +328,9 @@ export function* CodeBlock(this: Context, {value, lang}: CodeBlockProps) {
 				>
 					<ContentBody value={value} lang={lang} keyer={keyer} />
 				</ContentArea>
-				{
-					typeof document !== "undefined" && rest === "live" &&
+				{typeof document !== "undefined" && rest === "live" && (
 					<Preview value={value} />
-				}
+				)}
 			</div>
 		);
 	}
