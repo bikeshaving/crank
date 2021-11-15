@@ -1,7 +1,10 @@
 /** @jsx createElement */
 import {createElement} from "@b9g/crank/crank.js";
 import type {Context} from "@b9g/crank/crank.js";
-import type {SelectionRange} from "@b9g/revise/contentarea.js";
+import type {
+	ContentAreaElement,
+	SelectionRange,
+} from "@b9g/revise/contentarea.js";
 
 export interface ContentAreaProps {
 	children: unknown;
@@ -34,18 +37,18 @@ export function* ContentArea(
 		selectionRange = oldSelectionRange,
 		renderSource,
 	} of this) {
-		this.flush((area) => {
+		this.schedule((area) => {
 			if (typeof renderSource === "string") {
 				area.source(renderSource);
 			}
 
-			if (typeof value === "string" && value !== area.value) {
-				console.error(
-					`Expected value ${JSON.stringify(
-						value,
-					)} but received ${JSON.stringify(area.value)} from the DOM`,
-				);
-			}
+			//if (typeof value === "string" && value !== area.value) {
+			//	console.error(
+			//		`Expected value ${JSON.stringify(
+			//			value,
+			//		)} but received ${JSON.stringify(area.value)} from the DOM`,
+			//	);
+			//}
 
 			if (selectionRange) {
 				area.setSelectionRange(

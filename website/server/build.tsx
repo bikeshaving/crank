@@ -175,25 +175,6 @@ interface SidebarProps {
 	title: string;
 }
 
-function Footer(): Element {
-	return (
-		<footer class="footer">
-			<div>Copyright © 2020 Brian Kim.</div>
-			<div>
-				Distributed under the{" "}
-				<a href="https://github.com/bikeshaving/crank/blob/master/LICENSE">
-					MIT License
-				</a>
-				.
-			</div>
-			<div>
-				Logo by <a href="https://wstone.io">Will Stone</a> and{" "}
-				<a href="https://github.com/pjdon">Paul Donchenko</a>.
-			</div>
-		</footer>
-	);
-}
-
 function Sidebar({docs, title, url}: SidebarProps): Element {
 	const links: Array<Element> = [];
 	for (const doc of docs) {
@@ -229,13 +210,6 @@ function Home(): Element {
 							generators.
 						</h2>
 						<a href="/guides/getting-started">Get Started</a>
-						<iframe
-							src="https://ghbtns.com/github-btn.html?user=bikeshaving&repo=crank&type=star&count=true&size=large"
-							frameborder="0"
-							scrolling="0"
-							width="160px"
-							height="30px"
-						/>
 					</div>
 				</header>
 				<h2>Features</h2>
@@ -294,7 +268,6 @@ function Home(): Element {
 					</div>
 				</main>
 			</div>
-			<Footer />
 		</Root>
 	);
 }
@@ -374,7 +347,6 @@ function BlogIndexPage({docs, url}: BlogIndexPageProps): Element {
 			<Sidebar docs={docs} url={url} title="Recent Posts" />
 			<main class="main">
 				<BlogPreview docs={docs} />
-				<Footer />
 			</main>
 		</Root>
 	);
@@ -404,7 +376,6 @@ function BlogPage({
 						{children}
 					</BlogContent>
 				</div>
-				<Footer />
 			</main>
 		</Root>
 	);
@@ -426,7 +397,6 @@ function GuidePage({title, docs, url, children}: GuidePageProps): Element {
 					<h1>{title}</h1>
 					{children}
 				</div>
-				<Footer />
 			</main>
 		</Root>
 	);
@@ -452,11 +422,17 @@ const components = {
 	await fs.ensureDir(dist);
 	await fs.emptyDir(dist);
 	await fs.copy(path.join(rootDirname, "static"), path.join(dist, "static"));
+	await fs.copy(
+		path.join(rootDirname, "node_modules/esbuild-wasm/esbuild.wasm"),
+		path.join(dist, "static/esbuild.wasm"),
+	);
+	// HOME
 	await fs.writeFile(
 		path.join(dist, "index.html"),
 		await renderer.render(<Home />),
 	);
 
+	// GUIDES
 	{
 		const docs = await collectDocuments(
 			path.join(rootDirname, "documents/guides"),
@@ -482,6 +458,7 @@ const components = {
 		);
 	}
 
+	// BLOG
 	{
 		const posts = await collectDocuments(
 			path.join(rootDirname, "documents/blog"),
