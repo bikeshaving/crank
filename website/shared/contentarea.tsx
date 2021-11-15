@@ -37,18 +37,18 @@ export function* ContentArea(
 		selectionRange = oldSelectionRange,
 		renderSource,
 	} of this) {
-		this.schedule((area) => {
+		this.flush((area) => {
 			if (typeof renderSource === "string") {
 				area.source(renderSource);
 			}
 
-			//if (typeof value === "string" && value !== area.value) {
-			//	console.error(
-			//		`Expected value ${JSON.stringify(
-			//			value,
-			//		)} but received ${JSON.stringify(area.value)} from the DOM`,
-			//	);
-			//}
+			if (typeof value === "string" && value !== area.value) {
+				console.error(
+					`Expected value ${JSON.stringify(
+						value,
+					)} but received ${JSON.stringify(area.value)} from the DOM`,
+				);
+			}
 
 			if (selectionRange) {
 				area.setSelectionRange(
