@@ -352,6 +352,7 @@ function* Preview(
 
 	for ({value} of this) {
 		this.flush(async (iframe) => {
+			debugger;
 			const document1 = iframe.contentDocument;
 			if (document1 == null) {
 				return;

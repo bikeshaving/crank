@@ -17,33 +17,44 @@ import {renderer} from "https://unpkg.com/@b9g/crank/dom";
 let nextId = 0;
 function *ID() {
   const id = nextId++;
-  while (true) {
-    yield <span>Id: {id}</span>;
+  for ({} of this) {
+    yield <div>Id: {id}</div>;
   }
 }
 
-renderer.render(
-  <div>
-    <ID crank-key="a" />
-    <ID crank-key="b" />
-    <ID crank-key="c" />
-  </div>,
-  document.body,
-);
-console.log(document.body.innerHTML);
-// "<div><span>Id: 1</span><span>Id: 2</span><span>Id: 3</span><div>"
+function *List() {
+  let reversed = false;
+  const onclick = () => {
+    reversed = !reversed;
+    this.refresh();
+  };
+  for ({} of this) {
+    yield (
+      <div>
+        {
+          reversed ? (
+            <>
+              <ID crank-key="d" />
+              <ID crank-key="c" />
+              <ID crank-key="b" />
+              <ID crank-key="a" />
+            </>
+          ) : (
+            <>
+              <ID crank-key="a" />
+              <ID crank-key="b" />
+              <ID crank-key="c" />
+              <ID crank-key="d" />
+            </>
+          )
+        }
+        <button onclick={onclick}>Reverse! Reverse!</button>
+      </div>
+    );
+  }
+}
 
-renderer.render(
-  <div>
-    <ID crank-key="c" />
-    <ID crank-key="b" />
-    <ID crank-key="a" />
-  </div>,
-  document.body,
-);
-
-console.log(document.body.innerHTML);
-// "<div><span>Id: 3</span><span>Id: 2</span><span>Id: 1</span><div>"
+renderer.render(<List />, document.body);
 ```
 
 Keys are scoped to an element’s children, and can be any JavaScript value. When rendering iterables, it’s useful to key elements of the iterable, because it’s common for the values of rendered iterables to added, moved or removed.

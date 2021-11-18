@@ -87,8 +87,11 @@ li {
 	padding: 0 0.4rem;
 	z-index: 5;
 
-	backdrop-filter: blur(4px);
-	background-color: rgba(10, 14, 31, 0.2);
+	background-color: inherit;
+	@supports (backdrop-filter: blur(3px)) {
+		backdrop-filter: blur(3px);
+		background-color: rgba(10, 14, 31, 0.5);
+	}
 
 	a {
 		text-decoration: none;
