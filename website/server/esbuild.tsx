@@ -129,11 +129,11 @@ export interface PageProps {
 
 export function* Page(this: Context, {storage, children}: PageProps) {
 	this.provide(StorageKey, storage);
-	let nextStorage: Storage;
-	for ({storage: nextStorage} of this) {
-		if (storage !== nextStorage) {
-			this.provide(StorageKey, nextStorage);
-			storage = nextStorage;
+	let newStorage: Storage;
+	for ({storage: newStorage} of this) {
+		if (storage !== newStorage) {
+			this.provide(StorageKey, newStorage);
+			storage = newStorage;
 		}
 
 		yield children;
