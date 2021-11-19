@@ -336,37 +336,24 @@ export function* CodeBlock(this: Context, {value, lang}: CodeBlockProps) {
 	}
 }
 
-let esbuild: any;
-function* Preview(
+import {transform} from "sucrase";
+async function* Preview(
 	this: Context,
 	{value}: {value: string},
-): Generator<any, any, any> {
-	if (typeof document !== "undefined") {
-		if (esbuild == null) {
-			esbuild = import("esbuild-wasm").then(async (esbuild) => {
-				await esbuild.initialize({wasmURL: "/static/esbuild.wasm"});
-				return esbuild;
-			});
-		}
-	}
-
-	for ({value} of this) {
-		this.flush(async (iframe) => {
-			debugger;
+): AsyncGenerator<any, any, any> {
+	let iframe: any;
+	for await ({value} of this) {
+		this.flush(async () => {
 			const document1 = iframe.contentDocument;
 			if (document1 == null) {
 				return;
 			}
 
-			const {transform} = await esbuild;
 			try {
-				const parsed = await transform(value, {
-					loader: "jsx",
-					target: "es2020",
-					format: "esm",
-					jsx: "transform",
-					jsxFactory: "createElement",
-					jsxFragment: "''",
+				const parsed = transform(value, {
+					transforms: ["jsx", "typescript"],
+					jsxPragma: "createElement",
+					jsxFragmentPragma: "''",
 				});
 
 				document1.write(`
@@ -383,7 +370,14 @@ function* Preview(
 				console.error(err);
 			}
 		});
-		yield <iframe class="preview" src="about:blank" />;
+		yield (
+			<div class="preview">
+				<iframe
+					c-ref={(iframe1: any) => (iframe = iframe1)}
+					src="about:blank"
+				/>
+			</div>
+		);
 	}
 }
 

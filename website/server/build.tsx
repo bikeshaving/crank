@@ -422,10 +422,6 @@ const components = {
 	await fs.ensureDir(dist);
 	await fs.emptyDir(dist);
 	await fs.copy(path.join(rootDirname, "static"), path.join(dist, "static"));
-	await fs.copy(
-		path.join(rootDirname, "node_modules/esbuild-wasm/esbuild.wasm"),
-		path.join(dist, "static/esbuild.wasm"),
-	);
 	// HOME
 	await fs.writeFile(
 		path.join(dist, "index.html"),
