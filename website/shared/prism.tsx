@@ -144,7 +144,7 @@ export async function ContentBody(
 	let cursor = 0;
 	return (
 		<pre
-			style={{width: isLive ? "60%" : "800px"}}
+			style={{width: isLive ? "60%" : "900px"}}
 			class="editable"
 			spellcheck="false"
 			contenteditable={isClient && isLive}
