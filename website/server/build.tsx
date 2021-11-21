@@ -487,7 +487,7 @@ const components = {
 								publishDate={publishDate}
 							>
 								<Body components={components} />
-							</BlogPage>,
+							</BlogPage>
 						),
 					);
 				},
