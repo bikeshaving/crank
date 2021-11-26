@@ -120,7 +120,10 @@ function Root({title, children, url}: RootProps): Element {
 					</head>
 					<body>
 						<Navbar url={url} />
-						{children}
+						<div class="non-footer">
+							{children}
+						</div>
+						<Footer />
 						<Script src="client/index.tsx" />
 					</body>
 				</html>
@@ -399,6 +402,12 @@ function GuidePage({title, docs, url, children}: GuidePageProps): Element {
 				</div>
 			</main>
 		</Root>
+	);
+}
+
+function Footer() {
+	return (
+		<div class="footer"></div>
 	);
 }
 
