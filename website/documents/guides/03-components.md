@@ -7,19 +7,22 @@ So far, we’ve only seen and used host elements, but eventually, we’ll want t
 ## Basic Components
 The simplest kind of component is a *function component*. When rendered, the function is invoked with the props of the element as its first argument, and the return value of the function is recursively rendered as the element’s children.
 
-```js
+```js live
+import {createElement} from "https://unpkg.com/@b9g/crank/crank";
+import {renderer} from "https://unpkg.com/@b9g/crank/dom";
 function Greeting({name}) {
   return <div>Hello, {name}</div>;
 }
 
 renderer.render(<Greeting name="World" />, document.body);
-console.log(document.body.innerHTML);
-// "<div>Hello World</div>"
 ```
 
 Component elements can be passed children just as host elements can. The `createElement` function will add children to the props object under the name `children`, and it is up to the component to place these children somewhere in the returned element tree. If you don’t use the `children` prop, it will not appear in the rendered output.
 
-```js
+```js live
+import {createElement} from "https://unpkg.com/@b9g/crank/crank";
+import {renderer} from "https://unpkg.com/@b9g/crank/dom";
+
 function Greeting({name, children}) {
   return (
     <div>
@@ -34,9 +37,6 @@ renderer.render(
   </Greeting>,
   document.body,
 );
-
-console.log(document.body.innerHTML);
-// "<div>Message for Nemo: <span>Howdy</span></div>"
 ```
 
 ## Stateful Components
