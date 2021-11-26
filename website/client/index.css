@@ -314,8 +314,15 @@ code.inline {
 
 .editable {
 	flex: 0 1 auto;
-	width: 60%;
+	width: 100%;
+	max-width: 900px;
 	height: fit-content;
+	background: #0a0e1f;
+	background: linear-gradient(123deg, #0a0e1f 60%, #000e4f);
+}
+
+.editable-live {
+	width: 60%;
 }
 
 .preview {

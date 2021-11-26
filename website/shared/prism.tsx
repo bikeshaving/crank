@@ -118,7 +118,7 @@ function printTokens(tokens: Array<Token | string>): Array<Element | string> {
 	return result;
 }
 
-export async function ContentBody(
+export function ContentBody(
 	this: Context,
 	{value, lang, keyer}: {value: string; lang: string; keyer: Keyer},
 ) {
@@ -142,10 +142,14 @@ export async function ContentBody(
 	const isClient = typeof document !== "undefined";
 	const isLive = rest === "live";
 	let cursor = 0;
+	let className = "editable";
+	if (isLive) {
+		className += " editable-live";
+	}
+
 	return (
 		<pre
-			style={{width: isLive ? "60%" : "900px"}}
-			class="editable"
+			class={className}
 			spellcheck="false"
 			contenteditable={isClient && isLive}
 		>
