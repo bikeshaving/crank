@@ -68,9 +68,14 @@ a {
 	}
 }
 
-
 li {
 	margin: 0 0 1em;
+}
+
+/* Seems to be a flash of unstyled content caused by custom element host styles 😭😭😭 */
+content-area {
+	display: block;
+	display: contents;
 }
 
 .navbar {
@@ -88,6 +93,7 @@ li {
 	z-index: 5;
 
 	background-color: inherit;
+
 	@supports (backdrop-filter: blur(3px)) {
 		backdrop-filter: blur(3px);
 		background-color: rgba(10, 14, 31, 0.5);
@@ -135,6 +141,7 @@ li {
 	margin: 0 auto;
 	max-width: 800px;
 	margin: 0 auto;
+
 	@media screen and (min-width: 1100px) {
 		padding: 3.5rem 2rem 0;
 		max-width: 1100px;
@@ -142,15 +149,15 @@ li {
 }
 
 .sidebar {
-	background-color: inherit;
+	background-color: #0a0e1f;
 	margin-top: 3.5rem;
 	padding: 2rem 0.4rem;
 	border-bottom: 1px solid #f5f9ff;
 	color: #f5f9ff;
+
 	@media screen and (min-width: 800px) {
 		position: fixed;
 		top: 3.5rem;
-		left: 0;
 		bottom: 0;
 		border-bottom: none;
 		border-right: 1px solid #f5f9ff;
@@ -285,7 +292,7 @@ li {
 
 pre {
 	padding: .8em;
-	margin: 1.5em 0;
+	margin: 0;
 	font-size: .9em;
 	color: #e3eaf2;
 	overflow: auto;
@@ -310,6 +317,7 @@ code.inline {
 .playground {
 	display: flex;
 	flex-direction: row;
+	margin: 1.5em auto;
 }
 
 .editable {
@@ -322,24 +330,16 @@ code.inline {
 }
 
 .editable-live {
-	width: 60%;
+	width: 61.8%;
 }
 
 .preview {
 	flex: 0 1 auto;
-	margin: 1.5em 0;
-	width: 40%;
-	min-height: 350px;
-	max-height: max-content;
-	margin: 0;
-	margin-left: -1px;
-	padding: 0;
-	border: 1px solid #e3eaf2;
 	position: sticky;
 	top: calc(3.5rem + 30px);
-	iframe {
-		width: 100%;
-		height: 100%;
-		border: none;
-	}
+	width: 38.2%;
+	max-height: 350px;
+	margin: 0 0 0 -1px;
+	padding: 0;
+	border: 1px solid #e3eaf2;
 }

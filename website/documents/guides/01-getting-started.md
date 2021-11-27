@@ -6,23 +6,13 @@ title: Getting Started
 Crank is available on [NPM](https://npmjs.org/@bikeshaving/crank) in the ESModule and CommonJS formats.
 
 ```shell
-$ npm install @bikeshaving/crank
+$ npm install @b9g/crank
 ```
 
 ```jsx
 /** @jsx createElement */
-import {createElement} from "@bikeshaving/crank";
-import {renderer} from "@bikeshaving/crank/dom";
-
-renderer.render(<div id="hello">Hello world</div>, document.body);
-```
-
-If your environment does not support ESModules (you may see a message like `SyntaxError: Unexpected token export`), you can import the CommonJS versions of the library under the `cjs` directory.
-
-```jsx
-/** @jsx createElement */
-import {createElement} from "@bikeshaving/crank/cjs";
-import {renderer} from "@bikeshaving/crank/cjs/dom";
+import {createElement} from "@b9g/crank";
+import {renderer} from "@b9g/crank/dom";
 
 renderer.render(<div id="hello">Hello world</div>, document.body);
 ```
