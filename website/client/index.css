@@ -27,6 +27,14 @@ img {
 	background: #e1e4ea;
 }
 
+::selection {
+	background-color: #9b7735;
+}
+
+::-moz-selection {
+	background-color: #9b7735;
+}
+
 h1, h2, h3, h4, h5, h6 {
 	padding: 0;
 	margin: 1.4em 0;
@@ -338,6 +346,7 @@ code.inline {
 	position: sticky;
 	top: calc(3.5rem + 30px);
 	width: 38.2%;
+	min-height: 250px;
 	max-height: 350px;
 	margin: 0 0 0 -1px;
 	padding: 0;
