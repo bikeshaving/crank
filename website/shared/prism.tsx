@@ -375,12 +375,11 @@ async function* Preview(
 			}
 		});
 		yield (
-			<div class="preview">
-				<iframe
-					c-ref={(iframe1: any) => (iframe = iframe1)}
-					src="about:blank"
-				/>
-			</div>
+			<iframe
+				class="preview"
+				c-ref={(iframe1: any) => (iframe = iframe1)}
+				src="about:blank"
+			/>
 		);
 	}
 }
