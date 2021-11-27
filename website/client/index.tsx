@@ -22,7 +22,7 @@ if (!window.customElements.get("content-area")) {
 
 for (const el of Array.from(document.querySelectorAll(".codeblock"))) {
 	const {code, lang} = (el as HTMLElement).dataset;
-	if (code != null && lang != null && lang.endsWith("live")) {
+	if (code != null && lang != null) {
 		renderer.render(<CodeBlock value={code} lang={lang} />, el);
 	}
 }

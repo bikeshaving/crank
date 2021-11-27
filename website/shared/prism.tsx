@@ -118,56 +118,6 @@ function printTokens(tokens: Array<Token | string>): Array<Element | string> {
 	return result;
 }
 
-export function ContentBody(
-	this: Context,
-	{value, lang, keyer}: {value: string; lang: string; keyer: Keyer},
-) {
-	let rest: string;
-	{
-		const i = lang.indexOf(" ");
-		if (i === -1) {
-			rest = "";
-		} else {
-			[lang, rest] = [lang.slice(0, i), lang.slice(i + 1)];
-		}
-	}
-
-	const grammar = Prism.languages[lang];
-	let lines: Array<Array<string | Token>>;
-	if (grammar == null) {
-		lines = [];
-	} else {
-		lines = splitLines(Prism.tokenize(value || "", grammar));
-	}
-	const isClient = typeof document !== "undefined";
-	const isLive = rest === "live";
-	let cursor = 0;
-	let className = "editable";
-	if (isLive) {
-		className += " editable-live";
-	}
-
-	return (
-		<pre
-			class={className}
-			spellcheck="false"
-			contenteditable={isClient && isLive}
-		>
-			{lines.map((line) => {
-				const key = keyer.keyAt(cursor);
-				const length = line.reduce((l, t) => l + t.length, 0);
-				cursor += length + 1;
-				return (
-					<div c-key={key}>
-						<code>{printTokens(line)}</code>
-						<br />
-					</div>
-				);
-			})}
-		</pre>
-	);
-}
-
 export interface CodeBlockProps {
 	value: string;
 	lang: string;
@@ -179,7 +129,28 @@ export function* CodeBlock(this: Context, {value, lang}: CodeBlockProps) {
 	let renderSource: string | undefined;
 	const editHistory = new EditHistory();
 	const keyer = new Keyer();
+	let rest: string;
+	{
+		const i = lang.indexOf(" ");
+		if (i === -1) {
+			rest = "";
+		} else {
+			[lang, rest] = [lang.slice(0, i), lang.slice(i + 1)];
+		}
+	}
+	const isLive = rest === "live";
+	this.addEventListener("beforeinput", (ev: any) => {
+		if (!isLive) {
+			ev.preventDefault();
+		}
+	});
+
 	this.addEventListener("contentchange", (ev: any) => {
+		if (!isLive) {
+			this.refresh();
+			return;
+		}
+
 		const {edit, source} = ev.detail;
 		keyer.transform(edit);
 		if (source === "render") {
@@ -305,15 +276,6 @@ export function* CodeBlock(this: Context, {value, lang}: CodeBlockProps) {
 	});
 
 	checkpointEditHistoryBySelection(this, editHistory);
-	let rest: string;
-	{
-		const i = lang.indexOf(" ");
-		if (i === -1) {
-			rest = "";
-		} else {
-			[lang, rest] = [lang.slice(0, i), lang.slice(i + 1)];
-		}
-	}
 
 	for ({lang} of this) {
 		this.schedule(() => {
@@ -322,20 +284,57 @@ export function* CodeBlock(this: Context, {value, lang}: CodeBlockProps) {
 		});
 
 		value = value.match(/(?:\r|\n|\r\n)$/) ? value : value + "\n";
+		let rest: string;
+		{
+			const i = lang.indexOf(" ");
+			if (i === -1) {
+				rest = "";
+			} else {
+				[lang, rest] = [lang.slice(0, i), lang.slice(i + 1)];
+			}
+		}
+		const grammar = Prism.languages[lang];
+		let lines: Array<Array<string | Token>>;
+		if (grammar == null) {
+			lines = [];
+		} else {
+			lines = splitLines(Prism.tokenize(value || "", grammar));
+		}
+
+		const isClient = typeof document !== "undefined";
+		const isLive = rest === "live";
+		let cursor = 0;
+		let className = "editable";
+		if (isLive) {
+			className += " editable-live";
+		}
+
 		yield (
-			<div class="playground">
+			<p class="playground">
 				<ContentArea
 					c-ref={(area1: any) => (area = area1)}
 					value={value}
 					renderSource={renderSource}
 					selectionRange={selectionRange}
 				>
-					<ContentBody value={value} lang={lang} keyer={keyer} />
+					<pre class={className} spellcheck="false" contenteditable={isClient}>
+						{lines.map((line) => {
+							const key = keyer.keyAt(cursor);
+							const length = line.reduce((l, t) => l + t.length, 0);
+							cursor += length + 1;
+							return (
+								<div c-key={key}>
+									<code>{printTokens(line)}</code>
+									<br />
+								</div>
+							);
+						})}
+					</pre>
 				</ContentArea>
 				{typeof document !== "undefined" && rest === "live" && (
 					<Preview value={value} />
 				)}
-			</div>
+			</p>
 		);
 	}
 }
