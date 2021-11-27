@@ -120,9 +120,7 @@ function Root({title, children, url}: RootProps): Element {
 					</head>
 					<body>
 						<Navbar url={url} />
-						<div class="non-footer">
-							{children}
-						</div>
+						<div class="non-footer">{children}</div>
 						<Footer />
 						<Script src="client/index.tsx" />
 					</body>
@@ -406,9 +404,7 @@ function GuidePage({title, docs, url, children}: GuidePageProps): Element {
 }
 
 function Footer() {
-	return (
-		<div class="footer"></div>
-	);
+	return <div class="footer"></div>;
 }
 
 const components = {
@@ -496,7 +492,7 @@ const components = {
 								publishDate={publishDate}
 							>
 								<Body components={components} />
-							</BlogPage>
+							</BlogPage>,
 						),
 					);
 				},
