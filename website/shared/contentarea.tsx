@@ -1,8 +1,10 @@
 /** @jsx createElement */
+// TODO: This should go back into the revise repository at some point I guess.
 import {createElement} from "@b9g/crank/crank.js";
 import type {Context} from "@b9g/crank/crank.js";
 import type {
 	ContentAreaElement,
+	ContentEvent,
 	SelectionRange,
 } from "@b9g/revise/contentarea.js";
 
