@@ -2518,8 +2518,6 @@ declare global {
 	}
 }
 
-/**
- * Some JSX transpilation tools expect these functions to be defined on the
- * default export. Prefer named exports when importing directly.
- */
+// Some JSX transpilation tools expect these functions to be defined on the
+// default export. Prefer named exports when importing directly.
 export default {createElement, Fragment};
