@@ -12,118 +12,59 @@ import type {
 import Prism from "prismjs";
 import type {Token} from "prismjs";
 import "prismjs/components/prism-typescript.js";
-import {ContentArea} from "./contentarea";
+import {ContentArea} from "./contentarea.tsx";
+import {Preview} from "./preview.tsx";
 
-/*** Prism Logic ***/
-// @ts-ignore
-Prism.manual = true;
-function wrapContent(
-	content: Array<Token | string> | Token | string,
-): Array<Token | string> {
-	return Array.isArray(content) ? content : [content];
-}
-
-function unwrapContent(
-	content: Array<Token | string>,
-): Array<Token | string> | string {
-	if (content.length === 0) {
-		return "";
-	} else if (content.length === 1 && typeof content[0] === "string") {
-		return content[0];
-	}
-
-	return content;
-}
-
-function splitLinesRec(
-	tokens: Array<Token | string>,
-): Array<Array<Token | string>> {
-	let currentLine: Array<Token | string> = [];
-	const lines: Array<Array<Token | string>> = [currentLine];
-	for (let i = 0; i < tokens.length; i++) {
-		const token = tokens[i];
-		if (typeof token === "string") {
-			const split = token.split(/\r\n|\r|\n/);
-			for (let j = 0; j < split.length; j++) {
-				if (j > 0) {
-					lines.push((currentLine = []));
-				}
-
-				const token1 = split[j];
-				if (token1) {
-					currentLine.push(token1);
-				}
-			}
-		} else {
-			const split = splitLinesRec(wrapContent(token.content));
-			if (split.length > 1) {
-				for (let j = 0; j < split.length; j++) {
-					if (j > 0) {
-						lines.push((currentLine = []));
-					}
-
-					const line = split[j];
-					if (line.length) {
-						const token1 = new Prism.Token(
-							token.type,
-							unwrapContent(line),
-							token.alias,
-						);
-						token1.length = line.reduce((l, t) => l + t.length, 0);
-						currentLine.push(token1);
-					}
-				}
-			} else {
-				currentLine.push(token);
-			}
-		}
-	}
-
-	return lines;
-}
-
-export function splitLines(
-	tokens: Array<Token | string>,
-): Array<Array<Token | string>> {
-	const lines = splitLinesRec(tokens);
-	// Dealing with trailing newlines
-	if (lines.length && !lines[lines.length - 1].length) {
-		lines.pop();
-	}
-
-	return lines;
-}
-
-function printTokens(tokens: Array<Token | string>): Array<Element | string> {
-	const result: Array<Element | string> = [];
-	for (let i = 0; i < tokens.length; i++) {
-		const token = tokens[i];
-		if (typeof token === "string") {
-			result.push(token);
-		} else {
-			const children = Array.isArray(token.content)
-				? printTokens(token.content)
-				: token.content;
-			let className = "token " + token.type;
-			if (Array.isArray(token.alias)) {
-				className += " " + token.alias.join(" ");
-			} else if (typeof token.alias === "string") {
-				className += " " + token.alias;
+import type {Context} from "@b9g/crank/crank.js";
+import {transform} from "sucrase";
+export function* Preview(
+	this: Context,
+	{value}: {value: string},
+): Generator<any, any, any> {
+	let iframe: HTMLIFrameElement;
+	for ({value} of this) {
+		this.flush(() => {
+			const document1 = iframe.contentDocument;
+			if (document1 == null) {
+				return;
 			}
 
-			result.push(<span class={className}>{children}</span>);
-		}
+			try {
+				const parsed = transform(value, {
+					transforms: ["jsx", "typescript"],
+					jsxPragma: "createElement",
+					jsxFragmentPragma: "''",
+				});
+
+				document1.write(`
+					<style>
+						body {
+							color: #f5f9ff;
+						}
+					</style>
+				`);
+				document1.write(`<script type="module">${parsed.code}</script>`);
+				document1.close();
+			} catch (err) {
+				// TODO: Display errors in preview.
+				console.error(err);
+			}
+		});
+
+		yield (
+			<iframe
+				class="preview"
+				c-ref={(iframe1: any) => (iframe = iframe1)}
+				src="about:blank"
+			/>
+		);
 	}
-
-	return result;
 }
 
-export interface CodeBlockProps {
-	value: string;
-	lang: string;
-}
-
-export function* CodeBlock(this: Context, {value, lang}: CodeBlockProps) {
+export function* CodeBlock(
+	this: Context,
+	{value, lang}: {value: string; lang: string},
+) {
 	let selectionRange: SelectionRange | undefined;
 	let area: ContentAreaElement;
 	let renderSource: string | undefined;
@@ -206,7 +147,6 @@ export function* CodeBlock(this: Context, {value, lang}: CodeBlockProps) {
 				if (closing !== "}") {
 					closing = "\\" + closing;
 				}
-
 				const nextMatch = next.match(
 					new RegExp(String.raw`^([^\S\r\n]*)${closing}`),
 				);
@@ -276,7 +216,6 @@ export function* CodeBlock(this: Context, {value, lang}: CodeBlockProps) {
 	});
 
 	checkpointEditHistoryBySelection(this, editHistory);
-
 	for ({lang} of this) {
 		this.schedule(() => {
 			selectionRange = undefined;
@@ -293,6 +232,7 @@ export function* CodeBlock(this: Context, {value, lang}: CodeBlockProps) {
 				[lang, rest] = [lang.slice(0, i), lang.slice(i + 1)];
 			}
 		}
+
 		const grammar = Prism.languages[lang];
 		let lines: Array<Array<string | Token>>;
 		if (grammar == null) {
@@ -317,7 +257,11 @@ export function* CodeBlock(this: Context, {value, lang}: CodeBlockProps) {
 					renderSource={renderSource}
 					selectionRange={selectionRange}
 				>
-					<pre class={className} spellcheck="false" contenteditable={isClient}>
+					<pre
+						class={className}
+						spellcheck="false"
+						contenteditable={isClient && isLive}
+					>
 						{lines.map((line) => {
 							const key = keyer.keyAt(cursor);
 							const length = line.reduce((l, t) => l + t.length, 0);
@@ -339,50 +283,111 @@ export function* CodeBlock(this: Context, {value, lang}: CodeBlockProps) {
 	}
 }
 
-import {transform} from "sucrase";
-async function* Preview(
-	this: Context,
-	{value}: {value: string},
-): AsyncGenerator<any, any, any> {
-	let iframe: any;
-	for await ({value} of this) {
-		this.flush(async () => {
-			const document1 = iframe.contentDocument;
-			if (document1 == null) {
-				return;
-			}
+/*** Prism Logic ***/
+// @ts-ignore
+Prism.manual = true;
+function splitLinesRec(
+	tokens: Array<Token | string>,
+): Array<Array<Token | string>> {
+	let currentLine: Array<Token | string> = [];
+	const lines: Array<Array<Token | string>> = [currentLine];
+	for (let i = 0; i < tokens.length; i++) {
+		const token = tokens[i];
+		if (typeof token === "string") {
+			const split = token.split(/\r\n|\r|\n/);
+			for (let j = 0; j < split.length; j++) {
+				if (j > 0) {
+					lines.push((currentLine = []));
+				}
 
-			try {
-				const parsed = transform(value, {
-					transforms: ["jsx", "typescript"],
-					jsxPragma: "createElement",
-					jsxFragmentPragma: "''",
-				});
-
-				document1.write(`
-					<style>
-						body {
-							color: #f5f9ff;
-						}
-					</style>
-				`);
-				document1.write(`<script type="module">${parsed.code}</script>`);
-				document1.close();
-			} catch (err) {
-				// TODO: show errors
-				console.error(err);
+				const token1 = split[j];
+				if (token1) {
+					currentLine.push(token1);
+				}
 			}
-		});
-		yield (
-			<iframe
-				class="preview"
-				c-ref={(iframe1: any) => (iframe = iframe1)}
-				src="about:blank"
-			/>
-		);
+		} else {
+			const split = splitLinesRec(wrapContent(token.content));
+			if (split.length > 1) {
+				for (let j = 0; j < split.length; j++) {
+					if (j > 0) {
+						lines.push((currentLine = []));
+					}
+
+					const line = split[j];
+					if (line.length) {
+						const token1 = new Prism.Token(
+							token.type,
+							unwrapContent(line),
+							token.alias,
+						);
+						token1.length = line.reduce((l, t) => l + t.length, 0);
+						currentLine.push(token1);
+					}
+				}
+			} else {
+				currentLine.push(token);
+			}
+		}
 	}
+
+	return lines;
 }
 
+function wrapContent(
+	content: Array<Token | string> | Token | string,
+): Array<Token | string> {
+	return Array.isArray(content) ? content : [content];
+}
+
+function unwrapContent(
+	content: Array<Token | string>,
+): Array<Token | string> | string {
+	if (content.length === 0) {
+		return "";
+	} else if (content.length === 1 && typeof content[0] === "string") {
+		return content[0];
+	}
+
+	return content;
+}
+
+export function splitLines(
+	tokens: Array<Token | string>,
+): Array<Array<Token | string>> {
+	const lines = splitLinesRec(tokens);
+	// Dealing with trailing newlines
+	if (lines.length && !lines[lines.length - 1].length) {
+		lines.pop();
+	}
+
+	return lines;
+}
+
+function printTokens(tokens: Array<Token | string>): Array<Element | string> {
+	const result: Array<Element | string> = [];
+	for (let i = 0; i < tokens.length; i++) {
+		const token = tokens[i];
+		if (typeof token === "string") {
+			result.push(token);
+		} else {
+			const children = Array.isArray(token.content)
+				? printTokens(token.content)
+				: token.content;
+			let className = "token " + token.type;
+			if (Array.isArray(token.alias)) {
+				className += " " + token.alias.join(" ");
+			} else if (typeof token.alias === "string") {
+				className += " " + token.alias;
+			}
+
+			result.push(<span class={className}>{children}</span>);
+		}
+	}
+
+	return result;
+}
+
+/*** Revise Logic ***/
 function checkpointEditHistoryBySelection(
 	ctx: Context,
 	editHistory: EditHistory,
