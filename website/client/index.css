@@ -205,11 +205,6 @@ content-area {
 .main {
 	@media screen and (min-width: 800px) {
 		margin-top: 3.5rem;
-		margine-left: 3rem;
-	}
-
-	@media screen and (min-width: 1100px) {
-		margine-left: 6rem;
 	}
 }
 
@@ -323,9 +318,12 @@ code.inline {
 }
 
 .playground {
-	display: flex;
-	flex-direction: row;
 	margin: 1.5em auto;
+	display: flex;
+	flex-direction: column;
+	@media screen and (min-width: 1100px) {
+		flex-direction: row;
+	}
 }
 
 .editable {
@@ -335,20 +333,30 @@ code.inline {
 	height: fit-content;
 	background: #0a0e1f;
 	background: linear-gradient(123deg, #0a0e1f 60%, #000e4f);
+	overflow: auto;
 }
 
 .editable-live {
-	width: 61.8%;
+	@media screen and (min-width: 1100px) {
+		width: 61.8%;
+	}
 }
 
 .preview {
 	flex: 0 1 auto;
 	position: sticky;
 	top: calc(3.5rem + 30px);
-	width: 38.2%;
-	min-height: 250px;
-	max-height: 350px;
-	margin: 0 0 0 -1px;
 	padding: 0;
 	border: 1px solid #e3eaf2;
+
+	min-height: 300px;
+	width: calc(100% - 1.5rem);
+	margin: -1px 0 0 0;
+
+	@media screen and (min-width: 1100px) {
+		min-height: 250px;
+		max-height: 350px;
+		width: 38.2%;
+		margin: 0 0 0 -1px;
+	}
 }
