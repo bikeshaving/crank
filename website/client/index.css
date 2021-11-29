@@ -22,9 +22,12 @@ p {
 
 img {
 	display: block;
-	max-width: 100%;
 	margin: 0 auto;
 	background: #e1e4ea;
+	max-width: 100%;
+	@media screen and (min-width: 1100px) {
+		max-width: 900px;
+	}
 }
 
 ::selection {
@@ -334,6 +337,7 @@ code.inline {
 	background: #0a0e1f;
 	background: linear-gradient(123deg, #0a0e1f 60%, #000e4f);
 	overflow: auto;
+	word-wrap: normal;
 }
 
 .editable-live {
