@@ -12,12 +12,10 @@ import type {
 import Prism from "prismjs";
 import type {Token} from "prismjs";
 import "prismjs/components/prism-typescript.js";
-import {ContentArea} from "./contentarea.tsx";
-import {Preview} from "./preview.tsx";
-
-import type {Context} from "@b9g/crank/crank.js";
+import {ContentArea} from "./contentarea";
 import {transform} from "sucrase";
-export function* Preview(
+
+function* Preview(
 	this: Context,
 	{value}: {value: string},
 ): Generator<any, any, any> {
@@ -79,6 +77,7 @@ export function* CodeBlock(
 			[lang, rest] = [lang.slice(0, i), lang.slice(i + 1)];
 		}
 	}
+
 	const isLive = rest === "live";
 	this.addEventListener("beforeinput", (ev: any) => {
 		if (!isLive) {

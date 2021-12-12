@@ -7,7 +7,7 @@ So far, we’ve only seen and used host elements, but eventually, we’ll want t
 ## Basic Components
 The simplest kind of component is a *function component*. When rendered, the function is invoked with the props of the element as its first argument, and the return value of the function is recursively rendered as the element’s children.
 
-```js live
+```jsx live
 import {createElement} from "https://unpkg.com/@b9g/crank/crank";
 import {renderer} from "https://unpkg.com/@b9g/crank/dom";
 function Greeting({name}) {
@@ -19,7 +19,7 @@ renderer.render(<Greeting name="World" />, document.body);
 
 Component elements can be passed children just as host elements can. The `createElement` function will add children to the props object under the name `children`, and it is up to the component to place these children somewhere in the returned element tree. If you don’t use the `children` prop, it will not appear in the rendered output.
 
-```js live
+```jsx live
 import {createElement} from "https://unpkg.com/@b9g/crank/crank";
 import {renderer} from "https://unpkg.com/@b9g/crank/dom";
 
@@ -172,30 +172,41 @@ By replacing the `while` loop with a `for…of` loop which iterates over `this`,
 
 One Crank idiom we see in the preceding example is that we overwrite the variables declared via the generator’s parameters with the destructuring expression in the `for…of` statement. This is an easy way to make sure those variables stay in sync with the current props of the component. However, there is no requirement that you must always overwrite old props in the `for` expression, meaning you can assign new props to a different variable and compare them against the old props.
 
-```jsx
+```jsx live
+import {createElement} from "https://unpkg.com/@b9g/crank/crank";
+import {renderer} from "https://unpkg.com/@b9g/crank/dom";
+
 function *Greeting({name}) {
-  yield <div>Hello {name}</div>;
+  yield <div>Hello {name}.</div>;
   for (const {name: newName} of this) {
-    if (name !== newName) {
+    if (name === newName) {
       yield (
-        <div>Goodbye {name} and hello {newName}</div>
+        <div>Hello again {newName}.</div>
       );
     } else {
-      yield <div>Hello again {newName}</div>;
+      yield (
+        <div>Goodbye {name} and hello {newName}.</div>
+      );
     }
 
     name = newName;
   }
 }
 
-renderer.render(<Greeting name="Alice" />, document.body);
-console.log(document.body.innerHTML); // "<div>Hello Alice</div>"
-renderer.render(<Greeting name="Alice" />, document.body);
-console.log(document.body.innerHTML); // "<div>Hello again Alice</div>"
-renderer.render(<Greeting name="Bob" />, document.body);
-console.log(document.body.innerHTML); // "<div>Goodbye Alice and hello Bob</div>"
-renderer.render(<Greeting name="Bob" />, document.body);
-console.log(document.body.innerHTML); // "<div>Hello again Bob</div>"
+function *App() {
+  let i = 0;
+  for ({} of this) {
+    const name = (Math.floor(i++ / 2) % 2) === 0 ? "Alice" : "Bob";
+    yield (
+      <div>
+        <Greeting name={name} />
+        <button onclick={() => this.refresh()}>Rerender</button>
+      </div>
+    );
+  }
+}
+
+renderer.render(<App />, document.body);
 ```
 
 The fact that state is just local variables allows us to blur the lines between props and state, in a way that is easy to understand and without lifecycle methods like `componentWillUpdate` from React. With generators and `for` loops, comparing old and new props is as easy as comparing adjacent elements of an array.
