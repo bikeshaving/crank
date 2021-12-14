@@ -249,7 +249,7 @@ export function* CodeBlock(
 		}
 
 		yield (
-			<p class="playground">
+			<div class="playground">
 				<ContentArea
 					c-ref={(area1: any) => (area = area1)}
 					value={value}
@@ -258,6 +258,9 @@ export function* CodeBlock(
 				>
 					<pre
 						class={className}
+						autocomplete="off"
+						autocorrect="off"
+						autocapitalize="off"
 						spellcheck="false"
 						contenteditable={isClient && isLive}
 					>
@@ -277,7 +280,7 @@ export function* CodeBlock(
 				{typeof document !== "undefined" && rest === "live" && (
 					<Preview value={value} />
 				)}
-			</p>
+			</div>
 		);
 	}
 }
