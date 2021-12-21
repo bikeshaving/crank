@@ -56,18 +56,22 @@ function printAttrs(props: Record<string, any>): string {
 			case name === "children":
 			case name === "innerHTML":
 				break;
-			case name === "style":
+			case name === "style": {
 				if (typeof value === "string") {
 					attrs.push(`style="${escape(value)}"`);
-				} else {
+				} else if (typeof value === "object") {
 					attrs.push(`style="${escape(printStyleObject(value))}"`);
 				}
 				break;
-			case name === "className":
-				if (!("class" in props)) {
-					attrs.push(`class="${escape(value)}"`);
+			}
+			case name === "className": {
+				if ("class" in props || typeof value !== "string") {
+					continue;
 				}
+
+				attrs.push(`class="${escape(value)}"`);
 				break;
+			}
 			case typeof value === "string":
 				attrs.push(`${escape(name)}="${escape(value)}"`);
 				break;
