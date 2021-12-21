@@ -90,10 +90,12 @@ describe("render", () => {
 					<div className="class1 class2" />
 					<div className="hidden" class="override" />
 					<div class="override" className="hidden" />
+					<div className={null} />
+					<div class={undefined} />
 				</Fragment>,
 			),
 		).toEqual(
-			'<div class="class1 class2"></div><div class="class1 class2"></div><div class="override"></div><div class="override"></div>',
+			'<div class="class1 class2"></div><div class="class1 class2"></div><div class="override"></div><div class="override"></div><div></div><div></div>',
 		);
 	});
 
