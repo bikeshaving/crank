@@ -8,7 +8,7 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
-    "@b9g/crank": "^0.4.1",
+    "@b9g/crank": "^0.4.2",
     "@b9g/revise": "^0.1.1",
     "@repeaterjs/repeater": "^3.0.4",
     "@types/fs-extra": "^9.0.13",
