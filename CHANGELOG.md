@@ -1,4 +1,7 @@
 # Changelog
+## [0.4.2] - 2021-12-20
+### Fixed
+- Fix null/undefined in className property for HTML renderer
 ## [0.4.1] - 2021-10-29
 ### Added
 - `createElement` and `Fragment` have been added to default module exports, to work with more JSX tools (#219).
