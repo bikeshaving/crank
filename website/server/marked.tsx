@@ -1,7 +1,7 @@
 /** @jsx createElement */
 import {createElement, Fragment, Raw} from "@b9g/crank";
 import type {Children, Component, Element} from "@b9g/crank";
-import marked from "marked";
+import {marked} from "marked";
 // TODO: Allow Token to be extended somehow
 import type {Token, Tokens} from "marked";
 
@@ -426,7 +426,6 @@ let demo = false;
 	//const Marked = createComponent(blog);
 	demo = true;
 	const Marked = createComponent(`
-
 <PartsOfJSX prop="value" />
 <span class="demo">**Hello?**</sp>
 
