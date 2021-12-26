@@ -326,8 +326,10 @@ function build(
 			}
 
 			case "html": {
-				// TODO:
-				//console.log(token);
+				// TODO: handle custom html components here?
+				if (demo) {
+					console.log(token);
+				}
 				continue;
 			}
 
@@ -415,17 +417,24 @@ export function createComponent(markdown: string): Component<MarkedProps> {
 	};
 }
 
-//import {renderer} from "@b9g/crank/html";
+import {renderer} from "@b9g/crank/html";
 //import {promises as fs} from "node:fs";
-//(async () => {
-//	//const blog = await fs.readFile("./blog/2020-04-15-introducing-crank.md", "utf-8");
-//	//const Marked = createComponent(blog);
-//	const Marked = createComponent(`
-//- hello
-//
-//	uhhh
-//
-//- world`);
-//	const html = renderer.render(<Marked />);
-//	console.log(html);
-//})();
+
+let demo = false;
+(async () => {
+	//const blog = await fs.readFile("./blog/2020-04-15-introducing-crank.md", "utf-8");
+	//const Marked = createComponent(blog);
+	demo = true;
+	const Marked = createComponent(`
+
+<PartsOfJSX prop="value" />
+<span class="demo">**Hello?**</sp>
+
+<detail>
+I’m more worried about myself, what if *I’m* a carrier.
+</detail>
+`);
+	const html = renderer.render(<Marked />);
+	console.log(html);
+	demo = false;
+})();
