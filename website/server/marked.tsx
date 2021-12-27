@@ -287,8 +287,13 @@ function build(
 	blockLevel = false,
 ): Array<Element | string> {
 	const result: Array<Element | string> = [];
+	let inside = false;
 	for (let i = 0; i < tokens.length; i++) {
 		let token = tokens[i];
+		if (inside && token.type !== "html") {
+			console.log("I’m inside you");
+			console.log(token);
+		}
 		let children: Array<Element | string> | undefined;
 		// TODO: Don’t hard-code the process of creating children
 		switch (token.type) {
@@ -328,6 +333,13 @@ function build(
 			case "html": {
 				// TODO: handle custom html components here?
 				if (demo) {
+					if (token.raw.match(/^<\//)) {
+						console.log("closing");
+						inside = false;
+					} else if (token.raw.match(/^</)) {
+						console.log("opening");
+						inside = true;
+					}
 					console.log(token);
 				}
 				continue;
@@ -426,14 +438,11 @@ let demo = false;
 	//const Marked = createComponent(blog);
 	demo = true;
 	const Marked = createComponent(`
-<PartsOfJSX prop="value" />
-<span class="demo">**Hello?**</sp>
+<div />
 
-<detail>
-I’m more worried about myself, what if *I’m* a carrier.
-</detail>
+<span>Hi</span>
 `);
 	const html = renderer.render(<Marked />);
-	console.log(html);
+	console.log(69, html);
 	demo = false;
 })();
