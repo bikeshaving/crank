@@ -12,7 +12,7 @@
     "@b9g/revise": "^0.1.1",
     "@repeaterjs/repeater": "^3.0.4",
     "@types/fs-extra": "^9.0.13",
-    "@types/marked": "^3.0.1",
+    "@types/marked": "^4.0.1",
     "@types/mini-css-extract-plugin": "^2.4.0",
     "@types/postcss-nested": "^4.2.3",
     "@types/postcss-preset-env": "^6.7.3",
