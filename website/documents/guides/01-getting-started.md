@@ -43,7 +43,7 @@ function *Timer() {
   }, 1000);
   try {
     for ({} of this) {
-      yield <div>Seconds: {seconds}</div>;
+      yield <div>Time elapsed {seconds}s</div>;
     }
   } finally {
     clearInterval(interval);
@@ -58,7 +58,7 @@ renderer.render(<Timer />, document.body);
 import {createElement} from "https://unpkg.com/@b9g/crank/crank";
 import {renderer} from "https://unpkg.com/@b9g/crank/dom";
 
-async function QuoteOfTheDay() {
+async function RandomQuote() {
   const res = await fetch("https://favqs.com/api/qotd");
   const {quote} = await res.json();
   return (
@@ -69,7 +69,7 @@ async function QuoteOfTheDay() {
   );
 }
 
-renderer.render(<QuoteOfTheDay />, document.body);
+renderer.render(<RandomQuote />, document.body);
 ```
 
 ### A Loading Component

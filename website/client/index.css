@@ -224,7 +224,7 @@ content-area {
 	}
 
 	@media screen and (min-width: 800px) {
-		margin-left: 250px;
+		margin-left: 240px;
 		padding: 2rem 1rem;
 		max-width: 800px;
 	}
@@ -360,7 +360,7 @@ code.inline {
 	margin: -1px 0 0 0;
 	min-height: 300px;
 	background: #0a0e1f;
-	background: linear-gradient(123deg, #0a0e1f 60%, #2b200c);
+	background: linear-gradient(123deg, #2b200c, 10%, #0a0e1f);
 
 	@media screen and (min-width: 1100px) {
 		min-height: 90%;
