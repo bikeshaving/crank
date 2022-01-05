@@ -406,13 +406,14 @@ function build(
 		}
 
 		result.push(
-			<Tag token={token} rootProps={rootProps}>{children}</Tag>
+			<Tag token={token} rootProps={rootProps}>
+				{children}
+			</Tag>,
 		);
 	}
 
 	return result;
 }
-
 
 interface JSXStackFrame {
 	tagName: string;
@@ -424,37 +425,40 @@ type JSXLexerMode = "none" | "open" | "props";
 
 // I have to write a parser to handle HTML as JSX 😔
 function parseJSX(
-	html: string, stack: Array<JSXStackFrame>
+	html: string,
+	stack: Array<JSXStackFrame>,
 ): [Array<Element | string>, Array<JSXStackFrame>] {
 	// We need a pass in a stack.
-	console.dir(html);
+	//console.dir(html);
 	let mode: JSXLexerMode = "none";
 	let loop = 0;
 	for (let i = 0; i < html.length; ) {
 		let left = html.slice(i);
 		let match: RegExpMatchArray | null;
-		if (match = left.match(/^\s+/)) {
+		if ((match = left.match(/^\s+/))) {
 			// Dealing with whitespace.
 			i += match[0].length;
 		} else {
 			switch (mode) {
 				case "none": {
-					if (match = left.match(/^<!--/)) {
+					if ((match = left.match(/^<!--/))) {
 						// we assume comments aren’t split across several tokens
-						const closeMatch = left
-							.slice(i + match[0].length)
-							.match("-->");
+						const closeMatch = left.slice(i + match[0].length).match("-->");
 						if (closeMatch) {
 							// Not really sure why RegExpMatchArray.index could possibly be
-// `undefined`.
-							i += match[0].length + (closeMatch.index || 0) + closeMatch[0].length;
+							// `undefined`.
+							i +=
+								match[0].length +
+								(closeMatch.index || 0) +
+								closeMatch[0].length;
 
 							// TODO: Emit comments maybe.
 						}
-					} if (left[0] === "<") {
+					}
+					if (left[0] === "<") {
 						mode = "open";
 						i++;
-					} else if (match = left.match(/[^<>]/)) {
+					} else if ((match = left.match(/[^<>]/))) {
 						// Add the raw text as children
 						i += match[0].length;
 					} else {
@@ -472,7 +476,7 @@ function parseJSX(
 						left = left.slice(1);
 					}
 
-					if (match = left.match(/^\w+/)) {
+					if ((match = left.match(/^\w+/))) {
 						const tag = match[0];
 						i += tag.length;
 						mode = "props";
@@ -481,10 +485,9 @@ function parseJSX(
 							//	console.error({tag, tags});
 							//	throw new Error("Tag mismatch");
 							//}
-
-							console.log(["POPPING TAG", tag]);
+							//console.log(["POPPING TAG", tag]);
 						} else {
-							console.log(["PUSHING TAG", tag]);
+							//console.log(["PUSHING TAG", tag]);
 						}
 					}
 
@@ -495,12 +498,10 @@ function parseJSX(
 					if (left[0] === ">") {
 						mode = "none";
 						i++;
-					} else if (
-						match = left.match(/^(\w+)(?:\s*=\s*('|")(\w+)\2)?/)
-					) {
+					} else if ((match = left.match(/^(\w+)(?:\s*=\s*('|")(\w+)\2)?/))) {
 						// second match group is for attr quotes
-						const [, key, , value] = match;
-						console.log({key, value, match});
+						//const [, key, , value] = match;
+						//console.log({key, value, match});
 						i += match[0].length;
 					} else {
 						throw new Error(`Unexpected character: ${left[0] || "EOF"}`);
@@ -513,7 +514,7 @@ function parseJSX(
 
 		loop++;
 
-		if (loop >= 10000) {
+		if (loop >= 100) {
 			throw new Error(`Non-terminating input: ${JSON.stringify(left)}`);
 		}
 	}
@@ -521,9 +522,10 @@ function parseJSX(
 	return [[], stack];
 }
 
-// TODO: Should the components be passed into the outer function?
+// I’m not really sure about the factory component pattern we’re doing here.
 export function createComponent(markdown: string): Component<MarkedProps> {
 	const tokens = marked.Lexer.lex(markdown);
+
 	return function Marked(props: MarkedProps) {
 		props = {
 			...props,
@@ -535,6 +537,7 @@ export function createComponent(markdown: string): Component<MarkedProps> {
 	};
 }
 
+/* Scratchpad
 import {renderer} from "@b9g/crank/html";
 //import {promises as fs} from "node:fs";
 
@@ -550,6 +553,7 @@ import {renderer} from "@b9g/crank/html";
 	const test7 = '<b>Hello <i>World</i></b>';
 	const test8 = "<div>Hello <span>World</span></div>";
 	const test9 = "<span>Hello <span>World</span></span>";
-	const Marked = createComponent(test8);
+	const Marked = createComponent(test1);
 	console.log(renderer.render(<Marked />));
 })();
+*/
