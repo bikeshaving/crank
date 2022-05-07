@@ -12,7 +12,7 @@ import type {
 import Prism from "prismjs";
 import type {Token} from "prismjs";
 import "prismjs/components/prism-typescript.js";
-import {ContentArea} from "./contentarea";
+import {ContentArea} from "./contentarea.js";
 import {transform} from "sucrase";
 
 function* Preview(
