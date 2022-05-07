@@ -2,8 +2,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "ts-node-esm server/build.tsx && echo crank.js.org > dist/CNAME",
-    "watch": "nodemon --exec ts-node-esm server/build.tsx",
+    "build": "ts-node-esm server/main.tsx && echo crank.js.org > dist/CNAME",
+    "watch": "nodemon --exec ts-node-esm server/main.tsx",
     "start": "{ npm run watch & http-server dist -p 1337; }",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"

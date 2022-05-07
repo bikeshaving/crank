@@ -243,7 +243,7 @@ function Home(): Element {
 							Crank has no dependencies, and its core is a single file. It
 							currently measures at{" "}
 							<a href="https://bundlephobia.com/result?p=@bikeshaving/crank">
-								4.5KB minified and gzipped
+								5.1kB minified and gzipped
 							</a>
 							.
 						</p>
