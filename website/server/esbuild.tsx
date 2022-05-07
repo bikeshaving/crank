@@ -4,7 +4,7 @@ import * as path from "path";
 import * as ESBuild from "esbuild";
 import {createElement} from "@b9g/crank/crank.js";
 import type {Children, Context} from "@b9g/crank/crank.js";
-import postcssPlugin from "./postcss-plugin";
+import postcssPlugin from "./postcss-plugin.js";
 import postcssPresetEnv from "postcss-preset-env";
 import postcssNested from "postcss-nested";
 
@@ -58,7 +58,7 @@ export class Storage {
 			outdir: this.dirname,
 			sourcemap: true,
 			plugins: [
-				postcssPlugin({plugins: [postcssPresetEnv(), postcssNested()]}),
+				postcssPlugin({plugins: [postcssPresetEnv() as any, postcssNested()]}),
 			],
 			watch: {
 				onRebuild: (error, result) => {

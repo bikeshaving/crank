@@ -22,9 +22,9 @@ import "prismjs/components/prism-tsx.js";
 import "prismjs/components/prism-diff.js";
 import "prismjs/components/prism-bash.js";
 
-import {createComponent} from "./marked";
-import {CodeBlock} from "../shared/prism";
-import {Page, Link, Script, Storage} from "./esbuild";
+import {createComponent} from "./marked.js";
+import {CodeBlock} from "../shared/prism.js";
+import {Page, Link, Script, Storage} from "./esbuild.js";
 
 const rootDirname = new URL("..", import.meta.url).pathname;
 
