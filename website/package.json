@@ -21,6 +21,7 @@
     "front-matter": "^4.0.2",
     "fs-extra": "^10.0.0",
     "gh-pages": "^3.2.3",
+    "http-server": "^14.1.0",
     "marked": "^4.0.8",
     "mini-css-extract-plugin": "^2.4.2",
     "nodemon": "^2.0.16",
