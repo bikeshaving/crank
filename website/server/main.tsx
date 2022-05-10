@@ -81,9 +81,7 @@ async function collectDocuments(name: string): Promise<Array<DocInfo>> {
 	return docs;
 }
 
-const storage = new Storage({
-	dirname: rootDirname,
-});
+const storage = new Storage({dirname: rootDirname});
 
 interface RootProps {
 	title: string;
@@ -205,10 +203,7 @@ function Home(): Element {
 				<header class="hero">
 					<div>
 						<h1>Crank.js</h1>
-						<h2>
-							Write JSX-driven components with functions, promises and
-							generators.
-						</h2>
+						<h2>The most “Just JavaScript” framework.</h2>
 						<a href="/guides/getting-started">Get Started</a>
 					</div>
 				</header>
