@@ -2,7 +2,7 @@
 title: Components
 ---
 
-So far, we’ve only seen and used host elements, but eventually, we’ll want to group parts of the element tree into reusable *components.* In Crank, all components are functions; there is no class-based component API.
+So far, we’ve only seen and used host elements, but eventually, we’ll want to group these elements into reusable *components*. Crank uses plain old JavaScript functions to define components, and we will see how it uses the different kinds of function types to allow developers to write reusable, stateful and interactive components.
 
 ## Basic Components
 The simplest kind of component is a *function component*. When rendered, the function is invoked with the props of the element as its first argument, and the return value of the function is recursively rendered as the element’s children.
@@ -17,7 +17,7 @@ function Greeting({name}) {
 renderer.render(<Greeting name="World" />, document.body);
 ```
 
-Component elements can be passed children just as host elements can. The `createElement` function will add children to the props object under the name `children`, and it is up to the component to place these children somewhere in the returned element tree. If you don’t use the `children` prop, it will not appear in the rendered output.
+Component elements can be passed children just as host elements can. The `createElement()` function will add children to the props object under the name `children`, and it is up to the component to place them somewhere in the returned element tree. If you don’t use the `children` prop, it will not appear in the rendered output.
 
 ```jsx live
 import {createElement} from "https://unpkg.com/@b9g/crank/crank";
@@ -77,7 +77,7 @@ console.log(document.body.innerHTML);
 By yielding elements rather than returning them, we can make components stateful using variables in the generator’s local scope. Crank uses the same diffing algorithm which reuses DOM nodes to reuse generator objects, so that their executions are preserved between renders. Every time a generator component is rendered, Crank resumes the generator and executes the generator until the next `yield`. The yielded expression, usually an element, is then rendered as the element’s children, just as if it were returned from a function component.
 
 ### Contexts
-In the preceding example, the `Counter` component’s local state changed when it was rerendered, but we may want to write components which update themselves according to timers or events instead. Crank allows components to control their own execution by passing in an object called a *context* as the `this` keyword of each component. Contexts provide several utility methods, most important of which is the `refresh` method, which tells Crank to update the related component instance in place.
+In the preceding example, the `Counter` component’s local state changed when it was rerendered, but we may want to write components which update themselves according to timers or events instead. Crank allows components to control their own execution by passing in an object called a *context* as the `this` keyword of each component. Component contexts provide several utility methods, most important of which is the `refresh` method, which tells Crank to update the related component instance in place.
 
 ```jsx
 function *Timer() {
@@ -99,9 +99,9 @@ function *Timer() {
 }
 ```
 
-This `Timer` component is similar to the `Counter` one, except now the state (the local variable `seconds`) is updated in the callback passed to `setInterval`, rather than when the component is rerendered. Additionally, the `refresh` method is called to ensure that the generator is stepped through whenever the `setInterval` callback fires, so that the rendered DOM actually reflects the updated `seconds` variable.
+This `Timer` component is similar to the `Counter` one, except now the state (the local variable `seconds`) is updated in a `setInterval()` callback, rather than when the component is rerendered. Additionally, the `refresh()` method is called to ensure that the generator is stepped through whenever the `setInterval()` callback fires, so that the rendered DOM actually reflects the updated `seconds` variable.
 
-One important detail about the `Timer` example is that it cleans up after itself with `clearInterval` in the `finally` block. Crank will call the `return` method on an element’s related generator object when it is unmounted.
+One important detail about the `Timer` example is that it cleans up after itself with `clearInterval()` in the `finally` block. Behind the scenes, Crank will call the `return()` method on an element’s generator object when it is unmounted.
 
 ### Props Updates
 The generator components we’ve seen so far haven’t used props. Generator components can accept props as their first parameter just like regular function components.

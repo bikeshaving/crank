@@ -1,29 +1,13 @@
 # Crank.js
-Write JSX-driven components with functions, promises and generators.
+The most “Just JavaScript” framework.
 
-Documentation is available at [crank.js.org](https://crank.js.org). Crank.js is in a beta phase, and some APIs may change. To read more about the motivations for this library, you can read the [introductory blog post](https://crank.js.org/blog/introducing-crank).
+Crank.js is a component framework for JavaScript which allows you to write components with functions, promises and generators. The API is designed to be simple and explicit. By relying on the built-in control flow operators of JavaScript, and by making the process of rendering explicit rather than reactive, Crank.js helps developers build on top of the latest low-level DOM abstractions, integrate cleanly with existing JavaScript libraries, and diagnose runtime errors quickly.
 
-## Features
-### Declarative
-Crank uses the same JSX syntax and diffing algorithm popularized by React, allowing you to write HTML-like code directly in JavaScript.
+And because its component API is built on top the four current function syntaxes provided by the ECMAScript standard (`function () {}`, `async function () {}`, `function *` and `async function *() {}`), features of modern-day JavaScript, widely available in all contemporary browsers.
 
-### Just Functions
-All components in Crank are just functions or generator functions. No classes, hooks, proxies or template languages are needed.
+Documentation is available at [crank.js.org](https://crank.js.org). To read more about the motivations for this library, you can read the [introductory blog post](https://crank.js.org/blog/introducing-crank).
 
-### Promise-friendly
-Crank provides first-class support for promises. You can define components as async functions and race renderings to display fallback UIs.
-
-### Lightweight
-Crank has no dependencies, and its core is a single file. It currently measures at [5KB minified and gzipped](https://bundlephobia.com/result?p=@b9g/crank).
-
-### Performant
-[According to benchmarks](https://github.com/krausest/js-framework-benchmark), Crank beats React in terms of speed and memory usage, and is currently comparable to Preact or Vue.
-
-### Extensible
-The core renderer can be extended to target alternative environments such as WebGL libraries, terminals, smartphones or smart TVs.
-
-## Installation
-Crank is available on [NPM](https://npmjs.org/@b9g/crank) in the ESModule and CommonJS formats.
+It is published on NPM under the @b9g (b[ikeshavin]g) npm organization. It is also available at.
 
 ```shell
 $ npm install @b9g/crank

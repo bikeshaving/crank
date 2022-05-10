@@ -3,8 +3,8 @@
   "type": "module",
   "scripts": {
     "build": "ts-node-esm server/main.tsx && echo crank.js.org > dist/CNAME",
-    "watch": "nodemon --exec ts-node-esm server/main.tsx",
-    "start": "{ npm run watch & http-server dist -p 1337; }",
+    "watch": "nodemon --exec ts-node-esm server/main.tsx -e 'ts tsx md'",
+    "start": "{ npm run watch & http-server dist -p 1337 -c-1; }",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
