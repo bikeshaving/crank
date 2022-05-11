@@ -202,7 +202,7 @@ function Home(): Element {
 			<div class="home">
 				<header class="hero">
 					<h1>Crank.js</h1>
-					<h2>The most “Just JavaScript” framework.</h2>
+					<h2>The most “Just JavaScript” web framework.</h2>
 				</header>
 			</div>
 		</Root>
