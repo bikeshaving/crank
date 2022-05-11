@@ -1,38 +1,22 @@
 # Crank.js
-The most “Just JavaScript” framework.
+### The most “Just JavaScript” web framework out there.
 
-Crank.js is a component framework for JavaScript which allows you to write components with functions, promises and generators. The API is designed to be simple and explicit. By relying on the built-in control flow operators of JavaScript, and by making the process of rendering explicit rather than reactive, Crank.js helps developers build on top of the latest low-level DOM abstractions, integrate cleanly with existing JavaScript libraries, and diagnose runtime errors quickly.
+Crank.js is a framework where components are defined with functions, async functions and generator functions. Its API aims to be minimal and transparent. By relying on standard JavaScript control flow operators and data structures, and by making the process of rendering explicit rather than reactive, Crank.js helps developers write durable, bug-free applications, built with the latest and greatest libraries and built-in APIs.
 
-And because its component API is built on top the four current function syntaxes provided by the ECMAScript standard (`function () {}`, `async function () {}`, `function *` and `async function *() {}`), features of modern-day JavaScript, widely available in all contemporary browsers.
+## Getting Started
 
-Documentation is available at [crank.js.org](https://crank.js.org). To read more about the motivations for this library, you can read the [introductory blog post](https://crank.js.org/blog/introducing-crank).
+The documentation for Crank.js is available at [crank.js.org](https://crank.js.org). To learn about the initial motivations for the creation of the framework, you can read its [introductory blog post](https://crank.js.org/blog/introducing-crank).
 
-It is published on NPM under the @b9g (b[ikeshavin]g) npm organization. It is also available at.
+Crank.js is published on NPM under the `@b9g` organization (short for “b**ikeshavin**g”).
 
 ```shell
 $ npm install @b9g/crank
 ```
 
-```jsx
-/** @jsx createElement */
-import {createElement} from "@b9g/crank";
-import {renderer} from "@b9g/crank/dom";
+### Key Examples
 
-renderer.render(<div id="hello">Hello world</div>, document.body);
-```
+#### A Simple Component
 
-If your environment does not support ESModules (you may see a message like `SyntaxError: Unexpected token export`), you can import the CommonJS versions of the library under the `cjs` directory.
-
-```jsx
-/** @jsx createElement */
-import {createElement} from "@b9g/crank/cjs";
-import {renderer} from "@b9g/crank/cjs/dom";
-
-renderer.render(<div id="hello">Hello world</div>, document.body);
-```
-
-## Key Examples
-### A Simple Component
 ```jsx
 /** @jsx createElement */
 import {createElement} from "@b9g/crank";
@@ -47,9 +31,8 @@ function Greeting({name = "World"}) {
 renderer.render(<Greeting />, document.body);
 ```
 
-[Try on CodeSandbox](https://codesandbox.io/s/a-simple-crank-component-mhciu)
+#### A Stateful Component
 
-### A Stateful Component
 ```jsx
 /** @jsx createElement */
 import {createElement} from "@b9g/crank";
@@ -73,9 +56,8 @@ function *Timer() {
 renderer.render(<Timer />, document.body);
 ```
 
-[Try on CodeSandbox](https://codesandbox.io/s/a-stateful-crank-component-hh8zx)
+#### An Async Component
 
-### An Async Component
 ```jsx
 /** @jsx createElement */
 import {createElement} from "@b9g/crank";
@@ -94,9 +76,8 @@ async function QuoteOfTheDay() {
 renderer.render(<QuoteOfTheDay />, document.body);
 ```
 
-[Try on CodeSandbox](https://codesandbox.io/s/an-async-crank-component-ru02q)
-
 ### A Loading Component
+
 ```jsx
 /** @jsx createElement */
 import {createElement, Fragment} from "@b9g/crank";
@@ -151,5 +132,3 @@ function *RandomDogApp() {
 
 renderer.render(<RandomDogApp />, document.body);
 ```
-
-[Try on CodeSandbox](https://codesandbox.io/s/a-loading-crank-component-pci9d)
