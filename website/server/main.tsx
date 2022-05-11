@@ -201,67 +201,9 @@ function Home(): Element {
 		<Root title="Crank.js" url="/">
 			<div class="home">
 				<header class="hero">
-					<div>
-						<h1>Crank.js</h1>
-						<h2>The most “Just JavaScript” framework.</h2>
-						<a href="/guides/getting-started">Get Started</a>
-					</div>
+					<h1>Crank.js</h1>
+					<h2>The most “Just JavaScript” framework.</h2>
 				</header>
-				<h2>Features</h2>
-				<main class="features">
-					<div class="feature">
-						<h3>Declarative</h3>
-						<p>
-							Crank uses the same JSX syntax and diffing algorithm popularized
-							by React, allowing you to write HTML-like code directly in
-							JavaScript.
-						</p>
-					</div>
-					<div class="feature">
-						<h3>Just Functions</h3>
-						<p>
-							All components in Crank are just functions or generator functions.
-							No classes, hooks, proxies or template languages are needed.
-						</p>
-					</div>
-					<div class="feature">
-						<h3>Promise-friendly</h3>
-						<p>
-							Crank provides first-class support for promises. You can define
-							components as async functions and race renderings to display
-							fallback UIs.
-						</p>
-					</div>
-					<div class="feature">
-						<h3>Lightweight</h3>
-						<p>
-							Crank has no dependencies, and its core is a single file. It
-							currently measures at{" "}
-							<a href="https://bundlephobia.com/result?p=@bikeshaving/crank">
-								5.1kB minified and gzipped
-							</a>
-							.
-						</p>
-					</div>
-					<div class="feature">
-						<h3>Performant</h3>
-						<p>
-							<a href="https://github.com/krausest/js-framework-benchmark">
-								According to benchmarks
-							</a>
-							, Crank beats React in terms of speed and memory usage, and is
-							currently comparable to Preact or Vue.
-						</p>
-					</div>
-					<div class="feature">
-						<h3>Extensible</h3>
-						<p>
-							The core renderer can be extended to target alternative
-							environments such as WebGL libraries, terminals, smartphones or
-							smart TVs.
-						</p>
-					</div>
-				</main>
 			</div>
 		</Root>
 	);
