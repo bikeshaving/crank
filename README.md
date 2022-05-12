@@ -1,13 +1,15 @@
 # Crank.js
-### The most “Just JavaScript” web framework.
+**The most “Just JavaScript” web framework.**
 
-Crank.js is a framework where components are defined with *Plain Old JavaScript Functions*. But not just regular functions: components can also be defined with async functions for working with promises, and generator functions for working with local state. Its API aims to be minimal and transparent. By relying on standard JavaScript control flow operators and data structures, and by making the process of rendering explicit rather than reactive, Crank.js helps developers write durable, bug-free applications with the latest and greatest libraries and APIs.
+Crank.js is a framework where components are defined with *Plain Old JavaScript Functions*. But not just regular functions: components can also be defined with async functions for working with promises, and generator functions for working with local state.
 
-## Getting Started
+Its API aims to be minimal and transparent. By relying on standard JavaScript control flow operators and data structures, and by making the process of rendering explicit, Crank.js helps developers write durable, bug-free applications with the latest and greatest libraries and APIs.
 
-The documentation for Crank.js is available at [crank.js.org](https://crank.js.org). To learn about the initial motivations for its creation, you can read the [introductory blog post](https://crank.js.org/blog/introducing-crank).
+Rather than forcing developers to work with increasingly convoluted reactive solutions and bespoke templating languages, Crank.js uses the platform. It is a dedication to the web, to the promise of an accessible and inclusive platform for self-expression and commerce, built with the idea that a simpler framework is how we push the frontier.
 
-Crank.js is published on NPM under the `@b9g` organization (short for “b**ikeshavin**g”).
+## Get Started
+
+The documentation for Crank.js is available at [crank.js.org](https://crank.js.org). Crank.js is published on NPM under the `@b9g` organization (short for “b*ikeshavin*g”).
 
 ```shell
 $ npm install @b9g/crank
@@ -17,7 +19,7 @@ $ npm install @b9g/crank
 
 #### A Simple Component
 
-```jsx
+```jsx live
 /** @jsx createElement */
 import {createElement} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
@@ -33,7 +35,7 @@ renderer.render(<Greeting />, document.body);
 
 #### A Stateful Component
 
-```jsx
+```jsx live
 /** @jsx createElement */
 import {createElement} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
@@ -58,7 +60,7 @@ renderer.render(<Timer />, document.body);
 
 #### An Async Component
 
-```jsx
+```jsx live
 /** @jsx createElement */
 import {createElement} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
@@ -78,7 +80,7 @@ renderer.render(<QuoteOfTheDay />, document.body);
 
 ### A Loading Component
 
-```jsx
+```jsx live
 /** @jsx createElement */
 import {createElement, Fragment} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
