@@ -1,11 +1,13 @@
 # Crank.js
-**The most “Just JavaScript” web framework.**
+The most “Just JavaScript” web framework.
 
-Crank.js is a framework where components are defined with *Plain Old JavaScript Functions*. But not just regular functions: components can also be defined with async functions for working with promises, and generator functions for working with local state.
+## Mission Statement
+
+Crank.js is a framework where components are defined with *Plain Old JavaScript Functions*. But not just regular functions! Components can also be defined with async functions for working with promises, and generator functions for working with local state.
 
 Its API aims to be minimal and transparent. By relying on standard JavaScript control flow operators and data structures, and by making the process of rendering explicit, Crank.js helps developers write durable, bug-free applications with the latest and greatest libraries and APIs.
 
-Rather than forcing developers to work with increasingly convoluted reactive solutions and bespoke templating languages, Crank.js uses the platform. It is a dedication to the web, to the promise of an accessible and inclusive platform for self-expression and commerce, built with the idea that a simpler framework is how we push the frontier.
+Rather than forcing developers to work with increasingly convoluted reactive solutions and bespoke templating languages, Crank.js uses the platform. It is a dedication to the web, to the promise of an accessible and inclusive medium for self-expression and commerce, built on the thesis that simpler code is how we’ll push the frontier.
 
 ## Get Started
 
