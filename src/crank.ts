@@ -253,6 +253,7 @@ export class Element<TTag extends Tag = Tag> {
 	}
 }
 
+// See Element interface
 Element.prototype.$$typeof = ElementSymbol;
 
 export function isElement(value: any): value is Element {
