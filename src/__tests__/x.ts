@@ -10,6 +10,7 @@ describe("x", () => {
 	});
 
 	test("props", () => {
+		expect(x`<p/>`).toEqual(createElement("p"));
 		//expect(x`<p class="foo" />`).toEqual(createElement("p", {class: "foo"}));
 		//expect(x`<p class=${"foo"} />`).toEqual(createElement("p", {class: "foo"}));
 	});
