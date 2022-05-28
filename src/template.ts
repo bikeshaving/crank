@@ -51,11 +51,16 @@ function createElementsFromParse(
 
 //x`<div a=${1} b=${2}>World</div>`;
 function parse(
-	// TODO: figure out if we need to use the raw strings array.
-	// This would imply that there are some escape sequences we need to handle.
+	// We use the cooked representation just because there are no situations
+	// where we need to escape characters in JSX.
 	spans: TemplateStringsArray,
 	expressions: Array<XExpression>,
 ): Array<ParseElementResult | string> {
+	// HIGH THOUGHTS:
+	// The parser has three modes, children, tag and props. The tag mode is
+	// initiated by a "<". The props mode is initiated after the first whitespace
+	// after a tag-hole or text, and ends after a tag end or tag close and end.
+	// The children mode is the initial mode and is the most permissive.
 	let mode: "children" | "tag" | "props" = "children";
 	//const stack: Array<Component | string> = [];
 	const result: Array<ParseElementResult | string> = [];
