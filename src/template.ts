@@ -4,24 +4,14 @@ import type {Component} from "./crank.js";
 // TODO: Figure out if we want to narrow the types.
 type XExpression = unknown;
 
-// TODO: Is it better to use the raw string? I don’t know tbh. The only reason
-// to use a raw string would be to allow escape sequences.
 export function x(
 	spans: TemplateStringsArray,
 	...expressions: Array<XExpression>
 ): Element | null {
-	const parsed = parse(spans, expressions);
+	const parsed = parseChildren(Array.from(spans), expressions);
 	return createElementsFromParse(parsed);
 }
 
-/*
-	ARE THESE ALL THE SPECIAL CHARACTERS?
-	`"`,`'` // prop value separator
-	"=", // prop key-value separator
-	"<", // tag start
-	">", // tag end
-	"/", // tag closer
- */
 interface ParseElementResult {
 	tag: Component | string;
 	props: Record<string, any>;
@@ -49,39 +39,55 @@ function createElementsFromParse(
 	return createElement("", null, result);
 }
 
-//x`<div a=${1} b=${2}>World</div>`;
-function parse(
-	// We use the cooked representation just because there are no situations
-	// where we need to escape characters in JSX.
-	spans: TemplateStringsArray,
+// TODO: Pick a grammar for your grammar
+// TODO: Is it a property, or an attribute?
+/* Grammar for templates
+ *
+ * CHILDREN = (ELEMENT | TEXT | ${})*
+ * TEXT = ~`<`
+ * ELEMENT =
+ *   SELF_CLOSING_ELEMENT |
+ *   OPENING_ELEMENT CHILDREN CLOSING_ELEMENT
+ * SELF_CLOSING_ELEMENT =
+ *   `<` (ELEMENT_NAME | ${}) PROPS `/` `>`
+ * OPENING_ELEMENT = `<` (ELEMENT_NAME | ${}) PROPS `>`
+ * CLOSING_ELEMENT = `<` `/` ELEMENT_NAME W `>`
+ * PROPS = (PROP | SPREAD_PROP)*
+ * SPREAD_PROP = `...` ${}
+ * PROP = PROP_NAME `=` PROP_VALUE
+ * PROP_NAME = “not whitespace”
+ * PROP_VALUE = (`"` ~`"` `"`) | (`'` ~`'` `'`') | ${}
+ */
+function parseChildren(
+	// We use the cooked representation because there are no situations where we
+	// need to escape characters in JSX.
+	spans: Array<string>,
 	expressions: Array<XExpression>,
 ): Array<ParseElementResult | string> {
-	// HIGH THOUGHTS:
-	// The parser has three modes, children, tag and props. The tag mode is
-	// initiated by a "<". The props mode is initiated after the first whitespace
-	// after a tag-hole or text, and ends after a tag end or tag close and end.
-	// The children mode is the initial mode and is the most permissive.
 	let mode: "children" | "tag" | "props" = "children";
-	//const stack: Array<Component | string> = [];
+	//const stack: Array<ParseElementResult> = [];
 	const result: Array<ParseElementResult | string> = [];
 	for (let i = 0; i < spans.length; i++) {
 		const span = spans[i];
 		for (let j = 0; j < span.length; j++) {
 			const ch = span[j];
+			// character is whitespace
+			switch (ch) {
+				case "\r":
+					if (ch[j + 1] === "\n") {
+						j++;
+					}
+				// fallthrough
+				case "\n":
+					break;
+				case " ":
+				case "\t":
+					break;
+			}
 			if (!ch.trim()) {
-				// character is whitespace
 				if (mode === "children") {
 					/*
 						TODO: The JSX whitespace rules are actually kinda complicated.
-
-						READ:
-						https://www.bennadel.com/blog/2880-a-quick-look-at-rendering-white-space-using-jsx-in-reactjs.htm
-						https://github.com/facebook/jsx/issues/6
-						https://github.com/facebook/jsx/issues/19
-						https://github.com/microsoft/TypeScript/issues/22186
-						https://github.com/developit/htm/issues/206
-						https://github.com/babel/babel/issues/7360
-						https://github.com/prettier/prettier/issues/12047
 
 						From https://github.com/facebook/jsx/issues/19#issuecomment-57079949
 							Indenting/beautifying code should never affect the outcome,
@@ -96,9 +102,9 @@ function parse(
 						rule: whitespace at the start or end of lines/documents can be
 						added and removed. The problem for JSX is that there are certain
 						instances where developers want to treat whitespace at the end of
-						lines as significant, and JSX uses a bunch of fancy heuristics
-						with regard to elements, text and interpolations to try and make
-						things behave predictably.
+						lines as significant, and JSX uses fancy heuristics with regard to
+						elements, text and interpolations to try and make things behave
+						predictably.
 
 							return (
 								<div>
@@ -109,15 +115,10 @@ function parse(
 
 						The canonical problem for web developers is when attempting to put
 						whitespace between “inline” elements on separate lines. The
-						solution is to interpolate the whitespace as a raw string, but this
-						is itself “ugly.” Neither the JSX grammar nor regular JavaScript
-						include a way to escape newlines at the end of code.
-
-						The root problem here is that the JSX grammar does not have a way
-						to demark significant whitespace at the end of a line, which can be
-						preserved by code formatters. At the same time, we don’t want to
-						adopt the whitespace rules of HTML, which are pretty fucking
-						insane.
+						solution is to interpolate the whitespace as a raw string at the
+						end of the line, but this is itself “ugly.” The root cause is that
+						neither JSX nor regular JavaScript include a way to escape newlines
+						at the end of code.
 
 							yield x`
 								<div>
@@ -127,12 +128,12 @@ function parse(
 							`;
 
 						Luckily, JavaScript template strings allow for Unix-style escapes
-						of newlines. By backslash escaping newlines in template documents,
-						we can allow significant whitespace between elements which are
-						separated by newlines.
+						of newlines. By escaping newlines in template documents, we can
+						allow for whitespace between elements which are separated by
+						newlines.
 
-						Therefore, a template string-based API for JSX-like element
-						creation should probably follow the following rules:
+						Therefore, a template tag-based API for element creation should
+						probably abide by the following rules with regard to whitespace:
 
 						1. Whitespace at the start of lines should be stripped.
 						2. Whitespace at the end of lines should be preserved.
@@ -148,15 +149,25 @@ function parse(
 				// TODO: Do we have to allow back-slash escapes in this shit or can people just interpolate random strings in children?
 				if (mode === "children") {
 					mode = "tag";
+				} else {
+					throw new Error("Unexpected character");
 				}
 			} else if (ch === ">") {
-				// what the fuck
+				if (mode === "tag" /* || mode === "props"*/) {
+					mode = "children";
+				} else {
+					result.push(ch);
+				}
 			} else if (ch === "/") {
-				// what the fuck
+				if (mode === "tag") {
+					// what the fuck
+				}
 			}
 		}
+
+		const expression = expressions[i];
+		expression;
 	}
 
-	expressions;
 	return result;
 }
