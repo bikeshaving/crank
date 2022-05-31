@@ -4,10 +4,19 @@ import type {Component} from "./crank.js";
 // TODO: Figure out if we want to narrow the types.
 type XExpression = unknown;
 
+// TODO: Handle illegal escape sequences.
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals#es2018_revision_of_illegal_escape_sequences
+
+// TODO: The biggest weakness with tagged templates is a lack of semantic type
+// checking for expressions. Investigate whether TypeScript has advanced in
+// this regard.
+
 export function x(
 	spans: TemplateStringsArray,
 	...expressions: Array<XExpression>
 ): Element | null {
+	// We use the “cooked” representation of template strings because there is no
+	// need for custom escape sequences.
 	const parsed = parseChildren(Array.from(spans), expressions);
 	return createElementsFromParse(parsed);
 }
@@ -39,28 +48,25 @@ function createElementsFromParse(
 	return createElement("", null, result);
 }
 
-// TODO: Pick a grammar for your grammar
-// TODO: Is it a property, or an attribute?
-/* Grammar for templates
+// Wouldn’t it be nice if there were a TypeScript plugin that just implemented this?
+
+/* Grammar
  *
- * CHILDREN = (ELEMENT | TEXT | ${})*
- * TEXT = ~`<`
- * ELEMENT =
- *   SELF_CLOSING_ELEMENT |
- *   OPENING_ELEMENT CHILDREN CLOSING_ELEMENT
- * SELF_CLOSING_ELEMENT =
- *   `<` (ELEMENT_NAME | ${}) PROPS `/` `>`
- * OPENING_ELEMENT = `<` (ELEMENT_NAME | ${}) PROPS `>`
- * CLOSING_ELEMENT = `<` `/` ELEMENT_NAME W `>`
+ * CHILDREN = (CHILD_TEXT | ELEMENT | ${Children})*
+ * CHILD_TEXT = ~`<`*
+ * ELEMENT = SELF_CLOSING_ELEMENT | OPENING_ELEMENT CHILDREN CLOSING_ELEMENT
+ * SELF_CLOSING_ELEMENT = `<` (IDENTIFIER | ${Component}) PROPS `/` `>`
+ * OPENING_ELEMENT = `<` (IDENTIFIER | ${Component}) PROPS `>`
+ * CLOSING_ELEMENT = `<` `/` IDENTIFIER `>`
  * PROPS = (PROP | SPREAD_PROP)*
- * SPREAD_PROP = `...` ${}
- * PROP = PROP_NAME `=` PROP_VALUE
- * PROP_NAME = “not whitespace”
+ * SPREAD_PROP = `...` ${Record<string, unknown>}
+ * PROP = IDENTIFIER `=` PROP_VALUE
+ * IDENTIFIER = /+/
  * PROP_VALUE = (`"` ~`"` `"`) | (`'` ~`'` `'`') | ${}
  */
 function parseChildren(
 	// We use the cooked representation because there are no situations where we
-	// need to escape characters in JSX.
+	// need to escape characters in this language.
 	spans: Array<string>,
 	expressions: Array<XExpression>,
 ): Array<ParseElementResult | string> {
