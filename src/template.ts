@@ -28,19 +28,35 @@ interface ParseElementResult {
 
 /* Whitespace
 The JSX whitespace rules are complicated and controversial.
-	A quote from https://github.com/facebook/jsx/issues/19#issuecomment-57079949:
+
+In the early days of React, when the JSX syntax extension was still being
+implemented in the popular open-source transpilers of the time, contributors
+debated how whitespace should work, because of JSX’s similarity to HTML, and
+how whitespace works in HTML, where, for instance, whitespace is collapsed
+between elements, and has different semantics according to whether we’re in a “block-formatting context.“
+
+One contributor writes (https://github.com/facebook/jsx/issues/19#issuecomment-57079949):
+
 	Indenting/beautifying code should never affect the outcome, especially as it
 	means all indentation has to carry over into the final result and cannot be
 	minified away (yuck!). While there are a handful of cases where you might
 	want newlines to affect the outcome, those are far better handled explicitly
 	by {' '} or {'\n'}.
 
-We can rephrase the desire for “beauty” here as a desire for the concrete rule:
-whitespace at the start or end of lines and documents, and inside elements, can
-be added or removed, without affecting the final result. The tricky part for
-JSX is that there are certain instances where developers want to treat
-whitespace at the ends of lines as significant, and JSX uses fancy heuristics
-with regard to elements, text and expressions to allow for this.
+We can rephrase the desire for “beauty” here as a desire for some whitespace in
+the JSX grammar to be semantic-insensitive, for the purposes of programmers and
+tools to toy with. Common use-cases for developer tooling like formatters and
+minifiers include highlighting the “structure” of elements via indentation, or
+trimming accidental whitespace. These use-cases can be rephrased as the
+concrete rule: whitespace at the starts and ends of lines, or around the
+children of an element, can be added or removed without affecting the semantics
+of the code, ”semantics” here meaning simply the transpilation of JSX to
+createElement() calls.
+
+The tricky part for JSX is the use-case mentioned previously, where developers
+want “some” whitespace at the ends of lines to be significant, as between two
+inline elements divided across lines. As the author indicates, the solution is
+to use JSX’s interpolation syntax `{" "}` to do so.
 
 	return (
 		<div>
@@ -49,12 +65,23 @@ with regard to elements, text and expressions to allow for this.
 		</div>
 	);
 
-The example that trips up developers is when attempting to put whitespace
-between “inline” elements like spans on separate lines. The solution is to
-interpolate the whitespace as a raw string at the end of the line, but this is
-itself “ugly” and a big lift for formatters. The root cause is that the JSX
-grammar does not have a way to indicate that whitespace at the end of lines is
-significant.
+Unfortunately, this solution is a pitfall for developers new to JSX, who
+regularly assume that the whitespace rules for JSX are the same or similar to
+that of HTML, as evidenced in the issue trackers for downstream transpilers.
+Ironically, this solution is in and of itself “ugly,” or at least requires more
+characters to type out, and a bigger lift for authors of developer tools.
+
+To ease the tension, either developer tools need a semantic understanding of
+inline/block elements to know how to preserve whitespace between elements, or
+the whitespace rules of JSX need to give a little. The former solution is
+futile, insofar as the semantics of inline and block elements can also depend
+on CSS. Meanwhile, there has been no progress made in regards to the latter
+solution. Hence we are at the impasse we are at today.
+
+The root cause of all this worry is that the JSX grammar does not have a way to
+indicate that whitespace at the ends of lines is significant. Thankfully,
+JavaScript template strings allow for Unix-style escapes of newlines, so we
+don’t have to deal with any of these problems!
 
 	yield x`
 		<div>
@@ -63,18 +90,16 @@ significant.
 		</div>
 	`;
 
-Thankfully, JavaScript template strings allow for Unix-style escapes of
-newlines, so we don’t have to deal with any of these problems! The only catch
-is that we have to use the raw representation of strings, because the “cooked”
-representation does not indicate that a newline has been escaped, and we need
-it so we can ignore the whitespace at the start of the line. For instance, in
-the previous example, we need to know that the newline is escaped, so that we
-can treat the tabs on the next line before `<span>World</span>` as
-insignificant.
+The only catch is that we have to use the raw representation of strings,
+because the “cooked” representation does not indicate that the newline has been
+escaped; it removes the newline from the cooked input entirely. For instance,
+as we parse the template in the previous example, we want to treat the tabs on
+the next line before `<span>World</span>` as insignificant, but we would have
+no way of knowing that the tabs were at the start of a new line, rather than
+between two elements.
 */
 
 /* Grammar
-
 CHILDREN = (CHILD_TEXT | ELEMENT | ${Children})*
 CHILD_TEXT = ~`<`+
 ELEMENT =
@@ -92,7 +117,7 @@ IDENTIFIER = /\S+/
 PROP_VALUE = (`"` ~`"`* `"`) | (`'` ~`'`* `'`') | ${unknown}
 */
 
-// TODO: Since we’re going down the recursive descent route, we need to
+// TODO: Since we’re going down the recursive descent route for now, we need to
 // indicate to the callee in all parseX functions how much span and expression
 // is consumed.
 function parseChildren(
@@ -105,7 +130,7 @@ function parseChildren(
 		const span = spans[s];
 		for (let i = 0; i < span.length; ) {
 			if (starting) {
-				// TODO: You can do gross regex magic to cut empty lines right?
+				// TODO: You can do gross regex magic to cut out whitespace-only lines right?
 				const match = /^[^\S\r\n]/.exec(span.slice(i));
 				if (match) {
 					i += match[0].length;
