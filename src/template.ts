@@ -1,9 +1,6 @@
 import {createElement, Element} from "./crank.js";
 import type {Tag} from "./crank.js";
 
-// TODO: Figure out if we want to narrow the types of expressions.
-type XExpression = unknown;
-
 // TODO: Handle illegal escape sequences.
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals#es2018_revision_of_illegal_escape_sequences
 
@@ -14,7 +11,7 @@ type XExpression = unknown;
 // TODO: Think about the name of this function.
 export function template(
 	spans: TemplateStringsArray,
-	...expressions: Array<XExpression>
+	...expressions: Array<unknown>
 ): Element | null {
 	const parsed = parseChildren(Array.from(spans.raw), expressions);
 	return createElementsFromParse(parsed);
@@ -108,6 +105,7 @@ function parseChildren(
 		const span = spans[s];
 		for (let i = 0; i < span.length; ) {
 			if (starting) {
+				// TODO: You can do gross regex magic to cut empty lines right?
 				const match = /^[^\S\r\n]/.exec(span.slice(i));
 				if (match) {
 					i += match[0].length;
