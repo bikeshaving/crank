@@ -75,7 +75,7 @@ To ease the tension, either developer tools need a semantic understanding of
 inline/block elements to know how to preserve whitespace between elements, or
 the whitespace rules of JSX need to give a little. The former solution is
 futile, insofar as the semantics of inline and block elements can also depend
-on CSS. Meanwhile, there has been no progress made in regards to the latter
+on styling. Meanwhile, there has been no progress made in regards to the latter
 solution. Hence we are at the impasse we are at today.
 
 The root cause of all this worry is that the JSX grammar does not have a way to
@@ -92,7 +92,7 @@ don’t have to deal with any of these problems!
 
 The only catch is that we have to use the raw representation of strings,
 because the “cooked” representation does not indicate that the newline has been
-escaped; it removes the newline from the cooked input entirely. For instance,
+escaped; it removes the newline from the template tag entirely. For instance,
 as we parse the template in the previous example, we want to treat the tabs on
 the next line before `<span>World</span>` as insignificant, but we would have
 no way of knowing that the tabs were at the start of a new line, rather than
@@ -100,26 +100,24 @@ between two elements.
 */
 
 /* Grammar
-CHILDREN = (CHILD_TEXT | ELEMENT | ${Children})*
-CHILD_TEXT = ~`<`+
-ELEMENT =
-  SELF_CLOSING_ELEMENT |
-  FRAGMENT_OPENING_ELEMENT CHILDREN CLOSING_ELEMENT |
-  OPENING_ELEMENT CHILDREN CLOSING_ELEMENT
-SELF_CLOSING_ELEMENT = `<` (IDENTIFIER | ${Component}) PROPS `/` `>`
-FRAGMENT_OPENING_ELEMENT = `<` `>`
-OPENING_ELEMENT = `<` (IDENTIFIER | ${Component}) PROPS `>`
-CLOSING_ELEMENT = `<` `/` (IDENTIFIER | ${Component})? `>`
-PROPS = (PROP | SPREAD_PROP)*
-SPREAD_PROP = `...` ${Record<string, unknown>}
-PROP = IDENTIFIER `=` PROP_VALUE
-IDENTIFIER = /\S+/
-PROP_VALUE = (`"` ~`"`* `"`) | (`'` ~`'`* `'`') | ${unknown}
+$CHILDREN: ($CHILD_TEXT | $ELEMENT | ${Children})*
+$CHILD_TEXT: /[^<]+/
+$ELEMENT:
+  $SELF_CLOSING_ELEMENT |
+  $OPENING_ELEMENT $CHILDREN $CLOSING_ELEMENT
+$SELF_CLOSING_ELEMENT: < ($IDENTIFIER | ${Component}) $PROPS / >
+$OPENING_ELEMENT: < ($IDENTIFIER | ${Component})? $PROPS >
+$CLOSING_ELEMENT: < / ($IDENTIFIER | ${Component})? >
+$PROPS: ($PROP | $SPREAD_PROP)*
+$SPREAD_PROP: ...${Record<string, unknown>}
+$PROP: $IDENTIFIER = $PROP_VALUE
+$IDENTIFIER: /\S+/
+$PROP_VALUE: /"[^"]*"/ | /'[^']*'/ | ${unknown}
 */
 
 // TODO: Since we’re going down the recursive descent route for now, we need to
-// indicate to the callee in all parseX functions how much span and expression
-// is consumed.
+// indicate to the callee in all the parseX functions how much span and
+// expression is consumed.
 function parseChildren(
 	spans: Array<string>,
 	expressions: Array<unknown>,
