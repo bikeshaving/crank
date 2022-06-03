@@ -314,11 +314,11 @@ export function createElement<TTag extends Tag>(
 }
 
 /**
- * Alias for createElement
+ * A single-letter alias for createElement
  *
- * This function does implement hyperscript’s CSS selector syntax.
+ * This function does not implement hyperscript’s CSS selector syntax.
  */
-export const h = createElement;
+export const c = createElement;
 
 /**
  * Clones a given element, shallowly copying the props object.
