@@ -13,7 +13,7 @@ export function template(
 	spans: TemplateStringsArray,
 	...expressions: Array<unknown>
 ): Element | null {
-	const parsed = parseChildren(Array.from(spans.raw), expressions);
+	const [parsed] = parseChildren(Array.from(spans.raw), expressions);
 	return createElementsFromParse(parsed);
 }
 
@@ -23,25 +23,24 @@ interface ParseElementResult {
 	tag: Tag;
 	props: Record<string, any> | null;
 	children: Array<ParseElementResult | string>;
-	length: number;
 }
 
 /* Whitespace
 The JSX whitespace rules are complicated and controversial.
 
 In the early days of React, when the JSX syntax extension was still being
-implemented in the popular open-source transpilers of the time, contributors
-debated how whitespace should work, because of JSX’s similarity to HTML, and
-how whitespace works in HTML, where, for instance, whitespace is collapsed
-between elements, and has different semantics according to whether we’re in a “block-formatting context.“
-
-One contributor writes (https://github.com/facebook/jsx/issues/19#issuecomment-57079949):
+implemented in the popular transpilers of the time, contributors debated how
+whitespace should work. Of course, they shouldn’t work like HTML’s because
+those rules are kinda insane. Insofar as JSX is meant for programmers, who like
+to fiddle with whitespace, it should follow the same semantics as JavaScript
+itself. One contributor writes:
 
 	Indenting/beautifying code should never affect the outcome, especially as it
 	means all indentation has to carry over into the final result and cannot be
 	minified away (yuck!). While there are a handful of cases where you might
 	want newlines to affect the outcome, those are far better handled explicitly
 	by {' '} or {'\n'}.
+	https://github.com/facebook/jsx/issues/19#issuecomment-57079949
 
 We can rephrase the desire for “beauty” here as a desire for some whitespace in
 the JSX grammar to be semantic-insensitive, for the purposes of programmers and
@@ -99,34 +98,78 @@ no way of knowing that the tabs were at the start of a new line, rather than
 between two elements.
 */
 
+/* Some rambling thoughts on closing tags
+JSX uses upper-case capitalization to determine whether a tag is an identifier
+from the scope. The disadvantage for template tags is that if we interpolate
+tags, this is slightly more typing (x`<${Component} />`). This unwieldy-ness is
+exacerbated by closing tags, which must match opening tags to form a
+well-formed tree.
+
+	yield x`
+		<${Component}>hello</${Component}>
+	`;
+
+Having to type out the `${}` twice is twice the syntactic noise. Honestly, as I
+look at the above example, it doesn’t seem too bad, but insofar as JSX is not
+HTML, we can do what developit/htm does and have a catch-all closing tag like
+`<//>`.
+
+	yield x`
+		<${Component}>hello<//>
+	`;
+
+I think this would be the most explicit, least surprising design, right? Trying
+to do fancy things where we allow closing elements to be un-interpolated, and
+then parsed and compared against function names, would get in the way of
+minifiers, which regularly mess with function names. We could also treat the
+double slash as a comment-like construct, where you could put anything after
+the slashes.
+
+	yield x`
+		<${Component}>hello< // Component >
+	`;
+ */
+
+// TODO: Add HTML style comments to the grammar `<!-- comment -->`
+
 /* Grammar
-$CHILDREN: ($CHILD_TEXT | $ELEMENT | ${Children})*
+$CHILDREN: ($CHILD_TEXT | $ELEMENT | ${unknown})*
 $CHILD_TEXT: /[^<]+/
 $ELEMENT:
   $SELF_CLOSING_ELEMENT |
   $OPENING_ELEMENT $CHILDREN $CLOSING_ELEMENT
-$SELF_CLOSING_ELEMENT: < ($IDENTIFIER | ${Component}) $PROPS / >
-$OPENING_ELEMENT: < ($IDENTIFIER | ${Component})? $PROPS >
-$CLOSING_ELEMENT: < / ($IDENTIFIER | ${Component})? >
+$SELF_CLOSING_ELEMENT: "<" ($IDENTIFIER | ${Tag}) $PROPS "/" ">"
+$OPENING_ELEMENT: "<" ($IDENTIFIER | ${Tag})? $PROPS ">"
+$CLOSING_ELEMENT: "<" ("/" | "//") ($IDENTIFIER)? ">"
 $PROPS: ($PROP | $SPREAD_PROP)*
-$SPREAD_PROP: ...${Record<string, unknown>}
-$PROP: $IDENTIFIER = $PROP_VALUE
-$IDENTIFIER: /\S+/
+$SPREAD_PROP: "..." ${Record<string, unknown>}
+$PROP: $IDENTIFIER ("=" $PROP_VALUE)?
+$IDENTIFIER: /[^\s>]+/
 $PROP_VALUE: /"[^"]*"/ | /'[^']*'/ | ${unknown}
 */
+
+// I wish we could use regexs but we have to deal with expressions...
+// We can probably deal with expressions with the string terminating regexp
+// thingy.
+const OPENING_TAG_RE = /<\s*([^\s>]*)/;
+const CLOSING_TAG_RE = /<\s*\/\s*([^\s>]*)\s*>/;
 
 // TODO: Since we’re going down the recursive descent route for now, we need to
 // indicate to the callee in all the parseX functions how much span and
 // expression is consumed.
+// s = span
+// i = index
 function parseChildren(
 	spans: Array<string>,
 	expressions: Array<unknown>,
-): Array<ParseElementResult | string> {
+): [result: Array<ParseElementResult | string>, span: number, index: number] {
 	const result: Array<ParseElementResult | string> = [];
 	let starting = true;
-	for (let s = 0; s < spans.length; s++) {
+	let s = 0; // span
+	let i = 0; // index
+	for (; s < spans.length; s++) {
 		const span = spans[s];
-		for (let i = 0; i < span.length; ) {
+		while (i < span.length) {
 			if (starting) {
 				// TODO: You can do gross regex magic to cut out whitespace-only lines right?
 				const match = /^[^\S\r\n]/.exec(span.slice(i));
@@ -149,10 +192,9 @@ function parseChildren(
 					} else if (match[2]) {
 						// element start detected
 						const spans1 = spans.slice(s + 1);
-						spans1.unshift(span.slice(match.index + match[0].length));
-						const result1 = parseTag(spans1, expressions.slice(s));
+						spans1.unshift(span.slice(match.index));
+						const [result1, s1, i1] = parseTag(spans1, expressions.slice(s));
 						result.push(result1);
-						i = match.index + result1.length;
 						throw new Error("TODO 1");
 					}
 				} else {
@@ -167,20 +209,21 @@ function parseChildren(
 		}
 	}
 
-	return result;
+	return [result, s, i];
 }
 
 function parseTag(
 	spans: Array<string>,
 	expressions: Array<unknown>,
-): ParseElementResult {
-	let length = 0;
+): [result: ParseElementResult, span: number, index: number] {
 	let span = spans[0];
+	let index = 0;
 	let tag: Tag = "";
 	// TODO: you can merge this with the next regexp you dumbass
+	const match = /<\s*/.exec(span);
 	const spaceMatch1 = /\s+/.exec(span);
 	if (spaceMatch1) {
-		length += spaceMatch1[0].length;
+		index += spaceMatch1[0].length;
 		span = span.slice(spaceMatch1.index);
 	}
 
@@ -188,7 +231,7 @@ function parseTag(
 		const tagMatch = /\S+/.exec(span);
 		if (tagMatch) {
 			tag = tagMatch[0];
-			length += tag.length;
+			index += tag.length;
 		}
 	} else if (expressions.length) {
 		tag = expressions[0] as Tag;
@@ -205,31 +248,31 @@ function parseTag(
 		throw new Error("Parse Error");
 	}
 
-	const props = parseProps(spans, expressions);
+	const [props, s, i] = parseProps(spans, expressions);
 	const endMatch = /\s*(\/)?>/.exec(span);
 	if (!endMatch) {
 		throw new Error("Parse Error Missing '>'");
 	}
 
-	length += endMatch[0].length;
+	index += endMatch[0].length;
 	if (endMatch[1]) {
 		if (!tag) {
 			throw new Error("Parse Error");
 		}
 
 		// self-closing element.
-		return {tag, props, children: [], length};
+		return [{tag, props, children: []}, 0, 0];
 	}
 
-	const children = parseChildren(spans, expressions);
-	return {tag, props, children, length};
+	//const [children] = parseChildren(spans, expressions);
+	return [{tag, props, children: []}, 0, 0];
 }
 
 function parseProps(
 	_spans: ArrayLike<string>,
 	_expressions: Array<unknown>,
-): Record<string, any> | null {
-	return null;
+): [result: Record<string, any> | null, span: number, index: number] {
+	return [null, 0, 0];
 }
 
 function createElementsFromParse(
