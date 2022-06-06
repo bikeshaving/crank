@@ -120,13 +120,14 @@ HTML, we can do what developit/htm does and have a catch-all closing tag like
 
 I think this would be the most explicit, least surprising design, right? Trying
 to do fancy things where we allow closing elements to be un-interpolated, and
-then parsed and compared against function names, would get in the way of
-minifiers, which regularly mess with function names. We could also treat the
-double slash as a comment-like construct, where you could put anything after
-the slashes.
+then parsed and compared against function names, for instance, would get in the
+way of minifiers, which regularly mess with function names. Using the
+double-slash to indicate we want to opt out of the well-formed XML constraint
+is nice and explicit. We could also treat the double slash as a comment-like
+construct, where you could put anything after the slashes.
 
 	yield x`
-		<${Component}>hello< // Component >
+		<${Component}>hello<//Component>
 	`;
  */
 
@@ -140,7 +141,7 @@ $ELEMENT:
   $OPENING_ELEMENT $CHILDREN $CLOSING_ELEMENT
 $SELF_CLOSING_ELEMENT: "<" ($IDENTIFIER | ${Tag}) $PROPS "/" ">"
 $OPENING_ELEMENT: "<" ($IDENTIFIER | ${Tag})? $PROPS ">"
-$CLOSING_ELEMENT: "<" ("/" | "//") ($IDENTIFIER)? ">"
+$CLOSING_ELEMENT: "<" "/" "/"? ($IDENTIFIER)? ">"
 $PROPS: ($PROP | $SPREAD_PROP)*
 $SPREAD_PROP: "..." ${Record<string, unknown>}
 $PROP: $IDENTIFIER ("=" $PROP_VALUE)?
