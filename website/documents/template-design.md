@@ -20,6 +20,8 @@ $PROP_VALUE:
   (/'/ (/[^']/ | ${unknown})* /'/)
 ```
 
+TODO: Add HTML style comments to the grammar `<!-- comment -->`
+
 ## Whitespace
 
 The JSX whitespace rules are complicated and controversial.
