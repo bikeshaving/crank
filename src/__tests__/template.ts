@@ -2,41 +2,39 @@ import {c} from "../crank.js";
 import {x} from "../template.js";
 
 describe("x", () => {
-	test.skip("basic", () => {
+	test("single element", () => {
 		expect(x`<p/>`).toEqual(c("p"));
-		//expect(x`<p />`).toEqual(createElement("p"));
-		//expect(x`<p></p>`).toEqual(createElement("p"));
+		expect(x`<p />`).toEqual(c("p"));
+		expect(x`<p></p>`).toEqual(c("p"));
 	});
 
-	test("strings", () => {
+	test("top-level strings", () => {
 		expect(x`hello <p>world</p>`).toEqual(
 			c("", null, ...["hello ", c("p", null, "world")]),
 		);
-		expect(x`<p />`).toEqual(c("p"));
-		//expect(x`<p></p>`).toEqual(createElement("p"));
+		expect(x`<p>hello</p> world`).toEqual(
+			c("", null, ...[c("p", null, "hello"), " world"]),
+		);
+		expect(x` hello<span> </span>world `).toEqual(
+			c("", null, ...["hello", c("span", null, " "), "world"]),
+		);
 	});
 
-	test.skip("props", () => {
-		expect(x`<p/>`).toEqual(c("p"));
-		//expect(x`<p class="foo" />`).toEqual(createElement("p", {class: "foo"}));
-		//expect(x`<p class=${"foo"} />`).toEqual(createElement("p", {class: "foo"}));
-	});
-
-	test.skip("whitespace 1", () => {
+	test("whitespace", () => {
 		expect(x`
 			<p/>
 		`).toEqual(c("p"));
-	});
-
-	test.skip("whitespace 2", () => {
-		const result = c(
-			"",
-			null,
-			...[c("span", null, "Hello"), " ", c("", null, c("span", null, "World"))],
-		);
 		expect(x`
 			<span>Hello</span> \
 			<span>World</span>
-		`).toEqual(result);
+		`).toEqual(
+			c("", null, ...[c("span", null, "Hello"), " ", c("span", null, "World")]),
+		);
+	});
+
+	test("basic props", () => {
+		expect(x`<p class="foo" />`).toEqual(c("p", {class: "foo"}));
+		//expect(x`<p class="foo" />`).toEqual(c("p", {class: "foo"}));
+		//expect(x`<p class=${"foo"} />`).toEqual(c("p", {class: "foo"}));
 	});
 });

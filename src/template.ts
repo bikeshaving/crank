@@ -8,7 +8,14 @@ export function x(
 	spans: TemplateStringsArray,
 	...expressions: Array<unknown>
 ): Element | null {
-	const parsed = parseChildren(spans.raw, expressions);
+	let parsed = parseChildren(spans.raw, expressions);
+	if (parsed.children.length === 0) {
+		return null;
+	} else if (parsed.children.length === 1) {
+		// TODO: Handle string children
+		parsed = parsed.children[0] as any;
+	}
+
 	return createElementsFromParse(parsed);
 }
 
@@ -57,7 +64,8 @@ function parseChildren(
 	 */
 	// TODO: Add spread operator
 	// TODO: Handle self-closing tag stuff
-	const propsRe = /\s*(?:([-\w]+)\s*(?:=\s*("[^"]*"|'[^']*')|$)?|(\/\s*?>))/g;
+	const propsRe =
+		/\s*(?:(?:([-\w]+)\s*(?:=\s*("[^"]*"|'[^']*')|$)?)|(\/?\s*>))/g;
 	for (let s = 0; s < spans.length; s++) {
 		const span = spans[s];
 		for (let i = 0; i < span.length; ) {
@@ -84,7 +92,10 @@ function parseChildren(
 							before = before.trim();
 						}
 
-						current.children.push(before);
+						if (before) {
+							current.children.push(before);
+						}
+
 						mode = "whitespace";
 						i = match.index + match[0].length;
 					} else if (match[2]) {
@@ -101,8 +112,6 @@ function parseChildren(
 									throw new Error("Mismatched tag");
 								}
 
-								// remove whitespace before end of element
-								before = before.trim();
 								if (before) {
 									current.children.push(before);
 								}
@@ -111,7 +120,10 @@ function parseChildren(
 								mode = "children";
 							} else if (tagMatch[3] != null) {
 								// opening tag match
-								current.children.push(before);
+								if (before) {
+									current.children.push(before);
+								}
+
 								const tagName = tagMatch[4];
 								stack.push(current);
 								const next = {tag: tagName, props: null, children: []};
@@ -127,7 +139,18 @@ function parseChildren(
 						}
 					}
 				} else {
-					throw new Error("TODO");
+					if (i < span.length) {
+						let after = span.slice(i);
+						if (s === spans.length - 1) {
+							after = after.trimRight();
+						}
+
+						if (after) {
+							current.children.push(after);
+						}
+					}
+
+					i = span.length;
 				}
 			} else if (mode === "props") {
 				propsRe.lastIndex = i;
@@ -137,8 +160,13 @@ function parseChildren(
 						// prop matched
 						throw new Error("PROP MATCH");
 					} else if (match[3]) {
+						if (match[3][0] === "/") {
+							// self-closing tag
+							current = stack.pop()!;
+						}
+
+						mode = "children";
 						i = match.index + match[0].length;
-						mode = "whitespace";
 					}
 				} else {
 					// Is this branch possible?
@@ -152,6 +180,12 @@ function parseChildren(
 		if (expression != null) {
 			throw new Error("TODO: Handle expressions");
 		}
+	}
+
+	if (stack.length) {
+		throw new Error(
+			`Missing closing tag for ${stack[stack.length - 1].tag.toString()}`,
+		);
 	}
 
 	return current;
