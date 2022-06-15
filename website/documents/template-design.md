@@ -49,9 +49,9 @@ semantic-insensitive, for the purposes of programmers and tools to toy with.
 Common use-cases include highlighting the “structure” of elements via
 indentation, and trimming accidental whitespace at the ends of lines. These
 use-cases can be rephrased as the concrete rule: whitespace at the starts and
-ends of lines, or around the children of an element, can be added or removed
-without affecting the semantics of the code, ”semantics” here meaning simply,
-the transpilation of JSX to `createElement()` calls.
+ends of lines, can be added or removed without affecting the semantics of the
+code, ”semantics” here meaning simply, the transpilation of JSX to
+`createElement()` calls and strings.
 
 The tricky part for JSX is the use-case mentioned previously, where developers
 want “some” whitespace at the ends of lines to be significant, as between
@@ -76,8 +76,8 @@ bigger lift for authors of developer tools to manage.
 To ease the tension, either developer tools need a semantic understanding of
 inline/block tags to preserve whitespace across lines, or the whitespace rules
 of JSX need to give a little. The former solution is futile, insofar as the
-semantics of inline and block can depend on styling in the browser. Meanwhile,
-there’s been no progress made with regard to JSX.
+semantics of inline and block depends on external styling information in the
+browser. Meanwhile, there’s been no progress made with regard to the JSX spec.
 
 The root cause of all this worry is that the JSX grammar does not have a way to
 indicate that whitespace at the ends of lines is significant. Thankfully,
