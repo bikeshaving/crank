@@ -4,20 +4,13 @@ import type {Tag} from "./crank.js";
 // TODO: Handle illegal escape sequences.
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals#es2018_revision_of_illegal_escape_sequences
 
-// TODO: The biggest weakness with tagged templates is a lack of semantic type
-// checking for expressions. Investigate whether TypeScript has advanced in
-// this regard.
-
-// TODO: Think about the name of this function.
-export function template(
+export function x(
 	spans: TemplateStringsArray,
 	...expressions: Array<unknown>
 ): Element | null {
-	const [parsed] = parseChildren(Array.from(spans.raw), expressions);
+	const parsed = parseChildren(spans.raw, expressions);
 	return createElementsFromParse(parsed);
 }
-
-export const x = template;
 
 interface ParseElementResult {
 	tag: Tag;
@@ -25,152 +18,149 @@ interface ParseElementResult {
 	children: Array<ParseElementResult | string>;
 }
 
-// TODO: Add HTML style comments to the grammar `<!-- comment -->`
-
-// I wish we could use regexs but we have to deal with expressions...
-// We can probably deal with expressions with the string terminating regexp
-// thingy.
-const OPENING_TAG_RE = /<\s*([^\s>]*)/;
-const CLOSING_TAG_RE = /<\s*\/\s*([^\s>]*)\s*>/;
-
-// TODO: Since we’re going down the recursive descent route for now, we need to
-// indicate to the callee in all the parseX functions how much span and
-// expression is consumed.
-// s = span
-// i = index
 function parseChildren(
-	spans: Array<string>,
+	spans: ArrayLike<string>,
 	expressions: Array<unknown>,
-): [result: Array<ParseElementResult | string>, span: number, index: number] {
-	const result: Array<ParseElementResult | string> = [];
-	let starting = true;
-	let s = 0; // span
-	let i = 0; // index
-	for (; s < spans.length; s++) {
+): ParseElementResult {
+	let current: ParseElementResult = {tag: "", props: null, children: []};
+	const stack: Array<ParseElementResult> = [];
+	let mode: "whitespace" | "children" | "props" = "whitespace";
+
+	// TODO: gross regexp magic to skip empty lines
+	/* Matches any whitespace that isn’t a newline. */
+	const whitespaceRe = /[^\S\r\n]+/g;
+	/*
+	 * Matches the first significant character in children mode.
+	 * Group 1: newline
+	 * Group 2: element start
+	 */
+	const childrenRe = /(\r|\n|\r\n)|(<)/g;
+	/*
+	 * Matches an opening or closing tag.
+	 * Group 1: closing tag
+	 * Group 2: closing tagName
+	 * Group 3: opening tag
+	 * Group 4: opening tagName
+	 *
+	 * The closing tag group has to go first because otherwise the opening tag
+	 * group will match.
+	 */
+	// TODO: Figure out how to throw a smart error if the closing tag has props
+	// TODO: we can probably combine the groups and make the slash optional
+	const tagRe = /(<\s*\/\s*([-\w]*)\s*>)|(<\s*(?:([-\w]*)|$))/g;
+
+	/*
+	 * Matches props after a tag.
+	 * Group 1: prop name
+	 * Group 2: prop value
+	 * Group 3: tag end
+	 */
+	// TODO: Add spread operator
+	// TODO: Handle self-closing tag stuff
+	const propsRe = /\s*(?:([-\w]+)\s*(?:=\s*("[^"]*"|'[^']*')|$)?|(\/\s*?>))/g;
+	for (let s = 0; s < spans.length; s++) {
 		const span = spans[s];
-		while (i < span.length) {
-			if (starting) {
-				// TODO: You can do gross regex magic to cut out whitespace-only lines right?
-				const match = /^[^\S\r\n]/.exec(span.slice(i));
-				if (match) {
-					i += match[0].length;
+		for (let i = 0; i < span.length; ) {
+			// TODO: Should we use the same mode system when handling expressions or nah?
+			if (mode === "whitespace") {
+				// consuming whitespace at the start of lines/elements
+				whitespaceRe.lastIndex = i;
+				const match = whitespaceRe.exec(span);
+				if (match && match.index === i) {
+					i = match.index + match[0].length;
 				}
 
-				starting = false;
-			} else {
-				const match = /(\r\n|\r|\n)|(<)/.exec(span.slice(i));
+				mode = "children";
+			} else if (mode === "children") {
+				childrenRe.lastIndex = i;
+				const match = childrenRe.exec(span);
 				if (match) {
-					if (match.index > 0) {
-						result.push(span.slice(i, i + match.index));
-					}
-
+					let before = span.slice(i, match.index);
 					if (match[1]) {
 						// newline detected
-						starting = true;
+						if (match.index > 0 && span[match.index - 1] === "\\") {
+							before = before.slice(0, -1);
+						} else {
+							before = before.trim();
+						}
+
+						current.children.push(before);
+						mode = "whitespace";
 						i = match.index + match[0].length;
 					} else if (match[2]) {
-						// element start detected
-						const spans1 = spans.slice(s + 1);
-						spans1.unshift(span.slice(match.index));
-						const [result1, s1, i1] = parseTag(spans1, expressions.slice(s));
-						result.push(result1);
-						throw new Error("TODO 1");
+						// tag detected
+						tagRe.lastIndex = match.index;
+						const tagMatch = tagRe.exec(span);
+						if (tagMatch) {
+							if (tagMatch[1] != null) {
+								// closing tag match
+								const tagName = tagMatch[2];
+								if (!stack.length) {
+									throw new Error(`Unexpected closing tag named ${tagName}`);
+								} else if (current.tag !== tagName) {
+									throw new Error("Mismatched tag");
+								}
+
+								// remove whitespace before end of element
+								before = before.trim();
+								if (before) {
+									current.children.push(before);
+								}
+
+								current = stack.pop()!;
+								mode = "children";
+							} else if (tagMatch[3] != null) {
+								// opening tag match
+								current.children.push(before);
+								const tagName = tagMatch[4];
+								stack.push(current);
+								const next = {tag: tagName, props: null, children: []};
+								current.children.push(next);
+								current = next;
+								mode = "props";
+							}
+
+							i = tagMatch.index + tagMatch[0].length;
+						} else {
+							// We have a "<" but something unexpected happened.
+							throw new Error("Unexpected token");
+						}
 					}
 				} else {
-					result.push(span.slice(i));
-					break;
+					throw new Error("TODO");
+				}
+			} else if (mode === "props") {
+				propsRe.lastIndex = i;
+				const match = propsRe.exec(span);
+				if (match) {
+					if (match[1]) {
+						// prop matched
+						throw new Error("PROP MATCH");
+					} else if (match[3]) {
+						i = match.index + match[0].length;
+						mode = "whitespace";
+					}
+				} else {
+					// Is this branch possible?
+					throw new Error("TODO");
 				}
 			}
 		}
 
-		if (expressions.length) {
-			throw new Error("TODO");
+		// handle the expression
+		const expression = expressions[s];
+		if (expression != null) {
+			throw new Error("TODO: Handle expressions");
 		}
 	}
 
-	return [result, s, i];
+	return current;
 }
 
-function parseTag(
-	spans: Array<string>,
-	expressions: Array<unknown>,
-): [result: ParseElementResult, span: number, index: number] {
-	let span = spans[0];
-	let index = 0;
-	let tag: Tag = "";
-	// TODO: you can merge this with the next regexp you dumbass
-	const match = /<\s*/.exec(span);
-	const spaceMatch1 = /\s+/.exec(span);
-	if (spaceMatch1) {
-		index += spaceMatch1[0].length;
-		span = span.slice(spaceMatch1.index);
-	}
-
-	if (span.length) {
-		const tagMatch = /\S+/.exec(span);
-		if (tagMatch) {
-			tag = tagMatch[0];
-			index += tag.length;
-		}
-	} else if (expressions.length) {
-		tag = expressions[0] as Tag;
-		if (
-			typeof tag !== "string" ||
-			typeof tag !== "function" ||
-			typeof tag !== "symbol"
-		) {
-			throw new TypeError("Unexpected tag type");
-		}
-
-		span = spans[1];
-	} else {
-		throw new Error("Parse Error");
-	}
-
-	const [props, s, i] = parseProps(spans, expressions);
-	const endMatch = /\s*(\/)?>/.exec(span);
-	if (!endMatch) {
-		throw new Error("Parse Error Missing '>'");
-	}
-
-	index += endMatch[0].length;
-	if (endMatch[1]) {
-		if (!tag) {
-			throw new Error("Parse Error");
-		}
-
-		// self-closing element.
-		return [{tag, props, children: []}, 0, 0];
-	}
-
-	//const [children] = parseChildren(spans, expressions);
-	return [{tag, props, children: []}, 0, 0];
-}
-
-function parseProps(
-	_spans: ArrayLike<string>,
-	_expressions: Array<unknown>,
-): [result: Record<string, any> | null, span: number, index: number] {
-	return [null, 0, 0];
-}
-
-function createElementsFromParse(
-	parsed: Array<ParseElementResult | string>,
-): Element | null {
-	if (parsed.length === 0) {
-		return null;
-	}
-
-	// TODO: actually do this bro
-	const result: Array<Element> = [];
-	for (let i = 0; i < parsed.length; i++) {
-		result.push(c("p"));
-	}
-
-	if (result.length === 1) {
-		return result[0];
-	}
-
-	// return a fragment
-	return c("", null, result);
+function createElementsFromParse(parsed: ParseElementResult): Element | null {
+	// TODO: We need to handle arbitrary children expressions
+	const children = parsed.children.map((child) =>
+		typeof child === "string" ? child : createElementsFromParse(child),
+	);
+	return c(parsed.tag, parsed.props, ...children);
 }

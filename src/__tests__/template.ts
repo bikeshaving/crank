@@ -8,11 +8,11 @@ describe("x", () => {
 		//expect(x`<p></p>`).toEqual(createElement("p"));
 	});
 
-	test("basic 1", () => {
+	test("strings", () => {
 		expect(x`hello <p>world</p>`).toEqual(
 			c("", null, ...["hello ", c("p", null, "world")]),
 		);
-		//expect(x`<p />`).toEqual(createElement("p"));
+		expect(x`<p />`).toEqual(c("p"));
 		//expect(x`<p></p>`).toEqual(createElement("p"));
 	});
 
