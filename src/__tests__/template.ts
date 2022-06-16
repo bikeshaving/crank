@@ -30,6 +30,7 @@ describe("x", () => {
 		`).toEqual(
 			c("", null, ...[c("span", null, "Hello"), " ", c("span", null, "World")]),
 		);
+		// TODO: Figure out how to test trailing whitespace without vim fucking deleting it for me lol
 	});
 
 	test("basic string props", () => {
@@ -38,5 +39,14 @@ describe("x", () => {
 		expect(x`<p f="'foo'" b='"bar"' />`).toEqual(
 			c("p", {f: "'foo'", b: '"bar"'}),
 		);
+	});
+
+	test("tag expressions", () => {
+		const T = "tag";
+		expect(x`
+			<${T}>
+				Hello world
+			</${T}>
+		`).toEqual(c(T, null, "Hello world"));
 	});
 });
