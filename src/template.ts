@@ -25,63 +25,65 @@ interface ParseElementResult {
 	children: Array<ParseElementResult | string>;
 }
 
+// TODO: gross regexp magic to skip empty lines
+/* Matches any whitespace that isn’t a newline. */
+const WHITESPACE_RE = /[^\S\r\n]+/g;
+
+/*
+ * Matches the first significant character in children mode.
+ * Group 1: newline
+ * Group 2: element start
+ */
+const CHILDREN_RE = /(\r|\n|\r\n)|(<)/g;
+
+// TODO: Figure out how to throw a smart error if the closing tag has props
+/*
+ * Matches an opening or closing tag
+ *
+ * Group 1: Closing slash, undefined if missing.
+ * Group 2: Tag name
+ */
+const TAG_RE = /<\s*(\/)?\s*(?:([-\w]*)\s*|$)/g;
+
+// TODO: Add spread operator
+// TODO: Handle self-closing tag stuff
+/*
+ * Matches props after a tag.
+ * Group 1: prop name
+ * Group 2: prop value
+ * Group 3: tag end
+ */
+const PROPS_RE =
+	/\s*(?:(?:([-\w]+)\s*(?:=\s*("[^"]*"|'[^']*')|$)?)|(\/?\s*>))/g;
+
+/* Modes */
+const LINE_START_MODE = 0;
+const CHILDREN_MODE = 1;
+const PROPS_MODE = 2;
+//const CLOSING_TAG_MODE = 3;
+
 function parseChildren(
 	spans: ArrayLike<string>,
 	expressions: Array<unknown>,
 ): ParseElementResult {
 	let current: ParseElementResult = {tag: "", props: null, children: []};
 	const stack: Array<ParseElementResult> = [];
-	let mode: "whitespace" | "children" | "props" = "whitespace";
-
-	// TODO: gross regexp magic to skip empty lines
-	/* Matches any whitespace that isn’t a newline. */
-	const whitespaceRe = /[^\S\r\n]+/g;
-	/*
-	 * Matches the first significant character in children mode.
-	 * Group 1: newline
-	 * Group 2: element start
-	 */
-	const childrenRe = /(\r|\n|\r\n)|(<)/g;
-	/*
-	 * Matches an opening or closing tag.
-	 * Group 1: closing tag
-	 * Group 2: closing tagName
-	 * Group 3: opening tag
-	 * Group 4: opening tagName
-	 *
-	 * The closing tag group has to go first because otherwise the opening tag
-	 * group will match.
-	 */
-	// TODO: Figure out how to throw a smart error if the closing tag has props
-	// TODO: we can probably combine the groups and make the slash optional
-	const tagRe = /(<\s*\/\s*([-\w]*)\s*>)|(<\s*(?:([-\w]*)|$))/g;
-
-	/*
-	 * Matches props after a tag.
-	 * Group 1: prop name
-	 * Group 2: prop value
-	 * Group 3: tag end
-	 */
-	// TODO: Add spread operator
-	// TODO: Handle self-closing tag stuff
-	const propsRe =
-		/\s*(?:(?:([-\w]+)\s*(?:=\s*("[^"]*"|'[^']*')|$)?)|(\/?\s*>))/g;
+	let mode: number = LINE_START_MODE;
 	for (let s = 0; s < spans.length; s++) {
 		const span = spans[s];
 		for (let i = 0; i < span.length; ) {
-			// TODO: Should we use the same mode system when handling expressions or nah?
-			if (mode === "whitespace") {
+			if (mode === LINE_START_MODE) {
 				// consuming whitespace at the start of lines/elements
-				whitespaceRe.lastIndex = i;
-				const match = whitespaceRe.exec(span);
+				WHITESPACE_RE.lastIndex = i;
+				const match = WHITESPACE_RE.exec(span);
 				if (match && match.index === i) {
 					i = match.index + match[0].length;
 				}
 
-				mode = "children";
-			} else if (mode === "children") {
-				childrenRe.lastIndex = i;
-				const match = childrenRe.exec(span);
+				mode = CHILDREN_MODE;
+			} else if (mode === CHILDREN_MODE) {
+				CHILDREN_RE.lastIndex = i;
+				const match = CHILDREN_RE.exec(span);
 				if (match) {
 					let before = span.slice(i, match.index);
 					if (match[1]) {
@@ -96,40 +98,35 @@ function parseChildren(
 							current.children.push(before);
 						}
 
-						mode = "whitespace";
+						mode = LINE_START_MODE;
 						i = match.index + match[0].length;
 					} else if (match[2]) {
 						// tag detected
-						tagRe.lastIndex = match.index;
-						const tagMatch = tagRe.exec(span);
+						TAG_RE.lastIndex = match.index;
+						const tagMatch = TAG_RE.exec(span);
 						if (tagMatch) {
-							if (tagMatch[1] != null) {
-								// closing tag match
-								const tagName = tagMatch[2];
+							const closing = tagMatch[1] != null;
+							const tagName = tagMatch[2];
+							if (before) {
+								current.children.push(before);
+							}
+
+							if (closing) {
 								if (!stack.length) {
 									throw new Error(`Unexpected closing tag named ${tagName}`);
 								} else if (current.tag !== tagName) {
 									throw new Error("Mismatched tag");
 								}
 
-								if (before) {
-									current.children.push(before);
-								}
-
 								current = stack.pop()!;
-								mode = "children";
-							} else if (tagMatch[3] != null) {
-								// opening tag match
-								if (before) {
-									current.children.push(before);
-								}
-
-								const tagName = tagMatch[4];
+								// TODO: Separate mode for closing tag
+								mode = PROPS_MODE;
+							} else {
 								stack.push(current);
 								const next = {tag: tagName, props: null, children: []};
 								current.children.push(next);
 								current = next;
-								mode = "props";
+								mode = PROPS_MODE;
 							}
 
 							i = tagMatch.index + tagMatch[0].length;
@@ -152,9 +149,9 @@ function parseChildren(
 
 					break;
 				}
-			} else if (mode === "props") {
-				propsRe.lastIndex = i;
-				const match = propsRe.exec(span);
+			} else if (mode === PROPS_MODE) {
+				PROPS_RE.lastIndex = i;
+				const match = PROPS_RE.exec(span);
 				if (match) {
 					if (match[1]) {
 						// prop matched
@@ -170,7 +167,7 @@ function parseChildren(
 							current = stack.pop()!;
 						}
 
-						mode = "children";
+						mode = CHILDREN_MODE;
 					}
 
 					i = match.index + match[0].length;
