@@ -68,4 +68,12 @@ describe("x", () => {
 			</div>
 		`).toEqual(c("div", null, c("span", null, "Hello", " ", "World")));
 	});
+
+	test("prop expressions", () => {
+		expect(x`
+			<div class=${"foo" + "bar"}>
+				<span></span>
+			</div>
+		`).toEqual(null);
+	});
 });
