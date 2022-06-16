@@ -150,7 +150,7 @@ function parseChildren(
 						}
 					}
 
-					i = span.length;
+					break;
 				}
 			} else if (mode === "props") {
 				propsRe.lastIndex = i;
@@ -158,7 +158,12 @@ function parseChildren(
 				if (match) {
 					if (match[1]) {
 						// prop matched
-						throw new Error("PROP MATCH");
+						const name = match[1];
+						const value = match[2]
+							// I made a couple useful winky emoticons by accident ^-^
+							.replace(/^('|")/, "")
+							.replace(/('|")$/, "");
+						current.props = {...current.props, ...{[name]: value}};
 					} else if (match[3]) {
 						if (match[3][0] === "/") {
 							// self-closing tag
@@ -166,8 +171,9 @@ function parseChildren(
 						}
 
 						mode = "children";
-						i = match.index + match[0].length;
 					}
+
+					i = match.index + match[0].length;
 				} else {
 					// Is this branch possible?
 					throw new Error("TODO");
