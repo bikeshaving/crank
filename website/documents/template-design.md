@@ -14,7 +14,7 @@ $CLOSING_ELEMENT: "<" "/" "/"? ($IDENTIFIER)? ">"
 $PROPS: ($PROP | $SPREAD_PROP)*
 $SPREAD_PROP: "..." ${Record<string, unknown>}
 $PROP: $IDENTIFIER ("=" $PROP_VALUE)?
-$IDENTIFIER: /[^\s>]+/
+$IDENTIFIER: /[-\w]+/
 $PROP_VALUE:
   (/"/ (/[^"]/ | ${unknown})* /"/) |
   (/'/ (/[^']/ | ${unknown})* /'/)
