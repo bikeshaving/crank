@@ -2,7 +2,7 @@ import {c} from "../crank.js";
 import {x} from "../template.js";
 
 describe("x", () => {
-	test("single element", () => {
+	test("single element without children", () => {
 		expect(x`<p/>`).toEqual(c("p"));
 		expect(x`<p />`).toEqual(c("p"));
 		expect(x`<p></p>`).toEqual(c("p"));
@@ -42,11 +42,30 @@ describe("x", () => {
 	});
 
 	test("tag expressions", () => {
-		const T = "tag";
+		const T1 = "tag1";
+		const T2 = "tag2";
 		expect(x`
-			<${T}>
-				Hello world
-			</${T}>
-		`).toEqual(c(T, null, "Hello world"));
+			<${T1}>Hello world</${T1}>
+		`).toEqual(c(T1, null, "Hello world"));
+		expect(x`
+			<${T1}>
+				<${T2}>
+					Hello world
+				</${T2}>
+			</${T1}>
+		`).toEqual(c(T1, null, ...[c(T2, null, "Hello world")]));
+	});
+
+	test("children expressions", () => {
+		const ex1 = "Hello";
+		const ex2 = "World";
+		expect(x`
+			<div>${ex1} ${ex2}</div>
+		`).toEqual(c("div", null, "Hello", " ", "World"));
+		expect(x`
+			<div>
+				<span>${ex1} ${ex2}</span>
+			</div>
+		`).toEqual(c("div", null, c("span", null, "Hello", " ", "World")));
 	});
 });
