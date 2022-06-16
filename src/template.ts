@@ -82,6 +82,7 @@ function parseChildren(
 				const match = CHILDREN_RE.exec(span);
 				if (match) {
 					let before = span.slice(i, match.index);
+					i = match.index + match[0].length;
 					if (match[1]) {
 						// newline detected
 						before =
@@ -94,39 +95,36 @@ function parseChildren(
 						}
 
 						mode = LINE_START_MODE;
-						i = match.index + match[0].length;
 					} else if (match[2]) {
 						if (before) {
 							current.children.push(before);
 						}
 
-						// tag detected
-						i = match.index + match[0].length;
 						const opening = match[3] == null;
 						expressing = i === span.length && s < spans.length - 1;
 						const tagName = match[4];
 						// TODO: Do we want to make sure tag is a component or string or symbol?
-						const tag: Tag = expressing ? expressions[s] : tagName;
+						const tag: Tag = expressing ? (expressions[s] as any) : tagName;
 
 						if (opening) {
 							stack.push(current);
 							const next = {tag, props: null, children: []};
 							current.children.push(next);
 							current = next;
-							mode = PROPS_MODE;
 						} else {
 							if (!stack.length) {
 								throw new Error(`Unexpected closing tag named ${tagName}`);
 							} else if (current.tag !== tag) {
-								throw new Error(`Mismatched tag: ${tag}`);
+								throw new Error(`Mismatched tag: ${String(tag)}`);
 							}
 
 							current = stack.pop()!;
 							// TODO: Separate mode for closing tag
-							mode = PROPS_MODE;
 						}
+
+						mode = PROPS_MODE;
 					} else {
-						throw new Error("This branch is probably not possible");
+						throw new Error("TODO: Is this branch possible?");
 					}
 				} else {
 					if (i < span.length) {
@@ -146,14 +144,17 @@ function parseChildren(
 				PROPS_RE.lastIndex = i;
 				const match = PROPS_RE.exec(span);
 				if (match) {
+					i = match.index + match[0].length;
 					if (match[1]) {
 						// prop matched
 						const name = match[1];
-						const value = match[2]
-							// I made a couple useful winky emoticons by accident ^-^
-							.replace(/^('|")/, "")
-							.replace(/('|")$/, "");
-						current.props = {...current.props, ...{[name]: value}};
+						let value = match[2];
+						if (value == null) {
+							throw new Error("TODO: fix me");
+						} else {
+							value = value.replace(/^('|")/, "").replace(/('|")$/, "");
+							current.props = {...current.props, ...{[name]: value}};
+						}
 					} else if (match[3]) {
 						if (match[3][0] === "/") {
 							// self-closing tag
@@ -162,8 +163,6 @@ function parseChildren(
 
 						mode = CHILDREN_MODE;
 					}
-
-					i = match.index + match[0].length;
 				} else {
 					// Is this branch possible?
 					throw new Error("TODO: Unexpected branch");
@@ -171,10 +170,15 @@ function parseChildren(
 			}
 		}
 
-		if (!expressing && s < spans.length - 1) {
-			throw new Error(
-				`Unexpected expression: ${JSON.stringify(expressions[s], null, 2)}`,
-			);
+		if (s < spans.length - 1 && !expressing) {
+			// TODO: We should probably get rid of this expressing flag...
+			if (mode === CHILDREN_MODE) {
+				current.children.push(expressions[s] as any);
+			} else {
+				throw new Error(
+					`Unexpected expression: ${JSON.stringify(expressions[s], null, 2)}`,
+				);
+			}
 		}
 	}
 
