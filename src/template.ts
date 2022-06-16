@@ -65,7 +65,9 @@ function parseChildren(
 	let mode: number = LINE_START_MODE;
 	for (let s = 0; s < spans.length; s++) {
 		const span = spans[s];
+		let expressing = false;
 		for (let i = 0; i < span.length; ) {
+			expressing = false;
 			if (mode === LINE_START_MODE) {
 				// consuming whitespace at the start of lines/elements
 				WHITESPACE_RE.lastIndex = i;
@@ -82,13 +84,11 @@ function parseChildren(
 					let before = span.slice(i, match.index);
 					if (match[1]) {
 						// newline detected
-						if (match.index > 0 && span[match.index - 1] === "\\") {
-							// remove the backslash from the output
-							before = before.slice(0, -1);
-						} else {
-							before = before.trim();
-						}
-
+						before =
+							match.index > 0 && span[match.index - 1] === "\\"
+								? // remove the backslash from the output
+								  before.slice(0, -1)
+								: before.trim();
 						if (before) {
 							current.children.push(before);
 						}
@@ -96,34 +96,37 @@ function parseChildren(
 						mode = LINE_START_MODE;
 						i = match.index + match[0].length;
 					} else if (match[2]) {
-						// tag detected
-						const opening = match[3] == null;
-						const tagName = match[4];
 						if (before) {
 							current.children.push(before);
 						}
 
+						// tag detected
+						i = match.index + match[0].length;
+						const opening = match[3] == null;
+						expressing = i === span.length && s < spans.length - 1;
+						const tagName = match[4];
+						// TODO: Do we want to make sure tag is a component or string or symbol?
+						const tag: Tag = expressing ? expressions[s] : tagName;
+
 						if (opening) {
 							stack.push(current);
-							const next = {tag: tagName, props: null, children: []};
+							const next = {tag, props: null, children: []};
 							current.children.push(next);
 							current = next;
 							mode = PROPS_MODE;
 						} else {
 							if (!stack.length) {
 								throw new Error(`Unexpected closing tag named ${tagName}`);
-							} else if (current.tag !== tagName) {
-								throw new Error("Mismatched tag");
+							} else if (current.tag !== tag) {
+								throw new Error(`Mismatched tag: ${tag}`);
 							}
 
 							current = stack.pop()!;
 							// TODO: Separate mode for closing tag
 							mode = PROPS_MODE;
 						}
-
-						i = match.index + match[0].length;
 					} else {
-						throw new Error("TODO: Is this branch possible");
+						throw new Error("This branch is probably not possible");
 					}
 				} else {
 					if (i < span.length) {
@@ -163,15 +166,15 @@ function parseChildren(
 					i = match.index + match[0].length;
 				} else {
 					// Is this branch possible?
-					throw new Error("TODO");
+					throw new Error("TODO: Unexpected branch");
 				}
 			}
 		}
 
-		// handle the expression
-		const expression = expressions[s];
-		if (expression != null) {
-			throw new Error("TODO: Handle expressions");
+		if (!expressing && s < spans.length - 1) {
+			throw new Error(
+				`Unexpected expression: ${JSON.stringify(expressions[s], null, 2)}`,
+			);
 		}
 	}
 
