@@ -29,21 +29,15 @@ interface ParseElementResult {
 /* Matches any whitespace that isn’t a newline. */
 const WHITESPACE_RE = /[^\S\r\n]+/g;
 
+// TODO: double closing slash
 /*
  * Matches the first significant character in children mode.
  * Group 1: newline
- * Group 2: element start
+ * Group 2: tag
+ * Group 3: closing slash, undefined if missing.
+ * Group 4: tag name
  */
-const CHILDREN_RE = /(\r|\n|\r\n)|(<)/g;
-
-// TODO: Figure out how to throw a smart error if the closing tag has props
-/*
- * Matches an opening or closing tag
- *
- * Group 1: Closing slash, undefined if missing.
- * Group 2: Tag name
- */
-const TAG_RE = /<\s*(\/)?\s*(?:([-\w]*)\s*|$)/g;
+const CHILDREN_RE = /(\r|\n|\r\n)|(<\s*(\/)?\s*(?:([-\w]*)\s*|$))/g;
 
 // TODO: Add spread operator
 // TODO: Handle self-closing tag stuff
@@ -89,6 +83,7 @@ function parseChildren(
 					if (match[1]) {
 						// newline detected
 						if (match.index > 0 && span[match.index - 1] === "\\") {
+							// remove the backslash from the output
 							before = before.slice(0, -1);
 						} else {
 							before = before.trim();
@@ -102,38 +97,33 @@ function parseChildren(
 						i = match.index + match[0].length;
 					} else if (match[2]) {
 						// tag detected
-						TAG_RE.lastIndex = match.index;
-						const tagMatch = TAG_RE.exec(span);
-						if (tagMatch) {
-							const closing = tagMatch[1] != null;
-							const tagName = tagMatch[2];
-							if (before) {
-								current.children.push(before);
-							}
-
-							if (closing) {
-								if (!stack.length) {
-									throw new Error(`Unexpected closing tag named ${tagName}`);
-								} else if (current.tag !== tagName) {
-									throw new Error("Mismatched tag");
-								}
-
-								current = stack.pop()!;
-								// TODO: Separate mode for closing tag
-								mode = PROPS_MODE;
-							} else {
-								stack.push(current);
-								const next = {tag: tagName, props: null, children: []};
-								current.children.push(next);
-								current = next;
-								mode = PROPS_MODE;
-							}
-
-							i = tagMatch.index + tagMatch[0].length;
-						} else {
-							// We have a "<" but something unexpected happened.
-							throw new Error("Unexpected token");
+						const opening = match[3] == null;
+						const tagName = match[4];
+						if (before) {
+							current.children.push(before);
 						}
+
+						if (opening) {
+							stack.push(current);
+							const next = {tag: tagName, props: null, children: []};
+							current.children.push(next);
+							current = next;
+							mode = PROPS_MODE;
+						} else {
+							if (!stack.length) {
+								throw new Error(`Unexpected closing tag named ${tagName}`);
+							} else if (current.tag !== tagName) {
+								throw new Error("Mismatched tag");
+							}
+
+							current = stack.pop()!;
+							// TODO: Separate mode for closing tag
+							mode = PROPS_MODE;
+						}
+
+						i = match.index + match[0].length;
+					} else {
+						throw new Error("TODO: Is this branch possible");
 					}
 				} else {
 					if (i < span.length) {
