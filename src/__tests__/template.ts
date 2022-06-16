@@ -32,9 +32,11 @@ describe("x", () => {
 		);
 	});
 
-	test("basic props", () => {
+	test("basic string props", () => {
 		expect(x`<p class="foo" />`).toEqual(c("p", {class: "foo"}));
-		//expect(x`<p class="foo" />`).toEqual(c("p", {class: "foo"}));
-		//expect(x`<p class=${"foo"} />`).toEqual(c("p", {class: "foo"}));
+		expect(x`<p f="foo" b="bar" />`).toEqual(c("p", {f: "foo", b: "bar"}));
+		expect(x`<p f="'foo'" b='"bar"' />`).toEqual(
+			c("p", {f: "'foo'", b: '"bar"'}),
+		);
 	});
 });
