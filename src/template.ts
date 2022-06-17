@@ -78,7 +78,7 @@ function parseChildren(
 		children: [],
 	};
 	const stack: Array<ParseElementResult> = [];
-	let mode: number = LINE_START_MODE;
+	let mode = LINE_START_MODE;
 	for (let s = 0; s < spans.length; s++) {
 		const span = spans[s];
 		for (let i = 0; i < span.length; ) {
@@ -203,7 +203,7 @@ function parseChildren(
 				stack.push(current);
 				const next = {
 					type: "element" as const,
-					tag: value,
+					tag: value as any,
 					props: null,
 					children: [],
 				};
