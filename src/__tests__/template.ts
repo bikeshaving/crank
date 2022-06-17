@@ -67,6 +67,19 @@ describe("x", () => {
 				<span>${ex1} ${ex2}</span>
 			</div>
 		`).toEqual(c("div", null, c("span", null, "Hello", " ", "World")));
+		expect(x`
+			<div><span>${null} ${undefined} ${true} ${false} ${1} ${2}</span></div>
+		`).toEqual(
+			c(
+				"div",
+				null,
+				c(
+					"span",
+					null,
+					...[null, " ", undefined, " ", true, " ", false, " ", 1, " ", 2],
+				),
+			),
+		);
 	});
 
 	test("prop expressions", () => {
