@@ -1,9 +1,6 @@
 import {c, Element} from "./crank.js";
 import type {Tag} from "./crank.js";
 
-// TODO: Handle illegal escape sequences.
-// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals#es2018_revision_of_illegal_escape_sequences
-
 // TODO: Consider the name of this function. Currently, I’m think `t` for
 // template?
 export function x(
@@ -13,9 +10,11 @@ export function x(
 	let parsed = parseChildren(spans.raw, expressions);
 	if (parsed.children.length === 0) {
 		return null;
-	} else if (parsed.children.length === 1) {
-		// TODO: Handle string children
-		parsed = parsed.children[0] as any;
+	} else if (
+		parsed.children.length === 1 &&
+		parsed.children[0].type === "element"
+	) {
+		parsed = parsed.children[0];
 	}
 
 	return createElementsFromParse(parsed);
@@ -45,7 +44,7 @@ const WHITESPACE_RE = /[^\S\r\n]+/g;
  * Group 1: newline
  * Group 2: tag
  * Group 3: closing slash, undefined if missing.
- * Group 4: tag name
+ * Group 4: tag name, will never be undefined.
  */
 const CHILDREN_RE = /(\r|\n|\r\n)|(<\s*(\/)?\s*(?:([-\w]*)\s*|$))/g;
 
@@ -59,6 +58,8 @@ const CHILDREN_RE = /(\r|\n|\r\n)|(<\s*(\/)?\s*(?:([-\w]*)\s*|$))/g;
  */
 const PROPS_RE =
 	/\s*(?:(?:([-\w]+)\s*(?:=\s*("[^"]*"|'[^']*')|$)?)|(\/?\s*>))/g;
+
+const CLOSING_TAG_RE = /\s*>/g;
 
 /* Modes */
 const LINE_START_MODE = 0;
@@ -166,7 +167,7 @@ function parseChildren(
 						const name = match[1];
 						let value = match[2];
 						if (value == null) {
-							throw new Error("TODO: fix me");
+							throw new Error("TODO: prop expressions!");
 						} else {
 							value = value.replace(/^('|")/, "").replace(/('|")$/, "");
 							current.props = {...current.props, ...{[name]: value}};
@@ -180,36 +181,16 @@ function parseChildren(
 						mode = CHILDREN_MODE;
 					}
 				} else {
-					// Is this branch possible?
-					throw new Error("TODO: Unexpected branch");
+					throw new Error("TODO: Is this branch possible?");
 				}
 			} else if (mode === CLOSING_TAG_MODE) {
-				// TODO: stop copying
-				PROPS_RE.lastIndex = i;
-				const match = PROPS_RE.exec(span);
+				CLOSING_TAG_RE.lastIndex = i;
+				const match = CLOSING_TAG_RE.exec(span);
 				if (match) {
 					i = match.index + match[0].length;
-					if (match[1]) {
-						// prop matched
-						const name = match[1];
-						let value = match[2];
-						if (value == null) {
-							throw new Error("TODO: fix me");
-						} else {
-							value = value.replace(/^('|")/, "").replace(/('|")$/, "");
-							current.props = {...current.props, ...{[name]: value}};
-						}
-					} else if (match[3]) {
-						if (match[3][0] === "/") {
-							// self-closing tag
-							current = stack.pop()!;
-						}
-
-						mode = CHILDREN_MODE;
-					}
+					mode = CHILDREN_MODE;
 				} else {
-					// Is this branch possible?
-					throw new Error("TODO: Unexpected branch");
+					throw new Error(`Unexpected character`);
 				}
 			}
 		}
@@ -255,7 +236,6 @@ function parseChildren(
 }
 
 function createElementsFromParse(parsed: ParseElementResult): Element | null {
-	// TODO: We need to handle arbitrary children expressions
 	const children: Array<unknown> = [];
 	for (let i = 0; i < parsed.children.length; i++) {
 		const child = parsed.children[i];
