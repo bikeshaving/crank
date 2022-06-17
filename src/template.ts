@@ -64,7 +64,7 @@ const PROPS_RE =
 const LINE_START_MODE = 0;
 const CHILDREN_MODE = 1;
 const PROPS_MODE = 2;
-//const CLOSING_TAG_MODE = 3;
+const CLOSING_TAG_MODE = 3;
 
 function parseChildren(
 	spans: ArrayLike<string>,
@@ -80,9 +80,7 @@ function parseChildren(
 	let mode: number = LINE_START_MODE;
 	for (let s = 0; s < spans.length; s++) {
 		const span = spans[s];
-		let expressing = false;
 		for (let i = 0; i < span.length; ) {
-			expressing = false;
 			if (mode === LINE_START_MODE) {
 				// consuming whitespace at the start of lines/elements
 				WHITESPACE_RE.lastIndex = i;
@@ -116,34 +114,31 @@ function parseChildren(
 						}
 
 						const opening = match[3] == null;
-						expressing = i === span.length && s < spans.length - 1;
-						const tagName = match[4];
-						// TODO: Do we want to make sure tag is a component or string or symbol?
-						const tag: Tag = expressing ? (expressions[s] as any) : tagName;
+						if (i !== span.length) {
+							const tagName = match[4];
+							if (opening) {
+								stack.push(current);
+								const next = {
+									type: "element" as const,
+									tag: tagName,
+									props: null,
+									children: [],
+								};
+								current.children.push(next);
+								current = next;
+							} else {
+								// closing
+								if (!stack.length) {
+									throw new Error(`Unexpected closing tag named ${tagName}`);
+								} else if (current.tag !== tagName) {
+									throw new Error(`Mismatched tag: ${tagName}`);
+								}
 
-						if (opening) {
-							stack.push(current);
-							const next = {
-								type: "element" as const,
-								tag,
-								props: null,
-								children: [],
-							};
-							current.children.push(next);
-							current = next;
-						} else {
-							// closing
-							if (!stack.length) {
-								throw new Error(`Unexpected closing tag named ${tagName}`);
-							} else if (current.tag !== tag) {
-								throw new Error(`Mismatched tag: ${String(tag)}`);
+								current = stack.pop()!;
 							}
-
-							current = stack.pop()!;
-							// TODO: Separate mode for closing tag
 						}
 
-						mode = PROPS_MODE;
+						mode = opening ? PROPS_MODE : CLOSING_TAG_MODE;
 					} else {
 						throw new Error("TODO: Is this branch possible?");
 					}
@@ -188,13 +183,60 @@ function parseChildren(
 					// Is this branch possible?
 					throw new Error("TODO: Unexpected branch");
 				}
+			} else if (mode === CLOSING_TAG_MODE) {
+				// TODO: stop copying
+				PROPS_RE.lastIndex = i;
+				const match = PROPS_RE.exec(span);
+				if (match) {
+					i = match.index + match[0].length;
+					if (match[1]) {
+						// prop matched
+						const name = match[1];
+						let value = match[2];
+						if (value == null) {
+							throw new Error("TODO: fix me");
+						} else {
+							value = value.replace(/^('|")/, "").replace(/('|")$/, "");
+							current.props = {...current.props, ...{[name]: value}};
+						}
+					} else if (match[3]) {
+						if (match[3][0] === "/") {
+							// self-closing tag
+							current = stack.pop()!;
+						}
+
+						mode = CHILDREN_MODE;
+					}
+				} else {
+					// Is this branch possible?
+					throw new Error("TODO: Unexpected branch");
+				}
 			}
 		}
 
-		if (s < spans.length - 1 && !expressing) {
-			// TODO: We should probably get rid of this expressing flag...
+		if (s < spans.length - 1) {
+			const value = expressions[s];
 			if (mode === CHILDREN_MODE) {
-				current.children.push({type: "value", value: expressions[s]});
+				current.children.push({type: "value", value});
+			} else if (mode === PROPS_MODE) {
+				stack.push(current);
+				const next = {
+					type: "element" as const,
+					tag: value,
+					props: null,
+					children: [],
+				};
+				current.children.push(next);
+				current = next;
+			} else if (mode === CLOSING_TAG_MODE) {
+				// closing
+				if (!stack.length) {
+					throw new Error(`Unexpected closing tag named ${value}`);
+				} else if (current.tag !== value) {
+					throw new Error(`Mismatched tag: ${value}`);
+				}
+
+				current = stack.pop()!;
 			} else {
 				throw new Error(
 					`Unexpected expression: ${JSON.stringify(expressions[s], null, 2)}`,
