@@ -52,20 +52,21 @@ const CHILDREN_RE = /(\r|\n|\r\n)|(<\s*(\/)?\s*(?:([-\w]*)\s*|$))/g;
 // TODO: Handle self-closing tag stuff
 /*
  * Matches props after a tag.
- * Group 1: prop name
- * Group 2: prop value
- * Group 3: tag end
+ * Group 1: tag end
+ * Group 2: prop name
+ * Group 3: prop value
+ * Group 4: prop value string
  */
-const PROPS_RE =
-	/\s*(?:(?:([-\w]+)\s*(?:=\s*("[^"]*"|'[^']*')|$)?)|(\/?\s*>))/g;
+const PROPS_RE = /\s*(\/?\s*>)|([-\w]+)\s*(=\s*(?:("[^"]*"|'[^']*')|$))?/g;
 
 const CLOSING_TAG_RE = /\s*>/g;
 
 /* Modes */
 const LINE_START_MODE = 0;
 const CHILDREN_MODE = 1;
-const PROPS_MODE = 2;
-const CLOSING_TAG_MODE = 3;
+const OPENING_TAG_MODE = 2;
+const PROPS_MODE = 3;
+const CLOSING_TAG_MODE = 4;
 
 function parseChildren(
 	spans: ArrayLike<string>,
@@ -115,8 +116,10 @@ function parseChildren(
 						}
 
 						const opening = match[3] == null;
-						if (i !== span.length) {
-							const tagName = match[4];
+						const tagName = match[4];
+						if (i === span.length) {
+							mode = opening ? OPENING_TAG_MODE : CLOSING_TAG_MODE;
+						} else {
 							if (opening) {
 								stack.push(current);
 								const next = {
@@ -127,6 +130,7 @@ function parseChildren(
 								};
 								current.children.push(next);
 								current = next;
+								mode = PROPS_MODE;
 							} else {
 								// closing
 								if (!stack.length) {
@@ -136,14 +140,14 @@ function parseChildren(
 								}
 
 								current = stack.pop()!;
+								mode = CLOSING_TAG_MODE;
 							}
 						}
-
-						mode = opening ? PROPS_MODE : CLOSING_TAG_MODE;
 					} else {
 						throw new Error("TODO: Is this branch possible?");
 					}
 				} else {
+					// No more tags or newlines in this span.
 					if (i < span.length) {
 						let after = span.slice(i);
 						if (s === spans.length - 1) {
@@ -163,26 +167,31 @@ function parseChildren(
 				if (match) {
 					i = match.index + match[0].length;
 					if (match[1]) {
-						// prop matched
-						const name = match[1];
-						let value = match[2];
-						if (value == null) {
-							throw new Error("TODO: prop expressions!");
-						} else {
-							value = value.replace(/^('|")/, "").replace(/('|")$/, "");
-							current.props = {...current.props, ...{[name]: value}};
-						}
-					} else if (match[3]) {
-						if (match[3][0] === "/") {
+						if (match[1][0] === "/") {
 							// self-closing tag
 							current = stack.pop()!;
 						}
 
 						mode = CHILDREN_MODE;
+					} else if (match[2]) {
+						// prop matched
+						const name = match[2];
+						let string = match[4];
+						if (string == null) {
+							if (i !== span.length) {
+								throw new Error("Property expected");
+							}
+						} else {
+							// I accidentally made some regular expression emoticons ^-^
+							string = string.replace(/^('|")/, "").replace(/('|")$/, "");
+							current.props = {...current.props, ...{[name]: string}};
+						}
 					}
 				} else {
 					throw new Error("TODO: Is this branch possible?");
 				}
+			} else if (mode === OPENING_TAG_MODE) {
+				throw new Error("TODO: This branch should not be possible...");
 			} else if (mode === CLOSING_TAG_MODE) {
 				CLOSING_TAG_RE.lastIndex = i;
 				const match = CLOSING_TAG_RE.exec(span);
@@ -195,11 +204,14 @@ function parseChildren(
 			}
 		}
 
+		// expressions[spans.length - 1] will never be defined because template
+		// tags always allow one more span than expression.
 		if (s < spans.length - 1) {
 			const value = expressions[s];
+			// TODO: use the statement label to break out of this part
 			if (mode === CHILDREN_MODE) {
 				current.children.push({type: "value", value});
-			} else if (mode === PROPS_MODE) {
+			} else if (mode === OPENING_TAG_MODE) {
 				stack.push(current);
 				const next = {
 					type: "element" as const,
@@ -209,6 +221,7 @@ function parseChildren(
 				};
 				current.children.push(next);
 				current = next;
+				mode = PROPS_MODE;
 			} else if (mode === CLOSING_TAG_MODE) {
 				// closing
 				if (!stack.length) {
@@ -218,9 +231,11 @@ function parseChildren(
 				}
 
 				current = stack.pop()!;
+			} else if (mode === PROPS_MODE) {
+				throw new Error("Oh no we don’t have the prop name");
 			} else {
 				throw new Error(
-					`Unexpected expression: ${JSON.stringify(expressions[s], null, 2)}`,
+					`Unexpected expression: \${${JSON.stringify(value, null, 2)}}`,
 				);
 			}
 		}
