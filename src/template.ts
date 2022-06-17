@@ -4,6 +4,8 @@ import type {Tag} from "./crank.js";
 // TODO: Handle illegal escape sequences.
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Template_literals#es2018_revision_of_illegal_escape_sequences
 
+// TODO: Consider the name of this function. Currently, I’m think `t` for
+// template?
 export function x(
 	spans: TemplateStringsArray,
 	...expressions: Array<unknown>
@@ -20,10 +22,18 @@ export function x(
 }
 
 interface ParseElementResult {
+	type: "element";
 	tag: Tag;
 	props: Record<string, any> | null;
-	children: Array<ParseElementResult | string>;
+	children: Array<ParseResult>;
 }
+
+interface ParseValueResult {
+	type: "value";
+	value: unknown;
+}
+
+type ParseResult = ParseElementResult | ParseValueResult;
 
 // TODO: gross regexp magic to skip empty lines
 /* Matches any whitespace that isn’t a newline. */
@@ -60,7 +70,12 @@ function parseChildren(
 	spans: ArrayLike<string>,
 	expressions: Array<unknown>,
 ): ParseElementResult {
-	let current: ParseElementResult = {tag: "", props: null, children: []};
+	let current: ParseElementResult = {
+		type: "element",
+		tag: "",
+		props: null,
+		children: [],
+	};
 	const stack: Array<ParseElementResult> = [];
 	let mode: number = LINE_START_MODE;
 	for (let s = 0; s < spans.length; s++) {
@@ -91,13 +106,13 @@ function parseChildren(
 								  before.slice(0, -1)
 								: before.trim();
 						if (before) {
-							current.children.push(before);
+							current.children.push({type: "value", value: before});
 						}
 
 						mode = LINE_START_MODE;
 					} else if (match[2]) {
 						if (before) {
-							current.children.push(before);
+							current.children.push({type: "value", value: before});
 						}
 
 						const opening = match[3] == null;
@@ -108,10 +123,16 @@ function parseChildren(
 
 						if (opening) {
 							stack.push(current);
-							const next = {tag, props: null, children: []};
+							const next = {
+								type: "element" as const,
+								tag,
+								props: null,
+								children: [],
+							};
 							current.children.push(next);
 							current = next;
 						} else {
+							// closing
 							if (!stack.length) {
 								throw new Error(`Unexpected closing tag named ${tagName}`);
 							} else if (current.tag !== tag) {
@@ -134,7 +155,7 @@ function parseChildren(
 						}
 
 						if (after) {
-							current.children.push(after);
+							current.children.push({type: "value", value: after});
 						}
 					}
 
@@ -173,7 +194,7 @@ function parseChildren(
 		if (s < spans.length - 1 && !expressing) {
 			// TODO: We should probably get rid of this expressing flag...
 			if (mode === CHILDREN_MODE) {
-				current.children.push(expressions[s] as any);
+				current.children.push({type: "value", value: expressions[s]});
 			} else {
 				throw new Error(
 					`Unexpected expression: ${JSON.stringify(expressions[s], null, 2)}`,
@@ -193,8 +214,13 @@ function parseChildren(
 
 function createElementsFromParse(parsed: ParseElementResult): Element | null {
 	// TODO: We need to handle arbitrary children expressions
-	const children = parsed.children.map((child) =>
-		typeof child === "string" ? child : createElementsFromParse(child),
-	);
+	const children: Array<unknown> = [];
+	for (let i = 0; i < parsed.children.length; i++) {
+		const child = parsed.children[i];
+		children.push(
+			child.type === "element" ? createElementsFromParse(child) : child.value,
+		);
+	}
+
 	return c(parsed.tag, parsed.props, ...children);
 }
