@@ -74,16 +74,15 @@ function parseChildren(
 	spans: ArrayLike<string>,
 	expressions: Array<unknown>,
 ): ParseElementResult {
+	let mode = LINE_START_MODE;
 	let current: ParseElementResult = {
 		type: "element",
 		tag: "",
 		props: null,
 		children: [],
 	};
-
 	const stack: Array<ParseElementResult> = [];
-	let mode = LINE_START_MODE;
-	outer: for (let s = 0; s < spans.length; s++) {
+	spanloop: for (let s = 0; s < spans.length; s++) {
 		const span = spans[s];
 		for (let i = 0; i < span.length; ) {
 			if (mode === LINE_START_MODE) {
@@ -147,7 +146,7 @@ function parseChildren(
 						}
 
 						if (expressing) {
-							continue outer;
+							continue spanloop;
 						}
 					} else {
 						throw new Error("TODO: Is this branch possible?");
@@ -180,20 +179,26 @@ function parseChildren(
 
 						mode = CHILDREN_MODE;
 					} else if (match[2]) {
-						throw new Error("Handle spread props");
+						if (i !== span.length || s >= spans.length - 1) {
+							throw new Error("Expression expected after ...");
+						}
+
+						current.props = {...current.props, ...expressions[s]};
+						continue spanloop;
 					} else if (match[3]) {
 						// prop matched
 						const name = match[3];
 						let string = match[5];
 						if (string == null) {
 							if (i !== span.length) {
+								// Is this logic correct?
 								throw new Error("Property expected");
 							} else if (s >= spans.length - 1) {
 								throw new Error("Expression expected");
 							}
 
 							current.props = {...current.props, ...{[name]: expressions[s]}};
-							continue outer;
+							continue spanloop;
 						} else {
 							current.props = {
 								...current.props,
@@ -213,7 +218,8 @@ function parseChildren(
 					i = match.index + match[0].length;
 					mode = CHILDREN_MODE;
 				} else {
-					throw new Error(`Unexpected character`);
+					// TODO: Better diagnostic.
+					throw new Error("Unexpected character");
 				}
 			}
 		}
