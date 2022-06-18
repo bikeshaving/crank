@@ -123,10 +123,11 @@ function parseChildren(
 						const tag = expressing ? (expressions[s] as Tag) : tagName;
 						if (closer) {
 							// closing
+							// TODO: Use function names for components
 							if (!stack.length) {
-								throw new Error(`Unexpected closing tag named ${tag}`);
+								throw new Error(`Unexpected closing tag named ${String(tag)}`);
 							} else if (closer !== "//" && current.tag !== tag) {
-								throw new Error(`Mismatched tag: ${tag}`);
+								throw new Error(`Mismatched tag: ${String(tag)}`);
 							}
 
 							current = stack.pop()!;
@@ -182,7 +183,7 @@ function parseChildren(
 							throw new Error("Expression expected after ...");
 						}
 
-						current.props = {...current.props, ...expressions[s]};
+						current.props = {...current.props, ...(expressions[s] as any)};
 						continue spanloop;
 					} else if (match[3]) {
 						// prop matched
