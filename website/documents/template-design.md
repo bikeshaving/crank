@@ -153,3 +153,13 @@ yield x`
 ```
 
 Why not!? It’s just nice and convenient, right?
+
+Should we allow for interpolations in prop names?
+
+```
+yield x`
+  <${Component} ${name}=${value} />
+`;
+```
+
+Why not?
