@@ -43,10 +43,10 @@ const WHITESPACE_RE = /[^\S\r\n]+/g;
  * Matches the first significant character in children mode.
  * Group 1: newline
  * Group 2: tag
- * Group 3: closing slash, undefined if missing.
- * Group 4: tag name, will never be undefined.
+ * Group 3: closing slash
+ * Group 4: tag name
  */
-const CHILDREN_RE = /(\r|\n|\r\n)|(<\s*(\/)?\s*(?:([-\w]*)\s*|$))/g;
+const CHILDREN_RE = /(\r|\n|\r\n)|(<\s*(\/{0,2})\s*(?:([-\w]*)\s*|$))/g;
 
 // TODO: Add spread operator
 // TODO: Handle self-closing tag stuff
@@ -55,11 +55,10 @@ const CHILDREN_RE = /(\r|\n|\r\n)|(<\s*(\/)?\s*(?:([-\w]*)\s*|$))/g;
  * Group 1: tag end
  * Group 2: spread props
  * Group 3: prop name
- * Group 4: prop value
- * Group 5: prop value string
+ * Group 4: prop value string
  */
 const PROPS_RE =
-	/\s*(\/?\s*>)|(\.\.\.$)|(?:([-\w]+)\s*(=\s*(?:("[^"]*"|'[^']*')|$))?)/g;
+	/\s*(\/?\s*>)|(\.\.\.$)|(?:([-\w]+)\s*(?:=\s*(?:("[^"]*"|'[^']*')|$))?)/g;
 
 /* Matches closing tag */
 const CLOSING_TAG_RE = /\s*>/g;
@@ -117,12 +116,22 @@ function parseChildren(
 							current.children.push({type: "value", value: before});
 						}
 
-						const opening = match[3] == null;
+						const closer = match[3];
 						const tagName = match[4];
 						const expressing = i === span.length && s < spans.length - 1;
 						// TODO: Some type checking?
 						const tag = expressing ? (expressions[s] as Tag) : tagName;
-						if (opening) {
+						if (closer) {
+							// closing
+							if (!stack.length) {
+								throw new Error(`Unexpected closing tag named ${tag}`);
+							} else if (closer !== "//" && current.tag !== tag) {
+								throw new Error(`Mismatched tag: ${tag}`);
+							}
+
+							current = stack.pop()!;
+							mode = CLOSING_TAG_MODE;
+						} else {
 							stack.push(current);
 							const next = {
 								type: "element" as const,
@@ -133,16 +142,6 @@ function parseChildren(
 							current.children.push(next);
 							current = next;
 							mode = PROPS_MODE;
-						} else {
-							// closing
-							if (!stack.length) {
-								throw new Error(`Unexpected closing tag named ${tag}`);
-							} else if (current.tag !== tag) {
-								throw new Error(`Mismatched tag: ${tag}`);
-							}
-
-							current = stack.pop()!;
-							mode = CLOSING_TAG_MODE;
 						}
 
 						if (expressing) {
@@ -188,7 +187,7 @@ function parseChildren(
 					} else if (match[3]) {
 						// prop matched
 						const name = match[3];
-						let string = match[5];
+						let string = match[4];
 						if (string == null) {
 							if (i < span.length) {
 								// boolean prop
