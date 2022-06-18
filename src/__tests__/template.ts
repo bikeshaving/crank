@@ -80,11 +80,37 @@ describe("x", () => {
 		);
 	});
 
+	test("boolean props", () => {
+		expect(x`
+			<label><input type="checkbox" checked name="cheese" disabled />Cheese</label>
+		`).toEqual(
+			c(
+				"label",
+				null,
+				c("input", {
+					type: "checkbox",
+					checked: true,
+					name: "cheese",
+					disabled: true,
+				}),
+			),
+		);
+	});
+
 	test("prop expressions", () => {
 		expect(x`
 			<div class=${"foo" + "bar"}>
 				<span></span>
 			</div>
 		`).toEqual(c("div", {class: "foobar"}, c("span")));
+	});
+
+	test("spread prop expression", () => {
+		const props = {
+			style: "color: red;",
+		};
+		expect(x`<div class="greeting" ...${props}>Hello world</div>`).toEqual(
+			c("div", {class: "greeting", style: "color: red;"}, "Hello world"),
+		);
 	});
 });

@@ -53,12 +53,15 @@ const CHILDREN_RE = /(\r|\n|\r\n)|(<\s*(\/)?\s*(?:([-\w]*)\s*|$))/g;
 /*
  * Matches props after a tag.
  * Group 1: tag end
- * Group 2: prop name
- * Group 3: prop value
- * Group 4: prop value string
+ * Group 2: spread props
+ * Group 3: prop name
+ * Group 4: prop value
+ * Group 5: prop value string
  */
-const PROPS_RE = /\s*(\/?\s*>)|([-\w]+)\s*(=\s*(?:("[^"]*"|'[^']*')|$))?/g;
+const PROPS_RE =
+	/\s*(\/?\s*>)|(\.\.\.$)|(?:([-\w]+)\s*(=\s*(?:("[^"]*"|'[^']*')|$))?)/g;
 
+/* Matches closing tag */
 const CLOSING_TAG_RE = /\s*>/g;
 
 /* Modes */
@@ -77,6 +80,7 @@ function parseChildren(
 		props: null,
 		children: [],
 	};
+
 	const stack: Array<ParseElementResult> = [];
 	let mode = LINE_START_MODE;
 	outer: for (let s = 0; s < spans.length; s++) {
@@ -176,9 +180,11 @@ function parseChildren(
 
 						mode = CHILDREN_MODE;
 					} else if (match[2]) {
+						throw new Error("Handle spread props");
+					} else if (match[3]) {
 						// prop matched
-						const name = match[2];
-						let string = match[4];
+						const name = match[3];
+						let string = match[5];
 						if (string == null) {
 							if (i !== span.length) {
 								throw new Error("Property expected");
@@ -197,7 +203,8 @@ function parseChildren(
 						}
 					}
 				} else {
-					throw new Error("TODO: Is this branch possible?");
+					// Unexpected character while parsing props
+					throw new Error("Unexpected character");
 				}
 			} else if (mode === CLOSING_TAG_MODE) {
 				CLOSING_TAG_RE.lastIndex = i;
@@ -215,7 +222,6 @@ function parseChildren(
 		// tags are always called with one more span than expression.
 		if (s < spans.length - 1) {
 			const value = expressions[s];
-			// TODO: use the statement label to break out of this part
 			if (mode === CHILDREN_MODE) {
 				current.children.push({type: "value", value});
 			} else {
