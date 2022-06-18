@@ -64,9 +64,8 @@ const CLOSING_TAG_RE = /\s*>/g;
 /* Modes */
 const LINE_START_MODE = 0;
 const CHILDREN_MODE = 1;
-const OPENING_TAG_MODE = 2;
-const PROPS_MODE = 3;
-const CLOSING_TAG_MODE = 4;
+const PROPS_MODE = 2;
+const CLOSING_TAG_MODE = 3;
 
 function parseChildren(
 	spans: ArrayLike<string>,
@@ -80,7 +79,7 @@ function parseChildren(
 	};
 	const stack: Array<ParseElementResult> = [];
 	let mode = LINE_START_MODE;
-	for (let s = 0; s < spans.length; s++) {
+	outer: for (let s = 0; s < spans.length; s++) {
 		const span = spans[s];
 		for (let i = 0; i < span.length; ) {
 			if (mode === LINE_START_MODE) {
@@ -117,31 +116,34 @@ function parseChildren(
 
 						const opening = match[3] == null;
 						const tagName = match[4];
-						if (i === span.length) {
-							mode = opening ? OPENING_TAG_MODE : CLOSING_TAG_MODE;
+						const expressing = i === span.length && s < spans.length - 1;
+						// TODO: Some type checking?
+						const tag = expressing ? (expressions[s] as Tag) : tagName;
+						if (opening) {
+							stack.push(current);
+							const next = {
+								type: "element" as const,
+								tag,
+								props: null,
+								children: [],
+							};
+							current.children.push(next);
+							current = next;
+							mode = PROPS_MODE;
 						} else {
-							if (opening) {
-								stack.push(current);
-								const next = {
-									type: "element" as const,
-									tag: tagName,
-									props: null,
-									children: [],
-								};
-								current.children.push(next);
-								current = next;
-								mode = PROPS_MODE;
-							} else {
-								// closing
-								if (!stack.length) {
-									throw new Error(`Unexpected closing tag named ${tagName}`);
-								} else if (current.tag !== tagName) {
-									throw new Error(`Mismatched tag: ${tagName}`);
-								}
-
-								current = stack.pop()!;
-								mode = CLOSING_TAG_MODE;
+							// closing
+							if (!stack.length) {
+								throw new Error(`Unexpected closing tag named ${tag}`);
+							} else if (current.tag !== tag) {
+								throw new Error(`Mismatched tag: ${tag}`);
 							}
+
+							current = stack.pop()!;
+							mode = CLOSING_TAG_MODE;
+						}
+
+						if (expressing) {
+							continue outer;
 						}
 					} else {
 						throw new Error("TODO: Is this branch possible?");
@@ -180,18 +182,23 @@ function parseChildren(
 						if (string == null) {
 							if (i !== span.length) {
 								throw new Error("Property expected");
+							} else if (s >= spans.length - 1) {
+								throw new Error("Expression expected");
 							}
+
+							current.props = {...current.props, ...{[name]: expressions[s]}};
+							continue outer;
 						} else {
-							// I accidentally made some regular expression emoticons ^-^
-							string = string.replace(/^('|")/, "").replace(/('|")$/, "");
-							current.props = {...current.props, ...{[name]: string}};
+							current.props = {
+								...current.props,
+								// I accidentally made some regular expression emoticons ^-^
+								...{[name]: string.replace(/^('|")/, "").replace(/('|")$/, "")},
+							};
 						}
 					}
 				} else {
 					throw new Error("TODO: Is this branch possible?");
 				}
-			} else if (mode === OPENING_TAG_MODE) {
-				throw new Error("TODO: This branch should not be possible...");
 			} else if (mode === CLOSING_TAG_MODE) {
 				CLOSING_TAG_RE.lastIndex = i;
 				const match = CLOSING_TAG_RE.exec(span);
@@ -205,34 +212,12 @@ function parseChildren(
 		}
 
 		// expressions[spans.length - 1] will never be defined because template
-		// tags always allow one more span than expression.
+		// tags are always called with one more span than expression.
 		if (s < spans.length - 1) {
 			const value = expressions[s];
 			// TODO: use the statement label to break out of this part
 			if (mode === CHILDREN_MODE) {
 				current.children.push({type: "value", value});
-			} else if (mode === OPENING_TAG_MODE) {
-				stack.push(current);
-				const next = {
-					type: "element" as const,
-					tag: value as any,
-					props: null,
-					children: [],
-				};
-				current.children.push(next);
-				current = next;
-				mode = PROPS_MODE;
-			} else if (mode === CLOSING_TAG_MODE) {
-				// closing
-				if (!stack.length) {
-					throw new Error(`Unexpected closing tag named ${value}`);
-				} else if (current.tag !== value) {
-					throw new Error(`Mismatched tag: ${value}`);
-				}
-
-				current = stack.pop()!;
-			} else if (mode === PROPS_MODE) {
-				throw new Error("Oh no we don’t have the prop name");
 			} else {
 				throw new Error(
 					`Unexpected expression: \${${JSON.stringify(value, null, 2)}}`,

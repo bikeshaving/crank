@@ -44,9 +44,7 @@ describe("x", () => {
 	test("tag expressions", () => {
 		const T1 = "tag1";
 		const T2 = "tag2";
-		expect(x`
-			<${T1}>Hello world</${T1}>
-		`).toEqual(c(T1, null, "Hello world"));
+		expect(x`<${T1}>Hello world</${T1}>`).toEqual(c(T1, null, "Hello world"));
 		expect(x`
 			<${T1}>
 				<${T2}>
@@ -87,6 +85,6 @@ describe("x", () => {
 			<div class=${"foo" + "bar"}>
 				<span></span>
 			</div>
-		`).toEqual(null);
+		`).toEqual(c("div", {class: "foobar"}, c("span")));
 	});
 });
