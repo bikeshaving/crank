@@ -56,15 +56,17 @@ describe("x", () => {
 
 	test("children expressions", () => {
 		const ex1 = "Hello";
-		const ex2 = "World";
+		const ex2 = "world";
 		expect(x`
 			<div>${ex1} ${ex2}</div>
-		`).toEqual(c("div", null, "Hello", " ", "World"));
+		`).toEqual(c("div", null, "Hello", " ", "world"));
+
 		expect(x`
 			<div>
 				<span>${ex1} ${ex2}</span>
 			</div>
-		`).toEqual(c("div", null, c("span", null, "Hello", " ", "World")));
+		`).toEqual(c("div", null, c("span", null, "Hello", " ", "world")));
+
 		expect(x`
 			<div><span>${null} ${undefined} ${true} ${false} ${1} ${2}</span></div>
 		`).toEqual(
@@ -115,5 +117,16 @@ describe("x", () => {
 		expect(x`<div class="greeting" ...${props}>Hello world</div>`).toEqual(
 			c("div", {class: "greeting", style: "color: red;"}, "Hello world"),
 		);
+	});
+
+	test("asymmetric closing tags", () => {
+		const Component = "C";
+		expect(x`
+			<${Component}>Hello world<//>
+		`).toEqual(c(Component, null, "Hello world"));
+
+		expect(x`
+			<${Component}>Hello world<//Component>
+		`).toEqual(c(Component, null, "Hello world"));
 	});
 });
