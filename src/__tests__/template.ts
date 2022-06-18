@@ -87,12 +87,15 @@ describe("x", () => {
 			c(
 				"label",
 				null,
-				c("input", {
-					type: "checkbox",
-					checked: true,
-					name: "cheese",
-					disabled: true,
-				}),
+				...[
+					c("input", {
+						type: "checkbox",
+						checked: true,
+						name: "cheese",
+						disabled: true,
+					}),
+					"Cheese",
+				],
 			),
 		);
 	});

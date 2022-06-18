@@ -190,15 +190,16 @@ function parseChildren(
 						const name = match[3];
 						let string = match[5];
 						if (string == null) {
-							if (i !== span.length) {
-								// Is this logic correct?
-								throw new Error("Property expected");
+							if (i < span.length) {
+								// boolean prop
+								current.props = {...current.props, ...{[name]: true}};
 							} else if (s >= spans.length - 1) {
 								throw new Error("Expression expected");
+							} else {
+								// prop expression
+								current.props = {...current.props, ...{[name]: expressions[s]}};
+								continue spanloop;
 							}
-
-							current.props = {...current.props, ...{[name]: expressions[s]}};
-							continue spanloop;
 						} else {
 							current.props = {
 								...current.props,
