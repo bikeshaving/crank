@@ -42,11 +42,13 @@ const WHITESPACE_RE = /[^\S\r\n]+/g;
 /*
  * Matches the first significant character in children mode.
  * Group 1: newline
- * Group 2: tag
- * Group 3: closing slash
- * Group 4: tag name
+ * Group 2: comment
+ * Group 3: tag
+ * Group 4: closing slash
+ * Group 5: tag name
  */
-const CHILDREN_RE = /(\r|\n|\r\n)|(<\s*(\/{0,2})\s*(?:([-\w]*)\s*|$))/g;
+const CHILDREN_RE =
+	/(\r|\n|\r\n)|(<!--.*?-->)|(<\s*(\/{0,2})\s*(?:([-\w]*)\s*|$))/g;
 
 // TODO: Add spread operator
 // TODO: Handle self-closing tag stuff
@@ -68,6 +70,7 @@ const LINE_START_MODE = 0;
 const CHILDREN_MODE = 1;
 const PROPS_MODE = 2;
 const CLOSING_TAG_MODE = 3;
+//const COMMENT_MODE = 4;
 
 function parseChildren(
 	spans: ArrayLike<string>,
@@ -81,6 +84,9 @@ function parseChildren(
 		children: [],
 	};
 	const stack: Array<ParseElementResult> = [];
+	// By continuing the spanloop, we avoid the logic at the bottom of the loop,
+	// which handles expressions and throws errors when an expression is
+	// unexpected.
 	spanloop: for (let s = 0; s < spans.length; s++) {
 		const span = spans[s];
 		for (let i = 0; i < span.length; ) {
@@ -99,8 +105,8 @@ function parseChildren(
 				if (match) {
 					let before = span.slice(i, match.index);
 					i = match.index + match[0].length;
-					if (match[1]) {
-						// newline detected
+					const [, newline, comment, tag, closer, tagName] = match;
+					if (newline) {
 						before =
 							match.index > 0 && span[match.index - 1] === "\\"
 								? // remove the backslash from the output
@@ -111,13 +117,19 @@ function parseChildren(
 						}
 
 						mode = LINE_START_MODE;
-					} else if (match[2]) {
+					} else if (comment) {
 						if (before) {
 							current.children.push({type: "value", value: before});
 						}
 
-						const closer = match[3];
-						const tagName = match[4];
+						if (i === span.length) {
+							throw new Error("POOP");
+						}
+					} else if (tag) {
+						if (before) {
+							current.children.push({type: "value", value: before});
+						}
+
 						const expressing = i === span.length && s < spans.length - 1;
 						// TODO: Some type checking?
 						const tag = expressing ? (expressions[s] as Tag) : tagName;
@@ -171,6 +183,7 @@ function parseChildren(
 				const match = PROPS_RE.exec(span);
 				if (match) {
 					i = match.index + match[0].length;
+					//const [, closer, spread, name, value] = match;
 					if (match[1]) {
 						if (match[1][0] === "/") {
 							// self-closing tag
@@ -210,7 +223,7 @@ function parseChildren(
 					}
 				} else {
 					// Unexpected character while parsing props
-					throw new Error("Unexpected character");
+					throw new Error("Unexpected character while parsing props");
 				}
 			} else if (mode === CLOSING_TAG_MODE) {
 				CLOSING_TAG_RE.lastIndex = i;
@@ -240,6 +253,7 @@ function parseChildren(
 	}
 
 	if (stack.length) {
+		// TODO: Better error message for components
 		throw new Error(
 			`Missing closing tag for ${stack[stack.length - 1].tag.toString()}`,
 		);

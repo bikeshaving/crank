@@ -132,4 +132,29 @@ describe("x", () => {
 			<//Component>
 		`).toEqual(c(Component, null, "Hello world"));
 	});
+
+	test("comments", () => {
+		expect(x`
+			<div>
+				<!--<span>Hello</span>--><span>world</span>
+			</div>
+		`).toEqual(c("div", null, c("span", null, "world")));
+
+		expect(x`
+			<div>
+				<!--<span>Hello</span>--> <!--<span>world</span>-->
+			</div>
+		`).toEqual(c("div", null, " "));
+
+		const Component = "C";
+		// TODO: Something is very wrong with the way the comment matching works.
+		// debugger;
+		expect(x`
+			<div>
+				<!--
+				<${Component} />
+				-->Hello World
+			</div>
+		`).toEqual(c(Component, null, "Hello world"));
+	});
 });
