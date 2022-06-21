@@ -48,7 +48,7 @@ const WHITESPACE_RE = /[^\S\r\n]+/g;
  * Group 5: tag name
  */
 const CHILDREN_RE =
-	/(\r|\n|\r\n)|(<!--.*?-->)|(<\s*(\/{0,2})\s*(?:([-\w]*)\s*|$))/g;
+	/(\r|\n|\r\n)|(<!--[\S\s]*?(?:-->|$))|(<\s*(\/{0,2})\s*(?:([-\w]*)\s*|$))/g;
 
 // TODO: Add spread operator
 // TODO: Handle self-closing tag stuff
@@ -70,7 +70,7 @@ const LINE_START_MODE = 0;
 const CHILDREN_MODE = 1;
 const PROPS_MODE = 2;
 const CLOSING_TAG_MODE = 3;
-//const COMMENT_MODE = 4;
+const COMMENT_MODE = 4;
 
 function parseChildren(
 	spans: ArrayLike<string>,
@@ -123,7 +123,8 @@ function parseChildren(
 						}
 
 						if (i === span.length) {
-							throw new Error("POOP");
+							mode = COMMENT_MODE;
+							continue spanloop;
 						}
 					} else if (tag) {
 						if (before) {
@@ -235,6 +236,14 @@ function parseChildren(
 					// TODO: Better diagnostic.
 					throw new Error("Unexpected character");
 				}
+			} else if (mode === COMMENT_MODE) {
+				const ci = span.indexOf("-->");
+				if (ci === -1) {
+					continue spanloop;
+				}
+
+				i = ci + "-->".length;
+				mode = CHILDREN_MODE;
 			}
 		}
 
