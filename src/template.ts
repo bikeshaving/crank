@@ -34,6 +34,13 @@ interface ParseValueResult {
 
 type ParseResult = ParseElementResult | ParseValueResult;
 
+/* Modes */
+const LINE_START_MODE = 0;
+const CHILDREN_MODE = 1;
+const PROPS_MODE = 2;
+const CLOSING_TAG_MODE = 3;
+const COMMENT_MODE = 4;
+
 // TODO: gross regexp magic to skip empty lines
 /* Matches any whitespace that isn’t a newline. */
 const WHITESPACE_RE = /[^\S\r\n]+/g;
@@ -64,13 +71,6 @@ const PROPS_RE =
 
 /* Matches closing tag */
 const CLOSING_TAG_RE = /\s*>/g;
-
-/* Modes */
-const LINE_START_MODE = 0;
-const CHILDREN_MODE = 1;
-const PROPS_MODE = 2;
-const CLOSING_TAG_MODE = 3;
-const COMMENT_MODE = 4;
 
 function parseChildren(
 	spans: ArrayLike<string>,
@@ -184,25 +184,24 @@ function parseChildren(
 				const match = PROPS_RE.exec(span);
 				if (match) {
 					i = match.index + match[0].length;
-					//const [, closer, spread, name, value] = match;
-					if (match[1]) {
-						if (match[1][0] === "/") {
+					const [, closer, spread, name, string] = match;
+					if (closer) {
+						if (closer[0] === "/") {
+							// TODO: Do we have to throw an error here if the stack is empty
 							// self-closing tag
 							current = stack.pop()!;
 						}
 
 						mode = CHILDREN_MODE;
-					} else if (match[2]) {
+					} else if (spread) {
 						if (i !== span.length || s >= spans.length - 1) {
 							throw new Error("Expression expected after ...");
 						}
 
 						current.props = {...current.props, ...(expressions[s] as any)};
 						continue spanloop;
-					} else if (match[3]) {
+					} else if (name) {
 						// prop matched
-						const name = match[3];
-						let string = match[4];
 						if (string == null) {
 							if (i < span.length) {
 								// boolean prop
