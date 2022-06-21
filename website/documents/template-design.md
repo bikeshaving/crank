@@ -3,7 +3,6 @@
 ## Grammar
 
 ```
-// TODO: Add HTML-style comments to the grammar `<!-- comment -->`
 // HTML-style comments should probably only work in $CHILDREN
 $CHILDREN: ($CHILD_TEXT | $ELEMENT | $COMMENT | ${unknown})*
 $CHILD_TEXT: /[^<]/+
@@ -14,14 +13,15 @@ $SELF_CLOSING_ELEMENT: "<" ($IDENTIFIER | ${Tag}) $PROPS "/" ">"
 $OPENING_ELEMENT: "<" ($IDENTIFIER | ${Tag})? $PROPS ">"
 $CLOSING_ELEMENT: "<" "/" "/"? ($IDENTIFIER | ${Tag})? ">"
 $PROPS: ($PROP | $SPREAD_PROP)*
-$SPREAD_PROP: "..." ${Record<string, unknown>}
 $PROP: ($IDENTIFIER | ${string}) ("=" $PROP_VALUE)?
+$SPREAD_PROP: "..." ${unknown}
 // TODO: Is this a good idea?
 $IDENTIFIER: /[-\w]/+
 $PROP_VALUE:
   (/"/ (/[^"]/ | ${unknown})* /"/) |
-  (/'/ (/[^']/ | ${unknown})* /'/)
-$COMMENT: "<!--" (/./ | ${unknown})*? "-->"
+  (/'/ (/[^']/ | ${unknown})* /'/) |
+  ${unknown}
+$COMMENT: "<!--" (/[\S\s]/ | ${unknown})*? "-->"
 ```
 
 ## Whitespace
