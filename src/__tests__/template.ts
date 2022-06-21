@@ -146,15 +146,13 @@ describe("x", () => {
 			</div>
 		`).toEqual(c("div", null, " "));
 
-		const Component = "C";
-		// TODO: Something is very wrong with the way the comment matching works.
-		// debugger;
 		expect(x`
 			<div>
 				<!--
-				<${Component} />
-				-->Hello World
+				<${"C"} value=${true} />
+				-->
+				Hello<!-- world-->
 			</div>
-		`).toEqual(c(Component, null, "Hello world"));
+		`).toEqual(c("div", null, "Hello"));
 	});
 });
