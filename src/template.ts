@@ -35,10 +35,12 @@ interface ParseValueResult {
 type ParseResult = ParseElementResult | ParseValueResult;
 
 /* Modes */
+// TODO: In the shower I had a fun little clever idea where we use the regular
+// expressions directly to signify modes
 const CHILDREN_MODE = 0;
 const PROPS_MODE = 1;
 const CLOSING_TAG_MODE = 2;
-const COMMENT_MODE = 3;
+const CLOSING_COMMENT_MODE = 3;
 
 /*
  * Matches the first significant character in children mode.
@@ -78,9 +80,12 @@ function parseChildren(
 	const stack: Array<ParseElementResult> = [];
 	let mode = CHILDREN_MODE;
 	let lineStart = true;
-	// TODO: move away from continue and statement labels that’s insane
-	spanloop: for (let s = 0; s < spans.length; s++) {
+	for (let s = 0; s < spans.length; s++) {
 		const span = spans[s];
+		// a variable which we use to
+		// expressions[spans.length - 1] will never be defined because template
+		// tags are always called with one more span than expression.
+		let expressing = s < spans.length - 1;
 		for (let i = 0; i < span.length; ) {
 			if (mode === CHILDREN_MODE) {
 				CHILDREN_RE.lastIndex = i;
@@ -93,7 +98,7 @@ function parseChildren(
 						lineStart = false;
 					}
 
-					const [, newline, comment, tag, closer, tagName] = match;
+					const [, newline, comment, tagging, closer, tagName] = match;
 					if (newline) {
 						before =
 							match.index > 0 && span[match.index - 1] === "\\"
@@ -109,13 +114,16 @@ function parseChildren(
 
 					if (comment) {
 						if (i === span.length) {
-							mode = COMMENT_MODE;
-							continue spanloop;
+							mode = CLOSING_COMMENT_MODE;
 						}
-					} else if (tag) {
-						const expressing = i === span.length && s < spans.length - 1;
+					} else if (tagging) {
 						// TODO: Consider runtime type checking
-						const tag = expressing ? (expressions[s] as Tag) : tagName;
+						let tag: Tag = tagName;
+						if (expressing && i === span.length) {
+							tag = expressions[s];
+							expressing = false;
+						}
+
 						if (closer) {
 							// TODO: Use function names for components
 							if (!stack.length) {
@@ -138,24 +146,18 @@ function parseChildren(
 							current = next;
 							mode = PROPS_MODE;
 						}
-
-						if (expressing) {
-							continue spanloop;
-						}
 					}
-				} else {
-					if (i < span.length) {
-						let after = span.slice(i);
-						if (s === spans.length - 1) {
-							after = after.replace(/\s*$/, "");
-						}
-
-						if (after) {
-							current.children.push({type: "value", value: after});
-						}
+				} else if (i < span.length) {
+					let after = span.slice(i);
+					if (s === spans.length - 1) {
+						after = after.replace(/\s*$/, "");
 					}
 
-					break;
+					if (after) {
+						current.children.push({type: "value", value: after});
+					}
+
+					i = span.length;
 				}
 			} else if (mode === PROPS_MODE) {
 				PROPS_RE.lastIndex = i;
@@ -177,7 +179,7 @@ function parseChildren(
 						}
 
 						current.props = {...current.props, ...(expressions[s] as any)};
-						continue spanloop;
+						expressing = false;
 					} else if (name) {
 						if (string == null) {
 							if (i < span.length) {
@@ -189,7 +191,7 @@ function parseChildren(
 							} else {
 								// prop expression
 								current.props = {...current.props, ...{[name]: expressions[s]}};
-								continue spanloop;
+								expressing = false;
 							}
 						} else {
 							current.props = {
@@ -213,10 +215,10 @@ function parseChildren(
 					// TODO: Better diagnostic
 					throw new Error("Unexpected character");
 				}
-			} else if (mode === COMMENT_MODE) {
+			} else if (mode === CLOSING_COMMENT_MODE) {
 				const ci = span.indexOf("-->");
 				if (ci === -1) {
-					continue spanloop;
+					break;
 				}
 
 				i = ci + "-->".length;
@@ -224,13 +226,11 @@ function parseChildren(
 			}
 		}
 
-		// expressions[spans.length - 1] will never be defined because template
-		// tags are always called with one more span than expression.
-		if (s < spans.length - 1) {
+		if (expressing) {
 			const value = expressions[s];
 			if (mode === CHILDREN_MODE) {
 				current.children.push({type: "value", value});
-			} else {
+			} else if (mode !== CLOSING_COMMENT_MODE) {
 				throw new Error(
 					`Unexpected expression: \${${JSON.stringify(value, null, 2)}}`,
 				);
