@@ -45,7 +45,6 @@ const COMMENT_MODE = 4;
 /* Matches any whitespace that isn’t a newline. */
 const WHITESPACE_RE = /[^\S\r\n]+/g;
 
-// TODO: double closing slash
 /*
  * Matches the first significant character in children mode.
  * Group 1: newline
@@ -57,8 +56,7 @@ const WHITESPACE_RE = /[^\S\r\n]+/g;
 const CHILDREN_RE =
 	/(\r|\n|\r\n)|(<!--[\S\s]*?(?:-->|$))|(<\s*(\/{0,2})\s*(?:([-\w]*)\s*|$))/g;
 
-// TODO: Add spread operator
-// TODO: Handle self-closing tag stuff
+// TODO: Think about prop name character class
 /*
  * Matches props after a tag.
  * Group 1: tag end
@@ -132,10 +130,9 @@ function parseChildren(
 						}
 
 						const expressing = i === span.length && s < spans.length - 1;
-						// TODO: Some type checking?
+						// TODO: Consider runtime type checking
 						const tag = expressing ? (expressions[s] as Tag) : tagName;
 						if (closer) {
-							// closing
 							// TODO: Use function names for components
 							if (!stack.length) {
 								throw new Error(`Unexpected closing tag named ${String(tag)}`);
@@ -161,11 +158,10 @@ function parseChildren(
 						if (expressing) {
 							continue spanloop;
 						}
-					} else {
-						throw new Error("TODO: Is this branch possible?");
 					}
 				} else {
-					// No more tags or newlines in this span.
+					// TODO: We can probably abstract this in the whitespace branch
+					// somehow
 					if (i < span.length) {
 						let after = span.slice(i);
 						if (s === spans.length - 1) {
@@ -195,16 +191,17 @@ function parseChildren(
 						mode = CHILDREN_MODE;
 					} else if (spread) {
 						if (i !== span.length || s >= spans.length - 1) {
-							throw new Error("Expression expected after ...");
+							// TODO: Allow whitespace after the ...?
+							throw new Error("Expression expected");
 						}
 
 						current.props = {...current.props, ...(expressions[s] as any)};
 						continue spanloop;
 					} else if (name) {
-						// prop matched
 						if (string == null) {
 							if (i < span.length) {
-								// boolean prop
+								// TODO: Does this work when an expression appears
+								// after the boolean prop?
 								current.props = {...current.props, ...{[name]: true}};
 							} else if (s >= spans.length - 1) {
 								throw new Error("Expression expected");
@@ -222,8 +219,8 @@ function parseChildren(
 						}
 					}
 				} else {
-					// Unexpected character while parsing props
-					throw new Error("Unexpected character while parsing props");
+					// TODO: Better diagnostic
+					throw new Error("Unexpected character");
 				}
 			} else if (mode === CLOSING_TAG_MODE) {
 				CLOSING_TAG_RE.lastIndex = i;
@@ -232,7 +229,7 @@ function parseChildren(
 					i = match.index + match[0].length;
 					mode = CHILDREN_MODE;
 				} else {
-					// TODO: Better diagnostic.
+					// TODO: Better diagnostic
 					throw new Error("Unexpected character");
 				}
 			} else if (mode === COMMENT_MODE) {
