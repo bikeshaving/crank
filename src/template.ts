@@ -35,15 +35,10 @@ interface ParseValueResult {
 type ParseResult = ParseElementResult | ParseValueResult;
 
 /* Modes */
-const LINE_START_MODE = 0;
-const CHILDREN_MODE = 1;
-const PROPS_MODE = 2;
-const CLOSING_TAG_MODE = 3;
-const COMMENT_MODE = 4;
-
-// TODO: gross regexp magic to skip empty lines
-/* Matches any whitespace that isn’t a newline. */
-const WHITESPACE_RE = /[^\S\r\n]+/g;
+const CHILDREN_MODE = 0;
+const PROPS_MODE = 1;
+const CLOSING_TAG_MODE = 2;
+const COMMENT_MODE = 3;
 
 /*
  * Matches the first significant character in children mode.
@@ -54,7 +49,7 @@ const WHITESPACE_RE = /[^\S\r\n]+/g;
  * Group 5: tag name
  */
 const CHILDREN_RE =
-	/(\r|\n|\r\n)|(<!--[\S\s]*?(?:-->|$))|(<\s*(\/{0,2})\s*(?:([-\w]*)\s*|$))/g;
+	/((?:\r|\n|\r\n)\s*)|(<!--[\S\s]*?(?:-->|$))|(<\s*(\/{0,2})\s*(?:([-\w]*)\s*|$))/g;
 
 // TODO: Think about prop name character class
 /*
@@ -74,7 +69,6 @@ function parseChildren(
 	spans: ArrayLike<string>,
 	expressions: Array<unknown>,
 ): ParseElementResult {
-	let mode = LINE_START_MODE;
 	let current: ParseElementResult = {
 		type: "element",
 		tag: "",
@@ -82,53 +76,43 @@ function parseChildren(
 		children: [],
 	};
 	const stack: Array<ParseElementResult> = [];
-	// By continuing the spanloop, we avoid the logic at the bottom of the loop,
-	// which handles expressions and throws errors when an expression is
-	// unexpected.
+	let mode = CHILDREN_MODE;
+	let lineStart = true;
+	// TODO: move away from continue and statement labels that’s insane
 	spanloop: for (let s = 0; s < spans.length; s++) {
 		const span = spans[s];
 		for (let i = 0; i < span.length; ) {
-			if (mode === LINE_START_MODE) {
-				// consuming whitespace at the start of lines/elements
-				WHITESPACE_RE.lastIndex = i;
-				const match = WHITESPACE_RE.exec(span);
-				if (match && match.index === i) {
-					i = match.index + match[0].length;
-				}
-
-				mode = CHILDREN_MODE;
-			} else if (mode === CHILDREN_MODE) {
+			if (mode === CHILDREN_MODE) {
 				CHILDREN_RE.lastIndex = i;
 				const match = CHILDREN_RE.exec(span);
 				if (match) {
 					let before = span.slice(i, match.index);
 					i = match.index + match[0].length;
+					if (lineStart) {
+						before = before.replace(/^\s*/, "");
+						lineStart = false;
+					}
+
 					const [, newline, comment, tag, closer, tagName] = match;
 					if (newline) {
 						before =
 							match.index > 0 && span[match.index - 1] === "\\"
 								? // remove the backslash from the output
 								  before.slice(0, -1)
-								: before.trim();
-						if (before) {
-							current.children.push({type: "value", value: before});
-						}
+								: before.replace(/\s*$/, "");
+						lineStart = true;
+					}
 
-						mode = LINE_START_MODE;
-					} else if (comment) {
-						if (before) {
-							current.children.push({type: "value", value: before});
-						}
+					if (before) {
+						current.children.push({type: "value", value: before});
+					}
 
+					if (comment) {
 						if (i === span.length) {
 							mode = COMMENT_MODE;
 							continue spanloop;
 						}
 					} else if (tag) {
-						if (before) {
-							current.children.push({type: "value", value: before});
-						}
-
 						const expressing = i === span.length && s < spans.length - 1;
 						// TODO: Consider runtime type checking
 						const tag = expressing ? (expressions[s] as Tag) : tagName;
@@ -160,12 +144,10 @@ function parseChildren(
 						}
 					}
 				} else {
-					// TODO: We can probably abstract this in the whitespace branch
-					// somehow
 					if (i < span.length) {
 						let after = span.slice(i);
 						if (s === spans.length - 1) {
-							after = after.trimRight();
+							after = after.replace(/\s*$/, "");
 						}
 
 						if (after) {
