@@ -105,10 +105,10 @@ describe("x", () => {
 
 	test("prop expressions", () => {
 		expect(x`
-			<div class=${"foo" + "bar"}>
-				<span></span>
+			<div class=${"greeting"} style = ${{color: "red"}}>
+				Hello world
 			</div>
-		`).toEqual(c("div", {class: "foobar"}, c("span")));
+		`).toEqual(c("div", {class: "greeting", style: {color: "red"}}, "Hello world"));
 	});
 
 	test("spread prop expressions", () => {
@@ -116,6 +116,13 @@ describe("x", () => {
 			style: "color: red;",
 		};
 		expect(x`<div class="greeting" ...${props}>Hello world</div>`).toEqual(
+			c("div", {class: "greeting", style: "color: red;"}, "Hello world"),
+		);
+		expect(x`<div class="greeting" ... ${props}>Hello world</div>`).toEqual(
+			c("div", {class: "greeting", style: "color: red;"}, "Hello world"),
+		);
+		expect(x`<div class="greeting" ...
+		${props}>Hello world</div>`).toEqual(
 			c("div", {class: "greeting", style: "color: red;"}, "Hello world"),
 		);
 	});
