@@ -65,7 +65,7 @@ const CHILDREN_RE =
  * Group 4: prop value string
  */
 const PROPS_RE =
-	/\s*(\/?\s*>)|(\.\.\.$)|(?:([-\w]+)\s*(?:=\s*(?:("[^"]*"|'[^']*')|$))?)/g;
+	/\s*(\/?\s*>)|(\.\.\.\s*$)|(?:([-\w]+)\s*(?:=\s*(?:("[^"]*"|'[^']*')|$))?)/g;
 
 /* Matches closing tag */
 const CLOSING_TAG_RE = /\s*>/g;
@@ -191,7 +191,6 @@ function parseChildren(
 						mode = CHILDREN_MODE;
 					} else if (spread) {
 						if (i !== span.length || s >= spans.length - 1) {
-							// TODO: Allow whitespace after the ...?
 							throw new Error("Expression expected");
 						}
 
@@ -203,7 +202,7 @@ function parseChildren(
 								// TODO: Does this work when an expression appears
 								// after the boolean prop?
 								current.props = {...current.props, ...{[name]: true}};
-							} else if (s >= spans.length - 1) {
+							} else if (i !== span.length || s >= spans.length - 1) {
 								throw new Error("Expression expected");
 							} else {
 								// prop expression
