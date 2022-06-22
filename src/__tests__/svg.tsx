@@ -35,10 +35,33 @@ describe("render", () => {
 			</svg>,
 			document.body,
 		);
+
+		let svgRoot = document.body.firstChild;
 		expect(document.body.firstChild).toBeInstanceOf(SVGElement);
-		for (const child of Array.from(document.body.firstChild!.childNodes)) {
-			expect(child).toBeInstanceOf(SVGElement);
-		}
+
+		let rect = svgRoot!.childNodes[0] as SVGElement;
+		expect(rect).toBeInstanceOf(SVGElement);
+		expect(rect.tagName).toEqual("rect");
+		expect(rect.getAttribute("width")).toEqual("100%");
+		expect(rect.getAttribute("height")).toEqual("100%");
+		expect(rect.getAttribute("fill")).toEqual("red");
+
+		let circle = svgRoot!.childNodes[1] as SVGElement;
+		expect(circle).toBeInstanceOf(SVGElement);
+		expect(circle.tagName).toEqual("circle");
+		expect(circle.getAttribute("cx")).toEqual("150");
+		expect(circle.getAttribute("cy")).toEqual("100");
+		expect(circle.getAttribute("r")).toEqual("80");
+		expect(circle.getAttribute("fill")).toEqual("green");
+
+		let text = svgRoot!.childNodes[2] as SVGElement;
+		expect(text).toBeInstanceOf(SVGElement);
+		expect(text.tagName).toEqual("text");
+		expect(text.getAttribute("x")).toEqual("150");
+		expect(text.getAttribute("y")).toEqual("125");
+		expect(text.getAttribute("font-size")).toEqual("60");
+		expect(text.getAttribute("text-anchor")).toEqual("middle");
+		expect(text.getAttribute("fill")).toEqual("white");
 	});
 
 	test("foreignObject", () => {
@@ -69,12 +92,14 @@ describe("render", () => {
 			document.body,
 		);
 
-		const rect = document.body.firstChild!.firstChild!;
-		const circle = rect.nextSibling;
+		const rect = document.body.firstChild!.firstChild as SVGElement;
+		const circle = rect.nextSibling as SVGElement;
 		expect(rect).toBeInstanceOf(SVGElement);
+		expect(rect.tagName).toEqual("rect");
 		expect(circle).toBeInstanceOf(SVGElement);
-		expect((rect as SVGElement).getAttribute("class")).toBe("rectClass");
-		expect((circle as SVGElement).getAttribute("class")).toBe("circleClass");
+		expect(circle.tagName).toEqual("circle");
+		expect(rect.getAttribute("class")).toBe("rectClass");
+		expect(circle.getAttribute("class")).toBe("circleClass");
 	});
 
 	test("g", () => {
@@ -88,8 +113,9 @@ describe("render", () => {
 			document.body,
 		);
 
-		const g = document.body.firstChild!.firstChild!;
+		const g = document.body.firstChild!.firstChild as SVGElement;
 		expect(g).toBeInstanceOf(SVGElement);
+		expect(g.tagName).toEqual("g");
 		expect(g.childNodes[0]).toBeInstanceOf(SVGElement);
 		expect(g.childNodes[1]).toBeInstanceOf(SVGElement);
 	});
@@ -103,8 +129,44 @@ describe("render", () => {
 			</svg>,
 			document.body,
 		);
-		const nested = document.body.firstChild!.firstChild!;
+		const nested = document.body.firstChild!.firstChild as SVGElement;
 		expect(nested).toBeInstanceOf(SVGElement);
+		expect(nested.tagName).toEqual("svg");
 		expect(nested.firstChild).toBeInstanceOf(SVGElement);
+		expect((nested.firstChild as SVGElement).tagName).toEqual("circle");
+	});
+
+	test("non-string values", () => {
+		renderer.render(
+			<svg xmlns="http://www.w3.org/2000/svg">
+				<rect class="rectClass" x={10} y={20.5} width={5_000} height={null} />
+			</svg>,
+			document.body,
+		);
+
+		const rect = document.body.firstChild!.firstChild! as SVGElement;
+		expect(rect).toBeInstanceOf(SVGElement);
+		expect(rect.getAttribute("x")).toEqual("10");
+		expect(rect.getAttribute("y")).toEqual("20.5");
+		expect(rect.getAttribute("width")).toEqual("5000");
+		expect(rect.getAttribute("height")).toEqual(null);
+	});
+
+	test("custom attributes", () => {
+		renderer.render(
+			<svg xmlns="http://www.w3.org/2000/svg">
+				<circle cx="25" cy="10" r="5" data-foo="abc" barBaz={true} />
+			</svg>,
+			document.body,
+		);
+
+		const circle = document.body.firstChild!.firstChild! as SVGElement;
+		expect(circle).toBeInstanceOf(SVGElement);
+		expect(circle.getAttribute("cx")).toEqual("25");
+		expect(circle.getAttribute("cy")).toEqual("10");
+		expect(circle.getAttribute("r")).toEqual("5");
+		expect(circle.getAttribute("data-foo")).toEqual("abc");
+		expect(circle.getAttribute("barBaz")).toEqual("");
+		expect(circle.getAttribute("does-not-exist")).toEqual(null);
 	});
 });
