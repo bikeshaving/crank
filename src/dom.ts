@@ -116,16 +116,25 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 						typeof (node as any)[name] === "boolean"
 					)
 				) {
-					try {
-						if ((node as any)[name] !== value) {
-							(node as any)[name] = value;
+					// walk up the object's prototype chain to find the owner of the
+					// named property
+					let obj = node;
+					do {
+						if (Object.prototype.hasOwnProperty.call(obj, name)) {
+							break;
 						}
+					} while ((obj = Object.getPrototypeOf(obj)));
 
+					// get the descriptor for the named property and check whether it
+					// implies that the property is writable
+					const descriptor = Object.getOwnPropertyDescriptor(obj, name);
+					if (descriptor?.writable === true || descriptor?.set !== undefined) {
+						(node as any)[name] = value;
 						return;
-					} catch (err) {
-						// some properties are readonly so we fallback to setting them as
-						// attributes
 					}
+
+					// if the property wasn't writable, fall through to the code below
+					// which uses setAttribute() instead of assigning directly.
 				}
 
 				if (value === true) {
