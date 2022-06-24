@@ -128,7 +128,10 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 					// get the descriptor for the named property and check whether it
 					// implies that the property is writable
 					const descriptor = Object.getOwnPropertyDescriptor(obj, name);
-					if (descriptor?.writable === true || descriptor?.set !== undefined) {
+					if (
+						descriptor != null &&
+						(descriptor.writable === true || descriptor.set !== undefined)
+					) {
 						(node as any)[name] = value;
 						return;
 					}
