@@ -139,7 +139,7 @@ describe("render", () => {
 	test("non-string values", () => {
 		renderer.render(
 			<svg xmlns="http://www.w3.org/2000/svg">
-				<rect class="rectClass" x={10} y={20.5} width={5_000} height={null} />
+				<rect class="rectClass" x={10} y={20.5} width={5000} height={null} />
 			</svg>,
 			document.body,
 		);
