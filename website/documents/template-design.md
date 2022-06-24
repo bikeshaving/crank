@@ -3,7 +3,6 @@
 ## Grammar
 
 ```
-// HTML-style comments should probably only work in $CHILDREN
 $CHILDREN: ($CHILD_TEXT | $ELEMENT | $COMMENT | ${unknown})*
 $CHILD_TEXT: /[^<]/+
 $ELEMENT:
@@ -15,7 +14,6 @@ $CLOSING_ELEMENT: "<" "/" "/"? ($IDENTIFIER | ${Tag})? ">"
 $PROPS: ($PROP | $SPREAD_PROP)*
 $PROP: ($IDENTIFIER | ${string}) ("=" $PROP_VALUE)?
 $SPREAD_PROP: "..." ${unknown}
-// TODO: Is this a good idea?
 $IDENTIFIER: /[-\w]/+
 $PROP_VALUE:
   (/"/ (/[^"]/ | ${unknown})* /"/) |

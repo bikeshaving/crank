@@ -7,14 +7,12 @@ export function x(
 	spans: TemplateStringsArray,
 	...expressions: Array<unknown>
 ): Element | null {
-	let parsed = parseChildren(spans.raw, expressions);
-	if (parsed.children.length === 0) {
+	let parsed = parse(spans.raw, expressions);
+	const children = parsed.children;
+	if (children.length === 0) {
 		return null;
-	} else if (
-		parsed.children.length === 1 &&
-		parsed.children[0].type === "element"
-	) {
-		parsed = parsed.children[0];
+	} else if (children.length === 1 && children[0].type === "element") {
+		parsed = children[0];
 	}
 
 	return createElementsFromParse(parsed);
@@ -35,34 +33,31 @@ interface ParseValueResult {
 type ParseResult = ParseElementResult | ParseValueResult;
 
 /*
- * Matches the first significant character in children mode.
  * Group 1: newline
  * Group 2: comment
  * Group 3: tag
- * Group 4: closing slash
- * Group 5: tag name
+ *   Group 4: closing slash
+ *   Group 5: tag name
  */
 const CHILDREN_MATCHER =
-	/((?:\r|\n|\r\n)\s*)|(<!--[\S\s]*?(?:-->|$))|(<\s*(\/{0,2})\s*(?:([-\w]*)\s*|$))/g;
+	/((?:\r|\n|\r\n)\s*)|(<!--[\S\s]*?(?:-->|$))|(<\s*(\/{0,2})\s*([-\w]*)\s*)/g;
 
 // TODO: Think about prop name character class
 /*
- * Matches props after a tag.
  * Group 1: tag end
  * Group 2: spread props
  * Group 3: prop name
- * Group 4: prop value string
+ * Group 4: equals
+ * Group 5: prop value string
  */
 const PROPS_MATCHER =
-	/\s*(\/?\s*>)|(\.\.\.\s*$)|(?:([-\w]+)\s*(?:=\s*(?:("[^"]*"|'[^']*')|$))?)/g;
+	/\s*(\/?\s*>)|(\.\.\.\s*)|(?:([-\w]+)\s*(?:(=)\s*(?:("[^"]*"|'[^']*')|$))?)/g;
 
-/* Matches closing tag */
 const CLOSING_TAG_MATCHER = /\s*>/g;
 
-/* Matches a closing comment. */
 const CLOSING_COMMENT_MATCHER = "-->";
 
-function parseChildren(
+function parse(
 	spans: ArrayLike<string>,
 	expressions: Array<unknown>,
 ): ParseElementResult {
@@ -72,39 +67,41 @@ function parseChildren(
 		props: null,
 		children: [],
 	};
+
 	const stack: Array<ParseElementResult> = [];
 	let matcher = CHILDREN_MATCHER as RegExp | string;
 	let lineStart = true;
 	for (let s = 0; s < spans.length; s++) {
 		const span = spans[s];
-		// expressions[spans.length - 1] will never be defined because
-		// template tags are always called with one more span than expression.
 		let expressing = s < spans.length - 1;
-		for (let i = 0; i < span.length; ) {
+		for (let i = 0, end = i; i < span.length; i = end) {
 			if (typeof matcher === "string") {
 				// The only matcher which is a string right now is the
-				// CLOSING_COMMENT_MATCHER.
-				i = span.indexOf(matcher);
-				if (i === -1) {
+				// CLOSING_COMMENT_MATCHER. But I wrote this shit abstractly for
+				// bullshit aspirational reasons I guess, like maybe I can use the
+				// structure of the parser in a parser generator for template tags.
+				const index = span.indexOf(matcher);
+				if (index === -1) {
 					break;
 				}
 
-				i += matcher.length;
+				end = index + matcher.length;
 				matcher = CHILDREN_MATCHER;
 			} else {
 				matcher.lastIndex = i;
 				const match = matcher.exec(span);
 				if (match) {
-					let before = span.slice(i, match.index);
-					i = match.index + match[0].length;
+					end = match.index + match[0].length;
 					if (matcher === CHILDREN_MATCHER) {
+						const [, newline, comment, tag, slash, tagName] = match;
+						let before = span.slice(i, match.index);
 						if (lineStart) {
 							before = before.replace(/^\s*/, "");
 							lineStart = false;
 						}
 
-						const [, newline, comment, tagging, closer, tagName] = match;
 						if (newline) {
+							// an escaped newline
 							before =
 								match.index > 0 && span[match.index - 1] === "\\"
 									? // remove the backslash from the output
@@ -118,25 +115,29 @@ function parseChildren(
 						}
 
 						if (comment) {
-							if (i === span.length) {
+							if (end === span.length) {
+								// Expression in a comment
 								matcher = CLOSING_COMMENT_MATCHER;
 							}
-						} else if (tagging) {
-							// TODO: Consider runtime type checking
+						} else if (tag) {
 							let tag: Tag = tagName;
-							if (expressing && i === span.length) {
+							if (!tagName && expressing && end === span.length) {
+								// TODO: Consider runtime type checking
 								tag = expressions[s] as Tag;
 								expressing = false;
 							}
 
-							if (closer) {
-								// TODO: Use function names for components
+							if (slash) {
 								if (!stack.length) {
-									throw new Error(
-										`Unexpected closing tag named ${String(tag)}`,
+									throw new SyntaxError(
+										`Unmatched closing tag "${getTagDisplay(tag)}"`,
 									);
-								} else if (closer !== "//" && current.tag !== tag) {
-									throw new Error(`Mismatched tag: ${String(tag)}`);
+								} else if (slash !== "//" && current.tag !== tag) {
+									throw new SyntaxError(
+										`Mismatched closing tag "${getTagDisplay(
+											tag,
+										)}" for opening tag "${getTagDisplay(current.tag)}"`,
+									);
 								}
 
 								current = stack.pop()!;
@@ -155,47 +156,51 @@ function parseChildren(
 							}
 						}
 					} else if (matcher === PROPS_MATCHER) {
-						const [, closer, spread, name, string] = match;
+						if (i < match.index) {
+							const before = span.slice(i, match.index);
+							if (before.trim()) {
+								throw new SyntaxError(`Unexpected text "${before}"`);
+							}
+						}
+
+						const [, closer, spread, name, equals, string] = match;
 						if (closer) {
 							if (closer[0] === "/") {
-								// TODO: Do we have to throw an error here if the stack is empty
-								// self-closing tag
+								// This is a self-closing element, so there will always be a
+								// result on the stack.
 								current = stack.pop()!;
 							}
 
 							matcher = CHILDREN_MATCHER;
 						} else if (spread) {
-							if (i !== span.length || s >= spans.length - 1) {
-								throw new Error("Expression expected");
+							if (!expressing || end < span.length) {
+								throw new SyntaxError(
+									`Missing expression after "..." while parsing props for ${String(
+										getTagDisplay(current.tag),
+									)}`,
+								);
 							}
 
 							current.props = {...current.props, ...(expressions[s] as any)};
 							expressing = false;
 						} else if (name) {
+							let value: unknown;
 							if (string == null) {
-								if (i < span.length) {
-									// TODO: Does this work when an expression appears
-									// after the boolean prop?
-									current.props = {...current.props, ...{[name]: true}};
-								} else if (i !== span.length || s >= spans.length - 1) {
-									throw new Error("Expression expected");
+								if (!equals) {
+									value = true;
+								} else if (!expressing || end < span.length) {
+									// TODO: More info
+									throw new SyntaxError("Expression expected");
 								} else {
-									// prop expression
-									current.props = {
-										...current.props,
-										...{[name]: expressions[s]},
-									};
+									value = expressions[s];
 									expressing = false;
 								}
 							} else {
-								current.props = {
-									...current.props,
-									// I accidentally made some regular expression emoticons ^-^
-									...{
-										[name]: string.replace(/^('|")/, "").replace(/('|")$/, ""),
-									},
-								};
+								// I accidentally made some regular expression emoticons ^-^
+								value = string.replace(/^('|")/, "").replace(/('|")$/, "");
 							}
+
+							current.props = {...current.props, ...{[name]: value}};
 						}
 					} else if (matcher === CLOSING_TAG_MATCHER) {
 						matcher = CHILDREN_MATCHER;
@@ -211,39 +216,44 @@ function parseChildren(
 							if (after) {
 								current.children.push({type: "value", value: after});
 							}
-
-							break;
 						}
-					} else {
+					} else if (!expressing) {
 						// TODO: Better diagnostic
-						throw new Error("Unexpected character");
+						throw new SyntaxError("Unexpected character");
 					}
+
+					break;
 				}
 			}
 		}
 
-		// TODO: I feel like there’s a more elegant way to express this. Too
-		// much custom logic right now.
 		if (expressing) {
 			const value = expressions[s];
 			if (matcher === CHILDREN_MATCHER) {
 				current.children.push({type: "value", value});
 			} else if (matcher !== CLOSING_COMMENT_MATCHER) {
-				throw new Error(
-					`Unexpected expression: \${${JSON.stringify(value, null, 2)}}`,
+				throw new SyntaxError(
+					`Unexpected expression \${${JSON.stringify(value)}}`,
 				);
 			}
 		}
 	}
 
 	if (stack.length) {
-		// TODO: Better error message for components
-		throw new Error(
-			`Missing closing tag for ${stack[stack.length - 1].tag.toString()}`,
+		throw new SyntaxError(
+			`Unmatched opening tag "${getTagDisplay(current.tag)}"`,
 		);
 	}
 
 	return current;
+}
+
+function getTagDisplay(tag: Tag) {
+	return typeof tag === "function"
+		? tag.name
+		: typeof tag !== "string"
+		? String(tag)
+		: tag;
 }
 
 function createElementsFromParse(parsed: ParseElementResult): Element | null {

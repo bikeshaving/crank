@@ -44,6 +44,15 @@ describe("x", () => {
 		);
 	});
 
+	test("fragment shorthand", () => {
+		expect(x`
+			<p>
+				Hello \
+				<>world</>
+			</p>
+		`).toEqual(c("p", null, "Hello ", c("", null, "world")));
+	});
+
 	test("tag expressions", () => {
 		const T1 = "tag1";
 		const T2 = "tag2";
@@ -161,5 +170,58 @@ describe("x", () => {
 				Hello<!-- world-->
 			</div>
 		`).toEqual(c("div", null, "Hello"));
+	});
+
+	test("unbalanced tags", () => {
+		expect(() => {
+			x`<span>`;
+		}).toThrow(new SyntaxError('Unmatched opening tag "span"'));
+		expect(() => {
+			x`</span>`;
+		}).toThrow(new SyntaxError('Unmatched closing tag "span"'));
+		expect(() => {
+			x`<div>uhhh</span>`;
+		}).toThrow(
+			new SyntaxError('Mismatched closing tag "span" for opening tag "div"'),
+		);
+	});
+
+	test("invalid characters", () => {
+		expect(() => {
+			x`<<>`;
+		}).toThrow(new SyntaxError('Unexpected text "<"'));
+		expect(() => {
+			x`<p<></p>`;
+		}).toThrow(new SyntaxError('Unexpected text "<"'));
+		expect(() => {
+			x`<p><</p>`;
+		}).toThrow(new SyntaxError('Unexpected text "</"'));
+		expect(() => {
+			x`<p</p>`;
+		}).toThrow(new SyntaxError('Unexpected text "</"'));
+		expect(() => {
+			x`<p class==></p>`;
+			// TODO: This should be a single "=" right?
+		}).toThrow(new SyntaxError('Unexpected text "=="'));
+		expect(() => {
+			x`<p class</p>`;
+		}).toThrow(new SyntaxError('Unexpected text "</"'));
+		expect(() => {
+			x`<p class=</p>`;
+			// TODO: This should be a single "</" or something, right?
+		}).toThrow(new SyntaxError('Unexpected text "=</"'));
+	});
+
+	test("invalid expressions", () => {
+		const exp = {foo: "bar"};
+		expect(() => {
+			x`<div ${exp}>`;
+		}).toThrow(new SyntaxError('Unexpected expression ${{"foo":"bar"}}'));
+		expect(() => {
+			x`<${"foo"} ${"bar"}>`;
+		}).toThrow(new SyntaxError('Unexpected expression ${"bar"}'));
+		expect(() => {
+			x`<p class${undefined} />`;
+		}).toThrow(new SyntaxError("Unexpected expression ${undefined}"));
 	});
 });
