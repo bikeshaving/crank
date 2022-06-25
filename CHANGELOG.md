@@ -1,4 +1,8 @@
 # Changelog
+
+## [0.4.3] - 2022-06-25
+### Fixed
+- Fix readonly DOM properties not being set correctly (#231)
 ## [0.4.2] - 2021-12-20
 ### Fixed
 - Fix null/undefined in className property for HTML renderer
