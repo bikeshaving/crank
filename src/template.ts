@@ -222,8 +222,7 @@ function parse(
 								expressing = false;
 							}
 						} else {
-							// I accidentally made some regular expression emoticons ^-^
-							value = string.replace(/^('|")/, "").replace(/('|")$/, "");
+							value = string.slice(1, -1);
 						}
 
 						current.props = {...current.props, ...{[name]: value}};
