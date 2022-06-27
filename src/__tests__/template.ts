@@ -149,6 +149,24 @@ describe("x", () => {
 		`).toEqual(c(Component, null, "Hello world"));
 	});
 
+	test("weird identifiers", () => {
+		expect(x`
+			<$a $b$ _c>
+				<-custom-element -prop="foo" _-_="bar" />
+				<__ $key=${1}/>
+			</$a>
+		`).toEqual(
+			c(
+				"$a",
+				{$b$: true, _c: true},
+				...[
+					c("-custom-element", {"-prop": "foo", "_-_": "bar"}),
+					c("__", {$key: 1}),
+				],
+			),
+		);
+	});
+
 	test("comments", () => {
 		expect(x`
 			<div>
