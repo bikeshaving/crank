@@ -36,11 +36,11 @@ type ParseResult = ParseElementResult | ParseValueResult;
  * Group 1: newline
  * Group 2: comment
  * Group 3: tag
- *   Group 4: closing slash
- *   Group 5: tag name
+ * Group 4: closing slash
+ * Group 5: tag name
  */
 const CHILDREN_RE =
-	/((?:\r|\n|\r\n)\s*)|(<!--[\S\s]*?(?:-->|$))|(<\s*(\/{0,2})\s*([-\w]*))/g;
+	/((?:\r|\n|\r\n)\s*)|(<!--[\S\s]*?(?:-->|$))|(<\s*(\/{0,2})\s*([-_$\w]*))/g;
 
 /*
  * Group 1: tag end
@@ -50,7 +50,7 @@ const CHILDREN_RE =
  * Group 5: prop value string
  */
 const PROPS_RE =
-	/\s*(?:(\/?\s*>)|(\.\.\.\s*)|(?:([-\w]+)\s*(=)?\s*(?:("[^"]*"|'[^']*'))?))/g;
+	/\s*(?:(\/?\s*>)|(\.\.\.\s*)|(?:([-_$\w]+)\s*(=)?\s*(?:("[^"]*"|'[^']*'))?))/g;
 
 const CLOSING_TAG_RE = /\s*>/g;
 
