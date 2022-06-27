@@ -104,7 +104,7 @@ function parse(
 					} else if (!expressing) {
 						// Not sure how much context to provide, 20 characters seems fine?
 						throw new SyntaxError(
-							`Unexpected text "${span.slice(i, i + 20).trim()}"`,
+							`Unexpected text \`${span.slice(i, i + 20).trim()}\``,
 						);
 					}
 
@@ -176,15 +176,13 @@ function parse(
 							};
 							current.children.push(next);
 							current = next;
-
-							// TODO: shorthand fragment elements x`<></>` can’t have props.
 							matcher = PROPS_RE;
 						}
 					}
 				} else if (matcher === PROPS_RE) {
 					if (i < match.index) {
 						throw new SyntaxError(
-							`Unexpected text "${span.slice(i, match.index).trim()}"`,
+							`Unexpected text \`${span.slice(i, match.index).trim()}\``,
 						);
 					}
 
@@ -214,7 +212,9 @@ function parse(
 							if (!equals) {
 								value = true;
 							} else if (end < span.length) {
-								throw new SyntaxError(`Unexpected text "${span[end]}"`);
+								throw new SyntaxError(
+									`Unexpected text \`${span.slice(end, end + 20)}\``,
+								);
 							} else if (!expressing) {
 								throw new SyntaxError("Expression expected");
 							} else {
@@ -231,7 +231,7 @@ function parse(
 				} else if (matcher === CLOSING_TAG_RE) {
 					if (i < match.index) {
 						throw new SyntaxError(
-							`Unexpected text "${span.slice(i, match.index).trim()}"`,
+							`Unexpected text \`${span.slice(i, match.index).trim()}\``,
 						);
 					}
 
