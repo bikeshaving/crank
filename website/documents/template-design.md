@@ -12,12 +12,15 @@ $SELF_CLOSING_ELEMENT: "<" ($IDENTIFIER | ${Tag}) $PROPS "/" ">"
 $OPENING_ELEMENT: "<" ($IDENTIFIER | ${Tag})? $PROPS ">"
 $CLOSING_ELEMENT: "<" "/" "/"? ($IDENTIFIER | ${Tag})? ">"
 $PROPS: ($PROP | $SPREAD_PROP)*
-$PROP: ($IDENTIFIER | ${string}) ("=" $PROP_VALUE)?
+// TODO: Maybe allow prop names to be expressions.
+$PROP: $IDENTIFIER ("=" $PROP_VALUE)?
 $SPREAD_PROP: "..." ${unknown}
-$IDENTIFIER: /[-\w]/+
+$IDENTIFIER: /[-_$\w]/+
+// TODO: Allow expressions in value strings.
+// TODO: Allow escaped quotes in strings?
 $PROP_VALUE:
-  (/"/ (/[^"]/ | ${unknown})* /"/) |
-  (/'/ (/[^']/ | ${unknown})* /'/) |
+  (/"/ /[^"]/* /"/) |
+  (/'/ /[^']/* /'/) |
   ${unknown}
 $COMMENT: "<!--" (/[\S\s]/ | ${unknown})*? "-->"
 ```
