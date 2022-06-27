@@ -48,7 +48,7 @@ const CHILDREN_RE =
  * Group 5: prop value string
  */
 const PROPS_RE =
-	/\s*(?:(\/?\s*>)|(\.\.\.\s*)|(?:([-_$\w]+)\s*(=)?\s*(?:("[^"]*"|'[^']*'))?))/g;
+	/\s*(?:(\/?\s*>)|(\.\.\.\s*)|(?:([-_$\w]+)\s*(=)?\s*(?:("(\\"|[\S\s])*?"|'(?:\\'|[\S\s])*?'))?))/g;
 
 const CLOSING_TAG_RE = /\s*>/g;
 
@@ -220,7 +220,7 @@ function parse(
 								expressing = false;
 							}
 						} else {
-							value = string.slice(1, -1);
+							value = string.slice(1, -1).replace(/\\(.?)/g, "$1");
 						}
 
 						current.props = {...current.props, ...{[name]: value}};

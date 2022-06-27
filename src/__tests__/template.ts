@@ -44,6 +44,13 @@ describe("happy path", () => {
 		);
 	});
 
+	test("string escapes", () => {
+		expect(t`<p a="a\"a\"a\"a" b='b\'b\'b\'b' />`).toEqual(
+			c("p", {a: 'a"a"a"a', b: "b'b'b'b"}),
+		);
+		expect(t`<p a="\\\"\'\a\b\\\"" />`).toEqual(c("p", {a: `\\"'ab\\"`}));
+	});
+
 	test("fragment shorthand", () => {
 		expect(t`
 			<p>
