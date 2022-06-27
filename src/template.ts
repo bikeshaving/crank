@@ -40,9 +40,8 @@ type ParseResult = ParseElementResult | ParseValueResult;
  *   Group 5: tag name
  */
 const CHILDREN_RE =
-	/(\r|\n|\r\n)\s*|(<!--[\S\s]*?(?:-->|$))|(<\s*(\/{0,2})\s*([-\w]*))/g;
+	/((?:\r|\n|\r\n)\s*)|(<!--[\S\s]*?(?:-->|$))|(<\s*(\/{0,2})\s*([-\w]*))/g;
 
-// TODO: Think about prop name character class
 /*
  * Group 1: tag end
  * Group 2: spread props
@@ -75,8 +74,8 @@ function parse(
 		for (let i = 0, end = i; i < span.length; i = end) {
 			if (typeof matcher === "string") {
 				// The only matcher which is a string right now is "-->". But I wrote
-				// this shit abstractly for bullshit aspirational reasons, like maybe I
-				// can use the structure of the parser in a parser generator for
+				// this shit abstractly for bullshit aspirational reasons, like maybe
+				// we can use the structure of the parser in a parser generator for
 				// template tags.
 				const index = span.indexOf(matcher);
 				if (index === -1) {
@@ -90,134 +89,7 @@ function parse(
 				const match = matcher.exec(span);
 				if (match) {
 					end = match.index + match[0].length;
-					if (matcher === CHILDREN_RE) {
-						const [, newline, comment, tag, slash, tagName] = match;
-						let before = span.slice(i, match.index);
-						if (lineStart) {
-							before = before.replace(/^\s*/, "");
-							lineStart = false;
-						}
-
-						if (newline) {
-							// We preserve whitespace before escaped newlines when it comes
-							// before an escaped newline.
-							//   x` \
-							//   `
-							if (span[Math.max(0, match.index - 1)] === "\\") {
-								// remove the backslash
-								before = before.slice(0, -1);
-							} else {
-								before = before.replace(/\s*$/, "");
-							}
-
-							lineStart = true;
-						}
-
-						if (before) {
-							current.children.push({type: "value", value: before});
-						}
-
-						if (comment) {
-							if (end === span.length) {
-								// Expression in a comment x`<!-- ${exp} -->`
-								matcher = "-->";
-							}
-						} else if (tag) {
-							let tag: Tag = tagName;
-							if (!tagName && expressing && end === span.length) {
-								// TODO: Consider runtime type checking
-								tag = expressions[s] as Tag;
-								expressing = false;
-							}
-
-							if (slash) {
-								if (!stack.length) {
-									throw new SyntaxError(
-										`Unmatched closing tag "${getTagDisplay(tag)}"`,
-									);
-								} else if (slash !== "//" && current.tag !== tag) {
-									throw new SyntaxError(
-										`Mismatched closing tag "${getTagDisplay(
-											tag,
-										)}" for opening tag "${getTagDisplay(current.tag)}"`,
-									);
-								}
-
-								current = stack.pop()!;
-								matcher = CLOSING_TAG_RE;
-							} else {
-								stack.push(current);
-								const next = {
-									type: "element" as const,
-									tag,
-									props: null,
-									children: [],
-								};
-								current.children.push(next);
-								current = next;
-
-								// TODO: shorthand fragment elements x`<></>` can’t have props.
-								matcher = PROPS_RE;
-							}
-						}
-					} else if (matcher === PROPS_RE) {
-						if (i < match.index) {
-							throw new SyntaxError(
-								`Unexpected text "${span.slice(i, match.index).trim()}"`,
-							);
-						}
-
-						const [, closer, spread, name, equals, string] = match;
-						if (closer) {
-							if (closer[0] === "/") {
-								// This is a self-closing element, so there will always be a
-								// result on the stack.
-								current = stack.pop()!;
-							}
-
-							matcher = CHILDREN_RE;
-						} else if (spread) {
-							if (!expressing || end < span.length) {
-								throw new SyntaxError(
-									`Missing expression after "..." while parsing props for ${String(
-										getTagDisplay(current.tag),
-									)}`,
-								);
-							}
-
-							current.props = {...current.props, ...(expressions[s] as any)};
-							expressing = false;
-						} else if (name) {
-							let value: unknown;
-							if (string == null) {
-								if (!equals) {
-									value = true;
-								} else if (end < span.length) {
-									throw new SyntaxError(`Unexpected text "${span[end]}"`);
-								} else if (!expressing) {
-									throw new SyntaxError("Expression expected");
-								} else {
-									value = expressions[s];
-									expressing = false;
-								}
-							} else {
-								// I accidentally made some regular expression emoticons ^-^
-								value = string.replace(/^('|")/, "").replace(/('|")$/, "");
-							}
-
-							current.props = {...current.props, ...{[name]: value}};
-						}
-					} else if (matcher === CLOSING_TAG_RE) {
-						if (i < match.index) {
-							throw new SyntaxError(
-								`Unexpected text "${span.slice(i, match.index).trim()}"`,
-							);
-						}
-
-						matcher = CHILDREN_RE;
-					}
 				} else {
-					// No match made
 					if (matcher === CHILDREN_RE) {
 						if (i < span.length) {
 							let after = span.slice(i);
@@ -230,10 +102,140 @@ function parse(
 							}
 						}
 					} else if (!expressing) {
-						throw new SyntaxError(`Unexpected text "${span[i]}"`);
+						// Not sure how much context to provide, 20 characters seems fine?
+						throw new SyntaxError(
+							`Unexpected text "${span.slice(i, i + 20).trim()}"`,
+						);
 					}
 
 					break;
+				}
+
+				if (matcher === CHILDREN_RE) {
+					const [, newline, comment, tag, slash, tagName] = match;
+					let before = span.slice(i, match.index);
+					if (lineStart) {
+						before = before.replace(/^\s*/, "");
+						lineStart = false;
+					}
+
+					if (newline) {
+						// We preserve whitespace before escaped newlines.
+						//   x` \
+						//   `
+						if (span[Math.max(0, match.index - 1)] === "\\") {
+							// remove the backslash
+							before = before.slice(0, -1);
+						} else {
+							before = before.replace(/\s*$/, "");
+						}
+
+						lineStart = true;
+					}
+
+					if (before) {
+						current.children.push({type: "value", value: before});
+					}
+
+					if (comment) {
+						if (end === span.length) {
+							// We allow expressions in comments:
+							//   x`<!-- ${exp} -->`
+							matcher = "-->";
+						}
+					} else if (tag) {
+						let tag: Tag = tagName;
+						if (expressing && end === span.length) {
+							// TODO: Consider runtime type checking
+							tag = expressions[s] as Tag;
+							expressing = false;
+						}
+
+						if (slash) {
+							if (!stack.length) {
+								throw new SyntaxError(
+									`Unmatched closing tag "${getTagDisplay(tag)}"`,
+								);
+							} else if (slash !== "//" && current.tag !== tag) {
+								throw new SyntaxError(
+									`Mismatched closing tag "${getTagDisplay(
+										tag,
+									)}" for opening tag "${getTagDisplay(current.tag)}"`,
+								);
+							}
+
+							current = stack.pop()!;
+							matcher = CLOSING_TAG_RE;
+						} else {
+							stack.push(current);
+							const next = {
+								type: "element" as const,
+								tag,
+								props: null,
+								children: [],
+							};
+							current.children.push(next);
+							current = next;
+
+							// TODO: shorthand fragment elements x`<></>` can’t have props.
+							matcher = PROPS_RE;
+						}
+					}
+				} else if (matcher === PROPS_RE) {
+					if (i < match.index) {
+						throw new SyntaxError(
+							`Unexpected text "${span.slice(i, match.index).trim()}"`,
+						);
+					}
+
+					const [, closer, spread, name, equals, string] = match;
+					if (closer) {
+						if (closer[0] === "/") {
+							// This is a self-closing element, so there will always be a
+							// result on the stack.
+							current = stack.pop()!;
+						}
+
+						matcher = CHILDREN_RE;
+					} else if (spread) {
+						if (!expressing || end < span.length) {
+							throw new SyntaxError(
+								`Missing expression after "..." while parsing props for ${String(
+									getTagDisplay(current.tag),
+								)}`,
+							);
+						}
+
+						current.props = {...current.props, ...(expressions[s] as any)};
+						expressing = false;
+					} else if (name) {
+						let value: unknown;
+						if (string == null) {
+							if (!equals) {
+								value = true;
+							} else if (end < span.length) {
+								throw new SyntaxError(`Unexpected text "${span[end]}"`);
+							} else if (!expressing) {
+								throw new SyntaxError("Expression expected");
+							} else {
+								value = expressions[s];
+								expressing = false;
+							}
+						} else {
+							// I accidentally made some regular expression emoticons ^-^
+							value = string.replace(/^('|")/, "").replace(/('|")$/, "");
+						}
+
+						current.props = {...current.props, ...{[name]: value}};
+					}
+				} else if (matcher === CLOSING_TAG_RE) {
+					if (i < match.index) {
+						throw new SyntaxError(
+							`Unexpected text "${span.slice(i, match.index).trim()}"`,
+						);
+					}
+
+					matcher = CHILDREN_RE;
 				}
 			}
 		}

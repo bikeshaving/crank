@@ -228,6 +228,9 @@ describe("x", () => {
 			x`<p></p text>`;
 		}).toThrow(new SyntaxError('Unexpected text "text"'));
 		expect(() => {
+			x`<p></p text`;
+		}).toThrow(new SyntaxError('Unexpected text "text"'));
+		expect(() => {
 			x`<p><///p>`;
 		}).toThrow(new SyntaxError('Unexpected text "/p"'));
 	});
@@ -238,7 +241,7 @@ describe("x", () => {
 			x`<div ${exp}>`;
 		}).toThrow(new SyntaxError('Unexpected expression ${{"foo":"bar"}}'));
 		expect(() => {
-			x`<${"foo"} ${"bar"}>`;
+			x`<${"foo"}${"bar"}>`;
 		}).toThrow(new SyntaxError('Unexpected expression ${"bar"}'));
 		expect(() => {
 			x`<p class${undefined} />`;
