@@ -263,6 +263,10 @@ describe("sad path", () => {
 		expect(() => {
 			t`<foo="bar">`;
 		}).toThrow(new SyntaxError('Unexpected text `="`'));
+		expect(() => {
+			t`<foo="\">`;
+			// debatable, but whatever
+		}).toThrow(new SyntaxError('Unexpected text `="\\"`'));
 	});
 
 	test("invalid expressions", () => {
