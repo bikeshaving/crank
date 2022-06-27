@@ -1,9 +1,7 @@
 import {c, Element} from "./crank.js";
 import type {Tag} from "./crank.js";
 
-// TODO: Consider the name of this function. Currently, I’m think `t` for
-// template?
-export function x(
+export function t(
 	spans: TemplateStringsArray,
 	...expressions: Array<unknown>
 ): Element | null {
