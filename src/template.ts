@@ -39,8 +39,8 @@ type ParseResult = ParseElementResult | ParseValueResult;
  *   Group 4: closing slash
  *   Group 5: tag name
  */
-const CHILDREN_MATCHER =
-	/((?:\r|\n|\r\n)\s*)|(<!--[\S\s]*?(?:-->|$))|(<\s*(\/{0,2})\s*([-\w]*)\s*)/g;
+const CHILDREN_RE =
+	/(\r|\n|\r\n)\s*|(<!--[\S\s]*?(?:-->|$))|(<\s*(\/{0,2})\s*([-\w]*))/g;
 
 // TODO: Think about prop name character class
 /*
@@ -50,12 +50,10 @@ const CHILDREN_MATCHER =
  * Group 4: equals
  * Group 5: prop value string
  */
-const PROPS_MATCHER =
-	/\s*(\/?\s*>)|(\.\.\.\s*)|(?:([-\w]+)\s*(?:(=)\s*(?:("[^"]*"|'[^']*')|$))?)/g;
+const PROPS_RE =
+	/\s*(?:(\/?\s*>)|(\.\.\.\s*)|(?:([-\w]+)\s*(=)?\s*(?:("[^"]*"|'[^']*'))?))/g;
 
-const CLOSING_TAG_MATCHER = /\s*>/g;
-
-const CLOSING_COMMENT_MATCHER = "-->";
+const CLOSING_TAG_RE = /\s*>/g;
 
 function parse(
 	spans: ArrayLike<string>,
@@ -69,30 +67,30 @@ function parse(
 	};
 
 	const stack: Array<ParseElementResult> = [];
-	let matcher = CHILDREN_MATCHER as RegExp | string;
+	let matcher = CHILDREN_RE as RegExp | string;
 	let lineStart = true;
 	for (let s = 0; s < spans.length; s++) {
 		const span = spans[s];
 		let expressing = s < spans.length - 1;
 		for (let i = 0, end = i; i < span.length; i = end) {
 			if (typeof matcher === "string") {
-				// The only matcher which is a string right now is the
-				// CLOSING_COMMENT_MATCHER. But I wrote this shit abstractly for
-				// bullshit aspirational reasons I guess, like maybe I can use the
-				// structure of the parser in a parser generator for template tags.
+				// The only matcher which is a string right now is "-->". But I wrote
+				// this shit abstractly for bullshit aspirational reasons, like maybe I
+				// can use the structure of the parser in a parser generator for
+				// template tags.
 				const index = span.indexOf(matcher);
 				if (index === -1) {
 					break;
 				}
 
 				end = index + matcher.length;
-				matcher = CHILDREN_MATCHER;
+				matcher = CHILDREN_RE;
 			} else {
 				matcher.lastIndex = i;
 				const match = matcher.exec(span);
 				if (match) {
 					end = match.index + match[0].length;
-					if (matcher === CHILDREN_MATCHER) {
+					if (matcher === CHILDREN_RE) {
 						const [, newline, comment, tag, slash, tagName] = match;
 						let before = span.slice(i, match.index);
 						if (lineStart) {
@@ -101,12 +99,17 @@ function parse(
 						}
 
 						if (newline) {
-							// an escaped newline
-							before =
-								match.index > 0 && span[match.index - 1] === "\\"
-									? // remove the backslash from the output
-									  before.slice(0, -1)
-									: before.replace(/\s*$/, "");
+							// We preserve whitespace before escaped newlines when it comes
+							// before an escaped newline.
+							//   x` \
+							//   `
+							if (span[Math.max(0, match.index - 1)] === "\\") {
+								// remove the backslash
+								before = before.slice(0, -1);
+							} else {
+								before = before.replace(/\s*$/, "");
+							}
+
 							lineStart = true;
 						}
 
@@ -116,8 +119,8 @@ function parse(
 
 						if (comment) {
 							if (end === span.length) {
-								// Expression in a comment
-								matcher = CLOSING_COMMENT_MATCHER;
+								// Expression in a comment x`<!-- ${exp} -->`
+								matcher = "-->";
 							}
 						} else if (tag) {
 							let tag: Tag = tagName;
@@ -141,7 +144,7 @@ function parse(
 								}
 
 								current = stack.pop()!;
-								matcher = CLOSING_TAG_MATCHER;
+								matcher = CLOSING_TAG_RE;
 							} else {
 								stack.push(current);
 								const next = {
@@ -152,15 +155,16 @@ function parse(
 								};
 								current.children.push(next);
 								current = next;
-								matcher = PROPS_MATCHER;
+
+								// TODO: shorthand fragment elements x`<></>` can’t have props.
+								matcher = PROPS_RE;
 							}
 						}
-					} else if (matcher === PROPS_MATCHER) {
+					} else if (matcher === PROPS_RE) {
 						if (i < match.index) {
-							const before = span.slice(i, match.index);
-							if (before.trim()) {
-								throw new SyntaxError(`Unexpected text "${before}"`);
-							}
+							throw new SyntaxError(
+								`Unexpected text "${span.slice(i, match.index).trim()}"`,
+							);
 						}
 
 						const [, closer, spread, name, equals, string] = match;
@@ -171,7 +175,7 @@ function parse(
 								current = stack.pop()!;
 							}
 
-							matcher = CHILDREN_MATCHER;
+							matcher = CHILDREN_RE;
 						} else if (spread) {
 							if (!expressing || end < span.length) {
 								throw new SyntaxError(
@@ -188,8 +192,9 @@ function parse(
 							if (string == null) {
 								if (!equals) {
 									value = true;
-								} else if (!expressing || end < span.length) {
-									// TODO: More info
+								} else if (end < span.length) {
+									throw new SyntaxError(`Unexpected text "${span[end]}"`);
+								} else if (!expressing) {
 									throw new SyntaxError("Expression expected");
 								} else {
 									value = expressions[s];
@@ -202,11 +207,18 @@ function parse(
 
 							current.props = {...current.props, ...{[name]: value}};
 						}
-					} else if (matcher === CLOSING_TAG_MATCHER) {
-						matcher = CHILDREN_MATCHER;
+					} else if (matcher === CLOSING_TAG_RE) {
+						if (i < match.index) {
+							throw new SyntaxError(
+								`Unexpected text "${span.slice(i, match.index).trim()}"`,
+							);
+						}
+
+						matcher = CHILDREN_RE;
 					}
 				} else {
-					if (matcher === CHILDREN_MATCHER) {
+					// No match made
+					if (matcher === CHILDREN_RE) {
 						if (i < span.length) {
 							let after = span.slice(i);
 							if (s === spans.length - 1) {
@@ -218,8 +230,7 @@ function parse(
 							}
 						}
 					} else if (!expressing) {
-						// TODO: Better diagnostic
-						throw new SyntaxError("Unexpected character");
+						throw new SyntaxError(`Unexpected text "${span[i]}"`);
 					}
 
 					break;
@@ -229,9 +240,9 @@ function parse(
 
 		if (expressing) {
 			const value = expressions[s];
-			if (matcher === CHILDREN_MATCHER) {
+			if (matcher === CHILDREN_RE) {
 				current.children.push({type: "value", value});
-			} else if (matcher !== CLOSING_COMMENT_MATCHER) {
+			} else if (matcher !== "-->") {
 				throw new SyntaxError(
 					`Unexpected expression \${${JSON.stringify(value)}}`,
 				);
