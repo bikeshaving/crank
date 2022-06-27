@@ -200,16 +200,36 @@ describe("x", () => {
 			x`<p</p>`;
 		}).toThrow(new SyntaxError('Unexpected text "</"'));
 		expect(() => {
-			x`<p class==></p>`;
-			// TODO: This should be a single "=" right?
-		}).toThrow(new SyntaxError('Unexpected text "=="'));
+			x`<p ///></p>`;
+		}).toThrow(new SyntaxError('Unexpected text "//"'));
+		expect(() => {
+			x`<p /p></p>`;
+			// debatable, but whatever
+		}).toThrow(new SyntaxError('Unexpected text "/"'));
+		expect(() => {
+			x`<e p p<></e>`;
+		}).toThrow(new SyntaxError('Unexpected text "<"'));
 		expect(() => {
 			x`<p class</p>`;
 		}).toThrow(new SyntaxError('Unexpected text "</"'));
 		expect(() => {
+			x`<p<`;
+		}).toThrow(new SyntaxError('Unexpected text "<"'));
+		expect(() => {
+			x`<p class=<`;
+		}).toThrow(new SyntaxError('Unexpected text "<"'));
+		expect(() => {
+			x`<p class==></p>`;
+		}).toThrow(new SyntaxError('Unexpected text "="'));
+		expect(() => {
 			x`<p class=</p>`;
-			// TODO: This should be a single "</" or something, right?
-		}).toThrow(new SyntaxError('Unexpected text "=</"'));
+		}).toThrow(new SyntaxError('Unexpected text "<"'));
+		expect(() => {
+			x`<p></p text>`;
+		}).toThrow(new SyntaxError('Unexpected text "text"'));
+		expect(() => {
+			x`<p><///p>`;
+		}).toThrow(new SyntaxError('Unexpected text "/p"'));
 	});
 
 	test("invalid expressions", () => {
