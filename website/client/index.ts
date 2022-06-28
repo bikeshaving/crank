@@ -1,5 +1,4 @@
-/** @jsx createElement */
-import {createElement} from "@b9g/crank";
+import {t} from "@b9g/crank/template.js";
 import {renderer} from "@b9g/crank/dom.js";
 
 import Prism from "prismjs";
@@ -23,6 +22,6 @@ if (!window.customElements.get("content-area")) {
 for (const el of Array.from(document.querySelectorAll(".codeblock"))) {
 	const {code, lang} = (el as HTMLElement).dataset;
 	if (code != null && lang != null) {
-		renderer.render(<CodeBlock value={code} lang={lang} />, el);
+		renderer.render(t`<${CodeBlock} value=${code} lang=${lang} />`, el);
 	}
 }

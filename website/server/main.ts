@@ -1,11 +1,5 @@
-/** @jsx createElement */
-import {
-	Children,
-	createElement,
-	Element,
-	Fragment,
-	Raw,
-} from "@b9g/crank/crank.js";
+import {Children, Element, Raw} from "@b9g/crank/crank.js";
+import {t} from "@b9g/crank/template.js";
 import {renderer} from "@b9g/crank/html.js";
 
 import fs from "fs-extra";
@@ -91,40 +85,38 @@ interface RootProps {
 
 // TODO: I wonder if we can do some kind of slot-based or includes API
 function Root({title, children, url}: RootProps): Element {
-	return (
-		<Fragment>
-			<Raw value="<!DOCTYPE html>" />
-			<Page storage={storage}>
-				<html lang="en">
-					<head>
-						<meta charset="UTF-8" />
-						<meta name="viewport" content="width=device-width" />
-						<title>{title}</title>
-						<Link rel="stylesheet" type="text/css" href="client/index.css" />
-						<link rel="shortcut icon" href="/static/favicon.ico" />
-						<script
-							async
-							src="https://www.googletagmanager.com/gtag/js?id=UA-20910936-4"
-						/>
-						<script
-							innerHTML={`
-								window.dataLayer = window.dataLayer || [];
-								function gtag(){dataLayer.push(arguments);}
-								gtag('js', new Date());
+	return t`
+		<${Raw} value="<!DOCTYPE html>" />
+		<${Page} storage=${storage}>
+			<html lang="en">
+				<head>
+					<meta charset="UTF-8" />
+					<meta name="viewport" content="width=device-width" />
+					<title>${title}</title>
+					<${Link} rel="stylesheet" type="text/css" href="client/index.css" />
+					<link rel="shortcut icon" href="/static/favicon.ico" />
+					<script
+						async
+						src="https://www.googletagmanager.com/gtag/js?id=UA-20910936-4"
+					/>
+					<script
+						innerHTML=${`
+							window.dataLayer = window.dataLayer || [];
+							function gtag(){dataLayer.push(arguments);}
+							gtag('js', new Date());
 
-								gtag('config', 'UA-20910936-4');
-							`}
-						/>
-					</head>
-					<body>
-						<Navbar url={url} />
-						<div class="non-footer">{children}</div>
-						<Script src="client/index.tsx" />
-					</body>
-				</html>
-			</Page>
-		</Fragment>
-	);
+							gtag('config', 'UA-20910936-4');
+						`}
+					/>
+				</head>
+				<body>
+					<${Navbar} url=${url} />
+					<div class="non-footer">${children}</div>
+					<${Script} src="client/index.ts" />
+				</body>
+			</html>
+		<//Page>
+	`!;
 }
 
 interface NavbarProps {
@@ -132,25 +124,28 @@ interface NavbarProps {
 }
 
 function Navbar({url}: NavbarProps): Element {
-	return (
+	return t`
 		<nav id="navbar" class="navbar">
 			<div class="navbar-group">
 				<div class="navbar-item">
-					<a class={`navbar-title-link ${url === "/" && "current"}`} href="/">
+					<a
+						class="navbar-title-link ${url === "/" ? "current" : null}"
+						href="/"
+					>
 						<img class="navbar-logo" src="/static/logo.svg" alt="" />
 						<span>Crank.js</span>
 					</a>
 				</div>
 				<div class="navbar-item">
 					<a
-						class={url.startsWith("/guides") && "current"}
+						class=${url.startsWith("/guides") && "current"}
 						href="/guides/getting-started"
 					>
 						Docs
 					</a>
 				</div>
 				<div class="navbar-item">
-					<a class={url.startsWith("/blog") && "current"} href="/blog/">
+					<a class=${url.startsWith("/blog") && "current"} href="/blog/">
 						Blog
 					</a>
 				</div>
@@ -164,7 +159,7 @@ function Navbar({url}: NavbarProps): Element {
 				</div>
 			</div>
 		</nav>
-	);
+	`;
 }
 
 interface SidebarProps {
@@ -177,36 +172,37 @@ function Sidebar({docs, title, url}: SidebarProps): Element {
 	const links: Array<Element> = [];
 	for (const doc of docs) {
 		if (doc.attributes.publish) {
-			links.push(
+			links.push(t`
 				<div class="sidebar-item">
-					<a href={doc.url} class={doc.url === url ? "current" : ""}>
-						{doc.attributes.title}
+					<a href=${doc.url} class=${doc.url === url ? "current" : ""}>
+						${doc.attributes.title}
 					</a>
-				</div>,
-			);
+				</div>
+			`);
 		}
 	}
 
-	return (
+	return t`
 		<div id="sidebar" class="sidebar">
-			<h3>{title}</h3>
-			{links}
+			<h3>${title}</h3>
+			${links}
 		</div>
-	);
+	`;
 }
 
 function Home(): Element {
 	// TODO: Move home content to a document.
-	return (
-		<Root title="Crank.js" url="/">
+	return t`
+		<${Root} title="Crank.js" url="/">
 			<div class="home">
 				<header class="hero">
 					<h1>Crank.js</h1>
 					<h2>The most “Just JavaScript” web framework.</h2>
 				</header>
+				<div class="hero">Hello world</div>
 			</div>
-		</Root>
-	);
+		<//Root>
+	`;
 }
 
 interface BlogContentProps {
@@ -224,13 +220,11 @@ function BlogContent({title, publishDate, children}: BlogContentProps) {
 			day: "numeric",
 			timeZone: "UTC",
 		});
-	return (
-		<Fragment>
-			<h1>{title}</h1>
-			{formattedDate && <p>{formattedDate}</p>}
-			{children}
-		</Fragment>
-	);
+	return t`
+		<h1>${title}</h1>
+		${formattedDate && t`<p>{formattedDate}</p>`}
+		${children}
+	`;
 }
 
 interface BlogPreviewProps {
@@ -260,16 +254,16 @@ function BlogPreview({docs}: BlogPreviewProps): Array<Element> {
 
 		const {title, publishDate} = doc.attributes;
 		const Body = createComponent(body);
-		return (
+		return t`
 			<div class="content">
-				<BlogContent title={title} publishDate={publishDate}>
-					<Body components={components} />
-				</BlogContent>
+				<${BlogContent} title=${title} publishDate=${publishDate}>
+					<${Body} components=${components} />
+				<//BlogContent>
 				<div>
-					<a href={doc.url}>Read more…</a>
+					<a href=${doc.url}>Read more…</a>
 				</div>
 			</div>
-		);
+		`;
 	});
 }
 
@@ -279,14 +273,14 @@ interface BlogIndexPageProps {
 }
 
 function BlogIndexPage({docs, url}: BlogIndexPageProps): Element {
-	return (
-		<Root title="Crank.js | Blog" url={url}>
-			<Sidebar docs={docs} url={url} title="Recent Posts" />
+	return t`
+		<${Root} title="Crank.js | Blog" url=${url}>
+			<${Sidebar} docs=${docs} url=${url} title="Recent Posts" />
 			<main class="main">
-				<BlogPreview docs={docs} />
+				<${BlogPreview} docs=${docs} />
 			</main>
-		</Root>
-	);
+		<//Root>
+	`;
 }
 
 interface BlogPageProps {
@@ -304,18 +298,18 @@ function BlogPage({
 	publishDate,
 	url,
 }: BlogPageProps): Element {
-	return (
-		<Root title={`Crank.js | ${title}`} url={url}>
-			<Sidebar docs={docs} url={url} title="Recent Posts" />
+	return t`
+		<${Root} title="Crank.js | ${title}" url=${url}>
+			<${Sidebar} docs=${docs} url=${url} title="Recent Posts" />
 			<main class="main">
 				<div class="content">
-					<BlogContent title={title} publishDate={publishDate}>
-						{children}
-					</BlogContent>
+					<${BlogContent} title=${title} publishDate=${publishDate}>
+						${children}
+					<//BlogContent>
 				</div>
 			</main>
-		</Root>
-	);
+		<//Root>
+	`;
 }
 
 interface GuidePageProps {
@@ -326,31 +320,31 @@ interface GuidePageProps {
 }
 
 function GuidePage({title, docs, url, children}: GuidePageProps): Element {
-	return (
-		<Root title={`Crank.js | ${title}`} url={url}>
-			<Sidebar docs={docs} url={url} title="Guides" />
+	return t`
+		<${Root} title="Crank.js | ${title}" url=${url}>
+			<${Sidebar} docs=${docs} url=${url} title="Guides" />
 			<main class="main">
 				<div class="content">
-					<h1>{title}</h1>
-					{children}
+					<h1>${title}</h1>
+					${children}
 				</div>
 			</main>
-		</Root>
-	);
+		<//Root>
+	`;
 }
 
 const components = {
 	codespan({token}: any) {
-		return <code class="inline">{token.text}</code>;
+		return t`<code class="inline">${token.text}</code>`;
 	},
 
 	code({token}: any) {
 		const {text: code, lang} = token;
-		return (
-			<div class="codeblock" data-code={code} data-lang={lang}>
-				<CodeBlock value={code} lang={lang} />
+		return t`
+			<div class="codeblock" data-code=${code} data-lang=${lang}>
+				<${CodeBlock} value=${code} lang=${lang} />
 			</div>
-		);
+		`;
 	},
 };
 
@@ -362,7 +356,7 @@ const components = {
 	// HOME
 	await fs.writeFile(
 		path.join(dist, "index.html"),
-		await renderer.render(<Home />),
+		await renderer.render(t`<${Home} />`),
 	);
 
 	// GUIDES
@@ -381,11 +375,11 @@ const components = {
 				await fs.ensureDir(path.dirname(filename));
 				return fs.writeFile(
 					filename,
-					await renderer.render(
-						<GuidePage title={title} docs={docs} url={url}>
-							<Body components={components} />
-						</GuidePage>,
-					),
+					await renderer.render(t`
+						<${GuidePage} title=${title} docs=${docs} url=${url}>
+							<${Body} components=${components} />
+						<//GuidePage>,
+					`),
 				);
 			}),
 		);
@@ -401,7 +395,7 @@ const components = {
 		await fs.ensureDir(path.join(dist, "blog"));
 		await fs.writeFile(
 			path.join(dist, "blog/index.html"),
-			await renderer.render(<BlogIndexPage docs={posts} url="/blog" />),
+			await renderer.render(t`<${BlogIndexPage} docs=${posts} url="/blog" />`),
 		);
 
 		await Promise.all(
@@ -416,16 +410,16 @@ const components = {
 					await fs.ensureDir(path.dirname(filename));
 					return fs.writeFile(
 						filename,
-						await renderer.render(
-							<BlogPage
-								title={title}
-								docs={posts}
-								url={url}
-								publishDate={publishDate}
+						await renderer.render(t`
+							<${BlogPage}
+								title=${title}
+								docs=${posts}
+								url=${url}
+								publishDate=${publishDate}
 							>
-								<Body components={components} />
-							</BlogPage>,
-						),
+								<${Body} components=${components} />
+							<//BlogPage>,
+						`),
 					);
 				},
 			),

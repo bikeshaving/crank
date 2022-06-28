@@ -4,11 +4,11 @@ import type {Tag} from "./crank.js";
 export function t(
 	spans: TemplateStringsArray,
 	...expressions: Array<unknown>
-): Element | null {
+): Element {
 	let parsed = parse(spans.raw, expressions);
 	const children = parsed.children;
 	if (children.length === 0) {
-		return null;
+		return c("");
 	} else if (children.length === 1 && children[0].type === "element") {
 		parsed = children[0];
 	}
@@ -334,7 +334,7 @@ function formatString(str: string) {
 	);
 }
 
-function createElementsFromParse(parsed: ParseElementResult): Element | null {
+function createElementsFromParse(parsed: ParseElementResult): Element {
 	const children: Array<unknown> = [];
 	for (let i = 0; i < parsed.children.length; i++) {
 		const child = parsed.children[i];
