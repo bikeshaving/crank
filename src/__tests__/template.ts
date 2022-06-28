@@ -196,6 +196,19 @@ describe("happy path", () => {
 			</div>
 		`).toEqual(c("div", null, "Hello"));
 	});
+
+	test("string expressions", () => {
+		expect(t`
+			<p class="${undefined} ${null} ${"a"}-${{a: "1"}}-" />
+		`).toEqual(c("p", {class: "  a-[object Object]-"}));
+		expect(t`
+			<p class="a${1}\${2}\a${3}\"" />
+		`).toEqual(c("p", {class: 'a1${2}a3"'}));
+		// Don’t think too hard about escaping.
+		expect(t`
+			<p class="a\\${1}\\${2}\\\a${3}\"" />
+		`).toEqual(c("p", {class: 'a\\1\\2\\a3"'}));
+	});
 });
 
 describe("sad path", () => {

@@ -48,9 +48,13 @@ const CHILDREN_RE =
  * Group 5: prop value string
  */
 const PROPS_RE =
-	/\s*(?:(\/?\s*>)|(\.\.\.\s*)|(?:([-_$\w]+)\s*(=)?\s*(?:("(\\"|[\S\s])*?"|'(?:\\'|[\S\s])*?'))?))/g;
+	/\s*(?:(\/?\s*>)|(\.\.\.\s*)|(?:([-_$\w]+)\s*(=)?\s*(?:("(\\"|[\S\s])*?(?:"|$)|'(?:\\'|[\S\s])*?(?:'|$)))?))/g;
 
 const CLOSING_TAG_RE = /\s*>/g;
+
+const CLOSING_SINGLE_QUOTE_RE = /[^\\]?'/g;
+
+const CLOSING_DOUBLE_QUOTE_RE = /[^\\]?"/g;
 
 function parse(
 	spans: ArrayLike<string>,
@@ -62,10 +66,11 @@ function parse(
 		props: null,
 		children: [],
 	};
-
 	const stack: Array<ParseElementResult> = [];
 	let matcher = CHILDREN_RE as RegExp | string;
 	let lineStart = true;
+	let stringName = "";
+	let stringValue = "";
 	for (let s = 0; s < spans.length; s++) {
 		const span = spans[s];
 		let expressing = s < spans.length - 1;
@@ -75,7 +80,7 @@ function parse(
 				// this shit abstractly for bullshit aspirational reasons, like maybe
 				// we can use the structure of the parser in a parser generator for
 				// template tags.
-				const index = span.indexOf(matcher);
+				const index = span.slice(i).indexOf(matcher);
 				if (index === -1) {
 					break;
 				}
@@ -85,9 +90,7 @@ function parse(
 			} else {
 				matcher.lastIndex = i;
 				const match = matcher.exec(span);
-				if (match) {
-					end = match.index + match[0].length;
-				} else {
+				if (!match) {
 					if (matcher === CHILDREN_RE) {
 						if (i < span.length) {
 							let after = span.slice(i);
@@ -104,11 +107,23 @@ function parse(
 						throw new SyntaxError(
 							`Unexpected text \`${span.slice(i, i + 20).trim()}\``,
 						);
+					} else if (
+						matcher === CLOSING_SINGLE_QUOTE_RE ||
+						matcher === CLOSING_DOUBLE_QUOTE_RE
+					) {
+						stringValue += span.slice(i);
+						const exp = expressions[s];
+						if (exp != null) {
+							stringValue += typeof exp === "string" ? exp : String(exp);
+						}
+
+						expressing = false;
 					}
 
 					break;
 				}
 
+				end = match.index + match[0].length;
 				if (matcher === CHILDREN_RE) {
 					const [, newline, comment, tag, slash, tagName] = match;
 					let before = span.slice(i, match.index);
@@ -144,7 +159,6 @@ function parse(
 					} else if (tag) {
 						let tag: Tag = tagName;
 						if (expressing && end === span.length) {
-							// TODO: Consider runtime type checking
 							tag = expressions[s] as Tag;
 							expressing = false;
 						}
@@ -220,6 +234,28 @@ function parse(
 								expressing = false;
 							}
 						} else {
+							const quote = string[0];
+							if (end === span.length) {
+								// expression in a string
+								if (!expressing) {
+									throw new SyntaxError("Expression expected");
+								}
+
+								expressing = false;
+								stringName = name;
+								stringValue = string;
+								const exp = expressions[s];
+								if (exp != null) {
+									stringValue += typeof exp === "string" ? exp : String(exp);
+								}
+
+								matcher =
+									quote === "'"
+										? CLOSING_SINGLE_QUOTE_RE
+										: CLOSING_DOUBLE_QUOTE_RE;
+								break;
+							}
+
 							value = string.slice(1, -1).replace(/\\(.?)/g, "$1");
 						}
 
@@ -233,6 +269,19 @@ function parse(
 					}
 
 					matcher = CHILDREN_RE;
+				} else if (
+					matcher === CLOSING_SINGLE_QUOTE_RE ||
+					matcher === CLOSING_DOUBLE_QUOTE_RE
+				) {
+					// end - 1 removes the closing quote
+					stringValue += span.slice(i, end);
+					current.props = {
+						...current.props,
+						...{
+							[stringName]: stringValue.slice(1, -1).replace(/\\(.?)/g, "$1"),
+						},
+					};
+					matcher = PROPS_RE;
 				}
 			}
 		}
