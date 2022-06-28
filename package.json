@@ -14,7 +14,7 @@
   "license": "MIT",
   "type": "module",
   "exports": {
-    ".": {
+    "./*": {
       "import": "./crank.js",
       "require": "./crank.cjs"
     },
@@ -51,6 +51,14 @@
       "require": "./index.cjs"
     },
     "./package.json": "./package.json",
+    "./template": {
+      "import": "./template.js",
+      "require": "./template.cjs"
+    },
+    "./template.js": {
+      "import": "./template.js",
+      "require": "./template.cjs"
+    },
     "./umd": {
       "require": "./umd.js"
     },
