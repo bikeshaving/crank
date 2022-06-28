@@ -1,5 +1,5 @@
-/** @jsx createElement */
-import {createElement, Fragment, Raw} from "@b9g/crank";
+import {Raw} from "@b9g/crank";
+import {t} from "@b9g/crank/template.js";
 import type {Children, Component, Element} from "@b9g/crank";
 import {marked} from "marked";
 
@@ -195,52 +195,53 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 	code({token}) {
 		const {text, lang} = token as marked.Tokens.Code;
 		const langClassName = lang ? `language-${lang}` : null;
-		return (
-			<pre className={langClassName}>
-				<code className={langClassName}>{text}</code>
+		return t`
+			<pre class=${langClassName}>
+				<code class=${langClassName}>${text}</code>
 			</pre>
-		);
+		`;
 	},
 
 	heading({token, children}) {
 		const {depth} = token as marked.Tokens.Heading;
-		const Tag = `h${depth}`;
-		// TODO: ids
-		return <Tag>{children}</Tag>;
+		const tag = `h${depth}`;
+		return t`<${tag}>${children}<//>`;
 	},
 
 	// TODO: type: 'table';
 
-	hr: () => <hr />,
+	hr: () => t`<hr />`,
 
 	blockquote({children}) {
-		return <blockquote>{children}</blockquote>;
+		return t`<blockquote>${children}</blockquote>`;
 	},
 
 	list({token, children}) {
 		const {ordered, start} = token as marked.Tokens.List;
-		const Tag = ordered ? "ol" : "ul";
+		const tag = ordered ? "ol" : "ul";
 
-		return <Tag start={start && start !== 1 ? start : null}>{children}</Tag>;
+		return t`
+			<${tag} start=${start && start !== 1 ? start : null}>${children}<//>
+		`;
 	},
 
 	list_item({children}) {
-		return <li>{children}</li>;
+		return t`<li>${children}</li>`;
 	},
 
 	checkmark({token}) {
 		const {checked} = token as unknown as Checkmark;
-		return <input checked={checked} disabled="" type="checkbox" />;
+		return t`<input checked=${checked} disabled="" type="checkbox" />`;
 	},
 
 	paragraph({children}) {
-		return <p>{children}</p>;
+		return t`<p>${children}</p>`;
 	},
 
 	html({token}) {
 		// TODO: Is this all that’s necessary?
 		const {text} = token as marked.Tokens.HTML;
-		return <Raw value={text} />;
+		return t`<${Raw} value=${text} />`;
 	},
 
 	// TODO: type: 'def';
@@ -252,32 +253,32 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 	link({token, children}) {
 		const {href, title} = token as marked.Tokens.Link;
 		// TODO: url sanitization?
-		return (
-			<a href={href} title={title}>
-				{children}
+		return t`
+			<a href=${href} title=${title}>
+				${children}
 			</a>
-		);
+		`;
 	},
 
 	image({token}) {
 		const {href, title, text} = token as marked.Tokens.Image;
-		return <img src={href} title={title} alt={text} />;
+		return t`<img src=${href} title=${title} alt=${text} />`;
 	},
 
 	strong({children}) {
-		return <strong>{children}</strong>;
+		return t`<strong>${children}</strong>`;
 	},
 
 	em({children}) {
-		return <em>{children}</em>;
+		return t`<em>${children}</em>`;
 	},
 
 	codespan({token}) {
 		const {text} = token as marked.Tokens.Codespan;
-		return <code>{text}</code>;
+		return t`<code>${text}</code>`;
 	},
 
-	br: () => <br />,
+	br: () => t`<br />`,
 
 	// TODO: type: 'del';
 };
@@ -405,11 +406,11 @@ function build(
 			throw new Error(`Unknown tag "${token.type}"`);
 		}
 
-		result.push(
-			<Tag token={token} rootProps={rootProps}>
-				{children}
-			</Tag>,
-		);
+		result.push(t`
+			<${Tag} token=${token} rootProps=${rootProps}>
+				${children}
+			<//Tag>
+		`);
 	}
 
 	return result;
@@ -533,7 +534,7 @@ export function createComponent(markdown: string): Component<MarkedProps> {
 		};
 
 		const children = build(tokens, props, true);
-		return <Fragment>{children}</Fragment>;
+		return t`${children}`;
 	};
 }
 

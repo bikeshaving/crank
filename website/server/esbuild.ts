@@ -1,9 +1,8 @@
-/** @jsx createElement */
 import {promises as fs} from "fs";
 import * as path from "path";
 import * as ESBuild from "esbuild";
-import {createElement} from "@b9g/crank/crank.js";
 import type {Children, Context} from "@b9g/crank/crank.js";
+import {t} from "@b9g/crank/template.js";
 import postcssPlugin from "./postcss-plugin.js";
 import postcssPresetEnv from "postcss-preset-env";
 import postcssNested from "postcss-nested";
@@ -149,7 +148,7 @@ export async function Script(this: Context, props: Record<string, any>) {
 	let src: string;
 	({src, ...props} = props);
 	src = await storage.url(src, ".js");
-	return <script src={src} {...props} />;
+	return t`<script src=${src} ...${props} />`;
 }
 
 export async function Link(this: Context, props: Record<string, any>) {
@@ -162,5 +161,5 @@ export async function Link(this: Context, props: Record<string, any>) {
 	let rel: string;
 	({href, rel = "stylesheet", ...props} = props);
 	href = await storage.url(href, ".css");
-	return <link href={href} rel={rel} {...props} />;
+	return t`<link href=${href} rel=${rel} ...${props} />`;
 }

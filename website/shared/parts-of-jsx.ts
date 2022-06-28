@@ -1,8 +1,7 @@
-/** @jsx createElement */
-import {createElement} from "@b9g/crank";
+import {t} from "@b9g/crank/template.js";
 
 export function PartsOfJSX() {
-	return (
+	return t`
 		<svg
 			width="1180"
 			height="268"
@@ -220,5 +219,5 @@ export function PartsOfJSX() {
 				fill="#c699e3"
 			/>
 		</svg>
-	);
+	`;
 }
