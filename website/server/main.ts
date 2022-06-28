@@ -222,7 +222,7 @@ function BlogContent({title, publishDate, children}: BlogContentProps) {
 		});
 	return t`
 		<h1>${title}</h1>
-		${formattedDate && t`<p>{formattedDate}</p>`}
+		${formattedDate && t`<p>${formattedDate}</p>`}
 		${children}
 	`;
 }
