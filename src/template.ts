@@ -259,7 +259,11 @@ function parse(
 							value = string.slice(1, -1).replace(/\\(.?)/g, "$1");
 						}
 
-						current.props = {...current.props, ...{[name]: value}};
+						if (current.props == null) {
+							current.props = {};
+						}
+
+						current.props[name] = value;
 					}
 				} else if (matcher === CLOSING_TAG_RE) {
 					if (i < match.index) {
@@ -275,12 +279,13 @@ function parse(
 				) {
 					// end - 1 removes the closing quote
 					stringValue += span.slice(i, end);
-					current.props = {
-						...current.props,
-						...{
-							[stringName]: stringValue.slice(1, -1).replace(/\\(.?)/g, "$1"),
-						},
-					};
+					if (current.props == null) {
+						current.props = {};
+					}
+
+					current.props[stringName] = stringValue
+						.slice(1, -1)
+						.replace(/\\(.?)/g, "$1");
 					matcher = PROPS_RE;
 				}
 			}
