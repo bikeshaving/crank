@@ -69,13 +69,19 @@ function parse(
 	const stack: Array<ParseElementResult> = [];
 	let matcher = CHILDREN_RE as RegExp | string;
 	let lineStart = true;
+	// stringName and stringValue are used as state when handling expressions in prop strings:
+	//   t`<p class="foo ${exp}" />`
 	let stringName = "";
 	let stringValue = "";
 	for (let s = 0; s < spans.length; s++) {
 		const span = spans[s];
 		let expressing = s < spans.length - 1;
+		// TODO: restructure the loop by matcher
 		for (let i = 0, end = i; i < span.length; i = end) {
 			if (typeof matcher === "string") {
+				// TODO: let’s just use regexps consistently and not worry about having
+				// a separate branch
+				//
 				// The only matcher which is a string right now is "-->". But I wrote
 				// this shit abstractly for bullshit aspirational reasons, like maybe
 				// we can use the structure of the parser in a parser generator for
@@ -134,7 +140,7 @@ function parse(
 
 					if (newline) {
 						// We preserve whitespace before escaped newlines.
-						//   x` \
+						//   t` \
 						//   `
 						if (span[Math.max(0, match.index - 1)] === "\\") {
 							// remove the backslash
@@ -153,7 +159,7 @@ function parse(
 					if (comment) {
 						if (end === span.length) {
 							// We allow expressions in comments:
-							//   x`<!-- ${exp} -->`
+							//   t`<!-- ${exp} -->`
 							matcher = "-->";
 						}
 					} else if (tag) {
@@ -256,7 +262,7 @@ function parse(
 								break;
 							}
 
-							value = string.slice(1, -1).replace(/\\(.?)/g, "$1");
+							value = formatString(string);
 						}
 
 						if (current.props == null) {
@@ -283,9 +289,7 @@ function parse(
 						current.props = {};
 					}
 
-					current.props[stringName] = stringValue
-						.slice(1, -1)
-						.replace(/\\(.?)/g, "$1");
+					current.props[stringName] = formatString(stringValue);
 					matcher = PROPS_RE;
 				}
 			}
@@ -318,6 +322,16 @@ function getTagDisplay(tag: Tag) {
 		: typeof tag !== "string"
 		? String(tag)
 		: tag;
+}
+
+function formatString(str: string) {
+	return (
+		str
+			// remove quotes
+			.slice(1, -1)
+			// deal with escaped characters
+			.replace(/\\(.?)/g, "$1")
+	);
 }
 
 function createElementsFromParse(parsed: ParseElementResult): Element | null {
