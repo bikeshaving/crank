@@ -14,7 +14,7 @@
   "license": "MIT",
   "type": "module",
   "exports": {
-    "./*": {
+    ".": {
       "import": "./crank.js",
       "require": "./crank.cjs"
     },
