@@ -1,7 +1,5 @@
-/** @jsx createElement */
-// TODO: This should go back into the revise repository at some point I guess.
-import {createElement} from "@b9g/crank/crank.js";
 import type {Context} from "@b9g/crank/crank.js";
+import {t} from "@b9g/crank/template.js";
 import type {
 	ContentAreaElement,
 	ContentEvent,
@@ -61,9 +59,9 @@ export function* ContentArea(
 			}
 		});
 
-		const area: ContentAreaElement = yield (
-			<content-area c-static={composing}>{children}</content-area>
-		);
+		const area: ContentAreaElement = yield t`
+			<content-area c-static=${composing}>${children}</content-area>
+		`;
 
 		oldSelectionRange = area.getSelectionRange();
 	}

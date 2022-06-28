@@ -1,5 +1,4 @@
-/** @jsx createElement */
-import {createElement} from "@b9g/crank/crank.js";
+import {t} from "@b9g/crank/template.js";
 import type {Context, Element} from "@b9g/crank/crank.js";
 import {Edit} from "@b9g/revise/edit.js";
 import {Keyer} from "@b9g/revise/keyer.js";
@@ -49,13 +48,13 @@ function* Preview(
 			}
 		});
 
-		yield (
+		yield t`
 			<iframe
 				class="preview"
-				c-ref={(iframe1: any) => (iframe = iframe1)}
+				c-ref=${(iframe1: any) => (iframe = iframe1)}
 				src="about:blank"
 			/>
-		);
+		`;
 	}
 }
 
@@ -248,40 +247,42 @@ export function* CodeBlock(
 			className += " editable-live";
 		}
 
-		yield (
+		yield t`
 			<div class="playground">
-				<ContentArea
-					c-ref={(area1: any) => (area = area1)}
-					value={value}
-					renderSource={renderSource}
-					selectionRange={selectionRange}
+				<${ContentArea}
+					c-ref=${(area1: any) => (area = area1)}
+					value=${value}
+					renderSource=${renderSource}
+					selectionRange=${selectionRange}
 				>
 					<pre
-						class={className}
+						class=${className}
 						autocomplete="off"
 						autocorrect="off"
 						autocapitalize="off"
 						spellcheck="false"
-						contenteditable={isClient && isLive}
+						contenteditable=${isClient && isLive}
 					>
-						{lines.map((line) => {
+						${lines.map((line) => {
 							const key = keyer.keyAt(cursor);
 							const length = line.reduce((l, t) => l + t.length, 0);
 							cursor += length + 1;
-							return (
-								<div c-key={key}>
-									<code>{printTokens(line)}</code>
+							return t`
+								<div c-key=${key}>
+									<code>${printTokens(line)}</code>
 									<br />
 								</div>
-							);
+							`;
 						})}
 					</pre>
-				</ContentArea>
-				{typeof document !== "undefined" && rest === "live" && (
-					<Preview value={value} />
-				)}
+				<//ContentArea>
+				${
+					typeof document !== "undefined" &&
+					rest === "live" &&
+					t`<${Preview} value=${value} />`
+				}
 			</div>
-		);
+		`;
 	}
 }
 
@@ -382,7 +383,7 @@ function printTokens(tokens: Array<Token | string>): Array<Element | string> {
 				className += " " + token.alias;
 			}
 
-			result.push(<span class={className}>{children}</span>);
+			result.push(t`<span class=${className}>${children}</span>`);
 		}
 	}
 
