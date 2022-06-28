@@ -39,7 +39,13 @@ function copyPackage() {
 	};
 }
 
-const input = ["src/index.ts", "src/crank.ts", "src/dom.ts", "src/html.ts"];
+const input = [
+	"src/index.ts",
+	"src/crank.ts",
+	"src/dom.ts",
+	"src/html.ts",
+	"src/template.ts",
+];
 const ts = typescript2({
 	clean: true,
 	tsconfigOverride: {
