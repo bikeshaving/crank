@@ -4,6 +4,7 @@
 
 ```
 $CHILDREN: ($CHILD_TEXT | $ELEMENT | $COMMENT | ${unknown})*
+// TODO: Maybe allow escaped angle brackets here.
 $CHILD_TEXT: /[^<]/+
 $ELEMENT:
   $SELF_CLOSING_ELEMENT |
@@ -16,11 +17,9 @@ $PROPS: ($PROP | $SPREAD_PROP)*
 $PROP: $IDENTIFIER ("=" $PROP_VALUE)?
 $SPREAD_PROP: "..." ${unknown}
 $IDENTIFIER: /[-_$\w]/+
-// TODO: Allow expressions in value strings.
-// TODO: Allow escaped quotes in strings?
 $PROP_VALUE:
-  (/"/ /[^"]/* /"/) |
-  (/'/ /[^']/* /'/) |
+  (/"/ (/\\"/ | /[\S\s]/ | ${unknown})*? /"/) |
+  (/'/ (/\\'/ | /[\S\s]/ | ${unknown})*? /'/) |
   ${unknown}
 $COMMENT: "<!--" (/[\S\s]/ | ${unknown})*? "-->"
 ```
@@ -88,7 +87,7 @@ JavaScript template strings allow for Unix-style escapes of newlines, so we
 don’t have to deal with any of these problems!
 
 ```
-yield x`
+yield t`
   <div>
     <span>Hello</span> \
     <span>World</span>
@@ -112,7 +111,7 @@ exacerbated by closing tags, which must match opening tags to form a
 well-formed tree.
 
 ```
-yield x`
+yield t`
   <${Component}>hello</${Component}>
 `;
 ```
@@ -123,7 +122,7 @@ not HTML, we can do what developit/htm does and have a catch-all closing tag
 syntax like `<//>`.
 
 ```
-yield x`
+yield t`
   <${Component}>hello<//>
 `;
 ```
@@ -139,7 +138,7 @@ linters could fight about.
 
 ```
 // Maybe a linter could be used to determine if the rules
-yield x`
+yield t`
   <${Component}>hello<//Component>
 `;
 ```
@@ -150,7 +149,7 @@ Should we allow for interpolations in prop strings?
 
 ```
 const cls = 1;
-yield x`
+yield t`
   <div class="cls-${cls}">Hello</div>
 `;
 ```
@@ -160,7 +159,7 @@ Why not!? It’s just nice and convenient, right?
 Should we allow for interpolations in prop names?
 
 ```
-yield x`
+yield t`
   <${Component} ${name}=${value} />
 `;
 ```
