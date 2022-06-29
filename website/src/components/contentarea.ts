@@ -1,5 +1,5 @@
-import type {Context} from "@b9g/crank/crank.js";
 import {t} from "@b9g/crank/template.js";
+import type {Context} from "@b9g/crank/crank.js";
 import type {
 	ContentAreaElement,
 	ContentEvent,

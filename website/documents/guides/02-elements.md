@@ -1,9 +1,9 @@
 ---
 id: elements
-title: JSX, Elements and Renderers
+title: Elements and Renderers
 ---
 
-**Note:** If you’re familiar with how JSX and elements work in React, you may want to skip ahead to [the guide on components](./components). Elements in Crank work almost exactly as they do in React.
+**Note:** If you’re familiar with how elements work in React, you may want to skip ahead to [the guide on components](./components). Elements in Crank work almost exactly as they do in React.
 
 ## JSX
 
