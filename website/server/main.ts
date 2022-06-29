@@ -1,6 +1,7 @@
-import {Children, Element, Raw} from "@b9g/crank/crank.js";
 import {t} from "@b9g/crank/template.js";
 import {renderer} from "@b9g/crank/html.js";
+import {Raw} from "@b9g/crank/crank.js";
+import type {Children, Element} from "@b9g/crank/crank.js";
 
 import fs from "fs-extra";
 import type {Stats} from "fs";
@@ -129,7 +130,7 @@ function Navbar({url}: NavbarProps): Element {
 			<div class="navbar-group">
 				<div class="navbar-item">
 					<a
-						class="navbar-title-link ${url === "/" ? "current" : null}"
+						class="navbar-title-link ${url === "/" ? "current" : ""}"
 						href="/"
 					>
 						<img class="navbar-logo" src="/static/logo.svg" alt="" />
@@ -155,7 +156,7 @@ function Navbar({url}: NavbarProps): Element {
 					<a href="https://github.com/bikeshaving/crank">GitHub</a>
 				</div>
 				<div class="navbar-item">
-					<a href="http://npm.im/@bikeshaving/crank">NPM</a>
+					<a href="http://npm.im/@b9g/crank">NPM</a>
 				</div>
 			</div>
 		</nav>
@@ -190,16 +191,23 @@ function Sidebar({docs, title, url}: SidebarProps): Element {
 	`;
 }
 
-function Home(): Element {
+async function Home(): Promise<Element> {
 	// TODO: Move home content to a document.
+	//
+	const examples = await fs.readFile(
+		path.join(rootDirname, "documents/index.md"),
+		{encoding: "utf8"},
+	);
+	const Content = createComponent(examples);
+
 	return t`
 		<${Root} title="Crank.js" url="/">
 			<div class="home">
 				<header class="hero">
 					<h1>Crank.js</h1>
-					<h2>The most “Just JavaScript” web framework.</h2>
+					<h2>The “Just JavaScript” web framework.</h2>
 				</header>
-				<div class="hero">Hello world</div>
+				<${Content} components=${components} />
 			</div>
 		<//Root>
 	`;
@@ -253,11 +261,11 @@ function BlogPreview({docs}: BlogPreviewProps): Array<Element> {
 		}
 
 		const {title, publishDate} = doc.attributes;
-		const Body = createComponent(body);
+		const Content = createComponent(body);
 		return t`
 			<div class="content">
 				<${BlogContent} title=${title} publishDate=${publishDate}>
-					<${Body} components=${components} />
+					<${Content} components=${components} />
 				<//BlogContent>
 				<div>
 					<a href=${doc.url}>Read more…</a>
@@ -354,10 +362,12 @@ const components = {
 	await fs.emptyDir(dist);
 	await fs.copy(path.join(rootDirname, "static"), path.join(dist, "static"));
 	// HOME
-	await fs.writeFile(
-		path.join(dist, "index.html"),
-		await renderer.render(t`<${Home} />`),
-	);
+	{
+		await fs.writeFile(
+			path.join(dist, "index.html"),
+			await renderer.render(t`<${Home} />`),
+		);
+	}
 
 	// GUIDES
 	{
@@ -365,19 +375,24 @@ const components = {
 			path.join(rootDirname, "documents/guides"),
 		);
 		await Promise.all(
-			docs.map(async ({attributes: {title, publish}, url, body}) => {
+			docs.map(async (post) => {
+				const {
+					attributes: {title, publish},
+					url,
+					body,
+				} = post;
 				if (!publish) {
 					return;
 				}
 
-				const Body = createComponent(body);
+				const Content = createComponent(body);
 				const filename = path.join(dist, url + ".html");
 				await fs.ensureDir(path.dirname(filename));
 				return fs.writeFile(
 					filename,
 					await renderer.render(t`
 						<${GuidePage} title=${title} docs=${docs} url=${url}>
-							<${Body} components=${components} />
+							<${Content} components=${components} />
 						<//GuidePage>,
 					`),
 				);
@@ -399,30 +414,33 @@ const components = {
 		);
 
 		await Promise.all(
-			posts.map(
-				async ({attributes: {title, publish, publishDate}, url, body}) => {
-					if (!publish) {
-						return;
-					}
+			posts.map(async (post) => {
+				const {
+					attributes: {title, publish, publishDate},
+					url,
+					body,
+				} = post;
+				if (!publish) {
+					return;
+				}
 
-					const Body = createComponent(body);
-					const filename = path.join(dist, url + ".html");
-					await fs.ensureDir(path.dirname(filename));
-					return fs.writeFile(
-						filename,
-						await renderer.render(t`
+				const Content = createComponent(body);
+				const filename = path.join(dist, url + ".html");
+				await fs.ensureDir(path.dirname(filename));
+				return fs.writeFile(
+					filename,
+					await renderer.render(t`
 							<${BlogPage}
 								title=${title}
 								docs=${posts}
 								url=${url}
 								publishDate=${publishDate}
 							>
-								<${Body} components=${components} />
+								<${Content} components=${components} />
 							<//BlogPage>,
 						`),
-					);
-				},
-			),
+				);
+			}),
 		);
 	}
 
