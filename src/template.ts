@@ -1,7 +1,7 @@
 import {c, Element} from "./crank.js";
 import type {Tag} from "./crank.js";
 
-export function t(
+export function template(
 	spans: TemplateStringsArray,
 	...expressions: Array<unknown>
 ): Element {
@@ -16,19 +16,21 @@ export function t(
 	return createElementsFromParse(parsed);
 }
 
-interface ParseElementResult {
+export const t = template;
+
+interface ParseElement {
 	type: "element";
 	tag: Tag;
 	props: Record<string, any> | null;
 	children: Array<ParseResult>;
 }
 
-interface ParseValueResult {
+interface ParseValue {
 	type: "value";
 	value: unknown;
 }
 
-type ParseResult = ParseElementResult | ParseValueResult;
+type ParseResult = ParseElement | ParseValue;
 
 /*
  * Group 1: newline
@@ -59,14 +61,14 @@ const CLOSING_DOUBLE_QUOTE_RE = /[^\\]?"/g;
 function parse(
 	spans: ArrayLike<string>,
 	expressions: Array<unknown>,
-): ParseElementResult {
-	let current: ParseElementResult = {
+): ParseElement {
+	let current: ParseElement = {
 		type: "element",
 		tag: "",
 		props: null,
 		children: [],
 	};
-	const stack: Array<ParseElementResult> = [];
+	const stack: Array<ParseElement> = [];
 	let matcher = CHILDREN_RE as RegExp | string;
 	let lineStart = true;
 	// stringName and stringValue are used as state when handling expressions in prop strings:
@@ -334,7 +336,7 @@ function formatString(str: string) {
 	);
 }
 
-function createElementsFromParse(parsed: ParseElementResult): Element {
+function createElementsFromParse(parsed: ParseElement): Element {
 	const children: Array<unknown> = [];
 	for (let i = 0; i < parsed.children.length; i++) {
 		const child = parsed.children[i];
