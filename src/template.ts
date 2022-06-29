@@ -18,6 +18,8 @@ export function template(
 
 export const t = template;
 
+export default template;
+
 interface ParseElement {
 	type: "element";
 	tag: Tag;
