@@ -10,7 +10,7 @@ import "prismjs/components/prism-tsx";
 import "prismjs/components/prism-diff";
 import "prismjs/components/prism-bash";
 import {ContentAreaElement} from "@b9g/revise/contentarea.js";
-import {CodeBlock} from "../shared/prism";
+import {CodeBlock} from "./components/prism.js";
 
 // @ts-ignore
 Prism.manual = true;

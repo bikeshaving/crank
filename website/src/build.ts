@@ -1,6 +1,5 @@
 import {t} from "@b9g/crank/template.js";
 import {renderer} from "@b9g/crank/html.js";
-import {Raw} from "@b9g/crank/crank.js";
 import type {Children, Element} from "@b9g/crank/crank.js";
 
 import fs from "fs-extra";
@@ -18,10 +17,10 @@ import "prismjs/components/prism-diff.js";
 import "prismjs/components/prism-bash.js";
 
 import {createComponent} from "./marked.js";
-import {CodeBlock} from "../shared/prism.js";
-import {Page, Link, Script, Storage} from "./esbuild.js";
+import {CodeBlock} from "./components/prism.js";
+import {Page, Link, Script, Storage} from "./components/esbuild.js";
 
-const rootDirname = new URL("..", import.meta.url).pathname;
+const rootDirname = new URL(".", import.meta.url).pathname;
 
 interface WalkInfo {
 	filename: string;
@@ -53,7 +52,7 @@ interface DocInfo {
 }
 
 async function collectDocuments(name: string): Promise<Array<DocInfo>> {
-	const root = path.join(rootDirname, "documents");
+	const root = path.join(rootDirname, "../documents");
 	let docs: Array<DocInfo> = [];
 	for await (const {filename} of walk(name)) {
 		if (filename.endsWith(".md")) {
@@ -87,14 +86,14 @@ interface RootProps {
 // TODO: I wonder if we can do some kind of slot-based or includes API
 function Root({title, children, url}: RootProps): Element {
 	return t`
-		<${Raw} value="<!DOCTYPE html>" />
+		<$RAW value="<!DOCTYPE html>" />
 		<${Page} storage=${storage}>
 			<html lang="en">
 				<head>
 					<meta charset="UTF-8" />
 					<meta name="viewport" content="width=device-width" />
 					<title>${title}</title>
-					<${Link} rel="stylesheet" type="text/css" href="client/index.css" />
+					<${Link} rel="stylesheet" type="text/css" href="index.css" />
 					<link rel="shortcut icon" href="/static/favicon.ico" />
 					<script
 						async
@@ -113,7 +112,7 @@ function Root({title, children, url}: RootProps): Element {
 				<body>
 					<${Navbar} url=${url} />
 					<div class="non-footer">${children}</div>
-					<${Script} src="client/index.ts" />
+					<${Script} src="client.ts" />
 				</body>
 			</html>
 		<//Page>
@@ -195,7 +194,7 @@ async function Home(): Promise<Element> {
 	// TODO: Move home content to a document.
 	//
 	const examples = await fs.readFile(
-		path.join(rootDirname, "documents/index.md"),
+		path.join(rootDirname, "../documents/index.md"),
 		{encoding: "utf8"},
 	);
 	const Content = createComponent(examples);
@@ -356,94 +355,92 @@ const components = {
 	},
 };
 
-(async () => {
-	const dist = path.join(rootDirname, "./dist");
-	await fs.ensureDir(dist);
-	await fs.emptyDir(dist);
-	await fs.copy(path.join(rootDirname, "static"), path.join(dist, "static"));
-	// HOME
-	{
-		await fs.writeFile(
-			path.join(dist, "index.html"),
-			await renderer.render(t`<${Home} />`),
-		);
-	}
+const dist = path.join(rootDirname, "../dist");
+await fs.ensureDir(dist);
+await fs.emptyDir(dist);
+await fs.copy(path.join(rootDirname, "../static"), path.join(dist, "static"));
+// HOME
+{
+	await fs.writeFile(
+		path.join(dist, "index.html"),
+		await renderer.render(t`<${Home} />`),
+	);
+}
 
-	// GUIDES
-	{
-		const docs = await collectDocuments(
-			path.join(rootDirname, "documents/guides"),
-		);
-		await Promise.all(
-			docs.map(async (post) => {
-				const {
-					attributes: {title, publish},
-					url,
-					body,
-				} = post;
-				if (!publish) {
-					return;
-				}
+// GUIDES
+{
+	const docs = await collectDocuments(
+		path.join(rootDirname, "../documents/guides"),
+	);
+	await Promise.all(
+		docs.map(async (post) => {
+			const {
+				attributes: {title, publish},
+				url,
+				body,
+			} = post;
+			if (!publish) {
+				return;
+			}
 
-				const Content = createComponent(body);
-				const filename = path.join(dist, url + ".html");
-				await fs.ensureDir(path.dirname(filename));
-				return fs.writeFile(
-					filename,
-					await renderer.render(t`
-						<${GuidePage} title=${title} docs=${docs} url=${url}>
+			const Content = createComponent(body);
+			const filename = path.join(dist, url + ".html");
+			await fs.ensureDir(path.dirname(filename));
+			return fs.writeFile(
+				filename,
+				await renderer.render(t`
+					<${GuidePage} title=${title} docs=${docs} url=${url}>
+						<${Content} components=${components} />
+					<//GuidePage>,
+				`),
+			);
+		}),
+	);
+}
+
+// BLOG
+{
+	const posts = await collectDocuments(
+		path.join(rootDirname, "../documents/blog"),
+	);
+	posts.reverse();
+
+	await fs.ensureDir(path.join(dist, "blog"));
+	await fs.writeFile(
+		path.join(dist, "blog/index.html"),
+		await renderer.render(t`<${BlogIndexPage} docs=${posts} url="/blog" />`),
+	);
+
+	await Promise.all(
+		posts.map(async (post) => {
+			const {
+				attributes: {title, publish, publishDate},
+				url,
+				body,
+			} = post;
+			if (!publish) {
+				return;
+			}
+
+			const Content = createComponent(body);
+			const filename = path.join(dist, url + ".html");
+			await fs.ensureDir(path.dirname(filename));
+			return fs.writeFile(
+				filename,
+				await renderer.render(t`
+						<${BlogPage}
+							title=${title}
+							docs=${posts}
+							url=${url}
+							publishDate=${publishDate}
+						>
 							<${Content} components=${components} />
-						<//GuidePage>,
+						<//BlogPage>,
 					`),
-				);
-			}),
-		);
-	}
+			);
+		}),
+	);
+}
 
-	// BLOG
-	{
-		const posts = await collectDocuments(
-			path.join(rootDirname, "documents/blog"),
-		);
-		posts.reverse();
-
-		await fs.ensureDir(path.join(dist, "blog"));
-		await fs.writeFile(
-			path.join(dist, "blog/index.html"),
-			await renderer.render(t`<${BlogIndexPage} docs=${posts} url="/blog" />`),
-		);
-
-		await Promise.all(
-			posts.map(async (post) => {
-				const {
-					attributes: {title, publish, publishDate},
-					url,
-					body,
-				} = post;
-				if (!publish) {
-					return;
-				}
-
-				const Content = createComponent(body);
-				const filename = path.join(dist, url + ".html");
-				await fs.ensureDir(path.dirname(filename));
-				return fs.writeFile(
-					filename,
-					await renderer.render(t`
-							<${BlogPage}
-								title=${title}
-								docs=${posts}
-								url=${url}
-								publishDate=${publishDate}
-							>
-								<${Content} components=${components} />
-							<//BlogPage>,
-						`),
-				);
-			}),
-		);
-	}
-
-	await storage.write(path.join(dist, "static/"));
-	storage.clear();
-})();
+await storage.write(path.join(dist, "static/"));
+storage.clear();
