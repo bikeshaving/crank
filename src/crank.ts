@@ -282,6 +282,7 @@ export function createElement<TTag extends Tag>(
 			switch (name) {
 				case "crank-key":
 				case "c-key":
+				case "$key":
 					// We have to make sure we don’t assign null to the key because we
 					// don’t check for null keys in the diffing functions.
 					if (props[name] != null) {
@@ -290,12 +291,14 @@ export function createElement<TTag extends Tag>(
 					break;
 				case "crank-ref":
 				case "c-ref":
+				case "$ref":
 					if (typeof props[name] === "function") {
 						ref = props[name];
 					}
 					break;
 				case "crank-static":
 				case "c-static":
+				case "$static":
 					static_ = !!props[name];
 					break;
 				default:
@@ -308,6 +311,23 @@ export function createElement<TTag extends Tag>(
 		props1.children = children;
 	} else if (children.length === 1) {
 		props1.children = children[0];
+	}
+
+	// string aliases for the special tags
+	// TODO: Does this logic belong here, or in the Element constructor
+	switch (tag) {
+		case "$FRAGMENT":
+			tag = Fragment as any;
+			break;
+		case "$PORTAL":
+			tag = Portal as any;
+			break;
+		case "$COPY":
+			tag = Copy as any;
+			break;
+		case "$RAW":
+			tag = Raw as any;
+			break;
 	}
 
 	return new Element(tag, props1, key, ref, static_);
