@@ -294,4 +294,6 @@ describe("sad path", () => {
 			t`<p class${undefined} />`;
 		}).toThrow(new SyntaxError("Unexpected expression ${undefined}"));
 	});
+
+	// TODO: Figure out a way to test special props and tags
 });
