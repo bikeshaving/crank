@@ -16,9 +16,10 @@ import "prismjs/components/prism-tsx.js";
 import "prismjs/components/prism-diff.js";
 import "prismjs/components/prism-bash.js";
 
-import {createComponent} from "./marked.js";
-import {CodeBlock} from "./components/prism.js";
 import {Page, Link, Script, Storage} from "./components/esbuild.js";
+import {CodeBlock} from "./components/prism.js";
+import {Marked} from "./components/marked.js";
+import {Navbar, Sidebar} from "./components/navigation.js";
 
 const rootDirname = new URL(".", import.meta.url).pathname;
 
@@ -93,7 +94,7 @@ function Root({title, children, url}: RootProps): Element {
 					<meta charset="UTF-8" />
 					<meta name="viewport" content="width=device-width" />
 					<title>${title}</title>
-					<${Link} rel="stylesheet" type="text/css" href="index.css" />
+					<${Link} rel="stylesheet" type="text/css" href="client.css" />
 					<link rel="shortcut icon" href="/static/favicon.ico" />
 					<script
 						async
@@ -119,76 +120,25 @@ function Root({title, children, url}: RootProps): Element {
 	`!;
 }
 
-interface NavbarProps {
-	url: string;
-}
+const components = {
+	codespan({token}: any) {
+		return t`<code class="inline">${token.text}</code>`;
+	},
 
-function Navbar({url}: NavbarProps): Element {
-	return t`
-		<nav id="navbar" class="navbar">
-			<div class="navbar-group">
-				<div class="navbar-item">
-					<a
-						class="navbar-title-link ${url === "/" ? "current" : ""}"
-						href="/"
-					>
-						<img class="navbar-logo" src="/static/logo.svg" alt="" />
-						<span>Crank.js</span>
-					</a>
-				</div>
-				<div class="navbar-item">
-					<a
-						class=${url.startsWith("/guides") && "current"}
-						href="/guides/getting-started"
-					>
-						Docs
-					</a>
-				</div>
-				<div class="navbar-item">
-					<a class=${url.startsWith("/blog") && "current"} href="/blog/">
-						Blog
-					</a>
-				</div>
+	code({token}: any) {
+		const {text: code, lang} = token;
+		return t`
+			<div class="codeblock" data-code=${code} data-lang=${lang}>
+				<${CodeBlock} value=${code} lang=${lang} />
 			</div>
-			<div class="navbar-group">
-				<div class="navbar-item">
-					<a href="https://github.com/bikeshaving/crank">GitHub</a>
-				</div>
-				<div class="navbar-item">
-					<a href="http://npm.im/@b9g/crank">NPM</a>
-				</div>
-			</div>
-		</nav>
-	`;
-}
+		`;
+	},
+};
 
-interface SidebarProps {
-	docs: Array<DocInfo>;
-	url: string;
-	title: string;
-}
-
-function Sidebar({docs, title, url}: SidebarProps): Element {
-	const links: Array<Element> = [];
-	for (const doc of docs) {
-		if (doc.attributes.publish) {
-			links.push(t`
-				<div class="sidebar-item">
-					<a href=${doc.url} class=${doc.url === url ? "current" : ""}>
-						${doc.attributes.title}
-					</a>
-				</div>
-			`);
-		}
-	}
-
-	return t`
-		<div id="sidebar" class="sidebar">
-			<h3>${title}</h3>
-			${links}
-		</div>
-	`;
-}
+const dist = path.join(rootDirname, "../dist");
+await fs.ensureDir(dist);
+await fs.emptyDir(dist);
+await fs.copy(path.join(rootDirname, "../static"), path.join(dist, "static"));
 
 async function Home(): Promise<Element> {
 	// TODO: Move home content to a document.
@@ -197,7 +147,6 @@ async function Home(): Promise<Element> {
 		path.join(rootDirname, "../documents/index.md"),
 		{encoding: "utf8"},
 	);
-	const Content = createComponent(examples);
 
 	return t`
 		<${Root} title="Crank.js" url="/">
@@ -206,10 +155,67 @@ async function Home(): Promise<Element> {
 					<h1>Crank.js</h1>
 					<h2>The “Just JavaScript” web framework.</h2>
 				</header>
-				<${Content} components=${components} />
+				<${Marked} components=${components} markdown=${examples} />
 			</div>
 		<//Root>
 	`;
+}
+
+{
+	// HOME
+	await fs.writeFile(
+		path.join(dist, "index.html"),
+		await renderer.render(t`<${Home} />`),
+	);
+}
+
+interface GuidePageProps {
+	title: string;
+	url: string;
+	docs: Array<DocInfo>;
+	children: Children;
+}
+
+function GuidePage({title, docs, url, children}: GuidePageProps): Element {
+	return t`
+		<${Root} title="Crank.js | ${title}" url=${url}>
+			<${Sidebar} docs=${docs} url=${url} title="Guides" />
+			<main class="main">
+				<div class="content">
+					<h1>${title}</h1>
+					${children}
+				</div>
+			</main>
+		<//Root>
+	`;
+}
+
+{
+	// GUIDES
+	const docs = await collectDocuments(
+		path.join(rootDirname, "../documents/guides"),
+	);
+	await Promise.all(
+		docs.map(async (post) => {
+			const {
+				attributes: {title, publish},
+				url,
+				body,
+			} = post;
+			if (!publish) {
+				return;
+			}
+
+			const filename = path.join(dist, url + ".html");
+			await fs.ensureDir(path.dirname(filename));
+			const html = await renderer.render(t`
+				<${GuidePage} title=${title} docs=${docs} url=${url}>
+					<${Marked} markdown=${body} components=${components} />
+				<//GuidePage>
+			`);
+			return fs.writeFile(filename, html);
+		}),
+	);
 }
 
 interface BlogContentProps {
@@ -260,11 +266,10 @@ function BlogPreview({docs}: BlogPreviewProps): Array<Element> {
 		}
 
 		const {title, publishDate} = doc.attributes;
-		const Content = createComponent(body);
 		return t`
 			<div class="content">
 				<${BlogContent} title=${title} publishDate=${publishDate}>
-					<${Content} components=${components} />
+					<${Marked} markdown=${body} components=${components} />
 				<//BlogContent>
 				<div>
 					<a href=${doc.url}>Read more…</a>
@@ -288,6 +293,19 @@ function BlogIndexPage({docs, url}: BlogIndexPageProps): Element {
 			</main>
 		<//Root>
 	`;
+}
+
+{
+	// BLOG INDEX
+	const posts = await collectDocuments(
+		path.join(rootDirname, "../documents/blog"),
+	);
+	posts.reverse();
+	await fs.ensureDir(path.join(dist, "blog"));
+	await fs.writeFile(
+		path.join(dist, "blog/index.html"),
+		await renderer.render(t`<${BlogIndexPage} docs=${posts} url="/blog" />`),
+	);
 }
 
 interface BlogPageProps {
@@ -319,98 +337,12 @@ function BlogPage({
 	`;
 }
 
-interface GuidePageProps {
-	title: string;
-	url: string;
-	docs: Array<DocInfo>;
-	children: Children;
-}
-
-function GuidePage({title, docs, url, children}: GuidePageProps): Element {
-	return t`
-		<${Root} title="Crank.js | ${title}" url=${url}>
-			<${Sidebar} docs=${docs} url=${url} title="Guides" />
-			<main class="main">
-				<div class="content">
-					<h1>${title}</h1>
-					${children}
-				</div>
-			</main>
-		<//Root>
-	`;
-}
-
-const components = {
-	codespan({token}: any) {
-		return t`<code class="inline">${token.text}</code>`;
-	},
-
-	code({token}: any) {
-		const {text: code, lang} = token;
-		return t`
-			<div class="codeblock" data-code=${code} data-lang=${lang}>
-				<${CodeBlock} value=${code} lang=${lang} />
-			</div>
-		`;
-	},
-};
-
-const dist = path.join(rootDirname, "../dist");
-await fs.ensureDir(dist);
-await fs.emptyDir(dist);
-await fs.copy(path.join(rootDirname, "../static"), path.join(dist, "static"));
-// HOME
 {
-	await fs.writeFile(
-		path.join(dist, "index.html"),
-		await renderer.render(t`<${Home} />`),
-	);
-}
-
-// GUIDES
-{
-	const docs = await collectDocuments(
-		path.join(rootDirname, "../documents/guides"),
-	);
-	await Promise.all(
-		docs.map(async (post) => {
-			const {
-				attributes: {title, publish},
-				url,
-				body,
-			} = post;
-			if (!publish) {
-				return;
-			}
-
-			const Content = createComponent(body);
-			const filename = path.join(dist, url + ".html");
-			await fs.ensureDir(path.dirname(filename));
-			return fs.writeFile(
-				filename,
-				await renderer.render(t`
-					<${GuidePage} title=${title} docs=${docs} url=${url}>
-						<${Content} components=${components} />
-					<//GuidePage>,
-				`),
-			);
-		}),
-	);
-}
-
-// BLOG
-{
+	// BLOG POSTS
 	const posts = await collectDocuments(
 		path.join(rootDirname, "../documents/blog"),
 	);
 	posts.reverse();
-
-	await fs.ensureDir(path.join(dist, "blog"));
-	await fs.writeFile(
-		path.join(dist, "blog/index.html"),
-		await renderer.render(t`<${BlogIndexPage} docs=${posts} url="/blog" />`),
-	);
-
 	await Promise.all(
 		posts.map(async (post) => {
 			const {
@@ -422,7 +354,6 @@ await fs.copy(path.join(rootDirname, "../static"), path.join(dist, "static"));
 				return;
 			}
 
-			const Content = createComponent(body);
 			const filename = path.join(dist, url + ".html");
 			await fs.ensureDir(path.dirname(filename));
 			return fs.writeFile(
@@ -434,7 +365,7 @@ await fs.copy(path.join(rootDirname, "../static"), path.join(dist, "static"));
 							url=${url}
 							publishDate=${publishDate}
 						>
-							<${Content} components=${components} />
+							<${Marked} markdown=${body} components=${components} />
 						<//BlogPage>,
 					`),
 			);

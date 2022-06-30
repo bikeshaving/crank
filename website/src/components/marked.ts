@@ -1,20 +1,7 @@
-import {Raw} from "@b9g/crank";
 import {t} from "@b9g/crank/template.js";
 import type {Children, Component, Element} from "@b9g/crank";
 import {marked} from "marked";
-
-export interface MarkedProps {
-	components?: Record<string, Component<TokenProps>> | undefined;
-	[key: string]: unknown;
-}
-
-export interface TokenProps {
-	token: marked.Token;
-	rootProps: MarkedProps;
-	children: Children;
-	[key: string]: unknown;
-}
-
+// TODO: This is probably a component
 /*
 Token type definitions from Marked
 interface Space {
@@ -189,6 +176,13 @@ export interface Checkmark {
 	checked: boolean;
 }
 
+export interface TokenProps {
+	token: marked.Token;
+	rootProps: MarkedProps;
+	children: Children;
+	[key: string]: unknown;
+}
+
 export const defaultComponents: Record<string, Component<TokenProps>> = {
 	space: () => null,
 
@@ -241,7 +235,7 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 	html({token}) {
 		// TODO: Is this all that’s necessary?
 		const {text} = token as marked.Tokens.HTML;
-		return t`<${Raw} value=${text} />`;
+		return t`<$RAW value=${text} />`;
 	},
 
 	// TODO: type: 'def';
@@ -283,11 +277,15 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 	// TODO: type: 'del';
 };
 
-// This function is called recursively to turn an array of tokens into JSX
-// elements.
+interface BuildProps {
+	components?: Record<string, Component<TokenProps>> | undefined;
+	[key: string]: unknown;
+}
+
+// This function is called recursively to turn an array of tokens into elements.
 function build(
 	tokens: Array<marked.Token>,
-	rootProps: MarkedProps,
+	rootProps: BuildProps,
 	blockLevel = false,
 ): Array<Element | string> {
 	const result: Array<Element | string> = [];
@@ -424,6 +422,7 @@ interface JSXStackFrame {
 
 type JSXLexerMode = "none" | "open" | "props";
 
+// Yo Brian did any of this ever actually work you dumb bitch??
 // I have to write a parser to handle HTML as JSX 😔
 function parseJSX(
 	html: string,
@@ -523,19 +522,21 @@ function parseJSX(
 	return [[], stack];
 }
 
-// I’m not really sure about the factory component pattern we’re doing here.
-export function createComponent(markdown: string): Component<MarkedProps> {
+export interface MarkedProps {
+	markdown: string;
+	components?: Record<string, Component<TokenProps>> | undefined;
+	[key: string]: unknown;
+}
+
+export function Marked({markdown, ...props}: MarkedProps) {
 	const tokens = marked.Lexer.lex(markdown);
-
-	return function Marked(props: MarkedProps) {
-		props = {
-			...props,
-			components: {...defaultComponents, ...props.components},
-		};
-
-		const children = build(tokens, props, true);
-		return t`${children}`;
+	props = {
+		...props,
+		components: {...defaultComponents, ...props.components},
 	};
+
+	const children = build(tokens, props, true);
+	return t`${children}`;
 }
 
 /* Scratchpad
