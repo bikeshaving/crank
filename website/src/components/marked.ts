@@ -333,7 +333,6 @@ function build(
 				let elements: Array<Element | string>;
 				[elements, jsxStack] = parseJSX(token.raw, jsxStack);
 				result.push(...elements);
-				// TODO: Should we continue here?
 				continue;
 			}
 
@@ -422,14 +421,11 @@ interface JSXStackFrame {
 
 type JSXLexerMode = "none" | "open" | "props";
 
-// Yo Brian did any of this ever actually work you dumb bitch??
 // I have to write a parser to handle HTML as JSX 😔
 function parseJSX(
 	html: string,
 	stack: Array<JSXStackFrame>,
 ): [Array<Element | string>, Array<JSXStackFrame>] {
-	// We need a pass in a stack.
-	//console.dir(html);
 	let mode: JSXLexerMode = "none";
 	let loop = 0;
 	for (let i = 0; i < html.length; ) {
@@ -541,21 +537,17 @@ export function Marked({markdown, ...props}: MarkedProps) {
 
 /* Scratchpad
 import {renderer} from "@b9g/crank/html";
-//import {promises as fs} from "node:fs";
-
-(async () => {
-	//const blog = await fs.readFile("./blog/2020-04-15-introducing-crank.md", "utf-8");
-	//const Marked = createComponent(blog);
-	const test1 = "<div>Hello world</div>";
-	const test2 = "<div>\n\nHello *world*</div>";
-	const test3 = '<poop type="4">*uhhhh*</poop>';
-	const test4 = '<div class="hey">Hello</div>';
-	const test5 = '<span>`<hello>`</span>';
-	const test6 = '<PartsOfJSX />';
-	const test7 = '<b>Hello <i>World</i></b>';
-	const test8 = "<div>Hello <span>World</span></div>";
-	const test9 = "<span>Hello <span>World</span></span>";
-	const Marked = createComponent(test1);
-	console.log(renderer.render(<Marked />));
-})();
+const test1 = "<div>Hello world</div>";
+const test2 = "<div>\n\nHello *world*</div>";
+const test3 = '<poop type="4">*uhhhh*</poop>';
+const test4 = '<div class="hey">Hello</div>';
+const test5 = '<span>`<hello>`</span>';
+const test6 = '<PartsOfJSX />';
+const test7 = '<b>Hello <i>World</i></b>';
+const test8 = "<div>Hello <span>World</span></div>";
+const test9 = "<span>Hello <span>World</span></span>";
+var fuck = false;
+fuck = true;
+console.log(renderer.render(t`<${Marked} markdown=${test1}/>`));
+fuck = false;
 */
