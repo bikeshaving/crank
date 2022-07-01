@@ -3,9 +3,7 @@ import {renderer} from "@b9g/crank/html.js";
 import type {Children, Element} from "@b9g/crank/crank.js";
 
 import fs from "fs-extra";
-import type {Stats} from "fs";
 import * as path from "path";
-import frontmatter from "front-matter";
 
 // TODO: lazily import these?
 import "prismjs";
@@ -20,92 +18,22 @@ import {Page, Link, Script, Storage} from "./components/esbuild.js";
 import {CodeBlock} from "./components/prism.js";
 import {Marked} from "./components/marked.js";
 import {Navbar, Sidebar} from "./components/navigation.js";
+import {GoogleSpyware} from "./components/google-spyware.js";
+
+import {collectDocuments} from "./models/document.js";
+import type {DocInfo} from "./models/document.js";
 
 const rootDirname = new URL(".", import.meta.url).pathname;
-
-interface WalkInfo {
-	filename: string;
-	info: Stats;
-}
-
-async function* walk(dir: string): AsyncGenerator<WalkInfo> {
-	const files = await fs.readdir(dir);
-	for (let filename of files) {
-		filename = path.join(dir, filename);
-		const info = await fs.stat(filename);
-		if (info.isDirectory()) {
-			yield* walk(filename);
-		} else if (info.isFile()) {
-			yield {filename, info};
-		}
-	}
-}
-
-interface DocInfo {
-	attributes: {
-		title: string;
-		publish: boolean;
-		publishDate?: Date;
-	};
-	url: string;
-	filename: string;
-	body: string;
-}
-
-async function collectDocuments(
-	pathname: string,
-	dirname: string = pathname,
-): Promise<Array<DocInfo>> {
-	let docs: Array<DocInfo> = [];
-	for await (const {filename} of walk(pathname)) {
-		if (filename.endsWith(".md")) {
-			const md = await fs.readFile(filename, {encoding: "utf8"});
-			let {attributes, body} = frontmatter(md) as unknown as DocInfo;
-			attributes.publish =
-				attributes.publish == null ? true : attributes.publish;
-			if (attributes.publishDate != null) {
-				attributes.publishDate = new Date(attributes.publishDate);
-			}
-
-			const url = path
-				.join("/", path.relative(dirname, filename))
-				.replace(/\.md$/, "")
-				.replace(/([0-9]+-)+/, "");
-			docs.push({url, filename, body, attributes});
-		}
-	}
-
-	return docs;
-}
-
 const storage = new Storage({dirname: rootDirname});
-
-function GoogleSpyware() {
-	return t`
-		<script
-			async
-			src="https://www.googletagmanager.com/gtag/js?id=UA-20910936-4"
-		/>
-		<script
-			innerHTML=${`
-				window.dataLayer = window.dataLayer || [];
-				function gtag(){dataLayer.push(arguments);}
-				gtag('js', new Date());
-
-				gtag('config', 'UA-20910936-4');
-			`}
-		/>
-	`;
-}
 
 interface RootProps {
 	title: string;
 	children: Children;
 	url: string;
+	storage: Storage;
 }
 
-// TODO: I wonder if we can do some kind of slot-based or includes API
-function Root({title, children, url}: RootProps): Element {
+function Root({title, children, url, storage}: RootProps): Element {
 	return t`
 		<$RAW value="<!DOCTYPE html>" />
 		<${Page} storage=${storage}>
@@ -128,6 +56,7 @@ function Root({title, children, url}: RootProps): Element {
 	`!;
 }
 
+// TODO: where does this belong
 const components = {
 	codespan({token}: any) {
 		return t`<code class="inline">${token.text}</code>`;
@@ -149,14 +78,13 @@ await fs.emptyDir(dist);
 await fs.copy(path.join(rootDirname, "../static"), path.join(dist, "static"));
 
 async function Home(): Promise<Element> {
-	// TODO: Move home content to a document.
 	const markdown = await fs.readFile(
 		path.join(rootDirname, "../documents/index.md"),
 		{encoding: "utf8"},
 	);
 
 	return t`
-		<${Root} title="Crank.js" url="/">
+		<${Root} title="Crank.js" url="/" storage=${storage}>
 			<div class="home">
 				<header class="hero">
 					<h1>Crank.js</h1>
@@ -185,7 +113,7 @@ interface GuidePageProps {
 
 function GuidePage({title, docs, url, children}: GuidePageProps): Element {
 	return t`
-		<${Root} title="Crank.js | ${title}" url=${url}>
+		<${Root} title="Crank.js | ${title}" url=${url} storage=${storage}>
 			<${Sidebar} docs=${docs} url=${url} title="Guides" />
 			<main class="main">
 				<div class="content">
@@ -294,7 +222,7 @@ interface BlogIndexPageProps {
 
 function BlogIndexPage({docs, url}: BlogIndexPageProps): Element {
 	return t`
-		<${Root} title="Crank.js | Blog" url=${url}>
+		<${Root} title="Crank.js | Blog" url=${url} storage=${storage}>
 			<${Sidebar} docs=${docs} url=${url} title="Recent Posts" />
 			<main class="main">
 				<${BlogPreview} docs=${docs} />
@@ -333,7 +261,7 @@ function BlogPage({
 	url,
 }: BlogPageProps): Element {
 	return t`
-		<${Root} title="Crank.js | ${title}" url=${url}>
+		<${Root} title="Crank.js | ${title}" url=${url} storage=${storage}>
 			<${Sidebar} docs=${docs} url=${url} title="Recent Posts" />
 			<main class="main">
 				<div class="content">
