@@ -52,10 +52,12 @@ interface DocInfo {
 	body: string;
 }
 
-async function collectDocuments(name: string): Promise<Array<DocInfo>> {
-	const root = path.join(rootDirname, "../documents");
+async function collectDocuments(
+	pathname: string,
+	dirname: string = pathname,
+): Promise<Array<DocInfo>> {
 	let docs: Array<DocInfo> = [];
-	for await (const {filename} of walk(name)) {
+	for await (const {filename} of walk(pathname)) {
 		if (filename.endsWith(".md")) {
 			const md = await fs.readFile(filename, {encoding: "utf8"});
 			let {attributes, body} = frontmatter(md) as unknown as DocInfo;
@@ -66,7 +68,7 @@ async function collectDocuments(name: string): Promise<Array<DocInfo>> {
 			}
 
 			const url = path
-				.join("/", path.relative(root, filename))
+				.join("/", path.relative(dirname, filename))
 				.replace(/\.md$/, "")
 				.replace(/([0-9]+-)+/, "");
 			docs.push({url, filename, body, attributes});
@@ -142,7 +144,6 @@ await fs.copy(path.join(rootDirname, "../static"), path.join(dist, "static"));
 
 async function Home(): Promise<Element> {
 	// TODO: Move home content to a document.
-	//
 	const examples = await fs.readFile(
 		path.join(rootDirname, "../documents/index.md"),
 		{encoding: "utf8"},
@@ -153,7 +154,7 @@ async function Home(): Promise<Element> {
 			<div class="home">
 				<header class="hero">
 					<h1>Crank.js</h1>
-					<h2>The “Just JavaScript” web framework.</h2>
+					<h2>The most “Just JavaScript” web framework.</h2>
 				</header>
 				<${Marked} components=${components} markdown=${examples} />
 			</div>
@@ -194,6 +195,7 @@ function GuidePage({title, docs, url, children}: GuidePageProps): Element {
 	// GUIDES
 	const docs = await collectDocuments(
 		path.join(rootDirname, "../documents/guides"),
+		path.join(rootDirname, "../documents/"),
 	);
 	await Promise.all(
 		docs.map(async (post) => {
@@ -299,13 +301,14 @@ function BlogIndexPage({docs, url}: BlogIndexPageProps): Element {
 	// BLOG INDEX
 	const posts = await collectDocuments(
 		path.join(rootDirname, "../documents/blog"),
+		path.join(rootDirname, "../documents/"),
 	);
 	posts.reverse();
 	await fs.ensureDir(path.join(dist, "blog"));
-	await fs.writeFile(
-		path.join(dist, "blog/index.html"),
-		await renderer.render(t`<${BlogIndexPage} docs=${posts} url="/blog" />`),
-	);
+	const html = await renderer.render(t`
+		<${BlogIndexPage} docs=${posts} url="/blog" />
+	`);
+	await fs.writeFile(path.join(dist, "blog/index.html"), html);
 }
 
 interface BlogPageProps {
@@ -341,6 +344,7 @@ function BlogPage({
 	// BLOG POSTS
 	const posts = await collectDocuments(
 		path.join(rootDirname, "../documents/blog"),
+		path.join(rootDirname, "../documents/"),
 	);
 	posts.reverse();
 	await Promise.all(
@@ -356,19 +360,17 @@ function BlogPage({
 
 			const filename = path.join(dist, url + ".html");
 			await fs.ensureDir(path.dirname(filename));
-			return fs.writeFile(
-				filename,
-				await renderer.render(t`
-						<${BlogPage}
-							title=${title}
-							docs=${posts}
-							url=${url}
-							publishDate=${publishDate}
-						>
-							<${Marked} markdown=${body} components=${components} />
-						<//BlogPage>,
-					`),
-			);
+			const html = await renderer.render(t`
+				<${BlogPage}
+					title=${title}
+					docs=${posts}
+					url=${url}
+					publishDate=${publishDate}
+				>
+					<${Marked} markdown=${body} components=${components} />
+				<//BlogPage>
+			`);
+			return fs.writeFile(filename, html);
 		}),
 	);
 }
