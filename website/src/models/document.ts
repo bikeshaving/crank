@@ -21,6 +21,7 @@ async function* walk(dir: string): AsyncGenerator<WalkInfo> {
 	}
 }
 
+// TODO: better name
 export interface DocInfo {
 	attributes: {
 		title: string;
@@ -32,8 +33,12 @@ export interface DocInfo {
 	body: string;
 }
 
-export async function list(pathname: string): Promise<Array<DocInfo>> {
-	const docs: Array<DocInfo> = [];
+// TODO: better name
+export async function collectDocuments(
+	pathname: string,
+	dirname: string = pathname,
+): Promise<Array<DocInfo>> {
+	let docs: Array<DocInfo> = [];
 	for await (const {filename} of walk(pathname)) {
 		if (filename.endsWith(".md")) {
 			const md = await fs.readFile(filename, {encoding: "utf8"});
@@ -45,7 +50,7 @@ export async function list(pathname: string): Promise<Array<DocInfo>> {
 			}
 
 			const url = path
-				.join("/", path.relative(pathname, filename))
+				.join("/", path.relative(dirname, filename))
 				.replace(/\.md$/, "")
 				.replace(/([0-9]+-)+/, "");
 			docs.push({url, filename, body, attributes});
