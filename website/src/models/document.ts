@@ -1,5 +1,7 @@
 import fs from "fs-extra";
 import type {Stats} from "fs";
+import * as path from "path";
+import frontmatter from "front-matter";
 
 interface WalkInfo {
 	filename: string;
@@ -30,10 +32,8 @@ export interface DocInfo {
 	body: string;
 }
 
-export async function collectDocuments(
-	pathname: string,
-): Promise<Array<DocInfo>> {
-	let docs: Array<DocInfo> = [];
+export async function list(pathname: string): Promise<Array<DocInfo>> {
+	const docs: Array<DocInfo> = [];
 	for await (const {filename} of walk(pathname)) {
 		if (filename.endsWith(".md")) {
 			const md = await fs.readFile(filename, {encoding: "utf8"});
