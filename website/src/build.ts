@@ -80,6 +80,24 @@ async function collectDocuments(
 
 const storage = new Storage({dirname: rootDirname});
 
+function GoogleSpyware() {
+	return t`
+		<script
+			async
+			src="https://www.googletagmanager.com/gtag/js?id=UA-20910936-4"
+		/>
+		<script
+			innerHTML=${`
+				window.dataLayer = window.dataLayer || [];
+				function gtag(){dataLayer.push(arguments);}
+				gtag('js', new Date());
+
+				gtag('config', 'UA-20910936-4');
+			`}
+		/>
+	`;
+}
+
 interface RootProps {
 	title: string;
 	children: Children;
@@ -98,19 +116,7 @@ function Root({title, children, url}: RootProps): Element {
 					<title>${title}</title>
 					<${Link} rel="stylesheet" type="text/css" href="client.css" />
 					<link rel="shortcut icon" href="/static/favicon.ico" />
-					<script
-						async
-						src="https://www.googletagmanager.com/gtag/js?id=UA-20910936-4"
-					/>
-					<script
-						innerHTML=${`
-							window.dataLayer = window.dataLayer || [];
-							function gtag(){dataLayer.push(arguments);}
-							gtag('js', new Date());
-
-							gtag('config', 'UA-20910936-4');
-						`}
-					/>
+					<${GoogleSpyware} />
 				</head>
 				<body>
 					<${Navbar} url=${url} />
@@ -144,7 +150,7 @@ await fs.copy(path.join(rootDirname, "../static"), path.join(dist, "static"));
 
 async function Home(): Promise<Element> {
 	// TODO: Move home content to a document.
-	const examples = await fs.readFile(
+	const markdown = await fs.readFile(
 		path.join(rootDirname, "../documents/index.md"),
 		{encoding: "utf8"},
 	);
@@ -156,7 +162,7 @@ async function Home(): Promise<Element> {
 					<h1>Crank.js</h1>
 					<h2>The most “Just JavaScript” web framework.</h2>
 				</header>
-				<${Marked} components=${components} markdown=${examples} />
+				<${Marked} components=${components} markdown=${markdown} />
 			</div>
 		<//Root>
 	`;
