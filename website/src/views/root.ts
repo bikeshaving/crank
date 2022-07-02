@@ -2,17 +2,16 @@ import {t} from "@b9g/crank/template.js";
 import type {Children} from "@b9g/crank/crank.js";
 import {Page, Link, Script, Storage} from "../components/esbuild.js";
 import {Navbar} from "../components/navigation.js";
-
-const rootDirname = new URL("..", import.meta.url).pathname;
-const storage = new Storage({dirname: rootDirname});
+import {GoogleSpyware} from "../components/google-spyware.js";
 
 export interface RootProps {
 	title: string;
 	children: Children;
 	url: string;
+	storage: Storage;
 }
 
-export function Root({title, children, url}: RootProps) {
+export function Root({title, children, url, storage}: RootProps) {
 	return t`
 		<$RAW value="<!DOCTYPE html>" />
 		<${Page} storage=${storage}>
@@ -23,19 +22,7 @@ export function Root({title, children, url}: RootProps) {
 					<title>${title}</title>
 					<${Link} rel="stylesheet" type="text/css" href="client.css" />
 					<link rel="shortcut icon" href="/static/favicon.ico" />
-					<script
-						async
-						src="https://www.googletagmanager.com/gtag/js?id=UA-20910936-4"
-					/>
-					<script
-						innerHTML=${`
-							window.dataLayer = window.dataLayer || [];
-							function gtag(){dataLayer.push(arguments);}
-							gtag('js', new Date());
-
-							gtag('config', 'UA-20910936-4');
-						`}
-					/>
+					<${GoogleSpyware} />
 				</head>
 				<body>
 					<${Navbar} url=${url} />
