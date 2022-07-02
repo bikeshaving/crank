@@ -14,93 +14,29 @@ import "prismjs/components/prism-tsx.js";
 import "prismjs/components/prism-diff.js";
 import "prismjs/components/prism-bash.js";
 
-import {Page, Link, Script, Storage} from "./components/esbuild.js";
-import {CodeBlock} from "./components/prism.js";
 import {Marked} from "./components/marked.js";
-import {Navbar, Sidebar} from "./components/navigation.js";
-import {GoogleSpyware} from "./components/google-spyware.js";
+import {components} from "./components/marked-components.js";
+import {Sidebar} from "./components/navigation.js";
 
 import {collectDocuments} from "./models/document.js";
 import type {DocInfo} from "./models/document.js";
+import {Root} from "./views/root.js";
+import {Storage} from "./components/esbuild.js";
 
 const rootDirname = new URL(".", import.meta.url).pathname;
 const storage = new Storage({dirname: rootDirname});
-
-interface RootProps {
-	title: string;
-	children: Children;
-	url: string;
-	storage: Storage;
-}
-
-function Root({title, children, url, storage}: RootProps): Element {
-	return t`
-		<$RAW value="<!DOCTYPE html>" />
-		<${Page} storage=${storage}>
-			<html lang="en">
-				<head>
-					<meta charset="UTF-8" />
-					<meta name="viewport" content="width=device-width" />
-					<title>${title}</title>
-					<${Link} rel="stylesheet" type="text/css" href="client.css" />
-					<link rel="shortcut icon" href="/static/favicon.ico" />
-					<${GoogleSpyware} />
-				</head>
-				<body>
-					<${Navbar} url=${url} />
-					<div class="non-footer">${children}</div>
-					<${Script} src="client.ts" />
-				</body>
-			</html>
-		<//Page>
-	`!;
-}
-
-// TODO: where does this belong
-const components = {
-	codespan({token}: any) {
-		return t`<code class="inline">${token.text}</code>`;
-	},
-
-	code({token}: any) {
-		const {text: code, lang} = token;
-		return t`
-			<div class="codeblock" data-code=${code} data-lang=${lang}>
-				<${CodeBlock} value=${code} lang=${lang} />
-			</div>
-		`;
-	},
-};
 
 const dist = path.join(rootDirname, "../dist");
 await fs.ensureDir(dist);
 await fs.emptyDir(dist);
 await fs.copy(path.join(rootDirname, "../static"), path.join(dist, "static"));
 
-async function Home(): Promise<Element> {
-	const markdown = await fs.readFile(
-		path.join(rootDirname, "../documents/index.md"),
-		{encoding: "utf8"},
-	);
-
-	return t`
-		<${Root} title="Crank.js" url="/" storage=${storage}>
-			<div class="home">
-				<header class="hero">
-					<h1>Crank.js</h1>
-					<h2>The most “Just JavaScript” web framework.</h2>
-				</header>
-				<${Marked} components=${components} markdown=${markdown} />
-			</div>
-		<//Root>
-	`;
-}
-
+import Index from "./views/index.js";
 {
-	// HOME
+	// HOMEPAGE
 	await fs.writeFile(
 		path.join(dist, "index.html"),
-		await renderer.render(t`<${Home} />`),
+		await renderer.render(t`<${Index} storage=${storage} />`),
 	);
 }
 
@@ -161,17 +97,17 @@ interface BlogContentProps {
 }
 
 function BlogContent({title, publishDate, children}: BlogContentProps) {
-	const formattedDate =
-		publishDate &&
-		publishDate.toLocaleString("en-US", {
-			month: "long",
-			year: "numeric",
-			day: "numeric",
-			timeZone: "UTC",
-		});
 	return t`
 		<h1>${title}</h1>
-		${formattedDate && t`<p>${formattedDate}</p>`}
+		${
+			publishDate &&
+			t`<p>${publishDate.toLocaleString("en-US", {
+				month: "long",
+				year: "numeric",
+				day: "numeric",
+				timeZone: "UTC",
+			})}</p>`
+		}
 		${children}
 	`;
 }
