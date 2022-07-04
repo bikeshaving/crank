@@ -5,18 +5,18 @@ import frontmatter from "front-matter";
 
 interface WalkInfo {
 	filename: string;
-	info: Stats;
+	stats: Stats;
 }
 
 async function* walk(dir: string): AsyncGenerator<WalkInfo> {
 	const files = await fs.readdir(dir);
 	for (let filename of files) {
 		filename = path.join(dir, filename);
-		const info = await fs.stat(filename);
-		if (info.isDirectory()) {
+		const stats = await fs.stat(filename);
+		if (stats.isDirectory()) {
 			yield* walk(filename);
-		} else if (info.isFile()) {
-			yield {filename, info};
+		} else if (stats.isFile()) {
+			yield {filename, stats};
 		}
 	}
 }
@@ -36,7 +36,7 @@ export interface DocInfo {
 // TODO: better name
 export async function collectDocuments(
 	pathname: string,
-	dirname: string = pathname,
+	rootPathname: string = pathname,
 ): Promise<Array<DocInfo>> {
 	let docs: Array<DocInfo> = [];
 	for await (const {filename} of walk(pathname)) {
@@ -50,7 +50,7 @@ export async function collectDocuments(
 			}
 
 			const url = path
-				.join("/", path.relative(dirname, filename))
+				.join("/", path.relative(rootPathname, filename))
 				.replace(/\.md$/, "")
 				.replace(/([0-9]+-)+/, "");
 			docs.push({url, filename, body, attributes});
