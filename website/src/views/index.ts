@@ -11,9 +11,7 @@ const __dirname = new URL(".", import.meta.url).pathname;
 export default async function Index({storage}: {storage: Storage}) {
 	const markdown = await fs.readFile(
 		path.join(__dirname, "../../documents/index.md"),
-		{
-			encoding: "utf8",
-		},
+		{encoding: "utf8"},
 	);
 
 	return t`

@@ -18,19 +18,18 @@ import {Marked} from "./components/marked.js";
 import {components} from "./components/marked-components.js";
 import {Sidebar} from "./components/navigation.js";
 
+import {Storage} from "./components/esbuild.js";
+
 import {collectDocuments} from "./models/document.js";
 import type {DocInfo} from "./models/document.js";
 import {Root} from "./views/root.js";
-import {Storage} from "./components/esbuild.js";
 
 const rootDirname = new URL(".", import.meta.url).pathname;
 const storage = new Storage({dirname: rootDirname});
 
 const dist = path.join(rootDirname, "../dist");
-await fs.ensureDir(dist);
 await fs.emptyDir(dist);
-await fs.copy(path.join(rootDirname, "../static"), path.join(dist, "static"));
-
+await fs.ensureDir(dist);
 import Index from "./views/index.js";
 {
 	// HOMEPAGE
@@ -85,101 +84,22 @@ function GuidePage({title, docs, url, children}: GuidePageProps): Element {
 					<${Marked} markdown=${body} components=${components} />
 				<//GuidePage>
 			`);
-			return fs.writeFile(filename, html);
+			await fs.writeFile(filename, html);
 		}),
 	);
 }
 
-interface BlogContentProps {
-	title: string;
-	publishDate?: Date;
-	children: Children;
-}
-
-function BlogContent({title, publishDate, children}: BlogContentProps) {
-	return t`
-		<h1>${title}</h1>
-		${
-			publishDate &&
-			t`<p>${publishDate.toLocaleString("en-US", {
-				month: "long",
-				year: "numeric",
-				day: "numeric",
-				timeZone: "UTC",
-			})}</p>`
-		}
-		${children}
-	`;
-}
-
-interface BlogPreviewProps {
-	docs: Array<DocInfo>;
-}
-
-function BlogPreview({docs}: BlogPreviewProps): Array<Element> {
-	return docs.map((doc) => {
-		let {body} = doc;
-		if (body.match("<!-- endpreview -->")) {
-			body = body.split("<!-- endpreview -->")[0];
-		} else {
-			const lines = body.split(/\r\n|\r|\n/);
-			body = "";
-			let count = 0;
-			for (const line of lines) {
-				body += line + "\n";
-				if (line.trim()) {
-					count++;
-				}
-
-				if (count > 2) {
-					break;
-				}
-			}
-		}
-
-		const {title, publishDate} = doc.attributes;
-		return t`
-			<div class="content">
-				<${BlogContent} title=${title} publishDate=${publishDate}>
-					<${Marked} markdown=${body} components=${components} />
-				<//BlogContent>
-				<div>
-					<a href=${doc.url}>Read more…</a>
-				</div>
-			</div>
-		`;
-	});
-}
-
-interface BlogIndexPageProps {
-	docs: Array<DocInfo>;
-	url: string;
-}
-
-function BlogIndexPage({docs, url}: BlogIndexPageProps): Element {
-	return t`
-		<${Root} title="Crank.js | Blog" url=${url} storage=${storage}>
-			<${Sidebar} docs=${docs} url=${url} title="Recent Posts" />
-			<main class="main">
-				<${BlogPreview} docs=${docs} />
-			</main>
-		<//Root>
-	`;
-}
-
+import BlogIndex from "./views/blog-index.js";
 {
-	// BLOG INDEX
-	const posts = await collectDocuments(
-		path.join(rootDirname, "../documents/blog"),
-		path.join(rootDirname, "../documents/"),
-	);
-	posts.reverse();
-	await fs.ensureDir(path.join(dist, "blog"));
 	const html = await renderer.render(t`
-		<${BlogIndexPage} docs=${posts} url="/blog" />
+		<${BlogIndex} storage=${storage} />
 	`);
+
+	await fs.ensureDir(path.join(dist, "blog"));
 	await fs.writeFile(path.join(dist, "blog/index.html"), html);
 }
+
+import {BlogContent} from "./components/blog-content.js";
 
 interface BlogPageProps {
 	title: string;
@@ -240,10 +160,12 @@ function BlogPage({
 					<${Marked} markdown=${body} components=${components} />
 				<//BlogPage>
 			`);
-			return fs.writeFile(filename, html);
+			await fs.writeFile(filename, html);
 		}),
 	);
 }
+
+await fs.copy(path.join(rootDirname, "../static"), path.join(dist, "static"));
 
 await storage.write(path.join(dist, "static/"));
 storage.clear();

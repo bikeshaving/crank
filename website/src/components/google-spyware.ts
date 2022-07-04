@@ -1,4 +1,7 @@
 import {t} from "@b9g/crank/template.js";
+
+// TODO: find a better analytics solution that let’s me know when a bunch of
+// traffic comes to the site but isn’t spyware and is cheap or free.
 export function GoogleSpyware() {
 	return t`
 		<script
