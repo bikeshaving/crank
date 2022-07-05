@@ -2,12 +2,14 @@ import fs from "fs-extra";
 import * as path from "path";
 
 import {t} from "@b9g/crank/template.js";
-import {Root} from "./root.js";
+
+import {Root} from "../components/root.js";
 import {Marked} from "../components/marked.js";
 import {components} from "../components/marked-components.js";
 import type {Storage} from "../components/esbuild.js";
 
 const __dirname = new URL(".", import.meta.url).pathname;
+
 export default async function Index({storage}: {storage: Storage}) {
 	const markdown = await fs.readFile(
 		path.join(__dirname, "../../documents/index.md"),
