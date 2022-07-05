@@ -54,7 +54,7 @@ export class Router {
 
 export const router = new Router([
 	route("/", "home"),
-	route("/blog", "blog-index"),
+	route("/blog", "blogHome"),
 	route("/blog/:slug", "blog"),
 	route("/guides/:slug", "guide"),
 ]);
