@@ -7,9 +7,6 @@ import {renderer} from "@b9g/crank/html.js";
 import type {Component} from "@b9g/crank/crank.js";
 
 import {router} from "./routes.js";
-
-import HomeView from "./views/home.js";
-
 import {Storage} from "./components/esbuild.js";
 
 const __dirname = new URL(".", import.meta.url).pathname;
@@ -18,8 +15,14 @@ const storage = new Storage({
 	staticPaths: [path.join(__dirname, "../static")],
 });
 
+import HomeView from "./views/home.js";
+import BlogHomeView from "./views/blog-home.js";
+import GuideView from "./views/guide.js";
+//import BlogView from "./views/blog.js";
 const views: Record<string, Component> = {
 	home: HomeView,
+	blogHome: BlogHomeView,
+	guide: GuideView,
 };
 
 const server = createServer(async (req, res) => {
@@ -54,7 +57,7 @@ const server = createServer(async (req, res) => {
 	res.writeHead(200, {"Content-Type": "text/html"});
 	// TODO: Should we pass in name to props?
 	const html = await renderer.render(t`
-		<${View} storage=${storage} params=${match.params} />
+		<${View} url=${url} storage=${storage} params=${match.params} />
 	`);
 	res.end(html, "utf-8");
 });
