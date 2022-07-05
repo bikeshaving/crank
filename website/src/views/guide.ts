@@ -1,34 +1,46 @@
+import * as path from "path";
 import {t} from "@b9g/crank/template.js";
-import type {Children} from "@b9g/crank/crank.js";
-
-import type {DocInfo} from "../models/document.js";
 
 import {Root} from "../components/root.js";
 import {Sidebar} from "../components/navigation.js";
+import {Marked} from "../components/marked.js";
+import {components} from "../components/marked-components.js";
 import type {Storage} from "../components/esbuild.js";
 
+import {collectDocuments} from "../models/document.js";
+
 export interface GuideProps {
-	title: string;
 	url: string;
-	docs: Array<DocInfo>;
 	storage: Storage;
-	children: Children;
 }
 
+const __dirname = new URL(".", import.meta.url).pathname;
 export default async function Guide({
-	title,
+	// TODO: prop name is wrong here
 	url,
-	docs,
 	storage,
-	children,
 }: GuideProps) {
+	const docs = await collectDocuments(
+		path.join(__dirname, "../../documents/guides"),
+		path.join(__dirname, "../../documents/"),
+	);
+
+	const post = docs.find((doc) => doc.url === url);
+	if (!post) {
+		throw new Error("TODO: 404 errors");
+	}
+
+	const {
+		attributes: {title},
+		body,
+	} = post;
 	return t`
 		<${Root} title="Crank.js | ${title}" url=${url} storage=${storage}>
 			<${Sidebar} docs=${docs} url=${url} title="Guides" />
 			<main class="main">
 				<div class="content">
 					<h1>${title}</h1>
-					${children}
+					<${Marked} markdown=${body} components=${components} />
 				</div>
 			</main>
 		<//Root>

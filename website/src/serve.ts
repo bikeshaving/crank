@@ -46,7 +46,9 @@ const server = createServer(async (req, res) => {
 
 	const View = views[match.name];
 	if (!View) {
-		throw new Error(`Missing view for ${match.name}`);
+		res.writeHead(404, {"Content-Type": "text/html"});
+		res.end(`Missing view for ${match.name}`, "utf-8");
+		return;
 	}
 
 	res.writeHead(200, {"Content-Type": "text/html"});
@@ -57,6 +59,6 @@ const server = createServer(async (req, res) => {
 	res.end(html, "utf-8");
 });
 
-const PORT = 1337;
+const PORT = 1338;
 console.info(`Server is listening on port ${PORT}`);
 server.listen(PORT);
