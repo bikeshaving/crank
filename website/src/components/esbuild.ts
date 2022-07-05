@@ -1,8 +1,8 @@
-import {promises as fs} from "fs";
+import fs from "fs-extra";
 import * as path from "path";
 import * as ESBuild from "esbuild";
-import type {Children, Context} from "@b9g/crank/crank.js";
-import {t} from "@b9g/crank/template.js";
+
+// TODO: Pass plugins into storage or components
 import postcssPlugin from "./esbuild/postcss-plugin.js";
 import postcssPresetEnv from "postcss-preset-env";
 import postcssNested from "postcss-nested";
@@ -20,20 +20,33 @@ type CachedResult = ESBuild.BuildResult & {
 export interface StorageOptions {
 	dirname: string;
 	publicPath?: string | undefined;
+	staticPaths?: Array<string> | undefined;
 }
 
 export class Storage {
 	dirname: string;
 	publicPath: string;
+	staticPaths: Array<string>;
 	cache: Map<string, CachedResult>;
 
-	constructor({dirname, publicPath = "/static/"}: StorageOptions) {
+	constructor({
+		dirname,
+		publicPath = "/static/",
+		staticPaths = [],
+	}: StorageOptions) {
 		if (!path.isAbsolute(dirname)) {
 			throw new Error(`path (${dirname}) is not absolute`);
 		}
 
+		for (const staticPath of staticPaths) {
+			if (!path.isAbsolute(staticPath)) {
+				throw new Error(`path (${staticPath}) is not absolute`);
+			}
+		}
+
 		this.dirname = path.normalize(dirname);
 		this.publicPath = publicPath;
+		this.staticPaths = staticPaths;
 		this.cache = new Map();
 	}
 
@@ -89,20 +102,50 @@ export class Storage {
 	}
 
 	async write(dirname: string): Promise<void> {
+		await fs.ensureDir(dirname);
 		const outputs = Array.from(this.cache.values()).flatMap(
 			(result) => result.outputFiles,
 		);
 
 		await Promise.all(
 			outputs.map(async (output) => {
-				const filename = path.join(
-					dirname,
-					path.relative(this.dirname, output.path),
-				);
-
+				const outputPath = path.relative(this.dirname, output.path);
+				const filename = path.join(dirname, outputPath);
 				await fs.writeFile(filename, output.contents);
 			}),
 		);
+
+		await Promise.all(
+			this.staticPaths.map(async (staticPath) => {
+				await fs.copy(staticPath, dirname);
+			}),
+		);
+	}
+
+	async serve(inputPath: string): Promise<string | null> {
+		inputPath = inputPath.replace(new RegExp("^" + this.publicPath), "");
+		const outputs = Array.from(this.cache.values()).flatMap(
+			(result) => result.outputFiles,
+		);
+
+		for (const output of outputs) {
+			const outputPath = path.relative(this.dirname, output.path);
+			if (inputPath === outputPath) {
+				return output.text;
+			}
+		}
+
+		for (const staticPath of this.staticPaths) {
+			try {
+				return await fs.readFile(path.join(staticPath, inputPath), "utf-8");
+			} catch (err: any) {
+				if (err.code !== "ENOENT") {
+					throw err;
+				}
+			}
+		}
+
+		return null;
 	}
 
 	clear(): void {
@@ -112,6 +155,9 @@ export class Storage {
 	}
 }
 
+import type {Children, Context} from "@b9g/crank/crank.js";
+import {t} from "@b9g/crank/template.js";
+// TODO: Move components to their own file
 const StorageKey = Symbol.for("esbuild.StorageKey");
 declare global {
 	namespace Crank {
@@ -126,6 +172,7 @@ export interface PageProps {
 	children: Children;
 }
 
+// TODO: Better name
 export function* Page(this: Context, {storage, children}: PageProps) {
 	this.provide(StorageKey, storage);
 	let newStorage: Storage;

@@ -23,13 +23,17 @@ import {Sidebar} from "./components/navigation.js";
 import {Storage} from "./components/esbuild.js";
 import {Root} from "./components/root.js";
 
-const rootDirname = new URL(".", import.meta.url).pathname;
-const storage = new Storage({dirname: rootDirname});
+const __dirname = new URL(".", import.meta.url).pathname;
+const storage = new Storage({
+	dirname: __dirname,
+	staticPaths: [path.join(__dirname, "../static")],
+});
 
-const dist = path.join(rootDirname, "../dist");
+const dist = path.join(__dirname, "../dist");
 await fs.emptyDir(dist);
 await fs.ensureDir(dist);
 
+// TODO: Route this through the server or whatever
 import Home from "./views/home.js";
 {
 	// HOMEPAGE
@@ -44,8 +48,8 @@ import Guide from "./views/guide.js";
 {
 	// GUIDES
 	const docs = await collectDocuments(
-		path.join(rootDirname, "../documents/guides"),
-		path.join(rootDirname, "../documents/"),
+		path.join(__dirname, "../documents/guides"),
+		path.join(__dirname, "../documents/"),
 	);
 	await Promise.all(
 		docs.map(async (post) => {
@@ -115,8 +119,8 @@ function BlogPage({
 {
 	// BLOG POSTS
 	const posts = await collectDocuments(
-		path.join(rootDirname, "../documents/blog"),
-		path.join(rootDirname, "../documents/"),
+		path.join(__dirname, "../documents/blog"),
+		path.join(__dirname, "../documents/"),
 	);
 	posts.reverse();
 	await Promise.all(
@@ -147,7 +151,5 @@ function BlogPage({
 	);
 }
 
-await fs.copy(path.join(rootDirname, "../static"), path.join(dist, "static"));
-
-await storage.write(path.join(dist, "static/"));
+await storage.write(path.join(dist, "/static/"));
 storage.clear();

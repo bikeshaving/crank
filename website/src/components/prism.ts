@@ -102,7 +102,7 @@ export function* CodeBlock(
 		this.refresh();
 	});
 
-	this.addEventListener("keydown", (ev) => {
+	this.addEventListener("keydown", (ev: any) => {
 		if (ev.key === "Enter") {
 			// Potato quality tab-matching.
 			let {value: value1, selectionStart: selectionStart1, selectionEnd} = area;
