@@ -27,6 +27,7 @@
     "mini-css-extract-plugin": "^2.4.2",
     "nodemon": "^2.0.16",
     "normalize.css": "^8.0.1",
+    "path-to-regexp": "^6.2.1",
     "postcss-nested": "^5.0.6",
     "postcss-preset-env": "^6.7.0",
     "prism-themes": "^1.9.0",

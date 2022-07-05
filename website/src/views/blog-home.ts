@@ -1,8 +1,7 @@
 import {t} from "@b9g/crank/template.js";
 import * as path from "path";
 
-import {Root} from "../views/root.js";
-
+import {Root} from "../components/root.js";
 import {Sidebar} from "../components/navigation.js";
 import {BlogContent} from "../components/blog-content.js";
 import {Marked} from "../components/marked.js";
@@ -12,17 +11,17 @@ import type {Storage} from "../components/esbuild.js";
 import {collectDocuments} from "../models/document.js";
 const __dirname = new URL(".", import.meta.url).pathname;
 
-export interface BlogIndexPageProps {
+export interface BlogHomeProps {
 	storage: Storage;
 }
 
-export default async function BlogIndexPage({storage}: BlogIndexPageProps) {
-	// BLOG INDEX
+export default async function BlogHome({storage}: BlogHomeProps) {
 	const posts = await collectDocuments(
 		path.join(__dirname, "../../documents/blog"),
 		path.join(__dirname, "../../documents/"),
 	);
 	posts.reverse();
+
 	return t`
 		<${Root} title="Crank.js | Blog" url="/blog" storage=${storage}>
 			<${Sidebar} docs=${posts} url="/blog" title="Recent Posts" />

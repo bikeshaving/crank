@@ -14,15 +14,14 @@ import "prismjs/components/prism-tsx.js";
 import "prismjs/components/prism-diff.js";
 import "prismjs/components/prism-bash.js";
 
+import {collectDocuments} from "./models/document.js";
+import type {DocInfo} from "./models/document.js";
+
 import {Marked} from "./components/marked.js";
 import {components} from "./components/marked-components.js";
 import {Sidebar} from "./components/navigation.js";
-
 import {Storage} from "./components/esbuild.js";
-
-import {collectDocuments} from "./models/document.js";
-import type {DocInfo} from "./models/document.js";
-import {Root} from "./views/root.js";
+import {Root} from "./components/root.js";
 
 const rootDirname = new URL(".", import.meta.url).pathname;
 const storage = new Storage({dirname: rootDirname});
@@ -30,35 +29,17 @@ const storage = new Storage({dirname: rootDirname});
 const dist = path.join(rootDirname, "../dist");
 await fs.emptyDir(dist);
 await fs.ensureDir(dist);
-import Index from "./views/index.js";
+
+import Home from "./views/home.js";
 {
 	// HOMEPAGE
 	await fs.writeFile(
 		path.join(dist, "index.html"),
-		await renderer.render(t`<${Index} storage=${storage} />`),
+		await renderer.render(t`<${Home} storage=${storage} />`),
 	);
 }
 
-interface GuidePageProps {
-	title: string;
-	url: string;
-	docs: Array<DocInfo>;
-	children: Children;
-}
-
-function GuidePage({title, docs, url, children}: GuidePageProps): Element {
-	return t`
-		<${Root} title="Crank.js | ${title}" url=${url} storage=${storage}>
-			<${Sidebar} docs=${docs} url=${url} title="Guides" />
-			<main class="main">
-				<div class="content">
-					<h1>${title}</h1>
-					${children}
-				</div>
-			</main>
-		<//Root>
-	`;
-}
+import Guide from "./views/guide.js";
 
 {
 	// GUIDES
@@ -70,29 +51,30 @@ function GuidePage({title, docs, url, children}: GuidePageProps): Element {
 		docs.map(async (post) => {
 			const {
 				attributes: {title, publish},
-				url,
 				body,
+				url,
 			} = post;
 			if (!publish) {
 				return;
 			}
 
 			const filename = path.join(dist, url + ".html");
-			await fs.ensureDir(path.dirname(filename));
 			const html = await renderer.render(t`
-				<${GuidePage} title=${title} docs=${docs} url=${url}>
-					<${Marked} markdown=${body} components=${components} />
-				<//GuidePage>
-			`);
+			<${Guide} title=${title} docs=${docs} url=${url} storage=${storage}>
+				<${Marked} markdown=${body} components=${components} />
+			<//Guide>
+		`);
+
+			await fs.ensureDir(path.dirname(filename));
 			await fs.writeFile(filename, html);
 		}),
 	);
 }
 
-import BlogIndex from "./views/blog-index.js";
+import BlogHome from "./views/blog-home.js";
 {
 	const html = await renderer.render(t`
-		<${BlogIndex} storage=${storage} />
+		<${BlogHome} storage=${storage} />
 	`);
 
 	await fs.ensureDir(path.join(dist, "blog"));
