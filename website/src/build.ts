@@ -14,6 +14,7 @@ import "prismjs/components/prism-tsx.js";
 import "prismjs/components/prism-diff.js";
 import "prismjs/components/prism-bash.js";
 
+import {router} from "./routes.js";
 import {collectDocuments} from "./models/document.js";
 import type {DocInfo} from "./models/document.js";
 
@@ -51,24 +52,27 @@ import Guide from "./views/guide.js";
 		path.join(__dirname, "../documents/guides"),
 		path.join(__dirname, "../documents/"),
 	);
+
 	await Promise.all(
 		docs.map(async (post) => {
 			const {
-				attributes: {title, publish},
-				body,
+				attributes: {publish},
 				url,
 			} = post;
 			if (!publish) {
 				return;
 			}
 
-			const filename = path.join(dist, url + ".html");
-			const html = await renderer.render(t`
-			<${Guide} title=${title} docs=${docs} url=${url} storage=${storage}>
-				<${Marked} markdown=${body} components=${components} />
-			<//Guide>
-		`);
+			const match = router.match(url);
+			if (!match) {
+				return;
+			}
 
+			const html = await renderer.render(t`
+				<${Guide} url=${url} storage=${storage} params=${match.params} />
+			`);
+
+			const filename = path.join(dist, url + ".html");
 			await fs.ensureDir(path.dirname(filename));
 			await fs.writeFile(filename, html);
 		}),
