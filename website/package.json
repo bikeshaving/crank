@@ -4,6 +4,7 @@
   "scripts": {
     "build": "ts-node-esm src/build.ts && echo crank.js.org > dist/CNAME",
     "watch": "nodemon --exec ts-node-esm src/build.ts -e 'js,ts,css,md' --ignore dist",
+		"serve": "nodemon --exec ts-node-esm src/serve.ts -e 'js,ts,css,md' --ignore dist",
     "start": "{ npm run watch & http-server dist -p 1337 -c-1; }",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
@@ -24,6 +25,7 @@
     "gh-pages": "^3.2.3",
     "http-server": "^14.1.0",
     "marked": "^4.0.8",
+    "mime-types": "^2.1.35",
     "mini-css-extract-plugin": "^2.4.2",
     "nodemon": "^2.0.16",
     "normalize.css": "^8.0.1",
@@ -37,5 +39,8 @@
     "truncate-html": "^1.0.4",
     "ts-node": "^10.7.0",
     "typescript": "^4.4.4"
+  },
+  "devDependencies": {
+    "@types/mime-types": "^2.1.1"
   }
 }
