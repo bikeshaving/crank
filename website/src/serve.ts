@@ -18,10 +18,11 @@ const storage = new Storage({
 import HomeView from "./views/home.js";
 import BlogHomeView from "./views/blog-home.js";
 import GuideView from "./views/guide.js";
-//import BlogView from "./views/blog.js";
+import BlogView from "./views/blog.js";
 const views: Record<string, Component> = {
 	home: HomeView,
 	blogHome: BlogHomeView,
+	blog: BlogView,
 	guide: GuideView,
 };
 
