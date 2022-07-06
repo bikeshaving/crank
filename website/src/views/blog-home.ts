@@ -2,7 +2,7 @@ import {t} from "@b9g/crank/template.js";
 import * as path from "path";
 
 import {Root} from "../components/root.js";
-import {Sidebar} from "../components/navigation.js";
+import {Sidebar} from "../components/sidebar.js";
 import {BlogContent} from "../components/blog-content.js";
 import {Marked} from "../components/marked.js";
 import {components} from "../components/marked-components.js";

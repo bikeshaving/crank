@@ -1,7 +1,7 @@
 import {t} from "@b9g/crank/template.js";
 import type {Children} from "@b9g/crank/crank.js";
 import {Page, Link, Script, Storage} from "../components/esbuild.js";
-import {Navbar} from "../components/navigation.js";
+import {Navbar} from "../components/navbar.js";
 import {GoogleSpyware} from "../components/google-spyware.js";
 
 export interface RootProps {
