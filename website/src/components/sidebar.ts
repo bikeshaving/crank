@@ -1,4 +1,7 @@
 import {t} from "@b9g/crank/template.js";
+import type {Element} from "@b9g/crank/crank.js";
+import type {DocInfo} from "../models/document.js";
+
 export interface SidebarProps {
 	docs: Array<DocInfo>;
 	url: string;
