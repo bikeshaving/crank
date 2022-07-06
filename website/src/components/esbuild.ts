@@ -1,6 +1,7 @@
 import fs from "fs-extra";
 import * as path from "path";
-import * as ESBuild from "esbuild";
+import {build} from "esbuild";
+import type {BuildResult, OutputFile} from "esbuild";
 import * as mime from "mime-types";
 
 // TODO: Pass plugins into storage or components
@@ -13,8 +14,9 @@ function isWithinDir(dir: string, name: string) {
 	return resolved.startsWith(dir);
 }
 
-type CachedResult = ESBuild.BuildResult & {
-	outputFiles: Array<ESBuild.OutputFile>;
+// We need this type because it can’t really be inferred from the ESBuild types.
+type CachedResult = BuildResult & {
+	outputFiles: Array<OutputFile>;
 };
 
 // TODO: better names for these options
@@ -51,7 +53,7 @@ export class Storage {
 		this.cache = new Map();
 	}
 
-	async build(filename: string): Promise<Array<ESBuild.OutputFile>> {
+	async build(filename: string): Promise<Array<OutputFile>> {
 		let result = this.cache.get(filename);
 		if (result != null) {
 			return result.outputFiles;
@@ -60,13 +62,12 @@ export class Storage {
 		}
 
 		const entryname = path.resolve(this.dirname, filename);
-		result = await ESBuild.build({
+		result = await build({
 			entryPoints: [entryname],
 			entryNames: "[name]-[hash]",
 			bundle: true,
 			write: false,
 			minify: false,
-			allowOverwrite: true,
 			outbase: this.dirname,
 			outdir: this.dirname,
 			sourcemap: true,
@@ -160,7 +161,16 @@ export class Storage {
 
 import type {Children, Context} from "@b9g/crank/crank.js";
 import {t} from "@b9g/crank/template.js";
-// TODO: Move components to their own file
+
+// TODO: Move components to their own file?
+// While it’s cool that we can use provisions and components here, I’m not sure
+// what the advantage is of defining these separate components over calling
+// async functions to get URLs from local file paths. ESBuild has a neat design
+// principle which is that the only way to actually “concatenate” files is to
+// have an actual source file which imports all the files you’re trying to
+// concatenate together. The thing I’m thinking about now, is how do we
+// concretely bundle dependencies for those which are generated from
+// components.
 const StorageKey = Symbol.for("esbuild.StorageKey");
 declare global {
 	namespace Crank {
@@ -175,7 +185,7 @@ export interface PageProps {
 	children: Children;
 }
 
-// TODO: Better name
+// TODO: Better name than “Page”
 export function* Page(this: Context, {storage, children}: PageProps) {
 	this.provide(StorageKey, storage);
 	let newStorage: Storage;
