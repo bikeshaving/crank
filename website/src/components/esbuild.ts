@@ -1,6 +1,7 @@
 import fs from "fs-extra";
 import * as path from "path";
 import * as ESBuild from "esbuild";
+import * as mime from "mime-types";
 
 // TODO: Pass plugins into storage or components
 import postcssPlugin from "./esbuild/postcss-plugin.js";
@@ -122,7 +123,7 @@ export class Storage {
 		);
 	}
 
-	async serve(inputPath: string): Promise<string | null> {
+	async serve(inputPath: string): Promise<Uint8Array | string | null> {
 		inputPath = inputPath.replace(new RegExp("^" + this.publicPath), "");
 		const outputs = Array.from(this.cache.values()).flatMap(
 			(result) => result.outputFiles,
@@ -131,13 +132,15 @@ export class Storage {
 		for (const output of outputs) {
 			const outputPath = path.relative(this.dirname, output.path);
 			if (inputPath === outputPath) {
-				return output.text;
+				return output.contents;
 			}
 		}
 
 		for (const staticPath of this.staticPaths) {
 			try {
-				return await fs.readFile(path.join(staticPath, inputPath), "utf-8");
+				const mimeType = mime.lookup(inputPath) || "application/octet-stream";
+				const charset = mime.charset(mimeType) || "binary";
+				return await fs.readFile(path.join(staticPath, inputPath), charset);
 			} catch (err: any) {
 				if (err.code !== "ENOENT") {
 					throw err;

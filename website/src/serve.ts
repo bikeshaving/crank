@@ -32,11 +32,14 @@ const server = createServer(async (req, res) => {
 	console.info(`req: ${url}`);
 	if (url.startsWith(storage.publicPath)) {
 		const source = await storage.serve(url);
+		const mimeType = mime.lookup(url) || "application/octet-stream";
+		const charset = mime.charset(mimeType) || "binary";
 		if (source) {
 			res.writeHead(200, {
-				"Content-Type": mime.lookup(url) || "application/octet-stream",
+				"Content-Type": mimeType,
 			});
-			res.end(source, "utf-8");
+			// TODO: import Buffer
+			res.end(source, charset as any);
 			return;
 		}
 	}
