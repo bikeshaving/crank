@@ -60,6 +60,8 @@ const CLOSING_SINGLE_QUOTE_RE = /[^\\]?'/g;
 
 const CLOSING_DOUBLE_QUOTE_RE = /[^\\]?"/g;
 
+const CLOSING_COMMENT_RE = /-->/g;
+
 function parse(
 	spans: ArrayLike<string>,
 	expressions: Array<unknown>,
@@ -71,7 +73,7 @@ function parse(
 		children: [],
 	};
 	const stack: Array<ParseElement> = [];
-	let matcher = CHILDREN_RE as RegExp | string;
+	let matcher = CHILDREN_RE as RegExp;
 	let lineStart = true;
 	// stringName and stringValue are used as state when handling expressions in prop strings:
 	//   t`<p class="foo ${exp}" />`
@@ -82,220 +84,209 @@ function parse(
 		let expressing = s < spans.length - 1;
 		// TODO: restructure the loop by matcher
 		for (let i = 0, end = i; i < span.length; i = end) {
-			if (typeof matcher === "string") {
-				// TODO: let’s just use regexps consistently and not worry about having
-				// a separate branch
-				//
-				// The only matcher which is a string right now is "-->". But I wrote
-				// this shit abstractly for bullshit aspirational reasons, like maybe
-				// we can use the structure of the parser in a parser generator for
-				// template tags.
-				const index = span.slice(i).indexOf(matcher);
-				if (index === -1) {
-					break;
-				}
-
-				end = index + matcher.length;
-				matcher = CHILDREN_RE;
-			} else {
-				matcher.lastIndex = i;
-				const match = matcher.exec(span);
-				if (!match) {
-					if (matcher === CHILDREN_RE) {
-						if (i < span.length) {
-							let after = span.slice(i);
-							if (s === spans.length - 1) {
-								after = after.replace(/\s*$/, "");
-							}
-
-							if (after) {
-								current.children.push({type: "value", value: after});
-							}
-						}
-					} else if (!expressing) {
-						// Not sure how much context to provide, 20 characters seems fine?
-						throw new SyntaxError(
-							`Unexpected text \`${span.slice(i, i + 20).trim()}\``,
-						);
-					} else if (
-						matcher === CLOSING_SINGLE_QUOTE_RE ||
-						matcher === CLOSING_DOUBLE_QUOTE_RE
-					) {
-						stringValue += span.slice(i);
-						const exp = expressions[s];
-						if (exp != null) {
-							stringValue += typeof exp === "string" ? exp : String(exp);
-						}
-
-						expressing = false;
-					}
-
-					break;
-				}
-
-				end = match.index + match[0].length;
+			matcher.lastIndex = i;
+			const match = matcher.exec(span);
+			if (!match) {
 				if (matcher === CHILDREN_RE) {
-					const [, newline, comment, tag, slash, tagName] = match;
-					let before = span.slice(i, match.index);
-					if (lineStart) {
-						before = before.replace(/^\s*/, "");
-						lineStart = false;
-					}
-
-					if (newline) {
-						// We preserve whitespace before escaped newlines.
-						//   t` \
-						//   `
-						if (span[Math.max(0, match.index - 1)] === "\\") {
-							// remove the backslash
-							before = before.slice(0, -1);
-						} else {
-							before = before.replace(/\s*$/, "");
+					if (i < span.length) {
+						let after = span.slice(i);
+						if (s === spans.length - 1) {
+							after = after.replace(/\s*$/, "");
 						}
 
-						lineStart = true;
-					}
-
-					if (before) {
-						current.children.push({type: "value", value: before});
-					}
-
-					if (comment) {
-						if (end === span.length) {
-							// We allow expressions in comments:
-							//   t`<!-- ${exp} -->`
-							matcher = "-->";
-						}
-					} else if (tag) {
-						let tag: Tag = tagName;
-						if (expressing && end === span.length) {
-							tag = expressions[s] as Tag;
-							expressing = false;
-						}
-
-						if (slash) {
-							if (!stack.length) {
-								throw new SyntaxError(
-									`Unmatched closing tag "${getTagDisplay(tag)}"`,
-								);
-							} else if (slash !== "//" && current.tag !== tag) {
-								throw new SyntaxError(
-									`Mismatched closing tag "${getTagDisplay(
-										tag,
-									)}" for opening tag "${getTagDisplay(current.tag)}"`,
-								);
-							}
-
-							current = stack.pop()!;
-							matcher = CLOSING_TAG_RE;
-						} else {
-							stack.push(current);
-							const next = {
-								type: "element" as const,
-								tag,
-								props: null,
-								children: [],
-							};
-							current.children.push(next);
-							current = next;
-							matcher = PROPS_RE;
+						if (after) {
+							current.children.push({type: "value", value: after});
 						}
 					}
-				} else if (matcher === PROPS_RE) {
-					if (i < match.index) {
-						throw new SyntaxError(
-							`Unexpected text \`${span.slice(i, match.index).trim()}\``,
-						);
+				} else if (matcher === CLOSING_COMMENT_RE) {
+					if (!expressing) {
+						throw new SyntaxError('Missing "-->"');
 					}
-
-					const [, closer, spread, name, equals, string] = match;
-					if (closer) {
-						if (closer[0] === "/") {
-							// This is a self-closing element, so there will always be a
-							// result on the stack.
-							current = stack.pop()!;
-						}
-
-						matcher = CHILDREN_RE;
-					} else if (spread) {
-						if (!expressing || end < span.length) {
-							throw new SyntaxError(
-								`Missing expression after "..." while parsing props for ${String(
-									getTagDisplay(current.tag),
-								)}`,
-							);
-						}
-
-						current.props = {...current.props, ...(expressions[s] as any)};
-						expressing = false;
-					} else if (name) {
-						let value: unknown;
-						if (string == null) {
-							if (!equals) {
-								value = true;
-							} else if (end < span.length) {
-								throw new SyntaxError(
-									`Unexpected text \`${span.slice(end, end + 20)}\``,
-								);
-							} else if (!expressing) {
-								throw new SyntaxError("Expression expected");
-							} else {
-								value = expressions[s];
-								expressing = false;
-							}
-						} else {
-							const quote = string[0];
-							if (end === span.length) {
-								// expression in a string
-								if (!expressing) {
-									throw new SyntaxError("Expression expected");
-								}
-
-								expressing = false;
-								stringName = name;
-								stringValue = string;
-								const exp = expressions[s];
-								if (exp != null) {
-									stringValue += typeof exp === "string" ? exp : String(exp);
-								}
-
-								matcher =
-									quote === "'"
-										? CLOSING_SINGLE_QUOTE_RE
-										: CLOSING_DOUBLE_QUOTE_RE;
-								break;
-							}
-
-							value = formatString(string);
-						}
-
-						if (current.props == null) {
-							current.props = {};
-						}
-
-						current.props[name] = value;
-					}
-				} else if (matcher === CLOSING_TAG_RE) {
-					if (i < match.index) {
-						throw new SyntaxError(
-							`Unexpected text \`${span.slice(i, match.index).trim()}\``,
-						);
-					}
-
-					matcher = CHILDREN_RE;
+				} else if (!expressing) {
+					// Not sure how much context to provide, 20 characters seems fine?
+					throw new SyntaxError(
+						`Unexpected text \`${span.slice(i, i + 20).trim()}\``,
+					);
 				} else if (
 					matcher === CLOSING_SINGLE_QUOTE_RE ||
 					matcher === CLOSING_DOUBLE_QUOTE_RE
 				) {
-					// end - 1 removes the closing quote
-					stringValue += span.slice(i, end);
+					stringValue += span.slice(i);
+					const exp = expressions[s];
+					if (exp != null) {
+						stringValue += typeof exp === "string" ? exp : String(exp);
+					}
+
+					expressing = false;
+				}
+
+				break;
+			}
+
+			end = match.index + match[0].length;
+			if (matcher === CHILDREN_RE) {
+				const [, newline, comment, tag, slash, tagName] = match;
+				let before = span.slice(i, match.index);
+				if (lineStart) {
+					before = before.replace(/^\s*/, "");
+					lineStart = false;
+				}
+
+				if (newline) {
+					// We preserve whitespace before escaped newlines.
+					//   t` \
+					//   `
+					if (span[Math.max(0, match.index - 1)] === "\\") {
+						// remove the backslash
+						before = before.slice(0, -1);
+					} else {
+						before = before.replace(/\s*$/, "");
+					}
+
+					lineStart = true;
+				}
+
+				if (before) {
+					current.children.push({type: "value", value: before});
+				}
+
+				if (comment) {
+					if (end === span.length) {
+						// We allow expressions in comments:
+						//   t`<!-- ${exp} -->`
+						matcher = CLOSING_COMMENT_RE;
+					}
+				} else if (tag) {
+					let tag: Tag = tagName;
+					if (expressing && end === span.length) {
+						tag = expressions[s] as Tag;
+						expressing = false;
+					}
+
+					if (slash) {
+						if (!stack.length) {
+							throw new SyntaxError(
+								`Unmatched closing tag "${getTagDisplay(tag)}"`,
+							);
+						} else if (slash !== "//" && current.tag !== tag) {
+							throw new SyntaxError(
+								`Mismatched closing tag "${getTagDisplay(
+									tag,
+								)}" for opening tag "${getTagDisplay(current.tag)}"`,
+							);
+						}
+
+						current = stack.pop()!;
+						matcher = CLOSING_TAG_RE;
+					} else {
+						stack.push(current);
+						const next = {
+							type: "element" as const,
+							tag,
+							props: null,
+							children: [],
+						};
+						current.children.push(next);
+						current = next;
+						matcher = PROPS_RE;
+					}
+				}
+			} else if (matcher === PROPS_RE) {
+				if (i < match.index) {
+					throw new SyntaxError(
+						`Unexpected text \`${span.slice(i, match.index).trim()}\``,
+					);
+				}
+
+				const [, closer, spread, name, equals, string] = match;
+				if (closer) {
+					if (closer[0] === "/") {
+						// This is a self-closing element, so there will always be a
+						// result on the stack.
+						current = stack.pop()!;
+					}
+
+					matcher = CHILDREN_RE;
+				} else if (spread) {
+					if (!expressing || end < span.length) {
+						throw new SyntaxError(
+							`Missing expression after "..." while parsing props for ${String(
+								getTagDisplay(current.tag),
+							)}`,
+						);
+					}
+
+					current.props = {...current.props, ...(expressions[s] as any)};
+					expressing = false;
+				} else if (name) {
+					let value: unknown;
+					if (string == null) {
+						if (!equals) {
+							value = true;
+						} else if (end < span.length) {
+							throw new SyntaxError(
+								`Unexpected text \`${span.slice(end, end + 20)}\``,
+							);
+						} else if (!expressing) {
+							throw new SyntaxError("Expression expected");
+						} else {
+							value = expressions[s];
+							expressing = false;
+						}
+					} else {
+						const quote = string[0];
+						if (end === span.length) {
+							// expression in a string
+							if (!expressing) {
+								throw new SyntaxError("Expression expected");
+							}
+
+							expressing = false;
+							stringName = name;
+							stringValue = string;
+							const exp = expressions[s];
+							if (exp != null) {
+								stringValue += typeof exp === "string" ? exp : String(exp);
+							}
+
+							matcher =
+								quote === "'"
+									? CLOSING_SINGLE_QUOTE_RE
+									: CLOSING_DOUBLE_QUOTE_RE;
+							break;
+						}
+
+						value = formatString(string);
+					}
+
 					if (current.props == null) {
 						current.props = {};
 					}
 
-					current.props[stringName] = formatString(stringValue);
-					matcher = PROPS_RE;
+					current.props[name] = value;
 				}
+			} else if (matcher === CLOSING_TAG_RE) {
+				if (i < match.index) {
+					throw new SyntaxError(
+						`Unexpected text \`${span.slice(i, match.index).trim()}\``,
+					);
+				}
+
+				matcher = CHILDREN_RE;
+			} else if (
+				matcher === CLOSING_SINGLE_QUOTE_RE ||
+				matcher === CLOSING_DOUBLE_QUOTE_RE
+			) {
+				// end - 1 removes the closing quote
+				stringValue += span.slice(i, end);
+				if (current.props == null) {
+					current.props = {};
+				}
+
+				current.props[stringName] = formatString(stringValue);
+				matcher = PROPS_RE;
+			} else if (matcher === CLOSING_COMMENT_RE) {
+				matcher = CHILDREN_RE;
 			}
 		}
 
@@ -303,7 +294,7 @@ function parse(
 			const value = expressions[s];
 			if (matcher === CHILDREN_RE) {
 				current.children.push({type: "value", value});
-			} else if (matcher !== "-->") {
+			} else if (matcher !== CLOSING_COMMENT_RE) {
 				throw new SyntaxError(
 					`Unexpected expression \${${JSON.stringify(value)}}`,
 				);
