@@ -105,30 +105,7 @@ function parse(
 		const span = spans[s];
 		// Whether or not an expression is upcoming. Set to false when expressions
 		// are consumed.
-		// TODO: It might be easier to handle all the expression logic at the
-		// bottom of the loop again
 		let expressing = s < spans.length - 1;
-		if (expressing && span === "") {
-			// We have multiple expressions in a row.
-			//   <p>${a}${b}</p>
-			switch (matcher) {
-				case CHILDREN_RE:
-					current.children.push({type: "value", value: expressions[s]});
-					expressing = false;
-					break;
-				case CLOSING_SINGLE_QUOTE_RE:
-				case CLOSING_DOUBLE_QUOTE_RE: {
-					const exp = expressions[s];
-					if (typeof exp !== "boolean" && exp != null) {
-						propValue += typeof exp === "string" ? exp : String(exp);
-					}
-
-					expressing = false;
-					break;
-				}
-			}
-		}
-
 		for (let i = 0, end = i; i < span.length; i = end) {
 			matcher.lastIndex = i;
 			const match = matcher.exec(span);
@@ -162,17 +139,15 @@ function parse(
 						lineStart = !!newline;
 						if (comment) {
 							if (end === span.length) {
-								// We allow expressions in comments:
+								// Expression in a comment:
 								//   t`<!-- ${exp} -->`
 								matcher = CLOSING_COMMENT_RE;
-								if (expressing && end === span.length) {
-									expressing = false;
-								}
 							}
 						} else if (tag) {
 							let tag: Tag = tagName;
 							if (expressing && end === span.length) {
 								tag = expressions[s] as Tag;
+								// TAG EXPRESSION
 								expressing = false;
 							}
 
@@ -217,11 +192,6 @@ function parse(
 						}
 					}
 
-					if (expressing && end === span.length) {
-						current.children.push({type: "value", value: expressions[s]});
-						expressing = false;
-					}
-
 					break;
 
 				case PROPS_RE:
@@ -241,10 +211,6 @@ function parse(
 							}
 
 							matcher = CHILDREN_RE;
-							if (expressing && end === span.length) {
-								current.children.push({type: "value", value: expressions[s]});
-								expressing = false;
-							}
 						} else if (spread) {
 							if (!(expressing && end === span.length)) {
 								throw new SyntaxError(
@@ -255,6 +221,7 @@ function parse(
 							}
 
 							current.props = {...current.props, ...(expressions[s] as any)};
+							// SPREAD PROP EXPRESSION
 							expressing = false;
 						} else if (name) {
 							let value: unknown;
@@ -268,6 +235,7 @@ function parse(
 								} else if (!expressing) {
 									throw new SyntaxError("Expression expected");
 								} else {
+									// PROP EXPRESSION
 									value = expressions[s];
 									expressing = false;
 								}
@@ -280,12 +248,6 @@ function parse(
 											: CLOSING_DOUBLE_QUOTE_RE;
 									propName = name;
 									propValue = string;
-									const exp = expressions[s];
-									if (typeof exp !== "boolean" && exp != null) {
-										propValue += typeof exp === "string" ? exp : String(exp);
-									}
-
-									expressing = false;
 									break;
 								}
 
@@ -296,7 +258,6 @@ function parse(
 						}
 					} else {
 						if (!expressing) {
-							// TODO: is this branch actually possible?
 							// Not sure how much context to provide, 20 characters seems fine?
 							throw new SyntaxError(
 								`Unexpected text \`${span.slice(i, i + 20).trim()}\``,
@@ -316,7 +277,6 @@ function parse(
 
 						matcher = CHILDREN_RE;
 					} else {
-						// TODO: throw an unexpected expression error maybe.
 						// Not sure how much context to provide, 20 characters seems fine?
 						if (!expressing) {
 							throw new SyntaxError(
@@ -345,15 +305,6 @@ function parse(
 						}
 					}
 
-					if (expressing && end === span.length) {
-						const exp = expressions[s];
-						if (typeof exp !== "boolean" && exp != null) {
-							propValue += typeof exp === "string" ? exp : String(exp);
-						}
-
-						expressing = false;
-					}
-
 					break;
 
 				case CLOSING_COMMENT_RE:
@@ -365,15 +316,40 @@ function parse(
 						}
 					}
 
-					expressing = false;
 					break;
 			}
 		}
 
 		if (expressing) {
-			throw new SyntaxError(
-				`Unexpected expression \${${JSON.stringify(expressions[s])}}`,
-			);
+			switch (matcher) {
+				case CHILDREN_RE:
+					// TODO: handle tag expressions
+					current.children.push({type: "value", value: expressions[s]});
+					break;
+
+				//TODO
+				//case PROPS_RE:
+				//	break;
+				//case CLOSING_BRACKET_RE:
+				//	break;
+				case CLOSING_SINGLE_QUOTE_RE:
+				case CLOSING_DOUBLE_QUOTE_RE: {
+					const exp = expressions[s];
+					if (typeof exp !== "boolean" && exp != null) {
+						propValue += typeof exp === "string" ? exp : String(exp);
+					}
+
+					break;
+				}
+
+				case CLOSING_COMMENT_RE:
+					break;
+
+				default:
+					throw new SyntaxError(
+						`Unexpected expression \${${JSON.stringify(expressions[s])}}`,
+					);
+			}
 		}
 
 		lineStart = false;
