@@ -105,9 +105,7 @@ describe("happy path", () => {
 
 		expect(t`
 			${"Hello"} <span>world</span>
-		`).toEqual(
-			c("", null, "Hello", " ", c("span", null, "world")),
-		);
+		`).toEqual(c("", null, "Hello", " ", c("span", null, "world")));
 	});
 
 	test("shorthand boolean props", () => {
