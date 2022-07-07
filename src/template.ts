@@ -21,17 +21,31 @@ export function template(
 	return createElementsFromParse(parsed);
 }
 
-interface ParseElement {
-	type: "element";
-	tag: Tag;
-	props: Record<string, any> | null;
-	children: Array<ParseElement | ParseValue>;
-}
-
 interface ParseValue {
 	type: "value";
 	value: unknown;
 }
+
+interface ParseElement {
+	type: "element";
+	tag: Tag;
+	props: Array<ParseProp>;
+	children: Array<ParseElement | ParseValue>;
+}
+
+interface ParseProp {
+	type: "prop";
+	// null means spread prop
+	name: string | null;
+	value: unknown;
+	// TODO
+	// value: ParseValue | ParsePropString;
+}
+
+//interface ParsePropString {
+//	type: "propsString";
+//	parts: Array<string | ParseValue>;
+//}
 
 /* Grammar
 $CHILDREN: ($ELEMENT | $COMMENT | ${unknown} | [\S\s])*
@@ -95,9 +109,10 @@ function parse(
 	let current: ParseElement = {
 		type: "element",
 		tag: "",
-		props: null,
+		props: [],
 		children: [],
 	};
+
 	let lineStart = true;
 	let propName = "";
 	let propValue = "";
@@ -171,7 +186,7 @@ function parse(
 								const next = {
 									type: "element" as const,
 									tag,
-									props: null,
+									props: [],
 									children: [],
 								};
 								current.children.push(next);
@@ -220,7 +235,11 @@ function parse(
 								);
 							}
 
-							current.props = {...current.props, ...(expressions[s] as any)};
+							current.props.push({
+								type: "prop",
+								name: null,
+								value: expressions[s],
+							});
 							// SPREAD PROP EXPRESSION
 							expressing = false;
 						} else if (name) {
@@ -254,7 +273,7 @@ function parse(
 								value = formatString(string);
 							}
 
-							current.props = {...current.props, ...{[name]: value}};
+							current.props.push({type: "prop", name, value});
 						}
 					} else {
 						if (!expressing) {
@@ -290,10 +309,12 @@ function parse(
 				case CLOSING_DOUBLE_QUOTE_RE:
 					propValue += span.slice(i, end);
 					if (match) {
-						current.props = {
-							...current.props,
-							...{[propName]: formatString(propValue)},
-						};
+						current.props.push({
+							type: "prop",
+							name: propName,
+							value: formatString(propValue),
+						});
+
 						matcher = PROPS_RE;
 					} else {
 						if (!expressing) {
@@ -391,5 +412,16 @@ function createElementsFromParse(parsed: ParseElement): Element {
 		);
 	}
 
-	return c(parsed.tag, parsed.props, ...children);
+	let props = parsed.props.length ? ({} as Record<string, unknown>) : null;
+	for (let i = 0; i < parsed.props.length; i++) {
+		const prop = parsed.props[i];
+		if (prop.name === null) {
+			// name is null for spread props
+			props = {...props, ...(prop.value as any)};
+		} else {
+			props![prop.name] = prop.value;
+		}
+	}
+
+	return c(parsed.tag, props, ...children);
 }
