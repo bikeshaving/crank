@@ -79,6 +79,9 @@ describe("happy path", () => {
 		expect(t`
 			<div>${ex1} ${ex2}</div>
 		`).toEqual(c("div", null, "Hello", " ", "world"));
+		expect(t`
+			<div>${ex1}${ex2}</div>
+		`).toEqual(c("div", null, "Hello", "world"));
 
 		expect(t`
 			<div>
@@ -98,6 +101,12 @@ describe("happy path", () => {
 					...[null, " ", undefined, " ", true, " ", false, " ", 1, " ", 2],
 				),
 			),
+		);
+
+		expect(t`
+			${"Hello"} <span>world</span>
+		`).toEqual(
+			c("", null, "Hello", " ", c("span", null, "world")),
 		);
 	});
 
@@ -208,6 +217,10 @@ describe("happy path", () => {
 		expect(t`
 			<p class="a\\${1}\\${2}\\\a${3}\"" />
 		`).toEqual(c("p", {class: 'a\\1\\2\\a3"'}));
+
+		expect(t`
+			<p class="a${true}${false}${null}${undefined}b" />
+		`).toEqual(c("p", {class: "ab"}));
 	});
 });
 
