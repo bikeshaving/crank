@@ -193,7 +193,9 @@ describe("happy path", () => {
 				<!--<span>Hello</span>--> <!--<span>world</span>-->
 			</div>
 		`).toEqual(c("div", null, " "));
+	});
 
+	test("comment expressions", () => {
 		expect(t`
 			<div>
 				<!--
@@ -204,7 +206,7 @@ describe("happy path", () => {
 		`).toEqual(c("div", null, "Hello"));
 	});
 
-	test("string expressions", () => {
+	test("prop string expressions", () => {
 		expect(t`
 			<p class="${undefined} ${null} ${"a"}-${{a: "1"}}-" />
 		`).toEqual(c("p", {class: "  a-[object Object]-"}));
