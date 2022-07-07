@@ -23,22 +23,22 @@ export function template(
 
 interface ParseValue {
 	type: "value";
-	value: unknown;
+	value: any;
 }
 
 interface ParseElement {
 	type: "element";
-	tag: Tag;
-	props: Array<ParseProp>;
+	open: ParseValue;
+	close: ParseValue | null;
+	props: Array<ParseProp | ParseValue>;
 	children: Array<ParseElement | ParseValue>;
 }
 
 interface ParseProp {
 	type: "prop";
-	// null means spread prop
-	name: string | null;
+	name: string;
 	value: unknown;
-	// TODO
+	// TODO:
 	// value: ParseValue | ParsePropString;
 }
 
@@ -108,7 +108,8 @@ function parse(
 	const stack: Array<ParseElement> = [];
 	let current: ParseElement = {
 		type: "element",
-		tag: "",
+		open: {type: "value", value: ""},
+		close: null,
 		props: [],
 		children: [],
 	};
@@ -118,9 +119,10 @@ function parse(
 	let propValue = "";
 	for (let s = 0; s < spans.length; s++) {
 		const span = spans[s];
-		// Whether or not an expression is upcoming. Set to false when expressions
-		// are consumed.
-		let expressing = s < spans.length - 1;
+		// Whether or not an expression is upcoming.
+		// Set to false when expressions are consumed.
+		const expressing = s < spans.length - 1;
+		let expressionTarget: ParseValue | ParseProp | null = null;
 		for (let i = 0, end = i; i < span.length; i = end) {
 			matcher.lastIndex = i;
 			const match = matcher.exec(span);
@@ -163,29 +165,32 @@ function parse(
 							if (expressing && end === span.length) {
 								tag = expressions[s] as Tag;
 								// TAG EXPRESSION
-								expressing = false;
+								expressionTarget = current.open;
 							}
 
 							if (slash) {
-								if (!stack.length) {
-									throw new SyntaxError(
-										`Unmatched closing tag "${getTagDisplay(tag)}"`,
-									);
-								} else if (slash !== "//" && current.tag !== tag) {
-									throw new SyntaxError(
-										`Mismatched closing tag "${getTagDisplay(
-											tag,
-										)}" for opening tag "${getTagDisplay(current.tag)}"`,
-									);
-								}
+								// TODO: Move this logic later
+								// TODO: Use the closing property of ParseElement
+								//if (!stack.length) {
+								//	throw new SyntaxError(
+								//		`Unmatched closing tag "${getTagDisplay(tag)}"`,
+								//	);
+								//} else if (slash !== "//" && current.tag.value !== tag) {
+								//	throw new SyntaxError(
+								//		`Mismatched closing tag "${getTagDisplay(
+								//			tag,
+								//		)}" for opening tag "${getTagDisplay(current.tag.value)}"`,
+								//	);
+								//}
 
 								current = stack.pop()!;
 								matcher = CLOSING_BRACKET_RE;
 							} else {
 								stack.push(current);
-								const next = {
-									type: "element" as const,
-									tag,
+								const next: ParseElement = {
+									type: "element",
+									open: {type: "value", value: tag},
+									close: null,
 									props: [],
 									children: [],
 								};
@@ -230,23 +235,20 @@ function parse(
 							if (!(expressing && end === span.length)) {
 								throw new SyntaxError(
 									`Missing expression after "..." while parsing props for ${String(
-										getTagDisplay(current.tag),
+										getTagDisplay(current.open.value),
 									)}`,
 								);
 							}
 
-							current.props.push({
-								type: "prop",
-								name: null,
-								value: expressions[s],
-							});
+							const value: ParseValue = {type: "value", value: expressions[s]};
+							current.props.push(value);
 							// SPREAD PROP EXPRESSION
-							expressing = false;
+							expressionTarget = value;
 						} else if (name) {
-							let value: unknown;
+							const prop: ParseProp = {type: "prop", name, value: null};
 							if (string == null) {
 								if (!equals) {
-									value = true;
+									prop.value = true;
 								} else if (end < span.length) {
 									throw new SyntaxError(
 										`Unexpected text \`${span.slice(end, end + 20)}\``,
@@ -254,9 +256,9 @@ function parse(
 								} else if (!expressing) {
 									throw new SyntaxError("Expression expected");
 								} else {
+									prop.value = expressions[s];
 									// PROP EXPRESSION
-									value = expressions[s];
-									expressing = false;
+									expressionTarget = prop;
 								}
 							} else {
 								const quote = string[0];
@@ -268,12 +270,12 @@ function parse(
 									propName = name;
 									propValue = string;
 									break;
+								} else {
+									prop.value = formatString(string);
 								}
-
-								value = formatString(string);
 							}
 
-							current.props.push({type: "prop", name, value});
+							current.props.push(prop);
 						}
 					} else {
 						if (!expressing) {
@@ -324,8 +326,9 @@ function parse(
 								}\``,
 							);
 						}
-					}
 
+						// TODO: expressionTarget
+					}
 					break;
 
 				case CLOSING_COMMENT_RE:
@@ -342,17 +345,18 @@ function parse(
 		}
 
 		if (expressing) {
+			const value = expressions[s];
+			if (expressionTarget) {
+				expressionTarget.value = value;
+				continue;
+			}
+
 			switch (matcher) {
 				case CHILDREN_RE:
 					// TODO: handle tag expressions
 					current.children.push({type: "value", value: expressions[s]});
 					break;
 
-				//TODO
-				//case PROPS_RE:
-				//	break;
-				//case CLOSING_BRACKET_RE:
-				//	break;
 				case CLOSING_SINGLE_QUOTE_RE:
 				case CLOSING_DOUBLE_QUOTE_RE: {
 					const exp = expressions[s];
@@ -378,7 +382,7 @@ function parse(
 
 	if (stack.length) {
 		throw new SyntaxError(
-			`Unmatched opening tag "${getTagDisplay(current.tag)}"`,
+			`Unmatched opening tag "${getTagDisplay(current.open.value)}"`,
 		);
 	}
 
@@ -415,13 +419,13 @@ function createElementsFromParse(parsed: ParseElement): Element {
 	let props = parsed.props.length ? ({} as Record<string, unknown>) : null;
 	for (let i = 0; i < parsed.props.length; i++) {
 		const prop = parsed.props[i];
-		if (prop.name === null) {
-			// name is null for spread props
-			props = {...props, ...(prop.value as any)};
-		} else {
+		if (prop.type === "prop") {
 			props![prop.name] = prop.value;
+		} else {
+			// We re-use the ParseValue type for spread props
+			props = {...props, ...(prop.value as any)};
 		}
 	}
 
-	return c(parsed.tag, props, ...children);
+	return c(parsed.open.value, props, ...children);
 }
