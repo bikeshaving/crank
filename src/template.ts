@@ -11,6 +11,7 @@ export function template(
 ): Element {
 	let parsed = parse(spans.raw, expressions);
 	const children = parsed.children;
+	// TODO: Does this logic belong here?
 	if (children.length === 0) {
 		return c("");
 	} else if (children.length === 1 && children[0].type === "element") {
@@ -21,17 +22,23 @@ export function template(
 	return createElementsFromParse(parsed);
 }
 
+interface ParseElement {
+	type: "element";
+	open: ParseTag;
+	close: ParseTag | null;
+	props: Array<ParseProp | ParseValue>;
+	children: Array<ParseElement | ParseValue>;
+}
+
 interface ParseValue {
 	type: "value";
 	value: any;
 }
 
-interface ParseElement {
-	type: "element";
-	open: ParseValue;
-	close: ParseValue | null;
-	props: Array<ParseProp | ParseValue>;
-	children: Array<ParseElement | ParseValue>;
+interface ParseTag {
+	type: "tag";
+	slash: string;
+	value: any;
 }
 
 interface ParseProp {
@@ -108,7 +115,7 @@ function parse(
 	const stack: Array<ParseElement> = [];
 	let current: ParseElement = {
 		type: "element",
-		open: {type: "value", value: ""},
+		open: {type: "tag", slash: "", value: ""},
 		close: null,
 		props: [],
 		children: [],
@@ -120,9 +127,8 @@ function parse(
 	for (let s = 0; s < spans.length; s++) {
 		const span = spans[s];
 		// Whether or not an expression is upcoming.
-		// Set to false when expressions are consumed.
 		const expressing = s < spans.length - 1;
-		let expressionTarget: ParseValue | ParseProp | null = null;
+		let expressionTarget: ParseValue | ParseTag | ParseProp | null = null;
 		for (let i = 0, end = i; i < span.length; i = end) {
 			matcher.lastIndex = i;
 			const match = matcher.exec(span);
@@ -130,7 +136,7 @@ function parse(
 			switch (matcher) {
 				case CHILDREN_RE:
 					if (match) {
-						const [, newline, comment, tag, slash, tagName] = match;
+						const [, newline, comment, tag, closingSlash, tagName] = match;
 						if (i < match.index) {
 							let before = span.slice(i, match.index);
 							if (lineStart) {
@@ -161,39 +167,44 @@ function parse(
 								matcher = CLOSING_COMMENT_RE;
 							}
 						} else if (tag) {
-							let tag: Tag = tagName;
-							if (expressing && end === span.length) {
-								tag = expressions[s] as Tag;
-								// TAG EXPRESSION
-								expressionTarget = current.open;
-							}
+							if (closingSlash) {
+								current.close = {
+									type: "tag",
+									slash: closingSlash,
+									value: tagName,
+								};
 
-							if (slash) {
-								// TODO: Move this logic later
-								// TODO: Use the closing property of ParseElement
-								//if (!stack.length) {
-								//	throw new SyntaxError(
-								//		`Unmatched closing tag "${getTagDisplay(tag)}"`,
-								//	);
-								//} else if (slash !== "//" && current.tag.value !== tag) {
-								//	throw new SyntaxError(
-								//		`Mismatched closing tag "${getTagDisplay(
-								//			tag,
-								//		)}" for opening tag "${getTagDisplay(current.tag.value)}"`,
-								//	);
-								//}
+								if (!stack.length) {
+									// TODO: expressions
+									throw new SyntaxError(`Unmatched closing tag "${tagName}"`);
+								}
+
+								if (end === span.length) {
+									// TAG EXPRESSION
+									expressionTarget = current.close;
+								}
 
 								current = stack.pop()!;
 								matcher = CLOSING_BRACKET_RE;
 							} else {
-								stack.push(current);
 								const next: ParseElement = {
 									type: "element",
-									open: {type: "value", value: tag},
+									open: {
+										type: "tag",
+										slash: "",
+										value: tagName,
+									},
 									close: null,
 									props: [],
 									children: [],
 								};
+
+								if (end === span.length) {
+									// TAG EXPRESSION
+									expressionTarget = next.open;
+								}
+
+								stack.push(current);
 								current.children.push(next);
 								current = next;
 								matcher = PROPS_RE;
@@ -353,12 +364,12 @@ function parse(
 
 			switch (matcher) {
 				case CHILDREN_RE:
-					// TODO: handle tag expressions
 					current.children.push({type: "value", value: expressions[s]});
 					break;
 
 				case CLOSING_SINGLE_QUOTE_RE:
 				case CLOSING_DOUBLE_QUOTE_RE: {
+					// TODO: concatenate later
 					const exp = expressions[s];
 					if (typeof exp !== "boolean" && exp != null) {
 						propValue += typeof exp === "string" ? exp : String(exp);
@@ -408,6 +419,18 @@ function formatString(str: string) {
 }
 
 function createElementsFromParse(parsed: ParseElement): Element {
+	if (
+		parsed.close !== null &&
+		parsed.close.slash !== "//" &&
+		parsed.open.value !== parsed.close.value
+	) {
+		throw new SyntaxError(
+			`Mismatched closing tag "${getTagDisplay(
+				parsed.close.value,
+			)}" for opening tag "${getTagDisplay(parsed.open.value)}"`,
+		);
+	}
+
 	const children: Array<unknown> = [];
 	for (let i = 0; i < parsed.children.length; i++) {
 		const child = parsed.children[i];
