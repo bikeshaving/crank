@@ -5,7 +5,7 @@
     "build": "ts-node-esm src/build.ts && echo crank.js.org > dist/CNAME",
     "watch": "nodemon --exec ts-node-esm src/build.ts -e 'js,ts,css,md' --ignore dist",
 		"serve": "nodemon --exec ts-node-esm src/serve.ts -e 'js,ts,css,md' --ignore dist",
-    "start": "{ npm run watch & http-server dist -p 1337 -c-1; }",
+		"static": "http-server dist -p 1337 -c-1",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
