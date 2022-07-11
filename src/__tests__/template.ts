@@ -294,17 +294,18 @@ describe("sad path", () => {
 		}).toThrow(new SyntaxError('Unexpected text `="\\"`'));
 	});
 
+	// TODO: more information
 	test("invalid expressions", () => {
 		const exp = {foo: "bar"};
 		expect(() => {
 			t`<div ${exp}>`;
-		}).toThrow(new SyntaxError('Unexpected expression ${{"foo":"bar"}}'));
+		}).toThrow(new SyntaxError("Unexpected expression"));
 		expect(() => {
 			t`<${"foo"}${"bar"}>`;
-		}).toThrow(new SyntaxError('Unexpected expression ${"bar"}'));
+		}).toThrow(new SyntaxError("Unexpected expression"));
 		expect(() => {
 			t`<p class${undefined} />`;
-		}).toThrow(new SyntaxError("Unexpected expression ${undefined}"));
+		}).toThrow(new SyntaxError("Unexpected expression"));
 	});
 
 	// TODO: Figure out a way to test special props and tags

@@ -9,9 +9,16 @@ export function template(
 	spans: TemplateStringsArray,
 	...expressions: Array<unknown>
 ): Element {
-	let parsed = parse(spans.raw, expressions);
+	const {element, targets} = parse(spans.raw);
+	for (let i = 0; i < expressions.length; i++) {
+		const exp = expressions[i];
+		const target = targets[i];
+		if (target) {
+			target.value = exp;
+		}
+	}
 	// TODO: cache the parse results
-	return createElementsFromParse(parsed);
+	return createElementsFromParse(element);
 }
 
 interface ParseElement {
@@ -102,19 +109,18 @@ const CLOSING_DOUBLE_QUOTE_RE = /[^\\]?"/g;
 
 const CLOSING_COMMENT_RE = /-->/g;
 
-// TODO: Make ParseResult return targets.
-//interface ParseResult {
-//	element: ParseElement;
-//	targets: Array<ParseValue | ParseTag | ParseProp | ParseSpreadProp>;
-//}
+type ExpressionTarget = ParseValue | ParseTag | ParseProp | ParseSpreadProp;
 
-function parse(
-	spans: ArrayLike<string>,
-	expressions: Array<unknown>,
-): ParseElement {
+// TODO: Make ParseResult return targets.
+interface ParseResult {
+	element: ParseElement;
+	targets: Array<ExpressionTarget | null>;
+}
+
+function parse(spans: ArrayLike<string>): ParseResult {
 	let matcher = CHILDREN_RE as RegExp;
 	const stack: Array<ParseElement> = [];
-	let current: ParseElement = {
+	let element: ParseElement = {
 		type: "element",
 		open: {type: "tag", slash: "", value: ""},
 		close: null,
@@ -122,17 +128,13 @@ function parse(
 		children: [],
 	};
 
+	const targets: Array<ExpressionTarget | null> = [];
 	let lineStart = true;
 	for (let s = 0; s < spans.length; s++) {
 		const span = spans[s];
 		// Whether or not an expression is upcoming.
 		const expressing = s < spans.length - 1;
-		let expressionTarget:
-			| ParseValue
-			| ParseTag
-			| ParseProp
-			| ParseSpreadProp
-			| null = null;
+		let expressionTarget: ExpressionTarget | null = null;
 		for (let i = 0, end = i; i < span.length; i = end) {
 			matcher.lastIndex = i;
 			const match = matcher.exec(span);
@@ -160,7 +162,7 @@ function parse(
 							}
 
 							if (before) {
-								current.children.push({type: "value", value: before});
+								element.children.push({type: "value", value: before});
 							}
 						}
 
@@ -173,7 +175,7 @@ function parse(
 							}
 						} else if (tag) {
 							if (closingSlash) {
-								current.close = {
+								element.close = {
 									type: "tag",
 									slash: closingSlash,
 									value: tagName,
@@ -186,10 +188,10 @@ function parse(
 
 								if (end === span.length) {
 									// TAG EXPRESSION
-									expressionTarget = current.close;
+									expressionTarget = element.close;
 								}
 
-								current = stack.pop()!;
+								element = stack.pop()!;
 								matcher = CLOSING_BRACKET_RE;
 							} else {
 								const next: ParseElement = {
@@ -209,9 +211,9 @@ function parse(
 									expressionTarget = next.open;
 								}
 
-								stack.push(current);
-								current.children.push(next);
-								current = next;
+								stack.push(element);
+								element.children.push(next);
+								element = next;
 								matcher = PROPS_RE;
 							}
 						}
@@ -223,7 +225,7 @@ function parse(
 							}
 
 							if (after) {
-								current.children.push({type: "value", value: after});
+								element.children.push({type: "value", value: after});
 							}
 						}
 					}
@@ -243,7 +245,7 @@ function parse(
 							if (tagEnd[0] === "/") {
 								// This is a self-closing element, so there will always be a
 								// result on the stack.
-								current = stack.pop()!;
+								element = stack.pop()!;
 							}
 
 							matcher = CHILDREN_RE;
@@ -251,16 +253,16 @@ function parse(
 							if (!(expressing && end === span.length)) {
 								throw new SyntaxError(
 									`Missing expression after "..." while parsing props for ${String(
-										getTagDisplay(current.open.value),
+										getTagDisplay(element.open.value),
 									)}`,
 								);
 							}
 
 							const value = {
 								type: "spreadProp" as const,
-								value: expressions[s],
+								value: null,
 							};
-							current.props.push(value);
+							element.props.push(value);
 							// SPREAD PROP EXPRESSION
 							expressionTarget = value;
 						} else if (name) {
@@ -276,7 +278,7 @@ function parse(
 									throw new SyntaxError("Expression expected");
 								} else {
 									// PROP EXPRESSION
-									value = {type: "value" as const, value: expressions[s]};
+									value = {type: "value" as const, value: null};
 									expressionTarget = value;
 								}
 							} else {
@@ -296,7 +298,7 @@ function parse(
 								name,
 								value,
 							};
-							current.props.push(prop);
+							element.props.push(prop);
 						}
 					} else {
 						if (!expressing) {
@@ -331,7 +333,7 @@ function parse(
 				case CLOSING_SINGLE_QUOTE_RE:
 				case CLOSING_DOUBLE_QUOTE_RE: {
 					const string = span.slice(i, end);
-					const prop = current.props[current.props.length - 1] as ParseProp;
+					const prop = element.props[element.props.length - 1] as ParseProp;
 					const propString = prop.value as ParsePropString;
 					propString.parts.push(string);
 					if (match) {
@@ -363,34 +365,34 @@ function parse(
 		}
 
 		if (expressing) {
-			const value = expressions[s];
 			if (expressionTarget) {
-				expressionTarget.value = value;
+				targets.push(expressionTarget);
 				continue;
 			}
 
 			switch (matcher) {
-				case CHILDREN_RE:
-					current.children.push({type: "value", value: expressions[s]});
+				case CHILDREN_RE: {
+					const target = {type: "value" as const, value: null};
+					element.children.push(target);
+					targets.push(target);
 					break;
+				}
 
 				case CLOSING_SINGLE_QUOTE_RE:
 				case CLOSING_DOUBLE_QUOTE_RE: {
-					const prop = current.props[current.props.length - 1] as ParseProp;
-					(prop.value as ParsePropString).parts.push({
-						type: "value",
-						value,
-					});
+					const prop = element.props[element.props.length - 1] as ParseProp;
+					const target = {type: "value" as const, value: null};
+					(prop.value as ParsePropString).parts.push(target);
+					targets.push(target);
 					break;
 				}
 
 				case CLOSING_COMMENT_RE:
+					targets.push(null);
 					break;
 
 				default:
-					throw new SyntaxError(
-						`Unexpected expression \${${JSON.stringify(expressions[s])}}`,
-					);
+					throw new SyntaxError("Unexpected expression");
 			}
 		}
 
@@ -400,15 +402,15 @@ function parse(
 	if (stack.length) {
 		// TODO: Figure out how to parameterize this
 		throw new SyntaxError(
-			`Unmatched opening tag "${getTagDisplay(current.open.value)}"`,
+			`Unmatched opening tag "${getTagDisplay(element.open.value)}"`,
 		);
 	}
 
-	if (current.children.length === 1 && current.children[0].type === "element") {
-		return current.children[0];
+	if (element.children.length === 1 && element.children[0].type === "element") {
+		element = element.children[0];
 	}
 
-	return current;
+	return {element, targets};
 }
 
 function getTagDisplay(tag: Tag) {
