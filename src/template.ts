@@ -20,7 +20,7 @@ export function template(
 		if (target) {
 			if (target.type === "error") {
 				throw new SyntaxError(
-					target.message.replace("${}", getTagDisplay(exp)),
+					target.message.replace("${}", formatTagForError(exp)),
 				);
 			}
 
@@ -35,43 +35,12 @@ export const t = template;
 
 export default template;
 
-/*
- * Matches first significant character in children mode.
- *
- * Group 1: newline
- * Group 2: comment
- * Group 3: tag
- * Group 4: closing slash
- * Group 5: tag name
- */
-const CHILDREN_RE =
-	/((?:\r|\n|\r\n)\s*)|(<!--[\S\s]*?(?:-->|$))|(<\s*(\/{0,2})\s*([-_$\w]*))/g;
-
-/*
- * Matches props after element tags.
- *
- * Group 1: tag end
- * Group 2: spread props
- * Group 3: prop name
- * Group 4: equals
- * Group 5: prop value string
- */
-const PROPS_RE =
-	/\s*(?:(\/?\s*>)|(\.\.\.\s*)|(?:([-_$\w]+)\s*(=)?\s*(?:("(\\"|[\S\s])*?(?:"|$)|'(?:\\'|[\S\s])*?(?:'|$)))?))/g;
-
-const CLOSING_BRACKET_RE = />/g;
-
-const CLOSING_SINGLE_QUOTE_RE = /[^\\]?'/g;
-
-const CLOSING_DOUBLE_QUOTE_RE = /[^\\]?"/g;
-
-const CLOSING_COMMENT_RE = /-->/g;
-
+// Type definitions for a bare-bones AST
 interface ParseElement {
 	type: "element";
 	open: ParseTag;
 	close: ParseTag | null;
-	// ParseValue is re-used to represent spread props.
+	// ParseValue is used to represent spread props.
 	props: Array<ParseProp | ParseValue>;
 	children: Array<ParseElement | ParseValue>;
 }
@@ -104,18 +73,49 @@ interface ParseError {
 	value: any;
 }
 
-type ExpressionTarget = ParseValue | ParseTag | ParseProp | ParseError;
-
 // The parse result includes an array of targets, references to objects in the
 // parse tree whose value property is overwritten with expressions expressions
 // whenever the template function is called. By separating the logic of parsing
-// the static spans from the handling of dynamic expressions, we can cache
+// static template spans from the handling of dynamic expressions, we can cache
 // parse results for successive calls.
+type ExpressionTarget = ParseValue | ParseTag | ParseProp | ParseError;
 
 interface ParseResult {
 	element: ParseElement;
 	targets: Array<ExpressionTarget | null>;
 }
+
+/**
+ * Matches first significant character in children mode.
+ *
+ * Group 1: newline
+ * Group 2: comment
+ * Group 3: tag
+ * Group 4: closing slash
+ * Group 5: tag name
+ */
+const CHILDREN_RE =
+	/((?:\r|\n|\r\n)\s*)|(<!--[\S\s]*?(?:-->|$))|(<\s*(\/{0,2})\s*([-_$\w]*))/g;
+
+/**
+ * Matches props after element tags.
+ *
+ * Group 1: tag end
+ * Group 2: spread props
+ * Group 3: prop name
+ * Group 4: equals
+ * Group 5: prop value string
+ */
+const PROPS_RE =
+	/\s*(?:(\/?\s*>)|(\.\.\.\s*)|(?:([-_$\w]+)\s*(=)?\s*(?:("(\\"|[\S\s])*?(?:"|$)|'(?:\\'|[\S\s])*?(?:'|$)))?))/g;
+
+const CLOSING_BRACKET_RE = />/g;
+
+const CLOSING_SINGLE_QUOTE_RE = /[^\\]?'/g;
+
+const CLOSING_DOUBLE_QUOTE_RE = /[^\\]?"/g;
+
+const CLOSING_COMMENT_RE = /-->/g;
 
 function parse(spans: ArrayLike<string>): ParseResult {
 	let matcher = CHILDREN_RE;
@@ -132,7 +132,7 @@ function parse(spans: ArrayLike<string>): ParseResult {
 	let lineStart = true;
 	for (let s = 0; s < spans.length; s++) {
 		const span = spans[s];
-		// Whether or not an expression is upcoming.
+		// Whether or not an expression is upcoming. Used to provide better errors.
 		const expressing = s < spans.length - 1;
 		let expressionTarget: ExpressionTarget | null = null;
 		for (let i = 0, end = i; i < span.length; i = end) {
@@ -443,9 +443,9 @@ function build(parsed: ParseElement): Element {
 		parsed.open.value !== parsed.close.value
 	) {
 		throw new SyntaxError(
-			`Unmatched closing tag ${getTagDisplay(
+			`Unmatched closing tag ${formatTagForError(
 				parsed.close.value,
-			)}, expected ${getTagDisplay(parsed.open.value)}`,
+			)}, expected ${formatTagForError(parsed.open.value)}`,
 		);
 	}
 
@@ -490,7 +490,7 @@ function build(parsed: ParseElement): Element {
 	return c(parsed.open.value, props, ...children);
 }
 
-function getTagDisplay(tag: unknown): string {
+function formatTagForError(tag: unknown): string {
 	return typeof tag === "function"
 		? tag.name + "()"
 		: typeof tag === "string"
