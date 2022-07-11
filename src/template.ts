@@ -25,7 +25,7 @@ interface ParseElement {
 	type: "element";
 	open: ParseTag;
 	close: ParseTag | null;
-	props: Array<ParseProp | ParseSpreadProp>;
+	props: Array<ParseProp | ParseValue>;
 	children: Array<ParseElement | ParseValue>;
 }
 
@@ -40,11 +40,6 @@ interface ParseTag {
 	value: any;
 }
 
-interface ParseSpreadProp {
-	type: "spreadProp";
-	value: any;
-}
-
 interface ParseProp {
 	type: "prop";
 	name: string;
@@ -55,27 +50,6 @@ interface ParsePropString {
 	type: "propString";
 	parts: Array<string | ParseValue>;
 }
-
-/* Grammar
-$CHILDREN: ($ELEMENT | $COMMENT | ${unknown} | [\S\s])*
-// TODO: Maybe allow escaped angle brackets here.
-$ELEMENT:
-  $SELF_CLOSING_ELEMENT |
-  $OPENING_ELEMENT $CHILDREN $CLOSING_ELEMENT
-$SELF_CLOSING_ELEMENT: "<" ($IDENTIFIER | ${Tag}) $PROPS "/" ">"
-$OPENING_ELEMENT: "<" ($IDENTIFIER | ${Tag})? $PROPS ">"
-$CLOSING_ELEMENT: "<" "/" "/"? ($IDENTIFIER | ${Tag})? ">"
-$PROPS: ($PROP | $SPREAD_PROP)*
-// TODO: Maybe allow prop names to be expressions.
-$PROP: $IDENTIFIER ("=" $PROP_VALUE)?
-$SPREAD_PROP: "..." ${unknown}
-$IDENTIFIER: [-_$\w]+
-$PROP_VALUE:
-  ('"' ('\\"' | [\S\s] | ${unknown})*? '"') |
-  ("'" ("\\'" | [\S\s] | ${unknown})*? "'") |
-  ${unknown}
-$COMMENT: "<!--" ([\S\s] | ${unknown})*? "-->"
-*/
 
 /*
  * Matches first significant character in children mode.
@@ -259,7 +233,7 @@ function parse(spans: ArrayLike<string>): ParseResult {
 							}
 
 							const value = {
-								type: "spreadProp" as const,
+								type: "value" as const,
 								value: null,
 							};
 							element.props.push(value);
