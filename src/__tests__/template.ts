@@ -217,7 +217,6 @@ describe("happy path", () => {
 		expect(t`
 			<p class="a\\${1}\\${2}\\\a${3}\"" />
 		`).toEqual(c("p", {class: 'a\\1\\2\\a3"'}));
-
 		expect(t`
 			<p class="a${true}${false}${null}${undefined}b" />
 		`).toEqual(c("p", {class: "ab"}));
