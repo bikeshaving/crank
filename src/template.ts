@@ -10,14 +10,6 @@ export function template(
 	...expressions: Array<unknown>
 ): Element {
 	let parsed = parse(spans.raw, expressions);
-	const children = parsed.children;
-	// TODO: Does this logic belong here?
-	if (children.length === 0) {
-		return c("");
-	} else if (children.length === 1 && children[0].type === "element") {
-		parsed = children[0];
-	}
-
 	// TODO: cache the parse results
 	return createElementsFromParse(parsed);
 }
@@ -109,6 +101,12 @@ const CLOSING_SINGLE_QUOTE_RE = /[^\\]?'/g;
 const CLOSING_DOUBLE_QUOTE_RE = /[^\\]?"/g;
 
 const CLOSING_COMMENT_RE = /-->/g;
+
+// TODO: Make ParseResult return targets.
+//interface ParseResult {
+//	element: ParseElement;
+//	targets: Array<ParseValue | ParseTag | ParseProp | ParseSpreadProp>;
+//}
 
 function parse(
 	spans: ArrayLike<string>,
@@ -400,9 +398,14 @@ function parse(
 	}
 
 	if (stack.length) {
+		// TODO: Figure out how to parameterize this
 		throw new SyntaxError(
 			`Unmatched opening tag "${getTagDisplay(current.open.value)}"`,
 		);
+	}
+
+	if (current.children.length === 1 && current.children[0].type === "element") {
+		return current.children[0];
 	}
 
 	return current;
