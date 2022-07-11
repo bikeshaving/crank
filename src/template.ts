@@ -1,55 +1,39 @@
-import {c, Element} from "./crank.js";
-import type {Tag} from "./crank.js";
+import {c} from "./crank.js";
+import type {Element} from "./crank.js";
 
-export const t = template;
-
-export default template;
-
+const cache = new Map<string, ParseResult>();
 export function template(
 	spans: TemplateStringsArray,
 	...expressions: Array<unknown>
 ): Element {
-	const {element, targets} = parse(spans.raw);
+	const key = JSON.stringify(spans.raw);
+	let parseResult = cache.get(key);
+	if (parseResult == null) {
+		parseResult = parse(spans.raw);
+		cache.set(key, parseResult);
+	}
+
+	const {element, targets} = parseResult;
 	for (let i = 0; i < expressions.length; i++) {
 		const exp = expressions[i];
 		const target = targets[i];
 		if (target) {
+			if (target.type === "error") {
+				throw new SyntaxError(
+					target.message.replace("${}", getTagDisplay(exp)),
+				);
+			}
+
 			target.value = exp;
 		}
 	}
-	// TODO: cache the parse results
-	return createElementsFromParse(element);
+
+	return build(element);
 }
 
-interface ParseElement {
-	type: "element";
-	open: ParseTag;
-	close: ParseTag | null;
-	props: Array<ParseProp | ParseValue>;
-	children: Array<ParseElement | ParseValue>;
-}
+export const t = template;
 
-interface ParseValue {
-	type: "value";
-	value: any;
-}
-
-interface ParseTag {
-	type: "tag";
-	slash: string;
-	value: any;
-}
-
-interface ParseProp {
-	type: "prop";
-	name: string;
-	value: ParseValue | ParsePropString;
-}
-
-interface ParsePropString {
-	type: "propString";
-	parts: Array<string | ParseValue>;
-}
+export default template;
 
 /*
  * Matches first significant character in children mode.
@@ -83,16 +67,58 @@ const CLOSING_DOUBLE_QUOTE_RE = /[^\\]?"/g;
 
 const CLOSING_COMMENT_RE = /-->/g;
 
-type ExpressionTarget = ParseValue | ParseTag | ParseProp | ParseSpreadProp;
+interface ParseElement {
+	type: "element";
+	open: ParseTag;
+	close: ParseTag | null;
+	// ParseValue is re-used to represent spread props.
+	props: Array<ParseProp | ParseValue>;
+	children: Array<ParseElement | ParseValue>;
+}
 
-// TODO: Make ParseResult return targets.
+interface ParseValue {
+	type: "value";
+	value: any;
+}
+
+interface ParseTag {
+	type: "tag";
+	slash: string;
+	value: any;
+}
+
+interface ParseProp {
+	type: "prop";
+	name: string;
+	value: ParseValue | ParsePropString;
+}
+
+interface ParsePropString {
+	type: "propString";
+	parts: Array<string | ParseValue>;
+}
+
+interface ParseError {
+	type: "error";
+	message: string;
+	value: any;
+}
+
+type ExpressionTarget = ParseValue | ParseTag | ParseProp | ParseError;
+
+// The parse result includes an array of targets, references to objects in the
+// parse tree whose value property is overwritten with expressions expressions
+// whenever the template function is called. By separating the logic of parsing
+// the static spans from the handling of dynamic expressions, we can cache
+// parse results for successive calls.
+
 interface ParseResult {
 	element: ParseElement;
 	targets: Array<ExpressionTarget | null>;
 }
 
 function parse(spans: ArrayLike<string>): ParseResult {
-	let matcher = CHILDREN_RE as RegExp;
+	let matcher = CHILDREN_RE;
 	const stack: Array<ParseElement> = [];
 	let element: ParseElement = {
 		type: "element",
@@ -114,7 +140,7 @@ function parse(spans: ArrayLike<string>): ParseResult {
 			const match = matcher.exec(span);
 			end = match ? match.index + match[0].length : span.length;
 			switch (matcher) {
-				case CHILDREN_RE:
+				case CHILDREN_RE: {
 					if (match) {
 						const [, newline, comment, tag, closingSlash, tagName] = match;
 						if (i < match.index) {
@@ -156,17 +182,25 @@ function parse(spans: ArrayLike<string>): ParseResult {
 								};
 
 								if (!stack.length) {
-									// TODO: expressions
-									throw new SyntaxError(`Unmatched closing tag "${tagName}"`);
-								}
+									if (end !== span.length) {
+										throw new SyntaxError(`Unmatched closing tag "${tagName}"`);
+									}
 
-								if (end === span.length) {
-									// TAG EXPRESSION
-									expressionTarget = element.close;
-								}
+									expressionTarget = {
+										type: "error",
+										message: "Unmatched closing tag ${}",
+										value: null,
+									};
+									// early break from switch, not loop
+								} else {
+									if (end === span.length) {
+										// TAG EXPRESSION
+										expressionTarget = element.close;
+									}
 
-								element = stack.pop()!;
-								matcher = CLOSING_BRACKET_RE;
+									element = stack.pop()!;
+									matcher = CLOSING_BRACKET_RE;
+								}
 							} else {
 								const next: ParseElement = {
 									type: "element",
@@ -195,6 +229,7 @@ function parse(spans: ArrayLike<string>): ParseResult {
 						if (i < span.length) {
 							let after = span.slice(i);
 							if (!expressing) {
+								// trim trailing whitespace
 								after = after.replace(/\s*$/, "");
 							}
 
@@ -205,8 +240,9 @@ function parse(spans: ArrayLike<string>): ParseResult {
 					}
 
 					break;
+				}
 
-				case PROPS_RE:
+				case PROPS_RE: {
 					if (match) {
 						const [, tagEnd, spread, name, equals, string] = match;
 						if (i < match.index) {
@@ -224,14 +260,6 @@ function parse(spans: ArrayLike<string>): ParseResult {
 
 							matcher = CHILDREN_RE;
 						} else if (spread) {
-							if (!(expressing && end === span.length)) {
-								throw new SyntaxError(
-									`Missing expression after "..." while parsing props for ${String(
-										getTagDisplay(element.open.value),
-									)}`,
-								);
-							}
-
 							const value = {
 								type: "value" as const,
 								value: null,
@@ -239,6 +267,9 @@ function parse(spans: ArrayLike<string>): ParseResult {
 							element.props.push(value);
 							// SPREAD PROP EXPRESSION
 							expressionTarget = value;
+							if (!(expressing && end === span.length)) {
+								throw new SyntaxError('Expression expected after "..."');
+							}
 						} else if (name) {
 							let value: ParseValue | ParsePropString;
 							if (string == null) {
@@ -248,12 +279,15 @@ function parse(spans: ArrayLike<string>): ParseResult {
 									throw new SyntaxError(
 										`Unexpected text \`${span.slice(end, end + 20)}\``,
 									);
-								} else if (!expressing) {
-									throw new SyntaxError("Expression expected");
 								} else {
-									// PROP EXPRESSION
 									value = {type: "value" as const, value: null};
+									// PROP EXPRESSION
 									expressionTarget = value;
+									if (!(expressing && end === span.length)) {
+										throw new SyntaxError(
+											`Expression expected for prop "${name}"`,
+										);
+									}
 								}
 							} else {
 								const quote = string[0];
@@ -276,15 +310,15 @@ function parse(spans: ArrayLike<string>): ParseResult {
 						}
 					} else {
 						if (!expressing) {
-							// Not sure how much context to provide, 20 characters seems fine?
 							throw new SyntaxError(
 								`Unexpected text \`${span.slice(i, i + 20).trim()}\``,
 							);
 						}
 					}
 					break;
+				}
 
-				case CLOSING_BRACKET_RE:
+				case CLOSING_BRACKET_RE: {
 					// We’re in a self-closing slash and are looking for the >
 					if (match) {
 						if (i < match.index) {
@@ -295,14 +329,15 @@ function parse(spans: ArrayLike<string>): ParseResult {
 
 						matcher = CHILDREN_RE;
 					} else {
-						// Not sure how much context to provide, 20 characters seems fine?
 						if (!expressing) {
 							throw new SyntaxError(
 								`Unexpected text \`${span.slice(i, i + 20).trim()}\``,
 							);
 						}
 					}
+
 					break;
+				}
 
 				case CLOSING_SINGLE_QUOTE_RE:
 				case CLOSING_DOUBLE_QUOTE_RE: {
@@ -325,7 +360,7 @@ function parse(spans: ArrayLike<string>): ParseResult {
 					break;
 				}
 
-				case CLOSING_COMMENT_RE:
+				case CLOSING_COMMENT_RE: {
 					if (match) {
 						matcher = CHILDREN_RE;
 					} else {
@@ -335,12 +370,17 @@ function parse(spans: ArrayLike<string>): ParseResult {
 					}
 
 					break;
+				}
 			}
 		}
 
 		if (expressing) {
 			if (expressionTarget) {
 				targets.push(expressionTarget);
+				if (expressionTarget.type === "error") {
+					break;
+				}
+
 				continue;
 			}
 
@@ -368,16 +408,25 @@ function parse(spans: ArrayLike<string>): ParseResult {
 				default:
 					throw new SyntaxError("Unexpected expression");
 			}
+		} else if (expressionTarget) {
+			throw new SyntaxError("Expression expected");
 		}
 
 		lineStart = false;
 	}
 
 	if (stack.length) {
-		// TODO: Figure out how to parameterize this
-		throw new SyntaxError(
-			`Unmatched opening tag "${getTagDisplay(element.open.value)}"`,
-		);
+		const ti = targets.indexOf(element.open);
+		if (ti === -1) {
+			// TODO: Expressions needed here.
+			throw new SyntaxError(`Unmatched opening tag "${element.open.value}"`);
+		}
+
+		targets[ti] = {
+			type: "error",
+			message: "Unmatched opening tag ${}",
+			value: null,
+		};
 	}
 
 	if (element.children.length === 1 && element.children[0].type === "element") {
@@ -387,51 +436,32 @@ function parse(spans: ArrayLike<string>): ParseResult {
 	return {element, targets};
 }
 
-function getTagDisplay(tag: Tag) {
-	return typeof tag === "function"
-		? tag.name
-		: typeof tag !== "string"
-		? String(tag)
-		: tag;
-}
-
-function formatString(str: string) {
-	return (
-		str
-			// remove quotes
-			.slice(1, -1)
-			// deal with escaped characters
-			.replace(/\\(.?)/g, "$1")
-	);
-}
-
-function createElementsFromParse(parsed: ParseElement): Element {
+function build(parsed: ParseElement): Element {
 	if (
 		parsed.close !== null &&
 		parsed.close.slash !== "//" &&
 		parsed.open.value !== parsed.close.value
 	) {
 		throw new SyntaxError(
-			`Mismatched closing tag "${getTagDisplay(
+			`Unmatched closing tag ${getTagDisplay(
 				parsed.close.value,
-			)}" for opening tag "${getTagDisplay(parsed.open.value)}"`,
+			)}, expected ${getTagDisplay(parsed.open.value)}`,
 		);
 	}
 
 	const children: Array<unknown> = [];
 	for (let i = 0; i < parsed.children.length; i++) {
 		const child = parsed.children[i];
-		children.push(
-			child.type === "element" ? createElementsFromParse(child) : child.value,
-		);
+		children.push(child.type === "element" ? build(child) : child.value);
 	}
 
 	let props = parsed.props.length ? ({} as Record<string, unknown>) : null;
 	for (let i = 0; i < parsed.props.length; i++) {
 		const prop = parsed.props[i];
 		if (prop.type === "prop") {
+			let value: any;
 			if (prop.value.type === "value") {
-				props![prop.name] = prop.value.value;
+				value = prop.value.value;
 			} else {
 				let string = "";
 				for (let i = 0; i < prop.value.parts.length; i++) {
@@ -444,12 +474,26 @@ function createElementsFromParse(parsed: ParseElement): Element {
 					}
 				}
 
-				props![prop.name] = formatString(string);
+				value = string
+					// remove quotes
+					.slice(1, -1)
+					// deal with escaped characters
+					.replace(/\\(.?)/g, "$1");
 			}
+
+			props![prop.name] = value;
 		} else {
 			props = {...props, ...(prop.value as any)};
 		}
 	}
 
 	return c(parsed.open.value, props, ...children);
+}
+
+function getTagDisplay(tag: unknown): string {
+	return typeof tag === "function"
+		? tag.name + "()"
+		: typeof tag === "string"
+		? `"${tag}"`
+		: JSON.stringify(tag);
 }

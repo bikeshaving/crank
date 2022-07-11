@@ -233,9 +233,7 @@ describe("sad path", () => {
 		}).toThrow(new SyntaxError('Unmatched closing tag "span"'));
 		expect(() => {
 			t`<div>uhhh</span>`;
-		}).toThrow(
-			new SyntaxError('Mismatched closing tag "span" for opening tag "div"'),
-		);
+		}).toThrow(new SyntaxError('Unmatched closing tag "span", expected "div"'));
 	});
 
 	test("invalid characters", () => {
@@ -306,6 +304,20 @@ describe("sad path", () => {
 		expect(() => {
 			t`<p class${undefined} />`;
 		}).toThrow(new SyntaxError("Unexpected expression"));
+	});
+
+	test("unbalanced tags with expressions", () => {
+		function C() {}
+		function D() {}
+		expect(() => {
+			t`<${C}>`;
+		}).toThrow(new SyntaxError("Unmatched opening tag C()"));
+		expect(() => {
+			t`</${C}>`;
+		}).toThrow(new SyntaxError("Unmatched closing tag C()"));
+		expect(() => {
+			t`<${C}></${D}>`;
+		}).toThrow(new SyntaxError("Unmatched closing tag D(), expected C()"));
 	});
 
 	// TODO: Figure out a way to test special props and tags
