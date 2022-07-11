@@ -4,8 +4,8 @@
   "scripts": {
     "build": "ts-node-esm src/build.ts && echo crank.js.org > dist/CNAME",
     "watch": "nodemon --exec ts-node-esm src/build.ts -e 'js,ts,css,md' --ignore dist",
-		"serve": "nodemon --exec ts-node-esm src/serve.ts -e 'js,ts,css,md' --ignore dist",
-		"static": "http-server dist -p 1337 -c-1",
+    "serve": "nodemon --exec ts-node-esm src/serve.ts -e 'js,ts,css,md' --ignore dist",
+    "static": "http-server dist -p 1337 -c-1",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
@@ -16,6 +16,7 @@
     "@types/fs-extra": "^9.0.13",
     "@types/marked": "^4.0.1",
     "@types/mini-css-extract-plugin": "^2.4.0",
+    "@types/node": "^18.0.3",
     "@types/postcss-nested": "^4.2.3",
     "@types/postcss-preset-env": "^6.7.3",
     "@types/prismjs": "^1.16.6",
