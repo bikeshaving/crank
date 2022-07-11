@@ -26,7 +26,7 @@ interface ParseElement {
 	type: "element";
 	open: ParseTag;
 	close: ParseTag | null;
-	props: Array<ParseProp | ParseValue>;
+	props: Array<ParseProp | ParseSpreadProp>;
 	children: Array<ParseElement | ParseValue>;
 }
 
@@ -41,18 +41,21 @@ interface ParseTag {
 	value: any;
 }
 
+interface ParseSpreadProp {
+	type: "spreadProp";
+	value: any;
+}
+
 interface ParseProp {
 	type: "prop";
 	name: string;
-	value: unknown;
-	// TODO:
-	// value: ParseValue | ParsePropString;
+	value: ParseValue | ParsePropString;
 }
 
-//interface ParsePropString {
-//	type: "propsString";
-//	parts: Array<string | ParseValue>;
-//}
+interface ParsePropString {
+	type: "propString";
+	parts: Array<string | ParseValue>;
+}
 
 /* Grammar
 $CHILDREN: ($ELEMENT | $COMMENT | ${unknown} | [\S\s])*
@@ -122,13 +125,16 @@ function parse(
 	};
 
 	let lineStart = true;
-	let propName = "";
-	let propValue = "";
 	for (let s = 0; s < spans.length; s++) {
 		const span = spans[s];
 		// Whether or not an expression is upcoming.
 		const expressing = s < spans.length - 1;
-		let expressionTarget: ParseValue | ParseTag | ParseProp | null = null;
+		let expressionTarget:
+			| ParseValue
+			| ParseTag
+			| ParseProp
+			| ParseSpreadProp
+			| null = null;
 		for (let i = 0, end = i; i < span.length; i = end) {
 			matcher.lastIndex = i;
 			const match = matcher.exec(span);
@@ -154,6 +160,7 @@ function parse(
 									before = before.replace(/\s*$/, "");
 								}
 							}
+
 							if (before) {
 								current.children.push({type: "value", value: before});
 							}
@@ -251,15 +258,18 @@ function parse(
 								);
 							}
 
-							const value: ParseValue = {type: "value", value: expressions[s]};
+							const value = {
+								type: "spreadProp" as const,
+								value: expressions[s],
+							};
 							current.props.push(value);
 							// SPREAD PROP EXPRESSION
 							expressionTarget = value;
 						} else if (name) {
-							const prop: ParseProp = {type: "prop", name, value: null};
+							let value: ParseValue | ParsePropString;
 							if (string == null) {
 								if (!equals) {
-									prop.value = true;
+									value = {type: "value", value: true};
 								} else if (end < span.length) {
 									throw new SyntaxError(
 										`Unexpected text \`${span.slice(end, end + 20)}\``,
@@ -267,25 +277,27 @@ function parse(
 								} else if (!expressing) {
 									throw new SyntaxError("Expression expected");
 								} else {
-									prop.value = expressions[s];
 									// PROP EXPRESSION
-									expressionTarget = prop;
+									value = {type: "value" as const, value: expressions[s]};
+									expressionTarget = value;
 								}
 							} else {
 								const quote = string[0];
-								if (expressing && end === span.length) {
+								value = {type: "propString", parts: []};
+								value.parts.push(string);
+								if (end === span.length) {
 									matcher =
 										quote === "'"
 											? CLOSING_SINGLE_QUOTE_RE
 											: CLOSING_DOUBLE_QUOTE_RE;
-									propName = name;
-									propValue = string;
-									break;
-								} else {
-									prop.value = formatString(string);
 								}
 							}
 
+							const prop = {
+								type: "prop" as const,
+								name,
+								value,
+							};
 							current.props.push(prop);
 						}
 					} else {
@@ -319,15 +331,12 @@ function parse(
 					break;
 
 				case CLOSING_SINGLE_QUOTE_RE:
-				case CLOSING_DOUBLE_QUOTE_RE:
-					propValue += span.slice(i, end);
+				case CLOSING_DOUBLE_QUOTE_RE: {
+					const string = span.slice(i, end);
+					const prop = current.props[current.props.length - 1] as ParseProp;
+					const propString = prop.value as ParsePropString;
+					propString.parts.push(string);
 					if (match) {
-						current.props.push({
-							type: "prop",
-							name: propName,
-							value: formatString(propValue),
-						});
-
 						matcher = PROPS_RE;
 					} else {
 						if (!expressing) {
@@ -337,10 +346,10 @@ function parse(
 								}\``,
 							);
 						}
-
-						// TODO: expressionTarget
 					}
+
 					break;
+				}
 
 				case CLOSING_COMMENT_RE:
 					if (match) {
@@ -369,12 +378,11 @@ function parse(
 
 				case CLOSING_SINGLE_QUOTE_RE:
 				case CLOSING_DOUBLE_QUOTE_RE: {
-					// TODO: concatenate later
-					const exp = expressions[s];
-					if (typeof exp !== "boolean" && exp != null) {
-						propValue += typeof exp === "string" ? exp : String(exp);
-					}
-
+					const prop = current.props[current.props.length - 1] as ParseProp;
+					(prop.value as ParsePropString).parts.push({
+						type: "value",
+						value,
+					});
 					break;
 				}
 
@@ -443,9 +451,23 @@ function createElementsFromParse(parsed: ParseElement): Element {
 	for (let i = 0; i < parsed.props.length; i++) {
 		const prop = parsed.props[i];
 		if (prop.type === "prop") {
-			props![prop.name] = prop.value;
+			if (prop.value.type === "value") {
+				props![prop.name] = prop.value.value;
+			} else {
+				let string = "";
+				for (let i = 0; i < prop.value.parts.length; i++) {
+					const part = prop.value.parts[i];
+					if (typeof part === "string") {
+						string += part;
+					} else if (typeof part.value !== "boolean" && part.value != null) {
+						string +=
+							typeof part.value === "string" ? part.value : String(part.value);
+					}
+				}
+
+				props![prop.name] = formatString(string);
+			}
 		} else {
-			// We re-use the ParseValue type for spread props
 			props = {...props, ...(prop.value as any)};
 		}
 	}
