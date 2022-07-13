@@ -1,5 +1,5 @@
-import {t} from "@b9g/crank/template.js";
-import type {Children} from "@b9g/crank/crank.js";
+import {xm} from "@b9g/crank";
+import type {Children} from "@b9g/crank";
 import {Page, Link, Script, Storage} from "../components/esbuild.js";
 import {Navbar} from "../components/navbar.js";
 import {GoogleSpyware} from "../components/google-spyware.js";
@@ -12,7 +12,7 @@ export interface RootProps {
 }
 
 export function Root({title, children, url, storage}: RootProps) {
-	return t`
+	return xm`
 		<$RAW value="<!DOCTYPE html>" />
 		<${Page} storage=${storage}>
 			<html lang="en">

@@ -1,4 +1,4 @@
-import {t} from "@b9g/crank/template.js";
+import {xm} from "@b9g/crank";
 import * as path from "path";
 
 import {Root} from "../components/root.js";
@@ -22,7 +22,7 @@ export default async function BlogHome({storage}: BlogHomeProps) {
 	);
 	posts.reverse();
 
-	return t`
+	return xm`
 		<${Root} title="Crank.js | Blog" url="/blog" storage=${storage}>
 			<${Sidebar} docs=${posts} url="/blog" title="Recent Posts" />
 			<main class="main">${posts.map((post) => {
@@ -46,7 +46,7 @@ export default async function BlogHome({storage}: BlogHomeProps) {
 				}
 
 				const {title, publishDate} = post.attributes;
-				return t`
+				return xm`
 					<div class="content">
 						<${BlogContent} title=${title} publishDate=${publishDate}>
 							<${Marked} markdown=${body} components=${components} />
