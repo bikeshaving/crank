@@ -531,8 +531,7 @@ export function Marked({markdown, ...props}: MarkedProps) {
 		components: {...defaultComponents, ...props.components},
 	};
 
-	const children = build(tokens, props, true);
-	return xm`${children}`;
+	return build(tokens, props, true);
 }
 
 /* Scratchpad

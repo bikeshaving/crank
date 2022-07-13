@@ -239,15 +239,6 @@ content-area {
 	}
 }
 
-.footer {
-	margin: 8em auto 0;
-	padding: 3em 0;
-	line-height: 1.4em;
-	border-top: 1px solid #f5f9ff;
-	color: #bdc2c7;
-	text-align: center;
-}
-
 .hero {
 	padding: 7em 0;
 	display: flex;

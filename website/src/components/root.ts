@@ -26,10 +26,10 @@ export function Root({title, children, url, storage}: RootProps) {
 				</head>
 				<body>
 					<${Navbar} url=${url} />
-					<div class="non-footer">${children}</div>
+					<>${children}</>
 					<${Script} src="client.ts" />
 				</body>
 			</html>
 		<//Page>
-	`!;
+	`;
 }

@@ -1,5 +1,6 @@
 import {xm} from "@b9g/crank";
 import type {Context, Element} from "@b9g/crank";
+
 import {Edit} from "@b9g/revise/edit.js";
 import {Keyer} from "@b9g/revise/keyer.js";
 import {EditHistory} from "@b9g/revise/history.js";
@@ -12,7 +13,7 @@ import Prism from "prismjs";
 import type {Token} from "prismjs";
 import "prismjs/components/prism-typescript.js";
 import {ContentArea} from "./contentarea.js";
-import {transform} from "sucrase";
+import * as Sucrase from "sucrase";
 
 function* Preview(
 	this: Context,
@@ -27,7 +28,7 @@ function* Preview(
 			}
 
 			try {
-				const parsed = transform(value, {
+				const parsed = Sucrase.transform(value, {
 					transforms: ["jsx", "typescript"],
 					jsxPragma: "createElement",
 					jsxFragmentPragma: "''",
@@ -58,6 +59,7 @@ function* Preview(
 	}
 }
 
+// TODO: I need to separate the playground component from the codeblock component somehow
 export function* CodeBlock(
 	this: Context,
 	{value, lang}: {value: string; lang: string},
@@ -78,12 +80,6 @@ export function* CodeBlock(
 	}
 
 	const isLive = rest === "live";
-	this.addEventListener("beforeinput", (ev: any) => {
-		if (!isLive) {
-			ev.preventDefault();
-		}
-	});
-
 	this.addEventListener("contentchange", (ev: any) => {
 		if (!isLive) {
 			this.refresh();
@@ -240,12 +236,7 @@ export function* CodeBlock(
 		}
 
 		const isClient = typeof document !== "undefined";
-		const isLive = rest === "live";
 		let cursor = 0;
-		let className = "editable";
-		if (isLive) {
-			className += " editable-live";
-		}
 
 		yield xm`
 			<div class="playground">
@@ -256,7 +247,7 @@ export function* CodeBlock(
 					selectionRange=${selectionRange}
 				>
 					<pre
-						class=${className}
+						class="editable ${isLive && "editable-live"}"
 						autocomplete="off"
 						autocorrect="off"
 						autocapitalize="off"
@@ -282,6 +273,192 @@ export function* CodeBlock(
 					xm`<${Preview} value=${value} />`
 				}
 			</div>
+		`;
+	}
+}
+
+export function* PrismEditor(
+	this: Context,
+	{
+		value,
+		language,
+		editable,
+	}: {value: string; language: string; editable: boolean},
+) {
+	let selectionRange: SelectionRange | undefined;
+	let area: ContentAreaElement;
+	let renderSource: string | undefined;
+	const editHistory = new EditHistory();
+	const keyer = new Keyer();
+	this.addEventListener("contentchange", (ev: any) => {
+		const {edit, source} = ev.detail;
+		keyer.transform(edit);
+		if (source === "render") {
+			return;
+		} else if (source !== "history") {
+			editHistory.append(edit);
+		}
+
+		value = ev.target.value;
+		this.refresh();
+	});
+
+	this.addEventListener("keydown", (ev: any) => {
+		if (ev.key === "Enter") {
+			// Potato quality tab-matching.
+			let {value: value1, selectionStart: selectionStart1, selectionEnd} = area;
+			if (selectionStart1 !== selectionEnd) {
+				return;
+			}
+
+			// A reasonable length to look for tabs and braces.
+			const prev = value.slice(0, selectionStart1);
+			const tabMatch = prev.match(/[\r\n]?([^\S\r\n]*).*$/);
+			// [^\S\r\n] = non-newline whitespace
+			const prevMatch = prev.match(/({|\(|\[)([^\S\r\n]*)$/);
+			if (prevMatch) {
+				// increase tab
+				ev.preventDefault();
+				const next = value1.slice(selectionStart1);
+				const startBracket = prevMatch[1];
+				const startWhitespace = prevMatch[2];
+				let insertBefore = "\n";
+				if (tabMatch) {
+					insertBefore += tabMatch[1] + "  ";
+				}
+
+				let edit = Edit.build(
+					value1,
+					insertBefore,
+					selectionStart1,
+					selectionStart1 + startWhitespace.length,
+				);
+
+				selectionStart1 -= startWhitespace.length;
+				selectionStart1 += insertBefore.length;
+
+				const closingMap: Record<string, string> = {
+					"{": "}",
+					"(": ")",
+					"[": "]",
+				};
+				let closing = closingMap[startBracket];
+				if (closing !== "}") {
+					closing = "\\" + closing;
+				}
+				const nextMatch = next.match(
+					new RegExp(String.raw`^([^\S\r\n]*)${closing}`),
+				);
+
+				if (nextMatch) {
+					const value2 = edit.apply(value1);
+					const endWhitespace = nextMatch[1];
+					const insertAfter = tabMatch ? "\n" + tabMatch[1] : "\n";
+					const edit1 = Edit.build(
+						value2,
+						insertAfter,
+						selectionStart1,
+						selectionStart1 + endWhitespace.length,
+					);
+
+					edit = edit.compose(edit1);
+				}
+
+				value = edit.apply(value1);
+				selectionRange = {
+					selectionStart: selectionStart1,
+					selectionEnd: selectionStart1,
+					selectionDirection: "none",
+				};
+				this.refresh();
+			} else if (tabMatch && tabMatch[1].length) {
+				// match the tabbing of the previous line
+				ev.preventDefault();
+				const insertBefore = "\n" + tabMatch[1];
+				const edit = Edit.build(value1, insertBefore, selectionStart1);
+				value = edit.apply(value1);
+				selectionRange = {
+					selectionStart: selectionStart1 + insertBefore.length,
+					selectionEnd: selectionStart1 + insertBefore.length,
+					selectionDirection: "none",
+				};
+				this.refresh();
+			}
+		}
+	});
+
+	this.addEventListener("beforeinput", (ev: any) => {
+		switch (ev.inputType) {
+			case "historyUndo": {
+				ev.preventDefault();
+				const edit = editHistory.undo();
+				if (edit) {
+					selectionRange = selectionRangeFromEdit(edit);
+					value = edit.apply(value);
+					renderSource = "history";
+					this.refresh();
+				}
+				break;
+			}
+			case "historyRedo": {
+				ev.preventDefault();
+				const edit = editHistory.redo();
+				if (edit) {
+					value = edit.apply(value);
+					selectionRange = selectionRangeFromEdit(edit);
+					renderSource = "history";
+					this.refresh();
+				}
+				break;
+			}
+		}
+	});
+
+	checkpointEditHistoryBySelection(this, editHistory);
+	for ({language} of this) {
+		this.schedule(() => {
+			selectionRange = undefined;
+			renderSource = undefined;
+		});
+
+		value = value.match(/(?:\r|\n|\r\n)$/) ? value : value + "\n";
+		const grammar = Prism.languages[language];
+		let lines: Array<Array<string | Token>>;
+		if (grammar == null) {
+			lines = [];
+		} else {
+			lines = splitLines(Prism.tokenize(value || "", grammar));
+		}
+
+		const isClient = typeof document !== "undefined";
+		let cursor = 0;
+		yield xm`
+			<${ContentArea}
+				$ref=${(area1: any) => (area = area1)}
+				value=${value}
+				renderSource=${renderSource}
+				selectionRange=${selectionRange}
+			>
+				<pre
+					autocomplete="off"
+					autocorrect="off"
+					autocapitalize="off"
+					spellcheck="false"
+					contenteditable=${isClient && editable}
+				>
+					${lines.map((line) => {
+						const key = keyer.keyAt(cursor);
+						const length = line.reduce((l, t) => l + t.length, 0);
+						cursor += length + 1;
+						return xm`
+							<div c-key=${key}>
+								<code>${printTokens(line)}</code>
+								<br />
+							</div>
+						`;
+					})}
+				</pre>
+			<//ContentArea>
 		`;
 	}
 }
