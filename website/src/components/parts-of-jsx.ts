@@ -1,7 +1,7 @@
-import {t} from "@b9g/crank/template.js";
+import {xm} from "@b9g/crank";
 
 export function PartsOfJSX() {
-	return t`
+	return xm`
 		<svg
 			width="1180"
 			height="268"

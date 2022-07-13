@@ -1,5 +1,5 @@
-import {t} from "@b9g/crank/template.js";
-import type {Context} from "@b9g/crank/crank.js";
+import {xm} from "@b9g/crank";
+import type {Context} from "@b9g/crank";
 import type {
 	ContentAreaElement,
 	ContentEvent,
@@ -59,7 +59,7 @@ export function* ContentArea(
 			}
 		});
 
-		const area: ContentAreaElement = yield t`
+		const area: ContentAreaElement = yield xm`
 			<content-area c-static=${composing}>${children}</content-area>
 		`;
 

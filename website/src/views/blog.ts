@@ -1,4 +1,4 @@
-import {t} from "@b9g/crank/template.js";
+import {xm} from "@b9g/crank";
 import * as path from "path";
 
 import {Root} from "../components/root.js";
@@ -32,7 +32,7 @@ export default async function BlogPage({url, storage}: BlogPageProps) {
 		attributes: {title, publishDate},
 		body,
 	} = post;
-	return t`
+	return xm`
 		<${Root} title="Crank.js | ${title}" url=${url} storage=${storage}>
 			<${Sidebar} docs=${posts} url=${url} title="Recent Posts" />
 			<main class="main">

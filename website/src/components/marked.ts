@@ -1,4 +1,4 @@
-import {t} from "@b9g/crank/template.js";
+import {xm} from "@b9g/crank";
 import type {Children, Component, Element} from "@b9g/crank";
 import {marked} from "marked";
 // TODO: This is probably a component
@@ -189,7 +189,7 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 	code({token}) {
 		const {text, lang} = token as marked.Tokens.Code;
 		const langClassName = lang ? `language-${lang}` : null;
-		return t`
+		return xm`
 			<pre class=${langClassName}>
 				<code class=${langClassName}>${text}</code>
 			</pre>
@@ -199,43 +199,43 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 	heading({token, children}) {
 		const {depth} = token as marked.Tokens.Heading;
 		const tag = `h${depth}`;
-		return t`<${tag}>${children}<//>`;
+		return xm`<${tag}>${children}<//>`;
 	},
 
 	// TODO: type: 'table';
 
-	hr: () => t`<hr />`,
+	hr: () => xm`<hr />`,
 
 	blockquote({children}) {
-		return t`<blockquote>${children}</blockquote>`;
+		return xm`<blockquote>${children}</blockquote>`;
 	},
 
 	list({token, children}) {
 		const {ordered, start} = token as marked.Tokens.List;
 		const tag = ordered ? "ol" : "ul";
 
-		return t`
+		return xm`
 			<${tag} start=${start && start !== 1 ? start : null}>${children}<//>
 		`;
 	},
 
 	list_item({children}) {
-		return t`<li>${children}</li>`;
+		return xm`<li>${children}</li>`;
 	},
 
 	checkmark({token}) {
 		const {checked} = token as unknown as Checkmark;
-		return t`<input checked=${checked} disabled="" type="checkbox" />`;
+		return xm`<input checked=${checked} disabled="" type="checkbox" />`;
 	},
 
 	paragraph({children}) {
-		return t`<p>${children}</p>`;
+		return xm`<p>${children}</p>`;
 	},
 
 	html({token}) {
 		// TODO: Is this all that’s necessary?
 		const {text} = token as marked.Tokens.HTML;
-		return t`<$RAW value=${text} />`;
+		return xm`<$RAW value=${text} />`;
 	},
 
 	// TODO: type: 'def';
@@ -247,7 +247,7 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 	link({token, children}) {
 		const {href, title} = token as marked.Tokens.Link;
 		// TODO: url sanitization?
-		return t`
+		return xm`
 			<a href=${href} title=${title}>
 				${children}
 			</a>
@@ -256,23 +256,23 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 
 	image({token}) {
 		const {href, title, text} = token as marked.Tokens.Image;
-		return t`<img src=${href} title=${title} alt=${text} />`;
+		return xm`<img src=${href} title=${title} alt=${text} />`;
 	},
 
 	strong({children}) {
-		return t`<strong>${children}</strong>`;
+		return xm`<strong>${children}</strong>`;
 	},
 
 	em({children}) {
-		return t`<em>${children}</em>`;
+		return xm`<em>${children}</em>`;
 	},
 
 	codespan({token}) {
 		const {text} = token as marked.Tokens.Codespan;
-		return t`<code>${text}</code>`;
+		return xm`<code>${text}</code>`;
 	},
 
-	br: () => t`<br />`,
+	br: () => xm`<br />`,
 
 	// TODO: type: 'del';
 };
@@ -403,7 +403,7 @@ function build(
 			throw new Error(`Unknown tag "${token.type}"`);
 		}
 
-		result.push(t`
+		result.push(xm`
 			<${Tag} token=${token} rootProps=${rootProps}>
 				${children}
 			<//Tag>
@@ -532,7 +532,7 @@ export function Marked({markdown, ...props}: MarkedProps) {
 	};
 
 	const children = build(tokens, props, true);
-	return t`${children}`;
+	return xm`${children}`;
 }
 
 /* Scratchpad
@@ -548,6 +548,6 @@ const test8 = "<div>Hello <span>World</span></div>";
 const test9 = "<span>Hello <span>World</span></span>";
 var fuck = false;
 fuck = true;
-console.log(renderer.render(t`<${Marked} markdown=${test1}/>`));
+console.log(renderer.render(xm`<${Marked} markdown=${test1}/>`));
 fuck = false;
 */

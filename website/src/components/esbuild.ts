@@ -159,8 +159,8 @@ export class Storage {
 	}
 }
 
-import type {Children, Context} from "@b9g/crank/crank.js";
-import {t} from "@b9g/crank/template.js";
+import type {Children, Context} from "@b9g/crank";
+import {xm} from "@b9g/crank";
 
 // TODO: Move components to their own file?
 // While it’s cool that we can use provisions and components here, I’m not sure
@@ -208,7 +208,7 @@ export async function Script(this: Context, props: Record<string, any>) {
 	let src: string;
 	({src, ...props} = props);
 	src = await storage.url(src, ".js");
-	return t`<script src=${src} ...${props} />`;
+	return xm`<script src=${src} ...${props} />`;
 }
 
 export async function Link(this: Context, props: Record<string, any>) {
@@ -221,5 +221,5 @@ export async function Link(this: Context, props: Record<string, any>) {
 	let rel: string;
 	({href, rel = "stylesheet", ...props} = props);
 	href = await storage.url(href, ".css");
-	return t`<link href=${href} rel=${rel} ...${props} />`;
+	return xm`<link href=${href} rel=${rel} ...${props} />`;
 }

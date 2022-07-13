@@ -1,5 +1,5 @@
-import {t} from "@b9g/crank/template.js";
-import type {Children} from "@b9g/crank/crank.js";
+import {xm} from "@b9g/crank";
+import type {Children} from "@b9g/crank";
 
 export interface BlogContentProps {
 	title: string;
@@ -8,11 +8,11 @@ export interface BlogContentProps {
 }
 
 export function BlogContent({title, publishDate, children}: BlogContentProps) {
-	return t`
+	return xm`
 		<h1>${title}</h1>
 		${
 			publishDate &&
-			t`<p>${publishDate.toLocaleString("en-US", {
+			xm`<p>${publishDate.toLocaleString("en-US", {
 				month: "long",
 				year: "numeric",
 				day: "numeric",

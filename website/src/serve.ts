@@ -2,9 +2,9 @@ import {createServer} from "node:http";
 import * as path from "node:path";
 import * as mime from "mime-types";
 
-import {t} from "@b9g/crank/template.js";
+import {xm} from "@b9g/crank";
+import type {Component} from "@b9g/crank";
 import {renderer} from "@b9g/crank/html.js";
-import type {Component} from "@b9g/crank/crank.js";
 
 import {router} from "./routes.js";
 import {Storage} from "./components/esbuild.js";
@@ -60,7 +60,7 @@ const server = createServer(async (req, res) => {
 
 	res.writeHead(200, {"Content-Type": "text/html"});
 	// TODO: Should we pass in name to props?
-	const html = await renderer.render(t`
+	const html = await renderer.render(xm`
 		<${View} url=${url} storage=${storage} params=${match.params} />
 	`);
 	res.end(html, "utf-8");

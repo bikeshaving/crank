@@ -1,5 +1,5 @@
-import {t} from "@b9g/crank/template.js";
-import type {Context, Element} from "@b9g/crank/crank.js";
+import {xm} from "@b9g/crank";
+import type {Context, Element} from "@b9g/crank";
 import {Edit} from "@b9g/revise/edit.js";
 import {Keyer} from "@b9g/revise/keyer.js";
 import {EditHistory} from "@b9g/revise/history.js";
@@ -48,7 +48,7 @@ function* Preview(
 			}
 		});
 
-		yield t`
+		yield xm`
 			<iframe
 				class="preview"
 				c-ref=${(iframe1: any) => (iframe = iframe1)}
@@ -247,7 +247,7 @@ export function* CodeBlock(
 			className += " editable-live";
 		}
 
-		yield t`
+		yield xm`
 			<div class="playground">
 				<${ContentArea}
 					c-ref=${(area1: any) => (area = area1)}
@@ -267,7 +267,7 @@ export function* CodeBlock(
 							const key = keyer.keyAt(cursor);
 							const length = line.reduce((l, t) => l + t.length, 0);
 							cursor += length + 1;
-							return t`
+							return xm`
 								<div c-key=${key}>
 									<code>${printTokens(line)}</code>
 									<br />
@@ -279,7 +279,7 @@ export function* CodeBlock(
 				${
 					typeof document !== "undefined" &&
 					rest === "live" &&
-					t`<${Preview} value=${value} />`
+					xm`<${Preview} value=${value} />`
 				}
 			</div>
 		`;
@@ -383,7 +383,7 @@ function printTokens(tokens: Array<Token | string>): Array<Element | string> {
 				className += " " + token.alias;
 			}
 
-			result.push(t`<span class=${className}>${children}</span>`);
+			result.push(xm`<span class=${className}>${children}</span>`);
 		}
 	}
 

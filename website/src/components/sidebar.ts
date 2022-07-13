@@ -1,5 +1,5 @@
-import {t} from "@b9g/crank/template.js";
-import type {Element} from "@b9g/crank/crank.js";
+import {xm} from "@b9g/crank";
+import type {Element} from "@b9g/crank";
 import type {DocInfo} from "../models/document.js";
 
 export interface SidebarProps {
@@ -12,7 +12,7 @@ export function Sidebar({docs, title, url}: SidebarProps) {
 	const links: Array<Element> = [];
 	for (const doc of docs) {
 		if (doc.attributes.publish) {
-			links.push(t`
+			links.push(xm`
 				<div class="sidebar-item">
 					<a href=${doc.url} class=${doc.url === url ? "current" : ""}>
 						${doc.attributes.title}
@@ -22,7 +22,7 @@ export function Sidebar({docs, title, url}: SidebarProps) {
 		}
 	}
 
-	return t`
+	return xm`
 		<div id="sidebar" class="sidebar">
 			<h3>${title}</h3>
 			${links}

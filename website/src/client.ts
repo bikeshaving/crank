@@ -1,4 +1,4 @@
-import {t} from "@b9g/crank/template.js";
+import {xm} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom.js";
 
 import Prism from "prismjs";
@@ -31,6 +31,6 @@ if (!window.customElements.get("content-area")) {
 for (const el of Array.from(document.querySelectorAll(".codeblock"))) {
 	const {code, lang} = (el as HTMLElement).dataset;
 	if (code != null && lang != null) {
-		renderer.render(t`<${CodeBlock} value=${code} lang=${lang} />`, el);
+		renderer.render(xm`<${CodeBlock} value=${code} lang=${lang} />`, el);
 	}
 }
