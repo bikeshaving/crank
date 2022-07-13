@@ -19,7 +19,6 @@ if (!window.customElements.get("content-area")) {
 	window.customElements.define("content-area", ContentAreaElement);
 }
 
-// TODO: We need an abstraction (maybe we can adopt “island” terminology 🙄) which:
 // 1. Provides a root div element to render into
 // 2. Renders components based on server/client environments.
 // 3. Serializes props and makes them available on the client
