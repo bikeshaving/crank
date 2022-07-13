@@ -87,7 +87,7 @@ JavaScript template strings allow for Unix-style escapes of newlines, so we
 don’t have to deal with any of these problems!
 
 ```
-yield t`
+yield xm`
   <div>
     <span>Hello</span> \
     <span>World</span>
@@ -111,7 +111,7 @@ exacerbated by closing tags, which must match opening tags to form a
 well-formed tree.
 
 ```
-yield t`
+yield xm`
   <${Component}>hello</${Component}>
 `;
 ```
@@ -122,7 +122,7 @@ not HTML, we can do what developit/htm does and have a catch-all closing tag
 syntax like `<//>`.
 
 ```
-yield t`
+yield xm`
   <${Component}>hello<//>
 `;
 ```
@@ -138,7 +138,7 @@ linters could fight about.
 
 ```
 // Maybe a linter could be used to determine if the rules
-yield t`
+yield xm`
   <${Component}>hello<//Component>
 `;
 ```
@@ -149,7 +149,7 @@ Should we allow for interpolations in prop strings?
 
 ```
 const cls = 1;
-yield t`
+yield xm`
   <div class="cls-${cls}">Hello</div>
 `;
 ```
@@ -159,7 +159,7 @@ Why not!? It’s just nice and convenient, right?
 Should we allow for interpolations in prop names?
 
 ```
-yield t`
+yield xm`
   <${Component} ${name}=${value} />
 `;
 ```

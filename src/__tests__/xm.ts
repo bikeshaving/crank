@@ -1,23 +1,23 @@
 import {c} from "../crank.js";
-import {t} from "../template.js";
+import {xm} from "../xm.js";
 
 describe("happy path", () => {
 	test("single elements", () => {
-		expect(t`<p/>`).toEqual(c("p"));
-		expect(t`<p />`).toEqual(c("p"));
-		expect(t`<p></p>`).toEqual(c("p"));
-		expect(t`<p>hello world</p>`).toEqual(c("p", null, "hello world"));
+		expect(xm`<p/>`).toEqual(c("p"));
+		expect(xm`<p />`).toEqual(c("p"));
+		expect(xm`<p></p>`).toEqual(c("p"));
+		expect(xm`<p>hello world</p>`).toEqual(c("p", null, "hello world"));
 	});
 
 	test("top-level strings", () => {
-		expect(t`hello world`).toEqual(c("", null, "hello world"));
-		expect(t`hello <p>world</p>`).toEqual(
+		expect(xm`hello world`).toEqual(c("", null, "hello world"));
+		expect(xm`hello <p>world</p>`).toEqual(
 			c("", null, ...["hello ", c("p", null, "world")]),
 		);
-		expect(t`<p>hello</p> world`).toEqual(
+		expect(xm`<p>hello</p> world`).toEqual(
 			c("", null, ...[c("p", null, "hello"), " world"]),
 		);
-		expect(t` hello<span> </span>world `).toEqual(
+		expect(xm` hello<span> </span>world `).toEqual(
 			c("", null, ...["hello", c("span", null, " "), "world"]),
 		);
 	});
@@ -25,10 +25,10 @@ describe("happy path", () => {
 	test("newlines and whitespace", () => {
 		// TODO: Figure out how to test this without fricking editors/linters or
 		// whatever getting in the way
-		expect(t`
+		expect(xm`
 			<p/>
 		`).toEqual(c("p"));
-		expect(t`
+		expect(xm`
 			<span>Hello</span> \
 			<span>World</span>
 		`).toEqual(
@@ -37,22 +37,22 @@ describe("happy path", () => {
 	});
 
 	test("string props", () => {
-		expect(t`<p class="foo" />`).toEqual(c("p", {class: "foo"}));
-		expect(t`<p f="foo" b="bar" />`).toEqual(c("p", {f: "foo", b: "bar"}));
-		expect(t`<p f="'foo'" b='"bar"' />`).toEqual(
+		expect(xm`<p class="foo" />`).toEqual(c("p", {class: "foo"}));
+		expect(xm`<p f="foo" b="bar" />`).toEqual(c("p", {f: "foo", b: "bar"}));
+		expect(xm`<p f="'foo'" b='"bar"' />`).toEqual(
 			c("p", {f: "'foo'", b: '"bar"'}),
 		);
 	});
 
 	test("string escapes", () => {
-		expect(t`<p a="a\"a\"a\"a" b='b\'b\'b\'b' />`).toEqual(
+		expect(xm`<p a="a\"a\"a\"a" b='b\'b\'b\'b' />`).toEqual(
 			c("p", {a: 'a"a"a"a', b: "b'b'b'b"}),
 		);
-		expect(t`<p a="\\\"\'\a\b\\\"" />`).toEqual(c("p", {a: `\\"'ab\\"`}));
+		expect(xm`<p a="\\\"\'\a\b\\\"" />`).toEqual(c("p", {a: `\\"'ab\\"`}));
 	});
 
 	test("fragment shorthand", () => {
-		expect(t`
+		expect(xm`
 			<p>
 				Hello \
 				<>world</>
@@ -63,8 +63,8 @@ describe("happy path", () => {
 	test("tag expressions", () => {
 		const T1 = "tag1";
 		const T2 = "tag2";
-		expect(t`<${T1}>Hello world</${T1}>`).toEqual(c(T1, null, "Hello world"));
-		expect(t`
+		expect(xm`<${T1}>Hello world</${T1}>`).toEqual(c(T1, null, "Hello world"));
+		expect(xm`
 			<${T1}>
 				<${T2}>
 					Hello world
@@ -76,20 +76,20 @@ describe("happy path", () => {
 	test("children expressions", () => {
 		const ex1 = "Hello";
 		const ex2 = "world";
-		expect(t`
+		expect(xm`
 			<div>${ex1} ${ex2}</div>
 		`).toEqual(c("div", null, "Hello", " ", "world"));
-		expect(t`
+		expect(xm`
 			<div>${ex1}${ex2}</div>
 		`).toEqual(c("div", null, "Hello", "world"));
 
-		expect(t`
+		expect(xm`
 			<div>
 				<span>${ex1} ${ex2}</span>
 			</div>
 		`).toEqual(c("div", null, c("span", null, "Hello", " ", "world")));
 
-		expect(t`
+		expect(xm`
 			<div><span>${null} ${undefined} ${true} ${false} ${1} ${2}</span></div>
 		`).toEqual(
 			c(
@@ -103,13 +103,13 @@ describe("happy path", () => {
 			),
 		);
 
-		expect(t`
+		expect(xm`
 			${"Hello"} <span>world</span>
 		`).toEqual(c("", null, "Hello", " ", c("span", null, "world")));
 	});
 
 	test("shorthand boolean props", () => {
-		expect(t`
+		expect(xm`
 			<label><input type="checkbox" checked name="attendance" disabled />Present</label>
 		`).toEqual(
 			c(
@@ -127,7 +127,7 @@ describe("happy path", () => {
 	});
 
 	test("prop expressions", () => {
-		expect(t`
+		expect(xm`
 			<div class=${"greeting"} style = ${{color: "red"}}>
 				Hello world
 			</div>
@@ -138,13 +138,13 @@ describe("happy path", () => {
 		const props = {
 			style: "color: red;",
 		};
-		expect(t`<div class="greeting" ...${props}>Hello world</div>`).toEqual(
+		expect(xm`<div class="greeting" ...${props}>Hello world</div>`).toEqual(
 			c("div", {class: "greeting", style: "color: red;"}, "Hello world"),
 		);
-		expect(t`<div class="greeting" ... ${props}>Hello world</div>`).toEqual(
+		expect(xm`<div class="greeting" ... ${props}>Hello world</div>`).toEqual(
 			c("div", {class: "greeting", style: "color: red;"}, "Hello world"),
 		);
-		expect(t`<div class="greeting" ...
+		expect(xm`<div class="greeting" ...
 		${props}>Hello world</div>`).toEqual(
 			c("div", {class: "greeting", style: "color: red;"}, "Hello world"),
 		);
@@ -152,11 +152,11 @@ describe("happy path", () => {
 
 	test("asymmetric closing tags", () => {
 		const Component = "C";
-		expect(t`
+		expect(xm`
 			<${Component}>Hello world<//>
 		`).toEqual(c(Component, null, "Hello world"));
 
-		expect(t`
+		expect(xm`
 			<${Component}>
 				Hello world
 			<//Component>
@@ -164,7 +164,7 @@ describe("happy path", () => {
 	});
 
 	test("weird identifiers", () => {
-		expect(t`
+		expect(xm`
 			<$a $b$ _c>
 				<-custom-element -prop="foo" _-_="bar" />
 				<__ $key=${1}/>
@@ -182,13 +182,13 @@ describe("happy path", () => {
 	});
 
 	test("comments", () => {
-		expect(t`
+		expect(xm`
 			<div>
 				<!--<span>Hello</span>--><span>world</span>
 			</div>
 		`).toEqual(c("div", null, c("span", null, "world")));
 
-		expect(t`
+		expect(xm`
 			<div>
 				<!--<span>Hello</span>--> <!--<span>world</span>-->
 			</div>
@@ -196,7 +196,7 @@ describe("happy path", () => {
 	});
 
 	test("comment expressions", () => {
-		expect(t`
+		expect(xm`
 			<div>
 				<!--
 				<${"C"} value=${true} />
@@ -207,17 +207,17 @@ describe("happy path", () => {
 	});
 
 	test("prop string expressions", () => {
-		expect(t`
+		expect(xm`
 			<p class="${undefined} ${null} ${"a"}-${{a: "1"}}-" />
 		`).toEqual(c("p", {class: "  a-[object Object]-"}));
-		expect(t`
+		expect(xm`
 			<p class="a${1}\${2}\a${3}\"" />
 		`).toEqual(c("p", {class: 'a1${2}a3"'}));
 		// Don’t think too hard about escaping.
-		expect(t`
+		expect(xm`
 			<p class="a\\${1}\\${2}\\\a${3}\"" />
 		`).toEqual(c("p", {class: 'a\\1\\2\\a3"'}));
-		expect(t`
+		expect(xm`
 			<p class="a${true}${false}${null}${undefined}b" />
 		`).toEqual(c("p", {class: "ab"}));
 	});
@@ -226,68 +226,68 @@ describe("happy path", () => {
 describe("sad path", () => {
 	test("unbalanced tags", () => {
 		expect(() => {
-			t`<span>`;
+			xm`<span>`;
 		}).toThrow(new SyntaxError('Unmatched opening tag "span"'));
 		expect(() => {
-			t`</span>`;
+			xm`</span>`;
 		}).toThrow(new SyntaxError('Unmatched closing tag "span"'));
 		expect(() => {
-			t`<div>uhhh</span>`;
+			xm`<div>uhhh</span>`;
 		}).toThrow(new SyntaxError('Unmatched closing tag "span", expected "div"'));
 	});
 
 	test("invalid characters", () => {
 		expect(() => {
-			t`<<>`;
+			xm`<<>`;
 		}).toThrow(new SyntaxError("Unexpected text `<`"));
 		expect(() => {
-			t`<p<></p>`;
+			xm`<p<></p>`;
 		}).toThrow(new SyntaxError("Unexpected text `<`"));
 		expect(() => {
-			t`<p><</p>`;
+			xm`<p><</p>`;
 		}).toThrow(new SyntaxError("Unexpected text `</`"));
 		expect(() => {
-			t`<p</p>`;
+			xm`<p</p>`;
 		}).toThrow(new SyntaxError("Unexpected text `</`"));
 		expect(() => {
-			t`<p ///></p>`;
+			xm`<p ///></p>`;
 		}).toThrow(new SyntaxError("Unexpected text `//`"));
 		expect(() => {
-			t`<p /p></p>`;
+			xm`<p /p></p>`;
 			// debatable, but whatever
 		}).toThrow(new SyntaxError("Unexpected text `/`"));
 		expect(() => {
-			t`<e p p<></e>`;
+			xm`<e p p<></e>`;
 		}).toThrow(new SyntaxError("Unexpected text `<`"));
 		expect(() => {
-			t`<p class</p>`;
+			xm`<p class</p>`;
 		}).toThrow(new SyntaxError("Unexpected text `</`"));
 		expect(() => {
-			t`<p<`;
+			xm`<p<`;
 		}).toThrow(new SyntaxError("Unexpected text `<`"));
 		expect(() => {
-			t`<p class=<`;
+			xm`<p class=<`;
 		}).toThrow(new SyntaxError("Unexpected text `<`"));
 		expect(() => {
-			t`<p class==></p>`;
+			xm`<p class==></p>`;
 		}).toThrow(new SyntaxError("Unexpected text `=></p>`"));
 		expect(() => {
-			t`<p class=</p>`;
+			xm`<p class=</p>`;
 		}).toThrow(new SyntaxError("Unexpected text `</p>`"));
 		expect(() => {
-			t`<p></p text>`;
+			xm`<p></p text>`;
 		}).toThrow(new SyntaxError("Unexpected text `text`"));
 		expect(() => {
-			t`<p></p text`;
+			xm`<p></p text`;
 		}).toThrow(new SyntaxError("Unexpected text `text`"));
 		expect(() => {
-			t`<p><///p>`;
+			xm`<p><///p>`;
 		}).toThrow(new SyntaxError("Unexpected text `/p`"));
 		expect(() => {
-			t`<foo="bar">`;
+			xm`<foo="bar">`;
 		}).toThrow(new SyntaxError('Unexpected text `="`'));
 		expect(() => {
-			t`<foo="\">`;
+			xm`<foo="\">`;
 			// debatable, but whatever
 		}).toThrow(new SyntaxError('Unexpected text `="\\"`'));
 	});
@@ -296,13 +296,13 @@ describe("sad path", () => {
 	test("invalid expressions", () => {
 		const exp = {foo: "bar"};
 		expect(() => {
-			t`<div ${exp}>`;
+			xm`<div ${exp}>`;
 		}).toThrow(new SyntaxError("Unexpected expression"));
 		expect(() => {
-			t`<${"foo"}${"bar"}>`;
+			xm`<${"foo"}${"bar"}>`;
 		}).toThrow(new SyntaxError("Unexpected expression"));
 		expect(() => {
-			t`<p class${undefined} />`;
+			xm`<p class${undefined} />`;
 		}).toThrow(new SyntaxError("Unexpected expression"));
 	});
 
@@ -310,13 +310,13 @@ describe("sad path", () => {
 		function C() {}
 		function D() {}
 		expect(() => {
-			t`<${C}>`;
+			xm`<${C}>`;
 		}).toThrow(new SyntaxError("Unmatched opening tag C()"));
 		expect(() => {
-			t`</${C}>`;
+			xm`</${C}>`;
 		}).toThrow(new SyntaxError("Unmatched closing tag C()"));
 		expect(() => {
-			t`<${C}></${D}>`;
+			xm`<${C}></${D}>`;
 		}).toThrow(new SyntaxError("Unmatched closing tag D(), expected C()"));
 	});
 
