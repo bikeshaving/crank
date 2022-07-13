@@ -2,7 +2,7 @@ import {c} from "./crank.js";
 import type {Element} from "./crank.js";
 
 const cache = new Map<string, ParseResult>();
-export function template(
+export function xm(
 	spans: TemplateStringsArray,
 	...expressions: Array<unknown>
 ): Element {
@@ -30,10 +30,6 @@ export function template(
 
 	return build(element);
 }
-
-export const t = template;
-
-export default template;
 
 // Type definitions for a bare-bones AST
 interface ParseElement {
@@ -93,6 +89,10 @@ interface ParseResult {
  * Group 3: tag
  * Group 4: closing slash
  * Group 5: tag name
+ *
+ * The comment group must appear first because the tag group can potentially
+ * match a comment, so that we can handle tag expressions where we’ve reached
+ * the end of a span.
  */
 const CHILDREN_RE =
 	/((?:\r|\n|\r\n)\s*)|(<!--[\S\s]*?(?:-->|$))|(<\s*(\/{0,2})\s*([-_$\w]*))/g;
@@ -150,11 +150,11 @@ function parse(spans: ArrayLike<string>): ParseResult {
 							}
 
 							if (newline) {
-								// We preserve whitespace before escaped newlines.
-								//   t` \
-								//   `
 								if (span[Math.max(0, match.index - 1)] === "\\") {
-									// remove the backslash
+									// We preserve whitespace before escaped newlines.
+									//   xm` \
+									//   `
+									// remove the backslash from output
 									before = before.slice(0, -1);
 								} else {
 									before = before.replace(/\s*$/, "");
@@ -170,7 +170,7 @@ function parse(spans: ArrayLike<string>): ParseResult {
 						if (comment) {
 							if (end === span.length) {
 								// Expression in a comment:
-								//   t`<!-- ${exp} -->`
+								//   xm`<!-- ${exp} -->`
 								matcher = CLOSING_COMMENT_RE;
 							}
 						} else if (tag) {
@@ -186,12 +186,12 @@ function parse(spans: ArrayLike<string>): ParseResult {
 										throw new SyntaxError(`Unmatched closing tag "${tagName}"`);
 									}
 
+									// ERROR EXPRESSION
 									expressionTarget = {
 										type: "error",
 										message: "Unmatched closing tag ${}",
 										value: null,
 									};
-									// early break from switch, not loop
 								} else {
 									if (end === span.length) {
 										// TAG EXPRESSION
@@ -214,15 +214,14 @@ function parse(spans: ArrayLike<string>): ParseResult {
 									children: [],
 								};
 
-								if (end === span.length) {
-									// TAG EXPRESSION
-									expressionTarget = next.open;
-								}
-
-								stack.push(element);
 								element.children.push(next);
+								stack.push(element);
 								element = next;
 								matcher = PROPS_RE;
+								if (end === span.length) {
+									// TAG EXPRESSION
+									expressionTarget = element.open;
+								}
 							}
 						}
 					} else {
@@ -310,16 +309,29 @@ function parse(spans: ArrayLike<string>): ParseResult {
 						}
 					} else {
 						if (!expressing) {
-							throw new SyntaxError(
-								`Unexpected text \`${span.slice(i, i + 20).trim()}\``,
-							);
+							if (i === span.length) {
+								throw new SyntaxError(
+									`Expected props but reached end of document`,
+								);
+							} else {
+								throw new SyntaxError(
+									`Unexpected text \`${span.slice(i, i + 20).trim()}\``,
+								);
+							}
 						}
+
+						// Unexpected expression errors are handled in the outer loop.
+						//
+						// This would most likely be the starting point for the logic of
+						// prop name expressions.
+						//   xm`<p ${name}=${value}>`
 					}
+
 					break;
 				}
 
 				case CLOSING_BRACKET_RE: {
-					// We’re in a self-closing slash and are looking for the >
+					// We’re in a closing tag and looking for the >.
 					if (match) {
 						if (i < match.index) {
 							throw new SyntaxError(
@@ -365,7 +377,9 @@ function parse(spans: ArrayLike<string>): ParseResult {
 						matcher = CHILDREN_RE;
 					} else {
 						if (!expressing) {
-							throw new SyntaxError("Missing `-->`");
+							throw new SyntaxError(
+								"Expected `-->` but reached end of template",
+							);
 						}
 					}
 
@@ -418,7 +432,6 @@ function parse(spans: ArrayLike<string>): ParseResult {
 	if (stack.length) {
 		const ti = targets.indexOf(element.open);
 		if (ti === -1) {
-			// TODO: Expressions needed here.
 			throw new SyntaxError(`Unmatched opening tag "${element.open.value}"`);
 		}
 
@@ -483,6 +496,7 @@ function build(parsed: ParseElement): Element {
 
 			props![prop.name] = value;
 		} else {
+			// spread prop
 			props = {...props, ...(prop.value as any)};
 		}
 	}

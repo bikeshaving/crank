@@ -44,7 +44,7 @@ const input = [
 	"src/crank.ts",
 	"src/dom.ts",
 	"src/html.ts",
-	"src/template.ts",
+	"src/xm.ts",
 ];
 const ts = typescript2({
 	clean: true,
