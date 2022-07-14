@@ -1267,9 +1267,9 @@ const IsDone = 1 << 4;
  *
  * NOTE: This is mainly used to prevent some false positives in component
  * yields or returns undefined warnings. The reason we’re using this versus
- * IsUnmounted is a very troubling jest test (cascades sync generator parent
- * and sync generator child) where synchronous code causes a stack overflow
- * error in a non-deterministic way. Deeply disturbing stuff.
+ * IsUnmounted is a very troubling test (cascades sync generator parent and
+ * sync generator child) where synchronous code causes a stack overflow error
+ * in a non-deterministic way. Deeply disturbing stuff.
  */
 const IsErrored = 1 << 5;
 

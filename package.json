@@ -73,34 +73,33 @@
     "prebuild": "npm run clean",
     "build": "rollup -c rollup.config.js",
     "clean": "shx rm -rf dist",
-    "debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "preshipit": "npm run typecheck && npm run test && npm run build",
     "shipit": "cd dist && npm publish && cd .. && ./scripts/rename-pkg.js && cd dist && npm publish",
-    "test": "jest --config jest.config.cjs --color --no-cache",
+    "test": "playwright-test --runner uvu test",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@arkweid/lefthook": "^0.7.7",
-    "@types/jest": "^26.0.23",
+    "@types/sinon": "^10.0.12",
     "@typescript-eslint/eslint-plugin": "^5.30.5",
     "@typescript-eslint/parser": "^5.30.5",
     "eslint": "^8.19.0",
     "eslint-config-prettier": "^8.5.0",
-    "eslint-plugin-jest": "^26.5.3",
     "eslint-plugin-prettier": "^4.2.1",
     "eslint-plugin-react": "^7.30.1",
-    "jest": "^26.6.3",
     "magic-string": "^0.26.2",
+    "playwright-test": "^8.1.1",
     "prettier": "^2.7.1",
     "rollup": "^2.76.0",
     "rollup-plugin-typescript2": "^0.32.1",
     "shx": "^0.3.4",
-    "ts-jest": "^26.5.6",
-    "ts-jest-resolver": "^2.0.0",
-    "typescript": "^4.7.4"
+    "sinon": "^14.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^4.7.4",
+    "uvu": "^0.5.6"
   },
   "publishConfig": {
     "access": "public"
-	}
+  }
 }
