@@ -82,6 +82,7 @@ export function* CodeBlock(
 	const isLive = rest === "live";
 	this.addEventListener("contentchange", (ev: any) => {
 		if (!isLive) {
+			renderSource = "contentchange";
 			this.refresh();
 			return;
 		}
@@ -95,6 +96,7 @@ export function* CodeBlock(
 		}
 
 		value = ev.target.value;
+		renderSource = "contentchange";
 		this.refresh();
 	});
 
@@ -287,7 +289,7 @@ export function* PrismEditor(
 	{
 		value,
 		language,
-		editable = true,
+		editable,
 	}: {value: string; language: string; editable?: boolean},
 ) {
 	let selectionRange: SelectionRange | undefined;
@@ -305,6 +307,7 @@ export function* PrismEditor(
 		}
 
 		value = ev.target.value;
+		renderSource = "contentchange";
 		this.refresh();
 	});
 
@@ -375,6 +378,7 @@ export function* PrismEditor(
 					selectionEnd: selectionStart1,
 					selectionDirection: "none",
 				};
+				renderSource = "tab";
 				this.refresh();
 			} else if (tabMatch && tabMatch[1].length) {
 				// match the tabbing of the previous line
@@ -387,6 +391,7 @@ export function* PrismEditor(
 					selectionEnd: selectionStart1 + insertBefore.length,
 					selectionDirection: "none",
 				};
+				renderSource = "tab";
 				this.refresh();
 			}
 		}
@@ -426,11 +431,16 @@ export function* PrismEditor(
 	});
 
 	// TODO: controlled/uncontrolled behavior, pass value in here.
-	for ({language, editable = true} of this) {
+	let value1: string;
+	for ({value: value1, language, editable = true} of this) {
 		this.schedule(() => {
 			selectionRange = undefined;
 			renderSource = undefined;
 		});
+
+		if (renderSource == null) {
+			value = value1;
+		}
 
 		value = value.match(/(?:\r|\n|\r\n)$/) ? value : value + "\n";
 		const grammar = Prism.languages[language];
