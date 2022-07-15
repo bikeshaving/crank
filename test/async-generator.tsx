@@ -211,15 +211,15 @@ test("yield resumes async children", async () => {
 	Assert.is(await html, '<div id="0">0</div>');
 	Assert.is(document.body.innerHTML, '<div id="0">0</div>');
 	// TODO: Find a better way to test the timings
-	Assert.ok(Date.now() - t > 100 - 20 && Date.now() - t < 100 + 20);
+	Assert.ok(Date.now() - t > 100 - 30 && Date.now() - t < 100 + 30);
 	await renderer.render(<Component />, document.body);
 	Assert.is(await html, '<div id="1">1</div>');
 	Assert.is(document.body.innerHTML, '<div id="1">1</div>');
-	Assert.ok(Date.now() - t > 200 - 20 && Date.now() - t < 200 + 20);
+	Assert.ok(Date.now() - t > 200 - 30 && Date.now() - t < 200 + 30);
 	await renderer.render(<Component />, document.body);
 	Assert.is(await html, '<div id="2">2</div>');
 	Assert.is(document.body.innerHTML, '<div id="2">2</div>');
-	Assert.ok(Date.now() - t > 300 - 20 && Date.now() - t < 300 + 20);
+	Assert.ok(Date.now() - t > 300 - 30 && Date.now() - t < 300 + 30);
 	Assert.is(Async.callCount, 3);
 });
 

@@ -1,5 +1,4 @@
 name: Crank CI Workflow
-
 on:
   pull_request:
   push:
@@ -18,4 +17,7 @@ jobs:
     - run: npm run typecheck
     - run: npm run lint
     - run: npm run build
-    - run: npm run test
+    - run: npm run test -- --browser chromium
+    - run: npm run test -- --browser firefox
+    - run: npx playwright install-deps webkit
+    - run: npm run test -- --browser webkit
