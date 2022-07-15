@@ -209,7 +209,12 @@ export function* CodeBlock(
 		}
 	});
 
-	checkpointEditHistoryBySelection(this, editHistory);
+	this.schedule((el) => {
+		if (typeof document !== "undefined") {
+			area = el.querySelector("content-area");
+			checkpointEditHistoryBySelection(area, this, editHistory);
+		}
+	});
 	for ({lang} of this) {
 		this.schedule(() => {
 			selectionRange = undefined;
@@ -282,8 +287,8 @@ export function* PrismEditor(
 	{
 		value,
 		language,
-		editable,
-	}: {value: string; language: string; editable: boolean},
+		editable = true,
+	}: {value: string; language: string; editable?: boolean},
 ) {
 	let selectionRange: SelectionRange | undefined;
 	let area: ContentAreaElement;
@@ -414,8 +419,14 @@ export function* PrismEditor(
 		}
 	});
 
-	checkpointEditHistoryBySelection(this, editHistory);
-	for ({language} of this) {
+	this.schedule((el) => {
+		if (typeof document !== "undefined") {
+			checkpointEditHistoryBySelection(el, this, editHistory);
+		}
+	});
+
+	// TODO: controlled/uncontrolled behavior, pass value in here.
+	for ({language, editable = true} of this) {
 		this.schedule(() => {
 			selectionRange = undefined;
 			renderSource = undefined;
@@ -425,6 +436,7 @@ export function* PrismEditor(
 		const grammar = Prism.languages[language];
 		let lines: Array<Array<string | Token>>;
 		if (grammar == null) {
+			// TODO: plaintext...
 			lines = [];
 		} else {
 			lines = splitLines(Prism.tokenize(value || "", grammar));
@@ -569,12 +581,11 @@ function printTokens(tokens: Array<Token | string>): Array<Element | string> {
 
 /*** Revise Logic ***/
 function checkpointEditHistoryBySelection(
+	area: ContentAreaElement,
 	ctx: Context,
 	editHistory: EditHistory,
 ): void {
 	let oldSelectionRange: SelectionRange | undefined;
-	let area: any;
-
 	ctx.addEventListener("contentchange", () => {
 		oldSelectionRange = area.getSelectionRange();
 	});
@@ -598,18 +609,10 @@ function checkpointEditHistoryBySelection(
 		oldSelectionRange = newSelectionRange;
 	};
 
-	ctx.schedule((el: any) => {
-		if (typeof document !== "undefined") {
-			area = el.querySelector("content-area");
-		}
+	document.addEventListener("selectionchange", onselectionchange);
+	ctx.cleanup(() => {
+		document.removeEventListener("selectionchange", onselectionchange);
 	});
-
-	if (typeof document !== "undefined") {
-		document.addEventListener("selectionchange", onselectionchange);
-		ctx.cleanup(() => {
-			document.removeEventListener("selectionchange", onselectionchange);
-		});
-	}
 }
 
 function selectionRangeFromEdit(edit: Edit): SelectionRange | undefined {
