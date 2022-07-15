@@ -30,6 +30,9 @@ export function Navbar({url}: NavbarProps) {
 						Blog
 					</a>
 				</div>
+				<div class="navbar-item">
+					<a href="/playground/">Playground</a>
+				</div>
 			</div>
 			<div class="navbar-group">
 				<div class="navbar-item">
