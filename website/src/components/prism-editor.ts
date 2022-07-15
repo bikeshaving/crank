@@ -13,80 +13,21 @@ import Prism from "prismjs";
 import type {Token} from "prismjs";
 import "prismjs/components/prism-typescript.js";
 import {ContentArea} from "./contentarea.js";
-import * as Sucrase from "sucrase";
 
-function* Preview(
+export function* PrismEditor(
 	this: Context,
-	{value}: {value: string},
-): Generator<any, any, any> {
-	let iframe: HTMLIFrameElement;
-	for ({value} of this) {
-		this.flush(() => {
-			const document1 = iframe.contentDocument;
-			if (document1 == null) {
-				return;
-			}
-
-			try {
-				const parsed = Sucrase.transform(value, {
-					transforms: ["jsx", "typescript"],
-					jsxPragma: "createElement",
-					jsxFragmentPragma: "''",
-				});
-
-				document1.write(`
-					<style>
-						body {
-							color: #f5f9ff;
-						}
-					</style>
-				`);
-				document1.write(`<script type="module">${parsed.code}</script>`);
-				document1.close();
-			} catch (err) {
-				// TODO: Display errors in preview.
-				console.error(err);
-			}
-		});
-
-		yield xm`
-			<iframe
-				class="preview"
-				c-ref=${(iframe1: any) => (iframe = iframe1)}
-				src="about:blank"
-			/>
-		`;
-	}
-}
-
-// TODO: I need to separate the playground component from the codeblock component somehow
-export function* CodeBlock(
-	this: Context,
-	{value, lang}: {value: string; lang: string},
+	{
+		value,
+		language,
+		editable,
+	}: {value: string; language: string; editable?: boolean},
 ) {
 	let selectionRange: SelectionRange | undefined;
 	let area: ContentAreaElement;
 	let renderSource: string | undefined;
 	const editHistory = new EditHistory();
 	const keyer = new Keyer();
-	let rest: string;
-	{
-		const i = lang.indexOf(" ");
-		if (i === -1) {
-			rest = "";
-		} else {
-			[lang, rest] = [lang.slice(0, i), lang.slice(i + 1)];
-		}
-	}
-
-	const isLive = rest === "live";
 	this.addEventListener("contentchange", (ev: any) => {
-		if (!isLive) {
-			renderSource = "contentchange";
-			this.refresh();
-			return;
-		}
-
 		const {edit, source} = ev.detail;
 		keyer.transform(edit);
 		if (source === "render") {
@@ -167,6 +108,7 @@ export function* CodeBlock(
 					selectionEnd: selectionStart1,
 					selectionDirection: "none",
 				};
+				renderSource = "tab";
 				this.refresh();
 			} else if (tabMatch && tabMatch[1].length) {
 				// match the tabbing of the previous line
@@ -179,6 +121,7 @@ export function* CodeBlock(
 					selectionEnd: selectionStart1 + insertBefore.length,
 					selectionDirection: "none",
 				};
+				renderSource = "tab";
 				this.refresh();
 			}
 		}
@@ -213,30 +156,27 @@ export function* CodeBlock(
 
 	this.schedule((el) => {
 		if (typeof document !== "undefined") {
-			area = el.querySelector("content-area");
-			checkpointEditHistoryBySelection(area, this, editHistory);
+			checkpointEditHistoryBySelection(el, this, editHistory);
 		}
 	});
-	for ({lang} of this) {
+
+	// TODO: controlled/uncontrolled behavior, pass value in here.
+	let value1: string;
+	for ({value: value1, language, editable = true} of this) {
 		this.schedule(() => {
 			selectionRange = undefined;
 			renderSource = undefined;
 		});
 
-		value = value.match(/(?:\r|\n|\r\n)$/) ? value : value + "\n";
-		let rest: string;
-		{
-			const i = lang.indexOf(" ");
-			if (i === -1) {
-				rest = "";
-			} else {
-				[lang, rest] = [lang.slice(0, i), lang.slice(i + 1)];
-			}
+		if (renderSource == null) {
+			value = value1;
 		}
 
-		const grammar = Prism.languages[lang];
+		value = value.match(/(?:\r|\n|\r\n)$/) ? value : value + "\n";
+		const grammar = Prism.languages[language];
 		let lines: Array<Array<string | Token>>;
 		if (grammar == null) {
+			// TODO: plaintext...
 			lines = [];
 		} else {
 			lines = splitLines(Prism.tokenize(value || "", grammar));
@@ -244,42 +184,33 @@ export function* CodeBlock(
 
 		const isClient = typeof document !== "undefined";
 		let cursor = 0;
-
 		yield xm`
-			<div class="playground">
-				<${ContentArea}
-					c-ref=${(area1: any) => (area = area1)}
-					value=${value}
-					renderSource=${renderSource}
-					selectionRange=${selectionRange}
+			<${ContentArea}
+				$ref=${(area1: any) => (area = area1)}
+				value=${value}
+				renderSource=${renderSource}
+				selectionRange=${selectionRange}
+			>
+				<pre
+					autocomplete="off"
+					autocorrect="off"
+					autocapitalize="off"
+					spellcheck="false"
+					contenteditable=${isClient && editable}
 				>
-					<pre
-						class="editable ${isLive && "editable-live"}"
-						autocomplete="off"
-						autocorrect="off"
-						autocapitalize="off"
-						spellcheck="false"
-						contenteditable=${isClient && isLive}
-					>
-						${lines.map((line) => {
-							const key = keyer.keyAt(cursor);
-							const length = line.reduce((l, t) => l + t.length, 0);
-							cursor += length + 1;
-							return xm`
-								<div c-key=${key}>
-									<code>${printTokens(line)}</code>
-									<br />
-								</div>
-							`;
-						})}
-					</pre>
-				<//ContentArea>
-				${
-					typeof document !== "undefined" &&
-					rest === "live" &&
-					xm`<${Preview} value=${value} />`
-				}
-			</div>
+					${lines.map((line) => {
+						const key = keyer.keyAt(cursor);
+						const length = line.reduce((l, t) => l + t.length, 0);
+						cursor += length + 1;
+						return xm`
+							<div c-key=${key}>
+								<code>${printTokens(line)}</code>
+								<br />
+							</div>
+						`;
+					})}
+				</pre>
+			<//ContentArea>
 		`;
 	}
 }

@@ -1,6 +1,6 @@
 import {xm} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
-import {PrismEditor} from "./components/prism.js";
+import {PrismEditor} from "./components/prism-editor.js";
 import "prismjs/components/prism-javascript";
 
 import {ContentAreaElement} from "@b9g/revise/contentarea.js";
