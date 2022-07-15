@@ -37,9 +37,9 @@ export function* ContentArea(
 		selectionRange = oldSelectionRange,
 		renderSource,
 	} of this) {
-		this.flush((area) => {
+		this.flush((area: ContentAreaElement) => {
 			if (typeof renderSource === "string") {
-				area.source(renderSource);
+				Promise.resolve(() => area.source(renderSource!));
 			}
 
 			if (typeof value === "string" && value !== area.value) {
@@ -60,7 +60,7 @@ export function* ContentArea(
 		});
 
 		const area: ContentAreaElement = yield xm`
-			<content-area c-static=${composing}>${children}</content-area>
+			<content-area $static=${composing}>${children}</content-area>
 		`;
 
 		oldSelectionRange = area.getSelectionRange();
