@@ -6,16 +6,19 @@ import type {
 	SelectionRange,
 } from "@b9g/revise/contentarea.js";
 
-export interface ContentAreaProps {
-	children: unknown;
-	selectionRange?: SelectionRange | undefined;
-	value?: string | undefined;
-	renderSource?: string | undefined;
-}
-
 export function* ContentArea(
-	this: Context<ContentAreaProps>,
-	{value, children, selectionRange, renderSource}: ContentAreaProps,
+	this: Context,
+	{
+		value,
+		children,
+		selectionRange,
+		renderSource,
+	}: {
+		children: unknown;
+		selectionRange?: SelectionRange | undefined;
+		value?: string | undefined;
+		renderSource?: string | undefined;
+	},
 ) {
 	let composing = false;
 	this.addEventListener("compositionstart", () => {
@@ -24,22 +27,26 @@ export function* ContentArea(
 
 	this.addEventListener("compositionend", () => {
 		composing = false;
-		// Refreshing synchronously seems to cause weird effects with
-		// characters getting preserved in Korean (and probably other
-		// languages).
+		// Refreshing synchronously seems to cause weird effects with characters
+		// getting preserved in Korean (and probably other langauges).
 		Promise.resolve().then(() => this.refresh());
 	});
 
 	let oldSelectionRange: SelectionRange | undefined;
+	let area!: ContentAreaElement;
 	for ({
 		value,
 		children,
 		selectionRange = oldSelectionRange,
 		renderSource,
 	} of this) {
-		this.flush((area: ContentAreaElement) => {
+		this.schedule((area1: ContentAreaElement) => {
+			area = area1;
+		});
+
+		this.flush(() => {
 			if (typeof renderSource === "string") {
-				Promise.resolve(() => area.source(renderSource!));
+				area.source(renderSource!);
 			}
 
 			if (typeof value === "string" && value !== area.value) {
@@ -59,7 +66,7 @@ export function* ContentArea(
 			}
 		});
 
-		const area: ContentAreaElement = yield xm`
+		yield xm`
 			<content-area $static=${composing}>${children}</content-area>
 		`;
 
