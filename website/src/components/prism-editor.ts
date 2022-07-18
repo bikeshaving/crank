@@ -22,15 +22,15 @@ export function* PrismEditor(
 		editable,
 	}: {value: string; language: string; editable?: boolean},
 ) {
+	const keyer = new Keyer();
+	const editHistory = new EditHistory();
 	let selectionRange: SelectionRange | undefined;
 	let area: ContentAreaElement;
 	let renderSource: string | undefined;
-	const editHistory = new EditHistory();
-	const keyer = new Keyer();
 	this.addEventListener("contentchange", (ev: any) => {
 		const {edit, source} = ev.detail;
 		keyer.transform(edit);
-		if (source === "render") {
+		if (source === "contentchange") {
 			return;
 		} else if (source !== "history") {
 			editHistory.append(edit);
@@ -203,7 +203,7 @@ export function* PrismEditor(
 						const length = line.reduce((l, t) => l + t.length, 0);
 						cursor += length + 1;
 						return xm`
-							<div c-key=${key}>
+							<div $key=${key}>
 								<code>${printTokens(line)}</code>
 								<br />
 							</div>
