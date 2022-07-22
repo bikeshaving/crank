@@ -9,10 +9,11 @@ if (!window.customElements.get("content-area")) {
 }
 
 const el = document.getElementById("playground");
+
 renderer.render(
 	xm`
-	<div style="position: relative; top: 100px; border: 1px dotted green">
-		<${PrismEditor} value="console.log(\"Hello?\")" language="js" />
+	<div style="position: relative; top: 100px">
+		<${PrismEditor} value=${"hello\nworld"} language="" />
 	</div>
 `,
 	el,
