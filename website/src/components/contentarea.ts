@@ -32,18 +32,9 @@ export function* ContentArea(
 		Promise.resolve().then(() => this.refresh());
 	});
 
-	let oldSelectionRange: SelectionRange | undefined;
 	let area!: ContentAreaElement;
-	for ({
-		value,
-		children,
-		selectionRange = oldSelectionRange,
-		renderSource,
-	} of this) {
-		this.schedule((area1: ContentAreaElement) => {
-			area = area1;
-		});
-
+	for ({value, children, selectionRange, renderSource} of this) {
+		selectionRange = selectionRange || (area && area.getSelectionRange());
 		this.flush(() => {
 			if (typeof renderSource === "string") {
 				area.source(renderSource!);
@@ -58,6 +49,7 @@ export function* ContentArea(
 			}
 
 			if (selectionRange) {
+				// This must be done synchronously after rendering.
 				area.setSelectionRange(
 					selectionRange.selectionStart,
 					selectionRange.selectionEnd,
@@ -67,10 +59,11 @@ export function* ContentArea(
 		});
 
 		yield xm`
-			<content-area $static=${composing}>${children}</content-area>
+			<content-area
+				$ref=${(el: ContentAreaElement) => (area = el)}
+				$static=${composing}
+			>${children}</content-area>
 		`;
-
-		oldSelectionRange = area.getSelectionRange();
 	}
 }
 

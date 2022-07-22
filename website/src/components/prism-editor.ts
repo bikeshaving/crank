@@ -14,6 +14,8 @@ import type {Token} from "prismjs";
 import "prismjs/components/prism-typescript.js";
 import {ContentArea} from "./contentarea.js";
 
+const IS_CLIENT = typeof document !== "undefined";
+
 export function* PrismEditor(
 	this: Context,
 	{
@@ -41,9 +43,38 @@ export function* PrismEditor(
 		this.refresh();
 	});
 
+	// should be added to
+	this.addEventListener("beforeinput", (ev: any) => {
+		switch (ev.inputType) {
+			case "historyUndo": {
+				ev.preventDefault();
+				const edit = editHistory.undo();
+				if (edit) {
+					selectionRange = selectionRangeFromEdit(edit);
+					value = edit.apply(value);
+					renderSource = "history";
+					this.refresh();
+				}
+				break;
+			}
+			case "historyRedo": {
+				ev.preventDefault();
+				const edit = editHistory.redo();
+				if (edit) {
+					value = edit.apply(value);
+					selectionRange = selectionRangeFromEdit(edit);
+					renderSource = "history";
+					this.refresh();
+				}
+				break;
+			}
+		}
+	});
+
+	// Potato quality tab-matching.
+	// TODO: dedent when we see closing characters.
 	this.addEventListener("keydown", (ev: any) => {
 		if (ev.key === "Enter") {
-			// Potato quality tab-matching.
 			let {value: value1, selectionStart: selectionStart1, selectionEnd} = area;
 			if (selectionStart1 !== selectionEnd) {
 				return;
@@ -127,38 +158,11 @@ export function* PrismEditor(
 		}
 	});
 
-	this.addEventListener("beforeinput", (ev: any) => {
-		switch (ev.inputType) {
-			case "historyUndo": {
-				ev.preventDefault();
-				const edit = editHistory.undo();
-				if (edit) {
-					selectionRange = selectionRangeFromEdit(edit);
-					value = edit.apply(value);
-					renderSource = "history";
-					this.refresh();
-				}
-				break;
-			}
-			case "historyRedo": {
-				ev.preventDefault();
-				const edit = editHistory.redo();
-				if (edit) {
-					value = edit.apply(value);
-					selectionRange = selectionRangeFromEdit(edit);
-					renderSource = "history";
-					this.refresh();
-				}
-				break;
-			}
-		}
-	});
-
-	this.schedule((el) => {
-		if (typeof document !== "undefined") {
-			checkpointEditHistoryBySelection(el, this, editHistory);
-		}
-	});
+	if (IS_CLIENT) {
+		this.schedule(() => {
+			checkpointEditHistoryBySelection(area, this, editHistory);
+		});
+	}
 
 	// TODO: controlled/uncontrolled behavior, pass value in here.
 	let value1: string;
@@ -172,18 +176,20 @@ export function* PrismEditor(
 			value = value1;
 		}
 
+		// adding a line so that we can do shit
 		value = value.match(/(?:\r|\n|\r\n)$/) ? value : value + "\n";
 		const grammar = Prism.languages[language];
 		let lines: Array<Array<string | Token>>;
 		if (grammar == null) {
-			// TODO: plaintext...
-			lines = [];
+			lines = value
+				.replace(/\r\n|\r|\n$/, "")
+				.split(/\r\n|\r|\n/)
+				.map((line) => [line]);
 		} else {
 			lines = splitLines(Prism.tokenize(value || "", grammar));
 		}
 
-		const isClient = typeof document !== "undefined";
-		let cursor = 0;
+		let i = 0;
 		yield xm`
 			<${ContentArea}
 				$ref=${(area1: any) => (area = area1)}
@@ -195,13 +201,13 @@ export function* PrismEditor(
 					autocomplete="off"
 					autocorrect="off"
 					autocapitalize="off"
+					contenteditable=${IS_CLIENT && editable}
 					spellcheck="false"
-					contenteditable=${isClient && editable}
 				>
 					${lines.map((line) => {
-						const key = keyer.keyAt(cursor);
+						const key = keyer.keyAt(i);
 						const length = line.reduce((l, t) => l + t.length, 0);
-						cursor += length + 1;
+						i += length + 1;
 						return xm`
 							<div $key=${key}>
 								<code>${printTokens(line)}</code>
@@ -331,10 +337,6 @@ function checkpointEditHistoryBySelection(
 	});
 
 	const onselectionchange = () => {
-		if (!area) {
-			return;
-		}
-
 		const newSelectionRange = area.getSelectionRange();
 		if (
 			oldSelectionRange &&
