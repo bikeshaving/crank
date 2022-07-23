@@ -492,13 +492,9 @@ function build(parsed: ParseElement): Element {
 					// unescape things
 					// adapted from https://stackoverflow.com/a/57330383/1825413
 					.replace(
-						/\\[0-9]|\\['"bfnrtv]|\\x[0-9a-f]{2}|\\u[0-9a-f]{4}|\\u\{[0-9a-f]+\}|\\./gi,
+						/\\x[0-9a-f]{2}|\\u[0-9a-f]{4}|\\u\{[0-9a-f]+\}|\\./gi,
 						(match) => {
 							switch (match[1]) {
-								case "'":
-								case '"':
-								case "\\":
-									return match[1];
 								case "b":
 									return "\b";
 								case "f":
@@ -511,6 +507,8 @@ function build(parsed: ParseElement): Element {
 									return "\t";
 								case "v":
 									return "\v";
+								case "x":
+									return String.fromCharCode(parseInt(match.slice(2), 16));
 								case "u":
 									if (match[2] === "{") {
 										return String.fromCodePoint(
@@ -518,8 +516,6 @@ function build(parsed: ParseElement): Element {
 										);
 									}
 
-									return String.fromCharCode(parseInt(match.slice(2), 16));
-								case "x":
 									return String.fromCharCode(parseInt(match.slice(2), 16));
 								case "0":
 									return "\0";
