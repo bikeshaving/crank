@@ -76,7 +76,7 @@
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "preshipit": "npm run typecheck && npm run test && npm run build",
     "shipit": "cd dist && npm publish && cd .. && ./scripts/rename-pkg.js && cd dist && npm publish",
-    "test": "playwright-test --runner uvu test",
+    "test": "playwright-test --runner uvu",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
