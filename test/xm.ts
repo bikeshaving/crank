@@ -58,7 +58,8 @@ test("string escapes", () => {
 		xm`<p a="a\"a\"a\"a" b='b\'b\'b\'b' />`,
 		c("p", {a: 'a"a"a"a', b: "b'b'b'b"}),
 	);
-	Assert.equal(xm`<p a="\\\"\'\a\b\\\"" />`, c("p", {a: `\\"'ab\\"`}));
+	Assert.equal(xm`<p a="\\\"\'\a\b\\\"" />`, c("p", {a: `\\"'a\b\\"`}));
+	Assert.equal(xm`<p a="hello\r\nworld" />`, c("p", {a: "hello\r\nworld"}));
 });
 
 test("fragment shorthand", () => {
