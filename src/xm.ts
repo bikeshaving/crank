@@ -486,12 +486,48 @@ function build(parsed: ParseElement): Element {
 							typeof part.value === "string" ? part.value : String(part.value);
 					}
 				}
-
 				value = string
 					// remove quotes
 					.slice(1, -1)
-					// deal with escaped characters
-					.replace(/\\(.?)/g, "$1");
+					// unescape things
+					// adapted from https://stackoverflow.com/a/57330383/1825413
+					.replace(
+						/\\[0-9]|\\['"bfnrtv]|\\x[0-9a-f]{2}|\\u[0-9a-f]{4}|\\u\{[0-9a-f]+\}|\\./gi,
+						(match) => {
+							switch (match[1]) {
+								case "'":
+								case '"':
+								case "\\":
+									return match[1];
+								case "b":
+									return "\b";
+								case "f":
+									return "\f";
+								case "n":
+									return "\n";
+								case "r":
+									return "\r";
+								case "t":
+									return "\t";
+								case "v":
+									return "\v";
+								case "u":
+									if (match[2] === "{") {
+										return String.fromCodePoint(
+											parseInt(match.slice(3, -1), 16),
+										);
+									}
+
+									return String.fromCharCode(parseInt(match.slice(2), 16));
+								case "x":
+									return String.fromCharCode(parseInt(match.slice(2), 16));
+								case "0":
+									return "\0";
+								default:
+									return match.slice(1);
+							}
+						},
+					);
 			}
 
 			props![prop.name] = value;
