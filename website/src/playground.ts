@@ -12,9 +12,12 @@ const el = document.getElementById("playground");
 
 renderer.render(
 	xm`
-	<div style="position: relative; top: 100px">
-		<${PrismEditor} value=${"hello\nworld"} language="" />
-	</div>
-`,
-	el,
+		<div style="position: relative; top: 100px">
+			<${PrismEditor}
+				value="hello\n\nworld\n"
+				language="typescript"
+			/>
+		</div>
+	`,
+	el!,
 );

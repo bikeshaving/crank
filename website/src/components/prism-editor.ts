@@ -16,6 +16,15 @@ import {ContentArea} from "./contentarea.js";
 
 const IS_CLIENT = typeof document !== "undefined";
 
+function Line({line}: {line: Array<Token | string>}) {
+	return xm`
+		<div>
+			<code>${printTokens(line)}</code>
+			<br />
+		</div>
+	`;
+}
+
 export function* PrismEditor(
 	this: Context,
 	{
@@ -29,17 +38,20 @@ export function* PrismEditor(
 	let selectionRange: SelectionRange | undefined;
 	let area: ContentAreaElement;
 	let renderSource: string | undefined;
+	let currentEdit: Edit | undefined;
 	this.addEventListener("contentchange", (ev: any) => {
 		const {edit, source} = ev.detail;
-		keyer.transform(edit);
-		if (source === "contentchange") {
+		const normalizedEdit = edit.normalize();
+		keyer.transform(normalizedEdit);
+		if (source === "refresh") {
 			return;
 		} else if (source !== "history") {
-			editHistory.append(edit);
+			editHistory.append(normalizedEdit);
 		}
 
 		value = ev.target.value;
-		renderSource = "contentchange";
+		renderSource = "refresh";
+		currentEdit = edit;
 		this.refresh();
 	});
 
@@ -71,92 +83,95 @@ export function* PrismEditor(
 		}
 	});
 
-	// Potato quality tab-matching.
-	// TODO: dedent when we see closing characters.
-	this.addEventListener("keydown", (ev: any) => {
-		if (ev.key === "Enter") {
-			let {value: value1, selectionStart: selectionStart1, selectionEnd} = area;
-			if (selectionStart1 !== selectionEnd) {
-				return;
-			}
+	//// Potato quality tab-matching.
+	//// TODO: dedent when we see closing characters.
+	//this.addEventListener("keydown", (ev: any) => {
+	//	if (ev.key === "Enter") {
+	//		let {value: value1, selectionStart: selectionStart1, selectionEnd} = area;
+	//		if (selectionStart1 !== selectionEnd) {
+	//			return;
+	//		}
 
-			// A reasonable length to look for tabs and braces.
-			const prev = value.slice(0, selectionStart1);
-			const tabMatch = prev.match(/[\r\n]?([^\S\r\n]*).*$/);
-			// [^\S\r\n] = non-newline whitespace
-			const prevMatch = prev.match(/({|\(|\[)([^\S\r\n]*)$/);
-			if (prevMatch) {
-				// increase tab
-				ev.preventDefault();
-				const next = value1.slice(selectionStart1);
-				const startBracket = prevMatch[1];
-				const startWhitespace = prevMatch[2];
-				let insertBefore = "\n";
-				if (tabMatch) {
-					insertBefore += tabMatch[1] + "  ";
-				}
+	//		// A reasonable length to look for tabs and braces.
+	//		const prev = value.slice(0, selectionStart1);
+	//		const tabMatch = prev.match(/[\r\n]?([^\S\r\n]*).*$/);
+	//		// [^\S\r\n] = non-newline whitespace
+	//		const prevMatch = prev.match(/({|\(|\[)([^\S\r\n]*)$/);
+	//		if (prevMatch) {
+	//			// increase tab
+	//			ev.preventDefault();
+	//			const next = value1.slice(selectionStart1);
+	//			const startBracket = prevMatch[1];
+	//			const startWhitespace = prevMatch[2];
+	//			let insertBefore = "\n";
+	//			if (tabMatch) {
+	//				insertBefore += tabMatch[1] + "  ";
+	//			}
 
-				let edit = Edit.build(
-					value1,
-					insertBefore,
-					selectionStart1,
-					selectionStart1 + startWhitespace.length,
-				);
+	//			// TODO: use Edit.createBuilder
+	//			let edit = Edit.build(
+	//				value1,
+	//				insertBefore,
+	//				selectionStart1,
+	//				selectionStart1 + startWhitespace.length,
+	//			);
 
-				selectionStart1 -= startWhitespace.length;
-				selectionStart1 += insertBefore.length;
+	//			selectionStart1 -= startWhitespace.length;
+	//			selectionStart1 += insertBefore.length;
 
-				const closingMap: Record<string, string> = {
-					"{": "}",
-					"(": ")",
-					"[": "]",
-				};
-				let closing = closingMap[startBracket];
-				if (closing !== "}") {
-					closing = "\\" + closing;
-				}
-				const nextMatch = next.match(
-					new RegExp(String.raw`^([^\S\r\n]*)${closing}`),
-				);
+	//			const closingMap: Record<string, string> = {
+	//				"{": "}",
+	//				"(": ")",
+	//				"[": "]",
+	//			};
+	//			let closing = closingMap[startBracket];
+	//			if (closing !== "}") {
+	//				closing = "\\" + closing;
+	//			}
+	//			const nextMatch = next.match(
+	//				new RegExp(String.raw`^([^\S\r\n]*)${closing}`),
+	//			);
 
-				if (nextMatch) {
-					const value2 = edit.apply(value1);
-					const endWhitespace = nextMatch[1];
-					const insertAfter = tabMatch ? "\n" + tabMatch[1] : "\n";
-					const edit1 = Edit.build(
-						value2,
-						insertAfter,
-						selectionStart1,
-						selectionStart1 + endWhitespace.length,
-					);
+	//			if (nextMatch) {
+	//				const value2 = edit.apply(value1);
+	//				const endWhitespace = nextMatch[1];
+	//				const insertAfter = tabMatch ? "\n" + tabMatch[1] : "\n";
+	//				// TODO: use Edit.createBuilder
+	//				const edit1 = Edit.build(
+	//					value2,
+	//					insertAfter,
+	//					selectionStart1,
+	//					selectionStart1 + endWhitespace.length,
+	//				);
 
-					edit = edit.compose(edit1);
-				}
+	//				edit = edit.compose(edit1);
+	//			}
 
-				value = edit.apply(value1);
-				selectionRange = {
-					selectionStart: selectionStart1,
-					selectionEnd: selectionStart1,
-					selectionDirection: "none",
-				};
-				renderSource = "tab";
-				this.refresh();
-			} else if (tabMatch && tabMatch[1].length) {
-				// match the tabbing of the previous line
-				ev.preventDefault();
-				const insertBefore = "\n" + tabMatch[1];
-				const edit = Edit.build(value1, insertBefore, selectionStart1);
-				value = edit.apply(value1);
-				selectionRange = {
-					selectionStart: selectionStart1 + insertBefore.length,
-					selectionEnd: selectionStart1 + insertBefore.length,
-					selectionDirection: "none",
-				};
-				renderSource = "tab";
-				this.refresh();
-			}
-		}
-	});
+	//			value = edit.apply(value1);
+	//			selectionRange = {
+	//				selectionStart: selectionStart1,
+	//				selectionEnd: selectionStart1,
+	//				selectionDirection: "none",
+	//			};
+	//			renderSource = "tab";
+	//			this.refresh();
+	//		} else if (tabMatch && tabMatch[1].length) {
+	//			// match the tabbing of the previous line
+	//			ev.preventDefault();
+	//			const insertBefore = "\n" + tabMatch[1];
+	//			// TODO: use Edit.createBuilder
+	//			const edit = Edit.build(value1, insertBefore, selectionStart1);
+	//			value = edit.apply(value1);
+	//			selectionRange = {
+	//				selectionStart: selectionStart1 + insertBefore.length,
+	//				selectionEnd: selectionStart1 + insertBefore.length,
+	//				selectionDirection: "none",
+	//			};
+	//			renderSource = "tab";
+	//			this.refresh();
+	//		}
+	//	}
+	//});
 
 	if (IS_CLIENT) {
 		this.schedule(() => {
@@ -181,6 +196,7 @@ export function* PrismEditor(
 		const grammar = Prism.languages[language];
 		let lines: Array<Array<string | Token>>;
 		if (grammar == null) {
+			Prism.tokenize(value || "", Prism.languages.javascript);
 			lines = value
 				.replace(/\r\n|\r|\n$/, "")
 				.split(/\r\n|\r|\n/)
@@ -189,7 +205,9 @@ export function* PrismEditor(
 			lines = splitLines(Prism.tokenize(value || "", grammar));
 		}
 
-		let i = 0;
+		let index = 0;
+		const edit = currentEdit;
+		currentEdit = undefined;
 		yield xm`
 			<${ContentArea}
 				$ref=${(area1: any) => (area = area1)}
@@ -205,15 +223,19 @@ export function* PrismEditor(
 					spellcheck="false"
 				>
 					${lines.map((line) => {
-						const key = keyer.keyAt(i);
-						const length = line.reduce((l, t) => l + t.length, 0);
-						i += length + 1;
-						return xm`
-							<div $key=${key}>
-								<code>${printTokens(line)}</code>
-								<br />
-							</div>
-						`;
+						const key = keyer.keyAt(index);
+						// +1 for newline
+						const length = line.reduce((l, t) => l + t.length, 0) + 1;
+						const static_ = !(
+							edit && edit.hasChangesBetween(index, index + length)
+						);
+						try {
+							return xm`
+								<${Line} $key=${key} $static=${static_} line=${line} />
+							`;
+						} finally {
+							index += length;
+						}
 					})}
 				</pre>
 			<//ContentArea>
@@ -333,11 +355,19 @@ function checkpointEditHistoryBySelection(
 ): void {
 	let oldSelectionRange: SelectionRange | undefined;
 	ctx.addEventListener("contentchange", () => {
-		oldSelectionRange = area.getSelectionRange();
+		oldSelectionRange = {
+			selectionStart: area.selectionStart,
+			selectionEnd: area.selectionEnd,
+			selectionDirection: area.selectionDirection,
+		};
 	});
 
 	const onselectionchange = () => {
-		const newSelectionRange = area.getSelectionRange();
+		const newSelectionRange = {
+			selectionStart: area.selectionStart,
+			selectionEnd: area.selectionEnd,
+			selectionDirection: area.selectionDirection,
+		};
 		if (
 			oldSelectionRange &&
 			(oldSelectionRange.selectionStart !== newSelectionRange.selectionStart ||
