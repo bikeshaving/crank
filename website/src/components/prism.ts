@@ -100,89 +100,89 @@ export function* CodeBlock(
 		this.refresh();
 	});
 
-	this.addEventListener("keydown", (ev: any) => {
-		if (ev.key === "Enter") {
-			// Potato quality tab-matching.
-			let {value: value1, selectionStart: selectionStart1, selectionEnd} = area;
-			if (selectionStart1 !== selectionEnd) {
-				return;
-			}
+	//this.addEventListener("keydown", (ev: any) => {
+	//	if (ev.key === "Enter") {
+	//		// Potato quality tab-matching.
+	//		let {value: value1, selectionStart: selectionStart1, selectionEnd} = area;
+	//		if (selectionStart1 !== selectionEnd) {
+	//			return;
+	//		}
 
-			// A reasonable length to look for tabs and braces.
-			const prev = value.slice(0, selectionStart1);
-			const tabMatch = prev.match(/[\r\n]?([^\S\r\n]*).*$/);
-			// [^\S\r\n] = non-newline whitespace
-			const prevMatch = prev.match(/({|\(|\[)([^\S\r\n]*)$/);
-			if (prevMatch) {
-				// increase tab
-				ev.preventDefault();
-				const next = value1.slice(selectionStart1);
-				const startBracket = prevMatch[1];
-				const startWhitespace = prevMatch[2];
-				let insertBefore = "\n";
-				if (tabMatch) {
-					insertBefore += tabMatch[1] + "  ";
-				}
+	//		// A reasonable length to look for tabs and braces.
+	//		const prev = value.slice(0, selectionStart1);
+	//		const tabMatch = prev.match(/[\r\n]?([^\S\r\n]*).*$/);
+	//		// [^\S\r\n] = non-newline whitespace
+	//		const prevMatch = prev.match(/({|\(|\[)([^\S\r\n]*)$/);
+	//		if (prevMatch) {
+	//			// increase tab
+	//			ev.preventDefault();
+	//			const next = value1.slice(selectionStart1);
+	//			const startBracket = prevMatch[1];
+	//			const startWhitespace = prevMatch[2];
+	//			let insertBefore = "\n";
+	//			if (tabMatch) {
+	//				insertBefore += tabMatch[1] + "  ";
+	//			}
 
-				let edit = Edit.build(
-					value1,
-					insertBefore,
-					selectionStart1,
-					selectionStart1 + startWhitespace.length,
-				);
+	//			let edit = Edit.build(
+	//				value1,
+	//				insertBefore,
+	//				selectionStart1,
+	//				selectionStart1 + startWhitespace.length,
+	//			);
 
-				selectionStart1 -= startWhitespace.length;
-				selectionStart1 += insertBefore.length;
+	//			selectionStart1 -= startWhitespace.length;
+	//			selectionStart1 += insertBefore.length;
 
-				const closingMap: Record<string, string> = {
-					"{": "}",
-					"(": ")",
-					"[": "]",
-				};
-				let closing = closingMap[startBracket];
-				if (closing !== "}") {
-					closing = "\\" + closing;
-				}
-				const nextMatch = next.match(
-					new RegExp(String.raw`^([^\S\r\n]*)${closing}`),
-				);
+	//			const closingMap: Record<string, string> = {
+	//				"{": "}",
+	//				"(": ")",
+	//				"[": "]",
+	//			};
+	//			let closing = closingMap[startBracket];
+	//			if (closing !== "}") {
+	//				closing = "\\" + closing;
+	//			}
+	//			const nextMatch = next.match(
+	//				new RegExp(String.raw`^([^\S\r\n]*)${closing}`),
+	//			);
 
-				if (nextMatch) {
-					const value2 = edit.apply(value1);
-					const endWhitespace = nextMatch[1];
-					const insertAfter = tabMatch ? "\n" + tabMatch[1] : "\n";
-					const edit1 = Edit.build(
-						value2,
-						insertAfter,
-						selectionStart1,
-						selectionStart1 + endWhitespace.length,
-					);
+	//			if (nextMatch) {
+	//				const value2 = edit.apply(value1);
+	//				const endWhitespace = nextMatch[1];
+	//				const insertAfter = tabMatch ? "\n" + tabMatch[1] : "\n";
+	//				const edit1 = Edit.build(
+	//					value2,
+	//					insertAfter,
+	//					selectionStart1,
+	//					selectionStart1 + endWhitespace.length,
+	//				);
 
-					edit = edit.compose(edit1);
-				}
+	//				edit = edit.compose(edit1);
+	//			}
 
-				value = edit.apply(value1);
-				selectionRange = {
-					selectionStart: selectionStart1,
-					selectionEnd: selectionStart1,
-					selectionDirection: "none",
-				};
-				this.refresh();
-			} else if (tabMatch && tabMatch[1].length) {
-				// match the tabbing of the previous line
-				ev.preventDefault();
-				const insertBefore = "\n" + tabMatch[1];
-				const edit = Edit.build(value1, insertBefore, selectionStart1);
-				value = edit.apply(value1);
-				selectionRange = {
-					selectionStart: selectionStart1 + insertBefore.length,
-					selectionEnd: selectionStart1 + insertBefore.length,
-					selectionDirection: "none",
-				};
-				this.refresh();
-			}
-		}
-	});
+	//			value = edit.apply(value1);
+	//			selectionRange = {
+	//				selectionStart: selectionStart1,
+	//				selectionEnd: selectionStart1,
+	//				selectionDirection: "none",
+	//			};
+	//			this.refresh();
+	//		} else if (tabMatch && tabMatch[1].length) {
+	//			// match the tabbing of the previous line
+	//			ev.preventDefault();
+	//			const insertBefore = "\n" + tabMatch[1];
+	//			const edit = Edit.build(value1, insertBefore, selectionStart1);
+	//			value = edit.apply(value1);
+	//			selectionRange = {
+	//				selectionStart: selectionStart1 + insertBefore.length,
+	//				selectionEnd: selectionStart1 + insertBefore.length,
+	//				selectionDirection: "none",
+	//			};
+	//			this.refresh();
+	//		}
+	//	}
+	//});
 
 	this.addEventListener("beforeinput", (ev: any) => {
 		switch (ev.inputType) {
@@ -396,7 +396,11 @@ function checkpointEditHistoryBySelection(
 ): void {
 	let oldSelectionRange: SelectionRange | undefined;
 	ctx.addEventListener("contentchange", () => {
-		oldSelectionRange = area.getSelectionRange();
+		oldSelectionRange = {
+			selectionStart: area.selectionStart,
+			selectionEnd: area.selectionEnd,
+			selectionDirection: area.selectionDirection,
+		};
 	});
 
 	const onselectionchange = () => {
@@ -404,7 +408,11 @@ function checkpointEditHistoryBySelection(
 			return;
 		}
 
-		const newSelectionRange = area.getSelectionRange();
+		const newSelectionRange = {
+			selectionStart: area.selectionStart,
+			selectionEnd: area.selectionEnd,
+			selectionDirection: area.selectionDirection,
+		};
 		if (
 			oldSelectionRange &&
 			(oldSelectionRange.selectionStart !== newSelectionRange.selectionStart ||

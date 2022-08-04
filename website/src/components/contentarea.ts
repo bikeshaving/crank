@@ -34,7 +34,14 @@ export function* ContentArea(
 
 	let area!: ContentAreaElement;
 	for ({value, children, selectionRange, renderSource} of this) {
-		selectionRange = selectionRange || (area && area.getSelectionRange());
+		selectionRange =
+			selectionRange ||
+			(area && {
+				selectionStart: area.selectionStart,
+				selectionEnd: area.selectionEnd,
+				selectionDirection: area.selectionDirection,
+			});
+
 		this.flush(() => {
 			if (typeof renderSource === "string") {
 				area.source(renderSource!);
