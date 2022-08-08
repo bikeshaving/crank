@@ -1,11 +1,13 @@
 # Changelog
-
+## [0.4.4] - 2022-08-08
+### Fixed
+- Inlined event listener methods to avoid errors caused by bundling (#238).
 ## [0.4.3] - 2022-06-25
 ### Fixed
-- Fix readonly DOM properties not being set correctly (#231)
+- Fix readonly DOM properties not being set correctly (#231).
 ## [0.4.2] - 2021-12-20
 ### Fixed
-- Fix null/undefined in className property for HTML renderer
+- Fix null/undefined in className property for HTML renderer.
 ## [0.4.1] - 2021-10-29
 ### Added
 - `createElement` and `Fragment` have been added to default module exports, to work with more JSX tools (#219).
