@@ -13,10 +13,7 @@ const el = document.getElementById("playground");
 renderer.render(
 	xm`
 		<div style="position: relative; top: 100px">
-			<${PrismEditor}
-				value="hello\n\nworld\n"
-				language="typescript"
-			/>
+			<${PrismEditor} value="\n" language="typescript" />
 		</div>
 	`,
 	el!,
