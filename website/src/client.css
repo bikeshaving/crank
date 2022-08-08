@@ -83,10 +83,18 @@ li {
 	margin: 0 0 1em;
 }
 
-/* Seems to be a flash of unstyled content caused by custom element host styles 😭😭😭 */
 content-area {
 	display: block;
 	display: contents;
+	white-space: pre-wrap;
+	word-break: break-word;
+	overflow-wrap: break-word;
+	overflow: hidden scroll;
+
+	pre {
+		overflow: hidden scroll;
+		white-space: pre-wrap;
+	}
 }
 
 .navbar {

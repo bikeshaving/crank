@@ -32,6 +32,11 @@ export function* ContentArea(
 		Promise.resolve().then(() => this.refresh());
 	});
 
+	//let edit: any;
+	//this.addEventListener("contentchange", (ev: any) => {
+	//	edit = ev.detail.edit;
+	//});
+
 	let area!: ContentAreaElement;
 	for ({value, children, selectionRange, renderSource} of this) {
 		selectionRange =
@@ -42,6 +47,11 @@ export function* ContentArea(
 				selectionDirection: area.selectionDirection,
 			});
 
+		//if (selectionRange?.selectionEnd !== (value?.length || 0) - 1) {
+		//	debugger;
+		//}
+		let time = Date.now();
+		while (Date.now() < time + 40);
 		this.flush(() => {
 			if (typeof renderSource === "string") {
 				area.source(renderSource!);
