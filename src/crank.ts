@@ -1617,10 +1617,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	): void {
 		const impl = this[$ContextImpl];
 		let listeners: Array<EventListenerRecord>;
-		if (
-			(typeof listener !== "function" && typeof listener !== "object") ||
-			listener === null
-		) {
+		if (!isListenerOrListenerObject(listener)) {
 			return;
 		} else {
 			const listeners1 = listenersMap.get(impl);
@@ -1680,11 +1677,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	): void {
 		const impl = this[$ContextImpl];
 		const listeners = listenersMap.get(impl);
-		if (
-			listeners == null ||
-			(typeof listener !== "function" && typeof listener !== "object") ||
-			listener === null
-		) {
+		if (listeners == null || !isListenerOrListenerObject(listener)) {
 			return;
 		}
 
@@ -2328,6 +2321,17 @@ type MappedEventListener<T extends string> = (ev: EventMap[T]) => unknown;
 type MappedEventListenerOrEventListenerObject<T extends string> =
 	| MappedEventListener<T>
 	| {handleEvent: MappedEventListener<T>};
+
+function isListenerOrListenerObject(
+	value: unknown,
+): value is MappedEventListenerOrEventListenerObject<string> {
+	return (
+		typeof value === "function" ||
+		(value !== null &&
+			typeof value === "object" &&
+			typeof (value as any).handleEvent === "function")
+	);
+}
 
 interface EventListenerRecord {
 	type: string;
