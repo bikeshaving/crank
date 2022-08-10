@@ -70,10 +70,10 @@ interface ParseError {
 }
 
 // The parse result includes an array of targets, references to objects in the
-// parse tree whose value property is overwritten with expressions expressions
-// whenever the template function is called. By separating the logic of parsing
-// static template spans from the handling of dynamic expressions, we can cache
-// parse results for successive calls.
+// parse tree whose `value` property is overwritten with expressions when the
+// template function is called. By separating the logic of parsing static
+// template spans from the handling of dynamic expressions, we can cache parse
+// results for successive calls.
 type ExpressionTarget = ParseValue | ParseTag | ParseProp | ParseError;
 
 interface ParseResult {
