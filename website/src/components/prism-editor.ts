@@ -85,93 +85,95 @@ export function* PrismEditor(
 
 	//// Potato quality tab-matching.
 	//// TODO: dedent when we see closing characters.
-	//this.addEventListener("keydown", (ev: any) => {
-	//	if (ev.key === "Enter") {
-	//		let {value: value1, selectionStart: selectionStart1, selectionEnd} = area;
-	//		if (selectionStart1 !== selectionEnd) {
-	//			return;
-	//		}
+	/*
+	this.addEventListener("keydown", (ev: any) => {
+		if (ev.key === "Enter") {
+			let {value: value1, selectionStart: selectionStart1, selectionEnd} = area;
+			if (selectionStart1 !== selectionEnd) {
+				return;
+			}
 
-	//		// A reasonable length to look for tabs and braces.
-	//		const prev = value.slice(0, selectionStart1);
-	//		const tabMatch = prev.match(/[\r\n]?([^\S\r\n]*).*$/);
-	//		// [^\S\r\n] = non-newline whitespace
-	//		const prevMatch = prev.match(/({|\(|\[)([^\S\r\n]*)$/);
-	//		if (prevMatch) {
-	//			// increase tab
-	//			ev.preventDefault();
-	//			const next = value1.slice(selectionStart1);
-	//			const startBracket = prevMatch[1];
-	//			const startWhitespace = prevMatch[2];
-	//			let insertBefore = "\n";
-	//			if (tabMatch) {
-	//				insertBefore += tabMatch[1] + "  ";
-	//			}
+			// A reasonable length to look for tabs and braces.
+			const prev = value.slice(0, selectionStart1);
+			const tabMatch = prev.match(/[\r\n]?([^\S\r\n]*).*$/);
+			// [^\S\r\n] = non-newline whitespace
+			const prevMatch = prev.match(/({|\(|\[)([^\S\r\n]*)$/);
+			if (prevMatch) {
+				// increase tab
+				ev.preventDefault();
+				const next = value1.slice(selectionStart1);
+				const startBracket = prevMatch[1];
+				const startWhitespace = prevMatch[2];
+				let insertBefore = "\n";
+				if (tabMatch) {
+					insertBefore += tabMatch[1] + "  ";
+				}
 
-	//			// TODO: use Edit.createBuilder
-	//			let edit = Edit.build(
-	//				value1,
-	//				insertBefore,
-	//				selectionStart1,
-	//				selectionStart1 + startWhitespace.length,
-	//			);
+				// TODO: use Edit.createBuilder
+				let edit = Edit.build(
+					value1,
+					insertBefore,
+					selectionStart1,
+					selectionStart1 + startWhitespace.length,
+				);
 
-	//			selectionStart1 -= startWhitespace.length;
-	//			selectionStart1 += insertBefore.length;
+				selectionStart1 -= startWhitespace.length;
+				selectionStart1 += insertBefore.length;
 
-	//			const closingMap: Record<string, string> = {
-	//				"{": "}",
-	//				"(": ")",
-	//				"[": "]",
-	//			};
-	//			let closing = closingMap[startBracket];
-	//			if (closing !== "}") {
-	//				closing = "\\" + closing;
-	//			}
-	//			const nextMatch = next.match(
-	//				new RegExp(String.raw`^([^\S\r\n]*)${closing}`),
-	//			);
+				const closingMap: Record<string, string> = {
+					"{": "}",
+					"(": ")",
+					"[": "]",
+				};
+				let closing = closingMap[startBracket];
+				if (closing !== "}") {
+					closing = "\\" + closing;
+				}
+				const nextMatch = next.match(
+					new RegExp(String.raw`^([^\S\r\n]*)${closing}`),
+				);
 
-	//			if (nextMatch) {
-	//				const value2 = edit.apply(value1);
-	//				const endWhitespace = nextMatch[1];
-	//				const insertAfter = tabMatch ? "\n" + tabMatch[1] : "\n";
-	//				// TODO: use Edit.createBuilder
-	//				const edit1 = Edit.build(
-	//					value2,
-	//					insertAfter,
-	//					selectionStart1,
-	//					selectionStart1 + endWhitespace.length,
-	//				);
+				if (nextMatch) {
+					const value2 = edit.apply(value1);
+					const endWhitespace = nextMatch[1];
+					const insertAfter = tabMatch ? "\n" + tabMatch[1] : "\n";
+					// TODO: use Edit.createBuilder
+					const edit1 = Edit.build(
+						value2,
+						insertAfter,
+						selectionStart1,
+						selectionStart1 + endWhitespace.length,
+					);
 
-	//				edit = edit.compose(edit1);
-	//			}
+					edit = edit.compose(edit1);
+				}
 
-	//			value = edit.apply(value1);
-	//			selectionRange = {
-	//				selectionStart: selectionStart1,
-	//				selectionEnd: selectionStart1,
-	//				selectionDirection: "none",
-	//			};
-	//			renderSource = "tab";
-	//			this.refresh();
-	//		} else if (tabMatch && tabMatch[1].length) {
-	//			// match the tabbing of the previous line
-	//			ev.preventDefault();
-	//			const insertBefore = "\n" + tabMatch[1];
-	//			// TODO: use Edit.createBuilder
-	//			const edit = Edit.build(value1, insertBefore, selectionStart1);
-	//			value = edit.apply(value1);
-	//			selectionRange = {
-	//				selectionStart: selectionStart1 + insertBefore.length,
-	//				selectionEnd: selectionStart1 + insertBefore.length,
-	//				selectionDirection: "none",
-	//			};
-	//			renderSource = "tab";
-	//			this.refresh();
-	//		}
-	//	}
-	//});
+				value = edit.apply(value1);
+				selectionRange = {
+					selectionStart: selectionStart1,
+					selectionEnd: selectionStart1,
+					selectionDirection: "none",
+				};
+				renderSource = "tab";
+				this.refresh();
+			} else if (tabMatch && tabMatch[1].length) {
+				// match the tabbing of the previous line
+				ev.preventDefault();
+				const insertBefore = "\n" + tabMatch[1];
+				// TODO: use Edit.createBuilder
+				const edit = Edit.build(value1, insertBefore, selectionStart1);
+				value = edit.apply(value1);
+				selectionRange = {
+					selectionStart: selectionStart1 + insertBefore.length,
+					selectionEnd: selectionStart1 + insertBefore.length,
+					selectionDirection: "none",
+				};
+				renderSource = "tab";
+				this.refresh();
+			}
+		}
+	});
+	*/
 
 	if (IS_CLIENT) {
 		this.schedule(() => {
@@ -244,6 +246,18 @@ export function* PrismEditor(
 }
 
 /*** Prism Logic ***/
+function splitLines(
+	tokens: Array<Token | string>,
+): Array<Array<Token | string>> {
+	const lines = splitLinesRec(tokens);
+	// Dealing with trailing newlines
+	if (lines.length && !lines[lines.length - 1].length) {
+		lines.pop();
+	}
+
+	return lines;
+}
+
 // @ts-ignore
 Prism.manual = true;
 function splitLinesRec(
@@ -309,18 +323,6 @@ function unwrapContent(
 	}
 
 	return content;
-}
-
-export function splitLines(
-	tokens: Array<Token | string>,
-): Array<Array<Token | string>> {
-	const lines = splitLinesRec(tokens);
-	// Dealing with trailing newlines
-	if (lines.length && !lines[lines.length - 1].length) {
-		lines.pop();
-	}
-
-	return lines;
 }
 
 function printTokens(tokens: Array<Token | string>): Array<Element | string> {

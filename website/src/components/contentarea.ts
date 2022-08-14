@@ -3,8 +3,13 @@ import type {Context} from "@b9g/crank";
 import type {
 	ContentAreaElement,
 	ContentEvent,
-	SelectionRange,
 } from "@b9g/revise/contentarea.js";
+
+interface SelectionRange {
+	selectionStart: number;
+	selectionEnd: number;
+	selectionDirection: "forward" | "backward" | "none";
+}
 
 export function* ContentArea(
 	this: Context,
@@ -47,11 +52,6 @@ export function* ContentArea(
 				selectionDirection: area.selectionDirection,
 			});
 
-		//if (selectionRange?.selectionEnd !== (value?.length || 0) - 1) {
-		//	debugger;
-		//}
-		let time = Date.now();
-		while (Date.now() < time + 40);
 		this.flush(() => {
 			if (typeof renderSource === "string") {
 				area.source(renderSource!);
