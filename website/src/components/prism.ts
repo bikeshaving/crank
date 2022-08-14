@@ -4,10 +4,7 @@ import type {Context, Element} from "@b9g/crank";
 import {Edit} from "@b9g/revise/edit.js";
 import {Keyer} from "@b9g/revise/keyer.js";
 import {EditHistory} from "@b9g/revise/history.js";
-import type {
-	ContentAreaElement,
-	SelectionRange,
-} from "@b9g/revise/contentarea.js";
+import type {ContentAreaElement} from "@b9g/revise/contentarea.js";
 
 import Prism from "prismjs";
 import type {Token} from "prismjs";
@@ -57,6 +54,12 @@ function* Preview(
 			/>
 		`;
 	}
+}
+
+interface SelectionRange {
+	selectionStart: number;
+	selectionEnd: number;
+	selectionDirection: "forward" | "backward" | "none";
 }
 
 // TODO: I need to separate the playground component from the codeblock component somehow
