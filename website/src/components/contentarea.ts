@@ -18,12 +18,13 @@ export function* ContentArea(
 		children,
 		selectionRange,
 		renderSource,
+		...rest
 	}: {
 		children: unknown;
 		selectionRange?: SelectionRange | undefined;
 		value?: string | undefined;
 		renderSource?: string | undefined;
-	},
+	} & Record<string, any>,
 ) {
 	let composing = false;
 	this.addEventListener("compositionstart", () => {
@@ -43,7 +44,7 @@ export function* ContentArea(
 	//});
 
 	let area!: ContentAreaElement;
-	for ({value, children, selectionRange, renderSource} of this) {
+	for ({value, children, selectionRange, renderSource, ...rest} of this) {
 		selectionRange =
 			selectionRange ||
 			(area && {
@@ -77,6 +78,7 @@ export function* ContentArea(
 
 		yield xm`
 			<content-area
+				...${rest}
 				$ref=${(el: ContentAreaElement) => (area = el)}
 				$static=${composing}
 			>${children}</content-area>

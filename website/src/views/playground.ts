@@ -8,7 +8,7 @@ const __dirname = new URL(".", import.meta.url).pathname;
 export default async function Playground({storage}: {storage: Storage}) {
 	return xm`
 		<${Root} title="Crank.js" url="/" storage=${storage}>
-			<div id="playground"></div>
+			<div id="playground" />
 			<${Script} src="./playground.ts" />
 		<//Root>
 	`;

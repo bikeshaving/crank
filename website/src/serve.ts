@@ -20,12 +20,15 @@ import BlogHomeView from "./views/blog-home.js";
 import GuideView from "./views/guide.js";
 import BlogView from "./views/blog.js";
 import PlaygroundView from "./views/playground.js";
+import SandboxView from "./views/sandbox.js";
+
 const views: Record<string, Component> = {
 	home: HomeView,
 	blogHome: BlogHomeView,
 	blog: BlogView,
 	guide: GuideView,
 	playground: PlaygroundView,
+	sandbox: SandboxView,
 };
 
 const server = createServer(async (req, res) => {
