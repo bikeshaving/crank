@@ -22,7 +22,9 @@ export function Root({title, children, url, storage}: RootProps) {
 					<title>${title}</title>
 					<${Link} rel="stylesheet" type="text/css" href="client.css" />
 					<link rel="shortcut icon" href="/static/favicon.ico" />
+					<!--
 					<${GoogleSpyware} />
+					-->
 				</head>
 				<body>
 					<${Navbar} url=${url} />

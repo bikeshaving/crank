@@ -4,26 +4,12 @@ import type {Context, Element} from "@b9g/crank";
 import {Edit} from "@b9g/revise/edit.js";
 import {Keyer} from "@b9g/revise/keyer.js";
 import {EditHistory} from "@b9g/revise/history.js";
-import type {
-	ContentAreaElement,
-	SelectionRange,
-} from "@b9g/revise/contentarea.js";
-
 import Prism from "prismjs";
 import type {Token} from "prismjs";
 import "prismjs/components/prism-typescript.js";
 import {ContentArea} from "./contentarea.js";
 
 const IS_CLIENT = typeof document !== "undefined";
-
-function Line({line}: {line: Array<Token | string>}) {
-	return xm`
-		<div>
-			<code>${printTokens(line)}</code>
-			<br />
-		</div>
-	`;
-}
 
 export function* PrismEditor(
 	this: Context,
@@ -36,9 +22,7 @@ export function* PrismEditor(
 	const keyer = new Keyer();
 	const editHistory = new EditHistory();
 	let selectionRange: SelectionRange | undefined;
-	let area: ContentAreaElement;
 	let renderSource: string | undefined;
-	let currentEdit: Edit | undefined;
 	this.addEventListener("contentchange", (ev: any) => {
 		const {edit, source} = ev.detail;
 		const normalizedEdit = edit.normalize();
@@ -51,11 +35,10 @@ export function* PrismEditor(
 
 		value = ev.target.value;
 		renderSource = "refresh";
-		currentEdit = edit;
 		this.refresh();
 	});
 
-	// should be added to
+	// should be added to history stuff
 	this.addEventListener("beforeinput", (ev: any) => {
 		switch (ev.inputType) {
 			case "historyUndo": {
@@ -176,12 +159,9 @@ export function* PrismEditor(
 	*/
 
 	if (IS_CLIENT) {
-		this.schedule(() => {
-			checkpointEditHistoryBySelection(area, this, editHistory);
-		});
+		checkpointEditHistoryBySelection(this, editHistory);
 	}
 
-	// TODO: controlled/uncontrolled behavior, pass value in here.
 	let value1: string;
 	for ({value: value1, language, editable = true} of this) {
 		this.schedule(() => {
@@ -208,14 +188,13 @@ export function* PrismEditor(
 		}
 
 		let index = 0;
-		const edit = currentEdit;
-		currentEdit = undefined;
 		yield xm`
 			<${ContentArea}
 				$ref=${(area1: any) => (area = area1)}
 				value=${value}
 				renderSource=${renderSource}
 				selectionRange=${selectionRange}
+				class="prism-editor"
 			>
 				<pre
 					autocomplete="off"
@@ -228,9 +207,7 @@ export function* PrismEditor(
 						const key = keyer.keyAt(index);
 						// +1 for newline
 						const length = line.reduce((l, t) => l + t.length, 0) + 1;
-						const static_ = !(
-							edit && edit.hasChangesBetween(index, index + length)
-						);
+						const static_ = false;
 						try {
 							return xm`
 								<${Line} $key=${key} $static=${static_} line=${line} />
@@ -243,6 +220,15 @@ export function* PrismEditor(
 			<//ContentArea>
 		`;
 	}
+}
+
+function Line({line}: {line: Array<Token | string>}) {
+	return xm`
+		<div>
+			<code>${printTokens(line)}</code>
+			<br />
+		</div>
+	`;
 }
 
 /*** Prism Logic ***/
@@ -349,12 +335,18 @@ function printTokens(tokens: Array<Token | string>): Array<Element | string> {
 	return result;
 }
 
+interface SelectionRange {
+	selectionStart: number;
+	selectionEnd: number;
+	selectionDirection: string;
+}
+
 /*** Revise Logic ***/
-function checkpointEditHistoryBySelection(
-	area: ContentAreaElement,
+async function checkpointEditHistoryBySelection(
 	ctx: Context,
 	editHistory: EditHistory,
 ): void {
+	const area: any = await new Promise((resolve) => ctx.schedule(resolve));
 	let oldSelectionRange: SelectionRange | undefined;
 	ctx.addEventListener("contentchange", () => {
 		oldSelectionRange = {

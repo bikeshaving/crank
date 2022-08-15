@@ -83,17 +83,21 @@ li {
 	margin: 0 0 1em;
 }
 
-content-area {
+#playground {
+	width: 100%;
+	height: 100vh;
+}
+
+.prism-editor {
 	display: block;
-	display: contents;
 	white-space: pre-wrap;
-	word-break: break-word;
-	overflow-wrap: break-word;
+	white-space: break-spaces;
 	overflow: hidden scroll;
+	word-break: break-all;
+	height: 100%;
 
 	pre {
-		overflow: hidden scroll;
-		white-space: pre-wrap;
+		height: 100%;
 	}
 }
 
