@@ -12,10 +12,9 @@
   "dependencies": {
     "@b9g/crank": "file:../dist",
     "@b9g/revise": "file:../../revise/dist",
-    "@repeaterjs/repeater": "^3.0.4",
     "@types/fs-extra": "^9.0.13",
     "@types/marked": "^4.0.1",
-    "@types/mini-css-extract-plugin": "^2.4.0",
+    "@types/mime-types": "^2.1.1",
     "@types/node": "^18.0.3",
     "@types/postcss-nested": "^4.2.3",
     "@types/postcss-preset-env": "^6.7.3",
@@ -27,7 +26,6 @@
     "http-server": "^14.1.0",
     "marked": "^4.0.8",
     "mime-types": "^2.1.35",
-    "mini-css-extract-plugin": "^2.4.2",
     "nodemon": "^2.0.16",
     "normalize.css": "^8.0.1",
     "path-to-regexp": "^6.2.1",
@@ -35,13 +33,9 @@
     "postcss-preset-env": "^6.7.0",
     "prism-themes": "^1.9.0",
     "prismjs": "^1.25.0",
-    "regexparam": "^2.0.0",
     "sucrase": "^3.20.3",
     "truncate-html": "^1.0.4",
     "ts-node": "^10.7.0",
     "typescript": "^4.4.4"
-  },
-  "devDependencies": {
-    "@types/mime-types": "^2.1.1"
   }
 }
