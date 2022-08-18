@@ -1,4 +1,5 @@
 import {xm} from "@b9g/crank";
+import type {Context} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
 import {PrismEditor} from "./components/prism-editor.js";
 import "prismjs/components/prism-javascript";
@@ -8,26 +9,48 @@ if (!window.customElements.get("content-area")) {
 	window.customElements.define("content-area", ContentAreaElement);
 }
 
-function* Sandbox({text}: {text: string}) {
+function* Sandbox(this: Context, {text}: {text: string}) {
 	let iframe: HTMLIFrameElement;
 	for ({text} of this) {
 		this.flush(() => {
-			iframe.contentWindow.postMessage(text);
+			iframe.src = "/sandbox";
+			// TODO: figure out the timings
+			setTimeout(() => {
+				iframe.contentWindow!.postMessage(text);
+			}, 100);
 		});
 
 		yield xm`
 			<iframe
-				$static
-				$ref=${(el) => (iframe = el)}
+				$ref=${(el: HTMLIFrameElement) => (iframe = el)}
 				class="sandbox"
-				src="/sandbox"
 			/>
 		`;
 	}
 }
 
-function* Playground({}) {
-	let value = "\n";
+function* Playground(this: Context, {}) {
+	let value = `
+import {createElement} from "@b9g/crank";
+import {renderer} from "@b9g/crank/dom";
+
+function *Timer() {
+  let seconds = 0;
+  const interval = setInterval(() => {
+    seconds++;
+    this.refresh();
+  }, 1000);
+  try {
+    for ({} of this) {
+      yield <div>{seconds}s</div>;
+    }
+  } finally {
+    clearInterval(interval);
+  }
+}
+
+renderer.render(<Timer />, document.body);
+	`.trim();
 	this.addEventListener("contentchange", (ev: any) => {
 		value = ev.target.value;
 		this.refresh();

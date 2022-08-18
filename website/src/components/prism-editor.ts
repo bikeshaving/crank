@@ -190,7 +190,6 @@ export function* PrismEditor(
 		let index = 0;
 		yield xm`
 			<${ContentArea}
-				$ref=${(area1: any) => (area = area1)}
 				value=${value}
 				renderSource=${renderSource}
 				selectionRange=${selectionRange}
@@ -345,7 +344,7 @@ interface SelectionRange {
 async function checkpointEditHistoryBySelection(
 	ctx: Context,
 	editHistory: EditHistory,
-): void {
+) {
 	const area: any = await new Promise((resolve) => ctx.schedule(resolve));
 	let oldSelectionRange: SelectionRange | undefined;
 	ctx.addEventListener("contentchange", () => {

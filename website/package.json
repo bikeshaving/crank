@@ -12,6 +12,12 @@
   "dependencies": {
     "@b9g/crank": "file:../dist",
     "@b9g/revise": "file:../../revise/dist",
+    "@babel/core": "^7.18.10",
+    "@babel/preset-react": "^7.18.6",
+    "@babel/preset-typescript": "^7.18.6",
+    "@babel/standalone": "^7.18.12",
+    "@types/babel__core": "^7.1.19",
+    "@types/babel__standalone": "^7.1.4",
     "@types/fs-extra": "^9.0.13",
     "@types/marked": "^4.0.1",
     "@types/mime-types": "^2.1.1",
