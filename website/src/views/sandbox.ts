@@ -17,7 +17,7 @@ export default async function Sandbox({storage}: {storage: Storage}) {
 					<link rel="shortcut icon" href="/static/favicon.ico" />
 				</head>
 				<body>
-					<h1>Sandbox</h1>
+					<div id="sandbox"></div>
 					<${Script} src="./sandbox.ts" />
 				</body>
 			<//Page>
