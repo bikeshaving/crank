@@ -83,30 +83,12 @@ li {
 	margin: 0 0 1em;
 }
 
-#playground {
-	width: 100%;
-	height: 100vh;
-}
-
-.prism-editor {
-	display: block;
-	white-space: pre-wrap;
-	white-space: break-spaces;
-	overflow: hidden scroll;
-	word-break: break-all;
-	height: 100%;
-
-	pre {
-		height: 100%;
-	}
-}
-
 .navbar {
 	position: fixed;
 	top: 0;
 	left: 0;
 	right: 0;
-	height: 3.5rem;
+	height: 50px;
 	border-bottom: 1px solid #f5f9ff;
 	display: flex;
 	justify-content: space-between;
@@ -158,6 +140,10 @@ li {
 	margin-right: 0.5em;
 }
 
+.navbar-spacer {
+	height: 50px;
+}
+
 .home {
 	box-sizing: content-box;
 	padding: 3.5rem 0.4rem 0;
@@ -175,15 +161,12 @@ li {
 	background-color: #0a0e1f;
 	margin-top: 3.5rem;
 	padding: 2rem 0.4rem;
-	border-bottom: 1px solid #f5f9ff;
 	color: #f5f9ff;
 
 	@media screen and (min-width: 800px) {
 		position: fixed;
 		top: 3.5rem;
 		bottom: 0;
-		border-bottom: none;
-		border-right: 1px solid #f5f9ff;
 		overflow-x: hidden;
 		overflow-y: auto;
 		width: 15rem;
@@ -305,8 +288,7 @@ pre {
 	margin: 0;
 	font-size: .9em;
 	color: #e3eaf2;
-	overflow: auto;
-	border: 1px solid #e3eaf2;
+	overflow: hidden auto;
 	line-height: 1.4;
 	tab-size: 2;
 	outline: none;
@@ -324,13 +306,45 @@ code.inline {
 	max-width: 1100px;
 }
 
-.playground {
-	margin: 1.5em auto;
-	display: flex;
-	flex-direction: column;
-	@media screen and (min-width: 1100px) {
-		flex-direction: row;
+.prism-editor {
+	display: block;
+	white-space: pre-wrap;
+	white-space: break-spaces;
+	word-break: break-all;
+	height: 100%;
+	pre {
+		height: 100%;
 	}
+}
+
+.prism-editor-root {
+	position: relative;
+}
+
+.prism-line {
+	margin-left: 4em;
+	overflow: visible;
+	&:before {
+		content: attr(data-line-number);
+		padding-right: 1em;
+		border-right: 1px solid white;
+		text-align: right;
+		position: absolute;
+		left: 0;
+		width: 3em;
+	}
+}
+
+.playground {
+	display: flex;
+	flex-direction: row;
+	height: calc(100vh - 50px);
+}
+
+.playground-preview {
+	border: none;
+	width: 100%;
+	height: 100%;
 }
 
 .editable {
@@ -359,7 +373,6 @@ code.inline {
 	position: sticky;
 	top: calc(3.5rem + 30px);
 	padding: 0;
-	border: 1px solid #e3eaf2;
 	margin: -1px 0 0 0;
 	min-height: 300px;
 	background: #0a0e1f;

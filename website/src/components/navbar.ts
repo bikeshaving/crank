@@ -43,5 +43,6 @@ export function Navbar({url}: NavbarProps) {
 				</div>
 			</div>
 		</nav>
+		<div class="navbar-spacer" />
 	`;
 }
