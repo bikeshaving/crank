@@ -39,6 +39,7 @@ export function* PrismEditor(
 	});
 
 	// should be added to history stuff
+	// TODO: restore this to a state where it worked.
 	this.addEventListener("beforeinput", (ev: any) => {
 		switch (ev.inputType) {
 			case "historyUndo": {
@@ -175,18 +176,8 @@ export function* PrismEditor(
 
 		// adding a line so that we can do shit
 		value = value.match(/(?:\r|\n|\r\n)$/) ? value : value + "\n";
-		const grammar = Prism.languages[language];
-		let lines: Array<Array<string | Token>>;
-		if (grammar == null) {
-			Prism.tokenize(value || "", Prism.languages.javascript);
-			lines = value
-				.replace(/\r\n|\r|\n$/, "")
-				.split(/\r\n|\r|\n/)
-				.map((line) => [line]);
-		} else {
-			lines = splitLines(Prism.tokenize(value || "", grammar));
-		}
-
+		const grammar = Prism.languages[language] || Prism.languages.javascript;
+		const lines = splitLines(Prism.tokenize(value || "", grammar));
 		let index = 0;
 		yield xm`
 			<${ContentArea}
@@ -201,36 +192,28 @@ export function* PrismEditor(
 					autocapitalize="off"
 					contenteditable=${IS_CLIENT && editable}
 					spellcheck="false"
+					class="prism-editor-root"
 				>
-					${lines.map((line) => {
-						const key = keyer.keyAt(index);
-						// +1 for newline
-						const length = line.reduce((l, t) => l + t.length, 0) + 1;
-						const static_ = false;
-						try {
-							return xm`
-								<${Line} $key=${key} $static=${static_} line=${line} />
-							`;
-						} finally {
+					<div>
+						${lines.map((line, l) => {
+							const key = keyer.keyAt(index);
+							const length =
+								line.reduce((length, t) => length + t.length, 0) + "\n".length;
 							index += length;
-						}
-					})}
+							return xm`
+								<div class="prism-line" data-line-number=${l + 1} $key=${key}>
+									<code>${printTokens(line)}</code>
+									<br />
+								</div>
+							`;
+						})}
+					</div>
 				</pre>
 			<//ContentArea>
 		`;
 	}
 }
 
-function Line({line}: {line: Array<Token | string>}) {
-	return xm`
-		<div>
-			<code>${printTokens(line)}</code>
-			<br />
-		</div>
-	`;
-}
-
-/*** Prism Logic ***/
 function splitLines(
 	tokens: Array<Token | string>,
 ): Array<Array<Token | string>> {
