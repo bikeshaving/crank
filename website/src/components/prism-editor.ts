@@ -1,7 +1,7 @@
 import {xm} from "@b9g/crank";
 import type {Context, Element} from "@b9g/crank";
 
-import {Edit} from "@b9g/revise/edit.js";
+//import {Edit} from "@b9g/revise/edit.js";
 import {Keyer} from "@b9g/revise/keyer.js";
 import {EditHistory} from "@b9g/revise/history.js";
 import Prism from "prismjs";
@@ -40,32 +40,32 @@ export function* PrismEditor(
 
 	// should be added to history stuff
 	// TODO: restore this to a state where it worked.
-	this.addEventListener("beforeinput", (ev: any) => {
-		switch (ev.inputType) {
-			case "historyUndo": {
-				ev.preventDefault();
-				const edit = editHistory.undo();
-				if (edit) {
-					selectionRange = selectionRangeFromEdit(edit);
-					value = edit.apply(value);
-					renderSource = "history";
-					this.refresh();
-				}
-				break;
-			}
-			case "historyRedo": {
-				ev.preventDefault();
-				const edit = editHistory.redo();
-				if (edit) {
-					value = edit.apply(value);
-					selectionRange = selectionRangeFromEdit(edit);
-					renderSource = "history";
-					this.refresh();
-				}
-				break;
-			}
-		}
-	});
+	//this.addEventListener("beforeinput", (ev: any) => {
+	//	switch (ev.inputType) {
+	//		case "historyUndo": {
+	//			ev.preventDefault();
+	//			const edit = editHistory.undo();
+	//			if (edit) {
+	//				selectionRange = selectionRangeFromEdit(edit);
+	//				value = edit.apply(value);
+	//				renderSource = "history";
+	//				this.refresh();
+	//			}
+	//			break;
+	//		}
+	//		case "historyRedo": {
+	//			ev.preventDefault();
+	//			const edit = editHistory.redo();
+	//			if (edit) {
+	//				value = edit.apply(value);
+	//				selectionRange = selectionRangeFromEdit(edit);
+	//				renderSource = "history";
+	//				this.refresh();
+	//			}
+	//			break;
+	//		}
+	//	}
+	//});
 
 	//// Potato quality tab-matching.
 	//// TODO: dedent when we see closing characters.
@@ -159,10 +159,6 @@ export function* PrismEditor(
 	});
 	*/
 
-	if (IS_CLIENT) {
-		checkpointEditHistoryBySelection(this, editHistory);
-	}
-
 	let value1: string;
 	for ({value: value1, language, editable = true} of this) {
 		this.schedule(() => {
@@ -180,36 +176,67 @@ export function* PrismEditor(
 		const lines = splitLines(Prism.tokenize(value || "", grammar));
 		let index = 0;
 		yield xm`
-			<${ContentArea}
-				value=${value}
-				renderSource=${renderSource}
-				selectionRange=${selectionRange}
-				class="prism-editor"
-			>
-				<pre
-					autocomplete="off"
-					autocorrect="off"
-					autocapitalize="off"
-					contenteditable=${IS_CLIENT && editable}
-					spellcheck="false"
-					class="prism-editor-root"
+			<div style="overflow: hidden auto; height: 100%">
+				<div
+					style="
+						display: flex;
+						flex-direction: row;
+						min-height: 100%;
+						flex: 1 0 50%;
+					"
 				>
-					<div>
-						${lines.map((line, l) => {
-							const key = keyer.keyAt(index);
-							const length =
-								line.reduce((length, t) => length + t.length, 0) + "\n".length;
-							index += length;
-							return xm`
-								<div class="prism-line" data-line-number=${l + 1} $key=${key}>
-									<code>${printTokens(line)}</code>
-									<br />
-								</div>
-							`;
-						})}
-					</div>
-				</pre>
-			<//ContentArea>
+					<div
+						style="
+							min-width: 3em;
+							margin: 0;
+							padding: 1em;
+							color: #fff;
+							font-size: 14px;
+							font-family: monospace;
+							line-height: 1.4;
+							border-right: 1px solid white;
+							text-align: right;
+						"
+					>${lines.map((_, l) => {
+						return xm`<div class="prism-editor-linenumber">${l + 1}</div>`;
+					})}</div>
+					<${ContentArea}
+						value=${value}
+						renderSource=${renderSource}
+						selectionRange=${selectionRange}
+						style="
+							display: block;
+							flex: 1 1 auto;
+							white-space: pre-wrap;
+							white-space: break-spaces;
+							word-break: break-all;
+							width: 100%;
+						"
+					>
+						<pre
+							autocomplete="off"
+							autocorrect="off"
+							autocapitalize="off"
+							contenteditable=${IS_CLIENT && editable}
+							spellcheck="false"
+						>
+							${lines.map((line, l) => {
+								const key = keyer.keyAt(index);
+								const length =
+									line.reduce((length, t) => length + t.length, 0) +
+									"\n".length;
+								index += length;
+								return xm`
+									<div class="prism-line" data-line-number=${l + 1} $key=${key}>
+										<code>${printTokens(line)}</code>
+										<br />
+									</div>
+								`;
+							})}
+						</pre>
+					<//ContentArea>
+				</div>
+			</div>
 		`;
 	}
 }
@@ -324,90 +351,90 @@ interface SelectionRange {
 }
 
 /*** Revise Logic ***/
-async function checkpointEditHistoryBySelection(
-	ctx: Context,
-	editHistory: EditHistory,
-) {
-	const area: any = await new Promise((resolve) => ctx.schedule(resolve));
-	let oldSelectionRange: SelectionRange | undefined;
-	ctx.addEventListener("contentchange", () => {
-		oldSelectionRange = {
-			selectionStart: area.selectionStart,
-			selectionEnd: area.selectionEnd,
-			selectionDirection: area.selectionDirection,
-		};
-	});
-
-	const onselectionchange = () => {
-		const newSelectionRange = {
-			selectionStart: area.selectionStart,
-			selectionEnd: area.selectionEnd,
-			selectionDirection: area.selectionDirection,
-		};
-		if (
-			oldSelectionRange &&
-			(oldSelectionRange.selectionStart !== newSelectionRange.selectionStart ||
-				oldSelectionRange.selectionEnd !== newSelectionRange.selectionEnd ||
-				oldSelectionRange.selectionDirection !==
-					newSelectionRange.selectionDirection)
-		) {
-			editHistory.checkpoint();
-		}
-
-		oldSelectionRange = newSelectionRange;
-	};
-
-	document.addEventListener("selectionchange", onselectionchange);
-	ctx.cleanup(() => {
-		document.removeEventListener("selectionchange", onselectionchange);
-	});
-}
-
-function selectionRangeFromEdit(edit: Edit): SelectionRange | undefined {
-	const operations = edit.operations();
-	let index = 0;
-	let start: number | undefined;
-	let end: number | undefined;
-	for (const op of operations) {
-		switch (op.type) {
-			case "delete": {
-				if (start === undefined) {
-					start = index;
-				}
-
-				break;
-			}
-
-			case "insert": {
-				if (start === undefined) {
-					start = index;
-				}
-
-				index += op.value.length;
-				end = index;
-				break;
-			}
-
-			case "retain": {
-				index += op.end - op.start;
-				break;
-			}
-		}
-	}
-
-	if (start !== undefined && end !== undefined) {
-		return {
-			selectionStart: start,
-			selectionEnd: end,
-			selectionDirection: "forward",
-		};
-	} else if (start !== undefined) {
-		return {
-			selectionStart: start,
-			selectionEnd: start,
-			selectionDirection: "none",
-		};
-	}
-
-	return undefined;
-}
+//async function checkpointEditHistoryBySelection(
+//	ctx: Context,
+//	editHistory: EditHistory,
+//) {
+//	const area: any = await new Promise((resolve) => ctx.schedule(resolve));
+//	let oldSelectionRange: SelectionRange | undefined;
+//	ctx.addEventListener("contentchange", () => {
+//		oldSelectionRange = {
+//			selectionStart: area.selectionStart,
+//			selectionEnd: area.selectionEnd,
+//			selectionDirection: area.selectionDirection,
+//		};
+//	});
+//
+//	const onselectionchange = () => {
+//		const newSelectionRange = {
+//			selectionStart: area.selectionStart,
+//			selectionEnd: area.selectionEnd,
+//			selectionDirection: area.selectionDirection,
+//		};
+//		if (
+//			oldSelectionRange &&
+//			(oldSelectionRange.selectionStart !== newSelectionRange.selectionStart ||
+//				oldSelectionRange.selectionEnd !== newSelectionRange.selectionEnd ||
+//				oldSelectionRange.selectionDirection !==
+//					newSelectionRange.selectionDirection)
+//		) {
+//			editHistory.checkpoint();
+//		}
+//
+//		oldSelectionRange = newSelectionRange;
+//	};
+//
+//	document.addEventListener("selectionchange", onselectionchange);
+//	ctx.cleanup(() => {
+//		document.removeEventListener("selectionchange", onselectionchange);
+//	});
+//}
+//
+//function selectionRangeFromEdit(edit: Edit): SelectionRange | undefined {
+//	const operations = edit.operations();
+//	let index = 0;
+//	let start: number | undefined;
+//	let end: number | undefined;
+//	for (const op of operations) {
+//		switch (op.type) {
+//			case "delete": {
+//				if (start === undefined) {
+//					start = index;
+//				}
+//
+//				break;
+//			}
+//
+//			case "insert": {
+//				if (start === undefined) {
+//					start = index;
+//				}
+//
+//				index += op.value.length;
+//				end = index;
+//				break;
+//			}
+//
+//			case "retain": {
+//				index += op.end - op.start;
+//				break;
+//			}
+//		}
+//	}
+//
+//	if (start !== undefined && end !== undefined) {
+//		return {
+//			selectionStart: start,
+//			selectionEnd: end,
+//			selectionDirection: "forward",
+//		};
+//	} else if (start !== undefined) {
+//		return {
+//			selectionStart: start,
+//			selectionEnd: start,
+//			selectionDirection: "none",
+//		};
+//	}
+//
+//	return undefined;
+//}

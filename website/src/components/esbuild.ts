@@ -9,6 +9,10 @@ import postcssPlugin from "./esbuild/postcss-plugin.js";
 import postcssPresetEnv from "postcss-preset-env";
 import postcssNested from "postcss-nested";
 
+// TODO: figure out why the ESM interop is busted
+import NodeModulesPolyfills from "@esbuild-plugins/node-modules-polyfill";
+import NodeGlobalsPolyfills from "@esbuild-plugins/node-globals-polyfill";
+
 function isWithinDir(dir: string, name: string) {
 	const resolved = path.resolve(dir, name);
 	return resolved.startsWith(dir);
@@ -73,6 +77,12 @@ export class Storage {
 			sourcemap: true,
 			plugins: [
 				postcssPlugin({plugins: [postcssPresetEnv() as any, postcssNested()]}),
+				// @ts-ignore
+				NodeModulesPolyfills.default(),
+				// @ts-ignore
+				NodeGlobalsPolyfills.default({
+					buffer: true,
+				}),
 			],
 			watch: {
 				onRebuild: (error, result) => {

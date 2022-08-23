@@ -18,7 +18,7 @@ export default async function Sandbox({storage}: {storage: Storage}) {
 				</head>
 				<body>
 					<div id="sandbox"></div>
-					<${Script} src="./sandbox.ts" />
+					<${Script} src="./sandbox.ts" type="module" />
 				</body>
 			<//Page>
 		</html>
