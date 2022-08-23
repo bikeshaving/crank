@@ -13,25 +13,58 @@ if (!window.customElements.get("content-area")) {
 
 function* Preview(this: Context, {text}: {text: string}) {
 	let iframe: HTMLIFrameElement;
+	let oldText: string | null = null;
+	let errorMessage: string | null = null;
+	let loading = true;
+	const onglobalmessage = (ev: MessageEvent) => {
+		const data = JSON.parse(ev.data);
+		if (data.type === "ready") {
+			iframe.contentWindow!.postMessage(text, "*");
+		} else if (data.type === "syntaxError") {
+			errorMessage = data.message;
+			this.refresh();
+		} else if (data.type === "error") {
+			errorMessage = data.message;
+			this.refresh();
+		} else if (data.type === "executed") {
+			loading = false;
+			this.refresh();
+		}
+	};
+
+	window.addEventListener("message", onglobalmessage);
+	this.cleanup(() => window.removeEventListener("message", onglobalmessage));
+
 	for ({text} of this) {
-		this.flush(() => {
-			iframe.src = "/sandbox";
-			// TODO: figure out the timings
-			setTimeout(() => {
-				iframe.contentWindow!.postMessage(text);
-			}, 100);
-		});
+		if (text !== oldText) {
+			loading = true;
+			errorMessage = null;
+			this.flush(() => {
+				iframe.src = new URL("/sandbox", window.location.origin).toString();
+			});
+		}
 
 		yield xm`
-			<iframe
-				$ref=${(el: HTMLIFrameElement) => (iframe = el)}
-				class="playground-preview"
-			/>
+			<div>
+				<div style="border-bottom: 1px solid white; padding: 1em">
+					${errorMessage ? "Errored!" : loading ? "Loading..." : "Done!"}
+				</div>
+				${errorMessage && xm`<pre>${errorMessage}</pre>`}
+				<iframe
+					$ref=${(el: HTMLIFrameElement) => (iframe = el)}
+					$static
+					style="width: 100%; height: 100%; border: none; padding: 1em "
+					sandbox="allow-scripts allow-same-origin"
+				/>
+			</div>
 		`;
+
+		oldText = text;
 	}
 }
 
-const EXAMPLE = `
+const EXAMPLE =
+	`
 import {createElement} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
 
@@ -51,7 +84,7 @@ function *Timer() {
 }
 
 renderer.render(<Timer />, document.body);
-`.trim();
+`.trim() + "\n";
 
 function debounce(fn: Function, wait: number, immediate?: boolean) {
 	let timeout: any = null;
@@ -79,7 +112,7 @@ function* Playground(this: Context, {}) {
 
 		//console.log(LZString.compressToEncodedURIComponent(value));
 		this.refresh();
-	}, 500);
+	}, 1000);
 
 	this.addEventListener("contentchange", (ev: any) => {
 		executeValue(ev);
@@ -87,12 +120,18 @@ function* Playground(this: Context, {}) {
 
 	for ({} of this) {
 		yield xm`
-			<div class="playground">
-				<div class="playground-input" style="flex: 50%; height: 100%">
+			<div
+				style="
+					display: flex;
+					flex-direction: row;
+					height: calc(100vh - 50px);
+				"
+			>
+				<div style="flex: 1 1 50%">
 					<${PrismEditor} value=${value} language="typescript" />
 				</div>
-				<div style="width: 0px; height: 100%; border-right: 1px solid white" />
-				<div class="playground-output" style="flex: 50%; height: 100%">
+				<div style="width: 0px; border-right: 1px solid white" />
+				<div style="flex: 1 1 50%">
 					<${Preview} text=${value} />
 				</div>
 			</div>

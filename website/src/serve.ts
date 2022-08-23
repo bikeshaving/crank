@@ -42,6 +42,7 @@ const server = createServer(async (req, res) => {
 		if (source) {
 			res.writeHead(200, {
 				"Content-Type": mimeType,
+				//"Access-Control-Allow-Origin": "*",
 			});
 			// TODO: import Buffer
 			res.end(source, charset as any);

@@ -1,40 +1,33 @@
-import Babel from "@babel/standalone";
-import type {PluginObj} from "@babel/core";
+import * as Babel from "@babel/core";
 // @ts-ignore
-//import babelPresetReact from "@babel/preset-react";
+import babelPluginSyntaxJSX from "@babel/plugin-syntax-jsx";
 // @ts-ignore
-//import babelPresetTypeScript from "@babel/preset-typescript";
+import babelPluginTransformReactJSX from "@babel/plugin-transform-react-jsx";
 
-function rewriteModuleSpecifiers(): PluginObj {
-	function rewriteStringLiteral(value: string) {
-		switch (value) {
-			case "@b9g/crank":
-				return "https://esm.sh/@b9g/crank";
-			case "@b9g/crank/dom":
-				return "https://esm.sh/@b9g/crank/dom";
-			case "@b9g/crank/html":
-				return "https://esm.sh/@b9g/crank/html";
-		}
+// @ts-ignore
+import babelPresetTypeScript from "@babel/preset-typescript";
 
-		return value;
+function rewriteBareModuleSpecifiers(): Babel.PluginObj {
+	function rewrite(value: string) {
+		return new URL(value, "https://esm.sh/").toString();
 	}
 
 	return {
-		name: "rewrite-module-specifiers",
+		name: "rewrite-bare-module-specifiers",
 		visitor: {
 			ImportDeclaration(path) {
-				path.node.source.value = rewriteStringLiteral(path.node.source.value);
+				path.node.source.value = rewrite(path.node.source.value);
 			},
 			ExportDeclaration(path) {
 				if ("source" in path.node && path.node.source) {
-					path.node.source.value = rewriteStringLiteral(path.node.source.value);
+					path.node.source.value = rewrite(path.node.source.value);
 				}
 			},
 			CallExpression(path) {
 				if (path.node.callee.type === "Import") {
 					const maybeImportStringLiteral = path.node.arguments[0];
 					if (maybeImportStringLiteral.type === "StringLiteral") {
-						maybeImportStringLiteral.value = rewriteStringLiteral(
+						maybeImportStringLiteral.value = rewrite(
 							maybeImportStringLiteral.value,
 						);
 					}
@@ -46,50 +39,69 @@ function rewriteModuleSpecifiers(): PluginObj {
 
 const script = document.createElement("script");
 script.type = "module";
+script.crossOrigin = "";
 
 window.addEventListener("message", (ev) => {
-	//console.log("global message listener", ev);
-
 	const code = ev.data;
-	const parsed = Babel.transform(code, {
-		presets: [
-			[
-				Babel.availablePresets.react,
-				{
-					runtime: "classic",
-					pragma: "createElement",
-					pragmaFrag: "''",
-				},
+	let parsed: any = null;
+	try {
+		parsed = Babel.transform(code, {
+			filename: "file",
+			presets: [
+				[
+					babelPresetTypeScript,
+					{
+						isTSX: true,
+						allExtensions: true,
+						jsxPragma: "createElement",
+						jsxPragmaFrag: "''",
+					},
+				],
 			],
-			//[babelPresetReact, {
-			//	runtime: "classic",
-			//	pragma: "createElement",
-			//	pragmaFrag: "''",
-			//}],
-			[
-				Babel.availablePresets.typescript,
-				{
-					isTSX: true,
-					allExtensions: true,
-					jsxPragma: "createElement",
-					jsxPragmaFrag: "''",
-				},
+			plugins: [
+				babelPluginSyntaxJSX,
+				[
+					babelPluginTransformReactJSX,
+					{
+						runtime: "classic",
+						pragma: "createElement",
+						pragmaFrag: "''",
+					},
+				],
+				rewriteBareModuleSpecifiers,
 			],
-			//[babelPresetTypeScript, {
-			//	isTSX: true,
-			//	allExtensions: true,
-			//	jsxPragma: "createElement",
-			//	jsxPragmaFrag: "''",
-			//}],
-		],
-		plugins: [rewriteModuleSpecifiers],
-	});
+		});
+	} catch (err) {
+		if (err instanceof SyntaxError) {
+			const message = err.message.replace(/^\/file: /, "");
+			window.parent.postMessage(
+				JSON.stringify({type: "syntaxError", message}),
+				window.location.origin,
+			);
+		}
+	}
 
-	script.remove();
-	script.text = (parsed && parsed.code) || "";
-	document.body.appendChild(script);
+	if (parsed) {
+		script.remove();
+		script.text =
+			(parsed.code || "") +
+			`;window.parent.postMessage(
+				JSON.stringify({type: "executed"}),
+				window.location.origin,
+			);`;
+		document.head.appendChild(script);
+	}
 });
 
-window.addEventListener("error", (_ev) => {
-	//console.log("global error listener", ev);
+window.addEventListener("error", (ev) => {
+	// TODO: handle CORS-truncated errors
+	window.parent.postMessage(
+		JSON.stringify({type: "error", message: ev.message}),
+		window.location.origin,
+	);
 });
+
+window.parent.postMessage(
+	JSON.stringify({type: "ready"}),
+	window.location.origin,
+);
