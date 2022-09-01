@@ -255,6 +255,7 @@ export function* CodeBlock(
 					value=${value}
 					renderSource=${renderSource}
 					selectionRange=${selectionRange}
+					style="display: block;"
 				>
 					<pre
 						class="editable ${isLive && "editable-live"}"

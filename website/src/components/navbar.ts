@@ -19,19 +19,21 @@ export function Navbar({url}: NavbarProps) {
 				</div>
 				<div class="navbar-item">
 					<a
-						class=${url.startsWith("/guides") && "current"}
 						href="/guides/getting-started"
-					>
-						Docs
-					</a>
+						class=${url.startsWith("/guides") && "current"}
+					>Docs</a>
 				</div>
 				<div class="navbar-item">
-					<a class=${url.startsWith("/blog") && "current"} href="/blog/">
-						Blog
-					</a>
+					<a
+						href="/blog/"
+						class=${url.startsWith("/blog") && "current"}
+					>Blog</a>
 				</div>
 				<div class="navbar-item">
-					<a href="/playground/">Playground</a>
+					<a
+						href="/playground/"
+						class=${url.startsWith("/playground") && "current"}
+					>Playground</a>
 				</div>
 			</div>
 			<div class="navbar-group">
@@ -43,6 +45,5 @@ export function Navbar({url}: NavbarProps) {
 				</div>
 			</div>
 		</nav>
-		<div class="navbar-spacer" />
 	`;
 }

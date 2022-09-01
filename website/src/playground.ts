@@ -3,9 +3,9 @@ import type {Context} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
 import {PrismEditor} from "./components/prism-editor.js";
 import "prismjs/components/prism-javascript";
-// TODO: store example URL in the hash
 //import LZString from "lz-string";
 
+// TODO: move this to the ContentAreaElement component
 import {ContentAreaElement} from "@b9g/revise/contentarea.js";
 if (!window.customElements.get("content-area")) {
 	window.customElements.define("content-area", ContentAreaElement);
@@ -20,9 +20,6 @@ function* Preview(this: Context, {text}: {text: string}) {
 		const data = JSON.parse(ev.data);
 		if (data.type === "ready") {
 			iframe.contentWindow!.postMessage(text, "*");
-		} else if (data.type === "syntaxError") {
-			errorMessage = data.message;
-			this.refresh();
 		} else if (data.type === "error") {
 			errorMessage = data.message;
 			this.refresh();
@@ -35,27 +32,28 @@ function* Preview(this: Context, {text}: {text: string}) {
 	window.addEventListener("message", onglobalmessage);
 	this.cleanup(() => window.removeEventListener("message", onglobalmessage));
 
+	const execute = debounce(() => {
+		iframe.src = new URL("/sandbox/", window.location.origin).toString();
+	}, 1000);
+
 	for ({text} of this) {
 		if (text !== oldText) {
 			loading = true;
 			errorMessage = null;
-			this.flush(() => {
-				iframe.src = new URL("/sandbox", window.location.origin).toString();
-			});
+			this.flush(() => execute());
 		}
 
 		yield xm`
-			<div>
-				<div style="border-bottom: 1px solid white; padding: 1em">
-					${errorMessage ? "Errored!" : loading ? "Loading..." : "Done!"}
-				</div>
-				${errorMessage && xm`<pre>${errorMessage}</pre>`}
+			<div style="height: 100%">
+				${errorMessage && xm`<pre style="color: red">${errorMessage}</pre>`}
 				<iframe
 					$ref=${(el: HTMLIFrameElement) => (iframe = el)}
 					$static
-					style="width: 100%; height: 100%; border: none; padding: 1em "
-					sandbox="allow-scripts allow-same-origin"
+					style="width: 100%; height: 80%; border: none; padding: 1em"
 				/>
+				<div style="border-top: 1px solid white; padding: 1em">
+					${errorMessage ? "Errored!" : loading ? "Loading..." : "Running!"}
+				</div>
 			</div>
 		`;
 
@@ -63,6 +61,26 @@ function* Preview(this: Context, {text}: {text: string}) {
 	}
 }
 
+function debounce(fn: Function, wait: number, immediate?: boolean) {
+	let timeout: any = null;
+	return function (this: unknown, ...args: Array<unknown>) {
+		const later = () => {
+			timeout = null;
+			if (!immediate) {
+				fn.apply(this, args);
+			}
+		};
+
+		if (immediate && !timeout) {
+			fn.apply(this, args);
+		}
+
+		clearTimeout(timeout);
+		timeout = setTimeout(later, wait);
+	};
+}
+
+// TODO: multiple examples
 const EXAMPLE =
 	`
 import {createElement} from "@b9g/crank";
@@ -86,52 +104,49 @@ function *Timer() {
 renderer.render(<Timer />, document.body);
 `.trim() + "\n";
 
-function debounce(fn: Function, wait: number, immediate?: boolean) {
-	let timeout: any = null;
-	return function (this: unknown, ...args: Array<unknown>) {
-		const later = () => {
-			timeout = null;
-			if (!immediate) {
-				fn.apply(this, args);
-			}
-		};
-
-		if (immediate && !timeout) {
-			fn.apply(this, args);
-		}
-
-		clearTimeout(timeout);
-		timeout = setTimeout(later, wait);
-	};
-}
-
 function* Playground(this: Context, {}) {
 	let value = EXAMPLE;
-	const executeValue = debounce((ev: any) => {
-		value = ev.target.value;
-
-		//console.log(LZString.compressToEncodedURIComponent(value));
-		this.refresh();
-	}, 1000);
-
 	this.addEventListener("contentchange", (ev: any) => {
-		executeValue(ev);
+		value = ev.target.value;
+		this.refresh();
 	});
 
+	//const hashchange = (ev: HashChangeEvent) => {
+	//	console.log("hashchange", ev);
+	//	const value1 = LZString.decompressFromEncodedURIComponent("poop");
+	//	console.log(value);
+	//};
+
+	window.addEventListener("hashchange", hashchange);
+	this.cleanup(() => window.removeEventListener("hashchange", hashchange));
+
 	for ({} of this) {
+		//this.flush(() => {
+		//	window.location.hash = LZString.compressToEncodedURIComponent(value);
+		//});
+
 		yield xm`
 			<div
 				style="
 					display: flex;
 					flex-direction: row;
+					width: 100vw;
 					height: calc(100vh - 50px);
+					position: absolute;
+					top: 50px;
+					overflow: hidden;
 				"
 			>
-				<div style="flex: 1 1 50%">
+				<div style="width: 50%; height: 100%; flex: 1 1 50%; border-right: 1px solid white">
+					<div style="position: relative; width: 100%; height: 50px; border-bottom: 1px solid white; padding: 1em; background-color: red">
+						<select name="example">
+							<option value="hello-world">Hello world</option>
+							<option value="todomvc">TodoMVC</option>
+						</select>
+					</div>
 					<${PrismEditor} value=${value} language="typescript" />
 				</div>
-				<div style="width: 0px; border-right: 1px solid white" />
-				<div style="flex: 1 1 50%">
+				<div style="height: 100%; flex: 1 1 50%;">
 					<${Preview} text=${value} />
 				</div>
 			</div>
@@ -139,7 +154,5 @@ function* Playground(this: Context, {}) {
 	}
 }
 
-document.body.style.overflow = "hidden";
 const el = document.getElementById("playground");
-
 renderer.render(xm`<${Playground} />`, el!);
