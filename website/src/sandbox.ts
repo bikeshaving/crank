@@ -75,7 +75,7 @@ window.addEventListener("message", (ev) => {
 		if (err instanceof SyntaxError) {
 			const message = err.message.replace(/^\/file: /, "");
 			window.parent.postMessage(
-				JSON.stringify({type: "syntaxError", message}),
+				JSON.stringify({type: "error", message}),
 				window.location.origin,
 			);
 		}

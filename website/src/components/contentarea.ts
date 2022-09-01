@@ -68,9 +68,12 @@ export function* ContentArea(
 
 			if (selectionRange) {
 				// This must be done synchronously after rendering.
+				// TODO: Maybe we should allow setting selectionRange to value.length
+				// and have that set the cursor to the last possible position in the
+				// document, even if it usually happens after the end of a newline.
 				area.setSelectionRange(
-					selectionRange.selectionStart,
-					selectionRange.selectionEnd,
+					Math.min(area.value.length - 1, selectionRange.selectionStart),
+					Math.min(area.value.length - 1, selectionRange.selectionEnd),
 					selectionRange.selectionDirection,
 				);
 			}
