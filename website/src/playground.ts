@@ -33,6 +33,7 @@ function* Preview(this: Context, {text}: {text: string}) {
 	this.cleanup(() => window.removeEventListener("message", onglobalmessage));
 
 	const execute = debounce(() => {
+		// TODO: Should we stop reloading the iframe?
 		iframe.src = new URL("/sandbox/", window.location.origin).toString();
 	}, 1000);
 
@@ -81,6 +82,11 @@ function debounce(fn: Function, wait: number, immediate?: boolean) {
 }
 
 // TODO: multiple examples
+//const EXAMPLE =
+//	`
+//hello
+//world
+//`.trim() + "\n";
 const EXAMPLE =
 	`
 import {createElement} from "@b9g/crank";
@@ -116,9 +122,8 @@ function* Playground(this: Context, {}) {
 	//	const value1 = LZString.decompressFromEncodedURIComponent("poop");
 	//	console.log(value);
 	//};
-
-	window.addEventListener("hashchange", hashchange);
-	this.cleanup(() => window.removeEventListener("hashchange", hashchange));
+	//window.addEventListener("hashchange", hashchange);
+	//this.cleanup(() => window.removeEventListener("hashchange", hashchange));
 
 	for ({} of this) {
 		//this.flush(() => {
@@ -138,13 +143,15 @@ function* Playground(this: Context, {}) {
 				"
 			>
 				<div style="width: 50%; height: 100%; flex: 1 1 50%; border-right: 1px solid white">
-					<div style="position: relative; width: 100%; height: 50px; border-bottom: 1px solid white; padding: 1em; background-color: red">
+					<div style="position: relative; width: 100%; height: 50px; border-bottom: 1px solid white; padding: 1em">
+						<!-- TODO: implement this shizz -->
 						<select name="example">
 							<option value="hello-world">Hello world</option>
 							<option value="todomvc">TodoMVC</option>
 						</select>
+						<button>Share</button>
 					</div>
-					<${PrismEditor} value=${value} language="typescript" />
+					<${PrismEditor} value=${value} language="typescript" $static=${true} />
 				</div>
 				<div style="height: 100%; flex: 1 1 50%;">
 					<${Preview} text=${value} />

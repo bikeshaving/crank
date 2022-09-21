@@ -55,6 +55,7 @@ window.addEventListener("message", (ev) => {
 						allExtensions: true,
 						jsxPragma: "createElement",
 						jsxPragmaFrag: "''",
+						allowDeclareFields: true,
 					},
 				],
 			],

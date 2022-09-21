@@ -38,11 +38,6 @@ export function* ContentArea(
 		Promise.resolve().then(() => this.refresh());
 	});
 
-	//let edit: any;
-	//this.addEventListener("contentchange", (ev: any) => {
-	//	edit = ev.detail.edit;
-	//});
-
 	let area!: ContentAreaElement;
 	for ({value, children, selectionRange, renderSource, ...rest} of this) {
 		selectionRange =
@@ -76,6 +71,24 @@ export function* ContentArea(
 					Math.min(area.value.length - 1, selectionRange.selectionEnd),
 					selectionRange.selectionDirection,
 				);
+			}
+
+			const selection = document.getSelection();
+			if (selection) {
+				const {focusNode} = selection;
+				let el: Element | undefined;
+				if (focusNode && focusNode.nodeType === Node.TEXT_NODE) {
+					el = focusNode.parentNode as Element;
+				} else if (focusNode && focusNode.nodeType === Node.ELEMENT_NODE) {
+					el = focusNode as Element;
+				}
+
+				if (el) {
+					const rect = el.getBoundingClientRect();
+					if (rect.top < 0 || rect.bottom > window.innerHeight) {
+						el.scrollIntoView();
+					}
+				}
 			}
 		});
 
