@@ -8,8 +8,21 @@ import Prism from "prismjs";
 import type {Token} from "prismjs";
 import "prismjs/components/prism-typescript.js";
 import {ContentArea} from "./contentarea.js";
+import type {ContentAreaElement} from "@b9g/revise/contentarea";
 
 const IS_CLIENT = typeof document !== "undefined";
+
+// TODO: Custom tabs
+const TAB = "  ";
+
+function Line({line}: {line: string}) {
+	return xm`
+		<div class="prism-line">
+			<code>${printTokens(line)}</code>
+			<br />
+		</div>
+	`;
+}
 
 export function* PrismEditor(
 	this: Context,
@@ -23,6 +36,7 @@ export function* PrismEditor(
 	let editHistory = new EditHistory();
 	let selectionRange: SelectionRange | undefined;
 	let renderSource: string | undefined;
+	let area!: ContentAreaElement;
 	this.addEventListener("contentchange", (ev: any) => {
 		const {edit, source} = ev.detail;
 		const normalizedEdit = edit.normalize();
@@ -36,173 +50,129 @@ export function* PrismEditor(
 		this.refresh();
 	});
 
-	const undo = () => {
-		const edit = editHistory.undo();
-		if (edit) {
-			value = edit.apply(value);
-			selectionRange = selectionRangeFromEdit(edit);
-			renderSource = "history";
-			this.refresh();
-			return true;
-		}
+	{
+		// history stuff
+		const undo = () => {
+			const edit = editHistory.undo();
+			if (edit) {
+				value = edit.apply(value);
+				selectionRange = selectionRangeFromEdit(edit);
+				renderSource = "history";
+				this.refresh();
+				return true;
+			}
 
-		return false;
-	};
+			return false;
+		};
 
-	const redo = () => {
-		const edit = editHistory.redo();
-		if (edit) {
-			value = edit.apply(value);
-			selectionRange = selectionRangeFromEdit(edit);
-			renderSource = "history";
-			this.refresh();
-			return true;
-		}
+		const redo = () => {
+			const edit = editHistory.redo();
+			if (edit) {
+				value = edit.apply(value);
+				selectionRange = selectionRangeFromEdit(edit);
+				renderSource = "history";
+				this.refresh();
+				return true;
+			}
 
-		return false;
-	};
+			return false;
+		};
 
-	this.addEventListener("beforeinput", (ev: InputEvent) => {
-		switch (ev.inputType) {
-			case "historyUndo": {
-				if (undo()) {
-					ev.preventDefault();
+		this.addEventListener("beforeinput", (ev: InputEvent) => {
+			switch (ev.inputType) {
+				case "historyUndo": {
+					if (undo()) {
+						ev.preventDefault();
+					}
+
+					break;
+				}
+				case "historyRedo": {
+					if (redo()) {
+						ev.preventDefault();
+					}
+
+					break;
+				}
+			}
+		});
+
+		this.addEventListener("keydown", (ev: KeyboardEvent) => {
+			if (
+				ev.keyCode === 0x5a /* Z */ &&
+				!ev.altKey &&
+				((ev.metaKey && !ev.ctrlKey) || (!ev.metaKey && ev.ctrlKey))
+			) {
+				if (ev.shiftKey) {
+					redo();
+				} else {
+					undo();
 				}
 
-				break;
-			}
-			case "historyRedo": {
-				if (redo()) {
-					ev.preventDefault();
-				}
-
-				break;
-			}
-		}
-	});
-
-	this.addEventListener("keydown", (ev: KeyboardEvent) => {
-		if (
-			ev.keyCode === 0x5a &&
-			!ev.altKey &&
-			((ev.metaKey && !ev.ctrlKey) || (!ev.metaKey && ev.ctrlKey))
-		) {
-			ev.preventDefault();
-			if (ev.shiftKey) {
+				ev.preventDefault();
+			} else if (
+				ev.keyCode === 0x59 /* Y */ &&
+				ev.ctrlKey &&
+				!ev.altKey &&
+				!ev.metaKey
+			) {
 				redo();
-			} else {
-				undo();
-			}
-		} else if (ev.keyCode === 0x59 && ev.ctrlKey && !ev.altKey && !ev.metaKey) {
-			ev.preventDefault();
-			redo();
-		}
-	});
-
-	checkpointEditHistory(this, editHistory);
-	//// Potato quality tab-matching.
-	//// TODO: dedent when we see closing characters.
-	/*
-	this.addEventListener("keydown", (ev: any) => {
-		if (ev.key === "Enter") {
-			let {value: value1, selectionStart: selectionStart1, selectionEnd} = area;
-			if (selectionStart1 !== selectionEnd) {
-				return;
-			}
-
-			// A reasonable length to look for tabs and braces.
-			const prev = value.slice(0, selectionStart1);
-			const tabMatch = prev.match(/[\r\n]?([^\S\r\n]*).*$/);
-			// [^\S\r\n] = non-newline whitespace
-			const prevMatch = prev.match(/({|\(|\[)([^\S\r\n]*)$/);
-			if (prevMatch) {
-				// increase tab
 				ev.preventDefault();
-				const next = value1.slice(selectionStart1);
-				const startBracket = prevMatch[1];
-				const startWhitespace = prevMatch[2];
-				let insertBefore = "\n";
-				if (tabMatch) {
-					insertBefore += tabMatch[1] + "  ";
+			}
+		});
+
+		checkpointEditHistory(this, editHistory);
+
+		let initial = true;
+		this.addEventListener("contentchange", (ev: any) => {
+			const {edit, source} = ev.detail;
+			if (source !== "history") {
+				if (!initial) {
+					editHistory.append(edit.normalize());
 				}
 
-				// TODO: use Edit.createBuilder
-				let edit = Edit.build(
-					value1,
-					insertBefore,
-					selectionStart1,
-					selectionStart1 + startWhitespace.length,
-				);
+				initial = false;
+			}
+		});
+	}
 
-				selectionStart1 -= startWhitespace.length;
-				selectionStart1 += insertBefore.length;
-
-				const closingMap: Record<string, string> = {
-					"{": "}",
-					"(": ")",
-					"[": "]",
-				};
-				let closing = closingMap[startBracket];
-				if (closing !== "}") {
-					closing = "\\" + closing;
-				}
-				const nextMatch = next.match(
-					new RegExp(String.raw`^([^\S\r\n]*)${closing}`),
-				);
-
-				if (nextMatch) {
-					const value2 = edit.apply(value1);
-					const endWhitespace = nextMatch[1];
-					const insertAfter = tabMatch ? "\n" + tabMatch[1] : "\n";
-					// TODO: use Edit.createBuilder
-					const edit1 = Edit.build(
-						value2,
-						insertAfter,
-						selectionStart1,
-						selectionStart1 + endWhitespace.length,
-					);
-
-					edit = edit.compose(edit1);
+	{
+		// Potato tab matching.
+		// TODO: clear empty lines of whitespace on enter
+		// TODO: tab/shift tab
+		this.addEventListener("keydown", (ev: any) => {
+			const {selectionStart, selectionEnd} = area;
+			if (ev.key === "Enter") {
+				if (selectionStart !== selectionEnd) {
+					return;
 				}
 
-				value = edit.apply(value1);
+				const prevLine = getPreviousLine(value, selectionStart);
+				const [, spaceBefore, bracket] = prevLine.match(
+					/(\s*).*?(\(|\[|{)?(?:\s*)$/,
+				)!;
+				let insert = "\n" + (spaceBefore || "");
+				if (bracket) {
+					insert += TAB;
+				}
+				const edit = Edit.builder(value)
+					.retain(selectionStart)
+					.insert(insert)
+					.build();
+				renderSource = "newline";
+				value = edit.apply(value);
 				selectionRange = {
-					selectionStart: selectionStart1,
-					selectionEnd: selectionStart1,
+					selectionStart: selectionStart + insert.length,
+					selectionEnd: selectionStart + insert.length,
 					selectionDirection: "none",
 				};
-				renderSource = "tab";
-				this.refresh();
-			} else if (tabMatch && tabMatch[1].length) {
-				// match the tabbing of the previous line
 				ev.preventDefault();
-				const insertBefore = "\n" + tabMatch[1];
-				// TODO: use Edit.createBuilder
-				const edit = Edit.build(value1, insertBefore, selectionStart1);
-				value = edit.apply(value1);
-				selectionRange = {
-					selectionStart: selectionStart1 + insertBefore.length,
-					selectionEnd: selectionStart1 + insertBefore.length,
-					selectionDirection: "none",
-				};
-				renderSource = "tab";
 				this.refresh();
+			} else if (ev.key === "Tab") {
+				// TODO: handle tabs and shift tabs
 			}
-		}
-	});
-	*/
-
-	let initial = true;
-	this.addEventListener("contentchange", (ev: any) => {
-		const {edit, source} = ev.detail;
-		if (source !== "history") {
-			if (!initial) {
-				editHistory.append(edit.normalize());
-			}
-
-			initial = false;
-		}
-	});
+		});
+	}
 
 	let value1: string;
 	for ({value: value1, language, editable = true} of this) {
@@ -219,6 +189,7 @@ export function* PrismEditor(
 		value = value.match(/(?:\r|\n|\r\n)$/) ? value : value + "\n";
 		const grammar = Prism.languages[language] || Prism.languages.javascript;
 		const lines = splitLines(Prism.tokenize(value || "", grammar));
+		//const lines = value.split("\n").map((l) => [l]).slice(0, -1);
 		let index = 0;
 		yield xm`
 			<div
@@ -231,6 +202,7 @@ export function* PrismEditor(
 					flex: 1 0 50%;
 					overflow: hidden auto;
 				"
+				$static=${renderSource == null}
 			>
 				<div
 					style="
@@ -258,6 +230,7 @@ export function* PrismEditor(
 						word-break: break-all;
 						width: 100%;
 					"
+					$ref=${(area1: ContentAreaElement) => (area = area1)}
 				>
 					<pre
 						autocomplete="off"
@@ -266,18 +239,14 @@ export function* PrismEditor(
 						contenteditable=${IS_CLIENT && editable}
 						spellcheck="false"
 						style="border-left: 1px solid white; min-height: 100%"
-					>${lines.map((line, l) => {
+					>${lines.map((line) => {
 						const key = keyer.keyAt(index);
 						const length =
 							line.reduce((length, t) => length + t.length, 0) + "\n".length;
 						index += length;
-						return xm`
-							<div $key=${key} class="prism-line" data-line-number=${l + 1}>
-								<code>${printTokens(line)}</code>
-								<br />
-							</div>
-						`;
-					})}</pre>
+						return xm`<${Line} $key=${key} line=${line} />`;
+					})}
+					</pre>
 				<//ContentArea>
 			</div>
 		`;
@@ -385,6 +354,17 @@ function printTokens(tokens: Array<Token | string>): Array<Element | string> {
 	}
 
 	return result;
+}
+
+function getPreviousLine(text: string, index: number) {
+	index = Math.max(0, index);
+	for (let i = index - 1; i >= 0; i--) {
+		if (text[i] === "\n" || text[i] === "\r") {
+			return text.slice(i + 1, index);
+		}
+	}
+
+	return text.slice(0, index);
 }
 
 interface SelectionRange {
