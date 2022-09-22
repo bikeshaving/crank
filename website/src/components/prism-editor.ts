@@ -15,11 +15,117 @@ const IS_CLIENT = typeof document !== "undefined";
 // TODO: Custom tabs
 const TAB = "  ";
 
-function Line({line}: {line: string}) {
+function Chunk({
+	chunk,
+	//observer,
+	key,
+	keyer,
+	index,
+}: {
+	chunk: Array<Array<Token | string>>;
+	//observer: IntersectionObserver;
+	key: any;
+	keyer: Keyer;
+	index: number;
+}) {
+	//this.flush((el) => {
+	//	//console.log("scheduling", key, el);
+	//	observer.observe(el);
+	//});
+
+	//this.cleanup((el) => {
+	//	//console.log("cleaning up", key, el);
+	//	observer.unobserve(el);
+	//});
+
 	return xm`
-		<div class="prism-line">
-			<code>${printTokens(line)}</code>
-			<br />
+		<div class="chunk" data-key=${key}>
+			${chunk.map((line) => {
+				const key = keyer.keyAt(index);
+				const length =
+					line.reduce((length, t) => length + t.length, 0) + "\n".length;
+				try {
+					return xm`
+						<${Line}
+							$key=${key}
+							key=${key}
+							line=${line}
+						/>
+					`;
+				} finally {
+					index += length;
+				}
+			})}
+		</div>
+	`;
+}
+
+function* Line(
+	this: Context,
+	{
+		line,
+		//observer,
+		key,
+	}: {
+		line: Array<Token | string>;
+		//observer: IntersectionObserver;
+		key: any;
+	},
+) {
+	for ({line, key} of this) {
+		yield xm`
+			<div class="prism-line" data-key=${key}>
+				${line.length ? xm`<code>${printTokens(line)}</code>` : null}
+				<br />
+			</div>
+		`;
+	}
+}
+
+function printTokens(tokens: Array<Token | string>): Array<Element | string> {
+	const result: Array<Element | string> = [];
+	for (let i = 0; i < tokens.length; i++) {
+		const token = tokens[i];
+		if (typeof token === "string") {
+			result.push(token);
+		} else {
+			const children = Array.isArray(token.content)
+				? printTokens(token.content)
+				: token.content;
+			let className = "token " + token.type;
+			if (Array.isArray(token.alias)) {
+				className += " " + token.alias.join(" ");
+			} else if (typeof token.alias === "string") {
+				className += " " + token.alias;
+			}
+
+			result.push(xm`<span class=${className}>${children}</span>`);
+		}
+	}
+
+	return result;
+}
+
+function Gutter({length}: {length: number}) {
+	const numbers: Array<any> = [];
+	for (let l = 0; l < length; l++) {
+		numbers.push(xm`<div class="prism-editor-linenumber">${l + 1}</div>`);
+	}
+
+	return xm`
+		<div
+			style="
+				min-width: 5em;
+				margin: 0;
+				padding: 1em;
+				color: #fff;
+				font-size: 14px;
+				font-family: monospace;
+				line-height: 1.4;
+				text-align: right;
+			"
+		>
+			${numbers}
 		</div>
 	`;
 }
@@ -38,10 +144,7 @@ export function* PrismEditor(
 	let renderSource: string | undefined;
 	let area!: ContentAreaElement;
 	this.addEventListener("contentchange", (ev: any) => {
-		const {edit, source} = ev.detail;
-		const normalizedEdit = edit.normalize();
-		keyer.transform(normalizedEdit);
-		if (source != null) {
+		if (ev.detail.source != null) {
 			return;
 		}
 
@@ -49,6 +152,19 @@ export function* PrismEditor(
 		renderSource = "refresh";
 		this.refresh();
 	});
+
+	{
+		// key stuff
+		let initial = true;
+		this.addEventListener("contentchange", (ev: any) => {
+			const {edit} = ev.detail;
+			if (initial) {
+				initial = false;
+			} else {
+				keyer.transform(edit);
+			}
+		});
+	}
 
 	{
 		// history stuff
@@ -175,6 +291,20 @@ export function* PrismEditor(
 	}
 
 	let value1: string;
+	const intersectionObserver = new IntersectionObserver(
+		(entries) => {
+			//console.log(entries);
+			for (const entry of entries) {
+				if (entry.isIntersecting) {
+					entry.target.style.backgroundColor = "red";
+				} else {
+					entry.target.style.backgroundColor = "blue";
+				}
+			}
+		},
+		{rootMargin: "500px 0px 500px 0px"},
+	);
+
 	for ({value: value1, language, editable = true} of this) {
 		this.schedule(() => {
 			selectionRange = undefined;
@@ -189,6 +319,7 @@ export function* PrismEditor(
 		value = value.match(/(?:\r|\n|\r\n)$/) ? value : value + "\n";
 		const grammar = Prism.languages[language] || Prism.languages.javascript;
 		const lines = splitLines(Prism.tokenize(value || "", grammar));
+		const chunks = Array.from(chunkArray(lines, Infinity));
 		//const lines = value.split("\n").map((l) => [l]).slice(0, -1);
 		let index = 0;
 		yield xm`
@@ -202,22 +333,8 @@ export function* PrismEditor(
 					flex: 1 0 50%;
 					overflow: hidden auto;
 				"
-				$static=${renderSource == null}
 			>
-				<div
-					style="
-						min-width: 5em;
-						margin: 0;
-						padding: 1em;
-						color: #fff;
-						font-size: 14px;
-						font-family: monospace;
-						line-height: 1.4;
-						text-align: right;
-					"
-				>${lines.map((_, l) => {
-					return xm`<div class="prism-editor-linenumber">${l + 1}</div>`;
-				})}</div>
+				<${Gutter} length=${lines.length} />
 				<${ContentArea}
 					value=${value}
 					renderSource=${renderSource}
@@ -239,17 +356,41 @@ export function* PrismEditor(
 						contenteditable=${IS_CLIENT && editable}
 						spellcheck="false"
 						style="border-left: 1px solid white; min-height: 100%"
-					>${lines.map((line) => {
+					>
+					${chunks.map((chunk) => {
 						const key = keyer.keyAt(index);
-						const length =
-							line.reduce((length, t) => length + t.length, 0) + "\n".length;
-						index += length;
-						return xm`<${Line} $key=${key} line=${line} />`;
+						const length = chunk
+							.map(
+								(line) =>
+									line.reduce((length, t) => length + t.length, 0) +
+									"\n".length,
+							)
+							.reduce((length, n) => length + n, 0);
+						try {
+							return xm`
+								<${Chunk}
+									$key=${key}
+									key=${key}
+									keyer=${keyer}
+									index=${index}
+									observer=${intersectionObserver}
+									chunk=${chunk}
+								/>
+							`;
+						} finally {
+							index += length;
+						}
 					})}
 					</pre>
 				<//ContentArea>
 			</div>
 		`;
+	}
+}
+
+function* chunkArray<T>(arr: Array<T>, size: number): Array<Array<T>> {
+	for (let i = 0; i < arr.length; i += size) {
+		yield arr.slice(i, i + size);
 	}
 }
 
@@ -330,30 +471,6 @@ function unwrapContent(
 	}
 
 	return content;
-}
-
-function printTokens(tokens: Array<Token | string>): Array<Element | string> {
-	const result: Array<Element | string> = [];
-	for (let i = 0; i < tokens.length; i++) {
-		const token = tokens[i];
-		if (typeof token === "string") {
-			result.push(token);
-		} else {
-			const children = Array.isArray(token.content)
-				? printTokens(token.content)
-				: token.content;
-			let className = "token " + token.type;
-			if (Array.isArray(token.alias)) {
-				className += " " + token.alias.join(" ");
-			} else if (typeof token.alias === "string") {
-				className += " " + token.alias;
-			}
-
-			result.push(xm`<span class=${className}>${children}</span>`);
-		}
-	}
-
-	return result;
 }
 
 function getPreviousLine(text: string, index: number) {

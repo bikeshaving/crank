@@ -86,7 +86,7 @@ export function* ContentArea(
 				if (el) {
 					const rect = el.getBoundingClientRect();
 					if (rect.top < 0 || rect.bottom > window.innerHeight) {
-						el.scrollIntoView();
+						el.scrollIntoView({block: "nearest"});
 					}
 				}
 			}
