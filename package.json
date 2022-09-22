@@ -1,6 +1,6 @@
 {
   "name": "@b9g/crank",
-  "version": "0.5.0-beta.1",
+  "version": "0.5.0-beta.2",
   "private": true,
   "description": "Write JSX-driven components with functions, promises and generators.",
   "homepage": "https://crank.js.org",
