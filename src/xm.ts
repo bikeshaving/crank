@@ -1,4 +1,4 @@
-import {c} from "./crank.js";
+import {createElement} from "./crank.js";
 import type {Element} from "./crank.js";
 
 const cache = new Map<string, ParseResult>();
@@ -533,7 +533,7 @@ function build(parsed: ParseElement): Element {
 		}
 	}
 
-	return c(parsed.open.value, props, ...children);
+	return createElement(parsed.open.value, props, ...children);
 }
 
 function formatTagForError(tag: unknown): string {
