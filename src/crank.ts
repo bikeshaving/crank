@@ -333,9 +333,6 @@ export function createElement<TTag extends Tag>(
 	return new Element(tag, props1, key, ref, static_);
 }
 
-/** A single-letter alias for createElement */
-export const c = createElement;
-
 /** Clones a given element, shallowly copying the props object. */
 export function cloneElement<TTag extends Tag>(
 	el: Element<TTag>,

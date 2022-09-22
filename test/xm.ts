@@ -1,31 +1,35 @@
 import {suite} from "uvu";
 import * as Assert from "uvu/assert";
 
-import {c} from "../src/crank.js";
+import {createElement} from "../src/crank.js";
 import {xm} from "../src/xm.js";
 
 const test = suite("xm");
 
 test("single elements", () => {
-	Assert.equal(xm`<p/>`, c("p"));
-	Assert.equal(xm`<p />`, c("p"));
-	Assert.equal(xm`<p></p>`, c("p"));
-	Assert.equal(xm`<p>hello world</p>`, c("p", null, "hello world"));
+	Assert.equal(xm`<p/>`, createElement("p"));
+	Assert.equal(xm`<p />`, createElement("p"));
+	Assert.equal(xm`<p></p>`, createElement("p"));
+	Assert.equal(xm`<p>hello world</p>`, createElement("p", null, "hello world"));
 });
 
 test("top-level strings", () => {
-	Assert.equal(xm`hello world`, c("", null, "hello world"));
+	Assert.equal(xm`hello world`, createElement("", null, "hello world"));
 	Assert.equal(
 		xm`hello <p>world</p>`,
-		c("", null, ...["hello ", c("p", null, "world")]),
+		createElement("", null, ...["hello ", createElement("p", null, "world")]),
 	);
 	Assert.equal(
 		xm`<p>hello</p> world`,
-		c("", null, ...[c("p", null, "hello"), " world"]),
+		createElement("", null, ...[createElement("p", null, "hello"), " world"]),
 	);
 	Assert.equal(
 		xm` hello<span> </span>world `,
-		c("", null, ...["hello", c("span", null, " "), "world"]),
+		createElement(
+			"",
+			null,
+			...["hello", createElement("span", null, " "), "world"],
+		),
 	);
 });
 
@@ -36,30 +40,50 @@ test("newlines and whitespace", () => {
 		xm`
 		<p/>
 	`,
-		c("p"),
+		createElement("p"),
 	);
 	Assert.equal(
 		xm`
 		<span>Hello</span> \
 		<span>World</span>
 	`,
-		c("", null, ...[c("span", null, "Hello"), " ", c("span", null, "World")]),
+		createElement(
+			"",
+			null,
+			...[
+				createElement("span", null, "Hello"),
+				" ",
+				createElement("span", null, "World"),
+			],
+		),
 	);
 });
 
 test("string props", () => {
-	Assert.equal(xm`<p class="foo" />`, c("p", {class: "foo"}));
-	Assert.equal(xm`<p f="foo" b="bar" />`, c("p", {f: "foo", b: "bar"}));
-	Assert.equal(xm`<p f="'foo'" b='"bar"' />`, c("p", {f: "'foo'", b: '"bar"'}));
+	Assert.equal(xm`<p class="foo" />`, createElement("p", {class: "foo"}));
+	Assert.equal(
+		xm`<p f="foo" b="bar" />`,
+		createElement("p", {f: "foo", b: "bar"}),
+	);
+	Assert.equal(
+		xm`<p f="'foo'" b='"bar"' />`,
+		createElement("p", {f: "'foo'", b: '"bar"'}),
+	);
 });
 
 test("string escapes", () => {
 	Assert.equal(
 		xm`<p a="a\"a\"a\"a" b='b\'b\'b\'b' />`,
-		c("p", {a: 'a"a"a"a', b: "b'b'b'b"}),
+		createElement("p", {a: 'a"a"a"a', b: "b'b'b'b"}),
 	);
-	Assert.equal(xm`<p a="\\\"\'\a\b\\\"" />`, c("p", {a: `\\"'a\b\\"`}));
-	Assert.equal(xm`<p a="hello\r\nworld" />`, c("p", {a: "hello\r\nworld"}));
+	Assert.equal(
+		xm`<p a="\\\"\'\a\b\\\"" />`,
+		createElement("p", {a: `\\"'a\b\\"`}),
+	);
+	Assert.equal(
+		xm`<p a="hello\r\nworld" />`,
+		createElement("p", {a: "hello\r\nworld"}),
+	);
 });
 
 test("fragment shorthand", () => {
@@ -70,14 +94,17 @@ test("fragment shorthand", () => {
 			<>world</>
 		</p>
 	`,
-		c("p", null, "Hello ", c("", null, "world")),
+		createElement("p", null, "Hello ", createElement("", null, "world")),
 	);
 });
 
 test("tag expressions", () => {
 	const T1 = "tag1";
 	const T2 = "tag2";
-	Assert.equal(xm`<${T1}>Hello world</${T1}>`, c(T1, null, "Hello world"));
+	Assert.equal(
+		xm`<${T1}>Hello world</${T1}>`,
+		createElement(T1, null, "Hello world"),
+	);
 	Assert.equal(
 		xm`
 		<${T1}>
@@ -86,7 +113,7 @@ test("tag expressions", () => {
 			</${T2}>
 		</${T1}>
 	`,
-		c(T1, null, c(T2, null, "Hello world")),
+		createElement(T1, null, createElement(T2, null, "Hello world")),
 	);
 });
 
@@ -97,13 +124,13 @@ test("children expressions", () => {
 		xm`
 		<div>${ex1} ${ex2}</div>
 	`,
-		c("div", null, "Hello", " ", "world"),
+		createElement("div", null, "Hello", " ", "world"),
 	);
 	Assert.equal(
 		xm`
 		<div>${ex1}${ex2}</div>
 	`,
-		c("div", null, "Hello", "world"),
+		createElement("div", null, "Hello", "world"),
 	);
 
 	Assert.equal(
@@ -112,17 +139,21 @@ test("children expressions", () => {
 			<span>${ex1} ${ex2}</span>
 		</div>
 	`,
-		c("div", null, c("span", null, "Hello", " ", "world")),
+		createElement(
+			"div",
+			null,
+			createElement("span", null, "Hello", " ", "world"),
+		),
 	);
 
 	Assert.equal(
 		xm`
 		<div><span>${null} ${undefined} ${true} ${false} ${1} ${2}</span></div>
 	`,
-		c(
+		createElement(
 			"div",
 			null,
-			c(
+			createElement(
 				"span",
 				null,
 				...[null, " ", undefined, " ", true, " ", false, " ", 1, " ", 2],
@@ -134,7 +165,7 @@ test("children expressions", () => {
 		xm`
 		${"Hello"} <span>world</span>
 	`,
-		c("", null, "Hello", " ", c("span", null, "world")),
+		createElement("", null, "Hello", " ", createElement("span", null, "world")),
 	);
 });
 
@@ -143,10 +174,10 @@ test("shorthand boolean props", () => {
 		xm`
 		<label><input type="checkbox" checked name="attendance" disabled />Present</label>
 	`,
-		c(
+		createElement(
 			"label",
 			null,
-			c("input", {
+			createElement("input", {
 				type: "checkbox",
 				checked: true,
 				name: "attendance",
@@ -164,7 +195,11 @@ test("prop expressions", () => {
 			Hello world
 		</div>
 	`,
-		c("div", {class: "greeting", style: {color: "red"}}, "Hello world"),
+		createElement(
+			"div",
+			{class: "greeting", style: {color: "red"}},
+			"Hello world",
+		),
 	);
 });
 
@@ -174,16 +209,28 @@ test("spread prop expressions", () => {
 	};
 	Assert.equal(
 		xm`<div class="greeting" ...${props}>Hello world</div>`,
-		c("div", {class: "greeting", style: "color: red;"}, "Hello world"),
+		createElement(
+			"div",
+			{class: "greeting", style: "color: red;"},
+			"Hello world",
+		),
 	);
 	Assert.equal(
 		xm`<div class="greeting" ... ${props}>Hello world</div>`,
-		c("div", {class: "greeting", style: "color: red;"}, "Hello world"),
+		createElement(
+			"div",
+			{class: "greeting", style: "color: red;"},
+			"Hello world",
+		),
 	);
 	Assert.equal(
 		xm`<div class="greeting" ...
 	${props}>Hello world</div>`,
-		c("div", {class: "greeting", style: "color: red;"}, "Hello world"),
+		createElement(
+			"div",
+			{class: "greeting", style: "color: red;"},
+			"Hello world",
+		),
 	);
 });
 
@@ -193,7 +240,7 @@ test("asymmetric closing tags", () => {
 		xm`
 		<${Component}>Hello world<//>
 	`,
-		c(Component, null, "Hello world"),
+		createElement(Component, null, "Hello world"),
 	);
 
 	Assert.equal(
@@ -202,7 +249,7 @@ test("asymmetric closing tags", () => {
 			Hello world
 		<//Component>
 	`,
-		c(Component, null, "Hello world"),
+		createElement(Component, null, "Hello world"),
 	);
 });
 
@@ -214,12 +261,12 @@ test("weird identifiers", () => {
 			<__ $key=${1}/>
 		</$a>
 	`,
-		c(
+		createElement(
 			"$a",
 			{$b$: true, _c: true},
 			...[
-				c("-custom-element", {"-prop": "foo", "_-_": "bar"}),
-				c("__", {$key: 1}),
+				createElement("-custom-element", {"-prop": "foo", "_-_": "bar"}),
+				createElement("__", {$key: 1}),
 			],
 		),
 	);
@@ -232,7 +279,7 @@ test("comments", () => {
 			<!--<span>Hello</span>--><span>world</span>
 		</div>
 	`,
-		c("div", null, c("span", null, "world")),
+		createElement("div", null, createElement("span", null, "world")),
 	);
 
 	Assert.equal(
@@ -241,7 +288,7 @@ test("comments", () => {
 			<!--<span>Hello</span>--> <!--<span>world</span>-->
 		</div>
 	`,
-		c("div", null, " "),
+		createElement("div", null, " "),
 	);
 });
 
@@ -255,7 +302,7 @@ test("comment expressions", () => {
 			Hello<!-- world-->
 		</div>
 	`,
-		c("div", null, "Hello"),
+		createElement("div", null, "Hello"),
 	);
 });
 
@@ -264,26 +311,26 @@ test("prop string expressions", () => {
 		xm`
 		<p class="${undefined} ${null} ${"a"}-${{a: "1"}}-" />
 	`,
-		c("p", {class: "  a-[object Object]-"}),
+		createElement("p", {class: "  a-[object Object]-"}),
 	);
 	Assert.equal(
 		xm`
 		<p class="a${1}\${2}\a${3}\"" />
 	`,
-		c("p", {class: 'a1${2}a3"'}),
+		createElement("p", {class: 'a1${2}a3"'}),
 	);
 	// Don’t think too hard about escaping.
 	Assert.equal(
 		xm`
 		<p class="a\\${1}\\${2}\\\a${3}\"" />
 	`,
-		c("p", {class: 'a\\1\\2\\a3"'}),
+		createElement("p", {class: 'a\\1\\2\\a3"'}),
 	);
 	Assert.equal(
 		xm`
 		<p class="a${true}${false}${null}${undefined}b" />
 	`,
-		c("p", {class: "ab"}),
+		createElement("p", {class: "ab"}),
 	);
 });
 
