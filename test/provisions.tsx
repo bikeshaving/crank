@@ -9,7 +9,7 @@ import {renderer} from "../src/dom.js";
 const test = suite("provisions");
 
 // TODO: test typings
-declare module "../src/index.js" {
+declare module "../src/crank.js" {
 	interface ProvisionMap {
 		greeting: string;
 	}

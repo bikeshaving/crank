@@ -40,7 +40,7 @@ function copyPackage() {
 }
 
 const input = [
-	"src/index.ts",
+	"src/mod.ts",
 	"src/crank.ts",
 	"src/dom.ts",
 	"src/html.ts",
