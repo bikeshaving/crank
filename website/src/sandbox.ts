@@ -86,10 +86,13 @@ window.addEventListener("message", (ev) => {
 		script.remove();
 		script.text =
 			(parsed.code || "") +
-			`;window.parent.postMessage(
-				JSON.stringify({type: "executed"}),
-				window.location.origin,
-			);`;
+			`
+;{
+	window.parent.postMessage(
+		JSON.stringify({type: "executed"}),
+		window.location.origin,
+	);
+}`;
 		document.head.appendChild(script);
 	}
 });

@@ -82,32 +82,17 @@ function debounce(fn: Function, wait: number, immediate?: boolean) {
 }
 
 // TODO: multiple examples
-//const EXAMPLE =
-//	`
-//hello
+//const EXAMPLE = `hello
 //world
-//`.trim() + "\n";
+//`;
+
 const EXAMPLE =
 	`
-import {createElement} from "@b9g/crank";
-import {renderer} from "@b9g/crank/dom";
+import {Context} from "@b9g/crank@beta/crank";
+Context;
+//import {renderer} from "@b9g/crank@beta/dom";
+//renderer;
 
-function *Timer() {
-  let seconds = 0;
-  const interval = setInterval(() => {
-    seconds++;
-    this.refresh();
-  }, 1000);
-  try {
-    for ({} of this) {
-      yield <div>{seconds}s</div>;
-    }
-  } finally {
-    clearInterval(interval);
-  }
-}
-
-renderer.render(<Timer />, document.body);
 `.trim() + "\n";
 
 function* Playground(this: Context, {}) {
