@@ -1,7 +1,7 @@
 import {xm} from "@b9g/crank";
 import type {Context} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
-import {PlaygroundEditor} from "./components/playground-editor.js";
+import {CodeEditor} from "./components/code-editor.js";
 import "prismjs/components/prism-javascript";
 //import LZString from "lz-string";
 
@@ -104,8 +104,7 @@ function debounce(fn: Function, wait: number, immediate?: boolean) {
 //world
 //`;
 
-const EXAMPLE =
-	`
+const EXAMPLE = `
 import {xm} from "@b9g/crank@beta/xm.js";
 import {renderer} from "@b9g/crank@beta/dom";
 
@@ -125,7 +124,7 @@ function *Timer() {
 }
 
 renderer.render(xm\`<\${Timer} />\`, document.body);
-`.trim() + "\n";
+`.trimLeft();
 
 function* Playground(this: Context, {}) {
 	let value = localStorage.getItem("playground-value") || EXAMPLE;
@@ -161,7 +160,12 @@ function* Playground(this: Context, {}) {
 				"
 			>
 				<div style="width: 50%; height: 100%; border-right: 1px solid white">
-					<${PlaygroundEditor} value=${value} language="typescript" $static=${true} />
+					<${CodeEditor}
+						$static
+						value=${value}
+						language="typescript"
+						showGutter
+					/>
 				</div>
 				<div style="width: 50%; height: 100%">
 					<${Preview} text=${value} />

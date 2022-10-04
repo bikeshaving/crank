@@ -10,7 +10,7 @@ import "prismjs/components/prism-tsx";
 import "prismjs/components/prism-diff";
 import "prismjs/components/prism-bash";
 import {ContentAreaElement} from "@b9g/revise/contentarea.js";
-import {CodeBlock} from "./components/prism.js";
+import {CodeEditor} from "./components/code-editor.js";
 
 // @ts-ignore
 Prism.manual = true;
@@ -30,6 +30,15 @@ if (!window.customElements.get("content-area")) {
 for (const el of Array.from(document.querySelectorAll(".codeblock"))) {
 	const {code, lang} = (el as HTMLElement).dataset;
 	if (code != null && lang != null) {
-		renderer.render(xm`<${CodeBlock} value=${code} lang=${lang} />`, el);
+		renderer.render(
+			xm`
+			<${CodeEditor}
+				value=${code}
+				lang=${lang}
+				editable=${lang.endsWith(" live")}
+			/>
+		`,
+			el,
+		);
 	}
 }

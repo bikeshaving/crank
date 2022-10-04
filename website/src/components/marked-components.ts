@@ -1,5 +1,5 @@
 import {xm} from "@b9g/crank";
-import {CodeBlock} from "./prism.js";
+import {CodeEditor} from "./code-editor.js";
 
 // TODO: declare these as top-level functions.
 export const components = {
@@ -11,7 +11,11 @@ export const components = {
 		const {text: code, lang} = token;
 		return xm`
 			<div class="codeblock" data-code=${code} data-lang=${lang}>
-				<${CodeBlock} value=${code} lang=${lang} />
+				<${CodeEditor}
+					value=${code}
+					lang=${lang}
+					editable=${lang.endsWith(" live")}
+				/>
 			</div>
 		`;
 	},

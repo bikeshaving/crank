@@ -79,7 +79,9 @@ export function* ContentArea(
 				if (
 					area.contains(document.activeElement) &&
 					selection &&
-					area.contains(selection.focusNode)
+					area.contains(selection.focusNode) &&
+					// TODO: think more about this condition
+					renderSource !== "refresh"
 				) {
 					let focusNode = selection.focusNode! as Element;
 					if (focusNode && focusNode.nodeType === Node.TEXT_NODE) {

@@ -63,7 +63,7 @@ interface SelectionRange {
 }
 
 // TODO: I need to separate the playground component from the codeblock component somehow
-export function* CodeBlock(
+export function* CodeEditor(
 	this: Context,
 	{value, lang}: {value: string; lang: string},
 ) {
@@ -247,11 +247,10 @@ export function* CodeBlock(
 
 		const isClient = typeof document !== "undefined";
 		let cursor = 0;
-
 		yield xm`
 			<div class="playground">
 				<${ContentArea}
-					c-ref=${(area1: any) => (area = area1)}
+					$ref=${(area1: any) => (area = area1)}
 					value=${value}
 					renderSource=${renderSource}
 					selectionRange=${selectionRange}
@@ -270,7 +269,7 @@ export function* CodeBlock(
 							const length = line.reduce((l, t) => l + t.length, 0);
 							cursor += length + 1;
 							return xm`
-								<div c-key=${key}>
+								<div $key=${key}>
 									<code>${printTokens(line)}</code><br />
 								</div>
 							`;
