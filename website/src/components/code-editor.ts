@@ -10,20 +10,66 @@ import "prismjs/components/prism-typescript.js";
 import {ContentArea} from "./contentarea.js";
 import type {ContentAreaElement} from "@b9g/revise/contentarea";
 
+function* Gutter(this: Context, {length}: {length: number}) {
+	const numbers: Array<any> = [];
+	for (let l = 0; l < length; l++) {
+		numbers.push(xm`
+			<div class="prism-editor-linenumber">${l + 1}</div>
+		`);
+	}
+
+	let initial = true;
+	for (const {length: newLength} of this) {
+		if (initial) {
+			initial = false;
+		} else {
+			if (length < newLength) {
+				for (let l = numbers.length; l < newLength; l++) {
+					numbers.push(xm`
+						<div class="prism-editor-linenumber">${l + 1}</div>
+					`);
+				}
+			} else if (length > newLength) {
+				numbers.length = newLength;
+			} else {
+				yield xm`<$COPY />`;
+				continue;
+			}
+		}
+
+		yield xm`
+			<div
+				style="
+					/* this has to match the css of lines or it gets misaligned :( */
+					margin: 0;
+					padding: 1em .5em;
+					color: #fff;
+					font-size: 14px;
+					font-family: monospace;
+					line-height: 1.4;
+					text-align: right;
+				"
+			>
+				${numbers}
+			</div>
+		`;
+
+		length = newLength;
+	}
+}
+
 const IS_CLIENT = typeof document !== "undefined";
 
 // TODO: Custom tabs
 const TAB = "  ";
 
-function* Line(this: Context, {line}: {line: Array<Token | string>}) {
-	for ({line} of this) {
-		yield xm`
-			<div class="prism-line">
-				${line.length ? xm`<code>${printTokens(line)}</code>` : null}
-				<br />
-			</div>
-		`;
-	}
+function Line({line}: {line: Array<Token | string>}) {
+	return xm`
+		<div class="prism-line">
+			${line.length ? xm`<code>${printTokens(line)}</code>` : null}
+			<br />
+		</div>
+	`;
 }
 
 function printTokens(tokens: Array<Token | string>): Array<Element | string> {
@@ -50,58 +96,19 @@ function printTokens(tokens: Array<Token | string>): Array<Element | string> {
 	return result;
 }
 
-function* Gutter({length}: {length: number}) {
-	const numbers: Array<any> = [];
-	for (let l = 0; l < length; l++) {
-		numbers.push(xm`
-			<div class="prism-editor-linenumber">${l + 1}</div>
-		`);
-	}
-
-	let initial = true;
-	for (const {length: newLength} of this) {
-		if (!initial) {
-			if (length < newLength) {
-				for (let l = numbers.length; l < newLength; l++) {
-					numbers.push(xm`
-						<div class="prism-editor-linenumber">${l + 1}</div>
-					`);
-				}
-			} else if (length > newLength) {
-				numbers.length = newLength;
-			}
-		} else {
-			initial = false;
-		}
-
-		yield xm`
-			<div
-				style="
-					/* this has to match the css of lines or it gets misaligned :( */
-					margin: 0;
-					padding: 1em .5em;
-					color: #fff;
-					font-size: 14px;
-					font-family: monospace;
-					line-height: 1.4;
-					text-align: right;
-				"
-			>
-				${numbers}
-			</div>
-		`;
-
-		length = newLength;
-	}
-}
-
-export function* PlaygroundEditor(
+export function* CodeEditor(
 	this: Context,
 	{
 		value,
 		language,
 		editable,
-	}: {value: string; language: string; editable?: boolean},
+		showGutter,
+	}: {
+		value: string;
+		language: string;
+		editable?: boolean;
+		showGutter?: boolean;
+	},
 ) {
 	const keyer = new Keyer();
 	let editHistory = new EditHistory();
@@ -120,14 +127,9 @@ export function* PlaygroundEditor(
 
 	{
 		// key stuff
-		let initial = true;
 		this.addEventListener("contentchange", (ev: any) => {
 			const {edit} = ev.detail;
-			if (initial) {
-				initial = false;
-			} else {
-				keyer.transform(edit);
-			}
+			keyer.transform(edit);
 		});
 	}
 
@@ -202,17 +204,14 @@ export function* PlaygroundEditor(
 			}
 		});
 
-		checkpointEditHistory(this, editHistory);
+		if (IS_CLIENT) {
+			checkpointEditHistory(this, editHistory);
+		}
 
-		let initial = true;
 		this.addEventListener("contentchange", (ev: any) => {
 			const {edit, source} = ev.detail;
 			if (source !== "history") {
-				if (!initial) {
-					editHistory.append(edit.normalize());
-				}
-
-				initial = false;
+				editHistory.append(edit.normalize());
 			}
 		});
 	}
@@ -256,7 +255,7 @@ export function* PlaygroundEditor(
 	}
 
 	let value1: string;
-	for ({value: value1, language, editable = true} of this) {
+	for ({value: value1, language, editable = true, showGutter} of this) {
 		this.schedule(() => {
 			selectionRange = undefined;
 			renderSource = undefined;
@@ -282,7 +281,7 @@ export function* PlaygroundEditor(
 					height: 100%;
 				"
 			>
-				<${Gutter} length=${lines.length} />
+				${showGutter && xm`<${Gutter} length=${lines.length} />`}
 				<${ContentArea}
 					value=${value}
 					renderSource=${renderSource}
@@ -303,7 +302,10 @@ export function* PlaygroundEditor(
 						autocapitalize="off"
 						contenteditable=${IS_CLIENT && editable}
 						spellcheck="false"
-						style="border-left: 1px solid white; min-height: 100%"
+						style="
+							${showGutter && "border-left: 1px solid white;"}
+							min-height: 100%;
+						"
 					>
 					${lines.flatMap((line, li) => {
 						const key = keyer.keyAt(index);
@@ -336,6 +338,10 @@ export function* PlaygroundEditor(
 	}
 }
 
+// TODO: move this to prism-utils file
+// @ts-ignore
+Prism.manual = true;
+
 function splitLines(
 	tokens: Array<Token | string>,
 ): Array<Array<Token | string>> {
@@ -348,8 +354,6 @@ function splitLines(
 	return lines;
 }
 
-// @ts-ignore
-Prism.manual = true;
 function splitLinesRec(
 	tokens: Array<Token | string>,
 ): Array<Array<Token | string>> {
