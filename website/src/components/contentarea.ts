@@ -38,6 +38,7 @@ export function* ContentArea(
 		Promise.resolve().then(() => this.refresh());
 	});
 
+	let initial = true;
 	let area!: ContentAreaElement;
 	for ({value, children, selectionRange, renderSource, ...rest} of this) {
 		selectionRange =
@@ -48,49 +49,50 @@ export function* ContentArea(
 				selectionDirection: area.selectionDirection,
 			});
 
-		this.flush(() => {
-			if (typeof renderSource === "string") {
-				area.source(renderSource!);
-			}
-
-			if (typeof value === "string" && value !== area.value) {
-				console.error(
-					`Expected value ${JSON.stringify(
-						value,
-					)} but received ${JSON.stringify(area.value)} from the DOM`,
-				);
-			}
-
-			if (selectionRange) {
-				// This must be done synchronously after rendering.
-				// TODO: Maybe we should allow setting selectionRange to value.length
-				// and have that set the cursor to the last possible position in the
-				// document, even if it usually happens after the end of a newline.
-				area.setSelectionRange(
-					Math.min(area.value.length - 1, selectionRange.selectionStart),
-					Math.min(area.value.length - 1, selectionRange.selectionEnd),
-					selectionRange.selectionDirection,
-				);
-			}
-
-			const selection = document.getSelection();
-			if (selection) {
-				const {focusNode} = selection;
-				let el: Element | undefined;
-				if (focusNode && focusNode.nodeType === Node.TEXT_NODE) {
-					el = focusNode.parentNode as Element;
-				} else if (focusNode && focusNode.nodeType === Node.ELEMENT_NODE) {
-					el = focusNode as Element;
+		if (!initial) {
+			this.flush(() => {
+				if (typeof renderSource === "string") {
+					area.source(renderSource!);
 				}
 
-				if (el) {
-					const rect = el.getBoundingClientRect();
+				if (typeof value === "string" && value !== area.value) {
+					console.error(
+						`Expected value ${JSON.stringify(
+							value,
+						)} but received ${JSON.stringify(area.value)} from the DOM`,
+					);
+				}
+
+				if (selectionRange) {
+					// This must be done synchronously after rendering.
+					// TODO: Maybe we should allow setting selectionRange to value.length
+					// and have that set the cursor to the last possible position in the
+					// document, even if it usually happens after the end of a newline.
+					area.setSelectionRange(
+						Math.min(area.value.length - 1, selectionRange.selectionStart),
+						Math.min(area.value.length - 1, selectionRange.selectionEnd),
+						selectionRange.selectionDirection,
+					);
+				}
+
+				const selection = document.getSelection();
+				if (
+					area.contains(document.activeElement) &&
+					selection &&
+					area.contains(selection.focusNode)
+				) {
+					let focusNode = selection.focusNode! as Element;
+					if (focusNode && focusNode.nodeType === Node.TEXT_NODE) {
+						focusNode = focusNode.parentNode as Element;
+					}
+
+					const rect = focusNode.getBoundingClientRect();
 					if (rect.top < 0 || rect.bottom > window.innerHeight) {
-						el.scrollIntoView({block: "nearest"});
+						focusNode.scrollIntoView({block: "nearest"});
 					}
 				}
-			}
-		});
+			});
+		}
 
 		yield xm`
 			<content-area
@@ -99,6 +101,8 @@ export function* ContentArea(
 				$static=${composing}
 			>${children}</content-area>
 		`;
+
+		initial = false;
 	}
 }
 
