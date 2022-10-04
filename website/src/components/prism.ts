@@ -271,13 +271,12 @@ export function* CodeBlock(
 							cursor += length + 1;
 							return xm`
 								<div c-key=${key}>
-									<code>${printTokens(line)}</code>
-									<br />
+									<code>${printTokens(line)}</code><br />
 								</div>
 							`;
 						})}
 					</pre>
-				<//ContentArea>
+				</${ContentArea}>
 				${
 					typeof document !== "undefined" &&
 					rest === "live" &&

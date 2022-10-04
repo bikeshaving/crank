@@ -315,6 +315,8 @@ code.inline {
 	background: linear-gradient(123deg, #0a0e1f 60%, #000e4f);
 	overflow: auto;
 	word-wrap: normal;
+	border: 1px solid #f5f9ff;
+	margin: 1.5em 0;
 	/* This is some kind of shit to make the shit not zoom on iOS */
 	@supports (-webkit-overflow-scrolling: touch) {
 		font-size: 16px;

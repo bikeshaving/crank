@@ -15,66 +15,10 @@ const IS_CLIENT = typeof document !== "undefined";
 // TODO: Custom tabs
 const TAB = "  ";
 
-function Chunk({
-	chunk,
-	//observer,
-	key,
-	keyer,
-	index,
-}: {
-	chunk: Array<Array<Token | string>>;
-	//observer: IntersectionObserver;
-	key: any;
-	keyer: Keyer;
-	index: number;
-}) {
-	//this.flush((el) => {
-	//	//console.log("scheduling", key, el);
-	//	observer.observe(el);
-	//});
-
-	//this.cleanup((el) => {
-	//	//console.log("cleaning up", key, el);
-	//	observer.unobserve(el);
-	//});
-
-	return xm`
-		<div class="chunk" data-key=${key}>
-			${chunk.map((line) => {
-				const key = keyer.keyAt(index);
-				const length =
-					line.reduce((length, t) => length + t.length, 0) + "\n".length;
-				try {
-					return xm`
-						<${Line}
-							$key=${key}
-							key=${key}
-							line=${line}
-						/>
-					`;
-				} finally {
-					index += length;
-				}
-			})}
-		</div>
-	`;
-}
-
-function* Line(
-	this: Context,
-	{
-		line,
-		//observer,
-		key,
-	}: {
-		line: Array<Token | string>;
-		//observer: IntersectionObserver;
-		key: any;
-	},
-) {
-	for ({line, key} of this) {
+function* Line(this: Context, {line}: {line: Array<Token | string>}) {
+	for ({line} of this) {
 		yield xm`
-			<div class="prism-line" data-key=${key}>
+			<div class="prism-line">
 				${line.length ? xm`<code>${printTokens(line)}</code>` : null}
 				<br />
 			</div>
@@ -106,31 +50,52 @@ function printTokens(tokens: Array<Token | string>): Array<Element | string> {
 	return result;
 }
 
-function Gutter({length}: {length: number}) {
+function* Gutter({length}: {length: number}) {
 	const numbers: Array<any> = [];
 	for (let l = 0; l < length; l++) {
-		numbers.push(xm`<div class="prism-editor-linenumber">${l + 1}</div>`);
+		numbers.push(xm`
+			<div class="prism-editor-linenumber">${l + 1}</div>
+		`);
 	}
 
-	return xm`
-		<div
-			style="
-				min-width: 5em;
-				margin: 0;
-				padding: 1em;
-				color: #fff;
-				font-size: 14px;
-				font-family: monospace;
-				line-height: 1.4;
-				text-align: right;
-			"
-		>
-			${numbers}
-		</div>
-	`;
+	let initial = true;
+	for (const {length: newLength} of this) {
+		if (!initial) {
+			if (length < newLength) {
+				for (let l = numbers.length; l < newLength; l++) {
+					numbers.push(xm`
+						<div class="prism-editor-linenumber">${l + 1}</div>
+					`);
+				}
+			} else if (length > newLength) {
+				numbers.length = newLength;
+			}
+		} else {
+			initial = false;
+		}
+
+		yield xm`
+			<div
+				style="
+					/* this has to match the css of lines or it gets misaligned :( */
+					margin: 0;
+					padding: 1em .5em;
+					color: #fff;
+					font-size: 14px;
+					font-family: monospace;
+					line-height: 1.4;
+					text-align: right;
+				"
+			>
+				${numbers}
+			</div>
+		`;
+
+		length = newLength;
+	}
 }
 
-export function* PrismEditor(
+export function* PlaygroundEditor(
 	this: Context,
 	{
 		value,
@@ -291,20 +256,6 @@ export function* PrismEditor(
 	}
 
 	let value1: string;
-	const intersectionObserver = new IntersectionObserver(
-		(entries) => {
-			//console.log(entries);
-			for (const entry of entries) {
-				if (entry.isIntersecting) {
-					entry.target.style.backgroundColor = "red";
-				} else {
-					entry.target.style.backgroundColor = "blue";
-				}
-			}
-		},
-		{rootMargin: "500px 0px 500px 0px"},
-	);
-
 	for ({value: value1, language, editable = true} of this) {
 		this.schedule(() => {
 			selectionRange = undefined;
@@ -319,7 +270,6 @@ export function* PrismEditor(
 		value = value.match(/(?:\r|\n|\r\n)$/) ? value : value + "\n";
 		const grammar = Prism.languages[language] || Prism.languages.javascript;
 		const lines = splitLines(Prism.tokenize(value || "", grammar));
-		const chunks = Array.from(chunkArray(lines, Infinity));
 		//const lines = value.split("\n").map((l) => [l]).slice(0, -1);
 		let index = 0;
 		yield xm`
@@ -327,11 +277,9 @@ export function* PrismEditor(
 				style="
 					display: flex;
 					flex-direction: row;
-					align-items: stretch;
 					position: relative;
-					height: calc(100% - 50px);
-					flex: 1 0 50%;
-					overflow: hidden auto;
+					overflow: auto;
+					height: 100%;
 				"
 			>
 				<${Gutter} length=${lines.length} />
@@ -357,26 +305,26 @@ export function* PrismEditor(
 						spellcheck="false"
 						style="border-left: 1px solid white; min-height: 100%"
 					>
-					${chunks.map((chunk) => {
+					${lines.flatMap((line, li) => {
 						const key = keyer.keyAt(index);
-						const length = chunk
-							.map(
-								(line) =>
-									line.reduce((length, t) => length + t.length, 0) +
-									"\n".length,
-							)
-							.reduce((length, n) => length + n, 0);
+						const length =
+							line.reduce((length, t) => length + t.length, 0) + "\n".length;
 						try {
-							return xm`
-								<${Chunk}
-									$key=${key}
-									key=${key}
-									keyer=${keyer}
-									index=${index}
-									observer=${intersectionObserver}
-									chunk=${chunk}
-								/>
-							`;
+							const line1 = xm`<${Line} $key=${key + "line"} line=${line} />`;
+							if (li % 10 === 0) {
+								return [
+									xm`
+										<div
+											class="sentry"
+											$key=${key + "sentry"}
+											data-content=""
+										/>
+									`,
+									line1,
+								];
+							} else {
+								return [line1];
+							}
 						} finally {
 							index += length;
 						}
@@ -385,12 +333,6 @@ export function* PrismEditor(
 				<//ContentArea>
 			</div>
 		`;
-	}
-}
-
-function* chunkArray<T>(arr: Array<T>, size: number): Array<Array<T>> {
-	for (let i = 0; i < arr.length; i += size) {
-		yield arr.slice(i, i + size);
 	}
 }
 
