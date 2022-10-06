@@ -1,6 +1,6 @@
 import {xm} from "@b9g/crank";
 
-// TODO: find a better analytics solution that let’s me know when a bunch of
+// TODO: find a better analytics solution that lets me know when a bunch of
 // traffic comes to the site but isn’t spyware and is cheap or free.
 export function GoogleSpyware() {
 	return xm`

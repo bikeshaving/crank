@@ -1,102 +1,17 @@
 import {xm} from "@b9g/crank";
 import type {Context} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
-import {CodeEditor} from "./components/code-editor.js";
+
 import "prismjs/components/prism-javascript";
+
+import {CodePreview} from "./components/code-preview.js";
+import {CodeEditor} from "./components/code-editor.js";
 //import LZString from "lz-string";
 
 // TODO: move this to the ContentAreaElement component
 import {ContentAreaElement} from "@b9g/revise/contentarea.js";
 if (!window.customElements.get("content-area")) {
 	window.customElements.define("content-area", ContentAreaElement);
-}
-
-function* Preview(this: Context, {text}: {text: string}) {
-	let iframe: HTMLIFrameElement;
-	let oldText: string | null = null;
-	let errorMessage: string | null = null;
-	let loading = true;
-	const onglobalmessage = (ev: MessageEvent) => {
-		const data = JSON.parse(ev.data);
-		if (data.type === "ready") {
-			iframe.contentWindow!.postMessage(text, "*");
-		} else if (data.type === "error") {
-			errorMessage = data.message;
-			this.refresh();
-		} else if (data.type === "executed") {
-			errorMessage = null;
-			loading = false;
-			this.refresh();
-		}
-	};
-
-	window.addEventListener("message", onglobalmessage);
-	this.cleanup(() => window.removeEventListener("message", onglobalmessage));
-
-	const execute = debounce(() => {
-		// TODO: Should we stop reloading the iframe?
-		iframe.src = new URL("/sandbox/", window.location.origin).toString();
-	}, 1000);
-
-	for ({text} of this) {
-		if (text !== oldText) {
-			loading = true;
-			errorMessage = null;
-			this.flush(() => execute());
-		}
-
-		yield xm`
-			<div style="height: 100%">
-				${
-					errorMessage &&
-					xm`<pre
-						style="
-							color: red;
-							width: 100%;
-							height: 80%;
-							padding: 1em;
-						"
-					>${errorMessage}
-					</pre>`
-				}
-				<iframe
-					$ref=${(el: HTMLIFrameElement) => (iframe = el)}
-					style="
-						width: 100%;
-						height: 80%;
-						border: 2px inset white;
-						padding: 1em;
-						margin: 0;
-						display: ${errorMessage ? "none" : "block"}
-					"
-				/>
-				<div style="height: 20%; padding: 1em">
-					${errorMessage ? "Errored!" : loading ? "Loading..." : "Running!"}
-				</div>
-			</div>
-		`;
-
-		oldText = text;
-	}
-}
-
-function debounce(fn: Function, wait: number, immediate?: boolean) {
-	let timeout: any = null;
-	return function (this: unknown, ...args: Array<unknown>) {
-		const later = () => {
-			timeout = null;
-			if (!immediate) {
-				fn.apply(this, args);
-			}
-		};
-
-		if (immediate && !timeout) {
-			fn.apply(this, args);
-		}
-
-		clearTimeout(timeout);
-		timeout = setTimeout(later, wait);
-	};
 }
 
 // TODO: multiple examples
@@ -168,7 +83,7 @@ function* Playground(this: Context, {}) {
 					/>
 				</div>
 				<div style="width: 50%; height: 100%">
-					<${Preview} text=${value} />
+					<${CodePreview} value=${value} />
 				</div>
 			</div>
 		`;

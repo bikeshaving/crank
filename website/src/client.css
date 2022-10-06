@@ -302,8 +302,8 @@ code.inline {
 	}
 }
 
-.codeblock {
-	max-width: 1100px;
+.code-block-container {
+	max-width: unset;
 }
 
 .editable {
