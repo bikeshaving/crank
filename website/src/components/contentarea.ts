@@ -63,7 +63,7 @@ export function* ContentArea(
 					);
 				}
 
-				if (selectionRange) {
+				if (area.contains(document.activeElement) && selectionRange) {
 					// This must be done synchronously after rendering.
 					// TODO: Maybe we should allow setting selectionRange to value.length
 					// and have that set the cursor to the last possible position in the
