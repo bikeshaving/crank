@@ -1225,10 +1225,9 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 const IsUpdating = 1 << 0;
 
 /**
- * A flag which is set when the component function or generator is
- * synchronously executing. This flags is used to ensure that a component which
- * triggers a second update in the course of rendering does not cause a stack
- * overflow or a generator error.
+ * A flag which is set when the component is synchronously executing. This flag
+ * is used to ensure that a component which triggers a second update in the
+ * course of rendering does not cause a stack overflow or generator error.
  */
 const IsExecuting = 1 << 1;
 
@@ -1240,7 +1239,7 @@ const IsIterating = 1 << 2;
 
 /**
  * A flag used by async generator components in conjunction with the
- * onavailable (_oa) callback to mark whether new props can be pulled via the
+ * onAvailable callback to mark whether new props can be pulled via the
  * context async iterator. See the Symbol.asyncIterator method and the
  * resumeCtxIterator function.
  */
@@ -1372,29 +1371,14 @@ class ContextImpl<
 	/*** async properties ***/
 	// See the runComponent/stepComponent/advanceComponent functions for more
 	// notes on the inflight/enqueued block/value properties.
-	/**
-	 * inflightBlock
-	 */
 	declare inflightBlock: Promise<unknown> | undefined;
-
 	// TODO: Can we combine this with retainer.inflight somehow please.
-	/**
-	 * inflightValue
-	 */
 	declare inflightValue: Promise<ElementValue<TNode>> | undefined;
-
-	/**
-	 * enqueuedBlock
-	 */
 	declare enqueuedBlock: Promise<unknown> | undefined;
-
-	/**
-	 * enqueuedValue
-	 */
 	declare enqueuedValue: Promise<ElementValue<TNode>> | undefined;
 
 	/**
-	 * onavailable - A callback used in conjunction with the IsAvailable flag to
+	 * onAvailable - A callback used in conjunction with the IsAvailable flag to
 	 * implement the props async iterator. See the Symbol.asyncIterator method
 	 * and the resumeCtxIterator function.
 	 */
@@ -2039,9 +2023,7 @@ function valuesEqual<TValue>(
  * tuple. The first result, called the “block,” is a possible promise which
  * represents the duration for which the component is blocked from accepting
  * new updates. The second result, called the “value,” is the actual result of
- * the update. The runComponent function caches block/value from the
- * stepComponent function on the context, according to whether the component
- * blocks. The “inflight” block/value properties are the currently executing
+ * the update. The “inflight” block/value properties are the currently executing
  * update, and the “enqueued” block/value properties represent an enqueued next
  * stepComponent. Enqueued steps are dequeued every time the current block
  * promise settles.
