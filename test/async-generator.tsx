@@ -264,6 +264,7 @@ test("concurrent unmount", async () => {
 		</div>,
 		document.body,
 	);
+
 	renderer.render(null, document.body);
 	Assert.is(document.body.innerHTML, "");
 	Assert.is(mock.callCount, 0);
@@ -279,7 +280,6 @@ test("async generator returns", async () => {
 	const Component = Sinon.fake(async function* Component(
 		this: Context,
 	): AsyncGenerator<Child> {
-		// TODO: I wish there was a way to do this without using for await here
 		let started = false;
 		for await (const _ of this) {
 			if (started) {
@@ -327,7 +327,7 @@ test("async generator returns", async () => {
 	Assert.is(Component.callCount, 1);
 });
 
-test("unmount", async () => {
+test("try/finally", async () => {
 	const mock = Sinon.fake();
 	async function* Component(this: Context): AsyncGenerator<Child> {
 		try {
@@ -351,6 +351,54 @@ test("unmount", async () => {
 	Assert.is(mock.callCount, 1);
 });
 
+test("Context iterator returns on unmount", async () => {
+	const mock = Sinon.fake();
+	async function* Component(this: Context): AsyncGenerator<Element> {
+		let i = 0;
+		for await ({} of this) {
+			yield <div>Hello {i++}</div>;
+		}
+
+		mock();
+	}
+
+	await renderer.render(<Component />, document.body);
+	await renderer.render(<Component />, document.body);
+	await renderer.render(<Component />, document.body);
+	Assert.is(document.body.innerHTML, "<div>Hello 2</div>");
+	Assert.is(mock.callCount, 0);
+	renderer.render(null, document.body);
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(mock.callCount, 1);
+});
+
+test("return called when component continues to yield", async () => {
+	const mock = Sinon.fake();
+	async function* Component(this: Context) {
+		let i = 0;
+		for await ({} of this) {
+			yield <div>Hello {i++}</div>;
+		}
+
+		mock();
+		yield <div>Exited {i++}</div>;
+		mock();
+		Assert.unreachable();
+	}
+
+	await renderer.render(<Component />, document.body);
+	await renderer.render(<Component />, document.body);
+	await renderer.render(<Component />, document.body);
+	Assert.is(document.body.innerHTML, "<div>Hello 2</div>");
+	Assert.is(mock.callCount, 0);
+	renderer.render(null, document.body);
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(mock.callCount, 1);
+	await new Promise((resolve) => setTimeout(resolve, 100));
+	Assert.is(mock.callCount, 1);
+});
+
+// https://github.com/bikeshaving/crank/pull/121
 test("unmount edge case", async () => {
 	function Switch({children, active}: {children: Children; active: boolean}) {
 		if (!active) {
