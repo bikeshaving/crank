@@ -1458,7 +1458,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	*[Symbol.iterator](): Generator<TProps> {
 		const impl = this[$ContextImpl];
-		while (!(impl.f & IsDone)) {
+		while (!(impl.f & IsDone) && !(impl.f & IsUnmounted)) {
 			if (impl.f & IsIterating) {
 				throw new Error("Context iterated twice without a yield");
 			} else if (impl.f & IsAsyncGen) {
@@ -1487,13 +1487,14 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 				impl.f &= ~IsAvailable;
 			} else {
 				await new Promise((resolve) => (impl.onAvailable = resolve));
-				if (impl.f & IsDone) {
-					break;
-				}
+			}
+
+			if (impl.f & IsDone || impl.f & IsUnmounted) {
+				break;
 			}
 
 			yield impl.ret.el.props;
-		} while (!(impl.f & IsDone));
+		} while (!(impl.f & IsDone) && !(impl.f & IsUnmounted));
 	}
 
 	/**
@@ -2284,20 +2285,40 @@ function unmountComponent(ctx: ContextImpl): void {
 	}
 
 	if (!(ctx.f & IsDone)) {
-		ctx.f |= IsDone;
-		resumeCtxIterator(ctx);
-		if (ctx.iterator && typeof ctx.iterator.return === "function") {
-			ctx.f |= IsExecuting;
-			try {
-				const iteration = ctx.iterator.return();
-				if (isPromiseLike(iteration)) {
-					iteration.catch((err) => propagateError<unknown>(ctx.parent, err));
-				}
-			} finally {
-				ctx.f &= ~IsExecuting;
+		if (ctx.iterator) {
+			resumeCtxIterator(ctx);
+			const value = runComponent(ctx);
+			if (isPromiseLike(value)) {
+				value.then(
+					() => {
+						returnComponent(ctx);
+					},
+					(err) => {
+						propagateError<unknown>(ctx.parent, err);
+					},
+				);
+			} else {
+				returnComponent(ctx);
 			}
 		}
 	}
+}
+
+function returnComponent(ctx: ContextImpl): void {
+	resumeCtxIterator(ctx);
+	if (!(ctx.f & IsDone) && typeof ctx.iterator!.return === "function") {
+		ctx.f |= IsExecuting;
+		try {
+			const iteration = ctx.iterator!.return();
+			if (isPromiseLike(iteration)) {
+				iteration.catch((err) => propagateError<unknown>(ctx.parent, err));
+			}
+		} finally {
+			ctx.f &= ~IsExecuting;
+		}
+	}
+
+	ctx.f |= IsDone;
 }
 
 /*** EVENT TARGET UTILITIES ***/

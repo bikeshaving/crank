@@ -633,18 +633,41 @@ test("try/finally triggerd by rendering async", async () => {
 
 test("Context iterator returns on unmount", () => {
 	const mock = Sinon.fake();
-	function* Component({index}): Generator<Element> {
-		for ({index} of this) {
-			yield <div>Hello {index}</div>;
+	function* Component(this: Context): Generator<Element> {
+		let i = 0;
+		for ({} of this) {
+			yield <div>Hello {i++}</div>;
 		}
 
 		mock();
 	}
 
-	let i = 0;
-	renderer.render(<Component index={i++} />, document.body);
-	renderer.render(<Component index={i++} />, document.body);
-	renderer.render(<Component index={i++} />, document.body);
+	renderer.render(<Component />, document.body);
+	renderer.render(<Component />, document.body);
+	renderer.render(<Component />, document.body);
+	Assert.is(document.body.innerHTML, "<div>Hello 2</div>");
+	Assert.is(mock.callCount, 0);
+	renderer.render(null, document.body);
+	Assert.is(mock.callCount, 1);
+});
+
+test("return called when component continues to yield", () => {
+	const mock = Sinon.fake();
+	function* Component(this: Context, {}): Generator<Element> {
+		let i = 0;
+		for ({} of this) {
+			yield <div>Hello {i++}</div>;
+		}
+
+		mock();
+		yield <div>Exited {i++}</div>;
+		mock();
+		Assert.unreachable();
+	}
+
+	renderer.render(<Component />, document.body);
+	renderer.render(<Component />, document.body);
+	renderer.render(<Component />, document.body);
 	Assert.is(document.body.innerHTML, "<div>Hello 2</div>");
 	Assert.is(mock.callCount, 0);
 	renderer.render(null, document.body);
