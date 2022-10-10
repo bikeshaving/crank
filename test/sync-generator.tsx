@@ -537,7 +537,7 @@ test("generator returns with async children and concurrent updates", async () =>
 	Assert.is(Component.callCount, 1);
 });
 
-test("unmount", () => {
+test("try/finally triggered by div", () => {
 	const mock = Sinon.fake();
 	function* Component(): Generator<Element> {
 		try {
@@ -560,7 +560,7 @@ test("unmount", () => {
 	Assert.is(mock.callCount, 1);
 });
 
-test("unmount against string", () => {
+test("try/finally triggered by rendering string", () => {
 	const mock = Sinon.fake();
 	function* Component(): Generator<Element> {
 		try {
@@ -582,7 +582,7 @@ test("unmount against string", () => {
 	Assert.is(mock.callCount, 1);
 });
 
-test("unmount against null", () => {
+test("try/finally triggered by rendering null", () => {
 	const mock = Sinon.fake();
 	function* Component(): Generator<Element> {
 		try {
@@ -599,12 +599,12 @@ test("unmount against null", () => {
 	renderer.render(<Component />, document.body);
 	Assert.is(document.body.innerHTML, "<div>Hello 2</div>");
 	Assert.is(mock.callCount, 0);
-	renderer.render([null, "Goodbye"], document.body);
-	Assert.is(document.body.innerHTML, "Goodbye");
+	renderer.render(null, document.body);
+	Assert.is(document.body.innerHTML, "");
 	Assert.is(mock.callCount, 1);
 });
 
-test("unmount against async", async () => {
+test("try/finally triggerd by rendering async", async () => {
 	const mock = Sinon.fake();
 	function* Component(): Generator<Element> {
 		try {
@@ -627,7 +627,27 @@ test("unmount against async", async () => {
 	Assert.is(document.body.innerHTML, "<div>Hello 2</div>");
 	Assert.is(mock.callCount, 0);
 	await renderer.render(<Async />, document.body);
+	Assert.is(mock.callCount, 1);
 	Assert.is(document.body.innerHTML, "<div>Goodbye</div>");
+});
+
+test("Context iterator returns on unmount", () => {
+	const mock = Sinon.fake();
+	function* Component({index}): Generator<Element> {
+		for ({index} of this) {
+			yield <div>Hello {index}</div>;
+		}
+
+		mock();
+	}
+
+	let i = 0;
+	renderer.render(<Component index={i++} />, document.body);
+	renderer.render(<Component index={i++} />, document.body);
+	renderer.render(<Component index={i++} />, document.body);
+	Assert.is(document.body.innerHTML, "<div>Hello 2</div>");
+	Assert.is(mock.callCount, 0);
+	renderer.render(null, document.body);
 	Assert.is(mock.callCount, 1);
 });
 
