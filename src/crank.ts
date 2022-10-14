@@ -1458,14 +1458,17 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	*[Symbol.iterator](): Generator<TProps> {
 		const impl = this[$ContextImpl];
+		if (impl.f & IsAsyncGen) {
+			throw new Error("Use for await…of in async generator components");
+		}
+
 		while (!(impl.f & IsDone) && !(impl.f & IsUnmounted)) {
 			if (impl.f & IsIterating) {
 				throw new Error("Context iterated twice without a yield");
-			} else if (impl.f & IsAsyncGen) {
-				throw new Error("Use for await…of in async generator components");
 			}
 
 			impl.f |= IsIterating;
+			impl.f &= ~IsAvailable;
 			yield impl.ret.el.props!;
 		}
 	}
@@ -1475,11 +1478,13 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		// where an async generator component is unmounted synchronously and
 		// therefore “done” before it starts iterating over the context.
 		const impl = this[$ContextImpl];
+		if (impl.f & IsSyncGen) {
+			throw new Error("Use for…of in sync generator components");
+		}
+
 		do {
 			if (impl.f & IsIterating) {
 				throw new Error("Context iterated twice without a yield");
-			} else if (impl.f & IsSyncGen) {
-				throw new Error("Use for…of in sync generator components");
 			}
 
 			impl.f |= IsIterating;
@@ -2273,7 +2278,6 @@ function resumeCtxIterator(ctx: ContextImpl): void {
 
 // TODO: async unmounting
 function unmountComponent(ctx: ContextImpl): void {
-	ctx.f |= IsUnmounted;
 	clearEventListeners(ctx);
 	const callbacks = cleanupMap.get(ctx);
 	if (callbacks) {
@@ -2284,10 +2288,15 @@ function unmountComponent(ctx: ContextImpl): void {
 		}
 	}
 
+	ctx.f |= IsUnmounted;
 	if (!(ctx.f & IsDone)) {
 		if (ctx.iterator) {
-			resumeCtxIterator(ctx);
-			const value = runComponent(ctx);
+			let value: Promise<unknown> | undefined;
+			if (!(ctx.f & IsAvailable)) {
+				resumeCtxIterator(ctx);
+				value = runComponent(ctx);
+			}
+
 			if (isPromiseLike(value)) {
 				value.then(
 					() => {

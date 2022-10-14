@@ -537,6 +537,80 @@ test("generator returns with async children and concurrent updates", async () =>
 	Assert.is(Component.callCount, 1);
 });
 
+test("while true try/finally", () => {
+	const beforeYieldFn = Sinon.fake();
+	const afterYieldFn = Sinon.fake();
+	const finallyFn = Sinon.fake();
+	function* Component() {
+		try {
+			let i = 0;
+			while (true) {
+				beforeYieldFn();
+				yield <div>Hello {i++}</div>;
+				afterYieldFn();
+			}
+		} finally {
+			finallyFn();
+		}
+	}
+
+	renderer.render(<Component />, document.body);
+	Assert.is(beforeYieldFn.callCount, 1);
+	Assert.is(afterYieldFn.callCount, 0);
+	renderer.render(<Component />, document.body);
+	Assert.is(beforeYieldFn.callCount, 2);
+	Assert.is(afterYieldFn.callCount, 1);
+	renderer.render(<Component />, document.body);
+	Assert.is(beforeYieldFn.callCount, 3);
+	Assert.is(afterYieldFn.callCount, 2);
+	Assert.is(document.body.innerHTML, "<div>Hello 2</div>");
+	Assert.is(finallyFn.callCount, 0);
+	renderer.render(null, document.body);
+	Assert.is(beforeYieldFn.callCount, 3);
+	Assert.is(afterYieldFn.callCount, 2);
+	Assert.is(document.body.innerHTML, "");
+	Assert.is(finallyFn.callCount, 1);
+});
+
+test("for of", () => {
+	const beforeYieldFn = Sinon.fake();
+	const afterYieldFn = Sinon.fake();
+	const afterLoopFn = Sinon.fake();
+	const finallyFn = Sinon.fake();
+	function* Component() {
+		try {
+			let i = 0;
+			for ({} of this) {
+				beforeYieldFn();
+				yield <div>Hello {i++}</div>;
+				afterYieldFn();
+			}
+
+			afterLoopFn();
+		} finally {
+			finallyFn();
+		}
+	}
+
+	renderer.render(<Component />, document.body);
+	Assert.is(beforeYieldFn.callCount, 1);
+	Assert.is(afterYieldFn.callCount, 0);
+	renderer.render(<Component />, document.body);
+	Assert.is(beforeYieldFn.callCount, 2);
+	Assert.is(afterYieldFn.callCount, 1);
+	renderer.render(<Component />, document.body);
+	Assert.is(beforeYieldFn.callCount, 3);
+	Assert.is(afterYieldFn.callCount, 2);
+	Assert.is(document.body.innerHTML, "<div>Hello 2</div>");
+	Assert.is(finallyFn.callCount, 0);
+	renderer.render(null, document.body);
+	Assert.is(beforeYieldFn.callCount, 3);
+	Assert.is(afterYieldFn.callCount, 3);
+	Assert.is(document.body.innerHTML, "");
+	Assert.is(afterLoopFn.callCount, 1);
+	Assert.is(finallyFn.callCount, 1);
+});
+
 test("try/finally triggered by div", () => {
 	const mock = Sinon.fake();
 	function* Component(): Generator<Element> {
@@ -579,28 +653,6 @@ test("try/finally triggered by rendering string", () => {
 	Assert.is(mock.callCount, 0);
 	renderer.render(["Goodbye", null], document.body);
 	Assert.is(document.body.innerHTML, "Goodbye");
-	Assert.is(mock.callCount, 1);
-});
-
-test("try/finally triggered by rendering null", () => {
-	const mock = Sinon.fake();
-	function* Component(): Generator<Element> {
-		try {
-			let i = 0;
-			while (true) {
-				yield <div>Hello {i++}</div>;
-			}
-		} finally {
-			mock();
-		}
-	}
-	renderer.render(<Component />, document.body);
-	renderer.render(<Component />, document.body);
-	renderer.render(<Component />, document.body);
-	Assert.is(document.body.innerHTML, "<div>Hello 2</div>");
-	Assert.is(mock.callCount, 0);
-	renderer.render(null, document.body);
-	Assert.is(document.body.innerHTML, "");
 	Assert.is(mock.callCount, 1);
 });
 
