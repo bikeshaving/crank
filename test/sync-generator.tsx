@@ -572,7 +572,7 @@ test("while true try/finally", () => {
 	Assert.is(finallyFn.callCount, 1);
 });
 
-test("for of", () => {
+test("for... of", () => {
 	const beforeYieldFn = Sinon.fake();
 	const afterYieldFn = Sinon.fake();
 	const afterLoopFn = Sinon.fake();

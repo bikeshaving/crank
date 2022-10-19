@@ -1237,6 +1237,8 @@ const IsExecuting = 1 << 1;
  */
 const IsIterating = 1 << 2;
 
+// TODO: Is IsAvailable just the opposite IsIterating??????????????????????????
+// WTF????????????????????????????????????????
 /**
  * A flag used by async generator components in conjunction with the
  * onAvailable callback to mark whether new props can be pulled via the
@@ -1465,41 +1467,39 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		while (!(impl.f & IsDone) && !(impl.f & IsUnmounted)) {
 			if (impl.f & IsIterating) {
 				throw new Error("Context iterated twice without a yield");
+			} else {
+				impl.f |= IsIterating;
 			}
 
-			impl.f |= IsIterating;
 			impl.f &= ~IsAvailable;
 			yield impl.ret.el.props!;
 		}
 	}
 
 	async *[Symbol.asyncIterator](): AsyncGenerator<TProps> {
-		// We use a do while loop rather than a while loop to handle an edge case
-		// where an async generator component is unmounted synchronously and
-		// therefore “done” before it starts iterating over the context.
 		const impl = this[$ContextImpl];
 		if (impl.f & IsSyncGen) {
 			throw new Error("Use for…of in sync generator components");
 		}
 
-		do {
+		while (!(impl.f & IsDone || impl.f & IsUnmounted)) {
 			if (impl.f & IsIterating) {
 				throw new Error("Context iterated twice without a yield");
+			} else {
+				impl.f |= IsIterating;
 			}
 
-			impl.f |= IsIterating;
 			if (impl.f & IsAvailable) {
 				impl.f &= ~IsAvailable;
 			} else {
 				await new Promise((resolve) => (impl.onAvailable = resolve));
-			}
-
-			if (impl.f & IsDone || impl.f & IsUnmounted) {
-				break;
+				if (impl.f & IsDone || impl.f & IsUnmounted) {
+					break;
+				}
 			}
 
 			yield impl.ret.el.props;
-		} while (!(impl.f & IsDone) && !(impl.f & IsUnmounted));
+		}
 	}
 
 	/**
@@ -2061,6 +2061,8 @@ function runComponent<TNode, TResult>(
 			throw err;
 		}
 	} else if (ctx.f & IsAsyncGen) {
+		// TODO: I keep coming back to why this branch should exist.
+		// THIS BRANCH SHOULD NOT BE NECESSARY.
 		return ctx.inflightValue;
 	} else if (!ctx.enqueuedBlock) {
 		let resolve: Function;
@@ -2169,8 +2171,8 @@ function stepComponent<TNode, TResult>(
 	}
 
 	let iteration: ChildrenIteration;
-	ctx.f |= IsExecuting;
 	try {
+		ctx.f |= IsExecuting;
 		iteration = ctx.iterator!.next(oldValue);
 	} catch (err) {
 		ctx.f |= IsDone | IsErrored;
@@ -2189,9 +2191,10 @@ function stepComponent<TNode, TResult>(
 			(iteration) => {
 				if (!(ctx.f & IsIterating)) {
 					ctx.f &= ~IsAvailable;
+				} else {
+					ctx.f &= ~IsIterating;
 				}
 
-				ctx.f &= ~IsIterating;
 				if (iteration.done) {
 					ctx.f |= IsDone;
 				}
@@ -2218,36 +2221,36 @@ function stepComponent<TNode, TResult>(
 		);
 
 		return [iteration, value];
-	}
-
-	// sync generator component
-	if (initial) {
-		ctx.f |= IsSyncGen;
-	}
-
-	ctx.f &= ~IsIterating;
-	if (iteration.done) {
-		ctx.f |= IsDone;
-	}
-
-	let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-	try {
-		value = updateComponentChildren<TNode, TResult>(
-			ctx,
-			iteration.value as Children,
-		);
-		if (isPromiseLike(value)) {
-			value = value.catch((err) => handleChildError(ctx, err));
+	} else {
+		// sync generator component
+		if (initial) {
+			ctx.f |= IsSyncGen;
 		}
-	} catch (err) {
-		value = handleChildError(ctx, err);
-	}
 
-	if (isPromiseLike(value)) {
-		return [value.catch(NOOP), value];
-	}
+		ctx.f &= ~IsIterating;
+		if (iteration.done) {
+			ctx.f |= IsDone;
+		}
 
-	return [undefined, value];
+		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
+		try {
+			value = updateComponentChildren<TNode, TResult>(
+				ctx,
+				iteration.value as Children,
+			);
+			if (isPromiseLike(value)) {
+				value = value.catch((err) => handleChildError(ctx, err));
+			}
+		} catch (err) {
+			value = handleChildError(ctx, err);
+		}
+
+		if (isPromiseLike(value)) {
+			return [value.catch(NOOP), value];
+		}
+
+		return [undefined, value];
+	}
 }
 
 /**
