@@ -577,7 +577,7 @@ test("for... of", () => {
 	const afterYieldFn = Sinon.fake();
 	const afterLoopFn = Sinon.fake();
 	const finallyFn = Sinon.fake();
-	function* Component() {
+	function* Component(this: Context) {
 		try {
 			let i = 0;
 			for ({} of this) {

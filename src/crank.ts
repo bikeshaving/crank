@@ -691,7 +691,7 @@ export class Renderer<
 	 * used root to delete the previously rendered element tree from the cache.
 	 * @param root - The node to be rendered into. The renderer will cache
 	 * element trees per root.
-	 * @param ctx - An optional context that will be the ancestor context of all
+	 * @param bridge - An optional context that will be the ancestor context of all
 	 * elements in the tree. Useful for connecting different renderers so that
 	 * events/provisions properly propagate. The context for a given root must be
 	 * the same or an error will be thrown.
