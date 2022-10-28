@@ -351,6 +351,84 @@ test("try/finally", async () => {
 	Assert.is(mock.callCount, 1);
 });
 
+test("for await...of", async () => {
+	const beforeYieldFn = Sinon.fake();
+	const afterYieldFn = Sinon.fake();
+	const afterLoopFn = Sinon.fake();
+	async function* Component(this: Context): AsyncGenerator<Child> {
+		let i = 0;
+		for await (const _ of this) {
+			beforeYieldFn();
+			yield <div>Hello {i++}</div>;
+			afterYieldFn();
+		}
+
+		afterLoopFn();
+	}
+
+	await renderer.render(<Component />, document.body);
+	Assert.is(beforeYieldFn.callCount, 1);
+	Assert.is(afterYieldFn.callCount, 1);
+	await new Promise((resolve) => setTimeout(resolve, 10));
+	Assert.is(beforeYieldFn.callCount, 1);
+	Assert.is(afterYieldFn.callCount, 1);
+	await renderer.render(<Component />, document.body);
+	Assert.is(beforeYieldFn.callCount, 2);
+	Assert.is(afterYieldFn.callCount, 2);
+	await renderer.render(<Component />, document.body);
+	Assert.is(beforeYieldFn.callCount, 3);
+	Assert.is(afterYieldFn.callCount, 3);
+	Assert.is(document.body.innerHTML, "<div>Hello 2</div>");
+	await new Promise((resolve) => setTimeout(resolve, 10));
+	Assert.is(beforeYieldFn.callCount, 3);
+	Assert.is(afterYieldFn.callCount, 3);
+	Assert.is(afterLoopFn.callCount, 0);
+	renderer.render(null, document.body);
+	Assert.is(document.body.innerHTML, "");
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(afterLoopFn.callCount, 1);
+});
+
+test("for await...of with await in loop", async () => {
+	const beforeYieldFn = Sinon.fake();
+	const afterYieldFn = Sinon.fake();
+	const afterLoopFn = Sinon.fake();
+	async function* Component(this: Context): AsyncGenerator<Child> {
+		let i = 0;
+		for await (const _ of this) {
+			await new Promise((r) => setTimeout(r, 10));
+			beforeYieldFn();
+			yield <div>Hello {i++}</div>;
+			afterYieldFn();
+		}
+
+		afterLoopFn();
+	}
+
+	// first render
+	await renderer.render(<Component />, document.body);
+	Assert.is(beforeYieldFn.callCount, 1);
+	Assert.is(afterYieldFn.callCount, 1);
+	Assert.is(document.body.innerHTML, "<div>Hello 0</div>");
+
+	// second render
+	await renderer.render(<Component />, document.body);
+	Assert.is(beforeYieldFn.callCount, 2);
+	Assert.is(afterYieldFn.callCount, 2);
+	Assert.is(document.body.innerHTML, "<div>Hello 1</div>");
+
+	// third render is interrupted by unmount
+	renderer.render(<Component />, document.body);
+	await new Promise((resolve) => setTimeout(resolve));
+	renderer.render(null, document.body);
+	Assert.is(document.body.innerHTML, "");
+	Assert.is(afterLoopFn.callCount, 0);
+	Assert.is(document.body.innerHTML, "");
+
+	await new Promise((resolve) => setTimeout(resolve, 6));
+	Assert.is(afterLoopFn.callCount, 1);
+});
+
 test("Context iterator returns on unmount", async () => {
 	const mock = Sinon.fake();
 	async function* Component(this: Context): AsyncGenerator<Element> {

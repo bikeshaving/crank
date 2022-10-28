@@ -1229,16 +1229,14 @@ const IsUpdating = 1 << 0;
  * is used to ensure that a component which triggers a second update in the
  * course of rendering does not cause a stack overflow or generator error.
  */
-const IsExecuting = 1 << 1;
+const IsSyncExecuting = 1 << 1;
 
 /**
  * A flag used to make sure multiple values are not pulled from context prop
  * iterators without a yield.
  */
-const IsIterating = 1 << 2;
+const NeedsToYield = 1 << 2;
 
-// TODO: Is IsAvailable just the opposite IsIterating??????????????????????????
-// WTF????????????????????????????????????????
 /**
  * A flag used by async generator components in conjunction with the
  * onAvailable callback to mark whether new props can be pulled via the
@@ -1290,6 +1288,8 @@ const IsScheduling = 1 << 9;
  * A flag which is set when a schedule callback calls refresh.
  */
 const IsSchedulingRefresh = 1 << 10;
+
+const IsInRenderLoop = 1 << 11;
 
 export interface Context extends Crank.Context {}
 
@@ -1379,6 +1379,7 @@ class ContextImpl<
 	declare enqueuedBlock: Promise<unknown> | undefined;
 	declare enqueuedValue: Promise<ElementValue<TNode>> | undefined;
 
+	// TODO: rename this function to better reflect when it is called
 	/**
 	 * onAvailable - A callback used in conjunction with the IsAvailable flag to
 	 * implement the props async iterator. See the Symbol.asyncIterator method
@@ -1464,15 +1465,19 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			throw new Error("Use for await…of in async generator components");
 		}
 
-		while (!(impl.f & IsDone) && !(impl.f & IsUnmounted)) {
-			if (impl.f & IsIterating) {
-				throw new Error("Context iterated twice without a yield");
-			} else {
-				impl.f |= IsIterating;
-			}
+		impl.f |= IsInRenderLoop;
+		try {
+			while (!(impl.f & IsUnmounted)) {
+				if (impl.f & NeedsToYield) {
+					throw new Error("Context iterated twice without a yield");
+				} else {
+					impl.f |= NeedsToYield;
+				}
 
-			impl.f &= ~IsAvailable;
-			yield impl.ret.el.props!;
+				yield impl.ret.el.props!;
+			}
+		} finally {
+			impl.f &= ~IsInRenderLoop;
 		}
 	}
 
@@ -1482,23 +1487,28 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			throw new Error("Use for…of in sync generator components");
 		}
 
-		while (!(impl.f & IsDone || impl.f & IsUnmounted)) {
-			if (impl.f & IsIterating) {
-				throw new Error("Context iterated twice without a yield");
-			} else {
-				impl.f |= IsIterating;
-			}
-
-			if (impl.f & IsAvailable) {
-				impl.f &= ~IsAvailable;
-			} else {
-				await new Promise((resolve) => (impl.onAvailable = resolve));
-				if (impl.f & IsDone || impl.f & IsUnmounted) {
-					break;
+		impl.f |= IsInRenderLoop;
+		try {
+			while (!(impl.f & IsUnmounted)) {
+				if (impl.f & NeedsToYield) {
+					throw new Error("Context iterated twice without a yield");
+				} else {
+					impl.f |= NeedsToYield;
 				}
-			}
 
-			yield impl.ret.el.props;
+				if (impl.f & IsAvailable) {
+					impl.f &= ~IsAvailable;
+				} else {
+					await new Promise((resolve) => (impl.onAvailable = resolve));
+					if (impl.f & IsDone || impl.f & IsUnmounted) {
+						break;
+					}
+				}
+
+				yield impl.ret.el.props;
+			}
+		} finally {
+			impl.f &= ~IsInRenderLoop;
 		}
 	}
 
@@ -1519,7 +1529,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		if (impl.f & IsUnmounted) {
 			console.error("Component is unmounted");
 			return impl.renderer.read(undefined);
-		} else if (impl.f & IsExecuting) {
+		} else if (impl.f & IsSyncExecuting) {
 			console.error("Component is already executing");
 			return this.value;
 		}
@@ -1848,7 +1858,7 @@ function updateComponent<TNode, TScope, TRoot extends TNode, TResult>(
 	let ctx: ContextImpl<TNode, TScope, TRoot, TResult>;
 	if (oldProps) {
 		ctx = ret.ctx as ContextImpl<TNode, TScope, TRoot, TResult>;
-		if (ctx.f & IsExecuting) {
+		if (ctx.f & IsSyncExecuting) {
 			console.error("Component is already executing");
 			return ret.cached;
 		}
@@ -1876,7 +1886,7 @@ function updateComponentChildren<TNode, TResult>(
 	let childValues: Promise<Array<string | TNode>> | Array<string | TNode>;
 	// We set the isExecuting flag in case a child component dispatches an event
 	// which bubbles to this component and causes a synchronous refresh().
-	ctx.f |= IsExecuting;
+	ctx.f |= IsSyncExecuting;
 	try {
 		childValues = diffChildren(
 			ctx.renderer,
@@ -1888,7 +1898,7 @@ function updateComponentChildren<TNode, TResult>(
 			narrow(children),
 		);
 	} finally {
-		ctx.f &= ~IsExecuting;
+		ctx.f &= ~IsSyncExecuting;
 	}
 
 	if (isPromiseLike(childValues)) {
@@ -2121,7 +2131,7 @@ function stepComponent<TNode, TResult>(
 
 	const initial = !ctx.iterator;
 	if (initial) {
-		ctx.f |= IsExecuting;
+		ctx.f |= IsSyncExecuting;
 		clearEventListeners(ctx);
 		let result: ReturnType<Component>;
 		try {
@@ -2130,7 +2140,7 @@ function stepComponent<TNode, TResult>(
 			ctx.f |= IsErrored;
 			throw err;
 		} finally {
-			ctx.f &= ~IsExecuting;
+			ctx.f &= ~IsSyncExecuting;
 		}
 
 		if (isIteratorLike(result)) {
@@ -2172,27 +2182,33 @@ function stepComponent<TNode, TResult>(
 
 	let iteration: ChildrenIteration;
 	try {
-		ctx.f |= IsExecuting;
+		ctx.f |= IsSyncExecuting;
 		iteration = ctx.iterator!.next(oldValue);
 	} catch (err) {
 		ctx.f |= IsDone | IsErrored;
 		throw err;
 	} finally {
-		ctx.f &= ~IsExecuting;
+		ctx.f &= ~IsSyncExecuting;
+	}
+
+	if (initial) {
+		ctx.f |= isPromiseLike(iteration) ? IsAsyncGen : IsSyncGen;
 	}
 
 	if (isPromiseLike(iteration)) {
 		// async generator component
-		if (initial) {
-			ctx.f |= IsAsyncGen;
-		}
-
 		const value: Promise<ElementValue<TNode>> = iteration.then(
 			(iteration) => {
-				if (!(ctx.f & IsIterating)) {
-					ctx.f &= ~IsAvailable;
+				if (ctx.f & IsUnmounted && ctx.f & IsInRenderLoop) {
+					return getValue(ctx.ret);
+				}
+
+				if (ctx.f & NeedsToYield) {
+					ctx.f &= ~NeedsToYield;
 				} else {
-					ctx.f &= ~IsIterating;
+					// The component is yielding multiple values per render loop, so
+					// making the props iterator unavailable would be
+					ctx.f &= ~IsAvailable;
 				}
 
 				if (iteration.done) {
@@ -2223,11 +2239,7 @@ function stepComponent<TNode, TResult>(
 		return [iteration, value];
 	} else {
 		// sync generator component
-		if (initial) {
-			ctx.f |= IsSyncGen;
-		}
-
-		ctx.f &= ~IsIterating;
+		ctx.f &= ~NeedsToYield;
 		if (iteration.done) {
 			ctx.f |= IsDone;
 		}
@@ -2261,7 +2273,7 @@ function advanceComponent(ctx: ContextImpl): void {
 	ctx.inflightValue = ctx.enqueuedValue;
 	ctx.enqueuedBlock = undefined;
 	ctx.enqueuedValue = undefined;
-	if (ctx.f & IsAsyncGen && !(ctx.f & IsDone) && !(ctx.f & IsUnmounted)) {
+	if (ctx.f & IsAsyncGen && !(ctx.f & IsDone)) {
 		runComponent(ctx);
 	}
 }
@@ -2294,8 +2306,8 @@ function unmountComponent(ctx: ContextImpl): void {
 	ctx.f |= IsUnmounted;
 	if (!(ctx.f & IsDone)) {
 		if (ctx.iterator) {
-			let value: Promise<unknown> | undefined;
-			if (!(ctx.f & IsAvailable)) {
+			let value: unknown;
+			if (ctx.f & IsInRenderLoop) {
 				resumeCtxIterator(ctx);
 				value = runComponent(ctx);
 			}
@@ -2303,14 +2315,22 @@ function unmountComponent(ctx: ContextImpl): void {
 			if (isPromiseLike(value)) {
 				value.then(
 					() => {
-						returnComponent(ctx);
+						if (ctx.f & IsInRenderLoop) {
+							unmountComponent(ctx);
+						} else {
+							returnComponent(ctx);
+						}
 					},
 					(err) => {
 						propagateError<unknown>(ctx.parent, err);
 					},
 				);
 			} else {
-				returnComponent(ctx);
+				if (ctx.f & IsInRenderLoop) {
+					unmountComponent(ctx);
+				} else {
+					returnComponent(ctx);
+				}
 			}
 		}
 	}
@@ -2319,14 +2339,14 @@ function unmountComponent(ctx: ContextImpl): void {
 function returnComponent(ctx: ContextImpl): void {
 	resumeCtxIterator(ctx);
 	if (!(ctx.f & IsDone) && typeof ctx.iterator!.return === "function") {
-		ctx.f |= IsExecuting;
+		ctx.f |= IsSyncExecuting;
 		try {
 			const iteration = ctx.iterator!.return();
 			if (isPromiseLike(iteration)) {
 				iteration.catch((err) => propagateError<unknown>(ctx.parent, err));
 			}
 		} finally {
-			ctx.f &= ~IsExecuting;
+			ctx.f &= ~IsSyncExecuting;
 		}
 	}
 
@@ -2467,13 +2487,13 @@ function handleChildError<TNode>(
 	resumeCtxIterator(ctx);
 	let iteration: ChildrenIteration;
 	try {
-		ctx.f |= IsExecuting;
+		ctx.f |= IsSyncExecuting;
 		iteration = ctx.iterator.throw(err);
 	} catch (err) {
 		ctx.f |= IsDone | IsErrored;
 		throw err;
 	} finally {
-		ctx.f &= ~IsExecuting;
+		ctx.f &= ~IsSyncExecuting;
 	}
 
 	if (isPromiseLike(iteration)) {
