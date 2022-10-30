@@ -477,25 +477,25 @@ class Retainer<TNode> {
 	 * The cached child values of this element. Only host and component elements
 	 * will use this property.
 	 */
-	declare cached: ElementValue<TNode>;
+	declare cachedChildValues: ElementValue<TNode>;
 	/**
 	 * The child which this retainer replaces. This property is used when an
 	 * async retainer tree replaces previously rendered elements, so that the
 	 * previously rendered elements can remain visible until the async tree
 	 * fulfills. Will be set to undefined once this subtree fully renders.
 	 */
-	declare fallback: RetainerChild<TNode>;
-	declare inflight: Promise<ElementValue<TNode>> | undefined;
-	declare onCommit: Function | undefined;
+	declare fallbackValue: RetainerChild<TNode>;
+	declare inflightValue: Promise<ElementValue<TNode>> | undefined;
+	declare onNextValues: Function | undefined;
 	constructor(el: Element) {
 		this.el = el;
-		this.value = undefined;
 		this.ctx = undefined;
 		this.children = undefined;
-		this.cached = undefined;
-		this.fallback = undefined;
-		this.inflight = undefined;
-		this.onCommit = undefined;
+		this.value = undefined;
+		this.cachedChildValues = undefined;
+		this.fallbackValue = undefined;
+		this.inflightValue = undefined;
+		this.onNextValues = undefined;
 	}
 }
 
@@ -510,10 +510,10 @@ type RetainerChild<TNode> = Retainer<TNode> | string | undefined;
  * @returns The value of the element.
  */
 function getValue<TNode>(ret: Retainer<TNode>): ElementValue<TNode> {
-	if (typeof ret.fallback !== "undefined") {
-		return typeof ret.fallback === "object"
-			? getValue(ret.fallback)
-			: ret.fallback;
+	if (typeof ret.fallbackValue !== "undefined") {
+		return typeof ret.fallbackValue === "object"
+			? getValue(ret.fallbackValue)
+			: ret.fallbackValue;
 	} else if (ret.el.tag === Portal) {
 		return;
 	} else if (typeof ret.el.tag !== "function" && ret.el.tag !== Fragment) {
@@ -529,8 +529,8 @@ function getValue<TNode>(ret: Retainer<TNode>): ElementValue<TNode> {
  * @returns A normalized array of nodes and strings.
  */
 function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode | string> {
-	if (ret.cached) {
-		return wrap(ret.cached);
+	if (ret.cachedChildValues) {
+		return wrap(ret.cachedChildValues);
 	}
 
 	const values: Array<ElementValue<TNode>> = [];
@@ -545,7 +545,7 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode | string> {
 	const values1 = normalize(values);
 	const tag = ret.el.tag;
 	if (typeof tag === "function" || (tag !== Fragment && tag !== Raw)) {
-		ret.cached = unwrap(values1);
+		ret.cachedChildValues = unwrap(values1);
 	}
 	return values1;
 }
@@ -705,7 +705,7 @@ export class Renderer<
 		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
 		let ret: Retainer<TNode> | undefined;
-		const ctx = bridge && (bridge[$ContextImpl] as ContextImpl<TNode>);
+		const ctx = bridge && (bridge[_ContextImpl] as ContextImpl<TNode>);
 		if (typeof root === "object" && root !== null) {
 			ret = this.cache.get(root);
 		}
@@ -761,24 +761,24 @@ function commitRootRender<TNode, TRoot extends TNode, TResult>(
 	oldProps: Record<string, any> | undefined,
 ): TResult {
 	// element is a host or portal element
-	if (root !== undefined) {
+	if (root != null) {
 		renderer.arrange(
 			Portal,
 			root,
 			ret.el.props,
 			childValues,
 			oldProps,
-			wrap(ret.cached),
+			wrap(ret.cachedChildValues),
 		);
 		flush(renderer, root);
 	}
 
-	ret.cached = unwrap(childValues);
+	ret.cachedChildValues = unwrap(childValues);
 	if (root == null) {
 		unmount(renderer, ret, ctx, ret);
 	}
 
-	return renderer.read(ret.cached);
+	return renderer.read(ret.cachedChildValues);
 }
 
 function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
@@ -861,7 +861,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 
 					const fallback = ret;
 					ret = new Retainer<TNode>(child);
-					ret.fallback = fallback;
+					ret.fallbackValue = fallback;
 				}
 
 				if (child.tag === Raw) {
@@ -940,31 +940,31 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			new Promise<any>((resolve) => (onChildValues = resolve)),
 		]);
 
-		if (parent.onCommit) {
-			parent.onCommit(childValues1);
+		if (parent.onNextValues) {
+			parent.onNextValues(childValues1);
 		}
 
-		parent.onCommit = onChildValues;
+		parent.onNextValues = onChildValues;
 		return childValues1.then((childValues) => {
-			parent.inflight = parent.fallback = undefined;
+			parent.inflightValue = parent.fallbackValue = undefined;
 			return normalize(childValues);
 		});
-	}
-
-	if (graveyard) {
-		for (let i = 0; i < graveyard.length; i++) {
-			unmount(renderer, host, ctx, graveyard[i]);
+	} else {
+		if (graveyard) {
+			for (let i = 0; i < graveyard.length; i++) {
+				unmount(renderer, host, ctx, graveyard[i]);
+			}
 		}
-	}
 
-	if (parent.onCommit) {
-		parent.onCommit(values);
-		parent.onCommit = undefined;
-	}
+		if (parent.onNextValues) {
+			parent.onNextValues(values);
+			parent.onNextValues = undefined;
+		}
 
-	parent.inflight = parent.fallback = undefined;
-	// We can assert there are no promises in the array because isAsync is false
-	return normalize(values as Array<ElementValue<TNode>>);
+		parent.inflightValue = parent.fallbackValue = undefined;
+		// We can assert there are no promises in the array because isAsync is false
+		return normalize(values as Array<ElementValue<TNode>>);
+	}
 }
 
 function createChildrenByKey<TNode>(
@@ -993,8 +993,8 @@ function getInflightValue<TNode>(
 		typeof child.el.tag === "function" ? child.ctx : undefined;
 	if (ctx && ctx.f & IsUpdating && ctx.inflightValue) {
 		return ctx.inflightValue;
-	} else if (child.inflight) {
-		return child.inflight;
+	} else if (child.inflightValue) {
+		return child.inflightValue;
 	}
 
 	return getValue(child);
@@ -1037,8 +1037,8 @@ function updateFragment<TNode, TScope, TRoot extends TNode>(
 	);
 
 	if (isPromiseLike(childValues)) {
-		ret.inflight = childValues.then((childValues) => unwrap(childValues));
-		return ret.inflight;
+		ret.inflightValue = childValues.then((childValues) => unwrap(childValues));
+		return ret.inflightValue;
 	}
 
 	return unwrap(childValues);
@@ -1073,11 +1073,11 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 	);
 
 	if (isPromiseLike(childValues)) {
-		ret.inflight = childValues.then((childValues) =>
+		ret.inflightValue = childValues.then((childValues) =>
 			commitHost(renderer, scope, ret, childValues, oldProps),
 		);
 
-		return ret.inflight;
+		return ret.inflightValue;
 	}
 
 	return commitHost(renderer, scope, ret, childValues, oldProps);
@@ -1121,8 +1121,15 @@ function commitHost<TNode, TScope>(
 		ret.el = new Element(tag, props, ret.el.key, ret.el.ref);
 	}
 
-	renderer.arrange(tag, value, props, childValues, oldProps, wrap(ret.cached));
-	ret.cached = unwrap(childValues);
+	renderer.arrange(
+		tag,
+		value,
+		props,
+		childValues,
+		oldProps,
+		wrap(ret.cachedChildValues),
+	);
+	ret.cachedChildValues = unwrap(childValues);
 	if (tag === Portal) {
 		flush(renderer, ret.value);
 		return;
@@ -1187,7 +1194,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 			host.el.props,
 			[],
 			host.el.props,
-			wrap(host.cached),
+			wrap(host.cachedChildValues),
 		);
 		flush(renderer, host.value);
 	} else if (ret.el.tag !== Fragment) {
@@ -1218,42 +1225,52 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 
 /*** CONTEXT FLAGS ***/
 /**
- * A flag which is set when the component is being updated by the parent and
- * cleared when the component has committed. Used to determine things like
- * whether the nearest host ancestor needs to be rearranged.
+ * A flag which is true when the component is initialized or updated by an
+ * ancestor component or the root render call.
+ *
+ * Used to determine things like whether the nearest host ancestor needs to be
+ * rearranged.
  */
 const IsUpdating = 1 << 0;
 
 /**
- * A flag which is set when the component is synchronously executing. This flag
- * is used to ensure that a component which triggers a second update in the
- * course of rendering does not cause a stack overflow or generator error.
+ * A flag which is true when the component is synchronously executing.
+ *
+ * Used to guard against components triggering stack overflow or generator error.
  */
 const IsSyncExecuting = 1 << 1;
 
 /**
- * A flag used to make sure multiple values are not pulled from context prop
- * iterators without a yield.
+ * A flag which is true when the component is in the render loop.
  */
-const NeedsToYield = 1 << 2;
+const IsInRenderLoop = 1 << 2;
 
 /**
+ * A flag which is true when the component starts the render loop but has not
+ * yielded yet.
+ *
+ * Used to make sure that components yield once per loop.
+ */
+const NeedsToYield = 1 << 3;
+
+// TODO: Rename this flag.
+/**
  * A flag used by async generator components in conjunction with the
- * onAvailable callback to mark whether new props can be pulled via the
- * context async iterator. See the Symbol.asyncIterator method and the
+ * onAvailable callback to mark whether new props can be pulled via the context
+ * async iterator. See the Symbol.asyncIterator method and the
  * resumeCtxIterator function.
  */
-const IsAvailable = 1 << 3;
+const IsAvailable = 1 << 4;
 
 /**
  * A flag which is set when a generator components returns, i.e. the done
- * property on the iteration is set to true. Generator components will stick to
- * their last rendered value and ignore further updates.
+ * property on the iteration is true. Generator components will stick to their
+ * last rendered value and ignore further updates.
  */
-const IsDone = 1 << 4;
+const IsDone = 1 << 5;
 
 /**
- * A flag which is set when a generator component errors.
+ * A flag which is set when a component errors.
  *
  * NOTE: This is mainly used to prevent some false positives in component
  * yields or returns undefined warnings. The reason we’re using this versus
@@ -1261,35 +1278,33 @@ const IsDone = 1 << 4;
  * sync generator child) where synchronous code causes a stack overflow error
  * in a non-deterministic way. Deeply disturbing stuff.
  */
-const IsErrored = 1 << 5;
+const IsErrored = 1 << 6;
 
 /**
  * A flag which is set when the component is unmounted. Unmounted components
  * are no longer in the element tree and cannot refresh or rerender.
  */
-const IsUnmounted = 1 << 6;
+const IsUnmounted = 1 << 7;
 
 /**
  * A flag which indicates that the component is a sync generator component.
  */
-const IsSyncGen = 1 << 7;
+const IsSyncGen = 1 << 8;
 
 /**
  * A flag which indicates that the component is an async generator component.
  */
-const IsAsyncGen = 1 << 8;
+const IsAsyncGen = 1 << 9;
 
 /**
  * A flag which is set while schedule callbacks are called.
  */
-const IsScheduling = 1 << 9;
+const IsScheduling = 1 << 10;
 
 /**
  * A flag which is set when a schedule callback calls refresh.
  */
-const IsSchedulingRefresh = 1 << 10;
-
-const IsInRenderLoop = 1 << 11;
+const IsSchedulingRefresh = 1 << 11;
 
 export interface Context extends Crank.Context {}
 
@@ -1310,7 +1325,7 @@ const flushMaps = new WeakMap<object, Map<ContextImpl, Set<Function>>>();
 
 /**
  * @internal
- * The internal class which holds all context data.
+ * The internal class which holds context data.
  */
 class ContextImpl<
 	TNode = unknown,
@@ -1371,10 +1386,9 @@ class ContextImpl<
 		| undefined;
 
 	/*** async properties ***/
-	// See the runComponent/stepComponent/advanceComponent functions for more
-	// notes on the inflight/enqueued block/value properties.
+	// See the runCtx()/stepCtx()/advanceCtx() functions for more notes on the
+	// inflight/enqueued block/value properties.
 	declare inflightBlock: Promise<unknown> | undefined;
-	// TODO: Can we combine this with retainer.inflight somehow please.
 	declare inflightValue: Promise<ElementValue<TNode>> | undefined;
 	declare enqueuedBlock: Promise<unknown> | undefined;
 	declare enqueuedValue: Promise<ElementValue<TNode>> | undefined;
@@ -1412,7 +1426,7 @@ class ContextImpl<
 	}
 }
 
-const $ContextImpl = Symbol.for("crank.ContextImpl");
+const _ContextImpl = Symbol.for("crank.ContextImpl");
 
 /**
  * A class which is instantiated and passed to every component as its this
@@ -1430,10 +1444,10 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	/**
 	 * @internal
 	 */
-	declare [$ContextImpl]: ContextImpl<unknown, unknown, unknown, TResult>;
+	declare [_ContextImpl]: ContextImpl<unknown, unknown, unknown, TResult>;
 
 	constructor(impl: ContextImpl<unknown, unknown, unknown, TResult>) {
-		this[$ContextImpl] = impl;
+		this[_ContextImpl] = impl;
 	}
 
 	/**
@@ -1444,7 +1458,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * plugins or utilities which wrap contexts.
 	 */
 	get props(): TProps {
-		return this[$ContextImpl].ret.el.props;
+		return this[_ContextImpl].ret.el.props;
 	}
 
 	// TODO: Should we rename this???
@@ -1456,17 +1470,17 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * mainly for plugins or utilities which wrap contexts.
 	 */
 	get value(): TResult {
-		return this[$ContextImpl].renderer.read(getValue(this[$ContextImpl].ret));
+		return this[_ContextImpl].renderer.read(getValue(this[_ContextImpl].ret));
 	}
 
 	*[Symbol.iterator](): Generator<TProps> {
-		const impl = this[$ContextImpl];
+		const impl = this[_ContextImpl];
 		if (impl.f & IsAsyncGen) {
 			throw new Error("Use for await…of in async generator components");
 		}
 
-		impl.f |= IsInRenderLoop;
 		try {
+			impl.f |= IsInRenderLoop;
 			while (!(impl.f & IsUnmounted)) {
 				if (impl.f & NeedsToYield) {
 					throw new Error("Context iterated twice without a yield");
@@ -1482,13 +1496,13 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	}
 
 	async *[Symbol.asyncIterator](): AsyncGenerator<TProps> {
-		const impl = this[$ContextImpl];
+		const impl = this[_ContextImpl];
 		if (impl.f & IsSyncGen) {
 			throw new Error("Use for…of in sync generator components");
 		}
 
-		impl.f |= IsInRenderLoop;
 		try {
+			impl.f |= IsInRenderLoop;
 			while (!(impl.f & IsUnmounted)) {
 				if (impl.f & NeedsToYield) {
 					throw new Error("Context iterated twice without a yield");
@@ -1500,7 +1514,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 					impl.f &= ~IsAvailable;
 				} else {
 					await new Promise((resolve) => (impl.onAvailable = resolve));
-					if (impl.f & IsDone || impl.f & IsUnmounted) {
+					if (impl.f & IsUnmounted) {
 						break;
 					}
 				}
@@ -1525,7 +1539,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * async iterator to suspend.
 	 */
 	refresh(): Promise<TResult> | TResult {
-		const impl = this[$ContextImpl];
+		const impl = this[_ContextImpl];
 		if (impl.f & IsUnmounted) {
 			console.error("Component is unmounted");
 			return impl.renderer.read(undefined);
@@ -1548,7 +1562,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * fire once per callback and update.
 	 */
 	schedule(callback: (value: TResult) => unknown): void {
-		const impl = this[$ContextImpl];
+		const impl = this[_ContextImpl];
 		let callbacks = scheduleMap.get(impl);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
@@ -1563,7 +1577,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * rendered into the root. Will only fire once per callback and render.
 	 */
 	flush(callback: (value: TResult) => unknown): void {
-		const impl = this[$ContextImpl];
+		const impl = this[_ContextImpl];
 		if (typeof impl.root !== "object" || impl.root === null) {
 			return;
 		}
@@ -1588,7 +1602,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * fire once per callback.
 	 */
 	cleanup(callback: (value: TResult) => unknown): void {
-		const impl = this[$ContextImpl];
+		const impl = this[_ContextImpl];
 		let callbacks = cleanupMap.get(impl);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
@@ -1602,7 +1616,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	consume(key: unknown): any;
 	consume(key: unknown): any {
 		for (
-			let parent = this[$ContextImpl].parent;
+			let parent = this[_ContextImpl].parent;
 			parent !== undefined;
 			parent = parent.parent
 		) {
@@ -1619,7 +1633,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	): void;
 	provide(key: unknown, value: any): void;
 	provide(key: unknown, value: any): void {
-		const impl = this[$ContextImpl];
+		const impl = this[_ContextImpl];
 		let provisions = provisionMaps.get(impl);
 		if (!provisions) {
 			provisions = new Map();
@@ -1634,7 +1648,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		listener: MappedEventListenerOrEventListenerObject<T> | null,
 		options?: boolean | AddEventListenerOptions,
 	): void {
-		const impl = this[$ContextImpl];
+		const impl = this[_ContextImpl];
 		let listeners: Array<EventListenerRecord>;
 		if (!isListenerOrListenerObject(listener)) {
 			return;
@@ -1694,7 +1708,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		listener: MappedEventListenerOrEventListenerObject<T> | null,
 		options?: EventListenerOptions | boolean,
 	): void {
-		const impl = this[$ContextImpl];
+		const impl = this[_ContextImpl];
 		const listeners = listenersMap.get(impl);
 		if (listeners == null || !isListenerOrListenerObject(listener)) {
 			return;
@@ -1724,7 +1738,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	}
 
 	dispatchEvent(ev: Event): boolean {
-		const impl = this[$ContextImpl];
+		const impl = this[_ContextImpl];
 		const path: Array<ContextImpl> = [];
 		for (
 			let parent = impl.parent;
@@ -1860,7 +1874,7 @@ function updateComponent<TNode, TScope, TRoot extends TNode, TResult>(
 		ctx = ret.ctx as ContextImpl<TNode, TScope, TRoot, TResult>;
 		if (ctx.f & IsSyncExecuting) {
 			console.error("Component is already executing");
-			return ret.cached;
+			return ret.cachedChildValues;
 		}
 	} else {
 		ctx = ret.ctx = new ContextImpl(renderer, root, host, parent, scope, ret);
@@ -1902,11 +1916,11 @@ function updateComponentChildren<TNode, TResult>(
 	}
 
 	if (isPromiseLike(childValues)) {
-		ctx.ret.inflight = childValues.then((childValues) =>
+		ctx.ret.inflightValue = childValues.then((childValues) =>
 			commitComponent(ctx, childValues),
 		);
 
-		return ctx.ret.inflight;
+		return ctx.ret.inflightValue;
 	}
 
 	return commitComponent(ctx, childValues);
@@ -1933,8 +1947,8 @@ function commitComponent<TNode>(
 		}
 	}
 
-	const oldValues = wrap(ctx.ret.cached);
-	let value = (ctx.ret.cached = unwrap(values));
+	const oldValues = wrap(ctx.ret.cachedChildValues);
+	let value = (ctx.ret.cachedChildValues = unwrap(values));
 	if (ctx.f & IsScheduling) {
 		ctx.f |= IsSchedulingRefresh;
 	} else if (!(ctx.f & IsUpdating)) {
@@ -1961,7 +1975,7 @@ function commitComponent<TNode>(
 
 			// rearranging the nearest ancestor host element
 			const host = ctx.host;
-			const oldHostValues = wrap(host.cached);
+			const oldHostValues = wrap(host.cachedChildValues);
 			invalidate(ctx, host);
 			const hostValues = getChildValues(host);
 			ctx.renderer.arrange(
@@ -2005,10 +2019,10 @@ function invalidate(ctx: ContextImpl, host: Retainer<unknown>): void {
 		parent !== undefined && parent.host === host;
 		parent = parent.parent
 	) {
-		parent.ret.cached = undefined;
+		parent.ret.cachedChildValues = undefined;
 	}
 
-	host.cached = undefined;
+	host.cachedChildValues = undefined;
 }
 
 function valuesEqual<TValue>(
@@ -2052,6 +2066,7 @@ function runComponent<TNode, TResult>(
 			const [block, value] = stepComponent<TNode, TResult>(ctx);
 			if (block) {
 				ctx.inflightBlock = block
+					// TODO: block promises should just not reject why are we making this complicated
 					.catch((err) => {
 						if (!(ctx.f & IsUpdating)) {
 							return propagateError<TNode>(ctx.parent, err);
@@ -2071,31 +2086,31 @@ function runComponent<TNode, TResult>(
 			throw err;
 		}
 	} else if (ctx.f & IsAsyncGen) {
-		// TODO: I keep coming back to why this branch should exist.
-		// THIS BRANCH SHOULD NOT BE NECESSARY.
 		return ctx.inflightValue;
 	} else if (!ctx.enqueuedBlock) {
-		let resolve: Function;
-		ctx.enqueuedBlock = ctx.inflightBlock
-			.then(() => {
-				try {
-					const [block, value] = stepComponent<TNode, TResult>(ctx);
-					resolve(value);
-					if (block) {
-						return block.catch((err) => {
+		let resolveEnqueuedValue: Function;
+		ctx.enqueuedBlock = ctx.inflightBlock.then(() => {
+			try {
+				const [block, value] = stepComponent<TNode, TResult>(ctx);
+				resolveEnqueuedValue(value);
+				if (block) {
+					return block
+						.catch((err) => {
 							if (!(ctx.f & IsUpdating)) {
 								return propagateError<TNode>(ctx.parent, err);
 							}
-						});
-					}
-				} catch (err) {
-					if (!(ctx.f & IsUpdating)) {
-						return propagateError<TNode>(ctx.parent, err);
-					}
+						})
+						.finally(() => advanceComponent(ctx));
 				}
-			})
-			.finally(() => advanceComponent(ctx));
-		ctx.enqueuedValue = new Promise((resolve1) => (resolve = resolve1));
+			} catch (err) {
+				if (!(ctx.f & IsUpdating)) {
+					return propagateError<TNode>(ctx.parent, err);
+				}
+			}
+		});
+		ctx.enqueuedValue = new Promise(
+			(resolve) => (resolveEnqueuedValue = resolve),
+		);
 	}
 
 	return ctx.enqueuedValue;
@@ -2167,12 +2182,12 @@ function stepComponent<TNode, TResult>(
 	if (initial) {
 		// The argument passed to the first call to next is ignored.
 		oldValue = undefined as any;
-	} else if (ctx.ret.inflight) {
+	} else if (ctx.ret.inflightValue) {
 		// The value passed back into the generator as the argument to the next
 		// method is a promise if an async generator component has async children.
 		// Sync generator components only resume when their children have fulfilled
 		// so the element’s inflight child values will never be defined.
-		oldValue = ctx.ret.inflight.then(
+		oldValue = ctx.ret.inflightValue.then(
 			(value) => ctx.renderer.read(value),
 			() => ctx.renderer.read(undefined),
 		);
@@ -2197,6 +2212,15 @@ function stepComponent<TNode, TResult>(
 
 	if (isPromiseLike(iteration)) {
 		// async generator component
+
+		// TODO: Move the logic for async generators out of stepCtx(). The
+		// continuous pulling of values from async generator components should be
+		// defined independently of the runCtx()/stepCtx()/advanceCtx() calls, and
+		// the exceptions defined in these functions for async generator components
+		// are gross and cringe. Once an async generator component is detected it
+		// should just continue pulling from the iterator, and the blocking/queuing
+		// behavior should be determined by when the values are pulled from the for
+		// await of props iterator.
 		const value: Promise<ElementValue<TNode>> = iteration.then(
 			(iteration) => {
 				if (ctx.f & IsUnmounted && ctx.f & IsInRenderLoop) {
@@ -2206,8 +2230,9 @@ function stepComponent<TNode, TResult>(
 				if (ctx.f & NeedsToYield) {
 					ctx.f &= ~NeedsToYield;
 				} else {
-					// The component is yielding multiple values per render loop, so
-					// making the props iterator unavailable would be
+					// This branch runs when the component yields after the first yield
+					// per render loop, so making the props async iterator unavailable
+					// would be incorrect.
 					ctx.f &= ~IsAvailable;
 				}
 
@@ -2236,6 +2261,9 @@ function stepComponent<TNode, TResult>(
 			},
 		);
 
+		// TODO: Rather than returning the iteration as the block, we could instead
+		// return a promise which fulfills when the component pulls another value
+		// from the props async iterator.
 		return [iteration, value];
 	} else {
 		// sync generator component
@@ -2278,6 +2306,8 @@ function advanceComponent(ctx: ContextImpl): void {
 	}
 }
 
+// TODO: Turn this into an async function which resolves the next time the loop
+// starts and a value is yielded.
 /**
  * Called to make props available to the props async iterator for async
  * generator components.
