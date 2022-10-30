@@ -425,7 +425,56 @@ test("for await...of with await in loop", async () => {
 	Assert.is(afterLoopFn.callCount, 0);
 	Assert.is(document.body.innerHTML, "");
 
-	await new Promise((resolve) => setTimeout(resolve, 6));
+	await new Promise((resolve) => setTimeout(resolve, 10));
+	Assert.is(afterLoopFn.callCount, 1);
+});
+
+test("for await...of with multiple yields", async () => {
+	const beforeYieldFn = Sinon.fake();
+	const afterYieldFn = Sinon.fake();
+	const afterLoopFn = Sinon.fake();
+	async function* Component(this: Context): AsyncGenerator<Child> {
+		let i = 0;
+		for await ({} of this) {
+			i++;
+			beforeYieldFn();
+			yield <div>Hello {i}</div>;
+			await new Promise((r) => setTimeout(r, 10));
+			yield <div>Goodbye {i}</div>;
+			afterYieldFn();
+		}
+
+		afterLoopFn();
+	}
+
+	// first render
+	await renderer.render(<Component />, document.body);
+	Assert.is(beforeYieldFn.callCount, 1);
+	Assert.is(afterYieldFn.callCount, 0);
+	Assert.is(document.body.innerHTML, "<div>Hello 1</div>");
+	await new Promise((r) => setTimeout(r, 10));
+	Assert.is(beforeYieldFn.callCount, 1);
+	Assert.is(afterYieldFn.callCount, 1);
+	Assert.is(document.body.innerHTML, "<div>Goodbye 1</div>");
+
+	// second render
+	await renderer.render(<Component />, document.body);
+	Assert.is(beforeYieldFn.callCount, 2);
+	Assert.is(afterYieldFn.callCount, 1);
+	Assert.is(document.body.innerHTML, "<div>Hello 2</div>");
+	await new Promise((r) => setTimeout(r, 10));
+	Assert.is(beforeYieldFn.callCount, 2);
+	Assert.is(afterYieldFn.callCount, 2);
+	Assert.is(document.body.innerHTML, "<div>Goodbye 2</div>");
+
+	// third render is interrupted by unmount
+	renderer.render(<Component />, document.body);
+	renderer.render(null, document.body);
+	Assert.is(document.body.innerHTML, "");
+	Assert.is(afterLoopFn.callCount, 0);
+	Assert.is(document.body.innerHTML, "");
+
+	await new Promise((resolve) => setTimeout(resolve, 10));
 	Assert.is(afterLoopFn.callCount, 1);
 });
 
