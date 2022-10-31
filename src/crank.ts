@@ -2066,12 +2066,9 @@ function runComponent<TNode, TResult>(
 			const [block, value] = stepComponent<TNode, TResult>(ctx);
 			if (block) {
 				ctx.inflightBlock = block
-					// TODO: block promises should just not reject why are we making this complicated
-					.catch((err) => {
-						if (!(ctx.f & IsUpdating)) {
-							return propagateError<TNode>(ctx.parent, err);
-						}
-					})
+					// TODO: there is some fuckery going on here related to async
+					// generator components resuming when they’re meant to be returned.
+					.then((v) => v)
 					.finally(() => advanceComponent(ctx));
 				// stepComponent will only return a block if the value is asynchronous
 				ctx.inflightValue = value as Promise<ElementValue<TNode>>;
@@ -2086,31 +2083,32 @@ function runComponent<TNode, TResult>(
 			throw err;
 		}
 	} else if (ctx.f & IsAsyncGen) {
+		// TODO: MURDER THIS SPECIAL BRANCH WITH FEROCIOUS INTENSITY
 		return ctx.inflightValue;
 	} else if (!ctx.enqueuedBlock) {
-		let resolveEnqueuedValue: Function;
-		ctx.enqueuedBlock = ctx.inflightBlock.then(() => {
+		// We need to assign enqueuedBlock and enqueuedValue synchronously, hence
+		// the Promise constructor call.
+		let resolveEnqueuedBlock: Function;
+		ctx.enqueuedBlock = new Promise(
+			(resolve) => (resolveEnqueuedBlock = resolve),
+		);
+
+		ctx.enqueuedValue = ctx.inflightBlock.then(() => {
 			try {
 				const [block, value] = stepComponent<TNode, TResult>(ctx);
-				resolveEnqueuedValue(value);
 				if (block) {
-					return block
-						.catch((err) => {
-							if (!(ctx.f & IsUpdating)) {
-								return propagateError<TNode>(ctx.parent, err);
-							}
-						})
-						.finally(() => advanceComponent(ctx));
+					resolveEnqueuedBlock(block.finally(() => advanceComponent(ctx)));
 				}
+
+				return value;
 			} catch (err) {
 				if (!(ctx.f & IsUpdating)) {
 					return propagateError<TNode>(ctx.parent, err);
 				}
+
+				throw err;
 			}
 		});
-		ctx.enqueuedValue = new Promise(
-			(resolve) => (resolveEnqueuedValue = resolve),
-		);
 	}
 
 	return ctx.enqueuedValue;
@@ -2171,7 +2169,7 @@ function stepComponent<TNode, TResult>(
 					throw err;
 				},
 			);
-			return [result1, value];
+			return [result1.catch(NOOP), value];
 		} else {
 			// sync function component
 			return [undefined, updateComponentChildren<TNode, TResult>(ctx, result)];
@@ -2264,7 +2262,11 @@ function stepComponent<TNode, TResult>(
 		// TODO: Rather than returning the iteration as the block, we could instead
 		// return a promise which fulfills when the component pulls another value
 		// from the props async iterator.
-		return [iteration, value];
+		return [
+			iteration.catch(NOOP),
+			// TODO: something deeply fucked in a rearranging test
+			value.then((v) => v),
+		];
 	} else {
 		// sync generator component
 		ctx.f &= ~NeedsToYield;
