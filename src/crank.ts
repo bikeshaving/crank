@@ -156,9 +156,7 @@ export type Component<TProps extends Record<string, unknown> = any> = (
 	| Iterator<Children, Children | void, any>
 	| AsyncIterator<Children, Children | void, any>;
 
-type ChildrenIteration =
-	| Promise<IteratorResult<Children, Children | void>>
-	| IteratorResult<Children, Children | void>;
+type ChildrenIteratorResult = IteratorResult<Children, Children | void>;
 
 /**
  * A type to keep track of keys. Any value can be a key, though null and
@@ -2176,101 +2174,47 @@ function stepComponent<TNode, TResult>(
 		}
 	}
 
-	let oldValue: Promise<TResult> | TResult;
+	let iteration: Promise<ChildrenIteratorResult> | ChildrenIteratorResult;
 	if (initial) {
-		// The argument passed to the first call to next is ignored.
-		oldValue = undefined as any;
-	} else if (ctx.ret.inflightValue) {
-		// The value passed back into the generator as the argument to the next
-		// method is a promise if an async generator component has async children.
-		// Sync generator components only resume when their children have fulfilled
-		// so the element’s inflight child values will never be defined.
-		oldValue = ctx.ret.inflightValue.then(
-			(value) => ctx.renderer.read(value),
-			() => ctx.renderer.read(undefined),
-		);
-	} else {
-		oldValue = ctx.renderer.read(getValue(ret));
+		try {
+			ctx.f |= IsSyncExecuting;
+			iteration = ctx.iterator!.next();
+		} catch (err) {
+			ctx.f |= IsDone | IsErrored;
+			throw err;
+		} finally {
+			ctx.f &= ~IsSyncExecuting;
+		}
+
+		if (isPromiseLike(iteration)) {
+			ctx.f |= IsAsyncGen;
+			pullFromAsyncGen(ctx, iteration);
+		} else {
+			ctx.f |= IsSyncGen;
+		}
 	}
 
-	let iteration: ChildrenIteration;
-	try {
-		ctx.f |= IsSyncExecuting;
-		iteration = ctx.iterator!.next(oldValue);
-	} catch (err) {
-		ctx.f |= IsDone | IsErrored;
-		throw err;
-	} finally {
-		ctx.f &= ~IsSyncExecuting;
-	}
-
-	if (initial) {
-		ctx.f |= isPromiseLike(iteration) ? IsAsyncGen : IsSyncGen;
-	}
-
-	if (isPromiseLike(iteration)) {
-		// async generator component
-
-		// TODO: Move the logic for async generators out of stepCtx(). The
-		// continuous pulling of values from async generator components should be
-		// defined independently of the runCtx()/stepCtx()/advanceCtx() calls, and
-		// the exceptions defined in these functions for async generator components
-		// are gross and cringe. Once an async generator component is detected it
-		// should just continue pulling from the iterator, and the blocking/queuing
-		// behavior should be determined by when the values are pulled from the for
-		// await of props iterator.
-		const value: Promise<ElementValue<TNode>> = iteration.then(
-			(iteration) => {
-				if (ctx.f & IsUnmounted && ctx.f & IsInRenderLoop) {
-					return getValue(ctx.ret);
-				}
-
-				if (ctx.f & NeedsToYield) {
-					ctx.f &= ~NeedsToYield;
-				} else {
-					// This branch runs when the component yields after the first yield
-					// per render loop, so making the props async iterator unavailable
-					// would be incorrect.
-					ctx.f &= ~IsAvailable;
-				}
-
-				if (iteration.done) {
-					ctx.f |= IsDone;
-				}
-
-				try {
-					const value = updateComponentChildren<TNode, TResult>(
-						ctx,
-						iteration.value as Children,
-					);
-
-					if (isPromiseLike(value)) {
-						return value.catch((err) => handleChildError(ctx, err));
-					}
-
-					return value;
-				} catch (err) {
-					return handleChildError(ctx, err);
-				}
-			},
-			(err) => {
-				ctx.f |= IsDone | IsErrored;
-				throw err;
-			},
-		);
-
-		// TODO: Rather than returning the iteration as the block, we could instead
-		// return a promise which fulfills when the component pulls another value
-		// from the props async iterator.
-		return [
-			iteration.catch(NOOP),
-			// TODO: something deeply fucked in a rearranging test
-			value.then((v) => v),
-		];
-	} else {
+	if (ctx.f & IsSyncGen) {
 		// sync generator component
 		ctx.f &= ~NeedsToYield;
-		if (iteration.done) {
+		if (!initial) {
+			try {
+				ctx.f |= IsSyncExecuting;
+				const oldValue = ctx.renderer.read(getValue(ret));
+				iteration = ctx.iterator!.next(oldValue);
+			} catch (err) {
+				ctx.f |= IsDone | IsErrored;
+				throw err;
+			} finally {
+				ctx.f &= ~IsSyncExecuting;
+			}
+		}
+
+		if (isPromiseLike(iteration!)) {
+			throw new Error("Sync generator component returned an async iteration");
+		}
+
+		if (iteration!.done) {
 			ctx.f |= IsDone;
 		}
 
@@ -2278,8 +2222,10 @@ function stepComponent<TNode, TResult>(
 		try {
 			value = updateComponentChildren<TNode, TResult>(
 				ctx,
-				iteration.value as Children,
+				// need to eliminate void
+				iteration!.value as Children,
 			);
+
 			if (isPromiseLike(value)) {
 				value = value.catch((err) => handleChildError(ctx, err));
 			}
@@ -2292,6 +2238,9 @@ function stepComponent<TNode, TResult>(
 		}
 
 		return [undefined, value];
+	} else {
+		// async generator component
+		return [ctx.inflightBlock, ctx.inflightValue];
 	}
 }
 
@@ -2299,13 +2248,99 @@ function stepComponent<TNode, TResult>(
  * Called when the inflight block promise settles.
  */
 function advanceComponent(ctx: ContextImpl): void {
+	if (ctx.f & IsAsyncGen) {
+		// TODO: no more optional branch here
+		return;
+	}
+
 	ctx.inflightBlock = ctx.enqueuedBlock;
 	ctx.inflightValue = ctx.enqueuedValue;
 	ctx.enqueuedBlock = undefined;
 	ctx.enqueuedValue = undefined;
-	if (ctx.f & IsAsyncGen && !(ctx.f & IsDone)) {
-		runComponent(ctx);
-	}
+	//if (ctx.f & IsAsyncGen && !(ctx.f & IsDone)) {
+	//	runComponent(ctx);
+	//}
+}
+
+// TODO: Pass in TNode, TResult
+async function pullFromAsyncGen<TNode, TResult>(
+	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
+	iterationP: Promise<ChildrenIteratorResult>,
+): Promise<void> {
+	do {
+		ctx.inflightBlock = iterationP.catch(NOOP);
+		let resolveInflightValue!: Function;
+		ctx.inflightValue = new Promise((r) => (resolveInflightValue = r));
+		let iteration: any;
+		try {
+			iteration = await iterationP;
+		} catch (err) {
+			ctx.f |= IsDone;
+			ctx.f |= IsErrored;
+			resolveInflightValue(Promise.reject(err));
+			break;
+		}
+
+		if (ctx.f & NeedsToYield) {
+			ctx.f &= ~NeedsToYield;
+		} else {
+			// This branch runs when the component yields after the first yield per
+			// render loop, so making the props async iterator unavailable would be
+			// incorrect.
+			ctx.f &= ~IsAvailable;
+		}
+
+		if (iteration.done) {
+			ctx.f |= IsDone;
+		}
+
+		const childValues = updateComponentChildren<TNode, TResult>(
+			ctx,
+			iteration.value!,
+		);
+
+		resolveInflightValue(childValues);
+		// TODO: this could be done more elegantly
+		let oldValue: Promise<TResult> | TResult;
+		if (ctx.ret.inflightValue) {
+			// The value passed back into the generator as the argument to the next
+			// method is a promise if an async generator component has async
+			// children. Sync generator components only resume when their children
+			// have fulfilled so the element’s inflight child values will never be
+			// defined.
+			oldValue = ctx.ret.inflightValue.then(
+				(value) => ctx.renderer.read(value),
+				() => ctx.renderer.read(undefined),
+			);
+		} else {
+			oldValue = ctx.renderer.read(getValue(ctx.ret));
+		}
+
+		if (ctx.f & IsUnmounted) {
+			if (ctx.f & IsInRenderLoop) {
+				try {
+					ctx.f |= IsSyncExecuting;
+					iterationP = ctx.iterator!.next(
+						oldValue,
+					) as Promise<ChildrenIteratorResult>;
+				} finally {
+					ctx.f &= ~IsSyncExecuting;
+				}
+			} else {
+				returnComponent(ctx);
+				break;
+			}
+		} else if (!(ctx.f & IsDone)) {
+			try {
+				ctx.f |= IsSyncExecuting;
+				iterationP = ctx.iterator!.next(
+					oldValue,
+				) as Promise<ChildrenIteratorResult>;
+			} finally {
+				ctx.f &= ~IsSyncExecuting;
+			}
+		}
+	} while (!(ctx.f & IsDone));
 }
 
 // TODO: Turn this into an async function which resolves the next time the loop
@@ -2336,11 +2371,10 @@ function unmountComponent(ctx: ContextImpl): void {
 	}
 
 	ctx.f |= IsUnmounted;
-	if (!(ctx.f & IsDone)) {
-		if (ctx.iterator) {
+	if (ctx.iterator && !(ctx.f & IsDone)) {
+		if (ctx.f & IsSyncGen) {
 			let value: unknown;
 			if (ctx.f & IsInRenderLoop) {
-				resumeCtxIterator(ctx);
 				value = runComponent(ctx);
 			}
 
@@ -2364,6 +2398,9 @@ function unmountComponent(ctx: ContextImpl): void {
 					returnComponent(ctx);
 				}
 			}
+		} else {
+			// async generator component
+			resumeCtxIterator(ctx);
 		}
 	}
 }
@@ -2517,7 +2554,7 @@ function handleChildError<TNode>(
 	}
 
 	resumeCtxIterator(ctx);
-	let iteration: ChildrenIteration;
+	let iteration: ChildrenIteratorResult | Promise<ChildrenIteratorResult>;
 	try {
 		ctx.f |= IsSyncExecuting;
 		iteration = ctx.iterator.throw(err);
