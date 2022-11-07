@@ -313,6 +313,7 @@ export function createElement<TTag extends Tag>(
 
 	// string aliases for the special tags
 	// TODO: Does this logic belong here, or in the Element constructor
+	// TODO: Rethink if we want to do this
 	switch (tag) {
 		case "$FRAGMENT":
 			tag = Fragment as any;
@@ -1444,6 +1445,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 */
 	declare [_ContextImpl]: ContextImpl<unknown, unknown, unknown, TResult>;
 
+	// TODO: If we could make the constructor function take a nicer value, it
+	// would be useful for testing purposes.
 	constructor(impl: ContextImpl<unknown, unknown, unknown, TResult>) {
 		this[_ContextImpl] = impl;
 	}
@@ -1896,10 +1899,11 @@ function updateComponentChildren<TNode, TResult>(
 	}
 
 	let childValues: Promise<Array<string | TNode>> | Array<string | TNode>;
-	// We set the isExecuting flag in case a child component dispatches an event
-	// which bubbles to this component and causes a synchronous refresh().
-	ctx.f |= IsSyncExecuting;
 	try {
+		// TODO: WAT
+		// We set the isExecuting flag in case a child component dispatches an event
+		// which bubbles to this component and causes a synchronous refresh().
+		ctx.f |= IsSyncExecuting;
 		childValues = diffChildren(
 			ctx.renderer,
 			ctx.root,
@@ -2241,6 +2245,12 @@ function stepComponent<TNode, TResult>(
 	} else {
 		// async generator component
 		return [ctx.inflightBlock, ctx.inflightValue];
+		// TODO:
+		// if we are in the render loop:
+		//   block for each async execution, return inflight value
+		// else:
+		//   block until another value is pulled,
+		//   return the value for the first result after loop starts
 	}
 }
 
@@ -2249,7 +2259,7 @@ function stepComponent<TNode, TResult>(
  */
 function advanceComponent(ctx: ContextImpl): void {
 	if (ctx.f & IsAsyncGen) {
-		// TODO: no more optional branch here
+		// TODO: DELETE THIS BRANCH
 		return;
 	}
 
@@ -2268,15 +2278,19 @@ async function pullFromAsyncGen<TNode, TResult>(
 	iterationP: Promise<ChildrenIteratorResult>,
 ): Promise<void> {
 	do {
+		// We have to assign block and value at the same time.
 		ctx.inflightBlock = iterationP.catch(NOOP);
 		let resolveInflightValue!: Function;
 		ctx.inflightValue = new Promise((r) => (resolveInflightValue = r));
+		ctx.inflightValue.catch(NOOP);
 		let iteration: any;
 		try {
 			iteration = await iterationP;
 		} catch (err) {
 			ctx.f |= IsDone;
 			ctx.f |= IsErrored;
+			// @ts-ignore
+			//console.log("HOOYAH", ctx.ret.el.tag.name);
 			resolveInflightValue(Promise.reject(err));
 			break;
 		}
@@ -2294,13 +2308,22 @@ async function pullFromAsyncGen<TNode, TResult>(
 			ctx.f |= IsDone;
 		}
 
-		const childValues = updateComponentChildren<TNode, TResult>(
-			ctx,
-			iteration.value!,
-		);
+		let value: any;
+		try {
+			value = updateComponentChildren<TNode, TResult>(ctx, iteration.value!);
 
-		resolveInflightValue(childValues);
+			if (isPromiseLike(value)) {
+				// @ts-ignore
+				value = value.catch((err) => handleChildError(ctx, err));
+			}
+
+			resolveInflightValue(value);
+		} catch (err) {
+			//handleChildError(ctx, err);
+		}
+
 		// TODO: this could be done more elegantly
+		// ELEGANTTTTTTTTTTTTTT
 		let oldValue: Promise<TResult> | TResult;
 		if (ctx.ret.inflightValue) {
 			// The value passed back into the generator as the argument to the next
