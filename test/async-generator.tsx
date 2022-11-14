@@ -25,11 +25,12 @@ test("basic", async () => {
 	): AsyncGenerator<Element> {
 		let i = 0;
 		for await ({message} of this) {
-			if (++i > 2) {
+			if (i >= 2) {
 				return <span>Final</span>;
 			}
 
 			yield <span>{message}</span>;
+			i++;
 		}
 	});
 
@@ -632,14 +633,13 @@ test("updates enqueue based on render loop", async () => {
 
 	Assert.is(await p1, document.body.firstChild);
 	Assert.is(document.body.innerHTML, "<div>run 1, call 1</div>");
-	// component has run twice because it is concurrently rendered synchronously
 	Assert.is(beforeAwaitFn.callCount, 2);
 	Assert.is(await p2, document.body.firstChild);
-	Assert.is(document.body.innerHTML, "<div>run 1, call 5</div>");
+	Assert.is(document.body.innerHTML, "<div>run 2, call 5</div>");
 	Assert.is(await p3, document.body.firstChild);
-	Assert.is(document.body.innerHTML, "<div>run 1, call 5</div>");
+	Assert.is(document.body.innerHTML, "<div>run 2, call 5</div>");
 	Assert.is(await p4, document.body.firstChild);
-	Assert.is(document.body.innerHTML, "<div>run 1, call 5</div>");
+	Assert.is(document.body.innerHTML, "<div>run 2, call 5</div>");
 
 	const p6 = renderer.render(<Component callIndex={6} />, document.body);
 	const p7 = renderer.render(<Component callIndex={7} />, document.body);
@@ -648,17 +648,17 @@ test("updates enqueue based on render loop", async () => {
 	const p10 = renderer.render(<Component callIndex={10} />, document.body);
 
 	Assert.is(await p5, document.body.firstChild);
-	Assert.is(document.body.innerHTML, "<div>Hello 5</div>");
+	Assert.is(document.body.innerHTML, "<div>run 2, call 5</div>");
 	Assert.is(await p6, document.body.firstChild);
-	Assert.is(document.body.innerHTML, "<div>Hello 6</div>");
+	Assert.is(document.body.innerHTML, "<div>run 3, call 6</div>");
 	Assert.is(await p7, document.body.firstChild);
-	Assert.is(document.body.innerHTML, "<div>Hello 10</div>");
+	Assert.is(document.body.innerHTML, "<div>run 4, call 10</div>");
 	Assert.is(await p8, document.body.firstChild);
-	Assert.is(document.body.innerHTML, "<div>Hello 10</div>");
+	Assert.is(document.body.innerHTML, "<div>run 4, call 10</div>");
 	Assert.is(await p9, document.body.firstChild);
-	Assert.is(document.body.innerHTML, "<div>Hello 10</div>");
+	Assert.is(document.body.innerHTML, "<div>run 4, call 10</div>");
 	Assert.is(await p10, document.body.firstChild);
-	Assert.is(document.body.innerHTML, "<div>Hello 10</div>");
+	Assert.is(document.body.innerHTML, "<div>run 4, call 10</div>");
 	Assert.is(beforeAwaitFn.callCount, 4);
 });
 
