@@ -1252,14 +1252,13 @@ const IsInRenderLoop = 1 << 2;
  */
 const NeedsToYield = 1 << 3;
 
-// TODO: Rename this flag.
 /**
  * A flag used by async generator components in conjunction with the
  * onAvailable callback to mark whether new props can be pulled via the context
  * async iterator. See the Symbol.asyncIterator method and the
  * resumeCtxIterator function.
  */
-const IsAvailable = 1 << 4;
+const PropsAvailable = 1 << 4;
 
 /**
  * A flag which is set when a generator components returns, i.e. the done
@@ -1398,8 +1397,8 @@ class ContextImpl<
 	 * implement the props async iterator. See the Symbol.asyncIterator method
 	 * and the resumeCtxIterator function.
 	 */
-	declare onAvailable: Function | undefined;
-
+	declare onAvailable: ((props: Record<string, any>) => unknown) | undefined;
+	declare onSuspend: Function | undefined;
 	constructor(
 		renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 		root: TRoot | undefined,
@@ -1416,12 +1415,14 @@ class ContextImpl<
 		this.parent = parent;
 		this.scope = scope;
 		this.ret = ret;
+
 		this.iterator = undefined;
 		this.inflightBlock = undefined;
 		this.inflightValue = undefined;
 		this.enqueuedBlock = undefined;
 		this.enqueuedValue = undefined;
 		this.onAvailable = undefined;
+		this.onSuspend = undefined;
 	}
 }
 
@@ -1503,6 +1504,9 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		}
 
 		try {
+			// await an empty promise to prevent the IsInRenderLoop flag from
+			// returning false positives in the case of async generator components
+			// which immediately enter the loop
 			impl.f |= IsInRenderLoop;
 			while (!(impl.f & IsUnmounted)) {
 				if (impl.f & NeedsToYield) {
@@ -1511,19 +1515,31 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 					impl.f |= NeedsToYield;
 				}
 
-				if (impl.f & IsAvailable) {
-					impl.f &= ~IsAvailable;
+				if (impl.f & PropsAvailable) {
+					impl.f &= ~PropsAvailable;
+					yield impl.ret.el.props;
 				} else {
-					await new Promise((resolve) => (impl.onAvailable = resolve));
+					const props = await new Promise(
+						(resolve) => (impl.onAvailable = resolve),
+					);
 					if (impl.f & IsUnmounted) {
 						break;
 					}
+
+					yield props as TProps;
 				}
 
-				yield impl.ret.el.props;
+				if (impl.onSuspend) {
+					impl.onSuspend();
+					impl.onSuspend = undefined;
+				}
 			}
 		} finally {
 			impl.f &= ~IsInRenderLoop;
+			if (impl.onSuspend) {
+				impl.onSuspend();
+				impl.onSuspend = undefined;
+			}
 		}
 	}
 
@@ -1549,7 +1565,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			return this.value;
 		}
 
-		resumeCtxIterator(impl);
 		const value = runComponent(impl);
 		if (isPromiseLike(value)) {
 			return (value as Promise<any>).then((value) => impl.renderer.read(value));
@@ -1882,7 +1897,6 @@ function updateComponent<TNode, TScope, TRoot extends TNode, TResult>(
 	}
 
 	ctx.f |= IsUpdating;
-	resumeCtxIterator(ctx);
 	return runComponent(ctx);
 }
 
@@ -2063,7 +2077,47 @@ function valuesEqual<TValue>(
 function runComponent<TNode, TResult>(
 	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (!ctx.inflightBlock) {
+	if (ctx.f & IsAsyncGen) {
+		// Async generator components which are in the props loop can be in one of
+		// three states:
+		//
+		// 1. propsAvailable flag is true: "available"
+		//
+		//   The component is paused somewhere in the loop. When the component
+		//   reaches the bottom of the loop, it will run again with the next props.
+		//
+		// 2. onAvailable callback is defined: "suspended"
+		//
+		//   The component has reached the bottom of the loop and is waiting for
+		//   new props.
+		//
+		// 3. neither 1 or 2: "Running"
+		//
+		//   The component is paused somewhere in the loop. When the component
+		//   reaches the bottom of the loop, it will suspend.
+		//
+		// By definition, components will never be both available and suspended at
+		// the same time.
+		//
+		// If the component is at the loop bottom, this means that the next value
+		// produced by the component will have the most up to date props, so we can
+		// simply return the current inflight value. Otherwise, we have to wait for
+		// the bottom of the loop before returning the inflight value.
+		const isAtLoopbottom = ctx.f & IsInRenderLoop && !ctx.onAvailable;
+		resumeCtxIterator(ctx);
+		if (isAtLoopbottom) {
+			if (ctx.inflightBlock == null) {
+				ctx.inflightBlock = new Promise((resolve) => (ctx.onSuspend = resolve));
+			}
+
+			return ctx.inflightBlock.then(() => {
+				ctx.inflightBlock = undefined;
+				return ctx.inflightValue;
+			});
+		}
+
+		return ctx.inflightValue;
+	} else if (!ctx.inflightBlock) {
 		try {
 			const [block, value] = stepComponent<TNode, TResult>(ctx);
 			if (block) {
@@ -2084,9 +2138,6 @@ function runComponent<TNode, TResult>(
 
 			throw err;
 		}
-	} else if (ctx.f & IsAsyncGen) {
-		// TODO: MURDER THIS SPECIAL BRANCH WITH FEROCIOUS INTENSITY
-		return ctx.inflightValue;
 	} else if (!ctx.enqueuedBlock) {
 		// We need to assign enqueuedBlock and enqueuedValue synchronously, hence
 		// the Promise constructor call.
@@ -2114,6 +2165,20 @@ function runComponent<TNode, TResult>(
 	}
 
 	return ctx.enqueuedValue;
+}
+
+/**
+ * Called when the inflight block promise settles.
+ */
+function advanceComponent(ctx: ContextImpl): void {
+	if (ctx.f & IsAsyncGen) {
+		return;
+	}
+
+	ctx.inflightBlock = ctx.enqueuedBlock;
+	ctx.inflightValue = ctx.enqueuedValue;
+	ctx.enqueuedBlock = undefined;
+	ctx.enqueuedValue = undefined;
 }
 
 /**
@@ -2146,6 +2211,7 @@ function stepComponent<TNode, TResult>(
 
 	const initial = !ctx.iterator;
 	if (initial) {
+		resumeCtxIterator(ctx);
 		ctx.f |= IsSyncExecuting;
 		clearEventListeners(ctx);
 		let result: ReturnType<Component>;
@@ -2178,7 +2244,7 @@ function stepComponent<TNode, TResult>(
 		}
 	}
 
-	let iteration: Promise<ChildrenIteratorResult> | ChildrenIteratorResult;
+	let iteration!: Promise<ChildrenIteratorResult> | ChildrenIteratorResult;
 	if (initial) {
 		try {
 			ctx.f |= IsSyncExecuting;
@@ -2214,11 +2280,11 @@ function stepComponent<TNode, TResult>(
 			}
 		}
 
-		if (isPromiseLike(iteration!)) {
+		if (isPromiseLike(iteration)) {
 			throw new Error("Sync generator component returned an async iteration");
 		}
 
-		if (iteration!.done) {
+		if (iteration.done) {
 			ctx.f |= IsDone;
 		}
 
@@ -2226,8 +2292,8 @@ function stepComponent<TNode, TResult>(
 		try {
 			value = updateComponentChildren<TNode, TResult>(
 				ctx,
-				// need to eliminate void
-				iteration!.value as Children,
+				// Children can be void so we eliminate that here
+				iteration.value as Children,
 			);
 
 			if (isPromiseLike(value)) {
@@ -2244,86 +2310,52 @@ function stepComponent<TNode, TResult>(
 		return [undefined, value];
 	} else {
 		// async generator component
-		return [ctx.inflightBlock, ctx.inflightValue];
-		// TODO:
-		// if we are in the render loop:
-		//   block for each async execution, return inflight value
-		// else:
-		//   block until another value is pulled,
-		//   return the value for the first result after loop starts
+		return [undefined, ctx.inflightValue];
 	}
 }
 
-/**
- * Called when the inflight block promise settles.
- */
-function advanceComponent(ctx: ContextImpl): void {
-	if (ctx.f & IsAsyncGen) {
-		// TODO: DELETE THIS BRANCH
-		return;
-	}
-
-	ctx.inflightBlock = ctx.enqueuedBlock;
-	ctx.inflightValue = ctx.enqueuedValue;
-	ctx.enqueuedBlock = undefined;
-	ctx.enqueuedValue = undefined;
-	//if (ctx.f & IsAsyncGen && !(ctx.f & IsDone)) {
-	//	runComponent(ctx);
-	//}
-}
-
-// TODO: Pass in TNode, TResult
 async function pullFromAsyncGen<TNode, TResult>(
 	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
 	iterationP: Promise<ChildrenIteratorResult>,
 ): Promise<void> {
 	do {
-		// We have to assign block and value at the same time.
-		ctx.inflightBlock = iterationP.catch(NOOP);
-		let resolveInflightValue!: Function;
-		ctx.inflightValue = new Promise((r) => (resolveInflightValue = r));
-		ctx.inflightValue.catch(NOOP);
-		let iteration: any;
+		// block and value must be assigned at the same time.
+		let onValue!: Function;
+		ctx.inflightValue = new Promise((resolve) => (onValue = resolve));
+		let iteration: ChildrenIteratorResult;
 		try {
 			iteration = await iterationP;
 		} catch (err) {
 			ctx.f |= IsDone;
 			ctx.f |= IsErrored;
-			// @ts-ignore
-			//console.log("HOOYAH", ctx.ret.el.tag.name);
-			resolveInflightValue(Promise.reject(err));
+			onValue(Promise.reject(err));
 			break;
+		} finally {
+			if (!(ctx.f & IsInRenderLoop)) {
+				ctx.f &= ~PropsAvailable;
+			}
 		}
 
 		if (ctx.f & NeedsToYield) {
 			ctx.f &= ~NeedsToYield;
-		} else {
-			// This branch runs when the component yields after the first yield per
-			// render loop, so making the props async iterator unavailable would be
-			// incorrect.
-			ctx.f &= ~IsAvailable;
 		}
 
 		if (iteration.done) {
 			ctx.f |= IsDone;
 		}
 
-		let value: any;
+		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 		try {
 			value = updateComponentChildren<TNode, TResult>(ctx, iteration.value!);
-
 			if (isPromiseLike(value)) {
-				// @ts-ignore
-				value = value.catch((err) => handleChildError(ctx, err));
+				value = value.catch((err: any) => handleChildError(ctx, err));
 			}
 
-			resolveInflightValue(value);
+			onValue(value);
 		} catch (err) {
-			//handleChildError(ctx, err);
+			handleChildError(ctx, err);
 		}
 
-		// TODO: this could be done more elegantly
-		// ELEGANTTTTTTTTTTTTTT
 		let oldValue: Promise<TResult> | TResult;
 		if (ctx.ret.inflightValue) {
 			// The value passed back into the generator as the argument to the next
@@ -2364,20 +2396,20 @@ async function pullFromAsyncGen<TNode, TResult>(
 			}
 		}
 	} while (!(ctx.f & IsDone));
+	// TODO: This might make more sense as a recursive function
 }
 
-// TODO: Turn this into an async function which resolves the next time the loop
-// starts and a value is yielded.
 /**
  * Called to make props available to the props async iterator for async
  * generator components.
  */
 function resumeCtxIterator(ctx: ContextImpl): void {
 	if (ctx.onAvailable) {
-		ctx.onAvailable();
+		ctx.onAvailable(ctx.ret.el.props);
 		ctx.onAvailable = undefined;
+		ctx.f &= ~PropsAvailable;
 	} else {
-		ctx.f |= IsAvailable;
+		ctx.f |= PropsAvailable;
 	}
 }
 
