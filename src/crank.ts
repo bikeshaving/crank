@@ -651,7 +651,7 @@ const defaultRendererImpl: RendererImpl<unknown, unknown, unknown, unknown> = {
 	flush: NOOP,
 };
 
-const $RendererImpl = Symbol.for("crank.RendererImpl");
+const _RendererImpl = Symbol.for("crank.RendererImpl");
 /**
  * An abstract class which is subclassed to render to different target
  * environments. This class is responsible for kicking off the rendering
@@ -674,10 +674,10 @@ export class Renderer<
 	 */
 	declare cache: WeakMap<object, Retainer<TNode>>;
 
-	declare [$RendererImpl]: RendererImpl<TNode, TScope, TRoot, TResult>;
+	declare [_RendererImpl]: RendererImpl<TNode, TScope, TRoot, TResult>;
 	constructor(impl: Partial<RendererImpl<TNode, TScope, TRoot, TResult>>) {
 		this.cache = new WeakMap();
-		this[$RendererImpl] = {
+		this[_RendererImpl] = {
 			...(defaultRendererImpl as RendererImpl<TNode, TScope, TRoot, TResult>),
 			...impl,
 		};
@@ -727,7 +727,7 @@ export class Renderer<
 			}
 		}
 
-		const impl = this[$RendererImpl];
+		const impl = this[_RendererImpl];
 		const childValues = diffChildren(
 			impl,
 			root,
@@ -1391,14 +1391,13 @@ class ContextImpl<
 	declare enqueuedBlock: Promise<unknown> | undefined;
 	declare enqueuedValue: Promise<ElementValue<TNode>> | undefined;
 
-	// TODO: rename this function to better reflect when it is called
 	/**
-	 * onAvailable - A callback used in conjunction with the IsAvailable flag to
+	 * onProps - A callback used in conjunction with the IsAvailable flag to
 	 * implement the props async iterator. See the Symbol.asyncIterator method
 	 * and the resumeCtxIterator function.
 	 */
-	declare onAvailable: ((props: Record<string, any>) => unknown) | undefined;
-	declare onSuspend: Function | undefined;
+	declare onProps: ((props: Record<string, any>) => unknown) | undefined;
+	declare onPropsRequested: Function | undefined;
 	constructor(
 		renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 		root: TRoot | undefined,
@@ -1421,8 +1420,8 @@ class ContextImpl<
 		this.inflightValue = undefined;
 		this.enqueuedBlock = undefined;
 		this.enqueuedValue = undefined;
-		this.onAvailable = undefined;
-		this.onSuspend = undefined;
+		this.onProps = undefined;
+		this.onPropsRequested = undefined;
 	}
 }
 
@@ -1520,7 +1519,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 					yield impl.ret.el.props;
 				} else {
 					const props = await new Promise(
-						(resolve) => (impl.onAvailable = resolve),
+						(resolve) => (impl.onProps = resolve),
 					);
 					if (impl.f & IsUnmounted) {
 						break;
@@ -1529,16 +1528,16 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 					yield props as TProps;
 				}
 
-				if (impl.onSuspend) {
-					impl.onSuspend();
-					impl.onSuspend = undefined;
+				if (impl.onPropsRequested) {
+					impl.onPropsRequested();
+					impl.onPropsRequested = undefined;
 				}
 			}
 		} finally {
 			impl.f &= ~IsInRenderLoop;
-			if (impl.onSuspend) {
-				impl.onSuspend();
-				impl.onSuspend = undefined;
+			if (impl.onPropsRequested) {
+				impl.onPropsRequested();
+				impl.onPropsRequested = undefined;
 			}
 		}
 	}
@@ -1565,7 +1564,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			return this.value;
 		}
 
-		const value = runComponent(impl);
+		const value = enqueueComponentRun(impl);
 		if (isPromiseLike(value)) {
 			return (value as Promise<any>).then((value) => impl.renderer.read(value));
 		}
@@ -1897,7 +1896,7 @@ function updateComponent<TNode, TScope, TRoot extends TNode, TResult>(
 	}
 
 	ctx.f |= IsUpdating;
-	return runComponent(ctx);
+	return enqueueComponentRun(ctx);
 }
 
 function updateComponentChildren<TNode, TResult>(
@@ -1971,7 +1970,7 @@ function commitComponent<TNode>(
 		// If we’re not updating the component, which happens when components are
 		// refreshed, or when async generator components iterate, we have to do a
 		// little bit housekeeping when a component’s child values have changed.
-		if (!valuesEqual(oldValues, values)) {
+		if (!arrayEqual(oldValues, values)) {
 			const records = getListenerRecords(ctx.parent, ctx.host);
 			if (records.length) {
 				for (let i = 0; i < values.length; i++) {
@@ -2041,17 +2040,14 @@ function invalidate(ctx: ContextImpl, host: Retainer<unknown>): void {
 	host.cachedChildValues = undefined;
 }
 
-function valuesEqual<TValue>(
-	values1: Array<TValue>,
-	values2: Array<TValue>,
-): boolean {
-	if (values1.length !== values2.length) {
+function arrayEqual<TValue>(arr1: Array<TValue>, arr2: Array<TValue>): boolean {
+	if (arr1.length !== arr2.length) {
 		return false;
 	}
 
-	for (let i = 0; i < values1.length; i++) {
-		const value1 = values1[i];
-		const value2 = values2[i];
+	for (let i = 0; i < arr1.length; i++) {
+		const value1 = arr1[i];
+		const value2 = arr2[i];
 		if (value1 !== value2) {
 			return false;
 		}
@@ -2060,24 +2056,14 @@ function valuesEqual<TValue>(
 	return true;
 }
 
-/**
- * Enqueues and executes the component associated with the context.
- *
- * The functions stepComponent and runComponent work together
- * to implement the async queueing behavior of components. The runComponent
- * function calls the stepComponent function, which returns two results in a
- * tuple. The first result, called the “block,” is a possible promise which
- * represents the duration for which the component is blocked from accepting
- * new updates. The second result, called the “value,” is the actual result of
- * the update. The “inflight” block/value properties are the currently executing
- * update, and the “enqueued” block/value properties represent an enqueued next
- * stepComponent. Enqueued steps are dequeued every time the current block
- * promise settles.
- */
-function runComponent<TNode, TResult>(
+/** Enqueues and executes the component associated with the context. */
+function enqueueComponentRun<TNode, TResult>(
 	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (ctx.f & IsAsyncGen) {
+		// This branch will only run for async generator components after the
+		// initial render.
+		//
 		// Async generator components which are in the props loop can be in one of
 		// three states:
 		//
@@ -2103,11 +2089,13 @@ function runComponent<TNode, TResult>(
 		// produced by the component will have the most up to date props, so we can
 		// simply return the current inflight value. Otherwise, we have to wait for
 		// the bottom of the loop before returning the inflight value.
-		const isAtLoopbottom = ctx.f & IsInRenderLoop && !ctx.onAvailable;
-		resumeCtxIterator(ctx);
+		const isAtLoopbottom = ctx.f & IsInRenderLoop && !ctx.onProps;
+		resumePropsIterator(ctx);
 		if (isAtLoopbottom) {
 			if (ctx.inflightBlock == null) {
-				ctx.inflightBlock = new Promise((resolve) => (ctx.onSuspend = resolve));
+				ctx.inflightBlock = new Promise(
+					(resolve) => (ctx.onPropsRequested = resolve),
+				);
 			}
 
 			return ctx.inflightBlock.then(() => {
@@ -2119,7 +2107,7 @@ function runComponent<TNode, TResult>(
 		return ctx.inflightValue;
 	} else if (!ctx.inflightBlock) {
 		try {
-			const [block, value] = stepComponent<TNode, TResult>(ctx);
+			const [block, value] = runComponent<TNode, TResult>(ctx);
 			if (block) {
 				ctx.inflightBlock = block
 					// TODO: there is some fuckery going on here related to async
@@ -2148,7 +2136,7 @@ function runComponent<TNode, TResult>(
 
 		ctx.enqueuedValue = ctx.inflightBlock.then(() => {
 			try {
-				const [block, value] = stepComponent<TNode, TResult>(ctx);
+				const [block, value] = runComponent<TNode, TResult>(ctx);
 				if (block) {
 					resolveEnqueuedBlock(block.finally(() => advanceComponent(ctx)));
 				}
@@ -2167,9 +2155,7 @@ function runComponent<TNode, TResult>(
 	return ctx.enqueuedValue;
 }
 
-/**
- * Called when the inflight block promise settles.
- */
+/** Called when the inflight block promise settles. */
 function advanceComponent(ctx: ContextImpl): void {
 	if (ctx.f & IsAsyncGen) {
 		return;
@@ -2183,7 +2169,8 @@ function advanceComponent(ctx: ContextImpl): void {
 
 /**
  * This function is responsible for executing the component and handling all
- * the different component types.
+ * the different component types. We cannot identify whether a component is a
+ * generator or async without calling it and inspecting the return value.
  *
  * @returns {[block, value]} A tuple where
  * block - A possible promise which represents the duration during which the
@@ -2198,7 +2185,7 @@ function advanceComponent(ctx: ContextImpl): void {
  * - Sync generator components block while any children are executing, because
  * they are expected to only resume when they’ve actually rendered.
  */
-function stepComponent<TNode, TResult>(
+function runComponent<TNode, TResult>(
 	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
 ): [
 	Promise<unknown> | undefined,
@@ -2211,7 +2198,7 @@ function stepComponent<TNode, TResult>(
 
 	const initial = !ctx.iterator;
 	if (initial) {
-		resumeCtxIterator(ctx);
+		resumePropsIterator(ctx);
 		ctx.f |= IsSyncExecuting;
 		clearEventListeners(ctx);
 		let result: ReturnType<Component>;
@@ -2258,7 +2245,7 @@ function stepComponent<TNode, TResult>(
 
 		if (isPromiseLike(iteration)) {
 			ctx.f |= IsAsyncGen;
-			pullFromAsyncGen(ctx, iteration);
+			runAsyncGenComponent(ctx, iteration);
 		} else {
 			ctx.f |= IsSyncGen;
 		}
@@ -2314,7 +2301,7 @@ function stepComponent<TNode, TResult>(
 	}
 }
 
-async function pullFromAsyncGen<TNode, TResult>(
+async function runAsyncGenComponent<TNode, TResult>(
 	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
 	iterationP: Promise<ChildrenIteratorResult>,
 ): Promise<void> {
@@ -2403,10 +2390,10 @@ async function pullFromAsyncGen<TNode, TResult>(
  * Called to make props available to the props async iterator for async
  * generator components.
  */
-function resumeCtxIterator(ctx: ContextImpl): void {
-	if (ctx.onAvailable) {
-		ctx.onAvailable(ctx.ret.el.props);
-		ctx.onAvailable = undefined;
+function resumePropsIterator(ctx: ContextImpl): void {
+	if (ctx.onProps) {
+		ctx.onProps(ctx.ret.el.props);
+		ctx.onProps = undefined;
 		ctx.f &= ~PropsAvailable;
 	} else {
 		ctx.f |= PropsAvailable;
@@ -2430,7 +2417,7 @@ function unmountComponent(ctx: ContextImpl): void {
 		if (ctx.f & IsSyncGen) {
 			let value: unknown;
 			if (ctx.f & IsInRenderLoop) {
-				value = runComponent(ctx);
+				value = enqueueComponentRun(ctx);
 			}
 
 			if (isPromiseLike(value)) {
@@ -2455,13 +2442,13 @@ function unmountComponent(ctx: ContextImpl): void {
 			}
 		} else {
 			// async generator component
-			resumeCtxIterator(ctx);
+			resumePropsIterator(ctx);
 		}
 	}
 }
 
 function returnComponent(ctx: ContextImpl): void {
-	resumeCtxIterator(ctx);
+	resumePropsIterator(ctx);
 	if (!(ctx.f & IsDone) && typeof ctx.iterator!.return === "function") {
 		ctx.f |= IsSyncExecuting;
 		try {
@@ -2608,7 +2595,7 @@ function handleChildError<TNode>(
 		throw err;
 	}
 
-	resumeCtxIterator(ctx);
+	resumePropsIterator(ctx);
 	let iteration: ChildrenIteratorResult | Promise<ChildrenIteratorResult>;
 	try {
 		ctx.f |= IsSyncExecuting;
