@@ -466,6 +466,7 @@ class Retainer<TNode> {
 	 * fulfills. Will be set to undefined once this subtree fully renders.
 	 */
 	declare fallbackValue: RetainerChild<TNode>;
+
 	declare inflightValue: Promise<ElementValue<TNode>> | undefined;
 	declare onNextValues: Function | undefined;
 	constructor(el: Element) {
@@ -1230,7 +1231,7 @@ const IsInRenderLoop = 1 << 2;
  * A flag which is true when the component starts the render loop but has not
  * yielded yet.
  *
- * Used to make sure that components yield once per loop.
+ * Used to make sure that components yield at least once per loop.
  */
 const NeedsToYield = 1 << 3;
 
@@ -2333,6 +2334,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 			value = handleChildError(ctx, err);
 		}
 
+		// TODO: this can be done more elegantly
 		let oldValue: Promise<TResult> | TResult;
 		if (ctx.ret.inflightValue) {
 			// The value passed back into the generator as the argument to the next
