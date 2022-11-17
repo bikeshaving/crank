@@ -129,7 +129,6 @@ test("sync generator throws independently", () => {
 
 // TODO: figure out how to test for an unhandled promise rejection
 // When run this test should fail rather than timing out.
-// eslint-disable-next-line
 test.skip("async generator throws independently", async () => {
 	const err = new Error("async generator throws independently");
 	async function* Thrower(this: Context) {
@@ -140,14 +139,14 @@ test.skip("async generator throws independently", async () => {
 	}
 
 	await renderer.render(<Thrower />, document.body);
+	await new Promise(() => {});
 });
 
 test("async generator throws in async generator", async () => {
 	const mock = Sinon.fake();
-	const err = new Error("async generator throws in async generator");
 	/* eslint-disable require-yield */
 	async function* Thrower() {
-		throw err;
+		throw new Error("async generator throws in async generator");
 	}
 	/* eslint-enable require-yield */
 
@@ -165,8 +164,8 @@ test("async generator throws in async generator", async () => {
 	try {
 		await renderer.render(<Component />, document.body);
 		Assert.unreachable();
-	} catch (err1) {
-		Assert.is(err, err1);
+	} catch (err: any) {
+		Assert.is(err.message, "async generator throws in async generator");
 	}
 
 	Assert.is(mock.callCount, 1);
@@ -174,7 +173,7 @@ test("async generator throws in async generator", async () => {
 
 // TODO: figure out why this test causes an unhandled rejection
 // eslint-disable-next-line
-test.skip("async generator throws in async generator after yield", async () => {
+test("async generator throws in async generator after yield", async () => {
 	const mock = Sinon.fake();
 	const err = new Error(
 		"async generator throws in async generator after yield",
@@ -199,7 +198,6 @@ test.skip("async generator throws in async generator after yield", async () => {
 
 	await renderer.render(<Component />, document.body);
 	Assert.is(document.body.innerHTML, "1");
-	await renderer.render(<Component />, document.body);
 	try {
 		await renderer.render(<Component />, document.body);
 		Assert.unreachable();
@@ -208,7 +206,6 @@ test.skip("async generator throws in async generator after yield", async () => {
 	}
 
 	Assert.is(mock.callCount, 1);
-	await new Promise(() => {});
 });
 
 test("sync function throws, sync generator catches", () => {

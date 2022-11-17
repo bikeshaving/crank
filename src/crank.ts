@@ -2291,6 +2291,12 @@ async function runAsyncGenComponent<TNode, TResult>(
 		// block and value must be assigned at the same time.
 		let onValue!: Function;
 		ctx.inflightValue = new Promise((resolve) => (onValue = resolve));
+		if (ctx.f & IsUpdating) {
+			// We should not swallow unhandled promise rejections if the component is
+			// updating independently.
+			// TODO: Does this handle this.refresh() calls?
+			ctx.inflightValue.catch(NOOP);
+		}
 		let iteration: ChildrenIteratorResult;
 		try {
 			iteration = await iterationP;
@@ -2322,7 +2328,9 @@ async function runAsyncGenComponent<TNode, TResult>(
 
 			onValue(value);
 		} catch (err) {
-			handleChildError(ctx, err);
+			// Do we need to catch potential errors here in the case of unhandled
+			// promise rejections?
+			value = handleChildError(ctx, err);
 		}
 
 		let oldValue: Promise<TResult> | TResult;
@@ -2365,7 +2373,6 @@ async function runAsyncGenComponent<TNode, TResult>(
 			}
 		}
 	} while (!(ctx.f & IsDone));
-	// TODO: This might make more sense as a recursive function
 }
 
 /**
