@@ -311,24 +311,6 @@ export function createElement<TTag extends Tag>(
 		props1.children = children[0];
 	}
 
-	// string aliases for the special tags
-	// TODO: Does this logic belong here, or in the Element constructor
-	// TODO: Rethink if we want to do this
-	switch (tag) {
-		case "$FRAGMENT":
-			tag = Fragment as any;
-			break;
-		case "$PORTAL":
-			tag = Portal as any;
-			break;
-		case "$COPY":
-			tag = Copy as any;
-			break;
-		case "$RAW":
-			tag = Raw as any;
-			break;
-	}
-
 	return new Element(tag, props1, key, ref, static_);
 }
 
