@@ -2,7 +2,7 @@ import {createElement} from "./crank.js";
 import type {Element} from "./crank.js";
 
 const cache = new Map<string, ParseResult>();
-export function xm(
+export function jsx(
 	spans: TemplateStringsArray,
 	...expressions: Array<unknown>
 ): Element {
@@ -151,10 +151,10 @@ function parse(spans: ArrayLike<string>): ParseResult {
 
 							if (newline) {
 								if (span[Math.max(0, match.index - 1)] === "\\") {
-									// We preserve whitespace before escaped newlines.
-									//   xm` \
+									// We preserve whitespace before escaped newlines and have to
+									// remove the backslash.
+									//   jsx` \
 									//   `
-									// remove the backslash from output
 									before = before.slice(0, -1);
 								} else {
 									before = before.replace(/\s*$/, "");
@@ -170,7 +170,7 @@ function parse(spans: ArrayLike<string>): ParseResult {
 						if (comment) {
 							if (end === span.length) {
 								// Expression in a comment:
-								//   xm`<!-- ${exp} -->`
+								//   jsx`<!-- ${exp} -->`
 								matcher = CLOSING_COMMENT_RE;
 							}
 						} else if (tag) {
@@ -324,7 +324,7 @@ function parse(spans: ArrayLike<string>): ParseResult {
 						//
 						// This would most likely be the starting point for the logic of
 						// prop name expressions.
-						//   xm`<p ${name}=${value}>`
+						//   jsx`<p ${name}=${value}>`
 					}
 
 					break;

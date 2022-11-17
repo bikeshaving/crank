@@ -51,13 +51,13 @@
       "require": "./mod.cjs"
     },
     "./package.json": "./package.json",
-    "./xm": {
-      "import": "./xm.js",
-      "require": "./xm.cjs"
+    "./jsx": {
+      "import": "./jsx.js",
+      "require": "./jsx.cjs"
     },
-    "./xm.js": {
-      "import": "./xm.js",
-      "require": "./xm.cjs"
+    "./jsx.js": {
+      "import": "./jsx.js",
+      "require": "./jsx.cjs"
     },
     "./umd": {
       "require": "./umd.js"
