@@ -1410,6 +1410,7 @@ class ContextImpl<
 
 const _ContextImpl = Symbol.for("crank.ContextImpl");
 
+type ComponentProps<T> = T extends (props: infer U) => any ? U : T;
 /**
  * A class which is instantiated and passed to every component as its this
  * value. Contexts form a tree just like elements and all components in the
@@ -1441,7 +1442,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * component or via the context iterator methods. This property is mainly for
 	 * plugins or utilities which wrap contexts.
 	 */
-	get props(): TProps {
+	get props(): ComponentProps<TProps> {
 		return this[_ContextImpl].ret.el.props;
 	}
 
@@ -1457,7 +1458,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		return this[_ContextImpl].renderer.read(getValue(this[_ContextImpl].ret));
 	}
 
-	*[Symbol.iterator](): Generator<TProps> {
+	*[Symbol.iterator](): Generator<ComponentProps<TProps>> {
 		const impl = this[_ContextImpl];
 		if (impl.f & IsAsyncGen) {
 			throw new Error("Use for await…of in async generator components");
@@ -1479,7 +1480,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		}
 	}
 
-	async *[Symbol.asyncIterator](): AsyncGenerator<TProps> {
+	async *[Symbol.asyncIterator](): AsyncGenerator<ComponentProps<TProps>> {
 		const impl = this[_ContextImpl];
 		if (impl.f & IsSyncGen) {
 			throw new Error("Use for…of in sync generator components");
@@ -1508,7 +1509,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 						break;
 					}
 
-					yield props as TProps;
+					yield props as ComponentProps<TProps>;
 				}
 
 				if (impl.onPropsRequested) {

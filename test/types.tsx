@@ -245,6 +245,30 @@ test("GeneratorComponent", () => {
 	elem = <MyAsyncGeneratorComponent message={"message"} />;
 });
 
+test("Props inference", () => {
+	function* MyComponent(
+		this: Context<typeof MyComponent>,
+		props: {message: string},
+	): any {
+		for (const props1 of this) {
+			// @ts-expect-error
+			props1.poop;
+			yield props1.message;
+		}
+	}
+
+	async function* MyAsyncComponent(
+		this: Context<typeof MyAsyncComponent>,
+		props: {message: string},
+	): any {
+		for await (const props1 of this) {
+			// @ts-expect-error
+			props1.poop;
+			yield props1.message;
+		}
+	}
+});
+
 test("loose typings", () => {
 	function MyFunctionComponent(props: MyProps) {
 		let message: string = props.message;
