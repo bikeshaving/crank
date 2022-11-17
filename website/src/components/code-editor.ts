@@ -309,26 +309,12 @@ export function* CodeEditor(
 							min-height: 100%;
 						"
 					>
-					${lines.flatMap((line, li) => {
+					${lines.map((line) => {
 						const key = keyer.keyAt(index);
 						const length =
 							line.reduce((length, t) => length + t.length, 0) + "\n".length;
 						try {
-							const line1 = jsx`<${Line} $key=${key + "line"} line=${line} />`;
-							if (li % 10 === 0) {
-								return [
-									jsx`
-										<div
-											class="sentry"
-											$key=${key + "sentry"}
-											data-content=""
-										/>
-									`,
-									line1,
-								];
-							} else {
-								return [line1];
-							}
+							return jsx`<${Line} $key=${key + "line"} line=${line} />`;
 						} finally {
 							index += length;
 						}
