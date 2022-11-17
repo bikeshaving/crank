@@ -1,4 +1,4 @@
-import {xm} from "@b9g/crank";
+import {jsx, Raw} from "@b9g/crank";
 import type {Children} from "@b9g/crank";
 import {Page, Link, Script, Storage} from "../components/esbuild.js";
 import {Navbar} from "../components/navbar.js";
@@ -12,8 +12,8 @@ export interface RootProps {
 }
 
 export function Root({title, children, url, storage}: RootProps) {
-	return xm`
-		<$RAW value="<!DOCTYPE html>" />
+	return jsx`
+		<${Raw} value="<!DOCTYPE html>" />
 		<${Page} storage=${storage}>
 			<html lang="en">
 				<head>

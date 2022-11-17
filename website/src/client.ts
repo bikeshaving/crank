@@ -1,4 +1,4 @@
-import {xm} from "@b9g/crank";
+import {jsx} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom.js";
 
 import Prism from "prismjs";
@@ -33,7 +33,7 @@ for (const container of Array.from(containers)) {
 	const {code, lang} = (container as HTMLElement).dataset;
 	if (code != null && lang != null) {
 		renderer.render(
-			xm`
+			jsx`
 				<${CodeBlock}
 					value=${code}
 					lang=${lang}

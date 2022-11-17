@@ -1,4 +1,4 @@
-import {xm} from "@b9g/crank";
+import {jsx} from "@b9g/crank";
 import type {Children} from "@b9g/crank";
 
 export interface BlogContentProps {
@@ -8,11 +8,11 @@ export interface BlogContentProps {
 }
 
 export function BlogContent({title, publishDate, children}: BlogContentProps) {
-	return xm`
+	return jsx`
 		<h1>${title}</h1>
 		${
 			publishDate &&
-			xm`<p>${publishDate.toLocaleString("en-US", {
+			jsx`<p>${publishDate.toLocaleString("en-US", {
 				month: "long",
 				year: "numeric",
 				day: "numeric",

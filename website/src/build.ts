@@ -1,4 +1,4 @@
-import {xm} from "@b9g/crank";
+import {jsx} from "@b9g/crank";
 import {renderer} from "@b9g/crank/html.js";
 
 import fs from "fs-extra";
@@ -34,7 +34,7 @@ import Home from "./views/home.js";
 	// HOMEPAGE
 	await fs.writeFile(
 		path.join(dist, "index.html"),
-		await renderer.render(xm`<${Home} storage=${storage} />`),
+		await renderer.render(jsx`<${Home} storage=${storage} />`),
 	);
 }
 
@@ -62,7 +62,7 @@ import Guide from "./views/guide.js";
 				return;
 			}
 
-			const html = await renderer.render(xm`
+			const html = await renderer.render(jsx`
 				<${Guide} url=${url} storage=${storage} params=${match.params} />
 			`);
 
@@ -75,7 +75,7 @@ import Guide from "./views/guide.js";
 
 import BlogHome from "./views/blog-home.js";
 {
-	const html = await renderer.render(xm`
+	const html = await renderer.render(jsx`
 		<${BlogHome} storage=${storage} />
 	`);
 
@@ -106,7 +106,7 @@ import BlogPage from "./views/blog.js";
 				return;
 			}
 
-			const html = await renderer.render(xm`
+			const html = await renderer.render(jsx`
 				<${BlogPage} url=${url} storage=${storage} />
 			`);
 

@@ -1,4 +1,4 @@
-import {xm} from "@b9g/crank";
+import {jsx} from "@b9g/crank";
 import * as path from "path";
 
 import {Root} from "../components/root.js";
@@ -34,7 +34,7 @@ export default async function Guide({
 		attributes: {title},
 		body,
 	} = post;
-	return xm`
+	return jsx`
 		<${Root} title="Crank.js | ${title}" url=${url} storage=${storage}>
 			<${Sidebar} docs=${docs} url=${url} title="Guides" />
 			<main class="main">

@@ -1,4 +1,4 @@
-import {xm} from "@b9g/crank";
+import {jsx} from "@b9g/crank";
 import type {Context} from "@b9g/crank";
 import {CodeEditor} from "./code-editor.js";
 import {CodePreview} from "./code-preview.js";
@@ -17,7 +17,7 @@ export function* CodeBlock(
 	}
 
 	for ({value, lang} of this) {
-		yield xm`
+		yield jsx`
 			<div
 				style="
 					display: flex;
@@ -37,7 +37,7 @@ export function* CodeBlock(
 
 				${
 					isLive &&
-					xm`
+					jsx`
 						<div style="
 							position: sticky;
 							top: 80px;

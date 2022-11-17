@@ -1,4 +1,4 @@
-import {xm} from "@b9g/crank";
+import {jsx, Copy} from "@b9g/crank";
 import type {Context, Element} from "@b9g/crank";
 
 import {Edit} from "@b9g/revise/edit.js";
@@ -13,7 +13,7 @@ import type {ContentAreaElement} from "@b9g/revise/contentarea";
 function* Gutter(this: Context, {length}: {length: number}) {
 	const numbers: Array<any> = [];
 	for (let l = 0; l < length; l++) {
-		numbers.push(xm`
+		numbers.push(jsx`
 			<div class="prism-editor-linenumber">${l + 1}</div>
 		`);
 	}
@@ -25,19 +25,19 @@ function* Gutter(this: Context, {length}: {length: number}) {
 		} else {
 			if (length < newLength) {
 				for (let l = numbers.length; l < newLength; l++) {
-					numbers.push(xm`
+					numbers.push(jsx`
 						<div class="prism-editor-linenumber">${l + 1}</div>
 					`);
 				}
 			} else if (length > newLength) {
 				numbers.length = newLength;
 			} else {
-				yield xm`<$COPY />`;
+				yield jsx`<${Copy} />`;
 				continue;
 			}
 		}
 
-		yield xm`
+		yield jsx`
 			<div
 				style="
 					/* this has to match the css of lines or it gets misaligned :( */
@@ -64,9 +64,9 @@ const IS_CLIENT = typeof document !== "undefined";
 const TAB = "  ";
 
 function Line({line}: {line: Array<Token | string>}) {
-	return xm`
+	return jsx`
 		<div class="prism-line">
-			${line.length ? xm`<code>${printTokens(line)}</code>` : null}
+			${line.length ? jsx`<code>${printTokens(line)}</code>` : null}
 			<br />
 		</div>
 	`;
@@ -89,7 +89,7 @@ function printTokens(tokens: Array<Token | string>): Array<Element | string> {
 				className += " " + token.alias;
 			}
 
-			result.push(xm`<span class=${className}>${children}</span>`);
+			result.push(jsx`<span class=${className}>${children}</span>`);
 		}
 	}
 
@@ -273,7 +273,7 @@ export function* CodeEditor(
 		const lines = splitLines(Prism.tokenize(value || "", grammar));
 		//const lines = value.split("\n").map((l) => [l]).slice(0, -1);
 		let index = 0;
-		yield xm`
+		yield jsx`
 			<div
 				style="
 					display: flex;
@@ -283,7 +283,7 @@ export function* CodeEditor(
 					height: 100%;
 				"
 			>
-				${showGutter && xm`<${Gutter} length=${lines.length} />`}
+				${showGutter && jsx`<${Gutter} length=${lines.length} />`}
 				<${ContentArea}
 					value=${value}
 					renderSource=${renderSource}
@@ -314,10 +314,10 @@ export function* CodeEditor(
 						const length =
 							line.reduce((length, t) => length + t.length, 0) + "\n".length;
 						try {
-							const line1 = xm`<${Line} $key=${key + "line"} line=${line} />`;
+							const line1 = jsx`<${Line} $key=${key + "line"} line=${line} />`;
 							if (li % 10 === 0) {
 								return [
-									xm`
+									jsx`
 										<div
 											class="sentry"
 											$key=${key + "sentry"}

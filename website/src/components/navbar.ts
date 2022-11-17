@@ -1,11 +1,11 @@
-import {xm} from "@b9g/crank";
+import {jsx} from "@b9g/crank";
 
 export interface NavbarProps {
 	url: string;
 }
 
 export function Navbar({url}: NavbarProps) {
-	return xm`
+	return jsx`
 		<nav id="navbar" class="navbar">
 			<div class="navbar-group">
 				<div class="navbar-item">
