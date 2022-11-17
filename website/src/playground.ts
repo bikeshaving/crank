@@ -1,4 +1,4 @@
-import {xm} from "@b9g/crank";
+import {jsx} from "@b9g/crank";
 import type {Context} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
 
@@ -20,7 +20,7 @@ if (!window.customElements.get("content-area")) {
 //`;
 
 const EXAMPLE = `
-import {xm} from "@b9g/crank@beta/xm.js";
+import {jsx} from "@b9g/crank@beta";
 import {renderer} from "@b9g/crank@beta/dom";
 
 function *Timer() {
@@ -31,14 +31,14 @@ function *Timer() {
   }, 1000);
   try {
     for ({} of this) {
-      yield xm\`<div>\${seconds}s</div>\`;
+      yield jsx\`<div>\${seconds}s</div>\`;
     }
   } finally {
     clearInterval(interval);
   }
 }
 
-renderer.render(xm\`<\${Timer} />\`, document.body);
+renderer.render(jsx\`<\${Timer} />\`, document.body);
 `.trimLeft();
 
 function* Playground(this: Context, {}) {
@@ -63,7 +63,7 @@ function* Playground(this: Context, {}) {
 		//	window.location.hash = LZString.compressToEncodedURIComponent(value);
 		//});
 
-		yield xm`
+		yield jsx`
 			<div
 				style="
 					display: flex;
@@ -91,4 +91,4 @@ function* Playground(this: Context, {}) {
 }
 
 const el = document.getElementById("playground");
-renderer.render(xm`<${Playground} />`, el!);
+renderer.render(jsx`<${Playground} />`, el!);

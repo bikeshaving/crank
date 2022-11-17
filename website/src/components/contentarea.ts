@@ -1,4 +1,4 @@
-import {xm} from "@b9g/crank";
+import {jsx} from "@b9g/crank";
 import type {Context} from "@b9g/crank";
 import type {
 	ContentAreaElement,
@@ -96,7 +96,7 @@ export function* ContentArea(
 			});
 		}
 
-		yield xm`
+		yield jsx`
 			<content-area
 				...${rest}
 				$ref=${(el: ContentAreaElement) => (area = el)}

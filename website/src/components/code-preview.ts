@@ -1,4 +1,4 @@
-import {xm} from "@b9g/crank";
+import {jsx} from "@b9g/crank";
 import type {Context} from "@b9g/crank";
 import {debounce} from "../utils/fns.js";
 
@@ -41,14 +41,14 @@ export function* CodePreview(this: Context, {value}: {value: string}) {
 			this.flush(() => execute());
 		}
 
-		yield xm`
+		yield jsx`
 			<div style="height: 100%; display: flex; flex-direction: column">
 				<div style="padding: 1em; border-bottom: 1px solid white">
 					${errorMessage ? "Errored!" : loading ? "Loading..." : "Running!"}
 				</div>
 				${
 					errorMessage &&
-					xm`<pre
+					jsx`<pre
 						style="
 							color: red;
 							height: 80%;

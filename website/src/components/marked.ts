@@ -1,4 +1,4 @@
-import {xm} from "@b9g/crank";
+import {jsx, Raw} from "@b9g/crank";
 import type {Children, Component, Element} from "@b9g/crank";
 import {marked} from "marked";
 // TODO: This is probably a component
@@ -189,7 +189,7 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 	code({token}) {
 		const {text, lang} = token as marked.Tokens.Code;
 		const langClassName = lang ? `language-${lang}` : null;
-		return xm`
+		return jsx`
 			<pre class=${langClassName}>
 				<code class=${langClassName}>${text}</code>
 			</pre>
@@ -199,43 +199,43 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 	heading({token, children}) {
 		const {depth} = token as marked.Tokens.Heading;
 		const tag = `h${depth}`;
-		return xm`<${tag}>${children}<//>`;
+		return jsx`<${tag}>${children}<//>`;
 	},
 
 	// TODO: type: 'table';
 
-	hr: () => xm`<hr />`,
+	hr: () => jsx`<hr />`,
 
 	blockquote({children}) {
-		return xm`<blockquote>${children}</blockquote>`;
+		return jsx`<blockquote>${children}</blockquote>`;
 	},
 
 	list({token, children}) {
 		const {ordered, start} = token as marked.Tokens.List;
 		const tag = ordered ? "ol" : "ul";
 
-		return xm`
+		return jsx`
 			<${tag} start=${start && start !== 1 ? start : null}>${children}<//>
 		`;
 	},
 
 	list_item({children}) {
-		return xm`<li>${children}</li>`;
+		return jsx`<li>${children}</li>`;
 	},
 
 	checkmark({token}) {
 		const {checked} = token as unknown as Checkmark;
-		return xm`<input checked=${checked} disabled="" type="checkbox" />`;
+		return jsx`<input checked=${checked} disabled="" type="checkbox" />`;
 	},
 
 	paragraph({children}) {
-		return xm`<p>${children}</p>`;
+		return jsx`<p>${children}</p>`;
 	},
 
 	html({token}) {
 		// TODO: Is this all that’s necessary?
 		const {text} = token as marked.Tokens.HTML;
-		return xm`<$RAW value=${text} />`;
+		return jsx`<${Raw} value=${text} />`;
 	},
 
 	// TODO: type: 'def';
@@ -247,7 +247,7 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 	link({token, children}) {
 		const {href, title} = token as marked.Tokens.Link;
 		// TODO: url sanitization?
-		return xm`
+		return jsx`
 			<a href=${href} title=${title}>
 				${children}
 			</a>
@@ -256,23 +256,23 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 
 	image({token}) {
 		const {href, title, text} = token as marked.Tokens.Image;
-		return xm`<img src=${href} title=${title} alt=${text} />`;
+		return jsx`<img src=${href} title=${title} alt=${text} />`;
 	},
 
 	strong({children}) {
-		return xm`<strong>${children}</strong>`;
+		return jsx`<strong>${children}</strong>`;
 	},
 
 	em({children}) {
-		return xm`<em>${children}</em>`;
+		return jsx`<em>${children}</em>`;
 	},
 
 	codespan({token}) {
 		const {text} = token as marked.Tokens.Codespan;
-		return xm`<code>${text}</code>`;
+		return jsx`<code>${text}</code>`;
 	},
 
-	br: () => xm`<br />`,
+	br: () => jsx`<br />`,
 
 	// TODO: type: 'del';
 };
@@ -403,7 +403,7 @@ function build(
 			throw new Error(`Unknown tag "${token.type}"`);
 		}
 
-		result.push(xm`
+		result.push(jsx`
 			<${Tag} token=${token} rootProps=${rootProps}>
 				${children}
 			<//Tag>
@@ -547,6 +547,6 @@ const test8 = "<div>Hello <span>World</span></div>";
 const test9 = "<span>Hello <span>World</span></span>";
 var fuck = false;
 fuck = true;
-console.log(renderer.render(xm`<${Marked} markdown=${test1}/>`));
+console.log(renderer.render(jsx`<${Marked} markdown=${test1}/>`));
 fuck = false;
 */

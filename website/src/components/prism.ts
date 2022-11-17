@@ -1,4 +1,4 @@
-import {xm} from "@b9g/crank";
+import {jsx} from "@b9g/crank";
 import type {Context, Element} from "@b9g/crank";
 
 import {Edit} from "@b9g/revise/edit.js";
@@ -46,7 +46,7 @@ function* Preview(
 			}
 		});
 
-		yield xm`
+		yield jsx`
 			<iframe
 				class="preview"
 				c-ref=${(iframe1: any) => (iframe = iframe1)}
@@ -247,7 +247,7 @@ export function* CodeEditor(
 
 		const isClient = typeof document !== "undefined";
 		let cursor = 0;
-		yield xm`
+		yield jsx`
 			<div class="playground">
 				<${ContentArea}
 					$ref=${(area1: any) => (area = area1)}
@@ -268,7 +268,7 @@ export function* CodeEditor(
 							const key = keyer.keyAt(cursor);
 							const length = line.reduce((l, t) => l + t.length, 0);
 							cursor += length + 1;
-							return xm`
+							return jsx`
 								<div $key=${key}>
 									<code>${printTokens(line)}</code><br />
 								</div>
@@ -279,7 +279,7 @@ export function* CodeEditor(
 				${
 					typeof document !== "undefined" &&
 					rest === "live" &&
-					xm`<${Preview} value=${value} />`
+					jsx`<${Preview} value=${value} />`
 				}
 			</div>
 		`;
@@ -383,7 +383,7 @@ function printTokens(tokens: Array<Token | string>): Array<Element | string> {
 				className += " " + token.alias;
 			}
 
-			result.push(xm`<span class=${className}>${children}</span>`);
+			result.push(jsx`<span class=${className}>${children}</span>`);
 		}
 	}
 
