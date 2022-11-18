@@ -1764,8 +1764,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		// Each early return within the try block returns true because while the
 		// return value is overridden in the finally block, TypeScript
 		// (justifiably) does not recognize the unsafe return statement.
-		//
-		// TODO: Run all callbacks even if one of them errors
 		try {
 			setEventProperty(ev, "eventPhase", CAPTURING_PHASE);
 			for (let i = path.length - 1; i >= 0; i--) {
@@ -1775,7 +1773,12 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 					setEventProperty(ev, "currentTarget", target.ctx);
 					for (const record of listeners) {
 						if (record.type === ev.type && record.options.capture) {
-							record.callback.call(target.ctx, ev);
+							try {
+								record.callback.call(target.ctx, ev);
+							} catch (err) {
+								console.error(err);
+							}
+
 							if (immediateCancelBubble) {
 								return true;
 							}
@@ -1803,7 +1806,12 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 				if (listeners) {
 					for (const record of listeners) {
 						if (record.type === ev.type) {
-							record.callback.call(ctx.ctx, ev);
+							try {
+								record.callback.call(ctx.ctx, ev);
+							} catch (err) {
+								console.error(err);
+							}
+
 							if (immediateCancelBubble) {
 								return true;
 							}
@@ -1825,7 +1833,12 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 						setEventProperty(ev, "currentTarget", target.ctx);
 						for (const record of listeners) {
 							if (record.type === ev.type && !record.options.capture) {
-								record.callback.call(target.ctx, ev);
+								try {
+									record.callback.call(target.ctx, ev);
+								} catch (err) {
+									console.error(err);
+								}
+
 								if (immediateCancelBubble) {
 									return true;
 								}
@@ -1838,8 +1851,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 					}
 				}
 			}
-		} catch (err) {
-			console.error(err);
 		} finally {
 			setEventProperty(ev, "eventPhase", NONE);
 			setEventProperty(ev, "currentTarget", null);
