@@ -313,7 +313,20 @@ test("unmount and dispatch", () => {
 	Assert.is(listener2.callCount, 0);
 });
 
-test("error thrown in listener and dispatchEvent", () => {
+test("event props", () => {
+	let ctx!: Context;
+	function Component(this: Context) {
+		ctx = this;
+		return <span>Hello</span>;
+	}
+
+	const mock = Sinon.fake();
+	renderer.render(<Component onfoo={mock} />, document.body);
+	ctx.dispatchEvent(new Event("foo"));
+	Assert.is(mock.callCount, 1);
+});
+
+test("error thrown in listener", () => {
 	let ctx!: Context;
 	function Component(this: Context) {
 		ctx = this;
@@ -341,17 +354,36 @@ test("error thrown in listener and dispatchEvent", () => {
 	}
 });
 
-test("event props", () => {
+test("errors do not affect other listeners", () => {
 	let ctx!: Context;
 	function Component(this: Context) {
 		ctx = this;
 		return <span>Hello</span>;
 	}
 
-	const mock = Sinon.fake();
-	renderer.render(<Component onfoo={mock} />, document.body);
-	ctx.dispatchEvent(new Event("foo"));
-	Assert.is(mock.callCount, 1);
+	renderer.render(
+		<div>
+			<Component />
+		</div>,
+		document.body,
+	);
+
+	const mock = Sinon.stub(console, "error");
+	const listener1 = () => {
+		throw new Error("errors do not affect other listeners");
+	};
+
+	const listener2 = Sinon.mock();
+
+	try {
+		ctx.addEventListener("foo", listener1);
+		ctx.addEventListener("foo", listener2);
+		ctx.dispatchEvent(new Event("foo"));
+		Assert.is(mock.callCount, 1);
+		Assert.is(listener2.callCount, 1);
+	} finally {
+		mock.restore();
+	}
 });
 
 test.run();
