@@ -1459,30 +1459,30 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	}
 
 	*[Symbol.iterator](): Generator<ComponentProps<TProps>> {
-		const impl = this[_ContextImpl];
-		if (impl.f & IsAsyncGen) {
+		const ctx = this[_ContextImpl];
+		if (ctx.f & IsAsyncGen) {
 			throw new Error("Use for await…of in async generator components");
 		}
 
 		try {
-			impl.f |= IsInRenderLoop;
-			while (!(impl.f & IsUnmounted)) {
-				if (impl.f & NeedsToYield) {
+			ctx.f |= IsInRenderLoop;
+			while (!(ctx.f & IsUnmounted)) {
+				if (ctx.f & NeedsToYield) {
 					throw new Error("Context iterated twice without a yield");
 				} else {
-					impl.f |= NeedsToYield;
+					ctx.f |= NeedsToYield;
 				}
 
-				yield impl.ret.el.props!;
+				yield ctx.ret.el.props!;
 			}
 		} finally {
-			impl.f &= ~IsInRenderLoop;
+			ctx.f &= ~IsInRenderLoop;
 		}
 	}
 
 	async *[Symbol.asyncIterator](): AsyncGenerator<ComponentProps<TProps>> {
-		const impl = this[_ContextImpl];
-		if (impl.f & IsSyncGen) {
+		const ctx = this[_ContextImpl];
+		if (ctx.f & IsSyncGen) {
 			throw new Error("Use for…of in sync generator components");
 		}
 
@@ -1490,38 +1490,36 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			// await an empty promise to prevent the IsInRenderLoop flag from
 			// returning false positives in the case of async generator components
 			// which immediately enter the loop
-			impl.f |= IsInRenderLoop;
-			while (!(impl.f & IsUnmounted)) {
-				if (impl.f & NeedsToYield) {
+			ctx.f |= IsInRenderLoop;
+			while (!(ctx.f & IsUnmounted)) {
+				if (ctx.f & NeedsToYield) {
 					throw new Error("Context iterated twice without a yield");
 				} else {
-					impl.f |= NeedsToYield;
+					ctx.f |= NeedsToYield;
 				}
 
-				if (impl.f & PropsAvailable) {
-					impl.f &= ~PropsAvailable;
-					yield impl.ret.el.props;
+				if (ctx.f & PropsAvailable) {
+					ctx.f &= ~PropsAvailable;
+					yield ctx.ret.el.props;
 				} else {
-					const props = await new Promise(
-						(resolve) => (impl.onProps = resolve),
-					);
-					if (impl.f & IsUnmounted) {
+					const props = await new Promise((resolve) => (ctx.onProps = resolve));
+					if (ctx.f & IsUnmounted) {
 						break;
 					}
 
 					yield props as ComponentProps<TProps>;
 				}
 
-				if (impl.onPropsRequested) {
-					impl.onPropsRequested();
-					impl.onPropsRequested = undefined;
+				if (ctx.onPropsRequested) {
+					ctx.onPropsRequested();
+					ctx.onPropsRequested = undefined;
 				}
 			}
 		} finally {
-			impl.f &= ~IsInRenderLoop;
-			if (impl.onPropsRequested) {
-				impl.onPropsRequested();
-				impl.onPropsRequested = undefined;
+			ctx.f &= ~IsInRenderLoop;
+			if (ctx.onPropsRequested) {
+				ctx.onPropsRequested();
+				ctx.onPropsRequested = undefined;
 			}
 		}
 	}
@@ -1539,21 +1537,21 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * async iterator to suspend.
 	 */
 	refresh(): Promise<TResult> | TResult {
-		const impl = this[_ContextImpl];
-		if (impl.f & IsUnmounted) {
+		const ctx = this[_ContextImpl];
+		if (ctx.f & IsUnmounted) {
 			console.error("Component is unmounted");
-			return impl.renderer.read(undefined);
-		} else if (impl.f & IsSyncExecuting) {
+			return ctx.renderer.read(undefined);
+		} else if (ctx.f & IsSyncExecuting) {
 			console.error("Component is already executing");
 			return this.value;
 		}
 
-		const value = enqueueComponentRun(impl);
+		const value = enqueueComponentRun(ctx);
 		if (isPromiseLike(value)) {
-			return (value as Promise<any>).then((value) => impl.renderer.read(value));
+			return (value as Promise<any>).then((value) => ctx.renderer.read(value));
 		}
 
-		return impl.renderer.read(value);
+		return ctx.renderer.read(value);
 	}
 
 	/**
@@ -1561,11 +1559,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * fire once per callback and update.
 	 */
 	schedule(callback: (value: TResult) => unknown): void {
-		const impl = this[_ContextImpl];
-		let callbacks = scheduleMap.get(impl);
+		const ctx = this[_ContextImpl];
+		let callbacks = scheduleMap.get(ctx);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
-			scheduleMap.set(impl, callbacks);
+			scheduleMap.set(ctx, callbacks);
 		}
 
 		callbacks.add(callback);
@@ -1576,21 +1574,21 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * rendered into the root. Will only fire once per callback and render.
 	 */
 	flush(callback: (value: TResult) => unknown): void {
-		const impl = this[_ContextImpl];
-		if (typeof impl.root !== "object" || impl.root === null) {
+		const ctx = this[_ContextImpl];
+		if (typeof ctx.root !== "object" || ctx.root === null) {
 			return;
 		}
 
-		let flushMap = flushMaps.get(impl.root);
+		let flushMap = flushMaps.get(ctx.root);
 		if (!flushMap) {
 			flushMap = new Map<ContextImpl, Set<Function>>();
-			flushMaps.set(impl.root, flushMap);
+			flushMaps.set(ctx.root, flushMap);
 		}
 
-		let callbacks = flushMap.get(impl);
+		let callbacks = flushMap.get(ctx);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
-			flushMap.set(impl, callbacks);
+			flushMap.set(ctx, callbacks);
 		}
 
 		callbacks.add(callback);
@@ -1601,11 +1599,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * fire once per callback.
 	 */
 	cleanup(callback: (value: TResult) => unknown): void {
-		const impl = this[_ContextImpl];
-		let callbacks = cleanupMap.get(impl);
+		const ctx = this[_ContextImpl];
+		let callbacks = cleanupMap.get(ctx);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
-			cleanupMap.set(impl, callbacks);
+			cleanupMap.set(ctx, callbacks);
 		}
 
 		callbacks.add(callback);
@@ -1615,11 +1613,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	consume(key: unknown): any;
 	consume(key: unknown): any {
 		for (
-			let parent = this[_ContextImpl].parent;
-			parent !== undefined;
-			parent = parent.parent
+			let ctx = this[_ContextImpl].parent;
+			ctx !== undefined;
+			ctx = ctx.parent
 		) {
-			const provisions = provisionMaps.get(parent);
+			const provisions = provisionMaps.get(ctx);
 			if (provisions && provisions.has(key)) {
 				return provisions.get(key)!;
 			}
@@ -1632,11 +1630,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	): void;
 	provide(key: unknown, value: any): void;
 	provide(key: unknown, value: any): void {
-		const impl = this[_ContextImpl];
-		let provisions = provisionMaps.get(impl);
+		const ctx = this[_ContextImpl];
+		let provisions = provisionMaps.get(ctx);
 		if (!provisions) {
 			provisions = new Map();
-			provisionMaps.set(impl, provisions);
+			provisionMaps.set(ctx, provisions);
 		}
 
 		provisions.set(key, value);
@@ -1647,17 +1645,17 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		listener: MappedEventListenerOrEventListenerObject<T> | null,
 		options?: boolean | AddEventListenerOptions,
 	): void {
-		const impl = this[_ContextImpl];
+		const ctx = this[_ContextImpl];
 		let listeners: Array<EventListenerRecord>;
 		if (!isListenerOrListenerObject(listener)) {
 			return;
 		} else {
-			const listeners1 = listenersMap.get(impl);
+			const listeners1 = listenersMap.get(ctx);
 			if (listeners1) {
 				listeners = listeners1;
 			} else {
 				listeners = [];
-				listenersMap.set(impl, listeners);
+				listenersMap.set(ctx, listeners);
 			}
 		}
 
@@ -1669,7 +1667,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			callback = listener;
 		}
 
-		const record: EventListenerRecord = {type, callback, listener, options};
+		const record: EventListenerRecord = {type, listener, callback, options};
 		if (options.once) {
 			record.callback = function (this: any) {
 				const i = listeners.indexOf(record);
@@ -1695,7 +1693,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		listeners.push(record);
 
 		// TODO: is it possible to separate out the EventTarget delegation logic
-		for (const value of getChildValues(impl.ret)) {
+		for (const value of getChildValues(ctx.ret)) {
 			if (isEventTarget(value)) {
 				value.addEventListener(record.type, record.callback, record.options);
 			}
@@ -1707,8 +1705,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		listener: MappedEventListenerOrEventListenerObject<T> | null,
 		options?: EventListenerOptions | boolean,
 	): void {
-		const impl = this[_ContextImpl];
-		const listeners = listenersMap.get(impl);
+		const ctx = this[_ContextImpl];
+		const listeners = listenersMap.get(ctx);
 		if (listeners == null || !isListenerOrListenerObject(listener)) {
 			return;
 		}
@@ -1729,7 +1727,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		listeners.splice(i, 1);
 
 		// TODO: is it possible to separate out the EventTarget delegation logic
-		for (const value of getChildValues(impl.ret)) {
+		for (const value of getChildValues(ctx.ret)) {
 			if (isEventTarget(value)) {
 				value.removeEventListener(record.type, record.callback, record.options);
 			}
@@ -1737,10 +1735,10 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	}
 
 	dispatchEvent(ev: Event): boolean {
-		const impl = this[_ContextImpl];
+		const ctx = this[_ContextImpl];
 		const path: Array<ContextImpl> = [];
 		for (
-			let parent = impl.parent;
+			let parent = ctx.parent;
 			parent !== undefined;
 			parent = parent.parent
 		) {
@@ -1756,7 +1754,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			immediateCancelBubble = true;
 			return stopImmediatePropagation.call(ev);
 		});
-		setEventProperty(ev, "target", impl.ctx);
+		setEventProperty(ev, "target", ctx.ctx);
 
 		// The only possible errors in this block are errors thrown by callbacks,
 		// and dispatchEvent will only log these errors rather than throwing
@@ -1791,13 +1789,21 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			}
 
 			{
-				const listeners = listenersMap.get(impl);
+				setEventProperty(ev, "eventPhase", AT_TARGET);
+				setEventProperty(ev, "currentTarget", ctx.ctx);
+				const propCallback = ctx.ret.el.props["on" + ev.type];
+				if (propCallback != null) {
+					propCallback(ev);
+					if (immediateCancelBubble || ev.cancelBubble) {
+						return true;
+					}
+				}
+
+				const listeners = listenersMap.get(ctx);
 				if (listeners) {
-					setEventProperty(ev, "eventPhase", AT_TARGET);
-					setEventProperty(ev, "currentTarget", impl.ctx);
 					for (const record of listeners) {
 						if (record.type === ev.type) {
-							record.callback.call(impl.ctx, ev);
+							record.callback.call(ctx.ctx, ev);
 							if (immediateCancelBubble) {
 								return true;
 							}
@@ -1833,7 +1839,6 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 				}
 			}
 		} catch (err) {
-			// TODO: Use setTimeout to rethrow the error.
 			console.error(err);
 		} finally {
 			setEventProperty(ev, "eventPhase", NONE);
@@ -2492,8 +2497,10 @@ function isListenerOrListenerObject(
 
 interface EventListenerRecord {
 	type: string;
-	callback: MappedEventListener<any>;
+	// listener is the original value passed to addEventListener, callback is the
+	// transformed function
 	listener: MappedEventListenerOrEventListenerObject<any>;
+	callback: MappedEventListener<any>;
 	options: AddEventListenerOptions;
 }
 
