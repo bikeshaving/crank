@@ -341,4 +341,17 @@ test("error thrown in listener and dispatchEvent", () => {
 	}
 });
 
+test("event props", () => {
+	let ctx!: Context;
+	function Component(this: Context) {
+		ctx = this;
+		return <span>Hello</span>;
+	}
+
+	const mock = Sinon.fake();
+	renderer.render(<Component onfoo={mock} />, document.body);
+	ctx.dispatchEvent(new Event("foo"));
+	Assert.is(mock.callCount, 1);
+});
+
 test.run();
