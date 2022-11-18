@@ -1307,28 +1307,22 @@ class ContextImpl<
 	TRoot extends TNode = TNode,
 	TResult = unknown,
 > {
-	/**
-	 * flags - A bitmask. See CONTEXT FLAGS above.
-	 */
+	/** A bitmask. See CONTEXT FLAGS above. */
 	declare f: number;
 
-	/**
-	 * ctx - The actual object passed as this to components.
-	 */
-	declare ctx: Context<unknown, TResult>;
+	/** The actual context associated with this impl. */
+	declare owner: Context<unknown, TResult>;
 
 	/**
-	 * renderer - The renderer which created this context.
+	 * The renderer which created this context.
 	 */
 	declare renderer: RendererImpl<TNode, TScope, TRoot, TResult>;
 
-	/**
-	 * root - The root node as set by the nearest ancestor portal.
-	 */
+	/** The root node as set by the nearest ancestor portal. */
 	declare root: TRoot | undefined;
 
 	/**
-	 * host - The nearest host or portal retainer.
+	 * The nearest ancestor host or portal retainer.
 	 *
 	 * When refresh is called, the host element will be arranged as the last step
 	 * of the commit, to make sure the parent’s children properly reflects the
@@ -1336,42 +1330,34 @@ class ContextImpl<
 	 */
 	declare host: Retainer<TNode>;
 
-	/**
-	 * parent - The parent context.
-	 */
+	/** The parent context impl. */
 	declare parent: ContextImpl<TNode, TScope, TRoot, TResult> | undefined;
 
-	/**
-	 * scope - The value of the scope at the point of element’s creation.
-	 */
+	/** The value of the scope at the point of element’s creation. */
 	declare scope: TScope | undefined;
 
-	/**
-	 * retainer - The internal node associated with this context.
-	 */
+	/** The internal node associated with this context. */
 	declare ret: Retainer<TNode>;
 
 	/**
-	 * iterator - The iterator returned by the component function.
+	 * The iterator returned by the component function.
+	 *
+	 * Existence of this property implies that the component is a generator
+	 * component. It is deleted when a component is returned.
 	 */
 	declare iterator:
 		| Iterator<Children, Children | void, unknown>
 		| AsyncIterator<Children, Children | void, unknown>
 		| undefined;
 
-	/*** async properties ***/
-	// See the runCtx()/stepCtx()/advanceCtx() functions for more notes on the
-	// inflight/enqueued block/value properties.
+	// The following properties are used to implement the
 	declare inflightBlock: Promise<unknown> | undefined;
 	declare inflightValue: Promise<ElementValue<TNode>> | undefined;
 	declare enqueuedBlock: Promise<unknown> | undefined;
 	declare enqueuedValue: Promise<ElementValue<TNode>> | undefined;
 
-	/**
-	 * onProps - A callback used in conjunction with the IsAvailable flag to
-	 * implement the props async iterator. See the Symbol.asyncIterator method
-	 * and the resumeCtxIterator function.
-	 */
+	// The following callbacks are used to implement the async generator render
+	// loop behavior.
 	declare onProps: ((props: Record<string, any>) => unknown) | undefined;
 	declare onPropsRequested: Function | undefined;
 	constructor(
@@ -1383,7 +1369,7 @@ class ContextImpl<
 		ret: Retainer<TNode>,
 	) {
 		this.f = 0;
-		this.ctx = new Context(this);
+		this.owner = new Context(this);
 		this.renderer = renderer;
 		this.root = root;
 		this.host = host;
@@ -1747,7 +1733,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 			immediateCancelBubble = true;
 			return stopImmediatePropagation.call(ev);
 		});
-		setEventProperty(ev, "target", ctx.ctx);
+		setEventProperty(ev, "target", ctx.owner);
 
 		// The only possible errors in this block are errors thrown by callbacks,
 		// and dispatchEvent will only log these errors rather than throwing
@@ -1763,11 +1749,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 				const target = path[i];
 				const listeners = listenersMap.get(target);
 				if (listeners) {
-					setEventProperty(ev, "currentTarget", target.ctx);
+					setEventProperty(ev, "currentTarget", target.owner);
 					for (const record of listeners) {
 						if (record.type === ev.type && record.options.capture) {
 							try {
-								record.callback.call(target.ctx, ev);
+								record.callback.call(target.owner, ev);
 							} catch (err) {
 								console.error(err);
 							}
@@ -1786,7 +1772,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 			{
 				setEventProperty(ev, "eventPhase", AT_TARGET);
-				setEventProperty(ev, "currentTarget", ctx.ctx);
+				setEventProperty(ev, "currentTarget", ctx.owner);
 				const propCallback = ctx.ret.el.props["on" + ev.type];
 				if (propCallback != null) {
 					propCallback(ev);
@@ -1800,7 +1786,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 					for (const record of listeners) {
 						if (record.type === ev.type) {
 							try {
-								record.callback.call(ctx.ctx, ev);
+								record.callback.call(ctx.owner, ev);
 							} catch (err) {
 								console.error(err);
 							}
@@ -1823,11 +1809,11 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 					const target = path[i];
 					const listeners = listenersMap.get(target);
 					if (listeners) {
-						setEventProperty(ev, "currentTarget", target.ctx);
+						setEventProperty(ev, "currentTarget", target.owner);
 						for (const record of listeners) {
 							if (record.type === ev.type && !record.options.capture) {
 								try {
-									record.callback.call(target.ctx, ev);
+									record.callback.call(target.owner, ev);
 								} catch (err) {
 									console.error(err);
 								}
@@ -2192,7 +2178,7 @@ function runComponent<TNode, TResult>(
 		clearEventListeners(ctx);
 		let result: ReturnType<Component>;
 		try {
-			result = (ret.el.tag as Component).call(ctx.ctx, ret.el.props);
+			result = (ret.el.tag as Component).call(ctx.owner, ret.el.props);
 		} catch (err) {
 			ctx.f |= IsErrored;
 			throw err;
@@ -2246,8 +2232,7 @@ function runComponent<TNode, TResult>(
 		if (!initial) {
 			try {
 				ctx.f |= IsSyncExecuting;
-				const oldValue = ctx.renderer.read(getValue(ret));
-				iteration = ctx.iterator!.next(oldValue);
+				iteration = ctx.iterator!.next(ctx.renderer.read(getValue(ret)));
 			} catch (err) {
 				ctx.f |= IsErrored;
 				throw err;
@@ -2437,7 +2422,8 @@ function unmountComponent(ctx: ContextImpl): void {
 				}
 			}
 		} else if (ctx.f & IsAsyncGen) {
-			// async generator component
+			// The logic for unmounting async generator components is in the
+			// runAsyncGenComponent function.
 			resumePropsIterator(ctx);
 		}
 	}
