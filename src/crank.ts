@@ -1244,13 +1244,6 @@ const NeedsToYield = 1 << 3;
 const PropsAvailable = 1 << 4;
 
 /**
- * A flag which is set when a generator components returns, i.e. the done
- * property on the iteration is true. Generator components will stick to their
- * last rendered value and ignore further updates.
- */
-const IsDone = 1 << 5;
-
-/**
  * A flag which is set when a component errors.
  *
  * NOTE: This is mainly used to prevent some false positives in component
@@ -2192,10 +2185,6 @@ function runComponent<TNode, TResult>(
 	Promise<ElementValue<TNode>> | ElementValue<TNode>,
 ] {
 	const ret = ctx.ret;
-	if (ctx.f & IsDone) {
-		return [undefined, getValue(ret)];
-	}
-
 	const initial = !ctx.iterator;
 	if (initial) {
 		resumePropsIterator(ctx);
@@ -2237,7 +2226,7 @@ function runComponent<TNode, TResult>(
 			ctx.f |= IsSyncExecuting;
 			iteration = ctx.iterator!.next();
 		} catch (err) {
-			ctx.f |= IsDone | IsErrored;
+			ctx.f |= IsErrored;
 			throw err;
 		} finally {
 			ctx.f &= ~IsSyncExecuting;
@@ -2260,7 +2249,7 @@ function runComponent<TNode, TResult>(
 				const oldValue = ctx.renderer.read(getValue(ret));
 				iteration = ctx.iterator!.next(oldValue);
 			} catch (err) {
-				ctx.f |= IsDone | IsErrored;
+				ctx.f |= IsErrored;
 				throw err;
 			} finally {
 				ctx.f &= ~IsSyncExecuting;
@@ -2272,7 +2261,8 @@ function runComponent<TNode, TResult>(
 		}
 
 		if (iteration.done) {
-			ctx.f |= IsDone;
+			ctx.f &= ~IsSyncGen;
+			ctx.iterator = undefined;
 		}
 
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
@@ -2290,11 +2280,8 @@ function runComponent<TNode, TResult>(
 			value = handleChildError(ctx, err);
 		}
 
-		if (isPromiseLike(value)) {
-			return [value.catch(NOOP), value];
-		}
-
-		return [undefined, value];
+		const block = isPromiseLike(value) ? value.catch(NOOP) : undefined;
+		return [block, value];
 	} else {
 		// async generator component
 		return [undefined, ctx.inflightValue];
@@ -2305,70 +2292,81 @@ async function runAsyncGenComponent<TNode, TResult>(
 	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
 	iterationP: Promise<ChildrenIteratorResult>,
 ): Promise<void> {
-	do {
-		// block and value must be assigned at the same time.
-		let onValue!: Function;
-		ctx.inflightValue = new Promise((resolve) => (onValue = resolve));
-		if (ctx.f & IsUpdating) {
-			// We should not swallow unhandled promise rejections if the component is
-			// updating independently.
-			// TODO: Does this handle this.refresh() calls?
-			ctx.inflightValue.catch(NOOP);
-		}
-		let iteration: ChildrenIteratorResult;
-		try {
-			iteration = await iterationP;
-		} catch (err) {
-			ctx.f |= IsDone;
-			ctx.f |= IsErrored;
-			onValue(Promise.reject(err));
-			break;
-		} finally {
-			if (!(ctx.f & IsInRenderLoop)) {
-				ctx.f &= ~PropsAvailable;
+	let done = false;
+	try {
+		while (!done) {
+			// inflightValue must be set synchronously.
+			let onValue!: Function;
+			ctx.inflightValue = new Promise((resolve) => (onValue = resolve));
+			if (ctx.f & IsUpdating) {
+				// We should not swallow unhandled promise rejections if the component is
+				// updating independently.
+				// TODO: Does this handle this.refresh() calls?
+				ctx.inflightValue.catch(NOOP);
 			}
-		}
-
-		if (ctx.f & NeedsToYield) {
-			ctx.f &= ~NeedsToYield;
-		}
-
-		if (iteration.done) {
-			ctx.f |= IsDone;
-		}
-
-		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-		try {
-			value = updateComponentChildren<TNode, TResult>(ctx, iteration.value!);
-			if (isPromiseLike(value)) {
-				value = value.catch((err: any) => handleChildError(ctx, err));
+			let iteration: ChildrenIteratorResult;
+			try {
+				iteration = await iterationP;
+			} catch (err) {
+				ctx.f |= IsErrored;
+				onValue(Promise.reject(err));
+				break;
+			} finally {
+				if (!(ctx.f & IsInRenderLoop)) {
+					ctx.f &= ~PropsAvailable;
+				}
 			}
 
-			onValue(value);
-		} catch (err) {
-			// Do we need to catch potential errors here in the case of unhandled
-			// promise rejections?
-			value = handleChildError(ctx, err);
-		}
+			if (ctx.f & NeedsToYield) {
+				ctx.f &= ~NeedsToYield;
+			}
 
-		// TODO: this can be done more elegantly
-		let oldValue: Promise<TResult> | TResult;
-		if (ctx.ret.inflightValue) {
-			// The value passed back into the generator as the argument to the next
-			// method is a promise if an async generator component has async
-			// children. Sync generator components only resume when their children
-			// have fulfilled so the element’s inflight child values will never be
-			// defined.
-			oldValue = ctx.ret.inflightValue.then(
-				(value) => ctx.renderer.read(value),
-				() => ctx.renderer.read(undefined),
-			);
-		} else {
-			oldValue = ctx.renderer.read(getValue(ctx.ret));
-		}
+			done = !!iteration.done;
+			let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
+			try {
+				value = updateComponentChildren<TNode, TResult>(ctx, iteration.value!);
+				if (isPromiseLike(value)) {
+					value = value.catch((err: any) => handleChildError(ctx, err));
+				}
 
-		if (ctx.f & IsUnmounted) {
-			if (ctx.f & IsInRenderLoop) {
+				onValue(value);
+			} catch (err) {
+				// Do we need to catch potential errors here in the case of unhandled
+				// promise rejections?
+				value = handleChildError(ctx, err);
+			}
+
+			// TODO: this can be done more elegantly
+			let oldValue: Promise<TResult> | TResult;
+			if (ctx.ret.inflightValue) {
+				// The value passed back into the generator as the argument to the next
+				// method is a promise if an async generator component has async
+				// children. Sync generator components only resume when their children
+				// have fulfilled so the element’s inflight child values will never be
+				// defined.
+				oldValue = ctx.ret.inflightValue.then(
+					(value) => ctx.renderer.read(value),
+					() => ctx.renderer.read(undefined),
+				);
+			} else {
+				oldValue = ctx.renderer.read(getValue(ctx.ret));
+			}
+
+			if (ctx.f & IsUnmounted) {
+				if (ctx.f & IsInRenderLoop) {
+					try {
+						ctx.f |= IsSyncExecuting;
+						iterationP = ctx.iterator!.next(
+							oldValue,
+						) as Promise<ChildrenIteratorResult>;
+					} finally {
+						ctx.f &= ~IsSyncExecuting;
+					}
+				} else {
+					returnComponent(ctx);
+					break;
+				}
+			} else if (!done) {
 				try {
 					ctx.f |= IsSyncExecuting;
 					iterationP = ctx.iterator!.next(
@@ -2377,26 +2375,16 @@ async function runAsyncGenComponent<TNode, TResult>(
 				} finally {
 					ctx.f &= ~IsSyncExecuting;
 				}
-			} else {
-				returnComponent(ctx);
-				break;
-			}
-		} else if (!(ctx.f & IsDone)) {
-			try {
-				ctx.f |= IsSyncExecuting;
-				iterationP = ctx.iterator!.next(
-					oldValue,
-				) as Promise<ChildrenIteratorResult>;
-			} finally {
-				ctx.f &= ~IsSyncExecuting;
 			}
 		}
-	} while (!(ctx.f & IsDone));
+	} finally {
+		ctx.f &= ~IsAsyncGen;
+		ctx.iterator = undefined;
+	}
 }
 
 /**
- * Called to make props available to the props async iterator for async
- * generator components.
+ * Called to resume the props async iterator for async generator components.
  */
 function resumePropsIterator(ctx: ContextImpl): void {
 	if (ctx.onProps) {
@@ -2421,7 +2409,7 @@ function unmountComponent(ctx: ContextImpl): void {
 	}
 
 	ctx.f |= IsUnmounted;
-	if (ctx.iterator && !(ctx.f & IsDone)) {
+	if (ctx.iterator) {
 		if (ctx.f & IsSyncGen) {
 			let value: unknown;
 			if (ctx.f & IsInRenderLoop) {
@@ -2448,7 +2436,7 @@ function unmountComponent(ctx: ContextImpl): void {
 					returnComponent(ctx);
 				}
 			}
-		} else {
+		} else if (ctx.f & IsAsyncGen) {
 			// async generator component
 			resumePropsIterator(ctx);
 		}
@@ -2457,9 +2445,9 @@ function unmountComponent(ctx: ContextImpl): void {
 
 function returnComponent(ctx: ContextImpl): void {
 	resumePropsIterator(ctx);
-	if (!(ctx.f & IsDone) && typeof ctx.iterator!.return === "function") {
-		ctx.f |= IsSyncExecuting;
+	if (ctx.iterator && typeof ctx.iterator!.return === "function") {
 		try {
+			ctx.f |= IsSyncExecuting;
 			const iteration = ctx.iterator!.return();
 			if (isPromiseLike(iteration)) {
 				iteration.catch((err) => propagateError<unknown>(ctx.parent, err));
@@ -2468,8 +2456,6 @@ function returnComponent(ctx: ContextImpl): void {
 			ctx.f &= ~IsSyncExecuting;
 		}
 	}
-
-	ctx.f |= IsDone;
 }
 
 /*** EVENT TARGET UTILITIES ***/
@@ -2592,16 +2578,13 @@ function clearEventListeners(ctx: ContextImpl): void {
 }
 
 /*** ERROR HANDLING UTILITIES ***/
+// TODO:
 // TODO: generator components which throw errors should be recoverable
 function handleChildError<TNode>(
 	ctx: ContextImpl<TNode, unknown, TNode>,
 	err: unknown,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (
-		ctx.f & IsDone ||
-		!ctx.iterator ||
-		typeof ctx.iterator.throw !== "function"
-	) {
+	if (!ctx.iterator || typeof ctx.iterator.throw !== "function") {
 		throw err;
 	}
 
@@ -2611,7 +2594,7 @@ function handleChildError<TNode>(
 		ctx.f |= IsSyncExecuting;
 		iteration = ctx.iterator.throw(err);
 	} catch (err) {
-		ctx.f |= IsDone | IsErrored;
+		ctx.f |= IsErrored;
 		throw err;
 	} finally {
 		ctx.f &= ~IsSyncExecuting;
@@ -2621,20 +2604,22 @@ function handleChildError<TNode>(
 		return iteration.then(
 			(iteration) => {
 				if (iteration.done) {
-					ctx.f |= IsDone;
+					ctx.f &= ~IsAsyncGen;
+					ctx.iterator = undefined;
 				}
 
 				return updateComponentChildren(ctx, iteration.value as Children);
 			},
 			(err) => {
-				ctx.f |= IsDone | IsErrored;
+				ctx.f |= IsErrored;
 				throw err;
 			},
 		);
 	}
 
 	if (iteration.done) {
-		ctx.f |= IsDone;
+		ctx.f &= ~IsSyncGen;
+		ctx.iterator = undefined;
 	}
 
 	return updateComponentChildren(ctx, iteration.value as Children);

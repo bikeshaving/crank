@@ -306,18 +306,14 @@ test("async generator returns", async () => {
 		document.body,
 	);
 	Assert.is(document.body.innerHTML, "<div>Goodbye</div>");
+	Assert.is(Component.callCount, 1);
 	await renderer.render(
 		<div>
 			<Component />
 		</div>,
 		document.body,
 	);
-	await renderer.render(
-		<div>
-			<Component />
-		</div>,
-		document.body,
-	);
+	Assert.is(document.body.innerHTML, "<div>Hello</div>");
 	await renderer.render(
 		<div>
 			<Component />
@@ -325,7 +321,15 @@ test("async generator returns", async () => {
 		document.body,
 	);
 	Assert.is(document.body.innerHTML, "<div>Goodbye</div>");
-	Assert.is(Component.callCount, 1);
+	Assert.is(Component.callCount, 2);
+	await renderer.render(
+		<div>
+			<Component />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div>Hello</div>");
+	Assert.is(Component.callCount, 3);
 });
 
 test("try/finally", async () => {
