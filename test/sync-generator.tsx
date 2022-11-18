@@ -480,18 +480,14 @@ test("generator returns", () => {
 		document.body,
 	);
 	Assert.is(document.body.innerHTML, "<div>Goodbye</div>");
+	Assert.is(Component.callCount, 1);
 	renderer.render(
 		<div>
 			<Component />
 		</div>,
 		document.body,
 	);
-	renderer.render(
-		<div>
-			<Component />
-		</div>,
-		document.body,
-	);
+	Assert.is(document.body.innerHTML, "<div>Hello</div>");
 	renderer.render(
 		<div>
 			<Component />
@@ -499,7 +495,7 @@ test("generator returns", () => {
 		document.body,
 	);
 	Assert.is(document.body.innerHTML, "<div>Goodbye</div>");
-	Assert.is(Component.callCount, 1);
+	Assert.is(Component.callCount, 2);
 	renderer.render(<div>{null}</div>, document.body);
 	renderer.render(
 		<div>
@@ -508,8 +504,10 @@ test("generator returns", () => {
 		document.body,
 	);
 	Assert.is(document.body.innerHTML, "<div>Hello</div>");
+	Assert.is(Component.callCount, 3);
 });
 
+// TODO: not sure what the point of this test is with the new generator return behavior
 test("generator returns with async children and concurrent updates", async () => {
 	async function Child(): Promise<string> {
 		return "child";
@@ -534,7 +532,7 @@ test("generator returns with async children and concurrent updates", async () =>
 	);
 	Assert.is(document.body.innerHTML, "<div>child</div>");
 	await new Promise((resolve) => setTimeout(resolve, 100));
-	Assert.is(Component.callCount, 1);
+	Assert.is(Component.callCount, 2);
 });
 
 test("while true try/finally", () => {
