@@ -4,12 +4,45 @@ import type {Context, Element} from "@b9g/crank";
 import {Edit} from "@b9g/revise/edit.js";
 import {Keyer} from "@b9g/revise/keyer.js";
 import {EditHistory} from "@b9g/revise/history.js";
-import Prism from "prismjs";
 import type {Token} from "prismjs";
-import "prismjs/components/prism-typescript.js";
 import {ContentArea} from "./contentarea.js";
 import type {ContentAreaElement} from "@b9g/revise/contentarea";
 
+import Prism from "prismjs";
+//import "prismjs/components/prism-js-templates.js";
+//const templateString = Prism.languages.javascript['template-string'];
+//// @ts-ignore
+//const templateLiteralPattern = templateString[templateString.length - 1].pattern.source;
+//
+//function createTemplate(language: string, tag: string) {
+//	if (!Prism.languages[language]) {
+//		return undefined;
+//	}
+//
+//	return {
+//		pattern: RegExp('((?:' + tag + ')\\s*)' + templateLiteralPattern),
+//		lookbehind: true,
+//		greedy: true,
+//		inside: {
+//			'template-punctuation': {
+//				pattern: /^`|`$/,
+//				alias: 'string'
+//			},
+//			'embedded-code': {
+//				pattern: /[\s\S]+/,
+//				alias: language
+//			}
+//		}
+//	};
+//}
+//
+//// @ts-ignore
+//templateString.push(createTemplate('html', /\b(?:jsx)/.source));
+//
+//import "prismjs/components/prism-jsx.js";
+//import "prismjs/components/prism-typescript.js";
+//
+//console.log(templateString);
 function* Gutter(this: Context, {length}: {length: number}) {
 	const numbers: Array<any> = [];
 	for (let l = 0; l < length; l++) {

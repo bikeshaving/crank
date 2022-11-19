@@ -14,7 +14,7 @@ export default async function Index({storage}: {storage: Storage}) {
 			<div class="home">
 				<header class="hero">
 					<h1>Crank.js</h1>
-					<h2>The Just JavaScript UI framework.</h2>
+					<h2>The Just JavaScript UI framework</h2>
 				</header>
 			</div>
 		<//Root>
