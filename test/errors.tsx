@@ -13,129 +13,222 @@ test.after.each(() => {
 });
 
 test("sync function throws", () => {
-	const err = new Error("sync function throws");
 	function Thrower(): never {
-		throw err;
+		throw new Error("sync function throws");
 	}
 
 	try {
 		renderer.render(<Thrower />, document.body);
 		Assert.unreachable();
-	} catch (err1) {
-		Assert.is(err, err1);
+	} catch (err: any) {
+		Assert.is(err.message, "sync function throws");
 	}
 });
 
 test("async function throws", async () => {
-	const err = new Error("async function throws");
-
 	async function Thrower(): Promise<never> {
-		throw err;
+		throw new Error("async function throws");
 	}
 
 	try {
 		await renderer.render(<Thrower />, document.body);
 		Assert.unreachable();
-	} catch (err1) {
-		Assert.is(err, err1);
+	} catch (err: any) {
+		Assert.is(err.message, "async function throws");
 	}
 });
 
 test("sync generator throws", () => {
-	const err = new Error("sync generator throws");
-	function* Thrower() {
-		yield 1;
-		yield 2;
-		throw err;
+	function* Thrower(this: Context) {
+		let i = 0;
+		for ({} of this) {
+			if (i >= 2) {
+				throw new Error("sync generator throws");
+			}
+
+			yield i++;
+		}
 	}
 
 	renderer.render(<Thrower />, document.body);
-	Assert.is(document.body.innerHTML, "1");
+	Assert.is(document.body.innerHTML, "0");
 	renderer.render(<Thrower />, document.body);
-	Assert.is(document.body.innerHTML, "2");
+	Assert.is(document.body.innerHTML, "1");
 
 	try {
 		renderer.render(<Thrower />, document.body);
 		Assert.unreachable();
-	} catch (err1) {
-		Assert.is(err, err1);
+	} catch (err: any) {
+		Assert.is(err.message, "sync generator throws");
 	}
 });
 
 test("async generator throws", async () => {
-	const err = new Error("async generator throws");
 	async function* Thrower(this: Context) {
-		let i = 1;
-		for await (const _ of this) {
-			if (i > 3) {
-				throw err;
+		let i = 0;
+		for await ({} of this) {
+			if (i >= 2) {
+				throw new Error("async generator throws");
 			}
+
 			yield i++;
 		}
 	}
 
 	await renderer.render(<Thrower />, document.body);
+	Assert.is(document.body.innerHTML, "0");
 	await renderer.render(<Thrower />, document.body);
-	await renderer.render(<Thrower />, document.body);
+	Assert.is(document.body.innerHTML, "1");
 	try {
 		await renderer.render(<Thrower />, document.body);
 		Assert.unreachable();
-	} catch (err1) {
-		Assert.is(err, err1);
+	} catch (err: any) {
+		Assert.is(err.message, "async generator throws");
 	}
 });
 
-test("sync generator throws independently", () => {
-	const err = new Error("sync generator throws independently");
+test("sync generator throws refresh call", () => {
 	let ctx!: Context;
 	function* Thrower(this: Context) {
 		ctx = this;
-		yield 1;
-		yield 2;
-		yield 3;
-		throw err;
-	}
-
-	const mock = Sinon.fake();
-	function* Component(this: Context) {
-		try {
-			while (true) {
-				yield (
-					<div>
-						<Thrower />
-					</div>
-				);
+		let i = 0;
+		for ({} of this) {
+			if (i >= 2) {
+				throw new Error("sync generator throws by refresh");
 			}
-		} catch (err) {
-			mock(err);
-			throw err;
+
+			yield i++;
 		}
 	}
 
-	renderer.render(<Component />, document.body);
-	Assert.is(document.body.innerHTML, "<div>1</div>");
+	renderer.render(<Thrower />, document.body);
+	Assert.is(document.body.innerHTML, "0");
 	ctx.refresh();
-	ctx.refresh();
-	Assert.is(document.body.innerHTML, "<div>3</div>");
+	Assert.is(document.body.innerHTML, "1");
 	try {
 		ctx.refresh();
-	} catch (err1) {
-		Assert.is(err, err1);
+		Assert.unreachable();
+	} catch (err: any) {
+		Assert.is(err.message, "sync generator throws by refresh");
+	}
+});
+
+test("sync generator throws by parent refresh", () => {
+	function* Thrower(this: Context) {
+		let i = 0;
+		for ({} of this) {
+			if (i >= 2) {
+				throw new Error("sync generator throws by parent refresh");
+			}
+
+			yield i++;
+		}
 	}
 
-	Assert.is(mock.callCount, 1);
-	Assert.is(mock.lastCall.args[0], err);
+	let ctx!: Context;
+	function* Parent(this: Context) {
+		ctx = this;
+		for ({} of this) {
+			yield (
+				<div>
+					<Thrower />
+				</div>
+			);
+		}
+	}
+
+	renderer.render(<Parent />, document.body);
+	Assert.is(document.body.innerHTML, "<div>0</div>");
+	ctx.refresh();
+	Assert.is(document.body.innerHTML, "<div>1</div>");
+	try {
+		ctx.refresh();
+		Assert.unreachable();
+	} catch (err: any) {
+		Assert.is(err.message, "sync generator throws by parent refresh");
+	}
+});
+
+test("async generator throws by parent sync generator refresh", async () => {
+	async function* Thrower(this: Context) {
+		let i = 0;
+		for await ({} of this) {
+			if (i >= 2) {
+				throw new Error("async generator throws by parent refresh");
+			}
+
+			yield i++;
+		}
+	}
+
+	let ctx!: Context;
+	function* Parent(this: Context) {
+		ctx = this;
+		for ({} of this) {
+			yield (
+				<div>
+					<Thrower />
+				</div>
+			);
+		}
+	}
+
+	await renderer.render(<Parent />, document.body);
+	Assert.is(document.body.innerHTML, "<div>0</div>");
+	await ctx.refresh();
+	Assert.is(document.body.innerHTML, "<div>1</div>");
+	try {
+		await ctx.refresh();
+		Assert.unreachable();
+	} catch (err: any) {
+		Assert.is(err.message, "async generator throws by parent refresh");
+	}
+});
+
+test("async generator throws by parent async generator refresh", async () => {
+	async function* Thrower(this: Context) {
+		let i = 0;
+		for await ({} of this) {
+			if (i >= 2) {
+				throw new Error("async generator throws by parent refresh");
+			}
+
+			yield i++;
+		}
+	}
+
+	let ctx!: Context;
+	async function* Parent(this: Context) {
+		ctx = this;
+		for await ({} of this) {
+			yield (
+				<div>
+					<Thrower />
+				</div>
+			);
+		}
+	}
+
+	await renderer.render(<Parent />, document.body);
+	Assert.is(document.body.innerHTML, "<div>0</div>");
+	await ctx.refresh();
+	Assert.is(document.body.innerHTML, "<div>1</div>");
+	try {
+		await ctx.refresh();
+		Assert.unreachable();
+	} catch (err: any) {
+		Assert.is(err.message, "async generator throws by parent refresh");
+	}
 });
 
 // TODO: figure out how to test for an unhandled promise rejection
 // When run this test should fail rather than timing out.
 test.skip("async generator throws independently", async () => {
-	const err = new Error("async generator throws independently");
 	async function* Thrower(this: Context) {
 		yield 1;
 		yield 2;
 		yield 3;
-		throw err;
+		throw new Error("async generator throws independently");
 	}
 
 	await renderer.render(<Thrower />, document.body);

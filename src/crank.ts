@@ -1882,7 +1882,11 @@ function updateComponentChildren<TNode, TResult>(
 	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
 	children: Children,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (ctx.f & IsUnmounted || ctx.f & IsErrored) {
+	if (ctx.f & IsUnmounted) {
+		return;
+	} else if (ctx.f & IsErrored) {
+		// This branch is necessary for some race conditions where this function is
+		// called after iterator.throw() in async generator components.
 		return;
 	} else if (children === undefined) {
 		console.error(
@@ -2293,17 +2297,15 @@ async function runAsyncGenComponent<TNode, TResult>(
 			try {
 				iteration = await iterationP;
 			} catch (err) {
+				done = true;
 				ctx.f |= IsErrored;
 				onValue(Promise.reject(err));
 				break;
 			} finally {
+				ctx.f &= ~NeedsToYield;
 				if (!(ctx.f & IsInRenderLoop)) {
 					ctx.f &= ~PropsAvailable;
 				}
-			}
-
-			if (ctx.f & NeedsToYield) {
-				ctx.f &= ~NeedsToYield;
 			}
 
 			done = !!iteration.done;
@@ -2313,12 +2315,13 @@ async function runAsyncGenComponent<TNode, TResult>(
 				if (isPromiseLike(value)) {
 					value = value.catch((err: any) => handleChildError(ctx, err));
 				}
-
-				onValue(value);
 			} catch (err) {
+				done = true;
 				// Do we need to catch potential errors here in the case of unhandled
 				// promise rejections?
 				value = handleChildError(ctx, err);
+			} finally {
+				onValue(value);
 			}
 
 			// TODO: this can be done more elegantly
@@ -2564,8 +2567,6 @@ function clearEventListeners(ctx: ContextImpl): void {
 }
 
 /*** ERROR HANDLING UTILITIES ***/
-// TODO:
-// TODO: generator components which throw errors should be recoverable
 function handleChildError<TNode>(
 	ctx: ContextImpl<TNode, unknown, TNode>,
 	err: unknown,
