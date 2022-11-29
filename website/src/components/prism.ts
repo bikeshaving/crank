@@ -13,9 +13,9 @@ import {ContentArea} from "./contentarea.js";
 import * as Sucrase from "sucrase";
 
 function* Preview(
-	this: Context,
+	this: Context<typeof Preview>,
 	{value}: {value: string},
-): Generator<any, any, any> {
+): Generator<any> {
 	let iframe: HTMLIFrameElement;
 	for ({value} of this) {
 		this.flush(() => {

@@ -19,6 +19,12 @@ if (!window.customElements.get("content-area")) {
 	window.customElements.define("content-area", ContentAreaElement);
 }
 
+const gearInteractiveRoot = document.getElementById("gear-interactive");
+import {GearInteractive} from "./components/gear-interactive.js";
+if (gearInteractiveRoot) {
+	renderer.render(jsx`<${GearInteractive} />`, gearInteractiveRoot);
+}
+
 // 1. Provides a root div element to render into
 // 2. Renders components based on server/client environments.
 // 3. Serializes props and makes them available on the client
