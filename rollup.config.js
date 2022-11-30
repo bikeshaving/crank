@@ -51,12 +51,13 @@ function copyPackage() {
 }
 
 const input = [
-	"src/mod.ts",
+	"src/core.ts",
 	"src/crank.ts",
 	"src/dom.ts",
 	"src/html.ts",
 	"src/tags.ts",
 ];
+
 const ts = typescript2({
 	clean: true,
 	tsconfigOverride: {

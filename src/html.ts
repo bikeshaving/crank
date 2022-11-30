@@ -1,4 +1,5 @@
-import {ElementValue, Portal, Renderer, RendererImpl} from "./crank.js";
+import {Portal, Renderer} from "./core.js";
+import type {ElementValue, RendererImpl} from "./core.js";
 
 const voidTags = new Set([
 	"area",
