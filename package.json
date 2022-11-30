@@ -15,8 +15,8 @@
   "type": "module",
   "exports": {
     ".": {
-      "import": "./dist/mod.js",
-      "require": "./dist/mod.cjs"
+      "import": "./dist/crank.js",
+      "require": "./dist/crank.cjs"
     },
     "./crank": {
       "import": "./dist/crank.js",
@@ -42,13 +42,13 @@
       "import": "./dist/html.js",
       "require": "./dist/html.cjs"
     },
-    "./mod": {
-      "import": "./dist/mod.js",
-      "require": "./dist/mod.cjs"
+    "./core": {
+      "import": "./dist/core.js",
+      "require": "./dist/core.cjs"
     },
-    "./mod.js": {
-      "import": "./dist/mod.js",
-      "require": "./dist/mod.cjs"
+    "./core.js": {
+      "import": "./dist/core.js",
+      "require": "./dist/core.cjs"
     },
     "./package.json": "./dist/package.json",
     "./tags": {
@@ -66,9 +66,9 @@
       "require": "./dist/umd.js"
     }
   },
-  "main": "mod.cjs",
-  "module": "mod.js",
-  "types": "mod.d.ts",
+  "main": "crank.cjs",
+  "module": "crank.js",
+  "types": "crank.d.ts",
   "scripts": {
     "prebuild": "npm run clean",
     "build": "rollup -c rollup.config.js",

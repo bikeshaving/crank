@@ -5,7 +5,7 @@ import {
 	Portal,
 	Renderer,
 	RendererImpl,
-} from "./crank.js";
+} from "./core.js";
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
