@@ -15,55 +15,55 @@
   "type": "module",
   "exports": {
     ".": {
-      "import": "./mod.js",
-      "require": "./mod.cjs"
+      "import": "./dist/mod.js",
+      "require": "./dist/mod.cjs"
     },
     "./crank": {
-      "import": "./crank.js",
-      "require": "./crank.cjs"
+      "import": "./dist/crank.js",
+      "require": "./dist/crank.cjs"
     },
     "./crank.js": {
-      "import": "./crank.js",
-      "require": "./crank.cjs"
+      "import": "./dist/crank.js",
+      "require": "./dist/crank.cjs"
     },
     "./dom": {
-      "import": "./dom.js",
-      "require": "./dom.cjs"
+      "import": "./dist/dom.js",
+      "require": "./dist/dom.cjs"
     },
     "./dom.js": {
-      "import": "./dom.js",
-      "require": "./dom.cjs"
+      "import": "./dist/dom.js",
+      "require": "./dist/dom.cjs"
     },
     "./html": {
-      "import": "./html.js",
-      "require": "./html.cjs"
+      "import": "./dist/html.js",
+      "require": "./dist/html.cjs"
     },
     "./html.js": {
-      "import": "./html.js",
-      "require": "./html.cjs"
+      "import": "./dist/html.js",
+      "require": "./dist/html.cjs"
     },
     "./mod": {
-      "import": "./mod.js",
-      "require": "./mod.cjs"
+      "import": "./dist/mod.js",
+      "require": "./dist/mod.cjs"
     },
     "./mod.js": {
-      "import": "./mod.js",
-      "require": "./mod.cjs"
+      "import": "./dist/mod.js",
+      "require": "./dist/mod.cjs"
     },
-    "./package.json": "./package.json",
-    "./jsx": {
-      "import": "./jsx.js",
-      "require": "./jsx.cjs"
+    "./package.json": "./dist/package.json",
+    "./tags": {
+      "import": "./dist/tags.js",
+      "require": "./dist/tags.cjs"
     },
-    "./jsx.js": {
-      "import": "./jsx.js",
-      "require": "./jsx.cjs"
+    "./tags.js": {
+      "import": "./dist/tags.js",
+      "require": "./dist/tags.cjs"
     },
     "./umd": {
-      "require": "./umd.js"
+      "require": "./dist/umd.js"
     },
     "./umd.js": {
-      "require": "./umd.js"
+      "require": "./dist/umd.js"
     }
   },
   "main": "mod.cjs",

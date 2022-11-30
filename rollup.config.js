@@ -26,13 +26,24 @@ function dts() {
 	};
 }
 
+function rewritePaths(exports) {
+	for (const [key, value] of Object.entries(exports)) {
+		if (typeof value === "string") {
+			exports[key] = value.replace(/^\.\/dist/, ".");
+		} else if (typeof value === "object" && value !== null) {
+			rewritePaths(value);
+		}
+	}
+}
+
 function copyPackage() {
 	return {
 		name: "copy-package",
 		writeBundle() {
-			const pkg1 = {...pkg};
+			const pkg1 = JSON.parse(JSON.stringify(pkg));
 			delete pkg1.private;
 			delete pkg1.scripts;
+			rewritePaths(pkg1.exports);
 			fs.writeFileSync("./dist/package.json", JSON.stringify(pkg1, null, 2));
 			fs.copyFileSync("./README.md", "./dist/README.md");
 		},
