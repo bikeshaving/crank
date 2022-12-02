@@ -54,6 +54,7 @@ const input = [
 	"src/core.ts",
 	"src/crank.ts",
 	"src/dom.ts",
+	"src/jsx-runtime.ts",
 	"src/html.ts",
 	"src/tags.ts",
 ];
