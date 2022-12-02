@@ -50,6 +50,14 @@
       "import": "./dist/core.js",
       "require": "./dist/core.cjs"
     },
+    "./jsx-runtime": {
+      "import": "./dist/jsx-runtime.js",
+      "require": "./dist/jsx-runtime.cjs"
+    },
+    "./jsx-runtime.js": {
+      "import": "./dist/jsx-runtime.js",
+      "require": "./dist/jsx-runtime.cjs"
+    },
     "./package.json": "./dist/package.json",
     "./tags": {
       "import": "./dist/tags.js",
