@@ -5,7 +5,7 @@ import type {BuildResult, OutputFile} from "esbuild";
 import * as mime from "mime-types";
 
 // TODO: Pass plugins into storage or components
-import postcssPlugin from "./esbuild/postcss-plugin.js";
+import {postcssPlugin} from "../plugins/esbuild.js";
 import postcssPresetEnv from "postcss-preset-env";
 import postcssNested from "postcss-nested";
 
@@ -181,7 +181,7 @@ import {jsx} from "@b9g/crank";
 // concatenate together. The thing I’m thinking about now, is how do we
 // concretely bundle dependencies for those which are generated from
 // components.
-const StorageKey = Symbol.for("esbuild.StorageKey");
+export const StorageKey = Symbol.for("esbuild.StorageKey");
 declare global {
 	namespace Crank {
 		interface ProvisionMap {

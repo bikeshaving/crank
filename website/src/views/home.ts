@@ -1,6 +1,5 @@
 import {jsx} from "@b9g/crank";
 import {Root} from "../components/root.js";
-import {CodeBlock} from "../components/code-block.js";
 import type {Storage} from "../components/esbuild.js";
 
 export default async function Home({storage}: {storage: Storage}) {
@@ -9,21 +8,16 @@ export default async function Home({storage}: {storage: Storage}) {
 			<div id="gear-interactive" />
 			<div style="margin: 0 auto">
 				<header style="
-					height: 90vh;
+					height: 100vh;
 					display: flex;
 					flex-direction: column;
 					justify-content: space-around;
 					align-items: center;
 					text-align: center;
 				">
-					<div>
-						<h1 style="color: white">
-							<span class="blur-background">Crank.js</span>
-						</h1>
-						<h1>
-							<span class="blur-background">The Just JavaScript Framework</span>
-						</h1>
-					</div>
+					<h1>
+						<span class="blur-background">The Just JavaScript Framework</span>
+					</h1>
 				</header>
 				<div class="blur-background">
 					<div class="feature">
@@ -43,14 +37,7 @@ export default async function Home({storage}: {storage: Storage}) {
 						</p>
 					</div>
 				</div>
-				<div
-					class="feature-playground"
-				>
-					<${CodeBlock}
-						value="console.log(\"Hello world\")"
-						lang="jsx live"
-						editable=${true}
-					/>
+				<div class="feature-playground">
 				</div>
 			</div>
 		<//Root>

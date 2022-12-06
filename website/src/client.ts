@@ -10,7 +10,7 @@ import "prismjs/components/prism-tsx";
 import "prismjs/components/prism-diff";
 import "prismjs/components/prism-bash";
 import {ContentAreaElement} from "@b9g/revise/contentarea.js";
-import {CodeBlock} from "./components/code-block.js";
+import {InlineCodeBlock} from "./components/inline-code-block.js";
 
 // @ts-ignore
 Prism.manual = true;
@@ -40,7 +40,7 @@ for (const container of Array.from(containers)) {
 	if (code != null && lang != null) {
 		renderer.render(
 			jsx`
-				<${CodeBlock}
+				<${InlineCodeBlock}
 					value=${code}
 					lang=${lang}
 					editable=${lang.endsWith(" live")}

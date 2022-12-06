@@ -1,6 +1,5 @@
 import {jsx} from "@b9g/crank";
-import {CodeBlock} from "./code-block.js";
-
+import {InlineCodeBlock} from "./inline-code-block.js";
 // TODO: declare these as top-level functions.
 export const components = {
 	codespan({token}: any) {
@@ -11,7 +10,7 @@ export const components = {
 		const {text: code, lang} = token;
 		return jsx`
 			<div class="code-block-container" data-code=${code} data-lang=${lang}>
-				<${CodeBlock} value=${code} lang=${lang} />
+				<${InlineCodeBlock} value=${code} lang=${lang} />
 			</div>
 		`;
 	},

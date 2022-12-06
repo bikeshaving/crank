@@ -3,7 +3,7 @@ import type {Plugin} from "esbuild";
 import postcss from "postcss";
 import type {AcceptedPlugin} from "postcss";
 
-export default function postcssPlugin({
+export function postcssPlugin({
 	plugins,
 }: {
 	plugins: Array<AcceptedPlugin>;

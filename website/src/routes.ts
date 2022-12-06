@@ -58,5 +58,4 @@ export const router = new Router([
 	route("/blog/:slug", "blog"),
 	route("/guides/:slug", "guide"),
 	route("/playground", "playground"),
-	route("/sandbox", "sandbox"),
 ]);

@@ -1,41 +1,79 @@
 import {jsx} from "@b9g/crank";
 import type {Context} from "@b9g/crank";
 import {debounce} from "../utils/fns.js";
-
-const IS_CLIENT = typeof document !== "undefined";
+import {transform} from "../plugins/babel.js";
 
 export function* CodePreview(this: Context, {value}: {value: string}) {
 	let iframe: HTMLIFrameElement;
-	let oldText: string | null = null;
-	let errorMessage: string | null = null;
 	let loading = true;
-	const onglobalmessage = (ev: MessageEvent) => {
-		const data = JSON.parse(ev.data);
-		if (data.type === "ready") {
-			iframe.contentWindow!.postMessage(value, "*");
-		} else if (data.type === "error") {
-			errorMessage = data.message;
+	let errorMessage: string | null = null;
+
+	const execute = debounce(() => {
+		const document1 = iframe.contentDocument;
+		if (document1 == null) {
+			return;
+		}
+
+		let parsed: any;
+		let code = "";
+		try {
+			parsed = transform(value);
+			code = parsed.code;
+		} catch (err: any) {
+			errorMessage = err.message;
 			this.refresh();
-		} else if (data.type === "executed") {
-			errorMessage = null;
+			return;
+		}
+
+		document1.write(`
+			<style>
+				body {
+					color: #f5f9ff;
+				}
+			</style>
+			<script>
+				window.addEventListener("load", (ev) => {
+					window.parent.postMessage(
+						JSON.stringify({type: "executed"}),
+						window.location.origin,
+					);
+				});
+
+				window.addEventListener("error", (ev) => {
+					window.parent.postMessage(
+						JSON.stringify({type: "error", message: ev.message}),
+						window.location.origin,
+					);
+				});
+			</script>
+			<script type="module">${code}</script>
+		`);
+		document1.close();
+	}, 2000);
+
+	const onmessage = (ev: any) => {
+		// TODO: same origin?
+		let data: any = JSON.parse(ev.data);
+		if (data.type === "executed") {
 			loading = false;
+			this.refresh();
+		} else if (data.type === "error") {
+			loading = false;
+			errorMessage = data.message;
 			this.refresh();
 		}
 	};
 
-	if (IS_CLIENT) {
-		window.addEventListener("message", onglobalmessage);
-		this.cleanup(() => window.removeEventListener("message", onglobalmessage));
+	if (typeof window !== "undefined") {
+		window.addEventListener("message", onmessage);
+		this.cleanup(() => {
+			window.removeEventListener("message", onmessage);
+		});
 	}
 
-	const execute = debounce(() => {
-		// TODO: Consider using srcdoc
-		// TODO: Should we stop reloading the iframe?
-		iframe.src = new URL("/sandbox/", window.location.origin).toString();
-	}, 1000);
-
+	let oldValue: string | undefined;
 	for ({value} of this) {
-		if (value !== oldText) {
+		if (value !== oldValue) {
 			loading = true;
 			errorMessage = null;
 			this.flush(() => execute());
@@ -48,17 +86,15 @@ export function* CodePreview(this: Context, {value}: {value: string}) {
 				</div>
 				${
 					errorMessage &&
-					jsx`<pre
-						style="
-							color: red;
-							height: 80%;
-							padding: 1em;
-						"
-					>${errorMessage}
-					</pre>`
+					jsx`
+					<pre style="color: pink; height: 80%; padding: 1em;">
+						${errorMessage}
+					</pre>
+				`
 				}
 				<iframe
 					$ref=${(el: HTMLIFrameElement) => (iframe = el)}
+					$static=${true}
 					style="
 						border: none;
 						padding: 1em;
@@ -71,6 +107,6 @@ export function* CodePreview(this: Context, {value}: {value: string}) {
 			</div>
 		`;
 
-		oldText = value;
+		oldValue = value;
 	}
 }
