@@ -8,17 +8,18 @@ export interface BlogContentProps {
 }
 
 export function BlogContent({title, publishDate, children}: BlogContentProps) {
+	const publishDateDisplay =
+		publishDate &&
+		publishDate.toLocaleString("en-US", {
+			month: "long",
+			year: "numeric",
+			day: "numeric",
+			timeZone: "UTC",
+		});
+
 	return jsx`
 		<h1>${title}</h1>
-		${
-			publishDate &&
-			jsx`<p>${publishDate.toLocaleString("en-US", {
-				month: "long",
-				year: "numeric",
-				day: "numeric",
-				timeZone: "UTC",
-			})}</p>`
-		}
+		${publishDateDisplay && jsx`<p>${publishDateDisplay}</p>`}
 		${children}
 	`;
 }

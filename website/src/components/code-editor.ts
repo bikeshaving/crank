@@ -4,45 +4,12 @@ import type {Context, Element} from "@b9g/crank";
 import {Edit} from "@b9g/revise/edit.js";
 import {Keyer} from "@b9g/revise/keyer.js";
 import {EditHistory} from "@b9g/revise/history.js";
+import type {ContentAreaElement} from "@b9g/revise/contentarea.js";
 import type {Token} from "prismjs";
-import {ContentArea} from "./contentarea.js";
-import type {ContentAreaElement} from "@b9g/revise/contentarea";
 
-import Prism from "prismjs";
-//import "prismjs/components/prism-js-templates.js";
-//const templateString = Prism.languages.javascript['template-string'];
-//// @ts-ignore
-//const templateLiteralPattern = templateString[templateString.length - 1].pattern.source;
-//
-//function createTemplate(language: string, tag: string) {
-//	if (!Prism.languages[language]) {
-//		return undefined;
-//	}
-//
-//	return {
-//		pattern: RegExp('((?:' + tag + ')\\s*)' + templateLiteralPattern),
-//		lookbehind: true,
-//		greedy: true,
-//		inside: {
-//			'template-punctuation': {
-//				pattern: /^`|`$/,
-//				alias: 'string'
-//			},
-//			'embedded-code': {
-//				pattern: /[\s\S]+/,
-//				alias: language
-//			}
-//		}
-//	};
-//}
-//
-//// @ts-ignore
-//templateString.push(createTemplate('html', /\b(?:jsx)/.source));
-//
-//import "prismjs/components/prism-jsx.js";
-//import "prismjs/components/prism-typescript.js";
-//
-//console.log(templateString);
+import {ContentArea} from "./contentarea.js";
+import {tokenize} from "../utils/prism.js";
+
 function* Gutter(this: Context, {length}: {length: number}) {
 	const numbers: Array<any> = [];
 	for (let l = 0; l < length; l++) {
@@ -300,14 +267,12 @@ export function* CodeEditor(
 			value = value1;
 		}
 
-		// adding a line so that we can do shit
 		value = value.match(/(?:\r|\n|\r\n)$/) ? value : value + "\n";
-		const grammar = Prism.languages[language] || Prism.languages.javascript;
-		const lines = splitLines(Prism.tokenize(value || "", grammar));
-		//const lines = value.split("\n").map((l) => [l]).slice(0, -1);
+		const lines = tokenize(value, language || "javascript");
 		let index = 0;
 		yield jsx`
 			<div
+				class="code-editor"
 				style="
 					display: flex;
 					flex-direction: row;
@@ -357,87 +322,6 @@ export function* CodeEditor(
 			</div>
 		`;
 	}
-}
-
-// TODO: move this to prism-utils file
-// @ts-ignore
-Prism.manual = true;
-
-function splitLines(
-	tokens: Array<Token | string>,
-): Array<Array<Token | string>> {
-	const lines = splitLinesRec(tokens);
-	// Dealing with trailing newlines
-	if (lines.length && !lines[lines.length - 1].length) {
-		lines.pop();
-	}
-
-	return lines;
-}
-
-function splitLinesRec(
-	tokens: Array<Token | string>,
-): Array<Array<Token | string>> {
-	let currentLine: Array<Token | string> = [];
-	const lines: Array<Array<Token | string>> = [currentLine];
-	for (let i = 0; i < tokens.length; i++) {
-		const token = tokens[i];
-		if (typeof token === "string") {
-			const split = token.split(/\r\n|\r|\n/);
-			for (let j = 0; j < split.length; j++) {
-				if (j > 0) {
-					lines.push((currentLine = []));
-				}
-
-				const token1 = split[j];
-				if (token1) {
-					currentLine.push(token1);
-				}
-			}
-		} else {
-			const split = splitLinesRec(wrapContent(token.content));
-			if (split.length > 1) {
-				for (let j = 0; j < split.length; j++) {
-					if (j > 0) {
-						lines.push((currentLine = []));
-					}
-
-					const line = split[j];
-					if (line.length) {
-						const token1 = new Prism.Token(
-							token.type,
-							unwrapContent(line),
-							token.alias,
-						);
-						token1.length = line.reduce((l, t) => l + t.length, 0);
-						currentLine.push(token1);
-					}
-				}
-			} else {
-				currentLine.push(token);
-			}
-		}
-	}
-
-	return lines;
-}
-
-function wrapContent(
-	content: Array<Token | string> | Token | string,
-): Array<Token | string> {
-	return Array.isArray(content) ? content : [content];
-}
-
-function unwrapContent(
-	content: Array<Token | string>,
-): Array<Token | string> | string {
-	if (content.length === 0) {
-		return "";
-	} else if (content.length === 1 && typeof content[0] === "string") {
-		return content[0];
-	}
-
-	return content;
 }
 
 function getPreviousLine(text: string, index: number) {
@@ -503,11 +387,10 @@ async function checkpointEditHistory(ctx: Context, editHistory: EditHistory) {
 }
 
 function selectionRangeFromEdit(edit: Edit): SelectionRange | undefined {
-	const operations = edit.operations();
 	let index = 0;
 	let start: number | undefined;
 	let end: number | undefined;
-	for (const op of operations) {
+	for (const op of edit.operations()) {
 		switch (op.type) {
 			case "delete": {
 				if (start === undefined) {
