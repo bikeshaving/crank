@@ -4,15 +4,34 @@ import {CodeEditor} from "./code-editor.js";
 import {CodePreview} from "./code-preview.js";
 
 export function* InlineCodeBlock(
-	this: Context,
-	{value, lang}: {value: string; lang: string},
-) {
+	this: Context<typeof InlineCodeBlock>,
+	{value, lang, editable}: {value: string; lang: string; editable: boolean},
+): any {
 	this.addEventListener("contentchange", (ev: any) => {
+		// TODO: think about whether its wise to mutate a prop identifier
 		value = ev.target.value;
 		this.refresh();
 	});
 
-	for ({lang} of this) {
+	let isIntersecting = false;
+	if (typeof window !== "undefined") {
+		const intersectionObserver = new IntersectionObserver((entries) => {
+			if (!isIntersecting) {
+				isIntersecting = entries[0].isIntersecting;
+				this.refresh();
+			}
+		});
+
+		this.flush((root) => {
+			intersectionObserver.observe(root);
+		});
+
+		this.cleanup(() => {
+			intersectionObserver.disconnect();
+		});
+	}
+
+	for ({lang, editable} of this) {
 		yield jsx`
 			<div
 				class="code-block"
@@ -20,28 +39,41 @@ export function* InlineCodeBlock(
 					display: flex;
 					flex-direction: row;
 					flex-wrap: wrap;
+					max-width: ${editable ? "100%" : "min(800px, 100%)"}
 				"
 			>
 				<div style="
-					width: 80ch;
-					flex: 2 1 auto;
-					border: 1px solid white;
-					margin: -1px 0 0 -1px;
-				">
-					<${CodeEditor} $static value=${value} lang=${lang} editable=${true} />
-				</div>
-				<div style="
-					width: 400px;
-					height: 300px;
 					flex: 1 1 auto;
-					position: sticky;
-					align-self; flex-start;
-					top: 80px;
+					width: min(100%, 600px);
 					border: 1px solid white;
-					margin: -1px 0 0 -1px;
+					overflow: none;
+					margin-top: -1px;
+					margin-left: -1px;
 				">
-					<${CodePreview} value=${value} />
+					<${CodeEditor}
+						$static
+						value=${value}
+						lang=${lang}
+						editable=${editable}
+					/>
 				</div>
+				${
+					editable &&
+					jsx`
+						<div style="
+							flex: 1 1 400px;
+							position: sticky;
+							align-self: flex-start;
+							min-height: 200px;
+							top: 80px;
+							border: 1px solid white;
+							margin-top: -1px;
+							margin-left: -1px;
+						">
+							<${CodePreview} value=${value} visible=${isIntersecting} />
+						</div>
+					`
+				}
 			</div>
 		`;
 	}

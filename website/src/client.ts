@@ -37,16 +37,14 @@ const containers = document.querySelectorAll(".code-block-container");
 for (const container of Array.from(containers)) {
 	//console.log(container.outerHTML);
 	const {code, lang} = (container as HTMLElement).dataset;
-	if (code != null && lang != null) {
-		renderer.render(
-			jsx`
-				<${InlineCodeBlock}
-					value=${code}
-					lang=${lang}
-					editable=${lang.endsWith(" live")}
-				/>
-			`,
-			container,
-		);
-	}
+	renderer.render(
+		jsx`
+			<${InlineCodeBlock}
+				value=${code}
+				lang=${lang}
+				editable=${lang.endsWith(" live")}
+			/>
+		`,
+		container,
+	);
 }
