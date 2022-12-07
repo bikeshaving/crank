@@ -3,12 +3,22 @@ import type {Context} from "@b9g/crank";
 import {debounce} from "../utils/fns.js";
 import {transform} from "../plugins/babel.js";
 
-export function* CodePreview(this: Context, {value}: {value: string}) {
+let globalId = 0;
+export function* CodePreview(
+	this: Context<typeof CodePreview>,
+	{value, visible}: {value: string; visible: boolean},
+): any {
+	const id = globalId++;
 	let iframe: HTMLIFrameElement;
+	let iframeHeight = 200;
 	let loading = true;
 	let errorMessage: string | null = null;
 
 	const execute = debounce(() => {
+		if (!visible) {
+			return;
+		}
+
 		const document1 = iframe.contentDocument;
 		if (document1 == null) {
 			return;
@@ -25,6 +35,8 @@ export function* CodePreview(this: Context, {value}: {value: string}) {
 			return;
 		}
 
+		// TODO: move these to separate scripts/styles?
+		document1.open();
 		document1.write(`
 			<style>
 				body {
@@ -32,19 +44,30 @@ export function* CodePreview(this: Context, {value}: {value: string}) {
 				}
 			</style>
 			<script>
-				window.addEventListener("load", (ev) => {
-					window.parent.postMessage(
-						JSON.stringify({type: "executed"}),
-						window.location.origin,
-					);
-				});
+				{
+					window.addEventListener("load", (ev) => {
+						window.parent.postMessage(
+							JSON.stringify({type: "executed", id: ${id}}),
+							window.location.origin,
+						);
+					});
 
-				window.addEventListener("error", (ev) => {
-					window.parent.postMessage(
-						JSON.stringify({type: "error", message: ev.message}),
-						window.location.origin,
-					);
-				});
+					window.addEventListener("error", (ev) => {
+						window.parent.postMessage(
+							JSON.stringify({type: "error", id: ${id}, message: ev.message}),
+							window.location.origin,
+						);
+					});
+
+					const resizeObserver = new ResizeObserver((entries) => {
+						const {contentRect} = entries[0];
+						window.parent.postMessage(
+							JSON.stringify({type: "resize", id: ${id}, rect: contentRect}),
+							window.location.origin,
+						);
+					});
+					resizeObserver.observe(document.documentElement);
+				}
 			</script>
 			<script type="module">${code}</script>
 		`);
@@ -54,12 +77,19 @@ export function* CodePreview(this: Context, {value}: {value: string}) {
 	const onmessage = (ev: any) => {
 		// TODO: same origin?
 		let data: any = JSON.parse(ev.data);
+		if (data.id !== id) {
+			return;
+		}
+
 		if (data.type === "executed") {
 			loading = false;
 			this.refresh();
 		} else if (data.type === "error") {
 			loading = false;
 			errorMessage = data.message;
+			this.refresh();
+		} else if (data.type === "resize") {
+			iframeHeight = data.rect.height;
 			this.refresh();
 		}
 	};
@@ -72,41 +102,49 @@ export function* CodePreview(this: Context, {value}: {value: string}) {
 	}
 
 	let oldValue: string | undefined;
-	for ({value} of this) {
-		if (value !== oldValue) {
+	let oldVisible: boolean | undefined;
+	for ({value, visible = true} of this) {
+		if (value !== oldValue || visible !== oldVisible) {
 			loading = true;
 			errorMessage = null;
 			this.flush(() => execute());
 		}
 
 		yield jsx`
-			<div style="height: 100%; display: flex; flex-direction: column">
+			<div>
 				<div style="padding: 1em; border-bottom: 1px solid white">
 					${errorMessage ? "Errored!" : loading ? "Loading..." : "Running!"}
 				</div>
-				${
-					errorMessage &&
-					jsx`
-					<pre style="color: pink; height: 80%; padding: 1em;">
-						${errorMessage}
-					</pre>
-				`
-				}
-				<iframe
-					$ref=${(el: HTMLIFrameElement) => (iframe = el)}
-					$static=${true}
+				<div
 					style="
-						border: none;
-						padding: 1em;
-						margin: 0;
-						width: 100%;
-						flex: 1 1;
-						display: ${errorMessage ? "none" : "block"}
+						max-height: 500px;
+						overflow: auto;
 					"
-				/>
+				>
+					${
+						errorMessage &&
+						jsx`
+						<pre style="color: pink; padding: 1em">
+							${errorMessage}
+						</pre>
+					`
+					}
+					<iframe
+						$ref=${(el: HTMLIFrameElement) => (iframe = el)}
+						style="
+							border: none;
+							padding: 1em;
+							margin: 0;
+							width: 100%;
+							height: calc(${iframeHeight}px + 2em);
+							display: ${loading || errorMessage ? "none" : "block"}
+						"
+					/>
+				</div>
 			</div>
 		`;
 
 		oldValue = value;
+		oldVisible = visible;
 	}
 }

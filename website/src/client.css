@@ -258,6 +258,10 @@ code.inline {
 			/* max-width: 800px; */
 		}
 	}
+
+	p {
+		max-width: 800px;
+	}
 }
 
 .hero {

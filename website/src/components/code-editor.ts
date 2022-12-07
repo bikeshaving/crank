@@ -277,8 +277,8 @@ export function* CodeEditor(
 					display: flex;
 					flex-direction: row;
 					position: relative;
-					overflow: auto;
 					height: 100%;
+					width: 100%;
 				"
 			>
 				${showGutter && jsx`<${Gutter} length=${lines.length} />`}
@@ -287,11 +287,8 @@ export function* CodeEditor(
 					renderSource=${renderSource}
 					selectionRange=${selectionRange}
 					style="
-						display: block;
+						display: contents;
 						flex: 1 1 auto;
-						white-space: pre-wrap;
-						white-space: break-spaces;
-						word-break: break-all;
 						width: 100%;
 					"
 					$ref=${(area1: ContentAreaElement) => (area = area1)}
@@ -304,19 +301,23 @@ export function* CodeEditor(
 						spellcheck="false"
 						style="
 							${showGutter && "border-left: 1px solid white;"}
-							min-height: 100%;
+							height: 100%;
+							width: 100%;
+							word-break: break-all;
+							overflow-wrap: anywhere;
+							white-space: pre-wrap;
 						"
 					>
-					${lines.map((line) => {
-						const key = keyer.keyAt(index);
-						const length =
-							line.reduce((length, t) => length + t.length, 0) + "\n".length;
-						try {
-							return jsx`<${Line} $key=${key + "line"} line=${line} />`;
-						} finally {
-							index += length;
-						}
-					})}
+						${lines.map((line) => {
+							const key = keyer.keyAt(index);
+							const length =
+								line.reduce((length, t) => length + t.length, 0) + "\n".length;
+							try {
+								return jsx`<${Line} $key=${key + "line"} line=${line} />`;
+							} finally {
+								index += length;
+							}
+						})}
 					</pre>
 				<//ContentArea>
 			</div>
