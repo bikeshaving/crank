@@ -23,26 +23,98 @@ const EXAMPLE = `
 import {jsx} from "@b9g/crank@beta";
 import {renderer} from "@b9g/crank@beta/dom";
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 function *Timer() {
   let seconds = 0;
   const interval = setInterval(() => {
     seconds++;
     this.refresh();
   }, 1000);
-  try {
-    for ({} of this) {
-      yield jsx\`<div>\${seconds}s</div>\`;
-    }
-  } finally {
-    clearInterval(interval);
+  for ({} of this) {
+    yield jsx\`<div>\${seconds}s</div>\`;
   }
+
+  clearInterval(interval);
 }
 
 renderer.render(jsx\`<\${Timer} />\`, document.body);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 `.trimLeft();
 
 function* Playground(this: Context, {}) {
-	let value = localStorage.getItem("playground-value") || EXAMPLE;
+	let value = /*localStorage.getItem("playground-value") || */ EXAMPLE;
 	this.addEventListener("contentchange", (ev: any) => {
 		value = ev.target.value;
 
@@ -67,22 +139,36 @@ function* Playground(this: Context, {}) {
 			<div
 				style="
 					display: flex;
-					flex-direction: row;
+					flex-wrap: wrap;
 					width: 100vw;
-					height: calc(100vh - 50px);
-					position: relative;
-					top: 50px;
+					height: 100vh;
+					align-items: stretch;
+					padding-top: 50px;
 				"
 			>
-				<div style="width: 50%; height: 100%; border-right: 1px solid white">
+				<div style="
+					flex: 1 1 auto;
+					width: 600px;
+					height: 100%;
+					overflow: auto;
+				">
 					<${CodeEditor}
-						$static
 						value=${value}
 						language="typescript"
-						showGutter
+						showGutter=${true}
 					/>
 				</div>
-				<div style="width: 50%; height: 100%">
+				<div style="
+					flex: 1 1 auto;
+					width: 300px;
+					border-top: 1px solid white;
+					border-left: 1px solid white;
+					margin-top: -1px;
+					margin-left: -1px;
+					position: sticky;
+					top: 0;
+					right: 0;
+				">
 					<${CodePreview} value=${value} />
 				</div>
 			</div>

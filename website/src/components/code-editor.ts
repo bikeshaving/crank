@@ -1,16 +1,17 @@
-import {jsx, Copy} from "@b9g/crank";
-import type {Context, Element} from "@b9g/crank";
+import {jsx} from "@b9g/crank";
+import type {Context, Element as CrankElement} from "@b9g/crank";
 
 import {Edit} from "@b9g/revise/edit.js";
 import {Keyer} from "@b9g/revise/keyer.js";
 import {EditHistory} from "@b9g/revise/history.js";
 import type {ContentAreaElement} from "@b9g/revise/contentarea.js";
+
 import type {Token} from "prismjs";
 
 import {ContentArea} from "./contentarea.js";
 import {tokenize} from "../utils/prism.js";
 
-function* Gutter(this: Context, {length}: {length: number}) {
+function Gutter(this: Context<typeof Gutter>, {length}: {length: number}) {
 	const numbers: Array<any> = [];
 	for (let l = 0; l < length; l++) {
 		numbers.push(jsx`
@@ -18,44 +19,24 @@ function* Gutter(this: Context, {length}: {length: number}) {
 		`);
 	}
 
-	let initial = true;
-	for (const {length: newLength} of this) {
-		if (initial) {
-			initial = false;
-		} else {
-			if (length < newLength) {
-				for (let l = numbers.length; l < newLength; l++) {
-					numbers.push(jsx`
-						<div class="prism-editor-linenumber">${l + 1}</div>
-					`);
-				}
-			} else if (length > newLength) {
-				numbers.length = newLength;
-			} else {
-				yield jsx`<${Copy} />`;
-				continue;
-			}
-		}
-
-		yield jsx`
-			<div
-				style="
-					/* this has to match the css of lines or it gets misaligned :( */
-					margin: 0;
-					padding: 1em .5em;
-					color: #fff;
-					font-size: 14px;
-					font-family: monospace;
-					line-height: 1.4;
-					text-align: right;
-				"
-			>
-				${numbers}
-			</div>
-		`;
-
-		length = newLength;
-	}
+	return jsx`
+		<div
+			style="
+				flex: none;
+				margin: 0;
+				padding: 1em .5em;
+				min-height: 100%;
+				color: #fff;
+				font-size: 14px;
+				font-family: monospace;
+				line-height: 1.4;
+				text-align: right;
+				border-right: 1px solid white;
+			"
+		>
+			${numbers}
+		</div>
+	`;
 }
 
 const IS_CLIENT = typeof document !== "undefined";
@@ -63,7 +44,10 @@ const IS_CLIENT = typeof document !== "undefined";
 // TODO: Custom tabs
 const TAB = "  ";
 
-function Line({line}: {line: Array<Token | string>}) {
+function Line(
+	this: Context<typeof Line>,
+	{line}: {line: Array<Token | string>},
+) {
 	return jsx`
 		<div class="prism-line">
 			${line.length ? jsx`<code>${printTokens(line)}</code>` : null}
@@ -72,8 +56,10 @@ function Line({line}: {line: Array<Token | string>}) {
 	`;
 }
 
-function printTokens(tokens: Array<Token | string>): Array<Element | string> {
-	const result: Array<Element | string> = [];
+function printTokens(
+	tokens: Array<Token | string>,
+): Array<CrankElement | string> {
+	const result: Array<CrankElement | string> = [];
 	for (let i = 0; i < tokens.length; i++) {
 		const token = tokens[i];
 		if (typeof token === "string") {
@@ -251,16 +237,25 @@ export function* CodeEditor(
 				ev.preventDefault();
 				this.refresh();
 			} else if (ev.key === "Tab") {
-				// TODO: handle tabs and shift tabs
+				// TODO:
 			}
 		});
 	}
 
+	let gutter: HTMLElement | undefined;
+	let pre: HTMLElement | undefined;
 	let value1: string;
 	for ({value: value1, language, editable = true, showGutter} of this) {
 		this.schedule(() => {
 			selectionRange = undefined;
 			renderSource = undefined;
+		});
+
+		this.flush(() => {
+			if (showGutter) {
+				const gutterWidth = gutter!.getBoundingClientRect().width;
+				pre!.style.maxWidth = `calc(100% - ${gutterWidth}px)`;
+			}
 		});
 
 		if (renderSource == null) {
@@ -274,38 +269,42 @@ export function* CodeEditor(
 			<div
 				class="code-editor"
 				style="
-					display: flex;
-					flex-direction: row;
 					position: relative;
-					height: 100%;
+					min-height: 100%;
 					width: 100%;
+					display: flex;
 				"
 			>
-				${showGutter && jsx`<${Gutter} length=${lines.length} />`}
+				${
+					showGutter &&
+					jsx`
+					<${Gutter}
+						$ref=${(el: any) => (gutter = el)}
+						length=${lines.length}
+					/>
+				`
+				}
 				<${ContentArea}
 					value=${value}
 					renderSource=${renderSource}
 					selectionRange=${selectionRange}
-					style="
-						display: contents;
-						flex: 1 1 auto;
-						width: 100%;
-					"
+					style="display: contents"
 					$ref=${(area1: ContentAreaElement) => (area = area1)}
 				>
 					<pre
+						$ref=${(el: any) => (pre = el)}
 						autocomplete="off"
 						autocorrect="off"
 						autocapitalize="off"
 						contenteditable=${IS_CLIENT && editable}
 						spellcheck="false"
 						style="
-							${showGutter && "border-left: 1px solid white;"}
-							height: 100%;
-							width: 100%;
+							flex: 0 1 auto;
 							word-break: break-all;
 							overflow-wrap: anywhere;
+							line-break: anywhere;
 							white-space: pre-wrap;
+							white-space: break-spaces;
 						"
 					>
 						${lines.map((line) => {
@@ -313,7 +312,12 @@ export function* CodeEditor(
 							const length =
 								line.reduce((length, t) => length + t.length, 0) + "\n".length;
 							try {
-								return jsx`<${Line} $key=${key + "line"} line=${line} />`;
+								return jsx`
+									<${Line}
+										$key=${key + "line"}
+										line=${line}
+									/>
+								`;
 							} finally {
 								index += length;
 							}
