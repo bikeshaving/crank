@@ -39,12 +39,12 @@ export function* InlineCodeBlock(
 					display: flex;
 					flex-direction: row;
 					flex-wrap: wrap;
-					max-width: ${editable ? "100%" : "min(800px, 100%)"}
+					max-width: ${editable ? "100%" : "min(100%, 1000px)"};
+					align-items: flex-start;
 				"
 			>
 				<div style="
-					flex: 1 1 auto;
-					width: min(100%, 600px);
+					flex: 1 1 650px;
 					border: 1px solid white;
 					overflow: none;
 					margin-top: -1px;
@@ -61,10 +61,9 @@ export function* InlineCodeBlock(
 					editable &&
 					jsx`
 						<div style="
-							flex: 1 1 400px;
+							flex: 1 1 300px;
 							position: sticky;
-							align-self: flex-start;
-							min-height: 200px;
+							min-height: 400px;
 							top: 80px;
 							border: 1px solid white;
 							margin-top: -1px;

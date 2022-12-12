@@ -10,7 +10,6 @@ export function* CodePreview(
 ): any {
 	const id = globalId++;
 	let iframe: HTMLIFrameElement;
-	let iframeHeight = 200;
 	let loading = true;
 	let errorMessage: string | null = null;
 
@@ -38,39 +37,34 @@ export function* CodePreview(
 		// TODO: move these to separate scripts/styles?
 		document1.open();
 		document1.write(`
-			<style>
-				body {
-					color: #f5f9ff;
-				}
-			</style>
-			<script>
-				{
-					window.addEventListener("load", (ev) => {
-						window.parent.postMessage(
-							JSON.stringify({type: "executed", id: ${id}}),
-							window.location.origin,
-						);
-					});
+<!DOCTYPE html>
+<head>
+<style>
+body {
+	color: #f5f9ff;
+}
+</style>
+<script>
+{
+	window.addEventListener("load", (ev) => {
+		window.parent.postMessage(
+			JSON.stringify({type: "executed", id: ${id}}),
+			window.location.origin,
+		);
+	});
 
-					window.addEventListener("error", (ev) => {
-						window.parent.postMessage(
-							JSON.stringify({type: "error", id: ${id}, message: ev.message}),
-							window.location.origin,
-						);
-					});
-
-					const resizeObserver = new ResizeObserver((entries) => {
-						const {contentRect} = entries[0];
-						window.parent.postMessage(
-							JSON.stringify({type: "resize", id: ${id}, rect: contentRect}),
-							window.location.origin,
-						);
-					});
-					resizeObserver.observe(document.documentElement);
-				}
-			</script>
-			<script type="module">${code}</script>
-		`);
+	window.addEventListener("error", (ev) => {
+		window.parent.postMessage(
+			JSON.stringify({type: "error", id: ${id}, message: ev.message}),
+			window.location.origin,
+		);
+	});
+}
+</script>
+<script type="module">${code}</script>
+</head>
+<body>
+</body>`);
 		document1.close();
 	}, 2000);
 
@@ -87,9 +81,6 @@ export function* CodePreview(
 		} else if (data.type === "error") {
 			loading = false;
 			errorMessage = data.message;
-			this.refresh();
-		} else if (data.type === "resize") {
-			iframeHeight = data.rect.height;
 			this.refresh();
 		}
 	};
@@ -115,12 +106,7 @@ export function* CodePreview(
 				<div style="padding: 1em; border-bottom: 1px solid white">
 					${errorMessage ? "Errored!" : loading ? "Loading..." : "Running!"}
 				</div>
-				<div
-					style="
-						max-height: 500px;
-						overflow: auto;
-					"
-				>
+				<div>
 					${
 						errorMessage &&
 						jsx`
@@ -136,8 +122,8 @@ export function* CodePreview(
 							padding: 1em;
 							margin: 0;
 							width: 100%;
-							height: calc(${iframeHeight}px + 2em);
-							display: ${loading || errorMessage ? "none" : "block"}
+							height: 300px;
+							display: ${errorMessage ? "none" : "block"}
 						"
 					/>
 				</div>
