@@ -17,6 +17,7 @@
     "@babel/preset-typescript": "^7.18.6",
     "@esbuild-plugins/node-globals-polyfill": "^0.1.1",
     "@esbuild-plugins/node-modules-polyfill": "^0.1.4",
+    "@tanstack/virtual-core": "^3.0.0-beta.30",
     "@types/babel__core": "^7.1.19",
     "@types/fs-extra": "^9.0.13",
     "@types/lz-string": "^1.3.34",

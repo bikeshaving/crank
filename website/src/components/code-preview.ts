@@ -34,37 +34,38 @@ export function* CodePreview(
 			return;
 		}
 
+		iframe.src = "";
+		// TODO: default styling for elements in the playground
 		// TODO: move these to separate scripts/styles?
-		document1.open();
 		document1.write(`
-<!DOCTYPE html>
-<head>
-<style>
-body {
-	color: #f5f9ff;
-}
-</style>
-<script>
-{
-	window.addEventListener("load", (ev) => {
-		window.parent.postMessage(
-			JSON.stringify({type: "executed", id: ${id}}),
-			window.location.origin,
-		);
-	});
+			<!DOCTYPE html>
+			<head>
+				<style>
+				body {
+					color: #f5f9ff;
+				}
+				</style>
+				<script>
+				{
+					window.addEventListener("load", (ev) => {
+						window.parent.postMessage(
+							JSON.stringify({type: "executed", id: ${id}}),
+							window.location.origin,
+						);
+					});
 
-	window.addEventListener("error", (ev) => {
-		window.parent.postMessage(
-			JSON.stringify({type: "error", id: ${id}, message: ev.message}),
-			window.location.origin,
-		);
-	});
-}
-</script>
-<script type="module">${code}</script>
-</head>
-<body>
-</body>`);
+					window.addEventListener("error", (ev) => {
+						window.parent.postMessage(
+							JSON.stringify({type: "error", id: ${id}, message: ev.message}),
+							window.location.origin,
+						);
+					});
+				}
+				</script>
+				<script type="module">${code}</script>
+			</head>
+			<body></body>
+		`);
 		document1.close();
 	}, 2000);
 
@@ -102,11 +103,15 @@ body {
 		}
 
 		yield jsx`
-			<div>
-				<div style="padding: 1em; border-bottom: 1px solid white">
+			<div style="
+				height: 100%;
+				display: flex;
+				flex-direction: column;
+			">
+				<div style="flex: none; padding: 1em; border-bottom: 1px solid white">
 					${errorMessage ? "Errored!" : loading ? "Loading..." : "Running!"}
 				</div>
-				<div>
+				<div style="flex: 1;">
 					${
 						errorMessage &&
 						jsx`
@@ -122,7 +127,7 @@ body {
 							padding: 1em;
 							margin: 0;
 							width: 100%;
-							height: 300px;
+							height: 100%;
 							display: ${errorMessage ? "none" : "block"}
 						"
 					/>

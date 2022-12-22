@@ -240,7 +240,13 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 		yield jsx`
 			<div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1">
 				<svg
-					style="display: block; height: 100%; margin: 0 auto;"
+					style="
+						display: block;
+						height: 100%;
+						margin: 0 auto;
+						position: relative;
+						left: 1px;
+					"
 					stroke="#aaa"
 					stroke-width="2"
 					fill="none"
