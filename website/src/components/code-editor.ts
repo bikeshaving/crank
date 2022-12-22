@@ -4,37 +4,53 @@ import type {Context, Element as CrankElement} from "@b9g/crank";
 import {Edit} from "@b9g/revise/edit.js";
 import {Keyer} from "@b9g/revise/keyer.js";
 import {EditHistory} from "@b9g/revise/history.js";
+
 import type {ContentAreaElement} from "@b9g/revise/contentarea.js";
 
 import type {Token} from "prismjs";
-
 import {ContentArea} from "./contentarea.js";
 import {tokenize} from "../utils/prism.js";
+import {useVirtualizer} from "../utils/virtualizer.js";
+import type {Virtualizer} from "../utils/virtualizer.js";
 
-function Gutter(this: Context<typeof Gutter>, {length}: {length: number}) {
-	const numbers: Array<any> = [];
-	for (let l = 0; l < length; l++) {
-		numbers.push(jsx`
-			<div class="prism-editor-linenumber">${l + 1}</div>
-		`);
-	}
-
+function Gutter(
+	this: Context<typeof Gutter>,
+	{virtualizer}: {virtualizer: Virtualizer<any, any>},
+) {
+	const items = virtualizer.getVirtualItems();
+	const totalSize = virtualizer.getTotalSize();
 	return jsx`
 		<div
 			style="
 				flex: none;
 				margin: 0;
 				padding: 1em .5em;
-				min-height: 100%;
+				height: max(120vh, ${totalSize + 28}px);
 				color: #fff;
 				font-size: 14px;
 				font-family: monospace;
 				line-height: 1.4;
 				text-align: right;
 				border-right: 1px solid white;
+				position: relative;
 			"
 		>
-			${numbers}
+			<div
+				style="
+					position: relative;
+					top: ${items[0]?.start}px;
+				"
+			>
+				${items.map(
+					(item) => jsx`
+					<div style="
+						height: ${item.size}px;
+					">
+						${item.index + 1}
+					</div>
+				`,
+				)}
+			</div>
 		</div>
 	`;
 }
@@ -46,10 +62,16 @@ const TAB = "  ";
 
 function Line(
 	this: Context<typeof Line>,
-	{line}: {line: Array<Token | string>},
+	{
+		line,
+		lineNumber,
+	}: {
+		line: Array<Token | string>;
+		lineNumber: number;
+	},
 ) {
 	return jsx`
-		<div class="prism-line">
+		<div class="prism-line" data-index=${lineNumber}>
 			${line.length ? jsx`<code>${printTokens(line)}</code>` : null}
 			<br />
 		</div>
@@ -101,6 +123,25 @@ export function* CodeEditor(
 	let selectionRange: SelectionRange | undefined;
 	let renderSource: string | undefined;
 	let area!: ContentAreaElement;
+	{
+		// key stuff
+		let initial = true;
+		this.addEventListener("contentchange", (ev: any) => {
+			if (initial) {
+				initial = false;
+				return;
+			}
+
+			const {edit, source} = ev.detail;
+			// TODO: when edits are dynamically created, ghost keys are created.
+			// This is because keyer.keyAt() is called before the edit transforms the
+			// keyer.keys array, creating unnecessary keys.
+			if (source !== "newline" && source !== "history") {
+				keyer.transform(edit);
+			}
+		});
+	}
+
 	this.addEventListener("contentchange", (ev: any) => {
 		if (ev.detail.source != null) {
 			return;
@@ -111,13 +152,28 @@ export function* CodeEditor(
 		this.refresh();
 	});
 
-	{
-		// key stuff
-		this.addEventListener("contentchange", (ev: any) => {
-			const {edit} = ev.detail;
-			keyer.transform(edit);
-		});
-	}
+	const virtualizer = useVirtualizer(this, {
+		count: 0,
+		getScrollElement: () => {
+			return getScroller(area);
+		},
+		onChange: () => {
+			if (renderSource != null) {
+				return;
+			}
+
+			value = area.value;
+			renderSource = "virtualizer";
+			this.refresh();
+		},
+		estimateSize: () => {
+			return 20;
+		},
+		// TODO: read this from the DOM and un-hardcode
+		scrollPaddingStart: 14,
+		scrollPaddingEnd: 14,
+		overscan: 100,
+	});
 
 	{
 		// history stuff
@@ -126,6 +182,7 @@ export function* CodeEditor(
 			if (edit) {
 				value = edit.apply(value);
 				selectionRange = selectionRangeFromEdit(edit);
+				keyer.transform(edit);
 				renderSource = "history";
 				this.refresh();
 				return true;
@@ -139,6 +196,7 @@ export function* CodeEditor(
 			if (edit) {
 				value = edit.apply(value);
 				selectionRange = selectionRangeFromEdit(edit);
+				keyer.transform(edit);
 				renderSource = "history";
 				this.refresh();
 				return true;
@@ -196,8 +254,6 @@ export function* CodeEditor(
 
 		this.addEventListener("contentchange", (ev: any) => {
 			const {edit, source} = ev.detail;
-			//console.log(edit, source);
-			//console.trace();
 			if (source !== "history") {
 				editHistory.append(edit.normalize());
 			}
@@ -227,6 +283,7 @@ export function* CodeEditor(
 					.retain(selectionStart)
 					.insert(insert)
 					.build();
+				keyer.transform(edit);
 				renderSource = "newline";
 				value = edit.apply(value);
 				selectionRange = {
@@ -242,29 +299,50 @@ export function* CodeEditor(
 		});
 	}
 
-	let gutter: HTMLElement | undefined;
-	let pre: HTMLElement | undefined;
 	let value1: string;
+	// TODO: parameterize newlines
 	for ({value: value1, language, editable = true, showGutter} of this) {
 		this.schedule(() => {
 			selectionRange = undefined;
 			renderSource = undefined;
 		});
 
-		this.flush(() => {
-			if (showGutter) {
-				const gutterWidth = gutter!.getBoundingClientRect().width;
-				pre!.style.maxWidth = `calc(100% - ${gutterWidth}px)`;
+		this.flush((el) => {
+			const pre = el.querySelector("pre")!;
+			for (let i = 0; i < pre.children.length; i++) {
+				const child = pre.children[i];
+				virtualizer.measureElement(child);
 			}
 		});
 
 		if (renderSource == null) {
+			// Very perplexing.
 			value = value1;
 		}
 
+		// make sure the value always ends with a newline
 		value = value.match(/(?:\r|\n|\r\n)$/) ? value : value + "\n";
+
+		const lineStarts: Array<number> = [];
+		{
+			// remove last empty line
+			const lines = value.split(/\n/).slice(0, -1);
+			for (let i = 0, c = 0; i < lines.length; i++) {
+				lineStarts.push(c);
+				c += lines[i].length + 1;
+			}
+
+			virtualizer.setOptions({
+				...virtualizer.options,
+				count: lines.length,
+			});
+		}
+
 		const lines = tokenize(value, language || "javascript");
 		let index = 0;
+		//const items = virtualizer.getVirtualItems();
+		//const start = items[0]?.index || 0;
+		//const end = items[items.length - 1]?.index || 0;
 		yield jsx`
 			<div
 				class="code-editor"
@@ -279,27 +357,28 @@ export function* CodeEditor(
 					showGutter &&
 					jsx`
 					<${Gutter}
-						$ref=${(el: any) => (gutter = el)}
 						length=${lines.length}
+						lineStarts=${lineStarts}
+						virtualizer=${virtualizer}
+						keyer=${keyer}
 					/>
 				`
 				}
 				<${ContentArea}
+					$ref=${(el: ContentAreaElement) => (area = el)}
 					value=${value}
 					renderSource=${renderSource}
 					selectionRange=${selectionRange}
 					style="display: contents"
-					$ref=${(area1: ContentAreaElement) => (area = area1)}
 				>
 					<pre
-						$ref=${(el: any) => (pre = el)}
 						autocomplete="off"
 						autocorrect="off"
 						autocapitalize="off"
 						contenteditable=${IS_CLIENT && editable}
 						spellcheck="false"
 						style="
-							flex: 0 1 auto;
+							flex: 1 1 auto;
 							word-break: break-all;
 							overflow-wrap: anywhere;
 							line-break: anywhere;
@@ -307,15 +386,19 @@ export function* CodeEditor(
 							white-space: break-spaces;
 						"
 					>
-						${lines.map((line) => {
-							const key = keyer.keyAt(index);
+						${lines.map((line, l) => {
+							// TODO: only highlight visible lines
+							// TODO: line should probably be a custom Prism token with the
+							// length already calculated.
 							const length =
 								line.reduce((length, t) => length + t.length, 0) + "\n".length;
 							try {
+								// TODO: using the virtualizer start and ends with static is breaking paste
 								return jsx`
 									<${Line}
-										$key=${key + "line"}
+										$key=${keyer.keyAt(index) + "line"}
 										line=${line}
+										lineNumber=${l}
 									/>
 								`;
 							} finally {
@@ -323,10 +406,21 @@ export function* CodeEditor(
 							}
 						})}
 					</pre>
-				<//ContentArea>
+				</${ContentArea}>
 			</div>
 		`;
 	}
+}
+
+function getScroller(el: Element | null): Element | null {
+	for (; el != null; el = el.parentElement) {
+		const overflowY = window.getComputedStyle(el).overflowY;
+		if (overflowY === "auto" || overflowY === "scroll") {
+			return el;
+		}
+	}
+
+	return document.scrollingElement;
 }
 
 function getPreviousLine(text: string, index: number) {

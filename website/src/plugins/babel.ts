@@ -88,26 +88,6 @@ function guardLoops({template, types}: typeof Babel): Babel.PluginObj {
 	};
 }
 
-function messageScriptStatus({template}: typeof Babel): Babel.PluginObj {
-	const createFooter = template(
-		`
-window.parent.postMessage(
-	JSON.stringify({type: "executed"}),
-	window.location.origin,
-);
-	`,
-		{syntacticPlaceholders: true},
-	);
-	return {
-		name: "message-script-status",
-		visitor: {
-			Program(path) {
-				path.pushContainer("body", createFooter());
-			},
-		},
-	};
-}
-
 export function transform(code: string) {
 	return Babel.transform(code, {
 		filename: "file",
@@ -135,7 +115,7 @@ export function transform(code: string) {
 			],
 			rewriteBareModuleSpecifiers,
 			guardLoops,
-			messageScriptStatus,
+			//messageScriptStatus,
 		],
 
 		sourceMaps: "inline",

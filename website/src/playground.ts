@@ -15,15 +15,10 @@ if (!window.customElements.get("content-area")) {
 }
 
 // TODO: multiple examples
-//const EXAMPLE = `hello
-//world
-//`;
 
 const EXAMPLE = `
-import {jsx} from "@b9g/crank@beta";
-import {renderer} from "@b9g/crank@beta/dom";
+import {jsx} from "@b9g/crank@beta/crank.js";
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 function *Timer() {
   let seconds = 0;
   const interval = setInterval(() => {
@@ -37,84 +32,12 @@ function *Timer() {
   clearInterval(interval);
 }
 
+import {renderer} from "@b9g/crank@beta/dom.js";
 renderer.render(jsx\`<\${Timer} />\`, document.body);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 `.trimLeft();
 
 function* Playground(this: Context, {}) {
-	let value = /*localStorage.getItem("playground-value") || */ EXAMPLE;
+	let value = localStorage.getItem("playground-value") || EXAMPLE;
 	this.addEventListener("contentchange", (ev: any) => {
 		value = ev.target.value;
 
@@ -128,13 +51,12 @@ function* Playground(this: Context, {}) {
 	//	console.log(value);
 	//};
 	//window.addEventListener("hashchange", hashchange);
-	//this.cleanup(() => window.removeEventListener("hashchange", hashchange));
+	//this.cleanup(() => window.removeEventListener("hashchange", hashchange))
 
 	for ({} of this) {
 		//this.flush(() => {
 		//	window.location.hash = LZString.compressToEncodedURIComponent(value);
 		//});
-
 		yield jsx`
 			<div
 				style="
@@ -142,10 +64,10 @@ function* Playground(this: Context, {}) {
 					flex-wrap: wrap;
 					width: 100vw;
 					height: 100vh;
-					align-items: stretch;
 					padding-top: 50px;
 				"
 			>
+				<!-- THIS IS THE SCROLL ELEMENT -->
 				<div style="
 					flex: 1 1 auto;
 					width: 600px;
@@ -161,13 +83,11 @@ function* Playground(this: Context, {}) {
 				<div style="
 					flex: 1 1 auto;
 					width: 300px;
+					height: 100%;
 					border-top: 1px solid white;
 					border-left: 1px solid white;
 					margin-top: -1px;
 					margin-left: -1px;
-					position: sticky;
-					top: 0;
-					right: 0;
 				">
 					<${CodePreview} value=${value} />
 				</div>

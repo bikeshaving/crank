@@ -11,12 +11,12 @@ export default async function Home({storage}: {storage: Storage}) {
 					height: 100vh;
 					display: flex;
 					flex-direction: column;
-					justify-content: space-around;
+					justify-content: center;
 					align-items: center;
 					text-align: center;
 				">
-					<h1>
-						<span class="blur-background">The Just JavaScript Framework</span>
+					<h1 class="blur-background">
+						The Just JavaScript Framework
 					</h1>
 				</header>
 				<div class="blur-background">

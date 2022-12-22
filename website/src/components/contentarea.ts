@@ -81,7 +81,9 @@ export function* ContentArea(
 					selection &&
 					area.contains(selection.focusNode) &&
 					// TODO: think more about this condition
-					renderSource !== "refresh"
+					// TODO: think even more about this condition
+					renderSource !== "refresh" &&
+					renderSource !== "virtualizer"
 				) {
 					let focusNode = selection.focusNode! as Element;
 					if (focusNode && focusNode.nodeType === Node.TEXT_NODE) {
@@ -90,6 +92,7 @@ export function* ContentArea(
 
 					const rect = focusNode.getBoundingClientRect();
 					if (rect.top < 0 || rect.bottom > window.innerHeight) {
+						// TODO: we need a way to skip this call for certain renderSources
 						focusNode.scrollIntoView({block: "nearest"});
 					}
 				}
