@@ -1,9 +1,12 @@
-## About
-Crank.js is a framework where components are defined with *Plain Old JavaScript Functions*. But not just regular functions! Components can also be defined with async functions for working with promises, and generator functions for working with local state.
-
-Its API aims to be minimal and transparent. By relying on standard JavaScript control flow operators and data structures, and by making the process of rendering explicit, Crank.js helps developers write durable, bug-free applications with the latest and greatest libraries and APIs.
-
 Rather than forcing developers to work with increasingly convoluted reactive solutions and bespoke templating languages, Crank.js uses the platform. It is a dedication to the web, to the promise of an accessible and inclusive medium for self-expression and commerce, built on the thesis that simpler code is how we’ll push the frontier.
+
+Crank.js is the most “Just JavaScript” framework out there. A bold claim, but here some plain facts.
+1. All Crank Components are “Just JavaScript” functions. But not just regular functions. Components can also be defined with async functions for working with promises, and generator functions for working with local state.
+2. Crank supports JSX-based rendering. Don’t think JSX is “Just JavaScript” enough? Crank ships with a ``` jsx`` ``` tagged template function which does the basically the same thing.
+3. Crank uses old-fashioned, battle-tested virtual DOM diffing to manage both stateful DOM nodes and lifecycle-based components in a predictable way.
+4. Props are just named arguments. Computed properties are just assignments. State is just local variables. Lifecycles are for loops or while loops or even just yielding components in sequence.
+5. Crank is the web framework that your messy side’s been dreaming of. Never “memoize” a callback ever again. Put side-effects anywhere you fucking want to. Await promises in any component, and await the results of those components with await.
+6. Components execute predictably. Re-rendering is done explicitly. You do not need a PhD in Algebraic Effects to write a wrapper to `setInterval()`.
 
 ### A Simple Component
 ```jsx live
