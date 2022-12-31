@@ -173,9 +173,12 @@ function Rack({mod, height}: {mod: number; height: number}) {
 
 	const path =
 		`M${points[0][0]} ${points[0][1]}` +
-		points.slice(1).map(([x, y]) => `L ${x} ${y}`);
+		points
+			.slice(1)
+			.map(([x, y]) => `L ${x} ${y}`)
+			.join(" ");
 	return jsx`
-		<path d=${path} /> 
+		<path d=${path} />
 	`;
 }
 
