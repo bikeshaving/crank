@@ -21,7 +21,7 @@ export function Navbar({url}: NavbarProps) {
 					<a
 						href="/guides/getting-started"
 						class=${url.startsWith("/guides") && "current"}
-					>Docs</a>
+					>Guides</a>
 				</div>
 				<div class="navbar-item">
 					<a
