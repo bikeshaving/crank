@@ -62,16 +62,15 @@ function* Playground(this: Context, {}) {
 				style="
 					display: flex;
 					flex-wrap: wrap;
+					align-items: flex-start;
 					width: 100vw;
 					height: 100vh;
 					padding-top: 50px;
 				"
 			>
-				<!-- THIS IS THE SCROLL ELEMENT -->
 				<div style="
-					flex: 1 1 auto;
-					width: 600px;
-					height: 100%;
+					flex: 1 1 600px;
+					height: min(100vw, 100%);
 					overflow: auto;
 				">
 					<${CodeEditor}
@@ -81,8 +80,7 @@ function* Playground(this: Context, {}) {
 					/>
 				</div>
 				<div style="
-					flex: 1 1 auto;
-					width: 300px;
+					flex: 1 1 400px;
 					height: 100%;
 					border-top: 1px solid white;
 					border-left: 1px solid white;
