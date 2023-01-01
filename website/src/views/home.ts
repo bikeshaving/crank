@@ -20,19 +20,22 @@ export default async function Home({storage}: {storage: Storage}) {
 			<div id="gear-interactive" />
 			<div style="margin: 0 auto">
 				<header style="
-					height: 100vh;
+					height: 50vh;
 					display: flex;
 					flex-direction: column;
-					justify-content: center;
+					justify-content: flex-end;
 					align-items: center;
 					text-align: center;
 				">
 					<h1 class="blur-background">
-						The Just JavaScript Framework
+						Crank.js
 					</h1>
+					<h2 class="blur-background">
+						The Just JavaScript Framework
+					</h2>
 				</header>
 				<div class="blur-background">
-					<div class="feature">
+					<div style="width: 800px; margin: 0 auto; padding: 30px; font-size: 1.2rem">
 						<${Marked} markdown=${index.body} components=${components} />
 					</div>
 				</div>
