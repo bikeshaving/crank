@@ -12,6 +12,7 @@ import {ContentArea} from "./contentarea.js";
 import {tokenize} from "../utils/prism.js";
 import {useVirtualizer} from "../utils/virtualizer.js";
 import type {Virtualizer} from "../utils/virtualizer.js";
+import {debounce} from "../utils/fns.js";
 
 function Gutter(
 	this: Context<typeof Gutter>,
@@ -25,7 +26,7 @@ function Gutter(
 				flex: none;
 				margin: 0;
 				padding: 1em .5em;
-				height: max(120vh, ${totalSize + 28}px);
+				height: max(100vh, ${totalSize + 28}px);
 				color: #fff;
 				font-size: 14px;
 				font-family: monospace;
@@ -43,11 +44,11 @@ function Gutter(
 			>
 				${items.map(
 					(item) => jsx`
-					<div style="
-						height: ${item.size}px;
-					">
-						${item.index + 1}
-					</div>
+					<div
+						style="
+							height: ${item.size}px;
+						"
+					>${item.index + 1}</div>
 				`,
 				)}
 			</div>
@@ -157,17 +158,15 @@ export function* CodeEditor(
 		getScrollElement: () => {
 			return getScroller(area);
 		},
-		onChange: () => {
-			if (renderSource != null) {
-				return;
-			}
-
+		// Debouncing because calling measureElement causes this function to fire
+		// multiple times.
+		onChange: debounce(() => {
 			value = area.value;
 			renderSource = "virtualizer";
 			this.refresh();
-		},
+		}, 0),
 		estimateSize: () => {
-			return 20;
+			return 19;
 		},
 		// TODO: read this from the DOM and un-hardcode
 		scrollPaddingStart: 14,

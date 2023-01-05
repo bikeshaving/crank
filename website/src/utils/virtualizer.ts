@@ -49,6 +49,12 @@ export function useVirtualizer<TItemElement extends Element>(
 		observeElementOffset,
 		observeElementRect,
 		scrollToFn: elementScroll,
+		measureElement: (el, instance) => {
+			// the default implementation rounds values
+			return el.getBoundingClientRect()[
+				instance.options.horizontal ? "width" : "height"
+			];
+		},
 		...options,
 	});
 }
