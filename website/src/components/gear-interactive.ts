@@ -210,7 +210,7 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 	}
 
 	const mod = 20;
-	const speed = 1;
+	const speed = 0.66;
 
 	const toothCount1 = 16;
 	const pitchRadius1 = (toothCount1 * mod) / 2;
@@ -241,7 +241,14 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 			1000;
 		const scrollAng = (-scrollTop * speed) / pitchRadius1;
 		yield jsx`
-			<div style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1">
+			<div style="
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100vw;
+				height: 100vh;
+				z-index: -1;
+			">
 				<svg
 					style="
 						display: block;
@@ -256,37 +263,51 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 					width=${width}
 				>
 					<g
-						transform="translate(
-							${rackX},
-							${rackY - ((scrollTop * speed) % (mod * Math.PI)) - (mod * Math.PI) / 2}
-						)"
+						style="
+							transform: translate(
+								${rackX}px,
+								${rackY - ((scrollTop * speed) % (mod * Math.PI)) - (mod * Math.PI) / 2}px
+							);
+						"
 					>
 						<${Rack} mod=${20} height=${height} />
 					</g>
 					<g
 						stroke="#9b7735"
-						transform="translate(${x1}, ${y1}) rotate(${-degreesFromRadians(scrollAng)})">
+						style="
+							transform:
+								translate(${x1}px, ${y1}px)
+								rotate(${-degreesFromRadians(scrollAng)}deg);
+						"
+					>
 						<${Gear} mod=${mod} toothCount=${toothCount1} />
 					</g>
 					<g
-						transform="translate(${x2}, ${y2}) rotate(${degreesFromRadians(
-			(scrollAng * toothCount1) / toothCount2,
-		)})">
+						style="
+							transform:
+								translate(${x2}px, ${y2}px)
+								rotate(${degreesFromRadians((scrollAng * toothCount1) / toothCount2)}deg);
+						"
+					>
 						<${Gear} mod=${mod} toothCount=${toothCount2} offset />
 					</g>
 					<g
 						stroke="#9b7735"
-						transform="translate(${x3}, ${y3}) rotate(${-degreesFromRadians(
-			(scrollAng * toothCount1) / toothCount3,
-		)})">
+						style="
+							transform: translate(${x3}px, ${y3}px)
+							rotate(${-degreesFromRadians((scrollAng * toothCount1) / toothCount3)}deg);
+						"
+					>
 						<${Gear} mod=${mod} toothCount=${toothCount3} />
 					</g>
 					<!-- This last position is hard-coded because I just can’t even -->
 					<g
-						transform="translate(
-							${x3 + pitchRadius3 - mod},
-							${y3 + 9 + ((scrollTop * speed) % (mod * Math.PI))}
-						)"
+						style="
+							transform: translate(
+								${x3 + pitchRadius3 - mod}px,
+								${y3 + 9 + ((scrollTop * speed) % (mod * Math.PI))}px
+							);
+						"
 					>
 						<${Rack} mod=${mod} height=${height} />
 					</g>
