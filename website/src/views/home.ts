@@ -6,7 +6,9 @@ import * as Path from "path";
 
 import {Marked} from "../components/marked.js";
 import {components} from "../components/marked-components.js";
+
 const __dirname = new URL(".", import.meta.url).pathname;
+
 export default async function Home({storage}: {storage: Storage}) {
 	const docs = await collectDocuments(Path.join(__dirname, "../../documents"));
 
@@ -47,15 +49,15 @@ export default async function Home({storage}: {storage: Storage}) {
 						The Just JavaScript Framework
 					</h3>
 				</header>
-				<div class="blur-background">
-					<div
-						style="
-							padding: 30px;
-							font-size: 1.2rem
-						"
-					>
-						<${Marked} markdown=${index.body} components=${components} />
-					</div>
+				<div
+					style="
+						margin: 0 auto;
+						padding: 30px;
+						max-width: 1400px;
+					"
+					class="blur-background"
+				>
+					<${Marked} markdown=${index.body} components=${components} />
 				</div>
 			</div>
 		<//Root>

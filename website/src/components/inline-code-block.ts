@@ -61,14 +61,19 @@ export function* InlineCodeBlock(
 					editable &&
 					jsx`
 						<div style="
-							flex: 1 1 300px;
+							flex: 1 1 auto;
 							position: sticky;
 							top: 80px;
+							min-height: 50px;
 							border: 1px solid white;
 							margin-top: -1px;
 							margin-left: -1px;
 						">
-							<${CodePreview} value=${value} visible=${isIntersecting} />
+							<${CodePreview}
+								value=${value}
+								visible=${isIntersecting}
+								autoresize
+							/>
 						</div>
 					`
 				}
