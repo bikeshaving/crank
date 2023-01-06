@@ -6,7 +6,11 @@ import {transform} from "../plugins/babel.js";
 let globalId = 0;
 export function* CodePreview(
 	this: Context<typeof CodePreview>,
-	{value, visible}: {value: string; visible: boolean},
+	{
+		value,
+		visible,
+		showStatus,
+	}: {value: string; visible: boolean; showStatus: boolean},
 ): any {
 	const id = globalId++;
 	let iframe: HTMLIFrameElement;
@@ -110,7 +114,7 @@ export function* CodePreview(
 
 	let oldValue: string | undefined;
 	let oldVisible: boolean | undefined;
-	for ({value, visible = true} of this) {
+	for ({value, visible = true, showStatus = false} of this) {
 		if (value !== oldValue || visible !== oldVisible) {
 			loading = true;
 			errorMessage = null;
@@ -125,30 +129,43 @@ export function* CodePreview(
 					height: 100%;
 				"
 			>
-				<div style="flex: none; padding: 1em; border-bottom: 1px solid white">
-					${errorMessage ? "Errored!" : loading ? "Loading..." : "Running!"}
-				</div>
-				<div style="flex: 1 1 auto;">
-					${
-						errorMessage &&
-						jsx`
-						<pre style="color: pink; padding: 1em">${errorMessage}</pre>
+				${
+					showStatus &&
+					jsx`
+						<div
+							style="
+								flex: none;
+								padding: 1em;
+								border-bottom: 1px solid white;
+							">
+							${errorMessage ? "Errored!" : loading ? "Loading..." : "Running!"}
+						</div>
 					`
-					}
-					<iframe
-						$ref=${(el: HTMLIFrameElement) => (iframe = el)}
-						style="
-							border: 1px solid red;
-							flex 1 1 auto;
-							padding: 1em;
-							margin: 0;
-							width: 100%;
-							position: relative;
-							top: 0;
-							bottom: 0;
-						"
-					/>
-				</div>
+				}
+				${
+					errorMessage &&
+					jsx`
+						<pre
+							style="
+								color: pink;
+								padding: 1em;
+							"
+						>${errorMessage}</pre>
+					`
+				}
+				<iframe
+					$ref=${(el: HTMLIFrameElement) => (iframe = el)}
+					style="
+						border: none;
+						flex: 1 1 100%;
+						padding: 1em;
+						margin: 0;
+						width: 100%;
+						position: relative;
+						top: 0;
+						bottom: 0;
+					"
+				/>
 			</div>
 		`;
 

@@ -25,6 +25,7 @@ function *Timer() {
     seconds++;
     this.refresh();
   }, 1000);
+
   for ({} of this) {
     yield jsx\`<div>\${seconds}s</div>\`;
   }
@@ -87,7 +88,7 @@ function* Playground(this: Context, {}) {
 					margin-top: -1px;
 					margin-left: -1px;
 				">
-					<${CodePreview} value=${value} />
+					<${CodePreview} value=${value} showStatus />
 				</div>
 			</div>
 		`;
