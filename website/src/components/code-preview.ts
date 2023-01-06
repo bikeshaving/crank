@@ -8,9 +8,15 @@ export function* CodePreview(
 	this: Context<typeof CodePreview>,
 	{
 		value,
-		visible,
-		showStatus,
-	}: {value: string; visible: boolean; showStatus: boolean},
+		visible = true,
+		showStatus = false,
+		autoresize = false,
+	}: {
+		value: string;
+		visible?: boolean;
+		showStatus?: boolean;
+		autoresize?: boolean;
+	},
 ): any {
 	const id = globalId++;
 	let iframe: HTMLIFrameElement;
@@ -84,6 +90,7 @@ export function* CodePreview(
 		document1.close();
 	}, 2000);
 
+	let height = 100;
 	const onmessage = (ev: any) => {
 		// TODO: same origin?
 		let data: any = JSON.parse(ev.data);
@@ -98,11 +105,16 @@ export function* CodePreview(
 			loading = false;
 			errorMessage = data.message;
 			this.refresh();
+		} else if (data.type === "resize") {
+			if (autoresize) {
+				// Auto-resizing iframes is tricky because you can get into an infinite
+				// loop. For instance, if the body height is `100vh`, or if a scrollbar
+				// being added or removed causes the page height to change. Therefore,
+				// we only increase the height and give a max height of 1000px.
+				height = Math.min(1000, Math.max(height, data.height));
+				this.refresh();
+			}
 		}
-		//} else if (data.type === "resize") {
-		//	height = data.height;
-		//	this.refresh();
-		//}
 	};
 
 	if (typeof window !== "undefined") {
@@ -114,7 +126,12 @@ export function* CodePreview(
 
 	let oldValue: string | undefined;
 	let oldVisible: boolean | undefined;
-	for ({value, visible = true, showStatus = false} of this) {
+	for ({
+		value,
+		visible = true,
+		showStatus = false,
+		autoresize = false,
+	} of this) {
 		if (value !== oldValue || visible !== oldVisible) {
 			loading = true;
 			errorMessage = null;
@@ -153,19 +170,22 @@ export function* CodePreview(
 						>${errorMessage}</pre>
 					`
 				}
-				<iframe
-					$ref=${(el: HTMLIFrameElement) => (iframe = el)}
+				<div
 					style="
-						border: none;
-						flex: 1 1 100%;
+						flex: 1 1 auto;
+						height: 100%;
 						padding: 1em;
-						margin: 0;
-						width: 100%;
-						position: relative;
-						top: 0;
-						bottom: 0;
 					"
-				/>
+				>
+					<iframe
+						$ref=${(el: HTMLIFrameElement) => (iframe = el)}
+						style="
+							border: none;
+							width: 100%;
+							height: ${autoresize ? `${height}px` : "100%"};
+						"
+					/>
+				</div>
 			</div>
 		`;
 

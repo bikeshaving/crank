@@ -66,12 +66,12 @@ function* Playground(this: Context, {}) {
 					align-items: flex-start;
 					width: 100vw;
 					height: 100vh;
-					padding-top: 50px;
 				"
 			>
 				<div style="
 					flex: 1 1 600px;
 					height: min(100vw, 100%);
+					padding-top: 50px;
 					overflow: auto;
 				">
 					<${CodeEditor}
@@ -87,6 +87,7 @@ function* Playground(this: Context, {}) {
 					border-left: 1px solid white;
 					margin-top: -1px;
 					margin-left: -1px;
+					padding-top: 50px;
 				">
 					<${CodePreview} value=${value} showStatus />
 				</div>
