@@ -63,7 +63,6 @@ export function* InlineCodeBlock(
 						<div style="
 							flex: 1 1 300px;
 							position: sticky;
-							min-height: 400px;
 							top: 80px;
 							border: 1px solid white;
 							margin-top: -1px;

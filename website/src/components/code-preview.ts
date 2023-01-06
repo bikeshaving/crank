@@ -60,6 +60,17 @@ export function* CodePreview(
 							window.location.origin,
 						);
 					});
+
+					new ResizeObserver((entries) => {
+						window.parent.postMessage(
+							JSON.stringify({
+								type: "resize",
+								id: ${id},
+								height: entries[0].contentRect.height,
+							}),
+							window.location.origin,
+						);
+					}).observe(document.documentElement);
 				}
 				</script>
 				<script type="module">${code}</script>
@@ -84,6 +95,10 @@ export function* CodePreview(
 			errorMessage = data.message;
 			this.refresh();
 		}
+		//} else if (data.type === "resize") {
+		//	height = data.height;
+		//	this.refresh();
+		//}
 	};
 
 	if (typeof window !== "undefined") {
@@ -103,32 +118,34 @@ export function* CodePreview(
 		}
 
 		yield jsx`
-			<div style="
-				height: 100%;
-				display: flex;
-				flex-direction: column;
-			">
+			<div
+				style="
+					display: flex;
+					flex-direction: column;
+					height: 100%;
+				"
+			>
 				<div style="flex: none; padding: 1em; border-bottom: 1px solid white">
 					${errorMessage ? "Errored!" : loading ? "Loading..." : "Running!"}
 				</div>
-				<div style="flex: 1;">
+				<div style="flex: 1 1 auto;">
 					${
 						errorMessage &&
 						jsx`
-						<pre style="color: pink; padding: 1em">
-							${errorMessage}
-						</pre>
+						<pre style="color: pink; padding: 1em">${errorMessage}</pre>
 					`
 					}
 					<iframe
 						$ref=${(el: HTMLIFrameElement) => (iframe = el)}
 						style="
-							border: none;
+							border: 1px solid red;
+							flex 1 1 auto;
 							padding: 1em;
 							margin: 0;
 							width: 100%;
-							height: 100%;
-							display: ${errorMessage ? "none" : "block"}
+							position: relative;
+							top: 0;
+							bottom: 0;
 						"
 					/>
 				</div>
