@@ -12,12 +12,12 @@ test.after.each(() => {
 });
 
 test("host", () => {
-	renderer.render(<div crank-static={true}>Hello world</div>, document.body);
+	renderer.render(<div $static={true}>Hello world</div>, document.body);
 
 	Assert.is(document.body.innerHTML, "<div>Hello world</div>");
 
 	renderer.render(
-		<div crank-static={true} style="background-color: red">
+		<div $static={true} style="background-color: red">
 			Hello again
 		</div>,
 		document.body,
@@ -30,15 +30,15 @@ test("component", () => {
 		return <div>Hello {name}</div>;
 	}
 
-	renderer.render(<Greeting crank-static={true} name="world" />, document.body);
+	renderer.render(<Greeting $static={true} name="world" />, document.body);
 
 	Assert.is(document.body.innerHTML, "<div>Hello world</div>");
 
-	renderer.render(<Greeting crank-static={true} name="Alice" />, document.body);
+	renderer.render(<Greeting $static={true} name="Alice" />, document.body);
 
 	Assert.is(document.body.innerHTML, "<div>Hello world</div>");
 
-	renderer.render(<Greeting crank-static={false} name="Bob" />, document.body);
+	renderer.render(<Greeting $static={false} name="Bob" />, document.body);
 
 	Assert.is(document.body.innerHTML, "<div>Hello Bob</div>");
 });
@@ -50,11 +50,11 @@ test("component refresh", () => {
 		return <div>Hello {name}</div>;
 	}
 
-	renderer.render(<Greeting crank-static={true} name="world" />, document.body);
+	renderer.render(<Greeting $static={true} name="world" />, document.body);
 
 	Assert.is(document.body.innerHTML, "<div>Hello world</div>");
 
-	renderer.render(<Greeting crank-static={true} name="Alice" />, document.body);
+	renderer.render(<Greeting $static={true} name="Alice" />, document.body);
 
 	Assert.is(document.body.innerHTML, "<div>Hello world</div>");
 
@@ -69,13 +69,13 @@ test("async component", async () => {
 	}
 
 	await renderer.render(
-		<Greeting crank-static={true} name="world" />,
+		<Greeting $static={true} name="world" />,
 		document.body,
 	);
 
 	Assert.is(document.body.innerHTML, "<div>Hello world</div>");
 	const p1 = renderer.render(
-		<Greeting crank-static={true} name="Alice" />,
+		<Greeting $static={true} name="Alice" />,
 		document.body,
 	);
 
@@ -84,7 +84,7 @@ test("async component", async () => {
 	Assert.is(document.body.innerHTML, "<div>Hello world</div>");
 
 	const p2 = renderer.render(
-		<Greeting crank-static={false} name="Bob" />,
+		<Greeting $static={false} name="Bob" />,
 		document.body,
 	);
 
@@ -102,13 +102,13 @@ test("async component refresh", async () => {
 	}
 
 	await renderer.render(
-		<Greeting crank-static={true} name="world" />,
+		<Greeting $static={true} name="world" />,
 		document.body,
 	);
 
 	Assert.is(document.body.innerHTML, "<div>Hello world</div>");
 	const p1 = renderer.render(
-		<Greeting crank-static={true} name="Alice" />,
+		<Greeting $static={true} name="Alice" />,
 		document.body,
 	);
 
@@ -132,7 +132,7 @@ test("inflight", async () => {
 	const p1 = renderer.render(<Greeting name="world" />, document.body);
 
 	const p2 = renderer.render(
-		<Greeting crank-static={true} name="Alice" />,
+		<Greeting $static={true} name="Alice" />,
 		document.body,
 	);
 
@@ -163,11 +163,11 @@ test("generator component", async () => {
 		}
 	}
 
-	renderer.render(<Greeting crank-static={true} name="world" />, document.body);
+	renderer.render(<Greeting $static={true} name="world" />, document.body);
 
 	Assert.is(document.body.innerHTML, "<div>Hello world 0</div>");
 
-	renderer.render(<Greeting crank-static={true} name="Alice" />, document.body);
+	renderer.render(<Greeting $static={true} name="Alice" />, document.body);
 
 	Assert.is(document.body.innerHTML, "<div>Hello world 0</div>");
 
@@ -178,7 +178,7 @@ test("generator component", async () => {
 test("isolate higher-order component", () => {
 	function isolate(Component: any) {
 		return function Wrapper(props: any) {
-			return <Component {...props} crank-static={true} />;
+			return <Component {...props} $static={true} />;
 		};
 	}
 
@@ -208,6 +208,12 @@ test("isolate higher-order component", () => {
 
 	ctx.refresh();
 	Assert.is(document.body.innerHTML, "<div>Hello Bob 1</div>");
+});
+
+test("tag change", () => {
+	renderer.render(<div $static={true}>Hello world</div>, document.body);
+	renderer.render(<span $static={true}>Hello world</span>, document.body);
+	Assert.is(document.body.innerHTML, "<span>Hello world</span>");
 });
 
 test.run();
