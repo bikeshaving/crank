@@ -780,15 +780,14 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	let childrenByKey: Map<Key, Retainer<TNode>> | undefined;
 	let seenKeys: Set<Key> | undefined;
 	let isAsync = false;
-	let oi = 0,
-		oldLength = oldRetained.length;
+	let oi = 0;
+	let oldLength = oldRetained.length;
 	for (let ni = 0, newLength = newChildren.length; ni < newLength; ni++) {
-		// We make sure we don’t access indices out of bounds to prevent
-		// deoptimizations.
+		// length checks to prevent index out of bounds deoptimizations.
 		let ret = oi >= oldLength ? undefined : oldRetained[oi];
 		let child = narrow(newChildren[ni]);
 		{
-			// Aligning new children with old retainers
+			// aligning new children with old retainers
 			let oldKey = typeof ret === "object" ? ret.el.key : undefined;
 			let newKey = typeof child === "object" ? child.key : undefined;
 			if (newKey !== undefined && seenKeys && seenKeys.has(newKey)) {
@@ -826,16 +825,18 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		// Updating
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 		if (typeof child === "object") {
-			if (typeof ret === "object" && child.static_) {
-				ret.el = child;
-				value = getInflightValue(ret);
-			} else if (child.tag === Copy) {
+			if (child.tag === Copy) {
 				value = getInflightValue(ret);
 			} else {
 				let oldProps: Record<string, any> | undefined;
+				let static_ = false;
 				if (typeof ret === "object" && ret.el.tag === child.tag) {
 					oldProps = ret.el.props;
 					ret.el = child;
+					if (child.static_) {
+						value = getInflightValue(ret);
+						static_ = true;
+					}
 				} else {
 					if (typeof ret === "object") {
 						(graveyard = graveyard || []).push(ret);
@@ -846,7 +847,9 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					ret.fallbackValue = fallback;
 				}
 
-				if (child.tag === Raw) {
+				if (static_) {
+					// pass
+				} else if (child.tag === Raw) {
 					value = updateRaw(renderer, ret, scope, oldProps);
 				} else if (child.tag === Fragment) {
 					value = updateFragment(renderer, root, host, ctx, scope, ret);
@@ -1075,6 +1078,8 @@ function commitHost<TNode, TScope>(
 	const tag = ret.el.tag as string | symbol;
 	const value = ret.value as TNode;
 	let props = ret.el.props;
+	// TODO: The Copy tag doubles as a way to skip the patching of a prop. Not
+	// sure about this feature. Should probably be removed.
 	let copied: Set<string> | undefined;
 	if (tag !== Portal) {
 		for (const propName in {...oldProps, ...props}) {
