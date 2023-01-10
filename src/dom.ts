@@ -9,7 +9,11 @@ import {
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
-export const impl: Partial<RendererImpl<Node, string>> = {
+interface DOMScope {
+	xmlns: string | undefined;
+}
+
+export const impl: Partial<RendererImpl<Node, DOMScope>> = {
 	parse(text: string): ElementValue<Node> {
 		if (typeof document.createRange === "function") {
 			const fragment = document.createRange().createContextualFragment(text);
@@ -21,20 +25,29 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 		}
 	},
 
-	scope(scope: string, tag: string | symbol): string | undefined {
+	scope(scope: DOMScope | undefined, tag: string | symbol): DOMScope {
+		scope = scope || {xmlns: ""};
+		let xmlns = scope.xmlns;
 		// TODO: Should we handle xmlns???
 		switch (tag) {
 			case Portal:
 			case "foreignObject":
-				return undefined;
+				xmlns = undefined;
+				break;
 			case "svg":
-				return SVG_NAMESPACE;
-			default:
-				return scope;
+				xmlns = SVG_NAMESPACE;
+				break;
 		}
+
+		return {xmlns};
 	},
 
-	create(tag: string | symbol, _props: unknown, ns: string | undefined): Node {
+	create(
+		tag: string | symbol,
+		_props: unknown,
+		scope: DOMScope | undefined,
+	): Node {
+		let ns: string | undefined = scope ? scope.xmlns : undefined;
 		if (typeof tag !== "string") {
 			throw new Error(`Unknown tag: ${tag.toString()}`);
 		} else if (tag.toLowerCase() === "svg") {
@@ -42,6 +55,18 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 		}
 
 		return ns ? document.createElementNS(ns, tag) : document.createElement(tag);
+	},
+
+	hydrate(
+		tag: string | symbol,
+		node: Node,
+	): {
+		props: Record<string, unknown>;
+		children: Array<Node>;
+	} {
+		// TODO: How do we extract props from nodes? Is this even possible?
+		const children = Array.from(node.childNodes);
+		return {props: {}, children};
 	},
 
 	patch(
@@ -52,9 +77,9 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 		// TODO: Stricter typings?
 		value: unknown,
 		oldValue: unknown,
-		scope: string | undefined,
+		scope: DOMScope | undefined,
 	): void {
-		const isSVG = scope === SVG_NAMESPACE;
+		const isSVG = scope && scope.xmlns === SVG_NAMESPACE;
 		switch (name) {
 			case "style": {
 				const style: CSSStyleDeclaration = node.style;
@@ -239,7 +264,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 	},
 };
 
-export class DOMRenderer extends Renderer<Node, string> {
+export class DOMRenderer extends Renderer<Node, DOMScope> {
 	constructor() {
 		super(impl);
 	}
@@ -249,15 +274,30 @@ export class DOMRenderer extends Renderer<Node, string> {
 		root: Node,
 		ctx?: Context,
 	): Promise<ElementValue<Node>> | ElementValue<Node> {
-		if (root == null || typeof root.nodeType !== "number") {
-			throw new TypeError(
-				`Render root is not a node. Received: ${JSON.stringify(
-					root && root.toString(),
-				)}`,
-			);
-		}
-
+		validateRoot(root);
 		return super.render(children, root, ctx);
+	}
+
+	hydrate(
+		children: Children,
+		root: Node,
+		ctx?: Context,
+	): Promise<ElementValue<Node>> | ElementValue<Node> {
+		validateRoot(root);
+		return super.hydrate(children, root, ctx);
+	}
+}
+
+function validateRoot(root: unknown): asserts root is Node {
+	if (
+		root === null ||
+		(typeof root === "object" && typeof (root as any).nodeType !== "number")
+	) {
+		throw new TypeError(
+			`Render root is not a node. Received: ${JSON.stringify(
+				root && root.toString(),
+			)}`,
+		);
 	}
 }
 

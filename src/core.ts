@@ -551,6 +551,16 @@ export interface RendererImpl<
 		scope: TScope | undefined,
 	): TNode;
 
+	// TODO: Think about the name of this method
+	hydrate<TTag extends string | symbol>(
+		tag: TTag,
+		node: TNode | TRoot,
+		props: TagProps<TTag>,
+	): {
+		props: Record<string, unknown>;
+		children: Array<TNode | string>;
+	};
+
 	/**
 	 * Called when an element’s rendered value is exposed via render, schedule,
 	 * refresh, refs, or generator yield expressions.
@@ -576,10 +586,10 @@ export interface RendererImpl<
 	 *
 	 * @returns The escaped string.
 	 *
-	 * Rather than returning text nodes for whatever environment we’re rendering
-	 * to, we defer that step for Renderer.prototype.arrange. We do this so that
-	 * adjacent strings can be concatenated and the actual element tree can be
-	 * rendered in a normalized form.
+	 * Rather than returning Text nodes as we would in the DOM case, for example,
+	 * we delay that step for Renderer.prototype.arrange. We do this so that
+	 * adjacent strings can be concatenated, and the actual element tree can be
+	 * rendered in normalized form.
 	 */
 	escape(text: string, scope: TScope | undefined): string;
 
@@ -622,6 +632,9 @@ export interface RendererImpl<
 
 const defaultRendererImpl: RendererImpl<unknown, unknown, unknown, unknown> = {
 	create() {
+		throw new Error("Not implemented");
+	},
+	hydrate() {
 		throw new Error("Not implemented");
 	},
 	scope: IDENTITY,
@@ -703,6 +716,96 @@ export class Renderer<
 		} else if (ret.ctx !== ctx) {
 			throw new Error("Context mismatch");
 		} else {
+			oldProps = ret.el.props;
+			ret.el = createElement(Portal, {children, root});
+			if (typeof root === "object" && root !== null && children == null) {
+				this.cache.delete(root);
+			}
+		}
+
+		const impl = this[_RendererImpl];
+		const childValues = diffChildren(
+			impl,
+			root,
+			ret,
+			ctx,
+			impl.scope(undefined, Portal, ret.el.props),
+			ret,
+			children,
+			// TODO: pass in hydration children
+		);
+
+		// We return the child values of the portal because portal elements
+		// themselves have no readable value.
+		if (isPromiseLike(childValues)) {
+			return childValues.then((childValues) =>
+				commitRootRender(impl, root, ctx, ret!, childValues, oldProps),
+			);
+		}
+
+		return commitRootRender(impl, root, ctx, ret, childValues, oldProps);
+	}
+
+	// Hydration is a recursive process like rendering except we don’t create new
+	// nodes. How should it be implemented? In internal terms, we need to create
+	// Retainer nodes but we should skip most RendererImpl methods, or change the
+	// way they work.
+	//
+	// In terms of the RendererImpl methods:
+	//
+	// We should definitely skip calling create().
+	//
+	// We probably should skip patch() and arrange().
+	//
+	// It will probably be necessary to call scope() and escape(), to handle SVG
+	// namespaces and HTML text escaping.
+	//
+	// The read() method should work but isn’t directly tied to rendering or
+	// hydration.
+	//
+	// I’m not sure how to handle Raw nodes and the parse() method. And the
+	// dispose() method is probably unnnecessary because host elements should not
+	// be removed during hydration.
+	//
+	// This could be implemented with a flag that is passed through all the
+	// recursive functions. I thought we could put hydration data in the scope
+	// system, but it turns out the state we need to keep track of is a little
+	// more complicated, and scope is not passed to methods like arrange().
+	//
+	// The happy path for hydration is that it calls all component functions,
+	// attaches event listeners to the current DOM, and compares Element, Text
+	// and raw nodes against their virtual representations (raw nodes can allow
+	// the creation of Comment nodes, for instance). I would rather not have
+	// special logic for all these cases, so I’m thinking of creating a method
+	// like arrange() for the hydration case.
+	//
+	// Alternatively, we could add a RendererImpl method which “reverses”
+	// children from DOM nodes, so that we can pass them into the patch() and
+	// arrange() methods. The idea would be to create a function which is passed
+	// a node, and returns virtual props and children to compare against.
+	hydrate(
+		children: Children,
+		root: TRoot,
+		bridge?: Context | undefined,
+	): Promise<TResult> | TResult {
+		let ret: Retainer<TNode> | undefined;
+		// Renderer.render() lets you pass a ctx to connect the Context trees of
+		// two renderers. Should Renderer.hydrate() do the same?
+		const ctx = bridge && (bridge[_ContextImpl] as ContextImpl<TNode>);
+		ret = this.cache.get(root);
+
+		let oldProps: Record<string, any> | undefined;
+		if (ret === undefined) {
+			ret = new Retainer(createElement(Portal, {children, root}));
+			ret.value = root;
+			if (typeof root === "object" && root !== null && children != null) {
+				this.cache.set(root, ret);
+			}
+		} else {
+			// TODO: Should hydration be allowed with previously rendered roots?
+			// What is the use-case?
+			// If hydrate is called with previously rendered roots, we should just
+			// return render.
 			oldProps = ret.el.props;
 			ret.el = createElement(Portal, {children, root});
 			if (typeof root === "object" && root !== null && children == null) {
@@ -850,9 +953,18 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				if (static_) {
 					// pass
 				} else if (child.tag === Raw) {
+					// what do we pass in here?
 					value = updateRaw(renderer, ret, scope, oldProps);
 				} else if (child.tag === Fragment) {
-					value = updateFragment(renderer, root, host, ctx, scope, ret);
+					value = updateFragment(
+						renderer,
+						root,
+						host,
+						ctx,
+						scope,
+						ret,
+						// TODO: pass in hydration children
+					);
 				} else if (typeof child.tag === "function") {
 					value = updateComponent(
 						renderer,
@@ -862,13 +974,17 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 						scope,
 						ret,
 						oldProps,
+						// TODO: pass in hydration children
 					);
 				} else {
+					// TODO: pass in a hydration flag
 					value = updateHost(renderer, root, ctx, scope, ret, oldProps);
 				}
 			}
 
 			const ref = child.ref;
+			// TODO: we have to make sure committing is done in order for hydration
+			// purposes.
 			if (isPromiseLike(value)) {
 				isAsync = true;
 				if (typeof ref === "function") {
@@ -877,8 +993,10 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 						return value;
 					});
 				}
-			} else if (typeof ref === "function") {
-				ref(renderer.read(value));
+			} else {
+				if (typeof ref === "function") {
+					ref(renderer.read(value));
+				}
 			}
 		} else {
 			// child is a string or undefined
@@ -1019,6 +1137,7 @@ function updateFragment<TNode, TScope, TRoot extends TNode>(
 		scope,
 		ret,
 		ret.el.props.children,
+		// TODO: pass in hydrating children
 	);
 
 	if (isPromiseLike(childValues)) {
@@ -1042,6 +1161,7 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 	if (el.tag === Portal) {
 		root = ret.value = el.props.root;
 	} else if (!oldProps) {
+		// TODO: Move this back to the commit step for hydration
 		// We use the truthiness of oldProps to determine if this the first render.
 		ret.value = renderer.create(tag, el.props, scope);
 	}
@@ -1055,6 +1175,7 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 		scope,
 		ret,
 		ret.el.props.children,
+		// TODO: pass hydration nodes
 	);
 
 	if (isPromiseLike(childValues)) {
@@ -1870,6 +1991,9 @@ function updateComponent<TNode, TScope, TRoot extends TNode, TResult>(
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	let ctx: ContextImpl<TNode, TScope, TRoot, TResult>;
 	if (oldProps) {
+		if (ret.ctx == null) {
+			throw new Error("Hmmm");
+		}
 		ctx = ret.ctx as ContextImpl<TNode, TScope, TRoot, TResult>;
 		if (ctx.f & IsSyncExecuting) {
 			console.error("Component is already executing");
@@ -1913,6 +2037,7 @@ function updateComponentChildren<TNode, TResult>(
 			ctx.scope,
 			ctx.ret,
 			narrow(children),
+			// TODO: hydration
 		);
 	} finally {
 		ctx.f &= ~IsSyncExecuting;
