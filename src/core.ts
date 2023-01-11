@@ -1160,10 +1160,6 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 	const tag = el.tag as string | symbol;
 	if (el.tag === Portal) {
 		root = ret.value = el.props.root;
-	} else if (!oldProps) {
-		// TODO: Move this back to the commit step for hydration
-		// We use the truthiness of oldProps to determine if this the first render.
-		ret.value = renderer.create(tag, el.props, scope);
 	}
 
 	scope = renderer.scope(scope, tag, el.props);
@@ -1197,15 +1193,20 @@ function commitHost<TNode, TScope>(
 	oldProps: Record<string, any> | undefined,
 ): ElementValue<TNode> {
 	const tag = ret.el.tag as string | symbol;
-	const value = ret.value as TNode;
+	let value = ret.value as TNode;
 	let props = ret.el.props;
-	// TODO: The Copy tag doubles as a way to skip the patching of a prop. Not
-	// sure about this feature. Should probably be removed.
 	let copied: Set<string> | undefined;
 	if (tag !== Portal) {
+		if (ret.value == null) {
+			// This assumes that renderer.create does not return nullish values.
+			value = ret.value = renderer.create(tag, props, scope);
+		}
+
 		for (const propName in {...oldProps, ...props}) {
 			const propValue = props[propName];
 			if (propValue === Copy) {
+				// TODO: The Copy tag doubles as a way to skip the patching of a prop.
+				// Not sure about this feature. Should probably be removed.
 				(copied = copied || new Set()).add(propName);
 			} else if (propName !== "children") {
 				renderer.patch(
