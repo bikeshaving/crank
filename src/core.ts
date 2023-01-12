@@ -876,7 +876,6 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	scope: TScope | undefined,
 	parent: Retainer<TNode>,
 	children: Children,
-	// TODO: does this need to be a promise in the case of async previous siblings?
 	hydrationData: HydrationData<TNode> | undefined,
 ): Promise<Array<TNode | string>> | Array<TNode | string> {
 	const oldRetained = wrap(parent.children);
@@ -887,15 +886,16 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	let childrenByKey: Map<Key, Retainer<TNode>> | undefined;
 	let seenKeys: Set<Key> | undefined;
 	let isAsync = false;
+	let hydrationBlock: Promise<unknown> | undefined;
 	let oi = 0;
 	let oldLength = oldRetained.length;
 	for (let ni = 0, newLength = newChildren.length; ni < newLength; ni++) {
 		// length checks to prevent index out of bounds deoptimizations.
-		let oldChild = oi >= oldLength ? undefined : oldRetained[oi];
+		let ret = oi >= oldLength ? undefined : oldRetained[oi];
 		let child = narrow(newChildren[ni]);
 		{
 			// aligning new children with old retainers
-			let oldKey = typeof oldChild === "object" ? oldChild.el.key : undefined;
+			let oldKey = typeof ret === "object" ? ret.el.key : undefined;
 			let newKey = typeof child === "object" ? child.key : undefined;
 			if (newKey !== undefined && seenKeys && seenKeys.has(newKey)) {
 				console.error("Duplicate key", newKey);
@@ -911,16 +911,16 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			} else {
 				childrenByKey = childrenByKey || createChildrenByKey(oldRetained, oi);
 				if (newKey === undefined) {
-					while (oldChild !== undefined && oldKey !== undefined) {
+					while (ret !== undefined && oldKey !== undefined) {
 						oi++;
-						oldChild = oldRetained[oi];
-						oldKey = typeof oldChild === "object" ? oldChild.el.key : undefined;
+						ret = oldRetained[oi];
+						oldKey = typeof ret === "object" ? ret.el.key : undefined;
 					}
 
 					oi++;
 				} else {
-					oldChild = childrenByKey.get(newKey);
-					if (oldChild !== undefined) {
+					ret = childrenByKey.get(newKey);
+					if (ret !== undefined) {
 						childrenByKey.delete(newKey);
 					}
 
@@ -933,68 +933,108 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 		if (typeof child === "object") {
 			if (child.tag === Copy) {
-				value = getInflightValue(oldChild);
+				value = getInflightValue(ret);
 			} else {
 				let oldProps: Record<string, any> | undefined;
 				let static_ = false;
-				if (typeof oldChild === "object" && oldChild.el.tag === child.tag) {
-					oldProps = oldChild.el.props;
-					oldChild.el = child;
+				if (typeof ret === "object" && ret.el.tag === child.tag) {
+					oldProps = ret.el.props;
+					ret.el = child;
 					if (child.static_) {
-						value = getInflightValue(oldChild);
+						value = getInflightValue(ret);
 						static_ = true;
 					}
 				} else {
-					if (typeof oldChild === "object") {
-						(graveyard = graveyard || []).push(oldChild);
+					if (typeof ret === "object") {
+						(graveyard = graveyard || []).push(ret);
 					}
 
-					const fallback = oldChild;
-					oldChild = new Retainer<TNode>(child);
-					oldChild.fallbackValue = fallback;
+					const fallback = ret;
+					ret = new Retainer<TNode>(child);
+					ret.fallbackValue = fallback;
 				}
 
 				if (static_) {
 					// pass
 				} else if (child.tag === Raw) {
-					value = updateRaw(renderer, oldChild, scope, oldProps);
+					// TODO: think about Raw tag and hydration
+					value = hydrationBlock
+						? hydrationBlock.then(() =>
+								updateRaw(renderer, ret as Retainer<TNode>, scope, oldProps),
+						  )
+						: updateRaw(renderer, ret, scope, oldProps);
 				} else if (child.tag === Fragment) {
-					value = updateFragment(
-						renderer,
-						root,
-						host,
-						ctx,
-						scope,
-						oldChild,
-						hydrationData,
-					);
+					value = hydrationBlock
+						? hydrationBlock.then(() =>
+								updateFragment(
+									renderer,
+									root,
+									host,
+									ctx,
+									scope,
+									ret as Retainer<TNode>,
+									hydrationData,
+								),
+						  )
+						: updateFragment(
+								renderer,
+								root,
+								host,
+								ctx,
+								scope,
+								ret,
+								hydrationData,
+						  );
 				} else if (typeof child.tag === "function") {
-					value = updateComponent(
-						renderer,
-						root,
-						host,
-						ctx,
-						scope,
-						oldChild,
-						oldProps,
-						hydrationData,
-					);
+					value = hydrationBlock
+						? hydrationBlock.then(() =>
+								updateComponent(
+									renderer,
+									root,
+									host,
+									ctx,
+									scope,
+									ret as Retainer<TNode>,
+									oldProps,
+									hydrationData,
+								),
+						  )
+						: updateComponent(
+								renderer,
+								root,
+								host,
+								ctx,
+								scope,
+								ret,
+								oldProps,
+								hydrationData,
+						  );
 				} else {
-					value = updateHost(
-						renderer,
-						root,
-						ctx,
-						scope,
-						oldChild,
-						oldProps,
-						hydrationData,
-					);
+					value = hydrationBlock
+						? hydrationBlock.then(() =>
+								updateHost(
+									renderer,
+									root,
+									ctx,
+									scope,
+									ret as Retainer<TNode>,
+									oldProps,
+									hydrationData,
+								),
+						  )
+						: updateHost(
+								renderer,
+								root,
+								ctx,
+								scope,
+								ret,
+								oldProps,
+								hydrationData,
+						  );
 				}
 			}
 
 			const ref = child.ref;
-			// TODO: we have to make sure committing is done in order for hydration
-			// purposes.
 			if (isPromiseLike(value)) {
 				isAsync = true;
 				if (typeof ref === "function") {
@@ -1005,7 +1045,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				}
 
 				if (hydrationData !== undefined) {
-					hydrationData.ready = value;
+					hydrationBlock = value;
 				}
 			} else {
 				if (typeof ref === "function") {
@@ -1014,19 +1054,19 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			}
 		} else {
 			// child is a string or undefined
-			if (typeof oldChild === "object") {
-				(graveyard = graveyard || []).push(oldChild);
+			if (typeof ret === "object") {
+				(graveyard = graveyard || []).push(ret);
 			}
 
 			if (typeof child === "string") {
-				value = oldChild = renderer.escape(child, scope);
+				value = ret = renderer.escape(child, scope);
 			} else {
-				oldChild = undefined;
+				ret = undefined;
 			}
 		}
 
 		values[ni] = value;
-		newRetained[ni] = oldChild;
+		newRetained[ni] = ret;
 	}
 
 	// cleanup remaining retainers
