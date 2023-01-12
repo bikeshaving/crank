@@ -60,13 +60,23 @@ export const impl: Partial<RendererImpl<Node, DOMScope>> = {
 	hydrate(
 		tag: string | symbol,
 		node: Node,
+		props: Record<string, unknown>,
 	): {
 		props: Record<string, unknown>;
-		children: Array<Node>;
+		children: Array<Node | string>;
 	} {
+		const children: Array<Node | string> = [];
+		for (let i = 0; i < node.childNodes.length; i++) {
+			const child = node.childNodes[i];
+			if (child.nodeType === Node.TEXT_NODE) {
+				children.push(child.nodeValue || "");
+			} else if (child.nodeType === Node.ELEMENT_NODE) {
+				children.push(child);
+			}
+		}
+
 		// TODO: How do we extract props from nodes? Is this even possible?
-		const children = Array.from(node.childNodes);
-		return {props: {}, children};
+		return {props, children};
 	},
 
 	patch(

@@ -732,7 +732,7 @@ export class Renderer<
 			impl.scope(undefined, Portal, ret.el.props),
 			ret,
 			children,
-			// TODO: pass in hydration children
+			undefined, // hydration data
 		);
 
 		// We return the child values of the portal because portal elements
@@ -788,32 +788,26 @@ export class Renderer<
 		root: TRoot,
 		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
-		let ret: Retainer<TNode> | undefined;
-		// Renderer.render() lets you pass a ctx to connect the Context trees of
-		// two renderers. Should Renderer.hydrate() do the same?
+		const impl = this[_RendererImpl];
 		const ctx = bridge && (bridge[_ContextImpl] as ContextImpl<TNode>);
+		let ret: Retainer<TNode> | undefined;
 		ret = this.cache.get(root);
-
-		let oldProps: Record<string, any> | undefined;
-		if (ret === undefined) {
-			ret = new Retainer(createElement(Portal, {children, root}));
-			ret.value = root;
-			if (typeof root === "object" && root !== null && children != null) {
-				this.cache.set(root, ret);
-			}
-		} else {
-			// TODO: Should hydration be allowed with previously rendered roots?
-			// What is the use-case?
-			// If hydrate is called with previously rendered roots, we should just
-			// return render.
-			oldProps = ret.el.props;
-			ret.el = createElement(Portal, {children, root});
-			if (typeof root === "object" && root !== null && children == null) {
-				this.cache.delete(root);
-			}
+		if (ret !== undefined) {
+			// If there is a retainer for the root, hydration is not necessary.
+			return this.render(children, root, bridge);
 		}
 
-		const impl = this[_RendererImpl];
+		let oldProps: Record<string, any> | undefined;
+		ret = new Retainer(createElement(Portal, {children, root}));
+		ret.value = root;
+		if (typeof root === "object" && root !== null && children != null) {
+			this.cache.set(root, ret);
+		}
+
+		const hydrationData = {
+			...impl.hydrate(Portal, root, {}),
+			ready: undefined,
+		};
 		const childValues = diffChildren(
 			impl,
 			root,
@@ -822,6 +816,7 @@ export class Renderer<
 			impl.scope(undefined, Portal, ret.el.props),
 			ret,
 			children,
+			hydrationData,
 		);
 
 		// We return the child values of the portal because portal elements
@@ -866,6 +861,13 @@ function commitRootRender<TNode, TRoot extends TNode, TResult>(
 	return renderer.read(ret.cachedChildValues);
 }
 
+interface HydrationData<TNode> {
+	props: Record<string, unknown>;
+	children: Array<TNode | string>;
+	// TODO: rename maybe
+	ready: Promise<unknown> | undefined;
+}
+
 function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
@@ -874,6 +876,8 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	scope: TScope | undefined,
 	parent: Retainer<TNode>,
 	children: Children,
+	// TODO: does this need to be a promise in the case of async previous siblings?
+	hydrationData: HydrationData<TNode> | undefined,
 ): Promise<Array<TNode | string>> | Array<TNode | string> {
 	const oldRetained = wrap(parent.children);
 	const newRetained: typeof oldRetained = [];
@@ -887,11 +891,11 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	let oldLength = oldRetained.length;
 	for (let ni = 0, newLength = newChildren.length; ni < newLength; ni++) {
 		// length checks to prevent index out of bounds deoptimizations.
-		let ret = oi >= oldLength ? undefined : oldRetained[oi];
+		let oldChild = oi >= oldLength ? undefined : oldRetained[oi];
 		let child = narrow(newChildren[ni]);
 		{
 			// aligning new children with old retainers
-			let oldKey = typeof ret === "object" ? ret.el.key : undefined;
+			let oldKey = typeof oldChild === "object" ? oldChild.el.key : undefined;
 			let newKey = typeof child === "object" ? child.key : undefined;
 			if (newKey !== undefined && seenKeys && seenKeys.has(newKey)) {
 				console.error("Duplicate key", newKey);
@@ -907,16 +911,16 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			} else {
 				childrenByKey = childrenByKey || createChildrenByKey(oldRetained, oi);
 				if (newKey === undefined) {
-					while (ret !== undefined && oldKey !== undefined) {
+					while (oldChild !== undefined && oldKey !== undefined) {
 						oi++;
-						ret = oldRetained[oi];
-						oldKey = typeof ret === "object" ? ret.el.key : undefined;
+						oldChild = oldRetained[oi];
+						oldKey = typeof oldChild === "object" ? oldChild.el.key : undefined;
 					}
 
 					oi++;
 				} else {
-					ret = childrenByKey.get(newKey);
-					if (ret !== undefined) {
+					oldChild = childrenByKey.get(newKey);
+					if (oldChild !== undefined) {
 						childrenByKey.delete(newKey);
 					}
 
@@ -929,32 +933,31 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 		if (typeof child === "object") {
 			if (child.tag === Copy) {
-				value = getInflightValue(ret);
+				value = getInflightValue(oldChild);
 			} else {
 				let oldProps: Record<string, any> | undefined;
 				let static_ = false;
-				if (typeof ret === "object" && ret.el.tag === child.tag) {
-					oldProps = ret.el.props;
-					ret.el = child;
+				if (typeof oldChild === "object" && oldChild.el.tag === child.tag) {
+					oldProps = oldChild.el.props;
+					oldChild.el = child;
 					if (child.static_) {
-						value = getInflightValue(ret);
+						value = getInflightValue(oldChild);
 						static_ = true;
 					}
 				} else {
-					if (typeof ret === "object") {
-						(graveyard = graveyard || []).push(ret);
+					if (typeof oldChild === "object") {
+						(graveyard = graveyard || []).push(oldChild);
 					}
 
-					const fallback = ret;
-					ret = new Retainer<TNode>(child);
-					ret.fallbackValue = fallback;
+					const fallback = oldChild;
+					oldChild = new Retainer<TNode>(child);
+					oldChild.fallbackValue = fallback;
 				}
 
 				if (static_) {
 					// pass
 				} else if (child.tag === Raw) {
-					// what do we pass in here?
-					value = updateRaw(renderer, ret, scope, oldProps);
+					value = updateRaw(renderer, oldChild, scope, oldProps);
 				} else if (child.tag === Fragment) {
 					value = updateFragment(
 						renderer,
@@ -962,8 +965,8 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 						host,
 						ctx,
 						scope,
-						ret,
-						// TODO: pass in hydration children
+						oldChild,
+						hydrationData,
 					);
 				} else if (typeof child.tag === "function") {
 					value = updateComponent(
@@ -972,13 +975,20 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 						host,
 						ctx,
 						scope,
-						ret,
+						oldChild,
 						oldProps,
-						// TODO: pass in hydration children
+						hydrationData,
 					);
 				} else {
-					// TODO: pass in a hydration flag
-					value = updateHost(renderer, root, ctx, scope, ret, oldProps);
+					value = updateHost(
+						renderer,
+						root,
+						ctx,
+						scope,
+						oldChild,
+						oldProps,
+						hydrationData,
+					);
 				}
 			}
 
@@ -993,6 +1003,10 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 						return value;
 					});
 				}
+
+				if (hydrationData !== undefined) {
+					hydrationData.ready = value;
+				}
 			} else {
 				if (typeof ref === "function") {
 					ref(renderer.read(value));
@@ -1000,19 +1014,19 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			}
 		} else {
 			// child is a string or undefined
-			if (typeof ret === "object") {
-				(graveyard = graveyard || []).push(ret);
+			if (typeof oldChild === "object") {
+				(graveyard = graveyard || []).push(oldChild);
 			}
 
 			if (typeof child === "string") {
-				value = ret = renderer.escape(child, scope);
+				value = oldChild = renderer.escape(child, scope);
 			} else {
-				ret = undefined;
+				oldChild = undefined;
 			}
 		}
 
 		values[ni] = value;
-		newRetained[ni] = ret;
+		newRetained[ni] = oldChild;
 	}
 
 	// cleanup remaining retainers
@@ -1128,6 +1142,7 @@ function updateFragment<TNode, TScope, TRoot extends TNode>(
 	ctx: ContextImpl<TNode, TScope, TRoot> | undefined,
 	scope: TScope | undefined,
 	ret: Retainer<TNode>,
+	hydrationData: HydrationData<TNode> | undefined,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	const childValues = diffChildren(
 		renderer,
@@ -1137,7 +1152,7 @@ function updateFragment<TNode, TScope, TRoot extends TNode>(
 		scope,
 		ret,
 		ret.el.props.children,
-		// TODO: pass in hydrating children
+		hydrationData,
 	);
 
 	if (isPromiseLike(childValues)) {
@@ -1155,14 +1170,31 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 	scope: TScope | undefined,
 	ret: Retainer<TNode>,
 	oldProps: Record<string, any> | undefined,
+	hydrationData: HydrationData<TNode> | undefined,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	const el = ret.el;
 	const tag = el.tag as string | symbol;
+	let hydrationValue: TNode | undefined;
 	if (el.tag === Portal) {
 		root = ret.value = el.props.root;
+	} else {
+		if (hydrationData !== undefined) {
+			// TODO: we have to wait for parent to be ready before shifting children
+			const value = hydrationData.children.shift();
+			if (typeof value === "string") {
+				throw new Error("TODO");
+			}
+
+			hydrationValue = value;
+		}
 	}
 
 	scope = renderer.scope(scope, tag, el.props);
+	const childHydrationData = hydrationValue && {
+		...renderer.hydrate(tag, hydrationValue, el.props),
+		ready: undefined,
+	};
+
 	const childValues = diffChildren(
 		renderer,
 		root,
@@ -1171,18 +1203,26 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 		scope,
 		ret,
 		ret.el.props.children,
-		// TODO: pass hydration nodes
+		childHydrationData,
 	);
 
+	// TODO: wait for hydrationData.ready
 	if (isPromiseLike(childValues)) {
 		ret.inflightValue = childValues.then((childValues) =>
-			commitHost(renderer, scope, ret, childValues, oldProps),
+			commitHost(renderer, scope, ret, childValues, oldProps, hydrationValue),
 		);
 
 		return ret.inflightValue;
 	}
 
-	return commitHost(renderer, scope, ret, childValues, oldProps);
+	return commitHost(
+		renderer,
+		scope,
+		ret,
+		childValues,
+		oldProps,
+		hydrationValue,
+	);
 }
 
 function commitHost<TNode, TScope>(
@@ -1191,13 +1231,14 @@ function commitHost<TNode, TScope>(
 	ret: Retainer<TNode>,
 	childValues: Array<TNode | string>,
 	oldProps: Record<string, any> | undefined,
+	hydrationValue: TNode | undefined,
 ): ElementValue<TNode> {
 	const tag = ret.el.tag as string | symbol;
-	let value = ret.value as TNode;
+	let value = hydrationValue || (ret.value as TNode);
 	let props = ret.el.props;
 	let copied: Set<string> | undefined;
 	if (tag !== Portal) {
-		if (ret.value == null) {
+		if (value == null) {
 			// This assumes that renderer.create does not return nullish values.
 			value = ret.value = renderer.create(tag, props, scope);
 		}
@@ -1989,12 +2030,15 @@ function updateComponent<TNode, TScope, TRoot extends TNode, TResult>(
 	scope: TScope | undefined,
 	ret: Retainer<TNode>,
 	oldProps: Record<string, any> | undefined,
+	hydrationData: HydrationData<TNode> | undefined,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	let ctx: ContextImpl<TNode, TScope, TRoot, TResult>;
 	if (oldProps) {
+		// TODO: we should probably use the existence of ret.ctx
 		if (ret.ctx == null) {
 			throw new Error("Hmmm");
 		}
+
 		ctx = ret.ctx as ContextImpl<TNode, TScope, TRoot, TResult>;
 		if (ctx.f & IsSyncExecuting) {
 			console.error("Component is already executing");
@@ -2005,12 +2049,13 @@ function updateComponent<TNode, TScope, TRoot extends TNode, TResult>(
 	}
 
 	ctx.f |= IsUpdating;
-	return enqueueComponentRun(ctx);
+	return enqueueComponentRun(ctx, hydrationData);
 }
 
 function updateComponentChildren<TNode, TResult>(
 	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
 	children: Children,
+	hydrationData?: HydrationData<TNode> | undefined,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (ctx.f & IsUnmounted) {
 		return;
@@ -2038,7 +2083,7 @@ function updateComponentChildren<TNode, TResult>(
 			ctx.scope,
 			ctx.ret,
 			narrow(children),
-			// TODO: hydration
+			hydrationData,
 		);
 	} finally {
 		ctx.f &= ~IsSyncExecuting;
@@ -2173,8 +2218,12 @@ function arrayEqual<TValue>(arr1: Array<TValue>, arr2: Array<TValue>): boolean {
 /** Enqueues and executes the component associated with the context. */
 function enqueueComponentRun<TNode, TResult>(
 	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
+	hydrationData?: HydrationData<TNode> | undefined,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	if (ctx.f & IsAsyncGen) {
+		if (hydrationData !== undefined) {
+			throw new Error("Hydration error");
+		}
 		// This branch will only run for async generator components after the
 		// initial render.
 		//
@@ -2221,7 +2270,7 @@ function enqueueComponentRun<TNode, TResult>(
 		return ctx.inflightValue;
 	} else if (!ctx.inflightBlock) {
 		try {
-			const [block, value] = runComponent<TNode, TResult>(ctx);
+			const [block, value] = runComponent<TNode, TResult>(ctx, hydrationData);
 			if (block) {
 				ctx.inflightBlock = block
 					// TODO: there is some fuckery going on here related to async
@@ -2241,8 +2290,11 @@ function enqueueComponentRun<TNode, TResult>(
 			throw err;
 		}
 	} else if (!ctx.enqueuedBlock) {
+		if (hydrationData !== undefined) {
+			throw new Error("Hydration error");
+		}
 		// We need to assign enqueuedBlock and enqueuedValue synchronously, hence
-		// the Promise constructor call.
+		// the Promise constructor call here.
 		let resolveEnqueuedBlock: Function;
 		ctx.enqueuedBlock = new Promise(
 			(resolve) => (resolveEnqueuedBlock = resolve),
@@ -2301,6 +2353,7 @@ function advanceComponent(ctx: ContextImpl): void {
  */
 function runComponent<TNode, TResult>(
 	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
+	hydrationData?: HydrationData<TNode> | undefined,
 ): [
 	Promise<unknown> | undefined,
 	Promise<ElementValue<TNode>> | ElementValue<TNode>,
@@ -2328,7 +2381,8 @@ function runComponent<TNode, TResult>(
 			const result1 =
 				result instanceof Promise ? result : Promise.resolve(result);
 			const value = result1.then(
-				(result) => updateComponentChildren<TNode, TResult>(ctx, result),
+				(result) =>
+					updateComponentChildren<TNode, TResult>(ctx, result, hydrationData),
 				(err) => {
 					ctx.f |= IsErrored;
 					throw err;
@@ -2337,8 +2391,13 @@ function runComponent<TNode, TResult>(
 			return [result1.catch(NOOP), value];
 		} else {
 			// sync function component
-			return [undefined, updateComponentChildren<TNode, TResult>(ctx, result)];
+			return [
+				undefined,
+				updateComponentChildren<TNode, TResult>(ctx, result, hydrationData),
+			];
 		}
+	} else if (hydrationData !== undefined) {
+		throw new Error("Hydration error");
 	}
 
 	let iteration!: Promise<ChildrenIteratorResult> | ChildrenIteratorResult;
@@ -2355,7 +2414,7 @@ function runComponent<TNode, TResult>(
 
 		if (isPromiseLike(iteration)) {
 			ctx.f |= IsAsyncGen;
-			runAsyncGenComponent(ctx, iteration);
+			runAsyncGenComponent(ctx, iteration, hydrationData);
 		} else {
 			ctx.f |= IsSyncGen;
 		}
@@ -2391,6 +2450,7 @@ function runComponent<TNode, TResult>(
 				ctx,
 				// Children can be void so we eliminate that here
 				iteration.value as Children,
+				hydrationData,
 			);
 
 			if (isPromiseLike(value)) {
@@ -2411,6 +2471,7 @@ function runComponent<TNode, TResult>(
 async function runAsyncGenComponent<TNode, TResult>(
 	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
 	iterationP: Promise<ChildrenIteratorResult>,
+	hydrationData: HydrationData<TNode> | undefined,
 ): Promise<void> {
 	let done = false;
 	try {
@@ -2424,6 +2485,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 				// TODO: Does this handle this.refresh() calls?
 				ctx.inflightValue.catch(NOOP);
 			}
+
 			let iteration: ChildrenIteratorResult;
 			try {
 				iteration = await iterationP;
@@ -2442,7 +2504,12 @@ async function runAsyncGenComponent<TNode, TResult>(
 			done = !!iteration.done;
 			let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 			try {
-				value = updateComponentChildren<TNode, TResult>(ctx, iteration.value!);
+				value = updateComponentChildren<TNode, TResult>(
+					ctx,
+					iteration.value!,
+					hydrationData,
+				);
+				hydrationData = undefined;
 				if (isPromiseLike(value)) {
 					value = value.catch((err: any) => handleChildError(ctx, err));
 				}
