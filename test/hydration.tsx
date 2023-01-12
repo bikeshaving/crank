@@ -122,13 +122,17 @@ test("async component and host", async () => {
 	document.body.innerHTML =
 		"<div><div><button>Slow</button></div><button>Fast</button></div>";
 	const div = document.body.firstChild!;
-	const button1 = div.childNodes[0] as HTMLButtonElement;
+	const button1 = div.childNodes[0].childNodes[0] as HTMLButtonElement;
 	const button2 = div.childNodes[1] as HTMLButtonElement;
 	const onclick1 = Sinon.fake();
 	const onclick2 = Sinon.fake();
 	async function Component() {
 		await new Promise((resolve) => setTimeout(resolve, 5));
-		return <button onclick={onclick1}>Slow</button>;
+		return (
+			<div>
+				<button onclick={onclick1}>Slow</button>
+			</div>
+		);
 	}
 
 	await renderer.hydrate(
@@ -143,7 +147,7 @@ test("async component and host", async () => {
 		"<div><div><button>Slow</button></div><button>Fast</button></div>",
 	);
 	Assert.is(document.body.firstChild, div);
-	Assert.is(document.body.firstChild!.childNodes[0], button1);
+	Assert.is(document.body.firstChild!.childNodes[0].childNodes[0], button1);
 	Assert.is(document.body.firstChild!.childNodes[1], button2);
 	button1.click();
 	button2.click();
