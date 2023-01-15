@@ -2,6 +2,7 @@ import {
 	Children,
 	Context,
 	ElementValue,
+	HydrationData,
 	Portal,
 	Renderer,
 	RendererImpl,
@@ -59,23 +60,22 @@ export const impl: Partial<RendererImpl<Node, DOMScope>> = {
 
 	hydrate(
 		tag: string | symbol,
-		node: Node,
+		node: Element,
 		props: Record<string, unknown>,
-	): {
-		props: Record<string, unknown>;
-		children: Array<Node | string>;
-	} {
-		const children: Array<Node | string> = [];
-		for (let i = 0; i < node.childNodes.length; i++) {
-			const child = node.childNodes[i];
-			if (child.nodeType === Node.TEXT_NODE) {
-				children.push(child.nodeValue || "");
-			} else if (child.nodeType === Node.ELEMENT_NODE) {
-				children.push(child);
-			}
+	): HydrationData<Element> | undefined {
+		if (typeof tag !== "string" && tag !== Portal) {
+			throw new Error(`Unknown tag: ${tag.toString()}`);
 		}
 
-		// TODO: How do we extract props from nodes? Is this even possible?
+		if (
+			typeof tag === "string" &&
+			tag.toUpperCase() !== (node as Element).tagName
+		) {
+			return undefined;
+		}
+
+		const children = Array.from(node.children);
+		// TODO: extract props from nodes
 		return {props, children};
 	},
 

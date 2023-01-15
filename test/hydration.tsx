@@ -2,7 +2,7 @@
 import {suite} from "uvu";
 import * as Assert from "uvu/assert";
 import * as Sinon from "sinon";
-import {createElement, Fragment} from "../src/crank.js";
+import {createElement, Fragment, Raw} from "../src/crank.js";
 import type {Context} from "../src/crank.js";
 
 import {renderer} from "../src/dom.js";
@@ -118,7 +118,7 @@ test("async generator component", async () => {
 	Assert.ok(onclick.called);
 });
 
-test("async component and host", async () => {
+test("async component and host sibling", async () => {
 	document.body.innerHTML =
 		"<div><div><button>Slow</button></div><button>Fast</button></div>";
 	const div = document.body.firstChild!;
@@ -155,7 +155,7 @@ test("async component and host", async () => {
 	Assert.ok(onclick2.called);
 });
 
-test("out of order siblings", async () => {
+test("async sibling components resolve out of order", async () => {
 	document.body.innerHTML =
 		"<div><button>Slow</button><button>Fast</button></div>";
 	const div = document.body.firstChild!;
@@ -194,6 +194,116 @@ test("out of order siblings", async () => {
 	button2.click();
 	Assert.ok(onclick1.called);
 	Assert.ok(onclick2.called);
+});
+
+test("text sibling", async () => {
+	document.body.innerHTML = "<div>Text1<button>Click</button>Text2</div>";
+	const div = document.body.firstChild!;
+	const text1 = div.childNodes[0] as Text;
+	const button = div.childNodes[1] as HTMLButtonElement;
+	const text2 = div.childNodes[2] as Text;
+	const Component = Sinon.fake(function () {
+		return (
+			<Fragment>
+				Text1<button onclick={onclick}>Click</button>Text2
+			</Fragment>
+		);
+	});
+
+	renderer.hydrate(
+		<div>
+			<Component />
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		"<div>Text1<button>Click</button>Text2</div>",
+	);
+
+	Assert.is(document.body.firstChild, div);
+	Assert.is(document.body.firstChild!.childNodes[0], text1);
+	Assert.is(document.body.firstChild!.childNodes[1], button);
+	Assert.is(document.body.firstChild!.childNodes[2], text2);
+});
+
+test("mismatched tag", () => {
+	document.body.innerHTML = "<div>Hello</div>";
+	const Component = Sinon.fake(function () {
+		return <button onclick={onclick}>Click</button>;
+	});
+
+	renderer.hydrate(<Component />, document.body);
+	Assert.ok(Component.called);
+	Assert.is(document.body.innerHTML, "<button>Click</button>");
+});
+
+test("mismatched text", () => {
+	document.body.innerHTML = "<button>Do not click</button>";
+	const button = document.body.firstChild as HTMLButtonElement;
+	const onclick = Sinon.fake();
+
+	const Component = Sinon.fake(function () {
+		return <button onclick={onclick}>Click</button>;
+	});
+
+	renderer.hydrate(<Component />, document.body);
+	Assert.ok(Component.called);
+	Assert.is(document.body.innerHTML, "<button>Click</button>");
+	Assert.is(document.body.firstChild, button);
+	button.click();
+	Assert.ok(onclick.called);
+});
+
+test("raw string", () => {
+	document.body.innerHTML = "<div><div>Raw</div><button>Click</button></div>";
+	const onclick = Sinon.fake();
+	const button = document.body.childNodes[0].childNodes[1] as HTMLButtonElement;
+	const Component = Sinon.fake(function () {
+		return (
+			<div>
+				<Raw value="<div>Raw</div>" />
+				<button onclick={onclick}>Click</button>
+			</div>
+		);
+	});
+
+	renderer.hydrate(<Component />, document.body);
+	Assert.ok(Component.called);
+	Assert.is(
+		document.body.innerHTML,
+		"<div><div>Raw</div><button>Click</button></div>",
+	);
+	Assert.is(document.body.childNodes[0].childNodes[1], button);
+	button.click();
+	Assert.ok(onclick.called);
+});
+
+test("raw comment", () => {
+	document.body.innerHTML =
+		"<div><!-- comment -->Hello<button>Click</button></div>";
+	const onclick = Sinon.fake();
+	const button = document.body.childNodes[0].childNodes[2] as HTMLButtonElement;
+	const Component = Sinon.fake(function () {
+		return (
+			<div>
+				<Raw value="<!-- comment -->" />
+				Hello
+				<button onclick={onclick}>Click</button>
+			</div>
+		);
+	});
+
+	renderer.hydrate(<Component />, document.body);
+	Assert.ok(Component.called);
+	Assert.is(
+		document.body.innerHTML,
+		"<div><!-- comment -->Hello<button>Click</button></div>",
+	);
+
+	button.click();
+	Assert.ok(onclick.called);
 });
 
 test.run();
