@@ -532,6 +532,11 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode | string> {
 	return values1;
 }
 
+export interface HydrationData<TNode> {
+	props: Record<string, unknown>;
+	children: Array<TNode>;
+}
+
 // TODO: Document the interface and methods
 export interface RendererImpl<
 	TNode,
@@ -556,10 +561,7 @@ export interface RendererImpl<
 		tag: TTag,
 		node: TNode | TRoot,
 		props: TagProps<TTag>,
-	): {
-		props: Record<string, unknown>;
-		children: Array<TNode | string>;
-	};
+	): HydrationData<TNode> | undefined;
 
 	/**
 	 * Called when an element’s rendered value is exposed via render, schedule,
@@ -804,10 +806,7 @@ export class Renderer<
 			this.cache.set(root, ret);
 		}
 
-		const hydrationData = {
-			...impl.hydrate(Portal, root, {}),
-			ready: undefined,
-		};
+		const hydrationData = impl.hydrate(Portal, root, {});
 		const childValues = diffChildren(
 			impl,
 			root,
@@ -859,13 +858,6 @@ function commitRootRender<TNode, TRoot extends TNode, TResult>(
 	}
 
 	return renderer.read(ret.cachedChildValues);
-}
-
-interface HydrationData<TNode> {
-	props: Record<string, unknown>;
-	children: Array<TNode | string>;
-	// TODO: rename maybe
-	ready: Promise<unknown> | undefined;
 }
 
 function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
@@ -1219,21 +1211,17 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 		root = ret.value = el.props.root;
 	} else {
 		if (hydrationData !== undefined) {
-			// TODO: we have to wait for parent to be ready before shifting children
 			const value = hydrationData.children.shift();
-			if (typeof value === "string") {
-				throw new Error("TODO");
-			}
-
 			hydrationValue = value;
 		}
 	}
 
 	scope = renderer.scope(scope, tag, el.props);
-	const childHydrationData = hydrationValue && {
-		...renderer.hydrate(tag, hydrationValue, el.props),
-		ready: undefined,
-	};
+	const childHydrationData =
+		hydrationValue && renderer.hydrate(tag, hydrationValue, el.props);
+	if (childHydrationData === undefined) {
+		hydrationValue = undefined;
+	}
 
 	const childValues = diffChildren(
 		renderer,
@@ -1246,7 +1234,6 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 		childHydrationData,
 	);
 
-	// TODO: wait for hydrationData.ready
 	if (isPromiseLike(childValues)) {
 		ret.inflightValue = childValues.then((childValues) =>
 			commitHost(renderer, scope, ret, childValues, oldProps, hydrationValue),
