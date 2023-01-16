@@ -708,7 +708,104 @@ test("multiple iterations without a yield throw", async () => {
 	Assert.is(i, 1);
 });
 
-test("updates enqueue based on render loop", async () => {
+test("for...of enqueues", async () => {
+	const fn = Sinon.fake();
+	async function* Component(
+		this: Context<typeof Component>,
+		{message}: {message: string},
+	) {
+		for ({message} of this) {
+			await new Promise((resolve) => setTimeout(resolve));
+			fn();
+			yield <span>{message}</span>;
+		}
+	}
+
+	const p1 = renderer.render(
+		<div>
+			<Component message="Hello 1" />
+		</div>,
+		document.body,
+	);
+	const p2 = renderer.render(
+		<div>
+			<Component message="Hello 2" />
+		</div>,
+		document.body,
+	);
+	const p3 = renderer.render(
+		<div>
+			<Component message="Hello 3" />
+		</div>,
+		document.body,
+	);
+	const p4 = renderer.render(
+		<div>
+			<Component message="Hello 4" />
+		</div>,
+		document.body,
+	);
+	const p5 = renderer.render(
+		<div>
+			<Component message="Hello 5" />
+		</div>,
+		document.body,
+	);
+
+	Assert.is(await p1, document.body.firstChild);
+	Assert.is(document.body.innerHTML, "<div><span>Hello 1</span></div>");
+	Assert.is(await p2, document.body.firstChild);
+	Assert.is(document.body.innerHTML, "<div><span>Hello 5</span></div>");
+	Assert.is(await p3, document.body.firstChild);
+	Assert.is(document.body.innerHTML, "<div><span>Hello 5</span></div>");
+	Assert.is(await p4, document.body.firstChild);
+	Assert.is(document.body.innerHTML, "<div><span>Hello 5</span></div>");
+	const p6 = renderer.render(
+		<div>
+			<Component message="Hello 6" />
+		</div>,
+		document.body,
+	);
+	const p7 = renderer.render(
+		<div>
+			<Component message="Hello 7" />
+		</div>,
+		document.body,
+	);
+	const p8 = renderer.render(
+		<div>
+			<Component message="Hello 8" />
+		</div>,
+		document.body,
+	);
+	const p9 = renderer.render(
+		<div>
+			<Component message="Hello 9" />
+		</div>,
+		document.body,
+	);
+	const p10 = renderer.render(
+		<div>
+			<Component message="Hello 10" />
+		</div>,
+		document.body,
+	);
+	Assert.is(await p5, document.body.firstChild);
+	Assert.is(document.body.innerHTML, "<div><span>Hello 5</span></div>");
+	Assert.is(await p6, document.body.firstChild);
+	Assert.is(document.body.innerHTML, "<div><span>Hello 6</span></div>");
+	Assert.is(await p7, document.body.firstChild);
+	Assert.is(document.body.innerHTML, "<div><span>Hello 10</span></div>");
+	Assert.is(await p8, document.body.firstChild);
+	Assert.is(document.body.innerHTML, "<div><span>Hello 10</span></div>");
+	Assert.is(await p9, document.body.firstChild);
+	Assert.is(document.body.innerHTML, "<div><span>Hello 10</span></div>");
+	Assert.is(await p10, document.body.firstChild);
+	Assert.is(document.body.innerHTML, "<div><span>Hello 10</span></div>");
+	Assert.is(fn.callCount, 4);
+});
+
+test("for await...of updates enqueue", async () => {
 	const beforeAwaitFn = Sinon.fake();
 	async function* Component(this: Context, {callIndex}: {callIndex: number}) {
 		let runIndex = 1;
