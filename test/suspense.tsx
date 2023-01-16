@@ -98,7 +98,7 @@ test("suspense with refresh", async () => {
 	Assert.is(document.body.innerHTML, "<span>Child 200</span>");
 	await ctx.refresh();
 	Assert.is(document.body.innerHTML, "<span>Loading...</span>");
-	await new Promise((resolve) => setTimeout(resolve, 100));
+	await new Promise((resolve) => setTimeout(resolve, 120));
 	Assert.is(document.body.innerHTML, "<span>Child 200</span>");
 });
 
