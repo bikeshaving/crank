@@ -21,7 +21,7 @@ test.after.each(() => {
 
 test("basic", () => {
 	const fn = Sinon.fake();
-	renderer.render(<div crank-ref={fn}>Hello</div>, document.body);
+	renderer.render(<div $ref={fn}>Hello</div>, document.body);
 
 	Assert.is(document.body.innerHTML, "<div>Hello</div>");
 	Assert.is(fn.callCount, 1);
@@ -32,7 +32,7 @@ test("child", () => {
 	const fn = Sinon.fake();
 	renderer.render(
 		<div>
-			<span crank-ref={fn}>Hello</span>
+			<span $ref={fn}>Hello</span>
 		</div>,
 		document.body,
 	);
@@ -46,7 +46,7 @@ test("Fragment element", () => {
 	const fn = Sinon.fake();
 	renderer.render(
 		<div>
-			<Fragment crank-ref={fn}>
+			<Fragment $ref={fn}>
 				<span>1</span>
 				<span>2</span>
 				<span>3</span>
@@ -69,13 +69,13 @@ test("Fragment element", () => {
 test("Raw element", () => {
 	const fn = Sinon.fake();
 	renderer.render(
-		<Raw value="<div>Hello world</div>" crank-ref={fn} />,
+		<Raw value="<div>Hello world</div>" $ref={fn} />,
 		document.body,
 	);
 
 	Assert.is(fn.callCount, 1);
 
-	const refArgs = fn.lastCall.args[0];
+	const refArgs = fn.lastCall.args;
 	Assert.is(refArgs.length, 1);
 	Assert.ok(refArgs[0] instanceof Node);
 });
@@ -88,7 +88,7 @@ test("function component", () => {
 
 	renderer.render(
 		<div>
-			<Component crank-ref={fn} />
+			<Component $ref={fn} />
 		</div>,
 		document.body,
 	);
@@ -108,7 +108,7 @@ test("generator component", () => {
 
 	renderer.render(
 		<div>
-			<Component crank-ref={fn} />
+			<Component $ref={fn} />
 		</div>,
 		document.body,
 	);
@@ -126,7 +126,7 @@ test("async function component", async () => {
 
 	await renderer.render(
 		<div>
-			<Component crank-ref={fn} />
+			<Component $ref={fn} />
 		</div>,
 		document.body,
 	);
@@ -146,7 +146,7 @@ test("async generator component", async () => {
 
 	await renderer.render(
 		<div>
-			<Component crank-ref={fn} />
+			<Component $ref={fn} />
 		</div>,
 		document.body,
 	);
@@ -166,7 +166,7 @@ test("transcluded in function component", async () => {
 		return (
 			<div>
 				<Child>
-					<span crank-ref={fn}>Hello</span>
+					<span $ref={fn}>Hello</span>
 				</Child>
 			</div>
 		);
@@ -190,7 +190,7 @@ test("transcluded in async function component", async () => {
 		return (
 			<div>
 				<Child>
-					<span crank-ref={fn}>Hello</span>
+					<span $ref={fn}>Hello</span>
 				</Child>
 			</div>
 		);

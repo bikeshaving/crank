@@ -8,9 +8,15 @@ import type {Context} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 const test = suite("hydration");
+let consoleError: Sinon.SinonStub;
+test.before.each(() => {
+	consoleError = Sinon.stub(console, "error");
+});
+
 test.after.each(() => {
 	renderer.render(null, document.body);
 	document.body.innerHTML = "";
+	consoleError.restore();
 });
 
 test("simple", () => {
@@ -228,6 +234,38 @@ test("text sibling", async () => {
 	Assert.is(document.body.firstChild!.childNodes[2], text2);
 });
 
+test("split text", async () => {
+	document.body.innerHTML = "<div>Text1Text2<button>Click</button></div>";
+	const div = document.body.firstChild!;
+	const text = div.childNodes[0] as Text;
+	const button = div.childNodes[1] as HTMLButtonElement;
+	const Component = Sinon.fake(function () {
+		return (
+			<Fragment>
+				{"Text1"}
+				{"Text2"}
+				<button onclick={onclick}>Click</button>
+			</Fragment>
+		);
+	});
+
+	renderer.hydrate(
+		<div>
+			<Component />
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		"<div>Text1Text2<button>Click</button></div>",
+	);
+
+	Assert.is(document.body.firstChild, div);
+	Assert.is(document.body.firstChild!.childNodes[0], text);
+	Assert.is(document.body.firstChild!.childNodes[1], button);
+});
+
 test("mismatched tag", () => {
 	document.body.innerHTML = "<div>Hello</div>";
 	const Component = Sinon.fake(function () {
@@ -237,6 +275,7 @@ test("mismatched tag", () => {
 	renderer.hydrate(<Component />, document.body);
 	Assert.ok(Component.called);
 	Assert.is(document.body.innerHTML, "<button>Click</button>");
+	Assert.is(consoleError.callCount, 1);
 });
 
 test("mismatched text", () => {
@@ -254,9 +293,10 @@ test("mismatched text", () => {
 	Assert.is(document.body.firstChild, button);
 	button.click();
 	Assert.ok(onclick.called);
+	Assert.is(consoleError.callCount, 1);
 });
 
-test("raw string", () => {
+test("raw element", () => {
 	document.body.innerHTML = "<div><div>Raw</div><button>Click</button></div>";
 	const onclick = Sinon.fake();
 	const button = document.body.childNodes[0].childNodes[1] as HTMLButtonElement;
@@ -275,6 +315,52 @@ test("raw string", () => {
 		document.body.innerHTML,
 		"<div><div>Raw</div><button>Click</button></div>",
 	);
+	Assert.is(document.body.childNodes[0].childNodes[1], button);
+	button.click();
+	Assert.ok(onclick.called);
+});
+
+test("raw multiple elements", () => {
+	document.body.innerHTML =
+		"<div><div>Raw 1</div><div>Raw 2</div><button>Click</button></div>";
+	const onclick = Sinon.fake();
+	const button = document.body.childNodes[0].childNodes[2] as HTMLButtonElement;
+	const Component = Sinon.fake(function () {
+		return (
+			<div>
+				<Raw value="<div>Raw 1</div><div>Raw 2</div>" />
+				<button onclick={onclick}>Click</button>
+			</div>
+		);
+	});
+
+	renderer.hydrate(<Component />, document.body);
+	Assert.ok(Component.called);
+	Assert.is(
+		document.body.innerHTML,
+		"<div><div>Raw 1</div><div>Raw 2</div><button>Click</button></div>",
+	);
+	Assert.is(document.body.childNodes[0].childNodes[2], button);
+	button.click();
+	Assert.ok(onclick.called);
+});
+
+test("raw text", () => {
+	document.body.innerHTML = "<div>Raw<button>Click</button></div>";
+	const onclick = Sinon.fake();
+	const button = document.body.childNodes[0].childNodes[1] as HTMLButtonElement;
+	const Component = Sinon.fake(function () {
+		return (
+			<div>
+				<Raw value="Raw" />
+				<button onclick={onclick}>Click</button>
+			</div>
+		);
+	});
+
+	renderer.hydrate(<Component />, document.body);
+	Assert.ok(Component.called);
+	Assert.is(document.body.innerHTML, "<div>Raw<button>Click</button></div>");
 	Assert.is(document.body.childNodes[0].childNodes[1], button);
 	button.click();
 	Assert.ok(onclick.called);

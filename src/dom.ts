@@ -10,25 +10,8 @@ import {
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
-interface DOMScope {
-	xmlns: string | undefined;
-}
-
-export const impl: Partial<RendererImpl<Node, DOMScope>> = {
-	parse(text: string): ElementValue<Node> {
-		if (typeof document.createRange === "function") {
-			const fragment = document.createRange().createContextualFragment(text);
-			return Array.from(fragment.childNodes);
-		} else {
-			const childNodes = new DOMParser().parseFromString(text, "text/html").body
-				.childNodes;
-			return Array.from(childNodes);
-		}
-	},
-
-	scope(scope: DOMScope | undefined, tag: string | symbol): DOMScope {
-		scope = scope || {xmlns: ""};
-		let xmlns = scope.xmlns;
+export const impl: Partial<RendererImpl<Node, string>> = {
+	scope(xmlns: string | undefined, tag: string | symbol): string | undefined {
 		// TODO: Should we handle xmlns???
 		switch (tag) {
 			case Portal:
@@ -40,22 +23,23 @@ export const impl: Partial<RendererImpl<Node, DOMScope>> = {
 				break;
 		}
 
-		return {xmlns};
+		return xmlns;
 	},
 
 	create(
 		tag: string | symbol,
 		_props: unknown,
-		scope: DOMScope | undefined,
+		xmlns: string | undefined,
 	): Node {
-		let ns: string | undefined = scope ? scope.xmlns : undefined;
 		if (typeof tag !== "string") {
 			throw new Error(`Unknown tag: ${tag.toString()}`);
 		} else if (tag.toLowerCase() === "svg") {
-			ns = SVG_NAMESPACE;
+			xmlns = SVG_NAMESPACE;
 		}
 
-		return ns ? document.createElementNS(ns, tag) : document.createElement(tag);
+		return xmlns
+			? document.createElementNS(xmlns, tag)
+			: document.createElement(tag);
 	},
 
 	hydrate(
@@ -71,10 +55,20 @@ export const impl: Partial<RendererImpl<Node, DOMScope>> = {
 			typeof tag === "string" &&
 			tag.toUpperCase() !== (node as Element).tagName
 		) {
+			console.error(`Expected <${tag}> while hydrating but found:`, node);
 			return undefined;
 		}
 
-		const children = Array.from(node.children);
+		const children: Array<string | Element> = [];
+		for (let i = 0; i < node.childNodes.length; i++) {
+			const child = node.childNodes[i];
+			if (child.nodeType === Node.TEXT_NODE) {
+				children.push((child as Text).data);
+			} else if (child.nodeType === Node.ELEMENT_NODE) {
+				children.push(child as Element);
+			}
+		}
+
 		// TODO: extract props from nodes
 		return {props, children};
 	},
@@ -87,9 +81,9 @@ export const impl: Partial<RendererImpl<Node, DOMScope>> = {
 		// TODO: Stricter typings?
 		value: unknown,
 		oldValue: unknown,
-		scope: DOMScope | undefined,
+		xmlns: string | undefined,
 	): void {
-		const isSVG = scope && scope.xmlns === SVG_NAMESPACE;
+		const isSVG = xmlns === SVG_NAMESPACE;
 		switch (name) {
 			case "style": {
 				const style: CSSStyleDeclaration = node.style;
@@ -272,9 +266,76 @@ export const impl: Partial<RendererImpl<Node, DOMScope>> = {
 			}
 		}
 	},
+
+	text(
+		text: string,
+		_scope: string | undefined,
+		hydration: HydrationData<Element> | undefined,
+	): string {
+		if (hydration != null) {
+			let value = hydration.children.shift();
+			if (typeof value !== "string" || !value.startsWith(text)) {
+				console.error(`Expected "${text}" while hydrating but found:`, value);
+			} else if (text.length < value.length) {
+				value = value.slice(text.length);
+				hydration.children.unshift(value);
+			}
+		}
+
+		return text;
+	},
+
+	raw(
+		value: string | Node,
+		xmlns: string | undefined,
+		hydration: HydrationData<Element> | undefined,
+	): ElementValue<Node> {
+		let result: ElementValue<Node>;
+		if (typeof value === "string") {
+			const el =
+				xmlns == null
+					? document.createElement("div")
+					: document.createElementNS(xmlns, "svg");
+			el.innerHTML = value;
+			if (el.childNodes.length === 0) {
+				result = undefined;
+			} else if (el.childNodes.length === 1) {
+				result = el.childNodes[0];
+			} else {
+				result = Array.from(el.childNodes);
+			}
+		} else {
+			result = value;
+		}
+
+		if (hydration != null) {
+			// TODO: maybe we should warn on incorrect values
+			if (Array.isArray(result)) {
+				for (let i = 0; i < result.length; i++) {
+					const node = result[i];
+					if (
+						typeof node !== "string" &&
+						(node.nodeType === Node.ELEMENT_NODE ||
+							node.nodeType === Node.TEXT_NODE)
+					) {
+						hydration.children.shift();
+					}
+				}
+			} else if (result != null && typeof result !== "string") {
+				if (
+					result.nodeType === Node.ELEMENT_NODE ||
+					result.nodeType === Node.TEXT_NODE
+				) {
+					hydration.children.shift();
+				}
+			}
+		}
+
+		return result;
+	},
 };
 
-export class DOMRenderer extends Renderer<Node, DOMScope> {
+export class DOMRenderer extends Renderer<Node, string> {
 	constructor() {
 		super(impl);
 	}
