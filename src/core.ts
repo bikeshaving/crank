@@ -754,43 +754,6 @@ export class Renderer<
 		return commitRootRender(impl, root, ctx, ret, childValues, oldProps);
 	}
 
-	// Hydration is a recursive process like rendering except we don’t create new
-	// nodes. How should it be implemented? In internal terms, we need to create
-	// Retainer nodes but we should skip most RendererImpl methods, or change the
-	// way they work.
-	//
-	// In terms of the RendererImpl methods:
-	//
-	// We should definitely skip calling create().
-	//
-	// We probably should skip patch() and arrange().
-	//
-	// It will probably be necessary to call scope() and text(), to handle SVG
-	// namespaces and HTML text escaping.
-	//
-	// The read() method should work but isn’t directly tied to rendering or
-	// hydration.
-	//
-	// I’m not sure how to handle Raw nodes and the parse() method. And the
-	// dispose() method is probably unnnecessary because host elements should not
-	// be removed during hydration.
-	//
-	// This could be implemented with a flag that is passed through all the
-	// recursive functions. I thought we could put hydration data in the scope
-	// system, but it turns out the state we need to keep track of is a little
-	// more complicated, and scope is not passed to methods like arrange().
-	//
-	// The happy path for hydration is that it calls all component functions,
-	// attaches event listeners to the current DOM, and compares Element, Text
-	// and raw nodes against their virtual representations (raw nodes can allow
-	// the creation of Comment nodes, for instance). I would rather not have
-	// special logic for all these cases, so I’m thinking of creating a method
-	// like arrange() for the hydration case.
-	//
-	// Alternatively, we could add a RendererImpl method which “reverses”
-	// children from DOM nodes, so that we can pass them into the patch() and
-	// arrange() methods. The idea would be to create a function which is passed
-	// a node, and returns virtual props and children to compare against.
 	hydrate(
 		children: Children,
 		root: TRoot,
@@ -955,7 +918,6 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				if (static_) {
 					// pass
 				} else if (child.tag === Raw) {
-					// TODO: think about Raw tag and hydration
 					value = hydrationBlock
 						? hydrationBlock.then(() =>
 								updateRaw(
@@ -2260,7 +2222,10 @@ function enqueueComponentRun<TNode, TResult>(
 		if (hydrationData !== undefined) {
 			throw new Error("Hydration error");
 		}
-		// This branch will run for non-initial renders of async gen components.
+
+		// This branch will run for non-initial renders of async generator
+		// components when they are not in for...of loops. When in a for...of loop,
+		// async generator components will behave normally.
 		//
 		// Async gen componennts can be in one of three states:
 		//
@@ -2470,7 +2435,7 @@ function runComponent<TNode, TResult>(
 		}
 
 		if (isPromiseLike(iteration)) {
-			throw new Error("Invalid generator component");
+			throw new Error("Mixed generator component");
 		}
 
 		if (iteration.done) {
@@ -2513,7 +2478,7 @@ function runComponent<TNode, TResult>(
 		}
 
 		if (!isPromiseLike(iteration)) {
-			throw new Error("Invalid generator component");
+			throw new Error("Mixed generator component");
 		}
 
 		const block = iteration.catch(NOOP);
@@ -2549,14 +2514,13 @@ function runComponent<TNode, TResult>(
 
 		return [block, value];
 	} else {
-		// TODO: Confirm that this is not called multiple times.
 		runAsyncGenComponent(
 			ctx,
 			iteration as Promise<ChildrenIteratorResult>,
 			hydrationData,
 		);
 		// async generator component
-		return [undefined, ctx.inflightValue];
+		return [ctx.inflightBlock, ctx.inflightValue];
 	}
 }
 

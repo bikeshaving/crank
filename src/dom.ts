@@ -270,15 +270,15 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 	text(
 		text: string,
 		_scope: string | undefined,
-		hydration: HydrationData<Element> | undefined,
+		hydrationData: HydrationData<Element> | undefined,
 	): string {
-		if (hydration != null) {
-			let value = hydration.children.shift();
+		if (hydrationData != null) {
+			let value = hydrationData.children.shift();
 			if (typeof value !== "string" || !value.startsWith(text)) {
 				console.error(`Expected "${text}" while hydrating but found:`, value);
 			} else if (text.length < value.length) {
 				value = value.slice(text.length);
-				hydration.children.unshift(value);
+				hydrationData.children.unshift(value);
 			}
 		}
 
@@ -288,7 +288,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 	raw(
 		value: string | Node,
 		xmlns: string | undefined,
-		hydration: HydrationData<Element> | undefined,
+		hydrationData: HydrationData<Element> | undefined,
 	): ElementValue<Node> {
 		let result: ElementValue<Node>;
 		if (typeof value === "string") {
@@ -308,7 +308,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 			result = value;
 		}
 
-		if (hydration != null) {
+		if (hydrationData != null) {
 			// TODO: maybe we should warn on incorrect values
 			if (Array.isArray(result)) {
 				for (let i = 0; i < result.length; i++) {
@@ -318,7 +318,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 						(node.nodeType === Node.ELEMENT_NODE ||
 							node.nodeType === Node.TEXT_NODE)
 					) {
-						hydration.children.shift();
+						hydrationData.children.shift();
 					}
 				}
 			} else if (result != null && typeof result !== "string") {
@@ -326,7 +326,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 					result.nodeType === Node.ELEMENT_NODE ||
 					result.nodeType === Node.TEXT_NODE
 				) {
-					hydration.children.shift();
+					hydrationData.children.shift();
 				}
 			}
 		}
