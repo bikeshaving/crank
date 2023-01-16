@@ -758,7 +758,7 @@ test("for await...of throws", async () => {
 		await ctx![Symbol.asyncIterator]().next();
 		Assert.unreachable();
 	} catch (err: any) {
-		Assert.is(err.message, "Use for…of in sync generator components");
+		Assert.is(err.message, "Use for...of in sync generator components");
 	}
 });
 
