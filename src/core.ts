@@ -1429,9 +1429,14 @@ const IsUpdating = 1 << 0;
 const IsSyncExecuting = 1 << 1;
 
 /**
- * A flag which is true when the component is in the render loop.
+ * A flag which is true when the component is in a for...of loop.
  */
-const IsInRenderLoop = 1 << 2;
+const IsInForOfLoop = 1 << 2;
+
+/**
+ * A flag which is true when the component is in a for await...of loop.
+ */
+const IsInForAwaitOfLoop = 1 << 3;
 
 /**
  * A flag which is true when the component starts the render loop but has not
@@ -1439,7 +1444,7 @@ const IsInRenderLoop = 1 << 2;
  *
  * Used to make sure that components yield at least once per loop.
  */
-const NeedsToYield = 1 << 3;
+const NeedsToYield = 1 << 4;
 
 /**
  * A flag used by async generator components in conjunction with the
@@ -1447,7 +1452,7 @@ const NeedsToYield = 1 << 3;
  * async iterator. See the Symbol.asyncIterator method and the
  * resumeCtxIterator function.
  */
-const PropsAvailable = 1 << 4;
+const PropsAvailable = 1 << 5;
 
 /**
  * A flag which is set when a component errors.
@@ -1645,12 +1650,8 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 
 	*[Symbol.iterator](): Generator<ComponentProps<TProps>> {
 		const ctx = this[_ContextImpl];
-		if (ctx.f & IsAsyncGen) {
-			throw new Error("Use for await…of in async generator components");
-		}
-
 		try {
-			ctx.f |= IsInRenderLoop;
+			ctx.f |= IsInForOfLoop;
 			while (!(ctx.f & IsUnmounted)) {
 				if (ctx.f & NeedsToYield) {
 					throw new Error("Context iterated twice without a yield");
@@ -1661,21 +1662,18 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 				yield ctx.ret.el.props!;
 			}
 		} finally {
-			ctx.f &= ~IsInRenderLoop;
+			ctx.f &= ~IsInForOfLoop;
 		}
 	}
 
 	async *[Symbol.asyncIterator](): AsyncGenerator<ComponentProps<TProps>> {
 		const ctx = this[_ContextImpl];
 		if (ctx.f & IsSyncGen) {
-			throw new Error("Use for…of in sync generator components");
+			throw new Error("Use for...of in sync generator components");
 		}
 
 		try {
-			// await an empty promise to prevent the IsInRenderLoop flag from
-			// returning false positives in the case of async generator components
-			// which immediately enter the loop
-			ctx.f |= IsInRenderLoop;
+			ctx.f |= IsInForAwaitOfLoop;
 			while (!(ctx.f & IsUnmounted)) {
 				if (ctx.f & NeedsToYield) {
 					throw new Error("Context iterated twice without a yield");
@@ -1701,7 +1699,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 				}
 			}
 		} finally {
-			ctx.f &= ~IsInRenderLoop;
+			ctx.f &= ~IsInForAwaitOfLoop;
 			if (ctx.onPropsRequested) {
 				ctx.onPropsRequested();
 				ctx.onPropsRequested = undefined;
@@ -2258,39 +2256,38 @@ function enqueueComponentRun<TNode, TResult>(
 	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
 	hydrationData?: HydrationData<TNode> | undefined,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (ctx.f & IsAsyncGen) {
+	if (ctx.f & IsAsyncGen && !(ctx.f & IsInForOfLoop)) {
 		if (hydrationData !== undefined) {
 			throw new Error("Hydration error");
 		}
-		// This branch will only run for async generator components after the
-		// initial render.
+		// This branch will run for non-initial renders of async gen components.
 		//
-		// Async generator components which are in the props loop can be in one of
-		// three states:
+		// Async gen componennts can be in one of three states:
 		//
 		// 1. propsAvailable flag is true: "available"
 		//
-		//   The component is paused somewhere in the loop. When the component
+		//   The component is suspended somewhere in the loop. When the component
 		//   reaches the bottom of the loop, it will run again with the next props.
 		//
 		// 2. onAvailable callback is defined: "suspended"
 		//
-		//   The component has reached the bottom of the loop and is waiting for
-		//   new props.
+		//   The component has suspended at the bottom of the loop and is waiting
+		//   for new props.
 		//
 		// 3. neither 1 or 2: "Running"
 		//
-		//   The component is paused somewhere in the loop. When the component
+		//   The component is suspended somewhere in the loop. When the component
 		//   reaches the bottom of the loop, it will suspend.
 		//
-		// By definition, components will never be both available and suspended at
+		// Components will never be both available and suspended at
 		// the same time.
 		//
 		// If the component is at the loop bottom, this means that the next value
 		// produced by the component will have the most up to date props, so we can
 		// simply return the current inflight value. Otherwise, we have to wait for
-		// the bottom of the loop before returning the inflight value.
-		const isAtLoopbottom = ctx.f & IsInRenderLoop && !ctx.onProps;
+		// the bottom of the loop to be reached before returning the inflight
+		// value.
+		const isAtLoopbottom = ctx.f & IsInForAwaitOfLoop && !ctx.onProps;
 		resumePropsIterator(ctx);
 		if (isAtLoopbottom) {
 			if (ctx.inflightBlock == null) {
@@ -2361,7 +2358,7 @@ function enqueueComponentRun<TNode, TResult>(
 
 /** Called when the inflight block promise settles. */
 function advanceComponent(ctx: ContextImpl): void {
-	if (ctx.f & IsAsyncGen) {
+	if (ctx.f & IsAsyncGen && !(ctx.f & IsInForOfLoop)) {
 		return;
 	}
 
@@ -2452,15 +2449,14 @@ function runComponent<TNode, TResult>(
 
 		if (isPromiseLike(iteration)) {
 			ctx.f |= IsAsyncGen;
-			runAsyncGenComponent(ctx, iteration, hydrationData);
 		} else {
 			ctx.f |= IsSyncGen;
 		}
 	}
 
 	if (ctx.f & IsSyncGen) {
-		// sync generator component
 		ctx.f &= ~NeedsToYield;
+		// sync generator component
 		if (!initial) {
 			try {
 				ctx.f |= IsSyncExecuting;
@@ -2474,7 +2470,7 @@ function runComponent<TNode, TResult>(
 		}
 
 		if (isPromiseLike(iteration)) {
-			throw new Error("Sync generator component returned an async iteration");
+			throw new Error("Invalid generator component");
 		}
 
 		if (iteration.done) {
@@ -2500,7 +2496,65 @@ function runComponent<TNode, TResult>(
 
 		const block = isPromiseLike(value) ? value.catch(NOOP) : undefined;
 		return [block, value];
+	} else if (ctx.f & IsInForOfLoop) {
+		// TODO: does this need to be done async?
+		ctx.f &= ~NeedsToYield;
+		// we are in a for...of loop for async generator
+		if (!initial) {
+			try {
+				ctx.f |= IsSyncExecuting;
+				iteration = ctx.iterator!.next(ctx.renderer.read(getValue(ret)));
+			} catch (err) {
+				ctx.f |= IsErrored;
+				throw err;
+			} finally {
+				ctx.f &= ~IsSyncExecuting;
+			}
+		}
+
+		if (!isPromiseLike(iteration)) {
+			throw new Error("Invalid generator component");
+		}
+
+		const block = iteration.catch(NOOP);
+		const value = iteration.then(
+			(iteration) => {
+				let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
+				if (!(ctx.f & IsInForOfLoop)) {
+					runAsyncGenComponent(ctx, Promise.resolve(iteration), hydrationData);
+				}
+
+				try {
+					value = updateComponentChildren<TNode, TResult>(
+						ctx,
+						// Children can be void so we eliminate that here
+						iteration.value as Children,
+						hydrationData,
+					);
+
+					if (isPromiseLike(value)) {
+						value = value.catch((err) => handleChildError(ctx, err));
+					}
+				} catch (err) {
+					value = handleChildError(ctx, err);
+				}
+
+				return value;
+			},
+			(err) => {
+				ctx.f |= IsErrored;
+				throw err;
+			},
+		);
+
+		return [block, value];
 	} else {
+		// TODO: Confirm that this is not called multiple times.
+		runAsyncGenComponent(
+			ctx,
+			iteration as Promise<ChildrenIteratorResult>,
+			hydrationData,
+		);
 		// async generator component
 		return [undefined, ctx.inflightValue];
 	}
@@ -2514,6 +2568,10 @@ async function runAsyncGenComponent<TNode, TResult>(
 	let done = false;
 	try {
 		while (!done) {
+			if (ctx.f & IsInForOfLoop) {
+				break;
+			}
+
 			// inflightValue must be set synchronously.
 			let onValue!: Function;
 			ctx.inflightValue = new Promise((resolve) => (onValue = resolve));
@@ -2534,7 +2592,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 				break;
 			} finally {
 				ctx.f &= ~NeedsToYield;
-				if (!(ctx.f & IsInRenderLoop)) {
+				if (!(ctx.f & IsInForAwaitOfLoop)) {
 					ctx.f &= ~PropsAvailable;
 				}
 			}
@@ -2552,7 +2610,6 @@ async function runAsyncGenComponent<TNode, TResult>(
 					value = value.catch((err: any) => handleChildError(ctx, err));
 				}
 			} catch (err) {
-				done = true;
 				// Do we need to catch potential errors here in the case of unhandled
 				// promise rejections?
 				value = handleChildError(ctx, err);
@@ -2577,7 +2634,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 			}
 
 			if (ctx.f & IsUnmounted) {
-				if (ctx.f & IsInRenderLoop) {
+				if (ctx.f & IsInForAwaitOfLoop) {
 					try {
 						ctx.f |= IsSyncExecuting;
 						iterationP = ctx.iterator!.next(
@@ -2590,7 +2647,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 					returnComponent(ctx);
 					break;
 				}
-			} else if (!done) {
+			} else if (!done && !(ctx.f & IsInForOfLoop)) {
 				try {
 					ctx.f |= IsSyncExecuting;
 					iterationP = ctx.iterator!.next(
@@ -2602,8 +2659,10 @@ async function runAsyncGenComponent<TNode, TResult>(
 			}
 		}
 	} finally {
-		ctx.f &= ~IsAsyncGen;
-		ctx.iterator = undefined;
+		if (done) {
+			ctx.f &= ~IsAsyncGen;
+			ctx.iterator = undefined;
+		}
 	}
 }
 
@@ -2636,14 +2695,14 @@ function unmountComponent(ctx: ContextImpl): void {
 	if (ctx.iterator) {
 		if (ctx.f & IsSyncGen) {
 			let value: unknown;
-			if (ctx.f & IsInRenderLoop) {
+			if (ctx.f & IsInForOfLoop) {
 				value = enqueueComponentRun(ctx);
 			}
 
 			if (isPromiseLike(value)) {
 				value.then(
 					() => {
-						if (ctx.f & IsInRenderLoop) {
+						if (ctx.f & IsInForOfLoop) {
 							unmountComponent(ctx);
 						} else {
 							returnComponent(ctx);
@@ -2654,16 +2713,32 @@ function unmountComponent(ctx: ContextImpl): void {
 					},
 				);
 			} else {
-				if (ctx.f & IsInRenderLoop) {
+				if (ctx.f & IsInForOfLoop) {
 					unmountComponent(ctx);
 				} else {
 					returnComponent(ctx);
 				}
 			}
 		} else if (ctx.f & IsAsyncGen) {
-			// The logic for unmounting async generator components is in the
-			// runAsyncGenComponent function.
-			resumePropsIterator(ctx);
+			if (ctx.f & IsInForOfLoop) {
+				const value = enqueueComponentRun(ctx) as Promise<unknown>;
+				value.then(
+					() => {
+						if (ctx.f & IsInForOfLoop) {
+							unmountComponent(ctx);
+						} else {
+							returnComponent(ctx);
+						}
+					},
+					(err) => {
+						propagateError<unknown>(ctx.parent, err);
+					},
+				);
+			} else {
+				// The logic for unmounting async generator components is in the
+				// runAsyncGenComponent function.
+				resumePropsIterator(ctx);
+			}
 		}
 	}
 }
@@ -2842,6 +2917,7 @@ function handleChildError<TNode>(
 
 	if (iteration.done) {
 		ctx.f &= ~IsSyncGen;
+		ctx.f &= ~IsAsyncGen;
 		ctx.iterator = undefined;
 	}
 

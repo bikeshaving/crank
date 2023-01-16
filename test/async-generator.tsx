@@ -356,6 +356,118 @@ test("try/finally", async () => {
 	Assert.is(mock.callCount, 1);
 });
 
+test("for...of", async () => {
+	const beforeYieldFn = Sinon.fake();
+	const afterYieldFn = Sinon.fake();
+	const afterLoopFn = Sinon.fake();
+	async function* Component(this: Context) {
+		let i = 0;
+		for ({} of this) {
+			beforeYieldFn();
+			yield <div>Hello {i++}</div>;
+			afterYieldFn();
+		}
+
+		afterLoopFn();
+	}
+
+	await renderer.render(<Component />, document.body);
+	Assert.is(beforeYieldFn.callCount, 1);
+	Assert.is(afterYieldFn.callCount, 0);
+	Assert.is(document.body.innerHTML, "<div>Hello 0</div>");
+	await renderer.render(<Component />, document.body);
+	Assert.is(beforeYieldFn.callCount, 2);
+	Assert.is(afterYieldFn.callCount, 1);
+	Assert.is(document.body.innerHTML, "<div>Hello 1</div>");
+
+	renderer.render(null, document.body);
+	Assert.is(document.body.innerHTML, "");
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(afterLoopFn.callCount, 1);
+});
+
+test("for...of delayed", async () => {
+	const beforeYieldFn = Sinon.fake();
+	const afterYieldFn = Sinon.fake();
+	const afterLoopFn = Sinon.fake();
+	async function* Component(this: Context) {
+		let i = 0;
+		await new Promise((resolve) => setTimeout(resolve));
+		for ({} of this) {
+			beforeYieldFn();
+			yield <div>Hello {i++}</div>;
+			afterYieldFn();
+		}
+
+		afterLoopFn();
+	}
+
+	await renderer.render(<Component />, document.body);
+	Assert.is(beforeYieldFn.callCount, 1);
+	Assert.is(afterYieldFn.callCount, 0);
+	Assert.is(document.body.innerHTML, "<div>Hello 0</div>");
+	await renderer.render(<Component />, document.body);
+	Assert.is(beforeYieldFn.callCount, 2);
+	Assert.is(afterYieldFn.callCount, 1);
+	Assert.is(document.body.innerHTML, "<div>Hello 1</div>");
+
+	renderer.render(null, document.body);
+	Assert.is(document.body.innerHTML, "");
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(afterLoopFn.callCount, 1);
+});
+
+test("for...of then for...await of", async () => {
+	const beforeYieldFn = Sinon.fake();
+	const afterYieldFn = Sinon.fake();
+	const afterLoopFn = Sinon.fake();
+	async function* Component(this: Context) {
+		let i = 0;
+		for ({} of this) {
+			beforeYieldFn();
+			yield <div>for...of {i++}</div>;
+			afterYieldFn();
+			break;
+		}
+
+		afterLoopFn();
+		for await ({} of this) {
+			beforeYieldFn();
+			yield <div>for await...of {i++}</div>;
+			// this code executes immediately because we are in a for await...of loop
+			afterYieldFn();
+			break;
+		}
+
+		afterLoopFn();
+
+		for ({} of this) {
+			beforeYieldFn();
+			yield <div>for...of {i++}</div>;
+			afterYieldFn();
+			break;
+		}
+
+		afterLoopFn();
+	}
+
+	await renderer.render(<Component />, document.body);
+	Assert.is(beforeYieldFn.callCount, 1);
+	Assert.is(afterYieldFn.callCount, 0);
+	Assert.is(document.body.innerHTML, "<div>for...of 0</div>");
+
+	await renderer.render(<Component />, document.body);
+	Assert.is(afterLoopFn.callCount, 2);
+	Assert.is(beforeYieldFn.callCount, 3);
+	Assert.is(afterYieldFn.callCount, 2);
+	Assert.is(document.body.innerHTML, "<div>for...of 2</div>");
+
+	renderer.render(null, document.body);
+	Assert.is(document.body.innerHTML, "");
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(afterLoopFn.callCount, 3);
+});
+
 test("for await...of", async () => {
 	const beforeYieldFn = Sinon.fake();
 	const afterYieldFn = Sinon.fake();
@@ -594,23 +706,6 @@ test("multiple iterations without a yield throw", async () => {
 	}
 
 	Assert.is(i, 1);
-});
-
-test("for...of throws", async () => {
-	let ctx: Context;
-	async function* Component(this: Context): AsyncGenerator<null> {
-		ctx = this;
-		yield null;
-		await new Promise(() => {});
-	}
-
-	await renderer.render(<Component />, document.body);
-	try {
-		ctx![Symbol.iterator]().next();
-		Assert.unreachable();
-	} catch (err: any) {
-		Assert.is(err.message, "Use for await…of in async generator components");
-	}
 });
 
 test("updates enqueue based on render loop", async () => {
