@@ -1,5 +1,5 @@
-import {createElement} from "./core.js";
-import type {Element} from "./core.js";
+import {createElement} from "./crank.js";
+import type {Element} from "./crank.js";
 
 const cache = new Map<string, ParseResult>();
 export function jsx(

@@ -2,7 +2,7 @@ import {suite} from "uvu";
 import * as Assert from "uvu/assert";
 
 import {createElement} from "../src/crank.js";
-import {jsx} from "../src/tags.js";
+import {jsx} from "../src/jsx-tag.js";
 
 const test = suite("jsx");
 
