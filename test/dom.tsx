@@ -447,6 +447,25 @@ test("raw html", () => {
 	Assert.ok(document.getElementById("raw"));
 });
 
+test("raw svg", () => {
+	const html = '<circle cx="5" cy="5" r="5" />';
+	renderer.render(
+		<svg>
+			Raw: <Raw value={html} />
+		</svg>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<svg>Raw: <circle cx="5" cy="5" r="5"></circle></svg>',
+	);
+
+	Assert.ok(
+		document.body.firstChild!.childNodes[1] instanceof SVGCircleElement,
+	);
+});
+
 test("raw node", () => {
 	var template = document.createElement("template");
 	template.innerHTML = '<span id="raw">Hi</span>';

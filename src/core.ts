@@ -107,8 +107,7 @@ export type Copy = typeof Copy;
 /**
  * A special tag for injecting raw nodes or strings via a value prop.
  *
- * If the value prop is a string, Renderer.prototype.parse() will be called on
- * the string and the result will be set as the element’s value.
+ * Renderer.prototype.raw() is called with the value prop.
  */
 export const Raw = Symbol.for("crank.Raw") as any;
 export type Raw = typeof Raw;
@@ -534,7 +533,7 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode | string> {
 
 export interface HydrationData<TNode> {
 	props: Record<string, unknown>;
-	children: Array<TNode>;
+	children: Array<TNode | string>;
 }
 
 // TODO: Document the interface and methods
@@ -556,7 +555,6 @@ export interface RendererImpl<
 		scope: TScope | undefined,
 	): TNode;
 
-	// TODO: Think about the name of this method
 	hydrate<TTag extends string | symbol>(
 		tag: TTag,
 		node: TNode | TRoot,
@@ -586,14 +584,18 @@ export interface RendererImpl<
 	 * @param text - The string child.
 	 * @param scope - The current scope.
 	 *
-	 * @returns The escaped string.
+	 * @returns A string to be passed to arrange.
 	 *
 	 * Rather than returning Text nodes as we would in the DOM case, for example,
 	 * we delay that step for Renderer.prototype.arrange. We do this so that
 	 * adjacent strings can be concatenated, and the actual element tree can be
 	 * rendered in normalized form.
 	 */
-	escape(text: string, scope: TScope | undefined): string;
+	text(
+		text: string,
+		scope: TScope | undefined,
+		hydration: HydrationData<TNode> | undefined,
+	): string;
 
 	/**
 	 * Called for each Raw element whose value prop is a string.
@@ -603,7 +605,11 @@ export interface RendererImpl<
 	 *
 	 * @returns The parsed node or string.
 	 */
-	parse(text: string, scope: TScope | undefined): ElementValue<TNode>;
+	raw(
+		value: string | TNode,
+		scope: TScope | undefined,
+		hydration: HydrationData<TNode> | undefined,
+	): ElementValue<TNode>;
 
 	patch<TTag extends string | symbol, TName extends string>(
 		tag: TTag,
@@ -641,8 +647,8 @@ const defaultRendererImpl: RendererImpl<unknown, unknown, unknown, unknown> = {
 	},
 	scope: IDENTITY,
 	read: IDENTITY,
-	escape: IDENTITY,
-	parse: IDENTITY,
+	text: IDENTITY,
+	raw: IDENTITY,
 	patch: NOOP,
 	arrange: NOOP,
 	dispose: NOOP,
@@ -759,7 +765,7 @@ export class Renderer<
 	//
 	// We probably should skip patch() and arrange().
 	//
-	// It will probably be necessary to call scope() and escape(), to handle SVG
+	// It will probably be necessary to call scope() and text(), to handle SVG
 	// namespaces and HTML text escaping.
 	//
 	// The read() method should work but isn’t directly tied to rendering or
@@ -952,9 +958,15 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					// TODO: think about Raw tag and hydration
 					value = hydrationBlock
 						? hydrationBlock.then(() =>
-								updateRaw(renderer, ret as Retainer<TNode>, scope, oldProps),
+								updateRaw(
+									renderer,
+									ret as Retainer<TNode>,
+									scope,
+									oldProps,
+									hydrationData,
+								),
 						  )
-						: updateRaw(renderer, ret, scope, oldProps);
+						: updateRaw(renderer, ret, scope, oldProps, hydrationData);
 				} else if (child.tag === Fragment) {
 					value = hydrationBlock
 						? hydrationBlock.then(() =>
@@ -1051,7 +1063,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			}
 
 			if (typeof child === "string") {
-				value = ret = renderer.escape(child, scope);
+				value = ret = renderer.text(child, scope, hydrationData);
 			} else {
 				ret = undefined;
 			}
@@ -1154,14 +1166,11 @@ function updateRaw<TNode, TScope>(
 	ret: Retainer<TNode>,
 	scope: TScope | undefined,
 	oldProps: Record<string, any> | undefined,
+	hydrationData: HydrationData<TNode> | undefined,
 ): ElementValue<TNode> {
 	const props = ret.el.props;
-	if (typeof props.value === "string") {
-		if (!oldProps || oldProps.value !== props.value) {
-			ret.value = renderer.parse(props.value, scope);
-		}
-	} else {
-		ret.value = props.value;
+	if (!oldProps || oldProps.value !== props.value) {
+		ret.value = renderer.raw(props.value, scope, hydrationData);
 	}
 
 	return ret.value;
@@ -1206,7 +1215,7 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	const el = ret.el;
 	const tag = el.tag as string | symbol;
-	let hydrationValue: TNode | undefined;
+	let hydrationValue: TNode | string | undefined;
 	if (el.tag === Portal) {
 		root = ret.value = el.props.root;
 	} else {
@@ -1217,12 +1226,14 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 	}
 
 	scope = renderer.scope(scope, tag, el.props);
-	const childHydrationData =
-		hydrationValue && renderer.hydrate(tag, hydrationValue, el.props);
-	if (childHydrationData === undefined) {
-		hydrationValue = undefined;
-	}
+	let childHydrationData: HydrationData<TNode> | undefined;
+	if (hydrationValue != null && typeof hydrationValue !== "string") {
+		childHydrationData = renderer.hydrate(tag, hydrationValue, el.props);
 
+		if (childHydrationData === undefined) {
+			hydrationValue = undefined;
+		}
+	}
 	const childValues = diffChildren(
 		renderer,
 		root,

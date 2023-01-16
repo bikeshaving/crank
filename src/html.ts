@@ -107,7 +107,7 @@ export const impl: Partial<RendererImpl<Node, undefined, any, string>> = {
 		return {value: ""};
 	},
 
-	escape(text: string): string {
+	text(text: string): string {
 		return escape(text);
 	},
 
