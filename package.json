@@ -42,14 +42,6 @@
       "import": "./dist/html.js",
       "require": "./dist/html.cjs"
     },
-    "./core": {
-      "import": "./dist/core.js",
-      "require": "./dist/core.cjs"
-    },
-    "./core.js": {
-      "import": "./dist/core.js",
-      "require": "./dist/core.cjs"
-    },
     "./jsx-runtime": {
       "import": "./dist/jsx-runtime.js",
       "require": "./dist/jsx-runtime.cjs"
@@ -58,14 +50,22 @@
       "import": "./dist/jsx-runtime.js",
       "require": "./dist/jsx-runtime.cjs"
     },
-    "./package.json": "./dist/package.json",
-    "./tags": {
-      "import": "./dist/tags.js",
-      "require": "./dist/tags.cjs"
+    "./jsx-tag": {
+      "import": "./dist/jsx-tag.js",
+      "require": "./dist/jsx-tag.cjs"
     },
-    "./tags.js": {
-      "import": "./dist/tags.js",
-      "require": "./dist/tags.cjs"
+    "./jsx-tag.js": {
+      "import": "./dist/jsx-tag.js",
+      "require": "./dist/jsx-tag.cjs"
+    },
+    "./package.json": "./dist/package.json",
+    "./standalone": {
+      "import": "./dist/standalone.js",
+      "require": "./dist/standalone.cjs"
+    },
+    "./standalone.js": {
+      "import": "./dist/standalone.js",
+      "require": "./dist/standalone.cjs"
     },
     "./umd": {
       "require": "./dist/umd.js"
