@@ -3,7 +3,7 @@ import * as path from "path";
 
 import typescript2 from "rollup-plugin-typescript2";
 import MagicString from "magic-string";
-import pkg from "./package.json";
+import pkg from "./package.json" assert {type: "json"};
 
 /**
  * A hack to add triple-slash references to sibling d.ts files for deno.
