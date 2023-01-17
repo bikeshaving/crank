@@ -1,4 +1,76 @@
 # Changelog
+## [0.5.0] - 2023-01-17
+
+### Breaking changes
+- The internal `RendererImpl` method `escape()` has been renamed to `text()`.
+- The internal `RendererImpl` method `parse()` has been renamed to `raw()`, and the value is always passed to this method, regardless of if the value prop is a string.
+- Generator components which return will now restart rather than stay stuck on the returned value. This should help when debugging components which have accidentally returned.
+
+### Quality of life improvements
+- Special props like `crank-key`, shortened to `c-key`, have an additional `$`-prefixed variant. Going forward, this will be the preferred syntax.
+	```ts
+	<div $key={key} $ref={ref} $static />
+	```
+- Generator components which are in a `for...of` or `for await...of` loop will now
+attempt to exit the loop gracefully, so that cleanup code can go after the loop.
+	```ts
+	// before
+	function Counter() {
+		let i = 0;
+		const interval = setInterval(() => {
+			i++;
+			this.refresh();
+		}, 1000);
+		try {
+			for ({} of this) {
+				yield <div>{i}</div>;
+			}
+		} finally {
+			clearInterval(interval);
+		}
+	}
+
+	// after
+	function Counter() {
+		let i = 0;
+		const interval = setInterval(() => {
+			i++;
+			this.refresh();
+		}, 1000);
+		for ({} of this) {
+			yield <div>{i}</div>;
+		}
+		clearInterval(interval);
+	}
+	```
+- Async generator components can now use for...of loops. Async generator components which yield from a for...of loop will behave like sync generator components, pausing at each yield.
+	```ts
+	async function Counter() {
+		let i = 0;
+		const interval = setInterval(() => {
+			i++;
+			this.refresh();
+		}, 1000);
+		for ({} of this) {
+			yield <div>{i}</div>;
+		}
+
+		clearInterval(interval);
+	}
+	```
+
+### New Features
+- The automatic JSX runtime transform is now supported.
+- Hydration: The DOM Renderer now provides a `hydrate()` method which will attempt to re-use DOM nodes already found on the page. A corresponding `hydrate()` method has been defined for custom renderers.
+- Crank now provides a tagged template function called `jsx` which replicates JSX syntax and allows templates to be written with vanilla JavaScript.
+- Calling `dispatchEvent()` on a component context will now trigger any `onevent` style props.
+
+### Bug Fixes
+- Errors which are thrown in Context event listener functions will not prevent other listeners from being called.
+- Async generator components will now correctly re-run for latest props.
+- IFrame/IMG `src` and other props which are sensitive to being re-assigned will not be re-assigned.
+- $static elements which are re-rendered with different tags will now correctly re-render.
+
 ## [0.4.4] - 2022-08-08
 ### Fixed
 - Inlined event listener methods to avoid errors caused by bundling (#238).
