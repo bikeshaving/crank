@@ -1,4 +1,4 @@
-import {jsx} from "@b9g/crank";
+import {jsx} from "@b9g/crank/standalone";
 import type {Context} from "@b9g/crank";
 import {debounce} from "../utils/fns.js";
 import {transform} from "../plugins/babel.js";

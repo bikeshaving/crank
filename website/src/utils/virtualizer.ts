@@ -7,7 +7,7 @@ import {
 	VirtualizerOptions,
 } from "@tanstack/virtual-core";
 export * from "@tanstack/virtual-core";
-import type {Context} from "@b9g/crank/core.js";
+import type {Context} from "@b9g/crank";
 
 function useVirtualizerBase<
 	TScrollElement extends Element | Window,

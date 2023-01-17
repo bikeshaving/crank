@@ -1,5 +1,5 @@
-import {jsx} from "@b9g/crank";
-import {renderer} from "@b9g/crank/dom.js";
+import {jsx} from "@b9g/crank/standalone";
+import {renderer} from "@b9g/crank/dom";
 
 import Prism from "prismjs";
 // TODO: lazily import these?

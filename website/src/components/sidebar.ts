@@ -1,5 +1,5 @@
-import {jsx} from "@b9g/crank";
-import type {Element} from "@b9g/crank";
+import {jsx} from "@b9g/crank/standalone";
+import type {Element} from "@b9g/crank/standalone";
 import type {DocInfo} from "../models/document.js";
 
 export interface SidebarProps {

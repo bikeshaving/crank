@@ -1,4 +1,4 @@
-import {jsx} from "@b9g/crank";
+import {jsx} from "@b9g/crank/standalone";
 
 // TODO: find a better analytics solution that lets me know when a bunch of
 // traffic comes to the site but isn’t spyware and is cheap or free.
