@@ -1,4 +1,4 @@
-import {jsx} from "@b9g/crank";
+import {jsx} from "@b9g/crank/standalone";
 import * as path from "path";
 
 import {Root} from "../components/root.js";

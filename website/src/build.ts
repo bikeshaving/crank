@@ -1,5 +1,5 @@
-import {jsx} from "@b9g/crank";
-import {renderer} from "@b9g/crank/html.js";
+import {jsx} from "@b9g/crank/standalone";
+import {renderer} from "@b9g/crank/html";
 
 import fs from "fs-extra";
 import * as path from "path";

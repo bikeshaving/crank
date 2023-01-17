@@ -1,4 +1,4 @@
-import {jsx} from "@b9g/crank";
+import {jsx} from "@b9g/crank/standalone";
 
 export interface NavbarProps {
 	url: string;

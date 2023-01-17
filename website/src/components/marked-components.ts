@@ -1,4 +1,4 @@
-import {jsx} from "@b9g/crank";
+import {jsx} from "@b9g/crank/standalone";
 import {InlineCodeBlock} from "./inline-code-block.js";
 
 export const components = {

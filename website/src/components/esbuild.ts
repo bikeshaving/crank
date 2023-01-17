@@ -3,6 +3,8 @@ import * as path from "path";
 import {build} from "esbuild";
 import type {BuildResult, OutputFile} from "esbuild";
 import * as mime from "mime-types";
+import {jsx} from "@b9g/crank/standalone";
+import type {Children, Context} from "@b9g/crank";
 
 // TODO: Pass plugins into storage or components
 import {postcssPlugin} from "../plugins/esbuild.js";
@@ -168,9 +170,6 @@ export class Storage {
 		}
 	}
 }
-
-import type {Children, Context} from "@b9g/crank";
-import {jsx} from "@b9g/crank";
 
 // TODO: Move components to their own file?
 // While it’s cool that we can use provisions and components here, I’m not sure

@@ -1,4 +1,4 @@
-import {jsx} from "@b9g/crank";
+import {jsx} from "@b9g/crank/standalone";
 import {Root} from "../components/root.js";
 import type {Storage} from "../components/esbuild.js";
 import {collectDocuments} from "../models/document.js";

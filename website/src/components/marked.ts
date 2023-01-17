@@ -1,4 +1,4 @@
-import {jsx, Raw} from "@b9g/crank";
+import {jsx, Raw} from "@b9g/crank/standalone";
 import type {Children, Component, Element} from "@b9g/crank";
 import {marked} from "marked";
 // TODO: This is probably a component

@@ -1,4 +1,4 @@
-import {jsx} from "@b9g/crank";
+import {jsx} from "@b9g/crank/standalone";
 import type {Context} from "@b9g/crank";
 import {CodeEditor} from "./code-editor.js";
 import {CodePreview} from "./code-preview.js";

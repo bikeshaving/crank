@@ -1,4 +1,4 @@
-import {jsx, Raw} from "@b9g/crank";
+import {jsx, Raw} from "@b9g/crank/standalone";
 import type {Children} from "@b9g/crank";
 import {Page, Link, Script, Storage} from "../components/esbuild.js";
 import {Navbar} from "../components/navbar.js";

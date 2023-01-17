@@ -2,9 +2,9 @@ import {createServer} from "node:http";
 import * as path from "node:path";
 import * as mime from "mime-types";
 
-import {jsx} from "@b9g/crank";
+import {jsx} from "@b9g/crank/standalone";
 import type {Component} from "@b9g/crank";
-import {renderer} from "@b9g/crank/html.js";
+import {renderer} from "@b9g/crank/html";
 
 import {router} from "./routes.js";
 import {Storage} from "./components/esbuild.js";
