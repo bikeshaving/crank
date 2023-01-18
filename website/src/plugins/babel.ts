@@ -108,9 +108,8 @@ export function transform(code: string) {
 			[
 				babelPluginTransformReactJSX,
 				{
-					runtime: "classic",
-					pragma: "createElement",
-					pragmaFrag: "''",
+					runtime: "automatic",
+					importSource: "@b9g/crank@beta",
 				},
 			],
 			rewriteBareModuleSpecifiers,

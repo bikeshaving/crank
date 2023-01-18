@@ -5,7 +5,55 @@ import {collectDocuments} from "../models/document.js";
 import * as Path from "path";
 
 import {Marked} from "../components/marked.js";
-import {components} from "../components/marked-components.js";
+import {InlineCodeBlock} from "../components/inline-code-block.js";
+
+const components = {
+	heading({token, children}: any) {
+		const {depth} = token;
+		const tag = `h${depth}`;
+		return jsx`
+			<${tag}
+				style="
+					text-align: center;
+					font-size: ${depth === 2 ? 24 : depth === 3 ? 20 : 0}px;
+				"
+			>
+				${children}
+			<//tag>`;
+	},
+
+	paragraph({token}: any) {
+		return jsx`
+			<p style="
+				margin: 30px auto;
+				max-width: 800px;
+			">${token.text}</p>
+		`;
+	},
+
+	codespan({token}: any) {
+		return jsx`<code class="inline">${token.text}</code>`;
+	},
+
+	code({token}: any) {
+		const {text: code, lang} = token;
+		return jsx`
+			<div
+				style="
+					max-width: 1200px;
+				"
+				class="code-block-container"
+				data-code=${code} data-lang=${lang}
+			>
+				<${InlineCodeBlock}
+					value=${code}
+					lang=${lang}
+					editable=${lang.endsWith(" live")}
+				/>
+			</div>
+		`;
+	},
+};
 
 const __dirname = new URL(".", import.meta.url).pathname;
 
@@ -49,15 +97,63 @@ export default async function Home({storage}: {storage: Storage}) {
 						The Just JavaScript Framework
 					</h3>
 				</header>
+				<div class="blur-background">
+					<div
+						style="
+							margin: 0 auto;
+							padding: 50px;
+							max-width: 800px;
+							font-size: 24px;
+							text-align: justify;
+						"
+					>
+						<p>
+							Many web frameworks claim to be “just JavaScript.” None have as \
+							strong a claim as Crank.
+						</p>
+						<p>
+							Crank is a framework for building user interfaces. It starts with \
+							the question: what if we took the popular idea of “components are \
+							functions,” and extended it to include async and generator \
+							functions as well?
+						</p>
+						<p>
+							The result is a developer experience where you spend less time \
+							writing “framework integrations” and more time writing vanilla \
+							JavaScript.
+						</p>
+					</div>
+					<div
+						style="
+							margin: 50px auto;
+							padding: 100px;
+							max-width: 1200px;
+						"
+					>
+						<${Marked} markdown=${index.body} components=${components} />
+					</div>
+				</div>
 				<div
 					style="
-						margin: 0 auto;
-						padding: 30px;
-						max-width: 1400px;
+						text-align: center;
+						height: 100vh;
+						display: flex;
+						justify-content: center;
+						align-items: center;
 					"
-					class="blur-background"
 				>
-					<${Marked} markdown=${index.body} components=${components} />
+					<a
+						style="
+							display: inline-block;
+							border: 1px solid #dbb368;
+							color: #dbb368;
+							padding: 20px;
+							margin: 50px 0;
+							text-decoration: none;
+							font-size: 24px;
+						"
+						href="/guides/getting-started"
+					>Get Started</a>
 				</div>
 			</div>
 		<//Root>

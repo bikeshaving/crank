@@ -1,35 +1,233 @@
-Many frameworks claim to be “Just JavaScript.” Few have as strong a claim as
-Crank.
+## Why choose Crank?
 
-### Components are functions.
-Crank components are plain old JavaScript functions. Props are parameters.
-Computed props are assignments. Async components are async functions, and
-generator functions provide a scope for state to be defined with local
-variables.
+### Reason #1: It’s declarative
+
+Crank is built to work with JSX, an HTML-like syntax extension to JavaScript.
+It uses battle-tested virtual DOM algorithms to manage both DOM nodes and
+components, so you can perfomantly re-render reams upon reams of apps and
+documents declaratively.
 
 ```jsx live
-import {createElement} from "@b9g/crank@beta";
 import {renderer} from "@b9g/crank@beta/dom";
 
 function Greeting({name = "World"}) {
   return <div>Hello {name}</div>;
 }
 
-renderer.render(<Greeting />, document.body);
+renderer.render(<Greeting name="Alice" />, document.body);
 ```
 
-It’s built on JSX and the diffing algorithm made popularized by React. Don’t
-think JSX is vanilla enough? Crank ships with a tagged template function which
-does basically the same thing.
+Don’t think JSX is vanilla enough? Crank provides a tagged template function
+which does basically the same thing.
 
-### It’s declarative.
+```jsx live
+import {jsx} from "@b9g/crank@beta/standalone";
+import {renderer} from "@b9g/crank@beta/dom";
 
-Crank uses the same battle-tested virtual DOM algorithms popularized by React
-to manage stateful rendering. There are built-in renderers for manipulating DOM
-nodes and producing HTML. There’s also an API for writing custom renderers for
-environments like Three.js.
+// TODO: replace this with a fun SVG function to show off some template tag features.
+function Greeting({name = "World"}) {
+  return jsx`<div>Hello ${name}</div>`;
+}
 
-### It’s predictable.
+renderer.render(jsx`<${Greeting} name=${"Alice"} />`, document.body);
+```
 
-Crank has a well-defined execution model so you can get messy. Put side-effects
-wherever you want. Never “memoize” a callback ever again.
+### Reason #2: It’s predictable
+
+Never “memoize” a callback ever again.
+
+```jsx live
+import {renderer} from "@b9g/crank@beta/dom";
+
+const r = () => Math.floor(Math.random() * 256);
+const randomColorCSS = () => `rgb(${r()}, ${r()}, ${r()})`;
+
+function Box({color=randomColorCSS(), size=1, children}) {
+  return (
+    <div style={`
+      width: ${100 * size}%;
+      aspect-ratio: 1 / 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border: 1px solid ${color};
+    `}>
+      {children}
+    </div>
+  );
+}
+
+function *ConcentricBoxes({}) {
+  const colors = Array.from({length: 100}, () => {
+    return randomColorCSS();
+  });
+
+  // TODO: Uncomment me!
+  /*
+  const interval = setInterval(() => {
+    // should have the effect of shifting colors inward
+    colors.unshift(colors.pop());
+    this.refresh();
+  }, 1000);
+  */
+
+  for ({} of this) {
+    yield (
+      <div style="width: 100%; height: 300px;">
+        <Box color={colors[0]}>
+          <Box color={colors[1]} size={0.9}>
+            <Box color={colors[2]} size={0.8}>
+              <Box color={colors[3]} size={0.7}>
+                <marquee>That’s a lot of boxes.</marquee>
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+      </div>
+    );
+  }
+
+  // TODO: Remember to clean up after yourself!
+  //clearInterval(interval);
+}
+
+renderer.render(<ConcentricBoxes />, document.body);
+```
+
+Crank has a well-defined execution model. This means you can put side-effects
+wherever you want. Precision in execution means you don’t have to keep asking
+your framework “why did you render?”
+
+### Reason #3: It’s convenient
+
+Thanks to generator functions, local state can be defined with local variables,
+and lifecycles can be defined with `for` or `while` loops.
+
+```jsx live
+import {renderer} from "@b9g/crank@beta/dom";
+
+function *Timer() {
+  let interval = null;
+  let seconds = 0;
+  const ontoggle = () => {
+    if (interval == null) {
+      interval = setInterval(() => {
+        seconds++;
+        this.refresh();
+      }, 1000);
+    } else {
+      clearInterval(interval);
+      interval = null;
+    }
+
+    this.refresh();
+  };
+
+  this.cleanup(() => clearInterval(interval));
+
+  const onreset = () => {
+    seconds = 0;
+    this.refresh();
+  };
+
+
+  for ({} of this) {
+    yield (
+      <div>
+        <div>
+          Seconds: {seconds} second{seconds !== 1 && "s"}
+        </div>
+        <button onclick={ontoggle}>
+          {interval == null ? "Start timer" : "Stop timer"}
+        </button>
+        <button onclick={onreset}>Reset timer</button>
+      </div>
+    );
+  }
+}
+
+renderer.render(<Timer />, document.body);
+```
+
+In addition, Crank injects a context as the `this` parameter to every
+component. These contexts provide useful methods for updating components,
+getting the latest props, adding event listeners, running code after rendering,
+and cleaning up after components are unmounted. This object can be passed to
+separate functions to create reusable utilities.
+
+
+### Reason #4: It’s promise-friendly
+Async components can be defined with async functions and async generator
+functions. This means you can use the `await` keyword to use promises in any
+component, just like you would in regular JavaScript. When Crank renders async
+components, methods return promises which fulfill when rendering has finished.
+It features a sophisticated rendering model so you can render fallback states
+by racing components.
+
+```jsx live
+import {Fragment} from "@b9g/crank";
+import {renderer} from "@b9g/crank/dom";
+
+function *Dots() {
+  let i = 0;
+  const interval = setInterval(() => {
+    i++;
+    this.refresh();
+  }, 200);
+
+  for ({} of this) {
+    yield ".".repeat(i);
+  }
+
+  clearInterval(interval);
+}
+
+async function LoadingIndicator() {
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  return <div>Fetching a good boy<Dots /></div>;
+}
+
+async function RandomDog({throttle = false}) {
+  const res = await fetch("https://dog.ceo/api/breeds/image/random");
+  const data = await res.json();
+  if (throttle) {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+
+  return (
+    <a href={data.message}>
+      <img src={data.message} alt="A Random Dog" width="300" />
+    </a>
+  );
+}
+
+async function *RandomDogLoader({throttle}) {
+  for await ({throttle} of this) {
+    yield <LoadingIndicator />;
+    yield <RandomDog throttle={throttle} />;
+  }
+}
+
+function *RandomDogApp() {
+  let throttle = false;
+  this.addEventListener("click", (ev) => {
+    if (ev.target.tagName === "BUTTON") {
+      throttle = !throttle;
+      this.refresh();
+    }
+  });
+
+  for ({} of this) {
+    yield (
+      <Fragment>
+        <div>
+          <button>Show me another dog.</button>
+        </div>
+        <RandomDogLoader throttle={throttle} />
+      </Fragment>
+    );
+  }
+}
+
+renderer.render(<RandomDogApp />, document.body);
+```
