@@ -1,2 +1,2 @@
 export * from "./crank.js";
-export * from "./jsx-tag.js";
+export {jsx} from "./jsx-tag.js";
