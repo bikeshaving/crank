@@ -40,7 +40,8 @@ const components = {
 		return jsx`
 			<div
 				style="
-					max-width: 1200px;
+					margin: 0 auto;
+					max-width: 1400px;
 				"
 				class="code-block-container"
 				data-code=${code} data-lang=${lang}
@@ -108,30 +109,16 @@ export default async function Home({storage}: {storage: Storage}) {
 						"
 					>
 						<p>
-							Many web frameworks claim to be “just JavaScript.” None have as \
+							Many frameworks claim to be “just JavaScript.” None have as \
 							strong a claim as Crank.
 						</p>
 						<p>
-							Crank is a framework for building user interfaces. It starts with \
-							the question: what if we took the popular idea of “components are \
-							functions,” and extended it to include async and generator \
-							functions as well?
-						</p>
-						<p>
-							The result is a developer experience where you spend less time \
-							writing “framework integrations” and more time writing vanilla \
-							JavaScript.
+							It starts with the question: what if we took the idea of \
+							components as functions and extended it to include async and \
+							generator functions as well?
 						</p>
 					</div>
-					<div
-						style="
-							margin: 50px auto;
-							padding: 100px;
-							max-width: 1200px;
-						"
-					>
-						<${Marked} markdown=${index.body} components=${components} />
-					</div>
+					<${Marked} markdown=${index.body} components=${components} />
 				</div>
 				<div
 					style="

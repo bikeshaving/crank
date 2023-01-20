@@ -1,18 +1,19 @@
 # Changelog
-## [0.5.0] - 2023-01-17
+## [0.5.0] - 2023-01-20
 
 ### Breaking changes
+
 - The internal `RendererImpl` method `escape()` has been renamed to `text()`.
-- The internal `RendererImpl` method `parse()` has been renamed to `raw()`, and the value is always passed to this method, regardless of if the value prop is a string.
-- Generator components which return will now restart rather than stay stuck on the returned value. This should help when debugging components which have accidentally returned.
+- The internal `RendererImpl` method `parse()` has been renamed to `raw()`, and the value `prop` is always passed into this method, regardless of whether the value is a string.
+- Generator components which return will restart when re-rerendered, rather than staying stuck on the returned value. This should help debugging components which have accidentally returned.
 
 ### Quality of life improvements
-- Special props like `crank-key`, shortened to `c-key`, have an additional `$`-prefixed variant. Going forward, this will be the preferred syntax.
+- Special props like `crank-key`, have an additional `$`-prefixed variant. Going forward, this will be the preferred syntax, but `crank-key` and `c-key` will continue to be supported as well.
 	```ts
 	<div $key={key} $ref={ref} $static />
 	```
 - Generator components which are in a `for...of` or `for await...of` loop will now
-attempt to exit the loop gracefully, so that cleanup code can go after the loop.
+attempt to exit normally, so that cleanup code can be placed after the loop.
 	```ts
 	// before
 	function Counter() {
@@ -43,7 +44,7 @@ attempt to exit the loop gracefully, so that cleanup code can go after the loop.
 		clearInterval(interval);
 	}
 	```
-- Async generator components can now use for...of loops. Async generator components which yield from a for...of loop will behave like sync generator components, pausing at each yield.
+- Async generator components can now use for...of loops. Async generator components which yield from a for...of loop behave like sync generator components, pausing at each yield.
 	```ts
 	async function Counter() {
 		let i = 0;
@@ -58,18 +59,47 @@ attempt to exit the loop gracefully, so that cleanup code can go after the loop.
 		clearInterval(interval);
 	}
 	```
+- The `Context` type can now be passed a function type as its first parameter to strongly type the `this` props iterators.
+	```ts
+	function *MyComponent(
+		this: Context<typeof MyComponent>,
+		{name}: {name: string},
+	) {
+
+		// name will be correctly inferred
+		for ({name} of this) {
+			yield <div>Hello name</div>;
+		}
+	}
+	```
 
 ### New Features
-- The automatic JSX runtime transform is now supported.
+- The automatic JSX runtime transform is now supported. Here is the babel configuration.
+	```ts
+
+	```
 - Hydration: The DOM Renderer now provides a `hydrate()` method which will attempt to re-use DOM nodes already found on the page. A corresponding `hydrate()` method has been defined for custom renderers.
 - Crank now provides a tagged template function called `jsx` which replicates JSX syntax and allows templates to be written with vanilla JavaScript.
+	```ts
+		import {jsx} from "@b9g/crank/standalone";
+		import {renderer} from "@b9g/crank/standalone";
+		function Greeting({
+			name
+		}) {
+			return jsx`
+				<div>Hello ${name}</div>
+			`;
+		}
+		
+		renderer.render(jsx`<${Greeting} name="world" />`, document.body);
+	```
 - Calling `dispatchEvent()` on a component context will now trigger any `onevent` style props.
 
 ### Bug Fixes
 - Errors which are thrown in Context event listener functions will not prevent other listeners from being called.
-- Async generator components will now correctly re-run for latest props.
+- Async generator components should run more predictably.
 - IFrame/IMG `src` and other props which are sensitive to being re-assigned will not be re-assigned.
-- $static elements which are re-rendered with different tags will now correctly re-render.
+- `$static` elements which are re-rendered with different tags will now correctly re-render.
 
 ## [0.4.4] - 2022-08-08
 ### Fixed

@@ -1,5 +1,5 @@
 # Crank.js
-### The most “Just JavaScript” web framework.
+### The Just JavaScript web framework.
 
 Crank.js is a framework where components are defined with *Plain Old JavaScript Functions*. But not just regular functions! Components can also be defined with async functions for working with promises, and generator functions for working with local state.
 
@@ -20,8 +20,6 @@ $ npm install @b9g/crank
 #### A Simple Component
 
 ```jsx live
-/** @jsx createElement */
-import {createElement} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
 
 function Greeting({name = "World"}) {
@@ -36,8 +34,6 @@ renderer.render(<Greeting />, document.body);
 #### A Stateful Component
 
 ```jsx live
-/** @jsx createElement */
-import {createElement} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
 
 function *Timer() {
@@ -61,8 +57,6 @@ renderer.render(<Timer />, document.body);
 #### An Async Component
 
 ```jsx live
-/** @jsx createElement */
-import {createElement} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
 
 async function QuoteOfTheDay() {
@@ -81,8 +75,7 @@ renderer.render(<QuoteOfTheDay />, document.body);
 ### A Loading Component
 
 ```jsx live
-/** @jsx createElement */
-import {createElement, Fragment} from "@b9g/crank";
+import {Fragment} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
 
 async function LoadingIndicator() {
@@ -120,7 +113,7 @@ function *RandomDogApp() {
     }
   });
 
-  while (true) {
+  for ({} of this) {
     yield (
       <Fragment>
         <div>

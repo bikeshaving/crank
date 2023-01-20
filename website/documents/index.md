@@ -24,12 +24,40 @@ which does basically the same thing.
 import {jsx} from "@b9g/crank@beta/standalone";
 import {renderer} from "@b9g/crank@beta/dom";
 
-// TODO: replace this with a fun SVG function to show off some template tag features.
-function Greeting({name = "World"}) {
-  return jsx`<div>Hello ${name}</div>`;
+function Star({cx, cy, r=50, ir, p=5, fill="red"}) {
+  cx = parseFloat(cx);
+  cy = parseFloat(cy);
+  r == parseFloat(r);
+  if (ir == null) {
+    ir = r * 0.4;
+  }
+
+  ir = parseFloat(ir);
+
+  const points = [];
+  const angle = Math.PI / p;
+  for (let i = 0, a = -(Math.PI / 2); i < p * 2; i++, a += angle) {
+    const x = cx + Math.cos(a) * (i % 2 === 0 ? r : ir);
+    const y = cy + Math.sin(a) * (i % 2 === 0 ? r : ir);
+    points.push([x, y]);
+  }
+
+  return jsx`
+    <polygon points=${points} fill=${fill} />
+  `;
 }
 
-renderer.render(jsx`<${Greeting} name=${"Alice"} />`, document.body);
+renderer.render(jsx`
+  <svg viewBox="0 0 200 200" width="200px" height="200px">
+    <${Star} cx="70" cy="70" r="50" fill="red" />
+    <${Star} cx="80" cy="80" r="50" fill="orange" />
+    <${Star} cx="90" cy="90" r="50" fill="yellow" />
+    <${Star} cx="100" cy="100" r="50" fill="green" />
+    <${Star} cx="110" cy="110" r="50" fill="blue" />
+    <${Star} cx="120" cy="120" r="50" fill="indigo" />
+    <${Star} cx="130" cy="130" r="50" fill="purple" />
+  </svg>
+`, document.body);
 ```
 
 ### Reason #2: It’s predictable
@@ -58,9 +86,7 @@ function Box({color=randomColorCSS(), size=1, children}) {
 }
 
 function *ConcentricBoxes({}) {
-  const colors = Array.from({length: 100}, () => {
-    return randomColorCSS();
-  });
+  const colors = Array.from({length: 100}, () => randomColorCSS());
 
   // TODO: Uncomment me!
   /*
