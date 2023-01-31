@@ -1,21 +1,32 @@
-## Why choose Crank?
+Many frameworks claim to be “just JavaScript.” Few have as strong a claim as
+Crank.
+
+It starts with the question: if components are defined with functions, why
+can’t they be defined with async functions and generator functions as well?
+
+The result is a framework where you spend less time writing “framework
+integrations” and more time writing vanilla JavaScript.
+
+## Three Reasons to choose Crank
 
 ### Reason #1: It’s declarative
 
-Crank is built to work with JSX, an HTML-like syntax extension to JavaScript.
-It uses battle-tested virtual DOM algorithms to manage both DOM nodes and
-components, so you can perfomantly re-render reams upon reams of apps and
-documents declaratively.
+Crank works with JSX, an HTML-like syntax extension to JavaScript. It uses
+battle-tested virtual DOM algorithms to manage DOM nodes and stateful
+components, so you can perfomantly re-render JSX-like text declaratively.
 
 ```jsx live
 import {renderer} from "@b9g/crank@beta/dom";
 
 function Greeting({name = "World"}) {
-  return <div>Hello {name}</div>;
+  return <marquee behavior="alternate">Hello {name}.</marquee>;
 }
 
-renderer.render(<Greeting name="Alice" />, document.body);
+const names = ["Alice", "Bob", "Carol", "Dave"];
+const randomName = names[Math.floor(Math.random() * names.length)];
+renderer.render(<Greeting name={randomName} />, document.body);
 ```
+
 
 Don’t think JSX is vanilla enough? Crank provides a tagged template function
 which does basically the same thing.
@@ -28,17 +39,13 @@ function Star({cx, cy, r=50, ir, p=5, fill="red"}) {
   cx = parseFloat(cx);
   cy = parseFloat(cy);
   r == parseFloat(r);
-  if (ir == null) {
-    ir = r * 0.4;
-  }
-
-  ir = parseFloat(ir);
-
+  ir = ir == null ? r * 0.4 : parseFloat(ir);
+  p = parseFloat(p);
   const points = [];
   const angle = Math.PI / p;
-  for (let i = 0, a = -(Math.PI / 2); i < p * 2; i++, a += angle) {
+  for (let i = 0, a = Math.PI / 2; i < p * 2; i++, a += angle) {
     const x = cx + Math.cos(a) * (i % 2 === 0 ? r : ir);
-    const y = cy + Math.sin(a) * (i % 2 === 0 ? r : ir);
+    const y = cy - Math.sin(a) * (i % 2 === 0 ? r : ir);
     points.push([x, y]);
   }
 
@@ -47,16 +54,36 @@ function Star({cx, cy, r=50, ir, p=5, fill="red"}) {
   `;
 }
 
+function Stars({width, height}) {
+  return jsx`
+    <svg
+      viewBox="0 0 ${width} ${height}"
+      width="${width}px"
+      height="${height}px"
+    >
+      <!--
+        Refactoring this to be less repetitive has been left
+        as an exercise for the reader.
+      -->
+      <${Star} cx="70" cy="70" r="50" fill="red" />
+      <${Star} cx="80" cy="80" r="50" fill="orange" />
+      <${Star} cx="90" cy="90" r="50" fill="yellow" />
+      <${Star} cx="100" cy="100" r="50" fill="green" />
+      <${Star} cx="110" cy="110" r="50" fill="blue" />
+      <${Star} cx="120" cy="120" r="50" fill="indigo" />
+      <${Star}
+        cx="130"
+        cy="130"
+        r="50"
+        fill="purple"
+        p=${6}
+      />
+    </svg>
+  `;
+}
+
 renderer.render(jsx`
-  <svg viewBox="0 0 200 200" width="200px" height="200px">
-    <${Star} cx="70" cy="70" r="50" fill="red" />
-    <${Star} cx="80" cy="80" r="50" fill="orange" />
-    <${Star} cx="90" cy="90" r="50" fill="yellow" />
-    <${Star} cx="100" cy="100" r="50" fill="green" />
-    <${Star} cx="110" cy="110" r="50" fill="blue" />
-    <${Star} cx="120" cy="120" r="50" fill="indigo" />
-    <${Star} cx="130" cy="130" r="50" fill="purple" />
-  </svg>
+  <${Stars} width=${200} height=${200} />
 `, document.body);
 ```
 
@@ -85,7 +112,7 @@ function Box({color=randomColorCSS(), size=1, children}) {
   );
 }
 
-function *ConcentricBoxes({}) {
+function *ConcentricBoxes() {
   const colors = Array.from({length: 100}, () => randomColorCSS());
 
   // TODO: Uncomment me!
@@ -99,7 +126,7 @@ function *ConcentricBoxes({}) {
 
   for ({} of this) {
     yield (
-      <div style="width: 100%; height: 300px;">
+      <div style="width: 100%;">
         <Box color={colors[0]}>
           <Box color={colors[1]} size={0.9}>
             <Box color={colors[2]} size={0.8}>
@@ -123,8 +150,6 @@ renderer.render(<ConcentricBoxes />, document.body);
 Crank has a well-defined execution model. This means you can put side-effects
 wherever you want. Precision in execution means you don’t have to keep asking
 your framework “why did you render?”
-
-### Reason #3: It’s convenient
 
 Thanks to generator functions, local state can be defined with local variables,
 and lifecycles can be defined with `for` or `while` loops.
@@ -181,8 +206,85 @@ getting the latest props, adding event listeners, running code after rendering,
 and cleaning up after components are unmounted. This object can be passed to
 separate functions to create reusable utilities.
 
+### Reason #3: It’s promise-friendly.
+The nicest way to “use” fetch is to call it. Any function can be asynchronous.
 
-### Reason #4: It’s promise-friendly
+```jsx live
+import {createElement} from "@b9g/crank";
+import {renderer} from "@b9g/crank/dom";
+
+async function QuoteOfTheDay() {
+  // Quotes API courtesy https://theysaidso.com
+  const res = await fetch("https://quotes.rest/qod.json");
+  const quote = (await res.json())["contents"]["quotes"][0];
+  return (
+    <figure>
+      <blockquote>{quote.quote}</blockquote>
+      <figcaption>— <a href={quote.permalink}>{quote.author}</a></figcaption>
+    </figure>
+  );
+}
+
+renderer.render(<QuoteOfTheDay />, document.body);
+```
+
+```jsx live
+import {renderer} from "@b9g/crank/dom";
+
+function formatNumber(number, type) {
+  if (type === "American Express") {
+    return [number.slice(0, 4), number.slice(4, 10), number.slice(10, 15)].join(" ");
+  }
+
+  return [
+    number.slice(0, 4),
+    number.slice(4, 8),
+    number.slice(8, 12),
+    number.slice(12),
+  ].join(" ");
+}
+
+function CreditCard({type, expiration, number, owner}) {
+  return (
+    <div style="padding: 10px; border: 1px solid currentcolor; border-radius: 10px;">
+      <div style="display: flex; justify-content: space-between;">
+        <div>{formatNumber(number, type)}</div>
+        <div>{type}</div>
+      </div>
+      <div style="display: flex; justify-content: space-between;">
+        <div>{owner}</div>
+        <div>Exp: {expiration}</div>
+      </div>
+    </div>
+  );
+}
+
+async function FakeCreditCard() {
+  // Mock credit card data courtesy https://fakerapi.it/en
+  const res = await fetch("https://fakerapi.it/api/v1/credit_cards?_quantity=1");
+  if (res.status === 429) {
+    return (
+      <marquee>Too many requests. Please use free APIs responsibly.</marquee>
+    );
+  }
+  const {data: [card]} = await res.json();
+  return (
+    <>
+      <button
+        onclick={() => this.refresh()}
+      >Generate new card</button>
+      <CreditCard
+        number={card.number}
+        type={card.type}
+        owner={card.owner}
+        expiration={card.expiration}
+      />
+    </>
+  );
+}
+
+renderer.render(<FakeCreditCard />, document.body);
+```
 Async components can be defined with async functions and async generator
 functions. This means you can use the `await` keyword to use promises in any
 component, just like you would in regular JavaScript. When Crank renders async

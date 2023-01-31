@@ -2,12 +2,18 @@
 title: Getting Started
 ---
 
+## Try Crank
+The fastest way to try Crank is via the [playground](/playground).
+
 ## Installation
-Crank is available on [NPM](https://npmjs.org/@bikeshaving/crank) in the ESModule and CommonJS formats.
+The Crank package is available on [NPM](https://npmjs.org/@b9g/crank) in the
+ESModule and CommonJS formats. Crank can be used with JSX or a template tag which does roughly the same thing.
 
 ```shell
 $ npm install @b9g/crank
 ```
+
+The Crank package is composed of modules.
 
 ```jsx
 /** @jsx createElement */

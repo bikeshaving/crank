@@ -9,7 +9,12 @@ export const components = {
 	code({token}: any) {
 		const {text: code, lang} = token;
 		return jsx`
-			<div class="code-block-container" data-code=${code} data-lang=${lang}>
+			<div
+				style="margin: 30px auto;"
+				class="code-block-container"
+				data-code=${code}
+				data-lang=${lang}
+			>
 				<${InlineCodeBlock}
 					value=${code}
 					lang=${lang}

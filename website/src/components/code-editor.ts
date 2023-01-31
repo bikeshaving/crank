@@ -383,6 +383,7 @@ export function* CodeEditor(
 							line-break: anywhere;
 							white-space: pre-wrap;
 							white-space: break-spaces;
+							font-size: 14px;
 						"
 					>
 						${lines.map((line, l) => {

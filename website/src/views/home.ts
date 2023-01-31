@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+
 import {Root} from "../components/root.js";
 import type {Storage} from "../components/esbuild.js";
 import {collectDocuments} from "../models/document.js";
@@ -6,7 +7,6 @@ import * as Path from "path";
 
 import {Marked} from "../components/marked.js";
 import {InlineCodeBlock} from "../components/inline-code-block.js";
-
 const components = {
 	heading({token, children}: any) {
 		const {depth} = token;
@@ -40,7 +40,7 @@ const components = {
 		return jsx`
 			<div
 				style="
-					margin: 0 auto;
+					margin: 30px auto;
 					max-width: 1400px;
 				"
 				class="code-block-container"
@@ -61,8 +61,8 @@ const __dirname = new URL(".", import.meta.url).pathname;
 export default async function Home({storage}: {storage: Storage}) {
 	const docs = await collectDocuments(Path.join(__dirname, "../../documents"));
 
-	const index = docs.find((doc) => doc.filename.endsWith("/index.md"));
-	if (!index) {
+	const md = docs.find((doc) => doc.filename.endsWith("/index.md"));
+	if (!md) {
 		throw new Error("index.md missing you silly goose");
 	}
 
@@ -99,26 +99,7 @@ export default async function Home({storage}: {storage: Storage}) {
 					</h3>
 				</header>
 				<div class="blur-background">
-					<div
-						style="
-							margin: 0 auto;
-							padding: 50px;
-							max-width: 800px;
-							font-size: 24px;
-							text-align: justify;
-						"
-					>
-						<p>
-							Many frameworks claim to be “just JavaScript.” None have as \
-							strong a claim as Crank.
-						</p>
-						<p>
-							It starts with the question: what if we took the idea of \
-							components as functions and extended it to include async and \
-							generator functions as well?
-						</p>
-					</div>
-					<${Marked} markdown=${index.body} components=${components} />
+					<${Marked} markdown=${md.body} components=${components} />
 				</div>
 				<div
 					style="
