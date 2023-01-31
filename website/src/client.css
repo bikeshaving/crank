@@ -102,22 +102,19 @@ code.inline {
 }
 
 
-.navbar {
+.__________navbar {
 	position: fixed;
 	top: 0;
 	left: 0;
 	right: 0;
 	height: 50px;
 	border-bottom: 1px solid #f5f9ff;
-	display: flex;
-	justify-content: space-between;
 	align-items: center;
-	overflow-y: auto;
+	overflow-x: auto;
 	padding: 0 0.4rem;
 	z-index: 5;
 
 	background-color: inherit;
-
 	@supports (backdrop-filter: blur(3px)) {
 		backdrop-filter: blur(3px);
 		background-color: rgba(10, 14, 31, 0.5);
@@ -138,36 +135,6 @@ code.inline {
 		backdrop-filter: blur(3px);
 		background-color: rgba(10, 14, 31, 0.5);
 	}
-}
-
-.navbar-item + .navbar-item {
-	margin-left: 1rem;
-}
-
-.navbar-group {
-	display: flex;
-	align-items: center;
-	+ .navbar-group {
-		margin-left: 1rem;
-	}
-}
-
-.navbar-title-link {
-	display: flex;
-	align-items: center;
-}
-
-.navbar-logo {
-	width: 1.9em;
-	height: 1.9em;
-	background-color: transparent;
-	display: inline-block;
-	margin-top: -2px;
-	margin-right: 0.5em;
-}
-
-.navbar-spacer {
-	height: 50px;
 }
 
 .home {
@@ -289,60 +256,5 @@ code.inline {
 		text-decoration: none;
 		margin-right: 1em;
 		padding: .5em;
-	}
-}
-
-.feature {
-	max-width: 1000px;
-	margin: 0 auto;
-	padding: 30px;
-}
-
-.feature-playground {
-	max-width: 1800px;
-}
-
-.code-block-container {
-	max-width: unset;
-}
-
-.editable {
-	flex: 0 1 auto;
-	width: 100%;
-	max-width: 900px;
-	height: fit-content;
-	background: #0a0e1f;
-	background: linear-gradient(123deg, #0a0e1f 60%, #000e4f);
-	overflow: auto;
-	word-wrap: normal;
-	border: 1px solid #f5f9ff;
-	margin: 1.5em 0;
-	/* This is some kind of shit to make the shit not zoom on iOS */
-	@supports (-webkit-overflow-scrolling: touch) {
-		font-size: 16px;
-	}
-}
-
-.editable-live {
-	@media screen and (min-width: 1100px) {
-		width: 61.8%;
-	}
-}
-
-.preview {
-	flex: 0 1 auto;
-	position: sticky;
-	top: calc(3.5rem + 30px);
-	padding: 0;
-	margin: -1px 0 0 0;
-	min-height: 300px;
-	background: #0a0e1f;
-	background: linear-gradient(123deg, #2b200c, 10%, #0a0e1f);
-
-	@media screen and (min-width: 1100px) {
-		min-height: 90%;
-		max-height: 350px;
-		width: 38.2%;
-		margin: 0 0 0 -1px;
 	}
 }

@@ -1,10 +1,12 @@
 import {createServer} from "node:http";
-import * as path from "node:path";
-import * as mime from "mime-types";
+import * as Path from "node:path";
+import * as MimeTypes from "mime-types";
+import process from "node:process";
 
 import {jsx} from "@b9g/crank/standalone";
 import type {Component} from "@b9g/crank";
 import {renderer} from "@b9g/crank/html";
+import {renderStylesToString} from "@emotion/server";
 
 import {router} from "./routes.js";
 import {Storage} from "./components/esbuild.js";
@@ -12,7 +14,7 @@ import {Storage} from "./components/esbuild.js";
 const __dirname = new URL(".", import.meta.url).pathname;
 const storage = new Storage({
 	dirname: __dirname,
-	staticPaths: [path.join(__dirname, "../static")],
+	staticPaths: [Path.join(__dirname, "../static")],
 });
 
 import HomeView from "./views/home.js";
@@ -35,8 +37,8 @@ const server = createServer(async (req, res) => {
 	console.info(`req: ${url}`);
 	if (url.startsWith(storage.publicPath)) {
 		const source = await storage.serve(url);
-		const mimeType = mime.lookup(url) || "application/octet-stream";
-		const charset = mime.charset(mimeType) || "binary";
+		const mimeType = MimeTypes.lookup(url) || "application/octet-stream";
+		const charset = MimeTypes.charset(mimeType) || "binary";
 		if (source) {
 			res.writeHead(200, {
 				"Content-Type": mimeType,
@@ -64,12 +66,14 @@ const server = createServer(async (req, res) => {
 
 	res.writeHead(200, {"Content-Type": "text/html"});
 	// TODO: Should we pass in name to props?
-	const html = await renderer.render(jsx`
+	let html = await renderer.render(jsx`
 		<${View} url=${url} storage=${storage} params=${match.params} />
 	`);
+
+	html = renderStylesToString(html);
 	res.end(html, "utf-8");
 });
 
-const PORT = 1338;
+const PORT = process.env.PORT ?? 1338;
 console.info(`Server is listening on port ${PORT}`);
 server.listen(PORT);

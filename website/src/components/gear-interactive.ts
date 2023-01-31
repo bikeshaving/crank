@@ -1,12 +1,12 @@
 import {jsx} from "@b9g/crank/standalone";
 import type {Context} from "@b9g/crank";
 
-function degreesFromRadians(rad: number) {
-	return (rad * 180) / Math.PI;
+function degreesFromRadians(r: number) {
+	return (r * 180) / Math.PI;
 }
 
-function radiansFromDegrees(deg: number) {
-	return (deg * Math.PI) / 180;
+function radiansFromDegrees(d: number) {
+	return (d * Math.PI) / 180;
 }
 
 function rotate([x, y]: [number, number], a: number) {
@@ -70,12 +70,16 @@ function calculateGear(mod: number, toothCount: number, pressureAngle: number) {
 	// rotate points so teeth tips aligned with x=0 and y=0
 	points = points.map(([x, y]) => rotate([x, y], -mirrorAngle / 2));
 
-	const toothPoints = [];
+	let toothPoints = [];
 	for (let i = 0; i <= toothCount; i++) {
-		const points1 = points.slice().map(([x, y]) => {
-			const a = toothAngle * i;
-			return rotate([x, y], a);
-		});
+		const points1 = points
+			.slice()
+			.map(([x, y]) => {
+				const a = toothAngle * i;
+				return rotate([x, y], a);
+			})
+			.map(([x, y]) => [Math.round(x * 100) / 100, Math.round(y * 100) / 100]);
+
 		toothPoints.push(points1);
 	}
 
@@ -108,22 +112,44 @@ function calculateGear(mod: number, toothCount: number, pressureAngle: number) {
 	};
 }
 
-function* Gear(
+export function* Gear(
 	this: Context<typeof Gear>,
 	{
 		mod,
 		toothCount,
 		offset,
-	}: {mod: number; toothCount: number; offset: boolean | undefined},
+		mask,
+		stroke,
+		strokeWidth,
+		fill,
+		circleRadius,
+	}: {
+		mod: number;
+		toothCount: number;
+		offset: boolean | undefined;
+		mask?: string;
+		stroke?: string | number;
+		strokeWidth?: string | number;
+		fill?: string | number;
+		circleRadius?: number;
+	},
 ): Generator<any> {
 	const pressureAngle = radiansFromDegrees(20);
 	let path!: string;
 	let dedRadius = 0;
 	let toothAngle = 0;
-	let circleRadius = 0;
 	let oldMod: number | undefined;
 	let oldToothCount: number | undefined;
-	for ({mod, toothCount, offset} of this) {
+	for ({
+		mod,
+		toothCount,
+		offset,
+		mask,
+		stroke,
+		strokeWidth,
+		fill,
+		circleRadius,
+	} of this) {
 		if (oldMod !== mod || oldToothCount !== toothCount) {
 			({path, dedRadius, toothAngle} = calculateGear(
 				mod,
@@ -131,12 +157,12 @@ function* Gear(
 				pressureAngle,
 			));
 
-			circleRadius = dedRadius - 2 * mod;
+			circleRadius = circleRadius == null ? dedRadius - 2 * mod : circleRadius;
 			// add the inner circle
 			path += `
-			  M ${-circleRadius}, 0
-				a ${circleRadius}, ${circleRadius} 0 1 0 ${circleRadius * 2}, 0
-				a ${circleRadius}, ${circleRadius} 0 1 0 ${-circleRadius * 2}, 0
+			  M ${-circleRadius} 0
+				a ${circleRadius} ${circleRadius} 0 1 0 ${circleRadius * 2} 0
+				a ${circleRadius} ${circleRadius} 0 1 0 ${-circleRadius * 2} 0
 			`;
 		}
 
@@ -145,6 +171,10 @@ function* Gear(
 			<path
 				transform="rotate(${pathAngle * (180 / Math.PI)})"
 				d=${path}
+				mask=${mask}
+				stroke=${stroke}
+				stroke-width=${strokeWidth}
+				fill=${fill}
 			/>
 		`;
 
@@ -198,14 +228,25 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 	};
 
 	measure();
-	const onscroll = () => {
-		measure();
-		this.refresh();
-	};
 	if (typeof window !== "undefined") {
+		const onscroll = () => {
+			measure();
+			this.refresh();
+		};
+
 		window.addEventListener("scroll", onscroll, {passive: true});
 		this.cleanup(() => {
 			window.removeEventListener("scroll", onscroll);
+		});
+
+		onclick = () => {
+			// TODO: advance the gears by a tiny amount every time the page is
+			// clicked.
+		};
+
+		window.addEventListener("click", onclick);
+		this.cleanup(() => {
+			window.removeEventListener("click", onclick as any);
 		});
 	}
 
@@ -270,7 +311,7 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 							);
 						"
 					>
-						<${Rack} mod=${20} height=${height} />
+						<${Rack} mod=${mod} height=${height} />
 					</g>
 					<g
 						stroke="#9b7735"
@@ -303,10 +344,9 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 					<!-- This last position is hard-coded because I just can’t even -->
 					<g
 						style="
-							transform: translate(
-								${x3 + pitchRadius3 - mod}px,
-								${y3 + 9 + ((scrollTop * speed) % (mod * Math.PI))}px
-							);
+							transform: translate(${x3 + pitchRadius3 - mod}px, ${
+			y3 + 9 + ((scrollTop * speed) % (mod * Math.PI))
+		}px);
 						"
 					>
 						<${Rack} mod=${mod} height=${height} />
@@ -315,4 +355,59 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 			</div>
 		`;
 	}
+}
+
+export function GearLogo() {
+	const r = 300;
+	const wa = (35 * Math.PI) / 180;
+	return jsx`
+		<svg
+			style="flex: none;"
+			fill="none"
+			viewBox="-200 -200 400 400"
+			width="400"
+			height="400"
+		>
+			<defs>
+				<mask id="wedge-mask">
+					<rect x="-200" y="-200" width="400" height="400" fill="white" />
+					<path
+						stroke="none"
+						fill="black"
+						d="
+							M 0 0
+							L ${Math.cos(wa) * r} ${Math.sin(wa) * r}
+							L ${Math.cos(wa) * r} ${-Math.sin(wa) * r}
+							z
+						"
+					/>
+				</mask>
+			</defs>
+			<g
+				stroke="none"
+				fill="#dbb368"
+			>
+				<${Gear}
+					mod=${20}
+					toothCount=${16}
+					offset=${1}
+					stroke="none"
+					strokeWidth="4"
+					mask="url(#wedge-mask)"
+					circleRadius=${110}
+				/>
+				<circle cx="0" cy="0" r="60" stroke="none" />
+				<path
+					d="
+						M 0 0
+						L 0 40
+						L 160 20
+						A 0.2 1 0 0 0 160 -20
+						L 0 -40
+						z
+					"
+				/>
+			</g>
+		</svg>
+	`;
 }

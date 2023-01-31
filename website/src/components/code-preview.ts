@@ -19,7 +19,10 @@ export function* CodePreview(
 	},
 ): any {
 	const id = globalId++;
-	let iframe: HTMLIFrameElement;
+	let iframe!: HTMLIFrameElement;
+	// We use this iframe ID as the key for the iframe, so that previous iframes
+	// are destroyed along with any registered callbacks like setInterval.
+	let iframeID = 0;
 	let loading = true;
 	let errorMessage: string | null = null;
 
@@ -33,6 +36,7 @@ export function* CodePreview(
 			return;
 		}
 
+		//iframeID++;
 		let parsed: any;
 		let code = "";
 		try {
@@ -178,6 +182,7 @@ export function* CodePreview(
 					"
 				>
 					<iframe
+						$key=${iframeID}
 						$ref=${(el: HTMLIFrameElement) => (iframe = el)}
 						style="
 							border: none;

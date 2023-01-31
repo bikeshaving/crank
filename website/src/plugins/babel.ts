@@ -9,7 +9,7 @@ import babelPresetTypeScript from "@babel/preset-typescript";
 
 function rewriteBareModuleSpecifiers(): Babel.PluginObj {
 	function rewrite(value: string) {
-		return new URL(value, "https://esm.sh/").toString();
+		return new URL(value, "https://unpkg.com/").toString() + "?module";
 	}
 
 	return {
