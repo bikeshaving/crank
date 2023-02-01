@@ -4,16 +4,13 @@ Crank.
 It starts with the question: if components are defined with functions, why
 can’t they be defined with async functions and generator functions as well?
 
-The result is a framework where you spend less time writing “framework
-integrations” and more time writing vanilla JavaScript.
-
 ## Three Reasons to choose Crank
 
 ### Reason #1: It’s declarative
 
-Crank works with JSX, an HTML-like syntax extension to JavaScript. It uses
-battle-tested virtual DOM algorithms to manage DOM nodes and stateful
-components, so you can perfomantly re-render JSX-like text declaratively.
+Crank works with JSX, an HTML-like syntax extension to JavaScript, so you can
+write templates directly in your modules. It uses battle-tested virtual DOM
+algorithms to manage both DOM nodes and stateful components.
 
 ```jsx live
 import {renderer} from "@b9g/crank@beta/dom";
