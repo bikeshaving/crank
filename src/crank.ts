@@ -2033,11 +2033,6 @@ function updateComponent<TNode, TScope, TRoot extends TNode, TResult>(
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
 	let ctx: ContextImpl<TNode, TScope, TRoot, TResult>;
 	if (oldProps) {
-		// TODO: we should probably use the existence of ret.ctx
-		if (ret.ctx == null) {
-			throw new Error("Hmmm");
-		}
-
 		ctx = ret.ctx as ContextImpl<TNode, TScope, TRoot, TResult>;
 		if (ctx.f & IsSyncExecuting) {
 			console.error("Component is already executing");
