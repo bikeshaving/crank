@@ -6,22 +6,36 @@ title: Getting Started
 The fastest way to try Crank is via the [playground](/playground).
 
 ## Installation
-The Crank package is available on [NPM](https://npmjs.org/@b9g/crank) in the
-ESModule and CommonJS formats. Crank can be used with JSX or a template tag which does roughly the same thing.
+The Crank package is available on [NPM](https://npmjs.org/@b9g/crank).
 
 ```shell
 $ npm install @b9g/crank
 ```
 
-The Crank package is composed of modules.
-
 ```jsx
-/** @jsx createElement */
 import {createElement} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
+renderer.render(<div id="hello">Hello world</div>, document.body);
+```
+
+It can also be imported directly from ESM-compatible via CDNs like [unpkg](https://unpkg.com/@b9g/crank?module) or [esm.sh](https://esm.sh/@b9g/crank).
+
+```jsx
+import {createElement} from "https://unpkg.com/@b9g/crank?module";
+import {renderer} from "https://unpkg.com/@b9g/crank/dom?module";
 
 renderer.render(<div id="hello">Hello world</div>, document.body);
 ```
+
+### Transforming JSX
+The main challenge when setting up Crank is [getting the JSX transform](https://facebook.github.io/jsx/) to work.
+
+```jsx
+import {renderer} from "@b9g/crank/dom";
+```
+
+### The JSX template tag
+If you do not want to use JSX, you can install
 
 ## Key Examples
 ### A Simple Component
