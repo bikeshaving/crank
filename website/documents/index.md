@@ -13,7 +13,7 @@ write templates directly in your modules. It uses battle-tested virtual DOM
 algorithms to manage both DOM nodes and stateful components.
 
 ```jsx live
-import {renderer} from "@b9g/crank@beta/dom";
+import {renderer} from "@b9g/crank/dom";
 
 function Greeting({name = "World"}) {
   return <marquee behavior="alternate">Hello {name}.</marquee>;
@@ -29,8 +29,8 @@ Don’t think JSX is vanilla enough? Crank provides a tagged template function
 which does basically the same thing.
 
 ```jsx live
-import {jsx} from "@b9g/crank@beta/standalone";
-import {renderer} from "@b9g/crank@beta/dom";
+import {jsx} from "@b9g/crank/standalone";
+import {renderer} from "@b9g/crank/dom";
 
 function Star({cx, cy, r=50, ir, p=5, fill="red"}) {
   cx = parseFloat(cx);
@@ -89,7 +89,7 @@ renderer.render(jsx`
 Never “memoize” a callback ever again.
 
 ```jsx live
-import {renderer} from "@b9g/crank@beta/dom";
+import {renderer} from "@b9g/crank/dom";
 
 const r = () => Math.floor(Math.random() * 256);
 const randomColorCSS = () => `rgb(${r()}, ${r()}, ${r()})`;
@@ -152,7 +152,7 @@ Thanks to generator functions, local state can be defined with local variables,
 and lifecycles can be defined with `for` or `while` loops.
 
 ```jsx live
-import {renderer} from "@b9g/crank@beta/dom";
+import {renderer} from "@b9g/crank/dom";
 
 function *Timer() {
   let interval = null;

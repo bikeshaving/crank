@@ -109,7 +109,7 @@ export function transform(code: string) {
 				babelPluginTransformReactJSX,
 				{
 					runtime: "automatic",
-					importSource: "@b9g/crank@beta",
+					importSource: "@b9g/crank",
 				},
 			],
 			rewriteBareModuleSpecifiers,

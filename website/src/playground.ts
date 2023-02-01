@@ -17,7 +17,7 @@ if (!window.customElements.get("content-area")) {
 // TODO: multiple examples
 
 const EXAMPLE = `
-import {jsx} from "@b9g/crank@beta/crank.js";
+import {jsx} from "@b9g/crank/crank.js";
 
 function *Timer() {
   let seconds = 0;
@@ -33,7 +33,7 @@ function *Timer() {
   clearInterval(interval);
 }
 
-import {renderer} from "@b9g/crank@beta/dom.js";
+import {renderer} from "@b9g/crank/dom.js";
 renderer.render(jsx\`<\${Timer} />\`, document.body);
 `.trimLeft();
 

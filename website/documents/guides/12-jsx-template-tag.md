@@ -18,8 +18,8 @@ that your code can run directly in browsers without having to be transpiled.
   <body>
     <div id="root" />
     <script type="module">
-import {jsx} from "https://esm.sh/@b9g/crank@beta/standalone";
-import {renderer} from "https://esm.sh/@b9g/crank@beta/dom";
+import {jsx} from "https://unpkg.com/@b9g/crank/standalone?module";
+import {renderer} from "https://unpkg.com/@b9g/crank/dom?module";
 
 function Greeting({name="World"}) {
   return jsx`
@@ -36,7 +36,7 @@ renderer.render(
 </html>
 ```
 
-A self-contained Crank application. No transpilation required.
+A Crank application as a single HTML file. No transpilation required.
 
 The JSX tag function can be imported from the module `"@b9g/crank/standalone"`.
 This module exports everything from the root `@b9g/crank` module as well as the
@@ -46,8 +46,8 @@ The modules are structured like this to prevent. Due to limitations with templat
 references in tags must be interpolated.
 
 ```jsx
-import {jsx} from "@b9g/crank@beta/standalone";
-import {renderer} from "@b9g/crank@beta/dom";
+import {jsx} from "@b9g/crank/standalone";
+import {renderer} from "@b9g/crank/dom";
 
 function Greeting({name="World"}) {
   return jsx`
