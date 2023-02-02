@@ -1235,7 +1235,11 @@ function commitHost<TNode, TScope>(
 	hydrationValue: TNode | undefined,
 ): ElementValue<TNode> {
 	const tag = ret.el.tag as string | symbol;
-	let value = hydrationValue || (ret.value as TNode);
+	let value = ret.value as TNode;
+	if (hydrationValue != null) {
+		value = ret.value = hydrationValue;
+	}
+
 	let props = ret.el.props;
 	let copied: Set<string> | undefined;
 	if (tag !== Portal) {
