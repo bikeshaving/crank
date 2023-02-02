@@ -86,6 +86,33 @@ test("sync generator component", () => {
 	Assert.ok(onclick.called);
 });
 
+test("refresh", () => {
+	document.body.innerHTML = "<button>Click</button>";
+	const button = document.body.firstChild as HTMLButtonElement;
+
+	const onclick = Sinon.fake();
+	const Component = Sinon.fake(function* Component(this: Context) {
+		let count = 0;
+		for ({} of this) {
+			yield <button onclick={() => {
+				onclick();
+				count++;
+				this.refresh();
+			}}>Click {count}</button>;
+		}
+	});
+
+	renderer.hydrate(<Component />, document.body);
+
+	Assert.ok(Component.called);
+	Assert.is(document.body.innerHTML, "<button>Click 0</button>");
+	Assert.is(document.body.firstChild, button);
+	button.click();
+	Assert.ok(onclick.called);
+	Assert.is(document.body.innerHTML, "<button>Click 1</button>");
+	Assert.is(document.body.firstChild, button);
+});
+
 test("async function component", async () => {
 	document.body.innerHTML = "<button>Click</button>";
 	const button = document.body.firstChild as HTMLButtonElement;
