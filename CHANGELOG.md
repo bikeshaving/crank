@@ -1,4 +1,8 @@
 # Changelog
+## [0.5.1] - 2023-02-02
+### Bug Fixes
+- Fixed a bug where refreshing hydrated components throws errors.
+
 ## [0.5.0] - 2023-02-01
 
 ### Breaking changes

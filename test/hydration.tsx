@@ -94,11 +94,17 @@ test("refresh", () => {
 	const Component = Sinon.fake(function* Component(this: Context) {
 		let count = 0;
 		for ({} of this) {
-			yield <button onclick={() => {
-				onclick();
-				count++;
-				this.refresh();
-			}}>Click {count}</button>;
+			yield (
+				<button
+					onclick={() => {
+						onclick();
+						count++;
+						this.refresh();
+					}}
+				>
+					Click {count}
+				</button>
+			);
 		}
 	});
 
