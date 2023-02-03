@@ -1,0 +1,46 @@
+{
+  "name": "astro-crank",
+  "description": "Use Crank components within Astro",
+  "license": "MIT",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./client.js": "./client.js",
+    "./server.js": "./server.js"
+  },
+  "keywords": [
+    "astro",
+    "astro-component",
+    "astro-integration",
+    "crank",
+    "renderer",
+    "withastro"
+  ],
+  "dependencies": {
+    "@babel/core": ">=7.0.0-0 <8.0.0",
+    "@babel/plugin-transform-react-jsx": "^7.17.12"
+  },
+  "peerDependencies": {
+    "astro": "^2.0.0",
+    "@b9g/crank": "^0.5.1"
+  },
+  "engines": {
+    "node": ">=16.12.0"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "main": "index.js",
+  "module": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bikeshaving/crank.git",
+    "directory": "packages/astro-crank"
+  },
+  "author": "Brian Kim",
+  "bugs": {
+    "url": "https://github.com/bikeshaving/crank/issues"
+  },
+  "homepage": "https://github.com/bikeshaving/crank#readme"
+}
