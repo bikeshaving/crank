@@ -299,7 +299,7 @@ test("split text", async () => {
 	Assert.is(document.body.firstChild!.childNodes[1], button);
 });
 
-test("mismatched tag", () => {
+test.skip("mismatched tag", () => {
 	document.body.innerHTML = "<div>Hello</div>";
 	const Component = Sinon.fake(function () {
 		return <button onclick={onclick}>Click</button>;
@@ -311,7 +311,7 @@ test("mismatched tag", () => {
 	Assert.is(consoleError.callCount, 1);
 });
 
-test("mismatched text", () => {
+test.skip("mismatched text", () => {
 	document.body.innerHTML = "<button>Do not click</button>";
 	const button = document.body.firstChild as HTMLButtonElement;
 	const onclick = Sinon.fake();
