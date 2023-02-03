@@ -1,6 +1,6 @@
 /** @jsx createElement */
-import {createElement} from "@bikeshaving/crank";
-import {renderer} from "@bikeshaving/crank/dom";
+import {createElement} from "@b9g/crank";
+import {renderer} from "@b9g/crank/dom";
 
 function Greeting({name = "World"}) {
 	return <div>Hello {name}</div>;

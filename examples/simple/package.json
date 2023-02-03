@@ -2,7 +2,6 @@
   "name": "a-simple-crank-component",
   "private": true,
   "version": "1.0.0",
-  "main": "index.html",
   "scripts": {
     "start": "parcel index.html --open",
     "build": "parcel build index.html"
@@ -15,13 +14,15 @@
     }
   },
   "dependencies": {
-    "@bikeshaving/crank": "*"
+    "@b9g/crank": "*",
+    "@babel/preset-react": "^7.18.6"
   },
   "devDependencies": {
-    "@babel/core": "^7.14.0",
-    "@babel/preset-react": "^7.13.13",
+    "parcel": "^2.8.3",
     "parcel-bundler": "^1.12.5"
   },
-  "browserslist": ["last 2 Chrome versions"],
+  "browserslist": [
+    "last 2 Chrome versions"
+  ],
   "keywords": []
 }
