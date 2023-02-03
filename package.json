@@ -42,6 +42,14 @@
       "import": "./dist/html.js",
       "require": "./dist/html.cjs"
     },
+    "./jsx-dev-runtime": {
+      "import": "./dist/jsx-runtime.js",
+      "require": "./dist/jsx-runtime.cjs"
+    },
+    "./jsx-dev-runtime.js": {
+      "import": "./dist/jsx-runtime.js",
+      "require": "./dist/jsx-runtime.cjs"
+    },
     "./jsx-runtime": {
       "import": "./dist/jsx-runtime.js",
       "require": "./dist/jsx-runtime.cjs"
