@@ -1567,20 +1567,24 @@ class ContextImpl<
 
 const _ContextImpl = Symbol.for("crank.ContextImpl");
 
-type ComponentProps<T> = T extends (props: infer U) => any ? U : T;
+type ComponentProps<T> = T extends () => any
+	? {}
+	: T extends (props: infer U) => any
+	? U
+	: T;
 /**
  * A class which is instantiated and passed to every component as its this
  * value. Contexts form a tree just like elements and all components in the
  * element tree are connected via contexts. Components can use this tree to
  * communicate data upwards via events and downwards via provisions.
  *
- * @template [TProps=*] - The expected shape of the props passed to the
- * component. Used to strongly type the Context iterator methods.
+ * @template [T=*] - The expected shape of the props passed to the component,
+ * or a component function. Used to strongly type the Context iterator methods.
  * @template [TResult=*] - The readable element value type. It is used in
  * places such as the return value of refresh and the argument passed to
  * schedule and cleanup callbacks.
  */
-export class Context<TProps = any, TResult = any> implements EventTarget {
+export class Context<T = any, TResult = any> implements EventTarget {
 	/**
 	 * @internal
 	 */
@@ -1599,7 +1603,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 	 * component or via the context iterator methods. This property is mainly for
 	 * plugins or utilities which wrap contexts.
 	 */
-	get props(): ComponentProps<TProps> {
+	get props(): ComponentProps<T> {
 		return this[_ContextImpl].ret.el.props;
 	}
 
@@ -1615,7 +1619,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		return this[_ContextImpl].renderer.read(getValue(this[_ContextImpl].ret));
 	}
 
-	*[Symbol.iterator](): Generator<ComponentProps<TProps>> {
+	*[Symbol.iterator](): Generator<ComponentProps<T>> {
 		const ctx = this[_ContextImpl];
 		try {
 			ctx.f |= IsInForOfLoop;
@@ -1633,7 +1637,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 		}
 	}
 
-	async *[Symbol.asyncIterator](): AsyncGenerator<ComponentProps<TProps>> {
+	async *[Symbol.asyncIterator](): AsyncGenerator<ComponentProps<T>> {
 		const ctx = this[_ContextImpl];
 		if (ctx.f & IsSyncGen) {
 			throw new Error("Use for...of in sync generator components");
@@ -1657,7 +1661,7 @@ export class Context<TProps = any, TResult = any> implements EventTarget {
 						break;
 					}
 
-					yield props as ComponentProps<TProps>;
+					yield props as ComponentProps<T>;
 				}
 
 				if (ctx.onPropsRequested) {
