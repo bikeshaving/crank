@@ -1,4 +1,12 @@
 # Changelog
+## [0.5.2] - 2023-02-03
+### Bug Fixes
+- Allow `Context<typeof Component>` context types to be passed components with
+	0 parameters.
+- Alias jsx-dev-runtime to jsx-runtime for parcel/other bundlers
+- Disable hydration mismatch warnings until we figure out the expected DX for
+	warning suppression.
+
 ## [0.5.1] - 2023-02-02
 ### Bug Fixes
 - Fixed a bug where refreshing hydrated components throws errors.
