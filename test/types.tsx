@@ -249,7 +249,7 @@ test("Props inference", () => {
 	function* MyComponent(
 		this: Context<typeof MyComponent>,
 		props: {message: string},
-	): any {
+	): unknown {
 		for (const props1 of this) {
 			// @ts-expect-error
 			props1.poop;
@@ -260,12 +260,27 @@ test("Props inference", () => {
 	async function* MyAsyncComponent(
 		this: Context<typeof MyAsyncComponent>,
 		props: {message: string},
-	): any {
+	): unknown {
 		for await (const props1 of this) {
 			// @ts-expect-error
 			props1.poop;
 			yield props1.message;
 		}
+	}
+
+	function* FunctionWithNoParameters(
+		this: Context<typeof FunctionWithNoParameters>,
+	): unknown {
+		for ({} of this) {
+			// pass
+		}
+
+		// @ts-expect-error
+		for (const {poop} of this) {
+			// pass
+		}
+
+		yield "hello";
 	}
 });
 
