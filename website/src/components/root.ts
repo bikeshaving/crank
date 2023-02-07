@@ -27,7 +27,23 @@ export function Root({title, children, url, storage}: RootProps) {
 					-->
 				</head>
 				<body>
-					<${Navbar} url=${url} />
+					<script>
+						<${Raw} value=${`
+const colorScheme = sessionStorage.getItem("color-scheme") ||
+	(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+if (colorScheme === "dark") {
+	document.body.classList.add("color-theme-dark");
+	document.body.classList.remove("color-theme-light");
+} else {
+	document.body.classList.add("color-theme-light");
+	document.body.classList.remove("color-theme-dark");
+}
+console.log("hi2");
+`} />
+					</script>
+					<div id="navbar-root">
+						<${Navbar} url=${url} />
+					</div>
 					<>${children}</>
 					<${Script} src="client.ts" />
 				</body>

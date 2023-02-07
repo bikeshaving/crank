@@ -13,12 +13,11 @@ $ npm install @b9g/crank
 ```
 
 ```jsx
-import {createElement} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
 renderer.render(<div id="hello">Hello world</div>, document.body);
 ```
 
-It can also be imported directly from ESM-compatible via CDNs like [unpkg](https://unpkg.com/@b9g/crank?module) or [esm.sh](https://esm.sh/@b9g/crank).
+It can also be imported directly from ESM CDNs like [unpkg](https://unpkg.com/@b9g/crank?module) or [esm.sh](https://esm.sh/@b9g/crank).
 
 ```jsx
 import {createElement} from "https://unpkg.com/@b9g/crank?module";
@@ -28,7 +27,9 @@ renderer.render(<div id="hello">Hello world</div>, document.body);
 ```
 
 ### Transforming JSX
-The main challenge when setting up Crank is [getting the JSX transform](https://facebook.github.io/jsx/) to work.
+The main challenge when setting up Crank is transforming [JSX](https://facebook.github.io/jsx/). Bundling and transpilation continues to evolve.
+
+### Alternatives to JSX
 
 ```jsx
 import {renderer} from "@b9g/crank/dom";

@@ -22,7 +22,7 @@ if (!window.customElements.get("content-area")) {
 const gearInteractiveRoot = document.getElementById("gear-interactive");
 import {GearInteractive} from "./components/gear-interactive.js";
 if (gearInteractiveRoot) {
-	renderer.render(jsx`<${GearInteractive} />`, gearInteractiveRoot);
+	renderer.hydrate(jsx`<${GearInteractive} />`, gearInteractiveRoot);
 }
 
 // 1. Provides a root div element to render into
@@ -35,9 +35,8 @@ if (gearInteractiveRoot) {
 // the component on the client.
 const containers = document.querySelectorAll(".code-block-container");
 for (const container of Array.from(containers)) {
-	//console.log(container.outerHTML);
 	const {code, lang} = (container as HTMLElement).dataset;
-	renderer.render(
+	renderer.hydrate(
 		jsx`
 			<${InlineCodeBlock}
 				value=${code}
@@ -48,3 +47,11 @@ for (const container of Array.from(containers)) {
 		container,
 	);
 }
+
+import {Navbar} from "./components/navbar.js";
+const navbar = document.getElementById("navbar-root");
+
+renderer.hydrate(
+	jsx`<${Navbar} url=${new URL(window.location).pathname} />`,
+	navbar,
+);

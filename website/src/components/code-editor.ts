@@ -1,5 +1,6 @@
 import {jsx} from "@b9g/crank/standalone";
 import type {Context, Element as CrankElement} from "@b9g/crank";
+import {css} from "@emotion/css";
 
 import {Edit} from "@b9g/revise/edit.js";
 import {Keyer} from "@b9g/revise/keyer.js";
@@ -27,12 +28,12 @@ function Gutter(
 				margin: 0;
 				padding: 1em .5em;
 				height: max(100vh, ${totalSize + 28}px);
-				color: #fff;
+				color: var(--text-color);
 				font-size: 14px;
 				font-family: monospace;
 				line-height: 1.4;
 				text-align: right;
-				border-right: 1px solid white;
+				border-right: 1px solid var(--text-color);
 				position: relative;
 			"
 		>
@@ -376,14 +377,16 @@ export function* CodeEditor(
 						autocapitalize="off"
 						contenteditable=${IS_CLIENT && editable}
 						spellcheck="false"
-						style="
-							flex: 1 1 auto;
-							word-break: break-all;
-							overflow-wrap: anywhere;
-							line-break: anywhere;
-							white-space: pre-wrap;
-							white-space: break-spaces;
-							font-size: 14px;
+						class="
+							${css`
+								flex: 1 1 auto;
+								word-break: break-all;
+								overflow-wrap: anywhere;
+								line-break: anywhere;
+								white-space: pre-wrap;
+								white-space: break-spaces;
+								font-size: 14px;
+							`}
 						"
 					>
 						${lines.map((line, l) => {
