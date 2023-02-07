@@ -54,11 +54,6 @@ export function* CodePreview(
 		document1.write(`
 			<!DOCTYPE html>
 			<head>
-				<style>
-				body {
-					color: #f5f9ff;
-				}
-				</style>
 				<script>
 				{
 					window.addEventListener("load", (ev) => {
