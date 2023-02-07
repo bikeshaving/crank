@@ -1,5 +1,16 @@
 @import "normalize.css/normalize.css";
-@import "prism-themes/themes/prism-coldark-dark.css";
+@import "prism-themes/themes/prism-coldark-cold.css";
+
+:root {
+	--bg-color: #0a0e1f;
+	--text-color: #f5f9ff;
+	--highlight-color: #dbb368;
+}
+
+.color-theme-light {
+	--bg-color: #f5f9ff;
+	--text-color: #0a0e1f;
+}
 
 * {
 	box-sizing: border-box;
@@ -10,8 +21,8 @@ html {
 }
 
 body {
-	background-color: #0a0e1f;
-	color: #f5f9ff;
+	background-color: var(--bg-color);
+	color: var(--text-color);
 	font-family: sans-serif;
 }
 
@@ -48,11 +59,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 h1, h2, h3 {
-	color: #dbb368;
+	color: var(--highlight-color);
 }
 
 blockquote {
-	border-left: 2px solid #dbb368;
+	border-left: 2px solid var(--highlight-color);
 	margin: 1.5em 0;
 	padding: 0 0 0 .8em;
 
@@ -64,7 +75,7 @@ blockquote {
 a {
 	color: inherit;
 	&.current {
-		color: #dbb368;
+		color: var(--highlight-color);
 	}
 
 	&.anchor {
@@ -87,7 +98,7 @@ pre {
 	padding: 1em;
 	margin: 0;
 	font-size: 14px;
-	color: #e3eaf2;
+	color: var(--text-color);
 	line-height: 1.4;
 	tab-size: 2;
 	outline: none;
@@ -101,97 +112,18 @@ code.inline {
 	background: #281f12;
 }
 
-
-.__________navbar {
-	position: fixed;
-	top: 0;
-	left: 0;
-	right: 0;
-	height: 50px;
-	border-bottom: 1px solid #f5f9ff;
-	align-items: center;
-	overflow-x: auto;
-	padding: 0 0.4rem;
-	z-index: 5;
-
-	background-color: inherit;
-	@supports (backdrop-filter: blur(3px)) {
-		backdrop-filter: blur(3px);
-		background-color: rgba(10, 14, 31, 0.5);
-	}
-
-	a {
-		text-decoration: none;
-		font-weight: bold;
-	}
-
-	@media screen and (min-width: 1100px) {
-		padding: 0 2rem;
+.color-theme-light {
+	code.inline {
+		background: #ddd;
 	}
 }
+
 
 .blur-background {
 	@supports (backdrop-filter: blur(3px)) {
 		backdrop-filter: blur(3px);
 		background-color: rgba(10, 14, 31, 0.5);
 	}
-}
-
-.home {
-	box-sizing: content-box;
-	padding: 3.5rem 0.4rem 0;
-	margin: 0 auto;
-	max-width: 800px;
-	margin: 0 auto;
-
-	@media screen and (min-width: 1100px) {
-		padding: 3.5rem 2rem 0;
-		max-width: 1100px;
-	}
-}
-
-.sidebar {
-	background-color: #0a0e1f;
-	margin-top: 3.5rem;
-	padding: 2rem 0.4rem;
-	color: #f5f9ff;
-
-	@media screen and (min-width: 800px) {
-		position: fixed;
-		top: 3.5rem;
-		bottom: 0;
-		overflow-x: hidden;
-		overflow-y: auto;
-		width: 15rem;
-		margin: 0;
-		padding: 2rem 1rem;
-		text-align: right;
-	}
-
-	@media screen and (min-width: 1100px) {
-		padding: 3rem 2rem;
-		width: 20rem;
-	}
-
-	h3 {
-		color: #dbb368;
-	}
-
-	a {
-		text-decoration: none;
-	}
-
-	:first-child {
-		margin-top: 0;
-	}
-
-	:last-child {
-		margin-bottom: 0;
-	}
-}
-
-.sidebar-item {
-	margin: 10px 0;
 }
 
 .main {
@@ -228,33 +160,5 @@ code.inline {
 
 	p {
 		max-width: 800px;
-	}
-}
-
-.hero {
-	padding: 7em 0;
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	align-items: center;
-
-	h1 {
-		font-size: 2.5rem;
-		margin-bottom: .5rem;
-	}
-
-	h2 {
-		font-size: 2.5rem;
-		margin-bottom: 2rem;
-		color: #f5f9ff;
-	}
-
-	a {
-		font-size: 1.25rem;
-		color: #dbb368;
-		border: 1px solid #dbb368;
-		text-decoration: none;
-		margin-right: 1em;
-		padding: .5em;
 	}
 }

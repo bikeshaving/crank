@@ -157,7 +157,7 @@ export function* CodePreview(
 							style="
 								flex: none;
 								padding: 1em;
-								border-bottom: 1px solid white;
+								border-bottom: 1px solid var(--text-color);
 							">
 							${errorMessage ? "Errored!" : loading ? "Loading..." : "Running!"}
 						</div>

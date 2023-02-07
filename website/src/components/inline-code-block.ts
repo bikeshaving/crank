@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import {css} from "@emotion/css";
 import type {Context} from "@b9g/crank";
 import {CodeEditor} from "./code-editor.js";
 import {CodePreview} from "./code-preview.js";
@@ -8,7 +9,7 @@ export function* InlineCodeBlock(
 	{value, lang, editable}: {value: string; lang: string; editable: boolean},
 ): any {
 	this.addEventListener("contentchange", (ev: any) => {
-		// TODO: think about whether its wise to mutate a prop identifier
+		// TODO: think about whether its wise to mutate a prop
 		value = ev.target.value;
 		this.refresh();
 	});
@@ -45,7 +46,7 @@ export function* InlineCodeBlock(
 			>
 				<div style="
 					flex: 1 1 650px;
-					border: 1px solid white;
+					border: 1px solid var(--text-color);
 					overflow: none;
 					margin-top: -1px;
 					margin-left: -1px;
@@ -65,7 +66,7 @@ export function* InlineCodeBlock(
 							position: sticky;
 							top: 80px;
 							min-height: 50px;
-							border: 1px solid white;
+							border: 1px solid var(--text-color);
 							margin-top: -1px;
 							margin-left: -1px;
 						">

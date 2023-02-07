@@ -1,9 +1,7 @@
 import {jsx} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 
-export interface NavbarProps {
-	url: string;
-}
+import {ColorSchemeToggle} from "./color-scheme-toggle.js";
 
 const positionFixed = css`
 	position: fixed;
@@ -30,7 +28,7 @@ const navbarGroupLayout = css`
 	gap: 1rem;
 `;
 
-export function Navbar({url}: NavbarProps) {
+export function Navbar({url}: {url: string}) {
 	return jsx`
 		<nav
 			class="
@@ -38,7 +36,7 @@ export function Navbar({url}: NavbarProps) {
 				${positionFixed}
 				${navbarLayout}
 				${css`
-					border-bottom: 1px solid #f5f9ff;
+					border-bottom: 1px solid var(--text-color);
 					overflow-x: auto;
 					padding: 0 2rem;
 					background-color: inherit;
@@ -93,6 +91,7 @@ export function Navbar({url}: NavbarProps) {
 				<div>
 					<a href="http://npm.im/@b9g/crank">NPM</a>
 				</div>
+				<${ColorSchemeToggle} />
 			</div>
 		</nav>
 	`;

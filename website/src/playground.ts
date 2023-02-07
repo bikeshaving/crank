@@ -83,8 +83,8 @@ function* Playground(this: Context, {}) {
 				<div style="
 					flex: 1 1 400px;
 					height: 100%;
-					border-top: 1px solid white;
-					border-left: 1px solid white;
+					border-top: 1px solid currentcolor;
+					border-left: 1px solid currentcolor;
 					margin-top: -1px;
 					margin-left: -1px;
 					padding-top: 50px;
@@ -97,4 +97,4 @@ function* Playground(this: Context, {}) {
 }
 
 const el = document.getElementById("playground");
-renderer.render(jsx`<${Playground} />`, el!);
+renderer.hydrate(jsx`<${Playground} />`, el!);
