@@ -1,5 +1,5 @@
 @import "normalize.css/normalize.css";
-@import "prism-themes/themes/prism-coldark-cold.css";
+@import "./prism-theme.css";
 
 :root {
 	--bg-color: #0a0e1f;
@@ -10,6 +10,7 @@
 .color-theme-light {
 	--bg-color: #f5f9ff;
 	--text-color: #0a0e1f;
+	--highlight-color: #b97f24;
 }
 
 * {
@@ -118,11 +119,26 @@ code.inline {
 	}
 }
 
-
+/* colors have to match background or it looks bad */
 .blur-background {
 	@supports (backdrop-filter: blur(3px)) {
 		backdrop-filter: blur(3px);
 		background-color: rgba(10, 14, 31, 0.5);
+		pre {
+			background-color: rgba(17, 27, 39, 0.5);
+		}
+	}
+}
+
+.color-theme-light {
+	.blur-background {
+		@supports (backdrop-filter: blur(3px)) {
+			backdrop-filter: blur(3px);
+			background-color: rgba(245, 249, 255, 0.5);
+			pre {
+				background-color: rgba(227, 234, 242, 0.5);
+			}
+		}
 	}
 }
 

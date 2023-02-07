@@ -85,6 +85,7 @@ export default async function Home({storage}: {storage: Storage}) {
 					<h1
 						style="
 							margin: 30px 0;
+							color: var(--highlight-color);
 						"
 					>
 						Crank.js
@@ -92,7 +93,7 @@ export default async function Home({storage}: {storage: Storage}) {
 					<h3
 						style="
 							margin: 0;
-							color: white;
+							color: var(--text-color);
 						"
 					>
 						The Just JavaScript Framework

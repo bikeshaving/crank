@@ -378,6 +378,7 @@ export function* CodeEditor(
 						contenteditable=${IS_CLIENT && editable}
 						spellcheck="false"
 						class="
+							language-${language}
 							${css`
 								flex: 1 1 auto;
 								word-break: break-all;
