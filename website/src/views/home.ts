@@ -1,4 +1,4 @@
-import {jsx} from "@b9g/crank/standalone";
+import {jsx, Raw} from "@b9g/crank/standalone";
 
 import {Root} from "../components/root.js";
 import type {Storage} from "../components/esbuild.js";
@@ -37,6 +37,7 @@ const components = {
 
 	code({token}: any) {
 		const {text: code, lang} = token;
+		const json = JSON.stringify({code, lang});
 		return jsx`
 			<div
 				style="
@@ -44,8 +45,10 @@ const components = {
 					max-width: 1400px;
 				"
 				class="code-block-container"
-				data-code=${code} data-lang=${lang}
 			>
+				<script class="props" type="application/json">
+					<${Raw} value=${json} />
+				</script>
 				<${InlineCodeBlock}
 					value=${code}
 					lang=${lang}

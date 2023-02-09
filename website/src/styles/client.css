@@ -50,9 +50,16 @@ img {
 	background-color: #9b7735;
 }
 
+button {
+	background-color: transparent;
+	border-radius: 0;
+	border: 1px solid var(--text-color);
+	padding: 0.5em;
+}
+
 h1, h2, h3, h4, h5, h6 {
 	padding: 0;
-	margin: 1.4em 0;
+	margin: 0 0 1.4em;
 	a {
 		color: inherit;
 		text-decoration: none;
@@ -119,7 +126,6 @@ code.inline {
 	}
 }
 
-/* colors have to match background or it looks bad */
 .blur-background {
 	@supports (backdrop-filter: blur(3px)) {
 		backdrop-filter: blur(3px);
@@ -127,48 +133,12 @@ code.inline {
 	}
 }
 
+/* colors have to match background or it looks bad */
 .color-theme-light {
 	.blur-background {
 		@supports (backdrop-filter: blur(3px)) {
 			backdrop-filter: blur(3px);
 			background-color: rgba(245, 249, 255, 0.5);
 		}
-	}
-}
-
-.main {
-	@media screen and (min-width: 800px) {
-		margin-top: 3.5rem;
-	}
-}
-
-.content {
-	margin: 0 auto;
-	padding: 2rem 0.4rem;
-	> :first-child {
-		margin-top: 0;
-	}
-
-	> :last-child {
-		margin-bottom: 0;
-	}
-
-	@media screen and (min-width: 800px) {
-		margin-left: 240px;
-		padding: 2rem 1rem;
-		/* max-width: 800px; */
-	}
-
-	@media screen and (min-width: 1100px) {
-		margin-left: 320px;
-		padding: 3rem 2rem;
-		/* max-width: 1100px; */
-		> * {
-			/* max-width: 800px; */
-		}
-	}
-
-	p {
-		max-width: 800px;
 	}
 }

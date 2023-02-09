@@ -2,7 +2,7 @@ import {jsx} from "@b9g/crank/standalone";
 import * as path from "path";
 
 import {Root} from "../components/root.js";
-import {Sidebar} from "../components/sidebar.js";
+import {Main, Sidebar} from "../components/sidebar.js";
 import {BlogContent} from "../components/blog-content.js";
 import {Marked} from "../components/marked.js";
 import {components} from "../components/marked-components.js";
@@ -35,13 +35,11 @@ export default async function BlogPage({url, storage}: BlogPageProps) {
 	return jsx`
 		<${Root} title="Crank.js | ${title}" url=${url} storage=${storage}>
 			<${Sidebar} docs=${posts} url=${url} title="Recent Posts" />
-			<main class="main">
-				<div class="content">
-					<${BlogContent} title=${title} publishDate=${publishDate}>
-						<${Marked} markdown=${body} components=${components} />
-					<//BlogContent>
-				</div>
-			</main>
+			<${Main}>
+				<${BlogContent} title=${title} publishDate=${publishDate}>
+					<${Marked} markdown=${body} components=${components} />
+				<//BlogContent>
+			<//Main>
 		<//Root>
 	`;
 }
