@@ -9,14 +9,15 @@ if (typeof window !== "undefined") {
 			? "dark"
 			: "light");
 	if (colorScheme === "dark") {
-		document.body.classList.add("color-theme-dark");
 		document.body.classList.remove("color-theme-light");
 	} else {
 		document.body.classList.add("color-theme-light");
-		document.body.classList.remove("color-theme-dark");
 	}
 }
 
+// This component would not work with multiple instances, insofar as clicking
+// on one instance would not notify the others. Too lazy to fix this though and
+// I don’t want to.
 export function ColorSchemeToggle(this: Context) {
 	const onclick = () => {
 		colorScheme = colorScheme === "dark" ? "light" : "dark";
@@ -26,11 +27,23 @@ export function ColorSchemeToggle(this: Context) {
 
 	if (typeof window !== "undefined") {
 		if (colorScheme === "dark") {
-			document.body.classList.add("color-theme-dark");
 			document.body.classList.remove("color-theme-light");
+			for (const iframe of Array.from(
+				document.querySelectorAll(".playground-iframe"),
+			)) {
+				(
+					iframe as HTMLIFrameElement
+				).contentWindow?.document.body.classList.remove("color-theme-light");
+			}
 		} else {
 			document.body.classList.add("color-theme-light");
-			document.body.classList.remove("color-theme-dark");
+			for (const iframe of Array.from(
+				document.querySelectorAll(".playground-iframe"),
+			)) {
+				(
+					iframe as HTMLIFrameElement
+				).contentWindow?.document.body.classList.add("color-theme-light");
+			}
 		}
 	}
 

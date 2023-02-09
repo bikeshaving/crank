@@ -1,8 +1,9 @@
-import fs from "fs-extra";
-import * as path from "path";
-import {build} from "esbuild";
+import FS from "fs-extra";
+import * as Path from "path";
+import * as ESBuild from "esbuild";
 import type {BuildResult, OutputFile} from "esbuild";
 import * as mime from "mime-types";
+
 import {jsx} from "@b9g/crank/standalone";
 import type {Children, Context} from "@b9g/crank";
 
@@ -11,12 +12,11 @@ import {postcssPlugin} from "../plugins/esbuild.js";
 import postcssPresetEnv from "postcss-preset-env";
 import postcssNested from "postcss-nested";
 
-// TODO: figure out why the ESM interop is busted
-import NodeModulesPolyfills from "@esbuild-plugins/node-modules-polyfill";
-import NodeGlobalsPolyfills from "@esbuild-plugins/node-globals-polyfill";
+import {NodeModulesPolyfillPlugin} from "@esbuild-plugins/node-modules-polyfill";
+import {NodeGlobalsPolyfillPlugin} from "@esbuild-plugins/node-globals-polyfill";
 
 function isWithinDir(dir: string, name: string) {
-	const resolved = path.resolve(dir, name);
+	const resolved = Path.resolve(dir, name);
 	return resolved.startsWith(dir);
 }
 
@@ -43,17 +43,17 @@ export class Storage {
 		publicPath = "/static/",
 		staticPaths = [],
 	}: StorageOptions) {
-		if (!path.isAbsolute(dirname)) {
+		if (!Path.isAbsolute(dirname)) {
 			throw new Error(`path (${dirname}) is not absolute`);
 		}
 
 		for (const staticPath of staticPaths) {
-			if (!path.isAbsolute(staticPath)) {
+			if (!Path.isAbsolute(staticPath)) {
 				throw new Error(`path (${staticPath}) is not absolute`);
 			}
 		}
 
-		this.dirname = path.normalize(dirname);
+		this.dirname = Path.normalize(dirname);
 		this.publicPath = publicPath;
 		this.staticPaths = staticPaths;
 		this.cache = new Map();
@@ -67,22 +67,22 @@ export class Storage {
 			throw new Error("filename outside directory");
 		}
 
-		const entryname = path.resolve(this.dirname, filename);
-		result = await build({
+		const entryname = Path.resolve(this.dirname, filename);
+		// TODO: this could probably be passed in via the component tree
+		result = await ESBuild.build({
 			entryPoints: [entryname],
 			entryNames: "[name]-[hash]",
 			bundle: true,
 			write: false,
 			minify: false,
+			format: "esm",
 			outbase: this.dirname,
 			outdir: this.dirname,
 			sourcemap: true,
 			plugins: [
 				postcssPlugin({plugins: [postcssPresetEnv() as any, postcssNested()]}),
-				// @ts-ignore
-				NodeModulesPolyfills.default(),
-				// @ts-ignore
-				NodeGlobalsPolyfills.default({
+				NodeModulesPolyfillPlugin(),
+				NodeGlobalsPolyfillPlugin({
 					buffer: true,
 				}),
 			],
@@ -109,29 +109,29 @@ export class Storage {
 			throw new Error("Unknown extension");
 		}
 
-		return path.posix.join(
+		return Path.posix.join(
 			this.publicPath,
-			path.relative(this.dirname, output.path),
+			Path.relative(this.dirname, output.path),
 		);
 	}
 
 	async write(dirname: string): Promise<void> {
-		await fs.ensureDir(dirname);
+		await FS.ensureDir(dirname);
 		const outputs = Array.from(this.cache.values()).flatMap(
 			(result) => result.outputFiles,
 		);
 
 		await Promise.all(
 			outputs.map(async (output) => {
-				const outputPath = path.relative(this.dirname, output.path);
-				const filename = path.join(dirname, outputPath);
-				await fs.writeFile(filename, output.contents);
+				const outputPath = Path.relative(this.dirname, output.path);
+				const filename = Path.join(dirname, outputPath);
+				await FS.writeFile(filename, output.contents);
 			}),
 		);
 
 		await Promise.all(
 			this.staticPaths.map(async (staticPath) => {
-				await fs.copy(staticPath, dirname);
+				await FS.copy(staticPath, dirname);
 			}),
 		);
 	}
@@ -143,7 +143,7 @@ export class Storage {
 		);
 
 		for (const output of outputs) {
-			const outputPath = path.relative(this.dirname, output.path);
+			const outputPath = Path.relative(this.dirname, output.path);
 			if (inputPath === outputPath) {
 				return output.contents;
 			}
@@ -153,7 +153,7 @@ export class Storage {
 			try {
 				const mimeType = mime.lookup(inputPath) || "application/octet-stream";
 				const charset = mime.charset(mimeType) || "binary";
-				return await fs.readFile(path.join(staticPath, inputPath), charset);
+				return await FS.readFile(Path.join(staticPath, inputPath), charset);
 			} catch (err: any) {
 				if (err.code !== "ENOENT") {
 					throw err;

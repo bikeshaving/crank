@@ -1,6 +1,6 @@
 import {jsx} from "@b9g/crank/standalone";
-import {css} from "@emotion/css";
 import type {Context} from "@b9g/crank";
+import {css} from "@emotion/css";
 import {CodeEditor} from "./code-editor.js";
 import {CodePreview} from "./code-preview.js";
 
@@ -35,22 +35,21 @@ export function* InlineCodeBlock(
 	for ({lang, editable} of this) {
 		yield jsx`
 			<div
-				class="code-block"
-				style="
+				class=${css`
 					display: flex;
 					flex-direction: row;
 					flex-wrap: wrap;
 					max-width: ${editable ? "100%" : "min(100%, 1000px)"};
 					align-items: flex-start;
-				"
+				`}
 			>
-				<div style="
+				<div class=${css`
 					flex: 1 1 650px;
 					border: 1px solid var(--text-color);
 					overflow: none;
 					margin-top: -1px;
 					margin-left: -1px;
-				">
+				`}>
 					<${CodeEditor}
 						$static
 						value=${value}
@@ -61,7 +60,7 @@ export function* InlineCodeBlock(
 				${
 					editable &&
 					jsx`
-						<div style="
+						<div class=${css`
 							flex: 1 1 auto;
 							position: sticky;
 							top: 80px;
@@ -69,7 +68,7 @@ export function* InlineCodeBlock(
 							border: 1px solid var(--text-color);
 							margin-top: -1px;
 							margin-left: -1px;
-						">
+						`}>
 							<${CodePreview}
 								value=${value}
 								visible=${isIntersecting}
