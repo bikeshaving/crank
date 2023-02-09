@@ -26,27 +26,27 @@ export default async function BlogHome({storage}: BlogHomeProps) {
 		<${Root} title="Crank.js | Blog" url="/blog" storage=${storage}>
 			<${Sidebar} docs=${posts} url="/blog" title="Recent Posts" />
 			<${Main}>${posts.map((post) => {
-				let {body} = post;
-				if (body.match("<!-- endpreview -->")) {
-					body = body.split("<!-- endpreview -->")[0];
-				} else {
-					const lines = body.split(/\r\n|\r|\n/);
-					body = "";
-					let count = 0;
-					for (const line of lines) {
-						body += line + "\n";
-						if (line.trim()) {
-							count++;
-						}
-
-						if (count > 2) {
-							break;
-						}
-					}
+		let {body} = post;
+		if (body.match("<!-- endpreview -->")) {
+			body = body.split("<!-- endpreview -->")[0];
+		} else {
+			const lines = body.split(/\r\n|\r|\n/);
+			body = "";
+			let count = 0;
+			for (const line of lines) {
+				body += line + "\n";
+				if (line.trim()) {
+					count++;
 				}
 
-				const {title, publishDate} = post.attributes;
-				return jsx`
+				if (count > 2) {
+					break;
+				}
+			}
+		}
+
+		const {title, publishDate} = post.attributes;
+		return jsx`
 					<div class="content">
 						<${BlogContent} title=${title} publishDate=${publishDate}>
 							<${Marked} markdown=${body} components=${components} />
@@ -56,7 +56,7 @@ export default async function BlogHome({storage}: BlogHomeProps) {
 						</div>
 					</div>
 				`;
-			})}<//Main>
+	})}<//Main>
 		<//Root>
 	`;
 }

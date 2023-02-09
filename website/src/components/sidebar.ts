@@ -23,7 +23,9 @@ export function Sidebar({
 						href=${doc.url}
 						class="
 							${doc.url === url && "current"}
-							${css`text-decoration: none`}
+							${css`
+								text-decoration: none;
+							`}
 						"
 					>
 						${doc.attributes.title}

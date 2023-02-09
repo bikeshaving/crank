@@ -4,27 +4,24 @@ import {Page, Link, Script, Storage} from "../components/esbuild.js";
 import {Navbar} from "../components/navbar.js";
 import {GoogleSpyware} from "../components/google-spyware.js";
 
-export interface RootProps {
-	title: string;
-	children: Children;
-	url: string;
-	storage: Storage;
-}
-
 function ColorSchemeScript() {
-	const script = `
-	const colorScheme = sessionStorage.getItem("color-scheme") ||
-		(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
-			? "dark" : "light"
-		);
-	if (colorScheme === "dark") {
-		document.body.classList.remove("color-theme-light");
-	} else {
-		document.body.classList.add("color-theme-light");
-	}`;
+	// This script must be executed as early as possible to prevent a FOUC.
+	// It also cannot be `type="module"` because that will also cause an FOUC.
+	const scriptText = `
+	(() => {
+		const colorScheme = sessionStorage.getItem("color-scheme") ||
+			(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+				? "dark" : "light"
+			);
+		if (colorScheme === "dark") {
+			document.body.classList.remove("color-theme-light");
+		} else {
+			document.body.classList.add("color-theme-light");
+		}
+	})()`;
 	return jsx`
-		<script type="module">
-			<${Raw} value=${script} />
+		<script>
+			<${Raw} value=${scriptText} />
 		</script>
 	`;
 }
@@ -63,7 +60,17 @@ async function StaticURLsJSON({storage}: {storage: Storage}) {
 	`;
 }
 
-export function Root({title, children, url, storage}: RootProps) {
+export function Root({
+	title,
+	children,
+	url,
+	storage,
+}: {
+	title: string;
+	children: Children;
+	url: string;
+	storage: Storage;
+}) {
 	return jsx`
 		<${Raw} value="<!DOCTYPE html>" />
 		<${Page} storage=${storage}>
@@ -80,11 +87,11 @@ export function Root({title, children, url, storage}: RootProps) {
 				</head>
 				<body>
 					<${ColorSchemeScript} />
-					<${StaticURLsJSON} storage=${storage} />
 					<div id="navbar-root">
 						<${Navbar} url=${url} />
 					</div>
 					<>${children}</>
+					<${StaticURLsJSON} storage=${storage} />
 					<${Script} src="client.ts" />
 				</body>
 			</html>
