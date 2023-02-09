@@ -8,7 +8,19 @@ import babelPluginTransformReactJSX from "@babel/plugin-transform-react-jsx";
 import babelPresetTypeScript from "@babel/preset-typescript";
 
 function rewriteBareModuleSpecifiers(): Babel.PluginObj {
-	function rewrite(value: string) {
+	function rewrite(value: string): string {
+		if (typeof window !== "undefined") {
+			const staticURLsScript = document.getElementById("static-urls");
+			if (staticURLsScript && staticURLsScript.textContent) {
+				const staticURLs: Record<string, string> = JSON.parse(
+					staticURLsScript.textContent,
+				);
+				if (staticURLs[value]) {
+					return staticURLs[value];
+				}
+			}
+		}
+
 		return new URL(value, "https://unpkg.com/").toString() + "?module";
 	}
 
