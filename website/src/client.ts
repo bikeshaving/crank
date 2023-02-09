@@ -25,17 +25,13 @@ if (gearInteractiveRoot) {
 	renderer.hydrate(jsx`<${GearInteractive} />`, gearInteractiveRoot);
 }
 
-// 1. Provides a root div element to render into
-// 2. Renders components based on server/client environments.
-// 3. Serializes props and makes them available on the client
-// 4. Generates a script which calls renderer.render with the serialized props
-// for every abstraction found.
-// 5. If the abstraction is a component, we can render children normally as a
-// server-side component, and then generate a client-side script to overwrite
-// the component on the client.
+// TODO: abstract this pattern as an Island component
 const containers = document.querySelectorAll(".code-block-container");
 for (const container of Array.from(containers)) {
-	const {code, lang} = (container as HTMLElement).dataset;
+	const propsScript = container.querySelector(".props");
+	const {code, lang} = propsScript?.textContent
+		? JSON.parse(propsScript.textContent)
+		: {};
 	renderer.hydrate(
 		jsx`
 			<${InlineCodeBlock}

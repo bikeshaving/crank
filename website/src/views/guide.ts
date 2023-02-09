@@ -2,7 +2,7 @@ import {jsx} from "@b9g/crank/standalone";
 import * as path from "path";
 
 import {Root} from "../components/root.js";
-import {Sidebar} from "../components/sidebar.js";
+import {Main, Sidebar} from "../components/sidebar.js";
 import {Marked} from "../components/marked.js";
 import {components} from "../components/marked-components.js";
 import type {Storage} from "../components/esbuild.js";
@@ -37,12 +37,10 @@ export default async function Guide({
 	return jsx`
 		<${Root} title="Crank.js | ${title}" url=${url} storage=${storage}>
 			<${Sidebar} docs=${docs} url=${url} title="Guides" />
-			<main class="main">
-				<div class="content">
-					<h1>${title}</h1>
-					<${Marked} markdown=${body} components=${components} />
-				</div>
-			</main>
+			<${Main}>
+				<h1>${title}</h1>
+				<${Marked} markdown=${body} components=${components} />
+			<//Main>
 		<//Root>
 	`;
 }

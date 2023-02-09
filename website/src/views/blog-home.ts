@@ -2,7 +2,7 @@ import {jsx} from "@b9g/crank/standalone";
 import * as path from "path";
 
 import {Root} from "../components/root.js";
-import {Sidebar} from "../components/sidebar.js";
+import {Main, Sidebar} from "../components/sidebar.js";
 import {BlogContent} from "../components/blog-content.js";
 import {Marked} from "../components/marked.js";
 import {components} from "../components/marked-components.js";
@@ -25,7 +25,7 @@ export default async function BlogHome({storage}: BlogHomeProps) {
 	return jsx`
 		<${Root} title="Crank.js | Blog" url="/blog" storage=${storage}>
 			<${Sidebar} docs=${posts} url="/blog" title="Recent Posts" />
-			<main class="main">${posts.map((post) => {
+			<${Main}>${posts.map((post) => {
 				let {body} = post;
 				if (body.match("<!-- endpreview -->")) {
 					body = body.split("<!-- endpreview -->")[0];
@@ -56,7 +56,7 @@ export default async function BlogHome({storage}: BlogHomeProps) {
 						</div>
 					</div>
 				`;
-			})}</main>
+			})}<//Main>
 		<//Root>
 	`;
 }

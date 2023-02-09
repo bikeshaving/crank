@@ -47,11 +47,11 @@ export function ColorSchemeToggle(this: Context) {
 		}
 	}
 
-	// TODO: better icons
+	// TODO: better icons?
 	return jsx`
 		<div>
 			<button onclick=${onclick}>
-				${colorScheme === "dark" ? "🌞" : "🌚"}
+				${colorScheme === "dark" ? "💡" : "🕶"}
 			</button>
 		</div>
 	`;

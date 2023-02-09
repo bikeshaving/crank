@@ -19,7 +19,13 @@ export function Sidebar({
 				<div class=${css`
 					margin: 10px 0;
 				`}>
-					<a href=${doc.url} class=${doc.url === url ? "current" : ""}>
+					<a
+						href=${doc.url}
+						class="
+							${doc.url === url && "current"}
+							${css`text-decoration: none`}
+						"
+					>
 						${doc.attributes.title}
 					</a>
 				</div>
@@ -30,13 +36,13 @@ export function Sidebar({
 	return jsx`
 		<div id="sidebar" class=${css`
 			background-color: var(--bg-color);
-			margin-top: 3.5rem;
+			margin-top: 50px;
 			padding: 2rem 0.4rem;
 			color: var(--text-color);
-
+			border-right: 1px solid currentcolor;
 			@media screen and (min-width: 800px) {
 				position: fixed;
-				top: 3.5rem;
+				top: 50px;
 				bottom: 0;
 				overflow-x: hidden;
 				overflow-y: auto;
@@ -51,24 +57,41 @@ export function Sidebar({
 				width: 20rem;
 			}
 
-			h3 {
-				color: var(--accent-color);
-			}
-
-			a {
-				text-decoration: none;
-			}
-
-			:first-child {
+			> :first-child {
 				margin-top: 0;
 			}
-
-			:last-child {
-				margin-bottom: 0;
-			}
 		`}>
-			<h3>${title}</h3>
+			<h3 class=${css`
+				color: var(--accent-color);
+				margin-top: 0;
+			`}>${title}</h3>
 			${links}
 		</div>
+	`;
+}
+
+export function Main({children}: {children: unknown}) {
+	return jsx`
+		<main class=${css`
+			margin: 0 auto;
+			padding: 2rem 0.4rem;
+
+			@media screen and (min-width: 800px) {
+				margin-left: 240px;
+				padding: 2rem 1rem;
+				margin-top: 50px;
+			}
+
+			@media screen and (min-width: 1100px) {
+				margin-left: 320px;
+				padding: 3rem 2rem;
+			}
+
+			p {
+				max-width: 800px;
+			}
+		`}>
+			${children}
+		</main>
 	`;
 }
