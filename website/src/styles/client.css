@@ -14,6 +14,19 @@
 }
 
 * {
+	color: var(--text-color);
+}
+
+::selection {
+	background-color: #9b7735;
+}
+
+::-moz-selection {
+	background-color: #9b7735;
+}
+
+
+* {
 	box-sizing: border-box;
 }
 
@@ -42,18 +55,10 @@ img {
 	}
 }
 
-::selection {
-	background-color: #9b7735;
-}
-
-::-moz-selection {
-	background-color: #9b7735;
-}
-
 button {
 	background-color: transparent;
 	border-radius: 0;
-	border: 1px solid var(--text-color);
+	border: 1px solid currentcolor;
 	padding: 0.5em;
 }
 
