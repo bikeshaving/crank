@@ -1,6 +1,7 @@
 import {jsx} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 
+import {GearLogo} from "./gear-interactive.js";
 import {ColorSchemeToggle} from "./color-scheme-toggle.js";
 
 const positionFixed = css`
@@ -48,15 +49,7 @@ export function Navbar({url}: {url: string}) {
 			"
 		>
 			<div class=${navbarGroupLayout}>
-				<img
-					src="/static/logo.svg"
-					alt="Crank.js logo"
-					class="${css`
-						width: 1.9em;
-						height: 1.9em;
-						background-color: transparent;
-					`}"
-				/>
+				<${GearLogo} width="1.9em" height="1.9em" />
 				<div>
 					<a
 						class=${url === "/" ? "current" : ""}

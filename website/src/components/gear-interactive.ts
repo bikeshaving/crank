@@ -357,7 +357,7 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 	}
 }
 
-export function GearLogo() {
+export function GearLogo({width=400, height=400}) {
 	const r = 300;
 	const wa = (35 * Math.PI) / 180;
 	return jsx`
@@ -365,8 +365,8 @@ export function GearLogo() {
 			style="flex: none;"
 			fill="none"
 			viewBox="-200 -200 400 400"
-			width="400"
-			height="400"
+			width=${width}
+			height=${height}
 		>
 			<defs>
 				<mask id="wedge-mask">
