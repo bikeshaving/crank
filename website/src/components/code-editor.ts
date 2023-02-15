@@ -23,11 +23,10 @@ function Gutter(
 	const totalSize = virtualizer.getTotalSize();
 	return jsx`
 		<div
-			style="
+			class=${css`
 				flex: none;
 				margin: 0;
 				padding: 1em .5em;
-				height: max(100vh, ${totalSize + 28}px);
 				color: var(--text-color);
 				font-size: 14px;
 				font-family: monospace;
@@ -35,23 +34,18 @@ function Gutter(
 				text-align: right;
 				border-right: 1px solid var(--text-color);
 				position: relative;
-			"
+			`}
+			style="height: max(100vh, ${totalSize + 28}px);"
 		>
 			<div
-				style="
+				class=${css`
 					position: relative;
 					top: ${items[0]?.start}px;
-				"
+				`}
 			>
-				${items.map(
-					(item) => jsx`
-					<div
-						style="
-							height: ${item.size}px;
-						"
-					>${item.index + 1}</div>
-				`,
-				)}
+				${items.map((item) => jsx`
+					<div style="height: ${item.size}px">${item.index + 1}</div>
+				`)}
 			</div>
 		</div>
 	`;
@@ -345,31 +339,29 @@ export function* CodeEditor(
 		//const end = items[items.length - 1]?.index || 0;
 		yield jsx`
 			<div
-				class="code-editor"
-				style="
-					position: relative;
-					min-height: 100%;
-					width: 100%;
-					display: flex;
+				class="
+					${css`
+						position: relative;
+						min-height: 100%;
+						width: 100%;
+						display: flex;
+					`}
 				"
 			>
-				${
-					showGutter &&
-					jsx`
+				${showGutter && jsx`
 					<${Gutter}
 						length=${lines.length}
 						lineStarts=${lineStarts}
 						virtualizer=${virtualizer}
 						keyer=${keyer}
 					/>
-				`
-				}
+				`}
 				<${ContentArea}
 					$ref=${(el: ContentAreaElement) => (area = el)}
 					value=${value}
 					renderSource=${renderSource}
 					selectionRange=${selectionRange}
-					style="display: contents"
+					class=${css`display: contents`}
 				>
 					<pre
 						autocomplete="off"

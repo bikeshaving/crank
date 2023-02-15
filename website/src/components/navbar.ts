@@ -11,14 +11,7 @@ const positionFixed = css`
 	right: 0;
 	height: 50px;
 	z-index: 999;
-	gap: 1rem;
-`;
-
-const navbarLayout = css`
-	display: flex;
-	flex-direction: row;
-	justify-content: space-between;
-	gap: 2rem;
+	gap: 1em;
 `;
 
 const navbarGroupLayout = css`
@@ -26,7 +19,7 @@ const navbarGroupLayout = css`
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
-	gap: 1rem;
+	gap: 1em;
 `;
 
 export function Navbar({url}: {url: string}) {
@@ -35,45 +28,54 @@ export function Navbar({url}: {url: string}) {
 			class="
 				blur-background
 				${positionFixed}
-				${navbarLayout}
 				${css`
 					border-bottom: 1px solid var(--text-color);
 					overflow-x: auto;
-					padding: 0 2rem;
 					background-color: inherit;
 					a {
 						text-decoration: none;
 						font-weight: bold;
 					}
+
+					@media screen and (min-width: 800px) {
+						padding: 0 2em;
+					}
+
+					display: flex;
+					flex-direction: row;
+					justify-content: space-between;
+					gap: 1em;
 				`}
 			"
 		>
 			<div class=${navbarGroupLayout}>
-				<${GearLogo} width="1.9em" height="1.9em" />
 				<div>
 					<a
-						class=${url === "/" ? "current" : ""}
+						class=${navbarGroupLayout}
+						aria-current=${url === "/" && "page"}
+						style="gap: 0.3em"
 						href="/"
 					>
+						<${GearLogo} width="1.9em" height="1.9em" />
 						Crank.js
 					</a>
 				</div>
 				<div>
 					<a
 						href="/guides/getting-started"
-						class=${url.startsWith("/guides") && "current"}
+						aria-current=${url.startsWith("/guides") && "page"}
 					>Guides</a>
 				</div>
 				<div>
 					<a
 						href="/blog/"
-						class=${url.startsWith("/blog") && "current"}
+						aria-current=${url.startsWith("/blog") && "page"}
 					>Blog</a>
 				</div>
 				<div>
 					<a
 						href="/playground/"
-						class=${url.startsWith("/playground") && "current"}
+						aria-current=${url.startsWith("/playground") && "page"}
 					>Playground</a>
 				</div>
 			</div>

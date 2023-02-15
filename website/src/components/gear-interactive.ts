@@ -251,7 +251,7 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 	}
 
 	const mod = 20;
-	const speed = 0.1;
+	const speed = 0.05;
 
 	const toothCount1 = 16;
 	const pitchRadius1 = (toothCount1 * mod) / 2;
