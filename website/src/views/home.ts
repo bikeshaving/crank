@@ -1,4 +1,5 @@
 import {jsx, Raw} from "@b9g/crank/standalone";
+import {css} from "@emotion/css";
 
 import {Root} from "../components/root.js";
 import type {Storage} from "../components/esbuild.js";
@@ -7,27 +8,38 @@ import * as Path from "path";
 
 import {Marked} from "../components/marked.js";
 import {InlineCodeBlock} from "../components/inline-code-block.js";
+
 const components = {
 	heading({token, children}: any) {
 		const {depth} = token;
-		const tag = `h${depth}`;
+		const Tag = `h${depth}`;
 		return jsx`
-			<${tag}
-				style="
+			<${Tag}
+				class="${css`
 					text-align: center;
-					font-size: ${depth === 2 ? 24 : depth === 3 ? 20 : 0}px;
-				"
+					color: var(${depth === 2 ? "--text-color" : "--highlight-color"});
+					margin: ${depth === 2 ? "100px" : depth === 3 ? "50px" : 0} auto;
+					font-size: ${depth === 2 ? "5vh" : depth === 3 ? "4vh" : null}
+				`}"
 			>
 				${children}
-			<//tag>`;
+			<//Tag>`;
 	},
 
 	paragraph({token}: any) {
 		return jsx`
-			<p style="
-				margin: 30px auto;
-				max-width: 800px;
-			">${token.text}</p>
+			<p
+				class="
+					blur-background
+					${css`
+						@media screen and (min-width: 800px) {
+							margin: 0 auto;
+							padding: 20px;
+							max-width: 1000px;
+						}
+					`}
+				"
+			>${token.text}</p>
 		`;
 	},
 
@@ -40,11 +52,17 @@ const components = {
 		const json = JSON.stringify({code, lang});
 		return jsx`
 			<div
-				style="
-					margin: 30px auto;
-					max-width: 1400px;
+				class="
+					code-block-container
+					blur-background
+					${css`
+						@media screen and (min-width: 800px) {
+							margin: 30px auto;
+						}
+
+						max-width: 1500px;
+					`}
 				"
-				class="code-block-container"
 			>
 				<script class="props" type="application/json">
 					<${Raw} value=${json} />
@@ -72,9 +90,9 @@ export default async function Home({storage}: {storage: Storage}) {
 	return jsx`
 		<${Root} title="Crank.js" url="/" storage=${storage}>
 			<div id="gear-interactive" />
-			<div style="margin: 0 auto">
+			<div class=${css`margin: 0 auto`}>
 				<header
-					style="
+					class=${css`
 						height: 100vh;
 						display: flex;
 						flex-direction: column;
@@ -83,7 +101,7 @@ export default async function Home({storage}: {storage: Storage}) {
 						align-items: center;
 						text-align: center;
 						font-size: 5vh;
-					"
+					`}
 				>
 					<h1
 						style="
@@ -102,20 +120,25 @@ export default async function Home({storage}: {storage: Storage}) {
 						The Just JavaScript Framework
 					</h3>
 				</header>
-				<div class="blur-background">
+				<div class="
+					${css`
+						padding: 2em 0;
+						font-size: 22px;
+					`}
+				">
 					<${Marked} markdown=${md.body} components=${components} />
 				</div>
 				<div
-					style="
+					class=${css`
 						text-align: center;
 						height: 100vh;
 						display: flex;
 						justify-content: center;
 						align-items: center;
-					"
+					`}
 				>
 					<a
-						style="
+						class=${css`
 							display: inline-block;
 							border: 1px solid #dbb368;
 							color: #dbb368;
@@ -123,7 +146,7 @@ export default async function Home({storage}: {storage: Storage}) {
 							margin: 50px 0;
 							text-decoration: none;
 							font-size: 24px;
-						"
+						`}
 						href="/guides/getting-started"
 					>Get Started</a>
 				</div>

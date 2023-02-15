@@ -16,20 +16,14 @@ export function Sidebar({
 	for (const doc of docs) {
 		if (doc.attributes.publish) {
 			links.push(jsx`
-				<div class=${css`
-					margin: 10px 0;
-				`}>
+				<div class=${css`margin: 10px 0`}>
 					<a
 						href=${doc.url}
+						aria-current=${doc.url === url && "page"}
 						class="
-							${doc.url === url && "current"}
-							${css`
-								text-decoration: none;
-							`}
+							${css`text-decoration: none`}
 						"
-					>
-						${doc.attributes.title}
-					</a>
+					>${doc.attributes.title}</a>
 				</div>
 			`);
 		}
@@ -64,7 +58,7 @@ export function Sidebar({
 			}
 		`}>
 			<h3 class=${css`
-				color: var(--accent-color);
+				color: var(--highlight-color);
 				margin-top: 0;
 			`}>${title}</h3>
 			${links}

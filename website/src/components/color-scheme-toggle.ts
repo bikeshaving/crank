@@ -1,7 +1,7 @@
 import {jsx} from "@b9g/crank/standalone";
 import type {Context} from "@b9g/crank/standalone";
 
-let colorScheme = "dark";
+let colorScheme: string | undefined;
 if (typeof window !== "undefined") {
 	colorScheme =
 		sessionStorage.getItem("color-scheme") ||
@@ -51,7 +51,7 @@ export function ColorSchemeToggle(this: Context) {
 	return jsx`
 		<div>
 			<button onclick=${onclick}>
-				${colorScheme === "dark" ? "💡" : "🕶"}
+				${colorScheme == null ? "⬜" : colorScheme === "dark" ? "💡" : "🕶"}
 			</button>
 		</div>
 	`;

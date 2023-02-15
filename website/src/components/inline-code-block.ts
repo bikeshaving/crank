@@ -45,8 +45,9 @@ export function* InlineCodeBlock(
 			>
 				<div class=${css`
 					flex: 1 1 650px;
+					max-width: 100%;
+					overflow: auto;
 					border: 1px solid var(--text-color);
-					overflow: none;
 					margin-top: -1px;
 					margin-left: -1px;
 				`}>

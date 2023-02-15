@@ -8,8 +8,7 @@ So far, we’ve only seen and used host elements, but eventually, we’ll want t
 The simplest kind of component is a *function component*. When rendered, the function is invoked with the props of the element as its first argument, and the return value of the function is recursively rendered as the element’s children.
 
 ```jsx live
-import {createElement} from "https://unpkg.com/@b9g/crank/crank";
-import {renderer} from "https://unpkg.com/@b9g/crank/dom";
+import {renderer} from "@b9g/crank/dom";
 function Greeting({name}) {
   return <div>Hello, {name}</div>;
 }
@@ -20,8 +19,7 @@ renderer.render(<Greeting name="World" />, document.body);
 Component elements can be passed children just as host elements can. The `createElement()` function will add children to the props object under the name `children`, and it is up to the component to place them somewhere in the returned element tree. If you don’t use the `children` prop, it will not appear in the rendered output.
 
 ```jsx live
-import {createElement} from "https://unpkg.com/@b9g/crank/crank";
-import {renderer} from "https://unpkg.com/@b9g/crank/dom";
+import {renderer} from "@b9g/crank/dom";
 
 function Greeting({name, children}) {
   return (
@@ -173,8 +171,7 @@ By replacing the `while` loop with a `for…of` loop which iterates over `this`,
 One Crank idiom we see in the preceding example is that we overwrite the variables declared via the generator’s parameters with the destructuring expression in the `for…of` statement. This is an easy way to make sure those variables stay in sync with the current props of the component. However, there is no requirement that you must always overwrite old props in the `for` expression, meaning you can assign new props to a different variable and compare them against the old props.
 
 ```jsx live
-import {createElement} from "https://unpkg.com/@b9g/crank/crank";
-import {renderer} from "https://unpkg.com/@b9g/crank/dom";
+import {renderer} from "@b9g/crank/dom";
 
 function *Greeting({name}) {
   yield <div>Hello {name}.</div>;

@@ -8,9 +8,26 @@
 }
 
 .color-theme-light {
-	--bg-color: #f5f9ff;
+	--bg-color: #e7f4f5;
 	--text-color: #0a0e1f;
 	--highlight-color: #b97f24;
+}
+
+.blur-background {
+	@supports (backdrop-filter: blur(3px)) {
+		backdrop-filter: blur(3px);
+		background-color: rgba(10, 14, 31, 0.5);
+	}
+}
+
+/* colors have to match background or it looks bad */
+.color-theme-light {
+	.blur-background {
+		@supports (backdrop-filter: blur(3px)) {
+			backdrop-filter: blur(3px);
+			background-color: rgba(231, 244, 245, 0.5);
+		}
+	}
 }
 
 * {
@@ -20,11 +37,6 @@
 ::selection {
 	background-color: #9b7735;
 }
-
-::-moz-selection {
-	background-color: #9b7735;
-}
-
 
 * {
 	box-sizing: border-box;
@@ -87,19 +99,9 @@ blockquote {
 
 a {
 	color: inherit;
-	&.current {
-		color: var(--highlight-color);
-	}
 
-	&.anchor {
-		scroll-margin-top: 5em;
-		outline: none;
-		&::before {
-			content: "";
-			display: inline-block;
-			margin-top: -5em;
-			padding-top: 5em;
-		}
+	&[aria-current] {
+		color: var(--highlight-color);
 	}
 }
 
@@ -128,22 +130,5 @@ code.inline {
 .color-theme-light {
 	code.inline {
 		background: #ddd;
-	}
-}
-
-.blur-background {
-	@supports (backdrop-filter: blur(3px)) {
-		backdrop-filter: blur(3px);
-		background-color: rgba(10, 14, 31, 0.5);
-	}
-}
-
-/* colors have to match background or it looks bad */
-.color-theme-light {
-	.blur-background {
-		@supports (backdrop-filter: blur(3px)) {
-			backdrop-filter: blur(3px);
-			background-color: rgba(245, 249, 255, 0.5);
-		}
 	}
 }
