@@ -87,7 +87,7 @@ Here’s a slightly more theoretical way to look at it. Let’s say you aren’t
 
 For instance, there’s the cyclomatic complexity of a program: this is measured by the number of independent paths which can be taken through a program’s source code. The more control-flow branches there are in a specific function (if, else, for, while, etc. statements), the more difficult it will be to understand what the code is meant to do, or if it is correct. Similarly, we can indirectly measure the complexity of code by checking if a function or program exhibits certain properties, like \i{referential transparency}. A function or program is referentially transparent if it returns the same output given the same input, and does not produce side-effects.
 
-I bring up referential transparency because this is brought up as a way to mitigate overe-execution. Insofar as, for instance, React components allow you take inputs and return declarative templates, you should not care about how many times said component runs. In other words, 
+I bring up referential transparency because this is brought up as a way to mitigate over-execution. Insofar as, for instance, React components allow you take inputs and return declarative templates, you should not care about how many times said component runs. In other words, 
 
 By contrast, executional transparency is the measure of 
 

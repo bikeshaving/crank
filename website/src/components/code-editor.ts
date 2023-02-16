@@ -71,9 +71,9 @@ function Line(
 			class="
 				prism-line
 				${css`
-					border-bottom: 1px dotted #333;
+					border-bottom: 1px dashed #333;
 					.color-scheme-light & {
-						border-bottom: 1px dotted #ddd;
+						border-bottom: 1px dashed #ddd;
 					}
 				`}
 			"

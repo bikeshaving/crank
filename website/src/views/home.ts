@@ -95,30 +95,35 @@ export default async function Home({storage}: {storage: Storage}) {
 					position: relative;
 					align-items: center;
 					text-align: center;
-					font-size: 5vh;
 				`}
 			>
-				<h1
-					style="
-						margin: 30px 0;
-						color: var(--highlight-color);
-					"
-				>
-					Crank.js
-				</h1>
-				<h3
-					style="
+				<h1 class=${css`
+					margin: 30px 0;
+					color: var(--highlight-color);
+					font-size: 50px;
+					@media screen and (min-width: 800px) {
+						font-size: 10vw;
+					}
+				`}
+				>Crank.js</h1>
+				<h2
+					class=${css`
 						margin: 0;
 						color: var(--text-color);
-					"
+						font-size: 24px;
+						@media screen and (min-width: 800px) {
+							font-size: 4vw;
+						}
+					`}
 				>
 					The Just JavaScript Framework
-				</h3>
+				</h2>
 			</header>
 			<div class=${css`
-				padding: 2em 0;
+				padding: 1em 0;
 				font-size: 22px;
 				background-color: var(--bg-color);
+				border-top: 1px solid currentcolor;
 			`}>
 				<${Marked} markdown=${md.body} components=${components} />
 			</div>
