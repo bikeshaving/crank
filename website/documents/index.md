@@ -99,8 +99,7 @@ renderer.render(jsx`
 
 ### Reason #2: It’s predictable
 
-Crank uses generator functions to define stateful components. You store local
-state in local variables, and yield elements to keep that state around.
+Crank uses generator functions to define stateful components. You store local state in local variables, and yield elements rather than returning them to keep that state around.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -127,11 +126,9 @@ function *CyclingName() {
 renderer.render(<CyclingName />, document.body);
 ```
 
-Components rerender based on explicit `this.refresh()` calls. This level of
-precision means you can put side-effects wherever you want.
+Components rerender based on explicit `this.refresh()` calls. This degree of precision means you can put side-effects wherever you want.
 
-Stop asking your framework “why did you render?” Never “memoize” a callback
-ever again.
+Stop asking your framework “why did you render?” Never “memoize” a callback ever again. Be messy with confidence, knowing that Crank won’t change how components run.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -181,9 +178,7 @@ renderer.render(<Timer />, document.body);
 
 ### Reason #3: It’s promise-friendly.
 
-Any component can be made asynchronous with the `async` keyword. As it turns
-out, the nicest way to use `fetch()` is to call the function and await its
-result.
+Any component can be made asynchronous with the `async` keyword. As it turns out, the nicest way to use `fetch()` is to call the function and await the result.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -205,9 +200,10 @@ renderer.render(<QuoteOfTheDay />, document.body);
 
 Async generators let you write components that are both stateful and async.
 Crank provides a thoughtful execution model which prevents concurrent runs of
-component instances, and allows you to race renderings to define declarative
-fallback states.
+component instances, and allows you to race renderings to define fallback
+states.
 
+TODO: ADD SOME ASYNC GENERATOR COMPONENTS HERE.
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
 
