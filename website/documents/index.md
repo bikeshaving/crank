@@ -7,7 +7,7 @@ It starts with the question: if components are \i{just} functions, why can’t t
 
 ### Reason #1: It’s declarative
 
-Crank works with JSX. It uses tried-and-tested virtual DOM algorithms. Simple
+Crank works with JSX. It uses tried-and-true virtual DOM algorithms. Simple
 components can be defined with functions which return elements.
 
 ```jsx live
@@ -93,13 +93,14 @@ function Stars({width, height}) {
 
 renderer.render(jsx`
   <${Stars} width=${200} height=${200} />
-  <p>You are awesome.</p>
+  <p>I believe in you.</p>
 `, document.body);
 ```
 
 ### Reason #2: It’s predictable
 
-Crank uses generator functions to define stateful components. You store local state in local variables, and yield elements rather than returning them to keep your state in scope.
+Crank uses generator functions to define stateful components. You store local
+state in local variables, and yield elements to keep that state around.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -127,9 +128,9 @@ renderer.render(<CyclingName />, document.body);
 ```
 
 Components rerender based on explicit `this.refresh()` calls. This level of
-precision means that you can put side-effects wherever you want.
+precision means you can put side-effects wherever you want.
 
-Stop asking your framework “Why did you render?” Never “memoize” a callback
+Stop asking your framework “why did you render?” Never “memoize” a callback
 ever again.
 
 ```jsx live
@@ -204,8 +205,8 @@ renderer.render(<QuoteOfTheDay />, document.body);
 
 Async generators let you write components that are both stateful and async.
 Crank provides a thoughtful execution model which prevents concurrent runs of
-component instances, and you can even race multiple renderings per update to
-define declarative fallback states.
+component instances, and allows you to race renderings to define declarative
+fallback states.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
