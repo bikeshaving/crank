@@ -1,15 +1,14 @@
 Many frameworks claim to be “just JavaScript.” Few have as strong a claim as
 Crank.
 
-It starts with the question: if components are just functions, why can’t we
-define them with async and generator functions as well?
+It starts with the question: if components are \i{just} functions, why can’t they be async functions and generator functions as well?
 
 ## Three Reasons to choose Crank
 
 ### Reason #1: It’s declarative
 
-Crank works with JSX. It uses tried-and-tested virtual DOM algorithms for
-declarative renderering. Simple components can be defined with functions which return JSX.
+Crank works with JSX. It uses tried-and-tested virtual DOM algorithms. Simple
+components can be defined with functions which return elements.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -18,20 +17,22 @@ function Greeting({name = "World"}) {
   return <div>Hello {name}.</div>;
 }
 
-function App() {
+function RandomName() {
   const names = ["Alice", "Bob", "Carol", "Dave"];
   const randomName = names[Math.floor(Math.random() * names.length)];
+
+  // TODO: Uncomment the button.
   return (
-    <>
+    <div>
       <Greeting name={randomName} />
-      {/* TODO: Uncomment me!
-      <button onclick={() => this.refresh()}>New name</button>
+      {/*
+      <button onclick={() => this.refresh()}>Random name</button>
       */}
-    </>
+    </div>
   );
 }
 
-renderer.render(<App />, document.body);
+renderer.render(<RandomName />, document.body);
 ```
 
 Don’t think JSX is vanilla enough? Crank provides a tagged template function
@@ -63,9 +64,11 @@ function Star({cx, cy, r=50, ir, p=5, fill="red"}) {
 function Stars({width, height}) {
   return jsx`
     <svg
+      xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 ${width} ${height}"
-      width="${width}px"
-      height="${height}px"
+      width=${width}
+      height=${height}
+      style="border: 1px solid currentcolor"
     >
       <!--
         Refactoring this to be less repetitive has been left
@@ -90,14 +93,44 @@ function Stars({width, height}) {
 
 renderer.render(jsx`
   <${Stars} width=${200} height=${200} />
+  <p>You are awesome.</p>
 `, document.body);
 ```
 
 ### Reason #2: It’s predictable
 
-Crank uses generator functions to define stateful components. Local variables
-can be used to store local state, and components rerender based on explicit
-`refresh()` calls.
+Crank uses generator functions to define stateful components. You store local state in local variables, and yield elements rather than returning them to keep your state in scope.
+
+```jsx live
+import {renderer} from "@b9g/crank/dom";
+
+function Greeting({name = "World"}) {
+  return <div>Hello {name}.</div>;
+}
+
+function *CyclingName() {
+  const names = ["Alice", "Bob", "Carol", "Dave"];
+  let i = 0;
+  while (true) {
+    yield (
+      <div>
+        <Greeting name={names[i % names.length]} />
+        <button onclick={() => this.refresh()}>Cycle name</button>
+      </div>
+    )
+
+    i++;
+  }
+}
+
+renderer.render(<CyclingName />, document.body);
+```
+
+Components rerender based on explicit `this.refresh()` calls. This level of
+precision means that you can put side-effects wherever you want.
+
+Stop asking your framework “Why did you render?” Never “memoize” a callback
+ever again.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -145,64 +178,6 @@ function *Timer() {
 renderer.render(<Timer />, document.body);
 ```
 
-This level of precision means that you can put side-effects wherever you want.
-Never “memoize” a callback ever again.
-
-```jsx live
-import {renderer} from "@b9g/crank/dom";
-
-const r = () => Math.floor(Math.random() * 256);
-const randomColorCSS = () => `rgb(${r()}, ${r()}, ${r()})`;
-
-function Box({color=randomColorCSS(), size=1, children}) {
-  return (
-    <div style={`
-      width: ${100 * size}%;
-      aspect-ratio: 1 / 1;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      border: 1px solid ${color};
-    `}>
-      {children}
-    </div>
-  );
-}
-
-function *ConcentricBoxes() {
-  const colors = Array.from({length: 100}, () => randomColorCSS());
-
-  // TODO: Uncomment me!
-  /*
-  const interval = setInterval(() => {
-    // should have the effect of shifting colors inward
-    colors.unshift(colors.pop());
-    this.refresh();
-  }, 1000);
-
-  this.cleanup(() => clearInterval(interval));
-  */
-
-  for ({} of this) {
-    yield (
-      <div style="width: 100%;">
-        <Box color={colors[0]}>
-          <Box color={colors[1]} size={0.9}>
-            <Box color={colors[2]} size={0.8}>
-              <Box color={colors[3]} size={0.7}>
-                <marquee>That’s a lot of boxes.</marquee>
-              </Box>
-            </Box>
-          </Box>
-        </Box>
-      </div>
-    );
-  }
-}
-
-renderer.render(<ConcentricBoxes />, document.body);
-```
-
 ### Reason #3: It’s promise-friendly.
 
 Any component can be made asynchronous with the `async` keyword. As it turns
@@ -227,7 +202,10 @@ async function QuoteOfTheDay() {
 renderer.render(<QuoteOfTheDay />, document.body);
 ```
 
-Crank 
+Async generators let you write components that are both stateful and async.
+Crank provides a thoughtful execution model which prevents concurrent runs of
+component instances, and you can even race multiple renderings per update to
+define declarative fallback states.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";

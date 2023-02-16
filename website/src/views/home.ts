@@ -28,18 +28,21 @@ const components = {
 
 	paragraph({token}: any) {
 		return jsx`
-			<p
-				class="
+			<p class=${css`
+				@media screen and (min-width: 800px) {
+					margin: 0 auto;
+					padding: 20px;
+					max-width: 1000px;
+				}
+			`}>
+				<span class="
 					blur-background
 					${css`
-						@media screen and (min-width: 800px) {
-							margin: 0 auto;
-							padding: 20px;
-							max-width: 1000px;
-						}
+						padding: 0.2em;
+						box-decoration-break: clone;
 					`}
-				"
-			>${token.text}</p>
+				">${token.text}</span>
+			</p>
 		`;
 	},
 
@@ -64,14 +67,14 @@ const components = {
 					`}
 				"
 			>
-				<script class="props" type="application/json">
-					<${Raw} value=${json} />
-				</script>
 				<${InlineCodeBlock}
 					value=${code}
 					lang=${lang}
 					editable=${lang.endsWith(" live")}
 				/>
+				<script class="props" type="application/json">
+					<${Raw} value=${json} />
+				</script>
 			</div>
 		`;
 	},

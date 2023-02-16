@@ -7,24 +7,24 @@
 	--highlight-color: #dbb368;
 }
 
-.color-theme-light {
+.color-scheme-light {
 	--bg-color: #e7f4f5;
 	--text-color: #0a0e1f;
 	--highlight-color: #b97f24;
 }
 
 .blur-background {
-	@supports (backdrop-filter: blur(3px)) {
-		backdrop-filter: blur(3px);
+	@supports (backdrop-filter: blur(4px)) {
+		backdrop-filter: blur(4px);
 		background-color: rgba(10, 14, 31, 0.5);
 	}
 }
 
 /* colors have to match background or it looks bad */
-.color-theme-light {
+.color-scheme-light {
 	.blur-background {
-		@supports (backdrop-filter: blur(3px)) {
-			backdrop-filter: blur(3px);
+		@supports (backdrop-filter: blur(4px)) {
+			backdrop-filter: blur(4px);
 			background-color: rgba(231, 244, 245, 0.5);
 		}
 	}
@@ -127,7 +127,7 @@ code.inline {
 	background: #281f12;
 }
 
-.color-theme-light {
+.color-scheme-light {
 	code.inline {
 		background: #ddd;
 	}
