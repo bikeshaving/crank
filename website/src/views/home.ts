@@ -26,22 +26,15 @@ const components = {
 			<//Tag>`;
 	},
 
-	paragraph({token}: any) {
+	paragraph({token, children}: any) {
 		return jsx`
 			<p class=${css`
 				@media screen and (min-width: 800px) {
-					margin: 0 auto;
-					padding: 20px;
+					margin: 1em auto 0;
 					max-width: 1000px;
 				}
 			`}>
-				<span class="
-					blur-background
-					${css`
-						padding: 0.2em;
-						box-decoration-break: clone;
-					`}
-				">${token.text}</span>
+				<span class=${css`box-decoration-break: clone;`}>${children}</span>
 			</p>
 		`;
 	},
@@ -93,66 +86,61 @@ export default async function Home({storage}: {storage: Storage}) {
 	return jsx`
 		<${Root} title="Crank.js" url="/" storage=${storage}>
 			<div id="gear-interactive" />
-			<div class=${css`margin: 0 auto`}>
-				<header
-					class=${css`
-						height: 100vh;
-						display: flex;
-						flex-direction: column;
-						justify-content: center;
-						position: relative;
-						align-items: center;
-						text-align: center;
-						font-size: 5vh;
-					`}
+			<header
+				class=${css`
+					height: 100vh;
+					display: flex;
+					flex-direction: column;
+					justify-content: center;
+					position: relative;
+					align-items: center;
+					text-align: center;
+					font-size: 5vh;
+				`}
+			>
+				<h1
+					style="
+						margin: 30px 0;
+						color: var(--highlight-color);
+					"
 				>
-					<h1
-						style="
-							margin: 30px 0;
-							color: var(--highlight-color);
-						"
-					>
-						Crank.js
-					</h1>
-					<h3
-						style="
-							margin: 0;
-							color: var(--text-color);
-						"
-					>
-						The Just JavaScript Framework
-					</h3>
-				</header>
-				<div class="
-					${css`
-						padding: 2em 0;
-						font-size: 22px;
-					`}
-				">
-					<${Marked} markdown=${md.body} components=${components} />
-				</div>
-				<div
-					class=${css`
-						text-align: center;
-						height: 100vh;
-						display: flex;
-						justify-content: center;
-						align-items: center;
-					`}
+					Crank.js
+				</h1>
+				<h3
+					style="
+						margin: 0;
+						color: var(--text-color);
+					"
 				>
-					<a
-						class=${css`
-							display: inline-block;
-							border: 1px solid #dbb368;
-							color: #dbb368;
-							padding: 20px;
-							margin: 50px 0;
-							text-decoration: none;
-							font-size: 24px;
-						`}
-						href="/guides/getting-started"
-					>Get Started</a>
-				</div>
+					The Just JavaScript Framework
+				</h3>
+			</header>
+			<div class=${css`
+				padding: 2em 0;
+				font-size: 22px;
+				background-color: var(--bg-color);
+			`}>
+				<${Marked} markdown=${md.body} components=${components} />
+			</div>
+			<div class=${css`
+				text-align: center;
+				height: 100vh;
+				display: flex;
+				justify-content: center;
+				align-items: center;
+			`}>
+				<a
+					href="/guides/getting-started"
+					class=${css`
+						display: inline-block;
+						border: 1px solid #dbb368;
+						color: #dbb368;
+						padding: 20px;
+						margin: 50px 0;
+						text-decoration: none;
+						font-size: 24px;
+					`}
+				>Get Started</a>
 			</div>
 		<//Root>
 	`;
