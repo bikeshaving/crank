@@ -14,9 +14,9 @@ function ColorSchemeScript() {
 				? "dark" : "light"
 			);
 		if (colorScheme === "dark") {
-			document.body.classList.remove("color-theme-light");
+			document.body.classList.remove("color-scheme-light");
 		} else {
-			document.body.classList.add("color-theme-light");
+			document.body.classList.add("color-scheme-light");
 		}
 	})()`;
 	return jsx`

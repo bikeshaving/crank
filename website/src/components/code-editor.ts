@@ -67,7 +67,18 @@ function Line(
 	},
 ) {
 	return jsx`
-		<div class="prism-line" data-index=${lineNumber}>
+		<div
+			class="
+				prism-line
+				${css`
+					border-bottom: 1px dotted #333;
+					.color-scheme-light & {
+						border-bottom: 1px dotted #ddd;
+					}
+				`}
+			"
+			data-index=${lineNumber}
+		>
 			${line.length ? jsx`<code>${printTokens(line)}</code>` : null}
 			<br />
 		</div>
