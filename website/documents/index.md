@@ -14,7 +14,7 @@ components can be defined with functions which return elements.
 import {renderer} from "@b9g/crank/dom";
 
 function Greeting({name = "World"}) {
-  return <div>Hello {name}.</div>;
+  return <p>Hello {name}.</p>;
 }
 
 function RandomName() {
@@ -78,7 +78,7 @@ function Stars({width, height}) {
       <${Star} cx="80" cy="80" r="50" fill="orange" />
       <${Star} cx="90" cy="90" r="50" fill="yellow" />
       <${Star} cx="100" cy="100" r="50" fill="green" />
-      <${Star} cx="110" cy="110" r="50" fill="blue" />
+      <${Star} cx="110" cy="110" r="50" fill="dodgerblue" />
       <${Star} cx="120" cy="120" r="50" fill="indigo" />
       <${Star}
         cx="130"
@@ -91,21 +91,35 @@ function Stars({width, height}) {
   `;
 }
 
+const inspirationalWords = [
+  "I believe in you.",
+  "You are great.",
+  "The best is yet to come.",
+  "Get back to work.",
+  "Keep pushing forward, always.",
+];
+
+function RandomInspirationalWords() {
+  return jsx`
+    <p>${inspirationalWords[Math.floor(Math.random() * inspirationalWords.length)]}</p>
+  `;
+}
+
 renderer.render(jsx`
   <${Stars} width=${200} height=${200} />
-  <p>I believe in you.</p>
+  <${RandomInspirationalWords} />
 `, document.body);
 ```
 
 ### Reason #2: It’s predictable
 
-Crank uses generator functions to define stateful components. You store local state in local variables, and yield elements rather than returning them to keep that state around.
+Crank uses generator functions to define stateful components. You store state in local variables, and yield elements rather than returning them to keep it around.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
 
 function Greeting({name = "World"}) {
-  return <div>Hello {name}.</div>;
+  return <p>Hello {name}.</p>;
 }
 
 function *CyclingName() {
@@ -126,9 +140,9 @@ function *CyclingName() {
 renderer.render(<CyclingName />, document.body);
 ```
 
-Components rerender based on explicit `this.refresh()` calls. This degree of precision means you can put side-effects wherever you want.
+Components rerender based on explicit `refresh()` calls. This degree of precision means you can put side-effects wherever you want.
 
-Stop asking your framework “why did you render?” Never “memoize” a callback ever again. Be messy with confidence, knowing that Crank won’t change how components run.
+Never “memoize” a callback ever again. Stop asking your framework “why did you render?” Be messy with confidence, with the knowledge that you control how your components run.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -136,12 +150,16 @@ import {renderer} from "@b9g/crank/dom";
 function *Timer() {
   let interval = null;
   let seconds = 0;
-  const ontoggle = () => {
+  const startInterval = () => {
+    interval = setInterval(() => {
+      seconds++;
+      this.refresh();
+    }, 1000);
+  };
+
+  const toggleInterval = () => {
     if (interval == null) {
-      interval = setInterval(() => {
-        seconds++;
-        this.refresh();
-      }, 1000);
+      startInterval();
     } else {
       clearInterval(interval);
       interval = null;
@@ -150,26 +168,30 @@ function *Timer() {
     this.refresh();
   };
 
-  const onreset = () => {
+  const resetInterval = () => {
     seconds = 0;
+    clearInterval(interval);
+    startInterval();
     this.refresh();
   };
 
+  // The this of a Crank component is an iterable of props.
   for ({} of this) {
+    // This is the render loop.
+    // It is nicer than using `while (true)` because it prevents.
     yield (
       <div>
-        <div>
-          Seconds: {seconds} second{seconds !== 1 && "s"}
-        </div>
-        <button onclick={ontoggle}>
+        <p>Seconds: {seconds} second{seconds !== 1 && "s"}</p>
+        <button onclick={toggleInterval}>
           {interval == null ? "Start timer" : "Stop timer"}
         </button>
-        <button onclick={onreset}>Reset timer</button>
+        {" "}
+        <button onclick={resetInterval}>Reset timer</button>
       </div>
     );
   }
 
-  // cleanup code can go after the loop.
+  // You can put cleanup code can go after the loop.
   clearInterval(interval);
 }
 
@@ -178,7 +200,7 @@ renderer.render(<Timer />, document.body);
 
 ### Reason #3: It’s promise-friendly.
 
-Any component can be made asynchronous with the `async` keyword. As it turns out, the nicest way to use `fetch()` is to call the function and await the result.
+Any component can be made asynchronous with the `async` keyword. As it turns out, the nicest way to use `fetch()` is to call the function and `await` its result.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -198,16 +220,13 @@ async function QuoteOfTheDay() {
 renderer.render(<QuoteOfTheDay />, document.body);
 ```
 
-Async generators let you write components that are both stateful and async.
-Crank provides a thoughtful execution model which prevents concurrent runs of
-component instances, and allows you to race renderings to define fallback
-states.
+Async generators let you write components that are both async and stateful. Thanks to async iterators, you can even race components to show temporary fallback states.
 
-TODO: ADD SOME ASYNC GENERATOR COMPONENTS HERE.
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
 
 function formatNumber(number, type) {
+  number = number.padEnd(16, "0");
   if (type === "American Express") {
     return [number.slice(0, 4), number.slice(4, 10), number.slice(10, 15)].join(" ");
   }
@@ -222,20 +241,50 @@ function formatNumber(number, type) {
 
 function CreditCard({type, expiration, number, owner}) {
   return (
-    <div style="padding: 10px; border: 1px solid currentcolor; border-radius: 10px;">
-      <div style="display: flex; justify-content: space-between;">
-        <div>{formatNumber(number, type)}</div>
-        <div>{type}</div>
-      </div>
-      <div style="display: flex; justify-content: space-between;">
-        <div>{owner}</div>
-        <div>Exp: {expiration}</div>
-      </div>
+    <div style="
+      padding: 10px;
+      margin: 10px 0;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+      border: 1px solid currentcolor;
+      border-radius: 10px;
+    ">
+      <pre>{formatNumber(number, type)}</pre>
+      <pre>Exp: {expiration}</pre>
+
+      <pre>{type}</pre>
+      <pre>{owner}</pre>
     </div>
   );
 }
 
-async function FakeCreditCard() {
+async function *LoadingCreditCard() {
+  await new Promise((r) => setTimeout(r, 1000));
+  let count = 0;
+  const interval = setInterval(() => {
+    count++;
+    this.refresh();
+  }, 200);
+
+  this.cleanup(() => clearInterval(interval));
+
+  for ({} of this) {
+    yield (
+      <CreditCard
+        number={"*".repeat(count) + "?".repeat(Math.max(0, 16 - count))}
+        type="__"
+        owner="__ __"
+        expiration="__/__"
+      />
+    );
+  }
+}
+
+async function MockCreditCard({throttle}) {
+  if (throttle) {
+    await new Promise((r) => setTimeout(r, 2000));
+  }
   // Mock credit card data courtesy https://fakerapi.it/en
   const res = await fetch("https://fakerapi.it/api/v1/credit_cards?_quantity=1");
   if (res.status === 429) {
@@ -245,19 +294,46 @@ async function FakeCreditCard() {
   }
   const {data: [card]} = await res.json();
   return (
-    <>
-      <button
-        onclick={() => this.refresh()}
-      >Generate new card</button>
-      <CreditCard
-        number={card.number}
-        type={card.type}
-        owner={card.owner}
-        expiration={card.expiration}
-      />
-    </>
+    <CreditCard
+      number={card.number}
+      type={card.type}
+      owner={card.owner}
+      expiration={card.expiration}
+    />
   );
 }
 
-renderer.render(<FakeCreditCard />, document.body);
+async function *RandomCreditCard({throttle}) {
+  for await ({throttle} of this) {
+    yield <LoadingCreditCard />;
+    await (yield <MockCreditCard throttle={throttle} />);
+  }
+}
+
+function *CreditCardGenerator() {
+  let throttle = false;
+  const toggleThrottle = () => {
+    throttle = !throttle;
+    this.refresh();
+  };
+
+  for ({} of this) {
+    yield (
+      <div>
+        <RandomCreditCard throttle={throttle} />
+        <div>
+          <button onclick={() => this.refresh()}>
+            Generate new card
+          </button>
+          {" "}
+          <button onclick={toggleThrottle}>
+            {throttle ? "Unthrottle" : "Throttle"} API
+          </button>
+        </div>
+      </div>
+    );
+  }
+}
+
+renderer.render(<CreditCardGenerator />, document.body);
 ```

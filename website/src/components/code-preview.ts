@@ -126,6 +126,7 @@ export function* CodePreview(
 				code = parsed.code;
 			} catch (err: any) {
 				errorMessage = err.message;
+				console.error(err.message || err);
 				this.refresh();
 				return;
 			}
