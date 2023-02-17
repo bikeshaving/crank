@@ -34,15 +34,13 @@ export function* InlineCodeBlock(
 
 	for ({lang, editable} of this) {
 		yield jsx`
-			<div
-				class=${css`
-					display: flex;
-					flex-direction: row;
-					flex-wrap: wrap;
-					max-width: ${editable ? "100%" : "min(100%, 1000px)"};
-					align-items: flex-start;
-				`}
-			>
+			<div class=${css`
+				display: flex;
+				flex-direction: row;
+				flex-wrap: wrap;
+				max-width: ${editable ? "100%" : "min(100%, 1000px)"};
+				align-items: flex-start;
+			`}>
 				<div class=${css`
 					flex: 1 1 650px;
 					max-width: 100%;
@@ -61,22 +59,23 @@ export function* InlineCodeBlock(
 				${
 					editable &&
 					jsx`
-						<div class=${css`
-							flex: 1 1 auto;
-							position: sticky;
-							top: 80px;
-							min-height: 50px;
-							border: 1px solid var(--text-color);
-							margin-top: -1px;
-							margin-left: -1px;
-						`}>
-							<${CodePreview}
-								value=${value}
-								visible=${isIntersecting}
-								autoresize
-							/>
-						</div>
-					`
+					<div class=${css`
+						flex: 1 1 auto;
+						position: sticky;
+						top: 80px;
+						min-height: 50px;
+						border: 1px solid currentcolor;
+						margin-top: -1px;
+						margin-left: -1px;
+					`}>
+						<${CodePreview}
+							value=${value}
+							visible=${isIntersecting}
+							autoresize
+							showStatus
+						/>
+					</div>
+				`
 				}
 			</div>
 		`;

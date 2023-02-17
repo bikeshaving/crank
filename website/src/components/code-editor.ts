@@ -26,9 +26,9 @@ function Gutter(
 			class=${css`
 				flex: none;
 				margin: 0;
-				padding: 1em .5em;
+				padding: 1em 0.5em;
 				color: var(--text-color);
-				font-size: 14px;
+				font-size: 16px;
 				font-family: monospace;
 				line-height: 1.4;
 				text-align: right;
@@ -43,9 +43,11 @@ function Gutter(
 					top: ${items[0]?.start}px;
 				`}
 			>
-				${items.map((item) => jsx`
+				${items.map(
+					(item) => jsx`
 					<div style="height: ${item.size}px">${item.index + 1}</div>
-				`)}
+				`,
+				)}
 			</div>
 		</div>
 	`;
@@ -359,20 +361,25 @@ export function* CodeEditor(
 					`}
 				"
 			>
-				${showGutter && jsx`
+				${
+					showGutter &&
+					jsx`
 					<${Gutter}
 						length=${lines.length}
 						lineStarts=${lineStarts}
 						virtualizer=${virtualizer}
 						keyer=${keyer}
 					/>
-				`}
+				`
+				}
 				<${ContentArea}
 					$ref=${(el: ContentAreaElement) => (area = el)}
 					value=${value}
 					renderSource=${renderSource}
 					selectionRange=${selectionRange}
-					class=${css`display: contents`}
+					class=${css`
+						display: contents;
+					`}
 				>
 					<pre
 						autocomplete="off"
@@ -389,7 +396,7 @@ export function* CodeEditor(
 								line-break: anywhere;
 								white-space: pre-wrap;
 								white-space: break-spaces;
-								font-size: 14px;
+								font-size: 16px;
 							`}
 						"
 					>

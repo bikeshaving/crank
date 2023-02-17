@@ -251,7 +251,7 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 	}
 
 	const mod = 20;
-	const speed = 1/3;
+	const speed = 1 / 3;
 
 	const toothCount1 = 16;
 	const pitchRadius1 = (toothCount1 * mod) / 2;
@@ -357,7 +357,7 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 	}
 }
 
-export function GearLogo({width=400, height=400}) {
+export function GearLogo({width = 400, height = 400}) {
 	const r = 300;
 	const wa = (35 * Math.PI) / 180;
 	return jsx`
