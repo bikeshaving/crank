@@ -10,7 +10,7 @@
 .color-scheme-light {
 	--bg-color: #e7f4f5;
 	--text-color: #0a0e1f;
-	--highlight-color: #b97f24;
+	--highlight-color: #fbab60;
 }
 
 .blur-background {
@@ -35,7 +35,7 @@
 }
 
 ::selection {
-	background-color: #9b7735;
+	background: var(--coldark02);
 }
 
 * {
@@ -71,7 +71,7 @@ button {
 	background-color: transparent;
 	border-radius: 0;
 	border: 1px solid currentcolor;
-	padding: 0.5em;
+	padding: 0.3em;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -125,10 +125,7 @@ code.inline {
 	font-size: .9em;
 	display: inline;
 	background: #281f12;
-}
-
-.color-scheme-light {
-	code.inline {
+	.color-scheme-light & {
 		background: #ddd;
 	}
 }
