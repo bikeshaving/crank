@@ -52,7 +52,7 @@
 }
 
 ::selection {
-	background: var(--coldark02);
+	background: var(--coldark13);
 }
 
 html {
@@ -140,8 +140,5 @@ code.inline {
 	margin: 0;
 	font-size: .9em;
 	display: inline;
-	background: #281f12;
-	.color-scheme-light & {
-		background: #ddd;
-	}
+	background: var(--coldark02);
 }

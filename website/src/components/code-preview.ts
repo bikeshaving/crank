@@ -49,6 +49,13 @@ function generateIFrameHTML(
 					);
 				});
 
+				window.addEventListener("unhandledrejection", (ev) => {
+					window.parent.postMessage(
+						JSON.stringify({type: "error", id: ${id}, message: ev.reason.message}),
+						window.location.origin,
+					);
+				});
+
 				const obs = new ResizeObserver((entries) => {
 					const height = entries[0].contentRect.height;
 					setTimeout(() => {
@@ -217,17 +224,16 @@ export function* CodePreview(
 							: "var(--coldark11)"};
 					padding: 1em;
 					background-color: var(--coldark00);
-				`}
-				>
+					width: 100%;
+				`}>
 					${
 						errorMessage &&
 						jsx`
-							<div class=${css`
+							<pre class=${css`
 								color: var(--coldark12);
 								width: 100%;
-							`}>
-								<pre>${errorMessage}</pre>
-							</div>
+								overflow-x: auto;
+							`}>${errorMessage}</pre>
 						`
 					}
 					<iframe
