@@ -1,6 +1,6 @@
 Many web frameworks claim to be “just JavaScript.” Few have as strong a claim as Crank.
 
-It starts with the question: if components are *just* functions, why can’t we use async and generator functions as well? Crank follows through: it builds a component model on top of promises and iterators. The result is a simpler developer experience where you spend less time writing framework integrations and more time writing vanilla JavaScript.
+It starts with the question: if components are *just* functions, why can’t you use async and generator functions as well? Crank follows through by building a component model on top of promises and iterators. The result is a simpler developer experience where you spend less time writing framework integrations and more time writing vanilla JavaScript.
 
 ## Three reasons to choose Crank
 
