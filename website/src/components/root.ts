@@ -61,7 +61,10 @@ async function StaticURLsJSON({storage}: {storage: Storage}) {
 }
 
 export function Root({
-	title, children, url, storage,
+	title,
+	children,
+	url,
+	storage,
 }: {
 	title: string;
 	children: Children;

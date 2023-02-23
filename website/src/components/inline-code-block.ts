@@ -61,7 +61,9 @@ export function* InlineCodeBlock(
 							editable=${editable}
 						/>
 					</div>
-					${editable && jsx`
+					${
+						editable &&
+						jsx`
 						<div class=${css`
 							flex: 1 1 auto;
 							position: sticky;
@@ -79,7 +81,8 @@ export function* InlineCodeBlock(
 								showStatus
 							/>
 						</div>
-					`}
+					`
+					}
 				</div>
 			</div>
 		`;
