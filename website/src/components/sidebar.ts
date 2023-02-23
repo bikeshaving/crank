@@ -22,11 +22,9 @@ export function Sidebar({
 					<a
 						href=${doc.url}
 						aria-current=${doc.url === url && "page"}
-						class="
-							${css`
-								text-decoration: none;
-							`}
-						"
+						class=${css`
+							text-decoration: none;
+						`}
 					>${doc.attributes.title}</a>
 				</div>
 			`);
@@ -40,6 +38,7 @@ export function Sidebar({
 			padding: 2rem 0.4rem;
 			color: var(--text-color);
 			border-right: 1px solid currentcolor;
+			border-bottom: 1px solid currentcolor;
 			@media screen and (min-width: 800px) {
 				position: fixed;
 				top: 50px;

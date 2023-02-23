@@ -29,6 +29,23 @@
 	}
 }
 
+.blur-background-2 {
+	@supports (backdrop-filter: blur(8px)) {
+		backdrop-filter: blur(8px);
+		background-color: rgba(10, 14, 31, 0.5) !important;
+	}
+}
+
+/* colors have to match background or it looks bad */
+.color-scheme-light {
+	.blur-background-2 {
+		@supports (backdrop-filter: blur(8px)) {
+			backdrop-filter: blur(8px);
+			background-color: rgba(231, 244, 245, 0.5) !important;
+		}
+	}
+}
+
 * {
 	color: var(--text-color);
 	box-sizing: border-box;
