@@ -194,7 +194,9 @@ export function* CodePreview(
 					height: 100%;
 				`}
 			>
-				${showStatus && jsx`
+				${
+					showStatus &&
+					jsx`
 					<div class=${css`
 						flex: none;
 						padding: 1em;
@@ -203,7 +205,8 @@ export function* CodePreview(
 					`}>
 						${errorMessage ? "Errored!" : loading ? "Loading..." : "Running!"}
 					</div>
-				`}
+				`
+				}
 				<div class=${css`
 					flex: 1 1 auto;
 					border: 4px solid ${loading ? "var(--coldark12)" : "var(--coldark11)"};

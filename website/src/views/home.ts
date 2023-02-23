@@ -18,7 +18,11 @@ const components = {
 				class="${css`
 					display: block;
 					text-align: center;
-					font-size: ${depth === 2 ? "max(5vh, 40px)" : depth === 3 ? "max(4vh, 30px)" : null};
+					font-size: ${depth === 2
+						? "max(5vh, 40px)"
+						: depth === 3
+						? "max(4vh, 30px)"
+						: null};
 					color: var(${depth === 2 ? "--text-color" : "--highlight-color"});
 					margin: 1em auto;
 					background-color: ${depth === 2 ? "var(--coldark02)" : null};
