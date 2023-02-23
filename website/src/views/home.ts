@@ -25,7 +25,7 @@ const components = {
 						: null};
 					color: var(${depth === 2 ? "--text-color" : "--highlight-color"});
 					margin: 1em auto;
-					background-color: ${depth === 2 ? "var(--coldark02)" : null};
+					background-color: ${depth === 2 ? "var(--coldark01)" : null};
 					${depth === 2 && "padding: 1em 0"};
 				`}"
 			>
@@ -36,9 +36,11 @@ const components = {
 	paragraph({children}: any) {
 		return jsx`
 			<p class=${css`
+				padding: 0 5px;
 				@media screen and (min-width: 800px) {
 					margin: 1em auto 0;
 					max-width: 1000px;
+					padding: 0 1em;
 				}
 			`}>
 				<span class=${css`
@@ -82,6 +84,52 @@ const components = {
 	},
 };
 
+function CallToAction() {
+	return jsx`
+		<div class=${css`
+			text-align: center;
+			height: 100vh;
+			display: flex;
+			flex-direction: column;
+			justify-content: center;
+			align-items: center;
+		`}>
+			<div class="blur-background-2 ${css`
+				padding: 2em;
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				align-items: center;
+			`}">
+				<h2 class=${css`
+					font-size: 32px;
+				`}>Intrigued?</h2>
+				<div class=${css`
+					@media screen and (min-width: 800px) {
+						display: flex;
+						justify-content: center;
+						gap: 1em;
+					}
+
+					& a {
+						display: block;
+						flex: 0 1 auto;
+						border: 1px solid var(--text-color);
+						color: var(--highlight-color);
+						padding: 0.4em;
+						text-decoration: none;
+						font-size: 24px;
+					}
+				`}>
+					<a href="/playground">Try it in the browser</a>
+					<a href="/guides/getting-started">Install it</a>
+					<a href="https://github.com/bikeshaving/crank">Star it on GitHub</a>
+				</div>
+			</div>
+		</div>
+	`;
+}
+
 const __dirname = new URL(".", import.meta.url).pathname;
 
 export default async function Home({storage}: {storage: Storage}) {
@@ -109,50 +157,29 @@ export default async function Home({storage}: {storage: Storage}) {
 				<h1 class=${css`
 					margin: 30px 0;
 					color: var(--highlight-color);
-					font-size: max(50px, 16vw);
+					font-size: max(40px, 14vw);
 				`}
 				>Crank.js</h1>
 				<h2
 					class=${css`
 						margin: 0;
 						color: var(--text-color);
-						font-size: max(30px, 8vw);
+						font-size: max(25px, 5vw);
 					`}
 				>
 					The Just JavaScript Framework.
 				</h2>
 			</header>
 			<div class="${css`
-				font-size: 16px;
-				@media screen and (min-width: 800px) {
-					font-size: 24px;
-				}
+				font-size: max(18px, min(24px, 2vw));
 
 				background-color: var(--bg-color);
-				border-top: 1px solid currentcolor;
+				border-top: 1px solid var(--text-color);
+				border-bottom: 1px solid var(--text-color);
 			`} blur-background-2">
 				<${Marked} markdown=${md.body} components=${components} />
-				<div class=${css`
-					text-align: center;
-					height: 100vh;
-					display: flex;
-					justify-content: center;
-					align-items: center;
-				`}>
-					<a
-						href="/guides/getting-started"
-						class=${css`
-							display: inline-block;
-							border: 1px solid #dbb368;
-							color: #dbb368;
-							padding: 20px;
-							margin: 50px 0;
-							text-decoration: none;
-							font-size: 24px;
-						`}
-					>Get Started</a>
-				</div>
 			</div>
+			<${CallToAction} />
 		<//Root>
 	`;
 }
