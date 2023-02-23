@@ -1,6 +1,7 @@
 import {jsx} from "@b9g/crank/standalone";
 import type {Context} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
+import {css} from "@emotion/css";
 
 import "prismjs/components/prism-javascript";
 
@@ -59,36 +60,41 @@ function* Playground(this: Context, {}) {
 		//	window.location.hash = LZString.compressToEncodedURIComponent(value);
 		//});
 		yield jsx`
-			<div
-				style="
-					display: flex;
-					flex-wrap: wrap;
-					align-items: flex-start;
-					width: 100vw;
-					height: 100vh;
-				"
-			>
-				<div style="
+			<div class="playground ${css`
+				display: flex;
+				flex-direction: row;
+				align-items: flex-start;
+				justify-content: stretch;
+
+				flex-wrap: wrap;
+				width: 100%;
+				height: 100vh;
+				padding-top: 50px;
+			`}">
+				<div class=${css`
 					flex: 1 1 600px;
-					height: min(100vw, 100%);
-					padding-top: 50px;
-					overflow: auto;
-				">
+					overflow-x: auto;
+					overflow-y: hidden;
+					@media (min-width: 800px) {
+						height: 100%;
+						overflow-y: auto;
+					}
+				`}>
 					<${CodeEditor}
 						value=${value}
 						language="typescript"
 						showGutter=${true}
 					/>
 				</div>
-				<div style="
+				<div class=${css`
 					flex: 1 1 400px;
-					height: 100%;
+					height: calc(100vh - 50px);
+
 					border-top: 1px solid currentcolor;
 					border-left: 1px solid currentcolor;
 					margin-top: -1px;
 					margin-left: -1px;
-					padding-top: 50px;
-				">
+				`}>
 					<${CodePreview} value=${value} showStatus />
 				</div>
 			</div>

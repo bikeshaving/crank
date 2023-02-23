@@ -1,5 +1,6 @@
 import {jsx} from "@b9g/crank/standalone";
 import type {Context} from "@b9g/crank";
+import {css} from "@emotion/css";
 import {debounce} from "../utils/fns.js";
 import {transform} from "../plugins/babel.js";
 
@@ -187,31 +188,27 @@ export function* CodePreview(
 
 		yield jsx`
 			<div
-				style="
+				class=${css`
 					display: flex;
 					flex-direction: column;
 					height: 100%;
-				"
+				`}
 			>
-				${
-					showStatus &&
-					jsx`
-						<div
-							style="
-								flex: none;
-								padding: 1em;
-								border-bottom: 1px solid var(--text-color);
-							">
-							${errorMessage ? "Errored!" : loading ? "Loading..." : "Running!"}
-						</div>
-					`
-				}
-				<div
-					style="
-						flex: 1 1 auto;
-						height: 100%;
+				${showStatus && jsx`
+					<div class=${css`
+						flex: none;
 						padding: 1em;
-					"
+						border-bottom: 1px solid var(--text-color);
+						height: 3em;
+					`}>
+						${errorMessage ? "Errored!" : loading ? "Loading..." : "Running!"}
+					</div>
+				`}
+				<div class=${css`
+					flex: 1 1 auto;
+					border: 4px solid ${loading ? "var(--coldark12)" : "var(--coldark11)"};
+					padding: 1em;
+				`}
 				>
 					<iframe
 						$key=${iframeID}
@@ -221,6 +218,7 @@ export function* CodePreview(
 							border: none;
 							width: 100%;
 							height: ${autoresize ? `${height}px` : "100%"};
+							background-color: var(--bg-color);
 						"
 					/>
 				</div>

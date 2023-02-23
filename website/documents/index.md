@@ -7,9 +7,8 @@ It starts with the question: if components are *just* functions, why can’t the
 
 ### Reason #1: It’s declarative
 
-Crank works with JSX. It uses tried-and-tested virtual DOM algorithms.
-
-Simple components can be defined with functions which return elements.
+Crank works with JSX. It uses tried-and-tested virtual DOM algorithms. Simple
+components can be defined with functions which return elements.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -37,7 +36,7 @@ renderer.render(<RandomName />, document.body);
 ```
 
 Don’t think JSX is vanilla enough? Crank provides a tagged template function
-which does basically the same thing.
+which provides the same syntax.
 
 ```jsx live
 import {jsx} from "@b9g/crank/standalone";
@@ -96,7 +95,7 @@ const inspirationalWords = [
   "I believe in you.",
   "You are great.",
   "Get back to work.",
-  "A lifetime of 90 years has about 4,680 weeks. Think about that. Get back to work.",
+  "A lifetime of 90 years is about 4,680 weeks. Think about that.",
 ];
 
 function RandomInspirationalWords() {
@@ -106,14 +105,24 @@ function RandomInspirationalWords() {
 }
 
 renderer.render(jsx`
-  <${Stars} width=${200} height=${200} />
-  <${RandomInspirationalWords} />
+  <div
+    class="motivational-poster"
+    style="
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    "
+  >
+    <${Stars} width=${200} height=${200} />
+    <${RandomInspirationalWords} />
+  </div>
 `, document.body);
 ```
 
 ### Reason #2: It’s predictable
 
-Crank uses generator functions to define stateful components. You store state in local variables, and yield elements rather than returning them to keep it around.
+Crank uses generator functions to define stateful components. You store state in local variables, and yield elements rather than returning them to keep that state around.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -177,11 +186,9 @@ function *Timer() {
 
   // The this of a Crank component is an iterable of props.
   for ({} of this) {
-    // This is the render loop.
-    // It is nicer than using `while (true)` loops because it prevents infinite loops.
-    // Most generator components should use render loops, `while (true)` loops were
-    // mainly used for pedagogical purposes.
-
+    // Welcome to the render loop.
+    // Most generator components should use render loops even if they do not
+    // use props.
     yield (
       <div>
         <p>Seconds: {seconds} second{seconds !== 1 && "s"}</p>
@@ -203,7 +210,7 @@ renderer.render(<Timer />, document.body);
 
 ### Reason #3: It’s promise-friendly.
 
-Any component can be made asynchronous with the `async` keyword. As it turns out, the nicest way to use `fetch()` is to call the function and `await` the result. Whaaaaa?
+Any component can be made asynchronous with the `async` keyword. As it turns out, the nicest way to use `fetch()` is to call the function and `await` the result.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -216,7 +223,7 @@ async function QuoteOfTheDay() {
     <figure>
       <blockquote>{quote.quote}</blockquote>
       <figcaption>
-        — <a href={quote.permalink} _target="blank">{quote.author}</a>
+        — <a href={quote.permalink} target="_blank">{quote.author}</a>
       </figcaption>
     </figure>
   );
@@ -225,7 +232,7 @@ async function QuoteOfTheDay() {
 renderer.render(<QuoteOfTheDay />, document.body);
 ```
 
-Async generators let you write components that are both async and stateful. Thanks to async iterators, you can even race components to show temporary fallback states.
+Async generators let you write components that are both async AND stateful. You can even race components to show temporary fallback states.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";

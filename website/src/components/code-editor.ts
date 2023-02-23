@@ -24,6 +24,11 @@ function Gutter(
 	return jsx`
 		<div
 			class=${css`
+				display: none;
+				@media (min-width: 800px) {
+					display: block;
+				}
+
 				flex: none;
 				margin: 0;
 				padding: 1em 0.5em;
@@ -35,7 +40,7 @@ function Gutter(
 				border-right: 1px solid var(--text-color);
 				position: relative;
 			`}
-			style="height: max(100vh, ${totalSize + 28}px);"
+			style="height: max(calc(100vh - 50px), ${totalSize + 50}px);"
 		>
 			<div
 				class=${css`

@@ -16,10 +16,13 @@ const components = {
 		return jsx`
 			<${Tag}
 				class="${css`
+					display: block;
 					text-align: center;
+					font-size: ${depth === 2 ? "max(5vh, 40px)" : depth === 3 ? "max(4vh, 30px)" : null};
 					color: var(${depth === 2 ? "--text-color" : "--highlight-color"});
-					margin: ${depth === 2 ? "100px" : depth === 3 ? "50px" : 0} auto;
-					font-size: ${depth === 2 ? "5vh" : depth === 3 ? "4vh" : null};
+					margin: 1em auto;
+					background-color: ${depth === 2 ? "var(--coldark02)" : null};
+					${depth === 2 && "padding: 1em 0"};
 				`}"
 			>
 				${children}
@@ -29,7 +32,6 @@ const components = {
 	paragraph({children}: any) {
 		return jsx`
 			<p class=${css`
-				padding: 1em;
 				@media screen and (min-width: 800px) {
 					margin: 1em auto 0;
 					max-width: 1000px;
@@ -103,20 +105,20 @@ export default async function Home({storage}: {storage: Storage}) {
 				<h1 class=${css`
 					margin: 30px 0;
 					color: var(--highlight-color);
-					font-size: max(50px, 10vw);
+					font-size: max(50px, 16vw);
 				`}
 				>Crank.js</h1>
 				<h2
 					class=${css`
 						margin: 0;
 						color: var(--text-color);
-						font-size: max(30px, 4vw);
+						font-size: max(30px, 8vw);
 					`}
 				>
 					The Just JavaScript Framework.
 				</h2>
 			</header>
-			<div class=${css`
+			<div class="${css`
 				font-size: 16px;
 				@media screen and (min-width: 800px) {
 					font-size: 24px;
@@ -124,7 +126,7 @@ export default async function Home({storage}: {storage: Storage}) {
 
 				background-color: var(--bg-color);
 				border-top: 1px solid currentcolor;
-			`}>
+			`} blur-background-2">
 				<${Marked} markdown=${md.body} components=${components} />
 				<div class=${css`
 					text-align: center;
