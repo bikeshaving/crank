@@ -25,7 +25,7 @@ const components = {
 						: null};
 					color: var(${depth === 2 ? "--text-color" : "--highlight-color"});
 					margin: 1em auto;
-					background-color: ${depth === 2 ? "var(--coldark01)" : null};
+					background-color: ${depth === 2 ? "var(--coldark00)" : null};
 					${depth === 2 && "padding: 1em 0"};
 				`}"
 			>
@@ -83,6 +83,39 @@ const components = {
 		`;
 	},
 };
+
+function Hero() {
+	return jsx`
+		<div id="gear-interactive" />
+		<header
+			class=${css`
+				height: 100vh;
+				display: flex;
+				flex-direction: column;
+				justify-content: center;
+				position: relative;
+				align-items: center;
+				text-align: center;
+			`}
+		>
+			<h1 class=${css`
+				margin: 30px 0;
+				color: var(--highlight-color);
+				font-size: max(40px, 14vw);
+			`}
+			>Crank.js</h1>
+			<h2
+				class=${css`
+					margin: 0;
+					color: var(--text-color);
+					font-size: max(25px, 5vw);
+				`}
+			>
+				The Just JavaScript Framework.
+			</h2>
+		</header>
+	`;
+}
 
 function CallToAction() {
 	return jsx`
@@ -142,34 +175,7 @@ export default async function Home({storage}: {storage: Storage}) {
 
 	return jsx`
 		<${Root} title="Crank.js" url="/" storage=${storage}>
-			<div id="gear-interactive" />
-			<header
-				class=${css`
-					height: 100vh;
-					display: flex;
-					flex-direction: column;
-					justify-content: center;
-					position: relative;
-					align-items: center;
-					text-align: center;
-				`}
-			>
-				<h1 class=${css`
-					margin: 30px 0;
-					color: var(--highlight-color);
-					font-size: max(40px, 14vw);
-				`}
-				>Crank.js</h1>
-				<h2
-					class=${css`
-						margin: 0;
-						color: var(--text-color);
-						font-size: max(25px, 5vw);
-					`}
-				>
-					The Just JavaScript Framework.
-				</h2>
-			</header>
+			<${Hero} />
 			<div class="${css`
 				font-size: max(18px, min(24px, 2vw));
 

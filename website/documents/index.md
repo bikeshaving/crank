@@ -1,6 +1,6 @@
 Many web frameworks claim to be “just JavaScript.” Few have as strong a claim as Crank.
 
-It starts with the question: if components are *just* functions, why can’t you use async and generator functions as well? Crank follows through by building a component model on top of promises and iterators. The result is a simpler developer experience where you spend less time writing framework integrations and more time writing vanilla JavaScript.
+It starts with the question: if components are *just* functions, why can’t you use async and generator functions as well? Crank follows through: it reimagines the component model as one which takes full advantage of promises and iterators. The result is a simpler developer experience where you spend less time writing framework integrations and more time writing vanilla JavaScript.
 
 ## Three reasons to choose Crank
 
@@ -121,7 +121,7 @@ renderer.render(jsx`
 
 ### Reason #2: It’s predictable
 
-Crank uses generator functions to define stateful components. You store state in local variables, and yield rather than returning to keep it around.
+Crank uses generator functions to define stateful components. You store state in local variables, and `yield` rather than `return` to keep it around.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -202,7 +202,7 @@ function *Timer() {
     );
   }
 
-  // You can put cleanup code after the loop.
+  // You can even put cleanup code after the loop.
   clearInterval(interval);
 }
 
@@ -211,7 +211,7 @@ renderer.render(<Timer />, document.body);
 
 ### Reason #3: It’s promise-friendly.
 
-Any component can be made asynchronous with the `async` keyword. As it turns out, the nicest way to use `fetch()` is to call the function and `await` the result.
+Any component can be made asynchronous with the `async` keyword. As it turns out, the nicest way to use `fetch()` is to call it and `await` the result.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
