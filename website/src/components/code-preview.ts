@@ -17,11 +17,6 @@ function generateIFrameHTML(
 				type="text/css"
 				href=${staticURLs!["client.css"]}
 			/>
-			<style>
-				body {
-					background: none !important;
-				}
-			</style>
 		</head>
 		<body>
 			<script>
@@ -54,19 +49,21 @@ function generateIFrameHTML(
 					);
 				});
 
-				window.addEventListener("message", (ev) => {
-				});
+				const obs = new ResizeObserver((entries) => {
+					const height = entries[0].contentRect.height;
+					setTimeout(() => {
+						window.parent.postMessage(
+							JSON.stringify({
+								type: "resize",
+								id: ${id},
+								height,
+							}),
+							window.location.origin,
+						);
+					}, 0);
+				})
 
-				new ResizeObserver((entries) => {
-					window.parent.postMessage(
-						JSON.stringify({
-							type: "resize",
-							id: ${id},
-							height: entries[0].contentRect.height,
-						}),
-						window.location.origin,
-					);
-				}).observe(document.documentElement);
+				obs.observe(document.documentElement);
 			}
 			</script>
 			<script type="module">${code}</script>
@@ -99,13 +96,14 @@ export function* CodePreview(
 
 	let staticURLs: Record<string, any> | undefined;
 	let execute: () => unknown;
+	let executeDebounced: () => unknown;
 	if (typeof window !== "undefined") {
 		staticURLs = JSON.parse(
 			// @ts-ignore
 			document.getElementById("static-urls").textContent,
 		);
 
-		execute = debounce(() => {
+		execute = () => {
 			if (!visible) {
 				return;
 			}
@@ -126,19 +124,20 @@ export function* CodePreview(
 				parsed = transform(value);
 				code = parsed.code;
 			} catch (err: any) {
-				errorMessage = err.message;
-				console.error(err.message || err);
+				loading = false;
+				errorMessage = err.message || err;
 				this.refresh();
 				return;
 			}
 
-			iframe.src = "";
 			document1.write(generateIFrameHTML(id, code, staticURLs!));
 			document1.close();
-		}, 2000);
+		};
+
+		executeDebounced = debounce(execute, 2000);
 	}
 
-	let height = 100;
+	let height = 200;
 	if (typeof window !== "undefined") {
 		const onmessage = (ev: any) => {
 			let data: any = JSON.parse(ev.data);
@@ -153,14 +152,13 @@ export function* CodePreview(
 				loading = false;
 				errorMessage = data.message;
 				this.refresh();
-			} else if (data.type === "resize") {
+			} else if (data.type === "resize" && visible) {
 				if (autoresize) {
 					// Auto-resizing iframes is tricky because you can get into an
 					// infinite loop. For instance, if the body height is `100vh`, or if
 					// a scrollbar being added or removed causes the page height to
-					// change. Therefore, we only increase the height and give a max
-					// height of 1000px.
-					height = Math.min(1000, Math.max(height, data.height));
+					// change. Therefore, we give a max height of 1000px.
+					height = Math.min(1000, Math.max(200, data.height));
 					this.refresh();
 				}
 			}
@@ -181,48 +179,69 @@ export function* CodePreview(
 		autoresize = false,
 	} of this) {
 		if (value !== oldValue || visible !== oldVisible) {
+			// TODO: This looks like it could just be an async function somehow
 			loading = true;
 			errorMessage = null;
-			this.flush(() => execute());
+			this.flush(() => executeDebounced());
 		}
 
 		yield jsx`
-			<div
-				class=${css`
-					display: flex;
-					flex-direction: column;
-					height: 100%;
-				`}
-			>
+			<div class=${css`
+				display: flex;
+				flex-direction: column;
+				height: 100%;
+			`}>
 				${
 					showStatus &&
 					jsx`
-					<div class=${css`
-						flex: none;
-						padding: 1em;
-						border-bottom: 1px solid var(--text-color);
-						height: 3em;
-					`}>
-						${errorMessage ? "Errored!" : loading ? "Loading..." : "Running!"}
-					</div>
-				`
+						<div class=${css`
+							flex: none;
+							padding: 1em;
+							border-bottom: 1px solid var(--highlight-color);
+							height: 3em;
+							text-align: right;
+							width: ${loading ? "0" : "100%"};
+							transition: width 0.2s ease-in-out;
+						`}>
+							${errorMessage ? "Errored!" : loading ? "Loading..." : "Running!"}
+						</div>
+					`
 				}
 				<div class=${css`
 					flex: 1 1 auto;
-					border: 4px solid ${loading ? "var(--coldark12)" : "var(--coldark11)"};
+					border: 5px solid
+						${errorMessage
+							? "var(--coldark15)"
+							: loading
+							? "var(--coldark12)"
+							: "var(--coldark11)"};
 					padding: 1em;
+					background-color: var(--coldark00);
 				`}
 				>
+					${
+						errorMessage &&
+						jsx`
+							<div class=${css`
+								color: var(--coldark12);
+								width: 100%;
+							`}>
+								<pre>${errorMessage}</pre>
+							</div>
+						`
+					}
 					<iframe
 						$key=${iframeID}
 						$ref=${(el: HTMLIFrameElement) => (iframe = el)}
-						class="playground-iframe"
-						style="
-							border: none;
-							width: 100%;
-							height: ${autoresize ? `${height}px` : "100%"};
-							background-color: var(--bg-color);
+						class="
+							playground-iframe
+							${css`
+								border: none;
+								width: 100%;
+								background-color: var(--bg-color);
+							`}
 						"
+						style="height: ${autoresize ? `${height}px` : "100%"};"
 					/>
 				</div>
 			</div>

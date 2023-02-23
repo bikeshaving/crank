@@ -62,11 +62,12 @@ function* Playground(this: Context, {}) {
 		yield jsx`
 			<div class="playground ${css`
 				display: flex;
-				flex-direction: row;
+				@media (min-width: 800px) {
+					flex-direction: row;
+				}
 				align-items: flex-start;
 				justify-content: stretch;
 
-				flex-wrap: wrap;
 				width: 100%;
 				height: 100vh;
 				padding-top: 50px;
@@ -92,8 +93,10 @@ function* Playground(this: Context, {}) {
 
 					border-top: 1px solid currentcolor;
 					border-left: 1px solid currentcolor;
-					margin-top: -1px;
-					margin-left: -1px;
+					@media (min-width: 800px) {
+						margin-top: -1px;
+						margin-left: -1px;
+					}
 				`}>
 					<${CodePreview} value=${value} showStatus />
 				</div>

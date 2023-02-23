@@ -357,14 +357,12 @@ export function* CodeEditor(
 		//const end = items[items.length - 1]?.index || 0;
 		yield jsx`
 			<div
-				class="
-					${css`
-						position: relative;
-						min-height: 100%;
-						width: 100%;
-						display: flex;
-					`}
-				"
+				class=${css`
+					position: relative;
+					min-height: 100%;
+					width: 100%;
+					display: flex;
+				`}
 			>
 				${
 					showGutter &&
@@ -401,6 +399,7 @@ export function* CodeEditor(
 								line-break: anywhere;
 								white-space: pre-wrap;
 								white-space: break-spaces;
+								/* Needs to be min 16px to prevent iOS zoom */
 								font-size: 16px;
 							`}
 						"

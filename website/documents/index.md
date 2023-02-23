@@ -1,9 +1,8 @@
-Many frameworks claim to be “just JavaScript.” Few have as strong a claim as
-Crank.
+Many web frameworks claim to be “just JavaScript.” Few have as strong a claim as Crank.
 
-It starts with the question: if components are *just* functions, why can’t they be async functions and generator functions as well?
+It starts with the question: if components are *just* functions, why can’t we use async and generator functions as well? Crank follows through: it builds a component model on top of promises and iterators. The result is a simpler developer experience where you spend less time writing framework integrations and more time writing vanilla JavaScript.
 
-## Three Reasons to choose Crank
+## Three reasons to choose Crank
 
 ### Reason #1: It’s declarative
 
@@ -122,7 +121,7 @@ renderer.render(jsx`
 
 ### Reason #2: It’s predictable
 
-Crank uses generator functions to define stateful components. You store state in local variables, and yield elements rather than returning them to keep that state around.
+Crank uses generator functions to define stateful components. You store state in local variables, and yield rather than returning to keep it around.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -189,6 +188,8 @@ function *Timer() {
     // Welcome to the render loop.
     // Most generator components should use render loops even if they do not
     // use props.
+    // The render loop provides useful behavior like preventing infinite loops
+    // because of a forgotten yield.
     yield (
       <div>
         <p>Seconds: {seconds} second{seconds !== 1 && "s"}</p>
@@ -232,7 +233,7 @@ async function QuoteOfTheDay() {
 renderer.render(<QuoteOfTheDay />, document.body);
 ```
 
-Async generators let you write components that are both async AND stateful. You can even race components to show temporary fallback states.
+Async generators let you write components that are both async *AND* stateful. You can even race components to show temporary fallback states.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -285,7 +286,7 @@ async function *LoadingCreditCard() {
     yield (
       <CreditCard
         number={"*".repeat(count) + "?".repeat(Math.max(0, 16 - count))}
-        type="__"
+        type={"Loading" + ".".repeat(count % 4)}
         owner="__ __"
         expiration="__/__"
       />
@@ -327,7 +328,7 @@ function *CreditCardGenerator() {
   const toggleThrottle = () => {
     throttle = !throttle;
     // TODO: A nicer user behavior would be to not generate a new card
-    // when activating the throttle.
+    // when toggling the throttle.
     this.refresh();
   };
 

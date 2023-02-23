@@ -16,12 +16,15 @@ export function* InlineCodeBlock(
 
 	let isIntersecting = false;
 	if (typeof window !== "undefined") {
-		const intersectionObserver = new IntersectionObserver((entries) => {
-			if (!isIntersecting) {
-				isIntersecting = entries[0].isIntersecting;
-				this.refresh();
-			}
-		});
+		const intersectionObserver = new IntersectionObserver(
+			(entries) => {
+				if (!isIntersecting) {
+					isIntersecting = entries[0].isIntersecting;
+					this.refresh();
+				}
+			},
+			{threshold: 0.1},
+		);
 
 		this.flush((root) => {
 			intersectionObserver.observe(root);
@@ -43,15 +46,12 @@ export function* InlineCodeBlock(
 					flex-wrap: wrap;
 					align-items: flex-start;
 					font-size: 16px;
-					border-left: 1px solid var(--text-color);
 				`}>
 					<div class=${css`
 						flex: 1 1 650px;
 						max-width: 100%;
 						overflow: auto;
-						border-top: 1px solid var(--text-color);
-						border-right: 1px solid var(--text-color);
-						border-bottom: 1px solid var(--text-color);
+						border: 1px solid var(--text-color);
 						margin-top: -1px;
 					`}>
 						<${CodeEditor}
@@ -64,24 +64,24 @@ export function* InlineCodeBlock(
 					${
 						editable &&
 						jsx`
-						<div class=${css`
-							flex: 1 1 auto;
-							position: sticky;
-							top: 100px;
-							border-top: 1px solid var(--text-color);
-							margin-top: -1px;
-							border-right: 1px solid var(--text-color);
-							border-bottom: 1px solid var(--text-color);
-							min-height: 50px;
-						`}>
-							<${CodePreview}
-								value=${value}
-								visible=${isIntersecting}
-								autoresize
-								showStatus
-							/>
-						</div>
-					`
+							<div class=${css`
+								flex: 1 1 auto;
+								position: sticky;
+								top: 100px;
+								border-top: 1px solid var(--text-color);
+								margin-top: -1px;
+								border-right: 1px solid var(--text-color);
+								border-bottom: 1px solid var(--text-color);
+								min-height: 50px;
+							`}>
+								<${CodePreview}
+									value=${value}
+									visible=${isIntersecting}
+									autoresize
+									showStatus
+								/>
+							</div>
+						`
 					}
 				</div>
 			</div>
