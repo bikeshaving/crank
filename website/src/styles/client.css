@@ -10,7 +10,6 @@
 .color-scheme-light {
 	--bg-color: #e7f4f5;
 	--text-color: #0a0e1f;
-	--highlight-color: #fbab60;
 }
 
 .blur-background {
@@ -32,14 +31,11 @@
 
 * {
 	color: var(--text-color);
+	box-sizing: border-box;
 }
 
 ::selection {
 	background: var(--coldark02);
-}
-
-* {
-	box-sizing: border-box;
 }
 
 html {
