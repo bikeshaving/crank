@@ -1,14 +1,15 @@
 Many frameworks claim to be “just JavaScript.” Few have as strong a claim as
 Crank.
 
-It starts with the question: if components are \i{just} functions, why can’t they be async functions and generator functions as well?
+It starts with the question: if components are *just* functions, why can’t they be async functions and generator functions as well?
 
 ## Three Reasons to choose Crank
 
 ### Reason #1: It’s declarative
 
-Crank works with JSX. It uses tried-and-true virtual DOM algorithms. Simple
-components can be defined with functions which return elements.
+Crank works with JSX. It uses tried-and-tested virtual DOM algorithms.
+
+Simple components can be defined with functions which return elements.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -94,9 +95,8 @@ function Stars({width, height}) {
 const inspirationalWords = [
   "I believe in you.",
   "You are great.",
-  "The best is yet to come.",
   "Get back to work.",
-  "Keep pushing forward, always.",
+  "A lifetime of 90 years has about 4,680 weeks. Think about that. Get back to work.",
 ];
 
 function RandomInspirationalWords() {
@@ -142,7 +142,7 @@ renderer.render(<CyclingName />, document.body);
 
 Components rerender based on explicit `refresh()` calls. This degree of precision means you can put side-effects wherever you want.
 
-Never “memoize” a callback ever again. Stop asking your framework “why did you render?” Be messy with confidence, with the knowledge that you control how your components run.
+Never “memoize” a callback ever again. Stop asking your framework “why did you render?” Be as messy as you need to be.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -171,14 +171,17 @@ function *Timer() {
   const resetInterval = () => {
     seconds = 0;
     clearInterval(interval);
-    startInterval();
+    interval = null;
     this.refresh();
   };
 
   // The this of a Crank component is an iterable of props.
   for ({} of this) {
     // This is the render loop.
-    // It is nicer than using `while (true)` because it prevents.
+    // It is nicer than using `while (true)` loops because it prevents infinite loops.
+    // Most generator components should use render loops, `while (true)` loops were
+    // mainly used for pedagogical purposes.
+
     yield (
       <div>
         <p>Seconds: {seconds} second{seconds !== 1 && "s"}</p>
@@ -191,7 +194,7 @@ function *Timer() {
     );
   }
 
-  // You can put cleanup code can go after the loop.
+  // You can put cleanup code after the loop.
   clearInterval(interval);
 }
 
@@ -200,7 +203,7 @@ renderer.render(<Timer />, document.body);
 
 ### Reason #3: It’s promise-friendly.
 
-Any component can be made asynchronous with the `async` keyword. As it turns out, the nicest way to use `fetch()` is to call the function and `await` its result.
+Any component can be made asynchronous with the `async` keyword. As it turns out, the nicest way to use `fetch()` is to call the function and `await` the result. Whaaaaa?
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -212,7 +215,9 @@ async function QuoteOfTheDay() {
   return (
     <figure>
       <blockquote>{quote.quote}</blockquote>
-      <figcaption>— <a href={quote.permalink}>{quote.author}</a></figcaption>
+      <figcaption>
+        — <a href={quote.permalink} _target="blank">{quote.author}</a>
+      </figcaption>
     </figure>
   );
 }
@@ -306,7 +311,7 @@ async function MockCreditCard({throttle}) {
 async function *RandomCreditCard({throttle}) {
   for await ({throttle} of this) {
     yield <LoadingCreditCard />;
-    await (yield <MockCreditCard throttle={throttle} />);
+    yield <MockCreditCard throttle={throttle} />;
   }
 }
 
@@ -314,6 +319,8 @@ function *CreditCardGenerator() {
   let throttle = false;
   const toggleThrottle = () => {
     throttle = !throttle;
+    // TODO: A nicer user behavior would be to not generate a new card
+    // when activating the throttle.
     this.refresh();
   };
 

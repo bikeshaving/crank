@@ -40,6 +40,7 @@ export function* InlineCodeBlock(
 				flex-wrap: wrap;
 				max-width: ${editable ? "100%" : "min(100%, 1000px)"};
 				align-items: flex-start;
+				font-size: 16px;
 			`}>
 				<div class=${css`
 					flex: 1 1 650px;
@@ -64,7 +65,7 @@ export function* InlineCodeBlock(
 						position: sticky;
 						top: 80px;
 						min-height: 50px;
-						border: 1px solid currentcolor;
+						border: 1px solid var(--text-color);
 						margin-top: -1px;
 						margin-left: -1px;
 					`}>
