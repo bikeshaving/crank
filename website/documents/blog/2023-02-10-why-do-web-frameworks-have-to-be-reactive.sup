@@ -1,19 +1,55 @@
 \title Why do Web Frameworks Need to be Reactive?
 
-\begin document
-When I first announced Crank at the start of the pandemic, almost three years ago now, I was surprised by its warm reception. I had assumed that the experience of being a new framework author would involve a lot more shouting into the void, standing on a street and wearing a sandwich board reading “Use My Framework” as passersby gawked, whispered “Ah, another soul lost to ‘Not Invented Here.’” Surprisingly, I found the JavaScript community and even fellow framework authors to be supportive of the effort.
+What are the rhetorical strategies you’re trying to employ here?
+The way this essay seems to be flowing
+- Crank had a moment
+- Shit on React as hard as I fucking can
+- Continue to shit on React
+- Veer into theoretical stuff about referential vs executional transparency
+- Extrapolate from React and say that every reactive framework does the same fucking thing
 
-Unfortunately, what happened afterwards is a great case-study in how to squander a JavaScript hype cycle. Infrequent updates caused Crank to wane into obscurity — crucially, before the sticky point where people build important things with it.
+It should be more like:
+- Crank had a moment
+- React fucking sucks
+- Vue fucking sucks
+- All reactive abstractions are leaky.
+- Is reactivity even necessary?
+- Men are bad, they do not ask questions, ads are bad, surveillance is bad.
+	THIS POINT SHOULD HIT LIKE A FUCKING CEMENT TRUCK.
+- Crank doesn’t do reactivity at all so what, that’s better.
+
+Inevitably, React hits will come frequently. Own up.
+
+IT SHOULD BE FUNNIER
+Maybe it will end up like:
+- Personal anecdote about Crank progress (pull heartstrings, humanize myself)
+- Challenge: Why create a non-reactive framework?
+- Bug analysis
+- Over-rendering vs under-rendering
+- The two kinds of transparencies, referential and executional
+- All reactive abstractions leak, muddy up execution.
+SPEED UP
+- React is not reactive: other frameworks go a step further, Vue.js case study
+- Quick montage of all of reactivity’s pitfalls in other frameworks.
+- FUCKING CEMENT TRUCK DEVASTATES THE READER
+- OPTIONAL: Svelte and react-three-fiber guy measuring dicks
+- The web as a frontier.
+
+\begin document
+When I first announced Crank at the start of the pandemic, almost three years ago now, I was surprised by its warm reception. I had assumed that the experience of being a new framework author would involve a lot more shouting into the void, standing on a street and wearing a sandwich board that reads “Use My Framework” as passersby gawked, whispered “Ah, another soul lost to ‘Not Invented Here.’” Surprisingly, I found the JavaScript community and even fellow framework authors to be supportive of the effort.
+
+Unfortunately, what happened afterwards is a great case-study on how to squander a JavaScript hype cycle. Infrequent updates, and my refusal to participate on popular developer forums like Twitter and Discord caused Crank to wane into obscurity — crucially, before the sticky point where people build important things with it.
 
 I have wonderful excuses. To my chagrin, the fantastic but unsparing \link{JS framework benchmark} revealed performance issues in early versions of Crank, and I found myself in the unfortunate position of having to solve difficult, unGoogleable problems which only I would be interested in solving. At the same time, some of the feedback that I read online, that I was being too toxic in my criticisms of React, had a chilling effect. What if I didn’t really know what I was talking about? Was I ignoring the people behind the screens?
 
-Nevertheless, for reasons of pride, or perhaps insanity, I persisted, refactoring the codebase numerous times, and refining its API. Today, I’m happy to say that, according to the same benchmark, Crank is comparable in performance to popular production-ready frameworks like Svelte and Vue, though some of the improvements just seem to be Chrome getting faster.
+I thought it would be better for me to learn about modern JavaScript engines, de-optimizations, and garbage collection in monastic silence, rather than beef with FAANG engineers on Twitter. Nevertheless, for reasons of pride, or perhaps insanity, I persisted, refactoring the codebase numerous times, and refining the API. Today, I’m happy to say that, according to the same benchmark, Crank is comparable in performance to popular production-ready frameworks like Svelte and Vue.
 
 Moreover, many of the opinions I had originally expressed in the introductory essay have been vindicated. For instance, React is now considering allowing the usage of async functions for components (though only on the server for some reason), a feature that has been a part of Crank since day one. \comment{if you want to make a claim about React’s declining popularity, then fucking cite it}
 
-With this in mind, as I try to write about Crank again, I find myself again faced with a problem which I have caused and perhaps only I am motivated to solve. I have to convince web developers to use Crank, despite the fact that it is a “non-reactive” web framework, perhaps the only one out there.
+\comment THE PARALLELISM IS GREAT HERE
+With this in mind, as I try to write about Crank again, I find myself again faced with a difficult, unGoogleable problem. I have to convince web developers that Crank is well-designed, despite the fact that it is “non-reactive.”
 
-Reactivity has many definitions. In the context of JavaScript and user interfaces (UIs), it refers to the ability of a framework to automatically update the UI in response to changes to the underlying data. As demonstration of how Crank is “non-reactive,” here’s what a simple counter component is defined:
+Reactivity has many definitions. In the context of JavaScript and user interfaces, it refers to the ability of a framework to update in response to changes to underlying data. As demonstration of how Crank is “non-reactive,” here’s how a simple counter component works:
 
 \code|||
 function *Counter() {
@@ -35,27 +71,27 @@ function *Counter() {
 
 Unlike other frameworks, Crank has no knowledge of what constitutes a component’s local state, or when it might change. For instance, in the preceding example, you have to both increment the \${count} variable and call \${this.refresh()}; updating the count variable on its own will not cause the DOM to update.
 
-Many developers saw examples like this and balked. “Isn’t the need for an explicit \${refresh()} here a ‘pitfall’ or a ‘footgun,’ in the sense that you could theoretically increment the count variable without refreshing the component?” I found in multiple places people describing this aspect of Crank’s design as “a disappointment” or “a step backward.”
+Many developers saw examples like this and balked. “Isn’t the need for an explicit \${refresh()} here a ‘pitfall’ or a ‘footgun,’ in the sense that you could theoretically increment the count variable without refreshing the component?” I saw many commenters described this aspect of Crank’s design as “a disappointment” or “a step backward.”
 
-To be honest, this was not a difficult design decision for me. I had had enough of the pains of “reactivity” in the past, and I was delighted to discover that I could represent state as merely local variables thanks to generator functions. It felt like an obvious win.
+\TODO cut probably
+To be honest, this was not a difficult design decision for me. I had had enough of the pains of “reactivity” in the past, and I was delighted to discover that I could represent state as just local variables thanks to generator functions. It felt like an obvious win.
 
+\TODO this is in the past tense for some reason
 Nevertheless, I should have anticipated that this decision would be a cause for controversy, if only because by not providing any sort of “reactive” solution, I was going against the grain. Why did I feel okay shirking the responsibilities of reactivity by making rerendering explicit, when almost all other framework authors seem to find it necessary to automate this task on behalf of their users?
-
-My goal for the rest of this essay is to convince you that Crank being non-reactive is actually a strength in its design, and not some oversight on the part of an inexperienced framework author.
 
 \section Under-rendering is better than over-rendering
 
 Here’s one way to think about it. As I mentioned earlier, one of the main objections to explicit refreshes is that it’s a potential “footgun,” a design flaw which results in bugs, because having to explicitly rerender components with a \${refresh()} call means it is possible to forget to update the view.
 
-I have definitely caused this, just forgetting to call \${this.refresh()}. Especially when coming from working on reactive frameworks to Crank, and muscle memory doesn’t kick in.
+I have personally forgotten to call \${this.refresh()} many times, especially when I’ve been working with a reactive framework and come back to working with Crank. It may seem odd to you that I don’t find this to be a damning indictment. To understand why I don’t mind “shooting” myself in the foot like this every so often, we need to do an analysis of this kind of bug in terms of its actual cost: its effects on software quality and developer productivity.
 
-It may seem odd that to you that I don’t find this a damning indictment of Crank. To understand why I don’t mind “shooting” myself in the foot like this every so often, we need to do an analysis of this kind of bug in terms of its actual cost: its effects on software quality and developer productivity.
+Two questions we can ask when evaluating the severity of potential bugs are 1. “Is the bug easy to spot?” and 2. “Is it easy to fix?” My answers to both these question is “yes.” When you forget to call ${this.refresh()} after updating the local state, the result is almost always immediately noticed by the developer in the course of development. For instance, you add a click handler to a button, click it, and see that the UI hasn’t changed.
 
-Two questions we can ask when evaluating the severity of potential bugs are 1. “Is the bug easy to spot?” and 2. “Is the bug easy to fix?” My answers to both these question is “yes.” When you forget to call ${this.refresh()} after updating the local state, the result is almost always immediately noticed by the developer in the course of development. You add a click handler to a button, click it, and see that the UI hasn’t changed. So the bug is easy to stop. Is the bug easy to fix? Yes, because rerendering in Crank is explicit, the way to fix this bug is usually equally obvious, a single line change.
+So the bug is easy to spot. Is the bug easy to fix? Yes, because rerendering in Crank is explicit, the way to fix this bug is usually equally obvious, a single line addition.
 
-So this type of bug is both easy to spot and fix, but your next question is probably, why we should tolerate this type of bug at all, if we can use reactive solutions to prevent them? To understand, we need to analyze what happens when frameworks attempt to prevent this kind of bug by going the other way, by rerendering for you when they detect changes to “state.”
+So this type of bug is both easy to spot and fix, but your next question is probably, why should we tolerate this type of bug at all, if we can use reactive solutions to prevent them? To understand, we need to analyze what happens when frameworks attempt to prevent this kind of bug by going the other way, by rerendering for you when they detect changes.
 
-We can broadly describe bugs where the view does not update to match state as cases of “under-rendering,” in the sense that less code is executed than expected. Logically then, if there is such a thing as “under-rendering,” then there must also be a thing called “over-rendering,” where the view executes and renders more code than is necessary. While not exactly a bug in the sense that users wouldn’t describe over-rendered applications as being obviously incorrect, over-rendering can still manifest as a problem in the sense that it can lead to performance issues.
+We can describe bugs where the view does not update as cases of “under-rendering,” in the sense that less code is executed than expected. Logically, if there is such a thing as “under-rendering,” then there must also be a thing called “over-rendering,” where the view executes and renders more code than is necessary. While not exactly a bug in the sense that users wouldn’t describe over-rendered applications as being obviously incorrect, over-rendering can still manifest as a problem in the sense that it can lead to performance issues.
 
 If you have ever investigated the performance of large JavaScript applications, you’ll probably agree with the following statement: most frameworks, and especially React, are pathologically over-rendered. We know this is true because there are popular developer tool extensions which are dedicated to identifying instances of over-rendering like \link{#TK}{why-did-you-render}. And the worst part is, unlike under-rendering, over-rendering is both difficult to detect and difficult to fix.
 
@@ -63,22 +99,24 @@ If you have ever investigated the performance of large JavaScript applications, 
 
 To visualize, you can imagine all possible situations of under-rendering and over-rendering as existing on a line, with under-rendering on the left and over-rendering on the right. Ideally, your framework should place developers at the imaginary point of “exactly rendered,” where just enough code executes that the UI reflects your data, with maximum efficiency.
 
-Crank differs from its contemporaries in that it aims to undershoot, rather than overshoot by default. By contrast, most frameworks imagine the “pit of success” to lie somewhere a little past the point of exactly rendered. The trick is to then argue with each other over how little they overshot the mark, how efficient their reactive solutions are.
+Crank has been designed to undershoot by default. By contrast, most frameworks imagine the “pit of success” to lie somewhere a little past the point of exactly rendered. The trick is then to argue with each other over how little they overshot the mark, how efficient their reactive solutions are.
 
-Crank aims to undershoot because that’s where I think the “pit of success” actually is, because to over-render by default betrays a misunderstanding of the lay of the land. As illustration, we can imagine the points on the preceding line as having an elevation, in the sense that it takes energy to go from one point on the line to another. Like I described earlier, it’s easy to go from under-rendered to exactly rendered, at least in Crank, insofar as it really is just adding a call to \${this.refresh()} here and there. This is just the process of normal development. On the other hand, it gets increasingly difficult to go from over-rendered to exactly rendered.
+Crank is designed like this because that’s where the “pit of success” actually is, to prefer over-rendering is to misunderstand the lay of the land. As illustration, we can imagine the points on the preceding line as having an elevation, in the sense that it takes energy to go from one point on the line to another. Like I described earlier, it’s easy to go from under-rendered to exactly rendered, at least in Crank, insofar as it really is just adding a call to \${this.refresh()} that you may have forgotten. This is just normal development. By contrast, it gets increasingly difficult to go from over-rendered to exactly rendered.
 
 \image{#TODO}{The cost of moving along the rendering line}
 
-The reason for this difficulty is that over-execution is due to the framework, and not necessarily anything with your own code. In other words, over-rendering does not exist as a single bottleneck which you can discover and optimize, but applies to all your code. Compounding this problem is the fact that you don’t over-rendered until it’s already too late, because on a superficial level, every point on the line from exactly rendered to infinitely over-rendered looks exactly the same to the end user, just progressively degraded.
-
-React is the worst offender in terms of over-execution. Most React developers are aware of the problem of over-rendering at least implicitly, but the psychology of the React developer is to believe that they will be saved by some technique or optimization. I regret to inform you that none of caching, memoization, \${shouldComponentUpdate()} or immutable data structures will save you. On the contrary, each of these techniques are \link{hotly debated}{https://kentcdodds.com/blog/usememo-and-usecallback} and must be \link{https://news.ycombinator.com/item?id=14418054}{selectively applied}.
+This is because over-execution does not manifest as single bottleneck; it is the framework which is over-rendering. Compounding this problem is the fact that over-rendering is seldom spotted immediately: every point on the line from exactly rendered to infinitely over-rendered looks exactly the same to the end user, just progressively degraded.
 
 The reasons these optimizations are many, but specifically, they don’t do much most of the time because many make the poor trade in JavaScript of CPU time for memory, where what you gain in reduced execution time is lost to additional garbage collection pauses, and because fundamentally, they don’t solve the root cause of the problem of over-execution; you’re in essence trying to execute less code by executing some other code instead.
 
-The root cause isn’t that you’re not using one of these techniques, it’s that React is rendering too much, and there is no lever you can pull to get it to stop. This is a consequence of years of de-emphasizing the idea that execution matters. It started with the idea that creating and rendering virtual DOM nodes was cheaper than rendering actual DOM nodes, and for the most part this is true. If you have the functions which read props and state and return virtual DOM elements, the actual execution of these functions is typically negligible compared to actual DOM mutations. At some point however, this was corrupted by overzealous functional programmers who said the cost of execution of these virtual DOM returning functions was negligible or even “free.”
+React is the worst offender in terms of over-execution. Most React developers are aware of the problem of over-rendering at least implicitly, but the psychology of the React developer is to believe that they will be saved by some technique or optimization, whether its “concurrent mode” or some future transpiler. The techniques for solving over-execution are \link{hotly debated}{https://kentcdodds.com/blog/usememo-and-usecallback} and must be \link{https://news.ycombinator.com/item?id=14418054}{selectively applied}.
 
-This is, of course, obviously false, no execution is ever really free insofar as it consumes CPU and memory, but this idea gripped the React team, such that successive features only make sense when they are considered in the context that executing these “render” functions is somehow negligible or free. Rerender to align a \${useEffect()} callback in a hook with its closure, rerender when a context is updated, rerender both to throw a promise for suspense and once again when that promise resolves. Each time, the virtual DOM producing functions are imagined to execute for free but the resulting effect when you scale an application is that those little bits of execution add up.
+The root cause isn’t that you’re not using one of these techniques, it’s that React is rendering too much, and there is no lever you can pull to get it to stop. This is a consequence of years of de-emphasizing the idea that execution matters. It started with the idea that creating and rendering virtual DOM nodes was cheaper than rendering actual DOM nodes, and for the most part this is true. However, at some point, this was corrupted by overzealous programmers, faster became free, as in you can run these virtual DOM functions as many times as you want with no detriment.
 
+\TODO the analogy at the end is just cuz I’m high Do not preserve.
+This is, of course, obviously false, no function call is free, at the very least it consumes some CPU and memory, but this idea gripped the React team, such that successive features only make sense when they are considered in the context that executing these “render” functions is somehow negligible or free. Rerender to align a \${useEffect()} callback in a hook with its closure, rerender when a context is updated, rerender both to throw a promise for suspense and once again when that promise resolves. Each new feature is like water poured into the open mouths of developers who are already drowning.
+
+\TODO this should probably go later
 The most perplexing aspect is that advancements in web frameworks in recent years have made it much simpler to render applications in a declarative manner. Most contemporary frameworks these days have some form of “immediate mode” rendering, where you simply declare what the DOM will look like via JSX or templates, and the framework uses techniques like virtual DOM diffing or compilation to make the actual DOM look like what you declared, regardless of what it looked like before. Essentially, we can make changes to the DOM with a snap of the fingers, so why is it that we still insist that this finger snapping be automated.
 
 \section Two different transparencies
@@ -87,19 +125,77 @@ Here’s a slightly more theoretical way to look at it. Let’s say you aren’t
 
 For instance, there’s the cyclomatic complexity of a program: this is measured by the number of independent paths which can be taken through a program’s source code. The more control-flow branches there are in a specific function (if, else, for, while, etc. statements), the more difficult it will be to understand what the code is meant to do, or if it is correct. Similarly, we can indirectly measure the complexity of code by checking if a function or program exhibits certain properties, like \i{referential transparency}. A function or program is referentially transparent if it returns the same output given the same input, and does not produce side-effects.
 
-I bring up referential transparency because this is brought up as a way to mitigate over-execution. Insofar as, for instance, React components allow you take inputs and return declarative templates, you should not care about how many times said component runs. In other words, 
+\comment{I think we should either beat down React exclusively, or bring up other frameworks. But React is sofaking wrong about everything. Hmmmmmmmm}
+I bring up referential transparency because this is brought up as a way to mitigate over-execution. Insofar as, for instance, components take inputs and return declarative templates, you should not care about how many times this is done.
 
-By contrast, executional transparency is the measure of 
+There is the strict definition of referential transparency, but it can also come in shades, maybe a function only has local side-effects. Immutable data structures blah blah blah. Idempotency can be thought of as weaker transparency.
 
-The fallacy behind this line of reasoning is that 
+Executional transparency is a term I made up to sell Crank, because I wanted to create space for a transparency that is not referential. If referential transparency is about understanding *what* the values of expressions are as your program runs, executional transparency is about understanding *when* or *how* many times the statements in your code runs. It is a measure of how easily it is to predict the order and number of times statements in a program are executed. It is a way of understanding the runtime behavior of a program, while referential transparency focuses on inputs and outputs.
+
+Executional transparency is every bit as important as referential transparency, though it is a property which is difficult to measure. The fallacy of the React team is to assume that the two transparencies are mutually exclusive, or at least inversely correlated. They are not. In actuality, good engineering works when you try your hardest to keep as much of both referential and executional transparency. You can trade referential transparency to mutate data structures in place and reduce the memory costs of your programs, and you can trade executional transparency to write more complicated programs. The complexity of what you’re trying to build is weighed against the two transparencies, made opaque for reasons practical reasons.
+
+	CHATGPT IS HELPING ME ORDER MY THOUGHTS A DIALOGUE:
+
+	ChatGPT and I fight about subjectivity...
+
+	Me: I am trying to create a concept of “executional transparency” in opposition to “referential transparency.” If we say that referential transparency is about understanding what the values of expressions are as your program runs, executional transparency is about understanding when or how many times the statements in your code runs. Does that make sense to you?
+
+	ChatGPT: Yes, it makes sense. Executional transparency can be thought of as a measure of how easily it is to predict the order and number of times statements in a program are executed. It is a way of understanding the runtime behavior of the program, while referential transparency focuses on the relationship between inputs and outputs. Both are important considerations in software development, and understanding the trade-offs between them can help developers write more maintainable and efficient code.
+
+	Me: Are they mutually exclusive?
+
+	ChatGPT: No, referential transparency and executional transparency are not necessarily mutually exclusive. In fact, they can be related and complementary concepts. Referential transparency refers to the idea that an expression always produces the same result, given the same inputs. On the other hand, executional transparency is concerned with understanding the control flow and order of execution of statements in a program. These two concepts can both impact the overall understandability and maintainability of a program, and they can both be desirable properties in certain situations. However, the extent to which each is important can depend on the specific context and the goals of the program.
+
+	Me: This is exactly in line with my thinking. In the essay I’m writing that I‘ve shown you so far, I‘m trying to point to the idea that referential transparency and executional transparency are inversely correlated is the fallacy which has allowed React maintainers to justify over-execution, when really, you can have both.
+
+	ChatGPT: That's interesting. Referential transparency and executional transparency are important concepts in software development, and it's important to understand the trade-offs between them. However, it's not necessarily a case of one being inversely correlated with the other. The relationship between the two concepts can be more nuanced and complex. In some cases, it might be possible to have both referential transparency and executional transparency, but in other cases, a trade-off might be necessary. It's important to carefully consider the requirements of each specific project and determine the best balance between these two concepts based on those requirements.
+
+	Me: Can you write a third section which introduces referential transparency and executional transparency as it relates to my framework Crank? I’m having a little difficulty.
+
+	ChatGPT: Sure! Here's a third section that introduces referential transparency and executional transparency as it relates to your framework Crank:
+
+	Referential transparency and executional transparency are important concepts in computer programming...
+	END SCENE
+
+Again I hate to rag on React, but let’s do it agian.
+React is executionally opaque to a fault. Most Strict mode. 
+My most charitable understanding of why React is designed this way is that React is a defense based on scale. When you work at a large company like Facebook, you do not have control over whne components run, because other people are modifying your code, because the application is of sufficient size that you will not know why code runs. By taking it away proactively, we prepare developers for working at companies of scale. 
+
+I am unconvinced by this line of reasoning.
 
 Because reactive systems re-execute code when things change, however that’s defined, they by necessity reduce the executional tranparency of the resulting code.
 
+LOB A CRITICISM AT VUE.JS. https://vuejs.org/guide/best-practices/performance.html#reduce-reactivity-overhead-for-large-immutable-structures
+
+\quote Vue does provide an escape hatch to opt-out of deep reactivity by using shallowRef() and shallowReactive(). Shallow APIs create state that is reactive only at the root level, and exposes all nested objects untouched. This keeps nested property access fast, with the trade-off being that we must now treat all nested objects as immutable, and updates can only be triggered by replacing the root state:
+
+\comment This is the juiciest part.
 \section Consent-driven development
 
-Here’s another way to look at it.
+	ME: Both React and Vue have equivalents to Crank‘s refresh(), except they call it forceUpdate(). Literary analysis can be applied here to the selection of the name of this function. If the developer must “force” the framework to “update,” the implication is that they do not control when components run. While this was probably meant to communicate that the APIs are escape hatches that you should not use, the effect is to perpetuate an analogy of control and dominance to describe the interaction between framework and framework user. You must force the framework to do what you want, but do not get used to it, because you are not in control under ordinary circumstances. Inversion of control has somehow become a complete loss of control.
+
+	ChatGPT: This paragraph provides an insightful analysis of the naming convention used in React and Vue for their equivalent function to Crank's refresh(). The author notes that the function is called forceUpdate(), and argues that the use of the word "force" implies that the developer does not have control over when components run. The author suggests that this reinforces a power dynamic between the framework and the user, where the user must exert dominance over the framework to achieve their desired outcome.
+
+	The author also makes a compelling point about the concept of inversion of control, which is a fundamental concept in software development. The author notes that while inversion of control is intended to allow the framework to manage certain aspects of the application, it can also lead to a complete loss of control for the user. This loss of control can be seen in the need to "force" the framework to do what the user wants.
+
+	Overall, the paragraph provides an interesting analysis of the naming conventions used in React and Vue, and highlights some of the issues that can arise when inversion of control is taken too far.
+
+Both React and Vue have equivalents to Crank’s refresh(), except they call it forceUpdate(). Note the name. If a user has to “force” a framework to “update,” the implication is that they do control when these updates happen. This word choice was probably meant to insinuate that these APIs are escape hatches, not to be used in the course of regular development. But the language reinforces a power dynamic between framework and user, where the user must exert dominance over the framework to achieve their aims. The classical conception of frameworks as “inversion of control” has been expanded to mean “loss of control,” and the user of framework must override the framework to call functions they themselves have written.
+
+Both React and Vue have equivalents to Crank‘s refresh(), except they call it forceUpdate(). Literary analysis can be applied here to the selection of the name of this function. If the developer must “force” the framework to “update,” the implication is that they do not control when components run. While this was probably meant to communicate that the APIs are escape hatches that you should not use, the effect is to perpetuate an analogy of control and dominance to describe the interaction between framework and framework user. You must force the framework to do what you want, but do not get used to it, because you are not in control under ordinary circumstances. Inversion of control has somehow become a complete loss of control.
+
+Both React and Vue have equivalents to Crank’s refresh(), except they call it forceUpdate(). We can perform literary analysis on this name. If a user has to “force” a framework to “update,” the implication is that they do not control when these updates happen. This word choice was probably meant to insinuate that these APIs are escape hatches, only to be used when reactivity breaks. But the language reinforces a power dynamic between user and framework where the user must exert dominance over the framework to achieve their aims. The classical conception of frameworks as “inversion of control” has expanded to mean “loss of control,” and in an ironic twist, the user must override the framework to call the functions they have written.
+
+\comment YOU ARE FUCKING REACHING BRIAN
+
+Every single reactive abstraction will inevitably leak.
 
 \section The frontier of web development
 
+Perhaps the reason why I do not consider reactivity to be important is that it ranks low on a list of challenges, where I and others imagine the frontier of the web to be. I personally findkjkkkkkkk.
+Personally speaking, reactivity ranks low on the list of problems that I consider interesting. The ability to have DOM update exactly when you want is a superpower.
 
-And the code has gotten monstrously complex to support features like hydration and async generator lifecycles. Maybe someday I will come back and refactor it to be nice and pretty, or maybe someone else could do it for me? Pretty please? Isn’t that open source or whatever.
+Perhaps I am wearing that sandwich board “Use My Framework.” Perhaps I am alone. It’s okay.
+
+\comment Where is this from? Just a fucking random thought, Brian?
+\comment And the code has gotten monstrously complex to support features like hydration and async generator lifecycles. Maybe someday I will come back and refactor it to be nice and pretty, or maybe someone else could do it for me? Pretty please? Isn’t that open source or whatever.
