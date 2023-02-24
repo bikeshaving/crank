@@ -1,10 +1,9 @@
 import * as Babel from "@babel/core";
-// @ts-ignore
+// @ts-expect-error
 import babelPluginSyntaxJSX from "@babel/plugin-syntax-jsx";
-// @ts-ignore
+// @ts-expect-error
 import babelPluginTransformReactJSX from "@babel/plugin-transform-react-jsx";
-
-// @ts-ignore
+// @ts-expect-error
 import babelPresetTypeScript from "@babel/preset-typescript";
 
 function rewriteBareModuleSpecifiers(): Babel.PluginObj {
@@ -101,34 +100,77 @@ function guardLoops({template, types}: typeof Babel): Babel.PluginObj {
 }
 
 export function transform(code: string) {
-	return Babel.transform(code, {
-		filename: "file",
-		presets: [
-			[
-				babelPresetTypeScript,
-				{
-					isTSX: true,
-					allExtensions: true,
-					jsxPragma: "createElement",
-					jsxPragmaFrag: "''",
-					allowDeclareFields: true,
-				},
+	try {
+		return Babel.transform(code, {
+			filename: "file",
+			presets: [
+				[
+					babelPresetTypeScript,
+					{
+						isTSX: true,
+						allExtensions: true,
+						jsxPragma: "createElement",
+						jsxPragmaFrag: "''",
+						allowDeclareFields: true,
+					},
+				],
 			],
-		],
-		plugins: [
-			babelPluginSyntaxJSX,
-			[
-				babelPluginTransformReactJSX,
-				{
-					runtime: "automatic",
-					importSource: "@b9g/crank",
-				},
+			plugins: [
+				babelPluginSyntaxJSX,
+				[
+					babelPluginTransformReactJSX,
+					{
+						runtime: "automatic",
+						importSource: "@b9g/crank",
+					},
+				],
+				rewriteBareModuleSpecifiers,
+				guardLoops,
+				//messageScriptStatus,
 			],
-			rewriteBareModuleSpecifiers,
-			guardLoops,
-			//messageScriptStatus,
-		],
 
-		sourceMaps: "inline",
-	});
+			sourceMaps: "inline",
+		});
+	} catch (err: any) {
+		// TODO: There might be a better way to do this.
+		if (
+			/pragma and pragmaFrag cannot be set when runtime is automatic/.test(
+				err.message,
+			)
+		) {
+			return Babel.transform(code, {
+				filename: "file",
+				presets: [
+					[
+						babelPresetTypeScript,
+						{
+							isTSX: true,
+							allExtensions: true,
+							jsxPragma: "createElement",
+							jsxPragmaFrag: "''",
+							allowDeclareFields: true,
+						},
+					],
+				],
+				plugins: [
+					babelPluginSyntaxJSX,
+					[
+						babelPluginTransformReactJSX,
+						{
+							runtime: "classic",
+							pragma: "createElement",
+							pragmaFrag: "''",
+						},
+					],
+					rewriteBareModuleSpecifiers,
+					guardLoops,
+					//messageScriptStatus,
+				],
+
+				sourceMaps: "inline",
+			});
+		}
+
+		throw err;
+	}
 }

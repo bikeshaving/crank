@@ -3,36 +3,38 @@ title: Getting Started
 ---
 
 ## Try Crank
-The fastest way to try Crank is via the [playground](/playground).
+The fastest way to try Crank is via the [playground](/playground). Many of the examples in this documentation are also interactive.
 
 ## Installation
-The Crank package is available on [NPM](https://npmjs.org/@b9g/crank).
+The Crank package is available on [NPM](https://npmjs.org/@b9g/crank) through the [@b9g organization](https://www.npmjs.com/org/b9g) (short for bikeshaving).
 
 ```shell
 $ npm install @b9g/crank
 ```
 
 ```jsx
+/** @jsx createElement */
+import {createElement} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
 renderer.render(<div id="hello">Hello world</div>, document.body);
 ```
 
-It is also available on ESM CDNs like [unpkg](https://unpkg.com) (https://unpkg.com/@b9g/crank?module) or [esm.sh](https://esm.sh) (https://esm.sh/@b9g/crank).
+It is also available on CDNs like [unpkg](https://unpkg.com) (https://unpkg.com/@b9g/crank?module) or [esm.sh](https://esm.sh) (https://esm.sh/@b9g/crank) for usage with ESM-ready environments.
 
-```jsx
+```jsx live
 /** @jsx createElement */
-import {createElement} from "https://unpkg.com/@b9g/crank?module";
+import {createElement} from "https://unpkg.com/@b9g/crank/crank?module";
 import {renderer} from "https://unpkg.com/@b9g/crank/dom?module";
 
 renderer.render(<div id="hello">Hello world</div>, document.body);
 ```
 
 ### Transforming JSX
+The hardest part about setting up a Crank project is transpiling away [JSX](https://facebook.github.io/jsx/). Unfortunately, bundling and transpilation continue to evolve in the world of JavaScript, but Crank has kept pace.
 
-The main challenge when setting up Crank is transforming [JSX](https://facebook.github.io/jsx/). Bundling and transpilation continues to evolve.
+### Starter templates
 
 ### Alternatives to JSX
-
 ```jsx
 import {renderer} from "@b9g/crank/dom";
 ```

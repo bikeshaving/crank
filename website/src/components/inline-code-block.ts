@@ -68,10 +68,11 @@ export function* InlineCodeBlock(
 								flex: 1 1 auto;
 								position: sticky;
 								top: 100px;
-								border-top: 1px solid var(--text-color);
+								border: 1px solid var(--text-color);
 								margin-top: -1px;
-								border-right: 1px solid var(--text-color);
-								border-bottom: 1px solid var(--text-color);
+								@media (min-width: 800px) {
+									margin-left: -1px;
+								}
 								min-height: 50px;
 							`}>
 								<${CodePreview}
