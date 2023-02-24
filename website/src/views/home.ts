@@ -24,9 +24,8 @@ const components = {
 						: depth === 3
 						? "max(4vh, 30px)"
 						: null};
-					color: var(${depth === 3 ? "--bg-color" : "--text-color"});
+					color: var(${depth === 3 ? "--highlight-color" : "--text-color"});
 					margin: 1em auto;
-					background-color: ${depth === 3 ? "var(--highlight-color)" : null};
 					${(depth === 2 || depth === 3) && "padding: 1em 0"};
 				`}"
 			>

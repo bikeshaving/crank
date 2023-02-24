@@ -96,7 +96,7 @@ const inspirationalWords = [
   "I believe in you.",
   "You are great.",
   "Get back to work.",
-  "A lifetime of 90 years is about 4,680 weeks. Most of us will live less than that.",
+  "We got this.",
 ];
 
 function RandomInspirationalWords() {
