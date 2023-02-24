@@ -152,10 +152,6 @@ renderer.render(<CyclingName />, document.body);
 
 Components rerender based on explicit `refresh()` calls. This level of precision means you can be as messy as you need to be.
 
-Stop worrying about where to put side-effects. Stop “memoizing” callbacks. Stop asking your framework *why did you render?* Stop searching your codebase for infinite loops caused by over-reactive abstractions.
-
-Start building.
-
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
 

@@ -119,3 +119,4 @@ import BlogPage from "./views/blog.js";
 
 await storage.write(path.join(dist, "/static/"));
 storage.clear();
+console.log("Hello");
