@@ -7,7 +7,7 @@ title: Elements and Renderers
 
 ## JSX
 
-Crank can be used with [JSX](https://facebook.github.io/jsx/), a well-supported, XML-like syntax extension to JavaScript. Most popular JavaScript transpilers support JSX transforms as an out-of-the-box feature. These transpilers work by transforming JSX expressions into function calls, and by convention, this has usually been a function called `createElement()`. For example, in the following code, the JSX expression assigned to `el` transpiles to the `createElement()` call assigned to `el1`.
+Crank is designed to be used with [JSX](https://facebook.github.io/jsx/), a well-supported, XML-like syntax extension to JavaScript. Most popular JavaScript transpilers support JSX transforms as an out-of-the-box feature. These transpilers work by transforming JSX expressions into function calls, and by convention, this has usually been a function called `createElement()`. For example, in the following code, the JSX expression assigned to `el` transpiles to the `createElement()` call assigned to `el1`.
 
 ```jsx
 /** @jsx createElement */
