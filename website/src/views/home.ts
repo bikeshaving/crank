@@ -1,8 +1,9 @@
-import {jsx, Raw} from "@b9g/crank/standalone";
+import {jsx} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 
 import {Root} from "../components/root.js";
 import type {Storage} from "../components/esbuild.js";
+import {EmbeddedJSON} from "../components/embed-json.js";
 import {collectDocuments} from "../models/document.js";
 import * as Path from "path";
 
@@ -56,7 +57,6 @@ const components = {
 
 	code({token}: any) {
 		const {text: code, lang} = token;
-		const json = JSON.stringify({code, lang});
 		return jsx`
 			<div
 				class="
@@ -76,9 +76,7 @@ const components = {
 					lang=${lang}
 					editable=${lang.endsWith(" live")}
 				/>
-				<script class="props" type="application/json">
-					<${Raw} value=${json} />
-				</script>
+				<${EmbeddedJSON} value=${{code, lang}} class="props" />
 			</div>
 		`;
 	},
