@@ -1,6 +1,8 @@
 Many web frameworks claim to be “just JavaScript.” Few have as strong a claim as Crank.
 
-It starts with the question: if components are *just* functions, why can’t you use async and generator functions as well? Crank follows through: it reimagines the component model as one which takes full advantage of promises and iterators. The result is a simpler developer experience where you spend less time writing framework integrations and more time writing vanilla JavaScript.
+It starts with the question: if components are *just* functions, why can’t they be async and generator functions as well? Crank follows through on this idea, reimagining the component model as one which takes full advantage of promises and iterators.
+
+The result is a simpler developer experience, where you spend less time writing framework integrations and more time writing vanilla JavaScript.
 
 ## Three reasons to choose Crank
 
@@ -35,7 +37,7 @@ renderer.render(<RandomName />, document.body);
 ```
 
 Don’t think JSX is vanilla enough? Crank provides a tagged template function
-which provides the same syntax.
+which does roughly the same thing.
 
 ```jsx live
 import {jsx} from "@b9g/crank/standalone";
@@ -94,7 +96,7 @@ const inspirationalWords = [
   "I believe in you.",
   "You are great.",
   "Get back to work.",
-  "A lifetime of 90 years is about 4,680 weeks. Think about that.",
+  "A lifetime of 90 years is about 4,680 weeks. Most of us will live less than that.",
 ];
 
 function RandomInspirationalWords() {
@@ -121,7 +123,7 @@ renderer.render(jsx`
 
 ### Reason #2: It’s predictable
 
-Crank uses generator functions to define stateful components. You store state in local variables, and `yield` rather than `return` to keep it around.
+Crank uses generator functions to define stateful components. You store state in local variables, and `yield` rather than `return` to keep that state around.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -148,9 +150,11 @@ function *CyclingName() {
 renderer.render(<CyclingName />, document.body);
 ```
 
-Components rerender based on explicit `refresh()` calls. This degree of precision means you can put side-effects wherever you want.
+Components rerender based on explicit `refresh()` calls. This level of precision means you can be as messy as you need to be.
 
-Never “memoize” a callback ever again. Stop asking your framework “why did you render?” Be as messy as you need to be.
+Stop worrying about where to put side-effects. Stop “memoizing” callbacks. Stop asking your framework *why did you render?* Stop searching your codebase for infinite loops caused by over-reactive abstractions.
+
+Start building.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -211,7 +215,7 @@ renderer.render(<Timer />, document.body);
 
 ### Reason #3: It’s promise-friendly.
 
-Any component can be made asynchronous with the `async` keyword. As it turns out, the nicest way to use `fetch()` is to call it and `await` the result.
+Any component can be made asynchronous with the `async` keyword. As it turns out, one of the nicest ways to use `fetch()` is to call it and `await` the result.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -233,7 +237,7 @@ async function QuoteOfTheDay() {
 renderer.render(<QuoteOfTheDay />, document.body);
 ```
 
-Async generators let you write components that are both async *AND* stateful. You can even race components to show temporary fallback states.
+Async generator functions let you write components that are both async *AND* stateful. You can even race components to show temporary fallback states.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";

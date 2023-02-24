@@ -62,23 +62,23 @@ function* Playground(this: Context, {}) {
 		yield jsx`
 			<div class="playground ${css`
 				display: flex;
+				flex-direction: column;
 				@media (min-width: 800px) {
 					flex-direction: row;
+					align-items: stretch;
+					justify-content: stretch;
 				}
-				align-items: flex-start;
-				justify-content: stretch;
 
 				width: 100%;
-				height: 100vh;
 				padding-top: 50px;
 			`}">
 				<div class=${css`
-					flex: 1 1 600px;
-					overflow-x: auto;
-					overflow-y: hidden;
+					flex: 0 1 auto;
+					min-height: 80vh;
 					@media (min-width: 800px) {
-						height: 100%;
-						overflow-y: auto;
+						height: calc(100vh - 50px);
+						width: 61.8%;
+						overflow: auto;
 					}
 				`}>
 					<${CodeEditor}
@@ -88,9 +88,11 @@ function* Playground(this: Context, {}) {
 					/>
 				</div>
 				<div class=${css`
-					flex: 1 1 400px;
-					height: calc(100vh - 50px);
-
+					@media (min-width: 800px) {
+						flex: 1 0 auto;
+						height: calc(100vh - 50px);
+						width: 400px;
+					}
 					border-top: 1px solid currentcolor;
 					border-left: 1px solid currentcolor;
 					@media (min-width: 800px) {

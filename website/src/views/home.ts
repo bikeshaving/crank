@@ -23,10 +23,10 @@ const components = {
 						: depth === 3
 						? "max(4vh, 30px)"
 						: null};
-					color: var(${depth === 2 ? "--text-color" : "--highlight-color"});
+					color: var(${depth === 3 ? "--bg-color" : "--text-color"});
 					margin: 1em auto;
-					background-color: ${depth === 2 ? "var(--coldark00)" : null};
-					${depth === 2 && "padding: 1em 0"};
+					background-color: ${depth === 3 ? "var(--highlight-color)" : null};
+					${(depth === 2 || depth === 3) && "padding: 1em 0"};
 				`}"
 			>
 				${children}
@@ -182,7 +182,7 @@ export default async function Home({storage}: {storage: Storage}) {
 				background-color: var(--bg-color);
 				border-top: 1px solid var(--text-color);
 				border-bottom: 1px solid var(--text-color);
-			`} blur-background-2">
+			`}">
 				<${Marked} markdown=${md.body} components=${components} />
 			</div>
 			<${CallToAction} />

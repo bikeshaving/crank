@@ -43,6 +43,11 @@ function generateIFrameHTML(
 				});
 
 				window.addEventListener("error", (ev) => {
+					// https://developer.mozilla.org/en-US/docs/Web/API/ResizeObserver#observation_errors
+					if (/ResizeObserver loop completed with undelivered notifications/.test(ev.message)) {
+						return;
+					}
+
 					window.parent.postMessage(
 						JSON.stringify({type: "error", id: ${id}, message: ev.message}),
 						window.location.origin,
@@ -50,6 +55,9 @@ function generateIFrameHTML(
 				});
 
 				window.addEventListener("unhandledrejection", (ev) => {
+					if (/ResizeObserver loop completed with undelivered notifications/.test(ev.reason.message)) {
+						return;
+					}
 					window.parent.postMessage(
 						JSON.stringify({type: "error", id: ${id}, message: ev.reason.message}),
 						window.location.origin,
@@ -58,19 +66,19 @@ function generateIFrameHTML(
 
 				const obs = new ResizeObserver((entries) => {
 					const height = entries[0].contentRect.height;
-					setTimeout(() => {
-						window.parent.postMessage(
-							JSON.stringify({
-								type: "resize",
-								id: ${id},
-								height,
-							}),
-							window.location.origin,
-						);
-					}, 0);
+					window.parent.postMessage(
+						JSON.stringify({
+							type: "resize",
+							id: ${id},
+							height,
+						}),
+						window.location.origin,
+					);
 				})
 
-				obs.observe(document.documentElement);
+				setTimeout(() => {
+					obs.observe(document.documentElement);
+				}, 0);
 			}
 			</script>
 			<script type="module">${code}</script>
@@ -131,6 +139,7 @@ export function* CodePreview(
 				parsed = transform(value);
 				code = parsed.code;
 			} catch (err: any) {
+				console.error(err);
 				loading = false;
 				errorMessage = err.message || err;
 				this.refresh();
@@ -144,7 +153,7 @@ export function* CodePreview(
 		executeDebounced = debounce(execute, 2000);
 	}
 
-	let height = 200;
+	let height = 100;
 	if (typeof window !== "undefined") {
 		const onmessage = (ev: any) => {
 			let data: any = JSON.parse(ev.data);
@@ -165,8 +174,11 @@ export function* CodePreview(
 					// infinite loop. For instance, if the body height is `100vh`, or if
 					// a scrollbar being added or removed causes the page height to
 					// change. Therefore, we give a max height of 1000px.
-					height = Math.min(1000, Math.max(200, data.height));
-					this.refresh();
+					setTimeout(() => {
+						// Putting this in a callback in an attempt to prevent infinite loops.
+						height = Math.min(1000, Math.max(100, data.height));
+						this.refresh();
+					});
 				}
 			}
 		};
@@ -215,22 +227,25 @@ export function* CodePreview(
 					`
 				}
 				<div class=${css`
+					display: flex;
+					flex-direction: column;
 					flex: 1 1 auto;
-					border: 5px solid
-						${errorMessage
-							? "var(--coldark15)"
-							: loading
-							? "var(--coldark12)"
-							: "var(--coldark11)"};
-					padding: 1em;
-					background-color: var(--coldark00);
+					padding: 0.5em;
+					transition: background-color 0.2s ease-in-out;
+					background-color: ${errorMessage
+						? "var(--coldark15)"
+						: loading
+						? "var(--coldark02)"
+						: "var(--coldark00)"};
 					width: 100%;
 				`}>
 					${
 						errorMessage &&
 						jsx`
 							<pre class=${css`
+								flex: none;
 								color: var(--coldark12);
+								background-color: var(--bg-color);
 								width: 100%;
 								overflow-x: auto;
 							`}>${errorMessage}</pre>
@@ -242,12 +257,13 @@ export function* CodePreview(
 						class="
 							playground-iframe
 							${css`
+								flex: 1 1 auto;
 								border: none;
 								width: 100%;
 								background-color: var(--bg-color);
 							`}
 						"
-						style="height: ${autoresize ? `${height}px` : "100%"};"
+						style="height: ${autoresize ? `${height}px` : "auto"};"
 					/>
 				</div>
 			</div>

@@ -15,16 +15,15 @@
 .blur-background {
 	@supports (backdrop-filter: blur(4px)) {
 		backdrop-filter: blur(4px);
-		background-color: rgba(10, 14, 31, 0.5);
+		background-color: rgba(10, 14, 31, 0.5) !important;
 	}
 }
 
-/* colors have to match background or it looks bad */
 .color-scheme-light {
 	.blur-background {
 		@supports (backdrop-filter: blur(4px)) {
 			backdrop-filter: blur(4px);
-			background-color: rgba(231, 244, 245, 0.5);
+			background-color: rgba(231, 244, 245, 0.5) !important;
 		}
 	}
 }
@@ -52,7 +51,7 @@
 }
 
 ::selection {
-	background: var(--coldark13);
+	background: var(--coldark01);
 }
 
 html {
