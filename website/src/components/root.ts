@@ -3,6 +3,7 @@ import type {Children} from "@b9g/crank";
 import {Page, Link, Script, Storage} from "../components/esbuild.js";
 import {Navbar} from "../components/navbar.js";
 import {GoogleSpyware} from "../components/google-spyware.js";
+import {EmbeddedJSON} from "../components/embed-json.js";
 
 function ColorSchemeScript() {
 	// This script must be executed as early as possible to prevent a FOUC.
@@ -28,8 +29,9 @@ function ColorSchemeScript() {
 
 async function StaticURLsJSON({storage}: {storage: Storage}) {
 	const clientCSSURL = await storage.url("styles/client.css", "css");
-	// TODO: figure out a smarter way to do this
-	// TODO: versioned modules
+	// This is how we get crank served locally.
+	// TODO: Figure out a smarter way to do this.
+	// TODO: Versioned modules.
 	const crankURL = await storage.url("lib/crank.js", "js");
 	const crankDOMURL = await storage.url("lib/dom.js", "js");
 	const crankHTMLURL = await storage.url("lib/html.js", "js");
@@ -54,9 +56,7 @@ async function StaticURLsJSON({storage}: {storage: Storage}) {
 	};
 
 	return jsx`
-		<script id="static-urls" type="application/json">
-			<${Raw} value=${JSON.stringify(staticURLs)} />
-		</script>
+		<${EmbeddedJSON} id="static-urls" value=${staticURLs} />
 	`;
 }
 

@@ -11,6 +11,7 @@ import "prismjs/components/prism-diff";
 import "prismjs/components/prism-bash";
 import {ContentAreaElement} from "@b9g/revise/contentarea.js";
 import {InlineCodeBlock} from "./components/inline-code-block.js";
+import {escapedScript} from "./components/embed-json.js";
 
 // @ts-ignore
 Prism.manual = true;
@@ -29,9 +30,11 @@ if (gearInteractiveRoot) {
 const containers = document.querySelectorAll(".code-block-container");
 for (const container of Array.from(containers)) {
 	const propsScript = container.querySelector(".props");
-	const {code, lang} = propsScript?.textContent
-		? JSON.parse(propsScript.textContent)
-		: {};
+	const json = propsScript.textContent.replace(
+		new RegExp(escapedScript, "g"),
+		"</script>",
+	);
+	const {code, lang} = JSON.parse(json);
 	renderer.hydrate(
 		jsx`
 			<${InlineCodeBlock}
