@@ -3,14 +3,14 @@ title: Getting Started
 ---
 
 ## Try Crank
-The fastest way to try Crank is via the [playground](/playground). Many of the examples in this documentation are also interactive.
+The fastest way to try Crank is via the [playground](/playground). Additionally, many of the code examples in these guides are editable and runnable.
 
 ## Installation
-The Crank package is available on [NPM](https://npmjs.org/@b9g/crank) through the [@b9g organization](https://www.npmjs.com/org/b9g) (short for bikeshaving).
-
 ```shell
 $ npm install @b9g/crank
 ```
+
+The Crank package is available on [NPM](https://npmjs.org/@b9g/crank) through the [@b9g organization](https://www.npmjs.com/org/b9g) (short for b*ikeshavin*g).
 
 ```jsx
 /** @jsx createElement */
@@ -19,134 +19,125 @@ import {renderer} from "@b9g/crank/dom";
 renderer.render(<div id="hello">Hello world</div>, document.body);
 ```
 
-It is also available on CDNs like [unpkg](https://unpkg.com) (https://unpkg.com/@b9g/crank?module) or [esm.sh](https://esm.sh) (https://esm.sh/@b9g/crank) for usage with ESM-ready environments.
+It is also available on CDNs like [unpkg](https://unpkg.com) (https://unpkg.com/@b9g/crank?module) and [esm.sh](https://esm.sh) (https://esm.sh/@b9g/crank) for usage in ESM-ready environments.
 
 ```jsx live
 /** @jsx createElement */
+
+// This is an ESM-ready environment!
 import {createElement} from "https://unpkg.com/@b9g/crank/crank?module";
 import {renderer} from "https://unpkg.com/@b9g/crank/dom?module";
 
 renderer.render(<div id="hello">Hello world</div>, document.body);
 ```
 
-### Transforming JSX
-The hardest part about setting up a Crank project is transpiling away [JSX](https://facebook.github.io/jsx/). Unfortunately, bundling and transpilation continue to evolve in the world of JavaScript, but Crank has kept pace.
+## Transpiling JSX
+Crank works with [JSX](https://facebook.github.io/jsx/), a well-supported, XML-like syntax extension to JavaScript. The hardest part about setting up a Crank project will probably be configuring your favorite web tools to transpile JSX in a way Crank understands; luckily, this section will walk you through the latest in JSX transforms and configurations.
 
-### Starter templates
+### Two types of JSX transpilation
+Historically speaking, there are two ways to transform JSX: the *classic* and *automatic* transforms. Crank supports both formats.
 
-### Alternatives to JSX
+The classic transform turns JSX elements into `createElement()` calls.
+
+```jsx
+/** @jsx createElement */
+import {createElement} from "@b9g/crank";
+
+const el = <div id="element">An element</div>;
+// Transpiles to:
+
+const el = createElement("div", {id: "element"}, "An element");
+// Identifiers like `createElement`, `Fragment` must be manually imported.
+```
+
+The automatic transform turns JSX elements into function calls from an automatically imported namespace.
+
+```jsx
+/** @jsxImportSource @b9g/crank */
+
+const profile = (
+  <div>
+    <img src="avatar.png" class="profile" />
+    <h3>{[user.firstName, user.lastName].join(" ")}</h3>
+  </div>
+);
+
+// Transpiles to:
+import { jsx as _jsx } from "@b9g/crank/jsx-runtime";
+import { jsxs as _jsxs } from "@b9g/crank/jsx-runtime";
+
+const profile = _jsxs("div", {
+  children: [
+    _jsx("img", {
+      src: "avatar.png",
+      "class": "profile",
+    }),
+    _jsx("h3", {
+      children: [user.firstName, user.lastName].join(" "),
+    }),
+  ],
+});
+
+```
+
+The automatic transform has the benefit of not requiring manual imports.
+
+## Common tools and configurations
+The following is an incomplete list of tool configurations to get started with JSX.
+
+#### [TypeScript](https://www.typescriptlang.org)
+
+Here’s the configuration you will need to set up automatic JSX transpilation.
+
+```tsconfig.json
+{
+  "compilerOptions": {
+    "jsx": "react-jsx"
+    "jsxImportSource": "@b9g/crank"
+  }
+}
+```
+
+The classic transform is supported as well.
+
+```tsconfig.json
+{
+  "compilerOptions": {
+    "target": "esnext",
+    TKTKTKTKTKTK
+  }
+}
+```
+
+Crank is written in TypeScript. Additional information about how to type components and use Crank types are provided in the [working with TypeScript guide](/guides/working-with-typescript).
+
+#### Babel
+```babelrc.json
+```
+You can install the “babel-preset-crank” package to set this up automatically.
+
+#### ESBuild
+```
+```
+
+#### Vite
+```
+```
+
+#### ESLint
+```
+```
+
+Crank provides 
+
+#### Astro.build
+```
+```
+
+## Avoiding JSX transpilation
 ```jsx
 import {renderer} from "@b9g/crank/dom";
 ```
 
-### The JSX template tag
-If you do not want to use JSX, you can install
+If you do not want to use JSX, you can use the JavaScript friendly tagged template function instead.
 
-## Key Examples
-### A Simple Component
-```jsx live
-import {createElement} from "https://unpkg.com/@b9g/crank/crank";
-import {renderer} from "https://unpkg.com/@b9g/crank/dom";
-
-function Greeting({name = "World"}) {
-  return <div>Hello {name}</div>;
-}
-
-renderer.render(<Greeting />, document.body);
-```
-
-### A Stateful Component
-```jsx live
-import {createElement} from "https://unpkg.com/@b9g/crank/crank";
-import {renderer} from "https://unpkg.com/@b9g/crank/dom";
-
-function *Timer() {
-  let seconds = 0;
-  const interval = setInterval(() => {
-    seconds++;
-    this.refresh();
-  }, 1000);
-  try {
-    for ({} of this) {
-      yield <div>Time elapsed {seconds}s</div>;
-    }
-  } finally {
-    clearInterval(interval);
-  }
-}
-
-renderer.render(<Timer />, document.body);
-```
-
-### An Async Component
-```jsx live
-import {createElement} from "https://unpkg.com/@b9g/crank/crank";
-import {renderer} from "https://unpkg.com/@b9g/crank/dom";
-
-async function RandomQuote() {
-  const res = await fetch("https://favqs.com/api/qotd");
-  const {quote} = await res.json();
-  return (
-    <figure>
-      <blockquote>{quote.body}</blockquote>
-      <figcaption>- <a href={quote.url}>{quote.author}</a></figcaption>
-    </figure>
-  );
-}
-
-renderer.render(<RandomQuote />, document.body);
-```
-
-### A Loading Component
-```jsx live
-/** @jsx createElement */
-import {createElement} from "https://unpkg.com/@b9g/crank/crank";
-import {renderer} from "https://unpkg.com/@b9g/crank/dom";
-
-async function LoadingIndicator() {
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  return <div>Fetching a good boy...</div>;
-}
-
-async function RandomDog({throttle = false}) {
-  const res = await fetch("https://dog.ceo/api/breeds/image/random");
-  const data = await res.json();
-  if (throttle) {
-    await new Promise(resolve => setTimeout(resolve, 2000));
-  }
-
-  return (
-    <img src={data.message} alt="A Random Dog" width="300" />
-  );
-}
-
-async function *RandomDogLoader({throttle}) {
-  for await ({throttle} of this) {
-    yield <LoadingIndicator />;
-    yield <RandomDog throttle={throttle} />;
-  }
-}
-
-function *RandomDogApp() {
-  let throttle = false;
-  this.addEventListener("click", (ev) => {
-    if (ev.target.tagName === "BUTTON") {
-      throttle = !throttle;
-      this.refresh();
-    }
-  });
-
-  for ({} of this) {
-    yield (
-      <>
-        <div>
-          <button>Show me another dog.</button>
-        </div>
-        <RandomDogLoader throttle={throttle} />
-      </>
-    );
-  }
-}
-
-renderer.render(<RandomDogApp />, document.body);
-```
