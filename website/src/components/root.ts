@@ -93,7 +93,7 @@ export function Root({
 					</div>
 					<>${children}</>
 					<${StaticURLsJSON} storage=${storage} />
-					<${Script} src="client.ts" />
+					<${Script} src="clients/code-blocks.ts" />
 				</body>
 			</html>
 		<//Page>

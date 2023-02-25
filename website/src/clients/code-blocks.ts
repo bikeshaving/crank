@@ -10,8 +10,10 @@ import "prismjs/components/prism-tsx";
 import "prismjs/components/prism-diff";
 import "prismjs/components/prism-bash";
 import {ContentAreaElement} from "@b9g/revise/contentarea.js";
-import {InlineCodeBlock} from "./components/inline-code-block.js";
-import {escapedScript} from "./components/embed-json.js";
+import {InlineCodeBlock} from "../components/inline-code-block.js";
+import {escapedScript} from "../components/embed-json.js";
+import {GearInteractive} from "../components/gear-interactive.js";
+import {Navbar} from "../components/navbar.js";
 
 // @ts-ignore
 Prism.manual = true;
@@ -21,7 +23,6 @@ if (!window.customElements.get("content-area")) {
 }
 
 const gearInteractiveRoot = document.getElementById("gear-interactive");
-import {GearInteractive} from "./components/gear-interactive.js";
 if (gearInteractiveRoot) {
 	renderer.hydrate(jsx`<${GearInteractive} />`, gearInteractiveRoot);
 }
@@ -47,7 +48,6 @@ for (const container of Array.from(containers)) {
 	);
 }
 
-import {Navbar} from "./components/navbar.js";
 const navbar = document.getElementById("navbar-root");
 
 renderer.hydrate(
