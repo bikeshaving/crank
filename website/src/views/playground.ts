@@ -7,7 +7,7 @@ export default async function Playground({storage}: {storage: Storage}) {
 	return jsx`
 		<${Root} title="Crank.js" url="/playground" storage=${storage}>
 			<div id="playground" />
-			<${Script} src="./playground.ts" type="module" />
+			<${Script} src="clients/playground.ts" type="module" />
 		<//Root>
 	`;
 }

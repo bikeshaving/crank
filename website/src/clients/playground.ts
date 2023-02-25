@@ -5,8 +5,8 @@ import {css} from "@emotion/css";
 
 import "prismjs/components/prism-javascript";
 
-import {CodePreview} from "./components/code-preview.js";
-import {CodeEditor} from "./components/code-editor.js";
+import {CodePreview} from "../components/code-preview.js";
+import {CodeEditor} from "../components/code-editor.js";
 //import LZString from "lz-string";
 
 // TODO: move this to the ContentAreaElement component
