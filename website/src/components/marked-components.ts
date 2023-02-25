@@ -1,6 +1,6 @@
 import {jsx} from "@b9g/crank/standalone";
 import {InlineCodeBlock} from "./inline-code-block.js";
-import {EmbeddedJSON} from "./embed-json.js";
+import {EmbeddedJSON} from "./embedded-json.js";
 
 export const components = {
 	codespan({token}: any) {

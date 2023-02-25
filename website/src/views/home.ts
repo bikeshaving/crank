@@ -3,7 +3,7 @@ import {css} from "@emotion/css";
 
 import {Root} from "../components/root.js";
 import type {Storage} from "../components/esbuild.js";
-import {EmbeddedJSON} from "../components/embed-json.js";
+import {EmbeddedJSON} from "../components/embedded-json.js";
 import {collectDocuments} from "../models/document.js";
 import * as Path from "path";
 

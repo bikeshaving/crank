@@ -70,12 +70,10 @@ export class Storage {
 				outdir: this.dirname,
 				sourcemap: true,
 				plugins: [
+					NodeModulesPolyfillPlugin(),
+					NodeGlobalsPolyfillPlugin({buffer: true}),
 					postcssPlugin({
 						plugins: [postcssPresetEnv() as any, postcssNested()],
-					}),
-					NodeModulesPolyfillPlugin(),
-					NodeGlobalsPolyfillPlugin({
-						buffer: true,
 					}),
 				],
 			});
