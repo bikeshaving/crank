@@ -133,7 +133,7 @@ function CallToAction() {
 			`}">
 				<h2 class=${css`
 					font-size: 32px;
-				`}>Intrigued?</h2>
+				`}>Intrigued? Here are some possible next steps.</h2>
 				<div class=${css`
 					@media screen and (min-width: 800px) {
 						display: flex;
@@ -175,10 +175,10 @@ export default async function Home({storage}: {storage: Storage}) {
 			<${Hero} />
 			<div class="${css`
 				font-size: max(18px, min(24px, 2vw));
-
 				background-color: var(--bg-color);
 				border-top: 1px solid var(--text-color);
 				border-bottom: 1px solid var(--text-color);
+				padding: 2em 0;
 			`}">
 				<${Marked} markdown=${md.body} components=${components} />
 			</div>

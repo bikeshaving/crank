@@ -216,7 +216,6 @@ export function* CodePreview(
 						<div class=${css`
 							flex: none;
 							padding: 1em;
-							border-bottom: 1px solid var(--highlight-color);
 							height: 3em;
 						`}>
 							${errorMessage ? "Errored!" : loading ? "Loading..." : "Running!"}
@@ -228,12 +227,13 @@ export function* CodePreview(
 					flex-direction: column;
 					flex: 1 1 auto;
 					padding: 0.5em;
-					transition: background-color 0.2s ease-in-out;
+					transition: background-color 0.4s ease-out;
 					background-color: ${errorMessage
 						? "var(--coldark15)"
 						: loading
 						? "var(--coldark02)"
-						: "var(--coldark00)"};
+						: "var(--background-color)"
+					};
 					width: 100%;
 				`}>
 					${
