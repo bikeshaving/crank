@@ -1,9 +1,9 @@
 import {jsx, Raw} from "@b9g/crank/standalone";
 import type {Children} from "@b9g/crank";
-import {Page, Link, Script, Storage} from "../components/esbuild.js";
-import {Navbar} from "../components/navbar.js";
-import {GoogleSpyware} from "../components/google-spyware.js";
-import {EmbeddedJSON} from "../components/embed-json.js";
+import {Page, Link, Script, Storage} from "./esbuild.js";
+import {Navbar} from "./navbar.js";
+import {GoogleSpyware} from "./google-spyware.js";
+import {StaticURLsJSON} from "./static-urls-json.js";
 
 function ColorSchemeScript() {
 	// This script must be executed as early as possible to prevent a FOUC.
@@ -24,40 +24,6 @@ function ColorSchemeScript() {
 		<script>
 			<${Raw} value=${scriptText} />
 		</script>
-	`;
-}
-
-async function StaticURLsJSON({storage}: {storage: Storage}) {
-	// TODO: calling this function causes ESBuild to hang.
-	//const clientCSSURL = await storage.url("styles/client.css", "css");
-	// NOTE: This is how we get crank served locally.
-	// TODO: Figure out a smarter way to do this.
-	// TODO: Versioned modules.
-	const crankURL = await storage.url("lib/crank.js", "js");
-	const crankDOMURL = await storage.url("lib/dom.js", "js");
-	const crankHTMLURL = await storage.url("lib/html.js", "js");
-	const crankJSXTagURL = await storage.url("lib/jsx-tag.js", "js");
-	const crankJSXRuntimeURL = await storage.url("lib/jsx-runtime.js", "js");
-	const crankStandaloneURL = await storage.url("lib/standalone.js", "js");
-	const staticURLs = {
-		//		"client.css": clientCSSURL,
-		"@b9g/crank": crankURL,
-		"@b9g/crank/crank": crankURL,
-		"@b9g/crank/crank.js": crankURL,
-		"@b9g/crank/dom": crankDOMURL,
-		"@b9g/crank/dom.js": crankDOMURL,
-		"@b9g/crank/html": crankHTMLURL,
-		"@b9g/crank/html.js": crankHTMLURL,
-		"@b9g/crank/jsx-tag": crankJSXTagURL,
-		"@b9g/crank/jsx-tag.js": crankJSXTagURL,
-		"@b9g/crank/jsx-runtime": crankJSXRuntimeURL,
-		"@b9g/crank/jsx-runtime.js": crankJSXRuntimeURL,
-		"@b9g/crank/standalone": crankStandaloneURL,
-		"@b9g/crank/standalone.js": crankStandaloneURL,
-	};
-
-	return jsx`
-		<${EmbeddedJSON} id="static-urls" value=${staticURLs} />
 	`;
 }
 
