@@ -1,6 +1,13 @@
+## What is Crank?
+
+Crank is a web framework where components can be defined with sync functions,
+async functions and generator functions.
+
+## Why is Crank “Just JavaScript?”
+
 Many web frameworks claim to be “just JavaScript.” Few have as strong a claim as Crank.
 
-It starts with the question: if components are *just* functions, why can’t they be async and generator functions as well? Crank follows through on this idea, reimagining the component model as one which takes full advantage of promises and iterators.
+It starts with the question: if components are *just* functions, why can’t they be async and generator functions as well? Crank runs with this idea, re-imagining the component model as taking advantage of promises and iterators.
 
 The result is a simpler developer experience, where you spend less time writing framework integrations and more time writing vanilla JavaScript.
 

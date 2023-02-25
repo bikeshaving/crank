@@ -1,6 +1,6 @@
-import fs from "fs-extra";
+import FS from "fs-extra";
 import type {Stats} from "fs";
-import * as path from "path";
+import * as Path from "path";
 import frontmatter from "front-matter";
 
 interface WalkInfo {
@@ -9,10 +9,10 @@ interface WalkInfo {
 }
 
 async function* walk(dir: string): AsyncGenerator<WalkInfo> {
-	const files = await fs.readdir(dir);
+	const files = await FS.readdir(dir);
 	for (let filename of files) {
-		filename = path.join(dir, filename);
-		const stats = await fs.stat(filename);
+		filename = Path.join(dir, filename);
+		const stats = await FS.stat(filename);
 		if (stats.isDirectory()) {
 			yield* walk(filename);
 		} else if (stats.isFile()) {
@@ -41,7 +41,7 @@ export async function collectDocuments(
 	let docs: Array<DocInfo> = [];
 	for await (const {filename} of walk(pathname)) {
 		if (filename.endsWith(".md")) {
-			const md = await fs.readFile(filename, {encoding: "utf8"});
+			const md = await FS.readFile(filename, {encoding: "utf8"});
 			let {attributes, body} = frontmatter(md) as unknown as DocInfo;
 			attributes.publish =
 				attributes.publish == null ? true : attributes.publish;
@@ -49,8 +49,7 @@ export async function collectDocuments(
 				attributes.publishDate = new Date(attributes.publishDate);
 			}
 
-			const url = path
-				.join("/", path.relative(rootPathname, filename))
+			const url = Path.join("/", Path.relative(rootPathname, filename))
 				.replace(/\.md$/, "")
 				.replace(/([0-9]+-)+/, "");
 			docs.push({url, filename, body, attributes});
