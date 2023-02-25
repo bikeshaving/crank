@@ -218,9 +218,6 @@ export function* CodePreview(
 							padding: 1em;
 							border-bottom: 1px solid var(--highlight-color);
 							height: 3em;
-							text-align: right;
-							width: ${loading ? "0" : "100%"};
-							transition: width 0.2s ease-in-out;
 						`}>
 							${errorMessage ? "Errored!" : loading ? "Loading..." : "Running!"}
 						</div>
