@@ -217,6 +217,7 @@ export function* CodePreview(
 							flex: none;
 							padding: 1em;
 							height: 3em;
+							border-bottom: 1px solid var(--text-color);
 						`}>
 							${errorMessage ? "Errored!" : loading ? "Loading..." : "Running!"}
 						</div>
@@ -226,7 +227,7 @@ export function* CodePreview(
 					display: flex;
 					flex-direction: column;
 					flex: 1 1 auto;
-					padding: 0.5em;
+					padding: 1em;
 					transition: background-color 0.4s ease-out;
 					background-color: ${errorMessage
 						? "var(--coldark15)"

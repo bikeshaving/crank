@@ -45,24 +45,19 @@ const views: Record<string, Component> = {
 	playground: PlaygroundView,
 };
 
-// TODO: get the URLs from the file system (guides, blog posts, etc)
-const urls = ["/"];
-const guides = await collectDocuments(
-	Path.join(__dirname, "../documents/guides"),
-);
-for (const guide of guides) {
-	urls.push(Path.join("guides", guide.url));
-}
-
-const blogPosts = await collectDocuments(
+const blogDocs = await collectDocuments(
 	Path.join(__dirname, "../documents/blog"),
+	Path.join(__dirname, "../documents"),
 );
-for (const blogPost of blogPosts) {
-	urls.push(Path.join("blog", blogPost.url));
-}
+const guideDocs = await collectDocuments(
+	Path.join(__dirname, "../documents/guides"),
+	Path.join(__dirname, "../documents"),
+);
 
-urls.push("/blog");
-urls.push("/playground");
+const blogURLs = blogDocs.map((doc) => doc.url);
+const guideURLs = guideDocs.map((doc) => doc.url);
+// TODO: get the URLs from the file system (guides, blog posts, etc)
+const urls = ["/", "/blog", "/playground", ...guideURLs, ...blogURLs];
 
 async function build(urls: Array<string>) {
 	for (const url of urls) {
