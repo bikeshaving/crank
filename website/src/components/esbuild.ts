@@ -1,7 +1,7 @@
 import FS from "fs-extra";
 import * as Path from "path";
 import * as ESBuild from "esbuild";
-import type {BuildResult, OutputFile} from "esbuild";
+import type {BuildContext, OutputFile} from "esbuild";
 import * as mime from "mime-types";
 
 import {jsx} from "@b9g/crank/standalone";
@@ -20,11 +20,6 @@ function isWithinDir(dir: string, name: string) {
 	return resolved.startsWith(dir);
 }
 
-// We need this type because it can’t really be inferred from the ESBuild types.
-type CachedResult = BuildResult & {
-	outputFiles: Array<OutputFile>;
-};
-
 // TODO: better names for these options
 export interface StorageOptions {
 	dirname: string;
@@ -36,7 +31,7 @@ export class Storage {
 	dirname: string;
 	publicPath: string;
 	staticPaths: Array<string>;
-	cache: Map<string, CachedResult>;
+	cache: Map<string, BuildContext>;
 
 	constructor({
 		dirname,
@@ -60,45 +55,38 @@ export class Storage {
 	}
 
 	async build(filename: string): Promise<Array<OutputFile>> {
-		let result = this.cache.get(filename);
-		if (result != null) {
-			return result.outputFiles;
+		let ctx = this.cache.get(filename);
+		if (ctx == null) {
+			const entryname = Path.resolve(this.dirname, filename);
+			ctx = await ESBuild.context({
+				entryPoints: [entryname],
+				// TODO: pass these in via components
+				entryNames: "[name]-[hash]",
+				bundle: true,
+				write: false,
+				minify: false,
+				format: "esm",
+				outbase: this.dirname,
+				outdir: this.dirname,
+				sourcemap: true,
+				plugins: [
+					postcssPlugin({
+						plugins: [postcssPresetEnv() as any, postcssNested()],
+					}),
+					NodeModulesPolyfillPlugin(),
+					NodeGlobalsPolyfillPlugin({
+						buffer: true,
+					}),
+				],
+			});
+
+			this.cache.set(filename, ctx);
 		} else if (!isWithinDir(this.dirname, filename)) {
 			throw new Error("filename outside directory");
 		}
 
-		const entryname = Path.resolve(this.dirname, filename);
-		// TODO: this could probably be passed in via the component tree
-		result = await ESBuild.build({
-			entryPoints: [entryname],
-			entryNames: "[name]-[hash]",
-			bundle: true,
-			write: false,
-			minify: false,
-			format: "esm",
-			outbase: this.dirname,
-			outdir: this.dirname,
-			sourcemap: true,
-			plugins: [
-				postcssPlugin({plugins: [postcssPresetEnv() as any, postcssNested()]}),
-				NodeModulesPolyfillPlugin(),
-				NodeGlobalsPolyfillPlugin({
-					buffer: true,
-				}),
-			],
-			watch: {
-				onRebuild: (error, result) => {
-					if (error) {
-						console.error(error);
-					} else {
-						this.cache.set(filename, result as CachedResult);
-					}
-				},
-			},
-		});
-
-		this.cache.set(filename, result);
-		return result.outputFiles;
+		const result = await ctx.rebuild();
+		return result.outputFiles || [];
 	}
 
 	async url(filename: string, extension: string): Promise<string> {
@@ -117,9 +105,12 @@ export class Storage {
 
 	async write(dirname: string): Promise<void> {
 		await FS.ensureDir(dirname);
-		const outputs = Array.from(this.cache.values()).flatMap(
-			(result) => result.outputFiles,
-		);
+
+		const outputs: Array<OutputFile> = [];
+		for (const ctx of this.cache.values()) {
+			const result = await ctx.rebuild();
+			outputs.push(...(result.outputFiles || []));
+		}
 
 		await Promise.all(
 			outputs.map(async (output) => {
@@ -138,9 +129,11 @@ export class Storage {
 
 	async serve(inputPath: string): Promise<Uint8Array | string | null> {
 		inputPath = inputPath.replace(new RegExp("^" + this.publicPath), "");
-		const outputs = Array.from(this.cache.values()).flatMap(
-			(result) => result.outputFiles,
-		);
+		const outputs: Array<OutputFile> = [];
+		for (const ctx of this.cache.values()) {
+			const result = await ctx.rebuild();
+			outputs.push(...(result.outputFiles || []));
+		}
 
 		for (const output of outputs) {
 			const outputPath = Path.relative(this.dirname, output.path);
@@ -165,8 +158,8 @@ export class Storage {
 	}
 
 	clear(): void {
-		for (const result of this.cache.values()) {
-			result.stop!();
+		for (const ctx of this.cache.values()) {
+			ctx.dispose();
 		}
 	}
 }

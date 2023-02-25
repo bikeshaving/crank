@@ -28,8 +28,9 @@ function ColorSchemeScript() {
 }
 
 async function StaticURLsJSON({storage}: {storage: Storage}) {
-	const clientCSSURL = await storage.url("styles/client.css", "css");
-	// This is how we get crank served locally.
+	// TODO: calling this function causes ESBuild to hang.
+	//const clientCSSURL = await storage.url("styles/client.css", "css");
+	// NOTE: This is how we get crank served locally.
 	// TODO: Figure out a smarter way to do this.
 	// TODO: Versioned modules.
 	const crankURL = await storage.url("lib/crank.js", "js");
@@ -39,7 +40,7 @@ async function StaticURLsJSON({storage}: {storage: Storage}) {
 	const crankJSXRuntimeURL = await storage.url("lib/jsx-runtime.js", "js");
 	const crankStandaloneURL = await storage.url("lib/standalone.js", "js");
 	const staticURLs = {
-		"client.css": clientCSSURL,
+		//		"client.css": clientCSSURL,
 		"@b9g/crank": crankURL,
 		"@b9g/crank/crank": crankURL,
 		"@b9g/crank/crank.js": crankURL,
