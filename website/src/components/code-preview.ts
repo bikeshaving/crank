@@ -232,8 +232,7 @@ export function* CodePreview(
 						? "var(--coldark15)"
 						: loading
 						? "var(--coldark02)"
-						: "var(--background-color)"
-					};
+						: "var(--background-color)"};
 					width: 100%;
 				`}>
 					${

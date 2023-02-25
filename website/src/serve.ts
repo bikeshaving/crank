@@ -74,6 +74,7 @@ const server = createServer(async (req, res) => {
 	res.end(html, "utf-8");
 });
 
+// TODO: stop using nodemon and do reloading ourselves with chokidar
 const PORT = process.env.PORT ?? 1338;
 console.info(`Server is listening on port ${PORT}`);
 server.listen(PORT);
