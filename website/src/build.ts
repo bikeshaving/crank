@@ -45,7 +45,6 @@ const guideDocs = await collectDocuments(
 
 const blogURLs = blogDocs.map((doc) => doc.url);
 const guideURLs = guideDocs.map((doc) => doc.url);
-// TODO: get the URLs from the file system (guides, blog posts, etc)
 const urls = ["/", "/blog", "/playground", ...guideURLs, ...blogURLs];
 
 async function build(urls: Array<string>) {
@@ -60,14 +59,12 @@ async function build(urls: Array<string>) {
 			continue;
 		}
 
-		//res.writeHead(200, {"Content-Type": "text/html"});
-		// TODO: Should we pass in name to props?
-		let html = await renderer.render(jsx`
+		const html = renderStylesToString(
+			await renderer.render(jsx`
 			<${View} url=${url} storage=${storage} params=${match.params} />
-		`);
+		`),
+		);
 
-		// TODO: This is causing the process to hang.
-		html = renderStylesToString(html);
 		await FS.ensureDir(Path.join(dist, url));
 		await FS.writeFile(Path.join(dist, url, "index.html"), html);
 	}
