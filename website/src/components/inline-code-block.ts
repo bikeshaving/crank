@@ -50,7 +50,8 @@ export function* InlineCodeBlock(
 					}
 				`}>
 					<div class=${css`
-						flex: 1 1 650px;
+						flex: 1 1 auto;
+						width: 100%;
 						border: 1px solid var(--text-color);
 						margin-top: -1px;
 					`}>
