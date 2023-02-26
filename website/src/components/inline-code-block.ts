@@ -43,26 +43,28 @@ export function* InlineCodeBlock(
 				<div class=${css`
 					display: flex;
 					flex-direction: column;
+					font-size: 16px;
 					@media (min-width: 800px) {
 						flex-direction: row;
 						align-items: flex-start;
 					}
-
-					font-size: 16px;
 				`}>
 					<div class=${css`
 						flex: 1 1 650px;
-						max-width: 100%;
-						overflow: auto;
 						border: 1px solid var(--text-color);
 						margin-top: -1px;
 					`}>
-						<${CodeEditor}
-							$static
-							value=${value}
-							lang=${lang}
-							editable=${editable}
-						/>
+						<div class=${css`
+							overflow-x: auto;
+							max-width: 100%;
+						`}>
+							<${CodeEditor}
+								$static
+								value=${value}
+								lang=${lang}
+								editable=${editable}
+							/>
+						</div>
 					</div>
 					${
 						editable &&
