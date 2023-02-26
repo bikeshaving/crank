@@ -30,7 +30,7 @@ export class Router {
 
 	match(pathname: string): MatchResult | null {
 		for (const route of this.routes) {
-			let match = route.match(pathname);
+			const match = route.match(pathname);
 			if (match) {
 				return {
 					name: route.name,

@@ -1,17 +1,33 @@
 import {jsx, Raw} from "@b9g/crank/standalone";
+import type {Context} from "@b9g/crank/standalone";
+import serializeJavascript from "serialize-javascript";
 
-export const escapedScript = "______ESCAPED_SCRIPT_____";
+let nextID = 0;
+export function *EmbeddedJSON(
+	this: Context,
+	{name, value, ...scriptProps}: any
+): any {
+	const id = nextID++;
+	for ({name, value} of this) {
+		name = `${name || "embedded-json"}-${id}`;
+		const code = `
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['${name}'] = ${serializeJavascript(value)};
+		`;
 
-// TODO: script props
-export function EmbeddedJSON(props: any) {
-	// A hack to prevent script injections. Not secure.
-	// TODO: Use serialize-javascript instead perhaps?
-	return jsx`
-		<script type="application/json" ...${props}>
-			<${Raw} value=${JSON.stringify(props.value).replace(
-		/<\/\s*script\s*>/gi,
-		escapedScript,
-	)} />
-		</script>
-	`;
+		yield jsx`
+			<script data-name=${name} ...${scriptProps}>
+				<${Raw} value=${code} />
+			</script>
+		`;
+	}
 }
+
+export function extractData(script: HTMLScriptElement): {name: string; value: any} {
+	const name = script.dataset.name || "";
+	return {name, value: (window as any).__embeddedJSON__[name]};
+}
+
+// TODO: Add an interface to strongly type the data by name.

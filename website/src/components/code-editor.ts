@@ -50,8 +50,8 @@ function Gutter(
 			>
 				${items.map(
 					(item) => jsx`
-					<div style="height: ${item.size}px">${item.index + 1}</div>
-				`,
+						<div style="height: ${item.size}px">${item.index + 1}</div>
+					`,
 				)}
 			</div>
 		</div>
