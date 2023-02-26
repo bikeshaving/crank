@@ -9,6 +9,7 @@ export const components = {
 
 	code({token}: any) {
 		const {text: code, lang} = token;
+		// TODO: turn this pattern into an Island Component
 		return jsx`
 			<div
 				style="margin: 30px auto;"
@@ -19,7 +20,7 @@ export const components = {
 					lang=${lang}
 					editable=${lang.endsWith(" live")}
 				/>
-				<${EmbeddedJSON} value=${{code, lang}} class="props" />
+				<${EmbeddedJSON} value=${{code, lang}} name="inline-code-block-props" />
 			</div>
 		`;
 	},

@@ -44,12 +44,13 @@
     "postcss-preset-env": "^8.0.1",
     "prism-themes": "^1.9.0",
     "prismjs": "^1.29.0",
+    "serialize-javascript": "^6.0.1",
     "sucrase": "^3.29.0",
     "truncate-html": "^1.0.4",
     "ts-node": "^10.9.1",
     "typescript": "^4.9.5"
   },
   "devDependencies": {
-    "why-is-node-running": "^2.2.2"
+    "@types/serialize-javascript": "^5.0.2"
   }
 }

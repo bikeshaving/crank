@@ -32,6 +32,6 @@ export async function StaticURLsJSON({storage}: {storage: Storage}) {
 	};
 
 	return jsx`
-		<${EmbeddedJSON} id="static-urls" value=${staticURLs} />
+		<${EmbeddedJSON} name="static-urls" value=${staticURLs} />
 	`;
 }
