@@ -6,14 +6,16 @@ import babelPluginTransformReactJSX from "@babel/plugin-transform-react-jsx";
 // @ts-expect-error
 import babelPresetTypeScript from "@babel/preset-typescript";
 
+import {extractData} from "../components/serialize-javascript.js";
+
 function rewriteBareModuleSpecifiers(): Babel.PluginObj {
 	function rewrite(value: string): string {
 		if (typeof window !== "undefined") {
-			const staticURLsScript = document.getElementById("static-urls");
-			if (staticURLsScript && staticURLsScript.textContent) {
-				const staticURLs: Record<string, string> = JSON.parse(
-					staticURLsScript.textContent,
-				);
+			const staticURLsScript = document.getElementById(
+				"static-urls",
+			) as HTMLScriptElement;
+			if (staticURLsScript) {
+				const staticURLs = extractData(staticURLsScript) as Record<string, any>;
 				if (staticURLs[value]) {
 					return staticURLs[value];
 				}

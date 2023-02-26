@@ -11,7 +11,7 @@ import "prismjs/components/prism-diff";
 import "prismjs/components/prism-bash";
 import {ContentAreaElement} from "@b9g/revise/contentarea.js";
 import {InlineCodeBlock} from "../components/inline-code-block.js";
-import {extractData} from "../components/embedded-json.js";
+import {extractData} from "../components/serialize-javascript.js";
 import {GearInteractive} from "../components/gear-interactive.js";
 import {Navbar} from "../components/navbar.js";
 

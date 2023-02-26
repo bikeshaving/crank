@@ -1,5 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
-import {EmbeddedJSON} from "./embedded-json.js";
+import {SerializeScript} from "./serialize-javascript.js";
 import type {Storage} from "./esbuild";
 
 export async function StaticURLsJSON({storage}: {storage: Storage}) {
@@ -32,6 +32,6 @@ export async function StaticURLsJSON({storage}: {storage: Storage}) {
 	};
 
 	return jsx`
-		<${EmbeddedJSON} name="static-urls" value=${staticURLs} />
+		<${SerializeScript} id="static-urls" name="static-urls" value=${staticURLs} />
 	`;
 }
