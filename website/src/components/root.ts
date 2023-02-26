@@ -58,7 +58,7 @@ export function Root({
 						<${Navbar} url=${url} />
 					</div>
 					<>${children}</>
-					<${StaticURLsJSON} storage=${storage} />
+					<${StaticURLsJSON} id="static-urls" storage=${storage} />
 					<${Script} src="clients/code-blocks.ts" />
 				</body>
 			</html>

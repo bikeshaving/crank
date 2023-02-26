@@ -1,6 +1,6 @@
 import {jsx} from "@b9g/crank/standalone";
 import {InlineCodeBlock} from "./inline-code-block.js";
-import {EmbeddedJSON} from "./embedded-json.js";
+import {SerializeScript} from "./serialize-javascript.js";
 
 export const components = {
 	codespan({token}: any) {
@@ -20,7 +20,11 @@ export const components = {
 					lang=${lang}
 					editable=${lang.endsWith(" live")}
 				/>
-				<${EmbeddedJSON} value=${{code, lang}} name="inline-code-block-props" />
+				<${SerializeScript}
+					class="props"
+					value=${{code, lang}}
+					name="inline-code-block-props"
+				/>
 			</div>
 		`;
 	},

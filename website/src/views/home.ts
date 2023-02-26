@@ -3,7 +3,7 @@ import {css} from "@emotion/css";
 
 import {Root} from "../components/root.js";
 import type {Storage} from "../components/esbuild.js";
-import {EmbeddedJSON} from "../components/embedded-json.js";
+import {SerializeScript} from "../components/serialize-javascript.js";
 import {collectDocuments} from "../models/document.js";
 import * as Path from "path";
 
@@ -75,7 +75,7 @@ const components = {
 					lang=${lang}
 					editable=${lang.endsWith(" live")}
 				/>
-				<${EmbeddedJSON} value=${{code, lang}} class="props" />
+				<${SerializeScript} value=${{code, lang}} class="props" />
 			</div>
 		`;
 	},

@@ -3,9 +3,9 @@ import type {Context} from "@b9g/crank/standalone";
 import serializeJavascript from "serialize-javascript";
 
 let nextID = 0;
-export function *EmbeddedJSON(
+export function* SerializeScript(
 	this: Context,
-	{name, value, ...scriptProps}: any
+	{name, value, ...scriptProps}: any,
 ): any {
 	const id = nextID++;
 	for ({name, value} of this) {
@@ -25,9 +25,13 @@ export function *EmbeddedJSON(
 	}
 }
 
-export function extractData(script: HTMLScriptElement): {name: string; value: any} {
-	const name = script.dataset.name || "";
-	return {name, value: (window as any).__embeddedJSON__[name]};
+export function extractData(script: HTMLScriptElement): unknown {
+	const name = script.dataset.name;
+	if (name == null) {
+		throw new Error("script element is missing data-name attribute");
+	}
+
+	return (window as any).__embeddedJSON__[name];
 }
 
 // TODO: Add an interface to strongly type the data by name.

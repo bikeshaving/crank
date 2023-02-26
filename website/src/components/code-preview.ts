@@ -3,6 +3,7 @@ import type {Context} from "@b9g/crank";
 import {css} from "@emotion/css";
 import {debounce} from "../utils/fns.js";
 import {transform} from "../plugins/babel.js";
+import {extractData} from "./serialize-javascript.js";
 
 function generateIFrameHTML(
 	id: number,
@@ -113,11 +114,9 @@ export function* CodePreview(
 	let execute: () => unknown;
 	let executeDebounced: () => unknown;
 	if (typeof window !== "undefined") {
-		staticURLs = JSON.parse(
-			// @ts-ignore
-			document.getElementById("static-urls").textContent,
-		);
-
+		staticURLs = extractData(
+			document.getElementById("static-urls") as HTMLScriptElement,
+		) as Record<string, any>;
 		execute = () => {
 			if (!visible) {
 				return;
