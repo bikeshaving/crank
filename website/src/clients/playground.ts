@@ -75,10 +75,10 @@ function* Playground(this: Context, {}) {
 				<div class=${css`
 					flex: 0 1 auto;
 					min-height: 80vh;
+					overflow: auto;
 					@media (min-width: 800px) {
 						height: calc(100vh - 50px);
 						width: 61.8%;
-						overflow: auto;
 					}
 				`}>
 					<${CodeEditor}
@@ -93,10 +93,11 @@ function* Playground(this: Context, {}) {
 						height: calc(100vh - 50px);
 						width: 400px;
 					}
+
 					border-top: 1px solid currentcolor;
-					border-left: 1px solid currentcolor;
+					margin-top: -1px;
 					@media (min-width: 800px) {
-						margin-top: -1px;
+						border-left: 1px solid currentcolor;
 						margin-left: -1px;
 					}
 				`}>

@@ -42,9 +42,12 @@ export function* InlineCodeBlock(
 			`}>
 				<div class=${css`
 					display: flex;
-					flex-direction: row;
-					flex-wrap: wrap;
-					align-items: flex-start;
+					flex-direction: column;
+					@media (min-width: 800px) {
+						flex-direction: row;
+						align-items: flex-start;
+					}
+
 					font-size: 16px;
 				`}>
 					<div class=${css`
@@ -65,15 +68,16 @@ export function* InlineCodeBlock(
 						editable &&
 						jsx`
 							<div class=${css`
-								flex: 1 1 auto;
+								flex: 0 1 auto;
 								position: sticky;
 								top: 100px;
 								border: 1px solid var(--text-color);
 								margin-top: -1px;
-								@media (min-width: 800px) {
-									margin-left: -1px;
-								}
 								min-height: 50px;
+								width: 100%;
+								@media screen and (min-width: 800px) {
+									width: 30%;
+								}
 							`}>
 								<${CodePreview}
 									value=${value}
