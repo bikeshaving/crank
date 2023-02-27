@@ -5,7 +5,7 @@ Crank is a JavaScript / TypeScript library for building websites and apps. It is
 ## Why is Crank “Just JavaScript?”
 
 Many web frameworks claim to be “just JavaScript.” Few have as strong a claim as Crank.
-It starts with the idea that JavaScript’s built-in syntaxes for functions are useful.
+It starts with the idea that we can use JavaScript’s built-in function syntaxes to write components.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -44,7 +44,7 @@ async function Definition({word}) {
 //renderer.render(<Definition word="framework" />, document.body);
 ```
 
-In a component, which is just a function, promises can be awaited, updates can be iterated, state can be held in scope, callbacks can be defined once, etc.
+Promises can be awaited. Updates can be iterated. State can be held in scope. Callbacks can be used without having to be “memoized.” Etc.
 
 The result is a simpler developer experience, where you spend less time writing framework integrations and more time writing vanilla JavaScript.
 

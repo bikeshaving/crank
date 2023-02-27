@@ -18,7 +18,28 @@ if (!window.customElements.get("content-area")) {
 // TODO: multiple examples
 
 const EXAMPLE = `
-import {jsx} from "@b9g/crank/crank.js";
+import {renderer} from "@b9g/crank/dom";
+
+function *Timer() {
+  let seconds = 0;
+  const interval = setInterval(() => {
+    seconds++;
+    this.refresh();
+  }, 1000);
+
+  for ({} of this) {
+    yield <div>{seconds}</div>;
+  }
+
+  clearInterval(interval);
+}
+
+renderer.render(<Timer />, document.body);
+`.trim();
+
+const EXAMPLE1 = `
+import {jsx} from "@b9g/crank/standalone";
+import {renderer} from "@b9g/crank/dom";
 
 function *Timer() {
   let seconds = 0;
@@ -34,12 +55,15 @@ function *Timer() {
   clearInterval(interval);
 }
 
-import {renderer} from "@b9g/crank/dom.js";
 renderer.render(jsx\`<\${Timer} />\`, document.body);
 `.trimLeft();
 
 function* Playground(this: Context, {}) {
-	let value = localStorage.getItem("playground-value") || EXAMPLE;
+	let value = localStorage.getItem("playground-value") || "";
+	if (!value.trim()) {
+		value = EXAMPLE;
+	}
+
 	this.addEventListener("contentchange", (ev: any) => {
 		value = ev.target.value;
 
