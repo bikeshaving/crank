@@ -1,13 +1,50 @@
 ## What is Crank?
 
-Crank is a JavaScript / TypeScript library for building websites and apps. It is a framework where components are defined with plain old functions, including async and generator functions, which yield/return JSX or templates.
+Crank is a JavaScript / TypeScript library for building websites and apps. It is a framework where components are defined with plain old functions, including async and generator functions, which `yield` / `return` JSX or templates.
 
 ## Why is Crank “Just JavaScript?”
 
 Many web frameworks claim to be “just JavaScript.” Few have as strong a claim as Crank.
 It starts with the idea that JavaScript’s built-in syntaxes for functions are useful.
 
-In a component, which is just a function, promises can be awaited, updates can be iterated, state can be held.
+```jsx live
+import {renderer} from "@b9g/crank/dom";
+
+function *Timer() {
+  let seconds = 0;
+  const interval = setInterval(() => {
+    seconds++;
+    this.refresh();
+  }, 1000);
+
+  for ({} of this) {
+    yield <p>{seconds} second{seconds !== 1 && "s"}</p>;
+  }
+
+  clearInterval(interval);
+}
+
+renderer.render(<Timer />, document.body);
+
+async function Definition({word}) {
+  // API courtesy https://dictionaryapi.dev
+  const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+  const data = await res.json();
+  const {phonetic, meanings} = data[0];
+  const {partOfSpeech, definitions} = meanings[0];
+  const {definition} = definitions[0];
+  return <>
+    <p>{word} <code>{phonetic}</code></p>
+    <p><code>{partOfSpeech}.</code> {definition}</p>
+    {/*<pre>{JSON.stringify(data, null, 2)}</pre>*/}
+  </>;
+}
+
+// TODO: Uncomment me.
+//renderer.render(<Definition word="framework" />, document.body);
+```
+
+In a component, which is just a function, promises can be awaited, updates can be iterated, state can be held in scope, callbacks can be defined once, etc.
 
 The result is a simpler developer experience, where you spend less time writing framework integrations and more time writing vanilla JavaScript.
 
@@ -130,7 +167,7 @@ renderer.render(jsx`
 
 ### Reason #2: It’s predictable
 
-Crank uses generator functions to define stateful components. You store state in local variables, and `yield` rather than `return` to keep that state around.
+Crank uses generator functions to define stateful components. You store state in local variables, and `yield` rather than `return` to keep it around.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -199,7 +236,7 @@ function *Timer() {
     // because of a forgotten yield.
     yield (
       <div>
-        <p>Seconds: {seconds} second{seconds !== 1 && "s"}</p>
+        <p>{seconds} second{seconds !== 1 && "s"}</p>
         <button onclick={toggleInterval}>
           {interval == null ? "Start timer" : "Stop timer"}
         </button>
