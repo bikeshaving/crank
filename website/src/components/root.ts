@@ -48,9 +48,7 @@ export function Root({
 					<title>${title}</title>
 					<${Link} rel="stylesheet" type="text/css" href="styles/client.css" />
 					<link rel="shortcut icon" href="/static/favicon.ico" />
-					<!--
 					<${GoogleSpyware} />
-					-->
 				</head>
 				<body>
 					<${ColorSchemeScript} />
