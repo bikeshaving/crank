@@ -1,6 +1,6 @@
 ## What is Crank?
 
-Crank is a JavaScript / TypeScript library for building websites and apps. It is a framework where components are defined with plain old functions, including async and generator functions, which `yield` / `return` JSX or templates.
+Crank is a JavaScript / TypeScript library for building websites and apps. It is a framework where components are defined with plain old functions, including async and generator functions, which `yield` and `return` JSX or templates.
 
 ## Why is Crank “Just JavaScript?”
 
