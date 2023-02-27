@@ -1,11 +1,11 @@
 ---
 title: Crank.js
 description: "The Just JavaScript framework.
-Crank is a JavaScript / TypeScript library for building websites and apps. It is a framework where components are defined with plain old functions, including async and generator functions, which `yield` and `return` JSX or templates."
+Crank is a JavaScript / TypeScript library for building websites and apps. It is a framework where components are defined with plain old functions, including async and generator functions, which `yield` and `return` JSX templates."
 ---
 ## What is Crank?
 
-Crank is a JavaScript / TypeScript library for building websites and apps. It is a framework where components are defined with plain old functions, including async and generator functions, which `yield` and `return` JSX or templates.
+Crank is a JavaScript / TypeScript library for building websites and apps. It is a framework where components are defined with plain old functions, including async and generator functions, which `yield` and `return` JSX templates.
 
 ## Why is Crank “Just JavaScript?”
 
@@ -366,6 +366,8 @@ async function MockCreditCard({throttle}) {
 }
 
 async function *RandomCreditCard({throttle}) {
+  setTimeout(() => this.refresh());
+  yield null;
   for await ({throttle} of this) {
     yield <LoadingCreditCard />;
     yield <MockCreditCard throttle={throttle} />;
@@ -384,7 +386,6 @@ function *CreditCardGenerator() {
   for ({} of this) {
     yield (
       <div>
-        <RandomCreditCard throttle={throttle} />
         <div>
           <button onclick={() => this.refresh()}>
             Generate new card
@@ -394,6 +395,7 @@ function *CreditCardGenerator() {
             {throttle ? "Unthrottle" : "Throttle"} API
           </button>
         </div>
+        <RandomCreditCard throttle={throttle} />
       </div>
     );
   }
