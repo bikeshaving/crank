@@ -1,3 +1,4 @@
+import Path from "path";
 import {jsx, Raw} from "@b9g/crank/standalone";
 import type {Children} from "@b9g/crank";
 import {Page, Link, Script, Storage} from "./esbuild.js";
@@ -32,11 +33,13 @@ export function Root({
 	children,
 	url,
 	storage,
+	description = "",
 }: {
 	title: string;
 	children: Children;
 	url: string;
 	storage: Storage;
+	description?: string;
 }) {
 	return jsx`
 		<${Raw} value="<!DOCTYPE html>" />
@@ -49,6 +52,9 @@ export function Root({
 					<${Link} rel="stylesheet" type="text/css" href="styles/client.css" />
 					<link rel="shortcut icon" href="/static/favicon.ico" />
 					<${GoogleSpyware} />
+					<meta property="og:title" content=${title} />
+					<meta property="og:url" content=${Path.join("https://crank.js.org", url)} />
+					<meta property="og:description" content=${description} />
 				</head>
 				<body>
 					<${ColorSchemeScript} />

@@ -171,7 +171,7 @@ export default async function Home({storage}: {storage: Storage}) {
 	}
 
 	return jsx`
-		<${Root} title="Crank.js" url="/" storage=${storage}>
+		<${Root} title="Crank.js" url="/" description=${md.attributes.description} storage=${storage}>
 			<${Hero} />
 			<div class="${css`
 				font-size: max(18px, min(24px, 2vw));

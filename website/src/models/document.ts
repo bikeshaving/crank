@@ -27,6 +27,7 @@ export interface DocInfo {
 		title: string;
 		publish: boolean;
 		publishDate?: Date;
+		description?: string;
 	};
 	url: string;
 	filename: string;

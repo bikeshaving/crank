@@ -10,11 +10,15 @@ export function GoogleSpyware() {
 		/>
 		<script
 			innerHTML=${`
-				window.dataLayer = window.dataLayer || [];
-				function gtag(){dataLayer.push(arguments);}
-				gtag('js', new Date());
+				<!-- Google tag (gtag.js) -->
+				<script async src="https://www.googletagmanager.com/gtag/js?id=G-1583Q8VK83"></script>
+				<script>
+					window.dataLayer = window.dataLayer || [];
+					function gtag(){dataLayer.push(arguments);}
+					gtag('js', new Date());
 
-				gtag('config', 'UA-20910936-4');
+					gtag('config', 'G-1583Q8VK83');
+				</script>
 			`}
 		/>
 	`;
