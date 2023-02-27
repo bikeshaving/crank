@@ -54,9 +54,11 @@ export function* InlineCodeBlock(
 						width: 100%;
 						border: 1px solid var(--text-color);
 						margin-top: -1px;
-						${editable ? `@media (min-width: 800px) {
+						${editable
+							? `@media (min-width: 800px) {
 							max-width: 61.8%;
-						}` : ""}
+						}`
+							: ""}
 					`}>
 						<div class=${css`
 							overflow-x: auto;
