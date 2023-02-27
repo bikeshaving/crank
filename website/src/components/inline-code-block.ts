@@ -54,6 +54,9 @@ export function* InlineCodeBlock(
 						width: 100%;
 						border: 1px solid var(--text-color);
 						margin-top: -1px;
+						${editable ? `@media (min-width: 800px) {
+							max-width: 61.8%;
+						}` : ""}
 					`}>
 						<div class=${css`
 							overflow-x: auto;
@@ -71,7 +74,7 @@ export function* InlineCodeBlock(
 						editable &&
 						jsx`
 							<div class=${css`
-								flex: 0 1 auto;
+								flex: 1 1 auto;
 								position: sticky;
 								top: 100px;
 								border: 1px solid var(--text-color);
