@@ -17,8 +17,10 @@ const storage = new Storage({
 });
 
 const dist = Path.join(__dirname, "../dist");
-await FS.emptyDir(dist);
-await FS.ensureDir(dist);
+// Empty a directory
+// Ensure that the dist directory exists and that it's empty
+await FS.rm(dist, {recursive: true, force: true});
+await FS.mkdir(dist, {recursive: true});
 
 import HomeView from "./views/home.js";
 import BlogHomeView from "./views/blog-home.js";
@@ -49,6 +51,7 @@ const urls = ["/", "/blog", "/playground", ...guideURLs, ...blogURLs];
 
 async function build(urls: Array<string>) {
 	for (const url of urls) {
+		// TODO: Make a mock request object and pass it through the server, and use the Response object to write html files.
 		const match = router.match(url);
 		if (!match) {
 			continue;
@@ -61,15 +64,20 @@ async function build(urls: Array<string>) {
 
 		const html = renderStylesToString(
 			await renderer.render(jsx`
-			<${View} url=${url} storage=${storage} params=${match.params} />
-		`),
+				<${View}
+					url=${url}
+					params=${match.params}
+					context=${{storage}}
+				/>
+			`),
 		);
 
-		await FS.ensureDir(Path.join(dist, url));
+		await FS.mkdir(Path.join(dist, url), {recursive: true});
 		await FS.writeFile(Path.join(dist, url, "index.html"), html);
 	}
 }
 
 await build(urls);
+
 await storage.write(Path.join(dist, "/static/"));
 storage.clear();
