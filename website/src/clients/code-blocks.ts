@@ -43,10 +43,3 @@ for (const container of Array.from(containers)) {
 		container,
 	);
 }
-
-const navbar = document.getElementById("navbar-root");
-
-renderer.hydrate(
-	jsx`<${Navbar} url=${new URL(window.location).pathname} />`,
-	navbar,
-);

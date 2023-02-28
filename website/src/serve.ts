@@ -8,6 +8,8 @@ import type {Component} from "@b9g/crank";
 import {renderer} from "@b9g/crank/html";
 import {renderStylesToString} from "@emotion/server";
 
+import {Request, Response} from "@remix-run/web-fetch";
+
 import {router} from "./routes.js";
 import {Storage} from "./components/esbuild.js";
 
@@ -57,17 +59,13 @@ const server = createServer(async (req, res) => {
 		return;
 	}
 
-	const View = views[match.name];
-	if (!View) {
-		res.writeHead(404, {"Content-Type": "text/html"});
-		res.end(`Missing view for ${match.name}`, "utf-8");
-		return;
-	}
-
 	res.writeHead(200, {"Content-Type": "text/html"});
-	// TODO: Should we pass in name to props?
 	let html = await renderer.render(jsx`
-		<${View} url=${url} storage=${storage} params=${match.params} />
+		<${match.View}
+			url=${url}
+			params=${match.params}
+			context=${{storage}}
+		/>
 	`);
 
 	html = renderStylesToString(html);

@@ -49,12 +49,14 @@ export function Root({
 					<meta charset="UTF-8" />
 					<meta name="viewport" content="width=device-width" />
 					<title>${title}</title>
-					<${Link} rel="stylesheet" type="text/css" href="styles/client.css" />
+					<!-- TODO: Update favicon.
 					<link rel="shortcut icon" href="/static/favicon.ico" />
-					<${GoogleSpyware} />
+					-->
+					<${Link} rel="stylesheet" type="text/css" href="styles/client.css" />
 					<meta property="og:title" content=${title} />
 					<meta property="og:url" content=${Path.join("https://crank.js.org", url)} />
 					<meta property="og:description" content=${description} />
+					<${GoogleSpyware} />
 				</head>
 				<body>
 					<${ColorSchemeScript} />
@@ -63,6 +65,7 @@ export function Root({
 					</div>
 					<>${children}</>
 					<${StaticURLsJSON} id="static-urls" storage=${storage} />
+					<${Script} src="clients/navbar.ts" />
 					<${Script} src="clients/code-blocks.ts" />
 				</body>
 			</html>

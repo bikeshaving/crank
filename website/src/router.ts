@@ -1,19 +1,33 @@
 import {compile, match} from "path-to-regexp";
 import type {MatchFunction, PathFunction} from "path-to-regexp";
+import type {Component} from "@b9g/crank";
+
+export interface ViewProps extends Record<string, unknown> {
+	url: string;
+	params: Record<string, string>;
+	context: Record<string, unknown>;
+}
+
+export type ViewComponent = Component<ViewProps>;
 
 export interface Route {
 	name: string;
+	view: ViewComponent;
 	match: MatchFunction;
 	reverse: PathFunction;
 }
 
+export interface RouteConfig {
+	name: string;
+	view: ViewComponent;
+}
+
 export function route(
 	matcher: string,
-	name: string,
-	// TODO: options?
+	config: RouteConfig,
 ): Route {
 	return {
-		name,
+		...config,
 		match: match(matcher),
 		reverse: compile(matcher),
 	};
@@ -21,6 +35,12 @@ export function route(
 
 export interface Router {
 	routes: Array<Route>;
+}
+
+export interface MatchResult {
+	name: string;
+	params: Record<string, unknown>;
+	View: ViewComponent;
 }
 
 export class Router {
@@ -35,6 +55,7 @@ export class Router {
 				return {
 					name: route.name,
 					params: match.params as Record<string, unknown>,
+					View: route.view,
 				};
 			}
 		}
@@ -47,7 +68,3 @@ export class Router {
 	}
 }
 
-export interface MatchResult {
-	name: string;
-	params: Record<string, unknown>;
-}

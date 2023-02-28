@@ -9,6 +9,7 @@ import * as Path from "path";
 
 import {Marked} from "../components/marked.js";
 import {InlineCodeBlock} from "../components/inline-code-block.js";
+import type {ViewProps} from "../router.js";
 
 const components = {
 	heading({token, children}: any) {
@@ -162,7 +163,7 @@ function CallToAction() {
 
 const __dirname = new URL(".", import.meta.url).pathname;
 
-export default async function Home({storage}: {storage: Storage}) {
+export default async function Home({context: {storage}}: ViewProps) {
 	const docs = await collectDocuments(Path.join(__dirname, "../../documents"));
 
 	const md = docs.find((doc) => doc.filename.endsWith("/index.md"));
@@ -171,7 +172,12 @@ export default async function Home({storage}: {storage: Storage}) {
 	}
 
 	return jsx`
-		<${Root} title="Crank.js" url="/" description=${md.attributes.description} storage=${storage}>
+		<${Root}
+			title="Crank.js"
+			url="/"
+			description=${md.attributes.description}
+			storage=${storage}
+		>
 			<${Hero} />
 			<div class="${css`
 				font-size: max(18px, min(24px, 2vw));

@@ -1,7 +1,8 @@
 import {Navbar} from "../components/navbar.js";
-const navbar = document.getElementById("navbar-root");
+import {jsx} from "@b9g/crank/standalone";
+import {renderer} from "@b9g/crank/dom";
 
 renderer.hydrate(
 	jsx`<${Navbar} url=${new URL(window.location).pathname} />`,
-	navbar,
+	document.getElementById("navbar-root"),
 );
