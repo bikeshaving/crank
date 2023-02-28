@@ -7,15 +7,12 @@ import {BlogContent} from "../components/blog-content.js";
 import {Marked} from "../components/marked.js";
 import {components} from "../components/marked-components.js";
 import type {Storage} from "../components/esbuild.js";
+import type {ViewProps} from "../router.js";
 
 import {collectDocuments} from "../models/document.js";
 const __dirname = new URL(".", import.meta.url).pathname;
 
-export interface BlogHomeProps {
-	storage: Storage;
-}
-
-export default async function BlogHome({storage}: BlogHomeProps) {
+export default async function BlogHome({context: {storage}}: ViewProps) {
 	const posts = await collectDocuments(
 		path.join(__dirname, "../../documents/blog"),
 		path.join(__dirname, "../../documents/"),

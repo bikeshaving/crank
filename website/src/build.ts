@@ -3,7 +3,7 @@ import type {Component} from "@b9g/crank/standalone";
 import {renderer} from "@b9g/crank/html";
 import {renderStylesToString} from "@emotion/server";
 
-import FS from "fs-extra";
+import * as FS from "fs/promises";
 import * as Path from "path";
 
 import {collectDocuments} from "./models/document.js";

@@ -6,6 +6,7 @@ import {Main, Sidebar} from "../components/sidebar.js";
 import {Marked} from "../components/marked.js";
 import {components} from "../components/marked-components.js";
 import type {Storage} from "../components/esbuild.js";
+import type {ViewProps} from "../router.js";
 
 import {collectDocuments} from "../models/document.js";
 
@@ -18,8 +19,8 @@ const __dirname = new URL(".", import.meta.url).pathname;
 export default async function Guide({
 	// TODO: prop name is wrong here
 	url,
-	storage,
-}: GuideProps) {
+	context: {storage},
+}: ViewProps) {
 	const docs = await collectDocuments(
 		path.join(__dirname, "../../documents/guides"),
 		path.join(__dirname, "../../documents/"),

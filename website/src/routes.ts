@@ -1,11 +1,31 @@
 import {route, Router} from "./router.js";
+import HomeView from "./views/home.js";
+import BlogHomeView from "./views/blog-home.js";
+import GuideView from "./views/guide.js";
+import BlogView from "./views/blog.js";
+import PlaygroundView from "./views/playground.js";
 
-// I guess this layer of indirection makes it easier to import the router
-// in different environments.
+// TODO: I am not sure what the value of the route() function is over using the
+// route config directly.
 export const router = new Router([
-	route("/", "home"),
-	route("/blog", "blogHome"),
-	route("/blog/:slug", "blog"),
-	route("/guides/:slug", "guide"),
-	route("/playground", "playground"),
+	route("/", {
+		name: "home",
+		view: HomeView,
+	}),
+	route("/blog", {
+		name: "blog-home",
+		view: BlogHomeView,
+	}),
+	route("/blog/:slug", {
+		name: "blog",
+		view: BlogView,
+	}),
+	route("/guides/:slug", {
+		name: "guide",
+		view: GuideView,
+	}),
+	route("/playground", {
+		name: "playground",
+		view: PlaygroundView,
+	}),
 ]);
