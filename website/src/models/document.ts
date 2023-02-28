@@ -1,4 +1,4 @@
-import FS from "fs-extra";
+import FS from "fs/promises";
 import type {Stats} from "fs";
 import * as Path from "path";
 import frontmatter from "front-matter";
