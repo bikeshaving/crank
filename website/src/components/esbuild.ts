@@ -1,4 +1,4 @@
-import FS from "fs-extra";
+import * as FS from "fs/promises";
 import * as Path from "path";
 import * as ESBuild from "esbuild";
 import type {BuildContext, OutputFile} from "esbuild";
@@ -14,6 +14,21 @@ import postcssNested from "postcss-nested";
 
 import {NodeModulesPolyfillPlugin} from "@esbuild-plugins/node-modules-polyfill";
 import {NodeGlobalsPolyfillPlugin} from "@esbuild-plugins/node-globals-polyfill";
+
+async function copy(src: string, dest: string): Promise<void> {
+	await FS.mkdir(dest, {recursive: true});
+	const files = await FS.readdir(src);
+	for (const file of files) {
+		const srcPath = Path.join(src, file);
+		const destPath = Path.join(dest, file);
+		const stat = await FS.stat(srcPath);
+		if (stat.isFile()) {
+			await FS.copyFile(srcPath, destPath);
+		} else if (stat.isDirectory()) {
+			await copy(srcPath, destPath);
+		}
+	}
+}
 
 function isWithinDir(dir: string, name: string) {
 	const resolved = Path.resolve(dir, name);
@@ -102,7 +117,7 @@ export class Storage {
 	}
 
 	async write(dirname: string): Promise<void> {
-		await FS.ensureDir(dirname);
+		await FS.mkdir(dirname, {recursive: true});
 
 		const outputs: Array<OutputFile> = [];
 		for (const ctx of this.cache.values()) {
@@ -120,7 +135,10 @@ export class Storage {
 
 		await Promise.all(
 			this.staticPaths.map(async (staticPath) => {
-				await FS.copy(staticPath, dirname);
+				//await FS.copy(staticPath, dirname);
+				// copy all files under staticPath to dirname
+				//
+				await copy(staticPath, dirname);
 			}),
 		);
 	}
@@ -144,7 +162,7 @@ export class Storage {
 			try {
 				const mimeType = mime.lookup(inputPath) || "application/octet-stream";
 				const charset = mime.charset(mimeType) || "binary";
-				return await FS.readFile(Path.join(staticPath, inputPath), charset);
+				return await FS.readFile(Path.join(staticPath, inputPath), charset as any);
 			} catch (err: any) {
 				if (err.code !== "ENOENT") {
 					throw err;
