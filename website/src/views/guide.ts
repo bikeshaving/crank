@@ -5,15 +5,9 @@ import {Root} from "../components/root.js";
 import {Main, Sidebar} from "../components/sidebar.js";
 import {Marked} from "../components/marked.js";
 import {components} from "../components/marked-components.js";
-import type {Storage} from "../components/esbuild.js";
 import type {ViewProps} from "../router.js";
 
 import {collectDocuments} from "../models/document.js";
-
-export interface GuideProps {
-	url: string;
-	storage: Storage;
-}
 
 const __dirname = new URL(".", import.meta.url).pathname;
 export default async function Guide({

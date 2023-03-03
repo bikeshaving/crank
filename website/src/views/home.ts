@@ -2,7 +2,6 @@ import {jsx} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 
 import {Root} from "../components/root.js";
-import type {Storage} from "../components/esbuild.js";
 import {SerializeScript} from "../components/serialize-javascript.js";
 import {collectDocuments} from "../models/document.js";
 import * as Path from "path";

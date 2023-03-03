@@ -1,7 +1,6 @@
 import {jsx} from "@b9g/crank/standalone";
 import {Root} from "../components/root.js";
 import {Script} from "../components/esbuild.js";
-import type {Storage} from "../components/esbuild.js";
 import type {ViewProps} from "../router.js";
 
 export default async function Playground({context: {storage}}: ViewProps) {

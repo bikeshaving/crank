@@ -162,7 +162,10 @@ export class Storage {
 			try {
 				const mimeType = mime.lookup(inputPath) || "application/octet-stream";
 				const charset = mime.charset(mimeType) || "binary";
-				return await FS.readFile(Path.join(staticPath, inputPath), charset as any);
+				return await FS.readFile(
+					Path.join(staticPath, inputPath),
+					charset as any,
+				);
 			} catch (err: any) {
 				if (err.code !== "ENOENT") {
 					throw err;
