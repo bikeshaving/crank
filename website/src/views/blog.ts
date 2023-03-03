@@ -6,7 +6,6 @@ import {Main, Sidebar} from "../components/sidebar.js";
 import {BlogContent} from "../components/blog-content.js";
 import {Marked} from "../components/marked.js";
 import {components} from "../components/marked-components.js";
-import type {Storage} from "../components/esbuild.js";
 import type {ViewProps} from "../router.js";
 
 import {collectDocuments} from "../models/document.js";

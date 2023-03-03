@@ -20,8 +20,6 @@ const dist = Path.join(__dirname, "../dist");
 // Empty a directory
 // Ensure that the dist directory exists and that it's empty
 await FS.rm(dist, {recursive: true, force: true});
-await FS.mkdir(dist, {recursive: true});
-
 import HomeView from "./views/home.js";
 import BlogHomeView from "./views/blog-home.js";
 import GuideView from "./views/guide.js";
@@ -30,7 +28,7 @@ import PlaygroundView from "./views/playground.js";
 
 const views: Record<string, Component> = {
 	home: HomeView,
-	blogHome: BlogHomeView,
+	["blog-home"]: BlogHomeView,
 	blog: BlogView,
 	guide: GuideView,
 	playground: PlaygroundView,
@@ -54,11 +52,13 @@ async function build(urls: Array<string>) {
 		// TODO: Make a mock request object and pass it through the server, and use the Response object to write html files.
 		const match = router.match(url);
 		if (!match) {
+			console.error("no match for", url);
 			continue;
 		}
 
 		const View = views[match.name];
 		if (!View) {
+			console.error("no view for", match.name);
 			continue;
 		}
 
@@ -72,6 +72,7 @@ async function build(urls: Array<string>) {
 			`),
 		);
 
+		console.info("writing", url);
 		await FS.mkdir(Path.join(dist, url), {recursive: true});
 		await FS.writeFile(Path.join(dist, url, "index.html"), html);
 	}

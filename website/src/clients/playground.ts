@@ -37,27 +37,6 @@ function *Timer() {
 renderer.render(<Timer />, document.body);
 `.trim();
 
-const EXAMPLE1 = `
-import {jsx} from "@b9g/crank/standalone";
-import {renderer} from "@b9g/crank/dom";
-
-function *Timer() {
-  let seconds = 0;
-  const interval = setInterval(() => {
-    seconds++;
-    this.refresh();
-  }, 1000);
-
-  for ({} of this) {
-    yield jsx\`<div>\${seconds}s</div>\`;
-  }
-
-  clearInterval(interval);
-}
-
-renderer.render(jsx\`<\${Timer} />\`, document.body);
-`.trimLeft();
-
 function* Playground(this: Context, {}) {
 	let value = localStorage.getItem("playground-value") || "";
 	if (!value.trim()) {

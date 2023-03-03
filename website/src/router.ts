@@ -22,10 +22,7 @@ export interface RouteConfig {
 	view: ViewComponent;
 }
 
-export function route(
-	matcher: string,
-	config: RouteConfig,
-): Route {
+export function route(matcher: string, config: RouteConfig): Route {
 	return {
 		...config,
 		match: match(matcher),
@@ -67,4 +64,3 @@ export class Router {
 		throw new Error("TODO");
 	}
 }
-
