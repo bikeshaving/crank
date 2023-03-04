@@ -249,7 +249,7 @@ function* App() {
       <svg
         width=${WIDTH * UNIT}
         height=${HEIGHT * UNIT}
-        style="border: 1px solid white"
+        style="border: 1px solid currentcolor"
         fill="transparent"
       >
         <${Board} field=${field} />
