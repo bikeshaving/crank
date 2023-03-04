@@ -19,6 +19,7 @@
 	}
 }
 
+/* colors have to match background or it looks bad */
 .color-scheme-light {
 	.blur-background {
 		@supports (backdrop-filter: blur(4px)) {
@@ -35,7 +36,6 @@
 	}
 }
 
-/* colors have to match background or it looks bad */
 .color-scheme-light {
 	.blur-background-2 {
 		@supports (backdrop-filter: blur(8px)) {
@@ -140,4 +140,8 @@ code.inline {
 	font-size: .9em;
 	display: inline;
 	background: var(--coldark01);
+}
+
+select {
+  background-color: var(--bg-color);
 }
