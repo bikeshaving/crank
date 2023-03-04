@@ -7,7 +7,9 @@ import "prismjs/components/prism-javascript";
 
 import {CodePreview} from "../components/code-preview.js";
 import {CodeEditor} from "../components/code-editor.js";
+import {extractData} from "../components/serialize-javascript.js";
 //import LZString from "lz-string";
+
 
 // TODO: move this to the ContentAreaElement component
 import {ContentAreaElement} from "@b9g/revise/contentarea.js";
@@ -15,9 +17,7 @@ if (!window.customElements.get("content-area")) {
 	window.customElements.define("content-area", ContentAreaElement);
 }
 
-// TODO: multiple examples
-
-const EXAMPLE = `
+const TIMER_EXAMPLE = `
 import {renderer} from "@b9g/crank/dom";
 
 function *Timer() {
@@ -36,19 +36,45 @@ function *Timer() {
 
 renderer.render(<Timer />, document.body);
 `.trim();
+import * as FS from "fs/promises";
+function CodeEditorNavbar({children}) {
+	return jsx`
+		<div class=${css`
+			flex: none;
+			padding: 1em;
+			height: 3em;
+			border-bottom: 1px solid var(--text-color);
+			display: flex;
+			flex-direction: row;
+			align-items: center;
+		`}>
+			${children}
+		</div>
+	`;
+}
+
+const examples = extractData(document.getElementById("examples"));
 
 function* Playground(this: Context, {}) {
-	let value = localStorage.getItem("playground-value") || "";
-	if (!value.trim()) {
-		value = EXAMPLE;
+	let code = localStorage.getItem("playground-value") || "";
+	if (!code.trim()) {
+		code = TIMER_EXAMPLE;
 	}
 
 	this.addEventListener("contentchange", (ev: any) => {
-		value = ev.target.value;
+		code = ev.target.value;
 
-		localStorage.setItem("playground-value", value);
+		localStorage.setItem("playground-value", code);
 		this.refresh();
 	});
+
+	let exampleName: "" | "timer" | "tetris" = "";
+	const onexamplechange = (ev: Event) => {
+		exampleName = (ev.target as HTMLSelectElement).value;
+		const {code: code1} = examples.find((example) => example.name === exampleName);
+		code = code1;
+		this.refresh();
+	};
 
 	//const hashchange = (ev: HashChangeEvent) => {
 	//	console.log("hashchange", ev);
@@ -57,11 +83,11 @@ function* Playground(this: Context, {}) {
 	//};
 	//window.addEventListener("hashchange", hashchange);
 	//this.cleanup(() => window.removeEventListener("hashchange", hashchange))
-
-	for ({} of this) {
 		//this.flush(() => {
 		//	window.location.hash = LZString.compressToEncodedURIComponent(value);
 		//});
+
+	for ({} of this) {
 		yield jsx`
 			<div class="playground ${css`
 				display: flex;
@@ -84,8 +110,22 @@ function* Playground(this: Context, {}) {
 						width: 61.8%;
 					}
 				`}>
+					<${CodeEditorNavbar}>
+						<div>
+							<select
+								name="Example"
+								value=${exampleName}
+								onchange=${onexamplechange}
+							>
+								<option value="" $key=${name}>Load an example...</option>
+								${examples.map(({name, label}) => jsx`
+									<option value=${name} $key=${name}>${label}</option>
+								`)}
+							</select>
+						</div>
+					<//CodeEditorNavbar>
 					<${CodeEditor}
-						value=${value}
+						value=${code}
 						language="typescript"
 						showGutter=${true}
 					/>
@@ -98,13 +138,13 @@ function* Playground(this: Context, {}) {
 					}
 
 					border-top: 1px solid currentcolor;
-					margin-top: -1px;
 					@media (min-width: 800px) {
+						border-top: none;
 						border-left: 1px solid currentcolor;
 						margin-left: -1px;
 					}
 				`}>
-					<${CodePreview} value=${value} showStatus />
+					<${CodePreview} value=${code} showStatus />
 				</div>
 			</div>
 		`;
