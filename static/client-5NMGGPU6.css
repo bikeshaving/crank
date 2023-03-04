@@ -521,6 +521,10 @@ code.inline {
   display: inline;
   background: var(--coldark01);
 }
+select {
+  background-color: #0a0e1f;
+  background-color: var(--bg-color);
+}
 /**
  * Adapted from Coldark Theme for Prism.js to support light/dark mode
  *
@@ -534,4 +538,4 @@ code.inline {
 normalize.css/normalize.css:
   (*! normalize.css v8.0.1 | MIT License | github.com/necolas/normalize.css *)
 */
-/*# sourceMappingURL=client-MPMYQO26.css.map */
+/*# sourceMappingURL=client-5NMGGPU6.css.map */
