@@ -17,25 +17,6 @@ if (!window.customElements.get("content-area")) {
 	window.customElements.define("content-area", ContentAreaElement);
 }
 
-const TIMER_EXAMPLE = `
-import {renderer} from "@b9g/crank/dom";
-
-function *Timer() {
-  let seconds = 0;
-  const interval = setInterval(() => {
-    seconds++;
-    this.refresh();
-  }, 1000);
-
-  for ({} of this) {
-    yield <div>{seconds}</div>;
-  }
-
-  clearInterval(interval);
-}
-
-renderer.render(<Timer />, document.body);
-`.trim();
 import * as FS from "fs/promises";
 function CodeEditorNavbar({children}) {
 	return jsx`
@@ -47,6 +28,8 @@ function CodeEditorNavbar({children}) {
 			display: flex;
 			flex-direction: row;
 			align-items: center;
+			position: sticky;
+			left: 0;
 		`}>
 			${children}
 		</div>
@@ -58,7 +41,7 @@ const examples = extractData(document.getElementById("examples"));
 function* Playground(this: Context, {}) {
 	let code = localStorage.getItem("playground-value") || "";
 	if (!code.trim()) {
-		code = TIMER_EXAMPLE;
+		code = examples[0].code;
 	}
 
 	this.addEventListener("contentchange", (ev: any) => {
