@@ -26,15 +26,22 @@ function *Timer() {
 
 renderer.render(<Timer />, document.body);
 `.trim();
+// TODO: read examples dir
 
 const TETRIS_EXAMPLE = await FS.readFile(
 	Path.join(__dirname, "../../examples/tetris.ts"),
 	"utf8",
 );
 
+const XSTATE_EXAMPLE = await FS.readFile(
+	Path.join(__dirname, "../../examples/xstate-calculator.ts"),
+	"utf8",
+);
+
 const examples = [
 	{name: "timer", label: "Timer", code: TIMER_EXAMPLE},
 	{name: "tetris", label: "Tetris", code: TETRIS_EXAMPLE},
+	{name: "calculator", label: "XState Calculator", code: XSTATE_EXAMPLE},
 ];
 
 export default async function Playground({context: {storage}}: ViewProps) {
