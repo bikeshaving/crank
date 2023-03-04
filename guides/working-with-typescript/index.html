@@ -83,11 +83,11 @@
 			" data-index="13"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="14"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-85" class="props">
+			" data-index="14"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-86" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-85'] = {"code":"import {Context} from \"@bikeshaving\u002Fcrank\";\nfunction *Timer (this: Context) {\n  let seconds = 0;\n  const interval = setInterval(() =\u003E {\n    seconds++;\n    this.refresh();\n  }, 1000);\n  try {\n    while (true) {\n      yield \u003Cdiv\u003ESeconds: {seconds}\u003C\u002Fdiv\u003E;\n    }\n  } finally {\n    clearInterval(interval);\n  }\n}","lang":"tsx"};
+			window.__embeddedJSON__['inline-code-block-props-86'] = {"code":"import {Context} from \"@bikeshaving\u002Fcrank\";\nfunction *Timer (this: Context) {\n  let seconds = 0;\n  const interval = setInterval(() =\u003E {\n    seconds++;\n    this.refresh();\n  }, 1000);\n  try {\n    while (true) {\n      yield \u003Cdiv\u003ESeconds: {seconds}\u003C\u002Fdiv\u003E;\n    }\n  } finally {\n    clearInterval(interval);\n  }\n}","lang":"tsx"};
 		</script></div><h2>Typing Component Return Values</h2><p>You’ll often want to add a return type to your components. Crank exports custom types to help you type the return types of components:</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-ceqexx"><div class="css-k65jh7"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
 							language-
 							css-1ashatc
@@ -151,11 +151,11 @@
 			" data-index="18"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="19"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-86" class="props">
+			" data-index="19"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-87" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-86'] = {"code":"import {Element} from \"@bikeshaving\u002Fcrank\";\nfunction SyncFn(): Element {\n  return \u003Cdiv\u003EHello world\u003C\u002Fdiv\u003E;\n}\n\nfunction *SyncGen(): Generator\u003CElement\u003E {\n  while (true) {\n    yield \u003Cdiv\u003EHello world\u003C\u002Fdiv\u003E;\n  }\n}\n\nasync function AsyncFn(): Promise\u003CElement\u003E {\n  return \u003Cdiv\u003EHello world\u003C\u002Fdiv\u003E;\n}\n\nasync function *AsyncGen(): AsyncGenerator\u003CElement\u003E {\n  while (true) {\n    yield \u003Cdiv\u003EHello world\u003C\u002Fdiv\u003E;\n  }\n}","lang":"tsx"};
+			window.__embeddedJSON__['inline-code-block-props-87'] = {"code":"import {Element} from \"@bikeshaving\u002Fcrank\";\nfunction SyncFn(): Element {\n  return \u003Cdiv\u003EHello world\u003C\u002Fdiv\u003E;\n}\n\nfunction *SyncGen(): Generator\u003CElement\u003E {\n  while (true) {\n    yield \u003Cdiv\u003EHello world\u003C\u002Fdiv\u003E;\n  }\n}\n\nasync function AsyncFn(): Promise\u003CElement\u003E {\n  return \u003Cdiv\u003EHello world\u003C\u002Fdiv\u003E;\n}\n\nasync function *AsyncGen(): AsyncGenerator\u003CElement\u003E {\n  while (true) {\n    yield \u003Cdiv\u003EHello world\u003C\u002Fdiv\u003E;\n  }\n}","lang":"tsx"};
 		</script></div><p><code class="inline">Element</code> is just the type returned by JSX expressions/<code class="inline">createElement</code>. As you can see, you still have to modify the return type of functions based on whether the function is async or a generator. You can also use the type <code class="inline">Child</code> which represents any valid value in an element tree.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-ceqexx"><div class="css-k65jh7"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
 							language-
 							css-1ashatc
@@ -189,11 +189,11 @@
 			" data-index="8"><code>  <span class="token keyword">yield</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span>Hello world<span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="9"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-87" class="props">
+			" data-index="9"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-88" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-87'] = {"code":"function *SyncGen(): Generator\u003CChild\u003E {\n  yield true;\n  yield false;\n  yield null;\n  yield undefined;\n  yield 0;\n  yield 9001;\n  yield \"Hello world\";\n  yield \u003Cdiv\u003EHello world\u003C\u002Fdiv\u003E;\n}","lang":"tsx"};
+			window.__embeddedJSON__['inline-code-block-props-88'] = {"code":"function *SyncGen(): Generator\u003CChild\u003E {\n  yield true;\n  yield false;\n  yield null;\n  yield undefined;\n  yield 0;\n  yield 9001;\n  yield \"Hello world\";\n  yield \u003Cdiv\u003EHello world\u003C\u002Fdiv\u003E;\n}","lang":"tsx"};
 		</script></div><p>Anything assignable to <code class="inline">Child</code> can be part of the element tree, and almost anything can be assigned to <code class="inline">Child</code>.</p><h2>Typing Props</h2><p>You can type the props object passed to components. This allows JSX elements which use your component as a tag to be type-checked.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-ceqexx"><div class="css-k65jh7"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
 							language-
 							css-1ashatc
@@ -221,11 +221,11 @@
 			" data-index="6"><code><span class="token keyword">const</span> el <span class="token operator">=</span> <span class="token operator">&lt;</span>Greeting name<span class="token operator">=</span><span class="token string">&quot;Brian&quot;</span> <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">;</span> <span class="token comment">// compiles</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code><span class="token keyword">const</span> el1 <span class="token operator">=</span> <span class="token operator">&lt;</span>Greeting name<span class="token operator">=</span><span class="token punctuation">{</span><span class="token number">1</span><span class="token punctuation">}</span> <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">;</span> <span class="token comment">// throws a type error</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-88" class="props">
+			" data-index="7"><code><span class="token keyword">const</span> el1 <span class="token operator">=</span> <span class="token operator">&lt;</span>Greeting name<span class="token operator">=</span><span class="token punctuation">{</span><span class="token number">1</span><span class="token punctuation">}</span> <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">;</span> <span class="token comment">// throws a type error</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-89" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-88'] = {"code":"function Greeting ({name}: {name: string}) {\n  return (\n    \u003Cdiv\u003EHello {name}\u003C\u002Fdiv\u003E\n  );\n}\n\nconst el = \u003CGreeting name=\"Brian\" \u002F\u003E; \u002F\u002F compiles\nconst el1 = \u003CGreeting name={1} \u002F\u003E; \u002F\u002F throws a type error","lang":"tsx"};
+			window.__embeddedJSON__['inline-code-block-props-89'] = {"code":"function Greeting ({name}: {name: string}) {\n  return (\n    \u003Cdiv\u003EHello {name}\u003C\u002Fdiv\u003E\n  );\n}\n\nconst el = \u003CGreeting name=\"Brian\" \u002F\u003E; \u002F\u002F compiles\nconst el1 = \u003CGreeting name={1} \u002F\u003E; \u002F\u002F throws a type error","lang":"tsx"};
 		</script></div><p>The children prop can be typed using the <code class="inline">Children</code> type provided by Crank. The <code class="inline">Children</code> type is a broad type which can be <code class="inline">Child</code> or arbitrarily nested iterables of <code class="inline">Child</code>. TypeScript doesn’t really provide a way to prevent functions from being used as the <code class="inline">children</code> prop, but such patterns are strongly discouraged. You should typically treat <code class="inline">children</code> as an opaque value only to be interpolated into JSX because its value can be almost anything.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-ceqexx"><div class="css-k65jh7"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
 							language-
 							css-1ashatc
@@ -253,11 +253,11 @@
 			" data-index="6"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-89" class="props">
+			" data-index="7"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-90" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-89'] = {"code":"import {Children} from \"@bikeshaving\u002Fcrank\";\nfunction Greeting ({name, children}: {name: string, children: Children}) {\n  return (\n    \u003Cdiv\u003E\n      Message for {name}: {children}\n    \u003C\u002Fdiv\u003E\n  );\n}","lang":"tsx"};
+			window.__embeddedJSON__['inline-code-block-props-90'] = {"code":"import {Children} from \"@bikeshaving\u002Fcrank\";\nfunction Greeting ({name, children}: {name: string, children: Children}) {\n  return (\n    \u003Cdiv\u003E\n      Message for {name}: {children}\n    \u003C\u002Fdiv\u003E\n  );\n}","lang":"tsx"};
 		</script></div><h2>Typing Event Listeners</h2><p>If you dispatch custom events, you may want parent event listeners to be typed with the event you bubbled automatically. To do so, you can use module augmentation to extend the <code class="inline">EventMap</code> interface from the global <code class="inline">Crank</code> module.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-ceqexx"><div class="css-k65jh7"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
 							language-
 							css-1ashatc
@@ -324,11 +324,11 @@
 			" data-index="19"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="20"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-90" class="props">
+			" data-index="20"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-91" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-90'] = {"code":"declare global {\n  module Crank {\n    interface EventMap {\n      \"mybutton.click\": CustomEvent\u003C{id: string}\u003E;\n    }\n  }\n}\n\n\nfunction MyButton (props) {\n  this.addEventListener(\"click\", () =\u003E {\n    this.dispatchEvent(new CustomEvent(\"mybutton.click\", {\n      bubbles: true,\n      detail: {id: props.id},\n    }));\n  });\n\n  return (\n    \u003Cbutton {...props} \u002F\u003E\n  );\n}","lang":"tsx"};
+			window.__embeddedJSON__['inline-code-block-props-91'] = {"code":"declare global {\n  module Crank {\n    interface EventMap {\n      \"mybutton.click\": CustomEvent\u003C{id: string}\u003E;\n    }\n  }\n}\n\n\nfunction MyButton (props) {\n  this.addEventListener(\"click\", () =\u003E {\n    this.dispatchEvent(new CustomEvent(\"mybutton.click\", {\n      bubbles: true,\n      detail: {id: props.id},\n    }));\n  });\n\n  return (\n    \u003Cbutton {...props} \u002F\u003E\n  );\n}","lang":"tsx"};
 		</script></div><p>When importing the DOM or HTML renderers, the <code class="inline">EventMap</code> will be extended with <a href="https://github.com/microsoft/TypeScript/blob/master/lib/lib.dom.d.ts#L5682">the <code class="inline">GlobalEventHandlersMap</code> interface</a>.</p><h2>Typing Provisions</h2><p>By default, calls to the context’s <code class="inline">provide</code> and <code class="inline">consume</code> methods will be loosely typed. If you want stricter typings of these methods, you can use module augmentation to extend the <code class="inline">ProvisionMap</code> interface from the global <code class="inline">Crank</code> module.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-ceqexx"><div class="css-k65jh7"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
 							language-
 							css-1ashatc
@@ -389,14 +389,14 @@
 			" data-index="17"><code>  <span class="token keyword">return</span> <span class="token operator">&lt;</span>p<span class="token operator">&gt;</span><span class="token punctuation">{</span>greeting<span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token punctuation">{</span>name<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>p<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="18"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-91" class="props">
+			" data-index="18"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-92" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-91'] = {"code":"declare global {\n  module Crank {\n    interface ProvisionMap {\n      greeting: string;\n    }\n  }\n}\n\nfunction GreetingProvider(\n  {greeting, children}: {greeting: string, children?: unknown},\n) {\n  this.provide(\"greeting\", greeting);\n  return children;\n}\n\nfunction Greeting({name}: {name: string}) {\n  const greeting = this.consume(\"greeting\");\n  return \u003Cp\u003E{greeting}, {name}\u003C\u002Fp\u003E;\n}","lang":"tsx"};
-		</script></div></main><script data-name="static-urls-92" id="static-urls">
+			window.__embeddedJSON__['inline-code-block-props-92'] = {"code":"declare global {\n  module Crank {\n    interface ProvisionMap {\n      greeting: string;\n    }\n  }\n}\n\nfunction GreetingProvider(\n  {greeting, children}: {greeting: string, children?: unknown},\n) {\n  this.provide(\"greeting\", greeting);\n  return children;\n}\n\nfunction Greeting({name}: {name: string}) {\n  const greeting = this.consume(\"greeting\");\n  return \u003Cp\u003E{greeting}, {name}\u003C\u002Fp\u003E;\n}","lang":"tsx"};
+		</script></div></main><script data-name="static-urls-93" id="static-urls">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['static-urls-92'] = {"@b9g\u002Fcrank":"\u002Fstatic\u002Fcrank-NDXDEUOC.js","@b9g\u002Fcrank\u002Fcrank":"\u002Fstatic\u002Fcrank-NDXDEUOC.js","@b9g\u002Fcrank\u002Fcrank.js":"\u002Fstatic\u002Fcrank-NDXDEUOC.js","@b9g\u002Fcrank\u002Fdom":"\u002Fstatic\u002Fdom-COFNYINC.js","@b9g\u002Fcrank\u002Fdom.js":"\u002Fstatic\u002Fdom-COFNYINC.js","@b9g\u002Fcrank\u002Fhtml":"\u002Fstatic\u002Fhtml-XXFTKZOT.js","@b9g\u002Fcrank\u002Fhtml.js":"\u002Fstatic\u002Fhtml-XXFTKZOT.js","@b9g\u002Fcrank\u002Fjsx-tag":"\u002Fstatic\u002Fjsx-tag-GTGYTP6P.js","@b9g\u002Fcrank\u002Fjsx-tag.js":"\u002Fstatic\u002Fjsx-tag-GTGYTP6P.js","@b9g\u002Fcrank\u002Fjsx-runtime":"\u002Fstatic\u002Fjsx-runtime-7UJITRZ3.js","@b9g\u002Fcrank\u002Fjsx-runtime.js":"\u002Fstatic\u002Fjsx-runtime-7UJITRZ3.js","@b9g\u002Fcrank\u002Fstandalone":"\u002Fstatic\u002Fstandalone-W7CSO6HQ.js","@b9g\u002Fcrank\u002Fstandalone.js":"\u002Fstatic\u002Fstandalone-W7CSO6HQ.js","client.css":"\u002Fstatic\u002Fclient-MPMYQO26.css"};
+			window.__embeddedJSON__['static-urls-93'] = {"@b9g\u002Fcrank":"\u002Fstatic\u002Fcrank-NDXDEUOC.js","@b9g\u002Fcrank\u002Fcrank":"\u002Fstatic\u002Fcrank-NDXDEUOC.js","@b9g\u002Fcrank\u002Fcrank.js":"\u002Fstatic\u002Fcrank-NDXDEUOC.js","@b9g\u002Fcrank\u002Fdom":"\u002Fstatic\u002Fdom-COFNYINC.js","@b9g\u002Fcrank\u002Fdom.js":"\u002Fstatic\u002Fdom-COFNYINC.js","@b9g\u002Fcrank\u002Fhtml":"\u002Fstatic\u002Fhtml-XXFTKZOT.js","@b9g\u002Fcrank\u002Fhtml.js":"\u002Fstatic\u002Fhtml-XXFTKZOT.js","@b9g\u002Fcrank\u002Fjsx-tag":"\u002Fstatic\u002Fjsx-tag-GTGYTP6P.js","@b9g\u002Fcrank\u002Fjsx-tag.js":"\u002Fstatic\u002Fjsx-tag-GTGYTP6P.js","@b9g\u002Fcrank\u002Fjsx-runtime":"\u002Fstatic\u002Fjsx-runtime-7UJITRZ3.js","@b9g\u002Fcrank\u002Fjsx-runtime.js":"\u002Fstatic\u002Fjsx-runtime-7UJITRZ3.js","@b9g\u002Fcrank\u002Fstandalone":"\u002Fstatic\u002Fstandalone-W7CSO6HQ.js","@b9g\u002Fcrank\u002Fstandalone.js":"\u002Fstatic\u002Fstandalone-W7CSO6HQ.js","client.css":"\u002Fstatic\u002Fclient-MPMYQO26.css"};
 		</script><script src="/static/navbar-RJ7YSC4A.js"></script><script src="/static/code-blocks-F3YQJKMZ.js"></script></body></html>
