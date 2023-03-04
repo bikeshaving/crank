@@ -23,7 +23,7 @@ function Gutter(
 	const totalSize = virtualizer.getTotalSize();
 	return jsx`
 		<div
-			class=${css`
+			class="blur-background ${css`
 				display: none;
 				@media (min-width: 800px) {
 					display: block;
@@ -38,8 +38,9 @@ function Gutter(
 				line-height: 1.4;
 				text-align: right;
 				border-right: 1px solid var(--text-color);
-				position: relative;
-			`}
+				position: sticky;
+				left: 0;
+			`}"
 			style="height: max(calc(100vh - 50px), ${totalSize + 50}px);"
 		>
 			<div
