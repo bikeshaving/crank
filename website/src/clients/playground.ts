@@ -10,14 +10,12 @@ import {CodeEditor} from "../components/code-editor.js";
 import {extractData} from "../components/serialize-javascript.js";
 //import LZString from "lz-string";
 
-
 // TODO: move this to the ContentAreaElement component
 import {ContentAreaElement} from "@b9g/revise/contentarea.js";
 if (!window.customElements.get("content-area")) {
 	window.customElements.define("content-area", ContentAreaElement);
 }
 
-import * as FS from "fs/promises";
 function CodeEditorNavbar({children}) {
 	return jsx`
 		<div class=${css`
@@ -54,7 +52,9 @@ function* Playground(this: Context, {}) {
 	let exampleName: "" | "timer" | "tetris" = "";
 	const onexamplechange = (ev: Event) => {
 		exampleName = (ev.target as HTMLSelectElement).value;
-		const {code: code1} = examples.find((example) => example.name === exampleName);
+		const {code: code1} = examples.find(
+			(example) => example.name === exampleName,
+		);
 		code = code1;
 		this.refresh();
 	};
@@ -66,9 +66,9 @@ function* Playground(this: Context, {}) {
 	//};
 	//window.addEventListener("hashchange", hashchange);
 	//this.cleanup(() => window.removeEventListener("hashchange", hashchange))
-		//this.flush(() => {
-		//	window.location.hash = LZString.compressToEncodedURIComponent(value);
-		//});
+	//this.flush(() => {
+	//	window.location.hash = LZString.compressToEncodedURIComponent(value);
+	//});
 
 	for ({} of this) {
 		yield jsx`
@@ -101,9 +101,11 @@ function* Playground(this: Context, {}) {
 								onchange=${onexamplechange}
 							>
 								<option value="" $key=${name}>Load an example...</option>
-								${examples.map(({name, label}) => jsx`
+								${examples.map(
+									({name, label}) => jsx`
 									<option value=${name} $key=${name}>${label}</option>
-								`)}
+								`,
+								)}
 							</select>
 						</div>
 					<//CodeEditorNavbar>
