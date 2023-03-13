@@ -1,4 +1,8 @@
 # Changelog
+## [0.5.3] - 2023-03-12
+### Bug Fixes
+- The cleanup() functions will be called even if components are unmounted. https://github.com/bikeshaving/crank/issues/249
+- Fixes a situation where component errors in async components were being ignored. https://github.com/bikeshaving/crank/issues/253
 ## [0.5.2] - 2023-02-03
 ### Bug Fixes
 - Allow `Context<typeof Component>` context types to be passed components with
