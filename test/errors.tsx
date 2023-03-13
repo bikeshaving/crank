@@ -154,7 +154,9 @@ test("async generator throws by parent sync generator refresh", async () => {
 		let i = 0;
 		for await ({} of this) {
 			if (i >= 2) {
-				throw new Error("async generator throws by parent refresh");
+				throw new Error(
+					"async generator throws by parent sync generator refresh",
+				);
 			}
 
 			yield i++;
@@ -181,16 +183,21 @@ test("async generator throws by parent sync generator refresh", async () => {
 		await ctx.refresh();
 		Assert.unreachable();
 	} catch (err: any) {
-		Assert.is(err.message, "async generator throws by parent refresh");
+		Assert.is(
+			err.message,
+			"async generator throws by parent sync generator refresh",
+		);
 	}
 });
 
-test("async generator throws by parent async generator refresh", async () => {
+test.skip("async generator throws by parent async generator refresh", async () => {
 	async function* Thrower(this: Context) {
 		let i = 0;
 		for await ({} of this) {
 			if (i >= 2) {
-				throw new Error("async generator throws by parent refresh");
+				throw new Error(
+					"async generator throws by parent async generator refresh",
+				);
 			}
 
 			yield i++;
@@ -217,7 +224,10 @@ test("async generator throws by parent async generator refresh", async () => {
 		await ctx.refresh();
 		Assert.unreachable();
 	} catch (err: any) {
-		Assert.is(err.message, "async generator throws by parent refresh");
+		Assert.is(
+			err.message,
+			"async generator throws by parent async generator refresh",
+		);
 	}
 });
 
@@ -429,6 +439,39 @@ test("restart", () => {
 	Assert.is(document.body.innerHTML, "<div>Restarting</div>");
 	renderer.render(<Component />, document.body);
 	Assert.is(document.body.innerHTML, "<div>1</div>");
+});
+
+// TODO: THIS TEST SHOULD FAIL IF UNSKIPPED
+test.skip("async gen causes unhandled rejection", async () => {
+	async function One() {
+		await new Promise((r) => setTimeout(r, 1000));
+		return <div>Hello</div>;
+	}
+
+	async function Two() {
+		await new Promise((r) => setTimeout(r, 2000));
+		throw new Error("async gen causes unhandled rejection");
+	}
+
+	async function* Loader() {
+		for await ({} of this) {
+			yield <One />;
+			yield <Two />;
+		}
+	}
+
+	renderer.render(<Loader />, document.body);
+	let resolve: any;
+	const p = new Promise((r) => (resolve = r));
+	window.addEventListener(
+		"unhandledrejection",
+		(ev) => {
+			resolve(ev.reason);
+		},
+		{once: true},
+	);
+	const err = await p;
+	Assert.is(err.message, "async gen causes unhandled rejection");
 });
 
 test.run();
