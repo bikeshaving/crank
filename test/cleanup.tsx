@@ -361,7 +361,7 @@ test("hanging child", async () => {
 
 test("cleanup is called even if component is prematurely unmounted", async () => {
 	const fn = Sinon.fake();
-	async function* Component() {
+	async function* Component(this: Context) {
 		fn();
 		await new Promise((r) => setTimeout(r, 100));
 		this.cleanup(() => {
