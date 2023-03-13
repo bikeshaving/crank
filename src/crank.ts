@@ -2288,6 +2288,9 @@ function enqueueComponentRun<TNode, TResult>(
 			return value;
 		} catch (err) {
 			if (!(ctx.f & IsUpdating)) {
+				if (!ctx.parent) {
+					throw err;
+				}
 				return propagateError<TNode>(ctx.parent, err);
 			}
 
@@ -2314,6 +2317,10 @@ function enqueueComponentRun<TNode, TResult>(
 				return value;
 			} catch (err) {
 				if (!(ctx.f & IsUpdating)) {
+					if (!ctx.parent) {
+						throw err;
+					}
+
 					return propagateError<TNode>(ctx.parent, err);
 				}
 
@@ -2593,10 +2600,21 @@ async function runAsyncGenComponent<TNode, TResult>(
 				// children. Sync generator components only resume when their children
 				// have fulfilled so the element’s inflight child values will never be
 				// defined.
-				oldValue = ctx.ret.inflightValue.then(
-					(value) => ctx.renderer.read(value),
-					() => ctx.renderer.read(undefined),
+				oldValue = ctx.ret.inflightValue.then((value) =>
+					ctx.renderer.read(value),
 				);
+
+				oldValue.catch((err) => {
+					if (ctx.f & IsUpdating) {
+						return;
+					}
+
+					if (!ctx.parent) {
+						throw err;
+					}
+
+					return propagateError(ctx.parent, err);
+				});
 			} else {
 				oldValue = ctx.renderer.read(getValue(ctx.ret));
 			}
@@ -2677,7 +2695,10 @@ function unmountComponent(ctx: ContextImpl): void {
 						}
 					},
 					(err) => {
-						propagateError<unknown>(ctx.parent, err);
+						if (!ctx.parent) {
+							throw err;
+						}
+						return propagateError<unknown>(ctx.parent, err);
 					},
 				);
 			} else {
@@ -2699,7 +2720,11 @@ function unmountComponent(ctx: ContextImpl): void {
 						}
 					},
 					(err) => {
-						propagateError<unknown>(ctx.parent, err);
+						if (!ctx.parent) {
+							throw err;
+						}
+
+						return propagateError<unknown>(ctx.parent, err);
 					},
 				);
 			} else {
@@ -2718,7 +2743,13 @@ function returnComponent(ctx: ContextImpl): void {
 			ctx.f |= IsSyncExecuting;
 			const iteration = ctx.iterator!.return();
 			if (isPromiseLike(iteration)) {
-				iteration.catch((err) => propagateError<unknown>(ctx.parent, err));
+				iteration.catch((err) => {
+					if (!ctx.parent) {
+						throw err;
+					}
+
+					return propagateError<unknown>(ctx.parent, err);
+				});
 			}
 		} finally {
 			ctx.f &= ~IsSyncExecuting;
@@ -2893,22 +2924,28 @@ function handleChildError<TNode>(
 }
 
 function propagateError<TNode>(
-	ctx: ContextImpl<TNode, unknown, TNode> | undefined,
+	ctx: ContextImpl<TNode, unknown, TNode>,
 	err: unknown,
 ): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (ctx === undefined) {
-		throw err;
-	}
-
 	let result: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 	try {
 		result = handleChildError(ctx, err);
 	} catch (err) {
+		if (!ctx.parent) {
+			throw err;
+		}
+
 		return propagateError<TNode>(ctx.parent, err);
 	}
 
 	if (isPromiseLike(result)) {
-		return result.catch((err) => propagateError<TNode>(ctx.parent, err));
+		return result.catch((err) => {
+			if (!ctx.parent) {
+				throw err;
+			}
+
+			return propagateError<TNode>(ctx.parent, err);
+		});
 	}
 
 	return result;
