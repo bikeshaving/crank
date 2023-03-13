@@ -359,4 +359,25 @@ test("hanging child", async () => {
 	Assert.is(fn.lastCall.args[0], undefined);
 });
 
+test("cleanup is called even if component is prematurely unmounted", async () => {
+	const fn = Sinon.fake();
+	async function* Component() {
+		fn();
+		await new Promise((r) => setTimeout(r, 100));
+		this.cleanup(() => {
+			fn();
+		});
+		for ({} of this) {
+			yield null;
+		}
+	}
+
+	renderer.render(<Component />, document.body);
+	renderer.render(null, document.body);
+
+	Assert.is(fn.callCount, 1);
+	await new Promise((r) => setTimeout(r, 200));
+	Assert.is(fn.callCount, 2);
+});
+
 test.run();
