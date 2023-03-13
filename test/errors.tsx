@@ -453,7 +453,7 @@ test.skip("async gen causes unhandled rejection", async () => {
 		throw new Error("async gen causes unhandled rejection");
 	}
 
-	async function* Loader() {
+	async function* Loader(this: Context) {
 		for await ({} of this) {
 			yield <One />;
 			yield <Two />;
@@ -462,7 +462,7 @@ test.skip("async gen causes unhandled rejection", async () => {
 
 	renderer.render(<Loader />, document.body);
 	let resolve: any;
-	const p = new Promise((r) => (resolve = r));
+	const p = new Promise<any>((r) => (resolve = r));
 	window.addEventListener(
 		"unhandledrejection",
 		(ev) => {
