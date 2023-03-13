@@ -1754,6 +1754,13 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	 */
 	cleanup(callback: (value: TResult) => unknown): void {
 		const ctx = this[_ContextImpl];
+
+		if (ctx.f & IsUnmounted) {
+			const value = ctx.renderer.read(getValue(ctx.ret));
+			callback(value);
+			return;
+		}
+
 		let callbacks = cleanupMap.get(ctx);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
