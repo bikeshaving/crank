@@ -18,46 +18,43 @@ const storage = new Storage({
 	staticPaths: [Path.join(__dirname, "../static")],
 });
 
-const server = createServer(async (req, res) => {
-	// TODO: Why can req.url be undefined???
-	const url = req.url || "";
-	console.info(`req: ${url}`);
-	if (url.startsWith(storage.publicPath)) {
-		const source = await storage.serve(url);
-		const mimeType = MimeTypes.lookup(url) || "application/octet-stream";
-		const charset = MimeTypes.charset(mimeType) || "binary";
-		if (source) {
-			res.writeHead(200, {
-				"Content-Type": mimeType,
-				//"Access-Control-Allow-Origin": "*",
-			});
-			// TODO: import Buffer
-			res.end(source, charset as any);
-			return;
+export default {
+	fetch: async (req: Request) => {
+		console.log("serving", req.url);
+		const path = new URL(req.url).pathname;
+		if (path.startsWith(storage.publicPath)) {
+			const source = await storage.serve(path);
+			const mimeType = MimeTypes.lookup(path) || "application/octet-stream";
+			const charset = MimeTypes.charset(mimeType) || "binary";
+			if (source) {
+				return new Response(source, {
+					status: 200,
+					headers: {
+						"Content-Type": mimeType,
+					},
+				});
+			}
 		}
-	}
 
-	const match = router.match(url);
-	if (!match) {
-		res.writeHead(404, {"Content-Type": "text/html"});
-		res.end("Page not found", "utf-8");
-		return;
-	}
+		const match = router.match(path);
+		if (match && match.View) {
+			let html = await renderer.render(jsx`
+				<${match.View}
+					url=${path}
+					params=${match.params}
+					context=${{storage}}
+				/>
+			`);
 
-	res.writeHead(200, {"Content-Type": "text/html"});
-	let html = await renderer.render(jsx`
-		<${match.View}
-			url=${url}
-			params=${match.params}
-			context=${{storage}}
-		/>
-	`);
+			html = renderStylesToString(html);
+			return new Response(html, {
+				headers: {"Content-Type": "text/html"},
+			});
+		}
 
-	html = renderStylesToString(html);
-	res.end(html, "utf-8");
-});
-
-// TODO: stop using nodemon and do reloading ourselves with chokidar
-const PORT = process.env.PORT ?? 1338;
-console.info(`Server is listening on port ${PORT}`);
-server.listen(PORT);
+		return new Response("Page not found", {
+			status: 404,
+			headers: {"Content-Type": "text/html"},
+		});
+	},
+}

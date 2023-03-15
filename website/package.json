@@ -4,7 +4,7 @@
   "scripts": {
     "build": "ts-node-esm src/build.ts && echo crank.js.org > dist/CNAME",
     "watch": "nodemon --exec ts-node-esm src/build.ts -e 'js,ts,css,md' --ignore dist",
-    "serve": "nodemon --exec ts-node-esm src/serve.ts -e 'js,ts,css,md' --ignore dist",
+    "serve": "shovel src/serve.ts --port 1338",
     "static": "http-server dist -p 1337 -c-1",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
@@ -12,6 +12,7 @@
   "dependencies": {
     "@b9g/crank": "file:../dist",
     "@b9g/revise": "file:../../revise/dist",
+    "@b9g/shovel": "^0.1.1",
     "@babel/core": "^7.21.0",
     "@babel/preset-react": "^7.18.6",
     "@babel/preset-typescript": "^7.21.0",
