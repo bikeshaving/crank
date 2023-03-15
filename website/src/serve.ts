@@ -1,7 +1,5 @@
-import {createServer} from "node:http";
-import * as Path from "node:path";
+import * as Path from "path";
 import * as MimeTypes from "mime-types";
-import process from "node:process";
 
 import {jsx} from "@b9g/crank/standalone";
 import {renderer} from "@b9g/crank/html";
@@ -20,7 +18,7 @@ const storage = new Storage({
 
 export default {
 	fetch: async (req: Request) => {
-		console.log("serving", req.url);
+		console.info("serving", req.url);
 		const path = new URL(req.url).pathname;
 		if (path.startsWith(storage.publicPath)) {
 			const source = await storage.serve(path);
@@ -30,7 +28,7 @@ export default {
 				return new Response(source, {
 					status: 200,
 					headers: {
-						"Content-Type": mimeType,
+						"Content-Type": `${mimeType}; charset=${charset}`,
 					},
 				});
 			}
@@ -57,4 +55,4 @@ export default {
 			headers: {"Content-Type": "text/html"},
 		});
 	},
-}
+};
