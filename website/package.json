@@ -2,9 +2,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "static": "shovel static ./src/app.ts && echo crank.js.org > dist/CNAME",
-    "serve": "shovel develop ./src/app.ts --port 1338",
-    "predeploy": "npm run static",
+    "build": "shovel static src/app.ts && echo crank.js.org > dist/CNAME",
+    "serve": "shovel develop src/app.ts --port 1338",
+    "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
@@ -18,7 +18,8 @@
     "@emotion/server": "^11.10.0",
     "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
     "@esbuild-plugins/node-modules-polyfill": "^0.2.2",
-    "@tanstack/virtual-core": "3.0.0-alpha.0",
+    "@remix-run/web-fetch": "^4.3.2",
+    "@tanstack/virtual-core": "^3.0.0-alpha.1",
     "@types/babel__core": "^7.20.0",
     "@types/lz-string": "^1.3.34",
     "@types/marked": "^4.0.8",
@@ -27,6 +28,7 @@
     "@types/postcss-nested": "^4.2.3",
     "@types/postcss-preset-env": "^7.7.0",
     "@types/prismjs": "^1.26.0",
+    "chokidar": "^3.5.3",
     "esbuild": "^0.17.10",
     "front-matter": "^4.0.2",
     "gh-pages": "^5.0.0",
@@ -34,6 +36,7 @@
     "lz-string": "^1.4.4",
     "marked": "^4.2.12",
     "mime-types": "^2.1.35",
+    "nodemon": "^2.0.20",
     "normalize.css": "^8.0.1",
     "path-to-regexp": "^6.2.1",
     "postcss-nested": "^6.0.1",
@@ -41,7 +44,9 @@
     "prism-themes": "^1.9.0",
     "prismjs": "^1.29.0",
     "serialize-javascript": "^6.0.1",
+    "sucrase": "^3.29.0",
     "truncate-html": "^1.0.4",
+    "ts-node": "^10.9.1",
     "typescript": "^4.9.5"
   },
   "devDependencies": {
