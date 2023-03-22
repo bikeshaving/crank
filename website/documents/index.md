@@ -3,12 +3,17 @@ title: Crank.js
 description: "The Just JavaScript framework. Crank is a JavaScript / TypeScript library where you write components with functions, promises and generators."
 ---
 
-Crank is a JavaScript / TypeScript library for building websites and apps. It is a framework where components are defined with plain old functions, including async and generator functions, which `yield` and `return` JSX templates.
+## What is Crank?
+
+Crank is a JavaScript / TypeScript library for building websites and applications. It is a framework where components are defined with plain old functions, including async and generator functions, which `yield` and `return` JSX.
 
 ## Why is Crank “Just JavaScript?”
 
-Many web frameworks claim to be “just JavaScript.” Few have as strong a claim as Crank.
-It starts with the idea that you can write components with JavaScript’s built-in function syntaxes.
+Many web frameworks claim to be “just JavaScript.”
+
+Few have as strong a claim as Crank.
+
+It starts with the idea that you can write components with *all* of JavaScript’s built-in function syntaxes.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -47,7 +52,7 @@ async function Definition({word}) {
 //renderer.render(<Definition word="framework" />, document.body);
 ```
 
-Promises can be awaited. Updates can be iterated. State and callbacks can be held in scope. Inside a component, JavaScript can be JavaScript.
+Crank components work like normal JavaScript, using standard control-flow. Props can be destructured. Promises can be awaited. Updates can be iterated. State can be held in scope.
 
 The result is a simpler developer experience, where you spend less time writing framework integrations and more time writing vanilla JavaScript.
 
@@ -55,8 +60,7 @@ The result is a simpler developer experience, where you spend less time writing 
 
 ### Reason #1: It’s declarative
 
-Crank works with JSX. It uses tried-and-tested virtual DOM algorithms. Simple
-components can be defined with functions which return elements.
+Crank works with JSX. It uses tried-and-tested virtual DOM algorithms. Simple components can be defined with functions which return elements.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -83,8 +87,7 @@ function RandomName() {
 renderer.render(<RandomName />, document.body);
 ```
 
-Don’t think JSX is vanilla enough? Crank provides a tagged template function
-which does roughly the same thing.
+Don’t think JSX is vanilla enough? Crank provides a tagged template function which does roughly the same thing.
 
 ```jsx live
 import {jsx} from "@b9g/crank/standalone";
@@ -199,6 +202,8 @@ renderer.render(<CyclingName />, document.body);
 
 Components rerender based on explicit `refresh()` calls. This level of precision means you can be as messy as you need to be.
 
+Never memoize a callback ever again.
+
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
 
@@ -258,29 +263,71 @@ renderer.render(<Timer />, document.body);
 
 ### Reason #3: It’s promise-friendly.
 
-Any component can be made asynchronous with the `async` keyword. As it turns out, one of the nicest ways to use `fetch()` is to call it and `await` the result.
+Any component can be made asynchronous with the `async` keyword. This means you can await `fetch()` directly in a component, client or server.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
 
-async function QuoteOfTheDay() {
-  // Quotes API courtesy https://theysaidso.com
-  const res = await fetch("https://quotes.rest/qod.json");
-  const quote = (await res.json())["contents"]["quotes"][0];
+async function Definition({word}) {
+  // API courtesy https://dictionaryapi.dev
+  const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+  const data = await res.json();
+  if (!Array.isArray(data)) {
+    return (
+      <div>No definition found for {word}</div>
+    );
+  }
+
+  const {phonetic, meanings} = data[0];
+  const {partOfSpeech, definitions} = meanings[0];
+  const {definition} = definitions[0];
   return (
-    <figure>
-      <blockquote>{quote.quote}</blockquote>
-      <figcaption>
-        — <a href={quote.permalink} target="_blank">{quote.author}</a>
-      </figcaption>
-    </figure>
+    <div>
+      <p>{word} <code>{phonetic}</code></p>
+      <p><b>{partOfSpeech}.</b> {definition}</p>
+    </div>
   );
 }
 
-renderer.render(<QuoteOfTheDay />, document.body);
+function *Dictionary() {
+  let word = "";
+  const onsubmit = (ev) => {
+    ev.preventDefault();
+    const formData = new FormData(ev.target);
+    const word1 = formData.get("word");
+    if (word1.trim()) {
+      word = word1;
+      this.refresh();
+    }
+  };
+
+  for ({} of this) {
+    yield (
+      <>
+        <form
+          action=""
+          method="get"
+          onsubmit={onsubmit}
+          style="margin-bottom: 15px"
+        >
+          <div style="margin-bottom: 15px">
+            <label for="name">Define:</label>{" "}
+            <input type="text" name="word" id="word" required />
+          </div>
+          <div>
+            <input type="submit" value="Search" />
+          </div>
+        </form>
+        {word && <Definition word={word} />}
+      </>
+    );
+  }
+}
+
+renderer.render(<Dictionary />, document.body);
 ```
 
-Async generator functions let you write components that are both async *AND* stateful. You can even race components to show temporary fallback states.
+Async generator functions let you write components that are both async *and* stateful. Crank uses promises wherever it makes sense, and has a rich async execution model which allows you to do things like racing components to display loading states.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";

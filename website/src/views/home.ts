@@ -60,7 +60,6 @@ const components = {
 			<div
 				class="
 					code-block-container
-					blur-background
 					${css`
 						@media screen and (min-width: 800px) {
 							margin: 30px auto;
@@ -73,6 +72,7 @@ const components = {
 				<${InlineCodeBlock}
 					value=${code}
 					lang=${lang}
+					breakpoint="800px"
 					editable=${lang.endsWith(" live")}
 				/>
 				<${SerializeScript} value=${{code, lang}} class="props" />
@@ -178,7 +178,7 @@ export default async function Home({context: {storage}}: ViewProps) {
 			storage=${storage}
 		>
 			<${Hero} />
-			<div class="${css`
+			<div class="blur-background-2 ${css`
 				font-size: max(18px, min(24px, 2vw));
 				background-color: var(--bg-color);
 				border-top: 1px solid var(--text-color);

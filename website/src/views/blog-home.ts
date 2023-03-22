@@ -42,12 +42,17 @@ export default async function BlogHome({context: {storage}}: ViewProps) {
 						}
 					}
 
-					const {title, publishDate} = post.attributes;
+					const {title, publishDate, author, authorURL} = post.attributes;
 					return jsx`
 						<div class="content">
-							<${BlogContent} title=${title} publishDate=${publishDate}>
+								<${BlogContent}
+										title=${title}
+										publishDate=${publishDate}
+										author=${author}
+										authorURL=${authorURL}
+								>
 								<${Marked} markdown=${body} components=${components} />
-							<//BlogContent>
+								<//BlogContent>
 							<div>
 								<a href=${post.url}>Read more…</a>
 							</div>

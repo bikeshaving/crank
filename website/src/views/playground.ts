@@ -33,15 +33,27 @@ const TETRIS_EXAMPLE = await FS.readFile(
 	"utf8",
 );
 
+const WIZARD_EXAMPLE = await FS.readFile(
+	Path.join(__dirname, "../../examples/wizard.js"),
+	"utf8",
+);
+
 const XSTATE_EXAMPLE = await FS.readFile(
 	Path.join(__dirname, "../../examples/xstate-calculator.tsx"),
 	"utf8",
 );
 
+const MINESWEEPER_EXAMPLE = await FS.readFile(
+	Path.join(__dirname, "../../examples/minesweeper.ts"),
+	"utf8",
+);
+
 const examples = [
 	{name: "timer", label: "Timer", code: TIMER_EXAMPLE},
+	{name: "wizard", label: "Form Wizard", code: WIZARD_EXAMPLE},
 	{name: "tetris", label: "Tetris", code: TETRIS_EXAMPLE},
 	{name: "calculator", label: "XState Calculator", code: XSTATE_EXAMPLE},
+	{name: "minesweeper", label: "Minesweeper", code: MINESWEEPER_EXAMPLE},
 ];
 
 export default async function Playground({context: {storage}}: ViewProps) {

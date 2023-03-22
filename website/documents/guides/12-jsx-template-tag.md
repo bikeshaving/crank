@@ -7,59 +7,78 @@ function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Temp
 as an alternative to JSX syntax. The main advantage of using a template tag is
 that your code can run directly in browsers without having to be transpiled.
 
-```html
+## A single-file Crank application.
+
+```index.html
 <!DOCTYPE html>
 <html lang="en-US">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <title>TODO: Replace me</title>
-  </head>
-  <body>
-    <div id="root" />
-    <script type="module">
-import {jsx} from "https://unpkg.com/@b9g/crank/standalone?module";
-import {renderer} from "https://unpkg.com/@b9g/crank/dom?module";
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width" />
+  <title>TODO: Replace me</title>
+</head>
+<body>
+  <div id="root" />
+  <script type="module">
+    import {jsx} from "https://unpkg.com/@b9g/crank/standalone?module";
+    import {renderer} from "https://unpkg.com/@b9g/crank/dom?module";
 
-function Greeting({name="World"}) {
-  return jsx`
-    <div>Hello ${name}</div>
-  `;
-}
+    function Greeting({name="World"}) {
+      return jsx`
+        <div>Hello ${name}</div>
+      `;
+    }
 
-renderer.render(
-  jsx`<${Greeting} name="Alice" />`,
-  document.getElementById("root"),
-);
-    </script>
-  </body>
+    renderer.render(
+      jsx`<${Greeting} name="Alice" />`,
+      document.getElementById("root"),
+    );
+  </script>
+</body>
 </html>
 ```
 
 A Crank application as a single HTML file. No transpilation required.
 
-The JSX tag function can be imported from the module `"@b9g/crank/standalone"`.
-This module exports everything from the root `@b9g/crank` module as well as the
-`jsx` tag function, which is defined in the module `"@b9g/crank/jsx-tag"`.
+## Installation
 
-The modules are structured like this to prevent. Due to limitations with template tags, component
-references in tags must be interpolated.
+The JSX tag function can be imported from the module `@b9g/crank/standalone`. This module exports everything from the root `@b9g/crank` module as well as the `jsx` tag function, which is defined in the module `@b9g/crank/jsx-tag`.
 
-```jsx
-import {jsx} from "@b9g/crank/standalone";
+```js live
+import {Fragment, jsx} from "@b9g/crank/standalone";
+import {jsx as jsx1} from "@b9g/crank/jsx-tag";
 import {renderer} from "@b9g/crank/dom";
 
-function Greeting({name="World"}) {
-  return jsx`
-    <div>Hello ${name}</div>
-  `;
-}
+renderer.render(jsx`
+  <${Fragment}>,
+    <div>Hello world</div>
+  <//Fragment>
+`, document.body);
 
-renderer.render(<Greeting name="Alice" />, document.body);
-// Notice the ${} is necessary. JSX Syntax wins here.
-renderer.render(jsx`<${Greeting} name="Bob" />`, document.body);
+// console.log(jsx === jsx1);
 ```
 
-## Comparing JSX syntax to JSX template tags
+In the future, we may use environment detection to automatically exports the correct `renderer`, which would make the `standalone` module truly “standalone.”
 
-JSX syntax
+## JSX Syntax
+
+The JSX template tag function is designed to replicate as much of JSX syntax and semantics as possible.
+
+Just like JSX syntax, the template version supports components, but they must be explicitly interpolated.
+
+```js
+import {jsx} from "@b9g/crank/standalone";
+function Component() {
+  /* ... */
+}
+
+const syntaxEl = <Component />;
+const templateEl = jsx`<${Component} />`;
+```
+
+Component closing tags can be done in one of three styles:
+
+```js
+import {jsx} from "@b9g/crank/standalone";
+
+```

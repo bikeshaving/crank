@@ -25,7 +25,7 @@ export function* SerializeScript(
 	}
 }
 
-export function extractData(script: HTMLScriptElement): unknown {
+export function extractData(script: HTMLScriptElement): any {
 	const name = script.dataset.name;
 	if (name == null) {
 		throw new Error("script element is missing data-name attribute");
