@@ -2,11 +2,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "ts-node-esm src/build.ts && echo crank.js.org > dist/CNAME",
-    "build1": "shovel static && echo crank.js.org > dist/CNAME",
-    "watch": "nodemon --exec ts-node-esm src/build.ts -e 'js,ts,css,md' --ignore dist",
+    "build": "shovel static src/app.ts && echo crank.js.org > dist/CNAME",
     "serve": "shovel develop src/app.ts --port 1338",
-    "static": "http-server dist -p 1337 -c-1",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
