@@ -5,10 +5,9 @@ import {jsx} from "@b9g/crank/standalone";
 import {renderer} from "@b9g/crank/html";
 import {renderStylesToString} from "@emotion/server";
 
-//import {Request, Response} from "@remix-run/web-fetch";
-
 import {router} from "./routes.js";
 import {Storage} from "./components/esbuild.js";
+import {collectDocuments} from "./models/document.js";
 
 const __dirname = new URL(".", import.meta.url).pathname;
 const storage = new Storage({
@@ -17,7 +16,7 @@ const storage = new Storage({
 });
 
 export default {
-	fetch: async (req: Request) => {
+	async fetch(req: Request) {
 		console.info("serving", req.url);
 		const path = new URL(req.url).pathname;
 		if (path.startsWith(storage.publicPath)) {
@@ -54,5 +53,19 @@ export default {
 			status: 404,
 			headers: {"Content-Type": "text/html"},
 		});
+	},
+
+	async staticPaths() {
+		const blogDocs = await collectDocuments(
+			Path.join(__dirname, "../documents/blog"),
+			Path.join(__dirname, "../documents"),
+		);
+		const guideDocs = await collectDocuments(
+			Path.join(__dirname, "../documents/guides"),
+			Path.join(__dirname, "../documents"),
+		);
+		const blogURLs = blogDocs.map((doc) => doc.url);
+		const guideURLs = guideDocs.map((doc) => doc.url);
+		return ["/", "/blog", "/playground", ...guideURLs, ...blogURLs];
 	},
 };

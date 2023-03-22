@@ -11,7 +11,6 @@ import type {ViewProps} from "../router.js";
 import {collectDocuments} from "../models/document.js";
 
 const __dirname = new URL(".", import.meta.url).pathname;
-
 export default async function BlogPage({url, context: {storage}}: ViewProps) {
 	const posts = await collectDocuments(
 		path.join(__dirname, "../../documents/blog"),

@@ -1,11 +1,10 @@
 import {jsx} from "@b9g/crank/standalone";
 import type {Context, Element as CrankElement} from "@b9g/crank";
 import {css} from "@emotion/css";
-
 import {Edit} from "@b9g/revise/edit.js";
+
 import {Keyer} from "@b9g/revise/keyer.js";
 import {EditHistory} from "@b9g/revise/history.js";
-
 import type {ContentAreaElement} from "@b9g/revise/contentarea.js";
 
 import type {Token} from "prismjs";
