@@ -10,8 +10,8 @@ import type {ContentAreaElement} from "@b9g/revise/contentarea.js";
 import type {Token} from "prismjs";
 import {ContentArea} from "./contentarea.js";
 import {tokenize} from "../utils/prism.js";
-import {useVirtualizer} from "../utils/virtualizer.js";
-import type {Virtualizer} from "../utils/virtualizer.js";
+//import {useVirtualizer} from "../utils/virtualizer.js";
+//import type {Virtualizer} from "../utils/virtualizer.js";
 import {debounce} from "../utils/fns.js";
 
 function Gutter(
@@ -166,26 +166,26 @@ export function* CodeEditor(
 		this.refresh();
 	});
 
-	const virtualizer = useVirtualizer(this, {
-		count: 0,
-		getScrollElement: () => {
-			return getScroller(area);
-		},
-		// Debouncing because calling measureElement causes this function to fire
-		// multiple times.
-		onChange: debounce(() => {
-			value = area.value;
-			renderSource = "virtualizer";
-			this.refresh();
-		}, 0),
-		estimateSize: () => {
-			return 19;
-		},
-		// TODO: read this from the DOM and un-hardcode
-		scrollPaddingStart: 14,
-		scrollPaddingEnd: 14,
-		overscan: 100,
-	});
+	//const virtualizer = useVirtualizer(this, {
+	//	count: 0,
+	//	getScrollElement: () => {
+	//		return getScroller(area);
+	//	},
+	//	// Debouncing because calling measureElement causes this function to fire
+	//	// multiple times.
+	//	onChange: debounce(() => {
+	//		value = area.value;
+	//		renderSource = "virtualizer";
+	//		this.refresh();
+	//	}, 0),
+	//	estimateSize: () => {
+	//		return 19;
+	//	},
+	//	// TODO: read this from the DOM and un-hardcode
+	//	scrollPaddingStart: 14,
+	//	scrollPaddingEnd: 14,
+	//	overscan: 100,
+	//});
 
 	{
 		// history stuff
@@ -323,7 +323,7 @@ export function* CodeEditor(
 			const pre = el.querySelector("pre")!;
 			for (let i = 0; i < pre.children.length; i++) {
 				const child = pre.children[i];
-				virtualizer.measureElement(child);
+				//virtualizer.measureElement(child);
 			}
 		});
 
@@ -344,10 +344,10 @@ export function* CodeEditor(
 				c += lines[i].length + 1;
 			}
 
-			virtualizer.setOptions({
-				...virtualizer.options,
-				count: lines.length,
-			});
+			//virtualizer.setOptions({
+			//	...virtualizer.options,
+			//	count: lines.length,
+			//});
 		}
 
 		const lines = tokenize(value, language || "javascript");
@@ -364,17 +364,6 @@ export function* CodeEditor(
 					display: flex;
 				`}
 			>
-				${
-					showGutter &&
-					jsx`
-					<${Gutter}
-						length=${lines.length}
-						lineStarts=${lineStarts}
-						virtualizer=${virtualizer}
-						keyer=${keyer}
-					/>
-				`
-				}
 				<${ContentArea}
 					$ref=${(el: ContentAreaElement) => (area = el)}
 					value=${value}
