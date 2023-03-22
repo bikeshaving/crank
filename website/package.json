@@ -2,9 +2,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "shovel static src/app.ts && echo crank.js.org > dist/CNAME",
+    "static": "shovel static src/app.ts && echo crank.js.org > dist/CNAME",
     "serve": "shovel develop src/app.ts --port 1338",
-    "predeploy": "npm run build",
+    "predeploy": "npm run static",
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
