@@ -55,17 +55,18 @@ export default {
 		});
 	},
 
-	async staticPaths() {
+	async *staticPaths(outDir) {
+		yield *["/", "/blog"];
 		const blogDocs = await collectDocuments(
 			Path.join(__dirname, "../documents/blog"),
 			Path.join(__dirname, "../documents"),
 		);
+		yield *blogDocs.map((doc) => `/blog/${doc.slug}`);
 		const guideDocs = await collectDocuments(
 			Path.join(__dirname, "../documents/guides"),
 			Path.join(__dirname, "../documents"),
 		);
-		const blogURLs = blogDocs.map((doc) => doc.url);
-		const guideURLs = guideDocs.map((doc) => doc.url);
-		return ["/", "/blog", "/playground", ...guideURLs, ...blogURLs];
+		yield *guideURLs.map((doc) => `/guides/${doc.slug}`);
+		await storage.write(outDir);
 	},
 };
