@@ -2,133 +2,83 @@
 title: Async Components
 ---
 
-## Async Function Components
-So far, every component we’ve seen has worked synchronously, and Crank will respect this as an intentional decision by the developer by keeping the entire process of rendering synchronous from start to finish. However, modern JavaScript includes promises and `async`/`await`, which allow you to write concurrently executing code as if it were synchronous. To facilitate these features, Crank allows components to be asynchronous functions as well, and we call these components, *async function components*.
+So far, every component we’ve seen has been a sync function or sync generator component. Crank processes element trees containing synchronous components instantly, ensuring that by the time `renderer.render()` or `this.refresh()` completes execution, rendering will have finished, and the DOM will have been updated.
 
-```jsx
-async function IPAddress () {
-  const res = await fetch("https://api.ipify.org");
-  const address = await res.text();
-  return <div>Your IP Address: {address}</div>;
+Nevertheless, a JavaScript component framework would not be complete without a way to work with promises. Luckily, Crank also allows any component to be async the same way you would make any function asynchronous, by adding an `async` before the `function` keyword. Both *async function* and *async generator components* are supported. This feature means you can `await` promises in the process of rendering in virtually any component.
+
+```jsx live
+import {renderer} from "@b9g/crank/dom";
+async function Definition({word}) {
+  // API courtesy https://dictionaryapi.dev
+  const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+  const data = await res.json();
+  const {phonetic, meanings} = data[0];
+  const {partOfSpeech, definitions} = meanings[0];
+  const {definition} = definitions[0];
+  return <>
+    <p>{word} <code>{phonetic}</code></p>
+    <p><b>{partOfSpeech}.</b> {definition}</p>
+    {/*<pre>{JSON.stringify(data, null, 4)}</pre>*/}
+  </>;
 }
 
-(async () => {
-  await renderer.render(<IPAddress />, document.body);
-  console.log(document.body.innerHTML); // <div>Your IP Address: 127.0.0.1</div>
-})();
+await renderer.render(<Definition word="framework" />, document.body);
 ```
 
-When Crank renders an async component anywhere in the tree, the entire process becomes asynchronous. Concretely, this means that `renderer.render` or `this.refresh` calls return a promise which fulfills when rendering has finished. It also means that no actual DOM updates will be triggered until this moment.
+When rendering is async, `renderer.render()` and `this.refresh()` will return promises which settle when rendering has finished.
 
 ### Concurrent Updates
-Because async function components can be rerendered while they are still pending, Crank implements a couple rules to make concurrent updates predictable and performant:
+The nature of declarative rendering means that async components can be rerendered while they are still pending. Therefore, Crank implements a couple rules to make concurrent updates predictable and performant:
 
-1. There can only be one pending run of an async function component at the same time for an element in the tree. If the same async component is rerendered concurrently while it is still pending, another call is enqueued with the latest props.
+1. There can only be one pending run of an async component at the same time for an element in the tree. If the same async component is rerendered concurrently while it is still pending, another call is enqueued with the updated props.
 
-```jsx
+```jsx live
+import {renderer} from "@b9g/crank/dom";
 async function Delay ({message}) {
   await new Promise((resolve) => setTimeout(resolve, 1000));
   return <div>{message}</div>;
 }
 
-(async () => {
-  const p1 = renderer.render(<Delay message="Run 1" />, document.body);
-  console.log(document.body.innerHTML); // ""
-  await p1;
-  console.log(document.body.innerHTML); // "<div>Run 1</div>"
-  const p2 = renderer.render(<Delay message="Run 2" />, document.body);
-  // These renders are enqueued because the second render is still pending.
-  const p3 = renderer.render(<Delay message="Run 3" />, document.body);
-  const p4 = renderer.render(<Delay message="Run 4" />, document.body);
-  console.log(document.body.innerHTML); // "<div>Run 1</div>"
-  await p2;
-  console.log(document.body.innerHTML); // "<div>Run 2</div>"
-  // By the time the third render fulfills, the fourth render has already completed.
-  await p3;
-  console.log(document.body.innerHTML); // "<div>Run 4</div>"
-  await p4;
-  console.log(document.body.innerHTML); // "<div>Run 4</div>"
-})();
+renderer.render(<Delay message="Run 1" />, document.body);
+await p1;
+renderer.render(<Delay message="Run 2" />, document.body);
+// These renders are enqueued because the second render is still pending.
+// The third render is dropped because when the second run fulfills, there is
+// already a fourth run which provides the latest props.
+renderer.render(<Delay message="Run 3" />, document.body);
+renderer.render(<Delay message="Run 4" />, document.body);
 ```
 
-In the preceding example, at no point is there more than one simultaneous call to the `Delay` component, despite the fact that it is rerendered concurrently for its second through fourth renders. And because these renderings are enqueued, only the second and fourth renderings have any effect. This is because the element is busy with the second render by the time the third and fourth renderings are requested, and then, only the fourth rendering is actually executed because third rendering’s props are obsolete by the time the component is ready to update again. This behavior allows async components to always be kept up-to-date without producing excess calls to the function.
+In the preceding example, at no point is there more than one simultaneous call to the `<Delay>` component, despite the fact that it is rerendered concurrently for its second through fourth renders. And because these renderings are enqueued, only the second and fourth renderings have any effect. This is because the element is busy with the second render by the time the third and fourth renderings are requested, and then, only the fourth rendering is actually executed because third rendering’s props are obsolete by the time the component is ready to update again. This behavior allows async components to always be kept up-to-date without producing excess calls.
 
 2. If two different async components are rendered in the same position, the components are raced. If the earlier component fulfills first, it shows until the later component fulfills. If the later component fulfills first, the earlier component is never rendered.
 
-```jsx
+```jsx live
+import {renderer} from "@b9g/crank/dom";
+
 async function Fast() {
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  await new Promise((resolve) => setTimeout(resolve, 1000));
   return <span>Fast</span>;
 }
 
 async function Slow() {
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  await new Promise((resolve) => setTimeout(resolve, 2000));
   return <span>Slow</span>;
 }
 
-(async () => {
-  const p1 = renderer.render(<div><Fast /></div>, document.body);
-  const p2 = renderer.render(<div><Slow /></div>, document.body);
-  await p1;
-  console.log(document.body.innerHTML); // "<div><span>Fast</span></div>"
-  await p2;
-  console.log(document.body.innerHTML); // "<div><span>Slow</span></div>"
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-  console.log(document.body.innerHTML); // "<div><span>Slow</span></div>"
-})();
-
-(async () => {
-  const p1 = renderer.render(<div><Slow /></div>, document.body);
-  const p2 = renderer.render(<div><Fast /></div>, document.body);
-  await p1;
-  console.log(document.body.innerHTML); // "<div><span>Fast</span></div>"
-  await p2;
-  console.log(document.body.innerHTML); // "<div><span>Fast</span></div>"
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-  console.log(document.body.innerHTML); // "<div><span>Fast</span></div>"
-})();
+// TODO: flip the order of these calls and watch the behavior.
+renderer.render(<Fast />, document.body);
+renderer.render(<Slow />, document.body);
 ```
 
-As we’ll see later, this ratcheting effect becomes useful for rendering fallback states for async components.
-
-<!--
-TODO: this section is too hard to understand and requires code examples so we’re removing it for now.
-### Async Children
-When Crank encounters an async component anywhere in the element tree, the entire rendering process becomes asynchronous. Therefore, async child components make parent components asynchronous, and sync function and generator components behave differently when they produce async children. On the one hand, sync function components transparently pass updates along to async children, so that when a renderer updates a sync function component concurrently, its async children will also enqueue an update immediately. On the other hand, sync generator components which produce async elements will not resume until those async children have fulfilled. This is because sync generators expect to be resumed after their children have rendered, and the actual DOM nodes which are created are passed back into the generator, but they wouldn’t be available if the generator was concurrently resumed before the async children had settled.
--->
+As we’ll see later, this “ratcheting” effect becomes useful for rendering fallback states for async components.
 
 ## Async Generator Components
-Just as you can write stateful components with sync generator functions, you can also write stateful *async* components with *async generator functions*.
+Just as you can write stateful components with sync generator functions, you can also write *stateful* async components with async generator functions.
 
-```jsx
-async function *AsyncLabeledCounter ({message}) { 
-  let count = 0;
-  for await ({message} of this) {
-    yield <div>Loading...</div>;
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    count++;
-    yield <div>{message} {count}</div>;
-  }
-}
-
-(async () => {
-  await renderer.render(
-    <AsyncLabeledCounter message="The count is now: " />,
-    document.body,
-  );
-  console.log(document.body.innerHTML); //<div>Loading...</div>
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-  console.log(document.body.innerHTML); //<div>The count is now: 1</div>
-  await renderer.render(
-    <AsyncLabeledCounter message="The count is now: " />,
-    document.body,
-  );
-  console.log(document.body.innerHTML); //<div>Loading...</div>
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-  console.log(document.body.innerHTML); //<div>The count is now: 2</div>
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-  console.log(document.body.innerHTML); //<div>The count is now: 2</div>
-})();
+```jsx live
+import {renderer} from "@b9g/crank/dom";
+renderer.render(<Dictionary />, document.body);
 ```
 
 `AsyncLabeledCounter` is an async version of the `LabeledCounter` example introduced in [the section on props updates](./components#props-updates). This example demonstrates several key differences between sync and async generator components. Firstly, rather than using `while` or `for…of` loops as with sync generator components, we now use [a `for await…of` loop](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/for-await...of). This is possible because contexts are not just an *iterable* of props, but also an *async iterable* of props as well.

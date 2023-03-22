@@ -2,97 +2,98 @@
 title: Getting Started
 ---
 
+<!-- Try to use absolute links so this can be copied to the package README. -->
+
 ## Try Crank
-The fastest way to try Crank is via the [playground](/playground). Additionally, many of the code examples in these guides are editable and runnable.
+
+The fastest way to try Crank is via the [online playground](https://crank.js.org/playground). In addition, many of the code examples in these guides feature live previews.
 
 ## Installation
+
+The Crank package is available on [NPM](https://npmjs.org/@b9g/crank) through
+the [@b9g organization](https://www.npmjs.com/org/b9g) (short for
+b*ikeshavin*g).
+
 ```shell
-$ npm install @b9g/crank
+npm i @b9g/crank
 ```
 
-The Crank package is available on [NPM](https://npmjs.org/@b9g/crank) through the [@b9g organization](https://www.npmjs.com/org/b9g) (short for b*ikeshavin*g).
+### Importing Crank with the **classic** JSX transform.
 
-```jsx
+```jsx live
 /** @jsx createElement */
-import {createElement} from "@b9g/crank";
+/** @jsxFrag Fragment */
+import {createElement, Fragment} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
-renderer.render(<div id="hello">Hello world</div>, document.body);
+
+renderer.render(
+  <p>This paragraph element is transpiled with the classic transform.</p>,
+  document.body,
+);
 ```
 
-It is also available on CDNs like [unpkg](https://unpkg.com) (https://unpkg.com/@b9g/crank?module) and [esm.sh](https://esm.sh) (https://esm.sh/@b9g/crank) for usage in ESM-ready environments.
+### Importing Crank with the **automatic** JSX transform.
+
+```jsx live
+/** @jsxImportSource @b9g/crank */
+import {renderer} from "@b9g/crank/dom";
+
+renderer.render(
+  <p>This paragraph element is transpiled with the automatic transform.</p>,
+  document.body,
+);
+```
+
+You will likely have to configure your tools to support JSX, especially if you do not want to use `@jsx` comment pragmas. See below for common tools and configurations.
+
+### Importing the JSX template tag.
+
+Starting in version `0.5`, the Crank package ships a [tagged template function](/guides/jsx-template-tag) which provides similar syntax and semantics as the JSX transform. This allows you to write Crank components in vanilla JavaScript.
+
+```js live
+import {jsx} from "@b9g/crank/standalone";
+import {renderer} from "@b9g/crank/dom";
+
+renderer.render(jsx`
+  <p>No transpilation is necessary with the JSX template tag.</p>
+`, document.body);
+```
+
+### ECMAScript Module CDNs
+Crank is also available on CDNs like [unpkg](https://unpkg.com)
+(https://unpkg.com/@b9g/crank?module) and [esm.sh](https://esm.sh)
+(https://esm.sh/@b9g/crank) for usage in ESM-ready environments.
 
 ```jsx live
 /** @jsx createElement */
 
 // This is an ESM-ready environment!
+// If code previews work, your browser is an ESM-ready environment!
+
 import {createElement} from "https://unpkg.com/@b9g/crank/crank?module";
 import {renderer} from "https://unpkg.com/@b9g/crank/dom?module";
 
-renderer.render(<div id="hello">Hello world</div>, document.body);
-```
-
-## Transpiling JSX
-Crank works with [JSX](https://facebook.github.io/jsx/), a well-supported, XML-like syntax extension to JavaScript. The hardest part about setting up a Crank project will probably be configuring your favorite web tools to transpile JSX in a way Crank understands; luckily, this section will walk you through the latest in JSX transforms and configurations.
-
-### Two types of JSX transpilation
-Historically speaking, there are two ways to transform JSX: the *classic* and *automatic* transforms. Crank supports both formats.
-
-The classic transform turns JSX elements into `createElement()` calls.
-
-```jsx
-/** @jsx createElement */
-import {createElement} from "@b9g/crank";
-
-const el = <div id="element">An element</div>;
-// Transpiles to:
-
-const el = createElement("div", {id: "element"}, "An element");
-// Identifiers like `createElement`, `Fragment` must be manually imported.
-```
-
-The automatic transform turns JSX elements into function calls from an automatically imported namespace.
-
-```jsx
-/** @jsxImportSource @b9g/crank */
-
-const profile = (
-  <div>
-    <img src="avatar.png" class="profile" />
-    <h3>{[user.firstName, user.lastName].join(" ")}</h3>
-  </div>
+renderer.render(
+  <div id="hello">
+    Running on <a href="https://unpkg.com">unpkg.com</a>
+  </div>,
+  document.body,
 );
-
-// Transpiles to:
-import { jsx as _jsx } from "@b9g/crank/jsx-runtime";
-import { jsxs as _jsxs } from "@b9g/crank/jsx-runtime";
-
-const profile = _jsxs("div", {
-  children: [
-    _jsx("img", {
-      src: "avatar.png",
-      "class": "profile",
-    }),
-    _jsx("h3", {
-      children: [user.firstName, user.lastName].join(" "),
-    }),
-  ],
-});
-
 ```
 
-The automatic transform has the benefit of not requiring manual imports.
+## Common tool configurations
+The following is an incomplete list of configurations to get started with Crank.
 
-## Common tools and configurations
-The following is an incomplete list of tool configurations to get started with JSX.
+### [TypeScript](https://www.typescriptlang.org)
 
-#### [TypeScript](https://www.typescriptlang.org)
+TypeScript is a typed superset of JavaScript.
 
 Here’s the configuration you will need to set up automatic JSX transpilation.
 
 ```tsconfig.json
 {
   "compilerOptions": {
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
     "jsxImportSource": "@b9g/crank"
   }
 }
@@ -103,41 +104,116 @@ The classic transform is supported as well.
 ```tsconfig.json
 {
   "compilerOptions": {
-    "target": "esnext",
-    TKTKTKTKTKTK
+    "jsx": "react",
+    "jsxFactory": "createElement",
+    "jsxFragmentFactory": "Fragment"
   }
 }
 ```
 
-Crank is written in TypeScript. Additional information about how to type components and use Crank types are provided in the [working with TypeScript guide](/guides/working-with-typescript).
+Crank is written in TypeScript. Refer to [the guide on TypeScript](/guides/working-with-typescript) for more information about Crank types.
 
-#### Babel
-```babelrc.json
-```
-You can install the “babel-preset-crank” package to set this up automatically.
+```tsx
+import type {Context} from "@b9g/crank";
+function *Timer(this: Context) {
+  let seconds = 0;
+  const interval = setInterval(() => {
+    seconds++;
+    this.refresh();
+  }, 1000);
+  for ({} of this) {
+    yield <div>Seconds: {seconds}</div>;
+  }
 
-#### ESBuild
-```
-```
-
-#### Vite
-```
-```
-
-#### ESLint
-```
-```
-
-Crank provides 
-
-#### Astro.build
-```
+  clearInterval(interval);
+}
 ```
 
-## Avoiding JSX transpilation
-```jsx
-import {renderer} from "@b9g/crank/dom";
+### [Babel](https://babeljs.io)
+
+Babel is a popular open-source JavaScript compiler which allows you to write code with modern syntax (including JSX) and run it in environments which do not support the syntax.
+
+Here is how to get Babel to transpile JSX for Crank.
+
+Automatic transform:
+```.babelrc.json
+{
+  "plugins": [
+    "@babel/plugin-syntax-jsx",
+    [
+      "@babel/plugin-transform-react-jsx",
+      {
+        "runtime": "automatic",
+        "importSource": "@b9g/crank",
+
+        "throwIfNamespace": false,
+        "useSpread": true
+      }
+    ]
+  ]
+}
 ```
 
-If you do not want to use JSX, you can use the JavaScript friendly tagged template function instead.
+Classic transform:
+```.babelrc.json
+{
+  "plugins": [
+    "@babel/plugin-syntax-jsx",
+    [
+      "@babel/plugin-transform-react-jsx",
+      {
+        "runtime": "class",
+        "pragma": "createElement",
+        "pragmaFrag": "''",
 
+        "throwIfNamespace": false,
+        "useSpread": true
+      }
+    ]
+  ]
+}
+```
+
+### [ESLint](https://eslint.org)
+
+ESLint is a popular open-source tool for analyzing and detecting problems in JavaScript code.
+
+Crank provides a configuration preset for working with ESLint under the package name `eslint-plugin-crank`.
+
+```bash
+npm i eslint eslint-plugin-crank
+```
+
+In your eslint configuration:
+
+```.eslintrc.json
+{
+  "extends": ["plugin:crank/recommended"]
+}
+```
+
+### [Astro](https://astro.build)
+
+Astro.js is a modern static site builder and framework.
+
+Crank provides an [Astro integration](https://docs.astro.build/en/guides/integrations-guide/) to enable server-side rendering and client-side hydration with Astro.
+
+```bash
+npm i astro-crank
+```
+
+In your `astro.config.mjs`.
+
+```astro.config.mjs
+import {defineConfig} from "astro/config";
+import crank from "astro-crank";
+
+// https://astro.build/config
+export default defineConfig({
+  integrations: [crank()],
+});
+```
+
+## Shovel
+
+A full-stack framework is in the works for Crank. Stay tuned.

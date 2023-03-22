@@ -14,12 +14,14 @@ interface SelectionRange {
 export function* ContentArea(
 	this: Context,
 	{
+		ref,
 		value,
 		children,
 		selectionRange,
 		renderSource,
 		...rest
 	}: {
+		ref?: (el: ContentAreaElement) => void;
 		children: unknown;
 		selectionRange?: SelectionRange | undefined;
 		value?: string | undefined;
@@ -102,7 +104,10 @@ export function* ContentArea(
 		yield jsx`
 			<content-area
 				...${rest}
-				ref=${(el: ContentAreaElement) => (area = el)}
+				ref=${(el: ContentAreaElement) => {
+					area = el;
+					ref?.(el);
+				}}
 				static=${composing}
 			>${children}</content-area>
 		`;

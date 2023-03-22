@@ -1,14 +1,14 @@
 import * as Path from "path";
+import {Blob} from "buffer";
 import * as MimeTypes from "mime-types";
 
 import {jsx} from "@b9g/crank/standalone";
 import {renderer} from "@b9g/crank/html";
 import {renderStylesToString} from "@emotion/server";
 
-//import {Request, Response} from "@remix-run/web-fetch";
-
 import {router} from "./routes.js";
 import {Storage} from "./components/esbuild.js";
+import {collectDocuments} from "./models/document.js";
 
 const __dirname = new URL(".", import.meta.url).pathname;
 const storage = new Storage({
@@ -17,7 +17,7 @@ const storage = new Storage({
 });
 
 export default {
-	fetch: async (req: Request) => {
+	async fetch(req: Request) {
 		console.info("serving", req.url);
 		const path = new URL(req.url).pathname;
 		if (path.startsWith(storage.publicPath)) {
@@ -25,12 +25,17 @@ export default {
 			const mimeType = MimeTypes.lookup(path) || "application/octet-stream";
 			const charset = MimeTypes.charset(mimeType) || "binary";
 			if (source) {
-				return new Response(source, {
+				const blob = new Blob([source], {
+					type: `${mimeType}; charset=${charset}`,
+				});
+				return new Response(blob, {
 					status: 200,
 					headers: {
 						"Content-Type": `${mimeType}; charset=${charset}`,
 					},
 				});
+			} else {
+				return new Response("Not found", {status: 404});
 			}
 		}
 
@@ -54,5 +59,21 @@ export default {
 			status: 404,
 			headers: {"Content-Type": "text/html"},
 		});
+	},
+
+	async *staticPaths(outDir) {
+		yield* ["/", "/blog", "/playground"];
+		const blogDocs = await collectDocuments(
+			Path.join(__dirname, "../documents/blog"),
+			Path.join(__dirname, "../documents"),
+		);
+		yield* blogDocs.map((doc) => doc.url);
+
+		const guideDocs = await collectDocuments(
+			Path.join(__dirname, "../documents/guides"),
+			Path.join(__dirname, "../documents"),
+		);
+		yield* guideDocs.map((doc) => doc.url);
+		await storage.write(Path.join(outDir, storage.publicPath));
 	},
 };
