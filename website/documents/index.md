@@ -7,8 +7,11 @@ Crank is a JavaScript / TypeScript library for building websites and apps. It is
 
 ## Why is Crank “Just JavaScript?”
 
-Many web frameworks claim to be “just JavaScript.” Few have as strong a claim as Crank.
-It starts with the idea that you can write components with JavaScript’s built-in function syntaxes.
+Many web frameworks claim to be “just JavaScript.”
+
+Few have as strong a claim as Crank.
+
+It starts with the idea that you can write components with *all* of JavaScript’s built-in function syntaxes.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -47,7 +50,7 @@ async function Definition({word}) {
 //renderer.render(<Definition word="framework" />, document.body);
 ```
 
-Promises can be awaited. Updates can be iterated. State and callbacks can be held in scope. Inside a component, JavaScript can be JavaScript.
+Crank components work like normal JavaScript. Props can be destructured. Promises can be awaited. Updates can be iterated. State is just whatever’s held in the function scope.
 
 The result is a simpler developer experience, where you spend less time writing framework integrations and more time writing vanilla JavaScript.
 
@@ -55,8 +58,7 @@ The result is a simpler developer experience, where you spend less time writing 
 
 ### Reason #1: It’s declarative
 
-Crank works with JSX. It uses tried-and-tested virtual DOM algorithms. Simple
-components can be defined with functions which return elements.
+Crank works with JSX. It uses tried-and-tested virtual DOM algorithms. Simple components can be defined with functions which return elements.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -83,8 +85,7 @@ function RandomName() {
 renderer.render(<RandomName />, document.body);
 ```
 
-Don’t think JSX is vanilla enough? Crank provides a tagged template function
-which does roughly the same thing.
+Don’t think JSX is vanilla enough? Crank provides a tagged template function which does roughly the same thing.
 
 ```jsx live
 import {jsx} from "@b9g/crank/standalone";
@@ -197,7 +198,7 @@ function *CyclingName() {
 renderer.render(<CyclingName />, document.body);
 ```
 
-Components rerender based on explicit `refresh()` calls. This level of precision means you can be as messy as you need to be.
+Components rerender based on explicit `refresh()` calls. This level of precision means you can be as messy as you need to be. And when you clean it up, you’ll be confident about how your code executes.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -258,7 +259,7 @@ renderer.render(<Timer />, document.body);
 
 ### Reason #3: It’s promise-friendly.
 
-Any component can be made asynchronous with the `async` keyword. As it turns out, one of the nicest ways to use `fetch()` is to call it and `await` the result.
+Any component can be made asynchronous with the `async` keyword. This means you can await `fetch()` directly in a component, client or server.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -280,7 +281,7 @@ async function QuoteOfTheDay() {
 renderer.render(<QuoteOfTheDay />, document.body);
 ```
 
-Async generator functions let you write components that are both async *AND* stateful. You can even race components to show temporary fallback states.
+Async generator functions let you write components that are both async *and* stateful. Crank uses promises wherever it makes sense, and has a rich async execution model which lets you do things like racing components to display delayed fallback states.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";

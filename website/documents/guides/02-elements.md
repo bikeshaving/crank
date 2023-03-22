@@ -5,7 +5,56 @@ title: Elements and Renderers
 
 **Note:** If you’re familiar with how elements work in React, you may want to skip ahead to [the guide on components](./components). Elements in Crank work almost exactly as they do in React.
 
-## JSX
+## Transpiling JSX
+Crank works with [JSX](https://facebook.github.io/jsx/), a well-supported, XML-like syntax extension to JavaScript. The hardest part about setting up a Crank project will probably be configuring your favorite web tools to transpile JSX in a way Crank understands; luckily, this section will walk you through the latest in JSX transforms and configurations.
+
+### Two types of JSX transpilation
+Historically speaking, there are two ways to transform JSX: the *classic* and *automatic* transforms. Crank supports both formats.
+
+The classic transform turns JSX elements into `createElement()` calls.
+
+```jsx
+/** @jsx createElement */
+import {createElement} from "@b9g/crank";
+
+const el = <div id="element">An element</div>;
+// Transpiles to:
+
+const el = createElement("div", {id: "element"}, "An element");
+// Identifiers like `createElement`, `Fragment` must be manually imported.
+```
+
+The automatic transform turns JSX elements into function calls from an automatically imported namespace.
+
+```jsx
+/** @jsxImportSource @b9g/crank */
+
+const profile = (
+  <div>
+    <img src="avatar.png" class="profile" />
+    <h3>{[user.firstName, user.lastName].join(" ")}</h3>
+  </div>
+);
+
+// Transpiles to:
+import { jsx as _jsx } from "@b9g/crank/jsx-runtime";
+import { jsxs as _jsxs } from "@b9g/crank/jsx-runtime";
+
+const profile = _jsxs("div", {
+  children: [
+    _jsx("img", {
+      src: "avatar.png",
+      "class": "profile",
+    }),
+    _jsx("h3", {
+      children: [user.firstName, user.lastName].join(" "),
+    }),
+  ],
+});
+
+```
+
+The automatic transform has the benefit of not requiring manual imports.
 
 Crank is designed to be used with [JSX](https://facebook.github.io/jsx/), a well-supported, XML-like syntax extension to JavaScript. Most popular JavaScript transpilers support JSX transforms as an out-of-the-box feature. These transpilers work by transforming JSX expressions into function calls, and by convention, this has usually been a function called `createElement()`. For example, in the following code, the JSX expression assigned to `el` transpiles to the `createElement()` call assigned to `el1`.
 
