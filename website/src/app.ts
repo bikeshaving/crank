@@ -56,17 +56,21 @@ export default {
 	},
 
 	async *staticPaths(outDir) {
-		yield *["/", "/blog"];
+		yield *["/", "/blog", "/playground"];
 		const blogDocs = await collectDocuments(
 			Path.join(__dirname, "../documents/blog"),
 			Path.join(__dirname, "../documents"),
 		);
-		yield *blogDocs.map((doc) => `/blog/${doc.slug}`);
+		yield *blogDocs.map((doc) => doc.url);
+
 		const guideDocs = await collectDocuments(
 			Path.join(__dirname, "../documents/guides"),
 			Path.join(__dirname, "../documents"),
 		);
-		yield *guideURLs.map((doc) => `/guides/${doc.slug}`);
-		await storage.write(outDir);
+		yield *guideDocs.map((doc) => doc.url);
+
+		console.log(`Writing static files to ${outDir}`);
+		await storage.write(Path.join(outDir, storage.publicPath));
 	},
 };
+

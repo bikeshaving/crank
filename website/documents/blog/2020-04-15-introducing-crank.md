@@ -8,7 +8,7 @@ After months of development, I’m happy to introduce Crank.js, a new framework 
 
 I will be honest. Before embarking on this project, I never considered myself capable of making a “web framework.” I don’t maintain any popular open-source libraries, and most of the early commits to this project had messages like “I can’t even believe I’m actually considering making my own web framework.” Before working on Crank, my framework of choice was React, and I had used it dutifully for almost every project within my control since the `React.createClass` days. And as React evolved, I must admit, I was intrigued and excited with the announcement of each new code-named feature like “Fibers,” “Hooks” and “Suspense.” I sincerely felt that React would continue to be relevant well into the 2020s.
 
-![The first commit messages](../static/commits.png)
+![The first commit messages](/static/commits.png)
 
 However, over time, I grew increasingly alienated by what I perceived to be the more general direction of React, which was to reframe it as a “UI runtime.” Each new API felt exciting, but I disliked how opaque and error-prone the concrete code written with these APIs seemed. I was unhappy, for instance, with the strangeness and pitfalls of the new Hooks API, and I worried about the constant warnings the React team gave about how code which worked today would break once something called “Concurrent Mode” landed. *I already have a UI runtime*, I began to grumble whenever I read the latest on React, *it’s called JavaScript.*
 

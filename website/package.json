@@ -2,15 +2,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "static": "shovel static src/app.ts && echo crank.js.org > dist/CNAME",
-    "serve": "shovel develop src/app.ts --port 1338",
     "predeploy": "npm run static",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "serve": "shovel develop src/app.ts --port 1338",
+    "static": "shovel static src/app.ts && echo crank.js.org > dist/CNAME"
   },
   "dependencies": {
     "@b9g/crank": "file:../dist",
     "@b9g/revise": "file:../../revise/dist",
-    "@b9g/shovel": "^0.1.5",
+    "@b9g/shovel": "^0.1.6",
     "@babel/core": "^7.21.0",
     "@babel/preset-react": "^7.18.6",
     "@babel/preset-typescript": "^7.21.0",
