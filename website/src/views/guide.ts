@@ -34,6 +34,7 @@ export default async function Guide({
 			<${Sidebar} docs=${docs} url=${url} title="Guides" />
 			<${Main}>
 				<h1>${title}</h1>
+				<marquee behavior="alternate">🚧 The docs are a work in progress.🚧</marquee>
 				<${Marked} markdown=${body} components=${components} />
 			<//Main>
 		<//Root>
