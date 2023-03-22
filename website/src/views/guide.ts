@@ -34,10 +34,10 @@ export default async function Guide({
 			<${Sidebar} docs=${docs} url=${url} title="Guides" />
 			<${Main}>
 				<marquee behavior="alternate">
-					👷👷👷
+					👷👷
 					The Crank documentation website is under construction to match the latest API. \
 					Please pardon the appearance.
-					👷👷👷
+					👷👷
 				</marquee>
 
 				<h1>${title}</h1>
