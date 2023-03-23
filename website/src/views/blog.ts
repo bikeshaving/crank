@@ -17,7 +17,9 @@ export default async function BlogPage({url, context: {storage}}: ViewProps) {
 		path.join(__dirname, "../../documents/"),
 	);
 	posts.reverse();
-	const post = posts.find((doc) => doc.url === url);
+	const post = posts.find(
+		(doc) => doc.url.replace(/\/$/, "") === url.replace(/\/$/, ""),
+	);
 	if (!post) {
 		throw new Error("TODO: 404 errors");
 	}

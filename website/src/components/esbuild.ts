@@ -2,7 +2,6 @@ import * as FS from "fs/promises";
 import * as Path from "path";
 import * as ESBuild from "esbuild";
 import type {BuildContext, OutputFile} from "esbuild";
-import * as mime from "mime-types";
 
 import {jsx} from "@b9g/crank/standalone";
 import type {Children, Context} from "@b9g/crank";
@@ -160,8 +159,6 @@ export class Storage {
 
 		for (const staticPath of this.staticPaths) {
 			try {
-				const mimeType = mime.lookup(inputPath) || "application/octet-stream";
-				const charset = mime.charset(mimeType) || "binary";
 				return await FS.readFile(Path.join(staticPath, inputPath));
 			} catch (err: any) {
 				if (err.code !== "ENOENT") {
