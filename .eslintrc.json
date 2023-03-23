@@ -12,20 +12,13 @@
   },
   "plugins": [
     "@typescript-eslint",
-    "prettier",
-    "react"
+    "prettier"
   ],
   "extends": [
     "eslint:recommended",
-    "plugin:prettier/recommended"
+    "plugin:prettier/recommended",
+    "plugin:crank/recommended"
   ],
-
-  "settings": {
-    "react": {
-      "pragma": "createElement",
-      "fragment": "Fragment"
-    }
-  },
   "rules": {
     "no-console": [
       "error",
@@ -41,7 +34,6 @@
         "argsIgnorePattern": "^_"
       }
     ],
-    "no-empty-pattern": 0,
     "no-dupe-class-members": 0,
     "@typescript-eslint/no-dupe-class-members": 1,
     "no-undef": 0,
@@ -55,8 +47,6 @@
         "bracketSpacing": false
       }
     ],
-    "linebreak-style": ["error", "unix"],
-    "react/jsx-uses-vars": 1,
-    "react/jsx-uses-react": 1
+    "linebreak-style": ["error", "unix"]
   }
 }

@@ -4,9 +4,7 @@ title: Getting Started
 
 ## Try Crank
 
-The fastest way to try Crank is via the [online playground](/playground).
-Additionally, many of the code examples in these guides are editable and
-runnable.
+The fastest way to try Crank is via the [online playground](https://crank.js.org/playground). In addition, many of the code examples in these guides feature live previews.
 
 ## Installation
 The Crank package is available on [NPM](https://npmjs.org/@b9g/crank) through
@@ -14,7 +12,7 @@ the [@b9g organization](https://www.npmjs.com/org/b9g) (short for
 b*ikeshavin*g).
 
 ```shell
-$ npm install @b9g/crank
+$ npm i @b9g/crank
 ```
 
 ### Hello world with the **classic** JSX transform.
@@ -34,15 +32,17 @@ import {renderer} from "@b9g/crank/dom";
 renderer.render(<div id="hello">Hello world</div>, document.body);
 ```
 
-If you do not wish to use pragmas (`/** @jsx createElement */`, `/** @jsxImportSource @b9g/crank */`), you will likely have to configure your tools to support it. See below for common tools and configurations.
+If you do not wish to use pragmas (`/** @jsx createElement */`, `/** @jsxImportSource @b9g/crank */`), you will likely have to configure your tools to support JSX. See below for common tools and configurations.
 
-### Hello world with the JSX template tag (added in `0.5.0`).
+### Hello world with the JSX template tag.
 
 ```js
 import {jsx} from "@b9g/crank/standalone";
 import {renderer} from "@b9g/crank/dom";
 renderer.render(jsx`<div id="hello">Hello world</div>`, document.body);
 ```
+
+Starting in version `0.5`, the Crank package ships a [tagged template function](/guides/jsx-template-tag) which parses the template tag with similar syntax and semantics as the JSX transform. This allows you to write Crank components in vanilla JavaScript.
 
 ### ECMAScript Module CDNs
 Crank is also available on CDNs like [unpkg](https://unpkg.com)
@@ -80,11 +80,6 @@ Here’s the configuration you will need to set up automatic JSX transpilation.
 The classic transform is supported as well.
 
 ```tsconfig.json
-{
-  "compilerOptions": {
-    "target": "esnext",
-  }
-}
 ```
 
 Crank is written in TypeScript. Additional information about how to type components and use Crank types are provided in the [working with TypeScript guide](/guides/working-with-typescript).
@@ -94,17 +89,11 @@ Crank is written in TypeScript. Additional information about how to type compone
 ```
 
 ### ESBuild
-```
-```
-
-### Vite
-```
+```bash
 ```
 
 ### ESLint
 ```
 ```
 
-### Astro.build
-```
-```
+### Shovel

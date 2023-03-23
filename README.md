@@ -1,5 +1,5 @@
 # Crank.js
-### The Just JavaScript web framework.
+The Just JavaScript web framework.
 
 Crank is a web framework where components can be defined with sync functions, async functions and generator functions. The documentation for Crank.js is available at [crank.js.org](https://crank.js.org).
 
