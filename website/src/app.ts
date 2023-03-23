@@ -1,4 +1,5 @@
 import * as Path from "path";
+import {Blob} from "buffer";
 import * as MimeTypes from "mime-types";
 
 import {jsx} from "@b9g/crank/standalone";
@@ -24,12 +25,17 @@ export default {
 			const mimeType = MimeTypes.lookup(path) || "application/octet-stream";
 			const charset = MimeTypes.charset(mimeType) || "binary";
 			if (source) {
-				return new Response(source, {
+				const blob = new Blob([source], {
+					type: `${mimeType}; charset=${charset}`,
+				});
+				return new Response(blob, {
 					status: 200,
 					headers: {
 						"Content-Type": `${mimeType}; charset=${charset}`,
 					},
 				});
+			} else {
+				return new Response("Not found", {status: 404});
 			}
 		}
 
@@ -56,21 +62,18 @@ export default {
 	},
 
 	async *staticPaths(outDir) {
-		yield *["/", "/blog", "/playground"];
+		yield* ["/", "/blog", "/playground"];
 		const blogDocs = await collectDocuments(
 			Path.join(__dirname, "../documents/blog"),
 			Path.join(__dirname, "../documents"),
 		);
-		yield *blogDocs.map((doc) => doc.url);
+		yield* blogDocs.map((doc) => doc.url);
 
 		const guideDocs = await collectDocuments(
 			Path.join(__dirname, "../documents/guides"),
 			Path.join(__dirname, "../documents"),
 		);
-		yield *guideDocs.map((doc) => doc.url);
-
-		console.log(`Writing static files to ${outDir}`);
+		yield* guideDocs.map((doc) => doc.url);
 		await storage.write(Path.join(outDir, storage.publicPath));
 	},
 };
-

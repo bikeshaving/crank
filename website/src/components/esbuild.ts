@@ -143,7 +143,7 @@ export class Storage {
 		);
 	}
 
-	async serve(inputPath: string): Promise<Uint8Array | string | null> {
+	async serve(inputPath: string): Promise<Uint8Array | null> {
 		inputPath = inputPath.replace(new RegExp("^" + this.publicPath), "");
 		const outputs: Array<OutputFile> = [];
 		for (const ctx of this.cache.values()) {
@@ -162,10 +162,7 @@ export class Storage {
 			try {
 				const mimeType = mime.lookup(inputPath) || "application/octet-stream";
 				const charset = mime.charset(mimeType) || "binary";
-				return await FS.readFile(
-					Path.join(staticPath, inputPath),
-					charset as any,
-				);
+				return await FS.readFile(Path.join(staticPath, inputPath));
 			} catch (err: any) {
 				if (err.code !== "ENOENT") {
 					throw err;
