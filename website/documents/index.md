@@ -52,7 +52,7 @@ async function Definition({word}) {
 //renderer.render(<Definition word="framework" />, document.body);
 ```
 
-Crank components work like normal JavaScript. Props can be destructured. Promises can be awaited. Updates can be iterated. State is just whatever’s held in the function scope.
+Crank components work like normal JavaScript, using standard control-flow. Props can be destructured. Promises can be awaited. Updates can be iterated. State can be held in scope.
 
 The result is a simpler developer experience, where you spend less time writing framework integrations and more time writing vanilla JavaScript.
 
@@ -200,7 +200,9 @@ function *CyclingName() {
 renderer.render(<CyclingName />, document.body);
 ```
 
-Components rerender based on explicit `refresh()` calls. This level of precision means you can be as messy as you need to be. And when you clean it up, you’ll be confident about how your code executes.
+Components rerender based on explicit `refresh()` calls. This level of precision means you can be as messy as you need to be to get the job done.
+
+Never memoize a callback ever again.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -283,7 +285,7 @@ async function QuoteOfTheDay() {
 renderer.render(<QuoteOfTheDay />, document.body);
 ```
 
-Async generator functions let you write components that are both async *and* stateful. Crank uses promises wherever it makes sense, and has a rich async execution model which lets you do things like racing components to display delayed fallback states.
+Async generator functions let you write components that are both async *and* stateful. Crank uses promises wherever it makes sense, and has a rich async execution model which allows you to do things like race components to display loading states.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
