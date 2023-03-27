@@ -2,7 +2,7 @@
 title: Components
 ---
 
-So far, we’ve only seen and used host elements, but eventually, we’ll want to group these elements into reusable *components*. Crank uses plain old JavaScript functions to define components, and we will see how it uses the different kinds of function types to allow developers to write reusable, stateful and interactive components.
+So far, we’ve only seen and used host elements, but eventually, we’ll want to group these elements into reusable *components*. Crank uses plain old JavaScript functions to define components and the type of the function determines the component’s behavior.
 
 ## Basic Components
 The simplest kind of component is a *function component*. When rendered, the function is invoked with the props of the element as its first argument, and the return value of the function is recursively rendered as the element’s children.
@@ -16,7 +16,9 @@ function Greeting({name}) {
 renderer.render(<Greeting name="World" />, document.body);
 ```
 
-Component elements can be passed children just as host elements can. The `createElement()` function will add children to the props object under the name `children`, and it is up to the component to place them somewhere in the returned element tree. If you don’t use the `children` prop, it will not appear in the rendered output.
+### Component children
+
+Component elements can be passed children just like host elements. The `createElement()` function will add children to the props object under the name `children`, and it is up to the component to place the children somewhere in the returned element tree. If you don’t use the `children` prop, it will not appear in the rendered output.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -40,39 +42,27 @@ renderer.render(
 ## Stateful Components
 Eventually, you’ll want to write components with local state. In Crank, we use [generator functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*) to do so. These types of components are referred to as *generator components*.
 
-```jsx
+```jsx live
+import {renderer} from "@b9g/crank/dom";
+
 function *Counter() {
   let count = 0;
   while (true) {
     count++;
     yield (
       <div>
-        You have updated this component {count} {count === 1 ? "time" : "times"}
+        You have updated this component {count} time{count !== 1 && "s"}.
+        <br />
+        <button onclick={() => this.refresh()}>Update</button>
       </div>
     );
   }
 }
 
 renderer.render(<Counter />, document.body);
-console.log(document.body.innerHTML);
-// "<div>You have updated this component 1 time</div>"
-renderer.render(<Counter />, document.body);
-console.log(document.body.innerHTML);
-// "<div>You have updated this component 2 times</div>"
-renderer.render(<Counter />, document.body);
-renderer.render(<Counter />, document.body);
-renderer.render(<Counter />, document.body);
-console.log(document.body.innerHTML);
-// "<div>You have updated this component 5 times</div>"
-renderer.render(null, document.body);
-console.log(document.body.innerHTML);
-// ""
-renderer.render(<Counter />, document.body);
-console.log(document.body.innerHTML);
-// "<div>You have updated this component 1 time</div>"
 ```
 
-By yielding elements rather than returning them, we can make components stateful using variables in the generator’s local scope. Crank uses the same diffing algorithm which reuses DOM nodes to reuse generator objects, so that their executions are preserved between renders. Every time a generator component is rendered, Crank resumes the generator and executes the generator until the next `yield`. The yielded expression, usually an element, is then rendered as the element’s children, just as if it were returned from a function component.
+By yielding elements rather than returning them, we can make components stateful using variables in the generator’s local scope. Crank uses the same diffing algorithm which reuses DOM nodes to reuse generator objects, so only . Every time a generator component is rendered, Crank resumes the generator and executes the generator until the next `yield`. The yielded expression, usually an element, is then rendered as the element’s children, just as if it were returned from a function component.
 
 ### Contexts
 In the preceding example, the `Counter` component’s local state changed when it was rerendered, but we may want to write components which update themselves according to timers or events instead. Crank allows components to control their own execution by passing in an object called a *context* as the `this` keyword of each component. Component contexts provide several utility methods, most important of which is the `refresh` method, which tells Crank to update the related component instance in place.

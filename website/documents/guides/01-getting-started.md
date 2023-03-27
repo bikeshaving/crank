@@ -19,6 +19,7 @@ $ npm i @b9g/crank
 ```
 
 ### Importing Crank with the **classic** JSX transform.
+
 ```jsx
 /** @jsx createElement */
 /** @jsxFrag Fragment */
@@ -29,6 +30,7 @@ renderer.render(<div id="hello">Hello world</div>, document.body);
 ```
 
 ### Importing Crank with the **automatic** JSX transform.
+
 ```jsx
 /** @jsxImportSource @b9g/crank */
 import {renderer} from "@b9g/crank/dom";

@@ -200,7 +200,7 @@ function *CyclingName() {
 renderer.render(<CyclingName />, document.body);
 ```
 
-Components rerender based on explicit `refresh()` calls. This level of precision means you can be as messy as you need to be to get the job done.
+Components rerender based on explicit `refresh()` calls. This level of precision means you can be as messy as you need to be.
 
 Never memoize a callback ever again.
 

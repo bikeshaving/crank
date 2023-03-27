@@ -54,7 +54,7 @@ const profile = _jsxs("div", {
 
 ```
 
-The automatic transform has the benefit of not requiring manual imports.
+The automatic transform has the benefit of not requiring manual imports. Beyond this fact, there is no difference between the two transforms, and the `_jsx()`/`_jsxs()` functions are wrappers around `createElement()`.
 
 ## Renderers
 
