@@ -145,3 +145,8 @@ code.inline {
 select {
   background-color: var(--bg-color);
 }
+
+input {
+	background-color: var(--bg-color);
+	color: var(--text-color);
+}

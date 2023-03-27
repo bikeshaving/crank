@@ -6,13 +6,14 @@ import type {BuildContext, OutputFile} from "esbuild";
 import {jsx} from "@b9g/crank/standalone";
 import type {Children, Context} from "@b9g/crank";
 
-// TODO: Pass plugins into storage or components
-import {postcssPlugin} from "../plugins/esbuild.js";
 import postcssPresetEnv from "postcss-preset-env";
 import postcssNested from "postcss-nested";
 
 import {NodeModulesPolyfillPlugin} from "@esbuild-plugins/node-modules-polyfill";
 import {NodeGlobalsPolyfillPlugin} from "@esbuild-plugins/node-globals-polyfill";
+
+// TODO: Pass plugins into storage or components
+import {postcssPlugin} from "../plugins/esbuild.js";
 
 async function copy(src: string, dest: string): Promise<void> {
 	await FS.mkdir(dest, {recursive: true});
