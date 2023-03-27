@@ -4,7 +4,7 @@
   "scripts": {
     "predeploy": "npm run static",
     "deploy": "gh-pages -d dist",
-    "serve": "shovel develop src/app.ts --port 1338",
+    "develop": "shovel develop src/app.ts --port 1338",
     "static": "shovel static src/app.ts && echo crank.js.org > dist/CNAME"
   },
   "dependencies": {
