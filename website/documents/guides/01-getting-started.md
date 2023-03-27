@@ -148,6 +148,7 @@ Classic transform:
         "runtime": "class",
         "pragma": "createElement",
         "pragmaFrag": "''",
+
         "throwIfNamespace": false,
         "useSpread": true
       }

@@ -3,10 +3,10 @@ id: elements
 title: Elements and Renderers
 ---
 
-**Note:** If you’re familiar with how elements work in React, you may want to skip ahead to [the guide on components](./components). Elements in Crank work almost exactly as they do in React.
+**Note:** If you’re familiar with how elements work in React, you may want to skip ahead to [the guide on components](./components). Elements in Crank work almost exactly like they do in React.
 
 ## Transpiling JSX
-Crank works with [JSX](https://facebook.github.io/jsx/), a well-supported, XML-like syntax extension to JavaScript. The hardest part about setting up a Crank project will probably be configuring your favorite web tools to transpile JSX in a way Crank understands; luckily, this section will walk you through the latest in JSX transforms and configurations.
+Crank works with [JSX](https://facebook.github.io/jsx/), a well-supported, XML-like syntax extension to JavaScript.
 
 ### Two types of JSX transpilation
 Historically speaking, there are two ways to transform JSX: the *classic* and *automatic* transforms. Crank supports both formats.
@@ -56,24 +56,11 @@ const profile = _jsxs("div", {
 
 The automatic transform has the benefit of not requiring manual imports.
 
-Crank is designed to be used with [JSX](https://facebook.github.io/jsx/), a well-supported, XML-like syntax extension to JavaScript. Most popular JavaScript transpilers support JSX transforms as an out-of-the-box feature. These transpilers work by transforming JSX expressions into function calls, and by convention, this has usually been a function called `createElement()`. For example, in the following code, the JSX expression assigned to `el` transpiles to the `createElement()` call assigned to `el1`.
-
-```jsx
-/** @jsx createElement */
-import {createElement} from "@b9g/crank";
-
-const el = <div id="element">An element</div>;
-// transpiles to:
-const el1 = createElement("div", {id: "element"}, "An element");
-```
-
-The `createElement()` function provided by Crank returns an *element*, a JavaScript object. Elements on their own don’t do anything special; instead, we use special classes called *renderers* to interpret elements and produce DOM nodes, HTML strings, WebGL-backed scene graphs, or whatever else you can think of.
+## Renderers
 
 Crank ships with two renderer subclasses for the two common web development use-cases: one for managing DOM nodes, available through the module `@b9g/crank/dom`, and one for creating HTML strings, available through the module `@b9g/crank/html`. You can use these modules to render interactive user interfaces in the browser and HTML responses on the server.
 
 ```jsx
-/** @jsx createElement */
-import {createElement} from "@b9g/crank";
 import {renderer as DOMRenderer} from "@b9g/crank/dom";
 import {renderer as HTMLRenderer} from "@b9g/crank/html";
 
