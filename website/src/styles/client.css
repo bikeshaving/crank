@@ -38,8 +38,8 @@
 
 .color-scheme-light {
 	.blur-background-2 {
-		@supports (backdrop-filter: blur(20px)) {
-			backdrop-filter: blur(20px);
+		@supports (backdrop-filter: blur(8px)) {
+			backdrop-filter: blur(8px);
 			background-color: rgba(231, 244, 245, 0.5) !important;
 		}
 	}
