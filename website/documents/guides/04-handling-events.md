@@ -146,11 +146,11 @@ The preceding example also demonstrates a slight difference in the way the `addE
 
 ## Form Elements
 
-Because Crank uses explicit state updates,
+Because Crank uses explicit state updates, it doesn’t have a concept of “controlled” vs “uncontrolled” props like `value`/`defaultValue` in React. No refresh means no render.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
-function* App() {
+function *App() {
   let reset = true;
   this.addEventListener("click", ev => {
     if (ev.target.tagName === "BUTTON") {
@@ -174,4 +174,11 @@ function* App() {
 }
 
 renderer.render(<App />, document.body);
+```
+
+You can use the `$static` prop to prevent an element from updating.
+
+```jsx live
+import {renderer} from "@b9g/crank/dom";
+function *
 ```

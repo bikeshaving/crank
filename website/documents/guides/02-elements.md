@@ -103,7 +103,7 @@ const componentEl1 = createElement(Component, null);
 
 By convention, JSX parsers treat lowercase tags (`<br />`) as strings and capitalized tags (`<Break />`) as variables. When a tag is a string, this signifies that the element will be handled by the renderer. We call these types of elements *host* or *intrinsic* elements, and for both of the web renderers, these correspond exactly to actual HTML elements, like `<div>` or `<input>`.
 
-As we’ll see later, elements can also have tags which are functions, in which case the behavior of the element is defined not by the renderer but by the execution of the referenced function. Elements with function tags are called *component elements*.
+As we’ll see later, elements can also have tags which are functions, in which case the behavior of the element is defined not by the renderer but by the execution of the referenced function. Elements with function tags are called *component* elements.
 
 ### Props
 JSX transpilers combine the attribute-like `key="value"` syntax to a single object for each element. We call this object the *props* object, short for “properties.”
