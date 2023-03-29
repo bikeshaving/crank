@@ -67,14 +67,17 @@ function generateIFrameHTML(
 
 				const obs = new ResizeObserver((entries) => {
 					const height = entries[0].contentRect.height;
-					window.parent.postMessage(
-						JSON.stringify({
-							type: "resize",
-							id: ${id},
-							height,
-						}),
-						window.location.origin,
-					);
+					// has vertical scrollbar
+					if (window.innerWidth > document.documentElement.clientWidth) {
+						window.parent.postMessage(
+							JSON.stringify({
+								type: "resize",
+								id: ${id},
+								height,
+							}),
+							window.location.origin,
+						);
+					}
 				})
 
 				setTimeout(() => {

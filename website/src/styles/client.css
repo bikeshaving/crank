@@ -38,8 +38,8 @@
 
 .color-scheme-light {
 	.blur-background-2 {
-		@supports (backdrop-filter: blur(8px)) {
-			backdrop-filter: blur(8px);
+		@supports (backdrop-filter: blur(20px)) {
+			backdrop-filter: blur(20px);
 			background-color: rgba(231, 244, 245, 0.5) !important;
 		}
 	}
@@ -127,6 +127,7 @@ pre {
 	@media screen and (min-width: 800px) {
 		padding: 1em;
 	}
+
 	font-size: 14px;
 	color: var(--text-color);
 	line-height: 1.4;
@@ -134,12 +135,18 @@ pre {
 	outline: none;
 }
 
-code.inline {
+code {
 	padding: .1em .2em;
 	margin: 0;
 	font-size: .9em;
-	display: inline;
 	background: var(--coldark01);
+}
+
+pre code {
+	padding: 0;
+	margin: 0;
+	font-size: 14px;
+	background: none;
 }
 
 select {
@@ -149,4 +156,5 @@ select {
 input {
 	background-color: var(--bg-color);
 	color: var(--text-color);
+	border: 1px solid var(--text-color);
 }

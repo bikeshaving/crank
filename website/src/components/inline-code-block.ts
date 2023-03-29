@@ -6,7 +6,18 @@ import {CodePreview} from "./code-preview.js";
 
 export function* InlineCodeBlock(
 	this: Context<typeof InlineCodeBlock>,
-	{value, lang, editable}: {value: string; lang: string; editable: boolean},
+	{
+		value,
+		lang,
+		editable,
+		// TODO: This is narsty.
+		breakpoint = "1300px",
+	}: {
+		value: string;
+		lang: string;
+		editable: boolean;
+		breakpoint: string;
+	},
 ): any {
 	this.addEventListener("contentchange", (ev: any) => {
 		// TODO: think about whether its wise to mutate a prop
@@ -35,7 +46,7 @@ export function* InlineCodeBlock(
 		});
 	}
 
-	for ({lang, editable} of this) {
+	for ({lang, editable, breakpoint = "1300px"} of this) {
 		yield jsx`
 			<div class=${css`
 				max-width: ${editable ? "calc(100% - 1px)" : "min(100%, 1000px)"};
@@ -44,7 +55,7 @@ export function* InlineCodeBlock(
 					display: flex;
 					flex-direction: column;
 					font-size: 16px;
-					@media (min-width: 800px) {
+					@media (min-width: ${breakpoint}) {
 						flex-direction: row;
 						align-items: flex-start;
 					}
@@ -55,7 +66,7 @@ export function* InlineCodeBlock(
 						border: 1px solid var(--text-color);
 						margin-top: -1px;
 						${editable
-							? `@media (min-width: 800px) {
+							? `@media (min-width: ${breakpoint}) {
 							max-width: 61.8%;
 						}`
 							: ""}
@@ -83,7 +94,7 @@ export function* InlineCodeBlock(
 								margin-top: -1px;
 								min-height: 50px;
 								width: 100%;
-								@media screen and (min-width: 800px) {
+								@media screen and (min-width: ${breakpoint}) {
 									width: 30%;
 								}
 							`}>

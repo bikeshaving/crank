@@ -121,7 +121,7 @@ function* Playground(this: Context, {}) {
 						height: calc(100vh - 50px);
 						width: 400px;
 					}
-
+					overflow-y: auto;
 					border-top: 1px solid currentcolor;
 					@media (min-width: 800px) {
 						border-top: none;
@@ -129,7 +129,7 @@ function* Playground(this: Context, {}) {
 						margin-left: -1px;
 					}
 				`}>
-					<${CodePreview} value=${code} showStatus />
+					<${CodePreview} value=${code} showStatus autoresize />
 				</div>
 			</div>
 		`;
