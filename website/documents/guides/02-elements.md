@@ -1,5 +1,4 @@
 ---
-id: elements
 title: Elements and Renderers
 ---
 
@@ -18,11 +17,17 @@ The classic transform turns JSX elements into `createElement()` calls.
 import {createElement} from "@b9g/crank";
 
 const el = <div id="element">An element</div>;
-// Transpiles to:
+```
+
+Transpiles to:
+
+```js
+import {createElement} from "@b9g/crank";
 
 const el = createElement("div", {id: "element"}, "An element");
-// Identifiers like `createElement`, `Fragment` must be manually imported.
 ```
+
+Identifiers like `createElement`, `Fragment` must be manually imported.
 
 The automatic transform turns JSX elements into function calls from an automatically imported namespace.
 
@@ -36,7 +41,10 @@ const profile = (
   </div>
 );
 
-// Transpiles to:
+```
+Transpiles to:
+
+```js
 import { jsx as _jsx } from "@b9g/crank/jsx-runtime";
 import { jsxs as _jsxs } from "@b9g/crank/jsx-runtime";
 
@@ -58,7 +66,7 @@ The automatic transform has the benefit of not requiring manual imports. Beyond 
 
 ## Renderers
 
-Crank ships with two renderer subclasses for the two common web development use-cases: one for managing DOM nodes, available through the module `@b9g/crank/dom`, and one for creating HTML strings, available through the module `@b9g/crank/html`. You can use these modules to render interactive user interfaces in the browser and HTML responses on the server.
+Crank ships with two renderer subclasses for the web: one for managing DOM nodes in a front-end application, available through the module `@b9g/crank/dom`, and one for creating HTML strings, available through the module `@b9g/crank/html`. You can use these modules to render interactive user interfaces in the browser and HTML responses on the server.
 
 ```jsx
 import {renderer as DOMRenderer} from "@b9g/crank/dom";
@@ -111,13 +119,17 @@ console.log(el.props); // {id: "my-id", "class": "my-class"}
 
 The value of each prop is a string if the string-like syntax is used (`key="value"`), or it can be an interpolated JavaScript expression by placing the value in curly brackets (`key={value}`). You can use props to “pass” values into host and component elements, similar to how you “pass” arguments into functions when invoking them.
 
-If you already have an object that you want to use as props, you can use the special JSX `...` syntax to “spread” it into an element. This works similarly to [ES6 spread syntax](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax).
+### Spread props
+
+You can use the special JSX `...` syntax to “spread” it into an element. This works similarly to [ES6 spread syntax](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax).
 
 ```jsx
 const props = {id: "1", src: "https://example.com/image", alt: "An image"};
 const el = <img {...props} id="2" />;
 // transpiles to:
 const el1 = createElement("img", {...props, id: "2"});
+
+console.log(el.props); // {id: "2", src: "https://example.com/image", alt: "An image"}
 ```
 
 ### Children
@@ -142,7 +154,9 @@ console.log(list.props.children.length); // 2
 
 By default, JSX parsers interpret the contents of elements as strings. So for instance, in the JSX expression `<p>Hello world</p>`, the children of the `<p>` element would be the string `"Hello world"`.
 
-However, just as with prop values, you can use curly brackets to interpolate JavaScript expressions into an element’s children. Besides elements and strings, almost every value in JavaScript can participate in an element tree. Numbers are rendered as strings, and the values `null`, `undefined`, `true` and `false` are erased, allowing you to render things conditionally using boolean expressions.
+However, just as with prop values, you can use curly brackets to interpolate JavaScript expressions into an element’s children. Besides elements and strings, almost every value in JavaScript can participate in an element tree.
+
+Numbers are rendered as strings. The values `null`, `undefined`, `true` and `false` are erased, so you can conditionally render items with short-circuit evaluation or conditional expressions.
 
 ```jsx
 const el = <div>{"a"}{1 + 1}{true}{false}{null}{undefined}</div>;
@@ -151,7 +165,7 @@ renderer.render(el, document.body);
 console.log(document.body.innerHTML); // <div>a2</div>
 ```
 
-Crank also allows arbitrarily nested iterables of values to be interpolated as children, so, for instance, you can insert arrays or sets of elements into element trees.
+Crank allows arbitrarily nested iterables of values to be interpolated as children, so, for instance, you can insert arrays or sets of elements into element trees.
 
 ```jsx
 const arr = [1, 2, 3];

@@ -15,40 +15,48 @@ the [@b9g organization](https://www.npmjs.com/org/b9g) (short for
 b*ikeshavin*g).
 
 ```shell
-$ npm i @b9g/crank
+npm i @b9g/crank
 ```
 
 ### Importing Crank with the **classic** JSX transform.
 
-```jsx
+```jsx live
 /** @jsx createElement */
 /** @jsxFrag Fragment */
 import {createElement, Fragment} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
 
-renderer.render(<div id="hello">Hello world</div>, document.body);
+renderer.render(
+  <p>This paragraph element is transpiled with the classic transform.</p>,
+  document.body,
+);
 ```
 
 ### Importing Crank with the **automatic** JSX transform.
 
-```jsx
+```jsx live
 /** @jsxImportSource @b9g/crank */
 import {renderer} from "@b9g/crank/dom";
 
-renderer.render(<div id="hello">Hello world</div>, document.body);
+renderer.render(
+  <p>This paragraph element is transpiled with the automatic transform.</p>,
+  document.body,
+);
 ```
 
-If you do not wish to use the `@jsx` comment pragmas, you will likely have to configure your tools to support JSX. See below for common tools and configurations.
+You will likely have to configure your tools to support JSX, especially if you do not want to use `@jsx` comment pragmas. See below for common tools and configurations.
 
 ### Importing the JSX template tag.
 
-Starting in version `0.5`, the Crank package ships a [tagged template function](/guides/jsx-template-tag) which parses the template tag with similar syntax and semantics as the JSX transform. This allows you to write Crank components in vanilla JavaScript.
+Starting in version `0.5`, the Crank package ships a [tagged template function](/guides/jsx-template-tag) which provides similar syntax and semantics as the JSX transform. This allows you to write Crank components in vanilla JavaScript.
 
-```js
+```js live
 import {jsx} from "@b9g/crank/standalone";
 import {renderer} from "@b9g/crank/dom";
 
-renderer.render(jsx`<div id="hello">Hello world</div>`, document.body);
+renderer.render(jsx`
+  <p>No transpilation is necessary with the JSX template tag.</p>
+`, document.body);
 ```
 
 ### ECMAScript Module CDNs
@@ -65,13 +73,20 @@ Crank is also available on CDNs like [unpkg](https://unpkg.com)
 import {createElement} from "https://unpkg.com/@b9g/crank/crank?module";
 import {renderer} from "https://unpkg.com/@b9g/crank/dom?module";
 
-renderer.render(<div id="hello">Hello world</div>, document.body);
+renderer.render(
+  <div id="hello">
+    Running on <a href="https://unpkg.com">unpkg.com</a>
+  </div>,
+  document.body,
+);
 ```
 
-## Common tools and configurations
-The following is an incomplete list of tool configurations to get started with Crank.
+## Common tool configurations
+The following is an incomplete list of configurations to get started with Crank.
 
 ### [TypeScript](https://www.typescriptlang.org)
+
+TypeScript is a typed superset of JavaScript.
 
 Here’s the configuration you will need to set up automatic JSX transpilation.
 
@@ -96,6 +111,8 @@ The classic transform is supported as well.
 }
 ```
 
+Crank is written in TypeScript. Refer to [the guide on TypeScript](/guides/working-with-typescript) for more information about Crank types.
+
 ```tsx
 import type {Context} from "@b9g/crank";
 function *Timer(this: Context) {
@@ -111,8 +128,6 @@ function *Timer(this: Context) {
   clearInterval(interval);
 }
 ```
-
-Crank is written in TypeScript. Refer to [the guide on TypeScript](/guides/working-with-typescript) for more information about Crank types.
 
 ### [Babel](https://babeljs.io)
 
@@ -159,7 +174,8 @@ Classic transform:
 }
 ```
 
-### ESLint
+### [ESLint](https://eslint.org)
+
 ESLint is a popular open-source tool for analyzing and detecting problems in JavaScript code.
 
 Crank provides a configuration preset for working with ESLint under the package name `eslint-plugin-crank`.
