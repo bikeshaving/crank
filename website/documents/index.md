@@ -5,7 +5,7 @@ description: "The Just JavaScript framework. Crank is a JavaScript / TypeScript 
 
 ## What is Crank?
 
-Crank is a JavaScript / TypeScript library for building websites and applications. It is a framework where components are defined with plain old functions, including async and generator functions, which `yield` and `return` JSX.
+Crank is a JavaScript / TypeScript library for building websites and applications. It is a framework where components are defined with plain old functions, including async and generator functions, which `yield` and `return` JSX templates.
 
 ## Why is Crank “Just JavaScript?”
 
@@ -285,7 +285,7 @@ async function QuoteOfTheDay() {
 renderer.render(<QuoteOfTheDay />, document.body);
 ```
 
-Async generator functions let you write components that are both async *and* stateful. Crank uses promises wherever it makes sense, and has a rich async execution model which allows you to do things like race components to display loading states.
+Async generator functions let you write components that are both async *and* stateful. Crank uses promises wherever it makes sense, and has a rich async execution model which allows you to do things like racing components to display loading states.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";

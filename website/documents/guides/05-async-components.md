@@ -2,7 +2,31 @@
 title: Async Components
 ---
 
+So far, every component we’ve seen has worked synchronously. Crank will respect this as an intentional decision: this means ensuring the entire rendering process occurs synchronously, so that when `renderer.render()` finishes executing, the DOM will have updated.
+
+However, Crank also allows any component to be async, by adding an `async` before the `function` keyword. Both *async function* and *async generator* components are supported. This feature means you can `await` promises in the process of rendering in virtually any component.
+
+```jsx live
+import {renderer} from "@b9g/crank/dom";
+async function Definition({word}) {
+  // API courtesy https://dictionaryapi.dev
+  const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+  const data = await res.json();
+  const {phonetic, meanings} = data[0];
+  const {partOfSpeech, definitions} = meanings[0];
+  const {definition} = definitions[0];
+  return <>
+    <p>{word} <code>{phonetic}</code></p>
+    <p><b>{partOfSpeech}.</b> {definition}</p>
+    {/*<pre>{JSON.stringify(data, null, 4)}</pre>*/}
+  </>;
+}
+
+renderer.render(<Definition word="framework" />, document.body);
+```
+
 ## Async Function Components
+
 So far, every component we’ve seen has worked synchronously, and Crank will respect this as an intentional decision by the developer by keeping the entire process of rendering synchronous from start to finish. However, modern JavaScript includes promises and `async`/`await`, which allow you to write concurrently executing code as if it were synchronous. To facilitate these features, Crank allows components to be asynchronous functions as well, and we call these components, *async function components*.
 
 ```jsx

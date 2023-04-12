@@ -52,9 +52,11 @@ function *Counter() {
 renderer.render(<Counter />, document.body);
 ```
 
-When using this method, you do not have to call the `removeEventListener()` method if you merely want to remove event listeners when the component is unmounted. This is done automatically.
-
 The context’s `addEventListener()` method attaches to the top-level node or nodes which each component renders, so if you want to listen to events on a nested node, you must use event delegation.
+
+While the `removeEventListener()` method is implemented, you do not have to call the `removeEventListener()` method if you merely want to remove event listeners when the component is unmounted.
+
+Because the event listener is attached to the outer `div`, we have to filter events by `ev.target.tagName` in the listener to make sure we’re not incrementing `count` based on clicks which don’t target the `button` element.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -80,8 +82,6 @@ function *Counter() {
 
 renderer.render(<Counter />, document.body);
 ```
-
-Because the event listener is attached to the outer `div`, we have to filter events by `ev.target.tagName` in the listener to make sure we’re not incrementing `count` based on clicks which don’t target the `button` element.
 
 ## Event props vs EventTarget
 The props-based event API and the context-based EventTarget API both have their advantages. On the one hand, using event props means you can listen to exactly the element you’d like to listen to.
@@ -140,45 +140,74 @@ function *MyApp() {
 renderer.render(<MyApp />, document.body);
 ```
 
-`MyButton` is a function component which wraps a `button` element. It dispatches a `CustomEvent` whose type is `"mybuttonclick"` when it is pressed, and whose `detail` property contains data about the ID of the clicked button. This event is not triggered on the underlying DOM nodes; instead, it can be listened for by parent component contexts using event capturing and bubbling, and in the example, the event propagates and is handled by the `MyApp` component. Using custom events and event bubbling allows you to encapsulate state transitions within component hierarchies without the need for complex state management solutions used in other frameworks like Redux or VueX.
+`MyButton` is a function component which wraps a `<button>` element. It dispatches a `CustomEvent` whose type is `"mybuttonclick"` when it is pressed, and whose `detail` property contains data about the pressed button. This event is not triggered on the underlying DOM nodes; instead, it can be listened for by parent component contexts using event capturing and bubbling, and in the example, the event propagates and is handled by the `MyApp` component.
 
-The preceding example also demonstrates a slight difference in the way the `addEventListener` method works in function components compared to generator components. With generator components, listeners stick between renders, and will continue to fire until the component is unmounted. However, with function components, because the `addEventListener` call would be invoked every time the component is rerendered, we remove and add listeners for each render. This allows function components to remain stateless while still listening for and dispatching events.
+Using custom events and event bubbling allows you to encapsulate state transitions within component hierarchies without the need for complex state management solutions used in other frameworks like Redux or VueX.
 
 ## Form Elements
 
-Because Crank uses explicit state updates, it doesn’t have a concept of “controlled” vs “uncontrolled” props like `value`/`defaultValue` in React. No refresh means no render.
+Because Crank uses explicit state updates, it doesn’t have a concept of “controlled” vs “uncontrolled” props like `value`/`defaultValue` in React. No update means the value is uncontrolled.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
-function *App() {
-  let reset = true;
-  this.addEventListener("click", ev => {
-    if (ev.target.tagName === "BUTTON") {
-      reset = true;
-      this.refresh();
-    }
-  });
+function *Form() {
+  let reset = false;
+  const onreset = () => {
+    reset = true;
+    this.refresh();
+  };
+
+  const onsubmit = (ev) => {
+    ev.preventDefault();
+  };
 
   for ({} of this) {
     yield (
-      <div>
+      <form onsubmit={onsubmit}>
         <input type="text" value="" />
         <p>
-          <button>Reset</button>
+          <button onclick={onreset}>Reset</button>
         </p>
-      </div>
+      </form>
     );
-
-    reset = false;
   }
 }
 
-renderer.render(<App />, document.body);
+renderer.render(<Form />, document.body);
 ```
 
-You can use the `$static` prop to prevent an element from updating.
+If your component is updating for other reasons, you can use the special property `$static` to prevent the input element from updating.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
-function *
+function *Form() {
+  let reset = false;
+  const onreset = () => {
+    reset = true;
+    this.refresh();
+  };
+
+  const onsubmit = (ev) => {
+    ev.preventDefault();
+  };
+
+  setInterval(() => {
+    this.refresh();
+  }, 1000);
+
+  for ({} of this) {
+    const currentReset = reset;
+    reset = false;
+    yield (
+      <form onsubmit={onsubmit}>
+        <input type="text" value="" $static={currentReset} />
+        <p>
+          <button onclick={onreset}>Reset</button>
+        </p>
+      </form>
+    );
+  }
+}
+
+renderer.render(<Form />, document.body);
 ```
