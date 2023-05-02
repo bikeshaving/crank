@@ -149,12 +149,8 @@ pre code {
 	background: none;
 }
 
-select {
+select, input, textarea {
   background-color: var(--bg-color);
-}
-
-input {
-	background-color: var(--bg-color);
 	color: var(--text-color);
 	border: 1px solid var(--text-color);
 }
