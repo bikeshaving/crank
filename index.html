@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Crank.js</title><link href="/static/client-X44XKGJU.css" rel="stylesheet" type="text/css"><meta property="og:title" content="Crank.js"><meta property="og:url" content="https:/crank.js.org/"><meta property="og:description" content="The Just JavaScript framework. Crank is a JavaScript / TypeScript library where you write components with functions, promises and generators."><script async src="https://www.googletagmanager.com/gtag/js?id=UA-20910936-4"></script><script>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Crank.js</title><link href="/static/client-Q5HR47TJ.css" rel="stylesheet" type="text/css"><meta property="og:title" content="Crank.js"><meta property="og:url" content="https:/crank.js.org/"><meta property="og:description" content="The Just JavaScript framework. Crank is a JavaScript / TypeScript library where you write components with functions, promises and generators."><script async src="https://www.googletagmanager.com/gtag/js?id=UA-20910936-4"></script><script>
 				window.dataLayer = window.dataLayer || [];
 				function gtag(){dataLayer.push(arguments);}
 				gtag('js', new Date());
@@ -753,57 +753,150 @@
 			" data-index="1"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="2"><code><span class="token keyword">async</span> <span class="token keyword">function</span> <span class="token function">QuoteOfTheDay</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="2"><code><span class="token keyword">async</span> <span class="token keyword">function</span> <span class="token function">Definition</span><span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>word<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><code>  <span class="token comment">// Quotes API courtesy https://theysaidso.com</span></code><br></div><div class="
+			" data-index="3"><code>  <span class="token comment">// API courtesy https://dictionaryapi.dev</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code>  <span class="token keyword">const</span> res <span class="token operator">=</span> <span class="token keyword">await</span> <span class="token function">fetch</span><span class="token punctuation">(</span><span class="token string">&quot;https://quotes.rest/qod.json&quot;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="4"><code>  <span class="token keyword">const</span> res <span class="token operator">=</span> <span class="token keyword">await</span> <span class="token function">fetch</span><span class="token punctuation">(</span><span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string">https://api.dictionaryapi.dev/api/v2/entries/en/</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>word<span class="token interpolation-punctuation punctuation">}</span></span><span class="token template-punctuation string">`</span></span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code>  <span class="token keyword">const</span> quote <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token keyword">await</span> res<span class="token punctuation">.</span><span class="token function">json</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">[</span><span class="token string">&quot;contents&quot;</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token string">&quot;quotes&quot;</span><span class="token punctuation">]</span><span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="5"><code>  <span class="token keyword">const</span> data <span class="token operator">=</span> <span class="token keyword">await</span> res<span class="token punctuation">.</span><span class="token function">json</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><code>  <span class="token keyword">return</span> <span class="token punctuation">(</span></code><br></div><div class="
+			" data-index="6"><code>  <span class="token keyword">const</span> <span class="token punctuation">{</span>phonetic<span class="token punctuation">,</span> meanings<span class="token punctuation">}</span> <span class="token operator">=</span> data<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code>    <span class="token operator">&lt;</span>figure<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="7"><code>  <span class="token keyword">const</span> <span class="token punctuation">{</span>partOfSpeech<span class="token punctuation">,</span> definitions<span class="token punctuation">}</span> <span class="token operator">=</span> meanings<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code>      <span class="token operator">&lt;</span>blockquote<span class="token operator">&gt;</span><span class="token punctuation">{</span>quote<span class="token punctuation">.</span>quote<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>blockquote<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="8"><code>  <span class="token keyword">const</span> <span class="token punctuation">{</span>definition<span class="token punctuation">}</span> <span class="token operator">=</span> definitions<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="9"><code>      <span class="token operator">&lt;</span>figcaption<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="9"><code>  <span class="token keyword">return</span> <span class="token punctuation">(</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="10"><code>        — <span class="token operator">&lt;</span>a href<span class="token operator">=</span><span class="token punctuation">{</span>quote<span class="token punctuation">.</span>permalink<span class="token punctuation">}</span> target<span class="token operator">=</span><span class="token string">&quot;_blank&quot;</span><span class="token operator">&gt;</span><span class="token punctuation">{</span>quote<span class="token punctuation">.</span>author<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>a<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="10"><code>    <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="11"><code>      <span class="token operator">&lt;</span><span class="token operator">/</span>figcaption<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="11"><code>      <span class="token operator">&lt;</span>p<span class="token operator">&gt;</span><span class="token punctuation">{</span>word<span class="token punctuation">}</span> <span class="token operator">&lt;</span>code<span class="token operator">&gt;</span><span class="token punctuation">{</span>phonetic<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>code<span class="token operator">&gt;</span><span class="token operator">&lt;</span><span class="token operator">/</span>p<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="12"><code>    <span class="token operator">&lt;</span><span class="token operator">/</span>figure<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="12"><code>      <span class="token operator">&lt;</span>p<span class="token operator">&gt;</span><span class="token operator">&lt;</span>b<span class="token operator">&gt;</span><span class="token punctuation">{</span>partOfSpeech<span class="token punctuation">}</span><span class="token punctuation">.</span><span class="token operator">&lt;</span><span class="token operator">/</span>b<span class="token operator">&gt;</span> <span class="token punctuation">{</span>definition<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>p<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="13"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="13"><code>    <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="14"><code><span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="14"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="15"><br></div><div class="
+			" data-index="15"><code><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="16"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>QuoteOfTheDay <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><div class="css-1rlv8kd"><div class="css-1nius9d"><div class="css-14pt8ki">Loading...</div><div class="css-j74n8p"><iframe class="
+			" data-index="16"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="17"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">Dictionary</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="18"><code>  <span class="token keyword">let</span> word <span class="token operator">=</span> <span class="token string">&quot;&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="19"><code>  <span class="token keyword">const</span> <span class="token function-variable function">onsubmit</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token parameter">ev</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="20"><code>    ev<span class="token punctuation">.</span><span class="token function">preventDefault</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="21"><code>    <span class="token keyword">const</span> formData <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">FormData</span><span class="token punctuation">(</span>ev<span class="token punctuation">.</span>target<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="22"><code>    <span class="token keyword">const</span> word1 <span class="token operator">=</span> formData<span class="token punctuation">.</span><span class="token function">get</span><span class="token punctuation">(</span><span class="token string">&quot;word&quot;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="23"><code>    <span class="token keyword">if</span> <span class="token punctuation">(</span>word1<span class="token punctuation">.</span><span class="token function">trim</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="24"><code>      word <span class="token operator">=</span> word1<span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="25"><code>      <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="26"><code>    <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="27"><code>  <span class="token punctuation">}</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="28"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="29"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="30"><code>    <span class="token keyword">yield</span> <span class="token punctuation">(</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="31"><code>      <span class="token operator">&lt;</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="32"><code>        <span class="token operator">&lt;</span>form action<span class="token operator">=</span><span class="token string">&quot;&quot;</span> method<span class="token operator">=</span><span class="token string">&quot;get&quot;</span> <span class="token keyword">class</span><span class="token operator">=</span><span class="token string">&quot;form-example&quot;</span> onsubmit<span class="token operator">=</span><span class="token punctuation">{</span>onsubmit<span class="token punctuation">}</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="33"><code>          <span class="token operator">&lt;</span>div style<span class="token operator">=</span><span class="token string">&quot;margin-bottom: 15px&quot;</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="34"><code>            <span class="token operator">&lt;</span>label <span class="token keyword">for</span><span class="token operator">=</span><span class="token string">&quot;name&quot;</span><span class="token operator">&gt;</span>Define<span class="token operator">:</span><span class="token operator">&lt;</span><span class="token operator">/</span>label<span class="token operator">&gt;</span><span class="token punctuation">{</span><span class="token string">&quot; &quot;</span><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="35"><code>            <span class="token operator">&lt;</span>input type<span class="token operator">=</span><span class="token string">&quot;text&quot;</span> name<span class="token operator">=</span><span class="token string">&quot;word&quot;</span> id<span class="token operator">=</span><span class="token string">&quot;word&quot;</span> required <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="36"><code>          <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="37"><code>          <span class="token operator">&lt;</span>div <span class="token keyword">class</span><span class="token operator">=</span><span class="token string">&quot;form-example&quot;</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="38"><code>            <span class="token operator">&lt;</span>input type<span class="token operator">=</span><span class="token string">&quot;submit&quot;</span> value<span class="token operator">=</span><span class="token string">&quot;Search&quot;</span> <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="39"><code>          <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="40"><code>        <span class="token operator">&lt;</span><span class="token operator">/</span>form<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="41"><code>        <span class="token punctuation">{</span>word <span class="token operator">&amp;&amp;</span> <span class="token operator">&lt;</span>Definition word<span class="token operator">=</span><span class="token punctuation">{</span>word<span class="token punctuation">}</span> <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="42"><code>      <span class="token operator">&lt;</span><span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="43"><code>    <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="44"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="45"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="46"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="47"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Dictionary <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><div class="css-1rlv8kd"><div class="css-1nius9d"><div class="css-14pt8ki">Loading...</div><div class="css-j74n8p"><iframe class="
 							playground-iframe
 							css-hjkbgb
 						" style="height: 100px;"></iframe></div></div></div></div></div><script data-name="embedded-json-5" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['embedded-json-5'] = {"code":"import {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\n\nasync function QuoteOfTheDay() {\n  \u002F\u002F Quotes API courtesy https:\u002F\u002Ftheysaidso.com\n  const res = await fetch(\"https:\u002F\u002Fquotes.rest\u002Fqod.json\");\n  const quote = (await res.json())[\"contents\"][\"quotes\"][0];\n  return (\n    \u003Cfigure\u003E\n      \u003Cblockquote\u003E{quote.quote}\u003C\u002Fblockquote\u003E\n      \u003Cfigcaption\u003E\n        — \u003Ca href={quote.permalink} target=\"_blank\"\u003E{quote.author}\u003C\u002Fa\u003E\n      \u003C\u002Ffigcaption\u003E\n    \u003C\u002Ffigure\u003E\n  );\n}\n\nrenderer.render(\u003CQuoteOfTheDay \u002F\u003E, document.body);","lang":"jsx live"};
-		</script></div><p class="css-dzajps"><span class="css-rvz5kp">Async generator functions let you write components that are both async <em>and</em> stateful. Crank uses promises wherever it makes sense, and has a rich async execution model which allows you to do things like race components to display loading states.</span></p><div class="
+			window.__embeddedJSON__['embedded-json-5'] = {"code":"import {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\n\nasync function Definition({word}) {\n  \u002F\u002F API courtesy https:\u002F\u002Fdictionaryapi.dev\n  const res = await fetch(`https:\u002F\u002Fapi.dictionaryapi.dev\u002Fapi\u002Fv2\u002Fentries\u002Fen\u002F${word}`);\n  const data = await res.json();\n  const {phonetic, meanings} = data[0];\n  const {partOfSpeech, definitions} = meanings[0];\n  const {definition} = definitions[0];\n  return (\n    \u003Cdiv\u003E\n      \u003Cp\u003E{word} \u003Ccode\u003E{phonetic}\u003C\u002Fcode\u003E\u003C\u002Fp\u003E\n      \u003Cp\u003E\u003Cb\u003E{partOfSpeech}.\u003C\u002Fb\u003E {definition}\u003C\u002Fp\u003E\n    \u003C\u002Fdiv\u003E\n  );\n}\n\nfunction *Dictionary() {\n  let word = \"\";\n  const onsubmit = (ev) =\u003E {\n    ev.preventDefault();\n    const formData = new FormData(ev.target);\n    const word1 = formData.get(\"word\");\n    if (word1.trim()) {\n      word = word1;\n      this.refresh();\n    }\n  };\n\n  for ({} of this) {\n    yield (\n      \u003C\u003E\n        \u003Cform action=\"\" method=\"get\" class=\"form-example\" onsubmit={onsubmit}\u003E\n          \u003Cdiv style=\"margin-bottom: 15px\"\u003E\n            \u003Clabel for=\"name\"\u003EDefine:\u003C\u002Flabel\u003E{\" \"}\n            \u003Cinput type=\"text\" name=\"word\" id=\"word\" required \u002F\u003E\n          \u003C\u002Fdiv\u003E\n          \u003Cdiv class=\"form-example\"\u003E\n            \u003Cinput type=\"submit\" value=\"Search\" \u002F\u003E\n          \u003C\u002Fdiv\u003E\n        \u003C\u002Fform\u003E\n        {word && \u003CDefinition word={word} \u002F\u003E}\n      \u003C\u002F\u003E\n    );\n  }\n}\n\nrenderer.render(\u003CDictionary \u002F\u003E, document.body);","lang":"jsx live"};
+		</script></div><p class="css-dzajps"><span class="css-rvz5kp">Async generator functions let you write components that are both async <em>and</em> stateful. Crank uses promises wherever it makes sense, and has a rich async execution model which allows you to do things like racing components to display loading states.</span></p><div class="
 					code-block-container
 					css-tz77l4
 				"><div class="css-1cvb758"><div class="css-ceqexx"><div class="css-1wfet5q"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
@@ -1172,5 +1265,5 @@
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['static-urls-7'] = {"@b9g\u002Fcrank":"\u002Fstatic\u002Fcrank-XB6WXNGQ.js","@b9g\u002Fcrank\u002Fcrank":"\u002Fstatic\u002Fcrank-XB6WXNGQ.js","@b9g\u002Fcrank\u002Fcrank.js":"\u002Fstatic\u002Fcrank-XB6WXNGQ.js","@b9g\u002Fcrank\u002Fdom":"\u002Fstatic\u002Fdom-FJYGSVTY.js","@b9g\u002Fcrank\u002Fdom.js":"\u002Fstatic\u002Fdom-FJYGSVTY.js","@b9g\u002Fcrank\u002Fhtml":"\u002Fstatic\u002Fhtml-V67ZRAK3.js","@b9g\u002Fcrank\u002Fhtml.js":"\u002Fstatic\u002Fhtml-V67ZRAK3.js","@b9g\u002Fcrank\u002Fjsx-tag":"\u002Fstatic\u002Fjsx-tag-HNWLDDKD.js","@b9g\u002Fcrank\u002Fjsx-tag.js":"\u002Fstatic\u002Fjsx-tag-HNWLDDKD.js","@b9g\u002Fcrank\u002Fjsx-runtime":"\u002Fstatic\u002Fjsx-runtime-6YBD4CTJ.js","@b9g\u002Fcrank\u002Fjsx-runtime.js":"\u002Fstatic\u002Fjsx-runtime-6YBD4CTJ.js","@b9g\u002Fcrank\u002Fstandalone":"\u002Fstatic\u002Fstandalone-S6C3ZD63.js","@b9g\u002Fcrank\u002Fstandalone.js":"\u002Fstatic\u002Fstandalone-S6C3ZD63.js","client.css":"\u002Fstatic\u002Fclient-X44XKGJU.css"};
+			window.__embeddedJSON__['static-urls-7'] = {"@b9g\u002Fcrank":"\u002Fstatic\u002Fcrank-XB6WXNGQ.js","@b9g\u002Fcrank\u002Fcrank":"\u002Fstatic\u002Fcrank-XB6WXNGQ.js","@b9g\u002Fcrank\u002Fcrank.js":"\u002Fstatic\u002Fcrank-XB6WXNGQ.js","@b9g\u002Fcrank\u002Fdom":"\u002Fstatic\u002Fdom-FJYGSVTY.js","@b9g\u002Fcrank\u002Fdom.js":"\u002Fstatic\u002Fdom-FJYGSVTY.js","@b9g\u002Fcrank\u002Fhtml":"\u002Fstatic\u002Fhtml-V67ZRAK3.js","@b9g\u002Fcrank\u002Fhtml.js":"\u002Fstatic\u002Fhtml-V67ZRAK3.js","@b9g\u002Fcrank\u002Fjsx-tag":"\u002Fstatic\u002Fjsx-tag-HNWLDDKD.js","@b9g\u002Fcrank\u002Fjsx-tag.js":"\u002Fstatic\u002Fjsx-tag-HNWLDDKD.js","@b9g\u002Fcrank\u002Fjsx-runtime":"\u002Fstatic\u002Fjsx-runtime-6YBD4CTJ.js","@b9g\u002Fcrank\u002Fjsx-runtime.js":"\u002Fstatic\u002Fjsx-runtime-6YBD4CTJ.js","@b9g\u002Fcrank\u002Fstandalone":"\u002Fstatic\u002Fstandalone-S6C3ZD63.js","@b9g\u002Fcrank\u002Fstandalone.js":"\u002Fstatic\u002Fstandalone-S6C3ZD63.js","client.css":"\u002Fstatic\u002Fclient-Q5HR47TJ.css"};
 		</script><script src="/static/navbar-52J6JOSM.js"></script><script src="/static/code-blocks-MHNSGLSF.js"></script></body></html>
