@@ -5,7 +5,7 @@ description: "The Just JavaScript framework. Crank is a JavaScript / TypeScript 
 
 ## What is Crank?
 
-Crank is a JavaScript / TypeScript library for building websites and applications. It is a framework where components are defined with plain old functions, including async and generator functions, which `yield` and `return` JSX templates.
+Crank is a JavaScript / TypeScript library for building websites and applications. It is a framework where components are defined with plain old functions, including async and generator functions, which `yield` and `return` JSX.
 
 ## Why is Crank “Just JavaScript?”
 
@@ -268,21 +268,52 @@ Any component can be made asynchronous with the `async` keyword. This means you 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
 
-async function QuoteOfTheDay() {
-  // Quotes API courtesy https://theysaidso.com
-  const res = await fetch("https://quotes.rest/qod.json");
-  const quote = (await res.json())["contents"]["quotes"][0];
+async function Definition({word}) {
+  // API courtesy https://dictionaryapi.dev
+  const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+  const data = await res.json();
+  const {phonetic, meanings} = data[0];
+  const {partOfSpeech, definitions} = meanings[0];
+  const {definition} = definitions[0];
   return (
-    <figure>
-      <blockquote>{quote.quote}</blockquote>
-      <figcaption>
-        — <a href={quote.permalink} target="_blank">{quote.author}</a>
-      </figcaption>
-    </figure>
+    <div>
+      <p>{word} <code>{phonetic}</code></p>
+      <p><b>{partOfSpeech}.</b> {definition}</p>
+    </div>
   );
 }
 
-renderer.render(<QuoteOfTheDay />, document.body);
+function *Dictionary() {
+  let word = "";
+  const onsubmit = (ev) => {
+    ev.preventDefault();
+    const formData = new FormData(ev.target);
+    const word1 = formData.get("word");
+    if (word1.trim()) {
+      word = word1;
+      this.refresh();
+    }
+  };
+
+  for ({} of this) {
+    yield (
+      <>
+        <form action="" method="get" class="form-example" onsubmit={onsubmit}>
+          <div style="margin-bottom: 15px">
+            <label for="name">Define:</label>{" "}
+            <input type="text" name="word" id="word" required />
+          </div>
+          <div class="form-example">
+            <input type="submit" value="Search" />
+          </div>
+        </form>
+        {word && <Definition word={word} />}
+      </>
+    );
+  }
+}
+
+renderer.render(<Dictionary />, document.body);
 ```
 
 Async generator functions let you write components that are both async *and* stateful. Crank uses promises wherever it makes sense, and has a rich async execution model which allows you to do things like racing components to display loading states.
