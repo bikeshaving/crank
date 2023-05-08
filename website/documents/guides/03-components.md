@@ -2,7 +2,7 @@
 title: Components
 ---
 
-So far, we’ve only seen and used *host elements*, lower-case elements like `<a>` or `<div>`, which correspond to HTML. Now we’ll want to group these elements into reusable *components*. Crank uses plain old JavaScript functions to define components. The type of the function determines the component’s behavior.
+So far, we’ve only seen and used *host elements*, lower-case elements like `<a>` or `<div>`, which correspond to HTML. Eventually, we’ll want to group these elements into reusable *components*. Crank uses plain old JavaScript functions to define components. The type of the function determines the component’s behavior.
 
 ## Basic Components
 The simplest kind of component is a *function component*. When rendered, the function is invoked with the props of the element as its first argument, and the return value of the function is rendered as the element’s children.
@@ -17,7 +17,7 @@ renderer.render(<Greeting name="World" />, document.body);
 ```
 
 ## Component children
-Components can be passed children just like host elements. The `createElement()` function will add children to the props object under the name `children`, and it is up to the component to place the children somewhere in the returned element tree, otherwise it will not appear in the rendered output.
+Component elements can have children just like host elements. The `createElement()` function will add children to the props object under the name `children`, and it is up to the component to place the children somewhere in the returned element tree, otherwise it will not appear in the rendered output.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -44,6 +44,8 @@ The type of children is unknown, i.e. it could be an array, an element, or whate
 ## Stateful Components
 Eventually, you’ll want to write components with local state. In Crank, we use [generator functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*) to do so. These types of components are referred to as *generator components*.
 
+A generator function is declared using `function *` syntax, and its body can contain one or more `yield` expressions.
+
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
 
@@ -64,7 +66,7 @@ renderer.render(<Counter />, document.body);
 renderer.render(<Counter />, document.body);
 ```
 
-By yielding elements rather than returning them, we can make components stateful using variables in the generator’s local scope. Crank uses the same diffing algorithm which reuses DOM nodes to reuse generator objects, so there will only be one execution of a generator component per rendered element.
+By yielding elements rather than returning them, components can be made stateful using variables in the generator’s local scope. Crank uses the same diffing algorithm which reuses DOM nodes to reuse generator objects, so there will only be one execution of a generator component for a given element in the tree.
 
 ## The Crank Context
 In the preceding example, the component’s local state was updated directly when the generator was executed. This is of limited value insofar as what we usually want want is to update according to events or timers.
@@ -134,9 +136,7 @@ The loop created by iterating over contexts is called the *render loop*. By repl
 
 The render loop has additional advantages over while loops. For instance, you can place cleanup code directly after the loop. The render loop will also throw errors if it has been iterated without a yield, to prevent infinite loops.
 
-One Crank idiom you may have noticed is that we define props in component parameters, and overwrite them using a destructuring expression in the `for...of` statement. This is an easy way to make sure those variables stay in sync with the current props of the component.
-
-Even if your component has no props, it is idiomatic to use a render loop.
+One Crank idiom you may have noticed is that we define props in component parameters, and overwrite them using a destructuring expression in the `for...of` statement. This is an easy way to make sure those variables stay in sync with the current props of the component. For this reason, even if your component has no props, it is idiomatic to use a render loop.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";

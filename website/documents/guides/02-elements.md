@@ -86,7 +86,7 @@ console.log(html); // <div id="element">Hello world</div>
 <!-- TODO: Make this a JSX element -->
 ![Image of a JSX element](/static/parts-of-jsx.svg)
 
-An element can be thought of as having three main parts: a *tag*, *props* and *children*. These roughly correspond to the syntax for HTML, and for the most part, you can copy-paste HTML into JSX-flavored JavaScript and have things work as you would expect. The main difference is that JSX has to be well-balanced like XML, so void tags must have a closing slash (`<hr/>` not `<hr>`). Also, if you forget to close an element or mismatch opening and closing tags, the parser will throw an error, whereas HTML can be unbalanced or malformed and mostly still work.
+An element can be thought of as having three main parts: a *tag*, *props* and *children*. These roughly correspond to the syntax for HTML, and for the most part, you can copy-paste HTML into JSX-flavored JavaScript and have things work as you would expect. The main difference is that JSX has to be well-balanced like XML, so void tags must have a closing slash (`<hr />` not `<hr>`). Also, if you forget to close an element or mismatch opening and closing tags, the parser will throw an error, whereas HTML can be unbalanced or malformed and mostly still work.
 
 ### Tags
 Tags are the first part of a JSX element expression, and can be thought of as the “name” or “type” of the element. JSX transpilers pass the tag of an element to the resulting `createElement()` call as its first argument.
