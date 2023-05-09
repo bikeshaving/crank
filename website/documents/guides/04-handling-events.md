@@ -140,13 +140,50 @@ function *MyApp() {
 renderer.render(<MyApp />, document.body);
 ```
 
-`MyButton` is a function component which wraps a `<button>` element. It dispatches a `CustomEvent` whose type is `"mybuttonclick"` when it is pressed, and whose `detail` property contains data about the pressed button. This event is not triggered on the underlying DOM nodes; instead, it can be listened for by parent component contexts using event capturing and bubbling, and in the example, the event propagates and is handled by the `MyApp` component.
+`<MyButton />` is a function component which wraps a `<button>` element. It dispatches a `CustomEvent` whose type is `"mybuttonclick"` when it is pressed, and whose `detail` property contains data about the pressed button. This event is not triggered on the underlying DOM nodes; instead, it can be listened for by parent component contexts using event capturing and bubbling, and in the example, the event propagates and is handled by the `MyApp` component.
+
+The `dispatchEvent()` will also call any prop callbacks if they are found.
+
+```jsx live
+import {renderer} from "@b9g/crank/dom";
+
+function MyButton(props) {
+  this.addEventListener("click", () => {
+    this.dispatchEvent(new CustomEvent("mybuttonclick", {
+      bubbles: true,
+      detail: {id: props.id},
+    }));
+  });
+
+  return (
+    <button {...props} />
+  );
+}
+
+function *CustomCounter() {
+  let count = 0;
+  const onmybuttonclick = () => {
+    count++;
+    this.refresh();
+  };
+
+  for ({} of this) {
+    yield (
+      <button onmybuttonclick={onmybuttonclick}>
+        Button pressed {count} time{count !== 1 && "s"}.
+      </button>
+    );
+  }
+}
+
+renderer.render(<CustomCounter />, document.body);
+```
 
 Using custom events and event bubbling allows you to encapsulate state transitions within component hierarchies without the need for complex state management solutions used in other frameworks like Redux or VueX.
 
 ## Form Elements
 
-Because Crank uses explicit state updates, it doesn’t have a concept of “controlled” vs “uncontrolled” props like `value`/`defaultValue` in React. No update means the value is uncontrolled.
+Because Crank uses explicit state updates, it doesn’t need a concept like “controlled” `value` vs “uncontrolled” `defaultValue` props in React. No update means the value is uncontrolled.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
