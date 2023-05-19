@@ -7,7 +7,7 @@ Most web applications require some measure of interactivity, where the user inte
 ## DOM Event Props
 You can attach event callbacks to host element directly using event props. These props start with `on`, are all lowercase, and correspond to the event type (`onclick`, `onkeydown`). By combining event props, local variables and `this.refresh()`, you can write interactive components.
 
-```jsx
+```jsx live
 import {renderer} from "@b9g/crank/dom";
 function *Counter() {
   let count = 0;

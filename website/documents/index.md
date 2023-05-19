@@ -272,6 +272,12 @@ async function Definition({word}) {
   // API courtesy https://dictionaryapi.dev
   const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
   const data = await res.json();
+  if (!Array.isArray(data)) {
+    return (
+      <div>No definition found for {word}</div>
+    );
+  }
+
   const {phonetic, meanings} = data[0];
   const {partOfSpeech, definitions} = meanings[0];
   const {definition} = definitions[0];
@@ -298,12 +304,17 @@ function *Dictionary() {
   for ({} of this) {
     yield (
       <>
-        <form action="" method="get" class="form-example" onsubmit={onsubmit}>
+        <form
+          action=""
+          method="get"
+          onsubmit={onsubmit}
+          style="margin-bottom: 15px"
+        >
           <div style="margin-bottom: 15px">
             <label for="name">Define:</label>{" "}
             <input type="text" name="word" id="word" required />
           </div>
-          <div class="form-example">
+          <div>
             <input type="submit" value="Search" />
           </div>
         </form>
