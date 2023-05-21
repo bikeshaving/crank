@@ -562,4 +562,16 @@ test("uncontrolled props", () => {
 	renderer.render(<input value={Copy} />, document.body);
 });
 
+test("default props", () => {
+	renderer.render(
+		<Fragment>
+			<input />
+			<input type="text" />
+		</Fragment>,
+		document.body,
+	);
+	Assert.equal(document.querySelectorAll("input").length, 2);
+	Assert.equal(document.querySelectorAll('input[type="text"]').length, 1);
+});
+
 test.run();

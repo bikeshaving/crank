@@ -162,10 +162,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 						descriptor != null &&
 						(descriptor.writable === true || descriptor.set !== undefined)
 					) {
-						if ((node as any)[name] !== value) {
-							(node as any)[name] = value;
-						}
-
+						(node as any)[name] = value;
 						return;
 					}
 
