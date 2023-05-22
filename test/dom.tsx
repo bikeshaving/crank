@@ -574,4 +574,18 @@ test("default props", () => {
 	Assert.equal(document.querySelectorAll('input[type="text"]').length, 1);
 });
 
+test("set/unset default props", () => {
+	// Attribute should be set on initial render.
+	renderer.render(<input type="text" />, document.body);
+	Assert.equal(document.querySelectorAll('input[type="text"]').length, 1);
+
+	// Remove attribute.
+	renderer.render(<input />, document.body);
+	Assert.equal(document.querySelectorAll('input[type="text"]').length, 0);
+
+	// Attribute should also be set on subsequent renders if it was previously missing.
+	renderer.render(<input type="text" />, document.body);
+	Assert.equal(document.querySelectorAll('input[type="text"]').length, 1);
+});
+
 test.run();
