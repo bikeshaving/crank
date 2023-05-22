@@ -1,4 +1,7 @@
 # Changelog
+## [0.5.4] - 2023-05-22
+### Bug Fixes
+- Fix DOM renderer bug where input of `type="text"` does not appear in the DOM, causing surprising CSS styling issues (https://github.com/bikeshaving/crank/pull/258 by @waynebaylor)
 ## [0.5.3] - 2023-03-12
 ### Bug Fixes
 - The cleanup() functions will be called even if components are unmounted. https://github.com/bikeshaving/crank/issues/249
