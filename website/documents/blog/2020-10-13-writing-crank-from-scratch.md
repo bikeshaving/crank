@@ -1,6 +1,8 @@
 ---
 title: Writing Crank from Scratch
 publishDate: 2020-10-13
+author: Brian Kim
+authorURL: https://github.com/brainkim
 ---
 
 One of my goals when authoring Crank.js was to create a framework which was so simple that any intermediate JavaScript developer could conceivably write it from scratch. What I think makes this uniquely achievable for Crank is that its component model is built on top of JavaScript’s two main control flow abstractions, iterators and promises, allowing developers to write components exclusively with sync and async functions and generator functions.
