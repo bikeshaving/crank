@@ -132,7 +132,7 @@ Therefore, the `children` prop should be treated as a black box, only to be rend
 The following props are specific to host elements for the HTML and DOM renderers.
 
 ### style
-The style prop can be used to add inline styles to an element. It can either be a CSS string, in which case it works exactly as it does in HTML, or it can also be an object, in which case CSS properties can be set individually.
+The style prop can be used to add inline styles to an element. It can either be a CSS string, in which case it works exactly as it does in HTML, or it can also be an object, in which case CSS properties can be set individually. The latter is helpful, for example, if you have an outside process that handles animating CSS styles and you don't want to reset them during a component re-render.
 
 ```jsx
 <div style="color: red"><span style={{"font-size": "16px"}}>Hello</span></div>
