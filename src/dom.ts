@@ -11,11 +11,14 @@ import {
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
 export const impl: Partial<RendererImpl<Node, string>> = {
-	scope(xmlns: string | undefined, tag: string | symbol): string | undefined {
+	scope(
+    xmlns: string | undefined,
+    tag: string | symbol,
+    props: any
+  ): string | undefined {
 		// TODO: Should we handle xmlns???
 		switch (tag) {
 			case Portal:
-			case "foreignObject":
 				xmlns = undefined;
 				break;
 			case "svg":
@@ -23,7 +26,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 				break;
 		}
 
-		return xmlns;
+		return props.xmlns ?? xmlns;
 	},
 
 	create(
