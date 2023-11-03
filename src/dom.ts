@@ -12,10 +12,10 @@ const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
 export const impl: Partial<RendererImpl<Node, string>> = {
 	scope(
-    xmlns: string | undefined,
-    tag: string | symbol,
-    props: any
-  ): string | undefined {
+		xmlns: string | undefined,
+		tag: string | symbol,
+		props: any
+	): string | undefined {
 		// TODO: Should we handle xmlns???
 		switch (tag) {
 			case Portal:
