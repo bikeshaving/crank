@@ -26,7 +26,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 				break;
 		}
 
-		return props.xmlns ?? xmlns;
+		return props?.xmlns ?? xmlns;
 	},
 
 	create(
