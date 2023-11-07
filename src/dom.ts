@@ -73,7 +73,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 		}
 
 		// TODO: extract props from nodes
-		return { props, children };
+		return {props, children};
 	},
 
 	patch(
@@ -105,7 +105,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 						style.cssText = "";
 					}
 
-					for (const styleName in { ...(oldValue as {}), ...(value as {}) }) {
+					for (const styleName in {...(oldValue as {}), ...(value as {})}) {
 						const styleValue = value && (value as any)[styleName];
 						if (styleValue == null) {
 							style.removeProperty(styleName);
@@ -382,6 +382,6 @@ export const renderer = new DOMRenderer();
 
 declare global {
 	module Crank {
-		interface EventMap extends GlobalEventHandlersEventMap { }
+		interface EventMap extends GlobalEventHandlersEventMap {}
 	}
 }
