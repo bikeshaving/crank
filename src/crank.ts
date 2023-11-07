@@ -2674,7 +2674,12 @@ function resumePropsIterator(ctx: ContextImpl): void {
 
 // TODO: async unmounting
 function unmountComponent(ctx: ContextImpl): void {
+	if (ctx.f & IsUnmounted) {
+		return;
+	}
+
 	clearEventListeners(ctx);
+
 	const callbacks = cleanupMap.get(ctx);
 	if (callbacks) {
 		cleanupMap.delete(ctx);
