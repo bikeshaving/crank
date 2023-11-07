@@ -77,9 +77,14 @@ test("foreignObject", () => {
 		document.body,
 	);
 	Assert.ok(document.body.firstChild instanceof SVGElement);
-	Assert.ok(
-		document.body.firstChild!.firstChild!.firstChild instanceof HTMLElement,
-	);
+
+	const foreignObject = document.body.firstChild!.firstChild!;
+	Assert.ok(foreignObject instanceof SVGElement);
+	Assert.is(foreignObject.namespaceURI, "http://www.w3.org/2000/svg");
+
+	const div = foreignObject.firstChild! as HTMLElement;
+	Assert.ok(div instanceof HTMLElement);
+	Assert.is(div.namespaceURI, "http://www.w3.org/1999/xhtml");
 });
 
 test("classes", () => {
