@@ -3,6 +3,7 @@ import * as Assert from "uvu/assert";
 import * as Sinon from "sinon";
 
 import {createElement} from "../src/crank.js";
+import type {Context} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 const test = suite("keys");
@@ -735,7 +736,7 @@ test("duplicate keys", () => {
 // https://github.com/bikeshaving/crank/issues/267
 test("component unmounts with key", () => {
 	const fn = Sinon.fake();
-	function *Component() {
+	function *Component(this: Context) {
 		this.cleanup(() => {
 			fn();
 		});
