@@ -1,4 +1,6 @@
 # Changelog
+## [0.5.6] - 2023-11-07
+- Fix `foreignObject` children having the wrong `xmlns` (https://github.com/bikeshaving/crank/pull/268 by (@canadaduane)
 ## [0.5.5] - 2023-11-06
 - Fix keyed component elements not cleaning up properly https://github.com/bikeshaving/crank/issues/267
 ## [0.5.4] - 2023-05-22
