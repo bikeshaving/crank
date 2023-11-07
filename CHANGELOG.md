@@ -1,4 +1,6 @@
 # Changelog
+## [0.5.5] - 2023-11-06
+- Fix keyed component elements not cleaning up properly https://github.com/bikeshaving/crank/issues/267
 ## [0.5.4] - 2023-05-22
 ### Bug Fixes
 - Fix DOM renderer bug where input of `type="text"` does not appear in the DOM, causing surprising CSS styling issues (https://github.com/bikeshaving/crank/pull/258 by @waynebaylor)
@@ -132,7 +134,7 @@
 			<div>Hello ${name}</div>
 		`;
 	}
-	
+
 	renderer.render(jsx`<${Greeting} name="world" />`, document.body);
 	```
 - Calling `dispatchEvent()` on a component context will now trigger any
