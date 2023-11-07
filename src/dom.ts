@@ -14,7 +14,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 	scope(
 		xmlns: string | undefined,
 		tag: string | symbol,
-		props: Record<string, any>
+		props: Record<string, any>,
 	): string | undefined {
 		switch (tag) {
 			case Portal:
