@@ -732,4 +732,32 @@ test("duplicate keys", () => {
 	}
 });
 
+// https://github.com/bikeshaving/crank/issues/267
+test("component unmounts with key", () => {
+	const fn = Sinon.fake();
+	function *Component() {
+		this.cleanup(() => {
+			fn();
+		});
+		for ({} of this) {
+			yield <div>Hello</div>;
+		}
+
+		fn();
+	}
+
+	renderer.render(
+		<div>
+			<Component crank-key="1" />
+		</div>,
+		document.body,
+	);
+	renderer.render(
+		<div>{null}</div>,
+		document.body,
+	);
+
+	Assert.is(fn.callCount, 2);
+});
+
 test.run();
