@@ -736,7 +736,7 @@ test("duplicate keys", () => {
 // https://github.com/bikeshaving/crank/issues/267
 test("component unmounts with key", () => {
 	const fn = Sinon.fake();
-	function *Component(this: Context) {
+	function* Component(this: Context) {
 		this.cleanup(() => {
 			fn();
 		});
@@ -753,10 +753,7 @@ test("component unmounts with key", () => {
 		</div>,
 		document.body,
 	);
-	renderer.render(
-		<div>{null}</div>,
-		document.body,
-	);
+	renderer.render(<div>{null}</div>, document.body);
 
 	Assert.is(fn.callCount, 2);
 });
