@@ -1,12 +1,26 @@
+// This seems to be some kind of ideation file for a router
 import {jsx} from "@b9g/crank/standalone";
 import {renderer} from "@b9g/crank/html";
 import {renderStylesToString} from "@emotion/server";
 
-import {Route} from "@b9g/shovel/router";
-import {Storage} from "@b9g/shovel/storage";
+import {Storage} from "./components/esbuild.js";
 import {collectDocuments} from "./models/document.js";
+import * as Path from "path";
+//import {Route} from "@b9g/shovel/router";
+declare const Route: any;
 
 const __dirname = new URL(".", import.meta.url).pathname;
+const storage = new Storage({
+	dirname: __dirname,
+	staticPaths: [Path.join(__dirname, "../static")],
+});
+
+import HomeView from "./views/home.js";
+import BlogHomeView from "./views/blog-home.js";
+import GuideView from "./views/guide.js";
+import BlogView from "./views/blog.js";
+import PlaygroundView from "./views/playground.js";
+
 const routes = jsx`
 	<${Route} path="/">
 		<${HomeView} />
