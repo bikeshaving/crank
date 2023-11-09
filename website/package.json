@@ -8,8 +8,8 @@
     "static": "shovel static src/app.ts && echo crank.js.org > dist/CNAME"
   },
   "dependencies": {
-    "@b9g/crank": "file:../dist",
-    "@b9g/revise": "file:../../revise/dist",
+    "@b9g/crank": "0.5.5",
+    "@b9g/revise": "0.1.2",
     "@b9g/shovel": "^0.1.6",
     "@babel/core": "^7.21.0",
     "@babel/preset-react": "^7.18.6",
