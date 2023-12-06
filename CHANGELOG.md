@@ -1,4 +1,6 @@
 # Changelog
+## [0.5.7] - 2023-12-05
+- Fix keyed elements disappearing incorrectly, a bug introduced in 0.5.5
 ## [0.5.6] - 2023-11-07
 - Fix `foreignObject` children having the wrong `xmlns` (https://github.com/bikeshaving/crank/pull/268 by (@canadaduane)
 ## [0.5.5] - 2023-11-06
