@@ -733,6 +733,8 @@ test("duplicate keys", () => {
 	}
 });
 
+import {Fragment} from "../src/crank.js";
+
 // https://github.com/bikeshaving/crank/issues/267
 test("component unmounts with key", () => {
 	const fn = Sinon.fake();
@@ -748,14 +750,44 @@ test("component unmounts with key", () => {
 	}
 
 	renderer.render(
+		<div>{[<Fragment />, <Fragment />, <Component crank-key="1" />]}</div>,
+		document.body,
+	);
+	renderer.render(<div>{[<Fragment />, <Fragment />]}</div>, document.body);
+
+	Assert.is(2, fn.callCount);
+});
+
+test("changing list", () => {
+	const fn = Sinon.fake();
+	function* Component(this: Context, {children}: {children?: any}) {
+		for ({children} of this) {
+			yield <p>{children}</p>;
+		}
+
+		fn(children);
+	}
+
+	renderer.render(
 		<div>
-			<Component crank-key="1" />
+			<Component crank-key="1">1</Component>
+			<Component crank-key="2">2</Component>
 		</div>,
 		document.body,
 	);
-	renderer.render(<div>{null}</div>, document.body);
 
-	Assert.is(fn.callCount, 2);
+	Assert.is(document.body.innerHTML, "<div><p>1</p><p>2</p></div>");
+
+	renderer.render(
+		<div>
+			<Component crank-key="2">2</Component>
+		</div>,
+		document.body,
+	);
+
+	Assert.is(document.body.innerHTML, "<div><p>2</p></div>");
+
+	Assert.is(1, fn.callCount);
 });
 
 test.run();
