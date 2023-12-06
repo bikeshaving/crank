@@ -1039,7 +1039,12 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	// cleanup remaining retainers
 	for (; oi < oldLength; oi++) {
 		const ret = oldRetained[oi];
-		if (typeof ret === "object") {
+		if (
+			typeof ret === "object" &&
+			(typeof ret.el.key === "undefined" ||
+				!seenKeys ||
+				!seenKeys.has(ret.el.key))
+		) {
 			(graveyard = graveyard || []).push(ret);
 		}
 	}
