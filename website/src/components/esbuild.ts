@@ -6,12 +6,11 @@ import type {BuildContext, OutputFile} from "esbuild";
 import {jsx} from "@b9g/crank/standalone";
 import type {Children, Context} from "@b9g/crank";
 
-import postcssPresetEnv from "postcss-preset-env";
-import postcssNested from "postcss-nested";
-
 import {NodeModulesPolyfillPlugin} from "@esbuild-plugins/node-modules-polyfill";
 import {NodeGlobalsPolyfillPlugin} from "@esbuild-plugins/node-globals-polyfill";
 
+import postcssPresetEnv from "postcss-preset-env";
+import postcssNested from "postcss-nested";
 // TODO: Pass plugins into storage or components
 import {postcssPlugin} from "../plugins/esbuild.js";
 
@@ -178,15 +177,6 @@ export class Storage {
 	}
 }
 
-// TODO: Move components to their own file?
-// While it’s cool that we can use provisions and components here, I’m not sure
-// what the advantage is of defining these separate components over calling
-// async functions to get URLs from local file paths. ESBuild has a neat design
-// principle which is that the only way to actually “concatenate” files is to
-// have an actual source file which imports all the files you’re trying to
-// concatenate together. The thing I’m thinking about now, is how do we
-// concretely bundle dependencies for those which are generated from
-// components.
 export const StorageKey = Symbol.for("esbuild.StorageKey");
 declare global {
 	namespace Crank {
@@ -201,7 +191,6 @@ export interface PageProps {
 	children: Children;
 }
 
-// TODO: Better name than “Page”
 export function* Page(this: Context, {storage, children}: PageProps) {
 	this.provide(StorageKey, storage);
 	let newStorage: Storage;
