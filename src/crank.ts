@@ -186,7 +186,7 @@ export interface Element<TTag extends Tag = Tag> {
 	tag: TTag;
 
 	/**
-	 * An object containing the “properties” of an element. These correspond to
+	 * An object containing the "properties" of an element. These correspond to
 	 * the attribute syntax from JSX.
 	 */
 	props: TagProps<TTag>;
@@ -351,7 +351,7 @@ function narrow(value: Children): NarrowedChild {
  *
  * @template TNode - The node type for the element provided by the renderer.
  *
- * When asking the question, what is the “value” of a specific element, the
+ * When asking the question, what is the "value" of a specific element, the
  * answer varies depending on the tag:
  *
  * For host elements, the value is the nodes created for the element.
@@ -848,6 +848,8 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	let childrenByKey: Map<Key, Retainer<TNode>> | undefined;
 	let seenKeys: Set<Key> | undefined;
 	let isAsync = false;
+	// When hydrating, sibling element trees must be rendered in order, because
+	// we do not know how many DOM nodes an element will render.
 	let hydrationBlock: Promise<unknown> | undefined;
 	let oi = 0;
 	let oldLength = oldRetained.length;
@@ -1429,11 +1431,11 @@ const PropsAvailable = 1 << 5;
 /**
  * A flag which is set when a component errors.
  *
- * NOTE: This is mainly used to prevent some false positives in component
- * yields or returns undefined warnings. The reason we’re using this versus
- * IsUnmounted is a very troubling test (cascades sync generator parent and
- * sync generator child) where synchronous code causes a stack overflow error
- * in a non-deterministic way. Deeply disturbing stuff.
+ * This is mainly used to prevent some false positives in "component yields or
+ * returns undefined" warnings. The reason we’re using this versus IsUnmounted
+ * is a very troubling test (cascades sync generator parent and sync generator
+ * child) where synchronous code causes a stack overflow error in a
+ * non-deterministic way. Deeply disturbing stuff.
  */
 const IsErrored = 1 << 6;
 
