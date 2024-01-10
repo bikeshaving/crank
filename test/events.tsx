@@ -315,7 +315,7 @@ test("unmount and dispatch", () => {
 
 test("event props", () => {
 	let ctx!: Context;
-	function Component(this: Context) {
+	function Component(this: Context, _props: {onfoo: (ev: Event) => any}) {
 		ctx = this;
 		return <span>Hello</span>;
 	}

@@ -56,8 +56,8 @@ export type Tag = string | symbol | Component;
 export type TagProps<TTag extends Tag> = TTag extends string
 	? JSX.IntrinsicElements[TTag]
 	: TTag extends Component<infer TProps>
-	? TProps
-	: Record<string, unknown>;
+	? TProps & JSX.IntrinsicAttributes
+	: Record<string, unknown> & JSX.IntrinsicAttributes;
 
 /***
  * SPECIAL TAGS
@@ -190,29 +190,6 @@ export interface Element<TTag extends Tag = Tag> {
 	 * the attribute syntax from JSX.
 	 */
 	props: TagProps<TTag>;
-
-	/**
-	 * A value which uniquely identifies an element from its siblings so that it
-	 * can be added/updated/moved/removed by key rather than position.
-	 *
-	 * Passed in createElement() as the prop "c-key".
-	 */
-	key: Key;
-
-	/**
-	 * A callback which is called with the element’s result when it is committed.
-	 *
-	 * Passed in createElement() as the prop "c-ref".
-	 */
-	ref: ((value: unknown) => unknown) | undefined;
-
-	/**
-	 * A possible boolean which indicates that element should NOT be rerendered.
-	 * If the element has never been rendered, this property has no effect.
-	 *
-	 * Passed in createElement() as the prop "c-static".
-	 */
-	static_: boolean | undefined;
 }
 
 /**
@@ -236,18 +213,21 @@ export interface Element<TTag extends Tag = Tag> {
  * rather than instatiating this class directly.
  */
 export class Element<TTag extends Tag = Tag> {
-	constructor(
-		tag: TTag,
-		props: TagProps<TTag>,
-		key: Key,
-		ref?: ((value: unknown) => unknown) | undefined,
-		static_?: boolean | undefined,
-	) {
+	constructor(tag: TTag, props: TagProps<TTag>) {
 		this.tag = tag;
 		this.props = props;
-		this.key = key;
-		this.ref = ref;
-		this.static_ = static_;
+	}
+
+	get key(): Key {
+		return this.props.key;
+	}
+
+	get ref(): unknown {
+		return this.props.ref;
+	}
+
+	get static_(): boolean {
+		return !!this.props["static"];
 	}
 }
 
@@ -256,6 +236,17 @@ Element.prototype.$$typeof = ElementSymbol;
 
 export function isElement(value: any): value is Element {
 	return value != null && value.$$typeof === ElementSymbol;
+}
+
+const DEPRECATED_PROP_PREFIXES = ["crank-", "c-", "$"];
+
+const SPECIAL_PROP_BASES = ["key", "ref", "static"];
+
+const SPECIAL_PROPS = new Set(["children", ...SPECIAL_PROP_BASES]);
+for (const propPrefix of DEPRECATED_PROP_PREFIXES) {
+	for (const propBase of SPECIAL_PROP_BASES) {
+		SPECIAL_PROPS.add(propPrefix + propBase);
+	}
 }
 
 /**
@@ -271,47 +262,32 @@ export function createElement<TTag extends Tag>(
 	props?: TagProps<TTag> | null | undefined,
 	...children: Array<unknown>
 ): Element<TTag> {
-	let key: Key;
-	let ref: ((value: unknown) => unknown) | undefined;
-	let static_ = false;
-	const props1 = {} as TagProps<TTag>;
-	if (props != null) {
-		for (const name in props) {
-			switch (name) {
-				case "crank-key":
-				case "c-key":
-				case "$key":
-					// We have to make sure we don’t assign null to the key because we
-					// don’t check for null keys in the diffing functions.
-					if (props[name] != null) {
-						key = props[name];
-					}
-					break;
-				case "crank-ref":
-				case "c-ref":
-				case "$ref":
-					if (typeof props[name] === "function") {
-						ref = props[name];
-					}
-					break;
-				case "crank-static":
-				case "c-static":
-				case "$static":
-					static_ = !!props[name];
-					break;
-				default:
-					props1[name] = props[name];
+	if (props == null) {
+		props = {} as TagProps<TTag>;
+	}
+
+	for (const propPrefix of DEPRECATED_PROP_PREFIXES) {
+		for (const propName of SPECIAL_PROP_BASES) {
+			const deprecatedPropName = propPrefix + propName;
+			if (deprecatedPropName in (props as TagProps<TTag>)) {
+				// eslint-disable-next-line no-console
+				console.warn(
+					`The \`${deprecatedPropName}\` prop is deprecated. Use \`${propName}\` instead.`,
+				);
+				(props as TagProps<TTag>)[propName] = (props as TagProps<TTag>)[
+					deprecatedPropName
+				];
 			}
 		}
 	}
 
 	if (children.length > 1) {
-		props1.children = children;
+		(props as TagProps<TTag>).children = children;
 	} else if (children.length === 1) {
-		props1.children = children[0];
+		(props as TagProps<TTag>).children = children[0];
 	}
 
-	return new Element(tag, props1, key, ref, static_);
+	return new Element(tag, props as TagProps<TTag>);
 }
 
 /** Clones a given element, shallowly copying the props object. */
@@ -322,7 +298,7 @@ export function cloneElement<TTag extends Tag>(
 		throw new TypeError("Cannot clone non-element");
 	}
 
-	return new Element(el.tag, {...el.props}, el.key, el.ref);
+	return new Element(el.tag, {...el.props});
 }
 
 /*** ELEMENT UTILITIES ***/
@@ -354,9 +330,10 @@ function narrow(value: Children): NarrowedChild {
  * When asking the question, what is the "value" of a specific element, the
  * answer varies depending on the tag:
  *
- * For host elements, the value is the nodes created for the element.
+ * For host elements, the value is the nodes created for the element, e.g. the
+ * DOM node in the case of the DOMRenderer.
  *
- * For fragments, the value is usually an array of nodes.
+ * For fragments, the value is the value of the
  *
  * For portals, the value is undefined, because a Portal element’s root and
  * children are opaque to its parent.
@@ -616,24 +593,24 @@ export interface RendererImpl<
 		tag: TTag,
 		node: TNode,
 		name: TName,
-		value: TagProps<TTag>[TName],
-		oldValue: TagProps<TTag>[TName] | undefined,
+		value: unknown,
+		oldValue: unknown,
 		scope: TScope,
 	): unknown;
 
 	arrange<TTag extends string | symbol>(
 		tag: TTag,
 		node: TNode,
-		props: TagProps<TTag>,
+		props: Record<string, unknown>,
 		children: Array<TNode | string>,
-		oldProps: TagProps<TTag> | undefined,
+		oldProps: Record<string, unknown> | undefined,
 		oldChildren: Array<TNode | string> | undefined,
 	): unknown;
 
 	dispose<TTag extends string | symbol>(
 		tag: TTag,
 		node: TNode,
-		props: TagProps<TTag>,
+		props: Record<string, unknown>,
 	): unknown;
 
 	flush(root: TRoot): unknown;
@@ -659,7 +636,8 @@ const defaultRendererImpl: RendererImpl<unknown, unknown, unknown, unknown> = {
 const _RendererImpl = Symbol.for("crank.RendererImpl");
 /**
  * An abstract class which is subclassed to render to different target
- * environments. This class is responsible for kicking off the rendering
+ * environments. Subclasses will typically call super() with a custom
+ * RendererImpl. This class is responsible for kicking off the rendering
  * process and caching previous trees by root.
  *
  * @template TNode - The type of the node for a rendering environment.
@@ -1140,7 +1118,7 @@ function updateRaw<TNode, TScope>(
 ): ElementValue<TNode> {
 	const props = ret.el.props;
 	if (!oldProps || oldProps.value !== props.value) {
-		ret.value = renderer.raw(props.value, scope, hydrationData);
+		ret.value = renderer.raw(props.value as any, scope, hydrationData);
 	}
 
 	return ret.value;
@@ -1162,7 +1140,7 @@ function updateFragment<TNode, TScope, TRoot extends TNode>(
 		ctx,
 		scope,
 		ret,
-		ret.el.props.children,
+		ret.el.props.children as any,
 		hydrationData,
 	);
 
@@ -1187,7 +1165,7 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 	const tag = el.tag as string | symbol;
 	let hydrationValue: TNode | string | undefined;
 	if (el.tag === Portal) {
-		root = ret.value = el.props.root;
+		root = ret.value = el.props.root as any;
 	} else {
 		if (hydrationData !== undefined) {
 			const value = hydrationData.children.shift();
@@ -1211,7 +1189,7 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 		ctx,
 		scope,
 		ret,
-		ret.el.props.children,
+		ret.el.props.children as any,
 		childHydrationData,
 	);
 
@@ -1261,7 +1239,7 @@ function commitHost<TNode, TScope>(
 				// TODO: The Copy tag doubles as a way to skip the patching of a prop.
 				// Not sure about this feature. Should probably be removed.
 				(copied = copied || new Set()).add(propName);
-			} else if (propName !== "children") {
+			} else if (!SPECIAL_PROPS.has(propName)) {
 				renderer.patch(
 					tag,
 					value,
@@ -1280,7 +1258,7 @@ function commitHost<TNode, TScope>(
 			props[name] = oldProps && oldProps[name];
 		}
 
-		ret.el = new Element(tag, props, ret.el.key, ret.el.ref);
+		ret.el = new Element(tag, props);
 	}
 
 	renderer.arrange(
@@ -1535,7 +1513,9 @@ class ContextImpl<
 		| AsyncIterator<Children, Children | void, unknown>
 		| undefined;
 
-	// The following properties are used to implement the
+	// A "block" is a promise which represents the duration during which new
+	// updates are queued, whereas "value" is a promise which represents the
+	// actual pending result of rendering.
 	declare inflightBlock: Promise<unknown> | undefined;
 	declare inflightValue: Promise<ElementValue<TNode>> | undefined;
 	declare enqueuedBlock: Promise<unknown> | undefined;
@@ -1611,7 +1591,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	 * plugins or utilities which wrap contexts.
 	 */
 	get props(): ComponentProps<T> {
-		return this[_ContextImpl].ret.el.props;
+		return this[_ContextImpl].ret.el.props as ComponentProps<T>;
 	}
 
 	// TODO: Should we rename this???
@@ -1637,7 +1617,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 					ctx.f |= NeedsToYield;
 				}
 
-				yield ctx.ret.el.props!;
+				yield ctx.ret.el.props as ComponentProps<T>;
 			}
 		} finally {
 			ctx.f &= ~IsInForOfLoop;
@@ -1661,7 +1641,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 
 				if (ctx.f & PropsAvailable) {
 					ctx.f &= ~PropsAvailable;
-					yield ctx.ret.el.props;
+					yield ctx.ret.el.props as ComponentProps<T>;
 				} else {
 					const props = await new Promise((resolve) => (ctx.onProps = resolve));
 					if (ctx.f & IsUnmounted) {
@@ -1962,8 +1942,8 @@ export class Context<T = any, TResult = any> implements EventTarget {
 			{
 				setEventProperty(ev, "eventPhase", AT_TARGET);
 				setEventProperty(ev, "currentTarget", ctx.owner);
-				const propCallback = ctx.ret.el.props["on" + ev.type];
-				if (propCallback != null) {
+				const propCallback = ctx.ret.el.props["on" + ev.type] as unknown;
+				if (typeof propCallback === "function") {
 					propCallback(ev);
 					if (immediateCancelBubble || ev.cancelBubble) {
 						return true;
@@ -2989,6 +2969,31 @@ declare global {
 
 		export interface IntrinsicElements {
 			[tag: string]: any;
+		}
+
+		export interface IntrinsicAttributes {
+			children?: unknown;
+			key?: unknown;
+			ref?: unknown;
+			["static"]?: unknown;
+			/** @deprecated */
+			["crank-key"]?: unknown;
+			/** @deprecated */
+			["crank-ref"]?: unknown;
+			/** @deprecated */
+			["crank-static"]?: unknown;
+			/** @deprecated */
+			["c-key"]?: unknown;
+			/** @deprecated */
+			["c-ref"]?: unknown;
+			/** @deprecated */
+			["c-static"]?: unknown;
+			/** @deprecated */
+			$key?: unknown;
+			/** @deprecated */
+			$ref?: unknown;
+			/** @deprecated */
+			$static?: unknown;
 		}
 
 		export interface ElementChildrenAttribute {

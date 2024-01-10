@@ -17,11 +17,11 @@ test.after.each(() => {
 test("keys with no changes", () => {
 	renderer.render(
 		<div>
-			<span crank-key="1">1</span>
-			<span crank-key="2">2</span>
-			<span crank-key="3">3</span>
-			<span crank-key="4">4</span>
-			<span crank-key="5">5</span>
+			<span key="1">1</span>
+			<span key="2">2</span>
+			<span key="3">3</span>
+			<span key="4">4</span>
+			<span key="5">5</span>
 		</div>,
 		document.body,
 	);
@@ -31,11 +31,11 @@ test("keys with no changes", () => {
 	);
 	renderer.render(
 		<div>
-			<span crank-key="1">1</span>
-			<span crank-key="2">2</span>
-			<span crank-key="3">3</span>
-			<span crank-key="4">4</span>
-			<span crank-key="5">5</span>
+			<span key="1">1</span>
+			<span key="2">2</span>
+			<span key="3">3</span>
+			<span key="4">4</span>
+			<span key="5">5</span>
 		</div>,
 		document.body,
 	);
@@ -48,11 +48,11 @@ test("keys with no changes", () => {
 test("no shared keys", () => {
 	renderer.render(
 		<div>
-			<span crank-key="1">1</span>
-			<span crank-key="2">2</span>
-			<span crank-key="3">3</span>
-			<span crank-key="4">4</span>
-			<span crank-key="5">5</span>
+			<span key="1">1</span>
+			<span key="2">2</span>
+			<span key="3">3</span>
+			<span key="4">4</span>
+			<span key="5">5</span>
 		</div>,
 		document.body,
 	);
@@ -67,11 +67,11 @@ test("no shared keys", () => {
 	const span5 = document.body.firstChild!.childNodes[4];
 	renderer.render(
 		<div>
-			<span crank-key="6">6</span>
-			<span crank-key="7">7</span>
-			<span crank-key="8">8</span>
-			<span crank-key="9">9</span>
-			<span crank-key="10">10</span>
+			<span key="6">6</span>
+			<span key="7">7</span>
+			<span key="8">8</span>
+			<span key="9">9</span>
+			<span key="10">10</span>
 		</div>,
 		document.body,
 	);
@@ -89,7 +89,7 @@ test("no shared keys", () => {
 test("keyed child moves forward", () => {
 	renderer.render(
 		<div>
-			<span crank-key="1">1</span>
+			<span key="1">1</span>
 			<span>2</span>
 		</div>,
 		document.body,
@@ -99,7 +99,7 @@ test("keyed child moves forward", () => {
 	renderer.render(
 		<div>
 			<span>0</span>
-			<span crank-key="1">1</span>
+			<span key="1">1</span>
 		</div>,
 		document.body,
 	);
@@ -111,7 +111,7 @@ test("keyed child moves backward", () => {
 	renderer.render(
 		<div>
 			<span>1</span>
-			<span crank-key="2">2</span>
+			<span key="2">2</span>
 		</div>,
 		document.body,
 	);
@@ -119,7 +119,7 @@ test("keyed child moves backward", () => {
 	const span2 = document.body.firstChild!.lastChild;
 	renderer.render(
 		<div>
-			<span crank-key="2">2</span>
+			<span key="2">2</span>
 			<span>3</span>
 		</div>,
 		document.body,
@@ -141,7 +141,7 @@ test("keyed child added between unkeyed children", () => {
 	renderer.render(
 		<div>
 			<span>1</span>
-			<span crank-key="2">2</span>
+			<span key="2">2</span>
 			<span>3</span>
 		</div>,
 		document.body,
@@ -155,9 +155,9 @@ test("keyed child added between unkeyed children", () => {
 
 test("keyed array", () => {
 	const spans = [
-		<span crank-key="2">2</span>,
-		<span crank-key="3">3</span>,
-		<span crank-key="4">4</span>,
+		<span key="2">2</span>,
+		<span key="3">3</span>,
+		<span key="4">4</span>,
 	];
 	renderer.render(
 		<div>
@@ -198,11 +198,11 @@ test("keyed array", () => {
 
 test("reversed keyed array", () => {
 	const spans = [
-		<span crank-key="2">2</span>,
-		<span crank-key="3">3</span>,
-		<span crank-key="4">4</span>,
-		<span crank-key="5">5</span>,
-		<span crank-key="6">6</span>,
+		<span key="2">2</span>,
+		<span key="3">3</span>,
+		<span key="4">4</span>,
+		<span key="5">5</span>,
+		<span key="6">6</span>,
 	];
 	renderer.render(
 		<div>
@@ -272,7 +272,7 @@ test("reversed keyed array", () => {
 test("keyed child added", () => {
 	renderer.render(
 		<div>
-			<span crank-key="2">2</span>
+			<span key="2">2</span>
 		</div>,
 		document.body,
 	);
@@ -280,8 +280,8 @@ test("keyed child added", () => {
 	const span2 = document.body.firstChild!.lastChild;
 	renderer.render(
 		<div>
-			<span crank-key="1">1</span>
-			<span crank-key="2">2</span>
+			<span key="1">1</span>
+			<span key="2">2</span>
 		</div>,
 		document.body,
 	);
@@ -300,7 +300,7 @@ test("unkeyed replaced with keyed", () => {
 	let span = document.body.firstChild!.firstChild;
 	renderer.render(
 		<div>
-			<span crank-key="1">1</span>
+			<span key="1">1</span>
 		</div>,
 		document.body,
 	);
@@ -322,7 +322,7 @@ test("text and unkeyed and keyed children", () => {
 		<div>
 			<span>Hello</span>
 			...
-			<span crank-key="world">World</span>
+			<span key="world">World</span>
 			...
 		</div>,
 		document.body,
@@ -336,7 +336,7 @@ test("text and unkeyed and keyed children", () => {
 	renderer.render(
 		<div>
 			...
-			<span crank-key="world">World</span>
+			<span key="world">World</span>
 			...
 			<span>Hello</span>
 		</div>,
@@ -351,7 +351,7 @@ test("text and unkeyed and keyed children", () => {
 		<div>
 			...
 			<span>Hello</span>
-			<span crank-key="world">World</span>
+			<span key="world">World</span>
 			...
 		</div>,
 		document.body,
@@ -366,7 +366,7 @@ test("text and unkeyed and keyed children", () => {
 test("keyed children added before removed unkeyed child", () => {
 	renderer.render(
 		<div>
-			<div crank-key="1">1</div>
+			<div key="1">1</div>
 			<span>2</span>
 		</div>,
 		document.body,
@@ -374,10 +374,10 @@ test("keyed children added before removed unkeyed child", () => {
 	Assert.is(document.body.innerHTML, "<div><div>1</div><span>2</span></div>");
 	renderer.render(
 		<div>
-			<span crank-key="1">1</span>
-			<span crank-key="2">2</span>
-			<span crank-key="3">3</span>
-			<span crank-key="4">4</span>
+			<span key="1">1</span>
+			<span key="2">2</span>
+			<span key="3">3</span>
+			<span key="4">4</span>
 		</div>,
 		document.body,
 	);
@@ -391,14 +391,14 @@ test("same key, different tag", () => {
 	renderer.render(
 		<div>
 			<span>0</span>
-			<span crank-key="1">1</span>
+			<span key="1">1</span>
 		</div>,
 		document.body,
 	);
 	Assert.is(document.body.innerHTML, "<div><span>0</span><span>1</span></div>");
 	renderer.render(
 		<div>
-			<div crank-key="1">1</div>
+			<div key="1">1</div>
 			<span>2</span>
 		</div>,
 		document.body,
@@ -410,14 +410,14 @@ test("same key, different tag 2", () => {
 	renderer.render(
 		<div>
 			<span>0</span>
-			<span crank-key="1">1</span>
+			<span key="1">1</span>
 		</div>,
 		document.body,
 	);
 	Assert.is(document.body.innerHTML, "<div><span>0</span><span>1</span></div>");
 	renderer.render(
 		<div>
-			<div crank-key="1">1</div>
+			<div key="1">1</div>
 			<span>0</span>
 		</div>,
 		document.body,
@@ -426,14 +426,14 @@ test("same key, different tag 2", () => {
 	renderer.render(
 		<div>
 			<span>0</span>
-			<span crank-key="1">1</span>
+			<span key="1">1</span>
 		</div>,
 		document.body,
 	);
 	Assert.is(document.body.innerHTML, "<div><span>0</span><span>1</span></div>");
 	renderer.render(
 		<div>
-			<div crank-key="1">1</div>
+			<div key="1">1</div>
 			<span>0</span>
 		</div>,
 		document.body,
@@ -444,10 +444,10 @@ test("same key, different tag 2", () => {
 test("unkeyed elements added in random spots", () => {
 	renderer.render(
 		<div>
-			<span crank-key="1">1</span>
-			<span crank-key="2">2</span>
-			<span crank-key="3">3</span>
-			<span crank-key="4">4</span>
+			<span key="1">1</span>
+			<span key="2">2</span>
+			<span key="3">3</span>
+			<span key="4">4</span>
 		</div>,
 		document.body,
 	);
@@ -462,13 +462,13 @@ test("unkeyed elements added in random spots", () => {
 	renderer.render(
 		<div>
 			<span>0.5</span>
-			<span crank-key="1">1</span>
+			<span key="1">1</span>
 			<span>1.5</span>
-			<span crank-key="2">2</span>
+			<span key="2">2</span>
 			<span>2.5</span>
-			<span crank-key="3">3</span>
+			<span key="3">3</span>
 			<span>3.5</span>
-			<span crank-key="4">4</span>
+			<span key="4">4</span>
 			<span>4.5</span>
 		</div>,
 		document.body,
@@ -483,10 +483,10 @@ test("unkeyed elements added in random spots", () => {
 	Assert.is(span4, document.body.firstChild!.childNodes[7]);
 	renderer.render(
 		<div>
-			<span crank-key="1">1</span>
-			<span crank-key="2">2</span>
-			<span crank-key="3">3</span>
-			<span crank-key="4">4</span>
+			<span key="1">1</span>
+			<span key="2">2</span>
+			<span key="3">3</span>
+			<span key="4">4</span>
 		</div>,
 		document.body,
 	);
@@ -503,12 +503,12 @@ test("unkeyed elements added in random spots", () => {
 test("moving a keyed item backwards", () => {
 	renderer.render(
 		<div>
-			<span crank-key="1">1</span>
-			<span crank-key="2">2</span>
-			<span crank-key="3">3</span>
-			<span crank-key="4">4</span>
-			<span crank-key="5">5</span>
-			<span crank-key="6">6</span>
+			<span key="1">1</span>
+			<span key="2">2</span>
+			<span key="3">3</span>
+			<span key="4">4</span>
+			<span key="5">5</span>
+			<span key="6">6</span>
 		</div>,
 		document.body,
 	);
@@ -524,12 +524,12 @@ test("moving a keyed item backwards", () => {
 	const span6 = document.body.firstChild!.childNodes[5];
 	renderer.render(
 		<div>
-			<span crank-key="1">1</span>
-			<span crank-key="5">5</span>
-			<span crank-key="2">2</span>
-			<span crank-key="3">3</span>
-			<span crank-key="4">4</span>
-			<span crank-key="6">6</span>
+			<span key="1">1</span>
+			<span key="5">5</span>
+			<span key="2">2</span>
+			<span key="3">3</span>
+			<span key="4">4</span>
+			<span key="6">6</span>
 		</div>,
 		document.body,
 	);
@@ -545,12 +545,12 @@ test("moving a keyed item backwards", () => {
 	Assert.is(span6, document.body.firstChild!.childNodes[5]);
 	renderer.render(
 		<div>
-			<span crank-key="1">1</span>
-			<span crank-key="2">2</span>
-			<span crank-key="3">3</span>
-			<span crank-key="4">4</span>
-			<span crank-key="5">5</span>
-			<span crank-key="6">6</span>
+			<span key="1">1</span>
+			<span key="2">2</span>
+			<span key="3">3</span>
+			<span key="4">4</span>
+			<span key="5">5</span>
+			<span key="6">6</span>
 		</div>,
 		document.body,
 	);
@@ -569,12 +569,12 @@ test("moving a keyed item backwards", () => {
 test("moving a keyed item forwards", () => {
 	renderer.render(
 		<div>
-			<span crank-key="1">1</span>
-			<span crank-key="2">2</span>
-			<span crank-key="3">3</span>
-			<span crank-key="4">4</span>
-			<span crank-key="5">5</span>
-			<span crank-key="6">6</span>
+			<span key="1">1</span>
+			<span key="2">2</span>
+			<span key="3">3</span>
+			<span key="4">4</span>
+			<span key="5">5</span>
+			<span key="6">6</span>
 		</div>,
 		document.body,
 	);
@@ -590,12 +590,12 @@ test("moving a keyed item forwards", () => {
 	const span6 = document.body.firstChild!.childNodes[5];
 	renderer.render(
 		<div>
-			<span crank-key="1">1</span>
-			<span crank-key="3">3</span>
-			<span crank-key="4">4</span>
-			<span crank-key="5">5</span>
-			<span crank-key="2">2</span>
-			<span crank-key="6">6</span>
+			<span key="1">1</span>
+			<span key="3">3</span>
+			<span key="4">4</span>
+			<span key="5">5</span>
+			<span key="2">2</span>
+			<span key="6">6</span>
 		</div>,
 		document.body,
 	);
@@ -611,12 +611,12 @@ test("moving a keyed item forwards", () => {
 	Assert.is(span6, document.body.firstChild!.childNodes[5]);
 	renderer.render(
 		<div>
-			<span crank-key="1">1</span>
-			<span crank-key="2">2</span>
-			<span crank-key="3">3</span>
-			<span crank-key="4">4</span>
-			<span crank-key="5">5</span>
-			<span crank-key="6">6</span>
+			<span key="1">1</span>
+			<span key="2">2</span>
+			<span key="3">3</span>
+			<span key="4">4</span>
+			<span key="5">5</span>
+			<span key="6">6</span>
 		</div>,
 		document.body,
 	);
@@ -634,12 +634,12 @@ test("moving a keyed item forwards", () => {
 test("swapping two keyed rows", () => {
 	renderer.render(
 		<div>
-			<span crank-key="1">1</span>
-			<span crank-key="2">2</span>
-			<span crank-key="3">3</span>
-			<span crank-key="4">4</span>
-			<span crank-key="5">5</span>
-			<span crank-key="6">6</span>
+			<span key="1">1</span>
+			<span key="2">2</span>
+			<span key="3">3</span>
+			<span key="4">4</span>
+			<span key="5">5</span>
+			<span key="6">6</span>
 		</div>,
 		document.body,
 	);
@@ -655,12 +655,12 @@ test("swapping two keyed rows", () => {
 	const span6 = document.body.firstChild!.childNodes[5];
 	renderer.render(
 		<div>
-			<span crank-key="1">1</span>
-			<span crank-key="5">5</span>
-			<span crank-key="3">3</span>
-			<span crank-key="4">4</span>
-			<span crank-key="2">2</span>
-			<span crank-key="6">6</span>
+			<span key="1">1</span>
+			<span key="5">5</span>
+			<span key="3">3</span>
+			<span key="4">4</span>
+			<span key="2">2</span>
+			<span key="6">6</span>
 		</div>,
 		document.body,
 	);
@@ -676,12 +676,12 @@ test("swapping two keyed rows", () => {
 	Assert.is(span6, document.body.firstChild!.childNodes[5]);
 	renderer.render(
 		<div>
-			<span crank-key="1">1</span>
-			<span crank-key="2">2</span>
-			<span crank-key="3">3</span>
-			<span crank-key="4">4</span>
-			<span crank-key="5">5</span>
-			<span crank-key="6">6</span>
+			<span key="1">1</span>
+			<span key="2">2</span>
+			<span key="3">3</span>
+			<span key="4">4</span>
+			<span key="5">5</span>
+			<span key="6">6</span>
 		</div>,
 		document.body,
 	);
@@ -702,9 +702,9 @@ test("duplicate keys", () => {
 	try {
 		renderer.render(
 			<div>
-				<span crank-key="1">1</span>
-				<span crank-key="1">2</span>
-				<span crank-key="1">3</span>
+				<span key="1">1</span>
+				<span key="1">2</span>
+				<span key="1">3</span>
 			</div>,
 			document.body,
 		);
@@ -716,9 +716,9 @@ test("duplicate keys", () => {
 		Assert.is(mock.callCount, 2);
 		renderer.render(
 			<div>
-				<span crank-key="2">1</span>
-				<span crank-key="1">2</span>
-				<span crank-key="2">3</span>
+				<span key="2">1</span>
+				<span key="1">2</span>
+				<span key="2">3</span>
 			</div>,
 			document.body,
 		);
@@ -750,7 +750,7 @@ test("component unmounts with key", () => {
 	}
 
 	renderer.render(
-		<div>{[<Fragment />, <Fragment />, <Component crank-key="1" />]}</div>,
+		<div>{[<Fragment />, <Fragment />, <Component key="1" />]}</div>,
 		document.body,
 	);
 	renderer.render(<div>{[<Fragment />, <Fragment />]}</div>, document.body);
@@ -770,8 +770,8 @@ test("changing list", () => {
 
 	renderer.render(
 		<div>
-			<Component crank-key="1">1</Component>
-			<Component crank-key="2">2</Component>
+			<Component key="1">1</Component>
+			<Component key="2">2</Component>
 		</div>,
 		document.body,
 	);
@@ -780,7 +780,7 @@ test("changing list", () => {
 
 	renderer.render(
 		<div>
-			<Component crank-key="2">2</Component>
+			<Component key="2">2</Component>
 		</div>,
 		document.body,
 	);
