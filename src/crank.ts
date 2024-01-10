@@ -981,22 +981,10 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				}
 			}
 
-			const ref = child.ref;
 			if (isPromiseLike(value)) {
 				isAsync = true;
-				if (typeof ref === "function") {
-					value = value.then((value) => {
-						ref(renderer.read(value));
-						return value;
-					});
-				}
-
 				if (hydrationData !== undefined) {
 					hydrationBlock = value;
-				}
-			} else {
-				if (typeof ref === "function") {
-					ref(renderer.read(value));
 				}
 			}
 		} else {
@@ -1119,6 +1107,9 @@ function updateRaw<TNode, TScope>(
 	const props = ret.el.props;
 	if (!oldProps || oldProps.value !== props.value) {
 		ret.value = renderer.raw(props.value as any, scope, hydrationData);
+		if (typeof ret.el.ref === "function") {
+			ret.el.ref(ret.value);
+		}
 	}
 
 	return ret.value;
@@ -1231,6 +1222,9 @@ function commitHost<TNode, TScope>(
 		if (value == null) {
 			// This assumes that renderer.create does not return nullish values.
 			value = ret.value = renderer.create(tag, props, scope);
+			if (typeof ret.el.ref === "function") {
+				ret.el.ref(value);
+			}
 		}
 
 		for (const propName in {...oldProps, ...props}) {

@@ -1,6 +1,5 @@
 import {suite} from "uvu";
 import * as Assert from "uvu/assert";
-import * as Sinon from "sinon";
 
 import {Context, Copy, createElement, Element, Fragment} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
@@ -344,27 +343,6 @@ test("copy async generator siblings with refresh", async () => {
 	Assert.is(document.body.innerHTML, "<div><span>0</span><span>0</span></div>");
 	await new Promise((resolve) => setTimeout(resolve, 100));
 	Assert.is(document.body.innerHTML, "<div><span>0</span><span>0</span></div>");
-});
-
-test("refs", () => {
-	renderer.render(<div>Hello</div>, document.body);
-	const mock = Sinon.fake();
-	renderer.render(<Copy ref={mock} />, document.body);
-	Assert.is(mock.lastCall.args[0], document.body.firstChild);
-});
-
-test("async refs", async () => {
-	async function Component() {
-		await new Promise((resolve) => setTimeout(resolve));
-		return <span>Hello</span>;
-	}
-
-	const p = renderer.render(<Component />, document.body);
-	const mock = Sinon.fake();
-	renderer.render(<Copy ref={mock} />, document.body);
-	Assert.is(mock.callCount, 0);
-	await p;
-	Assert.is(mock.lastCall.args[0], document.body.firstChild);
 });
 
 test.run();
