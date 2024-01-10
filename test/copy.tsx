@@ -18,7 +18,7 @@ test("copy of nothing", () => {
 });
 
 test("copy of nothing keyed", () => {
-	renderer.render(<Copy crank-key="key" />, document.body);
+	renderer.render(<Copy key="key" />, document.body);
 	Assert.is(document.body.innerHTML, "");
 });
 
@@ -62,7 +62,7 @@ test("copy of nothing keyed between elements", () => {
 	renderer.render(
 		<div>
 			<span>1</span>
-			<Copy crank-key="key" />
+			<Copy key="key" />
 			<span>2</span>
 		</div>,
 		document.body,
@@ -118,9 +118,9 @@ test("elements replaced with keyed copies", () => {
 
 	renderer.render(
 		<div>
-			<Copy crank-key="1" />
-			<Copy crank-key="2" />
-			<Copy crank-key="3" />
+			<Copy key="1" />
+			<Copy key="2" />
+			<Copy key="3" />
 		</div>,
 		document.body,
 	);
@@ -173,11 +173,11 @@ test("copy array return value", () => {
 
 test("copy children", () => {
 	let spans = [
-		<span crank-key="2">2</span>,
-		<span crank-key="3">3</span>,
-		<span crank-key="4">4</span>,
-		<span crank-key="5">5</span>,
-		<span crank-key="6">6</span>,
+		<span key="2">2</span>,
+		<span key="3">3</span>,
+		<span key="4">4</span>,
+		<span key="5">5</span>,
+		<span key="6">6</span>,
 	];
 	renderer.render(
 		<div>
@@ -198,7 +198,7 @@ test("copy children", () => {
 	const span5 = document.body.firstChild!.childNodes[4];
 	const span6 = document.body.firstChild!.childNodes[5];
 	const span7 = document.body.firstChild!.childNodes[6];
-	spans = spans.reverse().map((el) => <Copy crank-key={el.key} />);
+	spans = spans.reverse().map((el) => <Copy key={el.key} />);
 	renderer.render(
 		<div>
 			<span>1</span>
@@ -226,7 +226,7 @@ test("copy children", () => {
 	Assert.is(document.body.firstChild!.childNodes[4], span3);
 	Assert.is(document.body.firstChild!.childNodes[5], span2);
 	Assert.is(document.body.firstChild!.childNodes[6], span7);
-	spans = spans.reverse().map((el) => <Copy crank-key={el.key} />);
+	spans = spans.reverse().map((el) => <Copy key={el.key} />);
 	renderer.render(
 		<div>
 			<span>1</span>
@@ -349,7 +349,7 @@ test("copy async generator siblings with refresh", async () => {
 test("refs", () => {
 	renderer.render(<div>Hello</div>, document.body);
 	const mock = Sinon.fake();
-	renderer.render(<Copy crank-ref={mock} />, document.body);
+	renderer.render(<Copy ref={mock} />, document.body);
 	Assert.is(mock.lastCall.args[0], document.body.firstChild);
 });
 
@@ -361,7 +361,7 @@ test("async refs", async () => {
 
 	const p = renderer.render(<Component />, document.body);
 	const mock = Sinon.fake();
-	renderer.render(<Copy crank-ref={mock} />, document.body);
+	renderer.render(<Copy ref={mock} />, document.body);
 	Assert.is(mock.callCount, 0);
 	await p;
 	Assert.is(mock.lastCall.args[0], document.body.firstChild);

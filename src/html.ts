@@ -56,6 +56,18 @@ function printAttrs(props: Record<string, any>): string {
 		switch (true) {
 			case name === "children":
 			case name === "innerHTML":
+			case name === "key":
+			case name === "ref":
+			case name === "static":
+			case name === "crank-key":
+			case name === "crank-ref":
+			case name === "crank-static":
+			case name === "c-key":
+			case name === "c-ref":
+			case name === "c-static":
+			case name === "$key":
+			case name === "$ref":
+			case name === "$static":
 				break;
 			case name === "style": {
 				if (typeof value === "string") {

@@ -15,7 +15,10 @@ declare module "../src/crank.js" {
 	}
 }
 
-function* Provider(this: Context): Generator<Element> {
+function* Provider(
+	this: Context,
+	_props: {message?: string},
+): Generator<Element> {
 	let i = 1;
 	for (const {children, message = "Hello "} of this) {
 		this.provide("greeting", message + i++);
