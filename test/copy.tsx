@@ -1,5 +1,6 @@
 import {suite} from "uvu";
 import * as Assert from "uvu/assert";
+import * as Sinon from "sinon";
 
 import {Context, Copy, createElement, Element, Fragment} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
@@ -343,6 +344,55 @@ test("copy async generator siblings with refresh", async () => {
 	Assert.is(document.body.innerHTML, "<div><span>0</span><span>0</span></div>");
 	await new Promise((resolve) => setTimeout(resolve, 100));
 	Assert.is(document.body.innerHTML, "<div><span>0</span><span>0</span></div>");
+});
+
+test("identical elements", () => {
+	const fn = Sinon.fake();
+	function Component() {
+		fn();
+		return <span>Hello</span>;
+	}
+	const el = <Component />;
+	renderer.render(el, document.body);
+	Assert.is(document.body.innerHTML, "<span>Hello</span>");
+	renderer.render(el, document.body);
+	Assert.is(document.body.innerHTML, "<span>Hello</span>");
+	Assert.is(fn.callCount, 1);
+});
+
+test("identical elements passed as children", () => {
+	const fn = Sinon.fake();
+	function Child() {
+		fn();
+		return <span>Hello</span>;
+	}
+
+	let ctx!: Context;
+	function* Parent(this: Context, {children}: {children: Element}) {
+		ctx = this;
+		let i = 0;
+		for ({children} of this) {
+			yield (
+				<div>
+					{children}
+					{i}
+				</div>
+			);
+			i++;
+		}
+	}
+
+	renderer.render(
+		<Parent>
+			<Child />
+		</Parent>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>Hello</span>0</div>");
+	Assert.is(fn.callCount, 1);
+	ctx.refresh();
+	Assert.is(document.body.innerHTML, "<div><span>Hello</span>1</div>");
+	Assert.is(fn.callCount, 1);
 });
 
 test.run();

@@ -874,7 +874,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		// Updating
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 		if (typeof child === "object") {
-			if (child.tag === Copy) {
+			if (child.tag === Copy || (typeof ret === "object" && ret.el === child)) {
 				value = getInflightValue(ret);
 			} else {
 				let oldProps: Record<string, any> | undefined;
