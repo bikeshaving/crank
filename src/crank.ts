@@ -148,6 +148,7 @@ export type Children = Child | ChildIterable;
 export type Component<TProps extends Record<string, unknown> = any> = (
 	this: Context<TProps>,
 	props: TProps,
+	ctx: Context<TProps>,
 ) =>
 	| Children
 	| PromiseLike<Children>
@@ -2365,7 +2366,11 @@ function runComponent<TNode, TResult>(
 		clearEventListeners(ctx);
 		let result: ReturnType<Component>;
 		try {
-			result = (ret.el.tag as Component).call(ctx.owner, ret.el.props);
+			result = (ret.el.tag as Component).call(
+				ctx.owner,
+				ret.el.props,
+				ctx.owner,
+			);
 		} catch (err) {
 			ctx.f |= IsErrored;
 			throw err;
