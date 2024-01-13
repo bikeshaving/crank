@@ -2246,7 +2246,7 @@ function enqueueComponentRun<TNode, TResult>(
 		// the bottom of the loop to be reached before returning the inflight
 		// value.
 		const isAtLoopbottom = ctx.f & IsInForAwaitOfLoop && !ctx.onProps;
-		resumePropsIterator(ctx);
+		resumePropsAsyncIterator(ctx);
 		if (isAtLoopbottom) {
 			if (ctx.inflightBlock == null) {
 				ctx.inflightBlock = new Promise(
@@ -2361,7 +2361,7 @@ function runComponent<TNode, TResult>(
 	const ret = ctx.ret;
 	const initial = !ctx.iterator;
 	if (initial) {
-		resumePropsIterator(ctx);
+		resumePropsAsyncIterator(ctx);
 		ctx.f |= IsSyncExecuting;
 		clearEventListeners(ctx);
 		let result: ReturnType<Component>;
@@ -2401,6 +2401,7 @@ function runComponent<TNode, TResult>(
 			];
 		}
 	} else if (hydrationData !== undefined) {
+		// hydration data should only be passed on the initial render
 		throw new Error("Hydration error");
 	}
 
@@ -2424,7 +2425,6 @@ function runComponent<TNode, TResult>(
 	}
 
 	if (ctx.f & IsSyncGen) {
-		ctx.f &= ~NeedsToYield;
 		// sync generator component
 		if (!initial) {
 			try {
@@ -2442,6 +2442,15 @@ function runComponent<TNode, TResult>(
 			throw new Error("Mixed generator component");
 		}
 
+		if (
+			ctx.f & IsInForOfLoop &&
+			!(ctx.f & NeedsToYield) &&
+			!(ctx.f & IsUnmounted)
+		) {
+			console.error("Component yielded more than once in for...of loop");
+		}
+
+		ctx.f &= ~NeedsToYield;
 		if (iteration.done) {
 			ctx.f &= ~IsSyncGen;
 			ctx.iterator = undefined;
@@ -2466,9 +2475,7 @@ function runComponent<TNode, TResult>(
 		const block = isPromiseLike(value) ? value.catch(NOOP) : undefined;
 		return [block, value];
 	} else if (ctx.f & IsInForOfLoop) {
-		// TODO: does this need to be done async?
-		ctx.f &= ~NeedsToYield;
-		// we are in a for...of loop for async generator
+		// Async generator component using for...of loop
 		if (!initial) {
 			try {
 				ctx.f |= IsSyncExecuting;
@@ -2491,8 +2498,13 @@ function runComponent<TNode, TResult>(
 				let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 				if (!(ctx.f & IsInForOfLoop)) {
 					runAsyncGenComponent(ctx, Promise.resolve(iteration), hydrationData);
+				} else {
+					if (!(ctx.f & NeedsToYield) && !(ctx.f & IsUnmounted)) {
+						console.error("Component yielded more than once in for...of loop");
+					}
 				}
 
+				ctx.f &= ~NeedsToYield;
 				try {
 					value = updateComponentChildren<TNode, TResult>(
 						ctx,
@@ -2648,7 +2660,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 /**
  * Called to resume the props async iterator for async generator components.
  */
-function resumePropsIterator(ctx: ContextImpl): void {
+function resumePropsAsyncIterator(ctx: ContextImpl): void {
 	if (ctx.onProps) {
 		ctx.onProps(ctx.ret.el.props);
 		ctx.onProps = undefined;
@@ -2728,14 +2740,14 @@ function unmountComponent(ctx: ContextImpl): void {
 			} else {
 				// The logic for unmounting async generator components is in the
 				// runAsyncGenComponent function.
-				resumePropsIterator(ctx);
+				resumePropsAsyncIterator(ctx);
 			}
 		}
 	}
 }
 
 function returnComponent(ctx: ContextImpl): void {
-	resumePropsIterator(ctx);
+	resumePropsAsyncIterator(ctx);
 	if (ctx.iterator && typeof ctx.iterator!.return === "function") {
 		try {
 			ctx.f |= IsSyncExecuting;
@@ -2883,7 +2895,7 @@ function handleChildError<TNode>(
 		throw err;
 	}
 
-	resumePropsIterator(ctx);
+	resumePropsAsyncIterator(ctx);
 	let iteration: ChildrenIteratorResult | Promise<ChildrenIteratorResult>;
 	try {
 		ctx.f |= IsSyncExecuting;
