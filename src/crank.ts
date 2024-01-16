@@ -2474,69 +2474,79 @@ function runComponent<TNode, TResult>(
 
 		const block = isPromiseLike(value) ? value.catch(NOOP) : undefined;
 		return [block, value];
-	} else if (ctx.f & IsInForOfLoop) {
-		// Async generator component using for...of loop
-		if (!initial) {
-			try {
-				ctx.f |= IsSyncExecuting;
-				iteration = ctx.iterator!.next(ctx.renderer.read(getValue(ret)));
-			} catch (err) {
-				ctx.f |= IsErrored;
-				throw err;
-			} finally {
-				ctx.f &= ~IsSyncExecuting;
-			}
-		}
-
-		if (!isPromiseLike(iteration)) {
-			throw new Error("Mixed generator component");
-		}
-
-		const block = iteration.catch(NOOP);
-		const value = iteration.then(
-			(iteration) => {
-				let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-				if (!(ctx.f & IsInForOfLoop)) {
-					runAsyncGenComponent(ctx, Promise.resolve(iteration), hydrationData);
-				} else {
-					if (!(ctx.f & NeedsToYield) && !(ctx.f & IsUnmounted)) {
-						console.error("Component yielded more than once in for...of loop");
-					}
-				}
-
-				ctx.f &= ~NeedsToYield;
-				try {
-					value = updateComponentChildren<TNode, TResult>(
-						ctx,
-						// Children can be void so we eliminate that here
-						iteration.value as Children,
-						hydrationData,
-					);
-
-					if (isPromiseLike(value)) {
-						value = value.catch((err) => handleChildError(ctx, err));
-					}
-				} catch (err) {
-					value = handleChildError(ctx, err);
-				}
-
-				return value;
-			},
-			(err) => {
-				ctx.f |= IsErrored;
-				throw err;
-			},
-		);
-
-		return [block, value];
 	} else {
-		runAsyncGenComponent(
-			ctx,
-			iteration as Promise<ChildrenIteratorResult>,
-			hydrationData,
-		);
-		// async generator component
-		return [ctx.inflightBlock, ctx.inflightValue];
+		if (ctx.f & IsInForOfLoop) {
+			// Async generator component using for...of loops behave similar to sync
+			// generator components. This allows for easier refactoring of sync to
+			// async generator components.
+			if (!initial) {
+				try {
+					ctx.f |= IsSyncExecuting;
+					iteration = ctx.iterator!.next(ctx.renderer.read(getValue(ret)));
+				} catch (err) {
+					ctx.f |= IsErrored;
+					throw err;
+				} finally {
+					ctx.f &= ~IsSyncExecuting;
+				}
+			}
+
+			if (!isPromiseLike(iteration)) {
+				throw new Error("Mixed generator component");
+			}
+
+			const block = iteration.catch(NOOP);
+			const value = iteration.then(
+				(iteration) => {
+					let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
+					if (!(ctx.f & IsInForOfLoop)) {
+						runAsyncGenComponent(
+							ctx,
+							Promise.resolve(iteration),
+							hydrationData,
+						);
+					} else {
+						if (!(ctx.f & NeedsToYield) && !(ctx.f & IsUnmounted)) {
+							console.error(
+								"Component yielded more than once in for...of loop",
+							);
+						}
+					}
+
+					ctx.f &= ~NeedsToYield;
+					try {
+						value = updateComponentChildren<TNode, TResult>(
+							ctx,
+							// Children can be void so we eliminate that here
+							iteration.value as Children,
+							hydrationData,
+						);
+
+						if (isPromiseLike(value)) {
+							value = value.catch((err) => handleChildError(ctx, err));
+						}
+					} catch (err) {
+						value = handleChildError(ctx, err);
+					}
+
+					return value;
+				},
+				(err) => {
+					ctx.f |= IsErrored;
+					throw err;
+				},
+			);
+
+			return [block, value];
+		} else {
+			runAsyncGenComponent(
+				ctx,
+				iteration as Promise<ChildrenIteratorResult>,
+				hydrationData,
+				initial,
+			);
+			return [ctx.inflightBlock, ctx.inflightValue];
+		}
 	}
 }
 
@@ -2544,6 +2554,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
 	iterationP: Promise<ChildrenIteratorResult>,
 	hydrationData: HydrationData<TNode> | undefined,
+	initial: boolean = false,
 ): Promise<void> {
 	let done = false;
 	try {
@@ -2570,25 +2581,37 @@ async function runAsyncGenComponent<TNode, TResult>(
 				ctx.f |= IsErrored;
 				onValue(Promise.reject(err));
 				break;
-			} finally {
-				ctx.f &= ~NeedsToYield;
-				if (!(ctx.f & IsInForAwaitOfLoop)) {
-					ctx.f &= ~PropsAvailable;
-				}
+			}
+
+			if (!(ctx.f & IsInForAwaitOfLoop)) {
+				ctx.f &= ~PropsAvailable;
 			}
 
 			done = !!iteration.done;
 			let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 			try {
-				value = updateComponentChildren<TNode, TResult>(
-					ctx,
-					iteration.value!,
-					hydrationData,
-				);
-				hydrationData = undefined;
-				if (isPromiseLike(value)) {
-					value = value.catch((err: any) => handleChildError(ctx, err));
+				if (
+					!(ctx.f & NeedsToYield) &&
+					ctx.f & PropsAvailable &&
+					ctx.f & IsInForAwaitOfLoop &&
+					!initial &&
+					!done
+				) {
+					// We skip stale iterations in for await...of loops.
+					value = ctx.ret.inflightValue || getValue(ctx.ret);
+				} else {
+					value = updateComponentChildren<TNode, TResult>(
+						ctx,
+						iteration.value!,
+						hydrationData,
+					);
+					hydrationData = undefined;
+					if (isPromiseLike(value)) {
+						value = value.catch((err: any) => handleChildError(ctx, err));
+					}
 				}
+
+				ctx.f &= ~NeedsToYield;
 			} catch (err) {
 				// Do we need to catch potential errors here in the case of unhandled
 				// promise rejections?
@@ -2597,19 +2620,18 @@ async function runAsyncGenComponent<TNode, TResult>(
 				onValue(value);
 			}
 
-			// TODO: this can be done more elegantly
-			let oldValue: Promise<TResult> | TResult;
+			let oldResult: Promise<TResult> | TResult;
 			if (ctx.ret.inflightValue) {
 				// The value passed back into the generator as the argument to the next
 				// method is a promise if an async generator component has async
 				// children. Sync generator components only resume when their children
 				// have fulfilled so the element’s inflight child values will never be
 				// defined.
-				oldValue = ctx.ret.inflightValue.then((value) =>
+				oldResult = ctx.ret.inflightValue.then((value) =>
 					ctx.renderer.read(value),
 				);
 
-				oldValue.catch((err) => {
+				oldResult.catch((err) => {
 					if (ctx.f & IsUpdating) {
 						return;
 					}
@@ -2621,7 +2643,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 					return propagateError(ctx.parent, err);
 				});
 			} else {
-				oldValue = ctx.renderer.read(getValue(ctx.ret));
+				oldResult = ctx.renderer.read(getValue(ctx.ret));
 			}
 
 			if (ctx.f & IsUnmounted) {
@@ -2629,7 +2651,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 					try {
 						ctx.f |= IsSyncExecuting;
 						iterationP = ctx.iterator!.next(
-							oldValue,
+							oldResult,
 						) as Promise<ChildrenIteratorResult>;
 					} finally {
 						ctx.f &= ~IsSyncExecuting;
@@ -2642,12 +2664,14 @@ async function runAsyncGenComponent<TNode, TResult>(
 				try {
 					ctx.f |= IsSyncExecuting;
 					iterationP = ctx.iterator!.next(
-						oldValue,
+						oldResult,
 					) as Promise<ChildrenIteratorResult>;
 				} finally {
 					ctx.f &= ~IsSyncExecuting;
 				}
 			}
+
+			initial = false;
 		}
 	} finally {
 		if (done) {
