@@ -271,7 +271,6 @@ export function createElement<TTag extends Tag>(
 		for (const propName of SPECIAL_PROP_BASES) {
 			const deprecatedPropName = propPrefix + propName;
 			if (deprecatedPropName in (props as TagProps<TTag>)) {
-				// eslint-disable-next-line no-console
 				console.warn(
 					`The \`${deprecatedPropName}\` prop is deprecated. Use \`${propName}\` instead.`,
 				);
@@ -1581,21 +1580,17 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	/**
 	 * The current props of the associated element.
 	 *
-	 * Typically, you should read props either via the first parameter of the
-	 * component or via the context iterator methods. This property is mainly for
-	 * plugins or utilities which wrap contexts.
+	 * @deprecated
 	 */
 	get props(): ComponentProps<T> {
+		console.warn("The props property is deprecated");
 		return this[_ContextImpl].ret.el.props as ComponentProps<T>;
 	}
 
-	// TODO: Should we rename this???
 	/**
 	 * The current value of the associated element.
 	 *
-	 * Typically, you should read values via refs, generator yield expressions,
-	 * or the refresh, schedule, cleanup, or flush methods. This property is
-	 * mainly for plugins or utilities which wrap contexts.
+	 * @deprecated
 	 */
 	get value(): TResult {
 		return this[_ContextImpl].renderer.read(getValue(this[_ContextImpl].ret));
@@ -1679,7 +1674,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 			return ctx.renderer.read(undefined);
 		} else if (ctx.f & IsSyncExecuting) {
 			console.error("Component is already executing");
-			return this.value;
+			return ctx.renderer.read(getValue(ctx.ret));
 		}
 
 		const value = enqueueComponentRun(ctx);
