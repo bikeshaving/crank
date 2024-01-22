@@ -30,7 +30,7 @@
     "no-console": [
       "error",
       {
-        "allow": ["info", "error"]
+        "allow": ["info", "warn", "error"]
       }
     ],
     "no-unused-vars": 0,
