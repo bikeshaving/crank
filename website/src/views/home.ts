@@ -22,8 +22,8 @@ const components = {
 					font-size: ${depth === 2
 						? "max(5vh, 40px)"
 						: depth === 3
-						? "max(4vh, 30px)"
-						: null};
+							? "max(4vh, 30px)"
+							: null};
 					color: var(${depth === 3 ? "--highlight-color" : "--text-color"});
 					margin: 1em auto;
 					${(depth === 2 || depth === 3) && "padding: 1em 0"};

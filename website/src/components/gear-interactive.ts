@@ -345,8 +345,8 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 					<g
 						style="
 							transform: translate(${x3 + pitchRadius3 - mod}px, ${
-			y3 + 9 + ((scrollTop * speed) % (mod * Math.PI))
-		}px);
+								y3 + 9 + ((scrollTop * speed) % (mod * Math.PI))
+							}px);
 						"
 					>
 						<${Rack} mod=${mod} height=${height} />
