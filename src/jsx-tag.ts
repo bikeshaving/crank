@@ -540,6 +540,6 @@ function formatTagForError(tag: unknown): string {
 	return typeof tag === "function"
 		? tag.name + "()"
 		: typeof tag === "string"
-		? `"${tag}"`
-		: JSON.stringify(tag);
+			? `"${tag}"`
+			: JSON.stringify(tag);
 }
