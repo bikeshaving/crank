@@ -267,14 +267,16 @@ export function createElement<TTag extends Tag>(
 		props = {} as TagProps<TTag>;
 	}
 
-	for (const propPrefix of DEPRECATED_PROP_PREFIXES) {
-		for (const propName of SPECIAL_PROP_BASES) {
-			const deprecatedPropName = propPrefix + propName;
+	for (let i = 0; i < DEPRECATED_PROP_PREFIXES.length; i++) {
+		const propPrefix = DEPRECATED_PROP_PREFIXES[i];
+		for (let j = 0; j < SPECIAL_PROP_BASES.length; j++) {
+			const propBase = SPECIAL_PROP_BASES[j];
+			const deprecatedPropName = propPrefix + propBase;
 			if (deprecatedPropName in (props as TagProps<TTag>)) {
 				console.warn(
-					`The \`${deprecatedPropName}\` prop is deprecated. Use \`${propName}\` instead.`,
+					`The \`${deprecatedPropName}\` prop is deprecated. Use \`${propBase}\` instead.`,
 				);
-				(props as TagProps<TTag>)[propName] = (props as TagProps<TTag>)[
+				(props as TagProps<TTag>)[propBase] = (props as TagProps<TTag>)[
 					deprecatedPropName
 				];
 			}
