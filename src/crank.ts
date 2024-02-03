@@ -24,12 +24,12 @@ function arrayify<T>(
 	return value == null
 		? []
 		: Array.isArray(value)
-		? value
-		: typeof value === "string" ||
-		  typeof (value as any)[Symbol.iterator] !== "function"
-		? [value]
-		: // TODO: inference broke in TypeScript 3.9.
-		  [...(value as any)];
+			? value
+			: typeof value === "string" ||
+				  typeof (value as any)[Symbol.iterator] !== "function"
+				? [value]
+				: // TODO: inference broke in TypeScript 3.9.
+					[...(value as any)];
 }
 
 function isIteratorLike(
@@ -56,8 +56,8 @@ export type Tag = string | symbol | Component;
 export type TagProps<TTag extends Tag> = TTag extends string
 	? JSX.IntrinsicElements[TTag]
 	: TTag extends Component<infer TProps>
-	? TProps & JSX.IntrinsicAttributes
-	: Record<string, unknown> & JSX.IntrinsicAttributes;
+		? TProps & JSX.IntrinsicAttributes
+		: Record<string, unknown> & JSX.IntrinsicAttributes;
 
 /***
  * SPECIAL TAGS
@@ -908,7 +908,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 									oldProps,
 									hydrationData,
 								),
-						  )
+							)
 						: updateRaw(renderer, ret, scope, oldProps, hydrationData);
 				} else if (child.tag === Fragment) {
 					value = hydrationBlock
@@ -922,7 +922,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 									ret as Retainer<TNode>,
 									hydrationData,
 								),
-						  )
+							)
 						: updateFragment(
 								renderer,
 								root,
@@ -931,7 +931,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 								scope,
 								ret,
 								hydrationData,
-						  );
+							);
 				} else if (typeof child.tag === "function") {
 					value = hydrationBlock
 						? hydrationBlock.then(() =>
@@ -945,7 +945,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 									oldProps,
 									hydrationData,
 								),
-						  )
+							)
 						: updateComponent(
 								renderer,
 								root,
@@ -955,7 +955,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 								ret,
 								oldProps,
 								hydrationData,
-						  );
+							);
 				} else {
 					value = hydrationBlock
 						? hydrationBlock.then(() =>
@@ -968,7 +968,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 									oldProps,
 									hydrationData,
 								),
-						  )
+							)
 						: updateHost(
 								renderer,
 								root,
@@ -977,7 +977,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 								ret,
 								oldProps,
 								hydrationData,
-						  );
+							);
 				}
 			}
 
@@ -1551,8 +1551,8 @@ const _ContextImpl = Symbol.for("crank.ContextImpl");
 type ComponentProps<T> = T extends () => any
 	? {}
 	: T extends (props: infer U) => any
-	? U
-	: T;
+		? U
+		: T;
 /**
  * A class which is instantiated and passed to every component as its this
  * value. Contexts form a tree just like elements and all components in the
