@@ -23,6 +23,17 @@ test("onevent", () => {
 	Assert.is(mock.callCount, 3);
 });
 
+test("onevent camelCased", () => {
+	const mock = Sinon.fake();
+	renderer.render(<button onClick={mock}>Click me</button>, document.body);
+
+	const button = document.body.firstChild as HTMLButtonElement;
+	button.click()!;
+	button.click()!;
+	button.click()!;
+	Assert.is(mock.callCount, 3);
+});
+
 test("onevent SVG", () => {
 	const mock = Sinon.fake();
 	renderer.render(<svg onclick={mock} />, document.body);

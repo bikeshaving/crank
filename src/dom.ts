@@ -139,6 +139,16 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 				break;
 			default: {
 				if (
+					name[0] === "o" &&
+					name[1] === "n" &&
+					name[2] === name[2].toUpperCase() &&
+					typeof value === "function"
+				) {
+					// Support React-style event names (onClick, onChange, etc.)
+					name = name.toLowerCase();
+				}
+
+				if (
 					name in node &&
 					// boolean properties will coerce strings, but sometimes they map to
 					// enumerated attributes, where truthy strings ("false", "no") map to
