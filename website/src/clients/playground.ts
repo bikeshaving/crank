@@ -100,10 +100,10 @@ function* Playground(this: Context, {}) {
 								value=${exampleName}
 								onchange=${onexamplechange}
 							>
-								<option value="" $key=${name}>Load an example...</option>
+								<option value="" key=${name}>Load an example...</option>
 								${examples.map(
 									({name, label}) => jsx`
-									<option value=${name} $key=${name}>${label}</option>
+									<option value=${name} key=${name}>${label}</option>
 								`,
 								)}
 							</select>

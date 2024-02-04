@@ -248,8 +248,8 @@ export function* CodePreview(
 						`
 					}
 					<iframe
-						$key=${iframeID}
-						$ref=${(el: HTMLIFrameElement) => (iframe = el)}
+						key=${iframeID}
+						ref=${(el: HTMLIFrameElement) => (iframe = el)}
 						class="
 							playground-iframe
 							${css`

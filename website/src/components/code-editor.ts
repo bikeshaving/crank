@@ -377,7 +377,7 @@ export function* CodeEditor(
 				`
 				}
 				<${ContentArea}
-					$ref=${(el: ContentAreaElement) => (area = el)}
+					ref=${(el: ContentAreaElement) => (area = el)}
 					value=${value}
 					renderSource=${renderSource}
 					selectionRange=${selectionRange}
@@ -415,7 +415,7 @@ export function* CodeEditor(
 								// TODO: using the virtualizer start and ends with static is breaking paste
 								return jsx`
 									<${Line}
-										$key=${keyer.keyAt(index) + "line"}
+										key=${keyer.keyAt(index) + "line"}
 										line=${line}
 										lineNumber=${l}
 									/>

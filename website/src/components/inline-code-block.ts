@@ -65,7 +65,7 @@ export function* InlineCodeBlock(
 							max-width: 100%;
 						`}>
 							<${CodeEditor}
-								$static
+								static
 								value=${value}
 								lang=${lang}
 								editable=${editable}

@@ -102,8 +102,8 @@ export function* ContentArea(
 		yield jsx`
 			<content-area
 				...${rest}
-				$ref=${(el: ContentAreaElement) => (area = el)}
-				$static=${composing}
+				ref=${(el: ContentAreaElement) => (area = el)}
+				static=${composing}
 			>${children}</content-area>
 		`;
 
