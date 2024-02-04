@@ -1216,6 +1216,9 @@ function commitHost<TNode, TScope>(
 	let value = ret.value as TNode;
 	if (hydrationValue != null) {
 		value = ret.value = hydrationValue;
+		if (typeof ret.el.ref === "function") {
+			ret.el.ref(value);
+		}
 	}
 
 	let props = ret.el.props;
