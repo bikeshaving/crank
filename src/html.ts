@@ -59,6 +59,7 @@ function printAttrs(props: Record<string, any>): string {
 			case name === "key":
 			case name === "ref":
 			case name === "static":
+			// TODO: Remove these deprecated props
 			case name === "crank-key":
 			case name === "crank-ref":
 			case name === "crank-static":
