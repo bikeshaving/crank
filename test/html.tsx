@@ -102,6 +102,19 @@ test("null", () => {
 	Assert.is(renderer.render(null), "");
 });
 
+test("callbacks are not rendered", () => {
+	Assert.is(
+		renderer.render(
+			<div
+				onclick={() => {
+					// do nothing
+				}}
+			/>,
+		),
+		"<div></div>",
+	);
+});
+
 test("fragment", () => {
 	Assert.is(
 		renderer.render(
