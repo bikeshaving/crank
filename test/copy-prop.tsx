@@ -4,7 +4,7 @@ import * as Assert from "uvu/assert";
 import {createElement, Context} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
-const test = suite("static");
+const test = suite("copy-prop");
 
 test.after.each(() => {
 	renderer.render(null, document.body);
@@ -12,12 +12,12 @@ test.after.each(() => {
 });
 
 test("host", () => {
-	renderer.render(<div static={true}>Hello world</div>, document.body);
+	renderer.render(<div copy={true}>Hello world</div>, document.body);
 
 	Assert.is(document.body.innerHTML, "<div>Hello world</div>");
 
 	renderer.render(
-		<div static={true} style="background-color: red">
+		<div copy={true} style="background-color: red">
 			Hello again
 		</div>,
 		document.body,
@@ -30,15 +30,15 @@ test("component", () => {
 		return <div>Hello {name}</div>;
 	}
 
-	renderer.render(<Greeting static={true} name="world" />, document.body);
+	renderer.render(<Greeting copy={true} name="world" />, document.body);
 
 	Assert.is(document.body.innerHTML, "<div>Hello world</div>");
 
-	renderer.render(<Greeting static={true} name="Alice" />, document.body);
+	renderer.render(<Greeting copy={true} name="Alice" />, document.body);
 
 	Assert.is(document.body.innerHTML, "<div>Hello world</div>");
 
-	renderer.render(<Greeting static={false} name="Bob" />, document.body);
+	renderer.render(<Greeting copy={false} name="Bob" />, document.body);
 
 	Assert.is(document.body.innerHTML, "<div>Hello Bob</div>");
 });
@@ -50,11 +50,11 @@ test("component refresh", () => {
 		return <div>Hello {name}</div>;
 	}
 
-	renderer.render(<Greeting static={true} name="world" />, document.body);
+	renderer.render(<Greeting copy={true} name="world" />, document.body);
 
 	Assert.is(document.body.innerHTML, "<div>Hello world</div>");
 
-	renderer.render(<Greeting static={true} name="Alice" />, document.body);
+	renderer.render(<Greeting copy={true} name="Alice" />, document.body);
 
 	Assert.is(document.body.innerHTML, "<div>Hello world</div>");
 
@@ -68,11 +68,11 @@ test("async component", async () => {
 		return <div>Hello {name}</div>;
 	}
 
-	await renderer.render(<Greeting static={true} name="world" />, document.body);
+	await renderer.render(<Greeting copy={true} name="world" />, document.body);
 
 	Assert.is(document.body.innerHTML, "<div>Hello world</div>");
 	const p1 = renderer.render(
-		<Greeting static={true} name="Alice" />,
+		<Greeting copy={true} name="Alice" />,
 		document.body,
 	);
 
@@ -81,7 +81,7 @@ test("async component", async () => {
 	Assert.is(document.body.innerHTML, "<div>Hello world</div>");
 
 	const p2 = renderer.render(
-		<Greeting static={false} name="Bob" />,
+		<Greeting copy={false} name="Bob" />,
 		document.body,
 	);
 
@@ -98,11 +98,11 @@ test("async component refresh", async () => {
 		return <div>Hello {name}</div>;
 	}
 
-	await renderer.render(<Greeting static={true} name="world" />, document.body);
+	await renderer.render(<Greeting copy={true} name="world" />, document.body);
 
 	Assert.is(document.body.innerHTML, "<div>Hello world</div>");
 	const p1 = renderer.render(
-		<Greeting static={true} name="Alice" />,
+		<Greeting copy={true} name="Alice" />,
 		document.body,
 	);
 
@@ -126,7 +126,7 @@ test("inflight", async () => {
 	const p1 = renderer.render(<Greeting name="world" />, document.body);
 
 	const p2 = renderer.render(
-		<Greeting static={true} name="Alice" />,
+		<Greeting copy={true} name="Alice" />,
 		document.body,
 	);
 
@@ -157,11 +157,11 @@ test("generator component", async () => {
 		}
 	}
 
-	renderer.render(<Greeting static={true} name="world" />, document.body);
+	renderer.render(<Greeting copy={true} name="world" />, document.body);
 
 	Assert.is(document.body.innerHTML, "<div>Hello world 0</div>");
 
-	renderer.render(<Greeting static={true} name="Alice" />, document.body);
+	renderer.render(<Greeting copy={true} name="Alice" />, document.body);
 
 	Assert.is(document.body.innerHTML, "<div>Hello world 0</div>");
 
@@ -172,7 +172,7 @@ test("generator component", async () => {
 test("isolate higher-order component", () => {
 	function isolate(Component: any) {
 		return function Wrapper(props: any) {
-			return <Component {...props} static={true} />;
+			return <Component {...props} copy={true} />;
 		};
 	}
 
@@ -205,8 +205,8 @@ test("isolate higher-order component", () => {
 });
 
 test("tag change", () => {
-	renderer.render(<div static={true}>Hello world</div>, document.body);
-	renderer.render(<span static={true}>Hello world</span>, document.body);
+	renderer.render(<div copy={true}>Hello world</div>, document.body);
+	renderer.render(<span copy={true}>Hello world</span>, document.body);
 	Assert.is(document.body.innerHTML, "<span>Hello world</span>");
 });
 
