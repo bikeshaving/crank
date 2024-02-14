@@ -227,8 +227,8 @@ export class Element<TTag extends Tag = Tag> {
 		return this.props.ref;
 	}
 
-	get static_(): boolean {
-		return !!this.props["static"];
+	get copy(): boolean {
+		return !!this.props.copy;
 	}
 }
 
@@ -241,11 +241,11 @@ export function isElement(value: any): value is Element {
 
 const DEPRECATED_PROP_PREFIXES = ["crank-", "c-", "$"];
 
-const SPECIAL_PROP_BASES = ["key", "ref", "static"];
+const DEPRECATED_SPECIAL_PROP_BASES = ["key", "ref", "static"];
 
-const SPECIAL_PROPS = new Set(["children", ...SPECIAL_PROP_BASES]);
+const SPECIAL_PROPS = new Set(["children", "key", "ref", "copy"]);
 for (const propPrefix of DEPRECATED_PROP_PREFIXES) {
-	for (const propBase of SPECIAL_PROP_BASES) {
+	for (const propBase of DEPRECATED_SPECIAL_PROP_BASES) {
 		SPECIAL_PROPS.add(propPrefix + propBase);
 	}
 }
@@ -269,14 +269,15 @@ export function createElement<TTag extends Tag>(
 
 	for (let i = 0; i < DEPRECATED_PROP_PREFIXES.length; i++) {
 		const propPrefix = DEPRECATED_PROP_PREFIXES[i];
-		for (let j = 0; j < SPECIAL_PROP_BASES.length; j++) {
-			const propBase = SPECIAL_PROP_BASES[j];
+		for (let j = 0; j < DEPRECATED_SPECIAL_PROP_BASES.length; j++) {
+			const propBase = DEPRECATED_SPECIAL_PROP_BASES[j];
 			const deprecatedPropName = propPrefix + propBase;
+			const targetPropBase = propBase === "static" ? "copy" : propBase;
 			if (deprecatedPropName in (props as TagProps<TTag>)) {
 				console.warn(
-					`The \`${deprecatedPropName}\` prop is deprecated. Use \`${propBase}\` instead.`,
+					`The \`${deprecatedPropName}\` prop is deprecated. Use \`${targetPropBase}\` instead.`,
 				);
-				(props as TagProps<TTag>)[propBase] = (props as TagProps<TTag>)[
+				(props as TagProps<TTag>)[targetPropBase] = (props as TagProps<TTag>)[
 					deprecatedPropName
 				];
 			}
@@ -880,13 +881,13 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				value = getInflightValue(ret);
 			} else {
 				let oldProps: Record<string, any> | undefined;
-				let static_ = false;
+				let copy = false;
 				if (typeof ret === "object" && ret.el.tag === child.tag) {
 					oldProps = ret.el.props;
 					ret.el = child;
-					if (child.static_) {
+					if (child.copy) {
 						value = getInflightValue(ret);
-						static_ = true;
+						copy = true;
 					}
 				} else {
 					if (typeof ret === "object") {
@@ -898,7 +899,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					ret.fallbackValue = fallback;
 				}
 
-				if (static_) {
+				if (copy) {
 					// pass
 				} else if (child.tag === Raw) {
 					value = hydrationBlock

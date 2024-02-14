@@ -5,7 +5,7 @@ import * as Sinon from "sinon";
 import {Context, Copy, createElement, Element, Fragment} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
-const test = suite("copy");
+const test = suite("copy-el");
 
 test.after.each(() => {
 	document.body.innerHTML = "";
