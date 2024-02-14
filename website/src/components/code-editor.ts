@@ -1,4 +1,4 @@
-import {jsx} from "@b9g/crank/standalone";
+import {Copy, jsx} from "@b9g/crank/standalone";
 import type {Context, Element as CrankElement} from "@b9g/crank";
 import {css} from "@emotion/css";
 import {Edit} from "@b9g/revise/edit.js";
@@ -8,54 +8,60 @@ import {EditHistory} from "@b9g/revise/history.js";
 import type {ContentAreaElement} from "@b9g/revise/contentarea.js";
 
 import type {Token} from "prismjs";
+
+//import {parser} from "@lezer/javascript";
 import {ContentArea} from "./contentarea.js";
 import {tokenize} from "../utils/prism.js";
-import {useVirtualizer} from "../utils/virtualizer.js";
-import type {Virtualizer} from "../utils/virtualizer.js";
-import {debounce} from "../utils/fns.js";
 
-function Gutter(
-	this: Context<typeof Gutter>,
-	{virtualizer}: {virtualizer: Virtualizer<any, any>},
-) {
-	const items = virtualizer.getVirtualItems();
-	const totalSize = virtualizer.getTotalSize();
-	return jsx`
-		<div
-			class="blur-background ${css`
-				display: none;
-				@media (min-width: 800px) {
-					display: block;
-				}
+function* Gutter(this: Context<typeof Gutter>, {length}: {length: number}) {
+	let initial = true;
+	let newLength: number;
+	const lines = Array.from({length}, (_, i) => i + 1);
+	for ({length: newLength} of this) {
+		if (length === newLength) {
+			if (!initial) {
+				yield jsx`<${Copy} />`;
+				continue;
+			}
+		} else {
+			if (length < newLength) {
+				lines.push(
+					...Array.from({length: newLength - length}, (_, i) => i + length + 1),
+				);
+			} else {
+				lines.splice(newLength);
+			}
+		}
 
-				flex: none;
-				margin: 0;
-				padding: 1em 0.5em;
-				color: var(--text-color);
-				font-size: 16px;
-				font-family: monospace;
-				line-height: 1.4;
-				text-align: right;
-				border-right: 1px solid var(--text-color);
-				position: sticky;
-				left: 0;
-			`}"
-			style="height: max(calc(100vh - 50px), ${totalSize + 50}px);"
-		>
+		yield jsx`
 			<div
-				class=${css`
-					position: relative;
-					top: ${items[0]?.start}px;
-				`}
+				static=${length === newLength}
+				class="blur-background ${css`
+					display: none;
+					@media (min-width: 800px) {
+						display: flex;
+					}
+					flex-direction: column;
+					flex: none;
+					margin: 0;
+					padding: 1em 0.5em;
+					color: var(--text-color);
+					font-size: 16px;
+					font-family: monospace;
+					line-height: 1.4;
+					text-align: right;
+					border-right: 1px solid var(--text-color);
+					position: sticky;
+					left: 0;
+				`}"
 			>
-				${items.map(
-					(item) => jsx`
-						<div style="height: ${item.size}px">${item.index + 1}</div>
-					`,
-				)}
+				<!-- TODO: don't hardcode the height -->
+				${lines.map((line) => jsx`<div style="height: 23px">${line}</div>`)}
 			</div>
-		</div>
-	`;
+		`;
+		initial = false;
+		length = newLength;
+	}
 }
 
 const IS_CLIENT = typeof document !== "undefined";
@@ -133,7 +139,6 @@ export function* CodeEditor(
 	},
 ) {
 	const keyer = new Keyer();
-	let editHistory = new EditHistory();
 	let selectionRange: SelectionRange | undefined;
 	let renderSource: string | undefined;
 	let area!: ContentAreaElement;
@@ -163,30 +168,11 @@ export function* CodeEditor(
 
 		value = ev.target.value;
 		renderSource = "refresh";
+		currentEdit = ev.detail.edit;
 		this.refresh();
 	});
 
-	const virtualizer = useVirtualizer(this, {
-		count: 0,
-		getScrollElement: () => {
-			return getScroller(area);
-		},
-		// Debouncing because calling measureElement causes this function to fire
-		// multiple times.
-		onChange: debounce(() => {
-			//value = area.value;
-			//renderSource = "virtualizer";
-			this.refresh();
-		}, 0),
-		estimateSize: () => {
-			return 19;
-		},
-		// TODO: read this from the DOM and un-hardcode
-		scrollPaddingStart: 14,
-		scrollPaddingEnd: 14,
-		overscan: 100,
-	});
-
+	let editHistory = new EditHistory();
 	{
 		// history stuff
 		const undo = () => {
@@ -196,6 +182,7 @@ export function* CodeEditor(
 				selectionRange = selectionRangeFromEdit(edit);
 				keyer.transform(edit);
 				renderSource = "history";
+				currentEdit = edit;
 				this.refresh();
 				return true;
 			}
@@ -210,6 +197,7 @@ export function* CodeEditor(
 				selectionRange = selectionRangeFromEdit(edit);
 				keyer.transform(edit);
 				renderSource = "history";
+				currentEdit = edit;
 				this.refresh();
 				return true;
 			}
@@ -307,6 +295,8 @@ export function* CodeEditor(
 				this.refresh();
 			} else if (ev.key === "Tab") {
 				// TODO:
+			} else if (ev.key === "Escape") {
+				// TODO:
 			}
 		});
 	}
@@ -319,43 +309,16 @@ export function* CodeEditor(
 			renderSource = undefined;
 		});
 
-		this.flush((el) => {
-			const pre = el.querySelector("pre")!;
-			for (let i = 0; i < pre.children.length; i++) {
-				const child = pre.children[i];
-				virtualizer.measureElement(child);
-			}
-		});
-
 		if (renderSource == null) {
-			// Very perplexing.
 			value = value1;
 		}
 
 		// make sure the value always ends with a newline
 		value = value.match(/(?:\r|\n|\r\n)$/) ? value : value + "\n";
 
-		const lineStarts: Array<number> = [];
-		{
-			// remove last empty line
-			const lines = value.split(/\n/).slice(0, -1);
-			for (let i = 0, c = 0; i < lines.length; i++) {
-				lineStarts.push(c);
-				c += lines[i].length + 1;
-			}
-
-			virtualizer.setOptions({
-				...virtualizer.options,
-				count: lines.length,
-			});
-		}
-
-		const lines = tokenize(value, language || "javascript");
+		const lineTokens = tokenize(value, language || "javascript");
 		let index = 0;
-		//const items = virtualizer.getVirtualItems();
-		//const start = items[0]?.index || 0;
-		//const end = items[items.length - 1]?.index || 0;
-		yield jsx`
+		const result = jsx`
 			<div
 				class=${css`
 					position: relative;
@@ -364,17 +327,7 @@ export function* CodeEditor(
 					display: flex;
 				`}
 			>
-				${
-					showGutter &&
-					jsx`
-					<${Gutter}
-						length=${lines.length}
-						lineStarts=${lineStarts}
-						virtualizer=${virtualizer}
-						keyer=${keyer}
-					/>
-				`
-				}
+				${showGutter && jsx`<${Gutter} length=${lineTokens.length} />`}
 				<${ContentArea}
 					ref=${(el: ContentAreaElement) => (area = el)}
 					value=${value}
@@ -404,7 +357,7 @@ export function* CodeEditor(
 							`}
 						"
 					>
-						${lines.map((line, l) => {
+						${lineTokens.map((line, l) => {
 							// TODO: only highlight visible lines
 							// TODO: line should probably be a custom Prism token with the
 							// length already calculated.
@@ -427,18 +380,8 @@ export function* CodeEditor(
 				</${ContentArea}>
 			</div>
 		`;
+		yield result;
 	}
-}
-
-function getScroller(el: Element | null): Element | null {
-	for (; el != null; el = el.parentElement) {
-		const overflowY = window.getComputedStyle(el).overflowY;
-		if (overflowY === "auto" || overflowY === "scroll") {
-			return el;
-		}
-	}
-
-	return document.scrollingElement;
 }
 
 function getPreviousLine(text: string, index: number) {
