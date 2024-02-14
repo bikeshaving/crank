@@ -16,7 +16,7 @@ if (!window.customElements.get("content-area")) {
 	window.customElements.define("content-area", ContentAreaElement);
 }
 
-function CodeEditorNavbar({children}) {
+function CodeEditorNavbar({children}: any) {
 	return jsx`
 		<div class=${css`
 			flex: none;
@@ -34,9 +34,11 @@ function CodeEditorNavbar({children}) {
 	`;
 }
 
-const examples = extractData(document.getElementById("examples"));
+const examples = extractData(
+	document.getElementById("examples") as HTMLScriptElement,
+);
 
-function* Playground(this: Context, {}) {
+function* Playground(this: Context) {
 	let code = localStorage.getItem("playground-value") || "";
 	if (!code.trim()) {
 		code = examples[0].code;
@@ -44,16 +46,14 @@ function* Playground(this: Context, {}) {
 
 	this.addEventListener("contentchange", (ev: any) => {
 		code = ev.target.value;
-
 		localStorage.setItem("playground-value", code);
-		this.refresh();
 	});
 
-	let exampleName: "" | "timer" | "tetris" = "";
+	let exampleName = "";
 	const onexamplechange = (ev: Event) => {
 		exampleName = (ev.target as HTMLSelectElement).value;
 		const {code: code1} = examples.find(
-			(example) => example.name === exampleName,
+			(example: any) => example.name === exampleName,
 		);
 		code = code1;
 		this.refresh();
@@ -100,9 +100,9 @@ function* Playground(this: Context, {}) {
 								value=${exampleName}
 								onchange=${onexamplechange}
 							>
-								<option value="" key=${name}>Load an example...</option>
+								<option value="">Load an example...</option>
 								${examples.map(
-									({name, label}) => jsx`
+									({name, label}: any) => jsx`
 									<option value=${name} key=${name}>${label}</option>
 								`,
 								)}

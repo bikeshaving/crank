@@ -68,18 +68,20 @@ export class Storage {
 		this.cache = new Map();
 	}
 
-	async build(filename: string): Promise<Array<OutputFile>> {
+	async build(
+		filename: string,
+		options: Partial<ESBuild.BuildOptions> = {},
+	): Promise<Array<OutputFile>> {
 		let ctx = this.cache.get(filename);
 		if (ctx == null) {
 			const entryname = Path.resolve(this.dirname, filename);
 			ctx = await ESBuild.context({
-				entryPoints: [entryname],
 				// TODO: pass these in via components
 				entryNames: "[name]-[hash]",
 				bundle: true,
 				write: false,
 				minify: false,
-				format: "esm",
+				format: "iife",
 				outbase: this.dirname,
 				outdir: this.dirname,
 				sourcemap: true,
@@ -90,6 +92,8 @@ export class Storage {
 						plugins: [postcssPresetEnv() as any, postcssNested()],
 					}),
 				],
+				...options,
+				entryPoints: [entryname],
 			});
 
 			this.cache.set(filename, ctx);
@@ -101,8 +105,12 @@ export class Storage {
 		return result.outputFiles || [];
 	}
 
-	async url(filename: string, extension: string): Promise<string> {
-		const outputs = await this.build(filename);
+	async url(
+		filename: string,
+		extension: string,
+		options: Partial<ESBuild.BuildOptions> = {},
+	): Promise<string> {
+		const outputs = await this.build(filename, options);
 		const output = outputs.find((output) => output.path.endsWith(extension));
 		if (!output) {
 			// TODO: More descriptive error message
@@ -212,7 +220,9 @@ export async function Script(this: Context, props: Record<string, any>) {
 
 	let src: string;
 	({src, ...props} = props);
-	src = await storage.url(src, ".js");
+	src = await storage.url(src, ".js", {
+		format: props.type === "module" ? "esm" : "iife",
+	});
 	return jsx`<script src=${src} ...${props} />`;
 }
 
@@ -225,6 +235,8 @@ export async function Link(this: Context, props: Record<string, any>) {
 	let href: string;
 	let rel: string;
 	({href, rel = "stylesheet", ...props} = props);
-	href = await storage.url(href, ".css");
+	href = await storage.url(href, ".css", {
+		format: props.type === "module" ? "esm" : "iife",
+	});
 	return jsx`<link href=${href} rel=${rel} ...${props} />`;
 }
