@@ -2,9 +2,12 @@
 title: Components
 ---
 
-So far, we’ve only seen and used *host elements*, lower-case elements like `<a>` or `<div>`, which correspond to HTML. Eventually, we’ll want to group these elements into reusable *components*. Crank uses plain old JavaScript functions to define components. The type of the function determines the component’s behavior.
-
 ## Basic Components
+
+So far, we’ve only seen and used *host elements*. By convention, all host elements use lowercase tags like `<a>` or `<div>`, and these elements are rendered as their HTML equivalents.
+
+However, eventually we’ll want to group these elements into reusable *components*. In Crank, components are defined with plain old JavaScript functions, including async and generator functions, which return or yield JSX elements. These functions can be referenced as element tags, and component elements are distinguished from host elements through the use of capitalized identifiers. The capitalized identifier is not just a convention but a way to tell JSX compilers to interpret the tag as an identifier rather than a literal string.
+
 The simplest kind of component is a *function component*. When rendered, the function is invoked with the props of the element as its first argument, and the return value of the function is rendered as the element’s children.
 
 ```jsx live
@@ -73,8 +76,8 @@ In the preceding example, the component’s local state was updated directly whe
 
 Crank allows components to control their own execution by passing in an object called a *context* as the `this` keyword of each component. Contexts provide several utility methods, the most important of which is the `refresh()` method, which tells Crank to update the related component instance in place.
 
-```jsx
-function *Timer() {
+```jsx live
+function *Timer({message}) {
   let seconds = 0;
   const interval = setInterval(() => {
     seconds++;
@@ -84,7 +87,35 @@ function *Timer() {
   try {
     while (true) {
       yield (
-        <div>Seconds elapsed: {seconds}</div>
+        <div>{message} {seconds}</div>
+      );
+    }
+  } finally {
+    clearInterval(interval);
+  }
+}
+
+renderer.render(<Timer message="Seconds elapsed:" />, document.body);
+```
+
+This `<Timer>` component is similar to the `<Counter>` one, except now the state (the local variable `seconds`) is updated in a `setInterval()` callback, rather than when the component is rerendered. Additionally, the `refresh()` method is called to ensure that the generator is stepped through whenever the `setInterval()` callback fires, so that the rendered DOM actually reflects the updated `seconds` variable. Finally, the `<Timer>` component is passed a display message as a prop.
+
+One important detail about the `Timer` example is that it cleans up after itself with `clearInterval()` in the `finally` block. Behind the scenes, Crank will call the `return()` method on an element’s generator object when it is unmounted.
+
+If you hate the idea of using the `this` keyword, the context is also passed in as the second parameter of components.
+
+```jsx
+function *Timer({message}, ctx) {
+  let seconds = 0;
+  const interval = setInterval(() => {
+    seconds++;
+    ctx.refresh();
+  }, 1000);
+
+  try {
+    while (true) {
+      yield (
+        <div>{message} {seconds}</div>
       );
     }
   } finally {
@@ -93,13 +124,9 @@ function *Timer() {
 }
 ```
 
-This `<Timer />` component is similar to the `<Counter />` one, except now the state (the local variable `seconds`) is updated in a `setInterval()` callback, rather than when the component is rerendered. Additionally, the `refresh()` method is called to ensure that the generator is stepped through whenever the `setInterval()` callback fires, so that the rendered DOM actually reflects the updated `seconds` variable.
-
-One important detail about the `Timer` example is that it cleans up after itself with `clearInterval()` in the `finally` block. Behind the scenes, Crank will call the `return()` method on an element’s generator object when it is unmounted.
-
 ## The Render Loop
 
-The generator components we’ve seen so far haven’t used props. They’ve also used while (true) loops, which was done mainly for learning purposes. In actuality, Crank contexts are iterables of props, so you can `for...of` iterate through them.
+The `<Timer>` component works, but it can be improved. Firstly, while the component is stateful, it would not update the message if it was rerendered with new props. Secondly, the `while (true)` loop can iterate infinitely if you forget to add a `yield`. To solve these issues, Crank contexts are an iterable of the latest props.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -120,23 +147,21 @@ function *Timer({message}) {
 }
 
 renderer.render(
-  <Timer message="Seconds elapsed" />,
+  <Timer message="Seconds elapsed:" />,
   document.body,
 );
 
 setTimeout(() => {
   renderer.render(
-    <Timer message="Hello from the timeout" />,
+    <Timer message="Seconds elapsed (updated in setTimeout):" />,
     document.body,
   );
-}, 4500);
+}, 2500);
 ```
 
-The loop created by iterating over contexts is called the *render loop*. By replacing the `while` loop with a `for...of` loop which iterates over `this`, you can get the latest props each time the generator is resumed.
+The loop created by iterating over contexts is called the *render loop*. By replacing the `while` loop with a `for...of` loop, you can get the latest props each time the generator is resumed. It also provides benefits over `while` loops, like throwing errors if you forget to `yield`, and allowing you to write cleanup code after the loop without having to wrap the block in a `try`/`finally` block.
 
-The render loop has additional advantages over while loops. For instance, you can place cleanup code directly after the loop. The render loop will also throw errors if it has been iterated without a yield, to prevent infinite loops.
-
-One Crank idiom you may have noticed is that we define props in component parameters, and overwrite them using a destructuring expression in the `for...of` statement. This is an easy way to make sure those variables stay in sync with the current props of the component. For this reason, even if your component has no props, it is idiomatic to use a render loop.
+One Crank idiom you may have noticed is that we define props in function parameters, and overwrite them using a destructuring expression in the `for...of` statement. This is an easy way to make sure those variables stay in sync with the current props of the component. For this reason, even if your component has no props, it is idiomatic to destructure props and use a `for...of` loop.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -160,17 +185,18 @@ renderer.render(<Counter />, document.body);
 ```
 
 ## Default Props
-You may have noticed in the preceding examples that we used [object destructuring](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment#Object_destructuring) on the props parameter for convenience. You can further assign default values to specific props using JavaScript’s default value syntax.
+Because we use [object destructuring](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment#Object_destructuring), you can further assign default values to specific props using JavaScript’s default value syntax.
 
-```jsx
+```jsx live
+import {renderer} from "@b9g/crank/dom";
 function Greeting({name="World"}) {
   return <div>Hello, {name}</div>;
 }
 
-renderer.render(<Greeting />, document.body); // "<div>Hello World</div>"
+renderer.render(<Greeting />, document.body);
 ```
 
-This syntax works well for function components, but for generator components, you should make sure that you use the same default value in both the parameter list and the loop. A mismatch in the default values for a prop between these two positions may cause surprising behavior.
+For generator components, you should make sure that you use the same default value in both the parameter list and the loop. A mismatch in the default values for a prop between these two positions may cause surprising behavior.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";

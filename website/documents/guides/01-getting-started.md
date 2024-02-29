@@ -214,6 +214,4 @@ export default defineConfig({
 });
 ```
 
-## Shovel
-
-A full-stack framework is in the works for Crank. Stay tuned.
+## Key Examples

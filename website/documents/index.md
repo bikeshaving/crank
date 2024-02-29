@@ -5,27 +5,25 @@ description: "The Just JavaScript framework. Crank is a JavaScript / TypeScript 
 
 ## What is Crank?
 
-Crank is a JavaScript / TypeScript library for building websites and applications. It is a framework where components are defined with plain old functions, including async and generator functions, which `yield` and `return` JSX.
+Crank is a JavaScript / TypeScript library for building websites and applications. It is a framework where components are defined with plain old functions, including async and generator functions, which `yield` and `return` JSX elements.
 
 ## Why is Crank “Just JavaScript?”
 
-Many web frameworks claim to be “just JavaScript.”
-
-Few have as strong a claim as Crank.
+Many web frameworks claim to be “just JavaScript.” Few have as strong a claim as Crank.
 
 It starts with the idea that you can write components with *all* of JavaScript’s built-in function syntaxes.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
 
-function *Timer() {
+function *Timer({}, ctx) {
   let seconds = 0;
   const interval = setInterval(() => {
     seconds++;
-    this.refresh();
+    ctx.refresh();
   }, 1000);
 
-  for ({} of this) {
+  for ({} of ctx) {
     yield <p>{seconds} second{seconds !== 1 && "s"}</p>;
   }
 
@@ -69,7 +67,7 @@ function Greeting({name = "World"}) {
   return <p>Hello {name}.</p>;
 }
 
-function RandomName() {
+function RandomName({}, ctx) {
   const names = ["Alice", "Bob", "Carol", "Dave"];
   const randomName = names[Math.floor(Math.random() * names.length)];
 
@@ -78,7 +76,7 @@ function RandomName() {
     <div>
       <Greeting name={randomName} />
       {/*
-      <button onclick={() => this.refresh()}>Random name</button>
+      <button onclick={() => ctx.refresh()}>Random name</button>
       */}
     </div>
   );
@@ -182,14 +180,14 @@ function Greeting({name = "World"}) {
   return <p>Hello {name}.</p>;
 }
 
-function *CyclingName() {
+function *CyclingName({}, ctx) {
   const names = ["Alice", "Bob", "Carol", "Dave"];
   let i = 0;
   while (true) {
     yield (
       <div>
         <Greeting name={names[i % names.length]} />
-        <button onclick={() => this.refresh()}>Cycle name</button>
+        <button onclick={() => ctx.refresh()}>Cycle name</button>
       </div>
     )
 
@@ -207,13 +205,13 @@ Never memoize a callback ever again.
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
 
-function *Timer() {
+function *Timer({}, ctx) {
   let interval = null;
   let seconds = 0;
   const startInterval = () => {
     interval = setInterval(() => {
       seconds++;
-      this.refresh();
+      ctx.refresh();
     }, 1000);
   };
 
@@ -225,18 +223,18 @@ function *Timer() {
       interval = null;
     }
 
-    this.refresh();
+    ctx.refresh();
   };
 
   const resetInterval = () => {
     seconds = 0;
     clearInterval(interval);
     interval = null;
-    this.refresh();
+    ctx.refresh();
   };
 
   // The this of a Crank component is an iterable of props.
-  for ({} of this) {
+  for ({} of ctx) {
     // Welcome to the render loop.
     // Most generator components should use render loops even if they do not
     // use props.
@@ -254,7 +252,7 @@ function *Timer() {
     );
   }
 
-  // You can even put cleanup code after the loop.
+  // You can place cleanup code after the loop.
   clearInterval(interval);
 }
 
@@ -289,7 +287,7 @@ async function Definition({word}) {
   );
 }
 
-function *Dictionary() {
+function *Dictionary({}, ctx) {
   let word = "";
   const onsubmit = (ev) => {
     ev.preventDefault();
@@ -297,11 +295,11 @@ function *Dictionary() {
     const word1 = formData.get("word");
     if (word1.trim()) {
       word = word1;
-      this.refresh();
+      ctx.refresh();
     }
   };
 
-  for ({} of this) {
+  for ({} of ctx) {
     yield (
       <>
         <form
@@ -327,7 +325,7 @@ function *Dictionary() {
 renderer.render(<Dictionary />, document.body);
 ```
 
-Async generator functions let you write components that are both async *and* stateful. Crank uses promises wherever it makes sense, and has a rich async execution model which allows you to do things like racing components to display loading states.
+Async generator functions let you write components that are both async *and* stateful. Crank uses promises wherever they makes sense, and has a rich async execution model which allows you to do things like racing components to display loading states.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -366,17 +364,17 @@ function CreditCard({type, expiration, number, owner}) {
   );
 }
 
-async function *LoadingCreditCard() {
+async function *LoadingCreditCard({}, ctx) {
   await new Promise((r) => setTimeout(r, 1000));
   let count = 0;
   const interval = setInterval(() => {
     count++;
-    this.refresh();
+    ctx.refresh();
   }, 200);
 
-  this.cleanup(() => clearInterval(interval));
+  ctx.cleanup(() => clearInterval(interval));
 
-  for ({} of this) {
+  for ({} of ctx) {
     yield (
       <CreditCard
         number={"*".repeat(count) + "?".repeat(Math.max(0, 16 - count))}
@@ -410,29 +408,29 @@ async function MockCreditCard({throttle}) {
   );
 }
 
-async function *RandomCreditCard({throttle}) {
-  setTimeout(() => this.refresh());
+async function *RandomCreditCard({throttle}, ctx) {
+  setTimeout(() => ctx.refresh());
   yield null;
-  for await ({throttle} of this) {
+  for await ({throttle} of ctx) {
     yield <LoadingCreditCard />;
     yield <MockCreditCard throttle={throttle} />;
   }
 }
 
-function *CreditCardGenerator() {
+function *CreditCardGenerator({}, ctx) {
   let throttle = false;
   const toggleThrottle = () => {
     throttle = !throttle;
     // TODO: A nicer user behavior would be to not generate a new card
     // when toggling the throttle.
-    this.refresh();
+    ctx.refresh();
   };
 
-  for ({} of this) {
+  for ({} of ctx) {
     yield (
       <div>
         <div>
-          <button onclick={() => this.refresh()}>
+          <button onclick={() => ctx.refresh()}>
             Generate new card
           </button>
           {" "}

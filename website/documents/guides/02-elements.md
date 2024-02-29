@@ -8,7 +8,7 @@ title: Elements and Renderers
 Crank works with [JSX](https://facebook.github.io/jsx/), a well-supported, XML-like syntax extension to JavaScript.
 
 ### Two types of JSX transpilation
-Historically speaking, there are two ways to transform JSX: the *classic* and *automatic* transforms. Crank supports both formats.
+There are two ways to transform JSX: the *classic* and *automatic* transforms. Crank supports both formats.
 
 The classic transform turns JSX elements into `createElement()` calls.
 
@@ -83,7 +83,6 @@ console.log(html); // <div id="element">Hello world</div>
 
 ## The Parts of an Element
 
-<!-- TODO: Make this a JSX element -->
 ![Image of a JSX element](/static/parts-of-jsx.svg)
 
 An element can be thought of as having three main parts: a *tag*, *props* and *children*. These roughly correspond to the syntax for HTML, and for the most part, you can copy-paste HTML into JSX-flavored JavaScript and have things work as you would expect. The main difference is that JSX has to be well-balanced like XML, so void tags must have a closing slash (`<hr />` not `<hr>`). Also, if you forget to close an element or mismatch opening and closing tags, the parser will throw an error, whereas HTML can be unbalanced or malformed and mostly still work.
@@ -198,5 +197,3 @@ renderer.render(
 console.log(document.body.firstChild === div); // true
 console.log(document.body.firstChild.firstChild === span); // true
 ```
-
-**Note:** The documentation tries to avoid the terms “virtual DOM” or “DOM diffing” insofar as the core renderer can be extended to target multiple environments; instead, we use the terms “virtual elements” and “element diffing” to mean mostly the same thing.
