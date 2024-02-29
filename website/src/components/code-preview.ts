@@ -20,6 +20,7 @@ function generateIFrameHTML(
 			/>
 		</head>
 		<body>
+		  <!-- TODO: extract these scripts to a separate file or something -->
 			<script>
 				const colorScheme = sessionStorage.getItem("color-scheme") ||
 					(
@@ -35,7 +36,6 @@ function generateIFrameHTML(
 				}
 			</script>
 			<script>
-			{
 				window.addEventListener("load", (ev) => {
 					window.parent.postMessage(
 						JSON.stringify({type: "executed", id: ${id}}),
@@ -66,9 +66,11 @@ function generateIFrameHTML(
 				});
 
 				const obs = new ResizeObserver((entries) => {
-					const height = entries[0].contentRect.height;
-					// has vertical scrollbar
-					if (window.innerWidth > document.documentElement.clientWidth) {
+					const height = Math.max(entries[0].contentRect.height, 100);
+					if (
+						document.documentElement.clientHeight <
+						document.documentElement.scrollHeight
+					) {
 						window.parent.postMessage(
 							JSON.stringify({
 								type: "resize",
@@ -80,10 +82,7 @@ function generateIFrameHTML(
 					}
 				})
 
-				setTimeout(() => {
-					obs.observe(document.documentElement);
-				}, 0);
-			}
+				obs.observe(document.documentElement);
 			</script>
 			<script type="module">${code}</script>
 		</body>
