@@ -168,7 +168,6 @@ export function* CodeEditor(
 
 		value = ev.target.value;
 		renderSource = "refresh";
-		currentEdit = ev.detail.edit;
 		this.refresh();
 	});
 
@@ -182,7 +181,6 @@ export function* CodeEditor(
 				selectionRange = selectionRangeFromEdit(edit);
 				keyer.transform(edit);
 				renderSource = "history";
-				currentEdit = edit;
 				this.refresh();
 				return true;
 			}
@@ -197,7 +195,6 @@ export function* CodeEditor(
 				selectionRange = selectionRangeFromEdit(edit);
 				keyer.transform(edit);
 				renderSource = "history";
-				currentEdit = edit;
 				this.refresh();
 				return true;
 			}

@@ -65,6 +65,7 @@ export function* InlineCodeBlock(
 						width: 100%;
 						border: 1px solid var(--text-color);
 						margin-top: -1px;
+						margin-right: -1px;
 						${editable
 							? `@media (min-width: ${breakpoint}) {
 							max-width: 61.8%;
