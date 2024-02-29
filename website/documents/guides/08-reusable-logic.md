@@ -55,10 +55,13 @@ Anything can be passed as a key to the `provide` and `consume` methods, so you c
 
 **Note:** Crank does not link “providers” and “consumers” in any way, and doesn’t automatically refresh consumer components when the `provide` method is called. It’s up to you to ensure consumers update when providers update.
 
-### context.schedule
-You can pass a callback to the `schedule` method to listen for when the component renders. Callbacks passed to `schedule` fire synchronously after the component commits, with the rendered value of the component as its only argument. Scheduled callbacks fire once per call and callback function (think `requestAnimationFrame`, not `setInterval`). This means you have to continuously call the `schedule` method for each update if you want to execute some code every time your component commits.
+### `context.schedule()`
+You can pass a callback to the `schedule()` method to listen for when the component renders. Callbacks passed to `schedule` fire synchronously after the component renders, with the rendered value of the component as its only argument. Scheduled callbacks fire once per call and callback function per update (think `requestAnimationFrame()`, not `setInterval()`). This means you have to continuously call the `schedule` method for each update if you want to execute some code every time your component commits.
 
-### context.cleanup
+### `context.flush()`
+Similar to the `schedule()` method, this method fires when rendering has finished. Unlike the `schedule()` method, this method fires when a component’s rendered DOM is live. This is useful when you need to do something like calling `focus()` on an `<input>` element or perform DOM measurement calculations. Callbacks fire once per call and callback function per update.
+
+### `context.cleanup()`
 Similarly, you can pass a callback to the `cleanup` method to listen for when the component unmounts. Callbacks passed to `cleanup` fire synchronously when the component is unmounted. Each registered callback fires only once. The callback is called with the last rendered value of the component as its only argument.
 
 ## Strategies for Reusing Logic
@@ -73,7 +76,7 @@ import {Context} from "@bikeshaving/crank";
 
 const ContextIntervalSymbol = Symbol.for("ContextIntervalSymbol");
 
-Context.prototype.setInterval = function(callback, delay, ...args) {
+Context.prototype.setInterval = function(callback, delay, ...args) {`
   const interval = window.setInterval(callback, delay, ...args);
   if (typeof this[ContextIntervalSymbol] === "undefined") {
     this[ContextIntervalSymbol] = new Set();

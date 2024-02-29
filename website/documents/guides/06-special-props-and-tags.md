@@ -5,10 +5,10 @@ title: Special Props and Tags
 Crank provides certain APIs in the form of special props or element tags. The following is an overview of these props and tags.
 
 ## Special Props
-The following props apply to all elements, regardless of tag or renderer.
+The following prop names have special behavior. They are not passed to host elements and should not be used to define component props.
 
-### crank-key
-By default, Crank uses an element’s tag and position to determine if it represents an update or a change to the tree. Because elements often represent stateful DOM nodes or components, it can be useful to *key* the children of an element to hint to the renderer that an element has been added, moved or removed from a parent. In Crank, we do this with the special prop `crank-key`:
+### key
+By default, Crank uses an element’s tag and position to determine if it represents an update or a change to the tree. Because elements often represent stateful DOM nodes or components, it can be useful to *key* the children of an element to hint to the renderer that an element has been added, moved or removed from a parent. In Crank, we do this with the special prop `key`:
 
 ```jsx live
 import {createElement} from "https://unpkg.com/@b9g/crank/crank";
@@ -28,23 +28,24 @@ function *List() {
     reversed = !reversed;
     this.refresh();
   };
+
   for ({} of this) {
     yield (
       <div>
         {
           reversed ? (
             <>
-              <ID crank-key="d" />
-              <ID crank-key="c" />
-              <ID crank-key="b" />
-              <ID crank-key="a" />
+              <ID key="d" />
+              <ID key="c" />
+              <ID key="b" />
+              <ID key="a" />
             </>
           ) : (
             <>
-              <ID crank-key="a" />
-              <ID crank-key="b" />
-              <ID crank-key="c" />
-              <ID crank-key="d" />
+              <ID key="a" />
+              <ID key="b" />
+              <ID key="c" />
+              <ID key="d" />
             </>
           )
         }
@@ -57,7 +58,7 @@ function *List() {
 renderer.render(<List />, document.body);
 ```
 
-Keys are scoped to an element’s children, and can be any JavaScript value. When rendering iterables, it’s useful to key elements of the iterable, because it’s common for the values of rendered iterables to added, moved or removed.
+All elements in the element tree can be keyed. They are scoped to siblings, and can be any JavaScript value. The most common use-case is when rendering iterables, as the iterable can be rearranged.
 
 ```jsx live
 import {createElement} from "https://unpkg.com/@b9g/crank/crank";
@@ -65,8 +66,8 @@ import {renderer} from "https://unpkg.com/@b9g/crank/dom";
 
 function *Shuffler() {
   let nextId = 0;
-  const els = Array.from({length: 4}, (_, i) => <span crank-key={i}>{i}</span>);
-  while (true) {
+  const els = Array.from({length: 4}, (_, i) => <span key={i}>{i}</span>);
+  for ({} of this) {
     yield <div>{els}</div>;
     els.reverse();
   }
@@ -90,14 +91,11 @@ console.log(document.body.innerHTML);
 console.log(document.firstChild.firstChild === span); // true
 ```
 
-All elements in the element tree can be keyed. If the element is a component element, the `crank-key` prop is erased from the props object passed to the component.
-
-### crank-ref
-Sometimes, you may want to access the rendered value of a specific element in the element tree. To do this, you can pass a callback as the `crank-ref` prop. This callback is called with the rendered value of the element when the element has committed.
+### ref
+Sometimes, you may want to access the rendered value of a specific element in the element tree. To do this, you can pass a callback as the `ref` prop. This callback is called with the rendered value of the element when the element has committed.
 
 ```jsx live
-import {createElement} from "https://unpkg.com/@b9g/crank/crank";
-import {renderer} from "https://unpkg.com/@b9g/crank/dom";
+import {renderer} from "@b9g/crank";
 
 function *MyPlayer() {
   let audio;
@@ -108,7 +106,7 @@ function *MyPlayer() {
         <audio
           src="/static/t-rex-roar.mp3"
           controls={false}
-          c-ref={(el) => (audio = el)}
+          ref={(el) => (audio = el)}
         />
       </div>
     );
@@ -118,14 +116,62 @@ function *MyPlayer() {
 renderer.render(<MyPlayer />, document.body);
 ```
 
-Refs can be attached to any element in the element tree, and the value passed to the callback will vary according the type of the element and the specific renderer.
+Ref callbacks fire once the first time a host element is rendered. They do not work on fragment elements. For component elements, the `ref` prop must be explicitly passed to a component's child. This is useful when writing elements which wrap a host element.
+
+```jsx
+function MyInput({ref, class, ...props}) {
+  return <input ref={ref} class={"my-input-class " + class} ...props />
+}
+```
+
+### copy
+
+The `copy` prop is used to prevent the re-rendering of any element and its children. A truthy value indicates that the element should not re-render. It can be used to prevent rendering, or for performance reasons.
+
+```jsx
+function* List({elements}) {
+  for ({elements} of this) {
+    yield (
+      <ul>
+        {elements.map((el) => {
+          // The copy prop will prevent non-initial renders from updating the DOM.
+          return (
+            <li copy={el.hasChanged}>
+              {el.value}
+            </li>
+          );;
+        })}
+      </ul>
+    );
+  }
+}
+```
 
 ### children
-The `children` prop passed to components is special because it is not usually set with JSX’s `key="value"` prop syntax, but by the contents between the opening and closing tags. Crank places no limitations on the types of values that can be passed into components as children, but patterns like [render props](https://reactjs.org/docs/render-props.html) from the React community, where a callback is passed as the child of a component, should be avoided.
+The `children` prop passed to components is special because it is not usually set with JSX’s `key="value"` prop syntax, but by the contents between the opening and closing tags. It is the responsibility of the component to make sure the `children` passed in are rendered in its yielded or returned element tree.
 
-The actual type of the `children` prop will vary according to the number of children passed in. If a component element has no children (`<Component/>`), the `children` prop will be undefined, if it has one child (`<Component><Child/></Component>`), the `children` prop will be set to that child, and if it has multiple children (`<Component><Child/><Child/></Component>`), the `children` prop will be set to an array of those children. We do this to reduce runtime memory costs. All props have to be retained between renders, and most elements contain only zero or one child, so avoiding the allocation of an extra array for every element in the tree can noticeably reduce memory requirements.
+```jsx
+function Component({children}) {
+  console.log(children);
+  return (
+    <div>{children}</div>
+  );
+}
 
-Therefore, the `children` prop should be treated as a black box, only to be rendered somewhere within a component’s returned or yielded children. Attempting to iterate over or manipulate the passed in children of a component is an anti-pattern, and you should use [event dispatch](./handling-events#dispatching-events) or [provisions](./reusable-logic#provisions) to coordinate ancestor and descendant components.
+renderer.render(<Component>Hello world</Component>, document.body);
+// logs "Hello world"
+
+renderer.render(
+  <Component>
+    <div>1</div>
+    <div>2</div>
+    <div>3</div>
+  </Component>,
+  document.body,
+);
+// logs an array of virtual elements representing the child divs.
+```
+
 
 ## Special DOM Props
 
@@ -195,7 +241,7 @@ function equals(props, newProps) {
 }
 
 function memo(Component) {
-  return function *Wrapped({props}) {
+  return function *Wrapped(props) {
     yield <Component {...props} />;
     for (const newProps of this) {
       if (equals(props, newProps)) {
@@ -210,7 +256,7 @@ function memo(Component) {
 }
 ```
 
-In this example, `memo` is a higher-order component, a function which takes a component and returns a component. This wrapper component compares old and new props and yields a `Copy` element if every prop is shallowly equal. A `Copy` element can appear anywhere in an element tree to prevent rerenderings, and the only props `Copy` elements take are the `crank-key` and `crank-ref` props, which work as expected.
+In this example, `memo` is a higher-order component, a function which takes a component and returns a component. This wrapper component compares old and new props and yields a `Copy` element if every prop is shallowly equal. A `Copy` element can appear anywhere in an element tree to prevent rerenderings, and the only props `Copy` elements take are the `key` and `ref` props, which work as expected.
 
 ### Portal
 Sometimes you may want to render into a DOM node which isn’t the current parent element, or even a part of the currently rendered DOM tree. You can do this with the `Portal` tag, passing in a DOM node as its `root` prop. The Portal’s children will be rendered into the specified root element, just as if Renderer.render was called with the root value as its second argument.
@@ -258,4 +304,4 @@ function MarkdownViewer({markdown=""}) {
 }
 ```
 
-Be careful when using `Raw` elements, as passing unsanitized text inputs can lead to security vulnerabilities.
+Be careful when using `<Raw>` elements, as passing unsanitized text inputs can lead to security vulnerabilities.

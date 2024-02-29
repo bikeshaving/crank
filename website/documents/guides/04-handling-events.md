@@ -5,7 +5,7 @@ title: Handling Events
 Most web applications require some measure of interactivity, where the user interface updates according to input. To facilitate this, Crank provides several ways to listen to and trigger events.
 
 ## DOM Event Props
-You can attach event callbacks to host element directly using event props. These props start with `on`, are all lowercase, and correspond to the event type (`onclick`, `onkeydown`). By combining event props, local variables and `this.refresh()`, you can write interactive components.
+You can attach event callbacks to host element directly using event props. These props start with `on`, are by convention lowercase, and correspond to the event type (`onclick`, `onkeydown`). By combining event props, local variables and `this.refresh()`, you can write interactive components.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -83,13 +83,6 @@ function *Counter() {
 renderer.render(<Counter />, document.body);
 ```
 
-## Event props vs EventTarget
-The props-based event API and the context-based EventTarget API both have their advantages. On the one hand, using event props means you can listen to exactly the element you’d like to listen to.
-
-On the other hand, using the `addEventListener` method allows you to take full advantage of the EventTarget API, which includes registering passive event listeners, or listeners which are dispatched during the capture phase. Additionally, the EventTarget API can be used without referencing or accessing the child elements which a component renders, meaning you can use it to listen to elements nested in other components.
-
-Crank supports both API styles for convenience and flexibility.
-
 ## Dispatching Events
 Crank contexts implement the full EventTarget interface, meaning you can use [the `dispatchEvent` method](https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/dispatchEvent) and [the `CustomEvent` class](https://developer.mozilla.org/en-US/docs/Web/API/CustomEvent) to dispatch custom events to ancestor components:
 
@@ -110,7 +103,7 @@ function MyButton(props) {
 
 function MyButtons() {
   return [1, 2, 3, 4, 5].map((i) => (
-    <p> 
+    <p>
       <MyButton id={"button" + i}>Button {i}</MyButton>
     </p>
   ));
@@ -179,7 +172,14 @@ function *CustomCounter() {
 renderer.render(<CustomCounter />, document.body);
 ```
 
-Using custom events and event bubbling allows you to encapsulate state transitions within component hierarchies without the need for complex state management solutions used in other frameworks like Redux or VueX.
+Using custom events and event bubbling allows you to encapsulate state transitions within component hierarchies without the need for complex state management solutions in a way that is DOM-compatible.
+
+## Event props vs EventTarget
+The props-based event API and the context-based EventTarget API both have their advantages. On the one hand, using event props means you can listen to exactly the element you’d like to listen to.
+
+On the other hand, using the `addEventListener` method allows you to take full advantage of the EventTarget API, which includes registering passive event listeners, or listeners which are dispatched during the capture phase. Additionally, the EventTarget API can be used without referencing or accessing the child elements which a component renders, meaning you can use it to listen to elements nested in other components.
+
+Crank supports both API styles for convenience and flexibility.
 
 ## Form Elements
 
@@ -213,7 +213,7 @@ function *Form() {
 renderer.render(<Form />, document.body);
 ```
 
-If your component is updating for other reasons, you can use the special property `$static` to prevent the input element from updating.
+If your component is updating for other reasons, you can use the special property `copy` to prevent the input element from updating.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -237,7 +237,7 @@ function *Form() {
     reset = false;
     yield (
       <form onsubmit={onsubmit}>
-        <input type="text" value="" $static={currentReset} />
+        <input type="text" value="" copy={currentReset} />
         <p>
           <button onclick={onreset}>Reset</button>
         </p>
