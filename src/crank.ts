@@ -1585,11 +1585,8 @@ export class Context<T = any, TResult = any> implements EventTarget {
 
 	/**
 	 * The current props of the associated element.
-	 *
-	 * @deprecated
 	 */
 	get props(): ComponentProps<T> {
-		console.warn("The props property is deprecated");
 		return this[_ContextImpl].ret.el.props as ComponentProps<T>;
 	}
 
