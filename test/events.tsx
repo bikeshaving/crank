@@ -337,6 +337,19 @@ test("event props", () => {
 	Assert.is(mock.callCount, 1);
 });
 
+test("event props camelCased", () => {
+	let ctx!: Context;
+	function Component(this: Context, _props: {onFoo: (ev: Event) => any}) {
+		ctx = this;
+		return <span>Hello</span>;
+	}
+
+	const mock = Sinon.fake();
+	renderer.render(<Component onFoo={mock} />, document.body);
+	ctx.dispatchEvent(new Event("foo"));
+	Assert.is(mock.callCount, 1);
+});
+
 test("error thrown in listener", () => {
 	let ctx!: Context;
 	function Component(this: Context) {
