@@ -165,6 +165,60 @@ function *Component() {
 renderer.render(<Component />, document.body);
 ```
 
+## Cleanup logic
+While you can use context iterators to write cleanup logic after `for...of` and `for await...of` loops, this does not handle errors, and this cleanup logic cannot be written outside of component functions. To solve the first issue, you can use `try`/`finally`. When a generator component is removed from the tree, Crank calls the `return` method on the component’s generator object. You can think of it as whatever `yield` expression your component was suspended on being replaced by a `return` statement. This means any loops your component was in when the generator suspended are broken out of, and code after the yield does not execute.
+
+You can take advantage of this behavior by wrapping your `yield` loops in a `try`/`finally` block to release any resources that your component may have used.
+
+```jsx
+import {renderer} from "@b9g/crank/dom";
+
+function *Cleanup() {
+  try {
+    while (true) {
+      yield "Hi";
+    }
+  } finally {
+    console.log("finally block executed");
+  }
+}
+
+renderer.render(<Cleanup />, document.body);
+console.log(document.body); // "Hi"
+renderer.render(null, document.body);
+// "finally block executed"
+console.log(document.body); // ""
+```
+
+[The same best practices](https://eslint.org/docs/rules/no-unsafe-finally) which apply to `try`/`finally` statements in regular functions apply to generator components. In short, you should not yield or return anything in the `finally` block. Crank will not use the yielded or returned values and doing so might cause your components to inadvertently swallow errors or suspend in unexpected locations.
+
+To write cleanup logic which can be abstractd outside the component function, you can use the `cleanup()` method on the context. This method is similar to `flush() and `schedule()` in that it takes a callback.
+
+
+```jsx live
+import {renderer} from "@b9g/crank/dom";
+function addGlobalEventListener(ctx, type, listener, options) {
+  window.addEventListener(type, listener, options);
+  // ctx.cleanup allows you to write cleanup logic outside the component
+  ctx.cleanup(() => window.removeEventListener(type, listener, options));
+}
+
+function *KeyboardListener() {
+  let key = "";
+  const listener = (ev) => {
+    key = ev.key;
+    this.refresh();
+  };
+
+  addGlobalEventListener(this, "keypress", listener);
+  for ({} of this) {
+    yield <div>Last key pressed: {key || "N/A"}</div>
+  }
+}
+
+renderer.render(<KeyboardListener />, document.body);
+```
+
 ## Catching Errors
 
 It can be useful to catch errors thrown by components to show the user an error notification or to notify error-logging services. To facilitate this, Crank will cause `yield` expressions to rethrow errors which happen when rendering children. You can take advantage of this behavior by wrapping your `yield` operations in a `try`/`catch` block to catch errors caused by children.
@@ -202,32 +256,28 @@ function *Catcher() {
 renderer.render(<Catcher />, document.body);
 ```
 
-## Additional cleanup methods
+## Returning values from generator components
 
-When a generator component is removed from the tree, Crank calls the `return` method on the component’s generator object. You can think of it as whatever `yield` expression your component was suspended on being replaced by a `return` statement. This means any loops your component was in when the generator suspended are broken out of, and code after the yield does not execute.
+When you return from a generator component, the returned value is rendered and the component scope is thrown away, same as would happen when using a function component. This means that while the component cannot have local variables, but represent sequences of renderings.
 
-You can take advantage of this behavior by wrapping your `yield` loops in a `try`/`finally` block to release any resources that your component may have used.
-
-```jsx
+```jsx live
 import {renderer} from "@b9g/crank/dom";
+function *Component() {
+  yield <div>1</div>;
+  yield <div>2</div>;
+  return <div>3</div>;
+}
 
-function *Cleanup() {
-  try {
-    while (true) {
-      yield "Hi";
-    }
-  } finally {
-    console.log("finally block executed");
+function *App() {
+  for ({} of this) {
+    yield (
+      <div>
+        <Component />
+        <button onclick={() => this.refresh()}>Refresh</button>
+      </div>
+    );
   }
 }
 
-renderer.render(<Cleanup />, document.body);
-console.log(document.body); // "Hi"
-renderer.render(null, document.body);
-// "finally block executed"
-console.log(document.body); // ""
+renderer.render(<App />, document.body);
 ```
-
-[The same best practices](https://eslint.org/docs/rules/no-unsafe-finally) which apply to `try`/`finally` statements in regular functions apply to generator components. In short, you should not yield or return anything in the `finally` block. Crank will not use the yielded or returned values and doing so might cause your components to inadvertently swallow errors or suspend in unexpected locations.
-
-## Returning Values
