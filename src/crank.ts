@@ -1935,11 +1935,26 @@ export class Context<T = any, TResult = any> implements EventTarget {
 			{
 				setEventProperty(ev, "eventPhase", AT_TARGET);
 				setEventProperty(ev, "currentTarget", ctx.owner);
-				const propCallback = ctx.ret.el.props["on" + ev.type] as unknown;
+
+				// dispatchEvent calls the prop callback if it exists
+				let propCallback = ctx.ret.el.props["on" + ev.type] as unknown;
 				if (typeof propCallback === "function") {
 					propCallback(ev);
 					if (immediateCancelBubble || ev.cancelBubble) {
 						return true;
+					}
+				} else {
+					// Checks for camel-cased event props
+					for (const propName in ctx.ret.el.props) {
+						if (propName.toLowerCase() === "on" + ev.type.toLowerCase()) {
+							propCallback = ctx.ret.el.props[propName] as unknown;
+							if (typeof propCallback === "function") {
+								propCallback(ev);
+								if (immediateCancelBubble || ev.cancelBubble) {
+									return true;
+								}
+							}
+						}
 					}
 				}
 
