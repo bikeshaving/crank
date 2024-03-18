@@ -102,6 +102,19 @@ test("null", () => {
 	Assert.is(renderer.render(null), "");
 });
 
+test("callbacks are not rendered", () => {
+	Assert.is(
+		renderer.render(
+			<div
+				onclick={() => {
+					// do nothing
+				}}
+			/>,
+		),
+		"<div></div>",
+	);
+});
+
 test("fragment", () => {
 	Assert.is(
 		renderer.render(
@@ -142,9 +155,9 @@ test("nested arrays", () => {
 
 test("keyed array", () => {
 	const spans = [
-		<span crank-key="2">2</span>,
-		<span crank-key="3">3</span>,
-		<span crank-key="4">4</span>,
+		<span key="2">2</span>,
+		<span key="3">3</span>,
+		<span key="4">4</span>,
 	];
 	Assert.is(
 		renderer.render(

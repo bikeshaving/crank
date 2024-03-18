@@ -858,4 +858,50 @@ test("for await...of updates enqueue", async () => {
 	Assert.is(beforeAwaitFn.callCount, 4);
 });
 
+test("stale renders are skipped", async () => {
+	const characterDatas: Array<string> = [];
+	const mutationObserver = new MutationObserver((records) => {
+		for (const record of records) {
+			if (record.type === "characterData") {
+				characterDatas.push(record.target.textContent!);
+			}
+		}
+	});
+
+	mutationObserver.observe(document.body, {
+		characterData: true,
+		subtree: true,
+	});
+	let resolve: undefined | Function;
+	async function* Component(this: Context, {message}: {message: string}) {
+		for await ({message} of this) {
+			yield <span>{message} before</span>;
+			await new Promise((resolve1) => (resolve = resolve1));
+			yield <span>{message} after</span>;
+		}
+	}
+
+	try {
+		await renderer.render(<Component message="Hello" />, document.body);
+		Assert.is(document.body.innerHTML, "<span>Hello before</span>");
+		resolve!();
+		await new Promise((resolve) => setTimeout(resolve));
+		Assert.is(document.body.innerHTML, "<span>Hello after</span>");
+		await renderer.render(<Component message="Hello again" />, document.body);
+		Assert.is(document.body.innerHTML, "<span>Hello again before</span>");
+		const resolve1 = resolve;
+		const p = renderer.render(<Component message="Goodbye" />, document.body);
+		resolve1!();
+		await p;
+		Assert.is(document.body.innerHTML, "<span>Goodbye before</span>");
+		Assert.equal(characterDatas, [
+			"Hello after",
+			"Hello again before",
+			"Goodbye before",
+		]);
+	} finally {
+		mutationObserver.disconnect();
+	}
+});
+
 test.run();

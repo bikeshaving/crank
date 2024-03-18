@@ -2,18 +2,17 @@ import * as FS from "fs/promises";
 import * as Path from "path";
 import * as ESBuild from "esbuild";
 import type {BuildContext, OutputFile} from "esbuild";
-import * as mime from "mime-types";
 
 import {jsx} from "@b9g/crank/standalone";
 import type {Children, Context} from "@b9g/crank";
 
-// TODO: Pass plugins into storage or components
-import {postcssPlugin} from "../plugins/esbuild.js";
-import postcssPresetEnv from "postcss-preset-env";
-import postcssNested from "postcss-nested";
-
 import {NodeModulesPolyfillPlugin} from "@esbuild-plugins/node-modules-polyfill";
 import {NodeGlobalsPolyfillPlugin} from "@esbuild-plugins/node-globals-polyfill";
+
+import postcssPresetEnv from "postcss-preset-env";
+import postcssNested from "postcss-nested";
+// TODO: Pass plugins into storage or components
+import {postcssPlugin} from "../plugins/esbuild.js";
 
 async function copy(src: string, dest: string): Promise<void> {
 	await FS.mkdir(dest, {recursive: true});
@@ -69,18 +68,20 @@ export class Storage {
 		this.cache = new Map();
 	}
 
-	async build(filename: string): Promise<Array<OutputFile>> {
+	async build(
+		filename: string,
+		options: Partial<ESBuild.BuildOptions> = {},
+	): Promise<Array<OutputFile>> {
 		let ctx = this.cache.get(filename);
 		if (ctx == null) {
 			const entryname = Path.resolve(this.dirname, filename);
 			ctx = await ESBuild.context({
-				entryPoints: [entryname],
 				// TODO: pass these in via components
 				entryNames: "[name]-[hash]",
 				bundle: true,
 				write: false,
 				minify: false,
-				format: "esm",
+				format: "iife",
 				outbase: this.dirname,
 				outdir: this.dirname,
 				sourcemap: true,
@@ -91,6 +92,8 @@ export class Storage {
 						plugins: [postcssPresetEnv() as any, postcssNested()],
 					}),
 				],
+				...options,
+				entryPoints: [entryname],
 			});
 
 			this.cache.set(filename, ctx);
@@ -102,8 +105,12 @@ export class Storage {
 		return result.outputFiles || [];
 	}
 
-	async url(filename: string, extension: string): Promise<string> {
-		const outputs = await this.build(filename);
+	async url(
+		filename: string,
+		extension: string,
+		options: Partial<ESBuild.BuildOptions> = {},
+	): Promise<string> {
+		const outputs = await this.build(filename, options);
 		const output = outputs.find((output) => output.path.endsWith(extension));
 		if (!output) {
 			// TODO: More descriptive error message
@@ -143,7 +150,7 @@ export class Storage {
 		);
 	}
 
-	async serve(inputPath: string): Promise<Uint8Array | string | null> {
+	async serve(inputPath: string): Promise<Uint8Array | null> {
 		inputPath = inputPath.replace(new RegExp("^" + this.publicPath), "");
 		const outputs: Array<OutputFile> = [];
 		for (const ctx of this.cache.values()) {
@@ -160,12 +167,7 @@ export class Storage {
 
 		for (const staticPath of this.staticPaths) {
 			try {
-				const mimeType = mime.lookup(inputPath) || "application/octet-stream";
-				const charset = mime.charset(mimeType) || "binary";
-				return await FS.readFile(
-					Path.join(staticPath, inputPath),
-					charset as any,
-				);
+				return await FS.readFile(Path.join(staticPath, inputPath));
 			} catch (err: any) {
 				if (err.code !== "ENOENT") {
 					throw err;
@@ -183,15 +185,6 @@ export class Storage {
 	}
 }
 
-// TODO: Move components to their own file?
-// While it’s cool that we can use provisions and components here, I’m not sure
-// what the advantage is of defining these separate components over calling
-// async functions to get URLs from local file paths. ESBuild has a neat design
-// principle which is that the only way to actually “concatenate” files is to
-// have an actual source file which imports all the files you’re trying to
-// concatenate together. The thing I’m thinking about now, is how do we
-// concretely bundle dependencies for those which are generated from
-// components.
 export const StorageKey = Symbol.for("esbuild.StorageKey");
 declare global {
 	namespace Crank {
@@ -206,7 +199,6 @@ export interface PageProps {
 	children: Children;
 }
 
-// TODO: Better name than “Page”
 export function* Page(this: Context, {storage, children}: PageProps) {
 	this.provide(StorageKey, storage);
 	let newStorage: Storage;
@@ -228,7 +220,9 @@ export async function Script(this: Context, props: Record<string, any>) {
 
 	let src: string;
 	({src, ...props} = props);
-	src = await storage.url(src, ".js");
+	src = await storage.url(src, ".js", {
+		format: props.type === "module" ? "esm" : "iife",
+	});
 	return jsx`<script src=${src} ...${props} />`;
 }
 
@@ -241,6 +235,8 @@ export async function Link(this: Context, props: Record<string, any>) {
 	let href: string;
 	let rel: string;
 	({href, rel = "stylesheet", ...props} = props);
-	href = await storage.url(href, ".css");
+	href = await storage.url(href, ".css", {
+		format: props.type === "module" ? "esm" : "iife",
+	});
 	return jsx`<link href=${href} rel=${rel} ...${props} />`;
 }

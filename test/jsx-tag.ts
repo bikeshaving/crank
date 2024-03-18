@@ -261,7 +261,7 @@ test("weird identifiers", () => {
 		jsx`
 		<$a $b$ _c>
 			<-custom-element -prop="foo" _-_="bar" />
-			<__ $key=${1}/>
+			<__ key=${1}/>
 		</$a>
 	`,
 		createElement(
@@ -269,7 +269,7 @@ test("weird identifiers", () => {
 			{$b$: true, _c: true},
 			...[
 				createElement("-custom-element", {"-prop": "foo", "_-_": "bar"}),
-				createElement("__", {$key: 1}),
+				createElement("__", {key: 1}),
 			],
 		),
 	);

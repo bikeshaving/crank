@@ -104,4 +104,18 @@ test("refresh called on unmounted component", () => {
 	}
 });
 
+test("context is passed as second argument", () => {
+	let ctx1!: Context;
+	let ctx2!: Context;
+
+	function Component(this: Context, _props: any, ctx: Context) {
+		ctx1 = this;
+		ctx2 = ctx;
+		return null;
+	}
+
+	renderer.render(<Component />, document.body);
+	Assert.is(ctx1, ctx2);
+});
+
 test.run();

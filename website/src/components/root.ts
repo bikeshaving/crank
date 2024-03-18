@@ -3,7 +3,6 @@ import {jsx, Raw} from "@b9g/crank/standalone";
 import type {Children} from "@b9g/crank";
 import {Page, Link, Script, Storage} from "./esbuild.js";
 import {Navbar} from "./navbar.js";
-import {GoogleSpyware} from "./google-spyware.js";
 import {StaticURLsJSON} from "./static-urls-json.js";
 
 function ColorSchemeScript() {
@@ -56,7 +55,6 @@ export function Root({
 					<meta property="og:title" content=${title} />
 					<meta property="og:url" content=${Path.join("https://crank.js.org", url)} />
 					<meta property="og:description" content=${description} />
-					<${GoogleSpyware} />
 				</head>
 				<body>
 					<${ColorSchemeScript} />

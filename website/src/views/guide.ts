@@ -20,7 +20,9 @@ export default async function Guide({
 		path.join(__dirname, "../../documents/"),
 	);
 
-	const post = docs.find((doc) => doc.url === url);
+	const post = docs.find(
+		(doc) => doc.url.replace(/\/$/, "") === url.replace(/\/$/, ""),
+	);
 	if (!post) {
 		throw new Error("TODO: 404 errors");
 	}
@@ -33,13 +35,6 @@ export default async function Guide({
 		<${Root} title="Crank.js | ${title}" url=${url} storage=${storage}>
 			<${Sidebar} docs=${docs} url=${url} title="Guides" />
 			<${Main}>
-				<marquee behavior="alternate">
-					👷👷👷
-					The Crank documentation website is under construction to match the latest API. \
-					Please pardon the appearance.
-					👷👷👷
-				</marquee>
-
 				<h1>${title}</h1>
 				<${Marked} markdown=${body} components=${components} />
 			<//Main>

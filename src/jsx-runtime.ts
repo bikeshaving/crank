@@ -4,11 +4,13 @@
 import {createElement} from "./crank.js";
 
 function jsxAdapter(tag: any, props: Record<string, any>, key: any) {
-	// The new JSX transform extracts the key from props for reasons, but key is
-	// not a special property in Crank.
-	return createElement(tag, {...props, key});
+	// The new JSX transform extracts the key from props for performance reasons,
+	// but key is not a special property in Crank.
+	props.key = key;
+	return createElement(tag, props);
 }
 
 export const Fragment = "";
 export const jsx = jsxAdapter;
 export const jsxs = jsxAdapter;
+export const jsxDEV = jsxAdapter;

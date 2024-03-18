@@ -4,14 +4,7 @@ import * as Sinon from "sinon";
 
 const test = suite("refs");
 
-import {
-	Children,
-	Context,
-	createElement,
-	Element,
-	Fragment,
-	Raw,
-} from "../src/crank.js";
+import {Children, Context, createElement, Element, Raw} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 test.after.each(() => {
@@ -21,8 +14,17 @@ test.after.each(() => {
 
 test("basic", () => {
 	const fn = Sinon.fake();
-	renderer.render(<div $ref={fn}>Hello</div>, document.body);
+	renderer.render(<div ref={fn}>Hello</div>, document.body);
 
+	Assert.is(document.body.innerHTML, "<div>Hello</div>");
+	Assert.is(fn.callCount, 1);
+	Assert.is(fn.lastCall.args[0], document.body.firstChild);
+});
+
+test("runs once", () => {
+	const fn = Sinon.fake();
+	renderer.render(<div ref={fn}>Hello</div>, document.body);
+	renderer.render(<div ref={fn}>Hello</div>, document.body);
 	Assert.is(document.body.innerHTML, "<div>Hello</div>");
 	Assert.is(fn.callCount, 1);
 	Assert.is(fn.lastCall.args[0], document.body.firstChild);
@@ -32,7 +34,7 @@ test("child", () => {
 	const fn = Sinon.fake();
 	renderer.render(
 		<div>
-			<span $ref={fn}>Hello</span>
+			<span ref={fn}>Hello</span>
 		</div>,
 		document.body,
 	);
@@ -42,34 +44,10 @@ test("child", () => {
 	Assert.is(fn.lastCall.args[0], document.body.firstChild!.firstChild);
 });
 
-test("Fragment element", () => {
-	const fn = Sinon.fake();
-	renderer.render(
-		<div>
-			<Fragment $ref={fn}>
-				<span>1</span>
-				<span>2</span>
-				<span>3</span>
-			</Fragment>
-		</div>,
-		document.body,
-	);
-
-	Assert.is(
-		document.body.innerHTML,
-		"<div><span>1</span><span>2</span><span>3</span></div>",
-	);
-	Assert.is(fn.callCount, 1);
-	Assert.equal(
-		fn.lastCall.args[0],
-		Array.from(document.body.firstChild!.childNodes),
-	);
-});
-
 test("Raw element", () => {
 	const fn = Sinon.fake();
 	renderer.render(
-		<Raw value="<div>Hello world</div>" $ref={fn} />,
+		<Raw value="<div>Hello world</div>" ref={fn} />,
 		document.body,
 	);
 
@@ -80,15 +58,15 @@ test("Raw element", () => {
 	Assert.ok(refArgs[0] instanceof Node);
 });
 
-test("function component", () => {
+test("function component ref passing", () => {
 	const fn = Sinon.fake();
-	function Component(): Element {
-		return <span>Hello</span>;
+	function Component({ref}: {ref: unknown}): Element {
+		return <span ref={ref}>Hello</span>;
 	}
 
 	renderer.render(
 		<div>
-			<Component $ref={fn} />
+			<Component ref={fn} />
 		</div>,
 		document.body,
 	);
@@ -98,17 +76,17 @@ test("function component", () => {
 	Assert.is(fn.lastCall.args[0], document.body.firstChild!.firstChild);
 });
 
-test("generator component", () => {
+test("generator component ref passing", () => {
 	const fn = Sinon.fake();
-	function* Component(): Generator<Element> {
+	function* Component({ref}: {ref: unknown}): Generator<Element> {
 		while (true) {
-			yield <span>Hello</span>;
+			yield <span ref={ref}>Hello</span>;
 		}
 	}
 
 	renderer.render(
 		<div>
-			<Component $ref={fn} />
+			<Component ref={fn} />
 		</div>,
 		document.body,
 	);
@@ -118,15 +96,15 @@ test("generator component", () => {
 	Assert.is(fn.lastCall.args[0], document.body.firstChild!.firstChild);
 });
 
-test("async function component", async () => {
+test("async function component ref passing", async () => {
 	const fn = Sinon.fake();
-	async function Component(): Promise<Element> {
-		return <span>Hello</span>;
+	async function Component({ref}: {ref: unknown}): Promise<Element> {
+		return <span ref={ref}>Hello</span>;
 	}
 
 	await renderer.render(
 		<div>
-			<Component $ref={fn} />
+			<Component ref={fn} />
 		</div>,
 		document.body,
 	);
@@ -138,15 +116,18 @@ test("async function component", async () => {
 
 test("async generator component", async () => {
 	const fn = Sinon.fake();
-	async function* Component(this: Context): AsyncGenerator<Element> {
-		for await (const _ of this) {
-			yield <span>Hello</span>;
+	async function* Component(
+		this: Context,
+		{ref}: {ref: unknown},
+	): AsyncGenerator<Element> {
+		for await ({ref} of this) {
+			yield <span ref={ref}>Hello</span>;
 		}
 	}
 
 	await renderer.render(
 		<div>
-			<Component $ref={fn} />
+			<Component ref={fn} />
 		</div>,
 		document.body,
 	);
@@ -166,7 +147,7 @@ test("transcluded in function component", async () => {
 		return (
 			<div>
 				<Child>
-					<span $ref={fn}>Hello</span>
+					<span ref={fn}>Hello</span>
 				</Child>
 			</div>
 		);
@@ -190,7 +171,7 @@ test("transcluded in async function component", async () => {
 		return (
 			<div>
 				<Child>
-					<span $ref={fn}>Hello</span>
+					<span ref={fn}>Hello</span>
 				</Child>
 			</div>
 		);
@@ -203,6 +184,15 @@ test("transcluded in async function component", async () => {
 	Assert.is(document.body.innerHTML, "<div><span>Hello</span></div>");
 	Assert.is(fn.callCount, 1);
 	Assert.is(fn.lastCall.args[0], document.body.firstChild!.firstChild);
+});
+
+test("it works with hydrate", async () => {
+	const fn = Sinon.fake();
+	renderer.hydrate(<div ref={fn}>Hello</div>, document.body);
+	Assert.is(document.body.innerHTML, "<div>Hello</div>");
+	const div = document.body.firstChild;
+	Assert.is(fn.callCount, 1);
+	Assert.is(fn.lastCall.args[0], div);
 });
 
 test.run();

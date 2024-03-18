@@ -22,6 +22,7 @@ const navbarGroupLayout = css`
 	gap: 1em;
 `;
 
+// TODO: url should be named pathname
 export function Navbar({url}: {url: string}) {
 	return jsx`
 		<nav

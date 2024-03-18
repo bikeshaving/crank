@@ -1,10 +1,6 @@
 import Prism from "prismjs";
 import type {Token} from "prismjs";
 
-// Prevent Prism from highlighting every code block in the doc.
-// @ts-ignore
-Prism.manual = true;
-
 function wrapContent(
 	content: Array<Token | string> | Token | string,
 ): Array<Token | string> {

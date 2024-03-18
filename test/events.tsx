@@ -23,6 +23,17 @@ test("onevent", () => {
 	Assert.is(mock.callCount, 3);
 });
 
+test("onevent camelCased", () => {
+	const mock = Sinon.fake();
+	renderer.render(<button onClick={mock}>Click me</button>, document.body);
+
+	const button = document.body.firstChild as HTMLButtonElement;
+	button.click()!;
+	button.click()!;
+	button.click()!;
+	Assert.is(mock.callCount, 3);
+});
+
 test("onevent SVG", () => {
 	const mock = Sinon.fake();
 	renderer.render(<svg onclick={mock} />, document.body);
@@ -315,13 +326,26 @@ test("unmount and dispatch", () => {
 
 test("event props", () => {
 	let ctx!: Context;
-	function Component(this: Context) {
+	function Component(this: Context, _props: {onfoo: (ev: Event) => any}) {
 		ctx = this;
 		return <span>Hello</span>;
 	}
 
 	const mock = Sinon.fake();
 	renderer.render(<Component onfoo={mock} />, document.body);
+	ctx.dispatchEvent(new Event("foo"));
+	Assert.is(mock.callCount, 1);
+});
+
+test("event props camelCased", () => {
+	let ctx!: Context;
+	function Component(this: Context, _props: {onFoo: (ev: Event) => any}) {
+		ctx = this;
+		return <span>Hello</span>;
+	}
+
+	const mock = Sinon.fake();
+	renderer.render(<Component onFoo={mock} />, document.body);
 	ctx.dispatchEvent(new Event("foo"));
 	Assert.is(mock.callCount, 1);
 });

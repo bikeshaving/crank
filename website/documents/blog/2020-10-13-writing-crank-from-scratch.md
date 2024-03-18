@@ -1,6 +1,8 @@
 ---
 title: Writing Crank from Scratch
 publishDate: 2020-10-13
+author: Brian Kim
+authorURL: https://github.com/brainkim
 ---
 
 One of my goals when authoring Crank.js was to create a framework which was so simple that any intermediate JavaScript developer could conceivably write it from scratch. What I think makes this uniquely achievable for Crank is that its component model is built on top of JavaScript’s two main control flow abstractions, iterators and promises, allowing developers to write components exclusively with sync and async functions and generator functions.
@@ -2008,13 +2010,13 @@ What we want is a way to limit the concurrency of async component elements, so t
 
 Before we continue, I’d like to introduce a visual notation for promises which we’ll use for the rest of this essay. This is a promise.
 
-![A Promise](../static/promise.png)
+![A Promise](/static/promise.png)
 
 These diagrams will get more complicated, I *promise*. But for now, know that the horizontal axis represents time, the left edge represents when the promise was created and the right edge represents when the promise settles.
 
 Given this notation, we can represent multiple calls to an async function as follows.
 
-![Multiple Promises](../static/multiple-promises.png)
+![Multiple Promises](/static/multiple-promises.png)
 
 What we want for async components is a strategy which coalesces these promises so that there is only one pending run of a component element at any point in time. Visually, this would mean that none of these line segments overlap.
 
@@ -2022,7 +2024,7 @@ One possible technique we could use is *hitching,* where we resolve concurrent c
 
 This strategy would transform the previous diagram to the following one.
 
-![Hitching](../static/hitching.png)
+![Hitching](/static/hitching.png)
 
 The promises `B` and `C` resolve to the promise `A`, because they are created while `A` is still pending. We use a dotted line to indicate that these promises don’t actually perform any work, and we use the red trailing edge to indicate that these promises have resolved to some other call. Because `D` starts after `A` finishes, it is its own independent promise.
 
@@ -2078,7 +2080,7 @@ We’ve added two more variables to the wrapper function’s scope, `enqueued` a
 
 This strategy can be expressed as the following promise diagram.
 
-![Enqueuing](../static/enqueuing.png)
+![Enqueuing](/static/enqueuing.png)
 
 In this diagram, because `B` and `C` are created while `A` is pending, we enqueue another run. However, only `C` actually does work, because by the time `A` finishes, we only re-invoke the function with `C`’s arguments, while `B`’s arguments would have been overwritten. This is a useful behavior for async components, because we don’t really care about obsolete props or element trees. Lastly, `D` starts while `C` is pending, so we schedule another run for `D`. Note that the original function is not invoked until the current run settles, so we again have a situation where there is only one concurrent run of the original function at a time.
 
@@ -2310,7 +2312,7 @@ To implement this behavior, we’ll need to update the `stepCtx()` function so t
 
 We keep the inflight/enqueued pattern from the previous step, except now we advance the queue based on the blocking portion of the render. A promise diagram for this algorithm might look like this.
 
-![Partial Enqueuing](../static/partial-enqueuing.png)
+![Partial Enqueuing](/static/partial-enqueuing.png)
 
 The blue segments represent the duration for which the component is blocked, while the blue + black segments represent the duration for the entire render. As you can see, this allows for greater concurrency with regard to rendering, while still limiting the number of concurrent runs for each individual async component element to one.
 
@@ -2336,7 +2338,7 @@ console.log(app.innerHTML);
 
 We want rendering to ignore outdated renders just as async component enqueuing ignores outdated props and children. To achieve this, we use another promise technique called *chasing.* Chasing involves racing the current call of an async function with the next call, for every call. Visually, we can represent chasing like so.
 
-![Chasing](../static/chasing.png)
+![Chasing](/static/chasing.png)
 
 In the diagram, the `B` promise takes longer to settle than the `C` promise, so the `B` promise is cut off and made to resolve to the `C` promise. We can represent this algorithm as the following higher-order function.
 
@@ -2361,7 +2363,7 @@ The part of this algorithm that will probably hurt your brain is that we don’t
 
 The cool part about this strategy is that it chains, so that when any call settles, we know for a fact that *all* previous calls have settled as well. You can prove this mathematically with a [proof by induction](https://en.wikipedia.org/wiki/Mathematical_induction), or visually with a promise diagram.
 
-![Chained Chasing](../static/chained-chasing.png)
+![Chained Chasing](/static/chained-chasing.png)
 
 Proving that this algorithm works to settle all previous promises is as simple as drawing a vertical line upwards from the end of any promise in any promise diagram.
 

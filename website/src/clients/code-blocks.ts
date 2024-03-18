@@ -1,6 +1,8 @@
 import {jsx} from "@b9g/crank/standalone";
 import {renderer} from "@b9g/crank/dom";
 
+window.Prism = window.Prism || {};
+Prism.manual = true;
 import Prism from "prismjs";
 // TODO: lazily import these?
 import "prismjs/components/prism-javascript";
@@ -9,13 +11,11 @@ import "prismjs/components/prism-typescript";
 import "prismjs/components/prism-tsx";
 import "prismjs/components/prism-diff";
 import "prismjs/components/prism-bash";
+
 import {ContentAreaElement} from "@b9g/revise/contentarea.js";
 import {InlineCodeBlock} from "../components/inline-code-block.js";
 import {extractData} from "../components/serialize-javascript.js";
 import {GearInteractive} from "../components/gear-interactive.js";
-
-// @ts-ignore
-Prism.manual = true;
 
 if (!window.customElements.get("content-area")) {
 	window.customElements.define("content-area", ContentAreaElement);

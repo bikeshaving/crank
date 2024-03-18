@@ -24,12 +24,12 @@ function arrayify<T>(
 	return value == null
 		? []
 		: Array.isArray(value)
-		? value
-		: typeof value === "string" ||
-		  typeof (value as any)[Symbol.iterator] !== "function"
-		? [value]
-		: // TODO: inference broke in TypeScript 3.9.
-		  [...(value as any)];
+			? value
+			: typeof value === "string" ||
+				  typeof (value as any)[Symbol.iterator] !== "function"
+				? [value]
+				: // TODO: inference broke in TypeScript 3.9.
+					[...(value as any)];
 }
 
 function isIteratorLike(
@@ -56,8 +56,8 @@ export type Tag = string | symbol | Component;
 export type TagProps<TTag extends Tag> = TTag extends string
 	? JSX.IntrinsicElements[TTag]
 	: TTag extends Component<infer TProps>
-	? TProps
-	: Record<string, unknown>;
+		? TProps & JSX.IntrinsicAttributes
+		: Record<string, unknown> & JSX.IntrinsicAttributes;
 
 /***
  * SPECIAL TAGS
@@ -148,6 +148,7 @@ export type Children = Child | ChildIterable;
 export type Component<TProps extends Record<string, unknown> = any> = (
 	this: Context<TProps>,
 	props: TProps,
+	ctx: Context<TProps>,
 ) =>
 	| Children
 	| PromiseLike<Children>
@@ -186,33 +187,10 @@ export interface Element<TTag extends Tag = Tag> {
 	tag: TTag;
 
 	/**
-	 * An object containing the “properties” of an element. These correspond to
+	 * An object containing the "properties" of an element. These correspond to
 	 * the attribute syntax from JSX.
 	 */
 	props: TagProps<TTag>;
-
-	/**
-	 * A value which uniquely identifies an element from its siblings so that it
-	 * can be added/updated/moved/removed by key rather than position.
-	 *
-	 * Passed in createElement() as the prop "c-key".
-	 */
-	key: Key;
-
-	/**
-	 * A callback which is called with the element’s result when it is committed.
-	 *
-	 * Passed in createElement() as the prop "c-ref".
-	 */
-	ref: ((value: unknown) => unknown) | undefined;
-
-	/**
-	 * A possible boolean which indicates that element should NOT be rerendered.
-	 * If the element has never been rendered, this property has no effect.
-	 *
-	 * Passed in createElement() as the prop "c-static".
-	 */
-	static_: boolean | undefined;
 }
 
 /**
@@ -236,18 +214,21 @@ export interface Element<TTag extends Tag = Tag> {
  * rather than instatiating this class directly.
  */
 export class Element<TTag extends Tag = Tag> {
-	constructor(
-		tag: TTag,
-		props: TagProps<TTag>,
-		key: Key,
-		ref?: ((value: unknown) => unknown) | undefined,
-		static_?: boolean | undefined,
-	) {
+	constructor(tag: TTag, props: TagProps<TTag>) {
 		this.tag = tag;
 		this.props = props;
-		this.key = key;
-		this.ref = ref;
-		this.static_ = static_;
+	}
+
+	get key(): Key {
+		return this.props.key;
+	}
+
+	get ref(): unknown {
+		return this.props.ref;
+	}
+
+	get copy(): boolean {
+		return !!this.props.copy;
 	}
 }
 
@@ -256,6 +237,17 @@ Element.prototype.$$typeof = ElementSymbol;
 
 export function isElement(value: any): value is Element {
 	return value != null && value.$$typeof === ElementSymbol;
+}
+
+const DEPRECATED_PROP_PREFIXES = ["crank-", "c-", "$"];
+
+const DEPRECATED_SPECIAL_PROP_BASES = ["key", "ref", "static"];
+
+const SPECIAL_PROPS = new Set(["children", "key", "ref", "copy"]);
+for (const propPrefix of DEPRECATED_PROP_PREFIXES) {
+	for (const propBase of DEPRECATED_SPECIAL_PROP_BASES) {
+		SPECIAL_PROPS.add(propPrefix + propBase);
+	}
 }
 
 /**
@@ -271,47 +263,34 @@ export function createElement<TTag extends Tag>(
 	props?: TagProps<TTag> | null | undefined,
 	...children: Array<unknown>
 ): Element<TTag> {
-	let key: Key;
-	let ref: ((value: unknown) => unknown) | undefined;
-	let static_ = false;
-	const props1 = {} as TagProps<TTag>;
-	if (props != null) {
-		for (const name in props) {
-			switch (name) {
-				case "crank-key":
-				case "c-key":
-				case "$key":
-					// We have to make sure we don’t assign null to the key because we
-					// don’t check for null keys in the diffing functions.
-					if (props[name] != null) {
-						key = props[name];
-					}
-					break;
-				case "crank-ref":
-				case "c-ref":
-				case "$ref":
-					if (typeof props[name] === "function") {
-						ref = props[name];
-					}
-					break;
-				case "crank-static":
-				case "c-static":
-				case "$static":
-					static_ = !!props[name];
-					break;
-				default:
-					props1[name] = props[name];
+	if (props == null) {
+		props = {} as TagProps<TTag>;
+	}
+
+	for (let i = 0; i < DEPRECATED_PROP_PREFIXES.length; i++) {
+		const propPrefix = DEPRECATED_PROP_PREFIXES[i];
+		for (let j = 0; j < DEPRECATED_SPECIAL_PROP_BASES.length; j++) {
+			const propBase = DEPRECATED_SPECIAL_PROP_BASES[j];
+			const deprecatedPropName = propPrefix + propBase;
+			const targetPropBase = propBase === "static" ? "copy" : propBase;
+			if (deprecatedPropName in (props as TagProps<TTag>)) {
+				console.warn(
+					`The \`${deprecatedPropName}\` prop is deprecated. Use \`${targetPropBase}\` instead.`,
+				);
+				(props as TagProps<TTag>)[targetPropBase] = (props as TagProps<TTag>)[
+					deprecatedPropName
+				];
 			}
 		}
 	}
 
 	if (children.length > 1) {
-		props1.children = children;
+		(props as TagProps<TTag>).children = children;
 	} else if (children.length === 1) {
-		props1.children = children[0];
+		(props as TagProps<TTag>).children = children[0];
 	}
 
-	return new Element(tag, props1, key, ref, static_);
+	return new Element(tag, props as TagProps<TTag>);
 }
 
 /** Clones a given element, shallowly copying the props object. */
@@ -322,7 +301,7 @@ export function cloneElement<TTag extends Tag>(
 		throw new TypeError("Cannot clone non-element");
 	}
 
-	return new Element(el.tag, {...el.props}, el.key, el.ref);
+	return new Element(el.tag, {...el.props});
 }
 
 /*** ELEMENT UTILITIES ***/
@@ -351,12 +330,13 @@ function narrow(value: Children): NarrowedChild {
  *
  * @template TNode - The node type for the element provided by the renderer.
  *
- * When asking the question, what is the “value” of a specific element, the
+ * When asking the question, what is the "value" of a specific element, the
  * answer varies depending on the tag:
  *
- * For host elements, the value is the nodes created for the element.
+ * For host elements, the value is the nodes created for the element, e.g. the
+ * DOM node in the case of the DOMRenderer.
  *
- * For fragments, the value is usually an array of nodes.
+ * For fragments, the value is the value of the
  *
  * For portals, the value is undefined, because a Portal element’s root and
  * children are opaque to its parent.
@@ -616,24 +596,24 @@ export interface RendererImpl<
 		tag: TTag,
 		node: TNode,
 		name: TName,
-		value: TagProps<TTag>[TName],
-		oldValue: TagProps<TTag>[TName] | undefined,
+		value: unknown,
+		oldValue: unknown,
 		scope: TScope,
 	): unknown;
 
 	arrange<TTag extends string | symbol>(
 		tag: TTag,
 		node: TNode,
-		props: TagProps<TTag>,
+		props: Record<string, unknown>,
 		children: Array<TNode | string>,
-		oldProps: TagProps<TTag> | undefined,
+		oldProps: Record<string, unknown> | undefined,
 		oldChildren: Array<TNode | string> | undefined,
 	): unknown;
 
 	dispose<TTag extends string | symbol>(
 		tag: TTag,
 		node: TNode,
-		props: TagProps<TTag>,
+		props: Record<string, unknown>,
 	): unknown;
 
 	flush(root: TRoot): unknown;
@@ -659,7 +639,8 @@ const defaultRendererImpl: RendererImpl<unknown, unknown, unknown, unknown> = {
 const _RendererImpl = Symbol.for("crank.RendererImpl");
 /**
  * An abstract class which is subclassed to render to different target
- * environments. This class is responsible for kicking off the rendering
+ * environments. Subclasses will typically call super() with a custom
+ * RendererImpl. This class is responsible for kicking off the rendering
  * process and caching previous trees by root.
  *
  * @template TNode - The type of the node for a rendering environment.
@@ -848,6 +829,8 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	let childrenByKey: Map<Key, Retainer<TNode>> | undefined;
 	let seenKeys: Set<Key> | undefined;
 	let isAsync = false;
+	// When hydrating, sibling element trees must be rendered in order, because
+	// we do not know how many DOM nodes an element will render.
 	let hydrationBlock: Promise<unknown> | undefined;
 	let oi = 0;
 	let oldLength = oldRetained.length;
@@ -894,17 +877,17 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		// Updating
 		let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 		if (typeof child === "object") {
-			if (child.tag === Copy) {
+			if (child.tag === Copy || (typeof ret === "object" && ret.el === child)) {
 				value = getInflightValue(ret);
 			} else {
 				let oldProps: Record<string, any> | undefined;
-				let static_ = false;
+				let copy = false;
 				if (typeof ret === "object" && ret.el.tag === child.tag) {
 					oldProps = ret.el.props;
 					ret.el = child;
-					if (child.static_) {
+					if (child.copy) {
 						value = getInflightValue(ret);
-						static_ = true;
+						copy = true;
 					}
 				} else {
 					if (typeof ret === "object") {
@@ -916,7 +899,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					ret.fallbackValue = fallback;
 				}
 
-				if (static_) {
+				if (copy) {
 					// pass
 				} else if (child.tag === Raw) {
 					value = hydrationBlock
@@ -928,7 +911,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 									oldProps,
 									hydrationData,
 								),
-						  )
+							)
 						: updateRaw(renderer, ret, scope, oldProps, hydrationData);
 				} else if (child.tag === Fragment) {
 					value = hydrationBlock
@@ -942,7 +925,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 									ret as Retainer<TNode>,
 									hydrationData,
 								),
-						  )
+							)
 						: updateFragment(
 								renderer,
 								root,
@@ -951,7 +934,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 								scope,
 								ret,
 								hydrationData,
-						  );
+							);
 				} else if (typeof child.tag === "function") {
 					value = hydrationBlock
 						? hydrationBlock.then(() =>
@@ -965,7 +948,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 									oldProps,
 									hydrationData,
 								),
-						  )
+							)
 						: updateComponent(
 								renderer,
 								root,
@@ -975,7 +958,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 								ret,
 								oldProps,
 								hydrationData,
-						  );
+							);
 				} else {
 					value = hydrationBlock
 						? hydrationBlock.then(() =>
@@ -988,7 +971,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 									oldProps,
 									hydrationData,
 								),
-						  )
+							)
 						: updateHost(
 								renderer,
 								root,
@@ -997,26 +980,14 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 								ret,
 								oldProps,
 								hydrationData,
-						  );
+							);
 				}
 			}
 
-			const ref = child.ref;
 			if (isPromiseLike(value)) {
 				isAsync = true;
-				if (typeof ref === "function") {
-					value = value.then((value) => {
-						ref(renderer.read(value));
-						return value;
-					});
-				}
-
 				if (hydrationData !== undefined) {
 					hydrationBlock = value;
-				}
-			} else {
-				if (typeof ref === "function") {
-					ref(renderer.read(value));
 				}
 			}
 		} else {
@@ -1138,7 +1109,10 @@ function updateRaw<TNode, TScope>(
 ): ElementValue<TNode> {
 	const props = ret.el.props;
 	if (!oldProps || oldProps.value !== props.value) {
-		ret.value = renderer.raw(props.value, scope, hydrationData);
+		ret.value = renderer.raw(props.value as any, scope, hydrationData);
+		if (typeof ret.el.ref === "function") {
+			ret.el.ref(ret.value);
+		}
 	}
 
 	return ret.value;
@@ -1160,7 +1134,7 @@ function updateFragment<TNode, TScope, TRoot extends TNode>(
 		ctx,
 		scope,
 		ret,
-		ret.el.props.children,
+		ret.el.props.children as any,
 		hydrationData,
 	);
 
@@ -1185,7 +1159,7 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 	const tag = el.tag as string | symbol;
 	let hydrationValue: TNode | string | undefined;
 	if (el.tag === Portal) {
-		root = ret.value = el.props.root;
+		root = ret.value = el.props.root as any;
 	} else {
 		if (hydrationData !== undefined) {
 			const value = hydrationData.children.shift();
@@ -1209,7 +1183,7 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 		ctx,
 		scope,
 		ret,
-		ret.el.props.children,
+		ret.el.props.children as any,
 		childHydrationData,
 	);
 
@@ -1243,6 +1217,9 @@ function commitHost<TNode, TScope>(
 	let value = ret.value as TNode;
 	if (hydrationValue != null) {
 		value = ret.value = hydrationValue;
+		if (typeof ret.el.ref === "function") {
+			ret.el.ref(value);
+		}
 	}
 
 	let props = ret.el.props;
@@ -1251,6 +1228,9 @@ function commitHost<TNode, TScope>(
 		if (value == null) {
 			// This assumes that renderer.create does not return nullish values.
 			value = ret.value = renderer.create(tag, props, scope);
+			if (typeof ret.el.ref === "function") {
+				ret.el.ref(value);
+			}
 		}
 
 		for (const propName in {...oldProps, ...props}) {
@@ -1259,7 +1239,7 @@ function commitHost<TNode, TScope>(
 				// TODO: The Copy tag doubles as a way to skip the patching of a prop.
 				// Not sure about this feature. Should probably be removed.
 				(copied = copied || new Set()).add(propName);
-			} else if (propName !== "children") {
+			} else if (!SPECIAL_PROPS.has(propName)) {
 				renderer.patch(
 					tag,
 					value,
@@ -1278,7 +1258,7 @@ function commitHost<TNode, TScope>(
 			props[name] = oldProps && oldProps[name];
 		}
 
-		ret.el = new Element(tag, props, ret.el.key, ret.el.ref);
+		ret.el = new Element(tag, props);
 	}
 
 	renderer.arrange(
@@ -1429,11 +1409,11 @@ const PropsAvailable = 1 << 5;
 /**
  * A flag which is set when a component errors.
  *
- * NOTE: This is mainly used to prevent some false positives in component
- * yields or returns undefined warnings. The reason we’re using this versus
- * IsUnmounted is a very troubling test (cascades sync generator parent and
- * sync generator child) where synchronous code causes a stack overflow error
- * in a non-deterministic way. Deeply disturbing stuff.
+ * This is mainly used to prevent some false positives in "component yields or
+ * returns undefined" warnings. The reason we’re using this versus IsUnmounted
+ * is a very troubling test (cascades sync generator parent and sync generator
+ * child) where synchronous code causes a stack overflow error in a
+ * non-deterministic way. Deeply disturbing stuff.
  */
 const IsErrored = 1 << 6;
 
@@ -1533,7 +1513,9 @@ class ContextImpl<
 		| AsyncIterator<Children, Children | void, unknown>
 		| undefined;
 
-	// The following properties are used to implement the
+	// A "block" is a promise which represents the duration during which new
+	// updates are queued, whereas "value" is a promise which represents the
+	// actual pending result of rendering.
 	declare inflightBlock: Promise<unknown> | undefined;
 	declare inflightValue: Promise<ElementValue<TNode>> | undefined;
 	declare enqueuedBlock: Promise<unknown> | undefined;
@@ -1575,8 +1557,8 @@ const _ContextImpl = Symbol.for("crank.ContextImpl");
 type ComponentProps<T> = T extends () => any
 	? {}
 	: T extends (props: infer U) => any
-	? U
-	: T;
+		? U
+		: T;
 /**
  * A class which is instantiated and passed to every component as its this
  * value. Contexts form a tree just like elements and all components in the
@@ -1603,22 +1585,15 @@ export class Context<T = any, TResult = any> implements EventTarget {
 
 	/**
 	 * The current props of the associated element.
-	 *
-	 * Typically, you should read props either via the first parameter of the
-	 * component or via the context iterator methods. This property is mainly for
-	 * plugins or utilities which wrap contexts.
 	 */
 	get props(): ComponentProps<T> {
-		return this[_ContextImpl].ret.el.props;
+		return this[_ContextImpl].ret.el.props as ComponentProps<T>;
 	}
 
-	// TODO: Should we rename this???
 	/**
 	 * The current value of the associated element.
 	 *
-	 * Typically, you should read values via refs, generator yield expressions,
-	 * or the refresh, schedule, cleanup, or flush methods. This property is
-	 * mainly for plugins or utilities which wrap contexts.
+	 * @deprecated
 	 */
 	get value(): TResult {
 		return this[_ContextImpl].renderer.read(getValue(this[_ContextImpl].ret));
@@ -1635,7 +1610,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 					ctx.f |= NeedsToYield;
 				}
 
-				yield ctx.ret.el.props!;
+				yield ctx.ret.el.props as ComponentProps<T>;
 			}
 		} finally {
 			ctx.f &= ~IsInForOfLoop;
@@ -1659,7 +1634,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 
 				if (ctx.f & PropsAvailable) {
 					ctx.f &= ~PropsAvailable;
-					yield ctx.ret.el.props;
+					yield ctx.ret.el.props as ComponentProps<T>;
 				} else {
 					const props = await new Promise((resolve) => (ctx.onProps = resolve));
 					if (ctx.f & IsUnmounted) {
@@ -1702,7 +1677,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 			return ctx.renderer.read(undefined);
 		} else if (ctx.f & IsSyncExecuting) {
 			console.error("Component is already executing");
-			return this.value;
+			return ctx.renderer.read(getValue(ctx.ret));
 		}
 
 		const value = enqueueComponentRun(ctx);
@@ -1960,11 +1935,26 @@ export class Context<T = any, TResult = any> implements EventTarget {
 			{
 				setEventProperty(ev, "eventPhase", AT_TARGET);
 				setEventProperty(ev, "currentTarget", ctx.owner);
-				const propCallback = ctx.ret.el.props["on" + ev.type];
-				if (propCallback != null) {
+
+				// dispatchEvent calls the prop callback if it exists
+				let propCallback = ctx.ret.el.props["on" + ev.type] as unknown;
+				if (typeof propCallback === "function") {
 					propCallback(ev);
 					if (immediateCancelBubble || ev.cancelBubble) {
 						return true;
+					}
+				} else {
+					// Checks for camel-cased event props
+					for (const propName in ctx.ret.el.props) {
+						if (propName.toLowerCase() === "on" + ev.type.toLowerCase()) {
+							propCallback = ctx.ret.el.props[propName] as unknown;
+							if (typeof propCallback === "function") {
+								propCallback(ev);
+								if (immediateCancelBubble || ev.cancelBubble) {
+									return true;
+								}
+							}
+						}
 					}
 				}
 
@@ -2269,7 +2259,7 @@ function enqueueComponentRun<TNode, TResult>(
 		// the bottom of the loop to be reached before returning the inflight
 		// value.
 		const isAtLoopbottom = ctx.f & IsInForAwaitOfLoop && !ctx.onProps;
-		resumePropsIterator(ctx);
+		resumePropsAsyncIterator(ctx);
 		if (isAtLoopbottom) {
 			if (ctx.inflightBlock == null) {
 				ctx.inflightBlock = new Promise(
@@ -2384,12 +2374,16 @@ function runComponent<TNode, TResult>(
 	const ret = ctx.ret;
 	const initial = !ctx.iterator;
 	if (initial) {
-		resumePropsIterator(ctx);
+		resumePropsAsyncIterator(ctx);
 		ctx.f |= IsSyncExecuting;
 		clearEventListeners(ctx);
 		let result: ReturnType<Component>;
 		try {
-			result = (ret.el.tag as Component).call(ctx.owner, ret.el.props);
+			result = (ret.el.tag as Component).call(
+				ctx.owner,
+				ret.el.props,
+				ctx.owner,
+			);
 		} catch (err) {
 			ctx.f |= IsErrored;
 			throw err;
@@ -2420,6 +2414,7 @@ function runComponent<TNode, TResult>(
 			];
 		}
 	} else if (hydrationData !== undefined) {
+		// hydration data should only be passed on the initial render
 		throw new Error("Hydration error");
 	}
 
@@ -2443,7 +2438,6 @@ function runComponent<TNode, TResult>(
 	}
 
 	if (ctx.f & IsSyncGen) {
-		ctx.f &= ~NeedsToYield;
 		// sync generator component
 		if (!initial) {
 			try {
@@ -2461,6 +2455,15 @@ function runComponent<TNode, TResult>(
 			throw new Error("Mixed generator component");
 		}
 
+		if (
+			ctx.f & IsInForOfLoop &&
+			!(ctx.f & NeedsToYield) &&
+			!(ctx.f & IsUnmounted)
+		) {
+			console.error("Component yielded more than once in for...of loop");
+		}
+
+		ctx.f &= ~NeedsToYield;
 		if (iteration.done) {
 			ctx.f &= ~IsSyncGen;
 			ctx.iterator = undefined;
@@ -2484,66 +2487,79 @@ function runComponent<TNode, TResult>(
 
 		const block = isPromiseLike(value) ? value.catch(NOOP) : undefined;
 		return [block, value];
-	} else if (ctx.f & IsInForOfLoop) {
-		// TODO: does this need to be done async?
-		ctx.f &= ~NeedsToYield;
-		// we are in a for...of loop for async generator
-		if (!initial) {
-			try {
-				ctx.f |= IsSyncExecuting;
-				iteration = ctx.iterator!.next(ctx.renderer.read(getValue(ret)));
-			} catch (err) {
-				ctx.f |= IsErrored;
-				throw err;
-			} finally {
-				ctx.f &= ~IsSyncExecuting;
-			}
-		}
-
-		if (!isPromiseLike(iteration)) {
-			throw new Error("Mixed generator component");
-		}
-
-		const block = iteration.catch(NOOP);
-		const value = iteration.then(
-			(iteration) => {
-				let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
-				if (!(ctx.f & IsInForOfLoop)) {
-					runAsyncGenComponent(ctx, Promise.resolve(iteration), hydrationData);
-				}
-
-				try {
-					value = updateComponentChildren<TNode, TResult>(
-						ctx,
-						// Children can be void so we eliminate that here
-						iteration.value as Children,
-						hydrationData,
-					);
-
-					if (isPromiseLike(value)) {
-						value = value.catch((err) => handleChildError(ctx, err));
-					}
-				} catch (err) {
-					value = handleChildError(ctx, err);
-				}
-
-				return value;
-			},
-			(err) => {
-				ctx.f |= IsErrored;
-				throw err;
-			},
-		);
-
-		return [block, value];
 	} else {
-		runAsyncGenComponent(
-			ctx,
-			iteration as Promise<ChildrenIteratorResult>,
-			hydrationData,
-		);
-		// async generator component
-		return [ctx.inflightBlock, ctx.inflightValue];
+		if (ctx.f & IsInForOfLoop) {
+			// Async generator component using for...of loops behave similar to sync
+			// generator components. This allows for easier refactoring of sync to
+			// async generator components.
+			if (!initial) {
+				try {
+					ctx.f |= IsSyncExecuting;
+					iteration = ctx.iterator!.next(ctx.renderer.read(getValue(ret)));
+				} catch (err) {
+					ctx.f |= IsErrored;
+					throw err;
+				} finally {
+					ctx.f &= ~IsSyncExecuting;
+				}
+			}
+
+			if (!isPromiseLike(iteration)) {
+				throw new Error("Mixed generator component");
+			}
+
+			const block = iteration.catch(NOOP);
+			const value = iteration.then(
+				(iteration) => {
+					let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
+					if (!(ctx.f & IsInForOfLoop)) {
+						runAsyncGenComponent(
+							ctx,
+							Promise.resolve(iteration),
+							hydrationData,
+						);
+					} else {
+						if (!(ctx.f & NeedsToYield) && !(ctx.f & IsUnmounted)) {
+							console.error(
+								"Component yielded more than once in for...of loop",
+							);
+						}
+					}
+
+					ctx.f &= ~NeedsToYield;
+					try {
+						value = updateComponentChildren<TNode, TResult>(
+							ctx,
+							// Children can be void so we eliminate that here
+							iteration.value as Children,
+							hydrationData,
+						);
+
+						if (isPromiseLike(value)) {
+							value = value.catch((err) => handleChildError(ctx, err));
+						}
+					} catch (err) {
+						value = handleChildError(ctx, err);
+					}
+
+					return value;
+				},
+				(err) => {
+					ctx.f |= IsErrored;
+					throw err;
+				},
+			);
+
+			return [block, value];
+		} else {
+			runAsyncGenComponent(
+				ctx,
+				iteration as Promise<ChildrenIteratorResult>,
+				hydrationData,
+				initial,
+			);
+			return [ctx.inflightBlock, ctx.inflightValue];
+		}
 	}
 }
 
@@ -2551,6 +2567,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
 	iterationP: Promise<ChildrenIteratorResult>,
 	hydrationData: HydrationData<TNode> | undefined,
+	initial: boolean = false,
 ): Promise<void> {
 	let done = false;
 	try {
@@ -2577,25 +2594,37 @@ async function runAsyncGenComponent<TNode, TResult>(
 				ctx.f |= IsErrored;
 				onValue(Promise.reject(err));
 				break;
-			} finally {
-				ctx.f &= ~NeedsToYield;
-				if (!(ctx.f & IsInForAwaitOfLoop)) {
-					ctx.f &= ~PropsAvailable;
-				}
+			}
+
+			if (!(ctx.f & IsInForAwaitOfLoop)) {
+				ctx.f &= ~PropsAvailable;
 			}
 
 			done = !!iteration.done;
 			let value: Promise<ElementValue<TNode>> | ElementValue<TNode>;
 			try {
-				value = updateComponentChildren<TNode, TResult>(
-					ctx,
-					iteration.value!,
-					hydrationData,
-				);
-				hydrationData = undefined;
-				if (isPromiseLike(value)) {
-					value = value.catch((err: any) => handleChildError(ctx, err));
+				if (
+					!(ctx.f & NeedsToYield) &&
+					ctx.f & PropsAvailable &&
+					ctx.f & IsInForAwaitOfLoop &&
+					!initial &&
+					!done
+				) {
+					// We skip stale iterations in for await...of loops.
+					value = ctx.ret.inflightValue || getValue(ctx.ret);
+				} else {
+					value = updateComponentChildren<TNode, TResult>(
+						ctx,
+						iteration.value!,
+						hydrationData,
+					);
+					hydrationData = undefined;
+					if (isPromiseLike(value)) {
+						value = value.catch((err: any) => handleChildError(ctx, err));
+					}
 				}
+
+				ctx.f &= ~NeedsToYield;
 			} catch (err) {
 				// Do we need to catch potential errors here in the case of unhandled
 				// promise rejections?
@@ -2604,19 +2633,18 @@ async function runAsyncGenComponent<TNode, TResult>(
 				onValue(value);
 			}
 
-			// TODO: this can be done more elegantly
-			let oldValue: Promise<TResult> | TResult;
+			let oldResult: Promise<TResult> | TResult;
 			if (ctx.ret.inflightValue) {
 				// The value passed back into the generator as the argument to the next
 				// method is a promise if an async generator component has async
 				// children. Sync generator components only resume when their children
 				// have fulfilled so the element’s inflight child values will never be
 				// defined.
-				oldValue = ctx.ret.inflightValue.then((value) =>
+				oldResult = ctx.ret.inflightValue.then((value) =>
 					ctx.renderer.read(value),
 				);
 
-				oldValue.catch((err) => {
+				oldResult.catch((err) => {
 					if (ctx.f & IsUpdating) {
 						return;
 					}
@@ -2628,7 +2656,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 					return propagateError(ctx.parent, err);
 				});
 			} else {
-				oldValue = ctx.renderer.read(getValue(ctx.ret));
+				oldResult = ctx.renderer.read(getValue(ctx.ret));
 			}
 
 			if (ctx.f & IsUnmounted) {
@@ -2636,7 +2664,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 					try {
 						ctx.f |= IsSyncExecuting;
 						iterationP = ctx.iterator!.next(
-							oldValue,
+							oldResult,
 						) as Promise<ChildrenIteratorResult>;
 					} finally {
 						ctx.f &= ~IsSyncExecuting;
@@ -2649,12 +2677,14 @@ async function runAsyncGenComponent<TNode, TResult>(
 				try {
 					ctx.f |= IsSyncExecuting;
 					iterationP = ctx.iterator!.next(
-						oldValue,
+						oldResult,
 					) as Promise<ChildrenIteratorResult>;
 				} finally {
 					ctx.f &= ~IsSyncExecuting;
 				}
 			}
+
+			initial = false;
 		}
 	} finally {
 		if (done) {
@@ -2667,7 +2697,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 /**
  * Called to resume the props async iterator for async generator components.
  */
-function resumePropsIterator(ctx: ContextImpl): void {
+function resumePropsAsyncIterator(ctx: ContextImpl): void {
 	if (ctx.onProps) {
 		ctx.onProps(ctx.ret.el.props);
 		ctx.onProps = undefined;
@@ -2747,14 +2777,14 @@ function unmountComponent(ctx: ContextImpl): void {
 			} else {
 				// The logic for unmounting async generator components is in the
 				// runAsyncGenComponent function.
-				resumePropsIterator(ctx);
+				resumePropsAsyncIterator(ctx);
 			}
 		}
 	}
 }
 
 function returnComponent(ctx: ContextImpl): void {
-	resumePropsIterator(ctx);
+	resumePropsAsyncIterator(ctx);
 	if (ctx.iterator && typeof ctx.iterator!.return === "function") {
 		try {
 			ctx.f |= IsSyncExecuting;
@@ -2902,7 +2932,7 @@ function handleChildError<TNode>(
 		throw err;
 	}
 
-	resumePropsIterator(ctx);
+	resumePropsAsyncIterator(ctx);
 	let iteration: ChildrenIteratorResult | Promise<ChildrenIteratorResult>;
 	try {
 		ctx.f |= IsSyncExecuting;
@@ -2987,6 +3017,31 @@ declare global {
 
 		export interface IntrinsicElements {
 			[tag: string]: any;
+		}
+
+		export interface IntrinsicAttributes {
+			children?: unknown;
+			key?: unknown;
+			ref?: unknown;
+			["static"]?: unknown;
+			/** @deprecated */
+			["crank-key"]?: unknown;
+			/** @deprecated */
+			["crank-ref"]?: unknown;
+			/** @deprecated */
+			["crank-static"]?: unknown;
+			/** @deprecated */
+			["c-key"]?: unknown;
+			/** @deprecated */
+			["c-ref"]?: unknown;
+			/** @deprecated */
+			["c-static"]?: unknown;
+			/** @deprecated */
+			$key?: unknown;
+			/** @deprecated */
+			$ref?: unknown;
+			/** @deprecated */
+			$static?: unknown;
 		}
 
 		export interface ElementChildrenAttribute {

@@ -1,0 +1,10 @@
+{
+  "name": "eslint-plugin-crank",
+  "version": "0.1.0",
+  "description": "ESLint plugin for Crank",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "eslint-plugin-react": "^7.32.2"
+  }
+}

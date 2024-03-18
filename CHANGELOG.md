@@ -1,4 +1,16 @@
 # Changelog
+## [0.6.0] - 2024-03-04
+### Breaking Changes
+- Special props are now unprefixed. All special prefixed props are deprecated.
+- Special props are now passed into components via props.
+- The `ref` prop behavior has been changed. For host elements, the callback is fired once when the element is created. For component elements, the callback must be manually passed to one of the component’s children to fire. The `ref` callback will have no effect for other elements like `<Fragment>`.
+- The special `static` prop has been renamed to `copy` to avoid collisions with the `static` keyword.
+- The `value` prop, which allows you to access the current rendered value of a component has been deprecated.
+### Features
+- Component contexts are now passed to components as the second parameter.
+- React style camelCased event names (`onChange`, `onInput`) are now supported.
+- Stale renders are skipped with using `for await...of` in async generator components.
+- Components will now warn when yielding multiple times per props iteration.
 ## [0.5.7] - 2023-12-05
 - Fix keyed elements disappearing incorrectly, a bug introduced in 0.5.5
 ## [0.5.6] - 2023-11-07
