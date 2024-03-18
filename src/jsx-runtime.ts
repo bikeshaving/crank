@@ -13,3 +13,4 @@ function jsxAdapter(tag: any, props: Record<string, any>, key: any) {
 export const Fragment = "";
 export const jsx = jsxAdapter;
 export const jsxs = jsxAdapter;
+export const jsxDEV = jsxAdapter;
