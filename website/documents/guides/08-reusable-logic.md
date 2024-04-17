@@ -10,14 +10,7 @@ Crank provides several additional methods and properties via the `Context` API t
 ### context.props
 The current props of a component can be accessed via the readonly context property `props`. We recommended that you access props within components via its parameters or context iterators when writing components. The `props` property can be useful when you need to access a component’s current props from within an extension or helper function.
 
-### context.value
-Similarly, the most recently rendered value of a component is accessible via the readonly context property `value`. Again, we recommend that you access rendered values via the many methods described in [the guide on accessing rendered values](./lifecycles#accessing-rendered-values) or via [the `crank-ref` prop](./special-props-and-tags#crank-ref), but it can be useful to access the current value synchronously when writing helper context methods.
-
-Depending on the state of the component, the accessed value can be an node, a string, an array of nodes and strings, or `undefined`.
-
 ### context.provide and context.consume
-**Warning:** This API is more unstable than others, and the method names and behavior of components which use this method may change.
-
 Crank allows you to provide data to all of a component’s descendants via the methods `provide` and `consume`. The `provide` method sets a “provision” under a specific key, and the `consume` method retrieves the value set under a specific key by the nearest ancestor.
 
 ```ts
@@ -58,8 +51,53 @@ Anything can be passed as a key to the `provide` and `consume` methods, so you c
 ### `context.schedule()`
 You can pass a callback to the `schedule()` method to listen for when the component renders. Callbacks passed to `schedule` fire synchronously after the component renders, with the rendered value of the component as its only argument. Scheduled callbacks fire once per call and callback function per update (think `requestAnimationFrame()`, not `setInterval()`). This means you have to continuously call the `schedule` method for each update if you want to execute some code every time your component commits.
 
+```jsx
+function *Component(this, props) {
+  for await (props of this) {
+    this.schedule((div) => {
+      // the div is
+      div.innerHTML = props.innerHTML;
+    });
+    yield <div />;
+  }
+}
+```
+
 ### `context.flush()`
 Similar to the `schedule()` method, this method fires when rendering has finished. Unlike the `schedule()` method, this method fires when a component’s rendered DOM is live. This is useful when you need to do something like calling `focus()` on an `<input>` element or perform DOM measurement calculations. Callbacks fire once per call and callback function per update.
+
+```jsx live
+import {renderer} from "@b9g/crank/dom";
+function *AutoFocusingInput(props) {
+  // this.schedule does not work because it fires before the input element is
+  // added to the DOM
+  // this.schedule((input) => input.focus());
+  this.flush((input) => input.focus());
+  for (props of this) {
+    yield <input {...props}/>;
+  }
+}
+
+function *Component() {
+  let initial = true;
+  for ({} of this) {
+    yield (
+      <div>
+        <div>
+          {initial || <AutoFocusingInput />}
+        </div>
+        <div>
+          <button onclick={() => this.refresh()}>Refresh</button>
+        </div>
+      </div>
+    );
+
+    initial = false;
+  }
+}
+
+renderer.render(<Component />, document.body);
+```
 
 ### `context.cleanup()`
 Similarly, you can pass a callback to the `cleanup` method to listen for when the component unmounts. Callbacks passed to `cleanup` fire synchronously when the component is unmounted. Each registered callback fires only once. The callback is called with the last rendered value of the component as its only argument.
@@ -72,7 +110,7 @@ The following are various patterns you can use to write and reuse logic between 
 You can import and extend the Context class’s prototype to globally extend all contexts in your application.
 
 ```ts
-import {Context} from "@bikeshaving/crank";
+import {Context} from "@b9g/crank";
 
 const ContextIntervalSymbol = Symbol.for("ContextIntervalSymbol");
 

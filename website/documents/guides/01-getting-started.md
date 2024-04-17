@@ -257,18 +257,24 @@ renderer.render(<Timer />, document.body);
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
+async function Definition({word}) {
+  // API courtesy https://dictionaryapi.dev
+  const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+  const data = await res.json();
+  if (!Array.isArray(data)) {
+    return <p>No definition found for {word}</p>;
+  }
 
-async function QuoteOfTheDay() {
-  const res = await fetch("https://favqs.com/api/qotd");
-  const {quote} = await res.json();
-  return (
-    <p>
-      “{quote.body}” – <a href={quote.url}>{quote.author}</a>
-    </p>
-  );
+  const {phonetic, meanings} = data[0];
+  const {partOfSpeech, definitions} = meanings[0];
+  const {definition} = definitions[0];
+  return <>
+    <p>{word} <code>{phonetic}</code></p>
+    <p><b>{partOfSpeech}.</b> {definition}</p>
+  </>;
 }
 
-renderer.render(<QuoteOfTheDay />, document.body);
+await renderer.render(<Definition word="framework" />, document.body);
 ```
 
 ### A Loading Component
@@ -315,10 +321,10 @@ function *RandomDogApp() {
   for ({} of this) {
     yield (
       <Fragment>
-        <div>
-          <button>Show me another dog.</button>
-        </div>
         <RandomDogLoader throttle={throttle} />
+        <p>
+          <button>Show me another dog.</button>
+        </p>
       </Fragment>
     );
   }

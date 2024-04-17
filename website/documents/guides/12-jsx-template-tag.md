@@ -79,6 +79,9 @@ const templateEl = jsx`<${Component} />`;
 Component closing tags can be done in one of three styles:
 
 ```js
-import {jsx} from "@b9g/crank/standalone";
-
+const symmetricEl = jsx`<${Component}>{children}</${Component}>`;
+// the closing tag is not checked for symmetry and is basically a comment
+const commentEl = jsx`<${Component}>{children}<//Component>`;
+// double slash closing tags are not checked for symmetry
+const asymmetricEl = jsx`<${Component}>{children}<//>``;
 ```

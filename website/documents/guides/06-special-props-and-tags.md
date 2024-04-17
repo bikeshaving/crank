@@ -5,14 +5,13 @@ title: Special Props and Tags
 Crank provides certain APIs in the form of special props or element tags. The following is an overview of these props and tags.
 
 ## Special Props
-The following prop names have special behavior. They are not passed to host elements and should not be used to define component props.
+The following prop names have special behavior.
 
 ### key
 By default, Crank uses an element’s tag and position to determine if it represents an update or a change to the tree. Because elements often represent stateful DOM nodes or components, it can be useful to *key* the children of an element to hint to the renderer that an element has been added, moved or removed from a parent. In Crank, we do this with the special prop `key`:
 
 ```jsx live
-import {createElement} from "https://unpkg.com/@b9g/crank/crank";
-import {renderer} from "https://unpkg.com/@b9g/crank/dom";
+import {renderer} from "@b9g/crank/dom";
 
 let nextId = 0;
 function *ID() {
@@ -61,8 +60,7 @@ renderer.render(<List />, document.body);
 All elements in the element tree can be keyed. They are scoped to siblings, and can be any JavaScript value. The most common use-case is when rendering iterables, as the iterable can be rearranged.
 
 ```jsx live
-import {createElement} from "https://unpkg.com/@b9g/crank/crank";
-import {renderer} from "https://unpkg.com/@b9g/crank/dom";
+import {renderer} from "@b9g/crank/dom";
 
 function *Shuffler() {
   let nextId = 0;
@@ -95,7 +93,7 @@ console.log(document.firstChild.firstChild === span); // true
 Sometimes, you may want to access the rendered value of a specific element in the element tree. To do this, you can pass a callback as the `ref` prop. This callback is called with the rendered value of the element when the element has committed.
 
 ```jsx live
-import {renderer} from "@b9g/crank";
+import {renderer} from "@b9g/crank/dom";
 
 function *MyPlayer() {
   let audio;
@@ -184,7 +182,7 @@ The style prop can be used to add inline styles to an element. It can either be 
 <div style="color: red"><span style={{"font-size": "16px"}}>Hello</span></div>
 ```
 
-**Note:** Unlike other JSX frameworks, Crank does not camel-case style names or add pixel units to numbers.
+**Note:** Unlike other frameworks like React, Crank does not camel-case style names or add pixel units to numbers.
 
 ### innerHTML
 The `innerHTML` prop can be used to set the element’s children with an HTML string.
@@ -204,14 +202,14 @@ You can still use the `className` and `htmlFor` props as well, but using the for
 
 ## Special Tags
 
-Crank provides four element tags which have special meaning to the renderer, and affect element diffing and rendering output in various ways.
+Crank provides four special element tags which modify renderer behavior, affecting element diffing and rendering output in various ways.
 
 ### Fragment
-Crank provides a `Fragment` tag, which allows you to render multiple children into a parent without wrapping them in another DOM node. Under the hood, iterables which appear in the element tree are also implicitly wrapped in a `Fragment` element by the renderer.
+Crank provides a `<Fragment>` tag, which allows you to render multiple children into a parent without wrapping them in another DOM node. Under the hood, iterables which appear in the element tree are also implicitly wrapped in a `<Fragment>` element by the renderer.
 
 ```jsx
-import {createElement, Fragment} from "@bikeshaving/crank";
-import {renderer} from "@bikeshaving/crank/dom";
+import {Fragment} from "@b9g/crank";
+import {renderer} from "@b9g/crank/dom";
 function Siblings() {
   return (
     <Fragment>
@@ -227,7 +225,8 @@ console.log(document.body.innerHTML);
 ```
 
 ### Copy
-It‘s often fine to rerender Crank components, because elements are diffed, persistent between renders, and unnecessary mutations usually avoided. However, you might want to prevent a child from updating when the parent rerenders, perhaps because a certain prop hasn’t changed, because you want to batch updates from the parent, or as a performance optimization. To do this, you can use the `Copy` tag to indicate to Crank that you don’t want to update a previously rendered element in that same position.
+
+It‘s often fine to rerender Crank components, because elements are diffed, persistent between renders, and unnecessary mutations usually avoided. However, you might want to prevent a child from updating when the parent rerenders, perhaps because a certain prop hasn’t changed, because you want to batch updates from the parent, or as a performance optimization. To do this, you can use the `<Copy>` tag to indicate to Crank that you don’t want to update a previously rendered element in that same position.
 
 ```jsx
 function equals(props, newProps) {
@@ -256,15 +255,14 @@ function memo(Component) {
 }
 ```
 
-In this example, `memo` is a higher-order component, a function which takes a component and returns a component. This wrapper component compares old and new props and yields a `Copy` element if every prop is shallowly equal. A `Copy` element can appear anywhere in an element tree to prevent rerenderings, and the only props `Copy` elements take are the `key` and `ref` props, which work as expected.
+In this example, `memo` is a higher-order component, a function which takes a component and returns a component. This wrapper component compares old and new props and yields a `<Copy>` element if every prop is shallowly equal. A `<Copy>` element can appear anywhere in an element tree to prevent rerenderings, and the only props `<Copy>` elements take are the `key` and `ref` props, which work as expected.
 
 ### Portal
-Sometimes you may want to render into a DOM node which isn’t the current parent element, or even a part of the currently rendered DOM tree. You can do this with the `Portal` tag, passing in a DOM node as its `root` prop. The Portal’s children will be rendered into the specified root element, just as if Renderer.render was called with the root value as its second argument.
+Sometimes you may want to render into a DOM node which isn’t the current parent element, or even a part of the currently rendered DOM tree, as in the case of modals. You can do this with the `<Portal>` tag, passing in a DOM node as its `root` prop. The `<Portal>` element’s children will be rendered into the specified root element, just as if `renderer.render()` was called with the root value as its second argument.
 
-```jsx
-/** @jsx createElement */
-import {createElement, Portal} from "@bikeshaving/crank";
-import {renderer} from "@bikeshaving/crank/dom";
+```jsx live
+import {Portal} from "@b9g/crank";
+import {renderer} from "@b9g/crank/dom";
 const root1 = document.createElement("div");
 const root2 = document.createElement("div");
 function MyComponent() {
@@ -288,12 +286,14 @@ console.log(root2.innerHTML);
 This tag is useful for creating modals or tooltips, which usually need to be rendered into separate DOM elements at the bottom of the page for visibility reasons. Events dispatched from a `Portal` element‘s child components via the `dispatchEvent` method will still bubble into parent components.
 
 ### Raw
-Sometimes, you may want to insert raw HTML or actual DOM nodes directly into the element tree. Crank allows you to do this with the `Raw` element. The `Raw` element takes a `value` prop which is interpreted by the renderer. For the DOM renderer, if `value` is an HTML string, the renderer will parse and insert the resulting DOM nodes. If the value is already a DOM node, Crank will insert them in place.
+Sometimes, you may want to insert raw HTML or actual DOM nodes directly into the element tree. Crank allows you to do this with the `<Raw>` element. The `<Raw>` element takes a `value` prop, which can be . For the DOM renderer, if `value` is an HTML string, the renderer will parse and insert the resulting DOM nodes. If the value is already a DOM node, Crank will insert them in place.
 
 ```jsx
-/** @jsx createElement */
-import {createElement, Raw} from "@bikeshaving/crank";
+import {Raw} from "@b9g/crank";
+import {renderer} from "@b9g/crank/dom";
+// TODO: live preview doesn't work for this example because unpkg is 500ing
 import marked from "marked";
+
 function MarkdownViewer({markdown=""}) {
   const html = marked(markdown);
   return (
@@ -302,6 +302,8 @@ function MarkdownViewer({markdown=""}) {
     </div>
   );
 }
+
+renderer.render(<MarkdownViewer markdown="*hello* **world**" />);
 ```
 
 Be careful when using `<Raw>` elements, as passing unsanitized text inputs can lead to security vulnerabilities.

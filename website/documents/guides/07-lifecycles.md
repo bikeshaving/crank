@@ -2,7 +2,9 @@
 title: Lifecycles
 ---
 
-Crank uses generator functions to define component lifecycles. Internally, this is achieved by calling the [`next()`, `return()` and `throw()` methods of generators](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator#instance_methods) returned from components. As a developer, this means you can use standard JavaScript control flow to execute code during the lifecycle of a component. For parts of the lifecycle which cannot be placed in the generator body itself, Crank provides the lifecycle methods `schedule()`, `flush()` and `cleanup()` on the context.
+Crank uses generator functions to define component lifecycles. Internally, this is achieved by calling the [`next()`, `return()` and `throw()` methods of the generators](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator#instance_methods) returned from components. As a developer, this means you can use standard JavaScript control flow to execute code at various points in a component’s lifecycle.
+
+For parts of the lifecycle which cannot be expressed in the generator body itself, Crank provides the lifecycle methods `schedule()`, `flush()` and `cleanup()` on the context.
 
 ## Setup, update and teardown logic
 
@@ -78,7 +80,7 @@ renderer.render(<App />, document.body);
 
 ## Working with the DOM
 
-Logic which needs to happen after rendering, such as doing direct DOM manipulations or taking measurements, can be done directly after a `yield` in async generator components whic use `for await...of` loops, because the component is continuously resumed until the bottom of the `for await` loop. Conveniently, the `yield` expression will evaluate to the rendered result of the component.
+Logic which needs to happen after rendering, such as doing direct DOM manipulations or taking measurements, can be done directly after a `yield` in async generator components which use `for await...of` loops, because the component is continuously resumed until the bottom of the `for await` loop. Conveniently, the `yield` expression will evaluate to the rendered result of the component.
 
 ```jsx
 async function *Component(this, props) {
@@ -90,7 +92,7 @@ async function *Component(this, props) {
 }
 ```
 
-Unfortunately, this approach will not work for code in `for...of` loops. In a `for...of` loop, the behavior of `yield` works such that the component will suspend at the `yield` for each render, and this behavior holds for both sync and async generator components. This is necessary for sync generator components, because there is nowhere else to suspend, and is mimicked in async generator components, to make refactoring between sync and async generator components easier.
+Unfortunately, this approach will not work for code in `for...of` loops. In a `for...of` loop, the behavior of `yield` works such that the component will suspend at the `yield` for each render, and this behavior holds for both sync and async generator components. This behavior is necessary for sync generator components, because there is nowhere else to suspend, and is mimicked in async generator components, to make refactoring between sync and async generator components easier.
 
 ```jsx
 // The following behavior happens in both sync and async generator components
@@ -129,8 +131,7 @@ function *Component(this, props) {
 }
 ```
 
-On the other hand, the `flush()` method runs after the result is completely rendered and live in the DOM. This is required for DOM methods like the `focus()` method for auto-focusing after render. The reason for the distinction between `schedule()` and `flush()` is that Crank allows rendering to be async, and coordinates async rendering so that the rendering of multiple async siblings happens together, meaning there might be some time before a created DOM node is added to its intended parent.
-
+On the other hand, the `flush()` method runs after the result is completely rendered and live in the DOM. This is necessary for use-cases such as auto-focusing inputs after the first render. The reason for the distinction between `schedule()` and `flush()` is that Crank coordinates async rendering so that the rendering of multiple async siblings happens together, meaning there might be some time before a created DOM node is created but before it is added to its intended parent.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -165,10 +166,12 @@ function *Component() {
 renderer.render(<Component />, document.body);
 ```
 
-## Cleanup logic
-While you can use context iterators to write cleanup logic after `for...of` and `for await...of` loops, this does not handle errors, and this cleanup logic cannot be written outside of component functions. To solve the first issue, you can use `try`/`finally`. When a generator component is removed from the tree, Crank calls the `return` method on the component’s generator object. You can think of it as whatever `yield` expression your component was suspended on being replaced by a `return` statement. This means any loops your component was in when the generator suspended are broken out of, and code after the yield does not execute.
+All `schedule()` callbacks will always fire before `flush()` callbacks for a given render.
 
-You can take advantage of this behavior by wrapping your `yield` loops in a `try`/`finally` block to release any resources that your component may have used.
+## Cleanup logic
+While you can use context iterators to write cleanup logic after `for...of` and `for await...of` loops, this does not account for errors in components, and it does work if you are not using a render loop. To solve these issues, you can use `try`/`finally` block. When a generator component is removed from the tree, Crank calls the `return` method on the component’s generator object.
+
+You can think of it as whatever `yield` expression your component was suspended on being replaced by a `return` statement. This means any loops your component was in when the generator suspended are broken out of, and code after the yield does not execute.
 
 ```jsx
 import {renderer} from "@b9g/crank/dom";
@@ -190,7 +193,7 @@ renderer.render(null, document.body);
 console.log(document.body); // ""
 ```
 
-[The same best practices](https://eslint.org/docs/rules/no-unsafe-finally) which apply to `try`/`finally` statements in regular functions apply to generator components. In short, you should not yield or return anything in the `finally` block. Crank will not use the yielded or returned values and doing so might cause your components to inadvertently swallow errors or suspend in unexpected locations.
+[The same best practices](https://eslint.org/docs/rules/no-unsafe-finally) which apply to `try` / `finally` statements in regular functions apply to generator components. In short, you should not yield or return anything in the `finally` block. Crank will not use the yielded or returned values and doing so might cause your components to inadvertently swallow errors or suspend in unexpected locations.
 
 To write cleanup logic which can be abstractd outside the component function, you can use the `cleanup()` method on the context. This method is similar to `flush() and `schedule()` in that it takes a callback.
 
@@ -219,9 +222,11 @@ function *KeyboardListener() {
 renderer.render(<KeyboardListener />, document.body);
 ```
 
+The `cleanup()` method is also useful for refactoring teardown logic.
+
 ## Catching Errors
 
-It can be useful to catch errors thrown by components to show the user an error notification or to notify error-logging services. To facilitate this, Crank will cause `yield` expressions to rethrow errors which happen when rendering children. You can take advantage of this behavior by wrapping your `yield` operations in a `try`/`catch` block to catch errors caused by children.
+It can be useful to catch errors thrown by components to show the user an error notification or to notify error-logging services. To facilitate this, Crank will cause `yield` expressions to rethrow errors which happen when rendering children. You can take advantage of this behavior by wrapping your `yield` operations in a `try` / `catch` block to catch errors caused by children.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -258,7 +263,7 @@ renderer.render(<Catcher />, document.body);
 
 ## Returning values from generator components
 
-When you return from a generator component, the returned value is rendered and the component scope is thrown away, same as would happen when using a function component. This means that while the component cannot have local variables, but represent sequences of renderings.
+When you return from a generator component, the returned value is rendered and the component scope is thrown away, same as would happen when using a function component. This means that the component cannot have local variables which persist across returns.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";

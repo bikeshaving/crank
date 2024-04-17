@@ -2,9 +2,9 @@
 title: Async Components
 ---
 
-So far, every component we’ve seen has been a sync function or sync generator component. Crank processes synchronous components immediately, ensuring that by the time `renderer.render()` or the `refresh()` method completes execution, rendering will have finished.
+So far, every component we’ve seen has been a synchronous function or generator component. Crank processes synchronous components immediately, ensuring that by the time `renderer.render()` or the `refresh()` method completes execution, rendering will have finished.
 
-Nevertheless, a JavaScript framework would not be complete without a way to work with promises. To this end, Crank allows any component to be async the same way you would make any function asynchronous, by adding an `async` before the `function` keyword. Both *async function* and *async generator components* are supported. This feature means you can `await` promises in the process of rendering in virtually any component.
+Nevertheless, a JavaScript framework would not be complete without a way to work with promises. To this end, Crank simply allows any component to be async the same way you would make any function asynchronous: by making the function asynchronous. Both *async function* and *async generator components* are supported. This means you can `await` promises in any component.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -12,6 +12,10 @@ async function Definition({word}) {
   // API courtesy https://dictionaryapi.dev
   const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
   const data = await res.json();
+  if (data[0] == null) {
+    return <p>{word} not found</p>;
+  }
+
   const {phonetic, meanings} = data[0];
   const {partOfSpeech, definitions} = meanings[0];
   const {definition} = definitions[0];
@@ -30,48 +34,46 @@ When rendering is async, `renderer.render()` and the `refresh()` method will ret
 ### Concurrent Updates
 The nature of declarative rendering means that async components can be rerendered while they are still rendering. Therefore, Crank implements a couple rules to make concurrent updates predictable and performant:
 
-1. There can be only one pending run of an async component at a time for an element in the tree. If the same async component is rerendered concurrently while it is still pending, another call is enqueued with the updated props.
+1. There can be only one pending run of an async component at a time for an element in the tree. If the same async component is rerendered concurrently while a run is pending, another call is enqueued with the updated props.
+   ```jsx live
+   import {renderer} from "@b9g/crank/dom";
+   async function Delay ({message}) {
+     await new Promise((resolve) => setTimeout(resolve, 1000));
+     return <div>{message}</div>;
+   }
 
-```jsx live
-import {renderer} from "@b9g/crank/dom";
-async function Delay ({message}) {
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  return <div>{message}</div>;
-}
-
-await renderer.render(<Delay message="Run 1" />, document.body);
-renderer.render(<Delay message="Run 2" />, document.body);
-// The third and fourth renders are queued because the second render is still pending.
-renderer.render(<Delay message="Run 3" />, document.body);
-renderer.render(<Delay message="Run 4" />, document.body);
-```
-
-In the preceding example, at no point is there more than one simultaneous call to the `<Delay>` component, despite the fact that it is rerendered concurrently for its second through fourth renders. And because these renderings are enqueued, only the second and fourth renderings have any effect. This is because the element is busy with the second render by the time the third and fourth renderings are requested, and then, only the fourth rendering is actually executed because third rendering’s props are obsolete by the time the component is ready to update again. This behavior allows async components to always be kept up-to-date without producing excess calls.
+   await renderer.render(<Delay message="Run 1" />, document.body);
+   renderer.render(<Delay message="Run 2" />, document.body);
+   // The third and fourth renders are queued because the second render is still pending.
+   renderer.render(<Delay message="Run 3" />, document.body);
+   renderer.render(<Delay message="Run 4" />, document.body);
+   ```
+   In the preceding example, at no point is there more than one simultaneous call to the `<Delay>` component, despite the fact that it is rerendered concurrently for its second through fourth renders. And because these renderings are enqueued, the third rendering is skipped. This is because the element is busy with the second render by the time the third and fourth renderings are requested, and then, only the fourth rendering is actually executed because third rendering’s props are obsolete by the time the component is ready to update again. This behavior allows async components to always be kept up-to-date without producing excess calls.
 
 2. If two different async components are rendered in the same position, the components are raced. If the earlier component fulfills first, it shows until the later component fulfills. If the later component fulfills first, the earlier component is never rendered.
 
-```jsx live
-import {renderer} from "@b9g/crank/dom";
+    ```jsx live
+    import {renderer} from "@b9g/crank/dom";
 
-async function Fast() {
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  return <span>Fast</span>;
-}
+    async function Fast() {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      return <span>Fast</span>;
+    }
 
-async function Slow() {
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-  return <span>Slow</span>;
-}
+    async function Slow() {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      return <span>Slow</span>;
+    }
 
-// TODO: flip the order of these calls and watch the behavior.
-renderer.render(<Fast />, document.body);
-renderer.render(<Slow />, document.body);
-```
+    // TODO: flip the order of these calls and watch the behavior.
+    renderer.render(<Fast />, document.body);
+    renderer.render(<Slow />, document.body);
+    ```
 
-As we’ll see later, this “ratcheting” effect becomes useful for rendering fallback states for async components.
+    As we’ll see later, this “ratcheting” effect becomes useful for rendering loading indicators or placeholders for more responsive UIs.
 
 ## Async Generator Components
-Just as you can write stateful components with sync generator functions, you can also write *stateful* async components with async generator functions. Async generator components work just like sync generator components when using `for...of` loops, to allow easy refactoring between sync and async.
+Just as you can write stateful components with sync generator functions, you can also write stateful async components with async generator functions. Async generator components work just like sync generator components when using `for...of` loops, to allow easy refactoring between sync and async.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -95,7 +97,9 @@ async function *AsyncCounter() {
 renderer.render(<AsyncCounter />, document.body);
 ```
 
-The async components we’ve seen so far have been all or nothing, in the sense that nothing is rendered until promises are fulfilled. It is often useful to show loading indicators while these promises are pending, which appear only if a pending render is taking too long. In Crank, we can do this by racing async components. Async components can be raced by using the `for await...of` iterator of the context. By using an async iterator rather than an iterator, you can render multiple times for each update because the update suspends and resumes based on the async iteration.
+## Racing Components
+
+The async components we’ve seen so far have been all or nothing, in the sense that nothing is rendered until the components have fulfilled. Nevertheless, it is often useful to show loading indicators or placeholders while these promises are pending, which appear only if a pending render is taking too long. In Crank, we do this by racing async components. Async components can be raced within an async generator component using the context as an async iterator (`for await...of`). By using an async iterator rather than the iterator, you can render multiple times for each update. This is possible because the update suspends and resumes based on the loop and not at each yield.
 
 ```jsx live
 import {Fragment} from "@b9g/crank";
@@ -122,6 +126,7 @@ async function RandomDog({throttle = false}) {
 
 async function *RandomDogLoader({throttle}, ctx) {
   for await ({throttle} of ctx) {
+    // Each time the component is rendered, both LoadingIndicator and RandomDog are raced
     yield <LoadingIndicator />;
     yield <RandomDog throttle={throttle} />;
   }
@@ -151,7 +156,7 @@ function *RandomDogApp({}, ctx) {
 renderer.render(<RandomDogApp />, document.body);
 ```
 
-In this example, the `RandomDogLoader` component is an async generator component which races the `LoadingIndicator` component with the `RandomDog` component. Because the async generator component resumes continuously, both components are rendered, and according to the second rule of async components, the loading indicator only shows if the `RandomDog` component takes longer than the `LoadingIndicator` component, which fulfills at a fixed interval of one second.
+In this example, the `<RandomDogLoader>` component is an async generator component which races the `<LoadingIndicator>` component with the `<RandomDog>` component. Because the async generator component resumes continuously, both components are rendered, and according to the second rule of async components, the loading indicator only shows if the `<RandomDog>` component takes longer than the `<LoadingIndicator>` component, which fulfills at a fixed interval of one second.
 
 The preceding example hints at how we could abstract this pattern to implement the `Suspense` component from React.
 
@@ -176,11 +181,32 @@ await renderer.render(
 );
 ```
 
-No special tags are needed for async loading states, and the functionality to write this logic is implemented using the same element diffing algorithm that governs synchronous components. Additionally, this approach is more flexible in the sense that you can extend it; for instance, you can add another yield to the `for await…of` loop to show a second fallback state which waits ten seconds, to inform the user that something went wrong or that servers are slow to respond.
+No special tags are needed for async loading states, and the functionality to write this logic is implemented using the same element diffing algorithm that governs synchronous components and DOM elements. Additionally, this approach is more flexible in the sense that you can extend it. For instance, you can add another yield to the `for await...of` loop to show a second fallback state which waits ten seconds, to inform the user that something went wrong or that servers are slow to respond.
 
 ## Three Async Generator Modes
 
-Async generator components operate in two modes, dependent, where the component is suspended at each `yield` operator, and independent, where the component is continuously resumed. A component’s mode of operation is determined by whether it’s in a `for...of` or `for...await of` loop on the context.
+As you can see, async generator components operate in two modes, *dependent*, where the component is suspended at each `yield` operator, and *independent*, where the component is continuously resumed at each `yield`. A component’s mode of operation is determined by whether it’s in a `for...of` or `for...await of` loop on the context. The `for...of` loop exactly mimics sync generator components for ease of refactoring, while the `for...await of` loop allows for more complicated rendering behavior.
+
+```jsx
+async function *Dependent({children}) {
+  for ({children} of this) {
+    yield children; // suspends at the yield
+    // this line will not execute until the component is rerendered
+    console.log("hello");
+  }
+}
+
+async function *Independent({children} {
+  for await ({children} of this) {
+    yield children;
+    // this line will run after the component has yielded
+    console.log("hello");
+    // suspends at the bottom of the loop
+  }
+}
+```
+
+Unlike sync generator components, if the component does not use a render loop, the component will continuously resume. In other words, an async generator component which uses a `while (true)` is run in an independent mode. Async generator components are designed this way so that you can return async iterators from components.
 
 ```jsx
 async function *Independent({children}) {
@@ -190,20 +216,4 @@ async function *Independent({children}) {
     await new Promise((r) => setTimeout(r, 1000));
   }
 }
-
-async function *Dependent({children}) {
-  for ({children} of this) {
-    // suspends at the yield
-    yield children;
-  }
-}
-
-async function *Independent1({children} {
-  for await ({children} of this) {
-    yield children;
-    // suspends at the bottom of the loop
-  }
-}
 ```
-
-When a component does not enter a context iteration loop, it will continuously resume. This is done so that you can define async gnerators which suspend according to some async loop. As seen in the example, the first and third components will suspend only on promises, while the second component suspends at each yield like a sync generator component. The motivation behind this behavior is to make it easier to refactor simple sync components into async components, which only need to await promises but do not need to race trees to show loading indicators.

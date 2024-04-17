@@ -27,9 +27,7 @@ import {createElement} from "@b9g/crank";
 const el = createElement("div", {id: "element"}, "An element");
 ```
 
-Identifiers like `createElement`, `Fragment` must be manually imported.
-
-The automatic transform turns JSX elements into function calls from an automatically imported namespace.
+With the classic transform, the `createElement` function must be manually imported. The automatic transform turns JSX elements into function calls from an automatically imported namespace.
 
 ```jsx
 /** @jsxImportSource @b9g/crank */
@@ -62,11 +60,11 @@ const profile = _jsxs("div", {
 
 ```
 
-The automatic transform has the benefit of not requiring manual imports. Beyond this fact, there is no difference between the two transforms, and the `_jsx()`/`_jsxs()` functions are wrappers around `createElement()`.
+The automatic transform has the benefit of not requiring manual imports. Beyond this fact, there is no difference between the two transforms, and the provided `_jsx()`/`_jsxs()` functions are wrappers around `createElement()`.
 
 ## Renderers
 
-Crank ships with two renderer subclasses for the web: one for managing DOM nodes in a front-end application, available through the module `@b9g/crank/dom`, and one for creating HTML strings, available through the module `@b9g/crank/html`. You can use these modules to render interactive user interfaces in the browser and HTML responses on the server.
+Crank provides two renderer subclasses for the web: one for managing DOM nodes in a front-end application, available through the module `@b9g/crank/dom`, and one for creating HTML strings, available through the module `@b9g/crank/html`. You can use these modules to render interactive user interfaces in the browser and HTML responses on the server.
 
 ```jsx
 import {renderer as DOMRenderer} from "@b9g/crank/dom";
@@ -174,7 +172,7 @@ console.log(document.body.innerHTML); // "<div>123 abc</div>"
 ```
 
 ## Element Diffing
-Crank uses the same “virtual DOM” diffing algorithm made popular by React, where we compare elements by tag and position to reuse DOM nodes. This approach allows you to write declarative code which focuses on producing the right tree, while the framework does the dirty work of mutating the DOM efficiently.
+Crank uses the same “virtual DOM” diffing algorithm made popular by React, where elements are compared by tag and position to reuse DOM nodes. This approach allows you to write declarative code which focuses on producing the right tree, while the framework does the dirty work of mutating the DOM efficiently.
 
 ```jsx
 renderer.render(
