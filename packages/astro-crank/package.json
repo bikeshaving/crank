@@ -22,8 +22,8 @@
     "@babel/plugin-transform-react-jsx": "^7.17.12"
   },
   "peerDependencies": {
-    "astro": "^2.0.0",
-    "@b9g/crank": "^0.5.1"
+    "astro": "^4.0.0",
+    "@b9g/crank": "^0.6.0"
   },
   "engines": {
     "node": ">=16.12.0"
