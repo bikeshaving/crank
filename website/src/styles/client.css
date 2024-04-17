@@ -154,3 +154,7 @@ select, input, textarea {
 	color: var(--text-color);
 	border: 1px solid var(--text-color);
 }
+
+.content {
+	margin-bottom: 1em;
+}
