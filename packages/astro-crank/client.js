@@ -9,14 +9,14 @@ export default (rootEl) =>
 
 		for (const [key, value] of Object.entries(slotted)) {
 			props[key] = jsx`
-			<${Raw} value=${value} $static />
-		`;
+				<${Raw} value=${value} copy=${true} />
+			`;
 		}
 
 		if (children != null) {
 			children = jsx`
-			<${Raw} value=${children} $static />
-		`;
+				<${Raw} value=${children} copy=${true} />
+			`;
 		}
 
 		if (client === "only") {
