@@ -5,7 +5,8 @@
 - Special props are now passed into components via props.
 - The `ref` prop behavior has been changed. For host elements, the callback is fired once when the element is created. For component elements, the callback must be manually passed to one of the component’s children to fire. The `ref` callback will have no effect for other elements like `<Fragment>`.
 - The special `static` prop has been renamed to `copy` to avoid collisions with the `static` keyword.
-- The `value` prop, which allows you to access the current rendered value of a component has been deprecated.
+- The `context.value` property, which allows you to access the current rendered value of a component from the context, has been deprecated.
+- Elements which are reused between renders will skip rendering. This means you have to clone elements between renders if you want them to rerender.
 ### Features
 - Component contexts are now passed to components as the second parameter.
 - React style camelCased event names (`onChange`, `onInput`) are now supported.
