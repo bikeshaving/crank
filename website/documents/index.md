@@ -36,6 +36,10 @@ async function Definition({word}) {
   // API courtesy https://dictionaryapi.dev
   const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
   const data = await res.json();
+  if (!Array.isArray(data)) {
+    return <p>No definition found for {word}</p>;
+  }
+
   const {phonetic, meanings} = data[0];
   const {partOfSpeech, definitions} = meanings[0];
   const {definition} = definitions[0];

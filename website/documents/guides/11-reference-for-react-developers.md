@@ -38,7 +38,7 @@ The following are specific equivalents for React methods.
 ### setState and forceUpdate
 Crank uses generator functions and local variables for local state. Refer to [the section on stateful components](./guides/components#stateful-components).
 
-Crank is not “reactive” in the same sense as React, in that it does not track your component’s local state and rerender when it detects a change. You can either use the context’s `refresh` to manually refresh the component, similar to React’s `forceUpdate` method, or you can use async generator components, which refresh automatically whenever the returned async generator yields.
+Crank is not “reactive” in the same sense as React, in that it does not track your component’s local state and rerender when it detects a change. You can either use the context’s `refresh` to manually refresh the component, similar to React’s `forceUpdate` method, or you can use async generator components, which refresh automatically whenever the returned async generator yields in a `for await...of` loop.
 
 ### defaultProps
 Crank doesn’t have a `defaultProps` implementation. Instead, you can provide default values when destructuring props. [See the guide on default props](./components#default-props).

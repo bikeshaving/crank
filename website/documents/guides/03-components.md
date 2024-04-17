@@ -6,7 +6,7 @@ title: Components
 
 So far, we’ve only seen and used *host elements*. By convention, all host elements use lowercase tags like `<a>` or `<div>`, and these elements are rendered as their HTML equivalents.
 
-However, eventually we’ll want to group these elements into reusable *components*. In Crank, components are defined with plain old JavaScript functions, including async and generator functions, which return or yield JSX elements. These functions can be referenced as element tags, and component elements are distinguished from host elements through the use of capitalized identifiers. The capitalized identifier is not just a convention but a way to tell JSX compilers to interpret the tag as an identifier rather than a literal string.
+However, eventually we’ll want to group these elements into reusable *components*. In Crank, all components are defined with plain old JavaScript functions which produce JSX elements. These functions can be referenced as element tags, and component elements are distinguished from host elements through the use of capitalized identifiers. The capitalized identifier is not just a convention but a way to tell JSX compilers to interpret the tag as an identifier rather than a literal string.
 
 The simplest kind of component is a *function component*. When rendered, the function is invoked with the props of the element as its first argument, and the return value of the function is rendered as the element’s children.
 
@@ -42,7 +42,7 @@ renderer.render(
 );
 ```
 
-The type of children is unknown, i.e. it could be an array, an element, or whatever else the caller passes in.
+The type of children is unknown, e.g. it could be an array, an element, or whatever else the caller passes in.
 
 ## Stateful Components
 Eventually, you’ll want to write components with local state. In Crank, we use [generator functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*) to do so. These types of components are referred to as *generator components*.
@@ -58,7 +58,7 @@ function *Counter() {
     count++;
     yield (
       <div>
-        You have updated this component {count} time{count !== 1 && "s"}.
+        This component has updated {count} time{count !== 1 && "s"}.
       </div>
     );
   }
@@ -72,11 +72,12 @@ renderer.render(<Counter />, document.body);
 By yielding elements rather than returning them, components can be made stateful using variables in the generator’s local scope. Crank uses the same diffing algorithm which reuses DOM nodes to reuse generator objects, so there will only be one execution of a generator component for a given element in the tree.
 
 ## The Crank Context
-In the preceding example, the component’s local state was updated directly when the generator was executed. This is of limited value insofar as what we usually want want is to update according to events or timers.
+In the preceding example, the component’s local state `count` was updated directly when the generator was re-rendered. This is of limited value insofar as what we usually want want is to update according to events or timers.
 
 Crank allows components to control their own execution by passing in an object called a *context* as the `this` keyword of each component. Contexts provide several utility methods, the most important of which is the `refresh()` method, which tells Crank to update the related component instance in place.
 
 ```jsx live
+import {renderer} from "@b9g/crank/dom";
 function *Timer({message}) {
   let seconds = 0;
   const interval = setInterval(() => {
@@ -100,7 +101,7 @@ renderer.render(<Timer message="Seconds elapsed:" />, document.body);
 
 This `<Timer>` component is similar to the `<Counter>` one, except now the state (the local variable `seconds`) is updated in a `setInterval()` callback, rather than when the component is rerendered. Additionally, the `refresh()` method is called to ensure that the generator is stepped through whenever the `setInterval()` callback fires, so that the rendered DOM actually reflects the updated `seconds` variable. Finally, the `<Timer>` component is passed a display message as a prop.
 
-One important detail about the `Timer` example is that it cleans up after itself with `clearInterval()` in the `finally` block. Behind the scenes, Crank will call the `return()` method on an element’s generator object when it is unmounted.
+One important detail about the `Timer` example is that it cleans up after itself with `clearInterval()` in the `finally` block. Behind the scenes, Crank will call the `return()` method on the component’s generator object when it is unmounted.
 
 If you hate the idea of using the `this` keyword, the context is also passed in as the second parameter of components.
 
@@ -126,7 +127,7 @@ function *Timer({message}, ctx) {
 
 ## The Render Loop
 
-The `<Timer>` component works, but it can be improved. Firstly, while the component is stateful, it would not update the message if it was rerendered with new props. Secondly, the `while (true)` loop can iterate infinitely if you forget to add a `yield`. To solve these issues, Crank contexts are an iterable of the latest props.
+The `<Timer>` component works, but it can be improved. Firstly, while the component is stateful, it would not update the message if it was rerendered with new props. Secondly, the `while (true)` loop can iterate infinitely if you forget to add a `yield`, leading to unresponsive pages. To solve both of these issues, Crank contexts are themselves an iterable of props.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -139,7 +140,7 @@ function *Timer({message}) {
 
   for ({message} of this) {
     yield (
-      <div>{message}: {seconds}</div>
+      <div>{message} {seconds}</div>
     );
   }
 
@@ -159,9 +160,9 @@ setTimeout(() => {
 }, 2500);
 ```
 
-The loop created by iterating over contexts is called the *render loop*. By replacing the `while` loop with a `for...of` loop, you can get the latest props each time the generator is resumed. It also provides benefits over `while` loops, like throwing errors if you forget to `yield`, and allowing you to write cleanup code after the loop without having to wrap the block in a `try`/`finally` block.
+The loop created by iterating over contexts is called the *render loop*. By replacing the `while` loop with a `for...of` loop, you can get the latest props each time the generator is resumed. It also prevents common development mistakes by throwing errors if you forget to yield, or yield multiple times in a loop. FInally, it also allows you to write cleanup code after the loop without having to wrap the entire loop in a `try`/`finally` block, as you would in a `while` loop.
 
-One Crank idiom you may have noticed is that we define props in function parameters, and overwrite them using a destructuring expression in the `for...of` statement. This is an easy way to make sure those variables stay in sync with the current props of the component. For this reason, even if your component has no props, it is idiomatic to destructure props and use a `for...of` loop.
+One Crank idiom you may have noticed is that we define props in function parameters and overwrite them using a destructuring expression. This is an easy way to make sure those variables stay in sync with the current props of the component. For this reason, even if your component has no props, it is idiomatic to destructure props and use a `for...of` loop.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -172,6 +173,8 @@ function *Counter() {
     this.refresh();
   };
 
+  // using an empty destructuring expression means we do not need to declare
+  // more variables when there are no props
   for ({} of this) {
     yield (
       <button onclick={onclick}>

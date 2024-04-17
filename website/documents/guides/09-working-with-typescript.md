@@ -8,8 +8,8 @@ Crank is written in TypeScript, and provides some types out of box so you can ty
 Trying to reference `this` in a component without a `this` type annotation will throw a type error in TypeScript‘s strict mode (you’ll see a message like `'this' implicitly has type 'any' because it does not have a type annotation`). Crank exports the `Context` class so you can annotate your components `this` as `Context`:
 
 ```tsx
-import {Context} from "@bikeshaving/crank";
-function *Timer (this: Context) {
+import {Context} from "@b9g/crank";
+function *Timer (this: Context, props: {}, ctx: Context) {
   let seconds = 0;
   const interval = setInterval(() => {
     seconds++;
@@ -29,7 +29,7 @@ function *Timer (this: Context) {
 You’ll often want to add a return type to your components. Crank exports custom types to help you type the return types of components:
 
 ```tsx
-import {Element} from "@bikeshaving/crank";
+import {Element} from "@b9g/crank";
 function SyncFn(): Element {
   return <div>Hello world</div>;
 }
@@ -85,7 +85,7 @@ const el1 = <Greeting name={1} />; // throws a type error
 The children prop can be typed using the `Children` type provided by Crank. The `Children` type is a broad type which can be `Child` or arbitrarily nested iterables of `Child`. TypeScript doesn’t really provide a way to prevent functions from being used as the `children` prop, but such patterns are strongly discouraged. You should typically treat `children` as an opaque value only to be interpolated into JSX because its value can be almost anything.
 
 ```tsx
-import {Children} from "@bikeshaving/crank";
+import {Children} from "@b9g/crank";
 function Greeting ({name, children}: {name: string, children: Children}) {
   return (
     <div>
