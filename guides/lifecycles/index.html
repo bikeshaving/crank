@@ -1,10 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Crank.js | Lifecycles</title><link href="/static/client-Q5HR47TJ.css" rel="stylesheet" type="text/css"><meta property="og:title" content="Crank.js | Lifecycles"><meta property="og:url" content="https:/crank.js.org/guides/lifecycles"><meta property="og:description" content=""><script async src="https://www.googletagmanager.com/gtag/js?id=UA-20910936-4"></script><script>
-				window.dataLayer = window.dataLayer || [];
-				function gtag(){dataLayer.push(arguments);}
-				gtag('js', new Date());
-
-				gtag('config', 'UA-20910936-4');
-			</script></head><body><script>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Crank.js | Lifecycles</title><link href="/static/client-SSQIEGC5.css" rel="stylesheet" type="text/css"><meta property="og:title" content="Crank.js | Lifecycles"><meta property="og:url" content="https:/crank.js.org/guides/lifecycles"><meta property="og:description" content=""></head><body><script>
 	(() => {
 		const colorScheme = sessionStorage.getItem("color-scheme") ||
 			(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -35,184 +29,470 @@
 						A 0.2 1 0 0 0 160 -20
 						L 0 -40
 						z
-					"></path></g></svg>Crank.js</a></div><div><a href="/guides/getting-started" aria-current="page">Guides</a></div><div><a href="/blog/">Blog</a></div><div><a href="/playground/">Playground</a></div></div><div class="css-1n0j5y9"><div><a href="https://github.com/bikeshaving/crank">GitHub</a></div><div><a href="http://npm.im/@b9g/crank">NPM</a></div><button role="switch" aria-label="set dark mode" aria-checked="false">⬜</button></div></nav></div><style data-emotion="css 1wkb9s8">.css-1wkb9s8{background-color:var(--bg-color);margin-top:50px;padding:2rem 0.4rem;color:var(--text-color);border-right:1px solid currentcolor;border-bottom:1px solid currentcolor;}@media screen and (min-width: 800px){.css-1wkb9s8{position:fixed;top:50px;bottom:0;overflow-x:hidden;overflow-y:auto;width:15rem;margin:0;padding:2rem 1rem;text-align:right;}}@media screen and (min-width: 1100px){.css-1wkb9s8{padding:3rem 2rem;width:20rem;}}.css-1wkb9s8 >:first-child{margin-top:0;}</style><div id="sidebar" class="css-1wkb9s8"><style data-emotion="css ep9szm">.css-ep9szm{color:var(--highlight-color);margin-top:0;}</style><h3 class="css-ep9szm">Guides</h3><style data-emotion="css w1ljn4">.css-w1ljn4{margin:10px 0;}</style><div class="css-w1ljn4"><style data-emotion="css 1l0nd7p">.css-1l0nd7p{-webkit-text-decoration:none;text-decoration:none;}</style><a href="/guides/getting-started" class="css-1l0nd7p">Getting Started</a></div><div class="css-w1ljn4"><a href="/guides/elements" class="css-1l0nd7p">Elements and Renderers</a></div><div class="css-w1ljn4"><a href="/guides/components" class="css-1l0nd7p">Components</a></div><div class="css-w1ljn4"><a href="/guides/handling-events" class="css-1l0nd7p">Handling Events</a></div><div class="css-w1ljn4"><a href="/guides/async-components" class="css-1l0nd7p">Async Components</a></div><div class="css-w1ljn4"><a href="/guides/special-props-and-tags" class="css-1l0nd7p">Special Props and Tags</a></div><div class="css-w1ljn4"><a href="/guides/lifecycles" aria-current="page" class="css-1l0nd7p">Lifecycles</a></div><div class="css-w1ljn4"><a href="/guides/reusable-logic" class="css-1l0nd7p">Reusable Logic</a></div><div class="css-w1ljn4"><a href="/guides/working-with-typescript" class="css-1l0nd7p">Working with TypeScript</a></div><div class="css-w1ljn4"><a href="/guides/reference-for-react-developers" class="css-1l0nd7p">Reference for React Developers</a></div><div class="css-w1ljn4"><a href="/guides/jsx-template-tag" class="css-1l0nd7p">JSX Template Tag</a></div><div class="css-w1ljn4"><a href="/guides/xx-performance" class="css-1l0nd7p"></a></div></div><style data-emotion="css sjfxen">.css-sjfxen{margin:0 auto;padding:2rem 0.4rem;}@media screen and (min-width: 800px){.css-sjfxen{margin-left:240px;padding:2rem 1rem;margin-top:50px;}}@media screen and (min-width: 1100px){.css-sjfxen{margin-left:320px;padding:3rem 2rem;}}.css-sjfxen p{max-width:800px;}</style><main class="css-sjfxen"><h1>Lifecycles</h1><marquee behavior="alternate">🚧 The docs are a work in progress.🚧</marquee><p>Crank uses generator functions rather than hooks or classes to define component lifecycles. Internally, this is achieved by calling the <code class="inline">next</code>, <code class="inline">return</code> and <code class="inline">throw</code> methods of the returned generator object as components are mounted, updated and unmounted from the element tree. As a developer, you can use the <code class="inline">yield</code>, <code class="inline">return</code>, <code class="inline">try</code>, <code class="inline">catch</code>, and <code class="inline">finally</code> keywords within your generator components to take full advantage of the generator’s natural lifecycle.</p><h2>Returning Values</h2><p>In most generator components, you will yield children within a loop so that they can continue to respond to updates. However, you may also want to return a final state. Unlike function components, which are called and returned once for each update, once a generator component returns, its rendered value is final, and the component will never update again.</p><div style="margin: 30px auto;" class="code-block-container"><style data-emotion="css 1vm8pxc">.css-1vm8pxc{max-width:min(100%, 1000px);}</style><div class="css-1vm8pxc"><style data-emotion="css 1s1lac9">.css-1s1lac9{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;font-size:16px;}@media (min-width: 1300px){.css-1s1lac9{-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-align-items:flex-start;-webkit-box-align:flex-start;-ms-flex-align:flex-start;align-items:flex-start;}}</style><div class="css-1s1lac9"><style data-emotion="css k65jh7">.css-k65jh7{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;width:100%;border:1px solid var(--text-color);margin-top:-1px;}</style><div class="css-k65jh7"><style data-emotion="css 1m42aok">.css-1m42aok{overflow-x:auto;max-width:100%;}</style><div class="css-1m42aok"><style data-emotion="css artqa7">.css-artqa7{position:relative;min-height:100%;width:100%;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;}</style><div class="css-artqa7"><style data-emotion="css 84ojsb">.css-84ojsb{display:contents;}</style><content-area class="css-84ojsb"><style data-emotion="css 1ashatc">.css-1ashatc{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;word-break:break-all;overflow-wrap:anywhere;line-break:anywhere;white-space:pre-wrap;white-space:break-spaces;font-size:16px;}</style><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+					"></path></g></svg>Crank.js</a></div><div><a href="/guides/getting-started" aria-current="page">Guides</a></div><div><a href="/blog/">Blog</a></div><div><a href="/playground/">Playground</a></div></div><div class="css-1n0j5y9"><div><a href="https://github.com/bikeshaving/crank">GitHub</a></div><div><a href="http://npm.im/@b9g/crank">NPM</a></div><button role="switch" aria-label="set dark mode" aria-checked="false">⬜</button></div></nav></div><style data-emotion="css 1wkb9s8">.css-1wkb9s8{background-color:var(--bg-color);margin-top:50px;padding:2rem 0.4rem;color:var(--text-color);border-right:1px solid currentcolor;border-bottom:1px solid currentcolor;}@media screen and (min-width: 800px){.css-1wkb9s8{position:fixed;top:50px;bottom:0;overflow-x:hidden;overflow-y:auto;width:15rem;margin:0;padding:2rem 1rem;text-align:right;}}@media screen and (min-width: 1100px){.css-1wkb9s8{padding:3rem 2rem;width:20rem;}}.css-1wkb9s8 >:first-child{margin-top:0;}</style><div id="sidebar" class="css-1wkb9s8"><style data-emotion="css ep9szm">.css-ep9szm{color:var(--highlight-color);margin-top:0;}</style><h3 class="css-ep9szm">Guides</h3><style data-emotion="css w1ljn4">.css-w1ljn4{margin:10px 0;}</style><div class="css-w1ljn4"><style data-emotion="css 1l0nd7p">.css-1l0nd7p{-webkit-text-decoration:none;text-decoration:none;}</style><a href="/guides/getting-started" class="css-1l0nd7p">Getting Started</a></div><div class="css-w1ljn4"><a href="/guides/elements" class="css-1l0nd7p">Elements and Renderers</a></div><div class="css-w1ljn4"><a href="/guides/components" class="css-1l0nd7p">Components</a></div><div class="css-w1ljn4"><a href="/guides/handling-events" class="css-1l0nd7p">Handling Events</a></div><div class="css-w1ljn4"><a href="/guides/async-components" class="css-1l0nd7p">Async Components</a></div><div class="css-w1ljn4"><a href="/guides/special-props-and-tags" class="css-1l0nd7p">Special Props and Tags</a></div><div class="css-w1ljn4"><a href="/guides/lifecycles" aria-current="page" class="css-1l0nd7p">Lifecycles</a></div><div class="css-w1ljn4"><a href="/guides/reusable-logic" class="css-1l0nd7p">Reusable Logic</a></div><div class="css-w1ljn4"><a href="/guides/working-with-typescript" class="css-1l0nd7p">Working with TypeScript</a></div><div class="css-w1ljn4"><a href="/guides/reference-for-react-developers" class="css-1l0nd7p">Reference for React Developers</a></div><div class="css-w1ljn4"><a href="/guides/jsx-template-tag" class="css-1l0nd7p">JSX Template Tag</a></div><div class="css-w1ljn4"><a href="/guides/xx-performance" class="css-1l0nd7p"></a></div></div><style data-emotion="css sjfxen">.css-sjfxen{margin:0 auto;padding:2rem 0.4rem;}@media screen and (min-width: 800px){.css-sjfxen{margin-left:240px;padding:2rem 1rem;margin-top:50px;}}@media screen and (min-width: 1100px){.css-sjfxen{margin-left:320px;padding:3rem 2rem;}}.css-sjfxen p{max-width:800px;}</style><main class="css-sjfxen"><h1>Lifecycles</h1><p>Crank uses generator functions to define component lifecycles. Internally, this is achieved by calling the <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator#instance_methods"><code class="inline">next()</code>, <code class="inline">return()</code> and <code class="inline">throw()</code> methods of the generators</a> returned from components. As a developer, this means you can use standard JavaScript control flow to execute code at various points in a component’s lifecycle.</p><p>For parts of the lifecycle which cannot be expressed in the generator body itself, Crank provides the lifecycle methods <code class="inline">schedule()</code>, <code class="inline">flush()</code> and <code class="inline">cleanup()</code> on the context.</p><h2>Setup, update and teardown logic</h2><p>The execution of Crank components is well-defined and well-behaved, so there are no restrictions around where you need to place side-effects. This means much of setup, update and teardown logic can be placed directly in components.</p><div style="margin: 30px auto;" class="code-block-container"><style data-emotion="css 1cvb758">.css-1cvb758{max-width:calc(100% - 1px);}</style><div class="css-1cvb758"><style data-emotion="css 1s1lac9">.css-1s1lac9{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;font-size:16px;}@media (min-width: 1300px){.css-1s1lac9{-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-align-items:flex-start;-webkit-box-align:flex-start;-ms-flex-align:flex-start;align-items:flex-start;}}</style><div class="css-1s1lac9"><style data-emotion="css by286k">.css-by286k{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;width:100%;border:1px solid var(--text-color);margin-top:-1px;margin-right:-1px;}@media (min-width: 1300px){.css-by286k{max-width:61.8%;}}</style><div class="css-by286k"><style data-emotion="css 1m42aok">.css-1m42aok{overflow-x:auto;max-width:100%;}</style><div class="css-1m42aok"><style data-emotion="css artqa7">.css-artqa7{position:relative;min-height:100%;width:100%;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;}</style><div class="css-artqa7"><style data-emotion="css 84ojsb">.css-84ojsb{display:contents;}</style><content-area class="css-84ojsb"><style data-emotion="css 1ashatc">.css-1ashatc{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;word-break:break-all;overflow-wrap:anywhere;line-break:anywhere;white-space:pre-wrap;white-space:break-spaces;font-size:16px;}</style><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><style data-emotion="css 1flouoi">.css-1flouoi{border-bottom:1px dotted #333;}.color-scheme-light .css-1flouoi{border-bottom:1px dotted #ddd;}</style><div class="
 				prism-line
 				css-1flouoi
-			" data-index="0"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">Stuck</span><span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>message<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="0"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>renderer<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank/dom&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="1"><code>  <span class="token keyword">return</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span><span class="token punctuation">{</span>message<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="1"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="2"><code><span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="2"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">Blinker</span><span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>seconds<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><br></div><div class="
+			" data-index="3"><code>  <span class="token comment">// setup logic can go at the top of the scope</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Stuck message<span class="token operator">=</span><span class="token string">&quot;Hello&quot;</span> <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="4"><code>  <span class="token keyword">let</span> blinking <span class="token operator">=</span> <span class="token boolean">false</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code>console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>document<span class="token punctuation">.</span>body<span class="token punctuation">.</span>innerHTML<span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// &quot;&lt;div&gt;Hello&lt;/div&gt;&quot;</span></code><br></div><div class="
+			" data-index="5"><code>  <span class="token keyword">const</span> <span class="token function-variable function">blink</span> <span class="token operator">=</span> <span class="token keyword">async</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Stuck message<span class="token operator">=</span><span class="token string">&quot;Goodbye&quot;</span> <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="6"><code>    blinking <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code>console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>document<span class="token punctuation">.</span>body<span class="token punctuation">.</span>innerHTML<span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// &quot;&lt;div&gt;Hello&lt;/div&gt;&quot;</span></code><br></div><div class="
+			" data-index="7"><code>    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Stuck message<span class="token operator">=</span><span class="token string">&quot;Passing in new props is useless&quot;</span> <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="8"><code>    <span class="token keyword">await</span> <span class="token keyword">new</span> <span class="token class-name">Promise</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token parameter">r</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token function">setTimeout</span><span class="token punctuation">(</span>r<span class="token punctuation">,</span> <span class="token number">100</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="9"><code>console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>document<span class="token punctuation">.</span>body<span class="token punctuation">.</span>innerHTML<span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// &quot;&lt;div&gt;Hello&lt;/div&gt;&quot;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-125" class="props">
+			" data-index="9"><code>    blinking <span class="token operator">=</span> <span class="token boolean">false</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="10"><code>    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="11"><code>  <span class="token punctuation">}</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="12"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="13"><code>  <span class="token keyword">let</span> interval <span class="token operator">=</span> <span class="token function">setInterval</span><span class="token punctuation">(</span>blink<span class="token punctuation">,</span> seconds <span class="token operator">*</span> <span class="token number">1000</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="14"><code>  <span class="token keyword">let</span> oldSeconds <span class="token operator">=</span> seconds<span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="15"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="16"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span>seconds<span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="17"><code>    <span class="token comment">// update logic can go directly in the loop</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="18"><code>    <span class="token keyword">if</span> <span class="token punctuation">(</span>seconds <span class="token operator">!==</span> oldSeconds<span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="19"><code>      blinking <span class="token operator">=</span> <span class="token boolean">false</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="20"><code>      <span class="token function">clearInterval</span><span class="token punctuation">(</span>interval<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="21"><code>      interval <span class="token operator">=</span> <span class="token function">setInterval</span><span class="token punctuation">(</span>blink<span class="token punctuation">,</span> seconds <span class="token operator">*</span> <span class="token number">1000</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="22"><code>      oldSeconds <span class="token operator">=</span> seconds<span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="23"><code>    <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="24"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="25"><code>    console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>blinking<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="26"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="27"><code>    <span class="token keyword">yield</span> <span class="token punctuation">(</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="28"><code>      <span class="token operator">&lt;</span>p style<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">{</span><span class="token string-property property">&quot;background-color&quot;</span><span class="token operator">:</span> blinking <span class="token operator">?</span> <span class="token string">&quot;red&quot;</span> <span class="token operator">:</span> <span class="token keyword">null</span><span class="token punctuation">}</span><span class="token punctuation">}</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="29"><code>        <span class="token punctuation">{</span>blinking <span class="token operator">&amp;&amp;</span> <span class="token string">&quot;!!!&quot;</span><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="30"><code>      <span class="token operator">&lt;</span><span class="token operator">/</span>p<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="31"><code>    <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="32"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="33"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="34"><code>  <span class="token comment">// cleanup logic can go at the end of the loop</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="35"><code>  <span class="token function">clearInterval</span><span class="token punctuation">(</span>interval<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="36"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="37"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="38"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">App</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="39"><code>  <span class="token keyword">let</span> seconds <span class="token operator">=</span> <span class="token number">1</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="40"><code>  <span class="token keyword">const</span> <span class="token function-variable function">onChange</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token parameter">ev</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="41"><code>    seconds <span class="token operator">=</span> ev<span class="token punctuation">.</span>target<span class="token punctuation">.</span>value<span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="42"><code>    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="43"><code>  <span class="token punctuation">}</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="44"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="45"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="46"><code>    <span class="token keyword">yield</span> <span class="token punctuation">(</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="47"><code>      <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="48"><code>        <span class="token operator">&lt;</span>label <span class="token keyword">for</span><span class="token operator">=</span><span class="token string">&quot;seconds&quot;</span><span class="token operator">&gt;</span>Seconds<span class="token operator">:</span><span class="token operator">&lt;</span><span class="token operator">/</span>label<span class="token operator">&gt;</span><span class="token punctuation">{</span><span class="token string">&quot; &quot;</span><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="49"><code>        <span class="token operator">&lt;</span>input</code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="50"><code>          id<span class="token operator">=</span><span class="token string">&quot;seconds&quot;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="51"><code>          value<span class="token operator">=</span><span class="token punctuation">{</span>seconds<span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="52"><code>          type<span class="token operator">=</span><span class="token string">&quot;number&quot;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="53"><code>          min<span class="token operator">=</span><span class="token string">&quot;0.25&quot;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="54"><code>          max<span class="token operator">=</span><span class="token string">&quot;5&quot;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="55"><code>          step<span class="token operator">=</span><span class="token string">&quot;0.25&quot;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="56"><code>          onchange<span class="token operator">=</span><span class="token punctuation">{</span>onChange<span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="57"><code>        <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="58"><code>        <span class="token operator">&lt;</span>Blinker seconds<span class="token operator">=</span><span class="token punctuation">{</span>seconds<span class="token punctuation">}</span> <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="59"><code>      <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="60"><code>    <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="61"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="62"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="63"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="64"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>App <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><style data-emotion="css nuifz8">.css-nuifz8{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;position:-webkit-sticky;position:sticky;top:100px;border:1px solid var(--text-color);margin-top:-1px;min-height:50px;width:100%;}@media screen and (min-width: 1300px){.css-nuifz8{width:30%;}}</style><div class="css-nuifz8"><style data-emotion="css 1nius9d">.css-1nius9d{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;height:100%;}</style><div class="css-1nius9d"><style data-emotion="css 14pt8ki">.css-14pt8ki{-webkit-flex:none;-ms-flex:none;flex:none;padding:1em;height:3em;border-bottom:1px solid var(--text-color);}</style><div class="css-14pt8ki">Loading...</div><style data-emotion="css j74n8p">.css-j74n8p{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;padding:1em;-webkit-transition:background-color 0.4s ease-out;transition:background-color 0.4s ease-out;background-color:var(--coldark02);width:100%;}</style><div class="css-j74n8p"><style data-emotion="css hjkbgb">.css-hjkbgb{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;border:none;width:100%;background-color:var(--bg-color);}</style><iframe class="
+							playground-iframe
+							css-hjkbgb
+						" style="height: 100px;"></iframe></div></div></div></div></div><script data-name="inline-code-block-props-135" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-125'] = {"code":"function *Stuck({message}) {\n  return \u003Cdiv\u003E{message}\u003C\u002Fdiv\u003E;\n}\n\nrenderer.render(\u003CStuck message=\"Hello\" \u002F\u003E, document.body);\nconsole.log(document.body.innerHTML); \u002F\u002F \"\u003Cdiv\u003EHello\u003C\u002Fdiv\u003E\"\nrenderer.render(\u003CStuck message=\"Goodbye\" \u002F\u003E, document.body);\nconsole.log(document.body.innerHTML); \u002F\u002F \"\u003Cdiv\u003EHello\u003C\u002Fdiv\u003E\"\nrenderer.render(\u003CStuck message=\"Passing in new props is useless\" \u002F\u003E, document.body);\nconsole.log(document.body.innerHTML); \u002F\u002F \"\u003Cdiv\u003EHello\u003C\u002Fdiv\u003E\"","lang":"jsx"};
-		</script></div><p>You should be careful when writing generator components to make sure that you always place your <code class="inline">yield</code> operators in a <code class="inline">for</code> or <code class="inline">while</code> loop. If you forget and implicitly return from the generator, it will stop updating and nothing will be rendered ever again.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-k65jh7"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+			window.__embeddedJSON__['inline-code-block-props-135'] = {"code":"import {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\n\nfunction *Blinker({seconds}) {\n  \u002F\u002F setup logic can go at the top of the scope\n  let blinking = false;\n  const blink = async () =\u003E {\n    blinking = true;\n    this.refresh();\n    await new Promise((r) =\u003E setTimeout(r, 100));\n    blinking = false;\n    this.refresh();\n  };\n\n  let interval = setInterval(blink, seconds * 1000);\n  let oldSeconds = seconds;\n\n  for ({seconds} of this) {\n    \u002F\u002F update logic can go directly in the loop\n    if (seconds !== oldSeconds) {\n      blinking = false;\n      clearInterval(interval);\n      interval = setInterval(blink, seconds * 1000);\n      oldSeconds = seconds;\n    }\n\n    console.log(blinking);\n\n    yield (\n      \u003Cp style={{\"background-color\": blinking ? \"red\" : null}}\u003E\n        {blinking && \"!!!\"}\n      \u003C\u002Fp\u003E\n    );\n  }\n\n  \u002F\u002F cleanup logic can go at the end of the loop\n  clearInterval(interval);\n}\n\nfunction *App() {\n  let seconds = 1;\n  const onChange = (ev) =\u003E {\n    seconds = ev.target.value;\n    this.refresh();\n  };\n\n  for ({} of this) {\n    yield (\n      \u003Cdiv\u003E\n        \u003Clabel for=\"seconds\"\u003ESeconds:\u003C\u002Flabel\u003E{\" \"}\n        \u003Cinput\n          id=\"seconds\"\n          value={seconds}\n          type=\"number\"\n          min=\"0.25\"\n          max=\"5\"\n          step=\"0.25\"\n          onchange={onChange}\n        \u002F\u003E\n        \u003CBlinker seconds={seconds} \u002F\u003E\n      \u003C\u002Fdiv\u003E\n    );\n  }\n}\n\nrenderer.render(\u003CApp \u002F\u003E, document.body);","lang":"jsx live"};
+		</script></div><h2>Working with the DOM</h2><p>Logic which needs to happen after rendering, such as doing direct DOM manipulations or taking measurements, can be done directly after a <code class="inline">yield</code> in async generator components which use <code class="inline">for await...of</code> loops, because the component is continuously resumed until the bottom of the <code class="inline">for await</code> loop. Conveniently, the <code class="inline">yield</code> expression will evaluate to the rendered result of the component.</p><div style="margin: 30px auto;" class="code-block-container"><style data-emotion="css 1vm8pxc">.css-1vm8pxc{max-width:min(100%, 1000px);}</style><div class="css-1vm8pxc"><div class="css-1s1lac9"><style data-emotion="css 18sfz2f">.css-18sfz2f{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;width:100%;border:1px solid var(--text-color);margin-top:-1px;margin-right:-1px;}</style><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
 				prism-line
 				css-1flouoi
-			" data-index="0"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">Numbers</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="0"><code><span class="token keyword">async</span> <span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">Component</span><span class="token punctuation">(</span><span class="token parameter"><span class="token keyword">this</span><span class="token punctuation">,</span> props</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="1"><code>  <span class="token keyword">yield</span> <span class="token number">1</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="1"><code>  <span class="token keyword">for</span> <span class="token keyword">await</span> <span class="token punctuation">(</span>props <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="2"><code>  <span class="token keyword">yield</span> <span class="token number">2</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="2"><code>    <span class="token keyword">const</span> div <span class="token operator">=</span> <span class="token keyword">yield</span> <span class="token operator">&lt;</span>div <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><code>  <span class="token keyword">yield</span> <span class="token number">3</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="3"><code>    <span class="token comment">// logic which manipulates the div can go here.</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code><span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="4"><code>    div<span class="token punctuation">.</span>innerHTML <span class="token operator">=</span> props<span class="token punctuation">.</span>innerHTML<span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-136" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-136'] = {"code":"async function *Component(this, props) {\n  for await (props of this) {\n    const div = yield \u003Cdiv \u002F\u003E;\n    \u002F\u002F logic which manipulates the div can go here.\n    div.innerHTML = props.innerHTML;\n  }\n}","lang":"jsx"};
+		</script></div><p>Unfortunately, this approach will not work for code in <code class="inline">for...of</code> loops. In a <code class="inline">for...of</code> loop, the behavior of <code class="inline">yield</code> works such that the component will suspend at the <code class="inline">yield</code> for each render, and this behavior holds for both sync and async generator components. This behavior is necessary for sync generator components, because there is nowhere else to suspend, and is mimicked in async generator components, to make refactoring between sync and async generator components easier.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token comment">// The following behavior happens in both sync and async generator components</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><code><span class="token comment">// so long as they use a `for...of` and not a `for await...of` loop.</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">Component</span><span class="token punctuation">(</span><span class="token parameter"><span class="token keyword">this</span><span class="token punctuation">,</span> props</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><code>  <span class="token keyword">let</span> div <span class="token operator">=</span> <span class="token keyword">null</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="5"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Numbers <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="6"><code>  <span class="token keyword">const</span> <span class="token function-variable function">onclick</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code>console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>document<span class="token punctuation">.</span>body<span class="token punctuation">.</span>innerHTML<span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// &quot;1&quot;</span></code><br></div><div class="
+			" data-index="7"><code>    <span class="token comment">// If the component is only rendered once, div will still be null.</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Numbers <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="8"><code>    console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>div<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="9"><code>console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>document<span class="token punctuation">.</span>body<span class="token punctuation">.</span>innerHTML<span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// &quot;2&quot;</span></code><br></div><div class="
+			" data-index="9"><code>  <span class="token punctuation">}</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="10"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Numbers <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="10"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="11"><code>console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>document<span class="token punctuation">.</span>body<span class="token punctuation">.</span>innerHTML<span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// &quot;3&quot;</span></code><br></div><div class="
+			" data-index="11"><code>    <span class="token comment">// This does not work in sync components because the function is paused</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="12"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Numbers <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="12"><code>    <span class="token comment">// exactly at the yield. Only after rendering a second time will cause the</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="13"><code>console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>document<span class="token punctuation">.</span>body<span class="token punctuation">.</span>innerHTML<span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// &quot;&quot;</span></code><br></div><div class="
+			" data-index="13"><code>    <span class="token comment">// div variable to be assigned.</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="14"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Numbers <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="14"><code>    div <span class="token operator">=</span> <span class="token keyword">yield</span> <span class="token operator">&lt;</span>button onclick<span class="token operator">=</span><span class="token punctuation">{</span>div<span class="token punctuation">}</span><span class="token operator">&gt;</span>Click me<span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="15"><code>console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>document<span class="token punctuation">.</span>body<span class="token punctuation">.</span>innerHTML<span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// &quot;&quot;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-126" class="props">
+			" data-index="15"><code>    <span class="token comment">// Any code below the yield will not run until the next render.</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="16"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="17"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-137" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-126'] = {"code":"function *Numbers() {\n  yield 1;\n  yield 2;\n  yield 3;\n}\n\nrenderer.render(\u003CNumbers \u002F\u003E, document.body);\nconsole.log(document.body.innerHTML); \u002F\u002F \"1\"\nrenderer.render(\u003CNumbers \u002F\u003E, document.body);\nconsole.log(document.body.innerHTML); \u002F\u002F \"2\"\nrenderer.render(\u003CNumbers \u002F\u003E, document.body);\nconsole.log(document.body.innerHTML); \u002F\u002F \"3\"\nrenderer.render(\u003CNumbers \u002F\u003E, document.body);\nconsole.log(document.body.innerHTML); \u002F\u002F \"\"\nrenderer.render(\u003CNumbers \u002F\u003E, document.body);\nconsole.log(document.body.innerHTML); \u002F\u002F \"\"","lang":"jsx"};
-		</script></div><h2>Cleaning Up</h2><p>When a generator component is removed from the tree, Crank calls the <code class="inline">return</code> method on the component’s generator object. You can think of it as whatever <code class="inline">yield</code> expression your component was suspended on being replaced by a <code class="inline">return</code> statement. This means any loops your component was in when the generator suspended are broken out of, and code after the yield does not execute.</p><p>You can take advantage of this behavior by wrapping your <code class="inline">yield</code> loops in a <code class="inline">try</code>/<code class="inline">finally</code> block to release any resources that your component may have used.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-k65jh7"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+			window.__embeddedJSON__['inline-code-block-props-137'] = {"code":"\u002F\u002F The following behavior happens in both sync and async generator components\n\u002F\u002F so long as they use a `for...of` and not a `for await...of` loop.\n\nfunction *Component(this, props) {\n  let div = null;\n\n  const onclick = () =\u003E {\n    \u002F\u002F If the component is only rendered once, div will still be null.\n    console.log(div);\n  };\n  for ({} of this) {\n    \u002F\u002F This does not work in sync components because the function is paused\n    \u002F\u002F exactly at the yield. Only after rendering a second time will cause the\n    \u002F\u002F div variable to be assigned.\n    div = yield \u003Cbutton onclick={div}\u003EClick me\u003C\u002Fbutton\u003E;\n    \u002F\u002F Any code below the yield will not run until the next render.\n  }\n}","lang":"jsx"};
+		</script></div><p>Thankfully, the Crank context provides two callback-based methods which allow you to run code after rendering has completed: <code class="inline">schedule()</code> and <code class="inline">flush()</code>.</p><p>The <code class="inline">schedule()</code> method behaves like code which runs in an async generator’s <code class="inline">for await...of</code> loop. It runs immediately after the children DOM nodes are created:</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
 				prism-line
 				css-1flouoi
-			" data-index="0"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">Cleanup</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="0"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">Component</span><span class="token punctuation">(</span><span class="token parameter"><span class="token keyword">this</span><span class="token punctuation">,</span> props</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="1"><code>  <span class="token keyword">try</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="1"><code>  <span class="token keyword">for</span> <span class="token keyword">await</span> <span class="token punctuation">(</span>props <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="2"><code>    <span class="token keyword">while</span> <span class="token punctuation">(</span><span class="token boolean">true</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="2"><code>    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">schedule</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token parameter">div</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><code>      <span class="token keyword">yield</span> <span class="token string">&quot;Hi&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="3"><code>      <span class="token comment">// the div is</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code>    <span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="4"><code>      div<span class="token punctuation">.</span>innerHTML <span class="token operator">=</span> props<span class="token punctuation">.</span>innerHTML<span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code>  <span class="token punctuation">}</span> <span class="token keyword">finally</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="5"><code>    <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><code>    console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">&quot;finally block executed&quot;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="6"><code>    <span class="token keyword">yield</span> <span class="token operator">&lt;</span>div <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="7"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code><span class="token punctuation">}</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="9"><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="10"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Cleanup <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="11"><code>console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// &quot;Hi&quot;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="12"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token keyword">null</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="13"><code><span class="token comment">// &quot;finally block executed&quot;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="14"><code>console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// &quot;&quot;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-127" class="props">
+			" data-index="8"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-138" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-127'] = {"code":"function *Cleanup() {\n  try {\n    while (true) {\n      yield \"Hi\";\n    }\n  } finally {\n    console.log(\"finally block executed\");\n  }\n}\n\nrenderer.render(\u003CCleanup \u002F\u003E, document.body);\nconsole.log(document.body); \u002F\u002F \"Hi\"\nrenderer.render(null, document.body);\n\u002F\u002F \"finally block executed\"\nconsole.log(document.body); \u002F\u002F \"\"","lang":"jsx"};
-		</script></div><p><a href="https://eslint.org/docs/rules/no-unsafe-finally">The same best practices</a> which apply to <code class="inline">try</code>/<code class="inline">finally</code> statements in regular functions apply to generator components. In short, you should not yield or return anything in the <code class="inline">finally</code> block. Crank will not use the yielded or returned values and doing so might cause your components to inadvertently swallow errors or suspend in unexpected locations.</p><h2>Catching Errors</h2><p>We all make mistakes, and it can be useful to catch errors thrown by our components so that we can show the user something or notify error-logging services. To facilitate this, Crank will catch errors thrown when rendering child elements and throw them back into parent generator components using the <code class="inline">throw</code> method on the component’s generator object. You can think of it as whatever <code class="inline">yield</code> expression your component was suspended on being replaced with a <code class="inline">throw</code> statement with the error set to whatever was thrown by the component’s children.</p><p>You can take advantage of this behavior by wrapping your <code class="inline">yield</code> operations in a <code class="inline">try</code>/<code class="inline">catch</code> block to catch errors caused by children.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-k65jh7"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+			window.__embeddedJSON__['inline-code-block-props-138'] = {"code":"function *Component(this, props) {\n  for await (props of this) {\n    this.schedule((div) =\u003E {\n      \u002F\u002F the div is\n      div.innerHTML = props.innerHTML;\n    });\n    yield \u003Cdiv \u002F\u003E;\n  }\n}","lang":"jsx"};
+		</script></div><p>On the other hand, the <code class="inline">flush()</code> method runs after the result is completely rendered and live in the DOM. This is necessary for use-cases such as auto-focusing inputs after the first render. The reason for the distinction between <code class="inline">schedule()</code> and <code class="inline">flush()</code> is that Crank coordinates async rendering so that the rendering of multiple async siblings happens together, meaning there might be some time before a created DOM node is created but before it is added to its intended parent.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1cvb758"><div class="css-1s1lac9"><div class="css-by286k"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
 				prism-line
 				css-1flouoi
-			" data-index="0"><code><span class="token keyword">function</span> <span class="token function">Thrower</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span> </code><br></div><div class="
+			" data-index="0"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>renderer<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank/dom&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="1"><code>  <span class="token keyword">throw</span> <span class="token keyword">new</span> <span class="token class-name">Error</span><span class="token punctuation">(</span><span class="token string">&quot;Hmmm&quot;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="1"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">AutoFocusingInput</span><span class="token punctuation">(</span><span class="token parameter">props</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="2"><code><span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="2"><code>  <span class="token comment">// this.schedule does not work because it fires before the input element is</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><br></div><div class="
+			" data-index="3"><code>  <span class="token comment">// added to the DOM</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">Catcher</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="4"><code>  <span class="token comment">// this.schedule((input) =&gt; input.focus());</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code>  <span class="token keyword">try</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="5"><code>  <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">flush</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token parameter">input</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> input<span class="token punctuation">.</span><span class="token function">focus</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><code>    <span class="token keyword">yield</span> <span class="token operator">&lt;</span>Thrower <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="6"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span>props <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code>  <span class="token punctuation">}</span> <span class="token keyword">catch</span> <span class="token punctuation">(</span>err<span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="7"><code>    <span class="token keyword">yield</span> <span class="token operator">&lt;</span>input <span class="token punctuation">{</span><span class="token operator">...</span>props<span class="token punctuation">}</span><span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code>    <span class="token keyword">return</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span>Error<span class="token operator">:</span> <span class="token punctuation">{</span>err<span class="token punctuation">.</span>message<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="8"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="9"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="10"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="11"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">Component</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="12"><code>  <span class="token keyword">let</span> initial <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="13"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="14"><code>    <span class="token keyword">yield</span> <span class="token punctuation">(</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="15"><code>      <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="16"><code>        <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="17"><code>          <span class="token punctuation">{</span>initial <span class="token operator">||</span> <span class="token operator">&lt;</span>AutoFocusingInput <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="18"><code>        <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="19"><code>        <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="20"><code>          <span class="token operator">&lt;</span>button onclick<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">}</span><span class="token operator">&gt;</span>Refresh<span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="21"><code>        <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="22"><code>      <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="23"><code>    <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="24"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="25"><code>    initial <span class="token operator">=</span> <span class="token boolean">false</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="26"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="27"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="28"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="29"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Component <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><div class="css-nuifz8"><div class="css-1nius9d"><div class="css-14pt8ki">Loading...</div><div class="css-j74n8p"><iframe class="
+							playground-iframe
+							css-hjkbgb
+						" style="height: 100px;"></iframe></div></div></div></div></div><script data-name="inline-code-block-props-139" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-139'] = {"code":"import {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\nfunction *AutoFocusingInput(props) {\n  \u002F\u002F this.schedule does not work because it fires before the input element is\n  \u002F\u002F added to the DOM\n  \u002F\u002F this.schedule((input) =\u003E input.focus());\n  this.flush((input) =\u003E input.focus());\n  for (props of this) {\n    yield \u003Cinput {...props}\u002F\u003E;\n  }\n}\n\nfunction *Component() {\n  let initial = true;\n  for ({} of this) {\n    yield (\n      \u003Cdiv\u003E\n        \u003Cdiv\u003E\n          {initial || \u003CAutoFocusingInput \u002F\u003E}\n        \u003C\u002Fdiv\u003E\n        \u003Cdiv\u003E\n          \u003Cbutton onclick={() =\u003E this.refresh()}\u003ERefresh\u003C\u002Fbutton\u003E\n        \u003C\u002Fdiv\u003E\n      \u003C\u002Fdiv\u003E\n    );\n\n    initial = false;\n  }\n}\n\nrenderer.render(\u003CComponent \u002F\u003E, document.body);","lang":"jsx live"};
+		</script></div><p>All <code class="inline">schedule()</code> callbacks will always fire before <code class="inline">flush()</code> callbacks for a given render.</p><h2>Cleanup logic</h2><p>While you can use context iterators to write cleanup logic after <code class="inline">for...of</code> and <code class="inline">for await...of</code> loops, this does not account for errors in components, and it does work if you are not using a render loop. To solve these issues, you can use <code class="inline">try</code>/<code class="inline">finally</code> block. When a generator component is removed from the tree, Crank calls the <code class="inline">return</code> method on the component’s generator object.</p><p>You can think of it as whatever <code class="inline">yield</code> expression your component was suspended on being replaced by a <code class="inline">return</code> statement. This means any loops your component was in when the generator suspended are broken out of, and code after the yield does not execute.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>renderer<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank/dom&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">Cleanup</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code>  <span class="token keyword">try</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><code>    <span class="token keyword">while</span> <span class="token punctuation">(</span><span class="token boolean">true</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><code>      <span class="token keyword">yield</span> <span class="token string">&quot;Hi&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><code>    <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><code>  <span class="token punctuation">}</span> <span class="token keyword">finally</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="8"><code>    console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">&quot;finally block executed&quot;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="9"><code>  <span class="token punctuation">}</span></code><br></div><div class="
@@ -224,231 +504,269 @@
 			" data-index="11"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="12"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Catcher <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="12"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Cleanup <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="13"><code>console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>document<span class="token punctuation">.</span>body<span class="token punctuation">.</span>innerHTML<span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// &quot;&lt;div&gt;Error: Hmmm&lt;/div&gt;&quot;</span></code><br></div><div class="
+			" data-index="13"><code>console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// &quot;Hi&quot;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="14"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Catcher <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="14"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token keyword">null</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="15"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Catcher <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="15"><code><span class="token comment">// &quot;finally block executed&quot;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="16"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Catcher <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="17"><code>console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>document<span class="token punctuation">.</span>body<span class="token punctuation">.</span>innerHTML<span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// &quot;&lt;div&gt;Error: Hmmm&lt;/div&gt;&quot;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-128" class="props">
+			" data-index="16"><code>console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// &quot;&quot;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-140" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-128'] = {"code":"function Thrower() { \n  throw new Error(\"Hmmm\");\n}\n\nfunction *Catcher() {\n  try {\n    yield \u003CThrower \u002F\u003E;\n  } catch (err) {\n    return \u003Cdiv\u003EError: {err.message}\u003C\u002Fdiv\u003E;\n  }\n}\n\nrenderer.render(\u003CCatcher \u002F\u003E, document.body);\nconsole.log(document.body.innerHTML); \u002F\u002F \"\u003Cdiv\u003EError: Hmmm\u003C\u002Fdiv\u003E\"\nrenderer.render(\u003CCatcher \u002F\u003E, document.body);\nrenderer.render(\u003CCatcher \u002F\u003E, document.body);\nrenderer.render(\u003CCatcher \u002F\u003E, document.body);\nconsole.log(document.body.innerHTML); \u002F\u002F \"\u003Cdiv\u003EError: Hmmm\u003C\u002Fdiv\u003E\"","lang":"jsx"};
-		</script></div><p>As explained previously, this component “sticks” because it uses a return statement, so that the same error message is shown until the component is unmounted. However, you may also want to recover from errors as well, and you can do this by ignoring or handling the error.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-k65jh7"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+			window.__embeddedJSON__['inline-code-block-props-140'] = {"code":"import {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\n\nfunction *Cleanup() {\n  try {\n    while (true) {\n      yield \"Hi\";\n    }\n  } finally {\n    console.log(\"finally block executed\");\n  }\n}\n\nrenderer.render(\u003CCleanup \u002F\u003E, document.body);\nconsole.log(document.body); \u002F\u002F \"Hi\"\nrenderer.render(null, document.body);\n\u002F\u002F \"finally block executed\"\nconsole.log(document.body); \u002F\u002F \"\"","lang":"jsx"};
+		</script></div><p><a href="https://eslint.org/docs/rules/no-unsafe-finally">The same best practices</a> which apply to <code class="inline">try</code> / <code class="inline">finally</code> statements in regular functions apply to generator components. In short, you should not yield or return anything in the <code class="inline">finally</code> block. Crank will not use the yielded or returned values and doing so might cause your components to inadvertently swallow errors or suspend in unexpected locations.</p><p>To write cleanup logic which can be abstractd outside the component function, you can use the <code class="inline">cleanup()</code> method on the context. This method is similar to <code class="inline">flush() and </code>schedule()` in that it takes a callback.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1cvb758"><div class="css-1s1lac9"><div class="css-by286k"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
 				prism-line
 				css-1flouoi
-			" data-index="0"><code><span class="token keyword">function</span> <span class="token constant">T1000</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span> </code><br></div><div class="
+			" data-index="0"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>renderer<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank/dom&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="1"><code>  <span class="token keyword">throw</span> <span class="token keyword">new</span> <span class="token class-name">Error</span><span class="token punctuation">(</span><span class="token string">&quot;Die!!!&quot;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="1"><code><span class="token keyword">function</span> <span class="token function">addGlobalEventListener</span><span class="token punctuation">(</span><span class="token parameter">ctx<span class="token punctuation">,</span> type<span class="token punctuation">,</span> listener<span class="token punctuation">,</span> options</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="2"><code><span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="2"><code>  window<span class="token punctuation">.</span><span class="token function">addEventListener</span><span class="token punctuation">(</span>type<span class="token punctuation">,</span> listener<span class="token punctuation">,</span> options<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><br></div><div class="
+			" data-index="3"><code>  <span class="token comment">// ctx.cleanup allows you to write cleanup logic outside the component</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">Terminator</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="4"><code>  ctx<span class="token punctuation">.</span><span class="token function">cleanup</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> window<span class="token punctuation">.</span><span class="token function">removeEventListener</span><span class="token punctuation">(</span>type<span class="token punctuation">,</span> listener<span class="token punctuation">,</span> options<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code>  <span class="token keyword">while</span> <span class="token punctuation">(</span><span class="token boolean">true</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="5"><code><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><code>    <span class="token keyword">yield</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span>Come <span class="token keyword">with</span> me <span class="token keyword">if</span> you want to live<span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="6"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code>    <span class="token keyword">try</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="7"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">KeyboardListener</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code>      <span class="token keyword">yield</span> <span class="token operator">&lt;</span><span class="token constant">T1000</span> <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="8"><code>  <span class="token keyword">let</span> key <span class="token operator">=</span> <span class="token string">&quot;&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="9"><code>    <span class="token punctuation">}</span> <span class="token keyword">catch</span> <span class="token punctuation">(</span>err<span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="9"><code>  <span class="token keyword">const</span> <span class="token function-variable function">listener</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token parameter">ev</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="10"><code>      <span class="token keyword">yield</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span><span class="token constant">I</span>’ll be back<span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="10"><code>    key <span class="token operator">=</span> ev<span class="token punctuation">.</span>key<span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="11"><code>    <span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="11"><code>    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="12"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="12"><code>  <span class="token punctuation">}</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="13"><code><span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="13"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="14"><br></div><div class="
+			" data-index="14"><code>  <span class="token function">addGlobalEventListener</span><span class="token punctuation">(</span><span class="token keyword">this</span><span class="token punctuation">,</span> <span class="token string">&quot;keypress&quot;</span><span class="token punctuation">,</span> listener<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="15"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Terminator <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="15"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="16"><code>console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>document<span class="token punctuation">.</span>body<span class="token punctuation">.</span>innerHTML<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="16"><code>    <span class="token keyword">yield</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span>Last key pressed<span class="token operator">:</span> <span class="token punctuation">{</span>key <span class="token operator">||</span> <span class="token string">&quot;N/A&quot;</span><span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="17"><code><span class="token comment">// &quot;&lt;div&gt;Come with me if you want to live&lt;/div&gt;&quot;</span></code><br></div><div class="
+			" data-index="17"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="18"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Terminator <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="18"><code><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="19"><code>console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>document<span class="token punctuation">.</span>body<span class="token punctuation">.</span>innerHTML<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="19"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="20"><code><span class="token comment">// &quot;&lt;div&gt;I’ll be back&lt;/div&gt;&quot;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="21"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Terminator <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="22"><code>console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>document<span class="token punctuation">.</span>body<span class="token punctuation">.</span>innerHTML<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="23"><code><span class="token comment">// &quot;&lt;div&gt;Come with me if you want to live&lt;/div&gt;&quot;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="24"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Terminator <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="25"><code>console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>document<span class="token punctuation">.</span>body<span class="token punctuation">.</span>innerHTML<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="26"><code><span class="token comment">// &quot;&lt;div&gt;I’ll be back&lt;/div&gt;&quot;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-129" class="props">
+			" data-index="20"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>KeyboardListener <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><div class="css-nuifz8"><div class="css-1nius9d"><div class="css-14pt8ki">Loading...</div><div class="css-j74n8p"><iframe class="
+							playground-iframe
+							css-hjkbgb
+						" style="height: 100px;"></iframe></div></div></div></div></div><script data-name="inline-code-block-props-141" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-129'] = {"code":"function T1000() { \n  throw new Error(\"Die!!!\");\n}\n\nfunction *Terminator() {\n  while (true) {\n    yield \u003Cdiv\u003ECome with me if you want to live\u003C\u002Fdiv\u003E;\n    try {\n      yield \u003CT1000 \u002F\u003E;\n    } catch (err) {\n      yield \u003Cdiv\u003EI’ll be back\u003C\u002Fdiv\u003E;\n    }\n  }\n}\n\nrenderer.render(\u003CTerminator \u002F\u003E, document.body);\nconsole.log(document.body.innerHTML);\n\u002F\u002F \"\u003Cdiv\u003ECome with me if you want to live\u003C\u002Fdiv\u003E\"\nrenderer.render(\u003CTerminator \u002F\u003E, document.body);\nconsole.log(document.body.innerHTML);\n\u002F\u002F \"\u003Cdiv\u003EI’ll be back\u003C\u002Fdiv\u003E\"\nrenderer.render(\u003CTerminator \u002F\u003E, document.body);\nconsole.log(document.body.innerHTML);\n\u002F\u002F \"\u003Cdiv\u003ECome with me if you want to live\u003C\u002Fdiv\u003E\"\nrenderer.render(\u003CTerminator \u002F\u003E, document.body);\nconsole.log(document.body.innerHTML);\n\u002F\u002F \"\u003Cdiv\u003EI’ll be back\u003C\u002Fdiv\u003E\"","lang":"jsx"};
-		</script></div><h2>Accessing Rendered Values</h2><p>Sometimes, declarative rendering is not enough, and you’ll want to access the actual DOM nodes you’ve rendered, to make measurements or call imperative methods like the <code class="inline">focus</code> method for form elements, or the <code class="inline">play</code> method for media elements. To facilitate this, Crank will pass rendered DOM nodes back into the generator using the <code class="inline">next</code> method. This means that as a developer, you can read <code class="inline">yield</code> expressions to access the actual rendered DOM nodes.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-k65jh7"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+			window.__embeddedJSON__['inline-code-block-props-141'] = {"code":"import {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\nfunction addGlobalEventListener(ctx, type, listener, options) {\n  window.addEventListener(type, listener, options);\n  \u002F\u002F ctx.cleanup allows you to write cleanup logic outside the component\n  ctx.cleanup(() =\u003E window.removeEventListener(type, listener, options));\n}\n\nfunction *KeyboardListener() {\n  let key = \"\";\n  const listener = (ev) =\u003E {\n    key = ev.key;\n    this.refresh();\n  };\n\n  addGlobalEventListener(this, \"keypress\", listener);\n  for ({} of this) {\n    yield \u003Cdiv\u003ELast key pressed: {key || \"N\u002FA\"}\u003C\u002Fdiv\u003E\n  }\n}\n\nrenderer.render(\u003CKeyboardListener \u002F\u003E, document.body);","lang":"jsx live"};
+		</script></div><p>The <code class="inline">cleanup()</code> method is also useful for refactoring teardown logic.</p><h2>Catching Errors</h2><p>It can be useful to catch errors thrown by components to show the user an error notification or to notify error-logging services. To facilitate this, Crank will cause <code class="inline">yield</code> expressions to rethrow errors which happen when rendering children. You can take advantage of this behavior by wrapping your <code class="inline">yield</code> operations in a <code class="inline">try</code> / <code class="inline">catch</code> block to catch errors caused by children.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1cvb758"><div class="css-1s1lac9"><div class="css-by286k"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
 				prism-line
 				css-1flouoi
-			" data-index="0"><code><span class="token keyword">async</span> <span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">FocusingInput</span><span class="token punctuation">(</span><span class="token parameter">props</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="0"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>renderer<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank/dom&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="1"><code>  <span class="token keyword">for</span> <span class="token keyword">await</span> <span class="token punctuation">(</span>props <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="1"><code><span class="token keyword">function</span> <span class="token function">Thrower</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="2"><code>    <span class="token keyword">const</span> input <span class="token operator">=</span> <span class="token keyword">yield</span> <span class="token operator">&lt;</span>input <span class="token punctuation">{</span><span class="token operator">...</span>props<span class="token punctuation">}</span><span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="2"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span>Math<span class="token punctuation">.</span><span class="token function">random</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">&gt;</span> <span class="token number">0.5</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><code>    input<span class="token punctuation">.</span><span class="token function">focus</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="3"><code>    <span class="token keyword">throw</span> <span class="token keyword">new</span> <span class="token class-name">Error</span><span class="token punctuation">(</span><span class="token string">&quot;Oops&quot;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="4"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-130" class="props">
+			" data-index="5"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><code>  <span class="token keyword">return</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span>No errors<span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="8"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="9"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">Catcher</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="10"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="11"><code>    <span class="token keyword">try</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="12"><code>       <span class="token keyword">yield</span> <span class="token punctuation">(</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="13"><code>         <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="14"><code>           <span class="token operator">&lt;</span>Thrower <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="15"><code>           <span class="token operator">&lt;</span>button onclick<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">}</span><span class="token operator">&gt;</span>Rerender<span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="16"><code>         <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="17"><code>       <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="18"><code>     <span class="token punctuation">}</span> <span class="token keyword">catch</span> <span class="token punctuation">(</span>err<span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="19"><code>       <span class="token keyword">yield</span> <span class="token punctuation">(</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="20"><code>         <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="21"><code>           <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span>Error<span class="token operator">:</span> <span class="token punctuation">{</span>err<span class="token punctuation">.</span>message<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="22"><code>           <span class="token operator">&lt;</span>button onclick<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">}</span><span class="token operator">&gt;</span>Retry<span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="23"><code>         <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="24"><code>       <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="25"><code>     <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="26"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="27"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="28"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="29"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Catcher <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><div class="css-nuifz8"><div class="css-1nius9d"><div class="css-14pt8ki">Loading...</div><div class="css-j74n8p"><iframe class="
+							playground-iframe
+							css-hjkbgb
+						" style="height: 100px;"></iframe></div></div></div></div></div><script data-name="inline-code-block-props-142" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-130'] = {"code":"async function *FocusingInput(props) {\n  for await (props of this) {\n    const input = yield \u003Cinput {...props}\u002F\u003E;\n    input.focus();\n  }\n}","lang":"jsx"};
-		</script></div><p>The <code class="inline">FocusingInput</code> component focuses every time it is rerendered. We use an async generator component here because async generators continuously resume, so the <code class="inline">input.focus</code> call happens directly after the component is rendered. While we also pass rendered nodes into sync generator components as well, attempting to access them directly after the <code class="inline">yield</code> may lead to surprising results.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-k65jh7"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+			window.__embeddedJSON__['inline-code-block-props-142'] = {"code":"import {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\nfunction Thrower() {\n  if (Math.random() \u003E 0.5) {\n    throw new Error(\"Oops\");\n  }\n\n  return \u003Cdiv\u003ENo errors\u003C\u002Fdiv\u003E;\n}\n\nfunction *Catcher() {\n  for ({} of this) {\n    try {\n       yield (\n         \u003Cdiv\u003E\n           \u003CThrower \u002F\u003E\n           \u003Cbutton onclick={() =\u003E this.refresh()}\u003ERerender\u003C\u002Fbutton\u003E\n         \u003C\u002Fdiv\u003E\n       );\n     } catch (err) {\n       yield (\n         \u003Cdiv\u003E\n           \u003Cdiv\u003EError: {err.message}\u003C\u002Fdiv\u003E\n           \u003Cbutton onclick={() =\u003E this.refresh()}\u003ERetry\u003C\u002Fbutton\u003E\n         \u003C\u002Fdiv\u003E\n       );\n     }\n  }\n}\n\nrenderer.render(\u003CCatcher \u002F\u003E, document.body);","lang":"jsx live"};
+		</script></div><h2>Returning values from generator components</h2><p>When you return from a generator component, the returned value is rendered and the component scope is thrown away, same as would happen when using a function component. This means that the component cannot have local variables which persist across returns.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1cvb758"><div class="css-1s1lac9"><div class="css-by286k"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
 				prism-line
 				css-1flouoi
-			" data-index="0"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">FocusingInput</span><span class="token punctuation">(</span><span class="token parameter">props</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="0"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>renderer<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank/dom&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="1"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span>props <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="1"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">Component</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="2"><code>    <span class="token keyword">const</span> input <span class="token operator">=</span> <span class="token keyword">yield</span> <span class="token operator">&lt;</span>input <span class="token punctuation">{</span><span class="token operator">...</span>props<span class="token punctuation">}</span><span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="2"><code>  <span class="token keyword">yield</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span><span class="token number">1</span><span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><code>    <span class="token comment">// This line does not execute until the component is rerendered.</span></code><br></div><div class="
+			" data-index="3"><code>  <span class="token keyword">yield</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span><span class="token number">2</span><span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code>    input<span class="token punctuation">.</span><span class="token function">focus</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="4"><code>  <span class="token keyword">return</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span><span class="token number">3</span><span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="5"><code><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-131" class="props">
+			" data-index="6"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">App</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="8"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="9"><code>    <span class="token keyword">yield</span> <span class="token punctuation">(</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="10"><code>      <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="11"><code>        <span class="token operator">&lt;</span>Component <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="12"><code>        <span class="token operator">&lt;</span>button onclick<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">}</span><span class="token operator">&gt;</span>Refresh<span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="13"><code>      <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="14"><code>    <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="15"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="16"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="17"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="18"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>App <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><div class="css-nuifz8"><div class="css-1nius9d"><div class="css-14pt8ki">Loading...</div><div class="css-j74n8p"><iframe class="
+							playground-iframe
+							css-hjkbgb
+						" style="height: 100px;"></iframe></div></div></div></div></div><script data-name="inline-code-block-props-143" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-131'] = {"code":"function *FocusingInput(props) {\n  for (props of this) {\n    const input = yield \u003Cinput {...props}\u002F\u003E;\n    \u002F\u002F This line does not execute until the component is rerendered.\n    input.focus();\n  }\n}","lang":"jsx"};
-		</script></div><p>The problem is that sync generator components suspend at the point of yield expressions and only resume when updated by the parent or by a call to the <code class="inline">refresh</code> method. This means that if you were to try to access the rendered value via a <code class="inline">yield</code> expression, your code would not execute until the moment the component rerenders. You can imagine this as the generator function above suspended exactly before the <code class="inline">yield</code> expression is assigned to the <code class="inline">input</code> variable.</p><p>To solve this problem, Crank provides an additional method on the context called <code class="inline">schedule</code>, which takes a callback and calls it with the rendered value after the component executes.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-k65jh7"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
-							language-
-							css-1ashatc
-						"><div class="
-				prism-line
-				css-1flouoi
-			" data-index="0"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">FocusingInput</span><span class="token punctuation">(</span><span class="token parameter">props</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="1"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span>props <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="2"><code>    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">schedule</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token parameter">input</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> input<span class="token punctuation">.</span><span class="token function">focus</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="3"><code>    <span class="token keyword">yield</span> <span class="token operator">&lt;</span>input <span class="token punctuation">{</span><span class="token operator">...</span>props<span class="token punctuation">}</span><span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="4"><code>  <span class="token punctuation">}</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="5"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-132" class="props">
+			window.__embeddedJSON__['inline-code-block-props-143'] = {"code":"import {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\nfunction *Component() {\n  yield \u003Cdiv\u003E1\u003C\u002Fdiv\u003E;\n  yield \u003Cdiv\u003E2\u003C\u002Fdiv\u003E;\n  return \u003Cdiv\u003E3\u003C\u002Fdiv\u003E;\n}\n\nfunction *App() {\n  for ({} of this) {\n    yield (\n      \u003Cdiv\u003E\n        \u003CComponent \u002F\u003E\n        \u003Cbutton onclick={() =\u003E this.refresh()}\u003ERefresh\u003C\u002Fbutton\u003E\n      \u003C\u002Fdiv\u003E\n    );\n  }\n}\n\nrenderer.render(\u003CApp \u002F\u003E, document.body);","lang":"jsx live"};
+		</script></div></main><script data-name="static-urls-144" id="static-urls">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-132'] = {"code":"function *FocusingInput(props) {\n  for (props of this) {\n    this.schedule((input) =\u003E input.focus());\n    yield \u003Cinput {...props}\u002F\u003E;\n  }\n}","lang":"jsx"};
-		</script></div><p>The <code class="inline">schedule</code> method fires the passed in callback synchronously when component finally renders. However, one unfortunate consequence of using a callback is that we lose the sequential execution of code which makes generator components so elegant and easy to understand. We can recover some of this linearity by using the <code class="inline">schedule</code> method with the <code class="inline">refresh</code> method.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-k65jh7"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
-							language-
-							css-1ashatc
-						"><div class="
-				prism-line
-				css-1flouoi
-			" data-index="0"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">FocusingInput</span><span class="token punctuation">(</span><span class="token parameter">props</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="1"><code>  <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">schedule</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="2"><code>  <span class="token keyword">const</span> input <span class="token operator">=</span> <span class="token keyword">yield</span> <span class="token operator">&lt;</span>input <span class="token punctuation">{</span><span class="token operator">...</span>props<span class="token punctuation">}</span> <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="3"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span>props <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="4"><code>    input<span class="token punctuation">.</span><span class="token function">focus</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="5"><code>    <span class="token keyword">yield</span> <span class="token operator">&lt;</span>input <span class="token punctuation">{</span><span class="token operator">...</span>props<span class="token punctuation">}</span> <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="6"><code>  <span class="token punctuation">}</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="7"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-133" class="props">
-			if (window.__embeddedJSON__ == null) {
-				window.__embeddedJSON__ = {};
-			}
-			window.__embeddedJSON__['inline-code-block-props-133'] = {"code":"function *FocusingInput(props) {\n  this.schedule(() =\u003E this.refresh());\n  const input = yield \u003Cinput {...props} \u002F\u003E;\n  for (props of this) {\n    input.focus();\n    yield \u003Cinput {...props} \u002F\u003E;\n  }\n}","lang":"jsx"};
-		</script></div><p>The focusing input now focuses before the children are yielded, but because the same input is yielded, the result is mostly the same. The <code class="inline">schedule</code> method is designed to work with the <code class="inline">refresh</code> method so that sync generator components can schedule multiple rendering passes which work synchronously.</p></main><script data-name="static-urls-134" id="static-urls">
-			if (window.__embeddedJSON__ == null) {
-				window.__embeddedJSON__ = {};
-			}
-			window.__embeddedJSON__['static-urls-134'] = {"@b9g\u002Fcrank":"\u002Fstatic\u002Fcrank-XB6WXNGQ.js","@b9g\u002Fcrank\u002Fcrank":"\u002Fstatic\u002Fcrank-XB6WXNGQ.js","@b9g\u002Fcrank\u002Fcrank.js":"\u002Fstatic\u002Fcrank-XB6WXNGQ.js","@b9g\u002Fcrank\u002Fdom":"\u002Fstatic\u002Fdom-FJYGSVTY.js","@b9g\u002Fcrank\u002Fdom.js":"\u002Fstatic\u002Fdom-FJYGSVTY.js","@b9g\u002Fcrank\u002Fhtml":"\u002Fstatic\u002Fhtml-V67ZRAK3.js","@b9g\u002Fcrank\u002Fhtml.js":"\u002Fstatic\u002Fhtml-V67ZRAK3.js","@b9g\u002Fcrank\u002Fjsx-tag":"\u002Fstatic\u002Fjsx-tag-HNWLDDKD.js","@b9g\u002Fcrank\u002Fjsx-tag.js":"\u002Fstatic\u002Fjsx-tag-HNWLDDKD.js","@b9g\u002Fcrank\u002Fjsx-runtime":"\u002Fstatic\u002Fjsx-runtime-6YBD4CTJ.js","@b9g\u002Fcrank\u002Fjsx-runtime.js":"\u002Fstatic\u002Fjsx-runtime-6YBD4CTJ.js","@b9g\u002Fcrank\u002Fstandalone":"\u002Fstatic\u002Fstandalone-S6C3ZD63.js","@b9g\u002Fcrank\u002Fstandalone.js":"\u002Fstatic\u002Fstandalone-S6C3ZD63.js","client.css":"\u002Fstatic\u002Fclient-Q5HR47TJ.css"};
-		</script><script src="/static/navbar-52J6JOSM.js"></script><script src="/static/code-blocks-MHNSGLSF.js"></script></body></html>
+			window.__embeddedJSON__['static-urls-144'] = {"@b9g\u002Fcrank":"\u002Fstatic\u002Fcrank-IV2ABN22.js","@b9g\u002Fcrank\u002Fcrank":"\u002Fstatic\u002Fcrank-IV2ABN22.js","@b9g\u002Fcrank\u002Fcrank.js":"\u002Fstatic\u002Fcrank-IV2ABN22.js","@b9g\u002Fcrank\u002Fdom":"\u002Fstatic\u002Fdom-ASECXKBF.js","@b9g\u002Fcrank\u002Fdom.js":"\u002Fstatic\u002Fdom-ASECXKBF.js","@b9g\u002Fcrank\u002Fhtml":"\u002Fstatic\u002Fhtml-OFI3D6ZY.js","@b9g\u002Fcrank\u002Fhtml.js":"\u002Fstatic\u002Fhtml-OFI3D6ZY.js","@b9g\u002Fcrank\u002Fjsx-tag":"\u002Fstatic\u002Fjsx-tag-IIFLB6WU.js","@b9g\u002Fcrank\u002Fjsx-tag.js":"\u002Fstatic\u002Fjsx-tag-IIFLB6WU.js","@b9g\u002Fcrank\u002Fjsx-runtime":"\u002Fstatic\u002Fjsx-runtime-M3JFUQGP.js","@b9g\u002Fcrank\u002Fjsx-runtime.js":"\u002Fstatic\u002Fjsx-runtime-M3JFUQGP.js","@b9g\u002Fcrank\u002Fstandalone":"\u002Fstatic\u002Fstandalone-3PBDRIUR.js","@b9g\u002Fcrank\u002Fstandalone.js":"\u002Fstatic\u002Fstandalone-3PBDRIUR.js","client.css":"\u002Fstatic\u002Fclient-SSQIEGC5.css"};
+		</script><script src="/static/navbar-B645DEJ5.js"></script><script src="/static/code-blocks-GAT7VCK4.js"></script></body></html>
