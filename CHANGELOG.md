@@ -1,5 +1,5 @@
 # Changelog
-## [0.6.0] - 2024-03-04
+## [0.6.0] - 2024-04-26
 ### Breaking Changes
 - Special props are now unprefixed. All special prefixed props are deprecated.
 - Special props are now passed into components via props.
