@@ -2,7 +2,7 @@
   "name": "astro-crank",
   "description": "Use Crank components within Astro",
   "license": "MIT",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "exports": {
     ".": "./index.js",
@@ -17,10 +17,6 @@
     "renderer",
     "withastro"
   ],
-  "dependencies": {
-    "@babel/core": ">=7.0.0-0 <8.0.0",
-    "@babel/plugin-transform-react-jsx": "^7.17.12"
-  },
   "peerDependencies": {
     "astro": "^4.0.0",
     "@b9g/crank": "^0.6.0"
