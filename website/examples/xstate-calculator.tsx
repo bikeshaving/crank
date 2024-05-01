@@ -2,7 +2,7 @@
 // https://github.com/Glutnix/xstate-vue-calculator
 // Can't import from "xstate":
 // https://github.com/statelyai/xstate/pull/2318#issuecomment-864795216
-import {Machine, assign} from "xstate/dist/xstate.web.js";
+import {Machine, assign} from "xstate@4/dist/xstate.web.js";
 import {Context, createElement} from "@bikeshaving/crank";
 import {renderer} from "@bikeshaving/crank/dom";
 
