@@ -237,7 +237,7 @@ function *Timer({}, ctx) {
     ctx.refresh();
   };
 
-  // The this of a Crank component is an iterable of props.
+  // The context passed to a Crank component is an iterable of props.
   for ({} of ctx) {
     // Welcome to the render loop.
     // Most generator components should use render loops even if they do not
