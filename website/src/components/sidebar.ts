@@ -82,7 +82,7 @@ export function Main({children}: {children: unknown}) {
 			}
 
 			@media screen and (min-width: 1100px) {
-				margin-left: 320px;
+				margin-left: 20rem;
 				padding: 3rem 2rem;
 			}
 
