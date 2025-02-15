@@ -11,7 +11,6 @@ interface WalkInfo {
 async function* walk(dir: string): AsyncGenerator<WalkInfo> {
 	const files = (await FS.readdir(dir)).sort();
 	for (let filename of files) {
-		console.log(filename);
 		filename = Path.join(dir, filename);
 		const stats = await FS.stat(filename);
 		if (stats.isDirectory()) {
