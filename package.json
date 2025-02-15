@@ -87,7 +87,7 @@
   "types": "crank.d.ts",
   "scripts": {
     "prebuild": "npm run clean",
-    "build": "rollup -c rollup.config.js",
+    "build": "bun --bun run rollup -c rollup.config.js",
     "clean": "shx rm -rf dist",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "preshipit": "npm run typecheck && npm run test && npm run build",
