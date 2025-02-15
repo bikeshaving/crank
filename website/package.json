@@ -4,13 +4,13 @@
   "scripts": {
     "predeploy": "npm run static",
     "deploy": "gh-pages -d dist",
-    "develop": "shovel develop src/app.ts --port 1338",
+    "develop": "shovel develop src/app.ts --port 1337",
     "static": "shovel static src/app.ts && echo crank.js.org > dist/CNAME"
   },
   "dependencies": {
     "@b9g/crank": "^0.6.0",
     "@b9g/revise": "^0.1.2",
-    "@b9g/shovel": "^0.1.6",
+    "@b9g/shovel": "^0.1.8",
     "@babel/core": "^7.21.0",
     "@babel/preset-react": "^7.18.6",
     "@babel/preset-typescript": "^7.21.0",
