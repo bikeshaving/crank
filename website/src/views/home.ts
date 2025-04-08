@@ -124,7 +124,7 @@ function CallToAction() {
 			justify-content: center;
 			align-items: center;
 		`}>
-			<div class="blur-background-2 ${css`
+			<div class="${css`
 				padding: 2em;
 				display: flex;
 				flex-direction: column;
@@ -178,13 +178,13 @@ export default async function Home({context: {storage}}: ViewProps) {
 			storage=${storage}
 		>
 			<${Hero} />
-			<div class="blur-background-2 ${css`
+			<div class=${css`
 				font-size: max(18px, min(24px, 2vw));
 				background-color: var(--bg-color);
 				border-top: 1px solid var(--text-color);
 				border-bottom: 1px solid var(--text-color);
 				padding: 2em 0;
-			`}">
+			`}>
 				<${Marked} markdown=${md.body} components=${components} />
 			</div>
 			<${CallToAction} />

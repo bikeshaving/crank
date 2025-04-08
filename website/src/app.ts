@@ -18,7 +18,6 @@ const storage = new Storage({
 
 export default {
 	async fetch(req: Request) {
-		console.info("serving", req.url);
 		const path = new URL(req.url).pathname;
 		if (path.startsWith(storage.publicPath)) {
 			const source = await storage.serve(path);
@@ -75,5 +74,6 @@ export default {
 		);
 		yield* guideDocs.map((doc) => doc.url);
 		await storage.write(Path.join(outDir, storage.publicPath));
+		storage.clear();
 	},
 };
