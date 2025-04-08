@@ -27,9 +27,7 @@ function arrayify<T>(
 			? value
 			: typeof value === "string" ||
 				  typeof (value as any)[Symbol.iterator] !== "function"
-				? [value]
-				: // TODO: inference broke in TypeScript 3.9.
-					[...(value as any)];
+				? [value as T] : [...value as any];
 }
 
 function isIteratorLike(
