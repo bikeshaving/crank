@@ -10,14 +10,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-node@v1
-      with:
-        node-version: 18.x
-    - run: npm install --frozen-lockfile
-    - run: npm run typecheck
-    - run: npm run lint
-    - run: npm run build
-    - run: npm run test -- --browser chromium
-    - run: npm run test -- --browser firefox
-    - run: npx playwright install-deps webkit
-    - run: npm run test -- --browser webkit
+    - uses: oven-sh/setup-bun@v2
+    - run: bun install
+    - run: bun run typecheck
+    - run: bun run lint
+    - run: bun run build
+    - run: bun run test -- --browser chromium
+    - run: bun run test -- --browser firefox
+    - run: bunx playwright install-deps webkit
+    - run: bun run test -- --browser webkit
