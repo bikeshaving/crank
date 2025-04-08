@@ -31,7 +31,8 @@
       "error",
       {
         "varsIgnorePattern": "^_",
-        "argsIgnorePattern": "^_"
+        "argsIgnorePattern": "^_",
+        "caughtErrors": "none"
       }
     ],
     "no-dupe-class-members": 0,
