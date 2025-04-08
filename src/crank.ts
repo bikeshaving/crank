@@ -3023,6 +3023,7 @@ declare global {
 			key?: unknown;
 			ref?: unknown;
 			copy?: unknown;
+			/** @deprecated */
 			["static"]?: unknown;
 			/** @deprecated */
 			["crank-key"]?: unknown;
