@@ -31,6 +31,9 @@ export function jsx(
 	return build(element);
 }
 
+/** Alias for `jsx` template tag. */
+export const html = jsx;
+
 // Type definitions for a bare-bones AST
 interface ParseElement {
 	type: "element";
