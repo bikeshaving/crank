@@ -1,18 +1,32 @@
 {
   "name": "@b9g/crank",
   "version": "0.6.0",
-  "private": true,
-  "description": "Write JSX-driven components with functions, promises and generators.",
-  "homepage": "https://crank.js.org",
-  "bugs": {
-    "url": "https://github.com/bikeshaving/crank/issues"
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/bikeshaving/crank.git"
   },
-  "license": "MIT",
-  "type": "module",
+  "main": "crank.cjs",
+  "module": "crank.js",
+  "devDependencies": {
+    "@arkweid/lefthook": "^0.7.7",
+    "@types/sinon": "^17.0.3",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "eslint-plugin-react": "^7.33.2",
+    "magic-string": "^0.30.5",
+    "playwright-test": "^14.0.0",
+    "prettier": "^3.2.4",
+    "rollup": "^4.9.6",
+    "rollup-plugin-typescript2": "^0.36.0",
+    "shx": "^0.3.4",
+    "sinon": "^17.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3",
+    "uvu": "^0.5.6"
+  },
   "exports": {
     ".": {
       "import": "./dist/crank.js",
@@ -82,9 +96,16 @@
       "require": "./dist/umd.js"
     }
   },
-  "main": "crank.cjs",
-  "module": "crank.js",
-  "types": "crank.d.ts",
+  "bugs": {
+    "url": "https://github.com/bikeshaving/crank/issues"
+  },
+  "description": "Write JSX-driven components with functions, promises and generators.",
+  "homepage": "https://crank.js.org",
+  "license": "MIT",
+  "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "prebuild": "npm run clean",
     "build": "bun --bun run rollup -c rollup.config.js",
@@ -95,29 +116,8 @@
     "test": "playwright-test --runner uvu",
     "typecheck": "tsc --noEmit"
   },
-  "devDependencies": {
-    "@arkweid/lefthook": "^0.7.7",
-    "@types/sinon": "^17.0.3",
-    "@typescript-eslint/eslint-plugin": "^6.19.0",
-    "@typescript-eslint/parser": "^6.19.0",
-    "eslint": "^8.56.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-prettier": "^5.1.3",
-    "eslint-plugin-react": "^7.33.2",
-    "magic-string": "^0.30.5",
-    "playwright-test": "^14.0.0",
-    "prettier": "^3.2.4",
-    "rollup": "^4.9.6",
-    "rollup-plugin-typescript2": "^0.36.0",
-    "shx": "^0.3.4",
-    "sinon": "^17.0.1",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.3.3",
-    "uvu": "^0.5.6"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
+  "type": "module",
+  "types": "crank.d.ts",
   "workspaces": [
     "packages/*"
   ]
