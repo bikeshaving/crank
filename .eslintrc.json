@@ -49,5 +49,21 @@
       }
     ],
     "linebreak-style": ["error", "unix"]
-  }
+  },
+  "overrides": [
+    {
+      "files": ["website/examples/**/*"],
+      "rules": {
+        "prettier/prettier": [
+          "error",
+          {
+            "trailingComma": "all",
+            "arrowParens": "always",
+            "useTabs": false,
+            "bracketSpacing": false
+          }
+        ]
+      }
+    }
+  ]
 }

@@ -1,4 +1,4 @@
-emport {jsx} from "@b9g/crank/standalone";
+import {jsx} from "@b9g/crank/standalone";
 import {renderer} from "@b9g/crank/dom";
 
 function Hexagon({cx = 0, cy = 0, r, ...props}) {

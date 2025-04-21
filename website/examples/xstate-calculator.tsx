@@ -6,12 +6,16 @@ import {Machine, assign} from "xstate@4/dist/xstate.web.js";
 import {Context, createElement} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
 
-const not = (fn) => (...args) => !fn.apply(null, args);
+const not =
+  (fn) =>
+  (...args) =>
+    !fn.apply(null, args);
 const isZero = (context, event) => event.key === 0;
 const isNotZero = not(isZero);
 const isMinus = (context, event) => event.operator === "-";
 const isNotMinus = not(isMinus);
-const divideByZero = (context) => context.operand2 === "0." && context.operator === "/";
+const divideByZero = (context) =>
+  context.operand2 === "0." && context.operator === "/";
 const notDivideByZero = not(divideByZero);
 
 function doMath(operand1, operand2, operator) {
@@ -421,7 +425,10 @@ function* Calculator(this: Context) {
       if (Number.isInteger(+label)) {
         state = calcMachine.transition(state, {type: "NUMBER", key: +label});
       } else if (isOperator(label)) {
-        state = calcMachine.transition(state, {type: "OPERATOR", operator: label});
+        state = calcMachine.transition(state, {
+          type: "OPERATOR",
+          operator: label,
+        });
       } else if (label === "C") {
         state = calcMachine.transition(state, {type: "CLEAR_EVERYTHING"});
       } else if (label === ".") {
