@@ -124,6 +124,7 @@ export function transform(code: string) {
 					{
 						runtime: "automatic",
 						importSource: "@b9g/crank",
+						throwIfNamespace: false,
 					},
 				],
 				rewriteBareModuleSpecifiers,
@@ -162,6 +163,7 @@ export function transform(code: string) {
 							runtime: "classic",
 							pragma: "createElement",
 							pragmaFrag: "''",
+							throwIfNamespace: false,
 						},
 					],
 					rewriteBareModuleSpecifiers,
