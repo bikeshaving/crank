@@ -47,6 +47,7 @@ function* Playground(this: Context) {
 	this.addEventListener("contentchange", (ev: any) => {
 		code = ev.target.value;
 		localStorage.setItem("playground-value", code);
+		this.refresh();
 	});
 
 	let exampleName = "";
