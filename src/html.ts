@@ -58,7 +58,7 @@ function printAttrs(props: Record<string, any>): string {
 			name === "innerHTML" ||
 			name === "key" ||
 			name === "ref" ||
-			name === "static" ||
+			name === "copy" ||
 			name.startsWith("prop:") ||
 			// TODO: Remove deprecated special props
 			name === "crank-key" ||
