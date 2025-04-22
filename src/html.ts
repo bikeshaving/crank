@@ -59,6 +59,9 @@ function printAttrs(props: Record<string, any>): string {
 			case name === "key":
 			case name === "ref":
 			case name === "static":
+			case name.startsWith("prop:"):
+				break;
+			// TODO: Remove deprecated special props
 			case name === "crank-key":
 			case name === "crank-ref":
 			case name === "crank-static":
@@ -68,7 +71,6 @@ function printAttrs(props: Record<string, any>): string {
 			case name === "$key":
 			case name === "$ref":
 			case name === "$static":
-				// TODO: Remove deprecated special props
 				break;
 			case name === "style": {
 				if (typeof value === "string") {
