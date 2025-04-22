@@ -53,6 +53,8 @@ function printStyleObject(style: Record<string, any>): string {
 function printAttrs(props: Record<string, any>): string {
 	const attrs: string[] = [];
 	for (let [name, value] of Object.entries(props)) {
+		// TODO: Because printAttrs is called in arrange, special props are not filtered out.
+		// This should be handled by the core library.
 		if (
 			name === "children" ||
 			name === "innerHTML" ||
