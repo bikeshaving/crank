@@ -588,4 +588,22 @@ test("set/unset default props", () => {
 	Assert.equal(document.querySelectorAll('input[type="text"]').length, 1);
 });
 
+test("prop: prefix forces prop", () => {
+	let el: any;
+	renderer.render(
+		<custom-el prop:prop="value" ref={(el1: any) => (el = el1)} />,
+		document.body,
+	);
+	Assert.is(el.prop, "value");
+});
+
+test("attr: prefix forces attribute", () => {
+	let el: any;
+	renderer.render(<custom-el ref={(el1: any) => (el = el1)} />, document.body);
+	el.attr = "value";
+	renderer.render(<custom-el attr:attr="other" />, document.body);
+	Assert.is(el.getAttribute("attr"), "other");
+	Assert.is(el.attr, "value");
+});
+
 test.run();

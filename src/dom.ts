@@ -87,6 +87,27 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 		xmlns: string | undefined,
 	): void {
 		const isSVG = xmlns === SVG_NAMESPACE;
+		const colonIndex = name.indexOf(":");
+		if (colonIndex !== -1) {
+			const ns = name.slice(0, colonIndex);
+			const name1 = name.slice(colonIndex + 1);
+			switch (ns) {
+				case "prop":
+					(node as any)[name1] = value;
+					return;
+				case "attr":
+					if (value == null || value === false) {
+						node.removeAttribute(name1);
+					} else if (value === true) {
+						node.setAttribute(name1, "");
+					} else if (typeof value === "string") {
+						node.setAttribute(name1, value);
+					} else {
+						node.setAttribute(name, String(value));
+					}
+					return;
+			}
+		}
 		switch (name) {
 			case "style": {
 				const style: CSSStyleDeclaration = node.style;

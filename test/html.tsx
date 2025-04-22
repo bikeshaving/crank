@@ -269,4 +269,8 @@ test("stateful", () => {
 	Assert.is(mock.callCount, 1);
 });
 
+test("prop: prefix is not rendered", () => {
+	Assert.is(renderer.render(<div prop:foo="bar" />), "<div></div>");
+});
+
 test.run();
