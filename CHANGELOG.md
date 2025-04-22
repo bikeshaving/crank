@@ -1,4 +1,11 @@
 # Changelog
+## [0.6.1] - 2024-04-21
+### Features
+- Added `prop:` and `attr:` prefixes to disambiguate props which should be treated as element properties vs attributes.
+- Added `html` alias for the `jsx` template tag in JavaScript.
+### Bug Fixes
+- Added missing `copy` prop to TypeScript types.
+- Fix `copy` prop being rendered by HTML renderer.
 ## [0.6.0] - 2024-04-26
 ### Breaking Changes
 - Special props are now unprefixed. All special prefixed props are deprecated.
