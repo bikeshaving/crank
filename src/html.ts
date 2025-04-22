@@ -52,51 +52,49 @@ function printStyleObject(style: Record<string, any>): string {
 
 function printAttrs(props: Record<string, any>): string {
 	const attrs: string[] = [];
-	for (const [name, value] of Object.entries(props)) {
-		switch (true) {
-			case name === "children":
-			case name === "innerHTML":
-			case name === "key":
-			case name === "ref":
-			case name === "static":
-			case name.startsWith("prop:"):
-				break;
+	for (let [name, value] of Object.entries(props)) {
+		if (
+			name === "children" ||
+			name === "innerHTML" ||
+			name === "key" ||
+			name === "ref" ||
+			name === "static" ||
+			name.startsWith("prop:") ||
 			// TODO: Remove deprecated special props
-			case name === "crank-key":
-			case name === "crank-ref":
-			case name === "crank-static":
-			case name === "c-key":
-			case name === "c-ref":
-			case name === "c-static":
-			case name === "$key":
-			case name === "$ref":
-			case name === "$static":
-				break;
-			case name === "style": {
-				if (typeof value === "string") {
-					attrs.push(`style="${escape(value)}"`);
-				} else if (typeof value === "object") {
-					attrs.push(`style="${escape(printStyleObject(value))}"`);
-				}
-				break;
+			name === "crank-key" ||
+			name === "crank-ref" ||
+			name === "crank-static" ||
+			name === "c-key" ||
+			name === "c-ref" ||
+			name === "c-static" ||
+			name === "$key" ||
+			name === "$ref" ||
+			name === "$static"
+		) {
+			continue;
+		} else if (name === "style") {
+			if (typeof value === "string") {
+				attrs.push(`style="${escape(value)}"`);
+			} else if (typeof value === "object") {
+				attrs.push(`style="${escape(printStyleObject(value))}"`);
 			}
-			case name === "className": {
-				if ("class" in props || typeof value !== "string") {
-					continue;
-				}
+		} else if (name === "className") {
+			if ("class" in props || typeof value !== "string") {
+				continue;
+			}
 
-				attrs.push(`class="${escape(value)}"`);
-				break;
+			attrs.push(`class="${escape(value)}"`);
+		} else {
+			if (name.startsWith("attr:")) {
+				name = name.slice("attr:".length);
 			}
-			case typeof value === "string":
+			if (typeof value === "string") {
 				attrs.push(`${escape(name)}="${escape(value)}"`);
-				break;
-			case typeof value === "number":
+			} else if (typeof value === "number") {
 				attrs.push(`${escape(name)}="${value}"`);
-				break;
-			case value === true:
+			} else if (value === true) {
 				attrs.push(`${escape(name)}`);
-				break;
+			}
 		}
 	}
 

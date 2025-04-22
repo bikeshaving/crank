@@ -273,4 +273,12 @@ test("prop: prefix is not rendered", () => {
 	Assert.is(renderer.render(<div prop:foo="bar" />), "<div></div>");
 });
 
+test("attr: prefix renders correctly", () => {
+	renderer.render(<custom-el />, document.body);
+	Assert.is(
+		renderer.render(<div attr:attr="value" />),
+		'<div attr="value"></div>',
+	);
+});
+
 test.run();
