@@ -238,16 +238,7 @@ export function isElement(value: any): value is Element {
 	return value != null && value.$$typeof === ElementSymbol;
 }
 
-const DEPRECATED_PROP_PREFIXES = ["crank-", "c-", "$"];
-
-const DEPRECATED_SPECIAL_PROP_BASES = ["key", "ref", "static"];
-
 const SPECIAL_PROPS = new Set(["children", "key", "ref", "copy"]);
-for (const propPrefix of DEPRECATED_PROP_PREFIXES) {
-	for (const propBase of DEPRECATED_SPECIAL_PROP_BASES) {
-		SPECIAL_PROPS.add(propPrefix + propBase);
-	}
-}
 
 /**
  * Creates an element with the specified tag, props and children.
@@ -264,23 +255,6 @@ export function createElement<TTag extends Tag>(
 ): Element<TTag> {
 	if (props == null) {
 		props = {} as TagProps<TTag>;
-	}
-
-	for (let i = 0; i < DEPRECATED_PROP_PREFIXES.length; i++) {
-		const propPrefix = DEPRECATED_PROP_PREFIXES[i];
-		for (let j = 0; j < DEPRECATED_SPECIAL_PROP_BASES.length; j++) {
-			const propBase = DEPRECATED_SPECIAL_PROP_BASES[j];
-			const deprecatedPropName = propPrefix + propBase;
-			const targetPropBase = propBase === "static" ? "copy" : propBase;
-			if (deprecatedPropName in (props as TagProps<TTag>)) {
-				console.warn(
-					`The \`${deprecatedPropName}\` prop is deprecated. Use \`${targetPropBase}\` instead.`,
-				);
-				(props as TagProps<TTag>)[targetPropBase] = (props as TagProps<TTag>)[
-					deprecatedPropName
-				];
-			}
-		}
 	}
 
 	if (children.length > 1) {
@@ -1241,6 +1215,7 @@ function commitHost<TNode, TScope>(
 				// Not sure about this feature. Should probably be removed.
 				(copied = copied || new Set()).add(propName);
 			} else if (!SPECIAL_PROPS.has(propName)) {
+				// TODO: Should we avoid passing special props to patch?
 				renderer.patch(
 					tag,
 					value,
@@ -3025,26 +3000,6 @@ declare global {
 			key?: unknown;
 			ref?: unknown;
 			copy?: unknown;
-			/** @deprecated */
-			["static"]?: unknown;
-			/** @deprecated */
-			["crank-key"]?: unknown;
-			/** @deprecated */
-			["crank-ref"]?: unknown;
-			/** @deprecated */
-			["crank-static"]?: unknown;
-			/** @deprecated */
-			["c-key"]?: unknown;
-			/** @deprecated */
-			["c-ref"]?: unknown;
-			/** @deprecated */
-			["c-static"]?: unknown;
-			/** @deprecated */
-			$key?: unknown;
-			/** @deprecated */
-			$ref?: unknown;
-			/** @deprecated */
-			$static?: unknown;
 		}
 
 		export interface ElementChildrenAttribute {

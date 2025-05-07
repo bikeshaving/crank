@@ -58,20 +58,11 @@ function printAttrs(props: Record<string, any>): string {
 		if (
 			name === "children" ||
 			name === "innerHTML" ||
+			// TODO: Should we filter out props in the core library?
 			name === "key" ||
 			name === "ref" ||
 			name === "copy" ||
-			name.startsWith("prop:") ||
-			// TODO: Remove deprecated special props
-			name === "crank-key" ||
-			name === "crank-ref" ||
-			name === "crank-static" ||
-			name === "c-key" ||
-			name === "c-ref" ||
-			name === "c-static" ||
-			name === "$key" ||
-			name === "$ref" ||
-			name === "$static"
+			name.startsWith("prop:")
 		) {
 			continue;
 		} else if (name === "style") {
