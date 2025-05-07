@@ -1572,6 +1572,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	 * @deprecated
 	 */
 	get value(): TResult {
+		console.warn("Context.value is deprecated.");
 		return this[_ContextImpl].renderer.read(getValue(this[_ContextImpl].ret));
 	}
 
