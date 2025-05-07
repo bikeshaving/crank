@@ -828,6 +828,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	let childrenByKey: Map<Key, Retainer<TNode>> | undefined;
 	let seenKeys: Set<Key> | undefined;
 	let isAsync = false;
+	// TODO: Allow diffing to run in parallel when hydrating.
 	// When hydrating, sibling element trees must be rendered in order, because
 	// we do not know how many DOM nodes an element will render.
 	let hydrationBlock: Promise<unknown> | undefined;
@@ -959,6 +960,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 								hydrationData,
 							);
 				} else {
+					// host element
 					value = hydrationBlock
 						? hydrationBlock.then(() =>
 								updateHost(

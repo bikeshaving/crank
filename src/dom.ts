@@ -311,6 +311,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 		if (hydrationData != null) {
 			let value = hydrationData.children.shift();
 			if (typeof value !== "string" || !value.startsWith(text)) {
+				// pass
 				// TODO: consider pros and cons of hydration warnings
 				//console.error(`Expected "${text}" while hydrating but found:`, value);
 			} else if (text.length < value.length) {
