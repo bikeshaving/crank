@@ -407,11 +407,15 @@ class Retainer<TNode> {
 	 * The value associated with this element.
 	 */
 	declare value: ElementValue<TNode>;
+
+	// TODO: Stop caching child values to reduce memory cost at rest.
 	/**
 	 * The cached child values of this element. Only host and component elements
 	 * will use this property.
 	 */
 	declare cachedChildValues: ElementValue<TNode>;
+
+	// TODO: Rethink fallbackValue, inflightValue and onNextValues.
 	/**
 	 * The child which this retainer replaces. This property is used when an
 	 * async retainer tree replaces previously rendered elements, so that the
@@ -805,6 +809,8 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	// TODO: Allow diffing to run in parallel when hydrating.
 	// When hydrating, sibling element trees must be rendered in order, because
 	// we do not know how many DOM nodes an element will render.
+	// TODO: Switch from a single pass to a double pass to separate component
+	// logic from rendering.
 	let hydrationBlock: Promise<unknown> | undefined;
 	let oi = 0;
 	let oldLength = oldRetained.length;
@@ -972,6 +978,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			}
 
 			if (typeof child === "string") {
+				// TODO: We should concatenate adjacent strings.
 				value = ret = renderer.text(child, scope, hydrationData);
 			} else {
 				ret = undefined;
@@ -1109,7 +1116,7 @@ function updateFragment<TNode, TScope, TRoot extends TNode>(
 		ctx,
 		scope,
 		ret,
-		ret.el.props.children as any,
+		ret.el.props.children as Children,
 		hydrationData,
 	);
 

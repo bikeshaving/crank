@@ -315,6 +315,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 				// TODO: consider pros and cons of hydration warnings
 				//console.error(`Expected "${text}" while hydrating but found:`, value);
 			} else if (text.length < value.length) {
+				// TODO: The core library should concatenate text before calling this to prevent having to unshift hydration data
 				value = value.slice(text.length);
 				hydrationData.children.unshift(value);
 			}
@@ -373,6 +374,8 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 	},
 };
 
+// TODO: Consider using regular inheritance instead of delegation.
+// It's not immediately clear how super calls work from the source code alone.
 export class DOMRenderer extends Renderer<Node, string> {
 	constructor() {
 		super(impl);
