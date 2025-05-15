@@ -424,7 +424,7 @@ class Retainer<TNode> {
 	 */
 	declare fallbackValue: RetainerChild<TNode>;
 
-	declare inflightValue: Promise<ElementValue<TNode>> | undefined;
+	declare nextValues: Promise<ElementValue<TNode>> | undefined;
 	declare onNextValues: Function | undefined;
 	constructor(el: Element) {
 		this.el = el;
@@ -433,7 +433,7 @@ class Retainer<TNode> {
 		this.value = undefined;
 		this.cachedChildValues = undefined;
 		this.fallbackValue = undefined;
-		this.inflightValue = undefined;
+		this.nextValues = undefined;
 		this.onNextValues = undefined;
 	}
 }
@@ -494,6 +494,7 @@ export interface HydrationData<TNode> {
 	children: Array<TNode | string>;
 }
 
+// TODO: go back to classic inheritance
 // TODO: Document the interface and methods
 export interface RendererImpl<
 	TNode,
@@ -1028,7 +1029,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 
 		parent.onNextValues = onChildValues;
 		return childValues1.then((childValues) => {
-			parent.inflightValue = parent.fallbackValue = undefined;
+			parent.nextValues = parent.fallbackValue = undefined;
 			return normalize(childValues);
 		});
 	} else {
@@ -1043,7 +1044,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			parent.onNextValues = undefined;
 		}
 
-		parent.inflightValue = parent.fallbackValue = undefined;
+		parent.nextValues = parent.fallbackValue = undefined;
 		// We can assert there are no promises in the array because isAsync is false
 		return normalize(values as Array<ElementValue<TNode>>);
 	}
@@ -1075,8 +1076,8 @@ function getInflightValue<TNode>(
 		typeof child.el.tag === "function" ? child.ctx : undefined;
 	if (ctx && ctx.f & IsUpdating && ctx.inflightValue) {
 		return ctx.inflightValue;
-	} else if (child.inflightValue) {
-		return child.inflightValue;
+	} else if (child.nextValues) {
+		return child.nextValues;
 	}
 
 	return getValue(child);
@@ -1121,8 +1122,8 @@ function updateFragment<TNode, TScope, TRoot extends TNode>(
 	);
 
 	if (isPromiseLike(childValues)) {
-		ret.inflightValue = childValues.then((childValues) => unwrap(childValues));
-		return ret.inflightValue;
+		ret.nextValues = childValues.then((childValues) => unwrap(childValues));
+		return ret.nextValues;
 	}
 
 	return unwrap(childValues);
@@ -1170,11 +1171,11 @@ function updateHost<TNode, TScope, TRoot extends TNode>(
 	);
 
 	if (isPromiseLike(childValues)) {
-		ret.inflightValue = childValues.then((childValues) =>
+		ret.nextValues = childValues.then((childValues) =>
 			commitHost(renderer, scope, ret, childValues, oldProps, hydrationValue),
 		);
 
-		return ret.inflightValue;
+		return ret.nextValues;
 	}
 
 	return commitHost(
@@ -1504,8 +1505,7 @@ class ContextImpl<
 	declare enqueuedBlock: Promise<unknown> | undefined;
 	declare enqueuedValue: Promise<ElementValue<TNode>> | undefined;
 
-	// The following callbacks are used to implement the async generator render
-	// loop behavior.
+	// The following callbacks are used to implement the Context async iterator.
 	declare onProps: ((props: Record<string, any>) => unknown) | undefined;
 	declare onPropsRequested: Function | undefined;
 	constructor(
@@ -1544,9 +1544,10 @@ type ComponentProps<T> = T extends () => any
 		: T;
 /**
  * A class which is instantiated and passed to every component as its this
- * value. Contexts form a tree just like elements and all components in the
- * element tree are connected via contexts. Components can use this tree to
- * communicate data upwards via events and downwards via provisions.
+ * value/second parameter. Contexts form a tree just like elements and all
+ * components in the element tree are connected via contexts. Components can
+ * use this tree to communicate data upwards via events and downwards via
+ * provisions.
  *
  * @template [T=*] - The expected shape of the props passed to the component,
  * or a component function. Used to strongly type the Context iterator methods.
@@ -2078,11 +2079,11 @@ function updateComponentChildren<TNode, TResult>(
 	}
 
 	if (isPromiseLike(childValues)) {
-		ctx.ret.inflightValue = childValues.then((childValues) =>
+		ctx.ret.nextValues = childValues.then((childValues) =>
 			commitComponent(ctx, childValues),
 		);
 
-		return ctx.ret.inflightValue;
+		return ctx.ret.nextValues;
 	}
 
 	return commitComponent(ctx, childValues);
@@ -2595,7 +2596,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 					!done
 				) {
 					// We skip stale iterations in for await...of loops.
-					value = ctx.ret.inflightValue || getValue(ctx.ret);
+					value = ctx.ret.nextValues || getValue(ctx.ret);
 				} else {
 					value = updateComponentChildren<TNode, TResult>(
 						ctx,
@@ -2618,13 +2619,13 @@ async function runAsyncGenComponent<TNode, TResult>(
 			}
 
 			let oldResult: Promise<TResult> | TResult;
-			if (ctx.ret.inflightValue) {
+			if (ctx.ret.nextValues) {
 				// The value passed back into the generator as the argument to the next
 				// method is a promise if an async generator component has async
 				// children. Sync generator components only resume when their children
 				// have fulfilled so the element’s inflight child values will never be
 				// defined.
-				oldResult = ctx.ret.inflightValue.then((value) =>
+				oldResult = ctx.ret.nextValues.then((value) =>
 					ctx.renderer.read(value),
 				);
 
