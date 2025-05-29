@@ -389,23 +389,23 @@ function normalize<TNode>(
  * rendering element trees.
  */
 class Retainer<TNode> {
-	/**
-	 * The element associated with this retainer.
-	 */
+	/** The element associated with this retainer. */
 	declare el: Element;
+
 	/**
 	 * The context associated with this element. Will only be defined for
 	 * component elements.
 	 */
+
 	declare ctx: ContextImpl<TNode> | undefined;
 	/**
 	 * The retainer children of this element. Retainers form a tree which mirrors
 	 * elements. Can be a single child or undefined as a memory optimization.
 	 */
+
 	declare children: Array<RetainerChild<TNode>> | RetainerChild<TNode>;
-	/**
-	 * The value associated with this element.
-	 */
+
+	/** The value associated with this element. */
 	declare value: ElementValue<TNode>;
 
 	/**
@@ -416,14 +416,20 @@ class Retainer<TNode> {
 	 */
 	declare fallback: RetainerChild<TNode>;
 
+	/** The previous props for this retainer. */
+	declare oldProps: Record<string, any> | undefined;
+
 	declare nextValues: Promise<ElementValue<TNode>> | undefined;
+
 	declare onNextValues: Function | undefined;
+
 	constructor(el: Element) {
 		this.el = el;
 		this.ctx = undefined;
 		this.children = undefined;
 		this.value = undefined;
 		this.fallback = undefined;
+		this.oldProps = undefined;
 		this.nextValues = undefined;
 		this.onNextValues = undefined;
 	}
@@ -762,7 +768,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 		flush(renderer, root);
 	}
 
-	return renderer.read(childValues);
+	return renderer.read(unwrap(childValues));
 }
 
 function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
@@ -782,9 +788,8 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 					renderer,
 					child,
 					scope,
-					undefined, // TODO
 				));
-			} else if (el.tag === "function") {
+			} else if (typeof el.tag === "function") {
 				values.push(commitChildren(
 					renderer,
 					root,
@@ -805,11 +810,11 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 					root,
 					child,
 					scope,
-					undefined, // TODO
 				));
 			}
 
 			child.fallback = undefined;
+			child.oldProps = undefined;
 		} else if (typeof child === "string") {
 			const text = renderer.text(child, scope, undefined);
 			values.push(text);
@@ -823,11 +828,9 @@ function commitRaw<TNode, TScope>(
 	renderer: RendererImpl<TNode, TScope, TNode, unknown>,
 	ret: Retainer<TNode>,
 	scope: TScope | undefined,
-	oldProps: Record<string, any> | undefined,
 ): ElementValue<TNode> {
-	const props = ret.el.props;
-	if (!oldProps || oldProps.value !== props.value) {
-		ret.value = renderer.raw(props.value as any, scope, undefined);
+	if (!ret.oldProps || ret.oldProps.value !== ret.el.props.value) {
+		ret.value = renderer.raw(ret.el.props.value as any, scope, undefined);
 		if (typeof ret.el.ref === "function") {
 			ret.el.ref(ret.value);
 		}
@@ -841,11 +844,11 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	root: TNode | undefined,
 	ret: Retainer<TNode>,
 	scope: TScope,
-	oldProps: Record<string, any> | undefined,
 ): ElementValue<TNode> {
 	const tag = ret.el.tag as string | symbol;
 	let value = ret.value as TNode;
 	let props = ret.el.props;
+	const oldProps = ret.oldProps;
 	scope = renderer.scope(scope, tag, props)!;
 	const oldChildValues = getChildValues(ret);
 	const childValues = commitChildren(renderer, root, ret.children, scope);
@@ -972,10 +975,11 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			} else if (typeof ret === "object" && ret.el === child) {
 				// pass
 			} else {
-				let oldProps: Record<string, any> | undefined;
 				let copy = false;
 				if (typeof ret === "object" && ret.el.tag === child.tag) {
-					oldProps = ret.el.props;
+					if (typeof ret.el.tag === "string" || typeof ret.el.tag === "symbol") {
+						ret.oldProps = ret.el.props;
+					}
 					ret.el = child;
 					if (child.copy) {
 						//result = getInflightValue(ret);
@@ -1013,7 +1017,6 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 						ctx,
 						scope,
 						ret,
-						oldProps,
 					);
 				} else {
 					// host element or portal element
@@ -1923,11 +1926,9 @@ function diffComponent<TNode, TScope, TRoot extends TNode, TResult>(
 	parent: ContextImpl<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope | undefined,
 	ret: Retainer<TNode>,
-	// TODO: Why do we need to pass oldProps here?
-	oldProps: Record<string, any> | undefined,
 ): Promise<undefined> | undefined {
 	let ctx: ContextImpl<TNode, TScope, TRoot, TResult>;
-	if (oldProps) {
+	if (ret.ctx) {
 		ctx = ret.ctx as ContextImpl<TNode, TScope, TRoot, TResult>;
 		if (ctx.f & IsSyncExecuting) {
 			console.error("Component is already executing");

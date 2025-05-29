@@ -224,8 +224,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 		node: Node,
 		props: Record<string, any>,
 		children: Array<Element | string>,
-		_oldProps: Record<string, any> | undefined,
-		oldChildren: Array<Element | string> | undefined,
+		oldProps: Record<string, any> | undefined,
 	): void {
 		if (tag === Portal && (node == null || typeof node.nodeType !== "number")) {
 			throw new TypeError(
@@ -243,7 +242,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 			// However, if an element has previously rendered children, we clear the
 			// them because it would be surprising not to clear Crank managed
 			// children, even if the new element does not have explicit children.
-			("children" in props || (oldChildren && oldChildren.length))
+			("children" in props || (oldProps && "children" in oldProps))
 		) {
 			if (children.length === 0) {
 				node.textContent = "";
