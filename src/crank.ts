@@ -681,18 +681,12 @@ export class Renderer<
 
 		const impl = this[_RendererImpl];
 		const scope = impl.scope(undefined, Portal, ret.el.props);
-		const diff = diffChildren(
-			impl,
-			root,
-			ret,
-			ctx,
-			scope,
-			ret,
-			children,
-		);
+		const diff = diffChildren(impl, root, ret, ctx, scope, ret, children);
 
 		if (isPromiseLike(diff)) {
-			return diff.then(() => commitRootRender(impl, root, ret!, oldProps, scope));
+			return diff.then(() =>
+				commitRootRender(impl, root, ret!, oldProps, scope),
+			);
 		}
 
 		return commitRootRender(impl, root, ret!, oldProps, scope);
@@ -784,33 +778,14 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 		if (typeof child === "object") {
 			const el = child.el;
 			if (el.tag === Raw) {
-				values.push(commitRaw(
-					renderer,
-					child,
-					scope,
-				));
+				values.push(commitRaw(renderer, child, scope));
 			} else if (typeof el.tag === "function") {
-				values.push(commitChildren(
-					renderer,
-					root,
-					child.children,
-					scope,
-				));
+				values.push(commitComponent(child.ctx!));
 			} else if (el.tag === Fragment) {
-				values.push(commitChildren(
-					renderer,
-					root,
-					child.children,
-					scope,
-				));
+				values.push(commitChildren(renderer, root, child.children, scope));
 			} else {
 				// host element or portal element
-				values.push(commitHost(
-					renderer,
-					root,
-					child,
-					scope,
-				));
+				values.push(commitHost(renderer, root, child, scope));
 			}
 
 			child.fallback = undefined;
@@ -891,14 +866,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		ret.el = new Element(tag, props);
 	}
 
-	renderer.arrange(
-		tag,
-		value,
-		props,
-		childValues,
-		oldProps,
-		oldChildValues,
-	);
+	renderer.arrange(tag, value, props, childValues, oldProps, oldChildValues);
 	if (tag === Portal) {
 		flush(renderer, ret.value);
 		return;
@@ -977,7 +945,10 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			} else {
 				let copy = false;
 				if (typeof ret === "object" && ret.el.tag === child.tag) {
-					if (typeof ret.el.tag === "string" || typeof ret.el.tag === "symbol") {
+					if (
+						typeof ret.el.tag === "string" ||
+						typeof ret.el.tag === "symbol"
+					) {
 						ret.oldProps = ret.el.props;
 					}
 					ret.el = child;
@@ -1010,23 +981,10 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 						ret.el.props.children as Children,
 					);
 				} else if (typeof child.tag === "function") {
-					result = diffComponent(
-						renderer,
-						root,
-						host,
-						ctx,
-						scope,
-						ret,
-					);
+					result = diffComponent(renderer, root, host, ctx, scope, ret);
 				} else {
 					// host element or portal element
-					result = diffHost(
-						renderer,
-						root,
-						ctx,
-						scope,
-						ret,
-					);
+					result = diffHost(renderer, root, ctx, scope, ret);
 				}
 			}
 
@@ -1069,13 +1027,15 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 
 	parent.children = unwrap(newRetained);
 	if (isAsync) {
-		let results1 = Promise.all(results).finally(() => {
-			if (graveyard) {
-				for (let i = 0; i < graveyard.length; i++) {
-					unmount(renderer, host, ctx, graveyard[i]);
+		let results1 = Promise.all(results)
+			.finally(() => {
+				if (graveyard) {
+					for (let i = 0; i < graveyard.length; i++) {
+						unmount(renderer, host, ctx, graveyard[i]);
+					}
 				}
-			}
-		}).then(() => undefined);
+			})
+			.then(() => undefined);
 
 		let onNextResults!: Function;
 		results1 = Promise.race([
@@ -1120,23 +1080,23 @@ function createChildrenByKey<TNode>(
 	return childrenByKey;
 }
 
-function getInflightValue<TNode>(
-	child: RetainerChild<TNode>,
-): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-	if (typeof child !== "object") {
-		return child;
-	}
-
-	const ctx: ContextImpl<TNode> | undefined =
-		typeof child.el.tag === "function" ? child.ctx : undefined;
-	if (ctx && ctx.f & IsUpdating && ctx.inflightValue) {
-		return ctx.inflightValue;
-	} else if (child.nextValues) {
-		return child.nextValues;
-	}
-
-	return getValue(child);
-}
+//function getInflightValue<TNode>(
+//	child: RetainerChild<TNode>,
+//): Promise<ElementValue<TNode>> | ElementValue<TNode> {
+//	if (typeof child !== "object") {
+//		return child;
+//	}
+//
+//	const ctx: ContextImpl<TNode> | undefined =
+//		typeof child.el.tag === "function" ? child.ctx : undefined;
+//	if (ctx && ctx.f & IsUpdating && ctx.inflightValue) {
+//		return ctx.inflightValue;
+//	} else if (child.nextValues) {
+//		return child.nextValues;
+//	}
+//
+//	return getValue(child);
+//}
 
 function diffHost<TNode, TScope, TRoot extends TNode>(
 	renderer: RendererImpl<TNode, TScope, TRoot, unknown>,
@@ -1568,12 +1528,12 @@ export class Context<T = any, TResult = any> implements EventTarget {
 			return ctx.renderer.read(getValue(ctx.ret));
 		}
 
-		const value = enqueueComponentRun(ctx);
-		if (isPromiseLike(value)) {
-			return (value as Promise<any>).then((value) => ctx.renderer.read(value));
+		const result = enqueueComponentRun(ctx);
+		if (isPromiseLike(result)) {
+			return result.then(() => ctx.renderer.read(commitComponent(ctx)));
 		}
 
-		return ctx.renderer.read(value);
+		return ctx.renderer.read(commitComponent(ctx));
 	}
 
 	/**
@@ -1981,8 +1941,13 @@ function diffComponentChildren<TNode, TResult>(
 
 function commitComponent<TNode>(
 	ctx: ContextImpl<TNode, unknown, TNode>,
-	values: Array<TNode | string>,
 ): ElementValue<TNode> {
+	const values = commitChildren(
+		ctx.renderer,
+		ctx.root,
+		ctx.ret.children,
+		ctx.scope,
+	);
 	if (ctx.f & IsUnmounted) {
 		return;
 	}
@@ -2002,54 +1967,51 @@ function commitComponent<TNode>(
 
 	// TODO: we need to get the values here???
 	const oldValues = wrap(getChildValues(ctx.ret));
-	let value = unwrap(values);
 	if (ctx.f & IsScheduling) {
 		ctx.f |= IsSchedulingRefresh;
 	} else if (!(ctx.f & IsUpdating)) {
 		// If we’re not updating the component, which happens when components are
 		// refreshed, or when async generator components iterate, we have to do a
 		// little bit housekeeping when a component’s child values have changed.
-		if (!arrayEqual(oldValues, values)) {
-			const records = getListenerRecords(ctx.parent, ctx.host);
-			if (records.length) {
-				for (let i = 0; i < values.length; i++) {
-					const value = values[i];
-					if (isEventTarget(value)) {
-						for (let j = 0; j < records.length; j++) {
-							const record = records[j];
-							value.addEventListener(
-								record.type,
-								record.callback,
-								record.options,
-							);
-						}
+		const records = getListenerRecords(ctx.parent, ctx.host);
+		if (records.length) {
+			for (let i = 0; i < values.length; i++) {
+				const value = values[i];
+				if (isEventTarget(value)) {
+					for (let j = 0; j < records.length; j++) {
+						const record = records[j];
+						value.addEventListener(
+							record.type,
+							record.callback,
+							record.options,
+						);
 					}
 				}
 			}
-
-			// rearranging the nearest ancestor host element
-			const host = ctx.host;
-			invalidate(ctx, host);
-			const hostValues = getChildValues(host);
-			ctx.renderer.arrange(
-				host.el.tag as string | symbol,
-				host.value as TNode,
-				host.el.props,
-				hostValues,
-				// props and oldProps are the same because the host isn’t updated.
-				host.el.props,
-				undefined,
-			);
 		}
+
+		// rearranging the nearest ancestor host element
+		const host = ctx.host;
+		const hostValues = getChildValues(host);
+		ctx.renderer.arrange(
+			host.el.tag as string | symbol,
+			host.value as TNode,
+			host.el.props,
+			hostValues,
+			// props and oldProps are the same because the host isn’t updated.
+			host.el.props,
+			undefined,
+		);
 
 		flush(ctx.renderer, ctx.root, ctx);
 	}
 
 	const callbacks = scheduleMap.get(ctx);
+	let result = unwrap(values);
 	if (callbacks) {
 		scheduleMap.delete(ctx);
 		ctx.f |= IsScheduling;
-		const value1 = ctx.renderer.read(value);
+		const value1 = ctx.renderer.read(result);
 		for (const callback of callbacks) {
 			callback(value1);
 		}
@@ -2058,38 +2020,37 @@ function commitComponent<TNode>(
 		// Handles an edge case where refresh() is called during a schedule().
 		if (ctx.f & IsSchedulingRefresh) {
 			ctx.f &= ~IsSchedulingRefresh;
-			value = getValue(ctx.ret);
+			result = getValue(ctx.ret);
 		}
 	}
 
 	ctx.f &= ~IsUpdating;
-	return value;
+	return result;
 }
 
-function invalidate(ctx: ContextImpl, host: Retainer<unknown>): void {
-	for (
-		let parent = ctx.parent;
-		parent !== undefined && parent.host === host;
-		parent = parent.parent
-	) {
-	}
-}
+//function invalidate(ctx: ContextImpl, host: Retainer<unknown>): void {
+//	for (
+//		let parent = ctx.parent;
+//		parent !== undefined && parent.host === host;
+//		parent = parent.parent
+//	) {}
+//}
 
-function arrayEqual<TValue>(arr1: Array<TValue>, arr2: Array<TValue>): boolean {
-	if (arr1.length !== arr2.length) {
-		return false;
-	}
-
-	for (let i = 0; i < arr1.length; i++) {
-		const value1 = arr1[i];
-		const value2 = arr2[i];
-		if (value1 !== value2) {
-			return false;
-		}
-	}
-
-	return true;
-}
+//function arrayEqual<TValue>(arr1: Array<TValue>, arr2: Array<TValue>): boolean {
+//	if (arr1.length !== arr2.length) {
+//		return false;
+//	}
+//
+//	for (let i = 0; i < arr1.length; i++) {
+//		const value1 = arr1[i];
+//		const value2 = arr2[i];
+//		if (value1 !== value2) {
+//			return false;
+//		}
+//	}
+//
+//	return true;
+//}
 
 /** Enqueues and executes the component associated with the context. */
 function enqueueComponentRun<TNode, TResult>(
@@ -2198,7 +2159,6 @@ function enqueueComponentRun<TNode, TResult>(
 	return ctx.enqueuedValue;
 }
 
-
 /** Called when the inflight block promise settles. */
 function advanceComponent(ctx: ContextImpl): void {
 	if (ctx.f & IsAsyncGen && !(ctx.f & IsInForOfLoop)) {
@@ -2231,10 +2191,7 @@ function advanceComponent(ctx: ContextImpl): void {
  */
 function runComponent<TNode, TResult>(
 	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
-): [
-	Promise<unknown> | undefined,
-	Promise<undefined> | undefined,
-] {
+): [Promise<unknown> | undefined, Promise<undefined> | undefined] {
 	const ret = ctx.ret;
 	const initial = !ctx.iterator;
 	if (initial) {
@@ -2259,24 +2216,21 @@ function runComponent<TNode, TResult>(
 			ctx.iterator = returned;
 		} else if (isPromiseLike(returned)) {
 			// async function component
-			const result = returned instanceof Promise ? returned : Promise.resolve(returned);
+			const result =
+				returned instanceof Promise ? returned : Promise.resolve(returned);
 			return [
 				result.catch(NOOP),
 				result.then(
-					(result) =>
-						diffComponentChildren<TNode, TResult>(ctx, result),
+					(result) => diffComponentChildren<TNode, TResult>(ctx, result),
 					(err) => {
 						ctx.f |= IsErrored;
 						throw err;
 					},
-				)
+				),
 			];
 		} else {
 			// sync function component
-			return [
-				undefined,
-				diffComponentChildren<TNode, TResult>(ctx, returned),
-			];
+			return [undefined, diffComponentChildren<TNode, TResult>(ctx, returned)];
 		}
 	}
 
@@ -2374,11 +2328,7 @@ function runComponent<TNode, TResult>(
 				(iteration) => {
 					let result: Promise<undefined> | undefined;
 					if (!(ctx.f & IsInForOfLoop)) {
-						runAsyncGenComponent(
-							ctx,
-							Promise.resolve(iteration),
-							initial,
-						);
+						runAsyncGenComponent(ctx, Promise.resolve(iteration), initial);
 					} else {
 						if (!(ctx.f & NeedsToYield) && !(ctx.f & IsUnmounted)) {
 							console.error(
@@ -2472,10 +2422,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 					//result = ctx.ret.nextResults || getValue(ctx.ret);
 					result = undefined;
 				} else {
-					result = diffComponentChildren<TNode, TResult>(
-						ctx,
-						iteration.value!,
-					);
+					result = diffComponentChildren<TNode, TResult>(ctx, iteration.value!);
 					if (isPromiseLike(result)) {
 						result = result.catch((err: any) => handleChildError(ctx, err));
 					}
