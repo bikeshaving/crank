@@ -224,8 +224,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 		node: Node,
 		props: Record<string, any>,
 		children: Array<Element | string>,
-		_oldProps: Record<string, any> | undefined,
-		oldChildren: Array<Element | string> | undefined,
+		oldProps: Record<string, any> | undefined,
 	): void {
 		if (tag === Portal && (node == null || typeof node.nodeType !== "number")) {
 			throw new TypeError(
@@ -243,7 +242,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 			// However, if an element has previously rendered children, we clear the
 			// them because it would be surprising not to clear Crank managed
 			// children, even if the new element does not have explicit children.
-			("children" in props || (oldChildren && oldChildren.length))
+			("children" in props || (oldProps && "children" in oldProps))
 		) {
 			if (children.length === 0) {
 				node.textContent = "";
@@ -311,9 +310,11 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 		if (hydrationData != null) {
 			let value = hydrationData.children.shift();
 			if (typeof value !== "string" || !value.startsWith(text)) {
+				// pass
 				// TODO: consider pros and cons of hydration warnings
 				//console.error(`Expected "${text}" while hydrating but found:`, value);
 			} else if (text.length < value.length) {
+				// TODO: The core library should concatenate text before calling this to prevent having to unshift hydration data
 				value = value.slice(text.length);
 				hydrationData.children.unshift(value);
 			}
@@ -372,6 +373,8 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 	},
 };
 
+// TODO: Consider using regular inheritance instead of delegation.
+// It's not immediately clear how super calls work from the source code alone.
 export class DOMRenderer extends Renderer<Node, string> {
 	constructor() {
 		super(impl);
