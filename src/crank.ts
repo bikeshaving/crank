@@ -2435,6 +2435,18 @@ async function runAsyncGenComponent<TNode, TResult>(
 				onValue(result);
 			}
 
+			if (result) {
+				result.then(() => {
+					if (!(ctx.f & IsUpdating)) {
+						commitComponent(ctx);
+					}
+				});
+			} else {
+				if (!(ctx.f & IsUpdating)) {
+					commitComponent(ctx);
+				}
+			}
+
 			let oldResult: Promise<TResult> | TResult;
 			if (ctx.ret.nextValues) {
 				// The value passed back into the generator as the argument to the next
