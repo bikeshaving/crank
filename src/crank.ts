@@ -419,7 +419,7 @@ class Retainer<TNode> {
 	/** The previous props for this retainer. */
 	declare oldProps: Record<string, any> | undefined;
 
-	declare nextValues: Promise<ElementValue<TNode>> | undefined;
+	declare nextValues: Promise<Array<undefined>> | undefined;
 
 	declare onNextValues: Function | undefined;
 
@@ -2447,32 +2447,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 				}
 			}
 
-			let oldResult: Promise<TResult> | TResult;
-			if (ctx.ret.nextValues) {
-				// The value passed back into the generator as the argument to the next
-				// method is a promise if an async generator component has async
-				// children. Sync generator components only resume when their children
-				// have fulfilled so the element’s inflight child values will never be
-				// defined.
-				oldResult = ctx.ret.nextValues.then((value) =>
-					ctx.renderer.read(value),
-				);
-
-				oldResult.catch((err) => {
-					if (ctx.f & IsUpdating) {
-						return;
-					}
-
-					if (!ctx.parent) {
-						throw err;
-					}
-
-					return propagateError(ctx.parent, err);
-				});
-			} else {
-				oldResult = ctx.renderer.read(getValue(ctx.ret));
-			}
-
+			const oldResult = new Promise((resolve) => ctx.owner.schedule(resolve));
 			if (ctx.f & IsUnmounted) {
 				if (ctx.f & IsInForAwaitOfLoop) {
 					try {

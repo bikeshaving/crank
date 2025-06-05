@@ -161,27 +161,26 @@ test("Fragment parent", async () => {
 	Assert.is(document.body.innerHTML, "2");
 });
 
-test("yield resumes with an element", async () => {
-	let html: string | undefined;
+test("yield resumes with a promsie of an element", async () => {
+	let nodeP: Promise<HTMLElement> | undefined;
 	async function* Component(this: Context) {
 		let i = 0;
-		for await (const _ of this) {
-			const node: HTMLElement = yield <div id={i}>{i}</div>;
-			html = node.outerHTML;
+		for await ({} of this) {
+			nodeP = yield <div id={i}>{i}</div>;
 			i++;
 		}
 	}
 
 	await renderer.render(<Component />, document.body);
-	await new Promise((resolve) => setTimeout(resolve, 100));
+	let html = (await nodeP!).outerHTML;
 	Assert.is(html, '<div id="0">0</div>');
 	Assert.is(document.body.innerHTML, '<div id="0">0</div>');
 	await renderer.render(<Component />, document.body);
-	await new Promise((resolve) => setTimeout(resolve, 100));
+	html = (await nodeP!).outerHTML;
 	Assert.is(html, '<div id="1">1</div>');
 	Assert.is(document.body.innerHTML, '<div id="1">1</div>');
 	await renderer.render(<Component />, document.body);
-	await new Promise((resolve) => setTimeout(resolve, 100));
+	html = (await nodeP!).outerHTML;
 	Assert.is(html, '<div id="2">2</div>');
 	Assert.is(document.body.innerHTML, '<div id="2">2</div>');
 });
