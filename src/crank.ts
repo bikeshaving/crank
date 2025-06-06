@@ -684,9 +684,10 @@ export class Renderer<
 		const diff = diffChildren(impl, root, ret, ctx, scope, ret, children);
 
 		if (isPromiseLike(diff)) {
-			return diff.then(() =>
-				commitRootRender(impl, root, ret!, oldProps, scope),
-			);
+			return diff.then(() => {
+				debugger;
+				return commitRootRender(impl, root, ret!, oldProps, scope);
+			});
 		}
 
 		return commitRootRender(impl, root, ret!, oldProps, scope);
@@ -748,7 +749,6 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 ): TResult {
 	const oldChildValues = getChildValues(ret);
 	const childValues = commitChildren(renderer, root, ret.children, scope);
-	ret.fallback = undefined;
 	// element is a host or portal element
 	if (root != null) {
 		renderer.arrange(
@@ -774,7 +774,11 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	const values: Array<ElementValue<TNode>> = [];
 	const children1 = wrap(children);
 	for (let i = 0; i < children1.length; i++) {
-		const child = children1[i];
+		let child = children1[i];
+		while (typeof child === "object" && child.fallback) {
+			child = child.fallback;
+		}
+
 		if (typeof child === "object") {
 			const el = child.el;
 			if (el.tag === Raw) {
@@ -788,7 +792,6 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 				values.push(commitHost(renderer, root, child, scope));
 			}
 
-			child.fallback = undefined;
 			child.oldProps = undefined;
 		} else if (typeof child === "string") {
 			const text = renderer.text(child, scope, undefined);
@@ -1029,6 +1032,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	if (isAsync) {
 		let results1 = Promise.all(results)
 			.finally(() => {
+				parent.fallback = undefined;
 				if (graveyard) {
 					for (let i = 0; i < graveyard.length; i++) {
 						unmount(renderer, host, ctx, graveyard[i]);
@@ -1050,6 +1054,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		parent.onNextValues = onNextResults;
 		return results1;
 	} else {
+		parent.fallback = undefined;
 		if (graveyard) {
 			for (let i = 0; i < graveyard.length; i++) {
 				unmount(renderer, host, ctx, graveyard[i]);
