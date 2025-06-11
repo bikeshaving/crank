@@ -229,6 +229,14 @@ export class Element<TTag extends Tag = Tag> {
 	get copy(): boolean {
 		return !!this.props.copy;
 	}
+
+	set copy(value: boolean) {
+		if (value) {
+			this.props.copy = true;
+		} else {
+			this.props.copy = undefined;
+		}
+	}
 }
 
 // See Element interface
@@ -685,7 +693,6 @@ export class Renderer<
 
 		if (isPromiseLike(diff)) {
 			return diff.then(() => {
-				debugger;
 				return commitRootRender(impl, root, ret!, oldProps, scope);
 			});
 		}
@@ -830,7 +837,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	scope = renderer.scope(scope, tag, props)!;
 	const oldChildValues = getChildValues(ret);
 	const childValues = commitChildren(renderer, root, ret.children, scope);
-	let copied: Set<string> | undefined;
+	let copiedProps: Set<string> | undefined;
 	if (tag !== Portal) {
 		if (value == null) {
 			// This assumes that renderer.create does not return nullish values.
@@ -846,7 +853,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 			if (propValue === Copy) {
 				// TODO: The Copy tag doubles as a way to skip the patching of a prop.
 				// Not sure about this feature. Should probably be removed.
-				(copied = copied || new Set()).add(propName);
+				(copiedProps = copiedProps || new Set()).add(propName);
 			} else if (!SPECIAL_PROPS.has(propName)) {
 				renderer.patch(
 					tag,
@@ -860,9 +867,9 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		}
 	}
 
-	if (copied) {
+	if (copiedProps) {
 		props = {...ret.el.props};
-		for (const name of copied) {
+		for (const name of copiedProps) {
 			props[name] = oldProps && oldProps[name];
 		}
 
@@ -939,14 +946,18 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 
 		let result: Promise<undefined> | undefined = undefined;
 		if (typeof child === "object") {
+			let childCopied = false;
 			if (child.tag === Copy) {
-				// pass
-				// TODO: if we do a two-stage render, we need to mark retainers as not
-				// needing committing somehow.
+				childCopied = true;
+				if (typeof ret === "object") {
+					ret.el.props.copy = true;
+				}
 			} else if (typeof ret === "object" && ret.el === child) {
-				// pass
+				childCopied = true;
+				if (typeof ret === "object") {
+					ret.el.props.copy = true;
+				}
 			} else {
-				let copy = false;
 				if (typeof ret === "object" && ret.el.tag === child.tag) {
 					if (
 						typeof ret.el.tag === "string" ||
@@ -956,8 +967,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					}
 					ret.el = child;
 					if (child.copy) {
-						//result = getInflightValue(ret);
-						copy = true;
+						childCopied = true;
 					}
 				} else {
 					if (typeof ret === "object") {
@@ -969,10 +979,8 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					ret.fallback = fallback;
 				}
 
-				if (copy) {
+				if (child.copy || child.tag === Raw) {
 					// pass
-				} else if (child.tag === Raw) {
-					//result = updateRaw(renderer, ret, scope, oldProps, hydrationData);
 				} else if (child.tag === Fragment) {
 					result = diffChildren(
 						renderer,
@@ -989,6 +997,10 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					// host element or portal element
 					result = diffHost(renderer, root, ctx, scope, ret);
 				}
+			}
+
+			if (childCopied && typeof ret === "object") {
+				result = getInflight(ret);
 			}
 
 			if (isPromiseLike(result)) {
@@ -1041,17 +1053,17 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			})
 			.then(() => undefined);
 
-		let onNextResults!: Function;
-		results1 = Promise.race([
+		let onNextValues!: Function;
+		parent.nextValues = results1 = Promise.race([
 			results1,
-			new Promise<any>((resolve) => (onNextResults = resolve)),
+			new Promise<any>((resolve) => (onNextValues = resolve)),
 		]);
 
 		if (parent.onNextValues) {
 			parent.onNextValues(results1);
 		}
 
-		parent.onNextValues = onNextResults;
+		parent.onNextValues = onNextValues;
 		return results1;
 	} else {
 		parent.fallback = undefined;
@@ -1085,23 +1097,23 @@ function createChildrenByKey<TNode>(
 	return childrenByKey;
 }
 
-//function getInflightValue<TNode>(
-//	child: RetainerChild<TNode>,
-//): Promise<ElementValue<TNode>> | ElementValue<TNode> {
-//	if (typeof child !== "object") {
-//		return child;
-//	}
-//
-//	const ctx: ContextImpl<TNode> | undefined =
-//		typeof child.el.tag === "function" ? child.ctx : undefined;
-//	if (ctx && ctx.f & IsUpdating && ctx.inflightValue) {
-//		return ctx.inflightValue;
-//	} else if (child.nextValues) {
-//		return child.nextValues;
-//	}
-//
-//	return getValue(child);
-//}
+function getInflight<TNode>(
+	child: RetainerChild<TNode>,
+): Promise<undefined> | undefined {
+	if (typeof child !== "object") {
+		return;
+	}
+
+	const ctx: ContextImpl<TNode> | undefined = child.ctx;
+	if (ctx && ctx.f & IsUpdating && ctx.inflightValue) {
+		return ctx.inflightValue;
+	} else if (child.nextValues) {
+		// TODO: fix the type
+		return child.nextValues as unknown as undefined;
+	}
+
+	return undefined;
+}
 
 function diffHost<TNode, TScope, TRoot extends TNode>(
 	renderer: RendererImpl<TNode, TScope, TRoot, unknown>,
@@ -1367,7 +1379,6 @@ class ContextImpl<
 	// updates are queued, whereas "value" is a promise which represents the
 	// actual pending result of rendering.
 	declare inflightBlock: Promise<unknown> | undefined;
-	//declare inflightValue: Promise<ElementValue<TNode>> | undefined;
 	declare inflightValue: Promise<any> | undefined;
 	declare enqueuedBlock: Promise<unknown> | undefined;
 	//declare enqueuedValue: Promise<ElementValue<TNode>> | undefined;
@@ -1970,8 +1981,6 @@ function commitComponent<TNode>(
 		}
 	}
 
-	// TODO: we need to get the values here???
-	const oldValues = wrap(getChildValues(ctx.ret));
 	if (ctx.f & IsScheduling) {
 		ctx.f |= IsSchedulingRefresh;
 	} else if (!(ctx.f & IsUpdating)) {
