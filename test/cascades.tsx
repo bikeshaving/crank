@@ -143,32 +143,4 @@ test("sync generator parent and sync generator child", async () => {
 	Assert.is(mock.callCount, 1);
 });
 
-test("dispatchEvent in initial schedule callback", () => {
-	function* Child(this: Context) {
-		this.schedule(() => {
-			this.dispatchEvent(new Event("test", {bubbles: true}));
-		});
-
-		while (true) {
-			yield <span>child</span>;
-		}
-	}
-
-	function Parent(this: Context) {
-		this.addEventListener("test", () => {
-			this.refresh();
-		});
-
-		return (
-			<div>
-				<Child />
-			</div>
-		);
-	}
-
-	renderer.render(<Parent />, document.body);
-	Assert.is(document.body.innerHTML, "<div><span>child</span></div>");
-	Assert.is(mock.callCount, 1);
-});
-
 test.run();

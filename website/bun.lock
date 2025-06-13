@@ -3,7 +3,7 @@
   "workspaces": {
     "": {
       "dependencies": {
-        "@b9g/crank": "^0.6.0",
+        "@b9g/crank": "^0.6.1",
         "@b9g/revise": "^0.1.2",
         "@b9g/shovel": "^0.1.9",
         "@babel/core": "^7.26.10",
@@ -53,7 +53,7 @@
   "packages": {
     "@ampproject/remapping": ["@ampproject/remapping@2.2.0", "", { "dependencies": { "@jridgewell/gen-mapping": "^0.1.0", "@jridgewell/trace-mapping": "^0.3.9" } }, "sha512-qRmjj8nj9qmLTQXXmaR1cck3UXSRMPrbsLJAasZpF+t3riI71BXed5ebIOYwQntykeZuhjsdweEc9BxH5Jc26w=="],
 
-    "@b9g/crank": ["@b9g/crank@0.6.0", "", {}, "sha512-3pzebWQ3dpOYodx/ODr0WC9XJ0DFUizKfsV0MbfcZtKvU4D6KUyN/0AcKzuouQc2s7wNsxVFxN0ky6hCUvTwjw=="],
+    "@b9g/crank": ["@b9g/crank@0.6.1", "", {}, "sha512-NE5uuOMYeNdRLLGSXeM5EpyUvaNjcZmPUEs34ahnXhmlogv9yV3ymoX/RQFf63jTOvTP/wzN+vvNEfkq4sS+2g=="],
 
     "@b9g/revise": ["@b9g/revise@0.1.2", "", {}, "sha512-sZJfHyDMmjLMIuPjEOUyE1ML+Y681NfvIaRfoPlj2cwb/kklj3a8ucHKHjbJhApwUkBZ1OrNY8OFiWTC/rT8Bw=="],
 
