@@ -396,7 +396,10 @@ test("identical elements passed as children", () => {
 });
 
 test("copied element class name is not modified", () => {
-	const el = renderer.render(<span class="test">Hello</span>, document.body) as HTMLElement;
+	const el = renderer.render(
+		<span class="test">Hello</span>,
+		document.body,
+	) as HTMLElement;
 	Assert.is(document.body.innerHTML, '<span class="test">Hello</span>');
 	el.className = "changed";
 	renderer.render(<Copy />, document.body);

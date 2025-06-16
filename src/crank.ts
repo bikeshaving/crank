@@ -768,8 +768,10 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 			oldProps,
 			oldChildValues,
 		);
-		flush(renderer, root);
+	} else {
+		unmount(renderer, ret, ctx, ret);
 	}
+	flush(renderer, root);
 
 	ret.f |= HasCommitted;
 	return renderer.read(unwrap(childValues));
