@@ -663,7 +663,9 @@ export class Renderer<
 		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
 		let ret: Retainer<TNode> | undefined;
-		const ctx = bridge && (bridge[_ContextImpl] as ContextImpl<TNode>);
+		const ctx =
+			bridge &&
+			(bridge[_ContextImpl] as ContextImpl<TNode, TScope, TRoot, TResult>);
 		if (typeof root === "object" && root !== null) {
 			ret = this.cache.get(root);
 		}
@@ -692,11 +694,11 @@ export class Renderer<
 
 		if (isPromiseLike(diff)) {
 			return diff.then(() => {
-				return commitRootRender(impl, root, ret!, oldProps, scope);
+				return commitRootRender(impl, root, ret!, ctx, oldProps, scope);
 			});
 		}
 
-		return commitRootRender(impl, root, ret!, oldProps, scope);
+		return commitRootRender(impl, root, ret!, ctx, oldProps, scope);
 	}
 
 	hydrate(
@@ -750,11 +752,12 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
 	ret: Retainer<TNode>,
+	ctx: ContextImpl<TNode, TScope, TRoot, TResult> | undefined,
 	oldProps: Record<string, any> | undefined,
 	scope: TScope,
 ): TResult {
 	const oldChildValues = getChildValues(ret);
-	const childValues = commitChildren(renderer, root, ret.children, scope);
+	const childValues = commitChildren(renderer, root, ctx, ret.children, scope);
 	// element is a host or portal element
 	if (root != null) {
 		renderer.arrange(
@@ -775,6 +778,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	renderer: RendererImpl<TNode, unknown, TRoot, TResult>,
 	root: TRoot | undefined,
+	ctx: ContextImpl<TNode, TScope, TRoot, TResult> | undefined,
 	children: Array<RetainerChild<TNode>> | RetainerChild<TNode>,
 	scope: TScope | undefined,
 ): Array<TNode | string> {
@@ -789,14 +793,14 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 		if (typeof child === "object") {
 			const el = child.el;
 			if (el.tag === Raw) {
-				values.push(commitRaw(renderer, child, scope));
+				values.push(commitRaw(renderer, child, ctx, scope));
 			} else if (typeof el.tag === "function") {
 				values.push(commitComponent(child.ctx!));
 			} else if (el.tag === Fragment) {
-				values.push(commitChildren(renderer, root, child.children, scope));
+				values.push(commitChildren(renderer, root, ctx, child.children, scope));
 			} else {
 				// host element or portal element
-				values.push(commitHost(renderer, root, child, scope));
+				values.push(commitHostOrPortal(renderer, root, child, ctx, scope));
 			}
 
 			child.oldProps = undefined;
@@ -813,83 +817,108 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 function commitRaw<TNode, TScope>(
 	renderer: RendererImpl<TNode, TScope, TNode, unknown>,
 	ret: Retainer<TNode>,
+	ctx: ContextImpl<TNode, TScope, TNode, unknown> | undefined,
 	scope: TScope | undefined,
 ): ElementValue<TNode> {
-	if (!ret.oldProps || ret.oldProps.value !== ret.el.props.value) {
-		ret.value = renderer.raw(ret.el.props.value as any, scope, undefined);
-		if (typeof ret.el.ref === "function") {
-			ret.el.ref(ret.value);
+	try {
+		if (!ret.oldProps || ret.oldProps.value !== ret.el.props.value) {
+			ret.value = renderer.raw(ret.el.props.value as any, scope, undefined);
+			if (typeof ret.el.ref === "function") {
+				ret.el.ref(renderer.read(ret.value));
+			}
 		}
-	}
 
-	ret.f |= HasCommitted;
-	return ret.value;
+		ret.f |= HasCommitted;
+		return ret.value;
+	} catch (err) {
+		if (ctx) {
+			propagateError(ctx, err);
+			return undefined;
+		}
+
+		throw err;
+	}
 }
 
-function commitHost<TNode, TRoot extends TNode, TScope>(
+function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	renderer: RendererImpl<TNode, TScope, TRoot, unknown>,
 	root: TNode | undefined,
 	ret: Retainer<TNode>,
+	ctx: ContextImpl<TNode, TScope, TRoot, unknown> | undefined,
 	scope: TScope,
 ): ElementValue<TNode> {
-	if ((ret.f & HasCommitted) && (ret.el.copy || (ret.f & IsCopied))) {
+	if (ret.f & HasCommitted && (ret.el.copy || ret.f & IsCopied)) {
 		return getValue(ret);
 	}
 
-	const tag = ret.el.tag as string | symbol;
-	let value = ret.value as TNode;
-	let props = ret.el.props;
-	const oldProps = ret.oldProps;
-	scope = renderer.scope(scope, tag, props)!;
-	const oldChildValues = getChildValues(ret);
-	const childValues = commitChildren(renderer, root, ret.children, scope);
-	let copiedProps: Set<string> | undefined;
-	if (tag !== Portal) {
-		if (value == null) {
-			// This assumes that renderer.create does not return nullish values.
-			value = ret.value = renderer.create(tag, props, scope);
-			if (typeof ret.el.ref === "function") {
-				// TODO: don't we need to call read???
-				ret.el.ref(value);
+	try {
+		const tag = ret.el.tag as string | symbol;
+		let value = ret.value as TNode;
+		let props = ret.el.props;
+		const oldProps = ret.oldProps;
+		scope = renderer.scope(scope, tag, props)!;
+		const oldChildValues = getChildValues(ret);
+		const childValues = commitChildren(
+			renderer,
+			root,
+			ctx,
+			ret.children,
+			scope,
+		);
+		let copiedProps: Set<string> | undefined;
+		if (tag !== Portal) {
+			if (value == null) {
+				// This assumes that renderer.create does not return nullish values.
+				value = ret.value = renderer.create(tag, props, scope);
+				if (typeof ret.el.ref === "function") {
+					ret.el.ref(renderer.read(value));
+				}
+			}
+
+			for (const propName in {...oldProps, ...props}) {
+				const propValue = props[propName];
+				if (propValue === Copy) {
+					// TODO: The Copy tag doubles as a way to skip the patching of a prop.
+					// Not sure about this feature. Should probably be removed.
+					(copiedProps = copiedProps || new Set()).add(propName);
+				} else if (!SPECIAL_PROPS.has(propName)) {
+					renderer.patch(
+						tag,
+						value,
+						propName,
+						propValue,
+						oldProps && oldProps[propName],
+						scope,
+					);
+				}
 			}
 		}
 
-		for (const propName in {...oldProps, ...props}) {
-			const propValue = props[propName];
-			if (propValue === Copy) {
-				// TODO: The Copy tag doubles as a way to skip the patching of a prop.
-				// Not sure about this feature. Should probably be removed.
-				(copiedProps = copiedProps || new Set()).add(propName);
-			} else if (!SPECIAL_PROPS.has(propName)) {
-				renderer.patch(
-					tag,
-					value,
-					propName,
-					propValue,
-					oldProps && oldProps[propName],
-					scope,
-				);
+		if (copiedProps) {
+			props = {...ret.el.props};
+			for (const name of copiedProps) {
+				props[name] = oldProps && oldProps[name];
 			}
-		}
-	}
 
-	if (copiedProps) {
-		props = {...ret.el.props};
-		for (const name of copiedProps) {
-			props[name] = oldProps && oldProps[name];
+			ret.el.props = props;
 		}
 
-		ret.el.props = props;
-	}
+		renderer.arrange(tag, value, props, childValues, oldProps, oldChildValues);
+		ret.f |= HasCommitted;
+		if (tag === Portal) {
+			flush(renderer, ret.value);
+			return;
+		}
 
-	renderer.arrange(tag, value, props, childValues, oldProps, oldChildValues);
-	ret.f |= HasCommitted;
-	if (tag === Portal) {
-		flush(renderer, ret.value);
-		return;
-	}
+		return value;
+	} catch (err) {
+		if (ctx) {
+			propagateError(ctx, err);
+			return undefined;
+		}
 
-	return value;
+		throw err;
+	}
 }
 
 function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
@@ -904,7 +933,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	const oldRetained = wrap(parent.children);
 	const newRetained: typeof oldRetained = [];
 	const newChildren = arrayify(children);
-	const results: Array<Promise<undefined> | undefined> = [];
+	const diffs: Array<Promise<undefined> | undefined> = [];
 	let graveyard: Array<Retainer<TNode>> | undefined;
 	let childrenByKey: Map<Key, Retainer<TNode>> | undefined;
 	let seenKeys: Set<Key> | undefined;
@@ -951,7 +980,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			}
 		}
 
-		let result: Promise<undefined> | undefined = undefined;
+		let diff: Promise<undefined> | undefined = undefined;
 		if (typeof child === "object") {
 			let childCopied = false;
 			if (child.tag === Copy) {
@@ -980,12 +1009,12 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					ret.fallback = fallback;
 				}
 
-				if (child.copy && (ret.f & HasCommitted)) {
+				if (child.copy && ret.f & HasCommitted) {
 					// pass
 				} else if (child.tag === Raw) {
 					// pass
 				} else if (child.tag === Fragment) {
-					result = diffChildren(
+					diff = diffChildren(
 						renderer,
 						root,
 						host,
@@ -995,16 +1024,16 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 						ret.el.props.children as Children,
 					);
 				} else if (typeof child.tag === "function") {
-					result = diffComponent(renderer, root, host, ctx, scope, ret);
+					diff = diffComponent(renderer, root, host, ctx, scope, ret);
 				} else {
 					// host element or portal element
-					result = diffHost(renderer, root, ctx, scope, ret);
+					diff = diffHost(renderer, root, ctx, scope, ret);
 				}
 			}
 
 			if (typeof ret === "object") {
 				if (childCopied) {
-					result = getInflight(ret);
+					diff = getInflight(ret);
 					ret.f |= IsCopied;
 				} else {
 					ret.f &= ~HasCommitted;
@@ -1013,7 +1042,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				}
 			}
 
-			if (isPromiseLike(result)) {
+			if (isPromiseLike(diff)) {
 				isAsync = true;
 			}
 		} else {
@@ -1029,7 +1058,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			}
 		}
 
-		results[ni] = result;
+		diffs[ni] = diff;
 		newRetained[ni] = ret;
 	}
 
@@ -1052,7 +1081,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 
 	parent.children = unwrap(newRetained);
 	if (isAsync) {
-		let results1 = Promise.all(results)
+		let diffs1 = Promise.all(diffs)
 			.finally(() => {
 				parent.fallback = undefined;
 				if (graveyard) {
@@ -1064,17 +1093,17 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			.then(() => undefined);
 
 		let onNextValues!: Function;
-		parent.pending = results1 = Promise.race([
-			results1,
+		parent.pending = diffs1 = Promise.race([
+			diffs1,
 			new Promise<any>((resolve) => (onNextValues = resolve)),
 		]);
 
 		if (parent.onPending) {
-			parent.onPending(results1);
+			parent.onPending(diffs1);
 		}
 
 		parent.onPending = onNextValues;
-		return results1;
+		return diffs1;
 	} else {
 		parent.fallback = undefined;
 		if (graveyard) {
@@ -1084,7 +1113,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		}
 
 		if (parent.onPending) {
-			parent.onPending(results);
+			parent.onPending(diffs);
 			parent.onPending = undefined;
 		}
 
@@ -1107,9 +1136,7 @@ function createChildrenByKey<TNode>(
 	return childrenByKey;
 }
 
-function getInflight(
-	child: Retainer<unknown>,
-): Promise<undefined> | undefined {
+function getInflight(child: Retainer<unknown>): Promise<undefined> | undefined {
 	if (typeof child !== "object") {
 		return;
 	}
@@ -1554,9 +1581,9 @@ export class Context<T = any, TResult = any> implements EventTarget {
 			return ctx.renderer.read(getValue(ctx.ret));
 		}
 
-		const result = enqueueComponentRun(ctx);
-		if (isPromiseLike(result)) {
-			return result.then(() => ctx.renderer.read(commitComponent(ctx)));
+		const diff = enqueueComponentRun(ctx);
+		if (isPromiseLike(diff)) {
+			return diff.then(() => ctx.renderer.read(commitComponent(ctx)));
 		}
 
 		return ctx.renderer.read(commitComponent(ctx));
@@ -1944,12 +1971,12 @@ function diffComponentChildren<TNode, TResult>(
 		);
 	}
 
-	let result: Promise<undefined> | undefined;
+	let diff: Promise<undefined> | undefined;
 	try {
 		// We set the isExecuting flag in case a child component dispatches an event
 		// which bubbles to this component and causes a synchronous refresh().
 		ctx.f |= IsSyncExecuting;
-		result = diffChildren(
+		diff = diffChildren(
 			ctx.renderer,
 			ctx.root,
 			ctx.host,
@@ -1962,7 +1989,7 @@ function diffComponentChildren<TNode, TResult>(
 		ctx.f &= ~IsSyncExecuting;
 	}
 
-	return result;
+	return diff;
 }
 
 function commitComponent<TNode>(
@@ -1971,6 +1998,7 @@ function commitComponent<TNode>(
 	const values = commitChildren(
 		ctx.renderer,
 		ctx.root,
+		ctx,
 		ctx.ret.children,
 		ctx.scope,
 	);
@@ -2031,26 +2059,26 @@ function commitComponent<TNode>(
 	}
 
 	const callbacks = scheduleMap.get(ctx);
-	let result = unwrap(values);
+	let value = unwrap(values);
 	if (callbacks) {
 		scheduleMap.delete(ctx);
 		ctx.f |= IsScheduling;
-		const value1 = ctx.renderer.read(result);
+		const result = ctx.renderer.read(value);
 		for (const callback of callbacks) {
-			callback(value1);
+			callback(result);
 		}
 
 		ctx.f &= ~IsScheduling;
 		// Handles an edge case where refresh() is called during a schedule().
 		if (ctx.f & IsSchedulingRefresh) {
 			ctx.f &= ~IsSchedulingRefresh;
-			result = getValue(ctx.ret);
+			value = getValue(ctx.ret);
 		}
 	}
 
 	ctx.f &= ~IsUpdating;
 	ctx.ret.f |= HasCommitted;
-	return result;
+	return value;
 }
 
 /** Enqueues and executes the component associated with the context. */
@@ -2217,12 +2245,12 @@ function runComponent<TNode, TResult>(
 			ctx.iterator = returned;
 		} else if (isPromiseLike(returned)) {
 			// async function component
-			const result =
+			const returned1 =
 				returned instanceof Promise ? returned : Promise.resolve(returned);
 			return [
-				result.catch(NOOP),
-				result.then(
-					(result) => diffComponentChildren<TNode, TResult>(ctx, result),
+				returned1.catch(NOOP),
+				returned1.then(
+					(returned) => diffComponentChildren<TNode, TResult>(ctx, returned),
 					(err) => {
 						ctx.f |= IsErrored;
 						throw err;
@@ -2286,23 +2314,23 @@ function runComponent<TNode, TResult>(
 			ctx.iterator = undefined;
 		}
 
-		let result: Promise<undefined> | undefined;
+		let diff: Promise<undefined> | undefined;
 		try {
-			result = diffComponentChildren<TNode, TResult>(
+			diff = diffComponentChildren<TNode, TResult>(
 				ctx,
 				// Children can be void so we eliminate that here
 				iteration.value as Children,
 			);
 
-			if (isPromiseLike(result)) {
-				result = result.catch((err) => handleChildError(ctx, err));
+			if (isPromiseLike(diff)) {
+				diff = diff.catch((err) => handleChildError(ctx, err));
 			}
 		} catch (err) {
-			result = handleChildError(ctx, err);
+			diff = handleChildError(ctx, err);
 		}
 
-		const block = isPromiseLike(result) ? result.catch(NOOP) : undefined;
-		return [block, result];
+		const block = isPromiseLike(diff) ? diff.catch(NOOP) : undefined;
+		return [block, diff];
 	} else {
 		if (ctx.f & IsInForOfLoop) {
 			// Async generator component using for...of loops behave similar to sync
@@ -2325,9 +2353,9 @@ function runComponent<TNode, TResult>(
 			}
 
 			const block = iteration.catch(NOOP);
-			const result = iteration.then(
+			const diff = iteration.then(
 				(iteration) => {
-					let result: Promise<undefined> | undefined;
+					let diff: Promise<undefined> | undefined;
 					if (!(ctx.f & IsInForOfLoop)) {
 						runAsyncGenComponent(ctx, Promise.resolve(iteration), initial);
 					} else {
@@ -2340,20 +2368,20 @@ function runComponent<TNode, TResult>(
 
 					ctx.f &= ~NeedsToYield;
 					try {
-						result = diffComponentChildren<TNode, TResult>(
+						diff = diffComponentChildren<TNode, TResult>(
 							ctx,
 							// Children can be void so we eliminate that here
 							iteration.value as Children,
 						);
 
-						if (isPromiseLike(result)) {
-							result = result.catch((err) => handleChildError(ctx, err));
+						if (isPromiseLike(diff)) {
+							diff = diff.catch((err) => handleChildError(ctx, err));
 						}
 					} catch (err) {
-						result = handleChildError(ctx, err);
+						diff = handleChildError(ctx, err);
 					}
 
-					return result;
+					return diff;
 				},
 				(err) => {
 					ctx.f |= IsErrored;
@@ -2361,7 +2389,7 @@ function runComponent<TNode, TResult>(
 				},
 			);
 
-			return [block, result];
+			return [block, diff];
 		} else {
 			runAsyncGenComponent(
 				ctx,
@@ -2410,7 +2438,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 			}
 
 			done = !!iteration.done;
-			let result: Promise<undefined> | undefined;
+			let diff: Promise<undefined> | undefined;
 			try {
 				if (
 					!(ctx.f & NeedsToYield) &&
@@ -2419,29 +2447,30 @@ async function runAsyncGenComponent<TNode, TResult>(
 					!initial &&
 					!done
 				) {
-					// We skip stale iterations in for await...of loops.
-					//result = ctx.ret.nextResults || getValue(ctx.ret);
-					result = undefined;
+					diff = undefined;
 				} else {
-					result = diffComponentChildren<TNode, TResult>(ctx, iteration.value!);
-					if (isPromiseLike(result)) {
-						result = result.catch((err: any) => handleChildError(ctx, err));
+					diff = diffComponentChildren<TNode, TResult>(ctx, iteration.value!);
+					if (isPromiseLike(diff)) {
+						diff = diff.catch((err: any) => handleChildError(ctx, err));
 					}
 				}
 
 				ctx.f &= ~NeedsToYield;
 			} catch (err) {
-				result = handleChildError(ctx, err);
+				diff = handleChildError(ctx, err);
 			} finally {
-				onValue(result);
+				onValue(diff);
 			}
 
-			if (result) {
-				result.then(() => {
-					if (!(ctx.f & IsUpdating)) {
-						commitComponent(ctx);
-					}
-				});
+			if (diff) {
+				diff.then(
+					() => {
+						if (!(ctx.f & IsUpdating)) {
+							commitComponent(ctx);
+						}
+					},
+					() => {},
+				);
 			} else {
 				if (!(ctx.f & IsUpdating)) {
 					commitComponent(ctx);
@@ -2764,9 +2793,9 @@ function propagateError<TNode>(
 	ctx: ContextImpl<TNode, unknown, TNode>,
 	err: unknown,
 ): Promise<undefined> | undefined {
-	let result: Promise<undefined> | undefined;
+	let diff: Promise<undefined> | undefined;
 	try {
-		result = handleChildError(ctx, err);
+		diff = handleChildError(ctx, err);
 	} catch (err) {
 		if (!ctx.parent) {
 			throw err;
@@ -2775,17 +2804,26 @@ function propagateError<TNode>(
 		return propagateError<TNode>(ctx.parent, err);
 	}
 
-	if (isPromiseLike(result)) {
-		return result.catch((err) => {
-			if (!ctx.parent) {
-				throw err;
-			}
+	if (isPromiseLike(diff)) {
+		return diff.then(
+			() => {
+				if (!(ctx.f & IsUpdating)) {
+					commitComponent(ctx);
+				}
+			},
+			(err) => {
+				if (!ctx.parent) {
+					throw err;
+				}
 
-			return propagateError<TNode>(ctx.parent, err);
-		});
+				return propagateError<TNode>(ctx.parent, err);
+			},
+		) as Promise<undefined>;
 	}
 
-	return result;
+	if (!(ctx.f & IsUpdating)) {
+		commitComponent(ctx);
+	}
 }
 
 // TODO: uncomment and use in the Element interface below
