@@ -229,14 +229,6 @@ export class Element<TTag extends Tag = Tag> {
 	get copy(): boolean {
 		return !!this.props.copy;
 	}
-
-	set copy(value: boolean) {
-		if (value) {
-			this.props.copy = true;
-		} else {
-			this.props.copy = undefined;
-		}
-	}
 }
 
 // See Element interface
@@ -391,12 +383,18 @@ function normalize<TNode>(
 	return result;
 }
 
+/*** RETAINER FLAGS ***/
+const HasCommitted = 1 << 0;
+const IsCopied = 2 << 0;
+
 /**
  * @internal
  * The internal nodes which are cached and diffed against new elements when
  * rendering element trees.
  */
 class Retainer<TNode> {
+	/** A bitmask. See RETAINER FLAGS above. */
+	declare f: number;
 	/** The element associated with this retainer. */
 	declare el: Element;
 
@@ -427,19 +425,20 @@ class Retainer<TNode> {
 	/** The previous props for this retainer. */
 	declare oldProps: Record<string, any> | undefined;
 
-	declare nextValues: Promise<Array<undefined>> | undefined;
+	declare pending: Promise<undefined> | undefined;
 
-	declare onNextValues: Function | undefined;
+	declare onPending: Function | undefined;
 
 	constructor(el: Element) {
+		this.f = 0;
 		this.el = el;
 		this.ctx = undefined;
 		this.children = undefined;
 		this.value = undefined;
 		this.fallback = undefined;
 		this.oldProps = undefined;
-		this.nextValues = undefined;
-		this.onNextValues = undefined;
+		this.pending = undefined;
+		this.onPending = undefined;
 	}
 }
 
@@ -769,6 +768,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 		flush(renderer, root);
 	}
 
+	ret.f |= HasCommitted;
 	return renderer.read(unwrap(childValues));
 }
 
@@ -800,6 +800,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 			}
 
 			child.oldProps = undefined;
+			child.f |= HasCommitted;
 		} else if (typeof child === "string") {
 			const text = renderer.text(child, scope, undefined);
 			values.push(text);
@@ -821,6 +822,7 @@ function commitRaw<TNode, TScope>(
 		}
 	}
 
+	ret.f |= HasCommitted;
 	return ret.value;
 }
 
@@ -830,6 +832,10 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	ret: Retainer<TNode>,
 	scope: TScope,
 ): ElementValue<TNode> {
+	if ((ret.f & HasCommitted) && (ret.el.copy || (ret.f & IsCopied))) {
+		return getValue(ret);
+	}
+
 	const tag = ret.el.tag as string | symbol;
 	let value = ret.value as TNode;
 	let props = ret.el.props;
@@ -873,10 +879,11 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 			props[name] = oldProps && oldProps[name];
 		}
 
-		ret.el = new Element(tag, props);
+		ret.el.props = props;
 	}
 
 	renderer.arrange(tag, value, props, childValues, oldProps, oldChildValues);
+	ret.f |= HasCommitted;
 	if (tag === Portal) {
 		flush(renderer, ret.value);
 		return;
@@ -949,14 +956,8 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			let childCopied = false;
 			if (child.tag === Copy) {
 				childCopied = true;
-				if (typeof ret === "object") {
-					ret.el.props.copy = true;
-				}
 			} else if (typeof ret === "object" && ret.el === child) {
 				childCopied = true;
-				if (typeof ret === "object") {
-					ret.el.props.copy = true;
-				}
 			} else {
 				if (typeof ret === "object" && ret.el.tag === child.tag) {
 					if (
@@ -979,7 +980,9 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					ret.fallback = fallback;
 				}
 
-				if (child.copy || child.tag === Raw) {
+				if (child.copy && (ret.f & HasCommitted)) {
+					// pass
+				} else if (child.tag === Raw) {
 					// pass
 				} else if (child.tag === Fragment) {
 					result = diffChildren(
@@ -999,8 +1002,15 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				}
 			}
 
-			if (childCopied && typeof ret === "object") {
-				result = getInflight(ret);
+			if (typeof ret === "object") {
+				if (childCopied) {
+					result = getInflight(ret);
+					ret.f |= IsCopied;
+				} else {
+					ret.f &= ~HasCommitted;
+					// ???
+					//ret.f &= ~IsCopied;
+				}
 			}
 
 			if (isPromiseLike(result)) {
@@ -1054,16 +1064,16 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			.then(() => undefined);
 
 		let onNextValues!: Function;
-		parent.nextValues = results1 = Promise.race([
+		parent.pending = results1 = Promise.race([
 			results1,
 			new Promise<any>((resolve) => (onNextValues = resolve)),
 		]);
 
-		if (parent.onNextValues) {
-			parent.onNextValues(results1);
+		if (parent.onPending) {
+			parent.onPending(results1);
 		}
 
-		parent.onNextValues = onNextValues;
+		parent.onPending = onNextValues;
 		return results1;
 	} else {
 		parent.fallback = undefined;
@@ -1073,12 +1083,12 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			}
 		}
 
-		if (parent.onNextValues) {
-			parent.onNextValues(results);
-			parent.onNextValues = undefined;
+		if (parent.onPending) {
+			parent.onPending(results);
+			parent.onPending = undefined;
 		}
 
-		parent.nextValues = undefined;
+		parent.pending = undefined;
 	}
 }
 
@@ -1097,19 +1107,19 @@ function createChildrenByKey<TNode>(
 	return childrenByKey;
 }
 
-function getInflight<TNode>(
-	child: RetainerChild<TNode>,
+function getInflight(
+	child: Retainer<unknown>,
 ): Promise<undefined> | undefined {
 	if (typeof child !== "object") {
 		return;
 	}
 
-	const ctx: ContextImpl<TNode> | undefined = child.ctx;
+	const ctx: ContextImpl<unknown> | undefined = child.ctx;
 	if (ctx && ctx.f & IsUpdating && ctx.inflightValue) {
 		return ctx.inflightValue;
-	} else if (child.nextValues) {
+	} else if (child.pending) {
 		// TODO: fix the type
-		return child.nextValues as unknown as undefined;
+		return child.pending as unknown as undefined;
 	}
 
 	return undefined;
@@ -2039,32 +2049,9 @@ function commitComponent<TNode>(
 	}
 
 	ctx.f &= ~IsUpdating;
+	ctx.ret.f |= HasCommitted;
 	return result;
 }
-
-//function invalidate(ctx: ContextImpl, host: Retainer<unknown>): void {
-//	for (
-//		let parent = ctx.parent;
-//		parent !== undefined && parent.host === host;
-//		parent = parent.parent
-//	) {}
-//}
-
-//function arrayEqual<TValue>(arr1: Array<TValue>, arr2: Array<TValue>): boolean {
-//	if (arr1.length !== arr2.length) {
-//		return false;
-//	}
-//
-//	for (let i = 0; i < arr1.length; i++) {
-//		const value1 = arr1[i];
-//		const value2 = arr2[i];
-//		if (value1 !== value2) {
-//			return false;
-//		}
-//	}
-//
-//	return true;
-//}
 
 /** Enqueues and executes the component associated with the context. */
 function enqueueComponentRun<TNode, TResult>(

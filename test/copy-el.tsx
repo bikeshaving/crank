@@ -395,4 +395,34 @@ test("identical elements passed as children", () => {
 	Assert.is(fn.callCount, 1);
 });
 
+test("copied element class name is not modified", () => {
+	const el = renderer.render(<span class="test">Hello</span>, document.body) as HTMLElement;
+	Assert.is(document.body.innerHTML, '<span class="test">Hello</span>');
+	el.className = "changed";
+	renderer.render(<Copy />, document.body);
+	Assert.is(document.body.innerHTML, '<span class="changed">Hello</span>');
+});
+
+test("copied element children are not modified", () => {
+	const el = renderer.render(
+		<span>
+			<span class="test">Hello</span>
+			<span class="test">World</span>
+		</span>,
+		document.body,
+	) as HTMLElement;
+
+	Assert.is(
+		document.body.innerHTML,
+		'<span><span class="test">Hello</span><span class="test">World</span></span>',
+	);
+
+	el.firstChild!.textContent = "Changed";
+	renderer.render(<Copy />, document.body);
+	Assert.is(
+		document.body.innerHTML,
+		'<span><span class="test">Changed</span><span class="test">World</span></span>',
+	);
+});
+
 test.run();
