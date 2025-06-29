@@ -822,24 +822,15 @@ function commitRaw<TNode, TScope>(
 	ctx: ContextImpl<TNode, TScope, TNode, unknown> | undefined,
 	scope: TScope | undefined,
 ): ElementValue<TNode> {
-	try {
-		if (!ret.oldProps || ret.oldProps.value !== ret.el.props.value) {
-			ret.value = renderer.raw(ret.el.props.value as any, scope, undefined);
-			if (typeof ret.el.ref === "function") {
-				ret.el.ref(renderer.read(ret.value));
-			}
+	if (!ret.oldProps || ret.oldProps.value !== ret.el.props.value) {
+		ret.value = renderer.raw(ret.el.props.value as any, scope, undefined);
+		if (typeof ret.el.ref === "function") {
+			ret.el.ref(renderer.read(ret.value));
 		}
-
-		ret.f |= HasCommitted;
-		return ret.value;
-	} catch (err) {
-		if (ctx) {
-			propagateError(ctx, err);
-			return undefined;
-		}
-
-		throw err;
 	}
+
+	ret.f |= HasCommitted;
+	return ret.value;
 }
 
 function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
@@ -853,74 +844,65 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 		return getValue(ret);
 	}
 
-	try {
-		const tag = ret.el.tag as string | symbol;
-		let value = ret.value as TNode;
-		let props = ret.el.props;
-		const oldProps = ret.oldProps;
-		scope = renderer.scope(scope, tag, props)!;
-		const oldChildValues = getChildValues(ret);
-		const childValues = commitChildren(
-			renderer,
-			root,
-			ctx,
-			ret.children,
-			scope,
-		);
-		let copiedProps: Set<string> | undefined;
-		if (tag !== Portal) {
-			if (value == null) {
-				// This assumes that renderer.create does not return nullish values.
-				value = ret.value = renderer.create(tag, props, scope);
-				if (typeof ret.el.ref === "function") {
-					ret.el.ref(renderer.read(value));
-				}
-			}
-
-			for (const propName in {...oldProps, ...props}) {
-				const propValue = props[propName];
-				if (propValue === Copy) {
-					// TODO: The Copy tag doubles as a way to skip the patching of a prop.
-					// Not sure about this feature. Should probably be removed.
-					(copiedProps = copiedProps || new Set()).add(propName);
-				} else if (!SPECIAL_PROPS.has(propName)) {
-					renderer.patch(
-						tag,
-						value,
-						propName,
-						propValue,
-						oldProps && oldProps[propName],
-						scope,
-					);
-				}
+	const tag = ret.el.tag as string | symbol;
+	let value = ret.value as TNode;
+	let props = ret.el.props;
+	const oldProps = ret.oldProps;
+	scope = renderer.scope(scope, tag, props)!;
+	const oldChildValues = getChildValues(ret);
+	const childValues = commitChildren(
+		renderer,
+		root,
+		ctx,
+		ret.children,
+		scope,
+	);
+	let copiedProps: Set<string> | undefined;
+	if (tag !== Portal) {
+		if (value == null) {
+			// This assumes that renderer.create does not return nullish values.
+			value = ret.value = renderer.create(tag, props, scope);
+			if (typeof ret.el.ref === "function") {
+				ret.el.ref(renderer.read(value));
 			}
 		}
 
-		if (copiedProps) {
-			props = {...ret.el.props};
-			for (const name of copiedProps) {
-				props[name] = oldProps && oldProps[name];
+		for (const propName in {...oldProps, ...props}) {
+			const propValue = props[propName];
+			if (propValue === Copy) {
+				// TODO: The Copy tag doubles as a way to skip the patching of a prop.
+				// Not sure about this feature. Should probably be removed.
+				(copiedProps = copiedProps || new Set()).add(propName);
+			} else if (!SPECIAL_PROPS.has(propName)) {
+				renderer.patch(
+					tag,
+					value,
+					propName,
+					propValue,
+					oldProps && oldProps[propName],
+					scope,
+				);
 			}
-
-			ret.el.props = props;
 		}
-
-		renderer.arrange(tag, value, props, childValues, oldProps, oldChildValues);
-		ret.f |= HasCommitted;
-		if (tag === Portal) {
-			flush(renderer, ret.value);
-			return;
-		}
-
-		return value;
-	} catch (err) {
-		if (ctx) {
-			propagateError(ctx, err);
-			return undefined;
-		}
-
-		throw err;
 	}
+
+	if (copiedProps) {
+		props = {...ret.el.props};
+		for (const name of copiedProps) {
+			props[name] = oldProps && oldProps[name];
+		}
+
+		ret.el.props = props;
+	}
+
+	renderer.arrange(tag, value, props, childValues, oldProps, oldChildValues);
+	ret.f |= HasCommitted;
+	if (tag === Portal) {
+		flush(renderer, ret.value);
+		return;
+	}
+
+	return getValue(ret);
 }
 
 function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
@@ -2134,29 +2116,18 @@ function enqueueComponentRun<TNode, TResult>(
 
 		return ctx.inflightValue;
 	} else if (!ctx.inflightBlock) {
-		try {
-			const [block, value] = runComponent<TNode, TResult>(ctx);
-			if (block) {
-				ctx.inflightBlock = block
-					// TODO: there is some fuckery going on here related to async
-					// generator components resuming when they’re meant to be returned.
-					.then((v) => v)
-					.finally(() => advanceComponent(ctx));
-				// stepComponent will only return a block if the value is asynchronous
-				ctx.inflightValue = value as Promise<ElementValue<TNode>>;
-			}
-
-			return value;
-		} catch (err) {
-			if (!(ctx.f & IsUpdating)) {
-				if (!ctx.parent) {
-					throw err;
-				}
-				return propagateError<TNode>(ctx.parent, err);
-			}
-
-			throw err;
+		const [block, value] = runComponent<TNode, TResult>(ctx);
+		if (block) {
+			ctx.inflightBlock = block
+				// TODO: there is some fuckery going on here related to async
+				// generator components resuming when they’re meant to be returned.
+				.then((v) => v)
+				.finally(() => advanceComponent(ctx));
+			// stepComponent will only return a block if the value is asynchronous
+			ctx.inflightValue = value as Promise<ElementValue<TNode>>;
 		}
+
+		return value;
 	} else if (!ctx.enqueuedBlock) {
 		// We need to assign enqueuedBlock and enqueuedValue synchronously, hence
 		// the Promise constructor call here.
@@ -2166,24 +2137,12 @@ function enqueueComponentRun<TNode, TResult>(
 		);
 
 		ctx.enqueuedValue = ctx.inflightBlock.then(() => {
-			try {
-				const [block, value] = runComponent<TNode, TResult>(ctx);
-				if (block) {
-					resolveEnqueuedBlock(block.finally(() => advanceComponent(ctx)));
-				}
-
-				return value;
-			} catch (err) {
-				if (!(ctx.f & IsUpdating)) {
-					if (!ctx.parent) {
-						throw err;
-					}
-
-					return propagateError<TNode>(ctx.parent, err);
-				}
-
-				throw err;
+			const [block, value] = runComponent<TNode, TResult>(ctx);
+			if (block) {
+				resolveEnqueuedBlock(block.finally(() => advanceComponent(ctx)));
 			}
+
+			return value;
 		});
 	}
 
@@ -2317,19 +2276,11 @@ function runComponent<TNode, TResult>(
 		}
 
 		let diff: Promise<undefined> | undefined;
-		try {
-			diff = diffComponentChildren<TNode, TResult>(
-				ctx,
-				// Children can be void so we eliminate that here
-				iteration.value as Children,
-			);
-
-			if (isPromiseLike(diff)) {
-				diff = diff.catch((err) => handleChildError(ctx, err));
-			}
-		} catch (err) {
-			diff = handleChildError(ctx, err);
-		}
+		diff = diffComponentChildren<TNode, TResult>(
+			ctx,
+			// Children can be void so we eliminate that here
+			iteration.value as Children,
+		);
 
 		const block = isPromiseLike(diff) ? diff.catch(NOOP) : undefined;
 		return [block, diff];
@@ -2369,19 +2320,11 @@ function runComponent<TNode, TResult>(
 					}
 
 					ctx.f &= ~NeedsToYield;
-					try {
-						diff = diffComponentChildren<TNode, TResult>(
-							ctx,
-							// Children can be void so we eliminate that here
-							iteration.value as Children,
-						);
-
-						if (isPromiseLike(diff)) {
-							diff = diff.catch((err) => handleChildError(ctx, err));
-						}
-					} catch (err) {
-						diff = handleChildError(ctx, err);
-					}
+					diff = diffComponentChildren<TNode, TResult>(
+						ctx,
+						// Children can be void so we eliminate that here
+						iteration.value as Children,
+					);
 
 					return diff;
 				},
@@ -2452,14 +2395,12 @@ async function runAsyncGenComponent<TNode, TResult>(
 					diff = undefined;
 				} else {
 					diff = diffComponentChildren<TNode, TResult>(ctx, iteration.value!);
-					if (isPromiseLike(diff)) {
-						diff = diff.catch((err: any) => handleChildError(ctx, err));
-					}
 				}
 
 				ctx.f &= ~NeedsToYield;
 			} catch (err) {
-				diff = handleChildError(ctx, err);
+				// TODO: think about this
+				diff = propagateError(ctx, err);
 			} finally {
 				onValue(diff);
 			}
@@ -2554,21 +2495,13 @@ function unmountComponent(ctx: ContextImpl): void {
 			}
 
 			if (isPromiseLike(value)) {
-				value.then(
-					() => {
-						if (ctx.f & IsInForOfLoop) {
-							unmountComponent(ctx);
-						} else {
-							returnComponent(ctx);
-						}
-					},
-					(err) => {
-						if (!ctx.parent) {
-							throw err;
-						}
-						return propagateError<unknown>(ctx.parent, err);
-					},
-				);
+				value.then(() => {
+					if (ctx.f & IsInForOfLoop) {
+						unmountComponent(ctx);
+					} else {
+						returnComponent(ctx);
+					}
+				});
 			} else {
 				if (ctx.f & IsInForOfLoop) {
 					unmountComponent(ctx);
@@ -2579,22 +2512,13 @@ function unmountComponent(ctx: ContextImpl): void {
 		} else if (ctx.f & IsAsyncGen) {
 			if (ctx.f & IsInForOfLoop) {
 				const value = enqueueComponentRun(ctx) as Promise<unknown>;
-				value.then(
-					() => {
-						if (ctx.f & IsInForOfLoop) {
-							unmountComponent(ctx);
-						} else {
-							returnComponent(ctx);
-						}
-					},
-					(err) => {
-						if (!ctx.parent) {
-							throw err;
-						}
-
-						return propagateError<unknown>(ctx.parent, err);
-					},
-				);
+				value.then(() => {
+					if (ctx.f & IsInForOfLoop) {
+						unmountComponent(ctx);
+					} else {
+						returnComponent(ctx);
+					}
+				});
 			} else {
 				// The logic for unmounting async generator components is in the
 				// runAsyncGenComponent function.
@@ -2611,13 +2535,14 @@ function returnComponent(ctx: ContextImpl): void {
 			ctx.f |= IsSyncExecuting;
 			const iteration = ctx.iterator!.return();
 			if (isPromiseLike(iteration)) {
-				iteration.catch((err) => {
-					if (!ctx.parent) {
-						throw err;
-					}
+				// TODO: catch errors?
+				//iteration.catch((err) => {
+				//	if (!ctx.parent) {
+				//		throw err;
+				//	}
 
-					return propagateError<unknown>(ctx.parent, err);
-				});
+				//	return propagateError<unknown>(ctx.parent, err);
+				//});
 			}
 		} finally {
 			ctx.f &= ~IsSyncExecuting;
@@ -2745,6 +2670,20 @@ function clearEventListeners(ctx: ContextImpl): void {
 }
 
 /*** ERROR HANDLING UTILITIES ***/
+/**
+ * An internal error class used to capture the context of an error so that
+ * parent components can attempt to catch it.
+ */
+class UserError extends Error {
+	reason: unknown;
+	ctx?: ContextImpl;
+	constructor(reason: unknown, ctx?: ContextImpl) {
+		super();
+		this.reason = reason;
+		this.ctx = ctx;
+	}
+}
+
 function handleChildError<TNode>(
 	ctx: ContextImpl<TNode, unknown, TNode>,
 	err: unknown,
@@ -2791,6 +2730,11 @@ function handleChildError<TNode>(
 	return diffComponentChildren(ctx, iteration.value as Children);
 }
 
+// TODO: The new strategy for error handling is to catch errors, wrap them in a
+// UserError and rethrow the error. Then, in the execution origin (refresh,
+// render, runAsyncGen), we can catch the UserError and handle it
+// appropriately. This is because errors propagate up the tree and return
+// values for an errored component or host element are meaningless.
 function propagateError<TNode>(
 	ctx: ContextImpl<TNode, unknown, TNode>,
 	err: unknown,
@@ -2808,10 +2752,8 @@ function propagateError<TNode>(
 
 	if (isPromiseLike(diff)) {
 		return diff.then(
-			() => {
-				if (!(ctx.f & IsUpdating)) {
-					commitComponent(ctx);
-				}
+			(): undefined => {
+				commitComponent(ctx);
 			},
 			(err) => {
 				if (!ctx.parent) {
@@ -2820,11 +2762,7 @@ function propagateError<TNode>(
 
 				return propagateError<TNode>(ctx.parent, err);
 			},
-		) as Promise<undefined>;
-	}
-
-	if (!(ctx.f & IsUpdating)) {
-		commitComponent(ctx);
+		);
 	}
 }
 
