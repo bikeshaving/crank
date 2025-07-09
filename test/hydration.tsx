@@ -19,7 +19,7 @@ test.after.each(() => {
 	consoleError.restore();
 });
 
-test("simple", () => {
+test.skip("simple", () => {
 	document.body.innerHTML = "<button>Click</button>";
 	const button = document.body.firstChild as HTMLButtonElement;
 	const onclick = Sinon.fake();
@@ -31,7 +31,7 @@ test("simple", () => {
 	Assert.ok(onclick.called);
 });
 
-test("fragment", () => {
+test.skip("fragment", () => {
 	document.body.innerHTML = "<button>Click</button>";
 	const button = document.body.firstChild as HTMLButtonElement;
 	const onclick = Sinon.fake();
@@ -48,7 +48,7 @@ test("fragment", () => {
 	Assert.ok(onclick.called);
 });
 
-test("sync function component", () => {
+test.skip("sync function component", () => {
 	document.body.innerHTML = "<button>Click</button>";
 	const button = document.body.firstChild as HTMLButtonElement;
 
@@ -66,7 +66,7 @@ test("sync function component", () => {
 	Assert.ok(onclick.called);
 });
 
-test("sync generator component", () => {
+test.skip("sync generator component", () => {
 	document.body.innerHTML = "<button>Click</button>";
 	const button = document.body.firstChild as HTMLButtonElement;
 
@@ -86,7 +86,7 @@ test("sync generator component", () => {
 	Assert.ok(onclick.called);
 });
 
-test("refresh", () => {
+test.skip("refresh", () => {
 	document.body.innerHTML = "<button>Click</button>";
 	const button = document.body.firstChild as HTMLButtonElement;
 
@@ -119,7 +119,7 @@ test("refresh", () => {
 	Assert.is(document.body.firstChild, button);
 });
 
-test("async function component", async () => {
+test.skip("async function component", async () => {
 	document.body.innerHTML = "<button>Click</button>";
 	const button = document.body.firstChild as HTMLButtonElement;
 
@@ -137,7 +137,7 @@ test("async function component", async () => {
 	Assert.ok(onclick.called);
 });
 
-test("async generator component", async () => {
+test.skip("async generator component", async () => {
 	document.body.innerHTML = "<button>Click</button>";
 	const button = document.body.firstChild as HTMLButtonElement;
 
@@ -157,7 +157,7 @@ test("async generator component", async () => {
 	Assert.ok(onclick.called);
 });
 
-test("async component and host sibling", async () => {
+test.skip("async component and host sibling", async () => {
 	document.body.innerHTML =
 		"<div><div><button>Slow</button></div><button>Fast</button></div>";
 	const div = document.body.firstChild!;
@@ -194,7 +194,7 @@ test("async component and host sibling", async () => {
 	Assert.ok(onclick2.called);
 });
 
-test("async sibling components resolve out of order", async () => {
+test.skip("async sibling components resolve out of order", async () => {
 	document.body.innerHTML =
 		"<div><button>Slow</button><button>Fast</button></div>";
 	const div = document.body.firstChild!;
@@ -235,7 +235,7 @@ test("async sibling components resolve out of order", async () => {
 	Assert.ok(onclick2.called);
 });
 
-test("text sibling", async () => {
+test.skip("text sibling", async () => {
 	document.body.innerHTML = "<div>Text1<button>Click</button>Text2</div>";
 	const div = document.body.firstChild!;
 	const text1 = div.childNodes[0] as Text;
@@ -267,7 +267,7 @@ test("text sibling", async () => {
 	Assert.is(document.body.firstChild!.childNodes[2], text2);
 });
 
-test("split text", async () => {
+test.skip("split text", async () => {
 	document.body.innerHTML = "<div>Text1Text2<button>Click</button></div>";
 	const div = document.body.firstChild!;
 	const text = div.childNodes[0] as Text;
@@ -329,7 +329,7 @@ test.skip("mismatched text", () => {
 	Assert.is(consoleError.callCount, 1);
 });
 
-test("raw element", () => {
+test.skip("raw element", () => {
 	document.body.innerHTML = "<div><div>Raw</div><button>Click</button></div>";
 	const onclick = Sinon.fake();
 	const button = document.body.childNodes[0].childNodes[1] as HTMLButtonElement;
@@ -353,7 +353,7 @@ test("raw element", () => {
 	Assert.ok(onclick.called);
 });
 
-test("raw multiple elements", () => {
+test.skip("raw multiple elements", () => {
 	document.body.innerHTML =
 		"<div><div>Raw 1</div><div>Raw 2</div><button>Click</button></div>";
 	const onclick = Sinon.fake();
@@ -378,7 +378,7 @@ test("raw multiple elements", () => {
 	Assert.ok(onclick.called);
 });
 
-test("raw text", () => {
+test.skip("raw text", () => {
 	document.body.innerHTML = "<div>Raw<button>Click</button></div>";
 	const onclick = Sinon.fake();
 	const button = document.body.childNodes[0].childNodes[1] as HTMLButtonElement;
@@ -399,7 +399,7 @@ test("raw text", () => {
 	Assert.ok(onclick.called);
 });
 
-test("raw comment", () => {
+test.skip("raw comment", () => {
 	document.body.innerHTML =
 		"<div><!-- comment -->Hello<button>Click</button></div>";
 	const onclick = Sinon.fake();
@@ -425,4 +425,4 @@ test("raw comment", () => {
 	Assert.ok(onclick.called);
 });
 
-//test.run();
+test.run();
