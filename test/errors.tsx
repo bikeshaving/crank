@@ -179,6 +179,7 @@ test("async generator throws by parent sync generator refresh", async () => {
 	Assert.is(document.body.innerHTML, "<div>0</div>");
 	await ctx.refresh();
 	Assert.is(document.body.innerHTML, "<div>1</div>");
+	const mock = Sinon.fake();
 	try {
 		await ctx.refresh();
 		Assert.unreachable();
@@ -187,7 +188,10 @@ test("async generator throws by parent sync generator refresh", async () => {
 			err.message,
 			"async generator throws by parent sync generator refresh",
 		);
+		mock();
 	}
+
+	Assert.is(mock.callCount, 1);
 });
 
 test("async generator throws by parent async generator refresh", async () => {
