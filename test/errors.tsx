@@ -490,12 +490,14 @@ test("async gen causes unhandled rejection", async () => {
 	Assert.is(err.message, "async gen causes unhandled rejection");
 });
 
-test("nested generator function throws with refresh", () => {
+test("nested generator function throws with refresh can be caught by parent", () => {
 	let throwerCtx!: Context;
 	function* Thrower(this: Context): Generator<Child> {
 		throwerCtx = this;
 		yield <div>Hello</div>;
-		throw new Error("nested generator function throws with refresh");
+		throw new Error(
+			"nested generator function throws with refresh can be caught by parent",
+		);
 	}
 
 	function PassThrough() {
@@ -519,13 +521,15 @@ test("nested generator function throws with refresh", () => {
 	Assert.is(document.body.innerHTML, "<span>Error</span>");
 });
 
-test("nested async generator function throws with refresh", async () => {
+test("nested async generator function throws with refresh can be caught by parent", async () => {
 	let throwerCtx!: Context;
 	async function* Thrower(this: Context): AsyncGenerator<Child> {
 		throwerCtx = this;
 		yield <div>Hello</div>;
 		for await ({} of this) {
-			throw new Error("nested generator function throws with refresh");
+			throw new Error(
+				"nested generator function throws with refresh can be caught by parent",
+			);
 		}
 	}
 
@@ -548,6 +552,36 @@ test("nested async generator function throws with refresh", async () => {
 
 	await throwerCtx.refresh();
 	Assert.is(document.body.innerHTML, "<span>Error</span>");
+});
+
+test("nested async generator function throws independently", async () => {
+	async function* Thrower(this: Context): AsyncGenerator<Child> {
+		for await ({} of this) {
+			yield <div>Hello</div>;
+			throw new Error("nested async generator function throws independently");
+		}
+	}
+
+	const mock = Sinon.fake();
+	const onUnhandledRejection = (ev: PromiseRejectionEvent) => {
+		if (
+			ev.reason.message ===
+			"nested async generator function throws independently"
+		) {
+			ev.preventDefault();
+			mock();
+		}
+	};
+	try {
+		window.addEventListener("unhandledrejection", onUnhandledRejection);
+		await renderer.render(<Thrower />, document.body);
+
+		Assert.is(document.body.innerHTML, "<div>Hello</div>");
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		Assert.is(mock.callCount, 1);
+	} finally {
+		window.removeEventListener("unhandledrejection", onUnhandledRejection);
+	}
 });
 
 test.run();

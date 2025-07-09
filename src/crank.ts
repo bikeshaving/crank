@@ -2391,7 +2391,11 @@ async function runAsyncGenComponent<TNode, TResult>(
 				(resolve1, reject1) => ((resolve = resolve1), (reject = reject1)),
 			);
 			ctx.inflightValue.catch((err) => {
-				if (!(ctx.f & IsUpdating) && !(ctx.f & IsRefreshing)) {
+				// TODO: IsUpdating flag is incorrectly set when an async generator
+				// component immediately throws an error after a yield for an update.
+				if (/* !(ctx.f & IsUpdating) && */ !(ctx.f & IsRefreshing)) {
+					// The component is not being handled by a refresh() or render() call
+					// so we have to cause an unhandled promise rejection.
 					throw err;
 				}
 			});
