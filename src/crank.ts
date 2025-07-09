@@ -1484,7 +1484,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 		const ctx = this[_ContextImpl];
 		try {
 			ctx.f |= IsInForOfLoop;
-			while (!(ctx.f & IsUnmounted)) {
+			while (!(ctx.f & IsUnmounted) && !(ctx.f & IsErrored)) {
 				if (ctx.f & NeedsToYield) {
 					throw new Error("Context iterated twice without a yield");
 				} else {
@@ -1506,7 +1506,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 
 		try {
 			ctx.f |= IsInForAwaitOfLoop;
-			while (!(ctx.f & IsUnmounted)) {
+			while (!(ctx.f & IsUnmounted) && !(ctx.f & IsErrored)) {
 				if (ctx.f & NeedsToYield) {
 					throw new Error("Context iterated twice without a yield");
 				} else {
@@ -1565,9 +1565,11 @@ export class Context<T = any, TResult = any> implements EventTarget {
 		try {
 			diff = enqueueComponentRun(ctx);
 			if (isPromiseLike(diff)) {
-				return diff.then(() => ctx.renderer.read(commitComponent(ctx))).finally(() => {
-					ctx.f &= ~IsRefreshing;
-				});
+				return diff
+					.then(() => ctx.renderer.read(commitComponent(ctx)))
+					.finally(() => {
+						ctx.f &= ~IsRefreshing;
+					});
 			}
 
 			return ctx.renderer.read(commitComponent(ctx));
@@ -2371,8 +2373,10 @@ async function runAsyncGenComponent<TNode, TResult>(
 			// inflightValue must be set synchronously.
 			let resolve!: Function;
 			let reject!: Function;
-			ctx.inflightValue = new Promise((resolve1, reject1) => (resolve = resolve1, reject = reject1));
-			if ((ctx.f & IsUpdating) || (ctx.f & IsRefreshing)) {
+			ctx.inflightValue = new Promise(
+				(resolve1, reject1) => ((resolve = resolve1), (reject = reject1)),
+			);
+			if (ctx.f & IsUpdating || ctx.f & IsRefreshing) {
 				ctx.inflightValue.catch(NOOP);
 			}
 
