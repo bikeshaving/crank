@@ -1567,14 +1567,23 @@ export class Context<T = any, TResult = any> implements EventTarget {
 			ctx.f |= IsRefreshing;
 			diff = enqueueComponentRun(ctx);
 			if (isPromiseLike(diff)) {
-				return diff
-					.then(() => ctx.renderer.read(commitComponent(ctx)))
-					.finally(() => {
-						ctx.f &= ~IsRefreshing;
-					});
+				let result = diff.then(() => ctx.renderer.read(commitComponent(ctx)));
+				if (ctx.parent) {
+					result = result.catch((err) => propagateError(ctx.parent!, err));
+				}
+
+				return result.finally(() => {
+					ctx.f &= ~IsRefreshing;
+				});
 			}
 
 			return ctx.renderer.read(commitComponent(ctx));
+		} catch (err) {
+			if (ctx.parent) {
+				return propagateError(ctx.parent, err);
+			}
+
+			throw err;
 		} finally {
 			if (!isPromiseLike(diff)) {
 				ctx.f &= ~IsRefreshing;
@@ -2731,36 +2740,40 @@ function handleChildError<TNode>(
 	return diffComponentChildren(ctx, iteration.value as Children);
 }
 
-//function propagateError<TNode>(
-//	ctx: ContextImpl<TNode, unknown, TNode>,
-//	err: unknown,
-//): Promise<undefined> | undefined {
-//	let diff: Promise<undefined> | undefined;
-//	try {
-//		diff = handleChildError(ctx, err);
-//	} catch (err) {
-//		if (!ctx.parent) {
-//			throw err;
-//		}
-//
-//		return propagateError<TNode>(ctx.parent, err);
-//	}
-//
-//	if (isPromiseLike(diff)) {
-//		return diff.then(
-//			(): undefined => {
-//				commitComponent(ctx);
-//			},
-//			(err) => {
-//				if (!ctx.parent) {
-//					throw err;
-//				}
-//
-//				return propagateError<TNode>(ctx.parent, err);
-//			},
-//		);
-//	}
-//}
+function propagateError<TNode, TResult>(
+	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
+	err: unknown,
+): Promise<TResult> | TResult {
+	let diff: Promise<undefined> | undefined;
+	try {
+		diff = handleChildError(ctx, err);
+	} catch (err) {
+		if (!ctx.parent) {
+			throw err;
+		}
+
+		return propagateError(ctx.parent, err);
+	}
+
+	if (isPromiseLike(diff)) {
+		return diff.then(
+			() => {
+				commitComponent(ctx);
+				return ctx.renderer.read(getValue(ctx.ret));
+			},
+			(err) => {
+				if (!ctx.parent) {
+					throw err;
+				}
+
+				return propagateError(ctx.parent, err);
+			},
+		);
+	}
+
+	commitComponent(ctx);
+	return ctx.renderer.read(getValue(ctx.ret));
+}
 
 // TODO: uncomment and use in the Element interface below
 // type CrankElement = Element;

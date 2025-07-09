@@ -394,43 +394,6 @@ test("nested sync functions", () => {
 	Assert.is(document.body.innerHTML, "<span>Error</span>");
 });
 
-test("nested generator function throws with refresh", async () => {
-	let throwerCtx!: Context;
-	function* Thrower(this: Context): Generator<Child> {
-		throwerCtx = this;
-		yield <div>Hello</div>;
-		throw new Error("nested generator function throws with refresh");
-	}
-
-	function PassThrough() {
-		return <Thrower />;
-	}
-
-	function* Component(): Generator<Child> {
-		while (true) {
-			try {
-				yield <PassThrough />;
-			} catch (err) {
-				return <span>Error</span>;
-			}
-		}
-	}
-
-	renderer.render(<Component />, document.body);
-	Assert.is(document.body.innerHTML, "<div>Hello</div>");
-
-	const mock = Sinon.fake();
-	try {
-		await throwerCtx.refresh();
-		Assert.is(document.body.innerHTML, "<span>Error</span>");
-	} catch (err: any) {
-		Assert.is(err.message, "nested generator function throws with refresh");
-		mock();
-	}
-
-	Assert.is(mock.callCount, 1);
-});
-
 test("async function throws, sync generator catches", async () => {
 	async function Thrower(): Promise<never> {
 		throw new Error("async function throws, sync generator catches");
@@ -527,40 +490,63 @@ test("async gen causes unhandled rejection", async () => {
 	Assert.is(err.message, "async gen causes unhandled rejection");
 });
 
-// TODO:
-test.skip("refresh throws and is caught by parent", () => {
-	const err = new Error("refresh throws and is caught by parent");
+test("nested generator function throws with refresh", () => {
 	let throwerCtx!: Context;
-	function* Thrower(this: Context) {
+	function* Thrower(this: Context): Generator<Child> {
 		throwerCtx = this;
-		yield 1;
-		throw err;
+		yield <div>Hello</div>;
+		throw new Error("nested generator function throws with refresh");
 	}
 
-	function* Parent(this: Context) {
-		for ({} of this) {
+	function PassThrough() {
+		return <Thrower />;
+	}
+
+	function* Component(): Generator<Child> {
+		while (true) {
 			try {
-				yield (
-					<div>
-						<Thrower />
-					</div>
-				);
+				yield <PassThrough />;
 			} catch (err) {
 				return <span>Error</span>;
 			}
 		}
 	}
 
-	renderer.render(<Parent />, document.body);
-	Assert.is(document.body.innerHTML, "<div>1</div>");
-	// TODO: Should throwerCtx.refresh() throw an error if it is caught by a parent component?
-	try {
-		throwerCtx.refresh();
-	} catch (err) {
-		Assert.unreachable(
-			"Refresh should not throw an error if caught by a parent",
-		);
+	renderer.render(<Component />, document.body);
+	Assert.is(document.body.innerHTML, "<div>Hello</div>");
+
+	throwerCtx.refresh();
+	Assert.is(document.body.innerHTML, "<span>Error</span>");
+});
+
+test("nested async generator function throws with refresh", async () => {
+	let throwerCtx!: Context;
+	async function* Thrower(this: Context): AsyncGenerator<Child> {
+		throwerCtx = this;
+		yield <div>Hello</div>;
+		for await ({} of this) {
+			throw new Error("nested generator function throws with refresh");
+		}
 	}
+
+	function PassThrough() {
+		return <Thrower />;
+	}
+
+	function* Component(): Generator<Child> {
+		while (true) {
+			try {
+				yield <PassThrough />;
+			} catch (err) {
+				return <span>Error</span>;
+			}
+		}
+	}
+
+	await renderer.render(<Component />, document.body);
+	Assert.is(document.body.innerHTML, "<div>Hello</div>");
+
+	await throwerCtx.refresh();
 	Assert.is(document.body.innerHTML, "<span>Error</span>");
 });
 
