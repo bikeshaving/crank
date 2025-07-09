@@ -1320,6 +1320,8 @@ const IsScheduling = 1 << 10;
  */
 const IsSchedulingRefresh = 1 << 11;
 
+const IsRefreshing = 1 << 12;
+
 export interface Context extends Crank.Context {}
 
 /**
@@ -1559,12 +1561,21 @@ export class Context<T = any, TResult = any> implements EventTarget {
 			return ctx.renderer.read(getValue(ctx.ret));
 		}
 
-		const diff = enqueueComponentRun(ctx);
-		if (isPromiseLike(diff)) {
-			return diff.then(() => ctx.renderer.read(commitComponent(ctx)));
-		}
+		let diff: Promise<undefined> | undefined;
+		try {
+			diff = enqueueComponentRun(ctx);
+			if (isPromiseLike(diff)) {
+				return diff.then(() => ctx.renderer.read(commitComponent(ctx))).finally(() => {
+					ctx.f &= ~IsRefreshing;
+				});
+			}
 
-		return ctx.renderer.read(commitComponent(ctx));
+			return ctx.renderer.read(commitComponent(ctx));
+		} finally {
+			if (!isPromiseLike(diff)) {
+				ctx.f &= ~IsRefreshing;
+			}
+		}
 	}
 
 	/**
@@ -1964,7 +1975,7 @@ function diffComponentChildren<TNode, TResult>(
 			narrow(children),
 		);
 		if (diff) {
-			diff.catch((err) => handleChildError(ctx, err));
+			diff = diff.catch((err) => handleChildError(ctx, err));
 		}
 	} catch (err) {
 		diff = handleChildError(ctx, err);
@@ -2358,12 +2369,10 @@ async function runAsyncGenComponent<TNode, TResult>(
 			}
 
 			// inflightValue must be set synchronously.
-			let onValue!: Function;
-			ctx.inflightValue = new Promise((resolve) => (onValue = resolve));
-			if (ctx.f & IsUpdating) {
-				// We should not swallow unhandled promise rejections if the component is
-				// updating independently.
-				// TODO: Does this handle this.refresh() calls?
+			let resolve!: Function;
+			let reject!: Function;
+			ctx.inflightValue = new Promise((resolve1, reject1) => (resolve = resolve1, reject = reject1));
+			if ((ctx.f & IsUpdating) || (ctx.f & IsRefreshing)) {
 				ctx.inflightValue.catch(NOOP);
 			}
 
@@ -2373,7 +2382,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 			} catch (err) {
 				done = true;
 				ctx.f |= IsErrored;
-				onValue(Promise.reject(err));
+				reject(err);
 				break;
 			}
 
@@ -2394,30 +2403,26 @@ async function runAsyncGenComponent<TNode, TResult>(
 					diff = undefined;
 				} else {
 					diff = diffComponentChildren<TNode, TResult>(ctx, iteration.value!);
-					if (isPromiseLike(diff)) {
-						diff = diff.catch((err) => handleChildError(ctx, err));
-					}
 				}
 
 				ctx.f &= ~NeedsToYield;
 			} catch (err) {
-				// TODO: think about this
-				diff = handleChildError(ctx, err);
+				// pass
 			} finally {
-				onValue(diff);
+				resolve(diff);
 			}
 
 			if (diff) {
 				diff.then(
 					() => {
-						if (!(ctx.f & IsUpdating)) {
+						if (!(ctx.f & IsUpdating) && !(ctx.f & IsRefreshing)) {
 							commitComponent(ctx);
 						}
 					},
 					() => {},
 				);
 			} else {
-				if (!(ctx.f & IsUpdating)) {
+				if (!(ctx.f & IsUpdating) && !(ctx.f & IsRefreshing)) {
 					commitComponent(ctx);
 				}
 			}
@@ -2458,9 +2463,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 	}
 }
 
-/**
- * Called to resume the props async iterator for async generator components.
- */
+/** Called to resume the props async iterator for async generator components. */
 function resumePropsAsyncIterator(ctx: ContextImpl): void {
 	if (ctx.onProps) {
 		ctx.onProps(ctx.ret.el.props);

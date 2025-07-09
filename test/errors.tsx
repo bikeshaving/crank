@@ -393,8 +393,7 @@ test("nested generator function throws with refresh", async () => {
 	Assert.is(mock.callCount, 1);
 });
 
-// TODO: unskip this test
-test.skip("async function throws, sync generator catches", async () => {
+test("async function throws, sync generator catches", async () => {
 	async function Thrower(): Promise<never> {
 		throw new Error("async function throws, sync generator catches");
 	}
