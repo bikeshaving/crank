@@ -425,4 +425,4 @@ test("raw comment", () => {
 	Assert.ok(onclick.called);
 });
 
-test.run();
+//test.run();

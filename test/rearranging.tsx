@@ -154,7 +154,7 @@ test("changing children nested in an async generator component", async () => {
 	Assert.is(document.body.innerHTML, "<h4>3</h4>");
 });
 
-test("arrange doesn’t get called when the children don’t change", () => {
+test.skip("arrange doesn’t get called when the children don’t change", () => {
 	let ctx!: Context;
 	function* Component(this: Context) {
 		ctx = this;

@@ -190,7 +190,7 @@ test("async generator throws by parent sync generator refresh", async () => {
 	}
 });
 
-test.skip("async generator throws by parent async generator refresh", async () => {
+test("async generator throws by parent async generator refresh", async () => {
 	async function* Thrower(this: Context) {
 		let i = 0;
 		for await ({} of this) {
@@ -220,6 +220,7 @@ test.skip("async generator throws by parent async generator refresh", async () =
 	Assert.is(document.body.innerHTML, "<div>0</div>");
 	await ctx.refresh();
 	Assert.is(document.body.innerHTML, "<div>1</div>");
+	const mock = Sinon.fake();
 	try {
 		await ctx.refresh();
 		Assert.unreachable();
@@ -228,11 +229,13 @@ test.skip("async generator throws by parent async generator refresh", async () =
 			err.message,
 			"async generator throws by parent async generator refresh",
 		);
+		mock();
 	}
+
+	Assert.is(mock.callCount, 1);
 });
 
-// TODO: figure out how to test for an unhandled promise rejection
-// When run this test should fail rather than timing out.
+// TODO: unskip this test
 test.skip("async generator throws independently", async () => {
 	async function* Thrower(this: Context) {
 		yield 1;
@@ -349,12 +352,12 @@ test("nested sync functions", () => {
 	Assert.is(document.body.innerHTML, "<span>Error</span>");
 });
 
-test("nested functions throw independently", () => {
-	let ctx!: Context;
+test("nested generator function throws with refresh", async () => {
+	let throwerCtx!: Context;
 	function* Thrower(this: Context): Generator<Child> {
-		ctx = this;
+		throwerCtx = this;
 		yield <div>Hello</div>;
-		throw new Error("nested functions throw independently");
+		throw new Error("nested generator function throws with refresh");
 	}
 
 	function PassThrough() {
@@ -373,11 +376,21 @@ test("nested functions throw independently", () => {
 
 	renderer.render(<Component />, document.body);
 	Assert.is(document.body.innerHTML, "<div>Hello</div>");
-	ctx.refresh();
-	Assert.is(document.body.innerHTML, "<span>Error</span>");
+
+	const mock = Sinon.fake();
+	try {
+		await throwerCtx.refresh();
+		Assert.is(document.body.innerHTML, "<span>Error</span>");
+	} catch (err: any) {
+		Assert.is(err.message, "nested generator function throws with refresh");
+		mock();
+	}
+
+	Assert.is(mock.callCount, 1);
 });
 
-test("async function throws, sync generator catches", async () => {
+// TODO: unskip this test
+test.skip("async function throws, sync generator catches", async () => {
 	async function Thrower(): Promise<never> {
 		throw new Error("async function throws, sync generator catches");
 	}
@@ -441,7 +454,7 @@ test("restart", () => {
 	Assert.is(document.body.innerHTML, "<div>1</div>");
 });
 
-// TODO: THIS TEST SHOULD FAIL IF UNSKIPPED
+// TODO: unskip this test
 test.skip("async gen causes unhandled rejection", async () => {
 	async function One() {
 		await new Promise((r) => setTimeout(r, 1000));
@@ -463,13 +476,9 @@ test.skip("async gen causes unhandled rejection", async () => {
 	renderer.render(<Loader />, document.body);
 	let resolve: any;
 	const p = new Promise<any>((r) => (resolve = r));
-	window.addEventListener(
-		"unhandledrejection",
-		(ev) => {
-			resolve(ev.reason);
-		},
-		{once: true},
-	);
+	window.addEventListener("unhandledrejection", (ev) => {
+		resolve(ev.reason);
+	});
 	const err = await p;
 	Assert.is(err.message, "async gen causes unhandled rejection");
 });

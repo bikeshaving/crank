@@ -850,13 +850,7 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	const oldProps = ret.oldProps;
 	scope = renderer.scope(scope, tag, props)!;
 	const oldChildValues = getChildValues(ret);
-	const childValues = commitChildren(
-		renderer,
-		root,
-		ctx,
-		ret.children,
-		scope,
-	);
+	const childValues = commitChildren(renderer, root, ctx, ret.children, scope);
 	let copiedProps: Set<string> | undefined;
 	if (tag !== Portal) {
 		if (value == null) {
@@ -1969,6 +1963,11 @@ function diffComponentChildren<TNode, TResult>(
 			ctx.ret,
 			narrow(children),
 		);
+		if (diff) {
+			diff.catch((err) => handleChildError(ctx, err));
+		}
+	} catch (err) {
+		diff = handleChildError(ctx, err);
 	} finally {
 		ctx.f &= ~IsSyncExecuting;
 	}
@@ -2395,12 +2394,15 @@ async function runAsyncGenComponent<TNode, TResult>(
 					diff = undefined;
 				} else {
 					diff = diffComponentChildren<TNode, TResult>(ctx, iteration.value!);
+					if (isPromiseLike(diff)) {
+						diff = diff.catch((err) => handleChildError(ctx, err));
+					}
 				}
 
 				ctx.f &= ~NeedsToYield;
 			} catch (err) {
 				// TODO: think about this
-				diff = propagateError(ctx, err);
+				diff = handleChildError(ctx, err);
 			} finally {
 				onValue(diff);
 			}
@@ -2535,15 +2537,14 @@ function returnComponent(ctx: ContextImpl): void {
 			ctx.f |= IsSyncExecuting;
 			const iteration = ctx.iterator!.return();
 			if (isPromiseLike(iteration)) {
-				// TODO: catch errors?
-				//iteration.catch((err) => {
-				//	if (!ctx.parent) {
-				//		throw err;
-				//	}
-
-				//	return propagateError<unknown>(ctx.parent, err);
-				//});
+				iteration.then(NOOP, (err) => {
+					ctx.f |= IsErrored;
+					handleChildError(ctx, err);
+				});
 			}
+		} catch (err) {
+			ctx.f |= IsErrored;
+			handleChildError(ctx, err);
 		} finally {
 			ctx.f &= ~IsSyncExecuting;
 		}
@@ -2670,20 +2671,6 @@ function clearEventListeners(ctx: ContextImpl): void {
 }
 
 /*** ERROR HANDLING UTILITIES ***/
-/**
- * An internal error class used to capture the context of an error so that
- * parent components can attempt to catch it.
- */
-class UserError extends Error {
-	reason: unknown;
-	ctx?: ContextImpl;
-	constructor(reason: unknown, ctx?: ContextImpl) {
-		super();
-		this.reason = reason;
-		this.ctx = ctx;
-	}
-}
-
 function handleChildError<TNode>(
 	ctx: ContextImpl<TNode, unknown, TNode>,
 	err: unknown,
@@ -2708,6 +2695,7 @@ function handleChildError<TNode>(
 		return iteration.then(
 			(iteration) => {
 				if (iteration.done) {
+					ctx.f &= ~IsSyncGen;
 					ctx.f &= ~IsAsyncGen;
 					ctx.iterator = undefined;
 				}
@@ -2728,42 +2716,6 @@ function handleChildError<TNode>(
 	}
 
 	return diffComponentChildren(ctx, iteration.value as Children);
-}
-
-// TODO: The new strategy for error handling is to catch errors, wrap them in a
-// UserError and rethrow the error. Then, in the execution origin (refresh,
-// render, runAsyncGen), we can catch the UserError and handle it
-// appropriately. This is because errors propagate up the tree and return
-// values for an errored component or host element are meaningless.
-function propagateError<TNode>(
-	ctx: ContextImpl<TNode, unknown, TNode>,
-	err: unknown,
-): Promise<undefined> | undefined {
-	let diff: Promise<undefined> | undefined;
-	try {
-		diff = handleChildError(ctx, err);
-	} catch (err) {
-		if (!ctx.parent) {
-			throw err;
-		}
-
-		return propagateError<TNode>(ctx.parent, err);
-	}
-
-	if (isPromiseLike(diff)) {
-		return diff.then(
-			(): undefined => {
-				commitComponent(ctx);
-			},
-			(err) => {
-				if (!ctx.parent) {
-					throw err;
-				}
-
-				return propagateError<TNode>(ctx.parent, err);
-			},
-		);
-	}
 }
 
 // TODO: uncomment and use in the Element interface below
