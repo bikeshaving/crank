@@ -1,4 +1,4 @@
-const NOOP = () => {};
+const NOOP = (): undefined => {};
 const IDENTITY = <T>(value: T): T => value;
 
 function wrap<T>(value: Array<T> | T | undefined): Array<T> {
@@ -1285,13 +1285,12 @@ const PropsAvailable = 1 << 5;
 
 /**
  * A flag which is set when a component errors.
- *
- * This is mainly used to prevent some false positives in "component yields or
- * returns undefined" warnings. The reason we’re using this versus IsUnmounted
- * is a very troubling test (cascades sync generator parent and sync generator
- * child) where synchronous code causes a stack overflow error in a
- * non-deterministic way. Deeply disturbing stuff.
  */
+// This is mainly used to prevent some false positives in "component yields or
+// returns undefined" warnings. The reason we’re using this versus IsUnmounted
+// is a very troubling test (cascades sync generator parent and sync generator
+// child) where synchronous code causes a stack overflow error in a
+// non-deterministic way. Deeply disturbing stuff.
 const IsErrored = 1 << 6;
 
 /**
@@ -1321,6 +1320,8 @@ const IsScheduling = 1 << 10;
 const IsSchedulingRefresh = 1 << 11;
 
 const IsRefreshing = 1 << 12;
+
+const IsInAsyncGenLoop = 1 << 13;
 
 export interface Context extends Crank.Context {}
 
@@ -1563,6 +1564,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 
 		let diff: Promise<undefined> | undefined;
 		try {
+			ctx.f |= IsRefreshing;
 			diff = enqueueComponentRun(ctx);
 			if (isPromiseLike(diff)) {
 				return diff
@@ -2348,11 +2350,13 @@ function runComponent<TNode, TResult>(
 
 			return [block, diff];
 		} else {
-			runAsyncGenComponent(
-				ctx,
-				iteration as Promise<ChildrenIteratorResult>,
-				initial,
-			);
+			if (!(ctx.f & IsInAsyncGenLoop)) {
+				runAsyncGenComponent(
+					ctx,
+					iteration as Promise<ChildrenIteratorResult>,
+					initial,
+				);
+			}
 			return [ctx.inflightBlock, ctx.inflightValue];
 		}
 	}
@@ -2363,6 +2367,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 	iterationP: Promise<ChildrenIteratorResult>,
 	initial: boolean,
 ): Promise<void> {
+	ctx.f |= IsInAsyncGenLoop;
 	let done = false;
 	try {
 		while (!done) {
@@ -2376,9 +2381,11 @@ async function runAsyncGenComponent<TNode, TResult>(
 			ctx.inflightValue = new Promise(
 				(resolve1, reject1) => ((resolve = resolve1), (reject = reject1)),
 			);
-			if (ctx.f & IsUpdating || ctx.f & IsRefreshing) {
-				ctx.inflightValue.catch(NOOP);
-			}
+			ctx.inflightValue.catch((err) => {
+				if (!(ctx.f & IsUpdating) && !(ctx.f & IsRefreshing)) {
+					throw err;
+				}
+			});
 
 			let iteration: ChildrenIteratorResult;
 			try {
@@ -2398,12 +2405,13 @@ async function runAsyncGenComponent<TNode, TResult>(
 			let diff: Promise<undefined> | undefined;
 			try {
 				if (
+					!initial &&
+					!done &&
 					!(ctx.f & NeedsToYield) &&
 					ctx.f & PropsAvailable &&
-					ctx.f & IsInForAwaitOfLoop &&
-					!initial &&
-					!done
+					ctx.f & IsInForAwaitOfLoop
 				) {
+					// logic to skip yielded children in a stale for await of iteration.
 					diff = undefined;
 				} else {
 					diff = diffComponentChildren<TNode, TResult>(ctx, iteration.value!);
@@ -2417,20 +2425,16 @@ async function runAsyncGenComponent<TNode, TResult>(
 			}
 
 			if (diff) {
-				diff.then(
-					() => {
-						if (!(ctx.f & IsUpdating) && !(ctx.f & IsRefreshing)) {
-							commitComponent(ctx);
-						}
-					},
-					() => {},
-				);
+				diff.then((): undefined => {
+					if (!(ctx.f & IsUpdating) && !(ctx.f & IsRefreshing)) {
+						commitComponent(ctx);
+					}
+				}, NOOP);
 			} else {
 				if (!(ctx.f & IsUpdating) && !(ctx.f & IsRefreshing)) {
 					commitComponent(ctx);
 				}
 			}
-
 			const oldResult = new Promise((resolve) => ctx.owner.schedule(resolve));
 			if (ctx.f & IsUnmounted) {
 				if (ctx.f & IsInForAwaitOfLoop) {
@@ -2464,6 +2468,8 @@ async function runAsyncGenComponent<TNode, TResult>(
 			ctx.f &= ~IsAsyncGen;
 			ctx.iterator = undefined;
 		}
+
+		ctx.f &= ~IsInAsyncGenLoop;
 	}
 }
 
@@ -2724,6 +2730,37 @@ function handleChildError<TNode>(
 
 	return diffComponentChildren(ctx, iteration.value as Children);
 }
+
+//function propagateError<TNode>(
+//	ctx: ContextImpl<TNode, unknown, TNode>,
+//	err: unknown,
+//): Promise<undefined> | undefined {
+//	let diff: Promise<undefined> | undefined;
+//	try {
+//		diff = handleChildError(ctx, err);
+//	} catch (err) {
+//		if (!ctx.parent) {
+//			throw err;
+//		}
+//
+//		return propagateError<TNode>(ctx.parent, err);
+//	}
+//
+//	if (isPromiseLike(diff)) {
+//		return diff.then(
+//			(): undefined => {
+//				commitComponent(ctx);
+//			},
+//			(err) => {
+//				if (!ctx.parent) {
+//					throw err;
+//				}
+//
+//				return propagateError<TNode>(ctx.parent, err);
+//			},
+//		);
+//	}
+//}
 
 // TODO: uncomment and use in the Element interface below
 // type CrankElement = Element;
