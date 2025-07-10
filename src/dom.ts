@@ -57,8 +57,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 			typeof tag === "string" &&
 			tag.toUpperCase() !== (node as Element).tagName
 		) {
-			// TODO: consider pros and cons of hydration warnings
-			//console.error(`Expected <${tag}> while hydrating but found:`, node);
+			console.error(`Expected <${tag}> while hydrating but found:`, node);
 			return undefined;
 		}
 
@@ -310,9 +309,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 		if (hydrationData != null) {
 			let value = hydrationData.children.shift();
 			if (typeof value !== "string" || !value.startsWith(text)) {
-				// pass
-				// TODO: consider pros and cons of hydration warnings
-				//console.error(`Expected "${text}" while hydrating but found:`, value);
+				console.error(`Expected "${text}" while hydrating but found:`, value);
 			} else if (text.length < value.length) {
 				// TODO: The core library should concatenate text before calling this to prevent having to unshift hydration data
 				value = value.slice(text.length);
