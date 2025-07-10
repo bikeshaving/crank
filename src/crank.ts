@@ -61,7 +61,7 @@ export type TagProps<TTag extends Tag> = TTag extends string
 /*** FLAG HELPER FUNCTIONS ***/
 /**
  * Sets or clears a flag on an object with an 'f' bitmask property.
- * 
+ *
  * @param obj - Object with an 'f' number property
  * @param flag - The flag value to set or clear
  * @param value - Whether to set (true) or clear (false) the flag. Defaults to true.
@@ -76,7 +76,7 @@ function setFlag(obj: {f: number}, flag: number, value = true): void {
 
 /**
  * Tests whether a flag is set on an object with an 'f' bitmask property.
- * 
+ *
  * @param obj - Object with an 'f' number property
  * @param flag - The flag value to test
  * @returns True if the flag is set, false otherwise
@@ -413,8 +413,6 @@ function normalize<TNode>(
 /*** RETAINER FLAGS ***/
 const HasCommitted = 1 << 0;
 const IsCopied = 2 << 0;
-
-
 
 /**
  * @internal
@@ -2154,7 +2152,8 @@ function enqueueComponentRun<TNode, TResult>(
 		// simply return the current inflight value. Otherwise, we have to wait for
 		// the bottom of the loop to be reached before returning the inflight
 		// value.
-		const isAtLoopBottom = getFlag(ctx, IsInForAwaitOfLoop) && !ctx.onPropsProvided;
+		const isAtLoopBottom =
+			getFlag(ctx, IsInForAwaitOfLoop) && !ctx.onPropsProvided;
 		resumePropsAsyncIterator(ctx);
 		if (isAtLoopBottom) {
 			if (ctx.inflightBlock == null) {
