@@ -1319,9 +1319,10 @@ const IsScheduling = 1 << 10;
  */
 const IsSchedulingRefresh = 1 << 11;
 
+/**
+ * A flag which is set when the component is currently refreshing.
+ */
 const IsRefreshing = 1 << 12;
-
-const IsInAsyncGenLoop = 1 << 13;
 
 export interface Context extends Crank.Context {}
 
@@ -1383,7 +1384,7 @@ class ContextImpl<
 	declare ret: Retainer<TNode>;
 
 	/**
-	 * The iterator returned by the component function.
+	 * Any iterator returned by a component function.
 	 *
 	 * Existence of this property implies that the component is a generator
 	 * component. It is deleted when a component is returned.
@@ -1393,27 +1394,15 @@ class ContextImpl<
 		| AsyncIterator<Children, Children | void, unknown>
 		| undefined;
 
-	// The following callbacks are used to implement the Context async iterator.
-	declare onProps: ((props: Record<string, any>) => unknown) | undefined;
-	declare onPropsRequested: Function | undefined;
-
-	// A "block" is a promise which represents the duration during which new
-	// updates are queued, whereas a "diff" is a promise which settles when all
-	// child components have settled. This can be different for different types
-	// of components:
-	// - sync function components never block and pass new updates to children
-	//   immediately
-	// - async functions block while the component is running
-	// - sync generator components will block while children are running, because
-	//   they must be resumed with previous children
-	// - async generator components block like sync generator components when
-	//   using a for of props iterator, but block on next props requested when
-	//   using a for await of iterator, and block while the component is running
-	//   otherwise.
+	// See runComponent() for a description of these properties.
 	declare inflightBlock: Promise<unknown> | undefined;
 	declare inflightDiff: Promise<any> | undefined;
 	declare enqueuedBlock: Promise<unknown> | undefined;
 	declare enqueuedDiff: Promise<any> | undefined;
+	declare onPropsProvided:
+		| ((props: Record<string, any>) => unknown)
+		| undefined;
+	declare onPropsRequested: Function | undefined;
 
 	constructor(
 		renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
@@ -1433,11 +1422,13 @@ class ContextImpl<
 		this.ret = ret;
 
 		this.iterator = undefined;
+
 		this.inflightBlock = undefined;
 		this.inflightDiff = undefined;
 		this.enqueuedBlock = undefined;
 		this.enqueuedDiff = undefined;
-		this.onProps = undefined;
+
+		this.onPropsProvided = undefined;
 		this.onPropsRequested = undefined;
 	}
 }
@@ -1528,7 +1519,9 @@ export class Context<T = any, TResult = any> implements EventTarget {
 					ctx.f &= ~PropsAvailable;
 					yield ctx.ret.el.props as ComponentProps<T>;
 				} else {
-					const props = await new Promise((resolve) => (ctx.onProps = resolve));
+					const props = await new Promise(
+						(resolve) => (ctx.onPropsProvided = resolve),
+					);
 					if (ctx.f & IsUnmounted) {
 						break;
 					}
@@ -2132,9 +2125,9 @@ function enqueueComponentRun<TNode, TResult>(
 		// simply return the current inflight value. Otherwise, we have to wait for
 		// the bottom of the loop to be reached before returning the inflight
 		// value.
-		const isAtLoopbottom = ctx.f & IsInForAwaitOfLoop && !ctx.onProps;
+		const isAtLoopBottom = ctx.f & IsInForAwaitOfLoop && !ctx.onPropsProvided;
 		resumePropsAsyncIterator(ctx);
-		if (isAtLoopbottom) {
+		if (isAtLoopBottom) {
 			if (ctx.inflightBlock == null) {
 				ctx.inflightBlock = new Promise(
 					(resolve) => (ctx.onPropsRequested = resolve),
@@ -2199,10 +2192,11 @@ function advanceComponent(ctx: ContextImpl): void {
  * the different component types. We cannot identify whether a component is a
  * generator or async without calling it and inspecting the return value.
  *
- * @returns {[block, value]} A tuple where
- * block - A possible promise which represents the duration during which the
- * component is blocked from updating.
- * value - A possible promise resolving to the rendered value of children.
+ * @returns {[block, diff]} A tuple where
+ * - block is a promise or undefined which represents the duration during which the
+ *   component component will enqueue further updates.
+ * - diff is a promise or undefined which settles when all children have
+ *   diffed.
  *
  * Each component type will block according to the type of the component.
  * - Sync function components never block and will transparently pass updates
@@ -2211,6 +2205,13 @@ function advanceComponent(ctx: ContextImpl): void {
  * executing itself, but will not block for async children.
  * - Sync generator components block while any children are executing, because
  * they are expected to only resume when they’ve actually rendered.
+ * - Async generator components block depending on what kind of props iterator
+ *   they use:
+ *   - for...of loops behave like sync generator components, blocking
+ *     while the component or its children are executing
+ *   - for await...of loops block while new props have yet been requested
+ *   - async generator components not using a props iterator block while
+ *     executing
  */
 function runComponent<TNode, TResult>(
 	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
@@ -2338,7 +2339,6 @@ function runComponent<TNode, TResult>(
 				throw new Error("Mixed generator component");
 			}
 
-			const block = iteration.catch(NOOP);
 			const diff = iteration.then(
 				(iteration) => {
 					let diff: Promise<undefined> | undefined;
@@ -2367,15 +2367,14 @@ function runComponent<TNode, TResult>(
 				},
 			);
 
-			return [block, diff];
+			return [diff.catch(NOOP), diff];
 		} else {
-			if (!(ctx.f & IsInAsyncGenLoop)) {
-				runAsyncGenComponent(
-					ctx,
-					iteration as Promise<ChildrenIteratorResult>,
-					initial,
-				);
-			}
+			// initializes the async generator loop
+			runAsyncGenComponent(
+				ctx,
+				iteration as Promise<ChildrenIteratorResult>,
+				initial,
+			);
 			return [ctx.inflightBlock, ctx.inflightDiff];
 		}
 	} else {
@@ -2388,7 +2387,6 @@ async function runAsyncGenComponent<TNode, TResult>(
 	iterationP: Promise<ChildrenIteratorResult>,
 	initial: boolean,
 ): Promise<void> {
-	ctx.f |= IsInAsyncGenLoop;
 	let done = false;
 	try {
 		while (!done) {
@@ -2491,16 +2489,14 @@ async function runAsyncGenComponent<TNode, TResult>(
 			ctx.f &= ~IsAsyncGen;
 			ctx.iterator = undefined;
 		}
-
-		ctx.f &= ~IsInAsyncGenLoop;
 	}
 }
 
 /** Called to resume the props async iterator for async generator components. */
 function resumePropsAsyncIterator(ctx: ContextImpl): void {
-	if (ctx.onProps) {
-		ctx.onProps(ctx.ret.el.props);
-		ctx.onProps = undefined;
+	if (ctx.onPropsProvided) {
+		ctx.onPropsProvided(ctx.ret.el.props);
+		ctx.onPropsProvided = undefined;
 		ctx.f &= ~PropsAvailable;
 	} else {
 		ctx.f |= PropsAvailable;
