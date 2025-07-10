@@ -584,4 +584,35 @@ test("nested async generator function throws independently", async () => {
 	}
 });
 
+test("nested async generator throws independently can be caught by parent", async () => {
+	async function* Thrower(this: Context): AsyncGenerator<Child> {
+		for await ({} of this) {
+			yield <div>Hello</div>;
+			throw new Error(
+				"nested async generator throws independently can be caught by parent",
+			);
+		}
+	}
+
+	function PassThrough() {
+		return <Thrower />;
+	}
+
+	const mock = Sinon.fake();
+	function* Component(this: Context): Generator<Child> {
+		for ({} of this) {
+			try {
+				yield <PassThrough />;
+			} catch (err) {
+				mock();
+				return <span>Error</span>;
+			}
+		}
+	}
+
+	await renderer.render(<Component />, document.body);
+	Assert.is(document.body.innerHTML, "<span>Error</span>");
+	Assert.is(mock.callCount, 1);
+});
+
 test.run();

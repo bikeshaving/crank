@@ -2390,15 +2390,13 @@ async function runAsyncGenComponent<TNode, TResult>(
 			ctx.inflightValue = new Promise(
 				(resolve1, reject1) => ((resolve = resolve1), (reject = reject1)),
 			);
-			ctx.inflightValue.catch((err) => {
-				// TODO: IsUpdating flag is incorrectly set when an async generator
-				// component immediately throws an error after a yield for an update.
-				if (/* !(ctx.f & IsUpdating) && */ !(ctx.f & IsRefreshing)) {
-					// The component is not being handled by a refresh() or render() call
-					// so we have to cause an unhandled promise rejection.
-					throw err;
-				}
-			});
+			if (ctx.parent && !(ctx.f & IsRefreshing)) {
+				ctx.inflightValue.catch((err) => {
+					if (!(ctx.f & IsRefreshing)) {
+						return propagateError(ctx.parent!, err);
+					}
+				});
+			}
 
 			let iteration: ChildrenIteratorResult;
 			try {
@@ -2762,6 +2760,7 @@ function propagateError<TNode, TResult>(
 	if (isPromiseLike(diff)) {
 		return diff.then(
 			() => {
+				ctx.f &= ~IsUpdating;
 				commitComponent(ctx);
 				return ctx.renderer.read(getValue(ctx.ret));
 			},
@@ -2775,6 +2774,7 @@ function propagateError<TNode, TResult>(
 		);
 	}
 
+	ctx.f &= ~IsUpdating;
 	commitComponent(ctx);
 	return ctx.renderer.read(getValue(ctx.ret));
 }
