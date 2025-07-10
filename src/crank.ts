@@ -885,12 +885,12 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	const oldProps = ret.oldProps;
 	scope = renderer.scope(scope, tag, props)!;
 	
-	// During hydration, if we don't have a value yet, try to consume from hydrationData
+	// For host elements during hydration, consume next child from parent hydrationData
 	let childHydrationData: HydrationData<TNode> | undefined;
-	if (!value && hydrationData) {
+	if (!value && hydrationData && hydrationData.children.length > 0) {
 		const nextChild = hydrationData.children.shift();
 		if (nextChild && typeof nextChild !== "string") {
-			// Try to hydrate this node - validate it matches our tag
+			// Try to hydrate this node - validate it matches our tag and get child hydration data
 			childHydrationData = renderer.hydrate(tag, nextChild as any, props);
 			if (childHydrationData) {
 				// Hydration succeeded, use this node
@@ -898,9 +898,6 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 			}
 			// If hydration failed, childHydrationData will be undefined and we'll create a new node below
 		}
-	} else if (value && hydrationData) {
-		// We already have a value (probably from a previous render), get hydration data for children
-		childHydrationData = renderer.hydrate(tag, value as any, props);
 	}
 	
 	const oldChildValues = getChildValues(ret);
