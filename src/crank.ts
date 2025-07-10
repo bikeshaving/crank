@@ -511,13 +511,6 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode | string> {
 	return values1;
 }
 
-export interface HydrationData<TNode> {
-	props: Record<string, unknown>;
-	children: Array<TNode | string>;
-}
-
-// TODO: go back to classic inheritance
-// TODO: Document the interface and methods
 export interface RendererImpl<
 	TNode,
 	TScope,
@@ -535,12 +528,6 @@ export interface RendererImpl<
 		props: TagProps<TTag>,
 		scope: TScope | undefined,
 	): TNode;
-
-	hydrate<TTag extends string | symbol>(
-		tag: TTag,
-		node: TNode | TRoot,
-		props: TagProps<TTag>,
-	): HydrationData<TNode> | undefined;
 
 	/**
 	 * Called when an element’s rendered value is exposed via render, schedule,
@@ -575,7 +562,7 @@ export interface RendererImpl<
 	text(
 		text: string,
 		scope: TScope | undefined,
-		hydration: HydrationData<TNode> | undefined,
+		hydration: Array<TNode | string> | undefined,
 	): string;
 
 	/**
@@ -589,7 +576,7 @@ export interface RendererImpl<
 	raw(
 		value: string | TNode,
 		scope: TScope | undefined,
-		hydration: HydrationData<TNode> | undefined,
+		hydration: Array<TNode | string> | undefined,
 	): ElementValue<TNode>;
 
 	patch<TTag extends string | symbol, TName extends string>(
@@ -617,14 +604,18 @@ export interface RendererImpl<
 	): unknown;
 
 	flush(root: TRoot): unknown;
+
+	reconcile<TTag extends string | symbol>(
+		node: TNode,
+		tag: TTag,
+		props: TagProps<TTag>,
+		scope: TScope | undefined,
+	): Array<TNode | string> | undefined;
 }
 
 const defaultRendererImpl: RendererImpl<unknown, unknown, unknown, unknown> = {
 	create() {
-		throw new Error("Not implemented");
-	},
-	hydrate() {
-		throw new Error("Not implemented");
+		throw new Error("Create not implemented");
 	},
 	scope: IDENTITY,
 	read: IDENTITY,
@@ -634,6 +625,9 @@ const defaultRendererImpl: RendererImpl<unknown, unknown, unknown, unknown> = {
 	arrange: NOOP,
 	dispose: NOOP,
 	flush: NOOP,
+	reconcile() {
+		throw new Error("reconcile must be implemented for hydration");
+	},
 };
 
 const _RendererImpl = Symbol.for("crank.RendererImpl");
@@ -764,7 +758,7 @@ export class Renderer<
 			return diff.then(() => {
 				// Get hydration data for the portal/root element
 				// This provides the initial DOM children that need to be hydrated
-				const hydrationData = impl.hydrate(Portal, root, ret.el.props);
+				const hydration = impl.reconcile(root, Portal, ret.el.props, scope);
 				return commitRootRender(
 					impl,
 					root,
@@ -772,12 +766,12 @@ export class Renderer<
 					ctx,
 					oldProps,
 					scope,
-					hydrationData,
+					hydration,
 				);
 			});
 		}
 
-		const hydrationData = impl.hydrate(Portal, root, ret.el.props);
+		const hydration = impl.reconcile(root, Portal, ret.el.props, scope);
 		return commitRootRender(
 			impl,
 			root,
@@ -785,7 +779,7 @@ export class Renderer<
 			ctx,
 			oldProps,
 			scope,
-			hydrationData,
+			hydration,
 		);
 	}
 }
@@ -798,7 +792,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	ctx: ContextImpl<TNode, TScope, TRoot, TResult> | undefined,
 	oldProps: Record<string, any> | undefined,
 	scope: TScope,
-	hydrationData?: HydrationData<TNode>,
+	hydration?: Array<TNode | string>,
 ): TResult {
 	const oldChildValues = getChildValues(ret);
 	const childValues = commitChildren(
@@ -807,7 +801,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 		ctx,
 		ret.children,
 		scope,
-		hydrationData,
+		hydration,
 	);
 	// element is a host or portal element
 	if (root != null) {
@@ -834,7 +828,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	ctx: ContextImpl<TNode, TScope, TRoot, TResult> | undefined,
 	children: Array<RetainerChild<TNode>> | RetainerChild<TNode>,
 	scope: TScope | undefined,
-	hydrationData?: HydrationData<TNode>,
+	hydration?: Array<TNode | string>,
 ): Array<TNode | string> {
 	const values: Array<ElementValue<TNode>> = [];
 	const children1 = normalize(wrap(children));
@@ -847,9 +841,9 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 		if (typeof child === "object") {
 			const el = child.el;
 			if (el.tag === Raw) {
-				values.push(commitRaw(renderer, child, ctx, scope, hydrationData));
+				values.push(commitRaw(renderer, child, ctx, scope, hydration));
 			} else if (child.ctx) {
-				values.push(commitComponent(child.ctx, hydrationData));
+				values.push(commitComponent(child.ctx, hydration));
 			} else if (el.tag === Fragment) {
 				values.push(
 					commitChildren(
@@ -858,20 +852,20 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 						ctx,
 						child.children,
 						scope,
-						hydrationData,
+						hydration,
 					),
 				);
 			} else {
 				// host element or portal element
 				values.push(
-					commitHostOrPortal(renderer, root, child, ctx, scope, hydrationData),
+					commitHostOrPortal(renderer, root, child, ctx, scope, hydration),
 				);
 			}
 
 			child.oldProps = undefined;
 			setFlag(child, HasCommitted);
 		} else if (typeof child === "string") {
-			const text = renderer.text(child, scope, hydrationData);
+			const text = renderer.text(child, scope, hydration);
 			values.push(text);
 		}
 	}
@@ -885,10 +879,10 @@ function commitRaw<TNode, TScope>(
 	ret: Retainer<TNode>,
 	ctx: ContextImpl<TNode, TScope, TNode, unknown> | undefined,
 	scope: TScope | undefined,
-	hydrationData: HydrationData<TNode> | undefined,
+	hydration: Array<TNode | string> | undefined,
 ): ElementValue<TNode> {
 	if (!ret.oldProps || ret.oldProps.value !== ret.el.props.value) {
-		ret.value = renderer.raw(ret.el.props.value as any, scope, hydrationData);
+		ret.value = renderer.raw(ret.el.props.value as any, scope, hydration);
 		if (typeof ret.el.ref === "function") {
 			ret.el.ref(renderer.read(ret.value));
 		}
@@ -904,7 +898,7 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	ret: Retainer<TNode>,
 	ctx: ContextImpl<TNode, TScope, TRoot, unknown> | undefined,
 	scope: TScope,
-	hydrationData: HydrationData<TNode> | undefined,
+	hydration: Array<TNode | string> | undefined,
 ): ElementValue<TNode> {
 	if (getFlag(ret, HasCommitted) && (ret.el.copy || getFlag(ret, IsCopied))) {
 		return getValue(ret);
@@ -917,17 +911,15 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	scope = renderer.scope(scope, tag, props)!;
 
 	// For host elements during hydration, consume next child from parent hydrationData
-	let childHydrationData: HydrationData<TNode> | undefined;
-	if (!value && hydrationData && hydrationData.children.length > 0) {
-		const nextChild = hydrationData.children.shift();
+	let childHydration: Array<TNode | string> | undefined;
+	if (!value && hydration && hydration.length > 0) {
+		const nextChild = hydration.shift();
 		if (nextChild && typeof nextChild !== "string") {
 			// Try to hydrate this node - validate it matches our tag and get child hydration data
-			childHydrationData = renderer.hydrate(tag, nextChild, props);
-			if (childHydrationData) {
-				// Hydration succeeded, use this node
+			childHydration = renderer.reconcile(nextChild, tag, props, scope);
+			if (childHydration) {
 				value = ret.value = nextChild as TNode;
 			}
-			// If hydration failed, childHydrationData will be undefined and we'll create a new node below
 		}
 	}
 
@@ -938,7 +930,7 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 		ctx,
 		ret.children,
 		scope,
-		childHydrationData,
+		childHydration,
 	);
 	let copiedProps: Set<string> | undefined;
 	if (tag !== Portal) {
@@ -2095,7 +2087,7 @@ function diffComponentChildren<TNode, TResult>(
 
 function commitComponent<TNode>(
 	ctx: ContextImpl<TNode, unknown, TNode>,
-	hydrationData?: HydrationData<TNode>,
+	hydration?: Array<TNode | string>,
 ): ElementValue<TNode> {
 	const values = commitChildren(
 		ctx.renderer,
@@ -2103,7 +2095,7 @@ function commitComponent<TNode>(
 		ctx,
 		ctx.ret.children,
 		ctx.scope,
-		hydrationData,
+		hydration,
 	);
 
 	if (getFlag(ctx, IsUnmounted)) {
