@@ -413,7 +413,6 @@ function normalize<TNode>(
 /*** RETAINER FLAGS ***/
 const HasCommitted = 1 << 0;
 const IsCopied = 1 << 1;
-const IsHydrating = 1 << 2;
 
 /**
  * @internal
@@ -457,8 +456,7 @@ class Retainer<TNode> {
 
 	declare onPending: Function | undefined;
 
-	/** Hydration data used during hydration to match against existing DOM nodes */
-	declare hydrationData: HydrationData<TNode> | undefined;
+
 
 	constructor(el: Element) {
 		this.f = 0;
@@ -470,7 +468,7 @@ class Retainer<TNode> {
 		this.oldProps = undefined;
 		this.pending = undefined;
 		this.onPending = undefined;
-		this.hydrationData = undefined;
+
 	}
 }
 
@@ -765,21 +763,17 @@ export class Renderer<
 		// Get hydration data for the portal/root element
 		// This provides the initial DOM children that need to be hydrated
 		const hydrationData = impl.hydrate(Portal, root, {});
-		ret.hydrationData = hydrationData;
 		
-		// Mark this retainer as hydrating - this flag will be propagated to children
-		setFlag(ret, IsHydrating);
-		
-		// Start the diffing process with hydration context
+		// Start the diffing process
 		const diff = diffChildren(impl, root, ret, ctx, scope, ret, children);
 
 		if (isPromiseLike(diff)) {
 			return diff.then(() => {
-				return commitRootRender(impl, root, ret!, ctx, oldProps, scope);
+				return commitRootRender(impl, root, ret!, ctx, oldProps, scope, hydrationData);
 			});
 		}
 
-		return commitRootRender(impl, root, ret!, ctx, oldProps, scope);
+		return commitRootRender(impl, root, ret!, ctx, oldProps, scope, hydrationData);
 	}
 }
 
@@ -791,9 +785,10 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	ctx: ContextImpl<TNode, TScope, TRoot, TResult> | undefined,
 	oldProps: Record<string, any> | undefined,
 	scope: TScope,
+	hydrationData?: HydrationData<TNode>,
 ): TResult {
 	const oldChildValues = getChildValues(ret);
-	const childValues = commitChildren(renderer, root, ctx, ret.children, scope, ret.hydrationData);
+	const childValues = commitChildren(renderer, root, ctx, ret.children, scope, hydrationData);
 	// element is a host or portal element
 	if (root != null) {
 		renderer.arrange(
@@ -836,10 +831,11 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 			} else if (typeof el.tag === "function") {
 				values.push(commitComponent(child.ctx!));
 			} else if (el.tag === Fragment) {
-				values.push(commitChildren(renderer, root, ctx, child.children, scope, child.hydrationData));
+				// Fragments use the same hydration data as their parent
+				values.push(commitChildren(renderer, root, ctx, child.children, scope, hydrationData));
 			} else {
 				// host element or portal element
-				values.push(commitHostOrPortal(renderer, root, child, ctx, scope));
+				values.push(commitHostOrPortal(renderer, root, child, ctx, scope, hydrationData));
 			}
 
 			child.oldProps = undefined;
@@ -877,6 +873,7 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	ret: Retainer<TNode>,
 	ctx: ContextImpl<TNode, TScope, TRoot, unknown> | undefined,
 	scope: TScope,
+	hydrationData?: HydrationData<TNode>,
 ): ElementValue<TNode> {
 	if (getFlag(ret, HasCommitted) && (ret.el.copy || getFlag(ret, IsCopied))) {
 		return getValue(ret);
@@ -887,8 +884,27 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	let props = ret.el.props;
 	const oldProps = ret.oldProps;
 	scope = renderer.scope(scope, tag, props)!;
+	
+	// During hydration, if we don't have a value yet, try to consume from hydrationData
+	let childHydrationData: HydrationData<TNode> | undefined;
+	if (!value && hydrationData) {
+		const nextChild = hydrationData.children.shift();
+		if (nextChild && typeof nextChild !== "string") {
+			// Try to hydrate this node - validate it matches our tag
+			childHydrationData = renderer.hydrate(tag, nextChild as any, props);
+			if (childHydrationData) {
+				// Hydration succeeded, use this node
+				value = ret.value = nextChild as TNode;
+			}
+			// If hydration failed, childHydrationData will be undefined and we'll create a new node below
+		}
+	} else if (value && hydrationData) {
+		// We already have a value (probably from a previous render), get hydration data for children
+		childHydrationData = renderer.hydrate(tag, value as any, props);
+	}
+	
 	const oldChildValues = getChildValues(ret);
-	const childValues = commitChildren(renderer, root, ctx, ret.children, scope, ret.hydrationData);
+	const childValues = commitChildren(renderer, root, ctx, ret.children, scope, childHydrationData);
 	let copiedProps: Set<string> | undefined;
 	if (tag !== Portal) {
 		if (value == null) {
@@ -937,18 +953,7 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	return getValue(ret);
 }
 
-/**
- * Helper function to get the next hydration child from a parent retainer.
- * During hydration, this consumes children from the parent's hydration data in order.
- * Returns undefined if not in hydration mode or no more children available.
- */
-function getNextHydrationChild<TNode>(parent: Retainer<TNode>): TNode | string | undefined {
-	if (!getFlag(parent, IsHydrating) || !parent.hydrationData || !parent.hydrationData.children.length) {
-		return undefined;
-	}
-	
-	return parent.hydrationData.children.shift();
-}
+
 
 function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
@@ -1028,22 +1033,6 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					if (child.copy) {
 						childCopied = true;
 					}
-					
-					// Propagate hydration flag and assign DOM node for reused retainers during hydration
-					if (getFlag(parent, IsHydrating)) {
-						setFlag(ret, IsHydrating);
-						
-						// For host elements, assign the next available DOM node during hydration if not already set
-						if (typeof child.tag !== "function" && child.tag !== Fragment && child.tag !== Raw && !ret.value) {
-							const hydrationChild = getNextHydrationChild(parent);
-							if (hydrationChild && typeof hydrationChild !== "string") {
-								ret.value = hydrationChild;
-							} else if (typeof child.tag === "string" || typeof child.tag === "symbol") {
-								// If we can't get a hydration child for a host element, fall back to regular rendering
-								setFlag(ret, IsHydrating, false);
-							}
-						}
-					}
 				} else {
 					if (typeof ret === "object") {
 						(graveyard = graveyard || []).push(ret);
@@ -1052,22 +1041,6 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					const fallback = ret;
 					ret = new Retainer<TNode>(child);
 					ret.fallback = fallback;
-					
-					// Propagate hydration flag from parent to child retainers
-					if (getFlag(parent, IsHydrating)) {
-						setFlag(ret, IsHydrating);
-						
-						// For host elements, assign the next available DOM node during hydration
-						if (typeof child.tag !== "function" && child.tag !== Fragment && child.tag !== Raw) {
-							const hydrationChild = getNextHydrationChild(parent);
-							if (hydrationChild && typeof hydrationChild !== "string") {
-								ret.value = hydrationChild;
-							} else if (typeof child.tag === "string" || typeof child.tag === "symbol") {
-								// If we can't get a hydration child for a host element, fall back to regular rendering
-								setFlag(ret, IsHydrating, false);
-							}
-						}
-					}
 				}
 
 				if (child.copy && getFlag(ret, HasCommitted)) {
@@ -1227,19 +1200,6 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 	}
 
 	scope = renderer.scope(scope, tag, el.props);
-	
-	// During hydration, populate hydration data for host elements
-	if (getFlag(ret, IsHydrating) && ret.value && !ret.hydrationData) {
-		ret.hydrationData = renderer.hydrate(tag, ret.value as any, el.props);
-		
-		// If hydration fails (mismatched tag), fall back to regular rendering
-		if (!ret.hydrationData) {
-			// Clear the value so it gets created normally
-			ret.value = undefined;
-			// Clear the hydration flag for this subtree
-			setFlag(ret, IsHydrating, false);
-		}
-	}
 	
 	return diffChildren(
 		renderer,
@@ -2054,12 +2014,6 @@ function diffComponent<TNode, TScope, TRoot extends TNode, TResult>(
 		ctx = ret.ctx = new ContextImpl(renderer, root, host, parent, scope, ret);
 	}
 
-	// Propagate hydration flag to component retainer
-	if (getFlag(ret, IsHydrating)) {
-		// Components don't have hydration data themselves, but their children might need it
-		// The hydration flag is already propagated when the retainer was created
-	}
-
 	setFlag(ctx, IsUpdating);
 	return enqueueComponentRun(ctx);
 }
@@ -2115,7 +2069,6 @@ function commitComponent<TNode>(
 		ctx,
 		ctx.ret.children,
 		ctx.scope,
-		ctx.ret.hydrationData,
 	);
 	if (getFlag(ctx, IsUnmounted)) {
 		return;
