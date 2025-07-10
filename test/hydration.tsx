@@ -86,7 +86,7 @@ test("sync generator component", () => {
 	Assert.ok(onclick.called);
 });
 
-test.skip("refresh", () => {
+test("refresh", () => {
 	document.body.innerHTML = "<button>Click</button>";
 	const button = document.body.firstChild as HTMLButtonElement;
 
@@ -119,7 +119,7 @@ test.skip("refresh", () => {
 	Assert.is(document.body.firstChild, button);
 });
 
-test.skip("async function component", async () => {
+test("async function component", async () => {
 	document.body.innerHTML = "<button>Click</button>";
 	const button = document.body.firstChild as HTMLButtonElement;
 
