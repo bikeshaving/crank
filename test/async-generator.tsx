@@ -161,7 +161,7 @@ test("Fragment parent", async () => {
 	Assert.is(document.body.innerHTML, "2");
 });
 
-test("yield resumes with a promsie of an element", async () => {
+test("yield resumes with a promise of an element", async () => {
 	let nodeP: Promise<HTMLElement> | undefined;
 	async function* Component(this: Context) {
 		let i = 0;
