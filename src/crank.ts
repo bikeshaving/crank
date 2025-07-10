@@ -387,6 +387,33 @@ function normalize<TNode>(
 const HasCommitted = 1 << 0;
 const IsCopied = 1 << 1;
 
+/*** FLAG HELPER FUNCTIONS ***/
+/**
+ * Sets or clears a flag on an object with an 'f' bitmask property.
+ * 
+ * @param obj - Object with an 'f' number property
+ * @param flag - The flag value to set or clear
+ * @param value - Whether to set (true) or clear (false) the flag. Defaults to true.
+ */
+function setFlag(obj: {f: number}, flag: number, value = true): void {
+	if (value) {
+		obj.f |= flag;
+	} else {
+		obj.f &= ~flag;
+	}
+}
+
+/**
+ * Tests whether a flag is set on an object with an 'f' bitmask property.
+ * 
+ * @param obj - Object with an 'f' number property
+ * @param flag - The flag value to test
+ * @returns True if the flag is set, false otherwise
+ */
+function getFlag(obj: {f: number}, flag: number): boolean {
+	return !!(obj.f & flag);
+}
+
 /**
  * @internal
  * The internal nodes which are cached and diffed against new elements when
@@ -773,7 +800,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	}
 	flush(renderer, root);
 
-	ret.f |= HasCommitted;
+	setFlag(ret, HasCommitted);
 	return renderer.read(unwrap(childValues));
 }
 
