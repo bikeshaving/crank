@@ -248,21 +248,25 @@ test("async generator throws independently", async () => {
 		throw new Error("async generator throws independently");
 	}
 
-	const mock = Sinon.fake();
+	let resolve: (err: Error) => void;
+	const err = new Promise<Error>((resolve1) => {
+		resolve = resolve1;
+	});
+	const handler = (ev: PromiseRejectionEvent) => {
+		if (ev.reason.message === "async generator throws independently") {
+			ev.preventDefault();
+			resolve(ev.reason);
+		}
+	};
 	try {
-		window.addEventListener("unhandledrejection", (ev) => {
-			if (ev.reason.message === "async generator throws independently") {
-				ev.preventDefault();
-				mock();
-			}
-		});
+		window.addEventListener("unhandledrejection", handler);
 
 		await renderer.render(<Thrower />, document.body);
-		await new Promise((resolve) => setTimeout(resolve, 20));
+		await new Promise((resolve) => setTimeout(resolve, 100));
 		Assert.is(document.body.innerHTML, "3");
-		Assert.is(mock.callCount, 1);
+		Assert.is((await err).message, "async generator throws independently");
 	} finally {
-		window.removeEventListener("unhandledrejection", mock);
+		window.removeEventListener("unhandledrejection", handler);
 	}
 });
 
