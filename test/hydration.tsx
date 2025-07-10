@@ -19,7 +19,7 @@ test.after.each(() => {
 	consoleError.restore();
 });
 
-test.skip("simple", () => {
+test("simple", () => {
 	document.body.innerHTML = "<button>Click</button>";
 	const button = document.body.firstChild as HTMLButtonElement;
 	const onclick = Sinon.fake();
@@ -299,8 +299,9 @@ test.skip("split text", async () => {
 	Assert.is(document.body.firstChild!.childNodes[1], button);
 });
 
-test.skip("mismatched tag", () => {
+test("mismatched tag", () => {
 	document.body.innerHTML = "<div>Hello</div>";
+	const onclick = Sinon.fake();
 	const Component = Sinon.fake(function () {
 		return <button onclick={onclick}>Click</button>;
 	});
@@ -311,7 +312,7 @@ test.skip("mismatched tag", () => {
 	Assert.is(consoleError.callCount, 1);
 });
 
-test.skip("mismatched text", () => {
+test("mismatched text", () => {
 	document.body.innerHTML = "<button>Do not click</button>";
 	const button = document.body.firstChild as HTMLButtonElement;
 	const onclick = Sinon.fake();
