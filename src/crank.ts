@@ -413,6 +413,7 @@ function normalize<TNode>(
 /*** RETAINER FLAGS ***/
 const HasCommitted = 1 << 0;
 const IsCopied = 1 << 1;
+const IsHydrating = 1 << 2;
 
 /**
  * @internal
@@ -456,6 +457,9 @@ class Retainer<TNode> {
 
 	declare onPending: Function | undefined;
 
+	/** Hydration data used during hydration to match against existing DOM nodes */
+	declare hydrationData: HydrationData<TNode> | undefined;
+
 	constructor(el: Element) {
 		this.f = 0;
 		this.el = el;
@@ -466,6 +470,7 @@ class Retainer<TNode> {
 		this.oldProps = undefined;
 		this.pending = undefined;
 		this.onPending = undefined;
+		this.hydrationData = undefined;
 	}
 }
 
@@ -729,48 +734,50 @@ export class Renderer<
 	}
 
 	hydrate(
-		_children: Children,
-		_root: TRoot,
-		_bridge?: Context | undefined,
+		children: Children,
+		root: TRoot,
+		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
-		throw new Error("Reimplement hydration");
-		//const impl = this[_RendererImpl];
-		//const ctx = bridge && (bridge[_ContextImpl] as ContextImpl<TNode>);
-		//let ret: Retainer<TNode> | undefined;
-		//ret = this.cache.get(root);
-		//if (ret !== undefined) {
-		//	// If there is a retainer for the root, hydration is not necessary.
-		//	return this.render(children, root, bridge);
-		//}
+		let ret: Retainer<TNode> | undefined;
+		const ctx =
+			bridge &&
+			(bridge[_ContextImpl] as ContextImpl<TNode, TScope, TRoot, TResult>);
+		if (typeof root === "object" && root !== null) {
+			ret = this.cache.get(root);
+		}
 
-		//let oldProps: Record<string, any> | undefined;
-		//ret = new Retainer(createElement(Portal, {children, root}));
-		//ret.value = root;
-		//if (typeof root === "object" && root !== null && children != null) {
-		//	this.cache.set(root, ret);
-		//}
+		// If there is already a retainer for the root, hydration is not necessary.
+		if (ret !== undefined) {
+			return this.render(children, root, bridge);
+		}
 
-		//const hydrationData = impl.hydrate(Portal, root, {});
-		//const childValues = diffChildren(
-		//	impl,
-		//	root,
-		//	ret,
-		//	ctx,
-		//	impl.scope(undefined, Portal, ret.el.props),
-		//	ret,
-		//	children,
-		//	hydrationData,
-		//);
+		let oldProps: Record<string, any> | undefined;
+		ret = new Retainer(createElement(Portal, {children, root}));
+		ret.value = root;
+		ret.ctx = ctx;
+		if (typeof root === "object" && root !== null && children != null) {
+			this.cache.set(root, ret);
+		}
 
-		//// We return the child values of the portal because portal elements
-		//// themselves have no readable value.
-		//if (isPromiseLike(childValues)) {
-		//	return childValues.then((childValues) =>
-		//		commitRootRender(impl, root, ctx, ret!, childValues, oldProps),
-		//	);
-		//}
+		const impl = this[_RendererImpl];
+		const scope = impl.scope(undefined, Portal, ret.el.props);
+		
+		// Get hydration data for the portal/root
+		const hydrationData = impl.hydrate(Portal, root, {});
+		ret.hydrationData = hydrationData;
+		
+		// Mark this retainer as hydrating
+		setFlag(ret, IsHydrating);
+		
+		const diff = diffChildren(impl, root, ret, ctx, scope, ret, children);
 
-		//return commitRootRender(impl, root, ctx, ret, childValues, oldProps);
+		if (isPromiseLike(diff)) {
+			return diff.then(() => {
+				return commitRootRender(impl, root, ret!, ctx, oldProps, scope);
+			});
+		}
+
+		return commitRootRender(impl, root, ret!, ctx, oldProps, scope);
 	}
 }
 
@@ -784,7 +791,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	scope: TScope,
 ): TResult {
 	const oldChildValues = getChildValues(ret);
-	const childValues = commitChildren(renderer, root, ctx, ret.children, scope);
+	const childValues = commitChildren(renderer, root, ctx, ret.children, scope, ret.hydrationData);
 	// element is a host or portal element
 	if (root != null) {
 		renderer.arrange(
@@ -810,6 +817,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	ctx: ContextImpl<TNode, TScope, TRoot, TResult> | undefined,
 	children: Array<RetainerChild<TNode>> | RetainerChild<TNode>,
 	scope: TScope | undefined,
+	hydrationData?: HydrationData<TNode>,
 ): Array<TNode | string> {
 	const values: Array<ElementValue<TNode>> = [];
 	const children1 = wrap(children);
@@ -822,11 +830,11 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 		if (typeof child === "object") {
 			const el = child.el;
 			if (el.tag === Raw) {
-				values.push(commitRaw(renderer, child, ctx, scope));
+				values.push(commitRaw(renderer, child, ctx, scope, hydrationData));
 			} else if (typeof el.tag === "function") {
 				values.push(commitComponent(child.ctx!));
 			} else if (el.tag === Fragment) {
-				values.push(commitChildren(renderer, root, ctx, child.children, scope));
+				values.push(commitChildren(renderer, root, ctx, child.children, scope, child.hydrationData));
 			} else {
 				// host element or portal element
 				values.push(commitHostOrPortal(renderer, root, child, ctx, scope));
@@ -835,7 +843,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 			child.oldProps = undefined;
 			setFlag(child, HasCommitted);
 		} else if (typeof child === "string") {
-			const text = renderer.text(child, scope, undefined);
+			const text = renderer.text(child, scope, hydrationData);
 			values.push(text);
 		}
 	}
@@ -848,9 +856,10 @@ function commitRaw<TNode, TScope>(
 	ret: Retainer<TNode>,
 	ctx: ContextImpl<TNode, TScope, TNode, unknown> | undefined,
 	scope: TScope | undefined,
+	hydrationData?: HydrationData<TNode>,
 ): ElementValue<TNode> {
 	if (!ret.oldProps || ret.oldProps.value !== ret.el.props.value) {
-		ret.value = renderer.raw(ret.el.props.value as any, scope, undefined);
+		ret.value = renderer.raw(ret.el.props.value as any, scope, hydrationData);
 		if (typeof ret.el.ref === "function") {
 			ret.el.ref(renderer.read(ret.value));
 		}
@@ -877,7 +886,7 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	const oldProps = ret.oldProps;
 	scope = renderer.scope(scope, tag, props)!;
 	const oldChildValues = getChildValues(ret);
-	const childValues = commitChildren(renderer, root, ctx, ret.children, scope);
+	const childValues = commitChildren(renderer, root, ctx, ret.children, scope, ret.hydrationData);
 	let copiedProps: Set<string> | undefined;
 	if (tag !== Portal) {
 		if (value == null) {
@@ -924,6 +933,18 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	}
 
 	return getValue(ret);
+}
+
+/**
+ * Helper function to get the next hydration child from a parent retainer.
+ * During hydration, this consumes children from the parent's hydration data.
+ */
+function getNextHydrationChild<TNode>(parent: Retainer<TNode>): TNode | string | undefined {
+	if (!getFlag(parent, IsHydrating) || !parent.hydrationData) {
+		return undefined;
+	}
+	
+	return parent.hydrationData.children.shift();
 }
 
 function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
@@ -1004,6 +1025,22 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					if (child.copy) {
 						childCopied = true;
 					}
+					
+					// Propagate hydration flag and assign DOM node for reused retainers during hydration
+					if (getFlag(parent, IsHydrating)) {
+						setFlag(ret, IsHydrating);
+						
+						// For host elements, assign the next available DOM node during hydration if not already set
+						if (typeof child.tag !== "function" && child.tag !== Fragment && child.tag !== Raw && !ret.value) {
+							const hydrationChild = getNextHydrationChild(parent);
+							if (hydrationChild && typeof hydrationChild !== "string") {
+								ret.value = hydrationChild;
+							} else if (typeof child.tag === "string" || typeof child.tag === "symbol") {
+								// If we can't get a hydration child for a host element, fall back to regular rendering
+								setFlag(ret, IsHydrating, false);
+							}
+						}
+					}
 				} else {
 					if (typeof ret === "object") {
 						(graveyard = graveyard || []).push(ret);
@@ -1012,6 +1049,22 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					const fallback = ret;
 					ret = new Retainer<TNode>(child);
 					ret.fallback = fallback;
+					
+					// Propagate hydration flag from parent to child retainers
+					if (getFlag(parent, IsHydrating)) {
+						setFlag(ret, IsHydrating);
+						
+						// For host elements, assign the next available DOM node during hydration
+						if (typeof child.tag !== "function" && child.tag !== Fragment && child.tag !== Raw) {
+							const hydrationChild = getNextHydrationChild(parent);
+							if (hydrationChild && typeof hydrationChild !== "string") {
+								ret.value = hydrationChild;
+							} else if (typeof child.tag === "string" || typeof child.tag === "symbol") {
+								// If we can't get a hydration child for a host element, fall back to regular rendering
+								setFlag(ret, IsHydrating, false);
+							}
+						}
+					}
 				}
 
 				if (child.copy && getFlag(ret, HasCommitted)) {
@@ -1171,6 +1224,20 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 	}
 
 	scope = renderer.scope(scope, tag, el.props);
+	
+	// During hydration, populate hydration data for host elements
+	if (getFlag(ret, IsHydrating) && ret.value && !ret.hydrationData) {
+		ret.hydrationData = renderer.hydrate(tag, ret.value as any, el.props);
+		
+		// If hydration fails (mismatched tag), fall back to regular rendering
+		if (!ret.hydrationData) {
+			// Clear the value so it gets created normally
+			ret.value = undefined;
+			// Clear the hydration flag for this subtree
+			setFlag(ret, IsHydrating, false);
+		}
+	}
+	
 	return diffChildren(
 		renderer,
 		root,
@@ -1984,6 +2051,12 @@ function diffComponent<TNode, TScope, TRoot extends TNode, TResult>(
 		ctx = ret.ctx = new ContextImpl(renderer, root, host, parent, scope, ret);
 	}
 
+	// Propagate hydration flag to component retainer
+	if (getFlag(ret, IsHydrating)) {
+		// Components don't have hydration data themselves, but their children might need it
+		// The hydration flag is already propagated when the retainer was created
+	}
+
 	setFlag(ctx, IsUpdating);
 	return enqueueComponentRun(ctx);
 }
@@ -2039,6 +2112,7 @@ function commitComponent<TNode>(
 		ctx,
 		ctx.ret.children,
 		ctx.scope,
+		ctx.ret.hydrationData,
 	);
 	if (getFlag(ctx, IsUnmounted)) {
 		return;
