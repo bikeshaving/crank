@@ -456,8 +456,6 @@ class Retainer<TNode> {
 
 	declare onPending: Function | undefined;
 
-
-
 	constructor(el: Element) {
 		this.f = 0;
 		this.el = el;
@@ -468,7 +466,6 @@ class Retainer<TNode> {
 		this.oldProps = undefined;
 		this.pending = undefined;
 		this.onPending = undefined;
-
 	}
 }
 
@@ -759,21 +756,37 @@ export class Renderer<
 
 		const impl = this[_RendererImpl];
 		const scope = impl.scope(undefined, Portal, ret.el.props);
-		
+
 		// Get hydration data for the portal/root element
 		// This provides the initial DOM children that need to be hydrated
 		const hydrationData = impl.hydrate(Portal, root, {});
-		
+
 		// Start the diffing process
 		const diff = diffChildren(impl, root, ret, ctx, scope, ret, children);
 
 		if (isPromiseLike(diff)) {
 			return diff.then(() => {
-				return commitRootRender(impl, root, ret!, ctx, oldProps, scope, hydrationData);
+				return commitRootRender(
+					impl,
+					root,
+					ret!,
+					ctx,
+					oldProps,
+					scope,
+					hydrationData,
+				);
 			});
 		}
 
-		return commitRootRender(impl, root, ret!, ctx, oldProps, scope, hydrationData);
+		return commitRootRender(
+			impl,
+			root,
+			ret!,
+			ctx,
+			oldProps,
+			scope,
+			hydrationData,
+		);
 	}
 }
 
@@ -788,7 +801,14 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	hydrationData?: HydrationData<TNode>,
 ): TResult {
 	const oldChildValues = getChildValues(ret);
-	const childValues = commitChildren(renderer, root, ctx, ret.children, scope, hydrationData);
+	const childValues = commitChildren(
+		renderer,
+		root,
+		ctx,
+		ret.children,
+		scope,
+		hydrationData,
+	);
 	// element is a host or portal element
 	if (root != null) {
 		renderer.arrange(
@@ -832,10 +852,21 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 				values.push(commitComponent(child.ctx!));
 			} else if (el.tag === Fragment) {
 				// Fragments use the same hydration data as their parent
-				values.push(commitChildren(renderer, root, ctx, child.children, scope, hydrationData));
+				values.push(
+					commitChildren(
+						renderer,
+						root,
+						ctx,
+						child.children,
+						scope,
+						hydrationData,
+					),
+				);
 			} else {
 				// host element or portal element
-				values.push(commitHostOrPortal(renderer, root, child, ctx, scope, hydrationData));
+				values.push(
+					commitHostOrPortal(renderer, root, child, ctx, scope, hydrationData),
+				);
 			}
 
 			child.oldProps = undefined;
@@ -884,7 +915,7 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	let props = ret.el.props;
 	const oldProps = ret.oldProps;
 	scope = renderer.scope(scope, tag, props)!;
-	
+
 	// For host elements during hydration, consume next child from parent hydrationData
 	let childHydrationData: HydrationData<TNode> | undefined;
 	if (!value && hydrationData && hydrationData.children.length > 0) {
@@ -899,9 +930,16 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 			// If hydration failed, childHydrationData will be undefined and we'll create a new node below
 		}
 	}
-	
+
 	const oldChildValues = getChildValues(ret);
-	const childValues = commitChildren(renderer, root, ctx, ret.children, scope, childHydrationData);
+	const childValues = commitChildren(
+		renderer,
+		root,
+		ctx,
+		ret.children,
+		scope,
+		childHydrationData,
+	);
 	let copiedProps: Set<string> | undefined;
 	if (tag !== Portal) {
 		if (value == null) {
@@ -949,8 +987,6 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 
 	return getValue(ret);
 }
-
-
 
 function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
@@ -1197,7 +1233,7 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 	}
 
 	scope = renderer.scope(scope, tag, el.props);
-	
+
 	return diffChildren(
 		renderer,
 		root,

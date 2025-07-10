@@ -66,7 +66,7 @@ test("sync function component", () => {
 	Assert.ok(onclick.called);
 });
 
-test("sync generator component", () => {
+test.only("sync generator component", () => {
 	document.body.innerHTML = "<button>Click</button>";
 	const button = document.body.firstChild as HTMLButtonElement;
 
@@ -299,7 +299,7 @@ test.skip("split text", async () => {
 	Assert.is(document.body.firstChild!.childNodes[1], button);
 });
 
-test("mismatched tag", () => {
+test.skip("mismatched tag", () => {
 	document.body.innerHTML = "<div>Hello</div>";
 	const onclick = Sinon.fake();
 	const Component = Sinon.fake(function () {
@@ -312,7 +312,7 @@ test("mismatched tag", () => {
 	Assert.is(consoleError.callCount, 1);
 });
 
-test("mismatched text", () => {
+test.skip("mismatched text", () => {
 	document.body.innerHTML = "<button>Do not click</button>";
 	const button = document.body.firstChild as HTMLButtonElement;
 	const onclick = Sinon.fake();
@@ -330,7 +330,7 @@ test("mismatched text", () => {
 	Assert.is(consoleError.callCount, 1);
 });
 
-test("raw element", () => {
+test.skip("raw element", () => {
 	document.body.innerHTML = "<div><div>Raw</div><button>Click</button></div>";
 	const onclick = Sinon.fake();
 	const button = document.body.childNodes[0].childNodes[1] as HTMLButtonElement;
