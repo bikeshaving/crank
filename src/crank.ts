@@ -1426,6 +1426,7 @@ class ContextImpl<
 	declare inflightDiff: Promise<any> | undefined;
 	declare enqueuedBlock: Promise<unknown> | undefined;
 	declare enqueuedDiff: Promise<any> | undefined;
+
 	declare onPropsProvided:
 		| ((props: Record<string, any>) => unknown)
 		| undefined;
@@ -1533,8 +1534,8 @@ export class Context<T = any, TResult = any> implements EventTarget {
 			throw new Error("Use for...of in sync generator components");
 		}
 
+		setFlag(ctx, IsInForAwaitOfLoop);
 		try {
-			setFlag(ctx, IsInForAwaitOfLoop);
 			while (!getFlag(ctx, IsUnmounted) && !getFlag(ctx, IsErrored)) {
 				if (getFlag(ctx, NeedsToYield)) {
 					throw new Error("Context iterated twice without a yield");
@@ -2152,6 +2153,9 @@ function enqueueComponentRun<TNode, TResult>(
 		// simply return the current inflight value. Otherwise, we have to wait for
 		// the bottom of the loop to be reached before returning the inflight
 		// value.
+		//
+		// if ctx.onPropsProvided is defined, it means the component is suspended
+		// and waiting for new props, so it is not at the bottom of the loop.
 		const isAtLoopBottom =
 			getFlag(ctx, IsInForAwaitOfLoop) && !ctx.onPropsProvided;
 		resumePropsAsyncIterator(ctx);
