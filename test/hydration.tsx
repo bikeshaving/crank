@@ -31,7 +31,7 @@ test("simple", () => {
 	Assert.ok(onclick.called);
 });
 
-test.skip("fragment", () => {
+test("fragment", () => {
 	document.body.innerHTML = "<button>Click</button>";
 	const button = document.body.firstChild as HTMLButtonElement;
 	const onclick = Sinon.fake();
@@ -48,7 +48,7 @@ test.skip("fragment", () => {
 	Assert.ok(onclick.called);
 });
 
-test.skip("sync function component", () => {
+test("sync function component", () => {
 	document.body.innerHTML = "<button>Click</button>";
 	const button = document.body.firstChild as HTMLButtonElement;
 
@@ -66,7 +66,7 @@ test.skip("sync function component", () => {
 	Assert.ok(onclick.called);
 });
 
-test.skip("sync generator component", () => {
+test("sync generator component", () => {
 	document.body.innerHTML = "<button>Click</button>";
 	const button = document.body.firstChild as HTMLButtonElement;
 
@@ -194,7 +194,7 @@ test.skip("async component and host sibling", async () => {
 	Assert.ok(onclick2.called);
 });
 
-test.skip("async sibling components resolve out of order", async () => {
+test("async sibling components resolve out of order", async () => {
 	document.body.innerHTML =
 		"<div><button>Slow</button><button>Fast</button></div>";
 	const div = document.body.firstChild!;
@@ -330,7 +330,7 @@ test("mismatched text", () => {
 	Assert.is(consoleError.callCount, 1);
 });
 
-test.skip("raw element", () => {
+test("raw element", () => {
 	document.body.innerHTML = "<div><div>Raw</div><button>Click</button></div>";
 	const onclick = Sinon.fake();
 	const button = document.body.childNodes[0].childNodes[1] as HTMLButtonElement;
