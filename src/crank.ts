@@ -772,15 +772,7 @@ export class Renderer<
 		}
 
 		const hydration = impl.reconcile(root, Portal, ret.el.props, scope);
-		return commitRootRender(
-			impl,
-			root,
-			ret!,
-			ctx,
-			oldProps,
-			scope,
-			hydration,
-		);
+		return commitRootRender(impl, root, ret!, ctx, oldProps, scope, hydration);
 	}
 }
 
@@ -846,14 +838,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 				values.push(commitComponent(child.ctx, hydration));
 			} else if (el.tag === Fragment) {
 				values.push(
-					commitChildren(
-						renderer,
-						root,
-						ctx,
-						child.children,
-						scope,
-						hydration,
-					),
+					commitChildren(renderer, root, ctx, child.children, scope, hydration),
 				);
 			} else {
 				// host element or portal element
