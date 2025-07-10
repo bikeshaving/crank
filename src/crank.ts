@@ -1344,8 +1344,8 @@ const NeedsToYield = 1 << 4;
 
 /**
  * A flag used by async generator components in conjunction with the
- * onAvailable callback to mark whether new props can be pulled via the context
- * async iterator. See the Symbol.asyncIterator method and the
+ * onPropsAvailable callback to mark whether new props can be pulled via the
+ * context async iterator. See the Symbol.asyncIterator method and the
  * resumeCtxIterator function.
  */
 const PropsAvailable = 1 << 5;
@@ -2166,36 +2166,35 @@ function commitComponent<TNode>(
 function enqueueComponentRun<TNode, TResult>(
 	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
 ): Promise<undefined> | undefined {
+	// TODO: Move this logic to runComponent and use the block/diff tuple.
 	if (getFlag(ctx, IsAsyncGen) && !getFlag(ctx, IsInForOfLoop)) {
 		// This branch will run for non-initial renders of async generator
 		// components when they are not in for...of loops. When in a for...of loop,
 		// async generator components will behave like sync generator components.
 		//
-		// Async gen componennts can be in one of three states:
+		// Async gen components which are using for await with the props iterator
+		// can be in one of three states:
 		//
 		// 1. propsAvailable flag is true: "available"
-		//
 		//   The component is suspended somewhere in the loop. When the component
 		//   reaches the bottom of the loop, it will run again with the next props.
 		//
-		// 2. onAvailable callback is defined: "suspended"
-		//
+		// 2. onPropsAvailable callback is defined: "suspended"
 		//   The component has suspended at the bottom of the loop and is waiting
 		//   for new props.
 		//
-		// 3. neither 1 or 2: "Running"
-		//
+		// 3. neither 1 or 2: "running"
 		//   The component is suspended somewhere in the loop. When the component
 		//   reaches the bottom of the loop, it will suspend.
 		//
 		// Components will never be both available and suspended at
 		// the same time.
 		//
-		// If the component is at the loop bottom, this means that the next value
-		// produced by the component will have the most up to date props, so we can
-		// simply return the current inflight value. Otherwise, we have to wait for
-		// the bottom of the loop to be reached before returning the inflight
-		// value.
+		// If the component is waiting at the bottom of the loop, this means that
+		// the next value produced by the component will have the most up to date
+		// props, so we can return the current inflight value. Otherwise, we have
+		// to wait for the bottom of the loop to be reached before returning the
+		// inflight value.
 		//
 		// if ctx.onPropsProvided is defined, it means the component is suspended
 		// and waiting for new props, so it is not at the bottom of the loop.
