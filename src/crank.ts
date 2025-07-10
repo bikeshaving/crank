@@ -833,7 +833,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 			}
 
 			child.oldProps = undefined;
-			child.f |= HasCommitted;
+			setFlag(child, HasCommitted);
 		} else if (typeof child === "string") {
 			const text = renderer.text(child, scope, undefined);
 			values.push(text);
@@ -856,7 +856,7 @@ function commitRaw<TNode, TScope>(
 		}
 	}
 
-	ret.f |= HasCommitted;
+	setFlag(ret, HasCommitted);
 	return ret.value;
 }
 
@@ -867,7 +867,7 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	ctx: ContextImpl<TNode, TScope, TRoot, unknown> | undefined,
 	scope: TScope,
 ): ElementValue<TNode> {
-	if (ret.f & HasCommitted && (ret.el.copy || ret.f & IsCopied)) {
+	if (getFlag(ret, HasCommitted) && (ret.el.copy || getFlag(ret, IsCopied))) {
 		return getValue(ret);
 	}
 
@@ -917,7 +917,7 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	}
 
 	renderer.arrange(tag, value, props, childValues, oldProps, oldChildValues);
-	ret.f |= HasCommitted;
+	setFlag(ret, HasCommitted);
 	if (tag === Portal) {
 		flush(renderer, ret.value);
 		return;
@@ -1014,7 +1014,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					ret.fallback = fallback;
 				}
 
-				if (child.copy && ret.f & HasCommitted) {
+				if (child.copy && getFlag(ret, HasCommitted)) {
 					// pass
 				} else if (child.tag === Raw) {
 					// pass
@@ -1039,9 +1039,9 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			if (typeof ret === "object") {
 				if (childCopied) {
 					diff = getInflight(ret);
-					ret.f |= IsCopied;
+					setFlag(ret, IsCopied);
 				} else {
-					ret.f &= ~HasCommitted;
+					setFlag(ret, HasCommitted, false);
 					// ???
 					//ret.f &= ~IsCopied;
 				}
@@ -1147,7 +1147,7 @@ function getInflight(child: Retainer<unknown>): Promise<undefined> | undefined {
 	}
 
 	const ctx: ContextImpl<unknown> | undefined = child.ctx;
-	if (ctx && ctx.f & IsUpdating && ctx.inflightDiff) {
+	if (ctx && getFlag(ctx, IsUpdating) && ctx.inflightDiff) {
 		return ctx.inflightDiff;
 	} else if (child.pending) {
 		// TODO: fix the type
@@ -1512,44 +1512,44 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	*[Symbol.iterator](): Generator<ComponentProps<T>> {
 		const ctx = this[_ContextImpl];
 		try {
-			ctx.f |= IsInForOfLoop;
-			while (!(ctx.f & IsUnmounted) && !(ctx.f & IsErrored)) {
-				if (ctx.f & NeedsToYield) {
+			setFlag(ctx, IsInForOfLoop);
+			while (!getFlag(ctx, IsUnmounted) && !getFlag(ctx, IsErrored)) {
+				if (getFlag(ctx, NeedsToYield)) {
 					throw new Error("Context iterated twice without a yield");
 				} else {
-					ctx.f |= NeedsToYield;
+					setFlag(ctx, NeedsToYield);
 				}
 
 				yield ctx.ret.el.props as ComponentProps<T>;
 			}
 		} finally {
-			ctx.f &= ~IsInForOfLoop;
+			setFlag(ctx, IsInForOfLoop, false);
 		}
 	}
 
 	async *[Symbol.asyncIterator](): AsyncGenerator<ComponentProps<T>> {
 		const ctx = this[_ContextImpl];
-		if (ctx.f & IsSyncGen) {
+		if (getFlag(ctx, IsSyncGen)) {
 			throw new Error("Use for...of in sync generator components");
 		}
 
 		try {
-			ctx.f |= IsInForAwaitOfLoop;
-			while (!(ctx.f & IsUnmounted) && !(ctx.f & IsErrored)) {
-				if (ctx.f & NeedsToYield) {
+			setFlag(ctx, IsInForAwaitOfLoop);
+			while (!getFlag(ctx, IsUnmounted) && !getFlag(ctx, IsErrored)) {
+				if (getFlag(ctx, NeedsToYield)) {
 					throw new Error("Context iterated twice without a yield");
 				} else {
-					ctx.f |= NeedsToYield;
+					setFlag(ctx, NeedsToYield);
 				}
 
-				if (ctx.f & PropsAvailable) {
-					ctx.f &= ~PropsAvailable;
+				if (getFlag(ctx, PropsAvailable)) {
+					setFlag(ctx, PropsAvailable, false);
 					yield ctx.ret.el.props as ComponentProps<T>;
 				} else {
 					const props = await new Promise(
 						(resolve) => (ctx.onPropsProvided = resolve),
 					);
-					if (ctx.f & IsUnmounted) {
+					if (getFlag(ctx, IsUnmounted)) {
 						break;
 					}
 
@@ -1562,7 +1562,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 				}
 			}
 		} finally {
-			ctx.f &= ~IsInForAwaitOfLoop;
+			setFlag(ctx, IsInForAwaitOfLoop, false);
 			if (ctx.onPropsRequested) {
 				ctx.onPropsRequested();
 				ctx.onPropsRequested = undefined;
@@ -1584,17 +1584,17 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	 */
 	refresh(): Promise<TResult> | TResult {
 		const ctx = this[_ContextImpl];
-		if (ctx.f & IsUnmounted) {
+		if (getFlag(ctx, IsUnmounted)) {
 			console.error("Component is unmounted");
 			return ctx.renderer.read(undefined);
-		} else if (ctx.f & IsSyncExecuting) {
+		} else if (getFlag(ctx, IsSyncExecuting)) {
 			console.error("Component is already executing");
 			return ctx.renderer.read(getValue(ctx.ret));
 		}
 
 		let diff: Promise<undefined> | undefined;
 		try {
-			ctx.f |= IsRefreshing;
+			setFlag(ctx, IsRefreshing);
 			diff = enqueueComponentRun(ctx);
 			if (isPromiseLike(diff)) {
 				let result = diff.then(() => ctx.renderer.read(commitComponent(ctx)));
@@ -1603,7 +1603,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 				}
 
 				return result.finally(() => {
-					ctx.f &= ~IsRefreshing;
+					setFlag(ctx, IsRefreshing, false);
 				});
 			}
 
@@ -1616,7 +1616,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 			throw err;
 		} finally {
 			if (!isPromiseLike(diff)) {
-				ctx.f &= ~IsRefreshing;
+				setFlag(ctx, IsRefreshing, false);
 			}
 		}
 	}
@@ -1668,7 +1668,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	cleanup(callback: (value: TResult) => unknown): void {
 		const ctx = this[_ContextImpl];
 
-		if (ctx.f & IsUnmounted) {
+		if (getFlag(ctx, IsUnmounted)) {
 			const value = ctx.renderer.read(getValue(ctx.ret));
 			callback(value);
 			return;
@@ -1975,7 +1975,7 @@ function diffComponent<TNode, TScope, TRoot extends TNode, TResult>(
 	let ctx: ContextImpl<TNode, TScope, TRoot, TResult>;
 	if (ret.ctx) {
 		ctx = ret.ctx as ContextImpl<TNode, TScope, TRoot, TResult>;
-		if (ctx.f & IsSyncExecuting) {
+		if (getFlag(ctx, IsSyncExecuting)) {
 			console.error("Component is already executing");
 			return;
 		}
@@ -1983,7 +1983,7 @@ function diffComponent<TNode, TScope, TRoot extends TNode, TResult>(
 		ctx = ret.ctx = new ContextImpl(renderer, root, host, parent, scope, ret);
 	}
 
-	ctx.f |= IsUpdating;
+	setFlag(ctx, IsUpdating);
 	return enqueueComponentRun(ctx);
 }
 
@@ -1991,9 +1991,9 @@ function diffComponentChildren<TNode, TResult>(
 	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
 	children: Children,
 ): Promise<undefined> | undefined {
-	if (ctx.f & IsUnmounted) {
+	if (getFlag(ctx, IsUnmounted)) {
 		return;
-	} else if (ctx.f & IsErrored) {
+	} else if (getFlag(ctx, IsErrored)) {
 		// This branch is necessary for some race conditions where this function is
 		// called after iterator.throw() in async generator components.
 		return;
@@ -2007,7 +2007,7 @@ function diffComponentChildren<TNode, TResult>(
 	try {
 		// We set the isExecuting flag in case a child component dispatches an event
 		// which bubbles to this component and causes a synchronous refresh().
-		ctx.f |= IsSyncExecuting;
+		setFlag(ctx, IsSyncExecuting);
 		diff = diffChildren(
 			ctx.renderer,
 			ctx.root,
@@ -2023,7 +2023,7 @@ function diffComponentChildren<TNode, TResult>(
 	} catch (err) {
 		diff = handleChildError(ctx, err);
 	} finally {
-		ctx.f &= ~IsSyncExecuting;
+		setFlag(ctx, IsSyncExecuting, false);
 	}
 
 	return diff;
@@ -2039,7 +2039,7 @@ function commitComponent<TNode>(
 		ctx.ret.children,
 		ctx.scope,
 	);
-	if (ctx.f & IsUnmounted) {
+	if (getFlag(ctx, IsUnmounted)) {
 		return;
 	}
 
@@ -2056,9 +2056,9 @@ function commitComponent<TNode>(
 		}
 	}
 
-	if (ctx.f & IsScheduling) {
-		ctx.f |= IsSchedulingRefresh;
-	} else if (!(ctx.f & IsUpdating)) {
+	if (getFlag(ctx, IsScheduling)) {
+		setFlag(ctx, IsSchedulingRefresh);
+	} else if (!getFlag(ctx, IsUpdating)) {
 		// If we’re not updating the component, which happens when components are
 		// refreshed, or when async generator components iterate, we have to do a
 		// little bit housekeeping when a component’s child values have changed.
@@ -2099,22 +2099,22 @@ function commitComponent<TNode>(
 	let value = unwrap(values);
 	if (callbacks) {
 		scheduleMap.delete(ctx);
-		ctx.f |= IsScheduling;
+		setFlag(ctx, IsScheduling);
 		const result = ctx.renderer.read(value);
 		for (const callback of callbacks) {
 			callback(result);
 		}
 
-		ctx.f &= ~IsScheduling;
+		setFlag(ctx, IsScheduling, false);
 		// Handles an edge case where refresh() is called during a schedule().
-		if (ctx.f & IsSchedulingRefresh) {
-			ctx.f &= ~IsSchedulingRefresh;
+		if (getFlag(ctx, IsSchedulingRefresh)) {
+			setFlag(ctx, IsSchedulingRefresh, false);
 			value = getValue(ctx.ret);
 		}
 	}
 
-	ctx.f &= ~IsUpdating;
-	ctx.ret.f |= HasCommitted;
+	setFlag(ctx, IsUpdating, false);
+	setFlag(ctx.ret, HasCommitted);
 	return value;
 }
 
@@ -2122,7 +2122,7 @@ function commitComponent<TNode>(
 function enqueueComponentRun<TNode, TResult>(
 	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
 ): Promise<undefined> | undefined {
-	if (ctx.f & IsAsyncGen && !(ctx.f & IsInForOfLoop)) {
+	if (getFlag(ctx, IsAsyncGen) && !getFlag(ctx, IsInForOfLoop)) {
 		// This branch will run for non-initial renders of async generator
 		// components when they are not in for...of loops. When in a for...of loop,
 		// async generator components will behave like sync generator components.
@@ -2152,7 +2152,7 @@ function enqueueComponentRun<TNode, TResult>(
 		// simply return the current inflight value. Otherwise, we have to wait for
 		// the bottom of the loop to be reached before returning the inflight
 		// value.
-		const isAtLoopBottom = ctx.f & IsInForAwaitOfLoop && !ctx.onPropsProvided;
+		const isAtLoopBottom = getFlag(ctx, IsInForAwaitOfLoop) && !ctx.onPropsProvided;
 		resumePropsAsyncIterator(ctx);
 		if (isAtLoopBottom) {
 			if (ctx.inflightBlock == null) {
@@ -2204,7 +2204,7 @@ function enqueueComponentRun<TNode, TResult>(
 
 /** Called when the inflight block promise settles. */
 function advanceComponent(ctx: ContextImpl): void {
-	if (ctx.f & IsAsyncGen && !(ctx.f & IsInForOfLoop)) {
+	if (getFlag(ctx, IsAsyncGen) && !getFlag(ctx, IsInForOfLoop)) {
 		return;
 	}
 
@@ -2247,7 +2247,7 @@ function runComponent<TNode, TResult>(
 	const initial = !ctx.iterator;
 	if (initial) {
 		resumePropsAsyncIterator(ctx);
-		ctx.f |= IsSyncExecuting;
+		setFlag(ctx, IsSyncExecuting);
 		clearEventListeners(ctx);
 		let returned: ReturnType<Component>;
 		try {
@@ -2257,10 +2257,10 @@ function runComponent<TNode, TResult>(
 				ctx.owner,
 			);
 		} catch (err) {
-			ctx.f |= IsErrored;
+			setFlag(ctx, IsErrored);
 			throw err;
 		} finally {
-			ctx.f &= ~IsSyncExecuting;
+			setFlag(ctx, IsSyncExecuting, false);
 		}
 
 		if (isIteratorLike(returned)) {
@@ -2274,7 +2274,7 @@ function runComponent<TNode, TResult>(
 				returned1.then(
 					(returned) => diffComponentChildren<TNode, TResult>(ctx, returned),
 					(err) => {
-						ctx.f |= IsErrored;
+						setFlag(ctx, IsErrored);
 						throw err;
 					},
 				),
@@ -2288,33 +2288,33 @@ function runComponent<TNode, TResult>(
 	let iteration!: Promise<ChildrenIteratorResult> | ChildrenIteratorResult;
 	if (initial) {
 		try {
-			ctx.f |= IsSyncExecuting;
+			setFlag(ctx, IsSyncExecuting);
 			iteration = ctx.iterator!.next();
 		} catch (err) {
-			ctx.f |= IsErrored;
+			setFlag(ctx, IsErrored);
 			throw err;
 		} finally {
-			ctx.f &= ~IsSyncExecuting;
+			setFlag(ctx, IsSyncExecuting, false);
 		}
 
 		if (isPromiseLike(iteration)) {
-			ctx.f |= IsAsyncGen;
+			setFlag(ctx, IsAsyncGen);
 		} else {
-			ctx.f |= IsSyncGen;
+			setFlag(ctx, IsSyncGen);
 		}
 	}
 
-	if (ctx.f & IsSyncGen) {
+	if (getFlag(ctx, IsSyncGen)) {
 		// sync generator component
 		if (!initial) {
 			try {
-				ctx.f |= IsSyncExecuting;
+				setFlag(ctx, IsSyncExecuting);
 				iteration = ctx.iterator!.next(ctx.renderer.read(getValue(ret)));
 			} catch (err) {
-				ctx.f |= IsErrored;
+				setFlag(ctx, IsErrored);
 				throw err;
 			} finally {
-				ctx.f &= ~IsSyncExecuting;
+				setFlag(ctx, IsSyncExecuting, false);
 			}
 		}
 
@@ -2323,16 +2323,16 @@ function runComponent<TNode, TResult>(
 		}
 
 		if (
-			ctx.f & IsInForOfLoop &&
-			!(ctx.f & NeedsToYield) &&
-			!(ctx.f & IsUnmounted)
+			getFlag(ctx, IsInForOfLoop) &&
+			!getFlag(ctx, NeedsToYield) &&
+			!getFlag(ctx, IsUnmounted)
 		) {
 			console.error("Component yielded more than once in for...of loop");
 		}
 
-		ctx.f &= ~NeedsToYield;
+		setFlag(ctx, NeedsToYield, false);
 		if (iteration.done) {
-			ctx.f &= ~IsSyncGen;
+			setFlag(ctx, IsSyncGen, false);
 			ctx.iterator = undefined;
 		}
 
@@ -2345,20 +2345,20 @@ function runComponent<TNode, TResult>(
 
 		const block = isPromiseLike(diff) ? diff.catch(NOOP) : undefined;
 		return [block, diff];
-	} else if (ctx.f & IsAsyncGen) {
-		if (ctx.f & IsInForOfLoop) {
+	} else if (getFlag(ctx, IsAsyncGen)) {
+		if (getFlag(ctx, IsInForOfLoop)) {
 			// Async generator component using for...of loops behave similar to sync
 			// generator components. This allows for easier refactoring of sync to
 			// async generator components.
 			if (!initial) {
 				try {
-					ctx.f |= IsSyncExecuting;
+					setFlag(ctx, IsSyncExecuting);
 					iteration = ctx.iterator!.next(ctx.renderer.read(getValue(ret)));
 				} catch (err) {
-					ctx.f |= IsErrored;
+					setFlag(ctx, IsErrored);
 					throw err;
 				} finally {
-					ctx.f &= ~IsSyncExecuting;
+					setFlag(ctx, IsSyncExecuting, false);
 				}
 			}
 
@@ -2369,17 +2369,17 @@ function runComponent<TNode, TResult>(
 			const diff = iteration.then(
 				(iteration) => {
 					let diff: Promise<undefined> | undefined;
-					if (!(ctx.f & IsInForOfLoop)) {
+					if (!getFlag(ctx, IsInForOfLoop)) {
 						runAsyncGenComponent(ctx, Promise.resolve(iteration), initial);
 					} else {
-						if (!(ctx.f & NeedsToYield) && !(ctx.f & IsUnmounted)) {
+						if (!getFlag(ctx, NeedsToYield) && !getFlag(ctx, IsUnmounted)) {
 							console.error(
 								"Component yielded more than once in for...of loop",
 							);
 						}
 					}
 
-					ctx.f &= ~NeedsToYield;
+					setFlag(ctx, NeedsToYield, false);
 					diff = diffComponentChildren<TNode, TResult>(
 						ctx,
 						// Children can be void so we eliminate that here
@@ -2389,7 +2389,7 @@ function runComponent<TNode, TResult>(
 					return diff;
 				},
 				(err) => {
-					ctx.f |= IsErrored;
+					setFlag(ctx, IsErrored);
 					throw err;
 				},
 			);
@@ -2417,7 +2417,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 	let done = false;
 	try {
 		while (!done) {
-			if (ctx.f & IsInForOfLoop) {
+			if (getFlag(ctx, IsInForOfLoop)) {
 				break;
 			}
 
@@ -2427,9 +2427,9 @@ async function runAsyncGenComponent<TNode, TResult>(
 			ctx.inflightDiff = new Promise(
 				(resolve1, reject1) => ((resolve = resolve1), (reject = reject1)),
 			);
-			if (ctx.parent && !(ctx.f & IsRefreshing)) {
+			if (ctx.parent && !getFlag(ctx, IsRefreshing)) {
 				ctx.inflightDiff.catch((err) => {
-					if (!(ctx.f & IsRefreshing)) {
+					if (!getFlag(ctx, IsRefreshing)) {
 						return propagateError(ctx.parent!, err);
 					}
 				});
@@ -2440,13 +2440,13 @@ async function runAsyncGenComponent<TNode, TResult>(
 				iteration = await iterationP;
 			} catch (err) {
 				done = true;
-				ctx.f |= IsErrored;
+				setFlag(ctx, IsErrored);
 				reject(err);
 				break;
 			}
 
-			if (!(ctx.f & IsInForAwaitOfLoop)) {
-				ctx.f &= ~PropsAvailable;
+			if (!getFlag(ctx, IsInForAwaitOfLoop)) {
+				setFlag(ctx, PropsAvailable, false);
 			}
 
 			done = !!iteration.done;
@@ -2455,9 +2455,9 @@ async function runAsyncGenComponent<TNode, TResult>(
 				if (
 					!initial &&
 					!done &&
-					!(ctx.f & NeedsToYield) &&
-					ctx.f & PropsAvailable &&
-					ctx.f & IsInForAwaitOfLoop
+					!getFlag(ctx, NeedsToYield) &&
+					getFlag(ctx, PropsAvailable) &&
+					getFlag(ctx, IsInForAwaitOfLoop)
 				) {
 					// logic to skip yielded children in a stale for await of iteration.
 					diff = undefined;
@@ -2465,7 +2465,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 					diff = diffComponentChildren<TNode, TResult>(ctx, iteration.value!);
 				}
 
-				ctx.f &= ~NeedsToYield;
+				setFlag(ctx, NeedsToYield, false);
 			} catch (err) {
 				// pass
 			} finally {
@@ -2474,38 +2474,38 @@ async function runAsyncGenComponent<TNode, TResult>(
 
 			if (diff) {
 				diff.then((): undefined => {
-					if (!(ctx.f & IsUpdating) && !(ctx.f & IsRefreshing)) {
+					if (!getFlag(ctx, IsUpdating) && !getFlag(ctx, IsRefreshing)) {
 						commitComponent(ctx);
 					}
 				}, NOOP);
 			} else {
-				if (!(ctx.f & IsUpdating) && !(ctx.f & IsRefreshing)) {
+				if (!getFlag(ctx, IsUpdating) && !getFlag(ctx, IsRefreshing)) {
 					commitComponent(ctx);
 				}
 			}
 			const oldResult = new Promise((resolve) => ctx.owner.schedule(resolve));
-			if (ctx.f & IsUnmounted) {
-				if (ctx.f & IsInForAwaitOfLoop) {
+			if (getFlag(ctx, IsUnmounted)) {
+				if (getFlag(ctx, IsInForAwaitOfLoop)) {
 					try {
-						ctx.f |= IsSyncExecuting;
+						setFlag(ctx, IsSyncExecuting);
 						iterationP = ctx.iterator!.next(
 							oldResult,
 						) as Promise<ChildrenIteratorResult>;
 					} finally {
-						ctx.f &= ~IsSyncExecuting;
+						setFlag(ctx, IsSyncExecuting, false);
 					}
 				} else {
 					returnComponent(ctx);
 					break;
 				}
-			} else if (!done && !(ctx.f & IsInForOfLoop)) {
+			} else if (!done && !getFlag(ctx, IsInForOfLoop)) {
 				try {
-					ctx.f |= IsSyncExecuting;
+					setFlag(ctx, IsSyncExecuting);
 					iterationP = ctx.iterator!.next(
 						oldResult,
 					) as Promise<ChildrenIteratorResult>;
 				} finally {
-					ctx.f &= ~IsSyncExecuting;
+					setFlag(ctx, IsSyncExecuting, false);
 				}
 			}
 
@@ -2513,7 +2513,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 		}
 	} finally {
 		if (done) {
-			ctx.f &= ~IsAsyncGen;
+			setFlag(ctx, IsAsyncGen, false);
 			ctx.iterator = undefined;
 		}
 	}
@@ -2524,15 +2524,15 @@ function resumePropsAsyncIterator(ctx: ContextImpl): void {
 	if (ctx.onPropsProvided) {
 		ctx.onPropsProvided(ctx.ret.el.props);
 		ctx.onPropsProvided = undefined;
-		ctx.f &= ~PropsAvailable;
+		setFlag(ctx, PropsAvailable, false);
 	} else {
-		ctx.f |= PropsAvailable;
+		setFlag(ctx, PropsAvailable);
 	}
 }
 
 // TODO: async unmounting
 function unmountComponent(ctx: ContextImpl): void {
-	if (ctx.f & IsUnmounted) {
+	if (getFlag(ctx, IsUnmounted)) {
 		return;
 	}
 
@@ -2547,34 +2547,34 @@ function unmountComponent(ctx: ContextImpl): void {
 		}
 	}
 
-	ctx.f |= IsUnmounted;
+	setFlag(ctx, IsUnmounted);
 	if (ctx.iterator) {
-		if (ctx.f & IsSyncGen) {
+		if (getFlag(ctx, IsSyncGen)) {
 			let value: unknown;
-			if (ctx.f & IsInForOfLoop) {
+			if (getFlag(ctx, IsInForOfLoop)) {
 				value = enqueueComponentRun(ctx);
 			}
 
 			if (isPromiseLike(value)) {
 				value.then(() => {
-					if (ctx.f & IsInForOfLoop) {
+					if (getFlag(ctx, IsInForOfLoop)) {
 						unmountComponent(ctx);
 					} else {
 						returnComponent(ctx);
 					}
 				});
 			} else {
-				if (ctx.f & IsInForOfLoop) {
+				if (getFlag(ctx, IsInForOfLoop)) {
 					unmountComponent(ctx);
 				} else {
 					returnComponent(ctx);
 				}
 			}
-		} else if (ctx.f & IsAsyncGen) {
-			if (ctx.f & IsInForOfLoop) {
+		} else if (getFlag(ctx, IsAsyncGen)) {
+			if (getFlag(ctx, IsInForOfLoop)) {
 				const value = enqueueComponentRun(ctx) as Promise<unknown>;
 				value.then(() => {
-					if (ctx.f & IsInForOfLoop) {
+					if (getFlag(ctx, IsInForOfLoop)) {
 						unmountComponent(ctx);
 					} else {
 						returnComponent(ctx);
@@ -2593,19 +2593,19 @@ function returnComponent(ctx: ContextImpl): void {
 	resumePropsAsyncIterator(ctx);
 	if (ctx.iterator && typeof ctx.iterator!.return === "function") {
 		try {
-			ctx.f |= IsSyncExecuting;
+			setFlag(ctx, IsSyncExecuting);
 			const iteration = ctx.iterator!.return();
 			if (isPromiseLike(iteration)) {
 				iteration.then(NOOP, (err) => {
-					ctx.f |= IsErrored;
+					setFlag(ctx, IsErrored);
 					handleChildError(ctx, err);
 				});
 			}
 		} catch (err) {
-			ctx.f |= IsErrored;
+			setFlag(ctx, IsErrored);
 			handleChildError(ctx, err);
 		} finally {
-			ctx.f &= ~IsSyncExecuting;
+			setFlag(ctx, IsSyncExecuting, false);
 		}
 	}
 }
@@ -2741,36 +2741,36 @@ function handleChildError<TNode>(
 	resumePropsAsyncIterator(ctx);
 	let iteration: ChildrenIteratorResult | Promise<ChildrenIteratorResult>;
 	try {
-		ctx.f |= IsSyncExecuting;
+		setFlag(ctx, IsSyncExecuting);
 		iteration = ctx.iterator.throw(err);
 	} catch (err) {
-		ctx.f |= IsErrored;
+		setFlag(ctx, IsErrored);
 		throw err;
 	} finally {
-		ctx.f &= ~IsSyncExecuting;
+		setFlag(ctx, IsSyncExecuting, false);
 	}
 
 	if (isPromiseLike(iteration)) {
 		return iteration.then(
 			(iteration) => {
 				if (iteration.done) {
-					ctx.f &= ~IsSyncGen;
-					ctx.f &= ~IsAsyncGen;
+					setFlag(ctx, IsSyncGen, false);
+					setFlag(ctx, IsAsyncGen, false);
 					ctx.iterator = undefined;
 				}
 
 				return diffComponentChildren(ctx, iteration.value as Children);
 			},
 			(err) => {
-				ctx.f |= IsErrored;
+				setFlag(ctx, IsErrored);
 				throw err;
 			},
 		);
 	}
 
 	if (iteration.done) {
-		ctx.f &= ~IsSyncGen;
-		ctx.f &= ~IsAsyncGen;
+		setFlag(ctx, IsSyncGen, false);
+		setFlag(ctx, IsAsyncGen, false);
 		ctx.iterator = undefined;
 	}
 
@@ -2795,7 +2795,7 @@ function propagateError<TNode, TResult>(
 	if (isPromiseLike(diff)) {
 		return diff.then(
 			() => {
-				ctx.f &= ~IsUpdating;
+				setFlag(ctx, IsUpdating, false);
 				commitComponent(ctx);
 				return ctx.renderer.read(getValue(ctx.ret));
 			},
@@ -2809,7 +2809,7 @@ function propagateError<TNode, TResult>(
 		);
 	}
 
-	ctx.f &= ~IsUpdating;
+	setFlag(ctx, IsUpdating, false);
 	commitComponent(ctx);
 	return ctx.renderer.read(getValue(ctx.ret));
 }
