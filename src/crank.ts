@@ -385,7 +385,7 @@ function normalize<TNode>(
 
 /*** RETAINER FLAGS ***/
 const HasCommitted = 1 << 0;
-const IsCopied = 2 << 0;
+const IsCopied = 1 << 1;
 
 /**
  * @internal
