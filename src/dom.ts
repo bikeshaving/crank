@@ -7,8 +7,6 @@ import {
 	RendererImpl,
 } from "./crank.js";
 
-import type {HydrationData} from "./crank.js";
-
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
 export const impl: Partial<RendererImpl<Node, string>> = {
@@ -45,18 +43,17 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 			: document.createElement(tag);
 	},
 
-	hydrate(
-		tag: string | symbol,
+	reconcile(
 		node: Element,
-		props: Record<string, unknown>,
-	): HydrationData<Element> | undefined {
+		tag: string | symbol,
+	): Array<Element | string> | undefined {
 		if (typeof tag !== "string" && tag !== Portal) {
 			throw new Error(`Unknown tag: ${tag.toString()}`);
 		}
 
 		if (
 			typeof tag === "string" &&
-			tag.toUpperCase() !== (node as Element).tagName
+			tag.toUpperCase() !== (node as Element).tagName.toUpperCase()
 		) {
 			console.error(`Expected <${tag}> while hydrating but found:`, node);
 			return undefined;
@@ -72,8 +69,8 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 			}
 		}
 
-		// TODO: extract props from nodes
-		return {props, children};
+		// TODO: check props for mismatches and warn
+		return children;
 	},
 
 	patch(
@@ -305,16 +302,16 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 	text(
 		text: string,
 		_scope: string | undefined,
-		hydrationData: HydrationData<Element> | undefined,
+		hydration: Array<Element | string> | undefined,
 	): string {
-		if (hydrationData != null) {
-			let value = hydrationData.children.shift();
+		if (hydration != null) {
+			let value = hydration.shift();
 			if (typeof value !== "string" || !value.startsWith(text)) {
 				console.error(`Expected "${text}" while hydrating but found:`, value);
 			} else if (text.length < value.length) {
 				// TODO: The core library should concatenate text before calling this to prevent having to unshift hydration data
 				value = value.slice(text.length);
-				hydrationData.children.unshift(value);
+				hydration.unshift(value);
 			}
 		}
 
@@ -324,7 +321,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 	raw(
 		value: string | Node,
 		xmlns: string | undefined,
-		hydrationData: HydrationData<Element> | undefined,
+		hydration: Array<Element | string> | undefined,
 	): ElementValue<Node> {
 		let result: ElementValue<Node>;
 		if (typeof value === "string") {
@@ -344,7 +341,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 			result = value;
 		}
 
-		if (hydrationData != null) {
+		if (hydration != null) {
 			// TODO: maybe we should warn on incorrect values
 			if (Array.isArray(result)) {
 				for (let i = 0; i < result.length; i++) {
@@ -354,7 +351,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 						(node.nodeType === Node.ELEMENT_NODE ||
 							node.nodeType === Node.TEXT_NODE)
 					) {
-						hydrationData.children.shift();
+						hydration.shift();
 					}
 				}
 			} else if (result != null && typeof result !== "string") {
@@ -362,7 +359,7 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 					result.nodeType === Node.ELEMENT_NODE ||
 					result.nodeType === Node.TEXT_NODE
 				) {
-					hydrationData.children.shift();
+					hydration.shift();
 				}
 			}
 		}
