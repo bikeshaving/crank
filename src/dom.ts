@@ -2,11 +2,12 @@ import {
 	Children,
 	Context,
 	ElementValue,
-	HydrationData,
 	Portal,
 	Renderer,
 	RendererImpl,
 } from "./crank.js";
+
+import type {HydrationData} from "./crank.js";
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 

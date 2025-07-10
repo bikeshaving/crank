@@ -757,15 +757,14 @@ export class Renderer<
 		const impl = this[_RendererImpl];
 		const scope = impl.scope(undefined, Portal, ret.el.props);
 
-		// Get hydration data for the portal/root element
-		// This provides the initial DOM children that need to be hydrated
-		const hydrationData = impl.hydrate(Portal, root, {});
-
 		// Start the diffing process
 		const diff = diffChildren(impl, root, ret, ctx, scope, ret, children);
 
 		if (isPromiseLike(diff)) {
 			return diff.then(() => {
+				// Get hydration data for the portal/root element
+				// This provides the initial DOM children that need to be hydrated
+				const hydrationData = impl.hydrate(Portal, root, ret.el.props);
 				return commitRootRender(
 					impl,
 					root,
@@ -778,6 +777,7 @@ export class Renderer<
 			});
 		}
 
+		const hydrationData = impl.hydrate(Portal, root, ret.el.props);
 		return commitRootRender(
 			impl,
 			root,
@@ -837,7 +837,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	hydrationData?: HydrationData<TNode>,
 ): Array<TNode | string> {
 	const values: Array<ElementValue<TNode>> = [];
-	const children1 = wrap(children);
+	const children1 = normalize(wrap(children));
 	for (let i = 0; i < children1.length; i++) {
 		let child = children1[i];
 		while (typeof child === "object" && child.fallback) {
@@ -848,10 +848,9 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 			const el = child.el;
 			if (el.tag === Raw) {
 				values.push(commitRaw(renderer, child, ctx, scope, hydrationData));
-			} else if (typeof el.tag === "function") {
-				values.push(commitComponent(child.ctx!));
+			} else if (child.ctx) {
+				values.push(commitComponent(child.ctx, hydrationData));
 			} else if (el.tag === Fragment) {
-				// Fragments use the same hydration data as their parent
 				values.push(
 					commitChildren(
 						renderer,
@@ -877,6 +876,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 		}
 	}
 
+	// TODO: why are we running normalize on both ends?
 	return normalize(values);
 }
 
@@ -885,7 +885,7 @@ function commitRaw<TNode, TScope>(
 	ret: Retainer<TNode>,
 	ctx: ContextImpl<TNode, TScope, TNode, unknown> | undefined,
 	scope: TScope | undefined,
-	hydrationData?: HydrationData<TNode>,
+	hydrationData: HydrationData<TNode> | undefined,
 ): ElementValue<TNode> {
 	if (!ret.oldProps || ret.oldProps.value !== ret.el.props.value) {
 		ret.value = renderer.raw(ret.el.props.value as any, scope, hydrationData);
@@ -904,7 +904,7 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	ret: Retainer<TNode>,
 	ctx: ContextImpl<TNode, TScope, TRoot, unknown> | undefined,
 	scope: TScope,
-	hydrationData?: HydrationData<TNode>,
+	hydrationData: HydrationData<TNode> | undefined,
 ): ElementValue<TNode> {
 	if (getFlag(ret, HasCommitted) && (ret.el.copy || getFlag(ret, IsCopied))) {
 		return getValue(ret);
@@ -922,7 +922,7 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 		const nextChild = hydrationData.children.shift();
 		if (nextChild && typeof nextChild !== "string") {
 			// Try to hydrate this node - validate it matches our tag and get child hydration data
-			childHydrationData = renderer.hydrate(tag, nextChild as any, props);
+			childHydrationData = renderer.hydrate(tag, nextChild, props);
 			if (childHydrationData) {
 				// Hydration succeeded, use this node
 				value = ret.value = nextChild as TNode;
@@ -942,8 +942,8 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	);
 	let copiedProps: Set<string> | undefined;
 	if (tag !== Portal) {
+		// This assumes that renderer.create does not return nullish values.
 		if (value == null) {
-			// This assumes that renderer.create does not return nullish values.
 			value = ret.value = renderer.create(tag, props, scope);
 			if (typeof ret.el.ref === "function") {
 				ret.el.ref(renderer.read(value));
@@ -2095,6 +2095,7 @@ function diffComponentChildren<TNode, TResult>(
 
 function commitComponent<TNode>(
 	ctx: ContextImpl<TNode, unknown, TNode>,
+	hydrationData?: HydrationData<TNode>,
 ): ElementValue<TNode> {
 	const values = commitChildren(
 		ctx.renderer,
@@ -2102,7 +2103,9 @@ function commitComponent<TNode>(
 		ctx,
 		ctx.ret.children,
 		ctx.scope,
+		hydrationData,
 	);
+
 	if (getFlag(ctx, IsUnmounted)) {
 		return;
 	}
