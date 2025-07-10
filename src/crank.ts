@@ -1120,8 +1120,8 @@ function getInflight(child: Retainer<unknown>): Promise<undefined> | undefined {
 	}
 
 	const ctx: ContextImpl<unknown> | undefined = child.ctx;
-	if (ctx && ctx.f & IsUpdating && ctx.inflightValue) {
-		return ctx.inflightValue;
+	if (ctx && ctx.f & IsUpdating && ctx.inflightDiff) {
+		return ctx.inflightDiff;
 	} else if (child.pending) {
 		// TODO: fix the type
 		return child.pending as unknown as undefined;
@@ -1393,18 +1393,28 @@ class ContextImpl<
 		| AsyncIterator<Children, Children | void, unknown>
 		| undefined;
 
-	// A "block" is a promise which represents the duration during which new
-	// updates are queued, whereas "value" is a promise which represents the
-	// actual pending result of rendering.
-	declare inflightBlock: Promise<unknown> | undefined;
-	declare inflightValue: Promise<any> | undefined;
-	declare enqueuedBlock: Promise<unknown> | undefined;
-	//declare enqueuedValue: Promise<ElementValue<TNode>> | undefined;
-	declare enqueuedValue: Promise<any> | undefined;
-
 	// The following callbacks are used to implement the Context async iterator.
 	declare onProps: ((props: Record<string, any>) => unknown) | undefined;
 	declare onPropsRequested: Function | undefined;
+
+	// A "block" is a promise which represents the duration during which new
+	// updates are queued, whereas a "diff" is a promise which settles when all
+	// child components have settled. This can be different for different types
+	// of components:
+	// - sync function components never block and pass new updates to children
+	//   immediately
+	// - async functions block while the component is running
+	// - sync generator components will block while children are running, because
+	//   they must be resumed with previous children
+	// - async generator components block like sync generator components when
+	//   using a for of props iterator, but block on next props requested when
+	//   using a for await of iterator, and block while the component is running
+	//   otherwise.
+	declare inflightBlock: Promise<unknown> | undefined;
+	declare inflightDiff: Promise<any> | undefined;
+	declare enqueuedBlock: Promise<unknown> | undefined;
+	declare enqueuedDiff: Promise<any> | undefined;
+
 	constructor(
 		renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
 		root: TRoot | undefined,
@@ -1424,9 +1434,9 @@ class ContextImpl<
 
 		this.iterator = undefined;
 		this.inflightBlock = undefined;
-		this.inflightValue = undefined;
+		this.inflightDiff = undefined;
 		this.enqueuedBlock = undefined;
-		this.enqueuedValue = undefined;
+		this.enqueuedDiff = undefined;
 		this.onProps = undefined;
 		this.onPropsRequested = undefined;
 	}
@@ -2133,11 +2143,11 @@ function enqueueComponentRun<TNode, TResult>(
 
 			return ctx.inflightBlock.then(() => {
 				ctx.inflightBlock = undefined;
-				return ctx.inflightValue;
+				return ctx.inflightDiff;
 			});
 		}
 
-		return ctx.inflightValue;
+		return ctx.inflightDiff;
 	} else if (!ctx.inflightBlock) {
 		const [block, value] = runComponent<TNode, TResult>(ctx);
 		if (block) {
@@ -2147,7 +2157,7 @@ function enqueueComponentRun<TNode, TResult>(
 				.then((v) => v)
 				.finally(() => advanceComponent(ctx));
 			// stepComponent will only return a block if the value is asynchronous
-			ctx.inflightValue = value as Promise<ElementValue<TNode>>;
+			ctx.inflightDiff = value as Promise<ElementValue<TNode>>;
 		}
 
 		return value;
@@ -2159,7 +2169,7 @@ function enqueueComponentRun<TNode, TResult>(
 			(resolve) => (resolveEnqueuedBlock = resolve),
 		);
 
-		ctx.enqueuedValue = ctx.inflightBlock.then(() => {
+		ctx.enqueuedDiff = ctx.inflightBlock.then(() => {
 			const [block, value] = runComponent<TNode, TResult>(ctx);
 			if (block) {
 				resolveEnqueuedBlock(block.finally(() => advanceComponent(ctx)));
@@ -2169,7 +2179,7 @@ function enqueueComponentRun<TNode, TResult>(
 		});
 	}
 
-	return ctx.enqueuedValue;
+	return ctx.enqueuedDiff;
 }
 
 /** Called when the inflight block promise settles. */
@@ -2179,9 +2189,9 @@ function advanceComponent(ctx: ContextImpl): void {
 	}
 
 	ctx.inflightBlock = ctx.enqueuedBlock;
-	ctx.inflightValue = ctx.enqueuedValue;
+	ctx.inflightDiff = ctx.enqueuedDiff;
 	ctx.enqueuedBlock = undefined;
-	ctx.enqueuedValue = undefined;
+	ctx.enqueuedDiff = undefined;
 }
 
 /**
@@ -2366,7 +2376,7 @@ function runComponent<TNode, TResult>(
 					initial,
 				);
 			}
-			return [ctx.inflightBlock, ctx.inflightValue];
+			return [ctx.inflightBlock, ctx.inflightDiff];
 		}
 	} else {
 		throw new Error("Unknown component type");
@@ -2389,11 +2399,11 @@ async function runAsyncGenComponent<TNode, TResult>(
 			// inflightValue must be set synchronously.
 			let resolve!: Function;
 			let reject!: Function;
-			ctx.inflightValue = new Promise(
+			ctx.inflightDiff = new Promise(
 				(resolve1, reject1) => ((resolve = resolve1), (reject = reject1)),
 			);
 			if (ctx.parent && !(ctx.f & IsRefreshing)) {
-				ctx.inflightValue.catch((err) => {
+				ctx.inflightDiff.catch((err) => {
 					if (!(ctx.f & IsRefreshing)) {
 						return propagateError(ctx.parent!, err);
 					}
