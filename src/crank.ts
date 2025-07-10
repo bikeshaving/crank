@@ -2307,7 +2307,7 @@ function runComponent<TNode, TResult>(
 
 		const block = isPromiseLike(diff) ? diff.catch(NOOP) : undefined;
 		return [block, diff];
-	} else {
+	} else if (ctx.f & IsAsyncGen) {
 		if (ctx.f & IsInForOfLoop) {
 			// Async generator component using for...of loops behave similar to sync
 			// generator components. This allows for easier refactoring of sync to
@@ -2368,6 +2368,8 @@ function runComponent<TNode, TResult>(
 			}
 			return [ctx.inflightBlock, ctx.inflightValue];
 		}
+	} else {
+		throw new Error("Unknown component type");
 	}
 }
 
