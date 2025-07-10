@@ -762,13 +762,15 @@ export class Renderer<
 		const impl = this[_RendererImpl];
 		const scope = impl.scope(undefined, Portal, ret.el.props);
 		
-		// Get hydration data for the portal/root
+		// Get hydration data for the portal/root element
+		// This provides the initial DOM children that need to be hydrated
 		const hydrationData = impl.hydrate(Portal, root, {});
 		ret.hydrationData = hydrationData;
 		
-		// Mark this retainer as hydrating
+		// Mark this retainer as hydrating - this flag will be propagated to children
 		setFlag(ret, IsHydrating);
 		
+		// Start the diffing process with hydration context
 		const diff = diffChildren(impl, root, ret, ctx, scope, ret, children);
 
 		if (isPromiseLike(diff)) {
@@ -937,10 +939,11 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 
 /**
  * Helper function to get the next hydration child from a parent retainer.
- * During hydration, this consumes children from the parent's hydration data.
+ * During hydration, this consumes children from the parent's hydration data in order.
+ * Returns undefined if not in hydration mode or no more children available.
  */
 function getNextHydrationChild<TNode>(parent: Retainer<TNode>): TNode | string | undefined {
-	if (!getFlag(parent, IsHydrating) || !parent.hydrationData) {
+	if (!getFlag(parent, IsHydrating) || !parent.hydrationData || !parent.hydrationData.children.length) {
 		return undefined;
 	}
 	
