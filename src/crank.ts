@@ -952,17 +952,17 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			})
 			.then(() => undefined);
 
-		let onNextValues!: Function;
+		let onNextDiffs!: Function;
 		parent.pending = diffs1 = Promise.race([
 			diffs1,
-			new Promise<any>((resolve) => (onNextValues = resolve)),
+			new Promise<any>((resolve) => (onNextDiffs = resolve)),
 		]);
 
 		if (parent.onPending) {
 			parent.onPending(diffs1);
 		}
 
-		parent.onPending = onNextValues;
+		parent.onPending = onNextDiffs;
 		return diffs1;
 	} else {
 		parent.fallback = undefined;
