@@ -1,5 +1,5 @@
 import {Portal, Renderer} from "./crank.js";
-import type {ElementValue, RendererImpl} from "./crank.js";
+import type {ElementValue, RenderAdapter} from "./crank.js";
 
 const voidTags = new Set([
 	"area",
@@ -108,7 +108,7 @@ function join(children: Array<Node | string>): string {
 	return result;
 }
 
-export const impl: Partial<RendererImpl<Node, undefined, any, string>> = {
+export const impl: Partial<RenderAdapter<Node, undefined, any, string>> = {
 	create(): Node {
 		return {value: ""};
 	},

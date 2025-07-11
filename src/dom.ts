@@ -4,12 +4,12 @@ import {
 	ElementValue,
 	Portal,
 	Renderer,
-	RendererImpl,
+	RenderAdapter,
 } from "./crank.js";
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
-export const impl: Partial<RendererImpl<Node, string>> = {
+export const adapter: Partial<RenderAdapter<Node, string>> = {
 	scope(
 		xmlns: string | undefined,
 		tag: string | symbol,
@@ -306,12 +306,8 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 	): string {
 		if (hydration != null) {
 			let value = hydration.shift();
-			if (typeof value !== "string" || !value.startsWith(text)) {
+			if (value !== text) {
 				console.error(`Expected "${text}" while hydrating but found:`, value);
-			} else if (text.length < value.length) {
-				// TODO: The core library should concatenate text before calling this to prevent having to unshift hydration data
-				value = value.slice(text.length);
-				hydration.unshift(value);
 			}
 		}
 
@@ -368,11 +364,9 @@ export const impl: Partial<RendererImpl<Node, string>> = {
 	},
 };
 
-// TODO: Consider using regular inheritance instead of delegation.
-// It's not immediately clear how super calls work from the source code alone.
 export class DOMRenderer extends Renderer<Node, string> {
 	constructor() {
-		super(impl);
+		super(adapter);
 	}
 
 	render(

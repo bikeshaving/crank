@@ -107,7 +107,6 @@ export type Fragment = typeof Fragment;
 // TODO: We assert the following symbol tags as any because TypeScript support
 // for symbol tags in JSX doesn’t exist yet.
 // https://github.com/microsoft/TypeScript/issues/38367
-
 /**
  * A special tag for rendering into a new root node via a root prop.
  *
@@ -430,7 +429,7 @@ class Retainer<TNode> {
 	 * component elements.
 	 */
 
-	declare ctx: ContextImpl<TNode> | undefined;
+	declare ctx: ContextState<TNode> | undefined;
 	/**
 	 * The retainer children of this element. Retainers form a tree which mirrors
 	 * elements. Can be a single child or undefined as a memory optimization.
@@ -511,7 +510,11 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode | string> {
 	return values1;
 }
 
-export interface RendererImpl<
+/**
+ * An interface which describes the adapter used by Renderer subclasses to
+ * adapt the rendering process for a specific target environment.
+ */
+export interface RenderAdapter<
 	TNode,
 	TScope,
 	TRoot extends TNode = TNode,
@@ -603,7 +606,7 @@ export interface RendererImpl<
 		props: Record<string, unknown>,
 	): unknown;
 
-	flush(root: TRoot): unknown;
+	finalize(root: TRoot): unknown;
 
 	reconcile<TTag extends string | symbol>(
 		node: TNode,
@@ -613,9 +616,9 @@ export interface RendererImpl<
 	): Array<TNode | string> | undefined;
 }
 
-const defaultRendererImpl: RendererImpl<unknown, unknown, unknown, unknown> = {
+const defaultAdapter: RenderAdapter<any, any, any, any> = {
 	create() {
-		throw new Error("Create not implemented");
+		throw new Error("adapter must implement create");
 	},
 	scope: IDENTITY,
 	read: IDENTITY,
@@ -624,18 +627,19 @@ const defaultRendererImpl: RendererImpl<unknown, unknown, unknown, unknown> = {
 	patch: NOOP,
 	arrange: NOOP,
 	dispose: NOOP,
-	flush: NOOP,
+	finalize: NOOP,
 	reconcile() {
-		throw new Error("reconcile must be implemented for hydration");
+		throw new Error("adapter must implement reconcile for hydration");
 	},
 };
 
-const _RendererImpl = Symbol.for("crank.RendererImpl");
+const _RenderAdapter = Symbol.for("crank.RenderAdapter");
+
 /**
  * An abstract class which is subclassed to render to different target
- * environments. Subclasses will typically call super() with a custom
- * RendererImpl. This class is responsible for kicking off the rendering
- * process and caching previous trees by root.
+ * environments. Subclasses call super() with a custom RenderAdapter object.
+ * This class is responsible for kicking off the rendering process and caching
+ * previous trees by root.
  *
  * @template TNode - The type of the node for a rendering environment.
  * @template TScope - Data which is passed down the tree.
@@ -654,13 +658,10 @@ export class Renderer<
 	 */
 	declare cache: WeakMap<object, Retainer<TNode>>;
 
-	declare [_RendererImpl]: RendererImpl<TNode, TScope, TRoot, TResult>;
-	constructor(impl: Partial<RendererImpl<TNode, TScope, TRoot, TResult>>) {
+	declare [_RenderAdapter]: RenderAdapter<TNode, TScope, TRoot, TResult>;
+	constructor(adapter: Partial<RenderAdapter<TNode, TScope, TRoot, TResult>>) {
 		this.cache = new WeakMap();
-		this[_RendererImpl] = {
-			...(defaultRendererImpl as RendererImpl<TNode, TScope, TRoot, TResult>),
-			...impl,
-		};
+		this[_RenderAdapter] = {...defaultAdapter, ...adapter};
 	}
 
 	/**
@@ -686,7 +687,7 @@ export class Renderer<
 		let ret: Retainer<TNode> | undefined;
 		const ctx =
 			bridge &&
-			(bridge[_ContextImpl] as ContextImpl<TNode, TScope, TRoot, TResult>);
+			(bridge[_ContextState] as ContextState<TNode, TScope, TRoot, TResult>);
 		if (typeof root === "object" && root !== null) {
 			ret = this.cache.get(root);
 		}
@@ -702,24 +703,23 @@ export class Renderer<
 		} else if (ret.ctx !== ctx) {
 			throw new Error("Context mismatch");
 		} else {
-			oldProps = ret.el.props;
 			ret.el = createElement(Portal, {children, root});
 			if (typeof root === "object" && root !== null && children == null) {
 				this.cache.delete(root);
 			}
 		}
 
-		const impl = this[_RendererImpl];
-		const scope = impl.scope(undefined, Portal, ret.el.props);
-		const diff = diffChildren(impl, root, ret, ctx, scope, ret, children);
+		const adapter = this[_RenderAdapter];
+		const scope = adapter.scope(undefined, Portal, ret.el.props);
+		const diff = diffChildren(adapter, root, ret, ctx, scope, ret, children);
 
 		if (isPromiseLike(diff)) {
-			return diff.then(() => {
-				return commitRootRender(impl, root, ret!, ctx, oldProps, scope);
-			});
+			return diff.then(() =>
+				commitRootRender(adapter, root, ret!, ctx, oldProps, scope),
+			);
 		}
 
-		return commitRootRender(impl, root, ret!, ctx, oldProps, scope);
+		return commitRootRender(adapter, root, ret!, ctx, oldProps, scope);
 	}
 
 	hydrate(
@@ -730,7 +730,7 @@ export class Renderer<
 		let ret: Retainer<TNode> | undefined;
 		const ctx =
 			bridge &&
-			(bridge[_ContextImpl] as ContextImpl<TNode, TScope, TRoot, TResult>);
+			(bridge[_ContextState] as ContextState<TNode, TScope, TRoot, TResult>);
 		if (typeof root === "object" && root !== null) {
 			ret = this.cache.get(root);
 		}
@@ -740,7 +740,6 @@ export class Renderer<
 			return this.render(children, root, bridge);
 		}
 
-		let oldProps: Record<string, any> | undefined;
 		ret = new Retainer(createElement(Portal, {children, root}));
 		ret.value = root;
 		ret.ctx = ctx;
@@ -748,47 +747,55 @@ export class Renderer<
 			this.cache.set(root, ret);
 		}
 
-		const impl = this[_RendererImpl];
-		const scope = impl.scope(undefined, Portal, ret.el.props);
+		const adapter = this[_RenderAdapter];
+		const scope = adapter.scope(undefined, Portal, ret.el.props);
 
 		// Start the diffing process
-		const diff = diffChildren(impl, root, ret, ctx, scope, ret, children);
+		const diff = diffChildren(adapter, root, ret, ctx, scope, ret, children);
 
 		if (isPromiseLike(diff)) {
 			return diff.then(() => {
 				// Get hydration data for the portal/root element
 				// This provides the initial DOM children that need to be hydrated
-				const hydration = impl.reconcile(root, Portal, ret.el.props, scope);
+				const hydration = adapter.reconcile(root, Portal, ret.el.props, scope);
 				return commitRootRender(
-					impl,
+					adapter,
 					root,
 					ret!,
 					ctx,
-					oldProps,
+					ret.oldProps,
 					scope,
 					hydration,
 				);
 			});
 		}
 
-		const hydration = impl.reconcile(root, Portal, ret.el.props, scope);
-		return commitRootRender(impl, root, ret!, ctx, oldProps, scope, hydration);
+		const hydration = adapter.reconcile(root, Portal, ret.el.props, scope);
+		return commitRootRender(
+			adapter,
+			root,
+			ret!,
+			ctx,
+			ret.oldProps,
+			scope,
+			hydration,
+		);
 	}
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
 function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
-	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
+	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
 	ret: Retainer<TNode>,
-	ctx: ContextImpl<TNode, TScope, TRoot, TResult> | undefined,
+	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	oldProps: Record<string, any> | undefined,
 	scope: TScope,
 	hydration?: Array<TNode | string>,
 ): TResult {
 	const oldChildValues = getChildValues(ret);
 	const childValues = commitChildren(
-		renderer,
+		adapter,
 		root,
 		ctx,
 		ret.children,
@@ -797,7 +804,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	);
 	// element is a host or portal element
 	if (root != null) {
-		renderer.arrange(
+		adapter.arrange(
 			Portal,
 			root,
 			ret.el.props,
@@ -806,18 +813,18 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 			oldChildValues,
 		);
 	} else {
-		unmount(renderer, ret, ctx, ret);
+		unmount(adapter, ret, ctx, ret);
 	}
-	flush(renderer, root);
+	flush(adapter, root);
 
 	setFlag(ret, HasCommitted);
-	return renderer.read(unwrap(childValues));
+	return adapter.read(unwrap(childValues));
 }
 
 function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
-	renderer: RendererImpl<TNode, unknown, TRoot, TResult>,
+	adapter: RenderAdapter<TNode, unknown, TRoot, TResult>,
 	root: TRoot | undefined,
-	ctx: ContextImpl<TNode, TScope, TRoot, TResult> | undefined,
+	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	children: Array<RetainerChild<TNode>> | RetainerChild<TNode>,
 	scope: TScope | undefined,
 	hydration?: Array<TNode | string>,
@@ -833,24 +840,24 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 		if (typeof child === "object") {
 			const el = child.el;
 			if (el.tag === Raw) {
-				values.push(commitRaw(renderer, child, ctx, scope, hydration));
+				values.push(commitRaw(adapter, child, ctx, scope, hydration));
 			} else if (child.ctx) {
 				values.push(commitComponent(child.ctx, hydration));
 			} else if (el.tag === Fragment) {
 				values.push(
-					commitChildren(renderer, root, ctx, child.children, scope, hydration),
+					commitChildren(adapter, root, ctx, child.children, scope, hydration),
 				);
 			} else {
 				// host element or portal element
 				values.push(
-					commitHostOrPortal(renderer, root, child, ctx, scope, hydration),
+					commitHostOrPortal(adapter, root, child, ctx, scope, hydration),
 				);
 			}
 
 			child.oldProps = undefined;
 			setFlag(child, HasCommitted);
 		} else if (typeof child === "string") {
-			const text = renderer.text(child, scope, hydration);
+			const text = adapter.text(child, scope, hydration);
 			values.push(text);
 		}
 	}
@@ -860,16 +867,16 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 }
 
 function commitRaw<TNode, TScope>(
-	renderer: RendererImpl<TNode, TScope, TNode, unknown>,
+	adapter: RenderAdapter<TNode, TScope, TNode, unknown>,
 	ret: Retainer<TNode>,
-	ctx: ContextImpl<TNode, TScope, TNode, unknown> | undefined,
+	ctx: ContextState<TNode, TScope, TNode, unknown> | undefined,
 	scope: TScope | undefined,
 	hydration: Array<TNode | string> | undefined,
 ): ElementValue<TNode> {
 	if (!ret.oldProps || ret.oldProps.value !== ret.el.props.value) {
-		ret.value = renderer.raw(ret.el.props.value as any, scope, hydration);
+		ret.value = adapter.raw(ret.el.props.value as any, scope, hydration);
 		if (typeof ret.el.ref === "function") {
-			ret.el.ref(renderer.read(ret.value));
+			ret.el.ref(adapter.read(ret.value));
 		}
 	}
 
@@ -878,10 +885,10 @@ function commitRaw<TNode, TScope>(
 }
 
 function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
-	renderer: RendererImpl<TNode, TScope, TRoot, unknown>,
+	adapter: RenderAdapter<TNode, TScope, TRoot, unknown>,
 	root: TNode | undefined,
 	ret: Retainer<TNode>,
-	ctx: ContextImpl<TNode, TScope, TRoot, unknown> | undefined,
+	ctx: ContextState<TNode, TScope, TRoot, unknown> | undefined,
 	scope: TScope,
 	hydration: Array<TNode | string> | undefined,
 ): ElementValue<TNode> {
@@ -893,15 +900,13 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	let value = ret.value as TNode;
 	let props = ret.el.props;
 	const oldProps = ret.oldProps;
-	scope = renderer.scope(scope, tag, props)!;
+	scope = adapter.scope(scope, tag, props)!;
 
-	// For host elements during hydration, consume next child from parent hydrationData
 	let childHydration: Array<TNode | string> | undefined;
 	if (!value && hydration && hydration.length > 0) {
 		const nextChild = hydration.shift();
 		if (nextChild && typeof nextChild !== "string") {
-			// Try to hydrate this node - validate it matches our tag and get child hydration data
-			childHydration = renderer.reconcile(nextChild, tag, props, scope);
+			childHydration = adapter.reconcile(nextChild, tag, props, scope);
 			if (childHydration) {
 				value = ret.value = nextChild as TNode;
 			}
@@ -910,7 +915,7 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 
 	const oldChildValues = getChildValues(ret);
 	const childValues = commitChildren(
-		renderer,
+		adapter,
 		root,
 		ctx,
 		ret.children,
@@ -919,11 +924,11 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	);
 	let copiedProps: Set<string> | undefined;
 	if (tag !== Portal) {
-		// This assumes that renderer.create does not return nullish values.
+		// This assumes that .create does not return nullish values.
 		if (value == null) {
-			value = ret.value = renderer.create(tag, props, scope);
+			value = ret.value = adapter.create(tag, props, scope);
 			if (typeof ret.el.ref === "function") {
-				ret.el.ref(renderer.read(value));
+				ret.el.ref(adapter.read(value));
 			}
 		}
 
@@ -934,7 +939,7 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 				// Not sure about this feature. Should probably be removed.
 				(copiedProps = copiedProps || new Set()).add(propName);
 			} else if (!SPECIAL_PROPS.has(propName)) {
-				renderer.patch(
+				adapter.patch(
 					tag,
 					value,
 					propName,
@@ -952,13 +957,15 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 			props[name] = oldProps && oldProps[name];
 		}
 
-		ret.el.props = props;
+		ret.oldProps = props;
+	} else {
+		ret.oldProps = ret.el.props;
 	}
 
-	renderer.arrange(tag, value, props, childValues, oldProps, oldChildValues);
+	adapter.arrange(tag, value, props, childValues, oldProps, oldChildValues);
 	setFlag(ret, HasCommitted);
 	if (tag === Portal) {
-		flush(renderer, ret.value);
+		flush(adapter, ret.value);
 		return;
 	}
 
@@ -966,10 +973,10 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 }
 
 function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
-	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
+	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
 	host: Retainer<TNode>,
-	ctx: ContextImpl<TNode, TScope, TRoot, TResult> | undefined,
+	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope | undefined,
 	parent: Retainer<TNode>,
 	children: Children,
@@ -1059,7 +1066,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					// pass
 				} else if (child.tag === Fragment) {
 					diff = diffChildren(
-						renderer,
+						adapter,
 						root,
 						host,
 						ctx,
@@ -1068,10 +1075,10 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 						ret.el.props.children as Children,
 					);
 				} else if (typeof child.tag === "function") {
-					diff = diffComponent(renderer, root, host, ctx, scope, ret);
+					diff = diffComponent(adapter, root, host, ctx, scope, ret);
 				} else {
 					// host element or portal element
-					diff = diffHost(renderer, root, ctx, scope, ret);
+					diff = diffHost(adapter, root, ctx, scope, ret);
 				}
 			}
 
@@ -1081,8 +1088,6 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					setFlag(ret, IsCopied);
 				} else {
 					setFlag(ret, HasCommitted, false);
-					// ???
-					//ret.f &= ~IsCopied;
 				}
 			}
 
@@ -1095,7 +1100,6 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				(graveyard = graveyard || []).push(ret);
 			}
 			if (typeof child === "string") {
-				// TODO: We should concatenate adjacent strings.
 				ret = child;
 			} else {
 				ret = undefined;
@@ -1130,7 +1134,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				parent.fallback = undefined;
 				if (graveyard) {
 					for (let i = 0; i < graveyard.length; i++) {
-						unmount(renderer, host, ctx, graveyard[i]);
+						unmount(adapter, host, ctx, graveyard[i]);
 					}
 				}
 			})
@@ -1152,7 +1156,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		parent.fallback = undefined;
 		if (graveyard) {
 			for (let i = 0; i < graveyard.length; i++) {
-				unmount(renderer, host, ctx, graveyard[i]);
+				unmount(adapter, host, ctx, graveyard[i]);
 			}
 		}
 
@@ -1185,7 +1189,7 @@ function getInflight(child: Retainer<unknown>): Promise<undefined> | undefined {
 		return;
 	}
 
-	const ctx: ContextImpl<unknown> | undefined = child.ctx;
+	const ctx: ContextState<unknown> | undefined = child.ctx;
 	if (ctx && getFlag(ctx, IsUpdating) && ctx.inflightDiff) {
 		return ctx.inflightDiff;
 	} else if (child.pending) {
@@ -1197,9 +1201,9 @@ function getInflight(child: Retainer<unknown>): Promise<undefined> | undefined {
 }
 
 function diffHost<TNode, TScope, TRoot extends TNode>(
-	renderer: RendererImpl<TNode, TScope, TRoot, unknown>,
+	adapter: RenderAdapter<TNode, TScope, TRoot, unknown>,
 	root: TRoot | undefined,
-	ctx: ContextImpl<TNode, TScope, TRoot> | undefined,
+	ctx: ContextState<TNode, TScope, TRoot> | undefined,
 	scope: TScope | undefined,
 	ret: Retainer<TNode>,
 ): Promise<undefined> | undefined {
@@ -1209,10 +1213,10 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 		root = ret.value = el.props.root as any;
 	}
 
-	scope = renderer.scope(scope, tag, el.props);
+	scope = adapter.scope(scope, tag, el.props);
 
 	return diffChildren(
-		renderer,
+		adapter,
 		root,
 		ret,
 		ctx,
@@ -1223,11 +1227,11 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 }
 
 function flush<TRoot>(
-	renderer: RendererImpl<unknown, unknown, TRoot>,
+	adapter: RenderAdapter<unknown, unknown, TRoot>,
 	root: TRoot,
-	initiator?: ContextImpl,
+	initiator?: ContextState,
 ) {
-	renderer.flush(root);
+	adapter.finalize(root);
 	if (typeof root !== "object" || root === null) {
 		return;
 	}
@@ -1235,9 +1239,9 @@ function flush<TRoot>(
 	const flushMap = flushMaps.get(root as any);
 	if (flushMap) {
 		if (initiator) {
-			const flushMap1 = new Map<ContextImpl, Set<Function>>();
+			const flushMap1 = new Map<ContextState, Set<Function>>();
 			for (let [ctx, callbacks] of flushMap) {
-				if (!ctxContains(initiator, ctx)) {
+				if (!parentCtxContains(initiator, ctx)) {
 					flushMap.delete(ctx);
 					flushMap1.set(ctx, callbacks);
 				}
@@ -1253,7 +1257,7 @@ function flush<TRoot>(
 		}
 
 		for (const [ctx, callbacks] of flushMap) {
-			const value = renderer.read(getValue(ctx.ret));
+			const value = adapter.read(getValue(ctx.ret));
 			for (const callback of callbacks) {
 				callback(value);
 			}
@@ -1262,17 +1266,17 @@ function flush<TRoot>(
 }
 
 function unmount<TNode, TScope, TRoot extends TNode, TResult>(
-	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
+	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	host: Retainer<TNode>,
-	ctx: ContextImpl<TNode, TScope, TRoot, TResult> | undefined,
+	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	ret: Retainer<TNode>,
 ): void {
 	if (typeof ret.el.tag === "function") {
-		ctx = ret.ctx as ContextImpl<TNode, TScope, TRoot, TResult>;
+		ctx = ret.ctx as ContextState<TNode, TScope, TRoot, TResult>;
 		unmountComponent(ctx);
 	} else if (ret.el.tag === Portal) {
 		host = ret;
-		renderer.arrange(
+		adapter.arrange(
 			Portal,
 			host.value as TNode,
 			host.el.props,
@@ -1280,7 +1284,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 			host.el.props,
 			getChildValues(host),
 		);
-		flush(renderer, host.value);
+		flush(adapter, host.value);
 	} else if (ret.el.tag !== Fragment) {
 		if (isEventTarget(ret.value)) {
 			const records = getListenerRecords(ctx, host);
@@ -1294,7 +1298,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 			}
 		}
 
-		renderer.dispose(ret.el.tag, ret.value as TNode, ret.el.props);
+		adapter.dispose(ret.el.tag, ret.value as TNode, ret.el.props);
 		host = ret;
 	}
 
@@ -1302,7 +1306,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i];
 		if (typeof child === "object") {
-			unmount(renderer, host, ctx, child);
+			unmount(adapter, host, ctx, child);
 		}
 	}
 }
@@ -1399,20 +1403,21 @@ export interface Context extends Crank.Context {}
  */
 export interface ProvisionMap extends Crank.ProvisionMap {}
 
-const provisionMaps = new WeakMap<ContextImpl, Map<unknown, unknown>>();
+const provisionMaps = new WeakMap<ContextState, Map<unknown, unknown>>();
 
-const scheduleMap = new WeakMap<ContextImpl, Set<Function>>();
+const scheduleMap = new WeakMap<ContextState, Set<Function>>();
 
-const cleanupMap = new WeakMap<ContextImpl, Set<Function>>();
+const cleanupMap = new WeakMap<ContextState, Set<Function>>();
 
 // keys are roots
-const flushMaps = new WeakMap<object, Map<ContextImpl, Set<Function>>>();
+const flushMaps = new WeakMap<object, Map<ContextState, Set<Function>>>();
 
+// TODO: allow ContextState to be initialized for testing purposes
 /**
  * @internal
  * The internal class which holds context data.
  */
-class ContextImpl<
+class ContextState<
 	TNode = unknown,
 	TScope = unknown,
 	TRoot extends TNode = TNode,
@@ -1421,13 +1426,11 @@ class ContextImpl<
 	/** A bitmask. See CONTEXT FLAGS above. */
 	declare f: number;
 
-	/** The actual context associated with this impl. */
-	declare owner: Context<unknown, TResult>;
+	/** The actual context associated with this state. */
+	declare ctx: Context<unknown, TResult>;
 
-	/**
-	 * The renderer which created this context.
-	 */
-	declare renderer: RendererImpl<TNode, TScope, TRoot, TResult>;
+	/** The adapter of the renderer which created this context. */
+	declare adapter: RenderAdapter<TNode, TScope, TRoot, TResult>;
 
 	/** The root node as set by the nearest ancestor portal. */
 	declare root: TRoot | undefined;
@@ -1441,8 +1444,8 @@ class ContextImpl<
 	 */
 	declare host: Retainer<TNode>;
 
-	/** The parent context impl. */
-	declare parent: ContextImpl<TNode, TScope, TRoot, TResult> | undefined;
+	/** The parent context state. */
+	declare parent: ContextState<TNode, TScope, TRoot, TResult> | undefined;
 
 	/** The value of the scope at the point of element’s creation. */
 	declare scope: TScope | undefined;
@@ -1473,16 +1476,16 @@ class ContextImpl<
 	declare onPropsRequested: Function | undefined;
 
 	constructor(
-		renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
+		adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 		root: TRoot | undefined,
 		host: Retainer<TNode>,
-		parent: ContextImpl<TNode, TScope, TRoot, TResult> | undefined,
+		parent: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 		scope: TScope | undefined,
 		ret: Retainer<TNode>,
 	) {
 		this.f = 0;
-		this.owner = new Context(this);
-		this.renderer = renderer;
+		this.ctx = new Context(this);
+		this.adapter = adapter;
 		this.root = root;
 		this.host = host;
 		this.parent = parent;
@@ -1501,11 +1504,11 @@ class ContextImpl<
 	}
 }
 
-const _ContextImpl = Symbol.for("crank.ContextImpl");
+const _ContextState = Symbol.for("crank.ContextState");
 
-type ComponentProps<T> = T extends () => any
+type ComponentProps<T> = T extends () => unknown
 	? {}
-	: T extends (props: infer U) => any
+	: T extends (props: infer U) => unknown
 		? U
 		: T;
 /**
@@ -1524,20 +1527,21 @@ type ComponentProps<T> = T extends () => any
 export class Context<T = any, TResult = any> implements EventTarget {
 	/**
 	 * @internal
+	 * DO NOT USE THIS SYMBOL DIRECTLY.
 	 */
-	declare [_ContextImpl]: ContextImpl<unknown, unknown, unknown, TResult>;
+	declare [_ContextState]: ContextState<unknown, unknown, unknown, TResult>;
 
 	// TODO: If we could make the constructor function take a nicer value, it
 	// would be useful for testing purposes.
-	constructor(impl: ContextImpl<unknown, unknown, unknown, TResult>) {
-		this[_ContextImpl] = impl;
+	constructor(state: ContextState<unknown, unknown, unknown, TResult>) {
+		this[_ContextState] = state;
 	}
 
 	/**
 	 * The current props of the associated element.
 	 */
 	get props(): ComponentProps<T> {
-		return this[_ContextImpl].ret.el.props as ComponentProps<T>;
+		return this[_ContextState].ret.el.props as ComponentProps<T>;
 	}
 
 	/**
@@ -1547,11 +1551,11 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	 */
 	get value(): TResult {
 		console.warn("Context.value is deprecated.");
-		return this[_ContextImpl].renderer.read(getValue(this[_ContextImpl].ret));
+		return this[_ContextState].adapter.read(getValue(this[_ContextState].ret));
 	}
 
 	*[Symbol.iterator](): Generator<ComponentProps<T>> {
-		const ctx = this[_ContextImpl];
+		const ctx = this[_ContextState];
 		try {
 			setFlag(ctx, IsInForOfLoop);
 			while (!getFlag(ctx, IsUnmounted) && !getFlag(ctx, IsErrored)) {
@@ -1569,7 +1573,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	}
 
 	async *[Symbol.asyncIterator](): AsyncGenerator<ComponentProps<T>> {
-		const ctx = this[_ContextImpl];
+		const ctx = this[_ContextState];
 		if (getFlag(ctx, IsSyncGen)) {
 			throw new Error("Use for...of in sync generator components");
 		}
@@ -1624,13 +1628,13 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	 * async iterator to suspend.
 	 */
 	refresh(): Promise<TResult> | TResult {
-		const ctx = this[_ContextImpl];
+		const ctx = this[_ContextState];
 		if (getFlag(ctx, IsUnmounted)) {
 			console.error("Component is unmounted");
-			return ctx.renderer.read(undefined);
+			return ctx.adapter.read(undefined);
 		} else if (getFlag(ctx, IsSyncExecuting)) {
 			console.error("Component is already executing");
-			return ctx.renderer.read(getValue(ctx.ret));
+			return ctx.adapter.read(getValue(ctx.ret));
 		}
 
 		let diff: Promise<undefined> | undefined;
@@ -1638,7 +1642,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 			setFlag(ctx, IsRefreshing);
 			diff = enqueueComponentRun(ctx);
 			if (isPromiseLike(diff)) {
-				let result = diff.then(() => ctx.renderer.read(commitComponent(ctx)));
+				let result = diff.then(() => ctx.adapter.read(commitComponent(ctx)));
 				if (ctx.parent) {
 					result = result.catch((err) => propagateError(ctx.parent!, err));
 				}
@@ -1648,7 +1652,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 				});
 			}
 
-			return ctx.renderer.read(commitComponent(ctx));
+			return ctx.adapter.read(commitComponent(ctx));
 		} catch (err) {
 			if (ctx.parent) {
 				return propagateError(ctx.parent, err);
@@ -1667,7 +1671,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	 * fire once per callback and update.
 	 */
 	schedule(callback: (value: TResult) => unknown): void {
-		const ctx = this[_ContextImpl];
+		const ctx = this[_ContextState];
 		let callbacks = scheduleMap.get(ctx);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
@@ -1682,14 +1686,14 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	 * rendered into the root. Will only fire once per callback and render.
 	 */
 	flush(callback: (value: TResult) => unknown): void {
-		const ctx = this[_ContextImpl];
+		const ctx = this[_ContextState];
 		if (typeof ctx.root !== "object" || ctx.root === null) {
 			return;
 		}
 
 		let flushMap = flushMaps.get(ctx.root);
 		if (!flushMap) {
-			flushMap = new Map<ContextImpl, Set<Function>>();
+			flushMap = new Map<ContextState, Set<Function>>();
 			flushMaps.set(ctx.root, flushMap);
 		}
 
@@ -1707,10 +1711,10 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	 * fire once per callback.
 	 */
 	cleanup(callback: (value: TResult) => unknown): void {
-		const ctx = this[_ContextImpl];
+		const ctx = this[_ContextState];
 
 		if (getFlag(ctx, IsUnmounted)) {
-			const value = ctx.renderer.read(getValue(ctx.ret));
+			const value = ctx.adapter.read(getValue(ctx.ret));
 			callback(value);
 			return;
 		}
@@ -1728,7 +1732,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	consume(key: unknown): any;
 	consume(key: unknown): any {
 		for (
-			let ctx = this[_ContextImpl].parent;
+			let ctx = this[_ContextState].parent;
 			ctx !== undefined;
 			ctx = ctx.parent
 		) {
@@ -1745,7 +1749,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	): void;
 	provide(key: unknown, value: any): void;
 	provide(key: unknown, value: any): void {
-		const ctx = this[_ContextImpl];
+		const ctx = this[_ContextState];
 		let provisions = provisionMaps.get(ctx);
 		if (!provisions) {
 			provisions = new Map();
@@ -1760,7 +1764,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 		listener: MappedEventListenerOrEventListenerObject<T> | null,
 		options?: boolean | AddEventListenerOptions,
 	): void {
-		const ctx = this[_ContextImpl];
+		const ctx = this[_ContextState];
 		let listeners: Array<EventListenerRecord>;
 		if (!isListenerOrListenerObject(listener)) {
 			return;
@@ -1820,7 +1824,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 		listener: MappedEventListenerOrEventListenerObject<T> | null,
 		options?: EventListenerOptions | boolean,
 	): void {
-		const ctx = this[_ContextImpl];
+		const ctx = this[_ContextState];
 		const listeners = listenersMap.get(ctx);
 		if (listeners == null || !isListenerOrListenerObject(listener)) {
 			return;
@@ -1850,8 +1854,8 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	}
 
 	dispatchEvent(ev: Event): boolean {
-		const ctx = this[_ContextImpl];
-		const path: Array<ContextImpl> = [];
+		const ctx = this[_ContextState];
+		const path: Array<ContextState> = [];
 		for (
 			let parent = ctx.parent;
 			parent !== undefined;
@@ -1869,7 +1873,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 			immediateCancelBubble = true;
 			return stopImmediatePropagation.call(ev);
 		});
-		setEventProperty(ev, "target", ctx.owner);
+		setEventProperty(ev, "target", ctx.ctx);
 
 		// The only possible errors in this block are errors thrown by callbacks,
 		// and dispatchEvent will only log these errors rather than throwing
@@ -1885,11 +1889,11 @@ export class Context<T = any, TResult = any> implements EventTarget {
 				const target = path[i];
 				const listeners = listenersMap.get(target);
 				if (listeners) {
-					setEventProperty(ev, "currentTarget", target.owner);
+					setEventProperty(ev, "currentTarget", target.ctx);
 					for (const record of listeners) {
 						if (record.type === ev.type && record.options.capture) {
 							try {
-								record.callback.call(target.owner, ev);
+								record.callback.call(target.ctx, ev);
 							} catch (err) {
 								console.error(err);
 							}
@@ -1908,7 +1912,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 
 			{
 				setEventProperty(ev, "eventPhase", AT_TARGET);
-				setEventProperty(ev, "currentTarget", ctx.owner);
+				setEventProperty(ev, "currentTarget", ctx.ctx);
 
 				// dispatchEvent calls the prop callback if it exists
 				let propCallback = ctx.ret.el.props["on" + ev.type] as unknown;
@@ -1937,7 +1941,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 					for (const record of listeners) {
 						if (record.type === ev.type) {
 							try {
-								record.callback.call(ctx.owner, ev);
+								record.callback.call(ctx.ctx, ev);
 							} catch (err) {
 								console.error(err);
 							}
@@ -1960,11 +1964,11 @@ export class Context<T = any, TResult = any> implements EventTarget {
 					const target = path[i];
 					const listeners = listenersMap.get(target);
 					if (listeners) {
-						setEventProperty(ev, "currentTarget", target.owner);
+						setEventProperty(ev, "currentTarget", target.ctx);
 						for (const record of listeners) {
 							if (record.type === ev.type && !record.options.capture) {
 								try {
-									record.callback.call(target.owner, ev);
+									record.callback.call(target.ctx, ev);
 								} catch (err) {
 									console.error(err);
 								}
@@ -1990,10 +1994,9 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	}
 }
 
-/*** PRIVATE CONTEXT FUNCTIONS ***/
-function ctxContains(parent: ContextImpl, child: ContextImpl): boolean {
+function parentCtxContains(parent: ContextState, child: ContextState): boolean {
 	for (
-		let current: ContextImpl | undefined = child;
+		let current: ContextState | undefined = child;
 		current !== undefined;
 		current = current.parent
 	) {
@@ -2006,22 +2009,22 @@ function ctxContains(parent: ContextImpl, child: ContextImpl): boolean {
 }
 
 function diffComponent<TNode, TScope, TRoot extends TNode, TResult>(
-	renderer: RendererImpl<TNode, TScope, TRoot, TResult>,
+	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
 	host: Retainer<TNode>,
-	parent: ContextImpl<TNode, TScope, TRoot, TResult> | undefined,
+	parent: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope | undefined,
 	ret: Retainer<TNode>,
 ): Promise<undefined> | undefined {
-	let ctx: ContextImpl<TNode, TScope, TRoot, TResult>;
+	let ctx: ContextState<TNode, TScope, TRoot, TResult>;
 	if (ret.ctx) {
-		ctx = ret.ctx as ContextImpl<TNode, TScope, TRoot, TResult>;
+		ctx = ret.ctx as ContextState<TNode, TScope, TRoot, TResult>;
 		if (getFlag(ctx, IsSyncExecuting)) {
 			console.error("Component is already executing");
 			return;
 		}
 	} else {
-		ctx = ret.ctx = new ContextImpl(renderer, root, host, parent, scope, ret);
+		ctx = ret.ctx = new ContextState(adapter, root, host, parent, scope, ret);
 	}
 
 	setFlag(ctx, IsUpdating);
@@ -2029,7 +2032,7 @@ function diffComponent<TNode, TScope, TRoot extends TNode, TResult>(
 }
 
 function diffComponentChildren<TNode, TResult>(
-	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
+	ctx: ContextState<TNode, unknown, TNode, TResult>,
 	children: Children,
 ): Promise<undefined> | undefined {
 	if (getFlag(ctx, IsUnmounted)) {
@@ -2050,7 +2053,7 @@ function diffComponentChildren<TNode, TResult>(
 		// which bubbles to this component and causes a synchronous refresh().
 		setFlag(ctx, IsSyncExecuting);
 		diff = diffChildren(
-			ctx.renderer,
+			ctx.adapter,
 			ctx.root,
 			ctx.host,
 			ctx,
@@ -2071,11 +2074,11 @@ function diffComponentChildren<TNode, TResult>(
 }
 
 function commitComponent<TNode>(
-	ctx: ContextImpl<TNode, unknown, TNode>,
+	ctx: ContextState<TNode, unknown, TNode>,
 	hydration?: Array<TNode | string>,
 ): ElementValue<TNode> {
 	const values = commitChildren(
-		ctx.renderer,
+		ctx.adapter,
 		ctx.root,
 		ctx,
 		ctx.ret.children,
@@ -2126,17 +2129,17 @@ function commitComponent<TNode>(
 		// rearranging the nearest ancestor host element
 		const host = ctx.host;
 		const hostValues = getChildValues(host);
-		ctx.renderer.arrange(
+		ctx.adapter.arrange(
 			host.el.tag as string | symbol,
 			host.value as TNode,
 			host.el.props,
 			hostValues,
-			// props and oldProps are the same because the host isn’t updated.
+			// oldProps is the same as props the same because the host hasn't updated.
 			host.el.props,
 			undefined,
 		);
 
-		flush(ctx.renderer, ctx.root, ctx);
+		flush(ctx.adapter, ctx.root, ctx);
 	}
 
 	const callbacks = scheduleMap.get(ctx);
@@ -2144,7 +2147,7 @@ function commitComponent<TNode>(
 	if (callbacks) {
 		scheduleMap.delete(ctx);
 		setFlag(ctx, IsScheduling);
-		const result = ctx.renderer.read(value);
+		const result = ctx.adapter.read(value);
 		for (const callback of callbacks) {
 			callback(result);
 		}
@@ -2164,7 +2167,7 @@ function commitComponent<TNode>(
 
 /** Enqueues and executes the component associated with the context. */
 function enqueueComponentRun<TNode, TResult>(
-	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
+	ctx: ContextState<TNode, unknown, TNode, TResult>,
 ): Promise<undefined> | undefined {
 	// TODO: Move this logic to runComponent and use the block/diff tuple.
 	if (getFlag(ctx, IsAsyncGen) && !getFlag(ctx, IsInForOfLoop)) {
@@ -2250,15 +2253,14 @@ function enqueueComponentRun<TNode, TResult>(
 }
 
 /** Called when the inflight block promise settles. */
-function advanceComponent(ctx: ContextImpl): void {
+function advanceComponent(ctx: ContextState): void {
+	// TODO: delete special case here
 	if (getFlag(ctx, IsAsyncGen) && !getFlag(ctx, IsInForOfLoop)) {
 		return;
 	}
 
-	ctx.inflightBlock = ctx.enqueuedBlock;
-	ctx.inflightDiff = ctx.enqueuedDiff;
-	ctx.enqueuedBlock = undefined;
-	ctx.enqueuedDiff = undefined;
+	[ctx.inflightBlock, ctx.inflightDiff] = [ctx.enqueuedBlock, ctx.enqueuedDiff];
+	[ctx.enqueuedBlock, ctx.enqueuedDiff] = [undefined, undefined];
 }
 
 /**
@@ -2267,8 +2269,8 @@ function advanceComponent(ctx: ContextImpl): void {
  * generator or async without calling it and inspecting the return value.
  *
  * @returns {[block, diff]} A tuple where
- * - block is a promise or undefined which represents the duration during which the
- *   component component will enqueue further updates.
+ * - block is a promise or undefined which represents the duration during which
+ *   the component component will enqueue further updates.
  * - diff is a promise or undefined which settles when all children have
  *   diffed.
  *
@@ -2288,7 +2290,7 @@ function advanceComponent(ctx: ContextImpl): void {
  *     executing
  */
 function runComponent<TNode, TResult>(
-	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
+	ctx: ContextState<TNode, unknown, TNode, TResult>,
 ): [Promise<unknown> | undefined, Promise<undefined> | undefined] {
 	const ret = ctx.ret;
 	const initial = !ctx.iterator;
@@ -2298,11 +2300,7 @@ function runComponent<TNode, TResult>(
 		clearEventListeners(ctx);
 		let returned: ReturnType<Component>;
 		try {
-			returned = (ret.el.tag as Component).call(
-				ctx.owner,
-				ret.el.props,
-				ctx.owner,
-			);
+			returned = (ret.el.tag as Component).call(ctx.ctx, ret.el.props, ctx.ctx);
 		} catch (err) {
 			setFlag(ctx, IsErrored);
 			throw err;
@@ -2356,7 +2354,7 @@ function runComponent<TNode, TResult>(
 		if (!initial) {
 			try {
 				setFlag(ctx, IsSyncExecuting);
-				iteration = ctx.iterator!.next(ctx.renderer.read(getValue(ret)));
+				iteration = ctx.iterator!.next(ctx.adapter.read(getValue(ret)));
 			} catch (err) {
 				setFlag(ctx, IsErrored);
 				throw err;
@@ -2400,7 +2398,7 @@ function runComponent<TNode, TResult>(
 			if (!initial) {
 				try {
 					setFlag(ctx, IsSyncExecuting);
-					iteration = ctx.iterator!.next(ctx.renderer.read(getValue(ret)));
+					iteration = ctx.iterator!.next(ctx.adapter.read(getValue(ret)));
 				} catch (err) {
 					setFlag(ctx, IsErrored);
 					throw err;
@@ -2457,7 +2455,7 @@ function runComponent<TNode, TResult>(
 }
 
 async function runAsyncGenComponent<TNode, TResult>(
-	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
+	ctx: ContextState<TNode, unknown, TNode, TResult>,
 	iterationP: Promise<ChildrenIteratorResult>,
 	initial: boolean,
 ): Promise<void> {
@@ -2530,7 +2528,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 					commitComponent(ctx);
 				}
 			}
-			const oldResult = new Promise((resolve) => ctx.owner.schedule(resolve));
+			const oldResult = new Promise((resolve) => ctx.ctx.schedule(resolve));
 			if (getFlag(ctx, IsUnmounted)) {
 				if (getFlag(ctx, IsInForAwaitOfLoop)) {
 					try {
@@ -2567,7 +2565,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 }
 
 /** Called to resume the props async iterator for async generator components. */
-function resumePropsAsyncIterator(ctx: ContextImpl): void {
+function resumePropsAsyncIterator(ctx: ContextState): void {
 	if (ctx.onPropsProvided) {
 		ctx.onPropsProvided(ctx.ret.el.props);
 		ctx.onPropsProvided = undefined;
@@ -2578,7 +2576,7 @@ function resumePropsAsyncIterator(ctx: ContextImpl): void {
 }
 
 // TODO: async unmounting
-function unmountComponent(ctx: ContextImpl): void {
+function unmountComponent(ctx: ContextState): void {
 	if (getFlag(ctx, IsUnmounted)) {
 		return;
 	}
@@ -2588,7 +2586,7 @@ function unmountComponent(ctx: ContextImpl): void {
 	const callbacks = cleanupMap.get(ctx);
 	if (callbacks) {
 		cleanupMap.delete(ctx);
-		const value = ctx.renderer.read(getValue(ctx.ret));
+		const value = ctx.adapter.read(getValue(ctx.ret));
 		for (const callback of callbacks) {
 			callback(value);
 		}
@@ -2636,7 +2634,7 @@ function unmountComponent(ctx: ContextImpl): void {
 	}
 }
 
-function returnComponent(ctx: ContextImpl): void {
+function returnComponent(ctx: ContextState): void {
 	resumePropsAsyncIterator(ctx);
 	if (ctx.iterator && typeof ctx.iterator!.return === "function") {
 		try {
@@ -2665,7 +2663,7 @@ const CAPTURING_PHASE = 1;
 const AT_TARGET = 2;
 const BUBBLING_PHASE = 3;
 
-const listenersMap = new WeakMap<ContextImpl, Array<EventListenerRecord>>();
+const listenersMap = new WeakMap<ContextState, Array<EventListenerRecord>>();
 /**
  * A map of event type strings to Event subclasses. Can be extended via
  * TypeScript module augmentation to have strongly typed event listeners.
@@ -2741,7 +2739,7 @@ function setEventProperty<T extends keyof Event>(
  * element passed in matches the parent context’s host element.
  */
 function getListenerRecords(
-	ctx: ContextImpl | undefined,
+	ctx: ContextState | undefined,
 	ret: Retainer<unknown>,
 ): Array<EventListenerRecord> {
 	let listeners: Array<EventListenerRecord> = [];
@@ -2757,7 +2755,7 @@ function getListenerRecords(
 	return listeners;
 }
 
-function clearEventListeners(ctx: ContextImpl): void {
+function clearEventListeners(ctx: ContextState): void {
 	const listeners = listenersMap.get(ctx);
 	if (listeners && listeners.length) {
 		for (const value of getChildValues(ctx.ret)) {
@@ -2778,7 +2776,7 @@ function clearEventListeners(ctx: ContextImpl): void {
 
 /*** ERROR HANDLING UTILITIES ***/
 function handleChildError<TNode>(
-	ctx: ContextImpl<TNode, unknown, TNode>,
+	ctx: ContextState<TNode, unknown, TNode>,
 	err: unknown,
 ): Promise<undefined> | undefined {
 	if (!ctx.iterator || typeof ctx.iterator.throw !== "function") {
@@ -2825,7 +2823,7 @@ function handleChildError<TNode>(
 }
 
 function propagateError<TNode, TResult>(
-	ctx: ContextImpl<TNode, unknown, TNode, TResult>,
+	ctx: ContextState<TNode, unknown, TNode, TResult>,
 	err: unknown,
 ): Promise<TResult> | TResult {
 	let diff: Promise<undefined> | undefined;
@@ -2844,7 +2842,7 @@ function propagateError<TNode, TResult>(
 			() => {
 				setFlag(ctx, IsUpdating, false);
 				commitComponent(ctx);
-				return ctx.renderer.read(getValue(ctx.ret));
+				return ctx.adapter.read(getValue(ctx.ret));
 			},
 			(err) => {
 				if (!ctx.parent) {
@@ -2858,7 +2856,7 @@ function propagateError<TNode, TResult>(
 
 	setFlag(ctx, IsUpdating, false);
 	commitComponent(ctx);
-	return ctx.renderer.read(getValue(ctx.ret));
+	return ctx.adapter.read(getValue(ctx.ret));
 }
 
 // TODO: uncomment and use in the Element interface below
