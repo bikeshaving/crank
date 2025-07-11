@@ -784,194 +784,6 @@ export class Renderer<
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
-function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
-	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
-	root: TRoot | undefined,
-	ret: Retainer<TNode>,
-	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
-	oldProps: Record<string, any> | undefined,
-	scope: TScope,
-	hydration?: Array<TNode | string>,
-): TResult {
-	const oldChildValues = getChildValues(ret);
-	const childValues = commitChildren(
-		adapter,
-		root,
-		ctx,
-		ret.children,
-		scope,
-		hydration,
-	);
-	if (root == null) {
-		unmount(adapter, ret, ctx, ret);
-	} else {
-		// element is a host or portal element
-		adapter.arrange(
-			Portal,
-			root,
-			ret.el.props,
-			childValues,
-			oldProps,
-			oldChildValues,
-		);
-	}
-	flush(adapter, root);
-
-	setFlag(ret, HasCommitted);
-	return adapter.read(unwrap(childValues));
-}
-
-function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
-	adapter: RenderAdapter<TNode, unknown, TRoot, TResult>,
-	root: TRoot | undefined,
-	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
-	children: Array<RetainerChild<TNode>> | RetainerChild<TNode>,
-	scope: TScope | undefined,
-	hydration?: Array<TNode | string>,
-): Array<TNode | string> {
-	const values: Array<ElementValue<TNode>> = [];
-	const children1 = normalize(wrap(children));
-	for (let i = 0; i < children1.length; i++) {
-		let child = children1[i];
-		while (typeof child === "object" && child.fallback) {
-			child = child.fallback;
-		}
-
-		if (typeof child === "object") {
-			const el = child.el;
-			if (el.tag === Raw) {
-				values.push(commitRaw(adapter, child, ctx, scope, hydration));
-			} else if (child.ctx) {
-				values.push(commitComponent(child.ctx, hydration));
-			} else if (el.tag === Fragment) {
-				values.push(
-					commitChildren(adapter, root, ctx, child.children, scope, hydration),
-				);
-			} else {
-				// host element or portal element
-				values.push(
-					commitHostOrPortal(adapter, root, child, ctx, scope, hydration),
-				);
-			}
-
-			child.oldProps = undefined;
-			setFlag(child, HasCommitted);
-		} else if (typeof child === "string") {
-			const text = adapter.text(child, scope, hydration);
-			values.push(text);
-		}
-	}
-
-	// TODO: why are we running normalize on both ends?
-	return normalize(values);
-}
-
-function commitRaw<TNode, TScope>(
-	adapter: RenderAdapter<TNode, TScope, TNode, unknown>,
-	ret: Retainer<TNode>,
-	ctx: ContextState<TNode, TScope, TNode, unknown> | undefined,
-	scope: TScope | undefined,
-	hydration: Array<TNode | string> | undefined,
-): ElementValue<TNode> {
-	if (!ret.oldProps || ret.oldProps.value !== ret.el.props.value) {
-		ret.value = adapter.raw(ret.el.props.value as any, scope, hydration);
-		if (typeof ret.el.ref === "function") {
-			ret.el.ref(adapter.read(ret.value));
-		}
-	}
-
-	setFlag(ret, HasCommitted);
-	return ret.value;
-}
-
-function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
-	adapter: RenderAdapter<TNode, TScope, TRoot, unknown>,
-	root: TNode | undefined,
-	ret: Retainer<TNode>,
-	ctx: ContextState<TNode, TScope, TRoot, unknown> | undefined,
-	scope: TScope,
-	hydration: Array<TNode | string> | undefined,
-): ElementValue<TNode> {
-	if (getFlag(ret, HasCommitted) && (ret.el.copy || getFlag(ret, IsCopied))) {
-		return getValue(ret);
-	}
-
-	const tag = ret.el.tag as string | symbol;
-	let value = ret.value as TNode;
-	let props = ret.el.props;
-	const oldProps = ret.oldProps;
-	scope = adapter.scope(scope, tag, props)!;
-
-	let childHydration: Array<TNode | string> | undefined;
-	if (!value && hydration && hydration.length > 0) {
-		const nextChild = hydration.shift();
-		if (nextChild && typeof nextChild !== "string") {
-			childHydration = adapter.reconcile(nextChild, tag, props, scope);
-			if (childHydration) {
-				value = ret.value = nextChild as TNode;
-			}
-		}
-	}
-
-	const oldChildValues = getChildValues(ret);
-	const childValues = commitChildren(
-		adapter,
-		root,
-		ctx,
-		ret.children,
-		scope,
-		childHydration,
-	);
-	let copiedProps: Set<string> | undefined;
-	if (tag !== Portal) {
-		// This assumes that .create does not return nullish values.
-		if (value == null) {
-			value = ret.value = adapter.create(tag, props, scope);
-			if (typeof ret.el.ref === "function") {
-				ret.el.ref(adapter.read(value));
-			}
-		}
-
-		for (const propName in {...oldProps, ...props}) {
-			const propValue = props[propName];
-			if (propValue === Copy) {
-				// TODO: The Copy tag doubles as a way to skip the patching of a prop.
-				// Not sure about this feature. Should probably be removed.
-				(copiedProps = copiedProps || new Set()).add(propName);
-			} else if (!SPECIAL_PROPS.has(propName)) {
-				adapter.patch(
-					tag,
-					value,
-					propName,
-					propValue,
-					oldProps && oldProps[propName],
-					scope,
-				);
-			}
-		}
-	}
-
-	if (copiedProps) {
-		props = {...ret.el.props};
-		for (const name of copiedProps) {
-			props[name] = oldProps && oldProps[name];
-		}
-
-		ret.oldProps = props;
-	} else {
-		ret.oldProps = ret.el.props;
-	}
-
-	adapter.arrange(tag, value, props, childValues, oldProps, oldChildValues);
-	setFlag(ret, HasCommitted);
-	if (tag === Portal) {
-		flush(adapter, ret.value);
-		return;
-	}
-
-	return getValue(ret);
-}
-
 function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
@@ -1309,6 +1121,199 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 			unmount(adapter, host, ctx, child);
 		}
 	}
+}
+
+function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
+	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
+	root: TRoot | undefined,
+	ret: Retainer<TNode>,
+	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
+	oldProps: Record<string, any> | undefined,
+	scope: TScope,
+	hydration?: Array<TNode | string>,
+): TResult {
+	const oldChildValues = getChildValues(ret);
+	const childValues = commitChildren(
+		adapter,
+		root,
+		ctx,
+		ret.children,
+		scope,
+		hydration,
+	);
+	if (root == null) {
+		unmount(adapter, ret, ctx, ret);
+	} else {
+		// element is a host or portal element
+		adapter.arrange(
+			Portal,
+			root,
+			ret.el.props,
+			childValues,
+			oldProps,
+			oldChildValues,
+		);
+	}
+	flush(adapter, root);
+
+	setFlag(ret, HasCommitted);
+	return adapter.read(unwrap(childValues));
+}
+
+function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
+	adapter: RenderAdapter<TNode, unknown, TRoot, TResult>,
+	root: TRoot | undefined,
+	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
+	children: Array<RetainerChild<TNode>> | RetainerChild<TNode>,
+	scope: TScope | undefined,
+	hydration?: Array<TNode | string>,
+): Array<TNode | string> {
+	const values: Array<ElementValue<TNode>> = [];
+	const children1 = normalize(wrap(children));
+	for (let i = 0; i < children1.length; i++) {
+		let child = children1[i];
+		while (typeof child === "object" && child.fallback) {
+			child = child.fallback;
+		}
+
+		if (typeof child === "object") {
+			const el = child.el;
+			if (el.tag === Raw) {
+				values.push(commitRaw(adapter, child, ctx, scope, hydration));
+			} else if (child.ctx) {
+				values.push(commitComponent(child.ctx, hydration));
+			} else if (el.tag === Fragment) {
+				values.push(
+					commitChildren(adapter, root, ctx, child.children, scope, hydration),
+				);
+			} else {
+				// host element or portal element
+				values.push(
+					commitHostOrPortal(adapter, root, child, ctx, scope, hydration),
+				);
+			}
+
+			child.oldProps = undefined;
+			setFlag(child, HasCommitted);
+		} else if (typeof child === "string") {
+			const text = adapter.text(child, scope, hydration);
+			values.push(text);
+		}
+	}
+
+	// TODO: why are we running normalize on both ends?
+	return normalize(values);
+}
+
+function commitRaw<TNode, TScope>(
+	adapter: RenderAdapter<TNode, TScope, TNode, unknown>,
+	ret: Retainer<TNode>,
+	ctx: ContextState<TNode, TScope, TNode, unknown> | undefined,
+	scope: TScope | undefined,
+	hydration: Array<TNode | string> | undefined,
+): ElementValue<TNode> {
+	if (!ret.oldProps || ret.oldProps.value !== ret.el.props.value) {
+		ret.value = adapter.raw(ret.el.props.value as any, scope, hydration);
+		if (typeof ret.el.ref === "function") {
+			ret.el.ref(adapter.read(ret.value));
+		}
+	}
+
+	setFlag(ret, HasCommitted);
+	return ret.value;
+}
+
+function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
+	adapter: RenderAdapter<TNode, TScope, TRoot, unknown>,
+	root: TNode | undefined,
+	ret: Retainer<TNode>,
+	ctx: ContextState<TNode, TScope, TRoot, unknown> | undefined,
+	scope: TScope,
+	hydration: Array<TNode | string> | undefined,
+): ElementValue<TNode> {
+	if (getFlag(ret, HasCommitted) && (ret.el.copy || getFlag(ret, IsCopied))) {
+		return getValue(ret);
+	}
+
+	const tag = ret.el.tag as string | symbol;
+	let value = ret.value as TNode;
+	let props = ret.el.props;
+	const oldProps = ret.oldProps;
+	scope = adapter.scope(scope, tag, props)!;
+
+	let childHydration: Array<TNode | string> | undefined;
+	if (!value && hydration && hydration.length > 0) {
+		const nextChild = hydration.shift();
+		if (nextChild && typeof nextChild !== "string") {
+			childHydration = adapter.reconcile(nextChild, tag, props, scope);
+			if (childHydration) {
+				value = ret.value = nextChild as TNode;
+			}
+		}
+	}
+
+	const oldChildValues = getChildValues(ret);
+	const childValues = commitChildren(
+		adapter,
+		root,
+		ctx,
+		ret.children,
+		scope,
+		childHydration,
+	);
+	let copiedProps: Set<string> | undefined;
+	if (tag !== Portal) {
+		// This assumes that .create does not return nullish values.
+		if (value == null) {
+			value = ret.value = adapter.create(tag, props, scope);
+			if (typeof ret.el.ref === "function") {
+				ret.el.ref(adapter.read(value));
+			}
+		}
+
+		for (const propName in {...oldProps, ...props}) {
+			const propValue = props[propName];
+			// Currently, the Copy tag doubles as a way to skip the patching of a
+			// prop.
+			// <div class={initial ? "class-name" : Copy}>
+			//   class prop will not be patched when re-rendered.</div>
+			// </div>
+			// TODO: Should this feature be removed?
+			if (propValue === Copy) {
+				(copiedProps = copiedProps || new Set()).add(propName);
+			} else if (!SPECIAL_PROPS.has(propName)) {
+				adapter.patch(
+					tag,
+					value,
+					propName,
+					propValue,
+					oldProps && oldProps[propName],
+					scope,
+				);
+			}
+		}
+	}
+
+	if (copiedProps) {
+		props = {...ret.el.props};
+		for (const name of copiedProps) {
+			props[name] = oldProps && oldProps[name];
+		}
+
+		ret.oldProps = props;
+	} else {
+		ret.oldProps = ret.el.props;
+	}
+
+	adapter.arrange(tag, value, props, childValues, oldProps, oldChildValues);
+	setFlag(ret, HasCommitted);
+	if (tag === Portal) {
+		flush(adapter, ret.value);
+		// Portal elements
+		return;
+	}
+
+	return getValue(ret);
 }
 
 /*** CONTEXT FLAGS ***/
