@@ -802,8 +802,10 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 		scope,
 		hydration,
 	);
-	// element is a host or portal element
-	if (root != null) {
+	if (root == null) {
+		unmount(adapter, ret, ctx, ret);
+	} else {
+		// element is a host or portal element
 		adapter.arrange(
 			Portal,
 			root,
@@ -812,8 +814,6 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 			oldProps,
 			oldChildValues,
 		);
-	} else {
-		unmount(adapter, ret, ctx, ret);
 	}
 	flush(adapter, root);
 
