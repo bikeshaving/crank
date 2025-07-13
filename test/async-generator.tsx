@@ -401,7 +401,10 @@ test("for...of delayed", async () => {
 		afterLoopFn();
 	}
 
-	await renderer.render(<Component />, document.body);
+	const p = renderer.render(<Component />, document.body);
+	Assert.is(beforeYieldFn.callCount, 0);
+	Assert.is(afterYieldFn.callCount, 0);
+	await p;
 	Assert.is(beforeYieldFn.callCount, 1);
 	Assert.is(afterYieldFn.callCount, 0);
 	Assert.is(document.body.innerHTML, "<div>Hello 0</div>");

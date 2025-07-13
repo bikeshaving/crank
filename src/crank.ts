@@ -2387,13 +2387,10 @@ function runComponent<TNode, TResult>(
 			ctx.iterator = undefined;
 		}
 
-		let diff: Promise<undefined> | undefined;
-		diff = diffComponentChildren<TNode, TResult>(
+		const diff = diffComponentChildren<TNode, TResult>(
 			ctx,
-			// Children can be void so we eliminate that here
 			iteration.value as Children,
 		);
-
 		const block = isPromiseLike(diff) ? diff.catch(NOOP) : undefined;
 		return [block, diff];
 	} else if (getFlag(ctx, IsAsyncGen)) {
@@ -2419,7 +2416,6 @@ function runComponent<TNode, TResult>(
 
 			const diff = iteration.then(
 				(iteration) => {
-					let diff: Promise<undefined> | undefined;
 					if (!getFlag(ctx, IsInForOfLoop)) {
 						runAsyncGenComponent(ctx, Promise.resolve(iteration));
 					} else {
@@ -2431,13 +2427,11 @@ function runComponent<TNode, TResult>(
 					}
 
 					setFlag(ctx, NeedsToYield, false);
-					diff = diffComponentChildren<TNode, TResult>(
+					return diffComponentChildren<TNode, TResult>(
 						ctx,
 						// Children can be void so we eliminate that here
 						iteration.value as Children,
 					);
-
-					return diff;
 				},
 				(err) => {
 					setFlag(ctx, IsErrored);
