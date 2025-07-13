@@ -784,6 +784,7 @@ export class Renderer<
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
+// TODO: Should we move unmounting to the commit phase?
 function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
@@ -1353,7 +1354,7 @@ const NeedsToYield = 1 << 4;
 
 /**
  * A flag used by async generator components in conjunction with the
- * onPropsAvailable callback to mark whether new props can be pulled via the
+ * onPropsProvided callback to mark whether new props can be pulled via the
  * context async iterator. See the Symbol.asyncIterator method and the
  * resumeCtxIterator function.
  */
@@ -1470,9 +1471,9 @@ class ContextState<
 		| undefined;
 
 	// See runComponent() for a description of these properties.
-	declare inflightBlock: Promise<unknown> | undefined;
+	declare inflightBlock: Promise<undefined> | undefined;
 	declare inflightDiff: Promise<any> | undefined;
-	declare enqueuedBlock: Promise<unknown> | undefined;
+	declare enqueuedBlock: Promise<undefined> | undefined;
 	declare enqueuedDiff: Promise<any> | undefined;
 
 	declare onPropsProvided:
@@ -1532,7 +1533,7 @@ type ComponentProps<T> = T extends () => unknown
 export class Context<T = any, TResult = any> implements EventTarget {
 	/**
 	 * @internal
-	 * DO NOT USE THIS SYMBOL DIRECTLY.
+	 * DO NOT USE READ THIS PROPERTY.
 	 */
 	declare [_ContextState]: ContextState<unknown, unknown, unknown, TResult>;
 
@@ -2187,7 +2188,7 @@ function enqueueComponentRun<TNode, TResult>(
 		//   The component is suspended somewhere in the loop. When the component
 		//   reaches the bottom of the loop, it will run again with the next props.
 		//
-		// 2. onPropsAvailable callback is defined: "suspended"
+		// 2. onPropsProvided callback is defined: "suspended"
 		//   The component has suspended at the bottom of the loop and is waiting
 		//   for new props.
 		//
@@ -2296,7 +2297,7 @@ function advanceComponent(ctx: ContextState): void {
  */
 function runComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
-): [Promise<unknown> | undefined, Promise<undefined> | undefined] {
+): [Promise<undefined> | undefined, Promise<undefined> | undefined] {
 	const ret = ctx.ret;
 	const initial = !ctx.iterator;
 	if (initial) {
@@ -2420,7 +2421,7 @@ function runComponent<TNode, TResult>(
 				(iteration) => {
 					let diff: Promise<undefined> | undefined;
 					if (!getFlag(ctx, IsInForOfLoop)) {
-						runAsyncGenComponent(ctx, Promise.resolve(iteration), initial);
+						runAsyncGenComponent(ctx, Promise.resolve(iteration));
 					} else {
 						if (!getFlag(ctx, NeedsToYield) && !getFlag(ctx, IsUnmounted)) {
 							console.error(
@@ -2447,11 +2448,7 @@ function runComponent<TNode, TResult>(
 			return [diff.catch(NOOP), diff];
 		} else {
 			// initializes the async generator loop
-			runAsyncGenComponent(
-				ctx,
-				iteration as Promise<ChildrenIteratorResult>,
-				initial,
-			);
+			runAsyncGenComponent(ctx, iteration as Promise<ChildrenIteratorResult>);
 			return [ctx.inflightBlock, ctx.inflightDiff];
 		}
 	} else {
@@ -2462,7 +2459,6 @@ function runComponent<TNode, TResult>(
 async function runAsyncGenComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
 	iterationP: Promise<ChildrenIteratorResult>,
-	initial: boolean,
 ): Promise<void> {
 	let done = false;
 	try {
@@ -2503,8 +2499,6 @@ async function runAsyncGenComponent<TNode, TResult>(
 			let diff: Promise<undefined> | undefined;
 			try {
 				if (
-					!initial &&
-					!done &&
 					!getFlag(ctx, NeedsToYield) &&
 					getFlag(ctx, PropsAvailable) &&
 					getFlag(ctx, IsInForAwaitOfLoop)
@@ -2535,6 +2529,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 			}
 			const oldResult = new Promise((resolve) => ctx.ctx.schedule(resolve));
 			if (getFlag(ctx, IsUnmounted)) {
+				// TODO: move this back to unmountComponent
 				if (getFlag(ctx, IsInForAwaitOfLoop)) {
 					try {
 						setFlag(ctx, IsSyncExecuting);
@@ -2549,6 +2544,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 					break;
 				}
 			} else if (!done && !getFlag(ctx, IsInForOfLoop)) {
+				// get the next value from the iterator
 				try {
 					setFlag(ctx, IsSyncExecuting);
 					iterationP = ctx.iterator!.next(
@@ -2558,8 +2554,6 @@ async function runAsyncGenComponent<TNode, TResult>(
 					setFlag(ctx, IsSyncExecuting, false);
 				}
 			}
-
-			initial = false;
 		}
 	} finally {
 		if (done) {
@@ -2598,6 +2592,7 @@ function unmountComponent(ctx: ContextState): void {
 	}
 
 	setFlag(ctx, IsUnmounted);
+	// TODO: stop calling enqueueComponentRun here and call next/return directly.
 	if (ctx.iterator) {
 		if (getFlag(ctx, IsSyncGen)) {
 			let value: unknown;
