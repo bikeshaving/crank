@@ -2175,7 +2175,6 @@ function commitComponent<TNode>(
 function enqueueComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
 ): Promise<undefined> | undefined {
-	// TODO: Move this logic to runComponent and use the block/diff tuple.
 	if (getFlag(ctx, IsAsyncGen) && !getFlag(ctx, IsInForOfLoop)) {
 		// This branch will run for non-initial renders of async generator
 		// components when they are not in for...of loops. When in a for...of loop,
@@ -2184,7 +2183,7 @@ function enqueueComponent<TNode, TResult>(
 		// Async gen components which are using for await with the props iterator
 		// can be in one of three states:
 		//
-		// 1. propsAvailable flag is true: "available"
+		// 1. PropsAvailable flag is true: "available"
 		//   The component is suspended somewhere in the loop. When the component
 		//   reaches the bottom of the loop, it will run again with the next props.
 		//
@@ -2207,6 +2206,8 @@ function enqueueComponent<TNode, TResult>(
 		//
 		// if ctx.onPropsProvided is defined, it means the component is suspended
 		// and waiting for new props, so it is not at the bottom of the loop.
+		//
+		// This condition must be read before resumePropsAsyncIterator is called
 		const isAtLoopBottom =
 			getFlag(ctx, IsInForAwaitOfLoop) && !ctx.onPropsProvided;
 		resumePropsAsyncIterator(ctx);
