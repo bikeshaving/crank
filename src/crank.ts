@@ -1086,16 +1086,16 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 		ctx = ret.ctx as ContextState<TNode, TScope, TRoot, TResult>;
 		unmountComponent(ctx);
 	} else if (ret.el.tag === Portal) {
-		host = ret;
 		adapter.arrange(
 			Portal,
-			host.value as TNode,
-			host.el.props,
+			ret.value as TNode,
+			ret.el.props,
 			[],
-			host.el.props,
-			getChildValues(host),
+			ret.el.props,
+			getChildValues(ret),
 		);
-		flush(adapter, host.value);
+		flush(adapter, ret.value);
+		host = ret;
 	} else if (ret.el.tag !== Fragment) {
 		if (isEventTarget(ret.value)) {
 			const records = getListenerRecords(ctx, host);
