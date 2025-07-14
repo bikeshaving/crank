@@ -2501,7 +2501,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 
 				setFlag(ctx, NeedsToYield, false);
 			} catch (err) {
-				// pass
+				reject(err);
 			} finally {
 				resolve(diff);
 			}
@@ -2519,20 +2519,7 @@ async function runAsyncGenComponent<TNode, TResult>(
 			}
 			const oldResult = new Promise((resolve) => ctx.ctx.schedule(resolve));
 			if (getFlag(ctx, IsUnmounted)) {
-				// TODO: move this back to unmountComponent
-				if (getFlag(ctx, IsInForAwaitOfLoop)) {
-					try {
-						setFlag(ctx, IsSyncExecuting);
-						iterationP = ctx.iterator!.next(
-							oldResult,
-						) as Promise<ChildrenIteratorResult>;
-					} finally {
-						setFlag(ctx, IsSyncExecuting, false);
-					}
-				} else {
-					returnComponent(ctx);
-					break;
-				}
+				break;
 			} else if (!done && !getFlag(ctx, IsInForOfLoop)) {
 				// get the next value from the iterator
 				try {
@@ -2582,7 +2569,6 @@ async function unmountComponent(ctx: ContextState): Promise<undefined> {
 	}
 
 	setFlag(ctx, IsUnmounted);
-	// TODO: stop calling enqueueComponentRun here and call next/return directly.
 	if (ctx.iterator) {
 		let iteration: ChildrenIteratorResult | undefined;
 		if (getFlag(ctx, IsSyncGen)) {
@@ -2612,6 +2598,10 @@ async function unmountComponent(ctx: ContextState): Promise<undefined> {
 			}
 		} else if (getFlag(ctx, IsAsyncGen)) {
 			if (getFlag(ctx, IsInForOfLoop)) {
+				if (ctx.inflightBlock) {
+					await ctx.inflightBlock;
+				}
+
 				try {
 					setFlag(ctx, IsSyncExecuting);
 					const value = ctx.adapter.read(getValue(ctx.ret));
@@ -2633,14 +2623,40 @@ async function unmountComponent(ctx: ContextState): Promise<undefined> {
 					setFlag(ctx, IsSyncExecuting, false);
 				}
 			} else if (getFlag(ctx, IsInForAwaitOfLoop)) {
-				resumePropsAsyncIterator(ctx);
-				return;
+				const value = ctx.adapter.read(getValue(ctx.ret));
+				while (
+					(!iteration || !iteration.done) &&
+					getFlag(ctx, IsInForAwaitOfLoop)
+				) {
+					resumePropsAsyncIterator(ctx);
+					// resuming props might cause the component to exit loop naturally
+					await Promise.resolve();
+					if (!getFlag(ctx, IsInForAwaitOfLoop) || !ctx.iterator) {
+						break;
+					}
+					try {
+						setFlag(ctx, IsSyncExecuting);
+						const iterationP = ctx.iterator.next(value);
+						iteration = await iterationP;
+					} catch (err) {
+						setFlag(ctx, IsErrored);
+						if (ctx.parent) {
+							// TODO: fix type
+							return propagateError(ctx.parent, err) as any;
+						}
+
+						throw err;
+					} finally {
+						setFlag(ctx, IsSyncExecuting, false);
+					}
+				}
 			}
 		}
 
 		if (
 			(!iteration || !iteration.done) &&
-			typeof ctx.iterator!.return === "function"
+			ctx.iterator &&
+			typeof ctx.iterator.return === "function"
 		) {
 			try {
 				setFlag(ctx, IsSyncExecuting);
@@ -2669,28 +2685,6 @@ async function unmountComponent(ctx: ContextState): Promise<undefined> {
 			} finally {
 				setFlag(ctx, IsSyncExecuting, false);
 			}
-		}
-	}
-}
-
-// TODO: delete this function
-function returnComponent(ctx: ContextState): void {
-	resumePropsAsyncIterator(ctx);
-	if (ctx.iterator && typeof ctx.iterator!.return === "function") {
-		try {
-			setFlag(ctx, IsSyncExecuting);
-			const iteration = ctx.iterator!.return();
-			if (isPromiseLike(iteration)) {
-				iteration.then(NOOP, (err) => {
-					setFlag(ctx, IsErrored);
-					handleChildError(ctx, err);
-				});
-			}
-		} catch (err) {
-			setFlag(ctx, IsErrored);
-			handleChildError(ctx, err);
-		} finally {
-			setFlag(ctx, IsSyncExecuting, false);
 		}
 	}
 }

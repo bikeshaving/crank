@@ -287,7 +287,7 @@ test("concurrent unmount", async () => {
 	const mock = Sinon.fake();
 	async function* Component(this: Context): AsyncGenerator<Child> {
 		try {
-			for await (const _ of this) {
+			for await ({} of this) {
 				yield "Hello world";
 			}
 		} finally {
