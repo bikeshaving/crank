@@ -2567,7 +2567,7 @@ function resumePropsAsyncIterator(ctx: ContextState): void {
 }
 
 // TODO: async unmounting
-function unmountComponent(ctx: ContextState): void {
+async function unmountComponent(ctx: ContextState): Promise<void> {
 	if (getFlag(ctx, IsUnmounted)) {
 		return;
 	}
@@ -2576,8 +2576,8 @@ function unmountComponent(ctx: ContextState): void {
 
 	const callbacks = cleanupMap.get(ctx);
 	if (callbacks) {
-		cleanupMap.delete(ctx);
 		const value = ctx.adapter.read(getValue(ctx.ret));
+		cleanupMap.delete(ctx);
 		for (const callback of callbacks) {
 			callback(value);
 		}
@@ -2587,27 +2587,58 @@ function unmountComponent(ctx: ContextState): void {
 	// TODO: stop calling enqueueComponentRun here and call next/return directly.
 	if (ctx.iterator) {
 		if (getFlag(ctx, IsSyncGen)) {
-			let value: unknown;
-			if (getFlag(ctx, IsInForOfLoop)) {
-				value = enqueueComponentRun(ctx);
+			if (ctx.inflightBlock) {
+				await ctx.inflightBlock;
 			}
 
-			if (isPromiseLike(value)) {
-				value.then(() => {
-					if (getFlag(ctx, IsInForOfLoop)) {
-						unmountComponent(ctx);
-					} else {
-						returnComponent(ctx);
+			const value = ctx.adapter.read(getValue(ctx.ret));
+			let iteration: ChildrenIteratorResult | undefined;
+			if (getFlag(ctx, IsInForOfLoop)) {
+				try {
+					setFlag(ctx, IsSyncExecuting);
+					iteration = ctx.iterator!.next(value) as ChildrenIteratorResult;
+				} catch (err) {
+					setFlag(ctx, IsErrored);
+					if (ctx.parent) {
+						// TODO: fix type
+						return propagateError(ctx.parent, err) as any;
 					}
-				});
-			} else {
-				if (getFlag(ctx, IsInForOfLoop)) {
-					unmountComponent(ctx);
-				} else {
-					returnComponent(ctx);
+
+					throw err;
+				} finally {
+					setFlag(ctx, IsSyncExecuting, false);
+				}
+
+				if (isPromiseLike(iteration)) {
+					throw new Error("Mixed generator component");
+				}
+			}
+
+			if (
+				(!iteration || !iteration.done) &&
+				typeof ctx.iterator!.return === "function"
+			) {
+				try {
+					setFlag(ctx, IsSyncExecuting);
+					iteration = ctx.iterator.return() as ChildrenIteratorResult;
+				} catch (err) {
+					setFlag(ctx, IsErrored);
+					if (ctx.parent) {
+						// TODO: fix type
+						return propagateError(ctx.parent, err) as any;
+					}
+
+					throw err;
+				} finally {
+					setFlag(ctx, IsSyncExecuting, false);
+				}
+
+				if (isPromiseLike(iteration)) {
+					throw new Error("Mixed generator component");
 				}
 			}
 		} else if (getFlag(ctx, IsAsyncGen)) {
+			// TODO: copy logic from above
 			if (getFlag(ctx, IsInForOfLoop)) {
 				const value = enqueueComponentRun(ctx) as Promise<unknown>;
 				value.then(() => {
@@ -2626,6 +2657,7 @@ function unmountComponent(ctx: ContextState): void {
 	}
 }
 
+// TODO: delete this function
 function returnComponent(ctx: ContextState): void {
 	resumePropsAsyncIterator(ctx);
 	if (ctx.iterator && typeof ctx.iterator!.return === "function") {
