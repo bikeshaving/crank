@@ -2391,7 +2391,7 @@ function runComponent<TNode, TResult>(
 		);
 		const block = isPromiseLike(diff) ? diff.catch(NOOP) : undefined;
 		return [block, diff];
-	} else if (getFlag(ctx, IsAsyncGen)) {
+	} else {
 		if (getFlag(ctx, IsInForOfLoop)) {
 			// Async generator component using for...of loops behave similar to sync
 			// generator components. This allows for easier refactoring of sync to
@@ -2443,8 +2443,6 @@ function runComponent<TNode, TResult>(
 			runAsyncGenComponent(ctx, iteration as Promise<ChildrenIteratorResult>);
 			return [ctx.inflightBlock, ctx.inflightDiff];
 		}
-	} else {
-		throw new Error("Unknown component type");
 	}
 }
 
@@ -2567,7 +2565,7 @@ function resumePropsAsyncIterator(ctx: ContextState): void {
 }
 
 // TODO: async unmounting
-async function unmountComponent(ctx: ContextState): Promise<void> {
+async function unmountComponent(ctx: ContextState): Promise<undefined> {
 	if (getFlag(ctx, IsUnmounted)) {
 		return;
 	}
@@ -2586,17 +2584,20 @@ async function unmountComponent(ctx: ContextState): Promise<void> {
 	setFlag(ctx, IsUnmounted);
 	// TODO: stop calling enqueueComponentRun here and call next/return directly.
 	if (ctx.iterator) {
+		let iteration: ChildrenIteratorResult | undefined;
 		if (getFlag(ctx, IsSyncGen)) {
 			if (ctx.inflightBlock) {
 				await ctx.inflightBlock;
 			}
 
-			const value = ctx.adapter.read(getValue(ctx.ret));
-			let iteration: ChildrenIteratorResult | undefined;
 			if (getFlag(ctx, IsInForOfLoop)) {
 				try {
 					setFlag(ctx, IsSyncExecuting);
+					const value = ctx.adapter.read(getValue(ctx.ret));
 					iteration = ctx.iterator!.next(value) as ChildrenIteratorResult;
+					if (isPromiseLike(iteration)) {
+						throw new Error("Mixed generator component");
+					}
 				} catch (err) {
 					setFlag(ctx, IsErrored);
 					if (ctx.parent) {
@@ -2607,51 +2608,66 @@ async function unmountComponent(ctx: ContextState): Promise<void> {
 					throw err;
 				} finally {
 					setFlag(ctx, IsSyncExecuting, false);
-				}
-
-				if (isPromiseLike(iteration)) {
-					throw new Error("Mixed generator component");
-				}
-			}
-
-			if (
-				(!iteration || !iteration.done) &&
-				typeof ctx.iterator!.return === "function"
-			) {
-				try {
-					setFlag(ctx, IsSyncExecuting);
-					iteration = ctx.iterator.return() as ChildrenIteratorResult;
-				} catch (err) {
-					setFlag(ctx, IsErrored);
-					if (ctx.parent) {
-						// TODO: fix type
-						return propagateError(ctx.parent, err) as any;
-					}
-
-					throw err;
-				} finally {
-					setFlag(ctx, IsSyncExecuting, false);
-				}
-
-				if (isPromiseLike(iteration)) {
-					throw new Error("Mixed generator component");
 				}
 			}
 		} else if (getFlag(ctx, IsAsyncGen)) {
-			// TODO: copy logic from above
 			if (getFlag(ctx, IsInForOfLoop)) {
-				const value = enqueueComponentRun(ctx) as Promise<unknown>;
-				value.then(() => {
-					if (getFlag(ctx, IsInForOfLoop)) {
-						unmountComponent(ctx);
-					} else {
-						returnComponent(ctx);
+				try {
+					setFlag(ctx, IsSyncExecuting);
+					const value = ctx.adapter.read(getValue(ctx.ret));
+					const iterationP = ctx.iterator!.next(value);
+					if (!isPromiseLike(iterationP)) {
+						throw new Error("Mixed generator component");
 					}
-				});
-			} else {
-				// The logic for unmounting async generator components is in the
-				// runAsyncGenComponent function.
+
+					iteration = await iterationP;
+				} catch (err) {
+					setFlag(ctx, IsErrored);
+					if (ctx.parent) {
+						// TODO: fix type
+						return propagateError(ctx.parent, err) as any;
+					}
+
+					throw err;
+				} finally {
+					setFlag(ctx, IsSyncExecuting, false);
+				}
+			} else if (getFlag(ctx, IsInForAwaitOfLoop)) {
 				resumePropsAsyncIterator(ctx);
+				return;
+			}
+		}
+
+		if (
+			(!iteration || !iteration.done) &&
+			typeof ctx.iterator!.return === "function"
+		) {
+			try {
+				setFlag(ctx, IsSyncExecuting);
+				const iterationP = ctx.iterator.return();
+				if (isPromiseLike(iterationP)) {
+					if (!getFlag(ctx, IsAsyncGen)) {
+						throw new Error("Mixed generator component");
+					}
+
+					iteration = await iterationP;
+				} else {
+					if (!getFlag(ctx, IsSyncGen)) {
+						throw new Error("Mixed generator component");
+					}
+
+					iteration = iterationP;
+				}
+			} catch (err) {
+				setFlag(ctx, IsErrored);
+				if (ctx.parent) {
+					// TODO: fix type
+					return propagateError(ctx.parent, err) as any;
+				}
+
+				throw err;
+			} finally {
+				setFlag(ctx, IsSyncExecuting, false);
 			}
 		}
 	}
