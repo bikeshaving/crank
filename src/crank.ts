@@ -2314,7 +2314,10 @@ function runComponent<TNode, TResult>(
 
 		if (isIteratorLike(returned)) {
 			ctx.iterator = returned;
-		} else if (isPromiseLike(returned)) {
+		} else if (!isPromiseLike(returned)) {
+			// sync function component
+			return [undefined, diffComponentChildren<TNode, TResult>(ctx, returned)];
+		} else {
 			// async function component
 			const returned1 =
 				returned instanceof Promise ? returned : Promise.resolve(returned);
@@ -2328,9 +2331,6 @@ function runComponent<TNode, TResult>(
 					},
 				),
 			];
-		} else {
-			// sync function component
-			return [undefined, diffComponentChildren<TNode, TResult>(ctx, returned)];
 		}
 	}
 
