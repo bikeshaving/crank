@@ -1644,7 +1644,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 		let diff: Promise<undefined> | undefined;
 		try {
 			setFlag(ctx, IsRefreshing);
-			diff = enqueueComponentRun(ctx);
+			diff = enqueueComponent(ctx);
 			if (isPromiseLike(diff)) {
 				let result = diff.then(() => ctx.adapter.read(commitComponent(ctx)));
 				if (ctx.parent) {
@@ -2032,7 +2032,7 @@ function diffComponent<TNode, TScope, TRoot extends TNode, TResult>(
 	}
 
 	setFlag(ctx, IsUpdating);
-	return enqueueComponentRun(ctx);
+	return enqueueComponent(ctx);
 }
 
 function diffComponentChildren<TNode, TResult>(
@@ -2170,7 +2170,7 @@ function commitComponent<TNode>(
 }
 
 /** Enqueues and executes the component associated with the context. */
-function enqueueComponentRun<TNode, TResult>(
+function enqueueComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
 ): Promise<undefined> | undefined {
 	// TODO: Move this logic to runComponent and use the block/diff tuple.
