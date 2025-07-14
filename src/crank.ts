@@ -1076,6 +1076,7 @@ function flush<TRoot>(
 	}
 }
 
+// TODO: move this below commit functions
 function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	host: Retainer<TNode>,
@@ -2077,6 +2078,7 @@ function diffComponentChildren<TNode, TResult>(
 	return diff;
 }
 
+// TODO: move this below
 function commitComponent<TNode>(
 	ctx: ContextState<TNode, unknown, TNode>,
 	hydration?: Array<TNode | string>,
@@ -2225,19 +2227,15 @@ function enqueueComponent<TNode, TResult>(
 	} else if (!ctx.inflightBlock) {
 		const [block, value] = runComponent<TNode, TResult>(ctx);
 		if (block) {
-			ctx.inflightBlock = block
-				// TODO: there is some fuckery going on here related to async
-				// generator components resuming when they’re meant to be returned.
-				.then((v) => v)
-				.finally(() => advanceComponent(ctx));
+			ctx.inflightBlock = block.finally(() => advanceComponent(ctx));
 			// stepComponent will only return a block if the value is asynchronous
 			ctx.inflightDiff = value;
 		}
 
 		return value;
 	} else if (!ctx.enqueuedBlock) {
-		// enqueuedBlock and enqueuedDiff must be set simultaneously hence the
-		// Promise constructor.
+		// The enqueuedBlock and enqueuedDiff properties must be set
+		// simultaneously, hence the usage of the Promise constructor.
 		let resolve: Function;
 		ctx.enqueuedBlock = new Promise<undefined>(
 			(resolve1) => (resolve = resolve1),
