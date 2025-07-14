@@ -161,7 +161,50 @@ test("Fragment parent", async () => {
 	Assert.is(document.body.innerHTML, "2");
 });
 
-test("yield resumes with a promise of an element", async () => {
+test("for...of yield resumes with elements", async () => {
+	let node: HTMLElement | undefined;
+	async function* Component(this: Context) {
+		let i = 0;
+		for ({} of this) {
+			node = yield <div id={i}>{i}</div>;
+			i++;
+		}
+	}
+
+	await renderer.render(<Component />, document.body);
+	Assert.is(node, undefined);
+	await renderer.render(<Component />, document.body);
+	Assert.is(node!.outerHTML, '<div id="1">1</div>');
+	Assert.is(document.body.innerHTML, '<div id="1">1</div>');
+	await renderer.render(<Component />, document.body);
+	Assert.is(node!.outerHTML, '<div id="2">2</div>');
+	Assert.is(document.body.innerHTML, '<div id="2">2</div>');
+});
+
+test("for...of yield resumes with elements with async children", async () => {
+	async function Child({id}: {id: number}) {
+		await new Promise((resolve) => setTimeout(resolve));
+		return <div id={id}>{id}</div>;
+	}
+	let node: HTMLElement | undefined;
+	async function* Component(this: Context) {
+		let i = 0;
+		for ({} of this) {
+			node = yield <Child id={i} />;
+			i++;
+		}
+	}
+
+	await renderer.render(<Component />, document.body);
+	Assert.is(node, undefined);
+	await renderer.render(<Component />, document.body);
+	Assert.is(node!.outerHTML, '<div id="1">1</div>');
+	Assert.is(document.body.innerHTML, '<div id="1">1</div>');
+	await renderer.render(<Component />, document.body);
+	Assert.is(node!.outerHTML, '<div id="2">2</div>');
+	Assert.is(document.body.innerHTML, '<div id="2">2</div>');
+});
+test("for await...of yield resumes with a promise of an element", async () => {
 	let nodeP: Promise<HTMLElement> | undefined;
 	async function* Component(this: Context) {
 		let i = 0;

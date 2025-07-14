@@ -85,12 +85,7 @@ function getFlag(obj: {f: number}, flag: number): boolean {
 	return !!(obj.f & flag);
 }
 
-/***
- * SPECIAL TAGS
- *
- * Crank provides a couple tags which have special meaning for the renderer.
- ***/
-
+/*** SPECIAL TAGS ***/
 /**
  * A special tag for grouping multiple children within the same parent.
  *
@@ -160,8 +155,11 @@ export type Child = Element | string | number | boolean | null | undefined;
 export interface ChildIterable extends Iterable<Child | ChildIterable> {}
 
 /**
- * Describes all valid values of an element tree, including arbitrarily nested
+ * Describes all valid values for an element tree, including arbitrarily nested
  * iterables of such values.
+ *
+ * This type can be used to represent the type of the children prop for an
+ * element or the return/yield type of a component.
  */
 export type Children = Child | ChildIterable;
 
