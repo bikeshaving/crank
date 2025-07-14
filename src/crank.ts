@@ -2254,11 +2254,6 @@ function enqueueComponent<TNode, TResult>(
 
 /** Called when the inflight block promise settles. */
 function advanceComponent(ctx: ContextState): void {
-	// TODO: delete special case here
-	if (getFlag(ctx, IsAsyncGen) && !getFlag(ctx, IsInForOfLoop)) {
-		return;
-	}
-
 	[ctx.inflightBlock, ctx.inflightDiff] = [ctx.enqueuedBlock, ctx.enqueuedDiff];
 	[ctx.enqueuedBlock, ctx.enqueuedDiff] = [undefined, undefined];
 }
