@@ -2231,24 +2231,20 @@ function enqueueComponent<TNode, TResult>(
 				.then((v) => v)
 				.finally(() => advanceComponent(ctx));
 			// stepComponent will only return a block if the value is asynchronous
-			ctx.inflightDiff = value as Promise<ElementValue<TNode>>;
+			ctx.inflightDiff = value;
 		}
 
 		return value;
 	} else if (!ctx.enqueuedBlock) {
-		// We need to assign enqueuedBlock and enqueuedValue synchronously, hence
-		// the Promise constructor call here.
-		let resolveEnqueuedBlock: Function;
-		ctx.enqueuedBlock = new Promise(
-			(resolve) => (resolveEnqueuedBlock = resolve),
-		);
-
+		// enqueuedBlock and enqueuedDiff must be set simultaneously hence the
+		// Promise constructor.
+		let resolve: Function;
+		ctx.enqueuedBlock = new Promise<undefined>(
+			(resolve1) => (resolve = resolve1),
+		).finally(() => advanceComponent(ctx));
 		ctx.enqueuedDiff = ctx.inflightBlock.then(() => {
 			const [block, value] = runComponent<TNode, TResult>(ctx);
-			if (block) {
-				resolveEnqueuedBlock(block.finally(() => advanceComponent(ctx)));
-			}
-
+			resolve(block);
 			return value;
 		});
 	}
