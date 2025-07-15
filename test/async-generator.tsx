@@ -743,14 +743,18 @@ test("multiple iterations without a yield throw", async () => {
 		}
 	}
 
+	const fn = Sinon.fake();
+
 	try {
 		await renderer.render(<Component />, document.body);
 		Assert.unreachable();
 	} catch (err: any) {
 		Assert.is(err.message, "Context iterated twice without a yield");
+		fn();
 	}
 
 	Assert.is(i, 1);
+	Assert.is(fn.callCount, 1);
 });
 
 test("for...of enqueues", async () => {
