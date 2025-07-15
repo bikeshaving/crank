@@ -1637,6 +1637,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 		const ctx = this[_ContextState];
 		if (getFlag(ctx, IsUnmounted)) {
 			console.error("Component is unmounted");
+			// TODO: should we return the last value?
 			return ctx.adapter.read(undefined);
 		} else if (getFlag(ctx, IsSyncExecuting)) {
 			console.error("Component is already executing");
@@ -1649,10 +1650,13 @@ export class Context<T = any, TResult = any> implements EventTarget {
 			diff = enqueueComponent(ctx);
 			if (isPromiseLike(diff)) {
 				let result = diff.then(() => ctx.adapter.read(commitComponent(ctx)));
-				if (ctx.parent) {
-					result = result.catch((err) => propagateError(ctx.parent!, err));
-				}
+				result = result.catch((err) => {
+					if (ctx.parent) {
+						return propagateError(ctx.parent, err);
+					}
 
+					throw err;
+				});
 				return result.finally(() => {
 					setFlag(ctx, IsRefreshing, false);
 				});
@@ -2559,6 +2563,7 @@ async function pullComponent<TNode, TResult>(
 						setFlag(ctx, IsErrored);
 						if (ctx.parent) {
 							// TODO: fix type
+							// TODO: stop propagating errors which happen during unmount
 							return propagateError(ctx.parent, err) as any;
 						}
 
@@ -2601,7 +2606,9 @@ function resumePropsAsyncIterator(ctx: ContextState): void {
 }
 
 // TODO: async unmounting
-async function unmountComponent(ctx: ContextState): Promise<undefined> {
+// TODO: Rather than propagating errors, we should wrap them in an unhandled
+// promise rejection
+async function unmountComponent(ctx: ContextState): Promise<void> {
 	if (getFlag(ctx, IsUnmounted)) {
 		return;
 	}
@@ -2647,6 +2654,7 @@ async function unmountComponent(ctx: ContextState): Promise<undefined> {
 					setFlag(ctx, IsErrored);
 					if (ctx.parent) {
 						// TODO: fix type
+						// TODO: stop propagating errors which happen during unmount
 						return propagateError(ctx.parent, err) as any;
 					}
 
@@ -2681,6 +2689,7 @@ async function unmountComponent(ctx: ContextState): Promise<undefined> {
 					setFlag(ctx, IsErrored);
 					if (ctx.parent) {
 						// TODO: fix type
+						// TODO: stop propagating errors which happen during unmount
 						return propagateError(ctx.parent, err) as any;
 					}
 
@@ -2863,6 +2872,12 @@ function handleChildError<TNode>(
 	return diffComponentChildren(ctx, iteration.value as Children);
 }
 
+/**
+ * Propagates an error up the context tree by calling handleChildError with
+ * each parent
+ */
+// TODO: start with the parent of the context passed in so we don't have to
+// keep checking if ctx.parent is defined
 function propagateError<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
 	err: unknown,
