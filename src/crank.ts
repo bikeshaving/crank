@@ -1651,11 +1651,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 			if (isPromiseLike(diff)) {
 				let result = diff.then(() => ctx.adapter.read(commitComponent(ctx)));
 				result = result.catch((err) => {
-					if (ctx.parent) {
-						return propagateError(ctx.parent, err);
-					}
-
-					throw err;
+					return propagateError(ctx, err);
 				});
 				return result.finally(() => {
 					setFlag(ctx, IsRefreshing, false);
@@ -1664,11 +1660,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 
 			return ctx.adapter.read(commitComponent(ctx));
 		} catch (err) {
-			if (ctx.parent) {
-				return propagateError(ctx.parent, err);
-			}
-
-			throw err;
+			return propagateError(ctx, err);
 		} finally {
 			if (!isPromiseLike(diff)) {
 				setFlag(ctx, IsRefreshing, false);
@@ -2483,10 +2475,7 @@ async function pullComponent<TNode, TResult>(
 					// refresh has been called.
 					//if (!getFlag(ctx, IsUpdating) && !getFlag(ctx, IsRefreshing))) {
 					if (!getFlag(ctx, IsRefreshing)) {
-						if (ctx.parent) {
-							return propagateError(ctx.parent, err);
-						}
-						throw err;
+						return propagateError(ctx, err);
 					}
 				},
 			);
@@ -2561,13 +2550,7 @@ async function pullComponent<TNode, TResult>(
 						}
 					} catch (err) {
 						setFlag(ctx, IsErrored);
-						if (ctx.parent) {
-							// TODO: fix type
-							// TODO: stop propagating errors which happen during unmount
-							return propagateError(ctx.parent, err) as any;
-						}
-
-						throw err;
+						return propagateError(ctx, err) as any;
 					} finally {
 						setFlag(ctx, IsSyncExecuting, false);
 					}
@@ -2652,13 +2635,9 @@ async function unmountComponent(ctx: ContextState): Promise<void> {
 					}
 				} catch (err) {
 					setFlag(ctx, IsErrored);
-					if (ctx.parent) {
-						// TODO: fix type
-						// TODO: stop propagating errors which happen during unmount
-						return propagateError(ctx.parent, err) as any;
-					}
-
-					throw err;
+					// TODO: fix type
+					// TODO: stop propagating errors which happen during unmount
+					return propagateError(ctx, err) as any;
 				} finally {
 					setFlag(ctx, IsSyncExecuting, false);
 				}
@@ -2687,13 +2666,9 @@ async function unmountComponent(ctx: ContextState): Promise<void> {
 					}
 				} catch (err) {
 					setFlag(ctx, IsErrored);
-					if (ctx.parent) {
-						// TODO: fix type
-						// TODO: stop propagating errors which happen during unmount
-						return propagateError(ctx.parent, err) as any;
-					}
-
-					throw err;
+					// TODO: fix type
+					// TODO: stop propagating errors which happen during unmount
+					return propagateError(ctx, err) as any;
 				} finally {
 					setFlag(ctx, IsSyncExecuting, false);
 				}
@@ -2876,21 +2851,20 @@ function handleChildError<TNode>(
  * Propagates an error up the context tree by calling handleChildError with
  * each parent
  */
-// TODO: start with the parent of the context passed in so we don't have to
-// keep checking if ctx.parent is defined
 function propagateError<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
 	err: unknown,
 ): Promise<TResult> | TResult {
+	if (!ctx.parent) {
+		throw err;
+	}
+
+	ctx = ctx.parent;
 	let diff: Promise<undefined> | undefined;
 	try {
 		diff = handleChildError(ctx, err);
 	} catch (err) {
-		if (!ctx.parent) {
-			throw err;
-		}
-
-		return propagateError(ctx.parent, err);
+		return propagateError(ctx, err);
 	}
 
 	if (isPromiseLike(diff)) {
@@ -2900,13 +2874,7 @@ function propagateError<TNode, TResult>(
 				commitComponent(ctx);
 				return ctx.adapter.read(getValue(ctx.ret));
 			},
-			(err) => {
-				if (!ctx.parent) {
-					throw err;
-				}
-
-				return propagateError(ctx.parent, err);
-			},
+			(err) => propagateError(ctx, err),
 		);
 	}
 
