@@ -1649,13 +1649,10 @@ export class Context<T = any, TResult = any> implements EventTarget {
 			setFlag(ctx, IsRefreshing);
 			diff = enqueueComponent(ctx);
 			if (isPromiseLike(diff)) {
-				let result = diff.then(() => ctx.adapter.read(commitComponent(ctx)));
-				result = result.catch((err) => {
-					return propagateError(ctx, err);
-				});
-				return result.finally(() => {
-					setFlag(ctx, IsRefreshing, false);
-				});
+				return diff
+					.then(() => ctx.adapter.read(commitComponent(ctx)))
+					.catch((err) => propagateError(ctx, err))
+					.finally(() => setFlag(ctx, IsRefreshing, false));
 			}
 
 			return ctx.adapter.read(commitComponent(ctx));
