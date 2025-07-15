@@ -1169,8 +1169,11 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	hydration?: Array<TNode | string>,
 ): Array<TNode | string> {
 	const values: Array<ElementValue<TNode>> = [];
-	const children1 = normalize(wrap(children));
-	for (let i = 0; i < children1.length; i++) {
+	for (
+		let i = 0, children1 = normalize(wrap(children));
+		i < children1.length;
+		i++
+	) {
 		let child = children1[i];
 		while (typeof child === "object" && child.fallback) {
 			child = child.fallback;
@@ -1188,9 +1191,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 				);
 			} else {
 				// host element or portal element
-				values.push(
-					commitHostOrPortal(adapter, root, child, ctx, scope, hydration),
-				);
+				values.push(commitHost(adapter, root, child, ctx, scope, hydration));
 			}
 
 			child.oldProps = undefined;
@@ -1223,7 +1224,7 @@ function commitRaw<TNode, TScope>(
 	return ret.value;
 }
 
-function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
+function commitHost<TNode, TRoot extends TNode, TScope>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, unknown>,
 	root: TNode | undefined,
 	ret: Retainer<TNode>,
