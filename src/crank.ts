@@ -2523,6 +2523,9 @@ async function pullComponent<TNode, TResult>(
 						setFlag(ctx, IsSyncExecuting);
 						const iterationP = ctx.iterator.next(oldResult);
 						iteration = await iterationP;
+					} catch (err) {
+						setFlag(ctx, IsErrored);
+						throw err;
 					} finally {
 						setFlag(ctx, IsSyncExecuting, false);
 					}
@@ -2547,7 +2550,7 @@ async function pullComponent<TNode, TResult>(
 						}
 					} catch (err) {
 						setFlag(ctx, IsErrored);
-						return propagateError(ctx, err) as any;
+						throw err;
 					} finally {
 						setFlag(ctx, IsSyncExecuting, false);
 					}
@@ -2586,8 +2589,6 @@ function resumePropsAsyncIterator(ctx: ContextState): void {
 }
 
 // TODO: async unmounting
-// TODO: Rather than propagating errors, we should wrap them in an unhandled
-// promise rejection
 async function unmountComponent(ctx: ContextState): Promise<void> {
 	if (getFlag(ctx, IsUnmounted)) {
 		return;
@@ -2632,9 +2633,7 @@ async function unmountComponent(ctx: ContextState): Promise<void> {
 					}
 				} catch (err) {
 					setFlag(ctx, IsErrored);
-					// TODO: fix type
-					// TODO: stop propagating errors which happen during unmount
-					return propagateError(ctx, err) as any;
+					Promise.reject(err);
 				} finally {
 					setFlag(ctx, IsSyncExecuting, false);
 				}
@@ -2663,9 +2662,7 @@ async function unmountComponent(ctx: ContextState): Promise<void> {
 					}
 				} catch (err) {
 					setFlag(ctx, IsErrored);
-					// TODO: fix type
-					// TODO: stop propagating errors which happen during unmount
-					return propagateError(ctx, err) as any;
+					Promise.reject(err);
 				} finally {
 					setFlag(ctx, IsSyncExecuting, false);
 				}
