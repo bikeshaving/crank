@@ -2455,18 +2455,37 @@ async function pullComponent<TNode, TResult>(
 			}
 
 			// inflightValue must be set synchronously.
-			let resolve!: Function;
-			let reject!: Function;
+			let resolveInflight!: Function;
+			let rejectInflight!: Function;
 			ctx.inflightDiff = new Promise(
-				(resolve1, reject1) => ((resolve = resolve1), (reject = reject1)),
+				(resolve1, reject1) => (
+					(resolveInflight = resolve1), (rejectInflight = reject1)
+				),
 			);
-			if (ctx.parent && !getFlag(ctx, IsRefreshing)) {
-				ctx.inflightDiff.catch((err) => {
-					if (!getFlag(ctx, IsRefreshing)) {
-						return propagateError(ctx.parent!, err);
+			ctx.inflightDiff.then(
+				() => {
+					if (!getFlag(ctx, IsUpdating) && !getFlag(ctx, IsRefreshing)) {
+						commitComponent(ctx);
 					}
-				});
-			}
+				},
+				(err) => {
+					// TODO: We can use the IsUpdating flag to eliminate certain
+					// unhandled promise rejections but doing so swallows certain
+					// legitimate rejections in the case of an error which is thrown
+					// immediately after yielding. I suspect the change to make
+					// committing happen after a full tree has settled is the cause. We
+					// need a better flag to indicate tath the current inflightDiff is
+					// because the async gnerator is pulling, and not because render or
+					// refresh has been called.
+					//if (!getFlag(ctx, IsUpdating) && !getFlag(ctx, IsRefreshing))) {
+					if (!getFlag(ctx, IsRefreshing)) {
+						if (ctx.parent) {
+							return propagateError(ctx.parent, err);
+						}
+						throw err;
+					}
+				},
+			);
 
 			let iteration: ChildrenIteratorResult;
 			try {
@@ -2474,7 +2493,7 @@ async function pullComponent<TNode, TResult>(
 			} catch (err) {
 				done = true;
 				setFlag(ctx, IsErrored);
-				reject(err);
+				rejectInflight(err);
 				break;
 			}
 
@@ -2498,22 +2517,11 @@ async function pullComponent<TNode, TResult>(
 
 				setFlag(ctx, NeedsToYield, false);
 			} catch (err) {
-				reject(err);
+				rejectInflight(err);
 			} finally {
-				resolve(diff);
+				resolveInflight(diff);
 			}
 
-			if (diff) {
-				diff.then((): undefined => {
-					if (!getFlag(ctx, IsUpdating) && !getFlag(ctx, IsRefreshing)) {
-						commitComponent(ctx);
-					}
-				}, NOOP);
-			} else {
-				if (!getFlag(ctx, IsUpdating) && !getFlag(ctx, IsRefreshing)) {
-					commitComponent(ctx);
-				}
-			}
 			const oldResult = new Promise((resolve) => ctx.ctx.schedule(resolve));
 			if (getFlag(ctx, IsUnmounted)) {
 				while (
