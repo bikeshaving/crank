@@ -2839,39 +2839,47 @@ function handleChildError<TNode>(
 
 /**
  * Propagates an error up the context tree by calling handleChildError with
- * each parent
+ * each parent.
  */
-// TODO: I think this function might return the value of higher contexts, which
-// is incorrect.
 function propagateError<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
 	err: unknown,
 ): Promise<TResult> | TResult {
-	if (!ctx.parent) {
+	const parent = ctx.parent;
+	if (!parent) {
 		throw err;
 	}
 
-	ctx = ctx.parent;
 	let diff: Promise<undefined> | undefined;
 	try {
-		diff = handleChildError(ctx, err);
+		diff = handleChildError(parent, err);
 	} catch (err) {
-		return propagateError(ctx, err);
+		const result = propagateError(parent, err);
+		if (isPromiseLike(result)) {
+			return result.then(() => ctx.adapter.read(getValue(ctx.ret)));
+		} else {
+			return ctx.adapter.read(getValue(ctx.ret));
+		}
 	}
 
 	if (isPromiseLike(diff)) {
 		return diff.then(
 			() => {
-				setFlag(ctx, IsUpdating, false);
-				commitComponent(ctx);
+				commitComponent(parent);
 				return ctx.adapter.read(getValue(ctx.ret));
 			},
-			(err) => propagateError(ctx, err),
+			(err) => {
+				const result = propagateError(parent, err);
+				if (isPromiseLike(result)) {
+					return result.then(() => ctx.adapter.read(getValue(ctx.ret)));
+				} else {
+					return ctx.adapter.read(getValue(ctx.ret));
+				}
+			},
 		);
 	}
 
-	setFlag(ctx, IsUpdating, false);
-	commitComponent(ctx);
+	commitComponent(parent);
 	return ctx.adapter.read(getValue(ctx.ret));
 }
 
