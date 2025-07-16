@@ -134,6 +134,38 @@ test("multiple yields sync", async () => {
 	Assert.is(document.body.innerHTML, "<div><span>Hello</span></div>");
 });
 
+test("multiple yields in a row", async () => {
+	async function* Component(
+		this: Context,
+		{message}: {message: string},
+	): AsyncGenerator<Element> {
+		for await ({message} of this) {
+			yield <span>{message} 1</span>;
+			yield <span>{message} 2</span>;
+			yield <span>{message} 3</span>;
+		}
+	}
+
+	const result = await renderer.render(
+		<div>
+			<Component message="Hello" />
+		</div>,
+		document.body,
+	) as HTMLElement;
+
+	Assert.is(result.outerHTML, "<div><span>Hello 3</span></div>");
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Hello 3</span></div>",
+	);
+
+	await Promise.resolve();
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Hello 3</span></div>",
+	);
+});
+
 test("Fragment parent", async () => {
 	let resolve!: Function;
 	async function* Component(this: Context) {
