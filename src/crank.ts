@@ -1134,6 +1134,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	const childValues = commitChildren(
 		adapter,
 		root,
+		ret,
 		ctx,
 		scope,
 		ret,
@@ -1161,6 +1162,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	adapter: RenderAdapter<TNode, unknown, TRoot, TResult>,
 	root: TRoot | undefined,
+	host: Retainer<TNode>,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope | undefined,
 	parent: Retainer<TNode>,
@@ -1185,7 +1187,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 				values.push(commitComponent(child.ctx, hydration));
 			} else if (el.tag === Fragment) {
 				values.push(
-					commitChildren(adapter, root, ctx, scope, child, hydration),
+					commitChildren(adapter, root, host, ctx, scope, child, hydration),
 				);
 			} else {
 				// host element or portal element
@@ -1255,6 +1257,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	const childValues = commitChildren(
 		adapter,
 		root,
+		ret,
 		ctx,
 		scope,
 		ret,
@@ -2090,6 +2093,7 @@ function commitComponent<TNode>(
 	const values = commitChildren(
 		ctx.adapter,
 		ctx.root,
+		ctx.host,
 		ctx,
 		ctx.scope,
 		ctx.ret,
