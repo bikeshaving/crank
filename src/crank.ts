@@ -419,6 +419,7 @@ const IsCopied = 1 << 1;
 class Retainer<TNode> {
 	/** A bitmask. See RETAINER FLAGS above. */
 	declare f: number;
+
 	/** The element associated with this retainer. */
 	declare el: Element;
 
@@ -426,13 +427,12 @@ class Retainer<TNode> {
 	 * The context associated with this element. Will only be defined for
 	 * component elements.
 	 */
-
 	declare ctx: ContextState<TNode> | undefined;
+
 	/**
 	 * The retainer children of this element. Retainers form a tree which mirrors
 	 * elements. Can be a single child or undefined as a memory optimization.
 	 */
-
 	declare children: Array<RetainerChild<TNode>> | RetainerChild<TNode>;
 
 	/** The value associated with this element. */
@@ -442,18 +442,17 @@ class Retainer<TNode> {
 	 * The child which this retainer replaces. This property is used when an
 	 * async retainer tree replaces previously rendered elements, so that the
 	 * previously rendered elements can remain visible until the async tree
-	 * fulfills. Will be set to undefined once this subtree fully renders.
+	 * settles.
 	 */
 	declare fallback: RetainerChild<TNode>;
 
 	declare graveyard: Array<Retainer<TNode>> | undefined;
 
-	/** The previous props for this retainer. */
 	declare oldProps: Record<string, any> | undefined;
 
 	declare pending: Promise<undefined> | undefined;
 
-	declare onNextDiffs: Function | undefined;
+	declare onNext: Function | undefined;
 
 	constructor(el: Element) {
 		this.f = 0;
@@ -465,13 +464,11 @@ class Retainer<TNode> {
 		this.graveyard = undefined;
 		this.oldProps = undefined;
 		this.pending = undefined;
-		this.onNextDiffs = undefined;
+		this.onNext = undefined;
 	}
 }
 
-/**
- * The retainer equivalent of ElementValue
- */
+/** The retainer equivalent of ElementValue */
 type RetainerChild<TNode> = Retainer<TNode> | string | undefined;
 
 /**
@@ -959,17 +956,17 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			new Promise<any>((resolve) => (onNextDiffs = resolve)),
 		]);
 
-		if (parent.onNextDiffs) {
-			parent.onNextDiffs(diffs1);
+		if (parent.onNext) {
+			parent.onNext(diffs1);
 		}
 
-		parent.onNextDiffs = onNextDiffs;
+		parent.onNext = onNextDiffs;
 		return diffs1;
 	} else {
 		parent.fallback = undefined;
-		if (parent.onNextDiffs) {
-			parent.onNextDiffs(diffs);
-			parent.onNextDiffs = undefined;
+		if (parent.onNext) {
+			parent.onNext(diffs);
+			parent.onNext = undefined;
 		}
 
 		parent.pending = undefined;
@@ -2454,11 +2451,14 @@ function runComponent<TNode, TResult>(
  * for...of loop is implemented here. Because async generator components can
  * have multiple values requested at the same time, it makes sense to group the
  * logic in a single loop to prevent opaque race conditions.
+ *
+ * @returns {Promise<undefined>} A promise which resolves when the component
+ * has been unmounted
  */
 async function pullComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
 	iterationP: Promise<ChildrenIteratorResult>,
-): Promise<void> {
+): Promise<undefined> {
 	let done = false;
 	try {
 		while (!done) {
