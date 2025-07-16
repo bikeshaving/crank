@@ -792,21 +792,21 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope | undefined,
 	parent: Retainer<TNode>,
-	children: Children,
+	newChildren: Children,
 ): Promise<undefined> | undefined {
 	const oldRetained = wrap(parent.children);
 	const newRetained: typeof oldRetained = [];
-	const newChildren = arrayify(children);
+	const newChildren1 = arrayify(newChildren);
 	const diffs: Array<Promise<undefined> | undefined> = [];
 	let childrenByKey: Map<Key, Retainer<TNode>> | undefined;
 	let seenKeys: Set<Key> | undefined;
 	let isAsync = false;
 	let oi = 0;
 	let oldLength = oldRetained.length;
-	for (let ni = 0, newLength = newChildren.length; ni < newLength; ni++) {
+	for (let ni = 0, newLength = newChildren1.length; ni < newLength; ni++) {
 		// length checks to prevent index out of bounds deoptimizations.
 		let ret = oi >= oldLength ? undefined : oldRetained[oi];
-		let child = narrow(newChildren[ni]);
+		let child = narrow(newChildren1[ni]);
 		{
 			// aligning new children with old retainers
 			let oldKey = typeof ret === "object" ? ret.el.key : undefined;
@@ -1150,8 +1150,8 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 			oldChildValues,
 		);
 	}
-	flush(adapter, root);
 
+	flush(adapter, root);
 	setFlag(ret, HasCommitted);
 	return adapter.read(unwrap(childValues));
 }
@@ -1199,7 +1199,6 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 		}
 	}
 
-	// TODO: do we need to handle the graveyard of fallbacks?
 	if (parent.graveyard) {
 		for (let i = 0; i < parent.graveyard.length; i++) {
 			const ret = parent.graveyard[i];
