@@ -1136,7 +1136,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 		root,
 		ctx,
 		scope,
-		ret.children,
+		ret,
 		hydration,
 	);
 	if (root == null) {
@@ -1163,16 +1163,16 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	root: TRoot | undefined,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope | undefined,
-	children: Array<RetainerChild<TNode>> | RetainerChild<TNode>,
+	parent: Retainer<TNode>,
 	hydration?: Array<TNode | string>,
 ): Array<TNode | string> {
 	const values: Array<ElementValue<TNode>> = [];
 	for (
-		let i = 0, children1 = normalize(wrap(children));
-		i < children1.length;
+		let i = 0, children = normalize(wrap(parent.children));
+		i < children.length;
 		i++
 	) {
-		let child = children1[i];
+		let child = children[i];
 		while (typeof child === "object" && child.fallback) {
 			child = child.fallback;
 		}
@@ -1185,7 +1185,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 				values.push(commitComponent(child.ctx, hydration));
 			} else if (el.tag === Fragment) {
 				values.push(
-					commitChildren(adapter, root, ctx, scope, child.children, hydration),
+					commitChildren(adapter, root, ctx, scope, child, hydration),
 				);
 			} else {
 				// host element or portal element
@@ -1257,7 +1257,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		root,
 		ctx,
 		scope,
-		ret.children,
+		ret,
 		childHydration,
 	);
 	let copiedProps: Set<string> | undefined;
@@ -2092,7 +2092,7 @@ function commitComponent<TNode>(
 		ctx.root,
 		ctx,
 		ctx.scope,
-		ctx.ret.children,
+		ctx.ret,
 		hydration,
 	);
 
