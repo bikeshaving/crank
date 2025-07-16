@@ -446,6 +446,8 @@ class Retainer<TNode> {
 	 */
 	declare fallback: RetainerChild<TNode>;
 
+	declare graveyard: Array<Retainer<TNode>> | undefined;
+
 	/** The previous props for this retainer. */
 	declare oldProps: Record<string, any> | undefined;
 
@@ -460,6 +462,7 @@ class Retainer<TNode> {
 		this.children = undefined;
 		this.value = undefined;
 		this.fallback = undefined;
+		this.graveyard = undefined;
 		this.oldProps = undefined;
 		this.pending = undefined;
 		this.onNextDiffs = undefined;
@@ -795,7 +798,6 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	const newRetained: typeof oldRetained = [];
 	const newChildren = arrayify(children);
 	const diffs: Array<Promise<undefined> | undefined> = [];
-	let graveyard: Array<Retainer<TNode>> | undefined;
 	let childrenByKey: Map<Key, Retainer<TNode>> | undefined;
 	let seenKeys: Set<Key> | undefined;
 	let isAsync = false;
@@ -861,13 +863,18 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 						childCopied = true;
 					}
 				} else {
+					let graveyard: Array<Retainer<TNode>> | undefined;
 					if (typeof ret === "object") {
-						(graveyard = graveyard || []).push(ret);
+						(parent.graveyard = parent.graveyard || []).push(ret);
+
+						// make sure the old graveyard is preserved
+						graveyard = ret.graveyard;
 					}
 
 					const fallback = ret;
 					ret = new Retainer<TNode>(child);
 					ret.fallback = fallback;
+					ret.graveyard = graveyard;
 				}
 
 				if (child.copy && getFlag(ret, HasCommitted)) {
@@ -907,8 +914,9 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		} else {
 			// child is a string or undefined
 			if (typeof ret === "object") {
-				(graveyard = graveyard || []).push(ret);
+				(parent.graveyard = parent.graveyard || []).push(ret);
 			}
+
 			if (typeof child === "string") {
 				ret = child;
 			} else {
@@ -929,26 +937,21 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				!seenKeys ||
 				!seenKeys.has(ret.el.key))
 		) {
-			(graveyard = graveyard || []).push(ret);
+			(parent.graveyard = parent.graveyard || []).push(ret);
 		}
 	}
 
 	if (childrenByKey !== undefined && childrenByKey.size > 0) {
-		(graveyard = graveyard || []).push(...childrenByKey.values());
+		(parent.graveyard = parent.graveyard || []).push(...childrenByKey.values());
 	}
 
 	parent.children = unwrap(newRetained);
 	if (isAsync) {
 		let diffs1 = Promise.all(diffs)
+			.then(() => undefined)
 			.finally(() => {
 				parent.fallback = undefined;
-				if (graveyard) {
-					for (let i = 0; i < graveyard.length; i++) {
-						unmount(adapter, host, ctx, graveyard[i]);
-					}
-				}
-			})
-			.then(() => undefined);
+			});
 
 		let onNextDiffs!: Function;
 		parent.pending = diffs1 = Promise.race([
@@ -964,12 +967,6 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		return diffs1;
 	} else {
 		parent.fallback = undefined;
-		if (graveyard) {
-			for (let i = 0; i < graveyard.length; i++) {
-				unmount(adapter, host, ctx, graveyard[i]);
-			}
-		}
-
 		if (parent.onNextDiffs) {
 			parent.onNextDiffs(diffs);
 			parent.onNextDiffs = undefined;
@@ -1200,6 +1197,15 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 			const text = adapter.text(child, scope, hydration);
 			values.push(text);
 		}
+	}
+
+	// TODO: do we need to handle the graveyard of fallbacks?
+	if (parent.graveyard) {
+		for (let i = 0; i < parent.graveyard.length; i++) {
+			const ret = parent.graveyard[i];
+			unmount(adapter, host, ctx, ret);
+		}
+		parent.graveyard = undefined;
 	}
 
 	// TODO: why are we running normalize on both ends?
