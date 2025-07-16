@@ -451,7 +451,7 @@ class Retainer<TNode> {
 
 	declare pending: Promise<undefined> | undefined;
 
-	declare onPending: Function | undefined;
+	declare onNextDiffs: Function | undefined;
 
 	constructor(el: Element) {
 		this.f = 0;
@@ -462,7 +462,7 @@ class Retainer<TNode> {
 		this.fallback = undefined;
 		this.oldProps = undefined;
 		this.pending = undefined;
-		this.onPending = undefined;
+		this.onNextDiffs = undefined;
 	}
 }
 
@@ -702,6 +702,7 @@ export class Renderer<
 			throw new Error("Context mismatch");
 		} else {
 			ret.el = createElement(Portal, {children, root});
+			oldProps = ret.oldProps;
 			if (typeof root === "object" && root !== null && children == null) {
 				this.cache.delete(root);
 			}
@@ -710,7 +711,6 @@ export class Renderer<
 		const adapter = this[_RenderAdapter];
 		const scope = adapter.scope(undefined, Portal, ret.el.props);
 		const diff = diffChildren(adapter, root, ret, ctx, scope, ret, children);
-
 		if (isPromiseLike(diff)) {
 			return diff.then(() =>
 				commitRootRender(adapter, root, ret!, ctx, oldProps, scope),
@@ -761,7 +761,7 @@ export class Renderer<
 					root,
 					ret!,
 					ctx,
-					ret.oldProps,
+					undefined, // no oldProps for hydration
 					scope,
 					hydration,
 				);
@@ -957,11 +957,11 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			new Promise<any>((resolve) => (onNextDiffs = resolve)),
 		]);
 
-		if (parent.onPending) {
-			parent.onPending(diffs1);
+		if (parent.onNextDiffs) {
+			parent.onNextDiffs(diffs1);
 		}
 
-		parent.onPending = onNextDiffs;
+		parent.onNextDiffs = onNextDiffs;
 		return diffs1;
 	} else {
 		parent.fallback = undefined;
@@ -971,9 +971,9 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			}
 		}
 
-		if (parent.onPending) {
-			parent.onPending(diffs);
-			parent.onPending = undefined;
+		if (parent.onNextDiffs) {
+			parent.onNextDiffs(diffs);
+			parent.onNextDiffs = undefined;
 		}
 
 		parent.pending = undefined;
@@ -2212,7 +2212,7 @@ function enqueueComponent<TNode, TResult>(
 				);
 			}
 
-			return ctx.inflightBlock.then(() => {
+			return ctx.inflightBlock.finally(() => {
 				ctx.inflightBlock = undefined;
 				return ctx.inflightDiff;
 			});
@@ -2235,7 +2235,7 @@ function enqueueComponent<TNode, TResult>(
 		ctx.enqueuedBlock = new Promise<undefined>(
 			(resolve1) => (resolve = resolve1),
 		).finally(() => advanceComponent(ctx));
-		ctx.enqueuedDiff = ctx.inflightBlock.then(() => {
+		ctx.enqueuedDiff = ctx.inflightBlock.finally(() => {
 			const [block, value] = runComponent<TNode, TResult>(ctx);
 			resolve(block);
 			return value;
@@ -2845,6 +2845,8 @@ function handleChildError<TNode>(
  * Propagates an error up the context tree by calling handleChildError with
  * each parent
  */
+// TODO: I think this function might return the value of higher contexts, which
+// is incorrect.
 function propagateError<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
 	err: unknown,

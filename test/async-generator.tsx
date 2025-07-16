@@ -146,24 +146,18 @@ test("multiple yields in a row", async () => {
 		}
 	}
 
-	const result = await renderer.render(
+	const result = (await renderer.render(
 		<div>
 			<Component message="Hello" />
 		</div>,
 		document.body,
-	) as HTMLElement;
+	)) as HTMLElement;
 
 	Assert.is(result.outerHTML, "<div><span>Hello 3</span></div>");
-	Assert.is(
-		document.body.innerHTML,
-		"<div><span>Hello 3</span></div>",
-	);
+	Assert.is(document.body.innerHTML, "<div><span>Hello 3</span></div>");
 
 	await Promise.resolve();
-	Assert.is(
-		document.body.innerHTML,
-		"<div><span>Hello 3</span></div>",
-	);
+	Assert.is(document.body.innerHTML, "<div><span>Hello 3</span></div>");
 });
 
 test("Fragment parent", async () => {
