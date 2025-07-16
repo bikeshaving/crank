@@ -1004,8 +1004,7 @@ function getInflight(child: Retainer<unknown>): Promise<undefined> | undefined {
 	if (ctx && getFlag(ctx, IsUpdating) && ctx.inflightDiff) {
 		return ctx.inflightDiff;
 	} else if (child.pending) {
-		// TODO: fix the type
-		return child.pending as unknown as undefined;
+		return child.pending;
 	}
 
 	return undefined;
