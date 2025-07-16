@@ -1651,13 +1651,25 @@ export class Context<T = any, TResult = any> implements EventTarget {
 			if (isPromiseLike(diff)) {
 				return diff
 					.then(() => ctx.adapter.read(commitComponent(ctx)))
-					.catch((err) => propagateError(ctx, err))
+					.catch((err) => {
+						const diff = propagateError(ctx, err);
+						if (diff) {
+							return diff.then(() => ctx.adapter.read(getValue(ctx.ret)));
+						}
+
+						return ctx.adapter.read(getValue(ctx.ret));
+					})
 					.finally(() => setFlag(ctx, IsRefreshing, false));
 			}
 
 			return ctx.adapter.read(commitComponent(ctx));
 		} catch (err) {
-			return propagateError(ctx, err);
+			const diff = propagateError(ctx, err);
+			if (diff) {
+				return diff.then(() => ctx.adapter.read(getValue(ctx.ret)));
+			}
+
+			return ctx.adapter.read(getValue(ctx.ret));
 		} finally {
 			if (!isPromiseLike(diff)) {
 				setFlag(ctx, IsRefreshing, false);
@@ -2840,11 +2852,14 @@ function handleChildError<TNode>(
 /**
  * Propagates an error up the context tree by calling handleChildError with
  * each parent.
+ *
+ * @returns A promise which resolves to undefined when the error has been
+ * handled, or undefined if the error was handled synchronously.
  */
-function propagateError<TNode, TResult>(
-	ctx: ContextState<TNode, unknown, TNode, TResult>,
+function propagateError<TNode>(
+	ctx: ContextState<TNode>,
 	err: unknown,
-): Promise<TResult> | TResult {
+): Promise<undefined> | undefined {
 	const parent = ctx.parent;
 	if (!parent) {
 		throw err;
@@ -2854,33 +2869,17 @@ function propagateError<TNode, TResult>(
 	try {
 		diff = handleChildError(parent, err);
 	} catch (err) {
-		const result = propagateError(parent, err);
-		if (isPromiseLike(result)) {
-			return result.then(() => ctx.adapter.read(getValue(ctx.ret)));
-		} else {
-			return ctx.adapter.read(getValue(ctx.ret));
-		}
+		return propagateError(parent, err);
 	}
 
 	if (isPromiseLike(diff)) {
 		return diff.then(
-			() => {
-				commitComponent(parent);
-				return ctx.adapter.read(getValue(ctx.ret));
-			},
-			(err) => {
-				const result = propagateError(parent, err);
-				if (isPromiseLike(result)) {
-					return result.then(() => ctx.adapter.read(getValue(ctx.ret)));
-				} else {
-					return ctx.adapter.read(getValue(ctx.ret));
-				}
-			},
+			() => void commitComponent(parent),
+			(err) => propagateError(parent, err),
 		);
 	}
 
 	commitComponent(parent);
-	return ctx.adapter.read(getValue(ctx.ret));
 }
 
 // TODO: uncomment and use in the Element interface below
