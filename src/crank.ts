@@ -782,7 +782,6 @@ export class Renderer<
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
-// TODO: Should we move unmounting to the commit phase?
 function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
@@ -1136,8 +1135,8 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 		adapter,
 		root,
 		ctx,
-		ret.children,
 		scope,
+		ret.children,
 		hydration,
 	);
 	if (root == null) {
@@ -1163,8 +1162,8 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	adapter: RenderAdapter<TNode, unknown, TRoot, TResult>,
 	root: TRoot | undefined,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
-	children: Array<RetainerChild<TNode>> | RetainerChild<TNode>,
 	scope: TScope | undefined,
+	children: Array<RetainerChild<TNode>> | RetainerChild<TNode>,
 	hydration?: Array<TNode | string>,
 ): Array<TNode | string> {
 	const values: Array<ElementValue<TNode>> = [];
@@ -1186,7 +1185,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 				values.push(commitComponent(child.ctx, hydration));
 			} else if (el.tag === Fragment) {
 				values.push(
-					commitChildren(adapter, root, ctx, child.children, scope, hydration),
+					commitChildren(adapter, root, ctx, scope, child.children, hydration),
 				);
 			} else {
 				// host element or portal element
@@ -1257,8 +1256,8 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		adapter,
 		root,
 		ctx,
-		ret.children,
 		scope,
+		ret.children,
 		childHydration,
 	);
 	let copiedProps: Set<string> | undefined;
@@ -2092,8 +2091,8 @@ function commitComponent<TNode>(
 		ctx.adapter,
 		ctx.root,
 		ctx,
-		ctx.ret.children,
 		ctx.scope,
+		ctx.ret.children,
 		hydration,
 	);
 
