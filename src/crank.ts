@@ -2454,26 +2454,21 @@ async function pullComponent<TNode, TResult>(
 				(resolve1, reject1) => (
 					(resolveInflight = resolve1), (rejectInflight = reject1)
 				),
-			);
-			ctx.inflightDiff.then(
+			).then(
 				() => {
 					if (!getFlag(ctx, IsUpdating) && !getFlag(ctx, IsRefreshing)) {
 						commitComponent(ctx);
 					}
 				},
 				(err) => {
-					// TODO: We can use the IsUpdating flag to eliminate certain
-					// unhandled promise rejections but doing so swallows certain
-					// legitimate rejections in the case of an error which is thrown
-					// immediately after yielding. I suspect the change to make
-					// committing happen after a full tree has settled is the cause. We
-					// need a better flag to indicate tath the current inflightDiff is
-					// because the async gnerator is pulling, and not because render or
-					// refresh has been called.
-					//if (!getFlag(ctx, IsUpdating) && !getFlag(ctx, IsRefreshing))) {
-					if (!getFlag(ctx, IsRefreshing)) {
+					if (
+						(!getFlag(ctx, IsUpdating) && !getFlag(ctx, IsRefreshing)) ||
+						!getFlag(ctx, NeedsToYield)
+					) {
 						return propagateError(ctx, err);
 					}
+
+					throw err;
 				},
 			);
 
@@ -2483,10 +2478,12 @@ async function pullComponent<TNode, TResult>(
 			} catch (err) {
 				done = true;
 				setFlag(ctx, IsErrored);
+				setFlag(ctx, NeedsToYield, false);
 				rejectInflight(err);
 				break;
 			}
 
+			// this makes sure we pause before entering a loop if we yield before it
 			if (!getFlag(ctx, IsInForAwaitOfLoop)) {
 				setFlag(ctx, PropsAvailable, false);
 			}
@@ -2504,12 +2501,11 @@ async function pullComponent<TNode, TResult>(
 				} else {
 					diff = diffComponentChildren<TNode, TResult>(ctx, iteration.value!);
 				}
-
-				setFlag(ctx, NeedsToYield, false);
 			} catch (err) {
 				rejectInflight(err);
 			} finally {
 				resolveInflight(diff);
+				setFlag(ctx, NeedsToYield, false);
 			}
 
 			const oldResult = new Promise((resolve) => ctx.ctx.schedule(resolve));
