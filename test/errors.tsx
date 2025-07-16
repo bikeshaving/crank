@@ -270,10 +270,10 @@ test("async generator throws independently", async () => {
 	}
 });
 
-test("async generator rethrows child error", async () => {
+test("async generator rethrows after child error", async () => {
 	const mock = Sinon.fake();
 	async function Thrower(this: Context) {
-		throw new Error("async generator rethrows child error");
+		throw new Error("async generator rethrows after child error");
 	}
 
 	async function* Component(this: Context) {
@@ -283,7 +283,7 @@ test("async generator rethrows child error", async () => {
 			}
 		} catch (err) {
 			mock();
-			throw err;
+			throw new Error("async generator rethrows after child error 1");
 		}
 	}
 
@@ -291,15 +291,19 @@ test("async generator rethrows child error", async () => {
 		await renderer.render(<Component />, document.body);
 		Assert.unreachable();
 	} catch (err: any) {
-		Assert.is(err.message, "async generator rethrows child error");
+		Assert.is(err.message, "async generator rethrows after child error 1");
 	}
+
+	Assert.is(mock.callCount, 1);
 });
 
-test("async generator throws in async generator", async () => {
+test("async generator rethrows after child error in async generator", async () => {
 	const mock = Sinon.fake();
 	/* eslint-disable require-yield */
 	async function* Thrower() {
-		throw new Error("async generator throws in async generator");
+		throw new Error(
+			"async generator rethrows after child error in async generator",
+		);
 	}
 	/* eslint-enable require-yield */
 
@@ -310,7 +314,9 @@ test("async generator throws in async generator", async () => {
 			}
 		} catch (err) {
 			mock();
-			throw err;
+			throw new Error(
+				"async generator rethrows after child error in async generator 1",
+			);
 		}
 	}
 
@@ -318,7 +324,10 @@ test("async generator throws in async generator", async () => {
 		await renderer.render(<Component />, document.body);
 		Assert.unreachable();
 	} catch (err: any) {
-		Assert.is(err.message, "async generator throws in async generator");
+		Assert.is(
+			err.message,
+			"async generator rethrows after child error in async generator 1",
+		);
 	}
 
 	Assert.is(mock.callCount, 1);
