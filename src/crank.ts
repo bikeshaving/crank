@@ -346,9 +346,8 @@ function narrow(value: Children): NarrowedChild {
  * All of these possible values are reflected in this utility type.
  */
 export type ElementValue<TNode> =
-	| Array<TNode | string>
+	| Array<TNode>
 	| TNode
-	| string
 	| undefined;
 
 /**
@@ -443,7 +442,7 @@ class Retainer<TNode> {
 	 * previously rendered elements can remain visible until the async tree
 	 * settles.
 	 */
-	declare fallback: RetainerChild<TNode>;
+	declare fallback: Retainer<TNode> | undefined;
 
 	declare oldProps: Record<string, any> | undefined;
 
@@ -1156,7 +1155,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	oldProps: Record<string, any> | undefined,
 	scope: TScope,
-	hydration?: Array<TNode | string>,
+	hydration?: Array<TNode>,
 ): TResult {
 	const children = commitChildren(
 		adapter,
@@ -1192,7 +1191,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope | undefined,
 	parent: Retainer<TNode>,
-	hydration?: Array<TNode | string>,
+	hydration?: Array<TNode>,
 ): Array<TNode> {
 	const values: Array<ElementValue<TNode>> = [];
 	for (let i = 0, children = wrap(parent.children); i < children.length; i++) {
@@ -1248,7 +1247,7 @@ function commitRaw<TNode, TScope>(
 	adapter: RenderAdapter<TNode, TScope, TNode, unknown>,
 	ret: Retainer<TNode>,
 	scope: TScope | undefined,
-	hydration: Array<TNode | string> | undefined,
+	hydration: Array<TNode> | undefined,
 ): ElementValue<TNode> {
 	if (!ret.oldProps || ret.oldProps.value !== ret.el.props.value) {
 		ret.value = adapter.raw({
@@ -1271,7 +1270,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	ret: Retainer<TNode>,
 	ctx: ContextState<TNode, TScope, TRoot, unknown> | undefined,
 	scope: TScope,
-	hydration: Array<TNode | string> | undefined,
+	hydration: Array<TNode> | undefined,
 ): ElementValue<TNode> {
 	if (getFlag(ret, HasCommitted) && getFlag(ret, IsCopied)) {
 		return getValue(ret);
@@ -2136,7 +2135,7 @@ function diffComponentChildren<TNode, TResult>(
 // TODO: move this below
 function commitComponent<TNode>(
 	ctx: ContextState<TNode, unknown, TNode>,
-	hydration?: Array<TNode | string>,
+	hydration?: Array<TNode>,
 ): ElementValue<TNode> {
 	const values = commitChildren(
 		ctx.adapter,

@@ -56,7 +56,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 	}: {
 		node: Node;
 		tag: string | symbol;
-	}): Array<Element | string> | undefined {
+	}): Array<Node> | undefined {
 		if (typeof tag !== "string" && tag !== Portal) {
 			throw new Error(`Unknown tag: ${tag.toString()}`);
 		}
