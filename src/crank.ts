@@ -1370,6 +1370,7 @@ const PropsAvailable = 1 << 5;
 /**
  * A flag which is set when a component errors.
  */
+// TODO: Is this still true?
 // This is mainly used to prevent some false positives in "component yields or
 // returns undefined" warnings. The reason we’re using this versus IsUnmounted
 // is a very troubling test (cascades sync generator parent and sync generator
