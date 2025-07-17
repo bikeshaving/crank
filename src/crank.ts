@@ -863,9 +863,6 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					let graveyard: Array<Retainer<TNode>> | undefined;
 					if (typeof ret === "object") {
 						(parent.graveyard = parent.graveyard || []).push(ret);
-
-						// make sure the old graveyard is preserved
-						graveyard = ret.graveyard;
 					}
 
 					const fallback = ret;
@@ -1106,8 +1103,16 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 		host = ret;
 	}
 
-	const children = wrap(ret.children);
-	for (let i = 0; i < children.length; i++) {
+	if (ret.graveyard) {
+		for (let i = 0; i < ret.graveyard.length; i++) {
+			const child = ret.graveyard[i];
+			unmount(adapter, host, ctx, child);
+		}
+
+		ret.graveyard = undefined;
+	}
+
+	for (let i = 0, children = wrap(ret.children); i < children.length; i++) {
 		const child = children[i];
 		if (typeof child === "object") {
 			unmount(adapter, host, ctx, child);
