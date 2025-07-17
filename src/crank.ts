@@ -1,5 +1,4 @@
 const NOOP = (): undefined => {};
-const IDENTITY = <T>(value: T): T => value;
 
 function wrap<T>(value: Array<T> | T | undefined): Array<T> {
 	return value === undefined ? [] : Array.isArray(value) ? value : [value];
@@ -518,17 +517,17 @@ export interface RenderAdapter<
 	TRoot extends TNode = TNode,
 	TResult = ElementValue<TNode>,
 > {
-	scope<TTag extends string | symbol>(
-		scope: TScope | undefined,
-		tag: TTag,
-		props: TagProps<TTag>,
-	): TScope | undefined;
+	scope<TTag extends string | symbol>(data: {
+		scope: TScope | undefined;
+		tag: TTag;
+		props: TagProps<TTag>;
+	}): TScope | undefined;
 
-	create<TTag extends string | symbol>(
-		tag: TTag,
-		props: TagProps<TTag>,
-		scope: TScope | undefined,
-	): TNode;
+	create<TTag extends string | symbol>(data: {
+		tag: TTag;
+		props: TagProps<TTag>;
+		scope: TScope | undefined;
+	}): TNode;
 
 	/**
 	 * Called when an element’s rendered value is exposed via render, schedule,
@@ -560,11 +559,11 @@ export interface RenderAdapter<
 	 * adjacent strings can be concatenated, and the actual element tree can be
 	 * rendered in normalized form.
 	 */
-	text(
-		text: string,
-		scope: TScope | undefined,
-		hydration: Array<TNode | string> | undefined,
-	): string;
+	text(data: {
+		text: string;
+		scope: TScope | undefined;
+		hydration: Array<TNode | string> | undefined;
+	}): string;
 
 	/**
 	 * Called for each Raw element whose value prop is a string.
@@ -574,53 +573,53 @@ export interface RenderAdapter<
 	 *
 	 * @returns The parsed node or string.
 	 */
-	raw(
-		value: string | TNode,
-		scope: TScope | undefined,
-		hydration: Array<TNode | string> | undefined,
-	): ElementValue<TNode>;
+	raw(data: {
+		value: string | TNode;
+		scope: TScope | undefined;
+		hydration: Array<TNode | string> | undefined;
+	}): ElementValue<TNode>;
 
-	patch<TTag extends string | symbol, TName extends string>(
-		tag: TTag,
-		node: TNode,
-		name: TName,
-		value: unknown,
-		oldValue: unknown,
-		scope: TScope,
-	): unknown;
+	patch<TTag extends string | symbol, TName extends string>(data: {
+		tag: TTag;
+		node: TNode;
+		name: TName;
+		value: unknown;
+		oldValue: unknown;
+		scope: TScope;
+	}): unknown;
 
-	arrange<TTag extends string | symbol>(
-		tag: TTag,
-		node: TNode,
-		props: Record<string, unknown>,
-		children: Array<TNode | string>,
-		oldProps: Record<string, unknown> | undefined,
-	): unknown;
+	arrange<TTag extends string | symbol>(data: {
+		tag: TTag;
+		node: TNode;
+		props: Record<string, unknown>;
+		children: Array<TNode | string>;
+		oldProps: Record<string, unknown> | undefined;
+	}): unknown;
 
-	dispose<TTag extends string | symbol>(
-		tag: TTag,
-		node: TNode,
-		props: Record<string, unknown>,
-	): unknown;
+	dispose<TTag extends string | symbol>(data: {
+		tag: TTag;
+		node: TNode;
+		props: Record<string, unknown>;
+	}): unknown;
 
 	finalize(root: TRoot): unknown;
 
-	reconcile<TTag extends string | symbol>(
-		node: TNode,
-		tag: TTag,
-		props: TagProps<TTag>,
-		scope: TScope | undefined,
-	): Array<TNode | string> | undefined;
+	reconcile<TTag extends string | symbol>(data: {
+		node: TNode;
+		tag: TTag;
+		props: TagProps<TTag>;
+		scope: TScope | undefined;
+	}): Array<TNode | string> | undefined;
 }
 
 const defaultAdapter: RenderAdapter<any, any, any, any> = {
 	create() {
 		throw new Error("adapter must implement create");
 	},
-	scope: IDENTITY,
-	read: IDENTITY,
-	text: IDENTITY,
-	raw: IDENTITY,
+	scope: ({scope}) => scope,
+	read: (value) => value,
+	text: ({text}) => text,
+	raw: ({value}) => value,
 	patch: NOOP,
 	arrange: NOOP,
 	dispose: NOOP,
@@ -705,7 +704,11 @@ export class Renderer<
 		}
 
 		const adapter = this.adapter;
-		const scope = adapter.scope(undefined, Portal, ret.el.props);
+		const scope = adapter.scope({
+			scope: undefined,
+			tag: Portal,
+			props: ret.el.props,
+		});
 		const diff = diffChildren(adapter, root, ret, ctx, scope, ret, children);
 		if (isPromiseLike(diff)) {
 			return diff.then(() =>
@@ -742,7 +745,11 @@ export class Renderer<
 		}
 
 		const adapter = this.adapter;
-		const scope = adapter.scope(undefined, Portal, ret.el.props);
+		const scope = adapter.scope({
+			scope: undefined,
+			tag: Portal,
+			props: ret.el.props,
+		});
 
 		// Start the diffing process
 		const diff = diffChildren(adapter, root, ret, ctx, scope, ret, children);
@@ -751,7 +758,12 @@ export class Renderer<
 			return diff.then(() => {
 				// Get hydration data for the portal/root element
 				// This provides the initial DOM children that need to be hydrated
-				const hydration = adapter.reconcile(root, Portal, ret.el.props, scope);
+				const hydration = adapter.reconcile({
+					node: root,
+					tag: Portal,
+					props: ret.el.props,
+					scope,
+				});
 				return commitRootRender(
 					adapter,
 					root,
@@ -764,7 +776,12 @@ export class Renderer<
 			});
 		}
 
-		const hydration = adapter.reconcile(root, Portal, ret.el.props, scope);
+		const hydration = adapter.reconcile({
+			node: root,
+			tag: Portal,
+			props: ret.el.props,
+			scope,
+		});
 		return commitRootRender(
 			adapter,
 			root,
@@ -1009,7 +1026,7 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 		root = ret.value = el.props.root as any;
 	}
 
-	scope = adapter.scope(scope, tag, el.props);
+	scope = adapter.scope({scope, tag, props: el.props});
 
 	return diffChildren(
 		adapter,
@@ -1072,7 +1089,13 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 		ctx = ret.ctx as ContextState<TNode, TScope, TRoot, TResult>;
 		unmountComponent(ctx);
 	} else if (ret.el.tag === Portal) {
-		adapter.arrange(Portal, ret.value as TNode, ret.el.props, [], ret.el.props);
+		adapter.arrange({
+			tag: Portal,
+			node: ret.value as TNode,
+			props: ret.el.props,
+			children: [],
+			oldProps: ret.oldProps,
+		});
 		flush(adapter, ret.value);
 		host = ret;
 	} else if (ret.el.tag !== Fragment) {
@@ -1088,7 +1111,11 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 			}
 		}
 
-		adapter.dispose(ret.el.tag, ret.value as TNode, ret.el.props);
+		adapter.dispose({
+			tag: ret.el.tag,
+			node: ret.value as TNode,
+			props: ret.el.props,
+		});
 		host = ret;
 	}
 
@@ -1131,7 +1158,13 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 		unmount(adapter, ret, ctx, ret);
 	} else {
 		// element is a host or portal element
-		adapter.arrange(Portal, root, ret.el.props, childValues, oldProps);
+		adapter.arrange({
+			tag: Portal,
+			node: root,
+			props: ret.el.props,
+			children: childValues,
+			oldProps,
+		});
 	}
 
 	flush(adapter, root);
@@ -1177,7 +1210,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 			child.oldProps = undefined;
 			setFlag(child, HasCommitted);
 		} else if (typeof child === "string") {
-			const text = adapter.text(child, scope, hydration);
+			const text = adapter.text({text: child, scope, hydration});
 			values.push(text);
 		}
 	}
@@ -1201,7 +1234,11 @@ function commitRaw<TNode, TScope>(
 	hydration: Array<TNode | string> | undefined,
 ): ElementValue<TNode> {
 	if (!ret.oldProps || ret.oldProps.value !== ret.el.props.value) {
-		ret.value = adapter.raw(ret.el.props.value as any, scope, hydration);
+		ret.value = adapter.raw({
+			value: ret.el.props.value as any,
+			scope,
+			hydration,
+		});
 		if (typeof ret.el.ref === "function") {
 			ret.el.ref(adapter.read(ret.value));
 		}
@@ -1227,13 +1264,18 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	let value = ret.value as TNode;
 	let props = ret.el.props;
 	const oldProps = ret.oldProps;
-	scope = adapter.scope(scope, tag, props)!;
+	scope = adapter.scope({scope, tag, props})!;
 
 	let childHydration: Array<TNode | string> | undefined;
 	if (!value && hydration && hydration.length > 0) {
 		const nextChild = hydration.shift();
 		if (nextChild && typeof nextChild !== "string") {
-			childHydration = adapter.reconcile(nextChild, tag, props, scope);
+			childHydration = adapter.reconcile({
+				node: nextChild,
+				tag,
+				props,
+				scope,
+			});
 			if (childHydration) {
 				value = ret.value = nextChild as TNode;
 			}
@@ -1253,7 +1295,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	if (tag !== Portal) {
 		// This assumes that .create does not return nullish values.
 		if (value == null) {
-			value = ret.value = adapter.create(tag, props, scope);
+			value = ret.value = adapter.create({tag, props, scope});
 			if (typeof ret.el.ref === "function") {
 				ret.el.ref(adapter.read(value));
 			}
@@ -1270,14 +1312,14 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 			if (propValue === Copy) {
 				(copiedProps = copiedProps || new Set()).add(propName);
 			} else if (!SPECIAL_PROPS.has(propName)) {
-				adapter.patch(
+				adapter.patch({
 					tag,
-					value,
-					propName,
-					propValue,
-					oldProps && oldProps[propName],
+					node: value,
+					name: propName,
+					value: propValue,
+					oldValue: oldProps && oldProps[propName],
 					scope,
-				);
+				});
 			}
 		}
 	}
@@ -1293,7 +1335,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		ret.oldProps = ret.el.props;
 	}
 
-	adapter.arrange(tag, value, props, childValues, oldProps);
+	adapter.arrange({tag, node: value, props, children: childValues, oldProps});
 	setFlag(ret, HasCommitted);
 	if (tag === Portal) {
 		flush(adapter, ret.value);
@@ -2130,14 +2172,14 @@ function commitComponent<TNode>(
 		// rearranging the nearest ancestor host element
 		const host = ctx.host;
 		const hostValues = getChildValues(host);
-		ctx.adapter.arrange(
-			host.el.tag as string | symbol,
-			host.value as TNode,
-			host.el.props,
-			hostValues,
+		ctx.adapter.arrange({
+			tag: host.el.tag as string | symbol,
+			node: host.value as TNode,
+			props: host.el.props,
+			children: hostValues,
 			// oldProps is the same as props the same because the host hasn't updated.
-			host.el.props,
-		);
+			oldProps: host.el.props,
+		});
 
 		flush(ctx.adapter, ctx.root, ctx);
 	}

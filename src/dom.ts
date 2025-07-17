@@ -10,11 +10,15 @@ import {
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
 export const adapter: Partial<RenderAdapter<Node, string>> = {
-	scope(
-		xmlns: string | undefined,
-		tag: string | symbol,
-		props: Record<string, any>,
-	): string | undefined {
+	scope({
+		scope: xmlns,
+		tag,
+		props,
+	}: {
+		scope: string | undefined;
+		tag: string | symbol;
+		props: Record<string, any>;
+	}): string | undefined {
 		switch (tag) {
 			case Portal:
 				xmlns = undefined;
@@ -27,11 +31,13 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 		return props.xmlns || xmlns;
 	},
 
-	create(
-		tag: string | symbol,
-		_props: unknown,
-		xmlns: string | undefined,
-	): Node {
+	create({
+		tag,
+		scope: xmlns,
+	}: {
+		tag: string | symbol;
+		scope: string | undefined;
+	}): Node {
 		if (typeof tag !== "string") {
 			throw new Error(`Unknown tag: ${tag.toString()}`);
 		} else if (tag.toLowerCase() === "svg") {
@@ -43,10 +49,13 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 			: document.createElement(tag);
 	},
 
-	reconcile(
-		node: Element,
-		tag: string | symbol,
-	): Array<Element | string> | undefined {
+	reconcile({
+		node,
+		tag,
+	}: {
+		node: Node;
+		tag: string | symbol;
+	}): Array<Element | string> | undefined {
 		if (typeof tag !== "string" && tag !== Portal) {
 			throw new Error(`Unknown tag: ${tag.toString()}`);
 		}
@@ -73,16 +82,27 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 		return children;
 	},
 
-	patch(
-		_tag: string | symbol,
-		// TODO: Why does this assignment work?
-		node: HTMLElement | SVGElement,
-		name: string,
+	patch({
+		node,
+		name,
+		value,
+		oldValue,
+		scope: xmlns,
+	}: {
+		node: Node;
+		name: string;
 		// TODO: Stricter typings?
-		value: unknown,
-		oldValue: unknown,
-		xmlns: string | undefined,
-	): void {
+		value: unknown;
+		oldValue: unknown;
+		scope: string | undefined;
+	}): void {
+		if (node.nodeType !== Node.ELEMENT_NODE) {
+			throw new TypeError(
+				`Cannot patch node of type ${node.nodeType}. Expected an Element.`,
+			);
+		}
+
+		const element = node as Element;
 		const isSVG = xmlns === SVG_NAMESPACE;
 		const colonIndex = name.indexOf(":");
 		if (colonIndex !== -1) {
@@ -94,26 +114,26 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 					return;
 				case "attr":
 					if (value == null || value === false) {
-						node.removeAttribute(name1);
+						element.removeAttribute(name1);
 					} else if (value === true) {
-						node.setAttribute(name1, "");
+						element.setAttribute(name1, "");
 					} else if (typeof value === "string") {
-						node.setAttribute(name1, value);
+						element.setAttribute(name1, value);
 					} else {
-						node.setAttribute(name, String(value));
+						element.setAttribute(name, String(value));
 					}
 					return;
 			}
 		}
 		switch (name) {
 			case "style": {
-				const style: CSSStyleDeclaration = node.style;
+				const style: CSSStyleDeclaration = (element as HTMLElement).style;
 				if (style == null) {
-					node.setAttribute("style", value as string);
+					element.setAttribute("style", value as string);
 				} else if (value == null || value === false) {
-					node.removeAttribute("style");
+					element.removeAttribute("style");
 				} else if (value === true) {
-					node.setAttribute("style", "");
+					element.setAttribute("style", "");
 				} else if (typeof value === "string") {
 					if (style.cssText !== value) {
 						style.cssText = value;
@@ -138,20 +158,20 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 			case "class":
 			case "className":
 				if (value === true) {
-					node.setAttribute("class", "");
+					element.setAttribute("class", "");
 				} else if (value == null) {
-					node.removeAttribute("class");
+					element.removeAttribute("class");
 				} else if (!isSVG) {
-					if (node.className !== value) {
-						(node as any)["className"] = value;
+					if (element.className !== value) {
+						(element as any)["className"] = value;
 					}
-				} else if (node.getAttribute("class") !== value) {
-					node.setAttribute("class", value as string);
+				} else if (element.getAttribute("class") !== value) {
+					element.setAttribute("class", value as string);
 				}
 				break;
 			case "innerHTML":
 				if (value !== oldValue) {
-					node.innerHTML = value as any;
+					element.innerHTML = value as any;
 				}
 
 				break;
@@ -167,18 +187,18 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 				}
 
 				if (
-					name in node &&
+					name in element &&
 					// boolean properties will coerce strings, but sometimes they map to
 					// enumerated attributes, where truthy strings ("false", "no") map to
 					// falsy properties, so we use attributes in this case.
 					!(
 						typeof value === "string" &&
-						typeof (node as any)[name] === "boolean"
+						typeof (element as any)[name] === "boolean"
 					)
 				) {
 					// walk up the object's prototype chain to find the owner of the
 					// named property
-					let obj = node;
+					let obj = element;
 					do {
 						if (Object.prototype.hasOwnProperty.call(obj, name)) {
 							break;
@@ -192,8 +212,8 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 						descriptor != null &&
 						(descriptor.writable === true || descriptor.set !== undefined)
 					) {
-						if ((node as any)[name] !== value || oldValue === undefined) {
-							(node as any)[name] = value;
+						if ((element as any)[name] !== value || oldValue === undefined) {
+							(element as any)[name] = value;
 						}
 						return;
 					}
@@ -205,24 +225,30 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 				if (value === true) {
 					value = "";
 				} else if (value == null || value === false) {
-					node.removeAttribute(name);
+					element.removeAttribute(name);
 					return;
 				}
 
-				if (node.getAttribute(name) !== value) {
-					node.setAttribute(name, value as any);
+				if (element.getAttribute(name) !== value) {
+					element.setAttribute(name, value as any);
 				}
 			}
 		}
 	},
 
-	arrange(
-		tag: string | symbol,
-		node: Node,
-		props: Record<string, any>,
-		children: Array<Element | string>,
-		oldProps: Record<string, any> | undefined,
-	): void {
+	arrange({
+		tag,
+		node,
+		props,
+		children,
+		oldProps,
+	}: {
+		tag: string | symbol;
+		node: Node;
+		props: Record<string, any>;
+		children: Array<Node | string>;
+		oldProps: Record<string, any> | undefined;
+	}): void {
 		if (tag === Portal && (node == null || typeof node.nodeType !== "number")) {
 			throw new TypeError(
 				`Portal root is not a node. Received: ${JSON.stringify(
@@ -299,11 +325,13 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 		}
 	},
 
-	text(
-		text: string,
-		_scope: string | undefined,
-		hydration: Array<Element | string> | undefined,
-	): string {
+	text({
+		text,
+		hydration,
+	}: {
+		text: string;
+		hydration: Array<Node | string> | undefined;
+	}): string {
 		if (hydration != null) {
 			let value = hydration.shift();
 			if (value !== text) {
@@ -314,11 +342,15 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 		return text;
 	},
 
-	raw(
-		value: string | Node,
-		xmlns: string | undefined,
-		hydration: Array<Element | string> | undefined,
-	): ElementValue<Node> {
+	raw({
+		value,
+		scope: xmlns,
+		hydration,
+	}: {
+		value: string | Node;
+		scope: string | undefined;
+		hydration: Array<Element | string> | undefined;
+	}): ElementValue<Node> {
 		let result: ElementValue<Node>;
 		if (typeof value === "string") {
 			const el =
