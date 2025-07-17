@@ -518,9 +518,9 @@ export interface RenderAdapter<
 	TResult = ElementValue<TNode>,
 > {
 	scope<TTag extends string | symbol>(data: {
-		scope: TScope | undefined;
 		tag: TTag;
 		props: TagProps<TTag>;
+		scope: TScope | undefined;
 	}): TScope | undefined;
 
 	create<TTag extends string | symbol>(data: {
@@ -583,30 +583,30 @@ export interface RenderAdapter<
 		tag: TTag;
 		node: TNode;
 		name: TName;
-		value: unknown;
-		oldValue: unknown;
+		value: TagProps<TTag>[TName];
+		oldValue: TagProps<TTag>[TName] | undefined;
 		scope: TScope;
 	}): unknown;
 
 	arrange<TTag extends string | symbol>(data: {
 		tag: TTag;
 		node: TNode;
-		props: Record<string, unknown>;
+		props: TagProps<TTag>;
 		children: Array<TNode | string>;
-		oldProps: Record<string, unknown> | undefined;
+		oldProps: TagProps<TTag> | undefined;
 	}): unknown;
 
 	dispose<TTag extends string | symbol>(data: {
 		tag: TTag;
 		node: TNode;
-		props: Record<string, unknown>;
+		props: TagProps<TTag>;
 	}): unknown;
 
 	finalize(root: TRoot): unknown;
 
 	reconcile<TTag extends string | symbol>(data: {
-		node: TNode;
 		tag: TTag;
+		node: TNode;
 		props: TagProps<TTag>;
 		scope: TScope | undefined;
 	}): Array<TNode | string> | undefined;
