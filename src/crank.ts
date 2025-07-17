@@ -101,14 +101,15 @@ export type Fragment = typeof Fragment;
 // TODO: We assert the following symbol tags as any because TypeScript support
 // for symbol tags in JSX doesn’t exist yet.
 // https://github.com/microsoft/TypeScript/issues/38367
+
 /**
  * A special tag for rendering into a new root node via a root prop.
  *
  * This tag is useful for creating element trees with multiple roots, for
  * things like modals or tooltips.
  *
- * Renderer.prototype.render() will implicitly wrap top-level element trees in
- * a Portal element.
+ * Renderer.prototype.render() implicitly wraps top-level in a Portal element
+ * with the root set to the second argument passed in.
  */
 export const Portal = Symbol.for("crank.Portal") as any;
 export type Portal = typeof Portal;
@@ -125,10 +126,15 @@ export const Copy = Symbol.for("crank.Copy") as any;
 export type Copy = typeof Copy;
 
 /**
- * A special tag for injecting raw nodes or strings via a value prop.
+ * A special tag for rendering text nodes.
  *
- * Renderer.prototype.raw() is called with the value prop.
+ * Strings in the element tree are implicitly wrapped in a Text element with
+ * value set to the string.
  */
+export const Text = Symbol.for("crank.Text") as any;
+export type Text = typeof Text;
+
+/** A special tag for injecting raw nodes or strings via a value prop. */
 export const Raw = Symbol.for("crank.Raw") as any;
 export type Raw = typeof Raw;
 
@@ -345,10 +351,6 @@ function narrow(value: Children): NarrowedChild {
  *
  * All of these possible values are reflected in this utility type.
  */
-export type ElementValue<TNode> =
-	| Array<TNode>
-	| TNode
-	| undefined;
 
 /**
  * Takes an array of element values and normalizes the output as an array of
@@ -404,6 +406,7 @@ function normalize<TNode>(
 
 	return result;
 }
+export type ElementValue<TNode> = Array<TNode> | TNode | undefined;
 
 /*** RETAINER FLAGS ***/
 const HasCommitted = 1 << 0;
@@ -434,7 +437,7 @@ class Retainer<TNode> {
 	declare children: Array<RetainerChild<TNode>> | RetainerChild<TNode>;
 
 	/** The value associated with this element. */
-	declare value: ElementValue<TNode>;
+	declare value: ElementValue<TNode> | undefined;
 
 	/**
 	 * The child which this retainer replaces. This property is used when an
@@ -467,7 +470,7 @@ class Retainer<TNode> {
 }
 
 /** The retainer equivalent of ElementValue */
-type RetainerChild<TNode> = Retainer<TNode> | string | undefined;
+type RetainerChild<TNode> = Retainer<TNode> | undefined;
 
 /**
  * Finds the value of the element according to its type.
@@ -1193,7 +1196,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	parent: Retainer<TNode>,
 	hydration?: Array<TNode>,
 ): Array<TNode> {
-	const values: Array<ElementValue<TNode>> = [];
+	const values: Array<TNode> = [];
 	for (let i = 0, children = wrap(parent.children); i < children.length; i++) {
 		let child = children[i];
 		while (typeof child === "object" && child.fallback) {
@@ -1282,7 +1285,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	const oldProps = ret.oldProps;
 	scope = adapter.scope({scope, tag, props})!;
 
-	let childHydration: Array<TNode | string> | undefined;
+	let childHydration: Array<TNode> | undefined;
 	if (!value && hydration && hydration.length > 0) {
 		const nextChild = hydration.shift();
 		if (nextChild && typeof nextChild !== "string") {
@@ -1298,7 +1301,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		}
 	}
 
-	const childValues = commitChildren(
+	const children = commitChildren(
 		adapter,
 		root,
 		ret,
@@ -1351,7 +1354,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		ret.oldProps = ret.el.props;
 	}
 
-	adapter.arrange({tag, node: value, props, children: childValues, oldProps});
+	adapter.arrange({tag, node: value, props, children, oldProps});
 	setFlag(ret, HasCommitted);
 	if (tag === Portal) {
 		flush(adapter, ret.value);
