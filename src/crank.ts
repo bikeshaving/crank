@@ -561,7 +561,7 @@ export interface RenderAdapter<
 	text(data: {
 		text: string;
 		scope: TScope | undefined;
-		hydration: Array<TNode | string> | undefined;
+		hydration: Array<TNode> | undefined;
 	}): TNode;
 
 	/**
@@ -575,7 +575,7 @@ export interface RenderAdapter<
 	raw(data: {
 		value: string | TNode;
 		scope: TScope | undefined;
-		hydration: Array<TNode | string> | undefined;
+		hydration: Array<TNode> | undefined;
 	}): ElementValue<TNode>;
 
 	patch<TTag extends string | symbol, TName extends string>(data: {
@@ -585,7 +585,7 @@ export interface RenderAdapter<
 		value: TagProps<TTag>[TName];
 		oldValue: TagProps<TTag>[TName] | undefined;
 		scope: TScope;
-	}): unknown;
+	}): void;
 
 	arrange<TTag extends string | symbol>(data: {
 		tag: TTag;
@@ -593,22 +593,22 @@ export interface RenderAdapter<
 		props: TagProps<TTag>;
 		children: Array<TNode>;
 		oldProps: TagProps<TTag> | undefined;
-	}): unknown;
+	}): void;
 
 	dispose<TTag extends string | symbol>(data: {
 		tag: TTag;
 		node: TNode;
 		props: TagProps<TTag>;
-	}): unknown;
+	}): void;
 
-	finalize(root: TRoot): unknown;
+	finalize(root: TRoot): void;
 
 	reconcile<TTag extends string | symbol>(data: {
 		tag: TTag;
 		node: TNode;
 		props: TagProps<TTag>;
 		scope: TScope | undefined;
-	}): Array<TNode | string> | undefined;
+	}): Array<TNode> | undefined;
 }
 
 const defaultAdapter: RenderAdapter<any, any, any, any> = {
