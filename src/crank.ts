@@ -562,7 +562,7 @@ export interface RenderAdapter<
 		text: string;
 		scope: TScope | undefined;
 		hydration: Array<TNode | string> | undefined;
-	}): string;
+	}): TNode;
 
 	/**
 	 * Called for each Raw element whose value prop is a string.
@@ -591,7 +591,7 @@ export interface RenderAdapter<
 		tag: TTag;
 		node: TNode;
 		props: TagProps<TTag>;
-		children: Array<TNode | string>;
+		children: Array<TNode>;
 		oldProps: TagProps<TTag> | undefined;
 	}): unknown;
 
@@ -1193,7 +1193,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	scope: TScope | undefined,
 	parent: Retainer<TNode>,
 	hydration?: Array<TNode | string>,
-): Array<TNode | string> {
+): Array<TNode> {
 	const values: Array<ElementValue<TNode>> = [];
 	for (let i = 0, children = wrap(parent.children); i < children.length; i++) {
 		let child = children[i];
