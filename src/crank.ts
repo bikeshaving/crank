@@ -631,8 +631,6 @@ const defaultAdapter: RenderAdapter<any, any, any, any> = {
 	},
 };
 
-const _RenderAdapter = Symbol.for("crank.RenderAdapter");
-
 /**
  * An abstract class which is subclassed to render to different target
  * environments. Subclasses call super() with a custom RenderAdapter object.
@@ -655,11 +653,10 @@ export class Renderer<
 	 * A weakmap which stores element trees by root.
 	 */
 	declare cache: WeakMap<object, Retainer<TNode>>;
-
-	declare [_RenderAdapter]: RenderAdapter<TNode, TScope, TRoot, TResult>;
+	declare adapter: RenderAdapter<TNode, TScope, TRoot, TResult>;
 	constructor(adapter: Partial<RenderAdapter<TNode, TScope, TRoot, TResult>>) {
 		this.cache = new WeakMap();
-		this[_RenderAdapter] = {...defaultAdapter, ...adapter};
+		this.adapter = {...defaultAdapter, ...adapter};
 	}
 
 	/**
@@ -708,7 +705,7 @@ export class Renderer<
 			}
 		}
 
-		const adapter = this[_RenderAdapter];
+		const adapter = this.adapter;
 		const scope = adapter.scope(undefined, Portal, ret.el.props);
 		const diff = diffChildren(adapter, root, ret, ctx, scope, ret, children);
 		if (isPromiseLike(diff)) {
@@ -745,7 +742,7 @@ export class Renderer<
 			this.cache.set(root, ret);
 		}
 
-		const adapter = this[_RenderAdapter];
+		const adapter = this.adapter;
 		const scope = adapter.scope(undefined, Portal, ret.el.props);
 
 		// Start the diffing process
