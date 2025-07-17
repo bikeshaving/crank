@@ -1084,45 +1084,59 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 	host: Retainer<TNode>,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	ret: Retainer<TNode>,
+	nested: boolean = false,
 ): void {
 	if (typeof ret.el.tag === "function") {
-		ctx = ret.ctx as ContextState<TNode, TScope, TRoot, TResult>;
-		unmountComponent(ctx);
+		unmountComponent(ret.ctx!, nested);
 	} else if (ret.el.tag === Portal) {
-		adapter.arrange({
-			tag: Portal,
-			node: ret.value as TNode,
-			props: ret.el.props,
-			children: [],
-			oldProps: ret.oldProps,
-		});
-		flush(adapter, ret.value);
-		host = ret;
-	} else if (ret.el.tag !== Fragment) {
-		if (isEventTarget(ret.value)) {
-			const records = getListenerRecords(ctx, host);
-			for (let i = 0; i < records.length; i++) {
-				const record = records[i];
-				ret.value.removeEventListener(
-					record.type,
-					record.callback,
-					record.options,
-				);
-			}
+		if (getFlag(ret, HasCommitted)) {
+			adapter.arrange({
+				tag: Portal,
+				node: ret.value as TNode,
+				props: ret.el.props,
+				children: [],
+				oldProps: ret.oldProps,
+			});
+			flush(adapter, ret.value);
 		}
 
-		adapter.dispose({
-			tag: ret.el.tag,
-			node: ret.value as TNode,
-			props: ret.el.props,
-		});
-		host = ret;
-	}
+		unmountChildren(adapter, ret, ctx, ret);
+	} else if (ret.el.tag !== Fragment) {
+		if (getFlag(ret, HasCommitted)) {
+			if (isEventTarget(ret.value)) {
+				const records = getListenerRecords(ctx, host);
+				for (let i = 0; i < records.length; i++) {
+					const record = records[i];
+					ret.value.removeEventListener(
+						record.type,
+						record.callback,
+						record.options,
+					);
+				}
+			}
+			adapter.dispose({
+				tag: ret.el.tag,
+				node: ret.value as TNode,
+				props: ret.el.props,
+			});
+		}
 
+		unmountChildren(adapter, ret, ctx, ret);
+	} else {
+		unmountChildren(adapter, host, ctx, ret);
+	}
+}
+
+function unmountChildren<TNode, TScope, TRoot extends TNode, TResult>(
+	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
+	host: Retainer<TNode>,
+	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
+	ret: Retainer<TNode>,
+): void {
 	if (ret.graveyard) {
 		for (let i = 0; i < ret.graveyard.length; i++) {
 			const child = ret.graveyard[i];
-			unmount(adapter, host, ctx, child);
+			unmount(adapter, host, ctx, child, true);
 		}
 
 		ret.graveyard = undefined;
@@ -1131,7 +1145,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 	for (let i = 0, children = wrap(ret.children); i < children.length; i++) {
 		const child = children[i];
 		if (typeof child === "object") {
-			unmount(adapter, host, ctx, child);
+			unmount(adapter, host, ctx, child, true);
 		}
 	}
 }
@@ -1219,7 +1233,11 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 		for (let i = 0; i < parent.graveyard.length; i++) {
 			const ret = parent.graveyard[i];
 			unmount(adapter, host, ctx, ret);
+			if (ret.ctx && getFlag(ret.ctx, IsLingering)) {
+				// TODO:
+			}
 		}
+
 		parent.graveyard = undefined;
 	}
 
@@ -1430,6 +1448,8 @@ const IsSchedulingRefresh = 1 << 11;
  * A flag which is set when the component is currently refreshing.
  */
 const IsRefreshing = 1 << 12;
+
+const IsLingering = 1 << 13;
 
 export interface Context extends Crank.Context {}
 
@@ -2610,23 +2630,39 @@ function resumePropsAsyncIterator(ctx: ContextState): void {
 }
 
 // TODO: async unmounting
-async function unmountComponent(ctx: ContextState): Promise<undefined> {
+async function unmountComponent(
+	ctx: ContextState,
+	nested: boolean,
+): Promise<undefined> {
 	if (getFlag(ctx, IsUnmounted)) {
 		return;
 	}
 
+	setFlag(ctx, IsUnmounted);
 	clearEventListeners(ctx);
-
+	let lingerers: Array<PromiseLike<unknown>> | undefined;
 	const callbacks = cleanupMap.get(ctx);
 	if (callbacks) {
 		const value = ctx.adapter.read(getValue(ctx.ret));
 		cleanupMap.delete(ctx);
 		for (const callback of callbacks) {
-			callback(value);
+			const result = callback(value);
+			if (!nested && isPromiseLike(result)) {
+				(lingerers = lingerers || []).push(result);
+			}
 		}
 	}
 
-	setFlag(ctx, IsUnmounted);
+	if (lingerers) {
+		try {
+			setFlag(ctx, IsLingering);
+			await Promise.all(lingerers);
+		} finally {
+			setFlag(ctx, IsLingering, false);
+		}
+	}
+
+	unmountChildren(ctx.adapter, ctx.host, ctx, ctx.ret);
 	if (ctx.iterator) {
 		if (getFlag(ctx, IsSyncGen) || getFlag(ctx, IsInForOfLoop)) {
 			// we wait for the block so yields resume with the most up to date props
