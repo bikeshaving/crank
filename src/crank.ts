@@ -446,13 +446,13 @@ class Retainer<TNode> {
 	 */
 	declare fallback: RetainerChild<TNode>;
 
-	declare graveyard: Array<Retainer<TNode>> | undefined;
-
 	declare oldProps: Record<string, any> | undefined;
 
 	declare pending: Promise<undefined> | undefined;
 
 	declare onNext: Function | undefined;
+
+	declare graveyard: Array<Retainer<TNode>> | undefined;
 
 	constructor(el: Element) {
 		this.f = 0;
@@ -461,10 +461,10 @@ class Retainer<TNode> {
 		this.children = undefined;
 		this.value = undefined;
 		this.fallback = undefined;
-		this.graveyard = undefined;
 		this.oldProps = undefined;
 		this.pending = undefined;
 		this.onNext = undefined;
+		this.graveyard = undefined;
 	}
 }
 
@@ -1176,7 +1176,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 		if (typeof child === "object") {
 			const el = child.el;
 			if (el.tag === Raw) {
-				values.push(commitRaw(adapter, child, ctx, scope, hydration));
+				values.push(commitRaw(adapter, child, scope, hydration));
 			} else if (child.ctx) {
 				values.push(commitComponent(child.ctx, hydration));
 			} else if (el.tag === Fragment) {
@@ -1211,7 +1211,6 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 function commitRaw<TNode, TScope>(
 	adapter: RenderAdapter<TNode, TScope, TNode, unknown>,
 	ret: Retainer<TNode>,
-	ctx: ContextState<TNode, TScope, TNode, unknown> | undefined,
 	scope: TScope | undefined,
 	hydration: Array<TNode | string> | undefined,
 ): ElementValue<TNode> {
@@ -1234,7 +1233,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	scope: TScope,
 	hydration: Array<TNode | string> | undefined,
 ): ElementValue<TNode> {
-	if (getFlag(ret, HasCommitted) && (ret.el.copy || getFlag(ret, IsCopied))) {
+	if (getFlag(ret, HasCommitted) && getFlag(ret, IsCopied)) {
 		return getValue(ret);
 	}
 
@@ -2185,29 +2184,10 @@ function commitComponent<TNode>(
 function enqueueComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
 ): Promise<undefined> | undefined {
+	// This branch will run for non-initial renders of async generator
+	// components when they are not in for...of loops. When in a for...of loop,
+	// async generator components will behave like sync generator components.
 	if (getFlag(ctx, IsAsyncGen) && !getFlag(ctx, IsInForOfLoop)) {
-		// This branch will run for non-initial renders of async generator
-		// components when they are not in for...of loops. When in a for...of loop,
-		// async generator components will behave like sync generator components.
-		//
-		// Async gen components which are using for await with the props iterator
-		// can be in one of three states:
-		//
-		// 1. PropsAvailable flag is true: "available"
-		//   The component is suspended somewhere in the loop. When the component
-		//   reaches the bottom of the loop, it will run again with the next props.
-		//
-		// 2. onPropsProvided callback is defined: "suspended"
-		//   The component has suspended at the bottom of the loop and is waiting
-		//   for new props.
-		//
-		// 3. neither 1 or 2: "running"
-		//   The component is suspended somewhere in the loop. When the component
-		//   reaches the bottom of the loop, it will suspend.
-		//
-		// Components will never be both available and suspended at
-		// the same time.
-		//
 		// If the component is waiting at the bottom of the loop, this means that
 		// the next value produced by the component will have the most up to date
 		// props, so we can return the current inflight value. Otherwise, we have
@@ -2216,7 +2196,6 @@ function enqueueComponent<TNode, TResult>(
 		//
 		// if ctx.onPropsProvided is defined, it means the component is suspended
 		// and waiting for new props, so it is not at the bottom of the loop.
-		//
 		// This condition must be read before resumePropsAsyncIterator is called
 		const isAtLoopBottom =
 			getFlag(ctx, IsInForAwaitOfLoop) && !ctx.onPropsProvided;
@@ -2604,7 +2583,7 @@ function resumePropsAsyncIterator(ctx: ContextState): void {
 }
 
 // TODO: async unmounting
-async function unmountComponent(ctx: ContextState): Promise<void> {
+async function unmountComponent(ctx: ContextState): Promise<undefined> {
 	if (getFlag(ctx, IsUnmounted)) {
 		return;
 	}
@@ -2623,12 +2602,13 @@ async function unmountComponent(ctx: ContextState): Promise<void> {
 	setFlag(ctx, IsUnmounted);
 	if (ctx.iterator) {
 		if (getFlag(ctx, IsSyncGen) || getFlag(ctx, IsInForOfLoop)) {
+			// we wait for the block so yields resume with the most up to date props
+			if (ctx.inflightBlock) {
+				await ctx.inflightBlock;
+			}
+
 			let iteration: ChildrenIteratorResult | undefined;
 			if (getFlag(ctx, IsInForOfLoop)) {
-				if (ctx.inflightBlock) {
-					await ctx.inflightBlock;
-				}
-
 				try {
 					setFlag(ctx, IsSyncExecuting);
 					const value = ctx.adapter.read(getValue(ctx.ret));
