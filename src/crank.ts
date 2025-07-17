@@ -2655,7 +2655,7 @@ async function unmountComponent(ctx: ContextState): Promise<undefined> {
 					}
 				} catch (err) {
 					setFlag(ctx, IsErrored);
-					Promise.reject(err);
+					throw err;
 				} finally {
 					setFlag(ctx, IsSyncExecuting, false);
 				}
@@ -2684,7 +2684,7 @@ async function unmountComponent(ctx: ContextState): Promise<undefined> {
 					}
 				} catch (err) {
 					setFlag(ctx, IsErrored);
-					Promise.reject(err);
+					throw err;
 				} finally {
 					setFlag(ctx, IsSyncExecuting, false);
 				}
