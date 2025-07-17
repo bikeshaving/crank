@@ -91,7 +91,6 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 	}: {
 		node: Node;
 		name: string;
-		// TODO: Stricter typings?
 		value: unknown;
 		oldValue: unknown;
 		scope: string | undefined;
