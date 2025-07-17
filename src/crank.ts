@@ -595,7 +595,6 @@ export interface RenderAdapter<
 		props: Record<string, unknown>,
 		children: Array<TNode | string>,
 		oldProps: Record<string, unknown> | undefined,
-		oldChildren: Array<TNode | string> | undefined,
 	): unknown;
 
 	dispose<TTag extends string | symbol>(
@@ -1073,14 +1072,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 		ctx = ret.ctx as ContextState<TNode, TScope, TRoot, TResult>;
 		unmountComponent(ctx);
 	} else if (ret.el.tag === Portal) {
-		adapter.arrange(
-			Portal,
-			ret.value as TNode,
-			ret.el.props,
-			[],
-			ret.el.props,
-			getChildValues(ret),
-		);
+		adapter.arrange(Portal, ret.value as TNode, ret.el.props, [], ret.el.props);
 		flush(adapter, ret.value);
 		host = ret;
 	} else if (ret.el.tag !== Fragment) {
@@ -1126,7 +1118,6 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	scope: TScope,
 	hydration?: Array<TNode | string>,
 ): TResult {
-	const oldChildValues = getChildValues(ret);
 	const childValues = commitChildren(
 		adapter,
 		root,
@@ -1140,14 +1131,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 		unmount(adapter, ret, ctx, ret);
 	} else {
 		// element is a host or portal element
-		adapter.arrange(
-			Portal,
-			root,
-			ret.el.props,
-			childValues,
-			oldProps,
-			oldChildValues,
-		);
+		adapter.arrange(Portal, root, ret.el.props, childValues, oldProps);
 	}
 
 	flush(adapter, root);
@@ -1256,7 +1240,6 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		}
 	}
 
-	const oldChildValues = getChildValues(ret);
 	const childValues = commitChildren(
 		adapter,
 		root,
@@ -1310,7 +1293,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		ret.oldProps = ret.el.props;
 	}
 
-	adapter.arrange(tag, value, props, childValues, oldProps, oldChildValues);
+	adapter.arrange(tag, value, props, childValues, oldProps);
 	setFlag(ret, HasCommitted);
 	if (tag === Portal) {
 		flush(adapter, ret.value);
@@ -2154,7 +2137,6 @@ function commitComponent<TNode>(
 			hostValues,
 			// oldProps is the same as props the same because the host hasn't updated.
 			host.el.props,
-			undefined,
 		);
 
 		flush(ctx.adapter, ctx.root, ctx);
