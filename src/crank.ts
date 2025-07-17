@@ -503,8 +503,7 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode | string> {
 		}
 	}
 
-	const values1 = normalize(values);
-	return values1;
+	return normalize(values);
 }
 
 /**
@@ -1159,7 +1158,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	scope: TScope,
 	hydration?: Array<TNode | string>,
 ): TResult {
-	const childValues = commitChildren(
+	const children = commitChildren(
 		adapter,
 		root,
 		ret,
@@ -1176,14 +1175,14 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 			tag: Portal,
 			node: root,
 			props: ret.el.props,
-			children: childValues,
+			children,
 			oldProps,
 		});
 	}
 
 	flush(adapter, root);
 	setFlag(ret, HasCommitted);
-	return adapter.read(unwrap(childValues));
+	return adapter.read(unwrap(children));
 }
 
 function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
@@ -1196,11 +1195,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	hydration?: Array<TNode | string>,
 ): Array<TNode | string> {
 	const values: Array<ElementValue<TNode>> = [];
-	for (
-		let i = 0, children = normalize(wrap(parent.children));
-		i < children.length;
-		i++
-	) {
+	for (let i = 0, children = wrap(parent.children); i < children.length; i++) {
 		let child = children[i];
 		while (typeof child === "object" && child.fallback) {
 			child = child.fallback;
@@ -1224,6 +1219,10 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 			child.oldProps = undefined;
 			setFlag(child, HasCommitted);
 		} else if (typeof child === "string") {
+			while (i + 1 < children.length && typeof children[i + 1] === "string") {
+				child += children[++i];
+			}
+
 			const text = adapter.text({text: child, scope, hydration});
 			values.push(text);
 		}

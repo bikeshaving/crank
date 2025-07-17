@@ -21,6 +21,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 	}): string | undefined {
 		switch (tag) {
 			case Portal:
+				// TODO: read the namespace from the portal root element
 				xmlns = undefined;
 				break;
 			case "svg":
