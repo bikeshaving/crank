@@ -335,19 +335,11 @@ function narrow(value: Children): NarrowedChild {
  * When asking the question, what is the "value" of a specific element, the
  * answer varies depending on the tag:
  *
- * For host elements, the value is the nodes created for the element, e.g. the
+ * For host elements, the value is the node created for the element, e.g. the
  * DOM node in the case of the DOMRenderer.
- *
- * For fragments, the value is the value of the
  *
  * For portals, the value is undefined, because a Portal element’s root and
  * children are opaque to its parent.
- *
- * For components, the value can be any of the above, because the value of a
- * component is determined by its immediate children.
- *
- * Rendered values can also be strings or arrays of nodes and strings, in the
- * case of component or fragment elements with strings or multiple children.
  *
  * All of these possible values are reflected in this utility type.
  */
@@ -863,6 +855,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					diff = getInflight(ret);
 					setFlag(ret, IsCopied);
 				} else {
+					// TODO: why do we unset HasCommitted here?
 					setFlag(ret, HasCommitted, false);
 				}
 			}
@@ -956,10 +949,6 @@ function createChildrenByKey<TNode>(
 }
 
 function getInflight(child: Retainer<unknown>): Promise<undefined> | undefined {
-	if (typeof child !== "object") {
-		return;
-	}
-
 	const ctx: ContextState<unknown> | undefined = child.ctx;
 	if (ctx && getFlag(ctx, IsUpdating) && ctx.inflightDiff) {
 		return ctx.inflightDiff;
@@ -980,7 +969,7 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 	const el = ret.el;
 	const tag = el.tag as string | symbol;
 	if (el.tag === Portal) {
-		root = ret.value = el.props.root as any;
+		root = ret.value = el.props.root;
 	}
 
 	scope = adapter.scope({scope, tag, props: el.props});
@@ -992,7 +981,7 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 		ctx,
 		scope,
 		ret,
-		ret.el.props.children as any,
+		ret.el.props.children,
 	);
 }
 
