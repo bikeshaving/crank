@@ -506,6 +506,7 @@ export interface RenderAdapter<
 		text: string;
 		scope: TScope | undefined;
 		hydration: Array<TNode> | undefined;
+		// TODO: rename to node or maybe oldNode?
 		value: TNode | undefined;
 	}): TNode;
 
@@ -817,7 +818,6 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 						childCopied = true;
 					}
 				} else {
-					let graveyard: Array<Retainer<TNode>> | undefined;
 					if (typeof ret === "object") {
 						(parent.graveyard = parent.graveyard || []).push(ret);
 					}
@@ -825,7 +825,6 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					const fallback = ret;
 					ret = new Retainer<TNode>(child);
 					ret.fallback = fallback;
-					ret.graveyard = graveyard;
 				}
 
 				if (child.copy && getFlag(ret, HasCommitted)) {
@@ -973,7 +972,6 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 	}
 
 	scope = adapter.scope({scope, tag, props: el.props});
-
 	return diffChildren(
 		adapter,
 		root,
@@ -1047,6 +1045,8 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 		}
 
 		unmountChildren(adapter, ret, ctx, ret);
+	} else if (ret.el.tag === Text) {
+		// pass
 	} else if (ret.el.tag !== Fragment) {
 		if (getFlag(ret, HasCommitted)) {
 			if (isEventTarget(ret.value)) {
@@ -1139,7 +1139,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope | undefined,
 	parent: Retainer<TNode>,
-	hydration?: Array<TNode>,
+	hydration: Array<TNode> | undefined,
 ): Array<TNode> {
 	const values: Array<TNode> = [];
 	for (let i = 0, children = wrap(parent.children); i < children.length; i++) {
