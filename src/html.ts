@@ -113,8 +113,8 @@ export const impl: Partial<RenderAdapter<Node, undefined, any, string>> = {
 		return {value: ""};
 	},
 
-	text({text}: {text: string}): string {
-		return escape(text);
+	text({text}: {text: string}): Node {
+		return {value: escape(text)};
 	},
 
 	read(value: ElementValue<Node>): string {

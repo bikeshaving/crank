@@ -72,11 +72,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 		const children: Array<Node> = [];
 		for (let i = 0; i < node.childNodes.length; i++) {
 			const child = node.childNodes[i];
-			if (child.nodeType === Node.TEXT_NODE) {
-				children.push((child as Text).data);
-			} else if (child.nodeType === Node.ELEMENT_NODE) {
-				children.push(child as Element);
-			}
+			children.push(child);
 		}
 
 		// TODO: check props for mismatches and warn
@@ -277,22 +273,22 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 					if (oldChild === newChild) {
 						oldChild = oldChild.nextSibling;
 						i++;
-					} else if (typeof newChild === "string") {
-						if (oldChild.nodeType === Node.TEXT_NODE) {
-							if ((oldChild as Text).data !== newChild) {
-								(oldChild as Text).data = newChild;
-							}
+						//} else if (typeof newChild === "string") {
+						//	if (oldChild.nodeType === Node.TEXT_NODE) {
+						//		if ((oldChild as Text).data !== newChild) {
+						//			(oldChild as Text).data = newChild;
+						//		}
 
-							oldChild = oldChild.nextSibling;
-						} else {
-							node.insertBefore(document.createTextNode(newChild), oldChild);
-						}
+						//		oldChild = oldChild.nextSibling;
+						//	} else {
+						//		node.insertBefore(document.createTextNode(newChild), oldChild);
+						//	}
 
-						i++;
-					} else if (oldChild.nodeType === Node.TEXT_NODE) {
-						const nextSibling = oldChild.nextSibling;
-						node.removeChild(oldChild);
-						oldChild = nextSibling;
+						//	i++;
+						//} else if (oldChild.nodeType === Node.TEXT_NODE) {
+						//	const nextSibling = oldChild.nextSibling;
+						//	node.removeChild(oldChild);
+						//	oldChild = nextSibling;
 					} else {
 						node.insertBefore(newChild, oldChild);
 						i++;
@@ -315,11 +311,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 				// append excess children
 				for (; i < children.length; i++) {
 					const newChild = children[i];
-					node.appendChild(
-						typeof newChild === "string"
-							? document.createTextNode(newChild)
-							: newChild,
-					);
+					node.appendChild(newChild);
 				}
 			}
 		}
@@ -328,18 +320,28 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 	text({
 		text,
 		hydration,
+		value,
 	}: {
 		text: string;
-		hydration: Array<Node | string> | undefined;
-	}): string {
+		hydration: Array<Node> | undefined;
+		value: Node | undefined;
+	}): Node {
 		if (hydration != null) {
 			let value = hydration.shift();
-			if (value !== text) {
+			if (!value || value.nodeType !== Node.TEXT_NODE) {
 				console.error(`Expected "${text}" while hydrating but found:`, value);
 			}
 		}
 
-		return text;
+		if (value != null) {
+			if ((value as Text).data !== text) {
+				(value as Text).data = text;
+			}
+
+			return value;
+		}
+
+		return document.createTextNode(text);
 	},
 
 	raw({

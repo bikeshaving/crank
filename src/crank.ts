@@ -351,61 +351,6 @@ function narrow(value: Children): NarrowedChild {
  *
  * All of these possible values are reflected in this utility type.
  */
-
-/**
- * Takes an array of element values and normalizes the output as an array of
- * nodes and strings.
- *
- * @returns Normalized array of nodes and/or strings.
- *
- * Normalize will flatten only one level of nested arrays, because it is
- * designed to be called once at each level of the tree. It will also
- * concatenate adjacent strings and remove all undefined values.
- */
-function normalize<TNode>(
-	values: Array<ElementValue<TNode>>,
-): Array<TNode | string> {
-	const result: Array<TNode | string> = [];
-	let buffer: string | undefined;
-	for (let i = 0; i < values.length; i++) {
-		const value = values[i];
-		if (!value) {
-			// pass
-		} else if (typeof value === "string") {
-			buffer = (buffer || "") + value;
-		} else if (!Array.isArray(value)) {
-			if (buffer) {
-				result.push(buffer);
-				buffer = undefined;
-			}
-
-			result.push(value);
-		} else {
-			// We could use recursion here but it’s just easier to do it inline.
-			for (let j = 0; j < value.length; j++) {
-				const value1 = value[j];
-				if (!value1) {
-					// pass
-				} else if (typeof value1 === "string") {
-					buffer = (buffer || "") + value1;
-				} else {
-					if (buffer) {
-						result.push(buffer);
-						buffer = undefined;
-					}
-
-					result.push(value1);
-				}
-			}
-		}
-	}
-
-	if (buffer) {
-		result.push(buffer);
-	}
-
-	return result;
-}
 export type ElementValue<TNode> = Array<TNode> | TNode | undefined;
 
 /*** RETAINER FLAGS ***/
@@ -501,11 +446,16 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode> {
 	for (let i = 0, children = wrap(ret.children); i < children.length; i++) {
 		const child = children[i];
 		if (child) {
-			values.push(typeof child === "string" ? child : getValue(child));
+			const value = getValue(child);
+			if (Array.isArray(value)) {
+				values.push(...value);
+			} else if (value) {
+				values.push(value);
+			}
 		}
 	}
 
-	return normalize(values);
+	return values;
 }
 
 /**
@@ -920,17 +870,22 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			if (isPromiseLike(diff)) {
 				isAsync = true;
 			}
+		} else if (typeof child === "string") {
+			if (typeof ret === "object" && ret.el.tag === Text) {
+				ret.el.props.value = child;
+			} else {
+				if (typeof ret === "object") {
+					(parent.graveyard = parent.graveyard || []).push(ret);
+				}
+
+				ret = new Retainer<TNode>(createElement(Text, {value: child}));
+			}
 		} else {
-			// child is a string or undefined
 			if (typeof ret === "object") {
 				(parent.graveyard = parent.graveyard || []).push(ret);
 			}
 
-			if (typeof child === "string") {
-				ret = child;
-			} else {
-				ret = undefined;
-			}
+			ret = undefined;
 		}
 
 		diffs[ni] = diff;
@@ -1206,28 +1161,43 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 
 		if (typeof child === "object") {
 			const el = child.el;
+			let value: ElementValue<TNode>;
 			if (el.tag === Raw) {
-				values.push(commitRaw(adapter, child, scope, hydration));
-			} else if (child.ctx) {
-				values.push(commitComponent(child.ctx, hydration));
+				value = commitRaw(adapter, child, scope, hydration);
+			} else if (el.tag === Text) {
+				const oldValue = child.value as TNode | undefined;
+				value = adapter.text({
+					text: el.props.value,
+					scope,
+					hydration,
+					value: oldValue,
+				});
+				child.value = value;
 			} else if (el.tag === Fragment) {
-				values.push(
-					commitChildren(adapter, root, host, ctx, scope, child, hydration),
+				value = commitChildren(
+					adapter,
+					root,
+					host,
+					ctx,
+					scope,
+					child,
+					hydration,
 				);
+			} else if (typeof el.tag === "function") {
+				value = commitComponent(child.ctx!, hydration);
 			} else {
 				// host element or portal element
-				values.push(commitHost(adapter, root, child, ctx, scope, hydration));
+				value = commitHost(adapter, root, child, ctx, scope, hydration);
+			}
+
+			if (Array.isArray(value)) {
+				values.push(...value);
+			} else if (value) {
+				values.push(value);
 			}
 
 			child.oldProps = undefined;
 			setFlag(child, HasCommitted);
-		} else if (typeof child === "string") {
-			while (i + 1 < children.length && typeof children[i + 1] === "string") {
-				child += children[++i];
-			}
-
-			const text = adapter.text({text: child, scope, hydration});
-			values.push(text);
 		}
 	}
 
@@ -1244,7 +1214,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	}
 
 	// TODO: why are we running normalize on both ends?
-	return normalize(values);
+	return values;
 }
 
 function commitRaw<TNode, TScope>(

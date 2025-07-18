@@ -191,15 +191,25 @@ test("rerender text", () => {
 	renderer.render(<h1>Hello world 1</h1>, document.body);
 	Assert.is(document.body.innerHTML, "<h1>Hello world 1</h1>");
 	const h1 = document.body.firstChild!;
+	Assert.is(h1.childNodes.length, 1);
 	const text = h1.firstChild!;
 	renderer.render(<h1>Hello {"world"} 2</h1>, document.body);
 	Assert.is(document.body.innerHTML, "<h1>Hello world 2</h1>");
 	Assert.is(document.body.firstChild!, h1);
-	Assert.is(document.body.firstChild!.firstChild!, text);
+	Assert.is(h1.childNodes.length, 3);
+	Assert.is(document.body.firstChild!.childNodes[0] as Text, text);
+	Assert.is((document.body.firstChild!.childNodes[0] as Text).data, "Hello ");
+	Assert.is((document.body.firstChild!.childNodes[1] as Text).data, "world");
+	Assert.is((document.body.firstChild!.childNodes[2] as Text).data, " 2");
+	const text1 = document.body.firstChild!.childNodes[1] as Text;
+	const text2 = document.body.firstChild!.childNodes[2] as Text;
 	renderer.render(<h1>Hello world {3}</h1>, document.body);
 	Assert.is(document.body.innerHTML, "<h1>Hello world 3</h1>");
 	Assert.is(document.body.firstChild!, h1);
-	Assert.is(document.body.firstChild!.firstChild!, text);
+	Assert.is(h1.childNodes.length, 2);
+	Assert.is(document.body.firstChild!.childNodes[0] as Text, text);
+	Assert.is(document.body.firstChild!.childNodes[1] as Text, text1);
+	Assert.is(text2.parentNode, null);
 });
 
 test("rerender different child", () => {

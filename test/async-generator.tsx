@@ -970,9 +970,10 @@ test("stale renders are skipped", async () => {
 		await p;
 		Assert.is(document.body.innerHTML, "<span>Goodbye before</span>");
 		Assert.equal(characterDatas, [
-			"Hello after",
-			"Hello again before",
-			"Goodbye before",
+			" after",
+			"Hello again",
+			" before",
+			"Goodbye",
 		]);
 	} finally {
 		mutationObserver.disconnect();
