@@ -268,22 +268,6 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 					if (oldChild === newChild) {
 						oldChild = oldChild.nextSibling;
 						i++;
-						//} else if (typeof newChild === "string") {
-						//	if (oldChild.nodeType === Node.TEXT_NODE) {
-						//		if ((oldChild as Text).data !== newChild) {
-						//			(oldChild as Text).data = newChild;
-						//		}
-
-						//		oldChild = oldChild.nextSibling;
-						//	} else {
-						//		node.insertBefore(document.createTextNode(newChild), oldChild);
-						//	}
-
-						//	i++;
-						//} else if (oldChild.nodeType === Node.TEXT_NODE) {
-						//	const nextSibling = oldChild.nextSibling;
-						//	node.removeChild(oldChild);
-						//	oldChild = nextSibling;
 					} else {
 						node.insertBefore(newChild, oldChild);
 						i++;
