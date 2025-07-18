@@ -392,6 +392,8 @@ class Retainer<TNode> {
 
 	declare graveyard: Array<Retainer<TNode>> | undefined;
 
+	declare lingerers: Set<Retainer<TNode>> | undefined;
+
 	constructor(el: Element) {
 		this.f = 0;
 		this.el = el;
@@ -403,6 +405,7 @@ class Retainer<TNode> {
 		this.pending = undefined;
 		this.onNext = undefined;
 		this.graveyard = undefined;
+		this.lingerers = undefined;
 	}
 }
 
@@ -439,6 +442,17 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode> {
 		const child = children[i];
 		if (child) {
 			const value = getValue(child);
+			if (Array.isArray(value)) {
+				values.push(...value);
+			} else if (value) {
+				values.push(value);
+			}
+		}
+	}
+
+	if (ret.lingerers) {
+		for (const lingerer of ret.lingerers) {
+			const value = getValue(lingerer);
 			if (Array.isArray(value)) {
 				values.push(...value);
 			} else if (value) {
@@ -541,10 +555,12 @@ export interface RenderAdapter<
 		oldProps: TagProps<TTag> | undefined;
 	}): void;
 
-	dispose<TTag extends string | symbol>(data: {
+	remove<TTag extends string | symbol>(data: {
 		tag: TTag;
 		node: TNode;
 		props: TagProps<TTag>;
+		parent: TNode;
+		isNested: boolean;
 	}): void;
 
 	finalize(root: TRoot): void;
@@ -567,7 +583,7 @@ const defaultAdapter: RenderAdapter<any, any, any, any> = {
 	raw: ({value}) => value,
 	patch: NOOP,
 	arrange: NOOP,
-	dispose: NOOP,
+	remove: NOOP,
 	finalize: NOOP,
 	reconcile() {
 		throw new Error("adapter must implement reconcile for hydration");
@@ -1028,10 +1044,10 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 	host: Retainer<TNode>,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	ret: Retainer<TNode>,
-	nested: boolean = false,
+	isNested: boolean = false,
 ): void {
 	if (typeof ret.el.tag === "function") {
-		unmountComponent(ret.ctx!, nested);
+		unmountComponent(ret.ctx!, isNested);
 	} else if (ret.el.tag === Portal) {
 		if (getFlag(ret, HasCommitted)) {
 			adapter.arrange({
@@ -1045,8 +1061,6 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 		}
 
 		unmountChildren(adapter, ret, ctx, ret);
-	} else if (ret.el.tag === Text) {
-		// pass
 	} else if (ret.el.tag !== Fragment) {
 		if (getFlag(ret, HasCommitted)) {
 			if (isEventTarget(ret.value)) {
@@ -1060,10 +1074,13 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 					);
 				}
 			}
-			adapter.dispose({
+
+			adapter.remove({
 				tag: ret.el.tag,
 				node: ret.value as TNode,
 				props: ret.el.props,
+				parent: host.value as TNode,
+				isNested: !getFlag(host, IsUnmounted),
 			});
 		}
 
@@ -1194,12 +1211,20 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 		for (let i = 0; i < parent.graveyard.length; i++) {
 			const ret = parent.graveyard[i];
 			unmount(adapter, host, ctx, ret);
-			if (ret.ctx && getFlag(ret.ctx, IsLingering)) {
-				// TODO:
-			}
 		}
 
 		parent.graveyard = undefined;
+	}
+
+	if (parent.lingerers) {
+		for (const lingerer of parent.lingerers) {
+			const value = getValue(lingerer);
+			if (Array.isArray(value)) {
+				values.push(...value);
+			} else if (value) {
+				values.push(value);
+			}
+		}
 	}
 
 	// TODO: why are we running normalize on both ends?
@@ -1409,8 +1434,6 @@ const IsSchedulingRefresh = 1 << 11;
  * A flag which is set when the component is currently refreshing.
  */
 const IsRefreshing = 1 << 12;
-
-const IsLingering = 1 << 13;
 
 export interface Context extends Crank.Context {}
 
@@ -2616,10 +2639,15 @@ async function unmountComponent(
 
 	if (lingerers) {
 		try {
-			setFlag(ctx, IsLingering);
+			ctx.host.lingerers || (ctx.host.lingerers = new Set()).add(ctx.ret);
 			await Promise.all(lingerers);
 		} finally {
-			setFlag(ctx, IsLingering, false);
+			if (ctx.host.lingerers) {
+				ctx.host.lingerers.delete(ctx.ret);
+				if (ctx.host.lingerers.size === 0) {
+					ctx.host.lingerers = undefined;
+				}
+			}
 		}
 	}
 

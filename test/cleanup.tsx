@@ -395,14 +395,15 @@ test("cleanup can cause component to linger if callback returns a promise", asyn
 
 	renderer.render(
 		<div>
-			<Component />
-			{" "}
-			<span>World</span>
+			<Component /> <span>World</span>
 		</div>,
 		document.body,
 	);
 
-	Assert.is(document.body.innerHTML, "<div><span>Hello</span> <span>World</span></div>");
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Hello</span> <span>World</span></div>",
+	);
 
 	renderer.render(<div />, document.body);
 	Assert.is(fn.callCount, 1);

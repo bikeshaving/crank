@@ -296,6 +296,12 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 		}
 	},
 
+	remove({node, parent}: {node: Node; parent: Node}): void {
+		if (node.parentNode === parent) {
+			parent.removeChild(node);
+		}
+	},
+
 	text({
 		text,
 		hydration,
