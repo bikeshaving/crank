@@ -380,4 +380,36 @@ test("cleanup is called even if component is prematurely unmounted", async () =>
 	Assert.is(fn.callCount, 2);
 });
 
+test("cleanup can cause component to linger if callback returns a promise", async () => {
+	let fn = Sinon.fake();
+	let resolve: Function;
+	function* Component(this: Context) {
+		this.cleanup(() => {
+			fn();
+			return new Promise((resolve1) => (resolve = resolve1));
+		});
+		for ({} of this) {
+			yield <span>Hello</span>;
+		}
+	}
+
+	renderer.render(
+		<div>
+			<Component />
+			{" "}
+			<span>World</span>
+		</div>,
+		document.body,
+	);
+
+	Assert.is(document.body.innerHTML, "<div><span>Hello</span> <span>World</span></div>");
+
+	renderer.render(<div />, document.body);
+	Assert.is(fn.callCount, 1);
+	Assert.is(document.body.innerHTML, "<div><span>Hello</span></div>");
+	resolve!();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div></div>");
+});
+
 test.run();
