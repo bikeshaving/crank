@@ -496,8 +496,8 @@ function getValue<TNode>(ret: Retainer<TNode>): ElementValue<TNode> {
  *
  * @returns A normalized array of nodes and strings.
  */
-function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode | string> {
-	const values: Array<ElementValue<TNode>> = [];
+function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode> {
+	const values: Array<TNode> = [];
 	for (let i = 0, children = wrap(ret.children); i < children.length; i++) {
 		const child = children[i];
 		if (child) {
@@ -564,6 +564,7 @@ export interface RenderAdapter<
 		text: string;
 		scope: TScope | undefined;
 		hydration: Array<TNode> | undefined;
+		value: TNode | undefined;
 	}): TNode;
 
 	/**
@@ -1296,7 +1297,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 				scope,
 			});
 			if (childHydration) {
-				value = ret.value = nextChild as TNode;
+				value = ret.value = nextChild;
 			}
 		}
 	}

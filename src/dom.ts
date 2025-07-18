@@ -69,7 +69,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 			return undefined;
 		}
 
-		const children: Array<string | Element> = [];
+		const children: Array<Node> = [];
 		for (let i = 0; i < node.childNodes.length; i++) {
 			const child = node.childNodes[i];
 			if (child.nodeType === Node.TEXT_NODE) {
@@ -246,7 +246,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 		tag: string | symbol;
 		node: Node;
 		props: Record<string, any>;
-		children: Array<Node | string>;
+		children: Array<Node>;
 		oldProps: Record<string, any> | undefined;
 	}): void {
 		if (tag === Portal && (node == null || typeof node.nodeType !== "number")) {
@@ -349,7 +349,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 	}: {
 		value: string | Node;
 		scope: string | undefined;
-		hydration: Array<Element | string> | undefined;
+		hydration: Array<Node> | undefined;
 	}): ElementValue<Node> {
 		let result: ElementValue<Node>;
 		if (typeof value === "string") {
