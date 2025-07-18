@@ -296,7 +296,8 @@ test("split text", async () => {
 
 	Assert.is(document.body.firstChild, div);
 	Assert.is(document.body.firstChild!.childNodes[0], text);
-	Assert.is(document.body.firstChild!.childNodes[1], button);
+	Assert.is(document.body.firstChild!.childNodes[1].nodeType, Node.TEXT_NODE);
+	Assert.is(document.body.firstChild!.childNodes[2], button);
 });
 
 test("mismatched tag", () => {
@@ -422,6 +423,7 @@ test("raw comment", () => {
 		"<div><!-- comment -->Hello<button>Click</button></div>",
 	);
 
+	Assert.is(document.body.childNodes[0].childNodes[2], button);
 	button.click();
 	Assert.ok(onclick.called);
 });

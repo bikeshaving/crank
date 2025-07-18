@@ -61,22 +61,17 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 			throw new Error(`Unknown tag: ${tag.toString()}`);
 		}
 
+		// TODO: check props for mismatches and warn
 		if (
 			typeof tag === "string" &&
-			tag.toUpperCase() !== (node as Element).tagName.toUpperCase()
+			(node.nodeType !== Node.ELEMENT_NODE ||
+				tag.toUpperCase() !== (node as Element).tagName.toUpperCase())
 		) {
-			console.error(`Expected <${tag}> while hydrating but found:`, node);
+			console.error(`Expected <${tag}> while hydrating but found: `, node);
 			return undefined;
 		}
 
-		const children: Array<Node> = [];
-		for (let i = 0; i < node.childNodes.length; i++) {
-			const child = node.childNodes[i];
-			children.push(child);
-		}
-
-		// TODO: check props for mismatches and warn
-		return children;
+		return Array.from(node.childNodes);
 	},
 
 	patch({
@@ -330,6 +325,25 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 			let value = hydration.shift();
 			if (!value || value.nodeType !== Node.TEXT_NODE) {
 				console.error(`Expected "${text}" while hydrating but found:`, value);
+			} else {
+				// value is a text node, check if it matches the expected text
+				const textData = (value as Text).data;
+				if (textData.length > text.length) {
+					if (textData.startsWith(text)) {
+						// the text node is longer than the expected text, so we
+						// reuse the existing text node, but truncate it and unshift the rest
+						(value as Text).data = text;
+						hydration.unshift(
+							document.createTextNode(textData.slice(text.length)),
+						);
+
+						return value;
+					}
+				} else if (textData === text) {
+					return value;
+				}
+
+				console.error(`Expected "${text}" while hydrating but found:`, value);
 			}
 		}
 
@@ -353,48 +367,48 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 		scope: string | undefined;
 		hydration: Array<Node> | undefined;
 	}): ElementValue<Node> {
-		let result: ElementValue<Node>;
+		let nodes: Array<Node>;
 		if (typeof value === "string") {
 			const el =
 				xmlns == null
 					? document.createElement("div")
 					: document.createElementNS(xmlns, "svg");
 			el.innerHTML = value;
-			if (el.childNodes.length === 0) {
-				result = undefined;
-			} else if (el.childNodes.length === 1) {
-				result = el.childNodes[0];
-			} else {
-				result = Array.from(el.childNodes);
-			}
+			nodes = Array.from(el.childNodes);
 		} else {
-			result = value;
+			nodes = value == null ? [] : Array.isArray(value) ? [...value] : [value];
 		}
 
 		if (hydration != null) {
-			// TODO: maybe we should warn on incorrect values
-			if (Array.isArray(result)) {
-				for (let i = 0; i < result.length; i++) {
-					const node = result[i];
-					if (
-						typeof node !== "string" &&
-						(node.nodeType === Node.ELEMENT_NODE ||
-							node.nodeType === Node.TEXT_NODE)
-					) {
-						hydration.shift();
+			for (let i = 0; i < nodes.length; i++) {
+				const node = nodes[i];
+				// check if node is equal to the next node in the hydration array
+				const hydrated = hydration.shift();
+				try {
+					if (node.isEqualNode(hydrated as any)) {
+						nodes[i] = hydrated as Node;
+					} else {
+						console.error(
+							`Expected node to match during hydration but found:`,
+							node,
+							hydrated,
+						);
 					}
-				}
-			} else if (result != null && typeof result !== "string") {
-				if (
-					result.nodeType === Node.ELEMENT_NODE ||
-					result.nodeType === Node.TEXT_NODE
-				) {
-					hydration.shift();
+				} catch (err) {
+					console.error(
+						`Error comparing nodes during hydration: ${err}`,
+						node,
+						hydrated,
+					);
 				}
 			}
 		}
 
-		return result;
+		return nodes.length === 0
+			? undefined
+			: nodes.length === 1
+				? nodes[0]
+				: nodes;
 	},
 };
 

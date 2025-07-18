@@ -1248,7 +1248,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	let childHydration: Array<TNode> | undefined;
 	if (!value && hydration && hydration.length > 0) {
 		const nextChild = hydration.shift();
-		if (nextChild && typeof nextChild !== "string") {
+		if (nextChild) {
 			childHydration = adapter.reconcile({
 				node: nextChild,
 				tag,
