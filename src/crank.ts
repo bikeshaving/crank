@@ -1002,6 +1002,7 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 	);
 }
 
+const ANONYMOUS_ROOT: any = {};
 function flush<TRoot>(
 	adapter: RenderAdapter<unknown, unknown, TRoot>,
 	root: TRoot,
@@ -1009,7 +1010,7 @@ function flush<TRoot>(
 ) {
 	adapter.finalize(root);
 	if (typeof root !== "object" || root === null) {
-		return;
+		root = ANONYMOUS_ROOT;
 	}
 
 	const flushMap = flushMaps.get(root as any);
@@ -1724,14 +1725,11 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	 */
 	flush(callback: (value: TResult) => unknown): void {
 		const ctx = this[_ContextState];
-		if (typeof ctx.root !== "object" || ctx.root === null) {
-			return;
-		}
-
-		let flushMap = flushMaps.get(ctx.root);
+		const root = ctx.root || ANONYMOUS_ROOT;
+		let flushMap = flushMaps.get(root);
 		if (!flushMap) {
 			flushMap = new Map<ContextState, Set<Function>>();
-			flushMaps.set(ctx.root, flushMap);
+			flushMaps.set(root, flushMap);
 		}
 
 		let callbacks = flushMap.get(ctx);
@@ -2174,7 +2172,8 @@ function commitComponent<TNode>(
 			children: getChildValues(host),
 			// oldProps is the same as props the same because the host hasn't updated.
 			oldProps: host.el.props,
-		}); flush(ctx.adapter, ctx.root, ctx);
+		});
+		flush(ctx.adapter, ctx.root, ctx);
 	}
 
 	const callbacks = scheduleMap.get(ctx);
