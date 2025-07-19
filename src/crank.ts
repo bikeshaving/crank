@@ -785,7 +785,8 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			let newKey = typeof child === "object" ? child.key : undefined;
 			if (newKey !== undefined && seenKeys && seenKeys.has(newKey)) {
 				console.error("Duplicate key", newKey);
-				newKey = undefined;
+				child = cloneElement(child as Element);
+				newKey = child.props.key = undefined;
 			}
 
 			if (oldKey === newKey) {
