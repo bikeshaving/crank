@@ -428,4 +428,25 @@ test("raw comment", () => {
 	Assert.ok(onclick.called);
 });
 
+test("ref called with hydrated element", () => {
+	document.body.innerHTML = "<button>Click</button>";
+	const button = document.body.firstChild as HTMLButtonElement;
+	const ref = Sinon.fake();
+	const onclick = Sinon.fake();
+
+	renderer.hydrate(
+		<button ref={ref} onclick={onclick}>
+			Click
+		</button>,
+		document.body,
+	);
+
+	Assert.is(document.body.innerHTML, "<button>Click</button>");
+	Assert.is(document.body.firstChild, button);
+	Assert.ok(ref.calledOnce);
+	Assert.is(ref.lastCall.firstArg, button);
+	button.click();
+	Assert.ok(onclick.called);
+});
+
 test.run();
