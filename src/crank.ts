@@ -774,6 +774,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	let isAsync = false;
 	let oi = 0;
 	let oldLength = oldRetained.length;
+	let graveyard: Array<Retainer<TNode>> | undefined;
 	for (let ni = 0, newLength = newChildren1.length; ni < newLength; ni++) {
 		// length checks to prevent index out of bounds deoptimizations.
 		let ret = oi >= oldLength ? undefined : oldRetained[oi];
@@ -835,7 +836,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					}
 				} else {
 					if (typeof ret === "object") {
-						(parent.graveyard = parent.graveyard || []).push(ret);
+						(graveyard = graveyard || []).push(ret);
 					}
 
 					const fallback = ret;
@@ -883,14 +884,14 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				ret.el.props.value = child;
 			} else {
 				if (typeof ret === "object") {
-					(parent.graveyard = parent.graveyard || []).push(ret);
+					(graveyard = graveyard || []).push(ret);
 				}
 
 				ret = new Retainer<TNode>(createElement(Text, {value: child}));
 			}
 		} else {
 			if (typeof ret === "object") {
-				(parent.graveyard = parent.graveyard || []).push(ret);
+				(graveyard = graveyard || []).push(ret);
 			}
 
 			ret = undefined;
@@ -909,12 +910,12 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				!seenKeys ||
 				!seenKeys.has(ret.el.key))
 		) {
-			(parent.graveyard = parent.graveyard || []).push(ret);
+			(graveyard = graveyard || []).push(ret);
 		}
 	}
 
 	if (childrenByKey !== undefined && childrenByKey.size > 0) {
-		(parent.graveyard = parent.graveyard || []).push(...childrenByKey.values());
+		(graveyard = graveyard || []).push(...childrenByKey.values());
 	}
 
 	parent.children = unwrap(newRetained);
@@ -923,6 +924,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			.then(() => undefined)
 			.finally(() => {
 				parent.fallback = undefined;
+				parent.graveyard = graveyard;
 			});
 
 		let onNextDiffs!: Function;
@@ -939,6 +941,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		return diffs1;
 	} else {
 		parent.fallback = undefined;
+		parent.graveyard = graveyard;
 		if (parent.onNext) {
 			parent.onNext(diffs);
 			parent.onNext = undefined;
