@@ -844,7 +844,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					ret.fallback = fallback;
 				}
 
-				if (child.copy && getFlag(ret, HasCommitted)) {
+				if (childCopied && getFlag(ret, HasCommitted)) {
 					// pass
 				} else if (child.tag === Raw) {
 					// pass
@@ -870,9 +870,6 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				if (childCopied) {
 					diff = getInflight(ret);
 					setFlag(ret, IsCopied);
-				} else {
-					// TODO: why do we unset HasCommitted here?
-					setFlag(ret, HasCommitted, false);
 				}
 			}
 
@@ -1195,7 +1192,6 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 				values.push(value);
 			}
 
-			child.oldProps = undefined;
 			setFlag(child, HasCommitted);
 		}
 	}
@@ -1252,7 +1248,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	scope: TScope,
 	hydration: Array<TNode> | undefined,
 ): ElementValue<TNode> {
-	if (getFlag(ret, HasCommitted) && getFlag(ret, IsCopied)) {
+	if (getFlag(ret, IsCopied) && getFlag(ret, HasCommitted)) {
 		return getValue(ret);
 	}
 
@@ -2414,7 +2410,7 @@ function runComponent<TNode, TResult>(
 			const diff = iteration.then(
 				(iteration) => {
 					if (!getFlag(ctx, IsInForOfLoop)) {
-						pullComponent(ctx, Promise.resolve(iteration));
+						pullComponent(ctx, iteration);
 					} else {
 						if (!getFlag(ctx, NeedsToYield) && !getFlag(ctx, IsUnmounted)) {
 							console.error(
@@ -2456,7 +2452,7 @@ function runComponent<TNode, TResult>(
  */
 async function pullComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
-	iterationP: Promise<ChildrenIteratorResult>,
+	iterationP: Promise<ChildrenIteratorResult> | ChildrenIteratorResult,
 ): Promise<undefined> {
 	let done = false;
 	try {
@@ -2491,6 +2487,9 @@ async function pullComponent<TNode, TResult>(
 			);
 
 			let iteration: ChildrenIteratorResult;
+			// iterationP will be an iterator result if the component was in a
+			// for...of loop and has now exited.
+			const wasInForOf = !isPromiseLike(iterationP);
 			try {
 				iteration = await iterationP;
 			} catch (err) {
@@ -2510,9 +2509,10 @@ async function pullComponent<TNode, TResult>(
 			let diff: Promise<undefined> | undefined;
 			try {
 				if (
-					!getFlag(ctx, NeedsToYield) &&
-					getFlag(ctx, PropsAvailable) &&
-					getFlag(ctx, IsInForAwaitOfLoop)
+					wasInForOf ||
+					(!getFlag(ctx, NeedsToYield) &&
+						getFlag(ctx, PropsAvailable) &&
+						getFlag(ctx, IsInForAwaitOfLoop))
 				) {
 					// logic to skip yielded children in a stale for await of iteration.
 					diff = undefined;
