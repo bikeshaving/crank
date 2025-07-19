@@ -280,17 +280,10 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 					}
 				}
 
-				// remove excess DOM nodes
-				while (oldChild !== null) {
-					const nextSibling = oldChild.nextSibling;
-					node.removeChild(oldChild);
-					oldChild = nextSibling;
-				}
-
 				// append excess children
 				for (; i < children.length; i++) {
 					const newChild = children[i];
-					node.appendChild(newChild);
+					node.insertBefore(newChild, oldChild);
 				}
 			}
 		}

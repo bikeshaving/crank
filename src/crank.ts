@@ -560,7 +560,6 @@ export interface RenderAdapter<
 		node: TNode;
 		props: TagProps<TTag>;
 		parent: TNode;
-		isNested: boolean;
 	}): void;
 
 	finalize(root: TRoot): void;
@@ -1048,23 +1047,13 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 	host: Retainer<TNode>,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	ret: Retainer<TNode>,
-	isNested: boolean = false,
+	isNested: boolean,
 ): void {
 	if (typeof ret.el.tag === "function") {
 		unmountComponent(ret.ctx!, isNested);
 	} else if (ret.el.tag === Portal) {
-		if (getFlag(ret, HasCommitted)) {
-			adapter.arrange({
-				tag: Portal,
-				node: ret.value as TNode,
-				props: ret.el.props,
-				children: [],
-				oldProps: ret.oldProps,
-			});
-			flush(adapter, ret.value);
-		}
-
 		unmountChildren(adapter, ret, ctx, ret);
+		flush(adapter, ret.value);
 	} else if (ret.el.tag !== Fragment) {
 		if (getFlag(ret, HasCommitted)) {
 			if (isEventTarget(ret.value)) {
@@ -1084,7 +1073,6 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 				node: ret.value as TNode,
 				props: ret.el.props,
 				parent: host.value as TNode,
-				isNested: !getFlag(host, IsUnmounted),
 			});
 		}
 
@@ -1136,7 +1124,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 		hydration,
 	);
 	if (root == null) {
-		unmount(adapter, ret, ctx, ret);
+		unmount(adapter, ret, ctx, ret, false);
 	} else {
 		// element is a host or portal element
 		adapter.arrange({
@@ -1214,7 +1202,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	if (parent.graveyard) {
 		for (let i = 0; i < parent.graveyard.length; i++) {
 			const ret = parent.graveyard[i];
-			unmount(adapter, host, ctx, ret);
+			unmount(adapter, host, ctx, ret, false);
 		}
 
 		parent.graveyard = undefined;
@@ -2179,17 +2167,14 @@ function commitComponent<TNode>(
 
 		// rearranging the nearest ancestor host element
 		const host = ctx.host;
-		const hostValues = getChildValues(host);
 		ctx.adapter.arrange({
 			tag: host.el.tag as string | symbol,
 			node: host.value as TNode,
 			props: host.el.props,
-			children: hostValues,
+			children: getChildValues(host),
 			// oldProps is the same as props the same because the host hasn't updated.
 			oldProps: host.el.props,
-		});
-
-		flush(ctx.adapter, ctx.root, ctx);
+		}); flush(ctx.adapter, ctx.root, ctx);
 	}
 
 	const callbacks = scheduleMap.get(ctx);
@@ -2722,6 +2707,12 @@ async function unmountComponent(
 			// We let pullComponent handle unmounting
 			resumePropsAsyncIterator(ctx);
 		}
+	}
+
+	if (lingerers) {
+		// If there are lingerers, we must finalize the root because nodes have
+		// been removed asynchronously
+		ctx.adapter.finalize(ctx.root);
 	}
 }
 
