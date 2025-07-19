@@ -1220,7 +1220,6 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 		}
 	}
 
-	// TODO: why are we running normalize on both ends?
 	return values;
 }
 
@@ -1664,7 +1663,6 @@ export class Context<T = any, TResult = any> implements EventTarget {
 		const ctx = this[_ContextState];
 		if (getFlag(ctx, IsUnmounted)) {
 			console.error("Component is unmounted");
-			// TODO: should we return the last value?
 			return ctx.adapter.read(undefined);
 		} else if (getFlag(ctx, IsSyncExecuting)) {
 			console.error("Component is already executing");
@@ -2601,7 +2599,6 @@ function resumePropsAsyncIterator(ctx: ContextState): void {
 	}
 }
 
-// TODO: async unmounting
 async function unmountComponent(
 	ctx: ContextState,
 	nested: boolean,
