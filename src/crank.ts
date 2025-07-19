@@ -1292,9 +1292,6 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		// This assumes that .create does not return nullish values.
 		if (value == null) {
 			value = ret.value = adapter.create({tag, props, scope});
-			if (typeof ret.el.ref === "function") {
-				ret.el.ref(adapter.read(value));
-			}
 		}
 
 		for (const propName in {...oldProps, ...props}) {
@@ -1332,6 +1329,12 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	}
 
 	adapter.arrange({tag, node: value, props, children, oldProps});
+	if (!getFlag(ret, HasCommitted)) {
+		if (typeof ret.el.ref === "function") {
+			ret.el.ref(adapter.read(value));
+		}
+	}
+
 	setFlag(ret, HasCommitted);
 	if (tag === Portal) {
 		flush(adapter, ret.value);
