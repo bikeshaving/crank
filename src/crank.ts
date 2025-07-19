@@ -1056,6 +1056,8 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 		unmountChildren(adapter, ret, ctx, ret);
 		flush(adapter, ret.value);
 	} else if (ret.el.tag !== Fragment) {
+		unmountChildren(adapter, ret, ctx, ret);
+
 		if (getFlag(ret, HasCommitted)) {
 			if (isEventTarget(ret.value)) {
 				const records = getListenerRecords(ctx, host);
@@ -1076,8 +1078,6 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 				parent: host.value as TNode,
 			});
 		}
-
-		unmountChildren(adapter, ret, ctx, ret);
 	} else {
 		unmountChildren(adapter, host, ctx, ret);
 	}
