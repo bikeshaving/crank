@@ -2410,6 +2410,7 @@ function runComponent<TNode, TResult>(
 			const diff = iteration.then(
 				(iteration) => {
 					if (!getFlag(ctx, IsInForOfLoop)) {
+						// We have exited the for...of loop, so we start pulling
 						pullComponent(ctx, iteration);
 					} else {
 						if (!getFlag(ctx, NeedsToYield) && !getFlag(ctx, IsUnmounted)) {
@@ -2457,10 +2458,6 @@ async function pullComponent<TNode, TResult>(
 	let done = false;
 	try {
 		while (!done) {
-			if (getFlag(ctx, IsInForOfLoop)) {
-				break;
-			}
-
 			// inflightValue must be set synchronously.
 			let resolveInflight!: Function;
 			let rejectInflight!: Function;
@@ -2571,8 +2568,9 @@ async function pullComponent<TNode, TResult>(
 				}
 
 				break;
-			} else if (!done && !getFlag(ctx, IsInForOfLoop)) {
-				// get the next value from the iterator
+			} else if (getFlag(ctx, IsInForOfLoop)) {
+				break;
+			} else if (!iteration.done) {
 				try {
 					setFlag(ctx, IsSyncExecuting);
 					iterationP = ctx.iterator!.next(

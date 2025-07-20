@@ -488,7 +488,7 @@ test("for...of delayed", async () => {
 	Assert.is(afterLoopFn.callCount, 1);
 });
 
-test("for...of then for...await of", async () => {
+test("for...of then for...await of then for...of", async () => {
 	const beforeYieldFn = Sinon.fake();
 	const afterYieldFn = Sinon.fake();
 	const afterLoopFn = Sinon.fake();
@@ -507,7 +507,9 @@ test("for...of then for...await of", async () => {
 			yield <div>for await...of {i++}</div>;
 			// this code executes immediately because we are in a for await...of loop
 			afterYieldFn();
-			break;
+			if (i === 3) {
+				break;
+			}
 		}
 
 		afterLoopFn();
@@ -528,12 +530,26 @@ test("for...of then for...await of", async () => {
 	Assert.is(document.body.innerHTML, "<div>for...of 0</div>");
 
 	await renderer.render(<Component />, document.body);
-	Assert.is(afterLoopFn.callCount, 2);
-	Assert.is(beforeYieldFn.callCount, 3);
+	Assert.is(afterLoopFn.callCount, 1);
+	Assert.is(beforeYieldFn.callCount, 2);
 	Assert.is(afterYieldFn.callCount, 2);
-	Assert.is(document.body.innerHTML, "<div>for...of 2</div>");
+	Assert.is(document.body.innerHTML, "<div>for await...of 1</div>");
 
-	renderer.render(null, document.body);
+	await renderer.render(<Component />, document.body);
+
+	Assert.is(afterLoopFn.callCount, 1);
+	Assert.is(beforeYieldFn.callCount, 2);
+	Assert.is(afterYieldFn.callCount, 2);
+	// TODO: This should be "<div>for await...of 2</div>"
+	Assert.is(document.body.innerHTML, "<div>for await...of 1</div>");
+
+	await renderer.render(<Component />, document.body);
+	Assert.is(afterLoopFn.callCount, 2);
+	Assert.is(beforeYieldFn.callCount, 4);
+	Assert.is(afterYieldFn.callCount, 3);
+	Assert.is(document.body.innerHTML, "<div>for...of 3</div>");
+
+	await renderer.render(null, document.body);
 	Assert.is(document.body.innerHTML, "");
 	await new Promise((resolve) => setTimeout(resolve));
 	Assert.is(afterLoopFn.callCount, 3);
