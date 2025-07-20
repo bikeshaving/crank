@@ -2229,7 +2229,8 @@ function enqueueComponent<TNode, TResult>(
 			});
 		}
 
-		return ctx.inflightDiff;
+		// allow component to resume and set inflightDiff before returning it.
+		return Promise.resolve().then(() => ctx.inflightDiff);
 	} else if (!ctx.inflightBlock) {
 		const [block, value] = runComponent<TNode, TResult>(ctx);
 		if (block) {
@@ -2569,6 +2570,9 @@ async function pullComponent<TNode, TResult>(
 
 				break;
 			} else if (getFlag(ctx, IsInForOfLoop)) {
+				// we have entered a for...of loop, so updates will be handled by the
+				// regular runComponent/enqueueComponent logic.
+				advanceComponent(ctx);
 				break;
 			} else if (!iteration.done) {
 				try {
