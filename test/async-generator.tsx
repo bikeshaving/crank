@@ -28,17 +28,11 @@ test("basic", async () => {
 		}
 	}
 
-	await renderer.render(
-		<Component message="Hello" />,
-		document.body,
-	);
+	await renderer.render(<Component message="Hello" />, document.body);
 	Assert.is(document.body.innerHTML, "<span>Hello</span>");
 	await new Promise((resolve) => setTimeout(resolve));
 	Assert.is(document.body.innerHTML, "<span>Hello</span>");
-	await renderer.render(
-		<Component message="Hello again" />,
-		document.body,
-	);
+	await renderer.render(<Component message="Hello again" />, document.body);
 	Assert.is(document.body.innerHTML, "<span>Hello again</span>");
 });
 
