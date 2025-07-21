@@ -1501,6 +1501,9 @@ class ContextState<
 	declare enqueuedBlock: Promise<undefined> | undefined;
 	declare enqueuedDiff: Promise<undefined> | undefined;
 
+	declare pullIteration: Promise<ChildrenIteratorResult> | undefined;
+	declare pullDiff: Promise<undefined> | undefined;
+
 	// The onPropsProvided callback is set when a component requests props via
 	// the for await...of loop and props are not available. It is called when the
 	// component is updated or refreshed.
@@ -1536,6 +1539,9 @@ class ContextState<
 		this.inflightDiff = undefined;
 		this.enqueuedBlock = undefined;
 		this.enqueuedDiff = undefined;
+
+		this.pullIteration = undefined;
+		this.pullDiff = undefined;
 
 		this.onPropsProvided = undefined;
 		this.onPropsRequested = undefined;
@@ -2207,38 +2213,7 @@ function commitComponent<TNode>(
 function enqueueComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
 ): Promise<undefined> | undefined {
-	// TODO: remove this AsyncGen branch
-	// This branch will run for non-initial renders of async generator
-	// components when they are not in for...of loops. When in a for...of loop,
-	// async generator components will behave like sync generator components.
-	if (getFlag(ctx, IsAsyncGen) && !getFlag(ctx, IsInForOfLoop)) {
-		// If the component is waiting at the bottom of the loop, this means that
-		// the next value produced by the component will have the most up to date
-		// props, so we can return the current inflight value. Otherwise, we have
-		// to wait for the bottom of the loop to be reached before returning the
-		// inflight value.
-		//
-		// if ctx.onPropsProvided is defined, it means the component is suspended
-		// and waiting for new props, so it is not at the bottom of the loop.
-		// This condition must be read before resumePropsAsyncIterator is called
-		const isAtLoopBottom =
-			getFlag(ctx, IsInForAwaitOfLoop) && !ctx.onPropsProvided;
-		resumePropsAsyncIterator(ctx);
-		if (isAtLoopBottom) {
-			if (ctx.inflightBlock == null) {
-				ctx.inflightBlock = new Promise(
-					(resolve) => (ctx.onPropsRequested = resolve),
-				);
-			}
-
-			return ctx.inflightBlock.finally(() => {
-				ctx.inflightBlock = undefined;
-				return ctx.inflightDiff;
-			});
-		}
-
-		return ctx.inflightDiff;
-	} else if (!ctx.inflightBlock) {
+	if (!ctx.inflightBlock) {
 		const [block, diff] = runComponent<TNode, TResult>(ctx);
 		if (block) {
 			ctx.inflightBlock = block.finally(() => advanceComponent(ctx));
@@ -2299,10 +2274,13 @@ function advanceComponent(ctx: ContextState): void {
 function runComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
 ): [Promise<undefined> | undefined, Promise<undefined> | undefined] {
+	if (getFlag(ctx, IsUnmounted)) {
+		return [undefined, undefined];
+	}
+
 	const ret = ctx.ret;
 	const initial = !ctx.iterator;
 	if (initial) {
-		resumePropsAsyncIterator(ctx);
 		setFlag(ctx, IsSyncExecuting);
 		clearEventListeners(ctx);
 		let returned: ReturnType<Component>;
@@ -2396,6 +2374,7 @@ function runComponent<TNode, TResult>(
 		return [block, diff];
 	} else {
 		if (getFlag(ctx, IsInForOfLoop)) {
+			resumePropsAsyncIterator(ctx);
 			// Async generator component using for...of loops behave similar to sync
 			// generator components. This allows for easier refactoring of sync to
 			// async generator components.
@@ -2444,8 +2423,9 @@ function runComponent<TNode, TResult>(
 			return [diff.catch(NOOP), diff];
 		} else {
 			// initializes the async generator loop
-			pullComponent(ctx, iteration as Promise<ChildrenIteratorResult>);
-			return [ctx.inflightBlock, ctx.inflightDiff];
+			pullComponent(ctx, iteration);
+			const block = resumePropsAsyncIterator(ctx);
+			return [block, ctx.pullDiff];
 		}
 	}
 }
@@ -2461,14 +2441,25 @@ function runComponent<TNode, TResult>(
  */
 async function pullComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
-	iterationP: Promise<ChildrenIteratorResult> | ChildrenIteratorResult,
+	iterationP:
+		| Promise<ChildrenIteratorResult>
+		| ChildrenIteratorResult
+		| undefined,
 ): Promise<undefined> {
+	if (!iterationP) {
+		return;
+	}
+
 	let done = false;
 	try {
 		while (!done) {
+			if (isPromiseLike(iterationP)) {
+				ctx.pullIteration = iterationP;
+			}
+
 			let resolve!: Function;
 			let reject!: Function;
-			ctx.inflightDiff = new Promise(
+			ctx.pullDiff = new Promise(
 				(resolve1, reject1) => ((resolve = resolve1), (reject = reject1)),
 			).then(
 				(): undefined => {
@@ -2593,18 +2584,31 @@ async function pullComponent<TNode, TResult>(
 			setFlag(ctx, IsAsyncGen, false);
 			ctx.iterator = undefined;
 		}
+
+		ctx.pullDiff = undefined;
 	}
 }
 
-/** Called to resume the props async iterator for async generator components. */
-function resumePropsAsyncIterator(ctx: ContextState): void {
+/**
+ * Called to resume the props async iterator for async generator components.
+ */
+function resumePropsAsyncIterator(
+	ctx: ContextState,
+): Promise<undefined> | undefined {
 	if (ctx.onPropsProvided) {
 		ctx.onPropsProvided(ctx.ret.el.props);
 		ctx.onPropsProvided = undefined;
 		setFlag(ctx, PropsAvailable, false);
 	} else {
 		setFlag(ctx, PropsAvailable);
+		if (getFlag(ctx, IsInForAwaitOfLoop)) {
+			return new Promise<undefined>(
+				(resolve) => (ctx.onPropsRequested = resolve),
+			);
+		}
 	}
+
+	return ctx.pullIteration && ctx.pullIteration.then(NOOP, NOOP);
 }
 
 async function unmountComponent(
