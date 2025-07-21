@@ -1497,13 +1497,20 @@ class ContextState<
 
 	// See runComponent() for a description of these properties.
 	declare inflightBlock: Promise<undefined> | undefined;
-	declare inflightDiff: Promise<any> | undefined;
+	declare inflightDiff: Promise<undefined> | undefined;
 	declare enqueuedBlock: Promise<undefined> | undefined;
-	declare enqueuedDiff: Promise<any> | undefined;
+	declare enqueuedDiff: Promise<undefined> | undefined;
 
+	// The onPropsProvided callback is set when a component requests props via
+	// the for await...of loop and props are not available. It is called when the
+	// component is updated or refreshed.
 	declare onPropsProvided:
 		| ((props: Record<string, any>) => unknown)
 		| undefined;
+
+	// The onPropsRequested callback is set when a component is updated or
+	// refreshed but the new props are not consumed. It is called when the new
+	// props are requested.
 	declare onPropsRequested: Function | undefined;
 
 	constructor(
@@ -2459,15 +2466,12 @@ async function pullComponent<TNode, TResult>(
 	let done = false;
 	try {
 		while (!done) {
-			// inflightValue must be set synchronously.
-			let resolveInflight!: Function;
-			let rejectInflight!: Function;
+			let resolve!: Function;
+			let reject!: Function;
 			ctx.inflightDiff = new Promise(
-				(resolve1, reject1) => (
-					(resolveInflight = resolve1), (rejectInflight = reject1)
-				),
+				(resolve1, reject1) => ((resolve = resolve1), (reject = reject1)),
 			).then(
-				() => {
+				(): undefined => {
 					if (!(getFlag(ctx, IsUpdating) || getFlag(ctx, IsRefreshing))) {
 						commitComponent(ctx);
 					}
@@ -2486,12 +2490,12 @@ async function pullComponent<TNode, TResult>(
 
 			let iteration: ChildrenIteratorResult;
 			try {
-				iteration = isPromiseLike(iterationP) ? (await iterationP) : iterationP;
+				iteration = isPromiseLike(iterationP) ? await iterationP : iterationP;
 			} catch (err) {
 				done = true;
 				setFlag(ctx, IsErrored);
 				setFlag(ctx, NeedsToYield, false);
-				rejectInflight(err);
+				reject(err);
 				break;
 			}
 
@@ -2518,9 +2522,9 @@ async function pullComponent<TNode, TResult>(
 					diff = diffComponentChildren<TNode, TResult>(ctx, iteration.value!);
 				}
 			} catch (err) {
-				rejectInflight(err);
+				reject(err);
 			} finally {
-				resolveInflight(diff);
+				resolve(diff);
 				setFlag(ctx, NeedsToYield, false);
 			}
 
