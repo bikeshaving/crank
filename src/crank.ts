@@ -965,8 +965,8 @@ function createChildrenByKey<TNode>(
 
 function getInflight(child: Retainer<unknown>): Promise<undefined> | undefined {
 	const ctx: ContextState<unknown> | undefined = child.ctx;
-	if (ctx && getFlag(ctx, IsUpdating) && ctx.inflightDiff) {
-		return ctx.inflightDiff;
+	if (ctx && getFlag(ctx, IsUpdating) && ctx.inflight) {
+		return ctx.inflight[1];
 	} else if (child.pending) {
 		return child.pending;
 	}
@@ -1496,10 +1496,12 @@ class ContextState<
 		| undefined;
 
 	// See runComponent() for a description of these properties.
-	declare inflightBlock: Promise<undefined> | undefined;
-	declare inflightDiff: Promise<undefined> | undefined;
-	declare enqueuedBlock: Promise<undefined> | undefined;
-	declare enqueuedDiff: Promise<undefined> | undefined;
+	declare inflight:
+		| [Promise<undefined> | undefined, Promise<undefined> | undefined]
+		| undefined;
+	declare enqueued:
+		| [Promise<undefined> | undefined, Promise<undefined> | undefined]
+		| undefined;
 
 	declare pullIteration: Promise<ChildrenIteratorResult> | undefined;
 	declare pullDiff: Promise<undefined> | undefined;
@@ -1535,10 +1537,8 @@ class ContextState<
 
 		this.iterator = undefined;
 
-		this.inflightBlock = undefined;
-		this.inflightDiff = undefined;
-		this.enqueuedBlock = undefined;
-		this.enqueuedDiff = undefined;
+		this.inflight = undefined;
+		this.enqueued = undefined;
 
 		this.pullIteration = undefined;
 		this.pullDiff = undefined;
@@ -2213,36 +2213,36 @@ function commitComponent<TNode>(
 function enqueueComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
 ): Promise<undefined> | undefined {
-	if (!ctx.inflightBlock) {
+	if (!ctx.inflight) {
 		const [block, diff] = runComponent<TNode, TResult>(ctx);
 		if (block) {
-			ctx.inflightBlock = block.finally(() => advanceComponent(ctx));
-			// stepComponent will only return a block if the value is asynchronous
-			ctx.inflightDiff = diff;
+			ctx.inflight = [block.finally(() => advanceComponent(ctx)), diff];
 		}
 
 		return diff;
-	} else if (!ctx.enqueuedBlock) {
+	} else if (!ctx.enqueued) {
 		// The enqueuedBlock and enqueuedDiff properties must be set
 		// simultaneously, hence the usage of the Promise constructor.
 		let resolve: Function;
-		ctx.enqueuedBlock = new Promise<undefined>(
-			(resolve1) => (resolve = resolve1),
-		).finally(() => advanceComponent(ctx));
-		ctx.enqueuedDiff = ctx.inflightBlock.finally(() => {
-			const [block, diff] = runComponent<TNode, TResult>(ctx);
-			resolve(block);
-			return diff;
-		});
+		ctx.enqueued = [
+			new Promise<undefined>((resolve1) => (resolve = resolve1)).finally(() =>
+				advanceComponent(ctx),
+			),
+			ctx.inflight[0]!.finally(() => {
+				const [block, diff] = runComponent<TNode, TResult>(ctx);
+				resolve(block);
+				return diff;
+			}),
+		];
 	}
 
-	return ctx.enqueuedDiff;
+	return ctx.enqueued[1];
 }
 
 /** Called when the inflight block promise settles. */
 function advanceComponent(ctx: ContextState): void {
-	[ctx.inflightBlock, ctx.inflightDiff] = [ctx.enqueuedBlock, ctx.enqueuedDiff];
-	[ctx.enqueuedBlock, ctx.enqueuedDiff] = [undefined, undefined];
+	ctx.inflight = ctx.enqueued;
+	ctx.enqueued = undefined;
 }
 
 /**
@@ -2652,8 +2652,8 @@ async function unmountComponent(
 	if (ctx.iterator) {
 		if (getFlag(ctx, IsSyncGen) || getFlag(ctx, IsInForOfLoop)) {
 			// we wait for the block so yields resume with the most up to date props
-			if (ctx.inflightBlock) {
-				await ctx.inflightBlock;
+			if (ctx.inflight) {
+				await ctx.inflight[1];
 			}
 
 			let iteration: ChildrenIteratorResult | undefined;
