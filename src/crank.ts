@@ -2200,6 +2200,7 @@ function commitComponent<TNode>(
 function enqueueComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
 ): Promise<undefined> | undefined {
+	// TODO: remove this AsyncGen branch
 	// This branch will run for non-initial renders of async generator
 	// components when they are not in for...of loops. When in a for...of loop,
 	// async generator components will behave like sync generator components.
@@ -2229,17 +2230,16 @@ function enqueueComponent<TNode, TResult>(
 			});
 		}
 
-		// allow component to resume and set inflightDiff before returning it.
-		return Promise.resolve().then(() => ctx.inflightDiff);
+		return ctx.inflightDiff;
 	} else if (!ctx.inflightBlock) {
-		const [block, value] = runComponent<TNode, TResult>(ctx);
+		const [block, diff] = runComponent<TNode, TResult>(ctx);
 		if (block) {
 			ctx.inflightBlock = block.finally(() => advanceComponent(ctx));
 			// stepComponent will only return a block if the value is asynchronous
-			ctx.inflightDiff = value;
+			ctx.inflightDiff = diff;
 		}
 
-		return value;
+		return diff;
 	} else if (!ctx.enqueuedBlock) {
 		// The enqueuedBlock and enqueuedDiff properties must be set
 		// simultaneously, hence the usage of the Promise constructor.
@@ -2248,9 +2248,9 @@ function enqueueComponent<TNode, TResult>(
 			(resolve1) => (resolve = resolve1),
 		).finally(() => advanceComponent(ctx));
 		ctx.enqueuedDiff = ctx.inflightBlock.finally(() => {
-			const [block, value] = runComponent<TNode, TResult>(ctx);
+			const [block, diff] = runComponent<TNode, TResult>(ctx);
 			resolve(block);
-			return value;
+			return diff;
 		});
 	}
 
@@ -2468,13 +2468,13 @@ async function pullComponent<TNode, TResult>(
 				),
 			).then(
 				() => {
-					if (!getFlag(ctx, IsUpdating) && !getFlag(ctx, IsRefreshing)) {
+					if (!(getFlag(ctx, IsUpdating) || getFlag(ctx, IsRefreshing))) {
 						commitComponent(ctx);
 					}
 				},
 				(err) => {
 					if (
-						(!getFlag(ctx, IsUpdating) && !getFlag(ctx, IsRefreshing)) ||
+						!(getFlag(ctx, IsUpdating) || getFlag(ctx, IsRefreshing)) ||
 						!getFlag(ctx, NeedsToYield)
 					) {
 						return propagateError(ctx, err);
@@ -2485,11 +2485,8 @@ async function pullComponent<TNode, TResult>(
 			);
 
 			let iteration: ChildrenIteratorResult;
-			// iterationP will be an iterator result if the component was in a
-			// for...of loop and has now exited.
-			const wasInForOf = !isPromiseLike(iterationP);
 			try {
-				iteration = await iterationP;
+				iteration = isPromiseLike(iterationP) ? (await iterationP) : iterationP;
 			} catch (err) {
 				done = true;
 				setFlag(ctx, IsErrored);
@@ -2507,7 +2504,10 @@ async function pullComponent<TNode, TResult>(
 			let diff: Promise<undefined> | undefined;
 			try {
 				if (
-					wasInForOf ||
+					// if the component was in a for...of loop and has exited, iterationP
+					// will be an iteration and not a promise, so we can skip the diff of
+					// children as it is handled elsewhere.
+					!isPromiseLike(iterationP) ||
 					(!getFlag(ctx, NeedsToYield) &&
 						getFlag(ctx, PropsAvailable) &&
 						getFlag(ctx, IsInForAwaitOfLoop))
@@ -2572,7 +2572,6 @@ async function pullComponent<TNode, TResult>(
 			} else if (getFlag(ctx, IsInForOfLoop)) {
 				// we have entered a for...of loop, so updates will be handled by the
 				// regular runComponent/enqueueComponent logic.
-				advanceComponent(ctx);
 				break;
 			} else if (!iteration.done) {
 				try {
@@ -2617,12 +2616,12 @@ async function unmountComponent(
 	let lingerers: Array<PromiseLike<unknown>> | undefined;
 	const callbacks = cleanupMap.get(ctx);
 	if (callbacks) {
-		const value = ctx.adapter.read(getValue(ctx.ret));
+		const result = ctx.adapter.read(getValue(ctx.ret));
 		cleanupMap.delete(ctx);
 		for (const callback of callbacks) {
-			const result = callback(value);
-			if (!nested && isPromiseLike(result)) {
-				(lingerers = lingerers || []).push(result);
+			const cleanup = callback(result);
+			if (!nested && isPromiseLike(cleanup)) {
+				(lingerers = lingerers || []).push(cleanup);
 			}
 		}
 	}
@@ -2653,8 +2652,8 @@ async function unmountComponent(
 			if (getFlag(ctx, IsInForOfLoop)) {
 				try {
 					setFlag(ctx, IsSyncExecuting);
-					const value = ctx.adapter.read(getValue(ctx.ret));
-					const iterationP = ctx.iterator!.next(value);
+					const result = ctx.adapter.read(getValue(ctx.ret));
+					const iterationP = ctx.iterator!.next(result);
 					if (isPromiseLike(iterationP)) {
 						if (!getFlag(ctx, IsAsyncGen)) {
 							throw new Error("Mixed generator component");
