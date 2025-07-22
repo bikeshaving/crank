@@ -999,13 +999,17 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 	);
 }
 
+// When rendering is done without a root, we use this special anonymous root to
+// make sure flush callbacks are still called.
 const ANONYMOUS_ROOT: any = {};
 function flush<TRoot>(
 	adapter: RenderAdapter<unknown, unknown, TRoot>,
-	root: TRoot,
+	root: TRoot | null | undefined,
 	initiator?: ContextState,
 ) {
-	adapter.finalize(root);
+	if (root != null) {
+		adapter.finalize(root);
+	}
 	if (typeof root !== "object" || root === null) {
 		root = ANONYMOUS_ROOT;
 	}
@@ -1341,6 +1345,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	return getValue(ret);
 }
 
+// TODO: merge with Retainer flags?
 /*** CONTEXT FLAGS ***/
 /**
  * A flag which is true when the component is initialized or updated by an
@@ -2247,26 +2252,28 @@ function advanceComponent(ctx: ContextState): void {
  * This function is responsible for executing components, and handling the
  * different component types.
  *
- * @returns {[block, diff]} A tuple where
+ * @returns {[block, diff]} A tuple where:
  * - block is a promise or undefined which represents the duration during which
- *   the component component will enqueue further updates.
- * - diff is a promise or undefined which settles when all children have
- *   diffed.
+ *   the component is blocked.
+ * - diff is a promise or undefined which represents the duration for diffing
+ *   of children.
  *
- * Each component type will block according to the type of the component.
- * - Sync function components never block and will transparently pass updates
- * to children.
- * - Async function components and async generator components block while
- * executing itself, but will not block for async children.
- * - Sync generator components block while any children are executing, because
- * they are expected to only resume when they’ve actually rendered.
- * - Async generator components block depending on what kind of props iterator
- *   they use:
- *   - for...of loops behave like sync generator components, blocking
- *     while the component or its children are executing
- *   - for await...of loops block while new props have yet been requested
- *   - async generator components not using a props iterator block while
- *     executing
+ * While a component is blocked, further updates to the component are enqueued.
+ *
+ * Each component type blocks according to its implementation:
+ * - Sync function components never block; when props or state change,
+ *   updates are immediately passed to children.
+ * - Async function components block only while awaiting their own async work
+ *   (e.g., during an await), but do not block while their async children are rendering.
+ * - Sync generator components block while their children are rendering;
+ *   they only resume once their children have finished.
+ * - Async generator components can block in different ways, depending on their loop:
+ *   - With a for...of loop, they behave like sync generator components,
+ *     blocking while the component or its children are rendering.
+ *   - With a for await...of loop, they block only while waiting for new props
+ *     to be requested, not while children are rendering.
+ *   - Without any loop, they block while the component itself is rendering,
+ *     not while children are rendering.
  */
 function runComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
@@ -2595,6 +2602,9 @@ async function pullComponent<TNode, TResult>(
 
 /**
  * Called to resume the props async iterator for async generator components.
+ *
+ * @returns {Promise<undefined> | undefined} A possible promise which
+ * represents the duration during which the component is blocked.
  */
 function resumePropsAsyncIterator(
 	ctx: ContextState,
@@ -2628,10 +2638,10 @@ async function unmountComponent(
 	let lingerers: Array<PromiseLike<unknown>> | undefined;
 	const callbacks = cleanupMap.get(ctx);
 	if (callbacks) {
-		const result = ctx.adapter.read(getValue(ctx.ret));
+		const oldResult = ctx.adapter.read(getValue(ctx.ret));
 		cleanupMap.delete(ctx);
 		for (const callback of callbacks) {
-			const cleanup = callback(result);
+			const cleanup = callback(oldResult);
 			if (!nested && isPromiseLike(cleanup)) {
 				(lingerers = lingerers || []).push(cleanup);
 			}
