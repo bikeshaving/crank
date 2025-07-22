@@ -371,7 +371,10 @@ class Retainer<TNode> {
 	 * The retainer children of this element. Retainers form a tree which mirrors
 	 * elements. Can be a single child or undefined as a memory optimization.
 	 */
-	declare children: Array<RetainerChild<TNode>> | RetainerChild<TNode>;
+	declare children:
+		| Array<Retainer<TNode> | undefined>
+		| Retainer<TNode>
+		| undefined;
 
 	/** The value associated with this element. */
 	declare value: ElementValue<TNode> | undefined;
@@ -408,9 +411,6 @@ class Retainer<TNode> {
 		this.lingerers = undefined;
 	}
 }
-
-/** The retainer equivalent of ElementValue */
-type RetainerChild<TNode> = Retainer<TNode> | undefined;
 
 /**
  * Finds the value of the element according to its type.
@@ -949,7 +949,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 }
 
 function createChildrenByKey<TNode>(
-	children: Array<RetainerChild<TNode>>,
+	children: Array<Retainer<TNode> | undefined>,
 	offset: number,
 ): Map<Key, Retainer<TNode>> {
 	const childrenByKey = new Map<Key, Retainer<TNode>>();
