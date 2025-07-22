@@ -2466,10 +2466,7 @@ async function pullComponent<TNode, TResult>(
 			}
 
 			let resolve!: Function;
-			let reject!: Function;
-			ctx.pullDiff = new Promise(
-				(resolve1, reject1) => ((resolve = resolve1), (reject = reject1)),
-			).then(
+			ctx.pullDiff = new Promise((resolve1) => (resolve = resolve1)).then(
 				(): undefined => {
 					if (!(getFlag(ctx, IsUpdating) || getFlag(ctx, IsRefreshing))) {
 						commitComponent(ctx);
@@ -2495,7 +2492,7 @@ async function pullComponent<TNode, TResult>(
 				done = true;
 				setFlag(ctx, IsErrored);
 				setFlag(ctx, NeedsToYield, false);
-				reject(err);
+				resolve(Promise.reject(err));
 				break;
 			}
 
@@ -2522,13 +2519,13 @@ async function pullComponent<TNode, TResult>(
 					diff = diffComponentChildren<TNode, TResult>(ctx, iteration.value!);
 				}
 			} catch (err) {
-				reject(err);
+				resolve(Promise.reject(err));
 			} finally {
 				resolve(diff);
 				setFlag(ctx, NeedsToYield, false);
 			}
 
-			// TODO: make sure oldResult can reject
+			// TODO: make sure oldResult rejects with child errors
 			const oldResult = new Promise((resolve) => ctx.ctx.schedule(resolve));
 			if (getFlag(ctx, IsUnmounted)) {
 				while (
