@@ -1043,70 +1043,6 @@ function flush<TRoot>(
 	}
 }
 
-// TODO: move this below commit functions
-function unmount<TNode, TScope, TRoot extends TNode, TResult>(
-	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
-	host: Retainer<TNode>,
-	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
-	ret: Retainer<TNode>,
-	isNested: boolean,
-): void {
-	if (typeof ret.el.tag === "function") {
-		unmountComponent(ret.ctx!, isNested);
-	} else if (ret.el.tag === Portal) {
-		unmountChildren(adapter, ret, ctx, ret);
-		flush(adapter, ret.value);
-	} else if (ret.el.tag !== Fragment) {
-		unmountChildren(adapter, ret, ctx, ret);
-
-		if (getFlag(ret, HasCommitted)) {
-			if (isEventTarget(ret.value)) {
-				const records = getListenerRecords(ctx, host);
-				for (let i = 0; i < records.length; i++) {
-					const record = records[i];
-					ret.value.removeEventListener(
-						record.type,
-						record.callback,
-						record.options,
-					);
-				}
-			}
-
-			adapter.remove({
-				tag: ret.el.tag,
-				node: ret.value as TNode,
-				props: ret.el.props,
-				parent: host.value as TNode,
-			});
-		}
-	} else {
-		unmountChildren(adapter, host, ctx, ret);
-	}
-}
-
-function unmountChildren<TNode, TScope, TRoot extends TNode, TResult>(
-	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
-	host: Retainer<TNode>,
-	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
-	ret: Retainer<TNode>,
-): void {
-	if (ret.graveyard) {
-		for (let i = 0; i < ret.graveyard.length; i++) {
-			const child = ret.graveyard[i];
-			unmount(adapter, host, ctx, child, true);
-		}
-
-		ret.graveyard = undefined;
-	}
-
-	for (let i = 0, children = wrap(ret.children); i < children.length; i++) {
-		const child = children[i];
-		if (typeof child === "object") {
-			unmount(adapter, host, ctx, child, true);
-		}
-	}
-}
-
 function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
@@ -1343,6 +1279,69 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	}
 
 	return getValue(ret);
+}
+
+function unmount<TNode, TScope, TRoot extends TNode, TResult>(
+	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
+	host: Retainer<TNode>,
+	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
+	ret: Retainer<TNode>,
+	isNested: boolean,
+): void {
+	if (typeof ret.el.tag === "function") {
+		unmountComponent(ret.ctx!, isNested);
+	} else if (ret.el.tag === Portal) {
+		unmountChildren(adapter, ret, ctx, ret);
+		flush(adapter, ret.value);
+	} else if (ret.el.tag !== Fragment) {
+		unmountChildren(adapter, ret, ctx, ret);
+
+		if (getFlag(ret, HasCommitted)) {
+			if (isEventTarget(ret.value)) {
+				const records = getListenerRecords(ctx, host);
+				for (let i = 0; i < records.length; i++) {
+					const record = records[i];
+					ret.value.removeEventListener(
+						record.type,
+						record.callback,
+						record.options,
+					);
+				}
+			}
+
+			adapter.remove({
+				tag: ret.el.tag,
+				node: ret.value as TNode,
+				props: ret.el.props,
+				parent: host.value as TNode,
+			});
+		}
+	} else {
+		unmountChildren(adapter, host, ctx, ret);
+	}
+}
+
+function unmountChildren<TNode, TScope, TRoot extends TNode, TResult>(
+	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
+	host: Retainer<TNode>,
+	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
+	ret: Retainer<TNode>,
+): void {
+	if (ret.graveyard) {
+		for (let i = 0; i < ret.graveyard.length; i++) {
+			const child = ret.graveyard[i];
+			unmount(adapter, host, ctx, child, true);
+		}
+
+		ret.graveyard = undefined;
+	}
+
+	for (let i = 0, children = wrap(ret.children); i < children.length; i++) {
+		const child = children[i];
+		if (typeof child === "object") {
+			unmount(adapter, host, ctx, child, true);
+		}
+	}
 }
 
 // TODO: merge with Retainer flags?
