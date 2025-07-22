@@ -1496,12 +1496,8 @@ class ContextState<
 		| undefined;
 
 	// See runComponent() for a description of these properties.
-	declare inflight:
-		| [Promise<undefined> | undefined, Promise<undefined> | undefined]
-		| undefined;
-	declare enqueued:
-		| [Promise<undefined> | undefined, Promise<undefined> | undefined]
-		| undefined;
+	declare inflight: [Promise<undefined>, Promise<undefined>] | undefined;
+	declare enqueued: [Promise<undefined>, Promise<undefined>] | undefined;
 
 	declare pullIteration: Promise<ChildrenIteratorResult> | undefined;
 	declare pullDiff: Promise<undefined> | undefined;
@@ -2094,6 +2090,7 @@ function diffComponentChildren<TNode, TResult>(
 
 	let diff: Promise<undefined> | undefined;
 	try {
+		// TODO: Stop setting IsSyncExecuting here...
 		// We set the isExecuting flag in case a child component dispatches an event
 		// which bubbles to this component and causes a synchronous refresh().
 		setFlag(ctx, IsSyncExecuting);
@@ -2154,8 +2151,8 @@ function commitComponent<TNode>(
 		setFlag(ctx, IsSchedulingRefresh);
 	} else if (!getFlag(ctx, IsUpdating)) {
 		// If we’re not updating the component, which happens when components are
-		// refreshed, or when async generator components iterate, we have to do a
-		// little bit housekeeping when a component’s child values have changed.
+		// refreshed, or when async generator components iterate independently, we
+		// have to do a little bit housekeeping
 		const records = getListenerRecords(ctx.parent, ctx.host);
 		if (records.length) {
 			for (let i = 0; i < values.length; i++) {
@@ -2179,9 +2176,9 @@ function commitComponent<TNode>(
 			tag: host.el.tag as string | symbol,
 			node: host.value as TNode,
 			props: host.el.props,
-			children: getChildValues(host),
-			// oldProps is the same as props the same because the host hasn't updated.
+			// oldProps is the same as props the same because the host hasn't updated
 			oldProps: host.el.props,
+			children: getChildValues(host),
 		});
 		flush(ctx.adapter, ctx.root, ctx);
 	}
@@ -2216,7 +2213,8 @@ function enqueueComponent<TNode, TResult>(
 	if (!ctx.inflight) {
 		const [block, diff] = runComponent<TNode, TResult>(ctx);
 		if (block) {
-			ctx.inflight = [block.finally(() => advanceComponent(ctx)), diff];
+			// if block is a promise, diff is a promise
+			ctx.inflight = [block.finally(() => advanceComponent(ctx)), diff!];
 		}
 
 		return diff;
@@ -2246,9 +2244,8 @@ function advanceComponent(ctx: ContextState): void {
 }
 
 /**
- * This function is responsible for executing the component and handling all
- * the different component types. We cannot identify whether a component is a
- * generator or async without calling it and inspecting the return value.
+ * This function is responsible for executing components, and handling the
+ * different component types.
  *
  * @returns {[block, diff]} A tuple where
  * - block is a promise or undefined which represents the duration during which
@@ -2339,7 +2336,8 @@ function runComponent<TNode, TResult>(
 		if (!initial) {
 			try {
 				setFlag(ctx, IsSyncExecuting);
-				iteration = ctx.iterator!.next(ctx.adapter.read(getValue(ret)));
+				const oldResult = ctx.adapter.read(getValue(ctx.ret));
+				iteration = ctx.iterator!.next(oldResult);
 			} catch (err) {
 				setFlag(ctx, IsErrored);
 				throw err;
@@ -2374,14 +2372,18 @@ function runComponent<TNode, TResult>(
 		return [block, diff];
 	} else {
 		if (getFlag(ctx, IsInForOfLoop)) {
-			resumePropsAsyncIterator(ctx);
 			// Async generator component using for...of loops behave similar to sync
 			// generator components. This allows for easier refactoring of sync to
 			// async generator components.
+
+			// We call resumePropsAsyncIterator in case the component exits the
+			// for...of loop
+			resumePropsAsyncIterator(ctx);
 			if (!initial) {
 				try {
 					setFlag(ctx, IsSyncExecuting);
-					iteration = ctx.iterator!.next(ctx.adapter.read(getValue(ret)));
+					const oldResult = ctx.adapter.read(getValue(ctx.ret));
+					iteration = ctx.iterator!.next(oldResult);
 				} catch (err) {
 					setFlag(ctx, IsErrored);
 					throw err;
@@ -2470,6 +2472,7 @@ async function pullComponent<TNode, TResult>(
 				(err) => {
 					if (
 						!(getFlag(ctx, IsUpdating) || getFlag(ctx, IsRefreshing)) ||
+						// TODO: is this flag necessary?
 						!getFlag(ctx, NeedsToYield)
 					) {
 						return propagateError(ctx, err);
@@ -2519,6 +2522,7 @@ async function pullComponent<TNode, TResult>(
 				setFlag(ctx, NeedsToYield, false);
 			}
 
+			// TODO: make sure oldResult can reject
 			const oldResult = new Promise((resolve) => ctx.ctx.schedule(resolve));
 			if (getFlag(ctx, IsUnmounted)) {
 				while (
@@ -2660,8 +2664,8 @@ async function unmountComponent(
 			if (getFlag(ctx, IsInForOfLoop)) {
 				try {
 					setFlag(ctx, IsSyncExecuting);
-					const result = ctx.adapter.read(getValue(ctx.ret));
-					const iterationP = ctx.iterator!.next(result);
+					const oldResult = ctx.adapter.read(getValue(ctx.ret));
+					const iterationP = ctx.iterator!.next(oldResult);
 					if (isPromiseLike(iterationP)) {
 						if (!getFlag(ctx, IsAsyncGen)) {
 							throw new Error("Mixed generator component");
