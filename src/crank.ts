@@ -1503,8 +1503,7 @@ class ContextState<
 	declare inflight: [Promise<undefined>, Promise<undefined>] | undefined;
 	declare enqueued: [Promise<undefined>, Promise<undefined>] | undefined;
 
-	declare pullIteration: Promise<ChildrenIteratorResult> | undefined;
-	declare pullDiff: Promise<undefined> | undefined;
+	declare pull: PullController | undefined;
 
 	// The onPropsProvided callback is set when a component requests props via
 	// the for await...of loop and props are not available. It is called when the
@@ -1536,15 +1535,13 @@ class ContextState<
 		this.ret = ret;
 
 		this.iterator = undefined;
-
 		this.inflight = undefined;
 		this.enqueued = undefined;
 
-		this.pullIteration = undefined;
-		this.pullDiff = undefined;
-
 		this.onPropsProvided = undefined;
 		this.onPropsRequested = undefined;
+
+		this.pull = undefined;
 	}
 }
 
@@ -2080,11 +2077,7 @@ function diffComponentChildren<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
 	children: Children,
 ): Promise<undefined> | undefined {
-	if (getFlag(ctx, IsUnmounted)) {
-		return;
-	} else if (getFlag(ctx, IsErrored)) {
-		// This branch is necessary for some race conditions where this function is
-		// called after iterator.throw() in async generator components.
+	if (getFlag(ctx, IsUnmounted) || getFlag(ctx, IsErrored)) {
 		return;
 	} else if (children === undefined) {
 		console.error(
@@ -2377,6 +2370,8 @@ function runComponent<TNode, TResult>(
 		const block = isPromiseLike(diff) ? diff.catch(NOOP) : undefined;
 		return [block, diff];
 	} else {
+		// TODO: consider making the default behavior the same as for...of loops
+		// async generator component
 		if (getFlag(ctx, IsInForOfLoop)) {
 			// Async generator component using for...of loops behave similar to sync
 			// generator components. This allows for easier refactoring of sync to
@@ -2433,11 +2428,15 @@ function runComponent<TNode, TResult>(
 			// initializes the async generator loop
 			pullComponent(ctx, iteration);
 			const block = resumePropsAsyncIterator(ctx);
-			return [block, ctx.pullDiff];
+			return [block, ctx.pull && ctx.pull.diff];
 		}
 	}
 }
 
+interface PullController {
+	iterationP: Promise<ChildrenIteratorResult> | undefined;
+	diff: Promise<undefined> | undefined;
+}
 /**
  * The logic for pulling from async generator components when they are not in a
  * for...of loop is implemented here. Because async generator components can
@@ -2458,15 +2457,17 @@ async function pullComponent<TNode, TResult>(
 		return;
 	}
 
+	ctx.pull = {iterationP: undefined, diff: undefined};
+
 	let done = false;
 	try {
 		while (!done) {
 			if (isPromiseLike(iterationP)) {
-				ctx.pullIteration = iterationP;
+				ctx.pull.iterationP = iterationP;
 			}
 
 			let resolve!: Function;
-			ctx.pullDiff = new Promise((resolve1) => (resolve = resolve1)).then(
+			ctx.pull.diff = new Promise((resolve1) => (resolve = resolve1)).then(
 				(): undefined => {
 					if (!(getFlag(ctx, IsUpdating) || getFlag(ctx, IsRefreshing))) {
 						commitComponent(ctx);
@@ -2592,7 +2593,7 @@ async function pullComponent<TNode, TResult>(
 			ctx.iterator = undefined;
 		}
 
-		ctx.pullDiff = undefined;
+		ctx.pull = undefined;
 	}
 }
 
@@ -2618,7 +2619,7 @@ function resumePropsAsyncIterator(
 		}
 	}
 
-	return ctx.pullIteration && ctx.pullIteration.then(NOOP, NOOP);
+	return ctx.pull && ctx.pull.iterationP && ctx.pull.iterationP.then(NOOP, NOOP);
 }
 
 async function unmountComponent(
@@ -2659,6 +2660,12 @@ async function unmountComponent(
 	}
 
 	unmountChildren(ctx.adapter, ctx.host, ctx, ctx.ret);
+	if (lingerers) {
+		// If there are lingerers, we must finalize the root because nodes have
+		// been removed asynchronously
+		ctx.adapter.finalize(ctx.root);
+	}
+
 	if (ctx.iterator) {
 		if (getFlag(ctx, IsSyncGen) || getFlag(ctx, IsInForOfLoop)) {
 			// we wait for the block so yields resume with the most up to date props
@@ -2725,12 +2732,6 @@ async function unmountComponent(
 			// We let pullComponent handle unmounting
 			resumePropsAsyncIterator(ctx);
 		}
-	}
-
-	if (lingerers) {
-		// If there are lingerers, we must finalize the root because nodes have
-		// been removed asynchronously
-		ctx.adapter.finalize(ctx.root);
 	}
 }
 
