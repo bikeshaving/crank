@@ -2062,6 +2062,7 @@ function diffComponent<TNode, TScope, TRoot extends TNode, TResult>(
 	if (ret.ctx) {
 		ctx = ret.ctx as ContextState<TNode, TScope, TRoot, TResult>;
 		if (getFlag(ctx, IsSyncExecuting)) {
+			// TODO: Identify the component which is already executing
 			console.error("Component is already executing");
 			return;
 		}
@@ -2080,6 +2081,7 @@ function diffComponentChildren<TNode, TResult>(
 	if (getFlag(ctx, IsUnmounted) || getFlag(ctx, IsErrored)) {
 		return;
 	} else if (children === undefined) {
+		// TODO: identify the component which returned or yielded undefined
 		console.error(
 			"A component has returned or yielded undefined. If this was intentional, return or yield null instead.",
 		);
@@ -2371,12 +2373,11 @@ function runComponent<TNode, TResult>(
 		return [block, diff];
 	} else {
 		// TODO: consider making the default behavior the same as for...of loops
-		// async generator component
-		if (getFlag(ctx, IsInForOfLoop)) {
-			// Async generator component using for...of loops behave similar to sync
-			// generator components. This allows for easier refactoring of sync to
-			// async generator components.
 
+		// Async generator component using for...of loops behave similar to sync
+		// generator components. This allows for easier refactoring of sync to
+		// async generator components.
+		if (getFlag(ctx, IsInForOfLoop)) {
 			// We call resumePropsAsyncIterator in case the component exits the
 			// for...of loop
 			resumePropsAsyncIterator(ctx);
@@ -2436,15 +2437,14 @@ function runComponent<TNode, TResult>(
 interface PullController {
 	iterationP: Promise<ChildrenIteratorResult> | undefined;
 	diff: Promise<undefined> | undefined;
+	onChildError?: (err: unknown) => void;
 }
+
 /**
  * The logic for pulling from async generator components when they are not in a
- * for...of loop is implemented here. Because async generator components can
- * have multiple values requested at the same time, it makes sense to group the
- * logic in a single loop to prevent opaque race conditions.
- *
- * @returns {Promise<undefined>} A promise which resolves when the component
- * has been unmounted
+ * for...of loop is implemented here. It makes sense to group the logic for
+ * continuously resuming components in a single loop to prevent opaque race
+ * conditions.
  */
 async function pullComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
@@ -2452,14 +2452,15 @@ async function pullComponent<TNode, TResult>(
 		| Promise<ChildrenIteratorResult>
 		| ChildrenIteratorResult
 		| undefined,
-): Promise<undefined> {
+): Promise<void> {
 	if (!iterationP) {
 		return;
 	}
 
-	ctx.pull = {iterationP: undefined, diff: undefined};
+	ctx.pull = {iterationP: undefined, diff: undefined, onChildError: undefined};
 
 	let done = false;
+	let childError: any;
 	try {
 		while (!done) {
 			if (isPromiseLike(iterationP)) {
@@ -2497,6 +2498,29 @@ async function pullComponent<TNode, TResult>(
 				break;
 			}
 
+			if (childError != null) {
+				if (typeof ctx.iterator!.throw !== "function") {
+					// we cannot throw the error, so we just set the error flag
+					setFlag(ctx, IsErrored);
+					setFlag(ctx, NeedsToYield, false);
+					resolve(Promise.reject(childError));
+					break;
+				}
+
+				try {
+					setFlag(ctx, IsSyncExecuting);
+					iteration = await ctx.iterator!.throw(childError);
+				} catch (err) {
+					done = true;
+					setFlag(ctx, IsErrored);
+					setFlag(ctx, NeedsToYield, false);
+					resolve(Promise.reject(err));
+				} finally {
+					childError = undefined;
+					setFlag(ctx, IsSyncExecuting, false);
+				}
+			}
+
 			// this makes sure we pause before entering a loop if we yield before it
 			if (!getFlag(ctx, IsInForAwaitOfLoop)) {
 				setFlag(ctx, PropsAvailable, false);
@@ -2505,14 +2529,15 @@ async function pullComponent<TNode, TResult>(
 			done = !!iteration.done;
 			let diff: Promise<undefined> | undefined;
 			try {
-				if (
+				if (!isPromiseLike(iterationP)) {
 					// if the component was in a for...of loop and has exited, iterationP
 					// will be an iteration and not a promise, so we can skip the diff of
 					// children as it is handled elsewhere.
-					!isPromiseLike(iterationP) ||
-					(!getFlag(ctx, NeedsToYield) &&
-						getFlag(ctx, PropsAvailable) &&
-						getFlag(ctx, IsInForAwaitOfLoop))
+					diff = undefined;
+				} else if (
+					!getFlag(ctx, NeedsToYield) &&
+					getFlag(ctx, PropsAvailable) &&
+					getFlag(ctx, IsInForAwaitOfLoop)
 				) {
 					// logic to skip yielded children in a stale for await of iteration.
 					diff = undefined;
@@ -2526,8 +2551,37 @@ async function pullComponent<TNode, TResult>(
 				setFlag(ctx, NeedsToYield, false);
 			}
 
-			// TODO: make sure oldResult rejects with child errors
-			const oldResult = new Promise((resolve) => ctx.ctx.schedule(resolve));
+			let floating = true;
+			const oldResult = new Promise<TResult>((resolve, reject) => {
+				ctx.ctx.schedule(resolve);
+				ctx.pull!.onChildError = (err1: any) => {
+					reject(err1);
+					if (floating) {
+						childError = err1;
+						resumePropsAsyncIterator(ctx);
+						return ctx.pull!.diff;
+					}
+				};
+			});
+
+			oldResult.catch(NOOP);
+			const oldResult1: typeof oldResult = Object.create(oldResult);
+			oldResult1.then = function (
+				onfulfilled?: ((value: TResult) => any) | null,
+				onrejected?: ((reason: any) => any) | null,
+			): Promise<any> {
+				floating = false;
+				return Promise.prototype.then.call(oldResult, onfulfilled, onrejected);
+			};
+
+			oldResult1.catch = function (
+				onrejected?: ((reason: any) => any) | null,
+			): Promise<any> {
+				floating = false;
+				return Promise.prototype.catch.call(oldResult, onrejected);
+			};
+
+			// TODO: move this outside the loop
 			if (getFlag(ctx, IsUnmounted)) {
 				while (
 					(!iteration || !iteration.done) &&
@@ -2536,10 +2590,12 @@ async function pullComponent<TNode, TResult>(
 				) {
 					try {
 						setFlag(ctx, IsSyncExecuting);
-						const iterationP = ctx.iterator.next(oldResult);
+						const iterationP = ctx.iterator.next(oldResult1);
 						iteration = await iterationP;
 					} catch (err) {
 						setFlag(ctx, IsErrored);
+						// we throw the error here to cause an unhandled rejection because
+						// the promise returned from pullComponent is never awaited
 						throw err;
 					} finally {
 						setFlag(ctx, IsSyncExecuting, false);
@@ -2571,6 +2627,8 @@ async function pullComponent<TNode, TResult>(
 					}
 				}
 
+				break;
+			} else if (getFlag(ctx, IsErrored)) {
 				break;
 			} else if (getFlag(ctx, IsInForOfLoop)) {
 				// we have entered a for...of loop, so updates will be handled by the
@@ -2861,7 +2919,16 @@ function handleChildError<TNode>(
 	ctx: ContextState<TNode, unknown, TNode>,
 	err: unknown,
 ): Promise<undefined> | undefined {
-	if (!ctx.iterator || typeof ctx.iterator.throw !== "function") {
+	if (!ctx.iterator) {
+		throw err;
+	}
+
+	if (ctx.pull && ctx.pull.onChildError) {
+		ctx.pull.onChildError(err);
+		return ctx.pull.diff;
+	}
+
+	if (!ctx.iterator.throw) {
 		throw err;
 	}
 
