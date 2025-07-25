@@ -2619,7 +2619,9 @@ function resumePropsAsyncIterator(
 		}
 	}
 
-	return ctx.pull && ctx.pull.iterationP && ctx.pull.iterationP.then(NOOP, NOOP);
+	return (
+		ctx.pull && ctx.pull.iterationP && ctx.pull.iterationP.then(NOOP, NOOP)
+	);
 }
 
 async function unmountComponent(

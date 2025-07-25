@@ -6,6 +6,9 @@ import {createElement, Child, Context} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 const test = suite("errors");
+test.before.each(() => {
+	document.body.innerHTML = "";
+});
 
 test.after.each(() => {
 	renderer.render(null, document.body);
@@ -38,12 +41,12 @@ test("async function throws", async () => {
 	}
 });
 
-test("sync generator throws", () => {
+test("sync gen throws", () => {
 	function* Thrower(this: Context) {
 		let i = 0;
 		for ({} of this) {
 			if (i >= 2) {
-				throw new Error("sync generator throws");
+				throw new Error("sync gen throws");
 			}
 
 			yield i++;
@@ -59,16 +62,16 @@ test("sync generator throws", () => {
 		renderer.render(<Thrower />, document.body);
 		Assert.unreachable();
 	} catch (err: any) {
-		Assert.is(err.message, "sync generator throws");
+		Assert.is(err.message, "sync gen throws");
 	}
 });
 
-test("async generator throws", async () => {
+test("async gen throws", async () => {
 	async function* Thrower(this: Context) {
 		let i = 0;
 		for await ({} of this) {
 			if (i >= 2) {
-				throw new Error("async generator throws");
+				throw new Error("async gen throws");
 			}
 
 			yield i++;
@@ -83,18 +86,18 @@ test("async generator throws", async () => {
 		await renderer.render(<Thrower />, document.body);
 		Assert.unreachable();
 	} catch (err: any) {
-		Assert.is(err.message, "async generator throws");
+		Assert.is(err.message, "async gen throws");
 	}
 });
 
-test("sync generator throws refresh call", () => {
+test("sync gen throws refresh call", () => {
 	let ctx!: Context;
 	function* Thrower(this: Context) {
 		ctx = this;
 		let i = 0;
 		for ({} of this) {
 			if (i >= 2) {
-				throw new Error("sync generator throws by refresh");
+				throw new Error("sync gen throws by refresh");
 			}
 
 			yield i++;
@@ -109,16 +112,16 @@ test("sync generator throws refresh call", () => {
 		ctx.refresh();
 		Assert.unreachable();
 	} catch (err: any) {
-		Assert.is(err.message, "sync generator throws by refresh");
+		Assert.is(err.message, "sync gen throws by refresh");
 	}
 });
 
-test("sync generator throws by parent refresh", () => {
+test("sync gen throws by parent refresh", () => {
 	function* Thrower(this: Context) {
 		let i = 0;
 		for ({} of this) {
 			if (i >= 2) {
-				throw new Error("sync generator throws by parent refresh");
+				throw new Error("sync gen throws by parent refresh");
 			}
 
 			yield i++;
@@ -145,18 +148,16 @@ test("sync generator throws by parent refresh", () => {
 		ctx.refresh();
 		Assert.unreachable();
 	} catch (err: any) {
-		Assert.is(err.message, "sync generator throws by parent refresh");
+		Assert.is(err.message, "sync gen throws by parent refresh");
 	}
 });
 
-test("async generator throws by parent sync generator refresh", async () => {
+test("async gen throws by parent sync gen refresh", async () => {
 	async function* Thrower(this: Context) {
 		let i = 0;
 		for await ({} of this) {
 			if (i >= 2) {
-				throw new Error(
-					"async generator throws by parent sync generator refresh",
-				);
+				throw new Error("async gen throws by parent sync gen refresh");
 			}
 
 			yield i++;
@@ -184,24 +185,47 @@ test("async generator throws by parent sync generator refresh", async () => {
 		await ctx.refresh();
 		Assert.unreachable();
 	} catch (err: any) {
-		Assert.is(
-			err.message,
-			"async generator throws by parent sync generator refresh",
-		);
+		Assert.is(err.message, "async gen throws by parent sync gen refresh");
 		mock();
 	}
 
 	Assert.is(mock.callCount, 1);
 });
 
-test("async generator throws by parent async generator refresh", async () => {
+test("for await of throws in for await of", async () => {
+	/* eslint-disable require-yield */
+	async function* Thrower(this: Context) {
+		for await ({} of this) {
+			throw new Error("for await of throws in for await of");
+		}
+	}
+
+	async function* Parent(this: Context) {
+		for await ({} of this) {
+			yield (
+				<div>
+					<Thrower />
+				</div>
+			);
+		}
+	}
+
+	try {
+		await renderer.render(<Parent />, document.body);
+		Assert.unreachable();
+	} catch (err: any) {
+		Assert.is(err.message, "for await of throws in for await of");
+	}
+
+	Assert.is(document.body.innerHTML, "");
+});
+
+test("async gen throws by parent async gen refresh", async () => {
 	async function* Thrower(this: Context) {
 		let i = 0;
 		for await ({} of this) {
 			if (i >= 2) {
-				throw new Error(
-					"async generator throws by parent async generator refresh",
-				);
+				throw new Error("async gen throws by parent async gen refresh");
 			}
 
 			yield i++;
@@ -229,23 +253,42 @@ test("async generator throws by parent async generator refresh", async () => {
 		await parentCtx.refresh();
 		Assert.unreachable();
 	} catch (err: any) {
-		Assert.is(
-			err.message,
-			"async generator throws by parent async generator refresh",
-		);
+		Assert.is(err.message, "async gen throws by parent async gen refresh");
 		mock();
 	}
 
 	Assert.is(mock.callCount, 1);
 });
 
-test("async generator throws independently", async () => {
+test("async gen returns after child throws", async () => {
+	async function Thrower(this: Context) {
+		throw new Error("async gen returns after child throws");
+	}
+
+	async function* Component(this: Context) {
+		try {
+			for await ({} of this) {
+				yield <Thrower />;
+			}
+		} catch (err: any) {
+			return <span>{err.message}</span>;
+		}
+	}
+
+	await renderer.render(<Component />, document.body);
+	Assert.is(
+		document.body.innerHTML,
+		"<span>async gen returns after child throws</span>",
+	);
+});
+
+test("async gen throws independently", async () => {
 	async function* Thrower(this: Context) {
 		yield 1;
 		yield 2;
 		yield 3;
 		await new Promise((resolve) => setTimeout(resolve));
-		throw new Error("async generator throws independently");
+		throw new Error("async gen throws independently");
 	}
 
 	let resolve: (err: Error) => void;
@@ -253,7 +296,7 @@ test("async generator throws independently", async () => {
 		resolve = resolve1;
 	});
 	const handler = (ev: PromiseRejectionEvent) => {
-		if (ev.reason.message === "async generator throws independently") {
+		if (ev.reason.message === "async gen throws independently") {
 			ev.preventDefault();
 			resolve(ev.reason);
 		}
@@ -264,16 +307,16 @@ test("async generator throws independently", async () => {
 		await renderer.render(<Thrower />, document.body);
 		await new Promise((resolve) => setTimeout(resolve, 100));
 		Assert.is(document.body.innerHTML, "3");
-		Assert.is((await err).message, "async generator throws independently");
+		Assert.is((await err).message, "async gen throws independently");
 	} finally {
 		window.removeEventListener("unhandledrejection", handler);
 	}
 });
 
-test("async generator rethrows after child error", async () => {
+test("async gen rethrows after child error", async () => {
 	const mock = Sinon.fake();
 	async function Thrower(this: Context) {
-		throw new Error("async generator rethrows after child error");
+		throw new Error("async gen rethrows after child error");
 	}
 
 	async function* Component(this: Context) {
@@ -283,7 +326,7 @@ test("async generator rethrows after child error", async () => {
 			}
 		} catch (err) {
 			mock();
-			throw new Error("async generator rethrows after child error 1");
+			throw new Error("async gen rethrows after child error 1");
 		}
 	}
 
@@ -291,19 +334,17 @@ test("async generator rethrows after child error", async () => {
 		await renderer.render(<Component />, document.body);
 		Assert.unreachable();
 	} catch (err: any) {
-		Assert.is(err.message, "async generator rethrows after child error 1");
+		Assert.is(err.message, "async gen rethrows after child error 1");
 	}
 
 	Assert.is(mock.callCount, 1);
 });
 
-test("async generator rethrows after child error in async generator", async () => {
+test("async gen rethrows after child error in async gen", async () => {
 	const mock = Sinon.fake();
 	/* eslint-disable require-yield */
 	async function* Thrower() {
-		throw new Error(
-			"async generator rethrows after child error in async generator",
-		);
+		throw new Error("async gen rethrows after child error in async gen");
 	}
 	/* eslint-enable require-yield */
 
@@ -314,9 +355,7 @@ test("async generator rethrows after child error in async generator", async () =
 			}
 		} catch (err) {
 			mock();
-			throw new Error(
-				"async generator rethrows after child error in async generator 1",
-			);
+			throw new Error("async gen rethrows after child error in async gen 1");
 		}
 	}
 
@@ -326,19 +365,19 @@ test("async generator rethrows after child error in async generator", async () =
 	} catch (err: any) {
 		Assert.is(
 			err.message,
-			"async generator rethrows after child error in async generator 1",
+			"async gen rethrows after child error in async gen 1",
 		);
 	}
 
 	Assert.is(mock.callCount, 1);
 });
 
-test("async generator throws in async generator after yield", async () => {
+test("async gen throws in async gen after yield", async () => {
 	const mock = Sinon.fake();
 	async function* Thrower(this: Context) {
 		yield 1;
 		for await ({} of this) {
-			throw new Error("async generator throws in async generator after yield");
+			throw new Error("async gen throws in async gen after yield");
 		}
 	}
 
@@ -359,19 +398,16 @@ test("async generator throws in async generator after yield", async () => {
 		await renderer.render(<Component />, document.body);
 		Assert.unreachable();
 	} catch (err: any) {
-		Assert.is(
-			err.message,
-			"async generator throws in async generator after yield",
-		);
+		Assert.is(err.message, "async gen throws in async gen after yield");
 		mock();
 	}
 
 	Assert.is(mock.callCount, 2);
 });
 
-test("sync function throws, sync generator catches", () => {
+test("sync function throws, sync gen catches", () => {
 	function Thrower(): never {
-		throw new Error("sync function throws, sync generator catches");
+		throw new Error("sync function throws, sync gen catches");
 	}
 
 	function* Component(): Generator<Child> {
@@ -407,9 +443,9 @@ test("nested sync functions", () => {
 	Assert.is(document.body.innerHTML, "<span>Error</span>");
 });
 
-test("async function throws, sync generator catches", async () => {
+test("async function throws, sync gen catches", async () => {
 	async function Thrower(): Promise<never> {
-		throw new Error("async function throws, sync generator catches");
+		throw new Error("async function throws, sync gen catches");
 	}
 
 	function* Component(): Generator<Child> {
@@ -503,13 +539,13 @@ test("async gen causes unhandled rejection", async () => {
 	Assert.is(err.message, "async gen causes unhandled rejection");
 });
 
-test("nested generator function throws with refresh can be caught by parent", () => {
+test("nested gen function throws with refresh can be caught by parent", () => {
 	let throwerCtx!: Context;
 	function* Thrower(this: Context): Generator<Child> {
 		throwerCtx = this;
 		yield <div>Hello</div>;
 		throw new Error(
-			"nested generator function throws with refresh can be caught by parent",
+			"nested gen function throws with refresh can be caught by parent",
 		);
 	}
 
@@ -534,14 +570,14 @@ test("nested generator function throws with refresh can be caught by parent", ()
 	Assert.is(document.body.innerHTML, "<span>Error</span>");
 });
 
-test("nested async generator function throws with refresh can be caught by parent", async () => {
+test("nested async gen function throws with refresh can be caught by parent", async () => {
 	let throwerCtx!: Context;
 	async function* Thrower(this: Context): AsyncGenerator<Child> {
 		throwerCtx = this;
 		yield <div>Hello</div>;
 		for await ({} of this) {
 			throw new Error(
-				"nested generator function throws with refresh can be caught by parent",
+				"nested async gen function throws with refresh can be caught by parent",
 			);
 		}
 	}
@@ -567,19 +603,18 @@ test("nested async generator function throws with refresh can be caught by paren
 	Assert.is(document.body.innerHTML, "<span>Error</span>");
 });
 
-test("nested async generator function throws independently", async () => {
+test("nested async gen function throws independently", async () => {
 	async function* Thrower(this: Context): AsyncGenerator<Child> {
 		for await ({} of this) {
 			yield <div>Hello</div>;
-			throw new Error("nested async generator function throws independently");
+			throw new Error("nested async gen function throws independently");
 		}
 	}
 
 	const mock = Sinon.fake();
 	const onUnhandledRejection = (ev: PromiseRejectionEvent) => {
 		if (
-			ev.reason.message ===
-			"nested async generator function throws independently"
+			ev.reason.message === "nested async gen function throws independently"
 		) {
 			ev.preventDefault();
 			mock();
@@ -597,12 +632,12 @@ test("nested async generator function throws independently", async () => {
 	}
 });
 
-test("nested async generator throws independently can be caught by parent", async () => {
+test("nested async gen throws independently can be caught by parent", async () => {
 	async function* Thrower(this: Context): AsyncGenerator<Child> {
 		for await ({} of this) {
 			yield <div>Hello</div>;
 			throw new Error(
-				"nested async generator throws independently can be caught by parent",
+				"nested async gen throws independently can be caught by parent",
 			);
 		}
 	}
