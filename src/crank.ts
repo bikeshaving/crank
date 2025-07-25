@@ -1129,6 +1129,11 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 					value: oldValue,
 				});
 				child.value = value;
+				if (!getFlag(child, HasCommitted)) {
+					if (typeof el.ref === "function") {
+						el.ref(adapter.read(value));
+					}
+				}
 			} else if (el.tag === Fragment) {
 				value = commitChildren(
 					adapter,
