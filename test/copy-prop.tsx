@@ -145,7 +145,7 @@ test("inflight", async () => {
 
 test("generator component", async () => {
 	let ctx!: Context;
-	function* Greeting(this: Context, {name}: any) {
+	function* Greeting(this: Context, {name}: {name: string}) {
 		ctx = this;
 		let i = 0;
 		for ({name} of this) {

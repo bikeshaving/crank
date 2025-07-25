@@ -84,60 +84,6 @@ function getFlag(obj: {f: number}, flag: number): boolean {
 	return !!(obj.f & flag);
 }
 
-/*** SPECIAL TAGS ***/
-/**
- * A special tag for grouping multiple children within the same parent.
- *
- * All non-string iterables which appear in the element tree are implicitly
- * wrapped in a fragment element.
- *
- * This tag is just the empty string, and you can use the empty string in
- * createElement calls or transpiler options directly to avoid having to
- * reference this export.
- */
-export const Fragment = "";
-export type Fragment = typeof Fragment;
-
-// TODO: We assert the following symbol tags as any because TypeScript support
-// for symbol tags in JSX doesn’t exist yet.
-// https://github.com/microsoft/TypeScript/issues/38367
-
-/**
- * A special tag for rendering into a new root node via a root prop.
- *
- * This tag is useful for creating element trees with multiple roots, for
- * things like modals or tooltips.
- *
- * Renderer.prototype.render() implicitly wraps top-level in a Portal element
- * with the root set to the second argument passed in.
- */
-export const Portal = Symbol.for("crank.Portal") as any;
-export type Portal = typeof Portal;
-
-/**
- * A special tag which preserves whatever was previously rendered in the
- * element’s position.
- *
- * Copy elements are useful for when you want to prevent a subtree from
- * rerendering as a performance optimization. Copy elements can also be keyed,
- * in which case the previously rendered keyed element will be copied.
- */
-export const Copy = Symbol.for("crank.Copy") as any;
-export type Copy = typeof Copy;
-
-/**
- * A special tag for rendering text nodes.
- *
- * Strings in the element tree are implicitly wrapped in a Text element with
- * value set to the string.
- */
-export const Text = Symbol.for("crank.Text") as any;
-export type Text = typeof Text;
-
-/** A special tag for injecting raw nodes or strings via a value prop. */
-export const Raw = Symbol.for("crank.Raw") as any;
-export type Raw = typeof Raw;
-
 /**
  * Describes all valid values of an element tree, excluding iterables.
  *
@@ -185,13 +131,76 @@ export type Component<TProps extends Record<string, unknown> = any> = (
 	| Iterator<Children, Children | void, any>
 	| AsyncIterator<Children, Children | void, any>;
 
-type ChildrenIteratorResult = IteratorResult<Children, Children | void>;
+/*** SPECIAL TAGS ***/
+/**
+ * A special tag for grouping multiple children within the same parent.
+ *
+ * All non-string iterables which appear in the element tree are implicitly
+ * wrapped in a fragment element.
+ *
+ * This tag is just the empty string, and you can use the empty string in
+ * createElement calls or transpiler options directly to avoid having to
+ * reference this export.
+ */
+export const Fragment = "";
+export type Fragment = typeof Fragment;
+
+// TODO: We assert the following symbol tags as Components because TypeScript
+// support for symbol tags in JSX doesn’t exist yet.
+// https://github.com/microsoft/TypeScript/issues/38367
+
+/**
+ * A special tag for rendering into a new root node via a root prop.
+ *
+ * This tag is useful for creating element trees with multiple roots, for
+ * things like modals or tooltips.
+ *
+ * Renderer.prototype.render() implicitly wraps top-level in a Portal element
+ * with the root set to the second argument passed in.
+ */
+export const Portal = Symbol.for("crank.Portal") as unknown as Component<{
+	root?: object;
+}> &
+	symbol;
+export type Portal = typeof Portal;
+
+/**
+ * A special tag which preserves whatever was previously rendered in the
+ * element’s position.
+ *
+ * Copy elements are useful for when you want to prevent a subtree from
+ * rerendering as a performance optimization. Copy elements can also be keyed,
+ * in which case the previously rendered keyed element will be copied.
+ */
+export const Copy = Symbol.for("crank.Copy") as unknown as Component<{}> &
+	symbol;
+export type Copy = typeof Copy;
+
+/**
+ * A special tag for rendering text nodes.
+ *
+ * Strings in the element tree are implicitly wrapped in a Text element with
+ * value set to the string.
+ */
+export const Text = Symbol.for("crank.Text") as unknown as Component<{
+	value: string;
+}>;
+export type Text = typeof Text;
+
+/** A special tag for injecting raw nodes or strings via a value prop. */
+export const Raw = Symbol.for("crank.Raw") as unknown as Component<{
+	value: string | object;
+}> &
+	symbol;
+export type Raw = typeof Raw;
 
 /**
  * A type to keep track of keys. Any value can be a key, though null and
  * undefined are ignored.
  */
 type Key = unknown;
+
+type ChildrenIteratorResult = IteratorResult<Children, Children | void>;
 
 const ElementSymbol = Symbol.for("crank.Element");
 
