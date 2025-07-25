@@ -284,11 +284,13 @@ test("async gen returns after child throws", async () => {
 
 test("async gen throws independently", async () => {
 	async function* Thrower(this: Context) {
-		yield 1;
-		yield 2;
-		yield 3;
-		await new Promise((resolve) => setTimeout(resolve));
-		throw new Error("async gen throws independently");
+		for await ({} of this) {
+			yield 1;
+			yield 2;
+			yield 3;
+			await new Promise((resolve) => setTimeout(resolve));
+			throw new Error("async gen throws independently");
+		}
 	}
 
 	let resolve: (err: Error) => void;

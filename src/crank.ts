@@ -2390,12 +2390,7 @@ function runComponent<TNode, TResult>(
 		const block = isPromiseLike(diff) ? diff.catch(NOOP) : undefined;
 		return [block, diff];
 	} else {
-		// TODO: consider making the default behavior the same as for...of loops
-
-		// Async generator component using for...of loops behave similar to sync
-		// generator components. This allows for easier refactoring of sync to
-		// async generator components.
-		if (getFlag(ctx, IsInForOfLoop)) {
+		if (!getFlag(ctx, IsInForAwaitOfLoop)) {
 			// We call resumePropsAsyncIterator in case the component exits the
 			// for...of loop
 			resumePropsAsyncIterator(ctx);
@@ -2418,11 +2413,11 @@ function runComponent<TNode, TResult>(
 
 			const diff = iteration.then(
 				(iteration) => {
-					if (!getFlag(ctx, IsInForOfLoop)) {
-						// We have exited the for...of loop, so we start pulling
+					if (getFlag(ctx, IsInForAwaitOfLoop)) {
+						// We have entered a for await...of loop, so we start pulling
 						pullComponent(ctx, iteration);
 					} else {
-						if (!getFlag(ctx, NeedsToYield) && !getFlag(ctx, IsUnmounted)) {
+						if (getFlag(ctx, IsInForOfLoop) && !getFlag(ctx, NeedsToYield) && !getFlag(ctx, IsUnmounted)) {
 							console.error(
 								"Component yielded more than once in for...of loop",
 							);
@@ -2430,6 +2425,10 @@ function runComponent<TNode, TResult>(
 					}
 
 					setFlag(ctx, NeedsToYield, false);
+					if (iteration.done) {
+						setFlag(ctx, IsSyncGen, false);
+						ctx.iterator = undefined;
+					}
 					return diffComponentChildren<TNode, TResult>(
 						ctx,
 						// Children can be void so we eliminate that here
@@ -2645,7 +2644,7 @@ async function pullComponent<TNode, TResult>(
 				}
 
 				break;
-			} else if (getFlag(ctx, IsInForOfLoop)) {
+			} else if (!getFlag(ctx, IsInForAwaitOfLoop)) {
 				// we have entered a for...of loop, so updates will be handled by the
 				// regular runComponent/enqueueComponent logic.
 				break;

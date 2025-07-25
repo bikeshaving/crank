@@ -54,8 +54,8 @@ test("sync generator calls refresh directly", () => {
 
 test("async generator calls refresh directly", async () => {
 	async function* Component(this: Context) {
-		yield <span>Hello</span>;
 		this.refresh();
+		yield <span>Hello</span>;
 		for await (const _ of this) {
 			yield <span>Hello again</span>;
 		}

@@ -19,36 +19,17 @@ test.after.each(() => {
 });
 
 test("basic", async () => {
-	async function* Component(
-		this: Context,
-		{message}: {message: string},
-	): AsyncGenerator<Element> {
-		for await ({message} of this) {
-			yield <span>{message}</span>;
-		}
-	}
-
-	await renderer.render(<Component message="Hello" />, document.body);
-	Assert.is(document.body.innerHTML, "<span>Hello</span>");
-	await new Promise((resolve) => setTimeout(resolve));
-	Assert.is(document.body.innerHTML, "<span>Hello</span>");
-	await renderer.render(<Component message="Hello again" />, document.body);
-	Assert.is(document.body.innerHTML, "<span>Hello again</span>");
-});
-
-test("basic nested", async () => {
 	const Component = Sinon.fake(async function* Component(
 		this: Context,
 		{message}: {message: string},
 	): AsyncGenerator<Element> {
 		let i = 0;
-		for await ({message} of this) {
-			if (i >= 2) {
+		for ({message} of this) {
+			if (++i > 2) {
 				return <span>Final</span>;
 			}
 
 			yield <span>{message}</span>;
-			i++;
 		}
 	});
 
@@ -59,16 +40,12 @@ test("basic nested", async () => {
 		document.body,
 	);
 	Assert.is(document.body.innerHTML, "<div><span>Hello 1</span></div>");
-	await new Promise((resolve) => setTimeout(resolve));
-	Assert.is(document.body.innerHTML, "<div><span>Hello 1</span></div>");
 	await renderer.render(
 		<div>
 			<Component message="Hello 2" />
 		</div>,
 		document.body,
 	);
-	Assert.is(document.body.innerHTML, "<div><span>Hello 2</span></div>");
-	await new Promise((resolve) => setTimeout(resolve));
 	Assert.is(document.body.innerHTML, "<div><span>Hello 2</span></div>");
 	await renderer.render(
 		<div>
@@ -77,132 +54,100 @@ test("basic nested", async () => {
 		document.body,
 	);
 	Assert.is(document.body.innerHTML, "<div><span>Final</span></div>");
-	await new Promise((resolve) => setTimeout(resolve));
-	Assert.is(document.body.innerHTML, "<div><span>Final</span></div>");
 	Assert.is(Component.callCount, 1);
 });
 
-test("multiple yields per update", async () => {
-	let resolve: undefined | Function;
-	async function* Component(
-		this: Context,
-		{message}: {message: string},
-	): AsyncGenerator<Element> {
-		for await ({message} of this) {
-			yield <span>Loading</span>;
-			await new Promise((resolve1) => (resolve = resolve1));
-			yield <span>{message}</span>;
+test("refresh", async () => {
+	let ctx!: Context;
+	async function* Component(this: Context): AsyncGenerator<Element> {
+		ctx = this;
+		let i = 1;
+		while (true) {
+			yield <span>Hello {i++}</span>;
 		}
 	}
 
 	await renderer.render(
 		<div>
-			<Component message="Hello" />
+			<Component />
 		</div>,
 		document.body,
 	);
-	Assert.is(document.body.innerHTML, "<div><span>Loading</span></div>");
-	await new Promise((resolve) => setTimeout(resolve));
-	resolve!();
-	resolve = undefined;
-	await new Promise((resolve) => setTimeout(resolve));
-	Assert.is(document.body.innerHTML, "<div><span>Hello</span></div>");
-	await renderer.render(
-		<div>
-			<Component message="Goodbye" />
-		</div>,
-		document.body,
-	);
-	Assert.is(document.body.innerHTML, "<div><span>Loading</span></div>");
-	await new Promise((resolve) => setTimeout(resolve));
-	resolve!();
-	resolve = undefined;
-	await new Promise((resolve) => setTimeout(resolve));
-	Assert.is(document.body.innerHTML, "<div><span>Goodbye</span></div>");
+
+	Assert.is(document.body.innerHTML, "<div><span>Hello 1</span></div>");
+	await ctx.refresh();
+	Assert.is(document.body.innerHTML, "<div><span>Hello 2</span></div>");
+	await ctx.refresh();
+	await ctx.refresh();
+	Assert.is(document.body.innerHTML, "<div><span>Hello 4</span></div>");
 });
 
-test("multiple yields sync", async () => {
-	async function* Component(
-		this: Context,
-		{message}: {message: string},
-	): AsyncGenerator<Element> {
-		for await ({message} of this) {
-			yield <span>Loading</span>;
-			yield <span>{message}</span>;
-		}
+test("refreshing doesn’t cause siblings to update", async () => {
+	const mock = Sinon.fake();
+	function Sibling(): Element {
+		mock();
+		return <div>Sibling</div>;
 	}
 
-	const p = renderer.render(
-		<div>
-			<Component message="Hello" />
-		</div>,
-		document.body,
-	);
-	Assert.is(document.body.innerHTML, "");
-	await p;
-	Assert.is(document.body.innerHTML, "<div><span>Hello</span></div>");
-	await new Promise((resolve) => setTimeout(resolve, 100));
-	Assert.is(document.body.innerHTML, "<div><span>Hello</span></div>");
-	await renderer.render(
-		<div>
-			<Component message="Hello" />
-		</div>,
-		document.body,
-	);
-	Assert.is(document.body.innerHTML, "<div><span>Hello</span></div>");
-});
-
-test("multiple yields in a row", async () => {
-	async function* Component(
-		this: Context,
-		{message}: {message: string},
-	): AsyncGenerator<Element> {
-		for await ({message} of this) {
-			yield <span>{message} 1</span>;
-			yield <span>{message} 2</span>;
-			yield <span>{message} 3</span>;
+	let ctx!: Context;
+	async function* Component(this: Context): AsyncGenerator<Element> {
+		ctx = this;
+		let i = 0;
+		while (true) {
+			i++;
+			yield <div>Hello {i}</div>;
 		}
 	}
-
-	const result = (await renderer.render(
-		<div>
-			<Component message="Hello" />
-		</div>,
-		document.body,
-	)) as HTMLElement;
-
-	Assert.is(result.outerHTML, "<div><span>Hello 3</span></div>");
-	Assert.is(document.body.innerHTML, "<div><span>Hello 3</span></div>");
-
-	await Promise.resolve();
-	Assert.is(document.body.innerHTML, "<div><span>Hello 3</span></div>");
-});
-
-test("Fragment parent", async () => {
-	let resolve!: Function;
-	async function* Component(this: Context) {
-		for await (const _ of this) {
-			yield 1;
-			await new Promise((resolve1) => (resolve = resolve1));
-			yield 2;
-		}
-	}
-
 	await renderer.render(
 		<Fragment>
 			<Component />
+			<Sibling />
 		</Fragment>,
 		document.body,
 	);
+	Assert.is(document.body.innerHTML, "<div>Hello 1</div><div>Sibling</div>");
+	Assert.is(mock.callCount, 1);
+	await ctx.refresh();
+	Assert.is(document.body.innerHTML, "<div>Hello 2</div><div>Sibling</div>");
+	Assert.is(mock.callCount, 1);
+	await ctx.refresh();
+	await ctx.refresh();
+	await ctx.refresh();
+	await ctx.refresh();
+	await ctx.refresh();
+	Assert.is(document.body.innerHTML, "<div>Hello 7</div><div>Sibling</div>");
+	Assert.is(mock.callCount, 1);
+	await renderer.render(
+		<Fragment>
+			<Component />
+			<Sibling />
+		</Fragment>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div>Hello 8</div><div>Sibling</div>");
+	Assert.is(mock.callCount, 2);
+});
 
-	Assert.is(document.body.innerHTML, "1");
-	await new Promise((resolve) => setTimeout(resolve, 100));
-	Assert.is(document.body.innerHTML, "1");
-	resolve();
-	await new Promise((resolve) => setTimeout(resolve, 100));
-	Assert.is(document.body.innerHTML, "2");
-	await new Promise((resolve) => setTimeout(resolve, 100));
-	Assert.is(document.body.innerHTML, "2");
+
+test("while (true) loop", async () => {
+  async function* Timer(this: Context): AsyncGenerator<Element> {
+    let i = 0;
+    while (true) {
+      yield <span>{i++}</span>;
+    }
+  }
+
+  await renderer.render(<Timer />, document.body);
+  Assert.is(document.body.innerHTML, "<span>0</span>");
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  // Should still be paused at first yield!
+  Assert.is(document.body.innerHTML, "<span>0</span>");
+  await renderer.render(<Timer />, document.body);
+  Assert.is(document.body.innerHTML, "<span>1</span>");
+  await renderer.render(<Timer />, document.body);
+  Assert.is(document.body.innerHTML, "<span>2</span>");
+	await new Promise((resolve) => setTimeout(resolve, 50));
+	Assert.is(document.body.innerHTML, "<span>2</span>");
 });
 
 test("for...of yield resumes with elements", async () => {
@@ -248,6 +193,163 @@ test("for...of yield resumes with elements with async children", async () => {
 	Assert.is(node!.outerHTML, '<div id="2">2</div>');
 	Assert.is(document.body.innerHTML, '<div id="2">2</div>');
 });
+
+test("for await...of", async () => {
+	async function* Component(
+		this: Context,
+		{message}: {message: string},
+	): AsyncGenerator<Element> {
+		for await ({message} of this) {
+			yield <span>{message}</span>;
+		}
+	}
+
+	await renderer.render(<Component message="Hello" />, document.body);
+	Assert.is(document.body.innerHTML, "<span>Hello</span>");
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<span>Hello</span>");
+	await renderer.render(<Component message="Hello again" />, document.body);
+	Assert.is(document.body.innerHTML, "<span>Hello again</span>");
+});
+
+test("for await...of nested", async () => {
+	const Component = Sinon.fake(async function* Component(
+		this: Context,
+		{message}: {message: string},
+	): AsyncGenerator<Element> {
+		let i = 0;
+		for await ({message} of this) {
+			if (i >= 2) {
+				return <span>Final</span>;
+			}
+
+			yield <span>{message}</span>;
+			i++;
+		}
+	});
+
+	await renderer.render(
+		<div>
+			<Component message="Hello 1" />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>Hello 1</span></div>");
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div><span>Hello 1</span></div>");
+	await renderer.render(
+		<div>
+			<Component message="Hello 2" />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>Hello 2</span></div>");
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div><span>Hello 2</span></div>");
+	await renderer.render(
+		<div>
+			<Component message="Hello 3" />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>Final</span></div>");
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div><span>Final</span></div>");
+	Assert.is(Component.callCount, 1);
+});
+
+test("for await...of multiple yields per update", async () => {
+	let resolve: undefined | Function;
+	async function* Component(
+		this: Context,
+		{message}: {message: string},
+	): AsyncGenerator<Element> {
+		for await ({message} of this) {
+			yield <span>Loading</span>;
+			await new Promise((resolve1) => (resolve = resolve1));
+			yield <span>{message}</span>;
+		}
+	}
+
+	await renderer.render(
+		<div>
+			<Component message="Hello" />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>Loading</span></div>");
+	await new Promise((resolve) => setTimeout(resolve));
+	resolve!();
+	resolve = undefined;
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div><span>Hello</span></div>");
+	await renderer.render(
+		<div>
+			<Component message="Goodbye" />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>Loading</span></div>");
+	await new Promise((resolve) => setTimeout(resolve));
+	resolve!();
+	resolve = undefined;
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div><span>Goodbye</span></div>");
+});
+
+test("for await...of multiple yields per update sync", async () => {
+	async function* Component(
+		this: Context,
+		{message}: {message: string},
+	): AsyncGenerator<Element> {
+		for await ({message} of this) {
+			yield <span>{message} 1</span>;
+			yield <span>{message} 2</span>;
+			yield <span>{message} 3</span>;
+		}
+	}
+
+	const result = (await renderer.render(
+		<div>
+			<Component message="Hello" />
+		</div>,
+		document.body,
+	)) as HTMLElement;
+
+	Assert.is(result.outerHTML, "<div><span>Hello 3</span></div>");
+	Assert.is(document.body.innerHTML, "<div><span>Hello 3</span></div>");
+
+	await Promise.resolve();
+	Assert.is(document.body.innerHTML, "<div><span>Hello 3</span></div>");
+});
+
+test("for await...of with Fragment parent", async () => {
+	let resolve!: Function;
+	async function* Component(this: Context) {
+		for await (const _ of this) {
+			yield 1;
+			await new Promise((resolve1) => (resolve = resolve1));
+			yield 2;
+		}
+	}
+
+	await renderer.render(
+		<Fragment>
+			<Component />
+		</Fragment>,
+		document.body,
+	);
+
+	Assert.is(document.body.innerHTML, "1");
+	await new Promise((resolve) => setTimeout(resolve, 10));
+	Assert.is(document.body.innerHTML, "1");
+	resolve();
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	Assert.is(document.body.innerHTML, "2");
+	await new Promise((resolve) => setTimeout(resolve, 10));
+	Assert.is(document.body.innerHTML, "2");
+});
+
 test("for await...of yield resumes with a promise of an element", async () => {
 	let nodeP: Promise<HTMLElement> | undefined;
 	async function* Component(this: Context) {
@@ -272,7 +374,7 @@ test("for await...of yield resumes with a promise of an element", async () => {
 	Assert.is(document.body.innerHTML, '<div id="2">2</div>');
 });
 
-test("yield resumes async children", async () => {
+test("for await...of yield resumes async children", async () => {
 	const t = Date.now();
 	const Async = Sinon.fake(async function Async({
 		id,
