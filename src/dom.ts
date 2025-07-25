@@ -50,7 +50,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 			: document.createElement(tag);
 	},
 
-	reconcile({
+	adopt({
 		node,
 		tag,
 	}: {

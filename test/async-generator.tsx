@@ -128,24 +128,23 @@ test("refreshing doesn’t cause siblings to update", async () => {
 	Assert.is(mock.callCount, 2);
 });
 
-
 test("while (true) loop", async () => {
-  async function* Timer(this: Context): AsyncGenerator<Element> {
-    let i = 0;
-    while (true) {
-      yield <span>{i++}</span>;
-    }
-  }
+	async function* Timer(this: Context): AsyncGenerator<Element> {
+		let i = 0;
+		while (true) {
+			yield <span>{i++}</span>;
+		}
+	}
 
-  await renderer.render(<Timer />, document.body);
-  Assert.is(document.body.innerHTML, "<span>0</span>");
-  await new Promise((resolve) => setTimeout(resolve, 50));
-  // Should still be paused at first yield!
-  Assert.is(document.body.innerHTML, "<span>0</span>");
-  await renderer.render(<Timer />, document.body);
-  Assert.is(document.body.innerHTML, "<span>1</span>");
-  await renderer.render(<Timer />, document.body);
-  Assert.is(document.body.innerHTML, "<span>2</span>");
+	await renderer.render(<Timer />, document.body);
+	Assert.is(document.body.innerHTML, "<span>0</span>");
+	await new Promise((resolve) => setTimeout(resolve, 50));
+	// Should still be paused at first yield!
+	Assert.is(document.body.innerHTML, "<span>0</span>");
+	await renderer.render(<Timer />, document.body);
+	Assert.is(document.body.innerHTML, "<span>1</span>");
+	await renderer.render(<Timer />, document.body);
+	Assert.is(document.body.innerHTML, "<span>2</span>");
 	await new Promise((resolve) => setTimeout(resolve, 50));
 	Assert.is(document.body.innerHTML, "<span>2</span>");
 });

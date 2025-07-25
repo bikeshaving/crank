@@ -573,7 +573,7 @@ export interface RenderAdapter<
 
 	finalize(root: TRoot): void;
 
-	reconcile<TTag extends string | symbol>(data: {
+	adopt<TTag extends string | symbol>(data: {
 		tag: TTag;
 		node: TNode;
 		props: TagProps<TTag>;
@@ -593,8 +593,8 @@ const defaultAdapter: RenderAdapter<any, any, any, any> = {
 	arrange: NOOP,
 	remove: NOOP,
 	finalize: NOOP,
-	reconcile() {
-		throw new Error("adapter must implement reconcile for hydration");
+	adopt() {
+		throw new Error("adapter must implement adopt() for hydration");
 	},
 };
 
@@ -727,7 +727,7 @@ export class Renderer<
 			return diff.then(() => {
 				// Get hydration data for the portal/root element
 				// This provides the initial DOM children that need to be hydrated
-				const hydration = adapter.reconcile({
+				const hydration = adapter.adopt({
 					node: root,
 					tag: Portal,
 					props: ret.el.props,
@@ -745,7 +745,7 @@ export class Renderer<
 			});
 		}
 
-		const hydration = adapter.reconcile({
+		const hydration = adapter.adopt({
 			node: root,
 			tag: Portal,
 			props: ret.el.props,
@@ -1236,7 +1236,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	if (!value && hydration && hydration.length > 0) {
 		const nextChild = hydration.shift();
 		if (nextChild) {
-			childHydration = adapter.reconcile({
+			childHydration = adapter.adopt({
 				node: nextChild,
 				tag,
 				props,
@@ -2419,7 +2419,11 @@ function runComponent<TNode, TResult>(
 						// We have entered a for await...of loop, so we start pulling
 						pullComponent(ctx, iteration);
 					} else {
-						if (getFlag(ctx, IsInForOfLoop) && !getFlag(ctx, NeedsToYield) && !getFlag(ctx, IsUnmounted)) {
+						if (
+							getFlag(ctx, IsInForOfLoop) &&
+							!getFlag(ctx, NeedsToYield) &&
+							!getFlag(ctx, IsUnmounted)
+						) {
 							console.error(
 								"Component yielded more than once in for...of loop",
 							);
