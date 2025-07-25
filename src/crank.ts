@@ -276,6 +276,14 @@ export function isElement(value: any): value is Element {
 	return value != null && value.$$typeof === ElementSymbol;
 }
 
+function displayName(el: Element): string {
+	return typeof el.tag === "function"
+		? el.tag.name || "Anonymous"
+		: typeof el.tag === "string"
+			? el.tag
+			: el.tag.description || "AnonymousSymbol";
+}
+
 const SPECIAL_PROPS = new Set(["children", "key", "ref", "copy"]);
 
 /**
@@ -792,7 +800,10 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			let oldKey = typeof ret === "object" ? ret.el.key : undefined;
 			let newKey = typeof child === "object" ? child.key : undefined;
 			if (newKey !== undefined && seenKeys && seenKeys.has(newKey)) {
-				console.error("Duplicate key", newKey);
+				console.error(
+					`Duplicate key found in <${displayName(parent.el)}>`,
+					newKey,
+				);
 				child = cloneElement(child as Element);
 				newKey = child.props.key = undefined;
 			}
@@ -1705,10 +1716,12 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	refresh(): Promise<TResult> | TResult {
 		const ctx = this[_ContextState];
 		if (getFlag(ctx, IsUnmounted)) {
-			console.error("Component is unmounted");
+			console.error(`Component <${displayName(ctx.ret.el)}> is unmounted`);
 			return ctx.adapter.read(undefined);
 		} else if (getFlag(ctx, IsSyncExecuting)) {
-			console.error("Component is already executing");
+			console.error(
+				`Component <${displayName(ctx.ret.el)}> is already executing`,
+			);
 			return ctx.adapter.read(getValue(ctx.ret));
 		}
 
@@ -2081,8 +2094,9 @@ function diffComponent<TNode, TScope, TRoot extends TNode, TResult>(
 	if (ret.ctx) {
 		ctx = ret.ctx as ContextState<TNode, TScope, TRoot, TResult>;
 		if (getFlag(ctx, IsSyncExecuting)) {
-			// TODO: Identify the component which is already executing
-			console.error("Component is already executing");
+			console.error(
+				`Component <${displayName(ctx.ret.el)}> is already executing`,
+			);
 			return;
 		}
 	} else {
@@ -2096,13 +2110,13 @@ function diffComponent<TNode, TScope, TRoot extends TNode, TResult>(
 function diffComponentChildren<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
 	children: Children,
+	isYield: boolean,
 ): Promise<undefined> | undefined {
 	if (getFlag(ctx, IsUnmounted) || getFlag(ctx, IsErrored)) {
 		return;
 	} else if (children === undefined) {
-		// TODO: identify the component which returned or yielded undefined
 		console.error(
-			"A component has returned or yielded undefined. If this was intentional, return or yield null instead.",
+			`Component <${displayName(ctx.ret.el)}> has ${isYield ? "yielded" : "returned"} undefined. If this was intentional, ${isYield ? "yield" : "return"} null instead.`,
 		);
 	}
 
@@ -2315,7 +2329,10 @@ function runComponent<TNode, TResult>(
 			ctx.iterator = returned;
 		} else if (!isPromiseLike(returned)) {
 			// sync function component
-			return [undefined, diffComponentChildren<TNode, TResult>(ctx, returned)];
+			return [
+				undefined,
+				diffComponentChildren<TNode, TResult>(ctx, returned, false),
+			];
 		} else {
 			// async function component
 			const returned1 =
@@ -2323,7 +2340,8 @@ function runComponent<TNode, TResult>(
 			return [
 				returned1.catch(NOOP),
 				returned1.then(
-					(returned) => diffComponentChildren<TNode, TResult>(ctx, returned),
+					(returned) =>
+						diffComponentChildren<TNode, TResult>(ctx, returned, false),
 					(err) => {
 						setFlag(ctx, IsErrored);
 						throw err;
@@ -2376,7 +2394,9 @@ function runComponent<TNode, TResult>(
 			!getFlag(ctx, NeedsToYield) &&
 			!getFlag(ctx, IsUnmounted)
 		) {
-			console.error("Component yielded more than once in for...of loop");
+			console.error(
+				`Component <${displayName(ctx.ret.el)}> yielded/returned more than once in for...of loop`,
+			);
 		}
 
 		setFlag(ctx, NeedsToYield, false);
@@ -2388,6 +2408,7 @@ function runComponent<TNode, TResult>(
 		const diff = diffComponentChildren<TNode, TResult>(
 			ctx,
 			iteration.value as Children,
+			!iteration.done,
 		);
 		const block = isPromiseLike(diff) ? diff.catch(NOOP) : undefined;
 		return [block, diff];
@@ -2425,7 +2446,7 @@ function runComponent<TNode, TResult>(
 							!getFlag(ctx, IsUnmounted)
 						) {
 							console.error(
-								"Component yielded more than once in for...of loop",
+								`Component <${displayName(ctx.ret.el)}> yielded/returned more than once in for...of loop`,
 							);
 						}
 					}
@@ -2439,6 +2460,7 @@ function runComponent<TNode, TResult>(
 						ctx,
 						// Children can be void so we eliminate that here
 						iteration.value as Children,
+						!iteration.done,
 					);
 				},
 				(err) => {
@@ -2604,7 +2626,11 @@ async function pullComponent<TNode, TResult>(
 					// logic to skip yielded children in a stale for await of iteration.
 					diff = undefined;
 				} else {
-					diff = diffComponentChildren<TNode, TResult>(ctx, iteration.value!);
+					diff = diffComponentChildren<TNode, TResult>(
+						ctx,
+						iteration.value!,
+						!iteration.done,
+					);
 				}
 			} catch (err) {
 				onDiff(Promise.reject(err));
@@ -2975,7 +3001,11 @@ function handleChildError<TNode>(
 					ctx.iterator = undefined;
 				}
 
-				return diffComponentChildren(ctx, iteration.value as Children);
+				return diffComponentChildren(
+					ctx,
+					iteration.value as Children,
+					!iteration.done,
+				);
 			},
 			(err) => {
 				setFlag(ctx, IsErrored);
@@ -2990,7 +3020,11 @@ function handleChildError<TNode>(
 		ctx.iterator = undefined;
 	}
 
-	return diffComponentChildren(ctx, iteration.value as Children);
+	return diffComponentChildren(
+		ctx,
+		iteration.value as Children,
+		!iteration.done,
+	);
 }
 
 /**
