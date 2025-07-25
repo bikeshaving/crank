@@ -999,10 +999,24 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 	);
 }
 
+function parentCtxContains(parent: ContextState, child: ContextState): boolean {
+	for (
+		let current: ContextState | undefined = child;
+		current !== undefined;
+		current = current.parent
+	) {
+		if (current === parent) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 // When rendering is done without a root, we use this special anonymous root to
 // make sure flush callbacks are still called.
 const ANONYMOUS_ROOT: any = {};
-function flush<TRoot>(
+function finalize<TRoot>(
 	adapter: RenderAdapter<unknown, unknown, TRoot>,
 	root: TRoot | null | undefined,
 	initiator?: ContextState,
@@ -1014,11 +1028,17 @@ function flush<TRoot>(
 		root = ANONYMOUS_ROOT;
 	}
 
-	const flushMap = flushMaps.get(root as any);
+	// The initiator is the context which initiated the rendering process.
+	// If initiator is defined we call and clear all flush callbacks which are
+	// registered with the initiator or with a child context of the initiator,
+	// because they are fully rendered.
+	// If no initiator is provided, we can call and clear all flush callbacks
+	// defined on any context for the root.
+	const flushMap = flushMapByRoot.get(root as any);
 	if (flushMap) {
 		if (initiator) {
 			const flushMap1 = new Map<ContextState, Set<Function>>();
-			for (let [ctx, callbacks] of flushMap) {
+			for (const [ctx, callbacks] of flushMap) {
 				if (!parentCtxContains(initiator, ctx)) {
 					flushMap.delete(ctx);
 					flushMap1.set(ctx, callbacks);
@@ -1026,12 +1046,12 @@ function flush<TRoot>(
 			}
 
 			if (flushMap1.size) {
-				flushMaps.set(root as any, flushMap1);
+				flushMapByRoot.set(root as any, flushMap1);
 			} else {
-				flushMaps.delete(root as any);
+				flushMapByRoot.delete(root as any);
 			}
 		} else {
-			flushMaps.delete(root as any);
+			flushMapByRoot.delete(root as any);
 		}
 
 		for (const [ctx, callbacks] of flushMap) {
@@ -1074,7 +1094,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 		});
 	}
 
-	flush(adapter, root);
+	finalize(adapter, root);
 	setFlag(ret, HasCommitted);
 	return adapter.read(unwrap(children));
 }
@@ -1273,7 +1293,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 
 	setFlag(ret, HasCommitted);
 	if (tag === Portal) {
-		flush(adapter, ret.value);
+		finalize(adapter, ret.value);
 		// Portal elements
 		return;
 	}
@@ -1292,7 +1312,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 		unmountComponent(ret.ctx!, isNested);
 	} else if (ret.el.tag === Portal) {
 		unmountChildren(adapter, ret, ctx, ret);
-		flush(adapter, ret.value);
+		finalize(adapter, ret.value);
 	} else if (ret.el.tag !== Fragment) {
 		unmountChildren(adapter, ret, ctx, ret);
 
@@ -1445,7 +1465,7 @@ const scheduleMap = new WeakMap<ContextState, Set<Function>>();
 const cleanupMap = new WeakMap<ContextState, Set<Function>>();
 
 // keys are roots
-const flushMaps = new WeakMap<object, Map<ContextState, Set<Function>>>();
+const flushMapByRoot = new WeakMap<object, Map<ContextState, Set<Function>>>();
 
 // TODO: allow ContextState to be initialized for testing purposes
 /**
@@ -1728,15 +1748,15 @@ export class Context<T = any, TResult = any> implements EventTarget {
 
 	/**
 	 * Registers a callback which fires when the component’s children are
-	 * rendered into the root. Will only fire once per callback and render.
+	 * fully rendered. Will only fire once per callback and update.
 	 */
 	flush(callback: (value: TResult) => unknown): void {
 		const ctx = this[_ContextState];
 		const root = ctx.root || ANONYMOUS_ROOT;
-		let flushMap = flushMaps.get(root);
+		let flushMap = flushMapByRoot.get(root);
 		if (!flushMap) {
 			flushMap = new Map<ContextState, Set<Function>>();
-			flushMaps.set(root, flushMap);
+			flushMapByRoot.set(root, flushMap);
 		}
 
 		let callbacks = flushMap.get(ctx);
@@ -1749,8 +1769,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	}
 
 	/**
-	 * Registers a callback which fires when the component unmounts. Will only
-	 * fire once per callback.
+	 * Registers a callback which fires when the component unmounts.
 	 */
 	cleanup(callback: (value: TResult) => unknown): void {
 		const ctx = this[_ContextState];
@@ -2036,20 +2055,6 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	}
 }
 
-function parentCtxContains(parent: ContextState, child: ContextState): boolean {
-	for (
-		let current: ContextState | undefined = child;
-		current !== undefined;
-		current = current.parent
-	) {
-		if (current === parent) {
-			return true;
-		}
-	}
-
-	return false;
-}
-
 function diffComponent<TNode, TScope, TRoot extends TNode, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
@@ -2178,7 +2183,7 @@ function commitComponent<TNode>(
 			oldProps: host.el.props,
 			children: getChildValues(host),
 		});
-		flush(ctx.adapter, ctx.root, ctx);
+		finalize(ctx.adapter, ctx.root, ctx);
 	}
 
 	const callbacks = scheduleMap.get(ctx);
@@ -2460,8 +2465,8 @@ async function pullComponent<TNode, TResult>(
 	ctx.pull = {iterationP: undefined, diff: undefined, onChildError: undefined};
 
 	let done = false;
-	let childError: any;
 	try {
+		let childError: any;
 		while (!done) {
 			if (isPromiseLike(iterationP)) {
 				ctx.pull.iterationP = iterationP;
@@ -2498,31 +2503,7 @@ async function pullComponent<TNode, TResult>(
 				break;
 			}
 
-			if (childError != null) {
-				try {
-					setFlag(ctx, IsSyncExecuting);
-					if (typeof ctx.iterator!.throw !== "function") {
-						throw childError;
-					}
-					iteration = await ctx.iterator!.throw(childError);
-				} catch (err) {
-					done = true;
-					setFlag(ctx, IsErrored);
-					setFlag(ctx, NeedsToYield, false);
-					onDiff(Promise.reject(err));
-				} finally {
-					childError = undefined;
-					setFlag(ctx, IsSyncExecuting, false);
-				}
-			}
-
-			// this makes sure we pause before entering a loop if we yield before it
-			if (!getFlag(ctx, IsInForAwaitOfLoop)) {
-				setFlag(ctx, PropsAvailable, false);
-			}
-
-			done = !!iteration.done;
-
+			// this must be set after iterationP is awaited
 			let oldResult: Promise<TResult>;
 			{
 				// The 'floating' flag tracks whether the promise passed to the generator
@@ -2562,6 +2543,32 @@ async function pullComponent<TNode, TResult>(
 					return oldResult1.catch(onrejected);
 				};
 			}
+
+			if (childError != null) {
+				try {
+					setFlag(ctx, IsSyncExecuting);
+					if (typeof ctx.iterator!.throw !== "function") {
+						throw childError;
+					}
+					iteration = await ctx.iterator!.throw(childError);
+				} catch (err) {
+					done = true;
+					setFlag(ctx, IsErrored);
+					setFlag(ctx, NeedsToYield, false);
+					onDiff(Promise.reject(err));
+					break;
+				} finally {
+					childError = undefined;
+					setFlag(ctx, IsSyncExecuting, false);
+				}
+			}
+
+			// this makes sure we pause before entering a loop if we yield before it
+			if (!getFlag(ctx, IsInForAwaitOfLoop)) {
+				setFlag(ctx, PropsAvailable, false);
+			}
+
+			done = !!iteration.done;
 
 			let diff: Promise<undefined> | undefined;
 			try {
