@@ -143,7 +143,7 @@ export const impl: Partial<RenderAdapter<Node, undefined, any, string>> = {
 		if (tag === Portal) {
 			return;
 		} else if (typeof tag !== "string") {
-			throw new Error(`Unknown tag: ${tag.toString()}`);
+			throw new Error(`Unknown tag: ${String(tag)}`);
 		}
 
 		const attrs = printAttrs(props);

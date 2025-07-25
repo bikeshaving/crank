@@ -317,7 +317,7 @@ export function cloneElement<TTag extends Tag>(
 	el: Element<TTag>,
 ): Element<TTag> {
 	if (!isElement(el)) {
-		throw new TypeError("Cannot clone non-element");
+		throw new TypeError(`Cannot clone non-element: ${String(el)}`);
 	}
 
 	return new Element(el.tag, {...el.props});
@@ -671,7 +671,9 @@ export class Renderer<
 				this.cache.set(root, ret);
 			}
 		} else if (ret.ctx !== ctx) {
-			throw new Error("Context mismatch");
+			throw new Error(
+				"A previous call to render() was passed a different context",
+			);
 		} else {
 			ret.el = createElement(Portal, {children, root});
 			oldProps = ret.oldProps;
@@ -764,7 +766,7 @@ export class Renderer<
 			root,
 			ret!,
 			ctx,
-			ret.oldProps,
+			undefined, // no oldProps for hydration
 			scope,
 			hydration,
 		);
@@ -1646,7 +1648,9 @@ export class Context<T = any, TResult = any> implements EventTarget {
 			setFlag(ctx, IsInForOfLoop);
 			while (!getFlag(ctx, IsUnmounted) && !getFlag(ctx, IsErrored)) {
 				if (getFlag(ctx, NeedsToYield)) {
-					throw new Error("Context iterated twice without a yield");
+					throw new Error(
+						`<${displayName(ctx.ret.el)}> context iterated twice without a yield`,
+					);
 				} else {
 					setFlag(ctx, NeedsToYield);
 				}
@@ -1661,14 +1665,18 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	async *[Symbol.asyncIterator](): AsyncGenerator<ComponentProps<T>> {
 		const ctx = this[_ContextState];
 		if (getFlag(ctx, IsSyncGen)) {
-			throw new Error("Use for...of in sync generator components");
+			throw new Error(
+				`Component <${displayName(ctx.ret.el)}> is a sync generator and cannot use a for await...of loop`,
+			);
 		}
 
 		setFlag(ctx, IsInForAwaitOfLoop);
 		try {
 			while (!getFlag(ctx, IsUnmounted) && !getFlag(ctx, IsErrored)) {
 				if (getFlag(ctx, NeedsToYield)) {
-					throw new Error("Context iterated twice without a yield");
+					throw new Error(
+						`<${displayName(ctx.ret.el)}> context iterated twice without a yield`,
+					);
 				} else {
 					setFlag(ctx, NeedsToYield);
 				}

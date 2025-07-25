@@ -40,7 +40,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 		scope: string | undefined;
 	}): Node {
 		if (typeof tag !== "string") {
-			throw new Error(`Unknown tag: ${tag.toString()}`);
+			throw new Error(`Unknown tag: ${String(tag)}`);
 		} else if (tag.toLowerCase() === "svg") {
 			xmlns = SVG_NAMESPACE;
 		}
@@ -58,7 +58,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 		tag: string | symbol;
 	}): Array<Node> | undefined {
 		if (typeof tag !== "string" && tag !== Portal) {
-			throw new Error(`Unknown tag: ${tag.toString()}`);
+			throw new Error(`Unknown tag: ${String(tag)}`);
 		}
 
 		// TODO: check props for mismatches and warn
@@ -89,7 +89,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 	}): void {
 		if (node.nodeType !== Node.ELEMENT_NODE) {
 			throw new TypeError(
-				`Cannot patch node of type ${node.nodeType}. Expected an Element.`,
+				`Cannot patch node of type ${node.nodeType}. Expected Element.`,
 			);
 		}
 
@@ -242,9 +242,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 	}): void {
 		if (tag === Portal && (node == null || typeof node.nodeType !== "number")) {
 			throw new TypeError(
-				`Portal root is not a node. Received: ${JSON.stringify(
-					node && node.toString(),
-				)}`,
+				`<Portal> root is not a node. Received: ${String(node)}`,
 			);
 		}
 
@@ -371,15 +369,11 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 					if (node.isEqualNode(hydrated as any)) {
 						nodes[i] = hydrated as Node;
 					} else {
-						console.error(
-							`Expected node to match during hydration but found:`,
-							node,
-							hydrated,
-						);
+						console.error(`Node does not match hydration: `, node, hydrated);
 					}
 				} catch (err) {
 					console.error(
-						`Error comparing nodes during hydration: ${err}`,
+						`Error comparing nodes during hydration:\n${err}`,
 						node,
 						hydrated,
 					);
@@ -424,11 +418,7 @@ function validateRoot(root: unknown): asserts root is Node {
 		root === null ||
 		(typeof root === "object" && typeof (root as any).nodeType !== "number")
 	) {
-		throw new TypeError(
-			`Render root is not a node. Received: ${JSON.stringify(
-				root && root.toString(),
-			)}`,
-		);
+		throw new TypeError(`Render root is not a node. Received: ${String(root)}`);
 	}
 }
 

@@ -745,7 +745,6 @@ test("multiple iterations without a yield throw", () => {
 	Assert.is(i, 1);
 });
 
-// TODO: it would be nice to test this like other components
 test("for await...of throws", async () => {
 	let ctx: Context;
 	function* Component(this: Context): Generator<null> {
@@ -758,7 +757,11 @@ test("for await...of throws", async () => {
 		await ctx![Symbol.asyncIterator]().next();
 		Assert.unreachable();
 	} catch (err: any) {
-		Assert.is(err.message, "Use for...of in sync generator components");
+		Assert.ok(
+			err.message.endsWith(
+				" is a sync generator and cannot use a for await...of loop",
+			),
+		);
 	}
 });
 

@@ -843,7 +843,7 @@ test("multiple iterations without a yield throw", async () => {
 		await renderer.render(<Component />, document.body);
 		Assert.unreachable();
 	} catch (err: any) {
-		Assert.is(err.message, "Context iterated twice without a yield");
+		Assert.ok(err.message.endsWith("context iterated twice without a yield"));
 		fn();
 	}
 
