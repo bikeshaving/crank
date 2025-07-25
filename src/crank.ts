@@ -2114,7 +2114,6 @@ function diffComponentChildren<TNode, TResult>(
 	return diff;
 }
 
-// TODO: move this below
 function commitComponent<TNode>(
 	ctx: ContextState<TNode, unknown, TNode>,
 	hydration?: Array<TNode>,
@@ -2434,10 +2433,11 @@ function runComponent<TNode, TResult>(
 	}
 }
 
+// TODO: is it possible to make sure all properties are defined?
 interface PullController {
 	iterationP: Promise<ChildrenIteratorResult> | undefined;
 	diff: Promise<undefined> | undefined;
-	onChildError?: (err: unknown) => void;
+	onChildError: ((err: unknown) => void) | undefined;
 }
 
 /**
@@ -2467,8 +2467,8 @@ async function pullComponent<TNode, TResult>(
 				ctx.pull.iterationP = iterationP;
 			}
 
-			let resolve!: Function;
-			ctx.pull.diff = new Promise((resolve1) => (resolve = resolve1)).then(
+			let onDiff!: Function;
+			ctx.pull.diff = new Promise((resolve) => (onDiff = resolve)).then(
 				(): undefined => {
 					if (!(getFlag(ctx, IsUpdating) || getFlag(ctx, IsRefreshing))) {
 						commitComponent(ctx);
@@ -2489,32 +2489,27 @@ async function pullComponent<TNode, TResult>(
 
 			let iteration: ChildrenIteratorResult;
 			try {
-				iteration = isPromiseLike(iterationP) ? await iterationP : iterationP;
+				iteration = await iterationP;
 			} catch (err) {
 				done = true;
 				setFlag(ctx, IsErrored);
 				setFlag(ctx, NeedsToYield, false);
-				resolve(Promise.reject(err));
+				onDiff(Promise.reject(err));
 				break;
 			}
 
 			if (childError != null) {
-				if (typeof ctx.iterator!.throw !== "function") {
-					// we cannot throw the error, so we just set the error flag
-					setFlag(ctx, IsErrored);
-					setFlag(ctx, NeedsToYield, false);
-					resolve(Promise.reject(childError));
-					break;
-				}
-
 				try {
 					setFlag(ctx, IsSyncExecuting);
+					if (typeof ctx.iterator!.throw !== "function") {
+						throw childError;
+					}
 					iteration = await ctx.iterator!.throw(childError);
 				} catch (err) {
 					done = true;
 					setFlag(ctx, IsErrored);
 					setFlag(ctx, NeedsToYield, false);
-					resolve(Promise.reject(err));
+					onDiff(Promise.reject(err));
 				} finally {
 					childError = undefined;
 					setFlag(ctx, IsSyncExecuting, false);
@@ -2527,6 +2522,47 @@ async function pullComponent<TNode, TResult>(
 			}
 
 			done = !!iteration.done;
+
+			let oldResult: Promise<TResult>;
+			{
+				// The 'floating' flag tracks whether the promise passed to the generator
+				// is handled (via await, then, or catch). If handled, we reject the
+				// promise so the user can catch errors. If not, we inject the error back
+				// into the generator using throw, like for sync generator components.
+				let floating = true;
+				const oldResult1 = new Promise<TResult>((resolve, reject) => {
+					ctx.ctx.schedule(resolve);
+					ctx.pull!.onChildError = (err: any) => {
+						reject(err);
+						if (floating) {
+							childError = err;
+							resumePropsAsyncIterator(ctx);
+							return ctx.pull!.diff;
+						}
+					};
+				});
+
+				oldResult1.catch(NOOP);
+				// We use Object.create() to clone the promise for float detection
+				// because modern JS engines skip calling .then() on promises awaited
+				// with await.
+				oldResult = Object.create(oldResult1);
+				oldResult.then = function (
+					onfulfilled?: ((value: TResult) => any) | null,
+					onrejected?: ((reason: any) => any) | null,
+				): Promise<any> {
+					floating = false;
+					return oldResult1.then(onfulfilled, onrejected);
+				};
+
+				oldResult.catch = function (
+					onrejected?: ((reason: any) => any) | null,
+				): Promise<any> {
+					floating = false;
+					return oldResult1.catch(onrejected);
+				};
+			}
+
 			let diff: Promise<undefined> | undefined;
 			try {
 				if (!isPromiseLike(iterationP)) {
@@ -2545,41 +2581,11 @@ async function pullComponent<TNode, TResult>(
 					diff = diffComponentChildren<TNode, TResult>(ctx, iteration.value!);
 				}
 			} catch (err) {
-				resolve(Promise.reject(err));
+				onDiff(Promise.reject(err));
 			} finally {
-				resolve(diff);
+				onDiff(diff);
 				setFlag(ctx, NeedsToYield, false);
 			}
-
-			let floating = true;
-			const oldResult = new Promise<TResult>((resolve, reject) => {
-				ctx.ctx.schedule(resolve);
-				ctx.pull!.onChildError = (err1: any) => {
-					reject(err1);
-					if (floating) {
-						childError = err1;
-						resumePropsAsyncIterator(ctx);
-						return ctx.pull!.diff;
-					}
-				};
-			});
-
-			oldResult.catch(NOOP);
-			const oldResult1: typeof oldResult = Object.create(oldResult);
-			oldResult1.then = function (
-				onfulfilled?: ((value: TResult) => any) | null,
-				onrejected?: ((reason: any) => any) | null,
-			): Promise<any> {
-				floating = false;
-				return Promise.prototype.then.call(oldResult, onfulfilled, onrejected);
-			};
-
-			oldResult1.catch = function (
-				onrejected?: ((reason: any) => any) | null,
-			): Promise<any> {
-				floating = false;
-				return Promise.prototype.catch.call(oldResult, onrejected);
-			};
 
 			// TODO: move this outside the loop
 			if (getFlag(ctx, IsUnmounted)) {
@@ -2590,8 +2596,7 @@ async function pullComponent<TNode, TResult>(
 				) {
 					try {
 						setFlag(ctx, IsSyncExecuting);
-						const iterationP = ctx.iterator.next(oldResult1);
-						iteration = await iterationP;
+						iteration = await ctx.iterator.next(oldResult);
 					} catch (err) {
 						setFlag(ctx, IsErrored);
 						// we throw the error here to cause an unhandled rejection because
@@ -2609,16 +2614,7 @@ async function pullComponent<TNode, TResult>(
 				) {
 					try {
 						setFlag(ctx, IsSyncExecuting);
-						const iterationP = ctx.iterator.return();
-						if (isPromiseLike(iterationP)) {
-							if (!getFlag(ctx, IsAsyncGen)) {
-								throw new Error("Mixed generator component");
-							}
-
-							iteration = await iterationP;
-						} else {
-							throw new Error("Mixed generator component");
-						}
+						await ctx.iterator.return();
 					} catch (err) {
 						setFlag(ctx, IsErrored);
 						throw err;
@@ -2627,8 +2623,6 @@ async function pullComponent<TNode, TResult>(
 					}
 				}
 
-				break;
-			} else if (getFlag(ctx, IsErrored)) {
 				break;
 			} else if (getFlag(ctx, IsInForOfLoop)) {
 				// we have entered a for...of loop, so updates will be handled by the
@@ -2727,70 +2721,71 @@ async function unmountComponent(
 	}
 
 	if (ctx.iterator) {
-		if (getFlag(ctx, IsSyncGen) || getFlag(ctx, IsInForOfLoop)) {
-			// we wait for the block so yields resume with the most up to date props
-			if (ctx.inflight) {
-				await ctx.inflight[1];
-			}
-
-			let iteration: ChildrenIteratorResult | undefined;
-			if (getFlag(ctx, IsInForOfLoop)) {
-				try {
-					setFlag(ctx, IsSyncExecuting);
-					const oldResult = ctx.adapter.read(getValue(ctx.ret));
-					const iterationP = ctx.iterator!.next(oldResult);
-					if (isPromiseLike(iterationP)) {
-						if (!getFlag(ctx, IsAsyncGen)) {
-							throw new Error("Mixed generator component");
-						}
-
-						iteration = await iterationP;
-					} else {
-						if (!getFlag(ctx, IsSyncGen)) {
-							throw new Error("Mixed generator component");
-						}
-
-						iteration = iterationP;
-					}
-				} catch (err) {
-					setFlag(ctx, IsErrored);
-					throw err;
-				} finally {
-					setFlag(ctx, IsSyncExecuting, false);
-				}
-			}
-
-			if (
-				(!iteration || !iteration.done) &&
-				ctx.iterator &&
-				typeof ctx.iterator.return === "function"
-			) {
-				try {
-					setFlag(ctx, IsSyncExecuting);
-					const iterationP = ctx.iterator.return();
-					if (isPromiseLike(iterationP)) {
-						if (!getFlag(ctx, IsAsyncGen)) {
-							throw new Error("Mixed generator component");
-						}
-
-						iteration = await iterationP;
-					} else {
-						if (!getFlag(ctx, IsSyncGen)) {
-							throw new Error("Mixed generator component");
-						}
-
-						iteration = iterationP;
-					}
-				} catch (err) {
-					setFlag(ctx, IsErrored);
-					throw err;
-				} finally {
-					setFlag(ctx, IsSyncExecuting, false);
-				}
-			}
-		} else if (getFlag(ctx, IsAsyncGen)) {
-			// We let pullComponent handle unmounting
+		if (ctx.pull) {
+			// we let pullComponent handle unmounting
 			resumePropsAsyncIterator(ctx);
+			return;
+		}
+
+		// we wait for the block so yields resume with the most up to date props
+		if (ctx.inflight) {
+			await ctx.inflight[1];
+		}
+
+		let iteration: ChildrenIteratorResult | undefined;
+		if (getFlag(ctx, IsInForOfLoop)) {
+			try {
+				setFlag(ctx, IsSyncExecuting);
+				const oldResult = ctx.adapter.read(getValue(ctx.ret));
+				const iterationP = ctx.iterator!.next(oldResult);
+				if (isPromiseLike(iterationP)) {
+					if (!getFlag(ctx, IsAsyncGen)) {
+						throw new Error("Mixed generator component");
+					}
+
+					iteration = await iterationP;
+				} else {
+					if (!getFlag(ctx, IsSyncGen)) {
+						throw new Error("Mixed generator component");
+					}
+
+					iteration = iterationP;
+				}
+			} catch (err) {
+				setFlag(ctx, IsErrored);
+				throw err;
+			} finally {
+				setFlag(ctx, IsSyncExecuting, false);
+			}
+		}
+
+		if (
+			(!iteration || !iteration.done) &&
+			ctx.iterator &&
+			typeof ctx.iterator.return === "function"
+		) {
+			try {
+				setFlag(ctx, IsSyncExecuting);
+				const iterationP = ctx.iterator.return();
+				if (isPromiseLike(iterationP)) {
+					if (!getFlag(ctx, IsAsyncGen)) {
+						throw new Error("Mixed generator component");
+					}
+
+					iteration = await iterationP;
+				} else {
+					if (!getFlag(ctx, IsSyncGen)) {
+						throw new Error("Mixed generator component");
+					}
+
+					iteration = iterationP;
+				}
+			} catch (err) {
+				setFlag(ctx, IsErrored);
+				throw err;
+			} finally {
+				setFlag(ctx, IsSyncExecuting, false);
+			}
 		}
 	}
 }
@@ -2923,8 +2918,9 @@ function handleChildError<TNode>(
 		throw err;
 	}
 
-	if (ctx.pull && ctx.pull.onChildError) {
-		ctx.pull.onChildError(err);
+	if (ctx.pull) {
+		// we let pullComponent handle child errors
+		ctx.pull.onChildError!(err);
 		return ctx.pull.diff;
 	}
 
