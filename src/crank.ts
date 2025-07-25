@@ -2108,7 +2108,9 @@ function diffComponentChildren<TNode, TResult>(
 
 	let diff: Promise<undefined> | undefined;
 	try {
-		// TODO: Stop setting IsSyncExecuting here...
+		// TODO: Use a different flag here to indicate the component is
+		// synchronously rendering children
+
 		// We set the isExecuting flag in case a child component dispatches an event
 		// which bubbles to this component and causes a synchronous refresh().
 		setFlag(ctx, IsSyncExecuting);
