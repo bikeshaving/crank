@@ -365,15 +365,16 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 				const node = nodes[i];
 				// check if node is equal to the next node in the hydration array
 				const hydrated = hydration.shift();
-				try {
-					if (node.isEqualNode(hydrated as any)) {
-						nodes[i] = hydrated as Node;
-					} else {
-						console.error(`Node does not match hydration: `, node, hydrated);
-					}
-				} catch (err) {
+				if (
+					hydrated &&
+					typeof hydrated === "object" &&
+					typeof hydrated.nodeType === "number" &&
+					node.isEqualNode(hydrated as Node)
+				) {
+					nodes[i] = hydrated as Node;
+				} else {
 					console.error(
-						`Error comparing nodes during hydration:\n${err}`,
+						`<Raw> node does not match hydration: `,
 						node,
 						hydrated,
 					);
