@@ -479,6 +479,13 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode> {
 	return values;
 }
 
+function stripSpecialProps(props: Record<string, any>): Record<string, any> {
+	let _: unknown;
+	let result: Record<string, any>;
+	({key: _, ref: _, copy: _, ...result} = props);
+	return result;
+}
+
 /**
  * An interface which describes the adapter used by Renderer subclasses to
  * adapt the rendering process for a specific target environment.
@@ -632,7 +639,6 @@ export class Renderer<
 			ret = this.cache.get(root);
 		}
 
-		let oldProps: Record<string, any> | undefined;
 		if (ret === undefined) {
 			ret = new Retainer(createElement(Portal, {children, root}));
 			ret.value = root;
@@ -646,7 +652,6 @@ export class Renderer<
 			);
 		} else {
 			ret.el = createElement(Portal, {children, root});
-			oldProps = ret.oldProps;
 			if (typeof root === "object" && root !== null && children == null) {
 				this.cache.delete(root);
 			}
@@ -661,12 +666,10 @@ export class Renderer<
 		});
 		const diff = diffChildren(adapter, root, ret, ctx, scope, ret, children);
 		if (isPromiseLike(diff)) {
-			return diff.then(() =>
-				commitRootRender(adapter, root, ret!, ctx, oldProps, scope),
-			);
+			return diff.then(() => commitRootRender(adapter, root, ret!, ctx, scope));
 		}
 
-		return commitRootRender(adapter, root, ret!, ctx, oldProps, scope);
+		return commitRootRender(adapter, root, ret!, ctx, scope);
 	}
 
 	hydrate(
@@ -716,15 +719,7 @@ export class Renderer<
 					props: ret.el.props,
 					scope,
 				});
-				return commitRootRender(
-					adapter,
-					root,
-					ret!,
-					ctx,
-					undefined, // no oldProps for hydration
-					scope,
-					hydration,
-				);
+				return commitRootRender(adapter, root, ret!, ctx, scope, hydration);
 			});
 		}
 
@@ -735,15 +730,7 @@ export class Renderer<
 			props: ret.el.props,
 			scope,
 		});
-		return commitRootRender(
-			adapter,
-			root,
-			ret!,
-			ctx,
-			undefined, // no oldProps for hydration
-			scope,
-			hydration,
-		);
+		return commitRootRender(adapter, root, ret!, ctx, scope, hydration);
 	}
 }
 
@@ -826,12 +813,6 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				childCopied = true;
 			} else {
 				if (typeof ret === "object" && ret.el.tag === child.tag) {
-					if (
-						typeof ret.el.tag === "string" ||
-						typeof ret.el.tag === "symbol"
-					) {
-						ret.oldProps = ret.el.props;
-					}
 					ret.el = child;
 					if (child.copy) {
 						childCopied = true;
@@ -1075,10 +1056,10 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	root: TRoot | undefined,
 	ret: Retainer<TNode>,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
-	oldProps: Record<string, any> | undefined,
 	scope: TScope,
 	hydration?: Array<TNode>,
 ): TResult {
+	const props = stripSpecialProps(ret.el.props);
 	const children = commitChildren(
 		adapter,
 		root,
@@ -1096,14 +1077,15 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 			tag: Portal,
 			tagName: getTagName(Portal),
 			node: root,
-			props: ret.el.props,
+			props,
 			children,
-			oldProps,
+			oldProps: ret.oldProps,
 		});
 	}
 
-	finalize(adapter, root);
+	ret.oldProps = props;
 	setFlag(ret, IsMounted);
+	finalize(adapter, root);
 	return adapter.read(unwrap(children));
 }
 
@@ -1226,12 +1208,11 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	}
 
 	const tag = ret.el.tag as string | symbol;
-	let value = ret.value as TNode;
-
+	const props = stripSpecialProps(ret.el.props);
 	const oldProps = ret.oldProps;
-	let _: unknown;
-	let props: Record<string, any>;
-	({ref: _, key: _, copy: _, ...props} = ret.el.props);
+
+	// TODO: audit usage of node and value to make sure naming is consistent
+	let node = ret.value as TNode;
 	for (const propName in props) {
 		if (props[propName] === Copy) {
 			// Currently, the Copy tag can be used to skip the patching of a prop.
@@ -1240,6 +1221,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		}
 	}
 
+	// TODO: stop calling scope during commit and cache it on the Retainer
 	scope = adapter.scope({
 		tag,
 		tagName: getTagName(tag),
@@ -1248,7 +1230,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	})!;
 
 	let childHydration: Array<TNode> | undefined;
-	if (!value && hydration && hydration.length > 0) {
+	if (!node && hydration && hydration.length > 0) {
 		const nextChild = hydration.shift();
 		if (nextChild) {
 			childHydration = adapter.adopt({
@@ -1259,7 +1241,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 				scope,
 			});
 			if (childHydration) {
-				value = ret.value = nextChild;
+				node = ret.value = nextChild;
 			}
 		}
 	}
@@ -1275,12 +1257,12 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	);
 
 	if (tag !== Portal) {
-		// We use !value and not !getFlag(ret, IsMounted) here because of an
+		// We use !node and not !getFlag(ret, IsMounted) here because of an
 		// edge-case where a component fires a dispatchEvent from a schedule()
 		// callback. In that situation, the IsMounted flag can be true while the
 		// value is undefined.
-		if (!value) {
-			value = ret.value = adapter.create({
+		if (!node) {
+			node = ret.value = adapter.create({
 				tag,
 				tagName: getTagName(tag),
 				props,
@@ -1291,7 +1273,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		adapter.patch({
 			tag,
 			tagName: getTagName(tag),
-			node: value,
+			node: node,
 			props,
 			oldProps,
 			scope,
@@ -1301,7 +1283,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	adapter.arrange({
 		tag,
 		tagName: getTagName(tag),
-		node: value,
+		node: node,
 		props,
 		children,
 		oldProps,
@@ -1309,7 +1291,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	ret.oldProps = props;
 	if (!getFlag(ret, IsMounted)) {
 		if (typeof ret.el.ref === "function") {
-			ret.el.ref(adapter.read(value));
+			ret.el.ref(adapter.read(node));
 		}
 	}
 
@@ -1320,7 +1302,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		return;
 	}
 
-	return getValue(ret);
+	return node;
 }
 
 function unmount<TNode, TScope, TRoot extends TNode, TResult>(
@@ -2209,12 +2191,14 @@ function commitComponent<TNode>(
 
 		// rearranging the nearest ancestor host element
 		const host = ctx.host;
+		const props = stripSpecialProps(host.el.props);
 		ctx.adapter.arrange({
 			tag: host.el.tag as string | symbol,
 			tagName: getTagName(host.el.tag),
 			node: host.value as TNode,
-			props: host.oldProps,
-			oldProps: host.oldProps,
+			props,
+			// oldProps is the same because the host element has not re-rendered
+			oldProps: props,
 			children: getChildValues(host),
 		});
 		finalize(ctx.adapter, ctx.root, ctx);
