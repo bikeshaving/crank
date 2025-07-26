@@ -1256,11 +1256,8 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	({ref: _, key: _, copy: _, ...props} = ret.el.props);
 	for (const propName in props) {
 		if (props[propName] === Copy) {
-			// Currently, the Copy tag doubles as a way to skip the patching of a
-			// prop.
-			// <div class={initial ? "class-name" : Copy}>
-			//   class prop will not be patched when re-rendered.</div>
-			// </div>
+			// Currently, the Copy tag can be used to skip the patching of a prop.
+			//   <div class={shouldPatchClass ? "class-name" : Copy} />
 			props[propName] = oldProps && oldProps[propName];
 		}
 	}
