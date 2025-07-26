@@ -363,7 +363,7 @@ function narrow(value: Children): NarrowedChild {
 export type ElementValue<TNode> = Array<TNode> | TNode | undefined;
 
 /*** RETAINER FLAGS ***/
-const HasCommitted = 1 << 0;
+const IsMounted = 1 << 0;
 const IsCopied = 1 << 1;
 
 /**
@@ -842,7 +842,13 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			let childCopied = false;
 			if (child.tag === Copy) {
 				childCopied = true;
-			} else if (typeof ret === "object" && ret.el === child) {
+			} else if (
+				typeof ret === "object" &&
+				getFlag(ret, IsMounted) &&
+				ret.el === child
+			) {
+				// the IsMounted check is a defensive check in case uncommitted nodes
+				// are copied
 				childCopied = true;
 			} else {
 				if (typeof ret === "object" && ret.el.tag === child.tag) {
@@ -866,7 +872,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					ret.fallback = fallback;
 				}
 
-				if (childCopied && getFlag(ret, HasCommitted)) {
+				if (childCopied && getFlag(ret, IsMounted)) {
 					// pass
 				} else if (child.tag === Raw) {
 					// pass
@@ -1117,7 +1123,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	}
 
 	finalize(adapter, root);
-	setFlag(ret, HasCommitted);
+	setFlag(ret, IsMounted);
 	return adapter.read(unwrap(children));
 }
 
@@ -1151,7 +1157,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 					value: oldValue,
 				});
 				child.value = value;
-				if (!getFlag(child, HasCommitted)) {
+				if (!getFlag(child, IsMounted)) {
 					if (typeof el.ref === "function") {
 						el.ref(adapter.read(value));
 					}
@@ -1179,7 +1185,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 				values.push(value);
 			}
 
-			setFlag(child, HasCommitted);
+			setFlag(child, IsMounted);
 		}
 	}
 
@@ -1223,7 +1229,7 @@ function commitRaw<TNode, TScope>(
 		}
 	}
 
-	setFlag(ret, HasCommitted);
+	setFlag(ret, IsMounted);
 	return ret.value;
 }
 
@@ -1235,7 +1241,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	scope: TScope,
 	hydration: Array<TNode> | undefined,
 ): ElementValue<TNode> {
-	if (getFlag(ret, IsCopied) && getFlag(ret, HasCommitted)) {
+	if (getFlag(ret, IsCopied) && getFlag(ret, IsMounted)) {
 		return getValue(ret);
 	}
 
@@ -1312,13 +1318,13 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	}
 
 	adapter.arrange({tag, node: value, props, children, oldProps});
-	if (!getFlag(ret, HasCommitted)) {
+	if (!getFlag(ret, IsMounted)) {
 		if (typeof ret.el.ref === "function") {
 			ret.el.ref(adapter.read(value));
 		}
 	}
 
-	setFlag(ret, HasCommitted);
+	setFlag(ret, IsMounted);
 	if (tag === Portal) {
 		finalize(adapter, ret.value);
 		// Portal elements
@@ -1343,7 +1349,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 	} else if (ret.el.tag !== Fragment) {
 		unmountChildren(adapter, ret, ctx, ret);
 
-		if (getFlag(ret, HasCommitted)) {
+		if (getFlag(ret, IsMounted)) {
 			if (isEventTarget(ret.value)) {
 				const records = getListenerRecords(ctx, host);
 				for (let i = 0; i < records.length; i++) {
@@ -2243,7 +2249,7 @@ function commitComponent<TNode>(
 	}
 
 	setFlag(ctx, IsUpdating, false);
-	setFlag(ctx.ret, HasCommitted);
+	setFlag(ctx.ret, IsMounted);
 	return value;
 }
 
