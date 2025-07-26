@@ -537,6 +537,26 @@ test("clearing mutations", () => {
 	renderer.render(<div>{null}</div>, document.body);
 });
 
+test("unknown attribute", () => {
+	renderer.render(
+		<div
+			unknown="value"
+			unknown-attribute="value"
+			data-unknown-attribute="value"
+		/>,
+		document.body,
+	);
+	Assert.is(
+		document.body.innerHTML,
+		'<div unknown="value" unknown-attribute="value" data-unknown-attribute="value"></div>',
+	);
+
+	const div = document.body.firstChild as HTMLDivElement;
+	Assert.is(div.getAttribute("unknown"), "value");
+	Assert.is(div.getAttribute("unknown-attribute"), "value");
+	Assert.is(div.getAttribute("data-unknown-attribute"), "value");
+});
+
 test("removing props", () => {
 	const input = renderer.render(
 		<input dir="rtl" autofocus={true} value="hello" />,

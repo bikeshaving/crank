@@ -9,10 +9,7 @@ import {
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
-function isWritableProperty(
-	element: Element,
-	name: string,
-): boolean {
+function isWritableProperty(element: Element, name: string): boolean {
 	// walk up the object's prototype chain to find the owner
 	let propOwner = element;
 	do {
@@ -121,9 +118,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 		isHydrating: boolean;
 	}): void {
 		if (node.nodeType !== Node.ELEMENT_NODE) {
-			throw new TypeError(
-				`Cannot patch node of type ${node.nodeType}.`,
-			);
+			throw new TypeError(`Cannot patch node of type ${node.nodeType}.`);
 		}
 
 		const element = node as Element;
@@ -140,7 +135,10 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 				// handle prop:name or attr:name properties
 				const colonIndex = name.indexOf(":");
 				if (colonIndex !== -1) {
-					const [ns, name1] = [name.slice(0, colonIndex), name.slice(colonIndex + 1)];
+					const [ns, name1] = [
+						name.slice(0, colonIndex),
+						name.slice(colonIndex + 1),
+					];
 					switch (ns) {
 						case "prop":
 							(node as any)[name1] = value;
@@ -148,12 +146,18 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 						case "attr":
 							if (value == null || value === false) {
 								if (isHydrating && element.hasAttribute(name1)) {
-									console.warn(`Expected attribute "${name1}" to be missing while hydrating:`, element);
+									console.warn(
+										`Expected attribute "${name1}" to be missing while hydrating:`,
+										element,
+									);
 								}
 								element.removeAttribute(name1);
 							} else if (value === true) {
 								if (isHydrating && !element.hasAttribute(name1)) {
-									console.warn(`Expected attribute "${name1}" to be present while hydrating:`, element);
+									console.warn(
+										`Expected attribute "${name1}" to be present while hydrating:`,
+										element,
+									);
 								}
 								element.setAttribute(name1, "");
 							} else if (typeof value !== "string") {
@@ -186,10 +190,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 						element.removeAttribute("style");
 					} else if (value === true) {
 						if (isHydrating && style.cssText !== "") {
-							console.warn(
-								`Expected style to be "" while hydrating:`,
-								element,
-							);
+							console.warn(`Expected style to be "" while hydrating:`, element);
 						}
 						element.setAttribute("style", "");
 					} else if (typeof value === "string") {
@@ -237,10 +238,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 				case "className":
 					if (value === true) {
 						if (isHydrating && element.getAttribute("class") !== "") {
-							console.warn(
-								`Expected class to be "" while hydrating:`,
-								element,
-							);
+							console.warn(`Expected class to be "" while hydrating:`, element);
 						}
 						element.setAttribute("class", "");
 					} else if (value == null) {
@@ -304,21 +302,15 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 						!(
 							typeof value === "string" &&
 							typeof (element as any)[name] === "boolean"
-						)
+						) &&
+						isWritableProperty(element, name)
 					) {
-						// walk up the object's prototype chain to find the owner of the
-						// named property
-						if (isWritableProperty(element, name)) {
-							if ((element as any)[name] !== value || oldValue === undefined) {
-								// if the property is writable, assign it directly
-								(element as any)[name] = value;
-							}
-
-							continue;
+						if ((element as any)[name] !== value || oldValue === undefined) {
+							// if the property is writable, assign it directly
+							(element as any)[name] = value;
 						}
 
-						// if the property wasn't writable, fall through to the code below
-						// which uses setAttribute() instead of assigning directly.
+						continue;
 					}
 
 					if (value === true) {
