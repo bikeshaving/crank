@@ -8,15 +8,15 @@ import type {Context} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 const test = suite("hydration");
-let consoleError: Sinon.SinonStub;
+let consoleWarn: Sinon.SinonStub;
 test.before.each(() => {
-	consoleError = Sinon.stub(console, "error");
+	consoleWarn = Sinon.stub(console, "warn");
 });
 
 test.after.each(() => {
 	renderer.render(null, document.body);
 	document.body.innerHTML = "";
-	consoleError.restore();
+	consoleWarn.restore();
 });
 
 test("simple", () => {
@@ -310,7 +310,7 @@ test("mismatched tag", () => {
 	renderer.hydrate(<Component />, document.body);
 	Assert.ok(Component.called);
 	Assert.is(document.body.innerHTML, "<button>Click</button>");
-	Assert.is(consoleError.callCount, 1);
+	Assert.is(consoleWarn.callCount, 1);
 });
 
 test("mismatched text", () => {
@@ -328,7 +328,7 @@ test("mismatched text", () => {
 	Assert.is(document.body.firstChild, button);
 	button.click();
 	Assert.ok(onclick.called);
-	Assert.is(consoleError.callCount, 1);
+	Assert.is(consoleWarn.callCount, 1);
 });
 
 test("raw element", () => {

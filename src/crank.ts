@@ -555,6 +555,7 @@ export interface RenderAdapter<
 		props: TagProps<TTag>;
 		oldProps: TagProps<TTag> | undefined;
 		scope: TScope | undefined;
+		isHydrating: boolean;
 	}): void;
 
 	arrange<TTag extends string | symbol>(data: {
@@ -1286,6 +1287,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 			props,
 			oldProps,
 			scope,
+			isHydrating: !!childHydration,
 		});
 	}
 
