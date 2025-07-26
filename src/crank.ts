@@ -375,7 +375,7 @@ function getFlag(ret: Retainer<unknown>, flag: number): boolean {
  * The internal nodes which are cached and diffed against new elements when
  * rendering element trees.
  */
-class Retainer<TNode> {
+class Retainer<TNode, TScope = unknown> {
 	/** A bitmask. See RETAINER FLAGS above. */
 	declare f: number;
 
@@ -393,8 +393,8 @@ class Retainer<TNode> {
 	 * elements. Can be a single child or undefined as a memory optimization.
 	 */
 	declare children:
-		| Array<Retainer<TNode> | undefined>
-		| Retainer<TNode>
+		| Array<Retainer<TNode, TScope> | undefined>
+		| Retainer<TNode, TScope>
 		| undefined;
 
 	/**
@@ -403,7 +403,7 @@ class Retainer<TNode> {
 	 * previously rendered elements can remain visible until the async tree
 	 * settles.
 	 */
-	declare fallback: Retainer<TNode> | undefined;
+	declare fallback: Retainer<TNode, TScope> | undefined;
 
 	/**
 	 * The node or nodes associated with an element.
@@ -415,15 +415,17 @@ class Retainer<TNode> {
 	 */
 	declare value: ElementValue<TNode> | undefined;
 
+	declare scope: TScope | undefined;
+
 	declare oldProps: Record<string, any> | undefined;
 
 	declare pending: Promise<undefined> | undefined;
 
 	declare onNext: Function | undefined;
 
-	declare graveyard: Array<Retainer<TNode>> | undefined;
+	declare graveyard: Array<Retainer<TNode, TScope>> | undefined;
 
-	declare lingerers: Set<Retainer<TNode>> | undefined;
+	declare lingerers: Set<Retainer<TNode, TScope>> | undefined;
 
 	constructor(el: Element) {
 		this.f = 0;
@@ -554,7 +556,7 @@ export interface RenderAdapter<
 		node: TNode;
 		props: TagProps<TTag>;
 		oldProps: TagProps<TTag> | undefined;
-		scope: TScope;
+		scope: TScope | undefined;
 	}): void;
 
 	arrange<TTag extends string | symbol>(data: {
@@ -617,7 +619,7 @@ export class Renderer<
 	 * @internal
 	 * A weakmap which stores element trees by root.
 	 */
-	declare cache: WeakMap<object, Retainer<TNode>>;
+	declare cache: WeakMap<object, Retainer<TNode, TScope>>;
 	declare adapter: RenderAdapter<TNode, TScope, TRoot, TResult>;
 	constructor(adapter: Partial<RenderAdapter<TNode, TScope, TRoot, TResult>>) {
 		this.cache = new WeakMap();
@@ -644,7 +646,7 @@ export class Renderer<
 		root?: TRoot | undefined,
 		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
-		let ret: Retainer<TNode> | undefined;
+		let ret: Retainer<TNode, TScope> | undefined;
 		const ctx =
 			bridge &&
 			(bridge[_ContextState] as ContextState<TNode, TScope, TRoot, TResult>);
@@ -652,10 +654,18 @@ export class Renderer<
 			ret = this.cache.get(root);
 		}
 
+		const adapter = this.adapter;
+		let scope: TScope | undefined;
 		if (ret === undefined) {
 			ret = new Retainer(createElement(Portal, {children, root}));
 			ret.value = root;
 			ret.ctx = ctx;
+			ret.scope = adapter.scope({
+				tag: Portal,
+				tagName: getTagName(Portal),
+				props: stripSpecialProps(ret.el.props),
+				scope: undefined,
+			});
 			if (typeof root === "object" && root !== null && children != null) {
 				this.cache.set(root, ret);
 			}
@@ -665,18 +675,12 @@ export class Renderer<
 			);
 		} else {
 			ret.el = createElement(Portal, {children, root});
+			scope = ret.scope;
 			if (typeof root === "object" && root !== null && children == null) {
 				this.cache.delete(root);
 			}
 		}
 
-		const adapter = this.adapter;
-		const scope = adapter.scope({
-			tag: Portal,
-			tagName: getTagName(Portal),
-			props: ret.el.props,
-			scope: undefined,
-		});
 		const diff = diffChildren(adapter, root, ret, ctx, scope, ret, children);
 		if (isPromiseLike(diff)) {
 			return diff.then(() => commitRootRender(adapter, root, ret!, ctx, scope));
@@ -690,7 +694,7 @@ export class Renderer<
 		root: TRoot,
 		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
-		let ret: Retainer<TNode> | undefined;
+		let ret: Retainer<TNode, TScope> | undefined;
 		const ctx =
 			bridge &&
 			(bridge[_ContextState] as ContextState<TNode, TScope, TRoot, TResult>);
@@ -711,12 +715,12 @@ export class Renderer<
 		}
 
 		const adapter = this.adapter;
-		const scope = adapter.scope({
+		const scope = (ret.scope = adapter.scope({
 			tag: Portal,
 			tagName: getTagName(Portal),
-			props: ret.el.props,
+			props: stripSpecialProps(ret.el.props),
 			scope: undefined,
-		});
+		}));
 
 		// Start the diffing process
 		const diff = diffChildren(adapter, root, ret, ctx, scope, ret, children);
@@ -751,22 +755,22 @@ export class Renderer<
 function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
-	host: Retainer<TNode>,
+	host: Retainer<TNode, TScope>,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope | undefined,
-	parent: Retainer<TNode>,
+	parent: Retainer<TNode, TScope>,
 	newChildren: Children,
 ): Promise<undefined> | undefined {
 	const oldRetained = wrap(parent.children);
 	const newRetained: typeof oldRetained = [];
 	const newChildren1 = arrayify(newChildren);
 	const diffs: Array<Promise<undefined> | undefined> = [];
-	let childrenByKey: Map<Key, Retainer<TNode>> | undefined;
+	let childrenByKey: Map<Key, Retainer<TNode, TScope>> | undefined;
 	let seenKeys: Set<Key> | undefined;
 	let isAsync = false;
 	let oi = 0;
 	let oldLength = oldRetained.length;
-	let graveyard: Array<Retainer<TNode>> | undefined;
+	let graveyard: Array<Retainer<TNode, TScope>> | undefined;
 	for (let ni = 0, newLength = newChildren1.length; ni < newLength; ni++) {
 		// length checks to prevent index out of bounds deoptimizations.
 		let ret = oi >= oldLength ? undefined : oldRetained[oi];
@@ -837,7 +841,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					}
 
 					const fallback = ret;
-					ret = new Retainer<TNode>(child);
+					ret = new Retainer<TNode, TScope>(child);
 					ret.fallback = fallback;
 				}
 
@@ -881,7 +885,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					(graveyard = graveyard || []).push(ret);
 				}
 
-				ret = new Retainer<TNode>(createElement(Text, {value: child}));
+				ret = new Retainer<TNode, TScope>(createElement(Text, {value: child}));
 			}
 		} else {
 			if (typeof ret === "object") {
@@ -945,11 +949,11 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	}
 }
 
-function createChildrenByKey<TNode>(
-	children: Array<Retainer<TNode> | undefined>,
+function createChildrenByKey<TNode, TScope>(
+	children: Array<Retainer<TNode, TScope> | undefined>,
 	offset: number,
-): Map<Key, Retainer<TNode>> {
-	const childrenByKey = new Map<Key, Retainer<TNode>>();
+): Map<Key, Retainer<TNode, TScope>> {
+	const childrenByKey = new Map<Key, Retainer<TNode, TScope>>();
 	for (let i = offset; i < children.length; i++) {
 		const child = children[i];
 		if (typeof child === "object" && typeof child.el.key !== "undefined") {
@@ -976,7 +980,7 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 	root: TRoot | undefined,
 	ctx: ContextState<TNode, TScope, TRoot> | undefined,
 	scope: TScope | undefined,
-	ret: Retainer<TNode>,
+	ret: Retainer<TNode, TScope>,
 ): Promise<undefined> | undefined {
 	const el = ret.el;
 	const tag = el.tag as string | symbol;
@@ -984,12 +988,17 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 		root = ret.value = el.props.root;
 	}
 
-	scope = adapter.scope({
-		tag,
-		tagName: getTagName(tag),
-		props: el.props,
-		scope,
-	});
+	if (!getFlag(ret, IsMounted)) {
+		scope = ret.scope = adapter.scope({
+			tag,
+			tagName: getTagName(tag),
+			props: el.props,
+			scope,
+		});
+	} else {
+		scope = ret.scope;
+	}
+
 	return diffChildren(
 		adapter,
 		root,
@@ -1068,7 +1077,7 @@ function finalize<TRoot>(
 function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
-	ret: Retainer<TNode>,
+	ret: Retainer<TNode, TScope>,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope,
 	hydration?: Array<TNode>,
@@ -1106,10 +1115,10 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	adapter: RenderAdapter<TNode, unknown, TRoot, TResult>,
 	root: TRoot | undefined,
-	host: Retainer<TNode>,
+	host: Retainer<TNode, TScope>,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope | undefined,
-	parent: Retainer<TNode>,
+	parent: Retainer<TNode, TScope>,
 	hydration: Array<TNode> | undefined,
 ): Array<TNode> {
 	const values: Array<TNode> = [];
@@ -1152,7 +1161,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 				value = commitComponent(child.ctx!, hydration);
 			} else {
 				// host element or portal element
-				value = commitHost(adapter, root, child, ctx, scope, hydration);
+				value = commitHost(adapter, root, child, ctx, hydration);
 			}
 
 			if (Array.isArray(value)) {
@@ -1212,9 +1221,8 @@ function commitRaw<TNode, TScope>(
 function commitHost<TNode, TRoot extends TNode, TScope>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, unknown>,
 	root: TNode | undefined,
-	ret: Retainer<TNode>,
+	ret: Retainer<TNode, TScope>,
 	ctx: ContextState<TNode, TScope, TRoot, unknown> | undefined,
-	scope: TScope,
 	hydration: Array<TNode> | undefined,
 ): ElementValue<TNode> {
 	if (getFlag(ret, IsCopied) && getFlag(ret, IsMounted)) {
@@ -1235,14 +1243,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		}
 	}
 
-	// TODO: stop calling scope during commit and cache it on the Retainer
-	scope = adapter.scope({
-		tag,
-		tagName: getTagName(tag),
-		props,
-		scope,
-	})!;
-
+	const scope = ret.scope;
 	let childHydration: Array<TNode> | undefined;
 	if (!node && hydration && hydration.length > 0) {
 		const nextChild = hydration.shift();
