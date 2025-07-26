@@ -1294,9 +1294,10 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	);
 
 	if (tag !== Portal) {
-		// TODO: this doesn't work
-		//if (!getFlag(ret, IsMounted)) {
-		// This assumes that .create does not return nullish values.
+		// We use !value and not !getFlag(ret, IsMounted) here because of an
+		// edge-case where a component fires a dispatchEvent from a schedule()
+		// callback. In that situation, the IsMounted flag can be true while the
+		// value is undefined.
 		if (!value) {
 			value = ret.value = adapter.create({tag, props, scope});
 		}
