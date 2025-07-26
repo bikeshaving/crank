@@ -391,9 +391,6 @@ class Retainer<TNode> {
 		| Retainer<TNode>
 		| undefined;
 
-	/** The value associated with this element. */
-	declare value: ElementValue<TNode> | undefined;
-
 	/**
 	 * The child which this retainer replaces. This property is used when an
 	 * async retainer tree replaces previously rendered elements, so that the
@@ -401,6 +398,16 @@ class Retainer<TNode> {
 	 * settles.
 	 */
 	declare fallback: Retainer<TNode> | undefined;
+
+	/**
+	 * The node or nodes associated with an element.
+	 *
+	 * This is only assigned for host, portal, text and raw elements.
+	 *
+	 * It can be an array only in the case of Raw elements, because they can
+	 * possibly render multiple nodes.
+	 */
+	declare value: ElementValue<TNode> | undefined;
 
 	declare oldProps: Record<string, any> | undefined;
 
@@ -417,8 +424,8 @@ class Retainer<TNode> {
 		this.el = el;
 		this.ctx = undefined;
 		this.children = undefined;
-		this.value = undefined;
 		this.fallback = undefined;
+		this.value = undefined;
 		this.oldProps = undefined;
 		this.pending = undefined;
 		this.onNext = undefined;
@@ -808,8 +815,9 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				getFlag(ret, IsMounted) &&
 				ret.el === child
 			) {
-				// the IsMounted check is a defensive check in case uncommitted nodes
-				// are copied
+				// If the child is the same as the retained element, we skip
+				// re-rendering This is useful when a component is passed the same
+				// children, for instance
 				childCopied = true;
 			} else {
 				if (typeof ret === "object" && ret.el.tag === child.tag) {
