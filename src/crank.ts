@@ -284,8 +284,6 @@ export function isElement(value: any): value is Element {
 	return value != null && value.$$typeof === ElementSymbol;
 }
 
-const SPECIAL_PROPS = new Set(["children", "key", "ref", "copy"]);
-
 /**
  * Creates an element with the specified tag, props and children.
  *
@@ -491,34 +489,18 @@ export interface RenderAdapter<
 	TRoot extends TNode = TNode,
 	TResult = ElementValue<TNode>,
 > {
-	scope<TTag extends string | symbol>(data: {
-		tag: TTag;
-		props: TagProps<TTag>;
-		scope: TScope | undefined;
-	}): TScope | undefined;
-
 	create<TTag extends string | symbol>(data: {
 		tag: TTag;
 		props: TagProps<TTag>;
 		scope: TScope | undefined;
 	}): TNode;
 
-	/**
-	 * Called when an element’s rendered value is exposed via render, schedule,
-	 * refresh, refs, or generator yield expressions.
-	 *
-	 * @param value - The value of the element being read. Can be a node, a
-	 * string, undefined, or an array of nodes and strings, depending on the
-	 * element.
-	 *
-	 * @returns Varies according to the specific renderer subclass. By default,
-	 * it exposes the element’s value.
-	 *
-	 * This is useful for renderers which don’t want to expose their internal
-	 * nodes. For instance, the HTML renderer will convert all internal nodes to
-	 * strings.
-	 */
-	read(value: ElementValue<TNode>): TResult;
+	adopt<TTag extends string | symbol>(data: {
+		tag: TTag;
+		node: TNode;
+		props: TagProps<TTag>;
+		scope: TScope | undefined;
+	}): Array<TNode> | undefined;
 
 	/**
 	 * Called for each string in an element tree.
@@ -541,6 +523,12 @@ export interface RenderAdapter<
 		value: TNode | undefined;
 	}): TNode;
 
+	scope<TTag extends string | symbol>(data: {
+		tag: TTag;
+		props: TagProps<TTag>;
+		scope: TScope | undefined;
+	}): TScope | undefined;
+
 	/**
 	 * Called for each Raw element whose value prop is a string.
 	 *
@@ -550,11 +538,14 @@ export interface RenderAdapter<
 	 * @returns The parsed node or string.
 	 */
 	raw(data: {
+		tag: Raw;
 		value: string | TNode;
 		scope: TScope | undefined;
 		hydration: Array<TNode> | undefined;
 	}): ElementValue<TNode>;
 
+	// TODO: Switch back to passing props and oldProps instead of
+	// name, value and oldValue
 	patch<TTag extends string | symbol, TName extends string>(data: {
 		tag: TTag;
 		node: TNode;
@@ -579,19 +570,32 @@ export interface RenderAdapter<
 		parent: TNode;
 	}): void;
 
-	finalize(root: TRoot): void;
+	/**
+	 * Called when an element’s rendered value is exposed via render, schedule,
+	 * refresh, refs, or generator yield expressions.
+	 *
+	 * @param value - The value of the element being read. Can be a node, a
+	 * string, undefined, or an array of nodes and strings, depending on the
+	 * element.
+	 *
+	 * @returns Varies according to the specific renderer subclass. By default,
+	 * it exposes the element’s value.
+	 *
+	 * This is useful for renderers which don’t want to expose their internal
+	 * nodes. For instance, the HTML renderer will convert all internal nodes to
+	 * strings.
+	 */
+	read(value: ElementValue<TNode>): TResult;
 
-	adopt<TTag extends string | symbol>(data: {
-		tag: TTag;
-		node: TNode;
-		props: TagProps<TTag>;
-		scope: TScope | undefined;
-	}): Array<TNode> | undefined;
+	finalize(root: TRoot): void;
 }
 
 const defaultAdapter: RenderAdapter<any, any, any, any> = {
 	create() {
 		throw new Error("adapter must implement create");
+	},
+	adopt() {
+		throw new Error("adapter must implement adopt() for hydration");
 	},
 	scope: ({scope}) => scope,
 	read: (value) => value,
@@ -601,9 +605,6 @@ const defaultAdapter: RenderAdapter<any, any, any, any> = {
 	arrange: NOOP,
 	remove: NOOP,
 	finalize: NOOP,
-	adopt() {
-		throw new Error("adapter must implement adopt() for hydration");
-	},
 };
 
 /**
@@ -1220,6 +1221,7 @@ function commitRaw<TNode, TScope>(
 ): ElementValue<TNode> {
 	if (!ret.oldProps || ret.oldProps.value !== ret.el.props.value) {
 		ret.value = adapter.raw({
+			tag: Raw,
 			value: ret.el.props.value as any,
 			scope,
 			hydration,
@@ -1247,8 +1249,22 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 
 	const tag = ret.el.tag as string | symbol;
 	let value = ret.value as TNode;
-	let props = ret.el.props;
+
 	const oldProps = ret.oldProps;
+	let _: unknown;
+	let props: Record<string, any>;
+	({ref: _, key: _, copy: _, ...props} = ret.el.props);
+	for (const propName in props) {
+		if (props[propName] === Copy) {
+			// Currently, the Copy tag doubles as a way to skip the patching of a
+			// prop.
+			// <div class={initial ? "class-name" : Copy}>
+			//   class prop will not be patched when re-rendered.</div>
+			// </div>
+			props[propName] = oldProps && oldProps[propName];
+		}
+	}
+
 	scope = adapter.scope({scope, tag, props})!;
 
 	let childHydration: Array<TNode> | undefined;
@@ -1276,48 +1292,33 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		ret,
 		childHydration,
 	);
-	let copiedProps: Set<string> | undefined;
+
 	if (tag !== Portal) {
+		// TODO: this doesn't work
+		//if (!getFlag(ret, IsMounted)) {
 		// This assumes that .create does not return nullish values.
-		if (value == null) {
+		if (!value) {
 			value = ret.value = adapter.create({tag, props, scope});
 		}
 
 		for (const propName in {...oldProps, ...props}) {
 			const propValue = props[propName];
-			// Currently, the Copy tag doubles as a way to skip the patching of a
-			// prop.
-			// <div class={initial ? "class-name" : Copy}>
-			//   class prop will not be patched when re-rendered.</div>
-			// </div>
-			// TODO: Should this feature be removed?
-			if (propValue === Copy) {
-				(copiedProps = copiedProps || new Set()).add(propName);
-			} else if (!SPECIAL_PROPS.has(propName)) {
-				adapter.patch({
-					tag,
-					node: value,
-					name: propName,
-					value: propValue,
-					oldValue: oldProps && oldProps[propName],
-					scope,
-				});
+			if (propName === "children") {
+				continue;
 			}
+			adapter.patch({
+				tag,
+				node: value,
+				name: propName,
+				value: propValue,
+				oldValue: oldProps && oldProps[propName],
+				scope,
+			});
 		}
-	}
-
-	if (copiedProps) {
-		props = {...ret.el.props};
-		for (const name of copiedProps) {
-			props[name] = oldProps && oldProps[name];
-		}
-
-		ret.oldProps = props;
-	} else {
-		ret.oldProps = ret.el.props;
 	}
 
 	adapter.arrange({tag, node: value, props, children, oldProps});
+	ret.oldProps = props;
 	if (!getFlag(ret, IsMounted)) {
 		if (typeof ret.el.ref === "function") {
 			ret.el.ref(adapter.read(value));
@@ -1365,7 +1366,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 			adapter.remove({
 				tag: ret.el.tag,
 				node: ret.value as TNode,
-				props: ret.el.props,
+				props: ret.oldProps,
 				parent: host.value as TNode,
 			});
 		}
