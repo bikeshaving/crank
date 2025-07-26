@@ -45,6 +45,14 @@ function isPromiseLike(value: any): value is PromiseLike<unknown> {
  */
 export type Tag = string | symbol | Component;
 
+function getTagName(tag: Tag): string {
+	return typeof tag === "function"
+		? tag.name || "Anonymous"
+		: typeof tag === "string"
+			? tag
+			: tag.description || "AnonymousSymbol";
+}
+
 /**
  * A helper type to map the tag of an element to its expected props.
  *
@@ -274,14 +282,6 @@ Element.prototype.$$typeof = ElementSymbol;
 
 export function isElement(value: any): value is Element {
 	return value != null && value.$$typeof === ElementSymbol;
-}
-
-function displayName(el: Element): string {
-	return typeof el.tag === "function"
-		? el.tag.name || "Anonymous"
-		: typeof el.tag === "string"
-			? el.tag
-			: el.tag.description || "AnonymousSymbol";
 }
 
 const SPECIAL_PROPS = new Set(["children", "key", "ref", "copy"]);
@@ -803,7 +803,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			let newKey = typeof child === "object" ? child.key : undefined;
 			if (newKey !== undefined && seenKeys && seenKeys.has(newKey)) {
 				console.error(
-					`Duplicate key found in <${displayName(parent.el)}>`,
+					`Duplicate key found in <${getTagName(parent.el.tag)}>`,
 					newKey,
 				);
 				child = cloneElement(child as Element);
@@ -1655,7 +1655,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 			while (!getFlag(ctx, IsUnmounted) && !getFlag(ctx, IsErrored)) {
 				if (getFlag(ctx, NeedsToYield)) {
 					throw new Error(
-						`<${displayName(ctx.ret.el)}> context iterated twice without a yield`,
+						`<${getTagName(ctx.ret.el.tag)}> context iterated twice without a yield`,
 					);
 				} else {
 					setFlag(ctx, NeedsToYield);
@@ -1672,7 +1672,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 		const ctx = this[_ContextState];
 		if (getFlag(ctx, IsSyncGen)) {
 			throw new Error(
-				`Component <${displayName(ctx.ret.el)}> is a sync generator and cannot use a for await...of loop`,
+				`Component <${getTagName(ctx.ret.el.tag)}> is a sync generator and cannot use a for await...of loop`,
 			);
 		}
 
@@ -1681,7 +1681,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 			while (!getFlag(ctx, IsUnmounted) && !getFlag(ctx, IsErrored)) {
 				if (getFlag(ctx, NeedsToYield)) {
 					throw new Error(
-						`<${displayName(ctx.ret.el)}> context iterated twice without a yield`,
+						`<${getTagName(ctx.ret.el.tag)}> context iterated twice without a yield`,
 					);
 				} else {
 					setFlag(ctx, NeedsToYield);
@@ -1730,11 +1730,11 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	refresh(): Promise<TResult> | TResult {
 		const ctx = this[_ContextState];
 		if (getFlag(ctx, IsUnmounted)) {
-			console.error(`Component <${displayName(ctx.ret.el)}> is unmounted`);
+			console.error(`Component <${getTagName(ctx.ret.el.tag)}> is unmounted`);
 			return ctx.adapter.read(undefined);
 		} else if (getFlag(ctx, IsSyncExecuting)) {
 			console.error(
-				`Component <${displayName(ctx.ret.el)}> is already executing`,
+				`Component <${getTagName(ctx.ret.el.tag)}> is already executing`,
 			);
 			return ctx.adapter.read(getValue(ctx.ret));
 		}
@@ -2109,7 +2109,7 @@ function diffComponent<TNode, TScope, TRoot extends TNode, TResult>(
 		ctx = ret.ctx as ContextState<TNode, TScope, TRoot, TResult>;
 		if (getFlag(ctx, IsSyncExecuting)) {
 			console.error(
-				`Component <${displayName(ctx.ret.el)}> is already executing`,
+				`Component <${getTagName(ctx.ret.el.tag)}> is already executing`,
 			);
 			return;
 		}
@@ -2130,7 +2130,7 @@ function diffComponentChildren<TNode, TResult>(
 		return;
 	} else if (children === undefined) {
 		console.error(
-			`Component <${displayName(ctx.ret.el)}> has ${isYield ? "yielded" : "returned"} undefined. If this was intentional, ${isYield ? "yield" : "return"} null instead.`,
+			`Component <${getTagName(ctx.ret.el.tag)}> has ${isYield ? "yielded" : "returned"} undefined. If this was intentional, ${isYield ? "yield" : "return"} null instead.`,
 		);
 	}
 
@@ -2409,7 +2409,7 @@ function runComponent<TNode, TResult>(
 			!getFlag(ctx, IsUnmounted)
 		) {
 			console.error(
-				`Component <${displayName(ctx.ret.el)}> yielded/returned more than once in for...of loop`,
+				`Component <${getTagName(ctx.ret.el.tag)}> yielded/returned more than once in for...of loop`,
 			);
 		}
 
@@ -2460,7 +2460,7 @@ function runComponent<TNode, TResult>(
 							!getFlag(ctx, IsUnmounted)
 						) {
 							console.error(
-								`Component <${displayName(ctx.ret.el)}> yielded/returned more than once in for...of loop`,
+								`Component <${getTagName(ctx.ret.el.tag)}> yielded/returned more than once in for...of loop`,
 							);
 						}
 					}
