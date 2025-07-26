@@ -34,13 +34,15 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 
 	create({
 		tag,
+		tagName,
 		scope: xmlns,
 	}: {
 		tag: string | symbol;
+		tagName: string;
 		scope: string | undefined;
 	}): Node {
 		if (typeof tag !== "string") {
-			throw new Error(`Unknown tag: ${String(tag)}`);
+			throw new Error(`Unknown tag: ${tagName}`);
 		} else if (tag.toLowerCase() === "svg") {
 			xmlns = SVG_NAMESPACE;
 		}
@@ -51,14 +53,16 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 	},
 
 	adopt({
-		node,
 		tag,
+		tagName,
+		node,
 	}: {
-		node: Node;
 		tag: string | symbol;
+		tagName: string;
+		node: Node;
 	}): Array<Node> | undefined {
 		if (typeof tag !== "string" && tag !== Portal) {
-			throw new Error(`Unknown tag: ${String(tag)}`);
+			throw new Error(`Unknown tag: ${tagName}`);
 		}
 
 		// TODO: check props for mismatches and warn
@@ -304,49 +308,49 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 	},
 
 	text({
-		text,
-		hydration,
 		value,
+		oldNode,
+		hydration,
 	}: {
-		text: string;
+		value: string;
 		hydration: Array<Node> | undefined;
-		value: Node | undefined;
+		oldNode: Node | undefined;
 	}): Node {
 		if (hydration != null) {
-			let value = hydration.shift();
-			if (!value || value.nodeType !== Node.TEXT_NODE) {
-				console.error(`Expected "${text}" while hydrating but found:`, value);
+			let node = hydration.shift();
+			if (!node || node.nodeType !== Node.TEXT_NODE) {
+				console.error(`Expected "${node}" while hydrating but found:`, node);
 			} else {
 				// value is a text node, check if it matches the expected text
-				const textData = (value as Text).data;
-				if (textData.length > text.length) {
-					if (textData.startsWith(text)) {
+				const textData = (node as Text).data;
+				if (textData.length > value.length) {
+					if (textData.startsWith(value)) {
 						// the text node is longer than the expected text, so we
 						// reuse the existing text node, but truncate it and unshift the rest
-						(value as Text).data = text;
+						(node as Text).data = value;
 						hydration.unshift(
-							document.createTextNode(textData.slice(text.length)),
+							document.createTextNode(textData.slice(value.length)),
 						);
 
-						return value;
+						return node;
 					}
-				} else if (textData === text) {
-					return value;
+				} else if (textData === value) {
+					return node;
 				}
 
-				console.error(`Expected "${text}" while hydrating but found:`, value);
+				console.error(`Expected "${value}" while hydrating but found:`, node);
 			}
 		}
 
-		if (value != null) {
-			if ((value as Text).data !== text) {
-				(value as Text).data = text;
+		if (oldNode != null) {
+			if ((oldNode as Text).data !== value) {
+				(oldNode as Text).data = value;
 			}
 
-			return value;
+			return oldNode;
 		}
 
-		return document.createTextNode(text);
+		return document.createTextNode(value);
 	},
 
 	raw({

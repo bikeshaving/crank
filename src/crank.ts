@@ -491,54 +491,36 @@ export interface RenderAdapter<
 > {
 	create<TTag extends string | symbol>(data: {
 		tag: TTag;
+		tagName: string;
 		props: TagProps<TTag>;
 		scope: TScope | undefined;
 	}): TNode;
 
 	adopt<TTag extends string | symbol>(data: {
 		tag: TTag;
+		tagName: string;
 		node: TNode;
 		props: TagProps<TTag>;
 		scope: TScope | undefined;
 	}): Array<TNode> | undefined;
 
-	/**
-	 * Called for each string in an element tree.
-	 *
-	 * @param text - The string child.
-	 * @param scope - The current scope.
-	 *
-	 * @returns A string to be passed to arrange.
-	 *
-	 * Rather than returning Text nodes as we would in the DOM case, for example,
-	 * we delay that step for Renderer.prototype.arrange. We do this so that
-	 * adjacent strings can be concatenated, and the actual element tree can be
-	 * rendered in normalized form.
-	 */
+	// TODO: rename text to value, value to oldNode
 	text(data: {
-		text: string;
+		value: string;
 		scope: TScope | undefined;
 		hydration: Array<TNode> | undefined;
 		// TODO: rename to node or maybe oldNode?
-		value: TNode | undefined;
+		oldNode: TNode | undefined;
 	}): TNode;
 
 	scope<TTag extends string | symbol>(data: {
 		tag: TTag;
+		tagName: string;
 		props: TagProps<TTag>;
 		scope: TScope | undefined;
 	}): TScope | undefined;
 
-	/**
-	 * Called for each Raw element whose value prop is a string.
-	 *
-	 * @param text - The string child.
-	 * @param scope - The current scope.
-	 *
-	 * @returns The parsed node or string.
-	 */
 	raw(data: {
-		tag: Raw;
 		value: string | TNode;
 		scope: TScope | undefined;
 		hydration: Array<TNode> | undefined;
@@ -548,6 +530,7 @@ export interface RenderAdapter<
 	// name, value and oldValue
 	patch<TTag extends string | symbol>(data: {
 		tag: TTag;
+		tagName: string;
 		node: TNode;
 		props: TagProps<TTag>;
 		oldProps: TagProps<TTag> | undefined;
@@ -556,6 +539,7 @@ export interface RenderAdapter<
 
 	arrange<TTag extends string | symbol>(data: {
 		tag: TTag;
+		tagName: string;
 		node: TNode;
 		props: TagProps<TTag>;
 		children: Array<TNode>;
@@ -564,26 +548,12 @@ export interface RenderAdapter<
 
 	remove<TTag extends string | symbol>(data: {
 		tag: TTag;
+		tagName: string;
 		node: TNode;
 		props: TagProps<TTag>;
 		parent: TNode;
 	}): void;
 
-	/**
-	 * Called when an element’s rendered value is exposed via render, schedule,
-	 * refresh, refs, or generator yield expressions.
-	 *
-	 * @param value - The value of the element being read. Can be a node, a
-	 * string, undefined, or an array of nodes and strings, depending on the
-	 * element.
-	 *
-	 * @returns Varies according to the specific renderer subclass. By default,
-	 * it exposes the element’s value.
-	 *
-	 * This is useful for renderers which don’t want to expose their internal
-	 * nodes. For instance, the HTML renderer will convert all internal nodes to
-	 * strings.
-	 */
 	read(value: ElementValue<TNode>): TResult;
 
 	finalize(root: TRoot): void;
@@ -598,7 +568,7 @@ const defaultAdapter: RenderAdapter<any, any, any, any> = {
 	},
 	scope: ({scope}) => scope,
 	read: (value) => value,
-	text: ({text}) => text,
+	text: ({value}) => value,
 	raw: ({value}) => value,
 	patch: NOOP,
 	arrange: NOOP,
@@ -684,9 +654,10 @@ export class Renderer<
 
 		const adapter = this.adapter;
 		const scope = adapter.scope({
-			scope: undefined,
 			tag: Portal,
+			tagName: getTagName(Portal),
 			props: ret.el.props,
+			scope: undefined,
 		});
 		const diff = diffChildren(adapter, root, ret, ctx, scope, ret, children);
 		if (isPromiseLike(diff)) {
@@ -725,9 +696,10 @@ export class Renderer<
 
 		const adapter = this.adapter;
 		const scope = adapter.scope({
-			scope: undefined,
 			tag: Portal,
+			tagName: getTagName(Portal),
 			props: ret.el.props,
+			scope: undefined,
 		});
 
 		// Start the diffing process
@@ -738,8 +710,9 @@ export class Renderer<
 				// Get hydration data for the portal/root element
 				// This provides the initial DOM children that need to be hydrated
 				const hydration = adapter.adopt({
-					node: root,
 					tag: Portal,
+					tagName: getTagName(Portal),
+					node: root,
 					props: ret.el.props,
 					scope,
 				});
@@ -756,8 +729,9 @@ export class Renderer<
 		}
 
 		const hydration = adapter.adopt({
-			node: root,
 			tag: Portal,
+			tagName: getTagName(Portal),
+			node: root,
 			props: ret.el.props,
 			scope,
 		});
@@ -1015,7 +989,12 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 		root = ret.value = el.props.root;
 	}
 
-	scope = adapter.scope({scope, tag, props: el.props});
+	scope = adapter.scope({
+		tag,
+		tagName: getTagName(tag),
+		props: el.props,
+		scope,
+	});
 	return diffChildren(
 		adapter,
 		root,
@@ -1115,6 +1094,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 		// element is a host or portal element
 		adapter.arrange({
 			tag: Portal,
+			tagName: getTagName(Portal),
 			node: root,
 			props: ret.el.props,
 			children,
@@ -1151,10 +1131,10 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 			} else if (el.tag === Text) {
 				const oldValue = child.value as TNode | undefined;
 				value = adapter.text({
-					text: el.props.value,
+					value: el.props.value,
 					scope,
 					hydration,
-					value: oldValue,
+					oldNode: oldValue,
 				});
 				child.value = value;
 				if (!getFlag(child, IsMounted)) {
@@ -1220,7 +1200,6 @@ function commitRaw<TNode, TScope>(
 ): ElementValue<TNode> {
 	if (!ret.oldProps || ret.oldProps.value !== ret.el.props.value) {
 		ret.value = adapter.raw({
-			tag: Raw,
 			value: ret.el.props.value as any,
 			scope,
 			hydration,
@@ -1261,15 +1240,21 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		}
 	}
 
-	scope = adapter.scope({scope, tag, props})!;
+	scope = adapter.scope({
+		tag,
+		tagName: getTagName(tag),
+		props,
+		scope,
+	})!;
 
 	let childHydration: Array<TNode> | undefined;
 	if (!value && hydration && hydration.length > 0) {
 		const nextChild = hydration.shift();
 		if (nextChild) {
 			childHydration = adapter.adopt({
-				node: nextChild,
 				tag,
+				tagName: getTagName(tag),
+				node: nextChild,
 				props,
 				scope,
 			});
@@ -1295,11 +1280,17 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		// callback. In that situation, the IsMounted flag can be true while the
 		// value is undefined.
 		if (!value) {
-			value = ret.value = adapter.create({tag, props, scope});
+			value = ret.value = adapter.create({
+				tag,
+				tagName: getTagName(tag),
+				props,
+				scope,
+			});
 		}
 
 		adapter.patch({
 			tag,
+			tagName: getTagName(tag),
 			node: value,
 			props,
 			oldProps,
@@ -1307,7 +1298,14 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		});
 	}
 
-	adapter.arrange({tag, node: value, props, children, oldProps});
+	adapter.arrange({
+		tag,
+		tagName: getTagName(tag),
+		node: value,
+		props,
+		children,
+		oldProps,
+	});
 	ret.oldProps = props;
 	if (!getFlag(ret, IsMounted)) {
 		if (typeof ret.el.ref === "function") {
@@ -1355,6 +1353,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 
 			adapter.remove({
 				tag: ret.el.tag,
+				tagName: getTagName(ret.el.tag),
 				node: ret.value as TNode,
 				props: ret.oldProps,
 				parent: host.value as TNode,
@@ -2212,10 +2211,10 @@ function commitComponent<TNode>(
 		const host = ctx.host;
 		ctx.adapter.arrange({
 			tag: host.el.tag as string | symbol,
+			tagName: getTagName(host.el.tag),
 			node: host.value as TNode,
-			props: host.el.props,
-			// oldProps is the same as props the same because the host hasn't updated
-			oldProps: host.el.props,
+			props: host.oldProps,
+			oldProps: host.oldProps,
 			children: getChildValues(host),
 		});
 		finalize(ctx.adapter, ctx.root, ctx);

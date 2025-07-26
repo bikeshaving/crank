@@ -113,8 +113,8 @@ export const impl: Partial<RenderAdapter<Node, undefined, any, string>> = {
 		return {value: ""};
 	},
 
-	text({text}: {text: string}): Node {
-		return {value: escape(text)};
+	text({value}: {value: string}): Node {
+		return {value: escape(value)};
 	},
 
 	read(value: ElementValue<Node>): string {
@@ -131,11 +131,13 @@ export const impl: Partial<RenderAdapter<Node, undefined, any, string>> = {
 
 	arrange({
 		tag,
+		tagName,
 		node,
 		props,
 		children,
 	}: {
 		tag: string | symbol;
+		tagName: string;
 		node: Node;
 		props: Record<string, any>;
 		children: Array<Node | string>;
@@ -143,7 +145,7 @@ export const impl: Partial<RenderAdapter<Node, undefined, any, string>> = {
 		if (tag === Portal) {
 			return;
 		} else if (typeof tag !== "string") {
-			throw new Error(`Unknown tag: ${String(tag)}`);
+			throw new Error(`Unknown tag: ${tagName}`);
 		}
 
 		const attrs = printAttrs(props);
