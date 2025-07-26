@@ -514,7 +514,6 @@ export interface RenderAdapter<
 	create<TTag extends string | symbol>(data: {
 		tag: TTag;
 		tagName: string;
-		props: TagProps<TTag>;
 		scope: TScope | undefined;
 	}): TNode;
 
@@ -522,7 +521,6 @@ export interface RenderAdapter<
 		tag: TTag;
 		tagName: string;
 		node: TNode;
-		props: TagProps<TTag>;
 		scope: TScope | undefined;
 	}): Array<TNode> | undefined;
 
@@ -733,7 +731,6 @@ export class Renderer<
 					tag: Portal,
 					tagName: getTagName(Portal),
 					node: root,
-					props: ret.el.props,
 					scope,
 				});
 				return commitRootRender(adapter, root, ret!, ctx, scope, hydration);
@@ -744,7 +741,6 @@ export class Renderer<
 			tag: Portal,
 			tagName: getTagName(Portal),
 			node: root,
-			props: ret.el.props,
 			scope,
 		});
 		return commitRootRender(adapter, root, ret!, ctx, scope, hydration);
@@ -1252,7 +1248,6 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 				tag,
 				tagName: getTagName(tag),
 				node: nextChild,
-				props,
 				scope,
 			});
 			if (childHydration) {
@@ -1280,7 +1275,6 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 			node = ret.value = adapter.create({
 				tag,
 				tagName: getTagName(tag),
-				props,
 				scope,
 			});
 		}
