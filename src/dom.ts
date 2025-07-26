@@ -76,15 +76,13 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 
 	patch({
 		node,
-		name,
-		value,
-		oldValue,
+		props,
+		oldProps,
 		scope: xmlns,
 	}: {
 		node: Node;
-		name: string;
-		value: unknown;
-		oldValue: unknown;
+		props: Record<string, any>;
+		oldProps: Record<string, any> | undefined;
 		scope: string | undefined;
 	}): void {
 		if (node.nodeType !== Node.ELEMENT_NODE) {
@@ -95,133 +93,145 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 
 		const element = node as Element;
 		const isSVG = xmlns === SVG_NAMESPACE;
-		const colonIndex = name.indexOf(":");
-		if (colonIndex !== -1) {
-			const ns = name.slice(0, colonIndex);
-			const name1 = name.slice(colonIndex + 1);
-			switch (ns) {
-				case "prop":
-					(node as any)[name1] = value;
-					return;
-				case "attr":
-					if (value == null || value === false) {
-						element.removeAttribute(name1);
+		for (let name in {...oldProps, ...props}) {
+			let value = props[name];
+			const oldValue = oldProps ? oldProps[name] : undefined;
+
+			if (name === "children") {
+				continue;
+			}
+
+			{
+				const colonIndex = name.indexOf(":");
+				if (colonIndex !== -1) {
+					const ns = name.slice(0, colonIndex);
+					const name1 = name.slice(colonIndex + 1);
+					switch (ns) {
+						case "prop":
+							(node as any)[name1] = value;
+							continue;
+						case "attr":
+							if (value == null || value === false) {
+								element.removeAttribute(name1);
+							} else if (value === true) {
+								element.setAttribute(name1, "");
+							} else if (typeof value === "string") {
+								element.setAttribute(name1, value);
+							} else {
+								element.setAttribute(name, String(value));
+							}
+							continue;
+					}
+				}
+			}
+
+			switch (name) {
+				case "style": {
+					const style: CSSStyleDeclaration = (element as HTMLElement).style;
+					if (style == null) {
+						element.setAttribute("style", value as string);
+					} else if (value == null || value === false) {
+						element.removeAttribute("style");
 					} else if (value === true) {
-						element.setAttribute(name1, "");
+						element.setAttribute("style", "");
 					} else if (typeof value === "string") {
-						element.setAttribute(name1, value);
+						if (style.cssText !== value) {
+							style.cssText = value;
+						}
 					} else {
-						element.setAttribute(name, String(value));
-					}
-					return;
-			}
-		}
-		switch (name) {
-			case "style": {
-				const style: CSSStyleDeclaration = (element as HTMLElement).style;
-				if (style == null) {
-					element.setAttribute("style", value as string);
-				} else if (value == null || value === false) {
-					element.removeAttribute("style");
-				} else if (value === true) {
-					element.setAttribute("style", "");
-				} else if (typeof value === "string") {
-					if (style.cssText !== value) {
-						style.cssText = value;
-					}
-				} else {
-					if (typeof oldValue === "string") {
-						style.cssText = "";
-					}
+						if (typeof oldValue === "string") {
+							style.cssText = "";
+						}
 
-					for (const styleName in {...(oldValue as {}), ...(value as {})}) {
-						const styleValue = value && (value as any)[styleName];
-						if (styleValue == null) {
-							style.removeProperty(styleName);
-						} else if (style.getPropertyValue(styleName) !== styleValue) {
-							style.setProperty(styleName, styleValue);
+						for (const styleName in {...(oldValue as {}), ...(value as {})}) {
+							const styleValue = value && (value as any)[styleName];
+							if (styleValue == null) {
+								style.removeProperty(styleName);
+							} else if (style.getPropertyValue(styleName) !== styleValue) {
+								style.setProperty(styleName, styleValue);
+							}
 						}
 					}
-				}
 
-				break;
-			}
-			case "class":
-			case "className":
-				if (value === true) {
-					element.setAttribute("class", "");
-				} else if (value == null) {
-					element.removeAttribute("class");
-				} else if (!isSVG) {
-					if (element.className !== value) {
-						(element as any)["className"] = value;
-					}
-				} else if (element.getAttribute("class") !== value) {
-					element.setAttribute("class", value as string);
+					break;
 				}
-				break;
-			case "innerHTML":
-				if (value !== oldValue) {
-					element.innerHTML = value as any;
-				}
-
-				break;
-			default: {
-				if (
-					name[0] === "o" &&
-					name[1] === "n" &&
-					name[2] === name[2].toUpperCase() &&
-					typeof value === "function"
-				) {
-					// Support React-style event names (onClick, onChange, etc.)
-					name = name.toLowerCase();
-				}
-
-				if (
-					name in element &&
-					// boolean properties will coerce strings, but sometimes they map to
-					// enumerated attributes, where truthy strings ("false", "no") map to
-					// falsy properties, so we use attributes in this case.
-					!(
-						typeof value === "string" &&
-						typeof (element as any)[name] === "boolean"
-					)
-				) {
-					// walk up the object's prototype chain to find the owner of the
-					// named property
-					let obj = element;
-					do {
-						if (Object.prototype.hasOwnProperty.call(obj, name)) {
-							break;
+				case "class":
+				case "className":
+					if (value === true) {
+						element.setAttribute("class", "");
+					} else if (value == null) {
+						element.removeAttribute("class");
+					} else if (!isSVG) {
+						if (element.className !== value) {
+							(element as any)["className"] = value;
 						}
-					} while ((obj = Object.getPrototypeOf(obj)));
+					} else if (element.getAttribute("class") !== value) {
+						element.setAttribute("class", value as string);
+					}
+					break;
+				case "innerHTML":
+					if (value !== oldValue) {
+						element.innerHTML = value as any;
+					}
 
-					// get the descriptor for the named property and check whether it
-					// implies that the property is writable
-					const descriptor = Object.getOwnPropertyDescriptor(obj, name);
+					break;
+				default: {
 					if (
-						descriptor != null &&
-						(descriptor.writable === true || descriptor.set !== undefined)
+						name[0] === "o" &&
+						name[1] === "n" &&
+						name[2] === name[2].toUpperCase() &&
+						typeof value === "function"
 					) {
-						if ((element as any)[name] !== value || oldValue === undefined) {
-							(element as any)[name] = value;
-						}
-						return;
+						// Support React-style event names (onClick, onChange, etc.)
+						name = name.toLowerCase();
 					}
 
-					// if the property wasn't writable, fall through to the code below
-					// which uses setAttribute() instead of assigning directly.
-				}
+					if (
+						name in element &&
+						// boolean properties will coerce strings, but sometimes they map to
+						// enumerated attributes, where truthy strings ("false", "no") map to
+						// falsy properties, so we force using setAttribute.
+						!(
+							typeof value === "string" &&
+							typeof (element as any)[name] === "boolean"
+						)
+					) {
+						// walk up the object's prototype chain to find the owner of the
+						// named property
+						let propOwner = element;
+						do {
+							if (Object.prototype.hasOwnProperty.call(propOwner, name)) {
+								break;
+							}
+						} while ((propOwner = Object.getPrototypeOf(propOwner)));
 
-				if (value === true) {
-					value = "";
-				} else if (value == null || value === false) {
-					element.removeAttribute(name);
-					return;
-				}
+						// get the descriptor for the named property and check whether it
+						// implies that the property is writable
+						const descriptor = Object.getOwnPropertyDescriptor(propOwner, name);
+						if (
+							descriptor != null &&
+							(descriptor.writable === true || descriptor.set !== undefined)
+						) {
+							if ((element as any)[name] !== value || oldValue === undefined) {
+								(element as any)[name] = value;
+							}
+							continue;
+						}
 
-				if (element.getAttribute(name) !== value) {
-					element.setAttribute(name, value as any);
+						// if the property wasn't writable, fall through to the code below
+						// which uses setAttribute() instead of assigning directly.
+					}
+
+					if (value === true) {
+						value = "";
+					} else if (value == null || value === false) {
+						element.removeAttribute(name);
+						continue;
+					}
+
+					if (element.getAttribute(name) !== value) {
+						element.setAttribute(name, value as any);
+					}
 				}
 			}
 		}

@@ -546,12 +546,11 @@ export interface RenderAdapter<
 
 	// TODO: Switch back to passing props and oldProps instead of
 	// name, value and oldValue
-	patch<TTag extends string | symbol, TName extends string>(data: {
+	patch<TTag extends string | symbol>(data: {
 		tag: TTag;
 		node: TNode;
-		name: TName;
-		value: TagProps<TTag>[TName];
-		oldValue: TagProps<TTag>[TName] | undefined;
+		props: TagProps<TTag>;
+		oldProps: TagProps<TTag> | undefined;
 		scope: TScope;
 	}): void;
 
@@ -1299,20 +1298,13 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 			value = ret.value = adapter.create({tag, props, scope});
 		}
 
-		for (const propName in {...oldProps, ...props}) {
-			const propValue = props[propName];
-			if (propName === "children") {
-				continue;
-			}
-			adapter.patch({
-				tag,
-				node: value,
-				name: propName,
-				value: propValue,
-				oldValue: oldProps && oldProps[propName],
-				scope,
-			});
-		}
+		adapter.patch({
+			tag,
+			node: value,
+			props,
+			oldProps,
+			scope,
+		});
 	}
 
 	adapter.arrange({tag, node: value, props, children, oldProps});
