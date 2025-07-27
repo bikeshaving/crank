@@ -749,24 +749,4 @@ test("multiple iterations without a yield throw", () => {
 	Assert.is(i, 1);
 });
 
-test("for await...of throws", async () => {
-	let ctx: Context;
-	function* Component(this: Context): Generator<null> {
-		ctx = this;
-		yield null;
-	}
-
-	renderer.render(<Component />, document.body);
-	try {
-		await ctx![Symbol.asyncIterator]().next();
-		Assert.unreachable();
-	} catch (err: any) {
-		Assert.ok(
-			err.message.endsWith(
-				" is a sync generator and cannot use a for await...of loop",
-			),
-		);
-	}
-});
-
 test.run();

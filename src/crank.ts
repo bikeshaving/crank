@@ -1591,12 +1591,6 @@ export class Context<T = any, TResult = any> implements EventTarget {
 
 	async *[Symbol.asyncIterator](): AsyncGenerator<ComponentProps<T>> {
 		const ctx = this[_ContextState];
-		if (getFlag(ctx.ret, IsSyncGen)) {
-			throw new Error(
-				`Component <${getTagName(ctx.ret.el.tag)}> is a sync generator and cannot use a for await...of loop`,
-			);
-		}
-
 		setFlag(ctx.ret, IsInForAwaitOfLoop);
 		try {
 			while (!getFlag(ctx.ret, IsUnmounted) && !getFlag(ctx.ret, IsErrored)) {
