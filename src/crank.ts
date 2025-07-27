@@ -325,7 +325,7 @@ export type ElementValue<TNode> = Array<TNode> | TNode | undefined;
 const DidCommit = 1 << 0;
 const IsCopied = 1 << 1;
 const IsUpdating = 1 << 2;
-const IsSyncExecuting = 1 << 3;
+const IsExecuting = 1 << 3;
 const IsRefreshing = 1 << 4;
 const IsUnmounted = 1 << 5;
 // TODO: Is this flag still necessary or can we use IsUnmounted?
@@ -1653,7 +1653,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 		if (getFlag(ctx.ret, IsUnmounted)) {
 			console.error(`Component <${getTagName(ctx.ret.el.tag)}> is unmounted`);
 			return ctx.adapter.read(undefined);
-		} else if (getFlag(ctx.ret, IsSyncExecuting)) {
+		} else if (getFlag(ctx.ret, IsExecuting)) {
 			console.error(
 				`Component <${getTagName(ctx.ret.el.tag)}> is already executing`,
 			);
@@ -2028,7 +2028,7 @@ function diffComponent<TNode, TScope, TRoot extends TNode, TResult>(
 	let ctx: ContextState<TNode, TScope, TRoot, TResult>;
 	if (ret.ctx) {
 		ctx = ret.ctx as ContextState<TNode, TScope, TRoot, TResult>;
-		if (getFlag(ctx.ret, IsSyncExecuting)) {
+		if (getFlag(ctx.ret, IsExecuting)) {
 			console.error(
 				`Component <${getTagName(ctx.ret.el.tag)}> is already executing`,
 			);
@@ -2062,7 +2062,7 @@ function diffComponentChildren<TNode, TResult>(
 
 		// We set the isExecuting flag in case a child component dispatches an event
 		// which bubbles to this component and causes a synchronous refresh().
-		setFlag(ctx.ret, IsSyncExecuting);
+		setFlag(ctx.ret, IsExecuting);
 		diff = diffChildren(
 			ctx.adapter,
 			ctx.root,
@@ -2078,7 +2078,7 @@ function diffComponentChildren<TNode, TResult>(
 	} catch (err) {
 		diff = handleChildError(ctx, err);
 	} finally {
-		setFlag(ctx.ret, IsSyncExecuting, false);
+		setFlag(ctx.ret, IsExecuting, false);
 	}
 
 	return diff;
@@ -2232,13 +2232,11 @@ function advanceComponent(ctx: ContextState): void {
  *   (e.g., during an await), but do not block while their async children are rendering.
  * - Sync generator components block while their children are rendering;
  *   they only resume once their children have finished.
- * - Async generator components can block in different ways, depending on their loop:
- *   - With a for...of loop, they behave like sync generator components,
- *     blocking while the component or its children are rendering.
- *   - With a for await...of loop, they block only while waiting for new props
- *     to be requested, not while children are rendering.
- *   - Without any loop, they block while the component itself is rendering,
- *     not while children are rendering.
+ * - Async generator components can block in two different ways:
+ *   - By default, they behave like sync generator components, blocking while
+ *     the component or its children are rendering.
+ *   - Within a for await...of loop, they block only while waiting for new
+ *     props to be requested, and not while children are rendering.
  */
 function runComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
@@ -2250,7 +2248,7 @@ function runComponent<TNode, TResult>(
 	const ret = ctx.ret;
 	const initial = !ctx.iterator;
 	if (initial) {
-		setFlag(ctx.ret, IsSyncExecuting);
+		setFlag(ctx.ret, IsExecuting);
 		clearEventListeners(ctx);
 		let returned: ReturnType<Component>;
 		try {
@@ -2259,7 +2257,7 @@ function runComponent<TNode, TResult>(
 			setFlag(ctx.ret, IsErrored);
 			throw err;
 		} finally {
-			setFlag(ctx.ret, IsSyncExecuting, false);
+			setFlag(ctx.ret, IsExecuting, false);
 		}
 
 		if (isIteratorLike(returned)) {
@@ -2291,13 +2289,13 @@ function runComponent<TNode, TResult>(
 	let iteration!: Promise<ChildrenIteratorResult> | ChildrenIteratorResult;
 	if (initial) {
 		try {
-			setFlag(ctx.ret, IsSyncExecuting);
+			setFlag(ctx.ret, IsExecuting);
 			iteration = ctx.iterator!.next();
 		} catch (err) {
 			setFlag(ctx.ret, IsErrored);
 			throw err;
 		} finally {
-			setFlag(ctx.ret, IsSyncExecuting, false);
+			setFlag(ctx.ret, IsExecuting, false);
 		}
 
 		if (isPromiseLike(iteration)) {
@@ -2311,14 +2309,14 @@ function runComponent<TNode, TResult>(
 		// sync generator component
 		if (!initial) {
 			try {
-				setFlag(ctx.ret, IsSyncExecuting);
+				setFlag(ctx.ret, IsExecuting);
 				const oldResult = ctx.adapter.read(getValue(ctx.ret));
 				iteration = ctx.iterator!.next(oldResult);
 			} catch (err) {
 				setFlag(ctx.ret, IsErrored);
 				throw err;
 			} finally {
-				setFlag(ctx.ret, IsSyncExecuting, false);
+				setFlag(ctx.ret, IsExecuting, false);
 			}
 		}
 
@@ -2350,20 +2348,25 @@ function runComponent<TNode, TResult>(
 		const block = isPromiseLike(diff) ? diff.catch(NOOP) : undefined;
 		return [block, diff];
 	} else {
-		if (!getFlag(ctx.ret, IsInForAwaitOfLoop)) {
+		if (getFlag(ctx.ret, IsInForAwaitOfLoop)) {
+			// initializes the async generator loop
+			pullComponent(ctx, iteration);
+			const block = resumePropsAsyncIterator(ctx);
+			return [block, ctx.pull && ctx.pull.diff];
+		} else {
 			// We call resumePropsAsyncIterator in case the component exits the
 			// for...of loop
 			resumePropsAsyncIterator(ctx);
 			if (!initial) {
 				try {
-					setFlag(ctx.ret, IsSyncExecuting);
+					setFlag(ctx.ret, IsExecuting);
 					const oldResult = ctx.adapter.read(getValue(ctx.ret));
 					iteration = ctx.iterator!.next(oldResult);
 				} catch (err) {
 					setFlag(ctx.ret, IsErrored);
 					throw err;
 				} finally {
-					setFlag(ctx.ret, IsSyncExecuting, false);
+					setFlag(ctx.ret, IsExecuting, false);
 				}
 			}
 
@@ -2390,7 +2393,7 @@ function runComponent<TNode, TResult>(
 
 					setFlag(ctx.ret, NeedsToYield, false);
 					if (iteration.done) {
-						setFlag(ctx.ret, IsSyncGen, false);
+						setFlag(ctx.ret, IsAsyncGen, false);
 						ctx.iterator = undefined;
 					}
 					return diffComponentChildren<TNode, TResult>(
@@ -2407,11 +2410,6 @@ function runComponent<TNode, TResult>(
 			);
 
 			return [diff.catch(NOOP), diff];
-		} else {
-			// initializes the async generator loop
-			pullComponent(ctx, iteration);
-			const block = resumePropsAsyncIterator(ctx);
-			return [block, ctx.pull && ctx.pull.diff];
 		}
 	}
 }
@@ -2424,10 +2422,11 @@ interface PullController {
 }
 
 /**
- * The logic for pulling from async generator components when they are not in a
- * for...of loop is implemented here. It makes sense to group the logic for
- * continuously resuming components in a single loop to prevent opaque race
- * conditions.
+ * The logic for pulling from async generator components when they are in a for
+ * await...of loop is implemented here.
+ *
+ * It makes sense to group this logic to prevent opaque race conditions by
+ * calling next(), throw() and return() in sequence.
  */
 async function pullComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
@@ -2526,7 +2525,7 @@ async function pullComponent<TNode, TResult>(
 
 			if (childError != null) {
 				try {
-					setFlag(ctx.ret, IsSyncExecuting);
+					setFlag(ctx.ret, IsExecuting);
 					if (typeof ctx.iterator!.throw !== "function") {
 						throw childError;
 					}
@@ -2539,7 +2538,7 @@ async function pullComponent<TNode, TResult>(
 					break;
 				} finally {
 					childError = undefined;
-					setFlag(ctx.ret, IsSyncExecuting, false);
+					setFlag(ctx.ret, IsExecuting, false);
 				}
 			}
 
@@ -2586,7 +2585,7 @@ async function pullComponent<TNode, TResult>(
 					getFlag(ctx.ret, IsInForAwaitOfLoop)
 				) {
 					try {
-						setFlag(ctx.ret, IsSyncExecuting);
+						setFlag(ctx.ret, IsExecuting);
 						iteration = await ctx.iterator.next(oldResult);
 					} catch (err) {
 						setFlag(ctx.ret, IsErrored);
@@ -2594,7 +2593,7 @@ async function pullComponent<TNode, TResult>(
 						// the promise returned from pullComponent is never awaited
 						throw err;
 					} finally {
-						setFlag(ctx.ret, IsSyncExecuting, false);
+						setFlag(ctx.ret, IsExecuting, false);
 					}
 				}
 
@@ -2604,13 +2603,13 @@ async function pullComponent<TNode, TResult>(
 					typeof ctx.iterator.return === "function"
 				) {
 					try {
-						setFlag(ctx.ret, IsSyncExecuting);
+						setFlag(ctx.ret, IsExecuting);
 						await ctx.iterator.return();
 					} catch (err) {
 						setFlag(ctx.ret, IsErrored);
 						throw err;
 					} finally {
-						setFlag(ctx.ret, IsSyncExecuting, false);
+						setFlag(ctx.ret, IsExecuting, false);
 					}
 				}
 
@@ -2621,12 +2620,12 @@ async function pullComponent<TNode, TResult>(
 				break;
 			} else if (!iteration.done) {
 				try {
-					setFlag(ctx.ret, IsSyncExecuting);
+					setFlag(ctx.ret, IsExecuting);
 					iterationP = ctx.iterator!.next(
 						oldResult,
 					) as Promise<ChildrenIteratorResult>;
 				} finally {
-					setFlag(ctx.ret, IsSyncExecuting, false);
+					setFlag(ctx.ret, IsExecuting, false);
 				}
 			}
 		}
@@ -2716,7 +2715,7 @@ async function unmountComponent(
 		let iteration: ChildrenIteratorResult | undefined;
 		if (getFlag(ctx.ret, IsInForOfLoop)) {
 			try {
-				setFlag(ctx.ret, IsSyncExecuting);
+				setFlag(ctx.ret, IsExecuting);
 				const oldResult = ctx.adapter.read(getValue(ctx.ret));
 				const iterationP = ctx.iterator!.next(oldResult);
 				if (isPromiseLike(iterationP)) {
@@ -2736,7 +2735,7 @@ async function unmountComponent(
 				setFlag(ctx.ret, IsErrored);
 				throw err;
 			} finally {
-				setFlag(ctx.ret, IsSyncExecuting, false);
+				setFlag(ctx.ret, IsExecuting, false);
 			}
 		}
 
@@ -2746,7 +2745,7 @@ async function unmountComponent(
 			typeof ctx.iterator.return === "function"
 		) {
 			try {
-				setFlag(ctx.ret, IsSyncExecuting);
+				setFlag(ctx.ret, IsExecuting);
 				const iterationP = ctx.iterator.return();
 				if (isPromiseLike(iterationP)) {
 					if (!getFlag(ctx.ret, IsAsyncGen)) {
@@ -2765,7 +2764,7 @@ async function unmountComponent(
 				setFlag(ctx.ret, IsErrored);
 				throw err;
 			} finally {
-				setFlag(ctx.ret, IsSyncExecuting, false);
+				setFlag(ctx.ret, IsExecuting, false);
 			}
 		}
 	}
@@ -2912,13 +2911,13 @@ function handleChildError<TNode>(
 	resumePropsAsyncIterator(ctx);
 	let iteration: ChildrenIteratorResult | Promise<ChildrenIteratorResult>;
 	try {
-		setFlag(ctx.ret, IsSyncExecuting);
+		setFlag(ctx.ret, IsExecuting);
 		iteration = ctx.iterator.throw(err);
 	} catch (err) {
 		setFlag(ctx.ret, IsErrored);
 		throw err;
 	} finally {
-		setFlag(ctx.ret, IsSyncExecuting, false);
+		setFlag(ctx.ret, IsExecuting, false);
 	}
 
 	if (isPromiseLike(iteration)) {
