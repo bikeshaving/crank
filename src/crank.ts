@@ -237,6 +237,8 @@ export class Element<TTag extends Tag = Tag> {
 		this.props = props;
 	}
 
+	// TODO: deprecate these computed properties in favor of direct access to
+	// props
 	get key(): Key {
 		return this.props.key;
 	}
@@ -511,14 +513,14 @@ export interface RenderAdapter<
 	TRoot extends TNode = TNode,
 	TResult = ElementValue<TNode>,
 > {
-	create<TTag extends string | symbol>(data: {
-		tag: TTag;
+	create(data: {
+		tag: string | symbol;
 		tagName: string;
 		scope: TScope | undefined;
 	}): TNode;
 
-	adopt<TTag extends string | symbol>(data: {
-		tag: TTag;
+	adopt(data: {
+		tag: string | symbol;
 		tagName: string;
 		node: TNode;
 		scope: TScope | undefined;
@@ -533,10 +535,10 @@ export interface RenderAdapter<
 		oldNode: TNode | undefined;
 	}): TNode;
 
-	scope<TTag extends string | symbol>(data: {
-		tag: TTag;
+	scope(data: {
+		tag: string | symbol;
 		tagName: string;
-		props: TagProps<TTag>;
+		props: Record<string, any>;
 		scope: TScope | undefined;
 	}): TScope | undefined;
 
@@ -546,32 +548,30 @@ export interface RenderAdapter<
 		hydration: Array<TNode> | undefined;
 	}): ElementValue<TNode>;
 
-	// TODO: Switch back to passing props and oldProps instead of
-	// name, value and oldValue
-	patch<TTag extends string | symbol>(data: {
-		tag: TTag;
+	patch(data: {
+		tag: string | symbol;
 		tagName: string;
 		node: TNode;
-		props: TagProps<TTag>;
-		oldProps: TagProps<TTag> | undefined;
+		props: Record<string, any>;
+		oldProps: Record<string, any> | undefined;
 		scope: TScope | undefined;
 		isHydrating: boolean;
 	}): void;
 
-	arrange<TTag extends string | symbol>(data: {
-		tag: TTag;
+	arrange(data: {
+		tag: string | symbol;
 		tagName: string;
 		node: TNode;
-		props: TagProps<TTag>;
+		props: Record<string, any>;
 		children: Array<TNode>;
-		oldProps: TagProps<TTag> | undefined;
+		oldProps: Record<string, any> | undefined;
 	}): void;
 
-	remove<TTag extends string | symbol>(data: {
-		tag: TTag;
+	remove(data: {
+		tag: string | symbol;
 		tagName: string;
 		node: TNode;
-		props: TagProps<TTag>;
+		props: Record<string, any>;
 		parent: TNode;
 		isNested: boolean;
 	}): void;
