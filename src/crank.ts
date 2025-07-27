@@ -481,7 +481,7 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode> {
 function stripSpecialProps(props: Record<string, any>): Record<string, any> {
 	let _: unknown;
 	let result: Record<string, any>;
-	({key: _, ref: _, copy: _, ...result} = props);
+	({key: _, ref: _, copy: _, children: _, ...result} = props);
 	return result;
 }
 

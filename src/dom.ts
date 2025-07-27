@@ -126,11 +126,6 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 		for (let name in {...oldProps, ...props}) {
 			let value = props[name];
 			const oldValue = oldProps ? oldProps[name] : undefined;
-
-			if (name === "children") {
-				continue;
-			}
-
 			{
 				// handle prop:name or attr:name properties
 				const colonIndex = name.indexOf(":");

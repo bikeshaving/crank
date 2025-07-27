@@ -53,11 +53,7 @@ function printStyleObject(style: Record<string, any>): string {
 function printAttrs(props: Record<string, any>): string {
 	const attrs: string[] = [];
 	for (let [name, value] of Object.entries(props)) {
-		if (
-			name === "children" ||
-			name === "innerHTML" ||
-			name.startsWith("prop:")
-		) {
+		if (name === "innerHTML" || name.startsWith("prop:")) {
 			continue;
 		} else if (name === "style") {
 			if (typeof value === "string") {
