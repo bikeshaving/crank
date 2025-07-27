@@ -7,6 +7,7 @@ import {renderer} from "../src/dom.js";
 
 const test = suite("errors");
 test.before.each(() => {
+	renderer.render(null, document.body);
 	document.body.innerHTML = "";
 });
 

@@ -6,6 +6,15 @@ import {renderer} from "../src/dom.js";
 import * as Sinon from "sinon";
 
 const test = suite("Text");
+test.before.each(() => {
+	renderer.render(null, document.body);
+	document.body.innerHTML = "";
+});
+
+test.after.each(() => {
+	renderer.render(null, document.body);
+	document.body.innerHTML = "";
+});
 
 test("render text element", () => {
 	const element = <Text value="Hello, World!" />;

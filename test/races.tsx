@@ -6,8 +6,8 @@ import {createElement, Child, Context, Element} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 const test = suite("races");
-
 test.before.each(() => {
+	renderer.render(null, document.body);
 	document.body.innerHTML = "";
 });
 

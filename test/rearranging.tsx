@@ -6,6 +6,15 @@ import {createElement, Context, Fragment} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 const test = suite("rearranging");
+test.before.each(() => {
+	renderer.render(null, document.body);
+	document.body.innerHTML = "";
+});
+
+test.after.each(() => {
+	renderer.render(null, document.body);
+	document.body.innerHTML = "";
+});
 
 let headerCtx: Context | undefined;
 function* Header(this: Context) {

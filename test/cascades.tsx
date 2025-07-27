@@ -8,6 +8,8 @@ const test = suite("cascades");
 
 let mock: Sinon.SinonStub;
 test.before.each(() => {
+	renderer.render(null, document.body);
+	document.body.innerHTML = "";
 	mock = Sinon.stub(console, "error");
 });
 

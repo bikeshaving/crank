@@ -8,6 +8,11 @@ import type {Context} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 const test = suite("hydration");
+test.before.each(() => {
+	renderer.render(null, document.body);
+	document.body.innerHTML = "";
+});
+
 let consoleWarn: Sinon.SinonStub;
 test.before.each(() => {
 	consoleWarn = Sinon.stub(console, "warn");

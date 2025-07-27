@@ -6,6 +6,10 @@ const test = suite("refs");
 
 import {Children, Context, createElement, Element, Raw} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
+test.before.each(() => {
+	renderer.render(null, document.body);
+	document.body.innerHTML = "";
+});
 
 test.after.each(() => {
 	renderer.render(null, document.body);

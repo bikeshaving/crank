@@ -6,6 +6,10 @@ import {Context, Copy, createElement, Element, Fragment} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 const test = suite("copy-el");
+test.before.each(() => {
+	renderer.render(null, document.body);
+	document.body.innerHTML = "";
+});
 
 test.after.each(() => {
 	document.body.innerHTML = "";

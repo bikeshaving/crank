@@ -7,6 +7,15 @@ import type {Children, Context, Element} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 const test = suite("provisions");
+test.before.each(() => {
+	renderer.render(null, document.body);
+	document.body.innerHTML = "";
+});
+
+test.after.each(() => {
+	renderer.render(null, document.body);
+	document.body.innerHTML = "";
+});
 
 // TODO: test typings
 declare module "../src/crank.js" {

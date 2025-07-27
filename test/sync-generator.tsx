@@ -2,11 +2,15 @@ import {suite} from "uvu";
 import * as Assert from "uvu/assert";
 import * as Sinon from "sinon";
 
-const test = suite("sync generator");
-
 import {createElement, Fragment, Raw} from "../src/crank.js";
 import type {Child, Children, Context, Element} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
+
+const test = suite("sync generator");
+test.before.each(() => {
+	renderer.render(null, document.body);
+	document.body.innerHTML = "";
+});
 
 test.after.each(() => {
 	renderer.render(null, document.body);
