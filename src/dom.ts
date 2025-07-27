@@ -347,13 +347,11 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 		node,
 		props,
 		children,
-		oldProps,
 	}: {
 		tag: string | symbol;
 		node: Node;
 		props: Record<string, any>;
 		children: Array<Node>;
-		oldProps: Record<string, any> | undefined;
 	}): void {
 		if (tag === Portal && (node == null || typeof node.nodeType !== "number")) {
 			throw new TypeError(
@@ -361,43 +359,9 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 			);
 		}
 
-		if (
-			!("innerHTML" in props) &&
-			// We don’t want to update elements without explicit children (<div/>),
-			// because these elements sometimes have child nodes added via raw
-			// DOM manipulations.
-			// However, if an element has previously rendered children, we clear the
-			// them because it would be surprising not to clear Crank managed
-			// children, even if the new element does not have explicit children.
-			("children" in props || (oldProps && "children" in oldProps))
-		) {
-			if (children.length === 0) {
-				node.textContent = "";
-			} else {
-				let oldChild = node.firstChild;
-				let i = 0;
-				while (oldChild !== null && i < children.length) {
-					const newChild = children[i];
-					if (oldChild === newChild) {
-						oldChild = oldChild.nextSibling;
-						i++;
-					} else {
-						node.insertBefore(newChild, oldChild);
-						i++;
-						// TODO: This is an optimization but we need to think a little more about other cases like prepending.
-						if (oldChild !== children[i]) {
-							const nextSibling = oldChild.nextSibling;
-							node.removeChild(oldChild);
-							oldChild = nextSibling;
-						}
-					}
-				}
-
-				// append excess children
-				for (; i < children.length; i++) {
-					const newChild = children[i];
-					node.insertBefore(newChild, oldChild);
-				}
+		if (!("innerHTML" in props)) {
+			for (let i = 0; i < children.length; i++) {
+				node.appendChild(children[i]);
 			}
 		}
 	},
@@ -448,6 +412,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 				}
 
 				console.warn(`Expected "${value}" while hydrating but found:`, node);
+				oldNode = node;
 			}
 		}
 

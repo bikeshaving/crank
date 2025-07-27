@@ -497,6 +497,33 @@ test("raw node", () => {
 	Assert.ok(document.getElementById("raw"));
 });
 
+test("raw changes", () => {
+	let html = '<span id="raw">Hi</span>';
+	renderer.render(
+		<div>
+			Raw: <Raw value={html} />
+		</div>,
+		document.body,
+	);
+	Assert.is(
+		document.body.innerHTML,
+		'<div>Raw: <span id="raw">Hi</span></div>',
+	);
+
+	html = "RAWRAWRAW<div>Raw</div>RAWRAWRAW";
+	renderer.render(
+		<div>
+			Raw: <Raw value={html} />
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		"<div>Raw: RAWRAWRAW<div>Raw</div>RAWRAWRAW</div>",
+	);
+});
+
 test("style text", () => {
 	renderer.render(<div style="display: none" />, document.body);
 	Assert.is(document.body.innerHTML, '<div style="display: none;"></div>');
@@ -526,7 +553,7 @@ test("style text to object", () => {
 	Assert.is(document.body.innerHTML, '<div style="color: goldenrod;"></div>');
 });
 
-test("clearing mutations", () => {
+test("outside DOM mutations", () => {
 	renderer.render(<div />, document.body);
 
 	const div = document.body.firstChild as HTMLDivElement;
@@ -536,9 +563,10 @@ test("clearing mutations", () => {
 	Assert.is(document.body.innerHTML, "<div><span>child</span></div>");
 	renderer.render(<div>{[]}</div>, document.body);
 
-	Assert.is(document.body.innerHTML, "<div></div>");
+	Assert.is(document.body.innerHTML, "<div><span>child</span></div>");
 	div.innerHTML = "<span>child</span>";
 	renderer.render(<div>{null}</div>, document.body);
+	Assert.is(document.body.innerHTML, "<div><span>child</span></div>");
 });
 
 test("unknown attribute", () => {

@@ -342,23 +342,23 @@ const IsUpdating = 1 << 2;
 const IsSyncExecuting = 1 << 3;
 const IsRefreshing = 1 << 4;
 const IsUnmounted = 1 << 5;
-
 // TODO: Is this flag still necessary or can we use IsUnmounted?
 const IsErrored = 1 << 6;
-
-// TODO: we might want to use a ctx.type to distinguish between the four
-// function types
+// TODO: we might want to use a ctx.componentType to distinguish between the
+// four component types.
 const IsSyncGen = 1 << 7;
 const IsAsyncGen = 1 << 8;
-
 const IsInForOfLoop = 1 << 9;
 const IsInForAwaitOfLoop = 1 << 10;
 const NeedsToYield = 1 << 11;
 const PropsAvailable = 1 << 12;
-
 // TODO: Are these flags still necessary?
 const IsScheduling = 1 << 13;
 const IsSchedulingRefresh = 1 << 14;
+
+function getFlag(ret: Retainer<unknown>, flag: number): boolean {
+	return !!(ret.f & flag);
+}
 
 function setFlag(ret: Retainer<unknown>, flag: number, value = true): void {
 	if (value) {
@@ -366,10 +366,6 @@ function setFlag(ret: Retainer<unknown>, flag: number, value = true): void {
 	} else {
 		ret.f &= ~flag;
 	}
-}
-
-function getFlag(ret: Retainer<unknown>, flag: number): boolean {
-	return !!(ret.f & flag);
 }
 
 /**
@@ -504,8 +500,9 @@ function stripSpecialProps(props: Record<string, any>): Record<string, any> {
 }
 
 /**
- * An interface which describes the adapter used by Renderer subclasses to
- * adapt the rendering process for a specific target environment.
+ * Interface for adapting the rendering process to a specific target
+ * environment implemented by Renderer subclasses and passed to the Renderer
+ * constructor.
  */
 export interface RenderAdapter<
 	TNode,
@@ -516,22 +513,22 @@ export interface RenderAdapter<
 	create(data: {
 		tag: string | symbol;
 		tagName: string;
+		props: Record<string, any>;
 		scope: TScope | undefined;
 	}): TNode;
 
 	adopt(data: {
 		tag: string | symbol;
 		tagName: string;
+		props: Record<string, any>;
 		node: TNode;
 		scope: TScope | undefined;
 	}): Array<TNode> | undefined;
 
-	// TODO: rename text to value, value to oldNode
 	text(data: {
 		value: string;
 		scope: TScope | undefined;
 		hydration: Array<TNode> | undefined;
-		// TODO: rename to node or maybe oldNode?
 		oldNode: TNode | undefined;
 	}): TNode;
 
@@ -567,14 +564,7 @@ export interface RenderAdapter<
 		oldProps: Record<string, any> | undefined;
 	}): void;
 
-	remove(data: {
-		tag: string | symbol;
-		tagName: string;
-		node: TNode;
-		props: Record<string, any>;
-		parent: TNode;
-		isNested: boolean;
-	}): void;
+	remove(data: {node: TNode; parent: TNode; isNested: boolean}): void;
 
 	read(value: ElementValue<TNode>): TResult;
 
@@ -724,7 +714,6 @@ export class Renderer<
 
 		// Start the diffing process
 		const diff = diffChildren(adapter, root, ret, ctx, scope, ret, children);
-
 		if (isPromiseLike(diff)) {
 			return diff.then(() => {
 				// Get hydration data for the portal/root element
@@ -732,9 +721,20 @@ export class Renderer<
 				const hydration = adapter.adopt({
 					tag: Portal,
 					tagName: getTagName(Portal),
+					props: stripSpecialProps(ret.el.props),
 					node: root,
 					scope,
 				});
+
+				if (hydration) {
+					for (let i = 0; i < hydration.length; i++) {
+						adapter.remove({
+							node: hydration[i],
+							parent: root,
+							isNested: false,
+						});
+					}
+				}
 				return commitRootRender(adapter, root, ret!, ctx, scope, hydration);
 			});
 		}
@@ -743,8 +743,19 @@ export class Renderer<
 			tag: Portal,
 			tagName: getTagName(Portal),
 			node: root,
+			props: stripSpecialProps(ret.el.props),
 			scope,
 		});
+
+		if (hydration) {
+			for (let i = 0; i < hydration.length; i++) {
+				adapter.remove({
+					node: hydration[i],
+					parent: root,
+					isNested: false,
+				});
+			}
+		}
 		return commitRootRender(adapter, root, ret!, ctx, scope, hydration);
 	}
 }
@@ -920,7 +931,13 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			.then(() => undefined)
 			.finally(() => {
 				parent.fallback = undefined;
-				parent.graveyard = graveyard;
+				if (graveyard) {
+					if (parent.graveyard) {
+						parent.graveyard.push(...graveyard);
+					} else {
+						parent.graveyard = graveyard;
+					}
+				}
 			});
 
 		let onNextDiffs!: Function;
@@ -937,7 +954,14 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		return diffs1;
 	} else {
 		parent.fallback = undefined;
-		parent.graveyard = graveyard;
+		if (graveyard) {
+			if (parent.graveyard) {
+				parent.graveyard.push(...graveyard);
+			} else {
+				parent.graveyard = graveyard;
+			}
+		}
+
 		if (parent.onNext) {
 			parent.onNext(diffs);
 			parent.onNext = undefined;
@@ -1093,7 +1117,6 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	if (root == null) {
 		unmount(adapter, ret, ctx, ret, false);
 	} else {
-		// element is a host or portal element
 		adapter.arrange({
 			tag: Portal,
 			tagName: getTagName(Portal),
@@ -1130,7 +1153,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 			const el = child.el;
 			let value: ElementValue<TNode>;
 			if (el.tag === Raw) {
-				value = commitRaw(adapter, child, scope, hydration);
+				value = commitRaw(adapter, host, child, scope, hydration);
 			} else if (el.tag === Text) {
 				const oldValue = child.value as TNode | undefined;
 				value = adapter.text({
@@ -1158,8 +1181,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 			} else if (typeof el.tag === "function") {
 				value = commitComponent(child.ctx!, hydration);
 			} else {
-				// host element or portal element
-				value = commitHost(adapter, root, child, ctx, hydration);
+				value = commitHostOrPortal(adapter, root, child, ctx, hydration);
 			}
 
 			if (Array.isArray(value)) {
@@ -1181,27 +1203,26 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 		parent.graveyard = undefined;
 	}
 
-	if (parent.lingerers) {
-		for (const lingerer of parent.lingerers) {
-			const value = getValue(lingerer);
-			if (Array.isArray(value)) {
-				values.push(...value);
-			} else if (value) {
-				values.push(value);
-			}
-		}
-	}
-
 	return values;
 }
 
 function commitRaw<TNode, TScope>(
 	adapter: RenderAdapter<TNode, TScope, TNode, unknown>,
+	host: Retainer<TNode>,
 	ret: Retainer<TNode>,
 	scope: TScope | undefined,
 	hydration: Array<TNode> | undefined,
 ): ElementValue<TNode> {
 	if (!ret.oldProps || ret.oldProps.value !== ret.el.props.value) {
+		const oldNodes = wrap(ret.value);
+		for (let i = 0; i < oldNodes.length; i++) {
+			const oldNode = oldNodes[i];
+			adapter.remove({
+				node: oldNode,
+				parent: host.value as TNode,
+				isNested: false,
+			});
+		}
 		ret.value = adapter.raw({
 			value: ret.el.props.value as any,
 			scope,
@@ -1212,11 +1233,12 @@ function commitRaw<TNode, TScope>(
 		}
 	}
 
+	ret.oldProps = stripSpecialProps(ret.el.props);
 	setFlag(ret, IsMounted);
 	return ret.value;
 }
 
-function commitHost<TNode, TRoot extends TNode, TScope>(
+function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, unknown>,
 	root: TNode | undefined,
 	ret: Retainer<TNode, TScope>,
@@ -1225,6 +1247,10 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 ): ElementValue<TNode> {
 	if (getFlag(ret, IsCopied) && getFlag(ret, IsMounted)) {
 		return getValue(ret);
+	}
+
+	if (ret.el.tag === Portal) {
+		hydration = undefined;
 	}
 
 	const tag = ret.el.tag as string | symbol;
@@ -1250,10 +1276,18 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 				tag,
 				tagName: getTagName(tag),
 				node: nextChild,
+				props,
 				scope,
 			});
 			if (childHydration) {
 				node = ret.value = nextChild;
+				for (let i = 0; i < childHydration.length; i++) {
+					adapter.remove({
+						node: childHydration[i],
+						parent: root as TNode,
+						isNested: false,
+					});
+				}
 			}
 		}
 	}
@@ -1277,6 +1311,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 			node = ret.value = adapter.create({
 				tag,
 				tagName: getTagName(tag),
+				props,
 				scope,
 			});
 		}
@@ -1324,6 +1359,10 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 	ret: Retainer<TNode>,
 	isNested: boolean,
 ): void {
+	if (ret.fallback) {
+		unmount(adapter, host, ctx, ret.fallback, isNested);
+	}
+
 	if (typeof ret.el.tag === "function") {
 		unmountComponent(ret.ctx!, isNested);
 	} else if (ret.el.tag === Fragment) {
@@ -1348,10 +1387,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 			}
 
 			adapter.remove({
-				tag: ret.el.tag,
-				tagName: getTagName(ret.el.tag),
 				node: ret.value as TNode,
-				props: ret.oldProps,
 				parent: host.value as TNode,
 				isNested,
 			});
@@ -2528,9 +2564,9 @@ async function pullComponent<TNode, TResult>(
 			let diff: Promise<undefined> | undefined;
 			try {
 				if (!isPromiseLike(iterationP)) {
-					// if the component was in a for...of loop and has exited, iterationP
-					// will be an iteration and not a promise, so we can skip the diff of
-					// children as it is handled elsewhere.
+					// if iterationP is an iteration and not a promise, the component was
+					// not in a for await...of loop when the iteration started, so we can
+					// skip the diffing of children as it is handled elsewhere.
 					diff = undefined;
 				} else if (
 					!getFlag(ctx.ret, NeedsToYield) &&
@@ -2666,17 +2702,7 @@ async function unmountComponent(
 	}
 
 	if (lingerers) {
-		try {
-			ctx.host.lingerers || (ctx.host.lingerers = new Set()).add(ctx.ret);
-			await Promise.all(lingerers);
-		} finally {
-			if (ctx.host.lingerers) {
-				ctx.host.lingerers.delete(ctx.ret);
-				if (ctx.host.lingerers.size === 0) {
-					ctx.host.lingerers = undefined;
-				}
-			}
-		}
+		await Promise.all(lingerers);
 	}
 
 	unmountChildren(ctx.adapter, ctx.host, ctx, ctx.ret, isNested);

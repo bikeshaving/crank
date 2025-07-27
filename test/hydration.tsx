@@ -34,6 +34,7 @@ test("simple", () => {
 	Assert.is(document.body.firstChild, button);
 	button.click();
 	Assert.ok(onclick.called);
+	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("fragment", () => {
@@ -51,6 +52,7 @@ test("fragment", () => {
 	Assert.is(document.body.firstChild, button);
 	button.click();
 	Assert.ok(onclick.called);
+	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("sync function component", () => {
@@ -69,6 +71,7 @@ test("sync function component", () => {
 	Assert.is(document.body.firstChild, button);
 	button.click();
 	Assert.ok(onclick.called);
+	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("sync generator component", () => {
@@ -89,6 +92,7 @@ test("sync generator component", () => {
 	Assert.is(document.body.firstChild, button);
 	button.click();
 	Assert.ok(onclick.called);
+	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("refresh", () => {
@@ -122,6 +126,7 @@ test("refresh", () => {
 	Assert.ok(onclick.called);
 	Assert.is(document.body.innerHTML, "<button>Click 1</button>");
 	Assert.is(document.body.firstChild, button);
+	Assert.is(consoleWarn.callCount, 2);
 });
 
 test("async function component", async () => {
@@ -140,6 +145,7 @@ test("async function component", async () => {
 	Assert.is(document.body.firstChild, button);
 	button.click();
 	Assert.ok(onclick.called);
+	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("async generator component", async () => {
@@ -160,6 +166,7 @@ test("async generator component", async () => {
 	Assert.is(document.body.firstChild, button);
 	button.click();
 	Assert.ok(onclick.called);
+	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("async component and host sibling", async () => {
@@ -197,6 +204,7 @@ test("async component and host sibling", async () => {
 	button2.click();
 	Assert.ok(onclick1.called);
 	Assert.ok(onclick2.called);
+	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("async sibling components resolve out of order", async () => {
@@ -238,6 +246,7 @@ test("async sibling components resolve out of order", async () => {
 	button2.click();
 	Assert.ok(onclick1.called);
 	Assert.ok(onclick2.called);
+	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("text sibling", async () => {
@@ -270,6 +279,7 @@ test("text sibling", async () => {
 	Assert.is(document.body.firstChild!.childNodes[0], text1);
 	Assert.is(document.body.firstChild!.childNodes[1], button);
 	Assert.is(document.body.firstChild!.childNodes[2], text2);
+	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("split text", async () => {
@@ -303,6 +313,7 @@ test("split text", async () => {
 	Assert.is(document.body.firstChild!.childNodes[0], text);
 	Assert.is(document.body.firstChild!.childNodes[1].nodeType, Node.TEXT_NODE);
 	Assert.is(document.body.firstChild!.childNodes[2], button);
+	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("mismatched tag", () => {
@@ -358,6 +369,7 @@ test("raw element", () => {
 	Assert.is(document.body.childNodes[0].childNodes[1], button);
 	button.click();
 	Assert.ok(onclick.called);
+	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("raw multiple elements", () => {
@@ -404,6 +416,7 @@ test("raw text", () => {
 	Assert.is(document.body.childNodes[0].childNodes[1], button);
 	button.click();
 	Assert.ok(onclick.called);
+	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("raw comment", () => {
@@ -431,6 +444,7 @@ test("raw comment", () => {
 	Assert.is(document.body.childNodes[0].childNodes[2], button);
 	button.click();
 	Assert.ok(onclick.called);
+	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("ref called with hydrated element", () => {
@@ -452,6 +466,7 @@ test("ref called with hydrated element", () => {
 	Assert.is(ref.lastCall.firstArg, button);
 	button.click();
 	Assert.ok(onclick.called);
+	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("warns when attribute present but should be missing during hydration", () => {

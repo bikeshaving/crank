@@ -384,7 +384,7 @@ test("cleanup is called even if component is prematurely unmounted", async () =>
 	Assert.is(fn.callCount, 2);
 });
 
-test("cleanup can cause component to linger if callback returns a promise", async () => {
+test("components can linger", async () => {
 	let fn = Sinon.fake();
 	let resolve: Function;
 	function* Component(this: Context) {
@@ -415,6 +415,72 @@ test("cleanup can cause component to linger if callback returns a promise", asyn
 	resolve!();
 	await new Promise((resolve) => setTimeout(resolve));
 	Assert.is(document.body.innerHTML, "<div></div>");
+});
+
+test.skip("multiple components linger and unmount independently", async () => {
+	let mock1 = Sinon.fake();
+	let mock2 = Sinon.fake();
+	let resolve1!: Function;
+	let resolve2!: Function;
+
+	function* Child1(this: Context) {
+		this.cleanup(() => {
+			mock1();
+			return new Promise((r) => (resolve1 = r));
+		});
+		for ({} of this) yield <span>One</span>;
+	}
+
+	function* Child3(this: Context) {
+		this.cleanup(() => {
+			mock2();
+			return new Promise((r) => (resolve2 = r));
+		});
+
+		for ({} of this) yield <span>Three</span>;
+	}
+
+	renderer.render(
+		<div>
+			<Child1 />
+			<span>Two</span>
+			<Child3 />
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>One</span><span>Two</span><span>Three</span></div>",
+	);
+
+	renderer.render(
+		<div>
+			<span>Two</span>
+		</div>,
+		document.body,
+	);
+
+	Assert.is(mock1.callCount, 1);
+	Assert.is(mock2.callCount, 1);
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>One</span><span>Two</span><span>Three</span></div>",
+	);
+
+	resolve1();
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>One</span><span>Two</span><span>Three</span></div>",
+	);
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Two</span><span>Three</span></div>",
+	);
+	resolve2();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div><span>Two</span></div>");
 });
 
 test.run();
