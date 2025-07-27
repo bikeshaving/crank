@@ -573,6 +573,7 @@ export interface RenderAdapter<
 		node: TNode;
 		props: TagProps<TTag>;
 		parent: TNode;
+		isNested: boolean;
 	}): void;
 
 	read(value: ElementValue<TNode>): TResult;
@@ -1325,11 +1326,13 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 ): void {
 	if (typeof ret.el.tag === "function") {
 		unmountComponent(ret.ctx!, isNested);
+	} else if (ret.el.tag === Fragment) {
+		unmountChildren(adapter, host, ctx, ret, isNested);
 	} else if (ret.el.tag === Portal) {
-		unmountChildren(adapter, ret, ctx, ret);
+		unmountChildren(adapter, ret, ctx, ret, false);
 		finalize(adapter, ret.value);
-	} else if (ret.el.tag !== Fragment) {
-		unmountChildren(adapter, ret, ctx, ret);
+	} else {
+		unmountChildren(adapter, ret, ctx, ret, true);
 
 		if (getFlag(ret, IsMounted)) {
 			if (isEventTarget(ret.value)) {
@@ -1350,10 +1353,9 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 				node: ret.value as TNode,
 				props: ret.oldProps,
 				parent: host.value as TNode,
+				isNested,
 			});
 		}
-	} else {
-		unmountChildren(adapter, host, ctx, ret);
 	}
 }
 
@@ -1362,11 +1364,12 @@ function unmountChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	host: Retainer<TNode>,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	ret: Retainer<TNode>,
+	isNested: boolean,
 ): void {
 	if (ret.graveyard) {
 		for (let i = 0; i < ret.graveyard.length; i++) {
 			const child = ret.graveyard[i];
-			unmount(adapter, host, ctx, child, true);
+			unmount(adapter, host, ctx, child, isNested);
 		}
 
 		ret.graveyard = undefined;
@@ -1375,7 +1378,7 @@ function unmountChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	for (let i = 0, children = wrap(ret.children); i < children.length; i++) {
 		const child = children[i];
 		if (typeof child === "object") {
-			unmount(adapter, host, ctx, child, true);
+			unmount(adapter, host, ctx, child, isNested);
 		}
 	}
 }
@@ -2641,7 +2644,7 @@ function resumePropsAsyncIterator(
 
 async function unmountComponent(
 	ctx: ContextState,
-	nested: boolean,
+	isNested: boolean,
 ): Promise<undefined> {
 	if (getFlag(ctx.ret, IsUnmounted)) {
 		return;
@@ -2656,7 +2659,7 @@ async function unmountComponent(
 		cleanupMap.delete(ctx);
 		for (const callback of callbacks) {
 			const cleanup = callback(oldResult);
-			if (!nested && isPromiseLike(cleanup)) {
+			if (!isNested && isPromiseLike(cleanup)) {
 				(lingerers = lingerers || []).push(cleanup);
 			}
 		}
@@ -2676,7 +2679,7 @@ async function unmountComponent(
 		}
 	}
 
-	unmountChildren(ctx.adapter, ctx.host, ctx, ctx.ret);
+	unmountChildren(ctx.adapter, ctx.host, ctx, ctx.ret, isNested);
 	if (lingerers) {
 		// If there are lingerers, we must finalize the root because nodes have
 		// been removed asynchronously

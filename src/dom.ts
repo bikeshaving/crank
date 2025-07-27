@@ -402,8 +402,16 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 		}
 	},
 
-	remove({node, parent}: {node: Node; parent: Node}): void {
-		if (node.parentNode === parent) {
+	remove({
+		node,
+		parent,
+		isNested,
+	}: {
+		node: Node;
+		parent: Node;
+		isNested: boolean;
+	}): void {
+		if (!isNested && node.parentNode === parent) {
 			parent.removeChild(node);
 		}
 	},
