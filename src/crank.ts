@@ -322,7 +322,7 @@ function narrow(value: Children): NarrowedChild {
 export type ElementValue<TNode> = Array<TNode> | TNode | undefined;
 
 /*** RETAINER FLAGS ***/
-const IsMounted = 1 << 0;
+const DidCommit = 1 << 0;
 const IsCopied = 1 << 1;
 const IsUpdating = 1 << 2;
 const IsSyncExecuting = 1 << 3;
@@ -817,7 +817,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				childCopied = true;
 			} else if (
 				typeof ret === "object" &&
-				getFlag(ret, IsMounted) &&
+				getFlag(ret, DidCommit) &&
 				ret.el === child
 			) {
 				// If the child is the same as the retained element, we skip
@@ -840,7 +840,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					ret.fallback = fallback;
 				}
 
-				if (childCopied && getFlag(ret, IsMounted)) {
+				if (childCopied && getFlag(ret, DidCommit)) {
 					// pass
 				} else if (child.tag === Raw) {
 					// pass
@@ -999,7 +999,7 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 		root = ret.value = el.props.root;
 	}
 
-	if (!getFlag(ret, IsMounted)) {
+	if (!getFlag(ret, DidCommit)) {
 		scope = ret.scope = adapter.scope({
 			tag,
 			tagName: getTagName(tag),
@@ -1117,7 +1117,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	}
 
 	ret.oldProps = props;
-	setFlag(ret, IsMounted);
+	setFlag(ret, DidCommit);
 	finalize(adapter, root);
 	return adapter.read(unwrap(children));
 }
@@ -1152,7 +1152,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 					oldNode: oldValue,
 				});
 				child.value = value;
-				if (!getFlag(child, IsMounted)) {
+				if (!getFlag(child, DidCommit)) {
 					if (typeof el.props.ref === "function") {
 						el.props.ref(adapter.read(value));
 					}
@@ -1179,7 +1179,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 				values.push(value);
 			}
 
-			setFlag(child, IsMounted);
+			setFlag(child, DidCommit);
 		}
 	}
 
@@ -1223,7 +1223,7 @@ function commitRaw<TNode, TScope>(
 	}
 
 	ret.oldProps = stripSpecialProps(ret.el.props);
-	setFlag(ret, IsMounted);
+	setFlag(ret, DidCommit);
 	return ret.value;
 }
 
@@ -1234,7 +1234,7 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	ctx: ContextState<TNode, TScope, TRoot, unknown> | undefined,
 	hydration: Array<TNode> | undefined,
 ): ElementValue<TNode> {
-	if (getFlag(ret, IsCopied) && getFlag(ret, IsMounted)) {
+	if (getFlag(ret, IsCopied) && getFlag(ret, DidCommit)) {
 		return getValue(ret);
 	}
 
@@ -1325,13 +1325,13 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 		oldProps,
 	});
 	ret.oldProps = props;
-	if (!getFlag(ret, IsMounted)) {
+	if (!getFlag(ret, DidCommit)) {
 		if (typeof ret.el.props.ref === "function") {
 			ret.el.props.ref(adapter.read(node));
 		}
 	}
 
-	setFlag(ret, IsMounted);
+	setFlag(ret, DidCommit);
 	if (tag === Portal) {
 		finalize(adapter, ret.value);
 		// Portal elements
@@ -1362,7 +1362,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 	} else {
 		unmountChildren(adapter, ret, ctx, ret, true);
 
-		if (getFlag(ret, IsMounted)) {
+		if (getFlag(ret, DidCommit)) {
 			if (isEventTarget(ret.value)) {
 				const records = getListenerRecords(ctx, host);
 				for (let i = 0; i < records.length; i++) {
@@ -2172,7 +2172,7 @@ function commitComponent<TNode>(
 	}
 
 	setFlag(ctx.ret, IsUpdating, false);
-	setFlag(ctx.ret, IsMounted);
+	setFlag(ctx.ret, DidCommit);
 	return value;
 }
 
