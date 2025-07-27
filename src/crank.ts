@@ -747,6 +747,35 @@ export class Renderer<
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
+function getInflight(child: Retainer<unknown>): Promise<undefined> | undefined {
+	const ctx: ContextState<unknown> | undefined = child.ctx;
+	if (ctx && getFlag(ctx.ret, IsUpdating) && ctx.inflight) {
+		return ctx.inflight[1];
+	} else if (child.pending) {
+		return child.pending;
+	}
+
+	return undefined;
+}
+
+function createChildrenByKey<TNode, TScope>(
+	children: Array<Retainer<TNode, TScope> | undefined>,
+	offset: number,
+): Map<Key, Retainer<TNode, TScope>> {
+	const childrenByKey = new Map<Key, Retainer<TNode, TScope>>();
+	for (let i = offset; i < children.length; i++) {
+		const child = children[i];
+		if (
+			typeof child === "object" &&
+			typeof child.el.props.key !== "undefined"
+		) {
+			childrenByKey.set(child.el.props.key, child);
+		}
+	}
+
+	return childrenByKey;
+}
+
 function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
@@ -955,35 +984,6 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 
 		parent.pending = undefined;
 	}
-}
-
-function createChildrenByKey<TNode, TScope>(
-	children: Array<Retainer<TNode, TScope> | undefined>,
-	offset: number,
-): Map<Key, Retainer<TNode, TScope>> {
-	const childrenByKey = new Map<Key, Retainer<TNode, TScope>>();
-	for (let i = offset; i < children.length; i++) {
-		const child = children[i];
-		if (
-			typeof child === "object" &&
-			typeof child.el.props.key !== "undefined"
-		) {
-			childrenByKey.set(child.el.props.key, child);
-		}
-	}
-
-	return childrenByKey;
-}
-
-function getInflight(child: Retainer<unknown>): Promise<undefined> | undefined {
-	const ctx: ContextState<unknown> | undefined = child.ctx;
-	if (ctx && getFlag(ctx.ret, IsUpdating) && ctx.inflight) {
-		return ctx.inflight[1];
-	} else if (child.pending) {
-		return child.pending;
-	}
-
-	return undefined;
 }
 
 function diffHost<TNode, TScope, TRoot extends TNode>(
