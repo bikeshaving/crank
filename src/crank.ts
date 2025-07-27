@@ -409,7 +409,9 @@ class Retainer<TNode, TScope = unknown> {
 
 	declare graveyard: Array<Retainer<TNode, TScope>> | undefined;
 
-	declare lingerers: Set<Retainer<TNode, TScope>> | undefined;
+	declare lingerers:
+		| Array<Set<Retainer<TNode, TScope>> | undefined>
+		| undefined;
 
 	constructor(el: Element) {
 		this.f = 0;
@@ -452,7 +454,21 @@ function getValue<TNode>(ret: Retainer<TNode>): ElementValue<TNode> {
  */
 function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode> {
 	const values: Array<TNode> = [];
-	for (let i = 0, children = wrap(ret.children); i < children.length; i++) {
+	const lingerers = ret.lingerers;
+	const children = wrap(ret.children);
+	for (let i = 0; i < children.length; i++) {
+		if (lingerers != null && lingerers[i] != null) {
+			const rets = lingerers[i]!;
+			for (const ret of rets) {
+				const value = getValue(ret);
+				if (Array.isArray(value)) {
+					values.push(...value);
+				} else if (value) {
+					values.push(value);
+				}
+			}
+		}
+
 		const child = children[i];
 		if (child) {
 			const value = getValue(child);
@@ -464,13 +480,18 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode> {
 		}
 	}
 
-	if (ret.lingerers) {
-		for (const lingerer of ret.lingerers) {
-			const value = getValue(lingerer);
-			if (Array.isArray(value)) {
-				values.push(...value);
-			} else if (value) {
-				values.push(value);
+	if (lingerers != null && lingerers.length > children.length) {
+		for (let i = children.length; i < lingerers.length; i++) {
+			const rets = lingerers[i];
+			if (rets != null) {
+				for (const ret of rets) {
+					const value = getValue(ret);
+					if (Array.isArray(value)) {
+						values.push(...value);
+					} else if (value) {
+						values.push(value);
+					}
+				}
 			}
 		}
 	}
@@ -1038,7 +1059,7 @@ function parentCtxContains(parent: ContextState, child: ContextState): boolean {
 // When rendering is done without a root, we use this special anonymous root to
 // make sure flush callbacks are still called.
 const ANONYMOUS_ROOT: any = {};
-function finalize<TRoot>(
+function flush<TRoot>(
 	adapter: RenderAdapter<unknown, unknown, TRoot>,
 	root: TRoot | null | undefined,
 	initiator?: ContextState,
@@ -1101,6 +1122,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 		ctx,
 		scope,
 		ret,
+		0,
 		hydration,
 	);
 	if (root == null) {
@@ -1118,7 +1140,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 
 	ret.oldProps = props;
 	setFlag(ret, DidCommit);
-	finalize(adapter, root);
+	flush(adapter, root);
 	return adapter.read(unwrap(children));
 }
 
@@ -1129,9 +1151,10 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope | undefined,
 	parent: Retainer<TNode, TScope>,
+	index: number,
 	hydration: Array<TNode> | undefined,
 ): Array<TNode> {
-	const values: Array<TNode> = [];
+	let values: Array<TNode> = [];
 	for (let i = 0, children = wrap(parent.children); i < children.length; i++) {
 		let child = children[i];
 		while (typeof child === "object" && child.fallback) {
@@ -1141,9 +1164,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 		if (typeof child === "object") {
 			const el = child.el;
 			let value: ElementValue<TNode>;
-			if (el.tag === Raw) {
-				value = commitRaw(adapter, host, child, scope, hydration);
-			} else if (el.tag === Text) {
+			if (el.tag === Text) {
 				const oldValue = child.value as TNode | undefined;
 				value = adapter.text({
 					value: el.props.value,
@@ -1157,6 +1178,8 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 						el.props.ref(adapter.read(value));
 					}
 				}
+			} else if (el.tag === Raw) {
+				value = commitRaw(adapter, host, child, scope, hydration);
 			} else if (el.tag === Fragment) {
 				value = commitChildren(
 					adapter,
@@ -1165,9 +1188,11 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 					ctx,
 					scope,
 					child,
+					index,
 					hydration,
 				);
 			} else if (typeof el.tag === "function") {
+				child.ctx!.index = index;
 				value = commitComponent(child.ctx!, hydration);
 			} else {
 				value = commitHostOrPortal(adapter, root, child, ctx, hydration);
@@ -1175,8 +1200,10 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 
 			if (Array.isArray(value)) {
 				values.push(...value);
+				index += value.length;
 			} else if (value) {
 				values.push(value);
+				index++;
 			}
 
 			setFlag(child, DidCommit);
@@ -1190,6 +1217,10 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 		}
 
 		parent.graveyard = undefined;
+	}
+
+	if (parent.lingerers) {
+		values = getChildValues(parent);
 	}
 
 	return values;
@@ -1246,7 +1277,6 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	const props = stripSpecialProps(ret.el.props);
 	const oldProps = ret.oldProps;
 
-	// TODO: audit usage of node and value to make sure naming is consistent
 	let node = ret.value as TNode;
 	for (const propName in props) {
 		if (props[propName] === Copy) {
@@ -1288,13 +1318,14 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 		ctx,
 		scope,
 		ret,
+		0,
 		childHydration,
 	);
 
 	if (tag !== Portal) {
-		// We use !node and not !getFlag(ret, IsMounted) here because of an
+		// We use !node and not !getFlag(ret, DidCommit) here because of an
 		// edge-case where a component fires a dispatchEvent from a schedule()
-		// callback. In that situation, the IsMounted flag can be true while the
+		// callback. In that situation, the DidCommit flag can be true while the
 		// value is undefined.
 		if (!node) {
 			node = ret.value = adapter.create({
@@ -1333,7 +1364,7 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 
 	setFlag(ret, DidCommit);
 	if (tag === Portal) {
-		finalize(adapter, ret.value);
+		flush(adapter, ret.value);
 		// Portal elements
 		return;
 	}
@@ -1352,13 +1383,28 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 		unmount(adapter, host, ctx, ret.fallback, isNested);
 	}
 
+	if (ret.lingerers) {
+		for (let i = 0; i < ret.lingerers.length; i++) {
+			const lingerers = ret.lingerers[i];
+			if (lingerers) {
+				for (const lingerer of lingerers) {
+					unmount(adapter, host, ctx, lingerer, isNested);
+				}
+			}
+		}
+
+		ret.lingerers = undefined;
+	}
+
 	if (typeof ret.el.tag === "function") {
 		unmountComponent(ret.ctx!, isNested);
 	} else if (ret.el.tag === Fragment) {
 		unmountChildren(adapter, host, ctx, ret, isNested);
 	} else if (ret.el.tag === Portal) {
 		unmountChildren(adapter, ret, ctx, ret, false);
-		finalize(adapter, ret.value);
+		if (ret.value != null) {
+			adapter.finalize(ret.value as TRoot);
+		}
 	} else {
 		unmountChildren(adapter, ret, ctx, ret, true);
 
@@ -1492,6 +1538,10 @@ class ContextState<
 	// props are requested.
 	declare onPropsRequested: Function | undefined;
 
+	// The last known index of the component's children, relative to its nearest
+	// ancestor host or portal.
+	declare index: number;
+
 	constructor(
 		adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 		root: TRoot | undefined,
@@ -1516,6 +1566,7 @@ class ContextState<
 		this.onPropsRequested = undefined;
 
 		this.pull = undefined;
+		this.index = 0;
 	}
 }
 
@@ -2089,6 +2140,7 @@ function commitComponent<TNode>(
 		ctx,
 		ctx.scope,
 		ctx.ret,
+		ctx.index,
 		hydration,
 	);
 
@@ -2144,7 +2196,7 @@ function commitComponent<TNode>(
 			oldProps: props,
 			children: getChildValues(host),
 		});
-		finalize(ctx.adapter, ctx.root, ctx);
+		flush(ctx.adapter, ctx.root, ctx);
 	}
 
 	const callbacks = scheduleMap.get(ctx);
@@ -2419,8 +2471,8 @@ interface PullController {
  * The logic for pulling from async generator components when they are in a for
  * await...of loop is implemented here.
  *
- * It makes sense to group this logic to prevent opaque race conditions by
- * calling next(), throw() and return() in sequence.
+ * It makes sense to group this logic in a single async loop to prevent race
+ * conditions caused by calling next(), throw() and return() concurrently.
  */
 async function pullComponent<TNode, TResult>(
 	ctx: ContextState<TNode, unknown, TNode, TResult>,
@@ -2429,12 +2481,14 @@ async function pullComponent<TNode, TResult>(
 		| ChildrenIteratorResult
 		| undefined,
 ): Promise<void> {
-	if (!iterationP) {
+	if (!iterationP || ctx.pull) {
 		return;
 	}
 
 	ctx.pull = {iterationP: undefined, diff: undefined, onChildError: undefined};
 
+	// TODO: replace done with iteration
+	//let iteration: ChildrenIteratorResult | undefined;
 	let done = false;
 	try {
 		let childError: any;
@@ -2571,8 +2625,8 @@ async function pullComponent<TNode, TResult>(
 				setFlag(ctx.ret, NeedsToYield, false);
 			}
 
-			// TODO: move this outside the loop
 			if (getFlag(ctx.ret, IsUnmounted)) {
+				// TODO: move this unmounted branch outside the loop
 				while (
 					(!iteration || !iteration.done) &&
 					ctx.iterator &&
@@ -2609,7 +2663,7 @@ async function pullComponent<TNode, TResult>(
 
 				break;
 			} else if (!getFlag(ctx.ret, IsInForAwaitOfLoop)) {
-				// we have entered a for...of loop, so updates will be handled by the
+				// we have exited the for...await of, so updates will be handled by the
 				// regular runComponent/enqueueComponent logic.
 				break;
 			} else if (!iteration.done) {
@@ -2668,30 +2722,57 @@ async function unmountComponent(
 		return;
 	}
 
-	setFlag(ctx.ret, IsUnmounted);
-	clearEventListeners(ctx);
-	let lingerers: Array<PromiseLike<unknown>> | undefined;
+	let promises: Array<PromiseLike<unknown>> | undefined;
 	const callbacks = cleanupMap.get(ctx);
 	if (callbacks) {
 		const oldResult = ctx.adapter.read(getValue(ctx.ret));
 		cleanupMap.delete(ctx);
 		for (const callback of callbacks) {
 			const cleanup = callback(oldResult);
-			if (!isNested && isPromiseLike(cleanup)) {
-				(lingerers = lingerers || []).push(cleanup);
+			if (isPromiseLike(cleanup)) {
+				(promises = promises || []).push(cleanup);
 			}
 		}
 	}
 
-	if (lingerers) {
-		await Promise.all(lingerers);
+	let didLinger = false;
+	if (!isNested && promises && getChildValues(ctx.ret).length > 0) {
+		didLinger = true;
+		const index = ctx.index;
+		const lingerers = ctx.host.lingerers || (ctx.host.lingerers = []);
+		let set = lingerers[index];
+		if (set == null) {
+			set = new Set<Retainer<unknown>>();
+			lingerers[index] = set;
+		}
+
+		set.add(ctx.ret);
+		await Promise.all(promises);
+		set!.delete(ctx.ret);
+		if (set!.size === 0) {
+			lingerers[index] = undefined;
+		}
+
+		if (!lingerers.some(Boolean)) {
+			// If there are no lingerers remaining, we can remove the lingerers array
+			ctx.host.lingerers = undefined;
+		}
 	}
 
+	if (getFlag(ctx.ret, IsUnmounted)) {
+		// If the component was unmounted while awaiting the cleanup callbacks,
+		// we do not need to continue unmounting.
+		return;
+	}
+
+	setFlag(ctx.ret, IsUnmounted);
+	clearEventListeners(ctx);
 	unmountChildren(ctx.adapter, ctx.host, ctx, ctx.ret, isNested);
-	if (lingerers) {
-		// If there are lingerers, we must finalize the root because nodes have
-		// been removed asynchronously
-		ctx.adapter.finalize(ctx.root);
+	if (didLinger) {
+		// If we lingered, we call finalize to ensure rendering is finalized
+		if (ctx.root != null) {
+			ctx.adapter.finalize(ctx.root);
+		}
 	}
 
 	if (ctx.iterator) {
