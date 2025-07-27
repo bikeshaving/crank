@@ -236,20 +236,6 @@ export class Element<TTag extends Tag = Tag> {
 		this.tag = tag;
 		this.props = props;
 	}
-
-	// TODO: deprecate these computed properties in favor of direct access to
-	// props
-	get key(): Key {
-		return this.props.key;
-	}
-
-	get ref(): unknown {
-		return this.props.ref;
-	}
-
-	get copy(): boolean {
-		return !!this.props.copy;
-	}
 }
 
 // See Element interface
@@ -786,8 +772,8 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		let child = narrow(newChildren1[ni]);
 		{
 			// aligning new children with old retainers
-			let oldKey = typeof ret === "object" ? ret.el.key : undefined;
-			let newKey = typeof child === "object" ? child.key : undefined;
+			let oldKey = typeof ret === "object" ? ret.el.props.key : undefined;
+			let newKey = typeof child === "object" ? child.props.key : undefined;
 			if (newKey !== undefined && seenKeys && seenKeys.has(newKey)) {
 				console.error(
 					`Duplicate key found in <${getTagName(parent.el.tag)}>`,
@@ -809,7 +795,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 					while (ret !== undefined && oldKey !== undefined) {
 						oi++;
 						ret = oldRetained[oi];
-						oldKey = typeof ret === "object" ? ret.el.key : undefined;
+						oldKey = typeof ret === "object" ? ret.el.props.key : undefined;
 					}
 
 					oi++;
@@ -841,7 +827,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			} else {
 				if (typeof ret === "object" && ret.el.tag === child.tag) {
 					ret.el = child;
-					if (child.copy) {
+					if (child.props.copy) {
 						childCopied = true;
 					}
 				} else {
@@ -913,9 +899,9 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 		const ret = oldRetained[oi];
 		if (
 			typeof ret === "object" &&
-			(typeof ret.el.key === "undefined" ||
+			(typeof ret.el.props.key === "undefined" ||
 				!seenKeys ||
-				!seenKeys.has(ret.el.key))
+				!seenKeys.has(ret.el.props.key))
 		) {
 			(graveyard = graveyard || []).push(ret);
 		}
@@ -978,8 +964,11 @@ function createChildrenByKey<TNode, TScope>(
 	const childrenByKey = new Map<Key, Retainer<TNode, TScope>>();
 	for (let i = offset; i < children.length; i++) {
 		const child = children[i];
-		if (typeof child === "object" && typeof child.el.key !== "undefined") {
-			childrenByKey.set(child.el.key, child);
+		if (
+			typeof child === "object" &&
+			typeof child.el.props.key !== "undefined"
+		) {
+			childrenByKey.set(child.el.props.key, child);
 		}
 	}
 
@@ -1164,8 +1153,8 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 				});
 				child.value = value;
 				if (!getFlag(child, IsMounted)) {
-					if (typeof el.ref === "function") {
-						el.ref(adapter.read(value));
+					if (typeof el.props.ref === "function") {
+						el.props.ref(adapter.read(value));
 					}
 				}
 			} else if (el.tag === Fragment) {
@@ -1228,8 +1217,8 @@ function commitRaw<TNode, TScope>(
 			scope,
 			hydration,
 		});
-		if (typeof ret.el.ref === "function") {
-			ret.el.ref(adapter.read(ret.value));
+		if (typeof ret.el.props.ref === "function") {
+			ret.el.props.ref(adapter.read(ret.value));
 		}
 	}
 
@@ -1337,8 +1326,8 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	});
 	ret.oldProps = props;
 	if (!getFlag(ret, IsMounted)) {
-		if (typeof ret.el.ref === "function") {
-			ret.el.ref(adapter.read(node));
+		if (typeof ret.el.props.ref === "function") {
+			ret.el.props.ref(adapter.read(node));
 		}
 	}
 

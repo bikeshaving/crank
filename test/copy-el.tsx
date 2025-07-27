@@ -202,7 +202,7 @@ test("copy children", () => {
 	const span5 = document.body.firstChild!.childNodes[4];
 	const span6 = document.body.firstChild!.childNodes[5];
 	const span7 = document.body.firstChild!.childNodes[6];
-	spans = spans.reverse().map((el) => <Copy key={el.key} />);
+	spans = spans.reverse().map((el) => <Copy key={el.props.key} />);
 	renderer.render(
 		<div>
 			<span>1</span>
@@ -230,7 +230,7 @@ test("copy children", () => {
 	Assert.is(document.body.firstChild!.childNodes[4], span3);
 	Assert.is(document.body.firstChild!.childNodes[5], span2);
 	Assert.is(document.body.firstChild!.childNodes[6], span7);
-	spans = spans.reverse().map((el) => <Copy key={el.key} />);
+	spans = spans.reverse().map((el) => <Copy key={el.props.key} />);
 	renderer.render(
 		<div>
 			<span>1</span>
