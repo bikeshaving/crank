@@ -894,7 +894,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 
 				if (childCopied && getFlag(ret, DidCommit)) {
 					// pass
-				} else if (child.tag === Raw) {
+				} else if (child.tag === Raw || child.tag === Text) {
 					// pass
 				} else if (child.tag === Fragment) {
 					diff = diffChildren(
@@ -909,8 +909,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				} else if (typeof child.tag === "function") {
 					diff = diffComponent(adapter, root, host, ctx, scope, ret);
 				} else {
-					// host element or portal element
-					diff = diffHost(adapter, root, ctx, scope, ret);
+					diff = diffHostOrPortal(adapter, root, ctx, scope, ret);
 				}
 			}
 
@@ -1011,7 +1010,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	}
 }
 
-function diffHost<TNode, TScope, TRoot extends TNode>(
+function diffHostOrPortal<TNode, TScope, TRoot extends TNode>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, unknown>,
 	root: TRoot | undefined,
 	ctx: ContextState<TNode, TScope, TRoot> | undefined,
@@ -1024,15 +1023,15 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 		root = ret.value = el.props.root;
 	}
 
-	if (!getFlag(ret, DidCommit)) {
+	if (getFlag(ret, DidCommit)) {
+		scope = ret.scope;
+	} else {
 		scope = ret.scope = adapter.scope({
 			tag,
 			tagName: getTagName(tag),
 			props: el.props,
 			scope,
 		});
-	} else {
-		scope = ret.scope;
 	}
 
 	return diffChildren(
