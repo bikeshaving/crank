@@ -647,7 +647,7 @@ export class Renderer<
 		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
 		let ret: Retainer<TNode, TScope> | undefined;
-		const ctx =
+		const bridgeCtx =
 			bridge &&
 			(bridge[_ContextState] as ContextState<TNode, TScope, TRoot, TResult>);
 		if (typeof root === "object" && root !== null) {
@@ -659,7 +659,7 @@ export class Renderer<
 		if (ret === undefined) {
 			ret = new Retainer(createElement(Portal, {children, root}));
 			ret.value = root;
-			ret.ctx = ctx;
+			ret.ctx = bridgeCtx;
 			ret.scope = adapter.scope({
 				tag: Portal,
 				tagName: getTagName(Portal),
@@ -669,7 +669,7 @@ export class Renderer<
 			if (typeof root === "object" && root !== null && children != null) {
 				this.cache.set(root, ret);
 			}
-		} else if (ret.ctx !== ctx) {
+		} else if (ret.ctx !== bridgeCtx) {
 			throw new Error(
 				"A previous call to render() was passed a different context",
 			);
@@ -681,14 +681,22 @@ export class Renderer<
 			}
 		}
 
-		const diff = diffChildren(adapter, root, ret, ctx, scope, ret, children);
+		const diff = diffChildren(
+			adapter,
+			root,
+			ret,
+			bridgeCtx,
+			scope,
+			ret,
+			children,
+		);
 		if (isPromiseLike(diff)) {
 			return diff.then(() =>
-				commitRootRender(adapter, root, ret!, ctx, scope, undefined),
+				commitRootRender(adapter, root, ret!, bridgeCtx, scope, undefined),
 			);
 		}
 
-		return commitRootRender(adapter, root, ret!, ctx, scope, undefined);
+		return commitRootRender(adapter, root, ret!, bridgeCtx, scope, undefined);
 	}
 
 	// TODO: deduplicate with render()
@@ -698,7 +706,7 @@ export class Renderer<
 		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
 		let ret: Retainer<TNode, TScope> | undefined;
-		const ctx =
+		const bridgeCtx =
 			bridge &&
 			(bridge[_ContextState] as ContextState<TNode, TScope, TRoot, TResult>);
 		if (typeof root === "object" && root !== null) {
@@ -712,7 +720,7 @@ export class Renderer<
 
 		ret = new Retainer(createElement(Portal, {children, root}));
 		ret.value = root;
-		ret.ctx = ctx;
+		ret.ctx = bridgeCtx;
 		if (typeof root === "object" && root !== null && children != null) {
 			this.cache.set(root, ret);
 		}
@@ -726,7 +734,15 @@ export class Renderer<
 		}));
 
 		// Start the diffing process
-		const diff = diffChildren(adapter, root, ret, ctx, scope, ret, children);
+		const diff = diffChildren(
+			adapter,
+			root,
+			ret,
+			bridgeCtx,
+			scope,
+			ret,
+			children,
+		);
 		if (isPromiseLike(diff)) {
 			return diff.then(() => {
 				// Get hydration data for the portal/root element
@@ -752,7 +768,7 @@ export class Renderer<
 					adapter,
 					root,
 					ret!,
-					ctx,
+					bridgeCtx,
 					scope,
 					hydrationNodes,
 				);
@@ -776,7 +792,14 @@ export class Renderer<
 				});
 			}
 		}
-		return commitRootRender(adapter, root, ret!, ctx, scope, hydrationNodes);
+		return commitRootRender(
+			adapter,
+			root,
+			ret!,
+			bridgeCtx,
+			scope,
+			hydrationNodes,
+		);
 	}
 }
 
@@ -1270,6 +1293,8 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	}
 
 	if (parent.lingerers) {
+		// if parent.lingerers is set, a descendant component is unmounting
+		// asynchronously, so we overwrite values to include lingerering DOM nodes.
 		values = getChildValues(parent);
 	}
 
