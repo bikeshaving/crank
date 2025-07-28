@@ -371,12 +371,13 @@ class Retainer<TNode, TScope = unknown> {
 
 	/**
 	 * The context associated with this element. Will only be defined for
-	 * component elements.
+	 * component elements, or for portal elements which are passed a bridge
+	 * context.
 	 */
 	declare ctx: ContextState<TNode> | undefined;
 
 	/**
-	 * The retainer children of this element. Retainers form a tree which mirrors
+	 * The children of this element. Retainers form a tree which mirrors
 	 * elements. Can be a single child or undefined as a memory optimization.
 	 */
 	declare children:
@@ -386,9 +387,8 @@ class Retainer<TNode, TScope = unknown> {
 
 	/**
 	 * The child which this retainer replaces. This property is used when an
-	 * async retainer tree replaces previously rendered elements, so that the
-	 * previously rendered elements can remain visible until the async tree
-	 * settles.
+	 * async retainer tree replaces another, so that the previously rendered
+	 * nodes can remain visible until the async tree settles.
 	 */
 	declare fallback: Retainer<TNode, TScope> | undefined;
 
