@@ -531,7 +531,7 @@ export interface RenderAdapter<
 		tag: string | symbol;
 		tagName: string;
 		props: Record<string, any>;
-		node: TNode;
+		node: TNode | undefined;
 		scope: TScope | undefined;
 	}): Array<TNode> | undefined;
 
@@ -731,7 +731,7 @@ export class Renderer<
 			return diff.then(() => {
 				// Get hydration data for the portal/root element
 				// This provides the initial DOM children that need to be hydrated
-				const hydration = adapter.adopt({
+				const hydrationNodes = adapter.adopt({
 					tag: Portal,
 					tagName: getTagName(Portal),
 					props: stripSpecialProps(ret.el.props),
@@ -739,20 +739,27 @@ export class Renderer<
 					scope,
 				});
 
-				if (hydration) {
-					for (let i = 0; i < hydration.length; i++) {
+				if (hydrationNodes) {
+					for (let i = 0; i < hydrationNodes.length; i++) {
 						adapter.remove({
-							node: hydration[i],
+							node: hydrationNodes[i],
 							parent: root,
 							isNested: false,
 						});
 					}
 				}
-				return commitRootRender(adapter, root, ret!, ctx, scope, hydration);
+				return commitRootRender(
+					adapter,
+					root,
+					ret!,
+					ctx,
+					scope,
+					hydrationNodes,
+				);
 			});
 		}
 
-		const hydration = adapter.adopt({
+		const hydrationNodes = adapter.adopt({
 			tag: Portal,
 			tagName: getTagName(Portal),
 			node: root,
@@ -760,16 +767,16 @@ export class Renderer<
 			scope,
 		});
 
-		if (hydration) {
-			for (let i = 0; i < hydration.length; i++) {
+		if (hydrationNodes) {
+			for (let i = 0; i < hydrationNodes.length; i++) {
 				adapter.remove({
-					node: hydration[i],
+					node: hydrationNodes[i],
 					parent: root,
 					isNested: false,
 				});
 			}
 		}
-		return commitRootRender(adapter, root, ret!, ctx, scope, hydration);
+		return commitRootRender(adapter, root, ret!, ctx, scope, hydrationNodes);
 	}
 }
 
@@ -1342,27 +1349,25 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		hydrationNodes = undefined;
 	}
 
-	let childHydration: Array<TNode> | undefined;
+	let childHydrationNodes: Array<TNode> | undefined;
 	if (!getFlag(ret, DidCommit) && tag !== Portal) {
-		if (!node && hydrationNodes && hydrationNodes.length > 0) {
+		if (!node && hydrationNodes) {
 			const nextChild = hydrationNodes.shift();
-			if (nextChild) {
-				childHydration = adapter.adopt({
-					tag,
-					tagName: getTagName(tag),
-					node: nextChild,
-					props,
-					scope,
-				});
-				if (childHydration) {
-					node = nextChild;
-					for (let i = 0; i < childHydration.length; i++) {
-						adapter.remove({
-							node: childHydration[i],
-							parent: node,
-							isNested: false,
-						});
-					}
+			childHydrationNodes = adapter.adopt({
+				tag,
+				tagName: getTagName(tag),
+				node: nextChild!,
+				props,
+				scope,
+			});
+			if (childHydrationNodes) {
+				node = nextChild!;
+				for (let i = 0; i < childHydrationNodes.length; i++) {
+					adapter.remove({
+						node: childHydrationNodes[i],
+						parent: node,
+						isNested: false,
+					});
 				}
 			}
 		}
@@ -1390,7 +1395,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		props,
 		oldProps,
 		scope,
-		isHydrating: !!childHydration,
+		isHydrating: !!childHydrationNodes,
 	});
 
 	const children = commitChildren(
@@ -1400,7 +1405,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		scope,
 		ret,
 		0,
-		childHydration,
+		childHydrationNodes,
 	);
 
 	adapter.arrange({

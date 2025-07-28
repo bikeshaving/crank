@@ -85,20 +85,20 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 	}: {
 		tag: string | symbol;
 		tagName: string;
-		node: Node;
+		node: Node | undefined;
 	}): Array<Node> | undefined {
 		if (typeof tag !== "string" && tag !== Portal) {
 			throw new Error(`Unknown tag: ${tagName}`);
 		}
 
-		// TODO: check props for mismatches and warn
 		if (
-			typeof tag === "string" &&
-			(node.nodeType !== Node.ELEMENT_NODE ||
-				tag.toLowerCase() !== (node as Element).tagName.toLowerCase())
+			node == null ||
+			(typeof tag === "string" &&
+				(node.nodeType !== Node.ELEMENT_NODE ||
+					tag.toLowerCase() !== (node as Element).tagName.toLowerCase()))
 		) {
-			console.warn(`Expected <${tag}> while hydrating but found: `, node);
-			return undefined;
+			console.warn(`Expected <${tagName}> while hydrating but found: `, node);
+			return;
 		}
 
 		return Array.from(node.childNodes);
@@ -118,7 +118,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 		isHydrating: boolean;
 	}): void {
 		if (node.nodeType !== Node.ELEMENT_NODE) {
-			throw new TypeError(`Cannot patch node of type ${node.nodeType}.`);
+			throw new TypeError(`Cannot patch node: ${String(node)}`);
 		}
 
 		const element = node as Element;
