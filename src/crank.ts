@@ -165,7 +165,8 @@ export type Copy = typeof Copy;
  */
 export const Text = Symbol.for("crank.Text") as unknown as Component<{
 	value: string;
-}>;
+}> &
+	symbol;
 export type Text = typeof Text;
 
 /** A special tag for injecting raw nodes or strings via a value prop. */
@@ -330,8 +331,6 @@ const IsRefreshing = 1 << 4;
 const IsUnmounted = 1 << 5;
 // TODO: Is this flag still necessary or can we use IsUnmounted?
 const IsErrored = 1 << 6;
-// TODO: we might want to use a ctx.componentType to distinguish between the
-// four component types.
 const IsSyncGen = 1 << 7;
 const IsAsyncGen = 1 << 8;
 const IsInForOfLoop = 1 << 9;
