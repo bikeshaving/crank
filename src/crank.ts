@@ -128,7 +128,7 @@ export const Fragment = "";
 export type Fragment = typeof Fragment;
 
 // TODO: We assert the following symbol tags as Components because TypeScript
-// support for symbol tags in JSX doesn’t exist yet.
+// support for symbol tags in JSX doesn't exist yet.
 // https://github.com/microsoft/TypeScript/issues/38367
 
 /**
@@ -148,7 +148,7 @@ export type Portal = typeof Portal;
 
 /**
  * A special tag which preserves whatever was previously rendered in the
- * element’s position.
+ * element's position.
  *
  * Copy elements are useful for when you want to prevent a subtree from
  * rerendering as a performance optimization. Copy elements can also be keyed,
@@ -252,7 +252,7 @@ export function isElement(value: any): value is Element {
  *
  * This function is usually used as a transpilation target for JSX transpilers,
  * but it can also be called directly. It additionally extracts special props so
- * they aren’t accessible to renderer methods or components, and assigns the
+ * they aren't accessible to renderer methods or components, and assigns the
  * children prop according to any additional arguments passed to the function.
  */
 export function createElement<TTag extends Tag>(
@@ -308,18 +308,19 @@ function narrow(value: Children): NarrowedChild {
 /**
  * A helper type which repesents all possible rendered values of an element.
  *
- * @template TNode - The node type for the element provided by the renderer.
+ * @template TNode - The type of node produced by the associated renderer.
  *
  * When asking the question, what is the "value" of a specific element, the
  * answer varies depending on the tag:
  *
- * For host elements, the value is the node created for the element, e.g. the
- * DOM node in the case of the DOMRenderer.
+ * For intrinsic elements, the value is the node created for the element, e.g.
+ * the DOM node in the case of the DOMRenderer.
  *
- * For portals, the value is undefined, because a Portal element’s root and
+ * For portals, the value is undefined, because a Portal element's root and
  * children are opaque to its parent.
  *
- * All of these possible values are reflected in this utility type.
+ * For component or fragment elements the value can be a node or an array of
+ * nodes, depending on how many children they have.
  */
 export type ElementValue<TNode> = Array<TNode> | TNode | undefined;
 
@@ -359,59 +360,27 @@ function setFlag(ret: Retainer<unknown>, flag: number, value = true): void {
 
 /**
  * @internal
- * The internal nodes which are cached and diffed against new elements when
- * rendering element trees.
+ * Retainers are objects which act as the internal representation of elements,
+ * mirroring the element tree.
  */
 class Retainer<TNode, TScope = unknown> {
 	/** A bitmask. See RETAINER FLAGS above. */
 	declare f: number;
-
-	/** The element associated with this retainer. */
 	declare el: Element;
-
-	/**
-	 * The context associated with this element. Will only be defined for
-	 * component elements, or for portal elements which are passed a bridge
-	 * context.
-	 */
 	declare ctx: ContextState<TNode> | undefined;
-
-	/**
-	 * The children of this element. Retainers form a tree which mirrors
-	 * elements. Can be a single child or undefined as a memory optimization.
-	 */
 	declare children:
 		| Array<Retainer<TNode, TScope> | undefined>
 		| Retainer<TNode, TScope>
 		| undefined;
-
-	/**
-	 * The child which this retainer replaces. This property is used when an
-	 * async retainer tree replaces another, so that the previously rendered
-	 * nodes can remain visible until the async tree settles.
-	 */
 	declare fallback: Retainer<TNode, TScope> | undefined;
-
-	/**
-	 * The node or nodes associated with an element.
-	 *
-	 * This is only assigned for host, portal, text and raw elements.
-	 *
-	 * It can be an array only in the case of Raw elements, because they can
-	 * possibly render multiple nodes.
-	 */
+	// This is only assigned for host, text and raw elements.
 	declare value: ElementValue<TNode> | undefined;
-
 	declare scope: TScope | undefined;
-
+	// This is only assigned for host elements.
 	declare oldProps: Record<string, any> | undefined;
-
 	declare pendingDiff: Promise<undefined> | undefined;
-
 	declare onNextDiff: Function | undefined;
-
 	declare graveyard: Array<Retainer<TNode, TScope>> | undefined;
-
 	declare lingerers:
 		| Array<Set<Retainer<TNode, TScope>> | undefined>
 		| undefined;
@@ -434,7 +403,7 @@ class Retainer<TNode, TScope = unknown> {
 /**
  * Finds the value of the element according to its type.
  *
- * @returns The value of the element.
+ * @returns A node, an array of nodes or undefined.
  */
 function getValue<TNode>(ret: Retainer<TNode>): ElementValue<TNode> {
 	if (typeof ret.fallback !== "undefined") {
@@ -451,9 +420,9 @@ function getValue<TNode>(ret: Retainer<TNode>): ElementValue<TNode> {
 }
 
 /**
- * Walks an element’s children to find its child values.
+ * Walks an element's children to find its child values.
  *
- * @returns A normalized array of nodes and strings.
+ * @returns An array of nodes.
  */
 function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode> {
 	const values: Array<TNode> = [];
@@ -511,8 +480,8 @@ function stripSpecialProps(props: Record<string, any>): Record<string, any> {
 
 /**
  * Interface for adapting the rendering process to a specific target
- * environment implemented by Renderer subclasses and passed to the Renderer
- * constructor.
+ * environment. This interface is implemented by Renderer subclasses and passed
+ * to the Renderer constructor.
  */
 export interface RenderAdapter<
 	TNode,
@@ -562,6 +531,7 @@ export interface RenderAdapter<
 		props: Record<string, any>;
 		oldProps: Record<string, any> | undefined;
 		scope: TScope | undefined;
+		// TODO: should be a set of props that are hydrating
 		isHydrating: boolean;
 	}): void;
 
@@ -804,38 +774,6 @@ export class Renderer<
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
-function getInflightDiff(
-	child: Retainer<unknown>,
-): Promise<undefined> | undefined {
-	const ctx: ContextState<unknown> | undefined = child.ctx;
-	// TODO: Why can't we just use child.pendingDiff?
-	if (ctx && getFlag(ctx.ret, IsUpdating) && ctx.inflight) {
-		return ctx.inflight[1];
-	} else if (child.pendingDiff) {
-		return child.pendingDiff;
-	}
-
-	return undefined;
-}
-
-function createChildrenByKey<TNode, TScope>(
-	children: Array<Retainer<TNode, TScope> | undefined>,
-	offset: number,
-): Map<Key, Retainer<TNode, TScope>> {
-	const childrenByKey = new Map<Key, Retainer<TNode, TScope>>();
-	for (let i = offset; i < children.length; i++) {
-		const child = children[i];
-		if (
-			typeof child === "object" &&
-			typeof child.el.props.key !== "undefined"
-		) {
-			childrenByKey.set(child.el.props.key, child);
-		}
-	}
-
-	return childrenByKey;
-}
-
 function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
@@ -1046,6 +984,38 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	}
 }
 
+function getInflightDiff(
+	child: Retainer<unknown>,
+): Promise<undefined> | undefined {
+	const ctx: ContextState<unknown> | undefined = child.ctx;
+	// TODO: Why can't we just use child.pendingDiff?
+	if (ctx && getFlag(ctx.ret, IsUpdating) && ctx.inflight) {
+		return ctx.inflight[1];
+	} else if (child.pendingDiff) {
+		return child.pendingDiff;
+	}
+
+	return undefined;
+}
+
+function createChildrenByKey<TNode, TScope>(
+	children: Array<Retainer<TNode, TScope> | undefined>,
+	offset: number,
+): Map<Key, Retainer<TNode, TScope>> {
+	const childrenByKey = new Map<Key, Retainer<TNode, TScope>>();
+	for (let i = offset; i < children.length; i++) {
+		const child = children[i];
+		if (
+			typeof child === "object" &&
+			typeof child.el.props.key !== "undefined"
+		) {
+			childrenByKey.set(child.el.props.key, child);
+		}
+	}
+
+	return childrenByKey;
+}
+
 function diffHost<TNode, TScope, TRoot extends TNode>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, unknown>,
 	root: TRoot | undefined,
@@ -1079,71 +1049,6 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 		ret,
 		ret.el.props.children,
 	);
-}
-
-function contextContains(parent: ContextState, child: ContextState): boolean {
-	for (
-		let current: ContextState | undefined = child;
-		current !== undefined;
-		current = current.parent
-	) {
-		if (current === parent) {
-			return true;
-		}
-	}
-
-	return false;
-}
-
-// When rendering is done without a root, we use this special anonymous root to
-// make sure flush callbacks are still called.
-const ANONYMOUS_ROOT: any = {};
-function flush<TRoot>(
-	adapter: RenderAdapter<unknown, unknown, TRoot>,
-	root: TRoot | null | undefined,
-	initiator?: ContextState,
-) {
-	if (root != null) {
-		adapter.finalize(root);
-	}
-	if (typeof root !== "object" || root === null) {
-		root = ANONYMOUS_ROOT;
-	}
-
-	// The initiator is the context which initiated the rendering process.
-	// If initiator is defined we call and clear all flush callbacks which are
-	// registered with the initiator or with a child context of the initiator,
-	// because they are fully rendered.
-	// If no initiator is provided, we can call and clear all flush callbacks
-	// defined on any context for the root.
-	const flushMap = flushMapByRoot.get(root as any);
-	if (flushMap) {
-		if (initiator) {
-			const flushMap1 = new Map<ContextState, Set<Function>>();
-			for (const [ctx, callbacks] of flushMap) {
-				if (!contextContains(initiator, ctx)) {
-					// copy over callbacks to the new map
-					flushMap.delete(ctx);
-					flushMap1.set(ctx, callbacks);
-				}
-			}
-
-			if (flushMap1.size) {
-				flushMapByRoot.set(root as any, flushMap1);
-			} else {
-				flushMapByRoot.delete(root as any);
-			}
-		} else {
-			flushMapByRoot.delete(root as any);
-		}
-
-		for (const [ctx, callbacks] of flushMap) {
-			const value = adapter.read(getValue(ctx.ret));
-			for (const callback of callbacks) {
-				callback(value);
-			}
-		}
-	}
 }
 
 // TODO: use commit() on the root Portal in render()/hydrate() instead of this
@@ -1453,6 +1358,71 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	return node;
 }
 
+function contextContains(parent: ContextState, child: ContextState): boolean {
+	for (
+		let current: ContextState | undefined = child;
+		current !== undefined;
+		current = current.parent
+	) {
+		if (current === parent) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+// When rendering is done without a root, we use this special anonymous root to
+// make sure flush callbacks are still called.
+const ANONYMOUS_ROOT: any = {};
+function flush<TRoot>(
+	adapter: RenderAdapter<unknown, unknown, TRoot>,
+	root: TRoot | null | undefined,
+	initiator?: ContextState,
+) {
+	if (root != null) {
+		adapter.finalize(root);
+	}
+	if (typeof root !== "object" || root === null) {
+		root = ANONYMOUS_ROOT;
+	}
+
+	// The initiator is the context which initiated the rendering process.
+	// If initiator is defined we call and clear all flush callbacks which are
+	// registered with the initiator or with a child context of the initiator,
+	// because they are fully rendered.
+	// If no initiator is provided, we can call and clear all flush callbacks
+	// defined on any context for the root.
+	const flushMap = flushMapByRoot.get(root as any);
+	if (flushMap) {
+		if (initiator) {
+			const flushMap1 = new Map<ContextState, Set<Function>>();
+			for (const [ctx, callbacks] of flushMap) {
+				if (!contextContains(initiator, ctx)) {
+					// copy over callbacks to the new map
+					flushMap.delete(ctx);
+					flushMap1.set(ctx, callbacks);
+				}
+			}
+
+			if (flushMap1.size) {
+				flushMapByRoot.set(root as any, flushMap1);
+			} else {
+				flushMapByRoot.delete(root as any);
+			}
+		} else {
+			flushMapByRoot.delete(root as any);
+		}
+
+		for (const [ctx, callbacks] of flushMap) {
+			const value = adapter.read(getValue(ctx.ret));
+			for (const callback of callbacks) {
+				callback(value);
+			}
+		}
+	}
+}
+
 function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	host: Retainer<TNode>,
@@ -1577,15 +1547,15 @@ class ContextState<
 	 * The nearest ancestor host or portal retainer.
 	 *
 	 * When refresh is called, the host element will be arranged as the last step
-	 * of the commit, to make sure the parent’s children properly reflects the
-	 * components’s children.
+	 * of the commit, to make sure the parent's children properly reflects the
+	 * components's childrenk
 	 */
 	declare host: Retainer<TNode>;
 
 	/** The parent context state. */
 	declare parent: ContextState<TNode, TScope, TRoot, TResult> | undefined;
 
-	/** The value of the scope at the point of element’s creation. */
+	/** The value of the scope at the point of element's creation. */
 	declare scope: TScope | undefined;
 
 	/** The internal node associated with this context. */
@@ -1768,12 +1738,6 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	 *
 	 * @returns The rendered value of the component or a promise thereof if the
 	 * component or its children execute asynchronously.
-	 *
-	 * The refresh method works a little differently for async generator
-	 * components, in that it will resume the Context’s props async iterator
-	 * rather than resuming execution. This is because async generator components
-	 * are perpetually resumed independent of updates, and rely on the props
-	 * async iterator to suspend.
 	 */
 	refresh(): Promise<TResult> | TResult {
 		const ctx = this[_ContextState];
@@ -1821,8 +1785,8 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	}
 
 	/**
-	 * Registers a callback which fires when the component commits. Will only
-	 * fire once per callback and update.
+	 * Registers a callback which fires when the component's children are
+	 * created. Will only fire once per callback and update.
 	 */
 	schedule(callback: (value: TResult) => unknown): void {
 		const ctx = this[_ContextState];
@@ -1836,8 +1800,8 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	}
 
 	/**
-	 * Registers a callback which fires when the component’s children are
-	 * fully rendered. Will only fire once per callback and update.
+	 * Registers a callback which fires when the component's children are fully
+	 * rendered. Will only fire once per callback and update.
 	 */
 	flush(callback: (value: TResult) => unknown): void {
 		const ctx = this[_ContextState];
@@ -1859,6 +1823,8 @@ export class Context<T = any, TResult = any> implements EventTarget {
 
 	/**
 	 * Registers a callback which fires when the component unmounts.
+	 *
+	 * The callback can be async to defer the unmounting of a component's children.
 	 */
 	cleanup(callback: (value: TResult) => unknown): void {
 		const ctx = this[_ContextState];
@@ -2209,102 +2175,6 @@ function diffComponentChildren<TNode, TResult>(
 	}
 
 	return diff;
-}
-
-function commitComponent<TNode>(
-	ctx: ContextState<TNode, unknown, TNode>,
-	hydrationNodes?: Array<TNode> | undefined,
-): ElementValue<TNode> {
-	const values = commitChildren(
-		ctx.adapter,
-		ctx.host,
-		ctx,
-		ctx.scope,
-		ctx.ret,
-		ctx.index,
-		hydrationNodes,
-	);
-
-	if (getFlag(ctx.ret, IsUnmounted)) {
-		return;
-	}
-
-	const listeners = listenersMap.get(ctx);
-	if (listeners && listeners.length) {
-		for (let i = 0; i < values.length; i++) {
-			const value = values[i];
-			if (isEventTarget(value)) {
-				for (let j = 0; j < listeners.length; j++) {
-					const record = listeners[j];
-					value.addEventListener(record.type, record.callback, record.options);
-				}
-			}
-		}
-	}
-
-	if (getFlag(ctx.ret, IsScheduling)) {
-		setFlag(ctx.ret, IsSchedulingRefresh);
-	} else if (!getFlag(ctx.ret, IsUpdating)) {
-		// If we’re not updating the component, which happens when components are
-		// refreshed, or when async generator components iterate independently, we
-		// have to do a little bit housekeeping
-		const records = getListenerRecords(ctx.parent, ctx.host);
-		if (records.length) {
-			for (let i = 0; i < values.length; i++) {
-				const value = values[i];
-				if (isEventTarget(value)) {
-					for (let j = 0; j < records.length; j++) {
-						const record = records[j];
-						value.addEventListener(
-							record.type,
-							record.callback,
-							record.options,
-						);
-					}
-				}
-			}
-		}
-
-		// rearranging the nearest ancestor host element
-		const host = ctx.host;
-		const props = stripSpecialProps(host.el.props);
-		ctx.adapter.arrange({
-			tag: host.el.tag as string | symbol,
-			tagName: getTagName(host.el.tag),
-			node: host.value as TNode,
-			props,
-			// oldProps is the same because the host element has not re-rendered
-			oldProps: props,
-			children: getChildValues(host),
-		});
-		flush(ctx.adapter, ctx.root, ctx);
-	}
-
-	const callbacks = scheduleMap.get(ctx);
-	let value = unwrap(values);
-	if (callbacks) {
-		scheduleMap.delete(ctx);
-		setFlag(ctx.ret, IsScheduling);
-		try {
-			const result = ctx.adapter.read(value);
-			// TODO: think about error handling for schedule callbacks
-			for (const callback of callbacks) {
-				callback(result);
-			}
-
-			// Handles an edge case where refresh() is called during a schedule().
-			if (getFlag(ctx.ret, IsSchedulingRefresh)) {
-				setFlag(ctx.ret, IsSchedulingRefresh, false);
-				value = getValue(ctx.ret);
-			}
-		} finally {
-			setFlag(ctx.ret, IsScheduling, false);
-		}
-	}
-
-	setFlag(ctx.ret, IsUpdating, false);
-	setFlag(ctx.ret, DidCommit);
-	return value;
 }
 
 /** Enqueues and executes the component associated with the context. */
@@ -2772,6 +2642,102 @@ async function pullComponent<TNode, TResult>(
 	}
 }
 
+function commitComponent<TNode>(
+	ctx: ContextState<TNode, unknown, TNode>,
+	hydrationNodes?: Array<TNode> | undefined,
+): ElementValue<TNode> {
+	const values = commitChildren(
+		ctx.adapter,
+		ctx.host,
+		ctx,
+		ctx.scope,
+		ctx.ret,
+		ctx.index,
+		hydrationNodes,
+	);
+
+	if (getFlag(ctx.ret, IsUnmounted)) {
+		return;
+	}
+
+	const listeners = listenersMap.get(ctx);
+	if (listeners && listeners.length) {
+		for (let i = 0; i < values.length; i++) {
+			const value = values[i];
+			if (isEventTarget(value)) {
+				for (let j = 0; j < listeners.length; j++) {
+					const record = listeners[j];
+					value.addEventListener(record.type, record.callback, record.options);
+				}
+			}
+		}
+	}
+
+	if (getFlag(ctx.ret, IsScheduling)) {
+		setFlag(ctx.ret, IsSchedulingRefresh);
+	} else if (!getFlag(ctx.ret, IsUpdating)) {
+		// If we're not updating the component, which happens when components are
+		// refreshed, or when async generator components iterate independently, we
+		// have to do a little bit housekeeping
+		const records = getListenerRecords(ctx.parent, ctx.host);
+		if (records.length) {
+			for (let i = 0; i < values.length; i++) {
+				const value = values[i];
+				if (isEventTarget(value)) {
+					for (let j = 0; j < records.length; j++) {
+						const record = records[j];
+						value.addEventListener(
+							record.type,
+							record.callback,
+							record.options,
+						);
+					}
+				}
+			}
+		}
+
+		// rearranging the nearest ancestor host element
+		const host = ctx.host;
+		const props = stripSpecialProps(host.el.props);
+		ctx.adapter.arrange({
+			tag: host.el.tag as string | symbol,
+			tagName: getTagName(host.el.tag),
+			node: host.value as TNode,
+			props,
+			// oldProps is the same because the host element has not re-rendered
+			oldProps: props,
+			children: getChildValues(host),
+		});
+		flush(ctx.adapter, ctx.root, ctx);
+	}
+
+	const callbacks = scheduleMap.get(ctx);
+	let value = unwrap(values);
+	if (callbacks) {
+		scheduleMap.delete(ctx);
+		setFlag(ctx.ret, IsScheduling);
+		try {
+			const result = ctx.adapter.read(value);
+			// TODO: think about error handling for schedule callbacks
+			for (const callback of callbacks) {
+				callback(result);
+			}
+
+			// Handles an edge case where refresh() is called during a schedule().
+			if (getFlag(ctx.ret, IsSchedulingRefresh)) {
+				setFlag(ctx.ret, IsSchedulingRefresh, false);
+				value = getValue(ctx.ret);
+			}
+		} finally {
+			setFlag(ctx.ret, IsScheduling, false);
+		}
+	}
+
+	setFlag(ctx.ret, IsUpdating, false);
+	setFlag(ctx.ret, DidCommit);
+	return value;
+}
+
 /**
  * Called to resume the props async iterator for async generator components.
  *
@@ -3012,7 +2978,7 @@ function setEventProperty<T extends keyof Event>(
  * This function exploits the fact that contexts retain their nearest ancestor
  * host element. We can determine all the contexts which are directly listening
  * to an element by traversing up the context tree and checking that the host
- * element passed in matches the parent context’s host element.
+ * element passed in matches the parent context's host element.
  */
 function getListenerRecords(
 	ctx: ContextState | undefined,
@@ -3161,7 +3127,7 @@ declare global {
 	}
 
 	namespace JSX {
-		// TODO: JSX Element type (the result of JSX expressions) don’t work
+		// TODO: JSX Element type (the result of JSX expressions) don't work
 		// because TypeScript demands that all Components return JSX elements for
 		// some reason.
 		// interface Element extends CrankElement {}
