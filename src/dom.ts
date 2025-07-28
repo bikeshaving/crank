@@ -407,7 +407,10 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 				}
 
 				// We log textData and not node because node will be mutated
-				console.warn(`Expected "${value}" while hydrating but found:`, textData);
+				console.warn(
+					`Expected "${value}" while hydrating but found:`,
+					textData,
+				);
 				oldNode = node;
 			}
 		}

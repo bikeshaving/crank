@@ -1112,10 +1112,7 @@ function commit<TNode, TRoot extends TNode, TScope, TResult>(
 
 	if (typeof tag === "function") {
 		ret.ctx!.index = index;
-		value = commitComponent(
-			ret.ctx!,
-			hydrationNodes,
-		);
+		value = commitComponent(ret.ctx!, hydrationNodes);
 	} else if (tag === Fragment) {
 		value = commitChildren(
 			adapter,
