@@ -402,9 +402,9 @@ class Retainer<TNode, TScope = unknown> {
 
 	declare oldProps: Record<string, any> | undefined;
 
-	declare pending: Promise<undefined> | undefined;
+	declare pendingDiff: Promise<undefined> | undefined;
 
-	declare onNext: Function | undefined;
+	declare onNextDiff: Function | undefined;
 
 	declare graveyard: Array<Retainer<TNode, TScope>> | undefined;
 
@@ -420,8 +420,8 @@ class Retainer<TNode, TScope = unknown> {
 		this.fallback = undefined;
 		this.value = undefined;
 		this.oldProps = undefined;
-		this.pending = undefined;
-		this.onNext = undefined;
+		this.pendingDiff = undefined;
+		this.onNextDiff = undefined;
 		this.graveyard = undefined;
 		this.lingerers = undefined;
 	}
@@ -685,6 +685,7 @@ export class Renderer<
 		return commitRootRender(adapter, root, ret!, ctx, scope);
 	}
 
+	// TODO: deduplicate with render()
 	hydrate(
 		children: Children,
 		root: TRoot,
@@ -767,12 +768,15 @@ export class Renderer<
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
-function getInflight(child: Retainer<unknown>): Promise<undefined> | undefined {
+function getInflightDiff(
+	child: Retainer<unknown>,
+): Promise<undefined> | undefined {
 	const ctx: ContextState<unknown> | undefined = child.ctx;
+	// TODO: Why can't we just use child.pendingDiff?
 	if (ctx && getFlag(ctx.ret, IsUpdating) && ctx.inflight) {
 		return ctx.inflight[1];
-	} else if (child.pending) {
-		return child.pending;
+	} else if (child.pendingDiff) {
+		return child.pendingDiff;
 	}
 
 	return undefined;
@@ -866,12 +870,11 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				childCopied = true;
 			} else if (
 				typeof ret === "object" &&
-				getFlag(ret, DidCommit) &&
-				ret.el === child
+				ret.el === child &&
+				getFlag(ret, DidCommit)
 			) {
 				// If the child is the same as the retained element, we skip
-				// re-rendering This is useful when a component is passed the same
-				// children, for instance
+				// re-rendering.
 				childCopied = true;
 			} else {
 				if (typeof ret === "object" && ret.el.tag === child.tag) {
@@ -976,16 +979,16 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			});
 
 		let onNextDiffs!: Function;
-		parent.pending = diffs1 = Promise.race([
+		parent.pendingDiff = diffs1 = Promise.race([
 			diffs1,
 			new Promise<any>((resolve) => (onNextDiffs = resolve)),
 		]);
 
-		if (parent.onNext) {
-			parent.onNext(diffs1);
+		if (parent.onNextDiff) {
+			parent.onNextDiff(diffs1);
 		}
 
-		parent.onNext = onNextDiffs;
+		parent.onNextDiff = onNextDiffs;
 		return diffs1;
 	} else {
 		parent.fallback = undefined;
@@ -997,12 +1000,12 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			}
 		}
 
-		if (parent.onNext) {
-			parent.onNext(diffs);
-			parent.onNext = undefined;
+		if (parent.onNextDiff) {
+			parent.onNextDiff(diffs);
+			parent.onNextDiff = undefined;
 		}
 
-		parent.pending = undefined;
+		parent.pendingDiff = undefined;
 	}
 }
 
@@ -1041,7 +1044,7 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 	);
 }
 
-function parentCtxContains(parent: ContextState, child: ContextState): boolean {
+function contextContains(parent: ContextState, child: ContextState): boolean {
 	for (
 		let current: ContextState | undefined = child;
 		current !== undefined;
@@ -1081,7 +1084,8 @@ function flush<TRoot>(
 		if (initiator) {
 			const flushMap1 = new Map<ContextState, Set<Function>>();
 			for (const [ctx, callbacks] of flushMap) {
-				if (!parentCtxContains(initiator, ctx)) {
+				if (!contextContains(initiator, ctx)) {
+					// copy over callbacks to the new map
 					flushMap.delete(ctx);
 					flushMap1.set(ctx, callbacks);
 				}
