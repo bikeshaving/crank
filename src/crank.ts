@@ -1121,16 +1121,7 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	hydration?: Array<TNode>,
 ): TResult {
 	const props = stripSpecialProps(ret.el.props);
-	const children = commitChildren(
-		adapter,
-		root,
-		ret,
-		ctx,
-		scope,
-		ret,
-		0,
-		hydration,
-	);
+	const children = commitChildren(adapter, ret, ctx, scope, ret, 0, hydration);
 	if (root == null) {
 		unmount(adapter, ret, ctx, ret, false);
 	} else {
@@ -1152,7 +1143,6 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 
 function commit<TNode, TRoot extends TNode, TScope, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
-	root: TRoot | undefined,
 	host: Retainer<TNode, TScope>,
 	ret: Retainer<TNode, TScope>,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
@@ -1171,30 +1161,18 @@ function commit<TNode, TRoot extends TNode, TScope, TResult>(
 		ret.ctx!.index = index;
 		value = commitComponent(ret.ctx!, hydration);
 	} else if (tag === Fragment) {
-		value = commitChildren(
-			adapter,
-			root,
-			host,
-			ctx,
-			scope,
-			ret,
-			index,
-			hydration,
-		);
+		value = commitChildren(adapter, host, ctx, scope, ret, index, hydration);
 	} else if (tag === Text) {
 		value = commitText(adapter, ret, el as Element<Text>, scope, hydration);
 	} else if (tag === Raw) {
 		value = commitRaw(adapter, host, ret, scope, hydration);
 	} else {
-		value = commitHostOrPortal(adapter, root, ret, ctx, hydration);
+		value = commitHostOrPortal(adapter, ret, ctx, hydration);
 	}
 
 	if (!getFlag(ret, DidCommit)) {
 		if (
-			// TODO: is it possible to provide default ref behavior if the component
-			// does not access the ref in props?
 			typeof tag !== "function" &&
-			// TODO: should we allow refs to be set on Fragments?
 			tag !== Fragment &&
 			tag !== Portal &&
 			typeof el.props.ref === "function"
@@ -1210,7 +1188,6 @@ function commit<TNode, TRoot extends TNode, TScope, TResult>(
 
 function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	adapter: RenderAdapter<TNode, unknown, TRoot, TResult>,
-	root: TRoot | undefined,
 	host: Retainer<TNode, TScope>,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope | undefined,
@@ -1226,16 +1203,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 		}
 
 		if (typeof child === "object") {
-			const value = commit(
-				adapter,
-				root,
-				host,
-				child,
-				ctx,
-				scope,
-				index,
-				hydration,
-			);
+			const value = commit(adapter, host, child, ctx, scope, index, hydration);
 
 			if (Array.isArray(value)) {
 				values.push(...value);
@@ -1313,7 +1281,6 @@ function commitRaw<TNode, TScope>(
 
 function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, unknown>,
-	root: TNode | undefined,
 	ret: Retainer<TNode, TScope>,
 	ctx: ContextState<TNode, TScope, TRoot, unknown> | undefined,
 	hydration: Array<TNode> | undefined,
@@ -1322,15 +1289,9 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 		return getValue(ret);
 	}
 
-	if (ret.el.tag === Portal) {
-		// TODO: should we hydrate portals???
-		hydration = undefined;
-	}
-
 	const tag = ret.el.tag as string | symbol;
 	const props = stripSpecialProps(ret.el.props);
 	const oldProps = ret.oldProps;
-
 	let node = ret.value as TNode;
 	for (const propName in props) {
 		if (props[propName] === Copy) {
@@ -1341,33 +1302,63 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	}
 
 	const scope = ret.scope;
+	if (ret.el.tag === Portal) {
+		hydration = undefined;
+	}
+
 	let childHydration: Array<TNode> | undefined;
-	if (!node && hydration && hydration.length > 0) {
-		const nextChild = hydration.shift();
-		if (nextChild) {
-			childHydration = adapter.adopt({
-				tag,
-				tagName: getTagName(tag),
-				node: nextChild,
-				props,
-				scope,
-			});
-			if (childHydration) {
-				node = ret.value = nextChild;
-				for (let i = 0; i < childHydration.length; i++) {
-					adapter.remove({
-						node: childHydration[i],
-						parent: root as TNode,
-						isNested: false,
-					});
+	if (!getFlag(ret, DidCommit) && tag !== Portal) {
+		if (!node && hydration && hydration.length > 0) {
+			const nextChild = hydration.shift();
+			if (nextChild) {
+				childHydration = adapter.adopt({
+					tag,
+					tagName: getTagName(tag),
+					node: nextChild,
+					props,
+					scope,
+				});
+				if (childHydration) {
+					node = nextChild;
+					for (let i = 0; i < childHydration.length; i++) {
+						adapter.remove({
+							node: childHydration[i],
+							parent: node,
+							isNested: false,
+						});
+					}
 				}
 			}
 		}
+
+		// TODO: For some reason, there are cases where the node is already set and
+		// the DidCommit flag is false. Not checking for node fails a test where a
+		// child dispatches an event in a schedule callback, the parent listens for
+		// this event and refreshes.
+		if (!node) {
+			node = adapter.create({
+				tag,
+				tagName: getTagName(tag),
+				props,
+				scope,
+			});
+		}
+
+		ret.value = node;
 	}
+
+	adapter.patch({
+		tag,
+		tagName: getTagName(tag),
+		node,
+		props,
+		oldProps,
+		scope,
+		isHydrating: !!childHydration,
+	});
 
 	const children = commitChildren(
 		adapter,
-		root,
 		ret,
 		ctx,
 		scope,
@@ -1375,31 +1366,6 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 		0,
 		childHydration,
 	);
-
-	if (tag !== Portal) {
-		// We use !node and not !getFlag(ret, DidCommit) here because of an
-		// edge-case where a component fires a dispatchEvent from a schedule()
-		// callback. In that situation, the DidCommit flag can be true while the
-		// value is undefined.
-		if (!node) {
-			node = ret.value = adapter.create({
-				tag,
-				tagName: getTagName(tag),
-				props,
-				scope,
-			});
-		}
-
-		adapter.patch({
-			tag,
-			tagName: getTagName(tag),
-			node: node,
-			props,
-			oldProps,
-			scope,
-			isHydrating: !!childHydration,
-		});
-	}
 
 	adapter.arrange({
 		tag,
@@ -1413,6 +1379,8 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	ret.oldProps = props;
 	if (tag === Portal) {
 		flush(adapter, ret.value);
+		// The root passed to Portal elements are not visible to parents so we
+		// return undefined here.
 		return;
 	}
 
@@ -2183,7 +2151,6 @@ function commitComponent<TNode>(
 ): ElementValue<TNode> {
 	const values = commitChildren(
 		ctx.adapter,
-		ctx.root,
 		ctx.host,
 		ctx,
 		ctx.scope,
