@@ -2,7 +2,7 @@
 import {suite} from "uvu";
 import * as Assert from "uvu/assert";
 import * as Sinon from "sinon";
-import {Portal, createElement, Fragment} from "../src/crank.js";
+import {createElement, Portal} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 const test = suite("portal");
@@ -91,7 +91,10 @@ test("portal with rendered page", () => {
 		document.body,
 	);
 
-	Assert.is(document.body.innerHTML, `<div id="portal"><button>Click</button></div><div>Hello world</div>`);
+	Assert.is(
+		document.body.innerHTML,
+		`<div id="portal"><button>Click</button></div><div>Hello world</div>`,
+	);
 	Assert.is(portal.firstChild, button);
 	Assert.is(portal.innerHTML, `<button>Click</button>`);
 	button.click();
