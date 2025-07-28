@@ -1105,6 +1105,8 @@ function flush<TRoot>(
 	}
 }
 
+// TODO: use commit() on the root Portal in render()/hydrate() instead of this
+// function.
 function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
@@ -1143,6 +1145,60 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	return adapter.read(unwrap(children));
 }
 
+function commit<TNode, TRoot extends TNode, TScope, TResult>(
+	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
+	root: TRoot | undefined,
+	host: Retainer<TNode, TScope>,
+	ret: Retainer<TNode, TScope>,
+	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
+	scope: TScope | undefined,
+	index: number,
+	hydration: Array<TNode> | undefined,
+): ElementValue<TNode> {
+	const el = ret.el;
+	const tag = el.tag;
+	let value: ElementValue<TNode>;
+	if (typeof tag === "function") {
+		ret.ctx!.index = index;
+		value = commitComponent(ret.ctx!, hydration);
+	} else if (tag === Fragment) {
+		value = commitChildren(
+			adapter,
+			root,
+			host,
+			ctx,
+			scope,
+			ret,
+			index,
+			hydration,
+		);
+	} else if (tag === Text) {
+		value = commitText(adapter, ret, el as Element<Text>, scope, hydration);
+	} else if (tag === Raw) {
+		value = commitRaw(adapter, host, ret, scope, hydration);
+	} else {
+		value = commitHostOrPortal(adapter, root, ret, ctx, hydration);
+	}
+
+	if (!getFlag(ret, DidCommit)) {
+		if (
+			// TODO: is it possible to provide default ref behavior if the component
+			// does not access the ref in props?
+			typeof tag !== "function" &&
+			// TODO: should we allow refs to be set on Fragments?
+			tag !== Fragment &&
+			tag !== Portal &&
+			typeof el.props.ref === "function"
+		) {
+			el.props.ref(adapter.read(value));
+		}
+
+		setFlag(ret, DidCommit);
+	}
+
+	return value;
+}
+
 function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	adapter: RenderAdapter<TNode, unknown, TRoot, TResult>,
 	root: TRoot | undefined,
@@ -1161,41 +1217,16 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 		}
 
 		if (typeof child === "object") {
-			const el = child.el;
-			let value: ElementValue<TNode>;
-			if (el.tag === Text) {
-				const oldValue = child.value as TNode | undefined;
-				value = adapter.text({
-					value: el.props.value,
-					scope,
-					hydration,
-					oldNode: oldValue,
-				});
-				child.value = value;
-				if (!getFlag(child, DidCommit)) {
-					if (typeof el.props.ref === "function") {
-						el.props.ref(adapter.read(value));
-					}
-				}
-			} else if (el.tag === Raw) {
-				value = commitRaw(adapter, host, child, scope, hydration);
-			} else if (el.tag === Fragment) {
-				value = commitChildren(
-					adapter,
-					root,
-					host,
-					ctx,
-					scope,
-					child,
-					index,
-					hydration,
-				);
-			} else if (typeof el.tag === "function") {
-				child.ctx!.index = index;
-				value = commitComponent(child.ctx!, hydration);
-			} else {
-				value = commitHostOrPortal(adapter, root, child, ctx, hydration);
-			}
+			const value = commit(
+				adapter,
+				root,
+				host,
+				child,
+				ctx,
+				scope,
+				index,
+				hydration,
+			);
 
 			if (Array.isArray(value)) {
 				values.push(...value);
@@ -1225,6 +1256,24 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	return values;
 }
 
+function commitText<TNode, TScope>(
+	adapter: RenderAdapter<TNode, TScope, TNode, unknown>,
+	ret: Retainer<TNode, TScope>,
+	el: Element<Text>,
+	scope: TScope | undefined,
+	hydration?: Array<TNode>,
+): TNode {
+	const value = adapter.text({
+		value: el.props.value,
+		scope,
+		hydration,
+		oldNode: ret.value as TNode,
+	});
+
+	ret.value = value;
+	return value;
+}
+
 function commitRaw<TNode, TScope>(
 	adapter: RenderAdapter<TNode, TScope, TNode, unknown>,
 	host: Retainer<TNode>,
@@ -1247,13 +1296,9 @@ function commitRaw<TNode, TScope>(
 			scope,
 			hydration,
 		});
-		if (typeof ret.el.props.ref === "function") {
-			ret.el.props.ref(adapter.read(ret.value));
-		}
 	}
 
 	ret.oldProps = stripSpecialProps(ret.el.props);
-	setFlag(ret, DidCommit);
 	return ret.value;
 }
 
@@ -1269,6 +1314,7 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 	}
 
 	if (ret.el.tag === Portal) {
+		// TODO: should we hydrate portals???
 		hydration = undefined;
 	}
 
@@ -1354,17 +1400,10 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 		children,
 		oldProps,
 	});
-	ret.oldProps = props;
-	if (!getFlag(ret, DidCommit)) {
-		if (typeof ret.el.props.ref === "function") {
-			ret.el.props.ref(adapter.read(node));
-		}
-	}
 
-	setFlag(ret, DidCommit);
+	ret.oldProps = props;
 	if (tag === Portal) {
 		flush(adapter, ret.value);
-		// Portal elements
 		return;
 	}
 
