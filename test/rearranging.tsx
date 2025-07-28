@@ -163,33 +163,6 @@ test("changing children nested in an async generator component", async () => {
 	Assert.is(document.body.innerHTML, "<h4>3</h4>");
 });
 
-// TODO: unskip or delete this test
-test.skip("arrange doesn’t get called when the children don’t change", () => {
-	let ctx!: Context;
-	function* Component(this: Context) {
-		ctx = this;
-		for (const _ of this) {
-			yield "unchanging";
-		}
-	}
-
-	const spy = Sinon.spy(
-		(renderer as any)[Symbol.for("crank.RendererImpl")],
-		"arrange",
-	);
-	renderer.render(<Component />, document.body);
-	Assert.is(spy.callCount, 1);
-	Assert.is(document.body.innerHTML, "unchanging");
-	ctx!.refresh();
-	Assert.is(document.body.innerHTML, "unchanging");
-	ctx!.refresh();
-	Assert.is(document.body.innerHTML, "unchanging");
-	ctx!.refresh();
-	Assert.is(document.body.innerHTML, "unchanging");
-	Assert.is(spy.callCount, 1);
-	spy.restore();
-});
-
 test("changing children with a sibling in a fragment", () => {
 	function Sibling() {
 		return <p>Sibling</p>;
