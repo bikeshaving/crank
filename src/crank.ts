@@ -295,7 +295,7 @@ type NarrowedChild = Element | string | undefined;
 
 function narrow(value: Children): NarrowedChild {
 	if (typeof value === "boolean" || value == null) {
-		return undefined;
+		return;
 	} else if (typeof value === "string" || isElement(value)) {
 		return value;
 	} else if (typeof (value as any)[Symbol.iterator] === "function") {
@@ -994,8 +994,6 @@ function getInflightDiff(
 	} else if (child.pendingDiff) {
 		return child.pendingDiff;
 	}
-
-	return undefined;
 }
 
 function createChildrenByKey<TNode, TScope>(
