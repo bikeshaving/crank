@@ -50,7 +50,8 @@ function getTagName(tag: Tag): string {
 		? tag.name || "Anonymous"
 		: typeof tag === "string"
 			? tag
-			: tag.description || "AnonymousSymbol";
+			: // tag is symbol, using else branch to avoid typeof tag === "symbol"
+				tag.description || "Anonymous";
 }
 
 /**
@@ -331,8 +332,11 @@ const IsRefreshing = 1 << 4;
 const IsUnmounted = 1 << 5;
 // TODO: Is this flag still necessary or can we use IsUnmounted?
 const IsErrored = 1 << 6;
+
+// TODO: Maybe we can get rid of IsSyncGen and IsAsyncGen
 const IsSyncGen = 1 << 7;
 const IsAsyncGen = 1 << 8;
+
 const IsInForOfLoop = 1 << 9;
 const IsInForAwaitOfLoop = 1 << 10;
 const NeedsToYield = 1 << 11;
@@ -534,8 +538,8 @@ export interface RenderAdapter<
 	text(data: {
 		value: string;
 		scope: TScope | undefined;
-		hydration: Array<TNode> | undefined;
 		oldNode: TNode | undefined;
+		hydrationNodes: Array<TNode> | undefined;
 	}): TNode;
 
 	scope(data: {
@@ -548,7 +552,7 @@ export interface RenderAdapter<
 	raw(data: {
 		value: string | TNode;
 		scope: TScope | undefined;
-		hydration: Array<TNode> | undefined;
+		hydrationNodes: Array<TNode> | undefined;
 	}): ElementValue<TNode>;
 
 	patch(data: {
@@ -679,10 +683,12 @@ export class Renderer<
 
 		const diff = diffChildren(adapter, root, ret, ctx, scope, ret, children);
 		if (isPromiseLike(diff)) {
-			return diff.then(() => commitRootRender(adapter, root, ret!, ctx, scope));
+			return diff.then(() =>
+				commitRootRender(adapter, root, ret!, ctx, scope, undefined),
+			);
 		}
 
-		return commitRootRender(adapter, root, ret!, ctx, scope);
+		return commitRootRender(adapter, root, ret!, ctx, scope, undefined);
 	}
 
 	// TODO: deduplicate with render()
@@ -909,7 +915,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 				} else if (typeof child.tag === "function") {
 					diff = diffComponent(adapter, root, host, ctx, scope, ret);
 				} else {
-					diff = diffHostOrPortal(adapter, root, ctx, scope, ret);
+					diff = diffHost(adapter, root, ctx, scope, ret);
 				}
 			}
 
@@ -1010,7 +1016,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	}
 }
 
-function diffHostOrPortal<TNode, TScope, TRoot extends TNode>(
+function diffHost<TNode, TScope, TRoot extends TNode>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, unknown>,
 	root: TRoot | undefined,
 	ctx: ContextState<TNode, TScope, TRoot> | undefined,
@@ -1118,10 +1124,18 @@ function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
 	ret: Retainer<TNode, TScope>,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope,
-	hydration?: Array<TNode>,
+	hydrationNodes: Array<TNode> | undefined,
 ): TResult {
 	const props = stripSpecialProps(ret.el.props);
-	const children = commitChildren(adapter, ret, ctx, scope, ret, 0, hydration);
+	const children = commitChildren(
+		adapter,
+		ret,
+		ctx,
+		scope,
+		ret,
+		0,
+		hydrationNodes,
+	);
 	if (root == null) {
 		unmount(adapter, ret, ctx, ret, false);
 	} else {
@@ -1148,7 +1162,7 @@ function commit<TNode, TRoot extends TNode, TScope, TResult>(
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope | undefined,
 	index: number,
-	hydration: Array<TNode> | undefined,
+	hydrationNodes: Array<TNode> | undefined,
 ): ElementValue<TNode> {
 	if (getFlag(ret, IsCopied) && getFlag(ret, DidCommit)) {
 		return getValue(ret);
@@ -1159,15 +1173,29 @@ function commit<TNode, TRoot extends TNode, TScope, TResult>(
 	let value: ElementValue<TNode>;
 	if (typeof tag === "function") {
 		ret.ctx!.index = index;
-		value = commitComponent(ret.ctx!, hydration);
+		value = commitComponent(ret.ctx!, hydrationNodes);
 	} else if (tag === Fragment) {
-		value = commitChildren(adapter, host, ctx, scope, ret, index, hydration);
+		value = commitChildren(
+			adapter,
+			host,
+			ctx,
+			scope,
+			ret,
+			index,
+			hydrationNodes,
+		);
 	} else if (tag === Text) {
-		value = commitText(adapter, ret, el as Element<Text>, scope, hydration);
+		value = commitText(
+			adapter,
+			ret,
+			el as Element<Text>,
+			scope,
+			hydrationNodes,
+		);
 	} else if (tag === Raw) {
-		value = commitRaw(adapter, host, ret, scope, hydration);
+		value = commitRaw(adapter, host, ret, scope, hydrationNodes);
 	} else {
-		value = commitHostOrPortal(adapter, ret, ctx, hydration);
+		value = commitHost(adapter, ret, ctx, hydrationNodes);
 	}
 
 	if (!getFlag(ret, DidCommit)) {
@@ -1193,7 +1221,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 	scope: TScope | undefined,
 	parent: Retainer<TNode, TScope>,
 	index: number,
-	hydration: Array<TNode> | undefined,
+	hydrationNodes: Array<TNode> | undefined,
 ): Array<TNode> {
 	let values: Array<TNode> = [];
 	for (let i = 0, children = wrap(parent.children); i < children.length; i++) {
@@ -1203,7 +1231,15 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 		}
 
 		if (typeof child === "object") {
-			const value = commit(adapter, host, child, ctx, scope, index, hydration);
+			const value = commit(
+				adapter,
+				host,
+				child,
+				ctx,
+				scope,
+				index,
+				hydrationNodes,
+			);
 
 			if (Array.isArray(value)) {
 				values.push(...value);
@@ -1238,13 +1274,13 @@ function commitText<TNode, TScope>(
 	ret: Retainer<TNode, TScope>,
 	el: Element<Text>,
 	scope: TScope | undefined,
-	hydration?: Array<TNode>,
+	hydrationNodes: Array<TNode> | undefined,
 ): TNode {
 	const value = adapter.text({
 		value: el.props.value,
 		scope,
-		hydration,
 		oldNode: ret.value as TNode,
+		hydrationNodes,
 	});
 
 	ret.value = value;
@@ -1256,7 +1292,7 @@ function commitRaw<TNode, TScope>(
 	host: Retainer<TNode>,
 	ret: Retainer<TNode>,
 	scope: TScope | undefined,
-	hydration: Array<TNode> | undefined,
+	hydrationNodes: Array<TNode> | undefined,
 ): ElementValue<TNode> {
 	if (!ret.oldProps || ret.oldProps.value !== ret.el.props.value) {
 		const oldNodes = wrap(ret.value);
@@ -1271,7 +1307,7 @@ function commitRaw<TNode, TScope>(
 		ret.value = adapter.raw({
 			value: ret.el.props.value as any,
 			scope,
-			hydration,
+			hydrationNodes,
 		});
 	}
 
@@ -1279,11 +1315,11 @@ function commitRaw<TNode, TScope>(
 	return ret.value;
 }
 
-function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
+function commitHost<TNode, TRoot extends TNode, TScope>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, unknown>,
 	ret: Retainer<TNode, TScope>,
 	ctx: ContextState<TNode, TScope, TRoot, unknown> | undefined,
-	hydration: Array<TNode> | undefined,
+	hydrationNodes: Array<TNode> | undefined,
 ): ElementValue<TNode> {
 	if (getFlag(ret, IsCopied) && getFlag(ret, DidCommit)) {
 		return getValue(ret);
@@ -1303,13 +1339,13 @@ function commitHostOrPortal<TNode, TRoot extends TNode, TScope>(
 
 	const scope = ret.scope;
 	if (ret.el.tag === Portal) {
-		hydration = undefined;
+		hydrationNodes = undefined;
 	}
 
 	let childHydration: Array<TNode> | undefined;
 	if (!getFlag(ret, DidCommit) && tag !== Portal) {
-		if (!node && hydration && hydration.length > 0) {
-			const nextChild = hydration.shift();
+		if (!node && hydrationNodes && hydrationNodes.length > 0) {
+			const nextChild = hydrationNodes.shift();
 			if (nextChild) {
 				childHydration = adapter.adopt({
 					tag,
@@ -2147,7 +2183,7 @@ function diffComponentChildren<TNode, TResult>(
 
 function commitComponent<TNode>(
 	ctx: ContextState<TNode, unknown, TNode>,
-	hydration?: Array<TNode>,
+	hydrationNodes?: Array<TNode> | undefined,
 ): ElementValue<TNode> {
 	const values = commitChildren(
 		ctx.adapter,
@@ -2156,7 +2192,7 @@ function commitComponent<TNode>(
 		ctx.scope,
 		ctx.ret,
 		ctx.index,
-		hydration,
+		hydrationNodes,
 	);
 
 	if (getFlag(ctx.ret, IsUnmounted)) {
@@ -2219,16 +2255,20 @@ function commitComponent<TNode>(
 	if (callbacks) {
 		scheduleMap.delete(ctx);
 		setFlag(ctx.ret, IsScheduling);
-		const result = ctx.adapter.read(value);
-		for (const callback of callbacks) {
-			callback(result);
-		}
+		try {
+			const result = ctx.adapter.read(value);
+			// TODO: think about error handling for schedule callbacks
+			for (const callback of callbacks) {
+				callback(result);
+			}
 
-		setFlag(ctx.ret, IsScheduling, false);
-		// Handles an edge case where refresh() is called during a schedule().
-		if (getFlag(ctx.ret, IsSchedulingRefresh)) {
-			setFlag(ctx.ret, IsSchedulingRefresh, false);
-			value = getValue(ctx.ret);
+			// Handles an edge case where refresh() is called during a schedule().
+			if (getFlag(ctx.ret, IsSchedulingRefresh)) {
+				setFlag(ctx.ret, IsSchedulingRefresh, false);
+				value = getValue(ctx.ret);
+			}
+		} finally {
+			setFlag(ctx.ret, IsScheduling, false);
 		}
 	}
 
@@ -2738,6 +2778,7 @@ async function unmountComponent(
 	}
 
 	let promises: Array<PromiseLike<unknown>> | undefined;
+	// TODO: think about errror handling for callbacks
 	const callbacks = cleanupMap.get(ctx);
 	if (callbacks) {
 		const oldResult = ctx.adapter.read(getValue(ctx.ret));

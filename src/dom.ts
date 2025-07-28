@@ -378,14 +378,14 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 	text({
 		value,
 		oldNode,
-		hydration,
+		hydrationNodes,
 	}: {
 		value: string;
-		hydration: Array<Node> | undefined;
+		hydrationNodes: Array<Node> | undefined;
 		oldNode: Node | undefined;
 	}): Node {
-		if (hydration != null) {
-			let node = hydration.shift();
+		if (hydrationNodes != null) {
+			let node = hydrationNodes.shift();
 			if (!node || node.nodeType !== Node.TEXT_NODE) {
 				console.warn(`Expected "${value}" while hydrating but found:`, node);
 			} else {
@@ -396,7 +396,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 						// the text node is longer than the expected text, so we
 						// reuse the existing text node, but truncate it and unshift the rest
 						(node as Text).data = value;
-						hydration.unshift(
+						hydrationNodes.unshift(
 							document.createTextNode(textData.slice(value.length)),
 						);
 
@@ -425,11 +425,11 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 	raw({
 		value,
 		scope: xmlns,
-		hydration,
+		hydrationNodes,
 	}: {
 		value: string | Node;
 		scope: string | undefined;
-		hydration: Array<Node> | undefined;
+		hydrationNodes: Array<Node> | undefined;
 	}): ElementValue<Node> {
 		let nodes: Array<Node>;
 		if (typeof value === "string") {
@@ -443,11 +443,11 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 			nodes = value == null ? [] : Array.isArray(value) ? [...value] : [value];
 		}
 
-		if (hydration != null) {
+		if (hydrationNodes != null) {
 			for (let i = 0; i < nodes.length; i++) {
 				const node = nodes[i];
 				// check if node is equal to the next node in the hydration array
-				const hydrationNode = hydration.shift();
+				const hydrationNode = hydrationNodes.shift();
 				if (
 					hydrationNode &&
 					typeof hydrationNode === "object" &&
