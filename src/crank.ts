@@ -1379,6 +1379,7 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 	ret: Retainer<TNode>,
 	isNested: boolean,
 ): void {
+	// TODO: set the IsUnmounted flag consistently for all retainers
 	if (ret.fallback) {
 		unmount(adapter, host, ctx, ret.fallback, isNested);
 	}
