@@ -2,7 +2,7 @@
 import {suite} from "uvu";
 import * as Assert from "uvu/assert";
 import * as Sinon from "sinon";
-import {createElement, Fragment, Raw} from "../src/crank.js";
+import {createElement, Fragment, Portal, Raw, Text as Text1} from "../src/crank.js";
 import type {Context} from "../src/crank.js";
 
 import {renderer} from "../src/dom.js";
@@ -579,6 +579,205 @@ test("warns when style property value mismatches during hydration", () => {
 		consoleWarn.firstCall.args[0],
 		/Expected style "color" to be "blue"/,
 	);
+});
+
+test("hydration={true} can be used to continue hydration", () => {
+	document.body.innerHTML = `<button>Click</button>Hello`;
+	const button = document.body.firstChild as HTMLButtonElement;
+	renderer.hydrate(
+		<Fragment>
+			<button hydration={true}>Click</button>
+			Hello
+		</Fragment>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, `<button>Click</button>Hello`);
+	Assert.is(document.body.firstChild, button);
+});
+
+test("hydration={false} can be used to disable hydration", () => {
+	document.body.innerHTML = `Before <button id="server">Server</button>After`;
+	const button = document.body.firstChild as HTMLButtonElement;
+	renderer.hydrate(
+		<Fragment>
+			Before{" "}
+			<button id="client" hydration={false}>Client</button>
+			After
+		</Fragment>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, `Before <button id="client">Client</button>After`);
+	Assert.not(button === document.getElementById("client"));
+	Assert.is(consoleWarn.callCount, 0);
+});
+
+test("portals are not hydrated by default", () => {
+	document.body.innerHTML = `<div id="app">Before After</div><div id="portal"><button>Server</button></div>`;
+	const app = document.getElementById("app")!;
+	const portal = document.getElementById("portal")!;
+	const button = portal.firstChild as HTMLButtonElement;
+	const onclick = Sinon.fake();
+	renderer.hydrate(
+		<Fragment>
+			Before{" "}
+			<Portal root={portal}>
+				<button onclick={onclick}>Client</button>
+			</Portal>
+			After
+		</Fragment>,
+		app,
+	);
+	Assert.is(document.body.innerHTML, `<div id="app">Before After</div><div id="portal"><button>Server</button><button>Client</button></div>`);
+	Assert.is(portal.innerHTML, `<button>Server</button><button>Client</button>`);
+	button.click();
+	Assert.is(onclick.callCount, 0);
+	Assert.is(consoleWarn.callCount, 0);
+});
+
+test("hydration={true} can be used to hydrate a nested portal", () => {
+	const onclick = Sinon.fake();
+	document.body.innerHTML = `<div id="app">Before After</div><div id="portal"><button>Click</button></div>`;
+	const app = document.getElementById("app")!;
+	const portal = document.getElementById("portal")!;
+	const button = portal.firstChild as HTMLButtonElement;
+	renderer.hydrate(
+		<Fragment>
+			{"Before "}
+			<Portal root={portal} hydration={true}>
+				<button onclick={onclick}>Click</button>
+			</Portal>
+			After
+		</Fragment>,
+		app,
+	);
+
+	Assert.is(document.body.innerHTML, `<div id="app">Before After</div><div id="portal"><button>Click</button></div>`);
+	Assert.is(portal.firstChild, button);
+	Assert.is(portal.innerHTML, `<button>Click</button>`);
+	button.click();
+	Assert.is(onclick.callCount, 1);
+	Assert.is(consoleWarn.callCount, 0);
+});
+
+test("hydration={true} can be used to start hydration", () => {
+	const onclick = Sinon.fake();
+	document.body.innerHTML = `<div id="portal"><button>Click</button></div>`;
+	const portal = document.getElementById("portal")!;
+	const button = portal.firstChild as HTMLButtonElement;
+	renderer.render(
+		<div id="app">
+			Before{" "}
+			<Portal root={portal} hydration={true}>
+				<button onclick={onclick}>Click</button>
+			</Portal>
+			After
+		</div>,
+		document.body,
+	);
+
+	Assert.is(document.body.innerHTML, `<div id="portal"><button>Click</button></div><div id="app">Before After</div>`);
+	Assert.is(portal.firstChild, button);
+	Assert.is(portal.innerHTML, `<button>Click</button>`);
+	button.click();
+	Assert.is(onclick.callCount, 1);
+	Assert.is(consoleWarn.callCount, 0);
+});
+
+test("hydration={false} can be used to disable hydration for a fragment", () => {
+	document.body.innerHTML = `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`;
+	const app = document.getElementById("app")!;
+	const button1 = document.body.querySelector("button:nth-child(1)") as HTMLButtonElement;
+	const button2 = document.body.querySelector("button:nth-child(2)") as HTMLButtonElement;
+	renderer.hydrate(
+		<Fragment>
+			Before{" "}
+			<Fragment hydration={false}>
+				<button>Click1</button>{" "}
+				<button>Click2</button>
+			</Fragment>
+			{" "}After
+		</Fragment>,
+		app,
+	);
+	Assert.is(document.body.innerHTML, `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`);
+	Assert.not(button1 === document.body.querySelector("button:nth-child(1)"));
+	Assert.not(button2 === document.body.querySelector("button:nth-child(2)"));
+	Assert.is(consoleWarn.callCount, 0);
+});
+
+test("hydration={false} can be used to disable hydration for a component", () => {
+	document.body.innerHTML = `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`;
+	const app = document.getElementById("app")!;
+	const button1 = document.body.querySelector("button:nth-child(1)") as HTMLButtonElement;
+	const button2 = document.body.querySelector("button:nth-child(2)") as HTMLButtonElement;
+
+	function Component() {
+		return (
+			<Fragment>
+				<button>Click1</button>{" "}
+				<button>Click2</button>
+			</Fragment>
+		);
+	}
+
+	renderer.hydrate(
+		<Fragment>
+			Before{" "}
+			<Component hydration={false} />
+			{" "}After
+		</Fragment>,
+		app,
+	);
+	Assert.is(document.body.innerHTML, `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`);
+	Assert.not(button1 === document.body.querySelector("button:nth-child(1)"));
+	Assert.not(button2 === document.body.querySelector("button:nth-child(2)"));
+	Assert.is(consoleWarn.callCount, 0);
+});
+
+test("hydration={false} can be used to disable hydration for a Raw node", () => {
+	document.body.innerHTML = `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`;
+	const app = document.getElementById("app")!;
+	const button1 = document.body.querySelector("button:nth-child(1)") as HTMLButtonElement;
+	const button2 = document.body.querySelector("button:nth-child(2)") as HTMLButtonElement;
+
+	renderer.hydrate(
+		<Fragment>
+			Before{" "}
+			<Raw value="<button>Click1</button> <button>Click2</button>" hydration={false} />
+			{" "}After
+		</Fragment>,
+		app,
+	);
+	Assert.is(document.body.innerHTML, `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`);
+	Assert.not(button1 === document.body.querySelector("button:nth-child(1)"));
+	Assert.not(button2 === document.body.querySelector("button:nth-child(2)"));
+	Assert.is(consoleWarn.callCount, 0);
+});
+
+test("hydration={false} can be used to disable hydration for Text", () => {
+	document.body.innerHTML = `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`;
+	const app = document.getElementById("app")!;
+	const text1 = (document.body.querySelector("button:nth-child(1)") as HTMLButtonElement).firstChild as Text;
+	const text2 = (document.body.querySelector("button:nth-child(2)") as HTMLButtonElement).firstChild as Text;
+
+	renderer.hydrate(
+		<Fragment>
+			Before{" "}
+			<button>
+				<Text1 value="Click1" hydration={false} />
+			</button>
+			{" "}
+			<button>
+				<Text1 value="Click2" hydration={false} />
+			</button>
+			{" "}After
+		</Fragment>,
+		app,
+	);
+	Assert.is(document.body.innerHTML, `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`);
+	Assert.not(text1 === (document.body.querySelector("button:nth-child(1)") as HTMLButtonElement).firstChild);
+	Assert.not(text2 === (document.body.querySelector("button:nth-child(2)") as HTMLButtonElement).firstChild);
+	Assert.is(consoleWarn.callCount, 0);
 });
 
 test.run();

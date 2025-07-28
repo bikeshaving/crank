@@ -474,7 +474,7 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode> {
 function stripSpecialProps(props: Record<string, any>): Record<string, any> {
 	let _: unknown;
 	let result: Record<string, any>;
-	({key: _, ref: _, copy: _, children: _, ...result} = props);
+	({key: _, ref: _, copy: _, hydration: _, children: _, ...result} = props);
 	return result;
 }
 
@@ -1104,9 +1104,18 @@ function commit<TNode, TRoot extends TNode, TScope, TResult>(
 	const el = ret.el;
 	const tag = el.tag;
 	let value: ElementValue<TNode>;
+	let skippedHydrationNodes: Array<TNode> | undefined;
+	if (el.props.hydration != null && !el.props.hydration) {
+		skippedHydrationNodes = hydrationNodes;
+		hydrationNodes = undefined;
+	}
+
 	if (typeof tag === "function") {
 		ret.ctx!.index = index;
-		value = commitComponent(ret.ctx!, hydrationNodes);
+		value = commitComponent(
+			ret.ctx!,
+			hydrationNodes,
+		);
 	} else if (tag === Fragment) {
 		value = commitChildren(
 			adapter,
@@ -1129,6 +1138,10 @@ function commit<TNode, TRoot extends TNode, TScope, TResult>(
 		value = commitRaw(adapter, host, ret, scope, hydrationNodes);
 	} else {
 		value = commitHost(adapter, ret, ctx, hydrationNodes);
+	}
+
+	if (skippedHydrationNodes) {
+		skippedHydrationNodes.splice(0, wrap(value).length);
 	}
 
 	if (!getFlag(ret, DidCommit)) {
@@ -1273,58 +1286,67 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	}
 
 	const scope = ret.scope;
-	if (ret.el.tag === Portal) {
-		hydrationNodes = undefined;
-	}
-
 	let childHydrationNodes: Array<TNode> | undefined;
-	if (!getFlag(ret, DidCommit) && tag !== Portal) {
-		if (!node && hydrationNodes) {
-			const nextChild = hydrationNodes.shift();
-			childHydrationNodes = adapter.adopt({
-				tag,
-				tagName: getTagName(tag),
-				node: nextChild!,
-				props,
-				scope,
-			});
-			if (childHydrationNodes) {
-				node = nextChild!;
-				for (let i = 0; i < childHydrationNodes.length; i++) {
-					adapter.remove({
-						node: childHydrationNodes[i],
-						parent: node,
-						isNested: false,
-					});
+	if (!getFlag(ret, DidCommit)) {
+		if (tag === Portal) {
+			if (ret.el.props.hydration) {
+				childHydrationNodes = adapter.adopt({
+					tag,
+					tagName: getTagName(tag),
+					node,
+					props,
+					scope,
+				});
+			}
+		} else {
+			if (!node && hydrationNodes) {
+				const nextChild = hydrationNodes.shift();
+				childHydrationNodes = adapter.adopt({
+					tag,
+					tagName: getTagName(tag),
+					node: nextChild!,
+					props,
+					scope,
+				});
+				if (childHydrationNodes) {
+					node = nextChild!;
+					for (let i = 0; i < childHydrationNodes.length; i++) {
+						adapter.remove({
+							node: childHydrationNodes[i],
+							parent: node,
+							isNested: false,
+						});
+					}
 				}
 			}
-		}
 
-		// TODO: For some reason, there are cases where the node is already set and
-		// the DidCommit flag is false. Not checking for node fails a test where a
-		// child dispatches an event in a schedule callback, the parent listens for
-		// this event and refreshes.
-		if (!node) {
-			node = adapter.create({
-				tag,
-				tagName: getTagName(tag),
-				props,
-				scope,
-			});
+			// TODO: For some reason, there are cases where the node is already set and
+			// the DidCommit flag is false. Not checking for node fails a test where a
+			// child dispatches an event in a schedule callback, the parent listens for
+			// this event and refreshes.
+			if (!node) {
+				node = adapter.create({
+					tag,
+					tagName: getTagName(tag),
+					props,
+					scope,
+				});
+			}
+			ret.value = node;
 		}
-
-		ret.value = node;
 	}
 
-	adapter.patch({
-		tag,
-		tagName: getTagName(tag),
-		node,
-		props,
-		oldProps,
-		scope,
-		isHydrating: !!childHydrationNodes,
-	});
+	if (tag !== Portal) {
+		adapter.patch({
+			tag,
+			tagName: getTagName(tag),
+			node,
+			props,
+			oldProps,
+			scope,
+			isHydrating: !!childHydrationNodes,
+		});
+	}
 
 	const children = commitChildren(
 		adapter,
@@ -1348,8 +1370,8 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	ret.oldProps = props;
 	if (tag === Portal) {
 		flush(adapter, ret.value);
-		// The root passed to Portal elements are not visible to parents so we
-		// return undefined here.
+		// The root passed to Portal elements are opaque to parents so we return
+		// undefined here.
 		return;
 	}
 
@@ -3139,6 +3161,7 @@ declare global {
 			key?: unknown;
 			ref?: unknown;
 			copy?: unknown;
+			hydration?: unknown;
 		}
 
 		export interface ElementChildrenAttribute {
