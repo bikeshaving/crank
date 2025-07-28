@@ -916,8 +916,10 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 
 			if (typeof ret === "object") {
 				if (childCopied) {
-					diff = getInflight(ret);
 					setFlag(ret, IsCopied);
+					diff = getInflightDiff(ret);
+				} else {
+					setFlag(ret, IsCopied, false);
 				}
 			}
 
@@ -1159,6 +1161,10 @@ function commit<TNode, TRoot extends TNode, TScope, TResult>(
 	index: number,
 	hydration: Array<TNode> | undefined,
 ): ElementValue<TNode> {
+	if (getFlag(ret, IsCopied) && getFlag(ret, DidCommit)) {
+		return getValue(ret);
+	}
+
 	const el = ret.el;
 	const tag = el.tag;
 	let value: ElementValue<TNode>;
