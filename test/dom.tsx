@@ -1,7 +1,7 @@
 /// <ref lib="dom" />
 import {suite} from "uvu";
 import * as Assert from "uvu/assert";
-import {Copy, createElement, Fragment, Portal, Raw} from "../src/crank.js";
+import {Copy, createElement, Fragment, Raw} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 const test = suite("dom");
@@ -85,67 +85,6 @@ test("boolean replaces nested children", () => {
 	Assert.is(document.body.innerHTML, '<div id="1"><div id="2"></div></div>');
 	Assert.is(document.body.firstChild, div1);
 	Assert.is(document.body.firstChild!.firstChild, div2);
-});
-
-// TODO: move these tests to their own file
-test("portal", () => {
-	const el1 = document.createElement("div");
-	const el2 = document.createElement("div");
-	renderer.render(
-		<div>
-			Hello world
-			<Portal root={el1}>Hello from a portal</Portal>
-			<Portal root={el2}>
-				<div>Hello from another portal</div>
-			</Portal>
-		</div>,
-		document.body,
-	);
-	Assert.is(document.body.innerHTML, "<div>Hello world</div>");
-	Assert.is(el1.innerHTML, "Hello from a portal");
-	Assert.is(el2.innerHTML, "<div>Hello from another portal</div>");
-
-	renderer.render(null, document.body);
-	Assert.is(document.body.innerHTML, "");
-	Assert.is(el1.innerHTML, "");
-	Assert.is(el2.innerHTML, "");
-});
-
-test("portal at root", () => {
-	const div = document.createElement("div");
-	renderer.render(
-		<Portal root={div}>
-			<div>Hello world</div>
-		</Portal>,
-		document.body,
-	);
-	Assert.is(document.body.innerHTML, "");
-	Assert.is(div.innerHTML, "<div>Hello world</div>");
-	renderer.render(null, document.body);
-	Assert.is(document.body.innerHTML, "");
-	Assert.is(div.innerHTML, "");
-});
-
-test("changing root", () => {
-	const el1 = document.createElement("div");
-	const el2 = document.createElement("div");
-	renderer.render(
-		<Portal root={el1}>
-			<div>Hello world</div>
-		</Portal>,
-		document.body,
-	);
-	Assert.is(document.body.innerHTML, "");
-	Assert.is(el1.innerHTML, "<div>Hello world</div>");
-	renderer.render(
-		<Portal root={el2}>
-			<div>Hello world</div>
-		</Portal>,
-		document.body,
-	);
-	Assert.is(document.body.innerHTML, "");
-	Assert.is(el1.innerHTML, "");
-	Assert.is(el2.innerHTML, "<div>Hello world</div>");
 });
 
 test("attrs", () => {
