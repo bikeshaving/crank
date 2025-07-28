@@ -1,6 +1,5 @@
 import {suite} from "uvu";
 import * as Assert from "uvu/assert";
-import * as Sinon from "sinon";
 
 import {createElement, Context, Fragment} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
