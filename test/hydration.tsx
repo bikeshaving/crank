@@ -347,6 +347,16 @@ test("mismatched text", () => {
 	Assert.is(consoleWarn.callCount, 1);
 });
 
+test("missing element", () => {
+	function Component() {
+		return <button>Click</button>;
+	}
+
+	renderer.hydrate(<Component />, document.body);
+	Assert.is(document.body.innerHTML, "<button>Click</button>");
+	Assert.is(consoleWarn.callCount, 1);
+});
+
 test("raw element", () => {
 	document.body.innerHTML = "<div><div>Raw</div><button>Click</button></div>";
 	const onclick = Sinon.fake();
