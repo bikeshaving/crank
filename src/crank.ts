@@ -629,11 +629,17 @@ export class Renderer<
 		if (isPromiseLike(diff)) {
 			return diff.then(() => {
 				commit(this.adapter, ret, ret, ret.ctx, ret.scope, 0, undefined);
+				if (typeof root !== "object" || root === null) {
+					unmount(this.adapter, ret, ret.ctx, ret, false);
+				}
 				return this.adapter.read(unwrap(getChildValues(ret)));
 			});
 		}
 
 		commit(this.adapter, ret, ret, ret.ctx, ret.scope, 0, undefined);
+		if (typeof root !== "object" || root === null) {
+			unmount(this.adapter, ret, ret.ctx, ret, false);
+		}
 		return this.adapter.read(unwrap(getChildValues(ret)));
 	}
 
