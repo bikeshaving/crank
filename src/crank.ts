@@ -1312,6 +1312,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 
 	const scope = ret.scope;
 	let childHydrationNodes: Array<TNode> | undefined;
+	//let quietProps: Set<string> | undefined;
 	if (!getFlag(ret, DidCommit)) {
 		if (tag === Portal) {
 			if (ret.el.props.hydration) {
@@ -1326,6 +1327,15 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		} else {
 			if (!node && hydrationNodes) {
 				const nextChild = hydrationNodes.shift();
+				//if (typeof ret.el.props.hydration === "string") {
+				//	const hydrationMetaProp = new MetaProp(
+				//		"hydration",
+				//		ret.el.props.hydration,
+				//	);
+				//	quietProps = new Set<string>();
+
+				// TODO:
+				//}
 				childHydrationNodes = adapter.adopt({
 					tag,
 					tagName: getTagName(tag),

@@ -489,44 +489,35 @@ test("warns when attribute present but should be missing during hydration", () =
 	document.body.innerHTML = `<div foo="bar"></div>`;
 	renderer.hydrate(<div foo={null} />, document.body);
 	Assert.is(consoleWarn.callCount, 1);
-	Assert.match(
-		consoleWarn.firstCall.args[0],
-		/Expected attribute "foo" to be missing/,
-	);
+	Assert.match(consoleWarn.firstCall.args[0], /Expected "foo" to be missing/);
 });
 
 test("warns when attribute missing but should be present during hydration", () => {
 	document.body.innerHTML = `<div></div>`;
 	renderer.hydrate(<div foo={true} />, document.body);
 	Assert.is(consoleWarn.callCount, 1);
-	Assert.match(
-		consoleWarn.firstCall.args[0],
-		/Expected attribute "foo" to be ""/,
-	);
+	Assert.match(consoleWarn.firstCall.args[0], /Expected "foo" to be ""/);
 });
 
 test("warns when attribute value mismatches during hydration", () => {
 	document.body.innerHTML = `<div foo="baz"></div>`;
 	renderer.hydrate(<div foo="bar" />, document.body);
 	Assert.is(consoleWarn.callCount, 1);
-	Assert.match(
-		consoleWarn.firstCall.args[0],
-		/Expected attribute "foo" to be "bar"/,
-	);
+	Assert.match(consoleWarn.firstCall.args[0], /Expected "foo" to be "bar"/);
 });
 
 test("warns when style present but should be missing during hydration", () => {
 	document.body.innerHTML = `<div style="color: red"></div>`;
 	renderer.hydrate(<div style={null} />, document.body);
 	Assert.is(consoleWarn.callCount, 1);
-	Assert.match(consoleWarn.firstCall.args[0], /Expected style to be missing/);
+	Assert.match(consoleWarn.firstCall.args[0], /Expected "style" to be missing/);
 });
 
 test("warns when style should be empty string during hydration", () => {
 	document.body.innerHTML = `<div style="color: red"></div>`;
 	renderer.hydrate(<div style="" />, document.body);
 	Assert.is(consoleWarn.callCount, 1);
-	Assert.match(consoleWarn.firstCall.args[0], /Expected style to be ""/);
+	Assert.match(consoleWarn.firstCall.args[0], /Expected "style" to be ""/);
 });
 
 test("warns when style value mismatches during hydration", () => {
@@ -535,7 +526,7 @@ test("warns when style value mismatches during hydration", () => {
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(
 		consoleWarn.firstCall.args[0],
-		/Expected style to be "color: blue"/,
+		/Expected "style" to be "color: blue"/,
 	);
 });
 
@@ -543,28 +534,31 @@ test("warns when class present but should be missing during hydration", () => {
 	document.body.innerHTML = `<div class="foo"></div>`;
 	renderer.hydrate(<div class={null} />, document.body);
 	Assert.is(consoleWarn.callCount, 1);
-	Assert.match(consoleWarn.firstCall.args[0], /Expected class to be missing/);
+	Assert.match(consoleWarn.firstCall.args[0], /Expected "class" to be missing/);
 });
 
 test("warns when class should be empty string during hydration", () => {
 	document.body.innerHTML = `<div class="foo"></div>`;
 	renderer.hydrate(<div class="" />, document.body);
 	Assert.is(consoleWarn.callCount, 1);
-	Assert.match(consoleWarn.firstCall.args[0], /Expected class to be ""/);
+	Assert.match(consoleWarn.firstCall.args[0], /Expected "class" to be ""/);
 });
 
 test("warns when class value mismatches during hydration", () => {
 	document.body.innerHTML = `<div class="foo"></div>`;
 	renderer.hydrate(<div class="bar" />, document.body);
 	Assert.is(consoleWarn.callCount, 1);
-	Assert.match(consoleWarn.firstCall.args[0], /Expected class to be "bar"/);
+	Assert.match(consoleWarn.firstCall.args[0], /Expected "class" to be "bar"/);
 });
 
 test("warns when innerHTML mismatches during hydration", () => {
 	document.body.innerHTML = `<div>baz</div>`;
 	renderer.hydrate(<div innerHTML="bar" />, document.body);
 	Assert.is(consoleWarn.callCount, 1);
-	Assert.match(consoleWarn.firstCall.args[0], /Expected innerHTML to be "bar"/);
+	Assert.match(
+		consoleWarn.firstCall.args[0],
+		/Expected "innerHTML" to be "bar"/,
+	);
 });
 
 test("warns when style property present but should be missing during hydration", () => {
@@ -574,6 +568,24 @@ test("warns when style property present but should be missing during hydration",
 	Assert.match(
 		consoleWarn.firstCall.args[0],
 		/Expected style "color" to be missing/,
+	);
+});
+
+test("warns when id mismatches during hydration", () => {
+	document.body.innerHTML = `<div id="server"></div>`;
+	renderer.hydrate(<div id="client" />, document.body);
+	Assert.is(consoleWarn.callCount, 1);
+	Assert.match(consoleWarn.firstCall.args[0], /Expected "id" to be "client"/);
+});
+
+test("warns when input type and value mismatches during hydration", () => {
+	document.body.innerHTML = `<input type="email" value="server">`;
+	renderer.hydrate(<input type="text" value="client" />, document.body);
+	Assert.is(consoleWarn.callCount, 2);
+	Assert.match(consoleWarn.firstCall.args[0], /Expected "type" to be "text"/);
+	Assert.match(
+		consoleWarn.secondCall.args[0],
+		/Expected "value" to be "client"/,
 	);
 });
 

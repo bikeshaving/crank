@@ -105,6 +105,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 	},
 
 	patch({
+		tagName,
 		node,
 		props,
 		oldProps,
@@ -113,6 +114,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 		isHydrating,
 	}: {
 		node: Node;
+		tagName: string;
 		props: Record<string, any>;
 		oldProps: Record<string, any> | undefined;
 		scope: string | undefined;
@@ -123,7 +125,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 			throw new TypeError(`Cannot patch node: ${String(node)}`);
 		} else if (props.class && props.className) {
 			console.error(
-				"Both `class` and `className` properties are set. Use one or the other.",
+				`Both "class" and "className" set in props for <${tagName}>. Use one or the other.`,
 			);
 		}
 
@@ -151,7 +153,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 							if (value == null || value === false) {
 								if (isHydrating && element.hasAttribute(name1)) {
 									console.warn(
-										`Expected attribute "${name1}" to be missing while hydrating:`,
+										`Expected "${name1}" to be missing while hydrating:`,
 										element,
 									);
 								}
@@ -159,7 +161,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 							} else if (value === true) {
 								if (isHydrating && !element.hasAttribute(name1)) {
 									console.warn(
-										`Expected attribute "${name1}" to be present while hydrating:`,
+										`Expected "${name1}" to be present while hydrating:`,
 										element,
 									);
 								}
@@ -170,7 +172,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 
 							if (isHydrating && element.getAttribute(name1) !== value) {
 								console.warn(
-									`Expected attribute "${name1}" to be "${value}" while hydrating:`,
+									`Expected "${name1}" to be "${value}" while hydrating:`,
 									element.getAttribute(name1),
 								);
 							}
@@ -187,21 +189,24 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 					if (value == null || value === false) {
 						if (isHydrating && style.cssText !== "") {
 							console.warn(
-								`Expected style to be missing while hydrating:`,
+								`Expected "style" to be missing while hydrating:`,
 								element,
 							);
 						}
 						element.removeAttribute("style");
 					} else if (value === true) {
 						if (isHydrating && style.cssText !== "") {
-							console.warn(`Expected style to be "" while hydrating:`, element);
+							console.warn(
+								`Expected "style" to be "" while hydrating:`,
+								element,
+							);
 						}
 						element.setAttribute("style", "");
 					} else if (typeof value === "string") {
 						if (style.cssText !== value) {
 							if (isHydrating) {
 								console.warn(
-									`Expected style to be "${value}" while hydrating:`,
+									`Expected "style" to be "${value}" while hydrating:`,
 									element,
 								);
 							}
@@ -211,6 +216,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 					} else {
 						if (typeof oldValue === "string") {
 							// if the old value was a string, we need to clear the style
+							// TODO: only clear the styles enumerated in the old value
 							style.cssText = "";
 						}
 
@@ -242,13 +248,16 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 				case "className":
 					if (value === true) {
 						if (isHydrating && element.getAttribute("class") !== "") {
-							console.warn(`Expected class to be "" while hydrating:`, element);
+							console.warn(
+								`Expected "class" to be "" while hydrating:`,
+								element,
+							);
 						}
 						element.setAttribute("class", "");
 					} else if (value == null) {
 						if (isHydrating && element.hasAttribute("class")) {
 							console.warn(
-								`Expected class to be missing while hydrating:`,
+								`Expected "${name}" to be missing while hydrating:`,
 								element,
 							);
 						}
@@ -258,7 +267,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 						if (element.className !== value) {
 							if (isHydrating) {
 								console.warn(
-									`Expected class to be "${value}" while hydrating:`,
+									`Expected "${name}" to be "${value}" while hydrating:`,
 									element,
 								);
 							}
@@ -267,7 +276,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 					} else if (element.getAttribute("class") !== value) {
 						if (isHydrating) {
 							console.warn(
-								`Expected class to be "${value}" while hydrating:`,
+								`Expected "${name}" to be "${value}" while hydrating:`,
 								element,
 							);
 						}
@@ -278,7 +287,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 					if (value !== oldValue) {
 						if (isHydrating) {
 							console.warn(
-								`Expected innerHTML to be "${value}" while hydrating:`,
+								`Expected "innerHTML" to be "${value}" while hydrating:`,
 								element,
 							);
 						}
@@ -310,6 +319,16 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 						isWritableProperty(element, name)
 					) {
 						if ((element as any)[name] !== value || oldValue === undefined) {
+							if (
+								isHydrating &&
+								typeof (element as any)[name] === "string" &&
+								(element as any)[name] !== value
+							) {
+								console.warn(
+									`Expected "${name}" to be "${value}" while hydrating:`,
+									(element as any)[name],
+								);
+							}
 							// if the property is writable, assign it directly
 							(element as any)[name] = value;
 						}
@@ -322,7 +341,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 					} else if (value == null || value === false) {
 						if (isHydrating && element.hasAttribute(name)) {
 							console.warn(
-								`Expected attribute "${name}" to be missing while hydrating:`,
+								`Expected "${name}" to be missing while hydrating:`,
 								element,
 							);
 						}
@@ -334,7 +353,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 					if (element.getAttribute(name) !== value) {
 						if (isHydrating) {
 							console.warn(
-								`Expected attribute "${name}" to be "${value}" while hydrating:`,
+								`Expected "${name}" to be "${value}" while hydrating:`,
 								element.getAttribute(name),
 							);
 						}
