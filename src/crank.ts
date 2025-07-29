@@ -531,7 +531,8 @@ export interface RenderAdapter<
 		props: Record<string, any>;
 		oldProps: Record<string, any> | undefined;
 		scope: TScope | undefined;
-		// TODO: should be a set of props that are hydrating
+		copyProps: Set<string> | undefined;
+		// TODO: should pass a set of props who should not cause hydration warnings
 		isHydrating: boolean;
 	}): void;
 
@@ -853,7 +854,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 			} else {
 				if (typeof ret === "object" && ret.el.tag === child.tag) {
 					ret.el = child;
-					if (child.props.copy) {
+					if (child.props.copy && typeof child.props.copy !== "string") {
 						childCopied = true;
 					}
 				} else {
@@ -1274,11 +1275,38 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	const props = stripSpecialProps(ret.el.props);
 	const oldProps = ret.oldProps;
 	let node = ret.value as TNode;
-	for (const propName in props) {
-		if (props[propName] === Copy) {
-			// Currently, the Copy tag can be used to skip the patching of a prop.
-			//   <div class={shouldPatchClass ? "class-name" : Copy} />
-			props[propName] = oldProps && oldProps[propName];
+
+	let copyProps: Set<string> | undefined;
+	let copyChildren = false;
+	if (oldProps) {
+		for (const propName in props) {
+			if (props[propName] === Copy) {
+				// Currently, the Copy tag can be used to skip the patching of a prop.
+				//   <div class={shouldPatchClass ? "class-name" : Copy} />
+				props[propName] = oldProps[propName];
+				(copyProps = copyProps || new Set()).add(propName);
+			}
+		}
+
+		if (typeof ret.el.props.copy === "string") {
+			const copyMetaProp = new MetaProp("copy", ret.el.props.copy);
+			if (copyMetaProp.include) {
+				for (const propName of copyMetaProp.props) {
+					if (propName in oldProps) {
+						props[propName] = oldProps[propName];
+						(copyProps = copyProps || new Set()).add(propName);
+					}
+				}
+			} else {
+				for (const propName in oldProps) {
+					if (!copyMetaProp.props.has(propName)) {
+						props[propName] = oldProps[propName];
+						(copyProps = copyProps || new Set()).add(propName);
+					}
+				}
+			}
+
+			copyChildren = copyMetaProp.includes("children");
 		}
 	}
 
@@ -1305,6 +1333,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 					props,
 					scope,
 				});
+
 				if (childHydrationNodes) {
 					node = nextChild!;
 					for (let i = 0; i < childHydrationNodes.length; i++) {
@@ -1341,28 +1370,31 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 			props,
 			oldProps,
 			scope,
+			copyProps,
 			isHydrating: !!childHydrationNodes,
 		});
 	}
 
-	const children = commitChildren(
-		adapter,
-		ret,
-		ctx,
-		scope,
-		ret,
-		0,
-		childHydrationNodes,
-	);
+	if (!copyChildren) {
+		const children = commitChildren(
+			adapter,
+			ret,
+			ctx,
+			scope,
+			ret,
+			0,
+			childHydrationNodes,
+		);
 
-	adapter.arrange({
-		tag,
-		tagName: getTagName(tag),
-		node: node,
-		props,
-		children,
-		oldProps,
-	});
+		adapter.arrange({
+			tag,
+			tagName: getTagName(tag),
+			node: node,
+			props,
+			children,
+			oldProps,
+		});
+	}
 
 	ret.oldProps = props;
 	if (tag === Portal) {
@@ -1373,6 +1405,49 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	}
 
 	return node;
+}
+
+class MetaProp {
+	declare include: boolean;
+	declare props: Set<string>;
+
+	constructor(propName: string, propValue: string) {
+		this.include = true;
+		this.props = new Set<string>();
+		let noBangs = true;
+		let allBangs = true;
+		const tokens = propValue.split(/[,\s]+/);
+		for (let i = 0; i < tokens.length; i++) {
+			const token = tokens[i].trim();
+			if (!token) {
+				continue;
+			} else if (token.startsWith("!")) {
+				noBangs = false;
+				this.props.add(token.slice(1));
+			} else {
+				allBangs = false;
+				this.props.add(token);
+			}
+		}
+
+		if (!allBangs && !noBangs) {
+			console.error(
+				`Invalid ${propName} prop "${propValue}".\nUse prop or !prop, not both.`,
+			);
+			this.include = true;
+			this.props.clear();
+		} else {
+			this.include = noBangs;
+		}
+	}
+
+	includes(propName: string): boolean {
+		if (this.include) {
+			return this.props.has(propName);
+		} else {
+			return !this.props.has(propName);
+		}
+	}
 }
 
 function contextContains(parent: ContextState, child: ContextState): boolean {

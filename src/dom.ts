@@ -109,16 +109,22 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 		props,
 		oldProps,
 		scope: xmlns,
+		copyProps,
 		isHydrating,
 	}: {
 		node: Node;
 		props: Record<string, any>;
 		oldProps: Record<string, any> | undefined;
 		scope: string | undefined;
+		copyProps: Set<string> | undefined;
 		isHydrating: boolean;
 	}): void {
 		if (node.nodeType !== Node.ELEMENT_NODE) {
 			throw new TypeError(`Cannot patch node: ${String(node)}`);
+		} else if (props.class && props.className) {
+			console.error(
+				"Both `class` and `className` properties are set. Use one or the other.",
+			);
 		}
 
 		const element = node as Element;
@@ -127,6 +133,9 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 			let value = props[name];
 			const oldValue = oldProps ? oldProps[name] : undefined;
 			{
+				if (copyProps != null && copyProps.has(name)) {
+					continue;
+				}
 				// handle prop:name or attr:name properties
 				const colonIndex = name.indexOf(":");
 				if (colonIndex !== -1) {

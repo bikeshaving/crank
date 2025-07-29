@@ -1,5 +1,6 @@
 import {suite} from "uvu";
 import * as Assert from "uvu/assert";
+import * as Sinon from "sinon";
 
 import {createElement, Context} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
@@ -28,6 +29,17 @@ test("host", () => {
 		document.body,
 	);
 	Assert.is(document.body.innerHTML, "<div>Hello world</div>");
+
+	renderer.render(
+		<div copy={false} style="background-color: blue">
+			Did you miss me?
+		</div>,
+		document.body,
+	);
+	Assert.is(
+		document.body.innerHTML,
+		'<div style="background-color: blue;">Did you miss me?</div>',
+	);
 });
 
 test("component", () => {
@@ -213,6 +225,308 @@ test("tag change", () => {
 	renderer.render(<div copy={true}>Hello world</div>, document.body);
 	renderer.render(<span copy={true}>Hello world</span>, document.body);
 	Assert.is(document.body.innerHTML, "<span>Hello world</span>");
+});
+
+test("copy prop can include props", () => {
+	renderer.render(
+		<div
+			copy="style greeting"
+			style="color: red;"
+			class="greeting"
+			data-greeting={true}
+		>
+			Hello world
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div class="greeting" data-greeting="" style="color: red;">Hello world</div>',
+	);
+
+	renderer.render(
+		<div
+			copy="style data-greeting"
+			style="color: blue;"
+			class="second-greeting"
+			data-greeting={false}
+		>
+			Hello again
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div class="second-greeting" data-greeting="" style="color: red;">Hello again</div>',
+	);
+
+	renderer.render(
+		<div copy="style children" class="third-greeting" data-greeting={false}>
+			Hello a third time
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div class="third-greeting" style="color: red;">Hello again</div>',
+	);
+	renderer.render(
+		<div class="fourth-greeting" style="color: yellow;" data-greeting={false}>
+			Hello a fourth time
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div class="fourth-greeting" style="color: yellow;">Hello a fourth time</div>',
+	);
+});
+
+test("copy prop can exclude props", () => {
+	renderer.render(
+		<div
+			copy="style greeting"
+			style="color: red;"
+			class="greeting"
+			data-greeting={true}
+		>
+			Hello world
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div class="greeting" data-greeting="" style="color: red;">Hello world</div>',
+	);
+
+	renderer.render(
+		<div
+			copy="!style !data-greeting"
+			style="color: blue;"
+			class="second-greeting"
+			data-greeting={false}
+		>
+			Hello again
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div class="greeting" style="color: blue;">Hello world</div>',
+	);
+	renderer.render(
+		<div
+			copy="!style !data-greeting"
+			class="second-greeting"
+			data-greeting={false}
+		>
+			Hello again
+		</div>,
+		document.body,
+	);
+});
+
+test("copy can include and exclude props but never both", () => {
+	const consoleError = Sinon.stub(console, "error");
+	renderer.render(
+		<div
+			copy="style data-greeting"
+			style="color: red;"
+			class="greeting"
+			data-greeting={true}
+		>
+			Hello world
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div class="greeting" data-greeting="" style="color: red;">Hello world</div>',
+	);
+
+	renderer.render(
+		<div
+			copy="!style !data-greeting"
+			style="color: blue;"
+			class="second-greeting"
+			data-greeting={false}
+		>
+			Hello again
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div class="greeting" style="color: blue;">Hello world</div>',
+	);
+
+	renderer.render(
+		<div copy="!children" class="third-greeting" data-greeting={true}>
+			Hello a third time
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div class="greeting" style="color: blue;">Hello a third time</div>',
+	);
+
+	renderer.render(
+		<div
+			copy="!style data-greeting"
+			class="fourth-greeting"
+			data-greeting={false}
+		>
+			Hello a fourth time
+		</div>,
+		document.body,
+	);
+
+	Assert.is(consoleError.callCount, 1);
+	Assert.equal(
+		consoleError.firstCall.args[0],
+		'Invalid copy prop "!style data-greeting".\nUse prop or !prop, not both.',
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div class="fourth-greeting">Hello a fourth time</div>',
+	);
+
+	consoleError.restore();
+});
+
+test("initial render with copy children", () => {
+	renderer.render(
+		<div copy="children" class="greeting">
+			Hello world
+		</div>,
+		document.body,
+	);
+
+	Assert.is(document.body.innerHTML, '<div class="greeting">Hello world</div>');
+
+	renderer.render(
+		<div copy="children" class="second-greeting">
+			Hello again
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div class="second-greeting">Hello world</div>',
+	);
+
+	renderer.render(
+		<div copy={false} class="third-greeting">
+			Hello a third time
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div class="third-greeting">Hello a third time</div>',
+	);
+});
+
+test("initial render with children excluded", () => {
+	renderer.render(
+		<div copy="!class" class="greeting">
+			Hello world
+		</div>,
+		document.body,
+	);
+
+	Assert.is(document.body.innerHTML, '<div class="greeting">Hello world</div>');
+
+	renderer.render(
+		<div copy="!class !children" class="second-greeting">
+			Hello again
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div class="second-greeting">Hello again</div>',
+	);
+
+	renderer.render(
+		<div copy="class children" class="third-greeting">
+			Hello a third time
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div class="second-greeting">Hello again</div>',
+	);
+});
+
+test("copy prop can be used for uncontrolled input values", () => {
+	const spy = Sinon.spy();
+	function* Component(this: Context<typeof Component>, {}: {}) {
+		let force = false;
+		let value = "Hello";
+		for ({} of this) {
+			yield (
+				<div>
+					<input
+						type="text"
+						copy={force ? false : "value"}
+						value={value}
+						oninput={(ev: InputEvent) => {
+							spy(ev);
+							value = (ev.target as HTMLInputElement).value;
+							this.refresh();
+						}}
+					/>
+					<button
+						onclick={() => {
+							force = true;
+							this.refresh();
+						}}
+					>
+						Click me
+					</button>
+				</div>
+			);
+
+			force = false;
+		}
+	}
+
+	renderer.render(<Component />, document.body);
+	// The value attr is never set, so HTML won't reflect the value.
+	Assert.is(
+		document.body.innerHTML,
+		'<div><input type="text"><button>Click me</button></div>',
+	);
+	const input = document.querySelector("input") as HTMLInputElement;
+	Assert.is(input.value, "Hello");
+
+	// simulate input event
+	const toAdd = " world";
+	for (let i = 0; i < toAdd.length; i++) {
+		input.value = input.value + toAdd[i];
+		input.dispatchEvent(new Event("input"));
+		Assert.is(spy.callCount, i + 1);
+	}
+
+	Assert.is(input.value, "Hello world");
+	Assert.is(spy.callCount, toAdd.length);
 });
 
 test.run();
