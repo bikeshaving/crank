@@ -532,8 +532,8 @@ export interface RenderAdapter<
 		oldProps: Record<string, any> | undefined;
 		scope: TScope | undefined;
 		copyProps: Set<string> | undefined;
-		quietProps: Set<string> | undefined;
 		isHydrating: boolean;
+		quietProps: Set<string> | undefined;
 	}): void;
 
 	arrange(data: {
@@ -600,14 +600,13 @@ export class Renderer<
 	/**
 	 * Renders an element tree into a specific root.
 	 *
-	 * @param children - An element tree. You can render null with a previously
-	 * used root to delete the previously rendered element tree from the cache.
-	 * @param root - The node to be rendered into. The renderer will cache
-	 * element trees per root.
-	 * @param bridge - An optional context that will be the ancestor context of all
-	 * elements in the tree. Useful for connecting different renderers so that
-	 * events/provisions properly propagate. The context for a given root must be
-	 * the same or an error will be thrown.
+	 * @param children - An element tree. Rendering null deletes cached renders.
+	 * @param root - The root to be rendered into. The renderer caches renders
+	 * per root.
+	 * @param bridge - An optional context that will be the ancestor context of
+	 * all elements in the tree. Useful for connecting different renderers so
+	 * that events/provisions/errors properly propagate. The context for a given
+	 * root must be the same between renders.
 	 *
 	 * @returns The result of rendering the children, or a possible promise of
 	 * the result if the element tree renders asynchronously.
@@ -617,164 +616,99 @@ export class Renderer<
 		root?: TRoot | undefined,
 		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
-		let ret: Retainer<TNode, TScope> | undefined;
-		const bridgeCtx =
-			bridge &&
-			(bridge[_ContextState] as ContextState<TNode, TScope, TRoot, TResult>);
-		if (typeof root === "object" && root !== null) {
-			ret = this.cache.get(root);
-		}
-
-		const adapter = this.adapter;
-		let scope: TScope | undefined;
-		if (ret === undefined) {
-			ret = new Retainer(createElement(Portal, {children, root}));
-			ret.value = root;
-			ret.ctx = bridgeCtx;
-			ret.scope = adapter.scope({
-				tag: Portal,
-				tagName: getTagName(Portal),
-				props: stripSpecialProps(ret.el.props),
-				scope: undefined,
-			});
-			if (typeof root === "object" && root !== null && children != null) {
-				this.cache.set(root, ret);
-			}
-		} else if (ret.ctx !== bridgeCtx) {
-			throw new Error(
-				"A previous call to render() was passed a different context",
-			);
-		} else {
-			ret.el = createElement(Portal, {children, root});
-			scope = ret.scope;
-			if (typeof root === "object" && root !== null && children == null) {
-				this.cache.delete(root);
-			}
-		}
-
+		const ret = getRootRetainer(this, children, root, bridge);
 		const diff = diffChildren(
-			adapter,
+			this.adapter,
 			root,
 			ret,
-			bridgeCtx,
-			scope,
-			ret,
-			children,
-		);
-		if (isPromiseLike(diff)) {
-			return diff.then(() =>
-				commitRootRender(adapter, root, ret!, bridgeCtx, scope, undefined),
-			);
-		}
-
-		return commitRootRender(adapter, root, ret!, bridgeCtx, scope, undefined);
-	}
-
-	// TODO: deduplicate with render()
-	hydrate(
-		children: Children,
-		root: TRoot,
-		bridge?: Context | undefined,
-	): Promise<TResult> | TResult {
-		let ret: Retainer<TNode, TScope> | undefined;
-		const bridgeCtx =
-			bridge &&
-			(bridge[_ContextState] as ContextState<TNode, TScope, TRoot, TResult>);
-		if (typeof root === "object" && root !== null) {
-			ret = this.cache.get(root);
-		}
-
-		// If there is already a retainer for the root, hydration is not necessary.
-		if (ret !== undefined) {
-			return this.render(children, root, bridge);
-		}
-
-		ret = new Retainer(createElement(Portal, {children, root}));
-		ret.value = root;
-		ret.ctx = bridgeCtx;
-		if (typeof root === "object" && root !== null && children != null) {
-			this.cache.set(root, ret);
-		}
-
-		const adapter = this.adapter;
-		const scope = (ret.scope = adapter.scope({
-			tag: Portal,
-			tagName: getTagName(Portal),
-			props: stripSpecialProps(ret.el.props),
-			scope: undefined,
-		}));
-
-		// Start the diffing process
-		const diff = diffChildren(
-			adapter,
-			root,
-			ret,
-			bridgeCtx,
-			scope,
+			ret.ctx,
+			ret.scope,
 			ret,
 			children,
 		);
 		if (isPromiseLike(diff)) {
 			return diff.then(() => {
-				// Get hydration data for the portal/root element
-				// This provides the initial DOM children that need to be hydrated
-				const hydrationNodes = adapter.adopt({
-					tag: Portal,
-					tagName: getTagName(Portal),
-					props: stripSpecialProps(ret.el.props),
-					node: root,
-					scope,
-				});
-
-				if (hydrationNodes) {
-					for (let i = 0; i < hydrationNodes.length; i++) {
-						adapter.remove({
-							node: hydrationNodes[i],
-							parent: root,
-							isNested: false,
-						});
-					}
-				}
-				return commitRootRender(
-					adapter,
-					root,
-					ret!,
-					bridgeCtx,
-					scope,
-					hydrationNodes,
-				);
+				commit(this.adapter, ret, ret, ret.ctx, ret.scope, 0, undefined);
+				return this.adapter.read(unwrap(getChildValues(ret)));
 			});
 		}
 
-		const hydrationNodes = adapter.adopt({
-			tag: Portal,
-			tagName: getTagName(Portal),
-			node: root,
-			props: stripSpecialProps(ret.el.props),
-			scope,
-		});
+		commit(this.adapter, ret, ret, ret.ctx, ret.scope, 0, undefined);
+		return this.adapter.read(unwrap(getChildValues(ret)));
+	}
 
-		if (hydrationNodes) {
-			for (let i = 0; i < hydrationNodes.length; i++) {
-				adapter.remove({
-					node: hydrationNodes[i],
-					parent: root,
-					isNested: false,
-				});
-			}
-		}
-		return commitRootRender(
-			adapter,
+	hydrate(
+		children: Children,
+		root: TRoot,
+		bridge?: Context | undefined,
+	): Promise<TResult> | TResult {
+		const ret = getRootRetainer(this, children, root, bridge, true);
+		const diff = diffChildren(
+			this.adapter,
 			root,
-			ret!,
-			bridgeCtx,
-			scope,
-			hydrationNodes,
+			ret,
+			ret.ctx,
+			ret.scope,
+			ret,
+			children,
 		);
+		if (isPromiseLike(diff)) {
+			return diff.then(() => {
+				commit(this.adapter, ret, ret, ret.ctx, ret.scope, 0, undefined);
+				return this.adapter.read(unwrap(getChildValues(ret)));
+			});
+		}
+
+		commit(this.adapter, ret, ret, ret.ctx, ret.scope, 0, undefined);
+		return this.adapter.read(unwrap(getChildValues(ret)));
 	}
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
+function getRootRetainer<TNode extends object, TScope, TRoot extends TNode>(
+	renderer: Renderer<TNode, TScope, TRoot, unknown>,
+	children: Children,
+	root: TRoot | undefined,
+	bridge: Context | undefined,
+	hydration: boolean = false,
+): Retainer<TNode, TScope> {
+	let ret: Retainer<TNode, TScope> | undefined;
+	const bridgeCtx = bridge && bridge[_ContextState];
+	if (typeof root === "object" && root !== null) {
+		ret = renderer.cache.get(root);
+	}
+
+	const adapter = renderer.adapter;
+	if (ret === undefined) {
+		ret = new Retainer(createElement(Portal, {children, root, hydration}));
+		ret.value = root;
+		ret.ctx = bridgeCtx as
+			| ContextState<TNode, TScope, TRoot, unknown>
+			| undefined;
+		ret.scope = adapter.scope({
+			tag: Portal,
+			tagName: getTagName(Portal),
+			props: stripSpecialProps(ret.el.props),
+			scope: undefined,
+		});
+		// remember that typeof null === "object"
+		if (typeof root === "object" && root !== null && children != null) {
+			renderer.cache.set(root, ret);
+		}
+	} else if (ret.ctx !== bridgeCtx) {
+		throw new Error(
+			"A previous call to render() was passed a different context",
+		);
+	} else {
+		ret.el = createElement(Portal, {children, root, hydration});
+		if (typeof root === "object" && root !== null && children == null) {
+			renderer.cache.delete(root);
+		}
+	}
+
+	return ret;
+}
+
 function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
@@ -1050,45 +984,6 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 	);
 }
 
-// TODO: use commit() on the root Portal in render()/hydrate() instead of this
-// function.
-function commitRootRender<TNode, TRoot extends TNode, TScope, TResult>(
-	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
-	root: TRoot | undefined,
-	ret: Retainer<TNode, TScope>,
-	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
-	scope: TScope,
-	hydrationNodes: Array<TNode> | undefined,
-): TResult {
-	const props = stripSpecialProps(ret.el.props);
-	const children = commitChildren(
-		adapter,
-		ret,
-		ctx,
-		scope,
-		ret,
-		0,
-		hydrationNodes,
-	);
-	if (root == null) {
-		unmount(adapter, ret, ctx, ret, false);
-	} else {
-		adapter.arrange({
-			tag: Portal,
-			tagName: getTagName(Portal),
-			node: root,
-			props,
-			children,
-			oldProps: ret.oldProps,
-		});
-	}
-
-	ret.oldProps = props;
-	setFlag(ret, DidCommit);
-	flush(adapter, root);
-	return adapter.read(unwrap(children));
-}
-
 function commit<TNode, TRoot extends TNode, TScope, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	host: Retainer<TNode, TScope>,
@@ -1304,7 +1199,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	if (oldProps) {
 		for (const propName in props) {
 			if (props[propName] === Copy) {
-				// Currently, the Copy tag can be used to skip the patching of a prop.
+				// The Copy tag can be used to skip the patching of a prop.
 				//   <div class={shouldPatchClass ? "class-name" : Copy} />
 				props[propName] = oldProps[propName];
 				(copyProps = copyProps || new Set()).add(propName);
@@ -1350,6 +1245,16 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 					props,
 					scope,
 				});
+
+				if (childHydrationNodes) {
+					for (let i = 0; i < childHydrationNodes.length; i++) {
+						adapter.remove({
+							node: childHydrationNodes[i],
+							parent: node,
+							isNested: false,
+						});
+					}
+				}
 			}
 		} else {
 			if (!node && hydrationNodes) {
@@ -1412,8 +1317,8 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 			oldProps,
 			scope,
 			copyProps,
-			quietProps,
 			isHydrating: !!childHydrationNodes,
+			quietProps,
 		});
 	}
 
