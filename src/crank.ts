@@ -1104,9 +1104,32 @@ function commit<TNode, TRoot extends TNode, TScope, TResult>(
 
 	const el = ret.el;
 	const tag = el.tag;
+	if (
+		typeof tag === "function" ||
+		tag === Fragment ||
+		tag === Portal ||
+		tag === Raw ||
+		tag === Text
+	) {
+		if (typeof el.props.copy === "string") {
+			console.error(
+				`String copy prop ignored for <${getTagName(tag)}>. Use booleans instead.`,
+			);
+		}
+		if (typeof el.props.hydration === "string") {
+			console.error(
+				`String hydration prop ignored for <${getTagName(tag)}>. Use booleans instead.`,
+			);
+		}
+	}
+
 	let value: ElementValue<TNode>;
 	let skippedHydrationNodes: Array<TNode> | undefined;
-	if (el.props.hydration != null && !el.props.hydration) {
+	if (
+		el.props.hydration != null &&
+		!el.props.hydration &&
+		typeof el.props.hydration !== "string"
+	) {
 		skippedHydrationNodes = hydrationNodes;
 		hydrationNodes = undefined;
 	}
@@ -1316,7 +1339,10 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 	let hydrationMetaProp: MetaProp | undefined;
 	if (!getFlag(ret, DidCommit)) {
 		if (tag === Portal) {
-			if (ret.el.props.hydration) {
+			if (
+				ret.el.props.hydration &&
+				typeof ret.el.props.hydration !== "string"
+			) {
 				childHydrationNodes = adapter.adopt({
 					tag,
 					tagName: getTagName(tag),

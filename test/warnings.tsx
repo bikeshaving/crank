@@ -2,7 +2,7 @@ import {suite} from "uvu";
 import * as Assert from "uvu/assert";
 import * as Sinon from "sinon";
 
-import {createElement} from "../src/crank.js";
+import {createElement, Fragment, Portal, Raw, Text} from "../src/crank.js";
 import type {Child, Context} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
@@ -73,6 +73,128 @@ test("for of with multiple yields in async generator component", async () => {
 	await renderer.render(<Component />, document.body);
 	Assert.is(document.body.innerHTML, "<div>Goodbye</div>");
 	Assert.is(mock.callCount, 1);
+});
+
+test("class and className both defined warns", () => {
+	renderer.render(
+		<div class="foo" className="bar">
+			Test
+		</div>,
+		document.body,
+	);
+	Assert.is(mock.callCount, 1);
+	Assert.match(mock.firstCall.args[0], /Both "class" and "className" set/);
+});
+
+test("string copy prop on Fragment warns", () => {
+	renderer.render(<Fragment copy="!children">Test</Fragment>, document.body);
+	Assert.is(mock.callCount, 1);
+	Assert.match(mock.firstCall.args[0], /String copy prop ignored for <>/);
+});
+
+test("string hydration prop on Fragment warns", () => {
+	renderer.render(
+		<Fragment hydration="!children">Test</Fragment>,
+		document.body,
+	);
+	Assert.is(mock.callCount, 1);
+	Assert.match(mock.firstCall.args[0], /String hydration prop ignored for <>/);
+});
+
+test("string copy prop on Portal warns", () => {
+	const portal = document.createElement("div");
+	renderer.render(
+		<Portal root={portal} copy="!children">
+			Test
+		</Portal>,
+		document.body,
+	);
+	Assert.is(mock.callCount, 1);
+	Assert.match(
+		mock.firstCall.args[0],
+		/String copy prop ignored for <crank\.Portal>/,
+	);
+});
+
+test("string hydration prop on Portal warns", () => {
+	const portal = document.createElement("div");
+	renderer.render(
+		<Portal root={portal} hydration="!children">
+			Test
+		</Portal>,
+		document.body,
+	);
+	Assert.is(mock.callCount, 1);
+	Assert.match(
+		mock.firstCall.args[0],
+		/String hydration prop ignored for <crank\.Portal>/,
+	);
+});
+
+test("string copy prop on Text warns", () => {
+	renderer.render(<Text value="Test" copy="!children" />, document.body);
+	Assert.is(mock.callCount, 1);
+	Assert.match(
+		mock.firstCall.args[0],
+		/String copy prop ignored for <crank\.Text>/,
+	);
+});
+
+test("string hydration prop on Text warns", () => {
+	renderer.render(<Text value="Test" hydration="!children" />, document.body);
+	Assert.is(mock.callCount, 1);
+	Assert.match(
+		mock.firstCall.args[0],
+		/String hydration prop ignored for <crank\.Text>/,
+	);
+});
+
+test("string copy prop on Raw warns", () => {
+	renderer.render(
+		<Raw value="<div>Test</div>" copy="!children" />,
+		document.body,
+	);
+	Assert.is(mock.callCount, 1);
+	Assert.match(
+		mock.firstCall.args[0],
+		/String copy prop ignored for <crank\.Raw>/,
+	);
+});
+
+test("string hydration prop on Raw warns", () => {
+	renderer.render(
+		<Raw value="<div>Test</div>" hydration="!children" />,
+		document.body,
+	);
+	Assert.is(mock.callCount, 1);
+	Assert.match(
+		mock.firstCall.args[0],
+		/String hydration prop ignored for <crank\.Raw>/,
+	);
+});
+
+test("string copy prop on component warns", () => {
+	function TestComponent() {
+		return <div>Test</div>;
+	}
+	renderer.render(<TestComponent copy="!children" />, document.body);
+	Assert.is(mock.callCount, 1);
+	Assert.match(
+		mock.firstCall.args[0],
+		/String copy prop ignored for <TestComponent>/,
+	);
+});
+
+test("string hydration prop on component warns", () => {
+	function TestComponent() {
+		return <div>Test</div>;
+	}
+	renderer.render(<TestComponent hydration="!children" />, document.body);
+	Assert.is(mock.callCount, 1);
+	Assert.match(
+		mock.firstCall.args[0],
+		/String hydration prop ignored for <TestComponent>/,
+	);
 });
 
 test.run();
