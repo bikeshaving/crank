@@ -9,6 +9,36 @@ import {
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
+function emitHydrationWarning(
+	propName: string,
+	quietProps: Set<string> | undefined,
+	expectedValue: any,
+	actualValue: any,
+	element?: Element,
+	displayName?: string,
+) {
+	const checkName = propName;
+	const showName = displayName || propName;
+	if (!quietProps || !quietProps.has(checkName)) {
+		if (expectedValue === null || expectedValue === false) {
+			console.warn(
+				`Expected "${showName}" to be missing while hydrating:`,
+				element || actualValue,
+			);
+		} else if (expectedValue === true || expectedValue === "") {
+			console.warn(
+				`Expected "${showName}" to be ${expectedValue === true ? "present" : '""'} while hydrating:`,
+				element || actualValue,
+			);
+		} else {
+			console.warn(
+				`Expected "${showName}" to be "${expectedValue}" while hydrating:`,
+				actualValue,
+			);
+		}
+	}
+}
+
 function isWritableProperty(element: Element, name: string): boolean {
 	// walk up the object's prototype chain to find the owner
 	let propOwner = element;
@@ -111,6 +141,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 		oldProps,
 		scope: xmlns,
 		copyProps,
+		quietProps,
 		isHydrating,
 	}: {
 		node: Node;
@@ -119,6 +150,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 		oldProps: Record<string, any> | undefined;
 		scope: string | undefined;
 		copyProps: Set<string> | undefined;
+		quietProps: Set<string> | undefined;
 		isHydrating: boolean;
 	}): void {
 		if (node.nodeType !== Node.ELEMENT_NODE) {
@@ -152,18 +184,18 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 						case "attr":
 							if (value == null || value === false) {
 								if (isHydrating && element.hasAttribute(name1)) {
-									console.warn(
-										`Expected "${name1}" to be missing while hydrating:`,
+									emitHydrationWarning(
+										name,
+										quietProps,
+										value,
+										element.getAttribute(name1),
 										element,
 									);
 								}
 								element.removeAttribute(name1);
 							} else if (value === true) {
 								if (isHydrating && !element.hasAttribute(name1)) {
-									console.warn(
-										`Expected "${name1}" to be present while hydrating:`,
-										element,
-									);
+									emitHydrationWarning(name, quietProps, value, null, element);
 								}
 								element.setAttribute(name1, "");
 							} else if (typeof value !== "string") {
@@ -171,8 +203,10 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 							}
 
 							if (isHydrating && element.getAttribute(name1) !== value) {
-								console.warn(
-									`Expected "${name1}" to be "${value}" while hydrating:`,
+								emitHydrationWarning(
+									name,
+									quietProps,
+									value,
 									element.getAttribute(name1),
 								);
 							}
@@ -188,16 +222,22 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 					const style = (element as HTMLElement | SVGElement).style;
 					if (value == null || value === false) {
 						if (isHydrating && style.cssText !== "") {
-							console.warn(
-								`Expected "style" to be missing while hydrating:`,
+							emitHydrationWarning(
+								name,
+								quietProps,
+								value,
+								style.cssText,
 								element,
 							);
 						}
 						element.removeAttribute("style");
 					} else if (value === true) {
 						if (isHydrating && style.cssText !== "") {
-							console.warn(
-								`Expected "style" to be "" while hydrating:`,
+							emitHydrationWarning(
+								name,
+								quietProps,
+								"",
+								style.cssText,
 								element,
 							);
 						}
@@ -205,8 +245,11 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 					} else if (typeof value === "string") {
 						if (style.cssText !== value) {
 							if (isHydrating) {
-								console.warn(
-									`Expected "style" to be "${value}" while hydrating:`,
+								emitHydrationWarning(
+									name,
+									quietProps,
+									value,
+									style.cssText,
 									element,
 								);
 							}
@@ -224,17 +267,25 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 							const styleValue = value && (value as any)[styleName];
 							if (styleValue == null) {
 								if (isHydrating && style.getPropertyValue(styleName) !== "") {
-									console.warn(
-										`Expected style "${styleName}" to be missing while hydrating:`,
+									emitHydrationWarning(
+										name,
+										quietProps,
+										null,
+										style.getPropertyValue(styleName),
 										element,
+										`style.${styleName}`,
 									);
 								}
 								style.removeProperty(styleName);
 							} else if (style.getPropertyValue(styleName) !== styleValue) {
 								if (isHydrating) {
-									console.warn(
-										`Expected style "${styleName}" to be "${styleValue}" while hydrating:`,
+									emitHydrationWarning(
+										name,
+										quietProps,
+										styleValue,
+										style.getPropertyValue(styleName),
 										element,
+										`style.${styleName}`,
 									);
 								}
 								style.setProperty(styleName, styleValue);
@@ -248,16 +299,22 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 				case "className":
 					if (value === true) {
 						if (isHydrating && element.getAttribute("class") !== "") {
-							console.warn(
-								`Expected "class" to be "" while hydrating:`,
+							emitHydrationWarning(
+								name,
+								quietProps,
+								"",
+								element.getAttribute("class"),
 								element,
 							);
 						}
 						element.setAttribute("class", "");
 					} else if (value == null) {
 						if (isHydrating && element.hasAttribute("class")) {
-							console.warn(
-								`Expected "${name}" to be missing while hydrating:`,
+							emitHydrationWarning(
+								name,
+								quietProps,
+								value,
+								element.getAttribute("class"),
 								element,
 							);
 						}
@@ -266,8 +323,11 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 					} else if (!isSVG) {
 						if (element.className !== value) {
 							if (isHydrating) {
-								console.warn(
-									`Expected "${name}" to be "${value}" while hydrating:`,
+								emitHydrationWarning(
+									name,
+									quietProps,
+									value,
+									element.className,
 									element,
 								);
 							}
@@ -275,8 +335,11 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 						}
 					} else if (element.getAttribute("class") !== value) {
 						if (isHydrating) {
-							console.warn(
-								`Expected "${name}" to be "${value}" while hydrating:`,
+							emitHydrationWarning(
+								name,
+								quietProps,
+								value,
+								element.getAttribute("class"),
 								element,
 							);
 						}
@@ -286,8 +349,11 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 				case "innerHTML":
 					if (value !== oldValue) {
 						if (isHydrating) {
-							console.warn(
-								`Expected "innerHTML" to be "${value}" while hydrating:`,
+							emitHydrationWarning(
+								name,
+								quietProps,
+								value,
+								element.innerHTML,
 								element,
 							);
 						}
@@ -324,8 +390,10 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 								typeof (element as any)[name] === "string" &&
 								(element as any)[name] !== value
 							) {
-								console.warn(
-									`Expected "${name}" to be "${value}" while hydrating:`,
+								emitHydrationWarning(
+									name,
+									quietProps,
+									value,
 									(element as any)[name],
 								);
 							}
@@ -340,8 +408,11 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 						value = "";
 					} else if (value == null || value === false) {
 						if (isHydrating && element.hasAttribute(name)) {
-							console.warn(
-								`Expected "${name}" to be missing while hydrating:`,
+							emitHydrationWarning(
+								name,
+								quietProps,
+								value,
+								element.getAttribute(name),
 								element,
 							);
 						}
@@ -352,8 +423,10 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 
 					if (element.getAttribute(name) !== value) {
 						if (isHydrating) {
-							console.warn(
-								`Expected "${name}" to be "${value}" while hydrating:`,
+							emitHydrationWarning(
+								name,
+								quietProps,
+								value,
 								element.getAttribute(name),
 							);
 						}

@@ -532,7 +532,7 @@ export interface RenderAdapter<
 		oldProps: Record<string, any> | undefined;
 		scope: TScope | undefined;
 		copyProps: Set<string> | undefined;
-		// TODO: should pass a set of props who should not cause hydration warnings
+		quietProps: Set<string> | undefined;
 		isHydrating: boolean;
 	}): void;
 
@@ -1312,7 +1312,8 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 
 	const scope = ret.scope;
 	let childHydrationNodes: Array<TNode> | undefined;
-	//let quietProps: Set<string> | undefined;
+	let quietProps: Set<string> | undefined;
+	let hydrationMetaProp: MetaProp | undefined;
 	if (!getFlag(ret, DidCommit)) {
 		if (tag === Portal) {
 			if (ret.el.props.hydration) {
@@ -1327,15 +1328,19 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 		} else {
 			if (!node && hydrationNodes) {
 				const nextChild = hydrationNodes.shift();
-				//if (typeof ret.el.props.hydration === "string") {
-				//	const hydrationMetaProp = new MetaProp(
-				//		"hydration",
-				//		ret.el.props.hydration,
-				//	);
-				//	quietProps = new Set<string>();
-
-				// TODO:
-				//}
+				if (typeof ret.el.props.hydration === "string") {
+					hydrationMetaProp = new MetaProp("hydration", ret.el.props.hydration);
+					if (hydrationMetaProp.include) {
+						// if we're in inclusive mode, we add all props to quietProps and
+						// remove props specified in the metaprop
+						quietProps = new Set(Object.keys(props));
+						for (const propName of hydrationMetaProp.props) {
+							quietProps.delete(propName);
+						}
+					} else {
+						quietProps = hydrationMetaProp.props;
+					}
+				}
 				childHydrationNodes = adapter.adopt({
 					tag,
 					tagName: getTagName(tag),
@@ -1381,6 +1386,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 			oldProps,
 			scope,
 			copyProps,
+			quietProps,
 			isHydrating: !!childHydrationNodes,
 		});
 	}
@@ -1393,7 +1399,9 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 			scope,
 			ret,
 			0,
-			childHydrationNodes,
+			hydrationMetaProp && !hydrationMetaProp.includes("children")
+				? undefined
+				: childHydrationNodes,
 		);
 
 		adapter.arrange({

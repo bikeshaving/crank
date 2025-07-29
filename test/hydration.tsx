@@ -567,7 +567,7 @@ test("warns when style property present but should be missing during hydration",
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(
 		consoleWarn.firstCall.args[0],
-		/Expected style "color" to be missing/,
+		/Expected "style\.color" to be missing/,
 	);
 });
 
@@ -595,7 +595,7 @@ test("warns when style property value mismatches during hydration", () => {
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(
 		consoleWarn.firstCall.args[0],
-		/Expected style "color" to be "blue"/,
+		/Expected "style\.color" to be "blue"/,
 	);
 });
 
@@ -844,6 +844,133 @@ test("hydration={false} can be used to disable hydration for Text", () => {
 				.firstChild,
 	);
 	Assert.is(consoleWarn.callCount, 0);
+});
+
+test("hydration meta-prop can suppress specific property warnings (exclusive)", () => {
+	document.body.innerHTML = `<div id="server" class="old-class"></div>`;
+	renderer.hydrate(
+		<div id="client" class="new-class" hydration="!id" />,
+		document.body,
+	);
+	Assert.is(consoleWarn.callCount, 1);
+	Assert.match(
+		consoleWarn.firstCall.args[0],
+		/Expected "class" to be "new-class"/,
+	);
+});
+
+test("hydration meta-prop can suppress multiple property warnings (exclusive)", () => {
+	document.body.innerHTML = `<div id="server" class="old-class" data-test="old"></div>`;
+	renderer.hydrate(
+		<div
+			id="client"
+			class="new-class"
+			data-test="new"
+			hydration="!id !class"
+		/>,
+		document.body,
+	);
+	Assert.is(consoleWarn.callCount, 1);
+	Assert.match(
+		consoleWarn.firstCall.args[0],
+		/Expected "data-test" to be "new"/,
+	);
+});
+
+test("hydration meta-prop can suppress all but specified property warnings (inclusive)", () => {
+	document.body.innerHTML = `<div id="server" class="old-class" data-test="old"></div>`;
+	renderer.hydrate(
+		<div id="client" class="new-class" data-test="new" hydration="id" />,
+		document.body,
+	);
+	Assert.is(consoleWarn.callCount, 1);
+	Assert.match(consoleWarn.firstCall.args[0], /Expected "id" to be "client"/);
+});
+
+test("hydration meta-prop can suppress style property warnings", () => {
+	document.body.innerHTML = `<div style="color: red; background: blue"></div>`;
+	renderer.hydrate(
+		<div style={{color: "green", background: "blue"}} hydration="!style" />,
+		document.body,
+	);
+	Assert.is(consoleWarn.callCount, 0);
+});
+
+test("hydration meta-prop with spaces and mixed syntax", () => {
+	document.body.innerHTML = `<div id="server" class="old" data-foo="old" data-bar="old"></div>`;
+	renderer.hydrate(
+		<div
+			id="client"
+			class="new"
+			data-foo="new"
+			data-bar="new"
+			hydration="  !id   !class  "
+		/>,
+		document.body,
+	);
+	Assert.is(consoleWarn.callCount, 2);
+	Assert.match(
+		consoleWarn.firstCall.args[0],
+		/Expected "data-foo" to be "new"/,
+	);
+	Assert.match(
+		consoleWarn.secondCall.args[0],
+		/Expected "data-bar" to be "new"/,
+	);
+});
+
+test("hydration meta-prop can disable children hydration with !children", () => {
+	document.body.innerHTML = `<div><span>Server Content</span><button>Server Button</button></div>`;
+	const serverSpan = document.body.querySelector("span") as HTMLSpanElement;
+	const serverButton = document.body.querySelector(
+		"button",
+	) as HTMLButtonElement;
+
+	const onclick = Sinon.fake();
+	renderer.hydrate(
+		<div hydration="!children">
+			<span>Client Content</span>
+			<button onclick={onclick}>Client Button</button>
+		</div>,
+		document.body,
+	);
+
+	// Children should be fully re-rendered (not hydrated)
+	Assert.is(
+		document.body.innerHTML,
+		`<div><span>Client Content</span><button>Client Button</button></div>`,
+	);
+	Assert.not(document.body.querySelector("span") === serverSpan);
+	Assert.not(document.body.querySelector("button") === serverButton);
+
+	// Event handlers should work (since it's client-rendered)
+	const newButton = document.body.querySelector("button") as HTMLButtonElement;
+	newButton.click();
+	Assert.ok(onclick.called);
+	Assert.is(onclick.callCount, 1);
+	Assert.is(consoleWarn.callCount, 0);
+});
+
+test("hydration meta-prop inclusive mode shows warnings only for specified props", () => {
+	document.body.innerHTML = `<div class="server" id="server"><span>Server Content</span></div>`;
+
+	renderer.hydrate(
+		<div class="client" id="client" hydration="class">
+			<span>Client Content</span>
+		</div>,
+		document.body,
+	);
+
+	// Only class should warn (specified in inclusive mode), id should be quiet
+	Assert.is(consoleWarn.callCount, 1);
+	Assert.match(
+		consoleWarn.firstCall.args[0],
+		/Expected "class" to be "client"/,
+	);
+	Assert.is(
+		document.body.innerHTML,
+		`<div class="client" id="client"><span>Client Content</span></div>`,
+	);
 });
 
 test.run();
