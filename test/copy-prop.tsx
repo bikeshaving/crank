@@ -240,10 +240,11 @@ test("copy prop can include props", () => {
 		document.body,
 	);
 
-	Assert.is(
-		document.body.innerHTML,
-		'<div class="greeting" data-greeting="" style="color: red;">Hello world</div>',
-	);
+	const div = document.querySelector("div") as HTMLDivElement;
+	Assert.is(div.className, "greeting");
+	Assert.is(div.style.color, "red");
+	Assert.is(div.dataset.greeting, "");
+	Assert.is(div.innerHTML, "Hello world");
 
 	renderer.render(
 		<div
@@ -257,10 +258,10 @@ test("copy prop can include props", () => {
 		document.body,
 	);
 
-	Assert.is(
-		document.body.innerHTML,
-		'<div class="second-greeting" data-greeting="" style="color: red;">Hello again</div>',
-	);
+	Assert.is(div.className, "second-greeting");
+	Assert.is(div.style.color, "red");
+	Assert.is(div.dataset.greeting, "");
+	Assert.is(div.innerHTML, "Hello again");
 
 	renderer.render(
 		<div copy="style children" class="third-greeting" data-greeting={false}>
@@ -269,21 +270,22 @@ test("copy prop can include props", () => {
 		document.body,
 	);
 
-	Assert.is(
-		document.body.innerHTML,
-		'<div class="third-greeting" style="color: red;">Hello again</div>',
-	);
+	Assert.is(div.className, "third-greeting");
+	Assert.is(div.style.color, "red");
+	Assert.is(div.dataset.greeting, undefined);
+	Assert.is(div.innerHTML, "Hello again");
+
 	renderer.render(
-		<div class="fourth-greeting" style="color: yellow;" data-greeting={false}>
+		<div class="fourth-greeting" style="color: yellow;" data-greeting={true}>
 			Hello a fourth time
 		</div>,
 		document.body,
 	);
 
-	Assert.is(
-		document.body.innerHTML,
-		'<div class="fourth-greeting" style="color: yellow;">Hello a fourth time</div>',
-	);
+	Assert.is(div.className, "fourth-greeting");
+	Assert.is(div.style.color, "yellow");
+	Assert.is(div.dataset.greeting, "");
+	Assert.is(div.innerHTML, "Hello a fourth time");
 });
 
 test("copy prop can exclude props", () => {
@@ -299,10 +301,11 @@ test("copy prop can exclude props", () => {
 		document.body,
 	);
 
-	Assert.is(
-		document.body.innerHTML,
-		'<div class="greeting" data-greeting="" style="color: red;">Hello world</div>',
-	);
+	const div = document.querySelector("div") as HTMLDivElement;
+	Assert.is(div.className, "greeting");
+	Assert.is(div.dataset.greeting, "");
+	Assert.is(div.style.color, "red");
+	Assert.is(div.innerHTML, "Hello world");
 
 	renderer.render(
 		<div
@@ -316,10 +319,10 @@ test("copy prop can exclude props", () => {
 		document.body,
 	);
 
-	Assert.is(
-		document.body.innerHTML,
-		'<div class="greeting" style="color: blue;">Hello world</div>',
-	);
+	Assert.is(div.className, "greeting");
+	Assert.is(div.style.color, "blue");
+	Assert.is(div.innerHTML, "Hello world");
+	Assert.is(div.dataset.greeting, undefined);
 	renderer.render(
 		<div
 			copy="!style !data-greeting"
@@ -330,6 +333,11 @@ test("copy prop can exclude props", () => {
 		</div>,
 		document.body,
 	);
+
+	Assert.is(div.className, "greeting");
+	Assert.is(div.style.cssText, "");
+	Assert.is(div.innerHTML, "Hello world");
+	Assert.is(div.dataset.greeting, undefined);
 });
 
 test("copy can include and exclude props but never both", () => {
@@ -346,10 +354,11 @@ test("copy can include and exclude props but never both", () => {
 		document.body,
 	);
 
-	Assert.is(
-		document.body.innerHTML,
-		'<div class="greeting" data-greeting="" style="color: red;">Hello world</div>',
-	);
+	const div = document.querySelector("div") as HTMLDivElement;
+	Assert.is(div.className, "greeting");
+	Assert.is(div.dataset.greeting, "");
+	Assert.is(div.style.color, "red");
+	Assert.is(div.innerHTML, "Hello world");
 
 	renderer.render(
 		<div
@@ -363,10 +372,10 @@ test("copy can include and exclude props but never both", () => {
 		document.body,
 	);
 
-	Assert.is(
-		document.body.innerHTML,
-		'<div class="greeting" style="color: blue;">Hello world</div>',
-	);
+	Assert.is(div.className, "greeting");
+	Assert.is(div.style.color, "blue");
+	Assert.is(div.innerHTML, "Hello world");
+	Assert.is(div.dataset.greeting, undefined);
 
 	renderer.render(
 		<div copy="!children" class="third-greeting" data-greeting={true}>
@@ -375,10 +384,10 @@ test("copy can include and exclude props but never both", () => {
 		document.body,
 	);
 
-	Assert.is(
-		document.body.innerHTML,
-		'<div class="greeting" style="color: blue;">Hello a third time</div>',
-	);
+	Assert.is(div.className, "greeting");
+	Assert.is(div.style.color, "blue");
+	Assert.is(div.innerHTML, "Hello a third time");
+	Assert.is(div.dataset.greeting, undefined);
 
 	renderer.render(
 		<div
