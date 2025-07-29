@@ -14,7 +14,7 @@ function emitHydrationWarning(
 	quietProps: Set<string> | undefined,
 	expectedValue: any,
 	actualValue: any,
-	element?: Element,
+	element: Element,
 	displayName?: string,
 ) {
 	const checkName = propName;
@@ -22,18 +22,18 @@ function emitHydrationWarning(
 	if (!quietProps || !quietProps.has(checkName)) {
 		if (expectedValue === null || expectedValue === false) {
 			console.warn(
-				`Expected "${showName}" to be missing while hydrating:`,
-				element || actualValue,
+				`Expected "${showName}" to be missing but found ${String(actualValue)} while hydrating:`,
+				element,
 			);
 		} else if (expectedValue === true || expectedValue === "") {
 			console.warn(
-				`Expected "${showName}" to be ${expectedValue === true ? "present" : '""'} while hydrating:`,
-				element || actualValue,
+				`Expected "${showName}" to be ${expectedValue === true ? "present" : '""'} but found ${String(actualValue)} while hydrating:`,
+				element,
 			);
 		} else {
 			console.warn(
-				`Expected "${showName}" to be "${expectedValue}" while hydrating:`,
-				actualValue,
+				`Expected "${showName}" to be "${String(expectedValue)}" but found ${String(actualValue)} while hydrating:`,
+				element,
 			);
 		}
 	}
@@ -208,6 +208,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 									quietProps,
 									value,
 									element.getAttribute(name1),
+									element,
 								);
 							}
 
@@ -263,7 +264,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 							style.cssText = "";
 						}
 
-						for (const styleName in {...(oldValue as {}), ...(value as {})}) {
+						for (const styleName in {...oldValue, ...value}) {
 							const styleValue = value && (value as any)[styleName];
 							if (styleValue == null) {
 								if (isHydrating && style.getPropertyValue(styleName) !== "") {
@@ -395,6 +396,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 									quietProps,
 									value,
 									(element as any)[name],
+									element,
 								);
 							}
 							// if the property is writable, assign it directly
@@ -428,6 +430,7 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 								quietProps,
 								value,
 								element.getAttribute(name),
+								element,
 							);
 						}
 
