@@ -85,7 +85,7 @@ function printAttrs(props: Record<string, any>): string {
 }
 
 interface Node {
-	value: string;
+	value?: string;
 }
 
 function join(children: Array<Node | string>): string {
@@ -98,7 +98,7 @@ function join(children: Array<Node | string>): string {
 	return result;
 }
 
-export const impl: Partial<RenderAdapter<Node, undefined, any, string>> = {
+export const impl: Partial<RenderAdapter<Node, undefined, Node, string>> = {
 	create(): Node {
 		return {value: ""};
 	},
@@ -115,7 +115,7 @@ export const impl: Partial<RenderAdapter<Node, undefined, any, string>> = {
 		} else if (typeof value === "string") {
 			return value;
 		} else {
-			return value.value;
+			return value.value || "";
 		}
 	},
 

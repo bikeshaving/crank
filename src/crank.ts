@@ -367,7 +367,7 @@ class Retainer<TNode, TScope = unknown> {
 	/** A bitmask. See RETAINER FLAGS above. */
 	declare f: number;
 	declare el: Element;
-	declare ctx: ContextState<TNode> | undefined;
+	declare ctx: ContextState<TNode, TScope, any> | undefined;
 	declare children:
 		| Array<Retainer<TNode, TScope> | undefined>
 		| Retainer<TNode, TScope>
@@ -486,7 +486,7 @@ function stripSpecialProps(props: Record<string, any>): Record<string, any> {
 export interface RenderAdapter<
 	TNode,
 	TScope,
-	TRoot extends TNode = TNode,
+	TRoot extends TNode | undefined = TNode,
 	TResult = ElementValue<TNode>,
 > {
 	create(data: {
@@ -581,9 +581,9 @@ const defaultAdapter: RenderAdapter<any, any, any, any> = {
  * @template TResult - The type of exposed values.
  */
 export class Renderer<
-	TNode extends object = object,
-	TScope = unknown,
-	TRoot extends TNode = TNode,
+	TNode extends object,
+	TScope,
+	TRoot extends TNode | undefined = TNode,
 	TResult = ElementValue<TNode>,
 > {
 	/**
@@ -671,7 +671,11 @@ export class Renderer<
 }
 
 /*** PRIVATE RENDERER FUNCTIONS ***/
-function getRootRetainer<TNode extends object, TScope, TRoot extends TNode>(
+function getRootRetainer<
+	TNode extends object,
+	TScope,
+	TRoot extends TNode | undefined,
+>(
 	renderer: Renderer<TNode, TScope, TRoot, unknown>,
 	children: Children,
 	root: TRoot | undefined,
@@ -688,9 +692,7 @@ function getRootRetainer<TNode extends object, TScope, TRoot extends TNode>(
 	if (ret === undefined) {
 		ret = new Retainer(createElement(Portal, {children, root, hydration}));
 		ret.value = root;
-		ret.ctx = bridgeCtx as
-			| ContextState<TNode, TScope, TRoot, unknown>
-			| undefined;
+		ret.ctx = bridgeCtx as ContextState<any, any> | undefined;
 		ret.scope = adapter.scope({
 			tag: Portal,
 			tagName: getTagName(Portal),
@@ -715,7 +717,7 @@ function getRootRetainer<TNode extends object, TScope, TRoot extends TNode>(
 	return ret;
 }
 
-function diffChildren<TNode, TScope, TRoot extends TNode, TResult>(
+function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
 	host: Retainer<TNode, TScope>,
@@ -955,9 +957,9 @@ function createChildrenByKey<TNode, TScope>(
 	return childrenByKey;
 }
 
-function diffHost<TNode, TScope, TRoot extends TNode>(
+function diffHost<TNode, TScope, TRoot extends TNode | undefined>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, unknown>,
-	root: TRoot | undefined,
+	root: TRoot,
 	ctx: ContextState<TNode, TScope, TRoot> | undefined,
 	scope: TScope | undefined,
 	ret: Retainer<TNode, TScope>,
@@ -990,7 +992,7 @@ function diffHost<TNode, TScope, TRoot extends TNode>(
 	);
 }
 
-function commit<TNode, TRoot extends TNode, TScope, TResult>(
+function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	host: Retainer<TNode, TScope>,
 	ret: Retainer<TNode, TScope>,
@@ -1082,7 +1084,12 @@ function commit<TNode, TRoot extends TNode, TScope, TResult>(
 	return value;
 }
 
-function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
+function commitChildren<
+	TNode,
+	TScope,
+	TRoot extends TNode | undefined,
+	TResult,
+>(
 	adapter: RenderAdapter<TNode, unknown, TRoot, TResult>,
 	host: Retainer<TNode, TScope>,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
@@ -1140,7 +1147,7 @@ function commitChildren<TNode, TRoot extends TNode, TScope, TResult>(
 }
 
 function commitText<TNode, TScope>(
-	adapter: RenderAdapter<TNode, TScope, TNode, unknown>,
+	adapter: RenderAdapter<TNode, TScope, TNode | undefined, unknown>,
 	ret: Retainer<TNode, TScope>,
 	el: Element<Text>,
 	scope: TScope | undefined,
@@ -1158,7 +1165,7 @@ function commitText<TNode, TScope>(
 }
 
 function commitRaw<TNode, TScope>(
-	adapter: RenderAdapter<TNode, TScope, TNode, unknown>,
+	adapter: RenderAdapter<TNode, TScope, TNode | undefined, unknown>,
 	host: Retainer<TNode>,
 	ret: Retainer<TNode>,
 	scope: TScope | undefined,
@@ -1185,7 +1192,7 @@ function commitRaw<TNode, TScope>(
 	return ret.value;
 }
 
-function commitHost<TNode, TRoot extends TNode, TScope>(
+function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, unknown>,
 	ret: Retainer<TNode, TScope>,
 	ctx: ContextState<TNode, TScope, TRoot, unknown> | undefined,
@@ -1353,7 +1360,7 @@ function commitHost<TNode, TRoot extends TNode, TScope>(
 
 	ret.oldProps = props;
 	if (tag === Portal) {
-		flush(adapter, ret.value);
+		flush(adapter, ret.value as TRoot);
 		// The root passed to Portal elements are opaque to parents so we return
 		// undefined here.
 		return;
@@ -1424,7 +1431,7 @@ function contextContains(parent: ContextState, child: ContextState): boolean {
 const ANONYMOUS_ROOT: any = {};
 function flush<TRoot>(
 	adapter: RenderAdapter<unknown, unknown, TRoot>,
-	root: TRoot | null | undefined,
+	root: TRoot | undefined,
 	initiator?: ContextState,
 ) {
 	if (root != null) {
@@ -1470,7 +1477,7 @@ function flush<TRoot>(
 	}
 }
 
-function unmount<TNode, TScope, TRoot extends TNode, TResult>(
+function unmount<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	host: Retainer<TNode>,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
@@ -1529,7 +1536,12 @@ function unmount<TNode, TScope, TRoot extends TNode, TResult>(
 	}
 }
 
-function unmountChildren<TNode, TScope, TRoot extends TNode, TResult>(
+function unmountChildren<
+	TNode,
+	TScope,
+	TRoot extends TNode | undefined,
+	TResult,
+>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	host: Retainer<TNode>,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
@@ -1578,7 +1590,7 @@ const flushMapByRoot = new WeakMap<object, Map<ContextState, Set<Function>>>();
 class ContextState<
 	TNode = unknown,
 	TScope = unknown,
-	TRoot extends TNode = TNode,
+	TRoot extends TNode | undefined = TNode | undefined,
 	TResult = unknown,
 > {
 	/** The actual context associated with this state. */
@@ -1600,7 +1612,7 @@ class ContextState<
 	declare host: Retainer<TNode>;
 
 	/** The parent context state. */
-	declare parent: ContextState<TNode, TScope, TRoot, TResult> | undefined;
+	declare parent: ContextState | undefined;
 
 	/** The value of the scope at the point of element's creation. */
 	declare scope: TScope | undefined;
@@ -1643,9 +1655,9 @@ class ContextState<
 
 	constructor(
 		adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
-		root: TRoot | undefined,
+		root: TRoot,
 		host: Retainer<TNode>,
-		parent: ContextState<TNode, TScope, TRoot, TResult> | undefined,
+		parent: ContextState | undefined,
 		scope: TScope | undefined,
 		ret: Retainer<TNode>,
 	) {
@@ -2157,17 +2169,17 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	}
 }
 
-function diffComponent<TNode, TScope, TRoot extends TNode, TResult>(
+function diffComponent<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
-	host: Retainer<TNode>,
-	parent: ContextState<TNode, TScope, TRoot, TResult> | undefined,
+	host: Retainer<TNode, TScope>,
+	parent: ContextState | undefined,
 	scope: TScope | undefined,
 	ret: Retainer<TNode>,
 ): Promise<undefined> | undefined {
-	let ctx: ContextState<TNode, TScope, TRoot, TResult>;
+	let ctx: ContextState<TNode>;
 	if (ret.ctx) {
-		ctx = ret.ctx as ContextState<TNode, TScope, TRoot, TResult>;
+		ctx = ret.ctx;
 		if (getFlag(ctx.ret, IsExecuting)) {
 			console.error(
 				`Component <${getTagName(ctx.ret.el.tag)}> is already executing`,
@@ -2183,7 +2195,7 @@ function diffComponent<TNode, TScope, TRoot extends TNode, TResult>(
 }
 
 function diffComponentChildren<TNode, TResult>(
-	ctx: ContextState<TNode, unknown, TNode, TResult>,
+	ctx: ContextState<TNode, unknown, TNode | undefined, TResult>,
 	children: Children,
 	isYield: boolean,
 ): Promise<undefined> | undefined {
@@ -2226,7 +2238,7 @@ function diffComponentChildren<TNode, TResult>(
 
 /** Enqueues and executes the component associated with the context. */
 function enqueueComponent<TNode, TResult>(
-	ctx: ContextState<TNode, unknown, TNode, TResult>,
+	ctx: ContextState<TNode, unknown, TNode | undefined, TResult>,
 ): Promise<undefined> | undefined {
 	if (!ctx.inflight) {
 		const [block, diff] = runComponent<TNode, TResult>(ctx);
@@ -2287,7 +2299,7 @@ function advanceComponent(ctx: ContextState): void {
  *     props to be requested, and not while children are rendering.
  */
 function runComponent<TNode, TResult>(
-	ctx: ContextState<TNode, unknown, TNode, TResult>,
+	ctx: ContextState<TNode, unknown, TNode | undefined, TResult>,
 ): [Promise<undefined> | undefined, Promise<undefined> | undefined] {
 	if (getFlag(ctx.ret, IsUnmounted)) {
 		return [undefined, undefined];
@@ -2690,7 +2702,7 @@ async function pullComponent<TNode, TResult>(
 }
 
 function commitComponent<TNode>(
-	ctx: ContextState<TNode, unknown, TNode>,
+	ctx: ContextState<TNode>,
 	hydrationNodes?: Array<TNode> | undefined,
 ): ElementValue<TNode> {
 	const values = commitChildren(

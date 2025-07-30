@@ -65,7 +65,7 @@ function isWritableProperty(element: Element, name: string): boolean {
 	return false;
 }
 
-export const adapter: Partial<RenderAdapter<Node, string>> = {
+export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 	scope({
 		scope: xmlns,
 		tag,
@@ -580,14 +580,14 @@ export const adapter: Partial<RenderAdapter<Node, string>> = {
 	},
 };
 
-export class DOMRenderer extends Renderer<Node, string> {
+export class DOMRenderer extends Renderer<Node, string, Element> {
 	constructor() {
 		super(adapter);
 	}
 
 	render(
 		children: Children,
-		root: Node,
+		root: Element,
 		ctx?: Context,
 	): Promise<ElementValue<Node>> | ElementValue<Node> {
 		validateRoot(root);
@@ -596,7 +596,7 @@ export class DOMRenderer extends Renderer<Node, string> {
 
 	hydrate(
 		children: Children,
-		root: Node,
+		root: Element,
 		ctx?: Context,
 	): Promise<ElementValue<Node>> | ElementValue<Node> {
 		validateRoot(root);
@@ -604,12 +604,16 @@ export class DOMRenderer extends Renderer<Node, string> {
 	}
 }
 
-function validateRoot(root: unknown): asserts root is Node {
+function validateRoot(root: unknown): asserts root is Element {
 	if (
 		root === null ||
 		(typeof root === "object" && typeof (root as any).nodeType !== "number")
 	) {
 		throw new TypeError(`Render root is not a node. Received: ${String(root)}`);
+	} else if ((root as Node).nodeType !== Node.ELEMENT_NODE) {
+		throw new TypeError(
+			`Render root must be an element node. Received: ${String(root)}`,
+		);
 	}
 }
 
