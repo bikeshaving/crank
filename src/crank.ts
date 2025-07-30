@@ -2832,7 +2832,7 @@ async function unmountComponent(
 		return;
 	}
 
-	let promises: Array<PromiseLike<unknown>> | undefined;
+	let cleanupPromises: Array<PromiseLike<unknown>> | undefined;
 	// TODO: think about errror handling for callbacks
 	const callbacks = cleanupMap.get(ctx);
 	if (callbacks) {
@@ -2841,13 +2841,13 @@ async function unmountComponent(
 		for (const callback of callbacks) {
 			const cleanup = callback(oldResult);
 			if (isPromiseLike(cleanup)) {
-				(promises = promises || []).push(cleanup);
+				(cleanupPromises = cleanupPromises || []).push(cleanup);
 			}
 		}
 	}
 
 	let didLinger = false;
-	if (!isNested && promises && getChildValues(ctx.ret).length > 0) {
+	if (!isNested && cleanupPromises && getChildValues(ctx.ret).length > 0) {
 		didLinger = true;
 		const index = ctx.index;
 		const lingerers = ctx.host.lingerers || (ctx.host.lingerers = []);
@@ -2858,7 +2858,7 @@ async function unmountComponent(
 		}
 
 		set.add(ctx.ret);
-		await Promise.all(promises);
+		await Promise.all(cleanupPromises);
 		set!.delete(ctx.ret);
 		if (set!.size === 0) {
 			lingerers[index] = undefined;
