@@ -2732,12 +2732,41 @@ function commitComponent<TNode>(
 		}
 	}
 
+	// Execute schedule callbacks early to check for async deferral
+	const callbacks = scheduleMap.get(ctx);
+	let value = unwrap(values);
+	let schedulePromises: Array<PromiseLike<unknown>> | undefined;
+	if (callbacks) {
+		scheduleMap.delete(ctx);
+		setFlag(ctx.ret, IsScheduling);
+		try {
+			const result = ctx.adapter.read(value);
+			// TODO: think about error handling for schedule callbacks
+			for (const callback of callbacks) {
+				const scheduleResult = callback(result);
+				if (isPromiseLike(scheduleResult)) {
+					(schedulePromises = schedulePromises || []).push(scheduleResult);
+				}
+			}
+
+			// Handles an edge case where refresh() is called during a schedule().
+			if (getFlag(ctx.ret, IsSchedulingRefresh)) {
+				setFlag(ctx.ret, IsSchedulingRefresh, false);
+				value = getValue(ctx.ret);
+			}
+		} finally {
+			if (!schedulePromises) {
+				setFlag(ctx.ret, IsScheduling, false);
+			}
+		}
+	}
+
 	if (getFlag(ctx.ret, IsScheduling)) {
 		setFlag(ctx.ret, IsSchedulingRefresh);
 	} else if (!getFlag(ctx.ret, IsUpdating)) {
 		// If we're not updating the component, which happens when components are
 		// refreshed, or when async generator components iterate independently, we
-		// have to do a little bit housekeeping
+		// have to do a little bit housekeeping.
 		const records = getListenerRecords(ctx.parent, ctx.host);
 		if (records.length) {
 			for (let i = 0; i < values.length; i++) {
@@ -2755,6 +2784,7 @@ function commitComponent<TNode>(
 			}
 		}
 
+		// Function to perform DOM arrangement and flush
 		// rearranging the nearest ancestor host element
 		const host = ctx.host;
 		const props = stripSpecialProps(host.el.props);
@@ -2768,28 +2798,6 @@ function commitComponent<TNode>(
 			children: getChildValues(host),
 		});
 		flush(ctx.adapter, ctx.root, ctx);
-	}
-
-	const callbacks = scheduleMap.get(ctx);
-	let value = unwrap(values);
-	if (callbacks) {
-		scheduleMap.delete(ctx);
-		setFlag(ctx.ret, IsScheduling);
-		try {
-			const result = ctx.adapter.read(value);
-			// TODO: think about error handling for schedule callbacks
-			for (const callback of callbacks) {
-				callback(result);
-			}
-
-			// Handles an edge case where refresh() is called during a schedule().
-			if (getFlag(ctx.ret, IsSchedulingRefresh)) {
-				setFlag(ctx.ret, IsSchedulingRefresh, false);
-				value = getValue(ctx.ret);
-			}
-		} finally {
-			setFlag(ctx.ret, IsScheduling, false);
-		}
 	}
 
 	setFlag(ctx.ret, IsUpdating, false);
@@ -3034,9 +3042,9 @@ function setEventProperty<T extends keyof Event>(
  * A function to reconstruct an array of every listener given a context and a
  * host element.
  *
- * This function exploits the fact that contexts retain their nearest ancestor
- * host element. We can determine all the contexts which are directly listening
- * to an element by traversing up the context tree and checking that the host
+ * This function exploits the fact that contexts retain their ancestor host
+ * element. We can determine all the contexts which are directly listening to
+ * an element by traversing up the context tree and checking that the host
  * element passed in matches the parent context's host element.
  */
 function getListenerRecords(
