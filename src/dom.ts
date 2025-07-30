@@ -321,6 +321,49 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 						}
 
 						element.removeAttribute("class");
+					} else if (typeof value === "object") {
+						// class={{"included-class": true, "excluded-class": false}} syntax
+						if (typeof oldValue === "string") {
+							// if the old value was a string, we need to clear all classes
+							element.setAttribute("class", "");
+						}
+
+						let shouldIssueWarning = false;
+						const hydratingClasses = isHydrating
+							? new Set(Array.from(element.classList))
+							: undefined;
+						const hydratingClassName = isHydrating
+							? element.getAttribute("class")
+							: undefined;
+
+						for (const className in {...oldValue, ...value}) {
+							const classValue = value && value[className];
+							if (classValue) {
+								element.classList.add(className);
+								if (hydratingClasses && hydratingClasses.has(className)) {
+									hydratingClasses.delete(className);
+								} else if (isHydrating) {
+									shouldIssueWarning = true;
+								}
+							} else {
+								element.classList.remove(className);
+							}
+						}
+
+						if (
+							shouldIssueWarning ||
+							(hydratingClasses && hydratingClasses.size > 0)
+						) {
+							emitHydrationWarning(
+								name,
+								quietProps,
+								Object.keys(value)
+									.filter((k) => value[k])
+									.join(" "),
+								hydratingClassName || "",
+								element,
+							);
+						}
 					} else if (!isSVG) {
 						if (element.className !== value) {
 							if (isHydrating) {

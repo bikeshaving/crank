@@ -973,4 +973,49 @@ test("hydration meta-prop inclusive mode shows warnings only for specified props
 	);
 });
 
+test("warns when class object doesn't match server classes during hydration", () => {
+	document.body.innerHTML = `<div class="server-class other-class"></div>`;
+	renderer.hydrate(
+		<div class={{"client-class": true, active: true}} />,
+		document.body,
+	);
+	Assert.is(consoleWarn.callCount, 1);
+	Assert.match(
+		consoleWarn.firstCall.args[0],
+		/Expected "class" to be "client-class active"/,
+	);
+});
+
+test("warns when class object expects missing class during hydration", () => {
+	document.body.innerHTML = `<div class="existing"></div>`;
+	renderer.hydrate(
+		<div class={{existing: true, missing: true}} />,
+		document.body,
+	);
+	Assert.is(consoleWarn.callCount, 1);
+	Assert.match(
+		consoleWarn.firstCall.args[0],
+		/Expected "class" to be "existing missing"/,
+	);
+});
+
+test("warns when class object encounters unexpected server class during hydration", () => {
+	document.body.innerHTML = `<div class="expected unexpected"></div>`;
+	renderer.hydrate(<div class={{expected: true}} />, document.body);
+	Assert.is(consoleWarn.callCount, 1);
+	Assert.match(
+		consoleWarn.firstCall.args[0],
+		/Expected "class" to be "expected"/,
+	);
+});
+
+test("no warning class object matches", () => {
+	document.body.innerHTML = `<div class="active primary"></div>`;
+	renderer.hydrate(
+		<div class={{active: true, primary: true, disabled: false}} />,
+		document.body,
+	);
+	Assert.is(consoleWarn.callCount, 0);
+});
+
 test.run();

@@ -607,4 +607,122 @@ test("attr: prefix forces attribute", () => {
 	Assert.is(el.attr, "value");
 });
 
+test("object classnames basic", () => {
+	renderer.render(
+		<div
+			class={{
+				active: true,
+				disabled: false,
+				primary: true,
+			}}
+		>
+			Test
+		</div>,
+		document.body,
+	);
+
+	const element = document.querySelector("div")!;
+	Assert.ok(element.classList.contains("active"));
+	Assert.not.ok(element.classList.contains("disabled"));
+	Assert.ok(element.classList.contains("primary"));
+});
+
+test("object classnames update", () => {
+	renderer.render(
+		<div
+			class={{
+				active: true,
+				disabled: false,
+				primary: true,
+			}}
+		>
+			Test
+		</div>,
+		document.body,
+	);
+
+	let element = document.querySelector("div")!;
+	Assert.ok(element.classList.contains("active"));
+	Assert.ok(element.classList.contains("primary"));
+	Assert.not.ok(element.classList.contains("disabled"));
+	Assert.not.ok(element.classList.contains("warning"));
+
+	// Update classnames
+	renderer.render(
+		<div
+			class={{
+				active: false,
+				disabled: true,
+				primary: true,
+				warning: true,
+			}}
+		>
+			Test
+		</div>,
+		document.body,
+	);
+
+	element = document.querySelector("div")!;
+	Assert.not.ok(element.classList.contains("active"));
+	Assert.ok(element.classList.contains("disabled"));
+	Assert.ok(element.classList.contains("primary"));
+	Assert.ok(element.classList.contains("warning"));
+});
+
+test("object classnames string to object transition", () => {
+	// Start with string classnames
+	renderer.render(<div class="string-class other">Test</div>, document.body);
+
+	let element = document.querySelector("div")!;
+	Assert.ok(element.classList.contains("string-class"));
+	Assert.ok(element.classList.contains("other"));
+
+	// Switch to object classnames (should clear old string classes)
+	renderer.render(
+		<div
+			class={{
+				"object-class": true,
+				"new-class": true,
+			}}
+		>
+			Test
+		</div>,
+		document.body,
+	);
+
+	element = document.querySelector("div")!;
+	Assert.not.ok(element.classList.contains("string-class"));
+	Assert.not.ok(element.classList.contains("other"));
+	Assert.ok(element.classList.contains("object-class"));
+	Assert.ok(element.classList.contains("new-class"));
+});
+
+test("object classnames object to string transition", () => {
+	// Start with object classnames
+	renderer.render(
+		<div
+			class={{
+				"object-class": true,
+				"another-class": true,
+			}}
+		>
+			Test
+		</div>,
+		document.body,
+	);
+
+	let element = document.querySelector("div")!;
+	Assert.ok(element.classList.contains("object-class"));
+	Assert.ok(element.classList.contains("another-class"));
+
+	// Switch to string classnames (completely replaces class attribute)
+	renderer.render(<div class="string-class final">Test</div>, document.body);
+
+	element = document.querySelector("div")!;
+	Assert.ok(element.classList.contains("string-class"));
+	Assert.ok(element.classList.contains("final"));
+	Assert.not.ok(element.classList.contains("object-class"));
+	Assert.not.ok(element.classList.contains("another-class"));
+});
+
 test.run();
