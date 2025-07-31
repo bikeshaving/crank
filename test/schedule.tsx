@@ -1,9 +1,6 @@
 import {suite} from "uvu";
 import * as Assert from "uvu/assert";
 import * as Sinon from "sinon";
-
-const test = suite("schedule");
-
 import {
 	createElement,
 	Children,
@@ -13,6 +10,9 @@ import {
 	Fragment,
 } from "../src/crank.js";
 import {renderer} from "../src/dom.js";
+
+const test = suite("schedule");
+
 test.before.each(() => {
 	renderer.render(null, document.body);
 	document.body.innerHTML = "";
@@ -450,6 +450,7 @@ test("refresh copy alternating", () => {
 		}
 	}
 
+	debugger;
 	renderer.render(
 		<div>
 			<Component />
@@ -634,6 +635,116 @@ test("refresh with component", () => {
 
 	renderer.render(<Parent />, document.body);
 	Assert.is(document.body.innerHTML, "<p>Render 2</p>");
+});
+
+test("async schedule defers insertion", async () => {
+	let resolve!: Function;
+	function* Component(this: Context): Generator<Element> {
+		this.schedule(() => new Promise((r) => (resolve = r)));
+		for ({} of this) {
+			yield <span>Hello world</span>;
+		}
+	}
+
+	renderer.render(
+		<div>
+			<Component />
+		</div>,
+		document.body,
+	);
+
+	Assert.is(document.body.innerHTML, "<div></div>");
+	resolve();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div><span>Hello world</span></div>");
+});
+
+test("async schedule shows previous while we wait", async () => {
+	let resolve!: Function;
+	function* Component(this: Context): Generator<Element> {
+		this.schedule(() => new Promise((r) => (resolve = r)));
+		for ({} of this) {
+			yield <span>Hello from component</span>;
+		}
+	}
+
+	renderer.render(
+		<div><span>Hello world</span></div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>Hello world</span></div>");
+	renderer.render(
+		<div>
+			<Component />
+		</div>,
+		document.body,
+	);
+
+	Assert.is(document.body.innerHTML, "<div><span>Hello world</span></div>");
+
+	resolve();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div><span>Hello from component</span></div>");
+});
+
+test("async schedule after first render does nothing", async () => {
+	let resolve!: Function;
+	function* Component(this: Context): Generator<Element> {
+		let i = 0;
+		for ({} of this) {
+			this.schedule(() => new Promise((r) => (resolve = r)));
+			yield <span key={i}>Render {i++}</span>;
+		}
+	}
+
+	renderer.render(
+		<div>
+			<Component />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div></div>");
+	resolve();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div><span>Render 0</span></div>");
+
+	renderer.render(
+		<div>
+			<Component />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>Render 1</span></div>");
+
+	resolve();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div><span>Render 1</span></div>");
+});
+
+test("async schedule with refresh", async () => {
+	let resolve!: Function;
+	function* Component(this: Context): Generator<Element> {
+		let i = 0;
+		for ({} of this) {
+			this.schedule(async (value) => {
+				await new Promise((r) => (resolve = r));
+				this.refresh();
+			});
+			yield <span>Render {i++}</span>;
+		}
+	}
+
+	renderer.render(
+		<div>
+			<Component />
+		</div>,
+		document.body,
+	);
+
+	Assert.is(document.body.innerHTML, "<div></div>");
+	resolve();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div><span>Render 1</span></div>");
 });
 
 test.run();

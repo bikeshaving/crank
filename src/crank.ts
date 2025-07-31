@@ -325,26 +325,27 @@ function narrow(value: Children): NarrowedChild {
 export type ElementValue<TNode> = Array<TNode> | TNode | undefined;
 
 /*** RETAINER FLAGS ***/
-const DidCommit = 1 << 0;
-const IsCopied = 1 << 1;
-const IsUpdating = 1 << 2;
-const IsExecuting = 1 << 3;
-const IsRefreshing = 1 << 4;
-const IsUnmounted = 1 << 5;
+const DidDiff = 1 << 0;
+const DidCommit = 1 << 1;
+const IsCopied = 1 << 2;
+const IsUpdating = 1 << 3;
+const IsExecuting = 1 << 4;
+const IsRefreshing = 1 << 5;
+const IsUnmounted = 1 << 6;
 // TODO: Is this flag still necessary or can we use IsUnmounted?
-const IsErrored = 1 << 6;
+const IsErrored = 1 << 7;
 
 // TODO: Maybe we can get rid of IsSyncGen and IsAsyncGen
-const IsSyncGen = 1 << 7;
-const IsAsyncGen = 1 << 8;
+const IsSyncGen = 1 << 8;
+const IsAsyncGen = 1 << 9;
 
-const IsInForOfLoop = 1 << 9;
-const IsInForAwaitOfLoop = 1 << 10;
-const NeedsToYield = 1 << 11;
-const PropsAvailable = 1 << 12;
+const IsInForOfLoop = 1 << 10;
+const IsInForAwaitOfLoop = 1 << 11;
+const NeedsToYield = 1 << 12;
+const PropsAvailable = 1 << 13;
 // TODO: Are these flags still necessary?
-const IsScheduling = 1 << 13;
-const IsSchedulingRefresh = 1 << 14;
+const IsScheduling = 1 << 14;
+const IsSchedulingRefresh = 1 << 15;
 
 function getFlag(ret: Retainer<unknown>, flag: number): boolean {
 	return !!(ret.f & flag);
@@ -405,8 +406,10 @@ class Retainer<TNode, TScope = unknown> {
  *
  * @returns A node, an array of nodes or undefined.
  */
-function getValue<TNode>(ret: Retainer<TNode>): ElementValue<TNode> {
-	if (typeof ret.fallback !== "undefined") {
+function getValue<TNode>(ret: Retainer<TNode>, isNested = false): ElementValue<TNode> {
+	if (getFlag(ret, IsScheduling) && isNested) {
+		return ret.fallback ? getValue(ret.fallback) : undefined;
+	} else if (ret.fallback && (!getFlag(ret, DidDiff))) {
 		return typeof ret.fallback === "object"
 			? getValue(ret.fallback)
 			: ret.fallback;
@@ -432,7 +435,7 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode> {
 		if (lingerers != null && lingerers[i] != null) {
 			const rets = lingerers[i]!;
 			for (const ret of rets) {
-				const value = getValue(ret);
+				const value = getValue(ret, true);
 				if (Array.isArray(value)) {
 					values.push(...value);
 				} else if (value) {
@@ -443,7 +446,7 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode> {
 
 		const child = children[i];
 		if (child) {
-			const value = getValue(child);
+			const value = getValue(child, true);
 			if (Array.isArray(value)) {
 				values.push(...value);
 			} else if (value) {
@@ -457,7 +460,7 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode> {
 			const rets = lingerers[i];
 			if (rets != null) {
 				for (const ret of rets) {
-					const value = getValue(ret);
+					const value = getValue(ret, true);
 					if (Array.isArray(value)) {
 						values.push(...value);
 					} else if (value) {
@@ -886,7 +889,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		let diffs1 = Promise.all(diffs)
 			.then(() => undefined)
 			.finally(() => {
-				parent.fallback = undefined;
+				setFlag(parent, DidDiff);
 				if (graveyard) {
 					if (parent.graveyard) {
 						parent.graveyard.push(...graveyard);
@@ -909,7 +912,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		parent.onNextDiff = onNextDiffs;
 		return diffs1;
 	} else {
-		parent.fallback = undefined;
+		setFlag(parent, DidDiff);
 		if (graveyard) {
 			if (parent.graveyard) {
 				parent.graveyard.push(...graveyard);
@@ -1040,28 +1043,32 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	if (typeof tag === "function") {
 		ret.ctx!.index = index;
 		value = commitComponent(ret.ctx!, hydrationNodes);
-	} else if (tag === Fragment) {
-		value = commitChildren(
-			adapter,
-			host,
-			ctx,
-			scope,
-			ret,
-			index,
-			hydrationNodes,
-		);
-	} else if (tag === Text) {
-		value = commitText(
-			adapter,
-			ret,
-			el as Element<Text>,
-			scope,
-			hydrationNodes,
-		);
-	} else if (tag === Raw) {
-		value = commitRaw(adapter, host, ret, scope, hydrationNodes);
 	} else {
-		value = commitHost(adapter, ret, ctx, hydrationNodes);
+		if (tag === Fragment) {
+			value = commitChildren(
+				adapter,
+				host,
+				ctx,
+				scope,
+				ret,
+				index,
+				hydrationNodes,
+			);
+		} else if (tag === Text) {
+			value = commitText(
+				adapter,
+				ret,
+				el as Element<Text>,
+				scope,
+				hydrationNodes,
+			);
+		} else if (tag === Raw) {
+			value = commitRaw(adapter, host, ret, scope, hydrationNodes);
+		} else {
+			value = commitHost(adapter, ret, ctx, hydrationNodes);
+		}
+
+		ret.fallback = undefined;
 	}
 
 	if (skippedHydrationNodes) {
@@ -1069,6 +1076,7 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	}
 
 	if (!getFlag(ret, DidCommit)) {
+		setFlag(ret, DidCommit);
 		if (
 			typeof tag !== "function" &&
 			tag !== Fragment &&
@@ -1077,8 +1085,6 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		) {
 			el.props.ref(adapter.read(value));
 		}
-
-		setFlag(ret, DidCommit);
 	}
 
 	return value;
@@ -1101,7 +1107,7 @@ function commitChildren<
 	let values: Array<TNode> = [];
 	for (let i = 0, children = wrap(parent.children); i < children.length; i++) {
 		let child = children[i];
-		while (typeof child === "object" && child.fallback) {
+		while (typeof child === "object" && typeof child.fallback !== "undefined" && !getFlag(child, DidDiff)) {
 			child = child.fallback;
 		}
 
@@ -1125,13 +1131,23 @@ function commitChildren<
 			}
 
 			setFlag(child, DidCommit);
+			if (getFlag(child, IsScheduling)) {
+				for (let fallback = child.fallback; fallback; fallback = fallback.fallback) {
+					if (parent.graveyard) {
+						const index = parent.graveyard.indexOf(fallback);
+						if (index !== -1) {
+							parent.graveyard.splice(index, 1);
+						}
+					}
+				}
+			}
 		}
 	}
 
 	if (parent.graveyard) {
 		for (let i = 0; i < parent.graveyard.length; i++) {
-			const ret = parent.graveyard[i];
-			unmount(adapter, host, ctx, ret, false);
+			const child = parent.graveyard[i];
+			unmount(adapter, host, ctx, child, false);
 		}
 
 		parent.graveyard = undefined;
@@ -1305,10 +1321,10 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 				}
 			}
 
-			// TODO: For some reason, there are cases where the node is already set and
-			// the DidCommit flag is false. Not checking for node fails a test where a
-			// child dispatches an event in a schedule callback, the parent listens for
-			// this event and refreshes.
+			// TODO: For some reason, there are cases where the node is already set
+			// and the DidCommit flag is false. Not checking for node fails a test
+			// where a child dispatches an event in a schedule callback, the parent
+			// listens for this event and refreshes.
 			if (!node) {
 				node = adapter.create({
 					tag,
@@ -1507,6 +1523,7 @@ function unmount<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	} else if (ret.el.tag === Fragment) {
 		unmountChildren(adapter, host, ctx, ret, isNested);
 	} else if (ret.el.tag === Portal) {
+		// TODO: merge this with the bottom branch to make sure event listeners are removed
 		unmountChildren(adapter, ret, ctx, ret, false);
 		if (ret.value != null) {
 			adapter.finalize(ret.value as TRoot);
@@ -2739,29 +2756,81 @@ function commitComponent<TNode>(
 	if (callbacks) {
 		scheduleMap.delete(ctx);
 		setFlag(ctx.ret, IsScheduling);
-		try {
-			const result = ctx.adapter.read(value);
-			// TODO: think about error handling for schedule callbacks
-			for (const callback of callbacks) {
-				const scheduleResult = callback(result);
-				if (isPromiseLike(scheduleResult)) {
-					(schedulePromises = schedulePromises || []).push(scheduleResult);
-				}
+		const result = ctx.adapter.read(value);
+		// TODO: think about error handling for schedule callbacks
+		for (const callback of callbacks) {
+			const scheduleResult = callback(result);
+			if (isPromiseLike(scheduleResult)) {
+				(schedulePromises = schedulePromises || []).push(scheduleResult);
 			}
+		}
 
-			// Handles an edge case where refresh() is called during a schedule().
-			if (getFlag(ctx.ret, IsSchedulingRefresh)) {
-				setFlag(ctx.ret, IsSchedulingRefresh, false);
-				value = getValue(ctx.ret);
-			}
-		} finally {
-			if (!schedulePromises) {
+		if (!getFlag(ctx.ret, DidCommit) && schedulePromises) {
+			Promise.all(schedulePromises).then(() => {
 				setFlag(ctx.ret, IsScheduling, false);
-			}
+				setFlag(ctx.ret, IsSchedulingRefresh, false);
+
+				// TODO: Deduplicate this code with the logic below
+				// If we're not updating the component, which happens when components are
+				// refreshed, or when async generator components iterate independently, we
+				// have to do a little bit housekeeping.
+				const records = getListenerRecords(ctx.parent, ctx.host);
+				if (records.length) {
+					for (let i = 0; i < values.length; i++) {
+						const value = values[i];
+						if (isEventTarget(value)) {
+							for (let j = 0; j < records.length; j++) {
+								const record = records[j];
+								value.addEventListener(
+									record.type,
+									record.callback,
+									record.options,
+								);
+							}
+						}
+					}
+				}
+
+				// Function to perform DOM arrangement and flush
+				// rearranging the nearest ancestor host element
+				const host = ctx.host;
+				const props = stripSpecialProps(host.el.props);
+				ctx.adapter.arrange({
+					tag: host.el.tag as string | symbol,
+					tagName: getTagName(host.el.tag),
+					node: host.value as TNode,
+					props,
+					// oldProps is the same because the host element has not re-rendered
+					oldProps: props,
+					children: getChildValues(host),
+				});
+
+				flush(ctx.adapter, ctx.root, ctx);
+
+				// TODO: If we're unmounting here, how is the fallback not unmounted by default?
+				if (ctx.ret.fallback) {
+					unmount(ctx.adapter, ctx.host, ctx.parent, ctx.ret.fallback, false);
+				}
+
+				ctx.ret.fallback = undefined;
+			});
+
+			value = getValue(ctx.ret, true);
+		} else {
+			setFlag(ctx.ret, IsScheduling, false);
+			ctx.ret.fallback = undefined;
+		}
+
+		// Handles an edge case where refresh() is called during a schedule().
+		if (getFlag(ctx.ret, IsSchedulingRefresh)) {
+			setFlag(ctx.ret, IsSchedulingRefresh, false);
+			value = getValue(ctx.ret, true);
 		}
 	}
 
 	if (getFlag(ctx.ret, IsScheduling)) {
+		// TODO: Think about the name of this flag, now that it seems to be getting
+		// set when a schedule() returns a promise
 		setFlag(ctx.ret, IsSchedulingRefresh);
 	} else if (!getFlag(ctx.ret, IsUpdating)) {
 		// If we're not updating the component, which happens when components are
