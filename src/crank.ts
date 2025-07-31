@@ -411,16 +411,16 @@ function getValue<TNode>(
 	isInternal = false,
 ): ElementValue<TNode> {
 	if (getFlag(ret, IsScheduling) && isInternal) {
-		return ret.fallback ? getValue(ret.fallback) : undefined;
+		return ret.fallback ? getValue(ret.fallback, isInternal) : undefined;
 	} else if (ret.fallback && !getFlag(ret, DidDiff)) {
-		return ret.fallback ? getValue(ret.fallback) : ret.fallback;
+		return ret.fallback ? getValue(ret.fallback, isInternal) : ret.fallback;
 	} else if (ret.el.tag === Portal) {
 		return;
-	} else if (typeof ret.el.tag !== "function" && ret.el.tag !== Fragment) {
-		return ret.value;
+	} else if (ret.el.tag === Fragment || typeof ret.el.tag === "function") {
+		return unwrap(getChildValues(ret));
 	}
 
-	return unwrap(getChildValues(ret));
+	return ret.value;
 }
 
 /**
@@ -2497,7 +2497,33 @@ function runComponent<TNode, TResult>(
 	}
 }
 
-// TODO: is it possible to make sure all properties are defined?
+/**
+ * Called to resume the props async iterator for async generator components.
+ *
+ * @returns {Promise<undefined> | undefined} A possible promise which
+ * represents the duration during which the component is blocked.
+ */
+function resumePropsAsyncIterator(
+	ctx: ContextState,
+): Promise<undefined> | undefined {
+	if (ctx.onPropsProvided) {
+		ctx.onPropsProvided(ctx.ret.el.props);
+		ctx.onPropsProvided = undefined;
+		setFlag(ctx.ret, PropsAvailable, false);
+	} else {
+		setFlag(ctx.ret, PropsAvailable);
+		if (getFlag(ctx.ret, IsInForAwaitOfLoop)) {
+			return new Promise<undefined>(
+				(resolve) => (ctx.onPropsRequested = resolve),
+			);
+		}
+	}
+
+	return (
+		ctx.pull && ctx.pull.iterationP && ctx.pull.iterationP.then(NOOP, NOOP)
+	);
+}
+
 interface PullController {
 	iterationP: Promise<ChildrenIteratorResult> | undefined;
 	diff: Promise<undefined> | undefined;
@@ -2776,42 +2802,7 @@ function commitComponent<TNode>(
 				setFlag(ctx.ret, IsScheduling, false);
 				setFlag(ctx.ret, IsSchedulingRefresh, false);
 
-				// TODO: Deduplicate this code with the logic below
-				// If we're not updating the component, which happens when components are
-				// refreshed, or when async generator components iterate independently, we
-				// have to do a little bit housekeeping.
-				const host = ctx.host;
-				const records = getListenerRecords(ctx.parent, host);
-				if (records.length) {
-					for (let i = 0; i < values.length; i++) {
-						const value = values[i];
-						if (isEventTarget(value)) {
-							for (let j = 0; j < records.length; j++) {
-								const record = records[j];
-								value.addEventListener(
-									record.type,
-									record.callback,
-									record.options,
-								);
-							}
-						}
-					}
-				}
-
-				// Function to perform DOM arrangement and flush
-				// rearranging the nearest ancestor host element
-				const props = stripSpecialProps(host.el.props);
-				ctx.adapter.arrange({
-					tag: host.el.tag as string | symbol,
-					tagName: getTagName(host.el.tag),
-					node: host.value as TNode,
-					props,
-					// oldProps is the same because the host element has not re-rendered
-					oldProps: props,
-					children: getChildValues(host),
-				});
-
-				flush(ctx.adapter, ctx.root, ctx);
+				propagateComponent(ctx, values);
 
 				// TODO: If we're unmounting here, how is the fallback not unmounted by default?
 				if (ctx.ret.fallback) {
@@ -2839,40 +2830,7 @@ function commitComponent<TNode>(
 		// set when a schedule() returns a promise
 		setFlag(ctx.ret, IsSchedulingRefresh);
 	} else if (!getFlag(ctx.ret, IsUpdating)) {
-		// If we're not updating the component, which happens when components are
-		// refreshed, or when async generator components iterate independently, we
-		// have to do a little bit housekeeping.
-		const records = getListenerRecords(ctx.parent, ctx.host);
-		if (records.length) {
-			for (let i = 0; i < values.length; i++) {
-				const value = values[i];
-				if (isEventTarget(value)) {
-					for (let j = 0; j < records.length; j++) {
-						const record = records[j];
-						value.addEventListener(
-							record.type,
-							record.callback,
-							record.options,
-						);
-					}
-				}
-			}
-		}
-
-		// Function to perform DOM arrangement and flush
-		// rearranging the nearest ancestor host element
-		const host = ctx.host;
-		const props = stripSpecialProps(host.el.props);
-		ctx.adapter.arrange({
-			tag: host.el.tag as string | symbol,
-			tagName: getTagName(host.el.tag),
-			node: host.value as TNode,
-			props,
-			// oldProps is the same because the host element has not re-rendered
-			oldProps: props,
-			children: getChildValues(host),
-		});
-		flush(ctx.adapter, ctx.root, ctx);
+		propagateComponent(ctx, values);
 	}
 
 	setFlag(ctx.ret, IsUpdating, false);
@@ -2881,30 +2839,40 @@ function commitComponent<TNode>(
 }
 
 /**
- * Called to resume the props async iterator for async generator components.
- *
- * @returns {Promise<undefined> | undefined} A possible promise which
- * represents the duration during which the component is blocked.
+ * Propagates component changes up to ancestors when rendering starts from a
+ * component via refresh() or multiple for await...of renders. This handles
+ * event listeners and DOM arrangement that would normally happen during
+ * top-down rendering.
  */
-function resumePropsAsyncIterator(
-	ctx: ContextState,
-): Promise<undefined> | undefined {
-	if (ctx.onPropsProvided) {
-		ctx.onPropsProvided(ctx.ret.el.props);
-		ctx.onPropsProvided = undefined;
-		setFlag(ctx.ret, PropsAvailable, false);
-	} else {
-		setFlag(ctx.ret, PropsAvailable);
-		if (getFlag(ctx.ret, IsInForAwaitOfLoop)) {
-			return new Promise<undefined>(
-				(resolve) => (ctx.onPropsRequested = resolve),
-			);
+function propagateComponent<TNode>(
+	ctx: ContextState<TNode>,
+	values: Array<ElementValue<TNode>>,
+): void {
+	const records = getListenerRecords(ctx.parent, ctx.host);
+	if (records.length) {
+		for (let i = 0; i < values.length; i++) {
+			const value = values[i];
+			if (isEventTarget(value)) {
+				for (let j = 0; j < records.length; j++) {
+					const record = records[j];
+					value.addEventListener(record.type, record.callback, record.options);
+				}
+			}
 		}
 	}
 
-	return (
-		ctx.pull && ctx.pull.iterationP && ctx.pull.iterationP.then(NOOP, NOOP)
-	);
+	const host = ctx.host;
+	const props = stripSpecialProps(host.el.props);
+	ctx.adapter.arrange({
+		tag: host.el.tag as string | symbol,
+		tagName: getTagName(host.el.tag),
+		node: host.value as TNode,
+		props,
+		oldProps: props,
+		children: getChildValues(host),
+	});
+
+	flush(ctx.adapter, ctx.root, ctx);
 }
 
 async function unmountComponent(
