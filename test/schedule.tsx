@@ -450,7 +450,6 @@ test("refresh copy alternating", () => {
 		}
 	}
 
-	debugger;
 	renderer.render(
 		<div>
 			<Component />
@@ -669,7 +668,9 @@ test("async schedule shows previous while we wait", async () => {
 	}
 
 	renderer.render(
-		<div><span>Hello world</span></div>,
+		<div>
+			<span>Hello world</span>
+		</div>,
 		document.body,
 	);
 	Assert.is(document.body.innerHTML, "<div><span>Hello world</span></div>");
@@ -684,7 +685,10 @@ test("async schedule shows previous while we wait", async () => {
 
 	resolve();
 	await new Promise((resolve) => setTimeout(resolve));
-	Assert.is(document.body.innerHTML, "<div><span>Hello from component</span></div>");
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Hello from component</span></div>",
+	);
 });
 
 test("async schedule after first render does nothing", async () => {
@@ -726,7 +730,7 @@ test("async schedule with refresh", async () => {
 	function* Component(this: Context): Generator<Element> {
 		let i = 0;
 		for ({} of this) {
-			this.schedule(async (value) => {
+			this.schedule(async () => {
 				await new Promise((r) => (resolve = r));
 				this.refresh();
 			});

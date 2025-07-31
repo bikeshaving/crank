@@ -406,13 +406,14 @@ class Retainer<TNode, TScope = unknown> {
  *
  * @returns A node, an array of nodes or undefined.
  */
-function getValue<TNode>(ret: Retainer<TNode>, isNested = false): ElementValue<TNode> {
-	if (getFlag(ret, IsScheduling) && isNested) {
+function getValue<TNode>(
+	ret: Retainer<TNode>,
+	isInternal = false,
+): ElementValue<TNode> {
+	if (getFlag(ret, IsScheduling) && isInternal) {
 		return ret.fallback ? getValue(ret.fallback) : undefined;
-	} else if (ret.fallback && (!getFlag(ret, DidDiff))) {
-		return typeof ret.fallback === "object"
-			? getValue(ret.fallback)
-			: ret.fallback;
+	} else if (ret.fallback && !getFlag(ret, DidDiff)) {
+		return ret.fallback ? getValue(ret.fallback) : ret.fallback;
 	} else if (ret.el.tag === Portal) {
 		return;
 	} else if (typeof ret.el.tag !== "function" && ret.el.tag !== Fragment) {
@@ -1107,11 +1108,11 @@ function commitChildren<
 	let values: Array<TNode> = [];
 	for (let i = 0, children = wrap(parent.children); i < children.length; i++) {
 		let child = children[i];
-		while (typeof child === "object" && typeof child.fallback !== "undefined" && !getFlag(child, DidDiff)) {
+		while (child && !getFlag(child, DidDiff) && child.fallback) {
 			child = child.fallback;
 		}
 
-		if (typeof child === "object") {
+		if (child) {
 			const value = commit(
 				adapter,
 				host,
@@ -1132,7 +1133,12 @@ function commitChildren<
 
 			setFlag(child, DidCommit);
 			if (getFlag(child, IsScheduling)) {
-				for (let fallback = child.fallback; fallback; fallback = fallback.fallback) {
+				// remove fallbacks from the graveyard
+				for (
+					let fallback = child.fallback;
+					fallback;
+					fallback = fallback.fallback
+				) {
 					if (parent.graveyard) {
 						const index = parent.graveyard.indexOf(fallback);
 						if (index !== -1) {
@@ -1457,6 +1463,7 @@ function flush<TRoot>(
 		root = ANONYMOUS_ROOT;
 	}
 
+	// TODO: make sure we don't call flush with contexts which are async mounting with schedule()
 	// The initiator is the context which initiated the rendering process.
 	// If initiator is defined we call and clear all flush callbacks which are
 	// registered with the initiator or with a child context of the initiator,
@@ -1523,7 +1530,6 @@ function unmount<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	} else if (ret.el.tag === Fragment) {
 		unmountChildren(adapter, host, ctx, ret, isNested);
 	} else if (ret.el.tag === Portal) {
-		// TODO: merge this with the bottom branch to make sure event listeners are removed
 		unmountChildren(adapter, ret, ctx, ret, false);
 		if (ret.value != null) {
 			adapter.finalize(ret.value as TRoot);
@@ -2774,7 +2780,8 @@ function commitComponent<TNode>(
 				// If we're not updating the component, which happens when components are
 				// refreshed, or when async generator components iterate independently, we
 				// have to do a little bit housekeeping.
-				const records = getListenerRecords(ctx.parent, ctx.host);
+				const host = ctx.host;
+				const records = getListenerRecords(ctx.parent, host);
 				if (records.length) {
 					for (let i = 0; i < values.length; i++) {
 						const value = values[i];
@@ -2793,7 +2800,6 @@ function commitComponent<TNode>(
 
 				// Function to perform DOM arrangement and flush
 				// rearranging the nearest ancestor host element
-				const host = ctx.host;
 				const props = stripSpecialProps(host.el.props);
 				ctx.adapter.arrange({
 					tag: host.el.tag as string | symbol,
