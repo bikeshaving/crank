@@ -3292,6 +3292,10 @@ declare global {
 	}
 }
 
-// Some JSX transpilation tools expect these functions to be defined on the
-// default export. Prefer named exports when importing directly.
-export default {createElement, Fragment};
+/**
+ * A re-export of all Crank exports as the default export.
+ *
+ * Some JSX tools expect things like createElement/Fragment to be defined on
+ * the default export. Prefer using the named exports directly.
+ */
+export * as default from "./crank.js";
