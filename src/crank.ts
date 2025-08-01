@@ -811,10 +811,8 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 						childCopied = true;
 					}
 				} else {
-					if (typeof ret === "object") {
-						(graveyard = graveyard || []).push(ret);
-					}
-
+					// we do not need to add the retainer to the graveyard if it is the
+					// fallback of another retainer
 					const fallback = ret;
 					ret = new Retainer<TNode, TScope>(child);
 					ret.fallback = fallback;
@@ -1076,7 +1074,10 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 			value = commitHost(adapter, ret, ctx, hydrationNodes);
 		}
 
-		ret.fallback = undefined;
+		if (ret.fallback) {
+			unmount(adapter, host, ctx, ret.fallback, false);
+			ret.fallback = undefined;
+		}
 	}
 
 	if (skippedHydrationNodes) {
@@ -1139,21 +1140,6 @@ function commitChildren<
 			}
 
 			setFlag(child, DidCommit);
-			if (getFlag(child, IsScheduling)) {
-				// remove fallbacks from the parent graveyard.
-				if (parent.graveyard) {
-					for (
-						let fallback = child.fallback;
-						fallback;
-						fallback = fallback.fallback
-					) {
-						const index = parent.graveyard.indexOf(fallback);
-						if (index !== -1) {
-							parent.graveyard.splice(index, 1);
-						}
-					}
-				}
-			}
 		}
 	}
 
@@ -1517,6 +1503,7 @@ function unmount<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	// TODO: set the IsUnmounted flag consistently for all retainers
 	if (ret.fallback) {
 		unmount(adapter, host, ctx, ret.fallback, isNested);
+		ret.fallback = undefined;
 	}
 
 	if (ret.lingerers) {
@@ -2601,7 +2588,6 @@ function commitComponent<TNode>(
 
 				propagateComponent(ctx, values);
 
-				// TODO: If we're unmounting here, how is the fallback not unmounted by default?
 				if (ctx.ret.fallback) {
 					unmount(ctx.adapter, ctx.host, ctx.parent, ctx.ret.fallback, false);
 				}
@@ -2632,7 +2618,6 @@ function commitComponent<TNode>(
 			}
 		} else {
 			setFlag(ctx.ret, IsScheduling, false);
-			ctx.ret.fallback = undefined;
 		}
 
 		// Handles an edge case where refresh() is called during a schedule().
@@ -2647,8 +2632,16 @@ function commitComponent<TNode>(
 		// set when a schedule() returns a promise
 		setFlag(ctx.ret, IsSchedulingRefresh);
 		value = getValue(ctx.ret, true);
-	} else if (!getFlag(ctx.ret, IsUpdating)) {
-		propagateComponent(ctx, values);
+	} else {
+		if (!getFlag(ctx.ret, IsUpdating)) {
+			propagateComponent(ctx, values);
+		}
+
+		if (ctx.ret.fallback) {
+			unmount(ctx.adapter, ctx.host, ctx.parent, ctx.ret.fallback, false);
+		}
+
+		ctx.ret.fallback = undefined;
 	}
 
 	setFlag(ctx.ret, IsUpdating, false);
