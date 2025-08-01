@@ -751,4 +751,224 @@ test("async schedule with refresh", async () => {
 	Assert.is(document.body.innerHTML, "<div><span>Render 1</span></div>");
 });
 
+test("async mounting with component fallback", async () => {
+	let resolve!: Function;
+
+	function Fallback(): Element {
+		return (
+			<Fragment>
+				<span>Loading...</span>
+				<button>Cancel</button>
+			</Fragment>
+		);
+	}
+
+	function* AsyncComponent(this: Context): Generator<Element> {
+		this.schedule(() => new Promise((r) => (resolve = r)));
+		for ({} of this) {
+			yield <span>Loaded content</span>;
+		}
+	}
+
+	// Initial render with fallback
+	renderer.render(
+		<div>
+			<Fallback />
+		</div>,
+		document.body,
+	);
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Loading...</span><button>Cancel</button></div>",
+	);
+
+	// Replace with async component - should show fallback while scheduling
+	renderer.render(
+		<div>
+			<AsyncComponent />
+		</div>,
+		document.body,
+	);
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Loading...</span><button>Cancel</button></div>",
+	);
+
+	// Resolve async component - should replace fallback
+	resolve();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div><span>Loaded content</span></div>");
+});
+
+test("replacing async scheduling component", async () => {
+	let resolve2!: Function;
+
+	function* SchedulingComponent1(this: Context): Generator<Element> {
+		this.schedule(() => new Promise(() => {})); // Never resolves
+		for ({} of this) {
+			yield <span>Component 1</span>;
+		}
+	}
+
+	function* SchedulingComponent2(this: Context): Generator<Element> {
+		this.schedule(() => new Promise((r) => (resolve2 = r)));
+		for ({} of this) {
+			yield <span>Component 2</span>;
+		}
+	}
+
+	// Render first scheduling component
+	renderer.render(
+		<div>
+			<SchedulingComponent1 />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div></div>");
+
+	// Replace with second scheduling component before first resolves
+	renderer.render(
+		<div>
+			<SchedulingComponent2 />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div></div>");
+
+	// First component never resolves, so should stay empty
+
+	// Resolve second component (should render)
+	resolve2();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div><span>Component 2</span></div>");
+});
+
+test("async schedule inside async function", async () => {
+	let scheduleResolve!: Function;
+
+	async function AsyncComponent(this: Context): Promise<Element> {
+		this.schedule(() => new Promise((r) => (scheduleResolve = r)));
+		await new Promise((resolve) => setTimeout(resolve, 1));
+		return <span>Async Function Component</span>;
+	}
+
+	const renderPromise = renderer.render(
+		<div>
+			<AsyncComponent />
+		</div>,
+		document.body,
+	);
+
+	// Should be completely empty while async function is pending
+	Assert.is(document.body.innerHTML, "");
+
+	// Component function resolves but schedule is still pending
+	await renderPromise;
+	Assert.is(document.body.innerHTML, "<div></div>");
+
+	// Schedule resolves, component should appear
+	scheduleResolve();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Async Function Component</span></div>",
+	);
+});
+
+test("replacing async component that has resolved", async () => {
+	let resolve1!: Function;
+	let resolve2!: Function;
+
+	async function AsyncComponent(): Promise<Element> {
+		await new Promise((resolve) => (resolve1 = resolve));
+		return <span>Async Component</span>;
+	}
+
+	function* SchedulingComponent(this: Context): Generator<Element> {
+		this.schedule(() => new Promise((r) => (resolve2 = r)));
+		for ({} of this) {
+			yield <span>Scheduling Component</span>;
+		}
+	}
+
+	const result1 = renderer.render(
+		<div>
+			<AsyncComponent />
+		</div>,
+		document.body,
+	);
+
+	Assert.instance(result1, Promise);
+	Assert.is(document.body.innerHTML, "");
+	resolve1();
+	await result1;
+	Assert.is(document.body.innerHTML, "<div><span>Async Component</span></div>");
+
+	const result2 = renderer.render(
+		<div>
+			<SchedulingComponent />
+		</div>,
+		document.body,
+	);
+
+	Assert.is(document.body.innerHTML, "<div><span>Async Component</span></div>");
+	Assert.is(document.body.firstChild, result2);
+
+	resolve2();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Scheduling Component</span></div>",
+	);
+});
+
+// TODO: fix this test
+test.skip("replacing async component that is pending", async () => {
+	let resolve1!: Function;
+	let resolve2!: Function;
+
+	async function AsyncComponent(): Promise<Element> {
+		await new Promise((resolve) => (resolve1 = resolve));
+		return <span>Async Component</span>;
+	}
+
+	function* SchedulingComponent(this: Context): Generator<Element> {
+		this.schedule(() => new Promise((r) => (resolve2 = r)));
+		for ({} of this) {
+			yield <span>Scheduling Component</span>;
+		}
+	}
+
+	const result1 = renderer.render(
+		<div>
+			<AsyncComponent />
+		</div>,
+		document.body,
+	);
+
+	Assert.instance(result1, Promise);
+	Assert.is(document.body.innerHTML, "");
+	const result2 = renderer.render(
+		<div>
+			<SchedulingComponent />
+		</div>,
+		document.body,
+	);
+
+	// This kinda makes sense?
+	Assert.is(document.body.innerHTML, "<div></div>");
+	Assert.is(document.body.firstChild, result2);
+	resolve1();
+	await new Promise((resolve) => setTimeout(resolve));
+	await result1;
+	Assert.is(document.body.innerHTML, "<div><span>Async Component</span></div>");
+
+	resolve2();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Scheduling Component</span></div>",
+	);
+});
+
 test.run();

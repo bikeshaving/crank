@@ -408,12 +408,12 @@ class Retainer<TNode, TScope = unknown> {
  */
 function getValue<TNode>(
 	ret: Retainer<TNode>,
-	isInternal = false,
+	isNested = false,
 ): ElementValue<TNode> {
-	if (getFlag(ret, IsScheduling) && isInternal) {
-		return ret.fallback ? getValue(ret.fallback, isInternal) : undefined;
+	if (getFlag(ret, IsScheduling) && isNested) {
+		return ret.fallback ? getValue(ret.fallback, isNested) : undefined;
 	} else if (ret.fallback && !getFlag(ret, DidDiff)) {
-		return ret.fallback ? getValue(ret.fallback, isInternal) : ret.fallback;
+		return ret.fallback ? getValue(ret.fallback, isNested) : ret.fallback;
 	} else if (ret.el.tag === Portal) {
 		return;
 	} else if (ret.el.tag === Fragment || typeof ret.el.tag === "function") {
@@ -887,7 +887,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 
 	parent.children = unwrap(newRetained);
 	if (isAsync) {
-		let diffs1 = Promise.all(diffs)
+		const diffs1 = Promise.all(diffs)
 			.then(() => undefined)
 			.finally(() => {
 				setFlag(parent, DidDiff);
@@ -901,17 +901,17 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 			});
 
 		let onNextDiffs!: Function;
-		parent.pendingDiff = diffs1 = Promise.race([
+		const diffs2 = (parent.pendingDiff = Promise.race([
 			diffs1,
 			new Promise<any>((resolve) => (onNextDiffs = resolve)),
-		]);
+		]));
 
 		if (parent.onNextDiff) {
-			parent.onNextDiff(diffs1);
+			parent.onNextDiff(diffs2);
 		}
 
 		parent.onNextDiff = onNextDiffs;
-		return diffs1;
+		return diffs2;
 	} else {
 		setFlag(parent, DidDiff);
 		if (graveyard) {
@@ -1133,13 +1133,13 @@ function commitChildren<
 
 			setFlag(child, DidCommit);
 			if (getFlag(child, IsScheduling)) {
-				// remove fallbacks from the graveyard
-				for (
-					let fallback = child.fallback;
-					fallback;
-					fallback = fallback.fallback
-				) {
-					if (parent.graveyard) {
+				// remove fallbacks from the parent graveyard.
+				if (parent.graveyard) {
+					for (
+						let fallback = child.fallback;
+						fallback;
+						fallback = fallback.fallback
+					) {
 						const index = parent.graveyard.indexOf(fallback);
 						if (index !== -1) {
 							parent.graveyard.splice(index, 1);
@@ -2829,6 +2829,7 @@ function commitComponent<TNode>(
 		// TODO: Think about the name of this flag, now that it seems to be getting
 		// set when a schedule() returns a promise
 		setFlag(ctx.ret, IsSchedulingRefresh);
+		value = getValue(ctx.ret, true);
 	} else if (!getFlag(ctx.ret, IsUpdating)) {
 		propagateComponent(ctx, values);
 	}
