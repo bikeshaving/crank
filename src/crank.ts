@@ -1,3 +1,10 @@
+import {
+	CustomEventTarget,
+	addEventTargetDelegates,
+	clearEventListeners,
+	removeEventTargetDelegates,
+} from "./event-target.js";
+
 const NOOP = (): undefined => {};
 
 function wrap<T>(value: Array<T> | T | undefined): Array<T> {
@@ -1538,18 +1545,14 @@ function unmount<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		unmountChildren(adapter, ret, ctx, ret, true);
 
 		if (getFlag(ret, DidCommit)) {
-			if (isEventTarget(ret.value)) {
-				const records = getListenerRecords(ctx, host);
-				for (let i = 0; i < records.length; i++) {
-					const record = records[i];
-					ret.value.removeEventListener(
-						record.type,
-						record.callback,
-						record.options,
-					);
-				}
+			if (ctx) {
+				// Remove the value from every context which shares the same host.
+				removeEventTargetDelegates(
+					ctx.ctx,
+					[ret.value],
+					(ctx1) => ctx1[_ContextState].host === host,
+				);
 			}
-
 			adapter.remove({
 				node: ret.value as TNode,
 				parent: host.value as TNode,
@@ -1616,9 +1619,6 @@ class ContextState<
 	TRoot extends TNode | undefined = TNode | undefined,
 	TResult = unknown,
 > {
-	/** The actual context associated with this state. */
-	declare ctx: Context<unknown, TResult>;
-
 	/** The adapter of the renderer which created this context. */
 	declare adapter: RenderAdapter<TNode, TScope, TRoot, TResult>;
 
@@ -1636,6 +1636,9 @@ class ContextState<
 
 	/** The parent context state. */
 	declare parent: ContextState | undefined;
+
+	/** The actual context associated with this state. */
+	declare ctx: Context<unknown, TResult>;
 
 	/** The value of the scope at the point of element's creation. */
 	declare scope: TScope | undefined;
@@ -1684,11 +1687,13 @@ class ContextState<
 		scope: TScope | undefined,
 		ret: Retainer<TNode>,
 	) {
-		this.ctx = new Context(this);
 		this.adapter = adapter;
 		this.root = root;
 		this.host = host;
 		this.parent = parent;
+		// This property must be set after this.parent is set because the Context
+		// constructor reads this.parent.
+		this.ctx = new Context(this);
 		this.scope = scope;
 		this.ret = ret;
 
@@ -1724,7 +1729,10 @@ type ComponentProps<T> = T extends () => unknown
  * places such as the return value of refresh and the argument passed to
  * schedule and cleanup callbacks.
  */
-export class Context<T = any, TResult = any> implements EventTarget {
+export class Context<
+	T = any,
+	TResult = any,
+> extends CustomEventTarget<Context> {
 	/**
 	 * @internal
 	 * DO NOT USE READ THIS PROPERTY.
@@ -1734,6 +1742,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 	// TODO: If we could make the constructor function take a nicer value, it
 	// would be useful for testing purposes.
 	constructor(state: ContextState<unknown, unknown, unknown, TResult>) {
+		super(state.parent ? state.parent.ctx : null);
 		this[_ContextState] = state;
 	}
 
@@ -1962,59 +1971,7 @@ export class Context<T = any, TResult = any> implements EventTarget {
 		listener: MappedEventListenerOrEventListenerObject<T> | null,
 		options?: boolean | AddEventListenerOptions,
 	): void {
-		const ctx = this[_ContextState];
-		let listeners: Array<EventListenerRecord>;
-		if (!isListenerOrListenerObject(listener)) {
-			return;
-		} else {
-			const listeners1 = listenersMap.get(ctx);
-			if (listeners1) {
-				listeners = listeners1;
-			} else {
-				listeners = [];
-				listenersMap.set(ctx, listeners);
-			}
-		}
-
-		options = normalizeListenerOptions(options);
-		let callback: MappedEventListener<T>;
-		if (typeof listener === "object") {
-			callback = () => listener.handleEvent.apply(listener, arguments as any);
-		} else {
-			callback = listener;
-		}
-
-		const record: EventListenerRecord = {type, listener, callback, options};
-		if (options.once) {
-			record.callback = function (this: any) {
-				const i = listeners.indexOf(record);
-				if (i !== -1) {
-					listeners.splice(i, 1);
-				}
-
-				return callback.apply(this, arguments as any);
-			};
-		}
-
-		if (
-			listeners.some(
-				(record1) =>
-					record.type === record1.type &&
-					record.listener === record1.listener &&
-					!record.options.capture === !record1.options.capture,
-			)
-		) {
-			return;
-		}
-
-		listeners.push(record);
-
-		// TODO: is it possible to separate out the EventTarget delegation logic
-		for (const value of getChildValues(ctx.ret)) {
-			if (isEventTarget(value)) {
-				value.addEventListener(record.type, record.callback, record.options);
-			}
-		}
+		super.addEventListener(type, listener, options);
 	}
 
 	removeEventListener<T extends string>(
@@ -2022,172 +1979,24 @@ export class Context<T = any, TResult = any> implements EventTarget {
 		listener: MappedEventListenerOrEventListenerObject<T> | null,
 		options?: EventListenerOptions | boolean,
 	): void {
-		const ctx = this[_ContextState];
-		const listeners = listenersMap.get(ctx);
-		if (listeners == null || !isListenerOrListenerObject(listener)) {
-			return;
-		}
-
-		const options1 = normalizeListenerOptions(options);
-		const i = listeners.findIndex(
-			(record) =>
-				record.type === type &&
-				record.listener === listener &&
-				!record.options.capture === !options1.capture,
-		);
-
-		if (i === -1) {
-			return;
-		}
-
-		const record = listeners[i];
-		listeners.splice(i, 1);
-
-		// TODO: is it possible to separate out the EventTarget delegation logic
-		for (const value of getChildValues(ctx.ret)) {
-			if (isEventTarget(value)) {
-				value.removeEventListener(record.type, record.callback, record.options);
-			}
-		}
+		super.removeEventListener(type, listener, options);
 	}
 
-	dispatchEvent(ev: Event): boolean {
+	[CustomEventTarget.dispatchEventOnSelf](ev: Event): void {
 		const ctx = this[_ContextState];
-		const path: Array<ContextState> = [];
-		for (
-			let parent = ctx.parent;
-			parent !== undefined;
-			parent = parent.parent
-		) {
-			path.push(parent);
-		}
-
-		// We patch the stopImmediatePropagation method because ev.cancelBubble
-		// only informs us if stopPropagation was called and there are no
-		// properties which inform us if stopImmediatePropagation was called.
-		let immediateCancelBubble = false;
-		const stopImmediatePropagation = ev.stopImmediatePropagation;
-		setEventProperty(ev, "stopImmediatePropagation", () => {
-			immediateCancelBubble = true;
-			return stopImmediatePropagation.call(ev);
-		});
-		setEventProperty(ev, "target", ctx.ctx);
-
-		// The only possible errors in this block are errors thrown by callbacks,
-		// and dispatchEvent will only log these errors rather than throwing
-		// them. Therefore, we place all code in a try block, log errors in the
-		// catch block, and use an unsafe return statement in the finally block.
-		//
-		// Each early return within the try block returns true because while the
-		// return value is overridden in the finally block, TypeScript
-		// (justifiably) does not recognize the unsafe return statement.
-		try {
-			setEventProperty(ev, "eventPhase", CAPTURING_PHASE);
-			for (let i = path.length - 1; i >= 0; i--) {
-				const target = path[i];
-				const listeners = listenersMap.get(target);
-				if (listeners) {
-					setEventProperty(ev, "currentTarget", target.ctx);
-					for (const record of listeners) {
-						if (record.type === ev.type && record.options.capture) {
-							try {
-								record.callback.call(target.ctx, ev);
-							} catch (err) {
-								console.error(err);
-							}
-
-							if (immediateCancelBubble) {
-								return true;
-							}
-						}
-					}
-				}
-
-				if (ev.cancelBubble) {
-					return true;
-				}
-			}
-
-			{
-				setEventProperty(ev, "eventPhase", AT_TARGET);
-				setEventProperty(ev, "currentTarget", ctx.ctx);
-
-				// dispatchEvent calls the prop callback if it exists
-				let propCallback = ctx.ret.el.props["on" + ev.type] as unknown;
-				if (typeof propCallback === "function") {
-					propCallback(ev);
-					if (immediateCancelBubble || ev.cancelBubble) {
-						return true;
-					}
-				} else {
-					// Checks for camel-cased event props
-					for (const propName in ctx.ret.el.props) {
-						if (propName.toLowerCase() === "on" + ev.type.toLowerCase()) {
-							propCallback = ctx.ret.el.props[propName] as unknown;
-							if (typeof propCallback === "function") {
-								propCallback(ev);
-								if (immediateCancelBubble || ev.cancelBubble) {
-									return true;
-								}
-							}
-						}
-					}
-				}
-
-				const listeners = listenersMap.get(ctx);
-				if (listeners) {
-					for (const record of listeners) {
-						if (record.type === ev.type) {
-							try {
-								record.callback.call(ctx.ctx, ev);
-							} catch (err) {
-								console.error(err);
-							}
-
-							if (immediateCancelBubble) {
-								return true;
-							}
-						}
-					}
-
-					if (ev.cancelBubble) {
-						return true;
+		// dispatchEvent calls the prop callback if it exists
+		let propCallback = ctx.ret.el.props["on" + ev.type] as unknown;
+		if (typeof propCallback === "function") {
+			propCallback(ev);
+		} else {
+			for (const propName in ctx.ret.el.props) {
+				if (propName.toLowerCase() === "on" + ev.type.toLowerCase()) {
+					propCallback = ctx.ret.el.props[propName] as unknown;
+					if (typeof propCallback === "function") {
+						propCallback(ev);
 					}
 				}
 			}
-
-			if (ev.bubbles) {
-				setEventProperty(ev, "eventPhase", BUBBLING_PHASE);
-				for (let i = 0; i < path.length; i++) {
-					const target = path[i];
-					const listeners = listenersMap.get(target);
-					if (listeners) {
-						setEventProperty(ev, "currentTarget", target.ctx);
-						for (const record of listeners) {
-							if (record.type === ev.type && !record.options.capture) {
-								try {
-									record.callback.call(target.ctx, ev);
-								} catch (err) {
-									console.error(err);
-								}
-
-								if (immediateCancelBubble) {
-									return true;
-								}
-							}
-						}
-					}
-
-					if (ev.cancelBubble) {
-						return true;
-					}
-				}
-			}
-		} finally {
-			setEventProperty(ev, "eventPhase", NONE);
-			setEventProperty(ev, "currentTarget", null);
-			// eslint-disable-next-line no-unsafe-finally
-			return !ev.defaultPrevented;
 		}
 	}
 }
@@ -2332,7 +2141,7 @@ function runComponent<TNode, TResult>(
 	const initial = !ctx.iterator;
 	if (initial) {
 		setFlag(ctx.ret, IsExecuting);
-		clearEventListeners(ctx);
+		clearEventListeners(ctx.ctx);
 		let returned: ReturnType<Component>;
 		try {
 			returned = (ret.el.tag as Component).call(ctx.ctx, ret.el.props, ctx.ctx);
@@ -2768,19 +2577,7 @@ function commitComponent<TNode>(
 		return;
 	}
 
-	const listeners = listenersMap.get(ctx);
-	if (listeners && listeners.length) {
-		for (let i = 0; i < values.length; i++) {
-			const value = values[i];
-			if (isEventTarget(value)) {
-				for (let j = 0; j < listeners.length; j++) {
-					const record = listeners[j];
-					value.addEventListener(record.type, record.callback, record.options);
-				}
-			}
-		}
-	}
-
+	addEventTargetDelegates(ctx.ctx, values);
 	// Execute schedule callbacks early to check for async deferral
 	const callbacks = scheduleMap.get(ctx);
 	let value = unwrap(values);
@@ -2849,19 +2646,11 @@ function propagateComponent<TNode>(
 	ctx: ContextState<TNode>,
 	values: Array<ElementValue<TNode>>,
 ): void {
-	const records = getListenerRecords(ctx.parent, ctx.host);
-	if (records.length) {
-		for (let i = 0; i < values.length; i++) {
-			const value = values[i];
-			if (isEventTarget(value)) {
-				for (let j = 0; j < records.length; j++) {
-					const record = records[j];
-					value.addEventListener(record.type, record.callback, record.options);
-				}
-			}
-		}
-	}
-
+	addEventTargetDelegates(
+		ctx.ctx,
+		values,
+		(ctx1) => ctx1[_ContextState].host === ctx.host,
+	);
 	const host = ctx.host;
 	const props = stripSpecialProps(host.el.props);
 	ctx.adapter.arrange({
@@ -2929,7 +2718,7 @@ async function unmountComponent(
 	}
 
 	setFlag(ctx.ret, IsUnmounted);
-	clearEventListeners(ctx);
+	clearEventListeners(ctx.ctx);
 	unmountChildren(ctx.adapter, ctx.host, ctx, ctx.ret, isNested);
 	if (didLinger) {
 		// If we lingered, we call finalize to ensure rendering is finalized
@@ -3005,125 +2794,6 @@ async function unmountComponent(
 				setFlag(ctx.ret, IsExecuting, false);
 			}
 		}
-	}
-}
-
-/*** EVENT TARGET UTILITIES ***/
-// EVENT PHASE CONSTANTS
-// https://developer.mozilla.org/en-US/docs/Web/API/Event/eventPhase
-const NONE = 0;
-const CAPTURING_PHASE = 1;
-const AT_TARGET = 2;
-const BUBBLING_PHASE = 3;
-
-const listenersMap = new WeakMap<ContextState, Array<EventListenerRecord>>();
-/**
- * A map of event type strings to Event subclasses. Can be extended via
- * TypeScript module augmentation to have strongly typed event listeners.
- */
-export interface EventMap extends Crank.EventMap {
-	[type: string]: Event;
-}
-
-type MappedEventListener<T extends string> = (ev: EventMap[T]) => unknown;
-
-type MappedEventListenerOrEventListenerObject<T extends string> =
-	| MappedEventListener<T>
-	| {handleEvent: MappedEventListener<T>};
-
-function isListenerOrListenerObject(
-	value: unknown,
-): value is MappedEventListenerOrEventListenerObject<string> {
-	return (
-		typeof value === "function" ||
-		(value !== null &&
-			typeof value === "object" &&
-			typeof (value as any).handleEvent === "function")
-	);
-}
-
-interface EventListenerRecord {
-	type: string;
-	// listener is the original value passed to addEventListener, callback is the
-	// transformed function
-	listener: MappedEventListenerOrEventListenerObject<any>;
-	callback: MappedEventListener<any>;
-	options: AddEventListenerOptions;
-}
-
-function normalizeListenerOptions(
-	options: AddEventListenerOptions | boolean | null | undefined,
-): AddEventListenerOptions {
-	if (typeof options === "boolean") {
-		return {capture: options};
-	} else if (options == null) {
-		return {};
-	}
-
-	return options;
-}
-
-function isEventTarget(value: any): value is EventTarget {
-	return (
-		value != null &&
-		typeof value.addEventListener === "function" &&
-		typeof value.removeEventListener === "function" &&
-		typeof value.dispatchEvent === "function"
-	);
-}
-
-function setEventProperty<T extends keyof Event>(
-	ev: Event,
-	key: T,
-	value: Event[T],
-): void {
-	Object.defineProperty(ev, key, {value, writable: false, configurable: true});
-}
-
-// TODO: Maybe we can pass in the current context directly, rather than
-// starting from the parent?
-/**
- * A function to reconstruct an array of every listener given a context and a
- * host element.
- *
- * This function exploits the fact that contexts retain their ancestor host
- * element. We can determine all the contexts which are directly listening to
- * an element by traversing up the context tree and checking that the host
- * element passed in matches the parent context's host element.
- */
-function getListenerRecords(
-	ctx: ContextState | undefined,
-	ret: Retainer<unknown>,
-): Array<EventListenerRecord> {
-	let listeners: Array<EventListenerRecord> = [];
-	while (ctx !== undefined && ctx.host === ret) {
-		const listeners1 = listenersMap.get(ctx);
-		if (listeners1) {
-			listeners = listeners.concat(listeners1);
-		}
-
-		ctx = ctx.parent;
-	}
-
-	return listeners;
-}
-
-function clearEventListeners(ctx: ContextState): void {
-	const listeners = listenersMap.get(ctx);
-	if (listeners && listeners.length) {
-		for (const value of getChildValues(ctx.ret)) {
-			if (isEventTarget(value)) {
-				for (const record of listeners) {
-					value.removeEventListener(
-						record.type,
-						record.callback,
-						record.options,
-					);
-				}
-			}
-		}
-
-		listeners.length = 0;
 	}
 }
 
@@ -3226,11 +2896,19 @@ function propagateError<TNode>(
 	commitComponent(parent);
 }
 
+type MappedEventListener<T extends string> = (ev: Crank.EventMap[T]) => unknown;
+
+type MappedEventListenerOrEventListenerObject<T extends string> =
+	| MappedEventListener<T>
+	| {handleEvent: MappedEventListener<T>};
+
 // TODO: uncomment and use in the Element interface below
 // type CrankElement = Element;
 declare global {
 	namespace Crank {
-		export interface EventMap {}
+		export interface EventMap {
+			[tag: string]: Event;
+		}
 
 		export interface ProvisionMap {}
 
