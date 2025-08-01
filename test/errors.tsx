@@ -534,8 +534,8 @@ test("async function throws, sync gen catches", async () => {
 	Assert.is(document.body.innerHTML, "<div><span>Error</span></div>");
 });
 
-test("restart", () => {
-	const err = new Error("restart");
+test("error recovery", () => {
+	const err = new Error("error recovery");
 	function* Thrower() {
 		yield 1;
 		yield 2;
