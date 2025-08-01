@@ -922,8 +922,7 @@ test("replacing async component that has resolved", async () => {
 	);
 });
 
-// TODO: fix this test
-test.skip("replacing async component that is pending", async () => {
+test("replacing async component that is pending", async () => {
 	let resolve1!: Function;
 	let resolve2!: Function;
 

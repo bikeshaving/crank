@@ -384,7 +384,7 @@ class Retainer<TNode, TScope = unknown> {
 	// This is only assigned for host, text and raw elements.
 	declare value: ElementValue<TNode> | undefined;
 	declare scope: TScope | undefined;
-	// This is only assigned for host elements.
+	// This is only assigned for host and raw elements.
 	declare oldProps: Record<string, any> | undefined;
 	declare pendingDiff: Promise<undefined> | undefined;
 	declare onNextDiff: Function | undefined;
@@ -2608,8 +2608,28 @@ function commitComponent<TNode>(
 
 				ctx.ret.fallback = undefined;
 			});
-
 			value = getValue(ctx.ret, true);
+			if (ctx.ret.fallback) {
+				// TODO: Do we need to follow the whole chain of fallbacks and commit/propagate them?
+				// Or do we need to check if there is another inflight diff when the current inflight diff resolves???
+				const promise = getInflightDiff(ctx.ret.fallback);
+				if (promise) {
+					promise.then(() => {
+						if (getFlag(ctx.ret, IsScheduling)) {
+							const value = commit(
+								ctx.adapter,
+								ctx.host,
+								ctx.ret.fallback!,
+								ctx.parent,
+								ctx.scope,
+								ctx.index,
+								undefined,
+							);
+							propagateComponent(ctx, wrap(value));
+						}
+					});
+				}
+			}
 		} else {
 			setFlag(ctx.ret, IsScheduling, false);
 			ctx.ret.fallback = undefined;
