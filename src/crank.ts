@@ -627,8 +627,8 @@ export class Renderer<
 		root?: TRoot | undefined,
 		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
-		const ret = getRootRetainer(this, children, root, bridge);
-		const diff = diffChildren(
+		const ret = getRootRetainer(this, bridge, {children, root});
+		return renderRoot(
 			this.adapter,
 			root,
 			ret,
@@ -636,22 +636,7 @@ export class Renderer<
 			ret.scope,
 			ret,
 			children,
-		);
-		if (isPromiseLike(diff)) {
-			return diff.then(() => {
-				commit(this.adapter, ret, ret, ret.ctx, ret.scope, 0, undefined);
-				if (typeof root !== "object" || root === null) {
-					unmount(this.adapter, ret, ret.ctx, ret, false);
-				}
-				return this.adapter.read(unwrap(getChildValues(ret)));
-			});
-		}
-
-		commit(this.adapter, ret, ret, ret.ctx, ret.scope, 0, undefined);
-		if (typeof root !== "object" || root === null) {
-			unmount(this.adapter, ret, ret.ctx, ret, false);
-		}
-		return this.adapter.read(unwrap(getChildValues(ret)));
+		) as Promise<TResult> | TResult;
 	}
 
 	hydrate(
@@ -659,8 +644,12 @@ export class Renderer<
 		root: TRoot,
 		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
-		const ret = getRootRetainer(this, children, root, bridge, true);
-		const diff = diffChildren(
+		const ret = getRootRetainer(this, bridge, {
+			children,
+			root,
+			hydration: true,
+		});
+		return renderRoot(
 			this.adapter,
 			root,
 			ret,
@@ -668,16 +657,7 @@ export class Renderer<
 			ret.scope,
 			ret,
 			children,
-		);
-		if (isPromiseLike(diff)) {
-			return diff.then(() => {
-				commit(this.adapter, ret, ret, ret.ctx, ret.scope, 0, undefined);
-				return this.adapter.read(unwrap(getChildValues(ret)));
-			});
-		}
-
-		commit(this.adapter, ret, ret, ret.ctx, ret.scope, 0, undefined);
-		return this.adapter.read(unwrap(getChildValues(ret)));
+		) as Promise<TResult> | TResult;
 	}
 }
 
@@ -688,10 +668,16 @@ function getRootRetainer<
 	TRoot extends TNode | undefined,
 >(
 	renderer: Renderer<TNode, TScope, TRoot, unknown>,
-	children: Children,
-	root: TRoot | undefined,
 	bridge: Context | undefined,
-	hydration: boolean = false,
+	{
+		children,
+		root,
+		hydration,
+	}: {
+		children: Children;
+		root: TRoot | undefined;
+		hydration?: boolean;
+	},
 ): Retainer<TNode, TScope> {
 	let ret: Retainer<TNode, TScope> | undefined;
 	const bridgeCtx = bridge && bridge[_ContextState];
@@ -726,6 +712,63 @@ function getRootRetainer<
 	}
 
 	return ret;
+}
+
+function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
+	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
+	root: TRoot | undefined,
+	ret: Retainer<TNode, TScope>,
+	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
+	scope: TScope | undefined,
+	parent: Retainer<TNode, TScope>,
+	children: Children,
+): Promise<TResult> | TResult {
+	const diff = diffChildren(
+		adapter,
+		root,
+		ret,
+		ret.ctx,
+		ret.scope,
+		ret,
+		children,
+	);
+
+	const schedulePromises: Array<PromiseLike<unknown>> = [];
+	if (isPromiseLike(diff)) {
+		return diff.then(() => {
+			commit(
+				adapter,
+				ret,
+				ret,
+				ret.ctx,
+				ret.scope,
+				0,
+				schedulePromises,
+				undefined,
+			);
+			if (typeof root !== "object" || root === null) {
+				unmount(adapter, ret, ret.ctx, ret, false);
+			}
+			if (schedulePromises.length > 0) {
+				return Promise.all(schedulePromises).then(() => {
+					return adapter.read(unwrap(getChildValues(ret)));
+				});
+			}
+			return adapter.read(unwrap(getChildValues(ret)));
+		});
+	}
+
+	commit(adapter, ret, ret, ret.ctx, ret.scope, 0, schedulePromises, undefined);
+	if (typeof root !== "object" || root === null) {
+		unmount(adapter, ret, ret.ctx, ret, false);
+	}
+	if (schedulePromises.length > 0) {
+		return Promise.all(schedulePromises).then(() => {
+			return adapter.read(unwrap(getChildValues(ret)));
+		});
+	}
+
+	return adapter.read(unwrap(getChildValues(ret)));
 }
 
 function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
@@ -1008,6 +1051,7 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope | undefined,
 	index: number,
+	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes: Array<TNode> | undefined,
 ): ElementValue<TNode> {
 	if (getFlag(ret, IsCopied) && getFlag(ret, DidCommit)) {
@@ -1048,7 +1092,7 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 
 	if (typeof tag === "function") {
 		ret.ctx!.index = index;
-		value = commitComponent(ret.ctx!, hydrationNodes);
+		value = commitComponent(ret.ctx!, schedulePromises, hydrationNodes);
 	} else {
 		if (tag === Fragment) {
 			value = commitChildren(
@@ -1058,6 +1102,7 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				scope,
 				ret,
 				index,
+				schedulePromises,
 				hydrationNodes,
 			);
 		} else if (tag === Text) {
@@ -1071,7 +1116,7 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		} else if (tag === Raw) {
 			value = commitRaw(adapter, host, ret, scope, hydrationNodes);
 		} else {
-			value = commitHost(adapter, ret, ctx, hydrationNodes);
+			value = commitHost(adapter, ret, ctx, schedulePromises, hydrationNodes);
 		}
 
 		if (ret.fallback) {
@@ -1111,6 +1156,7 @@ function commitChildren<
 	scope: TScope | undefined,
 	parent: Retainer<TNode, TScope>,
 	index: number,
+	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes: Array<TNode> | undefined,
 ): Array<TNode> {
 	let values: Array<TNode> = [];
@@ -1128,6 +1174,7 @@ function commitChildren<
 				ctx,
 				scope,
 				index,
+				schedulePromises,
 				hydrationNodes,
 			);
 
@@ -1211,6 +1258,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, unknown>,
 	ret: Retainer<TNode, TScope>,
 	ctx: ContextState<TNode, TScope, TRoot, unknown> | undefined,
+	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes: Array<TNode> | undefined,
 ): ElementValue<TNode> {
 	if (getFlag(ret, IsCopied) && getFlag(ret, DidCommit)) {
@@ -1358,6 +1406,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 			scope,
 			ret,
 			0,
+			schedulePromises,
 			hydrationMetaProp && !hydrationMetaProp.includes("children")
 				? undefined
 				: childHydrationNodes,
@@ -1830,26 +1879,57 @@ export class Context<
 		}
 
 		let diff: Promise<undefined> | undefined;
+		const schedulePromises: Array<PromiseLike<unknown>> = [];
 		try {
 			setFlag(ctx.ret, IsRefreshing);
 			diff = enqueueComponent(ctx);
 			if (isPromiseLike(diff)) {
 				return diff
-					.then(() => ctx.adapter.read(commitComponent(ctx)))
+					.then(() => ctx.adapter.read(commitComponent(ctx, schedulePromises)))
+					.then((result) => {
+						if (schedulePromises.length) {
+							return Promise.all(schedulePromises).then(() => {
+								return ctx.adapter.read(getValue(ctx.ret));
+							});
+						}
+
+						return result;
+					})
 					.catch((err) => {
-						const diff = propagateError(ctx, err);
+						const diff = propagateError(ctx, err, schedulePromises);
 						if (diff) {
-							return diff.then(() => ctx.adapter.read(getValue(ctx.ret)));
+							return diff.then(() => {
+								if (schedulePromises.length) {
+									return Promise.all(schedulePromises).then(() => {
+										return ctx.adapter.read(getValue(ctx.ret));
+									});
+								}
+
+								return ctx.adapter.read(getValue(ctx.ret));
+							});
+						}
+
+						if (schedulePromises.length) {
+							return Promise.all(schedulePromises).then(() => {
+								return ctx.adapter.read(getValue(ctx.ret));
+							});
 						}
 
 						return ctx.adapter.read(getValue(ctx.ret));
 					})
 					.finally(() => setFlag(ctx.ret, IsRefreshing, false));
 			}
+			const result = ctx.adapter.read(commitComponent(ctx, schedulePromises));
+			if (schedulePromises.length) {
+				return Promise.all(schedulePromises).then(() => {
+					return ctx.adapter.read(getValue(ctx.ret));
+				});
+			}
 
-			return ctx.adapter.read(commitComponent(ctx));
+			return result;
 		} catch (err) {
-			const diff = propagateError(ctx, err);
+			// TODO: await schedulePromises
+			const diff = propagateError(ctx, err, schedulePromises);
 			if (diff) {
 				return diff.then(() => ctx.adapter.read(getValue(ctx.ret)));
 			}
@@ -2362,7 +2442,7 @@ async function pullComponent<TNode, TResult>(
 					if (
 						!(getFlag(ctx.ret, IsUpdating) || getFlag(ctx.ret, IsRefreshing))
 					) {
-						commitComponent(ctx);
+						commitComponent(ctx, []);
 					}
 				},
 				(err) => {
@@ -2371,7 +2451,7 @@ async function pullComponent<TNode, TResult>(
 						// TODO: is this flag necessary?
 						!getFlag(ctx.ret, NeedsToYield)
 					) {
-						return propagateError(ctx, err);
+						return propagateError(ctx, err, []);
 					}
 
 					throw err;
@@ -2548,6 +2628,7 @@ async function pullComponent<TNode, TResult>(
 
 function commitComponent<TNode>(
 	ctx: ContextState<TNode>,
+	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes?: Array<TNode> | undefined,
 ): ElementValue<TNode> {
 	const values = commitChildren(
@@ -2557,6 +2638,7 @@ function commitComponent<TNode>(
 		ctx.scope,
 		ctx.ret,
 		ctx.index,
+		schedulePromises,
 		hydrationNodes,
 	);
 
@@ -2568,7 +2650,7 @@ function commitComponent<TNode>(
 	// Execute schedule callbacks early to check for async deferral
 	const callbacks = scheduleMap.get(ctx);
 	let value = unwrap(values);
-	let schedulePromises: Array<PromiseLike<unknown>> | undefined;
+	let schedulePromises1: Array<PromiseLike<unknown>> | undefined;
 	if (callbacks) {
 		scheduleMap.delete(ctx);
 		setFlag(ctx.ret, IsScheduling);
@@ -2577,12 +2659,13 @@ function commitComponent<TNode>(
 		for (const callback of callbacks) {
 			const scheduleResult = callback(result);
 			if (isPromiseLike(scheduleResult)) {
-				(schedulePromises = schedulePromises || []).push(scheduleResult);
+				(schedulePromises1 = schedulePromises1 || []).push(scheduleResult);
 			}
 		}
 
-		if (!getFlag(ctx.ret, DidCommit) && schedulePromises) {
-			Promise.all(schedulePromises).then(() => {
+		if (schedulePromises1) {
+			schedulePromises.push(...schedulePromises1);
+			Promise.all(schedulePromises1).then(() => {
 				setFlag(ctx.ret, IsScheduling, false);
 				setFlag(ctx.ret, IsSchedulingRefresh, false);
 
@@ -2609,6 +2692,8 @@ function commitComponent<TNode>(
 								ctx.parent,
 								ctx.scope,
 								ctx.index,
+								// TODO: should we create and await an array
+								[],
 								undefined,
 							);
 							propagateComponent(ctx, wrap(value));
@@ -2886,6 +2971,7 @@ function handleChildError<TNode>(
 function propagateError<TNode>(
 	ctx: ContextState<TNode>,
 	err: unknown,
+	schedulePromises: Array<PromiseLike<unknown>>,
 ): Promise<undefined> | undefined {
 	const parent = ctx.parent;
 	if (!parent) {
@@ -2896,17 +2982,17 @@ function propagateError<TNode>(
 	try {
 		diff = handleChildError(parent, err);
 	} catch (err) {
-		return propagateError(parent, err);
+		return propagateError(parent, err, schedulePromises);
 	}
 
 	if (isPromiseLike(diff)) {
 		return diff.then(
-			() => void commitComponent(parent),
-			(err) => propagateError(parent, err),
+			() => void commitComponent(parent, schedulePromises),
+			(err) => propagateError(parent, err, schedulePromises),
 		);
 	}
 
-	commitComponent(parent);
+	commitComponent(parent, schedulePromises);
 }
 
 type MappedEventListener<T extends string> = (ev: Crank.EventMap[T]) => unknown;

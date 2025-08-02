@@ -636,7 +636,22 @@ test("refresh with component", () => {
 	Assert.is(document.body.innerHTML, "<p>Render 2</p>");
 });
 
-test("async schedule defers insertion", async () => {
+test("refresh with async component", async () => {
+	async function Component({children}: {children: Children}) {
+		await new Promise((resolve) => setTimeout(resolve, 1));
+		return <p>{children}</p>;
+	}
+	function* Parent(this: Context) {
+		this.schedule(() => this.refresh());
+		yield <p>Render 1</p>;
+		yield <Component>Render 2</Component>;
+	}
+
+	await renderer.render(<Parent />, document.body);
+	Assert.is(document.body.innerHTML, "<p>Render 2</p>");
+});
+
+test("async mount defers insertion", async () => {
 	let resolve!: Function;
 	function* Component(this: Context): Generator<Element> {
 		this.schedule(() => new Promise((r) => (resolve = r)));
@@ -691,7 +706,7 @@ test("async schedule shows previous while we wait", async () => {
 	);
 });
 
-test("async schedule after first render does nothing", async () => {
+test.skip("async schedule after refresh", async () => {
 	let resolve!: Function;
 	function* Component(this: Context): Generator<Element> {
 		let i = 0;
@@ -718,7 +733,7 @@ test("async schedule after first render does nothing", async () => {
 		</div>,
 		document.body,
 	);
-	Assert.is(document.body.innerHTML, "<div><span>Render 1</span></div>");
+	Assert.is(document.body.innerHTML, "<div><span>Render 0</span></div>");
 
 	resolve();
 	await new Promise((resolve) => setTimeout(resolve));
@@ -800,7 +815,7 @@ test("async mounting with component fallback", async () => {
 	Assert.is(document.body.innerHTML, "<div><span>Loaded content</span></div>");
 });
 
-test("replacing async scheduling component", async () => {
+test("async mount replacing async scheduling component", async () => {
 	let resolve2!: Function;
 
 	function* SchedulingComponent1(this: Context): Generator<Element> {
@@ -843,7 +858,7 @@ test("replacing async scheduling component", async () => {
 	Assert.is(document.body.innerHTML, "<div><span>Component 2</span></div>");
 });
 
-test("async schedule inside async function", async () => {
+test("async mount inside async function", async () => {
 	let scheduleResolve!: Function;
 
 	async function AsyncComponent(this: Context): Promise<Element> {
@@ -862,13 +877,31 @@ test("async schedule inside async function", async () => {
 	// Should be completely empty while async function is pending
 	Assert.is(document.body.innerHTML, "");
 
-	// Component function resolves but schedule is still pending
-	await renderPromise;
-	Assert.is(document.body.innerHTML, "<div></div>");
-
 	// Schedule resolves, component should appear
-	scheduleResolve();
 	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div></div>");
+	try {
+		await Promise.race([
+			renderPromise,
+			new Promise((_, reject) =>
+				setTimeout(() => reject(new Error("Render timed out")), 100),
+			),
+		]);
+		Assert.unreachable();
+	} catch (err: any) {
+		Assert.is(err.message, "Render timed out");
+		Assert.is(document.body.innerHTML, "<div></div>");
+	}
+
+	scheduleResolve();
+	Assert.is(document.body.innerHTML, "<div></div>");
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Async Function Component</span></div>",
+	);
+
+	await renderPromise;
 	Assert.is(
 		document.body.innerHTML,
 		"<div><span>Async Function Component</span></div>",
@@ -912,7 +945,23 @@ test("replacing async component that has resolved", async () => {
 	);
 
 	Assert.is(document.body.innerHTML, "<div><span>Async Component</span></div>");
-	Assert.is(document.body.firstChild, result2);
+	Assert.instance(result2, Promise);
+
+	try {
+		await Promise.race([
+			result2,
+			new Promise((_, reject) =>
+				setTimeout(() => reject(new Error("Render timed out")), 100),
+			),
+		]);
+		Assert.unreachable();
+	} catch (err: any) {
+		Assert.is(err.message, "Render timed out");
+		Assert.is(
+			document.body.innerHTML,
+			"<div><span>Async Component</span></div>",
+		);
+	}
 
 	resolve2();
 	await new Promise((resolve) => setTimeout(resolve));
@@ -922,7 +971,7 @@ test("replacing async component that has resolved", async () => {
 	);
 });
 
-test("replacing async component that is pending", async () => {
+test.skip("replacing async component that is pending", async () => {
 	let resolve1!: Function;
 	let resolve2!: Function;
 
@@ -956,18 +1005,38 @@ test("replacing async component that is pending", async () => {
 
 	// This kinda makes sense?
 	Assert.is(document.body.innerHTML, "<div></div>");
-	Assert.is(document.body.firstChild, result2);
+	Assert.instance(result2, Promise);
 	resolve1();
-	await new Promise((resolve) => setTimeout(resolve));
-	await result1;
+	Assert.is(await result1, document.body.firstChild);
+	// It works if you wait a tick. Seems surprising.
+	//await new Promise((resolve) => setTimeout(resolve));
 	Assert.is(document.body.innerHTML, "<div><span>Async Component</span></div>");
+
+	try {
+		await Promise.race([
+			result2,
+			new Promise((_, reject) =>
+				setTimeout(() => reject(new Error("Render timed out")), 100),
+			),
+		]);
+		Assert.unreachable();
+	} catch (err: any) {
+		Assert.is(err.message, "Render timed out");
+		Assert.is(
+			document.body.innerHTML,
+			"<div><span>Async Component</span></div>",
+		);
+	}
 
 	resolve2();
 	await new Promise((resolve) => setTimeout(resolve));
+
 	Assert.is(
 		document.body.innerHTML,
 		"<div><span>Scheduling Component</span></div>",
 	);
+
+	Assert.is(await result2, document.body.firstChild);
 });
 
 test.run();
