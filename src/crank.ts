@@ -5,47 +5,15 @@ import {
 	removeEventTargetDelegates,
 } from "./event-target.js";
 
+import {
+	arrayify,
+	isIteratorLike,
+	isPromiseLike,
+	safeRace,
+	unwrap,
+	wrap,
+} from "./utils.js";
 const NOOP = (): undefined => {};
-
-function wrap<T>(value: Array<T> | T | undefined): Array<T> {
-	return value === undefined ? [] : Array.isArray(value) ? value : [value];
-}
-
-function unwrap<T>(arr: Array<T>): Array<T> | T | undefined {
-	return arr.length === 0 ? undefined : arr.length === 1 ? arr[0] : arr;
-}
-
-type NonStringIterable<T> = Iterable<T> & object;
-
-/**
- * Ensures a value is an array.
- *
- * This function does the same thing as wrap() above except it handles nulls
- * and iterables, so it is appropriate for wrapping user-provided element
- * children.
- */
-function arrayify<T>(
-	value: NonStringIterable<T> | T | null | undefined,
-): Array<T> {
-	return value == null
-		? []
-		: Array.isArray(value)
-			? value
-			: typeof value === "string" ||
-				  typeof (value as any)[Symbol.iterator] !== "function"
-				? [value as T]
-				: [...(value as NonStringIterable<T>)];
-}
-
-function isIteratorLike(
-	value: any,
-): value is Iterator<unknown> | AsyncIterator<unknown> {
-	return value != null && typeof value.next === "function";
-}
-
-function isPromiseLike(value: any): value is PromiseLike<unknown> {
-	return value != null && typeof value.then === "function";
-}
 
 /**
  * A type which represents all valid values for an element tag.
@@ -949,7 +917,7 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 			});
 
 		let onNextDiffs!: Function;
-		const diffs2 = (parent.pendingDiff = Promise.race([
+		const diffs2 = (parent.pendingDiff = safeRace([
 			diffs1,
 			new Promise<any>((resolve) => (onNextDiffs = resolve)),
 		]));
