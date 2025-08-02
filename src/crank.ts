@@ -1805,7 +1805,10 @@ export class Context<
 		}
 	}
 
-	async *[Symbol.asyncIterator](): AsyncGenerator<ComponentProps<T>, undefined> {
+	async *[Symbol.asyncIterator](): AsyncGenerator<
+		ComponentProps<T>,
+		undefined
+	> {
 		const ctx = this[_ContextState];
 		setFlag(ctx.ret, IsInForAwaitOfLoop);
 		try {
@@ -1823,7 +1826,8 @@ export class Context<
 					yield ctx.ret.el.props;
 				} else {
 					const props = await new Promise<ComponentProps<T>>(
-						(resolve) => (ctx.onPropsProvided = resolve as (props: unknown) => unknown),
+						(resolve) =>
+							(ctx.onPropsProvided = resolve as (props: unknown) => unknown),
 					);
 					if (getFlag(ctx.ret, IsUnmounted) || getFlag(ctx.ret, IsErrored)) {
 						break;
@@ -2650,19 +2654,21 @@ function commitComponent<TNode>(
 		}
 
 		if (schedulePromises1) {
-			const scheduleP = ctx.scheduleP = Promise.all(schedulePromises1).then(() => {
-				setFlag(ctx.ret, IsScheduling, false);
-				setFlag(ctx.ret, IsSchedulingRefresh, false);
-				propagateComponent(ctx, values);
-				if (ctx.ret.fallback) {
-					unmount(ctx.adapter, ctx.host, ctx.parent, ctx.ret.fallback, false);
-				}
+			const scheduleP = (ctx.scheduleP = Promise.all(schedulePromises1).then(
+				() => {
+					setFlag(ctx.ret, IsScheduling, false);
+					setFlag(ctx.ret, IsSchedulingRefresh, false);
+					propagateComponent(ctx, values);
+					if (ctx.ret.fallback) {
+						unmount(ctx.adapter, ctx.host, ctx.parent, ctx.ret.fallback, false);
+					}
 
-				ctx.ret.fallback = undefined;
-				if (scheduleP === ctx.scheduleP) {
-					ctx.scheduleP = undefined;
-				}
-			});
+					ctx.ret.fallback = undefined;
+					if (scheduleP === ctx.scheduleP) {
+						ctx.scheduleP = undefined;
+					}
+				},
+			));
 
 			schedulePromises.push(scheduleP);
 			value = getValue(ctx.ret, true);
