@@ -1610,15 +1610,6 @@ function unmountChildren<
 		}
 	}
 }
-
-export interface Context extends Crank.Context {}
-
-/**
- * An interface which can be extended to provide strongly typed provisions.
- * See Context.prototype.consume and Context.prototype.provide.
- */
-export interface ProvisionMap extends Crank.ProvisionMap {}
-
 const provisionMaps = new WeakMap<ContextState, Map<unknown, unknown>>();
 
 const scheduleMap = new WeakMap<ContextState, Set<Function>>();
@@ -1909,6 +1900,7 @@ export class Context<
 					})
 					.finally(() => setFlag(ctx.ret, IsRefreshing, false));
 			}
+
 			const result = ctx.adapter.read(commitComponent(ctx, schedulePromises));
 			if (schedulePromises.length) {
 				return Promise.all(schedulePromises).then(() => {
@@ -2037,6 +2029,10 @@ export class Context<
 		options?: EventListenerOptions | boolean,
 	): void {
 		super.removeEventListener(type, listener, options);
+	}
+
+	dispatchEvent<T extends string>(ev: EventMap[T] | Event): boolean {
+		return super.dispatchEvent(ev);
 	}
 
 	[CustomEventTarget.dispatchEventOnSelf](ev: Event): void {
@@ -2988,6 +2984,16 @@ function propagateError<TNode>(
 
 	commitComponent(parent, schedulePromises);
 }
+
+export interface Context extends Crank.Context {}
+
+/**
+ * An interface which can be extended to provide strongly typed provisions.
+ * See Context.prototype.consume and Context.prototype.provide.
+ */
+export interface ProvisionMap extends Crank.ProvisionMap {}
+
+export interface EventMap extends Crank.EventMap {}
 
 type MappedEventListener<T extends string> = (ev: Crank.EventMap[T]) => unknown;
 
