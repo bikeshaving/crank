@@ -4,7 +4,6 @@ import {
 	clearEventListeners,
 	removeEventTargetDelegates,
 } from "./event-target.js";
-
 import {
 	arrayify,
 	isIteratorLike,
@@ -13,6 +12,7 @@ import {
 	unwrap,
 	wrap,
 } from "./utils.js";
+
 const NOOP = (): undefined => {};
 
 /**
@@ -1138,10 +1138,9 @@ function commitChildren<
 		) {
 			let isScheduling = false;
 			if (getFlag(child, IsScheduling) && child.fallback) {
-				const inflightDiff = getInflightDiff(child.fallback);
-				if (inflightDiff) {
-					schedulePromises.push(inflightDiff);
-				}
+				schedulePromises.push(
+					safeRace([child.ctx!.scheduleP, getInflightDiff(child.fallback)]),
+				);
 				isScheduling = true;
 			}
 
@@ -1700,6 +1699,8 @@ class ContextState<
 	// ancestor host or portal.
 	declare index: number;
 
+	declare scheduleP: Promise<unknown> | undefined;
+
 	constructor(
 		adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 		root: TRoot,
@@ -1727,6 +1728,7 @@ class ContextState<
 
 		this.pull = undefined;
 		this.index = 0;
+		this.scheduleP = undefined;
 	}
 }
 
@@ -2649,8 +2651,7 @@ function commitComponent<TNode>(
 		}
 
 		if (schedulePromises1) {
-			schedulePromises.push(...schedulePromises1);
-			Promise.all(schedulePromises1).then(() => {
+			const scheduleP = ctx.scheduleP = Promise.all(schedulePromises1).then(() => {
 				setFlag(ctx.ret, IsScheduling, false);
 				setFlag(ctx.ret, IsSchedulingRefresh, false);
 				propagateComponent(ctx, values);
@@ -2659,7 +2660,12 @@ function commitComponent<TNode>(
 				}
 
 				ctx.ret.fallback = undefined;
+				if (scheduleP === ctx.scheduleP) {
+					ctx.scheduleP = undefined;
+				}
 			});
+
+			schedulePromises.push(scheduleP);
 			value = getValue(ctx.ret, true);
 			if (ctx.ret.fallback) {
 				// TODO: Do we need to follow the whole chain of fallbacks and commit/propagate them?

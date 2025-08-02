@@ -1038,7 +1038,7 @@ test("replacing async component that is pending and resolves", async () => {
 	Assert.is(await result2, document.body.firstChild);
 });
 
-test.skip("replacing async component that is pending and doesn't resolve", async () => {
+test("replacing async component that is pending and doesn't resolve", async () => {
 	let resolve2!: Function;
 
 	async function AsyncComponent(): Promise<Element> {
@@ -1098,13 +1098,17 @@ test.skip("replacing async component that is pending and doesn't resolve", async
 	}
 
 	resolve2();
-	await new Promise((resolve) => setTimeout(resolve));
-
 	Assert.is(
-		document.body.innerHTML,
+		(await result2).outerHTML,
 		"<div><span>Scheduling Component</span></div>",
 	);
 
+	Assert.is(
+		(await result1).outerHTML,
+		"<div><span>Scheduling Component</span></div>",
+	);
+
+	Assert.is(await result1, document.body.firstChild);
 	Assert.is(await result2, document.body.firstChild);
 });
 
