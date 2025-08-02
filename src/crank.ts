@@ -1162,8 +1162,24 @@ function commitChildren<
 	let values: Array<TNode> = [];
 	for (let i = 0, children = wrap(parent.children); i < children.length; i++) {
 		let child = children[i];
-		while (child && !getFlag(child, DidDiff) && child.fallback) {
+		while (
+			child &&
+			(getFlag(child, IsScheduling) ||
+				(!getFlag(child, DidDiff) && child.fallback))
+		) {
+			let isScheduling = false;
+			if (getFlag(child, IsScheduling) && child.fallback) {
+				const inflightDiff = getInflightDiff(child.fallback);
+				if (inflightDiff) {
+					schedulePromises.push(inflightDiff);
+				}
+				isScheduling = true;
+			}
+
 			child = child.fallback;
+			if (isScheduling) {
+				break;
+			}
 		}
 
 		if (child) {
