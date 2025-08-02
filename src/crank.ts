@@ -980,14 +980,15 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 }
 
 function getInflightDiff(
-	child: Retainer<unknown>,
+	ret: Retainer<unknown>,
 ): Promise<undefined> | undefined {
-	const ctx: ContextState<unknown> | undefined = child.ctx;
-	// TODO: Why can't we just use child.pendingDiff?
-	if (ctx && getFlag(ctx.ret, IsUpdating) && ctx.inflight) {
-		return ctx.inflight[1];
-	} else if (child.pendingDiff) {
-		return child.pendingDiff;
+	// It is not enough to check pendingDiff because pendingDiff is the diff for
+	// children, but not the diff of an async component retainer's current run.
+	// For the latter we check ctx.inflight.
+	if (ret.ctx && ret.ctx.inflight) {
+		return ret.ctx.inflight[1];
+	} else if (ret.pendingDiff) {
+		return ret.pendingDiff;
 	}
 }
 
@@ -2684,9 +2685,7 @@ function commitComponent<TNode>(
 			Promise.all(schedulePromises1).then(() => {
 				setFlag(ctx.ret, IsScheduling, false);
 				setFlag(ctx.ret, IsSchedulingRefresh, false);
-
 				propagateComponent(ctx, values);
-
 				if (ctx.ret.fallback) {
 					unmount(ctx.adapter, ctx.host, ctx.parent, ctx.ret.fallback, false);
 				}
