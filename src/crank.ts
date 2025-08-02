@@ -1684,16 +1684,15 @@ class ContextState<
 	declare pull: PullController | undefined;
 
 	// The onPropsProvided callback is set when a component requests props via
-	// the for await...of loop and props are not available. It is called when the
-	// component is updated or refreshed.
+	// the for await...of loop and props are not available. It is called when
+	// the component is updated or refreshed.
 	declare onPropsProvided:
-		| ((props: Record<string, any>) => unknown)
+		| ((props: ComponentProps<unknown>) => unknown)
 		| undefined;
-
 	// The onPropsRequested callback is set when a component is updated or
 	// refreshed but the new props are not consumed. It is called when the new
 	// props are requested.
-	declare onPropsRequested: Function | undefined;
+	declare onPropsRequested: (() => unknown) | undefined;
 
 	// The last known index of the component's children, relative to its nearest
 	// ancestor host or portal.
@@ -1734,7 +1733,7 @@ class ContextState<
 
 const _ContextState = Symbol.for("crank.ContextState");
 
-type ComponentProps<T> = T extends () => unknown
+export type ComponentProps<T> = T extends () => unknown
 	? {}
 	: T extends (props: infer U) => unknown
 		? U
@@ -1786,10 +1785,10 @@ export class Context<
 		return this[_ContextState].adapter.read(getValue(this[_ContextState].ret));
 	}
 
-	*[Symbol.iterator](): Generator<ComponentProps<T>> {
+	*[Symbol.iterator](): Generator<ComponentProps<T>, undefined> {
 		const ctx = this[_ContextState];
+		setFlag(ctx.ret, IsInForOfLoop);
 		try {
-			setFlag(ctx.ret, IsInForOfLoop);
 			while (!getFlag(ctx.ret, IsUnmounted) && !getFlag(ctx.ret, IsErrored)) {
 				if (getFlag(ctx.ret, NeedsToYield)) {
 					throw new Error(
@@ -1806,7 +1805,7 @@ export class Context<
 		}
 	}
 
-	async *[Symbol.asyncIterator](): AsyncGenerator<ComponentProps<T>> {
+	async *[Symbol.asyncIterator](): AsyncGenerator<ComponentProps<T>, undefined> {
 		const ctx = this[_ContextState];
 		setFlag(ctx.ret, IsInForAwaitOfLoop);
 		try {
@@ -1821,16 +1820,16 @@ export class Context<
 
 				if (getFlag(ctx.ret, PropsAvailable)) {
 					setFlag(ctx.ret, PropsAvailable, false);
-					yield ctx.ret.el.props as ComponentProps<T>;
+					yield ctx.ret.el.props;
 				} else {
-					const props = await new Promise(
-						(resolve) => (ctx.onPropsProvided = resolve),
+					const props = await new Promise<ComponentProps<T>>(
+						(resolve) => (ctx.onPropsProvided = resolve as (props: unknown) => unknown),
 					);
-					if (getFlag(ctx.ret, IsUnmounted)) {
+					if (getFlag(ctx.ret, IsUnmounted) || getFlag(ctx.ret, IsErrored)) {
 						break;
 					}
 
-					yield props as ComponentProps<T>;
+					yield props;
 				}
 
 				if (ctx.onPropsRequested) {
@@ -2377,7 +2376,7 @@ function resumePropsAsyncIterator(
 		setFlag(ctx.ret, PropsAvailable);
 		if (getFlag(ctx.ret, IsInForAwaitOfLoop)) {
 			return new Promise<undefined>(
-				(resolve) => (ctx.onPropsRequested = resolve),
+				(resolve) => (ctx.onPropsRequested = resolve as () => unknown),
 			);
 		}
 	}
@@ -2703,7 +2702,7 @@ function commitComponent<TNode>(
 
 	if (getFlag(ctx.ret, IsScheduling)) {
 		// TODO: Think about the name of this flag, now that it seems to be getting
-		// set when a schedule() returns a promise
+		// set when a schedule() callback returns a promise
 		setFlag(ctx.ret, IsSchedulingRefresh);
 		value = getValue(ctx.ret, true);
 	} else {
