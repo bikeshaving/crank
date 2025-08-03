@@ -706,7 +706,7 @@ test("async schedule shows previous while we wait", async () => {
 	);
 });
 
-test.skip("async schedule after refresh", async () => {
+test("async schedule after refresh", async () => {
 	let resolve!: Function;
 	function* Component(this: Context): Generator<Element> {
 		let i = 0;

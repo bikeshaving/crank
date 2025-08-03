@@ -349,7 +349,6 @@ class Retainer<TNode, TScope = unknown> {
 		| Retainer<TNode, TScope>
 		| undefined;
 	declare fallback: Retainer<TNode, TScope> | undefined;
-	// This is only assigned for host, text and raw elements.
 	declare value: ElementValue<TNode> | undefined;
 	declare scope: TScope | undefined;
 	// This is only assigned for host and raw elements.
@@ -384,6 +383,9 @@ class Retainer<TNode, TScope = unknown> {
 function getValue<TNode>(
 	ret: Retainer<TNode>,
 	isNested = false,
+	// TODO: If index is passed in, it should be used to update the index of any component elements
+	/* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+	index = undefined,
 ): ElementValue<TNode> {
 	if (getFlag(ret, IsScheduling) && isNested) {
 		return ret.fallback ? getValue(ret.fallback, isNested) : undefined;
@@ -392,7 +394,9 @@ function getValue<TNode>(
 	} else if (ret.el.tag === Portal) {
 		return;
 	} else if (ret.el.tag === Fragment || typeof ret.el.tag === "function") {
-		return unwrap(getChildValues(ret));
+		const childValues = getChildValues(ret);
+		const result = unwrap(childValues);
+		return result;
 	}
 
 	return ret.value;
@@ -403,7 +407,12 @@ function getValue<TNode>(
  *
  * @returns An array of nodes.
  */
-function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode> {
+function getChildValues<TNode>(
+	ret: Retainer<TNode>,
+	// TODO: If index is passed in, it should be used to update the index of any component elements
+	/* eslint-disable-next-line @typescript-eslint/no-unused-vars */
+	index = undefined,
+): Array<TNode> {
 	const values: Array<TNode> = [];
 	const lingerers = ret.lingerers;
 	const children = wrap(ret.children);
@@ -2612,11 +2621,52 @@ async function pullComponent<TNode, TResult>(
 	}
 }
 
+/**
+ * Commits a component and handles schedule callback caching.
+ *
+ * SCHEDULE CACHING IMPLEMENTATION:
+ * ================================
+ * When schedule() callbacks return promises, we want to show the previously rendered
+ * content immediately while the new schedule promise is pending, then cleanly replace
+ * it when the promise resolves.
+ *
+ * The challenge is that during the second render:
+ * 1. Component creates new content (e.g., <span>Render 1</span>)
+ * 2. Old content gets put in graveyard and unmounted
+ * 3. We try to show cached content (e.g., <span>Render 0</span>) while scheduling
+ * 4. But the cached DOM node was just unmounted - it's a "zombie" node!
+ *
+ * SOLUTION - "Grave Robbing":
+ * ===========================
+ * 1. BEFORE commitChildren runs: Check if graveyard contains our cached value
+ * 2. "Rob" (remove) matching items from graveyard to prevent unmounting
+ * 3. Show cached content while scheduling (using the preserved DOM nodes)
+ * 4. AFTER schedule resolves: Unmount the robbed items for clean replacement
+ *
+ * This ensures:
+ * - Cached content shows immediately while scheduling ✓
+ * - DOM nodes stay connected (not "zombie" nodes) ✓
+ * - Clean replacement instead of accumulation ✓
+ * - Proper cleanup when scheduling doesn't happen ✓
+ */
 function commitComponent<TNode>(
 	ctx: ContextState<TNode>,
 	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes?: Array<TNode> | undefined,
 ): ElementValue<TNode> {
+	// Grave-rob cached DOM nodes before commitChildren to prevent unmounting
+	let robbedItems: Array<Retainer<TNode>> = [];
+	if (ctx.ret.graveyard && ctx.ret.value) {
+		// Rob any graveyard items that match our cached value
+		ctx.ret.graveyard = ctx.ret.graveyard.filter((child) => {
+			if (child.value === ctx.ret.value) {
+				robbedItems.push(child);
+				return false; // Remove from graveyard
+			}
+			return true; // Keep in graveyard
+		});
+	}
+
 	const values = commitChildren(
 		ctx.adapter,
 		ctx.host,
@@ -2650,11 +2700,26 @@ function commitComponent<TNode>(
 		}
 
 		if (schedulePromises1) {
+			// Scheduling happened - keep robbed items alive for caching
+
 			const scheduleP = (ctx.scheduleP = Promise.all(schedulePromises1).then(
 				() => {
 					setFlag(ctx.ret, IsScheduling, false);
 					setFlag(ctx.ret, IsSchedulingRefresh, false);
 					propagateComponent(ctx, values);
+
+					const finalValue = getValue(ctx.ret);
+
+					// Cache the resolved value for future schedule callbacks
+					ctx.ret.value = finalValue;
+
+					// Now unmount any items we robbed from graveyard to ensure clean replacement
+					if (robbedItems.length > 0) {
+						for (const robbedItem of robbedItems) {
+							unmount(ctx.adapter, ctx.host, ctx, robbedItem, false);
+						}
+					}
+
 					if (ctx.ret.fallback) {
 						unmount(ctx.adapter, ctx.host, ctx.parent, ctx.ret.fallback, false);
 					}
@@ -2667,7 +2732,10 @@ function commitComponent<TNode>(
 			));
 
 			schedulePromises.push(scheduleP);
-			value = getValue(ctx.ret, true);
+			// Use cached value when component already mounted and schedule returns promise
+			const didCommit = getFlag(ctx.ret, DidCommit);
+			const cachedValue = ctx.ret.value;
+			value = didCommit ? cachedValue : getValue(ctx.ret, true);
 			if (ctx.ret.fallback) {
 				// TODO: Do we need to follow the whole chain of fallbacks and commit/propagate them?
 				// Or do we need to check if there is another inflight diff when the current inflight diff resolves???
@@ -2693,6 +2761,13 @@ function commitComponent<TNode>(
 			}
 		} else {
 			setFlag(ctx.ret, IsScheduling, false);
+
+			// No scheduling happened - unmount the items we robbed from the graveyard
+			if (robbedItems.length > 0) {
+				for (const robbedItem of robbedItems) {
+					unmount(ctx.adapter, ctx.host, ctx, robbedItem, false);
+				}
+			}
 		}
 
 		// Handles an edge case where refresh() is called during a schedule().
@@ -2706,7 +2781,6 @@ function commitComponent<TNode>(
 		// TODO: Think about the name of this flag, now that it seems to be getting
 		// set when a schedule() callback returns a promise
 		setFlag(ctx.ret, IsSchedulingRefresh);
-		value = getValue(ctx.ret, true);
 	} else {
 		if (!getFlag(ctx.ret, IsUpdating)) {
 			propagateComponent(ctx, values);
@@ -2721,6 +2795,7 @@ function commitComponent<TNode>(
 
 	setFlag(ctx.ret, IsUpdating, false);
 	setFlag(ctx.ret, DidCommit);
+	ctx.ret.value = value;
 	return value;
 }
 
