@@ -524,6 +524,7 @@ export interface RenderAdapter<
 		oldProps: Record<string, any> | undefined;
 	}): void;
 
+	// TODO: rename to parentNode
 	remove(data: {node: TNode; parent: TNode; isNested: boolean}): void;
 
 	read(value: ElementValue<TNode>): TResult;
@@ -596,15 +597,9 @@ export class Renderer<
 		bridge?: Context | undefined,
 	): Promise<TResult> | TResult {
 		const ret = getRootRetainer(this, bridge, {children, root});
-		return renderRoot(
-			this.adapter,
-			root,
-			ret,
-			ret.ctx,
-			ret.scope,
-			ret,
-			children,
-		) as Promise<TResult> | TResult;
+		return renderRoot(this.adapter, root, ret, children) as
+			| Promise<TResult>
+			| TResult;
 	}
 
 	hydrate(
@@ -617,15 +612,9 @@ export class Renderer<
 			root,
 			hydration: true,
 		});
-		return renderRoot(
-			this.adapter,
-			root,
-			ret,
-			ret.ctx,
-			ret.scope,
-			ret,
-			children,
-		) as Promise<TResult> | TResult;
+		return renderRoot(this.adapter, root, ret, children) as
+			| Promise<TResult>
+			| TResult;
 	}
 }
 
@@ -686,9 +675,6 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
 	ret: Retainer<TNode, TScope>,
-	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
-	scope: TScope | undefined,
-	parent: Retainer<TNode, TScope>,
 	children: Children,
 ): Promise<TResult> | TResult {
 	const diff = diffChildren(
