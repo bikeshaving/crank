@@ -306,21 +306,18 @@ const IsCopied = 1 << 2;
 const IsUpdating = 1 << 3;
 const IsExecuting = 1 << 4;
 const IsRefreshing = 1 << 5;
-const IsUnmounted = 1 << 6;
+const IsScheduling = 1 << 6;
+const CommittedDuringSchedule = 1 << 7;
+const IsUnmounted = 1 << 8;
 // TODO: Is this flag still necessary or can we use IsUnmounted?
-const IsErrored = 1 << 7;
-
+const IsErrored = 1 << 9;
 // TODO: Maybe we can get rid of IsSyncGen and IsAsyncGen
-const IsSyncGen = 1 << 8;
-const IsAsyncGen = 1 << 9;
-
-const IsInForOfLoop = 1 << 10;
-const IsInForAwaitOfLoop = 1 << 11;
-const NeedsToYield = 1 << 12;
-const PropsAvailable = 1 << 13;
-// TODO: Are these flags still necessary?
-const IsScheduling = 1 << 14;
-const IsSchedulingRefresh = 1 << 15;
+const IsSyncGen = 1 << 10;
+const IsAsyncGen = 1 << 11;
+const IsInForOfLoop = 1 << 12;
+const IsInForAwaitOfLoop = 1 << 13;
+const NeedsToYield = 1 << 14;
+const PropsAvailable = 1 << 15;
 
 function getFlag(ret: Retainer<unknown>, flag: number): boolean {
 	return !!(ret.f & flag);
@@ -2655,7 +2652,7 @@ function commitComponent<TNode>(
 			const scheduleP = (ctx.scheduleP = Promise.all(schedulePromises1).then(
 				() => {
 					setFlag(ctx.ret, IsScheduling, false);
-					setFlag(ctx.ret, IsSchedulingRefresh, false);
+					setFlag(ctx.ret, CommittedDuringSchedule, false);
 					if (scheduleP === ctx.scheduleP) {
 						ctx.scheduleP = undefined;
 					}
@@ -2715,15 +2712,15 @@ function commitComponent<TNode>(
 	}
 
 	// Handles an edge case where refresh() is called during a schedule().
-	if (getFlag(ctx.ret, IsSchedulingRefresh)) {
-		setFlag(ctx.ret, IsSchedulingRefresh, false);
+	if (getFlag(ctx.ret, CommittedDuringSchedule)) {
+		setFlag(ctx.ret, CommittedDuringSchedule, false);
 		value = getValue(ctx.ret, true);
 	}
 
 	if (getFlag(ctx.ret, IsScheduling)) {
 		// TODO: Think about the name of this flag, now that it seems to be getting
 		// set when a schedule() callback returns a promise
-		setFlag(ctx.ret, IsSchedulingRefresh);
+		setFlag(ctx.ret, CommittedDuringSchedule);
 		value = getValue(ctx.ret, true);
 	} else {
 		if (!getFlag(ctx.ret, IsUpdating)) {
