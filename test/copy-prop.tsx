@@ -403,7 +403,7 @@ test("copy can include and exclude props but never both", () => {
 	Assert.is(consoleError.callCount, 1);
 	Assert.equal(
 		consoleError.firstCall.args[0],
-		'Invalid copy prop "!style data-greeting".\nUse prop or !prop, not both.',
+		'Invalid copy prop "!style data-greeting".\nUse prop or !prop but not both.',
 	);
 
 	Assert.is(

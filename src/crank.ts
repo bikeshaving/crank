@@ -1428,7 +1428,7 @@ class MetaProp {
 
 		if (!allBangs && !noBangs) {
 			console.error(
-				`Invalid ${propName} prop "${propValue}".\nUse prop or !prop, not both.`,
+				`Invalid ${propName} prop "${propValue}".\nUse prop or !prop but not both.`,
 			);
 			this.include = true;
 			this.props.clear();
@@ -1708,13 +1708,14 @@ class ContextState<
 	}
 }
 
-const _ContextState = Symbol.for("crank.ContextState");
-
 export type ComponentProps<T> = T extends () => unknown
 	? {}
 	: T extends (props: infer U) => unknown
 		? U
 		: T;
+
+const _ContextState = Symbol.for("crank.ContextState");
+
 /**
  * A class which is instantiated and passed to every component as its this
  * value/second parameter. Contexts form a tree just like elements and all
@@ -1830,7 +1831,7 @@ export class Context<
 	/**
 	 * Re-executes a component.
 	 *
-	 * @returns The rendered value of the component or a promise thereof if the
+	 * @returns The rendered result of the component or a promise thereof if the
 	 * component or its children execute asynchronously.
 	 */
 	refresh(): Promise<TResult> | TResult {
@@ -1899,7 +1900,21 @@ export class Context<
 			// TODO: await schedulePromises
 			const diff = propagateError(ctx, err, schedulePromises);
 			if (diff) {
-				return diff.then(() => ctx.adapter.read(getValue(ctx.ret)));
+				return diff
+					.then(() => {
+						if (schedulePromises.length) {
+							return Promise.all(schedulePromises).then(() => {
+								return ctx.adapter.read(getValue(ctx.ret));
+							});
+						}
+					})
+					.then(() => ctx.adapter.read(getValue(ctx.ret)));
+			}
+
+			if (schedulePromises.length) {
+				return Promise.all(schedulePromises).then(() => {
+					return ctx.adapter.read(getValue(ctx.ret));
+				});
 			}
 
 			return ctx.adapter.read(getValue(ctx.ret));
@@ -2640,15 +2655,20 @@ function commitComponent<TNode>(
 				() => {
 					setFlag(ctx.ret, IsScheduling, false);
 					setFlag(ctx.ret, IsSchedulingRefresh, false);
+					if (scheduleP === ctx.scheduleP) {
+						ctx.scheduleP = undefined;
+					}
+
+					//if (getFlag(ctx.ret, DidCommit)) {
+					//	return;
+					//}
+
 					propagateComponent(ctx, values);
 					if (ctx.ret.fallback) {
 						unmount(ctx.adapter, ctx.host, ctx.parent, ctx.ret.fallback, false);
 					}
 
 					ctx.ret.fallback = undefined;
-					if (scheduleP === ctx.scheduleP) {
-						ctx.scheduleP = undefined;
-					}
 				},
 			));
 
@@ -2668,7 +2688,7 @@ function commitComponent<TNode>(
 								ctx.parent,
 								ctx.scope,
 								ctx.index,
-								// TODO: should we create and await an array
+								// TODO: should we await schedulePromises we pass in here?
 								[],
 								undefined,
 							);
