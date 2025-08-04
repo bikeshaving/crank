@@ -706,7 +706,7 @@ test("async schedule shows previous while we wait", async () => {
 	);
 });
 
-test.skip("async schedule after refresh", async () => {
+test("async schedule does not work after initial render", async () => {
 	let resolve!: Function;
 	function* Component(this: Context): Generator<Element> {
 		let i = 0;
@@ -716,27 +716,55 @@ test.skip("async schedule after refresh", async () => {
 		}
 	}
 
-	renderer.render(
+	const result1 = renderer.render(
 		<div>
 			<Component />
 		</div>,
 		document.body,
 	);
 	Assert.is(document.body.innerHTML, "<div></div>");
+	try {
+		await Promise.race([
+			result1,
+			new Promise((_, reject) =>
+				setTimeout(() => reject(new Error("Render timed out")), 100),
+			),
+		]);
+		Assert.unreachable();
+	} catch (err: any) {
+		Assert.is(err.message, "Render timed out");
+		Assert.is(document.body.innerHTML, "<div></div>");
+	}
+
 	resolve();
+	await result1;
+	Assert.is(document.body.innerHTML, "<div><span>Render 0</span></div>");
 	await new Promise((resolve) => setTimeout(resolve));
 	Assert.is(document.body.innerHTML, "<div><span>Render 0</span></div>");
 
-	renderer.render(
+	const result2 = renderer.render(
 		<div>
 			<Component />
 		</div>,
 		document.body,
 	);
-	Assert.is(document.body.innerHTML, "<div><span>Render 0</span></div>");
+
+	Assert.is(document.body.innerHTML, "<div><span>Render 1</span></div>");
+	try {
+		await Promise.race([
+			result2,
+			new Promise((_, reject) =>
+				setTimeout(() => reject(new Error("Render timed out")), 100),
+			),
+		]);
+		Assert.unreachable();
+	} catch (err: any) {
+		Assert.is(err.message, "Render timed out");
+		Assert.is("<div><span>Render 1</span></div>", document.body.innerHTML);
+	}
 
 	resolve();
-	await new Promise((resolve) => setTimeout(resolve));
+	await result2;
 	Assert.is(document.body.innerHTML, "<div><span>Render 1</span></div>");
 });
 

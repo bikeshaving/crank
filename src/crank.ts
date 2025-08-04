@@ -2651,6 +2651,7 @@ function commitComponent<TNode>(
 		}
 
 		if (schedulePromises1) {
+			const didCommit = getFlag(ctx.ret, DidCommit);
 			const scheduleP = (ctx.scheduleP = Promise.all(schedulePromises1).then(
 				() => {
 					setFlag(ctx.ret, IsScheduling, false);
@@ -2659,9 +2660,10 @@ function commitComponent<TNode>(
 						ctx.scheduleP = undefined;
 					}
 
-					//if (getFlag(ctx.ret, DidCommit)) {
-					//	return;
-					//}
+					// TODO: async updating
+					if (didCommit) {
+						return;
+					}
 
 					propagateComponent(ctx, values);
 					if (ctx.ret.fallback) {
@@ -2673,39 +2675,49 @@ function commitComponent<TNode>(
 			));
 
 			schedulePromises.push(scheduleP);
-			value = getValue(ctx.ret, true);
-			if (ctx.ret.fallback) {
-				// TODO: Do we need to follow the whole chain of fallbacks and commit/propagate them?
-				// Or do we need to check if there is another inflight diff when the current inflight diff resolves???
-				const promise = getInflightDiff(ctx.ret.fallback);
-				if (promise) {
-					promise.then(() => {
-						if (getFlag(ctx.ret, IsScheduling)) {
-							const value = commit(
-								ctx.adapter,
-								ctx.host,
-								ctx.ret.fallback!,
-								ctx.parent,
-								ctx.scope,
-								ctx.index,
-								// TODO: should we await schedulePromises we pass in here?
-								[],
-								undefined,
-							);
-							propagateComponent(ctx, wrap(value));
-						}
-					});
+			if (didCommit) {
+				// TODO: async updating
+				setFlag(ctx.ret, IsScheduling, false);
+			} else {
+				if (ctx.ret.fallback) {
+					// When mounting asynchronously, we need to check fallbacks and
+					// manually re-render in the component tree position with these
+					// fallbacks. This is because commits are raced, and the fallback is no
+					// longer in the retainer tree, and therefore the commit will not
+					// commit the fallback’s children.
+					//
+					// TODO: Do we need to follow the whole chain of fallbacks and commit/propagate them?
+					// Or do we need to check if there is another inflight diff when the current inflight diff resolves???
+					const promise = getInflightDiff(ctx.ret.fallback);
+					if (promise) {
+						promise.then(() => {
+							if (getFlag(ctx.ret, IsScheduling)) {
+								const value = commit(
+									ctx.adapter,
+									ctx.host,
+									ctx.ret.fallback!,
+									ctx.parent,
+									ctx.scope,
+									ctx.index,
+									// TODO: should we await schedulePromises we pass in here?
+									[],
+									undefined,
+								);
+								propagateComponent(ctx, wrap(value));
+							}
+						});
+					}
 				}
 			}
 		} else {
 			setFlag(ctx.ret, IsScheduling, false);
 		}
+	}
 
-		// Handles an edge case where refresh() is called during a schedule().
-		if (getFlag(ctx.ret, IsSchedulingRefresh)) {
-			setFlag(ctx.ret, IsSchedulingRefresh, false);
-			value = getValue(ctx.ret, true);
-		}
+	// Handles an edge case where refresh() is called during a schedule().
+	if (getFlag(ctx.ret, IsSchedulingRefresh)) {
+		setFlag(ctx.ret, IsSchedulingRefresh, false);
+		value = getValue(ctx.ret, true);
 	}
 
 	if (getFlag(ctx.ret, IsScheduling)) {
