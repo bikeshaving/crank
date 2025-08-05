@@ -90,7 +90,7 @@ test("generator once", () => {
 	function* Component(this: Context): Generator<Element> {
 		this.schedule(fn);
 		let i = 0;
-		while (true) {
+		for ({} of this) {
 			yield <span>{i++}</span>;
 		}
 	}
@@ -118,7 +118,7 @@ test("generator every", () => {
 	const fn = Sinon.fake();
 	function* Component(this: Context): Generator<Element> {
 		let i = 0;
-		while (true) {
+		for ({} of this) {
 			this.schedule(fn);
 			yield <span>{i++}</span>;
 		}
@@ -274,7 +274,7 @@ test("multiple calls, same fn", () => {
 	function* Component(this: Context): Generator<Element> {
 		this.schedule(fn);
 		this.schedule(fn);
-		while (true) {
+		for ({} of this) {
 			yield <span>Hello</span>;
 		}
 	}
@@ -298,7 +298,7 @@ test("multiple calls, different fns", () => {
 	function* Component(this: Context): Generator<Element> {
 		this.schedule(fn1);
 		this.schedule(fn2);
-		while (true) {
+		for ({} of this) {
 			yield <span>Hello</span>;
 		}
 	}
@@ -323,7 +323,7 @@ test("multiple calls across updates", () => {
 	const fn2 = Sinon.fake();
 	function* Component(this: Context): Generator<Element> {
 		let i = 0;
-		while (true) {
+		for ({} of this) {
 			this.schedule(fn1);
 			this.schedule(fn2);
 			this.schedule(fn2);
@@ -377,7 +377,7 @@ test("refresh", () => {
 	const mock = Sinon.fake();
 	function* Component(this: Context): Generator<Element> {
 		let i = 0;
-		while (true) {
+		for ({} of this) {
 			mock();
 			if (i % 2 === 0) {
 				this.schedule(() => this.refresh());
@@ -414,7 +414,7 @@ test("refresh copy", () => {
 	function* Component(this: Context): Generator<Element> {
 		this.schedule(() => this.refresh());
 		const span = (yield <span />) as HTMLSpanElement;
-		while (true) {
+		for ({} of this) {
 			span.className = "manual";
 			span.textContent = "Hello world";
 			yield <Copy />;
@@ -437,7 +437,7 @@ test("refresh copy alternating", () => {
 	function* Component(this: Context): Generator<Element> {
 		let i = 0;
 		let span: HTMLSpanElement | undefined;
-		while (true) {
+		for ({} of this) {
 			if (span === undefined) {
 				this.schedule(() => this.refresh());
 				span = (yield <span />) as HTMLSpanElement;
@@ -471,7 +471,7 @@ test("component child", () => {
 
 	function* Component(this: Context): Generator<Element> {
 		this.schedule(fn);
-		while (true) {
+		for ({} of this) {
 			yield <Child />;
 		}
 	}
@@ -493,7 +493,7 @@ test("fragment child", () => {
 	const fn = Sinon.fake();
 	function* Component(this: Context): Generator<Element> {
 		this.schedule(fn);
-		while (true) {
+		for ({} of this) {
 			yield (
 				<Fragment>
 					<span>1</span>
@@ -532,7 +532,7 @@ test("async children once", async () => {
 
 	function* Component(this: Context): Generator<Element> {
 		this.schedule(fn);
-		while (true) {
+		for ({} of this) {
 			yield <Child>async</Child>;
 		}
 	}
@@ -559,7 +559,7 @@ test("async children every", async () => {
 
 	function* Component(this: Context): Generator<Element> {
 		let i = 0;
-		while (true) {
+		for ({} of this) {
 			this.schedule(fn);
 			yield <Child>async {i++}</Child>;
 		}
@@ -598,7 +598,7 @@ test("hanging child", async () => {
 
 	function* Component(this: Context): Generator<Element> {
 		this.schedule(fn);
-		while (true) {
+		for ({} of this) {
 			yield <Hanging />;
 		}
 	}
@@ -673,7 +673,7 @@ test("async mount defers insertion", async () => {
 	Assert.is(document.body.innerHTML, "<div><span>Hello world</span></div>");
 });
 
-test("async schedule shows previous while we wait", async () => {
+test("async mount with host fallback", async () => {
 	let resolve!: Function;
 	function* Component(this: Context): Generator<Element> {
 		this.schedule(() => new Promise((r) => (resolve = r)));
@@ -706,6 +706,7 @@ test("async schedule shows previous while we wait", async () => {
 	);
 });
 
+// TODO: async updating
 test("async schedule does not work after initial render", async () => {
 	let resolve!: Function;
 	function* Component(this: Context): Generator<Element> {
@@ -768,7 +769,7 @@ test("async schedule does not work after initial render", async () => {
 	Assert.is(document.body.innerHTML, "<div><span>Render 1</span></div>");
 });
 
-test("async schedule with refresh", async () => {
+test("async mount with refresh", async () => {
 	let resolve!: Function;
 	function* Component(this: Context): Generator<Element> {
 		let i = 0;
@@ -781,15 +782,17 @@ test("async schedule with refresh", async () => {
 		}
 	}
 
-	renderer.render(
+	const result = renderer.render(
 		<div>
 			<Component />
 		</div>,
 		document.body,
-	);
+	) as Promise<HTMLElement>;
 
 	Assert.is(document.body.innerHTML, "<div></div>");
+	Assert.instance(result, Promise);
 	resolve();
+	Assert.is((await result).outerHTML, "<div><span>Render 1</span></div>");
 	await new Promise((resolve) => setTimeout(resolve));
 	Assert.is(document.body.innerHTML, "<div><span>Render 1</span></div>");
 });
@@ -843,7 +846,7 @@ test("async mounting with component fallback", async () => {
 	Assert.is(document.body.innerHTML, "<div><span>Loaded content</span></div>");
 });
 
-test("async mount replacing async scheduling component", async () => {
+test("async mount replacing async mount component fallback", async () => {
 	let resolve2!: Function;
 
 	function* SchedulingComponent1(this: Context): Generator<Element> {
@@ -886,7 +889,7 @@ test("async mount replacing async scheduling component", async () => {
 	Assert.is(document.body.innerHTML, "<div><span>Component 2</span></div>");
 });
 
-test("async mount inside async function", async () => {
+test("async mount inside async component", async () => {
 	let scheduleResolve!: Function;
 
 	async function AsyncComponent(this: Context): Promise<Element> {
@@ -936,7 +939,7 @@ test("async mount inside async function", async () => {
 	);
 });
 
-test("replacing async component that has resolved", async () => {
+test("async mount replacing async component fallback that has already resolved", async () => {
 	let resolve1!: Function;
 	let resolve2!: Function;
 
@@ -999,7 +1002,7 @@ test("replacing async component that has resolved", async () => {
 	);
 });
 
-test("replacing async component that is pending and resolves", async () => {
+test("async mount replacing async component fallback that is pending and resolves", async () => {
 	let resolve1!: Function;
 	let resolve2!: Function;
 
@@ -1066,7 +1069,7 @@ test("replacing async component that is pending and resolves", async () => {
 	Assert.is(await result2, document.body.firstChild);
 });
 
-test("replacing async component that is pending and doesn't resolve", async () => {
+test("async mount replacing async component fallback that is pending and doesn't resolve", async () => {
 	let resolve2!: Function;
 
 	async function AsyncComponent(): Promise<Element> {
