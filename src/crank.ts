@@ -1152,8 +1152,6 @@ function commitChildren<
 				values.push(value);
 				index++;
 			}
-
-			setFlag(child, DidCommit);
 		}
 	}
 
