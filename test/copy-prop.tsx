@@ -2,6 +2,7 @@ import {suite} from "uvu";
 import * as Assert from "uvu/assert";
 import * as Sinon from "sinon";
 
+import {hangs} from "./utils.js";
 import {createElement, Context} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
@@ -147,15 +148,8 @@ test("inflight", async () => {
 		document.body,
 	);
 
-	Assert.is(
-		await Promise.race([
-			p1,
-			p2,
-			new Promise((resolve) => setTimeout(() => resolve("timeout"), 20)),
-		]),
-		"timeout",
-	);
-
+	await hangs(p1);
+	await hangs(p2);
 	resolve();
 	Assert.is(await p1, await p2);
 });
