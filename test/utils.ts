@@ -1,13 +1,15 @@
-import * as Assert from "uvu/assert";
-
+/**
+ * Utility assertion to check that a value does not settle before a specified
+ * timeout.
+ */
 export async function hangs(
 	value: unknown,
 	ms = 100,
-	message: string = "Expected not to resolve before timeout",
-): Promise<unknown> {
+	message: string = "Expected not to fulfill before timeout",
+): Promise<void> {
 	const timeout = Symbol("timeout");
 	try {
-		const result = await Promise.race([
+		await Promise.race([
 			value,
 			new Promise((_, reject) => setTimeout(() => reject(timeout), ms)),
 		]);

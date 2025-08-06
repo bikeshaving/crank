@@ -14,7 +14,7 @@ import {renderer} from "../src/dom.js";
 
 const test = suite("schedule");
 interface ResolvingComponent {
-	(props?: Record<string, any>): Promise<Children>;
+	(props?: Record<string, any>): any;
 	resolves: Array<Function>;
 }
 
@@ -29,12 +29,15 @@ const AsyncComponent = async function ({
 
 AsyncComponent.resolves = [];
 
-const SchedulingComponent = function* (this: Context): Generator<Element> {
+const SchedulingComponent = function* (
+	this: Context,
+	{children}: {children: Children},
+): Generator<Children> {
 	this.schedule(
 		() => new Promise((resolve) => SchedulingComponent.resolves.push(resolve)),
 	);
 	for ({} of this) {
-		yield <span>Scheduling Component</span>;
+		yield children;
 	}
 } as unknown as ResolvingComponent;
 SchedulingComponent.resolves = [];
@@ -806,8 +809,6 @@ test("async mount with refresh", async () => {
 });
 
 test("async mounting with component fallback", async () => {
-	let resolve!: Function;
-
 	function Fallback(): Element {
 		return (
 			<Fragment>
@@ -815,13 +816,6 @@ test("async mounting with component fallback", async () => {
 				<button>Cancel</button>
 			</Fragment>
 		);
-	}
-
-	function* SchedulingComponent(this: Context): Generator<Element> {
-		this.schedule(() => new Promise((r) => (resolve = r)));
-		for ({} of this) {
-			yield <span>Loaded content</span>;
-		}
 	}
 
 	// Initial render with fallback
@@ -839,7 +833,9 @@ test("async mounting with component fallback", async () => {
 	// Replace with async component - should show fallback while scheduling
 	const result2 = renderer.render(
 		<div>
-			<SchedulingComponent />
+			<SchedulingComponent>
+				<span>Loaded content</span>
+			</SchedulingComponent>
 		</div>,
 		document.body,
 	) as Promise<HTMLElement>;
@@ -848,8 +844,7 @@ test("async mounting with component fallback", async () => {
 		"<div><span>Loading...</span><button>Cancel</button></div>",
 	);
 
-	// Resolve async component - should replace fallback
-	resolve();
+	SchedulingComponent.resolves[0]();
 	Assert.is(
 		(await result2).outerHTML,
 		"<div><span>Loaded content</span></div>",
@@ -857,25 +852,17 @@ test("async mounting with component fallback", async () => {
 });
 
 test("async mount replacing async mount component fallback", async () => {
-	let resolve2!: Function;
-
-	function* SchedulingComponent1(this: Context): Generator<Element> {
-		this.schedule(() => new Promise(() => {})); // Never resolves
-		for ({} of this) {
-			yield <span>Component 1</span>;
-		}
+	function SchedulingComponent1(this: Context, ...args: any): Generator<Children> {
+		return SchedulingComponent.apply(this, args) as any;
 	}
 
-	function* SchedulingComponent2(this: Context): Generator<Element> {
-		this.schedule(() => new Promise((r) => (resolve2 = r)));
-		for ({} of this) {
-			yield <span>Component 2</span>;
-		}
+	function SchedulingComponent2(this: Context, ...args: any): Generator<Children> {
+		return SchedulingComponent.apply(this, args);
 	}
 
 	const result1 = renderer.render(
 		<div>
-			<SchedulingComponent1 />
+			<SchedulingComponent1><span>Component 1</span></SchedulingComponent1>
 		</div>,
 		document.body,
 	);
@@ -884,16 +871,18 @@ test("async mount replacing async mount component fallback", async () => {
 	// Replace with second scheduling component before first resolves
 	const result2 = renderer.render(
 		<div>
-			<SchedulingComponent2 />
+			<SchedulingComponent2>
+				<span>Component 2</span>
+			</SchedulingComponent2>
 		</div>,
 		document.body,
 	) as Promise<HTMLElement>;
 	Assert.is(document.body.innerHTML, "<div></div>");
 
 	// Resolve second component (should render)
-	resolve2();
+	SchedulingComponent.resolves[1]();
 	// TODO: result1 should resolve once SchedulingComponent2 resolves
-	//Assert.is((await result1).outerHTML, "<div><span>Component 2</span></div>");
+	//Assert.is((await result1).outerHTML, "<div><span>Scheduling Component</span></div>");
 	await hangs(result1);
 	Assert.is((await result2).outerHTML, "<div><span>Component 2</span></div>");
 });
@@ -939,37 +928,26 @@ test("async mount inside async component", async () => {
 });
 
 test("async mount replacing async component fallback that has already resolved", async () => {
-	let resolve1!: Function;
-	let resolve2!: Function;
-
-	async function AsyncComponent(): Promise<Element> {
-		await new Promise((resolve) => (resolve1 = resolve));
-		return <span>Async Component</span>;
-	}
-
-	function* SchedulingComponent(this: Context): Generator<Element> {
-		this.schedule(() => new Promise((r) => (resolve2 = r)));
-		for ({} of this) {
-			yield <span>Scheduling Component</span>;
-		}
-	}
-
 	const result1 = renderer.render(
 		<div>
-			<AsyncComponent />
+			<AsyncComponent>
+				<span>Async Component</span>
+			</AsyncComponent>
 		</div>,
 		document.body,
 	);
 
 	Assert.instance(result1, Promise);
 	Assert.is(document.body.innerHTML, "");
-	resolve1();
+	AsyncComponent.resolves[0]();
 	await result1;
 	Assert.is(document.body.innerHTML, "<div><span>Async Component</span></div>");
 
 	const result2 = renderer.render(
 		<div>
-			<SchedulingComponent />
+			<SchedulingComponent>
+				<span>Scheduling Component</span>
+			</SchedulingComponent>
 		</div>,
 		document.body,
 	);
@@ -980,7 +958,7 @@ test("async mount replacing async component fallback that has already resolved",
 	await hangs(result2);
 	Assert.is(document.body.innerHTML, "<div><span>Async Component</span></div>");
 
-	resolve2();
+	SchedulingComponent.resolves[0]();
 	await new Promise((resolve) => setTimeout(resolve));
 	Assert.is(
 		document.body.innerHTML,
@@ -989,24 +967,11 @@ test("async mount replacing async component fallback that has already resolved",
 });
 
 test("async mount replacing async component fallback that is pending and resolves", async () => {
-	let resolve1!: Function;
-	let resolve2!: Function;
-
-	async function AsyncComponent(): Promise<Element> {
-		await new Promise((resolve) => (resolve1 = resolve));
-		return <span>Async Component</span>;
-	}
-
-	function* SchedulingComponent(this: Context): Generator<Element> {
-		this.schedule(() => new Promise((r) => (resolve2 = r)));
-		for ({} of this) {
-			yield <span>Scheduling Component</span>;
-		}
-	}
-
 	const result1 = renderer.render(
 		<div>
-			<AsyncComponent />
+			<AsyncComponent>
+				<span>Async Component</span>
+			</AsyncComponent>
 		</div>,
 		document.body,
 	) as unknown as Promise<HTMLElement>;
@@ -1015,14 +980,16 @@ test("async mount replacing async component fallback that is pending and resolve
 	Assert.is(document.body.innerHTML, "");
 	const result2 = renderer.render(
 		<div>
-			<SchedulingComponent />
+			<SchedulingComponent>
+				<span>Scheduling Component</span>
+			</SchedulingComponent>
 		</div>,
 		document.body,
 	) as unknown as Promise<HTMLElement>;
 
 	Assert.is(document.body.innerHTML, "<div></div>");
 	Assert.instance(result2, Promise);
-	resolve1();
+	AsyncComponent.resolves[0]();
 	Assert.is(
 		(await result1).outerHTML,
 		"<div><span>Async Component</span></div>",
@@ -1030,7 +997,7 @@ test("async mount replacing async component fallback that is pending and resolve
 	await hangs(result2);
 	Assert.is(document.body.innerHTML, "<div><span>Async Component</span></div>");
 
-	resolve2();
+	SchedulingComponent.resolves[0]();
 	await new Promise((resolve) => setTimeout(resolve));
 
 	Assert.is(
@@ -1042,23 +1009,12 @@ test("async mount replacing async component fallback that is pending and resolve
 });
 
 test("async mount replacing async component fallback that is pending and doesn't resolve", async () => {
-	let resolve2!: Function;
-
-	async function AsyncComponent(): Promise<Element> {
-		await new Promise(() => {});
-		return <span>Async Component</span>;
-	}
-
-	function* SchedulingComponent(this: Context): Generator<Element> {
-		this.schedule(() => new Promise((r) => (resolve2 = r)));
-		for ({} of this) {
-			yield <span>Scheduling Component</span>;
-		}
-	}
-
+	// Use AsyncComponent that never resolves by not calling its resolve
 	const result1 = renderer.render(
 		<div>
-			<AsyncComponent />
+			<AsyncComponent>
+				<span>Async Component</span>
+			</AsyncComponent>
 		</div>,
 		document.body,
 	) as unknown as Promise<HTMLElement>;
@@ -1067,7 +1023,9 @@ test("async mount replacing async component fallback that is pending and doesn't
 	Assert.is(document.body.innerHTML, "");
 	const result2 = renderer.render(
 		<div>
-			<SchedulingComponent />
+			<SchedulingComponent>
+				<span>Scheduling Component</span>
+			</SchedulingComponent>
 		</div>,
 		document.body,
 	) as unknown as Promise<HTMLElement>;
@@ -1078,7 +1036,7 @@ test("async mount replacing async component fallback that is pending and doesn't
 	await hangs(result2);
 	Assert.is(document.body.innerHTML, "<div></div>");
 
-	resolve2();
+	SchedulingComponent.resolves[0]();
 	Assert.is(
 		(await result2).outerHTML,
 		"<div><span>Scheduling Component</span></div>",
@@ -1094,25 +1052,10 @@ test("async mount replacing async component fallback that is pending and doesn't
 });
 
 test("async mount replacing async tree", async () => {
-	let resolve1!: Function;
-	let resolve2!: Function;
-
-	async function AsyncComponent(): Promise<string> {
-		await new Promise((resolve) => (resolve1 = resolve));
-		return "Async Component";
-	}
-
-	function* SchedulingComponent(this: Context): Generator<Element> {
-		this.schedule(() => new Promise((r) => (resolve2 = r)));
-		for ({} of this) {
-			yield <span>Scheduling Component</span>;
-		}
-	}
-
 	const result1 = renderer.render(
 		<div>
 			<span>
-				<AsyncComponent />
+				<AsyncComponent>Async Component</AsyncComponent>
 			</span>
 		</div>,
 		document.body,
@@ -1122,19 +1065,21 @@ test("async mount replacing async tree", async () => {
 	Assert.is(document.body.innerHTML, "");
 	const result2 = renderer.render(
 		<div>
-			<SchedulingComponent />
+			<SchedulingComponent>
+				<span>Scheduling Component</span>
+			</SchedulingComponent>
 		</div>,
 		document.body,
 	) as unknown as Promise<HTMLElement>;
 
 	Assert.is(document.body.innerHTML, "<div></div>");
 	Assert.instance(result2, Promise);
-	resolve1();
+	AsyncComponent.resolves[0]();
 	Assert.is(
 		(await result1).outerHTML,
 		"<div><span>Async Component</span></div>",
 	);
-	resolve2();
+	SchedulingComponent.resolves[0]();
 	Assert.is(
 		(await result2).outerHTML,
 		"<div><span>Scheduling Component</span></div>",
@@ -1144,7 +1089,7 @@ test("async mount replacing async tree", async () => {
 test("async mount replacing multiple async fallbacks", async () => {
 	const result1 = renderer.render(
 		<div>
-			<span key="1">
+			<span>
 				<AsyncComponent>Render 1</AsyncComponent>
 			</span>
 		</div>,
@@ -1153,7 +1098,7 @@ test("async mount replacing multiple async fallbacks", async () => {
 
 	const result2 = renderer.render(
 		<div>
-			<AsyncComponent key="1">
+			<AsyncComponent>
 				<span>Render 2</span>
 			</AsyncComponent>
 		</div>,
@@ -1162,7 +1107,7 @@ test("async mount replacing multiple async fallbacks", async () => {
 
 	const result3 = renderer.render(
 		<div>
-			<Fragment key="1">
+			<Fragment>
 				<span>
 					<AsyncComponent>Render 3</AsyncComponent>
 				</span>
@@ -1173,7 +1118,9 @@ test("async mount replacing multiple async fallbacks", async () => {
 
 	const result4 = renderer.render(
 		<div>
-			<SchedulingComponent key="1" />
+			<SchedulingComponent>
+				<span>Scheduling Component</span>
+			</SchedulingComponent>
 		</div>,
 		document.body,
 	) as Promise<HTMLElement>;
