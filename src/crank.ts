@@ -1114,23 +1114,34 @@ function commitChildren<
 	let values: Array<TNode> = [];
 	for (let i = 0, children = wrap(parent.children); i < children.length; i++) {
 		let child = children[i];
+		// Skip components that are either scheduling or undiffed (with fallback)
+		let schedulePromises1: Array<unknown> | undefined;
 		while (
 			child &&
 			(getFlag(child, IsScheduling) ||
 				(!getFlag(child, DidDiff) && child.fallback))
 		) {
-			let isScheduling = false;
-			if (getFlag(child, IsScheduling) && child.fallback) {
-				schedulePromises.push(
-					safeRace([child.ctx!.scheduleP, getInflightDiff(child.fallback)]),
+			if (getFlag(child, IsScheduling)) {
+				(schedulePromises1 = schedulePromises1 || []).push(
+					child.ctx!.scheduleP!,
 				);
-				isScheduling = true;
 			}
 
 			child = child.fallback;
-			if (isScheduling) {
-				break;
+			if (schedulePromises1) {
+				if (child) {
+					if (!getFlag(child, DidDiff)) {
+						const inflightDiff = getInflightDiff(child);
+						schedulePromises1.push(inflightDiff);
+					} else {
+						schedulePromises1.push(undefined);
+					}
+				}
 			}
+		}
+
+		if (schedulePromises1 && schedulePromises1.length > 1) {
+			schedulePromises.push(safeRace(schedulePromises1));
 		}
 
 		if (child) {
@@ -2674,23 +2685,34 @@ function commitComponent<TNode>(
 				// TODO: async updating
 				setFlag(ctx.ret, IsScheduling, false);
 			} else {
-				if (ctx.ret.fallback) {
-					// When mounting asynchronously, we need to check fallbacks and
-					// manually re-render in the component tree position with these
-					// fallbacks. This is because commits are raced, and the fallback is no
-					// longer in the retainer tree, and therefore the commit will not
-					// commit the fallback’s children.
-					//
-					// TODO: Do we need to follow the whole chain of fallbacks and commit/propagate them?
-					// Or do we need to check if there is another inflight diff when the current inflight diff resolves???
-					const promise = getInflightDiff(ctx.ret.fallback);
+				// When mounting asynchronously, we need to check fallbacks and
+				// manually re-render in the component tree position with these
+				// fallbacks. This is because commits are raced, and the fallback is no
+				// longer in the retainer tree, and therefore the commit will not
+				// commit the fallback's children.
+				//
+				let ratchet = Infinity;
+				for (
+					let i = 0, fallback = ctx.ret.fallback;
+					fallback && !getFlag(fallback, DidCommit);
+					i++, fallback = fallback.fallback
+				) {
+					const currentFallback = fallback; // Capture specific fallback in closure
+					const fallbackIndex = i; // Capture specific index in closure
+					const promise = getInflightDiff(currentFallback);
 					if (promise) {
 						promise.then(() => {
+							// Ratchet mechanism: only process if this is the shallowest resolved fallback so far
+							if (fallbackIndex > ratchet) {
+								return;
+							}
+							ratchet = Math.min(ratchet, fallbackIndex);
+
 							if (getFlag(ctx.ret, IsScheduling)) {
 								const value = commit(
 									ctx.adapter,
 									ctx.host,
-									ctx.ret.fallback!,
+									currentFallback,
 									ctx.parent,
 									ctx.scope,
 									ctx.index,

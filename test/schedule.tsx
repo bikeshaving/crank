@@ -1,6 +1,7 @@
 import {suite} from "uvu";
 import * as Assert from "uvu/assert";
 import * as Sinon from "sinon";
+import {hangs} from "./utils.js";
 import {
 	createElement,
 	Children,
@@ -12,6 +13,31 @@ import {
 import {renderer} from "../src/dom.js";
 
 const test = suite("schedule");
+interface ResolvingComponent {
+	(props?: Record<string, any>): Promise<Children>;
+	resolves: Array<Function>;
+}
+
+const AsyncComponent = async function ({
+	children,
+}: {
+	children: Children;
+}): Promise<Children> {
+	await new Promise((resolve) => AsyncComponent.resolves.push(resolve));
+	return children;
+} as ResolvingComponent;
+
+AsyncComponent.resolves = [];
+
+const SchedulingComponent = function* (this: Context): Generator<Element> {
+	this.schedule(
+		() => new Promise((resolve) => SchedulingComponent.resolves.push(resolve)),
+	);
+	for ({} of this) {
+		yield <span>Scheduling Component</span>;
+	}
+} as unknown as ResolvingComponent;
+SchedulingComponent.resolves = [];
 
 test.before.each(() => {
 	renderer.render(null, document.body);
@@ -21,6 +47,8 @@ test.before.each(() => {
 test.after.each(() => {
 	renderer.render(null, document.body);
 	document.body.innerHTML = "";
+	AsyncComponent.resolves = [];
+	SchedulingComponent.resolves = [];
 });
 
 test("function once", () => {
@@ -724,18 +752,8 @@ test("async schedule does not work after initial render", async () => {
 		document.body,
 	);
 	Assert.is(document.body.innerHTML, "<div></div>");
-	try {
-		await Promise.race([
-			result1,
-			new Promise((_, reject) =>
-				setTimeout(() => reject(new Error("Render timed out")), 100),
-			),
-		]);
-		Assert.unreachable();
-	} catch (err: any) {
-		Assert.is(err.message, "Render timed out");
-		Assert.is(document.body.innerHTML, "<div></div>");
-	}
+	await hangs(result1);
+	Assert.is(document.body.innerHTML, "<div></div>");
 
 	resolve();
 	await result1;
@@ -751,18 +769,8 @@ test("async schedule does not work after initial render", async () => {
 	);
 
 	Assert.is(document.body.innerHTML, "<div><span>Render 1</span></div>");
-	try {
-		await Promise.race([
-			result2,
-			new Promise((_, reject) =>
-				setTimeout(() => reject(new Error("Render timed out")), 100),
-			),
-		]);
-		Assert.unreachable();
-	} catch (err: any) {
-		Assert.is(err.message, "Render timed out");
-		Assert.is("<div><span>Render 1</span></div>", document.body.innerHTML);
-	}
+	await hangs(result2);
+	Assert.is("<div><span>Render 1</span></div>", document.body.innerHTML);
 
 	resolve();
 	await result2;
@@ -809,7 +817,7 @@ test("async mounting with component fallback", async () => {
 		);
 	}
 
-	function* AsyncComponent(this: Context): Generator<Element> {
+	function* SchedulingComponent(this: Context): Generator<Element> {
 		this.schedule(() => new Promise((r) => (resolve = r)));
 		for ({} of this) {
 			yield <span>Loaded content</span>;
@@ -829,12 +837,12 @@ test("async mounting with component fallback", async () => {
 	);
 
 	// Replace with async component - should show fallback while scheduling
-	renderer.render(
+	const result2 = renderer.render(
 		<div>
-			<AsyncComponent />
+			<SchedulingComponent />
 		</div>,
 		document.body,
-	);
+	) as Promise<HTMLElement>;
 	Assert.is(
 		document.body.innerHTML,
 		"<div><span>Loading...</span><button>Cancel</button></div>",
@@ -842,8 +850,10 @@ test("async mounting with component fallback", async () => {
 
 	// Resolve async component - should replace fallback
 	resolve();
-	await new Promise((resolve) => setTimeout(resolve));
-	Assert.is(document.body.innerHTML, "<div><span>Loaded content</span></div>");
+	Assert.is(
+		(await result2).outerHTML,
+		"<div><span>Loaded content</span></div>",
+	);
 });
 
 test("async mount replacing async mount component fallback", async () => {
@@ -863,30 +873,29 @@ test("async mount replacing async mount component fallback", async () => {
 		}
 	}
 
-	// Render first scheduling component
-	renderer.render(
+	const result1 = renderer.render(
 		<div>
 			<SchedulingComponent1 />
 		</div>,
 		document.body,
 	);
 	Assert.is(document.body.innerHTML, "<div></div>");
-
+	await hangs(result1);
 	// Replace with second scheduling component before first resolves
-	renderer.render(
+	const result2 = renderer.render(
 		<div>
 			<SchedulingComponent2 />
 		</div>,
 		document.body,
-	);
+	) as Promise<HTMLElement>;
 	Assert.is(document.body.innerHTML, "<div></div>");
-
-	// First component never resolves, so should stay empty
 
 	// Resolve second component (should render)
 	resolve2();
-	await new Promise((resolve) => setTimeout(resolve));
-	Assert.is(document.body.innerHTML, "<div><span>Component 2</span></div>");
+	// TODO: result1 should resolve once SchedulingComponent2 resolves
+	//Assert.is((await result1).outerHTML, "<div><span>Component 2</span></div>");
+	await hangs(result1);
+	Assert.is((await result2).outerHTML, "<div><span>Component 2</span></div>");
 });
 
 test("async mount inside async component", async () => {
@@ -911,18 +920,8 @@ test("async mount inside async component", async () => {
 	// Schedule resolves, component should appear
 	await new Promise((resolve) => setTimeout(resolve));
 	Assert.is(document.body.innerHTML, "<div></div>");
-	try {
-		await Promise.race([
-			renderPromise,
-			new Promise((_, reject) =>
-				setTimeout(() => reject(new Error("Render timed out")), 100),
-			),
-		]);
-		Assert.unreachable();
-	} catch (err: any) {
-		Assert.is(err.message, "Render timed out");
-		Assert.is(document.body.innerHTML, "<div></div>");
-	}
+	await hangs(renderPromise);
+	Assert.is(document.body.innerHTML, "<div></div>");
 
 	scheduleResolve();
 	Assert.is(document.body.innerHTML, "<div></div>");
@@ -978,21 +977,8 @@ test("async mount replacing async component fallback that has already resolved",
 	Assert.is(document.body.innerHTML, "<div><span>Async Component</span></div>");
 	Assert.instance(result2, Promise);
 
-	try {
-		await Promise.race([
-			result2,
-			new Promise((_, reject) =>
-				setTimeout(() => reject(new Error("Render timed out")), 100),
-			),
-		]);
-		Assert.unreachable();
-	} catch (err: any) {
-		Assert.is(err.message, "Render timed out");
-		Assert.is(
-			document.body.innerHTML,
-			"<div><span>Async Component</span></div>",
-		);
-	}
+	await hangs(result2);
+	Assert.is(document.body.innerHTML, "<div><span>Async Component</span></div>");
 
 	resolve2();
 	await new Promise((resolve) => setTimeout(resolve));
@@ -1034,7 +1020,6 @@ test("async mount replacing async component fallback that is pending and resolve
 		document.body,
 	) as unknown as Promise<HTMLElement>;
 
-	// This kinda makes sense?
 	Assert.is(document.body.innerHTML, "<div></div>");
 	Assert.instance(result2, Promise);
 	resolve1();
@@ -1042,21 +1027,8 @@ test("async mount replacing async component fallback that is pending and resolve
 		(await result1).outerHTML,
 		"<div><span>Async Component</span></div>",
 	);
-	try {
-		await Promise.race([
-			result2,
-			new Promise((_, reject) =>
-				setTimeout(() => reject(new Error("Render timed out")), 100),
-			),
-		]);
-		Assert.unreachable();
-	} catch (err: any) {
-		Assert.is(err.message, "Render timed out");
-		Assert.is(
-			document.body.innerHTML,
-			"<div><span>Async Component</span></div>",
-		);
-	}
+	await hangs(result2);
+	Assert.is(document.body.innerHTML, "<div><span>Async Component</span></div>");
 
 	resolve2();
 	await new Promise((resolve) => setTimeout(resolve));
@@ -1102,31 +1074,9 @@ test("async mount replacing async component fallback that is pending and doesn't
 
 	Assert.is(document.body.innerHTML, "<div></div>");
 	Assert.instance(result2, Promise);
-	try {
-		await Promise.race([
-			result1,
-			new Promise((_, reject) =>
-				setTimeout(() => reject(new Error("Render timed out")), 100),
-			),
-		]);
-		Assert.unreachable();
-	} catch (err: any) {
-		Assert.is(err.message, "Render timed out");
-		Assert.is(document.body.innerHTML, "<div></div>");
-	}
-
-	try {
-		await Promise.race([
-			result2,
-			new Promise((_, reject) =>
-				setTimeout(() => reject(new Error("Render timed out")), 100),
-			),
-		]);
-		Assert.unreachable();
-	} catch (err: any) {
-		Assert.is(err.message, "Render timed out");
-		Assert.is(document.body.innerHTML, "<div></div>");
-	}
+	await hangs(result1);
+	await hangs(result2);
+	Assert.is(document.body.innerHTML, "<div></div>");
 
 	resolve2();
 	Assert.is(
@@ -1141,6 +1091,111 @@ test("async mount replacing async component fallback that is pending and doesn't
 
 	Assert.is(await result1, document.body.firstChild);
 	Assert.is(await result2, document.body.firstChild);
+});
+
+test("async mount replacing async tree", async () => {
+	let resolve1!: Function;
+	let resolve2!: Function;
+
+	async function AsyncComponent(): Promise<string> {
+		await new Promise((resolve) => (resolve1 = resolve));
+		return "Async Component";
+	}
+
+	function* SchedulingComponent(this: Context): Generator<Element> {
+		this.schedule(() => new Promise((r) => (resolve2 = r)));
+		for ({} of this) {
+			yield <span>Scheduling Component</span>;
+		}
+	}
+
+	const result1 = renderer.render(
+		<div>
+			<span>
+				<AsyncComponent />
+			</span>
+		</div>,
+		document.body,
+	) as unknown as Promise<HTMLElement>;
+
+	Assert.instance(result1, Promise);
+	Assert.is(document.body.innerHTML, "");
+	const result2 = renderer.render(
+		<div>
+			<SchedulingComponent />
+		</div>,
+		document.body,
+	) as unknown as Promise<HTMLElement>;
+
+	Assert.is(document.body.innerHTML, "<div></div>");
+	Assert.instance(result2, Promise);
+	resolve1();
+	Assert.is(
+		(await result1).outerHTML,
+		"<div><span>Async Component</span></div>",
+	);
+	resolve2();
+	Assert.is(
+		(await result2).outerHTML,
+		"<div><span>Scheduling Component</span></div>",
+	);
+});
+
+test("async mount replacing multiple async fallbacks", async () => {
+	const result1 = renderer.render(
+		<div>
+			<span key="1">
+				<AsyncComponent>Render 1</AsyncComponent>
+			</span>
+		</div>,
+		document.body,
+	) as Promise<HTMLElement>;
+
+	const result2 = renderer.render(
+		<div>
+			<AsyncComponent key="1">
+				<span>Render 2</span>
+			</AsyncComponent>
+		</div>,
+		document.body,
+	) as Promise<HTMLElement>;
+
+	const result3 = renderer.render(
+		<div>
+			<Fragment key="1">
+				<span>
+					<AsyncComponent>Render 3</AsyncComponent>
+				</span>
+			</Fragment>
+		</div>,
+		document.body,
+	) as Promise<HTMLElement>;
+
+	const result4 = renderer.render(
+		<div>
+			<SchedulingComponent key="1" />
+		</div>,
+		document.body,
+	) as Promise<HTMLElement>;
+
+	Assert.instance(result1, Promise);
+	Assert.instance(result2, Promise);
+	Assert.instance(result3, Promise);
+	Assert.instance(result4, Promise);
+	Assert.is(document.body.innerHTML, "<div></div>");
+	Assert.is(AsyncComponent.resolves.length, 3);
+	AsyncComponent.resolves[1]();
+	Assert.is((await result1).outerHTML, "<div><span>Render 2</span></div>");
+	Assert.is((await result2).outerHTML, "<div><span>Render 2</span></div>");
+	// TODO: result3 should hang until SchedulingComponent's resolve is called
+	//await hangs(result3);
+	Assert.is(document.body.innerHTML, "<div><span>Render 2</span></div>");
+	SchedulingComponent.resolves[0]();
+	//Assert.is((await result3).outerHTML, "<div><span>Scheduling Component</span></div>");
+	Assert.is(
+		(await result4).outerHTML,
+		"<div><span>Scheduling Component</span></div>",
+	);
 });
 
 test.run();
