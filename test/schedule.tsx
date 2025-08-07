@@ -37,7 +37,7 @@ const AsyncMountingComponent = function* (
 		() =>
 			new Promise((resolve) => AsyncMountingComponent.resolves.push(resolve)),
 	);
-	for ({} of this) {
+	for ({children} of this) {
 		yield children;
 	}
 } as unknown as ResolvingComponent;
@@ -1148,8 +1148,8 @@ test("async mount replacing multiple async fallbacks", async () => {
 	);
 });
 
-test.skip("hanging schedule is cleared by re-render", async () => {
-	// Initial render with hanging schedule
+test("hanging schedule is cleared by re-render", async () => {
+	// Initial render with hanging schedule - defers mounting
 	const result1 = renderer.render(
 		<div>
 			<AsyncMountingComponent>
@@ -1163,7 +1163,7 @@ test.skip("hanging schedule is cleared by re-render", async () => {
 	Assert.is(document.body.innerHTML, "<div></div>"); // Should be empty while scheduling
 	await hangs(result1); // Confirm it's hanging
 
-	// Re-render the same component - should abort the previous schedule
+	// Second render - completes synchronously (non-initial render ignores schedule)
 	const result2 = renderer.render(
 		<div>
 			<AsyncMountingComponent>
@@ -1171,23 +1171,18 @@ test.skip("hanging schedule is cleared by re-render", async () => {
 			</AsyncMountingComponent>
 		</div>,
 		document.body,
-	) as Promise<HTMLElement>;
+	);
 
-	Assert.instance(result2, Promise);
-
-	// The first render should resolve due to schedule abortion (via setTimeout)
-	// Wait a bit for setTimeout to fire
-	await new Promise((resolve) => setTimeout(resolve, 10));
-	Assert.is((await result1).outerHTML, "<div></div>"); // First render gets empty content
-
-	// Second render should still be hanging until we resolve its schedule
-	await hangs(result2);
-
-	// Resolve the second schedule - AsyncMountingComponent.resolves[1] since we have 2 components
-	AsyncMountingComponent.resolves[1]();
-	await new Promise((resolve) => setTimeout(resolve, 10));
-	Assert.is((await result2).outerHTML, "<div><span>Second</span></div>");
+	// Should complete synchronously, not return a promise
+	Assert.not.instance(result2, Promise);
+	Assert.is(
+		(result2 as HTMLElement).outerHTML,
+		"<div><span>Second</span></div>",
+	);
 	Assert.is(document.body.innerHTML, "<div><span>Second</span></div>");
+
+	// First render resolves to superseded state
+	Assert.is((await result1).outerHTML, "<div><span>Second</span></div>");
 });
 
 test.run();

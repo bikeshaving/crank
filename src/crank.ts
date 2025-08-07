@@ -2100,6 +2100,12 @@ function diffComponent<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				`Component <${getTagName(ctx.ret.el.tag)}> is already executing`,
 			);
 			return;
+		} else if (getFlag(ret, IsScheduling)) {
+			if (ctx.schedule) {
+				ctx.schedule.onAbort();
+				ctx.schedule = undefined;
+			}
+			setFlag(ret, IsScheduling, false);
 		}
 	} else {
 		ctx = ret.ctx = new ContextState(adapter, root, host, parent, scope, ret);
@@ -2652,8 +2658,16 @@ function commitComponent<TNode>(
 	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes?: Array<TNode> | undefined,
 ): ElementValue<TNode> {
-	// TODO: detect and abort schedule if the component is re-rendered outside a
-	// schedule callback somehow
+	if (ctx.schedule) {
+		const schedule = ctx.schedule;
+		setTimeout(() => {
+			schedule.onAbort();
+			if (ctx.schedule === schedule) {
+				ctx.schedule = undefined;
+			}
+		});
+	}
+
 	const values = commitChildren(
 		ctx.adapter,
 		ctx.host,
@@ -2665,14 +2679,6 @@ function commitComponent<TNode>(
 		hydrationNodes,
 	);
 
-	// TODO: This doesn't actually ever happen currently because commit() will
-	// always skip scheduling components
-	const previousSchedule = ctx.schedule;
-	if (previousSchedule) {
-		setTimeout(() => {
-			previousSchedule.onAbort();
-		});
-	}
 	if (getFlag(ctx.ret, IsUnmounted)) {
 		return;
 	}
@@ -2701,7 +2707,7 @@ function commitComponent<TNode>(
 					setFlag(ctx.ret, IsScheduling, false);
 					setFlag(ctx.ret, CommittedDuringSchedule, false);
 					// TODO: async updating
-					if (didCommit) {
+					if (didCommit || ctx.schedule !== schedule) {
 						return;
 					}
 
@@ -2893,6 +2899,7 @@ async function unmountComponent(
 	// is unmounting
 	if (ctx.schedule) {
 		ctx.schedule.onAbort();
+		ctx.schedule = undefined;
 	}
 
 	clearEventListeners(ctx.ctx);
