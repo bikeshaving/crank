@@ -2022,26 +2022,6 @@ export class Context<
 		provisions.set(key, value);
 	}
 
-	addEventListener<T extends string>(
-		type: T,
-		listener: MappedEventListenerOrEventListenerObject<T> | null,
-		options?: boolean | AddEventListenerOptions,
-	): void {
-		super.addEventListener(type, listener, options);
-	}
-
-	removeEventListener<T extends string>(
-		type: T,
-		listener: MappedEventListenerOrEventListenerObject<T> | null,
-		options?: EventListenerOptions | boolean,
-	): void {
-		super.removeEventListener(type, listener, options);
-	}
-
-	dispatchEvent<T extends string>(ev: EventMap[T] | Event): boolean {
-		return super.dispatchEvent(ev);
-	}
-
 	[CustomEventTarget.dispatchEventOnSelf](ev: Event): void {
 		const ctx = this[_ContextState];
 		// dispatchEvent calls the prop callback if it exists
@@ -3020,7 +3000,21 @@ function propagateError<TNode>(
 	commitComponent(parent, schedulePromises);
 }
 
-export interface Context extends Crank.Context {}
+export interface Context extends Crank.Context {
+	addEventListener<T extends string>(
+		type: T,
+		listener: MappedEventListenerOrEventListenerObject<T> | null,
+		options?: boolean | AddEventListenerOptions,
+	): void;
+
+	removeEventListener<T extends string>(
+		type: T,
+		listener: MappedEventListenerOrEventListenerObject<T> | null,
+		options?: EventListenerOptions | boolean,
+	): void;
+
+	dispatchEvent<T extends string>(ev: EventMap[T] | Event): boolean;
+}
 
 /**
  * An interface which can be extended to provide strongly typed provisions.
