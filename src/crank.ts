@@ -2665,6 +2665,14 @@ function commitComponent<TNode>(
 		hydrationNodes,
 	);
 
+	// TODO: This doesn't actually ever happen currently because commit() will
+	// always skip scheduling components
+	const previousSchedule = ctx.schedule;
+	if (previousSchedule) {
+		setTimeout(() => {
+			previousSchedule.onAbort();
+		});
+	}
 	if (getFlag(ctx.ret, IsUnmounted)) {
 		return;
 	}
@@ -2688,22 +2696,27 @@ function commitComponent<TNode>(
 
 		if (schedulePromises1) {
 			const didCommit = getFlag(ctx.ret, DidCommit);
-			const scheduleCallbacksP = Promise.all(schedulePromises1).then(() => {
-				setFlag(ctx.ret, IsScheduling, false);
-				setFlag(ctx.ret, CommittedDuringSchedule, false);
-				// TODO: async updating
-				if (didCommit) {
-					return;
-				}
+			const scheduleCallbacksP = Promise.all(schedulePromises1)
+				.then(() => {
+					setFlag(ctx.ret, IsScheduling, false);
+					setFlag(ctx.ret, CommittedDuringSchedule, false);
+					// TODO: async updating
+					if (didCommit) {
+						return;
+					}
 
-				propagateComponent(ctx, values);
-				if (ctx.ret.fallback) {
-					unmount(ctx.adapter, ctx.host, ctx.parent, ctx.ret.fallback, false);
-				}
+					propagateComponent(ctx, values);
+					if (ctx.ret.fallback) {
+						unmount(ctx.adapter, ctx.host, ctx.parent, ctx.ret.fallback, false);
+					}
 
-				ctx.ret.fallback = undefined;
-				ctx.schedule = undefined;
-			});
+					ctx.ret.fallback = undefined;
+				})
+				.finally(() => {
+					if (ctx.schedule === schedule) {
+						ctx.schedule = undefined;
+					}
+				});
 
 			let onAbort!: () => void;
 			const scheduleP = safeRace([
@@ -2711,7 +2724,7 @@ function commitComponent<TNode>(
 				new Promise<void>((resolve) => (onAbort = resolve)),
 			]);
 
-			ctx.schedule = {promise: scheduleP, onAbort};
+			const schedule = (ctx.schedule = {promise: scheduleP, onAbort});
 			schedulePromises.push(scheduleP);
 			if (didCommit) {
 				// TODO: async updating
@@ -2876,7 +2889,8 @@ async function unmountComponent(
 
 	setFlag(ctx.ret, IsUnmounted);
 
-	// If component has pending schedule promises, resolve them since component is unmounting
+	// If component has pending schedule promises, resolve them since component
+	// is unmounting
 	if (ctx.schedule) {
 		ctx.schedule.onAbort();
 	}
@@ -2897,7 +2911,8 @@ async function unmountComponent(
 			return;
 		}
 
-		// we wait for the block so yields resume with the most up to date props
+		// we wait for inflight value so yields resume with the most up to date
+		// props
 		if (ctx.inflight) {
 			await ctx.inflight[1];
 		}
