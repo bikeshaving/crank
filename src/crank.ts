@@ -308,16 +308,17 @@ const IsExecuting = 1 << 4;
 const IsRefreshing = 1 << 5;
 const IsScheduling = 1 << 6;
 const CommittedDuringSchedule = 1 << 7;
-const IsUnmounted = 1 << 8;
+const IsSchedulingFallback = 1 << 8;
+const IsUnmounted = 1 << 9;
 // TODO: Is this flag still necessary or can we use IsUnmounted?
-const IsErrored = 1 << 9;
+const IsErrored = 1 << 10;
 // TODO: Maybe we can get rid of IsSyncGen and IsAsyncGen
-const IsSyncGen = 1 << 10;
-const IsAsyncGen = 1 << 11;
-const IsInForOfLoop = 1 << 12;
-const IsInForAwaitOfLoop = 1 << 13;
-const NeedsToYield = 1 << 14;
-const PropsAvailable = 1 << 15;
+const IsSyncGen = 1 << 11;
+const IsAsyncGen = 1 << 12;
+const IsInForOfLoop = 1 << 13;
+const IsInForAwaitOfLoop = 1 << 14;
+const NeedsToYield = 1 << 15;
+const PropsAvailable = 1 << 16;
 
 function getFlag(ret: Retainer<unknown>, flag: number): boolean {
 	return !!(ret.f & flag);
@@ -1114,28 +1115,70 @@ function commitChildren<
 	let values: Array<TNode> = [];
 	for (let i = 0, children = wrap(parent.children); i < children.length; i++) {
 		let child = children[i];
-		// Skip components that are either scheduling or undiffed (with fallback)
 		let schedulePromises1: Array<unknown> | undefined;
+		let isSchedulingFallback = false;
 		while (
 			child &&
-			(getFlag(child, IsScheduling) ||
-				(!getFlag(child, DidDiff) && child.fallback))
+			((!getFlag(child, DidDiff) && child.fallback) ||
+				getFlag(child, IsScheduling))
 		) {
-			if (getFlag(child, IsScheduling)) {
+			// If the child is scheduling, it is a component retainer so ctx will be
+			// defined.
+			if (getFlag(child, IsScheduling) && child.ctx!.schedule) {
 				(schedulePromises1 = schedulePromises1 || []).push(
-					child.ctx!.scheduleP!,
+					child.ctx!.schedule.promise,
 				);
+				isSchedulingFallback = true;
 			}
 
 			child = child.fallback;
-			if (schedulePromises1) {
-				if (child) {
-					if (!getFlag(child, DidDiff)) {
-						const inflightDiff = getInflightDiff(child);
-						schedulePromises1.push(inflightDiff);
-					} else {
-						schedulePromises1.push(undefined);
-					}
+			// When a scheduling component is mounting asynchronously but diffs
+			// immediately, it will cause previous async diffs to settle due to the
+			// chasing mechanism. This would cause earlier renders to resolve sooner
+			// than expected, because the render would be missing both its usual
+			// children and the children of the scheduling render. Therefore, we need
+			// to defer the settling of previous renders until either that render
+			// settles, or the scheduling component finally finishes scheduling.
+			//
+			// To do this, we take advantage of the fact that commits for aborted
+			// renders will still fire and walk the tree. During that commit walk,
+			// when we encounter a scheduling element, we push a race of the
+			// scheduling promise with the inflight diff of the async fallback
+			// fallback to schedulePromises to delay the initiator.
+			//
+			// However, we need to make sure we only use the inflight diffs for the
+			// fallback which we are trying to delay, in the case of multiple renders
+			// and fallbacks. To do this, we take advantage of the fact that when
+			// multiple renders race (e.g., render1->render2->render3->scheduling
+			// component), the chasing mechanism will call stale commits in reverse
+			// order.
+			//
+			// We can use this ordering to delay to find which fallbacks we need to
+			// add to the race. Each commit call progressively marks an additional
+			// fallback as a scheduling fallback, and does not contribute to the
+			// scheduling promises if it is further than the last seen level.
+			//
+			// This prevents promise contamination where newer renders settle early
+			// due to diffs from older renders.
+			if (schedulePromises1 && isSchedulingFallback && child) {
+				if (!getFlag(child, DidDiff)) {
+					const inflightDiff = getInflightDiff(child);
+					schedulePromises1.push(inflightDiff);
+				} else {
+					// If a scheduling component's fallback has already diffed, we do not
+					// need delay the render.
+					schedulePromises1 = undefined;
+				}
+
+				if (getFlag(child, IsSchedulingFallback)) {
+					// This fallback was marked by a more recent commit - keep processing
+					// deeper levels
+					isSchedulingFallback = true;
+				} else {
+					// First unmarked fallback we've encountered - mark it and stop
+					// contributing to schedulePromises1 for deeper levels.
+					setFlag(child, IsSchedulingFallback, true);
+					isSchedulingFallback = false;
 				}
 			}
 		}
@@ -1681,7 +1724,7 @@ class ContextState<
 	// ancestor host or portal.
 	declare index: number;
 
-	declare scheduleP: Promise<unknown> | undefined;
+	declare schedule: ScheduleController | undefined;
 
 	constructor(
 		adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
@@ -1710,7 +1753,7 @@ class ContextState<
 
 		this.pull = undefined;
 		this.index = 0;
-		this.scheduleP = undefined;
+		this.schedule = undefined;
 	}
 }
 
@@ -2379,6 +2422,11 @@ interface PullController {
 	onChildError: ((err: unknown) => void) | undefined;
 }
 
+interface ScheduleController {
+	promise: Promise<unknown>;
+	onAbort: () => void;
+}
+
 /**
  * The logic for pulling from async generator components when they are in a for
  * await...of loop is implemented here.
@@ -2604,6 +2652,8 @@ function commitComponent<TNode>(
 	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes?: Array<TNode> | undefined,
 ): ElementValue<TNode> {
+	// TODO: detect and abort schedule if the component is re-rendered outside a
+	// schedule callback somehow
 	const values = commitChildren(
 		ctx.adapter,
 		ctx.host,
@@ -2638,56 +2688,60 @@ function commitComponent<TNode>(
 
 		if (schedulePromises1) {
 			const didCommit = getFlag(ctx.ret, DidCommit);
-			const scheduleP = (ctx.scheduleP = Promise.all(schedulePromises1).then(
-				() => {
-					setFlag(ctx.ret, IsScheduling, false);
-					setFlag(ctx.ret, CommittedDuringSchedule, false);
-					if (scheduleP === ctx.scheduleP) {
-						ctx.scheduleP = undefined;
-					}
+			const scheduleCallbacksP = Promise.all(schedulePromises1).then(() => {
+				setFlag(ctx.ret, IsScheduling, false);
+				setFlag(ctx.ret, CommittedDuringSchedule, false);
+				// TODO: async updating
+				if (didCommit) {
+					return;
+				}
 
-					// TODO: async updating
-					if (didCommit) {
-						return;
-					}
+				propagateComponent(ctx, values);
+				if (ctx.ret.fallback) {
+					unmount(ctx.adapter, ctx.host, ctx.parent, ctx.ret.fallback, false);
+				}
 
-					propagateComponent(ctx, values);
-					if (ctx.ret.fallback) {
-						unmount(ctx.adapter, ctx.host, ctx.parent, ctx.ret.fallback, false);
-					}
+				ctx.ret.fallback = undefined;
+				ctx.schedule = undefined;
+			});
 
-					ctx.ret.fallback = undefined;
-				},
-			));
+			let onAbort!: () => void;
+			const scheduleP = safeRace([
+				scheduleCallbacksP,
+				new Promise<void>((resolve) => (onAbort = resolve)),
+			]);
 
+			ctx.schedule = {promise: scheduleP, onAbort};
 			schedulePromises.push(scheduleP);
 			if (didCommit) {
 				// TODO: async updating
 				setFlag(ctx.ret, IsScheduling, false);
 			} else {
-				// When mounting asynchronously, we need to check fallbacks and
-				// manually re-render in the component tree position with these
-				// fallbacks. This is because commits are raced, and the fallback is no
-				// longer in the retainer tree, and therefore the commit will not
-				// commit the fallback's children.
-				//
+				// When mounting asynchronously with an async schedule callback, we
+				// need to check fallbacks and manually re-render in the component
+				// position with the fallback's committed children if it resolves
+				// before scheduling has finished. This is because commits are raced,
+				// and the fallback is no longer in the retainer tree, and therefore
+				// the commit will not commit the fallback's children.
 				let ratchet = Infinity;
 				for (
 					let i = 0, fallback = ctx.ret.fallback;
 					fallback && !getFlag(fallback, DidCommit);
 					i++, fallback = fallback.fallback
 				) {
-					const currentFallback = fallback; // Capture specific fallback in closure
-					const fallbackIndex = i; // Capture specific index in closure
-					const promise = getInflightDiff(currentFallback);
+					const promise = getInflightDiff(fallback);
 					if (promise) {
+						// Capture current fallback and index in closure
+						const currentFallback = fallback;
+						const currentI = i; // Capture specific index in closure
 						promise.then(() => {
-							// Ratchet mechanism: only process if this is the shallowest resolved fallback so far
-							if (fallbackIndex > ratchet) {
+							// Ratchet mechanism: only process if this is the shallowest
+							// resolved fallback so far
+							if (currentI > ratchet) {
 								return;
 							}
-							ratchet = Math.min(ratchet, fallbackIndex);
 
+							ratchet = Math.min(ratchet, currentI);
 							if (getFlag(ctx.ret, IsScheduling)) {
 								const value = commit(
 									ctx.adapter,
@@ -2821,6 +2875,12 @@ async function unmountComponent(
 	}
 
 	setFlag(ctx.ret, IsUnmounted);
+
+	// If component has pending schedule promises, resolve them since component is unmounting
+	if (ctx.schedule) {
+		ctx.schedule.onAbort();
+	}
+
 	clearEventListeners(ctx.ctx);
 	unmountChildren(ctx.adapter, ctx.host, ctx, ctx.ret, isNested);
 	if (didLinger) {

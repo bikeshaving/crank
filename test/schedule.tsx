@@ -852,20 +852,28 @@ test("async mounting with component fallback", async () => {
 });
 
 test("async mount replacing async mount component fallback", async () => {
-	function SchedulingComponent1(this: Context, ...args: any): Generator<Children> {
+	function SchedulingComponent1(
+		this: Context,
+		...args: any
+	): Generator<Children> {
 		return SchedulingComponent.apply(this, args) as any;
 	}
 
-	function SchedulingComponent2(this: Context, ...args: any): Generator<Children> {
+	function SchedulingComponent2(
+		this: Context,
+		...args: any
+	): Generator<Children> {
 		return SchedulingComponent.apply(this, args);
 	}
 
 	const result1 = renderer.render(
 		<div>
-			<SchedulingComponent1><span>Component 1</span></SchedulingComponent1>
+			<SchedulingComponent1>
+				<span>Component 1</span>
+			</SchedulingComponent1>
 		</div>,
 		document.body,
-	);
+	) as Promise<HTMLElement>;
 	Assert.is(document.body.innerHTML, "<div></div>");
 	await hangs(result1);
 	// Replace with second scheduling component before first resolves
@@ -878,12 +886,13 @@ test("async mount replacing async mount component fallback", async () => {
 		document.body,
 	) as Promise<HTMLElement>;
 	Assert.is(document.body.innerHTML, "<div></div>");
+	await hangs(result2);
 
 	// Resolve second component (should render)
 	SchedulingComponent.resolves[1]();
-	// TODO: result1 should resolve once SchedulingComponent2 resolves
-	//Assert.is((await result1).outerHTML, "<div><span>Scheduling Component</span></div>");
-	await hangs(result1);
+	// result1 should resolve once SchedulingComponent2 resolves (because
+	// component was unmounted)
+	Assert.is((await result1).outerHTML, "<div><span>Component 2</span></div>");
 	Assert.is((await result2).outerHTML, "<div><span>Component 2</span></div>");
 });
 
@@ -1134,11 +1143,13 @@ test("async mount replacing multiple async fallbacks", async () => {
 	AsyncComponent.resolves[1]();
 	Assert.is((await result1).outerHTML, "<div><span>Render 2</span></div>");
 	Assert.is((await result2).outerHTML, "<div><span>Render 2</span></div>");
-	// TODO: result3 should hang until SchedulingComponent's resolve is called
-	//await hangs(result3);
+	await hangs(result3);
 	Assert.is(document.body.innerHTML, "<div><span>Render 2</span></div>");
 	SchedulingComponent.resolves[0]();
-	//Assert.is((await result3).outerHTML, "<div><span>Scheduling Component</span></div>");
+	Assert.is(
+		(await result3).outerHTML,
+		"<div><span>Scheduling Component</span></div>",
+	);
 	Assert.is(
 		(await result4).outerHTML,
 		"<div><span>Scheduling Component</span></div>",
