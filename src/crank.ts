@@ -3082,6 +3082,20 @@ function propagateError<TNode>(
 	commitComponent(parent, schedulePromises);
 }
 
+/**
+ * An interface which can be extended to provide strongly typed provisions.
+ * See Context.prototype.consume and Context.prototype.provide.
+ */
+export interface ProvisionMap extends Crank.ProvisionMap {}
+
+export interface EventMap extends Crank.EventMap {}
+
+type MappedEventListener<T extends string> = (ev: Crank.EventMap[T]) => unknown;
+
+type MappedEventListenerOrEventListenerObject<T extends string> =
+	| MappedEventListener<T>
+	| {handleEvent: MappedEventListener<T>};
+
 export interface Context extends Crank.Context {
 	addEventListener<T extends string>(
 		type: T,
@@ -3097,20 +3111,6 @@ export interface Context extends Crank.Context {
 
 	dispatchEvent<T extends string>(ev: EventMap[T] | Event): boolean;
 }
-
-/**
- * An interface which can be extended to provide strongly typed provisions.
- * See Context.prototype.consume and Context.prototype.provide.
- */
-export interface ProvisionMap extends Crank.ProvisionMap {}
-
-export interface EventMap extends Crank.EventMap {}
-
-type MappedEventListener<T extends string> = (ev: Crank.EventMap[T]) => unknown;
-
-type MappedEventListenerOrEventListenerObject<T extends string> =
-	| MappedEventListener<T>
-	| {handleEvent: MappedEventListener<T>};
 
 // TODO: uncomment and use in the Element interface below
 // type CrankElement = Element;
