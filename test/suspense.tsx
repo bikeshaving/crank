@@ -1,13 +1,8 @@
 import {suite} from "uvu";
 import * as Assert from "uvu/assert";
 
-import {
-	createElement,
-	Children,
-	Context,
-	Element,
-	Fragment,
-} from "../src/crank.js";
+import {createElement, Children, Context, Element} from "../src/crank.js";
+import {Suspense, SuspenseList} from "../src/async.js";
 import {renderer} from "../src/dom.js";
 
 const test = suite("suspense");
@@ -20,197 +15,6 @@ test.after.each(() => {
 	renderer.render(null, document.body);
 	document.body.innerHTML = "";
 });
-
-async function SuspenseFallback(
-	this: Context,
-	{
-		children,
-		timeout,
-		suspenseCtx,
-		controller,
-	}: {
-		children: Children;
-		timeout: number;
-		suspenseCtx: Context;
-		controller?: SuspenseListController;
-	},
-): Children {
-	this.schedule(async () => {
-		if (controller) {
-			await controller.scheduleFallback(suspenseCtx);
-		}
-	});
-	await new Promise((resolve) => setTimeout(resolve, timeout));
-	return children;
-}
-
-function SuspenseChildren(
-	this: Context,
-	{
-		children,
-		suspenseCtx,
-		controller,
-	}: {
-		children: Children;
-		suspenseCtx: Context;
-		controller?: SuspenseListController;
-	},
-): Children {
-	this.schedule(async () => {
-		if (controller) {
-			await controller.scheduleChildren(suspenseCtx);
-		}
-	});
-
-	return children;
-}
-
-async function* Suspense(
-	this: Context,
-	{
-		children,
-		fallback,
-		timeout = 100,
-	}: {children: Children; fallback: Children; timeout?: number},
-): AsyncGenerator<Children> {
-	const controller = this.consume(SuspenseListController);
-	if (controller) {
-		controller.register(this);
-	}
-
-	for await ({children, fallback, timeout = 1000} of this) {
-		if (
-			controller &&
-			controller.tail === "hidden" &&
-			controller.revealOrder !== "together"
-		) {
-			// TODO: Yielding null doesn't seem to let async generator components re-render independently...
-			yield <Fragment />;
-		} else if (!controller || controller.revealOrder !== "together") {
-			yield (
-				<SuspenseFallback
-					timeout={timeout}
-					suspenseCtx={this}
-					controller={controller}
-				>
-					{fallback}
-				</SuspenseFallback>
-			);
-		}
-
-		yield (
-			<SuspenseChildren suspenseCtx={this} controller={controller}>
-				{children}
-			</SuspenseChildren>
-		);
-	}
-}
-
-const SuspenseListController = Symbol.for("SuspenseListController");
-
-interface SuspenseListController {
-	revealOrder?: "forwards" | "backwards" | "together";
-	tail?: "collapsed" | "hidden";
-	register(ctx: Context): void;
-	scheduleFallback(ctx: Context): Promise<void>;
-	scheduleChildren(ctx: Context): Promise<void>;
-}
-
-// SuspenseList - coordinates the reveal order of multiple async children
-function* SuspenseList(
-	this: Context,
-	{
-		children,
-		revealOrder = "forwards",
-		tail = "collapsed",
-	}: {
-		children: Children;
-		revealOrder?: "forwards" | "backwards" | "together";
-		tail?: "collapsed" | "hidden";
-	},
-): Generator<Children> {
-	let registering = true;
-	const suspenseItems: Array<{
-		ctx: Context;
-		childrenResolver: () => void;
-		childrenPromise: Promise<void>;
-	}> = [];
-
-	const controller: SuspenseListController = {
-		revealOrder,
-		tail,
-		register(ctx: Context) {
-			if (registering) {
-				let childrenResolver: () => void;
-
-				const childrenPromise = new Promise<void>(
-					(r) => (childrenResolver = r),
-				);
-
-				suspenseItems.push({
-					ctx,
-					childrenResolver: childrenResolver!,
-					childrenPromise,
-				});
-				return;
-			}
-
-			console.error("<Suspense> registered on <SuspenseList> asynchronously.");
-		},
-
-		async scheduleFallback(ctx: Context) {
-			const index = suspenseItems.findIndex((item) => item.ctx === ctx);
-			if (index === -1) {
-				throw new Error("Unregistered Suspense context");
-			}
-
-			// Fallback coordination with tail support
-			if (revealOrder === "forwards") {
-				await Promise.all(
-					suspenseItems.slice(0, index).map((item) => item.childrenPromise),
-				);
-			} else if (revealOrder === "backwards") {
-				await Promise.all(
-					suspenseItems.slice(index + 1).map((item) => item.childrenPromise),
-				);
-			}
-		},
-
-		async scheduleChildren(ctx: Context) {
-			const index = suspenseItems.findIndex((item) => item.ctx === ctx);
-			if (index === -1) {
-				throw new Error("Unregistered Suspense context");
-			}
-
-			// This children content is ready
-			suspenseItems[index].childrenResolver();
-			// Children coordination - determine when this content should show
-			if (revealOrder === "together") {
-				await Promise.all(suspenseItems.map((item) => item.childrenPromise));
-			} else if (revealOrder === "forwards") {
-				await Promise.all(
-					suspenseItems.slice(0, index + 1).map((item) => item.childrenPromise),
-				);
-			} else if (revealOrder === "backwards") {
-				await Promise.all(
-					suspenseItems.slice(index).map((item) => item.childrenPromise),
-				);
-			}
-		},
-	};
-
-	this.provide(SuspenseListController, controller);
-	for ({children, revealOrder = "forwards", tail = "collapsed"} of this) {
-		registering = true;
-		suspenseItems.length = 0;
-		controller.revealOrder = revealOrder;
-		controller.tail = tail;
-		setTimeout(() => {
-			registering = false;
-		});
-		yield children;
-	}
-}
 
 async function Child({timeout}: {timeout?: number}): Promise<Element> {
 	await new Promise((resolve) => setTimeout(resolve, timeout));
@@ -452,7 +256,7 @@ test("nested suspenselist together", async () => {
 });
 
 test("suspenselist forwards mode fast-slow", async () => {
-	const result = renderer.render(
+	renderer.render(
 		<SuspenseList revealOrder="forwards">
 			<Suspense fallback={<span>Loading A...</span>} timeout={50}>
 				<Child timeout={100} />
@@ -462,16 +266,12 @@ test("suspenselist forwards mode fast-slow", async () => {
 			</Suspense>
 		</SuspenseList>,
 		document.body,
-	) as Promise<Array<HTMLElement>>;
-	// Both loading initially
+	);
+
 	await new Promise((resolve) => setTimeout(resolve, 60));
 	Assert.is(document.body.innerHTML, "<span>Loading A...</span>");
 
-	Assert.equal(
-		(await result).map((el) => el.outerHTML),
-		["<span>Child 100</span>", "<span>Loading B...</span>"],
-	);
-
+	await new Promise((resolve) => setTimeout(resolve, 60));
 	Assert.is(
 		document.body.innerHTML,
 		"<span>Child 100</span><span>Loading B...</span>",
@@ -485,7 +285,7 @@ test("suspenselist forwards mode fast-slow", async () => {
 });
 
 test("suspenselist forwards mode slow-fast", async () => {
-	const result = renderer.render(
+	renderer.render(
 		<SuspenseList revealOrder="forwards">
 			<Suspense fallback={<span>Loading A...</span>} timeout={50}>
 				<Child timeout={200} />
@@ -497,27 +297,21 @@ test("suspenselist forwards mode slow-fast", async () => {
 		document.body,
 	) as Promise<Array<HTMLElement>>;
 
-	// Both loading initially
 	await new Promise((resolve) => setTimeout(resolve, 60));
 	Assert.is(document.body.innerHTML, "<span>Loading A...</span>");
 
-	// After second child ready (100ms), should still wait for first
 	await new Promise((resolve) => setTimeout(resolve, 60));
 	Assert.is(document.body.innerHTML, "<span>Loading A...</span>");
 
-	Assert.equal(
-		(await result).map((el) => el.outerHTML),
-		["<span>Child 200</span>", "<span>Child 100</span>"],
-	);
-
+	await new Promise((resolve) => setTimeout(resolve, 120));
 	Assert.is(
 		document.body.innerHTML,
 		"<span>Child 200</span><span>Child 100</span>",
 	);
 });
 
-test("suspenselist backwards mode slow-fast", async () => {
-	const result = renderer.render(
+test("suspenselist backwards mode fast-slow", async () => {
+	renderer.render(
 		<SuspenseList revealOrder="backwards">
 			<Suspense fallback={<span>Loading A...</span>} timeout={50}>
 				<Child timeout={100} />
@@ -529,28 +323,26 @@ test("suspenselist backwards mode slow-fast", async () => {
 		document.body,
 	) as Promise<Array<HTMLElement>>;
 
-	// Both loading initially
 	await new Promise((resolve) => setTimeout(resolve, 60));
 	Assert.is(document.body.innerHTML, "<span>Loading B...</span>");
 
-	Assert.equal(
-		(await result).map((el) => el.outerHTML),
-		["<span>Child 100</span>", "<span>Child 200</span>"],
-	);
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	Assert.is(document.body.innerHTML, "<span>Loading B...</span>");
 
+	await new Promise((resolve) => setTimeout(resolve, 120));
 	Assert.is(
 		document.body.innerHTML,
 		"<span>Child 100</span><span>Child 200</span>",
 	);
 });
 
-test("suspenselist backwards mode fast-slow", async () => {
-	const result = renderer.render(
-		<SuspenseList revealOrder="backwards">
-			<Suspense fallback={<span>Loading A...</span>} timeout={50}>
+test("suspenselist backwards mode slow-fast", async () => {
+	renderer.render(
+		<SuspenseList revealOrder="backwards" timeout={50}>
+			<Suspense fallback={<span>Loading A...</span>}>
 				<Child timeout={200} />
 			</Suspense>
-			<Suspense fallback={<span>Loading B...</span>} timeout={50}>
+			<Suspense fallback={<span>Loading B...</span>}>
 				<Child timeout={100} />
 			</Suspense>
 		</SuspenseList>,
@@ -560,28 +352,28 @@ test("suspenselist backwards mode fast-slow", async () => {
 	await new Promise((resolve) => setTimeout(resolve, 60));
 	Assert.is(document.body.innerHTML, "<span>Loading B...</span>");
 
-	Assert.equal(
-		(await result).map((el) => el.outerHTML),
-		["<span>Loading A...</span>", "<span>Child 100</span>"],
-	);
-
+	await new Promise((resolve) => setTimeout(resolve, 60));
 	Assert.is(
 		document.body.innerHTML,
 		"<span>Loading A...</span><span>Child 100</span>",
 	);
+	await new Promise((resolve) => setTimeout(resolve, 120));
+	Assert.is(
+		document.body.innerHTML,
+		"<span>Child 200</span><span>Child 100</span>",
+	);
 });
 
 test("suspenselist forwards collapsed - at most one fallback", async () => {
-	// Don't await the render - let it progress asynchronously
-	const renderPromise = renderer.render(
+	renderer.render(
 		<SuspenseList revealOrder="forwards" tail="collapsed">
-			<Suspense fallback={<span>Loading A...</span>} timeout={50}>
+			<Suspense fallback={<span>Loading A...</span>}>
 				<Child timeout={100} />
 			</Suspense>
-			<Suspense fallback={<span>Loading B...</span>} timeout={50}>
+			<Suspense fallback={<span>Loading B...</span>}>
 				<Child timeout={300} />
 			</Suspense>
-			<Suspense fallback={<span>Loading C...</span>} timeout={50}>
+			<Suspense fallback={<span>Loading C...</span>}>
 				<Child timeout={200} />
 			</Suspense>
 		</SuspenseList>,
@@ -605,48 +397,114 @@ test("suspenselist forwards collapsed - at most one fallback", async () => {
 		"<span>Child 100</span><span>Loading B...</span>",
 	);
 
-	Assert.equal(
-		(await renderPromise).map((el) => el.outerHTML),
-		[
-			"<span>Child 100</span>",
-			"<span>Child 300</span>",
-			"<span>Child 200</span>",
-		],
-	);
-
+	await new Promise((resolve) => setTimeout(resolve, 100));
 	Assert.is(
 		document.body.innerHTML,
 		"<span>Child 100</span><span>Child 300</span><span>Child 200</span>",
 	);
 });
 
-test("suspenselist forwards hidden - no fallbacks for waiting", async () => {
-	const renderPromise = renderer.render(
-		<SuspenseList revealOrder="forwards" tail="hidden">
-			<Suspense fallback={<span>Loading A...</span>} timeout={50}>
-				<Child timeout={100} />
-			</Suspense>
-			<Suspense fallback={<span>Loading B...</span>} timeout={50}>
+test("suspenselist backwards collapsed - at most one fallback", async () => {
+	renderer.render(
+		<SuspenseList revealOrder="backwards" tail="collapsed" timeout={50}>
+			<Suspense fallback={<span>Loading A...</span>}>
 				<Child timeout={200} />
+			</Suspense>
+			<Suspense fallback={<span>Loading B...</span>}>
+				<Child timeout={300} />
+			</Suspense>
+			<Suspense fallback={<span>Loading C...</span>}>
+				<Child timeout={100} />
 			</Suspense>
 		</SuspenseList>,
 		document.body,
 	) as Promise<Array<HTMLElement>>;
 
-	// TODO: is this correct behavior? Should we at least wait for first child?
-	Assert.is(await renderPromise, undefined);
-	await new Promise((resolve) => setTimeout(resolve, 60));
 	Assert.is(document.body.innerHTML, "");
 
-	// After A ready (100ms), show A and nothing for B (hidden)
 	await new Promise((resolve) => setTimeout(resolve, 60));
-	Assert.is(document.body.innerHTML, "<span>Child 100</span>");
+	Assert.is(document.body.innerHTML, "<span>Loading C...</span>");
 
-	// After B ready (200ms), both show
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	Assert.is(
+		document.body.innerHTML,
+		"<span>Loading B...</span><span>Child 100</span>",
+	);
+
 	await new Promise((resolve) => setTimeout(resolve, 120));
 	Assert.is(
 		document.body.innerHTML,
-		"<span>Child 100</span><span>Child 200</span>",
+		"<span>Loading B...</span><span>Child 100</span>",
+	);
+
+	await new Promise((resolve) => setTimeout(resolve, 100));
+	Assert.is(
+		document.body.innerHTML,
+		"<span>Child 200</span><span>Child 300</span><span>Child 100</span>",
+	);
+});
+
+test("suspenselist forwards hidden - no fallbacks", async () => {
+	renderer.render(
+		<SuspenseList revealOrder="forwards" tail="hidden" timeout={50}>
+			<Suspense fallback={<span>Loading A...</span>}>
+				<Child timeout={100} />
+			</Suspense>
+			<Suspense fallback={<span>Loading B...</span>}>
+				<Child timeout={300} />
+			</Suspense>
+			<Suspense fallback={<span>Loading C...</span>}>
+				<Child timeout={200} />
+			</Suspense>
+		</SuspenseList>,
+		document.body,
+	);
+
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	Assert.is(document.body.innerHTML, "");
+
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	Assert.is(document.body.innerHTML, "<span>Child 100</span>");
+
+	await new Promise((resolve) => setTimeout(resolve, 120));
+	Assert.is(document.body.innerHTML, "<span>Child 100</span>");
+
+	await new Promise((resolve) => setTimeout(resolve, 100));
+	Assert.is(
+		document.body.innerHTML,
+		"<span>Child 100</span><span>Child 300</span><span>Child 200</span>",
+	);
+});
+
+test("suspenselist backwards hidden - no fallbacks", async () => {
+	renderer.render(
+		<SuspenseList revealOrder="backwards" tail="hidden">
+			<Suspense fallback={<span>Loading A...</span>} timeout={50}>
+				<Child timeout={200} />
+			</Suspense>
+			<Suspense fallback={<span>Loading B...</span>} timeout={50}>
+				<Child timeout={300} />
+			</Suspense>
+			<Suspense fallback={<span>Loading C...</span>} timeout={50}>
+				<Child timeout={100} />
+			</Suspense>
+		</SuspenseList>,
+		document.body,
+	);
+
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	Assert.is(document.body.innerHTML, "");
+
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	Assert.is(document.body.innerHTML, "<span>Child 100</span>");
+
+	await new Promise((resolve) => setTimeout(resolve, 120));
+	Assert.is(document.body.innerHTML, "<span>Child 100</span>");
+
+	await new Promise((resolve) => setTimeout(resolve, 100));
+	Assert.is(
+		document.body.innerHTML,
+		"<span>Child 200</span><span>Child 300</span><span>Child 100</span>",
 	);
 });
 
@@ -667,12 +525,213 @@ test("suspenselist together ignores tail", async () => {
 		document.body.innerHTML,
 		"<span>Child 100</span><span>Child 200</span>",
 	);
+});
 
-	// After both ready, both reveal together
-	await new Promise((resolve) => setTimeout(resolve, 120));
-	Assert.is(
-		document.body.innerHTML,
-		"<span>Child 100</span><span>Child 200</span>",
+test("suspenselist forwards resolves with full list", async () => {
+	const result = renderer.render(
+		<SuspenseList revealOrder="forwards" tail="collapsed">
+			<Suspense fallback={<span>Loading A...</span>} timeout={50}>
+				<Child timeout={1} />
+			</Suspense>
+			<Suspense fallback={<span>Loading B...</span>} timeout={50}>
+				<Child timeout={3} />
+			</Suspense>
+			<Suspense fallback={<span>Loading C...</span>} timeout={50}>
+				<Child timeout={2} />
+			</Suspense>
+		</SuspenseList>,
+		document.body,
+	) as Promise<Array<HTMLElement>>;
+
+	Assert.equal(
+		(await result).map((el) => el.outerHTML),
+		["<span>Child 1</span>", "<span>Child 3</span>", "<span>Child 2</span>"],
+	);
+});
+
+test("suspenselist backwards resolves with full list", async () => {
+	const result = renderer.render(
+		<SuspenseList revealOrder="backwards" tail="collapsed">
+			<Suspense fallback={<span>Loading A...</span>} timeout={50}>
+				<Child timeout={1} />
+			</Suspense>
+			<Suspense fallback={<span>Loading B...</span>} timeout={50}>
+				<Child timeout={3} />
+			</Suspense>
+			<Suspense fallback={<span>Loading C...</span>} timeout={50}>
+				<Child timeout={2} />
+			</Suspense>
+		</SuspenseList>,
+		document.body,
+	) as Promise<Array<HTMLElement>>;
+
+	Assert.equal(
+		(await result).map((el) => el.outerHTML),
+		["<span>Child 1</span>", "<span>Child 3</span>", "<span>Child 2</span>"],
+	);
+});
+
+test("suspenselist together resolves with full list", async () => {
+	const result = renderer.render(
+		<SuspenseList revealOrder="together" tail="collapsed">
+			<Suspense fallback={<span>Loading A...</span>} timeout={50}>
+				<Child timeout={1} />
+			</Suspense>
+			<Suspense fallback={<span>Loading B...</span>} timeout={50}>
+				<Child timeout={3} />
+			</Suspense>
+			<Suspense fallback={<span>Loading C...</span>} timeout={50}>
+				<Child timeout={2} />
+			</Suspense>
+		</SuspenseList>,
+		document.body,
+	) as Promise<Array<HTMLElement>>;
+
+	Assert.equal(
+		(await result).map((el) => el.outerHTML),
+		["<span>Child 1</span>", "<span>Child 3</span>", "<span>Child 2</span>"],
+	);
+});
+
+test("suspenselist forwards hidden resolves with full list", async () => {
+	const result = renderer.render(
+		<SuspenseList revealOrder="forwards" tail="hidden">
+			<Suspense fallback={<span>Loading A...</span>} timeout={50}>
+				<Child timeout={100} />
+			</Suspense>
+			<Suspense fallback={<span>Loading B...</span>} timeout={50}>
+				<Child timeout={60} />
+			</Suspense>
+			<Suspense fallback={<span>Loading C...</span>} timeout={50}>
+				<Child timeout={80} />
+			</Suspense>
+		</SuspenseList>,
+		document.body,
+	) as Promise<Array<HTMLElement>>;
+
+	Assert.equal(
+		(await result).map((el) => el.outerHTML),
+		[
+			"<span>Child 100</span>",
+			"<span>Child 60</span>",
+			"<span>Child 80</span>",
+		],
+	);
+});
+
+test("suspenselist backwards hidden resolves with full list", async () => {
+	const result = renderer.render(
+		<SuspenseList revealOrder="backwards" tail="hidden">
+			<Suspense fallback={<span>Loading A...</span>} timeout={50}>
+				<Child timeout={80} />
+			</Suspense>
+			<Suspense fallback={<span>Loading B...</span>} timeout={50}>
+				<Child timeout={60} />
+			</Suspense>
+			<Suspense fallback={<span>Loading C...</span>} timeout={50}>
+				<Child timeout={100} />
+			</Suspense>
+		</SuspenseList>,
+		document.body,
+	) as Promise<Array<HTMLElement>>;
+
+	Assert.equal(
+		(await result).map((el) => el.outerHTML),
+		[
+			"<span>Child 80</span>",
+			"<span>Child 60</span>",
+			"<span>Child 100</span>",
+		],
+	);
+});
+
+test("suspenselist together hidden resolves with full list", async () => {
+	const result = renderer.render(
+		<SuspenseList revealOrder="together" tail="hidden">
+			<Suspense fallback={<span>Loading A...</span>} timeout={50}>
+				<Child timeout={1} />
+			</Suspense>
+			<Suspense fallback={<span>Loading B...</span>} timeout={50}>
+				<Child timeout={3} />
+			</Suspense>
+			<Suspense fallback={<span>Loading C...</span>} timeout={50}>
+				<Child timeout={2} />
+			</Suspense>
+		</SuspenseList>,
+		document.body,
+	) as Promise<Array<HTMLElement>>;
+
+	Assert.equal(
+		(await result).map((el) => el.outerHTML),
+		["<span>Child 1</span>", "<span>Child 3</span>", "<span>Child 2</span>"],
+	);
+});
+
+test("suspenselist forwards resolves with first children", async () => {
+	const result = renderer.render(
+		<SuspenseList revealOrder="forwards" tail="collapsed">
+			<Suspense fallback={<span>Loading A...</span>} timeout={50}>
+				<Child timeout={10} />
+			</Suspense>
+			<Suspense fallback={<span>Loading B...</span>} timeout={50}>
+				<Child timeout={200} />
+			</Suspense>
+			<Suspense fallback={<span>Loading C...</span>} timeout={50}>
+				<Child timeout={300} />
+			</Suspense>
+		</SuspenseList>,
+		document.body,
+	) as Promise<HTMLElement>;
+
+	Assert.equal((await result).outerHTML, "<span>Child 10</span>");
+});
+
+test("suspenselist forwards resolves with children and loading", async () => {
+	const result = renderer.render(
+		<SuspenseList revealOrder="forwards" tail="collapsed" timeout={50}>
+			<Suspense fallback={<span>Loading A...</span>}>
+				<Child timeout={200} />
+			</Suspense>
+			<Suspense fallback={<span>Loading B...</span>}>
+				<Child timeout={10} />
+			</Suspense>
+			<Suspense fallback={<span>Loading C...</span>}>
+				<Child timeout={300} />
+			</Suspense>
+		</SuspenseList>,
+		document.body,
+	) as Promise<Array<HTMLElement>>;
+
+	Assert.equal(
+		(await result).map((el) => el.outerHTML),
+		[
+			"<span>Child 200</span>",
+			"<span>Child 10</span>",
+			"<span>Loading C...</span>",
+		],
+	);
+});
+
+test("suspenselist forwards resolves with children but no loading", async () => {
+	const now = Date.now();
+	const result = renderer.render(
+		<SuspenseList revealOrder="forwards" tail="collapsed" timeout={50}>
+			<Suspense fallback={<span>Loading A...</span>}>
+				<Child timeout={10} />
+			</Suspense>
+			<Suspense fallback={<span>Loading B...</span>}>
+				<Child timeout={20} />
+			</Suspense>
+			<Suspense fallback={<span>Loading C...</span>}>
+				<Child timeout={300} />
+			</Suspense>
+		</SuspenseList>,
+		document.body,
+	) as Promise<Array<HTMLElement>>;
+
+	Assert.equal(
+		(await result).map((el) => el.outerHTML),
+		["<span>Child 10</span>", "<span>Child 20</span>"],
 	);
 });
 

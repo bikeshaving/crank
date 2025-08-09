@@ -1124,4 +1124,50 @@ test("for...of then for...await of then for...of", async () => {
 	Assert.is(afterLoopFn.callCount, 3);
 });
 
+test("for await...of waits for nephew", async () => {
+	let mock = Sinon.fake();
+	async function* Component(this: Context) {
+		for await ({} of this) {
+			yield <div>Children 1</div>;
+			mock();
+			yield <div>Children 2</div>;
+		}
+	}
+
+	let resolveNephew: Function;
+	async function Nephew() {
+		await new Promise((resolve) => (resolveNephew = resolve));
+		return <span>Nephew</span>;
+	}
+
+	function Passthrough() {
+		return (
+			<div>
+				<Nephew />
+			</div>
+		);
+	}
+
+	renderer.render(
+		<div>
+			<div>
+				<Passthrough />
+			</div>
+			<Component />
+		</div>,
+		document.body,
+	);
+
+	Assert.is(document.body.innerHTML, "");
+	await new Promise((resolve) => setTimeout(resolve, 10));
+	Assert.is(document.body.innerHTML, "");
+	Assert.is(mock.callCount, 1);
+	resolveNephew!();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(
+		document.body.innerHTML,
+		"<div><div><div><span>Nephew</span></div></div><div>Children 2</div></div>",
+	);
+});
+
 test.run();
