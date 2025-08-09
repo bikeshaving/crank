@@ -2,11 +2,15 @@ import {suite} from "uvu";
 import * as Assert from "uvu/assert";
 import * as Sinon from "sinon";
 
-const test = suite("sync generator");
-
 import {createElement, Fragment, Raw} from "../src/crank.js";
 import type {Child, Children, Context, Element} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
+
+const test = suite("sync generator");
+test.before.each(() => {
+	renderer.render(null, document.body);
+	document.body.innerHTML = "";
+});
 
 test.after.each(() => {
 	renderer.render(null, document.body);
@@ -743,23 +747,6 @@ test("multiple iterations without a yield throw", () => {
 		"Context iterated twice",
 	);
 	Assert.is(i, 1);
-});
-
-// TODO: it would be nice to test this like other components
-test("for await...of throws", async () => {
-	let ctx: Context;
-	function* Component(this: Context): Generator<null> {
-		ctx = this;
-		yield null;
-	}
-
-	renderer.render(<Component />, document.body);
-	try {
-		await ctx![Symbol.asyncIterator]().next();
-		Assert.unreachable();
-	} catch (err: any) {
-		Assert.is(err.message, "Use for...of in sync generator components");
-	}
 });
 
 test.run();

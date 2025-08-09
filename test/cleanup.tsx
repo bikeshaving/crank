@@ -6,6 +6,10 @@ import {createElement, Context, Element, Fragment} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 const test = suite("cleanup");
+test.before.each(() => {
+	renderer.render(null, document.body);
+	document.body.innerHTML = "";
+});
 
 test.after.each(() => {
 	renderer.render(null, document.body);
@@ -378,6 +382,292 @@ test("cleanup is called even if component is prematurely unmounted", async () =>
 	Assert.is(fn.callCount, 1);
 	await new Promise((r) => setTimeout(r, 200));
 	Assert.is(fn.callCount, 2);
+});
+
+test("components can linger", async () => {
+	let fn = Sinon.fake();
+	let resolve: Function;
+	function* Component(this: Context) {
+		this.cleanup(() => {
+			fn();
+			return new Promise((resolve1) => (resolve = resolve1));
+		});
+		for ({} of this) {
+			yield <span>Hello</span>;
+		}
+	}
+
+	renderer.render(
+		<div>
+			<Component /> <span>World</span>
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Hello</span> <span>World</span></div>",
+	);
+
+	renderer.render(<div />, document.body);
+	Assert.is(fn.callCount, 1);
+	Assert.is(document.body.innerHTML, "<div><span>Hello</span></div>");
+	resolve!();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div></div>");
+});
+
+test("multiple components linger and unmount independently", async () => {
+	let mock1 = Sinon.fake();
+	let mock2 = Sinon.fake();
+	let resolve1!: Function;
+	let resolve2!: Function;
+
+	function* Child1(this: Context) {
+		this.cleanup(() => {
+			mock1();
+			return new Promise((r) => (resolve1 = r));
+		});
+		for ({} of this) yield <span>One</span>;
+	}
+
+	function* Child3(this: Context) {
+		this.cleanup(() => {
+			mock2();
+			return new Promise((r) => (resolve2 = r));
+		});
+		for ({} of this) yield <span>Three</span>;
+	}
+
+	renderer.render(
+		<div>
+			<Child1 />
+			<span>Two</span>
+			<Child3 />
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>One</span><span>Two</span><span>Three</span></div>",
+	);
+
+	renderer.render(
+		<div>
+			<span>Two</span>
+		</div>,
+		document.body,
+	);
+
+	Assert.is(mock1.callCount, 1);
+	Assert.is(mock2.callCount, 1);
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>One</span><span>Two</span><span>Three</span></div>",
+	);
+
+	resolve1();
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>One</span><span>Two</span><span>Three</span></div>",
+	);
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Two</span><span>Three</span></div>",
+	);
+	resolve2();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div><span>Two</span></div>");
+});
+
+test("nested components linger correctly", async () => {
+	let parentCleanup = Sinon.fake();
+	let childCleanup = Sinon.fake();
+	let resolveParent!: Function;
+	let resolveChild!: Function;
+
+	function* Parent(this: Context) {
+		this.cleanup(() => {
+			parentCleanup();
+			return new Promise((r) => (resolveParent = r));
+		});
+		for ({} of this) yield <Child />;
+	}
+
+	function* Child(this: Context) {
+		this.cleanup(() => {
+			childCleanup();
+			return new Promise((r) => (resolveChild = r));
+		});
+		yield <span>Child</span>;
+	}
+
+	renderer.render(
+		<div>
+			<Parent />
+			<span>Sibling</span>
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Child</span><span>Sibling</span></div>",
+	);
+
+	// Remove Parent but keep Child lingering
+	renderer.render(
+		<div>
+			<span>Sibling</span>
+		</div>,
+		document.body,
+	);
+
+	Assert.is(parentCleanup.callCount, 1);
+	Assert.is(childCleanup.callCount, 0);
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Child</span><span>Sibling</span></div>",
+	);
+
+	resolveParent();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Child</span><span>Sibling</span></div>",
+	);
+
+	Assert.is(parentCleanup.callCount, 1);
+	Assert.is(childCleanup.callCount, 1);
+
+	resolveChild();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div><span>Sibling</span></div>");
+});
+
+test("fragments handle lingering components correctly", async () => {
+	let cleanupA = Sinon.fake();
+	let cleanupB = Sinon.fake();
+	let resolveA!: Function;
+	let resolveB!: Function;
+
+	function* ComponentA(this: Context) {
+		this.cleanup(() => {
+			cleanupA();
+			return new Promise((r) => (resolveA = r));
+		});
+		yield <span>A</span>;
+	}
+
+	function* ComponentB(this: Context) {
+		this.cleanup(() => {
+			cleanupB();
+			return new Promise((r) => (resolveB = r));
+		});
+		yield <span>B</span>;
+	}
+
+	renderer.render(
+		<div>
+			<Fragment>
+				<ComponentA />
+				<ComponentB />
+			</Fragment>
+			<span>Sibling</span>
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>A</span><span>B</span><span>Sibling</span></div>",
+	);
+
+	// Remove the fragment, keep lingering components
+	renderer.render(
+		<div>
+			<span>Sibling</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(cleanupA.callCount, 1);
+	Assert.is(cleanupB.callCount, 1);
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>A</span><span>Sibling</span><span>B</span></div>",
+	);
+
+	resolveA();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Sibling</span><span>B</span></div>",
+	);
+
+	resolveB();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div><span>Sibling</span></div>");
+});
+
+test("component without children does not linger", async () => {
+	let cleanup = Sinon.fake();
+	let resolve!: Function;
+
+	function* Component(this: Context, {condition}: {condition: boolean}) {
+		this.cleanup(() => {
+			cleanup();
+			return new Promise((r) => (resolve = r));
+		});
+
+		for ({condition} of this) {
+			if (condition) {
+				yield <span>Child</span>;
+			} else {
+				yield null;
+			}
+		}
+	}
+
+	renderer.render(<Component condition={true} />, document.body);
+	Assert.is(document.body.innerHTML, "<span>Child</span>");
+
+	renderer.render(<Component condition={false} />, document.body);
+	Assert.is(cleanup.callCount, 0);
+	Assert.is(document.body.innerHTML, "");
+	renderer.render(<div />, document.body);
+	Assert.is(cleanup.callCount, 1);
+	resolve();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div></div>");
+});
+
+test("lingering component cleared when parent unmounted", async () => {
+	let cleanup = Sinon.fake();
+
+	function* Child(this: Context) {
+		this.cleanup(() => {
+			cleanup();
+			return new Promise(() => {});
+		});
+		for ({} of this) yield <span>Child</span>;
+	}
+
+	renderer.render(
+		<div>
+			<Child />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>Child</span></div>");
+	renderer.render(<div></div>, document.body);
+	Assert.is(cleanup.callCount, 1);
+	renderer.render(<span>No more div</span>, document.body);
+	Assert.is(document.body.innerHTML, "<span>No more div</span>");
+	Assert.is(cleanup.callCount, 1);
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<span>No more div</span>");
 });
 
 test.run();

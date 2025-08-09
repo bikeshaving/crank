@@ -8,6 +8,8 @@ const test = suite("cascades");
 
 let mock: Sinon.SinonStub;
 test.before.each(() => {
+	renderer.render(null, document.body);
+	document.body.innerHTML = "";
 	mock = Sinon.stub(console, "error");
 });
 
@@ -54,8 +56,8 @@ test("sync generator calls refresh directly", () => {
 
 test("async generator calls refresh directly", async () => {
 	async function* Component(this: Context) {
-		yield <span>Hello</span>;
 		this.refresh();
+		yield <span>Hello</span>;
 		for await (const _ of this) {
 			yield <span>Hello again</span>;
 		}
@@ -168,7 +170,7 @@ test("dispatchEvent in initial schedule callback", () => {
 
 	renderer.render(<Parent />, document.body);
 	Assert.is(document.body.innerHTML, "<div><span>child</span></div>");
-	Assert.is(mock.callCount, 1);
+	Assert.is(mock.callCount, 0);
 });
 
 test.run();

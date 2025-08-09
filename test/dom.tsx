@@ -1,10 +1,14 @@
 /// <ref lib="dom" />
 import {suite} from "uvu";
 import * as Assert from "uvu/assert";
-import {Copy, createElement, Fragment, Portal, Raw} from "../src/crank.js";
+import {Copy, createElement, Fragment, Raw} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 const test = suite("dom");
+test.before.each(() => {
+	renderer.render(null, document.body);
+	document.body.innerHTML = "";
+});
 
 test.after.each(() => {
 	renderer.render(null, document.body);
@@ -83,67 +87,6 @@ test("boolean replaces nested children", () => {
 	Assert.is(document.body.firstChild!.firstChild, div2);
 });
 
-// TODO: move these tests to their own file
-test("portal", () => {
-	const el1 = document.createElement("div");
-	const el2 = document.createElement("div");
-	renderer.render(
-		<div>
-			Hello world
-			<Portal root={el1}>Hello from a portal</Portal>
-			<Portal root={el2}>
-				<div>Hello from another portal</div>
-			</Portal>
-		</div>,
-		document.body,
-	);
-	Assert.is(document.body.innerHTML, "<div>Hello world</div>");
-	Assert.is(el1.innerHTML, "Hello from a portal");
-	Assert.is(el2.innerHTML, "<div>Hello from another portal</div>");
-
-	renderer.render(null, document.body);
-	Assert.is(document.body.innerHTML, "");
-	Assert.is(el1.innerHTML, "");
-	Assert.is(el2.innerHTML, "");
-});
-
-test("portal at root", () => {
-	const div = document.createElement("div");
-	renderer.render(
-		<Portal root={div}>
-			<div>Hello world</div>
-		</Portal>,
-		document.body,
-	);
-	Assert.is(document.body.innerHTML, "");
-	Assert.is(div.innerHTML, "<div>Hello world</div>");
-	renderer.render(null, document.body);
-	Assert.is(document.body.innerHTML, "");
-	Assert.is(div.innerHTML, "");
-});
-
-test("changing root", () => {
-	const el1 = document.createElement("div");
-	const el2 = document.createElement("div");
-	renderer.render(
-		<Portal root={el1}>
-			<div>Hello world</div>
-		</Portal>,
-		document.body,
-	);
-	Assert.is(document.body.innerHTML, "");
-	Assert.is(el1.innerHTML, "<div>Hello world</div>");
-	renderer.render(
-		<Portal root={el2}>
-			<div>Hello world</div>
-		</Portal>,
-		document.body,
-	);
-	Assert.is(document.body.innerHTML, "");
-	Assert.is(el1.innerHTML, "");
-	Assert.is(el2.innerHTML, "<div>Hello world</div>");
-});
-
 test("attrs", () => {
 	renderer.render(
 		<Fragment>
@@ -191,15 +134,25 @@ test("rerender text", () => {
 	renderer.render(<h1>Hello world 1</h1>, document.body);
 	Assert.is(document.body.innerHTML, "<h1>Hello world 1</h1>");
 	const h1 = document.body.firstChild!;
+	Assert.is(h1.childNodes.length, 1);
 	const text = h1.firstChild!;
 	renderer.render(<h1>Hello {"world"} 2</h1>, document.body);
 	Assert.is(document.body.innerHTML, "<h1>Hello world 2</h1>");
 	Assert.is(document.body.firstChild!, h1);
-	Assert.is(document.body.firstChild!.firstChild!, text);
+	Assert.is(h1.childNodes.length, 3);
+	Assert.is(document.body.firstChild!.childNodes[0] as Text, text);
+	Assert.is((document.body.firstChild!.childNodes[0] as Text).data, "Hello ");
+	Assert.is((document.body.firstChild!.childNodes[1] as Text).data, "world");
+	Assert.is((document.body.firstChild!.childNodes[2] as Text).data, " 2");
+	const text1 = document.body.firstChild!.childNodes[1] as Text;
+	const text2 = document.body.firstChild!.childNodes[2] as Text;
 	renderer.render(<h1>Hello world {3}</h1>, document.body);
 	Assert.is(document.body.innerHTML, "<h1>Hello world 3</h1>");
 	Assert.is(document.body.firstChild!, h1);
-	Assert.is(document.body.firstChild!.firstChild!, text);
+	Assert.is(h1.childNodes.length, 2);
+	Assert.is(document.body.firstChild!.childNodes[0] as Text, text);
+	Assert.is(document.body.firstChild!.childNodes[1] as Text, text1);
+	Assert.is(text2.parentNode, null);
 });
 
 test("rerender different child", () => {
@@ -483,6 +436,33 @@ test("raw node", () => {
 	Assert.ok(document.getElementById("raw"));
 });
 
+test("raw changes", () => {
+	let html = '<span id="raw">Hi</span>';
+	renderer.render(
+		<div>
+			Raw: <Raw value={html} />
+		</div>,
+		document.body,
+	);
+	Assert.is(
+		document.body.innerHTML,
+		'<div>Raw: <span id="raw">Hi</span></div>',
+	);
+
+	html = "RAWRAWRAW<div>Raw</div>RAWRAWRAW";
+	renderer.render(
+		<div>
+			Raw: <Raw value={html} />
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		"<div>Raw: RAWRAWRAW<div>Raw</div>RAWRAWRAW</div>",
+	);
+});
+
 test("style text", () => {
 	renderer.render(<div style="display: none" />, document.body);
 	Assert.is(document.body.innerHTML, '<div style="display: none;"></div>');
@@ -512,7 +492,7 @@ test("style text to object", () => {
 	Assert.is(document.body.innerHTML, '<div style="color: goldenrod;"></div>');
 });
 
-test("clearing mutations", () => {
+test("outside DOM mutations", () => {
 	renderer.render(<div />, document.body);
 
 	const div = document.body.firstChild as HTMLDivElement;
@@ -522,9 +502,30 @@ test("clearing mutations", () => {
 	Assert.is(document.body.innerHTML, "<div><span>child</span></div>");
 	renderer.render(<div>{[]}</div>, document.body);
 
-	Assert.is(document.body.innerHTML, "<div></div>");
+	Assert.is(document.body.innerHTML, "<div><span>child</span></div>");
 	div.innerHTML = "<span>child</span>";
 	renderer.render(<div>{null}</div>, document.body);
+	Assert.is(document.body.innerHTML, "<div><span>child</span></div>");
+});
+
+test("unknown attribute", () => {
+	renderer.render(
+		<div
+			unknown="value"
+			unknown-attribute="value"
+			data-unknown-attribute="value"
+		/>,
+		document.body,
+	);
+	Assert.is(
+		document.body.innerHTML,
+		'<div unknown="value" unknown-attribute="value" data-unknown-attribute="value"></div>',
+	);
+
+	const div = document.body.firstChild as HTMLDivElement;
+	Assert.is(div.getAttribute("unknown"), "value");
+	Assert.is(div.getAttribute("unknown-attribute"), "value");
+	Assert.is(div.getAttribute("data-unknown-attribute"), "value");
 });
 
 test("removing props", () => {
@@ -604,6 +605,124 @@ test("attr: prefix forces attribute", () => {
 	renderer.render(<custom-el attr:attr="other" />, document.body);
 	Assert.is(el.getAttribute("attr"), "other");
 	Assert.is(el.attr, "value");
+});
+
+test("object classnames basic", () => {
+	renderer.render(
+		<div
+			class={{
+				active: true,
+				disabled: false,
+				primary: true,
+			}}
+		>
+			Test
+		</div>,
+		document.body,
+	);
+
+	const element = document.querySelector("div")!;
+	Assert.ok(element.classList.contains("active"));
+	Assert.not.ok(element.classList.contains("disabled"));
+	Assert.ok(element.classList.contains("primary"));
+});
+
+test("object classnames update", () => {
+	renderer.render(
+		<div
+			class={{
+				active: true,
+				disabled: false,
+				primary: true,
+			}}
+		>
+			Test
+		</div>,
+		document.body,
+	);
+
+	let element = document.querySelector("div")!;
+	Assert.ok(element.classList.contains("active"));
+	Assert.ok(element.classList.contains("primary"));
+	Assert.not.ok(element.classList.contains("disabled"));
+	Assert.not.ok(element.classList.contains("warning"));
+
+	// Update classnames
+	renderer.render(
+		<div
+			class={{
+				active: false,
+				disabled: true,
+				primary: true,
+				warning: true,
+			}}
+		>
+			Test
+		</div>,
+		document.body,
+	);
+
+	element = document.querySelector("div")!;
+	Assert.not.ok(element.classList.contains("active"));
+	Assert.ok(element.classList.contains("disabled"));
+	Assert.ok(element.classList.contains("primary"));
+	Assert.ok(element.classList.contains("warning"));
+});
+
+test("object classnames string to object transition", () => {
+	// Start with string classnames
+	renderer.render(<div class="string-class other">Test</div>, document.body);
+
+	let element = document.querySelector("div")!;
+	Assert.ok(element.classList.contains("string-class"));
+	Assert.ok(element.classList.contains("other"));
+
+	// Switch to object classnames (should clear old string classes)
+	renderer.render(
+		<div
+			class={{
+				"object-class": true,
+				"new-class": true,
+			}}
+		>
+			Test
+		</div>,
+		document.body,
+	);
+
+	element = document.querySelector("div")!;
+	Assert.not.ok(element.classList.contains("string-class"));
+	Assert.not.ok(element.classList.contains("other"));
+	Assert.ok(element.classList.contains("object-class"));
+	Assert.ok(element.classList.contains("new-class"));
+});
+
+test("object classnames object to string transition", () => {
+	// Start with object classnames
+	renderer.render(
+		<div
+			class={{
+				"object-class": true,
+				"another-class": true,
+			}}
+		>
+			Test
+		</div>,
+		document.body,
+	);
+
+	let element = document.querySelector("div")!;
+	Assert.ok(element.classList.contains("object-class"));
+	Assert.ok(element.classList.contains("another-class"));
+
+	// Switch to string classnames (completely replaces class attribute)
+	renderer.render(<div class="string-class final">Test</div>, document.body);
+
+	element = document.querySelector("div")!;
+	Assert.ok(element.classList.contains("string-class"));
+	Assert.ok(element.classList.contains("final"));
+	Assert.not.ok(element.classList.contains("object-class"));
+	Assert.not.ok(element.classList.contains("another-class"));
 });
 
 test.run();

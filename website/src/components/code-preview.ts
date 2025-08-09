@@ -202,7 +202,9 @@ export function* CodePreview(
 			// TODO: This looks like it could just be an async function somehow
 			loading = true;
 			errorMessage = null;
-			this.flush(() => executeDebounced());
+			if (typeof window !== "undefined") {
+				this.flush(() => executeDebounced());
+			}
 		}
 
 		yield jsx`

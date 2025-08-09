@@ -281,4 +281,31 @@ test("attr: prefix renders correctly", () => {
 	);
 });
 
+test("flush callback called once", async () => {
+	let i = 0;
+	const fn = Sinon.fake();
+	async function Component(this: Context) {
+		this.flush(fn);
+		return <span>{i++}</span>;
+	}
+
+	const result = await renderer.render(
+		<div>
+			<Component />
+		</div>,
+	);
+
+	Assert.is(result, "<div><span>0</span></div>");
+	Assert.is(fn.callCount, 1);
+
+	const result1 = await renderer.render(
+		<div>
+			<Component />
+		</div>,
+	);
+
+	Assert.is(result1, "<div><span>1</span></div>");
+	Assert.is(fn.callCount, 2);
+});
+
 test.run();

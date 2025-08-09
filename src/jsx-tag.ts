@@ -94,7 +94,7 @@ interface ParseResult {
  * Group 5: tag name
  *
  * The comment group must appear first because the tag group can potentially
- * match a comment, so that we can handle tag expressions where we’ve reached
+ * match a comment, so that we can handle tag expressions where we've reached
  * the end of a span.
  */
 const CHILDREN_RE =
@@ -334,7 +334,7 @@ function parse(spans: ArrayLike<string>): ParseResult {
 				}
 
 				case CLOSING_BRACKET_RE: {
-					// We’re in a closing tag and looking for the >.
+					// We're in a closing tag and looking for the >.
 					if (match) {
 						if (i < match.index) {
 							throw new SyntaxError(

@@ -1,11 +1,19 @@
 import {suite} from "uvu";
 import * as Assert from "uvu/assert";
-import * as Sinon from "sinon";
 
 import {createElement, Context, Fragment} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 const test = suite("rearranging");
+test.before.each(() => {
+	renderer.render(null, document.body);
+	document.body.innerHTML = "";
+});
+
+test.after.each(() => {
+	renderer.render(null, document.body);
+	document.body.innerHTML = "";
+});
 
 let headerCtx: Context | undefined;
 function* Header(this: Context) {
@@ -152,32 +160,6 @@ test("changing children nested in an async generator component", async () => {
 	Assert.is(document.body.innerHTML, "<h3>2</h3>");
 	await ctx.refresh();
 	Assert.is(document.body.innerHTML, "<h4>3</h4>");
-});
-
-test("arrange doesn’t get called when the children don’t change", () => {
-	let ctx!: Context;
-	function* Component(this: Context) {
-		ctx = this;
-		for (const _ of this) {
-			yield "unchanging";
-		}
-	}
-
-	const spy = Sinon.spy(
-		(renderer as any)[Symbol.for("crank.RendererImpl")],
-		"arrange",
-	);
-	renderer.render(<Component />, document.body);
-	Assert.is(spy.callCount, 1);
-	Assert.is(document.body.innerHTML, "unchanging");
-	ctx!.refresh();
-	Assert.is(document.body.innerHTML, "unchanging");
-	ctx!.refresh();
-	Assert.is(document.body.innerHTML, "unchanging");
-	ctx!.refresh();
-	Assert.is(document.body.innerHTML, "unchanging");
-	Assert.is(spy.callCount, 1);
-	spy.restore();
 });
 
 test("changing children with a sibling in a fragment", () => {

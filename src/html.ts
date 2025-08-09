@@ -1,5 +1,5 @@
 import {Portal, Renderer} from "./crank.js";
-import type {ElementValue, RendererImpl} from "./crank.js";
+import type {ElementValue, RenderAdapter} from "./crank.js";
 
 const voidTags = new Set([
 	"area",
@@ -53,26 +53,7 @@ function printStyleObject(style: Record<string, any>): string {
 function printAttrs(props: Record<string, any>): string {
 	const attrs: string[] = [];
 	for (let [name, value] of Object.entries(props)) {
-		// TODO: Because printAttrs is called in arrange, special props are not filtered out.
-		// This should be handled by the core library.
-		if (
-			name === "children" ||
-			name === "innerHTML" ||
-			name === "key" ||
-			name === "ref" ||
-			name === "copy" ||
-			name.startsWith("prop:") ||
-			// TODO: Remove deprecated special props
-			name === "crank-key" ||
-			name === "crank-ref" ||
-			name === "crank-static" ||
-			name === "c-key" ||
-			name === "c-ref" ||
-			name === "c-static" ||
-			name === "$key" ||
-			name === "$ref" ||
-			name === "$static"
-		) {
+		if (name === "innerHTML" || name.startsWith("prop:")) {
 			continue;
 		} else if (name === "style") {
 			if (typeof value === "string") {
@@ -104,7 +85,7 @@ function printAttrs(props: Record<string, any>): string {
 }
 
 interface Node {
-	value: string;
+	value?: string;
 }
 
 function join(children: Array<Node | string>): string {
@@ -117,13 +98,13 @@ function join(children: Array<Node | string>): string {
 	return result;
 }
 
-export const impl: Partial<RendererImpl<Node, undefined, any, string>> = {
+export const impl: Partial<RenderAdapter<Node, undefined, Node, string>> = {
 	create(): Node {
 		return {value: ""};
 	},
 
-	text(text: string): string {
-		return escape(text);
+	text({value}: {value: string}): Node {
+		return {value: escape(value)};
 	},
 
 	read(value: ElementValue<Node>): string {
@@ -134,20 +115,27 @@ export const impl: Partial<RendererImpl<Node, undefined, any, string>> = {
 		} else if (typeof value === "string") {
 			return value;
 		} else {
-			return value.value;
+			return value.value || "";
 		}
 	},
 
-	arrange(
-		tag: string | symbol,
-		node: Node,
-		props: Record<string, any>,
-		children: Array<Node | string>,
-	): void {
+	arrange({
+		tag,
+		tagName,
+		node,
+		props,
+		children,
+	}: {
+		tag: string | symbol;
+		tagName: string;
+		node: Node;
+		props: Record<string, any>;
+		children: Array<Node | string>;
+	}): void {
 		if (tag === Portal) {
 			return;
 		} else if (typeof tag !== "string") {
-			throw new Error(`Unknown tag: ${tag.toString()}`);
+			throw new Error(`Unknown tag: ${tagName}`);
 		}
 
 		const attrs = printAttrs(props);

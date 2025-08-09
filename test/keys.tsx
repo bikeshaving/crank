@@ -7,6 +7,10 @@ import type {Context} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 const test = suite("keys");
+test.before.each(() => {
+	renderer.render(null, document.body);
+	document.body.innerHTML = "";
+});
 
 // TODO: write generative tests for this stuff
 test.after.each(() => {
