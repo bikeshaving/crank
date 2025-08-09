@@ -40,8 +40,8 @@ export function lazy<T extends Component>(
 	} as unknown as T;
 }
 
-async function SuspenseEmpty({timeout}: {timeout: number}) {
-	await new Promise((resolve) => setTimeout(resolve, timeout));
+async function SuspenseEmpty() {
+	await new Promise((resolve) => setTimeout(resolve));
 	return null;
 }
 
@@ -95,7 +95,7 @@ function SuspenseChildren(
  *
  * @example
  * ```jsx
- * <Suspense fallback={<div>Loading...</div>} timeout={1000}>
+ * <Suspense fallback={<div>Loading...</div>}>
  *   <AsyncComponent />
  * </Suspense>
  * ```
@@ -113,6 +113,7 @@ export async function* Suspense(
 		controller.register(this);
 	}
 
+	this.provide(SuspenseListController, undefined);
 	for await ({children, fallback, timeout} of this) {
 		if (timeout == null) {
 			if (controller) {
@@ -133,9 +134,7 @@ export async function* Suspense(
 
 		if (controller.revealOrder !== "together") {
 			if (!controller.isHead(this)) {
-				yield createElement(SuspenseEmpty, {
-					timeout: timeout!,
-				});
+				yield createElement(SuspenseEmpty);
 			}
 
 			if (controller.tail !== "hidden") {

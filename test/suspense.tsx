@@ -1,7 +1,8 @@
 import {suite} from "uvu";
 import * as Assert from "uvu/assert";
 
-import {createElement, Children, Context, Element} from "../src/crank.js";
+import {createElement} from "../src/crank.js";
+import type {Context, Element} from "../src/crank.js";
 import {Suspense, SuspenseList} from "../src/async.js";
 import {renderer} from "../src/dom.js";
 
@@ -531,10 +532,10 @@ test("suspenselist forwards resolves with full list", async () => {
 	const result = renderer.render(
 		<SuspenseList revealOrder="forwards" tail="collapsed">
 			<Suspense fallback={<span>Loading A...</span>} timeout={50}>
-				<Child timeout={1} />
+				<Child timeout={10} />
 			</Suspense>
 			<Suspense fallback={<span>Loading B...</span>} timeout={50}>
-				<Child timeout={3} />
+				<Child timeout={1} />
 			</Suspense>
 			<Suspense fallback={<span>Loading C...</span>} timeout={50}>
 				<Child timeout={2} />
@@ -545,7 +546,7 @@ test("suspenselist forwards resolves with full list", async () => {
 
 	Assert.equal(
 		(await result).map((el) => el.outerHTML),
-		["<span>Child 1</span>", "<span>Child 3</span>", "<span>Child 2</span>"],
+		["<span>Child 10</span>", "<span>Child 1</span>", "<span>Child 2</span>"],
 	);
 });
 
@@ -553,13 +554,13 @@ test("suspenselist backwards resolves with full list", async () => {
 	const result = renderer.render(
 		<SuspenseList revealOrder="backwards" tail="collapsed">
 			<Suspense fallback={<span>Loading A...</span>} timeout={50}>
-				<Child timeout={1} />
+				<Child timeout={2} />
 			</Suspense>
 			<Suspense fallback={<span>Loading B...</span>} timeout={50}>
-				<Child timeout={3} />
+				<Child timeout={1} />
 			</Suspense>
 			<Suspense fallback={<span>Loading C...</span>} timeout={50}>
-				<Child timeout={2} />
+				<Child timeout={10} />
 			</Suspense>
 		</SuspenseList>,
 		document.body,
@@ -567,7 +568,7 @@ test("suspenselist backwards resolves with full list", async () => {
 
 	Assert.equal(
 		(await result).map((el) => el.outerHTML),
-		["<span>Child 1</span>", "<span>Child 3</span>", "<span>Child 2</span>"],
+		["<span>Child 2</span>", "<span>Child 1</span>", "<span>Child 10</span>"],
 	);
 });
 
@@ -713,7 +714,6 @@ test("suspenselist forwards resolves with children and loading", async () => {
 });
 
 test("suspenselist forwards resolves with children but no loading", async () => {
-	const now = Date.now();
 	const result = renderer.render(
 		<SuspenseList revealOrder="forwards" tail="collapsed" timeout={50}>
 			<Suspense fallback={<span>Loading A...</span>}>
@@ -727,11 +727,78 @@ test("suspenselist forwards resolves with children but no loading", async () => 
 			</Suspense>
 		</SuspenseList>,
 		document.body,
-	) as Promise<Array<HTMLElement>>;
+	) as Promise<HTMLElement>;
 
-	Assert.equal(
-		(await result).map((el) => el.outerHTML),
-		["<span>Child 10</span>", "<span>Child 20</span>"],
+	Assert.equal((await result).outerHTML, "<span>Child 10</span>");
+});
+
+test("suspense can override suspenselist timeout", async () => {
+	renderer.render(
+		<SuspenseList revealOrder="forwards" tail="collapsed" timeout={200}>
+			<Suspense fallback={<span>Loading A...</span>} timeout={50}>
+				<Child timeout={100} />
+			</Suspense>
+			<Suspense fallback={<span>Loading B...</span>}>
+				<Child timeout={300} />
+			</Suspense>
+		</SuspenseList>,
+		document.body,
+	);
+
+	// First Suspense has timeout=50, should show fallback at 50ms
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	Assert.is(document.body.innerHTML, "<span>Loading A...</span>");
+
+	// Second Suspense inherits timeout=200 from SuspenseList
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	Assert.is(document.body.innerHTML, "<span>Child 100</span>");
+
+	// Second fallback appears after 200ms total (SuspenseList timeout)
+	await new Promise((resolve) => setTimeout(resolve, 100));
+	Assert.is(
+		document.body.innerHTML,
+		"<span>Child 100</span><span>Loading B...</span>",
+	);
+
+	await new Promise((resolve) => setTimeout(resolve, 120));
+	Assert.is(
+		document.body.innerHTML,
+		"<span>Child 100</span><span>Child 300</span>",
+	);
+});
+
+test("suspenselist coordinates nested suspense in components", async () => {
+	function NestedComponent(): Element {
+		return (
+			<Suspense fallback={<span>Loading nested...</span>}>
+				<Child timeout={150} />
+			</Suspense>
+		);
+	}
+
+	renderer.render(
+		<SuspenseList revealOrder="forwards" tail="collapsed" timeout={50}>
+			<Suspense fallback={<span>Loading A...</span>}>
+				<Child timeout={100} />
+			</Suspense>
+			<NestedComponent />
+		</SuspenseList>,
+		document.body,
+	);
+
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	Assert.is(document.body.innerHTML, "<span>Loading A...</span>");
+
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	Assert.is(
+		document.body.innerHTML,
+		"<span>Child 100</span><span>Loading nested...</span>",
+	);
+
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	Assert.is(
+		document.body.innerHTML,
+		"<span>Child 100</span><span>Child 150</span>",
 	);
 });
 
