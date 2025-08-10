@@ -1,5 +1,6 @@
 import {suite} from "uvu";
 import * as Assert from "uvu/assert";
+import * as Sinon from "sinon";
 
 import {createElement} from "../src/crank.js";
 import type {Context, Element} from "../src/crank.js";
@@ -21,11 +22,6 @@ async function Child({timeout}: {timeout?: number}): Promise<Element> {
 	await new Promise((resolve) => setTimeout(resolve, timeout));
 	return <span>Child {timeout}</span>;
 }
-
-test.after.each(() => {
-	renderer.render(null, document.body);
-	document.body.innerHTML = "";
-});
 
 test("basic", async () => {
 	await renderer.render(
@@ -164,6 +160,40 @@ test("suspense with concurrent refresh after refresh fulfills", async () => {
 	Assert.is(document.body.innerHTML, "<span>Loading...</span>");
 	await new Promise((resolve) => setTimeout(resolve, 110));
 	Assert.is(document.body.innerHTML, "<span>Child 200</span>");
+});
+
+test("suspense preserves state on refresh", async () => {
+	let ctx!: Context;
+	const mock = Sinon.stub();
+	async function* StatefulChild(this: Context) {
+		mock();
+		let count = 0;
+		for ({} of this) {
+			await new Promise((resolve) => setTimeout(resolve, 200));
+			yield <span>Render {count++}</span>;
+		}
+	}
+
+	async function* App(this: Context) {
+		ctx = this;
+		for await (const _ of this) {
+			yield (
+				<Suspense fallback={<span>Loading...</span>} timeout={100}>
+					<StatefulChild />
+				</Suspense>
+			);
+		}
+	}
+
+	await renderer.render(<App />, document.body);
+	Assert.is(document.body.innerHTML, "<span>Loading...</span>");
+	await new Promise((resolve) => setTimeout(resolve, 100));
+	Assert.is(document.body.innerHTML, "<span>Render 0</span>");
+	await ctx.refresh();
+	Assert.is(document.body.innerHTML, "<span>Loading...</span>");
+	await new Promise((resolve) => setTimeout(resolve, 100));
+	Assert.is(document.body.innerHTML, "<span>Render 1</span>");
+	Assert.is(mock.callCount, 1);
 });
 
 test("suspenselist basic together mode", async () => {

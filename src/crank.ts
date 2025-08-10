@@ -312,13 +312,14 @@ const IsSchedulingFallback = 1 << 8;
 const IsUnmounted = 1 << 9;
 // TODO: Is this flag still necessary or can we use IsUnmounted?
 const IsErrored = 1 << 10;
+const IsResurrecting = 1 << 11;
 // TODO: Maybe we can get rid of IsSyncGen and IsAsyncGen
-const IsSyncGen = 1 << 11;
-const IsAsyncGen = 1 << 12;
-const IsInForOfLoop = 1 << 13;
-const IsInForAwaitOfLoop = 1 << 14;
-const NeedsToYield = 1 << 15;
-const PropsAvailable = 1 << 16;
+const IsSyncGen = 1 << 12;
+const IsAsyncGen = 1 << 13;
+const IsInForOfLoop = 1 << 14;
+const IsInForAwaitOfLoop = 1 << 15;
+const NeedsToYield = 1 << 16;
+const PropsAvailable = 1 << 17;
 
 function getFlag(ret: Retainer<unknown>, flag: number): boolean {
 	return !!(ret.f & flag);
@@ -372,6 +373,25 @@ class Retainer<TNode, TScope = unknown> {
 		this.graveyard = undefined;
 		this.lingerers = undefined;
 	}
+}
+
+function cloneRetainer<TNode, TScope>(
+	ret: Retainer<TNode, TScope>,
+): Retainer<TNode, TScope> {
+	const clone = new Retainer<TNode, TScope>(ret.el);
+	clone.f = ret.f;
+	clone.ctx = ret.ctx;
+	clone.children = ret.children;
+	clone.fallback = ret.fallback;
+	clone.value = ret.value;
+	clone.scope = ret.scope;
+	clone.oldProps = ret.oldProps;
+	clone.pendingDiff = ret.pendingDiff;
+	clone.onNextDiff = ret.onNextDiff;
+	clone.graveyard = ret.graveyard;
+	clone.lingerers = ret.lingerers;
+
+	return clone;
 }
 
 /**
@@ -800,17 +820,42 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				// re-rendering.
 				childCopied = true;
 			} else {
-				if (typeof ret === "object" && ret.el.tag === child.tag) {
+				if (ret && ret.el.tag === child.tag) {
 					ret.el = child;
 					if (child.props.copy && typeof child.props.copy !== "string") {
 						childCopied = true;
 					}
-				} else {
+				} else if (ret) {
 					// we do not need to add the retainer to the graveyard if it is the
 					// fallback of another retainer
-					const fallback = ret;
+					// search for the tag in fallback chain
+					let candidateFound = false;
+					for (
+						let predecessor = ret, candidate = ret.fallback;
+						candidate;
+						predecessor = candidate, candidate = candidate.fallback
+					) {
+						if (candidate.el.tag === child.tag) {
+							const clone = cloneRetainer(candidate);
+							setFlag(clone, IsResurrecting);
+							predecessor.fallback = clone;
+							const fallback = ret;
+							ret = candidate;
+							ret.el = child;
+							ret.fallback = fallback;
+							setFlag(ret, DidDiff, false);
+							candidateFound = true;
+							break;
+						}
+					}
+
+					if (!candidateFound) {
+						const fallback = ret;
+						ret = new Retainer<TNode, TScope>(child);
+						ret.fallback = fallback;
+					}
+				} else {
 					ret = new Retainer<TNode, TScope>(child);
-					ret.fallback = fallback;
 				}
 
 				if (childCopied && getFlag(ret, DidCommit)) {
@@ -1129,6 +1174,18 @@ function commitChildren<
 					child.ctx!.schedule.promise,
 				);
 				isSchedulingFallback = true;
+			}
+
+			if (!getFlag(child, DidDiff) && getFlag(child, DidCommit)) {
+				// If this child has not diffed but has committed, it means it is a
+				// fallback that is being resurrected.
+				for (const node of getChildValues(child)) {
+					adapter.remove({
+						node,
+						parent: host.value as TNode,
+						isNested: false,
+					});
+				}
 			}
 
 			child = child.fallback;
@@ -1572,6 +1629,10 @@ function unmount<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	if (ret.fallback) {
 		unmount(adapter, host, ctx, ret.fallback, isNested);
 		ret.fallback = undefined;
+	}
+
+	if (getFlag(ret, IsResurrecting)) {
+		return;
 	}
 
 	if (ret.lingerers) {

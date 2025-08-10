@@ -263,15 +263,15 @@ test("fast async function vs slow async generator in async generator", async () 
 	const slowFn = Sinon.fake();
 	async function* Slow(this: Context, {i}: {i: number}): AsyncGenerator<Child> {
 		slowFn();
-		await new Promise((resolve) => setTimeout(resolve, 200));
-		for await (const _ of this) {
+		for await ({i} of this) {
+			await new Promise((resolve) => setTimeout(resolve, 200));
 			yield <span>Slow {i}</span>;
 		}
 	}
 
 	async function* Component(this: Context): AsyncGenerator<Child> {
 		let i = 0;
-		for await (const _ of this) {
+		for await ({} of this) {
 			yield (
 				<div>
 					Hello: <Fast i={i} />
@@ -296,7 +296,7 @@ test("fast async function vs slow async generator in async generator", async () 
 	Assert.is(document.body.innerHTML, "<div>Hello: <span>Slow 1</span></div>");
 	await new Promise((resolve) => setTimeout(resolve, 300));
 	Assert.is(document.body.innerHTML, "<div>Hello: <span>Slow 1</span></div>");
-	Assert.is(slowFn.callCount, 2);
+	Assert.is(slowFn.callCount, 1);
 });
 
 test("fast async generator vs slow async function", async () => {

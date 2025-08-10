@@ -502,6 +502,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 		}
 
 		if (!("innerHTML" in props)) {
+			// TODO: this is slow
 			for (let i = 0; i < children.length; i++) {
 				node.appendChild(children[i]);
 			}
