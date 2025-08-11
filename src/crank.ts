@@ -1582,7 +1582,7 @@ function contextContains(parent: ContextState, child: ContextState): boolean {
 }
 
 // When rendering is done without a root, we use this special anonymous root to
-// make sure flush callbacks are still called.
+// make sure after callbacks are still called.
 const ANONYMOUS_ROOT: any = {};
 function flush<TRoot>(
 	adapter: RenderAdapter<unknown, unknown, TRoot>,
@@ -1592,6 +1592,7 @@ function flush<TRoot>(
 	if (root != null) {
 		adapter.finalize(root);
 	}
+
 	if (typeof root !== "object" || root === null) {
 		root = ANONYMOUS_ROOT;
 	}
@@ -1603,31 +1604,31 @@ function flush<TRoot>(
 	// because they are fully rendered.
 	// If no initiator is provided, we can call and clear all flush callbacks
 	// defined on any context for the root.
-	const flushMap = flushMapByRoot.get(root as any);
-	if (flushMap) {
+	const afterMap = afterMapByRoot.get(root as any);
+	if (afterMap) {
 		if (initiator) {
-			const flushMap1 = new Map<ContextState, Set<Function>>();
-			for (const [ctx, callbacks] of flushMap) {
+			const afterMap1 = new Map<ContextState, Set<Function>>();
+			for (const [ctx, callbacks] of afterMap) {
 				if (
 					!contextContains(initiator, ctx) &&
 					!getFlag(ctx.ret, IsScheduling)
 				) {
 					// copy over callbacks to the new map
-					flushMap.delete(ctx);
-					flushMap1.set(ctx, callbacks);
+					afterMap.delete(ctx);
+					afterMap1.set(ctx, callbacks);
 				}
 			}
 
-			if (flushMap1.size) {
-				flushMapByRoot.set(root as any, flushMap1);
+			if (afterMap1.size) {
+				afterMapByRoot.set(root as any, afterMap1);
 			} else {
-				flushMapByRoot.delete(root as any);
+				afterMapByRoot.delete(root as any);
 			}
 		} else {
-			flushMapByRoot.delete(root as any);
+			afterMapByRoot.delete(root as any);
 		}
 
-		for (const [ctx, callbacks] of flushMap) {
+		for (const [ctx, callbacks] of afterMap) {
 			const value = adapter.read(getValue(ctx.ret));
 			for (const callback of callbacks) {
 				callback(value);
@@ -1731,7 +1732,7 @@ const scheduleMap = new WeakMap<ContextState, Set<Function>>();
 const cleanupMap = new WeakMap<ContextState, Set<Function>>();
 
 // keys are roots
-const flushMapByRoot = new WeakMap<object, Map<ContextState, Set<Function>>>();
+const afterMapByRoot = new WeakMap<object, Map<ContextState, Set<Function>>>();
 
 interface PullController {
 	iterationP: Promise<ChildrenIteratorResult> | undefined;
@@ -2083,22 +2084,30 @@ export class Context<
 	 * Registers a callback which fires when the component's children are fully
 	 * rendered. Will only fire once per callback and update.
 	 */
-	flush(callback: (value: TResult) => unknown): void {
+	after(callback: (value: TResult) => unknown): void {
 		const ctx = this[_ContextState];
 		const root = ctx.root || ANONYMOUS_ROOT;
-		let flushMap = flushMapByRoot.get(root);
-		if (!flushMap) {
-			flushMap = new Map<ContextState, Set<Function>>();
-			flushMapByRoot.set(root, flushMap);
+		let afterMap = afterMapByRoot.get(root);
+		if (!afterMap) {
+			afterMap = new Map<ContextState, Set<Function>>();
+			afterMapByRoot.set(root, afterMap);
 		}
 
-		let callbacks = flushMap.get(ctx);
+		let callbacks = afterMap.get(ctx);
 		if (!callbacks) {
 			callbacks = new Set<Function>();
-			flushMap.set(ctx, callbacks);
+			afterMap.set(ctx, callbacks);
 		}
 
 		callbacks.add(callback);
+	}
+
+	/**
+	 * @deprecated the flush() method has been renamed to after().
+	 */
+	flush(callback: (value: TResult) => unknown): void {
+		console.error("Context.flush() method has been renamed to after()");
+		this.after(callback);
 	}
 
 	/**

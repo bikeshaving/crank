@@ -281,11 +281,11 @@ test("attr: prefix renders correctly", () => {
 	);
 });
 
-test("flush callback called once", async () => {
+test("after callback called once", async () => {
 	let i = 0;
 	const fn = Sinon.fake();
 	async function Component(this: Context) {
-		this.flush(fn);
+		this.after(fn);
 		return <span>{i++}</span>;
 	}
 
