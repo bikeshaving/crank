@@ -1597,13 +1597,11 @@ function flush<TRoot>(
 		root = ANONYMOUS_ROOT;
 	}
 
-	// TODO: make sure we don't call flush with contexts which are async mounting with schedule()
 	// The initiator is the context which initiated the rendering process.
 	// If initiator is defined we call and clear all flush callbacks which are
 	// registered with the initiator or with a child context of the initiator,
 	// because they are fully rendered.
-	// If no initiator is provided, we can call and clear all flush callbacks
-	// defined on any context for the root.
+	// If no initiator is provided, we can call and clear all flush callbacks.
 	const afterMap = afterMapByRoot.get(root as any);
 	if (afterMap) {
 		if (initiator) {
@@ -1803,9 +1801,7 @@ class ContextState<
 	// The onPropsProvided callback is set when a component requests props via
 	// the for await...of loop and props are not available. It is called when
 	// the component is updated or refreshed.
-	declare onPropsProvided:
-		| ((props: ComponentProps<unknown>) => unknown)
-		| undefined;
+	declare onPropsProvided: ((props: unknown) => unknown) | undefined;
 	// The onPropsRequested callback is set when a component is updated or
 	// refreshed but the new props are not consumed. It is called when the new
 	// props are requested.
@@ -1848,11 +1844,17 @@ class ContextState<
 	}
 }
 
+// Public type that only extracts props from component functions
 export type ComponentProps<T> = T extends () => unknown
 	? {}
 	: T extends (props: infer U) => unknown
 		? U
-		: T;
+		: never;
+
+// Public helper type that handles both component functions and regular objects
+export type ComponentPropsOrProps<T> = T extends Function
+	? ComponentProps<T>
+	: T;
 
 const _ContextState = Symbol.for("crank.ContextState");
 
@@ -1889,8 +1891,8 @@ export class Context<
 	/**
 	 * The current props of the associated element.
 	 */
-	get props(): ComponentProps<T> {
-		return this[_ContextState].ret.el.props as ComponentProps<T>;
+	get props(): ComponentPropsOrProps<T> {
+		return this[_ContextState].ret.el.props as ComponentPropsOrProps<T>;
 	}
 
 	/**
@@ -1911,7 +1913,7 @@ export class Context<
 		return getFlag(this[_ContextState].ret, IsUnmounted);
 	}
 
-	*[Symbol.iterator](): Generator<ComponentProps<T>, undefined> {
+	*[Symbol.iterator](): Generator<ComponentPropsOrProps<T>, undefined> {
 		const ctx = this[_ContextState];
 		setFlag(ctx.ret, IsInForOfLoop);
 		try {
@@ -1924,7 +1926,7 @@ export class Context<
 					setFlag(ctx.ret, NeedsToYield);
 				}
 
-				yield ctx.ret.el.props as ComponentProps<T>;
+				yield ctx.ret.el.props as ComponentPropsOrProps<T>;
 			}
 		} finally {
 			setFlag(ctx.ret, IsInForOfLoop, false);
@@ -1932,7 +1934,7 @@ export class Context<
 	}
 
 	async *[Symbol.asyncIterator](): AsyncGenerator<
-		ComponentProps<T>,
+		ComponentPropsOrProps<T>,
 		undefined
 	> {
 		const ctx = this[_ContextState];
@@ -1951,7 +1953,7 @@ export class Context<
 					setFlag(ctx.ret, PropsAvailable, false);
 					yield ctx.ret.el.props;
 				} else {
-					const props = await new Promise<ComponentProps<T>>(
+					const props = await new Promise<ComponentPropsOrProps<T>>(
 						(resolve) =>
 							(ctx.onPropsProvided = resolve as (props: unknown) => unknown),
 					);
