@@ -11,7 +11,7 @@ import {
 	safeRace,
 	unwrap,
 	wrap,
-} from "./utils.js";
+} from "./_utils.js";
 
 const NOOP = (): undefined => {};
 
