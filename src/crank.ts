@@ -2081,7 +2081,13 @@ export class Context<
 	 * Registers a callback which fires when the component's children are
 	 * created. Will only fire once per callback and update.
 	 */
-	schedule(callback: (value: TResult) => unknown): void {
+	schedule(): Promise<TResult>;
+	schedule(callback: (value: TResult) => unknown): void;
+	schedule(callback?: (value: TResult) => unknown): Promise<TResult> | void {
+		if (!callback) {
+			return new Promise<TResult>((resolve) => this.schedule(resolve));
+		}
+
 		const ctx = this[_ContextState];
 		let callbacks = scheduleMap.get(ctx);
 		if (!callbacks) {
@@ -2096,7 +2102,12 @@ export class Context<
 	 * Registers a callback which fires when the component's children are fully
 	 * rendered. Will only fire once per callback and update.
 	 */
-	after(callback: (value: TResult) => unknown): void {
+	after(): Promise<TResult>;
+	after(callback: (value: TResult) => unknown): void;
+	after(callback?: (value: TResult) => unknown): Promise<TResult> | void {
+		if (!callback) {
+			return new Promise<TResult>((resolve) => this.after(resolve));
+		}
 		const ctx = this[_ContextState];
 		const root = ctx.root || ANONYMOUS_ROOT;
 		let afterMap = afterMapByRoot.get(root);
@@ -2117,9 +2128,11 @@ export class Context<
 	/**
 	 * @deprecated the flush() method has been renamed to after().
 	 */
-	flush(callback: (value: TResult) => unknown): void {
+	flush(): Promise<TResult>;
+	flush(callback: (value: TResult) => unknown): void;
+	flush(callback?: (value: TResult) => unknown): Promise<TResult> | void {
 		console.error("Context.flush() method has been renamed to after()");
-		this.after(callback);
+		this.after(callback!);
 	}
 
 	/**
@@ -2127,7 +2140,12 @@ export class Context<
 	 *
 	 * The callback can be async to defer the unmounting of a component's children.
 	 */
-	cleanup(callback: (value: TResult) => unknown): void {
+	cleanup(): Promise<TResult>;
+	cleanup(callback: (value: TResult) => unknown): void;
+	cleanup(callback?: (value: TResult) => unknown): Promise<TResult> | void {
+		if (!callback) {
+			return new Promise<TResult>((resolve) => this.cleanup(resolve));
+		}
 		const ctx = this[_ContextState];
 
 		if (getFlag(ctx.ret, IsUnmounted)) {
