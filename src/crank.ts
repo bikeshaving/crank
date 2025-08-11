@@ -1985,11 +1985,13 @@ export class Context<
 	refresh(): Promise<TResult> | TResult {
 		const ctx = this[_ContextState];
 		if (getFlag(ctx.ret, IsUnmounted)) {
-			console.error(`Component <${getTagName(ctx.ret.el.tag)}> is unmounted`);
+			console.error(
+				`Component <${getTagName(ctx.ret.el.tag)}> is unmounted. Check the isUnmounted property if necessary.`,
+			);
 			return ctx.adapter.read(undefined);
 		} else if (getFlag(ctx.ret, IsExecuting)) {
 			console.error(
-				`Component <${getTagName(ctx.ret.el.tag)}> is already executing`,
+				`Component <${getTagName(ctx.ret.el.tag)}> is already executing Check the isExecuting property if necessary.`,
 			);
 			return ctx.adapter.read(getValue(ctx.ret));
 		}
