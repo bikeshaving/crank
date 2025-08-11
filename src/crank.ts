@@ -1719,6 +1719,17 @@ const cleanupMap = new WeakMap<ContextState, Set<Function>>();
 // keys are roots
 const flushMapByRoot = new WeakMap<object, Map<ContextState, Set<Function>>>();
 
+interface PullController {
+	iterationP: Promise<ChildrenIteratorResult> | undefined;
+	diff: Promise<undefined> | undefined;
+	onChildError: ((err: unknown) => void) | undefined;
+}
+
+interface ScheduleController {
+	promise: Promise<unknown>;
+	onAbort: () => void;
+}
+
 // TODO: allow ContextState to be initialized for testing purposes
 /**
  * @internal
@@ -2483,17 +2494,6 @@ function resumePropsAsyncIterator(
 	return (
 		ctx.pull && ctx.pull.iterationP && ctx.pull.iterationP.then(NOOP, NOOP)
 	);
-}
-
-interface PullController {
-	iterationP: Promise<ChildrenIteratorResult> | undefined;
-	diff: Promise<undefined> | undefined;
-	onChildError: ((err: unknown) => void) | undefined;
-}
-
-interface ScheduleController {
-	promise: Promise<unknown>;
-	onAbort: () => void;
 }
 
 /**
