@@ -1080,6 +1080,7 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	let value: ElementValue<TNode>;
 	let skippedHydrationNodes: Array<TNode> | undefined;
 	if (
+		hydrationNodes &&
 		el.props.hydration != null &&
 		!el.props.hydration &&
 		typeof el.props.hydration !== "string"
