@@ -542,7 +542,7 @@ export interface RenderAdapter<
 	}): void;
 
 	// TODO: rename to parentNode
-	remove(data: {node: TNode; parent: TNode; isNested: boolean}): void;
+	remove(data: {node: TNode; parentNode: TNode; isNested: boolean}): void;
 
 	read(value: ElementValue<TNode>): TResult;
 
@@ -1186,7 +1186,7 @@ function commitChildren<
 				for (const node of getChildValues(child)) {
 					adapter.remove({
 						node,
-						parent: host.value as TNode,
+						parentNode: host.value as TNode,
 						isNested: false,
 					});
 				}
@@ -1319,7 +1319,7 @@ function commitRaw<TNode, TScope>(
 			const oldNode = oldNodes[i];
 			adapter.remove({
 				node: oldNode,
-				parent: host.value as TNode,
+				parentNode: host.value as TNode,
 				isNested: false,
 			});
 		}
@@ -1406,7 +1406,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 					for (let i = 0; i < childHydrationNodes.length; i++) {
 						adapter.remove({
 							node: childHydrationNodes[i],
-							parent: node,
+							parentNode: node,
 							isNested: false,
 						});
 					}
@@ -1441,7 +1441,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 					for (let i = 0; i < childHydrationNodes.length; i++) {
 						adapter.remove({
 							node: childHydrationNodes[i],
-							parent: node,
+							parentNode: node,
 							isNested: false,
 						});
 					}
@@ -1675,7 +1675,7 @@ function unmount<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 			}
 			adapter.remove({
 				node: ret.value as TNode,
-				parent: host.value as TNode,
+				parentNode: host.value as TNode,
 				isNested,
 			});
 		}
@@ -2801,9 +2801,9 @@ function commitComponent<TNode>(
 
 	setFlag(ctx.ret, IsUpdating, false);
 	setFlag(ctx.ret, DidCommit);
-	// We always use getValue() instead of the unwrapping values because
-	// schedule() callbacks might call refresh() and cause the values to be
-	// stale.
+	// We always use getValue() instead of the unwrapping values because there
+	// are various ways in which the values could have been updated, especially
+	// if schedule callbacks call refresh() or async mounting is happening.
 	return getValue(ctx.ret, true);
 }
 
