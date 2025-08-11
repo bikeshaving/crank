@@ -1143,6 +1143,62 @@ test("async mount replacing multiple async fallbacks", async () => {
 	);
 });
 
+test("async mount replacing stateful component", async () => {
+	let statefulCtx: Context;
+	function* StatefulComponent(this: Context): Generator<Element> {
+		statefulCtx = this;
+		let i = 0;
+		for ({} of this) {
+			yield <span>Stateful {i++}</span>;
+		}
+	}
+
+	// Initial render with stateful component
+	renderer.render(
+		<div>
+			<div>
+				<StatefulComponent />
+			</div>
+		</div>,
+		document.body,
+	);
+	Assert.is(
+		document.body.innerHTML,
+		"<div><div><span>Stateful 0</span></div></div>",
+	);
+
+	// Replace with async component - should show nothing while scheduling
+	const result2 = renderer.render(
+		<div>
+			<AsyncMountingComponent>
+				<span>Scheduling Component</span>
+			</AsyncMountingComponent>
+		</div>,
+		document.body,
+	) as Promise<HTMLElement>;
+	Assert.is(
+		document.body.innerHTML,
+		"<div><div><span>Stateful 0</span></div></div>",
+	);
+	await hangs(result2);
+	statefulCtx!.refresh();
+	Assert.is(
+		document.body.innerHTML,
+		"<div><div><span>Stateful 1</span></div></div>",
+	);
+	statefulCtx!.refresh();
+	Assert.is(
+		document.body.innerHTML,
+		"<div><div><span>Stateful 2</span></div></div>",
+	);
+
+	AsyncMountingComponent.resolves[0]();
+	Assert.is(
+		(await result2).outerHTML,
+		"<div><span>Scheduling Component</span></div>",
+	);
+});
+
 test("hanging schedule causes commits to queue", async () => {
 	// Initial render with hanging schedule - defers mounting
 	const result1 = renderer.render(
