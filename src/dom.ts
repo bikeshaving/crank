@@ -502,9 +502,15 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 		}
 
 		if (!("innerHTML" in props)) {
-			// TODO: this is slow
+			let oldChild = node.firstChild;
 			for (let i = 0; i < children.length; i++) {
-				node.appendChild(children[i]);
+				const newChild = children[i];
+				if (oldChild === newChild) {
+					// the child is already in the right place, so we can skip it
+					oldChild = oldChild.nextSibling;
+				} else {
+					node.insertBefore(newChild, oldChild);
+				}
 			}
 		}
 	},

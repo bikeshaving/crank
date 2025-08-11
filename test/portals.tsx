@@ -93,7 +93,7 @@ test("portal with rendered page", () => {
 
 	Assert.is(
 		document.body.innerHTML,
-		`<div id="portal"><button>Click</button></div><div>Hello world</div>`,
+		`<div>Hello world</div><div id="portal"><button>Click</button></div>`,
 	);
 	Assert.is(portal.firstChild, button);
 	Assert.is(portal.innerHTML, `<button>Click</button>`);

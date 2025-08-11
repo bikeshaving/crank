@@ -652,9 +652,9 @@ test("portals are not hydrated by default", () => {
 	);
 	Assert.is(
 		document.body.innerHTML,
-		`<div id="app">Before After</div><div id="portal"><button>Server</button><button>Client</button></div>`,
+		`<div id="app">Before After</div><div id="portal"><button>Client</button><button>Server</button></div>`,
 	);
-	Assert.is(portal.innerHTML, `<button>Server</button><button>Client</button>`);
+	Assert.is(portal.innerHTML, `<button>Client</button><button>Server</button>`);
 	button.click();
 	Assert.is(onclick.callCount, 0);
 	Assert.is(consoleWarn.callCount, 0);
@@ -706,7 +706,7 @@ test("hydration={true} can be used to start hydration", () => {
 
 	Assert.is(
 		document.body.innerHTML,
-		`<div id="portal"><button>Click</button></div><div id="app">Before After</div>`,
+		`<div id="app">Before After</div><div id="portal"><button>Click</button></div>`,
 	);
 	Assert.is(portal.firstChild, button);
 	Assert.is(portal.innerHTML, `<button>Click</button>`);
