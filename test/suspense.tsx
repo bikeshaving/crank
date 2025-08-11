@@ -187,11 +187,11 @@ test("suspense preserves state on refresh", async () => {
 
 	await renderer.render(<App />, document.body);
 	Assert.is(document.body.innerHTML, "<span>Loading...</span>");
-	await new Promise((resolve) => setTimeout(resolve, 100));
+	await new Promise((resolve) => setTimeout(resolve, 120));
 	Assert.is(document.body.innerHTML, "<span>Render 0</span>");
 	await ctx.refresh();
 	Assert.is(document.body.innerHTML, "<span>Loading...</span>");
-	await new Promise((resolve) => setTimeout(resolve, 100));
+	await new Promise((resolve) => setTimeout(resolve, 120));
 	Assert.is(document.body.innerHTML, "<span>Render 1</span>");
 	Assert.is(mock.callCount, 1);
 });
@@ -829,6 +829,40 @@ test("suspenselist coordinates nested suspense in components", async () => {
 	Assert.is(
 		document.body.innerHTML,
 		"<span>Child 100</span><span>Child 150</span>",
+	);
+});
+
+test("suspenselist re-renders", async () => {
+	renderer.render(
+		<SuspenseList timeout={50}>
+			<Suspense fallback={<span>Loading A...</span>}>
+				<Child timeout={100} />
+			</Suspense>
+			<Suspense fallback={<span>Loading B...</span>}>
+				<Child timeout={1} />
+			</Suspense>
+		</SuspenseList>,
+		document.body,
+	);
+
+	renderer.render(
+		<SuspenseList timeout={50}>
+			<Suspense fallback={<span>Loading A...</span>}>
+				<Child timeout={100} />
+			</Suspense>
+			<Suspense fallback={<span>Loading B...</span>}>
+				<Child timeout={1} />
+			</Suspense>
+		</SuspenseList>,
+		document.body,
+	);
+
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	Assert.is(document.body.innerHTML, "<span>Loading A...</span>");
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	Assert.is(
+		document.body.innerHTML,
+		"<span>Child 100</span><span>Child 1</span>",
 	);
 });
 

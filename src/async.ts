@@ -54,7 +54,7 @@ async function SuspenseFallback(
 	}: {
 		children: Children;
 		timeout: number;
-		schedule?: () => void;
+		schedule?: () => Promise<unknown>;
 	},
 ): Promise<Children> {
 	if (schedule) {
@@ -72,9 +72,9 @@ function SuspenseChildren(
 		schedule,
 	}: {
 		children: Children;
-		schedule?: () => void;
+		schedule?: () => Promise<unknown>;
 	},
-): Children {
+) {
 	if (schedule) {
 		this.schedule(schedule);
 	}
@@ -114,6 +114,7 @@ export async function* Suspense(
 	}
 
 	this.provide(SuspenseListController, undefined);
+	let initial = true;
 	for await ({children, fallback, timeout} of this) {
 		if (timeout == null) {
 			if (controller) {
@@ -140,16 +141,20 @@ export async function* Suspense(
 			if (controller.tail !== "hidden") {
 				yield createElement(SuspenseFallback, {
 					timeout: timeout!,
-					schedule: () => controller.scheduleFallback(this),
+					schedule: initial
+						? () => controller.scheduleFallback(this)
+						: undefined,
 					children: fallback,
 				});
 			}
 		}
 
 		yield createElement(SuspenseChildren, {
-			schedule: () => controller.scheduleChildren(this),
+			schedule: initial ? () => controller.scheduleChildren(this) : undefined,
 			children,
 		});
+
+		initial = false;
 	}
 }
 
@@ -258,7 +263,6 @@ export function* SuspenseList(
 			if (index === -1) {
 				return false;
 			}
-
 			if (revealOrder === "forwards") {
 				return index === 0;
 			} else if (revealOrder === "backwards") {
@@ -316,7 +320,6 @@ export function* SuspenseList(
 		registering = true;
 		// TODO: Is there a fixed amount of microtasks that we can wait for?
 		setTimeout(() => (registering = false));
-		suspenseItems.length = 0;
 		controller.timeout = timeout;
 		controller.revealOrder = revealOrder;
 		controller.tail = tail;

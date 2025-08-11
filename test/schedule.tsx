@@ -761,14 +761,9 @@ test("async schedule does not work after initial render", async () => {
 			<Component />
 		</div>,
 		document.body,
-	);
+	) as Promise<HTMLElement>;
 
-	Assert.is(document.body.innerHTML, "<div><span>Render 1</span></div>");
-	await hangs(result2);
-	Assert.is("<div><span>Render 1</span></div>", document.body.innerHTML);
-
-	resolve();
-	await result2;
+	Assert.is((await result2).outerHTML, "<div><span>Render 1</span></div>");
 	Assert.is(document.body.innerHTML, "<div><span>Render 1</span></div>");
 });
 
@@ -1148,7 +1143,7 @@ test("async mount replacing multiple async fallbacks", async () => {
 	);
 });
 
-test("hanging schedule is cleared by re-render", async () => {
+test("hanging schedule causes commits to queue", async () => {
 	// Initial render with hanging schedule - defers mounting
 	const result1 = renderer.render(
 		<div>
@@ -1171,18 +1166,16 @@ test("hanging schedule is cleared by re-render", async () => {
 			</AsyncMountingComponent>
 		</div>,
 		document.body,
-	);
+	) as Promise<HTMLElement>;
 
 	// Should complete synchronously, not return a promise
-	Assert.not.instance(result2, Promise);
-	Assert.is(
-		(result2 as HTMLElement).outerHTML,
-		"<div><span>Second</span></div>",
-	);
-	Assert.is(document.body.innerHTML, "<div><span>Second</span></div>");
+	Assert.instance(result2, Promise);
+	await hangs(result2);
+	Assert.is(document.body.innerHTML, "<div></div>"); // Should still be empty
+	AsyncMountingComponent.resolves[0](); // Resolve the initial hanging schedule
 
-	// First render resolves to superseded state
-	Assert.is((await result1).outerHTML, "<div><span>Second</span></div>");
+	Assert.is((await result1).outerHTML, "<div><span>First</span></div>"); // Should render first component
+	Assert.is((await result2).outerHTML, "<div><span>Second</span></div>"); // Should render second component
 });
 
 test.run();

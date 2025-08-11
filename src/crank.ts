@@ -307,19 +307,18 @@ const IsUpdating = 1 << 3;
 const IsExecuting = 1 << 4;
 const IsRefreshing = 1 << 5;
 const IsScheduling = 1 << 6;
-const CommittedDuringSchedule = 1 << 7;
-const IsSchedulingFallback = 1 << 8;
-const IsUnmounted = 1 << 9;
+const IsSchedulingFallback = 1 << 7;
+const IsUnmounted = 1 << 8;
 // TODO: Is this flag still necessary or can we use IsUnmounted?
-const IsErrored = 1 << 10;
-const IsResurrecting = 1 << 11;
+const IsErrored = 1 << 9;
+const IsResurrecting = 1 << 10;
 // TODO: Maybe we can get rid of IsSyncGen and IsAsyncGen
-const IsSyncGen = 1 << 12;
-const IsAsyncGen = 1 << 13;
-const IsInForOfLoop = 1 << 14;
-const IsInForAwaitOfLoop = 1 << 15;
-const NeedsToYield = 1 << 16;
-const PropsAvailable = 1 << 17;
+const IsSyncGen = 1 << 11;
+const IsAsyncGen = 1 << 12;
+const IsInForOfLoop = 1 << 13;
+const IsInForAwaitOfLoop = 1 << 14;
+const NeedsToYield = 1 << 15;
+const PropsAvailable = 1 << 16;
 
 function getFlag(ret: Retainer<unknown>, flag: number): boolean {
 	return !!(ret.f & flag);
@@ -836,6 +835,10 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 						predecessor = candidate, candidate = candidate.fallback
 					) {
 						if (candidate.el.tag === child.tag) {
+							// If we find a retainer in the fallback chain with the same tag,
+							// we reuse it rather than creating a new retainer to preserve
+							// state. This behavior is useful for when a Suspense component
+							// re-renders and the children are re-rendered quickly.
 							const clone = cloneRetainer(candidate);
 							setFlag(clone, IsResurrecting);
 							predecessor.fallback = clone;
@@ -2162,12 +2165,10 @@ function diffComponent<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				`Component <${getTagName(ctx.ret.el.tag)}> is already executing`,
 			);
 			return;
-		} else if (getFlag(ret, IsScheduling)) {
-			if (ctx.schedule) {
-				ctx.schedule.onAbort();
-				ctx.schedule = undefined;
-			}
-			setFlag(ret, IsScheduling, false);
+		} else if (ctx.schedule) {
+			return ctx.schedule.promise.then(() => {
+				return diffComponent(adapter, root, host, parent, scope, ret);
+			});
 		}
 	} else {
 		ctx = ret.ctx = new ContextState(adapter, root, host, parent, scope, ret);
@@ -2721,13 +2722,10 @@ function commitComponent<TNode>(
 	hydrationNodes?: Array<TNode> | undefined,
 ): ElementValue<TNode> {
 	if (ctx.schedule) {
-		const schedule = ctx.schedule;
-		setTimeout(() => {
-			schedule.onAbort();
-			if (ctx.schedule === schedule) {
-				ctx.schedule = undefined;
-			}
+		ctx.schedule.promise.then(() => {
+			commitComponent(ctx, []);
 		});
+		return getValue(ctx.ret);
 	}
 
 	const values = commitChildren(
@@ -2748,13 +2746,12 @@ function commitComponent<TNode>(
 	addEventTargetDelegates(ctx.ctx, values);
 	// Execute schedule callbacks early to check for async deferral
 	const callbacks = scheduleMap.get(ctx);
-	let value = unwrap(values);
 	let schedulePromises1: Array<PromiseLike<unknown>> | undefined;
 	if (callbacks) {
 		scheduleMap.delete(ctx);
-		setFlag(ctx.ret, IsScheduling);
-		const result = ctx.adapter.read(value);
 		// TODO: think about error handling for schedule callbacks
+		setFlag(ctx.ret, IsScheduling);
+		const result = ctx.adapter.read(unwrap(values));
 		for (const callback of callbacks) {
 			const scheduleResult = callback(result);
 			if (isPromiseLike(scheduleResult)) {
@@ -2762,104 +2759,37 @@ function commitComponent<TNode>(
 			}
 		}
 
-		if (schedulePromises1) {
-			const didCommit = getFlag(ctx.ret, DidCommit);
-			const scheduleCallbacksP = Promise.all(schedulePromises1)
-				.then(() => {
-					setFlag(ctx.ret, IsScheduling, false);
-					setFlag(ctx.ret, CommittedDuringSchedule, false);
-					// TODO: async updating
-					if (didCommit || ctx.schedule !== schedule) {
-						return;
-					}
+		if (schedulePromises1 && !getFlag(ctx.ret, DidCommit)) {
+			const scheduleCallbacksP = Promise.all(schedulePromises1).then(() => {
+				setFlag(ctx.ret, IsScheduling, false);
+				propagateComponent(ctx);
+				if (ctx.ret.fallback) {
+					unmount(ctx.adapter, ctx.host, ctx.parent, ctx.ret.fallback, false);
+				}
 
-					propagateComponent(ctx, values);
-					if (ctx.ret.fallback) {
-						unmount(ctx.adapter, ctx.host, ctx.parent, ctx.ret.fallback, false);
-					}
-
-					ctx.ret.fallback = undefined;
-				})
-				.finally(() => {
-					if (ctx.schedule === schedule) {
-						ctx.schedule = undefined;
-					}
-				});
+				ctx.ret.fallback = undefined;
+			});
 
 			let onAbort!: () => void;
 			const scheduleP = safeRace([
 				scheduleCallbacksP,
 				new Promise<void>((resolve) => (onAbort = resolve)),
-			]);
+			]).finally(() => {
+				ctx.schedule = undefined;
+			});
 
-			const schedule = (ctx.schedule = {promise: scheduleP, onAbort});
+			ctx.schedule = {promise: scheduleP, onAbort};
 			schedulePromises.push(scheduleP);
-			if (didCommit) {
-				// TODO: async updating
-				setFlag(ctx.ret, IsScheduling, false);
-			} else {
-				// When mounting asynchronously with an async schedule callback, we
-				// need to check fallbacks and manually re-render in the component
-				// position with the fallback's committed children if it resolves
-				// before scheduling has finished. This is because commits are raced,
-				// and the fallback is no longer in the retainer tree, and therefore
-				// the commit will not commit the fallback's children.
-				let ratchet = Infinity;
-				for (
-					let i = 0, fallback = ctx.ret.fallback;
-					fallback && !getFlag(fallback, DidCommit);
-					i++, fallback = fallback.fallback
-				) {
-					const promise = getInflightDiff(fallback);
-					if (promise) {
-						// Capture current fallback and index in closure
-						const currentFallback = fallback;
-						const currentI = i; // Capture specific index in closure
-						promise.then(() => {
-							// Ratchet mechanism: only process if this is the shallowest
-							// resolved fallback so far
-							if (currentI > ratchet) {
-								return;
-							}
-
-							ratchet = Math.min(ratchet, currentI);
-							if (getFlag(ctx.ret, IsScheduling)) {
-								const value = commit(
-									ctx.adapter,
-									ctx.host,
-									currentFallback,
-									ctx.parent,
-									ctx.scope,
-									ctx.index,
-									// TODO: should we await schedulePromises we pass in here?
-									[],
-									undefined,
-								);
-								propagateComponent(ctx, wrap(value));
-							}
-						});
-					}
-				}
-			}
 		} else {
 			setFlag(ctx.ret, IsScheduling, false);
 		}
-	}
-
-	// Handles an edge case where refresh() is called during a schedule().
-	if (getFlag(ctx.ret, CommittedDuringSchedule)) {
-		setFlag(ctx.ret, CommittedDuringSchedule, false);
-		value = getValue(ctx.ret, true);
-	}
-
-	if (getFlag(ctx.ret, IsScheduling)) {
-		// TODO: Think about the name of this flag, now that it seems to be getting
-		// set when a schedule() callback returns a promise
-		setFlag(ctx.ret, CommittedDuringSchedule);
-		value = getValue(ctx.ret, true);
 	} else {
+		setFlag(ctx.ret, IsScheduling, false);
+	}
+
+	if (!getFlag(ctx.ret, IsScheduling)) {
 		if (!getFlag(ctx.ret, IsUpdating)) {
-			propagateComponent(ctx, values);
+			propagateComponent(ctx);
 		}
 
 		if (ctx.ret.fallback) {
@@ -2871,7 +2801,10 @@ function commitComponent<TNode>(
 
 	setFlag(ctx.ret, IsUpdating, false);
 	setFlag(ctx.ret, DidCommit);
-	return value;
+	// We always use getValue() instead of the unwrapping values because
+	// schedule() callbacks might call refresh() and cause the values to be
+	// stale.
+	return getValue(ctx.ret, true);
 }
 
 /**
@@ -2880,10 +2813,8 @@ function commitComponent<TNode>(
  * event listeners and DOM arrangement that would normally happen during
  * top-down rendering.
  */
-function propagateComponent<TNode>(
-	ctx: ContextState<TNode>,
-	values: Array<ElementValue<TNode>>,
-): void {
+function propagateComponent<TNode>(ctx: ContextState<TNode>): void {
+	const values = getChildValues(ctx.ret);
 	addEventTargetDelegates(
 		ctx.ctx,
 		values,
@@ -3212,7 +3143,7 @@ declare global {
 }
 
 /**
- * A re-export of all Crank exports as the default export.
+ * A re-export of some Crank exports as the default export.
  *
  * Some JSX tools expect things like createElement/Fragment to be defined on
  * the default export. Prefer using the named exports directly.
