@@ -1903,6 +1903,14 @@ export class Context<
 		return this[_ContextState].adapter.read(getValue(this[_ContextState].ret));
 	}
 
+	get isExecuting(): boolean {
+		return getFlag(this[_ContextState].ret, IsExecuting);
+	}
+
+	get isUnmounted(): boolean {
+		return getFlag(this[_ContextState].ret, IsUnmounted);
+	}
+
 	*[Symbol.iterator](): Generator<ComponentProps<T>, undefined> {
 		const ctx = this[_ContextState];
 		setFlag(ctx.ret, IsInForOfLoop);
