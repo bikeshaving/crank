@@ -599,12 +599,12 @@ test("warns when style property value mismatches during hydration", () => {
 	);
 });
 
-test("hydration={true} can be used to continue hydration", () => {
+test("hydrate={true} can be used to continue hydration", () => {
 	document.body.innerHTML = `<button>Click</button>Hello`;
 	const button = document.body.firstChild as HTMLButtonElement;
 	renderer.hydrate(
 		<Fragment>
-			<button hydration={true}>Click</button>
+			<button hydrate={true}>Click</button>
 			Hello
 		</Fragment>,
 		document.body,
@@ -613,13 +613,13 @@ test("hydration={true} can be used to continue hydration", () => {
 	Assert.is(document.body.firstChild, button);
 });
 
-test("hydration={false} can be used to disable hydration", () => {
+test("hydrate={false} can be used to disable hydration", () => {
 	document.body.innerHTML = `Before <button id="server">Server</button>After`;
 	const button = document.body.firstChild as HTMLButtonElement;
 	renderer.hydrate(
 		<Fragment>
 			Before{" "}
-			<button id="client" hydration={false}>
+			<button id="client" hydrate={false}>
 				Client
 			</button>
 			After
@@ -660,7 +660,7 @@ test("portals are not hydrated by default", () => {
 	Assert.is(consoleWarn.callCount, 0);
 });
 
-test("hydration={true} can be used to hydrate a nested portal", () => {
+test("hydrate={true} can be used to hydrate a nested portal", () => {
 	const onclick = Sinon.fake();
 	document.body.innerHTML = `<div id="app">Before After</div><div id="portal"><button>Click</button></div>`;
 	const app = document.getElementById("app")!;
@@ -669,7 +669,7 @@ test("hydration={true} can be used to hydrate a nested portal", () => {
 	renderer.hydrate(
 		<Fragment>
 			{"Before "}
-			<Portal root={portal} hydration={true}>
+			<Portal root={portal} hydrate={true}>
 				<button onclick={onclick}>Click</button>
 			</Portal>
 			After
@@ -688,7 +688,7 @@ test("hydration={true} can be used to hydrate a nested portal", () => {
 	Assert.is(consoleWarn.callCount, 0);
 });
 
-test("hydration={true} can be used to start hydration", () => {
+test("hydrate={true} can be used to start hydration", () => {
 	const onclick = Sinon.fake();
 	document.body.innerHTML = `<div id="portal"><button>Click</button></div>`;
 	const portal = document.getElementById("portal")!;
@@ -696,7 +696,7 @@ test("hydration={true} can be used to start hydration", () => {
 	renderer.render(
 		<div id="app">
 			Before{" "}
-			<Portal root={portal} hydration={true}>
+			<Portal root={portal} hydrate={true}>
 				<button onclick={onclick}>Click</button>
 			</Portal>
 			After
@@ -715,7 +715,7 @@ test("hydration={true} can be used to start hydration", () => {
 	Assert.is(consoleWarn.callCount, 0);
 });
 
-test("hydration={false} can be used to disable hydration for a fragment", () => {
+test("hydrate={false} can be used to disable hydration for a fragment", () => {
 	document.body.innerHTML = `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`;
 	const app = document.getElementById("app")!;
 	const button1 = document.body.querySelector(
@@ -727,7 +727,7 @@ test("hydration={false} can be used to disable hydration for a fragment", () => 
 	renderer.hydrate(
 		<Fragment>
 			Before{" "}
-			<Fragment hydration={false}>
+			<Fragment hydrate={false}>
 				<button>Click1</button> <button>Click2</button>
 			</Fragment>{" "}
 			After
@@ -743,7 +743,7 @@ test("hydration={false} can be used to disable hydration for a fragment", () => 
 	Assert.is(consoleWarn.callCount, 0);
 });
 
-test("hydration={false} can be used to disable hydration for a component", () => {
+test("hydrate={false} can be used to disable hydration for a component", () => {
 	document.body.innerHTML = `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`;
 	const app = document.getElementById("app")!;
 	const button1 = document.body.querySelector(
@@ -763,7 +763,7 @@ test("hydration={false} can be used to disable hydration for a component", () =>
 
 	renderer.hydrate(
 		<Fragment>
-			Before <Component hydration={false} /> After
+			Before <Component hydrate={false} /> After
 		</Fragment>,
 		app,
 	);
@@ -776,7 +776,7 @@ test("hydration={false} can be used to disable hydration for a component", () =>
 	Assert.is(consoleWarn.callCount, 0);
 });
 
-test("hydration={false} can be used to disable hydration for a Raw node", () => {
+test("hydrate={false} can be used to disable hydration for a Raw node", () => {
 	document.body.innerHTML = `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`;
 	const app = document.getElementById("app")!;
 	const button1 = document.body.querySelector(
@@ -791,7 +791,7 @@ test("hydration={false} can be used to disable hydration for a Raw node", () => 
 			Before{" "}
 			<Raw
 				value="<button>Click1</button> <button>Click2</button>"
-				hydration={false}
+				hydrate={false}
 			/>{" "}
 			After
 		</Fragment>,
@@ -806,7 +806,7 @@ test("hydration={false} can be used to disable hydration for a Raw node", () => 
 	Assert.is(consoleWarn.callCount, 0);
 });
 
-test("hydration={false} can be used to disable hydration for Text", () => {
+test("hydrate={false} can be used to disable hydration for Text", () => {
 	document.body.innerHTML = `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`;
 	const app = document.getElementById("app")!;
 	const text1 = (
@@ -820,10 +820,10 @@ test("hydration={false} can be used to disable hydration for Text", () => {
 		<Fragment>
 			Before{" "}
 			<button>
-				<Text1 value="Click1" hydration={false} />
+				<Text1 value="Click1" hydrate={false} />
 			</button>{" "}
 			<button>
-				<Text1 value="Click2" hydration={false} />
+				<Text1 value="Click2" hydrate={false} />
 			</button>{" "}
 			After
 		</Fragment>,
@@ -849,7 +849,7 @@ test("hydration={false} can be used to disable hydration for Text", () => {
 test("hydration meta-prop can suppress specific property warnings (exclusive)", () => {
 	document.body.innerHTML = `<div id="server" class="old-class"></div>`;
 	renderer.hydrate(
-		<div id="client" class="new-class" hydration="!id" />,
+		<div id="client" class="new-class" hydrate="!id" />,
 		document.body,
 	);
 	Assert.is(consoleWarn.callCount, 1);
@@ -862,12 +862,7 @@ test("hydration meta-prop can suppress specific property warnings (exclusive)", 
 test("hydration meta-prop can suppress multiple property warnings (exclusive)", () => {
 	document.body.innerHTML = `<div id="server" class="old-class" data-test="old"></div>`;
 	renderer.hydrate(
-		<div
-			id="client"
-			class="new-class"
-			data-test="new"
-			hydration="!id !class"
-		/>,
+		<div id="client" class="new-class" data-test="new" hydrate="!id !class" />,
 		document.body,
 	);
 	Assert.is(consoleWarn.callCount, 1);
@@ -880,7 +875,7 @@ test("hydration meta-prop can suppress multiple property warnings (exclusive)", 
 test("hydration meta-prop can suppress all but specified property warnings (inclusive)", () => {
 	document.body.innerHTML = `<div id="server" class="old-class" data-test="old"></div>`;
 	renderer.hydrate(
-		<div id="client" class="new-class" data-test="new" hydration="id" />,
+		<div id="client" class="new-class" data-test="new" hydrate="id" />,
 		document.body,
 	);
 	Assert.is(consoleWarn.callCount, 1);
@@ -890,7 +885,7 @@ test("hydration meta-prop can suppress all but specified property warnings (incl
 test("hydration meta-prop can suppress style property warnings", () => {
 	document.body.innerHTML = `<div style="color: red; background: blue"></div>`;
 	renderer.hydrate(
-		<div style={{color: "green", background: "blue"}} hydration="!style" />,
+		<div style={{color: "green", background: "blue"}} hydrate="!style" />,
 		document.body,
 	);
 	Assert.is(consoleWarn.callCount, 0);
@@ -904,7 +899,7 @@ test("hydration meta-prop with spaces and mixed syntax", () => {
 			class="new"
 			data-foo="new"
 			data-bar="new"
-			hydration="  !id   !class  "
+			hydrate="  !id   !class  "
 		/>,
 		document.body,
 	);
@@ -928,7 +923,7 @@ test("hydration meta-prop can disable children hydration with !children", () => 
 
 	const onclick = Sinon.fake();
 	renderer.hydrate(
-		<div hydration="!children">
+		<div hydrate="!children">
 			<span>Client Content</span>
 			<button onclick={onclick}>Client Button</button>
 		</div>,
@@ -955,7 +950,7 @@ test("hydration meta-prop inclusive mode shows warnings only for specified props
 	document.body.innerHTML = `<div class="server" id="server"><span>Server Content</span></div>`;
 
 	renderer.hydrate(
-		<div class="client" id="client" hydration="class">
+		<div class="client" id="client" hydrate="class">
 			<span>Client Content</span>
 		</div>,
 		document.body,

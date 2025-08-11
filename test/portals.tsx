@@ -76,7 +76,7 @@ test("changing root", () => {
 	Assert.is(el2.innerHTML, "<div>Hello world</div>");
 });
 
-test("portal with rendered page", () => {
+test("portal with rendered page and hydrate", () => {
 	const onclick = Sinon.fake();
 	document.body.innerHTML = `<div id="portal"><button>Click</button></div>`;
 	const portal = document.getElementById("portal")!;
@@ -84,7 +84,7 @@ test("portal with rendered page", () => {
 	renderer.render(
 		<div>
 			Hello world
-			<Portal root={portal} hydration={true}>
+			<Portal root={portal} hydrate={true}>
 				<button onclick={onclick}>Click</button>
 			</Portal>
 		</div>,

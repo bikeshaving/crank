@@ -476,7 +476,7 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode> {
 function stripSpecialProps(props: Record<string, any>): Record<string, any> {
 	let _: unknown;
 	let result: Record<string, any>;
-	({key: _, ref: _, copy: _, hydration: _, children: _, ...result} = props);
+	({key: _, ref: _, copy: _, hydrate: _, children: _, ...result} = props);
 	return result;
 }
 
@@ -632,7 +632,7 @@ export class Renderer<
 		const ret = getRootRetainer(this, bridge, {
 			children,
 			root,
-			hydration: true,
+			hydrate: true,
 		});
 		return renderRoot(this.adapter, root, ret, children) as
 			| Promise<TResult>
@@ -651,11 +651,11 @@ function getRootRetainer<
 	{
 		children,
 		root,
-		hydration,
+		hydrate,
 	}: {
 		children: Children;
 		root: TRoot | undefined;
-		hydration?: boolean;
+		hydrate?: boolean;
 	},
 ): Retainer<TNode, TScope> {
 	let ret: Retainer<TNode, TScope> | undefined;
@@ -666,7 +666,7 @@ function getRootRetainer<
 
 	const adapter = renderer.adapter;
 	if (ret === undefined) {
-		ret = new Retainer(createElement(Portal, {children, root, hydration}));
+		ret = new Retainer(createElement(Portal, {children, root, hydrate}));
 		ret.value = root;
 		ret.ctx = bridgeCtx as ContextState<any, any> | undefined;
 		ret.scope = adapter.scope({
@@ -684,7 +684,7 @@ function getRootRetainer<
 			"A previous call to render() was passed a different context",
 		);
 	} else {
-		ret.el = createElement(Portal, {children, root, hydration});
+		ret.el = createElement(Portal, {children, root, hydrate});
 		if (typeof root === "object" && root !== null && children == null) {
 			renderer.cache.delete(root);
 		}
@@ -1085,9 +1085,9 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				`String copy prop ignored for <${getTagName(tag)}>. Use booleans instead.`,
 			);
 		}
-		if (typeof el.props.hydration === "string") {
+		if (typeof el.props.hydrate === "string") {
 			console.error(
-				`String hydration prop ignored for <${getTagName(tag)}>. Use booleans instead.`,
+				`String hydrate prop ignored for <${getTagName(tag)}>. Use booleans instead.`,
 			);
 		}
 	}
@@ -1096,9 +1096,9 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	let skippedHydrationNodes: Array<TNode> | undefined;
 	if (
 		hydrationNodes &&
-		el.props.hydration != null &&
-		!el.props.hydration &&
-		typeof el.props.hydration !== "string"
+		el.props.hydrate != null &&
+		!el.props.hydrate &&
+		typeof el.props.hydrate !== "string"
 	) {
 		skippedHydrationNodes = hydrationNodes;
 		hydrationNodes = undefined;
@@ -1404,10 +1404,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 	let hydrationMetaProp: MetaProp | undefined;
 	if (!getFlag(ret, DidCommit)) {
 		if (tag === Portal) {
-			if (
-				ret.el.props.hydration &&
-				typeof ret.el.props.hydration !== "string"
-			) {
+			if (ret.el.props.hydrate && typeof ret.el.props.hydrate !== "string") {
 				childHydrationNodes = adapter.adopt({
 					tag,
 					tagName: getTagName(tag),
@@ -1429,8 +1426,8 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 		} else {
 			if (!node && hydrationNodes) {
 				const nextChild = hydrationNodes.shift();
-				if (typeof ret.el.props.hydration === "string") {
-					hydrationMetaProp = new MetaProp("hydration", ret.el.props.hydration);
+				if (typeof ret.el.props.hydrate === "string") {
+					hydrationMetaProp = new MetaProp("hydration", ret.el.props.hydrate);
 					if (hydrationMetaProp.include) {
 						// if we're in inclusive mode, we add all props to quietProps and
 						// remove props specified in the metaprop
@@ -3150,7 +3147,7 @@ declare global {
 			key?: unknown;
 			ref?: unknown;
 			copy?: unknown;
-			hydration?: unknown;
+			hydrate?: unknown;
 		}
 
 		export interface ElementChildrenAttribute {
