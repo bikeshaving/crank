@@ -401,15 +401,21 @@ function cloneRetainer<TNode, TScope>(
 function getValue<TNode>(
 	ret: Retainer<TNode>,
 	isNested = false,
+	index?: number,
 ): ElementValue<TNode> {
 	if (getFlag(ret, IsScheduling) && isNested) {
-		return ret.fallback ? getValue(ret.fallback, isNested) : undefined;
+		return ret.fallback ? getValue(ret.fallback, isNested, index) : undefined;
 	} else if (ret.fallback && !getFlag(ret, DidDiff)) {
-		return ret.fallback ? getValue(ret.fallback, isNested) : ret.fallback;
+		return ret.fallback
+			? getValue(ret.fallback, isNested, index)
+			: ret.fallback;
 	} else if (ret.el.tag === Portal) {
 		return;
 	} else if (ret.el.tag === Fragment || typeof ret.el.tag === "function") {
-		return unwrap(getChildValues(ret));
+		if (index != null && ret.ctx) {
+			ret.ctx.index = index;
+		}
+		return unwrap(getChildValues(ret, index));
 	}
 
 	return ret.value;
@@ -418,36 +424,56 @@ function getValue<TNode>(
 /**
  * Walks an element's children to find its child values.
  *
+ * @param ret - The retainer whose child values we are reading.
+ * @param startIndex - Starting index to thread through for context index updates.
+ *
  * @returns An array of nodes.
  */
-function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode> {
+function getChildValues<TNode>(
+	ret: Retainer<TNode>,
+	startIndex?: number,
+): Array<TNode> {
 	const values: Array<TNode> = [];
 	const lingerers = ret.lingerers;
 	const children = wrap(ret.children);
+	let currentIndex = startIndex;
+
 	for (let i = 0; i < children.length; i++) {
 		if (lingerers != null && lingerers[i] != null) {
 			const rets = lingerers[i]!;
 			for (const ret of rets) {
-				const value = getValue(ret, true);
+				const value = getValue(ret, true, currentIndex);
 				if (Array.isArray(value)) {
 					for (let j = 0; j < value.length; j++) {
 						values.push(value[j]);
 					}
+					if (currentIndex != null) {
+						currentIndex += value.length;
+					}
 				} else if (value) {
 					values.push(value);
+					if (currentIndex != null) {
+						currentIndex++;
+					}
 				}
 			}
 		}
 
 		const child = children[i];
 		if (child) {
-			const value = getValue(child, true);
+			const value = getValue(child, true, currentIndex);
 			if (Array.isArray(value)) {
 				for (let j = 0; j < value.length; j++) {
 					values.push(value[j]);
 				}
+				if (currentIndex != null) {
+					currentIndex += value.length;
+				}
 			} else if (value) {
 				values.push(value);
+				if (currentIndex != null) {
+					currentIndex++;
+				}
 			}
 		}
 	}
@@ -457,13 +483,19 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode> {
 			const rets = lingerers[i];
 			if (rets != null) {
 				for (const ret of rets) {
-					const value = getValue(ret, true);
+					const value = getValue(ret, true, currentIndex);
 					if (Array.isArray(value)) {
 						for (let j = 0; j < value.length; j++) {
 							values.push(value[j]);
 						}
+						if (currentIndex != null) {
+							currentIndex += value.length;
+						}
 					} else if (value) {
 						values.push(value);
+						if (currentIndex != null) {
+							currentIndex++;
+						}
 					}
 				}
 			}
@@ -2867,7 +2899,7 @@ function commitComponent<TNode>(
  * top-down rendering.
  */
 function propagateComponent<TNode>(ctx: ContextState<TNode>): void {
-	const values = getChildValues(ctx.ret);
+	const values = getChildValues(ctx.ret, ctx.index);
 	addEventTargetDelegates(
 		ctx.ctx,
 		values,
@@ -2881,7 +2913,7 @@ function propagateComponent<TNode>(ctx: ContextState<TNode>): void {
 		node: host.value as TNode,
 		props,
 		oldProps: props,
-		children: getChildValues(host),
+		children: getChildValues(host, 0),
 	});
 
 	flush(ctx.adapter, ctx.root, ctx);
