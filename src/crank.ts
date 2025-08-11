@@ -1611,7 +1611,10 @@ function flush<TRoot>(
 		if (initiator) {
 			const flushMap1 = new Map<ContextState, Set<Function>>();
 			for (const [ctx, callbacks] of flushMap) {
-				if (!contextContains(initiator, ctx)) {
+				if (
+					!contextContains(initiator, ctx) &&
+					!getFlag(ctx.ret, IsScheduling)
+				) {
 					// copy over callbacks to the new map
 					flushMap.delete(ctx);
 					flushMap1.set(ctx, callbacks);
