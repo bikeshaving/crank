@@ -24,7 +24,6 @@ Thank you for your interest in contributing to Crank! This guide will help you g
 - **`bun run lint`** - Run ESLint on all files
 - **`bun run test`** - Run tests using Playwright and uvu
 - **`bun run typecheck`** - Run TypeScript type checking
-- **`bun run shipit`** - Full release pipeline (typecheck, test, build, publish)
 
 ## Project Structure
 
