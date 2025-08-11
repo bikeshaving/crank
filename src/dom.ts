@@ -510,6 +510,14 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 					oldChild = oldChild.nextSibling;
 				} else {
 					node.insertBefore(newChild, oldChild);
+					if (
+						tag !== Portal &&
+						oldChild &&
+						i + 1 < children.length &&
+						oldChild !== children[i + 1]
+					) {
+						oldChild = oldChild.nextSibling;
+					}
 				}
 			}
 		}
