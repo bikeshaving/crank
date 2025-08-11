@@ -430,7 +430,9 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode> {
 			for (const ret of rets) {
 				const value = getValue(ret, true);
 				if (Array.isArray(value)) {
-					values.push(...value);
+					for (let j = 0; j < value.length; j++) {
+						values.push(value[j]);
+					}
 				} else if (value) {
 					values.push(value);
 				}
@@ -441,7 +443,9 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode> {
 		if (child) {
 			const value = getValue(child, true);
 			if (Array.isArray(value)) {
-				values.push(...value);
+				for (let j = 0; j < value.length; j++) {
+					values.push(value[j]);
+				}
 			} else if (value) {
 				values.push(value);
 			}
@@ -455,7 +459,9 @@ function getChildValues<TNode>(ret: Retainer<TNode>): Array<TNode> {
 				for (const ret of rets) {
 					const value = getValue(ret, true);
 					if (Array.isArray(value)) {
-						values.push(...value);
+						for (let j = 0; j < value.length; j++) {
+							values.push(value[j]);
+						}
 					} else if (value) {
 						values.push(value);
 					}
@@ -541,7 +547,6 @@ export interface RenderAdapter<
 		oldProps: Record<string, any> | undefined;
 	}): void;
 
-	// TODO: rename to parentNode
 	remove(data: {node: TNode; parentNode: TNode; isNested: boolean}): void;
 
 	read(value: ElementValue<TNode>): TResult;
@@ -930,7 +935,10 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	}
 
 	if (childrenByKey !== undefined && childrenByKey.size > 0) {
-		(graveyard = graveyard || []).push(...childrenByKey.values());
+		graveyard = graveyard || [];
+		for (const ret of childrenByKey.values()) {
+			graveyard.push(ret);
+		}
 	}
 
 	parent.children = unwrap(newRetained);
@@ -941,7 +949,9 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				setFlag(parent, DidDiff);
 				if (graveyard) {
 					if (parent.graveyard) {
-						parent.graveyard.push(...graveyard);
+						for (let i = 0; i < graveyard.length; i++) {
+							parent.graveyard.push(graveyard[i]);
+						}
 					} else {
 						parent.graveyard = graveyard;
 					}
@@ -964,7 +974,9 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		setFlag(parent, DidDiff);
 		if (graveyard) {
 			if (parent.graveyard) {
-				parent.graveyard.push(...graveyard);
+				for (let i = 0; i < graveyard.length; i++) {
+					parent.graveyard.push(graveyard[i]);
+				}
 			} else {
 				parent.graveyard = graveyard;
 			}
@@ -1261,7 +1273,9 @@ function commitChildren<
 			);
 
 			if (Array.isArray(value)) {
-				values.push(...value);
+				for (let j = 0; j < value.length; j++) {
+					values.push(value[j]);
+				}
 				index += value.length;
 			} else if (value) {
 				values.push(value);
