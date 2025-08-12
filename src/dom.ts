@@ -9,6 +9,32 @@ import {
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
+function isWritableProperty(element: Element, name: string): boolean {
+	// walk up the object's prototype chain to find the owner
+	let propOwner = element;
+	do {
+		if (Object.prototype.hasOwnProperty.call(propOwner, name)) {
+			break;
+		}
+	} while ((propOwner = Object.getPrototypeOf(propOwner)));
+
+	if (propOwner === null) {
+		return false;
+	}
+
+	// get the descriptor for the named property and check whether it implies
+	// that the property is writable
+	const descriptor = Object.getOwnPropertyDescriptor(propOwner, name);
+	if (
+		descriptor != null &&
+		(descriptor.writable === true || descriptor.set !== undefined)
+	) {
+		return true;
+	}
+
+	return false;
+}
+
 function emitHydrationWarning(
 	propName: string,
 	quietProps: Set<string> | undefined,
@@ -37,32 +63,6 @@ function emitHydrationWarning(
 			);
 		}
 	}
-}
-
-function isWritableProperty(element: Element, name: string): boolean {
-	// walk up the object's prototype chain to find the owner
-	let propOwner = element;
-	do {
-		if (Object.prototype.hasOwnProperty.call(propOwner, name)) {
-			break;
-		}
-	} while ((propOwner = Object.getPrototypeOf(propOwner)));
-
-	if (propOwner === null) {
-		return false;
-	}
-
-	// get the descriptor for the named property and check whether it implies
-	// that the property is writable
-	const descriptor = Object.getOwnPropertyDescriptor(propOwner, name);
-	if (
-		descriptor != null &&
-		(descriptor.writable === true || descriptor.set !== undefined)
-	) {
-		return true;
-	}
-
-	return false;
 }
 
 export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
@@ -464,6 +464,8 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 
 						element.removeAttribute(name);
 						continue;
+					} else if (typeof value !== "string") {
+						value = String(value);
 					}
 
 					if (element.getAttribute(name) !== value) {

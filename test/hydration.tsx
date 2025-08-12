@@ -1013,4 +1013,11 @@ test("no warning class object matches", () => {
 	Assert.is(consoleWarn.callCount, 0);
 });
 
+test("no warning when prop is a coerced number", () => {
+	document.body.innerHTML = `<div tabindex="3"></div>`;
+	renderer.hydrate(<div tabindex={3} />, document.body);
+
+	Assert.is(consoleWarn.callCount, 0);
+});
+
 test.run();
