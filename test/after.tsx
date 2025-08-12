@@ -339,4 +339,58 @@ test("callback isn’t called when sibling is refreshed", () => {
 	Assert.is(fn2.lastCall.args[0], document.body.firstChild!.childNodes[1]);
 });
 
+test("callback called after insertion with schedule refresh edge case", () => {
+	const fn = Sinon.fake();
+
+	function* Component(this: Context) {
+		this.after((el) => {
+			fn(document.contains(el));
+		});
+
+		this.schedule(() => {
+			this.refresh();
+		});
+
+		let i = 1;
+		for ({} of this) {
+			yield <span>render {i++}</span>;
+		}
+	}
+
+	// Somehow adding an extra div caused an edge case
+	renderer.render(
+		<div>
+			<Component />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>render 2</span></div>");
+	Assert.is(fn.callCount, 1);
+	Assert.is(fn.firstCall.args[0], true);
+});
+
+test("callback called after insertion with async schedule refresh edge case", async () => {
+	const fn = Sinon.fake();
+	async function* Component(this: Context) {
+		this.after((el) => {
+			fn(document.contains(el));
+		});
+		this.schedule(() => this.refresh());
+		let i = 1;
+		for ({} of this) {
+			yield <span>render {i++}</span>;
+		}
+	}
+
+	await renderer.render(
+		<div>
+			<Component />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>render 2</span></div>");
+	Assert.is(fn.callCount, 1);
+	Assert.is(fn.firstCall.args[0], true);
+});
+
 test.run();

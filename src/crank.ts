@@ -1629,31 +1629,29 @@ function flush<TRoot>(
 		root = ANONYMOUS_ROOT;
 	}
 
-	// The initiator is the context which initiated the rendering process.
-	// If initiator is defined we call and clear all flush callbacks which are
+	// The initiator is the context which initiated the rendering process. If
+	// initiator is defined we call and clear all flush callbacks which are
 	// registered with the initiator or with a child context of the initiator,
 	// because they are fully rendered.
-	// If no initiator is provided, we can call and clear all flush callbacks.
+	//
+	// If no initiator is provided, we can call and clear all flush callbacks
+	// which are not scheduling.
 	const afterMap = afterMapByRoot.get(root as any);
 	if (afterMap) {
-		if (initiator) {
-			const afterMap1 = new Map<ContextState, Set<Function>>();
-			for (const [ctx, callbacks] of afterMap) {
-				if (
-					!contextContains(initiator, ctx) &&
-					!getFlag(ctx.ret, IsScheduling)
-				) {
-					// copy over callbacks to the new map
-					afterMap.delete(ctx);
-					afterMap1.set(ctx, callbacks);
-				}
+		const afterMap1 = new Map<ContextState, Set<Function>>();
+		for (const [ctx, callbacks] of afterMap) {
+			if (
+				getFlag(ctx.ret, IsScheduling) ||
+				(initiator && !contextContains(initiator, ctx))
+			) {
+				// copy over callbacks to the new map (defer them)
+				afterMap.delete(ctx);
+				afterMap1.set(ctx, callbacks);
 			}
+		}
 
-			if (afterMap1.size) {
-				afterMapByRoot.set(root as any, afterMap1);
-			} else {
-				afterMapByRoot.delete(root as any);
-			}
+		if (afterMap1.size) {
+			afterMapByRoot.set(root as any, afterMap1);
 		} else {
 			afterMapByRoot.delete(root as any);
 		}
@@ -2809,10 +2807,12 @@ function commitComponent<TNode>(
 	if (ctx.schedule) {
 		ctx.schedule.promise.then(() => {
 			commitComponent(ctx, []);
+			propagateComponent(ctx);
 		});
 		return getValue(ctx.ret);
 	}
 
+	const wasScheduling = getFlag(ctx.ret, IsScheduling);
 	const values = commitChildren(
 		ctx.adapter,
 		ctx.host,
@@ -2866,10 +2866,10 @@ function commitComponent<TNode>(
 			ctx.schedule = {promise: scheduleP, onAbort};
 			schedulePromises.push(scheduleP);
 		} else {
-			setFlag(ctx.ret, IsScheduling, false);
+			setFlag(ctx.ret, IsScheduling, wasScheduling);
 		}
 	} else {
-		setFlag(ctx.ret, IsScheduling, false);
+		setFlag(ctx.ret, IsScheduling, wasScheduling);
 	}
 
 	if (!getFlag(ctx.ret, IsScheduling)) {
@@ -2882,9 +2882,9 @@ function commitComponent<TNode>(
 		}
 
 		ctx.ret.fallback = undefined;
+		setFlag(ctx.ret, IsUpdating, false);
 	}
 
-	setFlag(ctx.ret, IsUpdating, false);
 	setFlag(ctx.ret, DidCommit);
 	// We always use getValue() instead of the unwrapping values because there
 	// are various ways in which the values could have been updated, especially
