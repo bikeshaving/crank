@@ -2529,7 +2529,8 @@ function runComponent<TNode, TResult>(
 						if (
 							getFlag(ctx.ret, IsInForOfLoop) &&
 							!getFlag(ctx.ret, NeedsToYield) &&
-							!getFlag(ctx.ret, IsUnmounted)
+							!getFlag(ctx.ret, IsUnmounted) &&
+							!getFlag(ctx.ret, IsScheduling)
 						) {
 							console.error(
 								`Component <${getTagName(ctx.ret.el.tag)}> yielded/returned more than once in for...of loop`,

@@ -59,7 +59,9 @@ test("for of with multiple yields", async () => {
 });
 
 test("for of with multiple yields is fine when scheduling", async () => {
+	let ctx: Context;
 	function* Component(this: Context): Generator<Child> {
+		ctx = this;
 		for ({} of this) {
 			this.schedule(() => this.refresh());
 			yield <div>Hello</div>;
@@ -69,6 +71,10 @@ test("for of with multiple yields is fine when scheduling", async () => {
 
 	renderer.render(<Component />, document.body);
 	Assert.is(document.body.innerHTML, "<div>Goodbye</div>");
+	Assert.is(mock.callCount, 0);
+
+	// Test calling refresh directly also doesn't warn
+	ctx.refresh();
 	Assert.is(mock.callCount, 0);
 });
 
@@ -90,7 +96,9 @@ test("for of with multiple yields in async generator component", async () => {
 });
 
 test.skip("for of with multiple yields is fine when scheduling in async generator component", async () => {
+	let ctx: Context;
 	async function* Component(this: Context): AsyncGenerator<Child> {
+		ctx = this;
 		for ({} of this) {
 			this.schedule(() => this.refresh());
 			yield <div>Hello</div>;
@@ -100,6 +108,10 @@ test.skip("for of with multiple yields is fine when scheduling in async generato
 
 	await renderer.render(<Component />, document.body);
 	Assert.is(document.body.innerHTML, "<div>Goodbye</div>");
+	Assert.is(mock.callCount, 0);
+
+	// Test calling refresh directly also doesn't warn
+	await ctx.refresh();
 	Assert.is(mock.callCount, 0);
 });
 
