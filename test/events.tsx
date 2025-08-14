@@ -342,6 +342,52 @@ test("refresh callback", () => {
 	);
 });
 
+test("async refresh callback", async () => {
+	let resolve!: Function;
+	function* Component(this: Context): Generator<string> {
+		let count = 0;
+		this.addEventListener("click", (ev) => {
+			if ((ev.target as HTMLElement).id === "button") {
+				this.refresh(async () => {
+					await new Promise((resolve1) => (resolve = resolve1));
+					count++;
+				});
+			}
+		});
+
+		for ({} of this) {
+			yield (
+				<div>
+					<button id="button">Click me</button>
+					<span>Button has been clicked {count} times</span>
+				</div>
+			);
+		}
+	}
+
+	renderer.render(<Component />, document.body);
+	Assert.is(
+		document.body.innerHTML,
+		'<div><button id="button">Click me</button><span>Button has been clicked 0 times</span></div>',
+	);
+
+	const button = document.getElementById("button")!;
+	button.click();
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div><button id="button">Click me</button><span>Button has been clicked 0 times</span></div>',
+	);
+
+	resolve();
+	await new Promise((resolve) => setTimeout(resolve));
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div><button id="button">Click me</button><span>Button has been clicked 1 times</span></div>',
+	);
+});
+
 test("unmount and dispatch", () => {
 	let ctx!: Context;
 	function Component(this: Context) {
