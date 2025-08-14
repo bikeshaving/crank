@@ -1,7 +1,7 @@
 # Changelog
 ## [0.7.0] - 2025-08-14
 ### New Features
-1. **The `refresh()` method can now take a callback.**
+- **The `refresh()` method can now take a callback.**
   Users frequently complained about forgetting to call `refresh()` after
   updating state. I realized we can solve these problems with a `refresh()`
   callback. Starting in 0.7, the `refresh()` function can be passed a callback
@@ -72,7 +72,8 @@
   API before, and I actually only implemented it last minute because Claude
   hallucinated it. It’s such a good idea it might be backported to previous
   versions.
-1. **BREAKING**: Renamed `flush()` to `after()` (with deprecation warning for backward compatibility). The `flush()` method was confusingly named because it does not cause re-renders nor does it cause pending changes to be flushed to the DOM. The method has been renamed to `after()` for clarity.
+
+- **BREAKING**: Renamed `flush()` to `after()` (with deprecation warning for backward compatibility). The `flush()` method was confusingly named because it does not cause re-renders nor does it cause pending changes to be flushed to the DOM. The method has been renamed to `after()` for clarity.
   ```jsx
   function Component() {
     this.after((el) => {
@@ -80,7 +81,7 @@
     });
   }
   ```
-1. **Async Component System Overhaul**
+- **Async Component System Overhaul**
   Crank's async architecture has been completely redesigned for better
   coordination and predictable rendering behavior. Most notably, Crank now
   employs a two-pass rendering architecture, where DOM mutations only occur
@@ -162,8 +163,11 @@
       }
     }
     ```
-1. **Racing components don't lose state**
-  Previously, when multiple async components were racing to render, some components could lose their state, and DOM would be destroyed and recreated. In 0.7, if a component continuously wins its races, its state and DOM will be preserved.
+- **Racing components don't lose state**
+  Previously, when multiple async components were racing to render, some
+  components could lose their state, and DOM would be destroyed and recreated.
+  In 0.7, if a component continuously wins its races, its state and DOM will be
+  preserved.
   ```jsx
   async function *Suspense({fallback, children}) {
     for await ({fallback, children} of this) {
@@ -174,7 +178,7 @@
     }
   }
   ```
-1. **`@b9g/crank/async` module**
+- **`@b9g/crank/async` module**
   A new public module `@b9g/crank/async` has been added to the npm exports, providing utilities for working with async components and rendering patterns. Includes `lazy`, `Suspense`, and `SuspenseList` components.
 
   ```jsx
@@ -224,7 +228,7 @@
   <SuspenseList tail="collapsed">  {/* Show only next fallback */}
   <SuspenseList tail="hidden">     {/* Hide all fallbacks */}
   ```
-1. **Async unmounting for exit animations**
+- **Async unmounting for exit animations**
   Added async unmounting support via async `cleanup()` callbacks. Components can now perform exit animations and other asynchronous operations before being removed from the DOM.
 
   ```jsx
@@ -255,7 +259,7 @@
     }
   }
   ```
-1. **Async mounting for complex mounting coordination**
+- **Async mounting for complex mounting coordination**
   Similar to the `cleanup()` callback, the `schedule()` callback can now be asynchronous to defer mounting as well.
   The SuspenseList component is implemented using this feature and you can check the source to see usages.
   Async mounting can also be used with the HTML renderer to render twice, when you need to extract CSS, for instance.
@@ -300,7 +304,7 @@
 
   Async scheduling for non-initial renders has not been implemented, mainly due
   to its difficulty.
-1. **Context `isExecuting` / `isUnmounted` properties**
+- **Context `isExecuting` / `isUnmounted` properties**
   Added `isExecuting` and `isUnmounted` properties to Context for better component introspection and lifecycle management. This is mainly useful to squash warnings when you accidentally refresh components when they are already executing or unmounted.
 
   ```jsx
@@ -314,13 +318,13 @@
     break;
   }
   ```
-1. **Promise-returning overloads for `schedule()`, `after()`, and `cleanup()` when called with no arguments:**
+- **Promise-returning overloads for `schedule()`, `after()`, and `cleanup()` when called with no arguments:**
   ```typescript
   await this.schedule(); // Wait for commit
   await this.after();    // Wait for children fully rendered
   await this.cleanup();  // Wait for cleanup
   ```
-1. **The `copy` prop can now be a string for host elements**
+- **The `copy` prop can now be a string for host elements**
   The `copy` prop now accepts string values to specify which props should be copied from the previous render. Use `copy="!value"` to copy all props except `value`, or `copy="class children"` to copy only specific props. The meta-prop syntax does not allow mixing of bang and non-bang syntax.
 
   ```jsx
@@ -338,7 +342,7 @@
   // The Copy element tag can also be used for copying behavior.
   <input type="text" value={initial ? value : Copy} />
   ```
-1. **Hydration warnings and `hydrate` prop**
+- **Hydration warnings and `hydrate` prop**
   Added comprehensive hydration mismatch warnings to help developers identify and fix server-client rendering inconsistencies during development. Also added a special `hydrate` prop for fine-grained hydration control.
 
   ```jsx
@@ -356,7 +360,7 @@
   <input hydrate="!value" type="text" placeholder="Will hydrate" />
   <div hydrate="class id" class="hydrated" id="main" data-skip="ignored" />
   ```
-1. **The `class` prop can now take objects.**
+- **The `class` prop can now take objects.**
   The class property can now take an object instead of a string for basic `clsx` / `classnames` behavior.
 
   ```jsx
@@ -388,11 +392,11 @@
   The class object prop can be used to prevent Crank from clobbering props
   provided by third-party scripts, as it uses `classList.add()` and `.remove()`
   under the hood.
-1. **`@b9g/crank/event-target` module**
+- **`@b9g/crank/event-target` module**
   Crank's `EventTarget` class has been extracted into a separate public module. This module can be used when implementing custom renderers and provides better modularity.
-1. **Utility types `ComponentProps<T>` and `ComponentPropsOrProps<T>`**
+- **Utility types `ComponentProps<T>` and `ComponentPropsOrProps<T>`**
   Added new TypeScript utility types for better type inference when working with component props.
-1. **New `<Text>` element and Text node rendering**
+- **New `<Text>` element and Text node rendering**
   Renderers now return actual `Text` nodes instead of strings, and a new `<Text>` element has been added for explicit text node creation.
 
   ```jsx
@@ -426,19 +430,19 @@
   ```
 
   This change improves performance during reconciliation and hydration, enables direct DOM manipulation, and maintains better text node tracking.
-1. **Cooperative DOM rendering**
+- **Cooperative DOM rendering**
   Crank will no longer remove nodes which it doesn't control. This makes it
   safe to render directly to `document.body`, and any nodes added by third-party
   scripts or components will stay in the DOM unless their parent is also removed.
 
   Note: Crank will emit a warning when `hydrate()` is called on `document.body`,
   as hydration is destructive and expects to match the entire body content.
-1. **Custom renderer API stability**
+- **Custom renderer API stability**
   The custom renderer API has been stabilized and documented for building
   third-party renderers.
 
 ### Bug Fixes
-1. The error handling for async generator components has been improved.
+- The error handling for async generator components has been improved.
    Previously, errors thrown in `for await` loops might cause unhandled
    rejections even if they were handled by a `refresh()` or
    `renderer.render()` call.
