@@ -21,9 +21,10 @@ if (!window.customElements.get("content-area")) {
 	window.customElements.define("content-area", ContentAreaElement);
 }
 
+// TODO: why is this here???
 const gearInteractiveRoot = document.getElementById("gear-interactive");
 if (gearInteractiveRoot) {
-	renderer.hydrate(jsx`<${GearInteractive} />`, gearInteractiveRoot);
+	renderer.render(jsx`<${GearInteractive} />`, gearInteractiveRoot);
 }
 
 // TODO: abstract this pattern as an Island component

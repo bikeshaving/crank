@@ -203,7 +203,7 @@ export function* CodePreview(
 			loading = true;
 			errorMessage = null;
 			if (typeof window !== "undefined") {
-				this.flush(() => executeDebounced());
+				this.after(() => executeDebounced());
 			}
 		}
 

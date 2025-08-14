@@ -19,7 +19,7 @@ function useVirtualizerBase<
 	const virtualizer = new Virtualizer(options);
 	let unmount: any;
 
-	_this.flush(() => {
+	_this.after(() => {
 		unmount = virtualizer._didMount();
 	});
 

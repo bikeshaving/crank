@@ -4,7 +4,6 @@ import * as MimeTypes from "mime-types";
 
 import {jsx} from "@b9g/crank/standalone";
 import {renderer} from "@b9g/crank/html";
-import {renderStylesToString} from "@emotion/server";
 
 import {router} from "./routes.js";
 import {Storage} from "./components/esbuild.js";
@@ -40,7 +39,7 @@ export default {
 
 		const match = router.match(path);
 		if (match && match.View) {
-			let html = await renderer.render(jsx`
+			const html = await renderer.render(jsx`
 				<${match.View}
 					url=${path}
 					params=${match.params}
@@ -48,7 +47,6 @@ export default {
 				/>
 			`);
 
-			html = renderStylesToString(html);
 			return new Response(html, {
 				headers: {"Content-Type": "text/html"},
 			});

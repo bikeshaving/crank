@@ -166,6 +166,7 @@ export function* CodeEditor(
 			return;
 		}
 
+		ev.preventDefault();
 		value = ev.target.value;
 		renderSource = "refresh";
 		this.refresh();
@@ -308,6 +309,7 @@ export function* CodeEditor(
 
 		if (renderSource == null) {
 			value = value1;
+			renderSource = "update";
 		}
 
 		// make sure the value always ends with a newline
@@ -335,9 +337,10 @@ export function* CodeEditor(
 					`}
 				>
 					<pre
+						hydrate="!contenteditable"
 						autocomplete="off"
 						autocorrect="off"
-						autocapitalize="off"
+						autocapitalize="none"
 						contenteditable=${IS_CLIENT && editable}
 						spellcheck="false"
 						class="

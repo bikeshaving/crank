@@ -20,7 +20,7 @@ function* Wizard() {
 
   for ({} of this) {
     yield (
-      <form $key={step}>
+      <form key={step}>
         {step === 0 ? (
           <>
             <label for="name">Name:</label>

@@ -20,7 +20,6 @@ export function* InlineCodeBlock(
 	},
 ): any {
 	this.addEventListener("contentchange", (ev: any) => {
-		// TODO: think about whether its wise to mutate a prop
 		value = ev.target.value;
 		this.refresh();
 	});
@@ -37,7 +36,7 @@ export function* InlineCodeBlock(
 			{threshold: 0.1},
 		);
 
-		this.flush((root) => {
+		this.after((root) => {
 			intersectionObserver.observe(root);
 		});
 
@@ -48,10 +47,10 @@ export function* InlineCodeBlock(
 
 	for ({lang, editable, breakpoint = "1300px"} of this) {
 		yield jsx`
-			<div class=${css`
+			<div hydrate="!class" class=${css`
 				max-width: ${editable ? "calc(100% - 1px)" : "min(100%, 1000px)"};
 			`}>
-				<div class=${css`
+				<div hydrate="!class" class=${css`
 					display: flex;
 					flex-direction: column;
 					font-size: 16px;
@@ -60,7 +59,7 @@ export function* InlineCodeBlock(
 						align-items: flex-start;
 					}
 				`}>
-					<div class=${css`
+					<div hydrate="!class" class=${css`
 						flex: 1 1 auto;
 						width: 100%;
 						border: 1px solid var(--text-color);
@@ -72,12 +71,12 @@ export function* InlineCodeBlock(
 						}`
 							: ""}
 					`}>
-						<div class=${css`
+						<div hydrate="!class" class=${css`
 							overflow-x: auto;
 							max-width: 100%;
 						`}>
 							<${CodeEditor}
-								static
+								copy
 								value=${value}
 								lang=${lang}
 								editable=${editable}
@@ -87,7 +86,7 @@ export function* InlineCodeBlock(
 					${
 						editable &&
 						jsx`
-							<div class=${css`
+							<div hydrate="!class" class=${css`
 								flex: 1 1 auto;
 								position: sticky;
 								top: 100px;

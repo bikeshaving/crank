@@ -40,6 +40,7 @@ const examples = extractData(
 
 function* Playground(this: Context) {
 	let code = localStorage.getItem("playground-value") || "";
+	let updateEditor = true;
 	if (!code.trim()) {
 		code = examples[0].code;
 	}
@@ -57,6 +58,7 @@ function* Playground(this: Context) {
 			(example: any) => example.name === exampleName,
 		);
 		code = code1;
+		updateEditor = true;
 		this.refresh();
 	};
 
@@ -72,6 +74,9 @@ function* Playground(this: Context) {
 	//});
 
 	for ({} of this) {
+		this.schedule(() => {
+			updateEditor = false;
+		});
 		yield jsx`
 			<div class="playground ${css`
 				display: flex;
@@ -111,6 +116,7 @@ function* Playground(this: Context) {
 						</div>
 					<//CodeEditorNavbar>
 					<${CodeEditor}
+						copy=${!updateEditor}
 						value=${code}
 						language="typescript"
 						showGutter=${true}
@@ -138,4 +144,4 @@ function* Playground(this: Context) {
 }
 
 const el = document.getElementById("playground");
-renderer.hydrate(jsx`<${Playground} />`, el!);
+renderer.render(jsx`<${Playground} />`, el!);

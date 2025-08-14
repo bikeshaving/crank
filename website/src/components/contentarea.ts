@@ -28,18 +28,6 @@ export function* ContentArea(
 		renderSource?: string | undefined;
 	} & Record<string, any>,
 ) {
-	let composing = false;
-	this.addEventListener("compositionstart", () => {
-		composing = true;
-	});
-
-	this.addEventListener("compositionend", () => {
-		composing = false;
-		// Refreshing synchronously seems to cause weird effects with characters
-		// getting preserved in Korean (and probably other langauges).
-		Promise.resolve().then(() => this.refresh());
-	});
-
 	let initial = true;
 	let contentArea!: ContentAreaElement;
 	for ({ref, value, children, selectionRange, renderSource, ...rest} of this) {
@@ -52,7 +40,7 @@ export function* ContentArea(
 			});
 
 		if (!initial) {
-			this.flush(() => {
+			this.after(() => {
 				if (typeof renderSource === "string") {
 					contentArea.source(renderSource!);
 				}
@@ -104,7 +92,6 @@ export function* ContentArea(
 
 		yield jsx`
 			<content-area
-				static=${composing}
 				ref=${(el: ContentAreaElement) => {
 					contentArea = el;
 					ref?.(el);

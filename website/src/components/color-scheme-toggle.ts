@@ -54,6 +54,7 @@ export function ColorSchemeToggle(this: Context) {
 			role="switch"
 			aria-label="set dark mode"
 			aria-checked="${(colorScheme === "dark").toString()}"
+			hydrate="!aria-checked !children"
 		>
 			${colorScheme == null ? "⬜" : colorScheme === "dark" ? "💡" : "🕶"}
 		</button>
