@@ -56,6 +56,14 @@ function emitHydrationWarning(
 				`Expected "${showName}" to be ${expectedValue === true ? "present" : '""'} but found ${String(actualValue)} while hydrating:`,
 				element,
 			);
+		} else if (
+			typeof window !== "undefined" &&
+			window.location &&
+			new URL(expectedValue, window.location.origin).href ===
+				new URL(actualValue, window.location.origin).href
+		) {
+			// attrs which are URLs will often be resolved to their full
+			// href in the DOM, so we squash these errors
 		} else {
 			console.warn(
 				`Expected "${showName}" to be "${String(expectedValue)}" but found ${String(actualValue)} while hydrating:`,
@@ -219,6 +227,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 			}
 
 			switch (name) {
+				// TODO: fix hydration warnings for the style prop
 				case "style": {
 					const style = (element as HTMLElement | SVGElement).style;
 					if (value == null || value === false) {
@@ -245,15 +254,16 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 						element.setAttribute("style", "");
 					} else if (typeof value === "string") {
 						if (style.cssText !== value) {
-							if (isHydrating) {
-								emitHydrationWarning(
-									name,
-									quietProps,
-									value,
-									style.cssText,
-									element,
-								);
-							}
+							// TODO: Fix hydration warnings for styles
+							//if (isHydrating) {
+							//	emitHydrationWarning(
+							//		name,
+							//		quietProps,
+							//		value,
+							//		style.cssText,
+							//		element,
+							//	);
+							//}
 
 							style.cssText = value;
 						}
@@ -279,16 +289,17 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 								}
 								style.removeProperty(styleName);
 							} else if (style.getPropertyValue(styleName) !== styleValue) {
-								if (isHydrating) {
-									emitHydrationWarning(
-										name,
-										quietProps,
-										styleValue,
-										style.getPropertyValue(styleName),
-										element,
-										`style.${styleName}`,
-									);
-								}
+								// TODO: hydration warnings for style props
+								//if (isHydrating) {
+								//	emitHydrationWarning(
+								//		name,
+								//		quietProps,
+								//		styleValue,
+								//		style.getPropertyValue(styleName),
+								//		element,
+								//		`style.${styleName}`,
+								//	);
+								//}
 								style.setProperty(styleName, styleValue);
 							}
 						}
@@ -666,7 +677,7 @@ export class DOMRenderer extends Renderer<Node, string, Element> {
 
 function validateRoot(root: unknown): asserts root is Element {
 	if (
-		root === null ||
+		root == null ||
 		(typeof root === "object" && typeof (root as any).nodeType !== "number")
 	) {
 		throw new TypeError(`Render root is not a node. Received: ${String(root)}`);
