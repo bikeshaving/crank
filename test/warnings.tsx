@@ -58,6 +58,20 @@ test("for of with multiple yields", async () => {
 	Assert.is(mock.callCount, 1);
 });
 
+test("for of with multiple yields is fine when scheduling", async () => {
+	function* Component(this: Context): Generator<Child> {
+		for ({} of this) {
+			this.schedule(() => this.refresh());
+			yield <div>Hello</div>;
+			yield <div>Goodbye</div>;
+		}
+	}
+
+	renderer.render(<Component />, document.body);
+	Assert.is(document.body.innerHTML, "<div>Goodbye</div>");
+	Assert.is(mock.callCount, 0);
+});
+
 test("for of with multiple yields in async generator component", async () => {
 	async function* Component(this: Context): AsyncGenerator<Child> {
 		for ({} of this) {
@@ -73,6 +87,20 @@ test("for of with multiple yields in async generator component", async () => {
 	await renderer.render(<Component />, document.body);
 	Assert.is(document.body.innerHTML, "<div>Goodbye</div>");
 	Assert.is(mock.callCount, 1);
+});
+
+test.skip("for of with multiple yields is fine when scheduling in async generator component", async () => {
+	async function* Component(this: Context): AsyncGenerator<Child> {
+		for ({} of this) {
+			this.schedule(() => this.refresh());
+			yield <div>Hello</div>;
+			yield <div>Goodbye</div>;
+		}
+	}
+
+	await renderer.render(<Component />, document.body);
+	Assert.is(document.body.innerHTML, "<div>Goodbye</div>");
+	Assert.is(mock.callCount, 0);
 });
 
 test("class and className both defined warns", () => {
