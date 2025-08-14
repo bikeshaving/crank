@@ -2,7 +2,8 @@ import {suite} from "uvu";
 import * as Assert from "uvu/assert";
 import * as Sinon from "sinon";
 
-import {Context, Copy, createElement, Fragment, Raw} from "../src/crank.js";
+import {Copy, createElement, Fragment, Raw} from "../src/crank.js";
+import type {Children, Context} from "../src/crank.js";
 import {renderer} from "../src/html.js";
 
 const test = suite("html");
@@ -306,6 +307,59 @@ test("after callback called once", async () => {
 
 	Assert.is(result1, "<div><span>1</span></div>");
 	Assert.is(fn.callCount, 2);
+});
+
+test("refs work", () => {
+	let mock = Sinon.fake();
+	renderer.render(<div ref={mock}>Hello world</div>);
+
+	Assert.is(mock.callCount, 1);
+	Assert.is(mock.firstCall.args[0], "<div>Hello world</div>");
+});
+
+test("schedule allows for re-render", () => {
+	function* Child(this: Context, {children}: {children: Children}) {
+		for ({children} of this) {
+			yield children;
+		}
+	}
+
+	function* Component(this: Context) {
+		for ({} of this) {
+			this.schedule(() => this.refresh());
+			yield <div>Render 1</div>;
+			yield (
+				<Child>
+					<div>Render 2</div>
+				</Child>
+			);
+		}
+	}
+
+	const result = renderer.render(<Component />);
+	Assert.is(result, "<div>Render 2</div>");
+});
+
+test("schedule with async children on second render", async () => {
+	async function Child(this: Context, {children}: {children: Children}) {
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		return children;
+	}
+
+	function* Component(this: Context) {
+		for ({} of this) {
+			this.schedule(() => this.refresh());
+			yield <div>Render 1</div>;
+			yield (
+				<Child>
+					<div>Render 2</div>
+				</Child>
+			);
+		}
+	}
+
+	const result = await renderer.render(<Component />);
+	Assert.is(result, "<div>Render 2</div>");
 });
 
 test.run();

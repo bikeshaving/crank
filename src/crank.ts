@@ -754,28 +754,35 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				schedulePromises,
 				undefined,
 			);
-			if (typeof root !== "object" || root === null) {
-				unmount(adapter, ret, ret.ctx, ret, false);
-			}
 			if (schedulePromises.length > 0) {
 				return Promise.all(schedulePromises).then(() => {
+					if (typeof root !== "object" || root === null) {
+						unmount(adapter, ret, ret.ctx, ret, false);
+					}
 					return adapter.read(unwrap(getChildValues(ret)));
 				});
+			}
+
+			if (typeof root !== "object" || root === null) {
+				unmount(adapter, ret, ret.ctx, ret, false);
 			}
 			return adapter.read(unwrap(getChildValues(ret)));
 		});
 	}
 
 	commit(adapter, ret, ret, ret.ctx, ret.scope, 0, schedulePromises, undefined);
-	if (typeof root !== "object" || root === null) {
-		unmount(adapter, ret, ret.ctx, ret, false);
-	}
 	if (schedulePromises.length > 0) {
 		return Promise.all(schedulePromises).then(() => {
+			if (typeof root !== "object" || root === null) {
+				unmount(adapter, ret, ret.ctx, ret, false);
+			}
 			return adapter.read(unwrap(getChildValues(ret)));
 		});
 	}
 
+	if (typeof root !== "object" || root === null) {
+		unmount(adapter, ret, ret.ctx, ret, false);
+	}
 	return adapter.read(unwrap(getChildValues(ret)));
 }
 
