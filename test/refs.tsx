@@ -191,11 +191,12 @@ test("transcluded in async function component", async () => {
 });
 
 test("it works with hydrate", async () => {
-	document.body.innerHTML = "<div>Hello</div>";
-	const div = document.body.firstChild;
+	const container = document.createElement("div");
+	container.innerHTML = "<div>Hello</div>";
+	const div = container.firstChild;
 	const fn = Sinon.fake();
-	const div1 = renderer.hydrate(<div ref={fn}>Hello</div>, document.body);
-	Assert.is(document.body.innerHTML, "<div>Hello</div>");
+	const div1 = renderer.hydrate(<div ref={fn}>Hello</div>, container);
+	Assert.is(container.innerHTML, "<div>Hello</div>");
 	Assert.is(div, div1);
 	Assert.is(fn.callCount, 1);
 	Assert.is(fn.lastCall.args[0], div);

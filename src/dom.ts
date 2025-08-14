@@ -130,6 +130,17 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 		}
 
 		if (
+			node === document.body ||
+			node === document.head ||
+			node === document.documentElement ||
+			node === document
+		) {
+			console.warn(
+				`Hydrating ${node.nodeName.toLowerCase()} is discouraged as it is destructive and may remove unknown nodes.`,
+			);
+		}
+
+		if (
 			node == null ||
 			(typeof tag === "string" &&
 				(node.nodeType !== Node.ELEMENT_NODE ||

@@ -14,13 +14,12 @@ import type {Context} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 const test = suite("hydration");
-test.before.each(() => {
-	renderer.render(null, document.body);
-	document.body.innerHTML = "";
-});
-
 let consoleWarn: Sinon.SinonStub;
+let container: HTMLDivElement;
 test.before.each(() => {
+	document.body.innerHTML = "";
+	container = document.createElement("div");
+	document.body.appendChild(container);
 	consoleWarn = Sinon.stub(console, "warn");
 });
 
@@ -31,58 +30,58 @@ test.after.each(() => {
 });
 
 test("simple", () => {
-	document.body.innerHTML = "<button>Click</button>";
-	const button = document.body.firstChild as HTMLButtonElement;
+	container.innerHTML = "<button>Click</button>";
+	const button = container.firstChild as HTMLButtonElement;
 	const onclick = Sinon.fake();
-	renderer.hydrate(<button onclick={onclick}>Click</button>, document.body);
+	renderer.hydrate(<button onclick={onclick}>Click</button>, container);
 
-	Assert.is(document.body.innerHTML, "<button>Click</button>");
-	Assert.is(document.body.firstChild, button);
+	Assert.is(container.innerHTML, "<button>Click</button>");
+	Assert.is(container.firstChild, button);
 	button.click();
 	Assert.ok(onclick.called);
 	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("fragment", () => {
-	document.body.innerHTML = "<button>Click</button>";
-	const button = document.body.firstChild as HTMLButtonElement;
+	container.innerHTML = "<button>Click</button>";
+	const button = container.firstChild as HTMLButtonElement;
 	const onclick = Sinon.fake();
 	renderer.hydrate(
 		<Fragment>
 			<button onclick={onclick}>Click</button>
 		</Fragment>,
-		document.body,
+		container,
 	);
 
-	Assert.is(document.body.innerHTML, "<button>Click</button>");
-	Assert.is(document.body.firstChild, button);
+	Assert.is(container.innerHTML, "<button>Click</button>");
+	Assert.is(container.firstChild, button);
 	button.click();
 	Assert.ok(onclick.called);
 	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("sync function component", () => {
-	document.body.innerHTML = "<button>Click</button>";
-	const button = document.body.firstChild as HTMLButtonElement;
+	container.innerHTML = "<button>Click</button>";
+	const button = container.firstChild as HTMLButtonElement;
 
 	const onclick = Sinon.fake();
 	const Component = Sinon.fake(function Component() {
 		return <button onclick={onclick}>Click</button>;
 	});
 
-	renderer.hydrate(<Component />, document.body);
+	renderer.hydrate(<Component />, container);
 
 	Assert.ok(Component.called);
-	Assert.is(document.body.innerHTML, "<button>Click</button>");
-	Assert.is(document.body.firstChild, button);
+	Assert.is(container.innerHTML, "<button>Click</button>");
+	Assert.is(container.firstChild, button);
 	button.click();
 	Assert.ok(onclick.called);
 	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("sync generator component", () => {
-	document.body.innerHTML = "<button>Click</button>";
-	const button = document.body.firstChild as HTMLButtonElement;
+	container.innerHTML = "<button>Click</button>";
+	const button = container.firstChild as HTMLButtonElement;
 
 	const onclick = Sinon.fake();
 	const Component = Sinon.fake(function* Component(this: Context) {
@@ -91,19 +90,19 @@ test("sync generator component", () => {
 		}
 	});
 
-	renderer.hydrate(<Component />, document.body);
+	renderer.hydrate(<Component />, container);
 
 	Assert.ok(Component.called);
-	Assert.is(document.body.innerHTML, "<button>Click</button>");
-	Assert.is(document.body.firstChild, button);
+	Assert.is(container.innerHTML, "<button>Click</button>");
+	Assert.is(container.firstChild, button);
 	button.click();
 	Assert.ok(onclick.called);
 	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("refresh", () => {
-	document.body.innerHTML = "<button>Click</button>";
-	const button = document.body.firstChild as HTMLButtonElement;
+	container.innerHTML = "<button>Click</button>";
+	const button = container.firstChild as HTMLButtonElement;
 
 	const onclick = Sinon.fake();
 	const Component = Sinon.fake(function* Component(this: Context) {
@@ -123,40 +122,40 @@ test("refresh", () => {
 		}
 	});
 
-	renderer.hydrate(<Component />, document.body);
+	renderer.hydrate(<Component />, container);
 
 	Assert.ok(Component.called);
-	Assert.is(document.body.innerHTML, "<button>Click 0</button>");
-	Assert.is(document.body.firstChild, button);
+	Assert.is(container.innerHTML, "<button>Click 0</button>");
+	Assert.is(container.firstChild, button);
 	button.click();
 	Assert.ok(onclick.called);
-	Assert.is(document.body.innerHTML, "<button>Click 1</button>");
-	Assert.is(document.body.firstChild, button);
+	Assert.is(container.innerHTML, "<button>Click 1</button>");
+	Assert.is(container.firstChild, button);
 	Assert.is(consoleWarn.callCount, 2);
 });
 
 test("async function component", async () => {
-	document.body.innerHTML = "<button>Click</button>";
-	const button = document.body.firstChild as HTMLButtonElement;
+	container.innerHTML = "<button>Click</button>";
+	const button = container.firstChild as HTMLButtonElement;
 
 	const onclick = Sinon.fake();
 	const Component = Sinon.fake(async function Component() {
 		return <button onclick={onclick}>Click</button>;
 	});
 
-	await renderer.hydrate(<Component />, document.body);
+	await renderer.hydrate(<Component />, container);
 
 	Assert.ok(Component.called);
-	Assert.is(document.body.innerHTML, "<button>Click</button>");
-	Assert.is(document.body.firstChild, button);
+	Assert.is(container.innerHTML, "<button>Click</button>");
+	Assert.is(container.firstChild, button);
 	button.click();
 	Assert.ok(onclick.called);
 	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("async generator component", async () => {
-	document.body.innerHTML = "<button>Click</button>";
-	const button = document.body.firstChild as HTMLButtonElement;
+	container.innerHTML = "<button>Click</button>";
+	const button = container.firstChild as HTMLButtonElement;
 
 	const onclick = Sinon.fake();
 	const Component = Sinon.fake(async function* Component(this: Context) {
@@ -165,20 +164,20 @@ test("async generator component", async () => {
 		}
 	});
 
-	await renderer.hydrate(<Component />, document.body);
+	await renderer.hydrate(<Component />, container);
 
 	Assert.ok(Component.called);
-	Assert.is(document.body.innerHTML, "<button>Click</button>");
-	Assert.is(document.body.firstChild, button);
+	Assert.is(container.innerHTML, "<button>Click</button>");
+	Assert.is(container.firstChild, button);
 	button.click();
 	Assert.ok(onclick.called);
 	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("async component and host sibling", async () => {
-	document.body.innerHTML =
+	container.innerHTML =
 		"<div><div><button>Slow</button></div><button>Fast</button></div>";
-	const div = document.body.firstChild!;
+	const div = container.firstChild!;
 	const button1 = div.childNodes[0].childNodes[0] as HTMLButtonElement;
 	const button2 = div.childNodes[1] as HTMLButtonElement;
 	const onclick1 = Sinon.fake();
@@ -197,15 +196,15 @@ test("async component and host sibling", async () => {
 			<Component />
 			<button onclick={onclick2}>Fast</button>
 		</div>,
-		document.body,
+		container,
 	);
 	Assert.is(
-		document.body.innerHTML,
+		container.innerHTML,
 		"<div><div><button>Slow</button></div><button>Fast</button></div>",
 	);
-	Assert.is(document.body.firstChild, div);
-	Assert.is(document.body.firstChild!.childNodes[0].childNodes[0], button1);
-	Assert.is(document.body.firstChild!.childNodes[1], button2);
+	Assert.is(container.firstChild, div);
+	Assert.is(container.firstChild!.childNodes[0].childNodes[0], button1);
+	Assert.is(container.firstChild!.childNodes[1], button2);
 	button1.click();
 	button2.click();
 	Assert.ok(onclick1.called);
@@ -214,9 +213,8 @@ test("async component and host sibling", async () => {
 });
 
 test("async sibling components resolve out of order", async () => {
-	document.body.innerHTML =
-		"<div><button>Slow</button><button>Fast</button></div>";
-	const div = document.body.firstChild!;
+	container.innerHTML = "<div><button>Slow</button><button>Fast</button></div>";
+	const div = container.firstChild!;
 	const button1 = div.childNodes[0] as HTMLButtonElement;
 	const button2 = div.childNodes[1] as HTMLButtonElement;
 	const onclick1 = Sinon.fake();
@@ -239,15 +237,15 @@ test("async sibling components resolve out of order", async () => {
 		);
 	}
 
-	await renderer.hydrate(<Component />, document.body);
+	await renderer.hydrate(<Component />, container);
 	Assert.is(
-		document.body.innerHTML,
+		container.innerHTML,
 		"<div><button>Slow</button><button>Fast</button></div>",
 	);
 
-	Assert.is(document.body.firstChild, div);
-	Assert.is(document.body.firstChild!.childNodes[0], button1);
-	Assert.is(document.body.firstChild!.childNodes[1], button2);
+	Assert.is(container.firstChild, div);
+	Assert.is(container.firstChild!.childNodes[0], button1);
+	Assert.is(container.firstChild!.childNodes[1], button2);
 	button1.click();
 	button2.click();
 	Assert.ok(onclick1.called);
@@ -256,8 +254,8 @@ test("async sibling components resolve out of order", async () => {
 });
 
 test("text sibling", async () => {
-	document.body.innerHTML = "<div>Text1<button>Click</button>Text2</div>";
-	const div = document.body.firstChild!;
+	container.innerHTML = "<div>Text1<button>Click</button>Text2</div>";
+	const div = container.firstChild!;
 	const text1 = div.childNodes[0] as Text;
 	const button = div.childNodes[1] as HTMLButtonElement;
 	const text2 = div.childNodes[2] as Text;
@@ -273,24 +271,21 @@ test("text sibling", async () => {
 		<div>
 			<Component />
 		</div>,
-		document.body,
+		container,
 	);
 
-	Assert.is(
-		document.body.innerHTML,
-		"<div>Text1<button>Click</button>Text2</div>",
-	);
+	Assert.is(container.innerHTML, "<div>Text1<button>Click</button>Text2</div>");
 
-	Assert.is(document.body.firstChild, div);
-	Assert.is(document.body.firstChild!.childNodes[0], text1);
-	Assert.is(document.body.firstChild!.childNodes[1], button);
-	Assert.is(document.body.firstChild!.childNodes[2], text2);
+	Assert.is(container.firstChild, div);
+	Assert.is(container.firstChild!.childNodes[0], text1);
+	Assert.is(container.firstChild!.childNodes[1], button);
+	Assert.is(container.firstChild!.childNodes[2], text2);
 	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("split text", async () => {
-	document.body.innerHTML = "<div>Text1Text2<button>Click</button></div>";
-	const div = document.body.firstChild!;
+	container.innerHTML = "<div>Text1Text2<button>Click</button></div>";
+	const div = container.firstChild!;
 	const text = div.childNodes[0] as Text;
 	const button = div.childNodes[1] as HTMLButtonElement;
 	const Component = Sinon.fake(function () {
@@ -307,47 +302,44 @@ test("split text", async () => {
 		<div>
 			<Component />
 		</div>,
-		document.body,
+		container,
 	);
 
-	Assert.is(
-		document.body.innerHTML,
-		"<div>Text1Text2<button>Click</button></div>",
-	);
+	Assert.is(container.innerHTML, "<div>Text1Text2<button>Click</button></div>");
 
-	Assert.is(document.body.firstChild, div);
-	Assert.is(document.body.firstChild!.childNodes[0], text);
-	Assert.is(document.body.firstChild!.childNodes[1].nodeType, Node.TEXT_NODE);
-	Assert.is(document.body.firstChild!.childNodes[2], button);
+	Assert.is(container.firstChild, div);
+	Assert.is(container.firstChild!.childNodes[0], text);
+	Assert.is(container.firstChild!.childNodes[1].nodeType, Node.TEXT_NODE);
+	Assert.is(container.firstChild!.childNodes[2], button);
 	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("mismatched tag", () => {
-	document.body.innerHTML = "<div>Hello</div>";
+	container.innerHTML = "<div>Hello</div>";
 	const onclick = Sinon.fake();
 	const Component = Sinon.fake(function () {
 		return <button onclick={onclick}>Click</button>;
 	});
 
-	renderer.hydrate(<Component />, document.body);
+	renderer.hydrate(<Component />, container);
 	Assert.ok(Component.called);
-	Assert.is(document.body.innerHTML, "<button>Click</button>");
+	Assert.is(container.innerHTML, "<button>Click</button>");
 	Assert.is(consoleWarn.callCount, 1);
 });
 
 test("mismatched text", () => {
-	document.body.innerHTML = "<button>Do not click</button>";
-	const button = document.body.firstChild as HTMLButtonElement;
+	container.innerHTML = "<button>Do not click</button>";
+	const button = container.firstChild as HTMLButtonElement;
 	const onclick = Sinon.fake();
 
 	const Component = Sinon.fake(function () {
 		return <button onclick={onclick}>Click</button>;
 	});
 
-	renderer.hydrate(<Component />, document.body);
+	renderer.hydrate(<Component />, container);
 	Assert.ok(Component.called);
-	Assert.is(document.body.innerHTML, "<button>Click</button>");
-	Assert.is(document.body.firstChild, button);
+	Assert.is(container.innerHTML, "<button>Click</button>");
+	Assert.is(container.firstChild, button);
 	button.click();
 	Assert.ok(onclick.called);
 	Assert.is(consoleWarn.callCount, 1);
@@ -358,15 +350,15 @@ test("missing element", () => {
 		return <button>Click</button>;
 	}
 
-	renderer.hydrate(<Component />, document.body);
-	Assert.is(document.body.innerHTML, "<button>Click</button>");
+	renderer.hydrate(<Component />, container);
+	Assert.is(container.innerHTML, "<button>Click</button>");
 	Assert.is(consoleWarn.callCount, 1);
 });
 
 test("raw element", () => {
-	document.body.innerHTML = "<div><div>Raw</div><button>Click</button></div>";
+	container.innerHTML = "<div><div>Raw</div><button>Click</button></div>";
 	const onclick = Sinon.fake();
-	const button = document.body.childNodes[0].childNodes[1] as HTMLButtonElement;
+	const button = container.childNodes[0].childNodes[1] as HTMLButtonElement;
 	const Component = Sinon.fake(function () {
 		return (
 			<div>
@@ -376,23 +368,23 @@ test("raw element", () => {
 		);
 	});
 
-	renderer.hydrate(<Component />, document.body);
+	renderer.hydrate(<Component />, container);
 	Assert.ok(Component.called);
 	Assert.is(
-		document.body.innerHTML,
+		container.innerHTML,
 		"<div><div>Raw</div><button>Click</button></div>",
 	);
-	Assert.is(document.body.childNodes[0].childNodes[1], button);
+	Assert.is(container.childNodes[0].childNodes[1], button);
 	button.click();
 	Assert.ok(onclick.called);
 	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("raw multiple elements", () => {
-	document.body.innerHTML =
+	container.innerHTML =
 		"<div><div>Raw 1</div><div>Raw 2</div><button>Click</button></div>";
 	const onclick = Sinon.fake();
-	const button = document.body.childNodes[0].childNodes[2] as HTMLButtonElement;
+	const button = container.childNodes[0].childNodes[2] as HTMLButtonElement;
 	const Component = Sinon.fake(function () {
 		return (
 			<div>
@@ -402,21 +394,21 @@ test("raw multiple elements", () => {
 		);
 	});
 
-	renderer.hydrate(<Component />, document.body);
+	renderer.hydrate(<Component />, container);
 	Assert.ok(Component.called);
 	Assert.is(
-		document.body.innerHTML,
+		container.innerHTML,
 		"<div><div>Raw 1</div><div>Raw 2</div><button>Click</button></div>",
 	);
-	Assert.is(document.body.childNodes[0].childNodes[2], button);
+	Assert.is(container.childNodes[0].childNodes[2], button);
 	button.click();
 	Assert.ok(onclick.called);
 });
 
 test("raw text", () => {
-	document.body.innerHTML = "<div>Raw<button>Click</button></div>";
+	container.innerHTML = "<div>Raw<button>Click</button></div>";
 	const onclick = Sinon.fake();
-	const button = document.body.childNodes[0].childNodes[1] as HTMLButtonElement;
+	const button = container.childNodes[0].childNodes[1] as HTMLButtonElement;
 	const Component = Sinon.fake(function () {
 		return (
 			<div>
@@ -426,20 +418,20 @@ test("raw text", () => {
 		);
 	});
 
-	renderer.hydrate(<Component />, document.body);
+	renderer.hydrate(<Component />, container);
 	Assert.ok(Component.called);
-	Assert.is(document.body.innerHTML, "<div>Raw<button>Click</button></div>");
-	Assert.is(document.body.childNodes[0].childNodes[1], button);
+	Assert.is(container.innerHTML, "<div>Raw<button>Click</button></div>");
+	Assert.is(container.childNodes[0].childNodes[1], button);
 	button.click();
 	Assert.ok(onclick.called);
 	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("raw comment", () => {
-	document.body.innerHTML =
+	container.innerHTML =
 		"<div><!-- comment -->Hello<button>Click</button></div>";
 	const onclick = Sinon.fake();
-	const button = document.body.childNodes[0].childNodes[2] as HTMLButtonElement;
+	const button = container.childNodes[0].childNodes[2] as HTMLButtonElement;
 	const Component = Sinon.fake(function () {
 		return (
 			<div>
@@ -450,22 +442,22 @@ test("raw comment", () => {
 		);
 	});
 
-	renderer.hydrate(<Component />, document.body);
+	renderer.hydrate(<Component />, container);
 	Assert.ok(Component.called);
 	Assert.is(
-		document.body.innerHTML,
+		container.innerHTML,
 		"<div><!-- comment -->Hello<button>Click</button></div>",
 	);
 
-	Assert.is(document.body.childNodes[0].childNodes[2], button);
+	Assert.is(container.childNodes[0].childNodes[2], button);
 	button.click();
 	Assert.ok(onclick.called);
 	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("ref called with hydrated element", () => {
-	document.body.innerHTML = "<button>Click</button>";
-	const button = document.body.firstChild as HTMLButtonElement;
+	container.innerHTML = "<button>Click</button>";
+	const button = container.firstChild as HTMLButtonElement;
 	const ref = Sinon.fake();
 	const onclick = Sinon.fake();
 
@@ -473,11 +465,11 @@ test("ref called with hydrated element", () => {
 		<button ref={ref} onclick={onclick}>
 			Click
 		</button>,
-		document.body,
+		container,
 	);
 
-	Assert.is(document.body.innerHTML, "<button>Click</button>");
-	Assert.is(document.body.firstChild, button);
+	Assert.is(container.innerHTML, "<button>Click</button>");
+	Assert.is(container.firstChild, button);
 	Assert.ok(ref.calledOnce);
 	Assert.is(ref.lastCall.firstArg, button);
 	button.click();
@@ -486,43 +478,43 @@ test("ref called with hydrated element", () => {
 });
 
 test("warns when attribute present but should be missing during hydration", () => {
-	document.body.innerHTML = `<div foo="bar"></div>`;
-	renderer.hydrate(<div foo={null} />, document.body);
+	container.innerHTML = `<div foo="bar"></div>`;
+	renderer.hydrate(<div foo={null} />, container);
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(consoleWarn.firstCall.args[0], /Expected "foo" to be missing/);
 });
 
 test("warns when attribute missing but should be present during hydration", () => {
-	document.body.innerHTML = `<div></div>`;
-	renderer.hydrate(<div foo={true} />, document.body);
+	container.innerHTML = `<div></div>`;
+	renderer.hydrate(<div foo={true} />, container);
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(consoleWarn.firstCall.args[0], /Expected "foo" to be ""/);
 });
 
 test("warns when attribute value mismatches during hydration", () => {
-	document.body.innerHTML = `<div foo="baz"></div>`;
-	renderer.hydrate(<div foo="bar" />, document.body);
+	container.innerHTML = `<div foo="baz"></div>`;
+	renderer.hydrate(<div foo="bar" />, container);
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(consoleWarn.firstCall.args[0], /Expected "foo" to be "bar"/);
 });
 
 test("warns when style present but should be missing during hydration", () => {
-	document.body.innerHTML = `<div style="color: red"></div>`;
-	renderer.hydrate(<div style={null} />, document.body);
+	container.innerHTML = `<div style="color: red"></div>`;
+	renderer.hydrate(<div style={null} />, container);
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(consoleWarn.firstCall.args[0], /Expected "style" to be missing/);
 });
 
 test.skip("warns when style should be empty string during hydration", () => {
-	document.body.innerHTML = `<div style="color: red"></div>`;
-	renderer.hydrate(<div style="" />, document.body);
+	container.innerHTML = `<div style="color: red"></div>`;
+	renderer.hydrate(<div style="" />, container);
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(consoleWarn.firstCall.args[0], /Expected "style" to be ""/);
 });
 
 test.skip("warns when style value mismatches during hydration", () => {
-	document.body.innerHTML = `<div style="color: red"></div>`;
-	renderer.hydrate(<div style="color: blue" />, document.body);
+	container.innerHTML = `<div style="color: red"></div>`;
+	renderer.hydrate(<div style="color: blue" />, container);
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(
 		consoleWarn.firstCall.args[0],
@@ -531,29 +523,29 @@ test.skip("warns when style value mismatches during hydration", () => {
 });
 
 test("warns when class present but should be missing during hydration", () => {
-	document.body.innerHTML = `<div class="foo"></div>`;
-	renderer.hydrate(<div class={null} />, document.body);
+	container.innerHTML = `<div class="foo"></div>`;
+	renderer.hydrate(<div class={null} />, container);
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(consoleWarn.firstCall.args[0], /Expected "class" to be missing/);
 });
 
 test("warns when class should be empty string during hydration", () => {
-	document.body.innerHTML = `<div class="foo"></div>`;
-	renderer.hydrate(<div class="" />, document.body);
+	container.innerHTML = `<div class="foo"></div>`;
+	renderer.hydrate(<div class="" />, container);
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(consoleWarn.firstCall.args[0], /Expected "class" to be ""/);
 });
 
 test("warns when class value mismatches during hydration", () => {
-	document.body.innerHTML = `<div class="foo"></div>`;
-	renderer.hydrate(<div class="bar" />, document.body);
+	container.innerHTML = `<div class="foo"></div>`;
+	renderer.hydrate(<div class="bar" />, container);
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(consoleWarn.firstCall.args[0], /Expected "class" to be "bar"/);
 });
 
 test("warns when innerHTML mismatches during hydration", () => {
-	document.body.innerHTML = `<div>baz</div>`;
-	renderer.hydrate(<div innerHTML="bar" />, document.body);
+	container.innerHTML = `<div>baz</div>`;
+	renderer.hydrate(<div innerHTML="bar" />, container);
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(
 		consoleWarn.firstCall.args[0],
@@ -562,8 +554,8 @@ test("warns when innerHTML mismatches during hydration", () => {
 });
 
 test("warns when style property present but should be missing during hydration", () => {
-	document.body.innerHTML = `<div style="color: red"></div>`;
-	renderer.hydrate(<div style={{color: null}} />, document.body);
+	container.innerHTML = `<div style="color: red"></div>`;
+	renderer.hydrate(<div style={{color: null}} />, container);
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(
 		consoleWarn.firstCall.args[0],
@@ -572,15 +564,15 @@ test("warns when style property present but should be missing during hydration",
 });
 
 test("warns when id mismatches during hydration", () => {
-	document.body.innerHTML = `<div id="server"></div>`;
-	renderer.hydrate(<div id="client" />, document.body);
+	container.innerHTML = `<div id="server"></div>`;
+	renderer.hydrate(<div id="client" />, container);
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(consoleWarn.firstCall.args[0], /Expected "id" to be "client"/);
 });
 
 test("warns when input type and value mismatches during hydration", () => {
-	document.body.innerHTML = `<input type="email" value="server">`;
-	renderer.hydrate(<input type="text" value="client" />, document.body);
+	container.innerHTML = `<input type="email" value="server">`;
+	renderer.hydrate(<input type="text" value="client" />, container);
 	Assert.is(consoleWarn.callCount, 2);
 	Assert.match(consoleWarn.firstCall.args[0], /Expected "type" to be "text"/);
 	Assert.match(
@@ -590,8 +582,8 @@ test("warns when input type and value mismatches during hydration", () => {
 });
 
 test.skip("warns when style property value mismatches during hydration", () => {
-	document.body.innerHTML = `<div style="color: red"></div>`;
-	renderer.hydrate(<div style={{color: "blue"}} />, document.body);
+	container.innerHTML = `<div style="color: red"></div>`;
+	renderer.hydrate(<div style={{color: "blue"}} />, container);
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(
 		consoleWarn.firstCall.args[0],
@@ -600,22 +592,22 @@ test.skip("warns when style property value mismatches during hydration", () => {
 });
 
 test("hydrate={true} can be used to continue hydration", () => {
-	document.body.innerHTML = `<button>Click</button>Hello`;
-	const button = document.body.firstChild as HTMLButtonElement;
+	container.innerHTML = `<button>Click</button>Hello`;
+	const button = container.firstChild as HTMLButtonElement;
 	renderer.hydrate(
 		<Fragment>
 			<button hydrate={true}>Click</button>
 			Hello
 		</Fragment>,
-		document.body,
+		container,
 	);
-	Assert.is(document.body.innerHTML, `<button>Click</button>Hello`);
-	Assert.is(document.body.firstChild, button);
+	Assert.is(container.innerHTML, `<button>Click</button>Hello`);
+	Assert.is(container.firstChild, button);
 });
 
 test("hydrate={false} can be used to disable hydration", () => {
-	document.body.innerHTML = `Before <button id="server">Server</button>After`;
-	const button = document.body.firstChild as HTMLButtonElement;
+	container.innerHTML = `Before <button id="server">Server</button>After`;
+	const button = container.firstChild as HTMLButtonElement;
 	renderer.hydrate(
 		<Fragment>
 			Before{" "}
@@ -624,10 +616,10 @@ test("hydrate={false} can be used to disable hydration", () => {
 			</button>
 			After
 		</Fragment>,
-		document.body,
+		container,
 	);
 	Assert.is(
-		document.body.innerHTML,
+		container.innerHTML,
 		`Before <button id="client">Client</button>After`,
 	);
 	Assert.not(button === document.getElementById("client"));
@@ -635,7 +627,7 @@ test("hydrate={false} can be used to disable hydration", () => {
 });
 
 test("portals are not hydrated by default", () => {
-	document.body.innerHTML = `<div id="app">Before After</div><div id="portal"><button>Server</button></div>`;
+	container.innerHTML = `<div id="app">Before After</div><div id="portal"><button>Server</button></div>`;
 	const app = document.getElementById("app")!;
 	const portal = document.getElementById("portal")!;
 	const button = portal.firstChild as HTMLButtonElement;
@@ -651,7 +643,7 @@ test("portals are not hydrated by default", () => {
 		app,
 	);
 	Assert.is(
-		document.body.innerHTML,
+		container.innerHTML,
 		`<div id="app">Before After</div><div id="portal"><button>Client</button><button>Server</button></div>`,
 	);
 	Assert.is(portal.innerHTML, `<button>Client</button><button>Server</button>`);
@@ -662,7 +654,7 @@ test("portals are not hydrated by default", () => {
 
 test("hydrate={true} can be used to hydrate a nested portal", () => {
 	const onclick = Sinon.fake();
-	document.body.innerHTML = `<div id="app">Before After</div><div id="portal"><button>Click</button></div>`;
+	container.innerHTML = `<div id="app">Before After</div><div id="portal"><button>Click</button></div>`;
 	const app = document.getElementById("app")!;
 	const portal = document.getElementById("portal")!;
 	const button = portal.firstChild as HTMLButtonElement;
@@ -678,7 +670,7 @@ test("hydrate={true} can be used to hydrate a nested portal", () => {
 	);
 
 	Assert.is(
-		document.body.innerHTML,
+		container.innerHTML,
 		`<div id="app">Before After</div><div id="portal"><button>Click</button></div>`,
 	);
 	Assert.is(portal.firstChild, button);
@@ -690,7 +682,7 @@ test("hydrate={true} can be used to hydrate a nested portal", () => {
 
 test("hydrate={true} can be used to start hydration", () => {
 	const onclick = Sinon.fake();
-	document.body.innerHTML = `<div id="portal"><button>Click</button></div>`;
+	container.innerHTML = `<div id="portal"><button>Click</button></div>`;
 	const portal = document.getElementById("portal")!;
 	const button = portal.firstChild as HTMLButtonElement;
 	renderer.render(
@@ -701,11 +693,11 @@ test("hydrate={true} can be used to start hydration", () => {
 			</Portal>
 			After
 		</div>,
-		document.body,
+		container,
 	);
 
 	Assert.is(
-		document.body.innerHTML,
+		container.innerHTML,
 		`<div id="app">Before After</div><div id="portal"><button>Click</button></div>`,
 	);
 	Assert.is(portal.firstChild, button);
@@ -716,12 +708,12 @@ test("hydrate={true} can be used to start hydration", () => {
 });
 
 test("hydrate={false} can be used to disable hydration for a fragment", () => {
-	document.body.innerHTML = `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`;
+	container.innerHTML = `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`;
 	const app = document.getElementById("app")!;
-	const button1 = document.body.querySelector(
+	const button1 = container.querySelector(
 		"button:nth-child(1)",
 	) as HTMLButtonElement;
-	const button2 = document.body.querySelector(
+	const button2 = container.querySelector(
 		"button:nth-child(2)",
 	) as HTMLButtonElement;
 	renderer.hydrate(
@@ -735,21 +727,21 @@ test("hydrate={false} can be used to disable hydration for a fragment", () => {
 		app,
 	);
 	Assert.is(
-		document.body.innerHTML,
+		container.innerHTML,
 		`<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`,
 	);
-	Assert.not(button1 === document.body.querySelector("button:nth-child(1)"));
-	Assert.not(button2 === document.body.querySelector("button:nth-child(2)"));
+	Assert.not(button1 === container.querySelector("button:nth-child(1)"));
+	Assert.not(button2 === container.querySelector("button:nth-child(2)"));
 	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("hydrate={false} can be used to disable hydration for a component", () => {
-	document.body.innerHTML = `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`;
+	container.innerHTML = `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`;
 	const app = document.getElementById("app")!;
-	const button1 = document.body.querySelector(
+	const button1 = container.querySelector(
 		"button:nth-child(1)",
 	) as HTMLButtonElement;
-	const button2 = document.body.querySelector(
+	const button2 = container.querySelector(
 		"button:nth-child(2)",
 	) as HTMLButtonElement;
 
@@ -768,21 +760,21 @@ test("hydrate={false} can be used to disable hydration for a component", () => {
 		app,
 	);
 	Assert.is(
-		document.body.innerHTML,
+		container.innerHTML,
 		`<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`,
 	);
-	Assert.not(button1 === document.body.querySelector("button:nth-child(1)"));
-	Assert.not(button2 === document.body.querySelector("button:nth-child(2)"));
+	Assert.not(button1 === container.querySelector("button:nth-child(1)"));
+	Assert.not(button2 === container.querySelector("button:nth-child(2)"));
 	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("hydrate={false} can be used to disable hydration for a Raw node", () => {
-	document.body.innerHTML = `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`;
+	container.innerHTML = `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`;
 	const app = document.getElementById("app")!;
-	const button1 = document.body.querySelector(
+	const button1 = container.querySelector(
 		"button:nth-child(1)",
 	) as HTMLButtonElement;
-	const button2 = document.body.querySelector(
+	const button2 = container.querySelector(
 		"button:nth-child(2)",
 	) as HTMLButtonElement;
 
@@ -798,22 +790,22 @@ test("hydrate={false} can be used to disable hydration for a Raw node", () => {
 		app,
 	);
 	Assert.is(
-		document.body.innerHTML,
+		container.innerHTML,
 		`<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`,
 	);
-	Assert.not(button1 === document.body.querySelector("button:nth-child(1)"));
-	Assert.not(button2 === document.body.querySelector("button:nth-child(2)"));
+	Assert.not(button1 === container.querySelector("button:nth-child(1)"));
+	Assert.not(button2 === container.querySelector("button:nth-child(2)"));
 	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("hydrate={false} can be used to disable hydration for Text", () => {
-	document.body.innerHTML = `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`;
+	container.innerHTML = `<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`;
 	const app = document.getElementById("app")!;
 	const text1 = (
-		document.body.querySelector("button:nth-child(1)") as HTMLButtonElement
+		container.querySelector("button:nth-child(1)") as HTMLButtonElement
 	).firstChild as Text;
 	const text2 = (
-		document.body.querySelector("button:nth-child(2)") as HTMLButtonElement
+		container.querySelector("button:nth-child(2)") as HTMLButtonElement
 	).firstChild as Text;
 
 	renderer.hydrate(
@@ -830,27 +822,27 @@ test("hydrate={false} can be used to disable hydration for Text", () => {
 		app,
 	);
 	Assert.is(
-		document.body.innerHTML,
+		container.innerHTML,
 		`<div id="app">Before <button>Click1</button> <button>Click2</button> After</div>`,
 	);
 	Assert.not(
 		text1 ===
-			(document.body.querySelector("button:nth-child(1)") as HTMLButtonElement)
+			(container.querySelector("button:nth-child(1)") as HTMLButtonElement)
 				.firstChild,
 	);
 	Assert.not(
 		text2 ===
-			(document.body.querySelector("button:nth-child(2)") as HTMLButtonElement)
+			(container.querySelector("button:nth-child(2)") as HTMLButtonElement)
 				.firstChild,
 	);
 	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("hydration meta-prop can suppress specific property warnings (exclusive)", () => {
-	document.body.innerHTML = `<div id="server" class="old-class"></div>`;
+	container.innerHTML = `<div id="server" class="old-class"></div>`;
 	renderer.hydrate(
 		<div id="client" class="new-class" hydrate="!id" />,
-		document.body,
+		container,
 	);
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(
@@ -860,10 +852,10 @@ test("hydration meta-prop can suppress specific property warnings (exclusive)", 
 });
 
 test("hydration meta-prop can suppress multiple property warnings (exclusive)", () => {
-	document.body.innerHTML = `<div id="server" class="old-class" data-test="old"></div>`;
+	container.innerHTML = `<div id="server" class="old-class" data-test="old"></div>`;
 	renderer.hydrate(
 		<div id="client" class="new-class" data-test="new" hydrate="!id !class" />,
-		document.body,
+		container,
 	);
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(
@@ -873,26 +865,26 @@ test("hydration meta-prop can suppress multiple property warnings (exclusive)", 
 });
 
 test("hydration meta-prop can suppress all but specified property warnings (inclusive)", () => {
-	document.body.innerHTML = `<div id="server" class="old-class" data-test="old"></div>`;
+	container.innerHTML = `<div id="server" class="old-class" data-test="old"></div>`;
 	renderer.hydrate(
 		<div id="client" class="new-class" data-test="new" hydrate="id" />,
-		document.body,
+		container,
 	);
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(consoleWarn.firstCall.args[0], /Expected "id" to be "client"/);
 });
 
 test("hydration meta-prop can suppress style property warnings", () => {
-	document.body.innerHTML = `<div style="color: red; background: blue"></div>`;
+	container.innerHTML = `<div style="color: red; background: blue"></div>`;
 	renderer.hydrate(
 		<div style={{color: "green", background: "blue"}} hydrate="!style" />,
-		document.body,
+		container,
 	);
 	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("hydration meta-prop with spaces and mixed syntax", () => {
-	document.body.innerHTML = `<div id="server" class="old" data-foo="old" data-bar="old"></div>`;
+	container.innerHTML = `<div id="server" class="old" data-foo="old" data-bar="old"></div>`;
 	renderer.hydrate(
 		<div
 			id="client"
@@ -901,7 +893,7 @@ test("hydration meta-prop with spaces and mixed syntax", () => {
 			data-bar="new"
 			hydrate="  !id   !class  "
 		/>,
-		document.body,
+		container,
 	);
 	Assert.is(consoleWarn.callCount, 2);
 	Assert.match(
@@ -915,11 +907,9 @@ test("hydration meta-prop with spaces and mixed syntax", () => {
 });
 
 test("hydration meta-prop can disable children hydration with !children", () => {
-	document.body.innerHTML = `<div><span>Server Content</span><button>Server Button</button></div>`;
-	const serverSpan = document.body.querySelector("span") as HTMLSpanElement;
-	const serverButton = document.body.querySelector(
-		"button",
-	) as HTMLButtonElement;
+	container.innerHTML = `<div><span>Server Content</span><button>Server Button</button></div>`;
+	const serverSpan = container.querySelector("span") as HTMLSpanElement;
+	const serverButton = container.querySelector("button") as HTMLButtonElement;
 
 	const onclick = Sinon.fake();
 	renderer.hydrate(
@@ -927,19 +917,19 @@ test("hydration meta-prop can disable children hydration with !children", () => 
 			<span>Client Content</span>
 			<button onclick={onclick}>Client Button</button>
 		</div>,
-		document.body,
+		container,
 	);
 
 	// Children should be fully re-rendered (not hydrated)
 	Assert.is(
-		document.body.innerHTML,
+		container.innerHTML,
 		`<div><span>Client Content</span><button>Client Button</button></div>`,
 	);
-	Assert.not(document.body.querySelector("span") === serverSpan);
-	Assert.not(document.body.querySelector("button") === serverButton);
+	Assert.not(container.querySelector("span") === serverSpan);
+	Assert.not(container.querySelector("button") === serverButton);
 
 	// Event handlers should work (since it's client-rendered)
-	const newButton = document.body.querySelector("button") as HTMLButtonElement;
+	const newButton = container.querySelector("button") as HTMLButtonElement;
 	newButton.click();
 	Assert.ok(onclick.called);
 	Assert.is(onclick.callCount, 1);
@@ -947,13 +937,13 @@ test("hydration meta-prop can disable children hydration with !children", () => 
 });
 
 test("hydration meta-prop inclusive mode shows warnings only for specified props", () => {
-	document.body.innerHTML = `<div class="server" id="server"><span>Server Content</span></div>`;
+	container.innerHTML = `<div class="server" id="server"><span>Server Content</span></div>`;
 
 	renderer.hydrate(
 		<div class="client" id="client" hydrate="class">
 			<span>Client Content</span>
 		</div>,
-		document.body,
+		container,
 	);
 
 	// Only class should warn (specified in inclusive mode), id should be quiet
@@ -963,16 +953,16 @@ test("hydration meta-prop inclusive mode shows warnings only for specified props
 		/Expected "class" to be "client"/,
 	);
 	Assert.is(
-		document.body.innerHTML,
+		container.innerHTML,
 		`<div class="client" id="client"><span>Client Content</span></div>`,
 	);
 });
 
 test("warns when class object doesn't match server classes during hydration", () => {
-	document.body.innerHTML = `<div class="server-class other-class"></div>`;
+	container.innerHTML = `<div class="server-class other-class"></div>`;
 	renderer.hydrate(
 		<div class={{"client-class": true, active: true}} />,
-		document.body,
+		container,
 	);
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(
@@ -982,11 +972,8 @@ test("warns when class object doesn't match server classes during hydration", ()
 });
 
 test("warns when class object expects missing class during hydration", () => {
-	document.body.innerHTML = `<div class="existing"></div>`;
-	renderer.hydrate(
-		<div class={{existing: true, missing: true}} />,
-		document.body,
-	);
+	container.innerHTML = `<div class="existing"></div>`;
+	renderer.hydrate(<div class={{existing: true, missing: true}} />, container);
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(
 		consoleWarn.firstCall.args[0],
@@ -995,8 +982,8 @@ test("warns when class object expects missing class during hydration", () => {
 });
 
 test("warns when class object encounters unexpected server class during hydration", () => {
-	document.body.innerHTML = `<div class="expected unexpected"></div>`;
-	renderer.hydrate(<div class={{expected: true}} />, document.body);
+	container.innerHTML = `<div class="expected unexpected"></div>`;
+	renderer.hydrate(<div class={{expected: true}} />, container);
 	Assert.is(consoleWarn.callCount, 1);
 	Assert.match(
 		consoleWarn.firstCall.args[0],
@@ -1005,17 +992,17 @@ test("warns when class object encounters unexpected server class during hydratio
 });
 
 test("no warning class object matches", () => {
-	document.body.innerHTML = `<div class="active primary"></div>`;
+	container.innerHTML = `<div class="active primary"></div>`;
 	renderer.hydrate(
 		<div class={{active: true, primary: true, disabled: false}} />,
-		document.body,
+		container,
 	);
 	Assert.is(consoleWarn.callCount, 0);
 });
 
 test("no warning when prop is a coerced number", () => {
-	document.body.innerHTML = `<div tabindex="3"></div>`;
-	renderer.hydrate(<div tabindex={3} />, document.body);
+	container.innerHTML = `<div tabindex="3"></div>`;
+	renderer.hydrate(<div tabindex={3} />, container);
 
 	Assert.is(consoleWarn.callCount, 0);
 });

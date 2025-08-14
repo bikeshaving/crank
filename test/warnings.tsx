@@ -234,4 +234,19 @@ test("string hydrate prop on component warns", () => {
 	);
 });
 
+test("hydrating document.body warns", () => {
+	const warnMock = Sinon.stub(console, "warn");
+	try {
+		document.body.innerHTML = "<div>test</div>";
+		renderer.hydrate(<div>test</div>, document.body);
+		Assert.is(warnMock.callCount, 1);
+		Assert.match(
+			warnMock.firstCall.args[0],
+			/Hydrating body is discouraged as it is destructive/,
+		);
+	} finally {
+		warnMock.restore();
+	}
+});
+
 test.run();
