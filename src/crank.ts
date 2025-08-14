@@ -222,6 +222,9 @@ export function isElement(value: any): value is Element {
 	return value != null && value.$$typeof === ElementSymbol;
 }
 
+const DEPRECATED_PROP_PREFIXES = ["crank-", "c-", "$"];
+
+const DEPRECATED_SPECIAL_PROP_BASES = ["key", "ref", "static", "copy"];
 /**
  * Creates an element with the specified tag, props and children.
  *
@@ -237,6 +240,30 @@ export function createElement<TTag extends Tag>(
 ): Element<TTag> {
 	if (props == null) {
 		props = {} as TagProps<TTag>;
+	}
+
+	if ("static" in (props as TagProps<TTag>)) {
+		console.error(`The \`static\` prop is deprecated. Use \`copy\` instead.`);
+		(props as TagProps<TTag>)["copy"] = (props as TagProps<TTag>)["static"];
+		delete (props as any)["static"];
+	}
+
+	for (let i = 0; i < DEPRECATED_PROP_PREFIXES.length; i++) {
+		const propPrefix = DEPRECATED_PROP_PREFIXES[i];
+		for (let j = 0; j < DEPRECATED_SPECIAL_PROP_BASES.length; j++) {
+			const propBase = DEPRECATED_SPECIAL_PROP_BASES[j];
+			const deprecatedPropName = propPrefix + propBase;
+			if (deprecatedPropName in (props as TagProps<TTag>)) {
+				const targetPropBase = propBase === "static" ? "copy" : propBase;
+				console.error(
+					`The \`${deprecatedPropName}\` prop is deprecated. Use \`${targetPropBase}\` instead.`,
+				);
+				(props as TagProps<TTag>)[targetPropBase] = (props as TagProps<TTag>)[
+					deprecatedPropName
+				];
+				delete (props as any)[deprecatedPropName];
+			}
+		}
 	}
 
 	if (children.length > 1) {
