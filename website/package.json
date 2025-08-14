@@ -10,7 +10,7 @@
   "dependencies": {
     "@b9g/crank": "^0.6.1",
     "@b9g/revise": "^0.1.2",
-    "@b9g/shovel": "^0.1.9",
+    "@b9g/shovel": "^0.1.10",
     "@babel/core": "^7.26.10",
     "@babel/preset-react": "^7.26.3",
     "@babel/preset-typescript": "^7.27.0",
