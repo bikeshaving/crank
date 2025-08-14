@@ -22,7 +22,7 @@ function CodeEditorNavbar({children}: any) {
 			flex: none;
 			padding: 1em;
 			height: 3em;
-			border-bottom: 1px solid var(--text-color);
+			border-bottom: 1px solid var(--coldark3);
 			display: flex;
 			flex-direction: row;
 			align-items: center;

@@ -258,7 +258,7 @@ export function* CodeEditor(
 
 		this.addEventListener("contentchange", (ev: any) => {
 			const {edit, source} = ev.detail;
-			if (source !== "history") {
+			if (source !== "history" && source !== null) {
 				editHistory.append(edit.normalize());
 			}
 		});
