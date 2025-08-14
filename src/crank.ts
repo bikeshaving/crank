@@ -2045,21 +2045,34 @@ export class Context<
 	/**
 	 * Re-executes a component.
 	 *
+	 * @param callback - Optional callback to execute before refresh
 	 * @returns The rendered result of the component or a promise thereof if the
 	 * component or its children execute asynchronously.
 	 */
-	refresh(): Promise<TResult> | TResult {
+	refresh(callback?: () => unknown): Promise<TResult> | TResult {
 		const ctx = this[_ContextState];
 		if (getFlag(ctx.ret, IsUnmounted)) {
 			console.error(
 				`Component <${getTagName(ctx.ret.el.tag)}> is unmounted. Check the isUnmounted property if necessary.`,
 			);
-			return ctx.adapter.read(undefined);
+			return ctx.adapter.read(getValue(ctx.ret));
 		} else if (getFlag(ctx.ret, IsExecuting)) {
 			console.error(
 				`Component <${getTagName(ctx.ret.el.tag)}> is already executing Check the isExecuting property if necessary.`,
 			);
 			return ctx.adapter.read(getValue(ctx.ret));
+		}
+
+		if (callback) {
+			const result = callback();
+			if (isPromiseLike(result)) {
+				return Promise.resolve(result).then(() => {
+					if (!getFlag(ctx.ret, IsUnmounted)) {
+						return this.refresh();
+					}
+					return ctx.adapter.read(getValue(ctx.ret));
+				});
+			}
 		}
 
 		let diff: Promise<undefined> | undefined;
