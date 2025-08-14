@@ -35,7 +35,7 @@ function* Gutter(this: Context<typeof Gutter>, {length}: {length: number}) {
 
 		yield jsx`
 			<div
-				static=${length === newLength}
+				copy=${length === newLength}
 				class="blur-background ${css`
 					display: none;
 					@media (min-width: 800px) {
@@ -44,19 +44,25 @@ function* Gutter(this: Context<typeof Gutter>, {length}: {length: number}) {
 					flex-direction: column;
 					flex: none;
 					margin: 0;
-					padding: 1em 0.5em;
-					color: var(--text-color);
-					font-size: 16px;
+					padding: 1.1em 0.5em 0.9em 0.8em;
+					font-size: 14px;
 					font-family: monospace;
-					line-height: 1.4;
+					line-height: 1.6;
 					text-align: right;
 					border-right: 1px solid var(--text-color);
 					position: sticky;
 					left: 0;
 				`}"
 			>
-				<!-- TODO: don't hardcode the height -->
-				${lines.map((line) => jsx`<div style="height: 23px">${line}</div>`)}
+				${lines.map((line) => jsx`
+					<div
+						class="prism-line ${css`
+							border-top: 1px solid transparent;
+							color: var(--coldark03);
+						`}">
+							${line}
+						</div>
+				`)}
 			</div>
 		`;
 		initial = false;
