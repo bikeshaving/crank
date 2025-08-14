@@ -1,5 +1,462 @@
 # Changelog
-## [0.6.1] - 2024-04-21
+## [0.7.0] - 2025-08-14
+### New Features
+1. **The `refresh()` method can now take a callback.**
+  Users frequently complained about forgetting to call `refresh()` after
+  updating state. I realized we can solve these problems with a `refresh()`
+  callback. Starting in 0.7, the `refresh()` function can be passed a callback
+  which is executed immediately before re-rendering. By putting state updates
+  in the callback, you’ll never forget to call `refresh()` ever again. This
+  callback is also useful for inline event handlers.
+
+  **Before:**
+  ```jsx
+  function *Timer() {
+    let seconds = 0;
+    const interval = setInterval(() => {
+      seconds++;
+      this.refresh();
+    }, 1000);
+
+    for ({} of this) {
+      yield <div>{seconds}</div>;
+    }
+
+    clearInterval(interval);
+  }
+
+  function *Counter() {
+    let count = 0;
+    const onclick = () => {
+      count++;
+      this.refresh();
+    };
+
+    for ({} of this) {
+      yield (
+        <button onclick={onclick}>
+          Button pressed {count} time{count !== 1 && "s"}.
+        </button>
+      );
+    }
+  }
+  ```
+
+  **After:**
+  ```jsx
+  function *Timer() {
+    let seconds = 0;
+    const interval = setInterval(() => this.refresh(() => seconds++), 1000);
+
+    for ({} of this) {
+      yield <div>{seconds}</div>;
+    }
+
+    clearInterval(interval);
+  }
+
+  function *Counter() {
+    let count = 0;
+    for ({} of this) {
+      yield (
+        <button onclick={() => this.refresh(() => count++)}>
+          Button pressed {count} time{count !== 1 && "s"}.
+        </button>
+      );
+    }
+  }
+  ```
+
+  If the callback is async, `this.refresh()` will be deferred until the
+  callback has finished. I am deeply embarrassed that I didn’t think of this
+  API before, and I actually only implemented it last minute because Claude
+  hallucinated it. It’s such a good idea it might be backported to previous
+  versions.
+
+1. **BREAKING**: Renamed `flush()` to `after()` (with deprecation warning for backward compatibility). The `flush()` method was confusingly named because it does not cause re-renders nor does it cause pending changes to be flushed to the DOM. The method has been renamed to `after()` for clarity.
+  ```jsx
+  function Component() {
+    this.after((el) => {
+      // Run code after the component renders
+    });
+  }
+  ```
+
+1. **Async Component System Overhaul**
+  Crank's async architecture has been completely redesigned for better
+  coordination and predictable rendering behavior. Most notably, Crank now
+  employs a two-pass rendering architecture, where DOM mutations only occur
+  after the entire tree has settled. This change has numerous benefits.
+  - Eliminates tearing: Async siblings render together instead of independently, preventing inconsistent UI states
+    ```jsx
+    function UserInfo({userID}) {
+      // UserProfile and UserComments are async components.
+      // In 0.6 and earlier, after the initial render, the components would
+      // re-render independently.
+      // In 0.7, the components will always re-render together, unless the
+      // components themselves re-render independently via `refresh()` or
+      // `for await...of`.
+      return (
+        <div>
+          <UserProfile userID={userID} />
+          <UserComments userID={userID} />
+        </div>
+      );
+    }
+    ```
+  - Parallel hydration: In 0.5 basic hydration support was added. However,
+    because async components render independently, the hydration process caused
+    the component tree to run siblings in sequence, rather than in parallel. In
+    0.7, hydration is always run in parallel.
+  - **BREAKING CHANGE** Generator promises: In async generator components using
+    `for await...of`, `yield` always returns a promise representing children,
+    even for synchronous children
+    ```jsx
+    async function *Component({children}) {
+      for await ({children} of this) {
+        // In 0.6 and earlier, result might be a promise or the rendered result,
+        // depending on if the children contained async components.
+        // In 0.7, result will always be a promise, because this component
+        // might have async siblings.
+        const result = yield children;
+      }
+    }
+    ```
+    Sync generator components, and async generator components using `for...of`
+    loops are not affected by this change, as they will always wait for their
+    children before re-rendering.
+  - **BREAKING CHANGE** Async generators without props loops: Async generator
+    components which are not in a props loop now behave like sync generator
+    components.
+    ```jsx
+    // Async generator with while loop - behaves like sync generator
+    async function *Component() {
+      while (true) {
+        const data = await fetch('/api/data');
+        // In 0.7, the component will now pause at this yield, rather than
+        // continuing.
+        yield <div>{data}</div>;
+      }
+    }
+
+    // Async generator yielding before props loop - initial yield behaves like sync
+    async function *LoadingComponent() {
+      // Outside of a for await loop, this component will pause at this yield.
+      yield <div>Loading...</div>;
+
+      for await ({} of this) {
+        const data = await fetch('/api/data');
+        yield <div>{data}</div>; // Now yields promises as expected
+      }
+    }
+    ```
+
+    This behavior makes it even easier to convert sync generator components to
+    async generator components. If you want the old continuously resuming
+    behavior, you can call `refresh()` in an `after()` callback before each yield.
+    ```jsx
+    async function *Timer() {
+      let i = 0;
+      while (true) {
+        this.after(() => this.refresh());
+        yield <span>{i} seconds</span>;
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+    }
+    ```
+
+1. **Racing components don't lose state**
+  Previously, when multiple async components were racing to render, some components could lose their state, and DOM would be destroyed and recreated. In 0.7, if a component continuously wins its races, its state and DOM will be preserved.
+  ```jsx
+  async function *Suspense({fallback, children}) {
+    for await ({fallback, children} of this) {
+      // In 0.6 and earlier, the children would always be unmounted and remounted.
+      // In 0.7, children will stay mounted if they re-render faster than the fallback.
+      yield <Fallback>{fallback}</Fallback>;
+      yield children;
+    }
+  }
+  ```
+
+1. **`@b9g/crank/async` module**
+  A new public module `@b9g/crank/async` has been added to the npm exports, providing utilities for working with async components and rendering patterns. Includes `lazy`, `Suspense`, and `SuspenseList` components.
+
+  ```jsx
+  import {lazy, Suspense, SuspenseList} from "@b9g/crank/async";
+
+  // Lazy-loaded components
+  const LazyComponent = lazy(() => import('./MyComponent'));
+  const LazyDefault = lazy(() => import('./DefaultExport')); // Works with default exports
+
+  // Basic suspense with timeout
+  function App() {
+    return (
+      <Suspense fallback={<div>Loading...</div>} timeout={100}>
+        <LazyComponent prop="value" />
+      </Suspense>
+    );
+  }
+
+  // SuspenseList coordination
+  // Unlike React and others, Suspense components do not have to be direct
+  // children of the SuspenseList component, so long as they render immediately
+  // after the SuspenseList component (not as children of an async component).
+  function Dashboard() {
+    return (
+      <SuspenseList revealOrder="forwards" tail="collapsed">
+        <Suspense fallback={<div>Loading A...</div>}>
+          <AsyncComponentA />
+        </Suspense>
+        <div>
+          <Suspense fallback={<div>Loading B...</div>}>
+            <AsyncComponentB />
+          </Suspense>
+        </div>
+        <Suspense fallback={<div>Loading C...</div>}>
+          <AsyncComponentC />
+        </Suspense>
+      </SuspenseList>
+    );
+  }
+
+  // Different reveal orders
+  <SuspenseList revealOrder="together">     {/* All at once */}
+  <SuspenseList revealOrder="forwards">     {/* First to last */}
+  <SuspenseList revealOrder="backwards">    {/* Last to first */}
+
+  // Fallback control
+  <SuspenseList tail="collapsed">  {/* Show only next fallback */}
+  <SuspenseList tail="hidden">     {/* Hide all fallbacks */}
+  ```
+
+1. **Async unmounting for exit animations**
+  Added async unmounting support via async `cleanup()` callbacks. Components can now perform exit animations and other asynchronous operations before being removed from the DOM.
+
+  ```jsx
+  function *FadeOut() {
+    this.cleanup(async (el) => {
+      // Animate out before unmounting
+      el.style.transition = 'opacity 300ms';
+      el.style.opacity = '0';
+      await new Promise(resolve => setTimeout(resolve, 300));
+    });
+
+    for ({} of this) {
+      yield <div>Fading content</div>;
+    }
+  }
+
+  function *Modal() {
+    this.cleanup(async (el) => {
+      // Slide out animation
+      el.classList.add('slide-out');
+      await new Promise(resolve =>
+        el.addEventListener('animationend', resolve, {once: true})
+      );
+    });
+
+    for ({} of this) {
+      yield <div class="modal">Modal content</div>;
+    }
+  }
+  ```
+1. **Async mounting for complex mounting coordination**
+  Similar to the `cleanup()` callback, the `schedule()` callback can now be asynchronous to defer mounting as well.
+  The SuspenseList component is implemented using this feature and you can check the source to see usages.
+  Async mounting can also be used with the HTML renderer to render twice, when you need to extract CSS, for instance.
+
+  ```jsx
+  // Example: CSS-in-JS extraction with emotion
+  export function* Root(this: Context, {title, children, url, storage}) {
+    for ({title, children, url, storage} of this) {
+      this.schedule(() => this.refresh());
+
+      // First render to extract the HTML
+      const childrenHTML = yield (
+        <Page storage={storage}>
+          <div id="navbar-root">
+            <Navbar url={url} />
+          </div>
+          {children}
+        </Page>
+      );
+
+      // Extract critical CSS from the rendered HTML
+      const {html, css} = extractCritical(childrenHTML);
+
+      // Second render with the extracted CSS inlined
+      yield (
+        <Page storage={storage}>
+          <html lang="en">
+            <head>
+              <title>{title}</title>
+              <style>{css}</style>
+              <link rel="stylesheet" href="styles/client.css" />
+            </head>
+            <body>
+              <Raw value={html} />
+            </body>
+          </html>
+        </Page>
+      );
+    }
+  }
+  ```
+
+  Async scheduling for non-initial renders has not been implemented, mainly due
+  to its difficulty.
+
+1. **Context `isExecuting` / `isUnmounted` properties**
+  Added `isExecuting` and `isUnmounted` properties to Context for better component introspection and lifecycle management. This is mainly useful to squash warnings when you accidentally refresh components when they are already executing or unmounted.
+
+  ```jsx
+  // Only refresh if not currently executing and not unmounted
+  if (!this.isExecuting && !this.isUnmounted) {
+    this.refresh();
+  }
+
+  // Check if component was unmounted during async operation
+  if (this.isUnmounted) {
+    break;
+  }
+  ```
+
+1. **Promise-returning overloads for `schedule()`, `after()`, and `cleanup()` when called with no arguments:**
+  ```typescript
+  await this.schedule(); // Wait for commit
+  await this.after();    // Wait for children fully rendered
+  await this.cleanup();  // Wait for cleanup
+  ```
+1. **The `copy` prop can now be a string for host elements**
+  The `copy` prop now accepts string values to specify which props should be copied from the previous render. Use `copy="!value"` to copy all props except `value`, or `copy="class children"` to copy only specific props. The meta-prop syntax does not allow mixing of bang and non-bang syntax.
+
+  ```jsx
+  // Copy all props except value (useful for leaving the value uncontrolled)
+  <input copy="!value" type="text" placeholder="Enter text..." />
+
+  // Copy only specific props
+  <div copy="class id" class="container" id="main" data-test="foo" />
+
+  // Copy children from previous render
+  <div copy="children" class="dynamic-class">
+    {/* children will be preserved from previous render */}
+  </div>
+
+  // The Copy element tag can also be used for copying behavior.
+  <input type="text" value={initial ? value : Copy} />
+  ```
+
+1. **Hydration warnings and `hydrate` prop**
+  Added comprehensive hydration mismatch warnings to help developers identify and fix server-client rendering inconsistencies during development. Also added a special `hydrate` prop for fine-grained hydration control.
+
+  ```jsx
+  // Disable hydration for entire subtree
+  <div hydrate={false}>
+    {/* This content won't be hydrated */}
+  </div>
+
+  // Include portal children in hydration
+  <Portal hydrate={true}>
+    {/* Portal children will be hydrated */}
+  </Portal>
+
+  // Selective prop hydration (like copy prop)
+  <input hydrate="!value" type="text" placeholder="Will hydrate" />
+  <div hydrate="class id" class="hydrated" id="main" data-skip="ignored" />
+  ```
+
+1. **The `class` prop can now take objects.**
+  The class property can now take an object instead of a string for basic `clsx` / `classnames` behavior.
+
+  ```jsx
+  function *Button() {
+    let isActive = false;
+    let isDisabled = false;
+
+    for ({} of this) {
+      yield (
+        <button
+          class={{
+            btn: true,
+            'btn-active': isActive,
+            'btn-disabled': isDisabled,
+            'btn-large': true
+          }}
+          onclick={() => this.refresh(() => isActive = !isActive)}
+        >
+          Toggle
+        </button>
+      );
+    }
+  }
+
+  // Equivalent to: class="btn btn-large" (when inactive)
+  // Or: class="btn btn-active btn-large" (when active)
+  ```
+
+  The class object prop can be used to prevent Crank from clobbering props
+  provided by third-party scripts, as it uses `classList.add()` and `.remove()`
+  under the hood.
+
+1. **`@b9g/crank/event-target` module**
+  Crank's `EventTarget` class has been extracted into a separate public module. This module can be used when implementing custom renderers and provides better modularity.
+
+1. **Utility types `ComponentProps<T>` and `ComponentPropsOrProps<T>`**
+  Added new TypeScript utility types for better type inference when working with component props.
+
+1. **New `<Text>` element and Text node rendering**
+  Renderers now return actual `Text` nodes instead of strings, and a new `<Text>` element has been added for explicit text node creation.
+
+  ```jsx
+  // New <Text> element for explicit text nodes
+  function Component() {
+    return <Text value="Hello world" />;
+  }
+
+  // Components can now access Text nodes directly
+  function *InteractiveText() {
+    this.schedule((node) => {
+      if (node instanceof Text) {
+        node.textContent = "Updated!";
+        console.log("Got actual Text node:", node);
+      }
+    });
+
+    for ({} of this) {
+      yield "Initial text"; // This becomes a Text node
+    }
+  }
+
+  // Each string gets its own Text node (no more concatenation)
+  function MultipleTexts() {
+    return (
+      <div>
+        {"First "}{"Second "}{"Third"} // Three separate Text nodes
+      </div>
+    );
+  }
+  ```
+
+  This change improves performance during reconciliation and hydration, enables direct DOM manipulation, and maintains better text node tracking.
+
+1. **Cooperative DOM rendering**
+  Crank will no longer remove nodes which it doesn't control. This makes it
+  safe to render directly to `document.body`, and any nodes added by third-party
+  scripts or components will stay in the DOM unless their parent is also removed.
+
+  Note: Crank will emit a warning when `hydrate()` is called on `document.body`,
+  as hydration is destructive and expects to match the entire body content.
+
+1. **Custom renderer API stability**
+  The custom renderer API has been stabilized and documented for building
+  third-party renderers.
+
+## Bug Fixes
+1. The error handling for async generator components has been improved.
+   Previously, errors thrown in `for await` loops might cause unhandled
+   rejections even if they were handled by a `refresh()` or
+   `renderer.render()` call.
+## [0.6.1] - 2025-04-21
 ### Features
 - Added `prop:` and `attr:` prefixes to disambiguate props which should be treated as element properties vs attributes.
 - Added `html` alias for the `jsx` template tag in JavaScript.
