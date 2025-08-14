@@ -74,7 +74,7 @@ test("for of with multiple yields is fine when scheduling", async () => {
 	Assert.is(mock.callCount, 0);
 
 	// Test calling refresh directly also doesn't warn
-	ctx.refresh();
+	ctx!.refresh();
 	Assert.is(mock.callCount, 0);
 });
 
@@ -111,7 +111,7 @@ test.skip("for of with multiple yields is fine when scheduling in async generato
 	Assert.is(mock.callCount, 0);
 
 	// Test calling refresh directly also doesn't warn
-	await ctx.refresh();
+	await ctx!.refresh();
 	Assert.is(mock.callCount, 0);
 });
 
