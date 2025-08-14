@@ -51,8 +51,10 @@ function copyPackage() {
 }
 
 const input = [
+	"src/async.ts",
 	"src/crank.ts",
 	"src/dom.ts",
+	"src/event-target.ts",
 	"src/jsx-runtime.ts",
 	"src/jsx-tag.ts",
 	"src/html.ts",

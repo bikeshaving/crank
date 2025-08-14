@@ -32,6 +32,14 @@
       "import": "./dist/crank.js",
       "require": "./dist/crank.cjs"
     },
+    "./async": {
+      "import": "./dist/async.js",
+      "require": "./dist/async.cjs"
+    },
+    "./async.js": {
+      "import": "./dist/async.js",
+      "require": "./dist/async.cjs"
+    },
     "./crank": {
       "import": "./dist/crank.js",
       "require": "./dist/crank.cjs"
@@ -47,6 +55,14 @@
     "./dom.js": {
       "import": "./dist/dom.js",
       "require": "./dist/dom.cjs"
+    },
+    "./event-target": {
+      "import": "./dist/event-target.js",
+      "require": "./dist/event-target.cjs"
+    },
+    "./event-target.js": {
+      "import": "./dist/event-target.js",
+      "require": "./dist/event-target.cjs"
     },
     "./html": {
       "import": "./dist/html.js",
