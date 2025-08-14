@@ -3,8 +3,8 @@
   "workspaces": {
     "": {
       "dependencies": {
-        "@b9g/crank": "^0.6.1",
-        "@b9g/revise": "^0.1.2",
+        "@b9g/crank": "^0.7.0",
+        "@b9g/revise": "^0.1.3",
         "@b9g/shovel": "^0.1.10",
         "@babel/core": "^7.26.10",
         "@babel/preset-react": "^7.26.3",
@@ -53,9 +53,9 @@
   "packages": {
     "@ampproject/remapping": ["@ampproject/remapping@2.3.0", "", { "dependencies": { "@jridgewell/gen-mapping": "^0.3.5", "@jridgewell/trace-mapping": "^0.3.24" } }, "sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw=="],
 
-    "@b9g/crank": ["@b9g/crank@0.6.1", "", {}, "sha512-NE5uuOMYeNdRLLGSXeM5EpyUvaNjcZmPUEs34ahnXhmlogv9yV3ymoX/RQFf63jTOvTP/wzN+vvNEfkq4sS+2g=="],
+    "@b9g/crank": ["@b9g/crank@0.7.0", "", {}, "sha512-H3zWkiKNEXQ2tqU+UvZhqk0pXa/K1x0PLbpbRtmtxiLe37bOzpgqtK+S402h+rAlSIEGjItbdYy2xdXBT2W4Ag=="],
 
-    "@b9g/revise": ["@b9g/revise@0.1.2", "", {}, "sha512-sZJfHyDMmjLMIuPjEOUyE1ML+Y681NfvIaRfoPlj2cwb/kklj3a8ucHKHjbJhApwUkBZ1OrNY8OFiWTC/rT8Bw=="],
+    "@b9g/revise": ["@b9g/revise@0.1.3", "", {}, "sha512-KohPDhyxEEaxTUiU/GhKsj9Lin/mV8Iz4NS0vXIOYeye86p9CvrZaBV9PBQlitSxayoO6iikIGyMMlMADMQ8iQ=="],
 
     "@b9g/shovel": ["@b9g/shovel@0.1.10", "", { "dependencies": { "commander": "^13.1.0", "esbuild": "^0.25.0", "is-core-module": "^2.16.1", "magic-string": "^0.30.17", "resolve.exports": "^2.0.3", "source-map": "^0.7.4" }, "bin": { "shovel": "bin/shovel.js" } }, "sha512-PjldyId+owdDn1tVLk+vKLIoJJ45m+ZxfKNooUqEWCsdOeYis/5ZGPpVNmpdF51Gavexqf1SjwRX50S1uacaZw=="],
 
