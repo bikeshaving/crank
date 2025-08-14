@@ -74,7 +74,22 @@ export class Storage {
 	): Promise<Array<OutputFile>> {
 		let ctx = this.cache.get(filename);
 		if (ctx == null) {
-			const entryname = Path.resolve(this.dirname, filename);
+			let entryname: string;
+			// Use import.meta.resolve only for module specifiers (starting with @, not relative paths)
+			if (
+				filename.startsWith("@") ||
+				(!filename.startsWith(".") && !filename.includes("/"))
+			) {
+				try {
+					const resolved = import.meta.resolve(filename, import.meta.url);
+					entryname = new URL(resolved).pathname;
+				} catch (err) {
+					throw new Error(`Cannot resolve module: ${filename}`);
+				}
+			} else {
+				// Use original path resolution for relative/local paths
+				entryname = Path.resolve(this.dirname, filename);
+			}
 			ctx = await ESBuild.context({
 				// TODO: pass these in via components
 				entryNames: "[name]-[hash]",
