@@ -18,6 +18,12 @@ export async function StaticURLsJSON({storage}: {storage: Storage}) {
 	const crankStandaloneURL = await storage.url("lib/standalone.js", "js", {
 		format: "esm",
 	});
+	const crankAsyncURL = await storage.url("lib/async.js", "js", {
+		format: "esm",
+	});
+	const crankEventTargetURL = await storage.url("lib/event-target.js", "js", {
+		format: "esm",
+	});
 	// TODO: Calling this first causes ESBuild to hang. Scary stuff.
 	const clientCSSURL = await storage.url("styles/client.css", "css");
 	const staticURLs = {
@@ -34,6 +40,10 @@ export async function StaticURLsJSON({storage}: {storage: Storage}) {
 		"@b9g/crank/jsx-runtime.js": crankJSXRuntimeURL,
 		"@b9g/crank/standalone": crankStandaloneURL,
 		"@b9g/crank/standalone.js": crankStandaloneURL,
+		"@b9g/crank/async": crankAsyncURL,
+		"@b9g/crank/async.js": crankAsyncURL,
+		"@b9g/crank/event-target": crankEventTargetURL,
+		"@b9g/crank/event-target.js": crankEventTargetURL,
 		"client.css": clientCSSURL,
 	};
 

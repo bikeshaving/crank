@@ -54,7 +54,8 @@ function* Gutter(this: Context<typeof Gutter>, {length}: {length: number}) {
 					left: 0;
 				`}"
 			>
-				${lines.map((line) => jsx`
+				${lines.map(
+					(line) => jsx`
 					<div
 						class="prism-line ${css`
 							border-top: 1px solid transparent;
@@ -62,7 +63,8 @@ function* Gutter(this: Context<typeof Gutter>, {length}: {length: number}) {
 						`}">
 							${line}
 						</div>
-				`)}
+				`,
+				)}
 			</div>
 		`;
 		initial = false;

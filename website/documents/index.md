@@ -16,14 +16,14 @@ It starts with the idea that you can write components with *all* of JavaScriptâ€
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
 
-function *Timer({}, ctx) {
+function *Timer() {
   let seconds = 0;
   const interval = setInterval(() => {
     seconds++;
-    ctx.refresh();
+    this.refresh();
   }, 1000);
 
-  for ({} of ctx) {
+  for ({} of this) {
     yield <p>{seconds} second{seconds !== 1 && "s"}</p>;
   }
 
@@ -71,7 +71,7 @@ function Greeting({name = "World"}) {
   return <p>Hello {name}.</p>;
 }
 
-function RandomName({}, ctx) {
+function RandomName() {
   const names = ["Alice", "Bob", "Carol", "Dave"];
   const randomName = names[Math.floor(Math.random() * names.length)];
 
@@ -80,7 +80,7 @@ function RandomName({}, ctx) {
     <div>
       <Greeting name={randomName} />
       {/*
-      <button onclick={() => ctx.refresh()}>Random name</button>
+      <button onclick={() => this.refresh()}>Random name</button>
       */}
     </div>
   );
@@ -184,14 +184,14 @@ function Greeting({name = "World"}) {
   return <p>Hello {name}.</p>;
 }
 
-function *CyclingName({}, ctx) {
+function *CyclingName() {
   const names = ["Alice", "Bob", "Carol", "Dave"];
   let i = 0;
-  while (true) {
+  for ({} of this) {
     yield (
       <div>
         <Greeting name={names[i % names.length]} />
-        <button onclick={() => ctx.refresh()}>Cycle name</button>
+        <button onclick={() => this.refresh()}>Cycle name</button>
       </div>
     )
 
@@ -209,13 +209,13 @@ Never memoize a callback ever again.
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
 
-function *Timer({}, ctx) {
+function *Timer() {
   let interval = null;
   let seconds = 0;
   const startInterval = () => {
     interval = setInterval(() => {
       seconds++;
-      ctx.refresh();
+      this.refresh();
     }, 1000);
   };
 
@@ -227,18 +227,18 @@ function *Timer({}, ctx) {
       interval = null;
     }
 
-    ctx.refresh();
+    this.refresh();
   };
 
   const resetInterval = () => {
     seconds = 0;
     clearInterval(interval);
     interval = null;
-    ctx.refresh();
+    this.refresh();
   };
 
   // The context passed to a Crank component is an iterable of props.
-  for ({} of ctx) {
+  for ({} of this) {
     // Welcome to the render loop.
     // Most generator components should use render loops even if they do not
     // use props.
@@ -291,7 +291,7 @@ async function Definition({word}) {
   );
 }
 
-function *Dictionary({}, ctx) {
+function *Dictionary() {
   let word = "";
   const onsubmit = (ev) => {
     ev.preventDefault();
@@ -299,11 +299,11 @@ function *Dictionary({}, ctx) {
     const word1 = formData.get("word");
     if (word1.trim()) {
       word = word1;
-      ctx.refresh();
+      this.refresh();
     }
   };
 
-  for ({} of ctx) {
+  for ({} of this) {
     yield (
       <>
         <form
@@ -333,7 +333,7 @@ Async generator functions let you write components that are both async *and* sta
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
-
+import {Suspense} from "@b9g/crank/async";
 function formatNumber(number, type) {
   number = number.padEnd(16, "0");
   if (type === "American Express") {
@@ -368,17 +368,16 @@ function CreditCard({type, expiration, number, owner}) {
   );
 }
 
-async function *LoadingCreditCard({}, ctx) {
-  await new Promise((r) => setTimeout(r, 1000));
+async function *LoadingCreditCard() {
   let count = 0;
   const interval = setInterval(() => {
     count++;
-    ctx.refresh();
-  }, 200);
+    this.refresh();
+  }, 250);
 
-  ctx.cleanup(() => clearInterval(interval));
+  this.cleanup(() => clearInterval(interval));
 
-  for ({} of ctx) {
+  for ({} of this) {
     yield (
       <CreditCard
         number={"*".repeat(count) + "?".repeat(Math.max(0, 16 - count))}
@@ -395,7 +394,7 @@ async function MockCreditCard({throttle}) {
     await new Promise((r) => setTimeout(r, 2000));
   }
   // Mock credit card data courtesy https://fakerapi.it/en
-  const res = await fetch("https://fakerapi.it/api/v1/credit_cards?_quantity=1");
+  const res = await fetch("https://fakerapi.it/api/v2/creditCards?_quantity=1");
   if (res.status === 429) {
     return (
       <marquee>Too many requests. Please use free APIs responsibly.</marquee>
@@ -412,29 +411,28 @@ async function MockCreditCard({throttle}) {
   );
 }
 
-async function *RandomCreditCard({throttle}, ctx) {
-  setTimeout(() => ctx.refresh());
-  yield null;
-  for await ({throttle} of ctx) {
-    yield <LoadingCreditCard />;
-    yield <MockCreditCard throttle={throttle} />;
-  }
+function RandomCreditCard({throttle}) {
+  return (
+    <Suspense fallback={<LoadingCreditCard />}>
+      <MockCreditCard throttle={throttle} />
+    </Suspense>
+  );
 }
 
-function *CreditCardGenerator({}, ctx) {
+function *CreditCardGenerator() {
   let throttle = false;
   const toggleThrottle = () => {
     throttle = !throttle;
     // TODO: A nicer user behavior would be to not generate a new card
     // when toggling the throttle.
-    ctx.refresh();
+    this.refresh();
   };
 
-  for ({} of ctx) {
+  for ({} of this) {
     yield (
       <div>
         <div>
-          <button onclick={() => ctx.refresh()}>
+          <button onclick={() => this.refresh()}>
             Generate new card
           </button>
           {" "}
