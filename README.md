@@ -2,6 +2,53 @@
 
 The fastest way to try Crank is via the [online playground](https://crank.js.org/playground). In addition, many of the code examples in these guides feature live previews.
 
+# Why Crank?
+
+**Finally, a framework that feels like JavaScript.**
+
+While other frameworks invent new paradigms and force you to learn framework-specific APIs, Crank embraces the language features you already know. No hooks to memorize, no dependency arrays to debug, no cache invalidation to manage.
+
+## Pure JavaScript, No Compromises
+
+```javascript
+// Async components just work
+async function UserProfile({userId}) {
+  const user = await fetchUser(userId);
+  return <div>Hello, {user.name}!</div>;
+}
+
+// Lifecycle logic with generators feels natural
+function* Timer() {
+  let seconds = 0;
+  const interval = setInterval(() => {
+    seconds++;
+    this.refresh();
+  }, 1000);
+  
+  try {
+    while (true) {
+      yield <div>Seconds: {seconds}</div>;
+    }
+  } finally {
+    clearInterval(interval); // Cleanup just works
+  }
+}
+```
+
+## Why Developers Choose Crank
+
+- **🎯 Intuitive**: Use `async`/`await` for loading states and `function*` for lifecycle—no new APIs to learn
+- **⚡ Fast**: Outperforms React in benchmarks while weighing just 5KB with zero dependencies  
+- **🔧 Flexible**: Write components in vanilla JavaScript with template literals, or use JSX
+- **🧹 Clean**: State lives in function scope, lifecycle code goes where it belongs, no mysterious re-render bugs
+- **🌊 Future-proof**: Built on stable JavaScript features, not evolving framework abstractions
+
+## The "Just JavaScript" Promise, Delivered
+
+Other frameworks claim to be "just JavaScript" but ask you to think in terms of effects, dependencies, and framework-specific patterns. Crank actually delivers on that promise—your components are literally just functions that use standard JavaScript control flow.
+
+Ready to write components that feel like the JavaScript you know and love?
+
 ## Installation
 
 The Crank package is available on [NPM](https://npmjs.org/@b9g/crank) through
