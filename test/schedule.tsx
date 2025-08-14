@@ -1234,4 +1234,27 @@ test("hanging schedule causes commits to queue", async () => {
 	Assert.is((await result2).outerHTML, "<div><span>Second</span></div>"); // Should render second component
 });
 
+test("schedule refresh with an async component", async () => {
+	function* Component(this: Context) {
+		for ({} of this) {
+			this.schedule(() => this.refresh());
+			yield <span>Render 1</span>;
+			yield (
+				<AsyncComponent>
+					<span>Render 2</span>
+				</AsyncComponent>
+			);
+		}
+	}
+	const result1 = renderer.render(
+		<div>
+			<Component />
+		</div>,
+		document.body,
+	) as Promise<HTMLElement>;
+	await hangs(result1);
+	AsyncComponent.resolves[0]();
+	Assert.is((await result1).outerHTML, "<div><span>Render 2</span></div>");
+});
+
 test.run();
