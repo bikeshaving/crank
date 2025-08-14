@@ -86,7 +86,7 @@ test("delegation", () => {
 	let ctx!: Context;
 	function* Component(this: Context): Generator<Element> {
 		ctx = this;
-		while (true) {
+		for ({} of this) {
 			yield (
 				<div>
 					<button>Click me</button>
@@ -171,7 +171,7 @@ test("non-direct delegation", () => {
 		this.addEventListener("click", () => {
 			mock();
 		});
-		while (true) {
+		for ({} of this) {
 			yield (
 				<Fragment>
 					<Fragment>
@@ -205,8 +205,8 @@ test("non-direct delegation with refresh", () => {
 	let ctx!: Context;
 	function* Child(this: Context) {
 		ctx = this;
-		while (true) {
-			yield null;
+		yield null;
+		for ({} of this) {
 			yield (
 				<Fragment>
 					<Fragment>
@@ -225,7 +225,7 @@ test("non-direct delegation with refresh", () => {
 			}
 		});
 
-		while (true) {
+		for ({} of this) {
 			yield (
 				<Fragment>
 					<Fragment>
@@ -269,7 +269,49 @@ test("refresh on click", () => {
 			}
 		});
 
-		while (true) {
+		for ({} of this) {
+			yield (
+				<div>
+					<button id="button">Click me</button>
+					<span>Button has been clicked {count} times</span>
+				</div>
+			);
+		}
+	}
+
+	renderer.render(<Component />, document.body);
+	Assert.is(
+		document.body.innerHTML,
+		'<div><button id="button">Click me</button><span>Button has been clicked 0 times</span></div>',
+	);
+
+	const button = document.getElementById("button")!;
+	button.click();
+	Assert.is(
+		document.body.innerHTML,
+		'<div><button id="button">Click me</button><span>Button has been clicked 1 times</span></div>',
+	);
+	button.click();
+	button.click();
+	button.click();
+	Assert.is(
+		document.body.innerHTML,
+		'<div><button id="button">Click me</button><span>Button has been clicked 4 times</span></div>',
+	);
+});
+
+test("refresh callback", () => {
+	function* Component(this: Context): Generator<string> {
+		let count = 0;
+		this.addEventListener("click", (ev) => {
+			if ((ev.target as HTMLElement).id === "button") {
+				this.refresh(() => {
+					count++;
+				});
+			}
+		});
+
+		for ({} of this) {
 			yield (
 				<div>
 					<button id="button">Click me</button>
