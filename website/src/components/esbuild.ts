@@ -202,7 +202,7 @@ export interface PageProps {
 export function* Page(this: Context, {storage, children}: PageProps) {
 	this.provide(StorageKey, storage);
 	let newStorage: Storage;
-	for ({storage: newStorage} of this) {
+	for ({storage: newStorage, children} of this) {
 		if (storage !== newStorage) {
 			this.provide(StorageKey, newStorage);
 			storage = newStorage;

@@ -44,13 +44,15 @@ export function* Root(
 		description?: string;
 	},
 ) {
-	for ({} of this) {
+	for ({title, children, url, storage, description = ""} of this) {
 		this.schedule(() => this.refresh());
 		const childrenHTML: string = yield jsx`
-			<div id="navbar-root">
-				<${Navbar} url=${url} />
-			</div>
-			${children}
+			<${Page} storage=${storage}>
+				<div id="navbar-root">
+					<${Navbar} url=${url} />
+				</div>
+				${children}
+			<//Page>
 		`;
 		const {html, css} = extractCritical(childrenHTML);
 		yield jsx`
