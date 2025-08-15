@@ -26,6 +26,8 @@ export interface DocInfo {
 	attributes: {
 		title: string;
 		publish: boolean;
+		author?: string;
+		authorURL?: string;
 		publishDate?: Date;
 		description?: string;
 	};

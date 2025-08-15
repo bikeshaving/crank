@@ -7,6 +7,8 @@ import {SerializeScript} from "../components/serialize-javascript.js";
 import type {ViewProps} from "../router.js";
 
 const __dirname = new URL(".", import.meta.url).pathname;
+const EXAMPLES_DIR = Path.join(__dirname, "../../../examples");
+
 const TIMER_EXAMPLE = `
 import {renderer} from "@b9g/crank/dom";
 
@@ -26,37 +28,45 @@ function *Timer() {
 
 renderer.render(<Timer />, document.body);
 `.trim();
-// TODO: read examples dir
 
-const TETRIS_EXAMPLE = await FS.readFile(
-	Path.join(__dirname, "../../examples/tetris.ts"),
-	"utf8",
-);
+// Read all examples dynamically
+async function loadExamples() {
+	const files = await FS.readdir(EXAMPLES_DIR);
+	const exampleFiles = files.filter(
+		(file) =>
+			file.endsWith(".js") || file.endsWith(".ts") || file.endsWith(".tsx"),
+	);
 
-const WIZARD_EXAMPLE = await FS.readFile(
-	Path.join(__dirname, "../../examples/wizard.js"),
-	"utf8",
-);
+	const examples = [{name: "timer", label: "Timer", code: TIMER_EXAMPLE}];
 
-const XSTATE_EXAMPLE = await FS.readFile(
-	Path.join(__dirname, "../../examples/xstate-calculator.tsx"),
-	"utf8",
-);
+	// Define display names for examples
+	const exampleLabels = {
+		"greeting.js": "Hello World",
+		"todomvc.js": "Todo MVC",
+		"hackernews.js": "Hacker News",
+		"animated-letters.js": "Animated Letters",
+		"wizard.js": "Form Wizard",
+		"tetris.ts": "Tetris",
+		"xstate-calculator.tsx": "XState Calculator",
+		"hexagonal-minesweeper.ts": "Hexagonal Minesweeper",
+	};
 
-//const MINESWEEPER_EXAMPLE = await FS.readFile(
-//	Path.join(__dirname, "../../examples/minesweeper.ts"),
-//	"utf8",
-//);
+	for (const file of exampleFiles) {
+		const name = Path.basename(file, Path.extname(file));
+		const label =
+			exampleLabels[file] ||
+			name.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+		const code = await FS.readFile(Path.join(EXAMPLES_DIR, file), "utf8");
 
-const examples = [
-	{name: "timer", label: "Timer", code: TIMER_EXAMPLE},
-	{name: "wizard", label: "Form Wizard", code: WIZARD_EXAMPLE},
-	{name: "tetris", label: "Tetris", code: TETRIS_EXAMPLE},
-	{name: "calculator", label: "XState Calculator", code: XSTATE_EXAMPLE},
-	//	{name: "minesweeper", label: "Minesweeper", code: MINESWEEPER_EXAMPLE},
-];
+		examples.push({name, label, code});
+	}
+
+	return examples;
+}
+
 
 export default async function Playground({context: {storage}}: ViewProps) {
+	const examples = await loadExamples();
 	return jsx`
 		<${Root} title="Crank.js" url="/playground" storage=${storage}>
 			<div id="playground" />

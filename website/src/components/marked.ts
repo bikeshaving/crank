@@ -202,7 +202,39 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 		return jsx`<${tag}>${children}<//>`;
 	},
 
-	// TODO: type: 'table';
+	table({token, rootProps}) {
+		const {align, header, rows} = token as marked.Tokens.Table;
+		return jsx`
+			<table>
+				<thead>
+					<tr>
+						${header.map(
+							(cell, index) => jsx`
+							<th style=${align[index] ? `text-align: ${align[index]}` : undefined}>
+								${build(cell.tokens, rootProps)}
+							</th>
+						`,
+						)}
+					</tr>
+				</thead>
+				<tbody>
+					${rows.map(
+						(row) => jsx`
+						<tr>
+							${row.map(
+								(cell, cellIndex) => jsx`
+								<td style=${align[cellIndex] ? `text-align: ${align[cellIndex]}` : undefined}>
+									${build(cell.tokens, rootProps)}
+								</td>
+							`,
+							)}
+						</tr>
+					`,
+					)}
+				</tbody>
+			</table>
+		`;
+	},
 
 	hr: () => jsx`<hr />`,
 
@@ -282,6 +314,23 @@ interface BuildProps {
 	[key: string]: unknown;
 }
 
+// HTML entity decoder
+function decodeHTMLEntities(text: string): string {
+	const entities: Record<string, string> = {
+		"&amp;": "&",
+		"&lt;": "<",
+		"&gt;": ">",
+		"&quot;": '"',
+		"&#39;": "'",
+		"&apos;": "'",
+	};
+
+	return text.replace(
+		/&(?:amp|lt|gt|quot|#39|apos);/g,
+		(match) => entities[match] || match,
+	);
+}
+
 // This function is called recursively to turn an array of tokens into elements.
 function build(
 	tokens: Array<marked.Token>,
@@ -296,7 +345,7 @@ function build(
 		// TODO: Don’t hard-code the process of creating children?
 		switch (token.type) {
 			case "escape": {
-				result.push(token.text);
+				result.push(decodeHTMLEntities(token.text));
 				continue;
 			}
 
@@ -322,7 +371,7 @@ function build(
 						continue;
 					}
 				} else {
-					result.push(token.text);
+					result.push(decodeHTMLEntities(token.text));
 					continue;
 				}
 
@@ -337,8 +386,8 @@ function build(
 			}
 
 			case "table": {
-				// Don’t got no need for tables yet.
-				throw new Error("TODO");
+				// Table component handles token processing internally
+				break;
 			}
 
 			case "list": {
@@ -525,7 +574,14 @@ export interface MarkedProps {
 }
 
 export function Marked({markdown, ...props}: MarkedProps) {
-	const tokens = marked.Lexer.lex(markdown);
+	// Configure marked to not encode HTML entities in text
+	const tokens = marked.Lexer.lex(markdown, {
+		gfm: true,
+		breaks: false,
+		pedantic: false,
+		sanitize: false,
+		smartypants: false,
+	});
 	props = {
 		...props,
 		components: {...defaultComponents, ...props.components},

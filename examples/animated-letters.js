@@ -1,13 +1,10 @@
-/** @jsx createElement */
-import {createElement} from "@bikeshaving/crank";
-import {renderer} from "@bikeshaving/crank/dom";
+import {renderer} from "@b9g/crank/dom";
 
 function shuffle(arr) {
 	for (let i = arr.length - 1; i > 0; i--) {
 		const j = Math.floor(Math.random() * (i + 1));
 		[arr[i], arr[j]] = [arr[j], arr[i]];
 	}
-
 	return arr;
 }
 
@@ -31,7 +28,7 @@ function deferTransitionStyles(callback) {
 }
 
 function* Letter({letter, index}) {
-	this.flush((node) => {
+	this.after((node) => {
 		node.style.transform = `translate(${index * 1.1}em, -20px)`;
 		node.style.opacity = 0;
 		deferTransitionStyles(() => {
@@ -61,7 +58,7 @@ function* Letter({letter, index}) {
 	);
 
 	for ({letter, index} of this) {
-		this.flush((node) => {
+		this.after((node) => {
 			deferTransitionStyles(() => {
 				node.style.transform = `translate(${index * 1.1}em, 0)`;
 			});
@@ -73,19 +70,18 @@ function* Letter({letter, index}) {
 
 function* Letters() {
 	const interval = setInterval(() => this.refresh(), 1500);
-	try {
-		while (true) {
-			yield (
-				<div style="height: 40px">
-					{getRandomLetters().map((l, i) => (
-						<Letter crank-key={l} letter={l} index={i} />
-					))}
-				</div>
-			);
-		}
-	} finally {
-		clearInterval(interval);
+
+	for ({} of this) {
+		yield (
+			<div style="height: 40px">
+				{getRandomLetters().map((l, i) => (
+					<Letter crank-key={l} letter={l} index={i} />
+				))}
+			</div>
+		);
 	}
+
+	clearInterval(interval);
 }
 
 renderer.render(<Letters />, document.body);
