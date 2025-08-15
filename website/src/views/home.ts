@@ -163,8 +163,7 @@ function CallToAction() {
 const __dirname = new URL(".", import.meta.url).pathname;
 
 export default async function Home({context: {storage}}: ViewProps) {
-	const docs = await collectDocuments(Path.join(__dirname, "../../documents"));
-
+	const docs = await collectDocuments(Path.join(__dirname, "../../../docs"));
 	const md = docs.find((doc) => doc.filename.endsWith("/index.md"));
 	if (!md) {
 		throw new Error("index.md missing you silly goose");
