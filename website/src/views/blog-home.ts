@@ -13,8 +13,8 @@ const __dirname = new URL(".", import.meta.url).pathname;
 
 export default async function BlogHome({context: {storage}}: ViewProps) {
 	const posts = await collectDocuments(
-		path.join(__dirname, "../../documents/blog"),
-		path.join(__dirname, "../../documents/"),
+		path.join(__dirname, "../../../docs/blog"),
+		path.join(__dirname, "../../../docs/"),
 	);
 	posts.reverse();
 

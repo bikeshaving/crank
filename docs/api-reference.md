@@ -2,6 +2,8 @@
 title: API Reference
 ---
 
+TODO: THESE API DOCS ARE OUT OF DATE
+
 ## Functions
 ### createElement
 
@@ -93,12 +95,52 @@ Returns an async iterator of the props passed to the component. Only used in gen
 
 Updates the component in place.
 
+**Parameters:**
+- `callback?: Function` - Optional callback to execute before refresh
+
+**Return Value:**
+
+The rendered result of the component or a promise thereof if the component or its children execute asynchronously.
+
 ### Context.prototype.schedule
 
 Executes the passed in callback when the component renders. The `schedule` method will only fire once for each call and callback.
 
 **Parameters:**
-- `callback: Function` - The callback to be executed.
+- `callback?: Function` - Optional callback to execute right before the .
+
+### Context.prototype.after
+
+Executes the passed in callback after the component and all its children have finished rendering and committing to the DOM.
+
+**Overloads:**
+- `after(): Promise<TResult>` - Returns a promise that resolves with the component's rendered value after completion.
+- `after(callback: (value: TResult) => unknown): void` - Executes the callback with the component's rendered value after completion.
+
+**Parameters:**
+- `callback?: Function` - Optional callback to be executed with the rendered value.
+
+**Return Value:**
+
+If no callback is provided, returns a Promise that resolves with the component's rendered value. If a callback is provided, returns void.
+
+**Example:**
+```tsx
+function* MyComponent() {
+  for ({} of this) {
+    yield <div>Rendering...</div>;
+
+    // Execute after this render cycle completes
+    this.after((value) => {
+      console.log("Component finished rendering:", value);
+    });
+
+    // Or await the completion
+    const result = await this.after();
+    console.log("Async completion:", result);
+  }
+}
+```
 
 ### Context.prototype.cleanup
 
@@ -207,6 +249,50 @@ props = {name: "Alice"};
 // INVALID ASSIGNMENTS
 // @ts-expect-error
 props = {name: 1000};
+```
+
+### ComponentProps
+
+A helper type to extract props from component functions. Returns an empty object type for components that take no parameters.
+
+**Type Parameters:**
+- `T` - The component function to extract props from.
+
+**Example:**
+```ts
+function Button({variant, children}: {variant: "primary" | "secondary", children: string}) {
+  return <button class={`btn-${variant}`}>{children}</button>;
+}
+
+type ButtonProps = ComponentProps<typeof Button>;
+// ButtonProps is {variant: "primary" | "secondary", children: string}
+
+function NoPropsComponent() {
+  return <div>No props needed</div>;
+}
+
+type NoProps = ComponentProps<typeof NoPropsComponent>;
+// NoProps is {}
+```
+
+### ComponentPropsOrProps
+
+A helper type that handles both component functions and regular objects. For functions, it extracts the props type; for other values, it returns the type as-is.
+
+**Type Parameters:**
+- `T` - The component function or props object type.
+
+**Example:**
+```ts
+function MyComponent({name}: {name: string}) {
+  return <div>Hello {name}</div>;
+}
+
+type ExtractedProps = ComponentPropsOrProps<typeof MyComponent>;
+// ExtractedProps is {name: string}
+
+type RegularProps = ComponentPropsOrProps<{id: number}>;
+// RegularProps is {id: number}
 ```
 
 ### Child
@@ -333,3 +419,156 @@ A special element tag for injecting raw nodes into an element tree via its value
 
 **Props:**
 - `value: TNode | string` - A string or a node. If the value is a node, it will be inserted directly into the tree. If the value is a string, the renderer will parse the string and insert the parsed result into the tree.
+
+### Text
+
+A special element tag for creating text nodes with specific content.
+
+**Props:**
+- `value: string` - The text content to render.
+
+## Async Module (@b9g/crank/async)
+
+The async module provides React-like components for handling asynchronous operations and coordinating loading states.
+
+### lazy
+
+Creates a lazy-loaded component from an initializer function. The component will be loaded asynchronously when first rendered.
+
+**Parameters:**
+- `initializer: () => Promise<Component | {default: Component}>` - Function that returns a Promise resolving to a component or module with a default export.
+
+**Return Value:**
+
+A component that loads the target component on first render.
+
+**Example:**
+```tsx
+import {lazy, Suspense} from "@b9g/crank/async";
+
+const LazyComponent = lazy(() => import('./MyComponent'));
+
+function App() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LazyComponent prop="value" />
+    </Suspense>
+  );
+}
+```
+
+### Suspense
+
+A component that handles loading states for its async children. Shows a fallback UI while waiting for async components to resolve.
+
+**Props:**
+- `children: Children` - The potentially async children to render.
+- `fallback: Children` - The UI to show while children are loading.
+- `timeout?: number` - Optional timeout in milliseconds before showing fallback (default: 300ms).
+
+**Example:**
+```tsx
+import {Suspense} from "@b9g/crank/async";
+
+function App() {
+  return (
+    <Suspense fallback={<div>Loading...</div>} timeout={500}>
+      <AsyncComponent />
+    </Suspense>
+  );
+}
+```
+
+### SuspenseList
+
+A component that coordinates multiple Suspense components, controlling the order in which they reveal their content and managing their fallback states.
+
+**Props:**
+- `revealOrder?: "forwards" | "backwards" | "together"` - Controls the order components are revealed (default: "forwards").
+  - `"forwards"`: Reveal components in the order they appear in the tree
+  - `"backwards"`: Reveal components in reverse order
+  - `"together"`: Wait for all components to load before revealing any
+- `tail?: "collapsed" | "hidden"` - Controls fallback visibility (default: "collapsed").
+  - `"collapsed"`: Show only the next pending fallback
+  - `"hidden"`: Hide all fallbacks
+- `timeout?: number` - Default timeout for child Suspense components in milliseconds.
+- `children: Children` - The elements containing Suspense components to coordinate.
+
+**Example:**
+```tsx
+import {Suspense, SuspenseList} from "@b9g/crank/async";
+
+function App() {
+  return (
+    <SuspenseList revealOrder="forwards" tail="collapsed">
+      <Suspense fallback={<div>Loading A...</div>}>
+        <ComponentA />
+      </Suspense>
+      <Suspense fallback={<div>Loading B...</div>}>
+        <ComponentB />
+      </Suspense>
+      <Suspense fallback={<div>Loading C...</div>}>
+        <ComponentC />
+      </Suspense>
+    </SuspenseList>
+  );
+}
+```
+
+**Note:** SuspenseList only coordinates Suspense components that are rendered immediately. Suspense components that are children of other async components will not be coordinated until they are rendered.
+
+## Standalone Module (@b9g/crank/standalone)
+
+The standalone module includes all core Crank exports plus the JSX template tag for use without transpilation.
+
+### jsx
+
+A tagged template function that provides JSX-like syntax in vanilla JavaScript without requiring transpilation.
+
+**Parameters:**
+- `template: TemplateStringsArray` - The template strings array from the tagged template.
+- `...substitutions: unknown[]` - The interpolated values.
+
+**Return Value:**
+
+An element or elements based on the template content.
+
+**Example:**
+```js
+import {jsx} from "@b9g/crank/standalone";
+import {renderer} from "@b9g/crank/dom";
+
+function Greeting({name = "World"}) {
+  return jsx`<div>Hello ${name}!</div>`;
+}
+
+renderer.render(jsx`<${Greeting} name="Crank" />`, document.body);
+```
+
+**Advanced Usage:**
+```js
+// Component interpolation
+const Button = ({children}) => jsx`<button>${children}</button>`;
+const element = jsx`<${Button}>Click me<//Button>`;
+
+// Multiple elements
+const list = jsx`
+  <li>Item 1</li>
+  <li>Item 2</li>
+  <li>Item 3</li>
+`;
+
+// With props
+const element = jsx`<div class="container" id=${elementId}>${content}</div>`;
+```
+
+### html
+
+An alias for the `jsx` template tag, provided for semantic clarity when generating HTML strings.
+
+**Example:**
+```js
+import {html} from "@b9g/crank/standalone";
+
+const template = html`<div class="card">${content}</div>`;
+```
