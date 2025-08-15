@@ -16,8 +16,8 @@ export default async function Guide({
 	context: {storage},
 }: ViewProps) {
 	const docs = await collectDocuments(
-		path.join(__dirname, "../../documents/guides"),
-		path.join(__dirname, "../../documents/"),
+		path.join(__dirname, "../../../docs/guides"),
+		path.join(__dirname, "../../../docs/"),
 	);
 
 	const post = docs.find(

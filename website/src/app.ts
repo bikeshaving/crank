@@ -61,14 +61,14 @@ export default {
 	async *staticPaths(outDir) {
 		yield* ["/", "/blog", "/playground"];
 		const blogDocs = await collectDocuments(
-			Path.join(__dirname, "../documents/blog"),
-			Path.join(__dirname, "../documents"),
+			Path.join(__dirname, "../../docs/blog"),
+			Path.join(__dirname, "../../docs"),
 		);
 		yield* blogDocs.map((doc) => doc.url);
 
 		const guideDocs = await collectDocuments(
-			Path.join(__dirname, "../documents/guides"),
-			Path.join(__dirname, "../documents"),
+			Path.join(__dirname, "../../docs/guides"),
+			Path.join(__dirname, "../../docs"),
 		);
 		yield* guideDocs.map((doc) => doc.url);
 		await storage.write(Path.join(outDir, storage.publicPath));

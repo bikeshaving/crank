@@ -200,10 +200,10 @@ async function RandomDog({throttle = false}) {
   return (
     <div style="text-align: center; padding: 10px; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
       <a href={data.message} target="_blank" style="text-decoration: none; color: inherit;">
-        <img 
-          src={data.message} 
-          alt="A Random Dog" 
-          width="300" 
+        <img
+          src={data.message}
+          alt="A Random Dog"
+          width="300"
           style="border-radius: 8px; display: block; margin: 0 auto;"
         />
         <div style="margin-top: 8px; color: #6c757d; font-size: 14px;">
