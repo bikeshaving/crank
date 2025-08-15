@@ -306,7 +306,7 @@ async function UserProfile({userId}) {
   await new Promise(resolve => setTimeout(resolve, 1500));
 
   return (
-    <div style={{padding: "15px", background: "#e7f3ff", borderRadius: "4px"}}>
+    <div style={{padding: "15px", background: "#e7f3ff", "border-radius": "4px"}}>
       <h4>User #{userId}</h4>
       <p>Email: user{userId}@example.com</p>
       <p>Status: Active</p>
@@ -318,7 +318,7 @@ async function UserPosts({userId}) {
   await new Promise(resolve => setTimeout(resolve, 2000));
 
   return (
-    <div style={{padding: "15px", background: "#f0f8f0", borderRadius: "4px"}}>
+    <div style={{padding: "15px", background: "#f0f8f0", "border-radius": "4px"}}>
       <h4>Recent Posts</h4>
       <ul>
         <li>Post 1 by User #{userId}</li>
@@ -382,7 +382,7 @@ const simulateImport = (componentName, delay = 1000) => {
           <div style={{
             padding: "20px",
             border: "2px solid #007bff",
-            borderRadius: "4px",
+            "border-radius": "4px",
             background: "#f8f9fa"
           }}>
             ✅ {componentName} loaded successfully!
@@ -544,7 +544,7 @@ function *SuspenseListDemo() {
       <div>
         <h3>SuspenseList Demo</h3>
 
-        <div style={{marginBottom: "20px"}}>
+        <div style={{"margin-bottom": "20px"}}>
           <label>
             Reveal Order:{" "}
             <select

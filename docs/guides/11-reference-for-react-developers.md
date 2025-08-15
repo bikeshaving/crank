@@ -497,11 +497,8 @@ function *VirtualList({ items }) {
 // React
 <div style={{fontSize: '16px', backgroundColor: 'red'}}>
 
-// Crank - now supports camelCase too!
-<div style={{fontSize: '16px', backgroundColor: 'red'}}>
-
-// Crank - or use CSS strings
-<div style="font-size: 16px; background-color: red;">
+// Crank - use kebab-case in style objects
+<div style={{'font-size': '16px', 'background-color': 'red'}}>
 ```
 
 ### Class Names
