@@ -29,7 +29,7 @@ export function BlogContent({
 		<h1>${title}</h1>
 		<p>
 			${author && jsx`By <a href=${authorURL} rel="author">${author}</a>`} \
-			${publishDateDisplay && jsx`<span>– Published ${publishDateDisplay}</span>`}
+			${publishDateDisplay && jsx({raw: ["<span>– Published ", "</span>"]}, publishDateDisplay)}
 		</p>
 		${children}
 	`;

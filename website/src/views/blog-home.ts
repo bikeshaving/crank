@@ -54,7 +54,7 @@ export default async function BlogHome({context: {storage}}: ViewProps) {
 								<${Marked} markdown=${body} components=${components} />
 								<//BlogContent>
 							<div>
-								<a href=${post.url}>Read more…</a>
+								<a href=${post.url}>Read more ...</a>
 							</div>
 						</div>
 					`;

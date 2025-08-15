@@ -433,4 +433,56 @@ test("unbalanced tags with expressions", () => {
 	}, "Unmatched closing tag D(), expected C()");
 });
 
+test("unicode characters", () => {
+	// Test that Unicode characters are preserved, not escaped
+	Assert.equal(
+		jsx`<span>–</span>`, // en dash (U+2013)
+		createElement("span", null, "–"),
+	);
+	Assert.equal(
+		jsx`<span>…</span>`, // ellipsis (U+2026)
+		createElement("span", null, "…"),
+	);
+
+	// Test Unicode with template expressions
+	const date = "January 1, 2024";
+	const result3 = jsx`<span>– Published ${date}</span>`;
+	const expected3 = createElement("span", null, "– Published ", date);
+	Assert.equal(result3, expected3);
+
+	const url = "/blog/post";
+	const result5 = jsx`<a href=${url}>Read more…</a>`;
+	const expected5 = createElement("a", {href: url}, "Read more…");
+	Assert.equal(result5, expected5);
+
+	// Test complex nested template like BlogContent component
+	const author = "John Doe";
+	const authorURL = "/author/john";
+	const publishDateDisplay = "January 1, 2024";
+	const complexResult = jsx`
+		<p>
+			${author && jsx`By <a href=${authorURL} rel="author">${author}</a>`} \
+			${publishDateDisplay && jsx`<span>– Published ${publishDateDisplay}</span>`}
+		</p>
+	`;
+
+	console.log("Complex template result:");
+	console.log("Actual:", JSON.stringify(complexResult, null, 2));
+
+	// Check that the Unicode dash is preserved in the nested span component
+	// Based on the actual structure: complexResult.props.children[2] is the span
+	const spanChild = complexResult.props.children[2];
+	console.log("Span child:", spanChild);
+	console.log("Span children:", spanChild.props.children);
+
+	// Verify the Unicode em dash is preserved
+	Assert.equal(spanChild.props.children[0], "– Published ");
+
+	// Test that cache key generation preserves Unicode
+	const spans = {raw: ["<span>– Published ", "</span>"]};
+	const cacheKey = JSON.stringify(spans.raw);
+	console.log("Cache key with Unicode:", cacheKey);
+	Assert.ok(cacheKey.includes("– Published"));
+});
+
 test.run();

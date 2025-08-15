@@ -158,3 +158,74 @@ select, input, textarea {
 .content {
 	margin-bottom: 1em;
 }
+
+/* Table styling */
+table {
+	width: 100%;
+	border-collapse: collapse;
+	margin: 2em 0;
+	font-size: 0.95em;
+	background: rgba(255, 255, 255, 0.02);
+	border-radius: 8px;
+	overflow: hidden;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+	@media screen and (min-width: 1100px) {
+		max-width: 900px;
+	}
+}
+
+.color-scheme-light table {
+	background: rgba(0, 0, 0, 0.02);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+th, td {
+	text-align: left;
+	padding: 12px 16px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.color-scheme-light th,
+.color-scheme-light td {
+	border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+th {
+	background: rgba(255, 255, 255, 0.05);
+	font-weight: 600;
+	color: var(--highlight-color);
+	border-bottom: 2px solid var(--highlight-color);
+}
+
+.color-scheme-light th {
+	background: rgba(0, 0, 0, 0.05);
+}
+
+td {
+	vertical-align: top;
+}
+
+/* Code in table cells */
+th code, td code {
+	font-size: 0.9em;
+	padding: 2px 4px;
+	border-radius: 3px;
+}
+
+/* Zebra striping */
+tbody tr:nth-child(even) {
+	background: rgba(255, 255, 255, 0.02);
+}
+
+.color-scheme-light tbody tr:nth-child(even) {
+	background: rgba(0, 0, 0, 0.02);
+}
+
+/* Hover effect */
+tbody tr:hover {
+	background: rgba(255, 255, 255, 0.05);
+}
+
+.color-scheme-light tbody tr:hover {
+	background: rgba(0, 0, 0, 0.05);
+}
