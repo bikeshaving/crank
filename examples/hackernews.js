@@ -199,10 +199,7 @@ function Navbar() {
 		<nav style="background: #ff6600; padding: 10px; margin-bottom: 20px;">
 			<div style="max-width: 800px; margin: 0 auto; color: white; font-weight: bold;">
 				<span style="color: #ffcc99; margin-right: 10px;">Crank News</span>
-				<a
-					href="#/top/1"
-					style="color: white; text-decoration: none;"
-				>
+				<a href="#/top/1" style="color: white; text-decoration: none;">
 					Top
 				</a>
 			</div>
