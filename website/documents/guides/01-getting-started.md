@@ -6,60 +6,67 @@ title: Getting Started
 
 ## Try Crank
 
-The fastest way to try Crank is via the [online playground](https://crank.js.org/playground). In addition, many of the code examples in these guides feature live previews.
+The fastest way to try Crank is via the [online
+playground](https://crank.js.org/playground). No setup required - just start
+writing components! Many examples in these guides also feature live previews
+you can edit directly.
 
-## Installation
+## Quick Start
 
-The Crank package is available on [NPM](https://npmjs.org/@b9g/crank) through
-the [@b9g organization](https://www.npmjs.com/org/b9g) (short for
-b*ikeshavin*g).
+### 1. Install Crank
 
 ```shell
 npm i @b9g/crank
 ```
 
-### Importing Crank with the **classic** JSX transform.
+### 2. Choose Your Setup
 
-```jsx live
-/** @jsx createElement */
-/** @jsxFrag Fragment */
-import {createElement, Fragment} from "@b9g/crank";
-import {renderer} from "@b9g/crank/dom";
+Crank works with any JSX setup. Here are the most common approaches:
 
-renderer.render(
-  <p>This paragraph element is transpiled with the classic transform.</p>,
-  document.body,
-);
-```
-
-### Importing Crank with the **automatic** JSX transform.
-
+**Option A: Automatic JSX Transform** (recommended for new projects)
 ```jsx live
 /** @jsxImportSource @b9g/crank */
 import {renderer} from "@b9g/crank/dom";
 
-renderer.render(
-  <p>This paragraph element is transpiled with the automatic transform.</p>,
-  document.body,
-);
+function Greeting({name = "World"}) {
+  return <div>Hello {name}!</div>;
+}
+
+renderer.render(<Greeting name="Crank" />, document.body);
 ```
 
-You will likely have to configure your tools to support JSX, especially if you do not want to use `@jsx` comment pragmas. See below for common tools and configurations.
+**Option B: Classic JSX Transform** (works with older setups)
+```jsx live
+/** @jsx createElement */
+/** @jsxFrag Fragment */
+import {createElement, Fragment, renderer} from "@b9g/crank/dom";
 
-### Importing the JSX template tag.
+function Greeting({name = "World"}) {
+  return <div>Hello {name}!</div>;
+}
 
-Starting in version `0.5`, the Crank package ships a [tagged template function](/guides/jsx-template-tag) which provides similar syntax and semantics as the JSX transform. This allows you to write Crank components in vanilla JavaScript.
+renderer.render(<Greeting name="Crank" />, document.body);
+```
 
+**Option C: No Build Required** (perfect for experimentation)
 ```js live
 import {jsx} from "@b9g/crank/standalone";
 import {renderer} from "@b9g/crank/dom";
 
-renderer.render(jsx`
-  <p>No transpilation is necessary with the JSX template tag.</p>
-`, document.body);
+function Greeting({name = "World"}) {
+  return jsx`<div>Hello ${name}!</div>`;
+}
+
+renderer.render(jsx`<${Greeting} name="Crank" />`, document.body);
 ```
 
-### ECMAScript Module CDNs
+### 3. Configure Your Tools
+
+Most modern tools support JSX out of the box. See the [tool
+configurations](#common-tool-configurations) section below for specific setup
+instructions.
+
+## Using CDNs
 Crank is also available on CDNs like [unpkg](https://unpkg.com)
 (https://unpkg.com/@b9g/crank?module) and [esm.sh](https://esm.sh)
 (https://esm.sh/@b9g/crank) for usage in ESM-ready environments.
@@ -117,10 +124,7 @@ Crank is written in TypeScript. Refer to [the guide on TypeScript](/guides/worki
 import type {Context} from "@b9g/crank";
 function *Timer(this: Context) {
   let seconds = 0;
-  const interval = setInterval(() => {
-    seconds++;
-    this.refresh();
-  }, 1000);
+  const interval = setInterval(() => this.refresh(() => seconds++), 1000);
   for ({} of this) {
     yield <div>Seconds: {seconds}</div>;
   }
@@ -237,17 +241,13 @@ import {renderer} from "@b9g/crank/dom";
 
 function *Timer() {
   let seconds = 0;
-  const interval = setInterval(() => {
-    seconds++;
-    this.refresh();
-  }, 1000);
-  try {
-    while (true) {
-      yield <div>Seconds: {seconds}</div>;
-    }
-  } finally {
-    clearInterval(interval);
+  const interval = setInterval(() => this.refresh(() => seconds++), 1000);
+
+  for ({} of this) {
+    yield <div>Seconds: {seconds}</div>;
   }
+
+  clearInterval(interval);
 }
 
 renderer.render(<Timer />, document.body);
@@ -311,19 +311,14 @@ async function *RandomDogLoader({throttle}) {
 
 function *RandomDogApp() {
   let throttle = false;
-  this.addEventListener("click", (ev) => {
-    if (ev.target.tagName === "BUTTON") {
-      throttle = !throttle;
-      this.refresh();
-    }
-  });
+  const onclick = () => this.refresh(() => throttle = !throttle);
 
   for ({} of this) {
     yield (
       <Fragment>
         <RandomDogLoader throttle={throttle} />
         <p>
-          <button>Show me another dog.</button>
+          <button onclick={onclick}>Show me another dog.</button>
         </p>
       </Fragment>
     );
@@ -332,3 +327,61 @@ function *RandomDogApp() {
 
 renderer.render(<RandomDogApp />, document.body);
 ```
+
+## What's New in Crank 0.7
+
+Crank 0.7 is a major release that introduces powerful new features while
+maintaining full backward compatibility. Here are the highlights:
+
+### Foolproof State Updates
+The `refresh()` method now accepts a callback function, making it impossible to
+forget to re-render after updating state:
+
+```jsx
+// Before: Easy to forget refresh()
+const onclick = () => {
+  count++;
+  this.refresh(); // Oops, might forget this!
+};
+
+// Now: Impossible to forget
+const onclick = () => this.refresh(() => count++);
+```
+
+This pattern is especially useful in event handlers and timer callbacks.
+
+### Advanced Async Patterns
+The new `async` module provides React-like APIs with Crank's unique async
+capabilities:
+
+```jsx
+import {lazy, Suspense} from "@b9g/crank/async";
+
+const LazyComponent = lazy(() => import("./component.js"));
+
+function App() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LazyComponent />
+    </Suspense>
+  );
+}
+```
+
+### TypeScript Improvements
+New helper types like `ComponentProps<T>` make it easier to work with component
+types:
+
+```tsx
+import {ComponentProps} from "@b9g/crank";
+
+function Button({variant}: {variant: "primary" | "secondary"}) {
+  return <button class={`btn-${variant}`}>Click me</button>;
+}
+
+// Extract Button's props type automatically
+type ButtonProps = ComponentProps<typeof Button>;
+```
+
+These features maintain full backward compatibility while providing modern
+development patterns for building scalable applications.

@@ -2,26 +2,23 @@
 title: Working with TypeScript
 ---
 
-Crank is written in TypeScript, and provides some types out of box so you can type-check your components and elements.
+Crank is written in TypeScript and provides excellent type safety out of the box. This guide covers the types and patterns you'll need to build type-safe Crank applications.
 
-## Typing this in Components
-Trying to reference `this` in a component without a `this` type annotation will throw a type error in TypeScript‘s strict mode (you’ll see a message like `'this' implicitly has type 'any' because it does not have a type annotation`). Crank exports the `Context` class so you can annotate your components `this` as `Context`:
+## Typing Component Context
+
+Generator components use `this` to access the component context. In TypeScript's strict mode, you'll need to provide a type annotation for `this`. Crank exports the `Context` type for this purpose:
 
 ```tsx
 import {Context} from "@b9g/crank";
 function *Timer (this: Context, props: {}, ctx: Context) {
   let seconds = 0;
-  const interval = setInterval(() => {
-    seconds++;
-    this.refresh();
-  }, 1000);
-  try {
-    while (true) {
-      yield <div>Seconds: {seconds}</div>;
-    }
-  } finally {
-    clearInterval(interval);
+  const interval = setInterval(() => this.refresh(() => seconds++), 1000);
+  
+  for ({} of this) {
+    yield <div>Seconds: {seconds}</div>;
   }
+  
+  clearInterval(interval);
 }
 ```
 
@@ -35,7 +32,7 @@ function SyncFn(): Element {
 }
 
 function *SyncGen(): Generator<Element> {
-  while (true) {
+  for ({} of this) {
     yield <div>Hello world</div>;
   }
 }
@@ -45,7 +42,7 @@ async function AsyncFn(): Promise<Element> {
 }
 
 async function *AsyncGen(): AsyncGenerator<Element> {
-  while (true) {
+  for ({} of this) {
     yield <div>Hello world</div>;
   }
 }
@@ -80,6 +77,32 @@ function Greeting ({name}: {name: string}) {
 
 const el = <Greeting name="Brian" />; // compiles
 const el1 = <Greeting name={1} />; // throws a type error
+```
+
+### ComponentProps Helper Type
+
+Starting in Crank 0.7, you can use the `ComponentProps` helper type to extract the props type from any component. This is useful when you need to reference a component's props in other type definitions or when creating higher-order components.
+
+```tsx
+import {ComponentProps} from "@b9g/crank";
+
+function Button({variant, children}: {variant: "primary" | "secondary", children: string}) {
+  return <button class={`btn btn-${variant}`}>{children}</button>;
+}
+
+// Extract Button's props type
+type ButtonProps = ComponentProps<typeof Button>;
+// Equivalent to: {variant: "primary" | "secondary", children: string}
+
+// Use in higher-order components
+function withLoading<T extends ComponentProps<any>>(Component: (props: T) => any) {
+  return function LoadingWrapper({loading, ...props}: T & {loading: boolean}) {
+    if (loading) return <div>Loading...</div>;
+    return <Component {...props} />;
+  };
+}
+
+const LoadingButton = withLoading(Button);
 ```
 
 The children prop can be typed using the `Children` type provided by Crank. The `Children` type is a broad type which can be `Child` or arbitrarily nested iterables of `Child`. TypeScript doesn’t really provide a way to prevent functions from being used as the `children` prop, but such patterns are strongly discouraged. You should typically treat `children` as an opaque value only to be interpolated into JSX because its value can be almost anything.

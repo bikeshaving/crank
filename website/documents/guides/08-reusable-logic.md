@@ -63,8 +63,8 @@ function *Component(this, props) {
 }
 ```
 
-### `context.flush()`
-Similar to the `schedule()` method, this method fires when rendering has finished. Unlike the `schedule()` method, this method fires when a component’s rendered DOM is live. This is useful when you need to do something like calling `focus()` on an `<input>` element or perform DOM measurement calculations. Callbacks fire once per call and callback function per update.
+### `context.after()`
+Similar to the `schedule()` method, this method fires when rendering has finished. Unlike the `schedule()` method, this method fires when a component's rendered DOM is live. This is useful when you need to do something like calling `focus()` on an `<input>` element or perform DOM measurement calculations. Callbacks fire once per call and callback function per update.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -72,7 +72,7 @@ function *AutoFocusingInput(props) {
   // this.schedule does not work because it fires before the input element is
   // added to the DOM
   // this.schedule((input) => input.focus());
-  this.flush((input) => input.focus());
+  this.after((input) => input.focus());
   for (props of this) {
     yield <input {...props}/>;
   }
@@ -138,12 +138,9 @@ Context.prototype.clearInterval = function(interval) {
 
 function *Counter() {
   let seconds = 0;
-  this.setInterval(() => {
-    seconds++;
-    this.refresh();
-  }, 1000);
+  this.setInterval(() => this.refresh(() => seconds++), 1000);
 
-  while (true) {
+  for ({} of this) {
     yield <div>Seconds: {seconds}</div>;
   }
 }
@@ -175,12 +172,9 @@ function createSetInterval(ctx, callback, delay, ...args) {
 function *Counter() {
   let seconds = 0;
   const setInterval = createSetInterval(this);
-  setInterval(() => {
-    seconds++;
-    this.refresh();
-  }, 1000);
+  setInterval(() => this.refresh(() => seconds++), 1000);
 
-  while (true) {
+  for ({} of this) {
     yield <div>Seconds: {seconds}</div>;
   }
 
@@ -206,10 +200,7 @@ Because Crank components are just functions, we can write functions which both t
 function interval(Component) {
   return function *WrappedComponent() {
     let seconds = 0;
-    const interval = window.setInterval(() => {
-      seconds++;
-      this.refresh();
-    }, 1000)
+    const interval = window.setInterval(() => this.refresh(() => seconds++), 1000)
     try {
       for (const props of this) {
         yield <Component seconds={seconds} {...props}/>;
