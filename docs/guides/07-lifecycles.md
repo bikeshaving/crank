@@ -481,7 +481,7 @@ function *FadeOutComponent() {
         padding: '20px',
         background: '#007bff',
         color: 'white',
-        borderRadius: '4px',
+        'border-radius': '4px',
         opacity: '1'
       }}>
         I will fade out when unmounted!
@@ -563,18 +563,18 @@ function *Modal({children, onClose}) {
         bottom: '0',
         background: 'rgba(0,0,0,0.5)',
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center'
+        'align-items': 'center',
+        'justify-content': 'center'
       }}>
         <div style={{
           background: 'white',
           padding: '2rem',
-          borderRadius: '8px',
-          maxWidth: '500px',
+          'border-radius': '8px',
+          'max-width': '500px',
           width: '90%'
         }}>
           {children}
-          <button onclick={onClose} style={{marginTop: '1rem'}}>
+          <button onclick={onClose} style={{'margin-top': '1rem'}}>
             Close
           </button>
         </div>

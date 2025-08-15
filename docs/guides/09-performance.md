@@ -439,18 +439,18 @@ function *ResourceManager() {
 ```jsx
 // 🤔 Probably unnecessary - this optimization isn't worth the complexity
 function *OverEngineered({color}) {
-  const baseStyle = {fontSize: '16px'};
+  const baseStyle = "font-size: 16px";
 
   for ({color} of this) {
-    const style = color ? {...baseStyle, color} : baseStyle;
+    const style = color ? `${baseStyle}; color: ${color}` : baseStyle;
     yield <div style={style}>Content</div>;
   }
 }
 
-// ✅ Simple and fine - object creation is cheap, readability matters
+// ✅ Simple and fine - string building is straightforward
 function *JustRight({color}) {
   for ({color} of this) {
-    yield <div style={{color, fontSize: '16px'}}>Content</div>;
+    yield <div style={`color: ${color}; font-size: 16px`}>Content</div>;
   }
 }
 

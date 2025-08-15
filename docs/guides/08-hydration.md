@@ -112,21 +112,22 @@ ensures their children are included.
 
 ### Selective Prop Hydration
 
-Use string values to specify which props should be hydrated:
+Use string values to specify which props should not emit hydration errors:
+- `hydrate="!data-timestamp"` - Hydrate all props except `data-timestamp`
+- `hydrate="class id"` - Hydrate only `class` and `id` props
+- `hydrate="!children" - Hydrate this element but not its children.
 
+You cannot mix bang (`!`) and non-bang syntax. Doing so will cause a warning.
 ```jsx
 function FormInput({value, placeholder}) {
   return (
     <div>
-      {/* Hydrate placeholder but preserve user's current input value */}
       <input
         hydrate="!value"
         type="text"
         placeholder={placeholder}
         value={value}
       />
-
-      {/* Only hydrate specific styling props */}
       <div
         hydrate="class id"
         class="form-group"
@@ -138,13 +139,50 @@ function FormInput({value, placeholder}) {
 }
 ```
 
-**String hydrate syntax:**
-- `hydrate="!data-timestamp"` - Hydrate all props except `data-timestamp`
-- `hydrate="class id"` - Hydrate only `class` and `id` props
-- Cannot mix bang (`!`) and non-bang syntax in the same string
-- `hydrate="!children" - Hydrate this element but not its children.
+```jsx
+let colorScheme =
+  typeof window !== "undefined"
+    ? sessionStorage.getItem("color-scheme") ??
+      (window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light")
+    : "light";
 
-This is useful for:
-- Form inputs where users may have entered data
-- Elements with dynamic attributes from analytics scripts
-- Preserving third-party modifications to specific props
+export function *ColorSchemeToggle() {
+  const toggleScheme = () => this.refresh(() => {
+    colorScheme = colorScheme === "dark" ? "light" : "dark";
+    sessionStorage.setItem("color-scheme", colorScheme);
+  });
+
+  if (typeof window !== "undefined") {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const systemListener = (event: MediaQueryListEvent) =>
+      this.refresh(() => colorScheme = event.matches ? "dark" : "light");
+    mediaQuery.addEventListener("change", systemListener);
+    this.cleanup(() => {
+      mediaQuery.removeEventListener("change", systemListener);
+    });
+  }
+
+  for ({} of this) {
+    if (typeof document !== "undefined") {
+      const action = colorScheme === "dark" ? "remove" : "add";
+      document.body.classList[action]("color-scheme-light");
+    }
+
+    // we do not want to hydrate the children or aria-checked because the
+    // server did not have access to the DOM and it might be mismatched
+    yield (
+      <button
+        onclick={toggleScheme}
+        role="switch"
+        aria-label="Set dark mode"
+        aria-checked={colorScheme === "dark"}
+        hydrate="!aria-checked !children"
+      >
+        Switch to {colorScheme === "dark" ? "light" : "dark"} mode
+      </button>
+    );
+  }
+}
+```
