@@ -215,11 +215,7 @@ import {renderer} from "@b9g/crank/dom";
 
 async function LoadingIndicator() {
   await new Promise(resolve => setTimeout(resolve, 1000));
-  return (
-    <div style="padding: 20px; text-align: center; background: #f8f9fa; border: 2px dashed #6c757d; border-radius: 8px; color: #6c757d;">
-      🐕 Fetching a good boy...
-    </div>
-  );
+  return <div>Fetching a good boy...</div>;
 }
 
 async function RandomDog({throttle = false}) {
@@ -230,25 +226,14 @@ async function RandomDog({throttle = false}) {
   }
 
   return (
-    <div style="text-align: center; padding: 10px; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-      <a href={data.message} target="_blank" style="text-decoration: none; color: inherit;">
-        <img
-          src={data.message}
-          alt="A Random Dog"
-          width="300"
-          style="border-radius: 8px; display: block; margin: 0 auto;"
-        />
-        <div style="margin-top: 8px; color: #6c757d; font-size: 14px;">
-          Click to view full size
-        </div>
-      </a>
-    </div>
+    <a href={data.message}>
+      <img src={data.message} alt="A Random Dog" width="300" />
+    </a>
   );
 }
 
 async function *RandomDogLoader({throttle}) {
   for await ({throttle} of this) {
-    // Each time the component is rendered, both LoadingIndicator and RandomDog are raced
     yield <LoadingIndicator />;
     yield <RandomDog throttle={throttle} />;
   }
@@ -256,25 +241,16 @@ async function *RandomDogLoader({throttle}) {
 
 function *RandomDogApp() {
   let throttle = false;
-  this.addEventListener("click", (ev) => {
-    if (ev.target.tagName === "BUTTON") {
-      this.refresh(() => throttle = !throttle);
-    }
-  });
+  const onclick = () => this.refresh(() => throttle = !throttle);
 
   for ({} of this) {
     yield (
-      <div style="max-width: 400px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-        <div style="margin-bottom: 20px; text-align: center;">
-          <button style="padding: 12px 24px; font-size: 16px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; transition: background-color 0.2s;">
-            Show me another dog!
-          </button>
-          <div style="margin-top: 10px; font-size: 14px; color: #6c757d;">
-            {throttle ? "🐌 Slow mode enabled" : "⚡ Fast mode"}
-          </div>
-        </div>
+      <Fragment>
         <RandomDogLoader throttle={throttle} />
-      </div>
+        <p>
+          <button onclick={onclick}>Show me another dog.</button>
+        </p>
+      </Fragment>
     );
   }
 }
@@ -611,20 +587,6 @@ function *SuspenseListDemo() {
             <MediumComponent />
           </Suspense>
         </SuspenseList>
-
-        <div style={{marginTop: "20px", fontSize: "14px", color: "#666"}}>
-          <p><strong>Reveal Orders:</strong></p>
-          <ul>
-            <li><strong>together:</strong> Wait for all, then show all at once</li>
-            <li><strong>forwards:</strong> Show in order (fast → medium → slow)</li>
-            <li><strong>backwards:</strong> Show in reverse order (slow → medium → fast)</li>
-          </ul>
-          <p><strong>Tail Behavior:</strong></p>
-          <ul>
-            <li><strong>collapsed:</strong> Show only the next loading fallback</li>
-            <li><strong>hidden:</strong> Hide all remaining fallbacks</li>
-          </ul>
-        </div>
       </div>
     );
   }

@@ -24,7 +24,7 @@ npm i @b9g/crank
 Crank works with any JSX setup. Here are the most common approaches:
 
 **Option A: Automatic JSX Transform** (recommended for new projects)
-```jsx live
+```jsx
 /** @jsxImportSource @b9g/crank */
 import {renderer} from "@b9g/crank/dom";
 
@@ -36,10 +36,11 @@ renderer.render(<Greeting name="Crank" />, document.body);
 ```
 
 **Option B: Classic JSX Transform** (works with older setups)
-```jsx live
+```jsx
 /** @jsx createElement */
 /** @jsxFrag Fragment */
-import {createElement, Fragment, renderer} from "@b9g/crank/dom";
+import {createElement, Fragment} from "@b9g/crank";
+import {renderer} from "@b9g/crank/dom";
 
 function Greeting({name = "World"}) {
   return <div>Hello {name}!</div>;
@@ -48,8 +49,8 @@ function Greeting({name = "World"}) {
 renderer.render(<Greeting name="Crank" />, document.body);
 ```
 
-**Option C: No Build Required** (perfect for experimentation)
-```js live
+**Option C: No Build Required**
+```js
 import {jsx} from "@b9g/crank/standalone";
 import {renderer} from "@b9g/crank/dom";
 
