@@ -74,7 +74,7 @@ export default [
 		output: {
 			format: "esm",
 			dir: "dist",
-			chunkFileNames: "[hash].js",
+			preserveModules: true,
 			sourcemap: true,
 			exports: "named",
 		},
@@ -85,7 +85,7 @@ export default [
 		output: {
 			format: "cjs",
 			dir: "dist",
-			chunkFileNames: "[hash].cjs",
+			preserveModules: true,
 			entryFileNames: "[name].cjs",
 			sourcemap: true,
 			exports: "named",
