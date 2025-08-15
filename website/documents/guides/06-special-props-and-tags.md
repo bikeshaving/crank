@@ -2,13 +2,17 @@
 title: Special Props and Tags
 ---
 
-Crank provides certain APIs in the form of special props or element tags. The following is an overview of these props and tags.
+While most props are passed directly to DOM elements or components, Crank reserves certain prop names for special framework behavior. These special props control element diffing, rendering optimization, and framework features.
+
+Additionally, Crank provides special element tags that modify how elements are rendered or diffed. This guide covers both special props and special tags.
 
 ## Special Props
-The following prop names have special behavior.
+The following prop names have special behavior in Crank:
 
 ### key
-By default, Crank uses an element’s tag and position to determine if it represents an update or a change to the tree. Because elements often represent stateful DOM nodes or components, it can be useful to *key* the children of an element to hint to the renderer that an element has been added, moved or removed from a parent. In Crank, we do this with the special prop `key`:
+The `key` prop helps Crank identify which elements have been added, moved, or removed when rendering lists. Without keys, Crank matches elements by position, which can cause issues when list items are reordered or inserted.
+
+Keys are especially important for stateful components or elements with form inputs, where you want to preserve state when the list changes.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -23,10 +27,7 @@ function *ID() {
 
 function *List() {
   let reversed = false;
-  const onclick = () => {
-    reversed = !reversed;
-    this.refresh();
-  };
+  const onclick = () => this.refresh(() => reversed = !reversed);
 
   for ({} of this) {
     yield (
@@ -124,7 +125,11 @@ function MyInput({ref, class, ...props}) {
 
 ### copy
 
-The `copy` prop is used to prevent the re-rendering of any element and its children. A truthy value indicates that the element should not re-render. It can be used to prevent rendering, or for performance reasons.
+The `copy` prop is used to prevent the re-rendering of any element and its children. It can be a boolean or a string that specifies which props to copy from the previous render.
+
+#### Boolean copy prop
+
+A truthy value indicates that the element should not re-render. It can be used to prevent rendering, or for performance reasons.
 
 ```jsx
 function* List({elements}) {
@@ -134,10 +139,10 @@ function* List({elements}) {
         {elements.map((el) => {
           // The copy prop will prevent non-initial renders from updating the DOM.
           return (
-            <li copy={el.hasChanged}>
+            <li copy={!el.hasChanged}>
               {el.value}
             </li>
-          );;
+          );
         })}
       </ul>
     );
@@ -145,8 +150,60 @@ function* List({elements}) {
 }
 ```
 
+#### String copy prop (0.7+)
+
+Starting in Crank 0.7, the `copy` prop can be a string to specify which props should be copied from the previous render. This provides fine-grained control over what gets updated.
+
+```jsx
+// Copy all props except value (useful for leaving the value uncontrolled)
+<input copy="!value" type="text" placeholder="Enter text..." />
+
+// Copy only specific props
+<div copy="class id" class="container" id="main" data-test="foo" />
+
+// Copy children from previous render
+<div copy="children" class="dynamic-class">
+  {/* children will be preserved from previous render */}
+</div>
+```
+
+**String copy syntax:**
+- `copy="!value"` - Copy all props except `value`
+- `copy="class children"` - Copy only `class` and `children` props
+- Cannot mix bang (`!`) and non-bang syntax in the same string
+
+### hydrate
+
+The `hydrate` prop provides fine-grained control over server-side rendering hydration. It works similarly to the `copy` prop but specifically for hydration behavior.
+
+```jsx
+// Disable hydration for entire subtree
+<div hydrate={false}>
+  {/* This content won't be hydrated, stays as server-rendered */}
+</div>
+
+// Include portal children in hydration  
+<Portal hydrate={true}>
+  {/* Portal children will be hydrated */}
+</Portal>
+
+// Selective prop hydration (like copy prop)
+<input hydrate="!value" type="text" placeholder="Will hydrate" />
+<div hydrate="class id" class="hydrated" id="main" data-skip="ignored" />
+```
+
+**Hydrate prop behavior:**
+- `hydrate={false}` - Skip hydration entirely for this element and children
+- `hydrate={true}` - Force hydration (useful for portals)
+- `hydrate="!value"` - Hydrate all props except `value`
+- `hydrate="class id"` - Hydrate only `class` and `id` props
+
+This is particularly useful when you have server-rendered content that should remain static, or when dealing with third-party widgets that shouldn't be disturbed during hydration.
+
+For comprehensive hydration patterns, best practices, and advanced techniques, see the [Hydration guide](/guides/hydration).
+
 ### children
-The `children` prop passed to components is special because it is not usually set with JSX’s `key="value"` prop syntax, but by the contents between the opening and closing tags. It is the responsibility of the component to make sure the `children` passed in are rendered in its yielded or returned element tree.
+The `children` prop passed to components is special because it is not usually set with JSX's `key="value"` prop syntax, but by the contents between the opening and closing tags. It is the responsibility of the component to make sure the `children` passed in are rendered in its yielded or returned element tree.
 
 ```jsx
 function Component({children}) {
@@ -191,6 +248,50 @@ Be careful when using the `innerHTML` prop, as passing unsanitized text inputs c
 
 As an alternative, you can also use [the special `Raw` element tag](#raw), which allows to inject raw HTML or even actual DOM nodes into the element tree, without requiring a parent host element.
 
+### class
+
+The `class` prop accepts both strings and objects for convenient class name management.
+
+#### String class prop
+```jsx
+<label class="my-label active" for="my-id">Label</label>
+```
+
+#### Object class prop (0.7+)
+Starting in Crank 0.7, the `class` prop can accept an object for basic `clsx`/`classnames` behavior:
+
+```jsx
+function *Button() {
+  let isActive = false;
+  let isDisabled = false;
+
+  for ({} of this) {
+    yield (
+      <button
+        class={{
+          btn: true,
+          'btn-active': isActive,
+          'btn-disabled': isDisabled,
+          'btn-large': true
+        }}
+        onclick={() => this.refresh(() => isActive = !isActive)}
+      >
+        Toggle
+      </button>
+    );
+  }
+}
+
+// Equivalent to: class="btn btn-large" (when inactive)
+// Or: class="btn btn-active btn-large" (when active)
+```
+
+**Benefits of object class prop:**
+- Conditional classes without string concatenation
+- Uses `classList.add()` and `classList.remove()` under the hood
+- Preserves classes added by third-party scripts
+- Prevents clobbering of external class modifications
+
 ### Prop Naming Conventions
 Crank strives to make copying and pasting HTML into your components as easy as possible, and to this extent it allows you to use `class` and `for` as props in your elements instead of `className` and `htmlFor`.
 
@@ -202,7 +303,7 @@ You can still use the `className` and `htmlFor` props as well, but using the for
 
 ## Special Tags
 
-Crank provides four special element tags which modify renderer behavior, affecting element diffing and rendering output in various ways.
+Crank provides five special element tags which modify renderer behavior, affecting element diffing and rendering output in various ways.
 
 ### Fragment
 Crank provides a `<Fragment>` tag, which allows you to render multiple children into a parent without wrapping them in another DOM node. Under the hood, iterables which appear in the element tree are also implicitly wrapped in a `<Fragment>` element by the renderer.
@@ -307,3 +408,48 @@ renderer.render(<MarkdownViewer markdown="*hello* **world**" />);
 ```
 
 Be careful when using `<Raw>` elements, as passing unsanitized text inputs can lead to security vulnerabilities.
+
+### Text
+
+The `<Text>` element provides explicit control over text node creation. Starting in Crank 0.7, renderers return actual `Text` nodes instead of strings, and the `<Text>` element allows you to create these nodes explicitly.
+
+```jsx
+import {Text} from "@b9g/crank";
+import {renderer} from "@b9g/crank/dom";
+
+// Explicit text node creation
+function Component() {
+  return <Text value="Hello world" />;
+}
+
+// Components can access Text nodes directly
+function *InteractiveText() {
+  this.schedule((node) => {
+    if (node instanceof Text) {
+      node.textContent = "Updated!";
+      console.log("Got actual Text node:", node);
+    }
+  });
+
+  for ({} of this) {
+    yield "Initial text"; // This becomes a Text node
+  }
+}
+
+// Each string gets its own Text node (no more concatenation)
+function MultipleTexts() {
+  return (
+    <div>
+      {"First "}{"Second "}{"Third"} // Three separate Text nodes
+    </div>
+  );
+}
+```
+
+**Benefits of explicit Text elements:**
+- Direct access to DOM Text nodes in lifecycle callbacks
+- Better performance during reconciliation and hydration
+- Improved text node tracking and manipulation
+- No automatic string concatenation - each string becomes its own node
+
+The `<Text>` element is particularly useful when you need precise control over text content or when integrating with libraries that manipulate text nodes directly.

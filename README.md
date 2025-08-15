@@ -3,10 +3,12 @@
 The fastest way to try Crank is via the [online playground](https://crank.js.org/playground). In addition, many of the code examples in these guides feature live previews.
 
 # Why Crank?
-
 **Finally, a framework that feels like JavaScript.**
 
-While other frameworks invent new paradigms and force you to learn framework-specific APIs, Crank embraces the language features you already know. No hooks to memorize, no dependency arrays to debug, no cache invalidation to manage.
+While other frameworks invent new paradigms and force you to learn
+framework-specific APIs, Crank embraces the language features you already know.
+No hooks to memorize, no dependency arrays to debug, no cache invalidation to
+manage.
 
 ## Pure JavaScript, No Compromises
 
@@ -20,32 +22,28 @@ async function UserProfile({userId}) {
 // Lifecycle logic with generators feels natural
 function* Timer() {
   let seconds = 0;
-  const interval = setInterval(() => {
-    seconds++;
-    this.refresh();
-  }, 1000);
-  
-  try {
-    while (true) {
-      yield <div>Seconds: {seconds}</div>;
-    }
-  } finally {
-    clearInterval(interval); // Cleanup just works
+  const interval = setInterval(() => this.refresh(() => seconds++), 1000);
+  for ({} of this) {
+    yield <div>Seconds: {seconds}</div>;
   }
+  clearInterval(interval); // Cleanup just works
 }
 ```
 
 ## Why Developers Choose Crank
 
 - **🎯 Intuitive**: Use `async`/`await` for loading states and `function*` for lifecycle—no new APIs to learn
-- **⚡ Fast**: Outperforms React in benchmarks while weighing just 5KB with zero dependencies  
+- **⚡ Fast**: Outperforms React in benchmarks while weighing just 5KB with zero dependencies
 - **🔧 Flexible**: Write components in vanilla JavaScript with template literals, or use JSX
 - **🧹 Clean**: State lives in function scope, lifecycle code goes where it belongs, no mysterious re-render bugs
 - **🌊 Future-proof**: Built on stable JavaScript features, not evolving framework abstractions
 
 ## The "Just JavaScript" Promise, Delivered
 
-Other frameworks claim to be "just JavaScript" but ask you to think in terms of effects, dependencies, and framework-specific patterns. Crank actually delivers on that promise—your components are literally just functions that use standard JavaScript control flow.
+Other frameworks claim to be "just JavaScript" but ask you to think in terms of
+effects, dependencies, and framework-specific patterns. Crank actually delivers
+on that promise—your components are literally just functions that use standard
+JavaScript control flow.
 
 Ready to write components that feel like the JavaScript you know and love?
 
@@ -57,6 +55,18 @@ b*ikeshavin*g).
 
 ```shell
 npm i @b9g/crank
+```
+
+### Importing Crank with the **automatic** JSX transform.
+
+```jsx live
+/** @jsxImportSource @b9g/crank */
+import {renderer} from "@b9g/crank/dom";
+
+renderer.render(
+  <p>This paragraph element is transpiled with the automatic transform.</p>,
+  document.body,
+);
 ```
 
 ### Importing Crank with the **classic** JSX transform.
@@ -73,23 +83,16 @@ renderer.render(
 );
 ```
 
-### Importing Crank with the **automatic** JSX transform.
-
-```jsx live
-/** @jsxImportSource @b9g/crank */
-import {renderer} from "@b9g/crank/dom";
-
-renderer.render(
-  <p>This paragraph element is transpiled with the automatic transform.</p>,
-  document.body,
-);
-```
-
-You will likely have to configure your tools to support JSX, especially if you do not want to use `@jsx` comment pragmas. See below for common tools and configurations.
+You will likely have to configure your tools to support JSX, especially if you
+do not want to use `@jsx` comment pragmas. See below for common tools and
+configurations.
 
 ### Importing the JSX template tag.
 
-Starting in version `0.5`, the Crank package ships a [tagged template function](/guides/jsx-template-tag) which provides similar syntax and semantics as the JSX transform. This allows you to write Crank components in vanilla JavaScript.
+Starting in version `0.5`, the Crank package ships a [tagged template
+function](/guides/jsx-template-tag) which provides similar syntax and semantics
+as the JSX transform. This allows you to write Crank components in vanilla
+JavaScript.
 
 ```js live
 import {jsx} from "@b9g/crank/standalone";
@@ -107,10 +110,6 @@ Crank is also available on CDNs like [unpkg](https://unpkg.com)
 
 ```jsx live
 /** @jsx createElement */
-
-// This is an ESM-ready environment!
-// If code previews work, your browser is an ESM-ready environment!
-
 import {createElement} from "https://unpkg.com/@b9g/crank/crank?module";
 import {renderer} from "https://unpkg.com/@b9g/crank/dom?module";
 
@@ -120,6 +119,135 @@ renderer.render(
   </div>,
   document.body,
 );
+```
+
+## Key Examples
+
+### A Simple Component
+
+```jsx live
+import {renderer} from "@b9g/crank/dom";
+
+function Greeting({name = "World"}) {
+  return (
+    <div>Hello {name}</div>
+  );
+}
+
+renderer.render(<Greeting />, document.body);
+```
+
+### A Stateful Component
+
+```jsx live
+function *Timer(this: Context) {
+  let seconds = 0;
+  const interval = setInterval(() => this.refresh(() => seconds++), 1000);
+  for ({} of this) {
+    yield <div>Seconds: {seconds}</div>;
+  }
+
+  clearInterval(interval);
+}
+```
+
+### An Async Component
+
+```jsx live
+import {renderer} from "@b9g/crank/dom";
+async function Definition({word}) {
+  // API courtesy https://dictionaryapi.dev
+  const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+  const data = await res.json();
+  if (!Array.isArray(data)) {
+    return <p>No definition found for {word}</p>;
+  }
+
+  const {phonetic, meanings} = data[0];
+  const {partOfSpeech, definitions} = meanings[0];
+  const {definition} = definitions[0];
+  return <>
+    <p>{word} <code>{phonetic}</code></p>
+    <p><b>{partOfSpeech}.</b> {definition}</p>
+  </>;
+}
+
+await renderer.render(<Definition word="framework" />, document.body);
+```
+
+### A Loading Component
+
+```jsx live
+import {Fragment} from "@b9g/crank";
+import {renderer} from "@b9g/crank/dom";
+
+async function LoadingIndicator() {
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  return (
+    <div style="padding: 20px; text-align: center; background: #f8f9fa; border: 2px dashed #6c757d; border-radius: 8px; color: #6c757d;">
+      🐕 Fetching a good boy...
+    </div>
+  );
+}
+
+async function RandomDog({throttle = false}) {
+  const res = await fetch("https://dog.ceo/api/breeds/image/random");
+  const data = await res.json();
+  if (throttle) {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+
+  return (
+    <div style="text-align: center; padding: 10px; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+      <a href={data.message} target="_blank" style="text-decoration: none; color: inherit;">
+        <img 
+          src={data.message} 
+          alt="A Random Dog" 
+          width="300" 
+          style="border-radius: 8px; display: block; margin: 0 auto;"
+        />
+        <div style="margin-top: 8px; color: #6c757d; font-size: 14px;">
+          Click to view full size
+        </div>
+      </a>
+    </div>
+  );
+}
+
+async function *RandomDogLoader({throttle}) {
+  // for await can be used to race component trees
+  for await ({throttle} of this) {
+    yield <LoadingIndicator />;
+    yield <RandomDog throttle={throttle} />;
+  }
+}
+
+function *RandomDogApp() {
+  let throttle = false;
+  this.addEventListener("click", (ev) => {
+    if (ev.target.tagName === "BUTTON") {
+      this.refresh(() => throttle = !throttle);
+    }
+  });
+
+  for ({} of this) {
+    yield (
+      <div style="max-width: 400px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <RandomDogLoader throttle={throttle} />
+        <div style="text-align: center; margin-top: 20px;">
+          <button style="padding: 12px 24px; font-size: 16px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer;">
+            Show me another dog!
+          </button>
+          <div style="margin-top: 10px; font-size: 14px; color: #6c757d;">
+            {throttle ? "🐌 Slow mode enabled" : "⚡ Fast mode"}
+          </div>
+        </div>
+      </div>
+    );
+  }
+}
+
+renderer.render(<RandomDogApp />, document.body);
 ```
 
 ## Common tool configurations
@@ -152,16 +280,15 @@ The classic transform is supported as well.
 }
 ```
 
-Crank is written in TypeScript. Refer to [the guide on TypeScript](/guides/working-with-typescript) for more information about Crank types.
+Crank is written in TypeScript. Refer to [the guide on
+TypeScript](https://crank.js.org/guides/working-with-typescript) for more
+information about Crank types.
 
 ```tsx
 import type {Context} from "@b9g/crank";
 function *Timer(this: Context) {
   let seconds = 0;
-  const interval = setInterval(() => {
-    seconds++;
-    this.refresh();
-  }, 1000);
+  const interval = setInterval(() => this.refresh(() => seconds++), 1000);
   for ({} of this) {
     yield <div>Seconds: {seconds}</div>;
   }
@@ -253,123 +380,4 @@ import crank from "astro-crank";
 export default defineConfig({
   integrations: [crank()],
 });
-```
-
-## Key Examples
-
-### A Simple Component
-
-```jsx live
-import {renderer} from "@b9g/crank/dom";
-
-function Greeting({name = "World"}) {
-  return (
-    <div>Hello {name}</div>
-  );
-}
-
-renderer.render(<Greeting />, document.body);
-```
-
-### A Stateful Component
-
-```jsx live
-import {renderer} from "@b9g/crank/dom";
-
-function *Timer() {
-  let seconds = 0;
-  const interval = setInterval(() => {
-    seconds++;
-    this.refresh();
-  }, 1000);
-  try {
-    while (true) {
-      yield <div>Seconds: {seconds}</div>;
-    }
-  } finally {
-    clearInterval(interval);
-  }
-}
-
-renderer.render(<Timer />, document.body);
-```
-
-### An Async Component
-
-```jsx live
-import {renderer} from "@b9g/crank/dom";
-async function Definition({word}) {
-  // API courtesy https://dictionaryapi.dev
-  const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
-  const data = await res.json();
-  if (!Array.isArray(data)) {
-    return <p>No definition found for {word}</p>;
-  }
-
-  const {phonetic, meanings} = data[0];
-  const {partOfSpeech, definitions} = meanings[0];
-  const {definition} = definitions[0];
-  return <>
-    <p>{word} <code>{phonetic}</code></p>
-    <p><b>{partOfSpeech}.</b> {definition}</p>
-  </>;
-}
-
-await renderer.render(<Definition word="framework" />, document.body);
-```
-
-### A Loading Component
-
-```jsx live
-import {Fragment} from "@b9g/crank";
-import {renderer} from "@b9g/crank/dom";
-
-async function LoadingIndicator() {
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  return <div>Fetching a good boy...</div>;
-}
-
-async function RandomDog({throttle = false}) {
-  const res = await fetch("https://dog.ceo/api/breeds/image/random");
-  const data = await res.json();
-  if (throttle) {
-    await new Promise(resolve => setTimeout(resolve, 2000));
-  }
-
-  return (
-    <a href={data.message}>
-      <img src={data.message} alt="A Random Dog" width="300" />
-    </a>
-  );
-}
-
-async function *RandomDogLoader({throttle}) {
-  for await ({throttle} of this) {
-    yield <LoadingIndicator />;
-    yield <RandomDog throttle={throttle} />;
-  }
-}
-
-function *RandomDogApp() {
-  let throttle = false;
-  this.addEventListener("click", (ev) => {
-    if (ev.target.tagName === "BUTTON") {
-      throttle = !throttle;
-      this.refresh();
-    }
-  });
-
-  for ({} of this) {
-    yield (
-      <Fragment>
-        <RandomDogLoader throttle={throttle} />
-        <p>
-          <button>Show me another dog.</button>
-        </p>
-      </Fragment>
-    );
-  }
-}
-
-renderer.render(<RandomDogApp />, document.body);
 ```
