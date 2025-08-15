@@ -6,6 +6,7 @@ import {
 	Renderer,
 	RenderAdapter,
 } from "./crank.js";
+import {camelToKebabCase, formatStyleValue} from "./_css.js";
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
@@ -286,32 +287,36 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 						}
 
 						for (const styleName in {...oldValue, ...value}) {
+							const cssName = camelToKebabCase(styleName);
 							const styleValue = value && (value as any)[styleName];
 							if (styleValue == null) {
-								if (isHydrating && style.getPropertyValue(styleName) !== "") {
+								if (isHydrating && style.getPropertyValue(cssName) !== "") {
 									emitHydrationWarning(
 										name,
 										quietProps,
 										null,
-										style.getPropertyValue(styleName),
+										style.getPropertyValue(cssName),
 										element,
 										`style.${styleName}`,
 									);
 								}
-								style.removeProperty(styleName);
-							} else if (style.getPropertyValue(styleName) !== styleValue) {
-								// TODO: hydration warnings for style props
-								//if (isHydrating) {
-								//	emitHydrationWarning(
-								//		name,
-								//		quietProps,
-								//		styleValue,
-								//		style.getPropertyValue(styleName),
-								//		element,
-								//		`style.${styleName}`,
-								//	);
-								//}
-								style.setProperty(styleName, styleValue);
+								style.removeProperty(cssName);
+							} else {
+								const formattedValue = formatStyleValue(cssName, styleValue);
+								if (style.getPropertyValue(cssName) !== formattedValue) {
+									// TODO: hydration warnings for style props
+									//if (isHydrating) {
+									//	emitHydrationWarning(
+									//		name,
+									//		quietProps,
+									//		formattedValue,
+									//		style.getPropertyValue(cssName),
+									//		element,
+									//		`style.${styleName}`,
+									//	);
+									//}
+									style.setProperty(cssName, formattedValue);
+								}
 							}
 						}
 					}
