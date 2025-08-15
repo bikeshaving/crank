@@ -466,14 +466,9 @@ test("unicode characters", () => {
 		</p>
 	`;
 
-	console.log("Complex template result:");
-	console.log("Actual:", JSON.stringify(complexResult, null, 2));
-
 	// Check that the Unicode dash is preserved in the nested span component
 	// Based on the actual structure: complexResult.props.children[2] is the span
 	const spanChild = complexResult.props.children[2];
-	console.log("Span child:", spanChild);
-	console.log("Span children:", spanChild.props.children);
 
 	// Verify the Unicode em dash is preserved
 	Assert.equal(spanChild.props.children[0], "– Published ");
@@ -481,7 +476,6 @@ test("unicode characters", () => {
 	// Test that cache key generation preserves Unicode
 	const spans = {raw: ["<span>– Published ", "</span>"]};
 	const cacheKey = JSON.stringify(spans.raw);
-	console.log("Cache key with Unicode:", cacheKey);
 	Assert.ok(cacheKey.includes("– Published"));
 });
 
