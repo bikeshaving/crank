@@ -12,7 +12,7 @@ The Just JavaScript Framework
 
 The fastest way to try Crank is via the [online playground](https://crank.js.org/playground). In addition, many of the code examples in these guides feature live previews.
 
-# Why Crank?
+## Why Crank?
 **Finally, a framework that feels like JavaScript.**
 
 While other frameworks invent new paradigms and force you to learn
