@@ -63,9 +63,7 @@ export function* Root(
 						<meta charset="UTF-8" />
 						<meta name="viewport" content="width=device-width" />
 						<title>${title}</title>
-						<!-- TODO: Update favicon.
 						<link rel="shortcut icon" href="/static/favicon.ico" />
-						-->
 						<style>${css}</style>
 						<${Link} rel="stylesheet" type="text/css" href="styles/client.css" />
 						<meta property="og:title" content=${title} />
