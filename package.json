@@ -115,7 +115,7 @@
   "bugs": {
     "url": "https://github.com/bikeshaving/crank/issues"
   },
-  "description": "Write JSX-driven components with functions, promises and generators.",
+  "description": "The Just JavaScript Framework.",
   "homepage": "https://crank.js.org",
   "license": "MIT",
   "private": true,
@@ -125,7 +125,6 @@
   "scripts": {
     "prebuild": "npm run clean",
     "build": "bun --bun run rollup -c rollup.config.js",
-    "generate-logo": "node scripts/build-logo.js",
     "clean": "shx rm -rf dist",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "preshipit": "npm run typecheck && npm run test && npm run build",

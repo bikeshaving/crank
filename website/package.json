@@ -46,6 +46,7 @@
     "prismjs": "^1.30.0",
     "serialize-javascript": "^6.0.2",
     "sucrase": "^3.35.0",
+    "svg-to-ico": "^1.0.17",
     "truncate-html": "^1.2.1",
     "ts-node": "^10.9.2",
     "typescript": "^4.9.5"
