@@ -367,6 +367,7 @@ export function GearLogo({width = 400, height = 400}) {
 			viewBox="-200 -200 400 400"
 			width=${width}
 			height=${height}
+			xmlns="http://www.w3.org/2000/svg"
 		>
 			<defs>
 				<mask id="wedge-mask">
@@ -399,12 +400,11 @@ export function GearLogo({width = 400, height = 400}) {
 				<circle cx="0" cy="0" r="60" stroke="none" />
 				<path
 					d="
-						M 0 0
-						L 0 25
-						L 160 12.5
-						A 0.2 1 0 0 0 160 -12.5
-						L 0 -25
-						z
+						M 0 -28
+						L 160 -14
+						L 160 14
+						L 0 28
+						Z
 					"
 				/>
 			</g>
