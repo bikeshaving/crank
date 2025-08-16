@@ -124,7 +124,7 @@ The `Renderer` class takes four type parameters:
 class Renderer<TNode, TScope, TRoot, TResult>
 ```
 
-### `TNode` - Internal Node Type
+### Internal Node Type: `TNode`
 The type of nodes your renderer creates internally:
 
 ```typescript
@@ -143,7 +143,7 @@ class StringRenderer extends Renderer<string, ...> {
 }
 ```
 
-### `TScope` - Context Information
+### Context Information: `TScope`
 Data passed down the element tree for context:
 
 ```typescript
@@ -169,7 +169,7 @@ class DOMRenderer extends Renderer<Node, SVGScope, ...> {
 }
 ```
 
-### `TRoot` - Root Container Type
+### Root Container: `TRoot`
 The type of the root container (usually same as `TNode`):
 
 ```typescript
@@ -180,7 +180,7 @@ renderer.render(<App />, document.getElementById("root"));
 terminalRenderer.render(<App />, process.stdout);
 ```
 
-### `TResult` - Public Result Type
+### Public Result: `TResult`
 What users see when accessing rendered values:
 
 ```typescript
@@ -195,7 +195,8 @@ class HTMLRenderer extends Renderer<InternalNode, never, Element, string> {
 
 ## Core Renderer Methods
 
-### `create(element, scope): TNode`
+### Create Nodes: `create()`
+**`create(element, scope): TNode`** - Create new nodes from elements.
 **Required.** Creates a node for each host element:
 
 ```typescript
@@ -215,7 +216,8 @@ create(element, scope) {
 }
 ```
 
-### `arrange(element, parent, children): unknown`
+### Arrange Children: `arrange()`  
+**`arrange(element, parent, children): unknown`** - Place child nodes into parents.
 **Required.** Connects child nodes to their parent:
 
 ```typescript
@@ -230,7 +232,8 @@ arrange(element, parent, children) {
 }
 ```
 
-### `patch(element, node): unknown`
+### Update Properties: `patch()`
+**`patch(element, node): unknown`** - Update node properties and attributes.
 Updates node properties when element props change:
 
 ```typescript
@@ -252,7 +255,8 @@ patch(element, node) {
 }
 ```
 
-### `text(text, scope): TResult`
+### Handle Text: `text()`
+**`text(text, scope): TResult`** - Create text nodes from strings.
 Processes text content:
 
 ```typescript
@@ -270,7 +274,8 @@ text(text, scope) {
 }
 ```
 
-### `raw(value, scope): TNode | string`
+### Raw Content: `raw()`
+**`raw(value, scope): TNode | string`** - Handle Raw element content.
 Handles `<Raw>` element content:
 
 ```typescript

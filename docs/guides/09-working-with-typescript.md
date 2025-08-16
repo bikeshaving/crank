@@ -10,7 +10,7 @@ Generator components use `this` to access the component context. In TypeScript's
 
 ```tsx
 import {Context} from "@b9g/crank";
-function *Timer (this: Context, props: {}, ctx: Context) {
+function *Timer(this: Context) {
   let seconds = 0;
   const interval = setInterval(() => this.refresh(() => seconds++), 1000);
   

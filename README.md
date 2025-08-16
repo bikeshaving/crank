@@ -1,3 +1,9 @@
+<div align="center">
+<img src="logo.svg" alt="Crank.js Logo" width="200" height="200" />
+# Crank.js
+The Just JavaScript Framework
+</div>
+
 ## Try Crank
 
 The fastest way to try Crank is via the [online playground](https://crank.js.org/playground). In addition, many of the code examples in these guides feature live previews.

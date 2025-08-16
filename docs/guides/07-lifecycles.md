@@ -2,16 +2,194 @@
 title: Lifecycles
 ---
 
-Component lifecycles in Crank are straightforward: they follow the natural flow of JavaScript generator functions. When a component mounts, the generator starts. When it updates, the generator resumes. When it unmounts, the generator exits.
+Component lifecycles in Crank are straightforward: they follow the natural flow of JavaScript generator functions. Unlike other frameworks that require special lifecycle methods, Crank lets you write lifecycle logic using normal JavaScript.
 
-Most lifecycle logic can be written directly in your generator using normal JavaScript control flow. For DOM-specific tasks that need precise timing, Crank provides three lifecycle methods on the context.
+## The Natural Generator Lifecycle
 
-## Core Lifecycle Methods
+Generator components have a simple, predictable lifecycle that mirrors the generator execution:
 
-Before diving into generator patterns, let's understand the three essential lifecycle methods available on the context:
+### Mount Phase
+When a component first renders, the generator function starts executing until it hits the first `yield`:
 
-### `schedule(callback)`
-Runs immediately after DOM nodes are created, but **before they're inserted into the document**. Useful for immediate DOM setup that doesn't require the element to be live in the document tree.
+```jsx
+import {renderer} from "@b9g/crank/dom";
+
+function *LifecycleDemo() {
+  console.log("🚀 Component mounting - this runs once");
+
+  let count = 0;
+
+  // This `for...of` loop IS the component lifecycle
+  for ({} of this) {
+    console.log("🔄 Rendering with count:", count);
+    yield (
+      <div>
+        <p>Count: {count}</p>
+        <button onclick={() => this.refresh(() => count++)}>
+          Increment
+        </button>
+      </div>
+    );
+    console.log("⏸️  Paused after yield - waiting for next update");
+  }
+
+  console.log("💀 Component unmounting - cleanup time");
+}
+
+renderer.render(<LifecycleDemo />, document.body);
+```
+
+### Update Phase
+When `this.refresh()` is called, the generator resumes from where it paused (after the `yield`) and continues to the next iteration of the loop. This gives you two important spaces for update logic:
+
+```jsx live
+import {renderer} from "@b9g/crank/dom";
+
+function *UpdateDemo({count}) {
+  let oldCount = null; // What the count was in the previous render
+  
+  for ({count} of this) {
+    // 1. BEFORE yield: Setup for this render
+    const isFirstRender = oldCount === null;
+    const countChanged = count !== oldCount;
+    
+    yield (
+      <div>
+        <p>
+          Current: {count}
+          {!isFirstRender && ` | Previous: ${oldCount}`}
+          {countChanged && " | ⚡ Props changed!"}
+        </p>
+      </div>
+    );
+    
+    // 2. AFTER yield: This only runs when we're about to re-render
+    oldCount = count; // Save current props as "old" for next comparison
+    
+    // This space is for:
+    // - Saving current props as "old" props for next comparison
+    // - Preparing for the NEXT render iteration
+  }
+}
+
+function *App() {
+  let count = 0;
+  
+  for ({} of this) {
+    yield (
+      <div>
+        <button onclick={() => this.refresh(() => count++)}>
+          Increment (count: {count})
+        </button>
+        <UpdateDemo count={count} />
+      </div>
+    );
+  }
+}
+
+renderer.render(<App />, document.body);
+```
+
+The key insight: you have TWO execution spaces in each loop iteration:
+- **Before `yield`**: Set up for the current render
+- **After `yield`**: Only runs when re-rendering - save current state as "old" state for comparison
+
+Here's a practical example using prop comparison for memoization:
+
+```jsx live
+import {renderer} from "@b9g/crank/dom";
+
+function *ExpensiveComponent({items, threshold}) {
+  let oldItems = [];
+  let oldThreshold = 0;
+  let cachedResult = null;
+  
+  for ({items, threshold} of this) {
+    // Check if we can use cached result
+    const itemsChanged = JSON.stringify(items) !== JSON.stringify(oldItems);
+    const thresholdChanged = threshold !== oldThreshold;
+    
+    if (!cachedResult || itemsChanged || thresholdChanged) {
+      console.log("🔄 Recalculating expensive operation...");
+      // Simulate expensive calculation
+      cachedResult = items
+        .filter(item => item.value > threshold)
+        .map(item => `${item.name}: ${item.value}`)
+        .join(', ');
+    } else {
+      console.log("✨ Using cached result!");
+    }
+    
+    yield (
+      <div>
+        <h3>Filtered Items (threshold: {threshold})</h3>
+        <p>{cachedResult || "No items match"}</p>
+      </div>
+    );
+    
+    // Save current props as "old" for next comparison
+    oldItems = [...items];
+    oldThreshold = threshold;
+  }
+}
+
+function *App() {
+  let threshold = 50;
+  const items = [
+    {name: "Item A", value: 25},
+    {name: "Item B", value: 75},
+    {name: "Item C", value: 100}
+  ];
+  
+  const updateThreshold = () => this.refresh(() => 
+    threshold = threshold === 50 ? 30 : 50
+  );
+  
+  for ({} of this) {
+    yield (
+      <div>
+        <button onclick={updateThreshold}>
+          Toggle Threshold ({threshold})
+        </button>
+        <ExpensiveComponent items={items} threshold={threshold} />
+      </div>
+    );
+  }
+}
+
+renderer.render(<App />, document.body);
+```
+
+### Unmount Phase
+When the component is removed from the tree, the generator exits the `for...of` loop and any code after it runs as cleanup:
+
+```jsx
+function *Component() {
+  // Mount
+  console.log("Setting up...");
+
+  for ({} of this) {
+    yield <div>Content</div>;
+    // Pauses here between updates
+  }
+
+  // Unmount - this code runs when component is removed
+  console.log("Cleaning up...");
+}
+```
+
+## Why You Need Extra Lifecycle Methods
+
+The natural generator lifecycle is perfect for most logic, but sometimes you need more precise timing around DOM operations. The `for...of` loop pauses at each `yield`, which means:
+
+- **After `yield`**: The element description exists, but DOM nodes might not be created yet
+- **You need to know**: When DOM nodes are created, when they're inserted, and when they're removed
+
+For these DOM-specific timings, Crank provides three lifecycle methods:
+
+### Schedule: DOM Created but Not Inserted
+
+**`schedule(callback)`** runs immediately after DOM nodes are created, but **before they're inserted into the document**. Useful for immediate DOM setup that doesn't require the element to be live in the document tree.
 
 ```jsx
 function *Component() {
@@ -21,15 +199,16 @@ function *Component() {
     console.log('Element created but not inserted:', element);
     console.log('Parent is null:', element.parentNode === null); // true
   });
-  
+
   for ({} of this) {
     yield <div>Hello world</div>;
   }
 }
 ```
 
-### `after(callback)`
-Runs after the element is fully rendered and live in the DOM. This is where you'd do things like focusing inputs, measuring elements, or triggering animations that require the element to be visible.
+### After: DOM Inserted and Live
+
+**`after(callback)`** runs after the element is fully rendered and live in the DOM. This is where you'd do things like focusing inputs, measuring elements, or triggering animations that require the element to be visible.
 
 ```jsx
 function *Component() {
@@ -38,25 +217,26 @@ function *Component() {
     element.focus();
     console.log('Element is live:', element.getBoundingClientRect());
   });
-  
+
   for ({} of this) {
     yield <input type="text" />;
   }
 }
 ```
 
-### `cleanup(callback)`
-Runs when the component is unmounted. Use this for cleaning up event listeners, timers, subscriptions, or performing exit animations.
+### Cleanup: DOM Removed and Unmounted
+
+**`cleanup(callback)`** runs when the component is unmounted. Use this for cleaning up event listeners, timers, subscriptions, or performing exit animations.
 
 ```jsx
 function *Component() {
   const interval = setInterval(() => console.log('tick'), 1000);
-  
+
   this.cleanup(() => {
     clearInterval(interval);
     console.log('Component cleaned up');
   });
-  
+
   for ({} of this) {
     yield <div>Timer running...</div>;
   }
@@ -66,7 +246,7 @@ function *Component() {
 ### Execution Order
 For any given render:
 1. `schedule()` callbacks run first (element created but not inserted)
-2. `after()` callbacks run second (element live in DOM)  
+2. `after()` callbacks run second (element live in DOM)
 3. `cleanup()` callbacks run when component unmounts
 
 ### When to Use Which Method
@@ -81,7 +261,7 @@ This timing difference is crucial for choosing the right method:
 
 **Use `after()` for:**
 - Focusing elements (requires element to be in the document)
-- Measuring dimensions with `getBoundingClientRect()` 
+- Measuring dimensions with `getBoundingClientRect()`
 - Triggering animations that need the element to be visible
 - Any DOM operations requiring the element to be live in the document tree
 
@@ -103,8 +283,8 @@ async function *Component() {
 
 The context provides two boolean properties to check component state:
 
-#### `this.isExecuting`
-True when the component is currently executing (between yield points). Useful for avoiding redundant refresh calls:
+#### Execution State: `isExecuting`
+**`this.isExecuting`** is true when the component is currently executing (between yield points). Useful for avoiding redundant refresh calls:
 
 ```jsx
 function *Component() {
@@ -114,30 +294,30 @@ function *Component() {
       this.refresh(() => console.log('Refreshing'));
     }
   };
-  
+
   for ({} of this) {
     yield <button onclick={handleClick}>Click me</button>;
   }
 }
 ```
 
-#### `this.isUnmounted`
-True after the component has been unmounted. Useful for avoiding work in async operations after unmount:
+#### Mount State: `isUnmounted`
+**`this.isUnmounted`** is true after the component has been unmounted. Useful for avoiding work in async operations after unmount:
 
 ```jsx
 async function *Component() {
   for ({} of this) {
     yield <div>Loading...</div>;
-    
+
     try {
       const data = await fetch('/api/data');
-      
+
       // Check if component was unmounted during the async operation
       if (this.isUnmounted) {
         console.log('Component unmounted, skipping update');
         break;
       }
-      
+
       this.refresh(() => console.log('Got data:', data));
     } catch (error) {
       if (!this.isUnmounted) {
@@ -150,19 +330,21 @@ async function *Component() {
 
 These properties help write safer async code by preventing common issues like calling `refresh()` on unmounted components or doing unnecessary work after unmount.
 
-### The `schedule(() => this.refresh())` Pattern
+## The Two-Pass Render Pattern
+
+Using `schedule(() => this.refresh())` for components that need to render twice.
 
 A common pattern is to use `schedule()` to trigger an immediate re-render. This is particularly useful for components that need to render twice - once for initial setup, then again with updated state:
 
 ```jsx
 function *TwoPassComponent() {
   let secondPass = false;
-  
+
   if (!secondPass) {
     // Schedule a refresh to happen after this render
     this.schedule(() => this.refresh(() => secondPass = true));
   }
-  
+
   for ({} of this) {
     if (!secondPass) {
       yield <div>First render - setting up...</div>;
@@ -181,12 +363,12 @@ function *SSRComponent({children}) {
   for ({children} of this) {
     // First render to extract styles
     this.schedule(() => this.refresh());
-    
+
     const html = yield <div>{children}</div>;
-    
+
     // Extract CSS from the rendered HTML
     const {html: finalHtml, css} = extractCritical(html);
-    
+
     // Second render with extracted CSS
     yield (
       <>
@@ -202,10 +384,10 @@ function *SSRComponent({children}) {
 ```jsx
 function *ProgressiveComponent() {
   let hydrated = false;
-  
+
   // After initial render, mark as hydrated and re-render
   this.schedule(() => this.refresh(() => hydrated = true));
-  
+
   for ({} of this) {
     if (hydrated) {
       yield <InteractiveVersion />;
@@ -220,14 +402,14 @@ function *ProgressiveComponent() {
 ```jsx
 function *ResponsiveComponent() {
   let width = 0;
-  
+
   this.schedule((element) => {
     const newWidth = element.offsetWidth;
     if (width !== newWidth) {
       this.refresh(() => width = newWidth);
     }
   });
-  
+
   for ({} of this) {
     yield (
       <div>
@@ -469,12 +651,12 @@ function *FadeOutComponent() {
   this.cleanup(async (element) => {
     element.style.transition = 'opacity 300ms ease-out';
     element.style.opacity = '0';
-    
+
     // Wait for animation to complete before unmounting
     await new Promise(resolve => setTimeout(resolve, 300));
     console.log('Component faded out and unmounted');
   });
-  
+
   for ({} of this) {
     yield (
       <div style={{
@@ -493,7 +675,7 @@ function *FadeOutComponent() {
 function *App() {
   let showComponent = true;
   const toggle = () => this.refresh(() => showComponent = !showComponent);
-  
+
   for ({} of this) {
     yield (
       <div>
@@ -509,6 +691,74 @@ function *App() {
 renderer.render(<App />, document.body);
 ```
 
+Here's a more complex example with staggered letter animations:
+
+```jsx live
+import {renderer} from "@b9g/crank/dom";
+
+function *Letter({children, delay = 0}) {
+  this.cleanup(async (element) => {
+    // Stagger the exit animation based on delay
+    await new Promise(resolve => setTimeout(resolve, delay));
+    
+    element.style.transition = 'all 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55)';
+    element.style.transform = 'translateY(-20px) rotateZ(10deg)';
+    element.style.opacity = '0';
+    
+    await new Promise(resolve => setTimeout(resolve, 400));
+  });
+  
+  for ({children} of this) {
+    yield (
+      <span style={{
+        display: 'inline-block',
+        transition: 'all 400ms ease',
+        transform: 'translateY(0) rotateZ(0deg)'
+      }}>
+        {children}
+      </span>
+    );
+  }
+}
+
+function *AnimatedText({text}) {
+  for ({text} of this) {
+    yield (
+      <div style={{
+        'font-size': '24px',
+        'font-weight': 'bold',
+        color: '#007bff',
+        'line-height': '1.5'
+      }}>
+        {text.split('').map((char, i) => (
+          <Letter key={i} delay={i * 50}>
+            {char === ' ' ? '\u00A0' : char}
+          </Letter>
+        ))}
+      </div>
+    );
+  }
+}
+
+function *LettersDemo() {
+  let showText = true;
+  const toggle = () => this.refresh(() => showText = !showText);
+  
+  for ({} of this) {
+    yield (
+      <div>
+        <button onclick={toggle}>
+          {showText ? 'Hide' : 'Show'} Animated Text
+        </button>
+        {showText && <AnimatedText text="Hello Crank!" />}
+      </div>
+    );
+  }
+}
+
+renderer.render(<LettersDemo />, document.body);
+```
+
 ### Async Mount
 
 The `schedule()` method can also be asynchronous, allowing components to defer their initial mounting:
@@ -522,7 +772,7 @@ function *LazyLoadComponent({src}) {
       img.onerror = reject;
     });
   });
-  
+
   for ({src} of this) {
     yield <img src={src} alt="Lazy loaded" />;
   }
@@ -539,20 +789,20 @@ function *Modal({children, onClose}) {
   this.schedule(async (modal) => {
     modal.style.transform = 'translateY(-100%)';
     modal.style.transition = 'transform 200ms ease-out';
-    
+
     // Force reflow, then animate in
     modal.offsetHeight;
     modal.style.transform = 'translateY(0)';
-    
+
     await new Promise(resolve => setTimeout(resolve, 200));
   });
-  
+
   // Async unmount: slide out to top
   this.cleanup(async (modal) => {
     modal.style.transform = 'translateY(-100%)';
     await new Promise(resolve => setTimeout(resolve, 200));
   });
-  
+
   for ({children, onClose} of this) {
     yield (
       <div style={{
@@ -593,15 +843,15 @@ async function *Component() {
   // Wait for component to be fully mounted
   await this.schedule();
   console.log('Component is now in the DOM');
-  
+
   for ({} of this) {
     yield <div>Mounted component</div>;
-    
+
     // Wait for rendering to complete
     await this.after();
     console.log('Render cycle complete');
   }
-  
+
   // Wait for cleanup to finish
   await this.cleanup();
   console.log('Component cleanup complete');
@@ -633,16 +883,16 @@ function *Root({children}) {
   for ({children} of this) {
     // First render to extract styles
     this.schedule(() => this.refresh());
-    
+
     const html = yield (
       <body>
         {children}
       </body>
     );
-    
+
     // Extract critical CSS from the rendered HTML
     const {html: finalHtml, css} = extractCritical(html);
-    
+
     // Second render with extracted CSS inlined
     yield (
       <html>
@@ -664,35 +914,44 @@ It can be useful to catch errors thrown by components to show the user an error 
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
-function Thrower() {
-  if (Math.random() > 0.5) {
-    throw new Error("Oops");
-  }
 
-  return <div>No errors</div>;
+function *Thrower({shouldThrow}) {
+  for ({shouldThrow} of this) {
+    if (shouldThrow) {
+      throw new Error("Component error triggered!");
+    }
+    
+    yield <div style={{color: 'green'}}>✅ Component working fine</div>;
+  }
 }
 
-function *Catcher() {
+function *ErrorDemo() {
+  let shouldThrow = false;
+  
   for ({} of this) {
     try {
        yield (
          <div>
-           <Thrower />
-           <button onclick={() => this.refresh()}>Rerender</button>
+           <button onclick={() => this.refresh(() => shouldThrow = !shouldThrow)}>
+             {shouldThrow ? 'Fix Component' : 'Break Component'}
+           </button>
+           <Thrower shouldThrow={shouldThrow} />
          </div>
        );
      } catch (err) {
        yield (
-         <div>
-           <div>Error: {err.message}</div>
-           <button onclick={() => this.refresh()}>Retry</button>
+         <div style={{color: 'red', border: '1px solid red', padding: '10px', 'border-radius': '4px'}}>
+           <div>❌ Error: {err.message}</div>
+           <button onclick={() => this.refresh(() => shouldThrow = false)}>
+             Reset Component
+           </button>
          </div>
        );
      }
   }
 }
 
-renderer.render(<Catcher />, document.body);
+renderer.render(<ErrorDemo />, document.body);
 ```
 
 ## Returning values from generator components
