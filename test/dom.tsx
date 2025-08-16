@@ -554,6 +554,58 @@ test("removing styles", () => {
 	Assert.is(div.style.backgroundColor, "");
 });
 
+test("style object camelCase", () => {
+	renderer.render(
+		<div
+			style={{
+				fontSize: "16px",
+				backgroundColor: "red",
+				marginTop: "10px",
+				borderRadius: "4px",
+				WebkitTransform: "rotate(45deg)",
+			}}
+		/>,
+		document.body,
+	);
+
+	// Check HTML output has kebab-case properties
+	// Note: Browser normalizes -webkit-transform to transform in innerHTML
+	const expectedHTML =
+		'<div style="font-size: 16px; background-color: red; margin-top: 10px; border-radius: 4px; transform: rotate(45deg);"></div>';
+	Assert.is(document.body.innerHTML, expectedHTML);
+
+	// Check DOM element properties are accessible via camelCase
+	const div = document.body.firstChild as HTMLElement;
+	Assert.is(div.style.fontSize, "16px");
+	Assert.is(div.style.backgroundColor, "red");
+	Assert.is(div.style.marginTop, "10px");
+	Assert.is(div.style.borderRadius, "4px");
+	// Browser normalizes WebkitTransform to transform
+	Assert.is(div.style.transform, "rotate(45deg)");
+});
+
+test("style object numeric values with px conversion", () => {
+	renderer.render(
+		<div
+			style={{width: 100, height: 200, opacity: 0.5, zIndex: 10, fontSize: 16}}
+		/>,
+		document.body,
+	);
+
+	// Check HTML output - numeric values should have px added except for unitless properties
+	const expectedHTML =
+		'<div style="width: 100px; height: 200px; opacity: 0.5; z-index: 10; font-size: 16px;"></div>';
+	Assert.is(document.body.innerHTML, expectedHTML);
+
+	// Check DOM element properties
+	const div = document.body.firstChild as HTMLElement;
+	Assert.is(div.style.width, "100px");
+	Assert.is(div.style.height, "200px");
+	Assert.is(div.style.opacity, "0.5");
+	Assert.is(div.style.zIndex, "10");
+	Assert.is(div.style.fontSize, "16px");
+});
+
 test("uncontrolled props", () => {
 	const input = renderer.render(<input value="hello" />, document.body) as any;
 	Assert.ok(input instanceof HTMLInputElement);

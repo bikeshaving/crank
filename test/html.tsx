@@ -83,6 +83,50 @@ test("styles string", () => {
 	);
 });
 
+test("styles camelCase", () => {
+	Assert.is(
+		renderer.render(
+			<div
+				style={{
+					fontSize: "16px",
+					backgroundColor: "red",
+					marginTop: "10px",
+					borderRadius: "4px",
+					WebkitTransform: "rotate(45deg)",
+				}}
+			/>,
+		),
+		'<div style="font-size:16px;background-color:red;margin-top:10px;border-radius:4px;-webkit-transform:rotate(45deg);"></div>',
+	);
+
+	// Test mixed camelCase and kebab-case
+	Assert.is(
+		renderer.render(
+			<div
+				style={{fontSize: "16px", "background-color": "blue", marginTop: "5px"}}
+			/>,
+		),
+		'<div style="font-size:16px;background-color:blue;margin-top:5px;"></div>',
+	);
+});
+
+test("styles numeric values with px conversion", () => {
+	Assert.is(
+		renderer.render(
+			<div
+				style={{
+					width: 100,
+					height: 200,
+					opacity: 0.5,
+					zIndex: 10,
+					fontSize: 16,
+				}}
+			/>,
+		),
+		'<div style="width:100px;height:200px;opacity:0.5;z-index:10;font-size:16px;"></div>',
+	);
+});
+
 test("class and className", () => {
 	Assert.is(
 		renderer.render(

@@ -1,5 +1,6 @@
 import {Portal, Renderer} from "./crank.js";
 import type {ElementValue, RenderAdapter} from "./crank.js";
+import {camelToKebabCase, formatStyleValue} from "./_css.js";
 
 const voidTags = new Set([
 	"area",
@@ -43,7 +44,9 @@ function printStyleObject(style: Record<string, any>): string {
 	const cssStrings = [];
 	for (const [name, value] of Object.entries(style)) {
 		if (value != null) {
-			cssStrings.push(`${name}:${value};`);
+			const cssName = camelToKebabCase(name);
+			const cssValue = formatStyleValue(cssName, value);
+			cssStrings.push(`${cssName}:${cssValue};`);
 		}
 	}
 
