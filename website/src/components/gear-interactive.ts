@@ -385,7 +385,7 @@ export function GearLogo({width = 400, height = 400}) {
 			</defs>
 			<g
 				stroke="none"
-				fill="#dbb368"
+				fill="var(--highlight-color)"
 			>
 				<${Gear}
 					mod=${20}
@@ -400,10 +400,10 @@ export function GearLogo({width = 400, height = 400}) {
 				<path
 					d="
 						M 0 0
-						L 0 40
-						L 160 20
-						A 0.2 1 0 0 0 160 -20
-						L 0 -40
+						L 0 25
+						L 160 12.5
+						A 0.2 1 0 0 0 160 -12.5
+						L 0 -25
 						z
 					"
 				/>

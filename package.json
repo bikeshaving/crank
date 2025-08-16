@@ -125,6 +125,7 @@
   "scripts": {
     "prebuild": "npm run clean",
     "build": "bun --bun run rollup -c rollup.config.js",
+    "generate-logo": "node scripts/build-logo.js",
     "clean": "shx rm -rf dist",
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "preshipit": "npm run typecheck && npm run test && npm run build",
