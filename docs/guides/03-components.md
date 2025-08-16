@@ -197,7 +197,7 @@ renderer.render(<Timer />, document.body);
 
 This pattern is particularly useful for event handlers:
 
-**Without callback (easy to forget refresh):**
+**Without callback:**
 ```jsx
 const onclick = () => {
   count++;
@@ -205,7 +205,7 @@ const onclick = () => {
 };
 ```
 
-**With callback (impossible to forget):**
+**With callback:**
 ```jsx
 const onclick = () => this.refresh(() => count++);
 ```

@@ -15,13 +15,13 @@ When a component first renders, the generator function starts executing until it
 import {renderer} from "@b9g/crank/dom";
 
 function *LifecycleDemo() {
-  console.log("🚀 Component mounting - this runs once");
 
+  // mount phase for logic before rendering
   let count = 0;
 
   // This `for...of` loop IS the component lifecycle
   for ({} of this) {
-    console.log("🔄 Rendering with count:", count);
+    // code which executes after we received props
     yield (
       <div>
         <p>Count: {count}</p>
@@ -30,10 +30,10 @@ function *LifecycleDemo() {
         </button>
       </div>
     );
-    console.log("⏸️  Paused after yield - waiting for next update");
+    // code which executes before we receive new props
   }
 
-  console.log("💀 Component unmounting - cleanup time");
+  // code which executes before we unmount
 }
 
 renderer.render(<LifecycleDemo />, document.body);
@@ -47,34 +47,24 @@ import {renderer} from "@b9g/crank/dom";
 
 function *UpdateDemo({count}) {
   let oldCount = null; // What the count was in the previous render
-  
+
   for ({count} of this) {
-    // 1. BEFORE yield: Setup for this render
-    const isFirstRender = oldCount === null;
-    const countChanged = count !== oldCount;
-    
     yield (
       <div>
         <p>
           Current: {count}
-          {!isFirstRender && ` | Previous: ${oldCount}`}
-          {countChanged && " | ⚡ Props changed!"}
+          {oldCount != null && ` | Previous: ${oldCount}`}
         </p>
       </div>
     );
-    
-    // 2. AFTER yield: This only runs when we're about to re-render
+
     oldCount = count; // Save current props as "old" for next comparison
-    
-    // This space is for:
-    // - Saving current props as "old" props for next comparison
-    // - Preparing for the NEXT render iteration
   }
 }
 
 function *App() {
   let count = 0;
-  
+
   for ({} of this) {
     yield (
       <div>
@@ -96,37 +86,34 @@ The key insight: you have TWO execution spaces in each loop iteration:
 
 Here's a practical example using prop comparison for memoization:
 
-```jsx live
+```jsx
 import {renderer} from "@b9g/crank/dom";
 
 function *ExpensiveComponent({items, threshold}) {
   let oldItems = [];
   let oldThreshold = 0;
   let cachedResult = null;
-  
+
   for ({items, threshold} of this) {
     // Check if we can use cached result
     const itemsChanged = JSON.stringify(items) !== JSON.stringify(oldItems);
     const thresholdChanged = threshold !== oldThreshold;
-    
+
     if (!cachedResult || itemsChanged || thresholdChanged) {
-      console.log("🔄 Recalculating expensive operation...");
       // Simulate expensive calculation
       cachedResult = items
         .filter(item => item.value > threshold)
         .map(item => `${item.name}: ${item.value}`)
         .join(', ');
-    } else {
-      console.log("✨ Using cached result!");
     }
-    
+
     yield (
       <div>
         <h3>Filtered Items (threshold: {threshold})</h3>
         <p>{cachedResult || "No items match"}</p>
       </div>
     );
-    
+
     // Save current props as "old" for next comparison
     oldItems = [...items];
     oldThreshold = threshold;
@@ -140,11 +127,11 @@ function *App() {
     {name: "Item B", value: 75},
     {name: "Item C", value: 100}
   ];
-  
-  const updateThreshold = () => this.refresh(() => 
+
+  const updateThreshold = () => this.refresh(() =>
     threshold = threshold === 50 ? 30 : 50
   );
-  
+
   for ({} of this) {
     yield (
       <div>
@@ -164,17 +151,18 @@ renderer.render(<App />, document.body);
 When the component is removed from the tree, the generator exits the `for...of` loop and any code after it runs as cleanup:
 
 ```jsx
-function *Component() {
-  // Mount
-  console.log("Setting up...");
+function *Timer({message}, ctx) {
+  let seconds = 0;
+  const interval = setInterval(() => ctx.refresh(() => seconds++), 1000);
 
-  for ({} of this) {
-    yield <div>Content</div>;
-    // Pauses here between updates
+  for ({message} of ctx) {
+    yield (
+      <div>{message} {seconds}</div>
+    );
   }
-
-  // Unmount - this code runs when component is removed
-  console.log("Cleaning up...");
+  // When the component unmounts, the props iterator returns and code after the
+  // loop can run
+  clearInterval(interval);
 }
 ```
 
@@ -193,11 +181,9 @@ For these DOM-specific timings, Crank provides three lifecycle methods:
 
 ```jsx
 function *Component() {
-  this.schedule((element) => {
+  this.schedule((el) => {
     // Element exists but is NOT in the document yet
-    element.style.opacity = '0';
-    console.log('Element created but not inserted:', element);
-    console.log('Parent is null:', element.parentNode === null); // true
+    el.style.opacity = '0';
   });
 
   for ({} of this) {
@@ -212,9 +198,9 @@ function *Component() {
 
 ```jsx
 function *Component() {
-  this.after((element) => {
+  this.after((el) => {
     // Element is now live in the document
-    element.focus();
+    el.focus();
     console.log('Element is live:', element.getBoundingClientRect());
   });
 
@@ -700,14 +686,14 @@ function *Letter({children, delay = 0}) {
   this.cleanup(async (element) => {
     // Stagger the exit animation based on delay
     await new Promise(resolve => setTimeout(resolve, delay));
-    
+
     element.style.transition = 'all 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55)';
     element.style.transform = 'translateY(-20px) rotateZ(10deg)';
     element.style.opacity = '0';
-    
+
     await new Promise(resolve => setTimeout(resolve, 400));
   });
-  
+
   for ({children} of this) {
     yield (
       <span style={{
@@ -743,7 +729,7 @@ function *AnimatedText({text}) {
 function *LettersDemo() {
   let showText = true;
   const toggle = () => this.refresh(() => showText = !showText);
-  
+
   for ({} of this) {
     yield (
       <div>
@@ -920,14 +906,14 @@ function *Thrower({shouldThrow}) {
     if (shouldThrow) {
       throw new Error("Component error triggered!");
     }
-    
+
     yield <div style={{color: 'green'}}>✅ Component working fine</div>;
   }
 }
 
 function *ErrorDemo() {
   let shouldThrow = false;
-  
+
   for ({} of this) {
     try {
        yield (
