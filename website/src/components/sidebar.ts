@@ -60,10 +60,10 @@ export function Sidebar({
 				margin-top: 0;
 			}
 		`}>
-			<h3 class=${css`
+			<h2 class=${css`
 				color: var(--highlight-color);
 				margin-top: 0;
-			`}>${title}</h3>
+			`}>${title}</h2>
 			${links}
 		</div>
 	`;

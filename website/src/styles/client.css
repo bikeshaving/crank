@@ -98,6 +98,9 @@ h1, h2, h3, h4, h5, h6 {
 
 h1, h2, h3 {
 	color: var(--highlight-color);
+	text-decoration: underline;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 0.3em;
 }
 
 blockquote {
