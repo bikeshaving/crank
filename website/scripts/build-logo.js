@@ -10,11 +10,7 @@ import svgToIco from "svg-to-ico";
 // Since we know the exact structure, let's generate it directly
 
 function generateLogoSVG(color) {
-  const wa = (35 * Math.PI) / 180;
-  const r = 300;
-	const logo = renderer.render(
-		jsx`<${GearLogo} />`,
-	);
+	const logo = renderer.render(jsx`<${GearLogo} />`);
 	if (color) {
 		return logo.replaceAll("var(--highlight-color)", "#DAA520");
 	}
@@ -24,11 +20,11 @@ function generateLogoSVG(color) {
 
 // Generate website logo with goldenrod
 const websiteLogo = generateLogoSVG();
-await Bun.write('./static/logo.svg', "#DAA520");
+await Bun.write("./static/logo.svg", websiteLogo);
 
 // Generate README logo with goldenrod
 const readmeLogo = generateLogoSVG("#DAA520");
-await Bun.write('../../logo.svg', readmeLogo);
+await Bun.write("../../logo.svg", readmeLogo);
 
 await svgToIco({
 	input_name: "../../logo.svg",
