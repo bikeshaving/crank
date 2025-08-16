@@ -47,7 +47,7 @@ function *Counter() {
 
   for ({} of this) {
     yield (
-      <button onclick={onclick}>
+      <button>
         Button pressed {count} time{count !== 1 && "s"}.
       </button>
     );

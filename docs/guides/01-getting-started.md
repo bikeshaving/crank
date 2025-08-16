@@ -74,10 +74,6 @@ Crank is also available on CDNs like [unpkg](https://unpkg.com)
 
 ```jsx live
 /** @jsx createElement */
-
-// This is an ESM-ready environment!
-// If code previews work, your browser is an ESM-ready environment!
-
 import {createElement} from "https://unpkg.com/@b9g/crank/crank?module";
 import {renderer} from "https://unpkg.com/@b9g/crank/dom?module";
 

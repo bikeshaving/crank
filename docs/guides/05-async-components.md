@@ -662,7 +662,8 @@ function ImageGallery({images}) {
 Async generator components operate in three distinct modes based on how they
 iterate over props:
 
-### 1. Sync-like Mode (`for...of` loop)
+### Sync-like Mode: Wait for Children
+**`for...of` loop** - Suspend at each yield and wait for children to complete.
 Async generators using `for...of` behave exactly like sync generator
 components. They suspend at each `yield` and wait for children to complete
 before resuming.
@@ -678,7 +679,8 @@ async function *SyncLike({children}) {
 }
 ```
 
-### 2. Continuous Mode (`for await...of` loop)
+### Continuous Mode: Race with Children  
+**`for await...of` loop** - Continue rendering while children are async.
 Async generators using `for await...of` continuously resume after yielding,
 enabling racing and cooperative rendering patterns.
 
