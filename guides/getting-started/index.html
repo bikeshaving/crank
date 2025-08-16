@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Crank.js | Getting Started</title><link href="/static/client-TNOPHTVT.css" rel="stylesheet" type="text/css"><meta property="og:title" content="Crank.js | Getting Started"><meta property="og:url" content="https:/crank.js.org/guides/getting-started"><meta property="og:description" content=""></head><body><script>
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Crank.js | Getting Started</title><link rel="shortcut icon" href="/static/favicon.ico"><style>.css-1l1hcps{position:fixed;top:0;left:0;right:0;height:50px;z-index:999;gap:1em;}.css-1n0j5y9{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-box-pack:center;-ms-flex-pack:center;-webkit-justify-content:center;justify-content:center;-webkit-align-items:center;-webkit-box-align:center;-ms-flex-align:center;align-items:center;gap:1em;}.css-1xmwt0h{border-bottom:1px solid var(--text-color);overflow-x:auto;background-color:inherit;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-box-pack:justify;-webkit-justify-content:space-between;justify-content:space-between;gap:1em;}.css-1xmwt0h a{-webkit-text-decoration:none;text-decoration:none;font-weight:bold;}@media screen and (min-width: 800px){.css-1xmwt0h{padding:0 2em;}}.css-1cvb758{max-width:calc(100% - 1px);}.css-1m42aok{overflow-x:auto;max-width:100%;}.css-artqa7{position:relative;min-height:100%;width:100%;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;}.css-84ojsb{display:contents;}.css-1ashatc{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;word-break:break-all;overflow-wrap:anywhere;line-break:anywhere;white-space:pre-wrap;white-space:break-spaces;font-size:16px;}.css-1flouoi{border-bottom:1px dotted #333;}.color-scheme-light .css-1flouoi{border-bottom:1px dotted #ddd;}.css-1nius9d{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;height:100%;}.css-14pt8ki{-webkit-flex:none;-ms-flex:none;flex:none;padding:1em;height:3em;border-bottom:1px solid var(--text-color);}.css-j74n8p{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;padding:1em;-webkit-transition:background-color 0.4s ease-out;transition:background-color 0.4s ease-out;background-color:var(--coldark02);width:100%;}.css-hjkbgb{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;border:none;width:100%;background-color:var(--bg-color);}.css-w1ljn4{margin:10px 0;}.css-1l0nd7p{-webkit-text-decoration:none;text-decoration:none;}.css-1wkb9s8{background-color:var(--bg-color);margin-top:50px;padding:2rem 0.4rem;color:var(--text-color);border-right:1px solid currentcolor;border-bottom:1px solid currentcolor;}@media screen and (min-width: 800px){.css-1wkb9s8{position:fixed;top:50px;bottom:0;overflow-x:hidden;overflow-y:auto;width:15rem;margin:0;padding:2rem 1rem;text-align:right;}}@media screen and (min-width: 1100px){.css-1wkb9s8{padding:3rem 2rem;width:20rem;}}.css-1wkb9s8 &gt;:first-child{margin-top:0;}.css-ep9szm{color:var(--highlight-color);margin-top:0;}.css-1mkiuoh{margin:0 auto;padding:2rem 0.4rem;}@media screen and (min-width: 800px){.css-1mkiuoh{margin-left:240px;padding:2rem 1rem;margin-top:50px;}}@media screen and (min-width: 1100px){.css-1mkiuoh{margin-left:20rem;padding:3rem 2rem;}}.css-1mkiuoh p{max-width:800px;}.css-1vm8pxc{max-width:min(100%, 1000px);}.css-1s1lac9{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;font-size:16px;}@media (min-width: 1300px){.css-1s1lac9{-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-align-items:flex-start;-webkit-box-align:flex-start;-ms-flex-align:flex-start;align-items:flex-start;}}.css-18sfz2f{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;width:100%;border:1px solid var(--text-color);margin-top:-1px;margin-right:-1px;}.css-by286k{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;width:100%;border:1px solid var(--text-color);margin-top:-1px;margin-right:-1px;}@media (min-width: 1300px){.css-by286k{max-width:61.8%;}}.css-nuifz8{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;position:-webkit-sticky;position:sticky;top:100px;border:1px solid var(--text-color);margin-top:-1px;min-height:50px;width:100%;}@media screen and (min-width: 1300px){.css-nuifz8{width:30%;}}</style><link href="/static/client-HDSPLS5O.css" rel="stylesheet" type="text/css"><meta property="og:title" content="Crank.js | Getting Started"><meta property="og:url" content="https:/crank.js.org/guides/getting-started"><meta property="og:description" content=""></head><body><script>
 	(() => {
 		const colorScheme = sessionStorage.getItem("color-scheme") ||
 			(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
@@ -9,32 +9,32 @@
 		} else {
 			document.body.classList.add("color-scheme-light");
 		}
-	})()</script><div id="navbar-root"><style data-emotion="css 1l1hcps 1xmwt0h">.css-1l1hcps{position:fixed;top:0;left:0;right:0;height:50px;z-index:999;gap:1em;}.css-1xmwt0h{border-bottom:1px solid var(--text-color);overflow-x:auto;background-color:inherit;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-box-pack:justify;-webkit-justify-content:space-between;justify-content:space-between;gap:1em;}.css-1xmwt0h a{-webkit-text-decoration:none;text-decoration:none;font-weight:bold;}@media screen and (min-width: 800px){.css-1xmwt0h{padding:0 2em;}}</style><nav class="
+	})()</script><div id="navbar-root"><nav class="
 				blur-background
 				css-1l1hcps
 				css-1xmwt0h
-			"><style data-emotion="css 1n0j5y9">.css-1n0j5y9{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-box-pack:center;-ms-flex-pack:center;-webkit-justify-content:center;justify-content:center;-webkit-align-items:center;-webkit-box-align:center;-ms-flex-align:center;align-items:center;gap:1em;}</style><div class="css-1n0j5y9"><div><a class="css-1n0j5y9" style="gap: 0.3em" href="/"><svg style="flex: none;" fill="none" viewBox="-200 -200 400 400" width="1.9em" height="1.9em"><defs><mask id="wedge-mask"><rect x="-200" y="-200" width="400" height="400" fill="white"></rect><path stroke="none" fill="black" d="
+			"><div class="css-1n0j5y9"><div><a class="css-1n0j5y9" style="gap: 0.3em" href="/"><svg style="flex: none;" fill="none" viewBox="-200 -200 400 400" width="1.9em" height="1.9em" xmlns="http://www.w3.org/2000/svg"><defs><mask id="wedge-mask"><rect x="-200" y="-200" width="400" height="400" fill="white"></rect><path stroke="none" fill="black" d="
 							M 0 0
 							L 245.74561328669753 172.07293090531383
 							L 245.74561328669753 -172.07293090531383
 							z
-						"></path></mask></defs><g stroke="none" fill="#dbb368"><path transform="rotate(0)" d="M 149.39 -16.97 M 149.62 -16.98 M 150.29 -17 M 151.42 -16.97 M 153 -16.85 M 155.02 -16.57 M 157.46 -16.1 M 160.32 -15.39 M 163.56 -14.39 M 167.17 -13.06 M 171.11 -11.35 M 175.36 -9.23 M 179.88 -6.66 M 179.88 6.66 M 175.36 9.23 M 171.11 11.35 M 167.17 13.06 M 163.56 14.39 M 160.32 15.39 M 157.46 16.1 M 155.02 16.57 M 153 16.85 M 151.42 16.97 M 150.29 17 M 149.62 16.98 M 149.39 16.97 A 8 8 0 0 0 144.51 41.5 L 144.73 41.57 L 145.36 41.81 L 146.39 42.27 L 147.8 42.99 L 149.56 44.01 L 151.64 45.38 L 154 47.13 L 156.62 49.29 L 159.44 51.9 L 162.43 54.99 L 165.54 58.58 L 168.73 62.69 L 163.64 74.98 L 158.48 75.64 L 153.74 75.97 L 149.44 76.04 L 145.6 75.89 L 142.22 75.57 L 139.31 75.14 L 136.88 74.63 L 134.91 74.11 L 133.4 73.63 L 132.35 73.22 L 131.73 72.95 L 131.53 72.84 A 8 8 0 0 0 117.63 93.64 L 117.8 93.79 L 118.3 94.25 L 119.07 95.07 L 120.1 96.28 L 121.33 97.9 L 122.73 99.96 L 124.24 102.48 L 125.83 105.48 L 127.44 108.97 L 129.02 112.96 L 130.52 117.47 L 131.9 122.49 L 122.49 131.9 L 117.47 130.52 L 112.96 129.02 L 108.97 127.44 L 105.48 125.83 L 102.48 124.24 L 99.96 122.73 L 97.9 121.33 L 96.28 120.1 L 95.07 119.07 L 94.25 118.3 L 93.79 117.8 L 93.64 117.63 A 8 8 0 0 0 72.84 131.53 L 72.95 131.73 L 73.22 132.35 L 73.63 133.4 L 74.11 134.91 L 74.63 136.88 L 75.14 139.31 L 75.57 142.22 L 75.89 145.6 L 76.04 149.44 L 75.97 153.74 L 75.64 158.48 L 74.98 163.64 L 62.69 168.73 L 58.58 165.54 L 54.99 162.43 L 51.9 159.44 L 49.29 156.62 L 47.13 154 L 45.38 151.64 L 44.01 149.56 L 42.99 147.8 L 42.27 146.39 L 41.81 145.36 L 41.57 144.73 L 41.5 144.51 A 8 8 0 0 0 16.97 149.39 L 16.98 149.62 L 17 150.29 L 16.97 151.42 L 16.85 153 L 16.57 155.02 L 16.1 157.46 L 15.39 160.32 L 14.39 163.56 L 13.06 167.17 L 11.35 171.11 L 9.23 175.36 L 6.66 179.88 L -6.66 179.88 L -9.23 175.36 L -11.35 171.11 L -13.06 167.17 L -14.39 163.56 L -15.39 160.32 L -16.1 157.46 L -16.57 155.02 L -16.85 153 L -16.97 151.42 L -17 150.29 L -16.98 149.62 L -16.97 149.39 A 8 8 0 0 0 -41.5 144.51 L -41.57 144.73 L -41.81 145.36 L -42.27 146.39 L -42.99 147.8 L -44.01 149.56 L -45.38 151.64 L -47.13 154 L -49.29 156.62 L -51.9 159.44 L -54.99 162.43 L -58.58 165.54 L -62.69 168.73 L -74.98 163.64 L -75.64 158.48 L -75.97 153.74 L -76.04 149.44 L -75.89 145.6 L -75.57 142.22 L -75.14 139.31 L -74.63 136.88 L -74.11 134.91 L -73.63 133.4 L -73.22 132.35 L -72.95 131.73 L -72.84 131.53 A 8 8 0 0 0 -93.64 117.63 L -93.79 117.8 L -94.25 118.3 L -95.07 119.07 L -96.28 120.1 L -97.9 121.33 L -99.96 122.73 L -102.48 124.24 L -105.48 125.83 L -108.97 127.44 L -112.96 129.02 L -117.47 130.52 L -122.49 131.9 L -131.9 122.49 L -130.52 117.47 L -129.02 112.96 L -127.44 108.97 L -125.83 105.48 L -124.24 102.48 L -122.73 99.96 L -121.33 97.9 L -120.1 96.28 L -119.07 95.07 L -118.3 94.25 L -117.8 93.79 L -117.63 93.64 A 8 8 0 0 0 -131.53 72.84 L -131.73 72.95 L -132.35 73.22 L -133.4 73.63 L -134.91 74.11 L -136.88 74.63 L -139.31 75.14 L -142.22 75.57 L -145.6 75.89 L -149.44 76.04 L -153.74 75.97 L -158.48 75.64 L -163.64 74.98 L -168.73 62.69 L -165.54 58.58 L -162.43 54.99 L -159.44 51.9 L -156.62 49.29 L -154 47.13 L -151.64 45.38 L -149.56 44.01 L -147.8 42.99 L -146.39 42.27 L -145.36 41.81 L -144.73 41.57 L -144.51 41.5 A 8 8 0 0 0 -149.39 16.97 L -149.62 16.98 L -150.29 17 L -151.42 16.97 L -153 16.85 L -155.02 16.57 L -157.46 16.1 L -160.32 15.39 L -163.56 14.39 L -167.17 13.06 L -171.11 11.35 L -175.36 9.23 L -179.88 6.66 L -179.88 -6.66 L -175.36 -9.23 L -171.11 -11.35 L -167.17 -13.06 L -163.56 -14.39 L -160.32 -15.39 L -157.46 -16.1 L -155.02 -16.57 L -153 -16.85 L -151.42 -16.97 L -150.29 -17 L -149.62 -16.98 L -149.39 -16.97 A 8 8 0 0 0 -144.51 -41.5 L -144.73 -41.57 L -145.36 -41.81 L -146.39 -42.27 L -147.8 -42.99 L -149.56 -44.01 L -151.64 -45.38 L -154 -47.13 L -156.62 -49.29 L -159.44 -51.9 L -162.43 -54.99 L -165.54 -58.58 L -168.73 -62.69 L -163.64 -74.98 L -158.48 -75.64 L -153.74 -75.97 L -149.44 -76.04 L -145.6 -75.89 L -142.22 -75.57 L -139.31 -75.14 L -136.88 -74.63 L -134.91 -74.11 L -133.4 -73.63 L -132.35 -73.22 L -131.73 -72.95 L -131.53 -72.84 A 8 8 0 0 0 -117.63 -93.64 L -117.8 -93.79 L -118.3 -94.25 L -119.07 -95.07 L -120.1 -96.28 L -121.33 -97.9 L -122.73 -99.96 L -124.24 -102.48 L -125.83 -105.48 L -127.44 -108.97 L -129.02 -112.96 L -130.52 -117.47 L -131.9 -122.49 L -122.49 -131.9 L -117.47 -130.52 L -112.96 -129.02 L -108.97 -127.44 L -105.48 -125.83 L -102.48 -124.24 L -99.96 -122.73 L -97.9 -121.33 L -96.28 -120.1 L -95.07 -119.07 L -94.25 -118.3 L -93.79 -117.8 L -93.64 -117.63 A 8 8 0 0 0 -72.84 -131.53 L -72.95 -131.73 L -73.22 -132.35 L -73.63 -133.4 L -74.11 -134.91 L -74.63 -136.88 L -75.14 -139.31 L -75.57 -142.22 L -75.89 -145.6 L -76.04 -149.44 L -75.97 -153.74 L -75.64 -158.48 L -74.98 -163.64 L -62.69 -168.73 L -58.58 -165.54 L -54.99 -162.43 L -51.9 -159.44 L -49.29 -156.62 L -47.13 -154 L -45.38 -151.64 L -44.01 -149.56 L -42.99 -147.8 L -42.27 -146.39 L -41.81 -145.36 L -41.57 -144.73 L -41.5 -144.51 A 8 8 0 0 0 -16.97 -149.39 L -16.98 -149.62 L -17 -150.29 L -16.97 -151.42 L -16.85 -153 L -16.57 -155.02 L -16.1 -157.46 L -15.39 -160.32 L -14.39 -163.56 L -13.06 -167.17 L -11.35 -171.11 L -9.23 -175.36 L -6.66 -179.88 L 6.66 -179.88 L 9.23 -175.36 L 11.35 -171.11 L 13.06 -167.17 L 14.39 -163.56 L 15.39 -160.32 L 16.1 -157.46 L 16.57 -155.02 L 16.85 -153 L 16.97 -151.42 L 17 -150.29 L 16.98 -149.62 L 16.97 -149.39 A 8 8 0 0 0 41.5 -144.51 L 41.57 -144.73 L 41.81 -145.36 L 42.27 -146.39 L 42.99 -147.8 L 44.01 -149.56 L 45.38 -151.64 L 47.13 -154 L 49.29 -156.62 L 51.9 -159.44 L 54.99 -162.43 L 58.58 -165.54 L 62.69 -168.73 L 74.98 -163.64 L 75.64 -158.48 L 75.97 -153.74 L 76.04 -149.44 L 75.89 -145.6 L 75.57 -142.22 L 75.14 -139.31 L 74.63 -136.88 L 74.11 -134.91 L 73.63 -133.4 L 73.22 -132.35 L 72.95 -131.73 L 72.84 -131.53 A 8 8 0 0 0 93.64 -117.63 L 93.79 -117.8 L 94.25 -118.3 L 95.07 -119.07 L 96.28 -120.1 L 97.9 -121.33 L 99.96 -122.73 L 102.48 -124.24 L 105.48 -125.83 L 108.97 -127.44 L 112.96 -129.02 L 117.47 -130.52 L 122.49 -131.9 L 131.9 -122.49 L 130.52 -117.47 L 129.02 -112.96 L 127.44 -108.97 L 125.83 -105.48 L 124.24 -102.48 L 122.73 -99.96 L 121.33 -97.9 L 120.1 -96.28 L 119.07 -95.07 L 118.3 -94.25 L 117.8 -93.79 L 117.63 -93.64 A 8 8 0 0 0 131.53 -72.84 L 131.73 -72.95 L 132.35 -73.22 L 133.4 -73.63 L 134.91 -74.11 L 136.88 -74.63 L 139.31 -75.14 L 142.22 -75.57 L 145.6 -75.89 L 149.44 -76.04 L 153.74 -75.97 L 158.48 -75.64 L 163.64 -74.98 L 168.73 -62.69 L 165.54 -58.58 L 162.43 -54.99 L 159.44 -51.9 L 156.62 -49.29 L 154 -47.13 L 151.64 -45.38 L 149.56 -44.01 L 147.8 -42.99 L 146.39 -42.27 L 145.36 -41.81 L 144.73 -41.57 L 144.51 -41.5 A 8 8 0 0 0 149.39 -16.97 L 149.62 -16.98 L 150.29 -17 L 151.42 -16.97 L 153 -16.85 L 155.02 -16.57 L 157.46 -16.1 L 160.32 -15.39 L 163.56 -14.39 L 167.17 -13.06 L 171.11 -11.35 L 175.36 -9.23 L 179.88 -6.66 L 179.88 6.66 L 175.36 9.23 L 171.11 11.35 L 167.17 13.06 L 163.56 14.39 L 160.32 15.39 L 157.46 16.1 L 155.02 16.57 L 153 16.85 L 151.42 16.97 L 150.29 17 L 149.62 16.98 L 149.39 16.97
+						"></path></mask></defs><g stroke="none" fill="var(--highlight-color)"><path transform="rotate(0)" d="M 149.39 -16.97 M 149.62 -16.98 M 150.29 -17 M 151.42 -16.97 M 153 -16.85 M 155.02 -16.57 M 157.46 -16.1 M 160.32 -15.39 M 163.56 -14.39 M 167.17 -13.06 M 171.11 -11.35 M 175.36 -9.23 M 179.88 -6.66 M 179.88 6.66 M 175.36 9.23 M 171.11 11.35 M 167.17 13.06 M 163.56 14.39 M 160.32 15.39 M 157.46 16.1 M 155.02 16.57 M 153 16.85 M 151.42 16.97 M 150.29 17 M 149.62 16.98 M 149.39 16.97 A 8 8 0 0 0 144.51 41.5 L 144.73 41.57 L 145.36 41.81 L 146.39 42.27 L 147.8 42.99 L 149.56 44.01 L 151.64 45.38 L 154 47.13 L 156.62 49.29 L 159.44 51.9 L 162.43 54.99 L 165.54 58.58 L 168.73 62.69 L 163.64 74.98 L 158.48 75.64 L 153.74 75.97 L 149.44 76.04 L 145.6 75.89 L 142.22 75.57 L 139.31 75.14 L 136.88 74.63 L 134.91 74.11 L 133.4 73.63 L 132.35 73.22 L 131.73 72.95 L 131.53 72.84 A 8 8 0 0 0 117.63 93.64 L 117.8 93.79 L 118.3 94.25 L 119.07 95.07 L 120.1 96.28 L 121.33 97.9 L 122.73 99.96 L 124.24 102.48 L 125.83 105.48 L 127.44 108.97 L 129.02 112.96 L 130.52 117.47 L 131.9 122.49 L 122.49 131.9 L 117.47 130.52 L 112.96 129.02 L 108.97 127.44 L 105.48 125.83 L 102.48 124.24 L 99.96 122.73 L 97.9 121.33 L 96.28 120.1 L 95.07 119.07 L 94.25 118.3 L 93.79 117.8 L 93.64 117.63 A 8 8 0 0 0 72.84 131.53 L 72.95 131.73 L 73.22 132.35 L 73.63 133.4 L 74.11 134.91 L 74.63 136.88 L 75.14 139.31 L 75.57 142.22 L 75.89 145.6 L 76.04 149.44 L 75.97 153.74 L 75.64 158.48 L 74.98 163.64 L 62.69 168.73 L 58.58 165.54 L 54.99 162.43 L 51.9 159.44 L 49.29 156.62 L 47.13 154 L 45.38 151.64 L 44.01 149.56 L 42.99 147.8 L 42.27 146.39 L 41.81 145.36 L 41.57 144.73 L 41.5 144.51 A 8 8 0 0 0 16.97 149.39 L 16.98 149.62 L 17 150.29 L 16.97 151.42 L 16.85 153 L 16.57 155.02 L 16.1 157.46 L 15.39 160.32 L 14.39 163.56 L 13.06 167.17 L 11.35 171.11 L 9.23 175.36 L 6.66 179.88 L -6.66 179.88 L -9.23 175.36 L -11.35 171.11 L -13.06 167.17 L -14.39 163.56 L -15.39 160.32 L -16.1 157.46 L -16.57 155.02 L -16.85 153 L -16.97 151.42 L -17 150.29 L -16.98 149.62 L -16.97 149.39 A 8 8 0 0 0 -41.5 144.51 L -41.57 144.73 L -41.81 145.36 L -42.27 146.39 L -42.99 147.8 L -44.01 149.56 L -45.38 151.64 L -47.13 154 L -49.29 156.62 L -51.9 159.44 L -54.99 162.43 L -58.58 165.54 L -62.69 168.73 L -74.98 163.64 L -75.64 158.48 L -75.97 153.74 L -76.04 149.44 L -75.89 145.6 L -75.57 142.22 L -75.14 139.31 L -74.63 136.88 L -74.11 134.91 L -73.63 133.4 L -73.22 132.35 L -72.95 131.73 L -72.84 131.53 A 8 8 0 0 0 -93.64 117.63 L -93.79 117.8 L -94.25 118.3 L -95.07 119.07 L -96.28 120.1 L -97.9 121.33 L -99.96 122.73 L -102.48 124.24 L -105.48 125.83 L -108.97 127.44 L -112.96 129.02 L -117.47 130.52 L -122.49 131.9 L -131.9 122.49 L -130.52 117.47 L -129.02 112.96 L -127.44 108.97 L -125.83 105.48 L -124.24 102.48 L -122.73 99.96 L -121.33 97.9 L -120.1 96.28 L -119.07 95.07 L -118.3 94.25 L -117.8 93.79 L -117.63 93.64 A 8 8 0 0 0 -131.53 72.84 L -131.73 72.95 L -132.35 73.22 L -133.4 73.63 L -134.91 74.11 L -136.88 74.63 L -139.31 75.14 L -142.22 75.57 L -145.6 75.89 L -149.44 76.04 L -153.74 75.97 L -158.48 75.64 L -163.64 74.98 L -168.73 62.69 L -165.54 58.58 L -162.43 54.99 L -159.44 51.9 L -156.62 49.29 L -154 47.13 L -151.64 45.38 L -149.56 44.01 L -147.8 42.99 L -146.39 42.27 L -145.36 41.81 L -144.73 41.57 L -144.51 41.5 A 8 8 0 0 0 -149.39 16.97 L -149.62 16.98 L -150.29 17 L -151.42 16.97 L -153 16.85 L -155.02 16.57 L -157.46 16.1 L -160.32 15.39 L -163.56 14.39 L -167.17 13.06 L -171.11 11.35 L -175.36 9.23 L -179.88 6.66 L -179.88 -6.66 L -175.36 -9.23 L -171.11 -11.35 L -167.17 -13.06 L -163.56 -14.39 L -160.32 -15.39 L -157.46 -16.1 L -155.02 -16.57 L -153 -16.85 L -151.42 -16.97 L -150.29 -17 L -149.62 -16.98 L -149.39 -16.97 A 8 8 0 0 0 -144.51 -41.5 L -144.73 -41.57 L -145.36 -41.81 L -146.39 -42.27 L -147.8 -42.99 L -149.56 -44.01 L -151.64 -45.38 L -154 -47.13 L -156.62 -49.29 L -159.44 -51.9 L -162.43 -54.99 L -165.54 -58.58 L -168.73 -62.69 L -163.64 -74.98 L -158.48 -75.64 L -153.74 -75.97 L -149.44 -76.04 L -145.6 -75.89 L -142.22 -75.57 L -139.31 -75.14 L -136.88 -74.63 L -134.91 -74.11 L -133.4 -73.63 L -132.35 -73.22 L -131.73 -72.95 L -131.53 -72.84 A 8 8 0 0 0 -117.63 -93.64 L -117.8 -93.79 L -118.3 -94.25 L -119.07 -95.07 L -120.1 -96.28 L -121.33 -97.9 L -122.73 -99.96 L -124.24 -102.48 L -125.83 -105.48 L -127.44 -108.97 L -129.02 -112.96 L -130.52 -117.47 L -131.9 -122.49 L -122.49 -131.9 L -117.47 -130.52 L -112.96 -129.02 L -108.97 -127.44 L -105.48 -125.83 L -102.48 -124.24 L -99.96 -122.73 L -97.9 -121.33 L -96.28 -120.1 L -95.07 -119.07 L -94.25 -118.3 L -93.79 -117.8 L -93.64 -117.63 A 8 8 0 0 0 -72.84 -131.53 L -72.95 -131.73 L -73.22 -132.35 L -73.63 -133.4 L -74.11 -134.91 L -74.63 -136.88 L -75.14 -139.31 L -75.57 -142.22 L -75.89 -145.6 L -76.04 -149.44 L -75.97 -153.74 L -75.64 -158.48 L -74.98 -163.64 L -62.69 -168.73 L -58.58 -165.54 L -54.99 -162.43 L -51.9 -159.44 L -49.29 -156.62 L -47.13 -154 L -45.38 -151.64 L -44.01 -149.56 L -42.99 -147.8 L -42.27 -146.39 L -41.81 -145.36 L -41.57 -144.73 L -41.5 -144.51 A 8 8 0 0 0 -16.97 -149.39 L -16.98 -149.62 L -17 -150.29 L -16.97 -151.42 L -16.85 -153 L -16.57 -155.02 L -16.1 -157.46 L -15.39 -160.32 L -14.39 -163.56 L -13.06 -167.17 L -11.35 -171.11 L -9.23 -175.36 L -6.66 -179.88 L 6.66 -179.88 L 9.23 -175.36 L 11.35 -171.11 L 13.06 -167.17 L 14.39 -163.56 L 15.39 -160.32 L 16.1 -157.46 L 16.57 -155.02 L 16.85 -153 L 16.97 -151.42 L 17 -150.29 L 16.98 -149.62 L 16.97 -149.39 A 8 8 0 0 0 41.5 -144.51 L 41.57 -144.73 L 41.81 -145.36 L 42.27 -146.39 L 42.99 -147.8 L 44.01 -149.56 L 45.38 -151.64 L 47.13 -154 L 49.29 -156.62 L 51.9 -159.44 L 54.99 -162.43 L 58.58 -165.54 L 62.69 -168.73 L 74.98 -163.64 L 75.64 -158.48 L 75.97 -153.74 L 76.04 -149.44 L 75.89 -145.6 L 75.57 -142.22 L 75.14 -139.31 L 74.63 -136.88 L 74.11 -134.91 L 73.63 -133.4 L 73.22 -132.35 L 72.95 -131.73 L 72.84 -131.53 A 8 8 0 0 0 93.64 -117.63 L 93.79 -117.8 L 94.25 -118.3 L 95.07 -119.07 L 96.28 -120.1 L 97.9 -121.33 L 99.96 -122.73 L 102.48 -124.24 L 105.48 -125.83 L 108.97 -127.44 L 112.96 -129.02 L 117.47 -130.52 L 122.49 -131.9 L 131.9 -122.49 L 130.52 -117.47 L 129.02 -112.96 L 127.44 -108.97 L 125.83 -105.48 L 124.24 -102.48 L 122.73 -99.96 L 121.33 -97.9 L 120.1 -96.28 L 119.07 -95.07 L 118.3 -94.25 L 117.8 -93.79 L 117.63 -93.64 A 8 8 0 0 0 131.53 -72.84 L 131.73 -72.95 L 132.35 -73.22 L 133.4 -73.63 L 134.91 -74.11 L 136.88 -74.63 L 139.31 -75.14 L 142.22 -75.57 L 145.6 -75.89 L 149.44 -76.04 L 153.74 -75.97 L 158.48 -75.64 L 163.64 -74.98 L 168.73 -62.69 L 165.54 -58.58 L 162.43 -54.99 L 159.44 -51.9 L 156.62 -49.29 L 154 -47.13 L 151.64 -45.38 L 149.56 -44.01 L 147.8 -42.99 L 146.39 -42.27 L 145.36 -41.81 L 144.73 -41.57 L 144.51 -41.5 A 8 8 0 0 0 149.39 -16.97 L 149.62 -16.98 L 150.29 -17 L 151.42 -16.97 L 153 -16.85 L 155.02 -16.57 L 157.46 -16.1 L 160.32 -15.39 L 163.56 -14.39 L 167.17 -13.06 L 171.11 -11.35 L 175.36 -9.23 L 179.88 -6.66 L 179.88 6.66 L 175.36 9.23 L 171.11 11.35 L 167.17 13.06 L 163.56 14.39 L 160.32 15.39 L 157.46 16.1 L 155.02 16.57 L 153 16.85 L 151.42 16.97 L 150.29 17 L 149.62 16.98 L 149.39 16.97
 			  M -110 0
 				a 110 110 0 1 0 220 0
 				a 110 110 0 1 0 -220 0
 			" mask="url(#wedge-mask)" stroke="none" stroke-width="4"></path><circle cx="0" cy="0" r="60" stroke="none"></circle><path d="
-						M 0 0
-						L 0 40
-						L 160 20
-						A 0.2 1 0 0 0 160 -20
-						L 0 -40
-						z
-					"></path></g></svg>Crank.js</a></div><div><a href="/guides/getting-started" aria-current="page">Guides</a></div><div><a href="/blog/">Blog</a></div><div><a href="/playground/">Playground</a></div></div><div class="css-1n0j5y9"><div><a href="https://github.com/bikeshaving/crank">GitHub</a></div><div><a href="http://npm.im/@b9g/crank">NPM</a></div><button role="switch" aria-label="set dark mode" aria-checked="false">⬜</button></div></nav></div><style data-emotion="css 1wkb9s8">.css-1wkb9s8{background-color:var(--bg-color);margin-top:50px;padding:2rem 0.4rem;color:var(--text-color);border-right:1px solid currentcolor;border-bottom:1px solid currentcolor;}@media screen and (min-width: 800px){.css-1wkb9s8{position:fixed;top:50px;bottom:0;overflow-x:hidden;overflow-y:auto;width:15rem;margin:0;padding:2rem 1rem;text-align:right;}}@media screen and (min-width: 1100px){.css-1wkb9s8{padding:3rem 2rem;width:20rem;}}.css-1wkb9s8 >:first-child{margin-top:0;}</style><div id="sidebar" class="css-1wkb9s8"><style data-emotion="css ep9szm">.css-ep9szm{color:var(--highlight-color);margin-top:0;}</style><h3 class="css-ep9szm">Guides</h3><style data-emotion="css w1ljn4">.css-w1ljn4{margin:10px 0;}</style><div class="css-w1ljn4"><style data-emotion="css 1l0nd7p">.css-1l0nd7p{-webkit-text-decoration:none;text-decoration:none;}</style><a href="/guides/getting-started" aria-current="page" class="css-1l0nd7p">Getting Started</a></div><div class="css-w1ljn4"><a href="/guides/elements" class="css-1l0nd7p">Elements and Renderers</a></div><div class="css-w1ljn4"><a href="/guides/components" class="css-1l0nd7p">Components</a></div><div class="css-w1ljn4"><a href="/guides/handling-events" class="css-1l0nd7p">Handling Events</a></div><div class="css-w1ljn4"><a href="/guides/async-components" class="css-1l0nd7p">Async Components</a></div><div class="css-w1ljn4"><a href="/guides/special-props-and-tags" class="css-1l0nd7p">Special Props and Tags</a></div><div class="css-w1ljn4"><a href="/guides/lifecycles" class="css-1l0nd7p">Lifecycles</a></div><div class="css-w1ljn4"><a href="/guides/reusable-logic" class="css-1l0nd7p">Reusable Logic</a></div><div class="css-w1ljn4"><a href="/guides/working-with-typescript" class="css-1l0nd7p">Working with TypeScript</a></div><div class="css-w1ljn4"><a href="/guides/reference-for-react-developers" class="css-1l0nd7p">Reference for React Developers</a></div><div class="css-w1ljn4"><a href="/guides/jsx-template-tag" class="css-1l0nd7p">JSX Template Tag</a></div><div class="css-w1ljn4"><a href="/guides/xx-performance" class="css-1l0nd7p"></a></div></div><style data-emotion="css 1mkiuoh">.css-1mkiuoh{margin:0 auto;padding:2rem 0.4rem;}@media screen and (min-width: 800px){.css-1mkiuoh{margin-left:240px;padding:2rem 1rem;margin-top:50px;}}@media screen and (min-width: 1100px){.css-1mkiuoh{margin-left:20rem;padding:3rem 2rem;}}.css-1mkiuoh p{max-width:800px;}</style><main class="css-1mkiuoh"><h1>Getting Started</h1><h2>Try Crank</h2><p>The fastest way to try Crank is via the <a href="https://crank.js.org/playground">online playground</a>. In addition, many of the code examples in these guides feature live previews.</p><h2>Installation</h2><p>The Crank package is available on <a href="https://npmjs.org/@b9g/crank">NPM</a> through
-the <a href="https://www.npmjs.com/org/b9g">@b9g organization</a> (short for
-b<em>ikeshavin</em>g).</p><div style="margin: 30px auto;" class="code-block-container"><style data-emotion="css 1vm8pxc">.css-1vm8pxc{max-width:min(100%, 1000px);}</style><div class="css-1vm8pxc"><style data-emotion="css 1s1lac9">.css-1s1lac9{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;font-size:16px;}@media (min-width: 1300px){.css-1s1lac9{-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-align-items:flex-start;-webkit-box-align:flex-start;-ms-flex-align:flex-start;align-items:flex-start;}}</style><div class="css-1s1lac9"><style data-emotion="css 18sfz2f">.css-18sfz2f{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;width:100%;border:1px solid var(--text-color);margin-top:-1px;margin-right:-1px;}</style><div class="css-18sfz2f"><style data-emotion="css 1m42aok">.css-1m42aok{overflow-x:auto;max-width:100%;}</style><div class="css-1m42aok"><style data-emotion="css artqa7">.css-artqa7{position:relative;min-height:100%;width:100%;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;}</style><div class="css-artqa7"><style data-emotion="css 84ojsb">.css-84ojsb{display:contents;}</style><content-area class="css-84ojsb"><style data-emotion="css 1ashatc">.css-1ashatc{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;word-break:break-all;overflow-wrap:anywhere;line-break:anywhere;white-space:pre-wrap;white-space:break-spaces;font-size:16px;}</style><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+						M 0 -28
+						L 160 -14
+						L 160 14
+						L 0 28
+						Z
+					"></path></g></svg>Crank.js</a></div><div><a href="/guides/getting-started" aria-current="page">Guides</a></div><div><a href="/blog/">Blog</a></div><div><a href="/playground/">Playground</a></div></div><div class="css-1n0j5y9"><div><a href="https://github.com/bikeshaving/crank">GitHub</a></div><div><a href="http://npm.im/@b9g/crank">NPM</a></div><button role="switch" aria-label="set dark mode" aria-checked="false">⬜</button></div></nav></div><div id="sidebar" class="css-1wkb9s8"><h2 class="css-ep9szm">Guides</h2><div class="css-w1ljn4"><a href="/guides/getting-started" aria-current="page" class="css-1l0nd7p">Getting Started</a></div><div class="css-w1ljn4"><a href="/guides/elements" class="css-1l0nd7p">Elements and Renderers</a></div><div class="css-w1ljn4"><a href="/guides/components" class="css-1l0nd7p">Components</a></div><div class="css-w1ljn4"><a href="/guides/handling-events" class="css-1l0nd7p">Handling Events</a></div><div class="css-w1ljn4"><a href="/guides/async-components" class="css-1l0nd7p">Async Components</a></div><div class="css-w1ljn4"><a href="/guides/special-props-and-tags" class="css-1l0nd7p">Special Props and Tags</a></div><div class="css-w1ljn4"><a href="/guides/lifecycles" class="css-1l0nd7p">Lifecycles</a></div><div class="css-w1ljn4"><a href="/guides/hydration" class="css-1l0nd7p">Hydration</a></div><div class="css-w1ljn4"><a href="/guides/reusable-logic" class="css-1l0nd7p">Reusable Logic</a></div><div class="css-w1ljn4"><a href="/guides/working-with-typescript" class="css-1l0nd7p">Working with TypeScript</a></div><div class="css-w1ljn4"><a href="/guides/reference-for-react-developers" class="css-1l0nd7p">React to Crank Migration Guide</a></div><div class="css-w1ljn4"><a href="/guides/jsx-template-tag" class="css-1l0nd7p">JSX Template Tag</a></div></div><main class="css-1mkiuoh"><h1>Getting Started</h1><h2>Try Crank</h2><p>The fastest way to try Crank is via the <a href="https://crank.js.org/playground">online
+playground</a>. No setup required - just start
+writing components! Many examples in these guides also feature live previews
+you can edit directly.</p><h2>Quick Start</h2><h3>1. Install Crank</h3><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
-						"><style data-emotion="css 1flouoi">.css-1flouoi{border-bottom:1px dotted #333;}.color-scheme-light .css-1flouoi{border-bottom:1px dotted #ddd;}</style><div class="
+						"><div class="
 				prism-line
 				css-1flouoi
 			" data-index="0"><code>npm i @b9g<span class="token operator">/</span>crank</code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-63" class="props">
@@ -42,7 +42,39 @@ b<em>ikeshavin</em>g).</p><div style="margin: 30px auto;" class="code-block-cont
 				window.__embeddedJSON__ = {};
 			}
 			window.__embeddedJSON__['inline-code-block-props-63'] = {"code":"npm i @b9g\u002Fcrank","lang":"shell"};
-		</script></div><h3>Importing Crank with the <strong>classic</strong> JSX transform.</h3><div style="margin: 30px auto;" class="code-block-container"><style data-emotion="css 1cvb758">.css-1cvb758{max-width:calc(100% - 1px);}</style><div class="css-1cvb758"><div class="css-1s1lac9"><style data-emotion="css by286k">.css-by286k{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;width:100%;border:1px solid var(--text-color);margin-top:-1px;margin-right:-1px;}@media (min-width: 1300px){.css-by286k{max-width:61.8%;}}</style><div class="css-by286k"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+		</script></div><h3>2. Choose Your Setup</h3><p>Crank works with any JSX setup. Here are the most common approaches:</p><p><strong>Option A: Automatic JSX Transform</strong> (recommended for new projects)</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token comment">/** @jsxImportSource @b9g/crank */</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>renderer<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank/dom&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code><span class="token keyword">function</span> <span class="token function">Greeting</span><span class="token punctuation">(</span><span class="token punctuation">{</span>name <span class="token operator">=</span> <span class="token string">&quot;World&quot;</span><span class="token punctuation">}</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><code>  <span class="token keyword">return</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span>Hello <span class="token punctuation">{</span>name<span class="token punctuation">}</span><span class="token operator">!</span><span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Greeting name<span class="token operator">=</span><span class="token string">&quot;Crank&quot;</span> <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-64" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-64'] = {"code":"\u002F** @jsxImportSource @b9g\u002Fcrank *\u002F\nimport {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\n\nfunction Greeting({name = \"World\"}) {\n  return \u003Cdiv\u003EHello {name}!\u003C\u002Fdiv\u003E;\n}\n\nrenderer.render(\u003CGreeting name=\"Crank\" \u002F\u003E, document.body);","lang":"jsx"};
+		</script></div><p><strong>Option B: Classic JSX Transform</strong> (works with older setups)</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
@@ -63,56 +95,24 @@ b<em>ikeshavin</em>g).</p><div style="margin: 30px auto;" class="code-block-cont
 			" data-index="4"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span></code><br></div><div class="
+			" data-index="5"><code><span class="token keyword">function</span> <span class="token function">Greeting</span><span class="token punctuation">(</span><span class="token punctuation">{</span>name <span class="token operator">=</span> <span class="token string">&quot;World&quot;</span><span class="token punctuation">}</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><code>  <span class="token operator">&lt;</span>p<span class="token operator">&gt;</span>This paragraph element is transpiled <span class="token keyword">with</span> the classic transform<span class="token punctuation">.</span><span class="token operator">&lt;</span><span class="token operator">/</span>p<span class="token operator">&gt;</span><span class="token punctuation">,</span></code><br></div><div class="
+			" data-index="6"><code>  <span class="token keyword">return</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span>Hello <span class="token punctuation">{</span>name<span class="token punctuation">}</span><span class="token operator">!</span><span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code>  document<span class="token punctuation">.</span>body<span class="token punctuation">,</span></code><br></div><div class="
+			" data-index="7"><code><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><style data-emotion="css nuifz8">.css-nuifz8{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;position:-webkit-sticky;position:sticky;top:100px;border:1px solid var(--text-color);margin-top:-1px;min-height:50px;width:100%;}@media screen and (min-width: 1300px){.css-nuifz8{width:30%;}}</style><div class="css-nuifz8"><style data-emotion="css 1nius9d">.css-1nius9d{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;height:100%;}</style><div class="css-1nius9d"><style data-emotion="css 14pt8ki">.css-14pt8ki{-webkit-flex:none;-ms-flex:none;flex:none;padding:1em;height:3em;border-bottom:1px solid var(--text-color);}</style><div class="css-14pt8ki">Loading...</div><style data-emotion="css j74n8p">.css-j74n8p{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;padding:1em;-webkit-transition:background-color 0.4s ease-out;transition:background-color 0.4s ease-out;background-color:var(--coldark02);width:100%;}</style><div class="css-j74n8p"><style data-emotion="css hjkbgb">.css-hjkbgb{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;border:none;width:100%;background-color:var(--bg-color);}</style><iframe class="
-							playground-iframe
-							css-hjkbgb
-						" style="height: 100px;"></iframe></div></div></div></div></div><script data-name="inline-code-block-props-64" class="props">
+			" data-index="8"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="9"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Greeting name<span class="token operator">=</span><span class="token string">&quot;Crank&quot;</span> <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-65" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-64'] = {"code":"\u002F** @jsx createElement *\u002F\n\u002F** @jsxFrag Fragment *\u002F\nimport {createElement, Fragment} from \"@b9g\u002Fcrank\";\nimport {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\n\nrenderer.render(\n  \u003Cp\u003EThis paragraph element is transpiled with the classic transform.\u003C\u002Fp\u003E,\n  document.body,\n);","lang":"jsx live"};
-		</script></div><h3>Importing Crank with the <strong>automatic</strong> JSX transform.</h3><div style="margin: 30px auto;" class="code-block-container"><div class="css-1cvb758"><div class="css-1s1lac9"><div class="css-by286k"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
-							language-
-							css-1ashatc
-						"><div class="
-				prism-line
-				css-1flouoi
-			" data-index="0"><code><span class="token comment">/** @jsxImportSource @b9g/crank */</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="1"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>renderer<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank/dom&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="2"><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="3"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="4"><code>  <span class="token operator">&lt;</span>p<span class="token operator">&gt;</span>This paragraph element is transpiled <span class="token keyword">with</span> the automatic transform<span class="token punctuation">.</span><span class="token operator">&lt;</span><span class="token operator">/</span>p<span class="token operator">&gt;</span><span class="token punctuation">,</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="5"><code>  document<span class="token punctuation">.</span>body<span class="token punctuation">,</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="6"><code><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><div class="css-nuifz8"><div class="css-1nius9d"><div class="css-14pt8ki">Loading...</div><div class="css-j74n8p"><iframe class="
-							playground-iframe
-							css-hjkbgb
-						" style="height: 100px;"></iframe></div></div></div></div></div><script data-name="inline-code-block-props-65" class="props">
-			if (window.__embeddedJSON__ == null) {
-				window.__embeddedJSON__ = {};
-			}
-			window.__embeddedJSON__['inline-code-block-props-65'] = {"code":"\u002F** @jsxImportSource @b9g\u002Fcrank *\u002F\nimport {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\n\nrenderer.render(\n  \u003Cp\u003EThis paragraph element is transpiled with the automatic transform.\u003C\u002Fp\u003E,\n  document.body,\n);","lang":"jsx live"};
-		</script></div><p>You will likely have to configure your tools to support JSX, especially if you do not want to use <code class="inline">@jsx</code> comment pragmas. See below for common tools and configurations.</p><h3>Importing the JSX template tag.</h3><p>Starting in version <code class="inline">0.5</code>, the Crank package ships a <a href="/guides/jsx-template-tag">tagged template function</a> which provides similar syntax and semantics as the JSX transform. This allows you to write Crank components in vanilla JavaScript.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1cvb758"><div class="css-1s1lac9"><div class="css-by286k"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+			window.__embeddedJSON__['inline-code-block-props-65'] = {"code":"\u002F** @jsx createElement *\u002F\n\u002F** @jsxFrag Fragment *\u002F\nimport {createElement, Fragment} from \"@b9g\u002Fcrank\";\nimport {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\n\nfunction Greeting({name = \"World\"}) {\n  return \u003Cdiv\u003EHello {name}!\u003C\u002Fdiv\u003E;\n}\n\nrenderer.render(\u003CGreeting name=\"Crank\" \u002F\u003E, document.body);","lang":"jsx"};
+		</script></div><p><strong>Option C: No Build Required</strong></p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
@@ -127,23 +127,28 @@ b<em>ikeshavin</em>g).</p><div style="margin: 30px auto;" class="code-block-cont
 			" data-index="2"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span>jsx<span class="token template-string"><span class="token template-punctuation string">`</span></span></code><br></div><div class="
+			" data-index="3"><code><span class="token keyword">function</span> <span class="token function">Greeting</span><span class="token punctuation">(</span><span class="token punctuation">{</span>name <span class="token operator">=</span> <span class="token string">&quot;World&quot;</span><span class="token punctuation">}</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code><span class="token template-string"><span class="token string">  &lt;p&gt;No transpilation is necessary with the JSX template tag.&lt;/p&gt;</span></span></code><br></div><div class="
+			" data-index="4"><code>  <span class="token keyword">return</span> jsx<span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string">&lt;div&gt;Hello </span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>name<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">!&lt;/div&gt;</span><span class="token template-punctuation string">`</span></span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code><span class="token template-string"><span class="token template-punctuation string">`</span></span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><div class="css-nuifz8"><div class="css-1nius9d"><div class="css-14pt8ki">Loading...</div><div class="css-j74n8p"><iframe class="
-							playground-iframe
-							css-hjkbgb
-						" style="height: 100px;"></iframe></div></div></div></div></div><script data-name="inline-code-block-props-66" class="props">
+			" data-index="5"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span>jsx<span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string">&lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Greeting<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> name=&quot;Crank&quot; /&gt;</span><span class="token template-punctuation string">`</span></span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-66" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-66'] = {"code":"import {jsx} from \"@b9g\u002Fcrank\u002Fstandalone\";\nimport {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\n\nrenderer.render(jsx`\n  \u003Cp\u003ENo transpilation is necessary with the JSX template tag.\u003C\u002Fp\u003E\n`, document.body);","lang":"js live"};
-		</script></div><h3>ECMAScript Module CDNs</h3><p>Crank is also available on CDNs like <a href="https://unpkg.com">unpkg</a>
+			window.__embeddedJSON__['inline-code-block-props-66'] = {"code":"import {jsx} from \"@b9g\u002Fcrank\u002Fstandalone\";\nimport {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\n\nfunction Greeting({name = \"World\"}) {\n  return jsx`\u003Cdiv\u003EHello ${name}!\u003C\u002Fdiv\u003E`;\n}\n\nrenderer.render(jsx`\u003C${Greeting} name=\"Crank\" \u002F\u003E`, document.body);","lang":"js"};
+		</script></div><h3>3. Configure Your Tools</h3><p>Most modern tools support JSX out of the box. See the <a href="#common-tool-configurations">tool
+configurations</a> section below for specific setup
+instructions.</p><h2>Using CDNs</h2><p>Crank is also available on CDNs like <a href="https://unpkg.com">unpkg</a>
 (<a href="https://unpkg.com/@b9g/crank?module">https://unpkg.com/@b9g/crank?module</a>) and <a href="https://esm.sh">esm.sh</a>
-(<a href="https://esm.sh/@b9g/crank">https://esm.sh/@b9g/crank</a>) for usage in ESM-ready environments.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1cvb758"><div class="css-1s1lac9"><div class="css-by286k"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+(<a href="https://esm.sh/@b9g/crank">https://esm.sh/@b9g/crank</a>) for usage in ESM-ready environments.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1cvb758"><div class="css-1s1lac9"><div class="css-by286k"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
@@ -152,51 +157,39 @@ b<em>ikeshavin</em>g).</p><div style="margin: 30px auto;" class="code-block-cont
 			" data-index="0"><code><span class="token comment">/** @jsx createElement */</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="1"><br></div><div class="
+			" data-index="1"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>createElement<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;https://unpkg.com/@b9g/crank/crank?module&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="2"><code><span class="token comment">// This is an ESM-ready environment!</span></code><br></div><div class="
+			" data-index="2"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>renderer<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;https://unpkg.com/@b9g/crank/dom?module&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><code><span class="token comment">// If code previews work, your browser is an ESM-ready environment!</span></code><br></div><div class="
+			" data-index="3"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><br></div><div class="
+			" data-index="4"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>createElement<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;https://unpkg.com/@b9g/crank/crank?module&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="5"><code>  <span class="token operator">&lt;</span>div id<span class="token operator">=</span><span class="token string">&quot;hello&quot;</span><span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>renderer<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;https://unpkg.com/@b9g/crank/dom?module&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="6"><code>    Running on <span class="token operator">&lt;</span>a href<span class="token operator">=</span><span class="token string">&quot;https://unpkg.com&quot;</span><span class="token operator">&gt;</span>unpkg<span class="token punctuation">.</span>com<span class="token operator">&lt;</span><span class="token operator">/</span>a<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><br></div><div class="
+			" data-index="7"><code>  <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span></code><br></div><div class="
+			" data-index="8"><code>  document<span class="token punctuation">.</span>body<span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="9"><code>  <span class="token operator">&lt;</span>div id<span class="token operator">=</span><span class="token string">&quot;hello&quot;</span><span class="token operator">&gt;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="10"><code>    Running on <span class="token operator">&lt;</span>a href<span class="token operator">=</span><span class="token string">&quot;https://unpkg.com&quot;</span><span class="token operator">&gt;</span>unpkg<span class="token punctuation">.</span>com<span class="token operator">&lt;</span><span class="token operator">/</span>a<span class="token operator">&gt;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="11"><code>  <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">,</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="12"><code>  document<span class="token punctuation">.</span>body<span class="token punctuation">,</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="13"><code><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><div class="css-nuifz8"><div class="css-1nius9d"><div class="css-14pt8ki">Loading...</div><div class="css-j74n8p"><iframe class="
+			" data-index="9"><code><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><div class="css-nuifz8"><div class="css-1nius9d"><div class="css-14pt8ki">Loading...</div><div class="css-j74n8p"><iframe class="
 							playground-iframe
 							css-hjkbgb
 						" style="height: 100px;"></iframe></div></div></div></div></div><script data-name="inline-code-block-props-67" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-67'] = {"code":"\u002F** @jsx createElement *\u002F\n\n\u002F\u002F This is an ESM-ready environment!\n\u002F\u002F If code previews work, your browser is an ESM-ready environment!\n\nimport {createElement} from \"https:\u002F\u002Funpkg.com\u002F@b9g\u002Fcrank\u002Fcrank?module\";\nimport {renderer} from \"https:\u002F\u002Funpkg.com\u002F@b9g\u002Fcrank\u002Fdom?module\";\n\nrenderer.render(\n  \u003Cdiv id=\"hello\"\u003E\n    Running on \u003Ca href=\"https:\u002F\u002Funpkg.com\"\u003Eunpkg.com\u003C\u002Fa\u003E\n  \u003C\u002Fdiv\u003E,\n  document.body,\n);","lang":"jsx live"};
-		</script></div><h2>Common tool configurations</h2><p>The following is an incomplete list of configurations to get started with Crank.</p><h3><a href="https://www.typescriptlang.org">TypeScript</a></h3><p>TypeScript is a typed superset of JavaScript.</p><p>Here’s the configuration you will need to set up automatic JSX transpilation.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+			window.__embeddedJSON__['inline-code-block-props-67'] = {"code":"\u002F** @jsx createElement *\u002F\nimport {createElement} from \"https:\u002F\u002Funpkg.com\u002F@b9g\u002Fcrank\u002Fcrank?module\";\nimport {renderer} from \"https:\u002F\u002Funpkg.com\u002F@b9g\u002Fcrank\u002Fdom?module\";\n\nrenderer.render(\n  \u003Cdiv id=\"hello\"\u003E\n    Running on \u003Ca href=\"https:\u002F\u002Funpkg.com\"\u003Eunpkg.com\u003C\u002Fa\u003E\n  \u003C\u002Fdiv\u003E,\n  document.body,\n);","lang":"jsx live"};
+		</script></div><h2>Common tool configurations</h2><p>The following is an incomplete list of configurations to get started with Crank.</p><h3><a href="https://www.typescriptlang.org">TypeScript</a></h3><p>TypeScript is a typed superset of JavaScript.</p><p>Here’s the configuration you will need to set up automatic JSX transpilation.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
@@ -222,7 +215,7 @@ b<em>ikeshavin</em>g).</p><div style="margin: 30px auto;" class="code-block-cont
 				window.__embeddedJSON__ = {};
 			}
 			window.__embeddedJSON__['inline-code-block-props-68'] = {"code":"{\n  \"compilerOptions\": {\n    \"jsx\": \"react-jsx\",\n    \"jsxImportSource\": \"@b9g\u002Fcrank\"\n  }\n}","lang":"tsconfig.json"};
-		</script></div><p>The classic transform is supported as well.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+		</script></div><p>The classic transform is supported as well.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
@@ -251,7 +244,7 @@ b<em>ikeshavin</em>g).</p><div style="margin: 30px auto;" class="code-block-cont
 				window.__embeddedJSON__ = {};
 			}
 			window.__embeddedJSON__['inline-code-block-props-69'] = {"code":"{\n  \"compilerOptions\": {\n    \"jsx\": \"react\",\n    \"jsxFactory\": \"createElement\",\n    \"jsxFragmentFactory\": \"Fragment\"\n  }\n}","lang":"tsconfig.json"};
-		</script></div><p>Crank is written in TypeScript. Refer to <a href="/guides/working-with-typescript">the guide on TypeScript</a> for more information about Crank types.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+		</script></div><p>Crank is written in TypeScript. Refer to <a href="/guides/working-with-typescript">the guide on TypeScript</a> for more information about Crank types.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
@@ -266,39 +259,30 @@ b<em>ikeshavin</em>g).</p><div style="margin: 30px auto;" class="code-block-cont
 			" data-index="2"><code>  <span class="token keyword">let</span> seconds <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><code>  <span class="token keyword">const</span> interval <span class="token operator">=</span> <span class="token function">setInterval</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="3"><code>  <span class="token keyword">const</span> interval <span class="token operator">=</span> <span class="token function">setInterval</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> seconds<span class="token operator">++</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token number">1000</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code>    seconds<span class="token operator">++</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="4"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code>    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="5"><code>    <span class="token keyword">yield</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span>Seconds<span class="token operator">:</span> <span class="token punctuation">{</span>seconds<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><code>  <span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token number">1000</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="6"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="7"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code>    <span class="token keyword">yield</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span>Seconds<span class="token operator">:</span> <span class="token punctuation">{</span>seconds<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="8"><code>  <span class="token function">clearInterval</span><span class="token punctuation">(</span>interval<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="9"><code>  <span class="token punctuation">}</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="10"><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="11"><code>  <span class="token function">clearInterval</span><span class="token punctuation">(</span>interval<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="12"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-70" class="props">
+			" data-index="9"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-70" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-70'] = {"code":"import type {Context} from \"@b9g\u002Fcrank\";\nfunction *Timer(this: Context) {\n  let seconds = 0;\n  const interval = setInterval(() =\u003E {\n    seconds++;\n    this.refresh();\n  }, 1000);\n  for ({} of this) {\n    yield \u003Cdiv\u003ESeconds: {seconds}\u003C\u002Fdiv\u003E;\n  }\n\n  clearInterval(interval);\n}","lang":"tsx"};
-		</script></div><h3><a href="https://babeljs.io">Babel</a></h3><p>Babel is a popular open-source JavaScript compiler which allows you to write code with modern syntax (including JSX) and run it in environments which do not support the syntax.</p><p>Here is how to get Babel to transpile JSX for Crank.</p><p>Automatic transform:</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+			window.__embeddedJSON__['inline-code-block-props-70'] = {"code":"import type {Context} from \"@b9g\u002Fcrank\";\nfunction *Timer(this: Context) {\n  let seconds = 0;\n  const interval = setInterval(() =\u003E this.refresh(() =\u003E seconds++), 1000);\n  for ({} of this) {\n    yield \u003Cdiv\u003ESeconds: {seconds}\u003C\u002Fdiv\u003E;\n  }\n\n  clearInterval(interval);\n}","lang":"tsx"};
+		</script></div><h3><a href="https://babeljs.io">Babel</a></h3><p>Babel is a popular open-source JavaScript compiler which allows you to write code with modern syntax (including JSX) and run it in environments which do not support the syntax.</p><p>Here is how to get Babel to transpile JSX for Crank.</p><p>Automatic transform:</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
@@ -351,7 +335,7 @@ b<em>ikeshavin</em>g).</p><div style="margin: 30px auto;" class="code-block-cont
 				window.__embeddedJSON__ = {};
 			}
 			window.__embeddedJSON__['inline-code-block-props-71'] = {"code":"{\n  \"plugins\": [\n    \"@babel\u002Fplugin-syntax-jsx\",\n    [\n      \"@babel\u002Fplugin-transform-react-jsx\",\n      {\n        \"runtime\": \"automatic\",\n        \"importSource\": \"@b9g\u002Fcrank\",\n\n        \"throwIfNamespace\": false,\n        \"useSpread\": true\n      }\n    ]\n  ]\n}","lang":".babelrc.json"};
-		</script></div><p>Classic transform:</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+		</script></div><p>Classic transform:</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
@@ -407,7 +391,7 @@ b<em>ikeshavin</em>g).</p><div style="margin: 30px auto;" class="code-block-cont
 				window.__embeddedJSON__ = {};
 			}
 			window.__embeddedJSON__['inline-code-block-props-72'] = {"code":"{\n  \"plugins\": [\n    \"@babel\u002Fplugin-syntax-jsx\",\n    [\n      \"@babel\u002Fplugin-transform-react-jsx\",\n      {\n        \"runtime\": \"class\",\n        \"pragma\": \"createElement\",\n        \"pragmaFrag\": \"''\",\n\n        \"throwIfNamespace\": false,\n        \"useSpread\": true\n      }\n    ]\n  ]\n}","lang":".babelrc.json"};
-		</script></div><h3><a href="https://eslint.org">ESLint</a></h3><p>ESLint is a popular open-source tool for analyzing and detecting problems in JavaScript code.</p><p>Crank provides a configuration preset for working with ESLint under the package name <code class="inline">eslint-plugin-crank</code>.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+		</script></div><h3><a href="https://eslint.org">ESLint</a></h3><p>ESLint is a popular open-source tool for analyzing and detecting problems in JavaScript code.</p><p>Crank provides a configuration preset for working with ESLint under the package name <code class="inline">eslint-plugin-crank</code>.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
@@ -418,7 +402,7 @@ b<em>ikeshavin</em>g).</p><div style="margin: 30px auto;" class="code-block-cont
 				window.__embeddedJSON__ = {};
 			}
 			window.__embeddedJSON__['inline-code-block-props-73'] = {"code":"npm i eslint eslint-plugin-crank","lang":"bash"};
-		</script></div><p>In your eslint configuration:</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+		</script></div><p>In your eslint configuration:</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
@@ -435,7 +419,7 @@ b<em>ikeshavin</em>g).</p><div style="margin: 30px auto;" class="code-block-cont
 				window.__embeddedJSON__ = {};
 			}
 			window.__embeddedJSON__['inline-code-block-props-74'] = {"code":"{\n  \"extends\": [\"plugin:crank\u002Frecommended\"]\n}","lang":".eslintrc.json"};
-		</script></div><h3><a href="https://astro.build">Astro</a></h3><p>Astro.js is a modern static site builder and framework.</p><p>Crank provides an <a href="https://docs.astro.build/en/guides/integrations-guide/">Astro integration</a> to enable server-side rendering and client-side hydration with Astro.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+		</script></div><h3><a href="https://astro.build">Astro</a></h3><p>Astro.js is a modern static site builder and framework.</p><p>Crank provides an <a href="https://docs.astro.build/en/guides/integrations-guide/">Astro integration</a> to enable server-side rendering and client-side hydration with Astro.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
@@ -446,7 +430,7 @@ b<em>ikeshavin</em>g).</p><div style="margin: 30px auto;" class="code-block-cont
 				window.__embeddedJSON__ = {};
 			}
 			window.__embeddedJSON__['inline-code-block-props-75'] = {"code":"npm i astro-crank","lang":"bash"};
-		</script></div><p>In your <code class="inline">astro.config.mjs</code>.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+		</script></div><p>In your <code class="inline">astro.config.mjs</code>.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
@@ -475,7 +459,7 @@ b<em>ikeshavin</em>g).</p><div style="margin: 30px auto;" class="code-block-cont
 				window.__embeddedJSON__ = {};
 			}
 			window.__embeddedJSON__['inline-code-block-props-76'] = {"code":"import {defineConfig} from \"astro\u002Fconfig\";\nimport crank from \"astro-crank\";\n\n\u002F\u002F https:\u002F\u002Fastro.build\u002Fconfig\nexport default defineConfig({\n  integrations: [crank()],\n});","lang":"astro.config.mjs"};
-		</script></div><h2>Key Examples</h2><h3>A Simple Component</h3><div style="margin: 30px auto;" class="code-block-container"><div class="css-1cvb758"><div class="css-1s1lac9"><div class="css-by286k"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+		</script></div><h2>Key Examples</h2><h3>A Simple Component</h3><div style="margin: 30px auto;" class="code-block-container"><div class="css-1cvb758"><div class="css-1s1lac9"><div class="css-by286k"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
@@ -513,7 +497,7 @@ b<em>ikeshavin</em>g).</p><div style="margin: 30px auto;" class="code-block-cont
 				window.__embeddedJSON__ = {};
 			}
 			window.__embeddedJSON__['inline-code-block-props-77'] = {"code":"import {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\n\nfunction Greeting({name = \"World\"}) {\n  return (\n    \u003Cdiv\u003EHello {name}\u003C\u002Fdiv\u003E\n  );\n}\n\nrenderer.render(\u003CGreeting \u002F\u003E, document.body);","lang":"jsx live"};
-		</script></div><h3>A Stateful Component</h3><div style="margin: 30px auto;" class="code-block-container"><div class="css-1cvb758"><div class="css-1s1lac9"><div class="css-by286k"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+		</script></div><h3>A Stateful Component</h3><div style="margin: 30px auto;" class="code-block-container"><div class="css-1cvb758"><div class="css-1s1lac9"><div class="css-by286k"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
@@ -531,54 +515,42 @@ b<em>ikeshavin</em>g).</p><div style="margin: 30px auto;" class="code-block-cont
 			" data-index="3"><code>  <span class="token keyword">let</span> seconds <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code>  <span class="token keyword">const</span> interval <span class="token operator">=</span> <span class="token function">setInterval</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="4"><code>  <span class="token keyword">const</span> interval <span class="token operator">=</span> <span class="token function">setInterval</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> seconds<span class="token operator">++</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token number">1000</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code>    seconds<span class="token operator">++</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="5"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><code>    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="6"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code>  <span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token number">1000</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="7"><code>    <span class="token keyword">yield</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span>Seconds<span class="token operator">:</span> <span class="token punctuation">{</span>seconds<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code>  <span class="token keyword">try</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="8"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="9"><code>    <span class="token keyword">while</span> <span class="token punctuation">(</span><span class="token boolean">true</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="9"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="10"><code>      <span class="token keyword">yield</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span>Seconds<span class="token operator">:</span> <span class="token punctuation">{</span>seconds<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="10"><code>  <span class="token function">clearInterval</span><span class="token punctuation">(</span>interval<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="11"><code>    <span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="11"><code><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="12"><code>  <span class="token punctuation">}</span> <span class="token keyword">finally</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="12"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="13"><code>    <span class="token function">clearInterval</span><span class="token punctuation">(</span>interval<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="14"><code>  <span class="token punctuation">}</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="15"><code><span class="token punctuation">}</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="16"><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="17"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Timer <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><div class="css-nuifz8"><div class="css-1nius9d"><div class="css-14pt8ki">Loading...</div><div class="css-j74n8p"><iframe class="
+			" data-index="13"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Timer <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><div class="css-nuifz8"><div class="css-1nius9d"><div class="css-14pt8ki">Loading...</div><div class="css-j74n8p"><iframe class="
 							playground-iframe
 							css-hjkbgb
 						" style="height: 100px;"></iframe></div></div></div></div></div><script data-name="inline-code-block-props-78" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-78'] = {"code":"import {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\n\nfunction *Timer() {\n  let seconds = 0;\n  const interval = setInterval(() =\u003E {\n    seconds++;\n    this.refresh();\n  }, 1000);\n  try {\n    while (true) {\n      yield \u003Cdiv\u003ESeconds: {seconds}\u003C\u002Fdiv\u003E;\n    }\n  } finally {\n    clearInterval(interval);\n  }\n}\n\nrenderer.render(\u003CTimer \u002F\u003E, document.body);","lang":"jsx live"};
-		</script></div><h3>An Async Component</h3><div style="margin: 30px auto;" class="code-block-container"><div class="css-1cvb758"><div class="css-1s1lac9"><div class="css-by286k"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+			window.__embeddedJSON__['inline-code-block-props-78'] = {"code":"import {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\n\nfunction *Timer() {\n  let seconds = 0;\n  const interval = setInterval(() =\u003E this.refresh(() =\u003E seconds++), 1000);\n\n  for ({} of this) {\n    yield \u003Cdiv\u003ESeconds: {seconds}\u003C\u002Fdiv\u003E;\n  }\n\n  clearInterval(interval);\n}\n\nrenderer.render(\u003CTimer \u002F\u003E, document.body);","lang":"jsx live"};
+		</script></div><h3>An Async Component</h3><div style="margin: 30px auto;" class="code-block-container"><div class="css-1cvb758"><div class="css-1s1lac9"><div class="css-by286k"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
@@ -646,7 +618,7 @@ b<em>ikeshavin</em>g).</p><div style="margin: 30px auto;" class="code-block-cont
 				window.__embeddedJSON__ = {};
 			}
 			window.__embeddedJSON__['inline-code-block-props-79'] = {"code":"import {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\nasync function Definition({word}) {\n  \u002F\u002F API courtesy https:\u002F\u002Fdictionaryapi.dev\n  const res = await fetch(`https:\u002F\u002Fapi.dictionaryapi.dev\u002Fapi\u002Fv2\u002Fentries\u002Fen\u002F${word}`);\n  const data = await res.json();\n  if (!Array.isArray(data)) {\n    return \u003Cp\u003ENo definition found for {word}\u003C\u002Fp\u003E;\n  }\n\n  const {phonetic, meanings} = data[0];\n  const {partOfSpeech, definitions} = meanings[0];\n  const {definition} = definitions[0];\n  return \u003C\u003E\n    \u003Cp\u003E{word} \u003Ccode\u003E{phonetic}\u003C\u002Fcode\u003E\u003C\u002Fp\u003E\n    \u003Cp\u003E\u003Cb\u003E{partOfSpeech}.\u003C\u002Fb\u003E {definition}\u003C\u002Fp\u003E\n  \u003C\u002F\u003E;\n}\n\nawait renderer.render(\u003CDefinition word=\"framework\" \u002F\u003E, document.body);","lang":"jsx live"};
-		</script></div><h3>A Loading Component</h3><div style="margin: 30px auto;" class="code-block-container"><div class="css-1cvb758"><div class="css-1s1lac9"><div class="css-by286k"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="
+		</script></div><h3>A Loading Component</h3><div style="margin: 30px auto;" class="code-block-container"><div class="css-1cvb758"><div class="css-1s1lac9"><div class="css-by286k"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
 						"><div class="
@@ -745,74 +717,169 @@ b<em>ikeshavin</em>g).</p><div style="margin: 30px auto;" class="code-block-cont
 			" data-index="30"><code>  <span class="token keyword">let</span> throttle <span class="token operator">=</span> <span class="token boolean">false</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="31"><code>  <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">addEventListener</span><span class="token punctuation">(</span><span class="token string">&quot;click&quot;</span><span class="token punctuation">,</span> <span class="token punctuation">(</span><span class="token parameter">ev</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="31"><code>  <span class="token keyword">const</span> <span class="token function-variable function">onclick</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> throttle <span class="token operator">=</span> <span class="token operator">!</span>throttle<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="32"><code>    <span class="token keyword">if</span> <span class="token punctuation">(</span>ev<span class="token punctuation">.</span>target<span class="token punctuation">.</span>tagName <span class="token operator">===</span> <span class="token string">&quot;BUTTON&quot;</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="32"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="33"><code>      throttle <span class="token operator">=</span> <span class="token operator">!</span>throttle<span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="33"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="34"><code>      <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="34"><code>    <span class="token keyword">yield</span> <span class="token punctuation">(</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="35"><code>    <span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="35"><code>      <span class="token operator">&lt;</span>Fragment<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="36"><code>  <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="36"><code>        <span class="token operator">&lt;</span>RandomDogLoader throttle<span class="token operator">=</span><span class="token punctuation">{</span>throttle<span class="token punctuation">}</span> <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="37"><br></div><div class="
+			" data-index="37"><code>        <span class="token operator">&lt;</span>p<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="38"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="38"><code>          <span class="token operator">&lt;</span>button onclick<span class="token operator">=</span><span class="token punctuation">{</span>onclick<span class="token punctuation">}</span><span class="token operator">&gt;</span>Show me another dog<span class="token punctuation">.</span><span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="39"><code>    <span class="token keyword">yield</span> <span class="token punctuation">(</span></code><br></div><div class="
+			" data-index="39"><code>        <span class="token operator">&lt;</span><span class="token operator">/</span>p<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="40"><code>      <span class="token operator">&lt;</span>Fragment<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="40"><code>      <span class="token operator">&lt;</span><span class="token operator">/</span>Fragment<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="41"><code>        <span class="token operator">&lt;</span>RandomDogLoader throttle<span class="token operator">=</span><span class="token punctuation">{</span>throttle<span class="token punctuation">}</span> <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="41"><code>    <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="42"><code>        <span class="token operator">&lt;</span>p<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="42"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="43"><code>          <span class="token operator">&lt;</span>button<span class="token operator">&gt;</span>Show me another dog<span class="token punctuation">.</span><span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="43"><code><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="44"><code>        <span class="token operator">&lt;</span><span class="token operator">/</span>p<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="44"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="45"><code>      <span class="token operator">&lt;</span><span class="token operator">/</span>Fragment<span class="token operator">&gt;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="46"><code>    <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="47"><code>  <span class="token punctuation">}</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="48"><code><span class="token punctuation">}</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="49"><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="50"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>RandomDogApp <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><div class="css-nuifz8"><div class="css-1nius9d"><div class="css-14pt8ki">Loading...</div><div class="css-j74n8p"><iframe class="
+			" data-index="45"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>RandomDogApp <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><div class="css-nuifz8"><div class="css-1nius9d"><div class="css-14pt8ki">Loading...</div><div class="css-j74n8p"><iframe class="
 							playground-iframe
 							css-hjkbgb
 						" style="height: 100px;"></iframe></div></div></div></div></div><script data-name="inline-code-block-props-80" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-80'] = {"code":"import {Fragment} from \"@b9g\u002Fcrank\";\nimport {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\n\nasync function LoadingIndicator() {\n  await new Promise(resolve =\u003E setTimeout(resolve, 1000));\n  return \u003Cdiv\u003EFetching a good boy...\u003C\u002Fdiv\u003E;\n}\n\nasync function RandomDog({throttle = false}) {\n  const res = await fetch(\"https:\u002F\u002Fdog.ceo\u002Fapi\u002Fbreeds\u002Fimage\u002Frandom\");\n  const data = await res.json();\n  if (throttle) {\n    await new Promise(resolve =\u003E setTimeout(resolve, 2000));\n  }\n\n  return (\n    \u003Ca href={data.message}\u003E\n      \u003Cimg src={data.message} alt=\"A Random Dog\" width=\"300\" \u002F\u003E\n    \u003C\u002Fa\u003E\n  );\n}\n\nasync function *RandomDogLoader({throttle}) {\n  for await ({throttle} of this) {\n    yield \u003CLoadingIndicator \u002F\u003E;\n    yield \u003CRandomDog throttle={throttle} \u002F\u003E;\n  }\n}\n\nfunction *RandomDogApp() {\n  let throttle = false;\n  this.addEventListener(\"click\", (ev) =\u003E {\n    if (ev.target.tagName === \"BUTTON\") {\n      throttle = !throttle;\n      this.refresh();\n    }\n  });\n\n  for ({} of this) {\n    yield (\n      \u003CFragment\u003E\n        \u003CRandomDogLoader throttle={throttle} \u002F\u003E\n        \u003Cp\u003E\n          \u003Cbutton\u003EShow me another dog.\u003C\u002Fbutton\u003E\n        \u003C\u002Fp\u003E\n      \u003C\u002FFragment\u003E\n    );\n  }\n}\n\nrenderer.render(\u003CRandomDogApp \u002F\u003E, document.body);","lang":"jsx live"};
-		</script></div></main><script data-name="static-urls-81" id="static-urls">
+			window.__embeddedJSON__['inline-code-block-props-80'] = {"code":"import {Fragment} from \"@b9g\u002Fcrank\";\nimport {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\n\nasync function LoadingIndicator() {\n  await new Promise(resolve =\u003E setTimeout(resolve, 1000));\n  return \u003Cdiv\u003EFetching a good boy...\u003C\u002Fdiv\u003E;\n}\n\nasync function RandomDog({throttle = false}) {\n  const res = await fetch(\"https:\u002F\u002Fdog.ceo\u002Fapi\u002Fbreeds\u002Fimage\u002Frandom\");\n  const data = await res.json();\n  if (throttle) {\n    await new Promise(resolve =\u003E setTimeout(resolve, 2000));\n  }\n\n  return (\n    \u003Ca href={data.message}\u003E\n      \u003Cimg src={data.message} alt=\"A Random Dog\" width=\"300\" \u002F\u003E\n    \u003C\u002Fa\u003E\n  );\n}\n\nasync function *RandomDogLoader({throttle}) {\n  for await ({throttle} of this) {\n    yield \u003CLoadingIndicator \u002F\u003E;\n    yield \u003CRandomDog throttle={throttle} \u002F\u003E;\n  }\n}\n\nfunction *RandomDogApp() {\n  let throttle = false;\n  const onclick = () =\u003E this.refresh(() =\u003E throttle = !throttle);\n\n  for ({} of this) {\n    yield (\n      \u003CFragment\u003E\n        \u003CRandomDogLoader throttle={throttle} \u002F\u003E\n        \u003Cp\u003E\n          \u003Cbutton onclick={onclick}\u003EShow me another dog.\u003C\u002Fbutton\u003E\n        \u003C\u002Fp\u003E\n      \u003C\u002FFragment\u003E\n    );\n  }\n}\n\nrenderer.render(\u003CRandomDogApp \u002F\u003E, document.body);","lang":"jsx live"};
+		</script></div><h2>What&#039;s New in Crank 0.7</h2><p>Crank 0.7 is a major release that introduces powerful new features while
+maintaining full backward compatibility. Here are the highlights:</p><h3>Foolproof State Updates</h3><p>The <code class="inline">refresh()</code> method now accepts a callback function, making it impossible to
+forget to re-render after updating state:</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token comment">// Before: Easy to forget refresh()</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><code><span class="token keyword">const</span> <span class="token function-variable function">onclick</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><code>  count<span class="token operator">++</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code>  <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// Oops, might forget this!</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><code><span class="token punctuation">}</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><code><span class="token comment">// Now: Impossible to forget</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><code><span class="token keyword">const</span> <span class="token function-variable function">onclick</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> count<span class="token operator">++</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-81" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['static-urls-81'] = {"@b9g\u002Fcrank":"\u002Fstatic\u002Fcrank-IKBCNXHY.js","@b9g\u002Fcrank\u002Fcrank":"\u002Fstatic\u002Fcrank-IKBCNXHY.js","@b9g\u002Fcrank\u002Fcrank.js":"\u002Fstatic\u002Fcrank-IKBCNXHY.js","@b9g\u002Fcrank\u002Fdom":"\u002Fstatic\u002Fdom-P6RTISBD.js","@b9g\u002Fcrank\u002Fdom.js":"\u002Fstatic\u002Fdom-P6RTISBD.js","@b9g\u002Fcrank\u002Fhtml":"\u002Fstatic\u002Fhtml-BAPPTV5D.js","@b9g\u002Fcrank\u002Fhtml.js":"\u002Fstatic\u002Fhtml-BAPPTV5D.js","@b9g\u002Fcrank\u002Fjsx-tag":"\u002Fstatic\u002Fjsx-tag-LOQQR4CC.js","@b9g\u002Fcrank\u002Fjsx-tag.js":"\u002Fstatic\u002Fjsx-tag-LOQQR4CC.js","@b9g\u002Fcrank\u002Fjsx-runtime":"\u002Fstatic\u002Fjsx-runtime-TBBD57QJ.js","@b9g\u002Fcrank\u002Fjsx-runtime.js":"\u002Fstatic\u002Fjsx-runtime-TBBD57QJ.js","@b9g\u002Fcrank\u002Fstandalone":"\u002Fstatic\u002Fstandalone-2WFTNLZJ.js","@b9g\u002Fcrank\u002Fstandalone.js":"\u002Fstatic\u002Fstandalone-2WFTNLZJ.js","client.css":"\u002Fstatic\u002Fclient-TNOPHTVT.css"};
-		</script><script src="/static/navbar-FAMV3XX3.js"></script><script src="/static/code-blocks-SV5MHPTG.js"></script></body></html>
+			window.__embeddedJSON__['inline-code-block-props-81'] = {"code":"\u002F\u002F Before: Easy to forget refresh()\nconst onclick = () =\u003E {\n  count++;\n  this.refresh(); \u002F\u002F Oops, might forget this!\n};\n\n\u002F\u002F Now: Impossible to forget\nconst onclick = () =\u003E this.refresh(() =\u003E count++);","lang":"jsx"};
+		</script></div><p>This pattern is especially useful in event handlers and timer callbacks.</p><h3>Advanced Async Patterns</h3><p>The new <code class="inline">async</code> module provides React-like APIs with Crank&#039;s unique async
+capabilities:</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>lazy<span class="token punctuation">,</span> Suspense<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank/async&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><code><span class="token keyword">const</span> LazyComponent <span class="token operator">=</span> <span class="token function">lazy</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token keyword">import</span><span class="token punctuation">(</span><span class="token string">&quot;./component.js&quot;</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><code><span class="token keyword">function</span> <span class="token function">App</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><code>  <span class="token keyword">return</span> <span class="token punctuation">(</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><code>    <span class="token operator">&lt;</span>Suspense fallback<span class="token operator">=</span><span class="token punctuation">{</span><span class="token operator">&lt;</span>div<span class="token operator">&gt;</span>Loading<span class="token operator">...</span><span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">}</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><code>      <span class="token operator">&lt;</span>LazyComponent <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="8"><code>    <span class="token operator">&lt;</span><span class="token operator">/</span>Suspense<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="9"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="10"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-82" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-82'] = {"code":"import {lazy, Suspense} from \"@b9g\u002Fcrank\u002Fasync\";\n\nconst LazyComponent = lazy(() =\u003E import(\".\u002Fcomponent.js\"));\n\nfunction App() {\n  return (\n    \u003CSuspense fallback={\u003Cdiv\u003ELoading...\u003C\u002Fdiv\u003E}\u003E\n      \u003CLazyComponent \u002F\u003E\n    \u003C\u002FSuspense\u003E\n  );\n}","lang":"jsx"};
+		</script></div><h3>TypeScript Improvements</h3><p>New helper types like <code class="inline">ComponentProps&lt;T&gt;</code> make it easier to work with component
+types:</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>ComponentProps<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><code><span class="token keyword">function</span> <span class="token function">Button</span><span class="token punctuation">(</span><span class="token punctuation">{</span>variant<span class="token punctuation">}</span><span class="token operator">:</span> <span class="token punctuation">{</span><span class="token literal-property property">variant</span><span class="token operator">:</span> <span class="token string">&quot;primary&quot;</span> <span class="token operator">|</span> <span class="token string">&quot;secondary&quot;</span><span class="token punctuation">}</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code>  <span class="token keyword">return</span> <span class="token operator">&lt;</span>button <span class="token keyword">class</span><span class="token operator">=</span><span class="token punctuation">{</span><span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string">btn-</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>variant<span class="token interpolation-punctuation punctuation">}</span></span><span class="token template-punctuation string">`</span></span><span class="token punctuation">}</span><span class="token operator">&gt;</span>Click me<span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><code><span class="token comment">// Extract Button&#039;s props type automatically</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><code>type ButtonProps <span class="token operator">=</span> ComponentProps<span class="token operator">&lt;</span><span class="token keyword">typeof</span> Button<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-83" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-83'] = {"code":"import {ComponentProps} from \"@b9g\u002Fcrank\";\n\nfunction Button({variant}: {variant: \"primary\" | \"secondary\"}) {\n  return \u003Cbutton class={`btn-${variant}`}\u003EClick me\u003C\u002Fbutton\u003E;\n}\n\n\u002F\u002F Extract Button's props type automatically\ntype ButtonProps = ComponentProps\u003Ctypeof Button\u003E;","lang":"tsx"};
+		</script></div><p>These features maintain full backward compatibility while providing modern
+development patterns for building scalable applications.</p></main><script data-name="static-urls-84" id="static-urls">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['static-urls-84'] = {"@b9g\u002Fcrank":"\u002Fstatic\u002Fcrank-ESBVX7GV.js","@b9g\u002Fcrank.js":"\u002Fstatic\u002Fcrank-ESBVX7GV.js","@b9g\u002Fcrank\u002Fasync":"\u002Fstatic\u002Fasync-CGDMGMUQ.js","@b9g\u002Fcrank\u002Fasync.js":"\u002Fstatic\u002Fasync-CGDMGMUQ.js","@b9g\u002Fcrank\u002Fcrank":"\u002Fstatic\u002Fcrank-ESBVX7GV.js","@b9g\u002Fcrank\u002Fcrank.js":"\u002Fstatic\u002Fcrank-ESBVX7GV.js","@b9g\u002Fcrank\u002Fdom":"\u002Fstatic\u002Fdom-2ZE6YNF6.js","@b9g\u002Fcrank\u002Fdom.js":"\u002Fstatic\u002Fdom-2ZE6YNF6.js","@b9g\u002Fcrank\u002Fevent-target":"\u002Fstatic\u002Fevent-target-K6L2AQDD.js","@b9g\u002Fcrank\u002Fevent-target.js":"\u002Fstatic\u002Fevent-target-K6L2AQDD.js","@b9g\u002Fcrank\u002Fhtml":"\u002Fstatic\u002Fhtml-4XAEMDNI.js","@b9g\u002Fcrank\u002Fhtml.js":"\u002Fstatic\u002Fhtml-4XAEMDNI.js","@b9g\u002Fcrank\u002Fjsx-dev-runtime":"\u002Fstatic\u002Fjsx-runtime-VTCZGTQU.js","@b9g\u002Fcrank\u002Fjsx-dev-runtime.js":"\u002Fstatic\u002Fjsx-runtime-VTCZGTQU.js","@b9g\u002Fcrank\u002Fjsx-runtime":"\u002Fstatic\u002Fjsx-runtime-VTCZGTQU.js","@b9g\u002Fcrank\u002Fjsx-runtime.js":"\u002Fstatic\u002Fjsx-runtime-VTCZGTQU.js","@b9g\u002Fcrank\u002Fjsx-tag":"\u002Fstatic\u002Fjsx-tag-VPNOE4JP.js","@b9g\u002Fcrank\u002Fjsx-tag.js":"\u002Fstatic\u002Fjsx-tag-VPNOE4JP.js","@b9g\u002Fcrank\u002Fstandalone":"\u002Fstatic\u002Fstandalone-FJ3E2LNJ.js","@b9g\u002Fcrank\u002Fstandalone.js":"\u002Fstatic\u002Fstandalone-FJ3E2LNJ.js","client.css":"\u002Fstatic\u002Fclient-HDSPLS5O.css"};
+		</script><script src="/static/navbar-MBN6NLBG.js"></script><script src="/static/code-blocks-VAVPFCJ2.js"></script></body></html>
