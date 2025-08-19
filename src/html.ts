@@ -61,7 +61,7 @@ function printAttrs(props: Record<string, any>): string {
 		} else if (name === "style") {
 			if (typeof value === "string") {
 				attrs.push(`style="${escape(value)}"`);
-			} else if (typeof value === "object") {
+			} else if (typeof value === "object" && value !== null) {
 				attrs.push(`style="${escape(printStyleObject(value))}"`);
 			}
 		} else if (name === "className") {
