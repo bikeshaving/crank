@@ -81,6 +81,12 @@ const components = {
 	},
 };
 
+const interactiveBackground = css`
+	line-height: 0.85;
+	border: 1px solid var(--text-color);
+	text-decoration: none;
+`;
+
 function Hero() {
 	return jsx`
 		<div id="gear-interactive" />
@@ -95,18 +101,22 @@ function Hero() {
 				text-align: center;
 			`}
 		>
-			<h1 class=${css`
-				margin: 30px 0;
+			<h1 class="${css`
 				color: var(--highlight-color);
 				font-size: max(40px, 14vw);
-			`}
+				margin: 0.3em 0;
+				padding: 0 0.2em;
+			`} blur-background ${interactiveBackground}"
 			>Crank.js</h1>
 			<h2
-				class=${css`
-					margin: 0;
+				class="${css`
 					color: var(--text-color);
 					font-size: max(25px, 5vw);
-				`}
+					margin: 0.2em;
+					padding: 0.1em 0.2em 0.05em;
+					line-height: 0.8;
+					border: 1px solid var(--text-color);
+				`} blur-background ${interactiveBackground}"
 			>
 				The Just JavaScript Framework.
 			</h2>
@@ -131,10 +141,12 @@ function CallToAction() {
 				justify-content: center;
 				align-items: center;
 			`}">
-				<h2 class=${css`
+				<h2 class="${css`
 					font-size: 32px;
-				`}>Intrigued? Here are some possible next steps.</h2>
-				<div class=${css`
+					margin: 1em 0.2em;
+					padding: 0.5em;
+				`} ${interactiveBackground} blur-background">Intrigued? Here are some possible next steps.</h2>
+				<div class="${css`
 					@media screen and (min-width: 800px) {
 						display: flex;
 						justify-content: center;
@@ -147,13 +159,12 @@ function CallToAction() {
 						border: 1px solid var(--text-color);
 						color: var(--highlight-color);
 						padding: 0.4em;
-						text-decoration: none;
 						font-size: 24px;
 					}
-				`}>
-					<a href="/playground">Try it in the browser</a>
-					<a href="/guides/getting-started">Install it</a>
-					<a href="https://github.com/bikeshaving/crank">Star it on GitHub</a>
+				`}">
+					<a class="${interactiveBackground} blur-background" href="/playground">Try it in the browser</a>
+					<a class="${interactiveBackground} blur-background" href="/guides/getting-started">Install it</a>
+					<a class="${interactiveBackground} blur-background" href="https://github.com/bikeshaving/crank">Contribute on GitHub</a>
 				</div>
 			</div>
 		</div>
