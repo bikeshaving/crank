@@ -76,6 +76,10 @@ test("styles", () => {
 	);
 });
 
+test("style null", () => {
+	Assert.is(renderer.render(<div style={null} />), "<div></div>");
+});
+
 test("styles string", () => {
 	Assert.is(
 		renderer.render(<div style="color: red;" />),
