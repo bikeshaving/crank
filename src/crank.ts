@@ -540,9 +540,26 @@ function stripSpecialProps(props: Record<string, any>): Record<string, any> {
 }
 
 /**
- * Interface for adapting the rendering process to a specific target
- * environment. This interface is implemented by Renderer subclasses and passed
- * to the Renderer constructor.
+ * Interface for adapting the rendering process to a specific target environment.
+ *
+ * The RenderAdapter defines how Crank elements are mapped to nodes in your target
+ * rendering environment (DOM, Canvas, WebGL, Terminal, etc.). Each method handles
+ * a specific part of the element lifecycle, from creation to removal.
+ *
+ * @template TNode - The type representing a node in your target environment
+ * @template TScope - Additional context data passed down the component tree
+ * @template TRoot - The type of the root container (defaults to TNode)
+ * @template TResult - The type returned when reading element values (defaults to ElementValue<TNode>)
+ *
+ * @example
+ * ```typescript
+ * const adapter: RenderAdapter<MyNode, MyScope> = {
+ *   create: ({ tag, props }) => new MyNode(tag, props),
+ *   patch: ({ node, props }) => node.update(props),
+ *   arrange: ({ node, children }) => node.replaceChildren(children),
+ *   // ... other methods
+ * };
+ * ```
  */
 export interface RenderAdapter<
 	TNode,
@@ -550,6 +567,29 @@ export interface RenderAdapter<
 	TRoot extends TNode | undefined = TNode,
 	TResult = ElementValue<TNode>,
 > {
+	/**
+	 * Creates a new node for the given element tag and props.
+	 *
+	 * This method is called when Crank encounters a new element that needs to be
+	 * rendered for the first time. You should create and return a node appropriate
+	 * for your target environment.
+	 *
+	 * @param data.tag - The element tag (e.g., "div", "sprite", or a symbol)
+	 * @param data.tagName - String representation of the tag for debugging
+	 * @param data.props - The element's props object
+	 * @param data.scope - Current scope context (can be undefined)
+	 * @returns A new node instance
+	 *
+	 * @example
+	 * ```typescript
+	 * create: ({ tag, props, scope }) => {
+	 *   if (tag === "sprite") {
+	 *     return new PIXI.Sprite(props.texture);
+	 *   }
+	 *   throw new Error(`Unknown tag: ${tag}`);
+	 * }
+	 * ```
+	 */
 	create(data: {
 		tag: string | symbol;
 		tagName: string;
@@ -557,6 +597,30 @@ export interface RenderAdapter<
 		scope: TScope | undefined;
 	}): TNode;
 
+	/**
+	 * Adopts existing nodes during hydration.
+	 *
+	 * Called when hydrating server-rendered content or reusing existing nodes.
+	 * Should return an array of child nodes if the provided node matches the
+	 * expected tag, or undefined if hydration should fail.
+	 *
+	 * @param data.tag - The element tag being hydrated
+	 * @param data.tagName - String representation of the tag
+	 * @param data.props - The element's props
+	 * @param data.node - The existing node to potentially adopt
+	 * @param data.scope - Current scope context
+	 * @returns Array of child nodes to hydrate, or undefined if adoption fails
+	 *
+	 * @example
+	 * ```typescript
+	 * adopt: ({ tag, node }) => {
+	 *   if (node && node.tagName.toLowerCase() === tag) {
+	 *     return Array.from(node.children);
+	 *   }
+	 *   return undefined; // Hydration mismatch
+	 * }
+	 * ```
+	 */
 	adopt(data: {
 		tag: string | symbol;
 		tagName: string;
@@ -565,6 +629,29 @@ export interface RenderAdapter<
 		scope: TScope | undefined;
 	}): Array<TNode> | undefined;
 
+	/**
+	 * Creates or updates a text node.
+	 *
+	 * Called when rendering text content. Should create a new text node or
+	 * update an existing one with the provided value.
+	 *
+	 * @param data.value - The text content to render
+	 * @param data.scope - Current scope context
+	 * @param data.oldNode - Previous text node to potentially reuse
+	 * @param data.hydrationNodes - Nodes available during hydration
+	 * @returns A text node containing the given value
+	 *
+	 * @example
+	 * ```typescript
+	 * text: ({ value, oldNode }) => {
+	 *   if (oldNode && oldNode.text !== value) {
+	 *     oldNode.text = value;
+	 *     return oldNode;
+	 *   }
+	 *   return new TextNode(value);
+	 * }
+	 * ```
+	 */
 	text(data: {
 		value: string;
 		scope: TScope | undefined;
@@ -572,6 +659,29 @@ export interface RenderAdapter<
 		hydrationNodes: Array<TNode> | undefined;
 	}): TNode;
 
+	/**
+	 * Computes scope context for child elements.
+	 *
+	 * Called to determine what scope context should be passed to child elements.
+	 * The scope can be used to pass rendering context like theme, coordinate systems,
+	 * or namespaces down the component tree.
+	 *
+	 * @param data.tag - The element tag
+	 * @param data.tagName - String representation of the tag
+	 * @param data.props - The element's props
+	 * @param data.scope - Current scope context
+	 * @returns New scope for children, or undefined to inherit current scope
+	 *
+	 * @example
+	 * ```typescript
+	 * scope: ({ tag, props, scope }) => {
+	 *   if (tag === "svg") {
+	 *     return { ...scope, namespace: "http://www.w3.org/2000/svg" };
+	 *   }
+	 *   return scope;
+	 * }
+	 * ```
+	 */
 	scope(data: {
 		tag: string | symbol;
 		tagName: string;
@@ -579,12 +689,67 @@ export interface RenderAdapter<
 		scope: TScope | undefined;
 	}): TScope | undefined;
 
+	/**
+	 * Handles raw values (strings or nodes) that bypass normal element processing.
+	 *
+	 * Called when rendering Raw elements or other direct node insertions.
+	 * Should convert string values to appropriate nodes for your environment.
+	 *
+	 * @param data.value - Raw string or node value to render
+	 * @param data.scope - Current scope context
+	 * @param data.hydrationNodes - Nodes available during hydration
+	 * @returns ElementValue that can be handled by arrange()
+	 *
+	 * @example
+	 * ```typescript
+	 * raw: ({ value, scope }) => {
+	 *   if (typeof value === "string") {
+	 *     const container = new Container();
+	 *     container.innerHTML = value;
+	 *     return Array.from(container.children);
+	 *   }
+	 *   return value;
+	 * }
+	 * ```
+	 */
 	raw(data: {
 		value: string | TNode;
 		scope: TScope | undefined;
 		hydrationNodes: Array<TNode> | undefined;
 	}): ElementValue<TNode>;
 
+	/**
+	 * Updates a node's properties.
+	 *
+	 * Called when element props change. Should efficiently update only the
+	 * properties that have changed. This is where you implement prop-to-attribute
+	 * mapping, event listener binding, and other property synchronization.
+	 *
+	 * @param data.tag - The element tag
+	 * @param data.tagName - String representation of the tag
+	 * @param data.node - The node to update
+	 * @param data.props - New props object
+	 * @param data.oldProps - Previous props object (undefined for initial render)
+	 * @param data.scope - Current scope context
+	 * @param data.copyProps - Props to skip (used for copying between renderers)
+	 * @param data.isHydrating - Whether currently hydrating
+	 * @param data.quietProps - Props to not warn about during hydration
+	 *
+	 * @example
+	 * ```typescript
+	 * patch: ({ node, props, oldProps }) => {
+	 *   for (const [key, value] of Object.entries(props)) {
+	 *     if (oldProps?.[key] !== value) {
+	 *       if (key.startsWith("on")) {
+	 *         node.addEventListener(key.slice(2), value);
+	 *       } else {
+	 *         node[key] = value;
+	 *       }
+	 *     }
+	 *   }
+	 * }
+	 * ```
+	 */
 	patch(data: {
 		tag: string | symbol;
 		tagName: string;
@@ -597,6 +762,32 @@ export interface RenderAdapter<
 		quietProps: Set<string> | undefined;
 	}): void;
 
+	/**
+	 * Arranges child nodes within their parent.
+	 *
+	 * Called after child elements are rendered to organize them within their
+	 * parent node. Should efficiently insert, move, or remove child nodes to
+	 * match the provided children array.
+	 *
+	 * @param data.tag - The parent element tag
+	 * @param data.tagName - String representation of the tag
+	 * @param data.node - The parent node
+	 * @param data.props - The parent element's props
+	 * @param data.children - Array of child nodes in correct order
+	 * @param data.oldProps - Previous props (for reference)
+	 *
+	 * @example
+	 * ```typescript
+	 * arrange: ({ node, children }) => {
+	 *   // Remove existing children
+	 *   node.removeChildren();
+	 *   // Add new children in order
+	 *   for (const child of children) {
+	 *     node.addChild(child);
+	 *   }
+	 * }
+	 * ```
+	 */
 	arrange(data: {
 		tag: string | symbol;
 		tagName: string;
@@ -606,10 +797,71 @@ export interface RenderAdapter<
 		oldProps: Record<string, any> | undefined;
 	}): void;
 
+	/**
+	 * Removes a node from its parent.
+	 *
+	 * Called when an element is being unmounted. Should clean up the node
+	 * and remove it from its parent if appropriate.
+	 *
+	 * @param data.node - The node to remove
+	 * @param data.parentNode - The parent node
+	 * @param data.isNested - Whether this is a nested removal (child of removed element)
+	 *
+	 * @example
+	 * ```typescript
+	 * remove: ({ node, parentNode, isNested }) => {
+	 *   // Clean up event listeners, resources, etc.
+	 *   node.cleanup?.();
+	 *   // Remove from parent unless it's a nested removal
+	 *   if (!isNested && parentNode.contains(node)) {
+	 *     parentNode.removeChild(node);
+	 *   }
+	 * }
+	 * ```
+	 */
 	remove(data: {node: TNode; parentNode: TNode; isNested: boolean}): void;
 
+	/**
+	 * Reads the final rendered value from an ElementValue.
+	 *
+	 * Called to extract the final result from rendered elements. This allows
+	 * you to transform the internal node representation into the public API
+	 * that users of your renderer will see.
+	 *
+	 * @param value - The ElementValue to read (array, single node, or undefined)
+	 * @returns The public representation of the rendered value
+	 *
+	 * @example
+	 * ```typescript
+	 * read: (value) => {
+	 *   if (Array.isArray(value)) {
+	 *     return value.map(node => node.publicAPI);
+	 *   }
+	 *   return value?.publicAPI;
+	 * }
+	 * ```
+	 */
 	read(value: ElementValue<TNode>): TResult;
 
+	/**
+	 * Performs final rendering to the root container.
+	 *
+	 * Called after the entire render cycle is complete. This is where you
+	 * trigger the actual rendering/presentation in your target environment
+	 * (e.g., calling render() on a canvas, flushing to the screen, etc.).
+	 *
+	 * @param root - The root container
+	 *
+	 * @example
+	 * ```typescript
+	 * finalize: (root) => {
+	 *   // Trigger actual rendering
+	 *   if (root instanceof PIXIApplication) {
+	 *     root.render();
+	 *   }
+	 * }
+	 * ```
+	 */
 	finalize(root: TRoot): void;
 }
 
