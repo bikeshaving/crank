@@ -346,6 +346,7 @@ const IsInForOfLoop = 1 << 13;
 const IsInForAwaitOfLoop = 1 << 14;
 const NeedsToYield = 1 << 15;
 const PropsAvailable = 1 << 16;
+const DidScheduleInRender = 1 << 17;
 
 function getFlag(ret: Retainer<unknown>, flag: number): boolean {
 	return !!(ret.f & flag);
@@ -2425,6 +2426,12 @@ export class Context<
 		}
 
 		callbacks.add(callback);
+
+		// Set flag to indicate schedule was called during component execution
+		if (getFlag(ctx.ret, IsExecuting)) {
+			setFlag(ctx.ret, DidScheduleInRender);
+			//console.log(new Error("Hello from schedule").stack, `\nsetting DidScheduleInRender to ${getFlag(ctx.ret, DidScheduleInRender)}`);
+		}
 	}
 
 	/**
@@ -2582,7 +2589,19 @@ function diffComponentChildren<TNode, TResult>(
 		console.error(
 			`Component <${getTagName(ctx.ret.el.tag)}> has ${isYield ? "yielded" : "returned"} undefined. If this was intentional, ${isYield ? "yield" : "return"} null instead.`,
 		);
+	} else if (getFlag(ctx.ret, IsInForOfLoop)) {
+		//console.log(new Error("Hello from diffComponentChildren").stack, `\n DidScheduleInRender is ${getFlag(ctx.ret, DidScheduleInRender)}`);
+		if (
+			!getFlag(ctx.ret, NeedsToYield) &&
+			!getFlag(ctx.ret, DidScheduleInRender)
+		) {
+			console.error(
+				`Component <${getTagName(ctx.ret.el.tag)}> yielded/returned more than once in for...of loop`,
+			);
+		}
+
 	}
+	setFlag(ctx.ret, NeedsToYield, false);
 
 	let diff: Promise<undefined> | undefined;
 	try {
@@ -2761,18 +2780,6 @@ function runComponent<TNode, TResult>(
 			throw new Error("Mixed generator component");
 		}
 
-		if (
-			getFlag(ctx.ret, IsInForOfLoop) &&
-			!getFlag(ctx.ret, NeedsToYield) &&
-			!getFlag(ctx.ret, IsUnmounted) &&
-			!getFlag(ctx.ret, IsScheduling)
-		) {
-			console.error(
-				`Component <${getTagName(ctx.ret.el.tag)}> yielded/returned more than once in for...of loop`,
-			);
-		}
-
-		setFlag(ctx.ret, NeedsToYield, false);
 		if (iteration.done) {
 			setFlag(ctx.ret, IsSyncGen, false);
 			ctx.iterator = undefined;
@@ -2817,20 +2824,8 @@ function runComponent<TNode, TResult>(
 					if (getFlag(ctx.ret, IsInForAwaitOfLoop)) {
 						// We have entered a for await...of loop, so we start pulling
 						pullComponent(ctx, iteration);
-					} else {
-						if (
-							getFlag(ctx.ret, IsInForOfLoop) &&
-							!getFlag(ctx.ret, NeedsToYield) &&
-							!getFlag(ctx.ret, IsUnmounted) &&
-							!getFlag(ctx.ret, IsScheduling)
-						) {
-							console.error(
-								`Component <${getTagName(ctx.ret.el.tag)}> yielded/returned more than once in for...of loop`,
-							);
-						}
 					}
 
-					setFlag(ctx.ret, NeedsToYield, false);
 					if (iteration.done) {
 						setFlag(ctx.ret, IsAsyncGen, false);
 						ctx.iterator = undefined;
@@ -3135,7 +3130,6 @@ function commitComponent<TNode>(
 	let schedulePromises1: Array<PromiseLike<unknown>> | undefined;
 	if (callbacks) {
 		scheduleMap.delete(ctx);
-		// TODO: think about error handling for schedule callbacks
 		setFlag(ctx.ret, IsScheduling);
 		const result = ctx.adapter.read(unwrap(values));
 		for (const callback of callbacks) {
@@ -3145,9 +3139,16 @@ function commitComponent<TNode>(
 			}
 		}
 
-		if (schedulePromises1 && !getFlag(ctx.ret, DidCommit)) {
+		if (schedulePromises1) {
 			const scheduleCallbacksP = Promise.all(schedulePromises1).then(() => {
 				setFlag(ctx.ret, IsScheduling, false);
+				if (!wasScheduling) {
+					setFlag(ctx.ret, DidScheduleInRender, false);
+				}
+				if (getFlag(ctx.ret, DidCommit)) {
+					return;
+				}
+
 				propagateComponent(ctx);
 				if (ctx.ret.fallback) {
 					unmount(ctx.adapter, ctx.host, ctx.parent, ctx.ret.fallback, false);
@@ -3156,21 +3157,39 @@ function commitComponent<TNode>(
 				ctx.ret.fallback = undefined;
 			});
 
-			let onAbort!: () => void;
-			const scheduleP = safeRace([
-				scheduleCallbacksP,
-				new Promise<void>((resolve) => (onAbort = resolve)),
-			]).finally(() => {
-				ctx.schedule = undefined;
-			});
+			if (!getFlag(ctx.ret, DidCommit)) {
+				let onAbort!: () => void;
+				const scheduleP = safeRace([
+					scheduleCallbacksP,
+					new Promise<void>((resolve) => (onAbort = resolve)),
+				]).finally(() => {
+					ctx.schedule = undefined;
+				});
 
-			ctx.schedule = {promise: scheduleP, onAbort};
-			schedulePromises.push(scheduleP);
+				ctx.schedule = {promise: scheduleP, onAbort};
+				schedulePromises.push(scheduleP);
+			} else {
+				setFlag(ctx.ret, IsScheduling, wasScheduling);
+			}
 		} else {
 			setFlag(ctx.ret, IsScheduling, wasScheduling);
+			if (!wasScheduling) {
+				setFlag(ctx.ret, DidScheduleInRender, false);
+			}
+			//console.log(
+			//	new Error("commitComponent case 1").stack,
+			//	`\n DidScheduleInRender is ${getFlag(ctx.ret, DidScheduleInRender)}, wasScheduling: ${wasScheduling}`
+			//);
 		}
 	} else {
 		setFlag(ctx.ret, IsScheduling, wasScheduling);
+		if (!wasScheduling) {
+			setFlag(ctx.ret, DidScheduleInRender, false);
+		}
+		//console.log(
+		//	new Error("commitComponent case 2").stack,
+		//	`\n DidScheduleInRender is ${getFlag(ctx.ret, DidScheduleInRender)}, wasScheduling: ${wasScheduling}`
+		//);
 	}
 
 	if (!getFlag(ctx.ret, IsScheduling)) {
