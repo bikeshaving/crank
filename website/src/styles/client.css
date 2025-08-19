@@ -4,13 +4,13 @@
 :root {
 	--bg-color: #0a0e1f;
 	--text-color: #f5f9ff;
-	--highlight-color: #dbb368;
+	--highlight-color: #daa520;
 }
 
 .color-scheme-light {
 	--bg-color: #e7f4f5;
 	--text-color: #0a0e1f;
-	--highlight-color: #DAA520;
+	--highlight-color: #daa520;
 }
 
 .blur-background {
@@ -100,7 +100,7 @@ h1, h2, h3 {
 	color: var(--highlight-color);
 	text-decoration: underline;
 	text-decoration-thickness: 1px;
-	text-underline-offset: 0.3em;
+	text-underline-offset: 0.1em;
 }
 
 blockquote {

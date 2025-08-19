@@ -2,20 +2,20 @@
 title: Custom Renderers
 ---
 
-# Custom Renderers
-
 Crank's custom renderer API allows you to render components to any target
 environment beyond the DOM. Whether you're building games with Canvas/WebGL,
-creating terminal UIs, generating images, or interfacing with any other
-graphics system, Crank's `RenderAdapter` interface provides the foundation.
+creating terminal UIs, generating images, building emails, or interfacing with
+any other graphics system, Crank's `RenderAdapter` interface provides the
+foundation.
 
 ## Overview
 
 A custom renderer consists of two main parts:
 
-1. **RenderAdapter** - Defines how elements map to your target environment
-2. **Renderer class** - Orchestrates the rendering process and manages the
-   component tree
+1. **RenderAdapter** - A set of functions which determine how elements map to
+   your target environment
+2. **Renderer() class** - An class which you subclass which orchestrates the
+   rendering process and manages the component tree
 
 ```typescript
 import {Renderer, type RenderAdapter} from "@b9g/crank";
@@ -36,13 +36,21 @@ export class MyRenderer extends Renderer<MyNode, MyScope, MyRoot> {
 export const renderer = new MyRenderer();
 ```
 
+A module which implements a custom renderer should by convention export an
+adapter, the subclass, and an instance of the subclass for convenience.
+
 ## RenderAdapter Interface
 
-The `RenderAdapter` interface defines how Crank elements are transformed into
-nodes in your target environment. Each method handles a specific part of the
-element lifecycle:
+The `RenderAdapter` interface defines how Crank elements are turned into nodes
+in your target environment. Each method handles a specific part of the element
+lifecycle.
 
 ### Type Parameters
+
+It’s highly recommended to use TypeScript to write a custom renderer, as this
+will help you understand the types of values which are passed to your
+RenderAdapter methods. The `Renderer` class takes the following type
+parameters.
 
 - `TNode` - The type representing nodes in your target environment.
 - `TScope` - Context data passed down the component tree (e.g., coordinate
@@ -53,7 +61,6 @@ element lifecycle:
   `ElementValue<TNode>`).
 
 ### Core Methods
-
 #### `create(data): TNode`
 Creates a new node when an element is rendered for the first time.
 
@@ -77,7 +84,6 @@ create({tag, props, scope}) {
 - `scope` - Current scope context
 
 #### `patch(data): void`
-
 Updates a node's properties when props change. This is where you implement
 prop-to-attribute mapping, event listener binding, and property
 synchronization.
@@ -107,12 +113,16 @@ patch: ({node, props, oldProps}) {
 - `oldProps` - Previous props (undefined on first render)
 - `tag` Element tag (string or symbol)
 - `scope` Current scope context
-- `copyProps`
-- `isHydrating` Whether
-- `quietProps`
+- `copyProps` A set of props which should not be updated because the user has
+  provided a copy with meta-prop syntax.
+- `isHydrating` Whether you are currently hydrating
+- `quietProps` A set of props which should not cause hydration warnings because
+  the user has provided a hydrate with meta-prop syntax.
 
 #### `arrange(data): void`
-Organizes child nodes within their parent after child elements are rendered. The remove method handles the removal of nodes, so this method is primarily
+Organizes child nodes within their parent after child elements are rendered.
+The remove method handles the removal of nodes, so this method is primarily
+about re-ordering existing nodes in the tree.
 
 ```typescript
 arrange({node, children}) {
@@ -143,23 +153,6 @@ remove({node, parentNode, isNested}) => {
 }
 ```
 
-#### `scope(data): TScope | undefined`
-Computes scope context for child elements. Useful for passing coordinate
-systems, themes, or namespaces down the tree. This method is only called once
-when elements are created.
-
-```typescript
-scope({tag, props, scope}) => {
-  if (tag === "viewport") {
-    return {
-      ...scope,
-      transform: new Transform(props.x, props.y, props.scale)
-    };
-  }
-  return scope;
-}
-```
-
 #### `text(data): TNode`
 Creates or updates text nodes.
 
@@ -186,13 +179,36 @@ raw: ({value, scope}) => {
 }
 ```
 
+**Parameters:**
+- `node` - The node which has been removed
+- `parentNode` - The parent node which this node is being removed from
+- `isNested` - Whether this removal is nested in another removal.
+  Depending on your target environment, you may only need to remove the
+  top-level node from its parent and leave the remaining nodes untouched.
+
 #### `adopt(data): Array<TNode> | undefined`
 
 Adopts existing nodes during hydration (for server-side rendering or state
 restoration).
 
-#### `read(value): TResult`
+#### `scope(data): TScope | undefined`
+Computes scope context for child elements. Useful for passing coordinate
+systems, themes, or namespaces down the tree. This method is only called once
+when elements are created.
 
+```typescript
+scope({tag, props, scope}) => {
+  if (tag === "viewport") {
+    return {
+      ...scope,
+      transform: new Transform(props.x, props.y, props.scale)
+    };
+  }
+  return scope;
+}
+```
+
+#### `read(value): TResult`
 Transforms the internal node representation into the public API.
 ```typescript
 read: (value) => {
@@ -204,7 +220,6 @@ read: (value) => {
 ```
 
 #### `finalize(root): void`
-
 Performs final rendering operations (e.g., triggering a render pass).
 ```typescript
 finalize: (root) => {
@@ -214,10 +229,11 @@ finalize: (root) => {
 }
 ```
 
+<!--
 ## Complete Example: Canvas Renderer
 Here's a complete example of a custom renderer for HTML5 Canvas:
 
-```typescript
+```tsx live
 import {Renderer, RenderAdapter, ElementValue } from "@b9g/crank";
 
 // Node types for our canvas environment
@@ -373,6 +389,13 @@ const canvas = document.getElementById("canvas") as HTMLCanvasElement;
 function* CanvasApp() {
   let x = 0;
 
+  let prevFrame;
+  const nextFrame = () => this.refresh(() => {
+    x = (x + 1) % (canvas.width - 100);
+    prevFrame = requestAnimationFrame(nextFrame);
+  });
+
+  prevFrame = requestAnimationFrame(nextFrame);
   for ({} of this) {
     yield (
       <group x={x} y={50}>
@@ -382,18 +405,17 @@ function* CanvasApp() {
         </text>
       </group>
     );
-
-    x = (x + 1) % (canvas.width - 100);
-    yield; // Pause for next frame
   }
+
+  cancelAnimationFrame(prevFrame);
 }
 
 // Render with animation
 canvasRenderer.render(<CanvasApp />, canvas);
 ```
+-->
 
 ## JSX Type Definitions
-
 To get proper TypeScript support, define JSX types for your custom elements:
 
 ```typescript
@@ -439,15 +461,13 @@ function* PixiApplication({children, ...props}) {
   document.body.appendChild(app.view);
 
   for ({children, ...props} of this) {
-    // Render children with Pixi renderer
-    pixiRenderer.render(children, app.stage);
-    yield <div>Pixi app running...</div>; // DOM fallback
+    pixiRenderer.render(children, app.stage, this);
   }
 }
 ```
 
-### Cross-Renderer Communication
-Use context and refs to communicate between renderers:
+The third parameter to `render()` allows you to connect the contexts of your
+child renderer with your parent renderer.
 
 ```typescript
 function* GameUI() {
@@ -472,15 +492,3 @@ function* GameUI() {
   }
 }
 ```
-
-## Conclusion
-Crank's custom renderer API opens up endless possibilities for creating UIs in
-any environment. By implementing the `RenderAdapter` interface, you can bring
-Crank's powerful component model, async support, and developer experience to
-any rendering target.
-
-The key is understanding how each adapter method fits into the overall
-rendering lifecycle and implementing them efficiently for your specific use
-case. Whether you're building games, data visualizations, terminal
-applications, or entirely new kinds of interfaces, Crank provides the
-foundation to make it happen.
