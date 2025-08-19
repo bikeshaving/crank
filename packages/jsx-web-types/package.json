@@ -1,0 +1,57 @@
+{
+  "name": "jsx-web-types",
+  "version": "0.1.0",
+  "description": "Comprehensive TypeScript types for JSX web platform elements (HTML, SVG, MathML)",
+  "types": "src/jsx-web.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/jsx-web.d.ts"
+    }
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "bun run prebuild && bun run scripts/generate.ts",
+    "prebuild": "bun run parse-microdata && bun run parse-rdfa",
+    "parse-microdata": "bun scripts/parse-microdata-mdn.ts",
+    "parse-rdfa": "bun scripts/parse-rdfa-w3c.ts",
+    "test": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx --fix"
+  },
+  "keywords": [
+    "jsx",
+    "typescript",
+    "html",
+    "svg",
+    "mathml",
+    "dom",
+    "web",
+    "types"
+  ],
+  "author": "Crank.js Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@mdn/browser-compat-data": "^5.3.26",
+    "@types/bun": "^1.2.20",
+    "@typescript-eslint/eslint-plugin": "^8.29.1",
+    "@typescript-eslint/parser": "^8.29.1",
+    "aria-data": "^1.0.0",
+    "cheerio": "^1.1.2",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.6",
+    "prettier": "^3.6.2",
+    "ts-morph": "^26.0.0",
+    "typescript": "^5.9.2"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.7.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bikeshaving/crank.git",
+    "directory": "packages/jsx-web-types"
+  }
+}

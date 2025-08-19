@@ -1,0 +1,50 @@
+{
+  "source": "W3C RDFa Core 1.1 Specification",
+  "url": "https://www.w3.org/TR/rdfa-core/",
+  "attributes": {
+    "about": {
+      "purpose": "a SafeCURIEorCURIEorIRI, used for stating what the\n          data is about (a 'subject' in RDF terminology);",
+      "globalAttribute": true
+    },
+    "content": {
+      "purpose": "a CDATA string, for supplying machine-readable content\n          for a literal (a 'literal object', in RDF terminology);",
+      "globalAttribute": true
+    },
+    "datatype": {
+      "purpose": "a TERMorCURIEorAbsIRI representing a datatype, to\n          express the datatype of a literal;",
+      "globalAttribute": true
+    },
+    "inlist": {
+      "purpose": "An attribute used to indicate that the object\n          associated with a rel or property\n          attribute on the same element is to be added to the list for that\n          predicate. The value of this attribute MUST be ignored.\n          Presence of this attribute causes a list to be created if it does not already exist.",
+      "globalAttribute": true
+    },
+    "prefix": {
+      "purpose": "a white space separated list of prefix-name IRI pairs of the form\n          NCName ':' ' '+ xsd:anyURI",
+      "globalAttribute": true
+    },
+    "property": {
+      "purpose": "a white space separated list of TERMorCURIEorAbsIRIs,\n          used for expressing relationships between a subject and either a resource\n          object if given or some literal\n          text (also a 'predicate');",
+      "globalAttribute": true
+    },
+    "rel": {
+      "purpose": "a white space separated list of TERMorCURIEorAbsIRIs,\n          used for expressing relationships between two resources ('predicates'\n          in RDF terminology);",
+      "globalAttribute": true
+    },
+    "resource": {
+      "purpose": "a SafeCURIEorCURIEorIRI for expressing the partner\n          resource of a relationship that is not intended to be navigable (e.g.,\n          a 'clickable' link) (also an 'object');",
+      "globalAttribute": true
+    },
+    "rev": {
+      "purpose": "a white space separated list of TERMorCURIEorAbsIRIs,\n          used for expressing reverse relationships between two resources (also\n          'predicates');",
+      "globalAttribute": true
+    },
+    "typeof": {
+      "purpose": "a white space separated list of TERMorCURIEorAbsIRIs\n          that indicate the RDF type(s) to associate with a subject;",
+      "globalAttribute": true
+    },
+    "vocab": {
+      "purpose": "an IRI that defines the mapping to use when a TERM\n          is referenced in an attribute value. See General\n            Use of Terms in Attributes and the section\n            on Vocabulary Expansion.",
+      "globalAttribute": true
+    }
+  }
+}
