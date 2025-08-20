@@ -10,7 +10,7 @@ I was pleasantly surprised by the warm reception to Crank back when I first rele
 
 Nevertheless, I’ve continued to find myself happy to work on Crank over the years, performing both basic and advanced maintenance tasks like ironing out embarrassing bugs, iterating on API design, and improving its runtime performance. However, I found the hardest task not to be technical but social: how do I convince developers to take the big step of adopting a new framework for their applications?
 
-One of the pitches I’ve tried is that Crank is the most “Just JavaScript” framework out there. Components are functions, including async and generator functions, so you can await promises directly in components, and define state as local variables. Intuitively, this feels JavaScript-y. I even went through the extra effort of writing a template tag to appease those people who like to make the objection that JSX is not JavaScript. But was this convincing enough on its own?
+One of the pitches I’ve tried is that Crank is the most “Just JavaScript” framework out there. Components are functions, including async and generator functions, so you can await promises directly in components, and define state as local variables. Intuitively, this feels JavaScript-y. I even went through the extra effort of writing a [template tag](https://crank.js.org/guides/jsx-template-tag/) to appease those people who like to make the objection that JSX is not JavaScript. But was this convincing enough on its own?
 
 As I’ve used Crank over the years, I realized that I had a better pitch: Crank isn’t “reactive” by any commonly held definition of “reactive,” and could even be further described as a “non-reactive” framework. It’s an unorthodox idea because almost every other web framework advertises itself as reactive, to the extent that frameworks are compared on the basis of their reactive abstractions. Most frameworks today (React, Vue, Svelte, Solid, etc.) are built around reactive primitives: signals, stores, observables, etc. Components create state, and re-render automatically in response to the framework’s chosen reactive abstraction, so much so that to not ship a reactive abstraction is to ship an incomplete framework. So, why would I go through the trouble of writing a non-reactive framework, let alone thinking that this was a selling point? 
 
@@ -193,10 +193,9 @@ Again, consider Crank’s alternative. Crank does not care whether you make upda
 
 ### Infinite Loops and Svelte
 
-When you have a case of reactivity brain, or become reactivity-coded, or jump on the reactivity train, you start to develop a totalizing view of programming, like when functional programmers start seeing everything as monads. All the state in your programs are reactive, derived state is also reactive, and you read the reactive state using “effects” which re-run automagically whenever you update them. Of course, the framework’s actual rendering of the DOM is just an effect, and you can write your effects to do other things like calling third-party libraries, or making updates to an imperative canvas.
+When you have a case of reactivity brain, or become reactivity-coded, or jump on the reactivity train, you start to develop a totalizing view of programming, like when functional programmers start seeing everything as monads. All the state in your programs is reactive, derived state is also reactive, and you read the reactive state using “effects” which re-run automagically whenever you update them. Of course, the framework’s actual rendering of the DOM is just one effect among many, and you can write your effects to do other things like calling third-party libraries, or making updates to an imperative canvas.
 
-Svelte had in its earlier versions (v4 and less) what I thought was the Crank-iest reactivity API which was that the Svelte compiler instrumented assignments to state, and made these assignments trigger re-renders. No nested state updates, no runtime reactive abstraction, just assignments = update.
-
+Svelte had in its earlier versions (v4 and less) what I thought was the Crank-iest reactivity API, which was that the Svelte compiler instrumented assignments to state, and made these assignments trigger re-renders. No nested state updates, no runtime reactive abstraction, just assignments = update.
 
 ```svelte
 <script>
@@ -301,11 +300,11 @@ The thing I want to focus on is that any reactive abstraction which uses effects
 </form>
 ```
 
-This component immediately blows the stack because we’re both reading to and writing to the same `$state()` rune in an `effect()` rune callback, so the effect keeps on firing.
+This component immediately blows the stack because we’re both reading to and writing to the same `$state()` rune in an `$effect()` rune callback, so the effect keeps on firing.
 
 [Reactivity proponents often wax poetic about their reactivity making programming like using spreadsheets](https://www.youtube.com/watch?v=AdNJ3fydeao), where each cell can update and cause other computed cells to update, but this just betrays the fact that these programmers have never had to update an excel file in anger, filled with so many computed fields that the application just dies when you open the file. All `effect()` callback APIs suffer from the possibility that a write causes a cascading read, and therefore an infinite loop. Just like Excel, Svelte provides sophisticated heuristics and tricks to prevent infinite loops for most cases, but they can still happen.
 
-The solution in Svelte is to not use the `$effect()`, be careful about updating random variables in `$effect()`, or use Svelte's special escape hatch to mark a read of a rune as being non-reactive with the `untrack()` function.
+The solution in Svelte is to not use the `$effect()`, be careful about updating random variables in `$effect()`, or use Svelte's special escape hatch to mark a read of a rune as being non-reactive: the `untrack()` function.
 
 ```js
 // ✅ Must use untrack() to break the reactive chain
@@ -319,11 +318,11 @@ $effect(() => {
 });
 ```
 
-Again, let's apply the bug severity heuristic. Are these bugs easy to spot? Usually you’ll blow the stack immediately, but there are still edge-cases in larger components. And because the `$effect()` rune colors the execution of all code which runs in it, you have to make sure that not only the code within the effect callback itself doesn’t update runes but also all nested function calls as well. This coloring of effect code is invisible to the user and requires careful tracing of logic, or defensive calls to `untrack()`, which might make it so that the effect doesn’t fire again when you want it to.
+Again, let's apply the bug severity heuristic. Are these bugs easy to spot? Usually you’ll blow the stack immediately, but there are still edge-cases in larger components. And because the `$effect()` rune colors the execution of all code which runs in it, you have to make sure that not only the code within the effect callback itself doesn’t touch runes, but also that all nested function calls don’t touch runes as well. This coloring of effect code is invisible to the user and requires careful tracing of logic, or defensive calls to `untrack()`, which might make it so that the effect doesn’t fire again when you want it to.
 
-These infinite loop bugs are also infuriating to fix because debugging when you’re in a reactive abstraction might subtly alter the reactivity. Even innocuous operations like logging different pieces of state can trigger infinite loops if you're not careful. Svelte provides `untrack()` as an escape hatch, but again, needing to opt out of reactivity to avoid bugs reveals the fundamental complexity of the reactive model.
+These infinite loop bugs are also uniquely infuriating to fix because debugging when you’re in a reactive abstraction might subtly alter the reactivity. Even innocuous operations like logging different pieces of state can trigger infinite loops which wouldn’t normally happe if you're not careful to judiciously use `untrack()`. Again, the framework provided escape hatch reveals the fundamental complexity of the reactive model.
 
-In Crank, these performance traps and infinite loops simply don't exist. State is just JavaScript variables. Updates happen when you call `refresh()`. There's no hidden proxy wrapping, no reactive tracking to accidentally trigger, no need for escape hatches like `shallowRef` or `untrack()`. You can definitely still cause infinite loops, but it will likely be your own fault and the error will likely come with a clear stack trace, the infinite loop will never be because of a spreadsheet-like reactive abstraction.
+In Crank, these performance traps and infinite loops simply don't exist. State is just JavaScript variables. Updates happen when you call `refresh()`. There's no hidden proxy wrapping, no reactive tracking to accidentally trigger, no need for escape hatches like `shallowRef` or `untrack()`. You can definitely still cause infinite loops, but it will likely be your own fault and the error will likely come with a clear stack trace. The infinite loop will never be because of a spreadsheet-like reactive abstraction.
 
 The irony is that reactive abstractions promise to eliminate manual update management, yet each framework requires its own set of escape hatches and workarounds. Solid needs `splitProps` and `mergeProps` to safely manipulate props. Vue needs `shallowRef` and `markRaw` to avoid performance cliffs. Svelte needs `untrack()` to prevent infinite loops. These APIs exist precisely because reactivity doesn't fully insulate you from update concerns - it just transforms them into different, often more subtle problems.
 
