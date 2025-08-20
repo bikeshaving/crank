@@ -9,6 +9,7 @@ import {
 import {camelToKebabCase, formatStyleValue} from "./_css.js";
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+const MATHML_NAMESPACE = "http://www.w3.org/1998/Math/MathML";
 
 function isWritableProperty(element: Element, name: string): boolean {
 	// walk up the object's prototype chain to find the owner
@@ -92,6 +93,9 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 			case "svg":
 				xmlns = SVG_NAMESPACE;
 				break;
+			case "math":
+				xmlns = MATHML_NAMESPACE;
+				break;
 		}
 
 		return props.xmlns || xmlns;
@@ -110,6 +114,8 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 			throw new Error(`Unknown tag: ${tagName}`);
 		} else if (tag.toLowerCase() === "svg") {
 			xmlns = SVG_NAMESPACE;
+		} else if (tag.toLowerCase() === "math") {
+			xmlns = MATHML_NAMESPACE;
 		}
 
 		return xmlns
@@ -183,6 +189,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 
 		const element = node as Element;
 		const isSVG = xmlns === SVG_NAMESPACE;
+		const isMathML = xmlns === MATHML_NAMESPACE;
 		for (let name in {...oldProps, ...props}) {
 			let value = props[name];
 			const oldValue = oldProps ? oldProps[name] : undefined;
@@ -391,7 +398,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 								element,
 							);
 						}
-					} else if (!isSVG) {
+					} else if (!isSVG && !isMathML) {
 						if (element.className !== value) {
 							if (isHydrating) {
 								emitHydrationWarning(
@@ -631,7 +638,9 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 			const el =
 				xmlns == null
 					? document.createElement("div")
-					: document.createElementNS(xmlns, "svg");
+					: xmlns === SVG_NAMESPACE
+						? document.createElementNS(xmlns, "svg")
+						: document.createElementNS(xmlns, "math");
 			el.innerHTML = value;
 			nodes = Array.from(el.childNodes);
 		} else {
