@@ -191,7 +191,7 @@ Again, consider the bug severity heuristics. These bugs are hard to spot because
 
 Again, consider Crank’s alternative. Crank does not care whether you make updates to deeply nested state, just that you call `refresh()` afterwards. Again, a reactive abstraction which is meant to “fix” the bug which Crank is susceptible to, leaks and potentially causes the same exact bug in a more subtle manner.
 
-### Infinite Loops and Svelte
+### Effects and Infinite Loops
 
 When you have a case of reactivity brain, or become reactivity-coded, or jump on the reactivity train, you start to develop a totalizing view of programming, like when functional programmers start seeing everything as monads. All the state in your programs is reactive, derived state is also reactive, and you read the reactive state using “effects” which re-run automagically whenever you update them. Of course, the framework’s actual rendering of the DOM is just one effect among many, and you can write your effects to do other things like calling third-party libraries, or making updates to an imperative canvas.
 
