@@ -54,7 +54,7 @@ function *Timer() {
 renderer.render(<Timer />, document.body);
 ```
 
-This was so easy it became a last-minute addition to the 0.7 API. Note that you no longer have to wrap `for...of` loops in a `try`/`finally`, another subtle quality of life improvement made in [0.5](https://github.com/bikeshaving/crank/blob/main/CHANGELOG.md#050---2023-02-01).
+This was so easy it became a last-minute addition to the 0.7 API. Note that you no longer have to wrap `for...of` loops in a `try`/`finally`, another subtle quality of life improvement made in 0.5.
 
 By having the convention where you put state changes in `refresh()` callbacks, you both make it impossible to forget to call `refresh()` and declaratively identify the code in the callback as intending to cause a re-render. And the API is short enough that you can usually wrap entire event callbacks in a `refresh()` without adding a line of indentation. This is one of those ideas that I wish I came up with sooner; as a matter of fact, it came to me by way of Claude Code, who hallucinated the API while I was berating it for generating the nastiest React-hook hallucinations in some Crank component. I’m grateful to Claude for imagining the `refresh()` callback API, and embarrassed that I didn’t discover it sooner.
 
