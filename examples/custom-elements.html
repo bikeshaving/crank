@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Crank Custom Elements Example</title>
+    <script type="module">
+        import { createElement, Raw } from "../dist/crank.js";
+        import { createCustomElementClass } from "../dist/custom-elements.js";
+
+        // Define a Counter component
+        function Counter({ count, ref }) {
+            const num = parseInt(count || "0", 10);
+            let customElement = null;
+
+            // Expose API methods via ref with explicit element parameter
+            ref?.((element) => {
+                customElement = element;
+                return {
+                    increment() {
+                        element.setAttribute("count", (num + 1).toString());
+                    },
+                    decrement() {
+                        element.setAttribute("count", Math.max(0, num - 1).toString());
+                    },
+                    reset() {
+                        element.setAttribute("count", "0");
+                    },
+                    get value() {
+                        return num;
+                    },
+                    // Custom event property for demonstration
+                    oncustomcount: null
+                };
+            });
+
+            return createElement("div", { style: "padding: 20px; border: 1px solid #ccc; margin: 10px;" },
+                createElement("h3", null, "Counter Component"),
+                createElement("p", null, `Count: ${num}`),
+                createElement("button", {
+                    onclick: () => customElement?.increment()
+                }, "Increment"),
+                createElement("button", {
+                    onclick: () => customElement?.decrement(),
+                    style: "margin-left: 10px;"
+                }, "Decrement"),
+                createElement("button", {
+                    onclick: () => customElement?.reset(),
+                    style: "margin-left: 10px;"
+                }, "Reset")
+            );
+        }
+
+        // Define a Card component with shadow DOM and slots
+        function Card({ title, header, children, footer, ref }) {
+            ref?.((element) => ({
+                updateTitle(newTitle) {
+                    element.setAttribute("title", newTitle);
+                },
+                // Custom event for card interactions
+                oncardaction: null
+            }));
+
+            return createElement("div", { style: "border: 2px solid #333; border-radius: 8px; padding: 16px; margin: 10px;" },
+                createElement("h2", { style: "margin-top: 0; color: #333;" }, title || "Card Title"),
+                header ? createElement("div", { style: "background: #f0f0f0; padding: 8px; margin: 8px 0;" }, 
+                    createElement(Raw, { value: header })) : null,
+                createElement("div", { style: "border-top: 1px solid #eee; padding-top: 12px;" }, 
+                    createElement(Raw, { value: children })),
+                footer ? createElement("div", { style: "background: #f0f0f0; padding: 8px; margin: 8px 0 0 0; font-size: 0.9em;" }, 
+                    createElement(Raw, { value: footer })) : null
+            );
+        }
+
+        // Create custom element classes
+        const CounterElement = createCustomElementClass(Counter, {
+            observedAttributes: ["count"]
+        });
+
+        const CardElement = createCustomElementClass(Card, {
+            observedAttributes: ["title"],
+            shadowDOM: "open"
+        });
+
+        // Register custom elements
+        customElements.define("crank-counter", CounterElement);
+        customElements.define("crank-card", CardElement);
+
+        // Demonstrate programmatic API access
+        document.addEventListener("DOMContentLoaded", () => {
+            const counter = document.querySelector("crank-counter");
+            const card = document.querySelector("crank-card");
+            
+            // Add external control buttons
+            document.getElementById("external-increment").onclick = () => counter.increment();
+            document.getElementById("external-value").onclick = () => alert(`Counter value: ${counter.value}`);
+            document.getElementById("update-card-title").onclick = () => card.updateTitle("Updated Title!");
+            
+            // Demonstrate custom event properties
+            counter.oncustomcount = (event) => {
+                console.log("Custom count event:", event.detail);
+            };
+            
+            card.oncardaction = (event) => {
+                console.log("Card action:", event.detail);
+            };
+            
+            // Test firing custom events
+            document.getElementById("fire-custom-event").onclick = () => {
+                counter.dispatchEvent(new CustomEvent('customcount', { detail: { value: counter.value } }));
+                card.dispatchEvent(new CustomEvent('cardaction', { detail: { action: 'test' } }));
+            };
+        });
+    </script>
+</head>
+<body>
+    <h1>Crank Custom Elements Example</h1>
+    
+    <h2>Light DOM Counter</h2>
+    <crank-counter count="5"></crank-counter>
+    
+    <h2>Shadow DOM Card with Slotted Content</h2>
+    <crank-card title="My Card">
+        <div slot="header">
+            <strong>🎯 Card Header</strong>
+            <p>This header content uses the "header" slot!</p>
+        </div>
+        
+        <p>This is the default slot content (no slot attribute).</p>
+        <ul>
+            <li>Light DOM content</li>
+            <li>Projected into shadow DOM</li>
+            <li>Via slot-based props and Raw elements</li>
+        </ul>
+        
+        <div slot="footer">
+            <em>Card footer - using the "footer" slot</em>
+        </div>
+    </crank-card>
+
+    <h2>External API Control</h2>
+    <button id="external-increment">Increment Counter Externally</button>
+    <button id="external-value">Get Counter Value</button>
+    <button id="update-card-title">Update Card Title</button>
+    <button id="fire-custom-event">Fire Custom Events</button>
+</body>
+</html>

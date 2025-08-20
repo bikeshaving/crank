@@ -48,6 +48,14 @@
       "import": "./dist/crank.js",
       "require": "./dist/crank.cjs"
     },
+    "./custom-elements": {
+      "import": "./dist/custom-elements.js",
+      "require": "./dist/custom-elements.cjs"
+    },
+    "./custom-elements.js": {
+      "import": "./dist/custom-elements.js",
+      "require": "./dist/custom-elements.cjs"
+    },
     "./dom": {
       "import": "./dist/dom.js",
       "require": "./dist/dom.cjs"
