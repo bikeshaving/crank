@@ -41,7 +41,7 @@ async function loadExamples() {
 		"todomvc.js": "Todo MVC",
 		"hackernews.js": "Hacker News",
 		"animated-letters.js": "Animated Letters",
-		"mathml": "MathML",
+		mathml: "MathML",
 		"wizard.js": "Form Wizard",
 		"tetris.ts": "Tetris",
 		"xstate-calculator.tsx": "XState Calculator",
