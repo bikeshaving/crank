@@ -190,8 +190,8 @@ const app = (
 		<div class="math-example">
 			<h3>Browser Support</h3>
 			<p>
-				MathML is natively supported in Firefox and Safari. Chrome requires
-				enabling experimental web platform features.
+				MathML is natively supported in Firefox, Safari, and Chrome 109+. Older
+				browsers may require polyfills like MathJax.
 			</p>
 		</div>
 	</div>

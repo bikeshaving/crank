@@ -18,6 +18,10 @@ test("simple math element", () => {
 	renderer.render(<math>Hello world</math>, document.body);
 	const mathElement = document.body.firstChild as Element;
 	Assert.ok(mathElement instanceof Element);
+	// Check if MathMLElement is available in this environment
+	if (typeof MathMLElement !== "undefined") {
+		Assert.ok(mathElement instanceof MathMLElement);
+	}
 	Assert.is(mathElement.tagName, "math");
 	Assert.is(mathElement.namespaceURI, "http://www.w3.org/1998/Math/MathML");
 	Assert.ok(mathElement.firstChild instanceof Text);
@@ -58,17 +62,26 @@ test("quadratic formula", () => {
 
 	const mathRoot = document.body.firstChild as Element;
 	Assert.ok(mathRoot instanceof Element);
+	if (typeof MathMLElement !== "undefined") {
+		Assert.ok(mathRoot instanceof MathMLElement);
+	}
 	Assert.is(mathRoot.tagName, "math");
 	Assert.is(mathRoot.namespaceURI, "http://www.w3.org/1998/Math/MathML");
 
 	// Check that child elements are also in MathML namespace
 	const mrow = mathRoot.firstChild as Element;
 	Assert.ok(mrow instanceof Element);
+	if (typeof MathMLElement !== "undefined") {
+		Assert.ok(mrow instanceof MathMLElement);
+	}
 	Assert.is(mrow.tagName, "mrow");
 	Assert.is(mrow.namespaceURI, "http://www.w3.org/1998/Math/MathML");
 
 	const mi = mrow.firstChild as Element;
 	Assert.ok(mi instanceof Element);
+	if (typeof MathMLElement !== "undefined") {
+		Assert.ok(mi instanceof MathMLElement);
+	}
 	Assert.is(mi.tagName, "mi");
 	Assert.is(mi.namespaceURI, "http://www.w3.org/1998/Math/MathML");
 	Assert.is(mi.textContent, "x");
