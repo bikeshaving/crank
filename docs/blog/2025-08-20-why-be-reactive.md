@@ -1,6 +1,9 @@
 ---
 title: Why Be Reactive?
-published: false
+description: Reactive frameworks promise automatic UI updates but create subtle bugs and performance traps. Crank's explicit refresh() calls aren't a limitation - they're a superpower for building ambitious web applications.
+publishDate: 2025-08-20
+author: Brian Kim
+authorURL: https://github.com/brainkim
 ---
 
 I was pleasantly surprised by the warm reception to Crank back when I first released it. [A pleasant tweet](https://x.com/Vjeux/status/1250687160237211649) from a React core team member, a rush of GitHub stars, and positive conversations on Reddit and Hacker News. Unfortunately, I squandered the JavaScript hype cycle, and today Crank isn't used very much.
