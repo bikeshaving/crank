@@ -115,16 +115,25 @@ test("mixed content with foreignObject-like behavior", () => {
 
 	const mathRoot = document.body.firstChild as Element;
 	Assert.ok(mathRoot instanceof Element);
+	if (typeof MathMLElement !== "undefined") {
+		Assert.ok(mathRoot instanceof MathMLElement);
+	}
 	Assert.is(mathRoot.namespaceURI, "http://www.w3.org/1998/Math/MathML");
 
 	// Check semantics element
 	const semantics = mathRoot.querySelector("semantics");
 	Assert.ok(semantics instanceof Element);
+	if (typeof MathMLElement !== "undefined") {
+		Assert.ok(semantics instanceof MathMLElement);
+	}
 	Assert.is(semantics.namespaceURI, "http://www.w3.org/1998/Math/MathML");
 
 	// Check annotation-xml element
 	const annotationXml = mathRoot.querySelector("annotation-xml");
 	Assert.ok(annotationXml instanceof Element);
+	if (typeof MathMLElement !== "undefined") {
+		Assert.ok(annotationXml instanceof MathMLElement);
+	}
 	Assert.is(annotationXml.namespaceURI, "http://www.w3.org/1998/Math/MathML");
 });
 
@@ -141,6 +150,9 @@ test("attributes work correctly", () => {
 
 	const mfrac = document.body.firstChild!.firstChild as Element;
 	Assert.ok(mfrac instanceof Element);
+	if (typeof MathMLElement !== "undefined") {
+		Assert.ok(mfrac instanceof MathMLElement);
+	}
 	Assert.is(mfrac.tagName, "mfrac");
 	Assert.is(mfrac.getAttribute("linethickness"), "2px");
 });
@@ -160,14 +172,23 @@ test("class attribute (not className)", () => {
 	const mn = document.body.firstChild!.childNodes[2] as Element;
 
 	Assert.ok(mi instanceof Element);
+	if (typeof MathMLElement !== "undefined") {
+		Assert.ok(mi instanceof MathMLElement);
+	}
 	Assert.is(mi.tagName, "mi");
 	Assert.is(mi.getAttribute("class"), "variable");
 
 	Assert.ok(mo instanceof Element);
+	if (typeof MathMLElement !== "undefined") {
+		Assert.ok(mo instanceof MathMLElement);
+	}
 	Assert.is(mo.tagName, "mo");
 	Assert.is(mo.getAttribute("class"), "operator");
 
 	Assert.ok(mn instanceof Element);
+	if (typeof MathMLElement !== "undefined") {
+		Assert.ok(mn instanceof MathMLElement);
+	}
 	Assert.is(mn.tagName, "mn");
 	Assert.is(mn.getAttribute("class"), "number");
 });
@@ -182,6 +203,9 @@ test("non-string attribute values", () => {
 
 	const mspace = document.body.firstChild!.firstChild as Element;
 	Assert.ok(mspace instanceof Element);
+	if (typeof MathMLElement !== "undefined") {
+		Assert.ok(mspace instanceof MathMLElement);
+	}
 	Assert.is(mspace.tagName, "mspace");
 	Assert.is(mspace.getAttribute("width"), "10");
 	Assert.is(mspace.getAttribute("height"), "20.5");
@@ -200,6 +224,9 @@ test("custom attributes and data attributes", () => {
 
 	const mi = document.body.firstChild!.firstChild as Element;
 	Assert.ok(mi instanceof Element);
+	if (typeof MathMLElement !== "undefined") {
+		Assert.ok(mi instanceof MathMLElement);
+	}
 	Assert.is(mi.getAttribute("data-variable"), "x");
 	Assert.is(mi.getAttribute("customAttr"), "value");
 	Assert.is(mi.textContent, "x");
@@ -227,10 +254,16 @@ test("nested math elements", () => {
 
 	const mathElement = div.childNodes[1] as Element;
 	Assert.ok(mathElement instanceof Element);
+	if (typeof MathMLElement !== "undefined") {
+		Assert.ok(mathElement instanceof MathMLElement);
+	}
 	Assert.is(mathElement.tagName, "math");
 	Assert.is(mathElement.namespaceURI, "http://www.w3.org/1998/Math/MathML");
 
 	const mrow = mathElement.firstChild as Element;
+	if (typeof MathMLElement !== "undefined") {
+		Assert.ok(mrow instanceof MathMLElement);
+	}
 	Assert.is(mrow.namespaceURI, "http://www.w3.org/1998/Math/MathML");
 });
 
