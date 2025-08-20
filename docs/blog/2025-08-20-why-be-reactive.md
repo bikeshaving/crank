@@ -58,7 +58,7 @@ This was so easy it became a last-minute addition to the 0.7 API. Note that you 
 
 By having the convention where you put state changes in `refresh()` callbacks, you both make it impossible to forget to call `refresh()` and declaratively identify the code in the callback as intending to cause a re-render. And the API is short enough that you can usually wrap entire event callbacks in a `refresh()` without adding a line of indentation. This is one of those ideas that I wish I came up with sooner; as a matter of fact, it came to me by way of Claude Code, who hallucinated the API while I was berating it for generating the nastiest React-hook hallucinations in some Crank component. I’m grateful to Claude for imagining the `refresh()` callback API, and embarrassed that I didn’t discover it sooner.
 
-## Bug severity and the pit of success
+## Bug severity analysis
 
 Yet even with the `refresh()` callback API, the objection remains: why tolerate any possibility of forgetting to call `refresh()`? Reactive abstractions promise to eliminate this entire class of bugs by automatically syncing state with the view. But as we'll see, this "solution" creates its own problems.
 
