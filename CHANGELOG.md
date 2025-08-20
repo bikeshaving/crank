@@ -1,4 +1,10 @@
 # Changelog
+## [0.7.1] - 2025-08-20
+### New Features
+- Crank now supports MathML (https://github.com/bikeshaving/crank/pull/308)
+- Crank now supports React-style style objects for props (https://github.com/bikeshaving/crank/pull/301)
+### Bug Fixes
+- Passing `null` to the style prop will no longer throw
 ## [0.7.0] - 2025-08-14
 ### New Features
 - **The `refresh()` method can now take a callback.**
