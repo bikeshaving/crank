@@ -1,0 +1,813 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Crank.js | Why Be Reactive?</title><link rel="shortcut icon" href="/static/favicon.ico"><style>.css-1l1hcps{position:fixed;top:0;left:0;right:0;height:50px;z-index:999;gap:1em;}.css-1n0j5y9{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-box-pack:center;-ms-flex-pack:center;-webkit-justify-content:center;justify-content:center;-webkit-align-items:center;-webkit-box-align:center;-ms-flex-align:center;align-items:center;gap:1em;}.css-1xmwt0h{border-bottom:1px solid var(--text-color);overflow-x:auto;background-color:inherit;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-box-pack:justify;-webkit-justify-content:space-between;justify-content:space-between;gap:1em;}.css-1xmwt0h a{-webkit-text-decoration:none;text-decoration:none;font-weight:bold;}@media screen and (min-width: 800px){.css-1xmwt0h{padding:0 2em;}}.css-1cvb758{max-width:calc(100% - 1px);}.css-1m42aok{overflow-x:auto;max-width:100%;}.css-artqa7{position:relative;min-height:100%;width:100%;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;}.css-84ojsb{display:contents;}.css-1ashatc{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;word-break:break-all;overflow-wrap:anywhere;line-break:anywhere;white-space:pre-wrap;white-space:break-spaces;font-size:16px;}.css-1flouoi{border-bottom:1px dotted #333;}.color-scheme-light .css-1flouoi{border-bottom:1px dotted #ddd;}.css-1nius9d{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;height:100%;}.css-14pt8ki{-webkit-flex:none;-ms-flex:none;flex:none;padding:1em;height:3em;border-bottom:1px solid var(--text-color);}.css-j74n8p{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;padding:1em;-webkit-transition:background-color 0.4s ease-out;transition:background-color 0.4s ease-out;background-color:var(--coldark02);width:100%;}.css-hjkbgb{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;border:none;width:100%;background-color:var(--bg-color);}.css-1mkiuoh{margin:0 auto;padding:2rem 0.4rem;}@media screen and (min-width: 800px){.css-1mkiuoh{margin-left:240px;padding:2rem 1rem;margin-top:50px;}}@media screen and (min-width: 1100px){.css-1mkiuoh{margin-left:20rem;padding:3rem 2rem;}}.css-1mkiuoh p{max-width:800px;}.css-1vm8pxc{max-width:min(100%, 1000px);}.css-1s1lac9{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;font-size:16px;}@media (min-width: 1300px){.css-1s1lac9{-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-align-items:flex-start;-webkit-box-align:flex-start;-ms-flex-align:flex-start;align-items:flex-start;}}.css-18sfz2f{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;width:100%;border:1px solid var(--text-color);margin-top:-1px;margin-right:-1px;}.css-by286k{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;width:100%;border:1px solid var(--text-color);margin-top:-1px;margin-right:-1px;}@media (min-width: 1300px){.css-by286k{max-width:61.8%;}}.css-nuifz8{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;position:-webkit-sticky;position:sticky;top:100px;border:1px solid var(--text-color);margin-top:-1px;min-height:50px;width:100%;}@media screen and (min-width: 1300px){.css-nuifz8{width:30%;}}</style><link href="/static/client-PG5TN3NC.css" rel="stylesheet" type="text/css"><meta property="og:title" content="Crank.js | Why Be Reactive?"><meta property="og:url" content="https:/crank.js.org/blog/why-be-reactive"><meta property="og:description" content="Reactive frameworks promise automatic UI updates but create subtle bugs and performance traps. Crank&#039;s explicit refresh() calls aren&#039;t a limitation - they&#039;re a superpower for building ambitious web applications."></head><body><script>
+	(() => {
+		const colorScheme = sessionStorage.getItem("color-scheme") ||
+			(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+				? "dark" : "light"
+			);
+		if (colorScheme === "dark") {
+			document.body.classList.remove("color-scheme-light");
+		} else {
+			document.body.classList.add("color-scheme-light");
+		}
+	})()</script><div id="navbar-root"><nav class="
+				blur-background
+				css-1l1hcps
+				css-1xmwt0h
+			"><div class="css-1n0j5y9"><div><a class="css-1n0j5y9" style="gap: 0.3em" href="/"><svg style="flex: none;" fill="none" viewBox="-200 -200 400 400" width="1.9em" height="1.9em" xmlns="http://www.w3.org/2000/svg"><defs><mask id="wedge-mask"><rect x="-200" y="-200" width="400" height="400" fill="white"></rect><path stroke="none" fill="black" d="
+							M 0 0
+							L 245.74561328669753 172.07293090531383
+							L 245.74561328669753 -172.07293090531383
+							z
+						"></path></mask></defs><g stroke="none" fill="var(--highlight-color)"><path transform="rotate(0)" d="M 149.39 -16.97 M 149.62 -16.98 M 150.29 -17 M 151.42 -16.97 M 153 -16.85 M 155.02 -16.57 M 157.46 -16.1 M 160.32 -15.39 M 163.56 -14.39 M 167.17 -13.06 M 171.11 -11.35 M 175.36 -9.23 M 179.88 -6.66 M 179.88 6.66 M 175.36 9.23 M 171.11 11.35 M 167.17 13.06 M 163.56 14.39 M 160.32 15.39 M 157.46 16.1 M 155.02 16.57 M 153 16.85 M 151.42 16.97 M 150.29 17 M 149.62 16.98 M 149.39 16.97 A 8 8 0 0 0 144.51 41.5 L 144.73 41.57 L 145.36 41.81 L 146.39 42.27 L 147.8 42.99 L 149.56 44.01 L 151.64 45.38 L 154 47.13 L 156.62 49.29 L 159.44 51.9 L 162.43 54.99 L 165.54 58.58 L 168.73 62.69 L 163.64 74.98 L 158.48 75.64 L 153.74 75.97 L 149.44 76.04 L 145.6 75.89 L 142.22 75.57 L 139.31 75.14 L 136.88 74.63 L 134.91 74.11 L 133.4 73.63 L 132.35 73.22 L 131.73 72.95 L 131.53 72.84 A 8 8 0 0 0 117.63 93.64 L 117.8 93.79 L 118.3 94.25 L 119.07 95.07 L 120.1 96.28 L 121.33 97.9 L 122.73 99.96 L 124.24 102.48 L 125.83 105.48 L 127.44 108.97 L 129.02 112.96 L 130.52 117.47 L 131.9 122.49 L 122.49 131.9 L 117.47 130.52 L 112.96 129.02 L 108.97 127.44 L 105.48 125.83 L 102.48 124.24 L 99.96 122.73 L 97.9 121.33 L 96.28 120.1 L 95.07 119.07 L 94.25 118.3 L 93.79 117.8 L 93.64 117.63 A 8 8 0 0 0 72.84 131.53 L 72.95 131.73 L 73.22 132.35 L 73.63 133.4 L 74.11 134.91 L 74.63 136.88 L 75.14 139.31 L 75.57 142.22 L 75.89 145.6 L 76.04 149.44 L 75.97 153.74 L 75.64 158.48 L 74.98 163.64 L 62.69 168.73 L 58.58 165.54 L 54.99 162.43 L 51.9 159.44 L 49.29 156.62 L 47.13 154 L 45.38 151.64 L 44.01 149.56 L 42.99 147.8 L 42.27 146.39 L 41.81 145.36 L 41.57 144.73 L 41.5 144.51 A 8 8 0 0 0 16.97 149.39 L 16.98 149.62 L 17 150.29 L 16.97 151.42 L 16.85 153 L 16.57 155.02 L 16.1 157.46 L 15.39 160.32 L 14.39 163.56 L 13.06 167.17 L 11.35 171.11 L 9.23 175.36 L 6.66 179.88 L -6.66 179.88 L -9.23 175.36 L -11.35 171.11 L -13.06 167.17 L -14.39 163.56 L -15.39 160.32 L -16.1 157.46 L -16.57 155.02 L -16.85 153 L -16.97 151.42 L -17 150.29 L -16.98 149.62 L -16.97 149.39 A 8 8 0 0 0 -41.5 144.51 L -41.57 144.73 L -41.81 145.36 L -42.27 146.39 L -42.99 147.8 L -44.01 149.56 L -45.38 151.64 L -47.13 154 L -49.29 156.62 L -51.9 159.44 L -54.99 162.43 L -58.58 165.54 L -62.69 168.73 L -74.98 163.64 L -75.64 158.48 L -75.97 153.74 L -76.04 149.44 L -75.89 145.6 L -75.57 142.22 L -75.14 139.31 L -74.63 136.88 L -74.11 134.91 L -73.63 133.4 L -73.22 132.35 L -72.95 131.73 L -72.84 131.53 A 8 8 0 0 0 -93.64 117.63 L -93.79 117.8 L -94.25 118.3 L -95.07 119.07 L -96.28 120.1 L -97.9 121.33 L -99.96 122.73 L -102.48 124.24 L -105.48 125.83 L -108.97 127.44 L -112.96 129.02 L -117.47 130.52 L -122.49 131.9 L -131.9 122.49 L -130.52 117.47 L -129.02 112.96 L -127.44 108.97 L -125.83 105.48 L -124.24 102.48 L -122.73 99.96 L -121.33 97.9 L -120.1 96.28 L -119.07 95.07 L -118.3 94.25 L -117.8 93.79 L -117.63 93.64 A 8 8 0 0 0 -131.53 72.84 L -131.73 72.95 L -132.35 73.22 L -133.4 73.63 L -134.91 74.11 L -136.88 74.63 L -139.31 75.14 L -142.22 75.57 L -145.6 75.89 L -149.44 76.04 L -153.74 75.97 L -158.48 75.64 L -163.64 74.98 L -168.73 62.69 L -165.54 58.58 L -162.43 54.99 L -159.44 51.9 L -156.62 49.29 L -154 47.13 L -151.64 45.38 L -149.56 44.01 L -147.8 42.99 L -146.39 42.27 L -145.36 41.81 L -144.73 41.57 L -144.51 41.5 A 8 8 0 0 0 -149.39 16.97 L -149.62 16.98 L -150.29 17 L -151.42 16.97 L -153 16.85 L -155.02 16.57 L -157.46 16.1 L -160.32 15.39 L -163.56 14.39 L -167.17 13.06 L -171.11 11.35 L -175.36 9.23 L -179.88 6.66 L -179.88 -6.66 L -175.36 -9.23 L -171.11 -11.35 L -167.17 -13.06 L -163.56 -14.39 L -160.32 -15.39 L -157.46 -16.1 L -155.02 -16.57 L -153 -16.85 L -151.42 -16.97 L -150.29 -17 L -149.62 -16.98 L -149.39 -16.97 A 8 8 0 0 0 -144.51 -41.5 L -144.73 -41.57 L -145.36 -41.81 L -146.39 -42.27 L -147.8 -42.99 L -149.56 -44.01 L -151.64 -45.38 L -154 -47.13 L -156.62 -49.29 L -159.44 -51.9 L -162.43 -54.99 L -165.54 -58.58 L -168.73 -62.69 L -163.64 -74.98 L -158.48 -75.64 L -153.74 -75.97 L -149.44 -76.04 L -145.6 -75.89 L -142.22 -75.57 L -139.31 -75.14 L -136.88 -74.63 L -134.91 -74.11 L -133.4 -73.63 L -132.35 -73.22 L -131.73 -72.95 L -131.53 -72.84 A 8 8 0 0 0 -117.63 -93.64 L -117.8 -93.79 L -118.3 -94.25 L -119.07 -95.07 L -120.1 -96.28 L -121.33 -97.9 L -122.73 -99.96 L -124.24 -102.48 L -125.83 -105.48 L -127.44 -108.97 L -129.02 -112.96 L -130.52 -117.47 L -131.9 -122.49 L -122.49 -131.9 L -117.47 -130.52 L -112.96 -129.02 L -108.97 -127.44 L -105.48 -125.83 L -102.48 -124.24 L -99.96 -122.73 L -97.9 -121.33 L -96.28 -120.1 L -95.07 -119.07 L -94.25 -118.3 L -93.79 -117.8 L -93.64 -117.63 A 8 8 0 0 0 -72.84 -131.53 L -72.95 -131.73 L -73.22 -132.35 L -73.63 -133.4 L -74.11 -134.91 L -74.63 -136.88 L -75.14 -139.31 L -75.57 -142.22 L -75.89 -145.6 L -76.04 -149.44 L -75.97 -153.74 L -75.64 -158.48 L -74.98 -163.64 L -62.69 -168.73 L -58.58 -165.54 L -54.99 -162.43 L -51.9 -159.44 L -49.29 -156.62 L -47.13 -154 L -45.38 -151.64 L -44.01 -149.56 L -42.99 -147.8 L -42.27 -146.39 L -41.81 -145.36 L -41.57 -144.73 L -41.5 -144.51 A 8 8 0 0 0 -16.97 -149.39 L -16.98 -149.62 L -17 -150.29 L -16.97 -151.42 L -16.85 -153 L -16.57 -155.02 L -16.1 -157.46 L -15.39 -160.32 L -14.39 -163.56 L -13.06 -167.17 L -11.35 -171.11 L -9.23 -175.36 L -6.66 -179.88 L 6.66 -179.88 L 9.23 -175.36 L 11.35 -171.11 L 13.06 -167.17 L 14.39 -163.56 L 15.39 -160.32 L 16.1 -157.46 L 16.57 -155.02 L 16.85 -153 L 16.97 -151.42 L 17 -150.29 L 16.98 -149.62 L 16.97 -149.39 A 8 8 0 0 0 41.5 -144.51 L 41.57 -144.73 L 41.81 -145.36 L 42.27 -146.39 L 42.99 -147.8 L 44.01 -149.56 L 45.38 -151.64 L 47.13 -154 L 49.29 -156.62 L 51.9 -159.44 L 54.99 -162.43 L 58.58 -165.54 L 62.69 -168.73 L 74.98 -163.64 L 75.64 -158.48 L 75.97 -153.74 L 76.04 -149.44 L 75.89 -145.6 L 75.57 -142.22 L 75.14 -139.31 L 74.63 -136.88 L 74.11 -134.91 L 73.63 -133.4 L 73.22 -132.35 L 72.95 -131.73 L 72.84 -131.53 A 8 8 0 0 0 93.64 -117.63 L 93.79 -117.8 L 94.25 -118.3 L 95.07 -119.07 L 96.28 -120.1 L 97.9 -121.33 L 99.96 -122.73 L 102.48 -124.24 L 105.48 -125.83 L 108.97 -127.44 L 112.96 -129.02 L 117.47 -130.52 L 122.49 -131.9 L 131.9 -122.49 L 130.52 -117.47 L 129.02 -112.96 L 127.44 -108.97 L 125.83 -105.48 L 124.24 -102.48 L 122.73 -99.96 L 121.33 -97.9 L 120.1 -96.28 L 119.07 -95.07 L 118.3 -94.25 L 117.8 -93.79 L 117.63 -93.64 A 8 8 0 0 0 131.53 -72.84 L 131.73 -72.95 L 132.35 -73.22 L 133.4 -73.63 L 134.91 -74.11 L 136.88 -74.63 L 139.31 -75.14 L 142.22 -75.57 L 145.6 -75.89 L 149.44 -76.04 L 153.74 -75.97 L 158.48 -75.64 L 163.64 -74.98 L 168.73 -62.69 L 165.54 -58.58 L 162.43 -54.99 L 159.44 -51.9 L 156.62 -49.29 L 154 -47.13 L 151.64 -45.38 L 149.56 -44.01 L 147.8 -42.99 L 146.39 -42.27 L 145.36 -41.81 L 144.73 -41.57 L 144.51 -41.5 A 8 8 0 0 0 149.39 -16.97 L 149.62 -16.98 L 150.29 -17 L 151.42 -16.97 L 153 -16.85 L 155.02 -16.57 L 157.46 -16.1 L 160.32 -15.39 L 163.56 -14.39 L 167.17 -13.06 L 171.11 -11.35 L 175.36 -9.23 L 179.88 -6.66 L 179.88 6.66 L 175.36 9.23 L 171.11 11.35 L 167.17 13.06 L 163.56 14.39 L 160.32 15.39 L 157.46 16.1 L 155.02 16.57 L 153 16.85 L 151.42 16.97 L 150.29 17 L 149.62 16.98 L 149.39 16.97
+			  M -110 0
+				a 110 110 0 1 0 220 0
+				a 110 110 0 1 0 -220 0
+			" mask="url(#wedge-mask)" stroke="none" stroke-width="4"></path><circle cx="0" cy="0" r="60" stroke="none"></circle><path d="
+						M 0 -28
+						L 160 -14
+						L 160 14
+						L 0 28
+						Z
+					"></path></g></svg>Crank.js</a></div><div><a href="/guides/getting-started">Guides</a></div><div><a href="/blog/" aria-current="page">Blog</a></div><div><a href="/playground/">Playground</a></div></div><div class="css-1n0j5y9"><div><a href="https://github.com/bikeshaving/crank">GitHub</a></div><div><a href="http://npm.im/@b9g/crank">NPM</a></div><button role="switch" aria-label="set dark mode" aria-checked="false">⬜</button></div></nav></div><main class="css-1mkiuoh"><h1>Why Be Reactive?</h1><p>By <a href="https://github.com/brainkim" rel="author">Brian Kim</a> <span>– Published August 20, 2025</span></p><p>I was pleasantly surprised by the warm reception to Crank back when I first released it. <a href="https://x.com/Vjeux/status/1250687160237211649">A pleasant tweet</a> from a React core team member, a rush of GitHub stars, and positive conversations on Reddit and Hacker News. Unfortunately, I squandered the JavaScript hype cycle, and today Crank isn&#039;t used very much.</p><p>Nevertheless, I’ve continued to find myself happy to work on Crank over the years, performing both basic and advanced maintenance tasks like ironing out embarrassing bugs, iterating on API design, and improving its runtime performance. However, I found the hardest task not to be technical but social: how do I convince developers to take the big step of adopting a new framework for their applications?</p><p>One of the pitches I’ve tried is that Crank is the most “Just JavaScript” framework out there. Components are functions, including async and generator functions, so you can await promises directly in components, and define state as local variables. Intuitively, this feels JavaScript-y. I even went through the extra effort of writing a template tag to appease those people who like to make the objection that JSX is not JavaScript. But was this convincing enough on its own?</p><p>As I’ve used Crank over the years, I realized that I had a better pitch: Crank isn’t “reactive” by any commonly held definition of “reactive,” and could even be further described as a “non-reactive” framework. It’s an unorthodox idea because almost every other web framework advertises itself as reactive, to the extent that frameworks are compared on the basis of their reactive abstractions. Most frameworks today (React, Vue, Svelte, Solid, etc.) are built around reactive primitives: signals, stores, observables, etc. Components create state, and re-render automatically in response to the framework’s chosen reactive abstraction, so much so that to not ship a reactive abstraction is to ship an incomplete framework. So, why would I go through the trouble of writing a non-reactive framework, let alone thinking that this was a selling point? </p><p>I worry about being too abstract, so let me provide concrete definitions and code examples. We can define reactivity in the context of web frameworks as a feature where the framework updates its <em>views</em> when some associated <em>state</em> changes, however you define “view” and “state,” such that the two stay in sync. Even by this most general of definitions, the early releases of Crank were not reactive. For instance, here is how we defined a timer in earlier versions of Crank:</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">Timer</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><code>  <span class="token keyword">let</span> seconds <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><code>  <span class="token keyword">const</span> interval <span class="token operator">=</span> <span class="token function">setInterval</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code>    seconds<span class="token operator">++</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><code>    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><code>  <span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token number">1000</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><code>  <span class="token keyword">try</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="8"><code>    <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="9"><code>      <span class="token keyword">yield</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span><span class="token punctuation">{</span>seconds<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="10"><code>    <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="11"><code>  <span class="token punctuation">}</span> <span class="token keyword">finally</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="12"><code>    <span class="token function">clearInterval</span><span class="token punctuation">(</span>interval<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="13"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="14"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-63" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-63'] = {"code":"function *Timer() {\n  let seconds = 0;\n  const interval = setInterval(() =\u003E {\n    seconds++;\n    this.refresh();\n  }, 1000);\n\n  try {\n    for ({} of this) {\n      yield \u003Cdiv\u003E{seconds}\u003C\u002Fdiv\u003E;\n    }\n  } finally {\n    clearInterval(interval);\n  }\n}","lang":"jsx"};
+		</script></div><p>In the Timer component, the sole piece of state is the variable <code class="inline">seconds</code>, and when it is incremented, we have to separately call to the utility method <code class="inline">refresh()</code> to actually update the view. When I first released Crank, many people saw code like this and balked. “Aha,” declared reactivity lovers. “Isn’t it a flaw that you can update a component’s local state but forget to call the <code class="inline">refresh()</code> method? Isn&#039;t this a footgun&quot;?</p><p>It’s true. As the first Crank user, I was also victim to this bug, forgetting to call <code class="inline">refresh()</code> after updating some state. But I refused to believe like some, that this meant I needed a reactive abstraction. Luckily, I recently realized that we can solve this problem with a slight API enhancement, by allowing a callback to be passed to <code class="inline">refresh()</code>.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1cvb758"><div class="css-1s1lac9"><div class="css-by286k"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>renderer<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank/dom&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">Timer</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><code>  <span class="token keyword">let</span> seconds <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code>  <span class="token keyword">const</span> interval <span class="token operator">=</span> <span class="token function">setInterval</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> seconds<span class="token operator">++</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token number">1000</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><code>    <span class="token keyword">yield</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span><span class="token punctuation">{</span>seconds<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="8"><code>  <span class="token comment">// New in 0.5. for...of loops naturally return when the component is about to unmount</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="9"><code>  <span class="token function">clearInterval</span><span class="token punctuation">(</span>interval<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="10"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="11"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="12"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>Timer <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><div class="css-nuifz8"><div class="css-1nius9d"><div class="css-14pt8ki">Loading...</div><div class="css-j74n8p"><iframe class="
+							playground-iframe
+							css-hjkbgb
+						" style="height: 100px;"></iframe></div></div></div></div></div><script data-name="inline-code-block-props-64" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-64'] = {"code":"import {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\nfunction *Timer() {\n  let seconds = 0;\n  const interval = setInterval(() =\u003E this.refresh(() =\u003E seconds++), 1000);\n  for ({} of this) {\n    yield \u003Cdiv\u003E{seconds}\u003C\u002Fdiv\u003E;\n  }\n\n  \u002F\u002F New in 0.5. for...of loops naturally return when the component is about to unmount\n  clearInterval(interval);\n}\n\nrenderer.render(\u003CTimer \u002F\u003E, document.body);","lang":"jsx live"};
+		</script></div><p>This was so easy it became a last-minute addition to the 0.7 API. Note that you no longer have to wrap <code class="inline">for...of</code> loops in a <code class="inline">try</code>/<code class="inline">finally</code>, another subtle quality of life improvement made in 0.5.</p><p>By having the convention where you put state changes in <code class="inline">refresh()</code> callbacks, you both make it impossible to forget to call <code class="inline">refresh()</code> and declaratively identify the code in the callback as intending to cause a re-render. And the API is short enough that you can usually wrap entire event callbacks in a <code class="inline">refresh()</code> without adding a line of indentation. This is one of those ideas that I wish I came up with sooner; as a matter of fact, it came to me by way of Claude Code, who hallucinated the API while I was berating it for generating the nastiest React-hook hallucinations in some Crank component. I’m grateful to Claude for imagining the <code class="inline">refresh()</code> callback API, and embarrassed that I didn’t discover it sooner.</p><h2>Bug severity analysis</h2><p>Yet even with the <code class="inline">refresh()</code> callback API, the objection remains: why tolerate any possibility of forgetting to call <code class="inline">refresh()</code>? Reactive abstractions promise to eliminate this entire class of bugs by automatically syncing state with the view. But as we&#039;ll see, this &quot;solution&quot; creates its own problems.</p><p>To understand why I don’t think non-reactivity indicates flawed design, we have to take a step back and consider the potential severity of this sort of bug. We can evaluate the “severity” of a class of bugs by asking the following two questions:</p><ol><li>Are these bugs easy to spot? and</li><li>Are these bugs easy to fix?</li></ol><p>These two questions determine if a bug will make it to your end users, and how long they will be tormented by a bug. For Crank, the answers to both these questions is yes. They are easy to spot because you immediately notice when your app hasn’t updated, and they’re easy to fix because you just add a <code class="inline">refresh()</code> call in the lines after the data updates you made, so much so that it eventually becomes muscle memory.  The refresh callback even solves the batching concern - multiple state updates in one callback naturally batch into one render.</p><p>But here&#039;s where it gets interesting: while every reactive abstraction claims to fix this class of bug, reactive abstractions have their own gotchas specific to them. In the next section, let me apply this same severity heuristic to some alternative frameworks - Solid, Vue, and Svelte - to show you what I mean.</p><h3>Losing Reactivity</h3><p>Consider these notorious examples from Solid.js.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>render<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;solid-js/web&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>createSignal<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;solid-js&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code><span class="token comment">// ❌ Wrong: Destructuring props in function parameters</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><code><span class="token keyword">function</span> <span class="token function">BrokenDisplay1</span><span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>seconds<span class="token punctuation">}</span><span class="token operator">:</span> <span class="token punctuation">{</span><span class="token literal-property property">seconds</span><span class="token operator">:</span> number<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><code>  <span class="token keyword">return</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span><span class="token punctuation">{</span>seconds<span class="token punctuation">}</span> second<span class="token punctuation">{</span>seconds <span class="token operator">===</span> <span class="token number">1</span> <span class="token operator">?</span> <span class="token string">&quot;&quot;</span> <span class="token operator">:</span> <span class="token string">&quot;s&quot;</span><span class="token punctuation">}</span> elapsed<span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="8"><code><span class="token comment">// ❌ Also wrong: Computing derived values outside of reactive context</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="9"><code><span class="token keyword">function</span> <span class="token function">BrokenDisplay2</span><span class="token punctuation">(</span><span class="token parameter"><span class="token literal-property property">props</span><span class="token operator">:</span> <span class="token punctuation">{</span><span class="token literal-property property">seconds</span><span class="token operator">:</span> number<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="10"><code>  <span class="token keyword">const</span> minutes <span class="token operator">=</span> props<span class="token punctuation">.</span>seconds <span class="token operator">/</span> <span class="token number">60</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="11"><code>  <span class="token keyword">return</span> <span class="token punctuation">(</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="12"><code>    <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="13"><code>      <span class="token operator">&lt;</span>span<span class="token operator">&gt;</span><span class="token punctuation">{</span>props<span class="token punctuation">.</span>seconds<span class="token punctuation">}</span> second<span class="token punctuation">{</span>props<span class="token punctuation">.</span>seconds <span class="token operator">===</span> <span class="token number">1</span> <span class="token operator">?</span> <span class="token string">&quot;&quot;</span> <span class="token operator">:</span> <span class="token string">&quot;s&quot;</span><span class="token punctuation">}</span> elapsed<span class="token operator">&lt;</span><span class="token operator">/</span>span<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="14"><code>      <span class="token punctuation">{</span><span class="token string">&quot; &quot;</span><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="15"><code>      <span class="token operator">&lt;</span>span<span class="token operator">&gt;</span><span class="token punctuation">(</span><span class="token punctuation">{</span>minutes<span class="token punctuation">.</span><span class="token function">toFixed</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">}</span> minutes<span class="token punctuation">)</span><span class="token operator">&lt;</span><span class="token operator">/</span>span<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="16"><code>    <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="17"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="18"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="19"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="20"><code><span class="token comment">// ✅ Right: Accessing props directly in JSX</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="21"><code><span class="token keyword">function</span> <span class="token function">WorkingDisplay1</span><span class="token punctuation">(</span><span class="token parameter"><span class="token literal-property property">props</span><span class="token operator">:</span> <span class="token punctuation">{</span><span class="token literal-property property">seconds</span><span class="token operator">:</span> number<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="22"><code>  <span class="token keyword">return</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span><span class="token punctuation">{</span>props<span class="token punctuation">.</span>seconds<span class="token punctuation">}</span> second<span class="token punctuation">{</span>props<span class="token punctuation">.</span>seconds <span class="token operator">===</span> <span class="token number">1</span> <span class="token operator">?</span> <span class="token string">&quot;&quot;</span> <span class="token operator">:</span> <span class="token string">&quot;s&quot;</span><span class="token punctuation">}</span> elapsed<span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="23"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="24"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="25"><code><span class="token comment">// ✅ Also right: Computing derived values in a callback</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="26"><code><span class="token keyword">function</span> <span class="token function">WorkingDisplay2</span><span class="token punctuation">(</span><span class="token parameter"><span class="token literal-property property">props</span><span class="token operator">:</span> <span class="token punctuation">{</span><span class="token literal-property property">seconds</span><span class="token operator">:</span> number<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="27"><code>  <span class="token keyword">const</span> <span class="token function-variable function">minutes</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> props<span class="token punctuation">.</span>seconds <span class="token operator">/</span> <span class="token number">60</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="28"><code>  <span class="token keyword">return</span> <span class="token punctuation">(</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="29"><code>    <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="30"><code>      <span class="token operator">&lt;</span>span<span class="token operator">&gt;</span><span class="token punctuation">{</span>props<span class="token punctuation">.</span>seconds<span class="token punctuation">}</span> second<span class="token punctuation">{</span>props<span class="token punctuation">.</span>seconds <span class="token operator">===</span> <span class="token number">1</span> <span class="token operator">?</span> <span class="token string">&quot;&quot;</span> <span class="token operator">:</span> <span class="token string">&quot;s&quot;</span><span class="token punctuation">}</span> elapsed<span class="token operator">&lt;</span><span class="token operator">/</span>span<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="31"><code>      <span class="token punctuation">{</span><span class="token string">&quot; &quot;</span><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="32"><code>      <span class="token operator">&lt;</span>span<span class="token operator">&gt;</span><span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token function">minutes</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">toFixed</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">}</span> minutes<span class="token punctuation">)</span><span class="token operator">&lt;</span><span class="token operator">/</span>span<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="33"><code>    <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="34"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="35"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="36"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="37"><code><span class="token keyword">function</span> <span class="token function">Timer</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="38"><code>  <span class="token keyword">const</span> <span class="token punctuation">[</span>seconds<span class="token punctuation">,</span> setSeconds<span class="token punctuation">]</span> <span class="token operator">=</span> <span class="token function">createSignal</span><span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="39"><code>  <span class="token function">setInterval</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token function">setSeconds</span><span class="token punctuation">(</span><span class="token function">seconds</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">+</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token number">1000</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="40"><code>  <span class="token keyword">return</span> <span class="token operator">&lt;</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="41"><code>    <span class="token operator">&lt;</span>BrokenDisplay1 seconds<span class="token operator">=</span><span class="token punctuation">{</span><span class="token function">seconds</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">}</span> <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="42"><code>    <span class="token operator">&lt;</span>BrokenDisplay2 seconds<span class="token operator">=</span><span class="token punctuation">{</span><span class="token function">seconds</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">}</span> <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="43"><code>    <span class="token operator">&lt;</span>WorkingDisplay1 seconds<span class="token operator">=</span><span class="token punctuation">{</span><span class="token function">seconds</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">}</span> <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="44"><code>    <span class="token operator">&lt;</span>WorkingDisplay2 seconds<span class="token operator">=</span><span class="token punctuation">{</span><span class="token function">seconds</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">}</span> <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="45"><code>  <span class="token operator">&lt;</span><span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="46"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="47"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="48"><code><span class="token function">render</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token operator">&lt;</span>Timer <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span><span class="token function">getElementById</span><span class="token punctuation">(</span><span class="token string">&quot;app&quot;</span><span class="token punctuation">)</span><span class="token operator">!</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-65" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-65'] = {"code":"import {render} from \"solid-js\u002Fweb\";\nimport {createSignal} from \"solid-js\";\n\n\u002F\u002F ❌ Wrong: Destructuring props in function parameters\nfunction BrokenDisplay1({seconds}: {seconds: number}) {\n  return \u003Cdiv\u003E{seconds} second{seconds === 1 ? \"\" : \"s\"} elapsed\u003C\u002Fdiv\u003E;\n}\n\n\u002F\u002F ❌ Also wrong: Computing derived values outside of reactive context\nfunction BrokenDisplay2(props: {seconds: number}) {\n  const minutes = props.seconds \u002F 60;\n  return (\n    \u003Cdiv\u003E\n      \u003Cspan\u003E{props.seconds} second{props.seconds === 1 ? \"\" : \"s\"} elapsed\u003C\u002Fspan\u003E\n      {\" \"}\n      \u003Cspan\u003E({minutes.toFixed(2)} minutes)\u003C\u002Fspan\u003E\n    \u003C\u002Fdiv\u003E\n  );\n}\n\n\u002F\u002F ✅ Right: Accessing props directly in JSX\nfunction WorkingDisplay1(props: {seconds: number}) {\n  return \u003Cdiv\u003E{props.seconds} second{props.seconds === 1 ? \"\" : \"s\"} elapsed\u003C\u002Fdiv\u003E;\n}\n\n\u002F\u002F ✅ Also right: Computing derived values in a callback\nfunction WorkingDisplay2(props: {seconds: number}) {\n  const minutes = () =\u003E props.seconds \u002F 60;\n  return (\n    \u003Cdiv\u003E\n      \u003Cspan\u003E{props.seconds} second{props.seconds === 1 ? \"\" : \"s\"} elapsed\u003C\u002Fspan\u003E\n      {\" \"}\n      \u003Cspan\u003E({minutes().toFixed(2)} minutes)\u003C\u002Fspan\u003E\n    \u003C\u002Fdiv\u003E\n  );\n}\n\nfunction Timer() {\n  const [seconds, setSeconds] = createSignal(0);\n  setInterval(() =\u003E setSeconds(seconds() + 1), 1000);\n  return \u003C\u003E\n    \u003CBrokenDisplay1 seconds={seconds()} \u002F\u003E\n    \u003CBrokenDisplay2 seconds={seconds()} \u002F\u003E\n    \u003CWorkingDisplay1 seconds={seconds()} \u002F\u003E\n    \u003CWorkingDisplay2 seconds={seconds()} \u002F\u003E\n  \u003C\u002F\u003E;\n}\n\nrender(() =\u003E \u003CTimer \u002F\u003E, document.getElementById(\"app\")!);","lang":"tsx"};
+		</script></div><p>Solid uses two reactive abstractions called signals and stores, and instruments reads to these reactive abstractions to cause DOM updates. In Solid.js, components are functions, but the props passed to components is a reactive store which instruments property reads to cause any calling code in an “effect” to re-execute. Solid.js also requires a special babel renderer for JSX which makes reads of state in JSX expressions trigger the re-execution logic. This fails quickly when you try to destructure the <code class="inline">props</code> store, or try to compute derived values outside of JSX expressions. The broken components won&#039;t update when props change because you&#039;ve extracted the value at a specific point in time rather than maintaining a reactive connection up to the JSX.</p><p>Let&#039;s consider this bug using the bug severity heuristic: these bugs are easy to spot because there are linter rules to not destructure props and use callbacks to compute derived data, but in a complex application edge-cases might still fall through the linter cracks. You only need to search for the term “losing reactivity” in framework issue trackers to see edge-cases in Solid and every reactive framework.</p><p>Well are they easy to fix? No, they&#039;re difficult to fix because you need to understand the framework&#039;s reactive rules: which contexts preserve reactivity and when values are accessed versus evaluated. The problem of manipulating props, which is just regular objects in Crank, is so overwhelming that Solid has to provide utilities to <a href="https://docs.solidjs.com/reference/reactive-utilities/split-props">split</a> and <a href="https://docs.solidjs.com/reference/reactive-utilities/merge-props">merge</a> props.</p><p>With Crank&#039;s explicit refresh model, this entire category of bugs doesn&#039;t exist. Props are just values passed to functions. You can destructure them, compute derived values with them, pass them around - it&#039;s all just JavaScript. When you want the component to update, you call <code class="inline">refresh()</code>. There&#039;s no invisible reactive graph to accidentally break.</p><h3>The Deep Reactivity Performance Trap</h3><p>Consider Vue.js. Like Solid it uses a reactive abstraction which instruments reads. It does this by using a proxy which recursively wraps a reactive object’s properties and children in reactive abstractions as well. This is useful for performing DOM updates when some deeply nested state is modified:</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>ref<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;vue&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><code><span class="token keyword">const</span> state <span class="token operator">=</span> <span class="token function">ref</span><span class="token punctuation">(</span><span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code>  <span class="token literal-property property">todos</span><span class="token operator">:</span> <span class="token punctuation">[</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><code>    <span class="token punctuation">{</span><span class="token literal-property property">id</span><span class="token operator">:</span> <span class="token number">1</span><span class="token punctuation">,</span> <span class="token literal-property property">text</span><span class="token operator">:</span> <span class="token string">&quot;Learn Vue&quot;</span><span class="token punctuation">,</span> <span class="token literal-property property">completed</span><span class="token operator">:</span> <span class="token boolean">false</span><span class="token punctuation">,</span> <span class="token literal-property property">metadata</span><span class="token operator">:</span> <span class="token punctuation">{</span><span class="token literal-property property">priority</span><span class="token operator">:</span> <span class="token string">&quot;high&quot;</span><span class="token punctuation">,</span> <span class="token literal-property property">tags</span><span class="token operator">:</span> <span class="token punctuation">[</span><span class="token string">&quot;learning&quot;</span><span class="token punctuation">]</span><span class="token punctuation">}</span><span class="token punctuation">}</span><span class="token punctuation">,</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><code>    <span class="token comment">// ... imagine 1000 more todos with nested objects</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><code>  <span class="token punctuation">]</span><span class="token punctuation">,</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><code>  <span class="token literal-property property">filters</span><span class="token operator">:</span> <span class="token punctuation">{</span><span class="token literal-property property">status</span><span class="token operator">:</span> <span class="token string">&quot;all&quot;</span><span class="token punctuation">,</span> <span class="token literal-property property">search</span><span class="token operator">:</span> <span class="token string">&quot;&quot;</span><span class="token punctuation">}</span><span class="token punctuation">,</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="8"><code>  <span class="token literal-property property">ui</span><span class="token operator">:</span> <span class="token punctuation">{</span><span class="token literal-property property">selectedTodo</span><span class="token operator">:</span> <span class="token keyword">null</span><span class="token punctuation">,</span> <span class="token literal-property property">theme</span><span class="token operator">:</span> <span class="token string">&quot;light&quot;</span><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="9"><code><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="10"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="11"><code>state<span class="token punctuation">.</span>value<span class="token punctuation">.</span>todos<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">.</span>completed <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span> <span class="token comment">// ✅ UI updates</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="12"><code>state<span class="token punctuation">.</span>value<span class="token punctuation">.</span>todos<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">.</span>metadata<span class="token punctuation">.</span>priority <span class="token operator">=</span> <span class="token string">&#039;low&#039;</span><span class="token punctuation">;</span> <span class="token comment">// ✅ UI updates</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="13"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="14"><code><span class="token keyword">const</span> <span class="token punctuation">{</span>ui<span class="token punctuation">}</span> <span class="token operator">=</span> state<span class="token punctuation">.</span>value<span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="15"><code><span class="token comment">// ✅ UI updates even though the reference was destructured, unlike Solid</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="16"><code>ui<span class="token punctuation">.</span>selectedTodo <span class="token operator">=</span> state<span class="token punctuation">.</span>value<span class="token punctuation">.</span>todos<span class="token punctuation">[</span><span class="token number">0</span><span class="token punctuation">]</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-66" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-66'] = {"code":"import {ref} from \"vue\";\n\nconst state = ref({\n  todos: [\n    {id: 1, text: \"Learn Vue\", completed: false, metadata: {priority: \"high\", tags: [\"learning\"]}},\n    \u002F\u002F ... imagine 1000 more todos with nested objects\n  ],\n  filters: {status: \"all\", search: \"\"},\n  ui: {selectedTodo: null, theme: \"light\"}\n});\n\nstate.value.todos[0].completed = true; \u002F\u002F ✅ UI updates\nstate.value.todos[0].metadata.priority = 'low'; \u002F\u002F ✅ UI updates\n\nconst {ui} = state.value;\n\u002F\u002F ✅ UI updates even though the reference was destructured, unlike Solid\nui.selectedTodo = state.value.todos[0];","lang":"js"};
+		</script></div><p>Let’s ignore the fact that proxies just don’t work with private class members, which is an unfortunate language design decision. Let’s ignore the fact that proxies can’t be used for primitives, which is why Vue ships both a <code class="inline">reactive()</code> and <code class="inline">ref()</code> API, so primitives can read/write a property to cause re-rendering. Besides all this, deeply proxying large objects and arrays is a performance bottleneck, and for this reason Vue prefers that large objects and arrays be wrapped in shallow proxies, which only change in response to top level mutations. The <a href="https://github.com/krausest/js-framework-benchmark/blob/chrome139/frameworks/keyed/vue/src/App.vue">official Vue.js framework benchmark code</a> shows this preference, and every framework which uses deeply nested proxies for reactivity finds a way to avoid using it in the benchmark.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>ref<span class="token punctuation">,</span> shallowRef<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;vue&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><code><span class="token comment">// ❌ Using ref() would wrap the entire array and all objects in proxies</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code><span class="token comment">// const rows = ref([])</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><code><span class="token comment">// ✅ Must use shallowRef to avoid deep reactivity for performance</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><code><span class="token keyword">const</span> rows <span class="token operator">=</span> <span class="token function">shallowRef</span><span class="token punctuation">(</span><span class="token punctuation">[</span><span class="token punctuation">]</span><span class="token punctuation">)</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="8"><code><span class="token keyword">function</span> <span class="token function">setRows</span><span class="token punctuation">(</span><span class="token parameter">update <span class="token operator">=</span> rows<span class="token punctuation">.</span>value<span class="token punctuation">.</span><span class="token function">slice</span><span class="token punctuation">(</span><span class="token punctuation">)</span></span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="9"><code>  <span class="token comment">// Manually trigger reactivity by reassigning</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="10"><code>  rows<span class="token punctuation">.</span>value <span class="token operator">=</span> update</code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="11"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="12"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="13"><code><span class="token keyword">function</span> <span class="token function">update</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="14"><code>  <span class="token keyword">const</span> _rows <span class="token operator">=</span> rows<span class="token punctuation">.</span>value</code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="15"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">let</span> i <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span> i <span class="token operator">&lt;</span> _rows<span class="token punctuation">.</span>length<span class="token punctuation">;</span> i <span class="token operator">+=</span> <span class="token number">10</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="16"><code>    _rows<span class="token punctuation">[</span>i<span class="token punctuation">]</span><span class="token punctuation">.</span>label <span class="token operator">+=</span> <span class="token string">&#039; !!!&#039;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="17"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="18"><code>  <span class="token comment">// Must manually trigger update after mutations</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="19"><code>  <span class="token function">setRows</span><span class="token punctuation">(</span><span class="token punctuation">)</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="20"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-67" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-67'] = {"code":"import {ref, shallowRef} from \"vue\";\n\n\u002F\u002F ❌ Using ref() would wrap the entire array and all objects in proxies\n\u002F\u002F const rows = ref([])\n\n\u002F\u002F ✅ Must use shallowRef to avoid deep reactivity for performance\nconst rows = shallowRef([])\n\nfunction setRows(update = rows.value.slice()) {\n  \u002F\u002F Manually trigger reactivity by reassigning\n  rows.value = update\n}\n\nfunction update() {\n  const _rows = rows.value\n  for (let i = 0; i \u003C _rows.length; i += 10) {\n    _rows[i].label += ' !!!'\n  }\n  \u002F\u002F Must manually trigger update after mutations\n  setRows()\n}","lang":"js"};
+		</script></div><p>Vue provides escape hatches like <code class="inline">shallowRef()</code> and  <code class="inline">markRaw()</code> to work around these performance issues, and make nested state non-proxied. But suddenly, we went from having the convenience of having deeply nested updates cause re-renders, to having to track when they do and when they don’t. This necessitates Vue ship utilities like <code class="inline">isReactive()</code> to tell you which parts of your data are reactive or not, because otherwise this quality would just be invisible to developers.</p><p>Again, consider the bug severity heuristics. These bugs are hard to spot because reactivity is a property which is invisibly added to your data structures and selectively removed for performance. These bugs are difficult to fix because again the quality of your data structures being reactive requires you to trace your state potentially all the way back to where it was created to figure out why or why not it is reactive.</p><p>Again, consider Crank’s alternative. Crank does not care whether you make updates to deeply nested state, just that you call <code class="inline">refresh()</code> afterwards. Again, a reactive abstraction which is meant to “fix” the bug which Crank is susceptible to, leaks and potentially causes the same exact bug in a more subtle manner.</p><h3>Infinite Loops and Svelte</h3><p>When you have a case of reactivity brain, or become reactivity-coded, or jump on the reactivity train, you start to develop a totalizing view of programming, like when functional programmers start seeing everything as monads. All the state in your programs are reactive, derived state is also reactive, and you read the reactive state using “effects” which re-run automagically whenever you update them. Of course, the framework’s actual rendering of the DOM is just an effect, and you can write your effects to do other things like calling third-party libraries, or making updates to an imperative canvas.</p><p>Svelte had in its earlier versions (v4 and less) what I thought was the Crank-iest reactivity API which was that the Svelte compiler instrumented assignments to state, and made these assignments trigger re-renders. No nested state updates, no runtime reactive abstraction, just assignments = update.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token operator">&lt;</span>script<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><code> <span class="token keyword">let</span> todos <span class="token operator">=</span> <span class="token punctuation">[</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><code>   <span class="token punctuation">{</span><span class="token literal-property property">id</span><span class="token operator">:</span> <span class="token number">1</span><span class="token punctuation">,</span> <span class="token literal-property property">text</span><span class="token operator">:</span> <span class="token string">&quot;Learn Svelte&quot;</span><span class="token punctuation">,</span> <span class="token literal-property property">completed</span><span class="token operator">:</span> <span class="token boolean">false</span><span class="token punctuation">,</span> <span class="token literal-property property">metadata</span><span class="token operator">:</span> <span class="token punctuation">{</span><span class="token literal-property property">priority</span><span class="token operator">:</span> <span class="token string">&quot;high&quot;</span><span class="token punctuation">}</span><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code>   <span class="token comment">// more todos...</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><code> <span class="token punctuation">]</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><code> <span class="token keyword">function</span> <span class="token function">toggleTodo</span><span class="token punctuation">(</span><span class="token parameter">id</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><code>   <span class="token comment">// ❌ This mutation doesn&#039;t trigger reactivity - no assignment to `todos`</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="8"><code>   <span class="token keyword">const</span> todo <span class="token operator">=</span> todos<span class="token punctuation">.</span><span class="token function">find</span><span class="token punctuation">(</span><span class="token parameter">t</span> <span class="token operator">=&gt;</span> t<span class="token punctuation">.</span>id <span class="token operator">===</span> id<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="9"><code>   todo<span class="token punctuation">.</span>completed <span class="token operator">=</span> <span class="token operator">!</span>todo<span class="token punctuation">.</span>completed<span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="10"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="11"><code>   <span class="token comment">// ✅ Must reassign the array to trigger reactivity</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="12"><code>   todos <span class="token operator">=</span> todos<span class="token punctuation">;</span> <span class="token comment">// or todos = [...todos]</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="13"><code> <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="14"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="15"><code> <span class="token keyword">function</span> <span class="token function">addTodo</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="16"><code>   <span class="token comment">// ❌ This push doesn&#039;t trigger reactivity</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="17"><code>   todos<span class="token punctuation">.</span><span class="token function">push</span><span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token literal-property property">id</span><span class="token operator">:</span> Date<span class="token punctuation">.</span><span class="token function">now</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token literal-property property">text</span><span class="token operator">:</span> <span class="token string">&#039;New todo&#039;</span><span class="token punctuation">,</span> <span class="token literal-property property">completed</span><span class="token operator">:</span> <span class="token boolean">false</span><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="18"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="19"><code>   <span class="token comment">// ✅ Must reassign</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="20"><code>   todos <span class="token operator">=</span> todos<span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="21"><code> <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="22"><code><span class="token operator">&lt;</span><span class="token operator">/</span>script<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="23"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="24"><code><span class="token punctuation">{</span>#each todos <span class="token keyword">as</span> todo<span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="25"><code> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="26"><code>   <span class="token operator">&lt;</span>input type<span class="token operator">=</span><span class="token string">&quot;checkbox&quot;</span> checked<span class="token operator">=</span><span class="token punctuation">{</span>todo<span class="token punctuation">.</span>completed<span class="token punctuation">}</span> on<span class="token operator">:</span>change<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token function">toggleTodo</span><span class="token punctuation">(</span>todo<span class="token punctuation">.</span>id<span class="token punctuation">)</span><span class="token punctuation">}</span> <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="27"><code>   <span class="token punctuation">{</span>todo<span class="token punctuation">.</span>text<span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="28"><code> <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="29"><code><span class="token punctuation">{</span><span class="token operator">/</span>each<span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-68" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-68'] = {"code":"\u003Cscript\u003E\n let todos = [\n   {id: 1, text: \"Learn Svelte\", completed: false, metadata: {priority: \"high\"}}\n   \u002F\u002F more todos...\n ];\n\n function toggleTodo(id) {\n   \u002F\u002F ❌ This mutation doesn't trigger reactivity - no assignment to `todos`\n   const todo = todos.find(t =\u003E t.id === id);\n   todo.completed = !todo.completed;\n\n   \u002F\u002F ✅ Must reassign the array to trigger reactivity\n   todos = todos; \u002F\u002F or todos = [...todos]\n }\n\n function addTodo() {\n   \u002F\u002F ❌ This push doesn't trigger reactivity\n   todos.push({id: Date.now(), text: 'New todo', completed: false});\n\n   \u002F\u002F ✅ Must reassign\n   todos = todos;\n }\n\u003C\u002Fscript\u003E\n\n{#each todos as todo}\n \u003Cdiv\u003E\n   \u003Cinput type=\"checkbox\" checked={todo.completed} on:change={() =\u003E toggleTodo(todo.id)} \u002F\u003E\n   {todo.text}\n \u003C\u002Fdiv\u003E\n{\u002Feach}","lang":"svelte"};
+		</script></div><p>Unfortunately, the Svelte maintainers thought that this lack of full reactivity was a problem and created a special syntax called “runes,” where prefixed function like calls <code class="inline">$state()</code> and <code class="inline">$derived()</code> allow you to create variables with reactive properties, and other calls like <code class="inline">$effect()</code> allow you to listen for changes.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token operator">&lt;</span>script<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><code>  <span class="token keyword">let</span> todos <span class="token operator">=</span> <span class="token function">$state</span><span class="token punctuation">(</span><span class="token punctuation">[</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><code>    <span class="token punctuation">{</span> <span class="token literal-property property">id</span><span class="token operator">:</span> <span class="token number">1</span><span class="token punctuation">,</span> <span class="token literal-property property">text</span><span class="token operator">:</span> <span class="token string">&#039;Learn Svelte&#039;</span><span class="token punctuation">,</span> <span class="token literal-property property">completed</span><span class="token operator">:</span> <span class="token boolean">false</span><span class="token punctuation">,</span> <span class="token literal-property property">metadata</span><span class="token operator">:</span> <span class="token punctuation">{</span> <span class="token literal-property property">priority</span><span class="token operator">:</span> <span class="token string">&#039;high&#039;</span> <span class="token punctuation">}</span> <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code>  <span class="token punctuation">]</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><code>  <span class="token keyword">function</span> <span class="token function">toggleTodo</span><span class="token punctuation">(</span><span class="token parameter">id</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><code>    <span class="token comment">// ✅ Deep reactivity works - direct mutation triggers updates</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><code>    <span class="token keyword">const</span> todo <span class="token operator">=</span> todos<span class="token punctuation">.</span><span class="token function">find</span><span class="token punctuation">(</span><span class="token parameter">t</span> <span class="token operator">=&gt;</span> t<span class="token punctuation">.</span>id <span class="token operator">===</span> id<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="8"><code>    todo<span class="token punctuation">.</span>completed <span class="token operator">=</span> <span class="token operator">!</span>todo<span class="token punctuation">.</span>completed<span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="9"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="10"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="11"><code>  <span class="token keyword">function</span> <span class="token function">addTodo</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="12"><code>    <span class="token comment">// ✅ Array mutations work automatically</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="13"><code>    todos<span class="token punctuation">.</span><span class="token function">push</span><span class="token punctuation">(</span><span class="token punctuation">{</span> <span class="token literal-property property">id</span><span class="token operator">:</span> Date<span class="token punctuation">.</span><span class="token function">now</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token literal-property property">text</span><span class="token operator">:</span> <span class="token string">&#039;New todo&#039;</span><span class="token punctuation">,</span> <span class="token literal-property property">completed</span><span class="token operator">:</span> <span class="token boolean">false</span> <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="14"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="15"><code><span class="token operator">&lt;</span><span class="token operator">/</span>script<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="16"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="17"><code><span class="token punctuation">{</span>#each todos <span class="token keyword">as</span> todo<span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="18"><code>  <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="19"><code>    <span class="token operator">&lt;</span>input type<span class="token operator">=</span><span class="token string">&quot;checkbox&quot;</span> checked<span class="token operator">=</span><span class="token punctuation">{</span>todo<span class="token punctuation">.</span>completed<span class="token punctuation">}</span> onchange<span class="token operator">=</span><span class="token punctuation">{</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token function">toggleTodo</span><span class="token punctuation">(</span>todo<span class="token punctuation">.</span>id<span class="token punctuation">)</span><span class="token punctuation">}</span> <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="20"><code>    <span class="token punctuation">{</span>todo<span class="token punctuation">.</span>text<span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="21"><code>  <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="22"><code><span class="token punctuation">{</span><span class="token operator">/</span>each<span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-69" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-69'] = {"code":"\u003Cscript\u003E\n  let todos = $state([\n    { id: 1, text: 'Learn Svelte', completed: false, metadata: { priority: 'high' } }\n  ]);\n\n  function toggleTodo(id) {\n    \u002F\u002F ✅ Deep reactivity works - direct mutation triggers updates\n    const todo = todos.find(t =\u003E t.id === id);\n    todo.completed = !todo.completed;\n  }\n\n  function addTodo() {\n    \u002F\u002F ✅ Array mutations work automatically\n    todos.push({ id: Date.now(), text: 'New todo', completed: false });\n  }\n\u003C\u002Fscript\u003E\n\n{#each todos as todo}\n  \u003Cdiv\u003E\n    \u003Cinput type=\"checkbox\" checked={todo.completed} onchange={() =\u003E toggleTodo(todo.id)} \u002F\u003E\n    {todo.text}\n  \u003C\u002Fdiv\u003E\n{\u002Feach}","lang":"svelte"};
+		</script></div><p>Let’s ignore the fact that these runes can only work in files which end with <code class="inline">*.svelte.js</code>. Let’s ignore the compiler infrastructure needed to make them work. Let’s ignore the fact that you can’t assign a <code class="inline">$derived()</code> rune to a let variable and re-assign it. Let’s ignore that these “runes” are actually compiler intrinsics, like a C++ feature, except instead of providing you low-level access to memory and assembly they provide access to a high-level reactive abstraction.</p><p>The thing I want to focus on is that any reactive abstraction which uses effects is prone to infinite loops:</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token operator">&lt;</span>script<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><code>  <span class="token keyword">let</span> password <span class="token operator">=</span> <span class="token function">$state</span><span class="token punctuation">(</span><span class="token string">&#039;&#039;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><code>  <span class="token keyword">let</span> attempts <span class="token operator">=</span> <span class="token function">$state</span><span class="token punctuation">(</span><span class="token number">0</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code>  <span class="token keyword">let</span> isSubmitting <span class="token operator">=</span> <span class="token function">$state</span><span class="token punctuation">(</span><span class="token boolean">false</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><code>  <span class="token comment">// ❌ Creates infinite loop!</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><code>  <span class="token function">$effect</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><code>    <span class="token keyword">if</span> <span class="token punctuation">(</span>isSubmitting <span class="token operator">&amp;&amp;</span> password <span class="token operator">!==</span> <span class="token string">&#039;hunter2&#039;</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="8"><code>      attempts<span class="token operator">++</span><span class="token punctuation">;</span> <span class="token comment">// This triggers the effect again!</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="9"><code>      <span class="token function">setTimeout</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="10"><code>        isSubmitting <span class="token operator">=</span> <span class="token boolean">false</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="11"><code>        password <span class="token operator">=</span> <span class="token string">&#039;&#039;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="12"><code>      <span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token number">2000</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="13"><code>    <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="14"><code>  <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="15"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="16"><code>  <span class="token keyword">function</span> <span class="token function">handleSubmit</span><span class="token punctuation">(</span><span class="token parameter">e</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="17"><code>    e<span class="token punctuation">.</span><span class="token function">preventDefault</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="18"><code>    <span class="token keyword">if</span> <span class="token punctuation">(</span>password<span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="19"><code>      isSubmitting <span class="token operator">=</span> <span class="token boolean">true</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="20"><code>    <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="21"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="22"><code><span class="token operator">&lt;</span><span class="token operator">/</span>script<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="23"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="24"><code><span class="token operator">&lt;</span>form onsubmit<span class="token operator">=</span><span class="token punctuation">{</span>handleSubmit<span class="token punctuation">}</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="25"><code>  <span class="token operator">&lt;</span>input</code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="26"><code>    type<span class="token operator">=</span><span class="token string">&quot;password&quot;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="27"><code>    <span class="token literal-property property">bind</span><span class="token operator">:</span>value<span class="token operator">=</span><span class="token punctuation">{</span>password<span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="28"><code>    disabled<span class="token operator">=</span><span class="token punctuation">{</span>isSubmitting<span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="29"><code>  <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="30"><code>  <span class="token operator">&lt;</span>button type<span class="token operator">=</span><span class="token string">&quot;submit&quot;</span> disabled<span class="token operator">=</span><span class="token punctuation">{</span>isSubmitting <span class="token operator">||</span> <span class="token operator">!</span>password<span class="token punctuation">}</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="31"><code>    <span class="token punctuation">{</span>isSubmitting <span class="token operator">?</span> <span class="token string">&#039;Checking...&#039;</span> <span class="token operator">:</span> <span class="token string">&#039;Login&#039;</span><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="32"><code>  <span class="token operator">&lt;</span><span class="token operator">/</span>button<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="33"><code>  <span class="token operator">&lt;</span>p<span class="token operator">&gt;</span>Failed attempts<span class="token operator">:</span> <span class="token punctuation">{</span>attempts<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>p<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="34"><code><span class="token operator">&lt;</span><span class="token operator">/</span>form<span class="token operator">&gt;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-70" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-70'] = {"code":"\u003Cscript\u003E\n  let password = $state('');\n  let attempts = $state(0);\n  let isSubmitting = $state(false);\n\n  \u002F\u002F ❌ Creates infinite loop!\n  $effect(() =\u003E {\n    if (isSubmitting && password !== 'hunter2') {\n      attempts++; \u002F\u002F This triggers the effect again!\n      setTimeout(() =\u003E {\n        isSubmitting = false;\n        password = '';\n      }, 2000);\n    }\n  });\n\n  function handleSubmit(e) {\n    e.preventDefault();\n    if (password) {\n      isSubmitting = true;\n    }\n  }\n\u003C\u002Fscript\u003E\n\n\u003Cform onsubmit={handleSubmit}\u003E\n  \u003Cinput\n    type=\"password\"\n    bind:value={password}\n    disabled={isSubmitting}\n  \u002F\u003E\n  \u003Cbutton type=\"submit\" disabled={isSubmitting || !password}\u003E\n    {isSubmitting ? 'Checking...' : 'Login'}\n  \u003C\u002Fbutton\u003E\n  \u003Cp\u003EFailed attempts: {attempts}\u003C\u002Fp\u003E\n\u003C\u002Fform\u003E","lang":"svelte"};
+		</script></div><p>This component immediately blows the stack because we’re both reading to and writing to the same <code class="inline">$state()</code> rune in an <code class="inline">effect()</code> rune callback, so the effect keeps on firing.</p><p><a href="https://svelte.dev/blog/rethinking-reactivity">Reactivity proponents often wax poetic about their reactivity making programming like using spreadsheets</a>, where each cell can update and cause other computed cells to update, but this just betrays the fact that these programmers have never had to update an excel file in anger, filled with so many computed fields that the application just dies when you open the file. All <code class="inline">effect()</code> callback APIs suffer from the possibility that a write causes a cascading read, and therefore an infinite loop. Just like Excel, Svelte provides sophisticated heuristics and tricks to prevent infinite loops for most cases, but they can still happen.</p><p>The solution in Svelte is to not use the <code class="inline">$effect()</code>, be careful about updating random variables in <code class="inline">$effect()</code>, or use Svelte&#039;s special escape hatch to mark a read of a rune as being non-reactive with the <code class="inline">untrack()</code> function.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token comment">// ✅ Must use untrack() to break the reactive chain</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><code><span class="token function">$effect</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span>isSubmitting <span class="token operator">&amp;&amp;</span> password <span class="token operator">!==</span> <span class="token string">&#039;hunter2&#039;</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code>    <span class="token function">untrack</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><code>      attempts<span class="token operator">++</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><code>    <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><code>    <span class="token comment">// ... rest of logic</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="8"><code><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span><span class="token template-string"><span class="token template-punctuation string">`</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="9"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="10"><code><span class="token template-string"><span class="token string">Again, let&#039;s apply the bug severity heuristic. Are these bugs easy to spot? Usually you’ll blow the stack immediately, but there are still edge-cases in larger components. And because the </span><span class="token template-punctuation string">`</span></span><span class="token function">$effect</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string"> rune colors the execution of all code which runs in it, you have to make sure that not only the code within the effect callback itself doesn’t update runes but also all nested function calls as well. This coloring of effect code is invisible to the user and requires careful tracing of logic, or defensive calls to </span><span class="token template-punctuation string">`</span></span><span class="token function">untrack</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string">, which might make it so that the effect doesn’t fire again when you want it to.</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="11"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="12"><code><span class="token template-string"><span class="token string">These infinite loop bugs are also infuriating to fix because debugging when you’re in a reactive abstraction might subtly alter the reactivity. Even innocuous operations like logging different pieces of state can trigger infinite loops if you&#039;re not careful. Svelte provides </span><span class="token template-punctuation string">`</span></span><span class="token function">untrack</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string"> as an escape hatch, but again, needing to opt out of reactivity to avoid bugs reveals the fundamental complexity of the reactive model.</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="13"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="14"><code><span class="token template-string"><span class="token string">In Crank, these performance traps and infinite loops simply don&#039;t exist. State is just JavaScript variables. Updates happen when you call </span><span class="token template-punctuation string">`</span></span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string">. There&#039;s no hidden proxy wrapping, no reactive tracking to accidentally trigger, no need for escape hatches like </span><span class="token template-punctuation string">`</span></span>shallowRef<span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string"> or </span><span class="token template-punctuation string">`</span></span><span class="token function">untrack</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string">. You can definitely still cause infinite loops, but it will likely be your own fault and the error will likely come with a clear stack trace, the infinite loop will never be because of a spreadsheet-like reactive abstraction.</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="15"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="16"><code><span class="token template-string"><span class="token string">The irony is that reactive abstractions promise to eliminate manual update management, yet each framework requires its own set of escape hatches and workarounds. Solid needs </span><span class="token template-punctuation string">`</span></span>splitProps<span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string"> and </span><span class="token template-punctuation string">`</span></span>mergeProps<span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string"> to safely manipulate props. Vue needs </span><span class="token template-punctuation string">`</span></span>shallowRef<span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string"> and </span><span class="token template-punctuation string">`</span></span>markRaw<span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string"> to avoid performance cliffs. Svelte needs </span><span class="token template-punctuation string">`</span></span><span class="token function">untrack</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string"> to prevent infinite loops. These APIs exist precisely because reactivity doesn&#039;t fully insulate you from update concerns - it just transforms them into different, often more subtle problems.</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="17"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="18"><code><span class="token template-string"><span class="token string">### Executional Transparency</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="19"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="20"><code><span class="token template-string"><span class="token string">When I wonder why I made Crank use explicit refreshes, and why I tolerated Crank having a non-reactive solution with no good solution to the “I forgot to call </span><span class="token template-punctuation string">`</span></span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string"> problem” until the recent </span><span class="token template-punctuation string">`</span></span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string"> callback API, I have to reach for a philosophical computing principle which I haven’t seen described much called *executional transparency.*</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="21"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="22"><code><span class="token template-string"><span class="token string">Executional transparency can be thought of as a quality of code, which can be opposed with *referential transparency*, which is a formal quality of code where when your statements avoid side-effects and use immutable variable declarations and data structures, the result of these constraints is that it becomes easier to “see” how data is transformed in your code, because there is no hidden state elsewhere which changes how the data is transformed.</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="23"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="24"><code><span class="token template-string"><span class="token template-punctuation string">`</span></span><span class="token template-string"><span class="token template-punctuation string">`</span><span class="token template-punctuation string">`</span></span>jsx</code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="25"><code><span class="token comment">// Referentially transparent - no side effects, same input = same output</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="26"><code><span class="token keyword">const</span> <span class="token function-variable function">add</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token parameter">a<span class="token punctuation">,</span> b</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> a <span class="token operator">+</span> b<span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="27"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="28"><code><span class="token comment">// Not referentially transparent - depends on external state</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="29"><code><span class="token keyword">let</span> counter <span class="token operator">=</span> <span class="token number">0</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="30"><code><span class="token keyword">const</span> <span class="token function-variable function">increment</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token operator">++</span>counter<span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-71" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-71'] = {"code":"\u002F\u002F ✅ Must use untrack() to break the reactive chain\n$effect(() =\u003E {\n  if (isSubmitting && password !== 'hunter2') {\n    untrack(() =\u003E {\n      attempts++;\n    });\n    \u002F\u002F ... rest of logic\n  }\n});`\n\nAgain, let's apply the bug severity heuristic. Are these bugs easy to spot? Usually you’ll blow the stack immediately, but there are still edge-cases in larger components. And because the `$effect()` rune colors the execution of all code which runs in it, you have to make sure that not only the code within the effect callback itself doesn’t update runes but also all nested function calls as well. This coloring of effect code is invisible to the user and requires careful tracing of logic, or defensive calls to `untrack()`, which might make it so that the effect doesn’t fire again when you want it to.\n\nThese infinite loop bugs are also infuriating to fix because debugging when you’re in a reactive abstraction might subtly alter the reactivity. Even innocuous operations like logging different pieces of state can trigger infinite loops if you're not careful. Svelte provides `untrack()` as an escape hatch, but again, needing to opt out of reactivity to avoid bugs reveals the fundamental complexity of the reactive model.\n\nIn Crank, these performance traps and infinite loops simply don't exist. State is just JavaScript variables. Updates happen when you call `refresh()`. There's no hidden proxy wrapping, no reactive tracking to accidentally trigger, no need for escape hatches like `shallowRef` or `untrack()`. You can definitely still cause infinite loops, but it will likely be your own fault and the error will likely come with a clear stack trace, the infinite loop will never be because of a spreadsheet-like reactive abstraction.\n\nThe irony is that reactive abstractions promise to eliminate manual update management, yet each framework requires its own set of escape hatches and workarounds. Solid needs `splitProps` and `mergeProps` to safely manipulate props. Vue needs `shallowRef` and `markRaw` to avoid performance cliffs. Svelte needs `untrack()` to prevent infinite loops. These APIs exist precisely because reactivity doesn't fully insulate you from update concerns - it just transforms them into different, often more subtle problems.\n\n### Executional Transparency\n\nWhen I wonder why I made Crank use explicit refreshes, and why I tolerated Crank having a non-reactive solution with no good solution to the “I forgot to call `refresh()` problem” until the recent `refresh()` callback API, I have to reach for a philosophical computing principle which I haven’t seen described much called *executional transparency.*\n\nExecutional transparency can be thought of as a quality of code, which can be opposed with *referential transparency*, which is a formal quality of code where when your statements avoid side-effects and use immutable variable declarations and data structures, the result of these constraints is that it becomes easier to “see” how data is transformed in your code, because there is no hidden state elsewhere which changes how the data is transformed.\n\n```jsx\n\u002F\u002F Referentially transparent - no side effects, same input = same output\nconst add = (a, b) =\u003E a + b;\n\n\u002F\u002F Not referentially transparent - depends on external state\nlet counter = 0;\nconst increment = () =\u003E ++counter;","lang":"js"};
+		</script></div><p>If referential transparency is about seeing what your data does, executional transparency is about seeing when your code runs. Frameworks, classically defined as abstractions which exhibit “Inversion of Control,” or simply defined APIs which call your code rather than you calling the API’s code, clearly have an important role to play in making your code executionally transparent. Crank code is executionally transparent because of its explicitness: a component runs if and only if it is updated by a parent or <code class="inline">refresh()</code> is called on the component. Crank also encourages executionally transparent code in a “exercise every day” kind of way, in that it forces developers to reason about when exactly they need their app updated with explicit calls to <code class="inline">refresh()</code>. </p><p>The root of this philosophy of prioritizing “executional transparency” is to contrast it with React, whose development is painful mainly because, despite the fact it has the least reactive abstraction of all frameworks, simple <code class="inline">setState()</code> calls, it is also somehow the most executionally opaque. Over the years, React devalued this sort of transparency by design, by, for instance, double-rendering components in development to ensure that rendering doesn’t contain any side-effects, and implementing confusing APIs like <code class="inline">useEffect()</code> and <code class="inline">useSyncExternalStore()</code> and <code class="inline">useTransition()</code> where callbacks return callbacks and all of them can be called at the whim of some arbitrary scheduling algorithm.</p><p>At each step of post-class React development, it seems that React has made component code more and more executionally opaque by cutting up the component model into more and more individual callbacks which can be fired at any time, and differently based on platform. Perhaps it was because React maintainers thought referential transparency was more important than executional transparency because they can be thought of as naturally opposing. But you can have both referentially transparent and executionally transparent code, the two qualities don’t have to be inversely correlated, and good software engineering often maximizes both.</p><p>The result for the React ecosystem is countless misunderstandings and blog posts about when code runs, a variety of tools to help developers debug excess rendering like <code class="inline">Why Did You Render</code>, and best practice disputes for even the simplest of tasks like storing a constant value in scope over the lifetime of a component (can you use “memoization” helpers like <code class="inline">useMemo()</code> or are the callbacks going to be re-called according to some arbitrary cache eviction?).</p><h3>Non-reactivity Is a Superpower</h3><p>Honestly, when I think about reactive abstractions and their drawbacks, and all the human-months poured into making the Web reactive, I am shocked that more frameworks don&#039;t choose to be non-reactive. And then late at night, I wonder: is it any wonder that framework maintainers, mostly men, might not think that the simplest solution is to ask the developer when to update? Is it any wonder that framework maintainers at advertising firms like Facebook and Google might prefer a reactive abstraction that surveils your code and deduces when to update, rather than explicitly asking for permission?</p><p>Maybe it’s because I see the problems of the web differently. While every framework chases increasingly complete reactive solutions — the latest versions of React Compiler literally put all your variables in a giant cache, making step-through debugging useless, just to prevent <em>some</em> re-renders — all to make TodoMVC prettier.</p><p>But the frontiers of the web aren&#039;t about TODO apps. The frontier is working on animations, virtual lists, scrollytelling, content-editable code editors, WebGL renderers, games, realtime applications with websocket streams, massive data visualizations, audio and video editors, slippy cartographic maps—the list of cool things you can build on the Web Platform goes on and on, and yet...</p><p>Reactive abstractions don’t help with any of these difficult problems. The more I use Crank, the more I see that explicit control over when your component renders is a superpower. You keep the context of exactly why your code is running. You render precisely when needed. And there are no leaky reactive abstractions mediating these critical decisions.</p><p>After five years and 1,875 commits of working on Crank, meditatively, repetitively, obsessively asking the question “what if components were just functions?” I think Crank now has a pretty good developer experience, and if you read this far please head over to the <a href="https://crank.js.org/playground">playground</a> and play around with some of the cool examples.</p><p>We have the ability to make the web more expressive and interactive, and it really just starts with the question “Why be Reactive?”</p></main><script data-name="static-urls-72" id="static-urls">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['static-urls-72'] = {"@b9g\u002Fcrank":"\u002Fstatic\u002Fcrank-ESBVX7GV.js","@b9g\u002Fcrank.js":"\u002Fstatic\u002Fcrank-ESBVX7GV.js","@b9g\u002Fcrank\u002Fasync":"\u002Fstatic\u002Fasync-CGDMGMUQ.js","@b9g\u002Fcrank\u002Fasync.js":"\u002Fstatic\u002Fasync-CGDMGMUQ.js","@b9g\u002Fcrank\u002Fcrank":"\u002Fstatic\u002Fcrank-ESBVX7GV.js","@b9g\u002Fcrank\u002Fcrank.js":"\u002Fstatic\u002Fcrank-ESBVX7GV.js","@b9g\u002Fcrank\u002Fdom":"\u002Fstatic\u002Fdom-2ZE6YNF6.js","@b9g\u002Fcrank\u002Fdom.js":"\u002Fstatic\u002Fdom-2ZE6YNF6.js","@b9g\u002Fcrank\u002Fevent-target":"\u002Fstatic\u002Fevent-target-K6L2AQDD.js","@b9g\u002Fcrank\u002Fevent-target.js":"\u002Fstatic\u002Fevent-target-K6L2AQDD.js","@b9g\u002Fcrank\u002Fhtml":"\u002Fstatic\u002Fhtml-4XAEMDNI.js","@b9g\u002Fcrank\u002Fhtml.js":"\u002Fstatic\u002Fhtml-4XAEMDNI.js","@b9g\u002Fcrank\u002Fjsx-dev-runtime":"\u002Fstatic\u002Fjsx-runtime-VTCZGTQU.js","@b9g\u002Fcrank\u002Fjsx-dev-runtime.js":"\u002Fstatic\u002Fjsx-runtime-VTCZGTQU.js","@b9g\u002Fcrank\u002Fjsx-runtime":"\u002Fstatic\u002Fjsx-runtime-VTCZGTQU.js","@b9g\u002Fcrank\u002Fjsx-runtime.js":"\u002Fstatic\u002Fjsx-runtime-VTCZGTQU.js","@b9g\u002Fcrank\u002Fjsx-tag":"\u002Fstatic\u002Fjsx-tag-VPNOE4JP.js","@b9g\u002Fcrank\u002Fjsx-tag.js":"\u002Fstatic\u002Fjsx-tag-VPNOE4JP.js","@b9g\u002Fcrank\u002Fstandalone":"\u002Fstatic\u002Fstandalone-FJ3E2LNJ.js","@b9g\u002Fcrank\u002Fstandalone.js":"\u002Fstatic\u002Fstandalone-FJ3E2LNJ.js","client.css":"\u002Fstatic\u002Fclient-PG5TN3NC.css"};
+		</script><script src="/static/navbar-MBN6NLBG.js"></script><script src="/static/code-blocks-VAVPFCJ2.js"></script></body></html>
