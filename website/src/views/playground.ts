@@ -14,11 +14,7 @@ import {renderer} from "@b9g/crank/dom";
 
 function *Timer() {
   let seconds = 0;
-  const interval = setInterval(() => {
-    seconds++;
-    this.refresh();
-  }, 1000);
-
+  const interval = setInterval(() => this.refresh(() => seconds++), 1000);
   for ({} of this) {
     yield <div>{seconds}</div>;
   }
@@ -45,6 +41,7 @@ async function loadExamples() {
 		"todomvc.js": "Todo MVC",
 		"hackernews.js": "Hacker News",
 		"animated-letters.js": "Animated Letters",
+		"mathml": "MathML",
 		"wizard.js": "Form Wizard",
 		"tetris.ts": "Tetris",
 		"xstate-calculator.tsx": "XState Calculator",
