@@ -178,7 +178,9 @@ test("non-string attribute values", () => {
 test("custom attributes and data attributes", () => {
 	renderer.render(
 		<math xmlns="http://www.w3.org/1998/Math/MathML">
-			<mi data-variable="x" customAttr="value">x</mi>
+			<mi data-variable="x" customAttr="value">
+				x
+			</mi>
 		</math>,
 		document.body,
 	);

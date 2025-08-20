@@ -84,12 +84,20 @@ function MatrixExample() {
 					<mfenced open="[" close="]">
 						<mtable>
 							<mtr>
-								<mtd><mi>a</mi></mtd>
-								<mtd><mi>b</mi></mtd>
+								<mtd>
+									<mi>a</mi>
+								</mtd>
+								<mtd>
+									<mi>b</mi>
+								</mtd>
 							</mtr>
 							<mtr>
-								<mtd><mi>c</mi></mtd>
-								<mtd><mi>d</mi></mtd>
+								<mtd>
+									<mi>c</mi>
+								</mtd>
+								<mtd>
+									<mi>d</mi>
+								</mtd>
 							</mtr>
 						</mtable>
 					</mfenced>
@@ -171,14 +179,20 @@ const app = (
 	<div>
 		<style>{style}</style>
 		<h1>Crank MathML Examples</h1>
-		<p>This demonstrates MathML support in Crank.js using native MathML elements with proper namespace support.</p>
+		<p>
+			This demonstrates MathML support in Crank.js using native MathML elements
+			with proper namespace support.
+		</p>
 		<QuadraticFormula />
 		<IntegralExample />
 		<MatrixExample />
 		<SummationExample />
 		<div class="math-example">
 			<h3>Browser Support</h3>
-			<p>MathML is natively supported in Firefox and Safari. Chrome requires enabling experimental web platform features.</p>
+			<p>
+				MathML is natively supported in Firefox and Safari. Chrome requires
+				enabling experimental web platform features.
+			</p>
 		</div>
 	</div>
 );
