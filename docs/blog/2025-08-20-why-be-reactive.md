@@ -3,9 +3,7 @@ title: Why Be Reactive?
 published: false
 ---
 
-I was pleasantly surprised by the warm reception to Crank back when I first released it. A pleasant tweet from a React core team member, a rush of GitHub stars, and positive conversations on Reddit and Hacker News. Unfortunately, the intervening months and years are a great case study in how to squander a JavaScript hype cycle, and today Crank isn’t used very much.
-
-###TKTK SCREEN SHOTS OF TWEETS?
+I was pleasantly surprised by the warm reception to Crank back when I first released it. [A pleasant tweet](https://x.com/Vjeux/status/1250687160237211649) from a React core team member, a rush of GitHub stars, and positive conversations on Reddit and Hacker News. Unfortunately, I squandered the JavaScript hype cycle, and today Crank isn't used very much.
 
 Nevertheless, I’ve continued to find myself happy to work on Crank over the years, performing both basic and advanced maintenance tasks like ironing out embarrassing bugs, iterating on API design, and improving its runtime performance. However, I found the hardest task not to be technical but social: how do I convince developers to take the big step of adopting a new framework for their applications?
 
@@ -33,7 +31,7 @@ function *Timer() {
 }
 ```
 
-In the Timer component, the sole piece of state is the variable `seconds`, and when it is incremented, we have to separately call to the utility method `refresh()` to actually update the view. When I first released Crank, many people saw code like this and balked. “Aha,” declared reactivity lovers. “Isn’t it a flaw that you can update a component’s local state but forget to call the `refresh()` method? Isn’t this a foot-gun”?
+In the Timer component, the sole piece of state is the variable `seconds`, and when it is incremented, we have to separately call to the utility method `refresh()` to actually update the view. When I first released Crank, many people saw code like this and balked. “Aha,” declared reactivity lovers. “Isn’t it a flaw that you can update a component’s local state but forget to call the `refresh()` method? Isn't this a footgun"?
 
 It’s true. As the first Crank user, I was also victim to this bug, forgetting to call `refresh()` after updating some state. But I refused to believe like some, that this meant I needed a reactive abstraction. Luckily, I recently realized that we can solve this problem with a slight API enhancement, by allowing a callback to be passed to `refresh()`.
 
@@ -55,30 +53,28 @@ renderer.render(<Timer />, document.body);
 
 This was so easy it became a last-minute addition to the 0.7 API. Note that you no longer have to wrap `for...of` loops in a `try`/`finally`, another subtle quality of life improvement made in [0.5](https://github.com/bikeshaving/crank/blob/main/CHANGELOG.md#050---2023-02-01).
 
-By having the convention where you put state changes in `refresh()` callbacks, you both make it impossible to forget to call `refresh()` and declaratively identify the code in the callback as intending to cause a re-render. And the API is short enough that you can usually wrap entire event callbacks in a `refresh()` without adding a line of indentation. This is one of those ideas that I wish I came up with sooner; as a matter of fact, it came to me by way of Claude Code, who hallucinated the API while I was berating it for generating the narstiest React-hook hallucinations in some Crank component. I’m grateful to Claude for imagining the `refresh()` callback API, and embarassed that I didn’t discover it sooner.
+By having the convention where you put state changes in `refresh()` callbacks, you both make it impossible to forget to call `refresh()` and declaratively identify the code in the callback as intending to cause a re-render. And the API is short enough that you can usually wrap entire event callbacks in a `refresh()` without adding a line of indentation. This is one of those ideas that I wish I came up with sooner; as a matter of fact, it came to me by way of Claude Code, who hallucinated the API while I was berating it for generating the nastiest React-hook hallucinations in some Crank component. I’m grateful to Claude for imagining the `refresh()` callback API, and embarrassed that I didn’t discover it sooner.
 
 ## Bug severity and the pit of success
 
-<!-- TODO SHORTEN Get from objection to why tolerate forget to call `refresh()` at all in three sentences. Using variety of sentence flow. -->
-Nevertheless, even with the `refresh()` callback API, I can imagine objections to the generator lifecycle. Surely, there might be situations where state is not updated correctly, or developers might still call `refresh()` at the wrong time, or forget to batch multiple state changes together. By not using a reactive abstraction you risk having state in the generator that isn’t synced with rendering. Why not just use a reactive abstraction that handles all of this automatically? Why tolerate the possibility that you write components like the naive `<Timer />` component, why tolerate the possible bug where the view doesn’t update to match state.
+Yet even with the `refresh()` callback API, the objection remains: why tolerate any possibility of forgetting to call `refresh()`? Reactive abstractions promise to eliminate this entire class of bugs by automatically syncing state with the view. But as we'll see, this "solution" creates its own problems.
 
 To understand why I don’t think non-reactivity indicates flawed design, we have to take a step back and consider the potential severity of this sort of bug. We can evaluate the “severity” of a class of bugs by asking the following two questions:
 
 1. Are these bugs easy to spot? and
 2. Are these bugs easy to fix?
 
-These two questions determine if a bug will make it to your end users, and how long they will be tormented by a bug. For Crank, the answers to both these questions is yes. The bare easy to spot because you immediately notice when your app hasn’t updated, and they’re easy to fix because you just add a `refresh()` call in the lines after the data updates you made, so much so that it eventually becomes muscle memory.  The refresh callback even solves the batching concern - multiple state updates in one callback naturally batch into one render.
+These two questions determine if a bug will make it to your end users, and how long they will be tormented by a bug. For Crank, the answers to both these questions is yes. They are easy to spot because you immediately notice when your app hasn’t updated, and they’re easy to fix because you just add a `refresh()` call in the lines after the data updates you made, so much so that it eventually becomes muscle memory.  The refresh callback even solves the batching concern - multiple state updates in one callback naturally batch into one render.
 
-<!-- TODO image of a spotted lanternfly vs image of a termite -->
 
-But here's where it gets interesting: while every reactive abstraction claims to fix this class of bug, reactive abstractions have their own gotchas specific to their. In the next section, let me apply this same severity heuristic to some alternative frameworks - Solid, Vue, and Svelte - to show you what I mean.
+But here's where it gets interesting: while every reactive abstraction claims to fix this class of bug, reactive abstractions have their own gotchas specific to them. In the next section, let me apply this same severity heuristic to some alternative frameworks - Solid, Vue, and Svelte - to show you what I mean.
 
 ### Losing Reactivity
 
 Consider these notorious examples from Solid.js.
 ```tsx
-import { render } from "solid-js/web";
-import { createSignal } from "solid-js";
+import {render} from "solid-js/web";
+import {createSignal} from "solid-js";
 
 // ❌ Wrong: Destructuring props in function parameters
 function BrokenDisplay1({seconds}: {seconds: number}) {
@@ -128,38 +124,39 @@ function Timer() {
 render(() => <Timer />, document.getElementById("app")!);
 ```
 
-Solid uses two reactive abstractions called signals and stores, and instruments reads to these reactive abstractions to cause DOM updates. In Solid.js, components are functions, but the props passed to components is a store which instruments property reads to cause any calling code to re-execute. Solid.js also requires a special babel renderer for JSX which puts reads of state in JSX expressions trigger the re-execution logic. This fails quickly when you try to destructure the `props` store, or try to compute derived values outside of JSX expressions. The broken components won't update when the signal changes because you've extracted the value at a specific point in time rather than maintaining a reactive connection.
+Solid uses two reactive abstractions called signals and stores, and instruments reads to these reactive abstractions to cause DOM updates. In Solid.js, components are functions, but the props passed to components is a reactive store which instruments property reads to cause any calling code in an “effect” to re-execute. Solid.js also requires a special babel renderer for JSX which makes reads of state in JSX expressions trigger the re-execution logic. This fails quickly when you try to destructure the `props` store, or try to compute derived values outside of JSX expressions. The broken components won't update when props change because you've extracted the value at a specific point in time rather than maintaining a reactive connection up to the JSX.
 
-Let’s consider this bug using the bug severity heuristic, these bugs are easy to spot because there are linter rules to not destructure props and use callbacks to compute derived data, but in a complex application edge-cases might still fall through the linter cracks. You only need to search for the term “Losing Reactivity” to see this error in every reactive framework.
+Let's consider this bug using the bug severity heuristic: these bugs are easy to spot because there are linter rules to not destructure props and use callbacks to compute derived data, but in a complex application edge-cases might still fall through the linter cracks. You only need to search for the term “losing reactivity” in framework issue trackers to see edge-cases in Solid and every reactive framework.
 
-Well are they easy to fix? No, they're difficult to fix because you need to understand the framework's reactive rules: which contexts preserve reactivity and when values are accessed versus evaluated. The problem of manipulating props, which is just regular objects of named parameters in Crank, is so overwhelming that Solid has to provide utilities to [split and merge props]().
+Well are they easy to fix? No, they're difficult to fix because you need to understand the framework's reactive rules: which contexts preserve reactivity and when values are accessed versus evaluated. The problem of manipulating props, which is just regular objects in Crank, is so overwhelming that Solid has to provide utilities to [split](https://docs.solidjs.com/reference/reactive-utilities/split-props) and [merge](https://docs.solidjs.com/reference/reactive-utilities/merge-props) props.
 
-With Crank's explicit refresh model, this entire category of bugs doesn't exist. Props are just values passed to functions. You can destructure them, compute derived values, pass them around - it's all just JavaScript. When you want the component to update, you call `refresh()`. There's no invisible reactive graph to accidentally break.
+With Crank's explicit refresh model, this entire category of bugs doesn't exist. Props are just values passed to functions. You can destructure them, compute derived values with them, pass them around - it's all just JavaScript. When you want the component to update, you call `refresh()`. There's no invisible reactive graph to accidentally break.
 
 ### The Deep Reactivity Performance Trap
 
-Consider Vue.js. Like Solid.js it uses a reactive abstraction which instruments reads. It does this by using a proxy which recursively wraps a reactive object’s properties and children in reactive abstractions as well. This is useful for performing DOM updates when some deeply nested state is modified:
+Consider Vue.js. Like Solid it uses a reactive abstraction which instruments reads. It does this by using a proxy which recursively wraps a reactive object’s properties and children in reactive abstractions as well. This is useful for performing DOM updates when some deeply nested state is modified:
 
 ```js
-import { ref } from 'vue';
+import {ref} from "vue";
 
 const state = ref({
   todos: [
-    {id: 1, text: 'Learn Vue', completed: false, metadata: {priority: 'high', tags: ['learning']}},
+    {id: 1, text: "Learn Vue", completed: false, metadata: {priority: "high", tags: ["learning"]}},
     // ... imagine 1000 more todos with nested objects
   ],
-  filters: {status: 'all', search: ''},
-  ui: {selectedTodo: null, theme: 'light'}
+  filters: {status: "all", search: ""},
+  ui: {selectedTodo: null, theme: "light"}
 });
 
 state.value.todos[0].completed = true; // ✅ UI updates
 state.value.todos[0].metadata.priority = 'low'; // ✅ UI updates
 
 const {ui} = state.value;
-ui.selectedTodo = state.value.todos[0]; // ✅ UI updates even though the reference was destructured.
+// ✅ UI updates even though the reference was destructured, unlike Solid
+ui.selectedTodo = state.value.todos[0];
 ```
 
-Let’s ignore the fact that proxies just don’t work with private class members, which is an unfortunate design decision.  Besides that, deeply proxying large objects and arrays is a performance bottleneck, and for this reason Vue prefers that large objects and arrays be wrapped in shallow proxies, which only change in response to top level mutations. The official Vue.js shows this preference, and every framework which uses deeply nested proxies for reactivity finds a way to avoid using it in the benchmark. TK add a link to the actual Vue.js demo.
+Let’s ignore the fact that proxies just don’t work with private class members, which is an unfortunate language design decision. Let’s ignore the fact that proxies can’t be used for primitives, which is why Vue ships both a `reactive()` and `ref()` API, so primitives can read/write a property to cause re-rendering. Besides all this, deeply proxying large objects and arrays is a performance bottleneck, and for this reason Vue prefers that large objects and arrays be wrapped in shallow proxies, which only change in response to top level mutations. The [official Vue.js framework benchmark code](https://github.com/krausest/js-framework-benchmark/blob/chrome139/frameworks/keyed/vue/src/App.vue) shows this preference, and every framework which uses deeply nested proxies for reactivity finds a way to avoid using it in the benchmark.
 
 ```js
 import {ref, shallowRef} from "vue";
@@ -201,7 +198,8 @@ Svelte had in its earlier versions (v4 and less) what I thought was the Crank-ie
 ```svelte
 <script>
  let todos = [
-   { id: 1, text: 'Learn Svelte', completed: false, metadata: { priority: 'high' } }
+   {id: 1, text: "Learn Svelte", completed: false, metadata: {priority: "high"}}
+   // more todos...
  ];
 
  function toggleTodo(id) {
@@ -215,7 +213,7 @@ Svelte had in its earlier versions (v4 and less) what I thought was the Crank-ie
 
  function addTodo() {
    // ❌ This push doesn't trigger reactivity
-   todos.push({ id: Date.now(), text: 'New todo', completed: false });
+   todos.push({id: Date.now(), text: 'New todo', completed: false});
 
    // ✅ Must reassign
    todos = todos;
@@ -258,7 +256,7 @@ Unfortunately, the Svelte maintainers thought that this lack of full reactivity 
 {/each}
 ```
 
-Let’s ignore the fact that these runes can only work in files which ends with `*.svelte.js`. Let’s ignore the compiler infrastructure needed to make them work. Let’s ignore the fact that you can’t assign a `$derived()` rune to a let variable and re-assign it. Let’s ignore that these “runes” are actually compiler intrinsics, like a C++ feature, except instead of providing you low-level access to memory and assembly they provide access to a high-level reactive abstraction.
+Let’s ignore the fact that these runes can only work in files which end with `*.svelte.js`. Let’s ignore the compiler infrastructure needed to make them work. Let’s ignore the fact that you can’t assign a `$derived()` rune to a let variable and re-assign it. Let’s ignore that these “runes” are actually compiler intrinsics, like a C++ feature, except instead of providing you low-level access to memory and assembly they provide access to a high-level reactive abstraction.
 
 The thing I want to focus on is that any reactive abstraction which uses effects is prone to infinite loops:
 
@@ -302,9 +300,9 @@ The thing I want to focus on is that any reactive abstraction which uses effects
 
 This component immediately blows the stack because we’re both reading to and writing to the same `$state()` rune in an `effect()` rune callback, so the effect keeps on firing.
 
-[Reactivity proponents often wax poetic about their reactivity making programming like using spreadsheets](#add link to rethinking reactivity from svelte), where each cell can update and cause other computed cells to update, but this just betrays the fact that these programmers have never had to update an excel file in anger, filled with so many computed fields that the application just dies when you open the file. All `effect()` callback APIs suffer from the possibility that a write causes a cascading read, and therefore an infinite loop. Just like Excel, Svelte provides sophisticated heuristics and tricks to prevent infinite loops for most cases, but they can still happen.
+[Reactivity proponents often wax poetic about their reactivity making programming like using spreadsheets](https://svelte.dev/blog/rethinking-reactivity), where each cell can update and cause other computed cells to update, but this just betrays the fact that these programmers have never had to update an excel file in anger, filled with so many computed fields that the application just dies when you open the file. All `effect()` callback APIs suffer from the possibility that a write causes a cascading read, and therefore an infinite loop. Just like Excel, Svelte provides sophisticated heuristics and tricks to prevent infinite loops for most cases, but they can still happen.
 
-The solution in Svelte, is to not use the `$effect()`, be careful about updating random variables in `$effect()`, or use Svelte’s special escape hatch to mark a read of a rune as being non-reactive with the `untrack()` function,
+The solution in Svelte is to not use the `$effect()`, be careful about updating random variables in `$effect()`, or use Svelte's special escape hatch to mark a read of a rune as being non-reactive with the `untrack()` function.
 
 ```js
 // ✅ Must use untrack() to break the reactive chain
@@ -315,9 +313,9 @@ $effect(() => {
     });
     // ... rest of logic
   }
-});
+});`
 
-Again, let’s apply the bug severity heuristic. Are these bugs easy to spot? Usually you’ll blow the stack immediately, but there are still edge-cases in larger components. And because the `$effect()` rune colors the execution of all code which runs in it, you have to make sure that not only the code within the effect callback itself doesn’t update runes but also all nested function calls as well. This coloring of effect code is invisible to the user and requires careful tracing of logic, or defensive calls to `untrack()`, which might make it so that the effect doesn’t fire again when you want it to.
+Again, let's apply the bug severity heuristic. Are these bugs easy to spot? Usually you’ll blow the stack immediately, but there are still edge-cases in larger components. And because the `$effect()` rune colors the execution of all code which runs in it, you have to make sure that not only the code within the effect callback itself doesn’t update runes but also all nested function calls as well. This coloring of effect code is invisible to the user and requires careful tracing of logic, or defensive calls to `untrack()`, which might make it so that the effect doesn’t fire again when you want it to.
 
 These infinite loop bugs are also infuriating to fix because debugging when you’re in a reactive abstraction might subtly alter the reactivity. Even innocuous operations like logging different pieces of state can trigger infinite loops if you're not careful. Svelte provides `untrack()` as an escape hatch, but again, needing to opt out of reactivity to avoid bugs reveals the fundamental complexity of the reactive model.
 
@@ -329,7 +327,7 @@ The irony is that reactive abstractions promise to eliminate manual update manag
 
 When I wonder why I made Crank use explicit refreshes, and why I tolerated Crank having a non-reactive solution with no good solution to the “I forgot to call `refresh()` problem” until the recent `refresh()` callback API, I have to reach for a philosophical computing principle which I haven’t seen described much called *executional transparency.*
 
-Executional transparency can be thought of as a quality of code, which can be opposed with *referential transparency*, which is a formal quality of code where when your statements avoid side-effects and use immutable variable declarations and data structures, the result of these constraints is that it becomes easier to “see” how data is transformed in your code, because there is no hidden state elsewhere which changes how the data is tranformed.
+Executional transparency can be thought of as a quality of code, which can be opposed with *referential transparency*, which is a formal quality of code where when your statements avoid side-effects and use immutable variable declarations and data structures, the result of these constraints is that it becomes easier to “see” how data is transformed in your code, because there is no hidden state elsewhere which changes how the data is transformed.
 
 ```jsx
 // Referentially transparent - no side effects, same input = same output
@@ -340,7 +338,7 @@ let counter = 0;
 const increment = () => ++counter;
 ```
 
-While I don’t have exact formal definition for executional transparency, it can be thought of as follows: if referential transparency is about seeing what your data does, executional transparency is about seeing when your code runs. Frameworks, classically defined as abstractions which exhibit “Inversion of Control,” or simply defined APIs which call your code rather than you calling the API’s code, clearly have an important role to play in making your code executionally transparent. Crank code is executionally transparent because of its explicitness: a component runs if and only if it is updated by a parent or `refresh()` is called on the component. Crank also encourages executionally transparent code in a “exercise every day” kind of way, in that it forces developers to reason about when exactly they need their app updated with explicit calls to `refresh()`. 
+If referential transparency is about seeing what your data does, executional transparency is about seeing when your code runs. Frameworks, classically defined as abstractions which exhibit “Inversion of Control,” or simply defined APIs which call your code rather than you calling the API’s code, clearly have an important role to play in making your code executionally transparent. Crank code is executionally transparent because of its explicitness: a component runs if and only if it is updated by a parent or `refresh()` is called on the component. Crank also encourages executionally transparent code in a “exercise every day” kind of way, in that it forces developers to reason about when exactly they need their app updated with explicit calls to `refresh()`. 
 
 The root of this philosophy of prioritizing “executional transparency” is to contrast it with React, whose development is painful mainly because, despite the fact it has the least reactive abstraction of all frameworks, simple `setState()` calls, it is also somehow the most executionally opaque. Over the years, React devalued this sort of transparency by design, by, for instance, double-rendering components in development to ensure that rendering doesn’t contain any side-effects, and implementing confusing APIs like `useEffect()` and `useSyncExternalStore()` and `useTransition()` where callbacks return callbacks and all of them can be called at the whim of some arbitrary scheduling algorithm.
 
@@ -350,11 +348,11 @@ The result for the React ecosystem is countless misunderstandings and blog posts
 
 ### Non-reactivity Is a Superpower
 
-Honestly, when I think about reactive abstractions and their drawbacks, and all the human-months poured into making the Web reactive, I am shocked that more frameworks don’t choose to be non-reactive. And then late at night, sometimes I wonder, is it any wonder that framework maintainers, mostly men, might not think of the simplest solution to views updating to state, might be to ask the user, the actual developer? Is it any wonder that framework maintainers, employed by firms like advertising Facebook and Google, might think that the best way to develop web applications is for a reactive abstraction to surveil your code and deduce when your code should update, rather than explicitly asking you for permission to update.
+Honestly, when I think about reactive abstractions and their drawbacks, and all the human-months poured into making the Web reactive, I am shocked that more frameworks don't choose to be non-reactive. And then late at night, I wonder: is it any wonder that framework maintainers, mostly men, might not think that the simplest solution is to ask the developer when to update? Is it any wonder that framework maintainers at advertising firms like Facebook and Google might prefer a reactive abstraction that surveils your code and deduces when to update, rather than explicitly asking for permission?
 
-Maybe it’s because I see the problems of the web differently. While every framework chases increasingly complete reactive solutions — the latest versions of React Compiler literally put all your variables in a giant cache, making step-through debugging useless, just to prevent *some* re-renders — all this effort is really doing is making their TodoMVC prettier.
+Maybe it’s because I see the problems of the web differently. While every framework chases increasingly complete reactive solutions — the latest versions of React Compiler literally put all your variables in a giant cache, making step-through debugging useless, just to prevent *some* re-renders — all to make TodoMVC prettier.
 
-But the frontiers of the web aren’t about TODO apps. The frontier is working on things like animations, virtual lists, scrollytelling, content-editable code editors, WebGL renderers, games, realtime applications with websocket streams, massive data visualizations, slippy cartographic maps... the list of cool things you can build on the Web Platform goes on and on and yet...
+But the frontiers of the web aren't about TODO apps. The frontier is working on animations, virtual lists, scrollytelling, content-editable code editors, WebGL renderers, games, realtime applications with websocket streams, massive data visualizations, audio and video editors, slippy cartographic maps—the list of cool things you can build on the Web Platform goes on and on, and yet...
 
 Reactive abstractions don’t help with any of these difficult problems. The more I use Crank, the more I see that explicit control over when your component renders is a superpower. You keep the context of exactly why your code is running. You render precisely when needed. And there are no leaky reactive abstractions mediating these critical decisions.
 
