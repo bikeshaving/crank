@@ -125,19 +125,119 @@ function canMove(grid) {
 	return false;
 }
 
+// Individual tile component with animations
+function* Tile({value, position, isNew = false, isMerged = false}) {
+	const key = `${position.row}-${position.col}`;
+
+	// Exit animation when tile disappears/merges
+	this.cleanup(async (element) => {
+		if (value === 0) return; // Don't animate empty tiles
+
+		// Merge animation - quick scale up then fade out
+		if (isMerged) {
+			element.style.transition =
+				"transform 150ms ease-out, opacity 150ms ease-out";
+			element.style.transform = "scale(1.1)";
+			await new Promise((resolve) => setTimeout(resolve, 75));
+			element.style.transform = "scale(0)";
+			element.style.opacity = "0";
+			await new Promise((resolve) => setTimeout(resolve, 75));
+		}
+	});
+
+	for ({value, isNew, isMerged} of this) {
+		if (value === 0) {
+			yield null; // Don't render empty tiles
+			continue;
+		}
+
+		// Official 2048 colors with better contrast
+		const getTileStyle = (val) => {
+			const styles = {
+				2: {bg: "#eee4da", color: "#776e65"},
+				4: {bg: "#ede0c8", color: "#776e65"},
+				8: {bg: "#f2b179", color: "#f9f6f2"},
+				16: {bg: "#f59563", color: "#f9f6f2"},
+				32: {bg: "#f67c5f", color: "#f9f6f2"},
+				64: {bg: "#f65e3b", color: "#f9f6f2"},
+				128: {bg: "#edcf72", color: "#f9f6f2", fontSize: "45px"},
+				256: {bg: "#edcc61", color: "#f9f6f2", fontSize: "45px"},
+				512: {bg: "#edc850", color: "#f9f6f2", fontSize: "45px"},
+				1024: {bg: "#edc53f", color: "#f9f6f2", fontSize: "35px"},
+				2048: {bg: "#edc22e", color: "#f9f6f2", fontSize: "35px"},
+				4096: {bg: "#3c3a32", color: "#f9f6f2", fontSize: "30px"},
+				8192: {bg: "#3c3a32", color: "#f9f6f2", fontSize: "30px"},
+			};
+			return styles[val] || {bg: "#3c3a32", color: "#f9f6f2", fontSize: "25px"};
+		};
+
+		const tileStyle = getTileStyle(value);
+
+		yield (
+			<div
+				key={key}
+				style={{
+					position: "absolute",
+					width: "106.25px",
+					height: "106.25px",
+					backgroundColor: tileStyle.bg,
+					color: tileStyle.color,
+					borderRadius: "3px",
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					fontSize: tileStyle.fontSize || "55px",
+					fontWeight: "bold",
+					lineHeight: "1",
+					top: `${position.row * 121.25 + 15}px`,
+					left: `${position.col * 121.25 + 15}px`,
+					transition: isNew
+						? "transform 150ms ease-out"
+						: "top 150ms ease-out, left 150ms ease-out, transform 150ms ease-out",
+					transform: isNew ? "scale(0)" : isMerged ? "scale(1.2)" : "scale(1)",
+					zIndex: isMerged ? 10 : 1,
+					animation: isNew
+						? "tileAppear 150ms ease-out forwards"
+						: isMerged
+							? "tileMerge 200ms ease-out forwards"
+							: "none",
+				}}
+			>
+				{value.toLocaleString()}
+			</div>
+		);
+
+		// Reset animation states after first render
+		if (isNew || isMerged) {
+			setTimeout(() => {
+				this.refresh(() => {
+					isNew = false;
+					isMerged = false;
+				});
+			}, 200);
+		}
+	}
+}
+
 function* Game2048() {
 	let grid = create2048Grid();
+	let previousGrid = create2048Grid();
 	let score = 0;
+	let bestScore = parseInt(localStorage.getItem("2048-best") || "0");
 	let gameOver = false;
 	let won = false;
 	let continueAfterWin = false;
+	let animating = false;
 
 	// Initialize with two random tiles
 	addRandomTile(grid);
 	addRandomTile(grid);
 
-	const move = (direction) => {
-		if (gameOver && !won) return;
+	const move = async (direction) => {
+		if (gameOver || animating) return;
+
+		animating = true;
+		previousGrid = grid.map((row) => [...row]); // Deep copy
 
 		let newGrid;
 		switch (direction) {
@@ -154,6 +254,7 @@ function* Game2048() {
 				newGrid = moveDown(grid);
 				break;
 			default:
+				animating = false;
 				return;
 		}
 
@@ -162,15 +263,24 @@ function* Game2048() {
 			grid = newGrid;
 
 			// Calculate score increase
-			let scoreIncrease = 0;
+			let newScore = 0;
 			for (let i = 0; i < 4; i++) {
 				for (let j = 0; j < 4; j++) {
 					if (grid[i][j] > 0) {
-						scoreIncrease += grid[i][j];
+						newScore += grid[i][j];
 					}
 				}
 			}
-			score = scoreIncrease;
+			score = newScore;
+
+			// Update best score
+			if (score > bestScore) {
+				bestScore = score;
+				localStorage.setItem("2048-best", bestScore.toString());
+			}
+
+			// Wait for slide animation
+			await new Promise((resolve) => setTimeout(resolve, 150));
 
 			addRandomTile(grid);
 
@@ -186,15 +296,19 @@ function* Game2048() {
 
 			this.refresh();
 		}
+
+		animating = false;
 	};
 
 	const restart = () => {
 		this.refresh(() => {
 			grid = create2048Grid();
+			previousGrid = create2048Grid();
 			score = 0;
 			gameOver = false;
 			won = false;
 			continueAfterWin = false;
+			animating = false;
 			addRandomTile(grid);
 			addRandomTile(grid);
 		});
@@ -230,33 +344,31 @@ function* Game2048() {
 	});
 
 	for ({} of this) {
-		const getTileColor = (value) => {
-			const colors = {
-				0: "#cdc1b4",
-				2: "#eee4da",
-				4: "#ede0c8",
-				8: "#f2b179",
-				16: "#f59563",
-				32: "#f67c5f",
-				64: "#f65e3b",
-				128: "#edcf72",
-				256: "#edcc61",
-				512: "#edc850",
-				1024: "#edc53f",
-				2048: "#edc22e",
-			};
-			return colors[value] || "#3c3a32";
-		};
+		// Generate tile data for rendering
+		const tiles = [];
+		for (let i = 0; i < 4; i++) {
+			for (let j = 0; j < 4; j++) {
+				if (grid[i][j] !== 0) {
+					const wasEmpty = previousGrid[i][j] === 0;
+					const wasDifferent =
+						previousGrid[i][j] !== 0 && previousGrid[i][j] !== grid[i][j];
 
-		const getTileTextColor = (value) => {
-			return value <= 4 ? "#776e65" : "#f9f6f2";
-		};
+					tiles.push({
+						key: `${i}-${j}-${grid[i][j]}`,
+						value: grid[i][j],
+						position: {row: i, col: j},
+						isNew: wasEmpty,
+						isMerged: wasDifferent,
+					});
+				}
+			}
+		}
 
 		yield (
 			<div
 				tabindex="0"
 				style={{
-					fontFamily: "Arial, sans-serif",
+					fontFamily: '"Clear Sans", "Helvetica Neue", Arial, sans-serif',
 					textAlign: "center",
 					backgroundColor: "#faf8ef",
 					padding: "20px",
@@ -264,9 +376,82 @@ function* Game2048() {
 					maxWidth: "500px",
 					margin: "0 auto",
 					outline: "none",
+					position: "relative",
 				}}
 			>
-				<h1 style={{color: "#776e65", margin: "0 0 20px 0"}}>2048</h1>
+				<style>{`
+					@keyframes tileAppear {
+						0% { transform: scale(0); }
+						100% { transform: scale(1); }
+					}
+					@keyframes tileMerge {
+						0% { transform: scale(1); }
+						50% { transform: scale(1.2); }
+						100% { transform: scale(1); }
+					}
+					.game-title {
+						font-size: 48px;
+						font-weight: bold;
+						color: #776e65;
+						margin: 0 0 10px 0;
+						text-transform: uppercase;
+						letter-spacing: -3px;
+					}
+					.game-intro {
+						color: #776e65;
+						font-size: 18px;
+						line-height: 1.65;
+						margin-bottom: 20px;
+					}
+					.score-container {
+						background: #bbada0;
+						padding: 10px 20px;
+						border-radius: 3px;
+						color: white;
+						font-weight: bold;
+						position: relative;
+						display: inline-block;
+						margin: 0 10px;
+						min-width: 80px;
+					}
+					.score-container .score-addition {
+						position: absolute;
+						right: 20px;
+						top: -30px;
+						color: #119145;
+						font-weight: bold;
+						font-size: 18px;
+						animation: scoreAddition 600ms ease-in;
+						pointer-events: none;
+					}
+					@keyframes scoreAddition {
+						0% { opacity: 1; transform: translateY(0); }
+						100% { opacity: 0; transform: translateY(-20px); }
+					}
+					.restart-button {
+						background: #8f7a66;
+						color: #f9f6f2;
+						border: none;
+						padding: 10px 20px;
+						border-radius: 3px;
+						cursor: pointer;
+						font-weight: bold;
+						font-size: 16px;
+						text-decoration: none;
+						display: inline-block;
+						transition: background 0.3s ease-in-out;
+					}
+					.restart-button:hover {
+						background: #9f7a66;
+					}
+				`}</style>
+
+				<h1 className="game-title">2048</h1>
+				<p className="game-intro">
+					<strong className="important">HOW TO PLAY:</strong> Use your{" "}
+					<strong>arrow keys</strong> to move the tiles. When two tiles with the
+					same number touch, they <strong>merge into one!</strong>
+				</p>
 
 				<div
 					style={{
@@ -276,30 +461,38 @@ function* Game2048() {
 						marginBottom: "20px",
 					}}
 				>
-					<div
-						style={{
-							backgroundColor: "#bbada0",
-							padding: "10px 20px",
-							borderRadius: "5px",
-							color: "white",
-							fontWeight: "bold",
-						}}
-					>
-						Score: {score}
+					<div style={{display: "flex", gap: "10px"}}>
+						<div className="score-container">
+							<div
+								style={{
+									fontSize: "13px",
+									textTransform: "uppercase",
+									letterSpacing: "1px",
+								}}
+							>
+								Score
+							</div>
+							<div style={{fontSize: "25px", fontWeight: "bold"}}>
+								{score.toLocaleString()}
+							</div>
+						</div>
+						<div className="score-container">
+							<div
+								style={{
+									fontSize: "13px",
+									textTransform: "uppercase",
+									letterSpacing: "1px",
+								}}
+							>
+								Best
+							</div>
+							<div style={{fontSize: "25px", fontWeight: "bold"}}>
+								{bestScore.toLocaleString()}
+							</div>
+						</div>
 					</div>
 
-					<button
-						onclick={restart}
-						style={{
-							backgroundColor: "#8f7a66",
-							color: "white",
-							border: "none",
-							padding: "10px 20px",
-							borderRadius: "5px",
-							cursor: "pointer",
-							fontWeight: "bold",
-						}}
-					>
+					<button className="restart-button" onclick={restart}>
 						New Game
 					</button>
 				</div>
@@ -308,126 +501,155 @@ function* Game2048() {
 					style={{
 						backgroundColor: "#bbada0",
 						borderRadius: "10px",
-						padding: "10px",
 						position: "relative",
+						width: "500px",
+						height: "500px",
+						margin: "0 auto",
 					}}
 				>
-					{grid.map((row, i) => (
-						<div key={i} style={{display: "flex", marginBottom: "10px"}}>
-							{row.map((cell, j) => (
-								<div
-									key={`${i}-${j}`}
-									style={{
-										width: "80px",
-										height: "80px",
-										backgroundColor: getTileColor(cell),
-										color: getTileTextColor(cell),
-										display: "flex",
-										alignItems: "center",
-										justifyContent: "center",
-										borderRadius: "5px",
-										fontSize: cell >= 128 ? "24px" : "32px",
-										fontWeight: "bold",
-										marginRight: j < 3 ? "10px" : "0",
-										transition: "all 0.15s ease-in-out",
-									}}
-								>
-									{cell || ""}
-								</div>
-							))}
-						</div>
+					{/* Grid background */}
+					{Array(4)
+						.fill()
+						.map((_, i) =>
+							Array(4)
+								.fill()
+								.map((_, j) => (
+									<div
+										key={`bg-${i}-${j}`}
+										style={{
+											position: "absolute",
+											width: "106.25px",
+											height: "106.25px",
+											backgroundColor: "rgba(238, 228, 218, 0.35)",
+											borderRadius: "3px",
+											top: `${i * 121.25 + 15}px`,
+											left: `${j * 121.25 + 15}px`,
+										}}
+									/>
+								)),
+						)}
+
+					{/* Tiles */}
+					{tiles.map((tileData) => (
+						<Tile
+							key={tileData.key}
+							value={tileData.value}
+							position={tileData.position}
+							isNew={tileData.isNew}
+							isMerged={tileData.isMerged}
+						/>
 					))}
 				</div>
 
 				{won && !continueAfterWin && (
 					<div
 						style={{
-							position: "absolute",
-							top: "50%",
-							left: "50%",
-							transform: "translate(-50%, -50%)",
-							backgroundColor: "rgba(255, 255, 255, 0.9)",
-							padding: "20px",
-							borderRadius: "10px",
-							textAlign: "center",
+							position: "fixed",
+							top: "0",
+							left: "0",
+							width: "100%",
+							height: "100%",
+							backgroundColor: "rgba(255, 255, 255, 0.73)",
+							zIndex: 100,
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "center",
 						}}
 					>
-						<h2 style={{color: "#776e65", margin: "0 0 10px 0"}}>You Win!</h2>
-						<button
-							onclick={continuePlaying}
+						<div
 							style={{
-								backgroundColor: "#8f7a66",
-								color: "white",
-								border: "none",
-								padding: "10px 20px",
-								borderRadius: "5px",
-								cursor: "pointer",
-								marginRight: "10px",
+								backgroundColor: "#ffffff",
+								padding: "30px",
+								borderRadius: "10px",
+								textAlign: "center",
+								boxShadow: "0 0 30px rgba(0, 0, 0, 0.4)",
 							}}
 						>
-							Continue
-						</button>
-						<button
-							onclick={restart}
-							style={{
-								backgroundColor: "#8f7a66",
-								color: "white",
-								border: "none",
-								padding: "10px 20px",
-								borderRadius: "5px",
-								cursor: "pointer",
-							}}
-						>
-							New Game
-						</button>
+							<h2
+								style={{
+									color: "#119145",
+									fontSize: "60px",
+									fontWeight: "bold",
+									margin: "0 0 20px 0",
+								}}
+							>
+								You Win!
+							</h2>
+							<p
+								style={{
+									color: "#776e65",
+									fontSize: "18px",
+									margin: "0 0 30px 0",
+								}}
+							>
+								Congratulations! You reached the 2048 tile!
+							</p>
+							<div>
+								<button
+									className="restart-button"
+									onclick={continuePlaying}
+									style={{marginRight: "10px"}}
+								>
+									Keep Going
+								</button>
+								<button className="restart-button" onclick={restart}>
+									Try Again
+								</button>
+							</div>
+						</div>
 					</div>
 				)}
 
 				{gameOver && !won && (
 					<div
 						style={{
-							position: "absolute",
-							top: "50%",
-							left: "50%",
-							transform: "translate(-50%, -50%)",
-							backgroundColor: "rgba(255, 255, 255, 0.9)",
-							padding: "20px",
-							borderRadius: "10px",
-							textAlign: "center",
+							position: "fixed",
+							top: "0",
+							left: "0",
+							width: "100%",
+							height: "100%",
+							backgroundColor: "rgba(238, 228, 218, 0.73)",
+							zIndex: 100,
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "center",
 						}}
 					>
-						<h2 style={{color: "#776e65", margin: "0 0 10px 0"}}>Game Over!</h2>
-						<button
-							onclick={restart}
+						<div
 							style={{
-								backgroundColor: "#8f7a66",
-								color: "white",
-								border: "none",
-								padding: "10px 20px",
-								borderRadius: "5px",
-								cursor: "pointer",
+								backgroundColor: "#ffffff",
+								padding: "30px",
+								borderRadius: "10px",
+								textAlign: "center",
+								boxShadow: "0 0 30px rgba(0, 0, 0, 0.4)",
 							}}
 						>
-							Try Again
-						</button>
+							<h2
+								style={{
+									color: "#776e65",
+									fontSize: "60px",
+									fontWeight: "bold",
+									margin: "0 0 20px 0",
+								}}
+							>
+								Game Over!
+							</h2>
+							<p
+								style={{
+									color: "#776e65",
+									fontSize: "18px",
+									margin: "0 0 30px 0",
+								}}
+							>
+								No more moves available. Your final score:{" "}
+								<strong>{score.toLocaleString()}</strong>
+							</p>
+							<button className="restart-button" onclick={restart}>
+								Try Again
+							</button>
+						</div>
 					</div>
 				)}
-
-				<div
-					style={{
-						marginTop: "20px",
-						color: "#776e65",
-						fontSize: "14px",
-					}}
-				>
-					<p>
-						<strong>How to play:</strong> Use arrow keys to move tiles. When two
-						tiles with the same number touch, they merge into one!
-					</p>
-					<p>
-						<strong>Goal:</strong> Get to the 2048 tile to win!
-					</p>
-				</div>
 			</div>
 		);
 	}

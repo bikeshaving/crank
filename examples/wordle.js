@@ -753,215 +753,240 @@ function* WordleGame() {
 		};
 
 		yield (
-			<div
-				tabindex="0"
-				style={{
-					fontFamily: "Arial, sans-serif",
-					textAlign: "center",
-					backgroundColor: "#ffffff",
-					padding: "20px",
-					maxWidth: "500px",
-					margin: "0 auto",
-					outline: "none",
-				}}
-			>
-				<h1
-					style={{
-						color: "#1a1a1b",
-						margin: "0 0 20px 0",
-						fontSize: "36px",
-						fontWeight: "bold",
-						letterSpacing: "2px",
-					}}
-				>
-					WORDLE
-				</h1>
-
-				{message && (
-					<div
-						style={{
-							backgroundColor: won ? "#6aaa64" : "#f56565",
-							color: "white",
-							padding: "10px",
-							borderRadius: "5px",
-							margin: "10px 0",
-							fontWeight: "bold",
-						}}
-					>
-						{message}
-					</div>
-				)}
-
-				{/* Game Grid */}
-				<div
-					style={{
-						display: "grid",
-						gridTemplateRows: "repeat(6, 1fr)",
-						gap: "5px",
-						marginBottom: "30px",
-						animation: shake ? "shake 0.5s ease-in-out" : "none",
-					}}
-				>
-					{Array(6)
-						.fill()
-						.map((_, rowIndex) => (
-							<div
-								key={rowIndex}
-								style={{
-									display: "grid",
-									gridTemplateColumns: "repeat(5, 1fr)",
-									gap: "5px",
-								}}
-							>
-								{Array(5)
-									.fill()
-									.map((_, colIndex) => {
-										let letter = "";
-										let state = null;
-
-										if (rowIndex < guesses.length) {
-											// Past guess
-											letter = guesses[rowIndex].word[colIndex];
-											state = guesses[rowIndex].result[colIndex];
-										} else if (rowIndex === currentRow) {
-											// Current guess
-											letter = currentGuess[colIndex] || "";
-										}
-
-										return (
-											<div
-												key={colIndex}
-												style={{
-													...getCellStyle(state),
-													borderColor:
-														letter && !state
-															? "#878a8c"
-															: getCellStyle(state).borderColor,
-												}}
-											>
-												{letter}
-											</div>
-										);
-									})}
-							</div>
-						))}
-				</div>
-
-				{/* Keyboard */}
-				<div style={{marginBottom: "20px"}}>
-					{[
-						["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
-						["A", "S", "D", "F", "G", "H", "J", "K", "L"],
-						["ENTER", "Z", "X", "C", "V", "B", "N", "M", "⌫"],
-					].map((row, rowIndex) => (
-						<div
-							key={rowIndex}
-							style={{
-								display: "flex",
-								justifyContent: "center",
-								margin: "5px 0",
-							}}
-						>
-							{row.map((key) => (
-								<button
-									key={key}
-									onclick={() => {
-										if (key === "ENTER") {
-											submitGuess();
-										} else if (key === "⌫") {
-											removeLetter();
-										} else {
-											addLetter(key);
-										}
-									}}
-									style={{
-										...getKeyStyle(key),
-										width: key === "ENTER" || key === "⌫" ? "80px" : "40px",
-									}}
-								>
-									{key}
-								</button>
-							))}
-						</div>
-					))}
-				</div>
-
-				<button
-					onclick={newGame}
-					style={{
-						backgroundColor: "#6aaa64",
-						color: "white",
-						border: "none",
-						padding: "12px 24px",
-						borderRadius: "5px",
-						cursor: "pointer",
-						fontWeight: "bold",
-						fontSize: "16px",
-					}}
-				>
-					New Game
-				</button>
-
-				<div
-					style={{
-						marginTop: "20px",
-						color: "#787c7e",
-						fontSize: "14px",
-					}}
-				>
-					<p>Guess the WORDLE in 6 tries.</p>
-					<p>Each guess must be a valid 5-letter word.</p>
-					<div
-						style={{
-							display: "flex",
-							justifyContent: "center",
-							gap: "10px",
-							marginTop: "10px",
-						}}
-					>
-						<div style={{display: "flex", alignItems: "center", gap: "5px"}}>
-							<div
-								style={{
-									width: "20px",
-									height: "20px",
-									backgroundColor: "#6aaa64",
-									borderRadius: "2px",
-								}}
-							></div>
-							<span>Correct</span>
-						</div>
-						<div style={{display: "flex", alignItems: "center", gap: "5px"}}>
-							<div
-								style={{
-									width: "20px",
-									height: "20px",
-									backgroundColor: "#c9b458",
-									borderRadius: "2px",
-								}}
-							></div>
-							<span>Present</span>
-						</div>
-						<div style={{display: "flex", alignItems: "center", gap: "5px"}}>
-							<div
-								style={{
-									width: "20px",
-									height: "20px",
-									backgroundColor: "#787c7e",
-									borderRadius: "2px",
-								}}
-							></div>
-							<span>Absent</span>
-						</div>
-					</div>
-				</div>
-
+			<div>
+				{/* Global page reset */}
 				<style>{`
+					* {
+						box-sizing: border-box;
+					}
+					html, body {
+						margin: 0;
+						padding: 0;
+						background: #ffffff;
+						font-family: "Clear Sans", "Helvetica Neue", Arial, sans-serif;
+						color: #1a1a1b;
+						min-height: 100vh;
+					}
 					@keyframes shake {
 						0%, 100% { transform: translateX(0); }
 						25% { transform: translateX(-5px); }
 						75% { transform: translateX(5px); }
 					}
 				`}</style>
+
+				<div
+					tabindex="0"
+					style={{
+						textAlign: "center",
+						backgroundColor: "#ffffff",
+						padding: "20px",
+						maxWidth: "500px",
+						margin: "0 auto",
+						outline: "none",
+						minHeight: "100vh",
+						display: "flex",
+						flexDirection: "column",
+						justifyContent: "space-between",
+					}}
+				>
+					<div>
+						<h1
+							style={{
+								color: "#1a1a1b",
+								margin: "0 0 20px 0",
+								fontSize: "36px",
+								fontWeight: "bold",
+								letterSpacing: "2px",
+								borderBottom: "1px solid #d3d6da",
+								paddingBottom: "10px",
+							}}
+						>
+							WORDLE
+						</h1>
+
+						{message && (
+							<div
+								style={{
+									backgroundColor: won ? "#6aaa64" : "#f56565",
+									color: "white",
+									padding: "10px",
+									borderRadius: "5px",
+									margin: "10px 0",
+									fontWeight: "bold",
+								}}
+							>
+								{message}
+							</div>
+						)}
+
+						{/* Game Grid */}
+						<div
+							style={{
+								display: "grid",
+								gridTemplateRows: "repeat(6, 1fr)",
+								gap: "5px",
+								marginBottom: "30px",
+								animation: shake ? "shake 0.5s ease-in-out" : "none",
+							}}
+						>
+							{Array(6)
+								.fill()
+								.map((_, rowIndex) => (
+									<div
+										key={rowIndex}
+										style={{
+											display: "grid",
+											gridTemplateColumns: "repeat(5, 1fr)",
+											gap: "5px",
+											justifyContent: "center",
+										}}
+									>
+										{Array(5)
+											.fill()
+											.map((_, colIndex) => {
+												let letter = "";
+												let state = null;
+
+												if (rowIndex < guesses.length) {
+													// Past guess
+													letter = guesses[rowIndex].word[colIndex];
+													state = guesses[rowIndex].result[colIndex];
+												} else if (rowIndex === currentRow) {
+													// Current guess
+													letter = currentGuess[colIndex] || "";
+												}
+
+												return (
+													<div
+														key={colIndex}
+														style={{
+															...getCellStyle(state),
+															borderColor:
+																letter && !state
+																	? "#878a8c"
+																	: getCellStyle(state).borderColor,
+														}}
+													>
+														{letter}
+													</div>
+												);
+											})}
+									</div>
+								))}
+						</div>
+					</div>
+
+					{/* Keyboard */}
+					<div style={{marginBottom: "20px"}}>
+						{[
+							["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"],
+							["A", "S", "D", "F", "G", "H", "J", "K", "L"],
+							["ENTER", "Z", "X", "C", "V", "B", "N", "M", "⌫"],
+						].map((row, rowIndex) => (
+							<div
+								key={rowIndex}
+								style={{
+									display: "flex",
+									justifyContent: "center",
+									margin: "5px 0",
+								}}
+							>
+								{row.map((key) => (
+									<button
+										key={key}
+										onclick={() => {
+											if (key === "ENTER") {
+												submitGuess();
+											} else if (key === "⌫") {
+												removeLetter();
+											} else {
+												addLetter(key);
+											}
+										}}
+										style={{
+											...getKeyStyle(key),
+											width: key === "ENTER" || key === "⌫" ? "80px" : "40px",
+										}}
+									>
+										{key}
+									</button>
+								))}
+							</div>
+						))}
+
+						<button
+							onclick={newGame}
+							style={{
+								backgroundColor: "#6aaa64",
+								color: "white",
+								border: "none",
+								padding: "12px 24px",
+								borderRadius: "5px",
+								cursor: "pointer",
+								fontWeight: "bold",
+								fontSize: "16px",
+								marginTop: "20px",
+							}}
+						>
+							New Game
+						</button>
+					</div>
+
+					{/* Legend */}
+					<div
+						style={{
+							color: "#787c7e",
+							fontSize: "14px",
+							marginTop: "20px",
+						}}
+					>
+						<p>Guess the WORDLE in 6 tries.</p>
+						<p>Each guess must be a valid 5-letter word.</p>
+						<div
+							style={{
+								display: "flex",
+								justifyContent: "center",
+								gap: "15px",
+								marginTop: "15px",
+								flexWrap: "wrap",
+							}}
+						>
+							<div style={{display: "flex", alignItems: "center", gap: "5px"}}>
+								<div
+									style={{
+										width: "20px",
+										height: "20px",
+										backgroundColor: "#6aaa64",
+										borderRadius: "2px",
+									}}
+								></div>
+								<span>Correct</span>
+							</div>
+							<div style={{display: "flex", alignItems: "center", gap: "5px"}}>
+								<div
+									style={{
+										width: "20px",
+										height: "20px",
+										backgroundColor: "#c9b458",
+										borderRadius: "2px",
+									}}
+								></div>
+								<span>Present</span>
+							</div>
+							<div style={{display: "flex", alignItems: "center", gap: "5px"}}>
+								<div
+									style={{
+										width: "20px",
+										height: "20px",
+										backgroundColor: "#787c7e",
+										borderRadius: "2px",
+									}}
+								></div>
+								<span>Absent</span>
+							</div>
+						</div>
+					</div>
+				</div>
 			</div>
 		);
 	}
