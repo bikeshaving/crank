@@ -316,7 +316,8 @@ $effect(() => {
     });
     // ... rest of logic
   }
-});`
+});
+```
 
 Again, let's apply the bug severity heuristic. Are these bugs easy to spot? Usually you’ll blow the stack immediately, but there are still edge-cases in larger components. And because the `$effect()` rune colors the execution of all code which runs in it, you have to make sure that not only the code within the effect callback itself doesn’t update runes but also all nested function calls as well. This coloring of effect code is invisible to the user and requires careful tracing of logic, or defensive calls to `untrack()`, which might make it so that the effect doesn’t fire again when you want it to.
 
