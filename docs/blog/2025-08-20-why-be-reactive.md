@@ -359,6 +359,6 @@ But the frontiers of the web aren't about TODO apps. The frontier is working on 
 
 Reactive abstractions don’t help with any of these difficult problems. The more I use Crank, the more I see that explicit control over when your component renders is a superpower. You keep the context of exactly why your code is running. You render precisely when needed. And there are no leaky reactive abstractions mediating these critical decisions.
 
-After five years and 1,875 commits of working on Crank, meditatively, repetitively, obsessively asking the question “what if components were just functions?” I think Crank now has a pretty good developer experience, and if you read this far please head over to the playground and just read through some of the cool examples.
+After five years and 1,875 commits of working on Crank, meditatively, repetitively, obsessively asking the question “what if components were just functions?” I think Crank now has a pretty good developer experience, and if you read this far please head over to the [playground](https://crank.js.org/playground) and play around with some of the cool examples.
 
 We have the ability to make the web more expressive and interactive, and it really just starts with the question “Why be Reactive?”

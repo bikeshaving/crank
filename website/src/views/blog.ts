@@ -25,11 +25,11 @@ export default async function BlogPage({url, context: {storage}}: ViewProps) {
 	}
 
 	const {
-		attributes: {title, publishDate, author, authorURL},
+		attributes: {title, publishDate, author, authorURL, description},
 		body,
 	} = post;
 	return jsx`
-		<${Root} title="Crank.js | ${title}" url=${url} storage=${storage}>
+		<${Root} title="Crank.js | ${title}" url=${url} description=${description} storage=${storage}>
 			<${Main}>
 				<${BlogContent}
 					title=${title}
