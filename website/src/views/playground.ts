@@ -49,6 +49,9 @@ async function loadExamples() {
 		"tetris.ts": "Tetris",
 		"xstate-calculator.tsx": "XState Calculator",
 		"hexagonal-minesweeper.ts": "Hexagonal Minesweeper",
+		"2048.js": "2048 Game",
+		"wordle.js": "Wordle Game",
+		"custom-elements.js": "Custom Elements Demo",
 	};
 
 	for (const file of exampleFiles) {
