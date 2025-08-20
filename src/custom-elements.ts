@@ -1,22 +1,28 @@
-import { Component, Context, Children } from "./crank.js";
-import { DOMRenderer, renderer } from "./dom.js";
-import { addEventTargetDelegates, removeEventTargetDelegates } from "./event-target.js";
+import {Component, Context, Children} from "./crank.js";
+import {DOMRenderer, renderer} from "./dom.js";
+import {
+	addEventTargetDelegates,
+	removeEventTargetDelegates,
+} from "./event-target.js";
 
 /**
  * Options for creating a Custom Element class from a Crank component
  */
-export interface CreateCustomElementOptions<TProps extends Record<string, any>> {
+export interface CreateCustomElementOptions<
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	TProps extends Record<string, any>,
+> {
 	/**
 	 * Attributes to observe for changes (triggers re-render when changed)
 	 */
 	observedAttributes?: string[];
-	
+
 	/**
 	 * Shadow DOM mode: 'open', 'closed', or false for light DOM
 	 * @default false (light DOM)
 	 */
-	shadowDOM?: 'open' | 'closed' | false;
-	
+	shadowDOM?: "open" | "closed" | false;
+
 	/**
 	 * Custom renderer instance
 	 * @default renderer (default DOM renderer)
@@ -32,6 +38,7 @@ export type RefAPI = Record<string, any>;
 /**
  * Convert kebab-case to camelCase
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function kebabToCamelCase(str: string): string {
 	return str.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
 }
@@ -40,9 +47,9 @@ function kebabToCamelCase(str: string): string {
  * Apply ref API object to custom element with proper this binding
  */
 function applyRefAPI(element: HTMLElement, api: RefAPI): void {
-	if (!api || typeof api !== 'object') return;
+	if (!api || typeof api !== "object") return;
 
-	Object.getOwnPropertyNames(api).forEach(name => {
+	Object.getOwnPropertyNames(api).forEach((name) => {
 		const descriptor = Object.getOwnPropertyDescriptor(api, name);
 		if (!descriptor) return;
 
@@ -52,9 +59,9 @@ function applyRefAPI(element: HTMLElement, api: RefAPI): void {
 				get: descriptor.get?.bind(element),
 				set: descriptor.set?.bind(element),
 				configurable: true,
-				enumerable: true
+				enumerable: true,
 			});
-		} else if (typeof descriptor.value === 'function') {
+		} else if (typeof descriptor.value === "function") {
 			// Handle methods with proper this binding
 			(element as any)[name] = descriptor.value.bind(element);
 		} else {
@@ -64,165 +71,206 @@ function applyRefAPI(element: HTMLElement, api: RefAPI): void {
 	});
 }
 
+// Private method symbols
+const _props = Symbol("CrankCustomElement.props");
+const _updateScheduled = Symbol("CrankCustomElement.updateScheduled");
+const _renderRoot = Symbol("CrankCustomElement.renderRoot");
+const _slots = Symbol("CrankCustomElement.slots");
+const _refAPI = Symbol("CrankCustomElement.refAPI");
+const _parseSlots = Symbol("CrankCustomElement.parseSlots");
+const _scheduleUpdate = Symbol("CrankCustomElement.scheduleUpdate");
+const _render = Symbol("CrankCustomElement.render");
+
 /**
  * Creates a Custom Element class from a Crank component
  */
 export function createCustomElementClass<TProps extends Record<string, any>>(
-	component: Component<TProps & { 
-		ref?: (apiFactory: (element: HTMLElement) => RefAPI) => void;
-		children?: Node[];
-		[slotName: string]: any; // Allow any slot names as props
-	}>,
-	options: CreateCustomElementOptions<TProps> = {}
+	component: Component<
+		TProps & {
+			ref?: (apiFactory: (element: HTMLElement) => RefAPI) => void;
+			children?: Node[];
+			[slotName: string]: any; // Allow any slot names as props
+		}
+	>,
+	options: CreateCustomElementOptions<TProps> = {},
 ): CustomElementConstructor {
 	const {
 		observedAttributes = [],
 		shadowDOM = false,
-		renderer: customRenderer = renderer
+		renderer: customRenderer = renderer,
 	} = options;
 
-	class CrankCustomElement extends HTMLElement {
-		private _props: Partial<TProps> = {};
-		private _updateScheduled = false;
-		private _renderRoot: Element | ShadowRoot;
-		private _slots: Record<string, Array<Node>> = {};
-		private _refAPI: RefAPI = {};
+	// Extract component name for better debugging
+	const componentName = component.name || "Component";
+	const className = `${componentName}CustomElement`;
 
-		static get observedAttributes(): string[] {
-			return observedAttributes;
-		}
+	const CrankCustomElement = {
+		[className]: class extends HTMLElement {
+			declare [_props]: Partial<TProps>;
+			declare [_updateScheduled]: boolean;
+			declare [_renderRoot]: Element | ShadowRoot;
+			declare [_slots]: Record<string, Array<Node>>;
+			declare [_refAPI]: RefAPI;
 
-		constructor() {
-			super();
-
-			// Set up render root (shadow DOM or light DOM)
-			if (shadowDOM) {
-				this._renderRoot = this.attachShadow({ mode: shadowDOM });
-			} else {
-				this._renderRoot = this;
+			static get observedAttributes(): string[] {
+				return observedAttributes;
 			}
-		}
 
-		connectedCallback(): void {
-			// Parse light DOM children into slots
-			if (shadowDOM) {
-				this._parseSlots();
+			constructor() {
+				super();
+
+				// Initialize all properties
+				this[_props] = {};
+				this[_updateScheduled] = false;
+				this[_slots] = {};
+				this[_refAPI] = {};
+
+				// Set up render root (shadow DOM or light DOM)
+				if (shadowDOM) {
+					this[_renderRoot] = this.attachShadow({mode: shadowDOM});
+				} else {
+					this[_renderRoot] = this;
+				}
 			}
-			this._scheduleUpdate();
-		}
 
-		disconnectedCallback(): void {
-			// Clean up everything by rendering null
-			customRenderer.render(null, this._renderRoot);
-		}
-
-		// Override dispatchEvent to call matching on* properties
-		dispatchEvent(event: Event): boolean {
-			// Call standard DOM dispatchEvent first
-			const result = super.dispatchEvent(event);
-			
-			// Check for matching on* property and call it
-			const handlerName = 'on' + event.type.toLowerCase();
-			if (this.hasOwnProperty(handlerName) && typeof (this as any)[handlerName] === 'function') {
-				(this as any)[handlerName](event);
+			connectedCallback(): void {
+				// Parse light DOM children into slots
+				if (shadowDOM) {
+					this[_parseSlots]();
+				}
+				this[_scheduleUpdate]();
 			}
-			
-			return result;
-		}
 
-		attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
-			if (oldValue === newValue) return;
-			
-			// Store the raw attribute value - let component handle conversion
-			this._props[name as keyof TProps] = newValue as any;
-			this._scheduleUpdate();
-		}
+			disconnectedCallback(): void {
+				// Clean up everything by rendering null
+				customRenderer.render(null, this[_renderRoot]);
+			}
 
-		private _parseSlots(): void {
-			this._slots = {};
-			Array.from(this.childNodes).forEach(node => {
-				// Get slot name from slot attribute (for elements) or use 'children' as default
-				let slotName = 'children';
-				if (node.nodeType === Node.ELEMENT_NODE) {
-					const slotAttr = (node as Element).getAttribute('slot');
-					if (slotAttr) {
-						slotName = slotAttr;
+			// Override dispatchEvent to call matching on* properties
+			dispatchEvent(event: Event): boolean {
+				// Call standard DOM dispatchEvent first
+				const result = super.dispatchEvent(event);
+
+				// Check for matching on* property and call it
+				const handlerName = "on" + event.type.toLowerCase();
+				if (
+					Object.prototype.hasOwnProperty.call(this, handlerName) &&
+					typeof (this as any)[handlerName] === "function"
+				) {
+					(this as any)[handlerName](event);
+				}
+
+				return result;
+			}
+
+			attributeChangedCallback(
+				name: string,
+				oldValue: string | null,
+				newValue: string | null,
+			): void {
+				if (oldValue === newValue) return;
+
+				// Store the raw attribute value - let component handle conversion
+				this[_props][name as keyof TProps] = newValue as any;
+				this[_scheduleUpdate]();
+			}
+
+			[_parseSlots](): void {
+				this[_slots] = {};
+				Array.from(this.childNodes).forEach((node) => {
+					// Get slot name from slot attribute (for elements) or use 'children' as default
+					let slotName = "children";
+					if (node.nodeType === Node.ELEMENT_NODE) {
+						const slotAttr = (node as Element).getAttribute("slot");
+						if (slotAttr) {
+							slotName = slotAttr;
+						}
 					}
-				}
-				
-				if (!this._slots[slotName]) {
-					this._slots[slotName] = [];
-				}
-				this._slots[slotName].push(node);
-			});
-		}
 
-		private _scheduleUpdate(): void {
-			if (!this._updateScheduled) {
-				this._updateScheduled = true;
-				queueMicrotask(() => {
-					this._updateScheduled = false;
-					this._render();
+					if (!this[_slots][slotName]) {
+						this[_slots][slotName] = [];
+					}
+					this[_slots][slotName].push(node);
 				});
 			}
-		}
 
-		private _render(): void {
-			// Collect current attributes as props
-			const props: any = { ...this._props };
-			
-			// Add slots as individual props
-			if (shadowDOM) {
-				Object.assign(props, this._slots);
-			}
-
-			// Add ref callback - component will call this with a function that takes an element
-			props.ref = (apiFactory: (element: HTMLElement) => RefAPI) => {
-				// Component calls ref with a function, we call that function with this element
-				const api = apiFactory(this);
-				this._refAPI = api;
-				applyRefAPI(this, api);
-			};
-
-			try {
-				// Create component result - component will call ref() during execution  
-				const context = {} as Context<TProps & { ref?: (apiFactory: (element: HTMLElement) => RefAPI) => void }>;
-				const componentResult = component.call(context, props, context);
-				
-				// Render the component normally
-				const result = customRenderer.render(
-					componentResult as Children,
-					this._renderRoot
-				);
-				
-				// Bridge component EventTarget to custom element
-				const retainer = customRenderer.cache.get(this._renderRoot);
-				if (retainer && retainer.ctx) {
-					// Access delegates using the same symbol
-					const _delegates = Symbol.for("CustomEventTarget.delegates");
-					const delegatesSet = (retainer.ctx as any)[_delegates];
-					
-					// Clear existing child delegates
-					if (delegatesSet && delegatesSet.size > 0) {
-						const existingDelegates = Array.from(delegatesSet);
-						removeEventTargetDelegates(retainer.ctx as any, existingDelegates);
-					}
-					
-					// Add custom element as delegate
-					addEventTargetDelegates(retainer.ctx as any, [this]);
-				}
-				
-				// Handle async rendering
-				if (result && typeof (result as any).then === 'function') {
-					(result as Promise<any>).catch((error: Error) => {
-						console.error('Error in async render:', error);
+			[_scheduleUpdate](): void {
+				if (!this[_updateScheduled]) {
+					this[_updateScheduled] = true;
+					queueMicrotask(() => {
+						this[_updateScheduled] = false;
+						this[_render]();
 					});
 				}
-			} catch (error) {
-				console.error('Error rendering Crank component in custom element:', error);
 			}
-		}
-	}
+
+			[_render](): void {
+				// Collect current attributes as props
+				const props: any = {...this[_props]};
+
+				// Add slots as individual props
+				if (shadowDOM) {
+					Object.assign(props, this[_slots]);
+				}
+
+				// Add ref callback - component will call this with a function that takes an element
+				props.ref = (apiFactory: (element: HTMLElement) => RefAPI) => {
+					// Component calls ref with a function, we call that function with this element
+					const api = apiFactory(this);
+					this[_refAPI] = api;
+					applyRefAPI(this, api);
+				};
+
+				try {
+					// Create component result - component will call ref() during execution
+					const context = {} as Context<
+						TProps & {
+							ref?: (apiFactory: (element: HTMLElement) => RefAPI) => void;
+						}
+					>;
+					const componentResult = component.call(context, props, context);
+
+					// Render the component normally
+					const result = customRenderer.render(
+						componentResult as Children,
+						this[_renderRoot],
+					);
+
+					// Bridge component EventTarget to custom element
+					const retainer = customRenderer.cache.get(this[_renderRoot]);
+					if (retainer && retainer.ctx) {
+						// Access delegates using the same symbol
+						const _delegates = Symbol.for("CustomEventTarget.delegates");
+						const delegatesSet = (retainer.ctx as any)[_delegates];
+
+						// Clear existing child delegates
+						if (delegatesSet && delegatesSet.size > 0) {
+							const existingDelegates = Array.from(delegatesSet);
+							removeEventTargetDelegates(
+								retainer.ctx as any,
+								existingDelegates,
+							);
+						}
+
+						// Add custom element as delegate
+						addEventTargetDelegates(retainer.ctx as any, [this]);
+					}
+
+					// Handle async rendering
+					if (result && typeof (result as any).then === "function") {
+						(result as Promise<any>).catch((error: Error) => {
+							console.error("Error in async render:", error);
+						});
+					}
+				} catch (error) {
+					console.error(
+						"Error rendering Crank component in custom element:",
+						error,
+					);
+				}
+			}
+		},
+	}[className];
 
 	return CrankCustomElement as any;
 }

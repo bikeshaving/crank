@@ -698,7 +698,7 @@ function validateRoot(root: unknown): asserts root is Element | ShadowRoot {
 	) {
 		throw new TypeError(`Render root is not a node. Received: ${String(root)}`);
 	} else if (
-		(root as Node).nodeType !== Node.ELEMENT_NODE && 
+		(root as Node).nodeType !== Node.ELEMENT_NODE &&
 		(root as Node).nodeType !== Node.DOCUMENT_FRAGMENT_NODE
 	) {
 		throw new TypeError(

@@ -10,7 +10,7 @@ test("createCustomElementClass creates a custom element", () => {
 	}
 
 	const TestElement = createCustomElementClass(TestComponent, {
-		observedAttributes: ["name"]
+		observedAttributes: ["name"],
 	});
 
 	assert.ok(typeof TestElement === "function");
@@ -23,16 +23,16 @@ test("custom element renders component content", async () => {
 	}
 
 	const TestElement = createCustomElementClass(TestComponent, {
-		observedAttributes: ["greeting"]
+		observedAttributes: ["greeting"],
 	});
 
 	customElements.define("test-greeting", TestElement);
-	
+
 	const element = document.createElement("test-greeting") as any;
 	document.body.appendChild(element);
 
 	// Wait for render
-	await new Promise(resolve => setTimeout(resolve, 0));
+	await new Promise((resolve) => setTimeout(resolve, 0));
 
 	assert.is(element.innerHTML, "<div>Message: default</div>");
 
@@ -45,32 +45,32 @@ test("custom element reacts to attribute changes", async () => {
 	}
 
 	const TestElement = createCustomElementClass(TestComponent, {
-		observedAttributes: ["message"]
+		observedAttributes: ["message"],
 	});
 
 	customElements.define("test-reactive", TestElement);
-	
+
 	const element = document.createElement("test-reactive") as any;
 	document.body.appendChild(element);
 
 	// Wait for initial render
-	await new Promise(resolve => setTimeout(resolve, 0));
+	await new Promise((resolve) => setTimeout(resolve, 0));
 	assert.is(element.innerHTML, "<div>Content: empty</div>");
 
 	// Change attribute
 	element.setAttribute("message", "updated");
-	
+
 	// Wait for re-render (microtask)
-	await new Promise(resolve => setTimeout(resolve, 0));
+	await new Promise((resolve) => setTimeout(resolve, 0));
 	assert.is(element.innerHTML, "<div>Content: updated</div>");
 
 	document.body.removeChild(element);
 });
 
 test("ref callback extends custom element with methods", async () => {
-	function TestComponent({count, ref}: {count?: string, ref?: any}) {
+	function TestComponent({count, ref}: {count?: string; ref?: any}) {
 		const num = parseInt(count || "0");
-		
+
 		ref?.((element: HTMLElement) => ({
 			increment() {
 				element.setAttribute("count", (num + 1).toString());
@@ -80,38 +80,38 @@ test("ref callback extends custom element with methods", async () => {
 			},
 			get value() {
 				return num;
-			}
+			},
 		}));
 
 		return <div>Count: {num}</div>;
 	}
 
 	const CounterElement = createCustomElementClass(TestComponent, {
-		observedAttributes: ["count"]
+		observedAttributes: ["count"],
 	});
 
 	customElements.define("test-counter", CounterElement);
-	
+
 	const element = document.createElement("test-counter") as any;
 	document.body.appendChild(element);
 
 	// Wait for initial render
-	await new Promise(resolve => setTimeout(resolve, 0));
-	
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
 	assert.is(element.innerHTML, "<div>Count: 0</div>");
 	assert.is(element.value, 0);
 
 	// Test increment method
 	element.increment();
-	await new Promise(resolve => setTimeout(resolve, 0));
-	
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
 	assert.is(element.innerHTML, "<div>Count: 1</div>");
 	assert.is(element.value, 1);
 
 	// Test decrement method
 	element.decrement();
-	await new Promise(resolve => setTimeout(resolve, 0));
-	
+	await new Promise((resolve) => setTimeout(resolve, 0));
+
 	assert.is(element.innerHTML, "<div>Count: 0</div>");
 	assert.is(element.value, 0);
 
@@ -124,16 +124,16 @@ test("shadow DOM mode creates shadow root", async () => {
 	}
 
 	const ShadowElement = createCustomElementClass(TestComponent, {
-		shadowDOM: "open"
+		shadowDOM: "open",
 	});
 
 	customElements.define("test-shadow", ShadowElement);
-	
+
 	const element = document.createElement("test-shadow") as any;
 	document.body.appendChild(element);
 
 	// Wait for render
-	await new Promise(resolve => setTimeout(resolve, 0));
+	await new Promise((resolve) => setTimeout(resolve, 0));
 
 	assert.ok(element.shadowRoot);
 	assert.is(element.shadowRoot.innerHTML, "<div>Shadow content</div>");
@@ -143,7 +143,15 @@ test("shadow DOM mode creates shadow root", async () => {
 });
 
 test("slot-based props passed from light DOM", async () => {
-	function TestComponent({header, children, footer}: {header?: any, children?: any, footer?: any}) {
+	function TestComponent({
+		header,
+		children,
+		footer,
+	}: {
+		header?: any;
+		children?: any;
+		footer?: any;
+	}) {
 		return (
 			<div>
 				<div class="header">
@@ -160,11 +168,11 @@ test("slot-based props passed from light DOM", async () => {
 	}
 
 	const SlotElement = createCustomElementClass(TestComponent, {
-		shadowDOM: "open"
+		shadowDOM: "open",
 	});
 
 	customElements.define("test-slots", SlotElement);
-	
+
 	const element = document.createElement("test-slots") as any;
 	element.innerHTML = `
 		<h1 slot="header">Header Content</h1>
@@ -174,7 +182,7 @@ test("slot-based props passed from light DOM", async () => {
 	document.body.appendChild(element);
 
 	// Wait for render
-	await new Promise(resolve => setTimeout(resolve, 0));
+	await new Promise((resolve) => setTimeout(resolve, 0));
 
 	// Check that slots were passed correctly
 	const shadowContent = element.shadowRoot.innerHTML;
@@ -190,9 +198,11 @@ test("custom event properties and EventTarget bridging", async () => {
 		ref?.((element: HTMLElement) => ({
 			fireCustomEvent() {
 				// This should trigger both addEventListener and oncustomevent property
-				element.dispatchEvent(new CustomEvent('customevent', { detail: 'test-data' }));
+				element.dispatchEvent(
+					new CustomEvent("customevent", {detail: "test-data"}),
+				);
 			},
-			oncustomevent: null  // This creates the custom event property
+			oncustomevent: null, // This creates the custom event property
 		}));
 
 		return <div>Component with events</div>;
@@ -201,26 +211,26 @@ test("custom event properties and EventTarget bridging", async () => {
 	const EventElement = createCustomElementClass(TestComponent, {});
 
 	customElements.define("test-events", EventElement);
-	
+
 	const element = document.createElement("test-events") as any;
 	document.body.appendChild(element);
 
 	// Wait for render
-	await new Promise(resolve => setTimeout(resolve, 0));
+	await new Promise((resolve) => setTimeout(resolve, 0));
 
 	let eventFired = false;
 	let propertyFired = false;
 
 	// Test addEventListener works
-	element.addEventListener('customevent', (e: CustomEvent) => {
+	element.addEventListener("customevent", (e: CustomEvent) => {
 		eventFired = true;
-		assert.is(e.detail, 'test-data');
+		assert.is(e.detail, "test-data");
 	});
 
 	// Test custom event property works
 	element.oncustomevent = (e: CustomEvent) => {
 		propertyFired = true;
-		assert.is(e.detail, 'test-data');
+		assert.is(e.detail, "test-data");
 	};
 
 	// Fire the custom event
@@ -244,8 +254,10 @@ test("component events bubble to custom element", async () => {
 		ref?.((element: HTMLElement) => ({
 			simulateComponentEvent() {
 				// Simulate component dispatching event that should bubble to element
-				element.dispatchEvent(new CustomEvent('componentevent', { detail: 'from-component' }));
-			}
+				element.dispatchEvent(
+					new CustomEvent("componentevent", {detail: "from-component"}),
+				);
+			},
 		}));
 
 		return <button onclick={handleClick}>Click me</button>;
@@ -254,17 +266,17 @@ test("component events bubble to custom element", async () => {
 	const ComponentElement = createCustomElementClass(TestComponent, {});
 
 	customElements.define("test-component-events", ComponentElement);
-	
+
 	const element = document.createElement("test-component-events") as any;
 	document.body.appendChild(element);
 
 	// Wait for render
-	await new Promise(resolve => setTimeout(resolve, 0));
+	await new Promise((resolve) => setTimeout(resolve, 0));
 
 	let eventReceived = false;
-	element.addEventListener('componentevent', (e: CustomEvent) => {
+	element.addEventListener("componentevent", (e: CustomEvent) => {
 		eventReceived = true;
-		assert.is(e.detail, 'from-component');
+		assert.is(e.detail, "from-component");
 	});
 
 	// Simulate component event
