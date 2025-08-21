@@ -1,5 +1,6 @@
 ---
 title: Introducing Crank
+description: A deep dive into why Crank.js was created, exploring the limitations of React's Suspense API and the philosophy behind using generators and async functions for components.
 publishDate: 2020-04-15
 author: Brian Kim
 authorURL: https://github.com/brainkim

@@ -1,5 +1,6 @@
 ---
 title: Writing Crank from Scratch
+description: A step-by-step guide to building Crank.js from the ground up, demonstrating how virtual DOM libraries work and showcasing advanced techniques with iterators and promises.
 publishDate: 2020-10-13
 author: Brian Kim
 authorURL: https://github.com/brainkim
