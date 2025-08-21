@@ -28,11 +28,11 @@ export default async function Guide({
 	}
 
 	const {
-		attributes: {title},
+		attributes: {title, description},
 		body,
 	} = post;
 	return jsx`
-		<${Root} title="Crank.js | ${title}" url=${url} storage=${storage}>
+		<${Root} title="Crank.js | ${title}" url=${url} description=${description} storage=${storage}>
 			<${Sidebar} docs=${docs} url=${url} title="Guides" />
 			<${Main}>
 				<h1>${title}</h1>

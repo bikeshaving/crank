@@ -2,7 +2,7 @@ import {jsx} from "@b9g/crank/standalone";
 import * as path from "path";
 
 import {Root} from "../components/root.js";
-import {Main, Sidebar} from "../components/sidebar.js";
+import {Main} from "../components/sidebar.js";
 import {BlogContent} from "../components/blog-content.js";
 import {Marked} from "../components/marked.js";
 import {components} from "../components/marked-components.js";
@@ -19,44 +19,38 @@ export default async function BlogHome({context: {storage}}: ViewProps) {
 	posts.reverse();
 
 	return jsx`
-		<${Root} title="Crank.js | Blog" url="/blog" storage=${storage}>
-			<${Sidebar} docs=${posts} url="/blog" title="Recent Posts" />
+		<${Root} title="Crank.js | Blog" url="/blog" description="Read the latest articles and updates about Crank.js, exploring reactive UI patterns and framework design." storage=${storage}>
 			<${Main}>
 				${posts.map((post) => {
-					let {body} = post;
-					if (body.match("<!-- endpreview -->")) {
-						body = body.split("<!-- endpreview -->")[0];
-					} else {
-						const lines = body.split(/\r\n|\r|\n/);
-						body = "";
-						let count = 0;
-						for (const line of lines) {
-							body += line + "\n";
-							if (line.trim()) {
-								count++;
-							}
-
-							if (count > 2) {
-								break;
-							}
-						}
-					}
-
-					const {title, publishDate, author, authorURL} = post.attributes;
+					const {title, publishDate, author, authorURL, description} = post.attributes;
+					const publishDateDisplay =
+						publishDate &&
+						publishDate.toLocaleString("en-US", {
+							month: "long",
+							year: "numeric",
+							day: "numeric",
+							timeZone: "UTC",
+						});
+					
 					return jsx`
-						<div class="content">
-								<${BlogContent}
-										title=${title}
-										publishDate=${publishDate}
-										author=${author}
-										authorURL=${authorURL}
-								>
-								<${Marked} markdown=${body} components=${components} />
-								<//BlogContent>
-							<div>
-								<a href=${post.url}>Read more ...</a>
+						<a href=${post.url} class="blog-preview-link" style="text-decoration: none; color: inherit; display: block; cursor: pointer;">
+							<div class="content">
+								<h1>${title}</h1>
+								<p style="color: var(--text-color); opacity: 0.7; font-size: 0.9em;">
+									${author && jsx`By <span style="text-decoration: underline;">${author}</span>`} \
+									${publishDateDisplay && jsx`<span>${"–"} ${publishDateDisplay}</span>`}
+								</p>
+								${description ? jsx`
+									<p style="font-style: italic; color: var(--text-color); opacity: 0.8; margin: 1.5em 0;">
+										${description}
+									</p>
+								` : jsx`
+									<p style="font-style: italic; color: var(--text-color); opacity: 0.8; margin: 1.5em 0;">
+										Click to read the full article...
+									</p>
+								`}
 							</div>
-						</div>
+						</a>
 					`;
 				})}
 			<//Main>
