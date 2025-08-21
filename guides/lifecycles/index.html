@@ -655,71 +655,146 @@
 						"><div class="
 				prism-line
 				css-1flouoi
-			" data-index="0"><code><span class="token keyword">async</span> <span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">Component</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="0"><code><span class="token keyword">function</span> <span class="token operator">*</span><span class="token function">SearchComponent</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="1"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="1"><code>  <span class="token keyword">let</span> searchTerm <span class="token operator">=</span> <span class="token string">&#039;&#039;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="2"><code>    <span class="token keyword">yield</span> <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span>Loading<span class="token operator">...</span><span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="2"><code>  <span class="token keyword">let</span> searchTimeout <span class="token operator">=</span> <span class="token keyword">null</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="3"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code>    <span class="token keyword">try</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="4"><code>  <span class="token keyword">const</span> <span class="token function-variable function">performSearch</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token parameter">term</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code>      <span class="token keyword">const</span> data <span class="token operator">=</span> <span class="token keyword">await</span> <span class="token function">fetch</span><span class="token punctuation">(</span><span class="token string">&#039;/api/data&#039;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="5"><code>    <span class="token comment">// Clear existing timeout</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><br></div><div class="
+			" data-index="6"><code>    <span class="token keyword">if</span> <span class="token punctuation">(</span>searchTimeout<span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code>      <span class="token comment">// Check if component was unmounted during the async operation</span></code><br></div><div class="
+			" data-index="7"><code>      <span class="token function">clearTimeout</span><span class="token punctuation">(</span>searchTimeout<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code>      <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token keyword">this</span><span class="token punctuation">.</span>isUnmounted<span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="8"><code>    <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="9"><code>        console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">&#039;Component unmounted, skipping update&#039;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="9"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="10"><code>        <span class="token keyword">break</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="10"><code>    <span class="token comment">// Debounce search requests</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="11"><code>      <span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="11"><code>    searchTimeout <span class="token operator">=</span> <span class="token function">setTimeout</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="12"><br></div><div class="
+			" data-index="12"><code>      <span class="token comment">// Check if component is still mounted before making the request</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="13"><code>      <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token string">&#039;Got data:&#039;</span><span class="token punctuation">,</span> data<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="13"><code>      <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span><span class="token keyword">this</span><span class="token punctuation">.</span>isUnmounted<span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="14"><code>    <span class="token punctuation">}</span> <span class="token keyword">catch</span> <span class="token punctuation">(</span>error<span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="14"><code>        console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span><span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string">Searching for: </span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>term<span class="token interpolation-punctuation punctuation">}</span></span><span class="token template-punctuation string">`</span></span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="15"><code>      <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span><span class="token keyword">this</span><span class="token punctuation">.</span>isUnmounted<span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="15"><code>        <span class="token comment">// Simulate API call that would call this.refresh() when complete</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="16"><code>        console<span class="token punctuation">.</span><span class="token function">error</span><span class="token punctuation">(</span><span class="token string">&#039;Error fetching data:&#039;</span><span class="token punctuation">,</span> error<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="16"><code>      <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="17"><code>      <span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="17"><code>    <span class="token punctuation">}</span><span class="token punctuation">,</span> <span class="token number">300</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="18"><code>    <span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="18"><code>  <span class="token punctuation">}</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="19"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="19"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="20"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-176" class="props">
+			" data-index="20"><code>  <span class="token keyword">const</span> <span class="token function-variable function">handleInput</span> <span class="token operator">=</span> <span class="token punctuation">(</span><span class="token parameter">ev</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="21"><code>    <span class="token keyword">this</span><span class="token punctuation">.</span><span class="token function">refresh</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="22"><code>      searchTerm <span class="token operator">=</span> ev<span class="token punctuation">.</span>target<span class="token punctuation">.</span>value<span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="23"><code>      <span class="token function">performSearch</span><span class="token punctuation">(</span>searchTerm<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="24"><code>    <span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="25"><code>  <span class="token punctuation">}</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="26"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="27"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token punctuation">{</span><span class="token punctuation">}</span> <span class="token keyword">of</span> <span class="token keyword">this</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="28"><code>    <span class="token keyword">yield</span> <span class="token punctuation">(</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="29"><code>      <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="30"><code>        <span class="token operator">&lt;</span>input </code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="31"><code>          type<span class="token operator">=</span><span class="token string">&quot;text&quot;</span> </code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="32"><code>          value<span class="token operator">=</span><span class="token punctuation">{</span>searchTerm<span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="33"><code>          oninput<span class="token operator">=</span><span class="token punctuation">{</span>handleInput<span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="34"><code>          placeholder<span class="token operator">=</span><span class="token string">&quot;Search...&quot;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="35"><code>        <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="36"><code>        <span class="token operator">&lt;</span>p<span class="token operator">&gt;</span>Search term<span class="token operator">:</span> <span class="token punctuation">{</span>searchTerm<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>p<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="37"><code>      <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="38"><code>    <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="39"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="40"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="41"><code>  <span class="token comment">// Cleanup timeout on unmount</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="42"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span>searchTimeout<span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="43"><code>    <span class="token function">clearTimeout</span><span class="token punctuation">(</span>searchTimeout<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="44"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="45"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-176" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-176'] = {"code":"async function *Component() {\n  for ({} of this) {\n    yield \u003Cdiv\u003ELoading...\u003C\u002Fdiv\u003E;\n\n    try {\n      const data = await fetch('\u002Fapi\u002Fdata');\n\n      \u002F\u002F Check if component was unmounted during the async operation\n      if (this.isUnmounted) {\n        console.log('Component unmounted, skipping update');\n        break;\n      }\n\n      this.refresh(() =\u003E console.log('Got data:', data));\n    } catch (error) {\n      if (!this.isUnmounted) {\n        console.error('Error fetching data:', error);\n      }\n    }\n  }\n}","lang":"jsx"};
+			window.__embeddedJSON__['inline-code-block-props-176'] = {"code":"function *SearchComponent() {\n  let searchTerm = '';\n  let searchTimeout = null;\n\n  const performSearch = (term) =\u003E {\n    \u002F\u002F Clear existing timeout\n    if (searchTimeout) {\n      clearTimeout(searchTimeout);\n    }\n\n    \u002F\u002F Debounce search requests\n    searchTimeout = setTimeout(() =\u003E {\n      \u002F\u002F Check if component is still mounted before making the request\n      if (!this.isUnmounted) {\n        console.log(`Searching for: ${term}`);\n        \u002F\u002F Simulate API call that would call this.refresh() when complete\n      }\n    }, 300);\n  };\n\n  const handleInput = (ev) =\u003E {\n    this.refresh(() =\u003E {\n      searchTerm = ev.target.value;\n      performSearch(searchTerm);\n    });\n  };\n\n  for ({} of this) {\n    yield (\n      \u003Cdiv\u003E\n        \u003Cinput \n          type=\"text\" \n          value={searchTerm}\n          oninput={handleInput}\n          placeholder=\"Search...\"\n        \u002F\u003E\n        \u003Cp\u003ESearch term: {searchTerm}\u003C\u002Fp\u003E\n      \u003C\u002Fdiv\u003E\n    );\n  }\n\n  \u002F\u002F Cleanup timeout on unmount\n  if (searchTimeout) {\n    clearTimeout(searchTimeout);\n  }\n}","lang":"jsx"};
 		</script></div><p>These properties help write safer async code by preventing common issues like calling <code class="inline">refresh()</code> on unmounted components or doing unnecessary work after unmount.</p><h2>The Two-Pass Render Pattern</h2><p>Using <code class="inline">schedule(() =&gt; this.refresh())</code> for components that need to render twice.</p><p>A common pattern is to use <code class="inline">schedule()</code> to trigger an immediate re-render. This is particularly useful for components that need to render twice - once for initial setup, then again with updated state:</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
