@@ -1,5 +1,6 @@
 ---
 title: Lifecycles
+description: Master component lifecycles in Crank using generator functions. Learn cleanup patterns, resource management, and how to handle component unmounting naturally.
 ---
 
 Component lifecycles in Crank are straightforward: they follow the natural flow of JavaScript generator functions. Unlike other frameworks that require special lifecycle methods, Crank lets you write lifecycle logic using normal JavaScript.

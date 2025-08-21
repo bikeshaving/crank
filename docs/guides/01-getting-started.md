@@ -1,5 +1,6 @@
 ---
 title: Getting Started
+description: Get up and running with Crank.js in minutes. Learn how to install Crank, set up your build tools, and create your first reactive component.
 ---
 
 <!-- Try to use absolute links so this can be copied to the package README. -->

@@ -1,5 +1,6 @@
 ---
 title: Handling Events
+description: Handle user interactions in Crank applications. Learn event listener patterns, event delegation, and best practices for building interactive UIs.
 ---
 
 Most web applications require some measure of interactivity, where the user
