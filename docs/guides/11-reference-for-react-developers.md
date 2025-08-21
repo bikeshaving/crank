@@ -1,5 +1,6 @@
 ---
 title: React to Crank Migration Guide
+description: Comprehensive guide for React developers moving to Crank. Learn migration patterns, API equivalents, and how to convert hooks to generators.
 ---
 
 This comprehensive guide covers everything you need to convert React codebases to Crank. It's organized by migration patterns rather than API comparisons, making it practical for systematic conversion.

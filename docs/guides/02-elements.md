@@ -1,5 +1,6 @@
 ---
 title: Elements and Renderers
+description: Master Crank elements and renderers. Learn how virtual elements work, explore different element types, and understand how Crank renders your UI efficiently.
 ---
 
 ## What Are Elements?

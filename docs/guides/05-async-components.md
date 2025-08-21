@@ -1,5 +1,6 @@
 ---
 title: Async Components
+description: Harness the power of async/await in your components. Learn how to build data-fetching components, handle loading states, and manage asynchronous UI updates.
 ---
 
 So far, every component we've seen has been synchronous - they execute
