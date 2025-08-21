@@ -33,11 +33,14 @@ export function BlogContent({
 			${author && jsx`By <a href=${authorURL} rel="author">${author}</a>`} \
 			${publishDateDisplay && jsx`<span>${"–"} ${publishDateDisplay}</span>`}
 		</p>
-		${description && jsx`
+		${
+			description &&
+			jsx`
 			<p style="font-style: italic; color: var(--text-color); opacity: 0.8; margin: 1.5em 0;">
 				${description}
 			</p>
-		`}
+		`
+		}
 		${children}
 	`;
 }

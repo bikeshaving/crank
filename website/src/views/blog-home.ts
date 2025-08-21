@@ -3,9 +3,6 @@ import * as path from "path";
 
 import {Root} from "../components/root.js";
 import {Main} from "../components/sidebar.js";
-import {BlogContent} from "../components/blog-content.js";
-import {Marked} from "../components/marked.js";
-import {components} from "../components/marked-components.js";
 import type {ViewProps} from "../router.js";
 
 import {collectDocuments} from "../models/document.js";
@@ -22,7 +19,7 @@ export default async function BlogHome({context: {storage}}: ViewProps) {
 		<${Root} title="Crank.js | Blog" url="/blog" description="Read the latest articles and updates about Crank.js, exploring reactive UI patterns and framework design." storage=${storage}>
 			<${Main}>
 				${posts.map((post) => {
-					const {title, publishDate, author, authorURL, description} = post.attributes;
+					const {title, publishDate, author, description} = post.attributes;
 					const publishDateDisplay =
 						publishDate &&
 						publishDate.toLocaleString("en-US", {
@@ -31,7 +28,7 @@ export default async function BlogHome({context: {storage}}: ViewProps) {
 							day: "numeric",
 							timeZone: "UTC",
 						});
-					
+
 					return jsx`
 						<a href=${post.url} class="blog-preview-link" style="text-decoration: none; color: inherit; display: block; cursor: pointer;">
 							<div class="content">
@@ -40,15 +37,19 @@ export default async function BlogHome({context: {storage}}: ViewProps) {
 									${author && jsx`By <span style="text-decoration: underline;">${author}</span>`} \
 									${publishDateDisplay && jsx`<span>${"–"} ${publishDateDisplay}</span>`}
 								</p>
-								${description ? jsx`
+								${
+									description
+										? jsx`
 									<p style="font-style: italic; color: var(--text-color); opacity: 0.8; margin: 1.5em 0;">
 										${description}
 									</p>
-								` : jsx`
+								`
+										: jsx`
 									<p style="font-style: italic; color: var(--text-color); opacity: 0.8; margin: 1.5em 0;">
 										Click to read the full article...
 									</p>
-								`}
+								`
+								}
 							</div>
 						</a>
 					`;
