@@ -1,6 +1,6 @@
 ---
 title: Why Be Reactive?
-description: Reactive frameworks promise automatic UI updates but create subtle bugs and performance traps. Crank's explicit refresh() calls aren't a limitation - they're a superpower for building ambitious web applications.
+description: Reactive frameworks promise automatic UI updates but create subtle bugs and performance traps. Crank's explicit refresh() calls aren't a limitation - they're a superpower for building ambitious web applications. This essay examines common gotchas of reactive abstractions and provides a philosophical grounding for why Crank will never have a reactive abstraction.
 publishDate: 2025-08-20
 author: Brian Kim
 authorURL: https://github.com/brainkim

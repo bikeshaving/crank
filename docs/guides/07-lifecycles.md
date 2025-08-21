@@ -292,25 +292,50 @@ function *Component() {
 **`this.isUnmounted`** is true after the component has been unmounted. Useful for avoiding work in async operations after unmount:
 
 ```jsx
-async function *Component() {
-  for ({} of this) {
-    yield <div>Loading...</div>;
+function *SearchComponent() {
+  let searchTerm = '';
+  let searchTimeout = null;
 
-    try {
-      const data = await fetch('/api/data');
-
-      // Check if component was unmounted during the async operation
-      if (this.isUnmounted) {
-        console.log('Component unmounted, skipping update');
-        break;
-      }
-
-      this.refresh(() => console.log('Got data:', data));
-    } catch (error) {
-      if (!this.isUnmounted) {
-        console.error('Error fetching data:', error);
-      }
+  const performSearch = (term) => {
+    // Clear existing timeout
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
     }
+
+    // Debounce search requests
+    searchTimeout = setTimeout(() => {
+      // Check if component is still mounted before making the request
+      if (!this.isUnmounted) {
+        console.log(`Searching for: ${term}`);
+        // Simulate API call that would call this.refresh() when complete
+      }
+    }, 300);
+  };
+
+  const handleInput = (ev) => {
+    this.refresh(() => {
+      searchTerm = ev.target.value;
+      performSearch(searchTerm);
+    });
+  };
+
+  for ({} of this) {
+    yield (
+      <div>
+        <input 
+          type="text" 
+          value={searchTerm}
+          oninput={handleInput}
+          placeholder="Search..."
+        />
+        <p>Search term: {searchTerm}</p>
+      </div>
+    );
+  }
+
+  // Cleanup timeout on unmount
+  if (searchTimeout) {
+    clearTimeout(searchTimeout);
   }
 }
 ```
