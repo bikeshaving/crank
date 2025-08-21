@@ -31,8 +31,12 @@ export default async function BlogPage({url, context: {storage}}: ViewProps) {
 	return jsx`
 		<${Root} title="Crank.js | ${title}" url=${url} description=${description} storage=${storage}>
 			<${Main}>
+				<div style="margin-bottom: 2em;">
+					<a href="/blog" style="color: var(--highlight-color); text-decoration: none;">${"←"} Back to Blog</a>
+				</div>
 				<${BlogContent}
 					title=${title}
+					description=${description}
 					publishDate=${publishDate}
 					author=${author}
 					authorURL=${authorURL}

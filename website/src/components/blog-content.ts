@@ -3,6 +3,7 @@ import type {Children} from "@b9g/crank";
 
 export interface BlogContentProps {
 	title: string;
+	description?: string;
 	author?: string;
 	authorURL?: string;
 	publishDate?: Date;
@@ -11,6 +12,7 @@ export interface BlogContentProps {
 
 export function BlogContent({
 	title,
+	description,
 	publishDate,
 	author,
 	authorURL,
@@ -27,10 +29,15 @@ export function BlogContent({
 
 	return jsx`
 		<h1>${title}</h1>
-		<p>
+		<p style="color: var(--text-color); opacity: 0.7; font-size: 0.9em;">
 			${author && jsx`By <a href=${authorURL} rel="author">${author}</a>`} \
-			${publishDateDisplay && jsx({raw: ["<span>– Published ", "</span>"]}, publishDateDisplay)}
+			${publishDateDisplay && jsx`<span>${"–"} ${publishDateDisplay}</span>`}
 		</p>
+		${description && jsx`
+			<p style="font-style: italic; color: var(--text-color); opacity: 0.8; margin: 1.5em 0;">
+				${description}
+			</p>
+		`}
 		${children}
 	`;
 }

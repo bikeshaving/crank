@@ -163,6 +163,23 @@ select, input, textarea {
 	margin-bottom: 1em;
 }
 
+/* Blog preview hover effect */
+.blog-preview-link .content {
+	border-radius: 8px;
+	padding: 8px;
+	margin-left: -8px;
+	margin-right: -8px;
+	transition: background-color 0.2s ease;
+}
+
+.blog-preview-link:hover .content {
+	background-color: rgba(255, 255, 255, 0.02);
+}
+
+.color-scheme-light .blog-preview-link:hover .content {
+	background-color: rgba(0, 0, 0, 0.02);
+}
+
 /* Table styling */
 table {
 	width: 100%;

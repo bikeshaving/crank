@@ -66,9 +66,17 @@ export function* Root(
 						<link rel="shortcut icon" href="/static/favicon.ico" />
 						<style>${css}</style>
 						<${Link} rel="stylesheet" type="text/css" href="styles/client.css" />
+						<meta name="description" content=${description} />
 						<meta property="og:title" content=${title} />
 						<meta property="og:url" content=${Path.join("https://crank.js.org", url)} />
 						<meta property="og:description" content=${description} />
+						<meta property="og:type" content="website" />
+						<meta property="og:site_name" content="Crank.js" />
+						<meta property="og:image" content="https://crank.js.org/static/logo.svg" />
+						<meta name="twitter:card" content="summary" />
+						<meta name="twitter:title" content=${title} />
+						<meta name="twitter:description" content=${description} />
+						<meta name="twitter:image" content="https://crank.js.org/static/logo.svg" />
 					</head>
 					<body>
 						<${ColorSchemeScript} />
