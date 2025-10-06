@@ -103,6 +103,7 @@ export function* InlineCodeBlock(
 									visible=${isIntersecting}
 									autoresize
 									showStatus
+									language=${lang.startsWith('python') ? 'python' : 'javascript'}
 								/>
 							</div>
 						`
