@@ -44,7 +44,7 @@ def SyntaxDemo():
     return h.div[
         h.h2["Pyperscript Syntax Demo"],
 
-        # Conditional rendering
+        # Conditional rendering and f-strings
         h.p[f"Hello, {name}!" if is_active else "Goodbye!"],
 
         # Attributes and styling
@@ -52,22 +52,23 @@ def SyntaxDemo():
             className="demo-box",
             style={"background": "#f0f0f0", "padding": "15px", "border-radius": "5px"}
         )[
-            h.h3["Features:"],
+            h.h3["Supported Crank Languages:"],
 
             # List comprehensions in templates
             h.ul[[
-                h.li[f"{item} support"] for item in items
+                h.li[item] for item in items
             ]],
 
-            # Nested elements with mixed content
-            h.p[
-                "This demonstrates ",
-                h.strong["Python's bracket notation"],
-                " creating clean, readable templates without JSX compilation."
-            ]
         ],
 
-        # Event handling placeholder
+        # Nested elements with mixed content
+        h.p[
+            "This demonstrates ",
+            h.strong["Python's bracket notation"],
+            " creating clean, readable templates without JSX compilation."
+        ],
+
+        # Event handling
         h.button(onclick=lambda e: None)["Click me!"]
     ]
 
