@@ -352,16 +352,6 @@ export function* CodePreview(
 							justify-content: space-between;
 						`}>
 							<span>${errorMessage ? "Errored!" : loading ? "Loading..." : "Running!"}</span>
-							<span class=${css`
-								font-size: 0.8em;
-								opacity: 0.7;
-								background: ${isPython ? '#306998' : '#f7df1e'};
-								color: ${isPython ? 'white' : 'black'};
-								padding: 2px 6px;
-								border-radius: 3px;
-							`}>
-								${isPython ? '🐍 Python' : '📜 JavaScript'}
-							</span>
 						</div>
 					`
 				}
