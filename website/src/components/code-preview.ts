@@ -213,7 +213,7 @@ export function* CodePreview(
 		visible?: boolean;
 		showStatus?: boolean;
 		autoresize?: boolean;
-		language?: 'javascript' | 'python';
+		language?: "javascript" | "python";
 	},
 ): any {
 	const id = globalId++;
@@ -224,8 +224,8 @@ export function* CodePreview(
 	let loading = true;
 	let errorMessage: string | null = null;
 
-	const currentLanguage = language || 'javascript';
-	const isPython = currentLanguage === 'python';
+	const currentLanguage = language || "javascript";
+	const isPython = currentLanguage === "python";
 
 	let staticURLs: Record<string, any> | undefined;
 	let execute: () => unknown;
@@ -250,7 +250,7 @@ export function* CodePreview(
 			}
 
 			let code = value;
-			
+
 			if (isPython) {
 				// Python code - no transformation needed
 				document1.write(generatePythonIFrameHTML(id, code, staticURLs!));
@@ -268,7 +268,7 @@ export function* CodePreview(
 					return;
 				}
 			}
-			
+
 			document1.close();
 		};
 
