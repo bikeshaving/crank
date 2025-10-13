@@ -346,6 +346,7 @@ const IsInForOfLoop = 1 << 13;
 const IsInForAwaitOfLoop = 1 << 14;
 const NeedsToYield = 1 << 15;
 const PropsAvailable = 1 << 16;
+const IsSchedulingRefresh = 1 << 17;
 
 function getFlag(ret: Retainer<unknown>, flag: number): boolean {
 	return !!(ret.f & flag);
@@ -2327,6 +2328,10 @@ export class Context<
 			}
 		}
 
+		if (getFlag(ctx.ret, IsScheduling)) {
+			setFlag(ctx.ret, IsSchedulingRefresh);
+		}
+
 		let diff: Promise<undefined> | undefined;
 		const schedulePromises: Array<PromiseLike<unknown>> = [];
 		try {
@@ -2765,7 +2770,7 @@ function runComponent<TNode, TResult>(
 			getFlag(ctx.ret, IsInForOfLoop) &&
 			!getFlag(ctx.ret, NeedsToYield) &&
 			!getFlag(ctx.ret, IsUnmounted) &&
-			!getFlag(ctx.ret, IsScheduling)
+			!getFlag(ctx.ret, IsSchedulingRefresh)
 		) {
 			console.error(
 				`Component <${getTagName(ctx.ret.el.tag)}> yielded/returned more than once in for...of loop`,
@@ -2773,6 +2778,7 @@ function runComponent<TNode, TResult>(
 		}
 
 		setFlag(ctx.ret, NeedsToYield, false);
+		setFlag(ctx.ret, IsSchedulingRefresh, false);
 		if (iteration.done) {
 			setFlag(ctx.ret, IsSyncGen, false);
 			ctx.iterator = undefined;
@@ -2822,7 +2828,7 @@ function runComponent<TNode, TResult>(
 							getFlag(ctx.ret, IsInForOfLoop) &&
 							!getFlag(ctx.ret, NeedsToYield) &&
 							!getFlag(ctx.ret, IsUnmounted) &&
-							!getFlag(ctx.ret, IsScheduling)
+							!getFlag(ctx.ret, IsSchedulingRefresh)
 						) {
 							console.error(
 								`Component <${getTagName(ctx.ret.el.tag)}> yielded/returned more than once in for...of loop`,
@@ -2831,6 +2837,7 @@ function runComponent<TNode, TResult>(
 					}
 
 					setFlag(ctx.ret, NeedsToYield, false);
+					setFlag(ctx.ret, IsSchedulingRefresh, false);
 					if (iteration.done) {
 						setFlag(ctx.ret, IsAsyncGen, false);
 						ctx.iterator = undefined;
@@ -3113,7 +3120,6 @@ function commitComponent<TNode>(
 		return getValue(ctx.ret);
 	}
 
-	const wasScheduling = getFlag(ctx.ret, IsScheduling);
 	const values = commitChildren(
 		ctx.adapter,
 		ctx.host,
@@ -3130,12 +3136,13 @@ function commitComponent<TNode>(
 	}
 
 	addEventTargetDelegates(ctx.ctx, values);
+
 	// Execute schedule callbacks early to check for async deferral
-	const callbacks = scheduleMap.get(ctx);
+	const wasScheduling = getFlag(ctx.ret, IsScheduling);
 	let schedulePromises1: Array<PromiseLike<unknown>> | undefined;
+	const callbacks = scheduleMap.get(ctx);
 	if (callbacks) {
 		scheduleMap.delete(ctx);
-		// TODO: think about error handling for schedule callbacks
 		setFlag(ctx.ret, IsScheduling);
 		const result = ctx.adapter.read(unwrap(values));
 		for (const callback of callbacks) {
@@ -3147,7 +3154,7 @@ function commitComponent<TNode>(
 
 		if (schedulePromises1 && !getFlag(ctx.ret, DidCommit)) {
 			const scheduleCallbacksP = Promise.all(schedulePromises1).then(() => {
-				setFlag(ctx.ret, IsScheduling, false);
+				setFlag(ctx.ret, IsScheduling, wasScheduling);
 				propagateComponent(ctx);
 				if (ctx.ret.fallback) {
 					unmount(ctx.adapter, ctx.host, ctx.parent, ctx.ret.fallback, false);
