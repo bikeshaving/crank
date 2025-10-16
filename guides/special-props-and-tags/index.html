@@ -797,65 +797,56 @@
 			" data-index="1"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>renderer<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank/dom&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="2"><code><span class="token keyword">const</span> root1 <span class="token operator">=</span> document<span class="token punctuation">.</span><span class="token function">createElement</span><span class="token punctuation">(</span><span class="token string">&quot;div&quot;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="2"><code><span class="token keyword">const</span> root <span class="token operator">=</span> document<span class="token punctuation">.</span><span class="token function">createElement</span><span class="token punctuation">(</span><span class="token string">&quot;div&quot;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><code><span class="token keyword">const</span> root2 <span class="token operator">=</span> document<span class="token punctuation">.</span><span class="token function">createElement</span><span class="token punctuation">(</span><span class="token string">&quot;div&quot;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="3"><code>document<span class="token punctuation">.</span>body<span class="token punctuation">.</span><span class="token function">appendChild</span><span class="token punctuation">(</span>root<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code><span class="token keyword">function</span> <span class="token function">MyComponent</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="4"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code>  <span class="token keyword">return</span> <span class="token punctuation">(</span></code><br></div><div class="
+			" data-index="5"><code><span class="token keyword">function</span> <span class="token function">MyComponent</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><code>    <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="6"><code>  <span class="token keyword">return</span> <span class="token punctuation">(</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code>      <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span>This div is rendered into root1<span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="7"><code>    <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code>      <span class="token operator">&lt;</span>Portal root<span class="token operator">=</span><span class="token punctuation">{</span>root2<span class="token punctuation">}</span><span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="8"><code>      <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span>This div is rendered into document<span class="token punctuation">.</span>body<span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="9"><code>        <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span>This div is rendered into root2<span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="9"><code>      <span class="token operator">&lt;</span>Portal root<span class="token operator">=</span><span class="token punctuation">{</span>root<span class="token punctuation">}</span><span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="10"><code>      <span class="token operator">&lt;</span><span class="token operator">/</span>Portal<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="10"><code>        <span class="token operator">&lt;</span>div<span class="token operator">&gt;</span>This div is rendered into root<span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="11"><code>    <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="11"><code>      <span class="token operator">&lt;</span><span class="token operator">/</span>Portal<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="12"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="12"><code>    <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="13"><code><span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="13"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="14"><br></div><div class="
+			" data-index="14"><code><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="15"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>MyComponent <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> root1<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="15"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="16"><code>console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>root1<span class="token punctuation">.</span>innerHTML<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="17"><code><span class="token comment">// &quot;&lt;div&gt;&lt;div&gt;This div is rendered into root1&lt;/div&gt;&lt;/div&gt;&quot;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="18"><code>console<span class="token punctuation">.</span><span class="token function">log</span><span class="token punctuation">(</span>root2<span class="token punctuation">.</span>innerHTML<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="19"><code><span class="token comment">// &quot;&lt;div&gt;This div is rendered into root2&lt;/div&gt;&quot;</span></code><br></div></pre></content-area></div></div></div><div class="css-nuifz8"><div class="css-1nius9d"><div class="css-q1dxn8"><span>Loading...</span></div><div class="css-j74n8p"><iframe class="
+			" data-index="16"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>MyComponent <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><div class="css-nuifz8"><div class="css-1nius9d"><div class="css-q1dxn8"><span>Loading...</span></div><div class="css-j74n8p"><iframe class="
 							playground-iframe
 							css-hjkbgb
 						" style="height: 100px;"></iframe></div></div></div></div></div><script data-name="inline-code-block-props-167" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-167'] = {"code":"import {Portal} from \"@b9g\u002Fcrank\";\nimport {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\nconst root1 = document.createElement(\"div\");\nconst root2 = document.createElement(\"div\");\nfunction MyComponent() {\n  return (\n    \u003Cdiv\u003E\n      \u003Cdiv\u003EThis div is rendered into root1\u003C\u002Fdiv\u003E\n      \u003CPortal root={root2}\u003E\n        \u003Cdiv\u003EThis div is rendered into root2\u003C\u002Fdiv\u003E\n      \u003C\u002FPortal\u003E\n    \u003C\u002Fdiv\u003E\n  );\n}\n\nrenderer.render(\u003CMyComponent \u002F\u003E, root1);\nconsole.log(root1.innerHTML);\n\u002F\u002F \"\u003Cdiv\u003E\u003Cdiv\u003EThis div is rendered into root1\u003C\u002Fdiv\u003E\u003C\u002Fdiv\u003E\"\nconsole.log(root2.innerHTML);\n\u002F\u002F \"\u003Cdiv\u003EThis div is rendered into root2\u003C\u002Fdiv\u003E\"","lang":"jsx live"};
+			window.__embeddedJSON__['inline-code-block-props-167'] = {"code":"import {Portal} from \"@b9g\u002Fcrank\";\nimport {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\nconst root = document.createElement(\"div\");\ndocument.body.appendChild(root);\n\nfunction MyComponent() {\n  return (\n    \u003Cdiv\u003E\n      \u003Cdiv\u003EThis div is rendered into document.body\u003C\u002Fdiv\u003E\n      \u003CPortal root={root}\u003E\n        \u003Cdiv\u003EThis div is rendered into root\u003C\u002Fdiv\u003E\n      \u003C\u002FPortal\u003E\n    \u003C\u002Fdiv\u003E\n  );\n}\n\nrenderer.render(\u003CMyComponent \u002F\u003E, document.body);","lang":"jsx live"};
 		</script></div><p>This tag is useful for creating modals or tooltips, which usually need to be rendered into separate DOM elements at the bottom of the page for visibility reasons. Events dispatched from a <code class="inline">Portal</code> element‘s child components via the <code class="inline">dispatchEvent</code> method will still bubble into parent components.</p><h3>Raw</h3><p>Sometimes, you may want to insert raw HTML or actual DOM nodes directly into the element tree. Crank allows you to do this with the <code class="inline">&lt;Raw&gt;</code> element. The <code class="inline">&lt;Raw&gt;</code> element takes a <code class="inline">value</code> prop, which can be . For the DOM renderer, if <code class="inline">value</code> is an HTML string, the renderer will parse and insert the resulting DOM nodes. If the value is already a DOM node, Crank will insert them in place.</p><div style="margin: 30px auto;" class="code-block-container"><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-18sfz2f"><div class="css-1m42aok"><div class="css-artqa7"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
 							language-
 							css-1ashatc
