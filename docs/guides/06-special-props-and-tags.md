@@ -365,24 +365,21 @@ Sometimes you may want to render into a DOM node which isn’t the current paren
 ```jsx live
 import {Portal} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
-const root1 = document.createElement("div");
-const root2 = document.createElement("div");
+const root = document.createElement("div");
+document.body.appendChild(root);
+
 function MyComponent() {
   return (
     <div>
-      <div>This div is rendered into root1</div>
-      <Portal root={root2}>
-        <div>This div is rendered into root2</div>
+      <div>This div is rendered into document.body</div>
+      <Portal root={root}>
+        <div>This div is rendered into root</div>
       </Portal>
     </div>
   );
 }
 
-renderer.render(<MyComponent />, root1);
-console.log(root1.innerHTML);
-// "<div><div>This div is rendered into root1</div></div>"
-console.log(root2.innerHTML);
-// "<div>This div is rendered into root2</div>"
+renderer.render(<MyComponent />, document.body);
 ```
 
 This tag is useful for creating modals or tooltips, which usually need to be rendered into separate DOM elements at the bottom of the page for visibility reasons. Events dispatched from a `Portal` element‘s child components via the `dispatchEvent` method will still bubble into parent components.
