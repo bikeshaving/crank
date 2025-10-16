@@ -866,4 +866,66 @@ test("suspenselist re-renders", async () => {
 	);
 });
 
+// https://github.com/bikeshaving/crank/issues/297
+// TODO: See if we can create a reproduction that does not use setInterval
+test("suspense fallback and children render simultaneously", async () => {
+	// Simple loading fallback that refreshes periodically
+	function* LoadingFallback(this: Context) {
+		let count = 0;
+		const interval = setInterval(() => this.refresh(() => {
+			count++;
+		}), 100);
+		this.cleanup(() => clearInterval(interval));
+
+		for ({} of this) {
+			yield <div class="fallback">Loading {count}...</div>;
+		}
+	}
+
+	// Async component that takes time to resolve
+	let apiCallCount = 0;
+	async function SlowAsyncComponent() {
+		const id = ++apiCallCount;
+		// Simulate slow network request
+		await new Promise(resolve => setTimeout(resolve, 500));
+		return <div class="content">Content {id}</div>;
+	}
+
+	// Parent component with button that triggers refresh
+	function *App(this: Context) {
+		for ({} of this) {
+			yield (
+				<Suspense fallback={<LoadingFallback />} timeout={300}>
+					<SlowAsyncComponent />
+				</Suspense>
+			);
+		}
+	}
+
+	// Initial render
+	await renderer.render(<App />, document.body);
+	renderer.render(<App />, document.body);
+	// Wait and check for the bug
+	let bugDetected = false;
+	for (let i = 0; i < 20; i++) {
+		await new Promise(resolve => setTimeout(resolve, 50));
+		const html = document.body.innerHTML;
+		if (i === 2) {
+			renderer.render(<App />, document.body);
+		}
+
+		// Check if BOTH fallback and content are visible
+		const hasFallback = html.includes('class="fallback"');
+		const hasContent = html.includes('class="content"');
+
+		if (hasFallback && hasContent) {
+			bugDetected = true;
+			break;
+		}
+	}
+
+	// Test fails if bug is detected
+	Assert.not.ok(bugDetected, "Fallback and content should not render simultaneously");
+});
+
 test.run();
