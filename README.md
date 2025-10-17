@@ -12,15 +12,15 @@ The Just JavaScript Framework
 
 The fastest way to try Crank is via the [online playground](https://crank.js.org/playground). In addition, many of the code examples in these guides feature live previews.
 
-## Why Crank?
-**Finally, a framework that feels like JavaScript.**
+## Motivation
+**A framework that feels like JavaScript.**
 
 While other frameworks invent new paradigms and force you to learn
 framework-specific APIs, Crank embraces the language features you already know.
 No hooks to memorize, no dependency arrays to debug, no cache invalidation to
 manage.
 
-## Pure JavaScript, No Compromises
+### Pure JavaScript, No Compromises
 
 ```javascript
 // Async components just work
@@ -40,22 +40,20 @@ function* Timer() {
 }
 ```
 
-## Why Developers Choose Crank
+### Why Developers Choose Crank
 
-- **🎯 Intuitive**: Use `async`/`await` for loading states and `function*` for lifecycle—no new APIs to learn
-- **⚡ Fast**: Outperforms React in benchmarks while weighing just 5KB with zero dependencies
-- **🔧 Flexible**: Write components in vanilla JavaScript with template literals, or use JSX
-- **🧹 Clean**: State lives in function scope, lifecycle code goes where it belongs, no mysterious re-render bugs
-- **🌊 Future-proof**: Built on stable JavaScript features, not evolving framework abstractions
+- **Intuitive**: Use `async`/`await` for loading states and `function*` for lifecycles — no new APIs to learn
+- **Fast**: Outperforms React in benchmarks while weighing just 5KB with zero dependencies
+- **Flexible**: Write components in vanilla JavaScript with template literals, or use JSX
+- **Clean**: State lives in function scope, lifecycle code goes where it belongs, no mysterious re-render bugs
+- **Future-proof**: Built on stable JavaScript features, not evolving framework abstractions
 
-## The "Just JavaScript" Promise, Delivered
+### The "Just JavaScript" Promise, Delivered
 
 Other frameworks claim to be "just JavaScript" but ask you to think in terms of
 effects, dependencies, and framework-specific patterns. Crank actually delivers
-on that promise—your components are literally just functions that use standard
+on that promise — your components are literally just functions that use standard
 JavaScript control flow.
-
-Ready to write components that feel like the JavaScript you know and love?
 
 ## Installation
 
@@ -79,24 +77,6 @@ renderer.render(
 );
 ```
 
-### Importing Crank with the **classic** JSX transform.
-
-```jsx live
-/** @jsx createElement */
-/** @jsxFrag Fragment */
-import {createElement, Fragment} from "@b9g/crank";
-import {renderer} from "@b9g/crank/dom";
-
-renderer.render(
-  <p>This paragraph element is transpiled with the classic transform.</p>,
-  document.body,
-);
-```
-
-You will likely have to configure your tools to support JSX, especially if you
-do not want to use `@jsx` comment pragmas. See below for common tools and
-configurations.
-
 ### Importing the JSX template tag.
 
 Starting in version `0.5`, the Crank package ships a [tagged template
@@ -115,8 +95,8 @@ renderer.render(jsx`
 
 ### ECMAScript Module CDNs
 Crank is also available on CDNs like [unpkg](https://unpkg.com)
-(https://unpkg.com/@b9g/crank?module) and [esm.sh](https://esm.sh)
-(https://esm.sh/@b9g/crank) for usage in ESM-ready environments.
+(https://unpkg.com/@b9g/crank?module), [esm.sh](https://esm.sh)
+(https://esm.sh/@b9g/crank), and [esm.run](https://esm.run/@b9g/crank)  for usage in ESM-ready environments.
 
 ```jsx live
 /** @jsx createElement */
@@ -194,7 +174,7 @@ import {renderer} from "@b9g/crank/dom";
 async function LoadingIndicator() {
   await new Promise(resolve => setTimeout(resolve, 1000));
   return (
-    <div style="padding: 20px; text-align: center; background: #f8f9fa; border: 2px dashed #6c757d; border-radius: 8px; color: #6c757d;">
+    <div>
       🐕 Fetching a good boy...
     </div>
   );
@@ -242,13 +222,13 @@ function *RandomDogApp() {
 
   for ({} of this) {
     yield (
-      <div style="max-width: 400px; margin: 0 auto; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+      <div>
         <RandomDogLoader throttle={throttle} />
-        <div style="text-align: center; margin-top: 20px;">
-          <button style="padding: 12px 24px; font-size: 16px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer;">
+        <div>
+          <button>
             Show me another dog!
           </button>
-          <div style="margin-top: 10px; font-size: 14px; color: #6c757d;">
+          <div>
             {throttle ? "🐌 Slow mode enabled" : "⚡ Fast mode"}
           </div>
         </div>
@@ -274,18 +254,6 @@ Here’s the configuration you will need to set up automatic JSX transpilation.
   "compilerOptions": {
     "jsx": "react-jsx",
     "jsxImportSource": "@b9g/crank"
-  }
-}
-```
-
-The classic transform is supported as well.
-
-```tsconfig.json
-{
-  "compilerOptions": {
-    "jsx": "react",
-    "jsxFactory": "createElement",
-    "jsxFragmentFactory": "Fragment"
   }
 }
 ```
@@ -323,26 +291,6 @@ Automatic transform:
       {
         "runtime": "automatic",
         "importSource": "@b9g/crank",
-
-        "throwIfNamespace": false,
-        "useSpread": true
-      }
-    ]
-  ]
-}
-```
-
-Classic transform:
-```.babelrc.json
-{
-  "plugins": [
-    "@babel/plugin-syntax-jsx",
-    [
-      "@babel/plugin-transform-react-jsx",
-      {
-        "runtime": "class",
-        "pragma": "createElement",
-        "pragmaFrag": "''",
 
         "throwIfNamespace": false,
         "useSpread": true
@@ -391,3 +339,497 @@ export default defineConfig({
   integrations: [crank()],
 });
 ```
+
+## API Reference
+
+### Core Exports
+
+```javascript
+import {
+  createElement,
+  Fragment,
+  Copy,
+  Portal,
+  Raw,
+  Text,
+  Context
+} from "@b9g/crank";
+
+import {renderer} from "@b9g/crank/dom"; // Browser DOM
+import {renderer} from "@b9g/crank/html"; // Server-side HTML
+
+import {jsx, html} from "@b9g/crank/standalone"; // Template tag (no build)
+
+import {Suspense, SuspenseList, lazy} from "@b9g/crank/async";
+```
+
+---
+
+### Component Types
+
+**Function Component** - Stateless
+```javascript
+function Greeting({name = "World"}) {
+  return <div>Hello {name}</div>;
+}
+```
+
+**Generator Component** - Stateful with `function*`
+```javascript
+function* Counter() {
+  let count = 0;
+  const onclick = () => this.refresh(() => count++);
+
+  for ({} of this) {
+    yield <button onclick={onclick}>Count: {count}</button>;
+  }
+}
+```
+
+**Async Component** - Uses `async` for promises
+```javascript
+async function UserProfile({userId}) {
+  const user = await fetch(`/api/users/${userId}`).then(r => r.json());
+  return <div>Hello, {user.name}!</div>;
+}
+```
+
+**Async Generator Component** - Stateful + async
+```javascript
+async function* DataLoader({url}) {
+  for ({url} of this) {
+    const data = await fetch(url).then(r => r.json());
+    yield <div>{data.message}</div>;
+  }
+}
+```
+
+---
+
+### Context API
+
+The context is available as `this` in components (or as 2nd parameter).
+
+```javascript
+function Component(props, ctx) {
+  console.log(this === ctx); // true
+  return props.children;
+}
+```
+
+#### Properties
+
+**`this.props`** - Current props (readonly)
+
+**`this.isExecuting`** - Whether the component is currently executing
+
+**`this.isUnmounted`** - Whether the component is unmounted
+
+#### Methods
+
+**`this.refresh(callback?)`** - Trigger re-render
+```javascript
+this.refresh();                    // Simple refresh
+this.refresh(() => count++);       // With state update (v0.7+)
+```
+
+**`this.schedule(callback)`** - Execute after render
+```javascript
+this.schedule(() => {
+  console.log("Component rendered");
+});
+```
+
+**`this.cleanup(callback)`** - Register cleanup on unmount
+```javascript
+function* Component() {
+  const interval = setInterval(() => this.refresh(), 1000);
+  this.cleanup(() => clearInterval(interval));
+
+  for ({} of this) {
+    yield <div>Tick</div>;
+  }
+}
+```
+
+**`this.addEventListener(type, listener, options?)`** - Listen to events
+```javascript
+this.addEventListener("click", (e) => console.log("Clicked!"));
+```
+
+**`this.dispatchEvent(event)`** - Dispatch events
+```javascript
+this.dispatchEvent(new CustomEvent("mybuttonclick", {
+  bubbles: true,
+  detail: {id: props.id}
+}));
+```
+
+**`this.provide(key, value)`** / **`this.consume(key)`** - Context API
+```javascript
+// Provider
+function* ThemeProvider() {
+  this.provide("theme", "dark");
+  for ({} of this) {
+    yield this.props.children;
+  }
+}
+
+// Consumer
+function ThemedButton() {
+  const theme = this.consume("theme");
+  return <button class={theme}>Click me</button>;
+}
+```
+
+#### Iteration
+
+**`for ({} of this)`** - Render loop (sync)
+```javascript
+function* Component() {
+  for ({} of this) {
+    yield <div>{this.props.message}</div>;
+  }
+}
+```
+
+**`for await ({} of this)`** - Async render loop for racing trees
+```javascript
+async function* AsyncComponent() {
+  for await ({} of this) {
+    // Multiple yields race - whichever completes first shows
+    yield <Loading />;
+    yield <Content />;
+  }
+}
+```
+
+---
+
+### Special Props
+
+**`key`** - Unique identifier for reconciliation
+```javascript
+{items.map(item => <li key={item.id}>{item.name}</li>)}
+```
+
+**`ref`** - Access rendered DOM element
+```javascript
+<audio ref={(el) => (audio = el)} />
+
+// Forward refs through components
+function MyInput({ref, ...props}) {
+  return <input ref={ref} {...props} />;
+}
+```
+
+**`copy`** - Prevent/control re-rendering
+```javascript
+// Boolean: prevent rendering when truthy
+<li copy={!el.hasChanged}>{el.value}</li>
+
+// string: copy specific props
+<input copy="!value" type="text" />        // Copy all except value
+<div copy="class id" />                    // Copy only class and id
+<div copy="children" />                    // Copy children
+```
+
+**`hydrate`** - Control SSR hydration
+```javascript
+<div hydrate={false}>                      // Skip hydration
+<Portal hydrate={true}>                    // Force hydration
+<input hydrate="!value" />                 // Hydrate all except value
+```
+
+**`class`** - String or object (v0.7+)
+```javascript
+<button class="btn active" />
+
+<button class={{
+  btn: true,
+  'btn-active': isActive,
+  'btn-disabled': isDisabled
+}} />
+```
+
+**`style`** - CSS string or object
+```javascript
+<div style="color: red; font-size: 16px" />
+<div style={{"font-size": "16px", color: "blue"}} />
+```
+
+**`innerHTML`** - Raw HTML string (⚠️ XSS risk)
+```javascript
+<div innerHTML="<strong>Bold</strong>" />
+```
+
+**Event Props** - Lowercase event handlers
+```javascript
+<button onclick={handler} />
+<input onchange={handler} oninput={handler} />
+<form onsubmit={handler} />
+```
+
+**Prop Naming** - HTML-friendly names supported
+```javascript
+<label class="my-label" for="my-id">Label</label>
+// Instead of className and htmlFor
+```
+
+---
+
+### Special Element Tags
+
+**`<Fragment>`** - Render children without wrapper
+```javascript
+import {Fragment} from "@b9g/crank";
+
+<Fragment>
+  <div>Child 1</div>
+  <div>Child 2</div>
+</Fragment>
+
+// Or use: <>...</>
+// The Fragment tag is the empty string
+```
+
+**`<Copy />`** - Prevent element re-rendering
+```javascript
+import {Copy} from "@b9g/crank";
+
+function memo(Component) {
+  return function* Wrapped(props) {
+    yield <Component {...props} />;
+    for (const newProps of this) {
+      if (equals(props, newProps)) {
+        yield <Copy />;  // Reuse previous render
+      } else {
+        yield <Component {...newProps} />;
+      }
+      props = newProps;
+    }
+  };
+}
+```
+
+**`<Portal>`** - Render into different DOM node
+```javascript
+import {Portal} from "@b9g/crank";
+
+const modalRoot = document.getElementById("modal-root");
+
+function Modal({children}) {
+  return (
+    <Portal root={modalRoot}>
+      <div class="modal">
+        {children}
+      </div>
+    </Portal>
+  );
+}
+```
+
+**`<Raw>`** - Insert raw HTML or DOM nodes
+```javascript
+import {Raw} from "@b9g/crank";
+
+function MarkdownViewer({markdown}) {
+  const html = marked(markdown);
+  return <div><Raw value={html} /></div>;
+}
+
+// Or insert DOM node
+<Raw value={domNode} />
+```
+
+**`<Text>`** - Explicit text node creation (v0.7+)
+```javascript
+import {Text} from "@b9g/crank";
+
+<Text value="Hello world" />
+
+// Access Text nodes in lifecycle
+function* Component() {
+  this.schedule((node) => {
+    if (node instanceof Text) {
+      console.log("Text node:", node);
+    }
+  });
+  for ({} of this) {
+    yield "Text content";  // Becomes a Text node
+  }
+}
+```
+
+---
+
+### Async Utilities (v0.7+)
+
+**`lazy(loader)`** - Lazy-load components
+```javascript
+import {lazy} from "@b9g/crank/async";
+
+const LazyComponent = lazy(() => import("./MyComponent.js"));
+
+<Suspense fallback={<div>Loading...</div>}>
+  <LazyComponent />
+</Suspense>
+```
+
+**`Suspense`** - Declarative loading states
+```javascript
+import {Suspense} from "@b9g/crank/async";
+
+<Suspense fallback={<div>Loading...</div>}>
+  <AsyncComponent />
+</Suspense>
+```
+
+**`SuspenseList`** - Coordinate multiple async components
+```javascript
+import {SuspenseList} from "@b9g/crank/async";
+
+<SuspenseList>
+  <Suspense fallback={<div>Loading 1...</div>}>
+    <Item1 />
+  </Suspense>
+  <Suspense fallback={<div>Loading 2...</div>}>
+    <Item2 />
+  </Suspense>
+</SuspenseList>
+```
+
+---
+
+### Lifecycle Patterns
+
+**Mount** - Code before first `yield`
+```javascript
+function* Component() {
+  console.log("Mounting...");
+  const interval = setInterval(() => this.refresh(), 1000);
+
+  for ({} of this) {
+    yield <div>Tick</div>;
+  }
+
+  clearInterval(interval);  // Cleanup
+}
+```
+
+**Update** - Code inside render loop
+```javascript
+function* Component() {
+  for ({} of this) {
+    console.log("Updated with:", this.props);
+    yield <div>{this.props.message}</div>;
+  }
+}
+```
+
+**Cleanup** - Code after loop or via `this.cleanup()`
+```javascript
+function* Component() {
+  const interval = setInterval(() => this.refresh(), 1000);
+  this.cleanup(() => clearInterval(interval));
+
+  for ({} of this) {
+    yield <div>Tick</div>;
+  }
+}
+```
+
+---
+
+### Advanced Patterns
+
+**Higher-Order Components**
+```javascript
+function withLogger(Component) {
+  return function* WrappedComponent(props) {
+    console.log("Rendering with:", props);
+    for ({} of this) {
+      yield <Component {...props} />;
+    }
+  };
+}
+```
+
+**Hooks**
+```javascript
+function useInterval(ctx, callback, delay) {
+  let interval = setInterval(callback, delay);
+  ctx.cleanup(() => clearInterval(interval);
+  return (newDelay) => {
+    delay = newDelay;
+    clearInterval(interval);
+    interval = setInterval(callback, delay);
+  };
+}
+```
+
+**Context Extensions** (⚠️ Prefer hooks over global extensions)
+```javascript
+import {Context} from "@b9g/crank";
+
+Context.prototype.setInterval = function(callback, delay) {
+  const interval = setInterval(callback, delay);
+  this.cleanup(() => clearInterval(interval));
+};
+
+// Use in components
+function* Timer() {
+  let seconds = 0;
+  this.setInterval(() => this.refresh(() => seconds++), 1000);
+
+  for ({} of this) {
+    yield <div>Seconds: {seconds}</div>;
+  }
+}
+```
+
+**Racing Components**
+```javascript
+async function* DataComponent({url}) {
+  for await ({url} of this) {
+    yield <Spinner />;
+    yield <Data data={data} />;
+  }
+}
+```
+
+---
+
+### TypeScript Support
+
+```typescript
+import type {Context} from "@b9g/crank";
+import {ComponentProps} from "@b9g/crank";  // v0.7+
+
+// Component with typed props
+interface Props {
+  name: string;
+  age?: number;
+}
+
+function Greeting({name, age}: Props) {
+  return <div>Hello {name}, age {age}</div>;
+}
+
+// Generator with typed context
+function* Greeting(this: Context<typeof Greeting>, {name}: {name: string}) {
+  for ({name} of this) {
+    yield <div>Hello {name}</div>;
+  }
+}
+
+// Extract component props type
+function Button({variant}: {variant: "primary" | "secondary"}) {
+  return <button class={`btn-${variant}`}>Click</button>;
+}
+
+type ButtonProps = ComponentProps<typeof Button>;
+```
+
+For comprehensive guides and documentation, visit [crank.js.org](https://crank.js.org)
+
