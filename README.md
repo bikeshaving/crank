@@ -1,16 +1,18 @@
 <div align="center">
-
 <img src="logo.svg" alt="Crank.js Logo" width="200" height="200" />
 
 # Crank.js
-
 The Just JavaScript Framework
-
 </div>
 
-## Try Crank
+## Get Started
 
-The fastest way to try Crank is via the [online playground](https://crank.js.org/playground). In addition, many of the code examples in these guides feature live previews.
+The fastest way to try Crank is via the [online playground](https://crank.js.org/playground).
+
+Other links:
+- [crank.js.org](https://crank.js.org)
+- [Deep Wiki](https://deepwiki.com/bikeshaving/crank)
+- [Examples](https://github.com/bikeshaving/crank/tree/main/examples)
 
 ## Motivation
 **A framework that feels like JavaScript.**
