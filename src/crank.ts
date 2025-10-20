@@ -338,7 +338,8 @@ const IsSchedulingFallback = 1 << 7;
 const IsUnmounted = 1 << 8;
 // TODO: Is this flag still necessary or can we use IsUnmounted?
 const IsErrored = 1 << 9;
-const IsResurrecting = 1 << 10;
+// TODO: Reenable resurrection
+//const IsResurrecting = 1 << 10;
 // TODO: Maybe we can get rid of IsSyncGen and IsAsyncGen
 const IsSyncGen = 1 << 11;
 const IsAsyncGen = 1 << 12;
@@ -402,24 +403,25 @@ class Retainer<TNode, TScope = unknown> {
 	}
 }
 
-function cloneRetainer<TNode, TScope>(
-	ret: Retainer<TNode, TScope>,
-): Retainer<TNode, TScope> {
-	const clone = new Retainer<TNode, TScope>(ret.el);
-	clone.f = ret.f;
-	clone.ctx = ret.ctx;
-	clone.children = ret.children;
-	clone.fallback = ret.fallback;
-	clone.value = ret.value;
-	clone.scope = ret.scope;
-	clone.oldProps = ret.oldProps;
-	clone.pendingDiff = ret.pendingDiff;
-	clone.onNextDiff = ret.onNextDiff;
-	clone.graveyard = ret.graveyard;
-	clone.lingerers = ret.lingerers;
-
-	return clone;
-}
+// TODO: Reenable resurrection
+//function cloneRetainer<TNode, TScope>(
+//	ret: Retainer<TNode, TScope>,
+//): Retainer<TNode, TScope> {
+//	const clone = new Retainer<TNode, TScope>(ret.el);
+//	clone.f = ret.f;
+//	clone.ctx = ret.ctx;
+//	clone.children = ret.children;
+//	clone.fallback = ret.fallback;
+//	clone.value = ret.value;
+//	clone.scope = ret.scope;
+//	clone.oldProps = ret.oldProps;
+//	clone.pendingDiff = ret.pendingDiff;
+//	clone.onNextDiff = ret.onNextDiff;
+//	clone.graveyard = ret.graveyard;
+//	clone.lingerers = ret.lingerers;
+//
+//	return clone;
+//}
 
 /**
  * Finds the value of the element according to its type.
@@ -1149,33 +1151,33 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 						childCopied = true;
 					}
 				} else if (ret) {
-					// we do not need to add the retainer to the graveyard if it is the
-					// fallback of another retainer
-					// search for the tag in fallback chain
 					let candidateFound = false;
-					for (
-						let predecessor = ret, candidate = ret.fallback;
-						candidate;
-						predecessor = candidate, candidate = candidate.fallback
-					) {
-						if (candidate.el.tag === child.tag) {
-							// If we find a retainer in the fallback chain with the same tag,
-							// we reuse it rather than creating a new retainer to preserve
-							// state. This behavior is useful for when a Suspense component
-							// re-renders and the children are re-rendered quickly.
-							const clone = cloneRetainer(candidate);
-							setFlag(clone, IsResurrecting);
-							predecessor.fallback = clone;
-							const fallback = ret;
-							ret = candidate;
-							ret.el = child;
-							ret.fallback = fallback;
-							setFlag(ret, DidDiff, false);
-							candidateFound = true;
-							break;
-						}
-					}
-
+					// TODO: Reenable resurrection
+					//// we do not need to add the retainer to the graveyard if it is the
+					//// fallback of another retainer
+					//// search for the tag in fallback chain
+					//for (
+					//	let predecessor = ret, candidate = ret.fallback;
+					//	candidate;
+					//	predecessor = candidate, candidate = candidate.fallback
+					//) {
+					//	if (candidate.el.tag === child.tag) {
+					//		// If we find a retainer in the fallback chain with the same tag,
+					//		// we reuse it rather than creating a new retainer to preserve
+					//		// state. This behavior is useful for when a Suspense component
+					//		// re-renders and the children are re-rendered quickly.
+					//		const clone = cloneRetainer(candidate);
+					//		setFlag(clone, IsResurrecting);
+					//		predecessor.fallback = clone;
+					//		const fallback = ret;
+					//		ret = candidate;
+					//		ret.el = child;
+					//		ret.fallback = fallback;
+					//		setFlag(ret, DidDiff, false);
+					//		candidateFound = true;
+					//		break;
+					//	}
+					//}
 					if (!candidateFound) {
 						const fallback = ret;
 						ret = new Retainer<TNode, TScope>(child);
@@ -1511,17 +1513,18 @@ function commitChildren<
 				isSchedulingFallback = true;
 			}
 
-			if (!getFlag(child, DidDiff) && getFlag(child, DidCommit)) {
-				// If this child has not diffed but has committed, it means it is a
-				// fallback that is being resurrected.
-				for (const node of getChildValues(child)) {
-					adapter.remove({
-						node,
-						parentNode: host.value as TNode,
-						isNested: false,
-					});
-				}
-			}
+			// TODO: Reenable resurrection
+			//if (!getFlag(child, DidDiff) && getFlag(child, DidCommit)) {
+			//	// If this child has not diffed but has committed, it means it is a
+			//	// fallback that is being resurrected.
+			//	for (const node of getChildValues(child)) {
+			//		adapter.remove({
+			//			node,
+			//			parentNode: host.value as TNode,
+			//			isNested: false,
+			//		});
+			//	}
+			//}
 
 			child = child.fallback;
 			// When a scheduling component is mounting asynchronously but diffs
@@ -1965,9 +1968,10 @@ function unmount<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		ret.fallback = undefined;
 	}
 
-	if (getFlag(ret, IsResurrecting)) {
-		return;
-	}
+	// TODO: Reenable resurrection
+	//if (getFlag(ret, IsResurrecting)) {
+	//	return;
+	//}
 
 	if (ret.lingerers) {
 		for (let i = 0; i < ret.lingerers.length; i++) {
