@@ -296,7 +296,8 @@ test("fast async function vs slow async generator in async generator", async () 
 	Assert.is(document.body.innerHTML, "<div>Hello: <span>Slow 1</span></div>");
 	await new Promise((resolve) => setTimeout(resolve, 300));
 	Assert.is(document.body.innerHTML, "<div>Hello: <span>Slow 1</span></div>");
-	Assert.is(slowFn.callCount, 1);
+	// TODO: resurrection has been disabled
+	Assert.is(slowFn.callCount, 2);
 });
 
 test("fast async generator vs slow async function", async () => {
