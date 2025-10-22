@@ -54,13 +54,10 @@ async function SuspenseFallback(
 	}: {
 		children: Children;
 		timeout: number;
-		schedule?: () => Promise<unknown>;
+		schedule: () => Promise<unknown>;
 	},
 ): Promise<Children> {
-	if (schedule) {
-		this.schedule(schedule);
-	}
-
+	this.schedule(schedule);
 	await new Promise((resolve) => setTimeout(resolve, timeout));
 	return children;
 }
@@ -72,13 +69,10 @@ function SuspenseChildren(
 		schedule,
 	}: {
 		children: Children;
-		schedule?: () => Promise<unknown>;
+		schedule: () => Promise<unknown>;
 	},
 ) {
-	if (schedule) {
-		this.schedule(schedule);
-	}
-
+	this.schedule(schedule);
 	return children;
 }
 
@@ -109,12 +103,7 @@ export async function* Suspense(
 	}: {children: Children; fallback: Children; timeout?: number},
 ): AsyncGenerator<Children> {
 	const controller = this.consume(SuspenseListController);
-	if (controller) {
-		controller.register(this);
-	}
-
 	this.provide(SuspenseListController, undefined);
-	let initial = true;
 	for await ({children, fallback, timeout} of this) {
 		if (timeout == null) {
 			if (controller) {
@@ -128,46 +117,50 @@ export async function* Suspense(
 			yield createElement(SuspenseFallback, {
 				timeout: timeout!,
 				children: fallback,
+				schedule: () => {},
 			});
 			yield children;
 			continue;
 		}
 
+		const items = await controller.register(this);
 		if (controller.revealOrder !== "together") {
-			if (!controller.isHead(this)) {
+			if (!controller.isHead(this, items)) {
 				yield createElement(SuspenseEmpty);
 			}
 
 			if (controller.tail !== "hidden") {
 				yield createElement(SuspenseFallback, {
 					timeout: timeout!,
-					schedule: initial
-						? () => controller.scheduleFallback(this)
-						: undefined,
 					children: fallback,
+					schedule: () => controller.scheduleFallback(this, items),
 				});
 			}
 		}
 
 		yield createElement(SuspenseChildren, {
-			schedule: initial ? () => controller.scheduleChildren(this) : undefined,
 			children,
+			schedule: () => controller.scheduleChildren(this, items),
 		});
-
-		initial = false;
 	}
 }
 
 const SuspenseListController = Symbol.for("SuspenseListController");
 
+interface SuspenseListItem {
+	ctx: Context;
+	resolve: () => void;
+	promise: Promise<void>;
+}
+
 interface SuspenseListController {
 	timeout?: number;
 	revealOrder?: "forwards" | "backwards" | "together";
 	tail?: "collapsed" | "hidden";
-	register(ctx: Context): void;
-	isHead(ctx: Context): boolean;
-	scheduleFallback(ctx: Context): Promise<void>;
-	scheduleChildren(ctx: Context): Promise<void>;
+	register(ctx: Context): Promise<Array<SuspenseListItem>>;
+	isHead(ctx: Context, items: Array<SuspenseListItem>): boolean;
+	scheduleFallback(ctx: Context, items: Array<SuspenseListItem>): Promise<void>;
+	scheduleChildren(ctx: Context, items: Array<SuspenseListItem>): Promise<void>;
 }
 
 declare global {
@@ -179,8 +172,6 @@ declare global {
 }
 
 /**
- * Coordinates the reveal order of multiple <Suspense> children.
- *
  * Controls when child <Suspense> components show their content or fallbacks
  * based on the specified reveal order. The <SuspenseList> resolves when
  * coordination effort is complete (not necessarily when all content is
@@ -194,7 +185,7 @@ declare global {
  *   In Crank, the default behavior of async components is to render together,
  *   so "together" might not be necessary if you are not using <Suspense>
  *   fallbacks.
- * @param tail - How to handle fallbacks:
+ *e@param tail - How to handle fallbacks:
  *   - "collapsed" (default): Show only the fallback for the next unresolved
  *     Suspense component
  *   - "hidden": Hide all fallbacks
@@ -230,35 +221,38 @@ export function* SuspenseList(
 		children: Children;
 	},
 ): Generator<Children> {
-	let registering = true;
-	const suspenseItems: Array<{
-		ctx: Context;
-		childrenResolver: () => void;
-		childrenPromise: Promise<void>;
-	}> = [];
-
+	let finishRegistration: () => void;
+	let registering: Promise<void> | null = null;
+	let items: Array<SuspenseListItem> = [];
 	const controller: SuspenseListController = {
 		timeout,
 		revealOrder,
 		tail,
-		register(ctx: Context) {
+		async register(ctx: Context) {
 			if (registering) {
-				let childrenResolver: () => void;
-
+				let childrenResolver!: () => void;
 				const childrenPromise = new Promise<void>(
 					(r) => (childrenResolver = r),
 				);
 
-				suspenseItems.push({
+				items.push({
 					ctx,
-					childrenResolver: childrenResolver!,
-					childrenPromise,
+					resolve: childrenResolver!,
+					promise: childrenPromise,
 				});
-				return;
+
+				// Wait for registration to complete
+				await registering;
+				return items;
 			}
+
+			console.error(
+				"Component registered outside SuspenseList registration window",
+			);
+			return [];
 		},
 
-		isHead(ctx: Context): boolean {
+		isHead(ctx: Context, suspenseItems: Array<SuspenseListItem>): boolean {
 			const index = suspenseItems.findIndex((item) => item.ctx === ctx);
 			if (index === -1) {
 				return false;
@@ -272,40 +266,48 @@ export function* SuspenseList(
 			return false;
 		},
 
-		async scheduleFallback(ctx: Context) {
+		async scheduleFallback(
+			ctx: Context,
+			suspenseItems: Array<SuspenseListItem>,
+		) {
 			const index = suspenseItems.findIndex((item) => item.ctx === ctx);
 			if (index === -1) {
 				return;
 			} else if (revealOrder === "forwards") {
 				await Promise.all(
-					suspenseItems.slice(0, index).map((item) => item.childrenPromise),
+					suspenseItems.slice(0, index).map((item) => item.promise),
 				);
 			} else if (revealOrder === "backwards") {
 				await Promise.all(
-					suspenseItems.slice(index + 1).map((item) => item.childrenPromise),
+					suspenseItems.slice(index + 1).map((item) => item.promise),
 				);
 			}
 		},
 
-		async scheduleChildren(ctx: Context) {
+		async scheduleChildren(
+			ctx: Context,
+			suspenseItems: Array<SuspenseListItem>,
+		) {
 			const index = suspenseItems.findIndex((item) => item.ctx === ctx);
 			if (index === -1) {
 				return;
 			}
 
 			// This children content is ready
-			suspenseItems[index].childrenResolver();
+			suspenseItems[index].resolve();
 			// Children coordination - determine when this content should show
 			if (revealOrder === "together") {
-				await Promise.all(suspenseItems.map((item) => item.childrenPromise));
+				await Promise.all(suspenseItems.map((item) => item.promise));
 			} else if (revealOrder === "forwards") {
-				await Promise.all(
-					suspenseItems.slice(0, index + 1).map((item) => item.childrenPromise),
-				);
+				const waitFor = suspenseItems
+					.slice(0, index + 1)
+					.map((item) => item.promise);
+				await Promise.all(waitFor);
 			} else if (revealOrder === "backwards") {
-				await Promise.all(
-					suspenseItems.slice(index).map((item) => item.childrenPromise),
-				);
+				const waitFor = suspenseItems
+					.slice(index + 1)
+					.map((item) => item.promise);
+				await Promise.all(waitFor);
 			}
 		},
 	};
@@ -317,12 +319,16 @@ export function* SuspenseList(
 		timeout,
 		children,
 	} of this) {
-		registering = true;
-		// TODO: Is there a fixed amount of microtasks that we can wait for?
-		setTimeout(() => (registering = false));
+		items = [];
 		controller.timeout = timeout;
 		controller.revealOrder = revealOrder;
 		controller.tail = tail;
+		registering = new Promise((r) => (finishRegistration = r));
+		// TODO: Is there a more precise timing for the registration window
+		setTimeout(() => {
+			finishRegistration();
+			registering = null;
+		});
 		yield children;
 	}
 }

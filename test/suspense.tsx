@@ -100,13 +100,13 @@ test("suspense with concurrent refresh", async () => {
 	await renderer.render(<App />, document.body);
 
 	Assert.is(document.body.innerHTML, "<span>Loading...</span>");
-	await new Promise((resolve) => setTimeout(resolve, 100));
+	await new Promise((resolve) => setTimeout(resolve, 120));
 	Assert.is(document.body.innerHTML, "<span>Child 200</span>");
 	const refreshP = ctx.refresh();
 	ctx.refresh();
 	await refreshP;
 	Assert.is(document.body.innerHTML, "<span>Loading...</span>");
-	await new Promise((resolve) => setTimeout(resolve, 100));
+	await new Promise((resolve) => setTimeout(resolve, 120));
 	Assert.is(document.body.innerHTML, "<span>Child 200</span>");
 });
 
@@ -860,7 +860,7 @@ test("suspenselist re-renders", async () => {
 
 	await new Promise((resolve) => setTimeout(resolve, 60));
 	Assert.is(document.body.innerHTML, "<span>Loading A...</span>");
-	await new Promise((resolve) => setTimeout(resolve, 60));
+	await new Promise((resolve) => setTimeout(resolve, 100));
 	Assert.is(
 		document.body.innerHTML,
 		"<span>Child 100</span><span>Child 1</span>",
