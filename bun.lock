@@ -11,6 +11,7 @@
         "@typescript-eslint/parser": "^8.29.1",
         "eslint": "^8.57.1",
         "eslint-config-prettier": "^9.1.0",
+        "eslint-plugin-crank": "^0.1.0",
         "eslint-plugin-prettier": "^5.2.6",
         "eslint-plugin-react": "^7.37.5",
         "magic-string": "^0.30.17",
