@@ -1,4 +1,20 @@
 # Changelog
+## [0.7.2] - 2025-10-23
+### Bug Fixes
+- **Fix spurious warnings for schedule+refresh pattern in generators** (#299)
+  Components using `schedule(() => this.refresh())` patterns in for...of loops
+  would incorrectly trigger "multiple yields" warnings in async generator
+  components. Added `IsSchedulingRefresh` flag to distinguish between scheduled
+  callbacks and refresh-triggered scheduling, preventing false warnings for
+  legitimate schedule+refresh patterns.
+- **Fix Suspense race condition where fallback and content render simultaneously** (#297)
+  Fixed a race condition where Suspense fallback components and resolved
+  content could both be visible at the same time. The issue occurred when
+  fallback components triggered propagations from inactive/unmounted components.
+  Added `isRetainerActive()` function with iterative tree traversal and host
+  boundary optimization to validate propagation paths and prevent inactive
+  components from contributing DOM nodes to the final render.
+
 ## [0.7.1] - 2025-08-20
 ### New Features
 - Crank now supports MathML (https://github.com/bikeshaving/crank/pull/308)
