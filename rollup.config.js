@@ -21,7 +21,8 @@ function dts() {
 				return {code, map};
 			}
 
-			return code;
+			// Return null to indicate no transformation, avoiding sourcemap warning
+			return null;
 		},
 	};
 }
