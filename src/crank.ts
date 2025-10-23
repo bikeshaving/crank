@@ -338,8 +338,7 @@ const IsSchedulingFallback = 1 << 7;
 const IsUnmounted = 1 << 8;
 // TODO: Is this flag still necessary or can we use IsUnmounted?
 const IsErrored = 1 << 9;
-// TODO: Reenable resurrection
-//const IsResurrecting = 1 << 10;
+const IsResurrecting = 1 << 10;
 // TODO: Maybe we can get rid of IsSyncGen and IsAsyncGen
 const IsSyncGen = 1 << 11;
 const IsAsyncGen = 1 << 12;
@@ -403,25 +402,24 @@ class Retainer<TNode, TScope = unknown> {
 	}
 }
 
-// TODO: Reenable resurrection
-//function cloneRetainer<TNode, TScope>(
-//	ret: Retainer<TNode, TScope>,
-//): Retainer<TNode, TScope> {
-//	const clone = new Retainer<TNode, TScope>(ret.el);
-//	clone.f = ret.f;
-//	clone.ctx = ret.ctx;
-//	clone.children = ret.children;
-//	clone.fallback = ret.fallback;
-//	clone.value = ret.value;
-//	clone.scope = ret.scope;
-//	clone.oldProps = ret.oldProps;
-//	clone.pendingDiff = ret.pendingDiff;
-//	clone.onNextDiff = ret.onNextDiff;
-//	clone.graveyard = ret.graveyard;
-//	clone.lingerers = ret.lingerers;
-//
-//	return clone;
-//}
+function cloneRetainer<TNode, TScope>(
+	ret: Retainer<TNode, TScope>,
+): Retainer<TNode, TScope> {
+	const clone = new Retainer<TNode, TScope>(ret.el);
+	clone.f = ret.f;
+	clone.ctx = ret.ctx;
+	clone.children = ret.children;
+	clone.fallback = ret.fallback;
+	clone.value = ret.value;
+	clone.scope = ret.scope;
+	clone.oldProps = ret.oldProps;
+	clone.pendingDiff = ret.pendingDiff;
+	clone.onNextDiff = ret.onNextDiff;
+	clone.graveyard = ret.graveyard;
+	clone.lingerers = ret.lingerers;
+
+	return clone;
+}
 
 /**
  * Finds the value of the element according to its type.
@@ -1152,32 +1150,31 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 					}
 				} else if (ret) {
 					let candidateFound = false;
-					// TODO: Reenable resurrection
-					//// we do not need to add the retainer to the graveyard if it is the
-					//// fallback of another retainer
-					//// search for the tag in fallback chain
-					//for (
-					//	let predecessor = ret, candidate = ret.fallback;
-					//	candidate;
-					//	predecessor = candidate, candidate = candidate.fallback
-					//) {
-					//	if (candidate.el.tag === child.tag) {
-					//		// If we find a retainer in the fallback chain with the same tag,
-					//		// we reuse it rather than creating a new retainer to preserve
-					//		// state. This behavior is useful for when a Suspense component
-					//		// re-renders and the children are re-rendered quickly.
-					//		const clone = cloneRetainer(candidate);
-					//		setFlag(clone, IsResurrecting);
-					//		predecessor.fallback = clone;
-					//		const fallback = ret;
-					//		ret = candidate;
-					//		ret.el = child;
-					//		ret.fallback = fallback;
-					//		setFlag(ret, DidDiff, false);
-					//		candidateFound = true;
-					//		break;
-					//	}
-					//}
+					// we do not need to add the retainer to the graveyard if it is the
+					// fallback of another retainer
+					// search for the tag in fallback chain
+					for (
+						let predecessor = ret, candidate = ret.fallback;
+						candidate;
+						predecessor = candidate, candidate = candidate.fallback
+					) {
+						if (candidate.el.tag === child.tag) {
+							// If we find a retainer in the fallback chain with the same tag,
+							// we reuse it rather than creating a new retainer to preserve
+							// state. This behavior is useful for when a Suspense component
+							// re-renders and the children are re-rendered quickly.
+							const clone = cloneRetainer(candidate);
+							setFlag(clone, IsResurrecting);
+							predecessor.fallback = clone;
+							const fallback = ret;
+							ret = candidate;
+							ret.el = child;
+							ret.fallback = fallback;
+							setFlag(ret, DidDiff, false);
+							candidateFound = true;
+							break;
+						}
+					}
 					if (!candidateFound) {
 						const fallback = ret;
 						ret = new Retainer<TNode, TScope>(child);
@@ -1513,18 +1510,17 @@ function commitChildren<
 				isSchedulingFallback = true;
 			}
 
-			// TODO: Reenable resurrection
-			//if (!getFlag(child, DidDiff) && getFlag(child, DidCommit)) {
-			//	// If this child has not diffed but has committed, it means it is a
-			//	// fallback that is being resurrected.
-			//	for (const node of getChildValues(child)) {
-			//		adapter.remove({
-			//			node,
-			//			parentNode: host.value as TNode,
-			//			isNested: false,
-			//		});
-			//	}
-			//}
+			if (!getFlag(child, DidDiff) && getFlag(child, DidCommit)) {
+				// If this child has not diffed but has committed, it means it is a
+				// fallback that is being resurrected.
+				for (const node of getChildValues(child)) {
+					adapter.remove({
+						node,
+						parentNode: host.value as TNode,
+						isNested: false,
+					});
+				}
+			}
 
 			child = child.fallback;
 			// When a scheduling component is mounting asynchronously but diffs
@@ -1968,10 +1964,9 @@ function unmount<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		ret.fallback = undefined;
 	}
 
-	// TODO: Reenable resurrection
-	//if (getFlag(ret, IsResurrecting)) {
-	//	return;
-	//}
+	if (getFlag(ret, IsResurrecting)) {
+		return;
+	}
 
 	if (ret.lingerers) {
 		for (let i = 0; i < ret.lingerers.length; i++) {
@@ -3205,6 +3200,47 @@ function commitComponent<TNode>(
 }
 
 /**
+ * Checks if a target retainer is active (contributing) in the host's retainer tree.
+ * Performs a downward traversal from host to find if target is in the active path.
+ */
+function isRetainerActive<TNode>(
+	target: Retainer<TNode>,
+	host: Retainer<TNode>,
+): boolean {
+	const stack: Retainer<TNode>[] = [host];
+
+	while (stack.length > 0) {
+		const current = stack.pop()!;
+
+		if (current === target) {
+			return true;
+		}
+
+		// Add direct children to stack (skip if this is a host boundary)
+		// Host boundaries are: DOM elements (string tags) or Portal, but NOT Fragment
+		const isHostBoundary =
+			current !== host &&
+			((typeof current.el.tag === "string" && current.el.tag !== Fragment) ||
+				current.el.tag === Portal);
+		if (current.children && !isHostBoundary) {
+			const children = wrap(current.children);
+			for (const child of children) {
+				if (child) {
+					stack.push(child);
+				}
+			}
+		}
+
+		// Add fallback chains (only if current retainer is using fallback)
+		if (current.fallback && !getFlag(current, DidDiff)) {
+			stack.push(current.fallback);
+		}
+	}
+
+	return false;
+}
+
+/**
  * Propagates component changes up to ancestors when rendering starts from a
  * component via refresh() or multiple for await...of renders. This handles
  * event listeners and DOM arrangement that would normally happen during
@@ -3218,14 +3254,23 @@ function propagateComponent<TNode>(ctx: ContextState<TNode>): void {
 		(ctx1) => ctx1[_ContextState].host === ctx.host,
 	);
 	const host = ctx.host;
+	const initiator = ctx.ret;
+
+	// Check if initiator is active in the host's tree
+	if (!isRetainerActive(initiator, host)) {
+		return;
+	}
+
 	const props = stripSpecialProps(host.el.props);
+	const hostChildren = getChildValues(host, 0);
+
 	ctx.adapter.arrange({
 		tag: host.el.tag as string | symbol,
 		tagName: getTagName(host.el.tag),
 		node: host.value as TNode,
 		props,
 		oldProps: props,
-		children: getChildValues(host, 0),
+		children: hostChildren,
 	});
 
 	flush(ctx.adapter, ctx.root, ctx);
