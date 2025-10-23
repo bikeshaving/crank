@@ -75,7 +75,7 @@ function* Letters() {
 		yield (
 			<div style="height: 40px">
 				{getRandomLetters().map((l, i) => (
-					<Letter crank-key={l} letter={l} index={i} />
+					<Letter key={l} letter={l} index={i} />
 				))}
 			</div>
 		);

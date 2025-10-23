@@ -28,7 +28,7 @@ function* Comment() {
 					</div>
 					<div>
 						{comment.comments.map((reply) => (
-							<Comment crank-key={reply.id} comment={reply} />
+							<Comment key={reply.id} comment={reply} />
 						))}
 					</div>
 				</div>
@@ -50,7 +50,7 @@ async function Item({id}) {
 				submitted by <strong>{item.user}</strong> {item.time_ago}
 			</p>
 			{item.comments.map((comment) => (
-				<Comment comment={comment} crank-key={comment.id} />
+				<Comment comment={comment} key={comment.id} />
 			))}
 		</div>
 	);
@@ -118,7 +118,7 @@ async function List({page, start = (page - 1) * 30 + 1}) {
 	const result = await fetch(`https://api.hnpwa.com/v0/news/${page}.json`);
 	const stories = await result.json();
 	const items = stories.map((story) => (
-		<Story story={story} crank-key={story.id} />
+		<Story story={story} key={story.id} />
 	));
 	return (
 		<Fragment>
