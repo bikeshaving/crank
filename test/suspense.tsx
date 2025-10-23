@@ -162,8 +162,7 @@ test("suspense with concurrent refresh after refresh fulfills", async () => {
 	Assert.is(document.body.innerHTML, "<span>Child 200</span>");
 });
 
-// TODO: This will fail while resurrection is disabled
-test.skip("suspense preserves state on refresh", async () => {
+test("suspense preserves state on refresh", async () => {
 	let ctx!: Context;
 	const mock = Sinon.stub();
 	async function* StatefulChild(this: Context) {
