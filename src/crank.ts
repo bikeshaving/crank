@@ -906,9 +906,28 @@ export class Renderer<
 	 */
 	declare cache: WeakMap<object, Retainer<TNode, TScope>>;
 	declare adapter: RenderAdapter<TNode, TScope, TRoot, TResult>;
+	/**
+	 * @internal
+	 * FinalizationRegistry to automatically unmount when root nodes are garbage collected.
+	 */
+	declare registry:
+		| FinalizationRegistry<{
+				adapter: RenderAdapter<TNode, TScope, TRoot, TResult>;
+				ret: Retainer<TNode, TScope>;
+		  }>
+		| undefined;
 	constructor(adapter: Partial<RenderAdapter<TNode, TScope, TRoot, TResult>>) {
 		this.cache = new WeakMap();
 		this.adapter = {...defaultAdapter, ...adapter};
+		// Only create FinalizationRegistry if it's available (not in all environments)
+		if (typeof FinalizationRegistry !== "undefined") {
+			this.registry = new FinalizationRegistry(({adapter, ret}) => {
+				// Check if the retainer hasn't already been unmounted
+				if (!getFlag(ret, IsUnmounted)) {
+					unmount(adapter, ret, ret.ctx, ret, false);
+				}
+			});
+		}
 	}
 
 	/**
@@ -990,6 +1009,10 @@ function getRootRetainer<
 		// remember that typeof null === "object"
 		if (typeof root === "object" && root !== null && children != null) {
 			renderer.cache.set(root, ret);
+			// Register root node for automatic unmounting when garbage collected
+			if (renderer.registry) {
+				renderer.registry.register(root, {adapter, ret}, ret);
+			}
 		}
 	} else if (ret.ctx !== bridgeCtx) {
 		throw new Error(
@@ -999,6 +1022,10 @@ function getRootRetainer<
 		ret.el = createElement(Portal, {children, root, hydrate});
 		if (typeof root === "object" && root !== null && children == null) {
 			renderer.cache.delete(root);
+			// Unregister from FinalizationRegistry when explicitly unmounting
+			if (renderer.registry) {
+				renderer.registry.unregister(ret);
+			}
 		}
 	}
 
