@@ -1,19 +1,18 @@
 import {jsx} from "@b9g/crank/standalone";
 import type {Context} from "@b9g/crank/standalone";
+import {
+	getColorScheme,
+	setColorScheme,
+	applyColorScheme,
+	syncIframes,
+	type ColorScheme,
+} from "../utils/color-scheme.js";
 
 // the website defaults to dark mode
-let colorScheme: string | undefined;
+let colorScheme: ColorScheme | undefined;
 if (typeof window !== "undefined") {
-	colorScheme =
-		sessionStorage.getItem("color-scheme") ||
-		(window.matchMedia("(prefers-color-scheme: dark)").matches
-			? "dark"
-			: "light");
-	if (colorScheme === "dark") {
-		document.body.classList.remove("color-scheme-light");
-	} else {
-		document.body.classList.add("color-scheme-light");
-	}
+	colorScheme = getColorScheme();
+	applyColorScheme(colorScheme);
 }
 
 // This component would not work with multiple instances, insofar as clicking
@@ -22,30 +21,13 @@ if (typeof window !== "undefined") {
 export function ColorSchemeToggle(this: Context) {
 	const onclick = () => {
 		colorScheme = colorScheme === "dark" ? "light" : "dark";
-		sessionStorage.setItem("color-scheme", colorScheme);
+		setColorScheme(colorScheme);
 		this.refresh();
 	};
 
 	if (typeof window !== "undefined") {
-		if (colorScheme === "dark") {
-			document.body.classList.remove("color-scheme-light");
-			for (const iframe of Array.from(
-				document.querySelectorAll(".playground-iframe"),
-			)) {
-				(
-					iframe as HTMLIFrameElement
-				).contentWindow?.document.body.classList.remove("color-scheme-light");
-			}
-		} else {
-			document.body.classList.add("color-scheme-light");
-			for (const iframe of Array.from(
-				document.querySelectorAll(".playground-iframe"),
-			)) {
-				(
-					iframe as HTMLIFrameElement
-				).contentWindow?.document.body.classList.add("color-scheme-light");
-			}
-		}
+		applyColorScheme(colorScheme!);
+		syncIframes(colorScheme!);
 	}
 
 	return jsx`

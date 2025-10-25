@@ -4,6 +4,7 @@ import {css} from "@emotion/css";
 import {debounce} from "../utils/fns.js";
 import {transform} from "../plugins/babel.js";
 import {extractData} from "./serialize-javascript.js";
+import {getColorSchemeScript} from "../utils/color-scheme.js";
 
 function generateJavaScriptIFrameHTML(
 	id: number,
@@ -17,27 +18,7 @@ function generateJavaScriptIFrameHTML(
 			<meta charset="utf-8">
 			<meta name="viewport" content="width=device-width,initial-scale=1">
 			<script>
-				// Detect and apply color scheme immediately
-				const colorScheme = sessionStorage.getItem("color-scheme") ||
-					(
-						window.matchMedia &&
-						window.matchMedia("(prefers-color-scheme: dark)").matches
-						? "dark"
-						: "light"
-					);
-
-				// Set CSS variables as inline styles - these have higher specificity
-				// than external CSS and will not be overridden
-				const isDark = colorScheme === "dark";
-				const bgColor = isDark ? "#0a0e1f" : "#e7f4f5";
-				const textColor = isDark ? "#f5f9ff" : "#0a0e1f";
-
-				document.documentElement.style.setProperty("--bg-color", bgColor);
-				document.documentElement.style.setProperty("--text-color", textColor);
-
-				if (!isDark) {
-					document.documentElement.classList.add("color-scheme-light");
-				}
+				${getColorSchemeScript()}
 			</script>
 			<style>
 				/* Ensure colors cascade to all elements */
