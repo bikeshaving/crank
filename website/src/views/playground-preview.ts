@@ -1,4 +1,4 @@
-import {Raw} from "@b9g/crank/standalone";
+import {jsx, Raw} from "@b9g/crank/standalone";
 import {getColorSchemeScript} from "../utils/color-scheme.js";
 
 /**
@@ -6,7 +6,7 @@ import {getColorSchemeScript} from "../utils/color-scheme.js";
  * This loads as a clean HTML page with critical scripts,
  * then receives and executes user code via postMessage.
  */
-export default function PlaygroundPreview() {
+export default function* PlaygroundPreview() {
 	const colorSchemeScript = getColorSchemeScript();
 
 	const scriptContent = `
@@ -99,38 +99,38 @@ export default function PlaygroundPreview() {
 		);
 	`;
 
-	return `
-		<!DOCTYPE html>
-		<html lang="en">
-		<head>
-			<meta charset="utf-8">
-			<meta name="viewport" content="width=device-width,initial-scale=1">
-			<script>${colorSchemeScript}</script>
-			<style>
-				html, body {
-					background-color: #0a0e1f;
-					color: #f5f9ff;
-					margin: 0;
-					padding: 0;
-					font-family: sans-serif;
-				}
-				html.color-scheme-light, html.color-scheme-light body {
-					background-color: #e7f4f5;
-					color: #0a0e1f;
-				}
-				:root {
-					--bg-color: #0a0e1f;
-					--text-color: #f5f9ff;
-				}
-				.color-scheme-light {
-					--bg-color: #e7f4f5;
-					--text-color: #0a0e1f;
-				}
-			</style>
-		</head>
-		<body>
-			<script type="module">${scriptContent}</script>
-		</body>
-		</html>
-	`;
+	const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width,initial-scale=1">
+	<script>${colorSchemeScript}</script>
+	<style>
+		html, body {
+			background-color: #0a0e1f;
+			color: #f5f9ff;
+			margin: 0;
+			padding: 0;
+			font-family: sans-serif;
+		}
+		html.color-scheme-light, html.color-scheme-light body {
+			background-color: #e7f4f5;
+			color: #0a0e1f;
+		}
+		:root {
+			--bg-color: #0a0e1f;
+			--text-color: #f5f9ff;
+		}
+		.color-scheme-light {
+			--bg-color: #e7f4f5;
+			--text-color: #0a0e1f;
+		}
+	</style>
+</head>
+<body>
+	<script type="module">${scriptContent}</script>
+</body>
+</html>`;
+
+	yield jsx`<${Raw} value=${html} />`;
 }
