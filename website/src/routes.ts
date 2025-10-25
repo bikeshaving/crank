@@ -4,7 +4,6 @@ import BlogHomeView from "./views/blog-home.js";
 import GuideView from "./views/guide.js";
 import BlogView from "./views/blog.js";
 import PlaygroundView from "./views/playground.js";
-import PlaygroundPreviewView from "./views/playground-preview.js";
 
 // TODO: I am not sure what the value of the route() function is over using the
 // route config directly.
@@ -28,9 +27,5 @@ export const router = new Router([
 	route("/playground", {
 		name: "playground",
 		view: PlaygroundView,
-	}),
-	route("/playground-preview", {
-		name: "playground-preview",
-		view: PlaygroundPreviewView,
 	}),
 ]);
