@@ -12,7 +12,32 @@ function generateJavaScriptIFrameHTML(
 ): string {
 	return `
 		<!DOCTYPE html>
+		<html lang="en">
 		<head>
+			<meta charset="utf-8">
+			<meta name="viewport" content="width=device-width,initial-scale=1">
+			<style>
+				/* Inline styles to ensure text is visible before external CSS loads */
+				:root {
+					--bg-color: #0a0e1f;
+					--text-color: #f5f9ff;
+				}
+				.color-scheme-light {
+					--bg-color: #e7f4f5;
+					--text-color: #0a0e1f;
+				}
+				* {
+					color: var(--text-color);
+					box-sizing: border-box;
+				}
+				body {
+					background-color: var(--bg-color);
+					color: var(--text-color);
+					font-family: sans-serif;
+					margin: 0;
+					padding: 0;
+				}
+			</style>
 			<link
 				rel="stylesheet"
 				type="text/css"
@@ -86,6 +111,7 @@ function generateJavaScriptIFrameHTML(
 			</script>
 			<script type="module">${code}</script>
 		</body>
+		</html>
 	`;
 }
 
