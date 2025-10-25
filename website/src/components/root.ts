@@ -5,22 +5,12 @@ import {extractCritical} from "@emotion/server";
 import {Page, Link, Script, Storage} from "./esbuild.js";
 import {Navbar} from "./navbar.js";
 import {StaticURLsJSON} from "./static-urls-json.js";
+import {getColorSchemeScript} from "../utils/color-scheme.js";
 
 function ColorSchemeScript() {
 	// This script must be executed as early as possible to prevent a FOUC.
 	// It also cannot be `type="module"` because that will also cause an FOUC.
-	const scriptText = `
-	(() => {
-		const colorScheme = sessionStorage.getItem("color-scheme") ||
-			(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
-				? "dark" : "light"
-			);
-		if (colorScheme === "dark") {
-			document.body.classList.remove("color-scheme-light");
-		} else {
-			document.body.classList.add("color-scheme-light");
-		}
-	})()`;
+	const scriptText = `(() => { ${getColorSchemeScript()} })()`;
 	return jsx`
 		<script>
 			<${Raw} value=${scriptText} />
