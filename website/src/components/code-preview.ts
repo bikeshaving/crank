@@ -16,18 +16,42 @@ function generateJavaScriptIFrameHTML(
 		<head>
 			<meta charset="utf-8">
 			<meta name="viewport" content="width=device-width,initial-scale=1">
+			<script>
+				// Detect and apply color scheme before any rendering
+				const colorScheme = sessionStorage.getItem("color-scheme") ||
+					(
+						window.matchMedia &&
+						window.matchMedia("(prefers-color-scheme: dark)").matches
+						? "dark"
+						: "light"
+					);
+
+				// Set colors directly on html element
+				const isDark = colorScheme === "dark";
+				const bgColor = isDark ? "#0a0e1f" : "#e7f4f5";
+				const textColor = isDark ? "#f5f9ff" : "#0a0e1f";
+
+				document.documentElement.style.setProperty("--bg-color", bgColor);
+				document.documentElement.style.setProperty("--text-color", textColor);
+
+				if (!isDark) {
+					document.documentElement.classList.add("color-scheme-light");
+				}
+			</script>
 			<style>
-				/* Inline styles to ensure text is visible before external CSS loads */
+				/* Inline styles to ensure text is visible */
 				:root {
 					--bg-color: #0a0e1f;
 					--text-color: #f5f9ff;
+					color: var(--text-color);
+					background-color: var(--bg-color);
 				}
 				.color-scheme-light {
 					--bg-color: #e7f4f5;
 					--text-color: #0a0e1f;
 				}
 				* {
-					color: var(--text-color);
+					color: inherit;
 					box-sizing: border-box;
 				}
 				body {
@@ -45,23 +69,6 @@ function generateJavaScriptIFrameHTML(
 			/>
 		</head>
 		<body>
-		  <!-- TODO: extract these scripts to a separate file or something -->
-			<script>
-				const colorScheme = sessionStorage.getItem("color-scheme") ||
-					(
-						window.matchMedia &&
-						window.matchMedia("(prefers-color-scheme: dark)").matches
-						? "dark"
-						: "light"
-					);
-				if (colorScheme === "dark") {
-					document.documentElement.classList.remove("color-scheme-light");
-					document.body.classList.remove("color-scheme-light");
-				} else {
-					document.documentElement.classList.add("color-scheme-light");
-					document.body.classList.add("color-scheme-light");
-				}
-			</script>
 			<script>
 				window.addEventListener("load", (ev) => {
 					window.parent.postMessage(
