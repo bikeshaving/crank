@@ -250,3 +250,11 @@ tbody tr:hover {
 .color-scheme-light tbody tr:hover {
 	background: rgba(0, 0, 0, 0.05);
 }
+
+/* Giscus iframe styling */
+.giscus, .giscus-frame {
+	max-width: 100%;
+	@media screen and (min-width: 1100px) {
+		max-width: 900px;
+	}
+}

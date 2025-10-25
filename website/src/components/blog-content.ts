@@ -1,5 +1,6 @@
 import {jsx} from "@b9g/crank/standalone";
 import type {Children} from "@b9g/crank";
+import {Giscus} from "./giscus.js";
 
 export interface BlogContentProps {
 	title: string;
@@ -42,5 +43,19 @@ export function BlogContent({
 		`
 		}
 		${children}
+		<${Giscus}
+			repo="bikeshaving/crank"
+			repoId="MDEwOlJlcG9zaXRvcnkyMDY0Mzk3MDc="
+			category="Comments"
+			categoryId="DIC_kwDODE4FG84Cw3V5"
+			mapping="pathname"
+			strict=${false}
+			reactionsEnabled=${true}
+			emitMetadata=${false}
+			inputPosition="top"
+			theme="preferred_color_scheme"
+			lang="en"
+			loading="lazy"
+		/>
 	`;
 }
