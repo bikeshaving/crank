@@ -26,7 +26,16 @@ function generateJavaScriptIFrameHTML(
 						: "light"
 					);
 
-				if (colorScheme !== "dark") {
+				// Set CSS variables as inline styles - these have higher specificity
+				// than external CSS and will not be overridden
+				const isDark = colorScheme === "dark";
+				const bgColor = isDark ? "#0a0e1f" : "#e7f4f5";
+				const textColor = isDark ? "#f5f9ff" : "#0a0e1f";
+
+				document.documentElement.style.setProperty("--bg-color", bgColor);
+				document.documentElement.style.setProperty("--text-color", textColor);
+
+				if (!isDark) {
 					document.documentElement.classList.add("color-scheme-light");
 				}
 			</script>
