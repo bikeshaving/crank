@@ -33,23 +33,19 @@ function generateJavaScriptIFrameHTML(
 			<style>
 				/* Dark mode (default) - apply colors directly without variables */
 				html, body {
-					background-color: #0a0e1f !important;
-					color: #f5f9ff !important;
+					background-color: #0a0e1f;
+					color: #f5f9ff;
 					margin: 0;
 					padding: 0;
 				}
 				* {
-					color: #f5f9ff !important;
 					box-sizing: border-box;
 				}
 
 				/* Light mode overrides */
 				html.color-scheme-light, html.color-scheme-light body {
-					background-color: #e7f4f5 !important;
-					color: #0a0e1f !important;
-				}
-				html.color-scheme-light * {
-					color: #0a0e1f !important;
+					background-color: #e7f4f5;
+					color: #0a0e1f;
 				}
 
 				/* CSS variables for compatibility with external CSS */
