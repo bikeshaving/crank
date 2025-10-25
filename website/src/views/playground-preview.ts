@@ -1,13 +1,14 @@
-import {jsx, Raw} from "@b9g/crank/standalone";
-import {Root} from "../components/root.js";
-import type {ViewProps} from "../router.js";
+import {Raw} from "@b9g/crank/standalone";
+import {getColorSchemeScript} from "../utils/color-scheme.js";
 
 /**
- * Server-rendered view for playground preview iframes.
- * This loads as a proper server route with critical scripts,
+ * Minimal server-rendered view for playground preview iframes.
+ * This loads as a clean HTML page with critical scripts,
  * then receives and executes user code via postMessage.
  */
-export default function* PlaygroundPreview({context: {storage}}: ViewProps) {
+export default function PlaygroundPreview() {
+	const colorSchemeScript = getColorSchemeScript();
+
 	const scriptContent = `
 		// Listen for code from parent window
 		window.addEventListener("message", async (ev) => {
@@ -98,17 +99,38 @@ export default function* PlaygroundPreview({context: {storage}}: ViewProps) {
 		);
 	`;
 
-	yield jsx`
-		<${Root}
-			title="Playground Preview"
-			description="Preview iframe for Crank.js playground"
-			storage=${storage}
-			url="/playground-preview"
-		>
-			<div id="preview-root"></div>
-			<script type="module">
-				<${Raw} value=${scriptContent} />
-			</script>
-		<//>
+	return `
+		<!DOCTYPE html>
+		<html lang="en">
+		<head>
+			<meta charset="utf-8">
+			<meta name="viewport" content="width=device-width,initial-scale=1">
+			<script>${colorSchemeScript}</script>
+			<style>
+				html, body {
+					background-color: #0a0e1f;
+					color: #f5f9ff;
+					margin: 0;
+					padding: 0;
+					font-family: sans-serif;
+				}
+				html.color-scheme-light, html.color-scheme-light body {
+					background-color: #e7f4f5;
+					color: #0a0e1f;
+				}
+				:root {
+					--bg-color: #0a0e1f;
+					--text-color: #f5f9ff;
+				}
+				.color-scheme-light {
+					--bg-color: #e7f4f5;
+					--text-color: #0a0e1f;
+				}
+			</style>
+		</head>
+		<body>
+			<script type="module">${scriptContent}</script>
+		</body>
+		</html>
 	`;
 }
