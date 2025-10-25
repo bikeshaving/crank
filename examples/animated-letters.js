@@ -64,7 +64,7 @@ function* Letter({letter, index}) {
 			});
 		});
 
-		yield <span style={{...style, color: "black"}}>{letter}</span>;
+		yield <span style={style}>{letter}</span>;
 	}
 }
 

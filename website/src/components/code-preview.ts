@@ -4,6 +4,7 @@ import {css} from "@emotion/css";
 import {debounce} from "../utils/fns.js";
 import {transform} from "../plugins/babel.js";
 import {extractData} from "./serialize-javascript.js";
+import {getColorSchemeScript} from "../utils/color-scheme.js";
 
 function generateJavaScriptIFrameHTML(
 	id: number,
@@ -12,7 +13,23 @@ function generateJavaScriptIFrameHTML(
 ): string {
 	return `
 		<!DOCTYPE html>
+		<html lang="en">
 		<head>
+			<meta charset="utf-8">
+			<meta name="viewport" content="width=device-width,initial-scale=1">
+			<script>
+				${getColorSchemeScript()}
+			</script>
+			<style>
+				/* Minimal inline styles - actual colors defined in client.css */
+				* {
+					box-sizing: border-box;
+				}
+				html, body {
+					margin: 0;
+					padding: 0;
+				}
+			</style>
 			<link
 				rel="stylesheet"
 				type="text/css"
@@ -20,21 +37,6 @@ function generateJavaScriptIFrameHTML(
 			/>
 		</head>
 		<body>
-		  <!-- TODO: extract these scripts to a separate file or something -->
-			<script>
-				const colorScheme = sessionStorage.getItem("color-scheme") ||
-					(
-						window.matchMedia &&
-						window.matchMedia("(prefers-color-scheme: dark)").matches
-						? "dark"
-						: "light"
-					);
-				if (colorScheme === "dark") {
-					document.body.classList.remove("color-scheme-light");
-				} else {
-					document.body.classList.add("color-scheme-light");
-				}
-			</script>
 			<script>
 				window.addEventListener("load", (ev) => {
 					window.parent.postMessage(
@@ -86,6 +88,7 @@ function generateJavaScriptIFrameHTML(
 			</script>
 			<script type="module">${code}</script>
 		</body>
+		</html>
 	`;
 }
 
@@ -119,8 +122,10 @@ function generatePythonIFrameHTML(
 						: "light"
 					);
 				if (colorScheme === "dark") {
+					document.documentElement.classList.remove("color-scheme-light");
 					document.body.classList.remove("color-scheme-light");
 				} else {
+					document.documentElement.classList.add("color-scheme-light");
 					document.body.classList.add("color-scheme-light");
 				}
 			</script>

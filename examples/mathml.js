@@ -160,15 +160,14 @@ const style = `
 		line-height: 1.6;
 	}
 	.math-example {
-		border: 1px solid #ddd;
+		border: 1px solid var(--text-color, #ddd);
 		padding: 20px;
 		margin: 20px 0;
-		background: #f9f9f9;
+		background: rgba(128, 128, 128, 0.1);
 		border-radius: 8px;
 	}
 	.math-example h3 {
 		margin-top: 0;
-		color: #333;
 	}
 	math {
 		font-size: 1.2em;
