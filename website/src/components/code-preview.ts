@@ -258,7 +258,6 @@ export function* CodePreview(
 	const isPython = currentLanguage === "python";
 
 	let staticURLs: Record<string, any> | undefined;
-	let iframeReady = false;
 	let execute: () => unknown;
 	let executeDebounced: () => unknown;
 	if (typeof window !== "undefined") {
@@ -270,38 +269,27 @@ export function* CodePreview(
 				return;
 			}
 
+			// We have to refresh to change the iframe variable in scope, as the
+			// previous iframe is destroyed. We would have to await refresh if this
+			// component was refactored to be async.
+			iframeID++;
+			this.refresh();
+			const document1 = iframe.contentDocument;
+			if (document1 == null) {
+				return;
+			}
+
 			let code = value;
 
 			if (isPython) {
-				// Python code - keep using document.write for PyScript
-				iframeID++;
-				this.refresh();
-				const document1 = iframe.contentDocument;
-				if (document1 == null) {
-					return;
-				}
+				// Python code - no transformation needed
 				document1.write(generatePythonIFrameHTML(id, code, staticURLs!));
-				document1.close();
 			} else {
-				// JavaScript code - use postMessage to server-rendered iframe
+				// JavaScript code - transform with Babel
 				try {
 					const parsed = transform(value);
 					code = parsed.code;
-
-					if (!iframeReady) {
-						// Reload iframe to reset state
-						pendingCode = code;
-						iframeID++;
-						iframeReady = false;
-						this.refresh();
-						// Code will be sent when iframe sends "ready" message
-					} else {
-						// Send code to already-loaded iframe
-						iframe.contentWindow?.postMessage(
-							JSON.stringify({type: "execute-code", id, code}),
-							window.location.origin
-						);
-					}
+					document1.write(generateJavaScriptIFrameHTML(id, code, staticURLs!));
 				} catch (err: any) {
 					console.error(err);
 					loading = false;
@@ -310,32 +298,17 @@ export function* CodePreview(
 					return;
 				}
 			}
+
+			document1.close();
 		};
 
 		executeDebounced = debounce(execute, 2000);
 	}
 
 	let height = 100;
-	let pendingCode: string | null = null;
 	if (typeof window !== "undefined") {
 		const onmessage = (ev: any) => {
 			let data: any = JSON.parse(ev.data);
-
-			// Handle messages without id (like "ready")
-			if (data.type === "ready") {
-				iframeReady = true;
-				// Send pending code if we have it
-				if (pendingCode && iframe.contentWindow) {
-					iframe.contentWindow.postMessage(
-						JSON.stringify({type: "execute-code", id, code: pendingCode}),
-						window.location.origin
-					);
-					pendingCode = null;
-				}
-				return;
-			}
-
-			// For messages with id, check it matches
 			if (data.id !== id) {
 				return;
 			}
@@ -440,7 +413,6 @@ export function* CodePreview(
 					<iframe
 						key=${iframeID}
 						ref=${(el: HTMLIFrameElement) => (iframe = el)}
-						src=${isPython ? undefined : "/playground-preview"}
 						class="
 							playground-iframe
 							${css`
