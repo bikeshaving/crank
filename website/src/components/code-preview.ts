@@ -55,8 +55,10 @@ function generateJavaScriptIFrameHTML(
 						: "light"
 					);
 				if (colorScheme === "dark") {
+					document.documentElement.classList.remove("color-scheme-light");
 					document.body.classList.remove("color-scheme-light");
 				} else {
+					document.documentElement.classList.add("color-scheme-light");
 					document.body.classList.add("color-scheme-light");
 				}
 			</script>
@@ -145,8 +147,10 @@ function generatePythonIFrameHTML(
 						: "light"
 					);
 				if (colorScheme === "dark") {
+					document.documentElement.classList.remove("color-scheme-light");
 					document.body.classList.remove("color-scheme-light");
 				} else {
+					document.documentElement.classList.add("color-scheme-light");
 					document.body.classList.add("color-scheme-light");
 				}
 			</script>
