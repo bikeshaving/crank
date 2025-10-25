@@ -1,12 +1,13 @@
 import {jsx, Raw} from "@b9g/crank/standalone";
 import {Root} from "../components/root.js";
+import type {ViewProps} from "../router.js";
 
 /**
  * Server-rendered view for playground preview iframes.
  * This loads as a proper server route with critical scripts,
  * then receives and executes user code via postMessage.
  */
-export default function* PlaygroundPreview({context}: {context: any}) {
+export default function* PlaygroundPreview({context: {storage}}: ViewProps) {
 	const scriptContent = `
 		// Listen for code from parent window
 		window.addEventListener("message", async (ev) => {
@@ -101,8 +102,8 @@ export default function* PlaygroundPreview({context}: {context: any}) {
 		<${Root}
 			title="Playground Preview"
 			description="Preview iframe for Crank.js playground"
-			context=${context}
-			path="/playground-preview"
+			storage=${storage}
+			url="/playground-preview"
 		>
 			<div id="preview-root"></div>
 			<script type="module">
