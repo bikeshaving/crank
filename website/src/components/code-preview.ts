@@ -17,7 +17,7 @@ function generateJavaScriptIFrameHTML(
 			<meta charset="utf-8">
 			<meta name="viewport" content="width=device-width,initial-scale=1">
 			<script>
-				// Detect and apply color scheme before any rendering
+				// Detect and apply color scheme immediately
 				const colorScheme = sessionStorage.getItem("color-scheme") ||
 					(
 						window.matchMedia &&
@@ -26,40 +26,46 @@ function generateJavaScriptIFrameHTML(
 						: "light"
 					);
 
-				// Set colors directly on html element
-				const isDark = colorScheme === "dark";
-				const bgColor = isDark ? "#0a0e1f" : "#e7f4f5";
-				const textColor = isDark ? "#f5f9ff" : "#0a0e1f";
-
-				document.documentElement.style.setProperty("--bg-color", bgColor);
-				document.documentElement.style.setProperty("--text-color", textColor);
-
-				if (!isDark) {
+				if (colorScheme !== "dark") {
 					document.documentElement.classList.add("color-scheme-light");
 				}
 			</script>
 			<style>
-				/* Inline styles to ensure text is visible */
+				/* Dark mode (default) - apply colors directly without variables */
+				html, body {
+					background-color: #0a0e1f !important;
+					color: #f5f9ff !important;
+					margin: 0;
+					padding: 0;
+				}
+				* {
+					color: #f5f9ff !important;
+					box-sizing: border-box;
+				}
+
+				/* Light mode overrides */
+				html.color-scheme-light, html.color-scheme-light body {
+					background-color: #e7f4f5 !important;
+					color: #0a0e1f !important;
+				}
+				html.color-scheme-light * {
+					color: #0a0e1f !important;
+				}
+
+				/* CSS variables for compatibility with external CSS */
 				:root {
 					--bg-color: #0a0e1f;
 					--text-color: #f5f9ff;
-					color: var(--text-color);
-					background-color: var(--bg-color);
+					--highlight-color: #daa520;
 				}
 				.color-scheme-light {
 					--bg-color: #e7f4f5;
 					--text-color: #0a0e1f;
+					--highlight-color: #daa520;
 				}
-				* {
-					color: inherit;
-					box-sizing: border-box;
-				}
+
 				body {
-					background-color: var(--bg-color);
-					color: var(--text-color);
 					font-family: sans-serif;
-					margin: 0;
-					padding: 0;
 				}
 			</style>
 			<link
