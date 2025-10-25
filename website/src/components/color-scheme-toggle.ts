@@ -4,7 +4,6 @@ import {
 	getColorScheme,
 	setColorScheme,
 	applyColorScheme,
-	syncIframes,
 	type ColorScheme,
 } from "../utils/color-scheme.js";
 
@@ -27,7 +26,6 @@ export function ColorSchemeToggle(this: Context) {
 
 	if (typeof window !== "undefined") {
 		applyColorScheme(colorScheme!);
-		syncIframes(colorScheme!);
 	}
 
 	return jsx`

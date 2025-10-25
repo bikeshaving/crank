@@ -21,38 +21,13 @@ function generateJavaScriptIFrameHTML(
 				${getColorSchemeScript()}
 			</script>
 			<style>
-				/* Ensure colors cascade to all elements */
-				html, body {
-					background-color: #0a0e1f;
-					color: #f5f9ff;
-					margin: 0;
-					padding: 0;
-				}
-
-				/* Light mode overrides */
-				html.color-scheme-light, html.color-scheme-light body {
-					background-color: #e7f4f5;
-					color: #0a0e1f;
-				}
-
+				/* Minimal inline styles - actual colors defined in client.css */
 				* {
 					box-sizing: border-box;
 				}
-
-				/* CSS variables for compatibility with external CSS */
-				:root {
-					--bg-color: #0a0e1f;
-					--text-color: #f5f9ff;
-					--highlight-color: #daa520;
-				}
-				.color-scheme-light {
-					--bg-color: #e7f4f5;
-					--text-color: #0a0e1f;
-					--highlight-color: #daa520;
-				}
-
-				body {
-					font-family: sans-serif;
+				html, body {
+					margin: 0;
+					padding: 0;
 				}
 			</style>
 			<link

@@ -9,7 +9,9 @@ export type ColorScheme = "dark" | "light";
  */
 export function getColorScheme(): ColorScheme {
 	if (typeof window === "undefined") {
-		return "dark"; // SSR default
+		// For SSR, we can't know the preference, so we return null/undefined
+		// and let client-side hydration handle it
+		return "dark"; // Still need a default for type safety
 	}
 
 	const stored = sessionStorage.getItem("color-scheme");
@@ -33,7 +35,8 @@ export function setColorScheme(scheme: ColorScheme): void {
 }
 
 /**
- * Applies color scheme classes and CSS variables to a document element
+ * Applies color scheme class to document elements.
+ * The actual colors are defined in CSS via :root and .color-scheme-light
  */
 export function applyColorScheme(
 	scheme: ColorScheme,
@@ -43,16 +46,8 @@ export function applyColorScheme(
 	const body =
 		target instanceof Document ? target.body : target.ownerDocument?.body;
 
-	const isDark = scheme === "dark";
-	const bgColor = isDark ? "#0a0e1f" : "#e7f4f5";
-	const textColor = isDark ? "#f5f9ff" : "#0a0e1f";
-
-	// Apply CSS variables as inline styles for highest specificity
-	root.style.setProperty("--bg-color", bgColor);
-	root.style.setProperty("--text-color", textColor);
-
-	// Apply classes
-	if (isDark) {
+	// Just toggle the class - CSS handles the actual colors
+	if (scheme === "dark") {
 		root.classList.remove("color-scheme-light");
 		body?.classList.remove("color-scheme-light");
 	} else {
@@ -62,8 +57,9 @@ export function applyColorScheme(
 }
 
 /**
- * Returns the inline script code for applying color scheme before render
- * Use this in server-rendered HTML to prevent FOUC
+ * Returns the inline script code for applying color scheme before render.
+ * Use this in server-rendered HTML to prevent FOUC.
+ * Only handles the mechanism - CSS defines the actual colors.
  */
 export function getColorSchemeScript(): string {
 	return `
@@ -71,57 +67,9 @@ export function getColorSchemeScript(): string {
 			(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
 				? "dark" : "light");
 
-		const isDark = colorScheme === "dark";
-		const bgColor = isDark ? "#0a0e1f" : "#e7f4f5";
-		const textColor = isDark ? "#f5f9ff" : "#0a0e1f";
-
-		document.documentElement.style.setProperty("--bg-color", bgColor);
-		document.documentElement.style.setProperty("--text-color", textColor);
-
-		if (!isDark) {
+		if (colorScheme === "light") {
 			document.documentElement.classList.add("color-scheme-light");
 		}
 	`.trim();
 }
 
-/**
- * Syncs color scheme to all playground iframes via postMessage
- */
-export function syncIframes(scheme: ColorScheme): void {
-	if (typeof window === "undefined") return;
-
-	const iframes = document.querySelectorAll<HTMLIFrameElement>(
-		".playground-iframe",
-	);
-
-	for (const iframe of iframes) {
-		// Send message to iframe
-		iframe.contentWindow?.postMessage(
-			JSON.stringify({type: "color-scheme-change", scheme}),
-			window.location.origin,
-		);
-
-		// Also apply directly (for iframes that don't have message listener yet)
-		if (iframe.contentDocument) {
-			applyColorScheme(scheme, iframe.contentDocument);
-		}
-	}
-}
-
-/**
- * Sets up a message listener in an iframe to receive color scheme updates
- */
-export function setupIframeColorSchemeListener(): void {
-	if (typeof window === "undefined") return;
-
-	window.addEventListener("message", (ev) => {
-		try {
-			const data = JSON.parse(ev.data);
-			if (data.type === "color-scheme-change") {
-				applyColorScheme(data.scheme as ColorScheme);
-			}
-		} catch {
-			// Ignore non-JSON messages
-		}
-	});
-}
