@@ -20,13 +20,11 @@ Other links:
 
 While other frameworks invent new paradigms and force you to learn
 framework-specific APIs, Crank embraces the language features you already know.
-No hooks to memorize, no dependency arrays to debug, no cache invalidation to
-manage.
 
 ### Pure JavaScript, No Compromises
 
 ```javascript
-// Async components just work
+// Async components just work, in the browser and on servers
 async function UserProfile({userId}) {
   const user = await fetchUser(userId);
   return <div>Hello, {user.name}!</div>;
@@ -34,11 +32,14 @@ async function UserProfile({userId}) {
 
 // Lifecycle logic with generators feels natural
 function* Timer() {
+  // setup goes here
   let seconds = 0;
   const interval = setInterval(() => this.refresh(() => seconds++), 1000);
+
   for ({} of this) {
     yield <div>Seconds: {seconds}</div>;
   }
+
   clearInterval(interval); // Cleanup just works
 }
 ```
@@ -99,7 +100,8 @@ renderer.render(jsx`
 ### ECMAScript Module CDNs
 Crank is also available on CDNs like [unpkg](https://unpkg.com)
 (https://unpkg.com/@b9g/crank?module), [esm.sh](https://esm.sh)
-(https://esm.sh/@b9g/crank), and [esm.run](https://esm.run/@b9g/crank)  for usage in ESM-ready environments.
+(https://esm.sh/@b9g/crank), and [esm.run](https://esm.run/@b9g/crank)
+(https://esm.run/@b9g/crank) for usage in ESM-ready environments.
 
 ```jsx live
 /** @jsx createElement */
