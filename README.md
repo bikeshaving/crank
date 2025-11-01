@@ -428,13 +428,13 @@ function Component(props, ctx) {
 
 #### Methods
 
-**`this.refresh(callback?)`** - Trigger re-render
+**`this.refresh(callback?)`** - Trigger re-execution
 ```javascript
 this.refresh();                    // Simple refresh
 this.refresh(() => count++);       // With state update (v0.7+)
 ```
 
-**`this.schedule(callback?)`** - Executes after DOM is rendered
+**`this.schedule(callback?)`** - Execute after DOM is rendered
 ```javascript
 // el is whatever the component returns Node/Text/HTMLElement/null, an array of dom nodes, etc
 this.schedule((el) => {
@@ -451,7 +451,7 @@ this.after((el) => {
 });
 ```
 
-**`this.cleanup(callback?)`** - Register cleanup on unmount
+**`this.cleanup(callback?)`** - Execute on unmount
 ```javascript
 function* Component() {
   const interval = setInterval(() => this.refresh(), 1000);
@@ -521,7 +521,7 @@ async function* AsyncComponent() {
 
 **`key`** - Unique identifier for reconciliation
 ```javascript
-{items.map(item => <li key={item.id}>{item.name}</li>)}
+<ul>{items.map(item => <li key={item.id}>{item.name}</li>)}</ul>
 ```
 
 **`ref`** - Access rendered DOM element
