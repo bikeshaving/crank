@@ -11,8 +11,9 @@ The fastest way to try Crank is via the [online playground](https://crank.js.org
 
 Other links:
 - [crank.js.org](https://crank.js.org)
-- [Deep Wiki](https://deepwiki.com/bikeshaving/crank)
+- [Introducing Crank.js](https://crank.js.org/blog/introducing-crank/)
 - [Examples](https://github.com/bikeshaving/crank/tree/main/examples)
+- [Deep Wiki](https://deepwiki.com/bikeshaving/crank)
 
 ## Motivation
 **A framework that feels like JavaScript.**
