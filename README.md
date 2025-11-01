@@ -45,7 +45,7 @@ function* Timer() {
 ### Why Developers Choose Crank
 
 - **Intuitive**: Use `async`/`await` for loading states and `function*` for lifecycles — no new APIs to learn
-- **Fast**: Outperforms React in benchmarks while weighing just 5KB with zero dependencies
+- **Fast**: Outperforms React in benchmarks while weighing at 13.55KB with zero dependencies
 - **Flexible**: Write components in vanilla JavaScript with template literals, or use JSX
 - **Clean**: State lives in function scope, lifecycle code goes where it belongs, no mysterious re-render bugs
 - **Future-proof**: Built on stable JavaScript features, not evolving framework abstractions
@@ -434,14 +434,24 @@ this.refresh();                    // Simple refresh
 this.refresh(() => count++);       // With state update (v0.7+)
 ```
 
-**`this.schedule(callback)`** - Execute after render
+**`this.schedule(callback?)`** - Executes after DOM is rendered
 ```javascript
-this.schedule(() => {
-  console.log("Component rendered");
+// el is whatever the component returns Node/Text/HTMLElement/null, an array of dom nodes, etc
+this.schedule((el) => {
+  console.log("Component rendered". el.innerHTML);
 });
 ```
 
-**`this.cleanup(callback)`** - Register cleanup on unmount
+**`this.after(callback?)`** - Execute after DOM is live
+```javascript
+// this runs after the DOM nodes have finally entered the DOM
+// this is where you put things like autofocus
+this.after((el) => {
+  console.log(el.isConnected); // true
+});
+```
+
+**`this.cleanup(callback?)`** - Register cleanup on unmount
 ```javascript
 function* Component() {
   const interval = setInterval(() => this.refresh(), 1000);
