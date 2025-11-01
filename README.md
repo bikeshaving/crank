@@ -259,13 +259,13 @@ Here’s the configuration you will need to set up automatic JSX transpilation.
 }
 ```
 
-Crank is written in TypeScript. Refer to [the guide on
+Crank is written in TypeScript and comes with types. Refer to [the guide on
 TypeScript](https://crank.js.org/guides/working-with-typescript) for more
 information about Crank types.
 
 ```tsx
 import type {Context} from "@b9g/crank";
-function *Timer(this: Context) {
+function *Timer(this: Context<typeof Timer>) {
   let seconds = 0;
   const interval = setInterval(() => this.refresh(() => seconds++), 1000);
   for ({} of this) {
