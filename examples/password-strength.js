@@ -1,10 +1,5 @@
 import {renderer} from "@b9g/crank/dom";
 
-const script = document.createElement('script');
-script.src = 'https://cdn.tailwindcss.com';
-document.head.appendChild(script);
-await new Promise((resolve) => script.addEventListener("load", () => resolve(), {once: true}));
-
 // Adapted from https://backbonenotbad.hyperclay.com/
 // https://gist.github.com/panphora/8f4d620ae92e8b28dcb4f20152185749
 function* PasswordStrength() {
@@ -49,4 +44,8 @@ function* PasswordStrength() {
   }
 }
 
+const script = document.createElement('script');
+script.src = 'https://cdn.tailwindcss.com';
+document.head.appendChild(script);
+await new Promise((resolve) => script.addEventListener("load", () => resolve(), {once: true}));
 renderer.render(<PasswordStrength />, document.body);
