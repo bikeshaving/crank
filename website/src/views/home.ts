@@ -83,7 +83,6 @@ const components = {
 
 const interactiveBackground = css`
 	line-height: 0.85;
-	border: 1px solid var(--text-color);
 	text-decoration: none;
 `;
 
@@ -93,6 +92,7 @@ function Hero() {
 		<header
 			class=${css`
 				height: 100vh;
+				width: 100%;
 				display: flex;
 				flex-direction: column;
 				justify-content: center;
@@ -102,6 +102,7 @@ function Hero() {
 			`}
 		>
 			<h1 class="${css`
+				width: 100%;
 				color: var(--highlight-color);
 				font-size: max(40px, 14vw);
 				margin: 0.3em 0;
@@ -110,12 +111,12 @@ function Hero() {
 			>Crank.js</h1>
 			<h2
 				class="${css`
+					width: 100%;
 					color: var(--text-color);
 					font-size: max(25px, 5vw);
 					margin: 0.2em;
 					padding: 0.1em 0.2em 0.05em;
 					line-height: 0.8;
-					border: 1px solid var(--text-color);
 				`} blur-background ${interactiveBackground}"
 			>
 				The Just JavaScript Framework.
@@ -128,7 +129,6 @@ function CallToAction() {
 	return jsx`
 		<div class=${css`
 			text-align: center;
-			height: 100vh;
 			display: flex;
 			flex-direction: column;
 			justify-content: center;
@@ -141,33 +141,39 @@ function CallToAction() {
 				justify-content: center;
 				align-items: center;
 			`}">
-				<h2 class="${css`
-					font-size: 32px;
-					margin: 1em 0.2em;
-					padding: 0.5em;
-				`} ${interactiveBackground} blur-background">Intrigued? Here are some possible next steps.</h2>
-				<div class="${css`
-					@media screen and (min-width: 800px) {
-						display: flex;
-						justify-content: center;
-						gap: 1em;
-					}
+			<h3 class="${css`
+				font-size: 32px;
+				margin: 1em 0.2em;
+				padding: 0.5em;
+			`}">Intrigued? Here are some possible next steps.</h3>
+			<div class="${css`
+				@media screen and (min-width: 800px) {
+					display: flex;
+					justify-content: center;
+					gap: 1em;
+				}
 
-					& a {
-						display: block;
-						flex: 0 1 auto;
-						border: 1px solid var(--text-color);
-						color: var(--highlight-color);
-						padding: 0.4em;
-						font-size: 24px;
-					}
-				`}">
-					<a class="${interactiveBackground} blur-background" href="/playground">Try it in the browser</a>
-					<a class="${interactiveBackground} blur-background" href="/guides/getting-started">Install it</a>
-					<a class="${interactiveBackground} blur-background" href="https://github.com/bikeshaving/crank">Contribute on GitHub</a>
-				</div>
+				& a {
+					display: block;
+					flex: 0 1 auto;
+					border: 1px solid var(--text-color);
+					color: var(--highlight-color);
+					padding: 0.4em;
+					font-size: 24px;
+				}
+			`}">
+				<a class="${interactiveBackground} blur-background" href="/playground">Try it in the browser</a>
+				<a class="${interactiveBackground} blur-background" href="/guides/getting-started">Install it</a>
+				<a class="${interactiveBackground} blur-background" href="https://github.com/bikeshaving/crank">Contribute on GitHub</a>
+			</div>
 			</div>
 		</div>
+	`;
+}
+
+function AntiHero() {
+	return jsx`
+		<div class=${css`height: 100vh`} />
 	`;
 }
 
@@ -196,8 +202,9 @@ export default async function Home({context: {storage}}: ViewProps) {
 				padding: 2em 0;
 			`}>
 				<${Marked} markdown=${md.body} components=${components} />
+				<${CallToAction} />
 			</div>
-			<${CallToAction} />
+			<${AntiHero} />
 		<//Root>
 	`;
 }

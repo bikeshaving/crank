@@ -261,4 +261,5 @@ function *Greeting({name="World"}) {
 }
 
 renderer.render(<Greeting />, document.body);
+renderer.render(<Greeting />, document.body);
 ```
