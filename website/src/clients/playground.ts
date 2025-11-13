@@ -8,7 +8,7 @@ import "prismjs/components/prism-javascript";
 import {CodePreview} from "../components/code-preview.js";
 import {CodeEditor} from "../components/code-editor.js";
 import {extractData} from "../components/serialize-javascript.js";
-//import LZString from "lz-string";
+import LZString from "lz-string";
 
 // TODO: move this to the ContentAreaElement component
 import {ContentAreaElement} from "@b9g/revise/contentarea.js";
@@ -38,16 +38,53 @@ const examples = extractData(
 	document.getElementById("examples") as HTMLScriptElement,
 );
 
+// Helper function to debounce URL hash updates
+function debounceHash(callback: () => void, delay: number) {
+	let timeoutId: number | undefined;
+	return () => {
+		if (timeoutId !== undefined) {
+			clearTimeout(timeoutId);
+		}
+		timeoutId = setTimeout(callback, delay) as any;
+	};
+}
+
 function* Playground(this: Context) {
-	let code = localStorage.getItem("playground-value") || "";
+	let code = "";
 	let updateEditor = true;
+	let copyButtonText = "Copy Link";
+
+	// Try to load code from URL hash first
+	if (window.location.hash) {
+		try {
+			const compressed = window.location.hash.slice(1);
+			const decompressed = LZString.decompressFromEncodedURIComponent(compressed);
+			if (decompressed) {
+				code = decompressed;
+			}
+		} catch (err) {
+			console.warn("Failed to decompress code from URL:", err);
+		}
+	}
+
+	// Fall back to localStorage, then default example
+	if (!code.trim()) {
+		code = localStorage.getItem("playground-value") || "";
+	}
 	if (!code.trim()) {
 		code = examples[0].code;
 	}
 
+	// Debounced function to update URL hash
+	const updateHash = debounceHash(() => {
+		const compressed = LZString.compressToEncodedURIComponent(code);
+		window.history.replaceState(null, "", `#${compressed}`);
+	}, 1000);
+
 	this.addEventListener("contentchange", (ev: any) => {
 		code = ev.target.value;
 		localStorage.setItem("playground-value", code);
+		updateHash();
 		this.refresh();
 	});
 
@@ -59,19 +96,52 @@ function* Playground(this: Context) {
 		);
 		code = code1;
 		updateEditor = true;
+		updateHash();
 		this.refresh();
 	};
 
-	//const hashchange = (ev: HashChangeEvent) => {
-	//	console.log("hashchange", ev);
-	//	const value1 = LZString.decompressFromEncodedURIComponent("poop");
-	//	console.log(value);
-	//};
-	//window.addEventListener("hashchange", hashchange);
-	//this.cleanup(() => window.removeEventListener("hashchange", hashchange))
-	//this.flush(() => {
-	//	window.location.hash = LZString.compressToEncodedURIComponent(value);
-	//});
+	const onCopyLink = async () => {
+		const compressed = LZString.compressToEncodedURIComponent(code);
+		const url = `${window.location.origin}${window.location.pathname}#${compressed}`;
+
+		try {
+			await navigator.clipboard.writeText(url);
+			copyButtonText = "Copied!";
+			this.refresh();
+			setTimeout(() => {
+				copyButtonText = "Copy Link";
+				this.refresh();
+			}, 2000);
+		} catch (err) {
+			console.error("Failed to copy to clipboard:", err);
+			copyButtonText = "Failed";
+			this.refresh();
+			setTimeout(() => {
+				copyButtonText = "Copy Link";
+				this.refresh();
+			}, 2000);
+		}
+	};
+
+	const hashchange = (ev: HashChangeEvent) => {
+		if (!window.location.hash) {
+			return;
+		}
+		try {
+			const compressed = window.location.hash.slice(1);
+			const decompressed = LZString.decompressFromEncodedURIComponent(compressed);
+			if (decompressed && decompressed !== code) {
+				code = decompressed;
+				updateEditor = true;
+				this.refresh();
+			}
+		} catch (err) {
+			console.warn("Failed to decompress code from URL:", err);
+		}
+	};
+
+	window.addEventListener("hashchange", hashchange);
+	this.cleanup(() => window.removeEventListener("hashchange", hashchange));
 
 	for ({} of this) {
 		this.schedule(() => {
@@ -100,11 +170,23 @@ function* Playground(this: Context) {
 					}
 				`}>
 					<${CodeEditorNavbar}>
-						<div>
+						<div class=${css`
+							display: flex;
+							gap: 1em;
+							align-items: center;
+							width: 100%;
+						`}>
 							<select
 								name="Example"
 								value=${exampleName}
 								onchange=${onexamplechange}
+								class=${css`
+									padding: 0.25em 0.5em;
+									border: 1px solid var(--coldark3);
+									border-radius: 4px;
+									background-color: var(--bg-color);
+									color: var(--text-color);
+								`}
 							>
 								<option value="">Load an example...</option>
 								${examples.map(
@@ -113,6 +195,26 @@ function* Playground(this: Context) {
 								`,
 								)}
 							</select>
+							<button
+								onclick=${onCopyLink}
+								class=${css`
+									padding: 0.25em 0.75em;
+									border: 1px solid var(--coldark3);
+									border-radius: 4px;
+									background-color: var(--bg-color);
+									color: var(--text-color);
+									cursor: pointer;
+									transition: all 0.2s;
+									&:hover {
+										background-color: var(--coldark02);
+									}
+									&:active {
+										transform: scale(0.98);
+									}
+								`}
+							>
+								${copyButtonText}
+							</button>
 						</div>
 					<//CodeEditorNavbar>
 					<${CodeEditor}
