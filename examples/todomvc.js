@@ -263,6 +263,8 @@ link.href = "https://unpkg.com/todomvc-app-css@2.4.2/index.css";
 // remove default stylesheet for playground
 document.head.querySelector("link").remove();
 document.head.appendChild(link);
-await new Promise((resolve) => link.addEventListener("load", () => resolve(), {once: true}));
+await new Promise((resolve) =>
+	link.addEventListener("load", () => resolve(), {once: true}),
+);
 
 renderer.render(<App />, document.body);

@@ -117,9 +117,7 @@ function Pager({page}) {
 async function List({page, start = (page - 1) * 30 + 1}) {
 	const result = await fetch(`https://api.hnpwa.com/v0/news/${page}.json`);
 	const stories = await result.json();
-	const items = stories.map((story) => (
-		<Story story={story} key={story.id} />
-	));
+	const items = stories.map((story) => <Story story={story} key={story.id} />);
 	return (
 		<Fragment>
 			<Pager page={page} />
