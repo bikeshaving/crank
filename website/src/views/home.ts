@@ -173,7 +173,9 @@ function CallToAction() {
 
 function AntiHero() {
 	return jsx`
-		<div class=${css`height: 100vh`} />
+		<div class=${css`
+			height: 100vh;
+		`} />
 	`;
 }
 

@@ -90,9 +90,8 @@ export function getColorSchemeScript(): string {
 export function syncIframes(scheme: ColorScheme): void {
 	if (typeof window === "undefined") return;
 
-	const iframes = document.querySelectorAll<HTMLIFrameElement>(
-		".playground-iframe",
-	);
+	const iframes =
+		document.querySelectorAll<HTMLIFrameElement>(".playground-iframe");
 
 	for (const iframe of iframes) {
 		// Send message to iframe
