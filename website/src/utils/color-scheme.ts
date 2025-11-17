@@ -43,6 +43,9 @@ export function applyColorScheme(
 	const body =
 		target instanceof Document ? target.body : target.ownerDocument?.body;
 
+	// Bail out early if root is not available (e.g., during SSR or early hydration)
+	if (!root) return;
+
 	const isDark = scheme === "dark";
 	const bgColor = isDark ? "#0a0e1f" : "#e7f4f5";
 	const textColor = isDark ? "#f5f9ff" : "#0a0e1f";
