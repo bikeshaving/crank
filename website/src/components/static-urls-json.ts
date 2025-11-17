@@ -1,7 +1,7 @@
 import {jsx} from "@b9g/crank/standalone";
 import {SerializeScript} from "./serialize-javascript.js";
 import type {Storage} from "./esbuild";
-import crankPackageJson from "@b9g/crank/package.json" with {type: "json"};
+import crankPackageJson from "@b9g/crank/package.json" assert {type: "json"};
 
 export async function StaticURLsJSON({storage}: {storage: Storage}) {
 	// Dynamically generate URLs from the exports map in package.json
