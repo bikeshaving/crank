@@ -777,4 +777,116 @@ test("object classnames object to string transition", () => {
 	Assert.not.ok(element.classList.contains("another-class"));
 });
 
+test("relative src should not cause unnecessary updates", () => {
+	// Track how many times src property is set
+	let srcSetCount = 0;
+	const originalDescriptor = Object.getOwnPropertyDescriptor(
+		HTMLIFrameElement.prototype,
+		"src",
+	)!;
+	Object.defineProperty(HTMLIFrameElement.prototype, "src", {
+		get: originalDescriptor.get,
+		set(value) {
+			srcSetCount++;
+			originalDescriptor.set!.call(this, value);
+		},
+		configurable: true,
+	});
+
+	try {
+		// Initial render
+		renderer.render(<iframe src="/test-path" />, document.body);
+		Assert.is(srcSetCount, 1, "src should be set once on initial render");
+
+		// Re-render with same src
+		renderer.render(<iframe src="/test-path" />, document.body);
+		Assert.is(srcSetCount, 1, "src should not be set again when unchanged");
+
+		// Re-render with different src
+		renderer.render(<iframe src="/different-path" />, document.body);
+		Assert.is(srcSetCount, 2, "src should be set when changed");
+	} finally {
+		// Restore original property
+		Object.defineProperty(
+			HTMLIFrameElement.prototype,
+			"src",
+			originalDescriptor,
+		);
+	}
+});
+
+test("relative href should not cause unnecessary updates", () => {
+	// Track how many times href property is set
+	let hrefSetCount = 0;
+	const originalDescriptor = Object.getOwnPropertyDescriptor(
+		HTMLAnchorElement.prototype,
+		"href",
+	)!;
+	Object.defineProperty(HTMLAnchorElement.prototype, "href", {
+		get: originalDescriptor.get,
+		set(value) {
+			hrefSetCount++;
+			originalDescriptor.set!.call(this, value);
+		},
+		configurable: true,
+	});
+
+	try {
+		// Initial render
+		renderer.render(<a href="/test-link">Link</a>, document.body);
+		Assert.is(hrefSetCount, 1, "href should be set once on initial render");
+
+		// Re-render with same href
+		renderer.render(<a href="/test-link">Link</a>, document.body);
+		Assert.is(hrefSetCount, 1, "href should not be set again when unchanged");
+
+		// Re-render with different href
+		renderer.render(<a href="/different-link">Link</a>, document.body);
+		Assert.is(hrefSetCount, 2, "href should be set when changed");
+	} finally {
+		// Restore original property
+		Object.defineProperty(
+			HTMLAnchorElement.prototype,
+			"href",
+			originalDescriptor,
+		);
+	}
+});
+
+test("absolute URLs should work correctly for src", () => {
+	let srcSetCount = 0;
+	const originalDescriptor = Object.getOwnPropertyDescriptor(
+		HTMLIFrameElement.prototype,
+		"src",
+	)!;
+	Object.defineProperty(HTMLIFrameElement.prototype, "src", {
+		get: originalDescriptor.get,
+		set(value) {
+			srcSetCount++;
+			originalDescriptor.set!.call(this, value);
+		},
+		configurable: true,
+	});
+
+	try {
+		// Initial render with absolute URL
+		renderer.render(<iframe src="https://example.com/page" />, document.body);
+		Assert.is(srcSetCount, 1);
+
+		// Re-render with same absolute URL
+		renderer.render(<iframe src="https://example.com/page" />, document.body);
+		Assert.is(
+			srcSetCount,
+			1,
+			"absolute src should not be set again when unchanged",
+		);
+	} finally {
+		Object.defineProperty(
+			HTMLIFrameElement.prototype,
+			"src",
+			originalDescriptor,
+		);
+	}
+});
+
 test.run();
