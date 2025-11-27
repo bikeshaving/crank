@@ -462,7 +462,24 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 						) &&
 						isWritableProperty(element, name)
 					) {
-						if ((element as any)[name] !== value || oldValue === undefined) {
+						// For URL properties like src and href, the DOM property returns the
+						// resolved absolute URL. We need to resolve the prop value the same way
+						// to compare correctly.
+						let domValue = (element as any)[name];
+						let propValue = value;
+						if (
+							(name === "src" || name === "href") &&
+							typeof value === "string" &&
+							typeof domValue === "string"
+						) {
+							try {
+								propValue = new URL(value, element.baseURI).href;
+							} catch {
+								// Invalid URL, use original value for comparison
+							}
+						}
+
+						if (propValue !== domValue || oldValue === undefined) {
 							if (
 								isHydrating &&
 								typeof (element as any)[name] === "string" &&
