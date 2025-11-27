@@ -1,4 +1,15 @@
 # Changelog
+## [0.7.3] - 2025-11-27
+### Bug Fixes
+- **Fix URL property comparison for src and href attributes** (#321)
+  The DOM property for `src` and `href` returns the resolved absolute URL,
+  while the prop value may be a relative URL. This caused unnecessary DOM
+  updates on every render when using relative URLs, which would reload iframes
+  and cause infinite loops with onload handlers. Now we resolve the prop value
+  using `new URL(value, element.baseURI)` before comparing, maintaining the
+  "DOM as source of truth" philosophy while correctly handling URL normalization.
+  This completes the fix from #181.
+
 ## [0.7.2] - 2025-10-23
 ### Bug Fixes
 - **Fix spurious warnings for schedule+refresh pattern in generators** (#299)
