@@ -21,25 +21,13 @@ function generateJavaScriptIFrameHTML(
 				${getColorSchemeScript()}
 			</script>
 			<style>
-				/* Ensure colors cascade to all elements */
+				/* Minimal reset - only margin/padding, let apps define their own styles */
 				html, body {
-					background-color: #0a0e1f;
-					color: #f5f9ff;
 					margin: 0;
 					padding: 0;
 				}
 
-				/* Light mode overrides */
-				html.color-scheme-light, html.color-scheme-light body {
-					background-color: #e7f4f5;
-					color: #0a0e1f;
-				}
-
-				* {
-					box-sizing: border-box;
-				}
-
-				/* CSS variables for compatibility with external CSS */
+				/* CSS variables for apps that want to use them */
 				:root {
 					--bg-color: #0a0e1f;
 					--text-color: #f5f9ff;
@@ -48,11 +36,6 @@ function generateJavaScriptIFrameHTML(
 				.color-scheme-light {
 					--bg-color: #e7f4f5;
 					--text-color: #0a0e1f;
-					--highlight-color: #daa520;
-				}
-
-				body {
-					font-family: sans-serif;
 				}
 			</style>
 			<link
@@ -63,6 +46,18 @@ function generateJavaScriptIFrameHTML(
 		</head>
 		<body>
 			<script>
+				// Listen for color scheme changes from parent
+				window.addEventListener('storage', (e) => {
+					if (e.key === 'color-scheme' && (e.newValue === 'dark' || e.newValue === 'light')) {
+						const isDark = e.newValue === 'dark';
+						document.documentElement.dataset.theme = e.newValue;
+						document.documentElement.style.setProperty('--bg-color', isDark ? '#0a0e1f' : '#e7f4f5');
+						document.documentElement.style.setProperty('--text-color', isDark ? '#f5f9ff' : '#0a0e1f');
+						document.documentElement.classList.toggle('color-scheme-light', !isDark);
+						document.body.classList.toggle('color-scheme-light', !isDark);
+					}
+				});
+
 				window.addEventListener("load", (ev) => {
 					window.parent.postMessage(
 						JSON.stringify({type: "executed", id: ${id}}),
@@ -139,22 +134,20 @@ function generatePythonIFrameHTML(
 		</head>
 		<body>
 			<script>
-				const colorScheme = sessionStorage.getItem("color-scheme") ||
-					(
-						window.matchMedia &&
-						window.matchMedia("(prefers-color-scheme: dark)").matches
-						? "dark"
-						: "light"
-					);
-				if (colorScheme === "dark") {
-					document.documentElement.classList.remove("color-scheme-light");
-					document.body.classList.remove("color-scheme-light");
-				} else {
-					document.documentElement.classList.add("color-scheme-light");
-					document.body.classList.add("color-scheme-light");
-				}
-			</script>
-			<script>
+				${getColorSchemeScript()}
+
+				// Listen for color scheme changes from parent
+				window.addEventListener('storage', (e) => {
+					if (e.key === 'color-scheme' && (e.newValue === 'dark' || e.newValue === 'light')) {
+						const isDark = e.newValue === 'dark';
+						document.documentElement.dataset.theme = e.newValue;
+						document.documentElement.style.setProperty('--bg-color', isDark ? '#0a0e1f' : '#e7f4f5');
+						document.documentElement.style.setProperty('--text-color', isDark ? '#f5f9ff' : '#0a0e1f');
+						document.documentElement.classList.toggle('color-scheme-light', !isDark);
+						document.body.classList.toggle('color-scheme-light', !isDark);
+					}
+				});
+
 				// Send loading message first
 				window.parent.postMessage(
 					JSON.stringify({type: "loading", id: ${id}, message: "Loading PyScript..."}),

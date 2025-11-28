@@ -1,44 +1,32 @@
 import {jsx} from "@b9g/crank/standalone";
 import type {Context} from "@b9g/crank/standalone";
-import {
-	getColorScheme,
-	setColorScheme,
-	applyColorScheme,
-	syncIframes,
-	type ColorScheme,
-} from "../utils/color-scheme.js";
+import {useColorScheme} from "../utils/color-scheme.js";
 
-// the website defaults to dark mode
-let colorScheme: ColorScheme | undefined;
-if (typeof window !== "undefined") {
-	colorScheme = getColorScheme();
-	applyColorScheme(colorScheme);
-}
+/**
+ * Color scheme toggle component
+ *
+ * Uses the reactive useColorScheme hook which automatically:
+ * - Syncs with all iframes via storage events
+ * - Responds to system preference changes
+ * - Persists user choice in sessionStorage
+ */
+export function* ColorSchemeToggle(this: Context) {
+	const colorScheme = useColorScheme(this);
 
-// This component would not work with multiple instances, insofar as clicking
-// on one instance would not update the state of others. Too lazy to fix this
-// though.
-export function ColorSchemeToggle(this: Context) {
-	const onclick = () => {
-		colorScheme = colorScheme === "dark" ? "light" : "dark";
-		setColorScheme(colorScheme);
-		this.refresh();
-	};
+	for ({} of this) {
+		const scheme = colorScheme.get();
+		const onclick = () => colorScheme.toggle();
 
-	if (typeof window !== "undefined") {
-		applyColorScheme(colorScheme!);
-		syncIframes(colorScheme!);
+		yield jsx`
+			<button
+				onclick=${onclick}
+				role="switch"
+				aria-label="toggle color scheme"
+				aria-checked="${(scheme === "dark").toString()}"
+				hydrate="!aria-checked !children"
+			>
+				${scheme === "dark" ? "💡" : "🕶"}
+			</button>
+		`;
 	}
-
-	return jsx`
-		<button
-			onclick=${onclick}
-			role="switch"
-			aria-label="set dark mode"
-			aria-checked="${(colorScheme === "dark").toString()}"
-			hydrate="!aria-checked !children"
-		>
-			${colorScheme == null ? "⬜" : colorScheme === "dark" ? "💡" : "🕶"}
-		</button>
-	`;
 }

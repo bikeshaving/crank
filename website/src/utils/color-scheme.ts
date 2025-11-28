@@ -1,126 +1,109 @@
-/**
- * Shared color scheme utilities for consistent dark/light mode handling
- */
+import type {Context} from "@b9g/crank/standalone";
 
 export type ColorScheme = "dark" | "light";
 
+const BG_DARK = "#0a0e1f";
+const BG_LIGHT = "#e7f4f5";
+const TEXT_DARK = "#f5f9ff";
+const TEXT_LIGHT = "#0a0e1f";
+
 /**
- * Gets the current color scheme from sessionStorage or system preference
+ * Reactive color scheme hook for Crank components
  */
-export function getColorScheme(): ColorScheme {
+export function useColorScheme(ctx: Context) {
+	// SSR: return static object, hydration will set up reactivity
 	if (typeof window === "undefined") {
-		return "dark"; // SSR default
+		return {
+			get: (): ColorScheme => "dark",
+			toggle: () => {},
+			set: () => {},
+		};
 	}
 
+	let current: ColorScheme = getColorScheme();
+	applyColorScheme(current);
+
+	const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+	const onMediaChange = (e: MediaQueryListEvent) => {
+		if (!sessionStorage.getItem("color-scheme")) {
+			current = e.matches ? "dark" : "light";
+			applyColorScheme(current);
+			ctx.refresh();
+		}
+	};
+	mediaQuery.addEventListener("change", onMediaChange);
+	ctx.cleanup(() => mediaQuery.removeEventListener("change", onMediaChange));
+
+	const onStorage = (e: StorageEvent) => {
+		if (
+			e.key === "color-scheme" &&
+			e.storageArea === sessionStorage &&
+			(e.newValue === "dark" || e.newValue === "light")
+		) {
+			current = e.newValue;
+			applyColorScheme(current);
+			ctx.refresh();
+		}
+	};
+	window.addEventListener("storage", onStorage);
+	ctx.cleanup(() => window.removeEventListener("storage", onStorage));
+
+	return {
+		get(): ColorScheme {
+			return current;
+		},
+		toggle(): void {
+			current = current === "dark" ? "light" : "dark";
+			sessionStorage.setItem("color-scheme", current);
+			applyColorScheme(current);
+			ctx.refresh();
+		},
+		set(scheme: ColorScheme): void {
+			current = scheme;
+			sessionStorage.setItem("color-scheme", current);
+			applyColorScheme(current);
+			ctx.refresh();
+		},
+	};
+}
+
+function getColorScheme(): ColorScheme {
 	const stored = sessionStorage.getItem("color-scheme");
 	if (stored === "dark" || stored === "light") {
 		return stored;
 	}
-
-	// Fall back to system preference
-	return window.matchMedia &&
-		window.matchMedia("(prefers-color-scheme: dark)").matches
+	return window.matchMedia("(prefers-color-scheme: dark)").matches
 		? "dark"
 		: "light";
 }
 
-/**
- * Sets the color scheme in sessionStorage
- */
-export function setColorScheme(scheme: ColorScheme): void {
-	if (typeof window === "undefined") return;
-	sessionStorage.setItem("color-scheme", scheme);
-}
-
-/**
- * Applies color scheme classes and CSS variables to a document element
- */
-export function applyColorScheme(
-	scheme: ColorScheme,
-	target: Document | HTMLElement = document.documentElement,
-): void {
-	const root = target instanceof Document ? target.documentElement : target;
-	const body =
-		target instanceof Document ? target.body : target.ownerDocument?.body;
-
+function applyColorScheme(scheme: ColorScheme): void {
 	const isDark = scheme === "dark";
-	const bgColor = isDark ? "#0a0e1f" : "#e7f4f5";
-	const textColor = isDark ? "#f5f9ff" : "#0a0e1f";
-
-	// Apply CSS variables as inline styles for highest specificity
-	root.style.setProperty("--bg-color", bgColor);
-	root.style.setProperty("--text-color", textColor);
-
-	// Apply classes
-	if (isDark) {
-		root.classList.remove("color-scheme-light");
-		body?.classList.remove("color-scheme-light");
-	} else {
-		root.classList.add("color-scheme-light");
-		body?.classList.add("color-scheme-light");
-	}
+	document.documentElement.dataset.theme = scheme;
+	document.documentElement.style.setProperty(
+		"--bg-color",
+		isDark ? BG_DARK : BG_LIGHT,
+	);
+	document.documentElement.style.setProperty(
+		"--text-color",
+		isDark ? TEXT_DARK : TEXT_LIGHT,
+	);
+	// Toggle class for CSS that uses .color-scheme-light
+	document.documentElement.classList.toggle("color-scheme-light", !isDark);
 }
 
 /**
- * Returns the inline script code for applying color scheme before render
- * Use this in server-rendered HTML to prevent FOUC
+ * Inline script for FOUC prevention in SSR
  */
 export function getColorSchemeScript(): string {
 	return `
-		const colorScheme = sessionStorage.getItem("color-scheme") ||
-			(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
-				? "dark" : "light");
-
-		const isDark = colorScheme === "dark";
-		const bgColor = isDark ? "#0a0e1f" : "#e7f4f5";
-		const textColor = isDark ? "#f5f9ff" : "#0a0e1f";
-
-		document.documentElement.style.setProperty("--bg-color", bgColor);
-		document.documentElement.style.setProperty("--text-color", textColor);
-
-		if (!isDark) {
-			document.documentElement.classList.add("color-scheme-light");
-		}
+		const s = sessionStorage.getItem("color-scheme");
+		const scheme = s === "dark" || s === "light" ? s :
+			(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+		const isDark = scheme === "dark";
+		document.documentElement.dataset.theme = scheme;
+		document.documentElement.style.setProperty("--bg-color", isDark ? "${BG_DARK}" : "${BG_LIGHT}");
+		document.documentElement.style.setProperty("--text-color", isDark ? "${TEXT_DARK}" : "${TEXT_LIGHT}");
+		if (!isDark) document.documentElement.classList.add("color-scheme-light");
 	`.trim();
-}
-
-/**
- * Syncs color scheme to all playground iframes via postMessage
- */
-export function syncIframes(scheme: ColorScheme): void {
-	if (typeof window === "undefined") return;
-
-	const iframes =
-		document.querySelectorAll<HTMLIFrameElement>(".playground-iframe");
-
-	for (const iframe of iframes) {
-		// Send message to iframe
-		iframe.contentWindow?.postMessage(
-			JSON.stringify({type: "color-scheme-change", scheme}),
-			window.location.origin,
-		);
-
-		// Also apply directly (for iframes that don't have message listener yet)
-		if (iframe.contentDocument) {
-			applyColorScheme(scheme, iframe.contentDocument);
-		}
-	}
-}
-
-/**
- * Sets up a message listener in an iframe to receive color scheme updates
- */
-export function setupIframeColorSchemeListener(): void {
-	if (typeof window === "undefined") return;
-
-	window.addEventListener("message", (ev) => {
-		try {
-			const data = JSON.parse(ev.data);
-			if (data.type === "color-scheme-change") {
-				applyColorScheme(data.scheme as ColorScheme);
-			}
-		} catch {
-			// Ignore non-JSON messages
-		}
-	});
 }
