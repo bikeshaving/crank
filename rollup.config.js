@@ -54,6 +54,7 @@ function copyPackage() {
 const input = [
 	"src/async.ts",
 	"src/crank.ts",
+	"src/custom-elements.ts",
 	"src/dom.ts",
 	"src/event-target.ts",
 	"src/jsx-runtime.ts",
