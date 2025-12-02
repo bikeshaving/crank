@@ -6,12 +6,15 @@ import {Main} from "../components/sidebar.js";
 import {BlogContent} from "../components/blog-content.js";
 import {Marked} from "../components/marked.js";
 import {components} from "../components/marked-components.js";
-import type {ViewProps} from "../router.js";
+interface ViewProps {
+	url: string;
+	params: Record<string, string>;
+}
 
 import {collectDocuments} from "../models/document.js";
 
 const __dirname = new URL(".", import.meta.url).pathname;
-export default async function BlogPage({url, context: {storage}}: ViewProps) {
+export default async function BlogPage({url}: ViewProps) {
 	const posts = await collectDocuments(
 		path.join(__dirname, "../../../docs/blog"),
 		path.join(__dirname, "../../../docs/"),
@@ -29,7 +32,7 @@ export default async function BlogPage({url, context: {storage}}: ViewProps) {
 		body,
 	} = post;
 	return jsx`
-		<${Root} title="Crank.js | ${title}" url=${url} description=${description} storage=${storage}>
+		<${Root} title="Crank.js | ${title}" url=${url} description=${description}>
 			<${Main}>
 				<div style="margin-bottom: 2em;">
 					<a href="/blog" style="color: var(--highlight-color); text-decoration: none;">${"←"} Back to Blog</a>

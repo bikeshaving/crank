@@ -2,9 +2,13 @@ import * as FS from "fs/promises";
 import * as Path from "path";
 import {jsx} from "@b9g/crank/standalone";
 import {Root} from "../components/root.js";
-import {Script} from "../components/esbuild.js";
 import {SerializeScript} from "../components/serialize-javascript.js";
-import type {ViewProps} from "../router.js";
+import {assets} from "../app.js";
+
+interface ViewProps {
+	url: string;
+	params: Record<string, string>;
+}
 
 const __dirname = new URL(".", import.meta.url).pathname;
 const EXAMPLES_DIR = Path.join(__dirname, "../../../examples");
@@ -61,13 +65,13 @@ async function loadExamples() {
 	return examples;
 }
 
-export default async function Playground({context: {storage}}: ViewProps) {
+export default async function Playground({url}: ViewProps) {
 	const examples = await loadExamples();
 	return jsx`
-		<${Root} title="Crank.js" url="/playground" storage=${storage}>
+		<${Root} title="Crank.js" url=${url}>
 			<div id="playground" />
 			<${SerializeScript} id="examples" value=${examples} />
-			<${Script} src="clients/playground.ts" type="module" />
+			<script type="module" src=${assets.playgroundScript}></script>
 		<//Root>
 	`;
 }

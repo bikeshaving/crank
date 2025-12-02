@@ -8,7 +8,10 @@ import * as Path from "path";
 
 import {Marked} from "../components/marked.js";
 import {InlineCodeBlock} from "../components/inline-code-block.js";
-import type {ViewProps} from "../router.js";
+interface ViewProps {
+	url: string;
+	params: Record<string, string>;
+}
 
 const components = {
 	heading({token, children}: any) {
@@ -181,7 +184,7 @@ function AntiHero() {
 
 const __dirname = new URL(".", import.meta.url).pathname;
 
-export default async function Home({context: {storage}}: ViewProps) {
+export default async function Home({url}: ViewProps) {
 	const docs = await collectDocuments(Path.join(__dirname, "../../../docs"));
 	const md = docs.find((doc) => doc.filename.endsWith("/index.md"));
 	if (!md) {
@@ -191,9 +194,8 @@ export default async function Home({context: {storage}}: ViewProps) {
 	return jsx`
 		<${Root}
 			title="Crank.js"
-			url="/"
+			url=${url}
 			description=${md.attributes.description}
-			storage=${storage}
 		>
 			<${Hero} />
 			<div class=${css`

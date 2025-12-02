@@ -3,12 +3,15 @@ import * as path from "path";
 
 import {Root} from "../components/root.js";
 import {Main} from "../components/sidebar.js";
-import type {ViewProps} from "../router.js";
+interface ViewProps {
+	url: string;
+	params: Record<string, string>;
+}
 
 import {collectDocuments} from "../models/document.js";
 const __dirname = new URL(".", import.meta.url).pathname;
 
-export default async function BlogHome({context: {storage}}: ViewProps) {
+export default async function BlogHome({url}: ViewProps) {
 	const posts = await collectDocuments(
 		path.join(__dirname, "../../../docs/blog"),
 		path.join(__dirname, "../../../docs/"),
@@ -16,7 +19,7 @@ export default async function BlogHome({context: {storage}}: ViewProps) {
 	posts.reverse();
 
 	return jsx`
-		<${Root} title="Crank.js | Blog" url="/blog" description="Read the latest articles and updates about Crank.js, exploring reactive UI patterns and framework design." storage=${storage}>
+		<${Root} title="Crank.js | Blog" url=${url} description="Read the latest articles and updates about Crank.js, exploring reactive UI patterns and framework design.">
 			<${Main}>
 				${posts.map((post) => {
 					const {title, publishDate, author, description} = post.attributes;
