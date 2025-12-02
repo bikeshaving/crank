@@ -9,10 +9,7 @@
   },
   "dependencies": {
     "@b9g/assets": "^0.1.13",
-    "@b9g/cache": "^0.1.4",
     "@b9g/crank": "^0.7.2",
-    "@b9g/filesystem": "^0.1.5",
-    "@b9g/http-errors": "^0.1.5",
     "@b9g/platform": "^0.1.10",
     "@b9g/platform-bun": "^0.1.6",
     "@b9g/platform-cloudflare": "^0.1.5",
@@ -26,7 +23,6 @@
     "@emotion/css": "^11.13.5",
     "@emotion/server": "^11.11.0",
     "@lezer/javascript": "^1.4.21",
-    "@remix-run/web-fetch": "^4.4.2",
     "@tanstack/virtual-core": "^3.13.6",
     "@types/babel__core": "^7.20.5",
     "@types/lz-string": "^1.5.0",
