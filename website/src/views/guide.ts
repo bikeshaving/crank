@@ -5,16 +5,15 @@ import {Root} from "../components/root.js";
 import {Main, Sidebar} from "../components/sidebar.js";
 import {Marked} from "../components/marked.js";
 import {components} from "../components/marked-components.js";
-import type {ViewProps} from "../router.js";
+interface ViewProps {
+	url: string;
+	params: Record<string, string>;
+}
 
 import {collectDocuments} from "../models/document.js";
 
 const __dirname = new URL(".", import.meta.url).pathname;
-export default async function Guide({
-	// TODO: prop name is wrong here
-	url,
-	context: {storage},
-}: ViewProps) {
+export default async function Guide({url}: ViewProps) {
 	const docs = await collectDocuments(
 		path.join(__dirname, "../../../docs/guides"),
 		path.join(__dirname, "../../../docs/"),
@@ -32,7 +31,7 @@ export default async function Guide({
 		body,
 	} = post;
 	return jsx`
-		<${Root} title="Crank.js | ${title}" url=${url} description=${description} storage=${storage}>
+		<${Root} title="Crank.js | ${title}" url=${url} description=${description}>
 			<${Sidebar} docs=${docs} url=${url} title="Guides" />
 			<${Main}>
 				<h1>${title}</h1>
