@@ -3,6 +3,7 @@ import type {Context} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
 import {css} from "@emotion/css";
 
+import "prismjs";
 import "prismjs/components/prism-javascript";
 
 import {CodePreview} from "../components/code-preview.js";
