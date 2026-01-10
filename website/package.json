@@ -4,8 +4,8 @@
   "scripts": {
     "predeploy": "npm run static",
     "deploy": "gh-pages -d dist",
-    "develop": "shovel develop src/app.ts --port 1337 --platform bun",
-    "static": "shovel activate src/app.ts --platform bun && echo crank.js.org > dist/CNAME"
+    "develop": "shovel develop src/server.ts --port 1337 --platform bun",
+    "static": "MODE=production shovel activate src/server.ts --platform bun && echo crank.js.org > dist/CNAME"
   },
   "dependencies": {
     "@b9g/assets": "0.2.0-beta.0",

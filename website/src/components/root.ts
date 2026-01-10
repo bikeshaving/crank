@@ -5,7 +5,7 @@ import {extractCritical} from "@emotion/server";
 import {Navbar} from "./navbar.js";
 import {SerializeScript} from "./serialize-javascript.js";
 import {getColorSchemeScript} from "../utils/color-scheme.js";
-import {assets, staticURLs} from "../app.js";
+import {assets, staticURLs} from "../server.js";
 
 function ColorSchemeScript() {
 	// This script must be executed as early as possible to prevent a FOUC.
