@@ -2,7 +2,8 @@ import * as Path from "path";
 
 import {jsx} from "@b9g/crank/standalone";
 import {renderer} from "@b9g/crank/html";
-import {Router, trailingSlash} from "@b9g/router";
+import {Router} from "@b9g/router";
+import {trailingSlash} from "@b9g/router/middleware";
 import {assets as assetsMiddleware} from "@b9g/assets/middleware";
 
 import {collectDocuments} from "./models/document.js";
@@ -108,7 +109,7 @@ router.route("/playground").get(async (request) => {
 
 // ServiceWorker fetch event
 self.addEventListener("fetch", (event) => {
-	event.respondWith(router.handler(event.request));
+	event.respondWith(router.handle(event.request));
 });
 
 // ServiceWorker activate event for static site generation
@@ -120,7 +121,7 @@ async function generateStaticSite() {
 	console.info("[Crank Website] Starting static site generation...");
 
 	try {
-		const staticBucket = await self.buckets.open("static");
+		const staticBucket = await self.directories.open("public");
 
 		// Static routes
 		const staticRoutes = ["/", "/blog", "/playground"];
@@ -145,7 +146,7 @@ async function generateStaticSite() {
 		for (const route of staticRoutes) {
 			try {
 				const request = new Request(`http://localhost${route}`);
-				const response = await router.handler(request);
+				const response = await router.handle(request);
 
 				if (response.ok) {
 					const content = await response.text();
