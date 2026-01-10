@@ -3,7 +3,7 @@ import * as Path from "path";
 import {jsx} from "@b9g/crank/standalone";
 import {Root} from "../components/root.js";
 import {SerializeScript} from "../components/serialize-javascript.js";
-import {assets} from "../app.js";
+import {assets} from "../server.js";
 
 interface ViewProps {
 	url: string;

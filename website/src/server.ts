@@ -118,7 +118,12 @@ self.addEventListener("activate", (event) => {
 });
 
 async function generateStaticSite() {
-	console.info("[Crank Website] Starting static site generation...");
+	if (import.meta.env.MODE !== "production") {
+		return;
+	}
+
+	const logger = self.loggers.get(["shovel", "crank-website"]);
+	logger.info("Starting static site generation...");
 
 	try {
 		const staticBucket = await self.directories.open("public");
@@ -139,8 +144,8 @@ async function generateStaticSite() {
 		);
 		staticRoutes.push(...guideDocs.map((doc) => doc.url));
 
-		console.info(
-			`[Crank Website] Pre-rendering ${staticRoutes.length} routes...`,
+		logger.info(
+			`Pre-rendering ${staticRoutes.length} routes...`,
 		);
 
 		for (const route of staticRoutes) {
@@ -172,15 +177,15 @@ async function generateStaticSite() {
 					await writable.write(content);
 					await writable.close();
 
-					console.info(`[Crank Website] Generated ${route} -> ${filePath}`);
+					logger.info(`Generated ${route} -> ${filePath}`);
 				}
 			} catch (error: any) {
-				console.error(`[Crank Website] Failed to generate ${route}:`, error.message);
+				logger.error(`Failed to generate ${route}:`, error.message);
 			}
 		}
 
-		console.info("[Crank Website] Static site generation complete!");
+		logger.info("Static site generation complete!");
 	} catch (error: any) {
-		console.error("[Crank Website] Static site generation failed:", error.message);
+		logger.error("Static site generation failed:", error.message);
 	}
 }
