@@ -18,16 +18,26 @@ import PlaygroundView from "./views/playground.js";
 // Import assets with assetBase for content-hashed URLs
 import clientCSS from "./styles/client.css" with {assetBase: "/static/"};
 import navbarScript from "./clients/navbar.ts" with {assetBase: "/static/"};
-import codeBlocksScript from "./clients/code-blocks.ts" with {assetBase: "/static/"};
-import playgroundScript from "./clients/playground.ts" with {assetBase: "/static/"};
+import codeBlocksScript from "./clients/code-blocks.ts" with {
+	assetBase: "/static/",
+};
+import playgroundScript from "./clients/playground.ts" with {
+	assetBase: "/static/",
+};
 import favicon from "../static/favicon.ico" with {assetBase: "/static/"};
 import logo from "../static/logo.svg" with {assetBase: "/static/"};
 
 // Import Crank client bundles for playground iframe
 import crankModule from "./clients/crank/index.ts" with {assetBase: "/static/"};
-import crankDomModule from "./clients/crank/dom.ts" with {assetBase: "/static/"};
-import crankHtmlModule from "./clients/crank/html.ts" with {assetBase: "/static/"};
-import crankStandaloneModule from "./clients/crank/standalone.ts" with {assetBase: "/static/"};
+import crankDomModule from "./clients/crank/dom.ts" with {
+	assetBase: "/static/",
+};
+import crankHtmlModule from "./clients/crank/html.ts" with {
+	assetBase: "/static/",
+};
+import crankStandaloneModule from "./clients/crank/standalone.ts" with {
+	assetBase: "/static/",
+};
 
 // Export asset URLs for use in views
 export const assets = {
@@ -144,9 +154,7 @@ async function generateStaticSite() {
 		);
 		staticRoutes.push(...guideDocs.map((doc) => doc.url));
 
-		logger.info(
-			`Pre-rendering ${staticRoutes.length} routes...`,
-		);
+		logger.info(`Pre-rendering ${staticRoutes.length} routes...`);
 
 		for (const route of staticRoutes) {
 			try {
