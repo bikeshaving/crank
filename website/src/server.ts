@@ -112,8 +112,8 @@ self.addEventListener("fetch", (event) => {
 	event.respondWith(router.handle(event.request));
 });
 
-// ServiceWorker activate event for static site generation
-self.addEventListener("activate", (event) => {
+// ServiceWorker install event for static site generation
+self.addEventListener("install", (event) => {
 	event.waitUntil(generateStaticSite());
 });
 
