@@ -59,9 +59,9 @@ interface EventListenerRecord {
 	options: AddEventListenerOptions;
 }
 
-export class CustomEventTarget<TParent extends CustomEventTarget<TParent> = any>
-	implements EventTarget
-{
+export class CustomEventTarget<
+	TParent extends CustomEventTarget<TParent> = any,
+> implements EventTarget {
 	declare static dispatchEventOnSelf: typeof _dispatchEventOnSelf;
 	declare [_parent]: TParent | null;
 	declare [_listeners]: Array<EventListenerRecord>;
