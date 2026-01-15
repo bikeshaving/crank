@@ -14,7 +14,7 @@
     "@b9g/platform-bun": "^0.1.12-beta.0",
     "@b9g/revise": "^0.1.3",
     "@b9g/router": "0.2.0-beta.1",
-    "@b9g/shovel": "0.2.0-beta.17",
+    "@b9g/shovel": "0.2.0-beta.18",
     "@babel/core": "^7.28.5",
     "@babel/preset-react": "^7.28.5",
     "@babel/preset-typescript": "^7.28.5",

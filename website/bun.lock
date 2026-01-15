@@ -10,7 +10,7 @@
         "@b9g/platform-bun": "^0.1.12-beta.0",
         "@b9g/revise": "^0.1.3",
         "@b9g/router": "0.2.0-beta.1",
-        "@b9g/shovel": "0.2.0-beta.17",
+        "@b9g/shovel": "0.2.0-beta.18",
         "@babel/core": "^7.28.5",
         "@babel/preset-react": "^7.28.5",
         "@babel/preset-typescript": "^7.28.5",
@@ -71,7 +71,7 @@
 
     "@b9g/router": ["@b9g/router@0.2.0-beta.1", "", { "dependencies": { "@b9g/http-errors": "^0.2.0-beta.0", "@b9g/match-pattern": "^0.2.0-beta.0" } }, "sha512-Czgt0RINQ2pafMC1+3Cdx2hBCJQhP4RXEADNWizVPDPP0oTY0vDJmt8N5waOkC56IfSwNpTp4hcmq2G+ZXwYxw=="],
 
-    "@b9g/shovel": ["@b9g/shovel@0.2.0-beta.17", "", { "dependencies": { "@b9g/async-context": "^0.2.0-beta.0", "@b9g/zen": "^0.1.6", "@clack/prompts": "^0.7.0", "@esbuild-plugins/node-globals-polyfill": "^0.2.3", "@esbuild-plugins/node-modules-polyfill": "^0.2.2", "@logtape/logtape": "^1.2.0", "commander": "^13.1.0", "esbuild": "^0.27.2", "magic-string": "^0.30.5", "mime": "^4.0.4", "picocolors": "^1.0.0", "source-map": "^0.7.4", "zod": "^3.23.0" }, "peerDependencies": { "@b9g/cache": "^0.2.0-beta.0", "@b9g/filesystem": "^0.1.8", "@b9g/http-errors": "^0.2.0-beta.0", "@b9g/node-webworker": "^0.2.0-beta.1", "@b9g/platform": "^0.1.14-beta.1", "@b9g/platform-bun": "^0.1.12-beta.0", "@b9g/platform-cloudflare": "^0.1.12-beta.0", "@b9g/platform-node": "^0.1.14-beta.0" }, "optionalPeers": ["@b9g/cache", "@b9g/filesystem", "@b9g/http-errors", "@b9g/platform", "@b9g/platform-bun", "@b9g/platform-cloudflare", "@b9g/platform-node"], "bin": { "shovel": "bin/cli.js", "create-shovel": "bin/create.js", "cli": "bin/cli.js", "create": "bin/create.js" } }, "sha512-oGsHnldvS+MO5++c6Lw+qXXy5pKByu6cpvInf9DxchVjLtGZB9jb8DFlQSfYV1pdD1uAjE0+oYFh8e98l4YlaA=="],
+    "@b9g/shovel": ["@b9g/shovel@0.2.0-beta.18", "", { "dependencies": { "@b9g/async-context": "^0.2.0-beta.0", "@b9g/zen": "^0.1.6", "@clack/prompts": "^0.7.0", "@esbuild-plugins/node-globals-polyfill": "^0.2.3", "@esbuild-plugins/node-modules-polyfill": "^0.2.2", "@logtape/logtape": "^1.2.0", "commander": "^13.1.0", "esbuild": "^0.27.2", "magic-string": "^0.30.5", "mime": "^4.0.4", "picocolors": "^1.0.0", "source-map": "^0.7.4", "zod": "^3.23.0" }, "peerDependencies": { "@b9g/cache": "^0.2.0-beta.0", "@b9g/filesystem": "^0.1.8", "@b9g/http-errors": "^0.2.0-beta.0", "@b9g/node-webworker": "^0.2.0-beta.1", "@b9g/platform": "^0.1.14-beta.1", "@b9g/platform-bun": "^0.1.12-beta.0", "@b9g/platform-cloudflare": "^0.1.12-beta.0", "@b9g/platform-node": "^0.1.14-beta.0" }, "optionalPeers": ["@b9g/cache", "@b9g/filesystem", "@b9g/http-errors", "@b9g/platform", "@b9g/platform-bun", "@b9g/platform-cloudflare", "@b9g/platform-node"], "bin": { "shovel": "bin/cli.js", "create-shovel": "bin/create.js", "cli": "bin/cli.js", "create": "bin/create.js" } }, "sha512-ucaJqu3xrldZzbLJNzHe/EQrH/Mwn4ejHoM2YQYGK7NSTLuTff2Se13MSNe/gn3Ex8Eo3xmR/CiPhI/vfw81qQ=="],
 
     "@b9g/zen": ["@b9g/zen@0.1.6", "", { "dependencies": { "zod": "^4.0.0" }, "peerDependencies": { "better-sqlite3": "^11.0.0", "mysql2": "^3.0.0", "postgres": "^3.0.0" }, "optionalPeers": ["better-sqlite3", "mysql2", "postgres"] }, "sha512-vkw53wplqgjh33o3uFU3xRfpvk5GkQU0epmfurPOzK09LCS9hqXwF6CgpnhukTsy1uYPXxWMSVUCbEULzhnZVA=="],
 
