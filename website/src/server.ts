@@ -29,15 +29,14 @@ import logo from "../static/logo.svg" with {assetBase: "/static/"};
 
 // Import Crank client bundles for playground iframe
 import crankModule from "./clients/crank/index.ts" with {assetBase: "/static/"};
-import crankDomModule from "./clients/crank/dom.ts" with {
-	assetBase: "/static/",
-};
-import crankHtmlModule from "./clients/crank/html.ts" with {
-	assetBase: "/static/",
-};
-import crankStandaloneModule from "./clients/crank/standalone.ts" with {
-	assetBase: "/static/",
-};
+import crankAsyncModule from "./clients/crank/async.ts" with {assetBase: "/static/"};
+import crankDomModule from "./clients/crank/dom.ts" with {assetBase: "/static/"};
+import crankEventTargetModule from "./clients/crank/event-target.ts" with {assetBase: "/static/"};
+import crankHtmlModule from "./clients/crank/html.ts" with {assetBase: "/static/"};
+import crankJsxDevRuntimeModule from "./clients/crank/jsx-dev-runtime.ts" with {assetBase: "/static/"};
+import crankJsxRuntimeModule from "./clients/crank/jsx-runtime.ts" with {assetBase: "/static/"};
+import crankJsxTagModule from "./clients/crank/jsx-tag.ts" with {assetBase: "/static/"};
+import crankStandaloneModule from "./clients/crank/standalone.ts" with {assetBase: "/static/"};
 
 // Export asset URLs for use in views
 export const assets = {
@@ -53,13 +52,14 @@ export const assets = {
 export const staticURLs: Record<string, string> = {
 	"client.css": clientCSS,
 	"@b9g/crank": crankModule,
-	"@b9g/crank.js": crankModule,
+	"@b9g/crank/async": crankAsyncModule,
 	"@b9g/crank/dom": crankDomModule,
-	"@b9g/crank/dom.js": crankDomModule,
+	"@b9g/crank/event-target": crankEventTargetModule,
 	"@b9g/crank/html": crankHtmlModule,
-	"@b9g/crank/html.js": crankHtmlModule,
+	"@b9g/crank/jsx-dev-runtime": crankJsxDevRuntimeModule,
+	"@b9g/crank/jsx-runtime": crankJsxRuntimeModule,
+	"@b9g/crank/jsx-tag": crankJsxTagModule,
 	"@b9g/crank/standalone": crankStandaloneModule,
-	"@b9g/crank/standalone.js": crankStandaloneModule,
 };
 
 const __dirname = new URL(".", import.meta.url).pathname;

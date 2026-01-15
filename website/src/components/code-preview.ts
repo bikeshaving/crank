@@ -2,9 +2,23 @@ import {jsx} from "@b9g/crank/standalone";
 import type {Context} from "@b9g/crank";
 import {css} from "@emotion/css";
 import {debounce} from "../utils/fns.js";
-import {transform} from "../plugins/babel.js";
+import {transform} from "../plugins/acorn.js";
 import {extractData} from "./serialize-javascript.js";
 import {getColorSchemeScript} from "../utils/color-scheme.js";
+
+/**
+ * Generate an Import Map from staticURLs for bare specifier resolution.
+ */
+function generateImportMap(staticURLs: Record<string, string>): string {
+	const imports: Record<string, string> = {};
+	for (const [key, value] of Object.entries(staticURLs)) {
+		// Skip non-module entries like CSS
+		if (!key.endsWith(".css")) {
+			imports[key] = value;
+		}
+	}
+	return JSON.stringify({imports}, null, "\t\t\t");
+}
 
 function generateJavaScriptIFrameHTML(
 	id: number,
@@ -19,6 +33,9 @@ function generateJavaScriptIFrameHTML(
 			<meta name="viewport" content="width=device-width,initial-scale=1">
 			<script>
 				${getColorSchemeScript()}
+			</script>
+			<script type="importmap">
+				${generateImportMap(staticURLs)}
 			</script>
 			<style>
 				/* Minimal reset - only margin/padding, let apps define their own styles */
