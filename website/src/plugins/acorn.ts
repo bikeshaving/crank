@@ -544,7 +544,10 @@ function injectLoopGuards(ast: any): void {
  * Transform JSX elements to function calls.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function transformJSX(ast: any, pragma: ReturnType<typeof parseJSXPragma>): void {
+function transformJSX(
+	ast: any,
+	pragma: ReturnType<typeof parseJSXPragma>,
+): void {
 	function walk(
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		node: any,
@@ -609,7 +612,10 @@ function transformJSXElement(
 	let tag: ESTree.Expression;
 	if (tagName.type === "JSXIdentifier") {
 		const name = tagName.name;
-		if (name[0] === name[0].toLowerCase() && name[0] !== name[0].toUpperCase()) {
+		if (
+			name[0] === name[0].toLowerCase() &&
+			name[0] !== name[0].toUpperCase()
+		) {
 			tag = {type: "Literal", value: name};
 		} else {
 			tag = {type: "Identifier", name};
@@ -734,7 +740,9 @@ function transformJSXFragment(
 			? createMemberExpression(pragma.jsxPragma!)
 			: {type: "Identifier", name: pragma.jsxPragma!};
 
-		const fragmentId: ESTree.Expression = pragma.jsxFragmentPragma!.includes(".")
+		const fragmentId: ESTree.Expression = pragma.jsxFragmentPragma!.includes(
+			".",
+		)
 			? createMemberExpression(pragma.jsxFragmentPragma!)
 			: {type: "Identifier", name: pragma.jsxFragmentPragma!};
 

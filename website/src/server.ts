@@ -29,14 +29,30 @@ import logo from "../static/logo.svg" with {assetBase: "/static/"};
 
 // Import Crank client bundles for playground iframe
 import crankModule from "./clients/crank/index.ts" with {assetBase: "/static/"};
-import crankAsyncModule from "./clients/crank/async.ts" with {assetBase: "/static/"};
-import crankDomModule from "./clients/crank/dom.ts" with {assetBase: "/static/"};
-import crankEventTargetModule from "./clients/crank/event-target.ts" with {assetBase: "/static/"};
-import crankHtmlModule from "./clients/crank/html.ts" with {assetBase: "/static/"};
-import crankJsxDevRuntimeModule from "./clients/crank/jsx-dev-runtime.ts" with {assetBase: "/static/"};
-import crankJsxRuntimeModule from "./clients/crank/jsx-runtime.ts" with {assetBase: "/static/"};
-import crankJsxTagModule from "./clients/crank/jsx-tag.ts" with {assetBase: "/static/"};
-import crankStandaloneModule from "./clients/crank/standalone.ts" with {assetBase: "/static/"};
+import crankAsyncModule from "./clients/crank/async.ts" with {
+	assetBase: "/static/",
+};
+import crankDomModule from "./clients/crank/dom.ts" with {
+	assetBase: "/static/",
+};
+import crankEventTargetModule from "./clients/crank/event-target.ts" with {
+	assetBase: "/static/",
+};
+import crankHtmlModule from "./clients/crank/html.ts" with {
+	assetBase: "/static/",
+};
+import crankJsxDevRuntimeModule from "./clients/crank/jsx-dev-runtime.ts" with {
+	assetBase: "/static/",
+};
+import crankJsxRuntimeModule from "./clients/crank/jsx-runtime.ts" with {
+	assetBase: "/static/",
+};
+import crankJsxTagModule from "./clients/crank/jsx-tag.ts" with {
+	assetBase: "/static/",
+};
+import crankStandaloneModule from "./clients/crank/standalone.ts" with {
+	assetBase: "/static/",
+};
 
 // Export asset URLs for use in views
 export const assets = {
