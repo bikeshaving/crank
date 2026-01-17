@@ -153,6 +153,11 @@ pre code {
 	background: none;
 }
 
+.prism-line {
+	font-size: 14px;
+	line-height: 1.6;
+}
+
 select, input, textarea {
   background-color: var(--bg-color);
 	color: var(--text-color);
