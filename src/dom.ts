@@ -11,6 +11,18 @@ import {camelToKebabCase, formatStyleValue} from "./_css.js";
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 const MATHML_NAMESPACE = "http://www.w3.org/1998/Math/MathML";
 
+function getRootDocument(root: Element | undefined): Document {
+	if (root && root.ownerDocument) {
+		return root.ownerDocument;
+	}
+
+	if (root && root.nodeType === Node.DOCUMENT_NODE) {
+		return root as unknown as Document;
+	}
+
+	return document;
+}
+
 function isWritableProperty(element: Element, name: string): boolean {
 	// walk up the object's prototype chain to find the owner
 	let propOwner = element;
@@ -58,15 +70,20 @@ function emitHydrationWarning(
 				`Expected "${showName}" to be ${expectedValue === true ? "present" : '""'} but found ${String(actualValue)} while hydrating:`,
 				element,
 			);
-		} else if (
-			typeof window !== "undefined" &&
-			window.location &&
-			new URL(expectedValue, window.location.origin).href ===
-				new URL(actualValue, window.location.origin).href
-		) {
-			// attrs which are URLs will often be resolved to their full
-			// href in the DOM, so we squash these errors
 		} else {
+			// Check if this is a URL mismatch that's actually just resolution
+			const win = element.ownerDocument.defaultView;
+			if (win && win.location) {
+				const origin = win.location.origin;
+				if (
+					new URL(expectedValue, origin).href ===
+					new URL(actualValue, origin).href
+				) {
+					// attrs which are URLs will often be resolved to their full
+					// href in the DOM, so we squash these errors
+					return;
+				}
+			}
 			console.warn(
 				`Expected "${showName}" to be "${String(expectedValue)}" but found ${String(actualValue)} while hydrating:`,
 				element,
@@ -84,6 +101,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 		scope: string | undefined;
 		tag: string | symbol;
 		props: Record<string, any>;
+		root: Element | undefined;
 	}): string | undefined {
 		switch (tag) {
 			case Portal:
@@ -105,10 +123,12 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 		tag,
 		tagName,
 		scope: xmlns,
+		root,
 	}: {
 		tag: string | symbol;
 		tagName: string;
 		scope: string | undefined;
+		root: Element | undefined;
 	}): Node {
 		if (typeof tag !== "string") {
 			throw new Error(`Unknown tag: ${tagName}`);
@@ -118,29 +138,31 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 			xmlns = MATHML_NAMESPACE;
 		}
 
-		return xmlns
-			? document.createElementNS(xmlns, tag)
-			: document.createElement(tag);
+		const doc = getRootDocument(root);
+		return xmlns ? doc.createElementNS(xmlns, tag) : doc.createElement(tag);
 	},
 
 	adopt({
 		tag,
 		tagName,
 		node,
+		root,
 	}: {
 		tag: string | symbol;
 		tagName: string;
 		node: Node | undefined;
+		root: Element | undefined;
 	}): Array<Node> | undefined {
 		if (typeof tag !== "string" && tag !== Portal) {
 			throw new Error(`Unknown tag: ${tagName}`);
 		}
 
+		const doc = getRootDocument(root);
 		if (
-			node === document.body ||
-			node === document.head ||
-			node === document.documentElement ||
-			node === document
+			node === doc.body ||
+			node === doc.head ||
+			node === doc.documentElement ||
+			node === doc
 		) {
 			console.warn(
 				`Hydrating ${node.nodeName.toLowerCase()} is discouraged as it is destructive and may remove unknown nodes.`,
@@ -175,6 +197,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 		props: Record<string, any>;
 		oldProps: Record<string, any> | undefined;
 		scope: string | undefined;
+		root: Element | undefined;
 		copyProps: Set<string> | undefined;
 		quietProps: Set<string> | undefined;
 		isHydrating: boolean;
@@ -551,6 +574,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 		node: Node;
 		props: Record<string, any>;
 		children: Array<Node>;
+		root: Element | undefined;
 	}): void {
 		if (tag === Portal && (node == null || typeof node.nodeType !== "number")) {
 			throw new TypeError(
@@ -588,6 +612,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 		node: Node;
 		parentNode: Node;
 		isNested: boolean;
+		root: Element | undefined;
 	}): void {
 		if (!isNested && node.parentNode === parentNode) {
 			parentNode.removeChild(node);
@@ -598,11 +623,14 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 		value,
 		oldNode,
 		hydrationNodes,
+		root,
 	}: {
 		value: string;
 		hydrationNodes: Array<Node> | undefined;
 		oldNode: Node | undefined;
+		root: Element | undefined;
 	}): Node {
+		const doc = getRootDocument(root);
 		if (hydrationNodes != null) {
 			let node = hydrationNodes.shift();
 			if (!node || node.nodeType !== Node.TEXT_NODE) {
@@ -616,7 +644,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 						// reuse the existing text node, but truncate it and unshift the rest
 						(node as Text).data = value;
 						hydrationNodes.unshift(
-							document.createTextNode(textData.slice(value.length)),
+							doc.createTextNode(textData.slice(value.length)),
 						);
 
 						return node;
@@ -642,26 +670,29 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 			return oldNode;
 		}
 
-		return document.createTextNode(value);
+		return doc.createTextNode(value);
 	},
 
 	raw({
 		value,
 		scope: xmlns,
 		hydrationNodes,
+		root,
 	}: {
 		value: string | Node;
 		scope: string | undefined;
 		hydrationNodes: Array<Node> | undefined;
+		root: Element | undefined;
 	}): ElementValue<Node> {
 		let nodes: Array<Node>;
 		if (typeof value === "string") {
+			const doc = getRootDocument(root);
 			const el =
 				xmlns == null
-					? document.createElement("div")
+					? doc.createElement("div")
 					: xmlns === SVG_NAMESPACE
-						? document.createElementNS(xmlns, "svg")
-						: document.createElementNS(xmlns, "math");
+						? doc.createElementNS(xmlns, "svg")
+						: doc.createElementNS(xmlns, "math");
 			el.innerHTML = value;
 			nodes = Array.from(el.childNodes);
 		} else {

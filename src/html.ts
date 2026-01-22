@@ -146,6 +146,7 @@ export const impl: Partial<RenderAdapter<Node, undefined, Node, string>> = {
 		node: Node;
 		props: Record<string, any>;
 		children: Array<Node | string>;
+		root: Node | undefined;
 	}): void {
 		if (tag === Portal) {
 			return;
