@@ -147,6 +147,30 @@ test("class and className", () => {
 	);
 });
 
+test("class object syntax", () => {
+	Assert.is(
+		renderer.render(
+			<div class={{active: true, disabled: false, primary: true}} />,
+		),
+		'<div class="active primary"></div>',
+	);
+});
+
+test("class object syntax with space-separated keys", () => {
+	Assert.is(
+		renderer.render(
+			<div
+				class={{
+					"w-5 h-5 rounded-full": true,
+					"bg-green-500 text-white": true,
+					"bg-gray-200 text-gray-400": false,
+				}}
+			/>,
+		),
+		'<div class="w-5 h-5 rounded-full bg-green-500 text-white"></div>',
+	);
+});
+
 test("null", () => {
 	Assert.is(renderer.render(null), "");
 });
