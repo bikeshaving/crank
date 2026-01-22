@@ -370,17 +370,21 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 							? element.getAttribute("class")
 							: undefined;
 
-						for (const className in {...oldValue, ...value}) {
-							const classValue = value && value[className];
+						for (const classNames in {...oldValue, ...value}) {
+							const classValue = value && value[classNames];
+							// Support space-separated class names like "foo bar baz"
+							const classes = classNames.split(/\s+/).filter(Boolean);
 							if (classValue) {
-								element.classList.add(className);
-								if (hydratingClasses && hydratingClasses.has(className)) {
-									hydratingClasses.delete(className);
-								} else if (isHydrating) {
-									shouldIssueWarning = true;
+								element.classList.add(...classes);
+								for (const className of classes) {
+									if (hydratingClasses && hydratingClasses.has(className)) {
+										hydratingClasses.delete(className);
+									} else if (isHydrating) {
+										shouldIssueWarning = true;
+									}
 								}
 							} else {
-								element.classList.remove(className);
+								element.classList.remove(...classes);
 							}
 						}
 

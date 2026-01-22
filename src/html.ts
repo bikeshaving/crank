@@ -70,6 +70,18 @@ function printAttrs(props: Record<string, any>): string {
 			}
 
 			attrs.push(`class="${escape(value)}"`);
+		} else if (name === "class") {
+			if (typeof value === "string") {
+				attrs.push(`class="${escape(value)}"`);
+			} else if (typeof value === "object" && value !== null) {
+				// class={{"foo bar": true, "baz": false}} syntax
+				const classes = Object.keys(value)
+					.filter((k) => value[k])
+					.join(" ");
+				if (classes) {
+					attrs.push(`class="${escape(classes)}"`);
+				}
+			}
 		} else {
 			if (name.startsWith("attr:")) {
 				name = name.slice("attr:".length);

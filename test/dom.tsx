@@ -777,6 +777,80 @@ test("object classnames object to string transition", () => {
 	Assert.not.ok(element.classList.contains("another-class"));
 });
 
+test("object classnames with space-separated keys", () => {
+	renderer.render(
+		<div
+			class={{
+				"w-5 h-5 rounded-full flex items-center justify-center": true,
+				"bg-green-500 text-white": true,
+				"bg-gray-200 text-gray-400": false,
+			}}
+		>
+			Test
+		</div>,
+		document.body,
+	);
+
+	const element = document.querySelector("div")!;
+	// All classes from truthy keys should be present
+	Assert.ok(element.classList.contains("w-5"));
+	Assert.ok(element.classList.contains("h-5"));
+	Assert.ok(element.classList.contains("rounded-full"));
+	Assert.ok(element.classList.contains("flex"));
+	Assert.ok(element.classList.contains("items-center"));
+	Assert.ok(element.classList.contains("justify-center"));
+	Assert.ok(element.classList.contains("bg-green-500"));
+	Assert.ok(element.classList.contains("text-white"));
+	// Classes from falsy keys should not be present
+	Assert.not.ok(element.classList.contains("bg-gray-200"));
+	Assert.not.ok(element.classList.contains("text-gray-400"));
+});
+
+test("object classnames with space-separated keys update", () => {
+	renderer.render(
+		<div
+			class={{
+				"base-class shared": true,
+				"variant-a extra-a": true,
+				"variant-b extra-b": false,
+			}}
+		>
+			Test
+		</div>,
+		document.body,
+	);
+
+	let element = document.querySelector("div")!;
+	Assert.ok(element.classList.contains("base-class"));
+	Assert.ok(element.classList.contains("shared"));
+	Assert.ok(element.classList.contains("variant-a"));
+	Assert.ok(element.classList.contains("extra-a"));
+	Assert.not.ok(element.classList.contains("variant-b"));
+	Assert.not.ok(element.classList.contains("extra-b"));
+
+	// Update: swap which variant is active
+	renderer.render(
+		<div
+			class={{
+				"base-class shared": true,
+				"variant-a extra-a": false,
+				"variant-b extra-b": true,
+			}}
+		>
+			Test
+		</div>,
+		document.body,
+	);
+
+	element = document.querySelector("div")!;
+	Assert.ok(element.classList.contains("base-class"));
+	Assert.ok(element.classList.contains("shared"));
+	Assert.not.ok(element.classList.contains("variant-a"));
+	Assert.not.ok(element.classList.contains("extra-a"));
+	Assert.ok(element.classList.contains("variant-b"));
+	Assert.ok(element.classList.contains("extra-b"));
+});
+
 test("relative src should not cause unnecessary updates", () => {
 	// Track how many times src property is set
 	let srcSetCount = 0;
