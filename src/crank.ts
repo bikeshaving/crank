@@ -596,6 +596,7 @@ export interface RenderAdapter<
 		tagName: string;
 		props: Record<string, any>;
 		scope: TScope | undefined;
+		root: TRoot | undefined;
 	}): TNode;
 
 	/**
@@ -628,6 +629,7 @@ export interface RenderAdapter<
 		props: Record<string, any>;
 		node: TNode | undefined;
 		scope: TScope | undefined;
+		root: TRoot | undefined;
 	}): Array<TNode> | undefined;
 
 	/**
@@ -658,6 +660,7 @@ export interface RenderAdapter<
 		scope: TScope | undefined;
 		oldNode: TNode | undefined;
 		hydrationNodes: Array<TNode> | undefined;
+		root: TRoot | undefined;
 	}): TNode;
 
 	/**
@@ -688,6 +691,7 @@ export interface RenderAdapter<
 		tagName: string;
 		props: Record<string, any>;
 		scope: TScope | undefined;
+		root: TRoot | undefined;
 	}): TScope | undefined;
 
 	/**
@@ -717,6 +721,7 @@ export interface RenderAdapter<
 		value: string | TNode;
 		scope: TScope | undefined;
 		hydrationNodes: Array<TNode> | undefined;
+		root: TRoot | undefined;
 	}): ElementValue<TNode>;
 
 	/**
@@ -758,6 +763,7 @@ export interface RenderAdapter<
 		props: Record<string, any>;
 		oldProps: Record<string, any> | undefined;
 		scope: TScope | undefined;
+		root: TRoot | undefined;
 		copyProps: Set<string> | undefined;
 		isHydrating: boolean;
 		quietProps: Set<string> | undefined;
@@ -796,6 +802,7 @@ export interface RenderAdapter<
 		props: Record<string, any>;
 		children: Array<TNode>;
 		oldProps: Record<string, any> | undefined;
+		root: TRoot | undefined;
 	}): void;
 
 	/**
@@ -820,7 +827,12 @@ export interface RenderAdapter<
 	 * }
 	 * ```
 	 */
-	remove(data: {node: TNode; parentNode: TNode; isNested: boolean}): void;
+	remove(data: {
+		node: TNode;
+		parentNode: TNode;
+		isNested: boolean;
+		root: TRoot | undefined;
+	}): void;
 
 	/**
 	 * Reads the final rendered value from an ElementValue.
@@ -924,7 +936,8 @@ export class Renderer<
 			this.registry = new FinalizationRegistry(({adapter, ret}) => {
 				// Check if the retainer hasn't already been unmounted
 				if (!getFlag(ret, IsUnmounted)) {
-					unmount(adapter, ret, ret.ctx, ret, false);
+					// Root is undefined because it was garbage collected
+					unmount(adapter, ret, ret.ctx, undefined, ret, false);
 				}
 			});
 		}
@@ -1005,6 +1018,7 @@ function getRootRetainer<
 			tagName: getTagName(Portal),
 			props: stripSpecialProps(ret.el.props),
 			scope: undefined,
+			root,
 		});
 		// remember that typeof null === "object"
 		if (typeof root === "object" && root !== null && children != null) {
@@ -1057,6 +1071,7 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				ret,
 				ret.ctx,
 				ret.scope,
+				root,
 				0,
 				schedulePromises,
 				undefined,
@@ -1064,31 +1079,41 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 			if (schedulePromises.length > 0) {
 				return Promise.all(schedulePromises).then(() => {
 					if (typeof root !== "object" || root === null) {
-						unmount(adapter, ret, ret.ctx, ret, false);
+						unmount(adapter, ret, ret.ctx, root, ret, false);
 					}
 					return adapter.read(unwrap(getChildValues(ret)));
 				});
 			}
 
 			if (typeof root !== "object" || root === null) {
-				unmount(adapter, ret, ret.ctx, ret, false);
+				unmount(adapter, ret, ret.ctx, root, ret, false);
 			}
 			return adapter.read(unwrap(getChildValues(ret)));
 		});
 	}
 
-	commit(adapter, ret, ret, ret.ctx, ret.scope, 0, schedulePromises, undefined);
+	commit(
+		adapter,
+		ret,
+		ret,
+		ret.ctx,
+		ret.scope,
+		root,
+		0,
+		schedulePromises,
+		undefined,
+	);
 	if (schedulePromises.length > 0) {
 		return Promise.all(schedulePromises).then(() => {
 			if (typeof root !== "object" || root === null) {
-				unmount(adapter, ret, ret.ctx, ret, false);
+				unmount(adapter, ret, ret.ctx, root, ret, false);
 			}
 			return adapter.read(unwrap(getChildValues(ret)));
 		});
 	}
 
 	if (typeof root !== "object" || root === null) {
-		unmount(adapter, ret, ret.ctx, ret, false);
+		unmount(adapter, ret, ret.ctx, root, ret, false);
 	}
 	return adapter.read(unwrap(getChildValues(ret)));
 }
@@ -1388,6 +1413,7 @@ function diffHost<TNode, TScope, TRoot extends TNode | undefined>(
 			tagName: getTagName(tag),
 			props: el.props,
 			scope,
+			root,
 		});
 	}
 
@@ -1408,6 +1434,7 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	ret: Retainer<TNode, TScope>,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope | undefined,
+	root: TRoot | undefined,
 	index: number,
 	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes: Array<TNode> | undefined,
@@ -1459,6 +1486,7 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				host,
 				ctx,
 				scope,
+				root,
 				ret,
 				index,
 				schedulePromises,
@@ -1471,15 +1499,23 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				el as Element<Text>,
 				scope,
 				hydrationNodes,
+				root,
 			);
 		} else if (tag === Raw) {
-			value = commitRaw(adapter, host, ret, scope, hydrationNodes);
+			value = commitRaw(adapter, host, ret, scope, hydrationNodes, root);
 		} else {
-			value = commitHost(adapter, ret, ctx, schedulePromises, hydrationNodes);
+			value = commitHost(
+				adapter,
+				ret,
+				ctx,
+				root,
+				schedulePromises,
+				hydrationNodes,
+			);
 		}
 
 		if (ret.fallback) {
-			unmount(adapter, host, ctx, ret.fallback, false);
+			unmount(adapter, host, ctx, root, ret.fallback, false);
 			ret.fallback = undefined;
 		}
 	}
@@ -1513,6 +1549,7 @@ function commitChildren<
 	host: Retainer<TNode, TScope>,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
 	scope: TScope | undefined,
+	root: TRoot | undefined,
 	parent: Retainer<TNode, TScope>,
 	index: number,
 	schedulePromises: Array<PromiseLike<unknown>>,
@@ -1545,6 +1582,7 @@ function commitChildren<
 						node,
 						parentNode: host.value as TNode,
 						isNested: false,
+						root,
 					});
 				}
 			}
@@ -1612,6 +1650,7 @@ function commitChildren<
 				child,
 				ctx,
 				scope,
+				root,
 				index,
 				schedulePromises,
 				hydrationNodes,
@@ -1632,7 +1671,7 @@ function commitChildren<
 	if (parent.graveyard) {
 		for (let i = 0; i < parent.graveyard.length; i++) {
 			const child = parent.graveyard[i];
-			unmount(adapter, host, ctx, child, false);
+			unmount(adapter, host, ctx, root, child, false);
 		}
 
 		parent.graveyard = undefined;
@@ -1647,30 +1686,33 @@ function commitChildren<
 	return values;
 }
 
-function commitText<TNode, TScope>(
-	adapter: RenderAdapter<TNode, TScope, TNode | undefined, unknown>,
+function commitText<TNode, TScope, TRoot extends TNode | undefined>(
+	adapter: RenderAdapter<TNode, TScope, TRoot, unknown>,
 	ret: Retainer<TNode, TScope>,
 	el: Element<Text>,
 	scope: TScope | undefined,
 	hydrationNodes: Array<TNode> | undefined,
+	root: TRoot | undefined,
 ): TNode {
 	const value = adapter.text({
 		value: el.props.value,
 		scope,
 		oldNode: ret.value as TNode,
 		hydrationNodes,
+		root,
 	});
 
 	ret.value = value;
 	return value;
 }
 
-function commitRaw<TNode, TScope>(
-	adapter: RenderAdapter<TNode, TScope, TNode | undefined, unknown>,
+function commitRaw<TNode, TScope, TRoot extends TNode | undefined>(
+	adapter: RenderAdapter<TNode, TScope, TRoot, unknown>,
 	host: Retainer<TNode>,
 	ret: Retainer<TNode>,
 	scope: TScope | undefined,
 	hydrationNodes: Array<TNode> | undefined,
+	root: TRoot | undefined,
 ): ElementValue<TNode> {
 	if (!ret.oldProps || ret.oldProps.value !== ret.el.props.value) {
 		const oldNodes = wrap(ret.value);
@@ -1680,12 +1722,14 @@ function commitRaw<TNode, TScope>(
 				node: oldNode,
 				parentNode: host.value as TNode,
 				isNested: false,
+				root,
 			});
 		}
 		ret.value = adapter.raw({
 			value: ret.el.props.value as any,
 			scope,
 			hydrationNodes,
+			root,
 		});
 	}
 
@@ -1697,6 +1741,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, unknown>,
 	ret: Retainer<TNode, TScope>,
 	ctx: ContextState<TNode, TScope, TRoot, unknown> | undefined,
+	root: TRoot | undefined,
 	schedulePromises: Array<PromiseLike<unknown>>,
 	hydrationNodes: Array<TNode> | undefined,
 ): ElementValue<TNode> {
@@ -1756,6 +1801,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 					node,
 					props,
 					scope,
+					root,
 				});
 
 				if (childHydrationNodes) {
@@ -1764,6 +1810,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 							node: childHydrationNodes[i],
 							parentNode: node,
 							isNested: false,
+							root,
 						});
 					}
 				}
@@ -1790,6 +1837,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 					node: nextChild!,
 					props,
 					scope,
+					root,
 				});
 
 				if (childHydrationNodes) {
@@ -1799,6 +1847,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 							node: childHydrationNodes[i],
 							parentNode: node,
 							isNested: false,
+							root,
 						});
 					}
 				}
@@ -1814,6 +1863,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 					tagName: getTagName(tag),
 					props,
 					scope,
+					root,
 				});
 			}
 			ret.value = node;
@@ -1828,6 +1878,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 			props,
 			oldProps,
 			scope,
+			root,
 			copyProps,
 			isHydrating: !!childHydrationNodes,
 			quietProps,
@@ -1840,6 +1891,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 			ret,
 			ctx,
 			scope,
+			tag === Portal ? (node as TRoot) : root,
 			ret,
 			0,
 			schedulePromises,
@@ -1855,6 +1907,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 			props,
 			children,
 			oldProps,
+			root,
 		});
 	}
 
@@ -1982,12 +2035,13 @@ function unmount<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	host: Retainer<TNode>,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
+	root: TRoot | undefined,
 	ret: Retainer<TNode>,
 	isNested: boolean,
 ): void {
 	// TODO: set the IsUnmounted flag consistently for all retainers
 	if (ret.fallback) {
-		unmount(adapter, host, ctx, ret.fallback, isNested);
+		unmount(adapter, host, ctx, root, ret.fallback, isNested);
 		ret.fallback = undefined;
 	}
 
@@ -2000,7 +2054,7 @@ function unmount<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 			const lingerers = ret.lingerers[i];
 			if (lingerers) {
 				for (const lingerer of lingerers) {
-					unmount(adapter, host, ctx, lingerer, isNested);
+					unmount(adapter, host, ctx, root, lingerer, isNested);
 				}
 			}
 		}
@@ -2011,14 +2065,14 @@ function unmount<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	if (typeof ret.el.tag === "function") {
 		unmountComponent(ret.ctx!, isNested);
 	} else if (ret.el.tag === Fragment) {
-		unmountChildren(adapter, host, ctx, ret, isNested);
+		unmountChildren(adapter, host, ctx, root, ret, isNested);
 	} else if (ret.el.tag === Portal) {
-		unmountChildren(adapter, ret, ctx, ret, false);
+		unmountChildren(adapter, ret, ctx, ret.value as TRoot, ret, false);
 		if (ret.value != null) {
 			adapter.finalize(ret.value as TRoot);
 		}
 	} else {
-		unmountChildren(adapter, ret, ctx, ret, true);
+		unmountChildren(adapter, ret, ctx, root, ret, true);
 
 		if (getFlag(ret, DidCommit)) {
 			if (ctx) {
@@ -2033,6 +2087,7 @@ function unmount<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				node: ret.value as TNode,
 				parentNode: host.value as TNode,
 				isNested,
+				root,
 			});
 		}
 	}
@@ -2047,13 +2102,14 @@ function unmountChildren<
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	host: Retainer<TNode>,
 	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
+	root: TRoot | undefined,
 	ret: Retainer<TNode>,
 	isNested: boolean,
 ): void {
 	if (ret.graveyard) {
 		for (let i = 0; i < ret.graveyard.length; i++) {
 			const child = ret.graveyard[i];
-			unmount(adapter, host, ctx, child, isNested);
+			unmount(adapter, host, ctx, root, child, isNested);
 		}
 
 		ret.graveyard = undefined;
@@ -2062,7 +2118,7 @@ function unmountChildren<
 	for (let i = 0, children = wrap(ret.children); i < children.length; i++) {
 		const child = children[i];
 		if (typeof child === "object") {
-			unmount(adapter, host, ctx, child, isNested);
+			unmount(adapter, host, ctx, root, child, isNested);
 		}
 	}
 }
@@ -3151,6 +3207,7 @@ function commitComponent<TNode>(
 		ctx.host,
 		ctx,
 		ctx.scope,
+		ctx.root,
 		ctx.ret,
 		ctx.index,
 		schedulePromises,
@@ -3183,7 +3240,14 @@ function commitComponent<TNode>(
 				setFlag(ctx.ret, IsScheduling, wasScheduling);
 				propagateComponent(ctx);
 				if (ctx.ret.fallback) {
-					unmount(ctx.adapter, ctx.host, ctx.parent, ctx.ret.fallback, false);
+					unmount(
+						ctx.adapter,
+						ctx.host,
+						ctx.parent,
+						ctx.root,
+						ctx.ret.fallback,
+						false,
+					);
 				}
 
 				ctx.ret.fallback = undefined;
@@ -3212,7 +3276,14 @@ function commitComponent<TNode>(
 		}
 
 		if (ctx.ret.fallback) {
-			unmount(ctx.adapter, ctx.host, ctx.parent, ctx.ret.fallback, false);
+			unmount(
+				ctx.adapter,
+				ctx.host,
+				ctx.parent,
+				ctx.root,
+				ctx.ret.fallback,
+				false,
+			);
 		}
 
 		ctx.ret.fallback = undefined;
@@ -3298,6 +3369,7 @@ function propagateComponent<TNode>(ctx: ContextState<TNode>): void {
 		props,
 		oldProps: props,
 		children: hostChildren,
+		root: ctx.root,
 	});
 
 	flush(ctx.adapter, ctx.root, ctx);
@@ -3365,7 +3437,7 @@ async function unmountComponent(
 	}
 
 	clearEventListeners(ctx.ctx);
-	unmountChildren(ctx.adapter, ctx.host, ctx, ctx.ret, isNested);
+	unmountChildren(ctx.adapter, ctx.host, ctx, ctx.root, ctx.ret, isNested);
 	if (didLinger) {
 		// If we lingered, we call finalize to ensure rendering is finalized
 		if (ctx.root != null) {

@@ -76,6 +76,28 @@ test("changing root", () => {
 	Assert.is(el2.innerHTML, "<div>Hello world</div>");
 });
 
+test("portal targeting iframe body", () => {
+	// Create an iframe to get a separate document
+	// This tests that ownerDocument is used correctly across different documents
+	const iframe = document.createElement("iframe");
+	document.body.appendChild(iframe);
+	const iframeDoc = iframe.contentDocument!;
+
+	renderer.render(
+		<Portal root={iframeDoc.body}>
+			<div>Hello from iframe</div>
+		</Portal>,
+		document.body,
+	);
+
+	Assert.is(iframeDoc.body.innerHTML, "<div>Hello from iframe</div>");
+
+	renderer.render(null, document.body);
+	Assert.is(iframeDoc.body.innerHTML, "");
+
+	document.body.removeChild(iframe);
+});
+
 test("portal with rendered page and hydrate", () => {
 	const onclick = Sinon.fake();
 	document.body.innerHTML = `<div id="portal"><button>Click</button></div>`;
