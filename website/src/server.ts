@@ -14,6 +14,7 @@ import BlogHomeView from "./views/blog-home.js";
 import BlogView from "./views/blog.js";
 import GuideView from "./views/guide.js";
 import PlaygroundView from "./views/playground.js";
+import NotFoundView from "./views/not-found.js";
 
 // Import assets with assetBase for content-hashed URLs
 import clientCSS from "./styles/client.css" with {assetBase: "/static/"};
@@ -133,6 +134,18 @@ router.route("/playground").get(async (request) => {
 	return renderView(PlaygroundView, url.pathname);
 });
 
+// 404 catch-all (must be last)
+router.route("*").all(async (request) => {
+	const url = new URL(request.url);
+	const html = await renderer.render(jsx`
+		<${NotFoundView} url=${url.pathname} params=${{}} />
+	`);
+	return new Response(html, {
+		status: 404,
+		headers: {"Content-Type": "text/html"},
+	});
+});
+
 // ServiceWorker fetch event
 self.addEventListener("fetch", (event) => {
 	event.respondWith(router.handle(event.request));
@@ -172,6 +185,19 @@ async function generateStaticSite() {
 
 		logger.info(`Pre-rendering ${staticRoutes.length} routes...`);
 
+		// Generate 404 page through router (fetch() doesn't work during install lifecycle)
+		// See: https://github.com/bikeshaving/shovel/issues/30
+		const notFoundRequest = new Request("http://localhost/404.html");
+		const notFoundResponse = await router.handle(notFoundRequest);
+		const notFoundHtml = await notFoundResponse.text();
+		const notFoundHandle = await staticBucket.getFileHandle("404.html", {
+			create: true,
+		});
+		const notFoundWritable = await notFoundHandle.createWritable();
+		await notFoundWritable.write(notFoundHtml);
+		await notFoundWritable.close();
+		logger.info("Generated 404.html");
+
 		for (const route of staticRoutes) {
 			try {
 				const request = new Request(`http://localhost${route}`);
@@ -210,6 +236,6 @@ async function generateStaticSite() {
 
 		logger.info("Static site generation complete!");
 	} catch (error: any) {
-		logger.error("Static site generation failed:", error.message);
+		logger.error("Static site generation failed: {error}", {error});
 	}
 }
