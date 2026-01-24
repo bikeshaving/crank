@@ -364,7 +364,7 @@ function formatNumber(number, type) {
 
 function CreditCard({type, expiration, number, owner}) {
   return (
-    <div style="
+    <div style={`
       padding: 10px;
       margin: 10px 0;
       display: grid;
@@ -372,7 +372,7 @@ function CreditCard({type, expiration, number, owner}) {
       grid-template-rows: repeat(2, 1fr);
       border: 1px solid currentcolor;
       border-radius: 10px;
-    ">
+    `}>
       <pre>{formatNumber(number, type)}</pre>
       <pre>Exp: {expiration}</pre>
 
