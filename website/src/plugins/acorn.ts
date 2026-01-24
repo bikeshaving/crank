@@ -109,6 +109,19 @@ const tsGenerator: any = {
 
 	// === Override nodes with optional type annotations ===
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	Literal(node: any, state: any) {
+		if (typeof node.value === "string") {
+			state.write(JSON.stringify(node.value));
+		} else if (node.raw !== undefined) {
+			state.write(node.raw);
+		} else if (node.value === null) {
+			state.write("null");
+		} else {
+			state.write(String(node.value));
+		}
+	},
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	Identifier(node: any, state: any) {
 		state.write(node.name);
 	},
@@ -891,16 +904,54 @@ function addJSXRuntimeImport(
 }
 
 /**
+ * Format a syntax error with code context and pointer.
+ */
+function formatSyntaxError(code: string, error: any): string {
+	const lines = code.split("\n");
+	const line = error.loc?.line ?? 1;
+	const column = error.loc?.column ?? 0;
+
+	// Get surrounding lines for context
+	const start = Math.max(0, line - 3);
+	const end = Math.min(lines.length, line + 2);
+
+	let result = `SyntaxError: ${error.message}\n\n`;
+
+	for (let i = start; i < end; i++) {
+		const lineNum = i + 1;
+		const prefix = lineNum === line ? "> " : "  ";
+		const gutter = String(lineNum).padStart(4, " ");
+		result += `${prefix}${gutter} | ${lines[i]}\n`;
+
+		if (lineNum === line) {
+			// Add pointer to the error position
+			const pointer = " ".repeat(column) + "^";
+			result += `       | ${pointer}\n`;
+		}
+	}
+
+	return result;
+}
+
+/**
  * Transform TypeScript/TSX code to JavaScript with loop protection.
  */
 export function transform(code: string): {code: string} {
 	const pragma = parseJSXPragma(code);
 
-	const ast = TypeScriptParser.parse(code, {
-		sourceType: "module",
-		ecmaVersion: "latest",
-		locations: true,
-	});
+	let ast;
+	try {
+		ast = TypeScriptParser.parse(code, {
+			sourceType: "module",
+			ecmaVersion: "latest",
+			locations: true,
+		});
+	} catch (error: any) {
+		if (error.loc) {
+			throw new SyntaxError(formatSyntaxError(code, error));
+		}
+		throw error;
+	}
 
 	transformJSX(ast, pragma);
 	addJSXRuntimeImport(ast, pragma);
