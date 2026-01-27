@@ -10,7 +10,7 @@
         "@b9g/platform-bun": "^0.1.12-beta.0",
         "@b9g/revise": "^0.1.3",
         "@b9g/router": "0.2.0-beta.1",
-        "@b9g/shovel": "0.2.0-beta.18",
+        "@b9g/shovel": "0.2.0-beta.26",
         "@emotion/css": "^11.13.5",
         "@emotion/server": "^11.11.0",
         "@lezer/javascript": "^1.5.4",
@@ -72,7 +72,7 @@
 
     "@b9g/router": ["@b9g/router@0.2.0-beta.1", "", { "dependencies": { "@b9g/http-errors": "^0.2.0-beta.0", "@b9g/match-pattern": "^0.2.0-beta.0" } }, "sha512-Czgt0RINQ2pafMC1+3Cdx2hBCJQhP4RXEADNWizVPDPP0oTY0vDJmt8N5waOkC56IfSwNpTp4hcmq2G+ZXwYxw=="],
 
-    "@b9g/shovel": ["@b9g/shovel@0.2.0-beta.18", "", { "dependencies": { "@b9g/async-context": "^0.2.0-beta.0", "@b9g/zen": "^0.1.6", "@clack/prompts": "^0.7.0", "@esbuild-plugins/node-globals-polyfill": "^0.2.3", "@esbuild-plugins/node-modules-polyfill": "^0.2.2", "@logtape/logtape": "^1.2.0", "commander": "^13.1.0", "esbuild": "^0.27.2", "magic-string": "^0.30.5", "mime": "^4.0.4", "picocolors": "^1.0.0", "source-map": "^0.7.4", "zod": "^3.23.0" }, "peerDependencies": { "@b9g/cache": "^0.2.0-beta.0", "@b9g/filesystem": "^0.1.8", "@b9g/http-errors": "^0.2.0-beta.0", "@b9g/node-webworker": "^0.2.0-beta.1", "@b9g/platform": "^0.1.14-beta.1", "@b9g/platform-bun": "^0.1.12-beta.0", "@b9g/platform-cloudflare": "^0.1.12-beta.0", "@b9g/platform-node": "^0.1.14-beta.0" }, "optionalPeers": ["@b9g/cache", "@b9g/filesystem", "@b9g/http-errors", "@b9g/platform", "@b9g/platform-bun", "@b9g/platform-cloudflare", "@b9g/platform-node"], "bin": { "shovel": "bin/cli.js", "create-shovel": "bin/create.js", "cli": "bin/cli.js", "create": "bin/create.js" } }, "sha512-ucaJqu3xrldZzbLJNzHe/EQrH/Mwn4ejHoM2YQYGK7NSTLuTff2Se13MSNe/gn3Ex8Eo3xmR/CiPhI/vfw81qQ=="],
+    "@b9g/shovel": ["@b9g/shovel@0.2.0-beta.26", "", { "dependencies": { "@b9g/async-context": "^0.2.0-beta.0", "@clack/prompts": "^0.7.0", "@esbuild-plugins/node-globals-polyfill": "^0.2.3", "@esbuild-plugins/node-modules-polyfill": "^0.2.2", "@logtape/logtape": "^1.2.0", "commander": "^13.1.0", "esbuild": "^0.27.2", "mime": "^4.0.4", "zod": "^3.23.0" }, "peerDependencies": { "@b9g/cache": "^0.2.0-beta.0", "@b9g/filesystem": "^0.1.8", "@b9g/http-errors": "^0.2.0-beta.0", "@b9g/node-webworker": "^0.2.0-beta.1", "@b9g/platform": "^0.1.14-beta.4", "@b9g/platform-bun": "^0.1.12-beta.1", "@b9g/platform-cloudflare": "^0.1.12-beta.1", "@b9g/platform-node": "^0.1.14-beta.1" }, "optionalPeers": ["@b9g/cache", "@b9g/filesystem", "@b9g/http-errors", "@b9g/platform", "@b9g/platform-bun", "@b9g/platform-cloudflare", "@b9g/platform-node"], "bin": { "shovel": "bin/cli.js", "create-shovel": "bin/create.js", "cli": "bin/cli.js", "create": "bin/create.js" } }, "sha512-CuJlvjnu7XHR7CagxbbY7Faci96tLVz7Ma+oUd/BGd88NekIp027I2EHVblKmPYi+55rwb5GdPBi+LMgon+dPA=="],
 
     "@b9g/zen": ["@b9g/zen@0.1.6", "", { "dependencies": { "zod": "^4.0.0" }, "peerDependencies": { "better-sqlite3": "^11.0.0", "mysql2": "^3.0.0", "postgres": "^3.0.0" }, "optionalPeers": ["better-sqlite3", "mysql2", "postgres"] }, "sha512-vkw53wplqgjh33o3uFU3xRfpvk5GkQU0epmfurPOzK09LCS9hqXwF6CgpnhukTsy1uYPXxWMSVUCbEULzhnZVA=="],
 
@@ -502,7 +502,7 @@
 
     "lz-string": ["lz-string@1.5.0", "", { "bin": { "lz-string": "bin/bin.js" } }, "sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ=="],
 
-    "magic-string": ["magic-string@0.30.21", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.5" } }, "sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ=="],
+    "magic-string": ["magic-string@0.25.9", "", { "dependencies": { "sourcemap-codec": "^1.4.8" } }, "sha512-RmF0AsMzgt25qzqqLc1+MbHmhdx0ojF2Fvs4XnOqz2ZOBXzzkEwc/dJQZCYHAn7v1jbVOjAZfK8msRn4BxO4VQ=="],
 
     "make-dir": ["make-dir@3.1.0", "", { "dependencies": { "semver": "^6.0.0" } }, "sha512-g3FeP20LNwhALb/6Cz6Dd4F2ngze0jz7tbzrD2wAV+o9FeNHe4rL+yK2md0J/fiSf1sa1ADhXqi5+oVwOM/eGw=="],
 
@@ -660,7 +660,7 @@
 
     "sisteransi": ["sisteransi@1.0.5", "", {}, "sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg=="],
 
-    "source-map": ["source-map@0.7.6", "", {}, "sha512-i5uvt8C3ikiWeNZSVZNWcfZPItFQOsYTUAOkcUPGd8DqDy1uOUikjt5dG+uRlwyvR108Fb9DOd4GvXfT0N2/uQ=="],
+    "source-map": ["source-map@0.5.7", "", {}, "sha512-LbrmJOMUSdEVxIKvdcJzQC+nQhe8FUZQTXQy6+I75skNgn3OoQ0DZA8YnFa7gp8tqtL3KPf1kmo0R5DoApeSGQ=="],
 
     "source-map-js": ["source-map-js@1.2.1", "", {}, "sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA=="],
 
@@ -712,8 +712,6 @@
 
     "@csstools/css-color-parser/@csstools/color-helpers": ["@csstools/color-helpers@4.2.1", "", {}, "sha512-CEypeeykO9AN7JWkr1OEOQb0HRzZlPWGwV0Ya6DuVgFdDi6g3ma/cPZ5ZPZM4AWQikDpq/0llnGGlIL+j8afzw=="],
 
-    "@emotion/babel-plugin/source-map": ["source-map@0.5.7", "", {}, "sha512-LbrmJOMUSdEVxIKvdcJzQC+nQhe8FUZQTXQy6+I75skNgn3OoQ0DZA8YnFa7gp8tqtL3KPf1kmo0R5DoApeSGQ=="],
-
     "duplexer2/readable-stream": ["readable-stream@2.3.8", "", { "dependencies": { "core-util-is": "~1.0.0", "inherits": "~2.0.3", "isarray": "~1.0.0", "process-nextick-args": "~2.0.0", "safe-buffer": "~5.1.1", "string_decoder": "~1.1.1", "util-deprecate": "~1.0.1" } }, "sha512-8p0AUk4XODgIewSi0l8Epjs+EVnWiK7NoDIEGU0HhE7+ZyY8D1IMY7odu5lRrFXGg71L15KG8QrPmum45RTtdA=="],
 
     "gh-pages/commander": ["commander@2.20.3", "", {}, "sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ=="],
@@ -721,8 +719,6 @@
     "make-dir/semver": ["semver@6.3.1", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA=="],
 
     "parse5/entities": ["entities@6.0.1", "", {}, "sha512-aN97NXWF6AWBTahfVOIrB/NShkzi5H7F9r1s9mD3cDj4Ko5f2qhhVoYMibXF7GlLveb/D2ioWay8lxI97Ven3g=="],
-
-    "rollup-plugin-inject/magic-string": ["magic-string@0.25.9", "", { "dependencies": { "sourcemap-codec": "^1.4.8" } }, "sha512-RmF0AsMzgt25qzqqLc1+MbHmhdx0ojF2Fvs4XnOqz2ZOBXzzkEwc/dJQZCYHAn7v1jbVOjAZfK8msRn4BxO4VQ=="],
 
     "strip-outer/escape-string-regexp": ["escape-string-regexp@1.0.5", "", {}, "sha512-vbRorB5FUQWvla16U8R/qgaFIya2qGzwDrNmCZuYKrbdSUMG6I1ZCGQRefkRVhuOkIGVne7BQ35DSfo1qvJqFg=="],
 
