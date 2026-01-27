@@ -101,7 +101,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		scope: string | undefined;
 		tag: string | symbol;
 		props: Record<string, any>;
-		root: Element | undefined;
+		root: Node | undefined;
 	}): string | undefined {
 		switch (tag) {
 			case Portal:
@@ -197,7 +197,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		props: Record<string, any>;
 		oldProps: Record<string, any> | undefined;
 		scope: string | undefined;
-		root: Element | undefined;
+		root: Node | undefined;
 		copyProps: Set<string> | undefined;
 		quietProps: Set<string> | undefined;
 		isHydrating: boolean;
@@ -574,7 +574,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		node: Node;
 		props: Record<string, any>;
 		children: Array<Node>;
-		root: Element | undefined;
+		root: Node | undefined;
 	}): void {
 		if (tag === Portal && (node == null || typeof node.nodeType !== "number")) {
 			throw new TypeError(
@@ -612,7 +612,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		node: Node;
 		parentNode: Node;
 		isNested: boolean;
-		root: Element | undefined;
+		root: Node | undefined;
 	}): void {
 		if (!isNested && node.parentNode === parentNode) {
 			parentNode.removeChild(node);
