@@ -11,7 +11,7 @@ import {camelToKebabCase, formatStyleValue} from "./_css.js";
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 const MATHML_NAMESPACE = "http://www.w3.org/1998/Math/MathML";
 
-function getRootDocument(root: Element | undefined): Document {
+function getRootDocument(root: Node | undefined): Document {
 	if (root && root.ownerDocument) {
 		return root.ownerDocument;
 	}
@@ -92,7 +92,7 @@ function emitHydrationWarning(
 	}
 }
 
-export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
+export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 	scope({
 		scope: xmlns,
 		tag,
@@ -128,7 +128,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 		tag: string | symbol;
 		tagName: string;
 		scope: string | undefined;
-		root: Element | undefined;
+		root: Node | undefined;
 	}): Node {
 		if (typeof tag !== "string") {
 			throw new Error(`Unknown tag: ${tagName}`);
@@ -151,7 +151,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 		tag: string | symbol;
 		tagName: string;
 		node: Node | undefined;
-		root: Element | undefined;
+		root: Node | undefined;
 	}): Array<Node> | undefined {
 		if (typeof tag !== "string" && tag !== Portal) {
 			throw new Error(`Unknown tag: ${tagName}`);
@@ -628,7 +628,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 		value: string;
 		hydrationNodes: Array<Node> | undefined;
 		oldNode: Node | undefined;
-		root: Element | undefined;
+		root: Node | undefined;
 	}): Node {
 		const doc = getRootDocument(root);
 		if (hydrationNodes != null) {
@@ -682,7 +682,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Element>> = {
 		value: string | Node;
 		scope: string | undefined;
 		hydrationNodes: Array<Node> | undefined;
-		root: Element | undefined;
+		root: Node | undefined;
 	}): ElementValue<Node> {
 		let nodes: Array<Node>;
 		if (typeof value === "string") {
