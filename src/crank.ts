@@ -921,11 +921,12 @@ export class Renderer<
 	/**
 	 * @internal
 	 * FinalizationRegistry to automatically unmount when root nodes are garbage collected.
+	 * Uses WeakRef to avoid preventing the root from being collected.
 	 */
 	declare registry:
 		| FinalizationRegistry<{
 				adapter: RenderAdapter<TNode, TScope, TRoot, TResult>;
-				ret: Retainer<TNode, TScope>;
+				retRef: WeakRef<Retainer<TNode, TScope>>;
 		  }>
 		| undefined;
 	constructor(adapter: Partial<RenderAdapter<TNode, TScope, TRoot, TResult>>) {
@@ -933,9 +934,10 @@ export class Renderer<
 		this.adapter = {...defaultAdapter, ...adapter};
 		// Only create FinalizationRegistry if it's available (not in all environments)
 		if (typeof FinalizationRegistry !== "undefined") {
-			this.registry = new FinalizationRegistry(({adapter, ret}) => {
-				// Check if the retainer hasn't already been unmounted
-				if (!getFlag(ret, IsUnmounted)) {
+			this.registry = new FinalizationRegistry(({adapter, retRef}) => {
+				const ret = retRef.deref();
+				// If ret was GC'd or already unmounted, nothing to do
+				if (ret && !getFlag(ret, IsUnmounted)) {
 					// Root is undefined because it was garbage collected
 					unmount(adapter, ret, ret.ctx, undefined, ret, false);
 				}
@@ -1023,9 +1025,15 @@ function getRootRetainer<
 		// remember that typeof null === "object"
 		if (typeof root === "object" && root !== null && children != null) {
 			renderer.cache.set(root, ret);
-			// Register root node for automatic unmounting when garbage collected
+			// Register root node for automatic unmounting when garbage collected.
+			// We use WeakRef for ret to avoid preventing root from being collected
+			// (since ret.value === root, a strong ref to ret would keep root alive).
 			if (renderer.registry) {
-				renderer.registry.register(root, {adapter, ret}, ret);
+				renderer.registry.register(
+					root,
+					{adapter, retRef: new WeakRef(ret)},
+					ret,
+				);
 			}
 		}
 	} else if (ret.ctx !== bridgeCtx) {
