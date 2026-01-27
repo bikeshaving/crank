@@ -99,11 +99,18 @@ function printAttrs(props: Record<string, any>): string {
 	return attrs.join(" ");
 }
 
-interface Node {
+/**
+ * The equivalent of DOM Node for the HTML Renderer. Not to be confused with
+ * the DOM's Text node. It's just an object with value string so that
+ * we can reference the value of the HTML by reference, not value.
+ *
+ * TextNode is never actually
+ */
+interface TextNode {
 	value?: string;
 }
 
-function join(children: Array<Node | string>): string {
+function join(children: Array<TextNode | string>): string {
 	let result = "";
 	for (let i = 0; i < children.length; i++) {
 		const child = children[i];
@@ -113,16 +120,18 @@ function join(children: Array<Node | string>): string {
 	return result;
 }
 
-export const impl: Partial<RenderAdapter<Node, undefined, Node, string>> = {
-	create(): Node {
+export const impl: Partial<
+	RenderAdapter<TextNode, undefined, TextNode, string>
+> = {
+	create(): TextNode {
 		return {value: ""};
 	},
 
-	text({value}: {value: string}): Node {
+	text({value}: {value: string}): TextNode {
 		return {value: escape(value)};
 	},
 
-	read(value: ElementValue<Node>): string {
+	read(value: ElementValue<TextNode>): string {
 		if (Array.isArray(value)) {
 			return join(value);
 		} else if (typeof value === "undefined") {
@@ -143,10 +152,10 @@ export const impl: Partial<RenderAdapter<Node, undefined, Node, string>> = {
 	}: {
 		tag: string | symbol;
 		tagName: string;
-		node: Node;
+		node: TextNode;
 		props: Record<string, any>;
-		children: Array<Node | string>;
-		root: Node | undefined;
+		children: Array<TextNode | string>;
+		root: TextNode | undefined;
 	}): void {
 		if (tag === Portal) {
 			return;
@@ -170,7 +179,7 @@ export const impl: Partial<RenderAdapter<Node, undefined, Node, string>> = {
 	},
 };
 
-export class HTMLRenderer extends Renderer<Node, undefined, any, string> {
+export class HTMLRenderer extends Renderer<TextNode, undefined, any, string> {
 	constructor() {
 		super(impl);
 	}
