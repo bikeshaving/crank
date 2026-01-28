@@ -2,7 +2,7 @@
 <img src="logo.svg" alt="Crank.js Logo" width="200" height="200" />
 
 # Crank.js
-The Just JavaScript Framework
+The Just JavaScript UI Framework
 </div>
 
 ## Get Started
@@ -11,6 +11,7 @@ The fastest way to try Crank is via the [online playground](https://crank.js.org
 
 Other links:
 - [crank.js.org](https://crank.js.org)
+- [NPM](https://www.npmjs.com/package/@b9g/crank)
 - [Introducing Crank.js](https://crank.js.org/blog/introducing-crank/)
 - [Examples](https://github.com/bikeshaving/crank/tree/main/examples)
 - [Deep Wiki](https://deepwiki.com/bikeshaving/crank)
