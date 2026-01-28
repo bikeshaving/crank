@@ -851,6 +851,62 @@ test("object classnames with space-separated keys update", () => {
 	Assert.ok(element.classList.contains("extra-b"));
 });
 
+test("object classnames with overlapping space-separated keys", () => {
+	// When two keys share a class, toggling one shouldn't remove the shared class
+	renderer.render(
+		<div
+			class={{
+				"a b": true,
+				"b c": true,
+			}}
+		>
+			Test
+		</div>,
+		document.body,
+	);
+
+	let element = document.querySelector("div")!;
+	Assert.ok(element.classList.contains("a"));
+	Assert.ok(element.classList.contains("b"));
+	Assert.ok(element.classList.contains("c"));
+
+	// Toggle first key off - "b" should remain because "b c" is still true
+	renderer.render(
+		<div
+			class={{
+				"a b": false,
+				"b c": true,
+			}}
+		>
+			Test
+		</div>,
+		document.body,
+	);
+
+	element = document.querySelector("div")!;
+	Assert.not.ok(element.classList.contains("a"));
+	Assert.ok(element.classList.contains("b")); // Still present from "b c"
+	Assert.ok(element.classList.contains("c"));
+
+	// Toggle both off
+	renderer.render(
+		<div
+			class={{
+				"a b": false,
+				"b c": false,
+			}}
+		>
+			Test
+		</div>,
+		document.body,
+	);
+
+	element = document.querySelector("div")!;
+	Assert.not.ok(element.classList.contains("a"));
+	Assert.not.ok(element.classList.contains("b"));
+	Assert.not.ok(element.classList.contains("c"));
+});
+
 test("relative src should not cause unnecessary updates", () => {
 	// Track how many times src property is set
 	let srcSetCount = 0;

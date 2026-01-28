@@ -393,11 +393,20 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 							? element.getAttribute("class")
 							: undefined;
 
-						for (const classNames in {...oldValue, ...value}) {
-							const classValue = value && value[classNames];
-							// Support space-separated class names like "foo bar baz"
-							const classes = classNames.split(/\s+/).filter(Boolean);
-							if (classValue) {
+						const allClassNames = {...oldValue, ...value};
+						// Two passes: removes first, then adds. This ensures that
+						// overlapping classes in different keys are handled correctly.
+						// e.g. {"a b": false, "b c": true} should result in "b c"
+						for (const classNames in allClassNames) {
+							if (!(value && value[classNames])) {
+								const classes = classNames.split(/\s+/).filter(Boolean);
+								element.classList.remove(...classes);
+							}
+						}
+
+						for (const classNames in allClassNames) {
+							if (value && value[classNames]) {
+								const classes = classNames.split(/\s+/).filter(Boolean);
 								element.classList.add(...classes);
 								for (const className of classes) {
 									if (hydratingClasses && hydratingClasses.has(className)) {
@@ -406,8 +415,6 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 										shouldIssueWarning = true;
 									}
 								}
-							} else {
-								element.classList.remove(...classes);
 							}
 						}
 
