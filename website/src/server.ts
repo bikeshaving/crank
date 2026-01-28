@@ -185,10 +185,8 @@ async function generateStaticSite() {
 
 		logger.info(`Pre-rendering ${staticRoutes.length} routes...`);
 
-		// Generate 404 page through router (fetch() doesn't work during install lifecycle)
-		// See: https://github.com/bikeshaving/shovel/issues/30
-		const notFoundRequest = new Request("http://localhost/404.html");
-		const notFoundResponse = await router.handle(notFoundRequest);
+		// Generate 404 page
+		const notFoundResponse = await fetch("/404.html");
 		const notFoundHtml = await notFoundResponse.text();
 		const notFoundHandle = await staticBucket.getFileHandle("404.html", {
 			create: true,
@@ -200,8 +198,7 @@ async function generateStaticSite() {
 
 		for (const route of staticRoutes) {
 			try {
-				const request = new Request(`http://localhost${route}`);
-				const response = await router.handle(request);
+				const response = await fetch(route);
 
 				if (response.ok) {
 					const content = await response.text();
