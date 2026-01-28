@@ -1,4 +1,34 @@
 # Changelog
+## [0.7.4] - 2026-01-28
+### New Features
+- **Allow spaces in class object syntax keys** (#328)
+  Class names with spaces are now supported in the object syntax:
+  ```jsx
+  <div class={{"hello world": true}} />
+  // renders: <div class="hello world"></div>
+  ```
+  Overlapping classes across keys are handled correctly—truthy keys always win:
+  ```jsx
+  <div class={{"a b": false, "b c": true}} />
+  // renders: <div class="b c"></div>  (b preserved)
+  ```
+
+### Improvements
+- **Remove global document/window references from DOM renderer** (#329)
+  The DOM renderer no longer relies on global `document` or `window` objects.
+  Instead, it derives the document from the root element via `root.ownerDocument`.
+  This enables Crank to work correctly in environments with multiple documents
+  (e.g., iframes, Shadow DOM, SSR hydration) and makes it compatible with
+  custom DOM implementations like TermDOM.
+
+  The `RenderAdapter` interface now includes a `root` parameter in all methods
+  (`create`, `adopt`, `text`, `scope`, `patch`, `arrange`, `remove`, `raw`)
+  to support this change.
+
+### Internal
+- Added `TextNode` type alias in HTML renderer for clarity
+- Various website improvements (404 page, better error messages, dependency updates)
+
 ## [0.7.3] - 2025-11-27
 ### Bug Fixes
 - **Fix URL property comparison for src and href attributes** (#321)
