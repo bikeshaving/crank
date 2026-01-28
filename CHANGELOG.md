@@ -25,10 +25,6 @@
   (`create`, `adopt`, `text`, `scope`, `patch`, `arrange`, `remove`, `raw`)
   to support this change.
 
-### Internal
-- Added `TextNode` type alias in HTML renderer for clarity
-- Various website improvements (404 page, better error messages, dependency updates)
-
 ## [0.7.3] - 2025-11-27
 ### Bug Fixes
 - **Fix URL property comparison for src and href attributes** (#321)
