@@ -49,7 +49,7 @@ await renderer.render(<UserProfile />, document.body);
 - **Intuitive**: Uses `async`/`await` for loading states and generator functions for lifecycles. Updates are just execution and control flow makes sense
 - **Fast**: Outperforms React in benchmarks while weighing in at 13.55KB with zero dependencies
 - **Flexible**: Write build-free vanilla JavaScript with template literals or write ergonomic JSX
-- **Transparent**: State lives in function scop. Explicit re-execution means no mysterious why did you render bugs.
+- **Transparent**: State lives in function scope. Explicit re-execution means no mysterious why did you render bugs.
 - **Future-proof**: Built on stable JavaScript features, not evolving framework abstractions
 
 ### The "Just JavaScript" Promise, Delivered
@@ -441,7 +441,7 @@ this.refresh(() => count++);       // With state update (v0.7+)
 ```javascript
 // el is whatever the component returns Node/Text/HTMLElement/null, an array of dom nodes, etc
 this.schedule((el) => {
-  console.log("Component rendered". el.innerHTML);
+  console.log("Component rendered", el.innerHTML);
 });
 ```
 
@@ -773,7 +773,7 @@ function withLogger(Component) {
 ```javascript
 function useInterval(ctx, callback, delay) {
   let interval = setInterval(callback, delay);
-  ctx.cleanup(() => clearInterval(interval);
+  ctx.cleanup(() => clearInterval(interval));
   return (newDelay) => {
     delay = newDelay;
     clearInterval(interval);
@@ -806,11 +806,17 @@ function* Timer() {
 ```javascript
 async function* DataComponent({url}) {
   for await ({url} of this) {
+    // This is the equivalent of calling
+    //   renderer.render(<Spinner />, document.body);
+    //   renderer.render(<Data />, document.body);
+    // but in a component.
     yield <Spinner />;
-    yield <Data data={data} />;
+    yield <Data />;
   }
 }
 ```
+
+Components race to render. Useful for fallback states.
 
 ---
 
