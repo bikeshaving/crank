@@ -19,19 +19,8 @@ Other links:
 ## Motivation
 **A framework that feels like JavaScript.**
 
-While other frameworks invent new paradigms and force you to learn
-framework-specific APIs, Crank embraces the language features you already know.
-
-### Pure JavaScript, No Compromises
-
 ```javascript
-// Async components just work, in the browser and on servers
-async function UserProfile({userId}) {
-  const user = await fetchUser(userId);
-  return <div>Hello, {user.name}!</div>;
-}
-
-// Lifecycle logic with generators feels natural
+// State is defined with generator components
 function* Timer() {
   // setup goes here
   let seconds = 0;
@@ -43,14 +32,24 @@ function* Timer() {
 
   clearInterval(interval); // Cleanup just works
 }
+
+renderer.render(<Timer />, document.body);
+
+// Async components just work on client and server
+async function UserProfile({userId}) {
+  const user = await fetchUser(userId);
+  return <div>Hello, {user.name}!</div>;
+}
+
+await renderer.render(<UserProfile />, document.body);
 ```
 
 ### Why Developers Choose Crank
 
-- **Intuitive**: Use `async`/`await` for loading states and `function*` for lifecycles — no new APIs to learn
-- **Fast**: Outperforms React in benchmarks while weighing at 13.55KB with zero dependencies
-- **Flexible**: Write components in vanilla JavaScript with template literals, or use JSX
-- **Clean**: State lives in function scope, lifecycle code goes where it belongs, no mysterious re-render bugs
+- **Intuitive**: Uses `async`/`await` for loading states and generator functions for lifecycles. Updates are just execution and control flow makes sense
+- **Fast**: Outperforms React in benchmarks while weighing in at 13.55KB with zero dependencies
+- **Flexible**: Write build-free vanilla JavaScript with template literals or write ergonomic JSX
+- **Transparent**: State lives in function scop. Explicit re-execution means no mysterious why did you render bugs.
 - **Future-proof**: Built on stable JavaScript features, not evolving framework abstractions
 
 ### The "Just JavaScript" Promise, Delivered
