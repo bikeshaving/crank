@@ -214,6 +214,10 @@ function Rack({mod, height}: {mod: number; height: number}) {
 
 export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 	let scrollTop = 0;
+	let idleOffset = 0;
+	let lastTime = 0;
+	let animationId: number | undefined;
+	const idleSpeed = 0.015; // radians per second - very subtle
 
 	const measure = () => {
 		if (typeof document !== "undefined") {
@@ -225,6 +229,16 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 				);
 			}
 		}
+	};
+
+	const animate = (time: number) => {
+		if (lastTime) {
+			const delta = (time - lastTime) / 1000;
+			idleOffset += idleSpeed * delta;
+		}
+		lastTime = time;
+		this.refresh();
+		animationId = requestAnimationFrame(animate);
 	};
 
 	measure();
@@ -239,14 +253,12 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 			window.removeEventListener("scroll", onscroll);
 		});
 
-		onclick = () => {
-			// TODO: advance the gears by a tiny amount every time the page is
-			// clicked.
-		};
-
-		window.addEventListener("click", onclick);
+		// Start idle animation
+		animationId = requestAnimationFrame(animate);
 		this.cleanup(() => {
-			window.removeEventListener("click", onclick as any);
+			if (animationId !== undefined) {
+				cancelAnimationFrame(animationId);
+			}
 		});
 	}
 
@@ -280,7 +292,9 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 			(typeof document !== "undefined" &&
 				document.scrollingElement?.clientHeight) ||
 			1000;
-		const scrollAng = (-scrollTop * speed) / pitchRadius1;
+		const scrollAng = (-scrollTop * speed) / pitchRadius1 + idleOffset;
+		// Linear rack movement derived from gear rotation
+		const rackOffset = -scrollAng * pitchRadius1;
 		yield jsx`
 			<div style="
 				position: fixed;
@@ -307,7 +321,7 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 						style="
 							transform: translate(
 								${rackX}px,
-								${rackY - ((scrollTop * speed) % (mod * Math.PI)) - (mod * Math.PI) / 2}px
+								${rackY - (rackOffset % (mod * Math.PI)) - (mod * Math.PI) / 2}px
 							);
 						"
 					>
@@ -341,11 +355,11 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 					>
 						<${Gear} mod=${mod} toothCount=${toothCount3} />
 					</g>
-					<!-- This last position is hard-coded because I just can’t even -->
+					<!-- This last position is hard-coded because I just can't even -->
 					<g
 						style="
 							transform: translate(${x3 + pitchRadius3 - mod}px, ${
-								y3 + 9 + ((scrollTop * speed) % (mod * Math.PI))
+								y3 + 9 + (rackOffset % (mod * Math.PI))
 							}px);
 						"
 					>
