@@ -122,7 +122,7 @@ function Hero() {
 					line-height: 0.8;
 				`} blur-background ${interactiveBackground}"
 			>
-				The Just JavaScript Framework.
+				The Just JavaScript UI Framework
 			</h2>
 		</header>
 	`;
@@ -209,6 +209,7 @@ export default async function Home({url}: ViewProps) {
 				<${CallToAction} />
 			</div>
 			<${AntiHero} />
+			<div class=${{"foo bar": true, "bar baz": false}}>Test</div>
 		<//Root>
 	`;
 }
