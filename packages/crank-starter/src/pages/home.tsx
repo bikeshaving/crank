@@ -2,13 +2,13 @@
 import {Counter} from "../components/counter";
 
 export function HomePage() {
-  return (
-    <html lang="en">
-      <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Crank + Shovel</title>
-        <style>{`
+	return (
+		<html lang="en">
+			<head>
+				<meta charset="UTF-8" />
+				<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+				<title>Crank + Shovel</title>
+				<style>{`
           * { box-sizing: border-box; margin: 0; padding: 0; }
           body {
             font-family: system-ui, -apple-system, sans-serif;
@@ -47,25 +47,25 @@ export function HomePage() {
           }
           button:hover { background: #1d4ed8; }
         `}</style>
-      </head>
-      <body>
-        <main>
-          <h1>Crank + Shovel</h1>
-          <p>
-            A starter template for building web apps with{" "}
-            <a href="https://crank.js.org">Crank.js</a> and{" "}
-            <a href="https://github.com/bikeshaving/shovel">Shovel</a>.
-          </p>
+			</head>
+			<body>
+				<main>
+					<h1>Crank + Shovel</h1>
+					<p>
+						A starter template for building web apps with{" "}
+						<a href="https://crank.js.org">Crank.js</a> and{" "}
+						<a href="https://github.com/bikeshaving/shovel">Shovel</a>.
+					</p>
 
-          <div class="counter">
-            <Counter />
-          </div>
+					<div class="counter">
+						<Counter />
+					</div>
 
-          <p>
-            Edit <code>src/pages/home.tsx</code> to get started.
-          </p>
-        </main>
-      </body>
-    </html>
-  );
+					<p>
+						Edit <code>src/pages/home.tsx</code> to get started.
+					</p>
+				</main>
+			</body>
+		</html>
+	);
 }
