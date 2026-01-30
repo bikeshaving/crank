@@ -28,8 +28,8 @@ const components = {
 							? "max(4vh, 30px)"
 							: null};
 					color: var(${depth === 3 ? "--highlight-color" : "--text-color"});
-					margin: 1em auto;
-					${(depth === 2 || depth === 3) && "padding: 1em 0"};
+					margin: 0.75em auto;
+					${(depth === 2 || depth === 3) && "padding: 0.75em 0"};
 				`}"
 			>
 				${children}
@@ -69,6 +69,7 @@ const components = {
 						}
 
 						max-width: 1500px;
+						background-color: var(--bg-color);
 					`}
 				"
 			>
@@ -198,18 +199,16 @@ export default async function Home({url}: ViewProps) {
 			description=${md.attributes.description}
 		>
 			<${Hero} />
-			<div class=${css`
+			<div class="blur-background-2 ${css`
 				font-size: max(18px, min(24px, 2vw));
-				background-color: var(--bg-color);
 				border-top: 1px solid var(--text-color);
 				border-bottom: 1px solid var(--text-color);
 				padding: 2em 0;
-			`}>
+			`}">
 				<${Marked} markdown=${md.body} components=${components} />
 				<${CallToAction} />
 			</div>
 			<${AntiHero} />
-			<div class=${{"foo bar": true, "bar baz": false}}>Test</div>
 		<//Root>
 	`;
 }

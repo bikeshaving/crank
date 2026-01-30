@@ -332,6 +332,7 @@ export function* CodeEditor(
 					min-height: 100%;
 					width: 100%;
 					display: flex;
+					background-color: var(--bg-color);
 				`}
 			>
 				${showGutter && jsx`<${Gutter} length=${lineTokens.length} />`}

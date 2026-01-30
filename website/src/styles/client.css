@@ -46,6 +46,22 @@
 	}
 }
 
+.blur-background-3 {
+	@supports (backdrop-filter: blur(20px)) {
+		backdrop-filter: blur(20px);
+		background-color: rgba(10, 14, 31, 0.4) !important;
+	}
+}
+
+.color-scheme-light {
+	.blur-background-3 {
+		@supports (backdrop-filter: blur(20px)) {
+			backdrop-filter: blur(20px);
+			background-color: rgba(231, 244, 245, 0.4) !important;
+		}
+	}
+}
+
 * {
 	color: var(--text-color);
 	box-sizing: border-box;
@@ -98,9 +114,6 @@ h1, h2, h3, h4, h5, h6 {
 
 h1, h2, h3 {
 	color: var(--highlight-color);
-	text-decoration: underline;
-	text-decoration-thickness: 1px;
-	text-underline-offset: 0.1em;
 }
 
 blockquote {
