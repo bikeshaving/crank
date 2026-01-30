@@ -111,7 +111,8 @@ function Hero() {
 				font-size: max(40px, 14vw);
 				margin: 0.3em 0;
 				padding: 0 0.2em;
-			`} blur-background ${interactiveBackground}"
+				text-shadow: 0 0 20px var(--bg-color), 0 0 40px var(--bg-color), 0 0 60px var(--bg-color);
+			`} ${interactiveBackground}"
 			>Crank.js</h1>
 			<h2
 				class="${css`
@@ -121,7 +122,8 @@ function Hero() {
 					margin: 0.2em;
 					padding: 0.1em 0.2em 0.05em;
 					line-height: 0.8;
-				`} blur-background ${interactiveBackground}"
+					text-shadow: 0 0 20px var(--bg-color), 0 0 40px var(--bg-color), 0 0 60px var(--bg-color);
+				`} ${interactiveBackground}"
 			>
 				The Just JavaScript UI Framework
 			</h2>

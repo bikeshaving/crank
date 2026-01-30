@@ -358,7 +358,7 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 					<!-- This last position is hard-coded because I just can't even -->
 					<g
 						style="
-							transform: translate(${x3 + pitchRadius3 - mod}px, ${
+							transform: translate(${x3 + pitchRadius3 - mod + 2}px, ${
 								y3 + 9 + (rackOffset % (mod * Math.PI))
 							}px);
 						"
