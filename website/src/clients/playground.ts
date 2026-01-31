@@ -11,7 +11,7 @@ import "prismjs/components/prism-javascript";
 import {CodePreview} from "../components/code-preview.js";
 import {CodeEditor} from "../components/code-editor.js";
 import {extractData} from "../components/serialize-javascript.js";
-//import LZString from "lz-string";
+import LZString from "lz-string";
 
 // TODO: move this to the ContentAreaElement component
 import {ContentAreaElement} from "@b9g/revise/contentarea.js";
@@ -42,11 +42,25 @@ const examples = extractData(
 );
 
 function* Playground(this: Context) {
-	let code = localStorage.getItem("playground-value") || "";
+	// Priority: URL hash > localStorage > default example
+	let code = "";
 	let updateEditor = true;
+	const hash = window.location.hash.slice(1);
+	if (hash) {
+		try {
+			code = LZString.decompressFromEncodedURIComponent(hash) || "";
+		} catch {
+			// Invalid hash, ignore
+		}
+	}
+	if (!code.trim()) {
+		code = localStorage.getItem("playground-value") || "";
+	}
 	if (!code.trim()) {
 		code = examples[0].code;
 	}
+
+	let shareStatus = "";
 
 	// Panel width as percentage (0-100)
 	let leftPanelWidth = parseFloat(
@@ -69,6 +83,23 @@ function* Playground(this: Context) {
 		code = code1;
 		updateEditor = true;
 		this.refresh();
+	};
+
+	const onShare = async () => {
+		const compressed = LZString.compressToEncodedURIComponent(code);
+		const url = `${window.location.origin}${window.location.pathname}#${compressed}`;
+		history.replaceState(null, "", `#${compressed}`);
+		try {
+			await navigator.clipboard.writeText(url);
+			shareStatus = "Copied!";
+		} catch {
+			shareStatus = "Failed";
+		}
+		this.refresh();
+		setTimeout(() => {
+			shareStatus = "";
+			this.refresh();
+		}, 2000);
 	};
 
 	const startDrag = (ev: MouseEvent | TouchEvent) => {
@@ -159,6 +190,24 @@ function* Playground(this: Context) {
 								)}
 							</select>
 						</div>
+						<button
+							class=${css`
+								margin-left: auto;
+								padding: 0.3em 0.8em;
+								background: transparent;
+								border: 1px solid currentcolor;
+								color: inherit;
+								cursor: pointer;
+								font-size: inherit;
+								&:hover {
+									background: var(--highlight-color);
+									color: var(--bg-color);
+								}
+							`}
+							onclick=${onShare}
+						>
+							${shareStatus || "Share"}
+						</button>
 					<//CodeEditorNavbar>
 					<${CodeEditor}
 						copy=${!updateEditor}
