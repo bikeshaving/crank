@@ -13,6 +13,7 @@ import HomeView from "./views/home.js";
 import BlogHomeView from "./views/blog-home.js";
 import BlogView from "./views/blog.js";
 import GuideView from "./views/guide.js";
+import APIView from "./views/api.js";
 import PlaygroundView from "./views/playground.js";
 import NotFoundView from "./views/not-found.js";
 
@@ -143,6 +144,21 @@ router.route("/guides/:slug").get(async (request, context) => {
 	return renderView(GuideView, url.pathname, context.params);
 });
 
+router.route("/api").get(async (request) => {
+	const url = new URL(request.url);
+	return renderView(APIView, url.pathname);
+});
+
+router.route("/api/:module").get(async (request, context) => {
+	const url = new URL(request.url);
+	return renderView(APIView, url.pathname, context.params);
+});
+
+router.route("/api/:module/:category/:slug").get(async (request, context) => {
+	const url = new URL(request.url);
+	return renderView(APIView, url.pathname, context.params);
+});
+
 router.route("/playground").get(async (request) => {
 	const url = new URL(request.url);
 	return renderView(PlaygroundView, url.pathname);
@@ -196,6 +212,12 @@ async function generateStaticSite() {
 			Path.join(__dirname, "../../docs"),
 		);
 		staticRoutes.push(...guideDocs.map((doc) => doc.url));
+
+		const apiDocs = await collectDocuments(
+			Path.join(__dirname, "../../docs/api"),
+			Path.join(__dirname, "../../docs"),
+		);
+		staticRoutes.push(...apiDocs.map((doc) => doc.url));
 
 		logger.info(`Pre-rendering ${staticRoutes.length} routes...`);
 
