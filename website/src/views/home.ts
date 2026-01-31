@@ -140,44 +140,52 @@ function Hero() {
 function CallToAction() {
 	return jsx`
 		<div class=${css`
-			text-align: center;
+			padding: 3rem 1rem;
 			display: flex;
 			flex-direction: column;
-			justify-content: center;
 			align-items: center;
+			gap: 1.5rem;
 		`}>
-			<div class="${css`
-				padding: 2em;
-				display: flex;
-				flex-direction: column;
-				justify-content: center;
-				align-items: center;
-			`}">
-			<h3 class="${css`
-				font-size: 32px;
-				margin: 1em 0.2em;
-				padding: 0.5em;
-			`}">Intrigued? Here are some possible next steps.</h3>
-			<div class="${css`
-				@media screen and (min-width: 800px) {
-					display: flex;
-					justify-content: center;
-					gap: 1em;
-				}
+			<a
+				href="/playground"
+				class=${css`
+					display: inline-block;
+					background: var(--highlight-color);
+					color: var(--bg-color);
+					padding: 0.8em 2em;
+					font-size: 1.25rem;
+					font-weight: bold;
+					text-decoration: none;
+					border-radius: 4px;
+					transition:
+						transform 0.15s ease,
+						box-shadow 0.15s ease;
 
-				& a {
-					display: block;
-					flex: 0 1 auto;
-					border: 1px solid var(--text-color);
-					color: var(--highlight-color);
-					padding: 0.4em;
-					font-size: 24px;
+					&:hover {
+						transform: translateY(-2px);
+						box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+					}
+				`}
+			>Try the Playground</a>
+			<div class=${css`
+				display: flex;
+				gap: 2rem;
+				font-size: 1rem;
+
+				a {
+					color: var(--text-color);
+					text-decoration: none;
+					opacity: 0.8;
+
+					&:hover {
+						color: var(--highlight-color);
+						opacity: 1;
+					}
 				}
-			`}">
-				<a class="${interactiveBackground} blur-background" href="/playground">Try it in the browser</a>
-				<a class="${interactiveBackground} blur-background" href="/guides/getting-started">Install it</a>
-				<a class="${interactiveBackground} blur-background" href="https://github.com/bikeshaving/crank">Contribute on GitHub</a>
-			</div>
+			`}>
+				<a href="/guides/getting-started">Get Started</a>
+				<a href="/api">API Reference</a>
+				<a href="https://github.com/bikeshaving/crank">GitHub</a>
 			</div>
 		</div>
 	`;

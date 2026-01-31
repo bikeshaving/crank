@@ -34,6 +34,7 @@ export default function NotFound({url}: ViewProps) {
 				`}>Page not found.</p>
 				<a href="/" class=${css`
 					border: 1px solid var(--text-color);
+					border-radius: 4px;
 					padding: 0.5em 1em;
 					text-decoration: none;
 					&:hover {

@@ -63,6 +63,7 @@ export function* InlineCodeBlock(
 						flex: 1 1 auto;
 						width: 100%;
 						border: 1px solid var(--text-color);
+						border-radius: 4px;
 						overflow: hidden;
 						${editable
 							? `@media (min-width: ${breakpoint}) {
@@ -89,6 +90,7 @@ export function* InlineCodeBlock(
 								position: sticky;
 								top: 100px;
 								border: 1px solid var(--text-color);
+								border-radius: 4px;
 								margin-top: -1px;
 								min-height: 50px;
 								width: 100%;
