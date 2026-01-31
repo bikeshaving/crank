@@ -71,26 +71,35 @@ function* Playground(this: Context) {
 		this.refresh();
 	};
 
-	const onDividerMouseDown = (ev: MouseEvent) => {
+	const startDrag = (ev: MouseEvent | TouchEvent) => {
 		ev.preventDefault();
 		isDragging = true;
 		document.body.style.cursor = "col-resize";
 		document.body.style.userSelect = "none";
 	};
 
-	const onMouseMove = (ev: MouseEvent) => {
-		if (!isDragging) return;
+	const updateWidth = (clientX: number) => {
 		const container = document.querySelector(".playground") as HTMLElement;
 		if (!container) return;
 		const rect = container.getBoundingClientRect();
-		const newWidth = ((ev.clientX - rect.left) / rect.width) * 100;
+		const newWidth = ((clientX - rect.left) / rect.width) * 100;
 		// Clamp between 20% and 80%
 		leftPanelWidth = Math.max(20, Math.min(80, newWidth));
 		localStorage.setItem("playground-panel-width", leftPanelWidth.toString());
 		this.refresh();
 	};
 
-	const onMouseUp = () => {
+	const onMouseMove = (ev: MouseEvent) => {
+		if (!isDragging) return;
+		updateWidth(ev.clientX);
+	};
+
+	const onTouchMove = (ev: TouchEvent) => {
+		if (!isDragging) return;
+		updateWidth(ev.touches[0].clientX);
+	};
+
+	const endDrag = () => {
 		if (isDragging) {
 			isDragging = false;
 			document.body.style.cursor = "";
@@ -99,10 +108,14 @@ function* Playground(this: Context) {
 	};
 
 	window.addEventListener("mousemove", onMouseMove);
-	window.addEventListener("mouseup", onMouseUp);
+	window.addEventListener("mouseup", endDrag);
+	window.addEventListener("touchmove", onTouchMove);
+	window.addEventListener("touchend", endDrag);
 	this.cleanup(() => {
 		window.removeEventListener("mousemove", onMouseMove);
-		window.removeEventListener("mouseup", onMouseUp);
+		window.removeEventListener("mouseup", endDrag);
+		window.removeEventListener("touchmove", onTouchMove);
+		window.removeEventListener("touchend", endDrag);
 	});
 
 	for ({} of this) {
@@ -177,7 +190,8 @@ function* Playground(this: Context) {
 							}
 						}
 					`}
-					onmousedown=${onDividerMouseDown}
+					onmousedown=${startDrag}
+					ontouchstart=${startDrag}
 				/>
 				<div class=${css`
 					@media (min-width: 800px) {
