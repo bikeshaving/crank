@@ -173,4 +173,4 @@ function* App() {
 
 - [Fragment](/api/core/components/Fragment)
 - [Lifecycles Guide](/guides/lifecycles)
-- [Special Props and Tags Guide](/guides/special-props-and-tags)
+- [Special Props and Tags Guide](/guides/special-props-and-components)
