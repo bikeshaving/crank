@@ -355,12 +355,7 @@ export function* CodePreview(
 
 	let oldValue: string | undefined;
 	let oldVisible: boolean | undefined;
-	for ({
-		value,
-		visible = true,
-		autoresize = false,
-		language,
-	} of this) {
+	for ({value, visible = true, autoresize = false, language} of this) {
 		if (value !== oldValue || visible !== oldVisible) {
 			// TODO: This looks like it could just be an async function somehow
 			loading = true;
@@ -372,8 +367,13 @@ export function* CodePreview(
 
 		const pulsingClass = css`
 			@keyframes pulse-bg {
-				0%, 100% { background-color: rgba(218, 165, 32, 0.2); }
-				50% { background-color: var(--bg-color); }
+				0%,
+				100% {
+					background-color: rgba(218, 165, 32, 0.2);
+				}
+				50% {
+					background-color: var(--bg-color);
+				}
 			}
 			animation: pulse-bg 1.5s ease-in-out infinite;
 		`;
