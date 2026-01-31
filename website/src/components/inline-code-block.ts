@@ -94,6 +94,8 @@ export function* InlineCodeBlock(
 								width: 100%;
 								background-color: var(--bg-color);
 								@media screen and (min-width: ${breakpoint}) {
+									margin-top: 0;
+									margin-left: -1px;
 									width: 30%;
 								}
 							`}>
