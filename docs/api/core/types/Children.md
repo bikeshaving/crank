@@ -26,7 +26,7 @@ This is the type you should use for:
 - Component return types
 - Generator yield types
 
-Arrays and other iterables are automatically wrapped in [Fragment](/api/core/special-tags/Fragment) elements during rendering.
+Arrays and other iterables are automatically wrapped in [Fragment](/api/core/components/Fragment) elements during rendering.
 
 ## Examples
 
@@ -110,4 +110,4 @@ function TodoList({todos}) {
 
 - [Child](/api/core/types/Child)
 - [Component](/api/core/types/Component)
-- [Fragment](/api/core/special-tags/Fragment)
+- [Fragment](/api/core/components/Fragment)

@@ -1,13 +1,13 @@
 ---
 title: Text
 module: "@b9g/crank"
-type: special-tag
+type: component
 publish: true
 ---
 
 # Text
 
-A special tag for explicitly creating text nodes.
+A component for explicitly creating text nodes.
 
 ## Syntax
 
@@ -100,6 +100,6 @@ const adapter = {
 
 ## See also
 
-- [Raw](/api/core/special-tags/Raw)
+- [Raw](/api/core/components/Raw)
 - [Child](/api/core/types/Child)
 - [RenderAdapter](/api/core/interfaces/RenderAdapter)

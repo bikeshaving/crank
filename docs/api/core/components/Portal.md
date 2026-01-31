@@ -1,13 +1,13 @@
 ---
 title: Portal
 module: "@b9g/crank"
-type: special-tag
+type: component
 publish: true
 ---
 
 # Portal
 
-A special tag for rendering children into a different root container.
+A component for rendering children into a different root container.
 
 ## Syntax
 
@@ -154,6 +154,6 @@ function App() {
 
 ## See also
 
-- [Fragment](/api/core/special-tags/Fragment)
+- [Fragment](/api/core/components/Fragment)
 - [Renderer](/api/core/classes/Renderer)
 - [Special Props and Tags Guide](/guides/special-props-and-tags)
