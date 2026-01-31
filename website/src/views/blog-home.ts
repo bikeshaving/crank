@@ -119,7 +119,7 @@ export default async function BlogHome({url}: ViewProps) {
 									opacity: 0.7;
 								`}>
 									${publishDateDisplay && jsx`<span>${publishDateDisplay}</span>`}
-									${publishDateDisplay && jsx`<span>•</span>`}
+									${publishDateDisplay && jsx`<span style="opacity: 0.5">/</span>`}
 									<span>${readTime} min read</span>
 								</div>
 								<h2 class=${css`
