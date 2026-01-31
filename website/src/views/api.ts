@@ -1,4 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
+import {css} from "@emotion/css";
 import * as path from "path";
 
 import {Root} from "../components/root.js";
@@ -6,6 +7,7 @@ import {Main} from "../components/sidebar.js";
 import {Marked} from "../components/marked.js";
 import {components} from "../components/marked-components.js";
 import {APISidebar, API_MODULES} from "../components/api-sidebar.js";
+import {EditOnGitHub} from "../components/edit-on-github.js";
 import {collectDocuments} from "../models/document.js";
 
 interface ViewProps {
@@ -39,6 +41,7 @@ export default async function APIView({url}: ViewProps) {
 	const {
 		attributes: {title, description},
 		body,
+		filename,
 	} = post;
 
 	return jsx`
@@ -50,6 +53,14 @@ export default async function APIView({url}: ViewProps) {
 			<${APISidebar} modules=${API_MODULES} url=${url} />
 			<${Main}>
 				<${Marked} markdown=${body} components=${components} />
+				<div class=${css`
+					margin-top: 3rem;
+					padding-top: 1.5rem;
+					border-top: 1px solid var(--text-color);
+					opacity: 0.5;
+				`}>
+					<${EditOnGitHub} filename=${filename} />
+				</div>
 			<//Main>
 		<//Root>
 	`;
