@@ -6,6 +6,7 @@ import {Main} from "../components/sidebar.js";
 import {BlogContent} from "../components/blog-content.js";
 import {Marked} from "../components/marked.js";
 import {components} from "../components/marked-components.js";
+import {Giscus} from "../components/giscus.js";
 interface ViewProps {
 	url: string;
 	params: Record<string, string>;
@@ -46,6 +47,19 @@ export default async function BlogPage({url}: ViewProps) {
 				>
 					<${Marked} markdown=${body} components=${components} />
 				<//BlogContent>
+				<div style="max-width: 800px; margin-top: 3rem;">
+					<${Giscus}
+						repo="bikeshaving/crank"
+						repoId="MDEwOlJlcG9zaXRvcnkyMDY0Mzk3MDc="
+						category="Comments"
+						categoryId="DIC_kwDODE4FG84Cw3V5"
+						mapping="url"
+						strict=${true}
+						reactionsEnabled=${true}
+						emitMetadata=${true}
+						inputPosition="top"
+					/>
+				</div>
 			<//Main>
 		<//Root>
 	`;
