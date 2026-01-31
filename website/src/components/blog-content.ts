@@ -156,17 +156,21 @@ export function BlogContent({
 
 				.code-block-live {
 					width: 100vw;
+					max-width: 1400px;
 					position: relative;
 					left: 50%;
-					right: 50%;
-					margin-left: -50vw;
-					margin-right: -50vw;
+					transform: translateX(-50%);
 					padding: 0 1rem;
 					box-sizing: border-box;
 
 					@media (min-width: 800px) {
 						padding: 0 2rem;
 					}
+				}
+
+				.code-block-container:not(.code-block-live) {
+					max-width: 100%;
+					overflow-x: auto;
 				}
 			`}>
 				${children}
