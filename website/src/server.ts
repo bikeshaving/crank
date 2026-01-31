@@ -1,4 +1,5 @@
 import * as Path from "path";
+import * as FS from "fs/promises";
 
 import {jsx} from "@b9g/crank/standalone";
 import {renderer} from "@b9g/crank/html";
@@ -13,6 +14,7 @@ import HomeView from "./views/home.js";
 import BlogHomeView from "./views/blog-home.js";
 import BlogView from "./views/blog.js";
 import GuideView from "./views/guide.js";
+import APIView from "./views/api.js";
 import PlaygroundView from "./views/playground.js";
 import NotFoundView from "./views/not-found.js";
 
@@ -55,6 +57,9 @@ import crankStandaloneModule from "./clients/crank/standalone.ts" with {
 	assetBase: "/static/",
 };
 
+// Export logger for custom app logging
+export const logger = self.loggers.get(["shovel", "crank-website"]);
+
 // Export asset URLs for use in views
 export const assets = {
 	clientCSS,
@@ -84,11 +89,60 @@ const __dirname = new URL(".", import.meta.url).pathname;
 // Create router
 const router = new Router();
 
+// Request logging middleware
+const requestLogger = self.loggers.get(["shovel", "crank-website"]);
+router.use(async (request) => {
+	const url = new URL(request.url);
+	requestLogger.info("{method} {path}", {
+		method: request.method,
+		path: url.pathname,
+	});
+	return;
+});
+
 // Strip trailing slashes (redirect /path/ → /path)
 router.use(trailingSlash("strip"));
 
 // Setup assets middleware to serve /static/ files
 router.use(assetsMiddleware());
+
+// Serve raw static files (images, etc.) from the static directory
+const staticDir = Path.join(__dirname, "../static");
+const mimeTypes: Record<string, string> = {
+	".png": "image/png",
+	".jpg": "image/jpeg",
+	".jpeg": "image/jpeg",
+	".gif": "image/gif",
+	".svg": "image/svg+xml",
+	".ico": "image/x-icon",
+	".mp3": "audio/mpeg",
+	".webp": "image/webp",
+};
+
+router.route("/static/:filename").get(async (request, context) => {
+	const {filename} = context.params;
+	const filePath = Path.join(staticDir, filename);
+
+	// Security: prevent directory traversal
+	if (!filePath.startsWith(staticDir)) {
+		return new Response("Forbidden", {status: 403});
+	}
+
+	try {
+		const content = await FS.readFile(filePath);
+		const ext = Path.extname(filename).toLowerCase();
+		const contentType = mimeTypes[ext] || "application/octet-stream";
+
+		return new Response(content, {
+			headers: {
+				"Content-Type": contentType,
+				"Cache-Control": "public, max-age=31536000",
+			},
+		});
+	} catch {
+		return new Response("Not Found", {status: 404});
+	}
+});
 
 // Helper to render a Crank view
 async function renderView(
@@ -128,6 +182,35 @@ router.route("/guides/:slug").get(async (request, context) => {
 	const url = new URL(request.url);
 	return renderView(GuideView, url.pathname, context.params);
 });
+
+router.route("/api").get(async (request) => {
+	const url = new URL(request.url);
+	return renderView(APIView, url.pathname);
+});
+
+router.route("/api/:module").get(async (request, context) => {
+	const url = new URL(request.url);
+	return renderView(APIView, url.pathname, context.params);
+});
+
+router.route("/api/:module/:category/:slug").get(async (request, context) => {
+	const url = new URL(request.url);
+	return renderView(APIView, url.pathname, context.params);
+});
+
+// Redirects for renamed URLs (old -> new)
+const redirects: Record<string, string> = {
+	"/guides/special-props-and-tags": "/guides/special-props-and-components",
+};
+
+for (const [oldPath, newPath] of Object.entries(redirects)) {
+	router.route(oldPath).get(() => {
+		return new Response(null, {
+			status: 301,
+			headers: {Location: newPath},
+		});
+	});
+}
 
 router.route("/playground").get(async (request) => {
 	const url = new URL(request.url);
@@ -183,6 +266,12 @@ async function generateStaticSite() {
 		);
 		staticRoutes.push(...guideDocs.map((doc) => doc.url));
 
+		const apiDocs = await collectDocuments(
+			Path.join(__dirname, "../../docs/api"),
+			Path.join(__dirname, "../../docs"),
+		);
+		staticRoutes.push(...apiDocs.map((doc) => doc.url));
+
 		logger.info(`Pre-rendering ${staticRoutes.length} routes...`);
 
 		// Generate 404 page
@@ -229,6 +318,60 @@ async function generateStaticSite() {
 			} catch (error: any) {
 				logger.error(`Failed to generate ${route}:`, error.message);
 			}
+		}
+
+		// Copy raw static files (images, etc.)
+		const staticFilesDir = await staticBucket.getDirectoryHandle("static", {
+			create: true,
+		});
+		const staticFiles = await FS.readdir(staticDir);
+		for (const filename of staticFiles) {
+			try {
+				const content = await FS.readFile(Path.join(staticDir, filename));
+				const fileHandle = await staticFilesDir.getFileHandle(filename, {
+					create: true,
+				});
+				const writable = await fileHandle.createWritable();
+				await writable.write(content);
+				await writable.close();
+				logger.info(`Copied static/${filename}`);
+			} catch (error: any) {
+				logger.error(`Failed to copy static/${filename}:`, error.message);
+			}
+		}
+
+		// Generate redirect HTML files for old URLs
+		for (const [oldPath, newPath] of Object.entries(redirects)) {
+			const redirectHtml = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Redirecting...</title>
+<meta http-equiv="refresh" content="0; url=${newPath}">
+<link rel="canonical" href="${newPath}">
+</head>
+<body>
+<p>Redirecting to <a href="${newPath}">${newPath}</a>...</p>
+</body>
+</html>`;
+
+			const filePath = `${oldPath.slice(1)}/index.html`;
+			const parts = filePath.split("/");
+			let currentDir = staticBucket;
+			for (let i = 0; i < parts.length - 1; i++) {
+				currentDir = await currentDir.getDirectoryHandle(parts[i], {
+					create: true,
+				});
+			}
+
+			const fileName = parts[parts.length - 1];
+			const fileHandle = await currentDir.getFileHandle(fileName, {
+				create: true,
+			});
+			const writable = await fileHandle.createWritable();
+			await writable.write(redirectHtml);
+			await writable.close();
+			logger.info(`Generated redirect ${oldPath} -> ${newPath}`);
 		}
 
 		logger.info("Static site generation complete!");

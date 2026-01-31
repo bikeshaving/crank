@@ -98,7 +98,7 @@ img {
 
 button {
 	background-color: transparent;
-	border-radius: 0;
+	border-radius: 4px;
 	border: 1px solid currentcolor;
 	padding: 0.3em;
 }
@@ -175,6 +175,7 @@ select, input, textarea {
   background-color: var(--bg-color);
 	color: var(--text-color);
 	border: 1px solid var(--text-color);
+	border-radius: 4px;
 }
 
 .content {
@@ -183,7 +184,7 @@ select, input, textarea {
 
 /* Blog preview hover effect */
 .blog-preview-link .content {
-	border-radius: 8px;
+	border-radius: 4px;
 	padding: 8px;
 	margin-left: -8px;
 	margin-right: -8px;

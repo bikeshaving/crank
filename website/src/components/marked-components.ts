@@ -9,16 +9,17 @@ export const components = {
 
 	code({token}: any) {
 		const {text: code, lang} = token;
+		const isLive = lang.endsWith(" live");
 		// TODO: turn this pattern into an Island Component
 		return jsx`
 			<div
 				style="margin: 30px auto;"
-				class="code-block-container"
+				class="code-block-container ${isLive ? "code-block-live" : ""}"
 			>
 				<${InlineCodeBlock}
 					value=${code}
 					lang=${lang}
-					editable=${lang.endsWith(" live")}
+					editable=${isLive}
 				/>
 				<${SerializeScript}
 					class="props"

@@ -3,6 +3,7 @@ import {jsx, Raw} from "@b9g/crank/standalone";
 import type {Children, Context} from "@b9g/crank";
 import {extractCritical} from "@emotion/server";
 import {Navbar} from "./navbar.js";
+import {Footer} from "./footer.js";
 import {SerializeScript} from "./serialize-javascript.js";
 import {getColorSchemeScript} from "../utils/color-scheme.js";
 import {assets, staticURLs} from "../server.js";
@@ -39,6 +40,7 @@ export function* Root(
 				<${Navbar} url=${url} />
 			</div>
 			${children}
+			<${Footer} />
 		`;
 		const {html, css} = extractCritical(childrenHTML);
 		yield jsx`

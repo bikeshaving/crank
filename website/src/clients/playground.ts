@@ -11,7 +11,7 @@ import "prismjs/components/prism-javascript";
 import {CodePreview} from "../components/code-preview.js";
 import {CodeEditor} from "../components/code-editor.js";
 import {extractData} from "../components/serialize-javascript.js";
-//import LZString from "lz-string";
+import LZString from "lz-string";
 
 // TODO: move this to the ContentAreaElement component
 import {ContentAreaElement} from "@b9g/revise/contentarea.js";
@@ -42,11 +42,31 @@ const examples = extractData(
 );
 
 function* Playground(this: Context) {
-	let code = localStorage.getItem("playground-value") || "";
+	// Priority: URL hash > localStorage > default example
+	let code = "";
 	let updateEditor = true;
+	const hash = window.location.hash.slice(1);
+	if (hash) {
+		try {
+			code = LZString.decompressFromEncodedURIComponent(hash) || "";
+		} catch {
+			// Invalid hash, ignore
+		}
+	}
+	if (!code.trim()) {
+		code = localStorage.getItem("playground-value") || "";
+	}
 	if (!code.trim()) {
 		code = examples[0].code;
 	}
+
+	let shareStatus = "";
+
+	// Panel width as percentage (0-100)
+	let leftPanelWidth = parseFloat(
+		localStorage.getItem("playground-panel-width") || "61.8",
+	);
+	let isDragging = false;
 
 	this.addEventListener("contentchange", (ev: any) => {
 		code = ev.target.value;
@@ -65,16 +85,69 @@ function* Playground(this: Context) {
 		this.refresh();
 	};
 
-	//const hashchange = (ev: HashChangeEvent) => {
-	//	console.log("hashchange", ev);
-	//	const value1 = LZString.decompressFromEncodedURIComponent("poop");
-	//	console.log(value);
-	//};
-	//window.addEventListener("hashchange", hashchange);
-	//this.cleanup(() => window.removeEventListener("hashchange", hashchange))
-	//this.flush(() => {
-	//	window.location.hash = LZString.compressToEncodedURIComponent(value);
-	//});
+	const onShare = async () => {
+		const compressed = LZString.compressToEncodedURIComponent(code);
+		const url = `${window.location.origin}${window.location.pathname}#${compressed}`;
+		history.replaceState(null, "", `#${compressed}`);
+		try {
+			await navigator.clipboard.writeText(url);
+			shareStatus = "Copied!";
+		} catch {
+			shareStatus = "Failed";
+		}
+		this.refresh();
+		setTimeout(() => {
+			shareStatus = "";
+			this.refresh();
+		}, 2000);
+	};
+
+	const startDrag = (ev: MouseEvent | TouchEvent) => {
+		ev.preventDefault();
+		isDragging = true;
+		document.body.style.cursor = "col-resize";
+		document.body.style.userSelect = "none";
+	};
+
+	const updateWidth = (clientX: number) => {
+		const container = document.querySelector(".playground") as HTMLElement;
+		if (!container) return;
+		const rect = container.getBoundingClientRect();
+		const newWidth = ((clientX - rect.left) / rect.width) * 100;
+		// Clamp between 20% and 80%
+		leftPanelWidth = Math.max(20, Math.min(80, newWidth));
+		localStorage.setItem("playground-panel-width", leftPanelWidth.toString());
+		this.refresh();
+	};
+
+	const onMouseMove = (ev: MouseEvent) => {
+		if (!isDragging) return;
+		updateWidth(ev.clientX);
+	};
+
+	const onTouchMove = (ev: TouchEvent) => {
+		if (!isDragging) return;
+		updateWidth(ev.touches[0].clientX);
+	};
+
+	const endDrag = () => {
+		if (isDragging) {
+			isDragging = false;
+			document.body.style.cursor = "";
+			document.body.style.userSelect = "";
+		}
+	};
+
+	window.addEventListener("mousemove", onMouseMove);
+	window.addEventListener("mouseup", endDrag);
+	window.addEventListener("touchmove", onTouchMove);
+	window.addEventListener("touchend", endDrag);
+	this.cleanup(() => {
+		window.removeEventListener("mousemove", onMouseMove);
+		window.removeEventListener("mouseup", endDrag);
+		window.removeEventListener("touchmove", onTouchMove);
+		window.removeEventListener("touchend", endDrag);
+	});
 
 	for ({} of this) {
 		this.schedule(() => {
@@ -94,12 +167,12 @@ function* Playground(this: Context) {
 				padding-top: 50px;
 			`}">
 				<div class=${css`
-					flex: 0 1 auto;
+					flex: 0 0 auto;
 					min-height: 80vh;
 					overflow: auto;
 					@media (min-width: 800px) {
 						height: calc(100vh - 50px);
-						width: 61.8%;
+						width: ${leftPanelWidth}%;
 					}
 				`}>
 					<${CodeEditorNavbar}>
@@ -117,6 +190,24 @@ function* Playground(this: Context) {
 								)}
 							</select>
 						</div>
+						<button
+							class=${css`
+								margin-left: auto;
+								padding: 0.3em 0.8em;
+								background: transparent;
+								border: 1px solid currentcolor;
+								color: inherit;
+								cursor: pointer;
+								font-size: inherit;
+								&:hover {
+									background: var(--highlight-color);
+									color: var(--bg-color);
+								}
+							`}
+							onclick=${onShare}
+						>
+							${shareStatus || "Share"}
+						</button>
 					<//CodeEditorNavbar>
 					<${CodeEditor}
 						copy=${!updateEditor}
@@ -125,20 +216,44 @@ function* Playground(this: Context) {
 						showGutter=${true}
 					/>
 				</div>
+				<div
+					class=${css`
+						display: none;
+						@media (min-width: 800px) {
+							display: block;
+							flex: 0 0 1px;
+							background: currentcolor;
+							cursor: col-resize;
+							position: relative;
+							z-index: 10;
+							&::before {
+								content: "";
+								position: absolute;
+								top: 0;
+								bottom: 0;
+								left: -4px;
+								right: -4px;
+							}
+							&:hover {
+								background: var(--highlight-color);
+							}
+						}
+					`}
+					onmousedown=${startDrag}
+					ontouchstart=${startDrag}
+				/>
 				<div class=${css`
 					@media (min-width: 800px) {
-						flex: 1 0 auto;
+						flex: 1 1 auto;
 						height: calc(100vh - 50px);
-						width: 400px;
+						min-width: 0;
 					}
 					overflow-y: auto;
 					border-top: 1px solid currentcolor;
 					@media (min-width: 800px) {
 						border-top: none;
-						border-left: 1px solid currentcolor;
-						margin-left: -1px;
 					}
-				`}>
+				`} style=${isDragging ? "pointer-events: none" : ""}>
 					<${CodePreview} value=${code} showStatus autoresize />
 				</div>
 			</div>

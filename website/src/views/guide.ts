@@ -1,10 +1,12 @@
 import {jsx} from "@b9g/crank/standalone";
+import {css} from "@emotion/css";
 import * as path from "path";
 
 import {Root} from "../components/root.js";
 import {Main, Sidebar} from "../components/sidebar.js";
 import {Marked} from "../components/marked.js";
 import {components} from "../components/marked-components.js";
+import {EditOnGitHub} from "../components/edit-on-github.js";
 interface ViewProps {
 	url: string;
 	params: Record<string, string>;
@@ -29,6 +31,7 @@ export default async function Guide({url}: ViewProps) {
 	const {
 		attributes: {title, description},
 		body,
+		filename,
 	} = post;
 	return jsx`
 		<${Root} title="Crank.js | ${title}" url=${url} description=${description}>
@@ -36,6 +39,14 @@ export default async function Guide({url}: ViewProps) {
 			<${Main}>
 				<h1>${title}</h1>
 				<${Marked} markdown=${body} components=${components} />
+				<div class=${css`
+					margin-top: 3rem;
+					padding-top: 1.5rem;
+					border-top: 1px solid var(--text-color);
+					opacity: 0.5;
+				`}>
+					<${EditOnGitHub} filename=${filename} />
+				</div>
 			<//Main>
 		<//Root>
 	`;
