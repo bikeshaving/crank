@@ -7,6 +7,7 @@ import {BlogContent} from "../components/blog-content.js";
 import {Marked} from "../components/marked.js";
 import {components} from "../components/marked-components.js";
 import {Giscus} from "../components/giscus.js";
+import {EditOnGitHub} from "../components/edit-on-github.js";
 
 interface ViewProps {
 	url: string;
@@ -38,6 +39,7 @@ export default async function BlogPage({url}: ViewProps) {
 	const {
 		attributes: {title, publishDate, author, authorURL, description},
 		body,
+		filename,
 	} = post;
 
 	const readTime = estimateReadTime(body);
@@ -86,7 +88,14 @@ export default async function BlogPage({url}: ViewProps) {
 
 				<div class=${css`
 					max-width: 800px;
-					margin-top: 4rem;
+					margin-top: 2rem;
+				`}>
+					<${EditOnGitHub} filename=${filename} />
+				</div>
+
+				<div class=${css`
+					max-width: 800px;
+					margin-top: 3rem;
 					padding-top: 2rem;
 					border-top: 1px solid var(--text-color);
 				`}>
