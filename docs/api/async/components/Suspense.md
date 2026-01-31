@@ -11,12 +11,9 @@ A component that displays fallback content while its children are loading.
 
 ## Syntax
 
-```ts
-async function* Suspense(props: {
-  children: Children;
-  fallback: Children;
-  timeout?: number;
-}): AsyncGenerator<Children>
+```jsx
+<Suspense fallback={<Loading />}>{children}</Suspense>
+<Suspense fallback={<Loading />} timeout={500}>{children}</Suspense>
 ```
 
 ## Props

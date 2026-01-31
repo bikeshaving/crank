@@ -11,8 +11,10 @@ A special tag for injecting raw HTML strings or DOM nodes directly into the rend
 
 ## Syntax
 
-```ts
-const Raw: unique symbol = Symbol.for("crank.Raw");
+```jsx
+<Raw value={htmlString} />
+<Raw value={domNode} />
+<Raw value={arrayOfNodes} />
 ```
 
 ## Description

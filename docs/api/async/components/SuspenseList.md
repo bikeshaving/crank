@@ -11,13 +11,10 @@ Controls when child Suspense components show their content or fallbacks based on
 
 ## Syntax
 
-```ts
-function* SuspenseList(props: {
-  children: Children;
-  revealOrder?: "forwards" | "backwards" | "together";
-  tail?: "collapsed" | "hidden";
-  timeout?: number;
-}): Generator<Children>
+```jsx
+<SuspenseList revealOrder="forwards">{children}</SuspenseList>
+<SuspenseList revealOrder="together" tail="collapsed">{children}</SuspenseList>
+<SuspenseList revealOrder="backwards" timeout={100}>{children}</SuspenseList>
 ```
 
 ## Props
