@@ -159,6 +159,24 @@ router.route("/api/:module/:category/:slug").get(async (request, context) => {
 	return renderView(APIView, url.pathname, context.params);
 });
 
+// Redirects for renamed URLs (old -> new)
+const redirects: Record<string, string> = {
+	"/api/core/special-tags/Fragment": "/api/core/components/Fragment",
+	"/api/core/special-tags/Portal": "/api/core/components/Portal",
+	"/api/core/special-tags/Copy": "/api/core/components/Copy",
+	"/api/core/special-tags/Text": "/api/core/components/Text",
+	"/api/core/special-tags/Raw": "/api/core/components/Raw",
+};
+
+for (const [oldPath, newPath] of Object.entries(redirects)) {
+	router.route(oldPath).get(() => {
+		return new Response(null, {
+			status: 301,
+			headers: {Location: newPath},
+		});
+	});
+}
+
 router.route("/playground").get(async (request) => {
 	const url = new URL(request.url);
 	return renderView(PlaygroundView, url.pathname);
@@ -265,6 +283,40 @@ async function generateStaticSite() {
 			} catch (error: any) {
 				logger.error(`Failed to generate ${route}:`, error.message);
 			}
+		}
+
+		// Generate redirect HTML files for old URLs
+		for (const [oldPath, newPath] of Object.entries(redirects)) {
+			const redirectHtml = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Redirecting...</title>
+<meta http-equiv="refresh" content="0; url=${newPath}">
+<link rel="canonical" href="${newPath}">
+</head>
+<body>
+<p>Redirecting to <a href="${newPath}">${newPath}</a>...</p>
+</body>
+</html>`;
+
+			const filePath = `${oldPath.slice(1)}/index.html`;
+			const parts = filePath.split("/");
+			let currentDir = staticBucket;
+			for (let i = 0; i < parts.length - 1; i++) {
+				currentDir = await currentDir.getDirectoryHandle(parts[i], {
+					create: true,
+				});
+			}
+
+			const fileName = parts[parts.length - 1];
+			const fileHandle = await currentDir.getFileHandle(fileName, {
+				create: true,
+			});
+			const writable = await fileHandle.createWritable();
+			await writable.write(redirectHtml);
+			await writable.close();
+			logger.info(`Generated redirect ${oldPath} -> ${newPath}`);
 		}
 
 		logger.info("Static site generation complete!");
