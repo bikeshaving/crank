@@ -1,4 +1,5 @@
 import * as Path from "path";
+import * as FS from "fs/promises";
 
 import {jsx} from "@b9g/crank/standalone";
 import {renderer} from "@b9g/crank/html";
@@ -104,6 +105,44 @@ router.use(trailingSlash("strip"));
 
 // Setup assets middleware to serve /static/ files
 router.use(assetsMiddleware());
+
+// Serve raw static files (images, etc.) from the static directory
+const staticDir = Path.join(__dirname, "../static");
+const mimeTypes: Record<string, string> = {
+	".png": "image/png",
+	".jpg": "image/jpeg",
+	".jpeg": "image/jpeg",
+	".gif": "image/gif",
+	".svg": "image/svg+xml",
+	".ico": "image/x-icon",
+	".mp3": "audio/mpeg",
+	".webp": "image/webp",
+};
+
+router.route("/static/:filename").get(async (request, context) => {
+	const {filename} = context.params;
+	const filePath = Path.join(staticDir, filename);
+
+	// Security: prevent directory traversal
+	if (!filePath.startsWith(staticDir)) {
+		return new Response("Forbidden", {status: 403});
+	}
+
+	try {
+		const content = await FS.readFile(filePath);
+		const ext = Path.extname(filename).toLowerCase();
+		const contentType = mimeTypes[ext] || "application/octet-stream";
+
+		return new Response(content, {
+			headers: {
+				"Content-Type": contentType,
+				"Cache-Control": "public, max-age=31536000",
+			},
+		});
+	} catch {
+		return new Response("Not Found", {status: 404});
+	}
+});
 
 // Helper to render a Crank view
 async function renderView(
@@ -278,6 +317,26 @@ async function generateStaticSite() {
 				}
 			} catch (error: any) {
 				logger.error(`Failed to generate ${route}:`, error.message);
+			}
+		}
+
+		// Copy raw static files (images, etc.)
+		const staticFilesDir = await staticBucket.getDirectoryHandle("static", {
+			create: true,
+		});
+		const staticFiles = await FS.readdir(staticDir);
+		for (const filename of staticFiles) {
+			try {
+				const content = await FS.readFile(Path.join(staticDir, filename));
+				const fileHandle = await staticFilesDir.getFileHandle(filename, {
+					create: true,
+				});
+				const writable = await fileHandle.createWritable();
+				await writable.write(content);
+				await writable.close();
+				logger.info(`Copied static/${filename}`);
+			} catch (error: any) {
+				logger.error(`Failed to copy static/${filename}:`, error.message);
 			}
 		}
 
