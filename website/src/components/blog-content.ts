@@ -153,6 +153,21 @@ export function BlogContent({
 					opacity: 0.3;
 					margin: 2.5rem 0;
 				}
+
+				.code-block-live {
+					width: 100vw;
+					position: relative;
+					left: 50%;
+					right: 50%;
+					margin-left: -50vw;
+					margin-right: -50vw;
+					padding: 0 1rem;
+					box-sizing: border-box;
+
+					@media (min-width: 800px) {
+						padding: 0 2rem;
+					}
+				}
 			`}>
 				${children}
 			</div>
