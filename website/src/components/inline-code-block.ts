@@ -63,11 +63,12 @@ export function* InlineCodeBlock(
 						flex: 1 1 auto;
 						width: 100%;
 						border: 1px solid var(--text-color);
-						border-radius: 4px;
+						border-radius: ${editable ? "4px 4px 0 0" : "4px"};
 						overflow: hidden;
 						${editable
 							? `@media (min-width: ${breakpoint}) {
 							max-width: 61.8%;
+							border-radius: 4px 0 0 4px;
 						}`
 							: ""}
 					`}>
@@ -90,7 +91,7 @@ export function* InlineCodeBlock(
 								position: sticky;
 								top: 100px;
 								border: 1px solid var(--text-color);
-								border-radius: 4px;
+								border-radius: 0 0 4px 4px;
 								margin-top: -1px;
 								min-height: 50px;
 								width: 100%;
@@ -98,6 +99,7 @@ export function* InlineCodeBlock(
 								@media screen and (min-width: ${breakpoint}) {
 									margin-top: 0;
 									margin-left: -1px;
+									border-radius: 0 4px 4px 0;
 									width: 30%;
 								}
 							`}>
