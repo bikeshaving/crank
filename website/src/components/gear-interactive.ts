@@ -217,7 +217,7 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 	let idleOffset = 0;
 	let lastTime = 0;
 	let animationId: number | undefined;
-	const idleSpeed = (2 * Math.PI) / 240;
+	const idleSpeed = (2 * Math.PI) / 720; // 1 rotation per 12 minutes
 
 	const measure = () => {
 		if (typeof document !== "undefined") {
