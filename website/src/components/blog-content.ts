@@ -77,8 +77,8 @@ export function BlogContent({
 						</span>
 					`
 					}
-					${publishDateDisplay && jsx`<span>•</span><span>${publishDateDisplay}</span>`}
-					${readTime && jsx`<span>•</span><span>${readTime} min read</span>`}
+					${publishDateDisplay && jsx`<span style="opacity: 0.5">/</span><span>${publishDateDisplay}</span>`}
+					${readTime && jsx`<span style="opacity: 0.5">/</span><span>${readTime} min read</span>`}
 				</div>
 
 				${
@@ -170,7 +170,6 @@ export function BlogContent({
 
 				.code-block-container:not(.code-block-live) {
 					max-width: 100%;
-					overflow-x: auto;
 				}
 			`}>
 				${children}
