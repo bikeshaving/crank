@@ -55,6 +55,9 @@ import crankStandaloneModule from "./clients/crank/standalone.ts" with {
 	assetBase: "/static/",
 };
 
+// Export logger for custom app logging
+export const logger = self.loggers.get(["shovel", "crank-website"]);
+
 // Export asset URLs for use in views
 export const assets = {
 	clientCSS,
@@ -83,6 +86,17 @@ const __dirname = new URL(".", import.meta.url).pathname;
 
 // Create router
 const router = new Router();
+
+// Request logging middleware
+const requestLogger = self.loggers.get(["shovel", "crank-website"]);
+router.use(async (request) => {
+	const url = new URL(request.url);
+	requestLogger.info("{method} {path}", {
+		method: request.method,
+		path: url.pathname,
+	});
+	return;
+});
 
 // Strip trailing slashes (redirect /path/ → /path)
 router.use(trailingSlash("strip"));
