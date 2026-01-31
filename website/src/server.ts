@@ -161,11 +161,7 @@ router.route("/api/:module/:category/:slug").get(async (request, context) => {
 
 // Redirects for renamed URLs (old -> new)
 const redirects: Record<string, string> = {
-	"/api/core/special-tags/Fragment": "/api/core/components/Fragment",
-	"/api/core/special-tags/Portal": "/api/core/components/Portal",
-	"/api/core/special-tags/Copy": "/api/core/components/Copy",
-	"/api/core/special-tags/Text": "/api/core/components/Text",
-	"/api/core/special-tags/Raw": "/api/core/components/Raw",
+	// Add redirects here when renaming published URLs
 };
 
 for (const [oldPath, newPath] of Object.entries(redirects)) {
