@@ -1,13 +1,13 @@
 ---
 title: Copy
 module: "@b9g/crank"
-type: special-tag
+type: component
 publish: true
 ---
 
 # Copy
 
-A special tag that preserves whatever was previously rendered in the element's position.
+A component that preserves whatever was previously rendered in the element's position.
 
 ## Syntax
 
@@ -171,6 +171,6 @@ function* App() {
 
 ## See also
 
-- [Fragment](/api/core/special-tags/Fragment)
+- [Fragment](/api/core/components/Fragment)
 - [Lifecycles Guide](/guides/lifecycles)
 - [Special Props and Tags Guide](/guides/special-props-and-tags)

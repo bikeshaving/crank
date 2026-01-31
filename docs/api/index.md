@@ -17,7 +17,7 @@ The core module contains the fundamental building blocks for creating and render
 - **Classes**: [Element](/api/core/classes/Element), [Context](/api/core/classes/Context), [Renderer](/api/core/classes/Renderer)
 - **Interfaces**: [RenderAdapter](/api/core/interfaces/RenderAdapter)
 - **Types**: [Tag](/api/core/types/Tag), [Child](/api/core/types/Child), [Children](/api/core/types/Children), [Component](/api/core/types/Component), [ElementValue](/api/core/types/ElementValue)
-- **Special Tags**: [Fragment](/api/core/special-tags/Fragment), [Portal](/api/core/special-tags/Portal), [Copy](/api/core/special-tags/Copy), [Text](/api/core/special-tags/Text), [Raw](/api/core/special-tags/Raw)
+- **Components**: [Fragment](/api/core/components/Fragment), [Portal](/api/core/components/Portal), [Copy](/api/core/components/Copy), [Text](/api/core/components/Text), [Raw](/api/core/components/Raw)
 
 ## Async Module
 

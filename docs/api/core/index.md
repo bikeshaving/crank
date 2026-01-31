@@ -37,10 +37,10 @@ npm install @b9g/crank
 - [Component](/api/core/types/Component) - Type for component functions
 - [ElementValue](/api/core/types/ElementValue) - Type for rendered element values
 
-## Special Tags
+## Components
 
-- [Fragment](/api/core/special-tags/Fragment) - Groups elements without a wrapper
-- [Portal](/api/core/special-tags/Portal) - Renders children into a different root
-- [Copy](/api/core/special-tags/Copy) - Preserves previously rendered content
-- [Text](/api/core/special-tags/Text) - Renders text nodes explicitly
-- [Raw](/api/core/special-tags/Raw) - Injects raw HTML or nodes
+- [Fragment](/api/core/components/Fragment) - Groups elements without a wrapper
+- [Portal](/api/core/components/Portal) - Renders children into a different root
+- [Copy](/api/core/components/Copy) - Preserves previously rendered content
+- [Text](/api/core/components/Text) - Renders text nodes explicitly
+- [Raw](/api/core/components/Raw) - Injects raw HTML or nodes

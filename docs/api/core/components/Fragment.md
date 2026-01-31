@@ -1,13 +1,13 @@
 ---
 title: Fragment
 module: "@b9g/crank"
-type: special-tag
+type: component
 publish: true
 ---
 
 # Fragment
 
-A special tag for grouping multiple children without adding a wrapper element to the DOM.
+A component for grouping multiple children without adding a wrapper element to the DOM.
 
 ## Syntax
 
@@ -150,6 +150,6 @@ function GoodComponent() {
 
 ## See also
 
-- [Portal](/api/core/special-tags/Portal)
+- [Portal](/api/core/components/Portal)
 - [Children](/api/core/types/Children)
 - [Special Props and Tags Guide](/guides/special-props-and-tags)

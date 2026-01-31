@@ -1,13 +1,13 @@
 ---
 title: Raw
 module: "@b9g/crank"
-type: special-tag
+type: component
 publish: true
 ---
 
 # Raw
 
-A special tag for injecting raw HTML strings or DOM nodes directly into the rendered output.
+A component for injecting raw HTML strings or DOM nodes directly into the rendered output.
 
 ## Syntax
 
@@ -169,6 +169,6 @@ const adapter = {
 
 ## See also
 
-- [Text](/api/core/special-tags/Text)
+- [Text](/api/core/components/Text)
 - [RenderAdapter](/api/core/interfaces/RenderAdapter)
 - [Special Props and Tags Guide](/guides/special-props-and-tags)

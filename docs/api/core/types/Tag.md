@@ -32,11 +32,11 @@ Standard HTML or SVG element names like `"div"`, `"span"`, `"svg"`, etc. These a
 
 Built-in special tags that have special rendering behavior:
 
-- [Fragment](/api/core/special-tags/Fragment) - Groups elements without a wrapper
-- [Portal](/api/core/special-tags/Portal) - Renders into a different root
-- [Copy](/api/core/special-tags/Copy) - Preserves previous content
-- [Text](/api/core/special-tags/Text) - Explicit text nodes
-- [Raw](/api/core/special-tags/Raw) - Raw HTML injection
+- [Fragment](/api/core/components/Fragment) - Groups elements without a wrapper
+- [Portal](/api/core/components/Portal) - Renders into a different root
+- [Copy](/api/core/components/Copy) - Preserves previous content
+- [Text](/api/core/components/Text) - Explicit text nodes
+- [Raw](/api/core/components/Raw) - Raw HTML injection
 
 ```tsx
 <Fragment>
