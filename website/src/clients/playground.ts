@@ -48,6 +48,12 @@ function* Playground(this: Context) {
 		code = examples[0].code;
 	}
 
+	// Panel width as percentage (0-100)
+	let leftPanelWidth = parseFloat(
+		localStorage.getItem("playground-panel-width") || "61.8",
+	);
+	let isDragging = false;
+
 	this.addEventListener("contentchange", (ev: any) => {
 		code = ev.target.value;
 		localStorage.setItem("playground-value", code);
@@ -65,16 +71,39 @@ function* Playground(this: Context) {
 		this.refresh();
 	};
 
-	//const hashchange = (ev: HashChangeEvent) => {
-	//	console.log("hashchange", ev);
-	//	const value1 = LZString.decompressFromEncodedURIComponent("poop");
-	//	console.log(value);
-	//};
-	//window.addEventListener("hashchange", hashchange);
-	//this.cleanup(() => window.removeEventListener("hashchange", hashchange))
-	//this.flush(() => {
-	//	window.location.hash = LZString.compressToEncodedURIComponent(value);
-	//});
+	const onDividerMouseDown = (ev: MouseEvent) => {
+		ev.preventDefault();
+		isDragging = true;
+		document.body.style.cursor = "col-resize";
+		document.body.style.userSelect = "none";
+	};
+
+	const onMouseMove = (ev: MouseEvent) => {
+		if (!isDragging) return;
+		const container = document.querySelector(".playground") as HTMLElement;
+		if (!container) return;
+		const rect = container.getBoundingClientRect();
+		const newWidth = ((ev.clientX - rect.left) / rect.width) * 100;
+		// Clamp between 20% and 80%
+		leftPanelWidth = Math.max(20, Math.min(80, newWidth));
+		localStorage.setItem("playground-panel-width", leftPanelWidth.toString());
+		this.refresh();
+	};
+
+	const onMouseUp = () => {
+		if (isDragging) {
+			isDragging = false;
+			document.body.style.cursor = "";
+			document.body.style.userSelect = "";
+		}
+	};
+
+	window.addEventListener("mousemove", onMouseMove);
+	window.addEventListener("mouseup", onMouseUp);
+	this.cleanup(() => {
+		window.removeEventListener("mousemove", onMouseMove);
+		window.removeEventListener("mouseup", onMouseUp);
+	});
 
 	for ({} of this) {
 		this.schedule(() => {
@@ -94,12 +123,12 @@ function* Playground(this: Context) {
 				padding-top: 50px;
 			`}">
 				<div class=${css`
-					flex: 0 1 auto;
+					flex: 0 0 auto;
 					min-height: 80vh;
 					overflow: auto;
 					@media (min-width: 800px) {
 						height: calc(100vh - 50px);
-						width: 61.8%;
+						width: ${leftPanelWidth}%;
 					}
 				`}>
 					<${CodeEditorNavbar}>
@@ -125,20 +154,43 @@ function* Playground(this: Context) {
 						showGutter=${true}
 					/>
 				</div>
+				<div
+					class=${css`
+						display: none;
+						@media (min-width: 800px) {
+							display: block;
+							flex: 0 0 1px;
+							background: currentcolor;
+							cursor: col-resize;
+							position: relative;
+							z-index: 10;
+							&::before {
+								content: "";
+								position: absolute;
+								top: 0;
+								bottom: 0;
+								left: -4px;
+								right: -4px;
+							}
+							&:hover {
+								background: var(--highlight-color);
+							}
+						}
+					`}
+					onmousedown=${onDividerMouseDown}
+				/>
 				<div class=${css`
 					@media (min-width: 800px) {
-						flex: 1 0 auto;
+						flex: 1 1 auto;
 						height: calc(100vh - 50px);
-						width: 400px;
+						min-width: 0;
 					}
 					overflow-y: auto;
 					border-top: 1px solid currentcolor;
 					@media (min-width: 800px) {
 						border-top: none;
-						border-left: 1px solid currentcolor;
-						margin-left: -1px;
 					}
-				`}>
+				`} style=${isDragging ? "pointer-events: none" : ""}>
 					<${CodePreview} value=${code} showStatus autoresize />
 				</div>
 			</div>
