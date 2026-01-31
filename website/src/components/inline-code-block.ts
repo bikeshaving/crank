@@ -63,8 +63,7 @@ export function* InlineCodeBlock(
 						flex: 1 1 auto;
 						width: 100%;
 						border: 1px solid var(--text-color);
-						margin-top: -1px;
-						margin-right: -1px;
+						overflow: hidden;
 						${editable
 							? `@media (min-width: ${breakpoint}) {
 							max-width: 61.8%;
@@ -73,7 +72,6 @@ export function* InlineCodeBlock(
 					`}>
 						<div hydrate="!class" class=${css`
 							overflow-x: auto;
-							max-width: 100%;
 						`}>
 							<${CodeEditor}
 								copy
