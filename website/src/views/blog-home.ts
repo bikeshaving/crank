@@ -91,7 +91,7 @@ export default async function BlogHome({url}: ViewProps) {
 									text-decoration: none;
 									color: inherit;
 									border: 1px solid var(--text-color);
-									border-radius: 8px;
+									border-radius: 4px;
 									padding: 1.5rem;
 									transition: all 0.2s ease;
 									background: var(--bg-color);
