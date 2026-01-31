@@ -245,13 +245,11 @@ export function* CodePreview(
 	{
 		value,
 		visible = true,
-		showStatus = false,
 		autoresize = false,
 		language,
 	}: {
 		value: string;
 		visible?: boolean;
-		showStatus?: boolean;
 		autoresize?: boolean;
 		language?: "javascript" | "python";
 	},
@@ -360,7 +358,6 @@ export function* CodePreview(
 	for ({
 		value,
 		visible = true,
-		showStatus = false,
 		autoresize = false,
 		language,
 	} of this) {
@@ -373,51 +370,53 @@ export function* CodePreview(
 			}
 		}
 
+		const pulsingClass = css`
+			@keyframes pulse-bg {
+				0%, 100% { background-color: rgba(218, 165, 32, 0.2); }
+				50% { background-color: var(--bg-color); }
+			}
+			animation: pulse-bg 1.5s ease-in-out infinite;
+		`;
+
 		yield jsx`
 			<div class=${css`
 				display: flex;
 				flex-direction: column;
 				height: 100%;
+				position: relative;
 			`}>
-				${
-					showStatus &&
-					jsx`
-						<div class=${css`
-							flex: none;
-							padding: 1em;
-							height: 3em;
-							border-bottom: 1px solid var(--text-color);
-							display: flex;
-							align-items: center;
-							justify-content: space-between;
-						`}>
-							<span>${errorMessage ? "Errored!" : loading ? "Loading..." : "Running!"}</span>
-						</div>
-					`
-				}
-				<div class=${css`
+				<div class="${css`
 					display: flex;
 					flex-direction: column;
 					flex: 1 1 auto;
 					padding: 1em;
-					transition: background-color 0.4s ease-out;
-					background-color: ${errorMessage
-						? "var(--coldark15)"
-						: loading
-							? "var(--coldark02)"
-							: "var(--background-color)"};
 					width: 100%;
-				`}>
+					position: relative;
+				`} ${loading ? pulsingClass : ""}">
 					${
 						errorMessage &&
 						jsx`
-							<pre class=${css`
-								flex: none;
-								color: var(--coldark12);
-								background-color: var(--bg-color);
-								width: 100%;
-								overflow-x: auto;
-							`}>${errorMessage}</pre>
+							<div class=${css`
+								position: absolute;
+								inset: 0;
+								background-color: rgba(180, 60, 60, 0.9);
+								display: flex;
+								align-items: center;
+								justify-content: center;
+								padding: 1em;
+								z-index: 10;
+							`}>
+								<pre class=${css`
+									color: white;
+									background-color: rgba(0, 0, 0, 0.3);
+									padding: 1em;
+									border-radius: 4px;
+									max-width: 100%;
+									overflow-x: auto;
+									font-size: 12px;
+									margin: 0;
+								`}>${errorMessage}</pre>
+							</div>
 						`
 					}
 					<iframe
