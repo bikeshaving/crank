@@ -161,7 +161,7 @@ router.route("/api/:module/:category/:slug").get(async (request, context) => {
 
 // Redirects for renamed URLs (old -> new)
 const redirects: Record<string, string> = {
-	// Add redirects here when renaming published URLs
+	"/guides/special-props-and-tags": "/guides/special-props-and-components",
 };
 
 for (const [oldPath, newPath] of Object.entries(redirects)) {

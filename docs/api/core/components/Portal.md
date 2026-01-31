@@ -156,4 +156,4 @@ function App() {
 
 - [Fragment](/api/core/components/Fragment)
 - [Renderer](/api/core/classes/Renderer)
-- [Special Props and Tags Guide](/guides/special-props-and-tags)
+- [Special Props and Tags Guide](/guides/special-props-and-components)

@@ -152,4 +152,4 @@ function GoodComponent() {
 
 - [Portal](/api/core/components/Portal)
 - [Children](/api/core/types/Children)
-- [Special Props and Tags Guide](/guides/special-props-and-tags)
+- [Special Props and Tags Guide](/guides/special-props-and-components)

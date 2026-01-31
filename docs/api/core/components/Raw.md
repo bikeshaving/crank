@@ -171,4 +171,4 @@ const adapter = {
 
 - [Text](/api/core/components/Text)
 - [RenderAdapter](/api/core/interfaces/RenderAdapter)
-- [Special Props and Tags Guide](/guides/special-props-and-tags)
+- [Special Props and Tags Guide](/guides/special-props-and-components)
