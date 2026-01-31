@@ -11,8 +11,8 @@ A special tag for rendering children into a different root container.
 
 ## Syntax
 
-```ts
-const Portal: unique symbol = Symbol.for("crank.Portal");
+```jsx
+<Portal root={container}>{children}</Portal>
 ```
 
 ## Description

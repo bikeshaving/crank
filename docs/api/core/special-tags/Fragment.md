@@ -11,8 +11,10 @@ A special tag for grouping multiple children without adding a wrapper element to
 
 ## Syntax
 
-```ts
-const Fragment: "" = "";
+```jsx
+<Fragment>{children}</Fragment>
+<Fragment key={key}>{children}</Fragment>
+<>{children}</>
 ```
 
 ## Description

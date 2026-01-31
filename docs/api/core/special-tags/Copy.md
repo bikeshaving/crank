@@ -11,8 +11,10 @@ A special tag that preserves whatever was previously rendered in the element's p
 
 ## Syntax
 
-```ts
-const Copy: unique symbol = Symbol.for("crank.Copy");
+```jsx
+<Copy />
+<Copy key={key} />
+<MyComponent copy />
 ```
 
 ## Description

@@ -11,8 +11,9 @@ A special tag for explicitly creating text nodes.
 
 ## Syntax
 
-```ts
-const Text: unique symbol = Symbol.for("crank.Text");
+```jsx
+<Text value="Hello, World!" />
+<Text value={dynamicText} />
 ```
 
 ## Description
