@@ -183,6 +183,14 @@ export interface TokenProps {
 	[key: string]: unknown;
 }
 
+// Generate a URL-friendly slug from text
+function slugify(text: string): string {
+	return text
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/(^-|-$)/g, "");
+}
+
 export const defaultComponents: Record<string, Component<TokenProps>> = {
 	space: () => null,
 
@@ -197,9 +205,10 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 	},
 
 	heading({token, children}) {
-		const {depth} = token as marked.Tokens.Heading;
+		const {depth, text} = token as marked.Tokens.Heading;
 		const tag = `h${depth}`;
-		return jsx`<${tag}>${children}<//>`;
+		const id = slugify(text);
+		return jsx`<${tag} id=${id}>${children}<//>`;
 	},
 
 	table({token, rootProps}) {
