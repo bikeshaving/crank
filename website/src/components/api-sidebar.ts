@@ -1,6 +1,7 @@
 import {jsx} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 import type {Element} from "@b9g/crank/standalone";
+import {Search} from "./search.js";
 
 export interface APIModule {
 	name: string;
@@ -127,6 +128,9 @@ export function APISidebar({
 					aria-current=${url === "/api" && "page"}
 				>API Reference</a>
 			</h2>
+			<div id="search-root">
+				<${Search} />
+			</div>
 			${links}
 		</div>
 	`;

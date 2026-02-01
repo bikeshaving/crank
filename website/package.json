@@ -5,7 +5,7 @@
     "predeploy": "npm run static",
     "deploy": "gh-pages -d dist/public",
     "develop": "shovel develop src/server.ts --port 1337 --platform bun",
-    "static": "MODE=production shovel build src/server.ts --platform bun --lifecycle && echo crank.js.org > dist/public/CNAME"
+    "static": "MODE=production shovel build src/server.ts --platform bun --lifecycle && echo crank.js.org > dist/public/CNAME && pagefind --site dist/public"
   },
   "dependencies": {
     "@b9g/assets": "0.2.0-beta.1",
@@ -35,6 +35,7 @@
     "lz-string": "^1.5.0",
     "marked": "^4.3.0",
     "normalize.css": "^8.0.1",
+    "pagefind": "^1.4.0",
     "postcss-nested": "^6.2.0",
     "postcss-preset-env": "^8.5.1",
     "prism-themes": "^1.9.0",

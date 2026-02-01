@@ -71,6 +71,7 @@ export function* Root(
 					<${SerializeScript} id="static-urls" value=${staticURLs} />
 					<script type="module" src=${assets.navbarScript}></script>
 					<script type="module" src=${assets.codeBlocksScript}></script>
+					<script type="module" src=${assets.searchScript}></script>
 				</body>
 			</html>
 		`;

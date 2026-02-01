@@ -2,6 +2,7 @@ import {jsx} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 import type {Element} from "@b9g/crank/standalone";
 import type {DocInfo} from "../models/document.js";
+import {Search} from "./search.js";
 
 export function Sidebar({
 	docs,
@@ -64,6 +65,9 @@ export function Sidebar({
 				color: var(--highlight-color);
 				margin-top: 0;
 			`}>${title}</h2>
+			<div id="search-root">
+				<${Search} />
+			</div>
 			${links}
 		</div>
 	`;
