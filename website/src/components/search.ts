@@ -39,10 +39,10 @@ export async function* Search(this: Context) {
 		if (typeof window === "undefined") return null;
 
 		try {
-			// Pagefind generates its assets at /_pagefind/
+			// Pagefind generates its assets at /pagefind/
 			// Use Function constructor to avoid bundler trying to resolve the import
 			const importPagefind = new Function(
-				'return import("/_pagefind/pagefind.js")',
+				'return import("/pagefind/pagefind.js")',
 			);
 			pagefind = await importPagefind();
 			return pagefind;
