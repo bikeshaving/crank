@@ -187,7 +187,7 @@ export async function* Search(this: Context) {
 									padding: 0.75rem;
 									text-decoration: none;
 									border-bottom: 1px solid var(--text-color);
-									opacity: 0.3;
+									border-bottom-color: rgba(128, 128, 128, 0.2);
 
 									&:last-child {
 										border-bottom: none;
@@ -207,8 +207,8 @@ export async function* Search(this: Context) {
 								<div
 									class=${css`
 										font-size: 0.8rem;
-										opacity: 0.7;
 										line-height: 1.4;
+										color: var(--text-color);
 
 										mark {
 											background: var(--highlight-color);
