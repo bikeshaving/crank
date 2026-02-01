@@ -282,8 +282,8 @@ async function generateStaticSite() {
 	try {
 		const staticBucket = await self.directories.open("public");
 
-		// Static routes
-		const staticRoutes = ["/", "/blog", "/playground"];
+		// Static routes (landing pages that need index.html at directory root)
+		const staticRoutes = ["/", "/blog", "/playground", "/api"];
 
 		// Collect blog and guide documents
 		const blogDocs = await collectDocuments(
