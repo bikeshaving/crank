@@ -5,7 +5,7 @@ describe("jsxToTemplate", () => {
 	test("converts simple HTML element", () => {
 		const input = `<div>Hello</div>`;
 		const output = jsxToTemplate(input);
-		expect(output).toContain('jsx`<div>Hello</div>`');
+		expect(output).toContain("jsx`<div>Hello</div>`");
 	});
 
 	test("converts element with expression", () => {
@@ -36,6 +36,20 @@ describe("jsxToTemplate", () => {
 		const input = `<Foo.Bar />`;
 		const output = jsxToTemplate(input);
 		expect(output).toContain("jsx`<${Foo.Bar} />`");
+	});
+
+	test("converts nested JSX in expressions", () => {
+		const input = `<Suspense fallback={<div>Loading...</div>}><Child /></Suspense>`;
+		const output = jsxToTemplate(input);
+		// Nested JSX should be wrapped in its own jsx`` template
+		expect(output).toContain("fallback=${jsx`<div>Loading...</div>`}");
+	});
+
+	test("converts nested JSX in children", () => {
+		const input = `<div>{condition && <span>Hello</span>}</div>`;
+		const output = jsxToTemplate(input);
+		// Regular expression with JSX should have nested JSX wrapped
+		expect(output).toContain("${condition && jsx`<span>Hello</span>`}");
 	});
 });
 

@@ -28,18 +28,47 @@ import type {
 	JSCodeshift,
 	Collection,
 } from "jscodeshift";
-import {
-	parse,
-	type ParseElement,
-	type ParseValue,
-	type ParseProp,
-	type ParsePropString,
-	type ParseResult,
-} from "@b9g/crank/jsx-tag";
+import {parse, type ParseElement} from "@b9g/crank/jsx-tag";
 
 interface SerializeResult {
 	parts: string[];
 	expressions: any[];
+}
+
+/**
+ * If an expression is a JSX element or fragment, wrap it in a jsx`...` tagged template.
+ * Otherwise, return the expression as-is.
+ */
+function wrapJSXExpression(
+	j: JSCodeshift,
+	expr: any,
+	useGenericClose: boolean = true,
+): any {
+	if (expr.type === "JSXElement") {
+		const serialized = serializeJSXElement(j, expr, useGenericClose);
+		return createTaggedTemplate(j, serialized);
+	} else if (expr.type === "JSXFragment") {
+		const serialized = serializeJSXFragment(j, expr, useGenericClose);
+		return createTaggedTemplate(j, serialized);
+	}
+	return expr;
+}
+
+/**
+ * Create a jsx`...` tagged template expression from serialized parts/expressions.
+ */
+function createTaggedTemplate(
+	j: JSCodeshift,
+	serialized: SerializeResult,
+): any {
+	const {parts, expressions} = serialized;
+	const templateLiteral = j.templateLiteral(
+		parts.map((p, i) =>
+			j.templateElement({raw: p, cooked: p}, i === parts.length - 1),
+		),
+		expressions,
+	);
+	return j.taggedTemplateExpression(j.identifier("jsx"), templateLiteral);
 }
 
 // Serialize a JSX element to template parts
@@ -95,7 +124,9 @@ function serializeJSXElement(
 				current += ` ${attrName}=`;
 				parts.push(current);
 				current = "";
-				expressions.push(attr.value.expression);
+				expressions.push(
+					wrapJSXExpression(j, attr.value.expression, useGenericClose),
+				);
 			}
 		} else if (attr.type === "JSXSpreadAttribute") {
 			// Spread props: ...${expr} (not {...expr})
@@ -119,7 +150,9 @@ function serializeJSXElement(
 				if (child.expression.type !== "JSXEmptyExpression") {
 					parts.push(current);
 					current = "";
-					expressions.push(child.expression);
+					expressions.push(
+						wrapJSXExpression(j, child.expression, useGenericClose),
+					);
 				}
 			} else if (child.type === "JSXElement") {
 				const nested = serializeJSXElement(j, child, useGenericClose);
@@ -142,7 +175,9 @@ function serializeJSXElement(
 			} else if (child.type === "JSXSpreadChild") {
 				parts.push(current);
 				current = "";
-				expressions.push((child as any).expression);
+				expressions.push(
+					wrapJSXExpression(j, (child as any).expression, useGenericClose),
+				);
 			}
 		}
 
@@ -188,7 +223,9 @@ function serializeJSXFragment(
 			if (child.expression.type !== "JSXEmptyExpression") {
 				parts.push(current);
 				current = "";
-				expressions.push(child.expression);
+				expressions.push(
+					wrapJSXExpression(j, child.expression, useGenericClose),
+				);
 			}
 		} else if (child.type === "JSXElement") {
 			const nested = serializeJSXElement(j, child, useGenericClose);
@@ -211,7 +248,9 @@ function serializeJSXFragment(
 		} else if (child.type === "JSXSpreadChild") {
 			parts.push(current);
 			current = "";
-			expressions.push((child as any).expression);
+			expressions.push(
+				wrapJSXExpression(j, (child as any).expression, useGenericClose),
+			);
 		}
 	}
 
@@ -305,7 +344,29 @@ export function jsxToTemplateTransform(
 					? serializeJSXElement(j, path.node)
 					: serializeJSXFragment(j, path.node);
 
-			const {parts, expressions} = serialized;
+			let {parts, expressions} = serialized;
+
+			// If content is multi-line, add newlines and proper indentation
+			const isMultiLine = parts.some((p) => p.includes("\n"));
+			if (isMultiLine) {
+				// Get indentation from the statement containing the JSX
+				let stmtPath = path.parent;
+				while (
+					stmtPath &&
+					!stmtPath.node.type?.endsWith("Statement") &&
+					!stmtPath.node.type?.endsWith("Declaration")
+				) {
+					stmtPath = stmtPath.parent;
+				}
+				const stmtIndent = stmtPath?.node?.loc?.start?.column ?? 0;
+				const contentIndent = stmtIndent + 2; // Content indented one level from statement
+
+				parts = parts.slice();
+				// Add newline + content indent at start, newline + statement indent before closing backtick
+				parts[0] = "\n" + " ".repeat(contentIndent) + parts[0];
+				parts[parts.length - 1] =
+					parts[parts.length - 1] + "\n" + " ".repeat(stmtIndent);
+			}
 
 			const templateLiteral = j.templateLiteral(
 				parts.map((p, i) =>
@@ -319,7 +380,13 @@ export function jsxToTemplateTransform(
 				templateLiteral,
 			);
 
-			j(path).replaceWith(taggedTemplate);
+			// If JSX is wrapped in parentheses, replace the whole parenthesized expression
+			// since template literals don't need parens
+			if (path.parent?.node?.type === "ParenthesizedExpression") {
+				j(path.parent).replaceWith(taggedTemplate);
+			} else {
+				j(path).replaceWith(taggedTemplate);
+			}
 		});
 	};
 
@@ -366,7 +433,18 @@ export function jsxToTemplateTransform(
 		}
 	}
 
-	return root.toSource({quote: "double"});
+	let output = root.toSource({quote: "double"});
+
+	// Remove unnecessary parentheses around jsx`` template literals
+	// Pattern: (\n  jsx`...`) -> jsx`...`
+	output = output.replace(
+		/\(\s*\n(\s*)(jsx`[\s\S]*?`)\s*\n\s*\)/g,
+		(match, indent, template) => {
+			return template;
+		},
+	);
+
+	return output;
 }
 
 /**
@@ -460,9 +538,7 @@ function parseElementToJSX(
 				}
 			}
 
-			attributes.push(
-				j.jsxAttribute(j.jsxIdentifier(prop.name), attrValue),
-			);
+			attributes.push(j.jsxAttribute(j.jsxIdentifier(prop.name), attrValue));
 		}
 	}
 
@@ -531,7 +607,18 @@ export function templateToJsxTransform(
 			}
 
 			const jsxNode = parseElementToJSX(j, element, expressions);
-			j(path).replaceWith(jsxNode);
+
+			// If template was multi-line, wrap JSX in parentheses
+			const isMultiLine = spans.some((s) => s.includes("\n"));
+			if (isMultiLine) {
+				// Use parenthesized expression for multi-line JSX
+				const parenExpr = j.parenthesizedExpression
+					? j.parenthesizedExpression(jsxNode)
+					: jsxNode;
+				j(path).replaceWith(parenExpr);
+			} else {
+				j(path).replaceWith(jsxNode);
+			}
 		} catch (e) {
 			console.warn("Failed to parse template:", e);
 		}
@@ -545,15 +632,12 @@ export function templateToJsxTransform(
  */
 export function jsxToTemplate(code: string): string {
 	const j = jscodeshift.withParser("tsx");
-	const result = jsxToTemplateTransform(
-		{source: code, path: "input.tsx"},
-		{
-			jscodeshift: j,
-			j,
-			stats: () => {},
-			report: () => {},
-		} as API,
-	);
+	const result = jsxToTemplateTransform({source: code, path: "input.tsx"}, {
+		jscodeshift: j,
+		j,
+		stats: () => {},
+		report: () => {},
+	} as API);
 	return result || code;
 }
 
@@ -562,14 +646,11 @@ export function jsxToTemplate(code: string): string {
  */
 export function templateToJsx(code: string): string {
 	const j = jscodeshift.withParser("tsx");
-	const result = templateToJsxTransform(
-		{source: code, path: "input.tsx"},
-		{
-			jscodeshift: j,
-			j,
-			stats: () => {},
-			report: () => {},
-		} as API,
-	);
+	const result = templateToJsxTransform({source: code, path: "input.tsx"}, {
+		jscodeshift: j,
+		j,
+		stats: () => {},
+		report: () => {},
+	} as API);
 	return result || code;
 }

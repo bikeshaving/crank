@@ -82,23 +82,29 @@ export async function* Search(this: Context) {
 		);
 
 		// Use sub_results to show specific sections instead of page introductions
-		results = data.flatMap((d) => {
-			// If there are sub_results, use the first (most relevant) one
-			if (d.sub_results && d.sub_results.length > 0) {
-				const sub = d.sub_results[0];
-				return [{
-					url: sub.url,
-					title: sub.title || d.meta.title || d.url,
-					excerpt: sub.excerpt,
-				}];
-			}
-			// Fall back to page-level result
-			return [{
-				url: d.url,
-				title: d.meta.title || d.url,
-				excerpt: d.excerpt,
-			}];
-		}).slice(0, 8);
+		results = data
+			.flatMap((d) => {
+				// If there are sub_results, use the first (most relevant) one
+				if (d.sub_results && d.sub_results.length > 0) {
+					const sub = d.sub_results[0];
+					return [
+						{
+							url: sub.url,
+							title: sub.title || d.meta.title || d.url,
+							excerpt: sub.excerpt,
+						},
+					];
+				}
+				// Fall back to page-level result
+				return [
+					{
+						url: d.url,
+						title: d.meta.title || d.url,
+						excerpt: d.excerpt,
+					},
+				];
+			})
+			.slice(0, 8);
 		loading = false;
 		this.refresh();
 	};

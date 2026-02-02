@@ -139,27 +139,13 @@ export function* CodeEditor(
 		language,
 		editable,
 		showGutter,
-		copy,
 	}: {
 		value: string;
 		language: string;
 		editable?: boolean;
 		showGutter?: boolean;
-		copy?: boolean;
 	},
 ) {
-	let copied = false;
-	const copyToClipboard = async () => {
-		if (typeof navigator !== "undefined" && navigator.clipboard) {
-			await navigator.clipboard.writeText(value);
-			copied = true;
-			this.refresh();
-			setTimeout(() => {
-				copied = false;
-				this.refresh();
-			}, 2000);
-		}
-	};
 	const keyer = new Keyer();
 	let selectionRange: SelectionRange | undefined;
 	let renderSource: string | undefined;
@@ -349,30 +335,6 @@ export function* CodeEditor(
 					background-color: var(--bg-color);
 				`}
 			>
-				${
-					copy &&
-					jsx`
-					<button
-						onclick=${copyToClipboard}
-						class=${css`
-							position: absolute;
-							top: 0.5em;
-							right: 0.5em;
-							z-index: 10;
-							padding: 0.3em 0.6em;
-							font-size: 12px;
-							cursor: pointer;
-							opacity: 0.7;
-							transition: opacity 0.2s;
-							&:hover {
-								opacity: 1;
-							}
-						`}
-					>
-						${copied ? "Copied!" : "Copy"}
-					</button>
-				`
-				}
 				${showGutter && jsx`<${Gutter} length=${lineTokens.length} />`}
 				<${ContentArea}
 					ref=${(el: ContentAreaElement) => (area = el)}

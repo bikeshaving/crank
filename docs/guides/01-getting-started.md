@@ -25,7 +25,7 @@ npm i @b9g/crank
 Crank works with any JSX setup. Here are the most common approaches:
 
 **Option A: Automatic JSX Transform** (recommended for new projects)
-```jsx
+```jsx notoggle
 /** @jsxImportSource @b9g/crank */
 import {renderer} from "@b9g/crank/dom";
 
@@ -51,7 +51,7 @@ renderer.render(<Greeting name="Crank" />, document.body);
 ```
 
 **Option C: No Build Required**
-```js
+```js notoggle
 import {jsx} from "@b9g/crank/standalone";
 import {renderer} from "@b9g/crank/dom";
 

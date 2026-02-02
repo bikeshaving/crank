@@ -25,7 +25,12 @@ export function* InlineCodeBlock(
 ): any {
 	// Track current syntax mode: "jsx" or "template"
 	let syntaxMode: "jsx" | "template" =
-		jsxVersion === value ? "jsx" : templateVersion === value ? "template" : "jsx";
+		jsxVersion === value
+			? "jsx"
+			: templateVersion === value
+				? "template"
+				: "jsx";
+	let justToggled = false;
 
 	this.addEventListener("contentchange", (ev: any) => {
 		value = ev.target.value;
@@ -53,7 +58,18 @@ export function* InlineCodeBlock(
 		});
 	}
 
-	for ({lang, editable, breakpoint = "1300px", jsxVersion, templateVersion} of this) {
+	for ({
+		lang,
+		editable,
+		breakpoint = "1300px",
+		jsxVersion,
+		templateVersion,
+	} of this) {
+		if (justToggled) {
+			this.schedule(() => {
+				justToggled = false;
+			});
+		}
 		const canToggle = jsxVersion && templateVersion;
 		const toggleSyntax = () => {
 			if (syntaxMode === "jsx" && templateVersion) {
@@ -63,6 +79,7 @@ export function* InlineCodeBlock(
 				syntaxMode = "jsx";
 				value = jsxVersion;
 			}
+			justToggled = true;
 			this.refresh();
 		};
 		yield jsx`
@@ -177,7 +194,7 @@ export function* InlineCodeBlock(
 							overflow-x: auto;
 						`}>
 							<${CodeEditor}
-								key=${syntaxMode}
+								copy=${!justToggled}
 								value=${value}
 								lang=${lang}
 								editable=${editable}
