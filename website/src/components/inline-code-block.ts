@@ -31,6 +31,7 @@ export function* InlineCodeBlock(
 				? "template"
 				: "jsx";
 	let justToggled = false;
+	let copied = false;
 
 	this.addEventListener("contentchange", (ev: any) => {
 		value = ev.target.value;
@@ -174,6 +175,11 @@ export function* InlineCodeBlock(
 								onclick=${async () => {
 									if (typeof navigator !== "undefined" && navigator.clipboard) {
 										await navigator.clipboard.writeText(value);
+										this.refresh(() => (copied = true));
+										setTimeout(
+											() => this.refresh(() => (copied = false)),
+											2000,
+										);
 									}
 								}}
 								class=${css`
@@ -187,7 +193,7 @@ export function* InlineCodeBlock(
 									}
 								`}
 							>
-								Copy
+								${copied ? "Copied!" : "Copy"}
 							</button>
 						</div>
 						<div hydrate="!class" class=${css`
