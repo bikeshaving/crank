@@ -35,7 +35,7 @@ export function jsx(
 export const html = jsx;
 
 // Type definitions for a bare-bones AST
-interface ParseElement {
+export interface ParseElement {
 	type: "element";
 	open: ParseTag;
 	close: ParseTag | null;
@@ -44,29 +44,29 @@ interface ParseElement {
 	children: Array<ParseElement | ParseValue>;
 }
 
-interface ParseValue {
+export interface ParseValue {
 	type: "value";
 	value: any;
 }
 
-interface ParseTag {
+export interface ParseTag {
 	type: "tag";
 	slash: string;
 	value: any;
 }
 
-interface ParseProp {
+export interface ParseProp {
 	type: "prop";
 	name: string;
 	value: ParseValue | ParsePropString;
 }
 
-interface ParsePropString {
+export interface ParsePropString {
 	type: "propString";
 	parts: Array<string | ParseValue>;
 }
 
-interface ParseError {
+export interface ParseError {
 	type: "error";
 	message: string;
 	value: any;
@@ -77,9 +77,9 @@ interface ParseError {
 // template function is called. By separating the logic of parsing static
 // template spans from the handling of dynamic expressions, we can cache parse
 // results for successive calls.
-type ExpressionTarget = ParseValue | ParseTag | ParseProp | ParseError;
+export type ExpressionTarget = ParseValue | ParseTag | ParseProp | ParseError;
 
-interface ParseResult {
+export interface ParseResult {
 	element: ParseElement;
 	targets: Array<ExpressionTarget | null>;
 }
@@ -120,7 +120,7 @@ const CLOSING_DOUBLE_QUOTE_RE = /[^\\]?"/g;
 
 const CLOSING_COMMENT_RE = /-->/g;
 
-function parse(spans: ArrayLike<string>): ParseResult {
+export function parse(spans: ArrayLike<string>): ParseResult {
 	let matcher = CHILDREN_RE;
 	const stack: Array<ParseElement> = [];
 	let element: ParseElement = {
