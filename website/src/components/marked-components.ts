@@ -1,7 +1,7 @@
 import {jsx} from "@b9g/crank/standalone";
 import {InlineCodeBlock} from "./inline-code-block.js";
 import {SerializeScript} from "./serialize-javascript.js";
-import {jsxToTemplate, templateToJsx} from "@b9g/crank-codemods";
+import {JSXToTemplate, templateToJSX} from "@b9g/crank-codemods";
 
 export const components = {
 	codespan({token}: any) {
@@ -39,11 +39,11 @@ export const components = {
 				if (hasJsx && !hasTemplate) {
 					// Code is JSX, compute template version
 					jsxVersion = code;
-					templateVersion = jsxToTemplate(code);
+					templateVersion = JSXToTemplate(code);
 				} else if (hasTemplate && !hasJsx) {
 					// Code is template, compute JSX version
 					templateVersion = code;
-					jsxVersion = templateToJsx(code);
+					jsxVersion = templateToJSX(code);
 				}
 			} catch {
 				// Conversion failed, don't show toggle
