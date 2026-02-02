@@ -31,13 +31,15 @@ if (gearInteractiveRoot) {
 const containers = document.querySelectorAll(".code-block-container");
 for (const container of Array.from(containers)) {
 	const propsScript = container.querySelector(".props") as HTMLScriptElement;
-	const {code, lang} = extractData(propsScript);
+	const {code, lang, jsxVersion, templateVersion} = extractData(propsScript);
 	renderer.hydrate(
 		jsx`
 			<${InlineCodeBlock}
 				value=${code}
 				lang=${lang}
 				editable=${lang.endsWith(" live")}
+				jsxVersion=${jsxVersion}
+				templateVersion=${templateVersion}
 			/>
 		`,
 		container,

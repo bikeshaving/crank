@@ -11,22 +11,24 @@ export const components = {
 	code({token}: any) {
 		const {text: code, lang} = token;
 		const isLive = lang.endsWith(" live");
+		const noToggle = lang.includes("notoggle");
 
 		// Pre-compute JSX/template alternate versions for toggle
 		let jsxVersion: string | null = null;
 		let templateVersion: string | null = null;
 
-		// Only compute alternate versions for JS/TS code blocks
+		// Only compute alternate versions for JS/TS code blocks (unless notoggle)
 		const isJsLang =
-			lang.startsWith("js") ||
-			lang.startsWith("ts") ||
-			lang.startsWith("jsx") ||
-			lang.startsWith("tsx") ||
-			lang === "javascript" ||
-			lang === "typescript" ||
-			lang === "javascript live" ||
-			lang === "jsx live" ||
-			lang === "tsx live";
+			!noToggle &&
+			(lang.startsWith("js") ||
+				lang.startsWith("ts") ||
+				lang.startsWith("jsx") ||
+				lang.startsWith("tsx") ||
+				lang === "javascript" ||
+				lang === "typescript" ||
+				lang === "javascript live" ||
+				lang === "jsx live" ||
+				lang === "tsx live");
 
 		if (isJsLang) {
 			// Detect if code uses JSX or template syntax

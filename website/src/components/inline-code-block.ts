@@ -27,17 +27,6 @@ export function* InlineCodeBlock(
 	let syntaxMode: "jsx" | "template" =
 		jsxVersion === value ? "jsx" : templateVersion === value ? "template" : "jsx";
 
-	const toggleSyntax = () => {
-		if (syntaxMode === "jsx" && templateVersion) {
-			syntaxMode = "template";
-			value = templateVersion;
-		} else if (syntaxMode === "template" && jsxVersion) {
-			syntaxMode = "jsx";
-			value = jsxVersion;
-		}
-		this.refresh();
-	};
-
 	this.addEventListener("contentchange", (ev: any) => {
 		value = ev.target.value;
 		this.refresh();
@@ -64,9 +53,18 @@ export function* InlineCodeBlock(
 		});
 	}
 
-	const canToggle = jsxVersion && templateVersion;
-
 	for ({lang, editable, breakpoint = "1300px", jsxVersion, templateVersion} of this) {
+		const canToggle = jsxVersion && templateVersion;
+		const toggleSyntax = () => {
+			if (syntaxMode === "jsx" && templateVersion) {
+				syntaxMode = "template";
+				value = templateVersion;
+			} else if (syntaxMode === "template" && jsxVersion) {
+				syntaxMode = "jsx";
+				value = jsxVersion;
+			}
+			this.refresh();
+		};
 		yield jsx`
 			<div hydrate="!class" class=${css`
 				max-width: ${editable ? "calc(100% - 1px)" : "min(100%, 1000px)"};
@@ -81,6 +79,7 @@ export function* InlineCodeBlock(
 					}
 				`}>
 					<div hydrate="!class" class=${css`
+						position: relative;
 						flex: 1 1 auto;
 						width: 100%;
 						border: 1px solid var(--text-color);
@@ -93,42 +92,92 @@ export function* InlineCodeBlock(
 						}`
 							: ""}
 					`}>
-						${
-							canToggle &&
-							jsx`
-								<div hydrate="!class" class=${css`
-									display: flex;
-									justify-content: flex-end;
-									padding: 4px 8px;
-									background-color: var(--bg-color);
-									border-bottom: 1px solid var(--text-color);
-								`}>
+						<div hydrate="!class" class=${css`
+							position: absolute;
+							top: 0.5em;
+							right: 0.5em;
+							z-index: 10;
+							display: flex;
+							align-items: center;
+							gap: 8px;
+						`}>
+							${
+								canToggle &&
+								jsx`
 									<button
+										hydrate
 										onclick=${toggleSyntax}
+										role="switch"
+										aria-label="toggle syntax"
+										aria-checked=${syntaxMode === "template"}
 										class=${css`
-											padding: 2px 8px;
-											font-size: 12px;
-											cursor: pointer;
+											position: relative;
+											width: 52px;
+											height: 24px;
+											border-radius: 12px;
 											border: 1px solid var(--text-color);
-											border-radius: 4px;
-											background-color: var(--bg-color);
-											color: var(--text-color);
+											background: var(--bg-color);
+											cursor: pointer;
+											padding: 0 4px;
+											display: flex;
+											align-items: center;
+											justify-content: space-between;
+											font-size: 10px;
+											font-family: monospace;
+											opacity: 0.7;
+											transition: opacity 0.2s;
 											&:hover {
-												background-color: var(--text-color);
-												color: var(--bg-color);
+												opacity: 1;
+											}
+											&:focus {
+												outline: none;
+												opacity: 1;
 											}
 										`}
 									>
-										${syntaxMode === "jsx" ? "Show Template" : "Show JSX"}
+										<span>JSX</span>
+										<span>JS</span>
+										<span
+											class=${css`
+												position: absolute;
+												width: 22px;
+												height: 20px;
+												border-radius: 10px;
+												border: 1px solid var(--text-color);
+												background: var(--bg-color);
+												transition: left 0.2s;
+											`}
+											style=${{left: syntaxMode === "jsx" ? "27px" : "2px"}}
+										/>
 									</button>
-								</div>
-							`
-						}
+								`
+							}
+							<button
+								hydrate
+								onclick=${async () => {
+									if (typeof navigator !== "undefined" && navigator.clipboard) {
+										await navigator.clipboard.writeText(value);
+									}
+								}}
+								class=${css`
+									padding: 0.3em 0.6em;
+									font-size: 12px;
+									cursor: pointer;
+									opacity: 0.7;
+									transition: opacity 0.2s;
+									&:hover {
+										opacity: 1;
+									}
+								`}
+							>
+								Copy
+							</button>
+						</div>
 						<div hydrate="!class" class=${css`
 							overflow-x: auto;
 						`}>
 							<${CodeEditor}
-								copy
+								key=${syntaxMode}
 								value=${value}
 								lang=${lang}
 								editable=${editable}
