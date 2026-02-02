@@ -75,7 +75,7 @@ export function Sidebar({
 
 export function Main({children}: {children: unknown}) {
 	return jsx`
-		<main class=${css`
+		<main data-pagefind-body class=${css`
 			margin: 0 auto;
 			padding: 2rem 0.4rem;
 
