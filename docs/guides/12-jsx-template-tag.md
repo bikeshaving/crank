@@ -217,7 +217,7 @@ The JSX template tag function is designed to replicate as much of JSX syntax and
 
 Just like JSX syntax, the template version supports components, but they must be explicitly interpolated.
 
-```js
+```js notoggle
 import {jsx} from "@b9g/crank/standalone";
 function Component() {
   /* ... */
@@ -229,7 +229,7 @@ const templateEl = jsx`<${Component} />`;
 
 Component closing tags can be done in one of three styles:
 
-```js
+```js notoggle
 const symmetricEl = jsx`<${Component}>{children}</${Component}>`;
 // the closing tag is not checked for symmetry and is basically a comment
 const commentEl = jsx`<${Component}>{children}<//Component>`;

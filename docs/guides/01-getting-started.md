@@ -37,7 +37,7 @@ renderer.render(<Greeting name="Crank" />, document.body);
 ```
 
 **Option B: Classic JSX Transform** (works with older setups)
-```jsx
+```jsx notoggle
 /** @jsx createElement */
 /** @jsxFrag Fragment */
 import {createElement, Fragment} from "@b9g/crank";
@@ -73,7 +73,7 @@ Crank is also available on CDNs like [unpkg](https://unpkg.com)
 (https://unpkg.com/@b9g/crank?module) and [esm.sh](https://esm.sh)
 (https://esm.sh/@b9g/crank) for usage in ESM-ready environments.
 
-```jsx live
+```jsx live notoggle
 /** @jsx createElement */
 import {createElement} from "https://unpkg.com/@b9g/crank/crank?module";
 import {renderer} from "https://unpkg.com/@b9g/crank/dom?module";
@@ -335,7 +335,7 @@ maintaining full backward compatibility. Here are the highlights:
 The `refresh()` method now accepts a callback function, making it impossible to
 forget to re-render after updating state:
 
-```jsx
+```jsx notoggle
 // Before: Easy to forget refresh()
 const onclick = () => {
   count++;
