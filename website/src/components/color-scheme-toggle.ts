@@ -8,11 +8,11 @@ const toggleStyles = css`
 	width: 60px;
 	height: 32px;
 	border-radius: 16px;
-	border: 2px solid var(--text-color);
-	background: var(--bg-color);
+	border: 1px solid var(--text-color);
+	background: transparent;
 	cursor: pointer;
 	padding: 0 4px;
-	display: none; /* Hidden until hydration */
+	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	font-size: 16px;
@@ -28,10 +28,10 @@ const knobStyles = css`
 	width: 26px;
 	height: 26px;
 	border-radius: 50%;
-	border: 2px solid var(--text-color);
-	background: color-mix(in srgb, var(--bg-color) 70%, transparent);
-	backdrop-filter: blur(2px);
+	border: 1px solid var(--text-color);
+	background: var(--bg-color);
 	transition: left 0.2s;
+	display: none; /* Hidden until hydration - show only outline before JS */
 `;
 
 /**
@@ -42,6 +42,8 @@ const knobStyles = css`
  * - Responds to system preference changes
  * - Persists user choice in sessionStorage
  */
+const IS_CLIENT = typeof window !== "undefined";
+
 export function* ColorSchemeToggle(this: Context) {
 	const colorScheme = useColorScheme(this);
 
@@ -58,15 +60,15 @@ export function* ColorSchemeToggle(this: Context) {
 				role="switch"
 				aria-label="toggle color scheme"
 				aria-checked=${isDark}
-				hydrate="!aria-checked !style"
+				hydrate="!aria-checked"
 				class=${toggleStyles}
-				style="display: flex;"
 			>
 				<span>${"🌙"}</span>
 				<span>${"💡"}</span>
 				<span
+					hydrate="!style"
 					class=${knobStyles}
-					style=${{left: isDark ? "30px" : "1px"}}
+					style=${IS_CLIENT ? {display: "block", left: isDark ? "30px" : "1px"} : undefined}
 				/>
 			</button>
 		`;

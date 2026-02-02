@@ -123,22 +123,21 @@ export function* InlineCodeBlock(
 								canToggle &&
 								jsx`
 									<button
-										hydrate="!style"
+										hydrate
 										onclick=${toggleSyntax}
 										role="switch"
 										aria-label="toggle syntax"
 										aria-checked=${syntaxMode === "template"}
-										style="display: flex;"
 										class=${css`
 											position: relative;
-											width: 52px;
+											width: 48px;
 											height: 24px;
 											border-radius: 12px;
 											border: 1px solid var(--text-color);
-											background: var(--bg-color);
+											background: transparent;
 											cursor: pointer;
 											padding: 0 4px;
-											display: none; /* Hidden until hydration */
+											display: flex;
 											align-items: center;
 											justify-content: space-between;
 											font-size: 10px;
@@ -160,24 +159,19 @@ export function* InlineCodeBlock(
 											class=${css`
 												position: absolute;
 												width: 22px;
-												height: 20px;
-												border-radius: 10px;
+												height: 22px;
+												border-radius: 11px;
 												border: 1px solid var(--text-color);
-												background: color-mix(
-													in srgb,
-													var(--bg-color) 70%,
-													transparent
-												);
-												backdrop-filter: blur(2px);
+												background: var(--bg-color);
 												transition: left 0.2s;
 											`}
-											style=${{left: syntaxMode === "jsx" ? "27px" : "2px"}}
+											style=${{left: syntaxMode === "jsx" ? "24px" : "2px"}}
 										/>
 									</button>
 								`
 							}
 							<button
-								hydrate="!style"
+								hydrate
 								onclick=${async () => {
 									if (typeof navigator !== "undefined" && navigator.clipboard) {
 										await navigator.clipboard.writeText(value);
@@ -188,11 +182,14 @@ export function* InlineCodeBlock(
 										);
 									}
 								}}
-								style="display: inline-block;"
 								class=${css`
-									display: none; /* Hidden until hydration */
-									padding: 0.3em 0.6em;
-									font-size: 12px;
+									height: 24px;
+									padding: 0 8px;
+									border-radius: 4px;
+									border: 1px solid var(--text-color);
+									background: transparent;
+									font-size: 10px;
+									font-family: monospace;
 									cursor: pointer;
 									opacity: 0.7;
 									transition: opacity 0.2s;
