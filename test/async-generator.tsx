@@ -1170,4 +1170,24 @@ test("for await...of waits for nephew", async () => {
 	);
 });
 
+// https://github.com/bikeshaving/crank/issues/334
+test("refresh before yield does not throw", async () => {
+	async function* Component(this: Context) {
+		await Promise.resolve();
+		this.refresh();
+		this.refresh();
+		for (const {} of this) {
+			yield <span>Hello</span>;
+		}
+	}
+
+	await renderer.render(
+		<div>
+			<Component />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>Hello</span></div>");
+});
+
 test.run();
