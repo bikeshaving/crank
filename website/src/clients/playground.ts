@@ -2,7 +2,17 @@ import {jsx} from "@b9g/crank/standalone";
 import type {Context} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
 import {css} from "@emotion/css";
-import {jsxToTemplate, templateToJsx} from "@b9g/crank-codemods";
+
+// Lazy-load codemod to avoid blocking initial render
+let jsxToTemplate: ((code: string) => string) | null = null;
+let templateToJsx: ((code: string) => string) | null = null;
+const loadCodemods = async () => {
+	if (!jsxToTemplate) {
+		const mod = await import("@b9g/crank-codemods");
+		jsxToTemplate = mod.jsxToTemplate;
+		templateToJsx = mod.templateToJsx;
+	}
+};
 
 window.Prism = window.Prism || {};
 Prism.manual = true;
@@ -120,12 +130,13 @@ function* Playground(this: Context) {
 		}, 2000);
 	};
 
-	const toggleSyntax = () => {
+	const toggleSyntax = async () => {
 		try {
-			if (syntaxMode === "jsx") {
+			await loadCodemods();
+			if (syntaxMode === "jsx" && jsxToTemplate) {
 				code = jsxToTemplate(code);
 				syntaxMode = "template";
-			} else {
+			} else if (templateToJsx) {
 				code = templateToJsx(code);
 				syntaxMode = "jsx";
 			}
