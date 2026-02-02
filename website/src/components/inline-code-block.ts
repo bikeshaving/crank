@@ -127,7 +127,7 @@ export function* InlineCodeBlock(
 										onclick=${toggleSyntax}
 										role="switch"
 										aria-label="toggle syntax"
-										aria-checked=${syntaxMode === "template"}
+										aria-checked=${syntaxMode === "template" ? "true" : "false"}
 										class=${css`
 											position: relative;
 											width: 48px;

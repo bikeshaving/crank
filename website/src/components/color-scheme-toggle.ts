@@ -59,7 +59,7 @@ export function* ColorSchemeToggle(this: Context) {
 				onclick=${onclick}
 				role="switch"
 				aria-label="toggle color scheme"
-				aria-checked=${isDark}
+				aria-checked=${isDark ? "true" : "false"}
 				hydrate="!aria-checked"
 				class=${toggleStyles}
 			>
