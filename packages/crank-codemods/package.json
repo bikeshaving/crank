@@ -1,0 +1,44 @@
+{
+  "name": "@b9g/crank-codemods",
+  "version": "0.1.0",
+  "description": "Codemods for Crank.js - transform between JSX and tagged template syntax",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./jsx-to-template": {
+      "types": "./dist/jsx-to-template.d.ts",
+      "import": "./dist/jsx-to-template.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@b9g/crank": "file:../../",
+    "jscodeshift": "^17.0.0"
+  },
+  "devDependencies": {
+    "@types/jscodeshift": "^0.12.0",
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "@b9g/crank": ">=0.7.0"
+  },
+  "keywords": [
+    "crank",
+    "codemod",
+    "jsx",
+    "template",
+    "transform"
+  ],
+  "license": "MIT"
+}
