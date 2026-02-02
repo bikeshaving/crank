@@ -807,21 +807,19 @@ test("keyed host elements reorder via refresh", async () => {
 		for ({} of this) {
 			yield (
 				<div>
-					{reversed ? (
-						[
-							<span key="d">d</span>,
-							<span key="c">c</span>,
-							<span key="b">b</span>,
-							<span key="a">a</span>,
-						]
-					) : (
-						[
-							<span key="a">a</span>,
-							<span key="b">b</span>,
-							<span key="c">c</span>,
-							<span key="d">d</span>,
-						]
-					)}
+					{reversed
+						? [
+								<span key="d">d</span>,
+								<span key="c">c</span>,
+								<span key="b">b</span>,
+								<span key="a">a</span>,
+							]
+						: [
+								<span key="a">a</span>,
+								<span key="b">b</span>,
+								<span key="c">c</span>,
+								<span key="d">d</span>,
+							]}
 				</div>
 			);
 		}
