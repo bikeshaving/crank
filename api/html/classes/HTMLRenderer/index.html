@@ -1,0 +1,396 @@
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Crank.js | HTMLRenderer</title><link rel="shortcut icon" href="/static/favicon-eefec412b1f6cade.ico"><style>.css-yop4go{position:relative;width:60px;height:32px;border-radius:16px;border:1px solid var(--text-color);background:transparent;cursor:pointer;padding:0 4px;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-align-items:center;-webkit-box-align:center;-ms-flex-align:center;align-items:center;-webkit-box-pack:justify;-webkit-justify-content:space-between;justify-content:space-between;font-size:16px;}.css-yop4go:focus{outline:none;border-color:var(--highlight-color);}.css-zj66tk{position:absolute;width:26px;height:26px;border-radius:50%;border:1px solid var(--text-color);background:var(--bg-color);-webkit-transition:left 0.2s;transition:left 0.2s;display:none;}.css-1l1hcps{position:fixed;top:0;left:0;right:0;height:50px;z-index:999;gap:1em;}.css-1n0j5y9{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-box-pack:center;-ms-flex-pack:center;-webkit-justify-content:center;justify-content:center;-webkit-align-items:center;-webkit-box-align:center;-ms-flex-align:center;align-items:center;gap:1em;}.css-1jqc1cx{background-color:var(--bg-color);margin-top:50px;padding:2rem 0.4rem;color:var(--text-color);border-right:1px solid currentcolor;border-bottom:1px solid currentcolor;}@media screen and (min-width: 800px){.css-1jqc1cx{position:fixed;top:50px;bottom:0;overflow-x:hidden;overflow-y:auto;width:15rem;margin:0;padding:2rem 1rem;text-align:right;}}@media screen and (min-width: 1100px){.css-1jqc1cx{padding:3rem 2rem;width:20rem;}}.css-1jqc1cx &gt;:first-child{margin-top:0;}.css-2iz09v{color:var(--highlight-color);font-size:1rem;margin:1.5rem 0 0.5rem;font-weight:bold;}.css-2iz09v:first-of-type{margin-top:0;}.css-313te8{font-size:0.85rem;color:var(--text-color);opacity:0.7;margin:0.75rem 0 0.25rem;text-transform:uppercase;letter-spacing:0.05em;}.css-12q7ml6{display:block;margin:0.4rem 0;-webkit-text-decoration:none;text-decoration:none;font-size:0.9rem;}.css-12q7ml6[aria-current=&quot;page&quot;]{font-weight:bold;color:var(--highlight-color);}.css-1xmwt0h{border-bottom:1px solid var(--text-color);overflow-x:auto;background-color:inherit;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-box-pack:justify;-webkit-justify-content:space-between;justify-content:space-between;gap:1em;}.css-1xmwt0h a{-webkit-text-decoration:none;text-decoration:none;font-weight:bold;}@media screen and (min-width: 800px){.css-1xmwt0h{padding:0 2em;}}.css-1nd56js{background-color:var(--bg-color);border-top:1px solid var(--text-color);padding:2em;text-align:center;font-size:14px;}.css-nf2n4z{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-box-pack:center;-ms-flex-pack:center;-webkit-justify-content:center;justify-content:center;gap:2em;-webkit-box-flex-wrap:wrap;-webkit-flex-wrap:wrap;-ms-flex-wrap:wrap;flex-wrap:wrap;margin-bottom:1em;}.css-1st8n6b{margin:0;color:var(--text-color);opacity:0.7;}.css-1xzghkg{position:absolute;top:0.5em;right:0.5em;z-index:10;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-align-items:center;-webkit-box-align:center;-ms-flex-align:center;align-items:center;gap:8px;}.css-1y5ulpa{height:24px;padding:0 8px;border-radius:4px;border:1px solid var(--text-color);background:transparent;font-size:10px;font-family:monospace;cursor:pointer;opacity:0.7;-webkit-transition:opacity 0.2s;transition:opacity 0.2s;}.css-1y5ulpa:hover{opacity:1;}.css-i7rnhw{overflow-x:auto;}.css-1y4o4pq{position:relative;min-height:100%;width:100%;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;background-color:var(--bg-color);}.css-84ojsb{display:contents;}.css-1ashatc{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;word-break:break-all;overflow-wrap:anywhere;line-break:anywhere;white-space:pre-wrap;white-space:break-spaces;font-size:16px;}.css-1flouoi{border-bottom:1px dotted #333;}.color-scheme-light .css-1flouoi{border-bottom:1px dotted #ddd;}.css-1vm8pxc{max-width:min(100%, 1000px);}.css-1s1lac9{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;font-size:16px;}@media (min-width: 1300px){.css-1s1lac9{-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-align-items:flex-start;-webkit-box-align:flex-start;-ms-flex-align:flex-start;align-items:flex-start;}}.css-1lyfw13{position:relative;-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;width:100%;border:1px solid var(--text-color);border-radius:4px;overflow:hidden;}.css-x8uxd2{position:relative;width:48px;height:24px;border-radius:12px;border:1px solid var(--text-color);background:transparent;cursor:pointer;padding:0 4px;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-align-items:center;-webkit-box-align:center;-ms-flex-align:center;align-items:center;-webkit-box-pack:justify;-webkit-justify-content:space-between;justify-content:space-between;font-size:10px;font-family:monospace;opacity:0.7;-webkit-transition:opacity 0.2s;transition:opacity 0.2s;}.css-x8uxd2:hover{opacity:1;}.css-x8uxd2:focus{outline:none;opacity:1;}.css-1rbk3h3{position:absolute;width:22px;height:22px;border-radius:11px;border:1px solid var(--text-color);background:var(--bg-color);-webkit-transition:left 0.2s;transition:left 0.2s;}.css-vrpffa{display:-webkit-inline-box;display:-webkit-inline-flex;display:-ms-inline-flexbox;display:inline-flex;-webkit-align-items:center;-webkit-box-align:center;-ms-flex-align:center;align-items:center;gap:0.5rem;font-size:0.9rem;color:var(--text-color);opacity:0.6;-webkit-text-decoration:none;text-decoration:none;-webkit-transition:opacity 0.2s ease;transition:opacity 0.2s ease;}.css-vrpffa:hover{opacity:1;color:var(--highlight-color);}.css-1lyshc7{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--text-color);opacity:0.5;}.css-ep9szm{color:var(--highlight-color);margin-top:0;}.css-1d9zsa{position:relative;margin-bottom:1rem;}.css-okn4a3{width:100%;padding:0.5rem 0.75rem;font-size:0.9rem;border:1px solid var(--text-color);border-radius:4px;background:var(--bg-color);color:var(--text-color);box-sizing:border-box;}.css-okn4a3::-webkit-input-placeholder{opacity:0.5;}.css-okn4a3::-moz-placeholder{opacity:0.5;}.css-okn4a3:-ms-input-placeholder{opacity:0.5;}.css-okn4a3::placeholder{opacity:0.5;}.css-okn4a3:focus{outline:none;border-color:var(--highlight-color);}.css-1mkiuoh{margin:0 auto;padding:2rem 0.4rem;}@media screen and (min-width: 800px){.css-1mkiuoh{margin-left:240px;padding:2rem 1rem;margin-top:50px;}}@media screen and (min-width: 1100px){.css-1mkiuoh{margin-left:20rem;padding:3rem 2rem;}}.css-1mkiuoh p{max-width:800px;}.css-1jznkyd{-webkit-text-decoration:none;text-decoration:none;}</style><link rel="stylesheet" type="text/css" href="/static/client-3f2e47bea41770a9.css"><meta name="description" content="API documentation for HTMLRenderer"><meta property="og:title" content="Crank.js | HTMLRenderer"><meta property="og:url" content="https:/crank.js.org/api/html/classes/HTMLRenderer"><meta property="og:description" content="API documentation for HTMLRenderer"><meta property="og:type" content="website"><meta property="og:site_name" content="Crank.js"><meta property="og:image" content="/static/logo-9c727b9c5ba929af.svg"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="Crank.js | HTMLRenderer"><meta name="twitter:description" content="API documentation for HTMLRenderer"><meta name="twitter:image" content="/static/logo-9c727b9c5ba929af.svg"></head><body><script>(() => { const s = sessionStorage.getItem("color-scheme");
+		const scheme = s === "dark" || s === "light" ? s :
+			(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+		const isDark = scheme === "dark";
+		document.documentElement.dataset.theme = scheme;
+		document.documentElement.style.setProperty("--bg-color", isDark ? "#0a0e1f" : "#e7f4f5");
+		document.documentElement.style.setProperty("--text-color", isDark ? "#f5f9ff" : "#0a0e1f");
+		if (!isDark) document.documentElement.classList.add("color-scheme-light"); })()</script><div id="navbar-root"><nav class="
+				blur-background
+				css-1l1hcps
+				css-1xmwt0h
+			"><div class="css-1n0j5y9"><div><a class="css-1n0j5y9" style="gap: 0.3em" href="/"><svg style="flex: none;" fill="none" viewBox="-200 -200 400 400" width="1.9em" height="1.9em" xmlns="http://www.w3.org/2000/svg"><defs><mask id="wedge-mask"><rect x="-200" y="-200" width="400" height="400" fill="white"></rect><path stroke="none" fill="black" d="
+							M 0 0
+							L 245.74561328669753 172.07293090531383
+							L 245.74561328669753 -172.07293090531383
+							z
+						"></path></mask></defs><g stroke="none" fill="var(--highlight-color)"><path transform="rotate(0)" d="M 149.39 -16.97 M 149.62 -16.98 M 150.29 -17 M 151.42 -16.97 M 153 -16.85 M 155.02 -16.57 M 157.46 -16.1 M 160.32 -15.39 M 163.56 -14.39 M 167.17 -13.06 M 171.11 -11.35 M 175.36 -9.23 M 179.88 -6.66 M 179.88 6.66 M 175.36 9.23 M 171.11 11.35 M 167.17 13.06 M 163.56 14.39 M 160.32 15.39 M 157.46 16.1 M 155.02 16.57 M 153 16.85 M 151.42 16.97 M 150.29 17 M 149.62 16.98 M 149.39 16.97 A 8 8 0 0 0 144.51 41.5 L 144.73 41.57 L 145.36 41.81 L 146.39 42.27 L 147.8 42.99 L 149.56 44.01 L 151.64 45.38 L 154 47.13 L 156.62 49.29 L 159.44 51.9 L 162.43 54.99 L 165.54 58.58 L 168.73 62.69 L 163.64 74.98 L 158.48 75.64 L 153.74 75.97 L 149.44 76.04 L 145.6 75.89 L 142.22 75.57 L 139.31 75.14 L 136.88 74.63 L 134.91 74.11 L 133.4 73.63 L 132.35 73.22 L 131.73 72.95 L 131.53 72.84 A 8 8 0 0 0 117.63 93.64 L 117.8 93.79 L 118.3 94.25 L 119.07 95.07 L 120.1 96.28 L 121.33 97.9 L 122.73 99.96 L 124.24 102.48 L 125.83 105.48 L 127.44 108.97 L 129.02 112.96 L 130.52 117.47 L 131.9 122.49 L 122.49 131.9 L 117.47 130.52 L 112.96 129.02 L 108.97 127.44 L 105.48 125.83 L 102.48 124.24 L 99.96 122.73 L 97.9 121.33 L 96.28 120.1 L 95.07 119.07 L 94.25 118.3 L 93.79 117.8 L 93.64 117.63 A 8 8 0 0 0 72.84 131.53 L 72.95 131.73 L 73.22 132.35 L 73.63 133.4 L 74.11 134.91 L 74.63 136.88 L 75.14 139.31 L 75.57 142.22 L 75.89 145.6 L 76.04 149.44 L 75.97 153.74 L 75.64 158.48 L 74.98 163.64 L 62.69 168.73 L 58.58 165.54 L 54.99 162.43 L 51.9 159.44 L 49.29 156.62 L 47.13 154 L 45.38 151.64 L 44.01 149.56 L 42.99 147.8 L 42.27 146.39 L 41.81 145.36 L 41.57 144.73 L 41.5 144.51 A 8 8 0 0 0 16.97 149.39 L 16.98 149.62 L 17 150.29 L 16.97 151.42 L 16.85 153 L 16.57 155.02 L 16.1 157.46 L 15.39 160.32 L 14.39 163.56 L 13.06 167.17 L 11.35 171.11 L 9.23 175.36 L 6.66 179.88 L -6.66 179.88 L -9.23 175.36 L -11.35 171.11 L -13.06 167.17 L -14.39 163.56 L -15.39 160.32 L -16.1 157.46 L -16.57 155.02 L -16.85 153 L -16.97 151.42 L -17 150.29 L -16.98 149.62 L -16.97 149.39 A 8 8 0 0 0 -41.5 144.51 L -41.57 144.73 L -41.81 145.36 L -42.27 146.39 L -42.99 147.8 L -44.01 149.56 L -45.38 151.64 L -47.13 154 L -49.29 156.62 L -51.9 159.44 L -54.99 162.43 L -58.58 165.54 L -62.69 168.73 L -74.98 163.64 L -75.64 158.48 L -75.97 153.74 L -76.04 149.44 L -75.89 145.6 L -75.57 142.22 L -75.14 139.31 L -74.63 136.88 L -74.11 134.91 L -73.63 133.4 L -73.22 132.35 L -72.95 131.73 L -72.84 131.53 A 8 8 0 0 0 -93.64 117.63 L -93.79 117.8 L -94.25 118.3 L -95.07 119.07 L -96.28 120.1 L -97.9 121.33 L -99.96 122.73 L -102.48 124.24 L -105.48 125.83 L -108.97 127.44 L -112.96 129.02 L -117.47 130.52 L -122.49 131.9 L -131.9 122.49 L -130.52 117.47 L -129.02 112.96 L -127.44 108.97 L -125.83 105.48 L -124.24 102.48 L -122.73 99.96 L -121.33 97.9 L -120.1 96.28 L -119.07 95.07 L -118.3 94.25 L -117.8 93.79 L -117.63 93.64 A 8 8 0 0 0 -131.53 72.84 L -131.73 72.95 L -132.35 73.22 L -133.4 73.63 L -134.91 74.11 L -136.88 74.63 L -139.31 75.14 L -142.22 75.57 L -145.6 75.89 L -149.44 76.04 L -153.74 75.97 L -158.48 75.64 L -163.64 74.98 L -168.73 62.69 L -165.54 58.58 L -162.43 54.99 L -159.44 51.9 L -156.62 49.29 L -154 47.13 L -151.64 45.38 L -149.56 44.01 L -147.8 42.99 L -146.39 42.27 L -145.36 41.81 L -144.73 41.57 L -144.51 41.5 A 8 8 0 0 0 -149.39 16.97 L -149.62 16.98 L -150.29 17 L -151.42 16.97 L -153 16.85 L -155.02 16.57 L -157.46 16.1 L -160.32 15.39 L -163.56 14.39 L -167.17 13.06 L -171.11 11.35 L -175.36 9.23 L -179.88 6.66 L -179.88 -6.66 L -175.36 -9.23 L -171.11 -11.35 L -167.17 -13.06 L -163.56 -14.39 L -160.32 -15.39 L -157.46 -16.1 L -155.02 -16.57 L -153 -16.85 L -151.42 -16.97 L -150.29 -17 L -149.62 -16.98 L -149.39 -16.97 A 8 8 0 0 0 -144.51 -41.5 L -144.73 -41.57 L -145.36 -41.81 L -146.39 -42.27 L -147.8 -42.99 L -149.56 -44.01 L -151.64 -45.38 L -154 -47.13 L -156.62 -49.29 L -159.44 -51.9 L -162.43 -54.99 L -165.54 -58.58 L -168.73 -62.69 L -163.64 -74.98 L -158.48 -75.64 L -153.74 -75.97 L -149.44 -76.04 L -145.6 -75.89 L -142.22 -75.57 L -139.31 -75.14 L -136.88 -74.63 L -134.91 -74.11 L -133.4 -73.63 L -132.35 -73.22 L -131.73 -72.95 L -131.53 -72.84 A 8 8 0 0 0 -117.63 -93.64 L -117.8 -93.79 L -118.3 -94.25 L -119.07 -95.07 L -120.1 -96.28 L -121.33 -97.9 L -122.73 -99.96 L -124.24 -102.48 L -125.83 -105.48 L -127.44 -108.97 L -129.02 -112.96 L -130.52 -117.47 L -131.9 -122.49 L -122.49 -131.9 L -117.47 -130.52 L -112.96 -129.02 L -108.97 -127.44 L -105.48 -125.83 L -102.48 -124.24 L -99.96 -122.73 L -97.9 -121.33 L -96.28 -120.1 L -95.07 -119.07 L -94.25 -118.3 L -93.79 -117.8 L -93.64 -117.63 A 8 8 0 0 0 -72.84 -131.53 L -72.95 -131.73 L -73.22 -132.35 L -73.63 -133.4 L -74.11 -134.91 L -74.63 -136.88 L -75.14 -139.31 L -75.57 -142.22 L -75.89 -145.6 L -76.04 -149.44 L -75.97 -153.74 L -75.64 -158.48 L -74.98 -163.64 L -62.69 -168.73 L -58.58 -165.54 L -54.99 -162.43 L -51.9 -159.44 L -49.29 -156.62 L -47.13 -154 L -45.38 -151.64 L -44.01 -149.56 L -42.99 -147.8 L -42.27 -146.39 L -41.81 -145.36 L -41.57 -144.73 L -41.5 -144.51 A 8 8 0 0 0 -16.97 -149.39 L -16.98 -149.62 L -17 -150.29 L -16.97 -151.42 L -16.85 -153 L -16.57 -155.02 L -16.1 -157.46 L -15.39 -160.32 L -14.39 -163.56 L -13.06 -167.17 L -11.35 -171.11 L -9.23 -175.36 L -6.66 -179.88 L 6.66 -179.88 L 9.23 -175.36 L 11.35 -171.11 L 13.06 -167.17 L 14.39 -163.56 L 15.39 -160.32 L 16.1 -157.46 L 16.57 -155.02 L 16.85 -153 L 16.97 -151.42 L 17 -150.29 L 16.98 -149.62 L 16.97 -149.39 A 8 8 0 0 0 41.5 -144.51 L 41.57 -144.73 L 41.81 -145.36 L 42.27 -146.39 L 42.99 -147.8 L 44.01 -149.56 L 45.38 -151.64 L 47.13 -154 L 49.29 -156.62 L 51.9 -159.44 L 54.99 -162.43 L 58.58 -165.54 L 62.69 -168.73 L 74.98 -163.64 L 75.64 -158.48 L 75.97 -153.74 L 76.04 -149.44 L 75.89 -145.6 L 75.57 -142.22 L 75.14 -139.31 L 74.63 -136.88 L 74.11 -134.91 L 73.63 -133.4 L 73.22 -132.35 L 72.95 -131.73 L 72.84 -131.53 A 8 8 0 0 0 93.64 -117.63 L 93.79 -117.8 L 94.25 -118.3 L 95.07 -119.07 L 96.28 -120.1 L 97.9 -121.33 L 99.96 -122.73 L 102.48 -124.24 L 105.48 -125.83 L 108.97 -127.44 L 112.96 -129.02 L 117.47 -130.52 L 122.49 -131.9 L 131.9 -122.49 L 130.52 -117.47 L 129.02 -112.96 L 127.44 -108.97 L 125.83 -105.48 L 124.24 -102.48 L 122.73 -99.96 L 121.33 -97.9 L 120.1 -96.28 L 119.07 -95.07 L 118.3 -94.25 L 117.8 -93.79 L 117.63 -93.64 A 8 8 0 0 0 131.53 -72.84 L 131.73 -72.95 L 132.35 -73.22 L 133.4 -73.63 L 134.91 -74.11 L 136.88 -74.63 L 139.31 -75.14 L 142.22 -75.57 L 145.6 -75.89 L 149.44 -76.04 L 153.74 -75.97 L 158.48 -75.64 L 163.64 -74.98 L 168.73 -62.69 L 165.54 -58.58 L 162.43 -54.99 L 159.44 -51.9 L 156.62 -49.29 L 154 -47.13 L 151.64 -45.38 L 149.56 -44.01 L 147.8 -42.99 L 146.39 -42.27 L 145.36 -41.81 L 144.73 -41.57 L 144.51 -41.5 A 8 8 0 0 0 149.39 -16.97 L 149.62 -16.98 L 150.29 -17 L 151.42 -16.97 L 153 -16.85 L 155.02 -16.57 L 157.46 -16.1 L 160.32 -15.39 L 163.56 -14.39 L 167.17 -13.06 L 171.11 -11.35 L 175.36 -9.23 L 179.88 -6.66 L 179.88 6.66 L 175.36 9.23 L 171.11 11.35 L 167.17 13.06 L 163.56 14.39 L 160.32 15.39 L 157.46 16.1 L 155.02 16.57 L 153 16.85 L 151.42 16.97 L 150.29 17 L 149.62 16.98 L 149.39 16.97
+			  M -110 0
+				a 110 110 0 1 0 220 0
+				a 110 110 0 1 0 -220 0
+			" mask="url(#wedge-mask)" stroke="none" stroke-width="4"></path><circle cx="0" cy="0" r="60" stroke="none"></circle><path d="
+						M 0 -28
+						L 160 -14
+						L 160 14
+						L 0 28
+						Z
+					"></path></g></svg>Crank.js</a></div><div><a href="/guides/getting-started">Guides</a></div><div><a href="/api" aria-current="page">API</a></div><div><a href="/blog/">Blog</a></div><div><a href="/playground/">Playground</a></div></div><div class="css-1n0j5y9"><div><a href="https://github.com/bikeshaving/crank">GitHub</a></div><div><a href="http://npm.im/@b9g/crank">NPM</a></div><button role="switch" aria-label="toggle color scheme" aria-checked="true" class="css-yop4go"><span>🌙</span><span>💡</span><span class="css-zj66tk"></span></button></div></nav></div><div id="sidebar" class="css-1jqc1cx"><h2 class="css-ep9szm"><a href="/api" class="css-1jznkyd">API Reference</a></h2><div id="search-root"><div class="css-1d9zsa"><input type="search" placeholder="Search..." value="" class="css-okn4a3"></div></div><div class="css-2iz09v"><a href="/api/core" class="css-1jznkyd">@b9g/crank</a></div><div class="css-313te8">Functions</div><a href="/api/core/functions/createElement" class="css-12q7ml6">createElement</a><a href="/api/core/functions/cloneElement" class="css-12q7ml6">cloneElement</a><a href="/api/core/functions/isElement" class="css-12q7ml6">isElement</a><div class="css-313te8">Classes</div><a href="/api/core/classes/Element" class="css-12q7ml6">Element</a><a href="/api/core/classes/Context" class="css-12q7ml6">Context</a><a href="/api/core/classes/Renderer" class="css-12q7ml6">Renderer</a><div class="css-313te8">Interfaces</div><a href="/api/core/interfaces/RenderAdapter" class="css-12q7ml6">RenderAdapter</a><div class="css-313te8">Types</div><a href="/api/core/types/Tag" class="css-12q7ml6">Tag</a><a href="/api/core/types/Child" class="css-12q7ml6">Child</a><a href="/api/core/types/Children" class="css-12q7ml6">Children</a><a href="/api/core/types/Component" class="css-12q7ml6">Component</a><a href="/api/core/types/ElementValue" class="css-12q7ml6">ElementValue</a><div class="css-313te8">Components</div><a href="/api/core/components/Fragment" class="css-12q7ml6">Fragment</a><a href="/api/core/components/Portal" class="css-12q7ml6">Portal</a><a href="/api/core/components/Copy" class="css-12q7ml6">Copy</a><a href="/api/core/components/Text" class="css-12q7ml6">Text</a><a href="/api/core/components/Raw" class="css-12q7ml6">Raw</a><div class="css-2iz09v"><a href="/api/async" class="css-1jznkyd">@b9g/crank/async</a></div><div class="css-313te8">Functions</div><a href="/api/async/functions/lazy" class="css-12q7ml6">lazy</a><div class="css-313te8">Components</div><a href="/api/async/components/Suspense" class="css-12q7ml6">Suspense</a><a href="/api/async/components/SuspenseList" class="css-12q7ml6">SuspenseList</a><div class="css-2iz09v"><a href="/api/dom" class="css-1jznkyd">@b9g/crank/dom</a></div><div class="css-313te8">Classes</div><a href="/api/dom/classes/DOMRenderer" class="css-12q7ml6">DOMRenderer</a><div class="css-313te8">Objects</div><a href="/api/dom/objects/adapter" class="css-12q7ml6">adapter</a><a href="/api/dom/objects/renderer" class="css-12q7ml6">renderer</a><div class="css-2iz09v"><a href="/api/html" class="css-1jznkyd">@b9g/crank/html</a></div><div class="css-313te8">Classes</div><a href="/api/html/classes/HTMLRenderer" class="css-12q7ml6" aria-current="page">HTMLRenderer</a><div class="css-313te8">Objects</div><a href="/api/html/objects/impl" class="css-12q7ml6">impl</a><a href="/api/html/objects/renderer" class="css-12q7ml6">renderer</a><div class="css-2iz09v"><a href="/api/standalone" class="css-1jznkyd">@b9g/crank/standalone</a></div><div class="css-313te8">Functions</div><a href="/api/standalone/functions/jsx" class="css-12q7ml6">jsx</a><a href="/api/standalone/functions/html" class="css-12q7ml6">html</a></div><main data-pagefind-body class="css-1mkiuoh"><h1 id="htmlrenderer">HTMLRenderer</h1><p>A renderer that generates HTML strings from Crank elements.</p><h2 id="syntax">Syntax</h2><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button role="switch" aria-label="toggle syntax" aria-checked="false" class="css-x8uxd2"><span>JSX</span><span>JS</span><span class="css-1rbk3h3" style="left:24px;"></span></button><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token keyword">class</span> <span class="token class-name">HTMLRenderer</span> <span class="token keyword">extends</span> <span class="token class-name">Renderer</span><span class="token operator">&lt;</span>TextNode<span class="token punctuation">,</span> <span class="token keyword">undefined</span><span class="token punctuation">,</span> any<span class="token punctuation">,</span> string<span class="token operator">&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><code>  <span class="token function">constructor</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code>  <span class="token function">render</span><span class="token punctuation">(</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><code>    <span class="token literal-property property">children</span><span class="token operator">:</span> Children<span class="token punctuation">,</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><code>    root<span class="token operator">?</span><span class="token operator">:</span> any<span class="token punctuation">,</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><code>    ctx<span class="token operator">?</span><span class="token operator">:</span> Context</code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><code>  <span class="token punctuation">)</span><span class="token operator">:</span> Promise<span class="token operator">&lt;</span>string<span class="token operator">&gt;</span> <span class="token operator">|</span> string<span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="8"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-463" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-463'] = {"code":"class HTMLRenderer extends Renderer\u003CTextNode, undefined, any, string\u003E {\n  constructor();\n\n  render(\n    children: Children,\n    root?: any,\n    ctx?: Context\n  ): Promise\u003Cstring\u003E | string;\n}","lang":"ts","jsxVersion":"class HTMLRenderer extends Renderer\u003CTextNode, undefined, any, string\u003E {\n  constructor();\n\n  render(\n    children: Children,\n    root?: any,\n    ctx?: Context\n  ): Promise\u003Cstring\u003E | string;\n}","templateVersion":"class HTMLRenderer extends Renderer\u003CTextNode, undefined, any, string\u003E {\n  constructor();\n\n  render(\n    children: Children,\n    root?: any,\n    ctx?: Context\n  ): Promise\u003Cstring\u003E | string;\n}"};
+		</script></div><h2 id="constructor">Constructor</h2><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token keyword">new</span> <span class="token class-name">HTMLRenderer</span><span class="token punctuation">(</span><span class="token punctuation">)</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-464" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-464'] = {"code":"new HTMLRenderer()","lang":"ts","jsxVersion":null,"templateVersion":null};
+		</script></div><p>Creates a new HTMLRenderer instance. In most cases, you should use the pre-instantiated <a href="/api/html/objects/renderer">renderer</a> export instead.</p><h2 id="instance-methods">Instance methods</h2><h3 id="render">render()</h3><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token function">render</span><span class="token punctuation">(</span>children<span class="token punctuation">,</span> root<span class="token operator">?</span><span class="token punctuation">,</span> ctx<span class="token operator">?</span><span class="token punctuation">)</span><span class="token operator">:</span> Promise<span class="token operator">&lt;</span>string<span class="token operator">&gt;</span> <span class="token operator">|</span> string</code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-465" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-465'] = {"code":"render(children, root?, ctx?): Promise\u003Cstring\u003E | string","lang":"ts","jsxVersion":null,"templateVersion":null};
+		</script></div><p>Renders an element tree to an HTML string.</p><p><strong>Parameters:</strong></p><ul><li><strong>children</strong> - <code class="inline">Children</code> - The element tree to render.</li><li><strong>root</strong> (optional) - <code class="inline">any</code> - Typically unused for HTML rendering.</li><li><strong>ctx</strong> (optional) - <code class="inline">Context</code> - An ancestor context for bridging renderers.</li></ul><p><strong>Returns:</strong> The HTML string, or a promise if the tree contains async components.</p><h2 id="description">Description</h2><p>HTMLRenderer is used for server-side rendering (SSR). It converts Crank elements into HTML strings that can be:</p><ul><li>Sent to the browser for initial page load</li><li>Hydrated on the client with <a href="/api/dom/classes/DOMRenderer">DOMRenderer.hydrate()</a></li><li>Used for static site generation</li><li>Embedded in emails or other non-browser contexts</li></ul><p>The renderer:</p><ul><li>Escapes text content to prevent XSS</li><li>Handles void elements (br, img, input, etc.) correctly</li><li>Converts style objects to CSS strings</li><li>Handles class objects (conditional classes)</li><li>Ignores event handlers and refs (client-only)</li></ul><h2 id="examples">Examples</h2><h3 id="basic-server-side-rendering">Basic server-side rendering</h3><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button role="switch" aria-label="toggle syntax" aria-checked="false" class="css-x8uxd2"><span>JSX</span><span>JS</span><span class="css-1rbk3h3" style="left:24px;"></span></button><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>renderer<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank/html&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><code><span class="token keyword">function</span> <span class="token function">App</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code>  <span class="token keyword">return</span> <span class="token punctuation">(</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><code>    <span class="token operator">&lt;</span>html<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><code>      <span class="token operator">&lt;</span>head<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><code>        <span class="token operator">&lt;</span>title<span class="token operator">&gt;</span>My App<span class="token operator">&lt;</span><span class="token operator">/</span>title<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><code>      <span class="token operator">&lt;</span><span class="token operator">/</span>head<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="8"><code>      <span class="token operator">&lt;</span>body<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="9"><code>        <span class="token operator">&lt;</span>div id<span class="token operator">=</span><span class="token string">&quot;root&quot;</span><span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="10"><code>          <span class="token operator">&lt;</span>h1<span class="token operator">&gt;</span>Hello<span class="token punctuation">,</span> World<span class="token operator">!</span><span class="token operator">&lt;</span><span class="token operator">/</span>h1<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="11"><code>        <span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="12"><code>      <span class="token operator">&lt;</span><span class="token operator">/</span>body<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="13"><code>    <span class="token operator">&lt;</span><span class="token operator">/</span>html<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="14"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="15"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="16"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="17"><code><span class="token keyword">const</span> html <span class="token operator">=</span> <span class="token keyword">await</span> renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>App <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="18"><code><span class="token comment">// Send html to client</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-466" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-466'] = {"code":"import {renderer} from \"@b9g\u002Fcrank\u002Fhtml\";\n\nfunction App() {\n  return (\n    \u003Chtml\u003E\n      \u003Chead\u003E\n        \u003Ctitle\u003EMy App\u003C\u002Ftitle\u003E\n      \u003C\u002Fhead\u003E\n      \u003Cbody\u003E\n        \u003Cdiv id=\"root\"\u003E\n          \u003Ch1\u003EHello, World!\u003C\u002Fh1\u003E\n        \u003C\u002Fdiv\u003E\n      \u003C\u002Fbody\u003E\n    \u003C\u002Fhtml\u003E\n  );\n}\n\nconst html = await renderer.render(\u003CApp \u002F\u003E);\n\u002F\u002F Send html to client","lang":"tsx","jsxVersion":"import {renderer} from \"@b9g\u002Fcrank\u002Fhtml\";\n\nfunction App() {\n  return (\n    \u003Chtml\u003E\n      \u003Chead\u003E\n        \u003Ctitle\u003EMy App\u003C\u002Ftitle\u003E\n      \u003C\u002Fhead\u003E\n      \u003Cbody\u003E\n        \u003Cdiv id=\"root\"\u003E\n          \u003Ch1\u003EHello, World!\u003C\u002Fh1\u003E\n        \u003C\u002Fdiv\u003E\n      \u003C\u002Fbody\u003E\n    \u003C\u002Fhtml\u003E\n  );\n}\n\nconst html = await renderer.render(\u003CApp \u002F\u003E);\n\u002F\u002F Send html to client","templateVersion":"import { jsx } from \"@b9g\u002Fcrank\u002Fstandalone\";\nimport {renderer} from \"@b9g\u002Fcrank\u002Fhtml\";\n\nfunction App() {\n  return jsx`\n    \u003Chtml\u003E\n      \u003Chead\u003E\n        \u003Ctitle\u003EMy App\u003C\u002Ftitle\u003E\n      \u003C\u002Fhead\u003E\n      \u003Cbody\u003E\n        \u003Cdiv id=\"root\"\u003E\n          \u003Ch1\u003EHello, World!\u003C\u002Fh1\u003E\n        \u003C\u002Fdiv\u003E\n      \u003C\u002Fbody\u003E\n    \u003C\u002Fhtml\u003E\n  `;\n}\n\nconst html = await renderer.render(jsx`\u003C${App} \u002F\u003E`);\n\u002F\u002F Send html to client"};
+		</script></div><h3 id="with-async-components">With async components</h3><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button role="switch" aria-label="toggle syntax" aria-checked="false" class="css-x8uxd2"><span>JSX</span><span>JS</span><span class="css-1rbk3h3" style="left:24px;"></span></button><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>renderer<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank/html&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><code><span class="token keyword">async</span> <span class="token keyword">function</span> <span class="token function">UserList</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code>  <span class="token keyword">const</span> users <span class="token operator">=</span> <span class="token keyword">await</span> <span class="token function">fetchUsers</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><code>  <span class="token keyword">return</span> <span class="token punctuation">(</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><code>    <span class="token operator">&lt;</span>ul<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><code>      <span class="token punctuation">{</span>users<span class="token punctuation">.</span><span class="token function">map</span><span class="token punctuation">(</span><span class="token parameter">user</span> <span class="token operator">=&gt;</span> <span class="token punctuation">(</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><code>        <span class="token operator">&lt;</span>li key<span class="token operator">=</span><span class="token punctuation">{</span>user<span class="token punctuation">.</span>id<span class="token punctuation">}</span><span class="token operator">&gt;</span><span class="token punctuation">{</span>user<span class="token punctuation">.</span>name<span class="token punctuation">}</span><span class="token operator">&lt;</span><span class="token operator">/</span>li<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="8"><code>      <span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="9"><code>    <span class="token operator">&lt;</span><span class="token operator">/</span>ul<span class="token operator">&gt;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="10"><code>  <span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="11"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="12"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="13"><code><span class="token comment">// render() returns a Promise for async components</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="14"><code><span class="token keyword">const</span> html <span class="token operator">=</span> <span class="token keyword">await</span> renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>UserList <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-467" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-467'] = {"code":"import {renderer} from \"@b9g\u002Fcrank\u002Fhtml\";\n\nasync function UserList() {\n  const users = await fetchUsers();\n  return (\n    \u003Cul\u003E\n      {users.map(user =\u003E (\n        \u003Cli key={user.id}\u003E{user.name}\u003C\u002Fli\u003E\n      ))}\n    \u003C\u002Ful\u003E\n  );\n}\n\n\u002F\u002F render() returns a Promise for async components\nconst html = await renderer.render(\u003CUserList \u002F\u003E);","lang":"tsx","jsxVersion":"import {renderer} from \"@b9g\u002Fcrank\u002Fhtml\";\n\nasync function UserList() {\n  const users = await fetchUsers();\n  return (\n    \u003Cul\u003E\n      {users.map(user =\u003E (\n        \u003Cli key={user.id}\u003E{user.name}\u003C\u002Fli\u003E\n      ))}\n    \u003C\u002Ful\u003E\n  );\n}\n\n\u002F\u002F render() returns a Promise for async components\nconst html = await renderer.render(\u003CUserList \u002F\u003E);","templateVersion":"import { jsx } from \"@b9g\u002Fcrank\u002Fstandalone\";\nimport {renderer} from \"@b9g\u002Fcrank\u002Fhtml\";\n\nasync function UserList() {\n  const users = await fetchUsers();\n  return jsx`\n    \u003Cul\u003E\n      ${users.map(user =\u003E jsx`\u003Cli key=${user.id}\u003E${user.name}\u003C\u002Fli\u003E`)}\n    \u003C\u002Ful\u003E\n  `;\n}\n\n\u002F\u002F render() returns a Promise for async components\nconst html = await renderer.render(jsx`\u003C${UserList} \u002F\u003E`);"};
+		</script></div><h3 id="express-js-integration">Express.js integration</h3><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button role="switch" aria-label="toggle syntax" aria-checked="false" class="css-x8uxd2"><span>JSX</span><span>JS</span><span class="css-1rbk3h3" style="left:24px;"></span></button><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token keyword">import</span> express <span class="token keyword">from</span> <span class="token string">&quot;express&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>renderer<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank/html&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code><span class="token keyword">const</span> app <span class="token operator">=</span> <span class="token function">express</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><code>app<span class="token punctuation">.</span><span class="token function">get</span><span class="token punctuation">(</span><span class="token string">&quot;/&quot;</span><span class="token punctuation">,</span> <span class="token keyword">async</span> <span class="token punctuation">(</span><span class="token parameter">req<span class="token punctuation">,</span> res</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><code>  <span class="token keyword">const</span> html <span class="token operator">=</span> <span class="token keyword">await</span> renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>App <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="8"><code>  res<span class="token punctuation">.</span><span class="token function">send</span><span class="token punctuation">(</span><span class="token template-string"><span class="token template-punctuation string">`</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="9"><code><span class="token template-string"><span class="token string">    &lt;!DOCTYPE html&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="10"><code><span class="token template-string"><span class="token string">    &lt;html&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="11"><code><span class="token template-string"><span class="token string">      &lt;head&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="12"><code><span class="token template-string"><span class="token string">        &lt;title&gt;My App&lt;/title&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="13"><code><span class="token template-string"><span class="token string">        &lt;script src=&quot;/client.js&quot; defer&gt;&lt;/script&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="14"><code><span class="token template-string"><span class="token string">      &lt;/head&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="15"><code><span class="token template-string"><span class="token string">      &lt;body&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="16"><code><span class="token template-string"><span class="token string">        &lt;div id=&quot;root&quot;&gt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>html<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&lt;/div&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="17"><code><span class="token template-string"><span class="token string">      &lt;/body&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="18"><code><span class="token template-string"><span class="token string">    &lt;/html&gt;</span></span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="19"><code><span class="token template-string"><span class="token string">  </span><span class="token template-punctuation string">`</span></span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="20"><code><span class="token punctuation">}</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-468" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-468'] = {"code":"import express from \"express\";\nimport {renderer} from \"@b9g\u002Fcrank\u002Fhtml\";\n\nconst app = express();\n\napp.get(\"\u002F\", async (req, res) =\u003E {\n  const html = await renderer.render(\u003CApp \u002F\u003E);\n\n  res.send(`\n    \u003C!DOCTYPE html\u003E\n    \u003Chtml\u003E\n      \u003Chead\u003E\n        \u003Ctitle\u003EMy App\u003C\u002Ftitle\u003E\n        \u003Cscript src=\"\u002Fclient.js\" defer\u003E\u003C\u002Fscript\u003E\n      \u003C\u002Fhead\u003E\n      \u003Cbody\u003E\n        \u003Cdiv id=\"root\"\u003E${html}\u003C\u002Fdiv\u003E\n      \u003C\u002Fbody\u003E\n    \u003C\u002Fhtml\u003E\n  `);\n});","lang":"tsx","jsxVersion":"import express from \"express\";\nimport {renderer} from \"@b9g\u002Fcrank\u002Fhtml\";\n\nconst app = express();\n\napp.get(\"\u002F\", async (req, res) =\u003E {\n  const html = await renderer.render(\u003CApp \u002F\u003E);\n\n  res.send(`\n    \u003C!DOCTYPE html\u003E\n    \u003Chtml\u003E\n      \u003Chead\u003E\n        \u003Ctitle\u003EMy App\u003C\u002Ftitle\u003E\n        \u003Cscript src=\"\u002Fclient.js\" defer\u003E\u003C\u002Fscript\u003E\n      \u003C\u002Fhead\u003E\n      \u003Cbody\u003E\n        \u003Cdiv id=\"root\"\u003E${html}\u003C\u002Fdiv\u003E\n      \u003C\u002Fbody\u003E\n    \u003C\u002Fhtml\u003E\n  `);\n});","templateVersion":"import { jsx } from \"@b9g\u002Fcrank\u002Fstandalone\";\nimport express from \"express\";\nimport {renderer} from \"@b9g\u002Fcrank\u002Fhtml\";\n\nconst app = express();\n\napp.get(\"\u002F\", async (req, res) =\u003E {\n  const html = await renderer.render(jsx`\u003C${App} \u002F\u003E`);\n\n  res.send(`\n    \u003C!DOCTYPE html\u003E\n    \u003Chtml\u003E\n      \u003Chead\u003E\n        \u003Ctitle\u003EMy App\u003C\u002Ftitle\u003E\n        \u003Cscript src=\"\u002Fclient.js\" defer\u003E\u003C\u002Fscript\u003E\n      \u003C\u002Fhead\u003E\n      \u003Cbody\u003E\n        \u003Cdiv id=\"root\"\u003E${html}\u003C\u002Fdiv\u003E\n      \u003C\u002Fbody\u003E\n    \u003C\u002Fhtml\u003E\n  `);\n});"};
+		</script></div><h3 id="static-site-generation">Static site generation</h3><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button role="switch" aria-label="toggle syntax" aria-checked="false" class="css-x8uxd2"><span>JSX</span><span>JS</span><span class="css-1rbk3h3" style="left:24px;"></span></button><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>writeFile<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;fs/promises&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>renderer<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank/html&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code><span class="token keyword">async</span> <span class="token keyword">function</span> <span class="token function">generateSite</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><code>  <span class="token keyword">const</span> pages <span class="token operator">=</span> <span class="token punctuation">[</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><code>    <span class="token punctuation">{</span><span class="token literal-property property">path</span><span class="token operator">:</span> <span class="token string">&quot;/index.html&quot;</span><span class="token punctuation">,</span> <span class="token literal-property property">component</span><span class="token operator">:</span> <span class="token operator">&lt;</span>HomePage <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">}</span><span class="token punctuation">,</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><code>    <span class="token punctuation">{</span><span class="token literal-property property">path</span><span class="token operator">:</span> <span class="token string">&quot;/about/index.html&quot;</span><span class="token punctuation">,</span> <span class="token literal-property property">component</span><span class="token operator">:</span> <span class="token operator">&lt;</span>AboutPage <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">}</span><span class="token punctuation">,</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><code>    <span class="token punctuation">{</span><span class="token literal-property property">path</span><span class="token operator">:</span> <span class="token string">&quot;/contact/index.html&quot;</span><span class="token punctuation">,</span> <span class="token literal-property property">component</span><span class="token operator">:</span> <span class="token operator">&lt;</span>ContactPage <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">}</span><span class="token punctuation">,</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="8"><code>  <span class="token punctuation">]</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="9"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="10"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">const</span> <span class="token punctuation">{</span>path<span class="token punctuation">,</span> component<span class="token punctuation">}</span> <span class="token keyword">of</span> pages<span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="11"><code>    <span class="token keyword">const</span> html <span class="token operator">=</span> <span class="token keyword">await</span> renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span>component<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="12"><code>    <span class="token keyword">await</span> <span class="token function">writeFile</span><span class="token punctuation">(</span><span class="token template-string"><span class="token template-punctuation string">`</span><span class="token string">./public</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>path<span class="token interpolation-punctuation punctuation">}</span></span><span class="token template-punctuation string">`</span></span><span class="token punctuation">,</span> <span class="token function">wrapInDocument</span><span class="token punctuation">(</span>html<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="13"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="14"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-469" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-469'] = {"code":"import {writeFile} from \"fs\u002Fpromises\";\nimport {renderer} from \"@b9g\u002Fcrank\u002Fhtml\";\n\nasync function generateSite() {\n  const pages = [\n    {path: \"\u002Findex.html\", component: \u003CHomePage \u002F\u003E},\n    {path: \"\u002Fabout\u002Findex.html\", component: \u003CAboutPage \u002F\u003E},\n    {path: \"\u002Fcontact\u002Findex.html\", component: \u003CContactPage \u002F\u003E},\n  ];\n\n  for (const {path, component} of pages) {\n    const html = await renderer.render(component);\n    await writeFile(`.\u002Fpublic${path}`, wrapInDocument(html));\n  }\n}","lang":"tsx","jsxVersion":"import {writeFile} from \"fs\u002Fpromises\";\nimport {renderer} from \"@b9g\u002Fcrank\u002Fhtml\";\n\nasync function generateSite() {\n  const pages = [\n    {path: \"\u002Findex.html\", component: \u003CHomePage \u002F\u003E},\n    {path: \"\u002Fabout\u002Findex.html\", component: \u003CAboutPage \u002F\u003E},\n    {path: \"\u002Fcontact\u002Findex.html\", component: \u003CContactPage \u002F\u003E},\n  ];\n\n  for (const {path, component} of pages) {\n    const html = await renderer.render(component);\n    await writeFile(`.\u002Fpublic${path}`, wrapInDocument(html));\n  }\n}","templateVersion":"import { jsx } from \"@b9g\u002Fcrank\u002Fstandalone\";\nimport {writeFile} from \"fs\u002Fpromises\";\nimport {renderer} from \"@b9g\u002Fcrank\u002Fhtml\";\n\nasync function generateSite() {\n  const pages = [\n    {path: \"\u002Findex.html\", component: jsx`\u003C${HomePage} \u002F\u003E`},\n    {path: \"\u002Fabout\u002Findex.html\", component: jsx`\u003C${AboutPage} \u002F\u003E`},\n    {path: \"\u002Fcontact\u002Findex.html\", component: jsx`\u003C${ContactPage} \u002F\u003E`},\n  ];\n\n  for (const {path, component} of pages) {\n    const html = await renderer.render(component);\n    await writeFile(`.\u002Fpublic${path}`, wrapInDocument(html));\n  }\n}"};
+		</script></div><h3 id="hydration-setup">Hydration setup</h3><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token comment">// server.tsx</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>renderer<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank/html&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code><span class="token keyword">function</span> <span class="token function">App</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><code>  <span class="token keyword">return</span> <span class="token operator">&lt;</span>div <span class="token keyword">class</span><span class="token operator">=</span><span class="token string">&quot;app&quot;</span><span class="token operator">&gt;</span>Interactive content<span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="6"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="7"><code><span class="token keyword">const</span> html <span class="token operator">=</span> <span class="token keyword">await</span> renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>App <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="8"><code><span class="token comment">// Send to client...</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="9"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="10"><code><span class="token comment">// client.tsx</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="11"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>renderer<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank/dom&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="12"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="13"><code><span class="token keyword">function</span> <span class="token function">App</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="14"><code>  <span class="token keyword">return</span> <span class="token operator">&lt;</span>div <span class="token keyword">class</span><span class="token operator">=</span><span class="token string">&quot;app&quot;</span><span class="token operator">&gt;</span>Interactive content<span class="token operator">&lt;</span><span class="token operator">/</span>div<span class="token operator">&gt;</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="15"><code><span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="16"><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="17"><code><span class="token comment">// Hydrate instead of render to preserve server HTML</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="18"><code>renderer<span class="token punctuation">.</span><span class="token function">hydrate</span><span class="token punctuation">(</span><span class="token operator">&lt;</span>App <span class="token operator">/</span><span class="token operator">&gt;</span><span class="token punctuation">,</span> document<span class="token punctuation">.</span><span class="token function">getElementById</span><span class="token punctuation">(</span><span class="token string">&quot;root&quot;</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-470" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-470'] = {"code":"\u002F\u002F server.tsx\nimport {renderer} from \"@b9g\u002Fcrank\u002Fhtml\";\n\nfunction App() {\n  return \u003Cdiv class=\"app\"\u003EInteractive content\u003C\u002Fdiv\u003E;\n}\n\nconst html = await renderer.render(\u003CApp \u002F\u003E);\n\u002F\u002F Send to client...\n\n\u002F\u002F client.tsx\nimport {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\n\nfunction App() {\n  return \u003Cdiv class=\"app\"\u003EInteractive content\u003C\u002Fdiv\u003E;\n}\n\n\u002F\u002F Hydrate instead of render to preserve server HTML\nrenderer.hydrate(\u003CApp \u002F\u003E, document.getElementById(\"root\"));","lang":"tsx","jsxVersion":null,"templateVersion":null};
+		</script></div><h2 id="see-also">See also</h2><ul><li><a href="/api/html/objects/renderer">renderer</a></li><li><a href="/api/html/objects/impl">impl</a></li><li><a href="/api/dom/classes/DOMRenderer">DOMRenderer</a></li><li><a href="/guides/hydration">Hydration Guide</a></li></ul><div class="css-1lyshc7"><a href="https://github.com/bikeshaving/crank/edit/main/docs/api/html/classes/HTMLRenderer.md" target="_blank" rel="noopener noreferrer" class="css-vrpffa"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>Edit on GitHub</a></div></main><footer class="css-1nd56js"><nav class="css-nf2n4z"><a href="/guides/getting-started">Docs</a><a href="/blog">Blog</a><a href="/playground">Playground</a><a href="https://github.com/bikeshaving/crank">GitHub</a><a href="https://www.npmjs.com/package/@b9g/crank">NPM</a></nav><p class="css-1st8n6b">MIT Licensed · Made with Crank.js</p></footer><script data-name="embedded-json-471" id="static-urls">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['embedded-json-471'] = {"client.css":"\u002Fstatic\u002Fclient-3f2e47bea41770a9.css","@b9g\u002Fcrank":"\u002Fstatic\u002Findex-f24db9ec1faf2d79.js","@b9g\u002Fcrank\u002Fasync":"\u002Fstatic\u002Fasync-3db978e65c84a55b.js","@b9g\u002Fcrank\u002Fdom":"\u002Fstatic\u002Fdom-99d3b4d2ff92e9df.js","@b9g\u002Fcrank\u002Fevent-target":"\u002Fstatic\u002Fevent-target-2c01c58f7606eeb9.js","@b9g\u002Fcrank\u002Fhtml":"\u002Fstatic\u002Fhtml-1bd751aee7ae1a45.js","@b9g\u002Fcrank\u002Fjsx-dev-runtime":"\u002Fstatic\u002Fjsx-dev-runtime-ecbadb89fa15c845.js","@b9g\u002Fcrank\u002Fjsx-runtime":"\u002Fstatic\u002Fjsx-runtime-ecbadb89fa15c845.js","@b9g\u002Fcrank\u002Fjsx-tag":"\u002Fstatic\u002Fjsx-tag-25a058368a652f33.js","@b9g\u002Fcrank\u002Fstandalone":"\u002Fstatic\u002Fstandalone-cd454af9ce80e4d8.js"};
+		</script><script type="module" src="/static/navbar-aea88ca83ee67433.js"></script><script type="module" src="/static/code-blocks-ff4c856c4098ca53.js"></script><script type="module" src="/static/search-c7ba3c3c7573106c.js"></script></body></html>
