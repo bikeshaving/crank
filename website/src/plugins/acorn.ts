@@ -639,7 +639,7 @@ function transformJSXElement(
 		tag = {type: "Identifier", name: tagName.name};
 	}
 
-	const props = transformJSXAttributes(openingElement.attributes);
+	const {props, keyExpr} = transformJSXAttributes(openingElement.attributes);
 	const children = transformJSXChildren(node.children, pragma);
 
 	if (pragma.jsxRuntime === "automatic") {
@@ -667,6 +667,12 @@ function transformJSXElement(
 			],
 		};
 
+		// Automatic JSX runtime expects key as the third argument
+		const args: ESTree.Expression[] = [tag, propsWithChildren];
+		if (keyExpr) {
+			args.push(keyExpr);
+		}
+
 		return {
 			type: "CallExpression",
 			callee: {
@@ -676,7 +682,7 @@ function transformJSXElement(
 				computed: false,
 				optional: false,
 			},
-			arguments: [tag, propsWithChildren],
+			arguments: args,
 			optional: false,
 		};
 	} else {
@@ -684,12 +690,33 @@ function transformJSXElement(
 			? createMemberExpression(pragma.jsxPragma!)
 			: {type: "Identifier", name: pragma.jsxPragma!};
 
+		// Classic runtime: key stays in props
+		const propsWithKey: ESTree.ObjectExpression = keyExpr
+			? {
+					type: "ObjectExpression",
+					properties: [
+						...props.properties,
+						{
+							type: "Property",
+							key: {type: "Identifier", name: "key"},
+							value: keyExpr,
+							kind: "init",
+							method: false,
+							shorthand: false,
+							computed: false,
+						},
+					],
+				}
+			: props;
+
 		return {
 			type: "CallExpression",
 			callee,
 			arguments: [
 				tag,
-				props.properties.length > 0 ? props : {type: "Literal", value: null},
+				propsWithKey.properties.length > 0
+					? propsWithKey
+					: {type: "Literal", value: null},
 				...children,
 			],
 			optional: false,
@@ -787,8 +814,12 @@ function transformJSXMemberExpression(node: any): ESTree.MemberExpression {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function transformJSXAttributes(attributes: any[]): ESTree.ObjectExpression {
+function transformJSXAttributes(attributes: any[]): {
+	props: ESTree.ObjectExpression;
+	keyExpr: ESTree.Expression | null;
+} {
 	const properties: ESTree.Property[] = [];
+	let keyExpr: ESTree.Expression | null = null;
 
 	for (const attr of attributes) {
 		if (attr.type === "JSXSpreadAttribute") {
@@ -798,7 +829,7 @@ function transformJSXAttributes(attributes: any[]): ESTree.ObjectExpression {
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			} as any);
 		} else if (attr.type === "JSXAttribute") {
-			const key =
+			const name =
 				attr.name.type === "JSXIdentifier" ? attr.name.name : attr.name.name;
 			let value: ESTree.Expression;
 
@@ -812,21 +843,29 @@ function transformJSXAttributes(attributes: any[]): ESTree.ObjectExpression {
 				value = attr.value;
 			}
 
-			properties.push({
-				type: "Property",
-				key: {type: "Identifier", name: key},
-				value,
-				kind: "init",
-				method: false,
-				shorthand: false,
-				computed: false,
-			});
+			// Extract the key prop for automatic JSX runtime (passed as 3rd arg)
+			if (name === "key") {
+				keyExpr = value;
+			} else {
+				properties.push({
+					type: "Property",
+					key: {type: "Identifier", name},
+					value,
+					kind: "init",
+					method: false,
+					shorthand: false,
+					computed: false,
+				});
+			}
 		}
 	}
 
 	return {
-		type: "ObjectExpression",
-		properties,
+		props: {
+			type: "ObjectExpression",
+			properties,
+		},
+		keyExpr,
 	};
 }
 
