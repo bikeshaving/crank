@@ -3,17 +3,6 @@ import type {Context} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
 import {css} from "@emotion/css";
 
-// Lazy-load codemod to avoid blocking initial render
-let jsxToTemplate: ((code: string) => string) | null = null;
-let templateToJsx: ((code: string) => string) | null = null;
-const loadCodemods = async () => {
-	if (!jsxToTemplate) {
-		const mod = await import("@b9g/crank-codemods");
-		jsxToTemplate = mod.jsxToTemplate;
-		templateToJsx = mod.templateToJsx;
-	}
-};
-
 window.Prism = window.Prism || {};
 Prism.manual = true;
 import "prismjs";
@@ -52,16 +41,6 @@ const examples = extractData(
 	document.getElementById("examples") as HTMLScriptElement,
 );
 
-// Detect if code uses JSX or template syntax
-function detectSyntaxMode(code: string): "jsx" | "template" {
-	const hasJsxTag = /\bjsx`/.test(code);
-	const hasHtmlTag = /\bhtml`/.test(code);
-	const hasJsxSyntax = /<[A-Z]|<[a-z]+[^`]/.test(code) && !hasJsxTag;
-	if (hasJsxTag || hasHtmlTag) return "template";
-	if (hasJsxSyntax) return "jsx";
-	return "jsx"; // default
-}
-
 function* Playground(this: Context) {
 	// Priority: URL hash > localStorage > default example
 	let code = "";
@@ -81,7 +60,6 @@ function* Playground(this: Context) {
 		code = examples[0].code;
 	}
 
-	let syntaxMode: "jsx" | "template" = detectSyntaxMode(code);
 	let shareStatus = "";
 
 	// Panel width as percentage (0-100)
@@ -94,7 +72,6 @@ function* Playground(this: Context) {
 		code = ev.target.value;
 		localStorage.setItem("playground-value", code);
 		exampleName = ""; // Clear example selection when user edits
-		syntaxMode = detectSyntaxMode(code);
 		this.refresh();
 	});
 
@@ -107,7 +84,6 @@ function* Playground(this: Context) {
 		);
 		if (example) {
 			code = example.code;
-			syntaxMode = detectSyntaxMode(code);
 			updateEditor = true;
 			this.refresh();
 		}
@@ -128,24 +104,6 @@ function* Playground(this: Context) {
 			shareStatus = "";
 			this.refresh();
 		}, 2000);
-	};
-
-	const toggleSyntax = async () => {
-		try {
-			await loadCodemods();
-			if (syntaxMode === "jsx" && jsxToTemplate) {
-				code = jsxToTemplate(code);
-				syntaxMode = "template";
-			} else if (templateToJsx) {
-				code = templateToJsx(code);
-				syntaxMode = "jsx";
-			}
-			updateEditor = true;
-			localStorage.setItem("playground-value", code);
-			this.refresh();
-		} catch (e) {
-			console.error("Failed to transform code:", e);
-		}
 	};
 
 	const startDrag = (ev: MouseEvent | TouchEvent) => {
@@ -236,43 +194,6 @@ function* Playground(this: Context) {
 								)}
 							</select>
 						</div>
-						<button
-							onclick=${toggleSyntax}
-							class=${css`
-								margin-left: 8px;
-								padding: 0 4px;
-								height: 24px;
-								width: 48px;
-								border-radius: 12px;
-								border: 1px solid currentcolor;
-								background: transparent;
-								cursor: pointer;
-								display: flex;
-								align-items: center;
-								justify-content: space-between;
-								font-size: 10px;
-								font-family: monospace;
-								position: relative;
-							`}
-							role="switch"
-							aria-label="toggle syntax"
-							aria-checked=${syntaxMode === "template" ? "true" : "false"}
-						>
-							<span>JSX</span>
-							<span>JS</span>
-							<span
-								class=${css`
-									position: absolute;
-									width: 22px;
-									height: 22px;
-									border-radius: 11px;
-									border: 1px solid currentcolor;
-									background: var(--bg-color);
-									transition: left 0.2s;
-								`}
-								style=${{left: syntaxMode === "jsx" ? "24px" : "2px"}}
-							/>
-						</button>
 						<button
 							class=${css`
 								margin-left: auto;
