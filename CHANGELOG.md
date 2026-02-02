@@ -1,4 +1,12 @@
 # Changelog
+## [0.7.5] - 2026-02-02
+### Bug Fixes
+- **Fix refresh() before yield causing TypeError** (#334)
+  Calling `refresh()` before an async generator component yields no longer throws:
+  ```
+  TypeError: Cannot read properties of undefined (reading 'firstChild')
+  ```
+
 ## [0.7.4] - 2026-01-28
 ### New Features
 - **Allow spaces in class object syntax keys** (#328)
