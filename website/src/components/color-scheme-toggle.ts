@@ -12,7 +12,7 @@ const toggleStyles = css`
 	background: var(--bg-color);
 	cursor: pointer;
 	padding: 0 4px;
-	display: flex;
+	display: none; /* Hidden until hydration */
 	align-items: center;
 	justify-content: space-between;
 	font-size: 16px;
@@ -29,7 +29,8 @@ const knobStyles = css`
 	height: 26px;
 	border-radius: 50%;
 	border: 2px solid var(--text-color);
-	background: var(--bg-color);
+	background: color-mix(in srgb, var(--bg-color) 70%, transparent);
+	backdrop-filter: blur(2px);
 	transition: left 0.2s;
 `;
 
@@ -57,8 +58,9 @@ export function* ColorSchemeToggle(this: Context) {
 				role="switch"
 				aria-label="toggle color scheme"
 				aria-checked=${isDark}
-				hydrate="!aria-checked"
+				hydrate="!aria-checked !style"
 				class=${toggleStyles}
+				style="display: flex;"
 			>
 				<span>${"🌙"}</span>
 				<span>${"💡"}</span>

@@ -123,11 +123,12 @@ export function* InlineCodeBlock(
 								canToggle &&
 								jsx`
 									<button
-										hydrate
+										hydrate="!style"
 										onclick=${toggleSyntax}
 										role="switch"
 										aria-label="toggle syntax"
 										aria-checked=${syntaxMode === "template"}
+										style="display: flex;"
 										class=${css`
 											position: relative;
 											width: 52px;
@@ -137,7 +138,7 @@ export function* InlineCodeBlock(
 											background: var(--bg-color);
 											cursor: pointer;
 											padding: 0 4px;
-											display: flex;
+											display: none; /* Hidden until hydration */
 											align-items: center;
 											justify-content: space-between;
 											font-size: 10px;
@@ -162,7 +163,12 @@ export function* InlineCodeBlock(
 												height: 20px;
 												border-radius: 10px;
 												border: 1px solid var(--text-color);
-												background: var(--bg-color);
+												background: color-mix(
+													in srgb,
+													var(--bg-color) 70%,
+													transparent
+												);
+												backdrop-filter: blur(2px);
 												transition: left 0.2s;
 											`}
 											style=${{left: syntaxMode === "jsx" ? "27px" : "2px"}}
@@ -171,7 +177,7 @@ export function* InlineCodeBlock(
 								`
 							}
 							<button
-								hydrate
+								hydrate="!style"
 								onclick=${async () => {
 									if (typeof navigator !== "undefined" && navigator.clipboard) {
 										await navigator.clipboard.writeText(value);
@@ -182,7 +188,9 @@ export function* InlineCodeBlock(
 										);
 									}
 								}}
+								style="display: inline-block;"
 								class=${css`
+									display: none; /* Hidden until hydration */
 									padding: 0.3em 0.6em;
 									font-size: 12px;
 									cursor: pointer;
