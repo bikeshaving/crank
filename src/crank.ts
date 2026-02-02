@@ -3331,6 +3331,12 @@ function propagateComponent<TNode>(ctx: ContextState<TNode>): void {
 		return;
 	}
 
+	// Check if host has been committed (has a node)
+	// Fixes #334: refresh() called before component yields
+	if (!getFlag(host, DidCommit)) {
+		return;
+	}
+
 	const props = stripSpecialProps(host.el.props);
 	const hostChildren = getChildValues(host, 0);
 
