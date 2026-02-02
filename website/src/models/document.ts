@@ -54,7 +54,8 @@ export async function collectDocuments(
 
 			const url = Path.join("/", Path.relative(rootPathname, filename))
 				.replace(/\.md$/, "")
-				.replace(/([0-9]+-)+/, "");
+				.replace(/([0-9]+-)+/, "")
+				.replace(/\/index$/, ""); // index.md -> parent directory URL
 			docs.push({url, filename, body, attributes});
 		}
 	}
