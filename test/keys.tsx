@@ -794,4 +794,125 @@ test("changing list", () => {
 	Assert.is(1, fn.callCount);
 });
 
+// Keyed host elements reorder correctly via refresh
+test("keyed host elements reorder via refresh", async () => {
+	let refresh: () => void;
+	function* List(this: Context) {
+		let reversed = false;
+		refresh = () => {
+			reversed = !reversed;
+			this.refresh();
+		};
+
+		for ({} of this) {
+			yield (
+				<div>
+					{reversed ? (
+						[
+							<span key="d">d</span>,
+							<span key="c">c</span>,
+							<span key="b">b</span>,
+							<span key="a">a</span>,
+						]
+					) : (
+						[
+							<span key="a">a</span>,
+							<span key="b">b</span>,
+							<span key="c">c</span>,
+							<span key="d">d</span>,
+						]
+					)}
+				</div>
+			);
+		}
+	}
+
+	renderer.render(<List />, document.body);
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>a</span><span>b</span><span>c</span><span>d</span></div>",
+	);
+
+	const spanA = document.body.firstChild!.childNodes[0];
+	const spanB = document.body.firstChild!.childNodes[1];
+	const spanC = document.body.firstChild!.childNodes[2];
+	const spanD = document.body.firstChild!.childNodes[3];
+
+	// Reverse via refresh
+	refresh!();
+	await new Promise((r) => setTimeout(r, 0));
+
+	// DOM should be reordered
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>d</span><span>c</span><span>b</span><span>a</span></div>",
+	);
+	// Same DOM nodes, just moved
+	Assert.is(document.body.firstChild!.childNodes[0], spanD);
+	Assert.is(document.body.firstChild!.childNodes[1], spanC);
+	Assert.is(document.body.firstChild!.childNodes[2], spanB);
+	Assert.is(document.body.firstChild!.childNodes[3], spanA);
+});
+
+// Bug: keyed generator components don't reorder via refresh
+test("keyed generator components reorder via refresh", async () => {
+	const mounted: string[] = [];
+	function* ID(this: Context, {id}: {id: string}) {
+		mounted.push(id);
+		for ({id} of this) {
+			yield <span>{id}</span>;
+		}
+	}
+
+	let refresh: () => void;
+	function* List(this: Context) {
+		let reversed = false;
+		refresh = () => {
+			reversed = !reversed;
+			this.refresh();
+		};
+
+		for ({} of this) {
+			const order = reversed ? ["d", "c", "b", "a"] : ["a", "b", "c", "d"];
+			yield (
+				<div>
+					{order.map((k) => (
+						<ID key={k} id={k} />
+					))}
+				</div>
+			);
+		}
+	}
+
+	renderer.render(<List />, document.body);
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>a</span><span>b</span><span>c</span><span>d</span></div>",
+	);
+	Assert.equal(mounted, ["a", "b", "c", "d"]);
+
+	const spanA = document.body.firstChild!.childNodes[0];
+	const spanB = document.body.firstChild!.childNodes[1];
+	const spanC = document.body.firstChild!.childNodes[2];
+	const spanD = document.body.firstChild!.childNodes[3];
+
+	// Reverse via refresh
+	refresh!();
+	await new Promise((r) => setTimeout(r, 0));
+
+	// Components should NOT be remounted
+	Assert.equal(mounted, ["a", "b", "c", "d"]);
+
+	// DOM should be reordered
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>d</span><span>c</span><span>b</span><span>a</span></div>",
+	);
+	// Same DOM nodes, just moved
+	Assert.is(document.body.firstChild!.childNodes[0], spanD);
+	Assert.is(document.body.firstChild!.childNodes[1], spanC);
+	Assert.is(document.body.firstChild!.childNodes[2], spanB);
+	Assert.is(document.body.firstChild!.childNodes[3], spanA);
+});
+
 test.run();
