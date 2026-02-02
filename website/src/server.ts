@@ -105,6 +105,23 @@ router.use(async (request) => {
 // Strip trailing slashes (redirect /path/ → /path)
 router.use(trailingSlash("strip"));
 
+// Redirects for renamed URLs (handled in middleware to avoid router conflicts)
+const redirects: Record<string, string> = {
+	"/guides/special-props-and-tags": "/guides/special-props-and-components",
+};
+
+router.use(async (request) => {
+	const url = new URL(request.url);
+	const newPath = redirects[url.pathname];
+	if (newPath) {
+		return new Response(null, {
+			status: 301,
+			headers: {Location: newPath},
+		});
+	}
+	return;
+});
+
 // Setup assets middleware to serve /static/ files
 router.use(assetsMiddleware());
 
@@ -229,20 +246,6 @@ router.route("/api/:module/:category/:slug").get(async (request, context) => {
 	const url = new URL(request.url);
 	return renderView(APIView, url.pathname, context.params);
 });
-
-// Redirects for renamed URLs (old -> new)
-const redirects: Record<string, string> = {
-	"/guides/special-props-and-tags": "/guides/special-props-and-components",
-};
-
-for (const [oldPath, newPath] of Object.entries(redirects)) {
-	router.route(oldPath).get(() => {
-		return new Response(null, {
-			status: 301,
-			headers: {Location: newPath},
-		});
-	});
-}
 
 router.route("/playground").get(async (request) => {
 	const url = new URL(request.url);

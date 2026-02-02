@@ -1,16 +1,16 @@
 ---
-title: Special Props and Tags
-description: Explore Crank's special props like crank-key, Copy tags, and Raw tags. Learn advanced techniques for controlling rendering and optimizing performance.
+title: Special Props and Components
+description: Explore Crank's special props like crank-key, Copy, and Raw. Learn advanced techniques for controlling rendering and optimizing performance.
 ---
 
 While most props are passed directly to DOM elements or components, Crank reserves certain prop names for special framework behavior. These special props control element diffing, rendering optimization, and framework features.
 
-Additionally, Crank provides special element tags that modify how elements are rendered or diffed. This guide covers both special props and special tags.
+Additionally, Crank provides special element components that modify how elements are rendered or diffed. This guide covers both special props and special components.
 
 ## Special Props
 The following prop names have special behavior in Crank:
 
-### key
+### The key prop
 The `key` prop helps Crank identify which elements have been added, moved, or removed when rendering lists. Without keys, Crank matches elements by position, which can cause issues when list items are reordered or inserted.
 
 Keys are especially important for stateful components or elements with form inputs, where you want to preserve state when the list changes.
@@ -91,7 +91,7 @@ console.log(document.body.innerHTML);
 console.log(document.firstChild.firstChild === span); // true
 ```
 
-### ref
+### The ref prop
 Sometimes, you may want to access the rendered value of a specific element in the element tree. To do this, you can pass a callback as the `ref` prop. This callback is called with the rendered value of the element when the element has committed.
 
 ```jsx live
@@ -124,7 +124,7 @@ function MyInput({ref, class, ...props}) {
 }
 ```
 
-### copy
+### The copy prop
 
 The `copy` prop is used to prevent the re-rendering of any element and its children. It can be a boolean or a string that specifies which props to copy from the previous render.
 
@@ -173,7 +173,7 @@ Starting in Crank 0.7, the `copy` prop can be a string to specify which props sh
 - `copy="class children"` - Copy only `class` and `children` props
 - Cannot mix bang (`!`) and non-bang syntax in the same string
 
-### hydrate
+### The hydrate prop
 
 The `hydrate` prop provides fine-grained control over server-side rendering hydration. It works similarly to the `copy` prop but specifically for hydration behavior.
 
@@ -203,7 +203,7 @@ This is particularly useful when you have server-rendered content that should re
 
 For comprehensive hydration patterns, best practices, and advanced techniques, see the [Hydration guide](/guides/hydration).
 
-### children
+### The children prop
 The `children` prop passed to components is special because it is not usually set with JSX's `key="value"` prop syntax, but by the contents between the opening and closing tags. It is the responsibility of the component to make sure the `children` passed in are rendered in its yielded or returned element tree.
 
 ```jsx
@@ -233,7 +233,7 @@ renderer.render(
 
 The following props are specific to host elements for the HTML and DOM renderers.
 
-### style
+### The style prop
 The style prop can be used to add inline styles to an element. It can either be a CSS string, in which case it works exactly as it does in HTML, or it can also be an object, in which case CSS properties can be set individually. The latter is helpful, for example, if you have an outside process that handles animating CSS styles and you don't want to reset them during a component re-render.
 
 ```jsx
@@ -242,14 +242,14 @@ The style prop can be used to add inline styles to an element. It can either be 
 
 **Note:** Unlike other frameworks like React, Crank does not camel-case style names or add pixel units to numbers.
 
-### innerHTML
+### The innerHTML prop
 The `innerHTML` prop can be used to set the element’s children with an HTML string.
 
 Be careful when using the `innerHTML` prop, as passing unsanitized text inputs can lead to security vulnerabilities.
 
-As an alternative, you can also use [the special `Raw` element tag](#raw), which allows to inject raw HTML or even actual DOM nodes into the element tree, without requiring a parent host element.
+As an alternative, you can also use [the special `Raw` component](#raw), which allows you to inject raw HTML or even actual DOM nodes into the element tree, without requiring a parent host element.
 
-### class
+### The class prop
 
 The `class` prop accepts both strings and objects for convenient class name management.
 
@@ -302,12 +302,12 @@ Crank strives to make copying and pasting HTML into your components as easy as p
 
 You can still use the `className` and `htmlFor` props as well, but using the former names is preferred. This philosophy also extends to SVG elements, and you can use props like `clip-path` and `stroke-width` without having to camel case them.
 
-## Special Tags
+## Special Components
 
-Crank provides five special element tags which modify renderer behavior, affecting element diffing and rendering output in various ways.
+Crank provides five special element components which modify renderer behavior, affecting element diffing and rendering output in various ways.
 
 ### Fragment
-Crank provides a `<Fragment>` tag, which allows you to render multiple children into a parent without wrapping them in another DOM node. Under the hood, iterables which appear in the element tree are also implicitly wrapped in a `<Fragment>` element by the renderer.
+Crank provides a `<Fragment>` component, which allows you to render multiple children into a parent without wrapping them in another DOM node. Under the hood, iterables which appear in the element tree are also implicitly wrapped in a `<Fragment>` element by the renderer.
 
 ```jsx
 import {Fragment} from "@b9g/crank";
@@ -328,7 +328,7 @@ console.log(document.body.innerHTML);
 
 ### Copy
 
-It‘s often fine to rerender Crank components, because elements are diffed, persistent between renders, and unnecessary mutations usually avoided. However, you might want to prevent a child from updating when the parent rerenders, perhaps because a certain prop hasn’t changed, because you want to batch updates from the parent, or as a performance optimization. To do this, you can use the `<Copy>` tag to indicate to Crank that you don’t want to update a previously rendered element in that same position.
+It's often fine to rerender Crank components, because elements are diffed, persistent between renders, and unnecessary mutations usually avoided. However, you might want to prevent a child from updating when the parent rerenders, perhaps because a certain prop hasn't changed, because you want to batch updates from the parent, or as a performance optimization. To do this, you can use the `<Copy>` component to indicate to Crank that you don't want to update a previously rendered element in that same position.
 
 ```jsx
 function equals(props, newProps) {
@@ -360,7 +360,7 @@ function memo(Component) {
 In this example, `memo` is a higher-order component, a function which takes a component and returns a component. This wrapper component compares old and new props and yields a `<Copy>` element if every prop is shallowly equal. A `<Copy>` element can appear anywhere in an element tree to prevent rerenderings, and the only props `<Copy>` elements take are the `key` and `ref` props, which work as expected.
 
 ### Portal
-Sometimes you may want to render into a DOM node which isn’t the current parent element, or even a part of the currently rendered DOM tree, as in the case of modals. You can do this with the `<Portal>` tag, passing in a DOM node as its `root` prop. The `<Portal>` element’s children will be rendered into the specified root element, just as if `renderer.render()` was called with the root value as its second argument.
+Sometimes you may want to render into a DOM node which isn't the current parent element, or even a part of the currently rendered DOM tree, as in the case of modals. You can do this with the `<Portal>` component, passing in a DOM node as its `root` prop. The `<Portal>` element's children will be rendered into the specified root element, just as if `renderer.render()` was called with the root value as its second argument.
 
 ```jsx live
 import {Portal} from "@b9g/crank";
@@ -382,7 +382,7 @@ function MyComponent() {
 renderer.render(<MyComponent />, document.body);
 ```
 
-This tag is useful for creating modals or tooltips, which usually need to be rendered into separate DOM elements at the bottom of the page for visibility reasons. Events dispatched from a `Portal` element‘s child components via the `dispatchEvent` method will still bubble into parent components.
+This component is useful for creating modals or tooltips, which usually need to be rendered into separate DOM elements at the bottom of the page for visibility reasons. Events dispatched from a `Portal` element's child components via the `dispatchEvent` method will still bubble into parent components.
 
 ### Raw
 Sometimes, you may want to insert raw HTML or actual DOM nodes directly into the element tree. Crank allows you to do this with the `<Raw>` element. The `<Raw>` element takes a `value` prop, which can be . For the DOM renderer, if `value` is an HTML string, the renderer will parse and insert the resulting DOM nodes. If the value is already a DOM node, Crank will insert them in place.

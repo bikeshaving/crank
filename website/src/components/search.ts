@@ -4,7 +4,13 @@ import type {Context} from "@b9g/crank";
 
 interface SearchResult {
 	url: string;
-	meta: {title?: string};
+	title: string;
+	excerpt: string;
+}
+
+interface PagefindSubResult {
+	title: string;
+	url: string;
 	excerpt: string;
 }
 
@@ -12,6 +18,7 @@ interface PagefindResult {
 	url: string;
 	meta: {title?: string};
 	excerpt: string;
+	sub_results?: PagefindSubResult[];
 }
 
 interface Pagefind {
@@ -74,11 +81,24 @@ export async function* Search(this: Context) {
 			search.results.slice(0, 8).map((r) => r.data()),
 		);
 
-		results = data.map((d) => ({
-			url: d.url,
-			meta: d.meta,
-			excerpt: d.excerpt,
-		}));
+		// Use sub_results to show specific sections instead of page introductions
+		results = data.flatMap((d) => {
+			// If there are sub_results, use the first (most relevant) one
+			if (d.sub_results && d.sub_results.length > 0) {
+				const sub = d.sub_results[0];
+				return [{
+					url: sub.url,
+					title: sub.title || d.meta.title || d.url,
+					excerpt: sub.excerpt,
+				}];
+			}
+			// Fall back to page-level result
+			return [{
+				url: d.url,
+				title: d.meta.title || d.url,
+				excerpt: d.excerpt,
+			}];
+		}).slice(0, 8);
 		loading = false;
 		this.refresh();
 	};
@@ -203,7 +223,7 @@ export async function* Search(this: Context) {
 									font-size: 0.9rem;
 									margin-bottom: 0.25rem;
 									color: var(--highlight-color);
-								`}>${r.meta.title || r.url}</div>
+								`}>${r.title}</div>
 								<div
 									class=${css`
 										font-size: 0.8rem;
