@@ -12,13 +12,32 @@ export function* InlineCodeBlock(
 		editable,
 		// TODO: This is narsty.
 		breakpoint = "1300px",
+		jsxVersion = null,
+		templateVersion = null,
 	}: {
 		value: string;
 		lang: string;
 		editable: boolean;
 		breakpoint: string;
+		jsxVersion?: string | null;
+		templateVersion?: string | null;
 	},
 ): any {
+	// Track current syntax mode: "jsx" or "template"
+	let syntaxMode: "jsx" | "template" =
+		jsxVersion === value ? "jsx" : templateVersion === value ? "template" : "jsx";
+
+	const toggleSyntax = () => {
+		if (syntaxMode === "jsx" && templateVersion) {
+			syntaxMode = "template";
+			value = templateVersion;
+		} else if (syntaxMode === "template" && jsxVersion) {
+			syntaxMode = "jsx";
+			value = jsxVersion;
+		}
+		this.refresh();
+	};
+
 	this.addEventListener("contentchange", (ev: any) => {
 		value = ev.target.value;
 		this.refresh();
@@ -45,7 +64,9 @@ export function* InlineCodeBlock(
 		});
 	}
 
-	for ({lang, editable, breakpoint = "1300px"} of this) {
+	const canToggle = jsxVersion && templateVersion;
+
+	for ({lang, editable, breakpoint = "1300px", jsxVersion, templateVersion} of this) {
 		yield jsx`
 			<div hydrate="!class" class=${css`
 				max-width: ${editable ? "calc(100% - 1px)" : "min(100%, 1000px)"};
@@ -72,6 +93,37 @@ export function* InlineCodeBlock(
 						}`
 							: ""}
 					`}>
+						${
+							canToggle &&
+							jsx`
+								<div hydrate="!class" class=${css`
+									display: flex;
+									justify-content: flex-end;
+									padding: 4px 8px;
+									background-color: var(--bg-color);
+									border-bottom: 1px solid var(--text-color);
+								`}>
+									<button
+										onclick=${toggleSyntax}
+										class=${css`
+											padding: 2px 8px;
+											font-size: 12px;
+											cursor: pointer;
+											border: 1px solid var(--text-color);
+											border-radius: 4px;
+											background-color: var(--bg-color);
+											color: var(--text-color);
+											&:hover {
+												background-color: var(--text-color);
+												color: var(--bg-color);
+											}
+										`}
+									>
+										${syntaxMode === "jsx" ? "Show Template" : "Show JSX"}
+									</button>
+								</div>
+							`
+						}
 						<div hydrate="!class" class=${css`
 							overflow-x: auto;
 						`}>
