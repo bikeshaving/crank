@@ -2,6 +2,7 @@ import {jsx} from "@b9g/crank/standalone";
 import type {Context} from "@b9g/crank";
 import {renderer} from "@b9g/crank/dom";
 import {css} from "@emotion/css";
+import {jsxToTemplate, templateToJsx} from "@b9g/crank-codemods";
 
 window.Prism = window.Prism || {};
 Prism.manual = true;
@@ -41,6 +42,16 @@ const examples = extractData(
 	document.getElementById("examples") as HTMLScriptElement,
 );
 
+// Detect if code uses JSX or template syntax
+function detectSyntaxMode(code: string): "jsx" | "template" {
+	const hasJsxTag = /\bjsx`/.test(code);
+	const hasHtmlTag = /\bhtml`/.test(code);
+	const hasJsxSyntax = /<[A-Z]|<[a-z]+[^`]/.test(code) && !hasJsxTag;
+	if (hasJsxTag || hasHtmlTag) return "template";
+	if (hasJsxSyntax) return "jsx";
+	return "jsx"; // default
+}
+
 function* Playground(this: Context) {
 	// Priority: URL hash > localStorage > default example
 	let code = "";
@@ -60,6 +71,7 @@ function* Playground(this: Context) {
 		code = examples[0].code;
 	}
 
+	let syntaxMode: "jsx" | "template" = detectSyntaxMode(code);
 	let shareStatus = "";
 
 	// Panel width as percentage (0-100)
@@ -71,18 +83,24 @@ function* Playground(this: Context) {
 	this.addEventListener("contentchange", (ev: any) => {
 		code = ev.target.value;
 		localStorage.setItem("playground-value", code);
+		exampleName = ""; // Clear example selection when user edits
+		syntaxMode = detectSyntaxMode(code);
 		this.refresh();
 	});
 
 	let exampleName = "";
 	const onexamplechange = (ev: Event) => {
 		exampleName = (ev.target as HTMLSelectElement).value;
-		const {code: code1} = examples.find(
+		if (!exampleName) return; // "Load an example..." selected
+		const example = examples.find(
 			(example: any) => example.name === exampleName,
 		);
-		code = code1;
-		updateEditor = true;
-		this.refresh();
+		if (example) {
+			code = example.code;
+			syntaxMode = detectSyntaxMode(code);
+			updateEditor = true;
+			this.refresh();
+		}
 	};
 
 	const onShare = async () => {
@@ -100,6 +118,23 @@ function* Playground(this: Context) {
 			shareStatus = "";
 			this.refresh();
 		}, 2000);
+	};
+
+	const toggleSyntax = () => {
+		try {
+			if (syntaxMode === "jsx") {
+				code = jsxToTemplate(code);
+				syntaxMode = "template";
+			} else {
+				code = templateToJsx(code);
+				syntaxMode = "jsx";
+			}
+			updateEditor = true;
+			localStorage.setItem("playground-value", code);
+			this.refresh();
+		} catch (e) {
+			console.error("Failed to transform code:", e);
+		}
 	};
 
 	const startDrag = (ev: MouseEvent | TouchEvent) => {
@@ -190,6 +225,43 @@ function* Playground(this: Context) {
 								)}
 							</select>
 						</div>
+						<button
+							onclick=${toggleSyntax}
+							class=${css`
+								margin-left: 8px;
+								padding: 0 4px;
+								height: 24px;
+								width: 48px;
+								border-radius: 12px;
+								border: 1px solid currentcolor;
+								background: transparent;
+								cursor: pointer;
+								display: flex;
+								align-items: center;
+								justify-content: space-between;
+								font-size: 10px;
+								font-family: monospace;
+								position: relative;
+							`}
+							role="switch"
+							aria-label="toggle syntax"
+							aria-checked=${syntaxMode === "template" ? "true" : "false"}
+						>
+							<span>JSX</span>
+							<span>JS</span>
+							<span
+								class=${css`
+									position: absolute;
+									width: 22px;
+									height: 22px;
+									border-radius: 11px;
+									border: 1px solid currentcolor;
+									background: var(--bg-color);
+									transition: left 0.2s;
+								`}
+								style=${{left: syntaxMode === "jsx" ? "24px" : "2px"}}
+							/>
+						</button>
 						<button
 							class=${css`
 								margin-left: auto;
