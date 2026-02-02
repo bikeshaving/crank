@@ -1,6 +1,6 @@
 export {
-	jsxToTemplate,
-	templateToJsx,
-	jsxToTemplateTransform,
-	templateToJsxTransform,
+	JSXToTemplate,
+	templateToJSX,
+	JSXToTemplateTransform,
+	templateToJSXTransform,
 } from "./jsx-to-template.js";

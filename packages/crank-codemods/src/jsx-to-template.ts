@@ -14,9 +14,9 @@
  *   jsx`<//>` (generic closing tag)
  *
  * Usage:
- *   import { jsxToTemplate, templateToJsx } from "@b9g/crank-codemods";
- *   const templateCode = jsxToTemplate(jsxCode);
- *   const jsxCode = templateToJsx(templateCode);
+ *   import { JSXToTemplate, templateToJSX } from "@b9g/crank-codemods";
+ *   const templateCode = JSXToTemplate(jsxCode);
+ *   const jsxCode = templateToJSX(templateCode);
  */
 
 import jscodeshift from "jscodeshift";
@@ -297,7 +297,7 @@ function expressionToJSXMemberExpression(j: JSCodeshift, node: any): any {
 /**
  * Transform JSX to tagged template literals (jscodeshift transform)
  */
-export function jsxToTemplateTransform(
+export function JSXToTemplateTransform(
 	fileInfo: FileInfo,
 	api: API,
 ): string | null {
@@ -576,7 +576,7 @@ function parseElementToJSX(
 /**
  * Transform tagged template literals back to JSX (jscodeshift transform)
  */
-export function templateToJsxTransform(
+export function templateToJSXTransform(
 	fileInfo: FileInfo,
 	api: API,
 ): string | null {
@@ -630,9 +630,9 @@ export function templateToJsxTransform(
 /**
  * Convert JSX code to tagged template syntax
  */
-export function jsxToTemplate(code: string): string {
+export function JSXToTemplate(code: string): string {
 	const j = jscodeshift.withParser("tsx");
-	const result = jsxToTemplateTransform({source: code, path: "input.tsx"}, {
+	const result = JSXToTemplateTransform({source: code, path: "input.tsx"}, {
 		jscodeshift: j,
 		j,
 		stats: () => {},
@@ -644,9 +644,9 @@ export function jsxToTemplate(code: string): string {
 /**
  * Convert tagged template syntax to JSX code
  */
-export function templateToJsx(code: string): string {
+export function templateToJSX(code: string): string {
 	const j = jscodeshift.withParser("tsx");
-	const result = templateToJsxTransform({source: code, path: "input.tsx"}, {
+	const result = templateToJSXTransform({source: code, path: "input.tsx"}, {
 		jscodeshift: j,
 		j,
 		stats: () => {},
