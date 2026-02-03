@@ -173,4 +173,33 @@ test("dispatchEvent in initial schedule callback", () => {
 	Assert.is(mock.callCount, 0);
 });
 
+// https://github.com/bikeshaving/crank/issues/336
+test("async generator refresh during await with for...of this", async () => {
+	async function* Component(this: Context) {
+		await Promise.resolve();
+		this.refresh();
+		for (const {} of this) {
+			yield <span>Hello</span>;
+		}
+	}
+
+	await renderer.render(<Component />, document.body);
+	Assert.is(document.body.innerHTML, "<span>Hello</span>");
+	Assert.is(mock.callCount, 0);
+});
+
+// https://github.com/bikeshaving/crank/issues/336
+test("async generator refresh during await with direct yield", async () => {
+	async function* Component(this: Context) {
+		await Promise.resolve();
+		this.refresh();
+		yield <span>Hello</span>;
+		yield <span>Goodbye</span>;
+	}
+
+	await renderer.render(<Component />, document.body);
+	Assert.is(document.body.innerHTML, "<span>Goodbye</span>");
+	Assert.is(mock.callCount, 0);
+});
+
 test.run();
