@@ -5,7 +5,8 @@
     "predeploy": "npm run static",
     "deploy": "gh-pages -d dist/public",
     "develop": "shovel develop src/server.ts --port 1337 --platform bun",
-    "static": "MODE=production shovel build src/server.ts --platform bun --lifecycle && echo crank.js.org > dist/public/CNAME && pagefind --site dist/public"
+    "pagefind": "pagefind --site dist/public",
+    "static": "MODE=production shovel build src/server.ts --platform bun --lifecycle && echo crank.js.org > dist/public/CNAME && bun run pagefind"
   },
   "dependencies": {
     "@b9g/assets": "0.2.0-beta.1",
