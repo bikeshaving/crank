@@ -72,6 +72,7 @@ export function* Root(
 					<script type="module" src=${assets.navbarScript}></script>
 					<script type="module" src=${assets.codeBlocksScript}></script>
 					<script type="module" src=${assets.searchScript}></script>
+					<script type="module" src=${assets.gearScript}></script>
 				</body>
 			</html>
 		`;
