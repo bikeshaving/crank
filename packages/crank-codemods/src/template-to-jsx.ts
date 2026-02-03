@@ -5,8 +5,8 @@
  *   jscodeshift -t node_modules/@b9g/crank-codemods/dist/template-to-jsx.js src/
  *
  * Programmatic usage:
- *   import { jsxFromTemplate } from "@b9g/crank-codemods";
- *   const jsxCode = jsxFromTemplate(templateCode);
+ *   import { templateToJSX } from "@b9g/crank-codemods";
+ *   const jsxCode = templateToJSX(templateCode);
  */
 
 import jscodeshift from "jscodeshift";
@@ -212,7 +212,7 @@ export default function transform(fileInfo: FileInfo, api: API): string | null {
 /**
  * Programmatic API: Convert tagged template syntax to JSX code.
  */
-export function jsxFromTemplate(code: string): string {
+export function templateToJSX(code: string): string {
 	const j = jscodeshift.withParser("tsx");
 	const result = transform({source: code, path: "input.tsx"}, {
 		jscodeshift: j,

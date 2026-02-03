@@ -1,8 +1,2 @@
-export {
-	default as jsxToTemplateTransform,
-	templateFromJSX,
-} from "./jsx-to-template.js";
-export {
-	default as templateToJSXTransform,
-	jsxFromTemplate,
-} from "./template-to-jsx.js";
+export {jsxToTemplate} from "./jsx-to-template.js";
+export {templateToJSX} from "./template-to-jsx.js";
