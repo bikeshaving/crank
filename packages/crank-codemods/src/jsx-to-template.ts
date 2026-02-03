@@ -269,10 +269,7 @@ function memberExpressionToString(node: any): string {
  * jscodeshift transform: Convert JSX to tagged template literals.
  * This is the default export for jscodeshift CLI compatibility.
  */
-export default function transform(
-	fileInfo: FileInfo,
-	api: API,
-): string | null {
+export default function transform(fileInfo: FileInfo, api: API): string | null {
 	const j = api.jscodeshift;
 	const root = j(fileInfo.source);
 
