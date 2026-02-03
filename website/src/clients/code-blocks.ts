@@ -1,8 +1,7 @@
 // Check early if there's work to do before loading heavy dependencies
 const containers = document.querySelectorAll(".code-block-container");
-const gearInteractiveRoot = document.getElementById("gear-interactive");
 
-if (containers.length > 0 || gearInteractiveRoot) {
+if (containers.length > 0) {
 	// Lazy-load all heavy dependencies
 	Promise.all([
 		import("@b9g/crank/standalone"),
@@ -55,13 +54,6 @@ if (containers.length > 0 || gearInteractiveRoot) {
 				`,
 					container,
 				);
-			}
-
-			// Render gear interactive if present
-			if (gearInteractiveRoot) {
-				const {GearInteractive} =
-					await import("../components/gear-interactive.js");
-				renderer.render(jsx`<${GearInteractive} />`, gearInteractiveRoot);
 			}
 		},
 	);

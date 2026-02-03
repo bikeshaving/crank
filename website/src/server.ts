@@ -28,6 +28,7 @@ import playgroundScript from "./clients/playground.ts" with {
 	assetBase: "/static/",
 };
 import searchScript from "./clients/search.ts" with {assetBase: "/static/"};
+import gearScript from "./clients/gear.ts" with {assetBase: "/static/"};
 import favicon from "../static/favicon.ico" with {assetBase: "/static/"};
 import logo from "../static/logo.svg" with {assetBase: "/static/"};
 
@@ -68,6 +69,7 @@ export const assets = {
 	codeBlocksScript,
 	playgroundScript,
 	searchScript,
+	gearScript,
 	favicon,
 	logo,
 };
