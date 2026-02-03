@@ -6,12 +6,11 @@
     "lib": ["esnext", "dom"],
     "jsx": "react",
     "jsxFactory": "createElement",
-    "declaration": true,
-    "sourceMap": true,
     "isolatedModules": true,
     "strict": true,
     "moduleResolution": "node",
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "noEmit": true
   }
 }
