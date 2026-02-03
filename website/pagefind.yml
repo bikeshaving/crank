@@ -1,0 +1,8 @@
+exclude_selectors:
+  - button
+  - "[role='switch']"
+  - nav
+  - "#sidebar"
+  - "#search-root"
+  - "input"
+  - "footer"
