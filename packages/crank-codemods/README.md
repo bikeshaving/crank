@@ -6,7 +6,7 @@ Codemods for converting between Crank.js JSX syntax and tagged template syntax.
 
 ## Functions
 
-- `JSXToTemplate(code)` - Convert JSX to tagged template literals
-- `templateToJSX(code)` - Convert tagged templates back to JSX
-- `JSXToTemplateTransform` - jscodeshift transform for JSX → template
+- `templateFromJSX(code)` - Convert JSX to tagged template literals
+- `jsxFromTemplate(code)` - Convert tagged templates back to JSX
+- `jsxToTemplateTransform` - jscodeshift transform for JSX → template
 - `templateToJSXTransform` - jscodeshift transform for template → JSX
