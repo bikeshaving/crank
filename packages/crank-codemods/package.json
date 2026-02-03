@@ -1,6 +1,7 @@
 {
   "name": "@b9g/crank-codemods",
   "version": "0.1.0",
+  "private": true,
   "description": "Codemods for Crank.js - transform between JSX and tagged template syntax",
   "type": "module",
   "main": "./dist/index.js",
