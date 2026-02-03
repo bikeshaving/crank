@@ -13,6 +13,10 @@
     "./jsx-to-template": {
       "types": "./dist/jsx-to-template.d.ts",
       "import": "./dist/jsx-to-template.js"
+    },
+    "./template-to-jsx": {
+      "types": "./dist/template-to-jsx.d.ts",
+      "import": "./dist/template-to-jsx.js"
     }
   },
   "files": [
