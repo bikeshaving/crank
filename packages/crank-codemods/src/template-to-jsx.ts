@@ -161,10 +161,7 @@ function parseElementToJSX(
  * jscodeshift transform: Convert tagged template literals back to JSX.
  * This is the default export for jscodeshift CLI compatibility.
  */
-export default function transform(
-	fileInfo: FileInfo,
-	api: API,
-): string | null {
+export default function transform(fileInfo: FileInfo, api: API): string | null {
 	const j = api.jscodeshift;
 	const root = j(fileInfo.source);
 
