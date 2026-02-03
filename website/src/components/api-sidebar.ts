@@ -1,20 +1,114 @@
 import {jsx} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
-import type {Element} from "@b9g/crank/standalone";
+import type {DocInfo} from "../models/document.js";
 import {Search} from "./search.js";
 
 export interface APIModule {
 	name: string;
 	slug: string;
+	url: string;
 	categories: Array<{
 		name: string;
 		slug: string;
 		items: Array<{
 			name: string;
-			slug: string;
 			url: string;
 		}>;
 	}>;
+}
+
+// Category display names and sort order
+const CATEGORY_ORDER = [
+	"functions",
+	"classes",
+	"interfaces",
+	"types",
+	"components",
+	"objects",
+];
+
+function capitalize(str: string): string {
+	return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+export function buildAPIModules(docs: DocInfo[]): APIModule[] {
+	const moduleMap = new Map<
+		string,
+		{
+			name: string;
+			slug: string;
+			url: string;
+			categories: Map<
+				string,
+				{name: string; slug: string; items: Array<{name: string; url: string}>}
+			>;
+		}
+	>();
+
+	for (const doc of docs) {
+		// Parse URL: /api, /api/{module}, /api/{module}/{category}/{item}
+		const parts = doc.url.split("/").filter(Boolean); // ["api", "core", "functions", "createElement"]
+
+		if (parts.length < 2) continue; // Skip /api itself
+
+		const moduleSlug = parts[1];
+
+		if (!moduleMap.has(moduleSlug)) {
+			moduleMap.set(moduleSlug, {
+				name: moduleSlug, // Will be overwritten by index.md title
+				slug: moduleSlug,
+				url: `/api/${moduleSlug}`,
+				categories: new Map(),
+			});
+		}
+
+		const mod = moduleMap.get(moduleSlug)!;
+
+		if (parts.length === 2) {
+			// Module index: /api/{module}
+			mod.name = doc.attributes.title;
+		} else if (parts.length === 4) {
+			// Item: /api/{module}/{category}/{item}
+			const categorySlug = parts[2];
+
+			if (!mod.categories.has(categorySlug)) {
+				mod.categories.set(categorySlug, {
+					name: capitalize(categorySlug),
+					slug: categorySlug,
+					items: [],
+				});
+			}
+
+			mod.categories.get(categorySlug)!.items.push({
+				name: doc.attributes.title,
+				url: doc.url,
+			});
+		}
+	}
+
+	// Convert to array and sort
+	const modules = Array.from(moduleMap.values()).map((mod) => ({
+		...mod,
+		categories: Array.from(mod.categories.values())
+			.sort((a, b) => {
+				const aIndex = CATEGORY_ORDER.indexOf(a.slug);
+				const bIndex = CATEGORY_ORDER.indexOf(b.slug);
+				return (aIndex === -1 ? 999 : aIndex) - (bIndex === -1 ? 999 : bIndex);
+			})
+			.map((cat) => ({
+				...cat,
+				items: cat.items.sort((a, b) => a.name.localeCompare(b.name)),
+			})),
+	}));
+
+	// Sort modules: core first, then alphabetically
+	modules.sort((a, b) => {
+		if (a.slug === "core") return -1;
+		if (b.slug === "core") return 1;
+		return a.name.localeCompare(b.name);
+	});
+
+	return modules;
 }
 
 const sidebarStyle = css`
@@ -82,38 +176,9 @@ export function APISidebar({
 	modules,
 	url,
 }: {
-	modules: Array<APIModule>;
+	modules: APIModule[];
 	url: string;
 }) {
-	const links: Array<Element> = [];
-
-	for (const mod of modules) {
-		links.push(jsx`
-			<div class=${moduleHeaderStyle}>
-				<a
-					href="/api/${mod.slug}"
-					class=${css`
-						text-decoration: none;
-					`}
-					aria-current=${url === `/api/${mod.slug}` && "page"}
-				>${mod.name}</a>
-			</div>
-		`);
-
-		for (const category of mod.categories) {
-			links.push(jsx`<div class=${categoryStyle}>${category.name}</div>`);
-			for (const item of category.items) {
-				links.push(jsx`
-					<a
-						href=${item.url}
-						class=${linkStyle}
-						aria-current=${url === item.url && "page"}
-					>${item.name}</a>
-				`);
-			}
-		}
-	}
-
 	return jsx`
 		<div id="sidebar" class=${sidebarStyle}>
 			<h2 class=${css`
@@ -131,198 +196,33 @@ export function APISidebar({
 			<div id="search-root">
 				<${Search} />
 			</div>
-			${links}
+			${modules.map(
+				(mod) => jsx`
+				<div class=${moduleHeaderStyle}>
+					<a
+						href=${mod.url}
+						class=${css`
+							text-decoration: none;
+						`}
+						aria-current=${url === mod.url && "page"}
+					>${mod.name}</a>
+				</div>
+				${mod.categories.map(
+					(category) => jsx`
+					<div class=${categoryStyle}>${category.name}</div>
+					${category.items.map(
+						(item) => jsx`
+						<a
+							href=${item.url}
+							class=${linkStyle}
+							aria-current=${url === item.url && "page"}
+						>${item.name}</a>
+					`,
+					)}
+				`,
+				)}
+			`,
+			)}
 		</div>
 	`;
 }
-
-export const API_MODULES: Array<APIModule> = [
-	{
-		name: "@b9g/crank",
-		slug: "core",
-		categories: [
-			{
-				name: "Functions",
-				slug: "functions",
-				items: [
-					{
-						name: "createElement",
-						slug: "createElement",
-						url: "/api/core/functions/createElement",
-					},
-					{
-						name: "cloneElement",
-						slug: "cloneElement",
-						url: "/api/core/functions/cloneElement",
-					},
-					{
-						name: "isElement",
-						slug: "isElement",
-						url: "/api/core/functions/isElement",
-					},
-				],
-			},
-			{
-				name: "Classes",
-				slug: "classes",
-				items: [
-					{name: "Element", slug: "Element", url: "/api/core/classes/Element"},
-					{name: "Context", slug: "Context", url: "/api/core/classes/Context"},
-					{
-						name: "Renderer",
-						slug: "Renderer",
-						url: "/api/core/classes/Renderer",
-					},
-				],
-			},
-			{
-				name: "Interfaces",
-				slug: "interfaces",
-				items: [
-					{
-						name: "RenderAdapter",
-						slug: "RenderAdapter",
-						url: "/api/core/interfaces/RenderAdapter",
-					},
-				],
-			},
-			{
-				name: "Types",
-				slug: "types",
-				items: [
-					{name: "Tag", slug: "Tag", url: "/api/core/types/Tag"},
-					{name: "Child", slug: "Child", url: "/api/core/types/Child"},
-					{name: "Children", slug: "Children", url: "/api/core/types/Children"},
-					{
-						name: "Component",
-						slug: "Component",
-						url: "/api/core/types/Component",
-					},
-					{
-						name: "ElementValue",
-						slug: "ElementValue",
-						url: "/api/core/types/ElementValue",
-					},
-				],
-			},
-			{
-				name: "Components",
-				slug: "components",
-				items: [
-					{
-						name: "Fragment",
-						slug: "Fragment",
-						url: "/api/core/components/Fragment",
-					},
-					{
-						name: "Portal",
-						slug: "Portal",
-						url: "/api/core/components/Portal",
-					},
-					{name: "Copy", slug: "Copy", url: "/api/core/components/Copy"},
-					{name: "Text", slug: "Text", url: "/api/core/components/Text"},
-					{name: "Raw", slug: "Raw", url: "/api/core/components/Raw"},
-				],
-			},
-		],
-	},
-	{
-		name: "@b9g/crank/async",
-		slug: "async",
-		categories: [
-			{
-				name: "Functions",
-				slug: "functions",
-				items: [{name: "lazy", slug: "lazy", url: "/api/async/functions/lazy"}],
-			},
-			{
-				name: "Components",
-				slug: "components",
-				items: [
-					{
-						name: "Suspense",
-						slug: "Suspense",
-						url: "/api/async/components/Suspense",
-					},
-					{
-						name: "SuspenseList",
-						slug: "SuspenseList",
-						url: "/api/async/components/SuspenseList",
-					},
-				],
-			},
-		],
-	},
-	{
-		name: "@b9g/crank/dom",
-		slug: "dom",
-		categories: [
-			{
-				name: "Classes",
-				slug: "classes",
-				items: [
-					{
-						name: "DOMRenderer",
-						slug: "DOMRenderer",
-						url: "/api/dom/classes/DOMRenderer",
-					},
-				],
-			},
-			{
-				name: "Objects",
-				slug: "objects",
-				items: [
-					{name: "adapter", slug: "adapter", url: "/api/dom/objects/adapter"},
-					{
-						name: "renderer",
-						slug: "renderer",
-						url: "/api/dom/objects/renderer",
-					},
-				],
-			},
-		],
-	},
-	{
-		name: "@b9g/crank/html",
-		slug: "html",
-		categories: [
-			{
-				name: "Classes",
-				slug: "classes",
-				items: [
-					{
-						name: "HTMLRenderer",
-						slug: "HTMLRenderer",
-						url: "/api/html/classes/HTMLRenderer",
-					},
-				],
-			},
-			{
-				name: "Objects",
-				slug: "objects",
-				items: [
-					{name: "impl", slug: "impl", url: "/api/html/objects/impl"},
-					{
-						name: "renderer",
-						slug: "renderer",
-						url: "/api/html/objects/renderer",
-					},
-				],
-			},
-		],
-	},
-	{
-		name: "@b9g/crank/standalone",
-		slug: "standalone",
-		categories: [
-			{
-				name: "Functions",
-				slug: "functions",
-				items: [
-					{name: "jsx", slug: "jsx", url: "/api/standalone/functions/jsx"},
-					{name: "html", slug: "html", url: "/api/standalone/functions/html"},
-				],
-			},
-		],
-	},
-];

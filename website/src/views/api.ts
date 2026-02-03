@@ -6,7 +6,7 @@ import {Root} from "../components/root.js";
 import {Main} from "../components/sidebar.js";
 import {Marked} from "../components/marked.js";
 import {components} from "../components/marked-components.js";
-import {APISidebar, API_MODULES} from "../components/api-sidebar.js";
+import {APISidebar, buildAPIModules} from "../components/api-sidebar.js";
 import {EditOnGitHub} from "../components/edit-on-github.js";
 import {collectDocuments} from "../models/document.js";
 
@@ -50,7 +50,7 @@ export default async function APIView({url}: ViewProps) {
 			url=${url}
 			description=${description || `API documentation for ${title}`}
 		>
-			<${APISidebar} modules=${API_MODULES} url=${url} />
+			<${APISidebar} modules=${buildAPIModules(docs)} url=${url} />
 			<${Main}>
 				<${Marked} markdown=${body} components=${components} />
 				<div class=${css`
