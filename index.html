@@ -319,179 +319,152 @@ which does roughly the same thing.</span></p><div class="
 			" data-index="22"><code><span class="token keyword">function</span> <span class="token function">Stars</span><span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>width<span class="token punctuation">,</span> height<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="23"><code>  <span class="token keyword">return</span> jsx<span class="token template-string"><span class="token template-punctuation string">`</span></span></code><br></div><div class="
+			" data-index="23"><code>  <span class="token keyword">const</span> points <span class="token operator">=</span> <span class="token number">5</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="24"><code><span class="token template-string"><span class="token string">    &lt;svg</span></span></code><br></div><div class="
+			" data-index="24"><code>  <span class="token keyword">return</span> jsx<span class="token template-string"><span class="token template-punctuation string">`</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="25"><code><span class="token template-string"><span class="token string">      xmlns=&quot;http://www.w3.org/2000/svg&quot;</span></span></code><br></div><div class="
+			" data-index="25"><code><span class="token template-string"><span class="token string">    &lt;svg</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="26"><code><span class="token template-string"><span class="token string">      viewBox=&quot;0 0 </span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>width<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> </span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>height<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&quot;</span></span></code><br></div><div class="
+			" data-index="26"><code><span class="token template-string"><span class="token string">      xmlns=&quot;http://www.w3.org/2000/svg&quot;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="27"><code><span class="token template-string"><span class="token string">      width=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>width<span class="token interpolation-punctuation punctuation">}</span></span></span></code><br></div><div class="
+			" data-index="27"><code><span class="token template-string"><span class="token string">      viewBox=&quot;0 0 </span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>width<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> </span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>height<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&quot;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="28"><code><span class="token template-string"><span class="token string">      height=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>height<span class="token interpolation-punctuation punctuation">}</span></span></span></code><br></div><div class="
+			" data-index="28"><code><span class="token template-string"><span class="token string">      width=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>width<span class="token interpolation-punctuation punctuation">}</span></span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="29"><code><span class="token template-string"><span class="token string">      style=&quot;border: 1px solid currentcolor&quot;</span></span></code><br></div><div class="
+			" data-index="29"><code><span class="token template-string"><span class="token string">      height=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>height<span class="token interpolation-punctuation punctuation">}</span></span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="30"><code><span class="token template-string"><span class="token string">    &gt;</span></span></code><br></div><div class="
+			" data-index="30"><code><span class="token template-string"><span class="token string">      style=&quot;border: 1px solid currentcolor&quot;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="31"><code><span class="token template-string"><span class="token string">      &lt;!--</span></span></code><br></div><div class="
+			" data-index="31"><code><span class="token template-string"><span class="token string">    &gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="32"><code><span class="token template-string"><span class="token string">        Refactoring this to be less repetitive has been left</span></span></code><br></div><div class="
+			" data-index="32"><code><span class="token template-string"><span class="token string">      &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Star<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> p=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>points<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> cx=&quot;70&quot; cy=&quot;70&quot; r=&quot;50&quot; fill=&quot;red&quot; /&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="33"><code><span class="token template-string"><span class="token string">        as an exercise for the reader.</span></span></code><br></div><div class="
+			" data-index="33"><code><span class="token template-string"><span class="token string">      &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Star<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> p=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>points<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> cx=&quot;80&quot; cy=&quot;80&quot; r=&quot;50&quot; fill=&quot;orange&quot; /&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="34"><code><span class="token template-string"><span class="token string">      --&gt;</span></span></code><br></div><div class="
+			" data-index="34"><code><span class="token template-string"><span class="token string">      &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Star<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> p=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>points<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> cx=&quot;90&quot; cy=&quot;90&quot; r=&quot;50&quot; fill=&quot;yellow&quot; /&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="35"><code><span class="token template-string"><span class="token string">      &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Star<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> cx=&quot;70&quot; cy=&quot;70&quot; r=&quot;50&quot; fill=&quot;red&quot; /&gt;</span></span></code><br></div><div class="
+			" data-index="35"><code><span class="token template-string"><span class="token string">      &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Star<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> p=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>points<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> cx=&quot;100&quot; cy=&quot;100&quot; r=&quot;50&quot; fill=&quot;green&quot; /&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="36"><code><span class="token template-string"><span class="token string">      &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Star<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> cx=&quot;80&quot; cy=&quot;80&quot; r=&quot;50&quot; fill=&quot;orange&quot; /&gt;</span></span></code><br></div><div class="
+			" data-index="36"><code><span class="token template-string"><span class="token string">      &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Star<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> p=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>points<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> cx=&quot;110&quot; cy=&quot;110&quot; r=&quot;50&quot; fill=&quot;dodgerblue&quot; /&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="37"><code><span class="token template-string"><span class="token string">      &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Star<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> cx=&quot;90&quot; cy=&quot;90&quot; r=&quot;50&quot; fill=&quot;yellow&quot; /&gt;</span></span></code><br></div><div class="
+			" data-index="37"><code><span class="token template-string"><span class="token string">      &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Star<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> p=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>points<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> cx=&quot;120&quot; cy=&quot;120&quot; r=&quot;50&quot; fill=&quot;indigo&quot; /&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="38"><code><span class="token template-string"><span class="token string">      &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Star<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> cx=&quot;100&quot; cy=&quot;100&quot; r=&quot;50&quot; fill=&quot;green&quot; /&gt;</span></span></code><br></div><div class="
+			" data-index="38"><code><span class="token template-string"><span class="token string">      &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Star<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> p=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>points<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> cx=&quot;130&quot; cy=&quot;130&quot; r=&quot;50&quot; fill=&quot;purple&quot; /&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="39"><code><span class="token template-string"><span class="token string">      &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Star<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> cx=&quot;110&quot; cy=&quot;110&quot; r=&quot;50&quot; fill=&quot;dodgerblue&quot; /&gt;</span></span></code><br></div><div class="
+			" data-index="39"><code><span class="token template-string"><span class="token string">    &lt;/svg&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="40"><code><span class="token template-string"><span class="token string">      &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Star<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> cx=&quot;120&quot; cy=&quot;120&quot; r=&quot;50&quot; fill=&quot;indigo&quot; /&gt;</span></span></code><br></div><div class="
+			" data-index="40"><code><span class="token template-string"><span class="token string">  </span><span class="token template-punctuation string">`</span></span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="41"><code><span class="token template-string"><span class="token string">      &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Star<span class="token interpolation-punctuation punctuation">}</span></span></span></code><br></div><div class="
+			" data-index="41"><code><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="42"><code><span class="token template-string"><span class="token string">        cx=&quot;130&quot;</span></span></code><br></div><div class="
+			" data-index="42"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="43"><code><span class="token template-string"><span class="token string">        cy=&quot;130&quot;</span></span></code><br></div><div class="
+			" data-index="43"><code><span class="token keyword">const</span> inspirationalWords <span class="token operator">=</span> <span class="token punctuation">[</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="44"><code><span class="token template-string"><span class="token string">        r=&quot;50&quot;</span></span></code><br></div><div class="
+			" data-index="44"><code>  <span class="token string">&quot;I believe in you.&quot;</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="45"><code><span class="token template-string"><span class="token string">        fill=&quot;purple&quot;</span></span></code><br></div><div class="
+			" data-index="45"><code>  <span class="token string">&quot;You are great.&quot;</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="46"><code><span class="token template-string"><span class="token string">        p=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span><span class="token number">6</span><span class="token interpolation-punctuation punctuation">}</span></span></span></code><br></div><div class="
+			" data-index="46"><code>  <span class="token string">&quot;Get back to work.&quot;</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="47"><code><span class="token template-string"><span class="token string">      /&gt;</span></span></code><br></div><div class="
+			" data-index="47"><code>  <span class="token string">&quot;We got this.&quot;</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="48"><code><span class="token template-string"><span class="token string">    &lt;/svg&gt;</span></span></code><br></div><div class="
+			" data-index="48"><code><span class="token punctuation">]</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="49"><code><span class="token template-string"><span class="token string">  </span><span class="token template-punctuation string">`</span></span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="49"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="50"><code><span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="50"><code><span class="token keyword">function</span> <span class="token function">RandomInspirationalWords</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="51"><br></div><div class="
+			" data-index="51"><code>  <span class="token keyword">return</span> jsx<span class="token template-string"><span class="token template-punctuation string">`</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="52"><code><span class="token keyword">const</span> inspirationalWords <span class="token operator">=</span> <span class="token punctuation">[</span></code><br></div><div class="
+			" data-index="52"><code><span class="token template-string"><span class="token string">    &lt;p&gt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>inspirationalWords<span class="token punctuation">[</span>Math<span class="token punctuation">.</span><span class="token function">floor</span><span class="token punctuation">(</span>Math<span class="token punctuation">.</span><span class="token function">random</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">*</span> inspirationalWords<span class="token punctuation">.</span>length<span class="token punctuation">)</span><span class="token punctuation">]</span><span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&lt;/p&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="53"><code>  <span class="token string">&quot;I believe in you.&quot;</span><span class="token punctuation">,</span></code><br></div><div class="
+			" data-index="53"><code><span class="token template-string"><span class="token string">  </span><span class="token template-punctuation string">`</span></span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="54"><code>  <span class="token string">&quot;You are great.&quot;</span><span class="token punctuation">,</span></code><br></div><div class="
+			" data-index="54"><code><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="55"><code>  <span class="token string">&quot;Get back to work.&quot;</span><span class="token punctuation">,</span></code><br></div><div class="
+			" data-index="55"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="56"><code>  <span class="token string">&quot;We got this.&quot;</span><span class="token punctuation">,</span></code><br></div><div class="
+			" data-index="56"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span>jsx<span class="token template-string"><span class="token template-punctuation string">`</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="57"><code><span class="token punctuation">]</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="57"><code><span class="token template-string"><span class="token string">  &lt;div</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="58"><br></div><div class="
+			" data-index="58"><code><span class="token template-string"><span class="token string">    class=&quot;motivational-poster&quot;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="59"><code><span class="token keyword">function</span> <span class="token function">RandomInspirationalWords</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="59"><code><span class="token template-string"><span class="token string">    style=&quot;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="60"><code>  <span class="token keyword">return</span> jsx<span class="token template-string"><span class="token template-punctuation string">`</span></span></code><br></div><div class="
+			" data-index="60"><code><span class="token template-string"><span class="token string">      display: flex;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="61"><code><span class="token template-string"><span class="token string">    &lt;p&gt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>inspirationalWords<span class="token punctuation">[</span>Math<span class="token punctuation">.</span><span class="token function">floor</span><span class="token punctuation">(</span>Math<span class="token punctuation">.</span><span class="token function">random</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">*</span> inspirationalWords<span class="token punctuation">.</span>length<span class="token punctuation">)</span><span class="token punctuation">]</span><span class="token interpolation-punctuation punctuation">}</span></span><span class="token string">&lt;/p&gt;</span></span></code><br></div><div class="
+			" data-index="61"><code><span class="token template-string"><span class="token string">      flex-direction: column;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="62"><code><span class="token template-string"><span class="token string">  </span><span class="token template-punctuation string">`</span></span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="62"><code><span class="token template-string"><span class="token string">      align-items: center;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="63"><code><span class="token punctuation">}</span></code><br></div><div class="
+			" data-index="63"><code><span class="token template-string"><span class="token string">      justify-content: center;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="64"><br></div><div class="
+			" data-index="64"><code><span class="token template-string"><span class="token string">    &quot;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="65"><code>renderer<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span>jsx<span class="token template-string"><span class="token template-punctuation string">`</span></span></code><br></div><div class="
+			" data-index="65"><code><span class="token template-string"><span class="token string">  &gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="66"><code><span class="token template-string"><span class="token string">  &lt;div</span></span></code><br></div><div class="
+			" data-index="66"><code><span class="token template-string"><span class="token string">    &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Stars<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> width=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span><span class="token number">200</span><span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> height=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span><span class="token number">200</span><span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> /&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="67"><code><span class="token template-string"><span class="token string">    class=&quot;motivational-poster&quot;</span></span></code><br></div><div class="
+			" data-index="67"><code><span class="token template-string"><span class="token string">    &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>RandomInspirationalWords<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> /&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="68"><code><span class="token template-string"><span class="token string">    style=&quot;</span></span></code><br></div><div class="
+			" data-index="68"><code><span class="token template-string"><span class="token string">  &lt;/div&gt;</span></span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="69"><code><span class="token template-string"><span class="token string">      display: flex;</span></span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="70"><code><span class="token template-string"><span class="token string">      flex-direction: column;</span></span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="71"><code><span class="token template-string"><span class="token string">      align-items: center;</span></span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="72"><code><span class="token template-string"><span class="token string">      justify-content: center;</span></span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="73"><code><span class="token template-string"><span class="token string">    &quot;</span></span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="74"><code><span class="token template-string"><span class="token string">  &gt;</span></span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="75"><code><span class="token template-string"><span class="token string">    &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>Stars<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> width=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span><span class="token number">200</span><span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> height=</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span><span class="token number">200</span><span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> /&gt;</span></span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="76"><code><span class="token template-string"><span class="token string">    &lt;</span><span class="token interpolation"><span class="token interpolation-punctuation punctuation">${</span>RandomInspirationalWords<span class="token interpolation-punctuation punctuation">}</span></span><span class="token string"> /&gt;</span></span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="77"><code><span class="token template-string"><span class="token string">  &lt;/div&gt;</span></span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="78"><code><span class="token template-string"><span class="token template-punctuation string">`</span></span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><div class="css-xsa4ll"><div class="css-rp15d"><div class="css-1j6wuma css-fxcfu0"><iframe class="
+			" data-index="69"><code><span class="token template-string"><span class="token template-punctuation string">`</span></span><span class="token punctuation">,</span> document<span class="token punctuation">.</span>body<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div><div class="css-xsa4ll"><div class="css-rp15d"><div class="css-1j6wuma css-fxcfu0"><iframe class="
 							playground-iframe
 							css-hjkbgb
 						" style="height: 100px;"></iframe></div></div></div></div></div><script data-name="inline-code-block-props-3" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-3'] = {"code":"import {jsx} from \"@b9g\u002Fcrank\u002Fstandalone\";\nimport {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\n\nfunction Star({cx, cy, r=50, ir, p=5, fill=\"red\"}) {\n  cx = parseFloat(cx);\n  cy = parseFloat(cy);\n  r == parseFloat(r);\n  ir = ir == null ? r * 0.4 : parseFloat(ir);\n  p = parseFloat(p);\n  const points = [];\n  const angle = Math.PI \u002F p;\n  for (let i = 0, a = Math.PI \u002F 2; i \u003C p * 2; i++, a += angle) {\n    const x = cx + Math.cos(a) * (i % 2 === 0 ? r : ir);\n    const y = cy - Math.sin(a) * (i % 2 === 0 ? r : ir);\n    points.push([x, y]);\n  }\n\n  return jsx`\n    \u003Cpolygon points=${points} fill=${fill} \u002F\u003E\n  `;\n}\n\nfunction Stars({width, height}) {\n  return jsx`\n    \u003Csvg\n      xmlns=\"http:\u002F\u002Fwww.w3.org\u002F2000\u002Fsvg\"\n      viewBox=\"0 0 ${width} ${height}\"\n      width=${width}\n      height=${height}\n      style=\"border: 1px solid currentcolor\"\n    \u003E\n      \u003C!--\n        Refactoring this to be less repetitive has been left\n        as an exercise for the reader.\n      --\u003E\n      \u003C${Star} cx=\"70\" cy=\"70\" r=\"50\" fill=\"red\" \u002F\u003E\n      \u003C${Star} cx=\"80\" cy=\"80\" r=\"50\" fill=\"orange\" \u002F\u003E\n      \u003C${Star} cx=\"90\" cy=\"90\" r=\"50\" fill=\"yellow\" \u002F\u003E\n      \u003C${Star} cx=\"100\" cy=\"100\" r=\"50\" fill=\"green\" \u002F\u003E\n      \u003C${Star} cx=\"110\" cy=\"110\" r=\"50\" fill=\"dodgerblue\" \u002F\u003E\n      \u003C${Star} cx=\"120\" cy=\"120\" r=\"50\" fill=\"indigo\" \u002F\u003E\n      \u003C${Star}\n        cx=\"130\"\n        cy=\"130\"\n        r=\"50\"\n        fill=\"purple\"\n        p=${6}\n      \u002F\u003E\n    \u003C\u002Fsvg\u003E\n  `;\n}\n\nconst inspirationalWords = [\n  \"I believe in you.\",\n  \"You are great.\",\n  \"Get back to work.\",\n  \"We got this.\",\n];\n\nfunction RandomInspirationalWords() {\n  return jsx`\n    \u003Cp\u003E${inspirationalWords[Math.floor(Math.random() * inspirationalWords.length)]}\u003C\u002Fp\u003E\n  `;\n}\n\nrenderer.render(jsx`\n  \u003Cdiv\n    class=\"motivational-poster\"\n    style=\"\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    \"\n  \u003E\n    \u003C${Stars} width=${200} height=${200} \u002F\u003E\n    \u003C${RandomInspirationalWords} \u002F\u003E\n  \u003C\u002Fdiv\u003E\n`, document.body);","lang":"jsx live"};
+			window.__embeddedJSON__['inline-code-block-props-3'] = {"code":"import {jsx} from \"@b9g\u002Fcrank\u002Fstandalone\";\nimport {renderer} from \"@b9g\u002Fcrank\u002Fdom\";\n\nfunction Star({cx, cy, r=50, ir, p=5, fill=\"red\"}) {\n  cx = parseFloat(cx);\n  cy = parseFloat(cy);\n  r == parseFloat(r);\n  ir = ir == null ? r * 0.4 : parseFloat(ir);\n  p = parseFloat(p);\n  const points = [];\n  const angle = Math.PI \u002F p;\n  for (let i = 0, a = Math.PI \u002F 2; i \u003C p * 2; i++, a += angle) {\n    const x = cx + Math.cos(a) * (i % 2 === 0 ? r : ir);\n    const y = cy - Math.sin(a) * (i % 2 === 0 ? r : ir);\n    points.push([x, y]);\n  }\n\n  return jsx`\n    \u003Cpolygon points=${points} fill=${fill} \u002F\u003E\n  `;\n}\n\nfunction Stars({width, height}) {\n  const points = 5;\n  return jsx`\n    \u003Csvg\n      xmlns=\"http:\u002F\u002Fwww.w3.org\u002F2000\u002Fsvg\"\n      viewBox=\"0 0 ${width} ${height}\"\n      width=${width}\n      height=${height}\n      style=\"border: 1px solid currentcolor\"\n    \u003E\n      \u003C${Star} p=${points} cx=\"70\" cy=\"70\" r=\"50\" fill=\"red\" \u002F\u003E\n      \u003C${Star} p=${points} cx=\"80\" cy=\"80\" r=\"50\" fill=\"orange\" \u002F\u003E\n      \u003C${Star} p=${points} cx=\"90\" cy=\"90\" r=\"50\" fill=\"yellow\" \u002F\u003E\n      \u003C${Star} p=${points} cx=\"100\" cy=\"100\" r=\"50\" fill=\"green\" \u002F\u003E\n      \u003C${Star} p=${points} cx=\"110\" cy=\"110\" r=\"50\" fill=\"dodgerblue\" \u002F\u003E\n      \u003C${Star} p=${points} cx=\"120\" cy=\"120\" r=\"50\" fill=\"indigo\" \u002F\u003E\n      \u003C${Star} p=${points} cx=\"130\" cy=\"130\" r=\"50\" fill=\"purple\" \u002F\u003E\n    \u003C\u002Fsvg\u003E\n  `;\n}\n\nconst inspirationalWords = [\n  \"I believe in you.\",\n  \"You are great.\",\n  \"Get back to work.\",\n  \"We got this.\",\n];\n\nfunction RandomInspirationalWords() {\n  return jsx`\n    \u003Cp\u003E${inspirationalWords[Math.floor(Math.random() * inspirationalWords.length)]}\u003C\u002Fp\u003E\n  `;\n}\n\nrenderer.render(jsx`\n  \u003Cdiv\n    class=\"motivational-poster\"\n    style=\"\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    \"\n  \u003E\n    \u003C${Stars} width=${200} height=${200} \u002F\u003E\n    \u003C${RandomInspirationalWords} \u002F\u003E\n  \u003C\u002Fdiv\u003E\n`, document.body);","lang":"jsx live"};
 		</script></div><h3 class="css-bn46mu">Reason #2: It’s predictable</h3><p class="css-dzajps"><span class="css-rvz5kp">Crank uses generator functions to define stateful components. You store state
 in local variables, and <code class="inline">yield</code> rather than <code class="inline">return</code> to keep it around.</span></p><div class="
 					code-block-container
