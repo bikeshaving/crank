@@ -26,21 +26,23 @@ export function* Root(
 		children,
 		url,
 		description = "",
+		noFooter = false,
 	}: {
 		title: string;
 		children: Children;
 		url: string;
 		description?: string;
+		noFooter?: boolean;
 	},
 ) {
-	for ({title, children, url, description = ""} of this) {
+	for ({title, children, url, description = "", noFooter = false} of this) {
 		this.schedule(() => this.refresh());
 		const childrenHTML: string = yield jsx`
 			<div id="navbar-root">
 				<${Navbar} url=${url} />
 			</div>
 			${children}
-			<${Footer} />
+			${!noFooter && jsx`<${Footer} />`}
 		`;
 		const {html, css} = extractCritical(childrenHTML);
 		yield jsx`

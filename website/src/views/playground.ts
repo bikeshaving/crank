@@ -68,7 +68,7 @@ async function loadExamples() {
 export default async function Playground({url}: ViewProps) {
 	const examples = await loadExamples();
 	return jsx`
-		<${Root} title="Crank.js" url=${url}>
+		<${Root} title="Crank.js" url=${url} noFooter>
 			<div id="playground" />
 			<${SerializeScript} id="examples" value=${examples} />
 			<script type="module" src=${assets.playgroundScript}></script>

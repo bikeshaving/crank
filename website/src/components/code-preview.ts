@@ -217,7 +217,7 @@ function generatePythonIFrameHTML(
 					);
 				});
 			</script>
-			
+
 			<py-config>
 				{
 					"packages": ["crankpy"],
@@ -229,7 +229,7 @@ function generatePythonIFrameHTML(
 					}
 				}
 			</py-config>
-			
+
 			<!-- Python code execution -->
 			<script type="py">
 ${code}
@@ -261,6 +261,8 @@ export function* CodePreview(
 	let iframeID = 0;
 	let loading = true;
 	let errorMessage: string | null = null;
+	let showErrorModal = true;
+	let suppressErrors = false;
 
 	const currentLanguage = language || "javascript";
 	const isPython = currentLanguage === "python";
@@ -331,6 +333,7 @@ export function* CodePreview(
 			} else if (data.type === "error") {
 				loading = false;
 				errorMessage = data.message;
+				showErrorModal = !suppressErrors;
 				this.refresh();
 			} else if (data.type === "resize" && visible) {
 				if (autoresize) {
@@ -360,6 +363,7 @@ export function* CodePreview(
 			// TODO: This looks like it could just be an async function somehow
 			loading = true;
 			errorMessage = null;
+			showErrorModal = !suppressErrors;
 			if (typeof window !== "undefined") {
 				this.after(() => executeDebounced());
 			}
@@ -395,27 +399,88 @@ export function* CodePreview(
 				`} ${loading ? pulsingClass : ""}">
 					${
 						errorMessage &&
+						showErrorModal &&
 						jsx`
 							<div class=${css`
 								position: absolute;
 								inset: 0;
-								background-color: rgba(180, 60, 60, 0.9);
+								background-color: rgba(0, 0, 0, 0.5);
 								display: flex;
 								align-items: center;
 								justify-content: center;
 								padding: 1em;
 								z-index: 10;
 							`}>
-								<pre class=${css`
-									color: white;
-									background-color: rgba(0, 0, 0, 0.3);
-									padding: 1em;
-									border-radius: 4px;
-									max-width: 100%;
-									overflow-x: auto;
-									font-size: 12px;
-									margin: 0;
-								`}>${errorMessage}</pre>
+								<div class=${css`
+									background-color: rgba(180, 60, 60, 0.95);
+									border-radius: 8px;
+									max-width: 90%;
+									max-height: 80%;
+									display: flex;
+									flex-direction: column;
+									box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+								`}>
+									<div class=${css`
+										display: flex;
+										justify-content: space-between;
+										align-items: center;
+										padding: 0.75em 1em;
+										border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+									`}>
+										<span class=${css`
+											color: white;
+											font-weight: bold;
+											font-size: 14px;
+										`}>Error</span>
+										<button
+											onclick=${() => {
+												showErrorModal = false;
+												this.refresh();
+											}}
+											class=${css`
+												background: none;
+												border: none;
+												color: white;
+												font-size: 20px;
+												cursor: pointer;
+												padding: 0;
+												line-height: 1;
+												opacity: 0.8;
+												&:hover {
+													opacity: 1;
+												}
+											`}
+										>×</button>
+									</div>
+									<pre class=${css`
+										color: white;
+										background-color: rgba(0, 0, 0, 0.2);
+										padding: 1em;
+										margin: 0;
+										overflow: auto;
+										font-size: 12px;
+										flex: 1;
+									`}>${errorMessage}</pre>
+									<label class=${css`
+										display: flex;
+										align-items: center;
+										gap: 0.5em;
+										padding: 0.75em 1em;
+										border-top: 1px solid rgba(255, 255, 255, 0.2);
+										color: white;
+										font-size: 12px;
+										cursor: pointer;
+									`}>
+										<input
+											type="checkbox"
+											checked=${suppressErrors}
+											onchange=${(ev: Event) => {
+												suppressErrors = (ev.target as HTMLInputElement).checked;
+											}}
+										/>
+										Suppress this modal
+									</label>
+								</div>
 							</div>
 						`
 					}
