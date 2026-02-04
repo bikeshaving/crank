@@ -123,6 +123,7 @@ function Star({cx, cy, r=50, ir, p=5, fill="red"}) {
 }
 
 function Stars({width, height}) {
+  const points = 5;
   return jsx`
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -131,23 +132,13 @@ function Stars({width, height}) {
       height=${height}
       style="border: 1px solid currentcolor"
     >
-      <!--
-        Refactoring this to be less repetitive has been left
-        as an exercise for the reader.
-      -->
-      <${Star} cx="70" cy="70" r="50" fill="red" />
-      <${Star} cx="80" cy="80" r="50" fill="orange" />
-      <${Star} cx="90" cy="90" r="50" fill="yellow" />
-      <${Star} cx="100" cy="100" r="50" fill="green" />
-      <${Star} cx="110" cy="110" r="50" fill="dodgerblue" />
-      <${Star} cx="120" cy="120" r="50" fill="indigo" />
-      <${Star}
-        cx="130"
-        cy="130"
-        r="50"
-        fill="purple"
-        p=${6}
-      />
+      <${Star} p=${points} cx="70" cy="70" r="50" fill="red" />
+      <${Star} p=${points} cx="80" cy="80" r="50" fill="orange" />
+      <${Star} p=${points} cx="90" cy="90" r="50" fill="yellow" />
+      <${Star} p=${points} cx="100" cy="100" r="50" fill="green" />
+      <${Star} p=${points} cx="110" cy="110" r="50" fill="dodgerblue" />
+      <${Star} p=${points} cx="120" cy="120" r="50" fill="indigo" />
+      <${Star} p=${points} cx="130" cy="130" r="50" fill="purple" />
     </svg>
   `;
 }
