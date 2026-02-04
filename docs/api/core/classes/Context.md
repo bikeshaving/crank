@@ -208,7 +208,7 @@ function* ThemeProvider({theme, children}) {
 
 function ThemedButton({children}) {
   const theme = this.consume(ThemeContext);
-  return <button style={{background: theme.primary}}>{children}</button>;
+  return <button style={{background: theme.primary, color: "white"}}>{children}</button>;
 }
 ```
 

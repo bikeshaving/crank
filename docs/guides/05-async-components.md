@@ -70,7 +70,7 @@ rules to make concurrent updates predictable and performant:
 
      for ({} of this) {
        yield (
-         <div style="margin: 10px 0; padding: 10px; background: #f0f8f0; border-radius: 4px; font-family: monospace; font-size: 12px;">
+         <div style="margin: 10px 0; padding: 10px; background: #f0f8f0; color: #333; border-radius: 4px; font-family: monospace; font-size: 12px;">
            <strong>Render Log:</strong><br />
            {logState.entries.map((entry, i) => (
              <div key={i}>{entry}</div>
@@ -92,7 +92,7 @@ rules to make concurrent updates predictable and performant:
      // Log when the component finishes
      addLogEntry(`✅ Completed: ${message}`);
 
-     return <div style="padding: 10px; margin: 5px 0; background: #e7f3ff; border-radius: 4px;">
+     return <div style="padding: 10px; margin: 5px 0; background: #e7f3ff; color: #333; border-radius: 4px;">
        {message}
      </div>;
    }
@@ -132,7 +132,7 @@ rules to make concurrent updates predictable and performant:
            <RenderLogger />
            <div
              ref={el => demoResult = el}
-             style="border: 1px dashed #ccc; padding: 10px; margin: 10px 0; min-height: 50px; background: #fafafa;"
+             style="border: 1px dashed #ccc; padding: 10px; margin: 10px 0; min-height: 50px; background: #fafafa; color: #333;"
            >
              Click the button to see the demo results here
            </div>
@@ -307,7 +307,7 @@ async function UserProfile({userId}) {
   await new Promise(resolve => setTimeout(resolve, 1500));
 
   return (
-    <div style={{padding: "15px", background: "#e7f3ff", "border-radius": "4px"}}>
+    <div style={{padding: "15px", background: "#e7f3ff", color: "#333", "border-radius": "4px"}}>
       <h4>User #{userId}</h4>
       <p>Email: user{userId}@example.com</p>
       <p>Status: Active</p>
@@ -319,7 +319,7 @@ async function UserPosts({userId}) {
   await new Promise(resolve => setTimeout(resolve, 2000));
 
   return (
-    <div style={{padding: "15px", background: "#f0f8f0", "border-radius": "4px"}}>
+    <div style={{padding: "15px", background: "#f0f8f0", color: "#333", "border-radius": "4px"}}>
       <h4>Recent Posts</h4>
       <ul>
         <li>Post 1 by User #{userId}</li>
@@ -384,7 +384,8 @@ const simulateImport = (componentName, delay = 1000) => {
             padding: "20px",
             border: "2px solid #007bff",
             "border-radius": "4px",
-            background: "#f8f9fa"
+            background: "#f8f9fa",
+            color: "#333"
           }}>
             ✅ {componentName} loaded successfully!
           </div>
@@ -519,17 +520,17 @@ import {renderer} from "@b9g/crank/dom";
 // Components with different loading times
 async function FastComponent() {
   await new Promise(resolve => setTimeout(resolve, 500));
-  return <div style={{padding: "10px", background: "#d4edda"}}>Fast (500ms)</div>;
+  return <div style={{padding: "10px", background: "#d4edda", color: "#333"}}>Fast (500ms)</div>;
 }
 
 async function MediumComponent() {
   await new Promise(resolve => setTimeout(resolve, 1500));
-  return <div style={{padding: "10px", background: "#fff3cd"}}>Medium (1500ms)</div>;
+  return <div style={{padding: "10px", background: "#fff3cd", color: "#333"}}>Medium (1500ms)</div>;
 }
 
 async function SlowComponent() {
   await new Promise(resolve => setTimeout(resolve, 2500));
-  return <div style={{padding: "10px", background: "#f8d7da"}}>Slow (2500ms)</div>;
+  return <div style={{padding: "10px", background: "#f8d7da", color: "#333"}}>Slow (2500ms)</div>;
 }
 
 function *SuspenseListDemo() {

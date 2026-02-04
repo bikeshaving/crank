@@ -468,7 +468,7 @@ function *Blinker({seconds}) {
     console.log(blinking);
 
     yield (
-      <p style={{"background-color": blinking ? "red" : null}}>
+      <p style={{"background-color": blinking ? "red" : null, color: blinking ? "white" : null}}>
         {blinking && "!!!"}
       </p>
     );
@@ -830,6 +830,7 @@ function *Modal({children, onClose}) {
       }}>
         <div style={{
           background: 'white',
+          color: '#333',
           padding: '2rem',
           'border-radius': '8px',
           'max-width': '500px',
