@@ -5,28 +5,20 @@ import {CodeEditor} from "./code-editor.js";
 import {CodePreview} from "./code-preview.js";
 
 // Detect if code uses JSX or template syntax
-function detectSyntax(code: string): "jsx" | "template" | null {
-	const hasJSX = /<[A-Za-z]/.test(code) && !code.includes("jsx`");
+function detectSyntax(code: string, lang: string): "jsx" | "template" | null {
 	const hasTemplate = /jsx`/.test(code);
-	if (hasJSX && !hasTemplate) return "jsx";
-	if (hasTemplate && !hasJSX) return "template";
+	// Use language identifier for JSX detection, not content sniffing
+	// (content sniffing fails on TypeScript generics like <T>)
+	const hasJSX = /jsx|tsx/.test(lang) && !hasTemplate;
+	if (hasJSX) return "jsx";
+	if (hasTemplate) return "template";
 	return null;
 }
 
 // Check if language supports toggle
 function canToggleLang(lang: string): boolean {
 	if (lang.includes("notoggle")) return false;
-	return (
-		lang.startsWith("js") ||
-		lang.startsWith("ts") ||
-		lang.startsWith("jsx") ||
-		lang.startsWith("tsx") ||
-		lang === "javascript" ||
-		lang === "typescript" ||
-		lang === "javascript live" ||
-		lang === "jsx live" ||
-		lang === "tsx live"
-	);
+	return /jsx|tsx/.test(lang) || lang.startsWith("js") || lang.startsWith("ts");
 }
 
 export function* InlineCodeBlock(
@@ -49,7 +41,7 @@ export function* InlineCodeBlock(
 	let templateToJSX: ((code: string) => string) | null = null;
 
 	// Detect initial syntax
-	const detectedSyntax = detectSyntax(value);
+	const detectedSyntax = detectSyntax(value, lang);
 	let syntaxMode: "jsx" | "template" = detectedSyntax || "jsx";
 
 	let justToggled = false;
@@ -58,7 +50,7 @@ export function* InlineCodeBlock(
 
 	this.addEventListener("contentchange", (ev: any) => {
 		value = ev.target.value;
-		syntaxMode = detectSyntax(value) || "jsx";
+		syntaxMode = detectSyntax(value, lang) || "jsx";
 		this.refresh();
 	});
 
