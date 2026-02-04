@@ -177,32 +177,28 @@ export default function transform(fileInfo: FileInfo, api: API): string | null {
 		const spans = quasi.quasis.map((q) => q.value.raw);
 		const expressions = quasi.expressions;
 
-		try {
-			const parseResult = parse(spans);
-			const {element, targets} = parseResult;
+		const parseResult = parse(spans);
+		const {element, targets} = parseResult;
 
-			for (let i = 0; i < expressions.length; i++) {
-				const target = targets[i];
-				if (target && target.type !== "error") {
-					target.value = expressions[i];
-				}
+		for (let i = 0; i < expressions.length; i++) {
+			const target = targets[i];
+			if (target && target.type !== "error") {
+				target.value = expressions[i];
 			}
+		}
 
-			const jsxNode = parseElementToJSX(j, element, expressions);
+		const jsxNode = parseElementToJSX(j, element, expressions);
 
-			// If template was multi-line, wrap JSX in parentheses
-			const isMultiLine = spans.some((s) => s.includes("\n"));
-			if (isMultiLine) {
-				// Use parenthesized expression for multi-line JSX
-				const parenExpr = j.parenthesizedExpression
-					? j.parenthesizedExpression(jsxNode)
-					: jsxNode;
-				j(path).replaceWith(parenExpr);
-			} else {
-				j(path).replaceWith(jsxNode);
-			}
-		} catch (e) {
-			throw e;
+		// If template was multi-line, wrap JSX in parentheses
+		const isMultiLine = spans.some((s) => s.includes("\n"));
+		if (isMultiLine) {
+			// Use parenthesized expression for multi-line JSX
+			const parenExpr = j.parenthesizedExpression
+				? j.parenthesizedExpression(jsxNode)
+				: jsxNode;
+			j(path).replaceWith(parenExpr);
+		} else {
+			j(path).replaceWith(jsxNode);
 		}
 	});
 
