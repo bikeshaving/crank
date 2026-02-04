@@ -388,7 +388,11 @@ function formatParam(param: any, state: any, generator: any) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function formatFunction(node: any, state: any, generator: any) {
 	state.write("(");
-	const params = node.params;
+	// Filter out TypeScript `this` parameter (e.g., `this: Context`)
+	const params = node.params.filter(
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		(p: any) => !(p.type === "Identifier" && p.name === "this"),
+	);
 	for (let i = 0; i < params.length; i++) {
 		if (i > 0) state.write(", ");
 		formatParam(params[i], state, generator);
@@ -940,6 +944,67 @@ function addJSXRuntimeImport(
 }
 
 /**
+ * Rewrite bare module specifiers to use unpkg CDN.
+ * Bare specifiers are those that don't start with '.', '/', or 'http'.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rewriteBareModuleSpecifiers(ast: any): void {
+	function isBareSpecifier(value: string): boolean {
+		return (
+			!value.startsWith(".") &&
+			!value.startsWith("/") &&
+			!value.startsWith("http://") &&
+			!value.startsWith("https://")
+		);
+	}
+
+	function rewrite(value: string): string {
+		if (!isBareSpecifier(value)) {
+			return value;
+		}
+		// Skip @b9g/crank imports - they're handled by the import map
+		if (value.startsWith("@b9g/crank")) {
+			return value;
+		}
+		// Convert bare specifier to unpkg URL
+		return new URL(value, "https://unpkg.com/").toString() + "?module";
+	}
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	function walk(node: any) {
+		if (!node || typeof node !== "object") return;
+
+		if (node.type === "ImportDeclaration" && node.source) {
+			node.source.value = rewrite(node.source.value);
+		} else if (
+			(node.type === "ExportNamedDeclaration" ||
+				node.type === "ExportAllDeclaration") &&
+			node.source
+		) {
+			node.source.value = rewrite(node.source.value);
+		} else if (
+			node.type === "ImportExpression" &&
+			node.source?.type === "Literal"
+		) {
+			node.source.value = rewrite(node.source.value);
+		}
+
+		for (const key in node) {
+			if (key === "type" || key === "loc" || key === "start" || key === "end")
+				continue;
+			const child = node[key];
+			if (Array.isArray(child)) {
+				child.forEach((c) => walk(c));
+			} else if (child && typeof child === "object") {
+				walk(child);
+			}
+		}
+	}
+
+	walk(ast);
+}
+
+/**
  * Format a syntax error with code context and pointer.
  */
 function formatSyntaxError(code: string, error: any): string {
@@ -991,6 +1056,7 @@ export function transform(code: string): {code: string} {
 
 	transformJSX(ast, pragma);
 	addJSXRuntimeImport(ast, pragma);
+	rewriteBareModuleSpecifiers(ast);
 	injectLoopGuards(ast);
 
 	const output = generate(ast, {generator: tsGenerator});
