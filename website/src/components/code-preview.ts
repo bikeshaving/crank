@@ -475,7 +475,8 @@ export function* CodePreview(
 											type="checkbox"
 											checked=${suppressErrors}
 											onchange=${(ev: Event) => {
-												suppressErrors = (ev.target as HTMLInputElement).checked;
+												suppressErrors = (ev.target as HTMLInputElement)
+													.checked;
 											}}
 										/>
 										Suppress this modal
