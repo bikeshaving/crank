@@ -1,6 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
-import {jsxToTemplate, templateToJSX} from "@b9g/crank-codemods";
 
 import {Root} from "../components/root.js";
 import {SerializeScript} from "../components/serialize-javascript.js";
@@ -62,39 +61,6 @@ const components = {
 		const {text: code, lang} = token;
 		const isLive = lang.endsWith(" live");
 
-		// Pre-compute JSX/template alternate versions for toggle
-		let jsxVersion: string | null = null;
-		let templateVersion: string | null = null;
-
-		const isJsLang =
-			lang.startsWith("js") ||
-			lang.startsWith("ts") ||
-			lang.startsWith("jsx") ||
-			lang.startsWith("tsx") ||
-			lang === "javascript" ||
-			lang === "typescript" ||
-			lang === "javascript live" ||
-			lang === "jsx live" ||
-			lang === "tsx live";
-
-		if (isJsLang) {
-			const hasJsx = /<[A-Za-z]/.test(code) && !code.includes("jsx`");
-			const hasTemplate = /jsx`/.test(code);
-
-			try {
-				if (hasJsx && !hasTemplate) {
-					jsxVersion = code;
-					templateVersion = jsxToTemplate(code);
-				} else if (hasTemplate && !hasJsx) {
-					templateVersion = code;
-					jsxVersion = templateToJSX(code);
-				}
-			} catch {
-				jsxVersion = null;
-				templateVersion = null;
-			}
-		}
-
 		return jsx`
 			<div
 				class="
@@ -115,11 +81,9 @@ const components = {
 					lang=${lang}
 					breakpoint="800px"
 					editable=${isLive}
-					jsxVersion=${jsxVersion}
-					templateVersion=${templateVersion}
 				/>
 				<${SerializeScript}
-					value=${{code, lang, jsxVersion, templateVersion}}
+					value=${{code, lang}}
 					class="props"
 					name="inline-code-block-props"
 				/>

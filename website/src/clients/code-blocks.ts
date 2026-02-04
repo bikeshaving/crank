@@ -40,16 +40,13 @@ if (containers.length > 0) {
 				const propsScript = container.querySelector(
 					".props",
 				) as HTMLScriptElement;
-				const {code, lang, jsxVersion, templateVersion} =
-					extractData(propsScript);
+				const {code, lang} = extractData(propsScript);
 				renderer.hydrate(
 					jsx`
 					<${InlineCodeBlock}
 						value=${code}
 						lang=${lang}
 						editable=${lang.endsWith(" live")}
-						jsxVersion=${jsxVersion}
-						templateVersion=${templateVersion}
 					/>
 				`,
 					container,

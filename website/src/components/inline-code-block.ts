@@ -4,6 +4,31 @@ import {css} from "@emotion/css";
 import {CodeEditor} from "./code-editor.js";
 import {CodePreview} from "./code-preview.js";
 
+// Detect if code uses JSX or template syntax
+function detectSyntax(code: string): "jsx" | "template" | null {
+	const hasJSX = /<[A-Za-z]/.test(code) && !code.includes("jsx`");
+	const hasTemplate = /jsx`/.test(code);
+	if (hasJSX && !hasTemplate) return "jsx";
+	if (hasTemplate && !hasJSX) return "template";
+	return null;
+}
+
+// Check if language supports toggle
+function canToggleLang(lang: string): boolean {
+	if (lang.includes("notoggle")) return false;
+	return (
+		lang.startsWith("js") ||
+		lang.startsWith("ts") ||
+		lang.startsWith("jsx") ||
+		lang.startsWith("tsx") ||
+		lang === "javascript" ||
+		lang === "typescript" ||
+		lang === "javascript live" ||
+		lang === "jsx live" ||
+		lang === "tsx live"
+	);
+}
+
 export function* InlineCodeBlock(
 	this: Context<typeof InlineCodeBlock>,
 	{
@@ -12,29 +37,28 @@ export function* InlineCodeBlock(
 		editable,
 		// TODO: This is narsty.
 		breakpoint = "1300px",
-		jsxVersion = null,
-		templateVersion = null,
 	}: {
 		value: string;
 		lang: string;
 		editable: boolean;
 		breakpoint: string;
-		jsxVersion?: string | null;
-		templateVersion?: string | null;
 	},
 ): any {
-	// Track current syntax mode: "jsx" or "template"
-	let syntaxMode: "jsx" | "template" =
-		jsxVersion === value
-			? "jsx"
-			: templateVersion === value
-				? "template"
-				: "jsx";
+	// Lazy-loaded conversion functions
+	let jsxToTemplate: ((code: string) => string) | null = null;
+	let templateToJSX: ((code: string) => string) | null = null;
+
+	// Detect initial syntax
+	const detectedSyntax = detectSyntax(value);
+	let syntaxMode: "jsx" | "template" = detectedSyntax || "jsx";
+
 	let justToggled = false;
 	let copied = false;
+	let converting = false;
 
 	this.addEventListener("contentchange", (ev: any) => {
 		value = ev.target.value;
+		syntaxMode = detectSyntax(value) || "jsx";
 		this.refresh();
 	});
 
@@ -59,27 +83,45 @@ export function* InlineCodeBlock(
 		});
 	}
 
-	for ({
-		lang,
-		editable,
-		breakpoint = "1300px",
-		jsxVersion,
-		templateVersion,
-	} of this) {
+	for ({lang, editable, breakpoint = "1300px"} of this) {
 		if (justToggled) {
 			this.schedule(() => {
 				justToggled = false;
 			});
 		}
-		const canToggle = jsxVersion && templateVersion;
-		const toggleSyntax = () => {
-			if (syntaxMode === "jsx" && templateVersion) {
-				syntaxMode = "template";
-				value = templateVersion;
-			} else if (syntaxMode === "template" && jsxVersion) {
-				syntaxMode = "jsx";
-				value = jsxVersion;
+
+		const canToggle = canToggleLang(lang) && detectedSyntax !== null;
+
+		const toggleSyntax = async () => {
+			if (converting) return;
+
+			// Lazy load conversion functions
+			if (!jsxToTemplate || !templateToJSX) {
+				converting = true;
+				this.refresh();
+				try {
+					const codemods = await import("@b9g/crank-codemods");
+					jsxToTemplate = codemods.jsxToTemplate;
+					templateToJSX = codemods.templateToJSX;
+				} catch {
+					converting = false;
+					return;
+				}
+				converting = false;
 			}
+
+			try {
+				if (syntaxMode === "jsx") {
+					value = jsxToTemplate(value);
+					syntaxMode = "template";
+				} else {
+					value = templateToJSX(value);
+					syntaxMode = "jsx";
+				}
+			} catch {
+				// Conversion failed, stay on current syntax
+			}
+
 			justToggled = true;
 			this.refresh();
 		};

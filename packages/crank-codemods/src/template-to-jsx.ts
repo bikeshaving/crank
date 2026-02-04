@@ -202,7 +202,7 @@ export default function transform(fileInfo: FileInfo, api: API): string | null {
 				j(path).replaceWith(jsxNode);
 			}
 		} catch (e) {
-			console.warn("Failed to parse template:", e);
+			throw e;
 		}
 	});
 
