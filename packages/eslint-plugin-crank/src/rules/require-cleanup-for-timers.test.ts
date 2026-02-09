@@ -403,6 +403,58 @@ describe("require-cleanup-for-timers", () => {
     });
   });
 
+  describe("post-loop and try/finally cleanup", () => {
+    it("should allow cleanup after the for-of loop", () => {
+      ruleTester.run("require-cleanup-for-timers", requireCleanupForTimers, {
+        valid: [
+          {
+            code: `
+              function* Timer(this: Context) {
+                let seconds = 0;
+                const interval = setInterval(() => this.refresh(() => {
+                  seconds++;
+                }), 1000);
+                for (const {} of this) {
+                  yield <div>{seconds}</div>;
+                }
+
+                clearInterval(interval);
+              }
+            `,
+          },
+        ],
+        invalid: [],
+      });
+    });
+
+    it("should allow cleanup in try/finally", () => {
+      ruleTester.run("require-cleanup-for-timers", requireCleanupForTimers, {
+        valid: [
+          {
+            code: `
+              function* Timer(this: Context) {
+                let seconds = 0;
+                const interval = setInterval(() => {
+                  seconds++;
+                  this.refresh();
+                }, 1000);
+
+                try {
+                  for (const {} of this) {
+                    yield <div>{seconds}</div>;
+                  }
+                } finally {
+                  clearInterval(interval);
+                }
+              }
+            `,
+          },
+        ],
+        invalid: [],
+      });
+    });
+  });
+
   describe("JavaScript compatibility", () => {
     it("should work with plain JavaScript", () => {
       const jsRuleTester = createJsRuleTester();

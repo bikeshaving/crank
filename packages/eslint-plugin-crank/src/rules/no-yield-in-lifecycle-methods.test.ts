@@ -163,31 +163,8 @@ describe("no-yield-in-lifecycle-methods", () => {
     });
   });
 
-  describe("invalid cases - return with value in lifecycle methods", () => {
-    it.each([
-      {
-        method: "schedule",
-        returnValue: "someValue",
-        setup: "doSomething();",
-        line: 5,
-        column: 19,
-      },
-      {
-        method: "after",
-        returnValue: "42",
-        setup: "",
-        line: 4,
-        column: 19,
-      },
-      {
-        method: "cleanup",
-        returnValue: "result",
-        setup: "cleanup();",
-        line: 5,
-        column: 19,
-      },
-    ])("should detect return with value in this.$method()", ({ method, returnValue, setup, line, column }) => {
-      const setupLine = setup ? `${setup}\n                  ` : "";
+  describe("invalid cases - return with value in after()", () => {
+    it("should detect return with value in this.after()", () => {
       ruleTester.run(
         "no-yield-in-lifecycle-methods",
         noYieldInLifecycleMethods,
@@ -197,8 +174,8 @@ describe("no-yield-in-lifecycle-methods", () => {
             {
               code: `
               function* Component(this: Context) {
-                this.${method}(() => {
-                  ${setupLine}return ${returnValue};
+                this.after(() => {
+                  return 42;
                 });
               }
             `,
@@ -207,14 +184,48 @@ describe("no-yield-in-lifecycle-methods", () => {
                   messageId: "noYieldInLifecycle",
                   data: {
                     statement: "return",
-                    method: method,
+                    method: "after",
                   },
-                  line: line,
-                  column: column,
+                  line: 4,
+                  column: 19,
                 },
               ],
             },
           ],
+        }
+      );
+    });
+  });
+
+  describe("valid cases - return with value in schedule/cleanup", () => {
+    it("should allow return with value in schedule() and cleanup() (async support in 0.7)", () => {
+      ruleTester.run(
+        "no-yield-in-lifecycle-methods",
+        noYieldInLifecycleMethods,
+        {
+          valid: [
+            {
+              code: `
+              function* Component(this: Context) {
+                this.schedule(() => {
+                  doSomething();
+                  return someValue;
+                });
+              }
+            `,
+            },
+            {
+              code: `
+              function* Component(this: Context) {
+                this.cleanup(() => {
+                  cleanup();
+                  return result;
+                });
+              }
+            `,
+            },
+          ],
+          invalid: [],
         }
       );
     });
@@ -269,9 +280,6 @@ describe("no-yield-in-lifecycle-methods", () => {
                 this.after(function* () {
                   yield 2;
                 });
-                this.cleanup(() => {
-                  return 3;
-                });
               }
             `,
               errors: [
@@ -290,14 +298,6 @@ describe("no-yield-in-lifecycle-methods", () => {
                     method: "after",
                   },
                   line: 7,
-                },
-                {
-                  messageId: "noYieldInLifecycle",
-                  data: {
-                    statement: "return",
-                    method: "cleanup",
-                  },
-                  line: 10,
                 },
               ],
             },

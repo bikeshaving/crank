@@ -15,7 +15,7 @@ export const requireCleanupForTimers: Rule.RuleModule = {
     type: "problem",
     docs: {
       description:
-        "Detect setInterval/setTimeout in generator components without corresponding this.cleanup()",
+        "Detect setInterval/setTimeout in generator components without corresponding cleanup",
       category: "Possible Errors",
       recommended: true,
     },
@@ -118,6 +118,76 @@ export const requireCleanupForTimers: Rule.RuleModule = {
     }
 
     /**
+     * Check if the function body contains a direct clear call for the timer,
+     * e.g. after the for-of loop or in a try/finally block.
+     */
+    function hasClearCallInFunctionBody(
+      funcNode: ESLintNode,
+      timerVariable: string,
+      timerType: string
+    ): boolean {
+      const clearFunction = getClearFunctionForTimer(timerType);
+      const body = funcNode.body;
+      if (!body || body.type !== "BlockStatement") return false;
+      return checkNodeTreeForClearCall(body, timerVariable, clearFunction);
+    }
+
+    /**
+     * Recursively check a node tree for a clear call, descending into
+     * blocks, try/finally, if/else, but stopping at function boundaries.
+     */
+    function checkNodeTreeForClearCall(
+      node: any,
+      timerVariable: string,
+      clearFunction: string
+    ): boolean {
+      if (!node) return false;
+
+      // Don't descend into nested functions
+      if (
+        node.type === "FunctionExpression" ||
+        node.type === "ArrowFunctionExpression" ||
+        node.type === "FunctionDeclaration"
+      ) {
+        return false;
+      }
+
+      // Direct clear call match
+      if (
+        node.type === "CallExpression" &&
+        node.callee.type === "Identifier" &&
+        node.callee.name === clearFunction &&
+        node.arguments &&
+        node.arguments.length > 0 &&
+        node.arguments[0].type === "Identifier" &&
+        node.arguments[0].name === timerVariable
+      ) {
+        return true;
+      }
+
+      // Recurse into child nodes
+      for (const key of Object.keys(node)) {
+        if (key === "parent") continue;
+        const child = node[key];
+        if (Array.isArray(child)) {
+          for (const item of child) {
+            if (item && typeof item === "object" && item.type) {
+              if (checkNodeTreeForClearCall(item, timerVariable, clearFunction)) {
+                return true;
+              }
+            }
+          }
+        } else if (child && typeof child === "object" && child.type) {
+          if (checkNodeTreeForClearCall(child, timerVariable, clearFunction)) {
+            return true;
+          }
+        }
+      }
+
+      return false;
+    }
+
+    /**
      * Check if any cleanup call in the function clears the timer
      */
     function hasCleanupForTimer(
@@ -126,21 +196,25 @@ export const requireCleanupForTimers: Rule.RuleModule = {
       timerType: string
     ): boolean {
       const cleanupCalls = cleanupCallsByFunction.get(generatorFunc);
-      if (!cleanupCalls || cleanupCalls.size === 0) {
-        return false;
-      }
 
-      // If we don't know the variable name, we can't verify cleanup
+      // If we don't know the variable name, just check for any cleanup call
       if (!timerVariable) {
-        // Check if there's at least one cleanup call
-        return cleanupCalls.size > 0;
+        return (cleanupCalls != null && cleanupCalls.size > 0) ||
+          false;
       }
 
-      // Check if any cleanup call clears this specific timer
-      for (const cleanupCall of cleanupCalls) {
-        if (cleanupCallbackClearsTimer(cleanupCall, timerVariable, timerType)) {
-          return true;
+      // Check this.cleanup() callbacks
+      if (cleanupCalls) {
+        for (const cleanupCall of cleanupCalls) {
+          if (cleanupCallbackClearsTimer(cleanupCall, timerVariable, timerType)) {
+            return true;
+          }
         }
+      }
+
+      // Check for direct clear calls in function body (post-loop or try/finally)
+      if (hasClearCallInFunctionBody(generatorFunc, timerVariable, timerType)) {
+        return true;
       }
 
       return false;

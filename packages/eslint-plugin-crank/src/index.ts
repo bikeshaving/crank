@@ -1,5 +1,6 @@
 import { preferRefreshCallback } from "./rules/prefer-refresh-callback.js";
 import { preferPropsIterator } from "./rules/prefer-props-iterator.js";
+import { propDestructuringConsistency } from "./rules/prop-destructuring-consistency.js";
 import { preferLowercaseEventProps } from "./rules/prefer-lowercase-event-props.js";
 import { noReactProps } from "./rules/no-react-props.js";
 import { preferKebabCaseSvgProps } from "./rules/prefer-kebab-case-svg-props.js";
@@ -9,6 +10,7 @@ import { requireCleanupForTimers } from "./rules/require-cleanup-for-timers.js";
 export const rules = {
   "prefer-refresh-callback": preferRefreshCallback,
   "prefer-props-iterator": preferPropsIterator,
+  "prop-destructuring-consistency": propDestructuringConsistency,
   "prefer-lowercase-event-props": preferLowercaseEventProps,
   "no-react-props": noReactProps,
   "prefer-kebab-case-svg-props": preferKebabCaseSvgProps,
@@ -24,6 +26,7 @@ export const configs = {
       "no-empty-pattern": "off",
       "crank/prefer-refresh-callback": "error",
       "crank/prefer-props-iterator": "error",
+      "crank/prop-destructuring-consistency": "error",
       "crank/prefer-lowercase-event-props": "error",
       "crank/no-react-props": "error",
       "crank/no-yield-in-lifecycle-methods": "error",

@@ -74,10 +74,12 @@ export const noYieldInLifecycleMethods: Rule.RuleModule = {
       },
 
       ReturnStatement(node) {
-        // Only flag return statements with a value
+        // Only flag return statements with a value, and only in after().
+        // schedule() and cleanup() can be async in 0.7, so returning
+        // values (e.g. promises) from them is valid.
         if (node.argument) {
           const method = isInsideLifecycleCallback(node);
-          if (method) {
+          if (method === "after") {
             context.report({
               node,
               messageId: "noYieldInLifecycle",
