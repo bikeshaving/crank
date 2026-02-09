@@ -61,18 +61,21 @@ export async function* Search(this: Context) {
 
 	const doSearch = async (q: string) => {
 		if (!q.trim()) {
-			results = [];
-			this.refresh();
+			this.refresh(() => {
+				results = [];
+			});
 			return;
 		}
 
-		loading = true;
-		this.refresh();
+		this.refresh(() => {
+			loading = true;
+		});
 
 		const pf = await loadPagefind();
 		if (!pf) {
-			loading = false;
-			this.refresh();
+			this.refresh(() => {
+				loading = false;
+			});
 			return;
 		}
 
@@ -82,7 +85,7 @@ export async function* Search(this: Context) {
 		);
 
 		// Use sub_results to show specific sections instead of page introductions
-		results = data
+		const newResults = data
 			.flatMap((d) => {
 				// If there are sub_results, use the first (most relevant) one
 				if (d.sub_results && d.sub_results.length > 0) {
@@ -105,8 +108,10 @@ export async function* Search(this: Context) {
 				];
 			})
 			.slice(0, 8);
-		loading = false;
-		this.refresh();
+		this.refresh(() => {
+			results = newResults;
+			loading = false;
+		});
 	};
 
 	const onInput = (e: InputEvent) => {
@@ -115,26 +120,31 @@ export async function* Search(this: Context) {
 
 		if (debounceTimer) clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => doSearch(query), 150);
+		this.cleanup(() => clearTimeout(debounceTimer!));
 	};
 
 	const onFocus = () => {
-		isOpen = true;
-		this.refresh();
+		this.refresh(() => {
+			isOpen = true;
+		});
 	};
 
 	const onBlur = () => {
 		// Delay to allow click on results
-		setTimeout(() => {
-			isOpen = false;
-			this.refresh();
+		const blurTimer = setTimeout(() => {
+			this.refresh(() => {
+				isOpen = false;
+			});
 		}, 200);
+		this.cleanup(() => clearTimeout(blurTimer));
 	};
 
 	const onKeyDown = (e: KeyboardEvent) => {
 		if (e.key === "Escape") {
-			isOpen = false;
 			(e.target as HTMLInputElement).blur();
-			this.refresh();
+			this.refresh(() => {
+				isOpen = false;
+			});
 		}
 	};
 

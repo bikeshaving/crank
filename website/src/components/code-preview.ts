@@ -282,8 +282,9 @@ export function* CodePreview(
 			// We have to refresh to change the iframe variable in scope, as the
 			// previous iframe is destroyed. We would have to await refresh if this
 			// component was refactored to be async.
-			iframeID++;
-			this.refresh();
+			this.refresh(() => {
+				iframeID++;
+			});
 			const document1 = iframe.contentDocument;
 			if (document1 == null) {
 				return;
@@ -302,9 +303,10 @@ export function* CodePreview(
 					document1.write(generateJavaScriptIFrameHTML(id, code, staticURLs!));
 				} catch (err: any) {
 					console.error(err);
-					loading = false;
-					errorMessage = err.message || err;
-					this.refresh();
+					this.refresh(() => {
+						loading = false;
+						errorMessage = err.message || err;
+					});
 					return;
 				}
 			}
@@ -324,17 +326,20 @@ export function* CodePreview(
 			}
 
 			if (data.type === "executed") {
-				loading = false;
-				this.refresh();
+				this.refresh(() => {
+					loading = false;
+				});
 			} else if (data.type === "loading") {
-				loading = true;
-				errorMessage = null;
-				this.refresh();
+				this.refresh(() => {
+					loading = true;
+					errorMessage = null;
+				});
 			} else if (data.type === "error") {
-				loading = false;
-				errorMessage = data.message;
-				showErrorModal = !suppressErrors;
-				this.refresh();
+				this.refresh(() => {
+					loading = false;
+					errorMessage = data.message;
+					showErrorModal = !suppressErrors;
+				});
 			} else if (data.type === "resize" && visible) {
 				if (autoresize) {
 					// Auto-resizing iframes is tricky because you can get into an
@@ -343,8 +348,9 @@ export function* CodePreview(
 					// change. Therefore, we give a max height of 1000px.
 					setTimeout(() => {
 						// Putting this in a callback in an attempt to prevent infinite loops.
-						height = Math.min(1000, Math.max(100, data.height));
-						this.refresh();
+						this.refresh(() => {
+							height = Math.min(1000, Math.max(100, data.height));
+						});
 					});
 				}
 			}
@@ -434,8 +440,9 @@ export function* CodePreview(
 										`}>Error</span>
 										<button
 											onclick=${() => {
-												showErrorModal = false;
-												this.refresh();
+												this.refresh(() => {
+													showErrorModal = false;
+												});
 											}}
 											class=${css`
 												background: none;

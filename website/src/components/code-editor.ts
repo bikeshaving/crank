@@ -175,9 +175,10 @@ export function* CodeEditor(
 		}
 
 		ev.preventDefault();
-		value = ev.target.value;
-		renderSource = "refresh";
-		this.refresh();
+		this.refresh(() => {
+			value = ev.target.value;
+			renderSource = "refresh";
+		});
 	});
 
 	let editHistory = new EditHistory();
@@ -186,11 +187,12 @@ export function* CodeEditor(
 		const undo = () => {
 			const edit = editHistory.undo();
 			if (edit) {
-				value = edit.apply(value);
-				selectionRange = selectionRangeFromEdit(edit);
-				keyer.transform(edit);
-				renderSource = "history";
-				this.refresh();
+				this.refresh(() => {
+					value = edit.apply(value);
+					selectionRange = selectionRangeFromEdit(edit);
+					keyer.transform(edit);
+					renderSource = "history";
+				});
 				return true;
 			}
 
@@ -200,11 +202,12 @@ export function* CodeEditor(
 		const redo = () => {
 			const edit = editHistory.redo();
 			if (edit) {
-				value = edit.apply(value);
-				selectionRange = selectionRangeFromEdit(edit);
-				keyer.transform(edit);
-				renderSource = "history";
-				this.refresh();
+				this.refresh(() => {
+					value = edit.apply(value);
+					selectionRange = selectionRangeFromEdit(edit);
+					keyer.transform(edit);
+					renderSource = "history";
+				});
 				return true;
 			}
 
@@ -289,16 +292,17 @@ export function* CodeEditor(
 					.retain(selectionStart)
 					.insert(insert)
 					.build();
-				keyer.transform(edit);
-				renderSource = "newline";
-				value = edit.apply(value);
-				selectionRange = {
-					selectionStart: selectionStart + insert.length,
-					selectionEnd: selectionStart + insert.length,
-					selectionDirection: "none",
-				};
 				ev.preventDefault();
-				this.refresh();
+				this.refresh(() => {
+					keyer.transform(edit);
+					renderSource = "newline";
+					value = edit.apply(value);
+					selectionRange = {
+						selectionStart: selectionStart + insert.length,
+						selectionEnd: selectionStart + insert.length,
+						selectionDirection: "none",
+					};
+				});
 			} else if (ev.key === "Tab") {
 				// TODO:
 			} else if (ev.key === "Escape") {

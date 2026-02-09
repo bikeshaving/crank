@@ -43,6 +43,7 @@ export const configs = {
 			"crank/no-react-props": "error",
 			"crank/no-yield-in-lifecycle-methods": "error",
 			"crank/require-cleanup-for-timers": "error",
+			"crank/jsx-uses-crank": "error",
 			"crank/jsx-uses-vars": "error",
 			"crank/jsx-no-undef": "error",
 			"crank/jsx-no-duplicate-props": "error",

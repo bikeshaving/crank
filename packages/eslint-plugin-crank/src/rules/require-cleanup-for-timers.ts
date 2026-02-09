@@ -86,6 +86,19 @@ export const requireCleanupForTimers: Rule.RuleModule = {
 		/**
 		 * Recursively check if a node contains a clear call for the timer
 		 */
+		function unwrapTSExpression(node: any): any {
+			if (!node) return node;
+			// Unwrap TypeScript non-null assertions (foo!) and type assertions (foo as T)
+			if (
+				node.type === "TSNonNullExpression" ||
+				node.type === "TSAsExpression" ||
+				node.type === "TSTypeAssertion"
+			) {
+				return unwrapTSExpression(node.expression);
+			}
+			return node;
+		}
+
 		function checkNodeForClearCall(
 			node: any,
 			timerVariable: string,
@@ -99,11 +112,12 @@ export const requireCleanupForTimers: Rule.RuleModule = {
 				node.callee.type === "Identifier" &&
 				node.callee.name === clearFunction &&
 				node.arguments &&
-				node.arguments.length > 0 &&
-				node.arguments[0].type === "Identifier" &&
-				node.arguments[0].name === timerVariable
+				node.arguments.length > 0
 			) {
-				return true;
+				const arg = unwrapTSExpression(node.arguments[0]);
+				if (arg.type === "Identifier" && arg.name === timerVariable) {
+					return true;
+				}
 			}
 
 			// Check block statements
