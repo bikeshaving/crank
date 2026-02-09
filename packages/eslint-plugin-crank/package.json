@@ -1,10 +1,42 @@
 {
   "name": "eslint-plugin-crank",
-  "version": "0.1.0",
-  "description": "ESLint plugin for Crank",
-  "main": "index.js",
+  "version": "1.0.0",
+  "description": "ESLint plugin for the Crank JS framework",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "crank",
+    "jsx"
+  ],
   "license": "MIT",
-  "dependencies": {
-    "eslint-plugin-react": "^7.32.2"
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "peerDependencies": {
+    "eslint": ">=9.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "lint": "eslint . --ext .ts,.js",
+    "prepare": "npm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.37.0",
+    "@tsconfig/recommended": "^1.0.10",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/parser": "^8.46.1",
+    "@vitest/coverage-v8": "^1.0.0",
+    "eslint": "^9.37.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.0",
+    "vitest": "^1.0.0"
   }
 }
