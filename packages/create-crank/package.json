@@ -1,0 +1,26 @@
+{
+  "name": "create-crank",
+  "version": "0.1.0",
+  "description": "Create a new Crank.js project",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bikeshaving/crank.git",
+    "directory": "packages/create-crank"
+  },
+  "type": "module",
+  "bin": {
+    "create-crank": "./bin/create.js"
+  },
+  "files": [
+    "bin"
+  ],
+  "keywords": [
+    "crank",
+    "crankjs",
+    "create",
+    "scaffold",
+    "starter",
+    "template"
+  ]
+}
