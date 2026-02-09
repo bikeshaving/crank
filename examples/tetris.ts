@@ -186,56 +186,57 @@ function* App() {
   );
 
   const interval = setInterval(() => {
-    currentPiece.y++;
-    if (!canFit(currentPiece, field)) {
-      currentPiece.y--;
-      placePiece(currentPiece, field);
-      // TODO: game over check
-      currentPiece = createPiece();
-    }
-    this.refresh();
-  }, 1000);
-  this.cleanup(() => clearInterval(interval));
-
-  const keydown = (ev) => {
-    if (ev.key === "w") {
-      // rotate left
-      // TODO: wall kicks to allow rotations at the edge
-      currentPiece.tet = rotate90(currentPiece.tet);
-      if (!canFit(currentPiece, field)) {
-        currentPiece.tet = rotate270(currentPiece.tet);
-      }
-    } else if (ev.key === "e") {
-      // rotate right
-      // TODO: wall kicks to allow rotations at the edge
-      currentPiece.tet = rotate270(currentPiece.tet);
-      if (!canFit(currentPiece, field)) {
-        currentPiece.tet = rotate90(currentPiece.tet);
-      }
-    } else if (ev.key === "a") {
-      // move left
-      currentPiece.x--;
-      if (!canFit(currentPiece, field)) {
-        currentPiece.x++;
-      }
-    } else if (ev.key === "s") {
-      // move down
+    this.refresh(() => {
       currentPiece.y++;
       if (!canFit(currentPiece, field)) {
         currentPiece.y--;
         placePiece(currentPiece, field);
+        // TODO: game over check
         currentPiece = createPiece();
       }
-    } else if (ev.key === "d") {
-      // move right
-      currentPiece.x++;
-      if (!canFit(currentPiece, field)) {
-        currentPiece.x--;
-      }
-    }
+    });
+  }, 1000);
+  this.cleanup(() => clearInterval(interval));
 
-    // TODO: hard drop
-    this.refresh();
+  const keydown = (ev) => {
+    this.refresh(() => {
+      if (ev.key === "w") {
+        // rotate left
+        // TODO: wall kicks to allow rotations at the edge
+        currentPiece.tet = rotate90(currentPiece.tet);
+        if (!canFit(currentPiece, field)) {
+          currentPiece.tet = rotate270(currentPiece.tet);
+        }
+      } else if (ev.key === "e") {
+        // rotate right
+        // TODO: wall kicks to allow rotations at the edge
+        currentPiece.tet = rotate270(currentPiece.tet);
+        if (!canFit(currentPiece, field)) {
+          currentPiece.tet = rotate90(currentPiece.tet);
+        }
+      } else if (ev.key === "a") {
+        // move left
+        currentPiece.x--;
+        if (!canFit(currentPiece, field)) {
+          currentPiece.x++;
+        }
+      } else if (ev.key === "s") {
+        // move down
+        currentPiece.y++;
+        if (!canFit(currentPiece, field)) {
+          currentPiece.y--;
+          placePiece(currentPiece, field);
+          currentPiece = createPiece();
+        }
+      } else if (ev.key === "d") {
+        // move right
+        currentPiece.x++;
+        if (!canFit(currentPiece, field)) {
+          currentPiece.x--;
+        }
+      }
+      // TODO: hard drop
+    });
   };
 
   window.addEventListener("keydown", keydown);

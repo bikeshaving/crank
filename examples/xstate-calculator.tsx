@@ -422,25 +422,26 @@ function* Calculator(this: Context) {
     if ((el.target as Element).tagName === "BUTTON") {
       // TODO: could this be abstracted somehow :-)
       const label = (el.target as Element).textContent!;
-      if (Number.isInteger(+label)) {
-        state = calcMachine.transition(state, {type: "NUMBER", key: +label});
-      } else if (isOperator(label)) {
-        state = calcMachine.transition(state, {
-          type: "OPERATOR",
-          operator: label,
-        });
-      } else if (label === "C") {
-        state = calcMachine.transition(state, {type: "CLEAR_EVERYTHING"});
-      } else if (label === ".") {
-        state = calcMachine.transition(state, {type: "DECIMAL_POINT"});
-      } else if (label === "=") {
-        state = calcMachine.transition(state, {type: "EQUALS"});
-      } else if (label === "%") {
-        state = calcMachine.transition(state, {type: "PERCENTAGE"});
-      } else if (label === "CE") {
-        state = calcMachine.transition(state, {type: "CLEAR_ENTRY"});
-      }
-      this.refresh();
+      this.refresh(() => {
+        if (Number.isInteger(+label)) {
+          state = calcMachine.transition(state, {type: "NUMBER", key: +label});
+        } else if (isOperator(label)) {
+          state = calcMachine.transition(state, {
+            type: "OPERATOR",
+            operator: label,
+          });
+        } else if (label === "C") {
+          state = calcMachine.transition(state, {type: "CLEAR_EVERYTHING"});
+        } else if (label === ".") {
+          state = calcMachine.transition(state, {type: "DECIMAL_POINT"});
+        } else if (label === "=") {
+          state = calcMachine.transition(state, {type: "EQUALS"});
+        } else if (label === "%") {
+          state = calcMachine.transition(state, {type: "PERCENTAGE"});
+        } else if (label === "CE") {
+          state = calcMachine.transition(state, {type: "CLEAR_ENTRY"});
+        }
+      });
     }
   });
 

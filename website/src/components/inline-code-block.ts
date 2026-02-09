@@ -49,9 +49,10 @@ export function* InlineCodeBlock(
 	let converting = false;
 
 	this.addEventListener("contentchange", (ev: any) => {
-		value = ev.target.value;
-		syntaxMode = detectSyntax(value, lang) || "jsx";
-		this.refresh();
+		this.refresh(() => {
+			value = ev.target.value;
+			syntaxMode = detectSyntax(value, lang) || "jsx";
+		});
 	});
 
 	let isIntersecting = false;
@@ -59,8 +60,9 @@ export function* InlineCodeBlock(
 		const intersectionObserver = new IntersectionObserver(
 			(entries) => {
 				if (!isIntersecting) {
-					isIntersecting = entries[0].isIntersecting;
-					this.refresh();
+					this.refresh(() => {
+						isIntersecting = entries[0].isIntersecting;
+					});
 				}
 			},
 			{threshold: 0.1},
@@ -75,7 +77,7 @@ export function* InlineCodeBlock(
 		});
 	}
 
-	for ({lang, editable, breakpoint = "1300px"} of this) {
+	for ({value, lang, editable, breakpoint = "1300px"} of this) {
 		if (justToggled) {
 			this.schedule(() => {
 				justToggled = false;
@@ -89,8 +91,9 @@ export function* InlineCodeBlock(
 
 			// Lazy load conversion functions
 			if (!jsxToTemplate || !templateToJSX) {
-				converting = true;
-				this.refresh();
+				this.refresh(() => {
+					converting = true;
+				});
 				try {
 					const codemods = await import("@b9g/crank-codemods");
 					jsxToTemplate = codemods.jsxToTemplate;
@@ -114,8 +117,9 @@ export function* InlineCodeBlock(
 				// Conversion failed, stay on current syntax
 			}
 
-			justToggled = true;
-			this.refresh();
+			this.refresh(() => {
+				justToggled = true;
+			});
 		};
 		yield jsx`
 			<div hydrate="!class" class=${css`

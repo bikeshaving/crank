@@ -325,10 +325,11 @@ export function* SuspenseList(
 		controller.tail = tail;
 		registering = new Promise((r) => (finishRegistration = r));
 		// TODO: Is there a more precise timing for the registration window
-		setTimeout(() => {
+		const timerId = setTimeout(() => {
 			finishRegistration();
 			registering = null;
 		});
+		this.cleanup(() => clearTimeout(timerId));
 		yield children;
 	}
 }

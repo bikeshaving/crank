@@ -69,10 +69,11 @@ function* Playground(this: Context) {
 	let isDragging = false;
 
 	this.addEventListener("contentchange", (ev: any) => {
-		code = ev.target.value;
-		localStorage.setItem("playground-value", code);
-		exampleName = ""; // Clear example selection when user edits
-		this.refresh();
+		this.refresh(() => {
+			code = ev.target.value;
+			localStorage.setItem("playground-value", code);
+			exampleName = ""; // Clear example selection when user edits
+		});
 	});
 
 	let exampleName = "";
@@ -83,9 +84,10 @@ function* Playground(this: Context) {
 			(example: any) => example.name === exampleName,
 		);
 		if (example) {
-			code = example.code;
-			updateEditor = true;
-			this.refresh();
+			this.refresh(() => {
+				code = example.code;
+				updateEditor = true;
+			});
 		}
 	};
 
@@ -93,16 +95,20 @@ function* Playground(this: Context) {
 		const compressed = LZString.compressToEncodedURIComponent(code);
 		const url = `${window.location.origin}${window.location.pathname}#${compressed}`;
 		history.replaceState(null, "", `#${compressed}`);
+		let status: string;
 		try {
 			await navigator.clipboard.writeText(url);
-			shareStatus = "Copied!";
+			status = "Copied!";
 		} catch {
-			shareStatus = "Failed";
+			status = "Failed";
 		}
-		this.refresh();
+		this.refresh(() => {
+			shareStatus = status;
+		});
 		setTimeout(() => {
-			shareStatus = "";
-			this.refresh();
+			this.refresh(() => {
+				shareStatus = "";
+			});
 		}, 2000);
 	};
 
@@ -119,9 +125,11 @@ function* Playground(this: Context) {
 		const rect = container.getBoundingClientRect();
 		const newWidth = ((clientX - rect.left) / rect.width) * 100;
 		// Clamp between 20% and 80%
-		leftPanelWidth = Math.max(20, Math.min(80, newWidth));
-		localStorage.setItem("playground-panel-width", leftPanelWidth.toString());
-		this.refresh();
+		const clampedWidth = Math.max(20, Math.min(80, newWidth));
+		this.refresh(() => {
+			leftPanelWidth = clampedWidth;
+			localStorage.setItem("playground-panel-width", leftPanelWidth.toString());
+		});
 	};
 
 	const onMouseMove = (ev: MouseEvent) => {

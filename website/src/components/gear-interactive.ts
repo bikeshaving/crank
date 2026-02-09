@@ -232,20 +232,22 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 	};
 
 	const animate = (time: number) => {
-		if (lastTime) {
-			const delta = (time - lastTime) / 1000;
-			idleOffset += idleSpeed * delta;
-		}
-		lastTime = time;
-		this.refresh();
+		this.refresh(() => {
+			if (lastTime) {
+				const delta = (time - lastTime) / 1000;
+				idleOffset += idleSpeed * delta;
+			}
+			lastTime = time;
+		});
 		animationId = requestAnimationFrame(animate);
 	};
 
 	measure();
 	if (typeof window !== "undefined") {
 		const onscroll = () => {
-			measure();
-			this.refresh();
+			this.refresh(() => {
+				measure();
+			});
 		};
 
 		window.addEventListener("scroll", onscroll, {passive: true});
