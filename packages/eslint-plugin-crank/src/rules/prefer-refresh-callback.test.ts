@@ -1,62 +1,62 @@
-import { describe, it } from "vitest";
-import { preferRefreshCallback } from "./prefer-refresh-callback.js";
+import {describe, it} from "vitest";
+import {preferRefreshCallback} from "./prefer-refresh-callback.js";
 import {
-  createTsRuleTester,
-  createJsRuleTester,
+	createTsRuleTester,
+	createJsRuleTester,
 } from "../test-helpers/rule-tester.js";
 
 const ruleTester = createTsRuleTester();
 
 describe("prefer-refresh-callback", () => {
-  describe("basic functionality", () => {
-    it("should pass for valid refresh callback patterns", () => {
-      ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
-        valid: [
-          {
-            code: `this.refresh(() => count++);`,
-          },
-          {
-            code: `this.refresh(() => { count++; });`,
-          },
-          {
-            code: `this.refresh(() => { 
+	describe("basic functionality", () => {
+		it("should pass for valid refresh callback patterns", () => {
+			ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
+				valid: [
+					{
+						code: `this.refresh(() => count++);`,
+					},
+					{
+						code: `this.refresh(() => { count++; });`,
+					},
+					{
+						code: `this.refresh(() => { 
               count++;
               doSomething();
             });`,
-          },
-          {
-            code: `someOtherObject.refresh();`,
-          },
-          {
-            code: `this.someOtherMethod();`,
-          },
-          {
-            code: `this.refresh(callback);`,
-          },
-        ],
-        invalid: [],
-      });
-    });
+					},
+					{
+						code: `someOtherObject.refresh();`,
+					},
+					{
+						code: `this.someOtherMethod();`,
+					},
+					{
+						code: `this.refresh(callback);`,
+					},
+				],
+				invalid: [],
+			});
+		});
 
-    it("should NOT detect standalone refresh calls outside Crank components", () => {
-      ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
-        valid: [
-          {
-            code: `this.refresh();`,
-          },
-        ],
-        invalid: [],
-      });
-    });
-  });
+		it("should NOT detect standalone refresh calls outside Crank components", () => {
+			ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
+				valid: [
+					{
+						code: `this.refresh();`,
+					},
+				],
+				invalid: [],
+			});
+		});
+	});
 
-  describe("context parameter patterns", () => {
-    it("should detect refresh calls with arbitrary context parameter names", () => {
-      ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
-        valid: [],
-        invalid: [
-          {
-            code: `
+	describe("context parameter patterns", () => {
+		it("should detect refresh calls with arbitrary context parameter names", () => {
+			ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
+				valid: [],
+				invalid: [
+					{
+						code: `
               function* Component({ ...props }, ctx: Context) {
                 const handleClick = async (e : Event) => {
                   await doSomething();
@@ -64,15 +64,15 @@ describe("prefer-refresh-callback", () => {
                 };
               }
             `,
-            errors: [
-              {
-                messageId: "preferRefreshCallback",
-                line: 5,
-                column: 19,
-                suggestions: [
-                  {
-                    messageId: "suggestRefreshCallback",
-                    output: `
+						errors: [
+							{
+								messageId: "preferRefreshCallback",
+								line: 5,
+								column: 19,
+								suggestions: [
+									{
+										messageId: "suggestRefreshCallback",
+										output: `
               function* Component({ ...props }, ctx: Context) {
                 const handleClick = (e: Event) => ctx.refresh(
                   async () => {
@@ -81,13 +81,13 @@ describe("prefer-refresh-callback", () => {
                 );
               }
             `,
-                  },
-                ],
-              },
-            ],
-          },
-          {
-            code: `
+									},
+								],
+							},
+						],
+					},
+					{
+						code: `
               function* Component({ ...props }, context: Context) {
                 const handleClick = async () => {
                   await doSomething();
@@ -95,15 +95,15 @@ describe("prefer-refresh-callback", () => {
                 }
               }
             `,
-            errors: [
-              {
-                messageId: "preferRefreshCallback",
-                line: 5,
-                column: 19,
-                suggestions: [
-                  {
-                    messageId: "suggestRefreshCallback",
-                    output: `
+						errors: [
+							{
+								messageId: "preferRefreshCallback",
+								line: 5,
+								column: 19,
+								suggestions: [
+									{
+										messageId: "suggestRefreshCallback",
+										output: `
               function* Component({ ...props }, context: Context) {
                 const handleClick = () => context.refresh(
                   async () => {
@@ -112,13 +112,13 @@ describe("prefer-refresh-callback", () => {
                 )
               }
             `,
-                  },
-                ],
-              },
-            ],
-          },
-          {
-            code: `
+									},
+								],
+							},
+						],
+					},
+					{
+						code: `
               function* Component({ ...props }, c: Context) {
                 const handleClick = async () => {
                   await doSomething();
@@ -126,15 +126,15 @@ describe("prefer-refresh-callback", () => {
                 }
               }
             `,
-            errors: [
-              {
-                messageId: "preferRefreshCallback",
-                line: 5,
-                column: 19,
-                suggestions: [
-                  {
-                    messageId: "suggestRefreshCallback",
-                    output: `
+						errors: [
+							{
+								messageId: "preferRefreshCallback",
+								line: 5,
+								column: 19,
+								suggestions: [
+									{
+										messageId: "suggestRefreshCallback",
+										output: `
               function* Component({ ...props }, c: Context) {
                 const handleClick = () => c.refresh(
                   async () => {
@@ -143,21 +143,21 @@ describe("prefer-refresh-callback", () => {
                 )
               }
             `,
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      });
-    });
+									},
+								],
+							},
+						],
+					},
+				],
+			});
+		});
 
-    it("should work with this: Context pattern", () => {
-      ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
-        valid: [],
-        invalid: [
-          {
-            code: `
+		it("should work with this: Context pattern", () => {
+			ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
+				valid: [],
+				invalid: [
+					{
+						code: `
               function* Component(this: Context, { ...props }) {
                 const handleClick = async () => {
                   await doSomething();
@@ -165,15 +165,15 @@ describe("prefer-refresh-callback", () => {
                 }
               }
             `,
-            errors: [
-              {
-                messageId: "preferRefreshCallback",
-                line: 5,
-                column: 19,
-                suggestions: [
-                  {
-                    messageId: "suggestRefreshCallback",
-                    output: `
+						errors: [
+							{
+								messageId: "preferRefreshCallback",
+								line: 5,
+								column: 19,
+								suggestions: [
+									{
+										messageId: "suggestRefreshCallback",
+										output: `
               function* Component(this: Context, { ...props }) {
                 const handleClick = () => this.refresh(
                   async () => {
@@ -182,23 +182,23 @@ describe("prefer-refresh-callback", () => {
                 )
               }
             `,
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      });
-    });
-  });
+									},
+								],
+							},
+						],
+					},
+				],
+			});
+		});
+	});
 
-  describe("final action detection", () => {
-    it("should detect refresh calls before return statements", () => {
-      ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
-        valid: [],
-        invalid: [
-          {
-            code: `
+	describe("final action detection", () => {
+		it("should detect refresh calls before return statements", () => {
+			ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
+				valid: [],
+				invalid: [
+					{
+						code: `
               function* Component(this: Context) {
                 const handleClick = async () => {
                   await doSomething();
@@ -207,15 +207,15 @@ describe("prefer-refresh-callback", () => {
                 }
               }
             `,
-            errors: [
-              {
-                messageId: "preferRefreshCallback",
-                line: 5,
-                column: 19,
-                suggestions: [
-                  {
-                    messageId: "suggestRefreshCallback",
-                    output: `
+						errors: [
+							{
+								messageId: "preferRefreshCallback",
+								line: 5,
+								column: 19,
+								suggestions: [
+									{
+										messageId: "suggestRefreshCallback",
+										output: `
               function* Component(this: Context) {
                 const handleClick = () => this.refresh(
                   async () => {
@@ -225,13 +225,13 @@ describe("prefer-refresh-callback", () => {
                 )
               }
             `,
-                  },
-                ],
-              },
-            ],
-          },
-          {
-            code: `
+									},
+								],
+							},
+						],
+					},
+					{
+						code: `
               function* Component(this: Context) {
                 const handleClick = async () => {
                   await doSomething();
@@ -240,15 +240,15 @@ describe("prefer-refresh-callback", () => {
                 }
               }
             `,
-            errors: [
-              {
-                messageId: "preferRefreshCallback",
-                line: 5,
-                column: 19,
-                suggestions: [
-                  {
-                    messageId: "suggestRefreshCallback",
-                    output: `
+						errors: [
+							{
+								messageId: "preferRefreshCallback",
+								line: 5,
+								column: 19,
+								suggestions: [
+									{
+										messageId: "suggestRefreshCallback",
+										output: `
               function* Component(this: Context) {
                 const handleClick = () => this.refresh(
                   async () => {
@@ -258,21 +258,21 @@ describe("prefer-refresh-callback", () => {
                 )
               }
             `,
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      });
-    });
+									},
+								],
+							},
+						],
+					},
+				],
+			});
+		});
 
-    it("should detect refresh calls before throw statements", () => {
-      ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
-        valid: [],
-        invalid: [
-          {
-            code: `
+		it("should detect refresh calls before throw statements", () => {
+			ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
+				valid: [],
+				invalid: [
+					{
+						code: `
               function* Component(this: Context) {
                 const handleClick = async () => {
                   try {
@@ -284,15 +284,15 @@ describe("prefer-refresh-callback", () => {
                 }
               }
             `,
-            errors: [
-              {
-                messageId: "preferRefreshCallback",
-                line: 7,
-                column: 21,
-                suggestions: [
-                  {
-                    messageId: "suggestRefreshCallback",
-                    output: `
+						errors: [
+							{
+								messageId: "preferRefreshCallback",
+								line: 7,
+								column: 21,
+								suggestions: [
+									{
+										messageId: "suggestRefreshCallback",
+										output: `
               function* Component(this: Context) {
                 const handleClick = () => this.refresh(
                   async () => {
@@ -305,21 +305,21 @@ describe("prefer-refresh-callback", () => {
                 )
               }
             `,
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      });
-    });
+									},
+								],
+							},
+						],
+					},
+				],
+			});
+		});
 
-    it("should detect refresh calls as last statements in try/catch/finally blocks", () => {
-      ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
-        valid: [],
-        invalid: [
-          {
-            code: `
+		it("should detect refresh calls as last statements in try/catch/finally blocks", () => {
+			ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
+				valid: [],
+				invalid: [
+					{
+						code: `
               function* Component(this: Context) {
                 const handleClick = async () => {
                   try {
@@ -331,15 +331,15 @@ describe("prefer-refresh-callback", () => {
                 }
               }
             `,
-            errors: [
-              {
-                messageId: "preferRefreshCallback",
-                line: 6,
-                column: 21,
-                suggestions: [
-                  {
-                    messageId: "suggestRefreshCallback",
-                    output: `
+						errors: [
+							{
+								messageId: "preferRefreshCallback",
+								line: 6,
+								column: 21,
+								suggestions: [
+									{
+										messageId: "suggestRefreshCallback",
+										output: `
               function* Component(this: Context) {
                 const handleClick = () => this.refresh(
                   async () => {
@@ -352,13 +352,13 @@ describe("prefer-refresh-callback", () => {
                 )
               }
             `,
-                  },
-                ],
-              },
-            ],
-          },
-          {
-            code: `
+									},
+								],
+							},
+						],
+					},
+					{
+						code: `
               function* Component(this: Context) {
                 const handleClick = async () => {
                   try {
@@ -370,15 +370,15 @@ describe("prefer-refresh-callback", () => {
                 }
               }
             `,
-            errors: [
-              {
-                messageId: "preferRefreshCallback",
-                line: 8,
-                column: 21,
-                suggestions: [
-                  {
-                    messageId: "suggestRefreshCallback",
-                    output: `
+						errors: [
+							{
+								messageId: "preferRefreshCallback",
+								line: 8,
+								column: 21,
+								suggestions: [
+									{
+										messageId: "suggestRefreshCallback",
+										output: `
               function* Component(this: Context) {
                 const handleClick = () => this.refresh(
                   async () => {
@@ -391,13 +391,13 @@ describe("prefer-refresh-callback", () => {
                 )
               }
             `,
-                  },
-                ],
-              },
-            ],
-          },
-          {
-            code: `
+									},
+								],
+							},
+						],
+					},
+					{
+						code: `
               function* Component(this: Context) {
                 const handleClick = async () => {
                   try {
@@ -409,15 +409,15 @@ describe("prefer-refresh-callback", () => {
                 }
               }
             `,
-            errors: [
-              {
-                messageId: "preferRefreshCallback",
-                line: 8,
-                column: 21,
-                suggestions: [
-                  {
-                    messageId: "suggestRefreshCallback",
-                    output: `
+						errors: [
+							{
+								messageId: "preferRefreshCallback",
+								line: 8,
+								column: 21,
+								suggestions: [
+									{
+										messageId: "suggestRefreshCallback",
+										output: `
               function* Component(this: Context) {
                 const handleClick = () => this.refresh(
                   async () => {
@@ -430,21 +430,21 @@ describe("prefer-refresh-callback", () => {
                 )
               }
             `,
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      });
-    });
+									},
+								],
+							},
+						],
+					},
+				],
+			});
+		});
 
-    it("should detect refresh calls as last statements in function scope", () => {
-      ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
-        valid: [],
-        invalid: [
-          {
-            code: `
+		it("should detect refresh calls as last statements in function scope", () => {
+			ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
+				valid: [],
+				invalid: [
+					{
+						code: `
               function* Component(this: Context) {
                 const handleClick = async () => {
                   await doSomething();
@@ -452,15 +452,15 @@ describe("prefer-refresh-callback", () => {
                 }
               }
             `,
-            errors: [
-              {
-                messageId: "preferRefreshCallback",
-                line: 5,
-                column: 19,
-                suggestions: [
-                  {
-                    messageId: "suggestRefreshCallback",
-                    output: `
+						errors: [
+							{
+								messageId: "preferRefreshCallback",
+								line: 5,
+								column: 19,
+								suggestions: [
+									{
+										messageId: "suggestRefreshCallback",
+										output: `
               function* Component(this: Context) {
                 const handleClick = () => this.refresh(
                   async () => {
@@ -469,20 +469,20 @@ describe("prefer-refresh-callback", () => {
                 )
               }
             `,
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      });
-    });
+									},
+								],
+							},
+						],
+					},
+				],
+			});
+		});
 
-    it("should NOT detect refresh calls that are not final actions", () => {
-      ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
-        valid: [
-          {
-            code: `
+		it("should NOT detect refresh calls that are not final actions", () => {
+			ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
+				valid: [
+					{
+						code: `
               function* Component(this: Context) {
                 const handleClick = async () => {
                   this.refresh();
@@ -490,9 +490,9 @@ describe("prefer-refresh-callback", () => {
                 }
               }
             `,
-          },
-          {
-            code: `
+					},
+					{
+						code: `
               function* Component(this: Context) {
                 const handleClick = async () => {
                   this.refresh();
@@ -501,9 +501,9 @@ describe("prefer-refresh-callback", () => {
                 }
               }
             `,
-          },
-          {
-            code: `
+					},
+					{
+						code: `
               function* Component(this: Context) {
                 const handleClick = async () => {
                   this.refresh();
@@ -514,20 +514,20 @@ describe("prefer-refresh-callback", () => {
                 }
               }
             `,
-          },
-        ],
-        invalid: [],
-      });
-    });
-  });
+					},
+				],
+				invalid: [],
+			});
+		});
+	});
 
-  describe("auto-fix functionality", () => {
-    it("should provide auto-fix for simple callback wrapping", () => {
-      ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
-        valid: [],
-        invalid: [
-          {
-            code: `
+	describe("auto-fix functionality", () => {
+		it("should provide auto-fix for simple callback wrapping", () => {
+			ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
+				valid: [],
+				invalid: [
+					{
+						code: `
               function* Component(this: Context) {
                 const handleClick = async () => {
                   await doSomething();
@@ -535,13 +535,13 @@ describe("prefer-refresh-callback", () => {
                 }
               }
             `,
-            errors: [
-              {
-                messageId: "preferRefreshCallback",
-                suggestions: [
-                  {
-                    messageId: "suggestRefreshCallback",
-                    output: `
+						errors: [
+							{
+								messageId: "preferRefreshCallback",
+								suggestions: [
+									{
+										messageId: "suggestRefreshCallback",
+										output: `
               function* Component(this: Context) {
                 const handleClick = () => this.refresh(
                   async () => {
@@ -550,21 +550,21 @@ describe("prefer-refresh-callback", () => {
                 )
               }
             `,
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      });
-    });
+									},
+								],
+							},
+						],
+					},
+				],
+			});
+		});
 
-    it("should work when there are multiple callbacks in the component", () => {
-      ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
-        valid: [],
-        invalid: [
-          {
-            code: `
+		it("should work when there are multiple callbacks in the component", () => {
+			ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
+				valid: [],
+				invalid: [
+					{
+						code: `
               function* Component(this: Context) {
                 const handleMove = () => {
                   // ...
@@ -576,13 +576,13 @@ describe("prefer-refresh-callback", () => {
                 };
               }
             `,
-            errors: [
-              {
-                messageId: "preferRefreshCallback",
-                suggestions: [
-                  {
-                    messageId: "suggestRefreshCallback",
-                    output: `
+						errors: [
+							{
+								messageId: "preferRefreshCallback",
+								suggestions: [
+									{
+										messageId: "suggestRefreshCallback",
+										output: `
               function* Component(this: Context) {
                 const handleMove = () => {
                   // ...
@@ -595,21 +595,21 @@ describe("prefer-refresh-callback", () => {
                 );
               }
             `,
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      });
-    });
+									},
+								],
+							},
+						],
+					},
+				],
+			});
+		});
 
-    it("should detect refresh calls in inline JSX callbacks", () => {
-      ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
-        valid: [],
-        invalid: [
-          {
-            code: `
+		it("should detect refresh calls in inline JSX callbacks", () => {
+			ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
+				valid: [],
+				invalid: [
+					{
+						code: `
               function* Component(this: Context) {
                 yield <button onclick={async () => {
                   await doSomething();
@@ -617,13 +617,13 @@ describe("prefer-refresh-callback", () => {
                 }} />;
               }
             `,
-            errors: [
-              {
-                messageId: "preferRefreshCallback",
-                suggestions: [
-                  {
-                    messageId: "suggestRefreshCallback",
-                    output: `
+						errors: [
+							{
+								messageId: "preferRefreshCallback",
+								suggestions: [
+									{
+										messageId: "suggestRefreshCallback",
+										output: `
               function* Component(this: Context) {
                 yield <button onclick={() => this.refresh(
                   async () => {
@@ -632,21 +632,21 @@ describe("prefer-refresh-callback", () => {
                 )} />;
               }
             `,
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      });
-    });
+									},
+								],
+							},
+						],
+					},
+				],
+			});
+		});
 
-    it("should provide auto-fix for complex callback with try/catch", () => {
-      ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
-        valid: [],
-        invalid: [
-          {
-            code: `
+		it("should provide auto-fix for complex callback with try/catch", () => {
+			ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
+				valid: [],
+				invalid: [
+					{
+						code: `
               function* Component(this: Context) {
                 const handleClick = async () => {
                   loadingState = true;
@@ -663,15 +663,15 @@ describe("prefer-refresh-callback", () => {
                 }
               }
             `,
-            errors: [
-              {
-                messageId: "preferRefreshCallback",
-                line: 9,
-                column: 21,
-                suggestions: [
-                  {
-                    messageId: "suggestRefreshCallback",
-                    output: `
+						errors: [
+							{
+								messageId: "preferRefreshCallback",
+								line: 9,
+								column: 21,
+								suggestions: [
+									{
+										messageId: "suggestRefreshCallback",
+										output: `
               function* Component(this: Context) {
                 const handleClick = () => this.refresh(
                   async () => {
@@ -688,21 +688,21 @@ describe("prefer-refresh-callback", () => {
                 )
               }
             `,
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      });
-    });
+									},
+								],
+							},
+						],
+					},
+				],
+			});
+		});
 
-    it("should work with generic context types", () => {
-      ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
-        valid: [],
-        invalid: [
-          {
-            code: `
+		it("should work with generic context types", () => {
+			ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
+				valid: [],
+				invalid: [
+					{
+						code: `
               function* Component<T>({ ...props }, ctx: Context<T>) {
                 const handleClick = async () => {
                   await processData<T>();
@@ -710,15 +710,15 @@ describe("prefer-refresh-callback", () => {
                 }
               }
             `,
-            errors: [
-              {
-                messageId: "preferRefreshCallback",
-                line: 5,
-                column: 19,
-                suggestions: [
-                  {
-                    messageId: "suggestRefreshCallback",
-                    output: `
+						errors: [
+							{
+								messageId: "preferRefreshCallback",
+								line: 5,
+								column: 19,
+								suggestions: [
+									{
+										messageId: "suggestRefreshCallback",
+										output: `
               function* Component<T>({ ...props }, ctx: Context<T>) {
                 const handleClick = () => ctx.refresh(
                   async () => {
@@ -727,23 +727,23 @@ describe("prefer-refresh-callback", () => {
                 )
               }
             `,
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      });
-    });
-  });
+									},
+								],
+							},
+						],
+					},
+				],
+			});
+		});
+	});
 
-  describe("complex real-world scenarios", () => {
-    it("should handle multiple refresh calls in nested if blocks and try/catch", () => {
-      ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
-        valid: [],
-        invalid: [
-          {
-            code: `
+	describe("complex real-world scenarios", () => {
+		it("should handle multiple refresh calls in nested if blocks and try/catch", () => {
+			ruleTester.run("prefer-refresh-callback", preferRefreshCallback, {
+				valid: [],
+				invalid: [
+					{
+						code: `
               function* Component(this: Context) {
                 const handleSubmit = async (event: Event) => {
                   event.preventDefault();
@@ -776,13 +776,13 @@ describe("prefer-refresh-callback", () => {
                 }
               }
             `,
-            errors: [
-              {
-                messageId: "preferRefreshCallback",
-                suggestions: [
-                  {
-                    messageId: "suggestRefreshCallback",
-                    output: `
+						errors: [
+							{
+								messageId: "preferRefreshCallback",
+								suggestions: [
+									{
+										messageId: "suggestRefreshCallback",
+										output: `
               function* Component(this: Context) {
                 const handleSubmit = (event: Event) => this.refresh(
                   async () => {
@@ -810,25 +810,25 @@ describe("prefer-refresh-callback", () => {
                 )
               }
             `,
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      });
-    });
-  });
+									},
+								],
+							},
+						],
+					},
+				],
+			});
+		});
+	});
 
-  describe("JavaScript compatibility", () => {
-    it("should work with plain JavaScript", () => {
-      const jsRuleTester = createJsRuleTester();
+	describe("JavaScript compatibility", () => {
+		it("should work with plain JavaScript", () => {
+			const jsRuleTester = createJsRuleTester();
 
-      jsRuleTester.run("prefer-refresh-callback", preferRefreshCallback, {
-        valid: [],
-        invalid: [
-          {
-            code: `
+			jsRuleTester.run("prefer-refresh-callback", preferRefreshCallback, {
+				valid: [],
+				invalid: [
+					{
+						code: `
               function* Component({ ...props }, ctx) {
                 const handleClick = async () => {
                   await doSomething();
@@ -836,15 +836,15 @@ describe("prefer-refresh-callback", () => {
                 }
               }
             `,
-            errors: [
-              {
-                messageId: "preferRefreshCallback",
-                line: 5,
-                column: 19,
-                suggestions: [
-                  {
-                    messageId: "suggestRefreshCallback",
-                    output: `
+						errors: [
+							{
+								messageId: "preferRefreshCallback",
+								line: 5,
+								column: 19,
+								suggestions: [
+									{
+										messageId: "suggestRefreshCallback",
+										output: `
               function* Component({ ...props }, ctx) {
                 const handleClick = () => ctx.refresh(
                   async () => {
@@ -853,13 +853,13 @@ describe("prefer-refresh-callback", () => {
                 )
               }
             `,
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      });
-    });
-  });
+									},
+								],
+							},
+						],
+					},
+				],
+			});
+		});
+	});
 });

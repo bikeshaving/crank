@@ -1,16 +1,16 @@
-import { describe, it } from "vitest";
-import { preferPropsIterator } from "./prefer-props-iterator.js";
-import { createTsRuleTester } from "../test-helpers/rule-tester.js";
+import {describe, it} from "vitest";
+import {preferPropsIterator} from "./prefer-props-iterator.js";
+import {createTsRuleTester} from "../test-helpers/rule-tester.js";
 
 const ruleTester = createTsRuleTester();
 
 describe("prefer-props-iterator (TypeScript)", () => {
-  it("should work with TypeScript context type annotations", () => {
-    ruleTester.run("prefer-props-iterator", preferPropsIterator, {
-      valid: [
-        // Correct usage with context parameter and type annotation
-        {
-          code: `
+	it("should work with TypeScript context type annotations", () => {
+		ruleTester.run("prefer-props-iterator", preferPropsIterator, {
+			valid: [
+				// Correct usage with context parameter and type annotation
+				{
+					code: `
             interface Context {
               refresh: (callback?: () => void) => void;
             }
@@ -22,10 +22,10 @@ describe("prefer-props-iterator (TypeScript)", () => {
               }
             }
           `,
-        },
-        // Correct usage with this context parameter and type annotation
-        {
-          code: `
+				},
+				// Correct usage with this context parameter and type annotation
+				{
+					code: `
             interface Context {
               refresh: (callback?: () => void) => void;
             }
@@ -37,12 +37,12 @@ describe("prefer-props-iterator (TypeScript)", () => {
               }
             }
           `,
-        },
-      ],
-      invalid: [
-        // while(true) with context parameter and type annotation
-        {
-          code: `
+				},
+			],
+			invalid: [
+				// while(true) with context parameter and type annotation
+				{
+					code: `
             interface Context {
               refresh: (callback?: () => void) => void;
             }
@@ -54,7 +54,7 @@ describe("prefer-props-iterator (TypeScript)", () => {
               }
             }
           `,
-          output: `
+					output: `
             interface Context {
               refresh: (callback?: () => void) => void;
             }
@@ -66,15 +66,15 @@ describe("prefer-props-iterator (TypeScript)", () => {
               }
             }
           `,
-          errors: [
-            {
-              messageId: "preferPropsIterator",
-            },
-          ],
-        },
-        // while(true) with this context parameter and type annotation
-        {
-          code: `
+					errors: [
+						{
+							messageId: "preferPropsIterator",
+						},
+					],
+				},
+				// while(true) with this context parameter and type annotation
+				{
+					code: `
             interface Context {
               refresh: (callback?: () => void) => void;
             }
@@ -86,7 +86,7 @@ describe("prefer-props-iterator (TypeScript)", () => {
               }
             }
           `,
-          output: `
+					output: `
             interface Context {
               refresh: (callback?: () => void) => void;
             }
@@ -98,13 +98,13 @@ describe("prefer-props-iterator (TypeScript)", () => {
               }
             }
           `,
-          errors: [
-            {
-              messageId: "preferPropsIterator",
-            },
-          ],
-        },
-      ],
-    });
-  });
+					errors: [
+						{
+							messageId: "preferPropsIterator",
+						},
+					],
+				},
+			],
+		});
+	});
 });
