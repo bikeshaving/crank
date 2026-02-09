@@ -6,6 +6,10 @@ import { noReactProps } from "./rules/no-react-props.js";
 import { preferKebabCaseSvgProps } from "./rules/prefer-kebab-case-svg-props.js";
 import { noYieldInLifecycleMethods } from "./rules/no-yield-in-lifecycle-methods.js";
 import { requireCleanupForTimers } from "./rules/require-cleanup-for-timers.js";
+import { jsxUsesCrank } from "./rules/jsx-uses-crank.js";
+import { jsxUsesVars } from "./rules/jsx-uses-vars.js";
+import { jsxNoUndef } from "./rules/jsx-no-undef.js";
+import { jsxNoDuplicateProps } from "./rules/jsx-no-duplicate-props.js";
 
 export const rules = {
   "prefer-refresh-callback": preferRefreshCallback,
@@ -16,6 +20,10 @@ export const rules = {
   "prefer-kebab-case-svg-props": preferKebabCaseSvgProps,
   "no-yield-in-lifecycle-methods": noYieldInLifecycleMethods,
   "require-cleanup-for-timers": requireCleanupForTimers,
+  "jsx-uses-crank": jsxUsesCrank,
+  "jsx-uses-vars": jsxUsesVars,
+  "jsx-no-undef": jsxNoUndef,
+  "jsx-no-duplicate-props": jsxNoDuplicateProps,
 };
 
 export const configs = {
@@ -31,6 +39,9 @@ export const configs = {
       "crank/no-react-props": "error",
       "crank/no-yield-in-lifecycle-methods": "error",
       "crank/require-cleanup-for-timers": "error",
+      "crank/jsx-uses-vars": "error",
+      "crank/jsx-no-undef": "error",
+      "crank/jsx-no-duplicate-props": "error",
     },
   },
   "react-migration": {
