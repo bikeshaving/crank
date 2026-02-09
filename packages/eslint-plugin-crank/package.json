@@ -16,16 +16,13 @@
     "jsx"
   ],
   "license": "MIT",
-  "engines": {
-    "node": ">=18.0.0"
-  },
   "peerDependencies": {
     "eslint": ">=9.0.0"
   },
   "scripts": {
     "build": "tsc",
     "test": "vitest run",
-    "lint": "eslint . --ext .ts,.js",
+    "lint": "eslint .",
     "prepare": "npm run build"
   },
   "devDependencies": {

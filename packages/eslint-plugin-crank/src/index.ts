@@ -20,6 +20,8 @@ export const configs = {
   recommended: {
     plugins: ["crank"],
     rules: {
+      // Allow empty destructuring pattern for `for ({} of this)`
+      "no-empty-pattern": "off",
       "crank/prefer-refresh-callback": "error",
       "crank/prefer-props-iterator": "error",
       "crank/prefer-lowercase-event-props": "error",
