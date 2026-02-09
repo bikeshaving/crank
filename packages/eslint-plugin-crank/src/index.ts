@@ -10,6 +10,8 @@ import {jsxUsesCrank} from "./rules/jsx-uses-crank.js";
 import {jsxUsesVars} from "./rules/jsx-uses-vars.js";
 import {jsxNoUndef} from "./rules/jsx-no-undef.js";
 import {jsxNoDuplicateProps} from "./rules/jsx-no-duplicate-props.js";
+import {noDeprecatedFlush} from "./rules/no-deprecated-flush.js";
+import {noDeprecatedSpecialProps} from "./rules/no-deprecated-special-props.js";
 
 export const rules = {
 	"prefer-refresh-callback": preferRefreshCallback,
@@ -24,6 +26,8 @@ export const rules = {
 	"jsx-uses-vars": jsxUsesVars,
 	"jsx-no-undef": jsxNoUndef,
 	"jsx-no-duplicate-props": jsxNoDuplicateProps,
+	"no-deprecated-flush": noDeprecatedFlush,
+	"no-deprecated-special-props": noDeprecatedSpecialProps,
 };
 
 export const configs = {
@@ -42,6 +46,8 @@ export const configs = {
 			"crank/jsx-uses-vars": "error",
 			"crank/jsx-no-undef": "error",
 			"crank/jsx-no-duplicate-props": "error",
+			"crank/no-deprecated-flush": "error",
+			"crank/no-deprecated-special-props": "error",
 		},
 	},
 	"react-migration": {
