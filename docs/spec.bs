@@ -1,0 +1,282 @@
+<pre class='metadata'>
+Title: Crank Component Specification
+Shortname: crank-components
+Level: 1
+Status: DREAM
+URL: https://crank.js.org/spec
+Editor: Brian Kim, bikeshaving, https://github.com/brainkim
+Abstract: This document specifies the component model for Crank.js. It defines how the framework invokes components, manages their lifecycle, handles async rendering, and propagates errors.
+Markup Shorthands: markdown yes
+</pre>
+
+<pre class='link-defaults'>
+</pre>
+
+# Component Invocation # {#invocation}
+
+A <dfn>component</dfn> is a function. The framework calls it with:
+
+- **`this`** bound to a [=component context=] object
+- **First argument**: the current props object
+- **Second argument**: the same [=component context=] object (for arrow functions and destructuring)
+
+```
+(this: Context, props: TProps, ctx: Context) =>
+  Children | Promise<Children> | Iterator<Children> | AsyncIterator<Children>
+```
+
+The framework distinguishes [=component=] types by return value, not declaration syntax.
+
+<table>
+  <thead>
+    <tr><th>Type<th>Returns<th>Stateful
+  </thead>
+  <tbody>
+    <tr><td>Function<td>`Children`<td>No — re-called on every update.
+    <tr><td>Generator<td>`Iterator<Children>`<td>Yes — lexical scope preserved across yields.
+    <tr><td>Async function<td>`Promise<Children>`<td>No — re-called on every update.
+    <tr><td>Async generator<td>`AsyncIterator<Children>`<td>Yes — lexical scope preserved across yields.
+  </tbody>
+</table>
+
+## Function Components ## {#function-components}
+
+The framework calls the function on every update. The return value is rendered as children. Function [=components=] never [=block=].
+
+## Generator Components ## {#generator-components}
+
+The framework calls the function once and stores the returned iterator. On each subsequent update, the framework calls `next(previousResult)` where `previousResult` is the rendered result of the previous yield.
+
+The framework preserves the generator's lexical scope across yields by retaining the iterator for as long as the [=component=] element occupies the same position in the element tree.
+
+Generator [=components=] [=block=] while their children render — `previousResult` is always a settled value, never a promise. The framework calls `return()` on unmount.
+
+## Async Function Components ## {#async-function-components}
+
+The framework calls the function on every update. The [=component=] [=blocks=] while its own async execution is pending, but does not [=block=] while its children render. See [[#enqueuing]] for queuing behavior.
+
+## Async Generator Components ## {#async-generator-components}
+
+The framework calls the function once and stores the returned async iterator. Async generators operate in three modes:
+
+: `for...of` mode (sync iterator)
+:: The [=component=] [=blocks=] while children render, identical to sync generators. `yield` evaluates to the settled rendered result.
+
+: `for await...of` mode (async iterator)
+:: The framework enters a pull-based loop. The [=component=] resumes continuously — it does not [=block=] while children render. `yield` evaluates to a `Promise` that resolves to the rendered result. The [=component=] suspends at the bottom of the loop until new props are available or `refresh()` is called. This mode enables racing patterns: multiple yields per update produce successive element trees that are raced via the [=chase|chasing=] algorithm ([[#chasing]]).
+
+: No-loop mode (no iterator)
+:: The [=component=] [=blocks=] while children render, identical to sync generators.
+
+# Context # {#context}
+
+The framework provides a <dfn>component context</dfn> object to each [=component=] instance.
+
+## Properties ## {#context-properties}
+
+<table>
+  <thead>
+    <tr><th>Property<th>Type<th>Description
+  </thead>
+  <tbody>
+    <tr><td>`props`<td>`TProps` (readonly)<td>Current props of the associated element.
+    <tr><td>`isExecuting`<td>`boolean` (readonly)<td>`true` during the synchronous call to the [=component=] function or `iterator.next()`. Set to `false` before children are diffed.
+    <tr><td>`isUnmounted`<td>`boolean` (readonly)<td>`true` after the [=component=] has been unmounted.
+  </tbody>
+</table>
+
+## Methods ## {#context-methods}
+
+<dl>
+  <dt>`refresh(callback?)`
+  <dd>[=Enqueue|Enqueues=] a re-execution of the [=component=]. If a callback is provided, the framework runs it before re-executing. If called while `isExecuting` is `true`, the framework logs an error and returns the current value.
+
+  <dt>`schedule(callback?)`
+  <dd>The framework calls the callback after DOM nodes are created but before they are inserted into the document. Callbacks are deduplicated per function identity.
+
+  <dt>`after(callback?)`
+  <dd>The framework calls the callback after DOM nodes are inserted into the document. Callbacks are deduplicated per function identity.
+
+  <dt>`cleanup(callback?)`
+  <dd>The framework calls the callback when the [=component=] unmounts, before children are unmounted. If the callback returns a promise, the framework defers child unmounting until it resolves.
+
+  <dt>`provide(key, value)`
+  <dd>Stores a value on this [=component context=], retrievable by descendants via `consume`.
+
+  <dt>`consume(key)`
+  <dd>Walks up the [=component context=] tree and returns the value from the nearest ancestor that called `provide` with the same key.
+
+  <dt>`dispatchEvent(event)`
+  <dd>Dispatches an event on the [=component context=]. The framework also invokes the matching `on*` prop on the [=component=] element, if present.
+
+  <dt>`addEventListener` / `removeEventListener`
+  <dd>Standard `EventTarget` API.
+</dl>
+
+Note: When called with no arguments, `schedule`, `after`, and `cleanup` return a `Promise` that resolves with the rendered value.
+
+## Method Signatures ## {#method-signatures}
+
+<table>
+  <thead>
+    <tr><th>Method<th>Signature
+  </thead>
+  <tbody>
+    <tr><td>`refresh`<td>`(callback?: () => unknown) => Promise<TResult> | TResult`
+    <tr><td>`schedule`<td>`(callback?: (value: TResult) => unknown) => Promise<TResult> | void`
+    <tr><td>`after`<td>`(callback?: (value: TResult) => unknown) => Promise<TResult> | void`
+    <tr><td>`cleanup`<td>`(callback?: (value: TResult) => unknown) => Promise<TResult> | void`
+    <tr><td>`provide`<td>`(key: unknown, value: unknown) => void`
+    <tr><td>`consume`<td>`(key: unknown) => unknown`
+    <tr><td>`dispatchEvent`<td>`(event: Event) => boolean`
+  </tbody>
+</table>
+
+# Props Iteration # {#props-iteration}
+
+The [=component context=] implements both `Symbol.iterator` and `Symbol.asyncIterator`.
+
+## Synchronous (`for...of`) ## {#sync-iteration}
+
+Each iteration yields the current props object. If the iterator is advanced twice without the [=component=] yielding, the framework throws a runtime error.
+
+## Asynchronous (`for await...of`) ## {#async-iteration}
+
+Each iteration yields the current props object. If new props are not yet available, the iteration awaits until the framework provides them. When a [=component=] enters this mode, the framework switches to a pull-based execution model where children render without [=blocking=] the generator.
+
+# Async Rendering # {#async-rendering}
+
+## Blocking ## {#blocking}
+
+Each [=component=] type has different blocking behavior. To <dfn lt="block|blocks|blocking">block</dfn> means the framework waits for the [=component's=] pending work to settle before accepting its next update.
+
+<table>
+  <thead>
+    <tr><th>Type<th>Blocks for own execution<th>Blocks for children
+  </thead>
+  <tbody>
+    <tr><td>Function<td>No<td>No
+    <tr><td>Generator<td>No (sync)<td>Yes
+    <tr><td>Async function<td>Yes<td>No
+    <tr><td>Async generator (`for...of`)<td>Yes<td>Yes
+    <tr><td>Async generator (`for await...of`)<td>Yes<td>No
+  </tbody>
+</table>
+
+When a [=component=] [=blocks=], the framework separates the block duration (the [=component's=] own execution) from the value duration (the full render including children). The [=enqueue|enqueuing=] algorithm advances based on the block, not the value.
+
+## Enqueuing ## {#enqueuing}
+
+When an async [=component=] is re-rendered while a previous execution is still pending, the framework <dfn lt="enqueue|enqueues|enqueuing">enqueues</dfn> at most one additional execution. The framework maintains two slots per [=component=]: <dfn>inflight</dfn> and <dfn>enqueued</dfn>.
+
+1. If no [=inflight=] execution exists, the framework starts one immediately.
+2. If an [=inflight=] execution exists but no [=enqueued=] execution, the framework creates an [=enqueued=] execution that waits for the [=inflight=] to settle, then runs with the latest props.
+3. If both [=inflight=] and [=enqueued=] executions exist, the framework updates the stored props but does not create a third execution. The [=enqueued=] execution will use whatever props are current when it starts.
+
+When the [=inflight=] execution settles, the [=enqueued=] execution is promoted to [=inflight=]. This guarantees at most one concurrent execution per [=component=] element, and that the final render always reflects the latest props.
+
+For async generator [=components=] in `for await...of` mode, the framework uses <dfn>hitching</dfn> instead of [=enqueue|enqueuing=]: concurrent updates resolve to the current [=inflight=] execution rather than scheduling a new one, because the generator resumes continuously on its own.
+
+## Chasing (Ratcheting) ## {#chasing}
+
+When different async element trees are rendered into the same position and settle out of order, the framework ensures that later renders always win. It does this by <dfn lt="chase|chasing">chasing</dfn>: racing each render's child values against the next render's child values using `Promise.race`.
+
+This produces a ratcheting effect: if an earlier render settles first, its result is displayed until the later render settles. If the later render settles first, the earlier render's result is never displayed. This guarantees rendering is monotonic — the DOM always reflects the most recently initiated render that has settled.
+
+## Fallbacks ## {#fallbacks}
+
+When a new async element is rendered into a position where a previous element has already committed, the framework preserves the previously rendered content until the new element settles for the first time. This prevents the DOM from going blank while async elements are pending. The <dfn>fallback</dfn> chain is cleared once the element commits.
+
+# Execution Order # {#execution-order}
+
+## Per Update ## {#per-update}
+
+1. The framework sets `isExecuting` to `true`.
+2. The framework calls the [=component=] function (for function [=components=]) or `iterator.next(previousResult)` (for generators).
+3. The framework sets `isExecuting` to `false`.
+4. The framework diffs the yielded/returned children against the previous tree.
+5. The framework commits DOM mutations.
+6. The framework fires `schedule` callbacks (DOM created, not yet inserted).
+7. The framework inserts DOM nodes into the document.
+8. The framework fires `after` callbacks (DOM live in document).
+
+## On Unmount ## {#on-unmount}
+
+1. The framework fires `cleanup` callbacks. If any return promises, child unmounting is deferred until they resolve.
+2. For generators: the framework calls `return()` on the iterator.
+3. Children are unmounted recursively.
+
+# Error Handling # {#error-handling}
+
+## Error Injection ## {#error-injection}
+
+When a child [=component=] throws during rendering, the framework calls `throw(error)` on the nearest ancestor generator's iterator. This causes the `yield` expression in the ancestor to throw the error. If the generator catches the error (via `try`/`catch` around `yield`), it may yield a recovery element tree and rendering continues. If uncaught, the error propagates up the [=component context=] tree to the next ancestor generator.
+
+## Async Error Handling ## {#async-error-handling}
+
+For async generator [=components=] in `for await...of` mode, the framework tracks whether the promise returned by `yield` is being observed (via `.then()` or `.catch()`). If the promise is **unobserved** ("floating") and a child error occurs, the framework injects the error via `throw(error)` on the iterator. If the promise is **observed**, the framework rejects the promise, allowing the [=component=] to catch the error via `await`.
+
+## Generator Return on Error ## {#generator-return-on-error}
+
+If a generator [=component=] does not catch an injected error, the framework does not call `return()` — the iterator is already done because the uncaught `throw()` terminates it. The `finally` block of the generator, if present, still executes as part of the iterator protocol.
+
+# Events # {#events}
+
+The framework maps `on*` props to DOM event listeners. Both lowercase (`onclick`) and camelCase (`onClick`) event prop names are supported; camelCase names are normalized to lowercase before registration.
+
+`dispatchEvent` on a [=component context=] also invokes the matching `on*` prop on the [=component's=] element.
+
+# DOM Attributes # {#dom-attributes}
+
+The framework passes props directly as DOM attributes using standard HTML names (`class`, `for`, `innerHTML`, `tabindex`). It does not translate React-style names (`className`, `htmlFor`, `dangerouslySetInnerHTML`).
+
+Style props accept an object with CSS property names. Both kebab-case (`font-size`) and camelCase (`fontSize`) are supported; camelCase names are converted to kebab-case. Numeric values are automatically suffixed with `px` for properties that accept length units.
+
+# Special Elements # {#special-elements}
+
+<table>
+  <thead>
+    <tr><th>Element<th>Tag<th>Behavior
+  </thead>
+  <tbody>
+    <tr><td>`Fragment`<td>`""`<td>The framework renders children without a wrapper node. Non-string iterables are implicitly wrapped in a Fragment.
+    <tr><td>`Copy`<td>`Symbol.for("crank.Copy")`<td>The framework preserves the previously rendered content at this position.
+    <tr><td>`Portal`<td>`Symbol.for("crank.Portal")`<td>The framework renders children into the DOM node specified by the `root` prop.
+    <tr><td>`Raw`<td>`Symbol.for("crank.Raw")`<td>The framework injects the raw HTML string or DOM node from the `value` prop.
+  </tbody>
+</table>
+
+# Special Props # {#special-props}
+
+<table>
+  <thead>
+    <tr><th>Prop<th>Type<th>Behavior
+  </thead>
+  <tbody>
+    <tr><td>`key`<td>`any`<td>The framework uses keys for reconciliation. Keyed children are matched by key, not position. Duplicate keys among siblings produce a runtime error.
+    <tr><td>`ref`<td>`(node) => unknown`<td>The framework calls this with the rendered DOM node after commit.
+    <tr><td>`copy`<td>`boolean | string`<td>`true`: the framework preserves the entire subtree. String: the framework selectively copies/excludes props (`"class disabled"` or `"!class"`).
+    <tr><td>`hydrate`<td>`boolean | string`<td>`true`: the framework hydrates from existing DOM. String: selective hydration of specific props.
+    <tr><td>`children`<td>`unknown`<td>Child content passed between opening and closing tags.
+  </tbody>
+</table>
+
+The framework strips all special props before passing the remaining props to the renderer.
+
+# JSX # {#jsx}
+
+## JSX Import Source ## {#jsx-import-source}
+
+```
+/** @jsxImportSource @b9g/crank */
+```
+
+Or via `tsconfig.json`:
+
+```json
+{ "compilerOptions": { "jsx": "react-jsx", "jsxImportSource": "@b9g/crank" } }
+```
+
+## Template Tags ## {#template-tags}
+
+The `jsx` and `html` tagged template literals from `@b9g/crank/standalone` produce Crank elements without a JSX compiler.
