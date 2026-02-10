@@ -82,20 +82,20 @@ const EVENT_HANDLER_MAP = new Map(
 	EVENT_HANDLERS.map((handler) => [handler, handler.toLowerCase()]),
 );
 
-export const preferLowercaseEventProps: Rule.RuleModule = {
+export const noReactEventProps: Rule.RuleModule = {
 	meta: {
 		type: "problem",
 		docs: {
 			description:
-				"Enforce lowercase event handler props (onclick not onClick) - Crank uses lowercase unlike React's camelCase",
+				"Detect React-style event handler props (onClick) and suggest standard DOM equivalents (onclick)",
 			category: "Best Practices",
 			recommended: true,
 		},
 		fixable: "code",
 		schema: [],
 		messages: {
-			preferLowercase:
-				"Event handler '{{camelCase}}' should be lowercase '{{lowercase}}' in Crank (unlike React)",
+			noReactEventProp:
+				"Use '{{standard}}' instead of '{{react}}' - Crank uses standard DOM event names, not React's camelCase",
 		},
 	},
 
@@ -106,8 +106,8 @@ export const preferLowercaseEventProps: Rule.RuleModule = {
 		// Create the mapper for event handler replacements, only for native elements
 		const handleEventMapping = createConditionalJSXAttributeMapper(
 			eventHandlerMappings,
-			"preferLowercase",
-			{from: "camelCase", to: "lowercase"},
+			"noReactEventProp",
+			{from: "react", to: "standard"},
 			isNativeElement,
 		);
 

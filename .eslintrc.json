@@ -72,7 +72,7 @@
         "crank/prefer-refresh-callback": "off",
         "crank/require-cleanup-for-timers": "off",
         "crank/no-react-props": "off",
-        "crank/prefer-lowercase-event-props": "off"
+        "crank/no-react-event-props": "off"
       }
     }
   ]

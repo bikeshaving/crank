@@ -1,12 +1,12 @@
 import {describe, it} from "vitest";
-import {preferLowercaseEventProps} from "./prefer-lowercase-event-props.js";
+import {noReactEventProps} from "./no-react-event-props.js";
 import {createTsRuleTester} from "../test-helpers/rule-tester.js";
 
 const ruleTester = createTsRuleTester();
 
-describe("prefer-lowercase-event-props", () => {
+describe("no-react-event-props", () => {
 	it("should allow lowercase event handlers (valid Crank syntax)", () => {
-		ruleTester.run("prefer-lowercase-event-props", preferLowercaseEventProps, {
+		ruleTester.run("no-react-event-props", noReactEventProps, {
 			valid: [
 				{code: `<button onclick={handleClick}>Click</button>`},
 				{code: `<input onchange={handleChange} />`},
@@ -58,25 +58,21 @@ describe("prefer-lowercase-event-props", () => {
 				output: `<form onsubmit={handleSubmit}>Submit</form>`,
 			},
 		])("should fix $event to $correct", ({event, correct, code, output}) => {
-			ruleTester.run(
-				"prefer-lowercase-event-props",
-				preferLowercaseEventProps,
-				{
-					valid: [],
-					invalid: [
-						{
-							code,
-							output,
-							errors: [
-								{
-									messageId: "preferLowercase",
-									data: {camelCase: event, lowercase: correct},
-								},
-							],
-						},
-					],
-				},
-			);
+			ruleTester.run("no-react-event-props", noReactEventProps, {
+				valid: [],
+				invalid: [
+					{
+						code,
+						output,
+						errors: [
+							{
+								messageId: "noReactEventProp",
+								data: {react: event, standard: correct},
+							},
+						],
+					},
+				],
+			});
 		});
 	});
 
@@ -86,25 +82,21 @@ describe("prefer-lowercase-event-props", () => {
 			{camel: "onKeyUp", lower: "onkeyup"},
 			{camel: "onKeyPress", lower: "onkeypress"},
 		])("should detect and fix $camel", ({camel, lower}) => {
-			ruleTester.run(
-				"prefer-lowercase-event-props",
-				preferLowercaseEventProps,
-				{
-					valid: [],
-					invalid: [
-						{
-							code: `<input ${camel}={handleKey} />`,
-							output: `<input ${lower}={handleKey} />`,
-							errors: [
-								{
-									messageId: "preferLowercase",
-									data: {camelCase: camel, lowercase: lower},
-								},
-							],
-						},
-					],
-				},
-			);
+			ruleTester.run("no-react-event-props", noReactEventProps, {
+				valid: [],
+				invalid: [
+					{
+						code: `<input ${camel}={handleKey} />`,
+						output: `<input ${lower}={handleKey} />`,
+						errors: [
+							{
+								messageId: "noReactEventProp",
+								data: {react: camel, standard: lower},
+							},
+						],
+					},
+				],
+			});
 		});
 	});
 
@@ -117,25 +109,21 @@ describe("prefer-lowercase-event-props", () => {
 			{camel: "onMouseEnter", lower: "onmouseenter"},
 			{camel: "onMouseLeave", lower: "onmouseleave"},
 		])("should detect and fix $camel", ({camel, lower}) => {
-			ruleTester.run(
-				"prefer-lowercase-event-props",
-				preferLowercaseEventProps,
-				{
-					valid: [],
-					invalid: [
-						{
-							code: `<div ${camel}={handleMouse} />`,
-							output: `<div ${lower}={handleMouse} />`,
-							errors: [
-								{
-									messageId: "preferLowercase",
-									data: {camelCase: camel, lowercase: lower},
-								},
-							],
-						},
-					],
-				},
-			);
+			ruleTester.run("no-react-event-props", noReactEventProps, {
+				valid: [],
+				invalid: [
+					{
+						code: `<div ${camel}={handleMouse} />`,
+						output: `<div ${lower}={handleMouse} />`,
+						errors: [
+							{
+								messageId: "noReactEventProp",
+								data: {react: camel, standard: lower},
+							},
+						],
+					},
+				],
+			});
 		});
 	});
 
@@ -144,25 +132,21 @@ describe("prefer-lowercase-event-props", () => {
 			{camel: "onFocus", lower: "onfocus", handler: "handleFocus"},
 			{camel: "onBlur", lower: "onblur", handler: "handleBlur"},
 		])("should detect and fix $camel", ({camel, lower, handler}) => {
-			ruleTester.run(
-				"prefer-lowercase-event-props",
-				preferLowercaseEventProps,
-				{
-					valid: [],
-					invalid: [
-						{
-							code: `<input ${camel}={${handler}} />`,
-							output: `<input ${lower}={${handler}} />`,
-							errors: [
-								{
-									messageId: "preferLowercase",
-									data: {camelCase: camel, lowercase: lower},
-								},
-							],
-						},
-					],
-				},
-			);
+			ruleTester.run("no-react-event-props", noReactEventProps, {
+				valid: [],
+				invalid: [
+					{
+						code: `<input ${camel}={${handler}} />`,
+						output: `<input ${lower}={${handler}} />`,
+						errors: [
+							{
+								messageId: "noReactEventProp",
+								data: {react: camel, standard: lower},
+							},
+						],
+					},
+				],
+			});
 		});
 	});
 
@@ -172,25 +156,21 @@ describe("prefer-lowercase-event-props", () => {
 			{camel: "onTouchMove", lower: "ontouchmove"},
 			{camel: "onTouchEnd", lower: "ontouchend"},
 		])("should detect and fix $camel", ({camel, lower}) => {
-			ruleTester.run(
-				"prefer-lowercase-event-props",
-				preferLowercaseEventProps,
-				{
-					valid: [],
-					invalid: [
-						{
-							code: `<div ${camel}={handleTouch} />`,
-							output: `<div ${lower}={handleTouch} />`,
-							errors: [
-								{
-									messageId: "preferLowercase",
-									data: {camelCase: camel, lowercase: lower},
-								},
-							],
-						},
-					],
-				},
-			);
+			ruleTester.run("no-react-event-props", noReactEventProps, {
+				valid: [],
+				invalid: [
+					{
+						code: `<div ${camel}={handleTouch} />`,
+						output: `<div ${lower}={handleTouch} />`,
+						errors: [
+							{
+								messageId: "noReactEventProp",
+								data: {react: camel, standard: lower},
+							},
+						],
+					},
+				],
+			});
 		});
 	});
 
@@ -200,25 +180,21 @@ describe("prefer-lowercase-event-props", () => {
 			{camel: "onDragEnd", lower: "ondragend", handler: "handleDrag"},
 			{camel: "onDrop", lower: "ondrop", handler: "handleDrop"},
 		])("should detect and fix $camel", ({camel, lower, handler}) => {
-			ruleTester.run(
-				"prefer-lowercase-event-props",
-				preferLowercaseEventProps,
-				{
-					valid: [],
-					invalid: [
-						{
-							code: `<div ${camel}={${handler}} />`,
-							output: `<div ${lower}={${handler}} />`,
-							errors: [
-								{
-									messageId: "preferLowercase",
-									data: {camelCase: camel, lowercase: lower},
-								},
-							],
-						},
-					],
-				},
-			);
+			ruleTester.run("no-react-event-props", noReactEventProps, {
+				valid: [],
+				invalid: [
+					{
+						code: `<div ${camel}={${handler}} />`,
+						output: `<div ${lower}={${handler}} />`,
+						errors: [
+							{
+								messageId: "noReactEventProp",
+								data: {react: camel, standard: lower},
+							},
+						],
+					},
+				],
+			});
 		});
 	});
 
@@ -228,30 +204,26 @@ describe("prefer-lowercase-event-props", () => {
 			{camel: "onPause", lower: "onpause", handler: "handlePause"},
 			{camel: "onEnded", lower: "onended", handler: "handleEnded"},
 		])("should detect and fix $camel", ({camel, lower, handler}) => {
-			ruleTester.run(
-				"prefer-lowercase-event-props",
-				preferLowercaseEventProps,
-				{
-					valid: [],
-					invalid: [
-						{
-							code: `<video ${camel}={${handler}} />`,
-							output: `<video ${lower}={${handler}} />`,
-							errors: [
-								{
-									messageId: "preferLowercase",
-									data: {camelCase: camel, lowercase: lower},
-								},
-							],
-						},
-					],
-				},
-			);
+			ruleTester.run("no-react-event-props", noReactEventProps, {
+				valid: [],
+				invalid: [
+					{
+						code: `<video ${camel}={${handler}} />`,
+						output: `<video ${lower}={${handler}} />`,
+						errors: [
+							{
+								messageId: "noReactEventProp",
+								data: {react: camel, standard: lower},
+							},
+						],
+					},
+				],
+			});
 		});
 	});
 
 	it("should handle multiple event handlers in one component", () => {
-		ruleTester.run("prefer-lowercase-event-props", preferLowercaseEventProps, {
+		ruleTester.run("no-react-event-props", noReactEventProps, {
 			valid: [],
 			invalid: [
 				{
@@ -259,12 +231,12 @@ describe("prefer-lowercase-event-props", () => {
 					output: `<button onclick={handleClick} onmouseover={handleHover}>Hover</button>`,
 					errors: [
 						{
-							messageId: "preferLowercase",
-							data: {camelCase: "onClick", lowercase: "onclick"},
+							messageId: "noReactEventProp",
+							data: {react: "onClick", standard: "onclick"},
 						},
 						{
-							messageId: "preferLowercase",
-							data: {camelCase: "onMouseOver", lowercase: "onmouseover"},
+							messageId: "noReactEventProp",
+							data: {react: "onMouseOver", standard: "onmouseover"},
 						},
 					],
 				},
@@ -273,7 +245,7 @@ describe("prefer-lowercase-event-props", () => {
 	});
 
 	it("should handle complex components with mixed props", () => {
-		ruleTester.run("prefer-lowercase-event-props", preferLowercaseEventProps, {
+		ruleTester.run("no-react-event-props", noReactEventProps, {
 			valid: [],
 			invalid: [
 				{
@@ -299,16 +271,16 @@ describe("prefer-lowercase-event-props", () => {
           `,
 					errors: [
 						{
-							messageId: "preferLowercase",
-							data: {camelCase: "onChange", lowercase: "onchange"},
+							messageId: "noReactEventProp",
+							data: {react: "onChange", standard: "onchange"},
 						},
 						{
-							messageId: "preferLowercase",
-							data: {camelCase: "onFocus", lowercase: "onfocus"},
+							messageId: "noReactEventProp",
+							data: {react: "onFocus", standard: "onfocus"},
 						},
 						{
-							messageId: "preferLowercase",
-							data: {camelCase: "onBlur", lowercase: "onblur"},
+							messageId: "noReactEventProp",
+							data: {react: "onBlur", standard: "onblur"},
 						},
 					],
 				},
@@ -317,7 +289,7 @@ describe("prefer-lowercase-event-props", () => {
 	});
 
 	it("should work with TypeScript type annotations", () => {
-		ruleTester.run("prefer-lowercase-event-props", preferLowercaseEventProps, {
+		ruleTester.run("no-react-event-props", noReactEventProps, {
 			valid: [],
 			invalid: [
 				{
@@ -339,8 +311,8 @@ describe("prefer-lowercase-event-props", () => {
           `,
 					errors: [
 						{
-							messageId: "preferLowercase",
-							data: {camelCase: "onClick", lowercase: "onclick"},
+							messageId: "noReactEventProp",
+							data: {react: "onClick", standard: "onclick"},
 						},
 					],
 				},

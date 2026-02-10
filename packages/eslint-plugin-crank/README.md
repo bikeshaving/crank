@@ -144,19 +144,19 @@ Reports undefined variables in JSX.
 
 Reports duplicate props in JSX elements.
 
-### React Migration Rules
-
-#### `crank/prefer-lowercase-event-props`
-
-`onClick` → `onclick`. Crank uses standard DOM event names.
+### DOM/SVG Attribute Rules
 
 #### `crank/no-react-props`
 
 `className` → `class`, `htmlFor` → `for`, `dangerouslySetInnerHTML={{ __html: v }}` → `innerHTML={v}`.
 
+#### `crank/no-react-event-props`
+
+`onClick` → `onclick`. Crank uses standard DOM event names.
+
 #### `crank/no-react-svg-props`
 
-`strokeWidth` → `stroke-width`, `xlinkHref` → `xlink:href`, etc. Crank uses standard SVG attribute names, not React's camelCase.
+`strokeWidth` → `stroke-width`, `xlinkHref` → `xlink:href`, etc. Crank uses standard SVG attribute names.
 
 ### Deprecated API Rules
 
