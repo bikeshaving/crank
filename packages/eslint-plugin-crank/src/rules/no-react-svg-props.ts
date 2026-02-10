@@ -179,29 +179,28 @@ function isSVGElement(node: ESLintNode): boolean {
 	return false;
 }
 
-export const preferKebabCaseSvgProps: Rule.RuleModule = {
+export const noReactSvgProps: Rule.RuleModule = {
 	meta: {
 		type: "suggestion",
 		docs: {
 			description:
-				"Warn against camelCase SVG attributes (React style) and suggest kebab-case equivalents",
+				"Detect React-style SVG attributes and suggest standard SVG equivalents",
 			category: "Best Practices",
-			recommended: false,
+			recommended: true,
 		},
 		fixable: "code",
 		schema: [],
 		messages: {
-			preferKebabCase:
-				"SVG attribute '{{camelCase}}' should be '{{kebabCase}}' - Crank uses standard SVG attribute names, not React's camelCase",
+			noReactSvgProp:
+				"Use '{{standard}}' instead of '{{react}}' - Crank uses standard SVG attribute names, not React's camelCase",
 		},
 	},
 
 	create(context) {
-		// Create the conditional mapper for SVG attribute replacements
 		const handleSVGMapping = createConditionalJSXAttributeMapper(
 			SVG_ATTRIBUTE_MAPPINGS,
-			"preferKebabCase",
-			{from: "camelCase", to: "kebabCase"},
+			"noReactSvgProp",
+			{from: "react", to: "standard"},
 			isSVGElement,
 		);
 

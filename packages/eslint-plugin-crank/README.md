@@ -154,9 +154,9 @@ Reports duplicate props in JSX elements.
 
 `className` → `class`, `htmlFor` → `for`, `dangerouslySetInnerHTML={{ __html: v }}` → `innerHTML={v}`.
 
-#### `crank/prefer-kebab-case-svg-props`
+#### `crank/no-react-svg-props`
 
-`strokeWidth` → `stroke-width`. Standard SVG uses kebab-case, not React's camelCase.
+`strokeWidth` → `stroke-width`, `xlinkHref` → `xlink:href`, etc. Crank uses standard SVG attribute names, not React's camelCase.
 
 ### Deprecated API Rules
 

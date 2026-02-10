@@ -1,12 +1,12 @@
 import {describe, it} from "vitest";
-import {preferKebabCaseSvgProps} from "./prefer-kebab-case-svg-props.js";
+import {noReactSvgProps} from "./no-react-svg-props.js";
 import {createTsRuleTester} from "../test-helpers/rule-tester.js";
 
 const ruleTester = createTsRuleTester();
 
-describe("prefer-kebab-case-svg-props", () => {
+describe("no-react-svg-props", () => {
 	it("should allow kebab-case SVG attributes", () => {
-		ruleTester.run("prefer-kebab-case-svg-props", preferKebabCaseSvgProps, {
+		ruleTester.run("no-react-svg-props", noReactSvgProps, {
 			valid: [
 				{
 					code: `
@@ -42,7 +42,7 @@ describe("prefer-kebab-case-svg-props", () => {
 	});
 
 	it("should not flag camelCase attributes in non-SVG elements", () => {
-		ruleTester.run("prefer-kebab-case-svg-props", preferKebabCaseSvgProps, {
+		ruleTester.run("no-react-svg-props", noReactSvgProps, {
 			valid: [
 				{
 					code: `<div strokeWidth="2">Not SVG</div>`,
@@ -93,7 +93,7 @@ describe("prefer-kebab-case-svg-props", () => {
 		])(
 			"should detect and fix $camelCase",
 			({camelCase, kebabCase, element, value}) => {
-				ruleTester.run("prefer-kebab-case-svg-props", preferKebabCaseSvgProps, {
+				ruleTester.run("no-react-svg-props", noReactSvgProps, {
 					valid: [],
 					invalid: [
 						{
@@ -109,7 +109,7 @@ describe("prefer-kebab-case-svg-props", () => {
             `,
 							errors: [
 								{
-									messageId: "preferKebabCase",
+									messageId: "noReactSvgProp",
 									data: {camelCase, kebabCase},
 								},
 							],
@@ -137,7 +137,7 @@ describe("prefer-kebab-case-svg-props", () => {
 		])(
 			"should detect and fix $camelCase",
 			({camelCase, kebabCase, element, value}) => {
-				ruleTester.run("prefer-kebab-case-svg-props", preferKebabCaseSvgProps, {
+				ruleTester.run("no-react-svg-props", noReactSvgProps, {
 					valid: [],
 					invalid: [
 						{
@@ -153,7 +153,7 @@ describe("prefer-kebab-case-svg-props", () => {
             `,
 							errors: [
 								{
-									messageId: "preferKebabCase",
+									messageId: "noReactSvgProp",
 									data: {camelCase, kebabCase},
 								},
 							],
@@ -193,7 +193,7 @@ describe("prefer-kebab-case-svg-props", () => {
 		])(
 			"should detect and fix $camelCase",
 			({camelCase, kebabCase, value, content}) => {
-				ruleTester.run("prefer-kebab-case-svg-props", preferKebabCaseSvgProps, {
+				ruleTester.run("no-react-svg-props", noReactSvgProps, {
 					valid: [],
 					invalid: [
 						{
@@ -209,7 +209,7 @@ describe("prefer-kebab-case-svg-props", () => {
             `,
 							errors: [
 								{
-									messageId: "preferKebabCase",
+									messageId: "noReactSvgProp",
 									data: {camelCase, kebabCase},
 								},
 							],
@@ -222,7 +222,7 @@ describe("prefer-kebab-case-svg-props", () => {
 
 	describe("clip and mask attributes", () => {
 		it("should detect and fix clipPath", () => {
-			ruleTester.run("prefer-kebab-case-svg-props", preferKebabCaseSvgProps, {
+			ruleTester.run("no-react-svg-props", noReactSvgProps, {
 				valid: [],
 				invalid: [
 					{
@@ -238,7 +238,7 @@ describe("prefer-kebab-case-svg-props", () => {
             `,
 						errors: [
 							{
-								messageId: "preferKebabCase",
+								messageId: "noReactSvgProp",
 								data: {camelCase: "clipPath", kebabCase: "clip-path"},
 							},
 						],
@@ -248,7 +248,7 @@ describe("prefer-kebab-case-svg-props", () => {
 		});
 
 		it("should detect and fix clipRule", () => {
-			ruleTester.run("prefer-kebab-case-svg-props", preferKebabCaseSvgProps, {
+			ruleTester.run("no-react-svg-props", noReactSvgProps, {
 				valid: [],
 				invalid: [
 					{
@@ -264,7 +264,7 @@ describe("prefer-kebab-case-svg-props", () => {
             `,
 						errors: [
 							{
-								messageId: "preferKebabCase",
+								messageId: "noReactSvgProp",
 								data: {camelCase: "clipRule", kebabCase: "clip-rule"},
 							},
 						],
@@ -276,7 +276,7 @@ describe("prefer-kebab-case-svg-props", () => {
 
 	describe("multiple attributes", () => {
 		it("should fix multiple camelCase attributes in one element", () => {
-			ruleTester.run("prefer-kebab-case-svg-props", preferKebabCaseSvgProps, {
+			ruleTester.run("no-react-svg-props", noReactSvgProps, {
 				valid: [],
 				invalid: [
 					{
@@ -292,15 +292,15 @@ describe("prefer-kebab-case-svg-props", () => {
             `,
 						errors: [
 							{
-								messageId: "preferKebabCase",
+								messageId: "noReactSvgProp",
 								data: {camelCase: "strokeWidth", kebabCase: "stroke-width"},
 							},
 							{
-								messageId: "preferKebabCase",
+								messageId: "noReactSvgProp",
 								data: {camelCase: "fillOpacity", kebabCase: "fill-opacity"},
 							},
 							{
-								messageId: "preferKebabCase",
+								messageId: "noReactSvgProp",
 								data: {
 									camelCase: "strokeDasharray",
 									kebabCase: "stroke-dasharray",
@@ -315,7 +315,7 @@ describe("prefer-kebab-case-svg-props", () => {
 
 	describe("nested SVG elements", () => {
 		it("should detect camelCase attributes in nested SVG elements", () => {
-			ruleTester.run("prefer-kebab-case-svg-props", preferKebabCaseSvgProps, {
+			ruleTester.run("no-react-svg-props", noReactSvgProps, {
 				valid: [],
 				invalid: [
 					{
@@ -337,11 +337,11 @@ describe("prefer-kebab-case-svg-props", () => {
             `,
 						errors: [
 							{
-								messageId: "preferKebabCase",
+								messageId: "noReactSvgProp",
 								data: {camelCase: "strokeWidth", kebabCase: "stroke-width"},
 							},
 							{
-								messageId: "preferKebabCase",
+								messageId: "noReactSvgProp",
 								data: {camelCase: "fillOpacity", kebabCase: "fill-opacity"},
 							},
 						],
@@ -353,7 +353,7 @@ describe("prefer-kebab-case-svg-props", () => {
 
 	describe("real-world SVG examples", () => {
 		it("should handle icon components", () => {
-			ruleTester.run("prefer-kebab-case-svg-props", preferKebabCaseSvgProps, {
+			ruleTester.run("no-react-svg-props", noReactSvgProps, {
 				valid: [],
 				invalid: [
 					{
@@ -389,25 +389,25 @@ describe("prefer-kebab-case-svg-props", () => {
             `,
 						errors: [
 							{
-								messageId: "preferKebabCase",
+								messageId: "noReactSvgProp",
 								data: {camelCase: "strokeWidth", kebabCase: "stroke-width"},
 							},
 							{
-								messageId: "preferKebabCase",
+								messageId: "noReactSvgProp",
 								data: {
 									camelCase: "strokeLinecap",
 									kebabCase: "stroke-linecap",
 								},
 							},
 							{
-								messageId: "preferKebabCase",
+								messageId: "noReactSvgProp",
 								data: {
 									camelCase: "strokeLinejoin",
 									kebabCase: "stroke-linejoin",
 								},
 							},
 							{
-								messageId: "preferKebabCase",
+								messageId: "noReactSvgProp",
 								data: {camelCase: "fillOpacity", kebabCase: "fill-opacity"},
 							},
 						],
@@ -417,7 +417,7 @@ describe("prefer-kebab-case-svg-props", () => {
 		});
 
 		it("should handle complex SVG charts", () => {
-			ruleTester.run("prefer-kebab-case-svg-props", preferKebabCaseSvgProps, {
+			ruleTester.run("no-react-svg-props", noReactSvgProps, {
 				valid: [],
 				invalid: [
 					{
@@ -439,23 +439,23 @@ describe("prefer-kebab-case-svg-props", () => {
             `,
 						errors: [
 							{
-								messageId: "preferKebabCase",
+								messageId: "noReactSvgProp",
 								data: {camelCase: "textAnchor", kebabCase: "text-anchor"},
 							},
 							{
-								messageId: "preferKebabCase",
+								messageId: "noReactSvgProp",
 								data: {camelCase: "fontFamily", kebabCase: "font-family"},
 							},
 							{
-								messageId: "preferKebabCase",
+								messageId: "noReactSvgProp",
 								data: {camelCase: "fontSize", kebabCase: "font-size"},
 							},
 							{
-								messageId: "preferKebabCase",
+								messageId: "noReactSvgProp",
 								data: {camelCase: "strokeWidth", kebabCase: "stroke-width"},
 							},
 							{
-								messageId: "preferKebabCase",
+								messageId: "noReactSvgProp",
 								data: {
 									camelCase: "strokeDasharray",
 									kebabCase: "stroke-dasharray",
@@ -470,7 +470,7 @@ describe("prefer-kebab-case-svg-props", () => {
 
 	describe("color and gradient attributes", () => {
 		it("should detect and fix stopColor and stopOpacity", () => {
-			ruleTester.run("prefer-kebab-case-svg-props", preferKebabCaseSvgProps, {
+			ruleTester.run("no-react-svg-props", noReactSvgProps, {
 				valid: [],
 				invalid: [
 					{
@@ -492,19 +492,19 @@ describe("prefer-kebab-case-svg-props", () => {
             `,
 						errors: [
 							{
-								messageId: "preferKebabCase",
+								messageId: "noReactSvgProp",
 								data: {camelCase: "stopColor", kebabCase: "stop-color"},
 							},
 							{
-								messageId: "preferKebabCase",
+								messageId: "noReactSvgProp",
 								data: {camelCase: "stopOpacity", kebabCase: "stop-opacity"},
 							},
 							{
-								messageId: "preferKebabCase",
+								messageId: "noReactSvgProp",
 								data: {camelCase: "stopColor", kebabCase: "stop-color"},
 							},
 							{
-								messageId: "preferKebabCase",
+								messageId: "noReactSvgProp",
 								data: {camelCase: "stopOpacity", kebabCase: "stop-opacity"},
 							},
 						],
