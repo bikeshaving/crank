@@ -25,7 +25,7 @@
     "eslint": ">=8.0.0"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "rm -rf dist && tsc",
     "test": "vitest run",
     "lint": "eslint .",
     "prepare": "npm run build"
