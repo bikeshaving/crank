@@ -52,14 +52,6 @@ export const configs = {
 			"crank/no-deprecated-special-props": "error",
 		},
 	},
-	"react-migration": {
-		plugins: ["crank"],
-		rules: {
-			"crank/prefer-lowercase-event-props": "error",
-			"crank/no-react-props": "error",
-			"crank/prefer-kebab-case-svg-props": "warn",
-		},
-	},
 };
 
 export const plugin = {

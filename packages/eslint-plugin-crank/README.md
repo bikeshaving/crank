@@ -40,8 +40,7 @@ export default [
 
 ## Configurations
 
-- **`recommended`** — All core rules enabled.
-- **`react-migration`** — Rules for catching React-isms (`className`, `onClick`, camelCase SVG props).
+- **`recommended`** — All rules enabled.
 
 ## Rules
 
