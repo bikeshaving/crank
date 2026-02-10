@@ -74,9 +74,9 @@ renderer.render(<Timer message="Elapsed" />, document.getElementById("app"));
 
 ## Philosophy
 
-Crank is **non-reactive**. There are no signals, effects, stores, or reactive proxies.
+Crank components are plain JavaScript functions and generators. State is variables. Props are values. Updates are explicit.
 
-- State is variables. Updates happen when you call `this.refresh()`.
-- Props are plain values. Destructure them — there is no reactivity to break.
-- Use `this.refresh(() => { ... })` so you cannot forget to refresh after mutating state.
-- Shared logic is plain classes and functions, not hooks.
+- The framework preserves generator scope across yields — local variables are your state.
+- `this.refresh(() => { ... })` atomically mutates state and triggers a re-render.
+- Props are plain values — destructure and transform them freely.
+- Shared logic is plain classes, functions, and modules.
