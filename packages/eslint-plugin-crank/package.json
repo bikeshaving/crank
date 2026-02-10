@@ -2,6 +2,11 @@
   "name": "eslint-plugin-crank",
   "version": "0.2.0",
   "description": "ESLint plugin for the Crank JS framework",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bikeshaving/crank.git",
+    "directory": "packages/eslint-plugin-crank"
+  },
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,7 +22,7 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "eslint": ">=9.0.0"
+    "eslint": ">=8.0.0"
   },
   "scripts": {
     "build": "tsc",

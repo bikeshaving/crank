@@ -10,6 +10,8 @@ npm i -D eslint-plugin-crank
 
 ## Usage
 
+### ESLint 9 (flat config)
+
 ```javascript
 // eslint.config.js
 import crankPlugin from "eslint-plugin-crank";
@@ -25,6 +27,15 @@ export default [
     },
   },
 ];
+```
+
+### ESLint 8 (eslintrc)
+
+```json
+{
+  "plugins": ["crank"],
+  "extends": ["plugin:crank/recommended"]
+}
 ```
 
 ## Configurations
@@ -116,6 +127,24 @@ try {
 }
 ```
 
+### JSX Rules
+
+#### `crank/jsx-uses-crank`
+
+Marks `createElement` imports as used when JSX is present (prevents false `no-unused-vars` errors).
+
+#### `crank/jsx-uses-vars`
+
+Marks variables used in JSX as used (prevents false `no-unused-vars` errors).
+
+#### `crank/jsx-no-undef`
+
+Reports undefined variables in JSX.
+
+#### `crank/jsx-no-duplicate-props`
+
+Reports duplicate props in JSX elements.
+
 ### React Migration Rules
 
 #### `crank/prefer-lowercase-event-props`
@@ -129,6 +158,16 @@ try {
 #### `crank/prefer-kebab-case-svg-props`
 
 `strokeWidth` → `stroke-width`. Standard SVG uses kebab-case, not React's camelCase.
+
+### Deprecated API Rules
+
+#### `crank/no-deprecated-flush`
+
+Detects usage of the deprecated `context.flush()` method and suggests `context.refresh()`.
+
+#### `crank/no-deprecated-special-props`
+
+Detects deprecated special props (`crank-key`, `crank-ref`) and suggests the current equivalents (`c-key`, `c-ref`).
 
 ## License
 
