@@ -1,5 +1,5 @@
 ---
-title: Crank Style Guide
+title: "Crank Style Guide: Dos and Don'ts"
 description: The dos and don'ts of writing cranky code. Covers component structure, state, props, events, cleanup, DOM access, async patterns, and the philosophy behind them.
 ---
 
@@ -10,47 +10,39 @@ Crank's design philosophy is that JavaScript already has the primitives you need
 3. **Own the execution.** You control when components re-render — there is no implicit reactivity. Understanding the execution of your components is the job; `this.refresh(() => ...)` makes it legible.
 4. **Compose uniformly.** A component should look and behave like a built-in element — props in, events out, children nested. The abstraction boundary is the same as the platform's.
 
-The dos and don'ts below are the practical expression of these principles. For full explanations, see the [Components](/guides/components), [Lifecycles](/guides/lifecycles), and [Async Components](/guides/async-components) guides. The [`eslint-plugin-crank`](https://github.com/bikeshaving/crank.js/tree/main/packages/eslint-plugin-crank) package enforces many of these automatically.
+For full explanations, see the [Components](/guides/components), [Lifecycles](/guides/lifecycles), and [Async Components](/guides/async-components) guides. The [`eslint-plugin-crank`](https://github.com/bikeshaving/crank.js/tree/main/packages/eslint-plugin-crank) package enforces many of these automatically.
 
 ## Component Structure
 
-**Don't** scatter setup, render, and cleanup code without clear boundaries:
+**Don't** put state inside the loop — it resets on every render:
 
 ```jsx
-function *SearchBox({placeholder}) {
-  for ({placeholder} of this) {
-    let query = ""; // re-initialized every render
-    const oninput = (ev) => { // recreated every render
-      query = ev.target.value;
-      this.refresh();
-    };
-    yield (
-      <input placeholder={placeholder} oninput={oninput} />
-    );
+function *Timer() {
+  const id = setInterval(() => this.refresh(), 1000);
+  for ({} of this) {
+    let seconds = 0; // reset to 0 every render
+    seconds++;
+    yield <p>{seconds}s</p>;
   }
+  clearInterval(id);
 }
 ```
 
 **Do** use the three-region structure — setup before the loop, render inside it, cleanup after it:
 
 ```jsx
-function *SearchBox({placeholder}) {
+function *Timer() {
   // Setup — runs once on mount
-  let query = "";
-  const oninput = (ev) => this.refresh(() => query = ev.target.value);
+  let seconds = 0;
+  const id = setInterval(() => this.refresh(() => seconds++), 1000);
 
   // Render — runs on every update
-  for ({placeholder} of this) {
-    yield (
-      <div>
-        <input type="text" placeholder={placeholder} oninput={oninput} />
-        <p>Query: {query}</p>
-      </div>
-    );
+  for ({} of this) {
+    yield <p>{seconds}s</p>;
   }
 
   // Cleanup — runs once on unmount
-  console.log("SearchBox removed");
+  clearInterval(id);
 }
 ```
 
@@ -229,6 +221,25 @@ function *App({userId}) {
 Keys are a rendering control mechanism, not list boilerplate. Use them whenever you want to force a fresh component — switching users, resetting forms, or swapping between views that should not share state.
 
 Conditional rendering with `&&` is safe — falsy values like `false` and `null` preserve their slot in the children array, so siblings do not shift positions.
+
+Crank inverts the update-skipping model. In React, everything re-renders by default and children must defend themselves with `shouldComponentUpdate` or `memo`. In Crank, the parent controls which children update — nothing re-renders until `refresh()` is called, and you preserve subtrees with the `copy` prop:
+
+```jsx
+function *Dashboard() {
+  let tab = "overview";
+  for ({} of this) {
+    yield (
+      <div>
+        <Tabs ontabchange={(ev) => this.refresh(() => tab = ev.detail)} />
+        <Sidebar copy />
+        {tab === "overview" ? <Overview /> : <Settings />}
+      </div>
+    );
+  }
+}
+```
+
+`<Sidebar copy />` tells the framework to preserve the entire subtree as-is. No component needs to defend itself against unnecessary re-renders — the parent takes responsibility for what changes.
 
 ## Children and Composition
 
