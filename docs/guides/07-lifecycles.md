@@ -83,9 +83,9 @@ renderer.render(<App />, document.body);
 
 The key insight: you have TWO execution spaces in each loop iteration:
 - **Before `yield`**: Set up for the current render
-- **After `yield`**: Only runs when re-rendering - save current state as "old" state for comparison
+- **After `yield`**: Only runs when re-rendering - save current state as “old” state for comparison
 
-Here's a practical example using prop comparison for memoization:
+Here’s a practical example using prop comparison for memoization:
 
 ```jsx
 import {renderer} from "@b9g/crank/dom";
@@ -172,13 +172,13 @@ function *Timer({message}, ctx) {
 The natural generator lifecycle is perfect for most logic, but sometimes you need more precise timing around DOM operations. The `for...of` loop pauses at each `yield`, which means:
 
 - **After `yield`**: The element description exists, but DOM nodes might not be created yet
-- **You need to know**: When DOM nodes are created, when they're inserted, and when they're removed
+- **You need to know**: When DOM nodes are created, when they’re inserted, and when they’re removed
 
 For these DOM-specific timings, Crank provides three lifecycle methods:
 
 ### Schedule: DOM Created but Not Inserted
 
-**`schedule(callback)`** runs immediately after DOM nodes are created, but **before they're inserted into the document**. Useful for immediate DOM setup that doesn't require the element to be live in the document tree.
+**`schedule(callback)`** runs immediately after DOM nodes are created, but **before they’re inserted into the document**. Useful for immediate DOM setup that doesn’t require the element to be live in the document tree.
 
 ```jsx
 function *Component() {
@@ -195,7 +195,7 @@ function *Component() {
 
 ### After: DOM Inserted and Live
 
-**`after(callback)`** runs after the element is fully rendered and live in the DOM. This is where you'd do things like focusing inputs, measuring elements, or triggering animations that require the element to be visible.
+**`after(callback)`** runs after the element is fully rendered and live in the DOM. This is where you’d do things like focusing inputs, measuring elements, or triggering animations that require the element to be visible.
 
 ```jsx
 function *Component() {
@@ -243,7 +243,7 @@ This timing difference is crucial for choosing the right method:
 **Use `schedule()` for:**
 - Setting up properties, styles, or attributes before the user sees the element
 - Triggering re-renders (the `this.schedule(() => this.refresh())` pattern)
-- DOM setup that doesn't require the element to be part of the document tree
+- DOM setup that doesn’t require the element to be part of the document tree
 - Preparing elements before they become visible
 
 **Use `after()` for:**
@@ -252,7 +252,7 @@ This timing difference is crucial for choosing the right method:
 - Triggering animations that need the element to be visible
 - Any DOM operations requiring the element to be live in the document tree
 
-The key insight: `schedule()` happens in the perfect "sweet spot" where you can modify elements without visual flicker, while `after()` gives you access to the fully live, measurable element.
+The key insight: `schedule()` happens in the perfect “sweet spot” where you can modify elements without visual flicker, while `after()` gives you access to the fully live, measurable element.
 
 ### Promise-based API (0.7+)
 All three methods return promises when called without arguments:
@@ -344,9 +344,7 @@ These properties help write safer async code by preventing common issues like ca
 
 ## The Two-Pass Render Pattern
 
-Using `schedule(() => this.refresh())` for components that need to render twice.
-
-A common pattern is to use `schedule()` to trigger an immediate re-render. This is particularly useful for components that need to render twice - once for initial setup, then again with updated state:
+A common pattern is to use `schedule()` to trigger an immediate re-render, so a component renders twice — once for initial setup, then again with updated state:
 
 ```jsx
 function *TwoPassComponent() {
@@ -432,10 +430,6 @@ function *ResponsiveComponent() {
   }
 }
 ```
-
-The key insight is that `schedule()` runs after DOM nodes are created but **before they're inserted into the document**. This timing makes it the perfect place to trigger another render cycle - you can inspect or modify elements, but the user doesn't see any flicker because nothing has been inserted yet.
-
-**Important:** Since `schedule()` fires before DOM insertion, elements passed to schedule callbacks are not yet part of the document tree. Use `after()` if you need the element to be live in the DOM.
 
 ## Setup, update and teardown logic
 
@@ -541,58 +535,7 @@ function *Component(this, props) {
 }
 ```
 
-Thankfully, the Crank context provides two callback-based methods which allow you to run code after rendering has completed: `schedule()` and `flush()`.
-
-The `schedule()` method behaves like code which runs in an async generator’s `for await...of` loop. It runs immediately after the children DOM nodes are created:
-
-```jsx
-function *Component(this, props) {
-  for await (props of this) {
-    this.schedule((div) => {
-      // the div is
-      div.innerHTML = props.innerHTML;
-    });
-    yield <div />;
-  }
-}
-```
-
-On the other hand, the `after()` method runs after the result is completely rendered and live in the DOM. This is necessary for use-cases such as auto-focusing inputs after the first render. The reason for the distinction between `schedule()` and `after()` is that Crank coordinates async rendering so that the rendering of multiple async siblings happens together, meaning there might be some time before a created DOM node is created but before it is added to its intended parent.
-
-```jsx live
-import {renderer} from "@b9g/crank/dom";
-function *AutoFocusingInput(props) {
-  // this.schedule does not work because it fires before the input element is
-  // added to the DOM
-  // this.schedule((input) => input.focus());
-  this.after((input) => input.focus());
-  for (props of this) {
-    yield <input {...props}/>;
-  }
-}
-
-function *Component() {
-  let initial = true;
-  for ({} of this) {
-    yield (
-      <div>
-        <div>
-          {initial || <AutoFocusingInput />}
-        </div>
-        <div>
-          <button onclick={() => this.refresh()}>Refresh</button>
-        </div>
-      </div>
-    );
-
-    initial = false;
-  }
-}
-
-renderer.render(<Component />, document.body);
-```
-
-All `schedule()` callbacks will always fire before `after()` callbacks for a given render.
+For `for...of` components, use the `schedule()` and `after()` lifecycle methods [described above](#schedule-dom-created-but-not-inserted) to access rendered DOM elements reliably.
 
 ## Cleanup logic
 While you can use context iterators to write cleanup logic after `for...of` and `for await...of` loops, this does not account for errors in components, and it does work if you are not using a render loop. To solve these issues, you can use `try`/`finally` block. When a generator component is removed from the tree, Crank calls the `return` method on the component’s generator object.
@@ -644,8 +587,6 @@ function *KeyboardListener() {
 
 renderer.render(<KeyboardListener />, document.body);
 ```
-
-The `cleanup()` method is also useful for refactoring teardown logic.
 
 ## Async Mount and Unmount
 
@@ -703,73 +644,7 @@ function *App() {
 renderer.render(<App />, document.body);
 ```
 
-Here's a more complex example with staggered letter animations:
-
-```jsx live
-import {renderer} from "@b9g/crank/dom";
-
-function *Letter({children, delay = 0}) {
-  this.cleanup(async (element) => {
-    // Stagger the exit animation based on delay
-    await new Promise(resolve => setTimeout(resolve, delay));
-
-    element.style.transition = 'all 400ms cubic-bezier(0.68, -0.55, 0.265, 1.55)';
-    element.style.transform = 'translateY(-20px) rotateZ(10deg)';
-    element.style.opacity = '0';
-
-    await new Promise(resolve => setTimeout(resolve, 400));
-  });
-
-  for ({children} of this) {
-    yield (
-      <span style={{
-        display: 'inline-block',
-        transition: 'all 400ms ease',
-        transform: 'translateY(0) rotateZ(0deg)'
-      }}>
-        {children}
-      </span>
-    );
-  }
-}
-
-function *AnimatedText({text}) {
-  for ({text} of this) {
-    yield (
-      <div style={{
-        'font-size': '24px',
-        'font-weight': 'bold',
-        color: '#007bff',
-        'line-height': '1.5'
-      }}>
-        {text.split('').map((char, i) => (
-          <Letter key={i} delay={i * 50}>
-            {char === ' ' ? '\u00A0' : char}
-          </Letter>
-        ))}
-      </div>
-    );
-  }
-}
-
-function *LettersDemo() {
-  let showText = true;
-  const toggle = () => this.refresh(() => showText = !showText);
-
-  for ({} of this) {
-    yield (
-      <div>
-        <button onclick={toggle}>
-          {showText ? 'Hide' : 'Show'} Animated Text
-        </button>
-        {showText && <AnimatedText text="Hello Crank!" />}
-      </div>
-    );
-  }
-}
-
-renderer.render(<LettersDemo />, document.body);
-```
+You can coordinate staggered animations across siblings by passing different delay values to child components’ `cleanup()` callbacks.
 
 ### Async Mount
 
@@ -846,80 +721,6 @@ function *Modal({children, onClose}) {
   }
 }
 ```
-
-### Promise-based Lifecycle Methods
-
-Starting in 0.7, lifecycle methods return promises when called without arguments, allowing you to await lifecycle events:
-
-```jsx
-async function *Component() {
-  // Wait for component to be fully mounted
-  await this.schedule();
-  console.log('Component is now in the DOM');
-
-  for ({} of this) {
-    yield <div>Mounted component</div>;
-
-    // Wait for rendering to complete
-    await this.after();
-    console.log('Render cycle complete');
-  }
-
-  // Wait for cleanup to finish
-  await this.cleanup();
-  console.log('Component cleanup complete');
-}
-```
-
-### Use Cases for Async Lifecycle
-
-**Async mounting is useful for:**
-- Loading animations and transitions
-- Waiting for external resources (images, fonts, APIs)
-- Coordinating multiple component animations
-- Complex initialization sequences
-
-**Async unmounting enables:**
-- Smooth exit animations
-- Saving component state before destruction
-- Coordinated cleanup across multiple components
-- User confirmation dialogs for destructive actions
-
-### Server-Side Rendering with CSS Extraction
-
-A powerful use case for async mounting is CSS-in-JS extraction during SSR:
-
-```jsx
-import {extractCritical} from '@emotion/server';
-
-function *Root({children}) {
-  for ({children} of this) {
-    // First render to extract styles
-    this.schedule(() => this.refresh());
-
-    const html = yield (
-      <body>
-        {children}
-      </body>
-    );
-
-    // Extract critical CSS from the rendered HTML
-    const {html: finalHtml, css} = extractCritical(html);
-
-    // Second render with extracted CSS inlined
-    yield (
-      <html>
-        <head>
-          <style>{css}</style>
-        </head>
-        <body innerHTML={finalHtml} />
-      </html>
-    );
-  }
-}
-```
-
-Async lifecycle methods provide fine-grained control over when and how components appear and disappear, enabling smooth user experiences and complex coordination patterns that would be difficult to achieve with synchronous-only lifecycles.
 
 ## Catching Errors
 

@@ -3,18 +3,18 @@ title: "Crank Style Guide: Dos and Don'ts"
 description: The dos and don'ts of writing cranky code. Covers component structure, state, props, events, cleanup, DOM access, async patterns, and the philosophy behind them.
 ---
 
-Crank's design philosophy is that JavaScript already has the primitives you need to build UIs. Code that follows these conventions is *cranky* — idiomatic Crank that leans on the language instead of fighting it.
+Crank’s design philosophy is that JavaScript already has the primitives you need to build UIs. Code that follows these conventions is *cranky* — idiomatic Crank that leans on the language instead of fighting it.
 
 1. **Use the language.** Write vanilla JavaScript. Variables are state, control flow is lifecycle, `async`/`await` is data fetching. Crank adds a thin rendering layer and gets out of the way.
-2. **Match the platform.** `class`, `for`, `onclick`, `innerHTML` — the DOM's names, not aliases.
+2. **Match the platform.** `class`, `for`, `onclick`, `innerHTML` — the DOM’s names, not aliases.
 3. **Own the execution.** You control when components re-render — there is no implicit reactivity. Understanding the execution of your components is the job; `this.refresh(() => ...)` makes it legible.
-4. **Compose uniformly.** A component should look and behave like a built-in element — props in, events out, children nested. The abstraction boundary is the same as the platform's.
+4. **Compose uniformly.** A component should look and behave like a built-in element — props in, events out, children nested. The abstraction boundary is the same as the platform’s.
 
 For full explanations, see the [Components](/guides/components), [Lifecycles](/guides/lifecycles), and [Async Components](/guides/async-components) guides. The [`eslint-plugin-crank`](https://github.com/bikeshaving/crank.js/tree/main/packages/eslint-plugin-crank) package enforces many of these automatically.
 
 ## Component Structure
 
-**Don't** put state inside the loop — it resets on every render:
+**Don’t** put state inside the loop — it resets on every render:
 
 ```jsx
 function *Timer() {
@@ -46,7 +46,7 @@ function *Timer() {
 }
 ```
 
-**Don't** use `while (true)` — the component renders but never sees prop updates, and a missing `yield` causes an infinite loop:
+**Don’t** use `while (true)` — the component renders but never sees prop updates, and a missing `yield` causes an infinite loop:
 
 ```jsx
 function *Counter({count}) {
@@ -68,7 +68,7 @@ function *Counter({count}) {
 
 **ESLint rule:** `crank/prefer-props-iterator`
 
-**Don't** return an implicit `undefined` — it produces a runtime warning:
+**Don’t** return an implicit `undefined` — it produces a runtime warning:
 
 ```jsx
 function Empty() {}
@@ -84,7 +84,7 @@ function Empty() {
 
 ## State Updates
 
-**Don't** mutate state and call `refresh()` as separate steps — it is easy to forget one or the other, especially in longer handlers:
+**Don’t** mutate state and call `refresh()` as separate steps — it is easy to forget one or the other, especially in longer handlers:
 
 ```jsx
 function *Counter() {
@@ -121,7 +121,7 @@ Note: `refresh()` during execution (while `this.isExecuting` is `true`) or after
 
 ## Props
 
-**Don't** destructure props in the parameter but skip the `for...of` binding — `name` below is captured once and never updated:
+**Don’t** destructure props in the parameter but skip the `for...of` binding — `name` below is captured once and never updated:
 
 ```jsx
 function *Greeting({name = "World"}) {
@@ -131,7 +131,7 @@ function *Greeting({name = "World"}) {
 }
 ```
 
-**Don't** destructure partially — any prop missing from the `for...of` binding stays stale:
+**Don’t** destructure partially — any prop missing from the `for...of` binding stays stale:
 
 ```jsx
 function *Card({title, count}) {
@@ -156,7 +156,7 @@ function *Greeting({name = "World", formal = false}) {
 
 ## Derived Values
 
-**Don't** recompute expensive work on every render when the inputs have not changed:
+**Don’t** recompute expensive work on every render when the inputs have not changed:
 
 ```jsx
 function *FilteredList({items, threshold}) {
@@ -169,7 +169,7 @@ function *FilteredList({items, threshold}) {
 }
 ```
 
-**Do** cache the result and compare inputs manually. Save current values after `yield` so they are available as "old" values on the next iteration:
+**Do** cache the result and compare inputs manually. Save current values after `yield` so they are available as “old” values on the next iteration:
 
 ```jsx
 function *FilteredList({items, threshold}) {
@@ -192,13 +192,13 @@ function *FilteredList({items, threshold}) {
 }
 ```
 
-This is Crank's equivalent of `useMemo`. No dependency array needed — you control the comparison directly.
+This is Crank’s equivalent of `useMemo`. No dependency array needed — you control the comparison directly.
 
 ## Keys and Rendering Control
 
 Crank matches elements by position in the tree. When the same component appears at the same position with different data, its generator state is reused by default. Keys give you explicit control over when state should be kept and when it should be thrown away.
 
-**Don't** let stale component state bleed across unrelated data. If a `<UserProfile>` switches from one user to another, generator state from the first user persists — timers keep running, local variables keep their values:
+**Don’t** let stale component state bleed across unrelated data. If a `<UserProfile>` switches from one user to another, generator state from the first user persists — timers keep running, local variables keep their values:
 
 ```jsx
 function *App({userId}) {
@@ -241,7 +241,7 @@ function *Dashboard() {
 
 ## Children and Composition
 
-**Don't** use render props or functions-as-children — generators already encapsulate state:
+**Don’t** use render props or functions-as-children — generators already encapsulate state:
 
 ```jsx
 function *App() {
@@ -274,7 +274,7 @@ If a parent needs to pass dynamic data to its children, use [context](/guides/re
 
 ## Context
 
-**Don't** use plain strings as context keys — they risk collisions between unrelated libraries or components:
+**Don’t** use plain strings as context keys — they risk collisions between unrelated libraries or components:
 
 ```jsx
 function *App({children}) {
@@ -312,7 +312,7 @@ Note that consumers do not automatically re-render when a provided value changes
 
 ## Cleanup
 
-**Don't** leave timers, listeners, or subscriptions without cleanup — they outlive the component and leak:
+**Don’t** leave timers, listeners, or subscriptions without cleanup — they outlive the component and leak:
 
 ```jsx
 function *Timer() {
@@ -382,7 +382,7 @@ Note: `cleanup` callbacks persist across renders and fire once on unmount. `sche
 
 ## Refs and DOM Access
 
-**Don't** use `this.schedule()` for operations that need the element to be live in the document — `schedule` fires after DOM nodes are created but *before* they are inserted:
+**Don’t** use `this.schedule()` for operations that need the element to be live in the document — `schedule` fires after DOM nodes are created but *before* they are inserted:
 
 ```jsx
 function *AutoFocusInput() {
@@ -411,7 +411,7 @@ Use `this.schedule()` only for setup that must happen *before* the element is vi
 
 ## Lifecycle Callbacks
 
-**Don't** yield or return JSX inside `schedule`, `after`, or `cleanup` callbacks — they are side-effect hooks, not render points. The yielded or returned elements are silently discarded:
+**Don’t** yield or return JSX inside `schedule`, `after`, or `cleanup` callbacks — they are side-effect hooks, not render points. The yielded or returned elements are silently discarded:
 
 ```jsx
 function *Component() {
@@ -440,7 +440,7 @@ function *Component() {
 
 ## Yield vs Return
 
-**Don't** use `return` inside a generator loop — it terminates the component permanently. The component renders once and is then dead:
+**Don’t** use `return` inside a generator loop — it terminates the component permanently. The component renders once and is then dead:
 
 ```jsx
 function *Greeting({name}) {
@@ -462,7 +462,7 @@ function *Greeting({name}) {
 
 ## Async Components
 
-**Don't** manage loading state manually with flags in a sync generator when an async component would be simpler:
+**Don’t** manage loading state manually with flags in a sync generator when an async component would be simpler:
 
 ```jsx
 function *UserProfile({userId}) {
@@ -505,7 +505,7 @@ For declarative loading states and code splitting, use `Suspense` and `lazy` fro
 
 Crank accepts React conventions for compatibility, but cranky code does not use them.
 
-**Don't** use React prop names:
+**Don’t** use React prop names:
 
 ```jsx
 function MyForm() {
@@ -535,6 +535,6 @@ function MyForm() {
 
 The `class` prop accepts objects for conditional classes, and the `style` prop accepts both strings and objects. See [Special Props and Components](/guides/special-props-and-components) for details.
 
-**Don't** think in dependency arrays or `useCallback`. There are no stale closures in Crank — handlers close over `let` variables that are reassigned each iteration, so they always see current values. Inline handlers are fine; Crank does not compare prop references to skip re-renders.
+**Don’t** think in dependency arrays or `useCallback`. There are no stale closures in Crank — handlers close over `let` variables that are reassigned each iteration, so they always see current values. Inline handlers are fine; Crank does not compare prop references to skip re-renders.
 
-**Don't** reach for a state management library when local variables and context will do. A `let` in a generator is state. `this.provide()` and `this.consume()` with symbol keys share it across a subtree. See [Reusable Logic](/guides/reusable-logic) for patterns that scale further.
+**Don’t** reach for a state management library when local variables and context will do. A `let` in a generator is state. `this.provide()` and `this.consume()` with symbol keys share it across a subtree. See [Reusable Logic](/guides/reusable-logic) for patterns that scale further.

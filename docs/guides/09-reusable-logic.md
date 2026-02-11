@@ -66,7 +66,7 @@ function *Component(this, props) {
 
 ### After: Execute When DOM is Live
 **`context.after()`** - Execute code after DOM is inserted and accessible.
-Similar to the `schedule()` method, this method fires when rendering has finished. Unlike the `schedule()` method, this method fires when a component's rendered DOM is live. This is useful when you need to do something like calling `focus()` on an `<input>` element or perform DOM measurement calculations. Callbacks fire once per call and callback function per update.
+Similar to the `schedule()` method, this method fires when rendering has finished. Unlike the `schedule()` method, this method fires when a component’s rendered DOM is live. This is useful when you need to do something like calling `focus()` on an `<input>` element or perform DOM measurement calculations. Callbacks fire once per call and callback function per update.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -149,8 +149,6 @@ function *Counter() {
 }
 ```
 
-In this example, we define the methods `setInterval` and `clearInterval` directly the `Context` prototype. The `setInterval` and `clearInterval` methods will now be available to all components.
-
 **Pros:**
 - Methods are available to every component automatically.
 
@@ -162,7 +160,7 @@ In this example, we define the methods `setInterval` and `clearInterval` directl
 Global context extensions are useful for creating Crank-specific wrappers around already global or otherwise well-known APIs like `setInterval`, `requestAnimationFrame` or `fetch`.
 
 ### Context Helper Utilities
-As an alternative to global context extensions, you can write utility functions which are passed contexts to scope reusable logic per component. In the following example, instead of defining the `setInterval` method globally, we define it locally by passing the context of the component into the `createSetInterval` function.
+As an alternative, you can write utility functions that accept a context to scope reusable logic per component.
 
 
 ```ts
@@ -217,8 +215,6 @@ function interval(Component) {
 const Counter = interval((props) => <div>Seconds: {props.seconds}</div>);
 ```
 
-The interval function takes a component function and returns a component which passes the number of seconds as a prop. Additionally, it refreshes the returned component whenever the interval is fired.
-
 **Pros:**
 - Locally scoped.
 - Explicitly imported and referenced.
@@ -229,7 +225,7 @@ The interval function takes a component function and returns a component which p
 - JavaScript doesn’t provide an easy syntax for decorating functions.
 - Props passed into the component by the wrapper may clash with the component’s own expected props.
 
-The main advantage of higher-order components is that you can respond to props in your utilities just like you would with a component. Higher-order components are most useful when you need reusable logic which responds to prop updates or sets only well-known props. Possible use-cases include styled component or animation libraries.
+Higher-order components are most useful when you need reusable logic which responds to prop updates or sets only well-known props. Possible use-cases include styled component or animation libraries.
 
 ### Async Iterators
 Because components can be written as async generator functions, you can integrate utility functions which return async iterators seamlessly with Crank. Async iterators are a great way to model resources because they define a standard way for releasing resources when they’re no longer needed by returning the iterator.

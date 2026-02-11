@@ -46,7 +46,7 @@ will be blown away if there mismatches.
 
 ## Hydration Warnings
 
-In development, Crank provides comprehensive warnings when server and client rendering don't match:
+In development, Crank provides comprehensive warnings when server and client rendering don’t match:
 
 ```jsx
 // Because this component renders differently on client and server you will
@@ -86,8 +86,8 @@ function App({userContent}) {
 This is particularly useful for:
 - Third-party widgets that manage their own DOM
 - User-generated HTML content
-- Static content that doesn't need interactivity
-- Complex visualizations that shouldn't be disturbed
+- Static content that doesn’t need interactivity
+- Complex visualizations that shouldn’t be disturbed
 
 ### Forcing Hydration
 
@@ -115,7 +115,7 @@ ensures their children are included.
 Use string values to specify which props should not emit hydration errors:
 - `hydrate="!data-timestamp"` - Hydrate all props except `data-timestamp`
 - `hydrate="class id"` - Hydrate only `class` and `id` props
-- `hydrate="!children" - Hydrate this element but not its children.
+- `hydrate=”!children” - Hydrate this element but not its children.
 
 You cannot mix bang (`!`) and non-bang syntax. Doing so will cause a warning.
 ```jsx
