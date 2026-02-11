@@ -31,21 +31,23 @@ The [=tag=] determines what the [=element=] represents:
 - <dfn>Component element</dfn>: the [=tag=] is a function — the framework invokes it as a [=component=] (see [[#invocation]]).
 - <dfn>Symbol element</dfn>: the [=tag=] is a symbol — used for special [=components=] like Portal, Raw, Copy, and Text (see [[#special-components]]).
 
-[=Elements=] are identified across versions and realms by an internal `$$typeof` symbol, following the [same pattern as React](https://overreacted.io/why-do-react-elements-have-typeof-property/) to protect against injection attacks.
+[=Elements=] are identified across versions and realms by an internal `$$typeof` symbol, following the [same pattern as React](https://overreacted.io/why-do-react-elements-have-typeof-property/) to protect against injection attacks. `isElement(value)` tests for this marker and returns `true` if the value is an [=element=].
+
+`cloneElement(element)` shallow-copies an [=element=], producing a new [=element=] with the same [=tag=] and [=props=].
 
 The `children` prop contains child content passed between opening and closing tags. See [[#child-normalization]] for the normalization rules applied to children.
 
 # Renderers # {#renderers}
 
-A <dfn>renderer</dfn> is the entry point to the framework. It translates the abstract [=element=] tree into mutations on a <dfn>host environment</dfn> — the platform-specific output target (e.g. the DOM, an HTML string, a native UI toolkit).
+A <dfn>renderer</dfn> is the entry point to the framework. It translates the abstract [=element=] tree into mutations on a <dfn>host environment</dfn> — the platform-specific output target (e.g. the DOM, an HTML string, a native UI toolkit). Each [=renderer=] is parameterized by a result type (`TResult`) — the public value type returned by `render` and exposed to [=components=] via callbacks and `yield` expressions. For the DOM [=renderer=], `TResult` is a DOM Node or array of Nodes; for the HTML [=renderer=], it is a string.
 
 ## render() ## {#renderer-render}
 
-`render(children, root?, bridge?)` — the [=renderer=] MUST render the [=element=] tree into the given root. The [=renderer=] MUST cache state per root; subsequent calls to `render` with the same root MUST update in place. Returns `Promise<TResult> | TResult`.
+`render(children, root?, bridge?)` — the [=renderer=] MUST render the [=element=] tree into the given root. The [=renderer=] MUST cache state per root; subsequent calls to `render` with the same root MUST update in place. When no root is provided, the [=renderer=] MUST perform a root-less render — producing output without mounting into a container. The HTML [=renderer=] uses this mode to render to a string. Returns `Promise<TResult> | TResult`.
 
 ## hydrate() ## {#renderer-hydrate}
 
-`hydrate(children, root, bridge?)` — the [=renderer=] MUST attach to pre-existing content in the root rather than creating new host nodes. Used for server-rendered HTML.
+`hydrate(children, root, bridge?)` — the [=renderer=] MUST attach to pre-existing content in the root rather than creating new host nodes. Used for server-rendered HTML. The framework walks the [=element=] tree and, for each host [=element=], calls the adapter's `adopt` operation instead of `create`. The adapter MUST return the child nodes of the adopted node; the framework removes any children not accounted for in the new tree. Props are patched onto adopted nodes so that event listeners and dynamic attributes are attached.
 
 ## Bridging ## {#bridging}
 
@@ -139,7 +141,7 @@ The framework MUST provide a <dfn>component context</dfn> object to each [=compo
 
 <dl>
   <dt>`refresh(callback?)`
-  <dd>[=Enqueue|Enqueues=] a re-execution of the [=component=]. If a callback is provided, the framework MUST run it before re-executing. If called while `isExecuting` is `true`, the framework MUST log an error and return the current value.
+  <dd>[=Enqueue|Enqueues=] a re-execution of the [=component=]. If a callback is provided, the framework MUST run it before re-executing. If the callback returns a promise, the framework MUST defer re-execution until the promise resolves; if the [=component=] has been unmounted by that time, re-execution MUST be skipped. If called while `isExecuting` is `true`, the framework MUST log an error and return the current value.
 
   <dt>`schedule(callback?)`
   <dd>Registers a callback that the framework MUST call after host nodes are created but before they are inserted into the [=host environment=]. The callback receives the [=element value=]. Callbacks are <strong>one-shot</strong>: they fire once and MUST be re-registered on subsequent renders. Multiple distinct callbacks MAY be registered; the framework MUST deduplicate callbacks by function identity (registering the same function reference twice in one update fires it once). If the callback returns a promise on the [=component's=] initial render, the framework MUST defer insertion until the promise resolves; on subsequent renders, promise return values MUST be ignored. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at schedule time.
@@ -243,15 +245,11 @@ A <dfn>Child</dfn> is any value that can appear in the element tree. The valid c
 - <strong>Numbers</strong> MUST be converted to strings and wrapped in a Text element.
 - <strong><code>null</code></strong> and <strong><code>undefined</code></strong> MUST produce no output. A [=component=] returning `undefined` renders nothing.
 - <strong>Booleans</strong> (`true` and `false`) MUST produce no output. This enables the `{condition && <Element />}` pattern — when the condition is `false`, nothing is rendered.
-- <strong>Non-string iterables</strong> (arrays, [generators](https://tc39.es/ecma262/#sec-generator-objects), Sets, etc.) MUST be implicitly wrapped in a [=Fragment=]. Each item in the iterable becomes a [=Child=] at its own position in the element tree. This means [=components=] can return arrays or generators to produce multiple siblings without a wrapper node.
+- <strong>Non-string iterables</strong> (arrays, Sets, etc.) MUST be implicitly wrapped in a [=Fragment=]. Each item in the iterable becomes a [=Child=] at its own position in the element tree. This means [=components=] can return arrays or other non-iterator iterables to produce multiple siblings without a wrapper node.
 - <strong>Nested arrays</strong> MUST be flattened into the children array.
 - <strong>Elements</strong> (objects with a `tag` property) MUST be diffed recursively.
 
 This normalization applies everywhere children appear: the return/yield value of a [=component=], the `children` prop, and the children of host elements.
-
-## Arrangement ## {#arrangement}
-
-After diffing, the framework arranges host nodes to reflect the new child order. The [=renderer=] receives the parent node and the ordered list of child nodes, and is responsible for inserting, moving, or removing nodes as needed.
 
 # Async Rendering # {#async-rendering}
 
@@ -474,7 +472,7 @@ An [=update=] occurs when a [=component=] receives new [=props=] or `refresh()` 
     <tr><td><code>schedule(cb)</code><td>After host nodes created, before insertion<td>[=Element value=]<td>One-shot<td>Defers insertion (initial render only)
     <tr><td><code>after(cb)</code><td>After host nodes inserted into environment<td>[=Element value=]<td>One-shot<td>Ignored
     <tr><td><code>cleanup(cb)</code><td>On unmount, before children unmount<td>[=Element value=]<td>Persistent<td>Defers child unmounting
-    <tr><td><code>refresh(cb)</code><td>Enqueues re-execution<td>None (cb runs before re-exec)<td>One-shot<td>N/A
+    <tr><td><code>refresh(cb)</code><td>Enqueues re-execution<td>None (cb runs before re-exec)<td>One-shot<td>Defers re-execution
   </tbody>
 </table>
 
@@ -570,13 +568,24 @@ The `class` prop (or `className`) accepts a string or an object. When an object 
   <tbody>
     <tr><td><code>key</code><td><code>any</code><td>The framework uses keys for reconciliation. Keyed children are matched by key, not position. Duplicate keys among siblings produce a runtime error.
     <tr><td><code>ref</code><td><code>(value: TResult) => unknown</code><td>The framework calls this with the [=element value=] after host mutations are committed but before host nodes are inserted into the [=host environment=] — the same timing as <code>schedule</code> callbacks.
-    <tr><td><code>copy</code><td><code>boolean | string</code><td><code>true</code>: the framework preserves the entire subtree. String: the framework selectively copies/excludes props (<code>"class disabled"</code> or <code>"!class"</code>).
-    <tr><td><code>hydrate</code><td><code>boolean | string</code><td><code>true</code>: the framework hydrates from existing host nodes. String: selective hydration of specific props.
+    <tr><td><code>copy</code><td><code>boolean | string</code><td><code>true</code>: the framework MUST preserve the entire subtree, skipping re-rendering. String: the framework MUST selectively copy props from the previous render using the [=prop selector=] syntax (see [[#prop-selector-syntax]]).
+    <tr><td><code>hydrate</code><td><code>boolean | string</code><td><code>true</code>: the framework MUST adopt existing host nodes instead of creating new ones, patching all props onto the adopted node. String: the framework MUST adopt existing host nodes but treat props matched by the [=prop selector=] as quiet — they MUST NOT be patched, preserving the server-rendered values.
     <tr><td><code>children</code><td><code>unknown</code><td>Child content passed between opening and closing tags.
   </tbody>
 </table>
 
 The framework MUST strip all special props before passing the remaining props to the renderer.
+
+## Prop Selector Syntax ## {#prop-selector-syntax}
+
+The `copy` and `hydrate` props accept a <dfn>prop selector</dfn> string that specifies which props to include or exclude. The syntax is:
+
+- Tokens are separated by whitespace or commas.
+- A token without a prefix (e.g. `"class disabled"`) is inclusive: only the named props are selected.
+- A token with a `!` prefix (e.g. `"!class"`) is exclusive: all props except the named ones are selected.
+- Mixing inclusive and exclusive tokens in a single selector MUST produce a runtime error.
+
+For `copy`, the selected props are copied from the previous render's values — unselected props are re-rendered normally. If `"children"` is among the selected props, child elements are also preserved. For `hydrate`, the selected props are quiet — the framework skips patching them onto the adopted node, preserving whatever the server rendered. Unselected props are patched normally so that event listeners and dynamic attributes are attached.
 
 # JSX # {#jsx}
 
