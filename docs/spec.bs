@@ -139,13 +139,13 @@ The framework provides a <dfn>component context</dfn> object to each [=component
   <dd>[=Enqueue|Enqueues=] a re-execution of the [=component=]. If a callback is provided, the framework runs it before re-executing. If called while `isExecuting` is `true`, the framework logs an error and returns the current value.
 
   <dt>`schedule(callback?)`
-  <dd>The framework calls the callback after DOM nodes are created but before they are inserted into the document. Callbacks are one-shot: they fire once per update and must be re-registered on subsequent renders. Multiple distinct callbacks may be registered; callbacks are deduplicated by function identity (registering the same function reference twice in one update fires it once).
+  <dd>Registers a callback that the framework calls after DOM nodes are created but before they are inserted into the document. The callback receives the [=element value=]. Callbacks are <strong>one-shot</strong>: they fire once and must be re-registered on subsequent renders. Multiple distinct callbacks may be registered; callbacks are deduplicated by function identity (registering the same function reference twice in one update fires it once). If the callback returns a promise on the [=component's=] initial render, the framework defers DOM insertion until the promise resolves; on subsequent renders, promise return values are ignored. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at schedule time.
 
   <dt>`after(callback?)`
-  <dd>The framework calls the callback after DOM nodes are inserted into the document. Same one-shot and deduplication semantics as `schedule`.
+  <dd>Registers a callback that the framework calls after DOM nodes are inserted into the document. The callback receives the [=element value=]. Same one-shot and deduplication semantics as `schedule`. Promise return values from `after` callbacks are always ignored. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at insertion time.
 
   <dt>`cleanup(callback?)`
-  <dd>The framework calls the callback when the [=component=] unmounts, before children are unmounted. If the callback returns a promise, the framework defers child unmounting until it resolves. Same deduplication semantics as `schedule`.
+  <dd>Registers a callback that the framework calls when the [=component=] unmounts, before children are unmounted. The callback receives the [=element value=]. Unlike `schedule` and `after`, cleanup callbacks are <strong>persistent</strong>: they survive across renders and fire once on unmount. Callbacks are deduplicated by function identity. If a callback returns a promise, the framework defers child unmounting until the promise resolves, keeping the [=component's=] DOM nodes in the document while awaiting. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at unmount time.
 
   <dt>`provide(key, value)`
   <dd>Stores a value on this [=component context=], retrievable by descendants via `consume`.
@@ -159,8 +159,6 @@ The framework provides a <dfn>component context</dfn> object to each [=component
   <dt>`addEventListener` / `removeEventListener`
   <dd>[`EventTarget`](https://dom.spec.whatwg.org/#interface-eventtarget) methods that delegate to the host nodes produced by the [=component=]. See [[#events]].
 </dl>
-
-Note: When called with no arguments, `schedule`, `after`, and `cleanup` return a `Promise` that resolves with the rendered value.
 
 ## Method Signatures ## {#method-signatures}
 
@@ -397,14 +395,14 @@ Framework receives element with component tag
 
 <table class="data">
   <thead>
-    <tr><th>Callback<th>When<th>Argument<th>Deduplication
+    <tr><th>Callback<th>When<th>Argument<th>Lifetime<th>Async return
   </thead>
   <tbody>
-    <tr><td><code>ref(cb)</code><td>After DOM created, before insertion<td>[=Element value=]<td>N/A (prop, not method)
-    <tr><td><code>schedule(cb)</code><td>After DOM created, before insertion<td>[=Element value=]<td>By function identity
-    <tr><td><code>after(cb)</code><td>After DOM inserted into document<td>[=Element value=]<td>By function identity
-    <tr><td><code>cleanup(cb)</code><td>On unmount, before children unmount<td>[=Element value=]<td>By function identity
-    <tr><td><code>refresh(cb)</code><td>Enqueues re-execution<td>None (cb runs before re-exec)<td>No
+    <tr><td><code>ref(cb)</code><td>After DOM created, before insertion<td>[=Element value=]<td>Prop<td>Ignored
+    <tr><td><code>schedule(cb)</code><td>After DOM created, before insertion<td>[=Element value=]<td>One-shot<td>Defers insertion (initial render only)
+    <tr><td><code>after(cb)</code><td>After DOM inserted into document<td>[=Element value=]<td>One-shot<td>Ignored
+    <tr><td><code>cleanup(cb)</code><td>On unmount, before children unmount<td>[=Element value=]<td>Persistent<td>Defers child unmounting
+    <tr><td><code>refresh(cb)</code><td>Enqueues re-execution<td>None (cb runs before re-exec)<td>One-shot<td>N/A
   </tbody>
 </table>
 
