@@ -12,7 +12,7 @@ Boilerplate: copyright off
 </pre>
 
 <div class="copyright">
-  Copyright © 2026 Brian Kim. Licensed under the <a href="https://opensource.org/licenses/MIT">MIT License</a>.
+  Copyright © 2019–2026 Brian Kim. Licensed under the <a href="https://opensource.org/licenses/MIT">MIT License</a>.
 </div>
 
 <pre class='link-defaults'>
