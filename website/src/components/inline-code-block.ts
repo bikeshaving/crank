@@ -4,23 +4,6 @@ import {css} from "@emotion/css";
 import {CodeEditor} from "./code-editor.js";
 import {CodePreview} from "./code-preview.js";
 
-// Detect if code uses JSX or template syntax
-function detectSyntax(code: string, lang: string): "jsx" | "template" | null {
-	const hasTemplate = /jsx`/.test(code);
-	// Use language identifier for JSX detection, not content sniffing
-	// (content sniffing fails on TypeScript generics like <T>)
-	const hasJSX = /jsx|tsx/.test(lang) && !hasTemplate;
-	if (hasJSX) return "jsx";
-	if (hasTemplate) return "template";
-	return null;
-}
-
-// Check if language supports toggle
-function canToggleLang(lang: string): boolean {
-	if (lang.includes("notoggle")) return false;
-	return /jsx|tsx/.test(lang) || lang.startsWith("js") || lang.startsWith("ts");
-}
-
 export function* InlineCodeBlock(
 	this: Context<typeof InlineCodeBlock>,
 	{
@@ -36,22 +19,11 @@ export function* InlineCodeBlock(
 		breakpoint: string;
 	},
 ): any {
-	// Lazy-loaded conversion functions
-	let jsxToTemplate: ((code: string) => string) | null = null;
-	let templateToJSX: ((code: string) => string) | null = null;
-
-	// Detect initial syntax
-	const detectedSyntax = detectSyntax(value, lang);
-	let syntaxMode: "jsx" | "template" = detectedSyntax || "jsx";
-
-	let justToggled = false;
 	let copied = false;
-	let converting = false;
 
 	this.addEventListener("contentchange", (ev: any) => {
 		this.refresh(() => {
 			value = ev.target.value;
-			syntaxMode = detectSyntax(value, lang) || "jsx";
 		});
 	});
 
@@ -78,49 +50,6 @@ export function* InlineCodeBlock(
 	}
 
 	for ({value, lang, editable, breakpoint = "1300px"} of this) {
-		if (justToggled) {
-			this.schedule(() => {
-				justToggled = false;
-			});
-		}
-
-		const canToggle = canToggleLang(lang) && detectedSyntax !== null;
-
-		const toggleSyntax = async () => {
-			if (converting) return;
-
-			// Lazy load conversion functions
-			if (!jsxToTemplate || !templateToJSX) {
-				this.refresh(() => {
-					converting = true;
-				});
-				try {
-					const codemods = await import("@b9g/crank-codemods");
-					jsxToTemplate = codemods.jsxToTemplate;
-					templateToJSX = codemods.templateToJSX;
-				} catch {
-					converting = false;
-					return;
-				}
-				converting = false;
-			}
-
-			try {
-				if (syntaxMode === "jsx") {
-					value = jsxToTemplate(value);
-					syntaxMode = "template";
-				} else {
-					value = templateToJSX(value);
-					syntaxMode = "jsx";
-				}
-			} catch {
-				// Conversion failed, stay on current syntax
-			}
-
-			this.refresh(() => {
-				justToggled = true;
-			});
-		};
 		yield jsx`
 			<div hydrate="!class" class=${css`
 				max-width: ${editable ? "calc(100% - 1px)" : "min(100%, 1000px)"};
@@ -157,57 +86,6 @@ export function* InlineCodeBlock(
 							align-items: center;
 							gap: 8px;
 						`}>
-							${
-								canToggle &&
-								jsx`
-									<button
-										hydrate
-										onclick=${toggleSyntax}
-										role="switch"
-										aria-label="toggle syntax"
-										aria-checked=${syntaxMode === "template" ? "true" : "false"}
-										class=${css`
-											position: relative;
-											width: 48px;
-											height: 24px;
-											border-radius: 12px;
-											border: 1px solid var(--text-color);
-											background: transparent;
-											cursor: pointer;
-											padding: 0 4px;
-											display: flex;
-											align-items: center;
-											justify-content: space-between;
-											font-size: 10px;
-											font-family: monospace;
-											opacity: 0.7;
-											transition: opacity 0.2s;
-											&:hover {
-												opacity: 1;
-											}
-											&:focus {
-												outline: none;
-												opacity: 1;
-											}
-										`}
-									>
-										<span>JSX</span>
-										<span>JS</span>
-										<span
-											class=${css`
-												position: absolute;
-												width: 22px;
-												height: 22px;
-												border-radius: 11px;
-												border: 1px solid var(--text-color);
-												background: var(--bg-color);
-												transition: left 0.2s;
-											`}
-											style=${{left: syntaxMode === "jsx" ? "24px" : "2px"}}
-										/>
-									</button>
-								`
-							}
 							<button
 								hydrate
 								onclick=${async () => {
@@ -243,7 +121,7 @@ export function* InlineCodeBlock(
 							overflow-x: auto;
 						`}>
 							<${CodeEditor}
-								copy=${!justToggled}
+								copy=${true}
 								value=${value}
 								lang=${lang}
 								editable=${editable}
