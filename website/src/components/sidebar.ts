@@ -90,7 +90,9 @@ export function Main({children}: {children: unknown}) {
 				padding: 3rem 2rem;
 			}
 
-			p, ul, ol {
+			p,
+			ul,
+			ol {
 				max-width: 800px;
 			}
 		`}>
