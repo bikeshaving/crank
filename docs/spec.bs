@@ -27,15 +27,15 @@ A <dfn>component</dfn> is a function. The framework calls it with:
 
 The framework distinguishes [=component=] types by return value, not declaration syntax.
 
-<table>
+<table class="data">
   <thead>
     <tr><th>Type<th>Syntax<th>Returns<th>Stateful
   </thead>
   <tbody>
-    <tr><td>Function<td>`function C(props) {}`<td>`Children`<td>No — re-called on every update.
-    <tr><td>Generator<td>`function *C(props) {}`<td>`Iterator<Children>`<td>Yes — lexical scope preserved across yields.
-    <tr><td>Async function<td>`async function C(props) {}`<td>`Promise<Children>`<td>No — re-called on every update.
-    <tr><td>Async generator<td>`async function *C(props) {}`<td>`AsyncIterator<Children>`<td>Yes — lexical scope preserved across yields.
+    <tr><td>Function<td><code>function C(props) {}</code><td><code>Children</code><td>No — re-called on every update.
+    <tr><td>Generator<td><code>function *C(props) {}</code><td><code>Iterator&lt;Children></code><td>Yes — lexical scope preserved across yields.
+    <tr><td>Async function<td><code>async function C(props) {}</code><td><code>Promise&lt;Children></code><td>No — re-called on every update.
+    <tr><td>Async generator<td><code>async function *C(props) {}</code><td><code>AsyncIterator&lt;Children></code><td>Yes — lexical scope preserved across yields.
   </tbody>
 </table>
 
@@ -74,14 +74,14 @@ The framework provides a <dfn>component context</dfn> object to each [=component
 
 ## Properties ## {#context-properties}
 
-<table>
+<table class="data">
   <thead>
     <tr><th>Property<th>Type<th>Description
   </thead>
   <tbody>
-    <tr><td>`props`<td>`TProps` (readonly)<td>Current props of the associated element.
-    <tr><td>`isExecuting`<td>`boolean` (readonly)<td>`true` during the synchronous call to the [=component=] function or `iterator.next()`. Set to `false` before children are diffed.
-    <tr><td>`isUnmounted`<td>`boolean` (readonly)<td>`true` after the [=component=] has been unmounted.
+    <tr><td><code>props</code><td><code>TProps</code> (readonly)<td>Current props of the associated element.
+    <tr><td><code>isExecuting</code><td><code>boolean</code> (readonly)<td><code>true</code> during the synchronous call to the [=component=] function or <code>iterator.next()</code>. Set to <code>false</code> before children are diffed.
+    <tr><td><code>isUnmounted</code><td><code>boolean</code> (readonly)<td><code>true</code> after the [=component=] has been unmounted.
   </tbody>
 </table>
 
@@ -117,18 +117,18 @@ Note: When called with no arguments, `schedule`, `after`, and `cleanup` return a
 
 ## Method Signatures ## {#method-signatures}
 
-<table>
+<table class="data">
   <thead>
     <tr><th>Method<th>Signature
   </thead>
   <tbody>
-    <tr><td>`refresh`<td>`(callback?: () => unknown) => Promise<TResult> | TResult`
-    <tr><td>`schedule`<td>`(callback?: (value: TResult) => unknown) => Promise<TResult> | void`
-    <tr><td>`after`<td>`(callback?: (value: TResult) => unknown) => Promise<TResult> | void`
-    <tr><td>`cleanup`<td>`(callback?: (value: TResult) => unknown) => Promise<TResult> | void`
-    <tr><td>`provide`<td>`(key: unknown, value: unknown) => void`
-    <tr><td>`consume`<td>`(key: unknown) => unknown`
-    <tr><td>`dispatchEvent`<td>`(event: Event) => boolean`
+    <tr><td><code>refresh</code><td><code>(callback?: () => unknown) => Promise&lt;TResult> | TResult</code>
+    <tr><td><code>schedule</code><td><code>(callback?: (value: TResult) => unknown) => Promise&lt;TResult> | void</code>
+    <tr><td><code>after</code><td><code>(callback?: (value: TResult) => unknown) => Promise&lt;TResult> | void</code>
+    <tr><td><code>cleanup</code><td><code>(callback?: (value: TResult) => unknown) => Promise&lt;TResult> | void</code>
+    <tr><td><code>provide</code><td><code>(key: unknown, value: unknown) => void</code>
+    <tr><td><code>consume</code><td><code>(key: unknown) => unknown</code>
+    <tr><td><code>dispatchEvent</code><td><code>(event: Event) => boolean</code>
   </tbody>
 </table>
 
@@ -150,7 +150,7 @@ Each iteration yields the current props object. If new props are not yet availab
 
 Each [=component=] type has different blocking behavior. To <dfn lt="block|blocks|blocking">block</dfn> means the framework waits for the [=component's=] pending work to settle before accepting its next update.
 
-<table>
+<table class="data">
   <thead>
     <tr><th>Type<th>Blocks for own execution<th>Blocks for children
   </thead>
@@ -158,8 +158,8 @@ Each [=component=] type has different blocking behavior. To <dfn lt="block|block
     <tr><td>Function<td>No<td>No
     <tr><td>Generator<td>No (sync)<td>Yes
     <tr><td>Async function<td>Yes<td>No
-    <tr><td>Async generator (`for...of`)<td>Yes<td>Yes
-    <tr><td>Async generator (`for await...of`)<td>Yes<td>No
+    <tr><td>Async generator (<code>for...of</code>)<td>Yes<td>Yes
+    <tr><td>Async generator (<code>for await...of</code>)<td>Yes<td>No
   </tbody>
 </table>
 
@@ -234,30 +234,30 @@ Style props accept an object with CSS property names. Both kebab-case (`font-siz
 
 # Special Elements # {#special-elements}
 
-<table>
+<table class="data">
   <thead>
     <tr><th>Element<th>Tag<th>Behavior
   </thead>
   <tbody>
-    <tr><td>`Fragment`<td>`""`<td>The framework renders children without a wrapper node. Non-string iterables are implicitly wrapped in a Fragment.
-    <tr><td>`Copy`<td>`Symbol.for("crank.Copy")`<td>The framework preserves the previously rendered content at this position.
-    <tr><td>`Portal`<td>`Symbol.for("crank.Portal")`<td>The framework renders children into the DOM node specified by the `root` prop.
-    <tr><td>`Raw`<td>`Symbol.for("crank.Raw")`<td>The framework injects the raw HTML string or DOM node from the `value` prop.
+    <tr><td><code>Fragment</code><td><code>""</code><td>The framework renders children without a wrapper node. Non-string iterables are implicitly wrapped in a Fragment.
+    <tr><td><code>Copy</code><td><code>Symbol.for("crank.Copy")</code><td>The framework preserves the previously rendered content at this position.
+    <tr><td><code>Portal</code><td><code>Symbol.for("crank.Portal")</code><td>The framework renders children into the DOM node specified by the <code>root</code> prop.
+    <tr><td><code>Raw</code><td><code>Symbol.for("crank.Raw")</code><td>The framework injects the raw HTML string or DOM node from the <code>value</code> prop.
   </tbody>
 </table>
 
 # Special Props # {#special-props}
 
-<table>
+<table class="data">
   <thead>
     <tr><th>Prop<th>Type<th>Behavior
   </thead>
   <tbody>
-    <tr><td>`key`<td>`any`<td>The framework uses keys for reconciliation. Keyed children are matched by key, not position. Duplicate keys among siblings produce a runtime error.
-    <tr><td>`ref`<td>`(node) => unknown`<td>The framework calls this with the rendered DOM node after commit.
-    <tr><td>`copy`<td>`boolean | string`<td>`true`: the framework preserves the entire subtree. String: the framework selectively copies/excludes props (`"class disabled"` or `"!class"`).
-    <tr><td>`hydrate`<td>`boolean | string`<td>`true`: the framework hydrates from existing DOM. String: selective hydration of specific props.
-    <tr><td>`children`<td>`unknown`<td>Child content passed between opening and closing tags.
+    <tr><td><code>key</code><td><code>any</code><td>The framework uses keys for reconciliation. Keyed children are matched by key, not position. Duplicate keys among siblings produce a runtime error.
+    <tr><td><code>ref</code><td><code>(node) => unknown</code><td>The framework calls this with the rendered DOM node after commit.
+    <tr><td><code>copy</code><td><code>boolean | string</code><td><code>true</code>: the framework preserves the entire subtree. String: the framework selectively copies/excludes props (<code>"class disabled"</code> or <code>"!class"</code>).
+    <tr><td><code>hydrate</code><td><code>boolean | string</code><td><code>true</code>: the framework hydrates from existing DOM. String: selective hydration of specific props.
+    <tr><td><code>children</code><td><code>unknown</code><td>Child content passed between opening and closing tags.
   </tbody>
 </table>
 
