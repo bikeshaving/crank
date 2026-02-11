@@ -81,15 +81,15 @@ export function Navbar({url}: {url: string}) {
 				</div>
 				<div>
 					<a
-						href="/playground/"
-						aria-current=${url.startsWith("/playground") && "page"}
-					>Playground</a>
-				</div>
-				<div>
-					<a
 						href="/spec"
 						aria-current=${url.startsWith("/spec") && "page"}
 					>Spec</a>
+				</div>
+				<div>
+					<a
+						href="/playground/"
+						aria-current=${url.startsWith("/playground") && "page"}
+					>Playground</a>
 				</div>
 			</div>
 			<div class=${navbarGroupLayout}>
