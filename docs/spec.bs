@@ -18,6 +18,47 @@ Boilerplate: copyright off
 <pre class='link-defaults'>
 </pre>
 
+# Elements # {#elements}
+
+An <dfn>element</dfn> is a lightweight object describing a node in the UI tree. Each [=element=] has a **tag** and **props**.
+
+[=Elements=] are created by `createElement(tag, props, ...children)`, JSX (see [[#jsx]]), or tagged templates (see [[#template-tags]]). The framework uses the term "tag" where the [JSX specification](https://facebook.github.io/jsx/) uses "type."
+
+The tag determines what the [=element=] represents:
+
+- **Host elements**: the tag is a string (`"div"`, `"span"`) — the [=renderer=] creates a node in the host environment.
+- **Component elements**: the tag is a function — the framework invokes it as a [=component=] (see [[#invocation]]).
+- **Symbol elements**: the tag is a symbol — used for special [=components=] like Portal, Raw, Copy, and Text (see [[#special-components]]).
+
+[=Elements=] are identified across versions and realms by an internal `$$typeof` symbol, following the [same pattern as React](https://overreacted.io/why-do-react-elements-have-typeof-property/) to protect against injection attacks.
+
+The `children` prop contains child content passed between opening and closing tags. See [[#child-normalization]] for the normalization rules applied to children.
+
+# Renderers # {#renderers}
+
+A <dfn>renderer</dfn> is the entry point to the framework. It translates the abstract [=element=] tree into mutations on a host environment.
+
+## render() ## {#renderer-render}
+
+`render(children, root?, bridge?)` — renders an [=element=] tree into a root. The [=renderer=] caches per root; subsequent calls to `render` with the same root update in place. Returns `Promise<TResult> | TResult`.
+
+## hydrate() ## {#renderer-hydrate}
+
+`hydrate(children, root, bridge?)` — attaches to pre-existing content in the root rather than creating from scratch. Used for server-rendered HTML.
+
+## Bridging ## {#bridging}
+
+The `bridge` parameter connects [=renderers=] so that events, provisions, and errors propagate across [=renderer=] boundaries.
+
+## Built-in Renderers ## {#built-in-renderers}
+
+The framework ships two [=renderers=]:
+
+- **DOM renderer** (`@b9g/crank/dom`) — renders into DOM Elements, creates DOM Nodes.
+- **HTML renderer** (`@b9g/crank/html`) — renders to HTML strings for server-side rendering.
+
+The core framework is [=renderer=]-agnostic: it manages [=component=] lifecycles, reconciles [=element=] trees, and tracks state independently of any output target. The [=renderer=] adapter interface is described in [[#render-adapter]].
+
 # Component Invocation # {#invocation}
 
 A <dfn>component</dfn> is a function. The framework calls it with:
@@ -187,7 +228,9 @@ Duplicate keys among siblings produce a runtime error. The framework discards th
 
 ## Element Values ## {#element-values}
 
-Every element in the tree produces an <dfn>element value</dfn> when rendered. For host elements (e.g. `"div"`), the [=element value=] is the node created by the [=renderer=]. For [=components=] and [=Fragments=], the [=element value=] is the node or array of nodes produced by their children. The [=element value=] is what `schedule`, `after`, and `cleanup` callbacks receive, and what the [=component context's=] `addEventListener` and `removeEventListener` methods delegate to.
+Every element in the tree produces an <dfn>element value</dfn> when rendered. For host elements (e.g. `"div"`), the [=element value=] is the node created by the [=renderer=]. For [=components=] and [=Fragments=], the [=element value=] is the node or array of nodes produced by their children.
+
+The [=element value=] is the argument passed to `ref` callbacks, `schedule` callbacks, `after` callbacks, and `cleanup` callbacks. It is also what the [=component context's=] `addEventListener` and `removeEventListener` methods delegate to, and what `yield` evaluates to in generator [=components=] (as `previousResult`).
 
 ## Child Normalization ## {#child-normalization}
 
@@ -259,7 +302,7 @@ When a new async element is rendered into a position where a previous element ha
 3. The framework sets `isExecuting` to `false`.
 4. The framework diffs the yielded/returned children against the previous tree.
 5. The framework commits DOM mutations.
-6. The framework fires `schedule` callbacks (DOM created, not yet inserted).
+6. The framework calls `ref` callbacks and fires `schedule` callbacks (DOM created, not yet inserted).
 7. The framework inserts DOM nodes into the document.
 8. The framework fires `after` callbacks (DOM live in document).
 
@@ -283,17 +326,17 @@ Framework receives element with component tag
 │   │
 │   ├─ returns Children ─────────────────────── FUNCTION COMPONENT
 │   │   diff children
-│   │   commit DOM → schedule(cb) → insert DOM → after(cb)
+│   │   commit DOM → ref(cb) / schedule(cb) → insert DOM → after(cb)
 │   │
 │   ├─ returns Iterator ─────────────────────── GENERATOR COMPONENT
 │   │   store iterator
 │   │   diff children ◀── BLOCKS until children settle
-│   │   commit DOM → schedule(cb) → insert DOM → after(cb)
+│   │   commit DOM → ref(cb) / schedule(cb) → insert DOM → after(cb)
 │   │
 │   ├─ returns Promise&lt;Children> ────────────── ASYNC FUNCTION COMPONENT
 │   │   ◀── BLOCKS until promise settles (enqueue if re-rendered)
 │   │   diff children (does not block)
-│   │   commit DOM → schedule(cb) → insert DOM → after(cb)
+│   │   commit DOM → ref(cb) / schedule(cb) → insert DOM → after(cb)
 │   │
 │   └─ returns AsyncIterator ────────────────── ASYNC GENERATOR COMPONENT
 │       store async iterator
@@ -302,18 +345,18 @@ Framework receives element with component tag
 │       ├─ enters for...of (sync iteration of ctx)
 │       │   diff children ◀── BLOCKS until children settle
 │       │   yield evaluates to settled result
-│       │   commit DOM → schedule(cb) → insert DOM → after(cb)
+│       │   commit DOM → ref(cb) / schedule(cb) → insert DOM → after(cb)
 │       │
 │       ├─ enters for await...of (async iteration of ctx)
 │       │   diff children (does not block, pull-based)
 │       │   yield evaluates to Promise&lt;result>
 │       │   multiple yields per update → chasing
-│       │   commit DOM → schedule(cb) → insert DOM → after(cb)
+│       │   commit DOM → ref(cb) / schedule(cb) → insert DOM → after(cb)
 │       │   suspends at loop bottom until new props or refresh()
 │       │
 │       └─ no loop (direct yield)
 │           diff children ◀── BLOCKS until children settle
-│           commit DOM → schedule(cb) → insert DOM → after(cb)
+│           commit DOM → ref(cb) / schedule(cb) → insert DOM → after(cb)
 │
 ├─ UPDATE (new props or refresh())
 │   │
@@ -357,9 +400,10 @@ Framework receives element with component tag
     <tr><th>Callback<th>When<th>Argument<th>Deduplication
   </thead>
   <tbody>
-    <tr><td><code>schedule(cb)</code><td>After DOM created, before insertion<td>Rendered value<td>By function identity
-    <tr><td><code>after(cb)</code><td>After DOM inserted into document<td>Rendered value<td>By function identity
-    <tr><td><code>cleanup(cb)</code><td>On unmount, before children unmount<td>Rendered value<td>By function identity
+    <tr><td><code>ref(cb)</code><td>After DOM created, before insertion<td>[=Element value=]<td>N/A (prop, not method)
+    <tr><td><code>schedule(cb)</code><td>After DOM created, before insertion<td>[=Element value=]<td>By function identity
+    <tr><td><code>after(cb)</code><td>After DOM inserted into document<td>[=Element value=]<td>By function identity
+    <tr><td><code>cleanup(cb)</code><td>On unmount, before children unmount<td>[=Element value=]<td>By function identity
     <tr><td><code>refresh(cb)</code><td>Enqueues re-execution<td>None (cb runs before re-exec)<td>No
   </tbody>
 </table>
@@ -378,12 +422,6 @@ For async generator [=components=] in `for await...of` mode, the framework track
 
 If a generator [=component=] does not catch an injected error, the framework does not call `return()` — the iterator is already done because the uncaught `throw()` terminates it. The [`finally`](https://tc39.es/ecma262/#sec-try-statement) block of the generator, if present, still executes as part of the [iterator protocol](https://tc39.es/ecma262/#sec-iteration).
 
-# Renderers # {#renderers}
-
-The core framework is <dfn>renderer</dfn>-agnostic. It manages component lifecycles, reconciles element trees, and tracks state independently of any output target. A [=renderer=] is an adapter that translates the framework's abstract operations (create, update, arrange, remove) into mutations on a specific host environment.
-
-The framework ships two renderers: a DOM renderer (`@b9g/crank/dom`) and an HTML string renderer (`@b9g/crank/html`). The sections below describe DOM-specific behavior; other renderers may implement equivalent semantics for their host environment.
-
 # Events # {#events}
 
 The framework maps `on*` props to [event listeners](https://dom.spec.whatwg.org/#concept-event-listener) on the underlying host nodes. Both lowercase (`onclick`) and camelCase (`onClick`) event prop names are supported; camelCase names are normalized to lowercase before registration.
@@ -400,11 +438,11 @@ The framework passes props directly as [DOM attributes](https://dom.spec.whatwg.
 
 Style props accept an object with [CSS property names](https://drafts.csswg.org/cssom/#dom-cssstyledeclaration-setproperty). Both kebab-case (`font-size`) and camelCase (`fontSize`) are supported; camelCase names are converted to kebab-case. Numeric values are automatically suffixed with `px` for properties that accept [length units](https://drafts.csswg.org/css-values/#lengths).
 
-# Special Elements # {#special-elements}
+# Special Components # {#special-components}
 
 <table class="data">
   <thead>
-    <tr><th>Element<th>Tag<th>Behavior
+    <tr><th>Component<th>Tag<th>Behavior
   </thead>
   <tbody>
     <tr><td><code>Fragment</code><td><code>""</code><td>The framework renders children without a wrapper node. Non-string iterables are implicitly wrapped in a <dfn>Fragment</dfn>.
@@ -423,7 +461,7 @@ Style props accept an object with [CSS property names](https://drafts.csswg.org/
   </thead>
   <tbody>
     <tr><td><code>key</code><td><code>any</code><td>The framework uses keys for reconciliation. Keyed children are matched by key, not position. Duplicate keys among siblings produce a runtime error.
-    <tr><td><code>ref</code><td><code>(node) => unknown</code><td>The framework calls this with the rendered DOM node after commit.
+    <tr><td><code>ref</code><td><code>(value: TResult) => unknown</code><td>The framework calls this with the [=element value=] after DOM mutations are committed but before DOM nodes are inserted into the document — the same timing as <code>schedule</code> callbacks.
     <tr><td><code>copy</code><td><code>boolean | string</code><td><code>true</code>: the framework preserves the entire subtree. String: the framework selectively copies/excludes props (<code>"class disabled"</code> or <code>"!class"</code>).
     <tr><td><code>hydrate</code><td><code>boolean | string</code><td><code>true</code>: the framework hydrates from existing DOM. String: selective hydration of specific props.
     <tr><td><code>children</code><td><code>unknown</code><td>Child content passed between opening and closing tags.
@@ -474,3 +512,32 @@ The `jsx` and `html` tagged template literals from `@b9g/crank/standalone` produ
 The template tag replicates JSX syntax and semantics within [tagged template literals](https://tc39.es/ecma262/#sec-tagged-templates). [=Component=] tags must be interpolated as expressions (`<${Component} />`). Closing tags support three forms: symmetric (`</${Component}>`), comment-style (`<//Component>`), and shorthand (`<//>`).
 
 The `@b9g/crank/standalone` module re-exports everything from the root `@b9g/crank` module along with the template tag functions, enabling single-file applications that run directly in browsers without a build step.
+
+# Render Adapter # {#render-adapter}
+
+A [=renderer=] is constructed with an adapter object that implements operations for a specific host environment. The adapter is parameterized by four types:
+
+- <strong><code>TNode</code></strong> — the host node type (e.g. DOM <code>Node</code>)
+- <strong><code>TScope</code></strong> — data passed down the tree (e.g. SVG namespace)
+- <strong><code>TRoot</code></strong> — the root container type (e.g. DOM <code>Element</code>)
+- <strong><code>TResult</code></strong> — the public value type returned by <code>render</code> and exposed to [=components=]
+
+The adapter implements the following operations:
+
+<table class="data">
+  <thead>
+    <tr><th>Operation<th>Signature<th>Description
+  </thead>
+  <tbody>
+    <tr><td><code>create</code><td><code>(tag: string, props: Record&lt;string, any>, scope: TScope) => TNode</code><td>Create a new host node for a host [=element=].
+    <tr><td><code>adopt</code><td><code>(node: TNode, tag: string, props: Record&lt;string, any>, scope: TScope) => TNode</code><td>Adopt an existing node during hydration.
+    <tr><td><code>text</code><td><code>(text: string, scope: TScope, oldNode?: TNode) => TNode</code><td>Create or update a text node.
+    <tr><td><code>scope</code><td><code>(tag: string, props: Record&lt;string, any>, scope: TScope) => TScope</code><td>Compute scope for child [=elements=] (e.g. SVG namespace propagation).
+    <tr><td><code>raw</code><td><code>(value: any, scope: TScope, oldNode?: TNode) => TNode</code><td>Handle raw HTML/node injection for the Raw [=component=].
+    <tr><td><code>patch</code><td><code>(node: TNode, tag: string, props: Record&lt;string, any>, oldProps: Record&lt;string, any>, scope: TScope) => void</code><td>Update a node's properties when props change.
+    <tr><td><code>arrange</code><td><code>(tag: string, node: TNode | TRoot, children: Array&lt;TNode>) => void</code><td>Position child nodes within a parent.
+    <tr><td><code>remove</code><td><code>(node: TNode, tag: string) => void</code><td>Remove a node when unmounted.
+    <tr><td><code>read</code><td><code>(node: TNode) => TResult</code><td>Transform internal node values into the public API type.
+    <tr><td><code>finalize</code><td><code>(root: TRoot) => void</code><td>Perform final operations after a render cycle.
+  </tbody>
+</table>
