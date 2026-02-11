@@ -75,48 +75,6 @@ function *Card({title, count}) {
 
 **ESLint rule:** `crank/prop-destructuring-consistency`
 
-## React-style event names
-
-Crank uses standard HTML event attributes, not React's camelCase synthetic events. React names silently bind to nothing.
-
-```jsx
-// WRONG — these are not DOM event names
-<button onClick={handler} onChange={handler} onKeyDown={handler} />
-
-// CORRECT — lowercase DOM event names
-<button onclick={handler} onchange={handler} onkeydown={handler} />
-```
-
-**ESLint rule:** `crank/no-react-event-props`
-
-## React-style HTML attributes
-
-Crank passes props directly to the DOM. React-isms like `className` are not translated.
-
-```jsx
-// WRONG
-<label className="title" htmlFor="name" />
-
-// CORRECT — standard HTML attribute names
-<label class="title" for="name" />
-```
-
-**ESLint rule:** `crank/no-react-props`
-
-## React-style SVG attributes
-
-SVG attributes in Crank use their standard names (kebab-case, namespaced), not React's camelCase.
-
-```jsx
-// WRONG
-<line strokeWidth="2" xlinkHref="#icon" />
-
-// CORRECT
-<line stroke-width="2" xlink:href="#icon" />
-```
-
-**ESLint rule:** `crank/no-react-svg-props`
-
 ## Leaking timers and subscriptions
 
 Timers and subscriptions outlive the component if not cleaned up. Use `try`/`finally` around the loop, `this.cleanup()`, or code after the `for...of` loop.
