@@ -44,9 +44,6 @@
         "@types/jscodeshift": "^0.12.0",
         "typescript": "^5.0.0",
       },
-      "peerDependencies": {
-        "@b9g/crank": ">=0.7.0",
-      },
     },
     "packages/create-crank": {
       "name": "create-crank",
@@ -1629,8 +1626,6 @@
 
     "zwitch": ["zwitch@2.0.4", "", {}, "sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A=="],
 
-    "@b9g/crank-codemods/@b9g/crank": ["@b9g/crank@0.7.5", "", {}, "sha512-tG82HhWizXZWVS2XZAElQ7/h31BrDoLh1N92M2JB8AOojc4xSHjZB2883ej9K7tbC3OnfA5dMp9IulJG1nrnBQ=="],
-
     "@babel/code-frame/js-tokens": ["js-tokens@4.0.0", "", {}, "sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ=="],
 
     "@babel/register/find-cache-dir": ["find-cache-dir@2.1.0", "", { "dependencies": { "commondir": "^1.0.1", "make-dir": "^2.0.0", "pkg-dir": "^3.0.0" } }, "sha512-Tq6PixE0w/VMFfCgbONnkiQIVol/JJL7nRMi20fqzA4NRs9AfeqMGeRdPi3wIhYkxjeBaWh2rxwapn5Tu3IqOQ=="],
@@ -1669,7 +1664,7 @@
 
     "astro/semver": ["semver@7.7.4", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-vFKC2IEtQnVhpT78h1Yp8wzwrf8CM+MzKMHGJZfBtzhZNycRFnXsHk6E5TxIkkMsgNS7mdX3AGB7x2QM2di4lA=="],
 
-    "astro-crank/@b9g/crank": ["@b9g/crank@0.7.5", "", {}, "sha512-tG82HhWizXZWVS2XZAElQ7/h31BrDoLh1N92M2JB8AOojc4xSHjZB2883ej9K7tbC3OnfA5dMp9IulJG1nrnBQ=="],
+    "astro-crank/@b9g/crank": ["@b9g/crank@0.6.1", "", {}, "sha512-NE5uuOMYeNdRLLGSXeM5EpyUvaNjcZmPUEs34ahnXhmlogv9yV3ymoX/RQFf63jTOvTP/wzN+vvNEfkq4sS+2g=="],
 
     "boxen/chalk": ["chalk@5.6.2", "", {}, "sha512-7NzBL0rN6fMUW+f7A6Io4h40qQlG+xGmtMxfbnH/K7TAtt8JQWVQK+6g0UXKMeVJoyV5EkkNsErQ8pVD3bLHbA=="],
 
