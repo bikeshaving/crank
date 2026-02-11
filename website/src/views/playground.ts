@@ -1,5 +1,3 @@
-import * as FS from "fs/promises";
-import * as Path from "path";
 import {jsx} from "@b9g/crank/standalone";
 import {Root} from "../components/root.js";
 import {SerializeScript} from "../components/serialize-javascript.js";
@@ -9,9 +7,6 @@ interface ViewProps {
 	url: string;
 	params: Record<string, string>;
 }
-
-const __dirname = new URL(".", import.meta.url).pathname;
-const EXAMPLES_DIR = Path.join(__dirname, "../../../examples");
 
 const TIMER_EXAMPLE = `
 import {renderer} from "@b9g/crank/dom";
@@ -31,16 +26,12 @@ renderer.render(<Timer />, document.body);
 
 // Read all examples dynamically
 async function loadExamples() {
-	const files = await FS.readdir(EXAMPLES_DIR);
-	const exampleFiles = files.filter(
-		(file) =>
-			file.endsWith(".js") || file.endsWith(".ts") || file.endsWith(".tsx"),
-	);
+	const examplesDir = await self.directories.open("examples");
 
 	const examples = [{name: "timer", label: "Timer", code: TIMER_EXAMPLE}];
 
 	// Define display names for examples
-	const exampleLabels = {
+	const exampleLabels: Record<string, string> = {
 		"greeting.js": "Hello World",
 		"todomvc.js": "Todo MVC",
 		"hackernews.js": "Hacker News",
@@ -52,12 +43,26 @@ async function loadExamples() {
 		"hexagonal-minesweeper.ts": "Hexagonal Minesweeper",
 	};
 
-	for (const file of exampleFiles) {
-		const name = Path.basename(file, Path.extname(file));
+	const entries: Array<[string, FileSystemHandle]> = [];
+	for await (const entry of examplesDir.entries()) {
+		entries.push(entry);
+	}
+	entries.sort((a, b) => a[0].localeCompare(b[0]));
+
+	const exampleFiles = entries.filter(
+		([name, handle]) =>
+			handle.kind === "file" &&
+			(name.endsWith(".js") || name.endsWith(".ts") || name.endsWith(".tsx")),
+	);
+
+	for (const [file, handle] of exampleFiles) {
+		const dotIndex = file.lastIndexOf(".");
+		const name = dotIndex !== -1 ? file.slice(0, dotIndex) : file;
 		const label =
 			exampleLabels[file] ||
 			name.replace(/-/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
-		const code = await FS.readFile(Path.join(EXAMPLES_DIR, file), "utf8");
+		const fileObj = await (handle as FileSystemFileHandle).getFile();
+		const code = await fileObj.text();
 
 		examples.push({name, label, code});
 	}

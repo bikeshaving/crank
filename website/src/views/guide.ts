@@ -1,6 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
-import * as path from "path";
 
 import {Root} from "../components/root.js";
 import {Main, Sidebar} from "../components/sidebar.js";
@@ -14,12 +13,10 @@ interface ViewProps {
 
 import {collectDocuments} from "../models/document.js";
 
-const __dirname = new URL(".", import.meta.url).pathname;
 export default async function Guide({url}: ViewProps) {
-	const docs = await collectDocuments(
-		path.join(__dirname, "../../../docs/guides"),
-		path.join(__dirname, "../../../docs/"),
-	);
+	const docsDir = await self.directories.open("docs");
+	const guidesDir = await docsDir.getDirectoryHandle("guides");
+	const docs = await collectDocuments(guidesDir, "guides");
 
 	const post = docs.find(
 		(doc) => doc.url.replace(/\/$/, "") === url.replace(/\/$/, ""),

@@ -1,4 +1,3 @@
-import Path from "path";
 import {jsx, Raw} from "@b9g/crank/standalone";
 import type {Children, Context} from "@b9g/crank";
 import {extractCritical} from "@emotion/server";
@@ -57,7 +56,7 @@ export function* Root(
 					<link rel="stylesheet" type="text/css" href=${assets.clientCSS} />
 					<meta name="description" content=${description} />
 					<meta property="og:title" content=${title} />
-					<meta property="og:url" content=${Path.join("https://crank.js.org", url)} />
+					<meta property="og:url" content=${`https://crank.js.org${url}`} />
 					<meta property="og:description" content=${description} />
 					<meta property="og:type" content="website" />
 					<meta property="og:site_name" content="Crank.js" />
