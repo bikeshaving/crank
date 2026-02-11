@@ -29,7 +29,7 @@ The [=tag=] determines what the [=element=] represents:
 
 - <dfn>Host element</dfn>: the [=tag=] is a string (`"div"`, `"span"`) — the [=renderer=] creates a node in the [=host environment=].
 - <dfn>Component element</dfn>: the [=tag=] is a function — the framework invokes it as a [=component=] (see [[#invocation]]).
-- <strong>Symbol element</strong>: the [=tag=] is a symbol — used for special [=components=] like Portal, Raw, Copy, and Text (see [[#special-components]]).
+- <dfn>Symbol element</dfn>: the [=tag=] is a symbol — used for special [=components=] like Portal, Raw, Copy, and Text (see [[#special-components]]).
 
 [=Elements=] are identified across versions and realms by an internal `$$typeof` symbol, following the [same pattern as React](https://overreacted.io/why-do-react-elements-have-typeof-property/) to protect against injection attacks.
 
@@ -62,7 +62,9 @@ The core framework is [=renderer=]-agnostic: it manages [=component=] lifecycles
 
 # Component Invocation # {#invocation}
 
-A <dfn>component</dfn> is a function. The framework MUST invoke a [=component=] when an [=element=] tree containing a component [=element=] is passed to a [=renderer's=] `render()` or `hydrate()` method, or when `refresh()` is called on the [=component=] or one of its ancestors. The framework MUST call it with:
+A <dfn>component</dfn> is a function or a special symbol [=tag=] that the framework handles internally. User-defined [=components=] are functions; the framework also provides built-in [=components=] (Fragment, Portal, Raw, Copy, Text) identified by symbol [=tags=] (see [[#special-components]]). This section describes the invocation model for function [=components=].
+
+The framework MUST invoke a function [=component=] when an [=element=] tree containing a [=component element=] is passed to a [=renderer's=] `render()` or `hydrate()` method, or when `refresh()` is called on the [=component=] or one of its ancestors. The framework MUST call it with:
 
 - <strong><code>this</code></strong> bound to a [=component context=] object
 - <strong>First argument</strong>: the current props object
@@ -140,13 +142,13 @@ The framework MUST provide a <dfn>component context</dfn> object to each [=compo
   <dd>[=Enqueue|Enqueues=] a re-execution of the [=component=]. If a callback is provided, the framework MUST run it before re-executing. If called while `isExecuting` is `true`, the framework MUST log an error and return the current value.
 
   <dt>`schedule(callback?)`
-  <dd>Registers a callback that the framework MUST call after DOM nodes are created but before they are inserted into the document. The callback receives the [=element value=]. Callbacks are <strong>one-shot</strong>: they fire once and MUST be re-registered on subsequent renders. Multiple distinct callbacks MAY be registered; the framework MUST deduplicate callbacks by function identity (registering the same function reference twice in one update fires it once). If the callback returns a promise on the [=component's=] initial render, the framework MUST defer DOM insertion until the promise resolves; on subsequent renders, promise return values MUST be ignored. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at schedule time.
+  <dd>Registers a callback that the framework MUST call after host nodes are created but before they are inserted into the [=host environment=]. The callback receives the [=element value=]. Callbacks are <strong>one-shot</strong>: they fire once and MUST be re-registered on subsequent renders. Multiple distinct callbacks MAY be registered; the framework MUST deduplicate callbacks by function identity (registering the same function reference twice in one update fires it once). If the callback returns a promise on the [=component's=] initial render, the framework MUST defer insertion until the promise resolves; on subsequent renders, promise return values MUST be ignored. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at schedule time.
 
   <dt>`after(callback?)`
-  <dd>Registers a callback that the framework MUST call after DOM nodes are inserted into the document. The callback receives the [=element value=]. Same one-shot and deduplication semantics as `schedule`. Promise return values from `after` callbacks MUST be ignored. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at insertion time.
+  <dd>Registers a callback that the framework MUST call after host nodes are inserted into the [=host environment=]. The callback receives the [=element value=]. Same one-shot and deduplication semantics as `schedule`. Promise return values from `after` callbacks MUST be ignored. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at insertion time.
 
   <dt>`cleanup(callback?)`
-  <dd>Registers a callback that the framework MUST call when the [=component=] unmounts, before children are unmounted. The callback receives the [=element value=]. Unlike `schedule` and `after`, cleanup callbacks are <strong>persistent</strong>: they MUST survive across renders and fire once on unmount. The framework MUST deduplicate callbacks by function identity. If a callback returns a promise, the framework MUST defer child unmounting until the promise resolves, keeping the [=component's=] DOM nodes in the document while awaiting. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at unmount time.
+  <dd>Registers a callback that the framework MUST call when the [=component=] unmounts, before children are unmounted. The callback receives the [=element value=]. Unlike `schedule` and `after`, cleanup callbacks are <strong>persistent</strong>: they MUST survive across renders and fire once on unmount. The framework MUST deduplicate callbacks by function identity. If a callback returns a promise, the framework MUST defer child unmounting until the promise resolves, keeping the [=component's=] host nodes in the [=host environment=] while awaiting. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at unmount time.
 
   <dt>`provide(key, value)`
   <dd>Stores a <dfn>provision</dfn> on this [=component context=], retrievable by descendants via `consume`.
@@ -214,7 +216,7 @@ By default, children at the same <dfn>position</dfn> — their index within a pa
   </tbody>
 </table>
 
-## Keyed Reconciliation ## {#keyed-reconciliation}
+## Key-Based Matching ## {#key-based-matching}
 
 When children have `key` props, the framework matches children by key instead of position. This allows the framework to efficiently reorder, insert, and remove children.
 
@@ -249,7 +251,7 @@ This normalization applies everywhere children appear: the return/yield value of
 
 ## Arrangement ## {#arrangement}
 
-After diffing, the framework arranges DOM nodes to reflect the new child order. The renderer receives the parent node and the ordered list of child nodes, and is responsible for inserting, moving, or removing DOM nodes as needed.
+After diffing, the framework arranges host nodes to reflect the new child order. The [=renderer=] receives the parent node and the ordered list of child nodes, and is responsible for inserting, moving, or removing nodes as needed.
 
 # Async Rendering # {#async-rendering}
 
@@ -288,11 +290,11 @@ Async generator [=components=] in `for await...of` mode use the same [=enqueue|e
 
 When different async element trees are rendered into the same [=position=] and settle out of order, the framework MUST ensure that later renders always win. It does this by <dfn lt="chase|chasing">chasing</dfn>: racing each render's child values against the next render's child values using [`Promise.race`](https://tc39.es/ecma262/#sec-promise.race).
 
-This produces a monotonic effect: if an earlier render settles first, its result is displayed until the later render settles. If the later render settles first, the earlier render's result MUST NOT be displayed. The DOM MUST always reflect the most recently initiated render that has settled.
+This produces a monotonic effect: if an earlier render settles first, its result is displayed until the later render settles. If the later render settles first, the earlier render's result MUST NOT be displayed. The [=host environment=] MUST always reflect the most recently initiated render that has settled.
 
 ## Fallbacks ## {#fallbacks}
 
-When a new async element is rendered into a position where a previous element has already committed, the framework MUST preserve the previously rendered content until the new element settles for the first time. This prevents the DOM from going blank while async elements are pending. The <dfn>fallback</dfn> chain MUST be cleared once the element commits.
+When a new async element is rendered into a position where a previous element has already committed, the framework MUST preserve the previously rendered content until the new element settles for the first time. This prevents the output from going blank while async elements are pending. The <dfn>fallback</dfn> chain MUST be cleared once the element commits.
 
 # Execution Order # {#execution-order}
 
@@ -304,10 +306,10 @@ The framework MUST execute the following steps in order:
 2. Call the [=component=] function (for function [=components=]) or `iterator.next(previousResult)` (for generators).
 3. Set `isExecuting` to `false`.
 4. Diff the yielded/returned children against the previous tree.
-5. Commit DOM mutations.
-6. Call `ref` callbacks and fire `schedule` callbacks (DOM created, not yet inserted).
-7. Insert DOM nodes into the document.
-8. Fire `after` callbacks (DOM live in document).
+5. Commit host mutations.
+6. Call `ref` callbacks and fire `schedule` callbacks (host nodes created, not yet inserted).
+7. Insert host nodes into the [=host environment=].
+8. Fire `after` callbacks (host nodes live in environment).
 
 ## On Unmount ## {#on-unmount}
 
@@ -321,7 +323,7 @@ The framework MUST execute the following steps in order:
 
 The following traces every path through the framework's [=component=] lifecycle, including all callbacks, [=blocking=] behavior, and async branching.
 
-The commit sequence after each diff is: commit DOM mutations, call `ref` callbacks, fire `schedule` callbacks (which MAY defer insertion by returning a promise on initial render), insert DOM nodes into the document, fire `after` callbacks.
+The commit sequence after each diff is: commit host mutations, call `ref` callbacks, fire `schedule` callbacks (which MAY defer insertion by returning a promise on initial render), insert host nodes into the [=host environment=], fire `after` callbacks.
 
 ### First Render ### {#first-render}
 
@@ -468,9 +470,9 @@ An [=update=] occurs when a [=component=] receives new [=props=] or `refresh()` 
     <tr><th>Callback<th>When<th>Argument<th>Lifetime<th>Async return
   </thead>
   <tbody>
-    <tr><td><code>ref(cb)</code><td>After DOM created, before insertion<td>[=Element value=]<td>Prop<td>Ignored
-    <tr><td><code>schedule(cb)</code><td>After DOM created, before insertion<td>[=Element value=]<td>One-shot<td>Defers insertion (initial render only)
-    <tr><td><code>after(cb)</code><td>After DOM inserted into document<td>[=Element value=]<td>One-shot<td>Ignored
+    <tr><td><code>ref(cb)</code><td>After host nodes created, before insertion<td>[=Element value=]<td>Prop<td>Ignored
+    <tr><td><code>schedule(cb)</code><td>After host nodes created, before insertion<td>[=Element value=]<td>One-shot<td>Defers insertion (initial render only)
+    <tr><td><code>after(cb)</code><td>After host nodes inserted into environment<td>[=Element value=]<td>One-shot<td>Ignored
     <tr><td><code>cleanup(cb)</code><td>On unmount, before children unmount<td>[=Element value=]<td>Persistent<td>Defers child unmounting
     <tr><td><code>refresh(cb)</code><td>Enqueues re-execution<td>None (cb runs before re-exec)<td>One-shot<td>N/A
   </tbody>
@@ -548,14 +550,14 @@ The `class` prop (or `className`) accepts a string or an object. When an object 
 
 <table class="data">
   <thead>
-    <tr><th>Component<th>Tag<th>Behavior
+    <tr><th>Component<th>Tag<th>Props<th>Behavior
   </thead>
   <tbody>
-    <tr><td><code>Fragment</code><td><code>""</code><td>The framework renders children without a wrapper node. Non-string iterables are implicitly wrapped in a <dfn>Fragment</dfn>.
-    <tr><td><code>Text</code><td><code><a href="https://tc39.es/ecma262/#sec-symbol.for">Symbol.for</a>("crank.Text")</code><td>The framework creates a text node. Strings and numbers in the children array are implicitly wrapped in a Text element.
-    <tr><td><code>Portal</code><td><code><a href="https://tc39.es/ecma262/#sec-symbol.for">Symbol.for</a>("crank.Portal")</code><td>The framework renders children into the DOM node specified by the <code>root</code> prop.
-    <tr><td><code>Raw</code><td><code><a href="https://tc39.es/ecma262/#sec-symbol.for">Symbol.for</a>("crank.Raw")</code><td>The framework injects the raw HTML string or DOM node from the <code>value</code> prop.
-    <tr><td><code>Copy</code><td><code><a href="https://tc39.es/ecma262/#sec-symbol.for">Symbol.for</a>("crank.Copy")</code><td>The framework preserves the previously rendered content at this position.
+    <tr><td><code>Fragment</code><td><code>""</code><td><code>children</code><td>The framework renders children without a wrapper node. Non-string iterables are implicitly wrapped in a <dfn>Fragment</dfn>.
+    <tr><td><code>Text</code><td><code><a href="https://tc39.es/ecma262/#sec-symbol.for">Symbol.for</a>("crank.Text")</code><td><code>value: string</code><td>The framework creates a text node from the <code>value</code> prop. Strings and numbers in the children array are implicitly wrapped in a Text element.
+    <tr><td><code>Portal</code><td><code><a href="https://tc39.es/ecma262/#sec-symbol.for">Symbol.for</a>("crank.Portal")</code><td><code>root?: object</code>, <code>children</code><td>The framework renders children into the host node specified by the <code>root</code> prop.
+    <tr><td><code>Raw</code><td><code><a href="https://tc39.es/ecma262/#sec-symbol.for">Symbol.for</a>("crank.Raw")</code><td><code>value: string | object</code><td>The framework injects raw content (e.g. an HTML string or a host node) from the <code>value</code> prop.
+    <tr><td><code>Copy</code><td><code><a href="https://tc39.es/ecma262/#sec-symbol.for">Symbol.for</a>("crank.Copy")</code><td>(none)<td>The framework preserves the previously rendered content at this [=position=].
   </tbody>
 </table>
 
@@ -567,9 +569,9 @@ The `class` prop (or `className`) accepts a string or an object. When an object 
   </thead>
   <tbody>
     <tr><td><code>key</code><td><code>any</code><td>The framework uses keys for reconciliation. Keyed children are matched by key, not position. Duplicate keys among siblings produce a runtime error.
-    <tr><td><code>ref</code><td><code>(value: TResult) => unknown</code><td>The framework calls this with the [=element value=] after DOM mutations are committed but before DOM nodes are inserted into the document — the same timing as <code>schedule</code> callbacks.
+    <tr><td><code>ref</code><td><code>(value: TResult) => unknown</code><td>The framework calls this with the [=element value=] after host mutations are committed but before host nodes are inserted into the [=host environment=] — the same timing as <code>schedule</code> callbacks.
     <tr><td><code>copy</code><td><code>boolean | string</code><td><code>true</code>: the framework preserves the entire subtree. String: the framework selectively copies/excludes props (<code>"class disabled"</code> or <code>"!class"</code>).
-    <tr><td><code>hydrate</code><td><code>boolean | string</code><td><code>true</code>: the framework hydrates from existing DOM. String: selective hydration of specific props.
+    <tr><td><code>hydrate</code><td><code>boolean | string</code><td><code>true</code>: the framework hydrates from existing host nodes. String: selective hydration of specific props.
     <tr><td><code>children</code><td><code>unknown</code><td>Child content passed between opening and closing tags.
   </tbody>
 </table>
