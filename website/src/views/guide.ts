@@ -1,6 +1,7 @@
 import {jsx} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 
+import {NotFound} from "@b9g/http-errors";
 import {Root} from "../components/root.js";
 import {Main, Sidebar} from "../components/sidebar.js";
 import {Marked} from "../components/marked.js";
@@ -22,7 +23,7 @@ export default async function Guide({url}: ViewProps) {
 		(doc) => doc.url.replace(/\/$/, "") === url.replace(/\/$/, ""),
 	);
 	if (!post) {
-		throw new Error("TODO: 404 errors");
+		throw new NotFound(`Guide not found: ${url}`);
 	}
 
 	const {

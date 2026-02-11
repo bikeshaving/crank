@@ -1,6 +1,7 @@
 import {jsx} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 
+import {NotFound} from "@b9g/http-errors";
 import {Root} from "../components/root.js";
 import {BlogContent} from "../components/blog-content.js";
 import {Marked} from "../components/marked.js";
@@ -29,7 +30,7 @@ export default async function BlogPage({url}: ViewProps) {
 		(doc) => doc.url.replace(/\/$/, "") === url.replace(/\/$/, ""),
 	);
 	if (!post) {
-		throw new Error("TODO: 404 errors");
+		throw new NotFound(`Blog post not found: ${url}`);
 	}
 
 	const {

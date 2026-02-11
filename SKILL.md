@@ -17,7 +17,7 @@ references:
   - docs/guides/08-reusable-logic.md
   - docs/guides/11-reference-for-react-developers.md
   - docs/guides/12-jsx-template-tag.md
-  - docs/guides/13-common-pitfalls.md
+  - docs/guides/13-crank-style-guide.md
   - docs/blog/2025-08-20-why-be-reactive.md
   - examples/todomvc.js
   - examples/hackernews.js
