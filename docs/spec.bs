@@ -6,7 +6,7 @@ Status: LS
 Date: 2026-02-11
 URL: https://crank.js.org/spec
 Editor: Brian Kim, bikeshaving, https://github.com/brainkim
-Abstract: This document specifies the component model for [Crank.js](https://crank.js.org). It defines how the framework invokes components, manages their lifecycle, handles async rendering, propagates errors, reconciles element trees, and creates elements via JSX, tagged templates, and createElement. The core framework is renderer-agnostic; this specification describes the component model independently of any particular output target, with DOM-specific behavior noted where applicable.
+Abstract: This document specifies the component model for [Crank.js](https://crank.js.org). It defines how the framework invokes components, manages their lifecycle, handles async rendering, propagates errors, reconciles element trees, and creates elements via JSX and tagged templates. The core framework is renderer-agnostic; this specification describes the component model independently of any particular output target, with DOM-specific behavior noted where applicable.
 Markup Shorthands: markdown yes
 Boilerplate: copyright off
 </pre>
@@ -18,17 +18,18 @@ Boilerplate: copyright off
 <pre class='link-defaults'>
 </pre>
 
+
 # Elements # {#elements}
 
-An <dfn>element</dfn> is a lightweight object describing a node in the UI tree. Each [=element=] has a **tag** and **props**.
+An <dfn>element</dfn> is a lightweight object describing a node in the UI tree. Each [=element=] has a <dfn>tag</dfn> and <dfn>props</dfn>.
 
-[=Elements=] are created by `createElement(tag, props, ...children)`, JSX (see [[#jsx]]), or tagged templates (see [[#template-tags]]). The framework uses the term "tag" where the [JSX specification](https://facebook.github.io/jsx/) uses "type."
+[=Elements=] are instances of the `Element` class, constructed with `new Element(tag, props)`. The framework uses the term "[=tag=]" where the [JSX specification](https://facebook.github.io/jsx/) uses "type." In practice, elements are created via JSX (see [[#jsx]]) or tagged templates (see [[#template-tags]]) rather than direct construction.
 
-The tag determines what the [=element=] represents:
+The [=tag=] determines what the [=element=] represents:
 
-- **Host elements**: the tag is a string (`"div"`, `"span"`) — the [=renderer=] creates a node in the host environment.
-- **Component elements**: the tag is a function — the framework invokes it as a [=component=] (see [[#invocation]]).
-- **Symbol elements**: the tag is a symbol — used for special [=components=] like Portal, Raw, Copy, and Text (see [[#special-components]]).
+- <dfn>Host element</dfn>: the [=tag=] is a string (`"div"`, `"span"`) — the [=renderer=] creates a node in the [=host environment=].
+- <dfn>Component element</dfn>: the [=tag=] is a function — the framework invokes it as a [=component=] (see [[#invocation]]).
+- <strong>Symbol element</strong>: the [=tag=] is a symbol — used for special [=components=] like Portal, Raw, Copy, and Text (see [[#special-components]]).
 
 [=Elements=] are identified across versions and realms by an internal `$$typeof` symbol, following the [same pattern as React](https://overreacted.io/why-do-react-elements-have-typeof-property/) to protect against injection attacks.
 
@@ -36,7 +37,7 @@ The `children` prop contains child content passed between opening and closing ta
 
 # Renderers # {#renderers}
 
-A <dfn>renderer</dfn> is the entry point to the framework. It translates the abstract [=element=] tree into mutations on a host environment.
+A <dfn>renderer</dfn> is the entry point to the framework. It translates the abstract [=element=] tree into mutations on a <dfn>host environment</dfn> — the platform-specific output target (e.g. the DOM, an HTML string, a native UI toolkit).
 
 ## render() ## {#renderer-render}
 
@@ -48,20 +49,20 @@ A <dfn>renderer</dfn> is the entry point to the framework. It translates the abs
 
 ## Bridging ## {#bridging}
 
-The `bridge` parameter connects [=renderers=] so that events, provisions, and errors propagate across [=renderer=] boundaries.
+The `bridge` parameter connects [=renderers=] so that events, [=provisions=], and errors propagate across [=renderer=] boundaries.
 
 ## Built-in Renderers ## {#built-in-renderers}
 
 The framework ships two [=renderers=]:
 
-- **DOM renderer** (`@b9g/crank/dom`) — renders into DOM Elements, creates DOM Nodes.
-- **HTML renderer** (`@b9g/crank/html`) — renders to HTML strings for server-side rendering.
+- <strong>DOM renderer</strong> (`@b9g/crank/dom`) — renders into DOM Elements, creates DOM Nodes.
+- <strong>HTML renderer</strong> (`@b9g/crank/html`) — renders to HTML strings for server-side rendering.
 
 The core framework is [=renderer=]-agnostic: it manages [=component=] lifecycles, reconciles [=element=] trees, and tracks state independently of any output target. The [=renderer=] adapter interface is described in [[#render-adapter]].
 
 # Component Invocation # {#invocation}
 
-A <dfn>component</dfn> is a function. The framework calls it with:
+A <dfn>component</dfn> is a function. The framework MUST invoke a [=component=] when an [=element=] tree containing a component [=element=] is passed to a [=renderer's=] `render()` or `hydrate()` method, or when `refresh()` is called on the [=component=] or one of its ancestors. The framework MUST call it with:
 
 - <strong><code>this</code></strong> bound to a [=component context=] object
 - <strong>First argument</strong>: the current props object
@@ -76,48 +77,48 @@ The framework distinguishes [=component=] types by return value, not declaration
 
 <table class="data">
   <thead>
-    <tr><th>Type<th>Syntax<th>Returns<th>Stateful
+    <tr><th>Type<th>Syntax<th>Returns<th>Scope preserved
   </thead>
   <tbody>
-    <tr><td>Function<td><code>function C(props)</code><td><code>Children</code><td>No — re-called on every update.
-    <tr><td>Generator<td><code>function *C(props)</code><td>[Iterator](https://tc39.es/ecma262/#sec-iterator-interface)<code>&lt;Children></code><td>Yes — lexical scope preserved across yields.
-    <tr><td>Async function<td><code>async function C(props)</code><td>[Promise](https://tc39.es/ecma262/#sec-promise-objects)<code>&lt;Children></code><td>No — re-called on every update.
-    <tr><td>Async generator<td><code>async function *C(props)</code><td>[AsyncIterator](https://tc39.es/ecma262/#sec-asynciterator-interface)<code>&lt;Children></code><td>Yes — lexical scope preserved across yields.
+    <tr><td>Function<td><code>function C(props)</code><td><code>Children</code><td>No
+    <tr><td>Generator<td><code>function *C(props)</code><td>[Iterator](https://tc39.es/ecma262/#sec-iterator-interface)<code>&lt;Children></code><td>Yes
+    <tr><td>Async function<td><code>async function C(props)</code><td>[Promise](https://tc39.es/ecma262/#sec-promise-objects)<code>&lt;Children></code><td>No
+    <tr><td>Async generator<td><code>async function *C(props)</code><td>[AsyncIterator](https://tc39.es/ecma262/#sec-asynciterator-interface)<code>&lt;Children></code><td>Yes
   </tbody>
 </table>
 
 ## Function Components ## {#function-components}
 
-The framework calls the function on every update. The return value is rendered as children. Function [=components=] never [=block=].
+The framework MUST re-call the function on every update. The return value is rendered as children. Function [=components=] MUST NOT [=block=].
 
 ## Generator Components ## {#generator-components}
 
-The framework calls the function once and stores the returned [iterator](https://tc39.es/ecma262/#sec-iterator-interface). On each subsequent update, the framework calls [`next(previousResult)`](https://tc39.es/ecma262/#sec-iteratorresult-interface) where `previousResult` is the rendered result of the previous yield.
+The framework MUST call the function once and store the returned [iterator](https://tc39.es/ecma262/#sec-iterator-interface). On each subsequent update, the framework MUST call [`next(previousResult)`](https://tc39.es/ecma262/#sec-iteratorresult-interface) where `previousResult` is the rendered result of the previous yield.
 
-The framework preserves the generator's lexical scope across yields by retaining the iterator for as long as the [=component=] element occupies the same position in the element tree.
+The framework MUST preserve the generator's lexical scope across yields by retaining the iterator for as long as the [=component=] element occupies the same position in the element tree.
 
-Generator [=components=] [=block=] while their children render — `previousResult` is always a settled value, never a promise. The framework calls [`return()`](https://tc39.es/ecma262/#sec-iterator-interface) on unmount.
+Generator [=components=] MUST [=block=] while their children render — `previousResult` MUST be a settled value, never a promise. The framework MUST call [`return()`](https://tc39.es/ecma262/#sec-iterator-interface) on unmount.
 
 ## Async Function Components ## {#async-function-components}
 
-The framework calls the function on every update. The [=component=] [=blocks=] while its own async execution is pending, but does not [=block=] while its children render. See [[#enqueuing]] for queuing behavior.
+The framework MUST re-call the function on every update. The [=component=] MUST [=block=] while its own async execution is pending, but MUST NOT [=block=] while its children render. See [[#enqueuing]] for queuing behavior.
 
 ## Async Generator Components ## {#async-generator-components}
 
-The framework calls the function once and stores the returned [async iterator](https://tc39.es/ecma262/#sec-asynciterator-interface). Async generators operate in three modes:
+The framework MUST call the function once and store the returned [async iterator](https://tc39.es/ecma262/#sec-asynciterator-interface). Async generators operate in three modes:
 
 : [`for...of`](https://tc39.es/ecma262/#sec-for-in-and-for-of-statements) mode (sync iterator)
-:: The [=component=] [=blocks=] while children render, identical to sync generators. `yield` evaluates to the settled rendered result.
+:: The [=component=] MUST [=block=] while children render, identical to sync generators. `yield` MUST evaluate to the settled rendered result.
 
 : [`for await...of`](https://tc39.es/ecma262/#sec-for-in-and-for-of-statements) mode (async iterator)
-:: The framework enters a pull-based loop. The [=component=] resumes continuously — it does not [=block=] while children render. `yield` evaluates to a [`Promise`](https://tc39.es/ecma262/#sec-promise-objects) that resolves to the rendered result. The [=component=] suspends at the bottom of the loop until new props are available or `refresh()` is called. This mode enables racing patterns: multiple yields per update produce successive element trees that are raced via the [=chase|chasing=] algorithm ([[#chasing]]).
+:: The framework MUST enter a pull-based loop. The [=component=] MUST NOT [=block=] while children render. `yield` MUST evaluate to a [`Promise`](https://tc39.es/ecma262/#sec-promise-objects) that resolves to the rendered result. The [=component=] MUST suspend at the bottom of the loop until new props are available or `refresh()` is called. This mode enables racing patterns: multiple yields per update produce successive element trees that are raced via the [=chase|chasing=] algorithm ([[#chasing]]).
 
 : No-loop mode (no iterator)
-:: The [=component=] [=blocks=] while children render, identical to sync generators.
+:: The [=component=] MUST [=block=] while children render, identical to sync generators.
 
 # Context # {#context}
 
-The framework provides a <dfn>component context</dfn> object to each [=component=] instance.
+The framework MUST provide a <dfn>component context</dfn> object to each [=component=] instance.
 
 ## Properties ## {#context-properties}
 
@@ -136,22 +137,22 @@ The framework provides a <dfn>component context</dfn> object to each [=component
 
 <dl>
   <dt>`refresh(callback?)`
-  <dd>[=Enqueue|Enqueues=] a re-execution of the [=component=]. If a callback is provided, the framework runs it before re-executing. If called while `isExecuting` is `true`, the framework logs an error and returns the current value.
+  <dd>[=Enqueue|Enqueues=] a re-execution of the [=component=]. If a callback is provided, the framework MUST run it before re-executing. If called while `isExecuting` is `true`, the framework MUST log an error and return the current value.
 
   <dt>`schedule(callback?)`
-  <dd>Registers a callback that the framework calls after DOM nodes are created but before they are inserted into the document. The callback receives the [=element value=]. Callbacks are <strong>one-shot</strong>: they fire once and must be re-registered on subsequent renders. Multiple distinct callbacks may be registered; callbacks are deduplicated by function identity (registering the same function reference twice in one update fires it once). If the callback returns a promise on the [=component's=] initial render, the framework defers DOM insertion until the promise resolves; on subsequent renders, promise return values are ignored. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at schedule time.
+  <dd>Registers a callback that the framework MUST call after DOM nodes are created but before they are inserted into the document. The callback receives the [=element value=]. Callbacks are <strong>one-shot</strong>: they fire once and MUST be re-registered on subsequent renders. Multiple distinct callbacks MAY be registered; the framework MUST deduplicate callbacks by function identity (registering the same function reference twice in one update fires it once). If the callback returns a promise on the [=component's=] initial render, the framework MUST defer DOM insertion until the promise resolves; on subsequent renders, promise return values MUST be ignored. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at schedule time.
 
   <dt>`after(callback?)`
-  <dd>Registers a callback that the framework calls after DOM nodes are inserted into the document. The callback receives the [=element value=]. Same one-shot and deduplication semantics as `schedule`. Promise return values from `after` callbacks are always ignored. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at insertion time.
+  <dd>Registers a callback that the framework MUST call after DOM nodes are inserted into the document. The callback receives the [=element value=]. Same one-shot and deduplication semantics as `schedule`. Promise return values from `after` callbacks MUST be ignored. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at insertion time.
 
   <dt>`cleanup(callback?)`
-  <dd>Registers a callback that the framework calls when the [=component=] unmounts, before children are unmounted. The callback receives the [=element value=]. Unlike `schedule` and `after`, cleanup callbacks are <strong>persistent</strong>: they survive across renders and fire once on unmount. Callbacks are deduplicated by function identity. If a callback returns a promise, the framework defers child unmounting until the promise resolves, keeping the [=component's=] DOM nodes in the document while awaiting. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at unmount time.
+  <dd>Registers a callback that the framework MUST call when the [=component=] unmounts, before children are unmounted. The callback receives the [=element value=]. Unlike `schedule` and `after`, cleanup callbacks are <strong>persistent</strong>: they MUST survive across renders and fire once on unmount. The framework MUST deduplicate callbacks by function identity. If a callback returns a promise, the framework MUST defer child unmounting until the promise resolves, keeping the [=component's=] DOM nodes in the document while awaiting. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at unmount time.
 
   <dt>`provide(key, value)`
-  <dd>Stores a value on this [=component context=], retrievable by descendants via `consume`.
+  <dd>Stores a <dfn>provision</dfn> on this [=component context=], retrievable by descendants via `consume`.
 
   <dt>`consume(key)`
-  <dd>Walks up the [=component context=] tree and returns the value from the nearest ancestor that called `provide` with the same key.
+  <dd>Walks up the [=component context=] tree and returns the [=provision=] from the nearest ancestor that called `provide` with the same key.
 
   <dt>`dispatchEvent(event)`
   <dd>Dispatches an [`Event`](https://dom.spec.whatwg.org/#interface-event) on the [=component context=] and invokes the matching `on*` prop on the [=component=] element, if present. See [[#events]].
@@ -183,19 +184,21 @@ The [=component context=] implements both [`Symbol.iterator`](https://tc39.es/ec
 
 ## Synchronous (`for...of`) ## {#sync-iteration}
 
-Each iteration yields the current props object. If the iterator is advanced twice without the [=component=] yielding, the framework throws a runtime error.
+Each iteration MUST yield the current props object. If the iterator is advanced twice without the [=component=] yielding, the framework MUST throw a runtime error.
 
 ## Asynchronous (`for await...of`) ## {#async-iteration}
 
-Each iteration yields the current props object. If new props are not yet available, the iteration awaits until the framework provides them. When a [=component=] enters this mode, the framework switches to a pull-based execution model where children render without [=blocking=] the generator.
+Each iteration MUST yield the current props object. If new props are not yet available, the iteration MUST await until the framework provides them. When a [=component=] enters this mode, the framework MUST switch to a pull-based execution model where children render without [=blocking=] the generator.
 
 # Reconciliation # {#reconciliation}
 
 When the framework diffs children, it walks the new children array against the previous children array and decides for each position whether to reuse, replace, or remove an element.
 
+To <dfn lt="mount|mounts|mounting">mount</dfn> an element is to create it for the first time — invoking a [=component=] function, creating host nodes, and inserting them into the [=host environment=]. To <dfn lt="unmount|unmounts|unmounting">unmount</dfn> an element is to remove it — firing [=cleanup=] callbacks, calling `return()` on iterators, and removing host nodes. To <dfn lt="update|updates|updating">update</dfn> an element is to re-render it in place with new [=props=] — re-calling a function [=component=] or advancing a generator's iterator.
+
 ## Position-Based Matching ## {#position-matching}
 
-By default, children at the same position are compared by tag. If the tags match, the framework reuses the existing element and updates its props. If the tags differ, the framework unmounts the old element and mounts a new one in its place.
+By default, children at the same <dfn>position</dfn> — their index within a parent's children array — are compared by [=tag=]. If the tags match, the framework MUST reuse the existing element and update its props. If the tags differ, the framework MUST unmount the old element and mount a new one in its place.
 
 <table class="data">
   <thead>
@@ -222,7 +225,7 @@ When children have `key` props, the framework matches children by key instead of
 5. For each subsequent unkeyed new child, the framework skips over keyed old children to find the next unkeyed one.
 6. After processing all new children, any remaining old children not matched by key are unmounted.
 
-Duplicate keys among siblings produce a runtime error. The framework discards the duplicate.
+Duplicate keys among siblings MUST produce a runtime error. The framework MUST discard the duplicate.
 
 ## Element Values ## {#element-values}
 
@@ -234,13 +237,13 @@ The [=element value=] is the argument passed to `ref` callbacks, `schedule` call
 
 A <dfn>Child</dfn> is any value that can appear in the element tree. The valid child types are: `Element | string | number | boolean | null | undefined`. Before diffing, the framework normalizes children:
 
-- **Strings** are wrapped in a Text element, producing a text node via the [=renderer=].
-- **Numbers** are converted to strings and wrapped in a Text element.
-- **`null`** and **`undefined`** produce no output. A [=component=] returning `undefined` renders nothing.
-- **Booleans** (`true` and `false`) produce no output. This enables the `{condition && <Element />}` pattern — when the condition is `false`, nothing is rendered.
-- **Non-string iterables** (arrays, [generators](https://tc39.es/ecma262/#sec-generator-objects), Sets, etc.) are implicitly wrapped in a [=Fragment=]. Each item in the iterable becomes a [=Child=] at its own position in the element tree. This means [=components=] can return arrays or generators to produce multiple siblings without a wrapper node.
-- **Nested arrays** are flattened into the children array.
-- **Elements** (objects with a `tag` property) are diffed recursively.
+- <strong>Strings</strong> are wrapped in a Text element, producing a text node via the [=renderer=].
+- <strong>Numbers</strong> are converted to strings and wrapped in a Text element.
+- <strong><code>null</code></strong> and <strong><code>undefined</code></strong> produce no output. A [=component=] returning `undefined` renders nothing.
+- <strong>Booleans</strong> (`true` and `false`) produce no output. This enables the `{condition && <Element />}` pattern — when the condition is `false`, nothing is rendered.
+- <strong>Non-string iterables</strong> (arrays, [generators](https://tc39.es/ecma262/#sec-generator-objects), Sets, etc.) are implicitly wrapped in a [=Fragment=]. Each item in the iterable becomes a [=Child=] at its own position in the element tree. This means [=components=] can return arrays or generators to produce multiple siblings without a wrapper node.
+- <strong>Nested arrays</strong> are flattened into the children array.
+- <strong>Elements</strong> (objects with a `tag` property) are diffed recursively.
 
 This normalization applies everywhere children appear: the return/yield value of a [=component=], the `children` prop, and the children of host elements.
 
@@ -271,125 +274,192 @@ When a [=component=] [=blocks=], the framework separates the block duration (the
 
 ## Enqueuing ## {#enqueuing}
 
-When an async [=component=] is re-rendered while a previous execution is still pending, the framework <dfn lt="enqueue|enqueues|enqueuing">enqueues</dfn> at most one additional execution. The framework maintains two slots per [=component=]: <dfn>inflight</dfn> and <dfn>enqueued</dfn>.
+When an async [=component=] is re-rendered while a previous execution is still pending, the framework <dfn lt="enqueue|enqueues|enqueuing">enqueues</dfn> at most one additional execution. The framework MUST maintain two slots per [=component=]: <dfn>inflight</dfn> and <dfn>enqueued</dfn>.
 
-1. If no [=inflight=] execution exists, the framework starts one immediately.
-2. If an [=inflight=] execution exists but no [=enqueued=] execution, the framework creates an [=enqueued=] execution that waits for the [=inflight=] to settle, then runs with the latest props.
-3. If both [=inflight=] and [=enqueued=] executions exist, the framework updates the stored props but does not create a third execution. The [=enqueued=] execution will use whatever props are current when it starts.
+1. If no [=inflight=] execution exists, the framework MUST start one immediately.
+2. If an [=inflight=] execution exists but no [=enqueued=] execution, the framework MUST create an [=enqueued=] execution that waits for the [=inflight=] to settle, then runs with the latest props.
+3. If both [=inflight=] and [=enqueued=] executions exist, the framework MUST update the stored props but MUST NOT create a third execution. The [=enqueued=] execution MUST use whatever props are current when it starts.
 
-When the [=inflight=] execution settles, the [=enqueued=] execution is promoted to [=inflight=]. This guarantees at most one concurrent execution per [=component=] element, and that the final render always reflects the latest props.
+When the [=inflight=] execution settles, the [=enqueued=] execution MUST be promoted to [=inflight=]. The framework MUST NOT allow more than one concurrent execution per [=component=] element, and the final render MUST reflect the latest props.
 
 Async generator [=components=] in `for await...of` mode use the same [=enqueue|enqueuing=] algorithm.
 
 ## Chasing ## {#chasing}
 
-When different async element trees are rendered into the same [=position-based matching|position=] and settle out of order, the framework ensures that later renders always win. It does this by <dfn lt="chase|chasing">chasing</dfn>: racing each render's child values against the next render's child values using [`Promise.race`](https://tc39.es/ecma262/#sec-promise.race).
+When different async element trees are rendered into the same [=position=] and settle out of order, the framework MUST ensure that later renders always win. It does this by <dfn lt="chase|chasing">chasing</dfn>: racing each render's child values against the next render's child values using [`Promise.race`](https://tc39.es/ecma262/#sec-promise.race).
 
-This produces a monotonic effect: if an earlier render settles first, its result is displayed until the later render settles. If the later render settles first, the earlier render's result is never displayed. The DOM always reflects the most recently initiated render that has settled.
+This produces a monotonic effect: if an earlier render settles first, its result is displayed until the later render settles. If the later render settles first, the earlier render's result MUST NOT be displayed. The DOM MUST always reflect the most recently initiated render that has settled.
 
 ## Fallbacks ## {#fallbacks}
 
-When a new async element is rendered into a position where a previous element has already committed, the framework preserves the previously rendered content until the new element settles for the first time. This prevents the DOM from going blank while async elements are pending. The <dfn>fallback</dfn> chain is cleared once the element commits.
+When a new async element is rendered into a position where a previous element has already committed, the framework MUST preserve the previously rendered content until the new element settles for the first time. This prevents the DOM from going blank while async elements are pending. The <dfn>fallback</dfn> chain MUST be cleared once the element commits.
 
 # Execution Order # {#execution-order}
 
 ## Per Update ## {#per-update}
 
-1. The framework sets `isExecuting` to `true`.
-2. The framework calls the [=component=] function (for function [=components=]) or `iterator.next(previousResult)` (for generators).
-3. The framework sets `isExecuting` to `false`.
-4. The framework diffs the yielded/returned children against the previous tree.
-5. The framework commits DOM mutations.
-6. The framework calls `ref` callbacks and fires `schedule` callbacks (DOM created, not yet inserted).
-7. The framework inserts DOM nodes into the document.
-8. The framework fires `after` callbacks (DOM live in document).
+The framework MUST execute the following steps in order:
+
+1. Set `isExecuting` to `true`.
+2. Call the [=component=] function (for function [=components=]) or `iterator.next(previousResult)` (for generators).
+3. Set `isExecuting` to `false`.
+4. Diff the yielded/returned children against the previous tree.
+5. Commit DOM mutations.
+6. Call `ref` callbacks and fire `schedule` callbacks (DOM created, not yet inserted).
+7. Insert DOM nodes into the document.
+8. Fire `after` callbacks (DOM live in document).
 
 ## On Unmount ## {#on-unmount}
 
-1. The framework fires `cleanup` callbacks. If any return promises, child unmounting is deferred until they resolve.
-2. Children are unmounted recursively.
-3. For generators: the framework calls `return()` on the iterator. The `finally` block executes as part of the iterator protocol.
+The framework MUST execute the following steps in order:
+
+1. Fire `cleanup` callbacks. If any return promises, child unmounting MUST be deferred until they resolve.
+2. Unmount children recursively.
+3. For generators: call `return()` on the iterator. The `finally` block executes as part of the iterator protocol.
 
 ## Full Lifecycle ## {#full-lifecycle}
 
-The following diagram traces every path through the framework's component lifecycle, including all callbacks, blocking behavior, and async branching.
+The following traces every path through the framework's [=component=] lifecycle, including all callbacks, [=blocking=] behavior, and async branching.
 
-<pre highlight="text">
-Framework receives element with component tag
-│
-├─ FIRST RENDER
-│   isExecuting = true
-│   call component(this, props, ctx)
-│   isExecuting = false
-│   │
-│   ├─ returns Children ─────────────────────── FUNCTION COMPONENT
-│   │   diff children
-│   │   commit DOM → ref(cb) / schedule(cb) → insert DOM → after(cb)
-│   │
-│   ├─ returns Iterator ─────────────────────── GENERATOR COMPONENT
-│   │   store iterator
-│   │   diff children ◀── BLOCKS until children settle
-│   │   commit DOM → ref(cb) / schedule(cb) → insert DOM → after(cb)
-│   │
-│   ├─ returns Promise&lt;Children> ────────────── ASYNC FUNCTION COMPONENT
-│   │   ◀── BLOCKS until promise settles (enqueue if re-rendered)
-│   │   diff children (does not block)
-│   │   commit DOM → ref(cb) / schedule(cb) → insert DOM → after(cb)
-│   │
-│   └─ returns AsyncIterator ────────────────── ASYNC GENERATOR COMPONENT
-│       store async iterator
-│       ◀── BLOCKS until first yield/return settles
-│       │
-│       ├─ enters for...of (sync iteration of ctx)
-│       │   diff children ◀── BLOCKS until children settle
-│       │   yield evaluates to settled result
-│       │   commit DOM → ref(cb) / schedule(cb) → insert DOM → after(cb)
-│       │
-│       ├─ enters for await...of (async iteration of ctx)
-│       │   diff children (does not block, pull-based)
-│       │   yield evaluates to Promise&lt;result>
-│       │   multiple yields per update → chasing
-│       │   commit DOM → ref(cb) / schedule(cb) → insert DOM → after(cb)
-│       │   suspends at loop bottom until new props or refresh()
-│       │
-│       └─ no loop (direct yield)
-│           diff children ◀── BLOCKS until children settle
-│           commit DOM → ref(cb) / schedule(cb) → insert DOM → after(cb)
-│
-├─ UPDATE (new props or refresh())
-│   │
-│   ├─ Function: re-call component(this, props, ctx) → full cycle above
-│   │
-│   ├─ Generator: iterator.next(previousResult) → diff → commit → callbacks
-│   │   ◀── BLOCKS until children settle
-│   │
-│   ├─ Async function: re-call component(this, props, ctx)
-│   │   enqueue if inflight (at most one pending)
-│   │   ◀── BLOCKS until own promise settles
-│   │   diff → commit → callbacks
-│   │
-│   └─ Async generator: iterator.next(previousResult)
-│       enqueue if inflight (at most one pending)
-│       ◀── BLOCKS until own yield settles
-│       branching per iteration mode (see above)
-│
-├─ CHILD ERROR
-│   │
-│   ├─ Function/Async function: error propagates up
-│   │
-│   ├─ Generator: iterator.throw(error)
-│   │   ├─ caught (try/catch around yield) → yield recovery tree
-│   │   └─ uncaught → propagates up (iterator done, finally runs)
-│   │
-│   └─ Async generator:
-│       ├─ yield promise unobserved → iterator.throw(error)
-│       └─ yield promise observed → promise rejected → catch via await
-│
-└─ UNMOUNT
-    cleanup(cb) → if promise returned, defer child unmounting
-    ├─ Generator/Async generator: iterator.return() → finally block runs
-    └─ children unmounted recursively
-</pre>
+The commit sequence after each diff is: commit DOM mutations, call `ref` callbacks, fire `schedule` callbacks (which MAY defer insertion by returning a promise on initial render), insert DOM nodes into the document, fire `after` callbacks.
+
+### First Render ### {#first-render}
+
+<ol>
+  <li>Set <code>isExecuting</code> to <code>true</code>.
+  <li>Call <code>component(this, props, ctx)</code>.
+  <li>Set <code>isExecuting</code> to <code>false</code>.
+  <li>Branch by return value:
+
+    <dl>
+      <dt>Returns <code>Children</code> — <strong>function component</strong>
+      <dd>
+        <ol>
+          <li>Diff children.
+          <li>Run the commit sequence.
+        </ol>
+
+      <dt>Returns <code>Iterator</code> — <strong>generator component</strong>
+      <dd>
+        <ol>
+          <li>Store the iterator.
+          <li>Diff children. BLOCKS until children settle.
+          <li>Run the commit sequence.
+        </ol>
+
+      <dt>Returns <code>Promise&lt;Children></code> — <strong>async function component</strong>
+      <dd>
+        <ol>
+          <li>BLOCK until the promise settles. [=Enqueue=] if re-rendered while pending.
+          <li>Diff children (does not block).
+          <li>Run the commit sequence.
+        </ol>
+
+      <dt>Returns <code>AsyncIterator</code> — <strong>async generator component</strong>
+      <dd>
+        <ol>
+          <li>Store the async iterator.
+          <li>BLOCK until the first yield/return settles.
+          <li>Branch by iteration mode:
+
+            <dl>
+              <dt><code>for...of</code> mode (sync iteration of context)
+              <dd>
+                <ol>
+                  <li>Diff children. BLOCKS until children settle.
+                  <li><code>yield</code> evaluates to the settled result.
+                  <li>Run the commit sequence.
+                </ol>
+
+              <dt><code>for await...of</code> mode (async iteration of context)
+              <dd>
+                <ol>
+                  <li>Diff children (does not block; pull-based).
+                  <li><code>yield</code> evaluates to a <code>Promise</code> that resolves to the result.
+                  <li>Multiple yields per update produce successive trees raced via [=chasing=].
+                  <li>Run the commit sequence.
+                  <li>Suspend at the bottom of the loop until new [=props=] are available or <code>refresh()</code> is called.
+                </ol>
+
+              <dt>No-loop mode (direct yield)
+              <dd>
+                <ol>
+                  <li>Diff children. BLOCKS until children settle.
+                  <li>Run the commit sequence.
+                </ol>
+            </dl>
+        </ol>
+    </dl>
+</ol>
+
+### Update ### {#lifecycle-update}
+
+An [=update=] occurs when a [=component=] receives new [=props=] or `refresh()` is called.
+
+<dl>
+  <dt>Function
+  <dd>
+    <ol>
+      <li>Set <code>isExecuting</code> to <code>true</code>.
+      <li>Re-call <code>component(this, props, ctx)</code>.
+      <li>Set <code>isExecuting</code> to <code>false</code>.
+      <li>The full first-render cycle applies from this point.
+    </ol>
+
+  <dt>Generator
+  <dd>
+    <ol>
+      <li>Set <code>isExecuting</code> to <code>true</code>.
+      <li>Call <code>iterator.next(previousResult)</code>.
+      <li>Set <code>isExecuting</code> to <code>false</code>.
+      <li>Diff children. BLOCKS until children settle.
+      <li>Run the commit sequence.
+    </ol>
+
+  <dt>Async function
+  <dd>
+    <ol>
+      <li>Set <code>isExecuting</code> to <code>true</code>.
+      <li>Re-call <code>component(this, props, ctx)</code>. [=Enqueue=] if [=inflight=] (at most one pending).
+      <li>Set <code>isExecuting</code> to <code>false</code>.
+      <li>BLOCK until the promise settles.
+      <li>Diff children, then run the commit sequence.
+    </ol>
+
+  <dt>Async generator
+  <dd>
+    <ol>
+      <li>Set <code>isExecuting</code> to <code>true</code>.
+      <li>Call <code>iterator.next(previousResult)</code>. [=Enqueue=] if [=inflight=] (at most one pending).
+      <li>Set <code>isExecuting</code> to <code>false</code>.
+      <li>BLOCK until the yield settles.
+      <li>Branch by iteration mode (see [[#first-render]]).
+    </ol>
+</dl>
+
+### Child Error ### {#lifecycle-child-error}
+
+<dl>
+  <dt>Function / Async function
+  <dd>The error propagates up the [=component context=] tree.
+
+  <dt>Generator
+  <dd>
+    The framework calls `iterator.throw(error)`.
+      - If caught (`try`/`catch` around `yield`): the generator MAY yield a recovery tree.
+      - If uncaught: the error propagates up. The iterator is done; the `finally` block runs.
+
+  <dt>Async generator
+  <dd>
+      - If the `yield` promise is <strong>unobserved</strong>: the framework calls `iterator.throw(error)`.
+      - If the `yield` promise is <strong>observed</strong>: the framework rejects the promise. The [=component=] catches the error via `await`.
+</dl>
+
+### Unmount ### {#lifecycle-unmount}
+
+1. Fire `cleanup` callbacks. If any return promises, child [=unmounting=] MUST be deferred until they resolve.
+2. For generators and async generators: call `return()` on the iterator. The `finally` block runs.
+3. [=Unmount=] children recursively.
 
 ### Callback Timing Reference ### {#callback-timing}
 
@@ -410,7 +480,7 @@ Framework receives element with component tag
 
 ## Error Injection ## {#error-injection}
 
-When a child [=component=] throws during rendering, the framework calls [`throw(error)`](https://tc39.es/ecma262/#sec-iterator-interface) on the nearest ancestor generator's iterator. This causes the `yield` expression in the ancestor to throw the error. If the generator catches the error (via `try`/`catch` around `yield`), it may yield a recovery element tree and rendering continues. If uncaught, the error propagates up the [=component context=] tree to the next ancestor generator.
+When a child [=component=] throws during rendering, the framework MUST call [`throw(error)`](https://tc39.es/ecma262/#sec-iterator-interface) on the nearest ancestor generator's iterator. This causes the `yield` expression in the ancestor to throw the error. If the generator catches the error (via `try`/`catch` around `yield`), it MAY yield a recovery element tree and rendering continues. If uncaught, the error MUST propagate up the [=component context=] tree to the next ancestor generator.
 
 ## Async Error Handling ## {#async-error-handling}
 
@@ -418,7 +488,7 @@ For async generator [=components=] in `for await...of` mode, the framework track
 
 ## Generator Return on Error ## {#generator-return-on-error}
 
-If a generator [=component=] does not catch an injected error, the framework does not call `return()` — the iterator is already done because the uncaught `throw()` terminates it. The [`finally`](https://tc39.es/ecma262/#sec-try-statement) block of the generator, if present, still executes as part of the [iterator protocol](https://tc39.es/ecma262/#sec-iteration).
+If a generator [=component=] does not catch an injected error, the framework MUST NOT call `return()` — the iterator is already done because the uncaught `throw()` terminates it. The [`finally`](https://tc39.es/ecma262/#sec-try-statement) block of the generator, if present, still executes as part of the [iterator protocol](https://tc39.es/ecma262/#sec-iteration).
 
 # Events # {#events}
 
@@ -504,15 +574,15 @@ The `class` prop (or `className`) accepts a string or an object. When an object 
   </tbody>
 </table>
 
-The framework strips all special props before passing the remaining props to the renderer.
+The framework MUST strip all special props before passing the remaining props to the renderer.
 
 # JSX # {#jsx}
 
-[JSX](https://facebook.github.io/jsx/) is an XML-like syntax extension for JavaScript that provides a concise way to write [=element=] trees. A JSX compiler transforms expressions like `<div class="foo">hello</div>` into `createElement("div", {class: "foo"}, "hello")` calls. The framework supports three ways to create [=elements=]: the automatic JSX transform, the classic `createElement` transform, and tagged template literals.
+[JSX](https://facebook.github.io/jsx/) is an XML-like syntax extension for JavaScript that provides a concise way to write [=element=] trees. A JSX compiler transforms `<div class="foo">hello</div>` into an `Element` constructor call. The framework supports two JSX compilation modes and a tagged template alternative.
 
 ## JSX Import Source ## {#jsx-import-source}
 
-The recommended approach uses the [automatic JSX transform](https://reactjs.org/blog/2020/09/22/introducing-the-new-jsx-transform.html), where the compiler inserts the `createElement` calls automatically — no import needed. Configure it with a file-level pragma comment:
+The recommended approach uses the [automatic JSX transform](https://reactjs.org/blog/2020/09/22/introducing-the-new-jsx-transform.html), where the compiler inserts element construction calls automatically — no import needed. Configure it with a file-level pragma comment:
 
 ```
 /** @jsxImportSource @b9g/crank */
@@ -524,11 +594,11 @@ Or project-wide via `tsconfig.json`:
 { "compilerOptions": { "jsx": "react-jsx", "jsxImportSource": "@b9g/crank" } }
 ```
 
-The framework provides `jsx-runtime` and `jsx-dev-runtime` modules at the `@b9g/crank` package root for use by JSX compilers.
+The framework provides `jsx-runtime` and `jsx-dev-runtime` modules at the `@b9g/crank` package root for use by JSX compilers. These modules export thin adapters that construct `Element` instances.
 
 ## Classic createElement Transform ## {#create-element-transform}
 
-The classic transform requires an explicit import and a pragma that tells the compiler which function to call:
+The classic transform uses `createElement(tag, props, ...children)`, a convenience wrapper that normalizes rest-argument children into the `children` prop and constructs an `Element`. It requires an explicit import:
 
 ```
 /** @jsxFactory createElement */
@@ -541,7 +611,7 @@ Or project-wide via `tsconfig.json`:
 { "compilerOptions": { "jsx": "react", "jsxFactory": "createElement" } }
 ```
 
-The `createElement` function is exported from the root `@b9g/crank` module.
+The automatic transform is preferred for new projects.
 
 ## Template Tags ## {#template-tags}
 
