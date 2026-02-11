@@ -27,6 +27,28 @@ export function* InlineCodeBlock(
 		});
 	});
 
+	let isIntersecting = false;
+	if (typeof window !== "undefined") {
+		const intersectionObserver = new IntersectionObserver(
+			(entries) => {
+				if (!isIntersecting) {
+					this.refresh(() => {
+						isIntersecting = entries[0].isIntersecting;
+					});
+				}
+			},
+			{threshold: 0.1},
+		);
+
+		this.after((root) => {
+			intersectionObserver.observe(root);
+		});
+
+		this.cleanup(() => {
+			intersectionObserver.disconnect();
+		});
+	}
+
 	// eslint-disable-next-line crank/prop-destructuring-consistency -- value is internal state updated by contentchange
 	for ({lang, editable, breakpoint = "1300px"} of this) {
 		yield jsx`
@@ -130,7 +152,9 @@ export function* InlineCodeBlock(
 							`}>
 								<${CodePreview}
 									value=${value}
+									visible=${isIntersecting}
 									autoresize
+									showStatus
 									language=${lang.startsWith("python") ? "python" : "javascript"}
 								/>
 							</div>
