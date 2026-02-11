@@ -8,7 +8,7 @@ globs:
   - "**/*.ts"
   - "**/*.js"
 references:
-  - docs/spec.md
+  - docs/spec.bs
   - docs/guides/03-components.md
   - docs/guides/04-handling-events.md
   - docs/guides/05-async-components.md
