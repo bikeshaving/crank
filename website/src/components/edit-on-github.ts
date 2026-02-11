@@ -5,14 +5,7 @@ const GITHUB_REPO = "bikeshaving/crank";
 const GITHUB_BRANCH = "main";
 
 export function EditOnGitHub({filename}: {filename: string}) {
-	// Extract relative path from docs/ directory
-	const docsIndex = filename.indexOf("/docs/");
-	if (docsIndex === -1) {
-		return null;
-	}
-
-	const relativePath = filename.slice(docsIndex + 1); // includes "docs/..."
-	const editUrl = `https://github.com/${GITHUB_REPO}/edit/${GITHUB_BRANCH}/${relativePath}`;
+	const editUrl = `https://github.com/${GITHUB_REPO}/edit/${GITHUB_BRANCH}/docs/${filename}`;
 
 	return jsx`
 		<a
