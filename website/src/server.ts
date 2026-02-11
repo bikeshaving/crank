@@ -254,6 +254,25 @@ router.route("/playground").get(async (request) => {
 	return renderView(PlaygroundView, url.pathname);
 });
 
+// Build and serve the Bikeshed spec on each request
+router.route("/spec").get(async () => {
+	const docs = await self.directories.open("docs");
+	const fileHandle = await docs.getFileHandle("spec.bs");
+	const file = await fileHandle.getFile();
+	const source = await file.text();
+	const form = new FormData();
+	form.append("file", new Blob([source]), "spec.bs");
+	form.append("force", "1");
+	const response = await fetch("https://api.csswg.org/bikeshed/", {
+		method: "POST",
+		body: form,
+	});
+	const html = await response.text();
+	return new Response(html, {
+		headers: {"Content-Type": "text/html"},
+	});
+});
+
 // 404 catch-all (must be last)
 router.route("*").all(async (request) => {
 	const url = new URL(request.url);
@@ -288,7 +307,7 @@ async function generateStaticSite() {
 		const staticBucket = await self.directories.open("public");
 
 		// Static routes (landing pages that need index.html at directory root)
-		const staticRoutes = ["/", "/blog", "/playground"];
+		const staticRoutes = ["/", "/blog", "/playground", "/spec"];
 
 		// Collect blog and guide documents
 		const blogDocs = await collectDocuments(
