@@ -135,7 +135,7 @@ Async components can be re-rendered while still pending. Crank enforces two rule
    the `<Delay>` component, despite the fact that it is rerendered concurrently
    for its second through fourth renders. Because these renderings are
    enqueued, the third rendering is skipped - by the time Run 2 completes, Run
-   3's props are obsolete and only Run 4 executes. This behavior allows async
+   3’s props are obsolete and only Run 4 executes. This behavior allows async
    components to always be kept up-to-date without producing excess calls.
 
 2. If two different async components are rendered in the same position, the
@@ -428,7 +428,7 @@ renderer.render(<LazyDemo />, document.body);
 
 ### How lazy() is Implemented
 
-Here's the actual implementation from [`src/async.ts`](https://github.com/bikeshaving/crank/blob/master/src/async.ts):
+Here’s the actual implementation from [`src/async.ts`](https://github.com/bikeshaving/crank/blob/master/src/async.ts):
 
 ```typescript
 export function lazy<T extends Component>(
@@ -644,7 +644,7 @@ function ImageGallery({images}) {
 - **Better UX**: Coordinated loading prevents jarring layout shifts
 - **Performance**: Code splitting reduces initial bundle size
 - **Flexibility**: Mix and match patterns for your specific needs
-- **Crank-native**: Built on Crank's async generator foundation
+- **Crank-native**: Built on Crank’s async generator foundation
 
 ## Three Async Generator Modes
 

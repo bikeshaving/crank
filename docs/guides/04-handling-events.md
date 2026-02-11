@@ -54,7 +54,7 @@ function *Counter() {
 renderer.render(<Counter />, document.body);
 ```
 
-The listener attaches to the component's root node, so use event delegation for nested elements:
+The listener attaches to the component’s root node, so use event delegation for nested elements:
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";

@@ -2,10 +2,10 @@
 title: Custom Renderers
 ---
 
-Crank's custom renderer API allows you to render components to any target
-environment beyond the DOM. Whether you're building games with Canvas/WebGL,
+Crank’s custom renderer API allows you to render components to any target
+environment beyond the DOM. Whether you’re building games with Canvas/WebGL,
 creating terminal UIs, generating images, building emails, or interfacing with
-any other graphics system, Crank's `RenderAdapter` interface provides the
+any other graphics system, Crank’s `RenderAdapter` interface provides the
 foundation.
 
 ## Overview
@@ -84,7 +84,7 @@ create({tag, props, scope}) {
 - `scope` - Current scope context
 
 #### `patch(data): void`
-Updates a node's properties when props change. This is where you implement
+Updates a node’s properties when props change. This is where you implement
 prop-to-attribute mapping, event listener binding, and property
 synchronization.
 
@@ -231,7 +231,7 @@ finalize: (root) => {
 
 <!--
 ## Complete Example: Canvas Renderer
-Here's a complete example of a custom renderer for HTML5 Canvas:
+Here’s a complete example of a custom renderer for HTML5 Canvas:
 
 ```tsx live
 import {Renderer, RenderAdapter, ElementValue } from "@b9g/crank";

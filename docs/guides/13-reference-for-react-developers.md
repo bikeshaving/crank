@@ -44,7 +44,7 @@ function Greeting({name}) {
 
 ### Class Components → Generator Functions
 
-React class components map to Crank generator functions. The generator's closure replaces instance state, and the `for...of` loop over the context replaces `render()`:
+React class components map to Crank generator functions. The generator’s closure replaces instance state, and the `for...of` loop over the context replaces `render()`:
 
 ```jsx
 // React
@@ -93,7 +93,7 @@ Crank distinguishes stateless and stateful components by return type: a function
 
 ### useState → Local Variables
 
-State in Crank is a local variable in the generator's closure. Calling `this.refresh()` re-renders the component, and the `for...of` loop yields the next iteration with updated values.
+State in Crank is a local variable in the generator’s closure. Calling `this.refresh()` re-renders the component, and the `for...of` loop yields the next iteration with updated values.
 
 ```jsx
 // React
@@ -242,7 +242,7 @@ function *Timer() {
 
 ### No Dependency Arrays
 
-React's `useEffect` requires a dependency array to control when side effects re-run. In Crank, the `for...of` loop destructures fresh props on every iteration, and you can compare values yourself:
+React’s `useEffect` requires a dependency array to control when side effects re-run. In Crank, the `for...of` loop destructures fresh props on every iteration, and you can compare values yourself:
 
 ```jsx
 // React
@@ -301,7 +301,7 @@ Crank does not automatically re-render consumers when a provided value changes. 
 
 ## Refs
 
-React's `useRef` creates a mutable container that persists across renders. In Crank, a local variable in the generator closure serves the same purpose, and the `ref` callback prop captures the DOM element.
+React’s `useRef` creates a mutable container that persists across renders. In Crank, a local variable in the generator closure serves the same purpose, and the `ref` callback prop captures the DOM element.
 
 ```jsx
 // React
@@ -401,7 +401,7 @@ function *Parent({data}) {
 
 ### Custom Hooks → Functions Taking Context
 
-React custom hooks are functions that call other hooks. In Crank, the equivalent is a plain function that receives the component's context as a parameter:
+React custom hooks are functions that call other hooks. In Crank, the equivalent is a plain function that receives the component’s context as a parameter:
 
 ```jsx
 // React
@@ -531,7 +531,7 @@ The `class` prop accepts a string or an object. The object form provides built-i
 
 ### innerHTML
 
-Replaces React's `dangerouslySetInnerHTML`:
+Replaces React’s `dangerouslySetInnerHTML`:
 
 ```jsx
 // React
@@ -573,7 +573,7 @@ function *SearchBox() {
 
 ### Uncontrolled Inputs
 
-The `copy` prop with a string value can exclude specific props from being re-applied on subsequent renders. `copy="!value"` tells Crank to re-apply all props *except* `value`, letting the browser manage the input's value:
+The `copy` prop with a string value can exclude specific props from being re-applied on subsequent renders. `copy="!value"` tells Crank to re-apply all props *except* `value`, letting the browser manage the input’s value:
 
 ```jsx
 // React
