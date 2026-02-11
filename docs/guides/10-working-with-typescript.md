@@ -2,11 +2,11 @@
 title: Working with TypeScript
 ---
 
-Crank is written in TypeScript and provides excellent type safety out of the box. This guide covers the types and patterns you'll need to build type-safe Crank applications.
+Crank is written in TypeScript and provides excellent type safety out of the box. This guide covers the types and patterns you’ll need to build type-safe Crank applications.
 
 ## Typing Component Context
 
-Generator components use `this` to access the component context. In TypeScript's strict mode, you'll need to provide a type annotation for `this`. Crank exports the `Context` type for this purpose:
+Generator components use `this` to access the component context. In TypeScript’s strict mode, you’ll need to provide a type annotation for `this`. Crank exports the `Context` type for this purpose:
 
 ```tsx
 import {Context} from "@b9g/crank";
@@ -81,7 +81,7 @@ const el1 = <Greeting name={1} />; // throws a type error
 
 ### ComponentProps Helper Type
 
-Starting in Crank 0.7, you can use the `ComponentProps` helper type to extract the props type from any component. This is useful when you need to reference a component's props in other type definitions or when creating higher-order components.
+Starting in Crank 0.7, you can use the `ComponentProps` helper type to extract the props type from any component. This is useful when you need to reference a component’s props in other type definitions or when creating higher-order components.
 
 ```tsx
 import {ComponentProps} from "@b9g/crank";

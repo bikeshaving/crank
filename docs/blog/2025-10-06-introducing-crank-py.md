@@ -153,7 +153,7 @@ renderer.render(h(Dictionary), document.body)
 
 ## Pythonic UI development
 
-While Bernhardt might have overstated the death of JavaScript, we're closely approaching a time when Python frontend web development is both possible and appealing. You can use Crank.py with the Pyodide WASM backend, to take advantage of the entire Python ecosystem, or with the MicroPython WASM backend to write (relatively) lightweight frontends.
+While Bernhardt might have overstated the death of JavaScript, we’re closely approaching a time when Python frontend web development is both possible and appealing. You can use Crank.py with the Pyodide WASM backend, to take advantage of the entire Python ecosystem, or with the MicroPython WASM backend to write (relatively) lightweight frontends.
 
 Crank.py is open source and available on [GitHub](https://github.com/bikeshaving/crankpy). You can also see a [basic TodoMVC implementation on PyScript.com](https://pyscript.com/@brainkim/crank-todomvc/latest?files=main.py,index.html). It is still under development, and there are likely PyScript FFI and other bugs in the implementation, but is backed by the stable Crank.js framework under the hood. Somehow, making Crank.js a “Just JavaScript” framework has paved the way for Crank.py as a “Just Python” framework. It would have been much more difficult to create adapters for other frameworks, which use compilers or insane `useCallback()` APIs, and I think Crank’s [non-reactive](https://crank.js.org/blog/why-be-reactive/), generator and promise driven component model will be a breath of fresh air for Python developers who view the complications of JavaScript frontend development with justified skepticism.
 

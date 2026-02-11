@@ -19,7 +19,7 @@ renderer.render(<Greeting name="World" />, document.body);
 ```
 
 ## Component children
-Children passed between tags appear as `props.children`. The component must place them in the returned tree — otherwise they won't render.
+Children passed between tags appear as `props.children`. The component must place them in the returned tree — otherwise they won’t render.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -64,7 +64,7 @@ fib.next(); // {value: 1}
 fib.next(); // {value: 2}
 ```
 
-The variables `a` and `b` persist between calls — the generator's scope is its state. Crank components work the same way: yield JSX instead of numbers, and the framework calls `next()` when the component re-renders:
+The variables `a` and `b` persist between calls — the generator’s scope is its state. Crank components work the same way: yield JSX instead of numbers, and the framework calls `next()` when the component re-renders:
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -86,7 +86,7 @@ renderer.render(<Counter />, document.body);
 renderer.render(<Counter />, document.body);
 ```
 
-However, `while (true)` is fragile — a missing `yield` freezes the page. A better pattern iterates over the component's *context* (`this`), which yields fresh props on each render:
+However, `while (true)` is fragile — a missing `yield` freezes the page. A better pattern iterates over the component’s *context* (`this`), which yields fresh props on each render:
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -146,7 +146,7 @@ renderer.render(<Timer />, document.body);
 
 ### The refresh() Callback Pattern
 
-`refresh()` accepts a callback that runs before re-rendering, so you can't forget to pair mutation with refresh:
+`refresh()` accepts a callback that runs before re-rendering, so you can’t forget to pair mutation with refresh:
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -189,7 +189,7 @@ function *Timer({message}, ctx) {
 ```
 
 ## Default Props
-Use JavaScript's default value syntax in the destructuring pattern:
+Use JavaScript’s default value syntax in the destructuring pattern:
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";

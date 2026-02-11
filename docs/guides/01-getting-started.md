@@ -326,7 +326,7 @@ function *RandomDogApp() {
 renderer.render(<RandomDogApp />, document.body);
 ```
 
-## What's New in Crank 0.7
+## What’s New in Crank 0.7
 
 Crank 0.7 is a major release that introduces powerful new features while
 maintaining full backward compatibility. Here are the highlights:
@@ -349,7 +349,7 @@ const onclick = () => this.refresh(() => count++);
 This pattern is especially useful in event handlers and timer callbacks.
 
 ### Advanced Async Patterns
-The new `async` module provides React-like APIs with Crank's unique async
+The new `async` module provides React-like APIs with Crank’s unique async
 capabilities:
 
 ```jsx
