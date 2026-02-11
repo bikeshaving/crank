@@ -65,11 +65,7 @@ Function components are great for displaying data, but what about components
 that need to remember things or respond to user interactions? For example, a
 counter that tracks clicks, or a form that manages input state.
 
-In Crank, we use [generator
-functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*)
-to create stateful components. If you haven't used generators before, here's
-the core idea — a generator function pauses at each `yield` and resumes where
-it left off when you call `next()`:
+In Crank, we use [generator functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*) to create stateful components. A generator pauses at each `yield` and resumes where it left off when you call `next()`:
 
 ```js
 function *fibonacci() {
@@ -85,15 +81,9 @@ fib.next(); // {value: 0}
 fib.next(); // {value: 1}
 fib.next(); // {value: 1}
 fib.next(); // {value: 2}
-fib.next(); // {value: 3}
 ```
 
-The variables `a` and `b` persist between calls — the generator's scope is its
-state. Crank uses the same mechanism for components: instead of yielding
-numbers, you yield JSX elements, and instead of calling `next()` yourself, the
-framework calls it each time the component needs to re-render.
-
-Here's a simple example:
+The variables `a` and `b` persist between calls — the generator's scope is its state. Crank components work the same way: yield JSX instead of numbers, and the framework calls `next()` when the component re-renders:
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -159,31 +149,13 @@ This pattern is much safer than `while (true)` because it's impossible to create
 
 ### Why `for ({} of this)`?
 
-There are many ways to interpret "generator functions are components." Crank's `for...of this` pattern is a deliberate design choice that balances several concerns at once.
+The component context (`this`) is iterable — it yields fresh props on each render. The destructuring in `for ({name} of this)` reassigns the parameter variables declared in the function head, keeping them current without declaring new ones. This means:
 
-The component context (`this`) is an [iterable](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols) that yields fresh props on each render. The `for...of` loop advances the iterator once per render, and the destructuring assignment in the loop head — `for ({name, count} of this)` — reassigns the function's parameter variables with the new values:
+- **TypeScript types flow through.** The parameter declaration types the props; the `for...of` reassignment reuses those bindings with no extra annotations.
+- **No lint issues.** No shadowed variables, no undeclared names — the loop writes into existing bindings.
+- **One source of truth.** Props are declared once in the parameter list and updated in one place.
 
-```jsx
-function *Greeting({name}) {
-  // name is "Alice" on first render
-  for ({name} of this) {
-    // name is updated to whatever the parent passes
-    yield <div>Hello, {name}</div>;
-  }
-}
-```
-
-This pattern works because JavaScript allows destructuring assignment to *reassign* existing variables. The `{name}` in `for ({name} of this)` isn't declaring a new variable — it's writing into the `name` that was already declared in the function's parameter list.
-
-This matters for three reasons:
-
-1. **TypeScript infers the props type from the parameter.** Declaring `function *Greeting({name}: {name: string})` gives `name` a type. The `for...of` reassignment reuses that binding, so no type annotations are needed inside the loop.
-
-2. **No undeclared variables.** If the loop declared new variables, linters would flag them as shadowing the parameter, or you'd need a separate `let` declaration. Reassigning the parameter sidesteps this entirely.
-
-3. **One source of truth.** The parameter list is where you declare what your component accepts. The `for...of` head is where those same names receive updated values. There's no second set of variable declarations to keep in sync.
-
-When a component has no props (or doesn't need to track prop updates), `for ({} of this)` still advances the iterator — the empty destructuring pattern discards the props object while keeping the component responsive to re-renders.
+When a component has no props, `for ({} of this)` advances the iterator with an empty destructuring pattern.
 
 But so far, our components only update when re-rendered from above. What if you
 want to update based on user interactions, timers, or other events?
