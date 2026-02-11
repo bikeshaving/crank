@@ -5,14 +5,10 @@ description: The dos and don'ts of writing cranky code. Covers component structu
 
 Crank's design philosophy is that JavaScript already has the primitives you need to build UIs. Code that follows these conventions is *cranky* — idiomatic Crank that leans on the language instead of fighting it.
 
-- **Use vanilla JavaScript.** If the language has a feature for it — variables, loops, `try`/`catch`, `async`/`await` — use that instead of a framework abstraction. Crank adds a thin rendering layer and gets out of the way.
-- **Variables are state.** A `let` in a generator closure is your `useState`.
-- **Control flow is lifecycle.** Setup before the loop, render inside it, cleanup after it. Context methods like `schedule`, `after`, and `cleanup` fill in where control flow alone cannot reach — DOM timing and unmount safety — but the generator structure carries the weight.
-- **The DOM is the API.** Use `class`, `for`, `onclick`, `innerHTML` — the platform's names, not aliases.
-- **Refresh explicitly.** Nothing re-renders until you say so. The `refresh` callback makes mutation and re-render atomic. Prefer this over reactive abstractions like signals or observables — the generator already resumes on each update, so plain callbacks and `refresh` are all you need to push changes through the tree.
-- **Close over mutation.** Handlers created once keep seeing current state because they close over reassigned variables — no stale-closure bugs, no dependency arrays.
-- **Compose with children first.** Props and `children` before context. Context before events. Reach for the simplest mechanism that works.
-- **Await, don't emulate.** Use `async function` for data fetching and `async function*` for loading states. Let the language do the work.
+1. **Use the language.** Write vanilla JavaScript. Variables are state, control flow is lifecycle, `async`/`await` is data fetching. Crank adds a thin rendering layer and gets out of the way.
+2. **Match the platform.** `class`, `for`, `onclick`, `innerHTML` — the DOM's names, not aliases.
+3. **Own the execution.** You control when components re-render — there is no implicit reactivity. Understanding the execution of your components is the job; `this.refresh(() => ...)` makes it legible.
+4. **Compose uniformly.** A component should look and behave like a built-in element — props in, events out, children nested. The abstraction boundary is the same as the platform's.
 
 The dos and don'ts below are the practical expression of these principles. For full explanations, see the [Components](/guides/components), [Lifecycles](/guides/lifecycles), and [Async Components](/guides/async-components) guides. The [`eslint-plugin-crank`](https://github.com/bikeshaving/crank.js/tree/main/packages/eslint-plugin-crank) package enforces many of these automatically.
 
