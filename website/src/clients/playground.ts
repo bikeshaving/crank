@@ -144,7 +144,9 @@ function* Playground(this: Context) {
 
 	const endDrag = () => {
 		if (isDragging) {
-			isDragging = false;
+			this.refresh(() => {
+				isDragging = false;
+			});
 			document.body.style.cursor = "";
 			document.body.style.userSelect = "";
 		}
