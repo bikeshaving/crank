@@ -1,32 +1,34 @@
 ---
-title: React to Crank Migration Guide
-description: Comprehensive guide for React developers moving to Crank. Learn migration patterns, API equivalents, and how to convert hooks to generators.
+title: Reference for React Developers
+description: A side-by-side reference mapping React patterns to their Crank equivalents. Covers components, state, lifecycle, context, refs, memoization, and async patterns.
 ---
 
-This comprehensive guide covers everything you need to convert React codebases to Crank. It's organized by migration patterns rather than API comparisons, making it practical for systematic conversion.
+Crank shares JSX syntax and component concepts with React but differs in how it handles state, lifecycle, and side effects. Where React uses hooks, Crank uses generator functions and plain JavaScript. This guide maps common React patterns to their Crank equivalents.
 
-## Quick Reference: Key Differences
-
-Before diving into specifics, here are the major differences to keep in mind:
+## Quick Reference
 
 | React | Crank | Notes |
 |-------|-------|-------|
-| `className` | `class` | Use HTML attribute names |
-| `htmlFor` | `for` | Use HTML attribute names |
-| `onClick` | `onclick` | Lowercase event props |
-| `onChange` | `onchange` | Lowercase event props |
-| `useState` | Generator + local variables | State persists in closure |
-| `useEffect` | Lifecycle methods | `schedule()`, `after()`, `cleanup()` |
-| `useContext` | `this.consume()` | Different method names |
-| `Context.Provider` | `this.provide()` | Different method names |
-| `defaultValue` | `copy="!value"` | Uncontrolled inputs pattern |
+| `className` | `class` | Both accepted; standard HTML name preferred |
+| `htmlFor` | `for` | Both accepted; standard HTML name preferred |
+| `onClick` | `onclick` | Both accepted; lowercase preferred |
+| `onChange` | `onchange` | Both accepted; lowercase preferred |
+| `useState` | Local variable in generator | State persists in generator closure |
+| `useEffect` | `schedule()`, `after()`, `cleanup()` | See [Lifecycle](#lifecycle) |
+| `useContext` | `this.consume(key)` | See [Context](#context) |
+| `Context.Provider` | `this.provide(key, value)` | No wrapper component needed |
+| `useRef` | Local variable + `ref` callback | See [Refs](#refs) |
+| `useMemo` | Manual cache in generator | See [Memoization](#memoization) |
+| `React.memo` | `Copy` element or `copy` prop | See [Memoization](#memoization) |
 | `dangerouslySetInnerHTML` | `innerHTML` | Direct prop |
+| `React.lazy` | `lazy()` from `@b9g/crank/async` | See [Async Patterns](#async-patterns) |
+| `Suspense` | `Suspense` from `@b9g/crank/async` | See [Async Patterns](#async-patterns) |
 
-## Converting Component Types
+## Components
 
 ### Function Components
 
-React function components convert directly:
+Stateless function components are identical in both frameworks:
 
 ```jsx
 // React
@@ -34,39 +36,32 @@ function Greeting({name}) {
   return <div>Hello {name}</div>;
 }
 
-// Crank - identical!
+// Crank — same
 function Greeting({name}) {
   return <div>Hello {name}</div>;
 }
 ```
 
-### Class Components
+### Class Components → Generator Functions
 
-Convert React class components to generator functions:
+React class components map to Crank generator functions. The generator's closure replaces instance state, and the `for...of` loop over the context replaces `render()`:
 
 ```jsx
 // React
 class Counter extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {count: 0};
-  }
-  
+  state = {count: 0};
+
   componentDidMount() {
-    console.log('Mounted');
+    console.log("Mounted");
   }
-  
+
   componentWillUnmount() {
-    console.log('Unmounting');
+    console.log("Unmounting");
   }
-  
-  increment = () => {
-    this.setState({count: this.state.count + 1});
-  }
-  
+
   render() {
     return (
-      <button onClick={this.increment}>
+      <button onClick={() => this.setState({count: this.state.count + 1})}>
         Count: {this.state.count}
       </button>
     );
@@ -76,306 +71,390 @@ class Counter extends React.Component {
 // Crank
 function *Counter() {
   let count = 0;
-  
-  // componentDidMount equivalent
-  console.log('Mounted');
-  
-  const increment = () => this.refresh(() => count++);
-  
+  console.log("Mounted");
+
+  const onclick = () => this.refresh(() => count++);
+
   for ({} of this) {
     yield (
-      <button onclick={increment}>
+      <button onclick={onclick}>
         Count: {count}
       </button>
     );
   }
-  
-  // componentWillUnmount equivalent
-  console.log('Unmounting');
+
+  console.log("Unmounting");
 }
 ```
 
-### Components with Complex State
+Crank distinguishes stateless and stateful components by return type: a function that returns JSX is stateless, while a generator that yields JSX is stateful.
 
-```jsx
-// React
-const [user, setUser] = useState(null);
-const [loading, setLoading] = useState(false);
-const [error, setError] = useState(null);
-
-// Crank
-function *UserComponent() {
-  let user = null;
-  let loading = false;
-  let error = null;
-  
-  const updateState = (updates) => {
-    this.refresh(() => {
-      Object.assign({user, loading, error}, updates);
-      user = updates.user ?? user;
-      loading = updates.loading ?? loading;
-      error = updates.error ?? error;
-    });
-  };
-  
-  // Use updateState({loading: true}) instead of setLoading(true)
-}
-```
-
-## NO HOOKS! 🎉
-
-**The best part about migrating from React to Crank? You get to DELETE all your hooks!**
-
-Crank doesn't have hooks because **you don't need them**. Generator functions give you persistent state, natural lifecycles, and direct control over your component logic. No more:
-
-- ❌ Dependency arrays you forget to update
-- ❌ Stale closure problems  
-- ❌ Rules of hooks restrictions
-- ❌ `useCallback` and `useMemo` everywhere
-- ❌ Complex custom hooks for simple logic
-- ❌ `useEffect` cleanup functions
-- ❌ Hook order dependencies
-
-**Instead, you get FREEDOM:**
-
-- ✅ **Write vanilla JavaScript** - loops, variables, functions, promises
-- ✅ **Natural lifecycles** - code runs when you expect it to
-- ✅ **No artificial restrictions** - put logic wherever it makes sense
-- ✅ **No memoization needed** - values persist naturally in closure scope
-- ✅ **Simple async patterns** - just use `async`/`await`
-
-## Converting Hooks to Vanilla JavaScript
+## State
 
 ### useState → Local Variables
 
+State in Crank is a local variable in the generator's closure. Calling `this.refresh()` re-renders the component, and the `for...of` loop yields the next iteration with updated values.
+
 ```jsx
 // React
-const [count, setCount] = useState(0);
-const increment = () => setCount(count + 1);
+function Counter() {
+  const [count, setCount] = useState(0);
+  return <button onClick={() => setCount(count + 1)}>Count: {count}</button>;
+}
 
 // Crank
-function *Component() {
+function *Counter() {
   let count = 0;
-  const increment = () => this.refresh(() => count++);
-  
+  const onclick = () => this.refresh(() => count++);
+
   for ({} of this) {
-    // component body
+    yield <button onclick={onclick}>Count: {count}</button>;
   }
 }
 ```
 
-### useEffect
+The callback form of `this.refresh()` runs the mutation immediately before re-rendering, which prevents forgetting to call `refresh()` after a state change.
+
+### Multiple State Variables
+
+Where React requires separate `useState` calls, Crank uses ordinary variable declarations:
 
 ```jsx
-// React - componentDidMount
+// React
+const [name, setName] = useState("");
+const [email, setEmail] = useState("");
+const [agreed, setAgreed] = useState(false);
+
+// Crank
+function *SignupForm() {
+  let name = "";
+  let email = "";
+  let agreed = false;
+
+  // ...
+}
+```
+
+### State Update Semantics
+
+The `refresh()` callback runs synchronously, so consecutive mutations compose as expected:
+
+```jsx
+// React — setState is batched; both refer to the same snapshot
+setCount(count + 1);
+setCount(count + 1); // still count + 1
+
+// Crank — mutations are sequential
+this.refresh(() => {
+  count = count + 1;
+  count = count + 1; // count + 2
+});
+```
+
+## Lifecycle
+
+### Mount Phase
+
+Code before the `for...of` loop runs once when the component mounts:
+
+```jsx
+// React
 useEffect(() => {
-  console.log('Mounted');
+  console.log("Mounted");
 }, []);
 
 // Crank
 function *Component() {
-  console.log('Mounted'); // Runs on mount
-  
+  console.log("Mounted");
+
   for ({} of this) {
-    yield <div>Content</div>;
+    yield <div />;
   }
 }
+```
 
-// React - componentDidUpdate
+### Per-Render Side Effects
+
+Crank provides two callback methods for post-render work, with different timing:
+
+- **`this.schedule(cb)`** — runs after DOM nodes are created but *before* they are inserted into the document. Useful for setting up properties without visual flicker.
+- **`this.after(cb)`** — runs after the element is live in the DOM. Useful for focusing inputs, measuring layout, or triggering animations.
+
+```jsx
+// React
 useEffect(() => {
-  console.log('Updated');
+  inputRef.current.focus();
 });
 
 // Crank
 function *Component() {
   for ({} of this) {
-    this.after(() => console.log('Updated')); // Runs after each render
-    yield <div>Content</div>;
+    this.after((el) => el.querySelector("input").focus());
+    yield <div><input type="text" /></div>;
   }
-}
-
-// React - componentWillUnmount
-useEffect(() => {
-  const timer = setInterval(() => {}, 1000);
-  return () => clearInterval(timer);
-}, []);
-
-// Crank
-function *Component() {
-  const timer = setInterval(() => {}, 1000);
-  
-  for ({} of this) {
-    yield <div>Content</div>;
-  }
-  
-  clearInterval(timer); // Cleanup on unmount
 }
 ```
 
-### useContext
+Both methods must be called inside the `for...of` loop to run on each render. They are one-shot: each call registers a callback for the current render only.
+
+### Unmount / Cleanup
+
+Three equivalent approaches:
+
+**Code after the loop** — runs when the component is removed from the tree:
+```jsx
+function *Timer() {
+  const interval = setInterval(() => this.refresh(), 1000);
+
+  for ({} of this) {
+    yield <div>Tick</div>;
+  }
+
+  clearInterval(interval); // cleanup
+}
+```
+
+**`try`/`finally`** — also handles errors:
+```jsx
+function *Timer() {
+  const interval = setInterval(() => this.refresh(), 1000);
+  try {
+    for ({} of this) {
+      yield <div>Tick</div>;
+    }
+  } finally {
+    clearInterval(interval);
+  }
+}
+```
+
+**`this.cleanup(cb)`** — useful for abstracting teardown into helper functions:
+```jsx
+function *Timer() {
+  const interval = setInterval(() => this.refresh(), 1000);
+  this.cleanup(() => clearInterval(interval));
+
+  for ({} of this) {
+    yield <div>Tick</div>;
+  }
+}
+```
+
+### No Dependency Arrays
+
+React's `useEffect` requires a dependency array to control when side effects re-run. In Crank, the `for...of` loop destructures fresh props on every iteration, and you can compare values yourself:
 
 ```jsx
 // React
-const ThemeContext = React.createContext();
+useEffect(() => {
+  document.title = `Count: ${count}`;
+}, [count]);
+
+// Crank
+function *Component({count}) {
+  for ({count} of this) {
+    this.after(() => document.title = `Count: ${count}`);
+    yield <div>{count}</div>;
+  }
+}
+```
+
+## Context
+
+React context requires creating a context object, wrapping descendants in a Provider component, and consuming with `useContext`. Crank uses `this.provide()` and `this.consume()` with any value as a key, and no wrapper component is needed.
+
+```jsx
+// React
+const ThemeContext = React.createContext("light");
 
 function App() {
   return (
     <ThemeContext.Provider value="dark">
-      <Child />
+      <Toolbar />
     </ThemeContext.Provider>
   );
 }
 
-function Child() {
+function Toolbar() {
   const theme = useContext(ThemeContext);
   return <div>Theme: {theme}</div>;
 }
 
 // Crank
+const ThemeKey = Symbol("theme");
+
 function *App() {
-  this.provide("theme", "dark");
-  
+  this.provide(ThemeKey, "dark");
+
   for ({} of this) {
-    yield <Child />;
+    yield <Toolbar />;
   }
 }
 
-function Child() {
-  const theme = this.consume("theme");
+function Toolbar() {
+  const theme = this.consume(ThemeKey);
   return <div>Theme: {theme}</div>;
 }
 ```
 
-### useMemo and useCallback → Just Delete Them!
+Crank does not automatically re-render consumers when a provided value changes. If a provider updates a value, it is responsible for re-rendering its subtree (which happens naturally when the provider yields new children).
+
+## Refs
+
+React's `useRef` creates a mutable container that persists across renders. In Crank, a local variable in the generator closure serves the same purpose, and the `ref` callback prop captures the DOM element.
 
 ```jsx
-// React - artificial memoization complexity
-const expensiveValue = useMemo(() => computeExpensive(data), [data]);
-const handleClick = useCallback(() => doSomething(id), [id]);
-const memoizedStyle = useMemo(() => ({color: theme}), [theme]);
-
-// Crank - pure vanilla JavaScript simplicity
-function *Component({data, id, theme}) {
-  // Expensive computation? Just cache it naturally!
-  let cachedData = null;
-  let expensiveValue = null;
-  
-  // Create functions once, use forever
-  const handleClick = () => doSomething(id);
-  const style = {color: theme};
-  
-  for ({data, id, theme} of this) {
-    // Natural memoization - no hooks needed
-    if (cachedData !== data) {
-      expensiveValue = computeExpensive(data);
-      cachedData = data;
-    }
-    
-    yield <div onclick={handleClick} style={style}>{expensiveValue}</div>;
-  }
-}
-```
-
-**Why this works:**
-- **Functions are created once** and persist in the generator closure
-- **Variables naturally cache** values between renders
-- **No dependency arrays** - you control exactly when things update
-- **No stale closures** - the `for...of` loop gives you fresh props
-- **Just vanilla JavaScript** - no framework magic needed!
-
-### Custom Hooks → Regular Functions and Classes
-
-```jsx
-// React - forced into hook patterns
-function useCounter(initialValue = 0) {
-  const [count, setCount] = useState(initialValue);
-  const increment = useCallback(() => setCount(c => c + 1), []);
-  const decrement = useCallback(() => setCount(c => c - 1), []);
-  return {count, increment, decrement};
+// React
+function AutoFocus() {
+  const inputRef = useRef(null);
+  useEffect(() => inputRef.current.focus(), []);
+  return <input ref={inputRef} />;
 }
 
-function useLocalStorage(key, defaultValue) {
-  const [value, setValue] = useState(() => {
-    return localStorage.getItem(key) ?? defaultValue;
-  });
-  
-  const setStoredValue = useCallback((newValue) => {
-    setValue(newValue);
-    localStorage.setItem(key, newValue);
-  }, [key]);
-  
-  return [value, setStoredValue];
-}
+// Crank
+function *AutoFocus() {
+  let input = null;
+  this.after(() => input && input.focus());
 
-// Crank - just write normal JavaScript!
-class Counter {
-  constructor(initialValue = 0) {
-    this.count = initialValue;
-  }
-  
-  increment() {
-    this.count++;
-  }
-  
-  decrement() {
-    this.count--;
-  }
-}
-
-class LocalStorage {
-  static get(key, defaultValue) {
-    return localStorage.getItem(key) ?? defaultValue;
-  }
-  
-  static set(key, value) {
-    localStorage.setItem(key, value);
-  }
-}
-
-// Or simple functions
-function createCounter(initialValue = 0) {
-  return {
-    count: initialValue,
-    increment() { this.count++; },
-    decrement() { this.count--; }
-  };
-}
-
-// Use in components - no hook restrictions!
-function *CounterComponent() {
-  const counter = createCounter(0);
-  let stored = LocalStorage.get('count', 0);
-  
-  const save = () => {
-    LocalStorage.set('count', counter.count);
-    this.refresh();
-  };
-  
   for ({} of this) {
-    yield (
-      <div>
-        <p>Count: {counter.count}</p>
-        <button onclick={() => { counter.increment(); this.refresh(); }}>+</button>
-        <button onclick={() => { counter.decrement(); this.refresh(); }}>-</button>
-        <button onclick={save}>Save</button>
-      </div>
-    );
+    yield <input ref={(el) => input = el} />;
   }
 }
 ```
 
-#### Real-World Example: Third-Party Library Integration
+## Memoization
 
-Here's how to integrate third-party libraries without hooks. This virtualizer utility wraps TanStack Virtual for use in Crank components:
+### useMemo → Manual Cache
+
+In a generator, cached values persist across renders in the closure. You can compare inputs and recompute only when they change:
+
+```jsx
+// React
+const sorted = useMemo(() => items.sort(compareFn), [items]);
+
+// Crank
+function *SortedList({items}) {
+  let prevItems = null;
+  let sorted = null;
+
+  for ({items} of this) {
+    if (items !== prevItems) {
+      sorted = [...items].sort(compareFn);
+      prevItems = items;
+    }
+
+    yield <ul>{sorted.map((item) => <li key={item.id}>{item.name}</li>)}</ul>;
+  }
+}
+```
+
+### useCallback → Function in Generator Scope
+
+Functions created in the generator body persist across renders without any wrapper:
+
+```jsx
+// React
+const handleClick = useCallback(() => doSomething(id), [id]);
+
+// Crank
+function *Component({id}) {
+  // handleClick is created once and persists for the component's lifetime
+  const handleClick = () => doSomething(id);
+
+  for ({id} of this) {
+    yield <button onclick={handleClick}>Click</button>;
+  }
+}
+```
+
+Note that `handleClick` closes over `id`, which is reassigned on each iteration of the `for...of` loop, so it always uses the current value.
+
+### React.memo → Copy
+
+To skip re-rendering a child, use the `Copy` element or the `copy` prop:
+
+```jsx
+// React
+const MemoizedChild = React.memo(Child);
+
+// Crank — using Copy element
+import {Copy} from "@b9g/crank";
+
+function *Parent({data}) {
+  let prevData = undefined;
+
+  for ({data} of this) {
+    if (data === prevData) {
+      yield <Copy />;
+    } else {
+      prevData = data;
+      yield <Child data={data} />;
+    }
+  }
+}
+
+// Crank — using copy prop on a child element
+<Child copy={data === prevData} data={data} />
+```
+
+## Reusable Logic
+
+### Custom Hooks → Functions Taking Context
+
+React custom hooks are functions that call other hooks. In Crank, the equivalent is a plain function that receives the component's context as a parameter:
+
+```jsx
+// React
+function useWindowSize() {
+  const [size, setSize] = useState({width: 0, height: 0});
+  useEffect(() => {
+    const handler = () => setSize({
+      width: window.innerWidth,
+      height: window.innerHeight,
+    });
+    window.addEventListener("resize", handler);
+    handler();
+    return () => window.removeEventListener("resize", handler);
+  }, []);
+  return size;
+}
+
+// Crank
+function trackWindowSize(ctx) {
+  let size = {width: window.innerWidth, height: window.innerHeight};
+  const handler = () => {
+    ctx.refresh(() => {
+      size = {width: window.innerWidth, height: window.innerHeight};
+    });
+  };
+
+  window.addEventListener("resize", handler);
+  ctx.cleanup(() => window.removeEventListener("resize", handler));
+  return () => size;
+}
+
+// Usage
+function *ResponsiveLayout() {
+  const getSize = trackWindowSize(this);
+
+  for ({} of this) {
+    const {width} = getSize();
+    yield <div>{width > 768 ? <DesktopNav /> : <MobileNav />}</div>;
+  }
+}
+```
+
+### Third-Party Library Integration
+
+Here is an example wrapping [TanStack Virtual](https://tanstack.com/virtual/latest) for use in a Crank component:
 
 ```typescript
-// virtualizer.ts - Utility function, not a hook!
-import { Virtualizer, VirtualizerOptions, observeElementOffset } from "@tanstack/virtual-core";
-import type { Context } from "@b9g/crank";
+import {Virtualizer, VirtualizerOptions, observeElementOffset, observeElementRect, elementScroll} from "@tanstack/virtual-core";
+import type {Context} from "@b9g/crank";
 
-export function useVirtualizer<TItemElement extends Element>(
+export function createVirtualizer<TItemElement extends Element>(
   ctx: Context,
-  options: VirtualizerOptions<Element, TItemElement>
+  options: VirtualizerOptions<Element, TItemElement>,
 ): Virtualizer<Element, TItemElement> {
   const virtualizer = new Virtualizer({
     observeElementOffset,
@@ -388,222 +467,141 @@ export function useVirtualizer<TItemElement extends Element>(
     },
     ...options,
   });
-  
-  // Setup lifecycle integration with Crank
+
   ctx.after(() => {
     const unmount = virtualizer._didMount();
     ctx.cleanup(() => unmount && unmount());
   });
-  
-  // Sync virtualizer updates with Crank's render cycle
+
   const afterUpdate = () => {
     virtualizer._willUpdate();
     ctx.after(afterUpdate);
   };
   ctx.after(afterUpdate);
-  
+
   return virtualizer;
 }
+```
 
-// Usage in a Crank component
-function *VirtualList({ items }) {
-  const virtualizer = useVirtualizer(this, {
-    count: items.length,
-    getScrollElement: () => document.getElementById('scroll-container'),
-    estimateSize: () => 35,
-  });
-  
-  for ({ items } of this) {
-    yield (
-      <div id="scroll-container" style={{ height: '400px', overflow: 'auto' }}>
-        <div style={{ 
-          height: `${virtualizer.getTotalSize()}px`,
-          position: 'relative' 
-        }}>
-          {virtualizer.getVirtualItems().map(virtualItem => (
-            <div
-              key={virtualItem.key}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: `${virtualItem.size}px`,
-                transform: `translateY(${virtualItem.start}px)`,
-              }}
-            >
-              Item {virtualItem.index}: {items[virtualItem.index]}
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+The function name is a convention — `createVirtualizer`, `setupVirtualizer`, or `useVirtualizer` all work. The key is that it takes the Crank context as a parameter and uses `ctx.after()` and `ctx.cleanup()` for lifecycle integration.
+
+## Events and Attributes
+
+### Prop Naming
+
+Crank accepts both React-style and standard HTML names. Standard names are preferred because they match the DOM and avoid ambiguity:
+
+| React | Standard (preferred) |
+|-------|---------------------|
+| `className` | `class` |
+| `htmlFor` | `for` |
+| `onClick` | `onclick` |
+| `onMouseOver` | `onmouseover` |
+| `onChange` | `onchange` |
+
+If both `class` and `className` are provided on the same element, Crank logs an error.
+
+### Style
+
+The `style` prop accepts a string or an object. In object form, camelCase property names are converted to kebab-case, and numeric values receive a `px` suffix (except for unitless properties like `opacity`, `z-index`, and `flex-grow`):
+
+```jsx
+// String form
+<div style="color: red; font-size: 16px" />
+
+// Object form — camelCase is converted to kebab-case
+<div style={{fontSize: 16, backgroundColor: "red"}} />
+// Equivalent to: style="font-size: 16px; background-color: red"
+
+// Kebab-case also works
+<div style={{"font-size": "16px", "background-color": "red"}} />
+```
+
+### Class
+
+The `class` prop accepts a string or an object. The object form provides built-in `clsx`/`classnames` behavior:
+
+```jsx
+// String
+<div class="btn active" />
+
+// Object — truthy values include the class, falsy values exclude it
+<div class={{btn: true, active: isActive, disabled: isDisabled}} />
+```
+
+### innerHTML
+
+Replaces React's `dangerouslySetInnerHTML`:
+
+```jsx
+// React
+<div dangerouslySetInnerHTML={{__html: htmlString}} />
+
+// Crank
+<div innerHTML={htmlString} />
+```
+
+As with React, be careful with unsanitized user input.
+
+## Forms
+
+### Controlled Inputs
+
+A controlled input binds its value to a generator variable and updates it on change:
+
+```jsx
+// React
+function SearchBox() {
+  const [query, setQuery] = useState("");
+  return <input value={query} onChange={(e) => setQuery(e.target.value)} />;
 }
-```
-
-**Key Points:**
-- The "hook" is just a regular function that takes the Crank context as first parameter
-- No special React lifecycle management - just vanilla JavaScript working with Crank's lifecycle methods
-- `ctx.after()` for DOM-ready operations, `ctx.cleanup()` for cleanup
-- Direct instantiation of the Virtualizer class - no wrapper complexity needed
-- The function name `useVirtualizer` is just convention - it could be `createVirtualizer` or `setupVirtualizer`
-```
-
-**For more complex reusable logic patterns, see the [Reusable Logic guide](/guides/reusable-logic)** - no hooks needed!
-
-## Converting Props and Events
-
-### HTML Attribute Names
-
-**Always use HTML attribute names, not React's camelCase versions:**
-
-```jsx
-// React
-<label className="my-label" htmlFor="my-input">
-  <input onChange={handleChange} onClick={handleClick} />
-</label>
 
 // Crank
-<label class="my-label" for="my-input">
-  <input onchange={handleChange} onclick={handleClick} />
-</label>
-```
+function *SearchBox() {
+  let query = "";
 
-### Event Handling
-
-**All event props are lowercase:**
-
-```jsx
-// React
-<button 
-  onClick={handleClick}
-  onMouseOver={handleHover}
-  onFocus={handleFocus}
-  onChange={handleChange}
->
-
-// Crank
-<button 
-  onclick={handleClick}
-  onmouseover={handleHover}
-  onfocus={handleFocus}
-  onchange={handleChange}
->
-```
-
-### Style Props
-
-```jsx
-// React
-<div style={{fontSize: '16px', backgroundColor: 'red'}}>
-
-// Crank - use kebab-case in style objects
-<div style={{'font-size': '16px', 'background-color': 'red'}}>
-```
-
-### Class Names
-
-```jsx
-// React - className only
-<div className={`btn ${isActive ? 'active' : ''}`}>
-
-// Crank - class prop with object support
-<div class={{btn: true, active: isActive}}>
-
-// Crank - or strings
-<div class={`btn ${isActive ? 'active' : ''}`}>
-```
-
-## Form Handling
-
-### Controlled vs Uncontrolled Inputs
-
-**React's controlled/uncontrolled concept doesn't exist in Crank. Use `copy` prop instead:**
-
-```jsx
-// React - uncontrolled input
-<input defaultValue="initial" />
-
-// Crank - uncontrolled input (preserves user changes)
-<input copy="!value" value="initial" />
-
-// React - controlled input
-const [value, setValue] = useState('');
-<input value={value} onChange={e => setValue(e.target.value)} />
-
-// Crank - controlled input
-function *Component() {
-  let value = '';
-  
   for ({} of this) {
     yield (
-      <input 
-        value={value} 
-        onchange={e => this.refresh(() => value = e.target.value)} 
+      <input
+        value={query}
+        oninput={(e) => this.refresh(() => query = e.target.value)}
       />
     );
   }
 }
 ```
 
-### Form Patterns
+### Uncontrolled Inputs
+
+The `copy` prop with a string value can exclude specific props from being re-applied on subsequent renders. `copy="!value"` tells Crank to re-apply all props *except* `value`, letting the browser manage the input's value:
 
 ```jsx
 // React
-function ContactForm() {
-  const [formData, setFormData] = useState({name: '', email: ''});
-  
-  const handleChange = (e) => {
-    setFormData({...formData, [e.target.name]: e.target.value});
-  };
-  
-  return (
-    <form>
-      <input name="name" value={formData.name} onChange={handleChange} />
-      <input name="email" value={formData.email} onChange={handleChange} />
-    </form>
-  );
-}
+<input defaultValue="initial" />
 
 // Crank
-function *ContactForm() {
-  let formData = {name: '', email: ''};
-  
-  const handleChange = (e) => {
-    this.refresh(() => {
-      formData = {...formData, [e.target.name]: e.target.value};
-    });
-  };
-  
-  for ({} of this) {
-    yield (
-      <form>
-        <input name="name" value={formData.name} onchange={handleChange} />
-        <input name="email" value={formData.email} onchange={handleChange} />
-      </form>
-    );
-  }
-}
+<input copy="!value" value="initial" />
 ```
 
 ## Async Patterns
 
-### Data Fetching
+### Async Function Components
+
+Crank supports `async` function components, which return a promise that resolves to JSX. This eliminates loading-state boilerplate for simple data fetching:
 
 ```jsx
 // React
 function UserProfile({userId}) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  
+
   useEffect(() => {
-    fetchUser(userId).then(user => {
+    fetchUser(userId).then((user) => {
       setUser(user);
       setLoading(false);
     });
   }, [userId]);
-  
+
   if (loading) return <div>Loading...</div>;
   return <div>{user.name}</div>;
 }
@@ -613,35 +611,16 @@ async function UserProfile({userId}) {
   const user = await fetchUser(userId);
   return <div>{user.name}</div>;
 }
-
-// Usage with Suspense
-function App() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <UserProfile userId={123} />
-    </Suspense>
-  );
-}
 ```
 
-### Code Splitting
+### Suspense and Lazy Loading
+
+Crank provides `Suspense` and `lazy` in the `@b9g/crank/async` module:
 
 ```jsx
-// React
-const LazyComponent = React.lazy(() => import('./LazyComponent'));
+import {Suspense, lazy} from "@b9g/crank/async";
 
-function App() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <LazyComponent />
-    </Suspense>
-  );
-}
-
-// Crank
-import {lazy, Suspense} from "@b9g/crank/async";
-
-const LazyComponent = lazy(() => import('./LazyComponent'));
+const LazyComponent = lazy(() => import("./LazyComponent"));
 
 function App() {
   return (
@@ -652,31 +631,38 @@ function App() {
 }
 ```
 
-## Advanced Patterns
+### Loading Indicators with Async Generators
 
-### Error Boundaries
+For more control over loading states, async generator components can race a loading indicator against async children using `for await...of`:
+
+```jsx
+async function *DataLoader({children}) {
+  for await ({children} of this) {
+    yield <div>Loading...</div>;
+    yield children;
+  }
+}
+```
+
+The loading indicator displays first. If the async child resolves quickly, the indicator may never appear. If the child takes longer, the indicator shows until the child is ready. See the [Async Components guide](/guides/async-components) for details.
+
+## Error Boundaries
+
+React error boundaries require a class component with `getDerivedStateFromError` and `componentDidCatch`. In Crank, a `try`/`catch` around `yield` catches errors thrown by child components:
 
 ```jsx
 // React
 class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false };
-  }
-  
+  state = {hasError: false, error: null};
+
   static getDerivedStateFromError(error) {
-    return { hasError: true };
+    return {hasError: true, error};
   }
-  
-  componentDidCatch(error, errorInfo) {
-    console.log(error, errorInfo);
-  }
-  
+
   render() {
     if (this.state.hasError) {
-      return <h1>Something went wrong.</h1>;
+      return <div>Error: {this.state.error.message}</div>;
     }
-    
     return this.props.children;
   }
 }
@@ -687,232 +673,8 @@ function *ErrorBoundary({children}) {
     try {
       yield children;
     } catch (error) {
-      console.log(error);
-      yield <h1>Something went wrong.</h1>;
+      yield <div>Error: {error.message}</div>;
     }
   }
 }
 ```
-
-### Higher-Order Components
-
-```jsx
-// React
-function withLoading(WrappedComponent) {
-  return function WithLoadingComponent(props) {
-    if (props.loading) {
-      return <div>Loading...</div>;
-    }
-    return <WrappedComponent {...props} />;
-  };
-}
-
-// Crank
-function withLoading(WrappedComponent) {
-  return function *WithLoadingComponent(props) {
-    for (props of this) {
-      if (props.loading) {
-        yield <div>Loading...</div>;
-      } else {
-        yield <WrappedComponent {...props} />;
-      }
-    }
-  };
-}
-```
-
-### Render Props
-
-```jsx
-// React
-function MouseTracker({render}) {
-  const [mouse, setMouse] = useState({x: 0, y: 0});
-  
-  const handleMouseMove = (e) => {
-    setMouse({x: e.clientX, y: e.clientY});
-  };
-  
-  return (
-    <div onMouseMove={handleMouseMove}>
-      {render(mouse)}
-    </div>
-  );
-}
-
-// Crank
-function *MouseTracker({render}) {
-  let mouse = {x: 0, y: 0};
-  
-  const handleMouseMove = (e) => {
-    this.refresh(() => {
-      mouse = {x: e.clientX, y: e.clientY};
-    });
-  };
-  
-  for ({render} of this) {
-    yield (
-      <div onmousemove={handleMouseMove}>
-        {render(mouse)}
-      </div>
-    );
-  }
-}
-```
-
-## Special Props Conversion
-
-### Key Props
-
-```jsx
-// React and Crank - identical
-{items.map(item => <Item key={item.id} data={item} />)}
-```
-
-### Ref Props
-
-```jsx
-// React
-const inputRef = useRef(null);
-<input ref={inputRef} />
-
-// Crank
-function *Component() {
-  let inputRef = null;
-  
-  for ({} of this) {
-    yield <input ref={el => inputRef = el} />;
-  }
-}
-```
-
-### innerHTML
-
-```jsx
-// React
-<div dangerouslySetInnerHTML={{__html: htmlString}} />
-
-// Crank
-<div innerHTML={htmlString} />
-```
-
-## Performance Optimization
-
-### React.memo equivalent
-
-```jsx
-// React
-const ExpensiveComponent = React.memo(({data}) => {
-  return <div>{expensiveOperation(data)}</div>;
-});
-
-// Crank
-function *ExpensiveComponent({data}) {
-  let lastData = null;
-  let cachedResult = null;
-  
-  for ({data} of this) {
-    if (data === lastData) {
-      yield <Copy />;
-    } else {
-      cachedResult = <div>{expensiveOperation(data)}</div>;
-      lastData = data;
-      yield cachedResult;
-    }
-  }
-}
-```
-
-### Preventing Re-renders
-
-```jsx
-// React - useMemo to prevent re-renders
-const memoizedChild = useMemo(() => 
-  <ExpensiveChild data={data} />, [data]
-);
-
-// Crank - copy prop to prevent re-renders
-<ExpensiveChild copy={!hasChanged} data={data} />
-```
-
-## Migration Checklist
-
-When converting a React component to Crank:
-
-### 1. Component Structure
-- [ ] Convert class components to generator functions
-- [ ] Replace `useState` with local variables
-- [ ] Replace `useEffect` with lifecycle methods
-- [ ] Move setup code to top of generator
-- [ ] Move cleanup code to bottom of generator
-
-### 2. Props and Events
-- [ ] Change `className` to `class`
-- [ ] Change `htmlFor` to `for`
-- [ ] Lowercase all event props (`onClick` → `onclick`)
-- [ ] Update style objects to use CSS property names
-- [ ] Replace `dangerouslySetInnerHTML` with `innerHTML`
-
-### 3. Form Handling
-- [ ] Replace `defaultValue` with `copy="!value"`
-- [ ] Update controlled inputs to use `onchange` (lowercase)
-- [ ] Wrap state updates in `this.refresh(() => ...)`
-
-### 4. Context API
-- [ ] Replace `Context.Provider` with `this.provide()`
-- [ ] Replace `useContext` with `this.consume()`
-
-### 5. Async Patterns
-- [ ] Convert data fetching to async functions
-- [ ] Wrap with `<Suspense>` for loading states
-- [ ] Use `lazy()` for code splitting
-
-### 6. Performance
-- [ ] Replace `React.memo` with manual comparison or `<Copy>`
-- [ ] Use `copy` prop for preventing unnecessary re-renders
-- [ ] Remove `useMemo`/`useCallback` (not needed in Crank)
-
-## Common Gotchas
-
-### 1. Event Handler Binding
-```jsx
-// React - need to bind or use arrow functions
-class MyComponent extends React.Component {
-  handleClick = () => { /* this is bound */ }
-}
-
-// Crank - handlers naturally have access to generator scope
-function *MyComponent() {
-  const handleClick = () => { /* naturally has access to component scope */ };
-}
-```
-
-### 2. State Updates
-```jsx
-// React - setState is async
-this.setState({count: this.state.count + 1});
-this.setState({count: this.state.count + 1}); // Still count + 1!
-
-// Crank - updates are synchronous within refresh callback
-this.refresh(() => {
-  count = count + 1;
-  count = count + 1; // Actually count + 2
-});
-```
-
-### 3. Effect Dependencies
-```jsx
-// React - need dependency arrays
-useEffect(() => {
-  doSomething(prop);
-}, [prop]); // Easy to forget dependencies
-
-// Crank - no dependency arrays needed
-function *Component({prop}) {
-  for ({prop} of this) {
-    this.after(() => doSomething(prop)); // Always gets latest prop
-    yield <div />;
-  }
-}
-```
-
-This guide covers all the major patterns needed to convert React codebases to Crank systematically. Keep it handy as your complete migration reference!
