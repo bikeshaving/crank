@@ -222,7 +222,7 @@ Keys are a rendering control mechanism, not list boilerplate. Use them whenever 
 
 Conditional rendering with `&&` is safe — falsy values like `false` and `null` preserve their slot in the children array, so siblings do not shift positions.
 
-Crank inverts the update-skipping model. In React, everything re-renders by default and children must defend themselves with `shouldComponentUpdate` or `memo`. In Crank, the parent controls which children update — nothing re-renders until `refresh()` is called, and you preserve subtrees with the `copy` prop:
+In React, children defend themselves against re-renders with `shouldComponentUpdate` or `memo`. In Crank, the parent takes responsibility — use `copy` to preserve subtrees:
 
 ```jsx
 function *Dashboard() {
@@ -239,11 +239,9 @@ function *Dashboard() {
 }
 ```
 
-`<Sidebar copy />` tells the framework to preserve the entire subtree as-is. No component needs to defend itself against unnecessary re-renders — the parent takes responsibility for what changes.
-
 ## Children and Composition
 
-**Don't** use render props (functions-as-children or functions-as-props that return JSX). This pattern exists in React to share stateful logic between components, but Crank does not need it — generators already encapsulate state, and `children` or named props handle the rendering side:
+**Don't** use render props or functions-as-children — generators already encapsulate state:
 
 ```jsx
 function *App() {
@@ -537,41 +535,6 @@ function MyForm() {
 
 The `class` prop accepts objects for conditional classes, and the `style` prop accepts both strings and objects. See [Special Props and Components](/guides/special-props-and-components) for details.
 
-**Don't** extract event handlers before the loop for "performance." Crank does not compare prop references to skip re-renders, so there is no benefit. Inline handlers are fine:
-
-```jsx
-function *Counter() {
-  let count = 0;
-  for ({} of this) {
-    yield (
-      <button onclick={() => this.refresh(() => count++)}>
-        Count: {count}
-      </button>
-    );
-  }
-}
-```
-
-**Don't** think in dependency arrays. There are no stale closures in Crank — handlers close over `let` variables that are reassigned each iteration, so they always see current values. When you need to react to a prop change, compare it yourself:
-
-```jsx
-function *Fetcher({url}) {
-  let oldUrl = null;
-  let data = null;
-
-  for ({url} of this) {
-    if (url !== oldUrl) {
-      fetch(url)
-        .then((res) => res.json())
-        .then((d) => this.refresh(() => data = d));
-      oldUrl = url;
-    }
-
-    yield <div>{data ? JSON.stringify(data) : "Loading..."}</div>;
-  }
-}
-```
-
-**Don't** use render props or functions-as-children. Generators already encapsulate state, and `children` or named props handle composition. See [Children and Composition](#children-and-composition).
+**Don't** think in dependency arrays or `useCallback`. There are no stale closures in Crank — handlers close over `let` variables that are reassigned each iteration, so they always see current values. Inline handlers are fine; Crank does not compare prop references to skip re-renders.
 
 **Don't** reach for a state management library when local variables and context will do. A `let` in a generator is state. `this.provide()` and `this.consume()` with symbol keys share it across a subtree. See [Reusable Logic](/guides/reusable-logic) for patterns that scale further.
