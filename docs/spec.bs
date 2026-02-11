@@ -470,15 +470,17 @@ The framework strips all special props before passing the remaining props to the
 
 # JSX # {#jsx}
 
-The framework uses the [JSX](https://facebook.github.io/jsx/) syntax to create elements. It implements the `jsxImportSource` convention defined by the [React JSX Transform](https://reactjs.org/blog/2020/09/22/introducing-the-new-jsx-transform.html).
+[JSX](https://facebook.github.io/jsx/) is an XML-like syntax extension for JavaScript that provides a concise way to write [=element=] trees. A JSX compiler transforms expressions like `<div class="foo">hello</div>` into `createElement("div", {class: "foo"}, "hello")` calls. The framework supports three ways to create [=elements=]: the automatic JSX transform, the classic `createElement` transform, and tagged template literals.
 
 ## JSX Import Source ## {#jsx-import-source}
+
+The recommended approach uses the [automatic JSX transform](https://reactjs.org/blog/2020/09/22/introducing-the-new-jsx-transform.html), where the compiler inserts the `createElement` calls automatically — no import needed. Configure it with a file-level pragma comment:
 
 ```
 /** @jsxImportSource @b9g/crank */
 ```
 
-Or via `tsconfig.json`:
+Or project-wide via `tsconfig.json`:
 
 ```json
 { "compilerOptions": { "jsx": "react-jsx", "jsxImportSource": "@b9g/crank" } }
@@ -488,14 +490,14 @@ The framework provides `jsx-runtime` and `jsx-dev-runtime` modules at the `@b9g/
 
 ## Classic createElement Transform ## {#create-element-transform}
 
-The framework also supports the classic `createElement` transform used by older JSX compilers and `React.createElement`-style code:
+The classic transform requires an explicit import and a pragma that tells the compiler which function to call:
 
 ```
 /** @jsxFactory createElement */
 import {createElement} from "@b9g/crank";
 ```
 
-Or via `tsconfig.json`:
+Or project-wide via `tsconfig.json`:
 
 ```json
 { "compilerOptions": { "jsx": "react", "jsxFactory": "createElement" } }
@@ -505,9 +507,9 @@ The `createElement` function is exported from the root `@b9g/crank` module.
 
 ## Template Tags ## {#template-tags}
 
-The `jsx` and `html` tagged template literals from `@b9g/crank/standalone` produce Crank elements without a JSX compiler. Both names refer to the same function.
+For environments without a JSX compiler, the `jsx` and `html` tagged template literals from `@b9g/crank/standalone` produce [=elements=] using standard JavaScript [tagged template literals](https://tc39.es/ecma262/#sec-tagged-templates). Both names refer to the same function.
 
-The template tag replicates JSX syntax and semantics within [tagged template literals](https://tc39.es/ecma262/#sec-tagged-templates). [=Component=] tags must be interpolated as expressions (`<${Component} />`). Closing tags support three forms: symmetric (`</${Component}>`), comment-style (`<//Component>`), and shorthand (`<//>`).
+The template tag replicates JSX syntax and semantics within template strings. [=Component=] tags must be interpolated as expressions (`<${Component} />`). Closing tags support three forms: symmetric (`</${Component}>`), comment-style (`<//Component>`), and shorthand (`<//>`).
 
 The `@b9g/crank/standalone` module re-exports everything from the root `@b9g/crank` module along with the template tag functions, enabling single-file applications that run directly in browsers without a build step.
 
