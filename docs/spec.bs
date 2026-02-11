@@ -8,7 +8,12 @@ URL: https://crank.js.org/spec
 Editor: Brian Kim, bikeshaving, https://github.com/brainkim
 Abstract: This document specifies the component model for [Crank.js](https://crank.js.org). It defines how the framework invokes components, manages their lifecycle, handles async rendering, propagates errors, reconciles element trees, and creates elements via JSX, tagged templates, and createElement. The core framework is renderer-agnostic; this specification describes the component model independently of any particular output target, with DOM-specific behavior noted where applicable.
 Markup Shorthands: markdown yes
+Boilerplate: copyright off
 </pre>
+
+<div class="copyright">
+  Copyright © 2026 Brian Kim. Licensed under the <a href="https://opensource.org/licenses/MIT">MIT License</a>.
+</div>
 
 <pre class='link-defaults'>
 </pre>
