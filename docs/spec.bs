@@ -41,11 +41,11 @@ A <dfn>renderer</dfn> is the entry point to the framework. It translates the abs
 
 ## render() ## {#renderer-render}
 
-`render(children, root?, bridge?)` — renders an [=element=] tree into a root. The [=renderer=] caches per root; subsequent calls to `render` with the same root update in place. Returns `Promise<TResult> | TResult`.
+`render(children, root?, bridge?)` — the [=renderer=] MUST render the [=element=] tree into the given root. The [=renderer=] MUST cache state per root; subsequent calls to `render` with the same root MUST update in place. Returns `Promise<TResult> | TResult`.
 
 ## hydrate() ## {#renderer-hydrate}
 
-`hydrate(children, root, bridge?)` — attaches to pre-existing content in the root rather than creating from scratch. Used for server-rendered HTML.
+`hydrate(children, root, bridge?)` — the [=renderer=] MUST attach to pre-existing content in the root rather than creating new host nodes. Used for server-rendered HTML.
 
 ## Bridging ## {#bridging}
 
@@ -196,7 +196,7 @@ Each iteration MUST yield the current props object. If new props are not yet ava
 
 When the framework diffs children, it walks the new children array against the previous children array and decides for each position whether to reuse, replace, or remove an element.
 
-To <dfn lt="mount|mounts|mounting">mount</dfn> an element is to create it for the first time — invoking a [=component=] function, creating host nodes, and inserting them into the [=host environment=]. To <dfn lt="unmount|unmounts|unmounting">unmount</dfn> an element is to remove it — firing [=cleanup=] callbacks, calling `return()` on iterators, and removing host nodes. To <dfn lt="update|updates|updating">update</dfn> an element is to re-render it in place with new [=props=] — re-calling a function [=component=] or advancing a generator's iterator.
+To <dfn lt="mount|mounts|mounting">mount</dfn> an element is to create it for the first time — invoking a [=component=] function, creating host nodes, and inserting them into the [=host environment=]. To <dfn lt="unmount|unmounts|unmounting">unmount</dfn> an element is to remove it — firing cleanup callbacks, calling `return()` on iterators, and removing host nodes. To <dfn lt="update|updates|updating">update</dfn> an element is to re-render it in place with new [=props=] — re-calling a function [=component=] or advancing a generator's iterator.
 
 ## Position-Based Matching ## {#position-matching}
 
@@ -237,15 +237,15 @@ The [=element value=] is the argument passed to `ref` callbacks, `schedule` call
 
 ## Child Normalization ## {#child-normalization}
 
-A <dfn>Child</dfn> is any value that can appear in the element tree. The valid child types are: `Element | string | number | boolean | null | undefined`. Before diffing, the framework normalizes children:
+A <dfn>Child</dfn> is any value that can appear in the element tree. The valid child types are: `Element | string | number | boolean | null | undefined`. Before diffing, the framework MUST normalize children:
 
-- <strong>Strings</strong> are wrapped in a Text element, producing a text node via the [=renderer=].
-- <strong>Numbers</strong> are converted to strings and wrapped in a Text element.
-- <strong><code>null</code></strong> and <strong><code>undefined</code></strong> produce no output. A [=component=] returning `undefined` renders nothing.
-- <strong>Booleans</strong> (`true` and `false`) produce no output. This enables the `{condition && <Element />}` pattern — when the condition is `false`, nothing is rendered.
-- <strong>Non-string iterables</strong> (arrays, [generators](https://tc39.es/ecma262/#sec-generator-objects), Sets, etc.) are implicitly wrapped in a [=Fragment=]. Each item in the iterable becomes a [=Child=] at its own position in the element tree. This means [=components=] can return arrays or generators to produce multiple siblings without a wrapper node.
-- <strong>Nested arrays</strong> are flattened into the children array.
-- <strong>Elements</strong> (objects with a `tag` property) are diffed recursively.
+- <strong>Strings</strong> MUST be wrapped in a Text element, producing a text node via the [=renderer=].
+- <strong>Numbers</strong> MUST be converted to strings and wrapped in a Text element.
+- <strong><code>null</code></strong> and <strong><code>undefined</code></strong> MUST produce no output. A [=component=] returning `undefined` renders nothing.
+- <strong>Booleans</strong> (`true` and `false`) MUST produce no output. This enables the `{condition && <Element />}` pattern — when the condition is `false`, nothing is rendered.
+- <strong>Non-string iterables</strong> (arrays, [generators](https://tc39.es/ecma262/#sec-generator-objects), Sets, etc.) MUST be implicitly wrapped in a [=Fragment=]. Each item in the iterable becomes a [=Child=] at its own position in the element tree. This means [=components=] can return arrays or generators to produce multiple siblings without a wrapper node.
+- <strong>Nested arrays</strong> MUST be flattened into the children array.
+- <strong>Elements</strong> (objects with a `tag` property) MUST be diffed recursively.
 
 This normalization applies everywhere children appear: the return/yield value of a [=component=], the `children` prop, and the children of host elements.
 
@@ -315,9 +315,9 @@ The framework MUST execute the following steps in order:
 
 The framework MUST execute the following steps in order:
 
-1. Fire `cleanup` callbacks. If any return promises, child unmounting MUST be deferred until they resolve.
-2. Unmount children recursively.
-3. For generators: call `return()` on the iterator. The `finally` block executes as part of the iterator protocol.
+1. Fire `cleanup` callbacks. If any return promises, child [=unmounting=] MUST be deferred until they resolve.
+2. For generators and async generators: call `return()` on the iterator. The `finally` block executes as part of the [iterator protocol](https://tc39.es/ecma262/#sec-iteration).
+3. [=Unmount=] children recursively.
 
 ## Full Lifecycle ## {#full-lifecycle}
 
@@ -329,7 +329,7 @@ The commit sequence after each diff is: commit host mutations, call `ref` callba
 
 <ol>
   <li>Set <code>isExecuting</code> to <code>true</code>.
-  <li>Call <code>component(this, props, ctx)</code>.
+  <li>Call <code>component.call(ctx, props, ctx)</code>.
   <li>Set <code>isExecuting</code> to <code>false</code>.
   <li>Branch by return value:
 
@@ -403,7 +403,7 @@ An [=update=] occurs when a [=component=] receives new [=props=] or `refresh()` 
   <dd>
     <ol>
       <li>Set <code>isExecuting</code> to <code>true</code>.
-      <li>Re-call <code>component(this, props, ctx)</code>.
+      <li>Re-call <code>component.call(ctx, props, ctx)</code>.
       <li>Set <code>isExecuting</code> to <code>false</code>.
       <li>The full first-render cycle applies from this point.
     </ol>
@@ -422,7 +422,7 @@ An [=update=] occurs when a [=component=] receives new [=props=] or `refresh()` 
   <dd>
     <ol>
       <li>Set <code>isExecuting</code> to <code>true</code>.
-      <li>Re-call <code>component(this, props, ctx)</code>. [=Enqueue=] if [=inflight=] (at most one pending).
+      <li>Re-call <code>component.call(ctx, props, ctx)</code>. [=Enqueue=] if [=inflight=] (at most one pending).
       <li>Set <code>isExecuting</code> to <code>false</code>.
       <li>BLOCK until the promise settles.
       <li>Diff children, then run the commit sequence.
@@ -470,7 +470,7 @@ An [=update=] occurs when a [=component=] receives new [=props=] or `refresh()` 
     <tr><th>Callback<th>When<th>Argument<th>Lifetime<th>Async return
   </thead>
   <tbody>
-    <tr><td><code>ref(cb)</code><td>After host nodes created, before insertion<td>[=Element value=]<td>Prop<td>Ignored
+    <tr><td><code>ref</code> (prop)<td>After host nodes created, before insertion<td>[=Element value=]<td>Per-render (set as a prop)<td>Ignored
     <tr><td><code>schedule(cb)</code><td>After host nodes created, before insertion<td>[=Element value=]<td>One-shot<td>Defers insertion (initial render only)
     <tr><td><code>after(cb)</code><td>After host nodes inserted into environment<td>[=Element value=]<td>One-shot<td>Ignored
     <tr><td><code>cleanup(cb)</code><td>On unmount, before children unmount<td>[=Element value=]<td>Persistent<td>Defers child unmounting
@@ -486,7 +486,7 @@ When a child [=component=] throws during rendering, the framework MUST call [`th
 
 ## Async Error Handling ## {#async-error-handling}
 
-For async generator [=components=] in `for await...of` mode, the framework tracks whether the promise returned by `yield` is being observed (via `.then()` or `.catch()`). If the promise is **unobserved** ("floating") and a child error occurs, the framework injects the error via `throw(error)` on the iterator. If the promise is **observed**, the framework rejects the promise, allowing the [=component=] to catch the error via `await`.
+For async generator [=components=] in `for await...of` mode, the framework tracks whether the promise returned by `yield` is being observed (via `.then()` or `.catch()`). If the promise is <strong>unobserved</strong> ("floating") and a child error occurs, the framework injects the error via `throw(error)` on the iterator. If the promise is <strong>observed</strong>, the framework rejects the promise, allowing the [=component=] to catch the error via `await`.
 
 ## Generator Return on Error ## {#generator-return-on-error}
 
