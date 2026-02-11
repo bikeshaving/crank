@@ -17,6 +17,7 @@ references:
   - docs/guides/08-reusable-logic.md
   - docs/guides/11-reference-for-react-developers.md
   - docs/guides/12-jsx-template-tag.md
+  - docs/guides/13-common-pitfalls.md
   - docs/blog/2025-08-20-why-be-reactive.md
   - examples/todomvc.js
   - examples/hackernews.js
@@ -25,7 +26,7 @@ references:
 
 # Crank Component Authoring
 
-Read `docs/spec.md` for the full component specification. This skill summarizes the patterns you need.
+Read `docs/spec.bs` for the full component specification. This skill summarizes the patterns you need.
 
 ## Canonical Example
 
