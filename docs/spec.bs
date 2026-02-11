@@ -432,9 +432,47 @@ The `addEventListener` and `removeEventListener` methods on the [=component cont
 
 Note: This section is specific to the DOM [=renderer=].
 
-The framework passes props directly as [DOM attributes](https://dom.spec.whatwg.org/#concept-element-attribute) using standard [HTML attribute names](https://html.spec.whatwg.org/multipage/indices.html#attributes-3) (`class`, `for`, `innerHTML`, `tabindex`). React-style aliases (`className`, `htmlFor`) are also accepted and normalized to their standard equivalents.
+## Property vs Attribute Resolution ## {#prop-attr-resolution}
 
-Style props accept an object with [CSS property names](https://drafts.csswg.org/cssom/#dom-cssstyledeclaration-setproperty). Both kebab-case (`font-size`) and camelCase (`fontSize`) are supported; camelCase names are converted to kebab-case. Numeric values are automatically suffixed with `px` for properties that accept [length units](https://drafts.csswg.org/css-values/#lengths).
+For each prop on a host [=element=], the DOM [=renderer=] decides whether to set it as a [DOM property](https://html.spec.whatwg.org/multipage/common-dom-interfaces.html#reflecting-content-attributes-in-idl-attributes) or an [HTML attribute](https://dom.spec.whatwg.org/#concept-element-attribute). The default behavior tries the DOM property first: if the name exists on the element object and is writable, the [=renderer=] assigns it directly (e.g. `el.value = "text"`). Otherwise, it falls back to [`setAttribute`](https://dom.spec.whatwg.org/#dom-element-setattribute).
+
+This heuristic works for most cases, but some props are ambiguous — a name might exist as both a property and an attribute with different semantics. The `prop:` and `attr:` prefixes force a specific interpretation:
+
+<table class="data">
+  <thead>
+    <tr><th>Prefix<th>Behavior<th>Example
+  </thead>
+  <tbody>
+    <tr><td><code>prop:</code><td>Always set as a DOM property<td><code>&lt;input prop:value="text" /></code> → <code>el.value = "text"</code>
+    <tr><td><code>attr:</code><td>Always set as an HTML attribute<td><code>&lt;input attr:value="text" /></code> → <code>el.setAttribute("value", "text")</code>
+  </tbody>
+</table>
+
+Without a prefix, the [=renderer=] also handles these special cases for boolean coercion: when a string value maps to a boolean DOM property (e.g. `<details open="false">`), the [=renderer=] forces `setAttribute` to avoid the property coercing `"false"` to `true`.
+
+## Boolean and Nullish Props ## {#boolean-props}
+
+- `true` sets the attribute to an empty string (`el.setAttribute(name, "")`).
+- `false` or `null` removes the attribute (`el.removeAttribute(name)`).
+
+## React Compatibility ## {#react-compat}
+
+The DOM [=renderer=] accepts React-style prop names and normalizes them:
+
+- `className` is treated as `class`.
+- Event props with a camelCase name where the third character is uppercase (`onClick`, `onChange`) are lowercased before registration (`onclick`, `onchange`).
+
+## Style ## {#style-prop}
+
+The `style` prop accepts either a string or an object with [CSS property names](https://drafts.csswg.org/cssom/#dom-cssstyledeclaration-setproperty). Both kebab-case (`font-size`) and camelCase (`fontSize`) are supported; camelCase names are converted to kebab-case. Numeric values are automatically suffixed with `px` for properties that accept [length units](https://drafts.csswg.org/css-values/#lengths).
+
+## Class ## {#class-prop}
+
+The `class` prop (or `className`) accepts a string or an object. When an object is provided, keys are space-separated class names and values are booleans that toggle them:
+
+```
+<div class={{"active": isActive, "disabled": isDisabled}} />
+```
 
 # Special Components # {#special-components}
 
