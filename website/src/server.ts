@@ -57,7 +57,7 @@ import crankStandaloneModule from "./clients/crank/standalone.ts" with {
 };
 
 // Export logger for custom app logging
-export const logger = self.loggers.get(["shovel", "crank-website"]);
+export const logger = self.loggers.get(["app", "crank-website"]);
 
 // Export asset URLs for use in views
 export const assets = {
@@ -89,7 +89,7 @@ export const staticURLs: Record<string, string> = {
 const router = new Router();
 
 // Request logging middleware
-const requestLogger = self.loggers.get(["shovel", "crank-website"]);
+const requestLogger = self.loggers.get(["app", "crank-website"]);
 router.use(async (request) => {
 	const url = new URL(request.url);
 	requestLogger.info("{method} {path}", {
@@ -295,7 +295,7 @@ async function generateStaticSite() {
 		return;
 	}
 
-	const logger = self.loggers.get(["shovel", "crank-website"]);
+	const logger = self.loggers.get(["app", "crank-website"]);
 	logger.info("Starting static site generation...");
 
 	try {
