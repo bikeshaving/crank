@@ -4,7 +4,6 @@ import {css} from "@emotion/css";
 import {Root} from "../components/root.js";
 import {SerializeScript} from "../components/serialize-javascript.js";
 import {collectDocuments} from "../models/document.js";
-import * as Path from "path";
 
 import {Marked} from "../components/marked.js";
 import {InlineCodeBlock} from "../components/inline-code-block.js";
@@ -206,13 +205,10 @@ function AntiHero() {
 	`;
 }
 
-const __dirname = new URL(".", import.meta.url).pathname;
-
 export default async function Home({url}: ViewProps) {
-	const docs = await collectDocuments(Path.join(__dirname, "../../../docs"));
-	const md = docs.find((doc) =>
-		doc.filename.endsWith(Path.join("docs", "index.md")),
-	);
+	const docsDir = await self.directories.open("docs");
+	const docs = await collectDocuments(docsDir);
+	const md = docs.find((doc) => doc.filename === "index.md");
 	if (!md) {
 		throw new Error("index.md missing you silly goose");
 	}

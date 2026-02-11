@@ -4,6 +4,21 @@
 			"module": "@b9g/filesystem/node-fs",
 			"export": "NodeFSDirectory",
 			"path": "../docs"
+		},
+		"static": {
+			"module": "@b9g/filesystem/node-fs",
+			"export": "NodeFSDirectory",
+			"path": "./static"
+		},
+		"examples": {
+			"module": "@b9g/filesystem/node-fs",
+			"export": "NodeFSDirectory",
+			"path": "../examples"
+		},
+		"pagefind": {
+			"module": "@b9g/filesystem/node-fs",
+			"export": "NodeFSDirectory",
+			"path": "./dist/public/pagefind"
 		}
 	}
 }
