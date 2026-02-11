@@ -3,9 +3,7 @@ title: Handling Events
 description: Handle user interactions in Crank applications. Learn event listener patterns, event delegation, and best practices for building interactive UIs.
 ---
 
-Most web applications require some measure of interactivity, where the user
-interface updates according to interactions like clicks and form inputs. To
-facilitate this, Crank provides several ways to listen to and trigger events.
+Crank provides several ways to listen to and trigger events.
 
 ## DOM Event Props
 You can attach event callbacks to host element directly using event props.
@@ -31,9 +29,7 @@ function *Counter() {
 renderer.render(<Counter />, document.body);
 ```
 
-Camel-cased event props are supported for compatibility reasons with React
-starting in 0.6, but you should prefer the lower-cased event props as that
-matches the DOM.
+Camel-cased event props (`onClick`) are supported for React compatibility but lowercase is preferred.
 
 ## The EventTarget Interface
 As an alternative to event props, Crank contexts implement the same
@@ -58,11 +54,7 @@ function *Counter() {
 renderer.render(<Counter />, document.body);
 ```
 
-The context’s `addEventListener()` method attaches to the top-level node or
-nodes which each component renders, so if you want to listen to events on a
-nested node, you must use event delegation. For instance, in the following
-example, we have to filter events by target to make sure we’re not incrementing
-`count` based on clicks to the outer `div`.
+The listener attaches to the component's root node, so use event delegation for nested elements:
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -88,9 +80,7 @@ function *Counter() {
 renderer.render(<Counter />, document.body);
 ```
 
-While the `removeEventListener()` method is implemented, you do not have to
-call the `removeEventListener()` method if you merely want to remove event
-listeners when the component is unmounted.
+Event listeners are automatically cleaned up when the component unmounts.
 
 ## Dispatching Events
 Crank contexts implement the full EventTarget interface, meaning you can use
@@ -152,14 +142,7 @@ function *MyApp() {
 renderer.render(<MyApp />, document.body);
 ```
 
-`<MyButton />` is a function component which wraps a `<button>` element. It
-dispatches a `CustomEvent` whose type is `"mybuttonclick"` when it is pressed,
-and whose `detail` property contains data about the pressed button. This event
-is not triggered on the underlying DOM nodes; instead, it can be listened for
-by parent component contexts using event capturing and bubbling, and in the
-example, the event propagates and is handled by the `MyApp` component.
-
-The `dispatchEvent()` will also call any prop callbacks if they are found.
+Custom events bubble through the component tree. `dispatchEvent()` also invokes matching `on*` prop callbacks:
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -193,18 +176,8 @@ function *CustomCounter() {
 renderer.render(<CustomCounter />, document.body);
 ```
 
-Using custom events and event bubbling allows you to encapsulate state
-transitions within component hierarchies without the need for complex state
-management solutions in a way that is DOM-compatible.
-
 ## Event props vs EventTarget
-The props-based event API and the context-based EventTarget API both have their
-advantages. On the one hand, using event props means you can add event
-listeners to the exact element you’d like to listen to. On the other hand,
-using the `addEventListener` method allows you to take full advantage of the
-`EventTarget` API, which includes registering passive event listeners, or
-listeners which are dispatched during the capture phase. Crank supports both
-API styles for convenience and flexibility.
+Event props target specific elements. `addEventListener` gives access to the full `EventTarget` API (passive listeners, capture phase). Use whichever fits.
 
 ## Form Elements
 

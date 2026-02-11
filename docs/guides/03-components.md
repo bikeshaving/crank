@@ -5,21 +5,9 @@ description: Build powerful components in Crank using functions and generators. 
 
 ## Basic Components
 
-So far, we’ve only seen and used *host elements*. By convention, all host
-elements use lowercase tags like `<a>` or `<div>`, and these elements are
-rendered as their HTML equivalents.
+Host elements use lowercase tags like `<div>` and render as their HTML equivalents. *Components* are functions referenced with capitalized tags — the capitalization tells the JSX compiler to treat the tag as an identifier, not a string.
 
-However, eventually we’ll want to group these elements into reusable
-*components*. In Crank, all components are defined with plain old JavaScript
-functions which produce JSX elements. These functions can be referenced as
-element tags, and component elements are distinguished from host elements
-through the use of capitalized identifiers. The capitalized identifier is not
-just a convention but a way to tell JSX compilers to interpret the tag as an
-identifier rather than a literal string.
-
-The simplest kind of component is a *function component*. When rendered, the
-function is invoked with the props of the element as its first argument, and
-the return value of the function is rendered as the element’s children.
+The simplest kind is a *function component*. The function receives props as its first argument and its return value is rendered as children.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -31,10 +19,7 @@ renderer.render(<Greeting name="World" />, document.body);
 ```
 
 ## Component children
-Component elements can have children just like host elements. The
-`createElement()` function will add children to the props object under the name
-`children`, and it is up to the component to place the children somewhere in
-the returned element tree, otherwise it will not appear in the rendered output.
+Children passed between tags appear as `props.children`. The component must place them in the returned tree — otherwise they won't render.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -61,11 +46,7 @@ whatever else the caller passes in.
 
 ## Stateful Components
 
-Function components are great for displaying data, but what about components
-that need to remember things or respond to user interactions? For example, a
-counter that tracks clicks, or a form that manages input state.
-
-In Crank, we use [generator functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*) to create stateful components. A generator pauses at each `yield` and resumes where it left off when you call `next()`:
+Crank uses [generator functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*) for stateful components. A generator pauses at each `yield` and resumes where it left off when you call `next()`:
 
 ```js
 function *fibonacci() {
@@ -105,25 +86,7 @@ renderer.render(<Counter />, document.body);
 renderer.render(<Counter />, document.body);
 ```
 
-In this example, each time `<Counter />` is rendered, the generator resumes
-where it left off, increments the count, and yields a new element. The local
-variable `count` persists between renders because it's stored in the
-generator's scope.
-
-However, there's a problem with the `while (true)` approach: if you forget to
-add a `yield`, your component will run forever and freeze the page. A better
-pattern is to use the component's context as an iterator.
-
-## The Crank Context
-
-Crank provides each component with a *context* object, available as the `this`
-keyword. This context gives you access to props, lifecycle methods, and most
-importantly, the ability to re-render your component on demand.
-
-### The Props Iterator Pattern
-
-The safest way to write generator components is to iterate over the context
-itself, which yields the component's props on each render:
+However, `while (true)` is fragile — a missing `yield` freezes the page. A better pattern iterates over the component's *context* (`this`), which yields fresh props on each render:
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -145,25 +108,21 @@ renderer.render(<Counter />, document.body);
 renderer.render(<Counter />, document.body);
 ```
 
-This pattern is much safer than `while (true)` because it's impossible to create infinite loops by forgetting `yield`, and it automatically receives new props when the component is re-rendered.
+The `for...of` loop cannot infinite-loop (it blocks at `yield`), and it automatically receives new props on each re-render.
 
 ### Why `for ({} of this)`?
 
-The component context (`this`) is iterable — it yields fresh props on each render. The destructuring in `for ({name} of this)` reassigns the parameter variables declared in the function head, keeping them current without declaring new ones. This means:
+The destructuring in `for ({name} of this)` reassigns the parameter variables from the function head, keeping them current without declaring new ones:
 
-- **TypeScript types flow through.** The parameter declaration types the props; the `for...of` reassignment reuses those bindings with no extra annotations.
-- **No lint issues.** No shadowed variables, no undeclared names — the loop writes into existing bindings.
-- **One source of truth.** Props are declared once in the parameter list and updated in one place.
+- **TypeScript types flow through.** The `for...of` reuses the parameter bindings — no extra annotations.
+- **No lint issues.** No shadowed or undeclared variables.
+- **One source of truth.** Props are declared in the parameter list and updated in one place.
 
 When a component has no props, `for ({} of this)` advances the iterator with an empty destructuring pattern.
 
-But so far, our components only update when re-rendered from above. What if you
-want to update based on user interactions, timers, or other events?
-
 ## Self-Updating Components with refresh()
 
-For components that need to update themselves—like timers, animations, or user
-interactions—Crank provides the `refresh()` method:
+Components update themselves with the `refresh()` method:
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -185,16 +144,9 @@ function *Timer() {
 renderer.render(<Timer />, document.body);
 ```
 
-This `<Timer>` component updates its own state in the `setInterval()` callback
-and calls `refresh()` to trigger a re-render. The props iterator receives the
-new render and yields updated content. After the component unmounts, the code
-after the for loop runs for cleanup.
-
 ### The refresh() Callback Pattern
 
-One issue with the code above is that it's easy to forget to call `refresh()`
-after a state update. Starting in Crank 0.7, the `refresh()` method can accept
-an optional callback function that executes immediately before re-rendering:
+`refresh()` accepts a callback that runs before re-rendering, so you can't forget to pair mutation with refresh:
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -215,28 +167,11 @@ function *Timer({message = "Seconds elapsed:"}) {
 renderer.render(<Timer />, document.body);
 ```
 
-This pattern is particularly useful for event handlers:
-
-**Without callback:**
-```jsx
-const onclick = () => {
-  count++;
-  // Oops! Forgot to call this.refresh() - UI won't update
-};
-```
-
-**With callback:**
-```jsx
-const onclick = () => this.refresh(() => count++);
-```
-
-Using the callback pattern consistently makes it impossible to forget to call
-`refresh()` and provides a clean, functional approach to state updates.
+For event handlers: `const onclick = () => this.refresh(() => count++);`
 
 ### Alternative Context Syntax
 
-If you prefer not to use the `this` keyword, the context is also passed as the
-second parameter:
+The context is also passed as the second parameter, for arrow functions or if you prefer not to use `this`:
 
 ```jsx
 function *Timer({message}, ctx) {
@@ -254,10 +189,7 @@ function *Timer({message}, ctx) {
 ```
 
 ## Default Props
-Because we use [object
-destructuring](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Destructuring_assignment#Object_destructuring),
-you can further assign default values to specific props using JavaScript’s
-default value syntax.
+Use JavaScript's default value syntax in the destructuring pattern:
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";

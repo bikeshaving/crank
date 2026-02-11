@@ -3,15 +3,7 @@ title: Async Components
 description: Harness the power of async/await in your components. Learn how to build data-fetching components, handle loading states, and manage asynchronous UI updates.
 ---
 
-So far, every component we've seen has been synchronous - they execute
-immediately and return or yield their result right away. But modern web
-applications often need to fetch data, wait for user input, or perform other
-asynchronous operations.
-
-Crank makes async components as simple as adding the `async` keyword to your
-function. You can `await` promises in any component, just like you would in
-regular JavaScript functions. Both *async function components* and *async
-generator components* are supported.
+Add `async` to any component to `await` promises. Both async function components and async generator components are supported.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -37,13 +29,8 @@ async function Definition({word}) {
 await renderer.render(<Definition word="framework" />, document.body);
 ```
 
-When rendering is async, `renderer.render()` and the `refresh()` method will
-return promises which settle when rendering has finished.
-
 ### Concurrent Updates
-The nature of declarative rendering means that async components can be
-rerendered while they are still rendering. Therefore, Crank implements a couple
-rules to make concurrent updates predictable and performant:
+Async components can be re-rendered while still pending. Crank enforces two rules:
 
 1. There can be only one pending run of an async component at a time for an
    element in the tree. If the same async component is rerendered concurrently
