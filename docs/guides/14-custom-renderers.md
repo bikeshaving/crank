@@ -20,7 +20,7 @@ A custom renderer consists of two main parts:
 ```typescript
 import {Renderer, type RenderAdapter} from "@b9g/crank";
 
-export const adapter: RenderAdapter<MyNode, MyScope> = {
+export const adapter: RenderAdapter<MyNode, MyScope, MyRoot> = {
   create: ({tag, props}) => new MyNode(tag, props),
   patch: ({node, props}) => node.update(props),
   arrange: ({node, children}) => node.replaceChildren(children),
@@ -61,6 +61,10 @@ parameters.
   `ElementValue<TNode>`).
 
 ### Core Methods
+
+All methods except `read` and `finalize` receive a `data` object. Every data
+object includes `root: TRoot | undefined`, giving access to the root container.
+
 #### `create(data): TNode`
 Creates a new node when an element is rendered for the first time.
 
@@ -77,28 +81,21 @@ create({tag, props, scope}) {
 }
 ```
 
-**Parameters:**
-- `tag` - Element tag (string or symbol)
-- `tagName` - String representation for debugging
-- `props` - Element props object
-- `scope` - Current scope context
+**Parameters:** `tag`, `tagName`, `props`, `scope`, `root`
 
 #### `patch(data): void`
-Updates a node’s properties when props change. This is where you implement
+Updates a node's properties when props change. This is where you implement
 prop-to-attribute mapping, event listener binding, and property
 synchronization.
 
 ```typescript
-patch: ({node, props, oldProps}) {
+patch({node, props, oldProps}) {
   for (const [key, value] of Object.entries(props)) {
     if (oldProps?.[key] !== value) {
       if (key.startsWith("on")) {
-        // Handle events
         const eventName = key.slice(2).toLowerCase();
         node.removeAllListeners(eventName);
         if (value) node.on(eventName, value);
-      } else if (key === "texture") {
-        node.texture = resolveTexture(value);
       } else {
         node[key] = value;
       }
@@ -107,45 +104,36 @@ patch: ({node, props, oldProps}) {
 }
 ```
 
-**Parameters:**
-- `node` - The node to update
-- `props` - New props object
-- `oldProps` - Previous props (undefined on first render)
-- `tag` Element tag (string or symbol)
-- `scope` Current scope context
-- `copyProps` A set of props which should not be updated because the user has
-  provided a copy with meta-prop syntax.
-- `isHydrating` Whether you are currently hydrating
-- `quietProps` A set of props which should not cause hydration warnings because
-  the user has provided a hydrate with meta-prop syntax.
+**Parameters:** `tag`, `tagName`, `node`, `props`, `oldProps`, `scope`, `root`,
+`copyProps`, `isHydrating`, `quietProps`
+
+- `copyProps` - A set of props to skip because the user provided a copy with
+  meta-prop syntax.
+- `isHydrating` - Whether we are currently hydrating.
+- `quietProps` - A set of props to suppress hydration warnings for because the
+  user provided a hydrate with meta-prop syntax.
 
 #### `arrange(data): void`
 Organizes child nodes within their parent after child elements are rendered.
-The remove method handles the removal of nodes, so this method is primarily
-about re-ordering existing nodes in the tree.
+The `remove` method handles node removal, so this method is primarily about
+re-ordering existing nodes in the tree.
 
 ```typescript
 arrange({node, children}) {
-  node.removeChildren(); // Clear existing
+  node.removeChildren();
   children.forEach((child, index) => node.addChildAt(child, index));
 }
 ```
 
-**Parameters:**
-- `node` - The parent node
-- `children` - Array of child nodes in correct order
-- `tag`,
-- `props`
-- `oldProps`
+**Parameters:** `tag`, `tagName`, `node`, `props`, `children`, `oldProps`,
+`root`
 
 #### `remove(data): void`
 Removes a node when an element is unmounted.
 
 ```typescript
-remove({node, parentNode, isNested}) => {
-  // Clean up resources
+remove({node, parentNode, isNested}) {
   node.destroy?.();
-
   // Remove from parent (unless nested removal)
   if (!isNested && parentNode.children.includes(node)) {
     parentNode.removeChild(node);
@@ -153,63 +141,80 @@ remove({node, parentNode, isNested}) => {
 }
 ```
 
+**Parameters:** `node`, `parentNode`, `isNested`, `root`
+
+- `isNested` - Whether this removal is nested in another removal. Depending on
+  your target environment, you may only need to remove the top-level node from
+  its parent and leave the remaining nodes untouched.
+
 #### `text(data): TNode`
 Creates or updates text nodes.
 
 ```typescript
-text: ({value, oldNode}) => {
+text({value, oldNode}) {
   if (oldNode && oldNode.text !== value) {
     oldNode.text = value;
     return oldNode;
   }
 
-  return new Text(value);
+  return new TextNode(value);
 }
 ```
+
+**Parameters:** `value`, `scope`, `oldNode`, `hydrationNodes`, `root`
 
 #### `raw(data): ElementValue<TNode>`
 Handles raw values that bypass normal element processing.
 
 ```typescript
-raw: ({value, scope}) => {
+raw({value}) {
   if (typeof value === "string") {
-    return parseMarkup(value); // Convert string to nodes
+    return parseMarkup(value);
   }
-  return value; // Pass through nodes directly
+  return value;
 }
 ```
 
-**Parameters:**
-- `node` - The node which has been removed
-- `parentNode` - The parent node which this node is being removed from
-- `isNested` - Whether this removal is nested in another removal.
-  Depending on your target environment, you may only need to remove the
-  top-level node from its parent and leave the remaining nodes untouched.
+**Parameters:** `value`, `scope`, `hydrationNodes`, `root`
 
 #### `adopt(data): Array<TNode> | undefined`
-
 Adopts existing nodes during hydration (for server-side rendering or state
-restoration).
+restoration). Should return an array of child nodes if the provided node
+matches the expected tag, or `undefined` if hydration should fail.
+
+```typescript
+adopt({tag, node}) {
+  if (node && node.tagName.toLowerCase() === tag) {
+    return Array.from(node.children);
+  }
+  return undefined;
+}
+```
+
+**Parameters:** `tag`, `tagName`, `props`, `node`, `scope`, `root`
 
 #### `scope(data): TScope | undefined`
 Computes scope context for child elements. Useful for passing coordinate
-systems, themes, or namespaces down the tree. This method is only called once
-when elements are created.
+systems, themes, or namespaces down the tree. Called once when elements are
+created.
 
 ```typescript
-scope({tag, props, scope}) => {
+scope({tag, props, scope}) {
   if (tag === "viewport") {
     return {
       ...scope,
-      transform: new Transform(props.x, props.y, props.scale)
+      transform: new Transform(props.x, props.y, props.scale),
     };
   }
   return scope;
 }
 ```
 
+**Parameters:** `tag`, `tagName`, `props`, `scope`, `root`
+
 #### `read(value): TResult`
 Transforms the internal node representation into the public API.
+
 ```typescript
 read: (value) => {
   if (Array.isArray(value)) {
@@ -221,6 +226,7 @@ read: (value) => {
 
 #### `finalize(root): void`
 Performs final rendering operations (e.g., triggering a render pass).
+
 ```typescript
 finalize: (root) => {
   if (root instanceof PIXI.Application) {
