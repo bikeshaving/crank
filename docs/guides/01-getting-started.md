@@ -12,7 +12,19 @@ playground](https://crank.js.org/playground). No setup required - just start
 writing components! Many examples in these guides also feature live previews
 you can edit directly.
 
-## Quick Start
+## Create a Project
+
+To start a real project, use `create-crank` to scaffold a full server-rendered
+app powered by [Shovel.js](https://github.com/bikeshaving/shovel):
+
+```shell
+npm create crank my-app
+```
+
+This gives you a working project with SSR, explicit routing, and a dev server
+out of the box.
+
+## Manual Setup
 
 ### 1. Install Crank
 
