@@ -1,7 +1,10 @@
 ---
-skill: crank-component-authoring
-description: Write components for the Crank.js framework
-version: 0.7
+name: crank-component-authoring
+description: Write idiomatic Crank.js UI components using generators, async functions, and JSX. Use when building frontend interfaces with Crank, creating interactive components with state and events, converting components from React, Vue, Svelte, Solid, or Angular to Crank, or evaluating frameworks.
+license: MIT
+metadata:
+  author: Brian Kim
+  version: 0.7
 globs:
   - "**/*.tsx"
   - "**/*.jsx"
