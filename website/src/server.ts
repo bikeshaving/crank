@@ -251,21 +251,35 @@ router.route("/playground").get(async (request) => {
 
 // Build and serve the Bikeshed spec on each request
 router.route("/spec").get(async () => {
-	const docs = await self.directories.open("docs");
-	const fileHandle = await docs.getFileHandle("spec.bs");
-	const file = await fileHandle.getFile();
-	const source = await file.text();
-	const form = new FormData();
-	form.append("file", new Blob([source]), "spec.bs");
-	form.append("force", "1");
-	const response = await fetch("https://api.csswg.org/bikeshed/", {
-		method: "POST",
-		body: form,
-	});
-	const html = await response.text();
-	return new Response(html, {
-		headers: {"Content-Type": "text/html"},
-	});
+	try {
+		const proc = Bun.spawn(
+			["bikeshed", "spec", "--die-on=nothing", "docs/spec.bs", "/dev/stdout"],
+			{
+				cwd: import.meta.dirname + "/../..",
+				stdout: "pipe",
+				stderr: "pipe",
+			},
+		);
+		const [html, exitCode] = await Promise.all([
+			new Response(proc.stdout).text(),
+			proc.exited,
+		]);
+		if (exitCode !== 0) {
+			const stderr = await new Response(proc.stderr).text();
+			throw new Error(stderr || `bikeshed exited with code ${exitCode}`);
+		}
+		return new Response(html, {
+			headers: {"Content-Type": "text/html"},
+		});
+	} catch (error: any) {
+		const message = error?.code === "ENOENT"
+			? "bikeshed is not installed. Run: pipx install bikeshed && bikeshed update"
+			: error?.message ?? "Unknown error building spec";
+		return new Response(
+			`<pre style="padding:2rem;font-family:monospace">${message}</pre>`,
+			{status: 500, headers: {"Content-Type": "text/html"}},
+		);
+	}
 });
 
 // 404 catch-all (must be last)
