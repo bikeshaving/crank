@@ -150,10 +150,10 @@ The framework MUST provide a <dfn>component context</dfn> object to each [=compo
   <dd>Registers a callback that the framework MUST call after host nodes are inserted into the [=host environment=]. The callback receives the [=element value=]. Same one-shot and deduplication semantics as `schedule`. Promise return values from `after` callbacks MUST be ignored. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at insertion time.
 
   <dt>`cleanup(callback?)`
-  <dd>Registers a callback that the framework MUST call when the [=component=] unmounts, before children are unmounted. The callback receives the [=element value=]. Unlike `schedule` and `after`, cleanup callbacks are <strong>persistent</strong>: they MUST survive across renders and fire once on unmount. The framework MUST deduplicate callbacks by function identity. If a callback returns a promise, the framework MUST defer child unmounting until the promise resolves, keeping the [=component's=] host nodes in the [=host environment=] while awaiting. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at unmount time.
+  <dd>Registers a callback that the framework MUST call when the [=component=] unmounts, before children are unmounted. The callback receives the [=element value=]. Unlike `schedule` and `after`, cleanup callbacks are <strong>persistent</strong>: they MUST survive across renders and fire once on unmount. The framework MUST deduplicate callbacks by function identity. If a callback returns a promise, the framework MUST defer child unmounting until the promise resolves, keeping the [=component's=] host nodes in the [=host environment=] while awaiting. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at unmount time. Components that acquire resources (timers, listeners, subscriptions) SHOULD clean them up via post-loop code, `try`/`finally`, or `cleanup()` callbacks.
 
   <dt>`provide(key, value)`
-  <dd>Stores a <dfn>provision</dfn> on this [=component context=], retrievable by descendants via `consume`.
+  <dd>Stores a <dfn>provision</dfn> on this [=component context=], retrievable by descendants via `consume`. Components SHOULD use symbols as provision keys to avoid collisions between unrelated libraries.
 
   <dt>`consume(key)`
   <dd>Walks up the [=component context=] tree and returns the [=provision=] from the nearest ancestor that called `provide` with the same key.
@@ -184,7 +184,7 @@ The framework MUST provide a <dfn>component context</dfn> object to each [=compo
 
 # Props Iteration # {#props-iteration}
 
-The [=component context=] implements both [`Symbol.iterator`](https://tc39.es/ecma262/#sec-symbol.iterator) and [`Symbol.asyncIterator`](https://tc39.es/ecma262/#sec-symbol.asynciterator).
+The [=component context=] implements both [`Symbol.iterator`](https://tc39.es/ecma262/#sec-symbol.iterator) and [`Symbol.asyncIterator`](https://tc39.es/ecma262/#sec-symbol.asynciterator). Generator components MAY iterate the context with `for...of this` (or `for await...of this`) to receive fresh props on each update; components that do not need prop updates MAY use other iteration patterns.
 
 ## Synchronous (`for...of`) ## {#sync-iteration}
 
@@ -243,7 +243,7 @@ A <dfn>Child</dfn> is any value that can appear in the element tree. The valid c
 
 - <strong>Strings</strong> MUST be wrapped in a Text element, producing a text node via the [=renderer=].
 - <strong>Numbers</strong> MUST be converted to strings and wrapped in a Text element.
-- <strong><code>null</code></strong> and <strong><code>undefined</code></strong> MUST produce no output. A [=component=] returning `undefined` renders nothing.
+- <strong><code>null</code></strong> and <strong><code>undefined</code></strong> MUST produce no output. A [=component=] returning `undefined` renders nothing. Components SHOULD return `null` for intentional empty output; the framework logs a warning for `undefined` returns.
 - <strong>Booleans</strong> (`true` and `false`) MUST produce no output. This enables the `{condition && <Element />}` pattern — when the condition is `false`, nothing is rendered.
 - <strong>Non-string iterables</strong> (arrays, Sets, etc.) MUST be implicitly wrapped in a [=Fragment=]. Each item in the iterable becomes a [=Child=] at its own position in the element tree. This means [=components=] can return arrays or other non-iterator iterables to produce multiple siblings without a wrapper node.
 - <strong>Nested arrays</strong> MUST be flattened into the children array.
@@ -321,7 +321,17 @@ The framework MUST execute the following steps in order:
 
 The following traces every path through the framework's [=component=] lifecycle, including all callbacks, [=blocking=] behavior, and async branching.
 
-The commit sequence after each diff is: commit host mutations, call `ref` callbacks, fire `schedule` callbacks (which MAY defer insertion by returning a promise on initial render), insert host nodes into the [=host environment=], fire `after` callbacks.
+### Commit Sequence ### {#commit-sequence}
+
+After each diff, the framework runs the <dfn>commit sequence</dfn>:
+
+<ol>
+  <li>Commit host mutations (create or patch host nodes, recursively commit children).
+  <li>Call <code>ref</code> callbacks for host elements. <code>ref</code> fires once on first commit; the element and its children exist but are <strong>not yet inserted</strong> into the parent. <code>ref</code> does not fire for components, fragments, or portals; for component elements, <code>ref</code> is passed as a regular prop.
+  <li>Fire <code>schedule</code> callbacks (same timing window — element exists but is not inserted). On first render, a <code>schedule</code> callback MAY return a promise to defer insertion.
+  <li>Insert host nodes into the [=host environment=] (<code>arrange</code>).
+  <li>Fire <code>after</code> callbacks (element is live in the document).
+</ol>
 
 ### First Render ### {#first-render}
 
@@ -336,7 +346,7 @@ The commit sequence after each diff is: commit host mutations, call `ref` callba
       <dd>
         <ol>
           <li>Diff children.
-          <li>Run the commit sequence.
+          <li>Run the [=commit sequence=].
         </ol>
 
       <dt>Returns <code>Iterator</code> — <strong>generator component</strong>
@@ -344,7 +354,7 @@ The commit sequence after each diff is: commit host mutations, call `ref` callba
         <ol>
           <li>Store the iterator.
           <li>Diff children. BLOCKS until children settle.
-          <li>Run the commit sequence.
+          <li>Run the [=commit sequence=].
         </ol>
 
       <dt>Returns <code>Promise&lt;Children></code> — <strong>async function component</strong>
@@ -352,7 +362,7 @@ The commit sequence after each diff is: commit host mutations, call `ref` callba
         <ol>
           <li>BLOCK until the promise settles. [=Enqueue=] if re-rendered while pending.
           <li>Diff children (does not block).
-          <li>Run the commit sequence.
+          <li>Run the [=commit sequence=].
         </ol>
 
       <dt>Returns <code>AsyncIterator</code> — <strong>async generator component</strong>
@@ -368,7 +378,7 @@ The commit sequence after each diff is: commit host mutations, call `ref` callba
                 <ol>
                   <li>Diff children. BLOCKS until children settle.
                   <li><code>yield</code> evaluates to the settled result.
-                  <li>Run the commit sequence.
+                  <li>Run the [=commit sequence=].
                 </ol>
 
               <dt><code>for await...of</code> mode (async iteration of context)
@@ -377,7 +387,7 @@ The commit sequence after each diff is: commit host mutations, call `ref` callba
                   <li>Diff children (does not block; pull-based).
                   <li><code>yield</code> evaluates to a <code>Promise</code> that resolves to the result.
                   <li>Multiple yields per update produce successive trees raced via [=chasing=].
-                  <li>Run the commit sequence.
+                  <li>Run the [=commit sequence=].
                   <li>Suspend at the bottom of the loop until new [=props=] are available or <code>refresh()</code> is called.
                 </ol>
 
@@ -385,7 +395,7 @@ The commit sequence after each diff is: commit host mutations, call `ref` callba
               <dd>
                 <ol>
                   <li>Diff children. BLOCKS until children settle.
-                  <li>Run the commit sequence.
+                  <li>Run the [=commit sequence=].
                 </ol>
             </dl>
         </ol>
@@ -413,7 +423,7 @@ An [=update=] occurs when a [=component=] receives new [=props=] or `refresh()` 
       <li>Call <code>iterator.next(previousResult)</code>.
       <li>Set <code>isExecuting</code> to <code>false</code>.
       <li>Diff children. BLOCKS until children settle.
-      <li>Run the commit sequence.
+      <li>Run the [=commit sequence=]. Note: <code>ref</code> does not re-fire on updates.
     </ol>
 
   <dt>Async function
@@ -423,7 +433,7 @@ An [=update=] occurs when a [=component=] receives new [=props=] or `refresh()` 
       <li>Re-call <code>component.call(ctx, props, ctx)</code>. [=Enqueue=] if [=inflight=] (at most one pending).
       <li>Set <code>isExecuting</code> to <code>false</code>.
       <li>BLOCK until the promise settles.
-      <li>Diff children, then run the commit sequence.
+      <li>Diff children, then run the [=commit sequence=].
     </ol>
 
   <dt>Async generator
@@ -567,7 +577,7 @@ The `class` prop (or `className`) accepts a string or an object. When an object 
   </thead>
   <tbody>
     <tr><td><code>key</code><td><code>any</code><td>The framework uses keys for reconciliation. Keyed children are matched by key, not position. Duplicate keys among siblings produce a runtime error.
-    <tr><td><code>ref</code><td><code>(value: TResult) => unknown</code><td>The framework calls this with the [=element value=] after host mutations are committed but before host nodes are inserted into the [=host environment=] — the same timing as <code>schedule</code> callbacks.
+    <tr><td><code>ref</code><td><code>(value: TResult) => unknown</code><td>The framework calls this with the [=element value=] after host mutations are committed but before host nodes are inserted into the [=host environment=] — the same timing as <code>schedule</code> callbacks. Only fires for host elements; for [=component elements=], <code>ref</code> is passed as a regular prop. Components that wrap a host element SHOULD forward <code>ref</code> to their root host element so callers can access the underlying node.
     <tr><td><code>copy</code><td><code>boolean | string</code><td><code>true</code>: the framework MUST preserve the entire subtree, skipping re-rendering. String: the framework MUST selectively copy props from the previous render using the [=prop selector=] syntax (see [[#prop-selector-syntax]]).
     <tr><td><code>hydrate</code><td><code>boolean | string</code><td><code>true</code>: the framework MUST adopt existing host nodes instead of creating new ones, patching all props onto the adopted node. String: the framework MUST adopt existing host nodes but treat props matched by the [=prop selector=] as quiet — they MUST NOT be patched, preserving the server-rendered values.
     <tr><td><code>children</code><td><code>unknown</code><td>Child content passed between opening and closing tags.

@@ -418,6 +418,14 @@ function *AutoFocusInput() {
 
 Use `this.schedule()` only for setup that must happen *before* the element is visible, like preventing layout shift or synchronous DOM configuration.
 
+The `ref` callback fires once on the first commit for host elements (`<div>`, `<input>`, etc.) only. It does not fire on fragments, portals, or component elements. For components, `ref` is passed as a regular prop, just like `key`. Components that wrap a host element should forward `ref` to their root element so callers can access the underlying DOM node:
+
+```jsx
+function MyInput({ref, class: cls, ...props}) {
+  return <input ref={ref} class={"my-input " + cls} {...props} />;
+}
+```
+
 ### Lifecycle Callbacks
 
 **Don't** return JSX from `schedule`, `after`, or `cleanup` callbacks. They are side-effect hooks, not render points. Returned elements are silently discarded:

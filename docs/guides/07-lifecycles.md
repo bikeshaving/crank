@@ -174,7 +174,30 @@ The natural generator lifecycle is perfect for most logic, but sometimes you nee
 - **After `yield`**: The element description exists, but DOM nodes might not be created yet
 - **You need to know**: When DOM nodes are created, when they’re inserted, and when they’re removed
 
-For these DOM-specific timings, Crank provides three lifecycle methods:
+For these DOM-specific timings, Crank provides the `ref` prop and three lifecycle methods:
+
+### Ref: Capture a Host Element
+
+The `ref` prop accepts a callback that receives the underlying DOM node. It fires once on first commit, after the element and its children are created but **before insertion into the parent**. Use it to capture a reference for later use:
+
+```jsx
+function *AutoFocusInput() {
+  let input = null;
+  this.after(() => input && input.focus());
+
+  for ({} of this) {
+    yield <input ref={(el) => input = el} />;
+  }
+}
+```
+
+`ref` only fires on host elements (`<div>`, `<input>`, etc.), not on component elements, fragments, or portals. For component elements, `ref` is passed as a regular prop — just like `key`. A component that wraps a host element should forward `ref` to its root element:
+
+```jsx
+function MyInput({ref, class: cls, ...props}) {
+  return <input ref={ref} class={"my-input " + cls} {...props} />;
+}
+```
 
 ### Schedule: DOM Created but Not Inserted
 
@@ -232,9 +255,11 @@ function *Component() {
 
 ### Execution Order
 For any given render:
-1. `schedule()` callbacks run first (element created but not inserted)
-2. `after()` callbacks run second (element live in DOM)
-3. `cleanup()` callbacks run when component unmounts
+1. `ref` callbacks fire first (host element created, children arranged, but not yet inserted into parent)
+2. `schedule()` callbacks run next (same timing window — element exists but is not inserted)
+3. Host nodes are inserted into the document (`arrange`)
+4. `after()` callbacks run last (element live in DOM)
+5. `cleanup()` callbacks run when component unmounts
 
 ### When to Use Which Method
 
