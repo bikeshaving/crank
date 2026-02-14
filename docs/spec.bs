@@ -8,16 +8,11 @@ URL: https://crank.js.org/spec
 Editor: Brian Kim, bikeshaving, https://github.com/brainkim
 Abstract: This document specifies the component model for [Crank.js](https://crank.js.org). It defines how the framework invokes components, manages their lifecycle, handles async rendering, propagates errors, reconciles element trees, and creates elements via JSX and tagged templates. The core framework is renderer-agnostic; this specification describes the component model independently of any particular output target, with DOM-specific behavior noted where applicable.
 Markup Shorthands: markdown yes
-Boilerplate: copyright off
+Local Boilerplate: copyright yes
 </pre>
-
-<div class="copyright">
-  Copyright © 2019–2026 Brian Kim. Licensed under the <a href="https://opensource.org/licenses/MIT">MIT License</a>.
-</div>
 
 <pre class='link-defaults'>
 </pre>
-
 
 # Elements # {#elements}
 
@@ -91,6 +86,31 @@ The framework distinguishes [=component=] types by return value, not declaration
   </tbody>
 </table>
 
+<div class="example" id="canonical-generator">
+A generator [=component=] has three regions: setup (before the loop), render (inside the loop), and cleanup (after the loop). Local variables are state; `refresh(callback)` atomically mutates state and triggers a re-render; `for...of this` receives fresh [=props=] on each [=update=].
+
+```
+function *Timer({message}) {
+  let seconds = 0;
+  // Setup: runs once on mount
+  const interval = setInterval(() => this.refresh(() => seconds++), 1000);
+
+  // Render: loop yields elements, receives fresh props each update
+  for ({message} of this) {
+    yield (
+      <div>
+        <p>{message}: {seconds}s</p>
+        <button onclick={() => this.refresh(() => seconds = 0)}>Reset</button>
+      </div>
+    );
+  }
+
+  // Cleanup: runs on unmount (after the loop exits)
+  clearInterval(interval);
+}
+```
+</div>
+
 ## Function Components ## {#function-components}
 
 The framework MUST re-call the function on every update. The return value is rendered as children. Function [=components=] MUST NOT [=block=].
@@ -109,16 +129,16 @@ The framework MUST re-call the function on every update. The [=component=] MUST 
 
 ## Async Generator Components ## {#async-generator-components}
 
-The framework MUST call the function once and store the returned [async iterator](https://tc39.es/ecma262/#sec-asynciterator-interface). Async generators operate in three modes:
+The framework MUST call the function once and store the returned [async iterator](https://tc39.es/ecma262/#sec-asynciterator-interface). Async generators operate in three modes, determined by how the [=component=] iterates its [=component context=]:
 
 : [`for...of`](https://tc39.es/ecma262/#sec-for-in-and-for-of-statements) mode (sync iterator)
-:: The [=component=] MUST [=block=] while children render, identical to sync generators. `yield` MUST evaluate to the settled rendered result.
+:: The [=component=] MUST [=block=] while children render, identical to sync generators. `yield` MUST evaluate to the settled rendered result. The framework enters this mode when the [=component=] calls [`Symbol.iterator`](https://tc39.es/ecma262/#sec-symbol.iterator) on its context (e.g. `for (const props of this)`), which sets an internal flag that the framework checks to determine [=blocking=] behavior.
 
 : [`for await...of`](https://tc39.es/ecma262/#sec-for-in-and-for-of-statements) mode (async iterator)
-:: The framework MUST enter a pull-based loop. The [=component=] MUST NOT [=block=] while children render. `yield` MUST evaluate to a [`Promise`](https://tc39.es/ecma262/#sec-promise-objects) that resolves to the rendered result. The [=component=] MUST suspend at the bottom of the loop until new props are available or `refresh()` is called. This mode enables racing patterns: multiple yields per update produce successive element trees that are raced via the [=chase|chasing=] algorithm ([[#chasing]]).
+:: The framework MUST enter a pull-based loop. The [=component=] MUST NOT [=block=] while children render. `yield` MUST evaluate to a [`Promise`](https://tc39.es/ecma262/#sec-promise-objects) that resolves to the rendered result. The [=component=] MUST suspend at the bottom of the loop until new props are available or `refresh()` is called. This mode enables racing patterns: multiple yields per update produce successive element trees that are raced via the [=chase|chasing=] algorithm ([[#chasing]]). The framework enters this mode when the [=component=] calls [`Symbol.asyncIterator`](https://tc39.es/ecma262/#sec-symbol.asynciterator) on its context (e.g. `for await (const props of this)`), which sets a separate internal flag.
 
 : No-loop mode (no iterator)
-:: The [=component=] MUST [=block=] while children render, identical to sync generators.
+:: The [=component=] MUST [=block=] while children render, identical to sync generators. When neither iteration flag is set, the framework defaults to blocking behavior.
 
 # Context # {#context}
 
@@ -181,6 +201,35 @@ The framework MUST provide a <dfn>component context</dfn> object to each [=compo
     <tr><td><code>dispatchEvent</code><td><code>(event: Event) => boolean</code>
   </tbody>
 </table>
+
+## TypeScript Typing ## {#typescript-typing}
+
+The framework exports a `Component<TProps>` type that captures the full union of valid [=component=] return types:
+
+```
+type Component<TProps extends Record<string, unknown> = any> = (
+  this: Context<TProps>,
+  props: TProps,
+  ctx: Context<TProps>,
+) =>
+  | Children
+  | PromiseLike<Children>
+  | Iterator<Children, Children | void, any>
+  | AsyncIterator<Children, Children | void, any>;
+```
+
+In TypeScript, generator [=components=] must annotate `this` explicitly because TypeScript does not infer `this` types for generator functions:
+
+```
+function *Counter(this: Context, {start}: {start: number}) {
+  let count = start;
+  for ({start} of this) {
+    yield <div>{count}</div>;
+  }
+}
+```
+
+The `Context<T>` type is parameterized by the [=component=] function itself or a props type. When referencing a [=component's=] context externally (e.g. in a helper function), use `Context<typeof MyComponent>` to infer the props type from the [=component=] definition.
 
 # Props Iteration # {#props-iteration}
 
@@ -597,6 +646,40 @@ The `copy` and `hydrate` props accept a <dfn>prop selector</dfn> string that spe
 
 For `copy`, the selected props are copied from the previous render's values — unselected props are re-rendered normally. If `"children"` is among the selected props, child elements are also preserved. For `hydrate`, the selected props are quiet — the framework skips patching them onto the adopted node, preserving whatever the server rendered. Unselected props are patched normally so that event listeners and dynamic attributes are attached.
 
+<div class="example" id="prop-selector-examples">
+
+Selective copy — preserve `class` and `disabled` from the previous render, re-render everything else:
+
+```
+<div copy="class disabled" onclick={handler}>{children}</div>
+```
+
+Full copy — skip re-rendering entirely:
+
+```
+<div copy>{children}</div>
+```
+
+Exclusive copy — copy everything except `onclick` (re-render only the event handler):
+
+```
+<div copy="!onclick" onclick={handler}>{children}</div>
+```
+
+Quiet hydration — adopt the server-rendered node but skip patching `class` and `style`, preserving server values while attaching event listeners:
+
+```
+<div hydrate="class style" onclick={handler}>{children}</div>
+```
+
+Full hydration — adopt and patch all props:
+
+```
+<div hydrate>{children}</div>
+```
+
+</div>
+
 # JSX # {#jsx}
 
 [JSX](https://facebook.github.io/jsx/) is an XML-like syntax extension for JavaScript that provides a concise way to write [=element=] trees. A JSX compiler transforms `<div class="foo">hello</div>` into an `Element` constructor call. The framework supports two JSX compilation modes and a tagged template alternative.
@@ -644,6 +727,8 @@ The `@b9g/crank/standalone` module re-exports everything from the root `@b9g/cra
 
 # Render Adapter # {#render-adapter}
 
+Note: This section is informative. It describes the adapter interface used by [=renderer=] implementors and is not required for [=component=] authoring.
+
 A [=renderer=] is constructed with an adapter object that implements operations for a specific host environment. The adapter is parameterized by four types:
 
 - <strong><code>TNode</code></strong> — the host node type (e.g. DOM <code>Node</code>)
@@ -668,5 +753,65 @@ The adapter implements the following operations:
     <tr><td><code>remove</code><td><code>(node: TNode, tag: string) => void</code><td>Remove a node when unmounted.
     <tr><td><code>read</code><td><code>(node: TNode) => TResult</code><td>Transform internal node values into the public API type.
     <tr><td><code>finalize</code><td><code>(root: TRoot) => void</code><td>Perform final operations after a render cycle.
+  </tbody>
+</table>
+
+# Async Utilities # {#async-utilities}
+
+Note: This section is informative. It describes optional utilities exported from `@b9g/crank/async` that build on the core [=component=] model.
+
+## lazy() ## {#lazy}
+
+`lazy(initializer)` creates a lazily-loaded [=component=] from an initializer function that returns a `Promise` resolving to a [=component=] or a module with a `default` export. The returned [=component=] is an async generator that awaits the initializer on first render, then delegates to the loaded [=component=] using `for...of` mode for all subsequent [=updates=].
+
+```
+const MyComponent = lazy(() => import("./MyComponent.js"));
+```
+
+## Suspense ## {#suspense}
+
+`Suspense` is an async generator [=component=] that displays a `fallback` while its `children` are pending. It uses `for await...of` mode to yield successive element trees: first the fallback (with a configurable `timeout` defaulting to 300ms), then the resolved children.
+
+```
+<Suspense fallback={<div>Loading...</div>}>
+  <AsyncComponent />
+</Suspense>
+```
+
+<table class="data">
+  <thead>
+    <tr><th>Prop<th>Type<th>Description
+  </thead>
+  <tbody>
+    <tr><td><code>children</code><td><code>Children</code><td>Content to display when loading is complete.
+    <tr><td><code>fallback</code><td><code>Children</code><td>Content to display while children are pending.
+    <tr><td><code>timeout</code><td><code>number</code><td>Milliseconds before showing fallback (default 300). Inherited from <code>SuspenseList</code> if nested.
+  </tbody>
+</table>
+
+## SuspenseList ## {#suspense-list}
+
+`SuspenseList` is a generator [=component=] that coordinates the reveal order of child `Suspense` [=components=]. It uses [=provisions=] to communicate with descendant `Suspense` [=components=] that register during the same render.
+
+```
+<SuspenseList revealOrder="forwards" tail="collapsed">
+  <Suspense fallback={<div>Loading A...</div>}>
+    <ComponentA />
+  </Suspense>
+  <Suspense fallback={<div>Loading B...</div>}>
+    <ComponentB />
+  </Suspense>
+</SuspenseList>
+```
+
+<table class="data">
+  <thead>
+    <tr><th>Prop<th>Type<th>Default<th>Description
+  </thead>
+  <tbody>
+    <tr><td><code>revealOrder</code><td><code>"forwards" | "backwards" | "together"</code><td><code>"forwards"</code><td><code>"forwards"</code>: reveal in document order, waiting for predecessors. <code>"backwards"</code>: reveal in reverse order, waiting for successors. <code>"together"</code>: reveal all simultaneously when all are ready.
+    <tr><td><code>tail</code><td><code>"collapsed" | "hidden"</code><td><code>"collapsed"</code><td><code>"collapsed"</code>: show fallback only for the next unresolved Suspense. <code>"hidden"</code>: hide all fallbacks. Only applies when <code>revealOrder</code> is not <code>"together"</code>.
+    <tr><td><code>timeout</code><td><code>number</code><td>(none)<td>Default timeout inherited by child Suspense [=components=].
+    <tr><td><code>children</code><td><code>Children</code><td><td>Elements containing Suspense [=components=] to coordinate.
   </tbody>
 </table>
