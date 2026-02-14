@@ -7,14 +7,14 @@ function](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Temp
 as an alternative to JSX syntax. The main advantage of using a template tag is
 that your code can run directly in browsers without having to be transpiled.
 
-**Note:** While the template tag is called `jsx`, it's also available as `html`
+**Note:** While the template tag is called `jsx`, it’s also available as `html`
 for convenience. The author of Crank would like to remind you that HTML !==
 JSX, but sometimes it is easier to pretend JSX is HTML for syntax highlighters
 and other tooling.
 
 ## A Complete Single-File Application
 
-Here's a complete HTML page that demonstrates Crank's JSX template tag with no
+Here’s a complete HTML page that demonstrates Crank’s JSX template tag with no
 build tools required:
 
 ```index.html

@@ -12,7 +12,19 @@ playground](https://crank.js.org/playground). No setup required - just start
 writing components! Many examples in these guides also feature live previews
 you can edit directly.
 
-## Quick Start
+## Create a Project
+
+To start a real project, use `create-crank` to scaffold a full server-rendered
+app powered by [Shovel.js](https://github.com/bikeshaving/shovel):
+
+```shell
+npm create crank my-app
+```
+
+This gives you a working project with SSR, explicit routing, and a dev server
+out of the box.
+
+## Manual Setup
 
 ### 1. Install Crank
 
@@ -326,7 +338,7 @@ function *RandomDogApp() {
 renderer.render(<RandomDogApp />, document.body);
 ```
 
-## What's New in Crank 0.7
+## What’s New in Crank 0.7
 
 Crank 0.7 is a major release that introduces powerful new features while
 maintaining full backward compatibility. Here are the highlights:
@@ -349,7 +361,7 @@ const onclick = () => this.refresh(() => count++);
 This pattern is especially useful in event handlers and timer callbacks.
 
 ### Advanced Async Patterns
-The new `async` module provides React-like APIs with Crank's unique async
+The new `async` module provides React-like APIs with Crank’s unique async
 capabilities:
 
 ```jsx

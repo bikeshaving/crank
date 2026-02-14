@@ -1,6 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
-import * as path from "path";
 
 import {Root} from "../components/root.js";
 import {Main} from "../components/sidebar.js";
@@ -15,13 +14,10 @@ interface ViewProps {
 	arams: Record<string, string>;
 }
 
-const __dirname = new URL(".", import.meta.url).pathname;
-
 export default async function APIView({url}: ViewProps) {
-	const docs = await collectDocuments(
-		path.join(__dirname, "../../../docs/api"),
-		path.join(__dirname, "../../../docs/"),
-	);
+	const docsDir = await self.directories.open("docs");
+	const apiDir = await docsDir.getDirectoryHandle("api");
+	const docs = await collectDocuments(apiDir, "api");
 
 	// Find the matching document
 	// Handle /api -> /api/index mapping

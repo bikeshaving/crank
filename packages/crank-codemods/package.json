@@ -35,9 +35,6 @@
     "@types/jscodeshift": "^0.12.0",
     "typescript": "^5.0.0"
   },
-  "peerDependencies": {
-    "@b9g/crank": ">=0.7.0"
-  },
   "keywords": [
     "crank",
     "codemod",

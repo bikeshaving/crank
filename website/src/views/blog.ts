@@ -1,7 +1,7 @@
 import {jsx} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
-import * as path from "path";
 
+import {NotFound} from "@b9g/http-errors";
 import {Root} from "../components/root.js";
 import {BlogContent} from "../components/blog-content.js";
 import {Marked} from "../components/marked.js";
@@ -16,24 +16,21 @@ interface ViewProps {
 
 import {collectDocuments} from "../models/document.js";
 
-const __dirname = new URL(".", import.meta.url).pathname;
-
 function estimateReadTime(body: string): number {
 	const words = body.trim().split(/\s+/).length;
 	return Math.max(1, Math.ceil(words / 200));
 }
 
 export default async function BlogPage({url}: ViewProps) {
-	const posts = await collectDocuments(
-		path.join(__dirname, "../../../docs/blog"),
-		path.join(__dirname, "../../../docs/"),
-	);
+	const docsDir = await self.directories.open("docs");
+	const blogDir = await docsDir.getDirectoryHandle("blog");
+	const posts = await collectDocuments(blogDir, "blog");
 	posts.reverse();
 	const post = posts.find(
 		(doc) => doc.url.replace(/\/$/, "") === url.replace(/\/$/, ""),
 	);
 	if (!post) {
-		throw new Error("TODO: 404 errors");
+		throw new NotFound(`Blog post not found: ${url}`);
 	}
 
 	const {

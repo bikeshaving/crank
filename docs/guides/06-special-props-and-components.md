@@ -116,7 +116,7 @@ function *MyPlayer() {
 renderer.render(<MyPlayer />, document.body);
 ```
 
-Ref callbacks fire once the first time a host element is rendered. They do not work on fragment elements. For component elements, the `ref` prop must be explicitly passed to a component's child. This is useful when writing elements which wrap a host element.
+Ref callbacks fire once the first time a host element is rendered. They do not work on fragment elements. For component elements, the `ref` prop must be explicitly passed to a component’s child. This is useful when writing elements which wrap a host element.
 
 ```jsx
 function MyInput({ref, class, ...props}) {
@@ -199,12 +199,12 @@ The `hydrate` prop provides fine-grained control over server-side rendering hydr
 - `hydrate="!value"` - Hydrate all props except `value`
 - `hydrate="class id"` - Hydrate only `class` and `id` props
 
-This is particularly useful when you have server-rendered content that should remain static, or when dealing with third-party widgets that shouldn't be disturbed during hydration.
+This is particularly useful when you have server-rendered content that should remain static, or when dealing with third-party widgets that shouldn’t be disturbed during hydration.
 
 For comprehensive hydration patterns, best practices, and advanced techniques, see the [Hydration guide](/guides/hydration).
 
 ### The children prop
-The `children` prop passed to components is special because it is not usually set with JSX's `key="value"` prop syntax, but by the contents between the opening and closing tags. It is the responsibility of the component to make sure the `children` passed in are rendered in its yielded or returned element tree.
+The `children` prop passed to components is special because it is not usually set with JSX’s `key="value"` prop syntax, but by the contents between the opening and closing tags. It is the responsibility of the component to make sure the `children` passed in are rendered in its yielded or returned element tree.
 
 ```jsx
 function Component({children}) {
@@ -234,7 +234,7 @@ renderer.render(
 The following props are specific to host elements for the HTML and DOM renderers.
 
 ### The style prop
-The style prop can be used to add inline styles to an element. It can either be a CSS string, in which case it works exactly as it does in HTML, or it can also be an object, in which case CSS properties can be set individually. The latter is helpful, for example, if you have an outside process that handles animating CSS styles and you don't want to reset them during a component re-render.
+The style prop can be used to add inline styles to an element. It can either be a CSS string, in which case it works exactly as it does in HTML, or it can also be an object, in which case CSS properties can be set individually. The latter is helpful, for example, if you have an outside process that handles animating CSS styles and you don’t want to reset them during a component re-render.
 
 ```jsx
 <div style="color: red"><span style={{"font-size": "16px"}}>Hello</span></div>
@@ -328,7 +328,7 @@ console.log(document.body.innerHTML);
 
 ### Copy
 
-It's often fine to rerender Crank components, because elements are diffed, persistent between renders, and unnecessary mutations usually avoided. However, you might want to prevent a child from updating when the parent rerenders, perhaps because a certain prop hasn't changed, because you want to batch updates from the parent, or as a performance optimization. To do this, you can use the `<Copy>` component to indicate to Crank that you don't want to update a previously rendered element in that same position.
+It’s often fine to rerender Crank components, because elements are diffed, persistent between renders, and unnecessary mutations usually avoided. However, you might want to prevent a child from updating when the parent rerenders, perhaps because a certain prop hasn’t changed, because you want to batch updates from the parent, or as a performance optimization. To do this, you can use the `<Copy>` component to indicate to Crank that you don’t want to update a previously rendered element in that same position.
 
 ```jsx
 function equals(props, newProps) {
@@ -360,7 +360,7 @@ function memo(Component) {
 In this example, `memo` is a higher-order component, a function which takes a component and returns a component. This wrapper component compares old and new props and yields a `<Copy>` element if every prop is shallowly equal. A `<Copy>` element can appear anywhere in an element tree to prevent rerenderings, and the only props `<Copy>` elements take are the `key` and `ref` props, which work as expected.
 
 ### Portal
-Sometimes you may want to render into a DOM node which isn't the current parent element, or even a part of the currently rendered DOM tree, as in the case of modals. You can do this with the `<Portal>` component, passing in a DOM node as its `root` prop. The `<Portal>` element's children will be rendered into the specified root element, just as if `renderer.render()` was called with the root value as its second argument.
+Sometimes you may want to render into a DOM node which isn’t the current parent element, or even a part of the currently rendered DOM tree, as in the case of modals. You can do this with the `<Portal>` component, passing in a DOM node as its `root` prop. The `<Portal>` element’s children will be rendered into the specified root element, just as if `renderer.render()` was called with the root value as its second argument.
 
 ```jsx live
 import {Portal} from "@b9g/crank";
@@ -382,7 +382,7 @@ function MyComponent() {
 renderer.render(<MyComponent />, document.body);
 ```
 
-This component is useful for creating modals or tooltips, which usually need to be rendered into separate DOM elements at the bottom of the page for visibility reasons. Events dispatched from a `Portal` element's child components via the `dispatchEvent` method will still bubble into parent components.
+This component is useful for creating modals or tooltips, which usually need to be rendered into separate DOM elements at the bottom of the page for visibility reasons. Events dispatched from a `Portal` element’s child components via the `dispatchEvent` method will still bubble into parent components.
 
 ### Raw
 Sometimes, you may want to insert raw HTML or actual DOM nodes directly into the element tree. Crank allows you to do this with the `<Raw>` element. The `<Raw>` element takes a `value` prop, which can be . For the DOM renderer, if `value` is an HTML string, the renderer will parse and insert the resulting DOM nodes. If the value is already a DOM node, Crank will insert them in place.

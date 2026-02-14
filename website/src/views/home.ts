@@ -4,7 +4,6 @@ import {css} from "@emotion/css";
 import {Root} from "../components/root.js";
 import {SerializeScript} from "../components/serialize-javascript.js";
 import {collectDocuments} from "../models/document.js";
-import * as Path from "path";
 
 import {Marked} from "../components/marked.js";
 import {InlineCodeBlock} from "../components/inline-code-block.js";
@@ -153,36 +152,18 @@ function CallToAction() {
 			align-items: center;
 			gap: 1.5rem;
 		`}>
-			<a
-				href="/playground"
-				class=${css`
-					display: inline-block;
-					background: var(--highlight-color);
-					color: var(--bg-color);
-					padding: 0.8em 2em;
-					font-size: 1.25rem;
-					font-weight: bold;
-					text-decoration: none;
-					border-radius: 4px;
-					transition:
-						transform 0.15s ease,
-						box-shadow 0.15s ease;
-
-					&:hover {
-						transform: translateY(-2px);
-						box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-					}
-				`}
-			>Try the Playground</a>
-			<div class=${css`
+			<nav class=${css`
 				display: flex;
-				gap: 2rem;
-				font-size: 1rem;
+				flex-wrap: wrap;
+				justify-content: center;
+				gap: 1.5rem;
+				font-size: 1.1rem;
 
 				a {
 					color: var(--text-color);
 					text-decoration: none;
 					opacity: 0.8;
+					padding: 0.5em 0;
 
 					&:hover {
 						color: var(--highlight-color);
@@ -190,10 +171,32 @@ function CallToAction() {
 					}
 				}
 			`}>
-				<a href="/guides/getting-started">Get Started</a>
+				<a
+					href="/guides/getting-started"
+					class=${css`
+						&& {
+							background: var(--highlight-color);
+							color: var(--bg-color);
+							opacity: 1;
+							padding: 0.5em 1.5em;
+							font-weight: bold;
+							border-radius: 4px;
+							transition:
+								transform 0.15s ease,
+								box-shadow 0.15s ease;
+
+							&:hover {
+								color: var(--bg-color);
+								transform: translateY(-2px);
+								box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+							}
+						}
+					`}
+				>Get Started</a>
+				<a href="/playground">Playground</a>
 				<a href="/api">API Reference</a>
 				<a href="https://github.com/bikeshaving/crank">GitHub</a>
-			</div>
+			</nav>
 		</div>
 	`;
 }
@@ -206,13 +209,10 @@ function AntiHero() {
 	`;
 }
 
-const __dirname = new URL(".", import.meta.url).pathname;
-
 export default async function Home({url}: ViewProps) {
-	const docs = await collectDocuments(Path.join(__dirname, "../../../docs"));
-	const md = docs.find((doc) =>
-		doc.filename.endsWith(Path.join("docs", "index.md")),
-	);
+	const docsDir = await self.directories.open("docs");
+	const docs = await collectDocuments(docsDir);
+	const md = docs.find((doc) => doc.filename === "index.md");
 	if (!md) {
 		throw new Error("index.md missing you silly goose");
 	}
@@ -230,8 +230,8 @@ export default async function Home({url}: ViewProps) {
 				border-bottom: 1px solid var(--text-color);
 				padding: 2em 0;
 			`}">
-				<${Marked} markdown=${md.body} components=${components} />
 				<${CallToAction} />
+				<${Marked} markdown=${md.body} components=${components} />
 			</div>
 			<${AntiHero} />
 		<//Root>

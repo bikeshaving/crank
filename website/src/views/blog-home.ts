@@ -1,6 +1,5 @@
 import {jsx} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
-import * as path from "path";
 
 import {Root} from "../components/root.js";
 
@@ -10,7 +9,6 @@ interface ViewProps {
 }
 
 import {collectDocuments} from "../models/document.js";
-const __dirname = new URL(".", import.meta.url).pathname;
 
 function estimateReadTime(body: string): number {
 	const words = body.trim().split(/\s+/).length;
@@ -18,10 +16,9 @@ function estimateReadTime(body: string): number {
 }
 
 export default async function BlogHome({url}: ViewProps) {
-	const posts = await collectDocuments(
-		path.join(__dirname, "../../../docs/blog"),
-		path.join(__dirname, "../../../docs/"),
-	);
+	const docsDir = await self.directories.open("docs");
+	const blogDir = await docsDir.getDirectoryHandle("blog");
+	const posts = await collectDocuments(blogDir, "blog");
 	posts.reverse();
 
 	return jsx`
