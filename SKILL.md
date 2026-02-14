@@ -11,8 +11,6 @@ metadata:
 
 **Crank 0.7+ is required.** The `this.refresh(() => ...)` callback pattern does not exist in earlier versions. If using an older version, the callback is silently ignored and all state updates will appear broken.
 
-Read the [component specification](docs/spec.bs) for the full details. This skill summarizes the patterns you need.
-
 ## No-Build Usage
 
 For single-file HTML output (artifacts, prototypes, demos), use the `jsx` template tag. No transpiler needed.
@@ -95,6 +93,16 @@ Crank components are plain JavaScript functions and generators. State is variabl
 
 ## References
 
+Read these two files for complete API coverage and idiomatic patterns:
+1. [Component Specification](docs/spec.bs) — complete API reference: all component types, lifecycle, context methods, reconciliation, async behavior, special props, JSX modes
+2. [Style Guide](docs/guides/12-crank-style-guide.md) — do/don't patterns: component structure, state updates, props, cleanup, refs, error handling
+
+## Examples (consult as needed for the relevant task)
+- [TodoMVC](examples/todomvc.js) — Form handling, list CRUD, filtering, localStorage persistence
+- [Hacker News](examples/hackernews.js) — Async data fetching, hash routing, recursive components
+- [Password Strength](examples/password-strength.js) — Real-time input tracking, derived state, visual feedback
+
+## Additional Guides (for deeper reading on specific topics)
 - [Components](docs/guides/03-components.md)
 - [Handling Events](docs/guides/04-handling-events.md)
 - [Async Components](docs/guides/05-async-components.md)
@@ -102,9 +110,5 @@ Crank components are plain JavaScript functions and generators. State is variabl
 - [Lifecycles](docs/guides/07-lifecycles.md)
 - [Reusable Logic](docs/guides/09-reusable-logic.md)
 - [JSX Template Tag](docs/guides/11-jsx-template-tag.md)
-- [Style Guide](docs/guides/12-crank-style-guide.md)
 - [Reference for React Developers](docs/guides/13-reference-for-react-developers.md)
 - [Why Be Reactive?](docs/blog/2025-08-20-why-be-reactive.md)
-- [TodoMVC Example](examples/todomvc.js) — Form handling, list CRUD, filtering, localStorage persistence
-- [Hacker News Example](examples/hackernews.js) — Async data fetching, hash routing, recursive components
-- [Password Strength Example](examples/password-strength.js) — Real-time input tracking, derived state, visual feedback
