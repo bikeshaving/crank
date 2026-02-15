@@ -57,8 +57,6 @@ The framework ships two [=renderers=]:
 
 The core framework is [=renderer=]-agnostic: it manages [=component=] lifecycles, reconciles [=element=] trees, and tracks state independently of any output target.
 
-Note: [=Renderers=] fall into two broad categories depending on how they use the `root` parameter. A <strong>stateful renderer</strong> requires a root object and caches element trees against it in a `WeakMap`; successive `render()` calls with the same root update in place, and generator [=components=] retain their scope across renders. The DOM [=renderer=] is the canonical stateful [=renderer=] — `root` is the container Element into which nodes are mounted. A <strong>stateless renderer</strong> does not require a root; each `render()` call produces a fresh result with no connection to previous renders. The HTML [=renderer=] is the canonical stateless [=renderer=] — it returns a string and discards all internal state when rendering completes. Custom [=renderers=] may be either: a native UI toolkit renderer would typically be stateful, while a serialization renderer (e.g. rendering to PDF or terminal escape codes) would typically be stateless.
-
 # Component Invocation # {#invocation}
 
 A <dfn>component</dfn> is a function or a special symbol [=tag=] that the framework handles internally. User-defined [=components=] are functions; the framework also provides built-in [=components=] (Fragment, Portal, Raw, Copy, Text) identified by symbol [=tags=] (see [[#special-components]]). This section describes the invocation model for function [=components=].
@@ -184,54 +182,9 @@ The framework must provide a <dfn>component context</dfn> object to each [=compo
   <dd>[`EventTarget`](https://dom.spec.whatwg.org/#interface-eventtarget) methods that delegate to the host nodes produced by the [=component=]. See [[#events]].
 </dl>
 
-## Method Signatures ## {#method-signatures}
+## TypeScript ## {#typescript-typing}
 
-<table class="data">
-  <thead>
-    <tr><th>Method<th>Signature
-  </thead>
-  <tbody>
-    <tr><td>`refresh`<td>`(callback?: () => unknown) => Promise<TResult> | TResult`
-    <tr><td>`schedule`<td>`(callback?: (value: TResult) => unknown) => Promise<TResult> | void`
-    <tr><td>`after`<td>`(callback?: (value: TResult) => unknown) => Promise<TResult> | void`
-    <tr><td>`cleanup`<td>`(callback?: (value: TResult) => unknown) => Promise<TResult> | void`
-    <tr><td>`provide`<td>`(key: unknown, value: unknown) => void`
-    <tr><td>`consume`<td>`(key: unknown) => unknown`
-    <tr><td>`dispatchEvent`<td>`(event: Event) => boolean`
-  </tbody>
-</table>
-
-## TypeScript Typing ## {#typescript-typing}
-
-The framework exports a `Component<TProps>` type that captures the full union of valid [=component=] return types:
-
-```
-type Component<TProps extends Record<string, unknown> = any> = (
-  this: Context<TProps>,
-  props: TProps,
-  ctx: Context<TProps>,
-) =>
-  | Children
-  | PromiseLike<Children>
-  | Iterator<Children, Children | void, any>
-  | AsyncIterator<Children, Children | void, any>;
-```
-
-In TypeScript, generator [=components=] must annotate `this` explicitly because TypeScript does not infer `this` types for generator functions:
-
-<div class="example" id="typescript-generator">
-
-```
-function *Counter(this: Context, {start}: {start: number}) {
-  let count = start;
-  for ({start} of this) {
-    yield <div>{count}</div>;
-  }
-}
-```
-</div>
-
-The `Context<T>` type is parameterized by the [=component=] function itself or a [=props=] type. `Context<typeof MyComponent>` infers the [=props=] type from the [=component=] definition — use it both inside [=components=] (to type `this`) and in helper functions that accept a context.
+In TypeScript, generator [=components=] must annotate `this` explicitly because TypeScript does not infer `this` types for generator functions. The `Context<T>` type is parameterized by the [=component=] function itself or a [=props=] type — `Context<typeof MyComponent>` infers the [=props=] from the [=component=] definition.
 
 # Props Iteration # {#props-iteration}
 
@@ -379,133 +332,16 @@ The framework must execute the following steps in order:
     - If the iterator is still not done after the natural exit attempt (or if the [=component=] is not in a loop), the framework calls `return()`. The `finally` block executes as part of the [iterator protocol](https://tc39.es/ecma262/#sec-iteration).
 3. [=Unmount=] children recursively.
 
-## Full Lifecycle ## {#full-lifecycle}
-
-The following traces every path through the framework's [=component=] lifecycle, including all callbacks, [=blocking=] behavior, and async branching.
-
-### Commit Sequence ### {#commit-sequence}
+## Commit Sequence ## {#commit-sequence}
 
 After each diff, the framework runs the <dfn export id="dfn-commit-sequence">commit sequence</dfn>:
 
-<ol>
-  <li>Commit host mutations (create or patch host nodes, recursively commit children).
-  <li>Call <code>ref</code> callbacks ([[#special-props]]) and fire <code>schedule</code> callbacks ([[#context-methods]]). Host nodes exist but are <strong>not yet inserted</strong>.
-  <li>Insert host nodes into the [=host environment=] (<code>arrange</code>).
-  <li>Fire <code>after</code> callbacks (element is live in the document).
-</ol>
+1. Commit host mutations (create or patch host nodes, recursively commit children).
+2. Call `ref` callbacks ([[#special-props]]) and fire `schedule` callbacks ([[#context-methods]]). Host nodes exist but are **not yet inserted**.
+3. Insert host nodes into the [=host environment=].
+4. Fire `after` callbacks (element is live in the document).
 
-### First Render ### {#first-render}
-
-<ol>
-  <li>Set <code>isExecuting</code> to <code>true</code>.
-  <li>Call <code>component.call(ctx, props, ctx)</code>.
-  <li>Set <code>isExecuting</code> to <code>false</code>.
-  <li>Branch by return value:
-
-    <dl>
-      <dt>Returns <code>Children</code> — <strong>function component</strong>
-      <dd>
-        <ol>
-          <li>Diff children.
-          <li>Run the [=commit sequence=].
-        </ol>
-
-      <dt>Returns <code>Iterator</code> — <strong>generator component</strong>
-      <dd>
-        <ol>
-          <li>Store the iterator.
-          <li>Diff children. BLOCKS until children settle.
-          <li>Run the [=commit sequence=].
-        </ol>
-
-      <dt>Returns `Promise<Children>` — <strong>async function component</strong>
-      <dd>
-        <ol>
-          <li>BLOCK until the promise settles. [=Enqueue=] if re-rendered while pending.
-          <li>Diff children (does not block).
-          <li>Run the [=commit sequence=].
-        </ol>
-
-      <dt>Returns <code>AsyncIterator</code> — <strong>async generator component</strong>
-      <dd>
-        <ol>
-          <li>Store the async iterator.
-          <li>BLOCK until the first yield/return settles.
-          <li>Branch by iteration mode:
-
-            <dl>
-              <dt>Blocking mode (<code>for...of</code> or no loop)
-              <dd>
-                <ol>
-                  <li>Diff children. BLOCKS until children settle.
-                  <li>Run the [=commit sequence=].
-                </ol>
-
-              <dt><code>for await...of</code> mode
-              <dd>
-                <ol>
-                  <li>Diff children (does not block). Behavior per [[#async-generator-components]].
-                  <li>Run the [=commit sequence=].
-                </ol>
-            </dl>
-        </ol>
-    </dl>
-</ol>
-
-### Update ### {#lifecycle-update}
-
-An [=update=] occurs when a [=component=] receives new [=props=] or `refresh()` is called.
-
-<dl>
-  <dt>Function
-  <dd>
-    <ol>
-      <li>Set <code>isExecuting</code> to <code>true</code>.
-      <li>Re-call <code>component.call(ctx, props, ctx)</code>.
-      <li>Set <code>isExecuting</code> to <code>false</code>.
-      <li>The full first-render cycle applies from this point.
-    </ol>
-
-  <dt>Generator
-  <dd>
-    <ol>
-      <li>Set <code>isExecuting</code> to <code>true</code>.
-      <li>Call <code>iterator.next(previousResult)</code>.
-      <li>Set <code>isExecuting</code> to <code>false</code>.
-      <li>Diff children. BLOCKS until children settle.
-      <li>Run the [=commit sequence=]. Note: <code>ref</code> does not re-fire on updates.
-    </ol>
-
-  <dt>Async function
-  <dd>
-    <ol>
-      <li>Set <code>isExecuting</code> to <code>true</code>.
-      <li>Re-call <code>component.call(ctx, props, ctx)</code>. [=Enqueue=] if [=inflight=] (at most one pending).
-      <li>Set <code>isExecuting</code> to <code>false</code>.
-      <li>BLOCK until the promise settles.
-      <li>Diff children, then run the [=commit sequence=].
-    </ol>
-
-  <dt>Async generator
-  <dd>
-    <ol>
-      <li>Set <code>isExecuting</code> to <code>true</code>.
-      <li>Call <code>iterator.next(previousResult)</code>. [=Enqueue=] if [=inflight=] (at most one pending).
-      <li>Set <code>isExecuting</code> to <code>false</code>.
-      <li>BLOCK until the yield settles.
-      <li>Branch by iteration mode (see [[#first-render]]).
-    </ol>
-</dl>
-
-### Child Error ### {#lifecycle-child-error}
-
-See [[#error-handling]]. For generators, the framework calls `throw(error)` on the iterator ([[#error-injection]]). For async generators, behavior depends on whether the [=yield promise=] is observed ([[#async-error-handling]]). For functions and async functions, the error propagates up the [=component context=] tree.
-
-### Unmount ### {#lifecycle-unmount}
-
-The framework follows the unmount sequence described in [[#on-unmount]]: cleanup callbacks, natural exit / iterator return, then recursive child [=unmounting=].
-
-### Callback Timing Reference ### {#callback-timing}
+## Callback Timing Reference ## {#callback-timing}
 
 <table class="data">
   <thead>
@@ -670,30 +506,11 @@ Selective copy — preserve `class` and `disabled` from the previous render, re-
 <div copy="class disabled" onclick={handler}>{children}</div>
 ```
 
-Full copy — skip re-rendering entirely:
-
-```
-<div copy>{children}</div>
-```
-
-Exclusive copy — copy everything except `onclick` (re-render only the event handler):
-
-```
-<div copy="!onclick" onclick={handler}>{children}</div>
-```
-
 Quiet hydration — adopt the server-rendered node but skip patching `class` and `style`, preserving server values while attaching event listeners:
 
 ```
 <div hydrate="class style" onclick={handler}>{children}</div>
 ```
-
-Full hydration — adopt and patch all props:
-
-```
-<div hydrate>{children}</div>
-```
-
 </div>
 
 # JSX # {#jsx}
