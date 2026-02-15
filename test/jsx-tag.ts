@@ -479,4 +479,31 @@ test("unicode characters", () => {
 	Assert.ok(cacheKey.includes("– Published"));
 });
 
+test("error messages include context", () => {
+	try {
+		jsx`<div>\n  </span>`;
+		Assert.unreachable("should have thrown");
+	} catch (e: any) {
+		Assert.instance(e, SyntaxError);
+		Assert.ok(e.message.includes("^"), "includes caret pointer");
+		Assert.ok(e.message.includes("|"), "includes context gutter");
+	}
+});
+
+test("multiline error messages include context", () => {
+	try {
+		jsx`
+			<div>
+				</span>
+			</div>
+		`;
+		Assert.unreachable("should have thrown");
+	} catch (e: any) {
+		Assert.instance(e, SyntaxError);
+		Assert.ok(e.message.includes("Unmatched closing tag"), "has base message");
+		Assert.ok(e.message.includes("^"), "includes caret pointer");
+		Assert.ok(e.message.includes("|"), "includes context gutter");
+	}
+});
+
 test.run();

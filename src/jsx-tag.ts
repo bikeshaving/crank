@@ -10,7 +10,18 @@ export function jsx(
 	let parseResult = cache.get(key);
 	if (parseResult == null) {
 		parseResult = parse(spans.raw);
-		cache.set(key, parseResult);
+		let hasError = false;
+		for (let i = 0; i < parseResult.targets.length; i++) {
+			const t = parseResult.targets[i];
+			if (t && t.type === "error") {
+				hasError = true;
+				break;
+			}
+		}
+
+		if (!hasError) {
+			cache.set(key, parseResult);
+		}
 	}
 
 	const {element, targets} = parseResult;
@@ -19,8 +30,16 @@ export function jsx(
 		const target = targets[i];
 		if (target) {
 			if (target.type === "error") {
+				const msg = target.message.replace("${}", formatTagForError(exp));
 				throw new SyntaxError(
-					target.message.replace("${}", formatTagForError(exp)),
+					target.spanIndex != null && target.charIndex != null
+						? formatSyntaxError(
+								msg,
+								spans.raw,
+								target.spanIndex,
+								target.charIndex,
+							)
+						: msg,
 				);
 			}
 
@@ -28,7 +47,7 @@ export function jsx(
 		}
 	}
 
-	return build(element);
+	return build(element, parseResult.spans);
 }
 
 /** Alias for `jsx` template tag. */
@@ -53,6 +72,8 @@ export interface ParseTag {
 	type: "tag";
 	slash: string;
 	value: any;
+	spanIndex?: number;
+	charIndex?: number;
 }
 
 export interface ParseProp {
@@ -70,6 +91,8 @@ export interface ParseError {
 	type: "error";
 	message: string;
 	value: any;
+	spanIndex?: number;
+	charIndex?: number;
 }
 
 // The parse result includes an array of targets, references to objects in the
@@ -82,6 +105,7 @@ export type ExpressionTarget = ParseValue | ParseTag | ParseProp | ParseError;
 export interface ParseResult {
 	element: ParseElement;
 	targets: Array<ExpressionTarget | null>;
+	spans: ArrayLike<string>;
 }
 
 /**
@@ -182,11 +206,20 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 									type: "tag",
 									slash: closingSlash,
 									value: tagName,
+									spanIndex: s,
+									charIndex: match.index,
 								};
 
 								if (!stack.length) {
 									if (end !== span.length) {
-										throw new SyntaxError(`Unmatched closing tag "${tagName}"`);
+										throw new SyntaxError(
+											formatSyntaxError(
+												`Unmatched closing tag "${tagName}"`,
+												spans,
+												s,
+												match.index,
+											),
+										);
 									}
 
 									// ERROR EXPRESSION
@@ -194,6 +227,8 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 										type: "error",
 										message: "Unmatched closing tag ${}",
 										value: null,
+										spanIndex: s,
+										charIndex: match.index,
 									};
 								} else {
 									if (end === span.length) {
@@ -211,6 +246,8 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 										type: "tag",
 										slash: "",
 										value: tagName,
+										spanIndex: s,
+										charIndex: match.index,
 									},
 									close: null,
 									props: [],
@@ -249,7 +286,12 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 						const [, tagEnd, spread, name, equals, string] = match;
 						if (i < match.index) {
 							throw new SyntaxError(
-								`Unexpected text \`${span.slice(i, match.index).trim()}\``,
+								formatSyntaxError(
+									`Unexpected text \`${span.slice(i, match.index).trim()}\``,
+									spans,
+									s,
+									i,
+								),
 							);
 						}
 
@@ -270,7 +312,14 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 							// SPREAD PROP EXPRESSION
 							expressionTarget = value;
 							if (!(expressing && end === span.length)) {
-								throw new SyntaxError('Expression expected after "..."');
+								throw new SyntaxError(
+									formatSyntaxError(
+										'Expression expected after "..."',
+										spans,
+										s,
+										match.index,
+									),
+								);
 							}
 						} else if (name) {
 							let value: ParseValue | ParsePropString;
@@ -279,7 +328,12 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 									value = {type: "value", value: true};
 								} else if (end < span.length) {
 									throw new SyntaxError(
-										`Unexpected text \`${span.slice(end, end + 20)}\``,
+										formatSyntaxError(
+											`Unexpected text \`${span.slice(end, end + 20)}\``,
+											spans,
+											s,
+											end,
+										),
 									);
 								} else {
 									value = {type: "value" as const, value: null};
@@ -287,7 +341,12 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 									expressionTarget = value;
 									if (!(expressing && end === span.length)) {
 										throw new SyntaxError(
-											`Expression expected for prop "${name}"`,
+											formatSyntaxError(
+												`Expression expected for prop "${name}"`,
+												spans,
+												s,
+												match.index,
+											),
 										);
 									}
 								}
@@ -314,11 +373,21 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 						if (!expressing) {
 							if (i === span.length) {
 								throw new SyntaxError(
-									`Expected props but reached end of document`,
+									formatSyntaxError(
+										`Expected props but reached end of document`,
+										spans,
+										s,
+										i,
+									),
 								);
 							} else {
 								throw new SyntaxError(
-									`Unexpected text \`${span.slice(i, i + 20).trim()}\``,
+									formatSyntaxError(
+										`Unexpected text \`${span.slice(i, i + 20).trim()}\``,
+										spans,
+										s,
+										i,
+									),
 								);
 							}
 						}
@@ -338,7 +407,12 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 					if (match) {
 						if (i < match.index) {
 							throw new SyntaxError(
-								`Unexpected text \`${span.slice(i, match.index).trim()}\``,
+								formatSyntaxError(
+									`Unexpected text \`${span.slice(i, match.index).trim()}\``,
+									spans,
+									s,
+									i,
+								),
 							);
 						}
 
@@ -346,7 +420,12 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 					} else {
 						if (!expressing) {
 							throw new SyntaxError(
-								`Unexpected text \`${span.slice(i, i + 20).trim()}\``,
+								formatSyntaxError(
+									`Unexpected text \`${span.slice(i, i + 20).trim()}\``,
+									spans,
+									s,
+									i,
+								),
 							);
 						}
 					}
@@ -365,9 +444,14 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 					} else {
 						if (!expressing) {
 							throw new SyntaxError(
-								`Missing \`${
-									matcher === CLOSING_SINGLE_QUOTE_RE ? "'" : '"'
-								}\``,
+								formatSyntaxError(
+									`Missing \`${
+										matcher === CLOSING_SINGLE_QUOTE_RE ? "'" : '"'
+									}\``,
+									spans,
+									s,
+									i,
+								),
 							);
 						}
 					}
@@ -381,7 +465,12 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 					} else {
 						if (!expressing) {
 							throw new SyntaxError(
-								"Expected `-->` but reached end of template",
+								formatSyntaxError(
+									"Expected `-->` but reached end of template",
+									spans,
+									s,
+									i,
+								),
 							);
 						}
 					}
@@ -423,10 +512,19 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 					break;
 
 				default:
-					throw new SyntaxError("Unexpected expression");
+					throw new SyntaxError(
+						formatSyntaxError(
+							"Unexpected expression",
+							spans,
+							s,
+							spans[s].length,
+						),
+					);
 			}
 		} else if (expressionTarget) {
-			throw new SyntaxError("Expression expected");
+			throw new SyntaxError(
+				formatSyntaxError("Expression expected", spans, s, spans[s].length),
+			);
 		}
 
 		lineStart = false;
@@ -435,13 +533,22 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 	if (stack.length) {
 		const ti = targets.indexOf(element.open);
 		if (ti === -1) {
-			throw new SyntaxError(`Unmatched opening tag "${element.open.value}"`);
+			throw new SyntaxError(
+				formatSyntaxError(
+					`Unmatched opening tag "${element.open.value}"`,
+					spans,
+					element.open.spanIndex ?? 0,
+					element.open.charIndex ?? 0,
+				),
+			);
 		}
 
 		targets[ti] = {
 			type: "error",
 			message: "Unmatched opening tag ${}",
 			value: null,
+			spanIndex: element.open.spanIndex,
+			charIndex: element.open.charIndex,
 		};
 	}
 
@@ -449,26 +556,34 @@ export function parse(spans: ArrayLike<string>): ParseResult {
 		element = element.children[0];
 	}
 
-	return {element, targets};
+	return {element, targets, spans};
 }
 
-function build(parsed: ParseElement): Element {
+function build(parsed: ParseElement, spans?: ArrayLike<string>): Element {
 	if (
 		parsed.close !== null &&
 		parsed.close.slash !== "//" &&
 		parsed.open.value !== parsed.close.value
 	) {
+		const msg = `Unmatched closing tag ${formatTagForError(
+			parsed.close.value,
+		)}, expected ${formatTagForError(parsed.open.value)}`;
 		throw new SyntaxError(
-			`Unmatched closing tag ${formatTagForError(
-				parsed.close.value,
-			)}, expected ${formatTagForError(parsed.open.value)}`,
+			spans && parsed.close.spanIndex != null && parsed.close.charIndex != null
+				? formatSyntaxError(
+						msg,
+						spans,
+						parsed.close.spanIndex,
+						parsed.close.charIndex,
+					)
+				: msg,
 		);
 	}
 
 	const children: Array<unknown> = [];
 	for (let i = 0; i < parsed.children.length; i++) {
 		const child = parsed.children[i];
-		children.push(child.type === "element" ? build(child) : child.value);
+		children.push(child.type === "element" ? build(child, spans) : child.value);
 	}
 
 	let props = parsed.props.length ? ({} as Record<string, unknown>) : null;
@@ -545,4 +660,53 @@ function formatTagForError(tag: unknown): string {
 		: typeof tag === "string"
 			? `"${tag}"`
 			: JSON.stringify(tag);
+}
+
+function formatSyntaxError(
+	message: string,
+	spans: ArrayLike<string>,
+	spanIndex: number,
+	charIndex: number,
+): string {
+	// Reconstruct full template source with ${} placeholders
+	let source = spans[0];
+	for (let i = 1; i < spans.length; i++) {
+		source += "${}" + spans[i];
+	}
+
+	// Compute absolute offset
+	let offset = 0;
+	for (let i = 0; i < spanIndex; i++) {
+		offset += spans[i].length + 3; // 3 = "${}".length
+	}
+	offset += charIndex;
+
+	// Split into lines and find line/column
+	const lines = source.split(/\n/);
+	let line = 0;
+	let col = offset;
+	for (let i = 0; i < lines.length; i++) {
+		if (col <= lines[i].length) {
+			line = i;
+			break;
+		}
+		col -= lines[i].length + 1; // +1 for the newline
+	}
+
+	// Build context lines
+	let result = `${message}\n\n`;
+	const start = Math.max(0, line - 1);
+	const end = Math.min(lines.length - 1, line + 1);
+	const gutterWidth = String(end + 1).length;
+	for (let i = start; i <= end; i++) {
+		const num = String(i + 1).padStart(gutterWidth);
+		if (i === line) {
+			result += `> ${num} | ${lines[i]}\n`;
+			result += `  ${" ".repeat(gutterWidth)} | ${" ".repeat(col)}^\n`;
+		} else {
+			result += `  ${num} | ${lines[i]}\n`;
+		}
+	}
+
+	return result.trimEnd();
 }
