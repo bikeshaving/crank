@@ -477,12 +477,12 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 				case "dangerouslySetInnerHTML": {
 					const htmlValue =
 						value && typeof value === "object" && "__html" in value
-							? value.__html
-							: value;
+							? (value.__html ?? "")
+							: (value ?? "");
 					const oldHtmlValue =
 						oldValue && typeof oldValue === "object" && "__html" in oldValue
-							? oldValue.__html
-							: oldValue;
+							? (oldValue.__html ?? "")
+							: (oldValue ?? "");
 					if (htmlValue !== oldHtmlValue) {
 						element.innerHTML = htmlValue as any;
 					}
