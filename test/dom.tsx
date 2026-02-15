@@ -1019,4 +1019,47 @@ test("absolute URLs should work correctly for src", () => {
 	}
 });
 
+test("htmlFor sets for attribute", () => {
+	renderer.render(<label htmlFor="email">Email</label>, document.body);
+	const label = document.body.firstChild as HTMLLabelElement;
+	Assert.is(label.getAttribute("for"), "email");
+});
+
+test("htmlFor removes for attribute when null", () => {
+	renderer.render(<label htmlFor="email">Email</label>, document.body);
+	renderer.render(<label htmlFor={null}>Email</label>, document.body);
+	const label = document.body.firstChild as HTMLLabelElement;
+	Assert.is(label.getAttribute("for"), null);
+});
+
+test("dangerouslySetInnerHTML sets innerHTML", () => {
+	renderer.render(
+		<div dangerouslySetInnerHTML={{__html: "<b>bold</b>"}} />,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><b>bold</b></div>");
+});
+
+test("dangerouslySetInnerHTML does not insert children", () => {
+	renderer.render(
+		<div dangerouslySetInnerHTML={{__html: "<b>bold</b>"}} />,
+		document.body,
+	);
+	const div = document.body.firstChild as HTMLElement;
+	Assert.is(div.innerHTML, "<b>bold</b>");
+	Assert.is(div.childNodes.length, 1);
+});
+
+test("dangerouslySetInnerHTML updates", () => {
+	renderer.render(
+		<div dangerouslySetInnerHTML={{__html: "<b>first</b>"}} />,
+		document.body,
+	);
+	renderer.render(
+		<div dangerouslySetInnerHTML={{__html: "<i>second</i>"}} />,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><i>second</i></div>");
+});
+
 test.run();

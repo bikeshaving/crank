@@ -1,4 +1,24 @@
 # Changelog
+## [0.7.6] - 2026-02-14
+### New Features
+- **Standalone module re-exports renderers**
+  `@b9g/crank/standalone` now exports the DOM and HTML renderers, enabling
+  single-import usage for CDN and no-build environments:
+  ```js
+  import {jsx, renderer} from "@b9g/crank/standalone";
+  ```
+
+- **React prop compatibility**
+  The DOM and HTML renderers now silently handle React-style props, so
+  copy-pasted React JSX works without modification:
+  - `htmlFor` → sets the `for` attribute
+  - `dangerouslySetInnerHTML={{__html: "..."}}` → sets `innerHTML`
+  - SVG camelCase attributes (`strokeWidth`, `fillOpacity`, `textAnchor`, etc.)
+    → converted to standard kebab-case (`stroke-width`, `fill-opacity`,
+    `text-anchor`)
+
+  The ESLint plugin continues to guide users toward idiomatic Crank prop names.
+
 ## [0.7.5] - 2026-02-02
 ### Bug Fixes
 - **Fix refresh() before yield causing TypeError** (#334)

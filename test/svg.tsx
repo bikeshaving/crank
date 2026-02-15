@@ -178,4 +178,52 @@ test("custom attributes", () => {
 	Assert.is(circle.getAttribute("does-not-exist"), null);
 });
 
+/* eslint-disable crank/no-react-svg-props */
+test("React-style camelCase SVG attributes", () => {
+	renderer.render(
+		<svg>
+			<path
+				strokeWidth="2"
+				strokeLinecap="round"
+				fillOpacity="0.5"
+				clipPath="url(#clip)"
+			/>
+		</svg>,
+		document.body,
+	);
+
+	const path = document.body.firstChild!.firstChild! as SVGElement;
+	Assert.ok(path instanceof SVGElement);
+	Assert.is(path.getAttribute("stroke-width"), "2");
+	Assert.is(path.getAttribute("stroke-linecap"), "round");
+	Assert.is(path.getAttribute("fill-opacity"), "0.5");
+	Assert.is(path.getAttribute("clip-path"), "url(#clip)");
+});
+
+test("React-style text SVG attributes", () => {
+	renderer.render(
+		<svg>
+			<text textAnchor="middle" dominantBaseline="central" />
+		</svg>,
+		document.body,
+	);
+
+	const text = document.body.firstChild!.firstChild! as SVGElement;
+	Assert.is(text.getAttribute("text-anchor"), "middle");
+	Assert.is(text.getAttribute("dominant-baseline"), "central");
+});
+
+test("SVG camelCase attributes that are already correct", () => {
+	renderer.render(
+		<svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid">
+			<circle cx="50" cy="50" r="40" />
+		</svg>,
+		document.body,
+	);
+
+	const svg = document.body.firstChild! as SVGElement;
+	Assert.is(svg.getAttribute("viewBox"), "0 0 100 100");
+	Assert.is(svg.getAttribute("preserveAspectRatio"), "xMidYMid");
+});
+
 test.run();
