@@ -479,4 +479,47 @@ test("unicode characters", () => {
 	Assert.ok(cacheKey.includes("– Published"));
 });
 
+test("error messages include line and column", () => {
+	try {
+		jsx`<div>\n  </span>`;
+		Assert.unreachable("should have thrown");
+	} catch (e: any) {
+		Assert.instance(e, SyntaxError);
+		Assert.ok(e.message.includes("(1:"), "includes line:col");
+		Assert.ok(e.message.includes(">"), "includes pointer line");
+	}
+});
+
+test("error messages include context lines", () => {
+	try {
+		jsx`
+			<div>
+				</span>
+			</div>
+		`;
+		Assert.unreachable("should have thrown");
+	} catch (e: any) {
+		Assert.instance(e, SyntaxError);
+		Assert.ok(e.message.includes("Unmatched closing tag"), "has base message");
+		Assert.ok(/\(\d+:\d+\)/.test(e.message), "includes (line:col)");
+		Assert.ok(e.message.includes("^"), "includes caret pointer");
+	}
+});
+
+test("multiline tag mismatch error has context", () => {
+	try {
+		jsx`
+			<div>
+				hello
+			</span>
+		`;
+		Assert.unreachable("should have thrown");
+	} catch (e: any) {
+		Assert.instance(e, SyntaxError);
+		Assert.ok(e.message.includes("Unmatched closing tag"), "has base message");
+		Assert.ok(/\(\d+:\d+\)/.test(e.message), "includes (line:col)");
+		Assert.ok(e.message.includes("|"), "includes context gutter");
+	}
+});
+
 test.run();
