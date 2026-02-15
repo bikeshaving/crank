@@ -10,7 +10,18 @@ export function jsx(
 	let parseResult = cache.get(key);
 	if (parseResult == null) {
 		parseResult = parse(spans.raw);
-		cache.set(key, parseResult);
+		let hasError = false;
+		for (let i = 0; i < parseResult.targets.length; i++) {
+			const t = parseResult.targets[i];
+			if (t && t.type === "error") {
+				hasError = true;
+				break;
+			}
+		}
+
+		if (!hasError) {
+			cache.set(key, parseResult);
+		}
 	}
 
 	const {element, targets} = parseResult;
@@ -682,11 +693,8 @@ function formatSyntaxError(
 		col -= lines[i].length + 1; // +1 for the newline
 	}
 
-	const lineNum = line + 1;
-	const colNum = col + 1;
-
 	// Build context lines
-	let result = `${message} (${lineNum}:${colNum})\n\n`;
+	let result = `${message}\n\n`;
 	const start = Math.max(0, line - 1);
 	const end = Math.min(lines.length - 1, line + 1);
 	const gutterWidth = String(end + 1).length;
