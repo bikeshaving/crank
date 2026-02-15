@@ -55,13 +55,7 @@ The framework ships two [=renderers=]:
 - <strong>DOM renderer</strong> (`@b9g/crank/dom`) — renders into DOM Elements, creates DOM Nodes.
 - <strong>HTML renderer</strong> (`@b9g/crank/html`) — renders to HTML strings for server-side rendering.
 
-The core framework is [=renderer=]-agnostic: it manages [=component=] lifecycles, reconciles [=element=] trees, and tracks state independently of any output target. The [=renderer=] adapter interface is described in [[#render-adapter]].
-
-### HTML Renderer Details ### {#html-renderer-details}
-
-The HTML [=renderer=] escapes five characters in text content and attribute values: `&` → `&amp;`, `<` → `&lt;`, `>` → `&gt;`, `"` → `&quot;`, `'` → `&#039;`. The `innerHTML` prop value is emitted without escaping, and `prop:`-prefixed props are omitted from the HTML output.
-
-The following tags are treated as [void elements](https://html.spec.whatwg.org/multipage/syntax.html#void-elements) and must not have a closing tag or children: `area`, `base`, `br`, `col`, `command`, `embed`, `hr`, `img`, `input`, `keygen`, `link`, `meta`, `param`, `source`, `track`, `wbr`.
+The core framework is [=renderer=]-agnostic: it manages [=component=] lifecycles, reconciles [=element=] trees, and tracks state independently of any output target.
 
 Note: [=Renderers=] fall into two broad categories depending on how they use the `root` parameter. A <strong>stateful renderer</strong> requires a root object and caches element trees against it in a `WeakMap`; successive `render()` calls with the same root update in place, and generator [=components=] retain their scope across renders. The DOM [=renderer=] is the canonical stateful [=renderer=] — `root` is the container Element into which nodes are mounted. A <strong>stateless renderer</strong> does not require a root; each `render()` call produces a fresh result with no connection to previous renders. The HTML [=renderer=] is the canonical stateless [=renderer=] — it returns a string and discards all internal state when rendering completes. Custom [=renderers=] may be either: a native UI toolkit renderer would typically be stateful, while a serialization renderer (e.g. rendering to PDF or terminal escape codes) would typically be stateless.
 
@@ -595,7 +589,7 @@ The `class` prop (or `className`) accepts a string or an object. When an object 
 
 The `innerHTML` prop bypasses child rendering entirely. When present, the [=renderer=] sets the node's content from the prop value and skips child arrangement — any children passed alongside `innerHTML` are ignored.
 
-In the DOM [=renderer=], `innerHTML` is assigned directly to the element's [`innerHTML`](https://html.spec.whatwg.org/multipage/dynamic-markup-insertion.html#dom-element-innerhtml) property. In the HTML [=renderer=], the prop value is emitted as the element's content without escaping.
+In the DOM [=renderer=], `innerHTML` is assigned directly to the element's [`innerHTML`](https://html.spec.whatwg.org/multipage/dynamic-markup-insertion.html#dom-element-innerhtml) property. In the HTML [=renderer=], the prop value is emitted as the element's content without escaping. Because `innerHTML` bypasses the framework's escaping and child model, setting it to untrusted input creates a [cross-site scripting](https://owasp.org/www-community/attacks/xss/) vulnerability. Authors must sanitize any user-provided content before passing it as `innerHTML`.
 
 ## Property vs Attribute Resolution ## {#prop-attr-resolution}
 
@@ -644,7 +638,7 @@ Without a prefix, the [=renderer=] also handles these special cases for boolean 
   </tbody>
 </table>
 
-The `Copy` symbol may also be used as an individual prop value to skip patching that prop. When the [=renderer=] encounters `Copy` as a value, it substitutes the previous render's value for that prop. This is distinct from the `copy` special prop, which operates on the element as a whole.
+The `Copy` symbol may also be used as an individual prop value to skip patching that prop. When the [=renderer=] encounters `Copy` as a value, it substitutes the previous render's value for that prop. The framework uses the name "Copy" at three levels: the `Copy` [=component=] ([[#special-components]]) preserves an entire subtree at a given [=position=]; the `copy` prop (above) preserves all or selected props on a single [=host element=]; and `Copy` as a prop value preserves one individual prop. Each operates at a different granularity.
 
 <div class="example" id="copy-as-value">
 
@@ -810,51 +804,6 @@ The template tag normalizes whitespace to match JSX conventions:
 ### Caching ### {#template-tag-caching}
 
 The template tag must cache parse results keyed by the [raw template strings](https://tc39.es/ecma262/#sec-gettemplateobject). On subsequent calls with the same template, the cached AST is reused and only the expression values are updated. This makes repeated renders efficient — the parsing cost is paid once per unique template site. The cache key is the JSON serialization of the raw strings array, so structurally identical templates share a cache entry even across different call sites.
-
-# Render Adapter # {#render-adapter}
-
-Note: This section is informative. It describes the adapter interface used by [=renderer=] implementors and is not required for [=component=] authoring.
-
-A [=renderer=] is constructed with an adapter object that implements operations for a specific [=host environment=]. The adapter is parameterized by four types:
-
-- <strong><code>TNode</code></strong> — the host node type (e.g. DOM <code>Node</code>)
-- <strong><code>TScope</code></strong> — data passed down the tree (e.g. SVG namespace)
-- <strong><code>TRoot</code></strong> — the root container type (e.g. DOM <code>Element</code>)
-- <strong><code>TResult</code></strong> — the public value type returned by <code>render</code> and exposed to [=components=]
-
-Every adapter method (except `read` and `finalize`) receives a single object parameter. The fields vary by operation; common fields like `tag`, `tagName`, `props`, `scope`, and `root` appear on most operations.
-
-<dl>
-  <dt>`create({ tag, tagName, props, scope, root }) => TNode`
-  <dd>Create a new host node for a [=host element=].
-
-  <dt>`adopt({ tag, tagName, props, node, scope, root }) => Array<TNode> | undefined`
-  <dd>Adopt an existing node during hydration. `node` is the candidate node from the [=host environment=]. Return its child nodes if adoption succeeds, or `undefined` if the node does not match the expected [=tag=].
-
-  <dt>`text({ value, scope, oldNode, hydrationNodes, root }) => TNode`
-  <dd>Create or update a text node. `oldNode` is the previous text node to reuse; `hydrationNodes` is the remaining node list when hydrating.
-
-  <dt>`scope({ tag, tagName, props, scope, root }) => TScope | undefined`
-  <dd>Compute scope for child [=elements=]. Return a new scope or `undefined` to inherit the current one. The DOM [=renderer=] uses this for SVG namespace propagation.
-
-  <dt>`raw({ value, scope, hydrationNodes, root }) => ElementValue<TNode>`
-  <dd>Handle raw content injection for the Raw [=component=]. `value` is a string or host node.
-
-  <dt>`patch({ tag, tagName, node, props, oldProps, scope, root, copyProps, isHydrating, quietProps }) => void`
-  <dd>Update a node's properties. `oldProps` is `undefined` on the initial render. `copyProps` is a `Set<string>` of prop names the framework has already resolved via `Copy`-as-value or [=prop selector=] — the adapter should skip these. `isHydrating` is `true` during hydration; `quietProps` is a `Set<string>` of props that should not emit hydration mismatch warnings.
-
-  <dt>`arrange({ tag, tagName, node, props, children, oldProps, root }) => void`
-  <dd>Position child nodes within a parent. `children` is the ordered array of child nodes. When `innerHTML` is present in `props`, the adapter should skip child insertion (the framework has already set the content).
-
-  <dt>`remove({ node, parentNode, isNested, root }) => void`
-  <dd>Remove a node when unmounted. `isNested` is `true` when the node is being removed as a descendant of another node that is itself being removed — in this case, the adapter may skip DOM removal since the ancestor will be removed.
-
-  <dt>`read(value: ElementValue<TNode>) => TResult`
-  <dd>Transform internal [=element values=] into the public API type. Called with the raw value, not an object parameter.
-
-  <dt>`finalize(root: TRoot) => void`
-  <dd>Perform final operations after a render cycle completes. Called with the root directly, not an object parameter.
-</dl>
 
 # Async Utilities # {#async-utilities}
 
