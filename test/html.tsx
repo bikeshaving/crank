@@ -107,7 +107,11 @@ test("styles camelCase", () => {
 	Assert.is(
 		renderer.render(
 			<div
-				style={{fontSize: "16px", "background-color": "blue", marginTop: "5px"}}
+				style={{
+					fontSize: "16px",
+					"background-color": "blue",
+					marginTop: "5px",
+				}}
 			/>,
 		),
 		'<div style="font-size:16px;background-color:blue;margin-top:5px;"></div>',
@@ -432,6 +436,39 @@ test("schedule with async children on second render", async () => {
 
 	const result = await renderer.render(<Component />);
 	Assert.is(result, "<div>Render 2</div>");
+});
+
+test("htmlFor renders as for attribute", () => {
+	Assert.is(
+		renderer.render(<label htmlFor="email">Email</label>),
+		'<label for="email">Email</label>',
+	);
+});
+
+test("htmlFor skipped when for is also present", () => {
+	Assert.is(
+		renderer.render(
+			<label for="email" htmlFor="other">
+				Email
+			</label>,
+		),
+		'<label for="email">Email</label>',
+	);
+});
+
+test("dangerouslySetInnerHTML renders content", () => {
+	Assert.is(
+		renderer.render(<div dangerouslySetInnerHTML={{__html: "<b>bold</b>"}} />),
+		"<div><b>bold</b></div>",
+	);
+});
+
+test("dangerouslySetInnerHTML not rendered as attribute", () => {
+	const result = renderer.render(
+		<div dangerouslySetInnerHTML={{__html: "<em>hi</em>"}} />,
+	) as string;
+	Assert.ok(!result.includes("dangerouslySetInnerHTML"));
+	Assert.is(result, "<div><em>hi</em></div>");
 });
 
 test.run();
