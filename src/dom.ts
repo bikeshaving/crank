@@ -7,6 +7,7 @@ import {
 	RenderAdapter,
 } from "./crank.js";
 import {camelToKebabCase, formatStyleValue} from "./_css.js";
+import {REACT_SVG_PROPS} from "./_svg.js";
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 const MATHML_NAMESPACE = "http://www.w3.org/1998/Math/MathML";
@@ -473,6 +474,27 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 					}
 
 					break;
+				case "dangerouslySetInnerHTML": {
+					const htmlValue =
+						value && typeof value === "object" && "__html" in value
+							? value.__html
+							: value;
+					const oldHtmlValue =
+						oldValue && typeof oldValue === "object" && "__html" in oldValue
+							? oldValue.__html
+							: oldValue;
+					if (htmlValue !== oldHtmlValue) {
+						element.innerHTML = htmlValue as any;
+					}
+					break;
+				}
+				case "htmlFor":
+					if (value == null || value === false) {
+						element.removeAttribute("for");
+					} else {
+						element.setAttribute("for", String(value === true ? "" : value));
+					}
+					break;
 				default: {
 					if (
 						name[0] === "o" &&
@@ -482,6 +504,11 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 					) {
 						// Support React-style event names (onClick, onChange, etc.)
 						name = name.toLowerCase();
+					}
+
+					// Support React-style SVG attribute names (strokeWidth, etc.)
+					if (isSVG && name in REACT_SVG_PROPS) {
+						name = REACT_SVG_PROPS[name];
 					}
 
 					// try to set the property directly
@@ -589,7 +616,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 			);
 		}
 
-		if (!("innerHTML" in props)) {
+		if (!("innerHTML" in props) && !("dangerouslySetInnerHTML" in props)) {
 			let oldChild = node.firstChild;
 			for (let i = 0; i < children.length; i++) {
 				const newChild = children[i];

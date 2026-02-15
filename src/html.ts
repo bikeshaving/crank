@@ -1,6 +1,7 @@
 import {Portal, Renderer} from "./crank.js";
 import type {ElementValue, RenderAdapter} from "./crank.js";
 import {camelToKebabCase, formatStyleValue} from "./_css.js";
+import {REACT_SVG_PROPS} from "./_svg.js";
 
 const voidTags = new Set([
 	"area",
@@ -56,8 +57,18 @@ function printStyleObject(style: Record<string, any>): string {
 function printAttrs(props: Record<string, any>): string {
 	const attrs: string[] = [];
 	for (let [name, value] of Object.entries(props)) {
-		if (name === "innerHTML" || name.startsWith("prop:")) {
+		if (
+			name === "innerHTML" ||
+			name === "dangerouslySetInnerHTML" ||
+			name.startsWith("prop:")
+		) {
 			continue;
+		} else if (name === "htmlFor") {
+			if ("for" in props || typeof value !== "string") {
+				continue;
+			}
+
+			attrs.push(`for="${escape(value)}"`);
 		} else if (name === "style") {
 			if (typeof value === "string") {
 				attrs.push(`style="${escape(value)}"`);
@@ -85,6 +96,8 @@ function printAttrs(props: Record<string, any>): string {
 		} else {
 			if (name.startsWith("attr:")) {
 				name = name.slice("attr:".length);
+			} else if (name in REACT_SVG_PROPS) {
+				name = REACT_SVG_PROPS[name];
 			}
 			if (typeof value === "string") {
 				attrs.push(`${escape(name)}="${escape(value)}"`);
@@ -171,7 +184,11 @@ export const impl: Partial<
 		} else {
 			const close = `</${tag}>`;
 			const contents =
-				"innerHTML" in props ? props["innerHTML"] : join(children);
+				"innerHTML" in props
+					? props["innerHTML"]
+					: "dangerouslySetInnerHTML" in props
+						? (props["dangerouslySetInnerHTML"]?.__html ?? "")
+						: join(children);
 			result = `${open}${contents}${close}`;
 		}
 
