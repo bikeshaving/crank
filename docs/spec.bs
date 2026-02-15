@@ -364,7 +364,7 @@ The framework must execute the following steps in order:
 
 The framework must execute the following steps in order:
 
-1. Fire `cleanup` callbacks. If any return promises, child [=unmounting=] must be deferred until they resolve.
+1. Fire `cleanup` callbacks. If any return promises and the [=component=] is directly unmounted (not nested inside a host element that is itself being removed), child [=unmounting=] must be deferred until the promises resolve. The [=component's=] nodes remain visible during this deferral. When the [=component=] is nested inside a host element being removed, the parent node is already gone — cleanup promises are still awaited but cannot defer visual removal.
 2. For generators and async generators: call `return()` on the iterator. The `finally` block executes as part of the [iterator protocol](https://tc39.es/ecma262/#sec-iteration).
 3. [=Unmount=] children recursively.
 
@@ -518,7 +518,7 @@ An [=update=] occurs when a [=component=] receives new [=props=] or `refresh()` 
 
 ### Unmount ### {#lifecycle-unmount}
 
-1. Fire `cleanup` callbacks. If any return promises, child [=unmounting=] must be deferred until they resolve.
+1. Fire `cleanup` callbacks. If any return promises and the [=component=] is directly unmounted (see [[#on-unmount]]), child [=unmounting=] is deferred until they resolve.
 2. For generators and async generators: call `return()` on the iterator. The `finally` block runs.
 3. [=Unmount=] children recursively.
 
@@ -532,7 +532,7 @@ An [=update=] occurs when a [=component=] receives new [=props=] or `refresh()` 
     <tr><td><code>ref</code> (prop)<td>After host nodes created, before insertion<td>[=Element value=]<td>Per-render (set as a prop)<td>Ignored
     <tr><td><code>schedule(cb)</code><td>After host nodes created, before insertion<td>[=Element value=]<td>One-shot<td>Defers insertion (initial render only)
     <tr><td><code>after(cb)</code><td>After host nodes inserted into environment<td>[=Element value=]<td>One-shot<td>Ignored
-    <tr><td><code>cleanup(cb)</code><td>On unmount, before children unmount<td>[=Element value=]<td>Persistent<td>Defers child unmounting
+    <tr><td><code>cleanup(cb)</code><td>On unmount, before children unmount<td>[=Element value=]<td>Persistent<td>Defers child unmounting (direct unmount only)
     <tr><td><code>refresh(cb)</code><td>Enqueues re-execution<td>None (cb runs before re-exec)<td>One-shot<td>Defers re-execution
   </tbody>
 </table>
