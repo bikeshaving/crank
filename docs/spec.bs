@@ -365,7 +365,10 @@ The framework must execute the following steps in order:
 The framework must execute the following steps in order:
 
 1. Fire `cleanup` callbacks. If any return promises and the [=component=] is directly unmounted (not nested inside a host element that is itself being removed), child [=unmounting=] must be deferred until the promises resolve. The [=component's=] nodes remain visible during this deferral. When the [=component=] is nested inside a host element being removed, the parent node is already gone — cleanup promises are still awaited but cannot defer visual removal.
-2. For generators and async generators: call `return()` on the iterator. The `finally` block executes as part of the [iterator protocol](https://tc39.es/ecma262/#sec-iteration).
+2. For generators and async generators, the framework attempts a natural exit before forcing termination:
+    - If the [=component=] is in a context iteration loop (`for...of` or `for await...of`), the framework calls `next()` on the iterator. The context iterator signals done, the loop condition becomes false, and the generator executes its cleanup code after the loop naturally.
+    - For `for await...of` mode, the framework continues calling `next()` until the iterator is done, draining any remaining yields.
+    - If the iterator is still not done after the natural exit attempt (or if the [=component=] is not in a loop), the framework calls `return()`. The `finally` block executes as part of the [iterator protocol](https://tc39.es/ecma262/#sec-iteration).
 3. [=Unmount=] children recursively.
 
 ## Full Lifecycle ## {#full-lifecycle}
