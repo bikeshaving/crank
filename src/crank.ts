@@ -802,6 +802,7 @@ export interface RenderAdapter<
 		props: Record<string, any>;
 		children: Array<TNode>;
 		oldProps: Record<string, any> | undefined;
+		scope: TScope | undefined;
 		root: TRoot | undefined;
 	}): void;
 
@@ -1879,6 +1880,7 @@ function commitHost<TNode, TScope, TRoot extends TNode | undefined>(
 			props,
 			children,
 			oldProps,
+			scope,
 			root,
 		});
 	}
@@ -3347,6 +3349,7 @@ function propagateComponent<TNode>(ctx: ContextState<TNode>): void {
 		props,
 		oldProps: props,
 		children: hostChildren,
+		scope: host.scope,
 		root: ctx.root,
 	});
 
