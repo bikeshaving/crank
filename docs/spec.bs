@@ -23,7 +23,7 @@ An <dfn>element</dfn> is a lightweight object describing a node in the UI tree. 
 The [=tag=] determines what the [=element=] represents:
 
 - <dfn export>Host element</dfn>: the [=tag=] is a string (`"div"`, `"span"`) — the [=renderer=] creates a node in the [=host environment=].
-- <dfn>Component element</dfn>: the [=tag=] is a function — the framework invokes it as a [=component=] (see [[#invocation]]).
+- <dfn export>Component element</dfn>: the [=tag=] is a function — the framework invokes it as a [=component=] (see [[#invocation]]).
 - <dfn export>Symbol element</dfn>: the [=tag=] is a symbol — used for special [=components=] like Portal, Raw, Copy, and Text (see [[#special-components]]).
 
 [=Elements=] are identified across versions and realms by an internal `$$typeof` symbol, following the [same pattern as React](https://overreacted.io/why-do-react-elements-have-typeof-property/) to protect against injection attacks. `isElement(value)` tests for this marker and returns `true` if the value is an [=element=].
@@ -66,7 +66,7 @@ A <dfn>component</dfn> is a function or a special symbol [=tag=] that the framew
 The framework must invoke a function [=component=] when an [=element=] tree containing a [=component element=] is passed to a [=renderer's=] `render()` or `hydrate()` method, or when `refresh()` is called on the [=component=] or one of its ancestors. The framework must call it with:
 
 - <strong><code>this</code></strong> bound to a [=component context=] object
-- <strong>First argument</strong>: the current props object
+- <strong>First argument</strong>: the current [=props=] object
 - <strong>Second argument</strong>: the same [=component context=] object (for arrow functions and destructuring)
 
 ```
@@ -115,7 +115,7 @@ function *Timer({message}) {
 
 ## Function Components ## {#function-components}
 
-The framework must re-call the function on every update. The return value is rendered as children. Function [=components=] must not [=block=].
+The framework must re-call the function on every update and render the return value as children. Function [=components=] must not [=block=].
 
 ## Generator Components ## {#generator-components}
 
@@ -133,14 +133,11 @@ The framework must re-call the function on every update. The [=component=] must 
 
 The framework must call the function once and store the returned [async iterator](https://tc39.es/ecma262/#sec-asynciterator-interface). Async generators operate in three modes, determined by how the [=component=] iterates its [=component context=]:
 
-: [`for...of`](https://tc39.es/ecma262/#sec-for-in-and-for-of-statements) mode (sync iterator)
-:: The [=component=] must [=block=] while children render, identical to sync generators. `yield` must evaluate to the settled rendered result. The framework enters this mode when the [=component=] calls [`Symbol.iterator`](https://tc39.es/ecma262/#sec-symbol.iterator) on its context (e.g. `for ({} of this)`), which sets an internal flag that the framework checks to determine [=blocking=] behavior.
+: Blocking mode (`for...of` or no loop)
+:: The [=component=] must [=block=] while children render, identical to sync generators. `yield` evaluates to the settled rendered result directly, not a promise. This is the default behavior. When the [=component=] iterates its context with [`for...of`](https://tc39.es/ecma262/#sec-for-in-and-for-of-statements) (calling [`Symbol.iterator`](https://tc39.es/ecma262/#sec-symbol.iterator), e.g. `for ({} of this)`), the framework sets an internal flag and delivers fresh [=props=] through the loop. Without a loop, the framework still calls `next()` on each update but does not deliver [=props=] via iteration.
 
 : [`for await...of`](https://tc39.es/ecma262/#sec-for-in-and-for-of-statements) mode (async iterator)
-:: The [=component=] executes continuously: it yields elements and the framework renders them without [=blocking=] the generator. The [=component=] must not [=block=] while children render. `yield` must evaluate to a <dfn export>yield promise</dfn> — a [`Promise`](https://tc39.es/ecma262/#sec-promise-objects) that resolves to the rendered result once children have settled. The [=yield promise=] must reject if a child [=component=] throws, allowing the async generator to catch child errors via `await`. If the [=yield promise=] is not awaited (the "floating" case), the framework detects this and injects the error back into the generator via `throw()` instead, matching the error injection behavior of sync generators. The [=component=] must suspend at the bottom of the loop until new props are available or `refresh()` is called. This mode enables racing patterns: multiple yields per update produce successive element trees that are raced via the [=chase|chasing=] algorithm ([[#chasing]]). The framework enters this mode when the [=component=] calls [`Symbol.asyncIterator`](https://tc39.es/ecma262/#sec-symbol.asynciterator) on its context (e.g. `for await ({} of this)`), which sets a separate internal flag.
-
-: No-loop mode (no iterator)
-:: The [=component=] must [=block=] while children render, identical to sync generators. `yield` evaluates to the settled result directly, not a promise. When neither iteration flag is set, the framework defaults to blocking behavior.
+:: The [=component=] executes continuously: it yields elements and the framework renders them without [=blocking=] the generator. The [=component=] must not [=block=] while children render. `yield` must evaluate to a <dfn export>yield promise</dfn> — a [`Promise`](https://tc39.es/ecma262/#sec-promise-objects) that resolves to the rendered result once children have settled. The [=yield promise=] must reject if a child [=component=] throws, allowing the async generator to catch child errors via `await`. If the [=yield promise=] is not awaited (the "floating" case), the framework detects this and injects the error back into the generator via `throw()` instead, matching the error injection behavior of sync generators. The [=component=] must suspend at the bottom of the loop until new [=props=] are available or `refresh()` is called. This mode enables racing patterns: multiple yields per update produce successive element trees that are raced via the [=chase|chasing=] algorithm ([[#chasing]]). The framework enters this mode when the [=component=] calls [`Symbol.asyncIterator`](https://tc39.es/ecma262/#sec-symbol.asynciterator) on its context (e.g. `for await ({} of this)`), which sets a separate internal flag.
 
 # Context # {#context}
 
@@ -234,19 +231,19 @@ function *Counter(this: Context, {start}: {start: number}) {
 ```
 </div>
 
-The `Context<T>` type is parameterized by the [=component=] function itself or a props type. When referencing a [=component's=] context externally (e.g. in a helper function), use `Context<typeof MyComponent>` to infer the props type from the [=component=] definition.
+The `Context<T>` type is parameterized by the [=component=] function itself or a [=props=] type. `Context<typeof MyComponent>` infers the [=props=] type from the [=component=] definition — use it both inside [=components=] (to type `this`) and in helper functions that accept a context.
 
 # Props Iteration # {#props-iteration}
 
-The [=component context=] implements both [`Symbol.iterator`](https://tc39.es/ecma262/#sec-symbol.iterator) and [`Symbol.asyncIterator`](https://tc39.es/ecma262/#sec-symbol.asynciterator). Generator components may iterate the context with `for...of this` (or `for await...of this`) to receive fresh props on each update; components that do not need prop updates may use other iteration patterns.
+The [=component context=] implements both [`Symbol.iterator`](https://tc39.es/ecma262/#sec-symbol.iterator) and [`Symbol.asyncIterator`](https://tc39.es/ecma262/#sec-symbol.asynciterator). Generator [=components=] may iterate the context with `for...of this` (or `for await...of this`) to receive fresh [=props=] on each update; [=components=] that do not need prop updates may use other iteration patterns.
 
 ## Synchronous (`for...of`) ## {#sync-iteration}
 
-Each iteration must yield the current props object. If the iterator is advanced twice without the [=component=] yielding, the framework must throw a runtime error.
+Each iteration must yield the current [=props=] object. If the iterator is advanced twice without the [=component=] yielding, the framework must throw a runtime error.
 
 ## Asynchronous (`for await...of`) ## {#async-iteration}
 
-Each iteration must yield the current props object. If new props are not yet available, the iteration must await until the framework provides them. When a [=component=] enters this mode, the framework must switch to a pull-based execution model where children render without [=blocking=] the generator.
+Each iteration must yield the current [=props=] object. If new [=props=] are not yet available, the iteration must await until the framework provides them. When a [=component=] enters this mode, the framework switches to continuous execution where children render without [=blocking=] the generator.
 
 # Reconciliation # {#reconciliation}
 
@@ -256,7 +253,7 @@ To <dfn export lt="mount|mounts|mounting">mount</dfn> an element is to create it
 
 ## Position-Based Matching ## {#position-matching}
 
-By default, children at the same <dfn>position</dfn> — their index within a parent's children array — are compared by [=tag=]. If the tags match, the framework must reuse the existing element and update its props. If the tags differ, the framework must unmount the old element and mount a new one in its place.
+By default, the framework compares children at the same <dfn>position</dfn> — their index within a parent's children array — by [=tag=]. If the tags match, the framework must reuse the existing element and update its [=props=]. If the tags differ, the framework must [=unmount=] the old element and [=mount=] a new one in its place.
 
 <table class="data">
   <thead>
@@ -287,7 +284,7 @@ Duplicate keys among siblings must produce a runtime error. The framework must d
 
 ## Element Values ## {#element-values}
 
-Every element in the tree produces an <dfn>element value</dfn> when rendered. For host elements (e.g. `"div"`), the [=element value=] is the node created by the [=renderer=]. For [=components=] and [=Fragments=], the [=element value=] is the node or array of nodes produced by their children.
+Every element in the tree produces an <dfn>element value</dfn> when rendered. For [=host elements=] (e.g. `"div"`), the [=element value=] is the node created by the [=renderer=]. For [=components=] and [=Fragments=], the [=element value=] is the node or array of nodes produced by their children.
 
 The [=element value=] is the argument passed to `ref` callbacks, `schedule` callbacks, `after` callbacks, and `cleanup` callbacks. It is also what the [=component context's=] `addEventListener` and `removeEventListener` methods delegate to, and what `yield` evaluates to in generator [=components=] (as `previousResult`).
 
@@ -303,7 +300,7 @@ A <dfn>Child</dfn> is any value that can appear in the element tree. The valid c
 - <strong>Nested arrays</strong> must be flattened into the children array.
 - <strong>Elements</strong> (objects with a `tag` property) must be diffed recursively.
 
-This normalization applies everywhere children appear: the return/yield value of a [=component=], the `children` prop, and the children of host elements.
+This normalization applies everywhere children appear: the return/yield value of a [=component=], the `children` prop, and the children of [=host elements=].
 
 # Async Rendering # {#async-rendering}
 
@@ -381,7 +378,7 @@ After each diff, the framework runs the <dfn export id="dfn-commit-sequence">com
 
 <ol>
   <li>Commit host mutations (create or patch host nodes, recursively commit children).
-  <li>Call <code>ref</code> callbacks for host elements. <code>ref</code> fires once on first commit; the element and its children exist but are <strong>not yet inserted</strong> into the parent. <code>ref</code> does not fire for components, fragments, or portals; for component elements, <code>ref</code> is passed as a regular prop.
+  <li>Call <code>ref</code> callbacks for [=host elements=]. <code>ref</code> fires once on first commit; the element and its children exist but are <strong>not yet inserted</strong> into the parent. <code>ref</code> does not fire for [=components=], [=Fragments=], or Portals; for [=component elements=], <code>ref</code> is passed as a regular prop.
   <li>Fire <code>schedule</code> callbacks (same timing window — element exists but is not inserted). On first render, a <code>schedule</code> callback may return a promise to defer insertion.
   <li>Insert host nodes into the [=host environment=] (<code>arrange</code>).
   <li>Fire <code>after</code> callbacks (element is live in the document).
@@ -438,7 +435,7 @@ After each diff, the framework runs the <dfn export id="dfn-commit-sequence">com
               <dt><code>for await...of</code> mode (async iteration of context)
               <dd>
                 <ol>
-                  <li>Diff children (does not block; pull-based).
+                  <li>Diff children (does not block; continuous execution).
                   <li><code>yield</code> evaluates to a <code>Promise</code> that resolves to the result.
                   <li>Multiple yields per update produce successive trees raced via [=chasing=].
                   <li>Run the [=commit sequence=].
@@ -556,7 +553,7 @@ If a generator [=component=] does not catch an injected error, the framework mus
 
 # Events # {#events}
 
-The framework maps `on*` props to [event listeners](https://dom.spec.whatwg.org/#concept-event-listener) on the underlying host nodes. Both lowercase (`onclick`) and camelCase (`onClick`) event prop names are supported; camelCase names are normalized to lowercase before registration.
+The framework maps `on*` [=props=] to [event listeners](https://dom.spec.whatwg.org/#concept-event-listener) on the underlying host nodes. The framework supports both lowercase (`onclick`) and camelCase (`onClick`) event prop names, normalizing camelCase to lowercase before registration.
 
 ## EventTarget Delegation ## {#event-delegation}
 
@@ -644,7 +641,7 @@ Without a prefix, the [=renderer=] also handles these special cases for boolean 
   </thead>
   <tbody>
     <tr><td><code>key</code><td><code>any</code><td>The framework uses keys for reconciliation. Keyed children are matched by key, not position. Duplicate keys among siblings produce a runtime error.
-    <tr><td><code>ref</code><td><code>(value: TResult) => unknown</code><td>The framework calls this with the [=element value=] after host mutations are committed but before host nodes are inserted into the [=host environment=] — the same timing as <code>schedule</code> callbacks. Only fires for host elements; for [=component elements=], <code>ref</code> is passed as a regular prop. Components that wrap a host element should forward <code>ref</code> to their root host element so callers can access the underlying node.
+    <tr><td><code>ref</code><td><code>(value: TResult) => unknown</code><td>The framework calls this with the [=element value=] after host mutations are committed but before host nodes are inserted into the [=host environment=] — the same timing as <code>schedule</code> callbacks. Only fires for [=host elements=]; for [=component elements=], <code>ref</code> is passed as a regular prop. [=Components=] that wrap a [=host element=] should forward <code>ref</code> to their root [=host element=] so callers can access the underlying node.
     <tr><td><code>copy</code><td><code>boolean | string</code><td><code>true</code>: the framework must preserve the entire subtree, skipping re-rendering. String: the framework must selectively copy props from the previous render using the [=prop selector=] syntax (see [[#prop-selector-syntax]]).
     <tr><td><code>hydrate</code><td><code>boolean | string</code><td><code>true</code>: the framework must adopt existing host nodes instead of creating new ones, patching all props onto the adopted node. String: the framework must adopt existing host nodes but treat props matched by the [=prop selector=] as quiet — they must not be patched, preserving the server-rendered values.
   </tbody>
@@ -810,7 +807,7 @@ The template tag must cache parse results keyed by the [raw template strings](ht
 
 Note: This section is informative. It describes the adapter interface used by [=renderer=] implementors and is not required for [=component=] authoring.
 
-A [=renderer=] is constructed with an adapter object that implements operations for a specific host environment. The adapter is parameterized by four types:
+A [=renderer=] is constructed with an adapter object that implements operations for a specific [=host environment=]. The adapter is parameterized by four types:
 
 - <strong><code>TNode</code></strong> — the host node type (e.g. DOM <code>Node</code>)
 - <strong><code>TScope</code></strong> — data passed down the tree (e.g. SVG namespace)
