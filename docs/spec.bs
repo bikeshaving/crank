@@ -557,7 +557,9 @@ The framework maps `on*` [=props=] to [event listeners](https://dom.spec.whatwg.
 
 ## EventTarget Delegation ## {#event-delegation}
 
-Every [=component context=] implements the [`EventTarget`](https://dom.spec.whatwg.org/#interface-eventtarget) interface. The `addEventListener` and `removeEventListener` methods on a [=component context=] <dfn export>delegate</dfn> to the host nodes that the [=component=] produces — when you call `this.addEventListener("click", handler)`, the framework registers that listener on every DOM node associated with the [=component=]. If the [=component=] re-renders and produces different host nodes, the framework updates the delegation: listeners are removed from old nodes and added to new ones. This allows [=components=] to listen to their own DOM events without requiring a `ref`.
+Every [=component context=] implements the [`EventTarget`](https://dom.spec.whatwg.org/#interface-eventtarget) interface. The `addEventListener` and `removeEventListener` methods on a [=component context=] <dfn export>delegate</dfn> to the top-level nodes in the [=component's=] [=element value=] — calling `this.addEventListener("click", handler)` registers that listener on each top-level node, not on their descendants. If the [=component=] re-renders and produces different nodes, the framework updates the delegation: listeners are removed from old nodes and added to new ones. This allows [=components=] to listen to their own events without requiring a `ref`.
+
+Note: In the DOM [=renderer=], the [=element value=] is a DOM Node or array of DOM Nodes. Delegation registers listeners via the standard DOM `addEventListener` API on those nodes.
 
 ## Bubbling ## {#event-bubbling}
 
