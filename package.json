@@ -129,7 +129,9 @@
     "lint": "eslint --ext .js,.jsx,.ts,.tsx .",
     "preshipit": "npm run typecheck && npm run test && npm run build",
     "shipit": "cd dist && npm publish",
-    "test": "playwright-test --runner uvu && cd packages/eslint-plugin-crank && npx vitest run",
+    "test": "playwright-test --runner uvu && cd packages/eslint-plugin-crank && bun test",
+    "test:core": "playwright-test --runner uvu",
+    "test:eslint": "cd packages/eslint-plugin-crank && bun test",
     "typecheck": "tsc --noEmit"
   },
   "type": "module",

@@ -1,4 +1,4 @@
-import {describe, it} from "vitest";
+import {describe, it} from "bun:test";
 import {jsxNoDuplicateProps} from "./jsx-no-duplicate-props.js";
 import {createJsRuleTester} from "../test-helpers/rule-tester.js";
 

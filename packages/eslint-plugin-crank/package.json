@@ -26,7 +26,7 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc",
-    "test": "vitest run",
+    "test": "bun test",
     "lint": "eslint .",
     "prepare": "npm run build"
   },
@@ -35,10 +35,8 @@
     "@tsconfig/recommended": "^1.0.10",
     "@types/node": "^20.0.0",
     "@typescript-eslint/parser": "^8.46.1",
-    "@vitest/coverage-v8": "^1.0.0",
     "eslint": "^9.37.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.46.0",
-    "vitest": "^1.0.0"
+    "typescript-eslint": "^8.46.0"
   }
 }
