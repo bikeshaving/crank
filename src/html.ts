@@ -64,11 +64,11 @@ function printAttrs(props: Record<string, any>, isSVG?: boolean): string {
 		) {
 			continue;
 		} else if (name === "htmlFor") {
-			if ("for" in props || typeof value !== "string") {
+			if ("for" in props || value == null || value === false) {
 				continue;
 			}
 
-			attrs.push(`for="${escape(value)}"`);
+			attrs.push(`for="${escape(String(value === true ? "" : value))}"`);
 		} else if (name === "style") {
 			if (typeof value === "string") {
 				attrs.push(`style="${escape(value)}"`);
