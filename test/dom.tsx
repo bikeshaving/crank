@@ -1300,6 +1300,23 @@ test("htmlFor removes for attribute when null", () => {
 	Assert.is(label.getAttribute("for"), null);
 });
 
+test("htmlFor skipped when for is also present", () => {
+	renderer.render(
+		<label for="email" htmlFor="other">
+			Email
+		</label>,
+		document.body,
+	);
+	const label = document.body.firstChild as HTMLLabelElement;
+	Assert.is(label.getAttribute("for"), "email");
+});
+
+test("className skipped when class is also present", () => {
+	renderer.render(<div class="real" className="ignored" />, document.body);
+	const div = document.body.firstChild as HTMLDivElement;
+	Assert.is(div.getAttribute("class"), "real");
+});
+
 test("dangerouslySetInnerHTML sets innerHTML", () => {
 	renderer.render(
 		<div dangerouslySetInnerHTML={{__html: "<b>bold</b>"}} />,

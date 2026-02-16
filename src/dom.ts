@@ -98,6 +98,7 @@ function patchProp(
 	name: string,
 	value: any,
 	oldValue: any,
+	props: Record<string, any>,
 	isSVG: boolean,
 	isMathML: boolean,
 	copyProps: Set<string> | undefined,
@@ -251,6 +252,7 @@ function patchProp(
 		}
 		case "class":
 		case "className":
+			if (name === "className" && "class" in props) break;
 			if (value === true) {
 				if (isHydrating && element.getAttribute("class") !== "") {
 					emitHydrationWarning(
@@ -387,6 +389,7 @@ function patchProp(
 			break;
 		}
 		case "htmlFor":
+			if ("for" in props) break;
 			if (value == null || value === false) {
 				element.removeAttribute("for");
 			} else {
@@ -639,6 +642,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 					name,
 					undefined,
 					oldProps[name],
+					props,
 					isSVG,
 					isMathML,
 					copyProps,
@@ -654,6 +658,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 				name,
 				props[name],
 				oldProps ? oldProps[name] : undefined,
+				props,
 				isSVG,
 				isMathML,
 				copyProps,
