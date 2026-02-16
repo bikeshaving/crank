@@ -93,6 +93,404 @@ function emitHydrationWarning(
 	}
 }
 
+function patchProp(
+	element: Element,
+	name: string,
+	value: any,
+	oldValue: any,
+	isSVG: boolean,
+	isMathML: boolean,
+	copyProps: Set<string> | undefined,
+	quietProps: Set<string> | undefined,
+	isHydrating: boolean,
+): void {
+	if (copyProps != null && copyProps.has(name)) {
+		return;
+	}
+	// handle prop:name or attr:name properties
+	const colonIndex = name.indexOf(":");
+	if (colonIndex !== -1) {
+		const [ns, name1] = [name.slice(0, colonIndex), name.slice(colonIndex + 1)];
+		switch (ns) {
+			case "prop":
+				(element as any)[name1] = value;
+				return;
+			case "attr":
+				if (value == null || value === false) {
+					if (isHydrating && element.hasAttribute(name1)) {
+						emitHydrationWarning(
+							name,
+							quietProps,
+							value,
+							element.getAttribute(name1),
+							element,
+						);
+					}
+					element.removeAttribute(name1);
+				} else if (value === true) {
+					if (isHydrating && !element.hasAttribute(name1)) {
+						emitHydrationWarning(name, quietProps, value, null, element);
+					}
+					element.setAttribute(name1, "");
+				} else if (typeof value !== "string") {
+					value = String(value);
+				}
+
+				if (isHydrating && element.getAttribute(name1) !== value) {
+					emitHydrationWarning(
+						name,
+						quietProps,
+						value,
+						element.getAttribute(name1),
+						element,
+					);
+				}
+
+				element.setAttribute(name1, String(value));
+				return;
+		}
+	}
+
+	switch (name) {
+		// TODO: fix hydration warnings for the style prop
+		case "style": {
+			const style = (element as HTMLElement | SVGElement).style;
+			if (value == null || value === false) {
+				if (isHydrating && style.cssText !== "") {
+					emitHydrationWarning(name, quietProps, value, style.cssText, element);
+				}
+				element.removeAttribute("style");
+			} else if (value === true) {
+				if (isHydrating && style.cssText !== "") {
+					emitHydrationWarning(name, quietProps, "", style.cssText, element);
+				}
+				element.setAttribute("style", "");
+			} else if (typeof value === "string") {
+				if (style.cssText !== value) {
+					// TODO: Fix hydration warnings for styles
+					//if (isHydrating) {
+					//	emitHydrationWarning(
+					//		name,
+					//		quietProps,
+					//		value,
+					//		style.cssText,
+					//		element,
+					//	);
+					//}
+
+					style.cssText = value;
+				}
+			} else {
+				if (typeof oldValue === "string") {
+					// if the old value was a string, we need to clear the style
+					// TODO: only clear the styles enumerated in the old value
+					style.cssText = "";
+				}
+
+				// First pass: remove styles present in oldValue but not in value
+				if (oldValue) {
+					for (const styleName in oldValue) {
+						if (value && styleName in value) continue;
+						const cssName = camelToKebabCase(styleName);
+						if (isHydrating && style.getPropertyValue(cssName) !== "") {
+							emitHydrationWarning(
+								name,
+								quietProps,
+								null,
+								style.getPropertyValue(cssName),
+								element,
+								`style.${styleName}`,
+							);
+						}
+						style.removeProperty(cssName);
+					}
+				}
+				// Second pass: apply all styles from value
+				if (value) {
+					for (const styleName in value) {
+						const cssName = camelToKebabCase(styleName);
+						const styleValue = (value as any)[styleName];
+						if (styleValue == null) {
+							if (isHydrating && style.getPropertyValue(cssName) !== "") {
+								emitHydrationWarning(
+									name,
+									quietProps,
+									null,
+									style.getPropertyValue(cssName),
+									element,
+									`style.${styleName}`,
+								);
+							}
+							style.removeProperty(cssName);
+						} else {
+							const formattedValue = formatStyleValue(cssName, styleValue);
+							if (style.getPropertyValue(cssName) !== formattedValue) {
+								// TODO: hydration warnings for style props
+								//if (isHydrating) {
+								//	emitHydrationWarning(
+								//		name,
+								//		quietProps,
+								//		formattedValue,
+								//		style.getPropertyValue(cssName),
+								//		element,
+								//		`style.${styleName}`,
+								//	);
+								//}
+								style.setProperty(cssName, formattedValue);
+							}
+						}
+					}
+				}
+			}
+
+			break;
+		}
+		case "class":
+		case "className":
+			if (value === true) {
+				if (isHydrating && element.getAttribute("class") !== "") {
+					emitHydrationWarning(
+						name,
+						quietProps,
+						"",
+						element.getAttribute("class"),
+						element,
+					);
+				}
+				element.setAttribute("class", "");
+			} else if (value == null) {
+				if (isHydrating && element.hasAttribute("class")) {
+					emitHydrationWarning(
+						name,
+						quietProps,
+						value,
+						element.getAttribute("class"),
+						element,
+					);
+				}
+
+				element.removeAttribute("class");
+			} else if (typeof value === "object") {
+				// class={{"included-class": true, "excluded-class": false}} syntax
+				if (typeof oldValue === "string") {
+					// if the old value was a string, we need to clear all classes
+					element.setAttribute("class", "");
+				}
+
+				let shouldIssueWarning = false;
+				const hydratingClasses = isHydrating
+					? new Set(Array.from(element.classList))
+					: undefined;
+				const hydratingClassName = isHydrating
+					? element.getAttribute("class")
+					: undefined;
+
+				// Two passes: removes first, then adds. This ensures that
+				// overlapping classes in different keys are handled correctly.
+				// e.g. {"a b": false, "b c": true} should result in "b c"
+				// Remove pass: iterate oldValue for classes to remove
+				if (oldValue) {
+					for (const classNames in oldValue) {
+						if (value && value[classNames]) continue;
+						const classes = classNames.split(/\s+/).filter(Boolean);
+						element.classList.remove(...classes);
+					}
+				}
+
+				// Add pass: iterate value for classes to add
+				if (value) {
+					for (const classNames in value) {
+						if (!value[classNames]) continue;
+						const classes = classNames.split(/\s+/).filter(Boolean);
+						element.classList.add(...classes);
+						for (const className of classes) {
+							if (hydratingClasses && hydratingClasses.has(className)) {
+								hydratingClasses.delete(className);
+							} else if (isHydrating) {
+								shouldIssueWarning = true;
+							}
+						}
+					}
+				}
+
+				if (
+					shouldIssueWarning ||
+					(hydratingClasses && hydratingClasses.size > 0)
+				) {
+					emitHydrationWarning(
+						name,
+						quietProps,
+						Object.keys(value)
+							.filter((k) => value[k])
+							.join(" "),
+						hydratingClassName || "",
+						element,
+					);
+				}
+			} else if (!isSVG && !isMathML) {
+				if (element.className !== value) {
+					if (isHydrating) {
+						emitHydrationWarning(
+							name,
+							quietProps,
+							value,
+							element.className,
+							element,
+						);
+					}
+					element.className = value;
+				}
+			} else if (element.getAttribute("class") !== value) {
+				if (isHydrating) {
+					emitHydrationWarning(
+						name,
+						quietProps,
+						value,
+						element.getAttribute("class"),
+						element,
+					);
+				}
+				element.setAttribute("class", value as string);
+			}
+			break;
+		case "innerHTML":
+			if (value !== oldValue) {
+				if (isHydrating) {
+					emitHydrationWarning(
+						name,
+						quietProps,
+						value,
+						element.innerHTML,
+						element,
+					);
+				}
+				element.innerHTML = value as any;
+			}
+
+			break;
+		case "dangerouslySetInnerHTML": {
+			const htmlValue =
+				value && typeof value === "object" && "__html" in value
+					? (value.__html ?? "")
+					: (value ?? "");
+			const oldHtmlValue =
+				oldValue && typeof oldValue === "object" && "__html" in oldValue
+					? (oldValue.__html ?? "")
+					: (oldValue ?? "");
+			if (htmlValue !== oldHtmlValue) {
+				element.innerHTML = htmlValue as any;
+			}
+			break;
+		}
+		case "htmlFor":
+			if (value == null || value === false) {
+				element.removeAttribute("for");
+			} else {
+				element.setAttribute("for", String(value === true ? "" : value));
+			}
+			break;
+		default: {
+			if (
+				name[0] === "o" &&
+				name[1] === "n" &&
+				name[2] === name[2].toUpperCase() &&
+				typeof value === "function"
+			) {
+				// Support React-style event names (onClick, onChange, etc.)
+				name = name.toLowerCase();
+			}
+
+			// Support React-style SVG attribute names (strokeWidth, etc.)
+			if (isSVG && name in REACT_SVG_PROPS) {
+				name = REACT_SVG_PROPS[name];
+			}
+
+			// try to set the property directly
+			if (
+				name in element &&
+				// boolean properties will coerce strings, but sometimes they map to
+				// enumerated attributes, where truthy strings ("false", "no") map to
+				// falsy properties, so we force using setAttribute.
+				!(
+					typeof value === "string" &&
+					typeof (element as any)[name] === "boolean"
+				) &&
+				isWritableProperty(element, name)
+			) {
+				// For URL properties like src and href, the DOM property returns the
+				// resolved absolute URL. We need to resolve the prop value the same way
+				// to compare correctly.
+				let domValue = (element as any)[name];
+				let propValue = value;
+				if (
+					(name === "src" || name === "href") &&
+					typeof value === "string" &&
+					typeof domValue === "string"
+				) {
+					try {
+						propValue = new URL(value, element.baseURI).href;
+					} catch {
+						// Invalid URL, use original value for comparison
+					}
+				}
+
+				if (propValue !== domValue || oldValue === undefined) {
+					if (
+						isHydrating &&
+						typeof (element as any)[name] === "string" &&
+						(element as any)[name] !== value
+					) {
+						emitHydrationWarning(
+							name,
+							quietProps,
+							value,
+							(element as any)[name],
+							element,
+						);
+					}
+					// if the property is writable, assign it directly
+					(element as any)[name] = value;
+				}
+
+				return;
+			}
+
+			if (value === true) {
+				value = "";
+			} else if (value == null || value === false) {
+				if (isHydrating && element.hasAttribute(name)) {
+					emitHydrationWarning(
+						name,
+						quietProps,
+						value,
+						element.getAttribute(name),
+						element,
+					);
+				}
+
+				element.removeAttribute(name);
+				return;
+			} else if (typeof value !== "string") {
+				value = String(value);
+			}
+
+			if (element.getAttribute(name) !== value) {
+				if (isHydrating) {
+					emitHydrationWarning(
+						name,
+						quietProps,
+						value,
+						element.getAttribute(name),
+						element,
+					);
+				}
+
+				element.setAttribute(name, value as any);
+			}
+		}
+	}
+}
+
 export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 	scope({
 		scope: xmlns,
@@ -214,387 +612,36 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		const element = node as Element;
 		const isSVG = xmlns === SVG_NAMESPACE;
 		const isMathML = xmlns === MATHML_NAMESPACE;
-		for (let name in {...oldProps, ...props}) {
-			let value = props[name];
-			const oldValue = oldProps ? oldProps[name] : undefined;
-			{
-				if (copyProps != null && copyProps.has(name)) {
-					continue;
-				}
-				// handle prop:name or attr:name properties
-				const colonIndex = name.indexOf(":");
-				if (colonIndex !== -1) {
-					const [ns, name1] = [
-						name.slice(0, colonIndex),
-						name.slice(colonIndex + 1),
-					];
-					switch (ns) {
-						case "prop":
-							(node as any)[name1] = value;
-							continue;
-						case "attr":
-							if (value == null || value === false) {
-								if (isHydrating && element.hasAttribute(name1)) {
-									emitHydrationWarning(
-										name,
-										quietProps,
-										value,
-										element.getAttribute(name1),
-										element,
-									);
-								}
-								element.removeAttribute(name1);
-							} else if (value === true) {
-								if (isHydrating && !element.hasAttribute(name1)) {
-									emitHydrationWarning(name, quietProps, value, null, element);
-								}
-								element.setAttribute(name1, "");
-							} else if (typeof value !== "string") {
-								value = String(value);
-							}
-
-							if (isHydrating && element.getAttribute(name1) !== value) {
-								emitHydrationWarning(
-									name,
-									quietProps,
-									value,
-									element.getAttribute(name1),
-									element,
-								);
-							}
-
-							element.setAttribute(name1, String(value));
-							continue;
-					}
-				}
+		// First pass: iterate oldProps to handle removals
+		if (oldProps) {
+			for (let name in oldProps) {
+				if (name in props) continue;
+				patchProp(
+					element,
+					name,
+					undefined,
+					oldProps[name],
+					isSVG,
+					isMathML,
+					copyProps,
+					quietProps,
+					isHydrating,
+				);
 			}
-
-			switch (name) {
-				// TODO: fix hydration warnings for the style prop
-				case "style": {
-					const style = (element as HTMLElement | SVGElement).style;
-					if (value == null || value === false) {
-						if (isHydrating && style.cssText !== "") {
-							emitHydrationWarning(
-								name,
-								quietProps,
-								value,
-								style.cssText,
-								element,
-							);
-						}
-						element.removeAttribute("style");
-					} else if (value === true) {
-						if (isHydrating && style.cssText !== "") {
-							emitHydrationWarning(
-								name,
-								quietProps,
-								"",
-								style.cssText,
-								element,
-							);
-						}
-						element.setAttribute("style", "");
-					} else if (typeof value === "string") {
-						if (style.cssText !== value) {
-							// TODO: Fix hydration warnings for styles
-							//if (isHydrating) {
-							//	emitHydrationWarning(
-							//		name,
-							//		quietProps,
-							//		value,
-							//		style.cssText,
-							//		element,
-							//	);
-							//}
-
-							style.cssText = value;
-						}
-					} else {
-						if (typeof oldValue === "string") {
-							// if the old value was a string, we need to clear the style
-							// TODO: only clear the styles enumerated in the old value
-							style.cssText = "";
-						}
-
-						for (const styleName in {...oldValue, ...value}) {
-							const cssName = camelToKebabCase(styleName);
-							const styleValue = value && (value as any)[styleName];
-							if (styleValue == null) {
-								if (isHydrating && style.getPropertyValue(cssName) !== "") {
-									emitHydrationWarning(
-										name,
-										quietProps,
-										null,
-										style.getPropertyValue(cssName),
-										element,
-										`style.${styleName}`,
-									);
-								}
-								style.removeProperty(cssName);
-							} else {
-								const formattedValue = formatStyleValue(cssName, styleValue);
-								if (style.getPropertyValue(cssName) !== formattedValue) {
-									// TODO: hydration warnings for style props
-									//if (isHydrating) {
-									//	emitHydrationWarning(
-									//		name,
-									//		quietProps,
-									//		formattedValue,
-									//		style.getPropertyValue(cssName),
-									//		element,
-									//		`style.${styleName}`,
-									//	);
-									//}
-									style.setProperty(cssName, formattedValue);
-								}
-							}
-						}
-					}
-
-					break;
-				}
-				case "class":
-				case "className":
-					if (value === true) {
-						if (isHydrating && element.getAttribute("class") !== "") {
-							emitHydrationWarning(
-								name,
-								quietProps,
-								"",
-								element.getAttribute("class"),
-								element,
-							);
-						}
-						element.setAttribute("class", "");
-					} else if (value == null) {
-						if (isHydrating && element.hasAttribute("class")) {
-							emitHydrationWarning(
-								name,
-								quietProps,
-								value,
-								element.getAttribute("class"),
-								element,
-							);
-						}
-
-						element.removeAttribute("class");
-					} else if (typeof value === "object") {
-						// class={{"included-class": true, "excluded-class": false}} syntax
-						if (typeof oldValue === "string") {
-							// if the old value was a string, we need to clear all classes
-							element.setAttribute("class", "");
-						}
-
-						let shouldIssueWarning = false;
-						const hydratingClasses = isHydrating
-							? new Set(Array.from(element.classList))
-							: undefined;
-						const hydratingClassName = isHydrating
-							? element.getAttribute("class")
-							: undefined;
-
-						const allClassNames = {...oldValue, ...value};
-						// Two passes: removes first, then adds. This ensures that
-						// overlapping classes in different keys are handled correctly.
-						// e.g. {"a b": false, "b c": true} should result in "b c"
-						for (const classNames in allClassNames) {
-							if (!(value && value[classNames])) {
-								const classes = classNames.split(/\s+/).filter(Boolean);
-								element.classList.remove(...classes);
-							}
-						}
-
-						for (const classNames in allClassNames) {
-							if (value && value[classNames]) {
-								const classes = classNames.split(/\s+/).filter(Boolean);
-								element.classList.add(...classes);
-								for (const className of classes) {
-									if (hydratingClasses && hydratingClasses.has(className)) {
-										hydratingClasses.delete(className);
-									} else if (isHydrating) {
-										shouldIssueWarning = true;
-									}
-								}
-							}
-						}
-
-						if (
-							shouldIssueWarning ||
-							(hydratingClasses && hydratingClasses.size > 0)
-						) {
-							emitHydrationWarning(
-								name,
-								quietProps,
-								Object.keys(value)
-									.filter((k) => value[k])
-									.join(" "),
-								hydratingClassName || "",
-								element,
-							);
-						}
-					} else if (!isSVG && !isMathML) {
-						if (element.className !== value) {
-							if (isHydrating) {
-								emitHydrationWarning(
-									name,
-									quietProps,
-									value,
-									element.className,
-									element,
-								);
-							}
-							element.className = value;
-						}
-					} else if (element.getAttribute("class") !== value) {
-						if (isHydrating) {
-							emitHydrationWarning(
-								name,
-								quietProps,
-								value,
-								element.getAttribute("class"),
-								element,
-							);
-						}
-						element.setAttribute("class", value as string);
-					}
-					break;
-				case "innerHTML":
-					if (value !== oldValue) {
-						if (isHydrating) {
-							emitHydrationWarning(
-								name,
-								quietProps,
-								value,
-								element.innerHTML,
-								element,
-							);
-						}
-						element.innerHTML = value as any;
-					}
-
-					break;
-				case "dangerouslySetInnerHTML": {
-					const htmlValue =
-						value && typeof value === "object" && "__html" in value
-							? (value.__html ?? "")
-							: (value ?? "");
-					const oldHtmlValue =
-						oldValue && typeof oldValue === "object" && "__html" in oldValue
-							? (oldValue.__html ?? "")
-							: (oldValue ?? "");
-					if (htmlValue !== oldHtmlValue) {
-						element.innerHTML = htmlValue as any;
-					}
-					break;
-				}
-				case "htmlFor":
-					if (value == null || value === false) {
-						element.removeAttribute("for");
-					} else {
-						element.setAttribute("for", String(value === true ? "" : value));
-					}
-					break;
-				default: {
-					if (
-						name[0] === "o" &&
-						name[1] === "n" &&
-						name[2] === name[2].toUpperCase() &&
-						typeof value === "function"
-					) {
-						// Support React-style event names (onClick, onChange, etc.)
-						name = name.toLowerCase();
-					}
-
-					// Support React-style SVG attribute names (strokeWidth, etc.)
-					if (isSVG && name in REACT_SVG_PROPS) {
-						name = REACT_SVG_PROPS[name];
-					}
-
-					// try to set the property directly
-					if (
-						name in element &&
-						// boolean properties will coerce strings, but sometimes they map to
-						// enumerated attributes, where truthy strings ("false", "no") map to
-						// falsy properties, so we force using setAttribute.
-						!(
-							typeof value === "string" &&
-							typeof (element as any)[name] === "boolean"
-						) &&
-						isWritableProperty(element, name)
-					) {
-						// For URL properties like src and href, the DOM property returns the
-						// resolved absolute URL. We need to resolve the prop value the same way
-						// to compare correctly.
-						let domValue = (element as any)[name];
-						let propValue = value;
-						if (
-							(name === "src" || name === "href") &&
-							typeof value === "string" &&
-							typeof domValue === "string"
-						) {
-							try {
-								propValue = new URL(value, element.baseURI).href;
-							} catch {
-								// Invalid URL, use original value for comparison
-							}
-						}
-
-						if (propValue !== domValue || oldValue === undefined) {
-							if (
-								isHydrating &&
-								typeof (element as any)[name] === "string" &&
-								(element as any)[name] !== value
-							) {
-								emitHydrationWarning(
-									name,
-									quietProps,
-									value,
-									(element as any)[name],
-									element,
-								);
-							}
-							// if the property is writable, assign it directly
-							(element as any)[name] = value;
-						}
-
-						continue;
-					}
-
-					if (value === true) {
-						value = "";
-					} else if (value == null || value === false) {
-						if (isHydrating && element.hasAttribute(name)) {
-							emitHydrationWarning(
-								name,
-								quietProps,
-								value,
-								element.getAttribute(name),
-								element,
-							);
-						}
-
-						element.removeAttribute(name);
-						continue;
-					} else if (typeof value !== "string") {
-						value = String(value);
-					}
-
-					if (element.getAttribute(name) !== value) {
-						if (isHydrating) {
-							emitHydrationWarning(
-								name,
-								quietProps,
-								value,
-								element.getAttribute(name),
-								element,
-							);
-						}
-
-						element.setAttribute(name, value as any);
-					}
-				}
-			}
+		}
+		// Second pass: iterate props to handle additions and updates
+		for (let name in props) {
+			patchProp(
+				element,
+				name,
+				props[name],
+				oldProps ? oldProps[name] : undefined,
+				isSVG,
+				isMathML,
+				copyProps,
+				quietProps,
+				isHydrating,
+			);
 		}
 	},
 

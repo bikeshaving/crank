@@ -463,10 +463,17 @@ function getChildValues<TNode>(
 ): Array<TNode> {
 	const values: Array<TNode> = [];
 	const lingerers = ret.lingerers;
-	const children = wrap(ret.children);
+	const rawChildren = ret.children;
+	const isChildrenArray = Array.isArray(rawChildren);
+	const childrenLength =
+		rawChildren === undefined
+			? 0
+			: isChildrenArray
+				? (rawChildren as Array<any>).length
+				: 1;
 	let currentIndex = startIndex;
 
-	for (let i = 0; i < children.length; i++) {
+	for (let i = 0; i < childrenLength; i++) {
 		if (lingerers != null && lingerers[i] != null) {
 			const rets = lingerers[i]!;
 			for (const ret of rets) {
@@ -487,7 +494,9 @@ function getChildValues<TNode>(
 			}
 		}
 
-		const child = children[i];
+		const child = isChildrenArray
+			? (rawChildren as Array<Retainer<TNode> | undefined>)[i]
+			: (rawChildren as Retainer<TNode>);
 		if (child) {
 			const value = getValue(child, true, currentIndex);
 			if (Array.isArray(value)) {
@@ -506,8 +515,8 @@ function getChildValues<TNode>(
 		}
 	}
 
-	if (lingerers != null && lingerers.length > children.length) {
-		for (let i = children.length; i < lingerers.length; i++) {
+	if (lingerers != null && lingerers.length > childrenLength) {
+		for (let i = childrenLength; i < lingerers.length; i++) {
 			const rets = lingerers[i];
 			if (rets != null) {
 				for (const ret of rets) {
@@ -1091,6 +1100,169 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	return adapter.read(unwrap(getChildValues(ret)));
 }
 
+function diffChild<TNode, TScope, TRoot extends TNode | undefined, TResult>(
+	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
+	root: TRoot | undefined,
+	host: Retainer<TNode, TScope>,
+	ctx: ContextState<TNode, TScope, TRoot, TResult> | undefined,
+	scope: TScope | undefined,
+	parent: Retainer<TNode, TScope>,
+	newChildren: Children,
+): Promise<undefined> | undefined {
+	let child = narrow(newChildren);
+	let ret = parent.children as Retainer<TNode, TScope> | undefined;
+	let graveyard: Array<Retainer<TNode, TScope>> | undefined;
+	let diff: Promise<undefined> | undefined;
+	if (typeof child === "object") {
+		let childCopied = false;
+		// Check key match
+		const oldKey = typeof ret === "object" ? ret.el.props.key : undefined;
+		const newKey = child.props.key;
+		if (oldKey !== newKey) {
+			if (typeof ret === "object") {
+				(graveyard = graveyard || []).push(ret);
+			}
+			ret = undefined;
+		}
+
+		if (child.tag === Copy) {
+			childCopied = true;
+		} else if (
+			typeof ret === "object" &&
+			ret.el === child &&
+			getFlag(ret, DidCommit)
+		) {
+			childCopied = true;
+		} else {
+			if (ret && ret.el.tag === child.tag) {
+				ret.el = child;
+				if (child.props.copy && typeof child.props.copy !== "string") {
+					childCopied = true;
+				}
+			} else if (ret) {
+				let candidateFound = false;
+				for (
+					let predecessor = ret, candidate = ret.fallback;
+					candidate;
+					predecessor = candidate, candidate = candidate.fallback
+				) {
+					if (candidate.el.tag === child.tag) {
+						const clone = cloneRetainer(candidate);
+						setFlag(clone, IsResurrecting);
+						predecessor.fallback = clone;
+						const fallback = ret;
+						ret = candidate;
+						ret.el = child;
+						ret.fallback = fallback;
+						setFlag(ret, DidDiff, false);
+						candidateFound = true;
+						break;
+					}
+				}
+				if (!candidateFound) {
+					const fallback = ret;
+					ret = new Retainer<TNode, TScope>(child);
+					ret.fallback = fallback;
+				}
+			} else {
+				ret = new Retainer<TNode, TScope>(child);
+			}
+
+			if (childCopied && getFlag(ret, DidCommit)) {
+				// pass
+			} else if (child.tag === Raw || child.tag === Text) {
+				// pass
+			} else if (child.tag === Fragment) {
+				diff = diffChildren(
+					adapter,
+					root,
+					host,
+					ctx,
+					scope,
+					ret,
+					ret.el.props.children as Children,
+				);
+			} else if (typeof child.tag === "function") {
+				diff = diffComponent(adapter, root, host, ctx, scope, ret);
+			} else {
+				diff = diffHost(adapter, root, ctx, scope, ret);
+			}
+		}
+
+		if (typeof ret === "object") {
+			if (childCopied) {
+				setFlag(ret, IsCopied);
+				diff = getInflightDiff(ret);
+			} else {
+				setFlag(ret, IsCopied, false);
+			}
+		}
+	} else if (typeof child === "string") {
+		if (typeof ret === "object" && ret.el.tag === Text) {
+			ret.el.props.value = child;
+		} else {
+			if (typeof ret === "object") {
+				(graveyard = graveyard || []).push(ret);
+			}
+
+			ret = new Retainer<TNode, TScope>(createElement(Text, {value: child}));
+		}
+	} else {
+		if (typeof ret === "object") {
+			(graveyard = graveyard || []).push(ret);
+		}
+
+		ret = undefined;
+	}
+
+	parent.children = ret;
+	if (isPromiseLike(diff)) {
+		const diff1 = diff.finally(() => {
+			setFlag(parent, DidDiff);
+			if (graveyard) {
+				if (parent.graveyard) {
+					for (let i = 0; i < graveyard.length; i++) {
+						parent.graveyard.push(graveyard[i]);
+					}
+				} else {
+					parent.graveyard = graveyard;
+				}
+			}
+		});
+
+		let onNextDiffs!: Function;
+		const diff2 = (parent.pendingDiff = safeRace([
+			diff1,
+			new Promise<any>((resolve) => (onNextDiffs = resolve)),
+		]));
+
+		if (parent.onNextDiff) {
+			parent.onNextDiff(diff2);
+		}
+
+		parent.onNextDiff = onNextDiffs;
+		return diff2;
+	} else {
+		setFlag(parent, DidDiff);
+		if (graveyard) {
+			if (parent.graveyard) {
+				for (let i = 0; i < graveyard.length; i++) {
+					parent.graveyard.push(graveyard[i]);
+				}
+			} else {
+				parent.graveyard = graveyard;
+			}
+		}
+
+		if (parent.onNextDiff) {
+			parent.onNextDiff(diff);
+			parent.onNextDiff = undefined;
+		}
+
+		parent.pendingDiff = undefined;
+	}
+}
+
 function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	adapter: RenderAdapter<TNode, TScope, TRoot, TResult>,
 	root: TRoot | undefined,
@@ -1100,6 +1272,17 @@ function diffChildren<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	parent: Retainer<TNode, TScope>,
 	newChildren: Children,
 ): Promise<undefined> | undefined {
+	// Fast path for the common single non-keyed child case
+	if (
+		!Array.isArray(newChildren) &&
+		(typeof newChildren !== "object" ||
+			newChildren === null ||
+			typeof (newChildren as any)[Symbol.iterator] !== "function") &&
+		!Array.isArray(parent.children)
+	) {
+		return diffChild(adapter, root, host, ctx, scope, parent, newChildren);
+	}
+
 	const oldRetained = wrap(parent.children);
 	const newRetained: typeof oldRetained = [];
 	const newChildren1 = arrayify(newChildren);
@@ -1494,7 +1677,10 @@ function commit<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	}
 
 	if (skippedHydrationNodes) {
-		skippedHydrationNodes.splice(0, wrap(value).length);
+		skippedHydrationNodes.splice(
+			0,
+			value == null ? 0 : Array.isArray(value) ? value.length : 1,
+		);
 	}
 
 	if (!getFlag(ret, DidCommit)) {
@@ -1529,8 +1715,18 @@ function commitChildren<
 	hydrationNodes: Array<TNode> | undefined,
 ): Array<TNode> {
 	let values: Array<TNode> = [];
-	for (let i = 0, children = wrap(parent.children); i < children.length; i++) {
-		let child = children[i];
+	const rawChildren = parent.children;
+	const isChildrenArray = Array.isArray(rawChildren);
+	const childrenLength =
+		rawChildren === undefined
+			? 0
+			: isChildrenArray
+				? (rawChildren as Array<any>).length
+				: 1;
+	for (let i = 0; i < childrenLength; i++) {
+		let child = isChildrenArray
+			? (rawChildren as Array<Retainer<TNode, TScope> | undefined>)[i]
+			: (rawChildren as Retainer<TNode, TScope> | undefined);
 		let schedulePromises1: Array<unknown> | undefined;
 		let isSchedulingFallback = false;
 		while (
@@ -2089,11 +2285,16 @@ function unmountChildren<
 		ret.graveyard = undefined;
 	}
 
-	for (let i = 0, children = wrap(ret.children); i < children.length; i++) {
-		const child = children[i];
-		if (typeof child === "object") {
-			unmount(adapter, host, ctx, root, child, isNested);
+	const rawChildren = ret.children;
+	if (Array.isArray(rawChildren)) {
+		for (let i = 0; i < rawChildren.length; i++) {
+			const child = rawChildren[i];
+			if (typeof child === "object") {
+				unmount(adapter, host, ctx, root, child, isNested);
+			}
 		}
+	} else if (rawChildren !== undefined) {
+		unmount(adapter, host, ctx, root, rawChildren, isNested);
 	}
 }
 const provisionMaps = new WeakMap<ContextState, Map<unknown, unknown>>();
@@ -3295,11 +3496,14 @@ function isRetainerActive<TNode>(
 			((typeof current.el.tag === "string" && current.el.tag !== Fragment) ||
 				current.el.tag === Portal);
 		if (current.children && !isHostBoundary) {
-			const children = wrap(current.children);
-			for (const child of children) {
-				if (child) {
-					stack.push(child);
+			if (Array.isArray(current.children)) {
+				for (const child of current.children) {
+					if (child) {
+						stack.push(child);
+					}
 				}
+			} else {
+				stack.push(current.children);
 			}
 		}
 

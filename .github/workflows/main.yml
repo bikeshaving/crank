@@ -34,7 +34,7 @@ jobs:
       - run: bun run build
 
   test:
-    name: Test
+    name: Test (${{ matrix.browser }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -46,5 +46,7 @@ jobs:
       - name: Install WebKit dependencies
         if: matrix.browser == 'webkit'
         run: bunx playwright install-deps webkit
-      - name: Run tests
-        run: bun run test -- --browser ${{ matrix.browser }}
+      - name: Run core tests
+        run: playwright-test --runner uvu --browser ${{ matrix.browser }}
+      - name: Run eslint plugin tests
+        run: cd packages/eslint-plugin-crank && bun test
