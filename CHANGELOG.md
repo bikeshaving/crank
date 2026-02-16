@@ -9,59 +9,58 @@
   ```
 
 - **React prop compatibility**
-  The DOM and HTML renderers now silently handle React-style props, so
-  copy-pasted React JSX works without modification:
+  The DOM and HTML renderers now accept React-style props, so copy-pasted React
+  JSX works without modification:
   - `htmlFor` → sets the `for` attribute
+  - `className` → sets the `class` attribute
   - `dangerouslySetInnerHTML={{__html: "..."}}` → sets `innerHTML`
   - SVG camelCase attributes (`strokeWidth`, `fillOpacity`, `textAnchor`, etc.)
-    → converted to standard kebab-case (`stroke-width`, `fill-opacity`,
-    `text-anchor`)
+    → converted to kebab-case (`stroke-width`, `fill-opacity`, `text-anchor`)
 
-  The ESLint plugin continues to guide users toward idiomatic Crank prop names.
+  When both the React alias and the native prop are present (e.g. `htmlFor` and
+  `for`), the native prop takes precedence. SVG prop mapping only applies within
+  SVG elements, so HTML props like `tabIndex` are unaffected.
 
-- **Better JSX template tag error messages**
-  Syntax errors in `jsx` template literals now include visual context with a
-  caret pointer:
+  The ESLint plugin guides users toward idiomatic Crank prop names.
+
+- **JSX template tag error context**
+  Syntax errors in `jsx` template literals now include line/column context with
+  a caret pointer:
   ```
   Unexpected text `=></p>`
 
   > 1 | <p class==></p>
        |          ^
   ```
+  Parse results with errors are no longer cached, so correcting a template
+  expression at runtime is possible.
 
 ### Bug Fixes
 - **Fix `dangerouslySetInnerHTML` rendering literal "null"/"undefined"**
   Setting `dangerouslySetInnerHTML` to `null` or `undefined` no longer renders
-  the string `"null"` or `"undefined"` as innerHTML.
+  the string `"null"` or `"undefined"` as innerHTML. Both renderers now require
+  the `{__html: "..."}` shape and ignore other value types.
 
 - **Fix `attr:` prefix re-adding removed attributes** (#341)
   Setting an `attr:` prop to `null`/`false` now correctly removes the attribute
-  without re-adding it as `"null"`/`"false"`.
+  instead of setting it to `"null"`/`"false"`.
 
-- **Fix `foreignObject` children created in SVG namespace**
-  Children of `<foreignObject>` are now automatically created in the HTML
-  namespace without requiring an explicit `xmlns` prop. Both DOM and HTML
-  renderers handle this.
+- **Fix `foreignObject` namespace handling**
+  Children of `<foreignObject>` are now created in the HTML namespace without
+  requiring an explicit `xmlns` prop. The `<foreignObject>` element itself
+  retains SVG namespace and SVG prop normalization. Both DOM and HTML renderers
+  handle this correctly.
 
-- **Fix Portal scope not reading root namespace**
+- **Fix Portal not reading root namespace**
   Portal now reads `namespaceURI` from its root element, so portaling into an
-  SVG element correctly creates children in the SVG namespace, and portaling out
-  of SVG into an HTML element resets to HTML namespace.
+  SVG element creates children in the SVG namespace, and portaling out of SVG
+  resets to HTML namespace.
 
 ### Improvements
 - **Reduce GC churn in DOM patch and child diff**
   Eliminated temporary object allocations in hot paths: replaced spread merges
   in `patch()` with two-loop iteration, added a fast path for single-child
   diffing, and replaced `wrap()` calls with inline iteration.
-
-- **SVG prop mapping restricted to SVG scope**
-  The `REACT_SVG_PROPS` camelCase→kebab-case mapping now only applies within
-  SVG elements, preventing incorrect attribute renaming on HTML elements that
-  share prop names (e.g. `tabIndex`).
-
-- **Switch eslint plugin tests from vitest to bun:test**
-  Removes the vitest dependency and aligns the plugin test runner with the rest
-  of the project.
 
 ## [0.7.5] - 2026-02-02
 ### Bug Fixes
