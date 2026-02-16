@@ -127,12 +127,16 @@ function patchProp(
 						);
 					}
 					element.removeAttribute(name1);
+					return;
 				} else if (value === true) {
 					if (isHydrating && !element.hasAttribute(name1)) {
 						emitHydrationWarning(name, quietProps, value, null, element);
 					}
 					element.setAttribute(name1, "");
-				} else if (typeof value !== "string") {
+					return;
+				}
+
+				if (typeof value !== "string") {
 					value = String(value);
 				}
 
@@ -146,7 +150,7 @@ function patchProp(
 					);
 				}
 
-				element.setAttribute(name1, String(value));
+				element.setAttribute(name1, value);
 				return;
 		}
 	}

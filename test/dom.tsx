@@ -660,6 +660,30 @@ test("attr: prefix forces attribute", () => {
 	Assert.is(el.attr, "value");
 });
 
+test("attr: prefix removes attribute when null", () => {
+	renderer.render(<div attr:data-x="hello" />, document.body);
+	const div = document.body.firstChild as HTMLElement;
+	Assert.is(div.getAttribute("data-x"), "hello");
+
+	renderer.render(<div attr:data-x={null} />, document.body);
+	Assert.is(div.getAttribute("data-x"), null);
+});
+
+test("attr: prefix removes attribute when false", () => {
+	renderer.render(<div attr:data-x="hello" />, document.body);
+	const div = document.body.firstChild as HTMLElement;
+	Assert.is(div.getAttribute("data-x"), "hello");
+
+	renderer.render(<div attr:data-x={false} />, document.body);
+	Assert.is(div.getAttribute("data-x"), null);
+});
+
+test("attr: prefix sets empty string when true", () => {
+	renderer.render(<div attr:data-x={true} />, document.body);
+	const div = document.body.firstChild as HTMLElement;
+	Assert.is(div.getAttribute("data-x"), "");
+});
+
 test("object classnames basic", () => {
 	renderer.render(
 		<div
