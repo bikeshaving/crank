@@ -1,5 +1,5 @@
 # Changelog
-## [0.7.6] - 2026-02-14
+## [0.7.6] - 2026-02-16
 ### New Features
 - **Standalone module re-exports renderers**
   `@b9g/crank/standalone` now exports the DOM and HTML renderers, enabling
@@ -18,6 +18,50 @@
     `text-anchor`)
 
   The ESLint plugin continues to guide users toward idiomatic Crank prop names.
+
+- **Better JSX template tag error messages**
+  Syntax errors in `jsx` template literals now include visual context with a
+  caret pointer:
+  ```
+  Unexpected text `=></p>`
+
+  > 1 | <p class==></p>
+       |          ^
+  ```
+
+### Bug Fixes
+- **Fix `dangerouslySetInnerHTML` rendering literal "null"/"undefined"**
+  Setting `dangerouslySetInnerHTML` to `null` or `undefined` no longer renders
+  the string `"null"` or `"undefined"` as innerHTML.
+
+- **Fix `attr:` prefix re-adding removed attributes** (#341)
+  Setting an `attr:` prop to `null`/`false` now correctly removes the attribute
+  without re-adding it as `"null"`/`"false"`.
+
+- **Fix `foreignObject` children created in SVG namespace**
+  Children of `<foreignObject>` are now automatically created in the HTML
+  namespace without requiring an explicit `xmlns` prop. Both DOM and HTML
+  renderers handle this.
+
+- **Fix Portal scope not reading root namespace**
+  Portal now reads `namespaceURI` from its root element, so portaling into an
+  SVG element correctly creates children in the SVG namespace, and portaling out
+  of SVG into an HTML element resets to HTML namespace.
+
+### Improvements
+- **Reduce GC churn in DOM patch and child diff**
+  Eliminated temporary object allocations in hot paths: replaced spread merges
+  in `patch()` with two-loop iteration, added a fast path for single-child
+  diffing, and replaced `wrap()` calls with inline iteration.
+
+- **SVG prop mapping restricted to SVG scope**
+  The `REACT_SVG_PROPS` camelCase→kebab-case mapping now only applies within
+  SVG elements, preventing incorrect attribute renaming on HTML elements that
+  share prop names (e.g. `tabIndex`).
+
+- **Switch eslint plugin tests from vitest to bun:test**
+  Removes the vitest dependency and aligns the plugin test runner with the rest
+  of the project.
 
 ## [0.7.5] - 2026-02-02
 ### Bug Fixes

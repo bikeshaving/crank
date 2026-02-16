@@ -144,8 +144,17 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 			props: Record<string, any>;
 			root: TextNode | undefined;
 		}): string | undefined {
-			if (tag === "svg") {
-				return "svg";
+			if (tag === Portal) {
+				return undefined;
+			}
+
+			switch (tag) {
+				case "svg":
+					return "svg";
+				case "math":
+					return "math";
+				case "foreignObject":
+					return undefined;
 			}
 
 			return scope;
@@ -193,7 +202,10 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 				throw new Error(`Unknown tag: ${tagName}`);
 			}
 
-			const attrs = printAttrs(props, scope === "svg");
+			const attrs = printAttrs(
+				props,
+				scope === "svg" || tag === "foreignObject",
+			);
 			const open = `<${tag}${attrs.length ? " " : ""}${attrs}>`;
 			let result: string;
 			if (voidTags.has(tag)) {

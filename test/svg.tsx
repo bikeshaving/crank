@@ -91,6 +91,46 @@ test("foreignObject", () => {
 	Assert.is(div.namespaceURI, "http://www.w3.org/1999/xhtml");
 });
 
+test("foreignObject children are HTML without explicit xmlns", () => {
+	renderer.render(
+		<svg viewBox="0 0 200 200">
+			<foreignObject x="20" y="20" width="160" height="160">
+				<div>
+					<p>Hello</p>
+				</div>
+			</foreignObject>
+		</svg>,
+		document.body,
+	);
+	const foreignObject = document.body.firstChild!.firstChild!;
+	Assert.ok(foreignObject instanceof SVGElement);
+
+	const div = foreignObject.firstChild! as Element;
+	Assert.ok(div instanceof HTMLDivElement);
+	Assert.is(div.namespaceURI, "http://www.w3.org/1999/xhtml");
+
+	const p = div.firstChild! as Element;
+	Assert.ok(p instanceof HTMLParagraphElement);
+	Assert.is(p.namespaceURI, "http://www.w3.org/1999/xhtml");
+});
+
+test("foreignObject itself gets SVG prop normalization", () => {
+	renderer.render(
+		<svg viewBox="0 0 200 200">
+			{/* eslint-disable-next-line crank/no-react-svg-props */}
+			<foreignObject clipPath="url(#clip)" colorInterpolation="sRGB">
+				<div>Hello</div>
+			</foreignObject>
+		</svg>,
+		document.body,
+	);
+	const foreignObject = document.body.firstChild!.firstChild! as SVGElement;
+	Assert.ok(foreignObject instanceof SVGElement);
+	// SVG props should be normalized on foreignObject itself
+	Assert.is(foreignObject.getAttribute("clip-path"), "url(#clip)");
+	Assert.is(foreignObject.getAttribute("color-interpolation"), "sRGB");
+});
+
 test("classes", () => {
 	renderer.render(
 		<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">

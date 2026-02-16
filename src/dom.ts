@@ -500,6 +500,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		scope: xmlns,
 		tag,
 		props,
+		root,
 	}: {
 		scope: string | undefined;
 		tag: string | symbol;
@@ -507,15 +508,24 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		root: Node | undefined;
 	}): string | undefined {
 		switch (tag) {
-			case Portal:
-				// TODO: read the namespace from the portal root element
-				xmlns = undefined;
+			case Portal: {
+				const ns = root instanceof Element ? root.namespaceURI : null;
+				xmlns =
+					ns === SVG_NAMESPACE
+						? SVG_NAMESPACE
+						: ns === MATHML_NAMESPACE
+							? MATHML_NAMESPACE
+							: undefined;
 				break;
+			}
 			case "svg":
 				xmlns = SVG_NAMESPACE;
 				break;
 			case "math":
 				xmlns = MATHML_NAMESPACE;
+				break;
+			case "foreignObject":
+				xmlns = undefined;
 				break;
 		}
 
@@ -539,6 +549,8 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 			xmlns = SVG_NAMESPACE;
 		} else if (tag.toLowerCase() === "math") {
 			xmlns = MATHML_NAMESPACE;
+		} else if (tag === "foreignObject") {
+			xmlns = SVG_NAMESPACE;
 		}
 
 		const doc = getRootDocument(root);
@@ -586,6 +598,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 	},
 
 	patch({
+		tag,
 		tagName,
 		node,
 		props,
@@ -595,6 +608,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		quietProps,
 		isHydrating,
 	}: {
+		tag: string | symbol;
 		node: Node;
 		tagName: string;
 		props: Record<string, any>;
@@ -614,7 +628,7 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 		}
 
 		const element = node as Element;
-		const isSVG = xmlns === SVG_NAMESPACE;
+		const isSVG = xmlns === SVG_NAMESPACE || tag === "foreignObject";
 		const isMathML = xmlns === MATHML_NAMESPACE;
 		// First pass: iterate oldProps to handle removals
 		if (oldProps) {
