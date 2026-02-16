@@ -2,7 +2,7 @@ import {suite} from "uvu";
 import * as Assert from "uvu/assert";
 import * as Sinon from "sinon";
 
-import {Copy, createElement, Fragment, Raw} from "../src/crank.js";
+import {Copy, createElement, Fragment, Portal, Raw} from "../src/crank.js";
 import type {Children, Context} from "../src/crank.js";
 import {renderer} from "../src/html.js";
 
@@ -453,6 +453,44 @@ test("htmlFor skipped when for is also present", () => {
 			</label>,
 		),
 		'<label for="email">Email</label>',
+	);
+});
+
+test("Portal children are not included in HTML output", () => {
+	function MyPortal({children}: {children: Children}) {
+		return <Portal root={undefined}>{children}</Portal>;
+	}
+
+	const result = renderer.render(
+		<div>
+			Before
+			<MyPortal>
+				<span>Inside portal</span>
+			</MyPortal>
+			After
+		</div>,
+	);
+	// Portal children are dropped in the HTML renderer since there's no
+	// alternate root to render them into.
+	Assert.is(result, "<div>BeforeAfter</div>");
+});
+
+test("foreignObject resets SVG scope for children but not itself", () => {
+	Assert.is(
+		renderer.render(
+			// eslint-disable-next-line crank/no-react-svg-props
+			<svg viewBox="0 0 100 100">
+				{/* eslint-disable crank/no-react-svg-props */}
+				<rect strokeWidth="2" />
+				<foreignObject x="0" y="0" width="100" height="100" clipPath="url(#c)">
+					<div strokeWidth="2" />
+				</foreignObject>
+				{/* eslint-enable crank/no-react-svg-props */}
+			</svg>,
+		),
+		// rect and foreignObject get SVG prop mapping (stroke-width, clip-path)
+		// div inside foreignObject does NOT (strokeWidth stays as-is)
+		'<svg viewBox="0 0 100 100"><rect stroke-width="2"></rect><foreignObject x="0" y="0" width="100" height="100" clip-path="url(#c)"><div strokeWidth="2"></div></foreignObject></svg>',
 	);
 });
 

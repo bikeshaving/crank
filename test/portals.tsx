@@ -123,4 +123,35 @@ test("portal with rendered page and hydrate", () => {
 	Assert.is(onclick.callCount, 1);
 });
 
+test("portal out of SVG resets scope to HTML", () => {
+	const htmlRoot = document.createElement("div");
+	renderer.render(
+		<svg viewBox="0 0 100 100">
+			<Portal root={htmlRoot}>
+				<div>
+					<span>Hello from HTML</span>
+				</div>
+			</Portal>
+		</svg>,
+		document.body,
+	);
+	// Children should be created as HTML elements, not SVG elements
+	const div = htmlRoot.firstChild as Element;
+	Assert.ok(div instanceof HTMLDivElement);
+	Assert.is(div.namespaceURI, "http://www.w3.org/1999/xhtml");
+});
+
+test("portal into SVG root creates SVG children", () => {
+	const svgRoot = document.createElementNS("http://www.w3.org/2000/svg", "g");
+	renderer.render(
+		<Portal root={svgRoot}>
+			<rect width="100" height="100" />
+		</Portal>,
+		document.body,
+	);
+	const rect = svgRoot.firstChild as Element;
+	Assert.is(rect.namespaceURI, "http://www.w3.org/2000/svg");
+	Assert.ok(rect instanceof SVGElement);
+});
+
 test.run();
