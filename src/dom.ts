@@ -378,11 +378,11 @@ function patchProp(
 			const htmlValue =
 				value && typeof value === "object" && "__html" in value
 					? (value.__html ?? "")
-					: (value ?? "");
+					: "";
 			const oldHtmlValue =
 				oldValue && typeof oldValue === "object" && "__html" in oldValue
 					? (oldValue.__html ?? "")
-					: (oldValue ?? "");
+					: "";
 			if (htmlValue !== oldHtmlValue) {
 				element.innerHTML = htmlValue as any;
 			}
