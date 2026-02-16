@@ -2,6 +2,7 @@
 import {suite} from "uvu";
 import * as Assert from "uvu/assert";
 import {Copy, createElement, Fragment, Raw} from "../src/crank.js";
+import type {Context} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 const test = suite("dom");
@@ -1019,6 +1020,249 @@ test("absolute URLs should work correctly for src", () => {
 	}
 });
 
+// Prop patching: two-loop iteration (removals then updates)
+test("simultaneous prop add, remove, and update", () => {
+	const div = renderer.render(
+		<div id="old" data-a="1" data-b="2" />,
+		document.body,
+	) as HTMLElement;
+	Assert.is(div.id, "old");
+	Assert.is(div.getAttribute("data-a"), "1");
+	Assert.is(div.getAttribute("data-b"), "2");
+
+	renderer.render(<div id="new" data-b="changed" data-c="3" />, document.body);
+	Assert.is(div.id, "new"); // updated
+	Assert.is(div.getAttribute("data-a"), null); // removed
+	Assert.is(div.getAttribute("data-b"), "changed"); // updated
+	Assert.is(div.getAttribute("data-c"), "3"); // added
+});
+
+test("remove all props", () => {
+	const div = renderer.render(
+		<div dir="rtl" data-a="1" data-b="2" />,
+		document.body,
+	) as HTMLElement;
+	Assert.is(div.dir, "rtl");
+	Assert.is(div.getAttribute("data-a"), "1");
+
+	renderer.render(<div />, document.body);
+	Assert.is(div.dir, "");
+	Assert.is(div.getAttribute("data-a"), null);
+	Assert.is(div.getAttribute("data-b"), null);
+});
+
+test("add props to element that had none", () => {
+	const div = renderer.render(<div />, document.body) as HTMLElement;
+	Assert.is(div.id, "");
+
+	renderer.render(<div id="added" data-x="y" />, document.body);
+	Assert.is(div.id, "added");
+	Assert.is(div.getAttribute("data-x"), "y");
+});
+
+test("event handler swap across renders", () => {
+	const calls: string[] = [];
+	renderer.render(<button onclick={() => calls.push("a")} />, document.body);
+	const button = document.body.firstChild as HTMLButtonElement;
+	button.click();
+	Assert.equal(calls, ["a"]);
+
+	renderer.render(<button onclick={() => calls.push("b")} />, document.body);
+	button.click();
+	Assert.equal(calls, ["a", "b"]);
+});
+
+test("event handler removal", () => {
+	const calls: string[] = [];
+	renderer.render(
+		<button onclick={() => calls.push("clicked")} />,
+		document.body,
+	);
+	const button = document.body.firstChild as HTMLButtonElement;
+	button.click();
+	Assert.equal(calls, ["clicked"]);
+
+	renderer.render(<button />, document.body);
+	button.click();
+	Assert.equal(calls, ["clicked"]); // no new call after removal
+});
+
+test("event handler add and remove different events simultaneously", () => {
+	const calls: string[] = [];
+	renderer.render(<div onclick={() => calls.push("click")} />, document.body);
+	const div = document.body.firstChild as HTMLDivElement;
+	div.click();
+	Assert.equal(calls, ["click"]);
+
+	// Remove onclick, add onmouseenter
+	renderer.render(
+		<div onmouseenter={() => calls.push("mouseenter")} />,
+		document.body,
+	);
+	div.click();
+	Assert.equal(calls, ["click"]); // onclick removed
+	div.dispatchEvent(new MouseEvent("mouseenter"));
+	Assert.equal(calls, ["click", "mouseenter"]); // onmouseenter added
+});
+
+// Style object two-loop: partial overlap
+test("style object partial overlap across renders", () => {
+	const div = renderer.render(
+		<div style={{color: "red", fontSize: "12px", margin: "5px"}} />,
+		document.body,
+	) as HTMLElement;
+	Assert.is(div.style.color, "red");
+	Assert.is(div.style.fontSize, "12px");
+	Assert.is(div.style.margin, "5px");
+
+	// color removed, fontSize updated, padding added, margin removed
+	renderer.render(
+		<div style={{fontSize: "14px", padding: "10px"}} />,
+		document.body,
+	);
+	Assert.is(div.style.color, ""); // removed
+	Assert.is(div.style.fontSize, "14px"); // updated
+	Assert.is(div.style.margin, ""); // removed
+	Assert.is(div.style.padding, "10px"); // added
+});
+
+test("style object with explicit null values", () => {
+	const div = renderer.render(
+		<div style={{color: "red", fontSize: "12px", margin: "5px"}} />,
+		document.body,
+	) as HTMLElement;
+	Assert.is(div.style.color, "red");
+	Assert.is(div.style.fontSize, "12px");
+	Assert.is(div.style.margin, "5px");
+
+	// Explicitly null out color, keep fontSize, update margin
+	renderer.render(
+		<div style={{color: null, fontSize: "12px", margin: "10px"}} />,
+		document.body,
+	);
+	Assert.is(div.style.color, ""); // explicitly removed
+	Assert.is(div.style.fontSize, "12px"); // unchanged
+	Assert.is(div.style.margin, "10px"); // updated
+});
+
+test("style object to empty object clears all styles", () => {
+	const div = renderer.render(
+		<div style={{color: "red", fontSize: "12px"}} />,
+		document.body,
+	) as HTMLElement;
+	Assert.is(div.style.color, "red");
+	Assert.is(div.style.fontSize, "12px");
+
+	renderer.render(<div style={{}} />, document.body);
+	Assert.is(div.style.color, ""); // removed
+	Assert.is(div.style.fontSize, ""); // removed
+});
+
+test("style object completely disjoint sets across renders", () => {
+	const div = renderer.render(
+		<div style={{color: "red", margin: "5px"}} />,
+		document.body,
+	) as HTMLElement;
+	Assert.is(div.style.color, "red");
+	Assert.is(div.style.margin, "5px");
+
+	// Completely different properties
+	renderer.render(
+		<div style={{padding: "10px", border: "1px solid black"}} />,
+		document.body,
+	);
+	Assert.is(div.style.color, ""); // removed
+	Assert.is(div.style.margin, ""); // removed
+	Assert.is(div.style.padding, "10px"); // added
+	Assert.is(div.style.border, "1px solid black"); // added
+});
+
+// Class object two-loop: partial overlap
+test("class object partial overlap across renders", () => {
+	renderer.render(
+		<div class={{active: true, highlight: true, large: true}}>Test</div>,
+		document.body,
+	);
+	let div = document.querySelector("div")!;
+	Assert.ok(div.classList.contains("active"));
+	Assert.ok(div.classList.contains("highlight"));
+	Assert.ok(div.classList.contains("large"));
+
+	// active removed, highlight kept, small added, large removed
+	renderer.render(
+		<div class={{active: false, highlight: true, small: true}}>Test</div>,
+		document.body,
+	);
+	Assert.not.ok(div.classList.contains("active")); // removed
+	Assert.ok(div.classList.contains("highlight")); // kept
+	Assert.not.ok(div.classList.contains("large")); // removed (not in new)
+	Assert.ok(div.classList.contains("small")); // added
+});
+
+test("class object all classes removed", () => {
+	renderer.render(
+		<div class={{a: true, b: true, c: true}}>Test</div>,
+		document.body,
+	);
+	let div = document.querySelector("div")!;
+	Assert.ok(div.classList.contains("a"));
+	Assert.ok(div.classList.contains("b"));
+	Assert.ok(div.classList.contains("c"));
+
+	renderer.render(
+		<div class={{a: false, b: false, c: false}}>Test</div>,
+		document.body,
+	);
+	Assert.not.ok(div.classList.contains("a"));
+	Assert.not.ok(div.classList.contains("b"));
+	Assert.not.ok(div.classList.contains("c"));
+});
+
+test("class object to empty object clears classes", () => {
+	renderer.render(<div class={{x: true, y: true}}>Test</div>, document.body);
+	let div = document.querySelector("div")!;
+	Assert.ok(div.classList.contains("x"));
+	Assert.ok(div.classList.contains("y"));
+
+	renderer.render(<div class={{}}>Test</div>, document.body);
+	Assert.not.ok(div.classList.contains("x"));
+	Assert.not.ok(div.classList.contains("y"));
+});
+
+// Mixed prop types changing simultaneously
+test("style, class, and attributes all change in single render", () => {
+	renderer.render(
+		<div id="old" style={{color: "red"}} class={{active: true}} data-x="1">
+			Test
+		</div>,
+		document.body,
+	);
+	let div = document.querySelector("div")!;
+	Assert.is(div.id, "old");
+	Assert.is(div.style.color, "red");
+	Assert.ok(div.classList.contains("active"));
+	Assert.is(div.getAttribute("data-x"), "1");
+
+	renderer.render(
+		<div
+			id="new"
+			style={{fontSize: "14px"}}
+			class={{highlight: true}}
+			data-y="2"
+		>
+			Test
+		</div>,
+		document.body,
+	);
+	Assert.is(div.id, "new"); // updated
+	Assert.is(div.style.color, ""); // removed
+	Assert.is(div.style.fontSize, "14px"); // added
+	Assert.not.ok(div.classList.contains("active")); // removed
+	Assert.ok(div.classList.contains("highlight")); // added
+	Assert.is(div.getAttribute("data-x"), null); // removed
+	Assert.is(div.getAttribute("data-y"), "2"); // added
+});
+
 test("htmlFor sets for attribute", () => {
 	renderer.render(<label htmlFor="email">Email</label>, document.body);
 	const label = document.body.firstChild as HTMLLabelElement;
@@ -1060,6 +1304,725 @@ test("dangerouslySetInnerHTML updates", () => {
 		document.body,
 	);
 	Assert.is(document.body.innerHTML, "<div><i>second</i></div>");
+});
+
+// Child cardinality transitions — exercises the diffChild/diffChildren boundary
+test("zero to one child", () => {
+	renderer.render(<div />, document.body);
+	Assert.is(document.body.innerHTML, "<div></div>");
+	renderer.render(
+		<div>
+			<span>a</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>a</span></div>");
+});
+
+test("one to zero children", () => {
+	renderer.render(
+		<div>
+			<span>a</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>a</span></div>");
+	renderer.render(<div />, document.body);
+	Assert.is(document.body.innerHTML, "<div></div>");
+});
+
+test("one to many children", () => {
+	renderer.render(
+		<div>
+			<span>a</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>a</span></div>");
+	renderer.render(
+		<div>
+			<span>a</span>
+			<span>b</span>
+			<span>c</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>a</span><span>b</span><span>c</span></div>",
+	);
+});
+
+test("many to one child", () => {
+	renderer.render(
+		<div>
+			<span>a</span>
+			<span>b</span>
+			<span>c</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>a</span><span>b</span><span>c</span></div>",
+	);
+	renderer.render(
+		<div>
+			<span>only</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>only</span></div>");
+});
+
+test("many to zero children", () => {
+	renderer.render(
+		<div>
+			<span>a</span>
+			<span>b</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>a</span><span>b</span></div>");
+	renderer.render(<div />, document.body);
+	Assert.is(document.body.innerHTML, "<div></div>");
+});
+
+test("zero to many children", () => {
+	renderer.render(<div />, document.body);
+	Assert.is(document.body.innerHTML, "<div></div>");
+	renderer.render(
+		<div>
+			<span>a</span>
+			<span>b</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>a</span><span>b</span></div>");
+});
+
+test("one to one child, same tag reuse", () => {
+	renderer.render(
+		<div>
+			<span>first</span>
+		</div>,
+		document.body,
+	);
+	const span = document.body.querySelector("span")!;
+	renderer.render(
+		<div>
+			<span>second</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>second</span></div>");
+	Assert.is(
+		document.body.querySelector("span"),
+		span,
+		"should reuse the span element",
+	);
+});
+
+test("one to one child, different tag", () => {
+	renderer.render(
+		<div>
+			<span>hello</span>
+		</div>,
+		document.body,
+	);
+	renderer.render(
+		<div>
+			<b>hello</b>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><b>hello</b></div>");
+});
+
+test("one text to one element", () => {
+	renderer.render(<div>hello</div>, document.body);
+	Assert.is(document.body.innerHTML, "<div>hello</div>");
+	renderer.render(
+		<div>
+			<span>hello</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>hello</span></div>");
+});
+
+test("one element to one text", () => {
+	renderer.render(
+		<div>
+			<span>hello</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>hello</span></div>");
+	renderer.render(<div>hello</div>, document.body);
+	Assert.is(document.body.innerHTML, "<div>hello</div>");
+});
+
+test("one to one child with null intermediate", () => {
+	renderer.render(
+		<div>
+			<span>a</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>a</span></div>");
+	renderer.render(<div>{null}</div>, document.body);
+	Assert.is(document.body.innerHTML, "<div></div>");
+	renderer.render(
+		<div>
+			<span>b</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>b</span></div>");
+});
+
+test("one to one child with boolean intermediate", () => {
+	renderer.render(
+		<div>
+			<span>a</span>
+		</div>,
+		document.body,
+	);
+	renderer.render(<div>{false}</div>, document.body);
+	Assert.is(document.body.innerHTML, "<div></div>");
+	renderer.render(
+		<div>
+			<span>b</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>b</span></div>");
+});
+
+test("one child with key to one child with different key", () => {
+	renderer.render(
+		<div>
+			<span key="a">a</span>
+		</div>,
+		document.body,
+	);
+	const span1 = document.body.querySelector("span")!;
+	renderer.render(
+		<div>
+			<span key="b">b</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>b</span></div>");
+	Assert.is.not(
+		document.body.querySelector("span"),
+		span1,
+		"should create a new span for different key",
+	);
+});
+
+test("one child with key to one child without key", () => {
+	renderer.render(
+		<div>
+			<span key="a">a</span>
+		</div>,
+		document.body,
+	);
+	const span1 = document.body.querySelector("span")!;
+	renderer.render(
+		<div>
+			<span>b</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>b</span></div>");
+	Assert.is.not(
+		document.body.querySelector("span"),
+		span1,
+		"should create a new span when key removed",
+	);
+});
+
+test("one child without key to one child with key", () => {
+	renderer.render(
+		<div>
+			<span>a</span>
+		</div>,
+		document.body,
+	);
+	const span1 = document.body.querySelector("span")!;
+	renderer.render(
+		<div>
+			<span key="b">b</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>b</span></div>");
+	Assert.is.not(
+		document.body.querySelector("span"),
+		span1,
+		"should create a new span when key added",
+	);
+});
+
+test("one keyed child to many children", () => {
+	renderer.render(
+		<div>
+			<span key="a">a</span>
+		</div>,
+		document.body,
+	);
+	renderer.render(
+		<div>
+			<span key="a">a</span>
+			<span key="b">b</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>a</span><span>b</span></div>");
+});
+
+test("many children to one keyed child", () => {
+	renderer.render(
+		<div>
+			<span key="a">a</span>
+			<span key="b">b</span>
+		</div>,
+		document.body,
+	);
+	renderer.render(
+		<div>
+			<span key="a">a</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>a</span></div>");
+});
+
+test("fragment single child transition", () => {
+	function Component({count}: {count: number}) {
+		const children = [];
+		for (let i = 0; i < count; i++) {
+			children.push(<span>{i}</span>);
+		}
+		return <div>{children}</div>;
+	}
+
+	renderer.render(<Component count={1} />, document.body);
+	Assert.is(document.body.innerHTML, "<div><span>0</span></div>");
+	renderer.render(<Component count={3} />, document.body);
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>0</span><span>1</span><span>2</span></div>",
+	);
+	renderer.render(<Component count={1} />, document.body);
+	Assert.is(document.body.innerHTML, "<div><span>0</span></div>");
+	renderer.render(<Component count={0} />, document.body);
+	Assert.is(document.body.innerHTML, "<div></div>");
+	renderer.render(<Component count={1} />, document.body);
+	Assert.is(document.body.innerHTML, "<div><span>0</span></div>");
+});
+
+test("component single child transition", () => {
+	function* Inner(this: Context, {message}: {message: string}): Generator {
+		let count = 0;
+		for ({message} of this) {
+			count++;
+			yield (
+				<span>
+					{message} ({count})
+				</span>
+			);
+		}
+	}
+
+	renderer.render(
+		<div>
+			<Inner message="a" />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>a (1)</span></div>");
+	renderer.render(
+		<div>
+			<Inner message="b" />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>b (2)</span></div>");
+	renderer.render(<div>{null}</div>, document.body);
+	Assert.is(document.body.innerHTML, "<div></div>");
+	// Re-mounting should reset the generator
+	renderer.render(
+		<div>
+			<Inner message="c" />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>c (1)</span></div>");
+});
+
+test("rapid cardinality cycling", () => {
+	for (let round = 0; round < 3; round++) {
+		renderer.render(<div />, document.body);
+		Assert.is(document.body.innerHTML, "<div></div>", `round ${round}: zero`);
+
+		renderer.render(
+			<div>
+				<span>one</span>
+			</div>,
+			document.body,
+		);
+		Assert.is(
+			document.body.innerHTML,
+			"<div><span>one</span></div>",
+			`round ${round}: one`,
+		);
+
+		renderer.render(
+			<div>
+				<span>a</span>
+				<span>b</span>
+				<span>c</span>
+			</div>,
+			document.body,
+		);
+		Assert.is(
+			document.body.innerHTML,
+			"<div><span>a</span><span>b</span><span>c</span></div>",
+			`round ${round}: many`,
+		);
+	}
+});
+
+test("async component as single child", async () => {
+	async function Async({msg}: {msg: string}) {
+		await new Promise((r) => setTimeout(r, 10));
+		return <span>{msg}</span>;
+	}
+
+	const p1 = renderer.render(
+		<div>
+			<Async msg="hello" />
+		</div>,
+		document.body,
+	);
+	// while async is pending, nothing is committed yet
+	Assert.is(document.body.innerHTML, "");
+	await p1;
+	Assert.is(document.body.innerHTML, "<div><span>hello</span></div>");
+
+	// update the async component
+	const p2 = renderer.render(
+		<div>
+			<Async msg="world" />
+		</div>,
+		document.body,
+	);
+	await p2;
+	Assert.is(document.body.innerHTML, "<div><span>world</span></div>");
+
+	// transition from async single child to sync single child
+	renderer.render(
+		<div>
+			<b>sync</b>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><b>sync</b></div>");
+});
+
+test("array child implicitly wrapped in fragment", () => {
+	// An array child gets wrapped in a Fragment by narrow(), exercising
+	// diffChild placing a Fragment then recursing into diffChildren.
+	const items = [<li key="a">a</li>, <li key="b">b</li>];
+	renderer.render(<ul>{items}</ul>, document.body);
+	Assert.is(document.body.innerHTML, "<ul><li>a</li><li>b</li></ul>");
+
+	// Transition from array (Fragment) to single element
+	renderer.render(
+		<ul>
+			<li>only</li>
+		</ul>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<ul><li>only</li></ul>");
+
+	// Back to array
+	renderer.render(
+		<ul>{[<li key="x">x</li>, <li key="y">y</li>, <li key="z">z</li>]}</ul>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<ul><li>x</li><li>y</li><li>z</li></ul>");
+});
+
+test("Copy element as single child", () => {
+	function* Counter(this: Context): Generator {
+		let count = 0;
+		for (const _ of this) {
+			count++;
+			yield <span>{count}</span>;
+		}
+	}
+
+	renderer.render(
+		<div>
+			<Counter />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>1</span></div>");
+	renderer.render(
+		<div>
+			<Counter />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>2</span></div>");
+	// Copy should preserve the component without re-rendering
+	renderer.render(
+		<div>
+			<Copy />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>2</span></div>");
+	// Render again — Copy doesn't increment the counter
+	renderer.render(
+		<div>
+			<Copy />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>2</span></div>");
+	// Regular render increments again
+	renderer.render(
+		<div>
+			<Counter />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>3</span></div>");
+});
+
+test("same element reference skips re-render", () => {
+	let renderCount = 0;
+	function Tracker(): ReturnType<typeof createElement> {
+		renderCount++;
+		return <span>rendered</span>;
+	}
+
+	const el = <Tracker />;
+	renderer.render(<div>{el}</div>, document.body);
+	Assert.is(renderCount, 1);
+	Assert.is(document.body.innerHTML, "<div><span>rendered</span></div>");
+	// Same reference — should skip
+	renderer.render(<div>{el}</div>, document.body);
+	Assert.is(renderCount, 1);
+	// New element — should re-render
+	renderer.render(
+		<div>
+			<Tracker />
+		</div>,
+		document.body,
+	);
+	Assert.is(renderCount, 2);
+});
+
+test("nullish child unmounts component subtree", () => {
+	const cleanups: string[] = [];
+	function* Child(this: Context, {name}: {name: string}): Generator {
+		try {
+			for ({name} of this) {
+				yield <span>{name}</span>;
+			}
+		} finally {
+			cleanups.push(name);
+		}
+	}
+
+	renderer.render(
+		<div>
+			<Child name="a" />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>a</span></div>");
+	Assert.equal(cleanups, []);
+
+	// null should unmount the component and fire cleanup
+	renderer.render(<div>{null}</div>, document.body);
+	Assert.is(document.body.innerHTML, "<div></div>");
+	Assert.equal(cleanups, ["a"]);
+
+	// mount again
+	renderer.render(
+		<div>
+			<Child name="b" />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>b</span></div>");
+
+	// undefined should also unmount
+	renderer.render(<div>{undefined}</div>, document.body);
+	Assert.is(document.body.innerHTML, "<div></div>");
+	Assert.equal(cleanups, ["a", "b"]);
+
+	// false should also unmount
+	renderer.render(
+		<div>
+			<Child name="c" />
+		</div>,
+		document.body,
+	);
+	renderer.render(<div>{false}</div>, document.body);
+	Assert.is(document.body.innerHTML, "<div></div>");
+	Assert.equal(cleanups, ["a", "b", "c"]);
+});
+
+test("nullish child unmounts nested component tree", () => {
+	const cleanups: string[] = [];
+	function* Leaf(this: Context, {id}: {id: string}): Generator {
+		try {
+			for ({id} of this) {
+				yield <span>{id}</span>;
+			}
+		} finally {
+			cleanups.push(id);
+		}
+	}
+
+	function Branch({id}: {id: string}) {
+		return (
+			<div>
+				<Leaf id={`${id}-1`} />
+				<Leaf id={`${id}-2`} />
+			</div>
+		);
+	}
+
+	renderer.render(
+		<div>
+			<Branch id="a" />
+		</div>,
+		document.body,
+	);
+	Assert.is(
+		document.body.innerHTML,
+		"<div><div><span>a-1</span><span>a-2</span></div></div>",
+	);
+
+	// Nulling out the single Branch child should unmount both leaves
+	renderer.render(<div>{null}</div>, document.body);
+	Assert.is(document.body.innerHTML, "<div></div>");
+	Assert.equal(cleanups.sort(), ["a-1", "a-2"]);
+});
+
+test("number child", () => {
+	renderer.render(<div>{42}</div>, document.body);
+	Assert.is(document.body.innerHTML, "<div>42</div>");
+	renderer.render(<div>{0}</div>, document.body);
+	Assert.is(document.body.innerHTML, "<div>0</div>");
+	// transition number → element
+	renderer.render(
+		<div>
+			<span>text</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>text</span></div>");
+	// transition element → number
+	renderer.render(<div>{99}</div>, document.body);
+	Assert.is(document.body.innerHTML, "<div>99</div>");
+});
+
+test("boolean and undefined children clear content", () => {
+	renderer.render(
+		<div>
+			<span>hello</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>hello</span></div>");
+	renderer.render(<div>{false}</div>, document.body);
+	Assert.is(document.body.innerHTML, "<div></div>");
+	renderer.render(
+		<div>
+			<span>back</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>back</span></div>");
+	renderer.render(<div>{undefined}</div>, document.body);
+	Assert.is(document.body.innerHTML, "<div></div>");
+	renderer.render(
+		<div>
+			<span>again</span>
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>again</span></div>");
+	renderer.render(<div>{true}</div>, document.body);
+	Assert.is(document.body.innerHTML, "<div></div>");
+});
+
+test("generator component preserves state through single-child path", () => {
+	function* Stateful(this: Context, {label}: {label: string}): Generator {
+		let renders = 0;
+		for ({label} of this) {
+			renders++;
+			yield (
+				<span>
+					{label}:{renders}
+				</span>
+			);
+		}
+	}
+
+	renderer.render(
+		<div>
+			<Stateful label="a" />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>a:1</span></div>");
+	// Re-render with same tag — should reuse retainer and preserve state
+	renderer.render(
+		<div>
+			<Stateful label="b" />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>b:2</span></div>");
+	renderer.render(
+		<div>
+			<Stateful label="c" />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>c:3</span></div>");
+	// Transition to many — first Stateful is reused, second is new
+	renderer.render(
+		<div>
+			<Stateful label="x" />
+			<Stateful label="y" />
+		</div>,
+		document.body,
+	);
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>x:4</span><span>y:1</span></div>",
+	);
+	// Back to single — first Stateful keeps state, second unmounted
+	renderer.render(
+		<div>
+			<Stateful label="z" />
+		</div>,
+		document.body,
+	);
+	Assert.is(document.body.innerHTML, "<div><span>z:5</span></div>");
 });
 
 test.run();
