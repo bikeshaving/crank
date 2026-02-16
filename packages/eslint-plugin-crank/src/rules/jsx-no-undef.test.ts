@@ -1,4 +1,4 @@
-import {describe, it} from "vitest";
+import {describe, it} from "bun:test";
 import {jsxNoUndef} from "./jsx-no-undef.js";
 import {createJsRuleTester} from "../test-helpers/rule-tester.js";
 

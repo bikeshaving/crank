@@ -1,19 +1,11 @@
-import {describe, it} from "vitest";
+import {describe, it} from "bun:test";
 import {jsxUsesVars} from "./jsx-uses-vars.js";
-import {RuleTester} from "eslint";
+import {createJsRuleTester} from "../test-helpers/rule-tester.js";
 
 // We need to test this rule in combination with no-unused-vars.
 // jsx-uses-vars marks component references as used so no-unused-vars
 // doesn't flag them.
-const ruleTester = new RuleTester({
-	languageOptions: {
-		ecmaVersion: 2022,
-		sourceType: "module",
-		parserOptions: {
-			ecmaFeatures: {jsx: true},
-		},
-	},
-});
+const ruleTester = createJsRuleTester();
 
 describe("jsx-uses-vars", () => {
 	it("should mark component variables as used", () => {

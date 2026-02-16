@@ -1,16 +1,8 @@
-import {describe, it} from "vitest";
+import {describe, it} from "bun:test";
 import {jsxUsesCrank} from "./jsx-uses-crank.js";
-import {RuleTester} from "eslint";
+import {createJsRuleTester} from "../test-helpers/rule-tester.js";
 
-const ruleTester = new RuleTester({
-	languageOptions: {
-		ecmaVersion: 2022,
-		sourceType: "module",
-		parserOptions: {
-			ecmaFeatures: {jsx: true},
-		},
-	},
-});
+const ruleTester = createJsRuleTester();
 
 describe("jsx-uses-crank", () => {
 	it("should mark Crank and createElement as used when JSX is present", () => {

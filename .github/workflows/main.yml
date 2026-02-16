@@ -47,6 +47,6 @@ jobs:
         if: matrix.browser == 'webkit'
         run: bunx playwright install-deps webkit
       - name: Run core tests
-        run: playwright-test --runner uvu --browser ${{ matrix.browser }}
+        run: bun run test:core -- --browser ${{ matrix.browser }}
       - name: Run eslint plugin tests
-        run: cd packages/eslint-plugin-crank && bun test
+        run: bun run test:eslint

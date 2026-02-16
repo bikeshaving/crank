@@ -1,4 +1,4 @@
-import {describe, it} from "vitest";
+import {describe, it} from "bun:test";
 import {preferRefreshCallback} from "./prefer-refresh-callback.js";
 import {
 	createTsRuleTester,

@@ -1,4 +1,4 @@
-import {describe, it} from "vitest";
+import {describe, it} from "bun:test";
 import {noYieldInLifecycleMethods} from "./no-yield-in-lifecycle-methods.js";
 import {
 	createTsRuleTester,

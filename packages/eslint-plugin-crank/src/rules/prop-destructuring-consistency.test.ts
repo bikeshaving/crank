@@ -1,4 +1,4 @@
-import {describe, it} from "vitest";
+import {describe, it} from "bun:test";
 import {propDestructuringConsistency} from "./prop-destructuring-consistency.js";
 import {
 	createJsRuleTester,

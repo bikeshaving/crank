@@ -1,4 +1,4 @@
-import {describe, it} from "vitest";
+import {describe, it} from "bun:test";
 import {noReactProps} from "./no-react-props.js";
 import {createTsRuleTester} from "../test-helpers/rule-tester.js";
 
