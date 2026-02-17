@@ -100,8 +100,7 @@ Don’t think JSX is vanilla enough? Crank provides a tagged template function
 which does roughly the same thing.
 
 ```jsx live
-import {jsx} from "@b9g/crank/standalone";
-import {renderer} from "@b9g/crank/dom";
+import {jsx, renderer} from "@b9g/crank/standalone";
 
 function Star({cx, cy, r=50, ir, p=5, fill="red"}) {
   cx = parseFloat(cx);

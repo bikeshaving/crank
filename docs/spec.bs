@@ -558,7 +558,7 @@ The automatic transform is preferred for new projects.
 
 ## Template Tags ## {#template-tags}
 
-For environments without a JSX compiler, the `jsx` and `html` [tagged template literals](https://tc39.es/ecma262/#sec-tagged-templates) from `@b9g/crank/jsx-tag` produce [=elements=] using standard JavaScript. Both names refer to the same function. The `@b9g/crank/standalone` module re-exports these along with everything from the root `@b9g/crank` module, enabling single-file applications that run directly in browsers without a build step.
+For environments without a JSX compiler, the `jsx` and `html` [tagged template literals](https://tc39.es/ecma262/#sec-tagged-templates) from `@b9g/crank/jsx-tag` produce [=elements=] using standard JavaScript. Both names refer to the same function. The `@b9g/crank/standalone` module re-exports these along with everything from the root `@b9g/crank` module and both built-in [=renderers=] (DOM and HTML), enabling single-file applications that run directly in browsers without a build step.
 
 ### Tags ### {#template-tag-tags}
 

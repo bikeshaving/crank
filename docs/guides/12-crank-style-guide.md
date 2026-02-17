@@ -582,6 +582,18 @@ function MyForm() {
 Crank uses `innerHTML` directly as a prop. There is no
 `dangerouslySetInnerHTML` wrapper.
 
+The same applies to SVG attributes — use the standard kebab-case names:
+
+```jsx
+// Don't
+<circle strokeWidth="2" fillOpacity={0.5} />
+
+// Do
+<circle stroke-width="2" fill-opacity={0.5} />
+```
+
+**ESLint rule:** `crank/no-react-svg-props`
+
 The `class` prop accepts objects for conditional classes, and the `style` prop accepts both strings and objects. See [Special Props and Components](/guides/special-props-and-components) for details.
 
 **Don't** reach for a state management library when local variables and provisions will do. A `let` in a generator is state. `this.provide()` and `this.consume()` with symbol keys share it across a subtree. See [Reusable Logic](/guides/reusable-logic) for patterns that scale further.

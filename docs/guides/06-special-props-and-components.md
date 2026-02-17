@@ -300,7 +300,19 @@ Crank strives to make copying and pasting HTML into your components as easy as p
 <label class="my-label" for="my-id">Label</label>
 ```
 
-You can still use the `className` and `htmlFor` props as well, but using the former names is preferred. This philosophy also extends to SVG elements, and you can use props like `clip-path` and `stroke-width` without having to camel case them.
+You can still use the `className` and `htmlFor` props as well, but the standard HTML names are preferred. When both are present on the same element (e.g. `class` and `className`), the native prop takes precedence.
+
+This philosophy extends to SVG elements. SVG attributes use kebab-case:
+
+```jsx
+<svg>
+  <circle cx="50" cy="50" r="40" stroke-width="2" fill-opacity="0.5" />
+</svg>
+```
+
+React-style camelCase SVG props (`strokeWidth`, `fillOpacity`, `textAnchor`, etc.) are accepted and automatically converted to kebab-case, but the kebab-case forms are preferred. The `eslint-plugin-crank` package provides a `no-react-svg-props` rule to guide toward idiomatic names.
+
+Similarly, `dangerouslySetInnerHTML={{__html: "..."}}` is accepted and mapped to `innerHTML`, but using `innerHTML` directly is preferred.
 
 ## Special Components
 

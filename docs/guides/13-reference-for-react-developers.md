@@ -20,7 +20,8 @@ Crank shares JSX syntax and component concepts with React but differs in how it 
 | `useRef` | Local variable + `ref` callback | See [Refs](#refs) |
 | `useMemo` | Manual cache in generator | See [Memoization](#memoization) |
 | `React.memo` | `Copy` element or `copy` prop | See [Memoization](#memoization) |
-| `dangerouslySetInnerHTML` | `innerHTML` | Direct prop |
+| `dangerouslySetInnerHTML` | `innerHTML` | Both accepted; direct prop preferred |
+| `strokeWidth` etc. | `stroke-width` etc. | SVG camelCase auto-mapped to kebab-case |
 | `React.lazy` | `lazy()` from `@b9g/crank/async` | See [Async Patterns](#async-patterns) |
 | `Suspense` | `Suspense` from `@b9g/crank/async` | See [Async Patterns](#async-patterns) |
 
@@ -499,7 +500,7 @@ Crank accepts both React-style and standard HTML names. Standard names are prefe
 | `onMouseOver` | `onmouseover` |
 | `onChange` | `onchange` |
 
-If both `class` and `className` are provided on the same element, Crank logs an error.
+If both `class` and `className` are provided on the same element, `class` takes precedence.
 
 ### Style
 
@@ -529,15 +530,29 @@ The `class` prop accepts a string or an object. The object form provides built-i
 <div class={{btn: true, active: isActive, disabled: isDisabled}} />
 ```
 
+### SVG Props
+
+React uses camelCase for SVG attributes (`strokeWidth`, `fillOpacity`, `textAnchor`). Crank accepts these and converts them to the correct kebab-case attributes, but the standard SVG names are preferred:
+
+```jsx
+// React
+<circle strokeWidth="2" fillOpacity={0.5} />
+
+// Crank — standard SVG names preferred
+<circle stroke-width="2" fill-opacity={0.5} />
+```
+
+The `eslint-plugin-crank` package provides `no-react-svg-props` to flag camelCase SVG props.
+
 ### innerHTML
 
-Replaces React’s `dangerouslySetInnerHTML`:
+Crank uses `innerHTML` directly. React's `dangerouslySetInnerHTML={{__html: "..."}}` syntax is also accepted and mapped to `innerHTML`:
 
 ```jsx
 // React
 <div dangerouslySetInnerHTML={{__html: htmlString}} />
 
-// Crank
+// Crank — direct prop preferred
 <div innerHTML={htmlString} />
 ```
 
