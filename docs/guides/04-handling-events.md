@@ -166,9 +166,9 @@ function *CustomCounter() {
 
   for ({} of this) {
     yield (
-      <button onmybuttonclick={onmybuttonclick}>
+      <MyButton onmybuttonclick={onmybuttonclick}>
         Button pressed {count} time{count !== 1 && "s"}.
-      </button>
+      </MyButton>
     );
   }
 }

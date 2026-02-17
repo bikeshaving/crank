@@ -113,9 +113,9 @@ ensures their children are included.
 ### Selective Prop Hydration
 
 Use string values to specify which props should not emit hydration errors:
-- `hydrate="!data-timestamp"` - Hydrate all props except `data-timestamp`
-- `hydrate="class id"` - Hydrate only `class` and `id` props
-- `hydrate=”!children” - Hydrate this element but not its children.
+- `hydrate="!data-timestamp"`: Hydrate all props except `data-timestamp`
+- `hydrate="class id"`: Hydrate only `class` and `id` props
+- `hydrate="!children"`: Hydrate this element but not its children.
 
 You cannot mix bang (`!`) and non-bang syntax. Doing so will cause a warning.
 ```jsx
