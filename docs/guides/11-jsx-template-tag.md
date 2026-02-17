@@ -74,9 +74,8 @@ build tools required:
   <div id="root"></div>
 
   <script type="module">
-    // Import Crank directly from unpkg CDN - no build required!
-    import {jsx, Fragment} from "https://unpkg.com/@b9g/crank/standalone?module";
-    import {renderer} from "https://unpkg.com/@b9g/crank/dom?module";
+    // Import everything from a single module - no build required!
+    import {jsx, Fragment, renderer} from "https://unpkg.com/@b9g/crank/standalone?module";
 
     // A simple greeting component
     function Greeting({name = "World", message = "Welcome"}) {
@@ -192,24 +191,24 @@ Simply save this as an HTML file and open it in your browser to see it in action
 
 ## Installation
 
-The JSX tag function can be imported from the module `@b9g/crank/standalone`. This module exports everything from the root `@b9g/crank` module as well as the `jsx` tag function (and its `html` alias), which is defined in the module `@b9g/crank/jsx-tag`.
+The JSX tag function can be imported from the module `@b9g/crank/standalone`. This module re-exports everything from the core `@b9g/crank` module, the `jsx` and `html` tag functions from `@b9g/crank/jsx-tag`, and both renderers:
+
+- `renderer` / `domRenderer` — the DOM renderer (from `@b9g/crank/dom`)
+- `htmlRenderer` — the HTML renderer (from `@b9g/crank/html`)
+
+This means a single import is sufficient for most use cases:
 
 ```js live
-import {Fragment, jsx, html} from "@b9g/crank/standalone";
-import {jsx as jsx1} from "@b9g/crank/jsx-tag";
-import {renderer} from "@b9g/crank/dom";
+import {jsx, renderer} from "@b9g/crank/standalone";
 
-// jsx and html are the same function - use whichever you prefer
-renderer.render(html`
-  <${Fragment}>
-    <div>Hello world with html alias</div>
-  </${Fragment}>
-`, document.body);
+function Greeting({name = "World"}) {
+  return jsx`<div>Hello ${name}!</div>`;
+}
 
-// console.log(jsx === html); // true
+renderer.render(jsx`<${Greeting} />`, document.body);
 ```
 
-In the future, we may use environment detection to automatically exports the correct `renderer`, which would make the `standalone` module truly “standalone.”
+The `html` tag is an alias for `jsx` — they are the same function.
 
 ## JSX Syntax
 
@@ -235,4 +234,15 @@ const symmetricEl = jsx`<${Component}>{children}</${Component}>`;
 const commentEl = jsx`<${Component}>{children}<//Component>`;
 // double slash closing tags are not checked for symmetry
 const asymmetricEl = jsx`<${Component}>{children}<//>``;
+```
+
+## Error Messages
+
+Syntax errors in template literals include line and column context with a caret pointer, making mistakes easy to spot:
+
+```
+Unexpected text `=></p>`
+
+> 1 | <p class==></p>
+     |          ^
 ```

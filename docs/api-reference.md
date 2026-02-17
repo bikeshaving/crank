@@ -519,7 +519,7 @@ function App() {
 
 ## Standalone Module (@b9g/crank/standalone)
 
-The standalone module includes all core Crank exports plus the JSX template tag for use without transpilation.
+The standalone module re-exports all core Crank exports, the JSX template tag functions, and both renderers (`renderer`/`domRenderer` from `@b9g/crank/dom`, `htmlRenderer` from `@b9g/crank/html`) for single-import usage without transpilation.
 
 ### jsx
 
@@ -535,8 +535,7 @@ An element or elements based on the template content.
 
 **Example:**
 ```js
-import {jsx} from "@b9g/crank/standalone";
-import {renderer} from "@b9g/crank/dom";
+import {jsx, renderer} from "@b9g/crank/standalone";
 
 function Greeting({name = "World"}) {
   return jsx`<div>Hello ${name}!</div>`;

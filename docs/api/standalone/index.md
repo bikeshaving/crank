@@ -5,7 +5,7 @@ publish: true
 
 # @b9g/crank/standalone
 
-Template tag functions for writing JSX-like syntax without a build step.
+Single-import module that re-exports everything from the core `@b9g/crank` module, the JSX template tag functions, and both renderers.
 
 ## Installation
 
@@ -14,19 +14,21 @@ npm install @b9g/crank
 ```
 
 ```ts
-import {jsx, html} from "@b9g/crank/standalone";
+import {jsx, renderer} from "@b9g/crank/standalone";
 ```
 
-## Functions
+## Exports
 
 - [jsx](/api/standalone/functions/jsx) - Template tag for JSX-like syntax
 - [html](/api/standalone/functions/html) - Alias for jsx
+- `renderer` / `domRenderer` - DOM renderer (from `@b9g/crank/dom`)
+- `htmlRenderer` - HTML renderer (from `@b9g/crank/html`)
+- All core exports from `@b9g/crank` (Fragment, Portal, Copy, Raw, Text, createElement, etc.)
 
 ## Quick start
 
 ```tsx
-import {jsx} from "@b9g/crank/standalone";
-import {renderer} from "@b9g/crank/dom";
+import {jsx, renderer} from "@b9g/crank/standalone";
 
 function Greeting({name}) {
   return jsx`<p>Hello, ${name}!</p>`;

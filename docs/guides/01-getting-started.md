@@ -64,8 +64,7 @@ renderer.render(<Greeting name="Crank" />, document.body);
 
 **Option C: No Build Required**
 ```js notoggle
-import {jsx} from "@b9g/crank/standalone";
-import {renderer} from "@b9g/crank/dom";
+import {jsx, renderer} from "@b9g/crank/standalone";
 
 function Greeting({name = "World"}) {
   return jsx`<div>Hello ${name}!</div>`;
