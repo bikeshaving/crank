@@ -158,10 +158,10 @@ The framework must provide a <dfn>component context</dfn> object to each [=compo
 
 <dl>
   <dt>`refresh(callback?)`
-  <dd>[=Enqueue|Enqueues=] a re-execution of the [=component=]. If a callback is provided, the framework must run it before re-executing. If the callback returns a promise, the framework must defer re-execution until the promise resolves; if the [=component=] has been unmounted by that time, re-execution must be skipped. If called while `isExecuting` is `true`, the framework must log an error and return the current value.
+  <dd>[=Enqueue|Enqueues=] a re-execution of the [=component=]. If a callback is provided, the framework must run it before re-executing. If the callback returns a promise, the framework must defer re-execution until the promise resolves; if the [=component=] has been unmounted by that time, re-execution must be skipped. If called while `isExecuting` is `true` or `isUnmounted` is `true`, the framework must log an error and return the current [=element value=].
 
   <dt>`schedule(callback?)`
-  <dd>Registers a callback that the framework must call after host nodes are created but before they are inserted into the [=host environment=]. The callback receives the [=element value=]. Callbacks are <strong>one-shot</strong>: they fire once and must be re-registered on subsequent renders. Multiple distinct callbacks may be registered; the framework must deduplicate callbacks by function identity (registering the same function reference twice in one update fires it once). If the callback returns a promise on the [=component's=] initial render, the framework must defer insertion until the promise resolves; on subsequent renders, promise return values must be ignored. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at schedule time.
+  <dd>Registers a callback that the framework must call after host nodes are created but before they are inserted into the [=host environment=]. The callback receives the [=element value=]. Callbacks are <strong>one-shot</strong>: they fire once and must be re-registered on subsequent renders. Multiple distinct callbacks may be registered; the framework must deduplicate callbacks by function identity (registering the same function reference twice in one update fires it once). If the callback returns a promise on the [=component's=] initial render, the framework must defer insertion until the promise resolves; when multiple `schedule` callbacks each return a promise, the framework must wait for all of them (as with [`Promise.all`](https://tc39.es/ecma262/#sec-promise.all)). On subsequent renders, promise return values must be ignored. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at schedule time.
 
   <dt>`after(callback?)`
   <dd>Registers a callback that the framework must call after host nodes are inserted into the [=host environment=]. The callback receives the [=element value=]. Same one-shot and deduplication semantics as `schedule`. Promise return values from `after` callbacks must be ignored. When called with no arguments, returns a `Promise<TResult>` that resolves with the [=element value=] at insertion time.
@@ -237,7 +237,7 @@ When children have `key` props, the framework matches children by key instead of
 5. For each subsequent unkeyed new child, the framework skips over keyed old children to find the next unkeyed one.
 6. After processing all new children, any remaining old children not matched by key are unmounted.
 
-Duplicate keys among siblings must produce a runtime error. The framework must discard the duplicate.
+Duplicate keys among siblings must log a warning. The framework must strip the key from the later occurrence, treating it as unkeyed; the first child with a given key retains the key.
 
 ## Element Values ## {#element-values}
 
@@ -255,7 +255,7 @@ A <dfn>Child</dfn> is any value that can appear in the element tree. The valid c
 - <strong>Booleans</strong> (`true` and `false`) must produce no output. This enables the `{condition && <Element />}` pattern — when the condition is `false`, nothing is rendered.
 - <strong>Non-string iterables</strong> (arrays, Sets, etc.) must be implicitly wrapped in a [=Fragment=]. Each item in the iterable becomes a [=Child=] at its own position in the element tree. This means [=components=] can return arrays or other non-iterator iterables to produce multiple siblings without a wrapper node.
 - <strong>Nested arrays</strong> must be flattened into the children array.
-- <strong>Elements</strong> (objects with a `tag` property) must be diffed recursively.
+- <strong>Elements</strong> (objects identified by the internal `$$typeof` marker — see [[#elements]]) must be diffed recursively.
 
 This normalization applies everywhere children appear: the return/yield value of a [=component=], the `children` prop, and the children of [=host elements=].
 
@@ -290,7 +290,7 @@ When an async [=component=] is re-rendered while a previous execution is still p
 
 When the [=inflight=] execution settles, the [=enqueued=] execution must be promoted to [=inflight=]. The framework must not allow more than one concurrent execution per [=component=] element, and the final render must reflect the latest props.
 
-Async generator [=components=] in `for await...of` mode use the same [=enqueue|enqueuing=] algorithm.
+Async generator [=components=] in `for await...of` mode use the same [=enqueue|enqueuing=] algorithm. Additionally, when such a [=component=] yields a value but new [=props=] are already available before the yield is processed, the framework should skip rendering the stale children. Only the most recent yield for a given [=update=] is rendered.
 
 ## Chasing ## {#chasing}
 
