@@ -84,7 +84,7 @@ create({tag, props, scope}) {
 **Parameters:** `tag`, `tagName`, `props`, `scope`, `root`
 
 #### `patch(data): void`
-Updates a node's properties when props change. This is where you implement
+Updates a node’s properties when props change. This is where you implement
 prop-to-attribute mapping, event listener binding, and property
 synchronization.
 

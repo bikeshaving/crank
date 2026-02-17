@@ -16,7 +16,7 @@ const element = <h1>Hello, world!</h1>;
 renderer.render(element, document.body);
 ```
 
-Elements are lightweight descriptions of what to render — they're just
+Elements are lightweight descriptions of what to render — they’re just
 JavaScript objects that Crank uses to create and update the actual DOM.
 
 **Note:** If you’re familiar with React, elements work almost exactly the same

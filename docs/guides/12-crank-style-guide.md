@@ -6,7 +6,7 @@ description: Conventions for writing cranky code. Covers component structure, st
 Crank’s design philosophy is that JavaScript already has the primitives you need to build UIs. Code that follows these conventions is *cranky*: idiomatic Crank that leans on the language instead of fighting it.
 
 1. **Use the language.** Write vanilla JavaScript. Variables are state, control flow is lifecycle, `async`/`await` is data fetching. Crank adds a thin rendering layer and gets out of the way.
-2. **Match the platform.** `class`, `for`, `onclick`, `innerHTML`. The DOM's names, not aliases.
+2. **Match the platform.** `class`, `for`, `onclick`, `innerHTML`. The DOM’s names, not aliases.
 3. **Own the execution.** You control when components re-render. There is no implicit reactivity. Understanding the execution of your components is the job; `this.refresh(() => ...)` makes it legible.
 4. **Compose uniformly.** A component should look and behave like a built-in element: props in, events out, children nested. The abstraction boundary is the same as the platform’s.
 
@@ -14,7 +14,7 @@ For full explanations, see the [Components](/guides/components), [Lifecycles](/g
 
 ### Component Structure
 
-**Don't** use `while (true)`. The component renders but never sees prop updates, and a missing `yield` causes an infinite loop:
+**Don’t** use `while (true)`. The component renders but never sees prop updates, and a missing `yield` causes an infinite loop:
 
 ```jsx
 function *Counter({count}) {
@@ -36,7 +36,7 @@ function *Counter({count}) {
 
 **ESLint rule:** `crank/prefer-props-iterator`
 
-**Don't** put persistent state inside the loop. It resets on every render:
+**Don’t** put persistent state inside the loop. It resets on every render:
 
 ```jsx
 function *Timer() {
@@ -68,7 +68,7 @@ function *Timer() {
 }
 ```
 
-**Don't** return `undefined` from a component. It produces a runtime warning:
+**Don’t** return `undefined` from a component. It produces a runtime warning:
 
 ```jsx
 function MaybeGreeting({name}) {
@@ -92,7 +92,7 @@ function MaybeGreeting({name}) {
 
 ### State Updates
 
-**Don't** mutate state and call `refresh()` as separate steps. It's easy to forget one or the other, especially in longer handlers:
+**Don’t** mutate state and call `refresh()` as separate steps. It’s easy to forget one or the other, especially in longer handlers:
 
 ```jsx
 function *Counter() {
@@ -141,7 +141,7 @@ function *Greeting({name = "World"}) {
 }
 ```
 
-**Don't** destructure partially. Any prop missing from the `for...of` binding stays stale:
+**Don’t** destructure partially. Any prop missing from the `for...of` binding stays stale:
 
 ```jsx
 function *Card({title, count}) {
@@ -250,7 +250,7 @@ function *Dashboard() {
 
 ### Children and Composition
 
-**Don't** use render props or functions-as-children. Generators already encapsulate state:
+**Don’t** use render props or functions-as-children. Generators already encapsulate state:
 
 ```jsx
 function *App() {
@@ -283,7 +283,7 @@ If a parent needs to pass dynamic data to its children, use [provisions](/guides
 
 ### Provisions
 
-**Don't** use plain strings as provision keys. They risk collisions between unrelated libraries or components:
+**Don’t** use plain strings as provision keys. They risk collisions between unrelated libraries or components:
 
 ```jsx
 function *App({children}) {
@@ -321,7 +321,7 @@ Note that consumers do not automatically re-render when a provided value changes
 
 ### Cleanup
 
-**Don't** leave timers, listeners, or subscriptions without cleanup. They outlive the component and leak:
+**Don’t** leave timers, listeners, or subscriptions without cleanup. They outlive the component and leak:
 
 ```jsx
 function *Timer() {
@@ -391,7 +391,7 @@ Note: `cleanup` callbacks persist across renders and fire once on unmount. `sche
 
 ### Refs and DOM Access
 
-**Don't** use `this.schedule()` for operations that need the element to be live in the document. `schedule` fires after DOM nodes are created but *before* they are inserted:
+**Don’t** use `this.schedule()` for operations that need the element to be live in the document. `schedule` fires after DOM nodes are created but *before* they are inserted:
 
 ```jsx
 function *AutoFocusInput() {
@@ -428,7 +428,7 @@ function MyInput({ref, class: cls, ...props}) {
 
 ### Lifecycle Callbacks
 
-**Don't** return JSX from `schedule`, `after`, or `cleanup` callbacks. They are side-effect hooks, not render points. Returned elements are silently discarded:
+**Don’t** return JSX from `schedule`, `after`, or `cleanup` callbacks. They are side-effect hooks, not render points. Returned elements are silently discarded:
 
 ```jsx
 function *Component() {
@@ -457,7 +457,7 @@ function *Component() {
 
 ### Yield vs Return
 
-**Don't** use `return` inside a generator loop. It terminates the generator and restarts it from scratch on the next update, losing all local state:
+**Don’t** use `return` inside a generator loop. It terminates the generator and restarts it from scratch on the next update, losing all local state:
 
 ```jsx
 function *Greeting({name}) {
@@ -520,7 +520,7 @@ For declarative loading states and code splitting, use `Suspense` and `lazy` fro
 
 ### Error Handling
 
-**Don't** reach for `try`/`catch` around `yield` as a first resort. It creates an error boundary that catches every failure in the child tree, including real bugs:
+**Don’t** reach for `try`/`catch` around `yield` as a first resort. It creates an error boundary that catches every failure in the child tree, including real bugs:
 
 ```jsx
 function *Dashboard() {
@@ -552,7 +552,7 @@ async function UserProfile({userId}) {
 React aliases like `className`, `htmlFor`, and `onClick` happen to work in Crank
 because they are writable DOM properties, but cranky code does not use them.
 
-**Don't** use React prop names:
+**Don’t** use React prop names:
 
 ```jsx
 function MyForm() {
@@ -596,4 +596,4 @@ The same applies to SVG attributes — use the standard kebab-case names:
 
 The `class` prop accepts objects for conditional classes, and the `style` prop accepts both strings and objects. See [Special Props and Components](/guides/special-props-and-components) for details.
 
-**Don't** reach for a state management library when local variables and provisions will do. A `let` in a generator is state. `this.provide()` and `this.consume()` with symbol keys share it across a subtree. See [Reusable Logic](/guides/reusable-logic) for patterns that scale further.
+**Don’t** reach for a state management library when local variables and provisions will do. A `let` in a generator is state. `this.provide()` and `this.consume()` with symbol keys share it across a subtree. See [Reusable Logic](/guides/reusable-logic) for patterns that scale further.
