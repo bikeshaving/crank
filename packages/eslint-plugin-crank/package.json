@@ -1,6 +1,6 @@
 {
   "name": "eslint-plugin-crank",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "ESLint plugin for the Crank JS framework",
   "repository": {
     "type": "git",
