@@ -68,7 +68,7 @@ function *Timer() {
 }
 ```
 
-**Don’t** return `undefined` from a component. It produces a runtime warning:
+**Don't** return `undefined` from a component, which is usually a mistake:
 
 ```jsx
 function MaybeGreeting({name}) {
@@ -125,7 +125,7 @@ Group related mutations in a single callback rather than calling `refresh` multi
 
 **ESLint rule:** `crank/prefer-refresh-callback`
 
-Note: `refresh()` during execution (while `this.isExecuting` is `true`) or after unmount logs an error and does nothing. In practice this rarely comes up; event handlers fire asynchronously after rendering.
+Note: `refresh()` during execution (while `this.isExecuting` is `true`) or after unmount is a no-op. In practice this rarely comes up; event handlers fire asynchronously after rendering.
 
 There are no stale closures in Crank. Handlers close over `let` variables that are reassigned each iteration, so they always see current values. Inline handlers are fine; Crank does not compare prop references to skip re-renders.
 
@@ -166,42 +166,35 @@ function *Greeting({name = "World", formal = false}) {
 
 ### Derived Values
 
-**Don’t** recompute expensive work on every render when the inputs have not changed:
+**Don’t** redo expensive work on every render when the inputs haven’t changed:
 
 ```jsx
-function *FilteredList({items, threshold}) {
-  for ({items, threshold} of this) {
-    const filtered = items.filter((item) => item.value > threshold);
-    yield (
-      <ul>{filtered.map((item) => <li key={item.id}>{item.name}</li>)}</ul>
-    );
+function *Report({data}) {
+  for ({data} of this) {
+    const summary = computeExpensiveSummary(data);
+    yield <div>{summary}</div>;
   }
 }
 ```
 
-**Do** cache the result and compare inputs manually. Save current values after `yield` so they are available as “old” values on the next iteration:
+**Do** cache the result and compare inputs manually. Save current values after `yield` so they’re available as “old” values on the next iteration:
 
 ```jsx
-function *FilteredList({items, threshold}) {
-  let oldItems = null;
-  let oldThreshold = null;
-  let filtered = [];
+function *Report({data}) {
+  let oldData = null;
+  let summary = null;
 
-  for ({items, threshold} of this) {
-    if (items !== oldItems || threshold !== oldThreshold) {
-      filtered = items.filter((item) => item.value > threshold);
+  for ({data} of this) {
+    if (data !== oldData) {
+      summary = computeExpensiveSummary(data);
     }
 
-    yield (
-      <ul>{filtered.map((item) => <li key={item.id}>{item.name}</li>)}</ul>
-    );
+    yield <div>{summary}</div>;
 
-    oldItems = items;
-    oldThreshold = threshold;
+    oldData = data;
   }
 }
 ```
-
 
 ### Keys and Rendering Control
 
@@ -426,34 +419,60 @@ function MyInput({ref, class: cls, ...props}) {
 }
 ```
 
-### Lifecycle Callbacks
+### Events
 
-**Don’t** return JSX from `schedule`, `after`, or `cleanup` callbacks. They are side-effect hooks, not render points. Returned elements are silently discarded:
+**Don’t** pass callback props down through multiple layers. It couples children to their parents and clutters intermediate components:
 
 ```jsx
-function *Component() {
-  this.schedule(() => <div />);
-  this.after(() => { return <div />; });
+function *App() {
+  let todos = [];
+  const ondelete = (id) => this.refresh(() => {
+    todos = todos.filter((t) => t.id !== id);
+  });
 
   for ({} of this) {
-    yield <div />;
+    yield <TodoList todos={todos} ondelete={ondelete} />;
   }
 }
 ```
 
-**Do** use lifecycle callbacks for side effects only, and yield in the main generator body:
+**Do** use `dispatchEvent` in children and `addEventListener` in parents. Custom events bubble up the component tree, just like DOM events:
 
 ```jsx
-function *Component() {
-  this.after((el) => el.focus());
+function *TodoItem({todo}) {
+  const ondelete = () => {
+    this.dispatchEvent(new CustomEvent("tododelete", {
+      bubbles: true,
+      detail: {id: todo.id},
+    }));
+  };
+
+  for ({todo} of this) {
+    yield (
+      <li>
+        {todo.title}
+        <button onclick={ondelete}>Delete</button>
+      </li>
+    );
+  }
+}
+
+function *App() {
+  let todos = [];
+
+  this.addEventListener("tododelete", (ev) => {
+    this.refresh(() => {
+      todos = todos.filter((t) => t.id !== ev.detail.id);
+    });
+  });
 
   for ({} of this) {
-    yield <input />;
+    yield <ul>{todos.map((t) => <TodoItem key={t.id} todo={t} />)}</ul>;
   }
 }
 ```
 
-**ESLint rule:** `crank/no-yield-in-lifecycle-methods`
+This mirrors how the DOM works: children signal intent via events, parents decide how to respond. No callback prop drilling required.
 
 ### Yield vs Return
 
@@ -596,4 +615,43 @@ The same applies to SVG attributes — use the standard kebab-case names:
 
 The `class` prop accepts objects for conditional classes, and the `style` prop accepts both strings and objects. See [Special Props and Components](/guides/special-props-and-components) for details.
 
-**Don’t** reach for a state management library when local variables and provisions will do. A `let` in a generator is state. `this.provide()` and `this.consume()` with symbol keys share it across a subtree. See [Reusable Logic](/guides/reusable-logic) for patterns that scale further.
+### Reusable Logic
+
+**Don’t** reach for higher-order components or global monkey-patching to share behavior between components:
+
+```jsx
+function withInterval(Component) {
+  return function *Wrapped(props) {
+    let seconds = 0;
+    const id = setInterval(() => this.refresh(() => seconds++), 1000);
+    try {
+      for (props of this) {
+        yield <Component seconds={seconds} {...props} />;
+      }
+    } finally {
+      clearInterval(id);
+    }
+  };
+}
+```
+
+**Do** write plain helper functions that accept a context. They compose, they’re explicit, and they’re just JavaScript:
+
+```jsx
+function useInterval(ctx, callback, delay) {
+  const id = setInterval(callback, delay);
+  ctx.cleanup(() => clearInterval(id));
+  return id;
+}
+
+function *Timer() {
+  let seconds = 0;
+  useInterval(this, () => this.refresh(() => seconds++), 1000);
+
+  for ({} of this) {
+    yield <p>{seconds}s</p>;
+  }
+}
+```
+
+A `let` in a generator is state. `this.provide()` and `this.consume()` with symbol keys share it across a subtree. See [Reusable Logic](/guides/reusable-logic) for more patterns.
