@@ -169,8 +169,8 @@ Starting in Crank 0.7, the `copy` prop can be a string to specify which props sh
 ```
 
 **String copy syntax:**
-- `copy="!value"` - Copy all props except `value`
-- `copy="class children"` - Copy only `class` and `children` props
+- `copy="!value"`: Copy all props except `value`
+- `copy="class children"`: Copy only `class` and `children` props
 - Cannot mix bang (`!`) and non-bang syntax in the same string
 
 ### The hydrate prop
@@ -194,10 +194,10 @@ The `hydrate` prop provides fine-grained control over server-side rendering hydr
 ```
 
 **Hydrate prop behavior:**
-- `hydrate={false}` - Skip hydration entirely for this element and children
-- `hydrate={true}` - Force hydration (useful for portals)
-- `hydrate="!value"` - Hydrate all props except `value`
-- `hydrate="class id"` - Hydrate only `class` and `id` props
+- `hydrate={false}`: Skip hydration entirely for this element and children
+- `hydrate={true}`: Force hydration (useful for portals)
+- `hydrate="!value"`: Hydrate all props except `value`
+- `hydrate="class id"`: Hydrate only `class` and `id` props
 
 This is particularly useful when you have server-rendered content that should remain static, or when dealing with third-party widgets that shouldn’t be disturbed during hydration.
 
@@ -460,6 +460,6 @@ function MultipleTexts() {
 - Direct access to DOM Text nodes in lifecycle callbacks
 - Better performance during reconciliation and hydration
 - Improved text node tracking and manipulation
-- No automatic string concatenation - each string becomes its own node
+- No automatic string concatenation: each string becomes its own node
 
 The `<Text>` element is particularly useful when you need precise control over text content or when integrating with libraries that manipulate text nodes directly.

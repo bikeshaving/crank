@@ -12,9 +12,9 @@ foundation.
 
 A custom renderer consists of two main parts:
 
-1. **RenderAdapter** - A set of functions which determine how elements map to
+1. **RenderAdapter**: A set of functions which determine how elements map to
    your target environment
-2. **Renderer() class** - An class which you subclass which orchestrates the
+2. **Renderer() class**: A class which you subclass which orchestrates the
    rendering process and manages the component tree
 
 ```typescript
@@ -52,12 +52,12 @@ will help you understand the types of values which are passed to your
 RenderAdapter methods. The `Renderer` class takes the following type
 parameters.
 
-- `TNode` - The type representing nodes in your target environment.
-- `TScope` - Context data passed down the component tree (e.g., coordinate
+- `TNode`: The type representing nodes in your target environment.
+- `TScope`: Context data passed down the component tree (e.g., coordinate
   systems, themes). The DOM renderer passes down xmlns info so that SVG
   elements are properly created.
-- `TRoot` - The root container type (defaults to `TNode`).
-- `TResult` - The type returned when reading element values (defaults to
+- `TRoot`: The root container type (defaults to `TNode`).
+- `TResult`: The type returned when reading element values (defaults to
   `ElementValue<TNode>`).
 
 ### Core Methods
@@ -107,10 +107,10 @@ patch({node, props, oldProps}) {
 **Parameters:** `tag`, `tagName`, `node`, `props`, `oldProps`, `scope`, `root`,
 `copyProps`, `isHydrating`, `quietProps`
 
-- `copyProps` - A set of props to skip because the user provided a copy with
+- `copyProps`: A set of props to skip because the user provided a copy with
   meta-prop syntax.
-- `isHydrating` - Whether we are currently hydrating.
-- `quietProps` - A set of props to suppress hydration warnings for because the
+- `isHydrating`: Whether we are currently hydrating.
+- `quietProps`: A set of props to suppress hydration warnings for because the
   user provided a hydrate with meta-prop syntax.
 
 #### `arrange(data): void`
@@ -143,7 +143,7 @@ remove({node, parentNode, isNested}) {
 
 **Parameters:** `node`, `parentNode`, `isNested`, `root`
 
-- `isNested` - Whether this removal is nested in another removal. Depending on
+- `isNested`: Whether this removal is nested in another removal. Depending on
   your target environment, you may only need to remove the top-level node from
   its parent and leave the remaining nodes untouched.
 

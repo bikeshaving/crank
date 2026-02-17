@@ -182,10 +182,10 @@ build tools required:
 ```
 
 This complete example shows how you can build a fully functional Crank application with:
-- **No build tools** - runs directly in modern browsers
-- **Direct CDN imports** - no local dependencies required
-- **Rich interactivity** - stateful components, async updates, event handling
-- **Modern syntax** - using the `html` template tag (alias for `jsx`)
+- **No build tools**: runs directly in modern browsers
+- **Direct CDN imports**: no local dependencies required
+- **Rich interactivity**: stateful components, async updates, event handling
+- **Modern syntax**: using the `html` template tag (alias for `jsx`)
 
 Simply save this as an HTML file and open it in your browser to see it in action!
 

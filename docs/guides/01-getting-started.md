@@ -8,7 +8,7 @@ description: Get up and running with Crank.js in minutes. Learn how to install C
 ## Try Crank
 
 The fastest way to try Crank is via the [online
-playground](https://crank.js.org/playground). No setup required - just start
+playground](https://crank.js.org/playground). No setup required, just start
 writing components! Many examples in these guides also feature live previews
 you can edit directly.
 

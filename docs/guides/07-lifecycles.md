@@ -83,7 +83,7 @@ renderer.render(<App />, document.body);
 
 The key insight: you have TWO execution spaces in each loop iteration:
 - **Before `yield`**: Set up for the current render
-- **After `yield`**: Only runs when re-rendering - save current state as “old” state for comparison
+- **After `yield`**: Only runs when re-rendering, save current state as “old” state for comparison
 
 Here’s a practical example using prop comparison for memoization:
 

@@ -3,7 +3,7 @@ title: Async Components
 description: Harness the power of async/await in your components. Learn how to build data-fetching components, handle loading states, and manage asynchronous UI updates.
 ---
 
-Add `async` to any component to `await` promises. Both async function components and async generator components are supported.
+So far, every component we've seen has been synchronous, but in Crank, making a component async is as simple as adding the `async` keyword and using `await`, just like regular JavaScript. Both async function components and async generator components are supported.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -134,7 +134,7 @@ Async components can be re-rendered while still pending. Crank enforces two rule
    skipped entirely**. At no point is there more than one simultaneous call to
    the `<Delay>` component, despite the fact that it is rerendered concurrently
    for its second through fourth renders. Because these renderings are
-   enqueued, the third rendering is skipped - by the time Run 2 completes, Run
+   enqueued, the third rendering is skipped — by the time Run 2 completes, Run
    3’s props are obsolete and only Run 4 executes. This behavior allows async
    components to always be kept up-to-date without producing excess calls.
 
@@ -281,7 +281,7 @@ Starting in Crank 0.7, async components received a major overhaul with a two-pas
 import {Suspense, SuspenseList, lazy} from "@b9g/crank/async";
 ```
 
-### Suspense - Loading States
+### Suspense: Loading States
 
 The `Suspense` component provides declarative loading states for async components:
 
@@ -348,7 +348,7 @@ renderer.render(<SuspenseDemo />, document.body);
 - **Nested suspense**: Multiple levels of loading states
 - **Error boundaries**: Catches async component errors
 
-### lazy() - Code Splitting Made Simple
+### lazy(): Code Splitting Made Simple
 
 The `lazy()` function creates components that load asynchronously, perfect for code splitting and performance optimization:
 
@@ -496,7 +496,7 @@ function *App({user}) {
 }
 ```
 
-### SuspenseList - Coordinated Loading
+### SuspenseList: Coordinated Loading
 
 `SuspenseList` coordinates multiple suspense boundaries for better UX:
 
@@ -587,13 +587,13 @@ renderer.render(<SuspenseListDemo />, document.body);
 **SuspenseList Features:**
 
 **Reveal Orders:**
-- `"forwards"` - Reveal in document order (first to last)
-- `"backwards"` - Reveal in reverse order (last to first)
-- `"together"` - Wait for all children, then reveal simultaneously
+- `"forwards"`: Reveal in document order (first to last)
+- `"backwards"`: Reveal in reverse order (last to first)
+- `"together"`: Wait for all children, then reveal simultaneously
 
 **Tail Behavior:**
-- `"collapsed"` - Show only the next pending fallback
-- `"hidden"` - Hide all remaining fallbacks once first item loads
+- `"collapsed"`: Show only the next pending fallback
+- `"hidden"`: Hide all remaining fallbacks once first item loads
 
 ### Real-world Patterns
 
@@ -652,7 +652,7 @@ Async generator components operate in three distinct modes based on how they
 iterate over props:
 
 ### Sync-like Mode: Wait for Children
-**`for...of` loop** - Suspend at each yield and wait for children to complete.
+**`for...of` loop**: Suspend at each yield and wait for children to complete.
 Async generators using `for...of` behave exactly like sync generator
 components. They suspend at each `yield` and wait for children to complete
 before resuming.
@@ -669,7 +669,7 @@ async function *SyncLike({children}) {
 ```
 
 ### Continuous Mode: Race with Children  
-**`for await...of` loop** - Continue rendering while children are async.
+**`for await...of` loop**: Continue rendering while children are async.
 Async generators using `for await...of` continuously resume after yielding,
 enabling racing and cooperative rendering patterns.
 
@@ -690,7 +690,7 @@ async function *Continuous({children}) {
 
 ### 3. No-loop Mode (no iterator)
 Starting in 0.7, async generators without a props iterator behave exactly like
-sync generators - they execute once and suspend at `yield`.
+sync generators: they execute once and suspend at `yield`.
 
 ```jsx
 async function *NoLoop({children}) {
