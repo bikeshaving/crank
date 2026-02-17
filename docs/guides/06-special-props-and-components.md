@@ -1,6 +1,6 @@
 ---
 title: Special Props and Components
-description: Explore Crank's special props like crank-key, Copy, and Raw. Learn advanced techniques for controlling rendering and optimizing performance.
+description: Explore Crank’s special props like crank-key, Copy, and Raw. Learn advanced techniques for controlling rendering and optimizing performance.
 ---
 
 While most props are passed directly to DOM elements or components, Crank reserves certain prop names for special framework behavior. These special props control element diffing, rendering optimization, and framework features.

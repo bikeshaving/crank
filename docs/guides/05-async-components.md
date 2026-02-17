@@ -3,7 +3,7 @@ title: Async Components
 description: Harness the power of async/await in your components. Learn how to build data-fetching components, handle loading states, and manage asynchronous UI updates.
 ---
 
-So far, every component we've seen has been synchronous, but in Crank, making a component async is as simple as adding the `async` keyword and using `await`, just like regular JavaScript. Both async function components and async generator components are supported.
+So far, every component we’ve seen has been synchronous, but in Crank, making a component async is as simple as adding the `async` keyword and using `await`, just like regular JavaScript. Both async function components and async generator components are supported.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";

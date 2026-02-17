@@ -1,6 +1,6 @@
 ---
 title: Components
-description: Build powerful components in Crank using functions and generators. Learn stateful components, props handling, and how to leverage JavaScript's control flow.
+description: Build powerful components in Crank using functions and generators. Learn stateful components, props handling, and how to leverage JavaScript’s control flow.
 ---
 
 ## Basic Components

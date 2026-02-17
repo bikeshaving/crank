@@ -546,7 +546,7 @@ The `eslint-plugin-crank` package provides `no-react-svg-props` to flag camelCas
 
 ### innerHTML
 
-Crank uses `innerHTML` directly. React's `dangerouslySetInnerHTML={{__html: "..."}}` syntax is also accepted and mapped to `innerHTML`:
+Crank uses `innerHTML` directly. React’s `dangerouslySetInnerHTML={{__html: "..."}}` syntax is also accepted and mapped to `innerHTML`:
 
 ```jsx
 // React
