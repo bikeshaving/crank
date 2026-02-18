@@ -31,17 +31,17 @@
 }
 
 .blur-background-2 {
-	@supports (backdrop-filter: blur(8px)) {
-		backdrop-filter: blur(8px);
-		background-color: rgba(10, 14, 31, 0.5) !important;
+	@supports (backdrop-filter: blur(4px)) {
+		backdrop-filter: blur(4px);
+		background-color: rgba(10, 14, 31, 0.8) !important;
 	}
 }
 
 .color-scheme-light {
 	.blur-background-2 {
-		@supports (backdrop-filter: blur(8px)) {
-			backdrop-filter: blur(8px);
-			background-color: rgba(231, 244, 245, 0.5) !important;
+		@supports (backdrop-filter: blur(4px)) {
+			backdrop-filter: blur(4px);
+			background-color: rgba(231, 244, 245, 0.8) !important;
 		}
 	}
 }
@@ -169,6 +169,12 @@ pre code {
 .prism-line {
 	font-size: 14px;
 	line-height: 1.6;
+}
+
+:is(.language-bash, .language-shell, .language-sh) code > :is(.token.function, .token.builtin):first-child::before {
+	content: "$ ";
+	opacity: 0.5;
+	user-select: none;
 }
 
 select, input, textarea {

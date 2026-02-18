@@ -1,6 +1,12 @@
 import Prism from "prismjs";
 import type {Token} from "prismjs";
 
+// Prism language components are CJS side-effect modules that reference a global
+// `Prism` variable. In bundled ESM, the core import above only creates a local
+// binding, so we need to expose it globally for language components to find.
+(globalThis as any).Prism = Prism;
+Prism.manual = true;
+
 function wrapContent(
 	content: Array<Token | string> | Token | string,
 ): Array<Token | string> {
