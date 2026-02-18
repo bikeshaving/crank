@@ -1,3 +1,14 @@
+// Ensure Prism global is set before loading language grammars for SSR.
+// prism.ts sets globalThis.Prism; language components are CJS side-effect
+// modules that reference the global.
+import "./utils/prism.js";
+import "prismjs/components/prism-javascript";
+import "prismjs/components/prism-jsx";
+import "prismjs/components/prism-typescript";
+import "prismjs/components/prism-tsx";
+import "prismjs/components/prism-diff";
+import "prismjs/components/prism-bash";
+
 import {jsx} from "@b9g/crank/standalone";
 import {renderer} from "@b9g/crank/html";
 import {Router} from "@b9g/router";
