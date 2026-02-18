@@ -8,10 +8,10 @@ if (!args.includes("--template")) {
 	args.push("--template", "crank");
 }
 
-// Run create-shovel with the args
-spawn("npx", ["create-shovel", ...args], {
+// Run create-shovel with the args. --yes skips the second install prompt
+// (the user already confirmed installing create-crank).
+spawn("npx", ["--yes", "create-shovel", ...args], {
 	stdio: "inherit",
-	shell: true,
 }).on("exit", (code) => {
 	process.exit(code ?? 0);
 });
