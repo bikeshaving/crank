@@ -71,7 +71,6 @@ const components = {
 						}
 
 						max-width: 1500px;
-						background-color: var(--bg-color);
 					`}
 				"
 			>
@@ -181,14 +180,9 @@ function CallToAction() {
 							padding: 0.5em 1.5em;
 							font-weight: bold;
 							border-radius: 4px;
-							transition:
-								transform 0.15s ease,
-								box-shadow 0.15s ease;
 
 							&:hover {
 								color: var(--bg-color);
-								transform: translateY(-2px);
-								box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 							}
 						}
 					`}
@@ -197,6 +191,21 @@ function CallToAction() {
 				<a href="/api">API Reference</a>
 				<a href="https://github.com/bikeshaving/crank">GitHub</a>
 			</nav>
+			<div class="code-block-container ${css`
+				max-width: 600px;
+				width: 100%;
+			`}">
+				<${InlineCodeBlock}
+					value=${"npm create crank"}
+					lang="bash"
+					editable=${false}
+				/>
+				<${SerializeScript}
+					value=${{code: "npm create crank", lang: "bash"}}
+					class="props"
+					name="inline-code-block-props"
+				/>
+			</div>
 		</div>
 	`;
 }
@@ -209,6 +218,84 @@ function AntiHero() {
 	`;
 }
 
+function BlogSection({posts}: {posts: Array<any>}) {
+	return jsx`
+		<div class=${css`
+			max-width: 1200px;
+			margin: 0 auto;
+			padding: 3rem 1rem;
+
+			@media (min-width: 800px) {
+				padding: 4rem 2rem;
+			}
+		`}>
+			<h2 class=${css`
+				text-align: center;
+				font-size: max(4vh, 30px);
+				color: var(--highlight-color);
+				margin: 0 0 2rem;
+			`}>From the Blog</h2>
+			<div class=${css`
+				display: grid;
+				gap: 1.5rem;
+
+				@media (min-width: 700px) {
+					grid-template-columns: repeat(2, 1fr);
+				}
+			`}>
+				${posts.map((post) => {
+					const {title, description} = post.attributes;
+					return jsx`
+						<a
+							href=${post.url}
+							class="blur-background ${css`
+								display: block;
+								text-decoration: none;
+								color: inherit;
+								border: 1px solid var(--text-color);
+								border-radius: 4px;
+								padding: 1.5rem;
+
+								&:hover {
+									border-color: var(--highlight-color);
+								}
+							`}"
+						>
+							<h3 class=${css`
+								font-size: 1.35rem;
+								margin: 0 0 0.5rem;
+								color: var(--highlight-color);
+								line-height: 1.3;
+							`}>${title}</h3>
+							${description && jsx`
+								<p class=${css`
+									margin: 0;
+									color: var(--text-color);
+									opacity: 0.85;
+									line-height: 1.6;
+									font-size: 0.95rem;
+								`}>${description}</p>
+							`}
+						</a>
+					`;
+				})}
+			</div>
+			<div class=${css`
+				text-align: center;
+				margin-top: 2rem;
+			`}>
+				<a
+					href="/blog"
+					class=${css`
+						color: var(--highlight-color);
+						font-size: 1.1rem;
+					`}
+				>All posts ${"→"}</a>
+			</div>
+		</div>
+	`;
+}
+
 export default async function Home({url}: ViewProps) {
 	const docsDir = await self.directories.open("docs");
 	const docs = await collectDocuments(docsDir);
@@ -216,6 +303,9 @@ export default async function Home({url}: ViewProps) {
 	if (!md) {
 		throw new Error("index.md missing you silly goose");
 	}
+
+	const blogDir = await docsDir.getDirectoryHandle("blog");
+	const posts = (await collectDocuments(blogDir, "blog")).reverse().slice(0, 4);
 
 	return jsx`
 		<${Root}
@@ -233,6 +323,7 @@ export default async function Home({url}: ViewProps) {
 				<${CallToAction} />
 				<${Marked} markdown=${md.body} components=${components} />
 			</div>
+			<${BlogSection} posts=${posts} />
 			<${AntiHero} />
 		<//Root>
 	`;
