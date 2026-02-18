@@ -1,5 +1,4 @@
-import {jsx} from "@b9g/crank/standalone";
-import {renderer} from "@b9g/crank/dom";
+import {jsx, renderer} from "@b9g/crank/standalone";
 
 // tetronimo shapes represented as 2d arrays
 type Tet = number[][];

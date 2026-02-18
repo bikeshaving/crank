@@ -125,7 +125,7 @@ export function* InlineCodeBlock(
 							<${CodeEditor}
 								copy=${true}
 								value=${value}
-								lang=${lang}
+								language=${lang}
 								editable=${editable}
 							/>
 						</div>

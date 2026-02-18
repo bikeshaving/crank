@@ -52,7 +52,7 @@ export function* Root(
 					<meta name="viewport" content="width=device-width" />
 					<title>${title}</title>
 					<link rel="shortcut icon" href=${assets.favicon} />
-					<style>${css}</style>
+					<style><${Raw} value=${css} /></style>
 					<link rel="stylesheet" type="text/css" href=${assets.clientCSS} />
 					<meta name="description" content=${description} />
 					<meta property="og:title" content=${title} />

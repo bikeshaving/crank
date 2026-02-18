@@ -85,14 +85,14 @@ Crank is also available on CDNs like [unpkg](https://unpkg.com)
 (https://esm.sh/@b9g/crank) for usage in ESM-ready environments.
 
 ```jsx live notoggle
-/** @jsx createElement */
-import {createElement} from "https://unpkg.com/@b9g/crank/crank?module";
-import {renderer} from "https://unpkg.com/@b9g/crank/dom?module";
+import {jsx, renderer} from "https://unpkg.com/@b9g/crank/standalone?module";
 
 renderer.render(
-  <div id="hello">
-    Running on <a href="https://unpkg.com">unpkg.com</a>
-  </div>,
+  jsx`
+    <div id="hello">
+      Running on <a href="https://unpkg.com">unpkg.com</a>
+    </div>
+  `,
   document.body,
 );
 ```
