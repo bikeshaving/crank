@@ -267,7 +267,7 @@ renderer.render(<Timer />, document.body);
 ### Reason #3: It’s promise-friendly.
 
 Any component can be made asynchronous with the `async` keyword. This means you
-can await `fetch()` directly in a component, client or server.
+can await `fetch()` directly in any component, client or server.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";

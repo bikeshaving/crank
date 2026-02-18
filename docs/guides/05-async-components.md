@@ -37,7 +37,7 @@ Async components can be re-rendered while still pending. Crank enforces two rule
    while a run is pending, another call is enqueued with the updated props.
    ```jsx live
    import {Fragment} from "@b9g/crank";
-   import {renderer} from "@b9g/crank/dom";
+import {renderer} from "@b9g/crank/dom";
    // Global log state that the logger component can read
    const logState = {
      entries: [],
