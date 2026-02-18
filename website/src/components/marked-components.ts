@@ -1,8 +1,11 @@
 import {jsx} from "@b9g/crank/standalone";
 import {InlineCodeBlock} from "./inline-code-block.js";
 import {SerializeScript} from "./serialize-javascript.js";
+import {PartsOfJSX} from "./parts-of-jsx.js";
 
 export const components = {
+	PartsOfJSX,
+
 	codespan({token}: any) {
 		return jsx`<code class="inline">${token.text}</code>`;
 	},

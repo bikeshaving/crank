@@ -273,17 +273,9 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 		return jsx`<p>${children}</p>`;
 	},
 
-	html({token}) {
-		// TODO: Is this all that’s necessary?
-		const {text} = token as marked.Tokens.HTML;
-		return jsx`<${Raw} value=${text} />`;
-	},
-
-	// TODO: type: 'def';
-	// This token type does not seem to be used by marked.
-
-	// TODO: type: 'text' | 'html';
-	// This is for tag tokens, which might not be a thing.
+	// html tokens are handled by parseJSX in build(), not through the component
+	// system. PascalCase tags resolve against the components map; everything else
+	// passes through as Raw markup.
 
 	link({token, children}) {
 		const {href, title} = token as marked.Tokens.Link;
@@ -348,19 +340,29 @@ function build(
 ): Array<Element | string> {
 	const result: Array<Element | string> = [];
 	let jsxStack: Array<JSXStackFrame> = [];
+
+	// When the JSX stack is non-empty we're inside a component tag, so all
+	// output goes to the top frame's children instead of the result array.
+	function emit(...elements: Array<Element | string>) {
+		const target =
+			jsxStack.length > 0
+				? jsxStack[jsxStack.length - 1].children
+				: result;
+		target.push(...elements);
+	}
+
 	for (let i = 0; i < tokens.length; i++) {
 		let token = tokens[i];
 		let children: Array<Element | string> | undefined;
-		// TODO: Don’t hard-code the process of creating children?
 		switch (token.type) {
 			case "escape": {
-				result.push(decodeHTMLEntities(token.text));
+				emit(decodeHTMLEntities(token.text));
 				continue;
 			}
 
 			case "text": {
 				const tokens1 = (token as marked.Tokens.Text).tokens;
-				// Handling situations where “text” tokens have children for some reason
+				// Handling situations where "text" tokens have children for some reason
 				if (tokens1 && tokens1.length) {
 					if (blockLevel) {
 						for (; tokens[i + 1] && tokens[i + 1].type === "text"; i++) {
@@ -376,11 +378,11 @@ function build(
 						};
 						children = build(tokens1, rootProps);
 					} else {
-						result.push(...build(tokens1, rootProps));
+						emit(...build(tokens1, rootProps));
 						continue;
 					}
 				} else {
-					result.push(decodeHTMLEntities(token.text));
+					emit(decodeHTMLEntities(token.text));
 					continue;
 				}
 
@@ -389,8 +391,8 @@ function build(
 
 			case "html": {
 				let elements: Array<Element | string>;
-				[elements, jsxStack] = parseJSX(token.raw, jsxStack);
-				result.push(...elements);
+				[elements, jsxStack] = parseJSX(token.raw, jsxStack, rootProps);
+				emit(...elements);
 				continue;
 			}
 
@@ -461,7 +463,7 @@ function build(
 			throw new Error(`Unknown tag "${token.type}"`);
 		}
 
-		result.push(jsx`
+		emit(jsx`
 			<${Tag} token=${token} rootProps=${rootProps}>
 				${children}
 			<//Tag>
@@ -477,103 +479,88 @@ interface JSXStackFrame {
 	children: Array<Element | string>;
 }
 
-type JSXLexerMode = "none" | "open" | "props";
+function isComponentTag(name: string): boolean {
+	return /^[A-Z]/.test(name);
+}
 
-// I have to write a parser to handle HTML as JSX 😔
+function parseProps(attrs: string): Record<string, string | true> {
+	const props: Record<string, string | true> = {};
+	const re = /([\w-]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'))?/g;
+	let m;
+	while ((m = re.exec(attrs))) {
+		props[m[1]] = m[2] ?? m[3] ?? true;
+	}
+
+	return props;
+}
+
+// Parse HTML tokens as JSX, resolving PascalCase tags against the components
+// map. Regular HTML passes through as Raw. Component open tags push a stack
+// frame; the matching close tag pops and renders, with everything in between
+// collected as children (including non-html markdown tokens — see emit() in
+// build()).
 function parseJSX(
 	html: string,
 	stack: Array<JSXStackFrame>,
+	rootProps: BuildProps,
 ): [Array<Element | string>, Array<JSXStackFrame>] {
-	let mode: JSXLexerMode = "none";
-	let loop = 0;
-	for (let i = 0; i < html.length; ) {
-		let left = html.slice(i);
-		let match: RegExpMatchArray | null;
-		if ((match = left.match(/^\s+/))) {
-			// Dealing with whitespace.
-			i += match[0].length;
-		} else {
-			switch (mode) {
-				case "none": {
-					if ((match = left.match(/^<!--/))) {
-						// we assume comments aren’t split across several tokens
-						const closeMatch = left.slice(i + match[0].length).match("-->");
-						if (closeMatch) {
-							// Not really sure why RegExpMatchArray.index could possibly be
-							// `undefined`.
-							i +=
-								match[0].length +
-								(closeMatch.index || 0) +
-								closeMatch[0].length;
+	const results: Array<Element | string> = [];
+	let m: RegExpMatchArray | null;
 
-							// TODO: Emit comments maybe.
-						}
-					}
-					if (left[0] === "<") {
-						mode = "open";
-						i++;
-					} else if ((match = left.match(/[^<>]/))) {
-						// Add the raw text as children
-						i += match[0].length;
-					} else {
-						throw new Error("TODO");
-					}
-
-					break;
-				}
-
-				case "open": {
-					let closing = false;
-					if (left[0] === "/") {
-						closing = true;
-						i++;
-						left = left.slice(1);
-					}
-
-					if ((match = left.match(/^\w+/))) {
-						const tag = match[0];
-						i += tag.length;
-						mode = "props";
-						if (closing) {
-							//if (tags[tags.length - 1] !== tag) {
-							//	console.error({tag, tags});
-							//	throw new Error("Tag mismatch");
-							//}
-							//console.log(["POPPING TAG", tag]);
-						} else {
-							//console.log(["PUSHING TAG", tag]);
-						}
-					}
-
-					break;
-				}
-
-				case "props": {
-					if (left[0] === ">") {
-						mode = "none";
-						i++;
-					} else if ((match = left.match(/^(\w+)(?:\s*=\s*('|")(\w+)\2)?/))) {
-						// second match group is for attr quotes
-						//const [, key, , value] = match;
-						//console.log({key, value, match});
-						i += match[0].length;
-					} else {
-						throw new Error(`Unexpected character: ${left[0] || "EOF"}`);
-					}
-
-					break;
-				}
-			}
+	// Self-closing tag: <Foo /> or <Foo prop="val" />
+	m = html.match(
+		/^\s*<(\w+)((?:\s+[\w-]+(?:\s*=\s*(?:"[^"]*"|'[^']*'))?)*)\s*\/>\s*$/s,
+	);
+	if (m) {
+		const [, tagName, attrs] = m;
+		if (isComponentTag(tagName) && rootProps.components?.[tagName]) {
+			const Tag = rootProps.components[tagName];
+			const token = {type: tagName, raw: html, ...parseProps(attrs || "")};
+			results.push(
+				jsx`<${Tag} token=${token} rootProps=${rootProps} />`,
+			);
+			return [results, stack];
 		}
 
-		loop++;
-
-		if (loop >= 100) {
-			throw new Error(`Non-terminating input: ${JSON.stringify(left)}`);
-		}
+		return [[jsx`<${Raw} value=${html} />`], stack];
 	}
 
-	return [[], stack];
+	// Opening tag: <Foo> or <Foo prop="val">
+	m = html.match(
+		/^\s*<(\w+)((?:\s+[\w-]+(?:\s*=\s*(?:"[^"]*"|'[^']*'))?)*)\s*>\s*$/s,
+	);
+	if (m) {
+		const [, tagName, attrs] = m;
+		if (isComponentTag(tagName) && rootProps.components?.[tagName]) {
+			return [
+				results,
+				[...stack, {tagName, props: parseProps(attrs || ""), children: []}],
+			];
+		}
+
+		return [[jsx`<${Raw} value=${html} />`], stack];
+	}
+
+	// Closing tag: </Foo>
+	m = html.match(/^\s*<\/(\w+)\s*>\s*$/s);
+	if (m) {
+		const tagName = m[1];
+		if (stack.length > 0 && stack[stack.length - 1].tagName === tagName) {
+			const frame = stack[stack.length - 1];
+			stack = stack.slice(0, -1);
+			const Tag = rootProps.components![tagName]!;
+			const token = {type: tagName, raw: html, ...frame.props};
+			results.push(
+				jsx`<${Tag} token=${token} rootProps=${rootProps}>${frame.children}<//Tag>`,
+			);
+			return [results, stack];
+		}
+
+		return [[jsx`<${Raw} value=${html} />`], stack];
+	}
+
+	// Fallback: pass through as raw HTML.
+	return [[jsx`<${Raw} value=${html} />`], stack];
 }
 
 export interface MarkedProps {
@@ -598,20 +585,3 @@ export function Marked({markdown, ...props}: MarkedProps) {
 
 	return build(tokens, props, true);
 }
-
-/* Scratchpad
-import {renderer} from "@b9g/crank/html";
-const test1 = "<div>Hello world</div>";
-const test2 = "<div>\n\nHello *world*</div>";
-const test3 = '<poop type="4">*uhhhh*</poop>';
-const test4 = '<div class="hey">Hello</div>';
-const test5 = '<span>`<hello>`</span>';
-const test6 = '<PartsOfJSX />';
-const test7 = '<b>Hello <i>World</i></b>';
-const test8 = "<div>Hello <span>World</span></div>";
-const test9 = "<span>Hello <span>World</span></span>";
-var fuck = false;
-fuck = true;
-console.log(renderer.render(jsx`<${Marked} markdown=${test1}/>`));
-fuck = false;
-*/
