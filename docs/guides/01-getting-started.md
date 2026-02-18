@@ -391,6 +391,3 @@ function Button({variant}: {variant: "primary" | "secondary"}) {
 // Extract Button's props type automatically
 type ButtonProps = ComponentProps<typeof Button>;
 ```
-
-These features maintain full backward compatibility while providing modern
-development patterns for building scalable applications.

@@ -109,7 +109,7 @@ console.log(html); // <div id="element">Hello world</div>
 
 ## The Parts of an Element
 
-![Image of a JSX element](/static/parts-of-jsx.svg)
+<PartsOfJSX />
 
 An element can be thought of as having three main parts: a *tag*, *props* and
 *children*. These roughly correspond to the syntax for HTML, and for the most
