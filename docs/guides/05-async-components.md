@@ -101,7 +101,7 @@ async function *AsyncCounter() {
     await new Promise((r) => setTimeout(r, 1000));
     yield (
       <button onclick={onclick}>
-        Button presed {count} time{count !== 1 && "s"}.
+        Button pressed {count} time{count !== 1 && "s"}.
       </button>
     );
   }

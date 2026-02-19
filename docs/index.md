@@ -105,7 +105,7 @@ import {jsx, renderer} from "@b9g/crank/standalone";
 function Star({cx, cy, r=50, ir, p=5, fill="red"}) {
   cx = parseFloat(cx);
   cy = parseFloat(cy);
-  r == parseFloat(r);
+  r = parseFloat(r);
   ir = ir == null ? r * 0.4 : parseFloat(ir);
   p = parseFloat(p);
   const points = [];
