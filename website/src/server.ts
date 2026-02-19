@@ -283,9 +283,10 @@ router.route("/spec").get(async () => {
 			headers: {"Content-Type": "text/html"},
 		});
 	} catch (error: any) {
-		const message = error?.code === "ENOENT"
-			? "bikeshed is not installed. Run: pipx install bikeshed && bikeshed update"
-			: error?.message ?? "Unknown error building spec";
+		const message =
+			error?.code === "ENOENT"
+				? "bikeshed is not installed. Run: pipx install bikeshed && bikeshed update"
+				: (error?.message ?? "Unknown error building spec");
 		return new Response(
 			`<pre style="padding:2rem;font-family:monospace">${message}</pre>`,
 			{status: 500, headers: {"Content-Type": "text/html"}},

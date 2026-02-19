@@ -19,7 +19,7 @@ For full explanations, see the [Components](/guides/components), [Lifecycles](/g
 
 ### Component Structure
 
-Use `for...of this` for component iteration. `while (true)` renders correctly but never sees prop updates, and a missed `yield` causes the page to hang:
+✅ **Do** use `for...of this` for component iteration. `while (true)` renders correctly but never sees prop updates, and a missed `yield` causes the page to hang:
 
 ```jsx
 // ❌ count is always the initial value
@@ -126,7 +126,7 @@ Group related mutations in a single callback rather than calling `refresh` multi
 
 **ESLint rule:** [`crank/prefer-refresh-callback`](https://github.com/bikeshaving/crank/blob/main/packages/eslint-plugin-crank/src/rules/prefer-refresh-callback.ts)
 
-❌ **Don't** call `refresh()` during execution or after unmount. It's a no-op in both cases and will emit warnings:
+❌ **Don’t** call `refresh()` during execution or after unmount. It’s a no-op in both cases and will emit warnings:
 
 ```jsx
 function *Example() {
@@ -231,9 +231,7 @@ function *Report({data}) {
 
 ### Keys and Rendering Control
 
-Crank matches elements by position in the tree. When the same component appears at the same position with different data, its generator state is reused by default. Keys give you explicit control over when state should be kept and when it should be thrown away.
-
-Use a key tied to data identity to prevent stale state from bleeding across unrelated data. When a `<UserProfile>` switches from one user to another without a key, generator state from the first user persists. When the key changes, Crank destroys the old component and creates a fresh one:
+✅ **Do** use keys to control component identity. Crank matches elements by position, so the same component at the same position reuses its generator state by default. Keys force a fresh component when data identity changes:
 
 ```jsx
 // ❌ stale state bleeds across users
@@ -499,7 +497,7 @@ This mirrors how the DOM works: children signal intent via events, parents decid
 
 ### Yield vs Return
 
-Use `yield` for normal renders. `return` inside a generator loop terminates it and restarts from scratch on the next update, losing all local state. Reserve `return` for a final value when the component is intentionally done:
+✅ **Do** use `yield` for normal renders. `return` inside a generator loop terminates it and restarts from scratch on the next update, losing all local state. Reserve `return` for a final value when the component is intentionally done:
 
 ```jsx
 // ❌ return restarts the generator
@@ -592,7 +590,7 @@ async function UserProfile({userId}) {
 React aliases like `className`, `htmlFor`, and `onClick` happen to work in Crank
 because they are writable DOM properties, but cranky code does not use them.
 
-Use standard HTML attribute names, not React aliases. They match the DOM and let you paste HTML directly into components:
+✅ **Do** use standard HTML attribute names, not React aliases. They match the DOM and let you paste HTML directly into components:
 
 ```jsx
 // ❌ React prop names

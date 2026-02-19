@@ -267,7 +267,9 @@ function BlogSection({posts}: {posts: Array<any>}) {
 								color: var(--highlight-color);
 								line-height: 1.3;
 							`}>${title}</h3>
-							${description && jsx`
+							${
+								description &&
+								jsx`
 								<p class=${css`
 									margin: 0;
 									color: var(--text-color);
@@ -275,7 +277,8 @@ function BlogSection({posts}: {posts: Array<any>}) {
 									line-height: 1.6;
 									font-size: 0.95rem;
 								`}>${description}</p>
-							`}
+							`
+							}
 						</a>
 					`;
 				})}
