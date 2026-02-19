@@ -2,6 +2,7 @@ import {jsx} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 
 import {Root} from "../components/root.js";
+import {BlogCard} from "../components/blog-card.js";
 
 interface ViewProps {
 	url: string;
@@ -69,90 +70,16 @@ export default async function BlogHome({url}: ViewProps) {
 					${posts.map((post, index) => {
 						const {title, publishDate, author, description} = post.attributes;
 						const readTime = estimateReadTime(post.body);
-						const publishDateDisplay =
-							publishDate &&
-							publishDate.toLocaleString("en-US", {
-								month: "short",
-								day: "numeric",
-								year: "numeric",
-								timeZone: "UTC",
-							});
-
-						const isFirst = index === 0;
-
 						return jsx`
-							<a
+							<${BlogCard}
 								href=${post.url}
-								class=${css`
-									display: block;
-									text-decoration: none;
-									color: inherit;
-									border: 1px solid var(--text-color);
-									border-radius: 4px;
-									padding: 1.5rem;
-									transition: all 0.2s ease;
-									background: var(--bg-color);
-
-									&:hover {
-										border-color: var(--highlight-color);
-										transform: translateY(-2px);
-										box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-									}
-
-									@media (min-width: 700px) {
-										padding: 2rem;
-										${isFirst ? "grid-column: 1 / -1;" : ""}
-									}
-								`}
-							>
-								<div class=${css`
-									display: flex;
-									flex-wrap: wrap;
-									gap: 0.5rem;
-									align-items: center;
-									margin-bottom: 0.75rem;
-									font-size: 0.85rem;
-									color: var(--text-color);
-									opacity: 0.7;
-								`}>
-									${publishDateDisplay && jsx`<span>${publishDateDisplay}</span>`}
-									${publishDateDisplay && jsx`<span style="opacity: 0.5">/</span>`}
-									<span>${readTime} min read</span>
-								</div>
-								<h2 class=${css`
-									font-size: ${isFirst ? "1.75rem" : "1.35rem"};
-									margin: 0 0 0.75rem;
-									color: var(--highlight-color);
-									line-height: 1.3;
-
-									@media (min-width: 700px) {
-										font-size: ${isFirst ? "2rem" : "1.5rem"};
-									}
-								`}>${title}</h2>
-								${
-									description &&
-									jsx`
-									<p class=${css`
-										margin: 0;
-										color: var(--text-color);
-										opacity: 0.85;
-										line-height: 1.6;
-										font-size: ${isFirst ? "1.05rem" : "0.95rem"};
-									`}>${description}</p>
-								`
-								}
-								${
-									author &&
-									jsx`
-									<p class=${css`
-										margin: 1rem 0 0;
-										font-size: 0.85rem;
-										color: var(--text-color);
-										opacity: 0.6;
-									`}>By ${author}</p>
-								`
-								}
-							</a>
+								title=${title}
+								description=${description}
+								publishDate=${publishDate}
+								readTime=${readTime}
+								author=${author}
+								featured=${index === 0}
+							/>
 						`;
 					})}
 				</div>
