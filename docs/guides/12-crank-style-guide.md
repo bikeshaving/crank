@@ -15,6 +15,8 @@ Idiomatic Crank is code that leans on the language instead of fighting it. Here 
 
 For full explanations, see the [Components](/guides/components), [Lifecycles](/guides/lifecycles), and [Async Components](/guides/async-components) guides. The [`eslint-plugin-crank`](https://github.com/bikeshaving/crank/tree/main/packages/eslint-plugin-crank) package enforces many of these automatically.
 
+## Do’s and Don’ts
+
 ### Component Structure
 
 Use `for...of this` for component iteration. `while (true)` renders correctly but never sees prop updates, and a missed `yield` causes the page to hang:
@@ -70,7 +72,7 @@ function *Timer() {
 }
 ```
 
-Return `null` for intentionally empty output, never `undefined`:
+✅ **Do** return `null` for intentionally empty output, never `undefined`:
 
 ```jsx
 // ❌ implicit undefined return
@@ -124,13 +126,44 @@ Group related mutations in a single callback rather than calling `refresh` multi
 
 **ESLint rule:** [`crank/prefer-refresh-callback`](https://github.com/bikeshaving/crank/blob/main/packages/eslint-plugin-crank/src/rules/prefer-refresh-callback.ts)
 
-Note: `refresh()` during execution (while `this.isExecuting` is `true`) or after unmount is a no-op. In practice this rarely comes up; event handlers fire asynchronously after rendering.
+❌ **Don't** call `refresh()` during execution or after unmount. It's a no-op in both cases and will emit warnings:
 
-There are no stale closures in Crank. Handlers close over `let` variables that are reassigned each iteration, so they always see current values. Inline event handlers are fine.
+```jsx
+function *Example() {
+  // ❌ refresh() during execution is a no-op
+  this.refresh();
+
+  for ({} of this) {
+    yield <div />;
+  }
+
+  // ❌ refresh() after unmount is a no-op
+  this.refresh();
+}
+```
+
+Check `this.isExecuting` or `this.isUnmounted` if you need to suppress the warnings.
+
+✅ **Do** use inline event handlers freely. There are no stale closures in Crank — handlers close over `let` variables that are reassigned each iteration, so they always see current values:
+
+```jsx
+function *Counter() {
+  let count = 0;
+
+  for ({} of this) {
+    // ✅ always sees current count — no stale closure
+    yield (
+      <button onclick={() => this.refresh(() => count++)}>
+        Count: {count}
+      </button>
+    );
+  }
+}
+```
 
 ### Props
 
-❌ **Don’t** destructure props in the parameter but skip the `for...of` binding. `name` below is captured once and never updated:
+❌ **Don’t** destructure props in the parameter but skip in the `for...of` binding. `name` below is captured once and never updated:
 
 ```jsx
 function *Greeting({name = "World"}) {
