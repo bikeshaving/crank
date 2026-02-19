@@ -71,7 +71,8 @@ Handles:
 - Boolean attributes
 - Custom attributes with `attr:` prefix
 - Properties with `prop:` prefix
-- innerHTML prop
+- `innerHTML` and `dangerouslySetInnerHTML` props
+- `htmlFor` prop (mapped to `for` attribute)
 
 ### arrange()
 

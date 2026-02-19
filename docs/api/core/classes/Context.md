@@ -11,21 +11,14 @@ The context object passed to component functions, providing access to props, lif
 
 ## Syntax
 
-```ts
-class Context<T = any, TResult = any> extends EventTarget {
-  readonly props: T;
-  readonly isExecuting: boolean;
-  readonly isUnmounted: boolean;
+```tsx
+function *MyComponent({name}) {
+  // Access props, lifecycle, and iteration via `this`
+  this.cleanup(() => console.log("unmounted"));
 
-  refresh(callback?: () => unknown): Promise<TResult> | TResult;
-  schedule(callback?: (value: TResult) => unknown): Promise<TResult> | void;
-  after(callback?: (value: TResult) => unknown): Promise<TResult> | void;
-  cleanup(callback?: (value: TResult) => unknown): Promise<TResult> | void;
-  provide<K>(key: K, value: ProvisionMap[K]): void;
-  consume<K>(key: K): ProvisionMap[K];
-
-  [Symbol.iterator](): Generator<T>;
-  [Symbol.asyncIterator](): AsyncGenerator<T>;
+  for (const {name} of this) {
+    yield <div>Hello {name}</div>;
+  }
 }
 ```
 

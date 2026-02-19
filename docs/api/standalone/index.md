@@ -21,8 +21,10 @@ import {jsx, renderer} from "@b9g/crank/standalone";
 
 - [jsx](/api/standalone/functions/jsx) - Template tag for JSX-like syntax
 - [html](/api/standalone/functions/html) - Alias for jsx
-- `renderer` / `domRenderer` - DOM renderer (from `@b9g/crank/dom`)
-- `htmlRenderer` - HTML renderer (from `@b9g/crank/html`)
+- `renderer` / `domRenderer` - DOM renderer instance (from `@b9g/crank/dom`)
+- `DOMRenderer` - DOM renderer class (from `@b9g/crank/dom`)
+- `htmlRenderer` - HTML renderer instance (from `@b9g/crank/html`)
+- `HTMLRenderer` - HTML renderer class (from `@b9g/crank/html`)
 - All core exports from `@b9g/crank` (Fragment, Portal, Copy, Raw, Text, createElement, etc.)
 
 ## Quick start

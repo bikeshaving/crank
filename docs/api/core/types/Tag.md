@@ -32,11 +32,12 @@ Standard HTML or SVG element names like `"div"`, `"span"`, `"svg"`, etc. These a
 
 Built-in special tags that have special rendering behavior:
 
-- [Fragment](/api/core/components/Fragment) - Groups elements without a wrapper
 - [Portal](/api/core/components/Portal) - Renders into a different root
 - [Copy](/api/core/components/Copy) - Preserves previous content
 - [Text](/api/core/components/Text) - Explicit text nodes
 - [Raw](/api/core/components/Raw) - Raw HTML injection
+
+[Fragment](/api/core/components/Fragment) is also a special tag, but it is the empty string (`""`), not a symbol.
 
 ```tsx
 <Fragment>
@@ -76,8 +77,8 @@ function getTagName(tag: Tag): string {
   }
 }
 
-getTagName("div");      // "div"
-getTagName(Fragment);   // "crank.Fragment" (fragment is empty string actually)
+getTagName("div");       // "div"
+getTagName(Fragment);    // "" (Fragment is the empty string)
 getTagName(MyComponent); // "MyComponent"
 ```
 

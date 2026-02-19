@@ -38,7 +38,7 @@ An [Element](/api/core/classes/Element) object that can be rendered.
 `createElement` is the primary function for creating Crank elements. It is typically used as the JSX factory function when using a transpiler, but can also be called directly.
 
 The function handles several special behaviors:
-- Extracts special props (`key`, `ref`, `copy`) from the props object
+- Extracts special props (`key`, `ref`, `copy`, `hydrate`) from the props object
 - Assigns children to `props.children` (single child or array)
 - Handles deprecated prop prefixes and logs warnings
 

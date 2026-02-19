@@ -11,12 +11,12 @@ The fundamental building block of Crank applications. Elements are JavaScript ob
 
 ## Syntax
 
-```ts
-class Element<TTag extends Tag = Tag> {
-  tag: TTag;
-  props: TagProps<TTag>;
-  $$typeof: symbol;
-}
+```tsx
+import {createElement} from "@b9g/crank";
+
+const el = createElement("div", {class: "app"}, "Hello");
+el.tag;   // "div"
+el.props; // {class: "app", children: "Hello"}
 ```
 
 ## Constructor
