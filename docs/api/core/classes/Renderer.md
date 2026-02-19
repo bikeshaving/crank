@@ -11,27 +11,10 @@ The base class for creating renderers that convert Crank elements into target-sp
 
 ## Syntax
 
-```ts
-class Renderer<
-  TNode extends object,
-  TScope,
-  TRoot extends TNode | undefined = TNode,
-  TResult = ElementValue<TNode>
-> {
-  constructor(adapter: Partial<RenderAdapter<TNode, TScope, TRoot, TResult>>);
+```tsx
+import {renderer} from "@b9g/crank/dom";
 
-  render(
-    children: Children,
-    root?: TRoot,
-    bridge?: Context
-  ): Promise<TResult> | TResult;
-
-  hydrate(
-    children: Children,
-    root: TRoot,
-    bridge?: Context
-  ): Promise<TResult> | TResult;
-}
+renderer.render(<App />, document.getElementById("root"));
 ```
 
 ## Type parameters

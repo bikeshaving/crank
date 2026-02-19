@@ -11,22 +11,11 @@ A renderer for browser DOM environments.
 
 ## Syntax
 
-```ts
-class DOMRenderer extends Renderer<Node, string, Element> {
-  constructor();
+```tsx
+import {renderer} from "@b9g/crank/dom";
 
-  render(
-    children: Children,
-    root: Element,
-    ctx?: Context
-  ): Promise<ElementValue<Node>> | ElementValue<Node>;
-
-  hydrate(
-    children: Children,
-    root: Element,
-    ctx?: Context
-  ): Promise<ElementValue<Node>> | ElementValue<Node>;
-}
+renderer.render(<App />, document.getElementById("root"));
+renderer.hydrate(<App />, document.getElementById("root"));
 ```
 
 ## Constructor
@@ -83,7 +72,7 @@ DOMRenderer is the standard renderer for browser applications. It extends the ba
 - Manages event listeners
 - Supports hydration of server-rendered HTML
 
-The renderer validates that the root is a DOM element node and will throw if you pass the document, body, head, or documentElement directly (with a warning).
+The renderer validates that the root is a DOM element node and will throw a `TypeError` if the root is not an element node. It will also log a warning if you render into the document, body, head, or documentElement directly.
 
 ## Examples
 

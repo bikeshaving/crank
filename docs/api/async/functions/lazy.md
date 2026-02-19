@@ -12,9 +12,7 @@ Creates a lazy-loaded component that loads on first render.
 ## Syntax
 
 ```ts
-lazy<T extends Component>(
-  initializer: () => Promise<T | {default: T}>
-): T
+const MyComponent = lazy(() => import("./MyComponent"));
 ```
 
 ## Type parameters

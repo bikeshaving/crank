@@ -11,24 +11,19 @@ Interface for adapting the rendering process to a specific target environment.
 
 ## Syntax
 
-```ts
-interface RenderAdapter<
-  TNode,
-  TScope,
-  TRoot extends TNode | undefined = TNode,
-  TResult = ElementValue<TNode>
-> {
-  create(data: CreateData): TNode;
-  adopt(data: AdoptData): Array<TNode> | undefined;
-  text(data: TextData): TNode;
-  scope(data: ScopeData): TScope | undefined;
-  raw(data: RawData): ElementValue<TNode>;
-  patch(data: PatchData): void;
-  arrange(data: ArrangeData): void;
-  remove(data: RemoveData): void;
-  read(value: ElementValue<TNode>): TResult;
-  finalize(root: TRoot): void;
-}
+```tsx
+import {Renderer} from "@b9g/crank";
+import type {RenderAdapter} from "@b9g/crank";
+
+const adapter: Partial<RenderAdapter<MyNode, void>> = {
+  create({tag, props}) { /* return a new node */ },
+  text({value}) { /* return a text node */ },
+  patch({node, props, oldProps}) { /* update node properties */ },
+  arrange({node, children}) { /* arrange children in parent */ },
+  // ...
+};
+
+const renderer = new Renderer(adapter);
 ```
 
 ## Type parameters
@@ -151,6 +146,7 @@ arrange(data: {
   props: Record<string, any>;
   children: Array<TNode>;
   oldProps: Record<string, any> | undefined;
+  scope: TScope | undefined;
   root: TRoot | undefined;
 }): void
 ```

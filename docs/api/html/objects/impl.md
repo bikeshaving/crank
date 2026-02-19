@@ -12,7 +12,7 @@ The HTML render adapter implementation for string-based rendering.
 ## Syntax
 
 ```ts
-const impl: Partial<RenderAdapter<TextNode, undefined, TextNode, string>>
+const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>>
 ```
 
 ## Description
@@ -22,6 +22,19 @@ The `impl` object (short for "implementation") contains the adapter methods for 
 Unlike the DOM adapter which creates real nodes, the HTML adapter works with simple `TextNode` objects that hold string values. The final HTML is assembled by joining these strings.
 
 ## Implemented methods
+
+### scope()
+
+Computes the XML namespace scope for child elements.
+
+```ts
+scope({tag, props, scope}): string | undefined
+```
+
+- Returns `"http://www.w3.org/2000/svg"` for `<svg>` elements
+- Returns `"http://www.w3.org/1998/Math/MathML"` for `<math>` elements
+- Returns `undefined` (exits namespace) for `<foreignObject>` elements
+- Otherwise inherits the parent scope
 
 ### create()
 
@@ -70,7 +83,8 @@ The `arrange()` method handles these props specially:
 |------|----------|
 | `style` | Converts object to CSS string, or uses string directly |
 | `class` / `className` | Handles string or conditional object |
-| `innerHTML` | Uses value directly instead of children |
+| `innerHTML` / `dangerouslySetInnerHTML` | Uses value directly instead of children |
+| `htmlFor` | Rendered as `for` attribute |
 | Event handlers (`on*`) | Ignored (client-only) |
 | `prop:*` | Ignored (DOM properties only) |
 | `attr:*` | Renders as attribute without prefix |

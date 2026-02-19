@@ -11,16 +11,10 @@ A renderer that generates HTML strings from Crank elements.
 
 ## Syntax
 
-```ts
-class HTMLRenderer extends Renderer<TextNode, undefined, any, string> {
-  constructor();
+```tsx
+import {renderer} from "@b9g/crank/html";
 
-  render(
-    children: Children,
-    root?: any,
-    ctx?: Context
-  ): Promise<string> | string;
-}
+const html = await renderer.render(<App />);
 ```
 
 ## Constructor
