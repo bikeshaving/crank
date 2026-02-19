@@ -209,39 +209,33 @@ function *Form() {
 renderer.render(<Form />, document.body);
 ```
 
-If your component needs to update for other reasons, you can use the special
-`copy` prop to prevent the input element from updating. The `copy` prop is a
-boolean which prevents an element and children from rerendering.
+If your component re-renders for other reasons, the input's `value` prop would overwrite whatever the user typed. The `copy` prop prevents an element from re-rendering, so it keeps the user's input intact until you explicitly want to reset it.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
 function *Form() {
   let reset = false;
-  const onreset = () => this.refresh(() => reset = true);
-
+  let status = "";
   const onsubmit = (ev) => {
-    reset = true;
     ev.preventDefault();
+    const data = new FormData(ev.target);
+    this.refresh(() => {
+      reset = true;
+      status = `Saved: ${data.get("name")}`;
+    });
   };
 
-  let seconds = 0;
-  const interval = setInterval(() => this.refresh(() => {
-    reset = false;
-    seconds++;
-  }), 1000);
   for ({} of this) {
     yield (
       <form onsubmit={onsubmit}>
-        <input type="text" value="" copy={!reset} />
-        <p>
-          <button onclick={onreset}>Reset</button>
-        </p>
-        <p>Time elapsed: {seconds} second{seconds !== 1 && "s"}</p>
+        <input name="name" type="text" value="" copy={!reset} />
+        <button type="submit">Save</button>
+        {status && <p>{status}</p>}
       </form>
     );
-  }
 
-  clearInterval(interval);
+    reset = false;
+  }
 }
 
 renderer.render(<Form />, document.body);

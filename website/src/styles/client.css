@@ -133,6 +133,17 @@ h1, h2, h3 {
 	color: var(--highlight-color);
 }
 
+:is(h1, h2, h3, h4, h5, h6) code {
+	color: inherit;
+	font-size: 0.9em;
+	background: rgba(218, 165, 32, 0.1);
+}
+
+.color-scheme-light :is(h1, h2, h3, h4, h5, h6) code {
+	background: rgba(218, 165, 32, 0.15);
+}
+
+
 blockquote {
 	border-left: 2px solid var(--highlight-color);
 	margin: 1.5em 0;
