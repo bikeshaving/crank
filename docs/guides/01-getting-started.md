@@ -80,17 +80,17 @@ configurations](#common-tool-configurations) section below for specific setup
 instructions.
 
 ## Using CDNs
-Crank is also available on CDNs like [unpkg](https://unpkg.com)
-(https://unpkg.com/@b9g/crank?module) and [esm.sh](https://esm.sh)
+Crank is also available on CDNs like [jsDelivr](https://www.jsdelivr.com)
+(https://cdn.jsdelivr.net/npm/@b9g/crank/) and [esm.sh](https://esm.sh)
 (https://esm.sh/@b9g/crank) for usage in ESM-ready environments.
 
 ```jsx live notoggle
-import {jsx, renderer} from "https://unpkg.com/@b9g/crank/standalone?module";
+import {jsx, renderer} from "https://cdn.jsdelivr.net/npm/@b9g/crank/standalone.js";
 
 renderer.render(
   jsx`
     <div id="hello">
-      Running on <a href="https://unpkg.com">unpkg.com</a>
+      Running on <a href="https://www.jsdelivr.com">jsDelivr</a>
     </div>
   `,
   document.body,
