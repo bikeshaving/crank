@@ -14,11 +14,11 @@ you can edit directly.
 
 ## Create a Project
 
-To start a real project, use `create-crank` to scaffold a full server-rendered
-app powered by [Shovel.js](https://github.com/bikeshaving/shovel):
+To start a real project, use `create-crank` to scaffold a full SSR or SSG app
+powered by [Shovel.js](https://github.com/bikeshaving/shovel):
 
 ```shell
-npm create crank my-app
+npm create crank
 ```
 
 This gives you a working project with SSR, explicit routing, and a dev server
@@ -104,25 +104,13 @@ The following is an incomplete list of configurations to get started with Crank.
 
 TypeScript is a typed superset of JavaScript.
 
-Here’s the configuration you will need to set up automatic JSX transpilation.
+Here’s the configuration you will need to set up JSX transpilation.
 
 ```tsconfig.json
 {
   "compilerOptions": {
     "jsx": "react-jsx",
     "jsxImportSource": "@b9g/crank"
-  }
-}
-```
-
-The classic transform is supported as well.
-
-```tsconfig.json
-{
-  "compilerOptions": {
-    "jsx": "react",
-    "jsxFactory": "createElement",
-    "jsxFragmentFactory": "Fragment"
   }
 }
 ```
@@ -148,7 +136,6 @@ Babel is a popular open-source JavaScript compiler which allows you to write cod
 
 Here is how to get Babel to transpile JSX for Crank.
 
-Automatic transform:
 ```.babelrc.json
 {
   "plugins": [
@@ -158,26 +145,6 @@ Automatic transform:
       {
         "runtime": "automatic",
         "importSource": "@b9g/crank",
-
-        "throwIfNamespace": false,
-        "useSpread": true
-      }
-    ]
-  ]
-}
-```
-
-Classic transform:
-```.babelrc.json
-{
-  "plugins": [
-    "@babel/plugin-syntax-jsx",
-    [
-      "@babel/plugin-transform-react-jsx",
-      {
-        "runtime": "class",
-        "pragma": "createElement",
-        "pragmaFrag": "''",
 
         "throwIfNamespace": false,
         "useSpread": true

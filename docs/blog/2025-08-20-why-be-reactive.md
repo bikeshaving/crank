@@ -309,7 +309,7 @@ The thing I want to focus on is that any reactive abstraction which uses effects
 
 This component immediately blows the stack because we’re both reading to and writing to the same `$state()` rune in an `$effect()` rune callback, so the callback keeps firing.
 
-[Reactivity proponents often wax poetic about reactivity making programming like using spreadsheets](https://www.youtube.com/watch?v=AdNJ3fydeao), where each cell can update and cause other computed cells to update. This just betrays the fact that these programmers have never had to update an excel file in anger. Spreadsheets with many computed cells often suffer from issues like slow-loading, and messy ones might fail to open at all.
+[Reactivity proponents often wax poetic](https://www.youtube.com/watch?v=AdNJ3fydeao) about reactivity making programming like using spreadsheets, where each cell can update and cause other computed cells to update. This just betrays the fact that these programmers have never had to update an Excel file in anger. Spreadsheets with many computed cells often suffer from issues like slow-loading, and messy ones might fail to open at all.
 
 All “effect” callback APIs suffer from the possibility that a write causes another read, and therefore an infinite loop. Just like Excel, Svelte provides sophisticated heuristics and tricks to prevent infinite loops for most cases, but these crashes can still happen.
 

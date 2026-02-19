@@ -131,6 +131,10 @@ function Stars({width, height}) {
       height=${height}
       style="border: 1px solid currentcolor"
     >
+      <!--
+        Refactoring this to be less repetitive has been left
+        as an exercise for the reader.
+      -->
       <${Star} p=${points} cx="70" cy="70" r="50" fill="red" />
       <${Star} p=${points} cx="80" cy="80" r="50" fill="orange" />
       <${Star} p=${points} cx="90" cy="90" r="50" fill="yellow" />
