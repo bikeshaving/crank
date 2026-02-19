@@ -178,15 +178,14 @@ For these DOM-specific timings, Crank provides the `ref` prop and three lifecycl
 
 ### Ref: Capture a Host Element
 
-The `ref` prop accepts a callback that receives the underlying DOM node. It fires once on first commit, after the element and its children are created but **before insertion into the parent**. Use it to capture a reference for later use:
+The `ref` prop accepts a callback that receives the underlying DOM node. It fires once on first commit, after the element and its children are created but **before insertion into the parent**. Use it to store a reference to a host element for later use:
 
 ```jsx
-function *AutoFocusInput() {
-  let input = null;
-  this.after(() => input && input.focus());
+function *Canvas() {
+  let canvas = null;
 
   for ({} of this) {
-    yield <input ref={(el) => input = el} />;
+    yield <canvas ref={(el) => canvas = el} width="300" height="150" />;
   }
 }
 ```
@@ -201,13 +200,13 @@ function MyInput({ref, class: cls, ...props}) {
 
 ### Schedule: DOM Created but Not Inserted
 
-**`schedule(callback)`** runs immediately after DOM nodes are created, but **before they’re inserted into the document**. Useful for immediate DOM setup that doesn’t require the element to be live in the document tree.
+**`schedule(callback)`** runs after DOM nodes are created, but **before they’re inserted into the document**. The callback receives the element value. This is the right time to set up properties or styles before the user sees the element, or to trigger an immediate re-render.
 
 ```jsx
-function *Component() {
+function *FadeIn() {
   this.schedule((el) => {
-    // Element exists but is NOT in the document yet
-    el.style.opacity = '0';
+    // Element exists but is NOT in the document yet — no flicker
+    el.style.opacity = ‘0’;
   });
 
   for ({} of this) {
@@ -218,18 +217,15 @@ function *Component() {
 
 ### After: DOM Inserted and Live
 
-**`after(callback)`** runs after the element is fully rendered and live in the DOM. This is where you’d do things like focusing inputs, measuring elements, or triggering animations that require the element to be visible.
+**`after(callback)`** runs after the element is inserted and live in the DOM. The callback receives the element value. This is where you focus inputs, measure layout, or trigger animations that require the element to be visible.
 
 ```jsx
-function *Component() {
-  this.after((el) => {
-    // Element is now live in the document
-    el.focus();
-    console.log('Element is live:', element.getBoundingClientRect());
-  });
+function *AutoFocusInput() {
+  let input = null;
+  this.after(() => input && input.focus());
 
   for ({} of this) {
-    yield <input type="text" />;
+    yield <input ref={(el) => input = el} />;
   }
 }
 ```
@@ -438,7 +434,7 @@ function *ProgressiveComponent() {
 function *ResponsiveComponent() {
   let width = 0;
 
-  this.schedule((element) => {
+  this.after((element) => {
     const newWidth = element.offsetWidth;
     if (width !== newWidth) {
       this.refresh(() => width = newWidth);
@@ -613,140 +609,6 @@ function *KeyboardListener() {
 renderer.render(<KeyboardListener />, document.body);
 ```
 
-## Async Mount and Unmount
-
-Starting in Crank 0.7, both mounting and unmounting can be asynchronous, enabling powerful patterns like coordinated animations, lazy loading, and complex initialization sequences.
-
-### Async Unmount
-
-You can make cleanup operations asynchronous by passing async functions to the `cleanup()` method. This is particularly useful for exit animations:
-
-```jsx live
-import {renderer} from "@b9g/crank/dom";
-
-function *FadeOutComponent() {
-  // Register async cleanup for smooth exit animation
-  this.cleanup(async (element) => {
-    element.style.transition = 'opacity 300ms ease-out';
-    element.style.opacity = '0';
-
-    // Wait for animation to complete before unmounting
-    await new Promise(resolve => setTimeout(resolve, 300));
-    console.log('Component faded out and unmounted');
-  });
-
-  for ({} of this) {
-    yield (
-      <div style={{
-        padding: '20px',
-        background: '#007bff',
-        color: 'white',
-        'border-radius': '4px',
-        opacity: '1'
-      }}>
-        I will fade out when unmounted!
-      </div>
-    );
-  }
-}
-
-function *App() {
-  let showComponent = true;
-  const toggle = () => this.refresh(() => showComponent = !showComponent);
-
-  for ({} of this) {
-    yield (
-      <div>
-        <button onclick={toggle}>
-          {showComponent ? 'Hide' : 'Show'} Component
-        </button>
-        {showComponent && <FadeOutComponent />}
-      </div>
-    );
-  }
-}
-
-renderer.render(<App />, document.body);
-```
-
-You can coordinate staggered animations across siblings by passing different delay values to child components’ `cleanup()` callbacks.
-
-### Async Mount
-
-The `schedule()` method can also be asynchronous, allowing components to defer their initial mounting:
-
-```jsx
-function *LazyLoadComponent({src}) {
-  // Async mounting - component waits until image loads
-  this.schedule(async (img) => {
-    return new Promise((resolve, reject) => {
-      img.onload = resolve;
-      img.onerror = reject;
-    });
-  });
-
-  for ({src} of this) {
-    yield <img src={src} alt="Lazy loaded" />;
-  }
-}
-```
-
-### Complex Coordination
-
-Async mount and unmount enable sophisticated coordination patterns:
-
-```jsx
-function *Modal({children, onClose}) {
-  // Async mount: slide in from top
-  this.schedule(async (modal) => {
-    modal.style.transform = 'translateY(-100%)';
-    modal.style.transition = 'transform 200ms ease-out';
-
-    // Force reflow, then animate in
-    modal.offsetHeight;
-    modal.style.transform = 'translateY(0)';
-
-    await new Promise(resolve => setTimeout(resolve, 200));
-  });
-
-  // Async unmount: slide out to top
-  this.cleanup(async (modal) => {
-    modal.style.transform = 'translateY(-100%)';
-    await new Promise(resolve => setTimeout(resolve, 200));
-  });
-
-  for ({children, onClose} of this) {
-    yield (
-      <div style={{
-        position: 'fixed',
-        top: '0',
-        left: '0',
-        right: '0',
-        bottom: '0',
-        background: 'rgba(0,0,0,0.5)',
-        display: 'flex',
-        'align-items': 'center',
-        'justify-content': 'center'
-      }}>
-        <div style={{
-          background: 'white',
-          color: '#333',
-          padding: '2rem',
-          'border-radius': '8px',
-          'max-width': '500px',
-          width: '90%'
-        }}>
-          {children}
-          <button onclick={onClose} style={{'margin-top': '1rem'}}>
-            Close
-          </button>
-        </div>
-      </div>
-    );
-  }
-}
-```
-
 ## Catching Errors
 
 It can be useful to catch errors thrown by components to show the user an error notification or to notify error-logging services. To facilitate this, Crank will cause `yield` expressions to rethrow errors which happen when rendering children. You can take advantage of this behavior by wrapping your `yield` operations in a `try` / `catch` block to catch errors caused by children.
@@ -760,7 +622,7 @@ function *Thrower({shouldThrow}) {
       throw new Error("Component error triggered!");
     }
 
-    yield <div style={{color: 'green'}}>✅ Component working fine</div>;
+    yield <div style={{color: 'green'}}>Component working fine</div>;
   }
 }
 
@@ -780,7 +642,7 @@ function *ErrorDemo() {
      } catch (err) {
        yield (
          <div style={{color: 'red', border: '1px solid red', padding: '10px', 'border-radius': '4px'}}>
-           <div>❌ Error: {err.message}</div>
+           <div>Error: {err.message}</div>
            <button onclick={() => this.refresh(() => shouldThrow = false)}>
              Reset Component
            </button>
@@ -799,18 +661,19 @@ When you return from a generator component, the returned value is rendered and t
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
-function *Component() {
-  yield <div>1</div>;
-  yield <div>2</div>;
-  return <div>3</div>;
+function *Countdown() {
+  yield <div>3…</div>;
+  yield <div>2…</div>;
+  yield <div>1…</div>;
+  return <div>Done!</div>;
 }
 
 function *App() {
   for ({} of this) {
     yield (
       <div>
-        <Component />
-        <button onclick={() => this.refresh()}>Refresh</button>
+        <Countdown />
+        <button onclick={() => this.refresh()}>Next</button>
       </div>
     );
   }

@@ -7,7 +7,7 @@ The key thesis behind Crank is that JavaScript already has all the primitives yo
 
 1. **Use the language.** Write vanilla JavaScript. Variables are state, control flow is lifecycle, `fetch()` does data fetching.
 2. **Match the platform.** Prefer props like `class`, `for`, `onclick`, `innerHTML`. Use DOM names and conventions.
-3. **Own the execution.** Avoid unnecessary reactive abstractions. Understanding the execution of components is your job and `this.refresh(() => ...)` makes it legible.
+3. **Own the execution.** Avoid unnecessary reactive abstractions. Understanding the execution of components is your job, and `this.refresh(() => ...)` makes it legible.
 4. **Compose uniformly.** A component should resemble built-in elements: props in, events out.
 
 For full explanations, see the [Components](/guides/components), [Lifecycles](/guides/lifecycles), and [Async Components](/guides/async-components) guides. Many of the conventions described in this document can be fixed automatically through the [`eslint-plugin-crank`](https://github.com/bikeshaving/crank/tree/main/packages/eslint-plugin-crank) package.
@@ -25,7 +25,7 @@ function Greeting({name}) {
 }
 ```
 
-❌ **Don’t** use arrow functions for components. They can’t be generators and don’t have their own `this`, so they can’t access the component context:
+❌ **Don’t** use arrow functions for components. They can’t be generators and don’t have their own `this`, so they can’t be stateful or access the context via `this`:
 
 ```jsx
 // ❌ arrow functions can't be generators or access this
@@ -326,13 +326,16 @@ function *App() {
 ✅ **Do** use `dispatchEvent` in children and `addEventListener` in parents. Custom events bubble up the component tree, just like DOM events:
 
 ```jsx
+class TodoDeleteEvent extends CustomEvent {
+  constructor(id) {
+    super("tododelete", {bubbles: true, detail: {id}});
+  }
+}
+
 function *TodoItem({todo}) {
   const ondelete = () => {
     // ✅ events bubble — children dispatch, parents listen
-    this.dispatchEvent(new CustomEvent("tododelete", {
-      bubbles: true,
-      detail: {id: todo.id},
-    }));
+    this.dispatchEvent(new TodoDeleteEvent(todo.id));
   };
 
   for ({todo} of this) {
@@ -389,31 +392,28 @@ yield <UserProfile userId={userId} />;
 yield <UserProfile key={userId} userId={userId} />;
 ```
 
-❌ **Don’t** omit keys or key list items by array index. Without stable keys, Crank matches by position — reordering or filtering a list causes state to bleed between items:
+Positional matching (no keys) is often fine — it’s the default behavior, and keying by array index is equivalent to not keying at all. You only need stable keys when items can be reordered, filtered, or removed:
 
 ```jsx
-// ❌ no keys — removing an item shifts state to the wrong component
+// ✅ positional matching is fine for static lists
+yield <ul>{items.map((item) => <li>{item.name}</li>)}</ul>;
+
+// ❌ without stable keys, removing a todo shifts state to the wrong component
 yield <ul>{todos.map((t) => <TodoItem todo={t} />)}</ul>;
 
-// ❌ array index is equally unstable
-yield <ul>{todos.map((t, i) => <TodoItem key={i} todo={t} />)}</ul>;
-```
-
-✅ **Do** key list items by stable identity:
-
-```jsx
 // ✅ stable key — each component tracks its own item
 yield <ul>{todos.map((t) => <TodoItem key={t.id} todo={t} />)}</ul>;
 ```
 
-✅ **Do** use `&&` for conditional rendering. Falsy values like `false` and `null` preserve their slot in the children array, so siblings don’t shift positions:
+✅ **Do** use `&&`, `||`, and `??` for conditional rendering. The values `true`, `false`, `null`, and `undefined` all render as empty but preserve their slot in the children array, so siblings don’t shift positions:
 
 ```jsx
 // ✅ falsy values preserve their slot
 yield (
   <div>
     {showHeader && <Header />}
-    <Main />
+    {error || <Main />}
+    {customFooter ?? <DefaultFooter />}
   </div>
 );
 ```
@@ -472,7 +472,12 @@ function *Timer() {
   // ✅ try/finally for error safety
   try {
     for ({} of this) {
-      yield <p>{s}s</p>;
+      yield (
+        <div>
+          <p>{s}s</p>
+          <SomeChild />
+        </div>
+      );
     }
   } finally {
     clearInterval(id);
@@ -480,7 +485,7 @@ function *Timer() {
 }
 ```
 
-✅ **Do** use `this.cleanup()` when registering teardown from a helper function:
+✅ **Do** use `this.cleanup()` when registering teardown from a helper function, or when you want to colocate cleanup with the variable:
 
 ```jsx
 function createInterval(ctx, callback, delay) {
@@ -501,6 +506,28 @@ function *Timer() {
 ```
 
 **ESLint rule:** [`crank/require-cleanup-for-timers`](https://github.com/bikeshaving/crank/blob/main/packages/eslint-plugin-crank/src/rules/require-cleanup-for-timers.ts)
+
+✅ **Do** use `Symbol.dispose` and `Symbol.asyncDispose` with `using` declarations for automatic resource cleanup. Generator components are naturally compatible with the [Explicit Resource Management](https://github.com/tc39/proposal-explicit-resource-management) proposal:
+
+```jsx
+function *Component() {
+  using connection = openConnection();
+  // connection[Symbol.dispose]() is called automatically when the generator returns
+
+  for ({} of this) {
+    yield <div>{connection.status}</div>;
+  }
+}
+
+async function *AsyncComponent() {
+  await using stream = await openStream();
+  // stream[Symbol.asyncDispose]() is called automatically when the generator returns
+
+  for ({} of this) {
+    yield <div>{stream.status}</div>;
+  }
+}
+```
 
 ### DOM Access
 
@@ -567,41 +594,39 @@ async function UserProfile({userId}) {
 }
 ```
 
-✅ **Do** use an async generator with `for await...of` to race a loading indicator against async children:
+✅ **Do** use `Suspense` from `@b9g/crank/async` for loading states. It races a fallback against async children so you don't have to wire up the `for await...of` pattern yourself:
 
 ```jsx
-// ✅ async generator races loading against children
-async function *DataLoader({children}) {
-  for await ({children} of this) {
-    yield <div>Loading...</div>;
-    yield children;
-  }
+import {Suspense} from "@b9g/crank/async";
+
+// ✅ declarative loading state
+function App() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <UserProfile userId={userId} />
+    </Suspense>
+  );
 }
 ```
 
-✅ **Do** use `Suspense` and `lazy` from `@b9g/crank/async` for declarative loading states and code splitting. See the [Async Components guide](/guides/async-components) for details.
+See the [Async Components guide](/guides/async-components) for details on `Suspense`, `SuspenseList`, and `lazy`.
 
 ### Error Handling
 
-❌ **Don’t** reach for `try`/`catch` around `yield` as a first resort. It creates an error boundary that catches every failure in the child tree, including real bugs:
+✅ **Do** handle expected failures at the source rather than throwing:
 
 ```jsx
-function *Dashboard() {
-  for ({} of this) {
-    // ❌ error boundary catches everything, including bugs
-    try {
-      yield <MainContent />;
-    } catch (err) {
-      yield <div>Something went wrong</div>;
-    }
+// ❌ throwing for an expected condition
+async function UserProfile({userId}) {
+  const res = await fetch(`/api/users/${userId}`);
+  if (!res.ok) {
+    throw new Error("Could not load user");
   }
+  const user = await res.json();
+  return <div>{user.name}</div>;
 }
-```
 
-✅ **Do** handle errors at the source:
-
-```jsx
-// ✅ handle errors at the source
+// ✅ handle expected failures with control flow
 async function UserProfile({userId}) {
   const res = await fetch(`/api/users/${userId}`).catch(() => null);
   if (!res?.ok) {
@@ -707,9 +732,8 @@ function Price({amount}) {
 ```jsx
 import {Context} from "@b9g/crank";
 // ❌ global monkey-patching
-Context.prototype.setInterval = function (callback, delay) {
-  const id = window.setInterval(callback, delay);
-  this.cleanup(() => clearInterval(id));
+Context.prototype.log = function (message) {
+  console.log(`[${this.props.name}] ${message}`);
 };
 ```
 
@@ -873,6 +897,49 @@ function *Dashboard() {
         {tab === "overview" ? <Overview /> : <Settings />}
       </div>
     );
+  }
+}
+```
+
+✅ **Do** use `copy` with a prop selector string to leave specific props uncontrolled. The named props keep their previous values while everything else re-renders normally:
+
+```jsx
+function *Form() {
+  let reset = false;
+  const onsubmit = (ev) => {
+    ev.preventDefault();
+    this.refresh(() => reset = true);
+  };
+
+  for ({} of this) {
+    yield (
+      <form onsubmit={onsubmit}>
+        {/* ✅ value is only patched when reset is true */}
+        <input name="query" type="text" value="" copy={!reset && "value"} />
+        <button type="submit">Submit</button>
+      </form>
+    );
+
+    reset = false;
+  }
+}
+```
+
+✅ **Do** use `this.schedule(() => this.refresh())` to render a component twice in one pass. The first render produces intermediate output you can inspect, and the scheduled refresh immediately re-renders with the final result. This is useful on the server for extracting CSS from rendered HTML:
+
+```jsx
+function *Page({children}) {
+  for ({children} of this) {
+    this.schedule(() => this.refresh());
+    // First render — capture child HTML
+    const childrenHTML = yield children;
+    // Extract critical CSS from the rendered output
+    const {html, css} = extractCritical(childrenHTML);
+    // Second render — final page with inlined styles
+    yield <>
+      <style><Raw value={css} /></style>
+      <div><Raw value={html} /></div>
+    </>;
   }
 }
 ```
