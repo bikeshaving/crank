@@ -44,7 +44,8 @@ export function PartsOfJSX() {
 	const tagLS = tom + 25;
 	const tagLE = tagLS + 30;
 
-	const font = "ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace";
+	const font =
+		"ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, Consolas, monospace";
 
 	return jsx`
 		<svg

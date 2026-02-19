@@ -345,9 +345,7 @@ function build(
 	// output goes to the top frame's children instead of the result array.
 	function emit(...elements: Array<Element | string>) {
 		const target =
-			jsxStack.length > 0
-				? jsxStack[jsxStack.length - 1].children
-				: result;
+			jsxStack.length > 0 ? jsxStack[jsxStack.length - 1].children : result;
 		target.push(...elements);
 	}
 
@@ -516,9 +514,7 @@ function parseJSX(
 		if (isComponentTag(tagName) && rootProps.components?.[tagName]) {
 			const Tag = rootProps.components[tagName];
 			const token = {type: tagName, raw: html, ...parseProps(attrs || "")};
-			results.push(
-				jsx`<${Tag} token=${token} rootProps=${rootProps} />`,
-			);
+			results.push(jsx`<${Tag} token=${token} rootProps=${rootProps} />`);
 			return [results, stack];
 		}
 
