@@ -17,19 +17,17 @@ For full explanations, see the [Components](/guides/components), [Lifecycles](/g
 
 ### Component Structure
 
-❌ **Don’t** use `while (true)` for component iteration. The component renders correctly but never sees prop updates, and a missed `yield` causes the page to hang:
+Use `for...of this` for component iteration. `while (true)` renders correctly but never sees prop updates, and a missed `yield` causes the page to hang:
 
 ```jsx
+// ❌ count is always the initial value
 function *Counter({count}) {
   while (true) {
-    yield <div>{count}</div>; // count is always the initial value
+    yield <div>{count}</div>;
   }
 }
-```
 
-✅ **Do** iterate over the context with `for...of this`. It yields fresh props on each render and makes infinite loops impossible:
-
-```jsx
+// ✅ for...of yields fresh props each render
 function *Counter({count}) {
   for ({count} of this) {
     yield <div>{count}</div>;
@@ -37,7 +35,7 @@ function *Counter({count}) {
 }
 ```
 
-**ESLint rule:** `crank/prefer-props-iterator`
+**ESLint rule:** [`crank/prefer-props-iterator`](https://github.com/bikeshaving/crank/blob/main/packages/eslint-plugin-crank/src/rules/prefer-props-iterator.ts)
 
 ❌ **Don’t** put persistent state inside the loop. It resets on every render:
 
@@ -72,20 +70,17 @@ function *Timer() {
 }
 ```
 
-❌ **Don't** return `undefined` from a component, which is usually a mistake:
+Return `null` for intentionally empty output, never `undefined`:
 
 ```jsx
+// ❌ implicit undefined return
 function MaybeGreeting({name}) {
   if (name) {
     return <div>Hello {name}</div>;
   }
-  // implicit undefined return
 }
-```
 
-✅ **Do** return `null` for intentionally empty output:
-
-```jsx
+// ✅ explicit null
 function MaybeGreeting({name}) {
   if (name) {
     return <div>Hello {name}</div>;
@@ -127,7 +122,7 @@ function *Counter() {
 
 Group related mutations in a single callback rather than calling `refresh` multiple times.
 
-**ESLint rule:** `crank/prefer-refresh-callback`
+**ESLint rule:** [`crank/prefer-refresh-callback`](https://github.com/bikeshaving/crank/blob/main/packages/eslint-plugin-crank/src/rules/prefer-refresh-callback.ts)
 
 Note: `refresh()` during execution (while `this.isExecuting` is `true`) or after unmount is a no-op. In practice this rarely comes up; event handlers fire asynchronously after rendering.
 
@@ -166,7 +161,7 @@ function *Greeting({name = "World", formal = false}) {
 }
 ```
 
-**ESLint rule:** `crank/prop-destructuring-consistency`
+**ESLint rule:** [`crank/prop-destructuring-consistency`](https://github.com/bikeshaving/crank/blob/main/packages/eslint-plugin-crank/src/rules/prop-destructuring-consistency.ts)
 
 ### Derived Values
 
@@ -205,24 +200,14 @@ function *Report({data}) {
 
 Crank matches elements by position in the tree. When the same component appears at the same position with different data, its generator state is reused by default. Keys give you explicit control over when state should be kept and when it should be thrown away.
 
-❌ **Don’t** let stale component state bleed across unrelated data. If a `<UserProfile>` switches from one user to another, generator state from the first user persists (timers keep running, local variables keep their values):
+Use a key tied to data identity to prevent stale state from bleeding across unrelated data. When a `<UserProfile>` switches from one user to another without a key, generator state from the first user persists. When the key changes, Crank destroys the old component and creates a fresh one:
 
 ```jsx
-function *App({userId}) {
-  for ({userId} of this) {
-    yield <UserProfile userId={userId} />;
-  }
-}
-```
+// ❌ stale state bleeds across users
+yield <UserProfile userId={userId} />;
 
-✅ **Do** use a key tied to the data identity. When the key changes, Crank destroys the old component and creates a fresh one:
-
-```jsx
-function *App({userId}) {
-  for ({userId} of this) {
-    yield <UserProfile key={userId} userId={userId} />;
-  }
-}
+// ✅ key forces a fresh component
+yield <UserProfile key={userId} userId={userId} />;
 ```
 
 Keys are a rendering control mechanism, not list boilerplate. Use them whenever you want to force a fresh component: switching users, resetting forms, or swapping between views that should not share state.
@@ -383,7 +368,7 @@ function *Timer() {
 }
 ```
 
-**ESLint rule:** `crank/require-cleanup-for-timers`
+**ESLint rule:** [`crank/require-cleanup-for-timers`](https://github.com/bikeshaving/crank/blob/main/packages/eslint-plugin-crank/src/rules/require-cleanup-for-timers.ts)
 
 Note: `cleanup` callbacks persist across renders and fire once on unmount. `schedule` and `after` callbacks are one-shot; they must be re-registered inside the loop on each render.
 
@@ -481,19 +466,17 @@ This mirrors how the DOM works: children signal intent via events, parents decid
 
 ### Yield vs Return
 
-❌ **Don’t** use `return` inside a generator loop. It terminates the generator and restarts it from scratch on the next update, losing all local state:
+Use `yield` for normal renders. `return` inside a generator loop terminates it and restarts from scratch on the next update, losing all local state. Reserve `return` for a final value when the component is intentionally done:
 
 ```jsx
+// ❌ return restarts the generator
 function *Greeting({name}) {
   for ({name} of this) {
     return <div>Hello {name}</div>;
   }
 }
-```
 
-✅ **Do** use `yield` for normal renders. Reserve `return` for a final value when the component is intentionally done:
-
-```jsx
+// ✅ yield preserves state
 function *Greeting({name}) {
   for ({name} of this) {
     yield <div>Hello {name}</div>;
@@ -576,9 +559,10 @@ async function UserProfile({userId}) {
 React aliases like `className`, `htmlFor`, and `onClick` happen to work in Crank
 because they are writable DOM properties, but cranky code does not use them.
 
-❌ **Don’t** use React prop names:
+Use standard HTML attribute names, not React aliases. They match the DOM and let you paste HTML directly into components:
 
 ```jsx
+// ❌ React prop names
 function MyForm() {
   return (
     <div>
@@ -587,12 +571,8 @@ function MyForm() {
     </div>
   );
 }
-```
 
-✅ **Do** use standard HTML attribute names. They match the DOM and let you paste
-HTML directly into components:
-
-```jsx
+// ✅ standard HTML attributes
 function MyForm() {
   return (
     <div>
@@ -609,14 +589,14 @@ Crank uses `innerHTML` directly as a prop. There is no
 The same applies to SVG attributes — use the standard kebab-case names:
 
 ```jsx
-// Don't
+// ❌
 <circle strokeWidth="2" fillOpacity={0.5} />
 
-// Do
+// ✅
 <circle stroke-width="2" fill-opacity={0.5} />
 ```
 
-**ESLint rule:** `crank/no-react-svg-props`
+**ESLint rule:** [`crank/no-react-svg-props`](https://github.com/bikeshaving/crank/blob/main/packages/eslint-plugin-crank/src/rules/no-react-svg-props.ts)
 
 The `class` prop accepts objects for conditional classes, and the `style` prop accepts both strings and objects. See [Special Props and Components](/guides/special-props-and-components) for details.
 
