@@ -4,16 +4,14 @@ description: Conventions for writing cranky code. Covers component structure, st
 ---
 
 The key thesis of Crank is that JavaScript already has the primitives needed to build UIs.
-Code which follows the conventions of Crank can humorously be called *cranky*, as in “this file solves the problem in a cranky way. Very nice.”
+Code which follows the conventions of Crank can humorously be called *cranky*, as in “This file solves the problem in a cranky way. Very nice.” Idiomatic Crank is code that leans on the language instead of fighting it. The following are the four core principles behind cranky code:
 
-Idiomatic Crank is code that leans on the language instead of fighting it. Here are the core principles behind cranky code.
+1. **Use the language.** Write vanilla JavaScript. Variables are state, control flow is lifecycle, `fetch()` is data fetching.
+2. **Match the platform.** `class`, `for`, `onclick`, `innerHTML`. Use DOM’s names, not aliases, and adopt browser stylistic conventions.
+3. **Own the execution.** Avoid unnecessary reactivity. Understanding the execution of components is your job: `this.refresh(() => ...)` makes it legible.
+4. **Compose uniformly.** A component should resemble built-in elements: props in, events out.
 
-1. **Use the language.** Write vanilla JavaScript. Variables are state, control flow is lifecycle, `fetch()` is data fetching. Crank adds a thin rendering layer and gets out of the way.
-2. **Match the platform.** `class`, `for`, `onclick`, `innerHTML`. The DOM’s names, not aliases.
-3. **Own the execution.** You control when components re-render. There is no implicit reactivity. Understanding the execution of components is your job: `this.refresh(() => ...)` makes it legible.
-4. **Compose uniformly.** A component should look and behave like a built-in element: props in, events out. The abstraction boundary should resemble the platform’s.
-
-For full explanations, see the [Components](/guides/components), [Lifecycles](/guides/lifecycles), and [Async Components](/guides/async-components) guides. The [`eslint-plugin-crank`](https://github.com/bikeshaving/crank/tree/main/packages/eslint-plugin-crank) package enforces many of these automatically.
+For full explanations, see the [Components](/guides/components), [Lifecycles](/guides/lifecycles), and [Async Components](/guides/async-components) guides. Many of the conventions described in this document can be fixed automatically through the [`eslint-plugin-crank`](https://github.com/bikeshaving/crank/tree/main/packages/eslint-plugin-crank) package.
 
 ## Do’s and Don’ts
 
@@ -22,15 +20,15 @@ For full explanations, see the [Components](/guides/components), [Lifecycles](/g
 ✅ **Do** use `for...of this` for component iteration. `while (true)` renders correctly but never sees prop updates, and a missed `yield` causes the page to hang:
 
 ```jsx
-// ❌ count is always the initial value
 function *Counter({count}) {
+  // ❌ count is always the initial value
   while (true) {
     yield <div>{count}</div>;
   }
 }
 
-// ✅ for...of yields fresh props each render
 function *Counter({count}) {
+  // ✅ for...of yields fresh props each render
   for ({count} of this) {
     yield <div>{count}</div>;
   }
@@ -45,6 +43,7 @@ function *Counter({count}) {
 function *Timer() {
   const id = setInterval(() => this.refresh(), 1000);
   for ({} of this) {
+    // ❌ state inside the loop resets every render
     let seconds = 0; // reset to 0 every render
     seconds++;
     yield <p>{seconds}s</p>;
@@ -54,7 +53,7 @@ function *Timer() {
 }
 ```
 
-✅ **Do** use the three-region structure: setup before the loop, render inside it, cleanup after it:
+✅ **Do** use the three-region structure of generator components: setup before the loop, render inside it, cleanup after it:
 
 ```jsx
 function *Timer() {
@@ -82,11 +81,11 @@ function MaybeGreeting({name}) {
   }
 }
 
-// ✅ explicit null
 function MaybeGreeting({name}) {
   if (name) {
     return <div>Hello {name}</div>;
   }
+  // ✅ explicit null
   return null;
 }
 ```
@@ -99,6 +98,7 @@ function MaybeGreeting({name}) {
 function *Counter() {
   let count = 0;
   const onclick = () => {
+    // ❌ separate mutation and refresh
     count++;
     this.refresh();
   };
@@ -109,7 +109,7 @@ function *Counter() {
 }
 ```
 
-✅ **Do** use the `this.refresh(() => ...)` callback form. It runs the mutation and triggers a re-render atomically, so you cannot forget one without the other:
+✅ **Do** use the `this.refresh(() => ...)` callback form. It runs the mutation and triggers a re-render atomically, so you cannot forget one without the other. Group related mutations in a single callback rather than calling `refresh` multiple times:
 
 ```jsx
 function *Counter() {
@@ -120,9 +120,32 @@ function *Counter() {
     yield <button onclick={onclick}>Count: {count}</button>;
   }
 }
-```
 
-Group related mutations in a single callback rather than calling `refresh` multiple times.
+function *Form() {
+  let name = "";
+  let email = "";
+  const onsubmit = (ev) => {
+    ev.preventDefault();
+    const data = new FormData(ev.target);
+    // ✅ one refresh, multiple mutations
+    this.refresh(() => {
+      name = data.get("name");
+      email = data.get("email");
+    });
+  };
+
+  for ({} of this) {
+    yield (
+      <form onsubmit={onsubmit}>
+        <input name="name" value={name} />
+        <input name="email" value={email} />
+        <button type="submit">Save</button>
+        <p>{name} ({email})</p>
+      </form>
+    );
+  }
+}
+```
 
 **ESLint rule:** [`crank/prefer-refresh-callback`](https://github.com/bikeshaving/crank/blob/main/packages/eslint-plugin-crank/src/rules/prefer-refresh-callback.ts)
 
@@ -167,6 +190,7 @@ function *Counter() {
 
 ```jsx
 function *Greeting({name = "World"}) {
+  // ❌ props captured once, never updated
   for ({} of this) {
     yield <p>Hello, {name}</p>;
   }
@@ -177,6 +201,7 @@ function *Greeting({name = "World"}) {
 
 ```jsx
 function *Card({title, count}) {
+  // ❌ count stays stale
   for ({title} of this) {
     yield <div>{title}: {count}</div>;
   }
@@ -187,6 +212,7 @@ function *Card({title, count}) {
 
 ```jsx
 function *Greeting({name = "World", formal = false}) {
+  // ✅ all props destructured with matching defaults
   for ({name = "World", formal = false} of this) {
     const prefix = formal ? "Dear" : "Hello";
     yield <p>{prefix}, {name}</p>;
@@ -203,6 +229,7 @@ function *Greeting({name = "World", formal = false}) {
 ```jsx
 function *Report({data}) {
   for ({data} of this) {
+    // ❌ recomputes every render
     const summary = computeExpensiveSummary(data);
     yield <div>{summary}</div>;
   }
@@ -218,6 +245,7 @@ function *Report({data}) {
   let summary;
 
   for ({data} of this) {
+    // ✅ cached with manual comparison
     if (data !== oldData) {
       summary = computeExpensiveSummary(data);
     }
@@ -241,11 +269,29 @@ yield <UserProfile userId={userId} />;
 yield <UserProfile key={userId} userId={userId} />;
 ```
 
-Keys are a rendering control mechanism, not list boilerplate. Use them whenever you want to force a fresh component: switching users, resetting forms, or swapping between views that should not share state.
+✅ **Do** key list items by stable identity. Without keys, Crank matches by position — reordering or filtering a list causes state to bleed between items:
 
-Conditional rendering with `&&` is safe. Falsy values like `false` and `null` preserve their slot in the children array, so siblings do not shift positions.
+```jsx
+// ❌ positional matching — removing an item shifts state to the wrong component
+yield <ul>{todos.map((t) => <TodoItem todo={t} />)}</ul>;
 
-The parent controls which subtrees re-render. Use `copy` to preserve them:
+// ✅ stable key — each component tracks its own item
+yield <ul>{todos.map((t) => <TodoItem key={t.id} todo={t} />)}</ul>;
+```
+
+✅ **Do** use `&&` for conditional rendering. Falsy values like `false` and `null` preserve their slot in the children array, so siblings don't shift positions:
+
+```jsx
+// ✅ falsy values preserve their slot
+yield (
+  <div>
+    {showHeader && <Header />}
+    <Main />
+  </div>
+);
+```
+
+✅ **Do** use `copy` to preserve subtrees when the child doesn't need to re-render:
 
 ```jsx
 function *Dashboard() {
@@ -254,6 +300,7 @@ function *Dashboard() {
     yield (
       <div>
         <Tabs ontabchange={(ev) => this.refresh(() => tab = ev.detail)} />
+        {/* ✅ copy preserves subtrees */}
         <Sidebar copy />
         {tab === "overview" ? <Overview /> : <Settings />}
       </div>
@@ -271,6 +318,7 @@ function *App() {
   for ({} of this) {
     yield (
       <div>
+        {/* ❌ render props and functions-as-children */}
         <DataProvider render={(data) => <Chart data={data} />} />
         <MouseTracker>{(pos) => <Tooltip x={pos.x} y={pos.y} />}</MouseTracker>
       </div>
@@ -279,7 +327,7 @@ function *App() {
 }
 ```
 
-✅ **Do** accept `children` and render it in the element tree. For multiple insertion points, use named props as slots:
+✅ **Do** treat `children` as opaque — accept it and forward it into the element tree without inspecting or transforming it. For multiple insertion points, use named props as slots:
 
 ```jsx
 function Layout({header, sidebar, children}) {
@@ -287,6 +335,7 @@ function Layout({header, sidebar, children}) {
     <div class="layout">
       <header>{header}</header>
       <aside>{sidebar}</aside>
+      {/* ✅ children forwarded as opaque */}
       <main>{children}</main>
     </div>
   );
@@ -301,6 +350,7 @@ If a parent needs to pass dynamic data to its children, use [provisions](/guides
 
 ```jsx
 function *App({children}) {
+  // ❌ string keys risk collisions
   this.provide("theme", "dark");
   for ({children} of this) {
     yield children;
@@ -316,6 +366,7 @@ function Toolbar() {
 ✅ **Do** use symbols so provisions are private and collision-free:
 
 ```jsx
+// ✅ symbol keys are private
 const ThemeKey = Symbol("theme");
 
 function *ThemeProvider({theme, children}) {
@@ -331,7 +382,24 @@ function ThemedButton({children}) {
 }
 ```
 
-Note that consumers do not automatically re-render when a provided value changes. When the provider yields new children, descendants re-render naturally as part of the subtree update.
+✅ **Do** use provisions when siblings or distant descendants need shared data without prop drilling:
+
+```jsx
+// ✅ provisions for shared data without prop drilling
+const LocaleKey = Symbol("locale");
+
+function *App({locale, children}) {
+  for ({locale, children} of this) {
+    this.provide(LocaleKey, locale);
+    yield children;
+  }
+}
+
+function Price({amount}) {
+  const locale = this.consume(LocaleKey);
+  return <span>{amount.toLocaleString(locale)}</span>;
+}
+```
 
 ### Cleanup
 
@@ -340,6 +408,7 @@ Note that consumers do not automatically re-render when a provided value changes
 ```jsx
 function *Timer() {
   let s = 0;
+  // ❌ no cleanup — interval leaks
   setInterval(() => this.refresh(() => s++), 1000);
   for ({} of this) {
     yield <div>{s}</div>;
@@ -360,6 +429,7 @@ function *Timer() {
     yield <p>{s}s</p>;
   }
 
+  // ✅ post-loop cleanup
   clearInterval(id);
 }
 ```
@@ -370,6 +440,7 @@ function *Timer() {
 function *Timer() {
   let s = 0;
   const id = setInterval(() => this.refresh(() => s++), 1000);
+  // ✅ try/finally for error safety
   try {
     for ({} of this) {
       yield <p>{s}s</p>;
@@ -385,6 +456,7 @@ function *Timer() {
 ```jsx
 function createInterval(ctx, callback, delay) {
   const id = setInterval(callback, delay);
+  // ✅ this.cleanup() in a helper
   ctx.cleanup(() => clearInterval(id));
   return id;
 }
@@ -409,6 +481,7 @@ Note: `cleanup` callbacks persist across renders and fire once on unmount. `sche
 
 ```jsx
 function *AutoFocusInput() {
+  // ❌ schedule fires before element is in the document
   this.schedule((el) => el.focus()); // element is not in the document yet
 
   for ({} of this) {
@@ -422,6 +495,7 @@ function *AutoFocusInput() {
 ```jsx
 function *AutoFocusInput() {
   let input = null;
+  // ✅ ref + after() for live DOM access
   this.after(() => input && input.focus());
 
   for ({} of this) {
@@ -436,6 +510,7 @@ The `ref` callback fires once on the first commit for host elements (`<div>`, `<
 
 ```jsx
 function MyInput({ref, class: cls, ...props}) {
+  // ✅ forward ref to the root element
   return <input ref={ref} class={"my-input " + cls} {...props} />;
 }
 ```
@@ -452,6 +527,7 @@ function *App() {
   });
 
   for ({} of this) {
+    // ❌ callback props couple parent and child
     yield <TodoList todos={todos} ondelete={ondelete} />;
   }
 }
@@ -462,6 +538,7 @@ function *App() {
 ```jsx
 function *TodoItem({todo}) {
   const ondelete = () => {
+    // ✅ events bubble — children dispatch, parents listen
     this.dispatchEvent(new CustomEvent("tododelete", {
       bubbles: true,
       detail: {id: todo.id},
@@ -522,6 +599,7 @@ function *Greeting({name}) {
 ```jsx
 function *UserProfile({userId}) {
   let user = null;
+  // ❌ manual loading flags in a sync generator
   let loading = true;
   fetch(`/api/users/${userId}`)
     .then((res) => res.json())
@@ -536,6 +614,7 @@ function *UserProfile({userId}) {
 ✅ **Do** use an async function component for one-shot data fetching:
 
 ```jsx
+// ✅ async function for one-shot fetch
 async function UserProfile({userId}) {
   const res = await fetch(`/api/users/${userId}`);
   const user = await res.json();
@@ -546,6 +625,7 @@ async function UserProfile({userId}) {
 ✅ **Do** use an async generator with `for await...of` to race a loading indicator against async children:
 
 ```jsx
+// ✅ async generator races loading against children
 async function *DataLoader({children}) {
   for await ({children} of this) {
     yield <div>Loading...</div>;
@@ -563,6 +643,7 @@ For declarative loading states and code splitting, use `Suspense` and `lazy` fro
 ```jsx
 function *Dashboard() {
   for ({} of this) {
+    // ❌ error boundary catches everything, including bugs
     try {
       yield <MainContent />;
     } catch (err) {
@@ -575,6 +656,7 @@ function *Dashboard() {
 ✅ **Do** handle errors at the source:
 
 ```jsx
+// ✅ handle errors at the source
 async function UserProfile({userId}) {
   const res = await fetch(`/api/users/${userId}`).catch(() => null);
   if (!res?.ok) {
@@ -633,27 +715,21 @@ The `class` prop accepts objects for conditional classes, and the `style` prop a
 
 ### Reusable Logic
 
-❌ **Don’t** reach for higher-order components or global monkey-patching to share behavior between components:
+❌ **Don’t** extend `Context.prototype` to share behavior globally. It’s implicit, globally scoped, and can’t run setup logic:
 
 ```jsx
-function withInterval(Component) {
-  return function *Wrapped(props) {
-    let seconds = 0;
-    const id = setInterval(() => this.refresh(() => seconds++), 1000);
-    try {
-      for (props of this) {
-        yield <Component seconds={seconds} {...props} />;
-      }
-    } finally {
-      clearInterval(id);
-    }
-  };
-}
+import {Context} from "@b9g/crank";
+// ❌ global monkey-patching
+Context.prototype.setInterval = function (callback, delay) {
+  const id = window.setInterval(callback, delay);
+  this.cleanup(() => clearInterval(id));
+};
 ```
 
 ✅ **Do** write plain helper functions that accept a context. They compose, they’re explicit, and they’re just JavaScript:
 
 ```jsx
+// ✅ plain helper function
 function useInterval(ctx, callback, delay) {
   const id = setInterval(callback, delay);
   ctx.cleanup(() => clearInterval(id));
@@ -670,4 +746,4 @@ function *Timer() {
 }
 ```
 
-A `let` in a generator is state. `this.provide()` and `this.consume()` with symbol keys share it across a subtree. See [Reusable Logic](/guides/reusable-logic) for more patterns.
+Higher-order components and async iterators are also valid strategies: HOCs are useful when reusable logic needs to respond to prop updates, and async iterators are framework-agnostic. See [Reusable Logic](/guides/reusable-logic) for all four patterns with tradeoffs.
