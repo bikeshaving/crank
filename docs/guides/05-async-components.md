@@ -22,7 +22,7 @@ async function Definition({word}) {
   const {definition} = definitions[0];
   return <>
     <p>{word} <code>{phonetic}</code></p>
-    <p><b>{partOfSpeech}.</b> {definition}</p>
+    <p><b>{partOfSpeech}.</b>{" "}{definition}</p>
     {/*<pre>{JSON.stringify(data, null, 4)}</pre>*/}
   </>;
 }
@@ -31,140 +31,59 @@ async function Definition({word}) {
 await renderer.render(<Definition word="framework" />, document.body);
 ```
 
-### Concurrent Updates
-Async components can be re-rendered while still pending. Crank enforces two rules:
+Async components can be re-rendered while still pending. Crank enforces two rules to keep things predictable: queuing and racing.
 
-1. There can be only one pending run of an async component at a time for an
-   element in the tree. If the same async component is rerendered concurrently
-   while a run is pending, another call is enqueued with the updated props.
-   ```jsx live
-   import {Fragment} from "@b9g/crank";
+### Queuing
+
+There can only be one pending run of an async component at a time for a given element in the tree. If the same async component is rerendered concurrently while a run is pending, another call is enqueued with the updated props.
+
+In the following demo, four renders are fired in quick succession. Notice that **Run 3 is skipped** — by the time Run 2 completes, Run 3’s props are already obsolete, so only Run 4 executes. This keeps async components up-to-date without excess calls.
+
+```jsx live
 import {renderer} from "@b9g/crank/dom";
-   // Global log state that the logger component can read
-   const logState = {
-     entries: [],
-     listeners: new Set()
-   };
 
-   function addLogEntry(entry) {
-     logState.entries.push(entry);
-     // Notify all logger components to re-render
-     logState.listeners.forEach(refresh => refresh());
-   }
+async function Delay({message}) {
+  await new Promise((r) => setTimeout(r, 1000));
+  return <div>{message}</div>;
+}
 
-   function *RenderLogger() {
-     // Subscribe to log updates
-     const refreshHandler = () => this.refresh();
-     logState.listeners.add(refreshHandler);
+const root = document.body.appendChild(document.createElement("div"));
 
-     for ({} of this) {
-       yield (
-         <div style="margin: 10px 0; padding: 10px; background: #f0f8f0; color: #333; border-radius: 4px; font-family: monospace; font-size: 12px;">
-           <strong>Render Log:</strong><br />
-           {logState.entries.map((entry, i) => (
-             <div key={i}>{entry}</div>
-           ))}
-         </div>
-       );
-     }
+// Run 1 starts immediately
+await renderer.render(<Delay message="Run 1" />, root);
 
-     // Cleanup subscription when component unmounts
-     logState.listeners.delete(refreshHandler);
-   }
+// Run 2 starts; Runs 3 and 4 are enqueued behind it
+renderer.render(<Delay message="Run 2" />, root);
+renderer.render(<Delay message="Run 3" />, root);
+await renderer.render(<Delay message="Run 4" />, root);
+// Run 3 was skipped — only Run 4 ran after Run 2.
+```
 
-   async function Delay({message}) {
-     // Log when the component actually starts executing
-     addLogEntry(`🚀 Started: ${message}`);
+### Racing
 
-     await new Promise((resolve) => setTimeout(resolve, 1000));
+If two different async components are rendered in the same position, the components are raced. If the earlier component fulfills first, it shows until the later component fulfills. If the later component fulfills first, the earlier component is never rendered.
 
-     // Log when the component finishes
-     addLogEntry(`✅ Completed: ${message}`);
+Try flipping the order of the two render calls below and watch the behavior change.
 
-     return <div style="padding: 10px; margin: 5px 0; background: #e7f3ff; color: #333; border-radius: 4px;">
-       {message}
-     </div>;
-   }
+```jsx live
+import {renderer} from "@b9g/crank/dom";
 
-   function *ConcurrentDemo() {
-     let demoResult = null;
+async function Fast() {
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  return <span>Fast</span>;
+}
 
-     const runDemo = async () => {
-       // Reset log
-       logState.entries = [];
-       addLogEntry("🔄 Starting concurrent update demo...");
+async function Slow() {
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  return <span>Slow</span>;
+}
 
-       // First render starts immediately
-       addLogEntry(`📝 Queued: Run 1`);
-       await renderer.render(<Delay message="Run 1" />, demoResult);
+// TODO: flip the order of these calls and watch the behavior.
+renderer.render(<Fast />, document.body);
+renderer.render(<Slow />, document.body);
+```
 
-       // Second render starts after first completes
-       addLogEntry(`📝 Queued: Run 2`);
-       renderer.render(<Delay message="Run 2" />, demoResult);
-
-       // Third and fourth renders are queued while second is pending
-       addLogEntry(`📝 Queued: Run 3`);
-       renderer.render(<Delay message="Run 3" />, demoResult);
-
-       addLogEntry(`📝 Queued: Run 4`);
-       renderer.render(<Delay message="Run 4" />, demoResult);
-
-       addLogEntry("ℹ️ Note: Run 3 will be skipped!");
-     };
-
-     for ({} of this) {
-       yield (
-         <Fragment>
-           <button onclick={runDemo} style="padding: 8px 16px; margin: 10px 0; cursor: pointer;">
-             Run Concurrent Update Demo
-           </button>
-           <RenderLogger />
-           <div
-             ref={el => demoResult = el}
-             style="border: 1px dashed #ccc; padding: 10px; margin: 10px 0; min-height: 50px; background: #fafafa; color: #333;"
-           >
-             Click the button to see the demo results here
-           </div>
-         </Fragment>
-       );
-     }
-   }
-
-   renderer.render(<ConcurrentDemo />, document.body);
-   ```
-   In the preceding example, you can see in the render log that **Run 3 is
-   skipped entirely**. At no point is there more than one simultaneous call to
-   the `<Delay>` component, despite the fact that it is rerendered concurrently
-   for its second through fourth renders. Because these renderings are
-   enqueued, the third rendering is skipped — by the time Run 2 completes, Run
-   3’s props are obsolete and only Run 4 executes. This behavior allows async
-   components to always be kept up-to-date without producing excess calls.
-
-2. If two different async components are rendered in the same position, the
-   components are raced. If the earlier component fulfills first, it shows
-   until the later component fulfills. If the later component fulfills first,
-   the earlier component is never rendered.
-
-    ```jsx live
-    import {renderer} from "@b9g/crank/dom";
-
-    async function Fast() {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      return <span>Fast</span>;
-    }
-
-    async function Slow() {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      return <span>Slow</span>;
-    }
-
-    // TODO: flip the order of these calls and watch the behavior.
-    renderer.render(<Fast />, document.body);
-    renderer.render(<Slow />, document.body);
-    ```
-
-    As we’ll see later, this “ratcheting” effect becomes useful for rendering
-    loading indicators or placeholders for more responsive UIs.
+As we’ll see later, this “ratcheting” effect becomes useful for rendering loading indicators or placeholders for more responsive UIs.
 
 ## Async Generator Components
 Just as you can write stateful components with sync generator functions, you
@@ -330,11 +249,11 @@ function *SuspenseDemo() {
           Load User #{userId + 1}
         </button>
 
-        <Suspense fallback={<div>🔄 Loading user profile...</div>}>
+        <Suspense fallback={<div>Loading user profile...</div>}>
           <UserProfile userId={userId} />
         </Suspense>
 
-        <Suspense fallback={<div>📝 Loading user posts...</div>}>
+        <Suspense fallback={<div>Loading user posts...</div>}>
           <UserPosts userId={userId} />
         </Suspense>
       </div>
@@ -350,118 +269,13 @@ renderer.render(<SuspenseDemo />, document.body);
 - **Nested suspense**: Multiple levels of loading states
 - **Error boundaries**: Catches async component errors
 
-### lazy(): Code Splitting Made Simple
+### lazy(): Code Splitting
 
-The `lazy()` function creates components that load asynchronously, perfect for code splitting and performance optimization:
+The `lazy()` function creates components that load on first render, making it easy to split code by route or feature:
 
-```jsx live
-import {lazy, Suspense} from "@b9g/crank/async";
-import {renderer} from "@b9g/crank/dom";
-
-// Create lazy-loaded components
-const HeavyChart = lazy(() => import("./chart-component.js"));
-const DataTable = lazy(() => import("./data-table.js"));
-
-// Simulate dynamic imports for the demo
-const simulateImport = (componentName, delay = 1000) => {
-  return new Promise(resolve => {
-    setTimeout(() => {
-      // Return a simple component for demo purposes
-      resolve({
-        default: () => (
-          <div style={{
-            padding: "20px",
-            border: "2px solid #007bff",
-            "border-radius": "4px",
-            background: "#f8f9fa",
-            color: "#333"
-          }}>
-            ✅ {componentName} loaded successfully!
-          </div>
-        )
-      });
-    }, delay);
-  });
-};
-
-// Override lazy for demo
-const DemoChart = lazy(() => simulateImport("Chart Component", 1500));
-const DemoTable = lazy(() => simulateImport("Data Table", 2000));
-
-function *LazyDemo() {
-  let showChart = false;
-  let showTable = false;
-
-  for ({} of this) {
-    yield (
-      <div>
-        <h3>Code Splitting Demo</h3>
-        <button onclick={() => this.refresh(() => showChart = !showChart)}>
-          {showChart ? "Hide" : "Show"} Chart
-        </button>
-        <button onclick={() => this.refresh(() => showTable = !showTable)}>
-          {showTable ? "Hide" : "Show"} Table
-        </button>
-
-        {showChart && (
-          <Suspense fallback={<div>📊 Loading chart...</div>}>
-            <DemoChart />
-          </Suspense>
-        )}
-
-        {showTable && (
-          <Suspense fallback={<div>📋 Loading table...</div>}>
-            <DemoTable />
-          </Suspense>
-        )}
-      </div>
-    );
-  }
-}
-
-renderer.render(<LazyDemo />, document.body);
-```
-
-**lazy() Features:**
-- **Dynamic imports**: Works with any function that returns a promise
-- **Default exports**: Automatically handles `{default: Component}`
-- **Error handling**: Integrates with error boundaries
-- **Caching**: Loads each component only once
-
-### How lazy() is Implemented
-
-Here’s the actual implementation from [`src/async.ts`](https://github.com/bikeshaving/crank/blob/master/src/async.ts):
-
-```typescript
-export function lazy<T extends Component>(
-  initializer: () => Promise<T | {default: T}>,
-): T {
-  return async function* LazyComponent(
-    this: Context,
-    props: any,
-  ): AsyncGenerator<Children> {
-    let Component = await initializer();
-    if (Component && typeof Component === "object" && "default" in Component) {
-      Component = Component.default;
-    }
-
-    if (typeof Component !== "function") {
-      throw new Error(
-        "Lazy component initializer must return a Component or a module with a default export that is a Component.",
-      );
-    }
-
-    for (props of this) {
-      yield createElement(Component, props);
-    }
-  } as unknown as T;
-}
-```
-
-### Real-world lazy() Patterns
-
-**Route-based code splitting:**
 ```jsx
+import {lazy, Suspense} from "@b9g/crank/async";
+
 const HomePage = lazy(() => import("./pages/Home"));
 const AboutPage = lazy(() => import("./pages/About"));
 const ContactPage = lazy(() => import("./pages/Contact"));
@@ -469,7 +283,7 @@ const ContactPage = lazy(() => import("./pages/Contact"));
 function *Router() {
   for ({route} of this) {
     yield (
-      <Suspense fallback={<PageSkeleton />}>
+      <Suspense fallback={<div>Loading...</div>}>
         {route === "home" && <HomePage />}
         {route === "about" && <AboutPage />}
         {route === "contact" && <ContactPage />}
@@ -479,24 +293,7 @@ function *Router() {
 }
 ```
 
-**Feature-based splitting:**
-```jsx
-const AdminPanel = lazy(() => import("./features/AdminPanel"));
-const UserDashboard = lazy(() => import("./features/UserDashboard"));
-
-function *App({user}) {
-  for ({user} of this) {
-    yield (
-      <div>
-        <Header />
-        <Suspense fallback={<div>Loading...</div>}>
-          {user.isAdmin ? <AdminPanel /> : <UserDashboard />}
-        </Suspense>
-      </div>
-    );
-  }
-}
-```
+The initializer is called once, and `lazy()` handles both direct component exports and modules with a `default` export.
 
 ### SuspenseList: Coordinated Loading
 
@@ -564,17 +361,17 @@ function *SuspenseListDemo() {
         </div>
 
         <SuspenseList key={key} revealOrder={revealOrder} tail={tail}>
-          <Suspense fallback={<div>⏳ Loading fast...</div>}>
+          <Suspense fallback={<div>Loading fast...</div>}>
             <FastComponent />
           </Suspense>
 
           <div style={{margin: "10px 0"}}>
-            <Suspense fallback={<div>⏳ Loading slow...</div>}>
+            <Suspense fallback={<div>Loading slow...</div>}>
               <SlowComponent />
             </Suspense>
           </div>
 
-          <Suspense fallback={<div>⏳ Loading medium...</div>}>
+          <Suspense fallback={<div>Loading medium...</div>}>
             <MediumComponent />
           </Suspense>
         </SuspenseList>
