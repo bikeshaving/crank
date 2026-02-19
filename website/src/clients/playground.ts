@@ -257,6 +257,7 @@ function* Playground(this: Context) {
 					ontouchstart=${startDrag}
 				/>
 				<div class=${css`
+					height: 80vh;
 					@media (min-width: 800px) {
 						flex: 1 1 auto;
 						height: calc(100vh - 50px);
