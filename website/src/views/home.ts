@@ -221,54 +221,51 @@ function AntiHero() {
 
 function BlogSection({posts}: {posts: Array<any>}) {
 	return jsx`
-		<div class="blur-background ${css`
+		<div class=${css`
+			max-width: 1200px;
+			margin: 0 auto;
 			padding: 3rem 1rem;
 
 			@media (min-width: 800px) {
 				padding: 4rem 2rem;
 			}
-		`}">
+		`}>
+			<h2 class=${css`
+				text-align: center;
+				font-size: max(4vh, 30px);
+				color: var(--highlight-color);
+				margin: 0 0 2rem;
+			`}>From the Blog</h2>
 			<div class=${css`
-				max-width: 1200px;
-				margin: 0 auto;
-			`}>
-				<h2 class=${css`
-					text-align: center;
-					font-size: max(4vh, 30px);
-					color: var(--highlight-color);
-					margin: 0 0 2rem;
-				`}>From the Blog</h2>
-				<div class=${css`
-					display: grid;
-					gap: 1.5rem;
+				display: grid;
+				gap: 1.5rem;
 
-					@media (min-width: 700px) {
-						grid-template-columns: repeat(2, 1fr);
-					}
-				`}>
-					${posts.map((post) => {
-						const {title, description} = post.attributes;
-						return jsx`
-							<${BlogCard}
-								href=${post.url}
-								title=${title}
-								description=${description}
-							/>
-						`;
-					})}
-				</div>
-				<div class=${css`
-					text-align: center;
-					margin-top: 2rem;
-				`}>
-					<a
-						href="/blog"
-						class=${css`
-							color: var(--highlight-color);
-							font-size: 1.1rem;
-						`}
-					>All posts ${"→"}</a>
-				</div>
+				@media (min-width: 700px) {
+					grid-template-columns: repeat(2, 1fr);
+				}
+			`}>
+				${posts.map((post) => {
+					const {title, description} = post.attributes;
+					return jsx`
+						<${BlogCard}
+							href=${post.url}
+							title=${title}
+							description=${description}
+						/>
+					`;
+				})}
+			</div>
+			<div class=${css`
+				text-align: center;
+				margin-top: 2rem;
+			`}>
+				<a
+					href="/blog"
+					class=${css`
+						color: var(--highlight-color);
+						font-size: 1.1rem;
+					`}
+				>All posts ${"→"}</a>
 			</div>
 		</div>
 	`;
@@ -300,8 +297,8 @@ export default async function Home({url}: ViewProps) {
 			`}">
 				<${CallToAction} />
 				<${Marked} markdown=${md.body} components=${components} />
+				<${BlogSection} posts=${posts} />
 			</div>
-			<${BlogSection} posts=${posts} />
 			<${AntiHero} />
 		<//Root>
 	`;
