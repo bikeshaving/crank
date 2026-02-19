@@ -162,7 +162,7 @@ async function Definition({word}) {
   const {definition} = definitions[0];
   return <>
     <p>{word} <code>{phonetic}</code></p>
-    <p><b>{partOfSpeech}.</b> {definition}</p>
+    <p><b>{partOfSpeech}.</b>{" "}{definition}</p>
   </>;
 }
 

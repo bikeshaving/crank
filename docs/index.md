@@ -48,7 +48,7 @@ async function Definition({word}) {
   const {definition} = definitions[0];
   return <>
     <p>{word} <code>{phonetic}</code></p>
-    <p><b>{partOfSpeech}.</b> {definition}</p>
+    <p><b>{partOfSpeech}.</b>{" "}{definition}</p>
     {/*<pre>{JSON.stringify(data, null, 4)}</pre>*/}
   </>;
 }
@@ -292,7 +292,7 @@ async function Definition({word}) {
   return (
     <div>
       <p>{word} <code>{phonetic}</code></p>
-      <p><b>{partOfSpeech}.</b> {definition}</p>
+      <p><b>{partOfSpeech}.</b>{" "}{definition}</p>
     </div>
   );
 }
