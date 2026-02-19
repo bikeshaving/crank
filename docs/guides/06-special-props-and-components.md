@@ -120,7 +120,7 @@ Ref callbacks fire once the first time a host element is rendered. They do not w
 
 ```jsx
 function MyInput({ref, class, ...props}) {
-  return <input ref={ref} class={"my-input-class " + class} ...props />
+  return <input ref={ref} class={"my-input-class " + class} {...props} />
 }
 ```
 

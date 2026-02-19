@@ -424,7 +424,7 @@ yield (
 function *CreateForm() { /* ... */ }
 function *EditForm() { /* ... */ }
 
-function *App() {
+function *App({mode}) {
   for ({mode} of this) {
     // switching the tag creates a fresh instance
     yield mode === "create" ? <CreateForm /> : <EditForm />;
