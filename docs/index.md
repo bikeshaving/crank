@@ -149,7 +149,7 @@ const inspirationalWords = [
   "We got this.",
 ];
 
-function RandomInspirationalWords() {
+function MotivationalPoster() {
   return jsx`
     <p>${inspirationalWords[Math.floor(Math.random() * inspirationalWords.length)]}</p>
   `;
@@ -166,7 +166,7 @@ renderer.render(jsx`
     "
   >
     <${Stars} width=${200} height=${200} />
-    <${RandomInspirationalWords} />
+    <${MotivationalPoster} />
   </div>
 `, document.body);
 ```

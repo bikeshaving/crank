@@ -504,7 +504,7 @@ export function* CodePreview(
 								background-color: var(--bg-color);
 							`}
 						"
-						style="height: ${autoresize ? `${height}px` : "auto"};"
+						style="min-height: ${autoresize ? `${height}px` : "auto"};"
 					/>
 				</div>
 			</div>
