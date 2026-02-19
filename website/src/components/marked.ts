@@ -208,7 +208,7 @@ export const defaultComponents: Record<string, Component<TokenProps>> = {
 		const {depth, text} = token as marked.Tokens.Heading;
 		const tag = `h${depth}`;
 		const id = slugify(text);
-		return jsx`<${tag} id=${id}>${children}<//>`;
+		return jsx`<${tag} id=${id}>${children} <a class="heading-anchor" href="#${id}">#</a><//>`;
 	},
 
 	table({token, rootProps}) {

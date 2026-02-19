@@ -106,9 +106,26 @@ button {
 h1, h2, h3, h4, h5, h6 {
 	padding: 0;
 	margin: 0 0 1.4em;
+	scroll-margin-top: 70px;
 	a {
 		color: inherit;
 		text-decoration: none;
+	}
+
+	.heading-anchor {
+		opacity: 0;
+		font-weight: normal;
+		font-size: 0.8em;
+		margin-left: 0.2em;
+		transition: opacity 0.15s;
+	}
+
+	&:hover .heading-anchor {
+		opacity: 0.4;
+	}
+
+	.heading-anchor:hover {
+		opacity: 1;
 	}
 }
 

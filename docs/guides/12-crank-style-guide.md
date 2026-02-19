@@ -3,18 +3,21 @@ title: Crank Style Guide
 description: Conventions for writing cranky code. Covers component structure, state, props, events, cleanup, DOM access, async patterns, and the philosophy behind them.
 ---
 
-Crank’s design philosophy is that JavaScript already has the primitives you need to build UIs. Code that follows these conventions is *cranky*: idiomatic Crank that leans on the language instead of fighting it.
+The key thesis of Crank is that JavaScript already has the primitives needed to build UIs.
+Code which follows the conventions of Crank can humorously be called *cranky*, as in “this file solves the problem in a cranky way. Very nice.”
 
-1. **Use the language.** Write vanilla JavaScript. Variables are state, control flow is lifecycle, `async`/`await` is data fetching. Crank adds a thin rendering layer and gets out of the way.
+Idiomatic Crank is code that leans on the language instead of fighting it. Here are the core principles behind cranky code.
+
+1. **Use the language.** Write vanilla JavaScript. Variables are state, control flow is lifecycle, `fetch()` is data fetching. Crank adds a thin rendering layer and gets out of the way.
 2. **Match the platform.** `class`, `for`, `onclick`, `innerHTML`. The DOM’s names, not aliases.
-3. **Own the execution.** You control when components re-render. There is no implicit reactivity. Understanding the execution of your components is the job; `this.refresh(() => ...)` makes it legible.
-4. **Compose uniformly.** A component should look and behave like a built-in element: props in, events out, children nested. The abstraction boundary is the same as the platform’s.
+3. **Own the execution.** You control when components re-render. There is no implicit reactivity. Understanding the execution of components is your job: `this.refresh(() => ...)` makes it legible.
+4. **Compose uniformly.** A component should look and behave like a built-in element: props in, events out. The abstraction boundary should resemble the platform’s.
 
 For full explanations, see the [Components](/guides/components), [Lifecycles](/guides/lifecycles), and [Async Components](/guides/async-components) guides. The [`eslint-plugin-crank`](https://github.com/bikeshaving/crank/tree/main/packages/eslint-plugin-crank) package enforces many of these automatically.
 
 ### Component Structure
 
-**Don’t** use `while (true)`. The component renders but never sees prop updates, and a missing `yield` causes an infinite loop:
+**Don’t** use `while (true)` for component iteration. The component renders correctly but never sees prop updates, and a missed `yield` causes the page to hang:
 
 ```jsx
 function *Counter({count}) {
@@ -24,7 +27,7 @@ function *Counter({count}) {
 }
 ```
 
-**Do** iterate over the context with `for...of this`. It yields fresh props on each render and makes infinite loops impossible:
+✅ **Do** iterate over the context with `for...of this`. It yields fresh props on each render and makes infinite loops impossible:
 
 ```jsx
 function *Counter({count}) {
@@ -46,11 +49,12 @@ function *Timer() {
     seconds++;
     yield <p>{seconds}s</p>;
   }
+
   clearInterval(id);
 }
 ```
 
-**Do** use the three-region structure: setup before the loop, render inside it, cleanup after it:
+✅ **Do** use the three-region structure: setup before the loop, render inside it, cleanup after it:
 
 ```jsx
 function *Timer() {
@@ -68,7 +72,7 @@ function *Timer() {
 }
 ```
 
-**Don't** return `undefined` from a component, which is usually a mistake:
+❌ ❌ **Don't** return `undefined` from a component, which is usually a mistake:
 
 ```jsx
 function MaybeGreeting({name}) {
@@ -79,7 +83,7 @@ function MaybeGreeting({name}) {
 }
 ```
 
-**Do** return `null` for intentional empty output:
+✅ **Do** return `null` for intentionally empty output:
 
 ```jsx
 function MaybeGreeting({name}) {
@@ -92,7 +96,7 @@ function MaybeGreeting({name}) {
 
 ### State Updates
 
-**Don’t** mutate state and call `refresh()` as separate steps. It’s easy to forget one or the other, especially in longer handlers:
+**Don’t** mutate state or call `refresh()` as separate steps. It’s easy to forget one or the other, especially in longer handlers:
 
 ```jsx
 function *Counter() {
@@ -108,7 +112,7 @@ function *Counter() {
 }
 ```
 
-**Do** use the `this.refresh(() => ...)` callback form. It runs the mutation and triggers a re-render atomically, so you cannot forget one without the other:
+✅ **Do** use the `this.refresh(() => ...)` callback form. It runs the mutation and triggers a re-render atomically, so you cannot forget one without the other:
 
 ```jsx
 function *Counter() {
@@ -127,7 +131,7 @@ Group related mutations in a single callback rather than calling `refresh` multi
 
 Note: `refresh()` during execution (while `this.isExecuting` is `true`) or after unmount is a no-op. In practice this rarely comes up; event handlers fire asynchronously after rendering.
 
-There are no stale closures in Crank. Handlers close over `let` variables that are reassigned each iteration, so they always see current values. Inline handlers are fine; Crank does not compare prop references to skip re-renders.
+There are no stale closures in Crank. Handlers close over `let` variables that are reassigned each iteration, so they always see current values. Inline event handlers are fine.
 
 ### Props
 
@@ -151,7 +155,7 @@ function *Card({title, count}) {
 }
 ```
 
-**Do** destructure every prop used in the loop body, with matching defaults in both positions:
+✅ **Do** destructure every prop used in the loop body, with matching defaults in both positions:
 
 ```jsx
 function *Greeting({name = "World", formal = false}) {
@@ -177,12 +181,13 @@ function *Report({data}) {
 }
 ```
 
-**Do** cache the result and compare inputs manually. Save current values after `yield` so they’re available as “old” values on the next iteration:
+✅ **Do** cache the result and compare inputs manually. Save current values after `yield` so they’re available as “old” values on the next iteration:
 
 ```jsx
 function *Report({data}) {
-  let oldData = null;
-  let summary = null;
+  // Remember to make state lexically scoped
+  let oldData;
+  let summary;
 
   for ({data} of this) {
     if (data !== oldData) {
@@ -210,7 +215,7 @@ function *App({userId}) {
 }
 ```
 
-**Do** use a key tied to the data identity. When the key changes, Crank destroys the old component and creates a fresh one:
+✅ **Do** use a key tied to the data identity. When the key changes, Crank destroys the old component and creates a fresh one:
 
 ```jsx
 function *App({userId}) {
@@ -258,7 +263,7 @@ function *App() {
 }
 ```
 
-**Do** accept `children` and render it in the element tree. For multiple insertion points, use named props as slots:
+✅ **Do** accept `children` and render it in the element tree. For multiple insertion points, use named props as slots:
 
 ```jsx
 function Layout({header, sidebar, children}) {
@@ -292,7 +297,7 @@ function Toolbar() {
 }
 ```
 
-**Do** use symbols so provisions are private and collision-free:
+✅ **Do** use symbols so provisions are private and collision-free:
 
 ```jsx
 const ThemeKey = Symbol("theme");
@@ -326,7 +331,7 @@ function *Timer() {
 }
 ```
 
-**Do** choose the cleanup approach that fits the situation.
+✅ **Do** choose the cleanup approach that fits the situation.
 
 Post-loop cleanup is the simplest option for straightforward cases:
 
@@ -396,7 +401,7 @@ function *AutoFocusInput() {
 }
 ```
 
-**Do** capture elements with a `ref` callback and use `this.after()` for focus, measurement, and animations:
+✅ **Do** capture elements with a `ref` callback and use `this.after()` for focus, measurement, and animations:
 
 ```jsx
 function *AutoFocusInput() {
@@ -436,7 +441,7 @@ function *App() {
 }
 ```
 
-**Do** use `dispatchEvent` in children and `addEventListener` in parents. Custom events bubble up the component tree, just like DOM events:
+✅ **Do** use `dispatchEvent` in children and `addEventListener` in parents. Custom events bubble up the component tree, just like DOM events:
 
 ```jsx
 function *TodoItem({todo}) {
@@ -486,7 +491,7 @@ function *Greeting({name}) {
 }
 ```
 
-**Do** use `yield` for normal renders. Reserve `return` for a final value when the component is intentionally done:
+✅ **Do** use `yield` for normal renders. Reserve `return` for a final value when the component is intentionally done:
 
 ```jsx
 function *Greeting({name}) {
@@ -514,7 +519,7 @@ function *UserProfile({userId}) {
 }
 ```
 
-**Do** use an async function component for one-shot data fetching:
+✅ **Do** use an async function component for one-shot data fetching:
 
 ```jsx
 async function UserProfile({userId}) {
@@ -524,7 +529,7 @@ async function UserProfile({userId}) {
 }
 ```
 
-**Do** use an async generator with `for await...of` to race a loading indicator against async children:
+✅ **Do** use an async generator with `for await...of` to race a loading indicator against async children:
 
 ```jsx
 async function *DataLoader({children}) {
@@ -553,7 +558,7 @@ function *Dashboard() {
 }
 ```
 
-**Do** handle errors at the source:
+✅ **Do** handle errors at the source:
 
 ```jsx
 async function UserProfile({userId}) {
@@ -584,7 +589,7 @@ function MyForm() {
 }
 ```
 
-**Do** use standard HTML attribute names. They match the DOM and let you paste
+✅ **Do** use standard HTML attribute names. They match the DOM and let you paste
 HTML directly into components:
 
 ```jsx
@@ -635,7 +640,7 @@ function withInterval(Component) {
 }
 ```
 
-**Do** write plain helper functions that accept a context. They compose, they’re explicit, and they’re just JavaScript:
+✅ **Do** write plain helper functions that accept a context. They compose, they’re explicit, and they’re just JavaScript:
 
 ```jsx
 function useInterval(ctx, callback, delay) {
