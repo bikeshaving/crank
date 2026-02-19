@@ -5,6 +5,7 @@ import {Root} from "../components/root.js";
 import {SerializeScript} from "../components/serialize-javascript.js";
 import {collectDocuments} from "../models/document.js";
 
+import {BlogCard} from "../components/blog-card.js";
 import {Marked} from "../components/marked.js";
 import {InlineCodeBlock} from "../components/inline-code-block.js";
 interface ViewProps {
@@ -220,80 +221,54 @@ function AntiHero() {
 
 function BlogSection({posts}: {posts: Array<any>}) {
 	return jsx`
-		<div class=${css`
-			max-width: 1200px;
-			margin: 0 auto;
+		<div class="blur-background ${css`
 			padding: 3rem 1rem;
 
 			@media (min-width: 800px) {
 				padding: 4rem 2rem;
 			}
-		`}>
-			<h2 class=${css`
-				text-align: center;
-				font-size: max(4vh, 30px);
-				color: var(--highlight-color);
-				margin: 0 0 2rem;
-			`}>From the Blog</h2>
+		`}">
 			<div class=${css`
-				display: grid;
-				gap: 1.5rem;
-
-				@media (min-width: 700px) {
-					grid-template-columns: repeat(2, 1fr);
-				}
+				max-width: 1200px;
+				margin: 0 auto;
 			`}>
-				${posts.map((post) => {
-					const {title, description} = post.attributes;
-					return jsx`
-						<a
-							href=${post.url}
-							class="blur-background ${css`
-								display: block;
-								text-decoration: none;
-								color: inherit;
-								border: 1px solid var(--text-color);
-								border-radius: 4px;
-								padding: 1.5rem;
+				<h2 class=${css`
+					text-align: center;
+					font-size: max(4vh, 30px);
+					color: var(--highlight-color);
+					margin: 0 0 2rem;
+				`}>From the Blog</h2>
+				<div class=${css`
+					display: grid;
+					gap: 1.5rem;
 
-								&:hover {
-									border-color: var(--highlight-color);
-								}
-							`}"
-						>
-							<h3 class=${css`
-								font-size: 1.35rem;
-								margin: 0 0 0.5rem;
-								color: var(--highlight-color);
-								line-height: 1.3;
-							`}>${title}</h3>
-							${
-								description &&
-								jsx`
-								<p class=${css`
-									margin: 0;
-									color: var(--text-color);
-									opacity: 0.85;
-									line-height: 1.6;
-									font-size: 0.95rem;
-								`}>${description}</p>
-							`
-							}
-						</a>
-					`;
-				})}
-			</div>
-			<div class=${css`
-				text-align: center;
-				margin-top: 2rem;
-			`}>
-				<a
-					href="/blog"
-					class=${css`
-						color: var(--highlight-color);
-						font-size: 1.1rem;
-					`}
-				>All posts ${"→"}</a>
+					@media (min-width: 700px) {
+						grid-template-columns: repeat(2, 1fr);
+					}
+				`}>
+					${posts.map((post) => {
+						const {title, description} = post.attributes;
+						return jsx`
+							<${BlogCard}
+								href=${post.url}
+								title=${title}
+								description=${description}
+							/>
+						`;
+					})}
+				</div>
+				<div class=${css`
+					text-align: center;
+					margin-top: 2rem;
+				`}>
+					<a
+						href="/blog"
+						class=${css`
+							color: var(--highlight-color);
+							font-size: 1.1rem;
+						`}
+					>All posts ${"→"}</a>
+				</div>
 			</div>
 		</div>
 	`;
