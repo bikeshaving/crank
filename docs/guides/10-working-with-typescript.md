@@ -6,18 +6,18 @@ Crank is written in TypeScript and provides excellent type safety out of the box
 
 ## Typing Component Context
 
-Generator components use `this` to access the component context. In TypeScript’s strict mode, you’ll need to provide a type annotation for `this`. Crank exports the `Context` type for this purpose:
+Generator components use `this` to access the component context. In TypeScript’s strict mode, you’ll need to provide a type annotation for `this`. Crank exports the `Context` type, parameterized by the component function itself so that props are inferred automatically:
 
 ```tsx
-import {Context} from "@b9g/crank";
-function *Timer(this: Context) {
+import type {Context} from "@b9g/crank";
+function *Timer(this: Context<typeof Timer>) {
   let seconds = 0;
   const interval = setInterval(() => this.refresh(() => seconds++), 1000);
-  
+
   for ({} of this) {
     yield <div>Seconds: {seconds}</div>;
   }
-  
+
   clearInterval(interval);
 }
 ```
@@ -26,12 +26,13 @@ function *Timer(this: Context) {
 You’ll often want to add a return type to your components. Crank exports custom types to help you type the return types of components:
 
 ```tsx
-import {Element} from "@b9g/crank";
+import type {Context, Element} from "@b9g/crank";
+
 function SyncFn(): Element {
   return <div>Hello world</div>;
 }
 
-function *SyncGen(): Generator<Element> {
+function *SyncGen(this: Context<typeof SyncGen>): Generator<Element> {
   for ({} of this) {
     yield <div>Hello world</div>;
   }
@@ -41,7 +42,7 @@ async function AsyncFn(): Promise<Element> {
   return <div>Hello world</div>;
 }
 
-async function *AsyncGen(): AsyncGenerator<Element> {
+async function *AsyncGen(this: Context<typeof AsyncGen>): AsyncGenerator<Element> {
   for ({} of this) {
     yield <div>Hello world</div>;
   }
@@ -51,7 +52,7 @@ async function *AsyncGen(): AsyncGenerator<Element> {
 `Element` is just the type returned by JSX expressions/`createElement`. As you can see, you still have to modify the return type of functions based on whether the function is async or a generator. You can also use the type `Child` which represents any valid value in an element tree.
 
 ```tsx
-function *SyncGen(): Generator<Child> {
+function *SyncGen(this: Context<typeof SyncGen>): Generator<Child> {
   yield true;
   yield false;
   yield null;
