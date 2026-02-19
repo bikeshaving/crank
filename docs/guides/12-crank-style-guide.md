@@ -25,6 +25,23 @@ function Greeting({name}) {
 }
 ```
 
+❌ **Don't** use arrow functions for components. They can't be generators and don't have their own `this`, so they can't access the component context:
+
+```jsx
+// ❌ arrow functions can't be generators or access this
+const Counter = () => {
+  // this.refresh is not available
+  return <div />;
+};
+
+// ✅ function declarations work with this and generators
+function *Counter() {
+  for ({} of this) {
+    yield <div />;
+  }
+}
+```
+
 ✅ **Do** use `for...of this` for component iteration. A `while (true)` loop renders correctly but never sees prop updates, and a missed `yield` causes the page to hang:
 
 ```jsx
@@ -111,17 +128,17 @@ function *Timer() {
 }
 ```
 
-✅ **Do** use `yield` for normal renders. `return` inside a generator loop terminates it and restarts from scratch on the next update, losing all local state. Reserve `return` for a final value when the component is intentionally done:
+❌ **Don't** `return` from a generator loop unless you want it to restart from scratch on the next update, losing all local state:
 
 ```jsx
-// ❌ return restarts the generator
+// ❌ return restarts the generator — state is lost
 function *Greeting({name}) {
   for ({name} of this) {
     return <div>Hello {name}</div>;
   }
 }
 
-// ✅ yield preserves state
+// ✅ yield preserves state across renders
 function *Greeting({name}) {
   for ({name} of this) {
     yield <div>Hello {name}</div>;
@@ -399,6 +416,20 @@ yield (
     <Main />
   </div>
 );
+```
+
+✅ **Do** use distinct component functions when you want Crank to treat elements as different types. Swapping the tag unmounts the old instance and mounts a fresh one:
+
+```jsx
+function *CreateForm() { /* ... */ }
+function *EditForm() { /* ... */ }
+
+function *App() {
+  for ({mode} of this) {
+    // switching the tag creates a fresh instance
+    yield mode === "create" ? <CreateForm /> : <EditForm />;
+  }
+}
 ```
 
 ### Cleanup
@@ -725,6 +756,74 @@ function memo(Component) {
 ```
 
 See [Reusable Logic](/guides/reusable-logic) for alternative approaches and tradeoffs.
+
+### TypeScript
+
+✅ **Do** annotate `this: Context<typeof Component>` in generator components. It's required in strict mode and infers the props type from the component definition:
+
+```tsx
+import type {Context} from "@b9g/crank";
+
+function *Timer(this: Context<typeof Timer>) {
+  let seconds = 0;
+  const id = setInterval(() => this.refresh(() => seconds++), 1000);
+
+  for ({} of this) {
+    yield <div>{seconds}s</div>;
+  }
+
+  clearInterval(id);
+}
+```
+
+✅ **Do** type props inline in the function parameter:
+
+```tsx
+function *Greeting(
+  this: Context<typeof Greeting>,
+  {name = "World"}: {name?: string},
+) {
+  for ({name = "World"} of this) {
+    yield <div>Hello, {name}</div>;
+  }
+}
+```
+
+✅ **Do** use `Children` for the children prop type, including named slots:
+
+```tsx
+import {Children} from "@b9g/crank";
+
+function Layout({header, sidebar, children}: {
+  header: Children,
+  sidebar: Children,
+  children: Children,
+}) {
+  return (
+    <div class="layout">
+      <header>{header}</header>
+      <aside>{sidebar}</aside>
+      <main>{children}</main>
+    </div>
+  );
+}
+```
+
+✅ **Do** augment `EventMap` and `ProvisionMap` for typed events and provisions:
+
+```tsx
+declare global {
+  module Crank {
+    interface EventMap {
+      "tododelete": CustomEvent<{id: string}>;
+    }
+
+    interface ProvisionMap {
+      theme: "light" | "dark";
+    }
+  }
+}
+```
 
 ### Performance
 
