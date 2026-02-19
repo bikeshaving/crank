@@ -137,7 +137,7 @@ build tools required:
     function App() {
       return jsx`
         <div class="app">
-          <h1>🎯 Crank JSX Template Tag Demo</h1>
+          <h1>Crank JSX Template Tag Demo</h1>
 
           <${Greeting}
             name="Developer"
@@ -150,7 +150,7 @@ build tools required:
 
           <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px;">
             <p>
-              <strong>✨ Features demonstrated:</strong>
+              <strong>Features demonstrated:</strong>
             </p>
             <ul>
               <li>No transpilation required - runs directly in the browser</li>
@@ -174,8 +174,7 @@ build tools required:
     // Render the application
     renderer.render(jsx`<${App} />`, document.getElementById("root"));
 
-    console.log("🎉 Crank application loaded successfully!");
-    console.log("📝 Note: 'html' is an alias for 'jsx' - they're the same function");
+    console.log("Crank application loaded successfully!");
   </script>
 </body>
 </html>
