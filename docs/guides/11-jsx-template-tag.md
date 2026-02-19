@@ -117,58 +117,35 @@ build tools required:
     }
 
     // Async component that fetches data
-    async function *TimeDisplay() {
-      for ({} of this) {
-        const now = new Date();
-        yield jsx`
-          <div style="text-align: center; padding: 15px; background: #f8f9fa; border-radius: 4px; margin: 20px 0;">
-            <p><strong>Current time:</strong> ${now.toLocaleString()}</p>
-            <p><small>This updates every 30 seconds</small></p>
-          </div>
-        `;
-
-        // Wait 30 seconds before next update
-        await new Promise(resolve => setTimeout(resolve, 30000));
-        this.refresh();
-      }
+    async function RandomDog() {
+      const res = await fetch("https://dog.ceo/api/breeds/image/random");
+      const data = await res.json();
+      return jsx`
+        <div style="text-align: center; padding: 15px;">
+          <img src=${data.message} alt="A random dog" width="300" />
+        </div>
+      `;
     }
 
     // Main application component
-    function App() {
-      return jsx`
-        <div class="app">
-          <h1>Crank JSX Template Tag Demo</h1>
+    function *App() {
+      for ({} of this) {
+        yield jsx`
+          <div class="app">
+            <h1>Crank JSX Template Tag Demo</h1>
 
-          <${Greeting}
-            name="Developer"
-            message="Hello"
-          />
+            <${Greeting}
+              name="Developer"
+              message="Hello"
+            />
 
-          <${Counter} />
+            <${Counter} />
 
-          <${TimeDisplay} />
-
-          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px;">
-            <p>
-              <strong>Features demonstrated:</strong>
-            </p>
-            <ul>
-              <li>No transpilation required - runs directly in the browser</li>
-              <li>JSX-like syntax with template literals</li>
-              <li>Stateful components using generator functions</li>
-              <li>Event handling with refresh callbacks</li>
-              <li>Async components with automatic re-rendering</li>
-              <li>Direct import from unpkg CDN</li>
-            </ul>
-            <p>
-              <small>
-                View source to see the complete implementation.
-                Everything fits in a single HTML file!
-              </small>
-            </p>
+            <button onclick=${() => this.refresh()}>Show me a dog</button>
+            <${RandomDog} />
           </div>
-        </div>
-      `;
+        `;
+      }
     }
 
     // Render the application
@@ -180,22 +157,11 @@ build tools required:
 </html>
 ```
 
-This complete example shows how you can build a fully functional Crank application with:
-- **No build tools**: runs directly in modern browsers
-- **Direct CDN imports**: no local dependencies required
-- **Rich interactivity**: stateful components, async updates, event handling
-- **Modern syntax**: using the `html` template tag (alias for `jsx`)
-
-Simply save this as an HTML file and open it in your browser to see it in action!
+Save this as an HTML file and open it in your browser — no build step required.
 
 ## Installation
 
-The JSX tag function can be imported from the module `@b9g/crank/standalone`. This module re-exports everything from the core `@b9g/crank` module, the `jsx` and `html` tag functions from `@b9g/crank/jsx-tag`, and both renderers:
-
-- `renderer` / `domRenderer` — the DOM renderer (from `@b9g/crank/dom`)
-- `htmlRenderer` — the HTML renderer (from `@b9g/crank/html`)
-
-This means a single import is sufficient for most use cases:
+The `@b9g/crank/standalone` module re-exports everything from the core `@b9g/crank` module, the `jsx` and `html` tag functions from `@b9g/crank/jsx-tag`, and both renderers (`renderer`/`domRenderer` from `@b9g/crank/dom`, `htmlRenderer` from `@b9g/crank/html`). A single import is sufficient for most use cases:
 
 ```js live
 import {jsx, renderer} from "@b9g/crank/standalone";
@@ -209,35 +175,80 @@ renderer.render(jsx`<${Greeting} />`, document.body);
 
 The `html` tag is an alias for `jsx` — they are the same function.
 
-## JSX Syntax
+## Tags
 
-The JSX template tag function is designed to replicate as much of JSX syntax and semantics as possible.
-
-Just like JSX syntax, the template version supports components, but they must be explicitly interpolated.
+String tags are written literally. Component and other expression tags must be interpolated:
 
 ```js notoggle
-import {jsx} from "@b9g/crank/standalone";
-function Component() {
-  /* ... */
-}
-
-const syntaxEl = <Component />;
-const templateEl = jsx`<${Component} />`;
+jsx`<div />`                    // host element
+jsx`<${Component} />`           // component element
+jsx`<${Fragment} />`            // symbol element
 ```
 
-Component closing tags can be done in one of three styles:
+Component closing tags can be written in three styles:
 
 ```js notoggle
-const symmetricEl = jsx`<${Component}>{children}</${Component}>`;
-// the closing tag is not checked for symmetry and is basically a comment
-const commentEl = jsx`<${Component}>{children}<//Component>`;
-// double slash closing tags are not checked for symmetry
-const asymmetricEl = jsx`<${Component}>{children}<//>``;
+// Symmetric — must match the opening tag
+jsx`<${Component}>${children}</${Component}>`
+// Comment-style — text after // is not checked, serves as documentation
+jsx`<${Component}>${children}<//Component>`
+// Shorthand — closes the nearest open tag
+jsx`<${Component}>${children}<//>`
 ```
+
+## Props
+
+Props appear after the tag name, before `>` or `/>`:
+
+```js notoggle
+// Boolean prop — value is true
+jsx`<button disabled>`
+
+// String prop — single or double quotes
+jsx`<div class="foo">`
+jsx`<div class='foo'>`
+
+// Expression prop — value used directly
+jsx`<div onclick=${handler}>`
+
+// Interpolated string prop — expressions coerced to strings
+jsx`<div class="prefix ${value} suffix">`
+
+// Spread prop — object entries merged into props
+jsx`<div ...${obj}>`
+```
+
+Escape sequences (`\n`, `\t`, `\xNN`, `\uNNNN`, `\u{N...}`) are processed within quoted strings, just like JavaScript.
+
+## Children and Comments
+
+Between opening and closing tags, the template accepts text, `${expressions}`, and nested elements. HTML-style comments are also supported — their contents are ignored, including any expressions:
+
+```js notoggle
+jsx`
+  <div>
+    <!-- This comment is ignored -->
+    <p>Hello ${name}</p>
+    <!-- Even ${expressions} inside comments are discarded -->
+  </div>
+`
+```
+
+## Whitespace
+
+The template tag normalizes whitespace to match JSX conventions:
+
+- A newline and any surrounding whitespace is collapsed — text before a newline has trailing whitespace trimmed, and text after a newline has leading whitespace trimmed.
+- A backslash before a newline (`\` at end of line) preserves the preceding whitespace and removes the backslash.
+- Trailing whitespace at the end of the template is trimmed.
+
+## Caching
+
+The template tag caches parse results keyed by the raw template strings. On subsequent calls with the same template, the cached AST is reused and only the expression values are updated. This makes repeated renders efficient — the parsing cost is paid once per unique template site.
 
 ## Error Messages
 
-Syntax errors in template literals include line and column context with a caret pointer, making mistakes easy to spot:
+Syntax errors include line and column context with a caret pointer:
 
 ```
 Unexpected text `=></p>`

@@ -48,62 +48,7 @@ Anything can be passed as a key to the `provide` and `consume` methods, so you c
 
 **Note:** Crank does not link “providers” and “consumers” in any way, and doesn’t automatically refresh consumer components when the `provide` method is called. It’s up to you to ensure consumers update when providers update.
 
-### Schedule: Execute After Render
-**`context.schedule()`**: Execute code immediately after component renders.
-You can pass a callback to the `schedule()` method to listen for when the component renders. Callbacks passed to `schedule` fire synchronously after the component renders, with the rendered value of the component as its only argument. Scheduled callbacks fire once per call and callback function per update (think `requestAnimationFrame()`, not `setInterval()`). This means you have to continuously call the `schedule` method for each update if you want to execute some code every time your component commits.
-
-```jsx
-function *Component(this, props) {
-  for await (props of this) {
-    this.schedule((div) => {
-      // the div is
-      div.innerHTML = props.innerHTML;
-    });
-    yield <div />;
-  }
-}
-```
-
-### After: Execute When DOM is Live
-**`context.after()`**: Execute code after DOM is inserted and accessible.
-Similar to the `schedule()` method, this method fires when rendering has finished. Unlike the `schedule()` method, this method fires when a component’s rendered DOM is live. This is useful when you need to do something like calling `focus()` on an `<input>` element or perform DOM measurement calculations. Callbacks fire once per call and callback function per update.
-
-```jsx live
-import {renderer} from "@b9g/crank/dom";
-function *AutoFocusingInput(props) {
-  // this.schedule does not work because it fires before the input element is
-  // added to the DOM
-  // this.schedule((input) => input.focus());
-  this.after((input) => input.focus());
-  for (props of this) {
-    yield <input {...props}/>;
-  }
-}
-
-function *Component() {
-  let initial = true;
-  for ({} of this) {
-    yield (
-      <div>
-        <div>
-          {initial || <AutoFocusingInput />}
-        </div>
-        <div>
-          <button onclick={() => this.refresh()}>Refresh</button>
-        </div>
-      </div>
-    );
-
-    initial = false;
-  }
-}
-
-renderer.render(<Component />, document.body);
-```
-
-### Cleanup: Execute on Unmount
-**`context.cleanup()`**: Execute code when component is unmounted.
-Similarly, you can pass a callback to the `cleanup` method to listen for when the component unmounts. Callbacks passed to `cleanup` fire synchronously when the component is unmounted. Each registered callback fires only once. The callback is called with the last rendered value of the component as its only argument.
+For the lifecycle methods `schedule()`, `after()`, and `cleanup()`, see the [Lifecycles guide](/guides/lifecycles).
 
 ## Strategies for Reusing Logic
 

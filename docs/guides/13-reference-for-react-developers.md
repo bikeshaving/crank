@@ -9,21 +9,29 @@ Crank shares JSX syntax and component concepts with React but differs in how it 
 
 | React | Crank | Notes |
 |-------|-------|-------|
-| `className` | `class` | Both accepted; standard HTML name preferred |
-| `htmlFor` | `for` | Both accepted; standard HTML name preferred |
+| `className` | `class` | Both accepted; standard name preferred |
+| `htmlFor` | `for` | Both accepted; standard name preferred |
 | `onClick` | `onclick` | Both accepted; lowercase preferred |
 | `onChange` | `onchange` | Both accepted; lowercase preferred |
+| `dangerouslySetInnerHTML` | `innerHTML` | Both accepted; direct prop preferred |
+| `strokeWidth` etc. | `stroke-width` etc. | SVG camelCase auto-mapped to kebab-case |
+| `style={{fontSize: 16}}` | Same | camelCase → kebab-case, numeric values get `px` |
+| `clsx()`/`classnames()` | `class={{active: bool}}` | Built-in object syntax for conditional classes |
+| `defaultValue` | `copy="!value" value="initial"` | See [Forms](#forms) |
 | `useState` | Local variable in generator | State persists in generator closure |
+| `useReducer` | Local variable + switch/if | No special API needed |
 | `useEffect` | `schedule()`, `after()`, `cleanup()` | See [Lifecycle](#lifecycle) |
 | `useContext` | `this.consume(key)` | See [Context](#context) |
 | `Context.Provider` | `this.provide(key, value)` | No wrapper component needed |
 | `useRef` | Local variable + `ref` callback | See [Refs](#refs) |
 | `useMemo` | Manual cache in generator | See [Memoization](#memoization) |
+| `useCallback` | Function in generator scope | No wrapper needed; always current |
 | `React.memo` | `Copy` element or `copy` prop | See [Memoization](#memoization) |
-| `dangerouslySetInnerHTML` | `innerHTML` | Both accepted; direct prop preferred |
-| `strokeWidth` etc. | `stroke-width` etc. | SVG camelCase auto-mapped to kebab-case |
+| `forwardRef` | `ref` is a regular prop | Just destructure and forward it |
+| `createPortal` | `<Portal root={node}>` | Import `Portal` from `@b9g/crank` |
 | `React.lazy` | `lazy()` from `@b9g/crank/async` | See [Async Patterns](#async-patterns) |
 | `Suspense` | `Suspense` from `@b9g/crank/async` | See [Async Patterns](#async-patterns) |
+| `SuspenseList` | `SuspenseList` from `@b9g/crank/async` | Coordinates multiple `Suspense` boundaries |
 
 ## Components
 
@@ -320,6 +328,22 @@ function *AutoFocus() {
   for ({} of this) {
     yield <input ref={(el) => input = el} />;
   }
+}
+```
+
+### forwardRef → Regular Prop
+
+In React, `forwardRef` is needed because `ref` is not a regular prop. In Crank, `ref` is a regular prop on component elements — just destructure and forward it:
+
+```jsx
+// React
+const FancyInput = React.forwardRef((props, ref) => {
+  return <input ref={ref} class="fancy" {...props} />;
+});
+
+// Crank — ref is just a prop
+function FancyInput({ref, ...props}) {
+  return <input ref={ref} class="fancy" {...props} />;
 }
 ```
 
@@ -628,12 +652,12 @@ async function UserProfile({userId}) {
 }
 ```
 
-### Suspense and Lazy Loading
+### Suspense, SuspenseList, and Lazy Loading
 
-Crank provides `Suspense` and `lazy` in the `@b9g/crank/async` module:
+Crank provides `Suspense`, `SuspenseList`, and `lazy` in the `@b9g/crank/async` module:
 
 ```jsx
-import {Suspense, lazy} from "@b9g/crank/async";
+import {Suspense, SuspenseList, lazy} from "@b9g/crank/async";
 
 const LazyComponent = lazy(() => import("./LazyComponent"));
 
@@ -646,20 +670,20 @@ function App() {
 }
 ```
 
-### Loading Indicators with Async Generators
-
-For more control over loading states, async generator components can race a loading indicator against async children using `for await...of`:
+`SuspenseList` coordinates multiple `Suspense` boundaries, controlling reveal order and fallback behavior:
 
 ```jsx
-async function *DataLoader({children}) {
-  for await ({children} of this) {
-    yield <div>Loading...</div>;
-    yield children;
-  }
-}
+<SuspenseList revealOrder="forwards" tail="collapsed">
+  <Suspense fallback={<div>Loading header...</div>}>
+    <Header />
+  </Suspense>
+  <Suspense fallback={<div>Loading content...</div>}>
+    <Content />
+  </Suspense>
+</SuspenseList>
 ```
 
-The loading indicator displays first. If the async child resolves quickly, the indicator may never appear. If the child takes longer, the indicator shows until the child is ready. See the [Async Components guide](/guides/async-components) for details.
+See the [Async Components guide](/guides/async-components) for details.
 
 ## Error Boundaries
 
@@ -691,5 +715,29 @@ function *ErrorBoundary({children}) {
       yield <div>Error: {error.message}</div>;
     }
   }
+}
+```
+
+## Portals
+
+React's `createPortal` renders children into a different DOM node. Crank provides a `Portal` element:
+
+```jsx
+// React
+import {createPortal} from "react-dom";
+
+function Modal({children}) {
+  return createPortal(children, document.getElementById("modal-root"));
+}
+
+// Crank
+import {Portal} from "@b9g/crank";
+
+function Modal({children}) {
+  return (
+    <Portal root={document.getElementById("modal-root")}>
+      {children}
+    </Portal>
+  );
 }
 ```
