@@ -5,7 +5,7 @@
     "": {
       "dependencies": {
         "@b9g/assets": "^0.2.1",
-        "@b9g/crank": "^0.7.5",
+        "@b9g/crank": "^0.7.6",
         "@b9g/crank-codemods": "file:../packages/crank-codemods",
         "@b9g/platform": "^0.1.17",
         "@b9g/platform-bun": "^0.1.16",
@@ -57,7 +57,7 @@
 
     "@b9g/cache": ["@b9g/cache@0.2.2", "", {}, "sha512-1hLFB/1dFRfQj+rSyt3VnzDpJ8QjVO5ssfABNSjknMw0dykAKUoMeFmafpuNQMPJI0QVZ2jA6IZWPTHlOEjcMQ=="],
 
-    "@b9g/crank": ["@b9g/crank@0.7.5", "", {}, "sha512-tG82HhWizXZWVS2XZAElQ7/h31BrDoLh1N92M2JB8AOojc4xSHjZB2883ej9K7tbC3OnfA5dMp9IulJG1nrnBQ=="],
+    "@b9g/crank": ["@b9g/crank@0.7.6", "", {}, "sha512-SVD3VsdIjISL757MUoDu7xX+fGFwelktDNMGSnfZW4Q9vQD5id9rpUQoOFEBjlDBp5iLEP0mepzURmx3lETPaQ=="],
 
     "@b9g/crank-codemods": ["@b9g/crank-codemods@file:../packages/crank-codemods", { "dependencies": { "@b9g/crank": "file:../../", "jscodeshift": "^17.0.0" }, "devDependencies": { "@types/jscodeshift": "^0.12.0", "typescript": "^5.0.0" } }],
 

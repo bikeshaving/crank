@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@b9g/assets": "^0.2.1",
-    "@b9g/crank": "^0.7.5",
+    "@b9g/crank": "^0.7.6",
     "@b9g/crank-codemods": "file:../packages/crank-codemods",
     "@b9g/platform": "^0.1.17",
     "@b9g/platform-bun": "^0.1.16",
