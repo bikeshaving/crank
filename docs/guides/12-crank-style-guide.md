@@ -221,23 +221,6 @@ function *Example() {
 }
 ```
 
-✅ **Do** use inline event handlers freely. There are no stale closures in Crank — handlers close over `let` variables that are reassigned each iteration, so they always see current values:
-
-```jsx
-function *Counter() {
-  let count = 0;
-
-  for ({} of this) {
-    // ✅ always sees current count — no stale closure
-    yield (
-      <button onclick={() => this.refresh(() => count++)}>
-        Count: {count}
-      </button>
-    );
-  }
-}
-```
-
 ### Props
 
 ❌ **Don’t** destructure props in the parameter but skip in the `for...of` binding. `name` below is captured once and never updated:
@@ -373,6 +356,23 @@ function *App() {
 
   for ({} of this) {
     yield <ul>{todos.map((t) => <TodoItem key={t.id} todo={t} />)}</ul>;
+  }
+}
+```
+
+✅ **Do** use inline event handlers freely. There are no stale closures in Crank — handlers close over `let` variables that are reassigned each iteration, so they always see current values:
+
+```jsx
+function *Counter() {
+  let count = 0;
+
+  for ({} of this) {
+    // ✅ always sees current count — no stale closure
+    yield (
+      <button onclick={() => this.refresh(() => count++)}>
+        Count: {count}
+      </button>
+    );
   }
 }
 ```
