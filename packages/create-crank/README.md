@@ -5,13 +5,13 @@ Create a new [Crank.js](https://crank.js.org) project.
 ## Usage
 
 ```bash
-npm create crank my-app
+npm create crank
 ```
 
 This is a shortcut for:
 
 ```bash
-npm create shovel my-app --template crank
+npm create shovel --template crank
 ```
 
 ## Options
@@ -20,13 +20,13 @@ All options are passed through to `create-shovel`:
 
 ```bash
 # Skip TypeScript prompt
-npm create crank my-app --typescript
-npm create crank my-app --no-typescript
+npm create crank --typescript
+npm create crank --no-typescript
 
 # Skip platform prompt
-npm create crank my-app --platform node
-npm create crank my-app --platform bun
-npm create crank my-app --platform cloudflare
+npm create crank --platform node
+npm create crank --platform bun
+npm create crank --platform cloudflare
 ```
 
 ## What you get
