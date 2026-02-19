@@ -75,7 +75,7 @@ build tools required:
 
   <script type="module">
     // Import everything from a single module - no build required!
-    import {jsx, Fragment, renderer} from "https://unpkg.com/@b9g/crank/standalone?module";
+    import {jsx, Fragment, renderer} from "https://cdn.jsdelivr.net/npm/@b9g/crank/standalone.js";
 
     // A simple greeting component
     function Greeting({name = "World", message = "Welcome"}) {

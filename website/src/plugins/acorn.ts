@@ -966,8 +966,8 @@ function rewriteBareModuleSpecifiers(ast: any): void {
 		if (value.startsWith("@b9g/crank")) {
 			return value;
 		}
-		// Convert bare specifier to unpkg URL
-		return new URL(value, "https://unpkg.com/").toString() + "?module";
+		// Convert bare specifier to jsdelivr URL
+		return "https://cdn.jsdelivr.net/npm/" + value + "/+esm";
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -98,19 +98,18 @@ renderer.render(jsx`
 ```
 
 ### ECMAScript Module CDNs
-Crank is also available on CDNs like [unpkg](https://unpkg.com)
-(https://unpkg.com/@b9g/crank?module), [esm.sh](https://esm.sh)
-(https://esm.sh/@b9g/crank), and [esm.run](https://esm.run/@b9g/crank)
-(https://esm.run/@b9g/crank) for usage in ESM-ready environments.
+Crank is also available on CDNs like [jsDelivr](https://www.jsdelivr.com)
+(https://cdn.jsdelivr.net/npm/@b9g/crank/) and [esm.sh](https://esm.sh)
+(https://esm.sh/@b9g/crank) for usage in ESM-ready environments.
 
 ```jsx live
 /** @jsx createElement */
-import {createElement} from "https://unpkg.com/@b9g/crank/crank?module";
-import {renderer} from "https://unpkg.com/@b9g/crank/dom?module";
+import {createElement} from "https://cdn.jsdelivr.net/npm/@b9g/crank/crank.js";
+import {renderer} from "https://cdn.jsdelivr.net/npm/@b9g/crank/dom.js";
 
 renderer.render(
   <div id="hello">
-    Running on <a href="https://unpkg.com">unpkg.com</a>
+    Running on <a href="https://www.jsdelivr.com">jsDelivr</a>
   </div>,
   document.body,
 );
