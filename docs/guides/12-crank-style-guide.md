@@ -3,7 +3,7 @@ title: Crank Style Guide
 description: Conventions for writing cranky code. Covers component structure, state, props, events, cleanup, DOM access, async patterns, and the philosophy behind them.
 ---
 
-The key thesis behind Crank is that JavaScript already has all the primitives you need to build UIs. Code which follows this principle can humorously be called *cranky*, as in "This file solves the problem in a cranky way. Very nice." The following are the four core principles behind idiomatic Crank code:
+The key thesis behind Crank is that JavaScript already has all the primitives you need to build UIs. Code which follows this principle can humorously be called *cranky*, as in “This file solves the problem in a cranky way. Very nice.” The following are the four core principles behind idiomatic Crank code:
 
 1. **Use the language.** Write vanilla JavaScript. Variables are state, control flow is lifecycle, `fetch()` does data fetching.
 2. **Match the platform.** Prefer props like `class`, `for`, `onclick`, `innerHTML`. Use DOM names and conventions.
@@ -12,7 +12,7 @@ The key thesis behind Crank is that JavaScript already has all the primitives yo
 
 For full explanations, see the [Components](/guides/components), [Lifecycles](/guides/lifecycles), and [Async Components](/guides/async-components) guides. Many of the conventions described in this document can be fixed automatically through the [`eslint-plugin-crank`](https://github.com/bikeshaving/crank/tree/main/packages/eslint-plugin-crank) package.
 
-## Do's and Don'ts
+## Do’s and Don’ts
 
 ### Component Structure
 
@@ -25,7 +25,7 @@ function Greeting({name}) {
 }
 ```
 
-❌ **Don't** use arrow functions for components. They can't be generators and don't have their own `this`, so they can't access the component context:
+❌ **Don’t** use arrow functions for components. They can’t be generators and don’t have their own `this`, so they can’t access the component context:
 
 ```jsx
 // ❌ arrow functions can't be generators or access this
@@ -75,7 +75,7 @@ function *Counter() {
 
 **ESLint rule:** [`crank/prefer-props-iterator`](https://github.com/bikeshaving/crank/blob/main/packages/eslint-plugin-crank/src/rules/prefer-props-iterator.ts)
 
-❌ **Don't** put persistent state inside the loop. It resets on every render:
+❌ **Don’t** put persistent state inside the loop. It resets on every render:
 
 ```jsx
 function *Timer() {
@@ -128,7 +128,7 @@ function *Timer() {
 }
 ```
 
-❌ **Don't** `return` from a generator loop unless you want it to restart from scratch on the next update, losing all local state:
+❌ **Don’t** `return` from a generator loop unless you want it to restart from scratch on the next update, losing all local state:
 
 ```jsx
 // ❌ return restarts the generator — state is lost
@@ -148,7 +148,7 @@ function *Greeting({name}) {
 
 ### State Updates
 
-❌ **Don't** mutate state or call `refresh()` as separate steps. It's easy to forget one or the other, especially in longer handlers:
+❌ **Don’t** mutate state or call `refresh()` as separate steps. It’s easy to forget one or the other, especially in longer handlers:
 
 ```jsx
 function *Counter() {
@@ -205,7 +205,7 @@ function *Form() {
 
 **ESLint rule:** [`crank/prefer-refresh-callback`](https://github.com/bikeshaving/crank/blob/main/packages/eslint-plugin-crank/src/rules/prefer-refresh-callback.ts)
 
-❌ **Don't** call `refresh()` during execution or after unmount. It's a no-op in both cases and will emit warnings:
+❌ **Don’t** call `refresh()` during execution or after unmount. It’s a no-op in both cases and will emit warnings:
 
 ```jsx
 function *Example() {
@@ -240,7 +240,7 @@ function *Counter() {
 
 ### Props
 
-❌ **Don't** destructure props in the parameter but skip in the `for...of` binding. `name` below is captured once and never updated:
+❌ **Don’t** destructure props in the parameter but skip in the `for...of` binding. `name` below is captured once and never updated:
 
 ```jsx
 function *Greeting({name = "World"}) {
@@ -251,7 +251,7 @@ function *Greeting({name = "World"}) {
 }
 ```
 
-❌ **Don't** destructure partially. Any prop missing from the `for...of` binding stays stale:
+❌ **Don’t** destructure partially. Any prop missing from the `for...of` binding stays stale:
 
 ```jsx
 function *Card({title, count}) {
@@ -300,7 +300,7 @@ function MyForm() {
 }
 ```
 
-✅ **Do** use standard SVG attribute names, not React's camelCase rewrites:
+✅ **Do** use standard SVG attribute names, not React’s camelCase rewrites:
 
 ```jsx
 // ❌
@@ -314,7 +314,7 @@ function MyForm() {
 
 ### Events
 
-❌ **Don't** use camelCased event props. Crank passes event attributes directly to the DOM:
+❌ **Don’t** use camelCased event props. Crank passes event attributes directly to the DOM:
 
 ```jsx
 // ❌ React-style camelCase
@@ -324,7 +324,7 @@ function MyForm() {
 <input onchange={handler} onkeydown={handler} />
 ```
 
-❌ **Don't** pass callback props down through multiple layers. It couples children to their parents and clutters intermediate components:
+❌ **Don’t** pass callback props down through multiple layers. It couples children to their parents and clutters intermediate components:
 
 ```jsx
 function *App() {
@@ -389,7 +389,7 @@ yield <UserProfile userId={userId} />;
 yield <UserProfile key={userId} userId={userId} />;
 ```
 
-❌ **Don't** omit keys or key list items by array index. Without stable keys, Crank matches by position — reordering or filtering a list causes state to bleed between items:
+❌ **Don’t** omit keys or key list items by array index. Without stable keys, Crank matches by position — reordering or filtering a list causes state to bleed between items:
 
 ```jsx
 // ❌ no keys — removing an item shifts state to the wrong component
@@ -406,7 +406,7 @@ yield <ul>{todos.map((t, i) => <TodoItem key={i} todo={t} />)}</ul>;
 yield <ul>{todos.map((t) => <TodoItem key={t.id} todo={t} />)}</ul>;
 ```
 
-✅ **Do** use `&&` for conditional rendering. Falsy values like `false` and `null` preserve their slot in the children array, so siblings don't shift positions:
+✅ **Do** use `&&` for conditional rendering. Falsy values like `false` and `null` preserve their slot in the children array, so siblings don’t shift positions:
 
 ```jsx
 // ✅ falsy values preserve their slot
@@ -434,7 +434,7 @@ function *App() {
 
 ### Cleanup
 
-❌ **Don't** leave timers, listeners, or subscriptions without cleanup. They outlive the component and leak:
+❌ **Don’t** leave timers, listeners, or subscriptions without cleanup. They outlive the component and leak:
 
 ```jsx
 function *Timer() {
@@ -539,7 +539,7 @@ function *AutoFocusInput() {
 
 ### Async Components
 
-❌ **Don't** manage loading state manually with flags in a sync generator when an async component would be simpler:
+❌ **Don’t** manage loading state manually with flags in a sync generator when an async component would be simpler:
 
 ```jsx
 function *UserProfile({userId}) {
@@ -583,7 +583,7 @@ async function *DataLoader({children}) {
 
 ### Error Handling
 
-❌ **Don't** reach for `try`/`catch` around `yield` as a first resort. It creates an error boundary that catches every failure in the child tree, including real bugs:
+❌ **Don’t** reach for `try`/`catch` around `yield` as a first resort. It creates an error boundary that catches every failure in the child tree, including real bugs:
 
 ```jsx
 function *Dashboard() {
@@ -614,7 +614,7 @@ async function UserProfile({userId}) {
 
 ### Composition
 
-❌ **Don't** use render props or functions-as-children. Generators already encapsulate state:
+❌ **Don’t** use render props or functions-as-children. Generators already encapsulate state:
 
 ```jsx
 function *App() {
@@ -645,7 +645,7 @@ function Layout({header, sidebar, children}) {
 }
 ```
 
-❌ **Don't** use plain strings as provision keys. They risk collisions between unrelated libraries or components:
+❌ **Don’t** use plain strings as provision keys. They risk collisions between unrelated libraries or components:
 
 ```jsx
 function *App({children}) {
@@ -702,7 +702,7 @@ function Price({amount}) {
 
 ### Reusable Logic
 
-❌ **Don't** extend `Context.prototype` to share behavior globally. It's implicit, globally scoped, and can't run setup logic:
+❌ **Don’t** extend `Context.prototype` to share behavior globally. It’s implicit, globally scoped, and can’t run setup logic:
 
 ```jsx
 import {Context} from "@b9g/crank";
@@ -713,7 +713,7 @@ Context.prototype.setInterval = function (callback, delay) {
 };
 ```
 
-✅ **Do** write plain helper functions that accept a context. They compose, they're explicit, and they're just JavaScript:
+✅ **Do** write plain helper functions that accept a context. They compose, they’re explicit, and they’re just JavaScript:
 
 ```jsx
 // ✅ plain helper function
@@ -733,7 +733,7 @@ function *Timer() {
 }
 ```
 
-✅ **Do** use higher-order components to wrap rendering logic around existing components. For example, a `memo` wrapper uses `<Copy />` to skip re-renders when props haven't changed:
+✅ **Do** use higher-order components to wrap rendering logic around existing components. For example, a `memo` wrapper uses `<Copy />` to skip re-renders when props haven’t changed:
 
 ```jsx
 import {Copy} from "@b9g/crank";
@@ -759,7 +759,7 @@ See [Reusable Logic](/guides/reusable-logic) for alternative approaches and trad
 
 ### TypeScript
 
-✅ **Do** annotate `this: Context<typeof Component>` in generator components. It's required in strict mode and infers the props type from the component definition:
+✅ **Do** annotate `this: Context<typeof Component>` in generator components. It’s required in strict mode and infers the props type from the component definition:
 
 ```tsx
 import type {Context} from "@b9g/crank";
@@ -827,7 +827,7 @@ declare global {
 
 ### Performance
 
-❌ **Don't** redo expensive work on every render when the inputs haven't changed:
+❌ **Don’t** redo expensive work on every render when the inputs haven’t changed:
 
 ```jsx
 function *Report({data}) {
@@ -839,7 +839,7 @@ function *Report({data}) {
 }
 ```
 
-✅ **Do** cache the result and compare inputs manually. Save current values after `yield` so they're available as "old" values on the next iteration:
+✅ **Do** cache the result and compare inputs manually. Save current values after `yield` so they’re available as “old” values on the next iteration:
 
 ```jsx
 function *Report({data}) {
@@ -859,7 +859,7 @@ function *Report({data}) {
 }
 ```
 
-✅ **Do** use `copy` to preserve subtrees when the child doesn't need to re-render:
+✅ **Do** use `copy` to preserve subtrees when the child doesn’t need to re-render:
 
 ```jsx
 function *Dashboard() {
