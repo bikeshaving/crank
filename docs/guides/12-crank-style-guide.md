@@ -17,7 +17,7 @@ For full explanations, see the [Components](/guides/components), [Lifecycles](/g
 
 ### Component Structure
 
-**Don’t** use `while (true)` for component iteration. The component renders correctly but never sees prop updates, and a missed `yield` causes the page to hang:
+❌ **Don’t** use `while (true)` for component iteration. The component renders correctly but never sees prop updates, and a missed `yield` causes the page to hang:
 
 ```jsx
 function *Counter({count}) {
@@ -39,7 +39,7 @@ function *Counter({count}) {
 
 **ESLint rule:** `crank/prefer-props-iterator`
 
-**Don’t** put persistent state inside the loop. It resets on every render:
+❌ **Don’t** put persistent state inside the loop. It resets on every render:
 
 ```jsx
 function *Timer() {
@@ -72,7 +72,7 @@ function *Timer() {
 }
 ```
 
-❌ ❌ **Don't** return `undefined` from a component, which is usually a mistake:
+❌ **Don't** return `undefined` from a component, which is usually a mistake:
 
 ```jsx
 function MaybeGreeting({name}) {
@@ -96,7 +96,7 @@ function MaybeGreeting({name}) {
 
 ### State Updates
 
-**Don’t** mutate state or call `refresh()` as separate steps. It’s easy to forget one or the other, especially in longer handlers:
+❌ **Don’t** mutate state or call `refresh()` as separate steps. It’s easy to forget one or the other, especially in longer handlers:
 
 ```jsx
 function *Counter() {
@@ -135,7 +135,7 @@ There are no stale closures in Crank. Handlers close over `let` variables that a
 
 ### Props
 
-**Don’t** destructure props in the parameter but skip the `for...of` binding. `name` below is captured once and never updated:
+❌ **Don’t** destructure props in the parameter but skip the `for...of` binding. `name` below is captured once and never updated:
 
 ```jsx
 function *Greeting({name = "World"}) {
@@ -145,7 +145,7 @@ function *Greeting({name = "World"}) {
 }
 ```
 
-**Don’t** destructure partially. Any prop missing from the `for...of` binding stays stale:
+❌ **Don’t** destructure partially. Any prop missing from the `for...of` binding stays stale:
 
 ```jsx
 function *Card({title, count}) {
@@ -170,7 +170,7 @@ function *Greeting({name = "World", formal = false}) {
 
 ### Derived Values
 
-**Don’t** redo expensive work on every render when the inputs haven’t changed:
+❌ **Don’t** redo expensive work on every render when the inputs haven’t changed:
 
 ```jsx
 function *Report({data}) {
@@ -205,7 +205,7 @@ function *Report({data}) {
 
 Crank matches elements by position in the tree. When the same component appears at the same position with different data, its generator state is reused by default. Keys give you explicit control over when state should be kept and when it should be thrown away.
 
-**Don’t** let stale component state bleed across unrelated data. If a `<UserProfile>` switches from one user to another, generator state from the first user persists (timers keep running, local variables keep their values):
+❌ **Don’t** let stale component state bleed across unrelated data. If a `<UserProfile>` switches from one user to another, generator state from the first user persists (timers keep running, local variables keep their values):
 
 ```jsx
 function *App({userId}) {
@@ -248,7 +248,7 @@ function *Dashboard() {
 
 ### Children and Composition
 
-**Don’t** use render props or functions-as-children. Generators already encapsulate state:
+❌ **Don’t** use render props or functions-as-children. Generators already encapsulate state:
 
 ```jsx
 function *App() {
@@ -281,7 +281,7 @@ If a parent needs to pass dynamic data to its children, use [provisions](/guides
 
 ### Provisions
 
-**Don’t** use plain strings as provision keys. They risk collisions between unrelated libraries or components:
+❌ **Don’t** use plain strings as provision keys. They risk collisions between unrelated libraries or components:
 
 ```jsx
 function *App({children}) {
@@ -319,7 +319,7 @@ Note that consumers do not automatically re-render when a provided value changes
 
 ### Cleanup
 
-**Don’t** leave timers, listeners, or subscriptions without cleanup. They outlive the component and leak:
+❌ **Don’t** leave timers, listeners, or subscriptions without cleanup. They outlive the component and leak:
 
 ```jsx
 function *Timer() {
@@ -389,7 +389,7 @@ Note: `cleanup` callbacks persist across renders and fire once on unmount. `sche
 
 ### Refs and DOM Access
 
-**Don’t** use `this.schedule()` for operations that need the element to be live in the document. `schedule` fires after DOM nodes are created but *before* they are inserted:
+❌ **Don’t** use `this.schedule()` for operations that need the element to be live in the document. `schedule` fires after DOM nodes are created but *before* they are inserted:
 
 ```jsx
 function *AutoFocusInput() {
@@ -426,7 +426,7 @@ function MyInput({ref, class: cls, ...props}) {
 
 ### Events
 
-**Don’t** pass callback props down through multiple layers. It couples children to their parents and clutters intermediate components:
+❌ **Don’t** pass callback props down through multiple layers. It couples children to their parents and clutters intermediate components:
 
 ```jsx
 function *App() {
@@ -481,7 +481,7 @@ This mirrors how the DOM works: children signal intent via events, parents decid
 
 ### Yield vs Return
 
-**Don’t** use `return` inside a generator loop. It terminates the generator and restarts it from scratch on the next update, losing all local state:
+❌ **Don’t** use `return` inside a generator loop. It terminates the generator and restarts it from scratch on the next update, losing all local state:
 
 ```jsx
 function *Greeting({name}) {
@@ -503,7 +503,7 @@ function *Greeting({name}) {
 
 ### Async Components
 
-**Don’t** manage loading state manually with flags in a sync generator when an async component would be simpler:
+❌ **Don’t** manage loading state manually with flags in a sync generator when an async component would be simpler:
 
 ```jsx
 function *UserProfile({userId}) {
@@ -544,7 +544,7 @@ For declarative loading states and code splitting, use `Suspense` and `lazy` fro
 
 ### Error Handling
 
-**Don’t** reach for `try`/`catch` around `yield` as a first resort. It creates an error boundary that catches every failure in the child tree, including real bugs:
+❌ **Don’t** reach for `try`/`catch` around `yield` as a first resort. It creates an error boundary that catches every failure in the child tree, including real bugs:
 
 ```jsx
 function *Dashboard() {
@@ -576,7 +576,7 @@ async function UserProfile({userId}) {
 React aliases like `className`, `htmlFor`, and `onClick` happen to work in Crank
 because they are writable DOM properties, but cranky code does not use them.
 
-**Don’t** use React prop names:
+❌ **Don’t** use React prop names:
 
 ```jsx
 function MyForm() {
@@ -622,7 +622,7 @@ The `class` prop accepts objects for conditional classes, and the `style` prop a
 
 ### Reusable Logic
 
-**Don’t** reach for higher-order components or global monkey-patching to share behavior between components:
+❌ **Don’t** reach for higher-order components or global monkey-patching to share behavior between components:
 
 ```jsx
 function withInterval(Component) {
