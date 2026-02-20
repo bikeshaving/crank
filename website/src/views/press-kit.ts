@@ -86,7 +86,9 @@ function LogoCard({
 				aria-label=${label}
 				class=${css`
 					height: 200px;
-					background: url(${src}) center / contain no-repeat, ${background};
+					background:
+						url(${src}) center / contain no-repeat,
+						${background};
 				`}
 			/>
 			<div class=${css`
@@ -151,7 +153,9 @@ function Swatch({color, label}: {color: string; label: string}) {
 				flex: none;
 			`} />
 			<div>
-				<div class=${css`font-weight: bold;`}>${label}</div>
+				<div class=${css`
+					font-weight: bold;
+				`}>${label}</div>
 				<code>${color}</code>
 			</div>
 		</div>

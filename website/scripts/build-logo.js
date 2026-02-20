@@ -35,7 +35,10 @@ const lightLogo = generateLogoSVG({color: "#DAA520", background: "#e7f4f5"});
 await Bun.write(resolve(websiteDir, "static/logo-light.svg"), lightLogo);
 
 const transparentLogo = generateLogoSVG({color: "#DAA520"});
-await Bun.write(resolve(websiteDir, "static/logo-transparent.svg"), transparentLogo);
+await Bun.write(
+	resolve(websiteDir, "static/logo-transparent.svg"),
+	transparentLogo,
+);
 
 await svgToIco({
 	input_name: rootLogo,
