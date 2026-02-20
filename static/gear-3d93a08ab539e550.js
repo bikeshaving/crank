@@ -1,0 +1,1 @@
+import"./chunk-5YGEZ7AS.js";var e=document.getElementById("gears");e&&Promise.all([import("./standalone-253GLABD.js"),import("./dom-LKEBTUEN.js"),import("./gears-SUGGO5MW.js")]).then(([{jsx:t},{renderer:o},{GearInteractive:r}])=>{o.render(t`<${r} />`,e)});

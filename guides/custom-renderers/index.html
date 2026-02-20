@@ -1,4 +1,4 @@
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Crank.js | Custom Renderers</title><link rel="shortcut icon" href="/static/favicon-eefec412b1f6cade.ico"><style>.css-yop4go{position:relative;width:60px;height:32px;border-radius:16px;border:1px solid var(--text-color);background:transparent;cursor:pointer;padding:0 4px;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-align-items:center;-webkit-box-align:center;-ms-flex-align:center;align-items:center;-webkit-box-pack:justify;-webkit-justify-content:space-between;justify-content:space-between;font-size:16px;}.css-yop4go:focus{outline:none;border-color:var(--highlight-color);}.css-zj66tk{position:absolute;width:26px;height:26px;border-radius:50%;border:1px solid var(--text-color);background:var(--bg-color);-webkit-transition:left 0.2s;transition:left 0.2s;display:none;}.css-1l1hcps{position:fixed;top:0;left:0;right:0;height:50px;z-index:999;gap:1em;}.css-1n0j5y9{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-box-pack:center;-ms-flex-pack:center;-webkit-justify-content:center;justify-content:center;-webkit-align-items:center;-webkit-box-align:center;-ms-flex-align:center;align-items:center;gap:1em;}.css-1xmwt0h{border-bottom:1px solid var(--text-color);overflow-x:auto;background-color:inherit;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-box-pack:justify;-webkit-justify-content:space-between;justify-content:space-between;gap:1em;}.css-1xmwt0h a{-webkit-text-decoration:none;text-decoration:none;font-weight:bold;}@media screen and (min-width: 800px){.css-1xmwt0h{padding:0 2em;}}.css-1nd56js{background-color:var(--bg-color);border-top:1px solid var(--text-color);padding:2em;text-align:center;font-size:14px;}.css-nf2n4z{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-box-pack:center;-ms-flex-pack:center;-webkit-justify-content:center;justify-content:center;gap:2em;-webkit-box-flex-wrap:wrap;-webkit-flex-wrap:wrap;-ms-flex-wrap:wrap;flex-wrap:wrap;margin-bottom:1em;}.css-1st8n6b{margin:0;color:var(--text-color);opacity:0.7;}.css-1xzghkg{position:absolute;top:0.5em;right:0.5em;z-index:10;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-align-items:center;-webkit-box-align:center;-ms-flex-align:center;align-items:center;gap:8px;}.css-1y5ulpa{height:24px;padding:0 8px;border-radius:4px;border:1px solid var(--text-color);background:transparent;font-size:10px;font-family:monospace;cursor:pointer;opacity:0.7;-webkit-transition:opacity 0.2s;transition:opacity 0.2s;}.css-1y5ulpa:hover{opacity:1;}.css-i7rnhw{overflow-x:auto;}.css-1y4o4pq{position:relative;min-height:100%;width:100%;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;background-color:var(--bg-color);}.css-84ojsb{display:contents;}.css-1ashatc{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;word-break:break-all;overflow-wrap:anywhere;line-break:anywhere;white-space:pre-wrap;white-space:break-spaces;font-size:16px;}.css-1flouoi{border-bottom:1px dotted #333;}.color-scheme-light .css-1flouoi{border-bottom:1px dotted #ddd;}.css-1vm8pxc{max-width:min(100%, 1000px);}.css-1s1lac9{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;font-size:16px;}@media (min-width: 1300px){.css-1s1lac9{-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-align-items:flex-start;-webkit-box-align:flex-start;-ms-flex-align:flex-start;align-items:flex-start;}}.css-1lyfw13{position:relative;-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;width:100%;border:1px solid var(--text-color);border-radius:4px;overflow:hidden;}.css-vrpffa{display:-webkit-inline-box;display:-webkit-inline-flex;display:-ms-inline-flexbox;display:inline-flex;-webkit-align-items:center;-webkit-box-align:center;-ms-flex-align:center;align-items:center;gap:0.5rem;font-size:0.9rem;color:var(--text-color);opacity:0.6;-webkit-text-decoration:none;text-decoration:none;-webkit-transition:opacity 0.2s ease;transition:opacity 0.2s ease;}.css-vrpffa:hover{opacity:1;color:var(--highlight-color);}.css-1lyshc7{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--text-color);opacity:0.5;}.css-w1ljn4{margin:10px 0;}.css-1l0nd7p{-webkit-text-decoration:none;text-decoration:none;}.css-1wkb9s8{background-color:var(--bg-color);margin-top:50px;padding:2rem 0.4rem;color:var(--text-color);border-right:1px solid currentcolor;border-bottom:1px solid currentcolor;}@media screen and (min-width: 800px){.css-1wkb9s8{position:fixed;top:50px;bottom:0;overflow-x:hidden;overflow-y:auto;width:15rem;margin:0;padding:2rem 1rem;text-align:right;}}@media screen and (min-width: 1100px){.css-1wkb9s8{padding:3rem 2rem;width:20rem;}}.css-1wkb9s8 &gt;:first-child{margin-top:0;}.css-ep9szm{color:var(--highlight-color);margin-top:0;}.css-1d9zsa{position:relative;margin-bottom:1rem;}.css-okn4a3{width:100%;padding:0.5rem 0.75rem;font-size:0.9rem;border:1px solid var(--text-color);border-radius:4px;background:var(--bg-color);color:var(--text-color);box-sizing:border-box;}.css-okn4a3::-webkit-input-placeholder{opacity:0.5;}.css-okn4a3::-moz-placeholder{opacity:0.5;}.css-okn4a3:-ms-input-placeholder{opacity:0.5;}.css-okn4a3::placeholder{opacity:0.5;}.css-okn4a3:focus{outline:none;border-color:var(--highlight-color);}.css-1mkiuoh{margin:0 auto;padding:2rem 0.4rem;}@media screen and (min-width: 800px){.css-1mkiuoh{margin-left:240px;padding:2rem 1rem;margin-top:50px;}}@media screen and (min-width: 1100px){.css-1mkiuoh{margin-left:20rem;padding:3rem 2rem;}}.css-1mkiuoh p{max-width:800px;}</style><link rel="stylesheet" type="text/css" href="/static/client-3f2e47bea41770a9.css"><meta name="description" content=""><meta property="og:title" content="Crank.js | Custom Renderers"><meta property="og:url" content="https:/crank.js.org/guides/custom-renderers"><meta property="og:description" content=""><meta property="og:type" content="website"><meta property="og:site_name" content="Crank.js"><meta property="og:image" content="/static/logo-9c727b9c5ba929af.svg"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="Crank.js | Custom Renderers"><meta name="twitter:description" content=""><meta name="twitter:image" content="/static/logo-9c727b9c5ba929af.svg"></head><body><script>(() => { const s = sessionStorage.getItem("color-scheme");
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width"><title>Crank.js | Custom Renderers</title><link rel="shortcut icon" href="/favicon.ico"><style>.css-yop4go{position:relative;width:60px;height:32px;border-radius:16px;border:1px solid var(--text-color);background:transparent;cursor:pointer;padding:0 4px;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-align-items:center;-webkit-box-align:center;-ms-flex-align:center;align-items:center;-webkit-box-pack:justify;-webkit-justify-content:space-between;justify-content:space-between;font-size:16px;}.css-yop4go:focus{outline:none;border-color:var(--highlight-color);}.css-zj66tk{position:absolute;width:26px;height:26px;border-radius:50%;border:1px solid var(--text-color);background:var(--bg-color);-webkit-transition:left 0.2s;transition:left 0.2s;display:none;}.css-1l1hcps{position:fixed;top:0;left:0;right:0;height:50px;z-index:999;gap:1em;}.css-1n0j5y9{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-box-pack:center;-ms-flex-pack:center;-webkit-justify-content:center;justify-content:center;-webkit-align-items:center;-webkit-box-align:center;-ms-flex-align:center;align-items:center;gap:1em;}.css-1xmwt0h{border-bottom:1px solid var(--text-color);overflow-x:auto;background-color:inherit;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-box-pack:justify;-webkit-justify-content:space-between;justify-content:space-between;gap:1em;}.css-1xmwt0h a{-webkit-text-decoration:none;text-decoration:none;font-weight:bold;}@media screen and (min-width: 800px){.css-1xmwt0h{padding:0 2em;}}.css-1nd56js{background-color:var(--bg-color);border-top:1px solid var(--text-color);padding:2em;text-align:center;font-size:14px;}.css-nf2n4z{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-box-pack:center;-ms-flex-pack:center;-webkit-justify-content:center;justify-content:center;gap:2em;-webkit-box-flex-wrap:wrap;-webkit-flex-wrap:wrap;-ms-flex-wrap:wrap;flex-wrap:wrap;margin-bottom:1em;}.css-1st8n6b{margin:0;color:var(--text-color);opacity:0.7;}.css-1vm8pxc{max-width:min(100%, 1000px);}.css-1s1lac9{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;font-size:16px;}@media (min-width: 1300px){.css-1s1lac9{-webkit-flex-direction:row;-ms-flex-direction:row;flex-direction:row;-webkit-align-items:flex-start;-webkit-box-align:flex-start;-ms-flex-align:flex-start;align-items:flex-start;}}.css-1lyfw13{position:relative;-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;width:100%;border:1px solid var(--text-color);border-radius:4px;overflow:hidden;}.css-1xzghkg{position:absolute;top:0.5em;right:0.5em;z-index:10;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-align-items:center;-webkit-box-align:center;-ms-flex-align:center;align-items:center;gap:8px;}.css-1y5ulpa{height:24px;padding:0 8px;border-radius:4px;border:1px solid var(--text-color);background:transparent;font-size:10px;font-family:monospace;cursor:pointer;opacity:0.7;-webkit-transition:opacity 0.2s;transition:opacity 0.2s;}.css-1y5ulpa:hover{opacity:1;}.css-i7rnhw{overflow-x:auto;}.css-1y4o4pq{position:relative;min-height:100%;width:100%;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;background-color:var(--bg-color);}.css-84ojsb{display:contents;}.css-1ashatc{-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;word-break:break-all;overflow-wrap:anywhere;line-break:anywhere;white-space:pre-wrap;white-space:break-spaces;font-size:16px;}.css-1flouoi{border-bottom:1px dotted #333;}.color-scheme-light .css-1flouoi{border-bottom:1px dotted #ddd;}.css-vrpffa{display:-webkit-inline-box;display:-webkit-inline-flex;display:-ms-inline-flexbox;display:inline-flex;-webkit-align-items:center;-webkit-box-align:center;-ms-flex-align:center;align-items:center;gap:0.5rem;font-size:0.9rem;color:var(--text-color);opacity:0.6;-webkit-text-decoration:none;text-decoration:none;-webkit-transition:opacity 0.2s ease;transition:opacity 0.2s ease;}.css-vrpffa:hover{opacity:1;color:var(--highlight-color);}.css-1lyshc7{margin-top:3rem;padding-top:1.5rem;border-top:1px solid var(--text-color);opacity:0.5;}.css-w1ljn4{margin:10px 0;}.css-1l0nd7p{-webkit-text-decoration:none;text-decoration:none;}.css-1wkb9s8{background-color:var(--bg-color);margin-top:50px;padding:2rem 0.4rem;color:var(--text-color);border-right:1px solid currentcolor;border-bottom:1px solid currentcolor;}@media screen and (min-width: 800px){.css-1wkb9s8{position:fixed;top:50px;bottom:0;overflow-x:hidden;overflow-y:auto;width:15rem;margin:0;padding:2rem 1rem;text-align:right;}}@media screen and (min-width: 1100px){.css-1wkb9s8{padding:3rem 2rem;width:20rem;}}.css-1wkb9s8 >:first-child{margin-top:0;}.css-ep9szm{color:var(--highlight-color);margin-top:0;}.css-1d9zsa{position:relative;margin-bottom:1rem;}.css-okn4a3{width:100%;padding:0.5rem 0.75rem;font-size:0.9rem;border:1px solid var(--text-color);border-radius:4px;background:var(--bg-color);color:var(--text-color);box-sizing:border-box;}.css-okn4a3::-webkit-input-placeholder{opacity:0.5;}.css-okn4a3::-moz-placeholder{opacity:0.5;}.css-okn4a3:-ms-input-placeholder{opacity:0.5;}.css-okn4a3::placeholder{opacity:0.5;}.css-okn4a3:focus{outline:none;border-color:var(--highlight-color);}.css-s848sl{margin:0 auto;padding:2rem 0.4rem;}@media screen and (min-width: 800px){.css-s848sl{margin-left:240px;padding:2rem 1rem;margin-top:50px;}}@media screen and (min-width: 1100px){.css-s848sl{margin-left:20rem;padding:3rem 2rem;}}.css-s848sl p,.css-s848sl ul,.css-s848sl ol{max-width:800px;}</style><link rel="stylesheet" type="text/css" href="/static/client-bb3474147984aa38.css"><meta name="description" content=""><meta property="og:title" content="Crank.js | Custom Renderers"><meta property="og:url" content="https://crank.js.org/guides/custom-renderers"><meta property="og:description" content=""><meta property="og:type" content="website"><meta property="og:site_name" content="Crank.js"><meta property="og:image" content="/static/logo-fa20bf6e23587cd0.svg"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="Crank.js | Custom Renderers"><meta name="twitter:description" content=""><meta name="twitter:image" content="/static/logo-fa20bf6e23587cd0.svg"></head><body><script>(() => { const s = sessionStorage.getItem("color-scheme");
 		const scheme = s === "dark" || s === "light" ? s :
 			(window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
 		const isDark = scheme === "dark";
@@ -9,49 +9,44 @@
 				blur-background
 				css-1l1hcps
 				css-1xmwt0h
-			"><div class="css-1n0j5y9"><div><a class="css-1n0j5y9" style="gap: 0.3em" href="/"><svg style="flex: none;" fill="none" viewBox="-200 -200 400 400" width="1.9em" height="1.9em" xmlns="http://www.w3.org/2000/svg"><defs><mask id="wedge-mask"><rect x="-200" y="-200" width="400" height="400" fill="white"></rect><path stroke="none" fill="black" d="
-							M 0 0
-							L 245.74561328669753 172.07293090531383
-							L 245.74561328669753 -172.07293090531383
-							z
-						"></path></mask></defs><g stroke="none" fill="var(--highlight-color)"><path transform="rotate(0)" d="M 149.39 -16.97 M 149.62 -16.98 M 150.29 -17 M 151.42 -16.97 M 153 -16.85 M 155.02 -16.57 M 157.46 -16.1 M 160.32 -15.39 M 163.56 -14.39 M 167.17 -13.06 M 171.11 -11.35 M 175.36 -9.23 M 179.88 -6.66 M 179.88 6.66 M 175.36 9.23 M 171.11 11.35 M 167.17 13.06 M 163.56 14.39 M 160.32 15.39 M 157.46 16.1 M 155.02 16.57 M 153 16.85 M 151.42 16.97 M 150.29 17 M 149.62 16.98 M 149.39 16.97 A 8 8 0 0 0 144.51 41.5 L 144.73 41.57 L 145.36 41.81 L 146.39 42.27 L 147.8 42.99 L 149.56 44.01 L 151.64 45.38 L 154 47.13 L 156.62 49.29 L 159.44 51.9 L 162.43 54.99 L 165.54 58.58 L 168.73 62.69 L 163.64 74.98 L 158.48 75.64 L 153.74 75.97 L 149.44 76.04 L 145.6 75.89 L 142.22 75.57 L 139.31 75.14 L 136.88 74.63 L 134.91 74.11 L 133.4 73.63 L 132.35 73.22 L 131.73 72.95 L 131.53 72.84 A 8 8 0 0 0 117.63 93.64 L 117.8 93.79 L 118.3 94.25 L 119.07 95.07 L 120.1 96.28 L 121.33 97.9 L 122.73 99.96 L 124.24 102.48 L 125.83 105.48 L 127.44 108.97 L 129.02 112.96 L 130.52 117.47 L 131.9 122.49 L 122.49 131.9 L 117.47 130.52 L 112.96 129.02 L 108.97 127.44 L 105.48 125.83 L 102.48 124.24 L 99.96 122.73 L 97.9 121.33 L 96.28 120.1 L 95.07 119.07 L 94.25 118.3 L 93.79 117.8 L 93.64 117.63 A 8 8 0 0 0 72.84 131.53 L 72.95 131.73 L 73.22 132.35 L 73.63 133.4 L 74.11 134.91 L 74.63 136.88 L 75.14 139.31 L 75.57 142.22 L 75.89 145.6 L 76.04 149.44 L 75.97 153.74 L 75.64 158.48 L 74.98 163.64 L 62.69 168.73 L 58.58 165.54 L 54.99 162.43 L 51.9 159.44 L 49.29 156.62 L 47.13 154 L 45.38 151.64 L 44.01 149.56 L 42.99 147.8 L 42.27 146.39 L 41.81 145.36 L 41.57 144.73 L 41.5 144.51 A 8 8 0 0 0 16.97 149.39 L 16.98 149.62 L 17 150.29 L 16.97 151.42 L 16.85 153 L 16.57 155.02 L 16.1 157.46 L 15.39 160.32 L 14.39 163.56 L 13.06 167.17 L 11.35 171.11 L 9.23 175.36 L 6.66 179.88 L -6.66 179.88 L -9.23 175.36 L -11.35 171.11 L -13.06 167.17 L -14.39 163.56 L -15.39 160.32 L -16.1 157.46 L -16.57 155.02 L -16.85 153 L -16.97 151.42 L -17 150.29 L -16.98 149.62 L -16.97 149.39 A 8 8 0 0 0 -41.5 144.51 L -41.57 144.73 L -41.81 145.36 L -42.27 146.39 L -42.99 147.8 L -44.01 149.56 L -45.38 151.64 L -47.13 154 L -49.29 156.62 L -51.9 159.44 L -54.99 162.43 L -58.58 165.54 L -62.69 168.73 L -74.98 163.64 L -75.64 158.48 L -75.97 153.74 L -76.04 149.44 L -75.89 145.6 L -75.57 142.22 L -75.14 139.31 L -74.63 136.88 L -74.11 134.91 L -73.63 133.4 L -73.22 132.35 L -72.95 131.73 L -72.84 131.53 A 8 8 0 0 0 -93.64 117.63 L -93.79 117.8 L -94.25 118.3 L -95.07 119.07 L -96.28 120.1 L -97.9 121.33 L -99.96 122.73 L -102.48 124.24 L -105.48 125.83 L -108.97 127.44 L -112.96 129.02 L -117.47 130.52 L -122.49 131.9 L -131.9 122.49 L -130.52 117.47 L -129.02 112.96 L -127.44 108.97 L -125.83 105.48 L -124.24 102.48 L -122.73 99.96 L -121.33 97.9 L -120.1 96.28 L -119.07 95.07 L -118.3 94.25 L -117.8 93.79 L -117.63 93.64 A 8 8 0 0 0 -131.53 72.84 L -131.73 72.95 L -132.35 73.22 L -133.4 73.63 L -134.91 74.11 L -136.88 74.63 L -139.31 75.14 L -142.22 75.57 L -145.6 75.89 L -149.44 76.04 L -153.74 75.97 L -158.48 75.64 L -163.64 74.98 L -168.73 62.69 L -165.54 58.58 L -162.43 54.99 L -159.44 51.9 L -156.62 49.29 L -154 47.13 L -151.64 45.38 L -149.56 44.01 L -147.8 42.99 L -146.39 42.27 L -145.36 41.81 L -144.73 41.57 L -144.51 41.5 A 8 8 0 0 0 -149.39 16.97 L -149.62 16.98 L -150.29 17 L -151.42 16.97 L -153 16.85 L -155.02 16.57 L -157.46 16.1 L -160.32 15.39 L -163.56 14.39 L -167.17 13.06 L -171.11 11.35 L -175.36 9.23 L -179.88 6.66 L -179.88 -6.66 L -175.36 -9.23 L -171.11 -11.35 L -167.17 -13.06 L -163.56 -14.39 L -160.32 -15.39 L -157.46 -16.1 L -155.02 -16.57 L -153 -16.85 L -151.42 -16.97 L -150.29 -17 L -149.62 -16.98 L -149.39 -16.97 A 8 8 0 0 0 -144.51 -41.5 L -144.73 -41.57 L -145.36 -41.81 L -146.39 -42.27 L -147.8 -42.99 L -149.56 -44.01 L -151.64 -45.38 L -154 -47.13 L -156.62 -49.29 L -159.44 -51.9 L -162.43 -54.99 L -165.54 -58.58 L -168.73 -62.69 L -163.64 -74.98 L -158.48 -75.64 L -153.74 -75.97 L -149.44 -76.04 L -145.6 -75.89 L -142.22 -75.57 L -139.31 -75.14 L -136.88 -74.63 L -134.91 -74.11 L -133.4 -73.63 L -132.35 -73.22 L -131.73 -72.95 L -131.53 -72.84 A 8 8 0 0 0 -117.63 -93.64 L -117.8 -93.79 L -118.3 -94.25 L -119.07 -95.07 L -120.1 -96.28 L -121.33 -97.9 L -122.73 -99.96 L -124.24 -102.48 L -125.83 -105.48 L -127.44 -108.97 L -129.02 -112.96 L -130.52 -117.47 L -131.9 -122.49 L -122.49 -131.9 L -117.47 -130.52 L -112.96 -129.02 L -108.97 -127.44 L -105.48 -125.83 L -102.48 -124.24 L -99.96 -122.73 L -97.9 -121.33 L -96.28 -120.1 L -95.07 -119.07 L -94.25 -118.3 L -93.79 -117.8 L -93.64 -117.63 A 8 8 0 0 0 -72.84 -131.53 L -72.95 -131.73 L -73.22 -132.35 L -73.63 -133.4 L -74.11 -134.91 L -74.63 -136.88 L -75.14 -139.31 L -75.57 -142.22 L -75.89 -145.6 L -76.04 -149.44 L -75.97 -153.74 L -75.64 -158.48 L -74.98 -163.64 L -62.69 -168.73 L -58.58 -165.54 L -54.99 -162.43 L -51.9 -159.44 L -49.29 -156.62 L -47.13 -154 L -45.38 -151.64 L -44.01 -149.56 L -42.99 -147.8 L -42.27 -146.39 L -41.81 -145.36 L -41.57 -144.73 L -41.5 -144.51 A 8 8 0 0 0 -16.97 -149.39 L -16.98 -149.62 L -17 -150.29 L -16.97 -151.42 L -16.85 -153 L -16.57 -155.02 L -16.1 -157.46 L -15.39 -160.32 L -14.39 -163.56 L -13.06 -167.17 L -11.35 -171.11 L -9.23 -175.36 L -6.66 -179.88 L 6.66 -179.88 L 9.23 -175.36 L 11.35 -171.11 L 13.06 -167.17 L 14.39 -163.56 L 15.39 -160.32 L 16.1 -157.46 L 16.57 -155.02 L 16.85 -153 L 16.97 -151.42 L 17 -150.29 L 16.98 -149.62 L 16.97 -149.39 A 8 8 0 0 0 41.5 -144.51 L 41.57 -144.73 L 41.81 -145.36 L 42.27 -146.39 L 42.99 -147.8 L 44.01 -149.56 L 45.38 -151.64 L 47.13 -154 L 49.29 -156.62 L 51.9 -159.44 L 54.99 -162.43 L 58.58 -165.54 L 62.69 -168.73 L 74.98 -163.64 L 75.64 -158.48 L 75.97 -153.74 L 76.04 -149.44 L 75.89 -145.6 L 75.57 -142.22 L 75.14 -139.31 L 74.63 -136.88 L 74.11 -134.91 L 73.63 -133.4 L 73.22 -132.35 L 72.95 -131.73 L 72.84 -131.53 A 8 8 0 0 0 93.64 -117.63 L 93.79 -117.8 L 94.25 -118.3 L 95.07 -119.07 L 96.28 -120.1 L 97.9 -121.33 L 99.96 -122.73 L 102.48 -124.24 L 105.48 -125.83 L 108.97 -127.44 L 112.96 -129.02 L 117.47 -130.52 L 122.49 -131.9 L 131.9 -122.49 L 130.52 -117.47 L 129.02 -112.96 L 127.44 -108.97 L 125.83 -105.48 L 124.24 -102.48 L 122.73 -99.96 L 121.33 -97.9 L 120.1 -96.28 L 119.07 -95.07 L 118.3 -94.25 L 117.8 -93.79 L 117.63 -93.64 A 8 8 0 0 0 131.53 -72.84 L 131.73 -72.95 L 132.35 -73.22 L 133.4 -73.63 L 134.91 -74.11 L 136.88 -74.63 L 139.31 -75.14 L 142.22 -75.57 L 145.6 -75.89 L 149.44 -76.04 L 153.74 -75.97 L 158.48 -75.64 L 163.64 -74.98 L 168.73 -62.69 L 165.54 -58.58 L 162.43 -54.99 L 159.44 -51.9 L 156.62 -49.29 L 154 -47.13 L 151.64 -45.38 L 149.56 -44.01 L 147.8 -42.99 L 146.39 -42.27 L 145.36 -41.81 L 144.73 -41.57 L 144.51 -41.5 A 8 8 0 0 0 149.39 -16.97 L 149.62 -16.98 L 150.29 -17 L 151.42 -16.97 L 153 -16.85 L 155.02 -16.57 L 157.46 -16.1 L 160.32 -15.39 L 163.56 -14.39 L 167.17 -13.06 L 171.11 -11.35 L 175.36 -9.23 L 179.88 -6.66 L 179.88 6.66 L 175.36 9.23 L 171.11 11.35 L 167.17 13.06 L 163.56 14.39 L 160.32 15.39 L 157.46 16.1 L 155.02 16.57 L 153 16.85 L 151.42 16.97 L 150.29 17 L 149.62 16.98 L 149.39 16.97
+			"><div class="css-1n0j5y9"><div><a class="css-1n0j5y9" style="gap: 0.3em" href="/"><svg style="flex: none;" fill="none" viewBox="-200 -200 400 400" width="1.9em" height="1.9em" xmlns="http://www.w3.org/2000/svg"><g stroke="none" fill="var(--highlight-color)"><path transform="rotate(0)" d="M 149.39 -16.97 M 149.62 -16.98 M 150.29 -17 M 151.42 -16.97 M 153 -16.85 M 155.02 -16.57 M 157.46 -16.1 M 160.32 -15.39 M 163.56 -14.39 M 167.17 -13.06 M 171.11 -11.35 M 175.36 -9.23 M 179.88 -6.66 M 179.88 6.66 M 175.36 9.23 M 171.11 11.35 M 167.17 13.06 M 163.56 14.39 M 160.32 15.39 M 157.46 16.1 M 155.02 16.57 M 153 16.85 M 151.42 16.97 M 150.29 17 M 149.62 16.98 M 149.39 16.97 A 8 8 0 0 0 144.51 41.5 L 144.73 41.57 L 145.36 41.81 L 146.39 42.27 L 147.8 42.99 L 149.56 44.01 L 151.64 45.38 L 154 47.13 L 156.62 49.29 L 159.44 51.9 L 162.43 54.99 L 165.54 58.58 L 168.73 62.69 L 163.64 74.98 L 158.48 75.64 L 153.74 75.97 L 149.44 76.04 L 145.6 75.89 L 142.22 75.57 L 139.31 75.14 L 136.88 74.63 L 134.91 74.11 L 133.4 73.63 L 132.35 73.22 L 131.73 72.95 L 131.53 72.84 A 8 8 0 0 0 117.63 93.64 L 117.8 93.79 L 118.3 94.25 L 119.07 95.07 L 120.1 96.28 L 121.33 97.9 L 122.73 99.96 L 124.24 102.48 L 125.83 105.48 L 127.44 108.97 L 129.02 112.96 L 130.52 117.47 L 131.9 122.49 L 122.49 131.9 L 117.47 130.52 L 112.96 129.02 L 108.97 127.44 L 105.48 125.83 L 102.48 124.24 L 99.96 122.73 L 97.9 121.33 L 96.28 120.1 L 95.07 119.07 L 94.25 118.3 L 93.79 117.8 L 93.64 117.63 A 8 8 0 0 0 72.84 131.53 L 72.95 131.73 L 73.22 132.35 L 73.63 133.4 L 74.11 134.91 L 74.63 136.88 L 75.14 139.31 L 75.57 142.22 L 75.89 145.6 L 76.04 149.44 L 75.97 153.74 L 75.64 158.48 L 74.98 163.64 L 62.69 168.73 L 58.58 165.54 L 54.99 162.43 L 51.9 159.44 L 49.29 156.62 L 47.13 154 L 45.38 151.64 L 44.01 149.56 L 42.99 147.8 L 42.27 146.39 L 41.81 145.36 L 41.57 144.73 L 41.5 144.51 A 8 8 0 0 0 16.97 149.39 L 16.98 149.62 L 17 150.29 L 16.97 151.42 L 16.85 153 L 16.57 155.02 L 16.1 157.46 L 15.39 160.32 L 14.39 163.56 L 13.06 167.17 L 11.35 171.11 L 9.23 175.36 L 6.66 179.88 L -6.66 179.88 L -9.23 175.36 L -11.35 171.11 L -13.06 167.17 L -14.39 163.56 L -15.39 160.32 L -16.1 157.46 L -16.57 155.02 L -16.85 153 L -16.97 151.42 L -17 150.29 L -16.98 149.62 L -16.97 149.39 A 8 8 0 0 0 -41.5 144.51 L -41.57 144.73 L -41.81 145.36 L -42.27 146.39 L -42.99 147.8 L -44.01 149.56 L -45.38 151.64 L -47.13 154 L -49.29 156.62 L -51.9 159.44 L -54.99 162.43 L -58.58 165.54 L -62.69 168.73 L -74.98 163.64 L -75.64 158.48 L -75.97 153.74 L -76.04 149.44 L -75.89 145.6 L -75.57 142.22 L -75.14 139.31 L -74.63 136.88 L -74.11 134.91 L -73.63 133.4 L -73.22 132.35 L -72.95 131.73 L -72.84 131.53 A 8 8 0 0 0 -93.64 117.63 L -93.79 117.8 L -94.25 118.3 L -95.07 119.07 L -96.28 120.1 L -97.9 121.33 L -99.96 122.73 L -102.48 124.24 L -105.48 125.83 L -108.97 127.44 L -112.96 129.02 L -117.47 130.52 L -122.49 131.9 L -131.9 122.49 L -130.52 117.47 L -129.02 112.96 L -127.44 108.97 L -125.83 105.48 L -124.24 102.48 L -122.73 99.96 L -121.33 97.9 L -120.1 96.28 L -119.07 95.07 L -118.3 94.25 L -117.8 93.79 L -117.63 93.64 A 8 8 0 0 0 -131.53 72.84 L -131.73 72.95 L -132.35 73.22 L -133.4 73.63 L -134.91 74.11 L -136.88 74.63 L -139.31 75.14 L -142.22 75.57 L -145.6 75.89 L -149.44 76.04 L -153.74 75.97 L -158.48 75.64 L -163.64 74.98 L -168.73 62.69 L -165.54 58.58 L -162.43 54.99 L -159.44 51.9 L -156.62 49.29 L -154 47.13 L -151.64 45.38 L -149.56 44.01 L -147.8 42.99 L -146.39 42.27 L -145.36 41.81 L -144.73 41.57 L -144.51 41.5 A 8 8 0 0 0 -149.39 16.97 L -149.62 16.98 L -150.29 17 L -151.42 16.97 L -153 16.85 L -155.02 16.57 L -157.46 16.1 L -160.32 15.39 L -163.56 14.39 L -167.17 13.06 L -171.11 11.35 L -175.36 9.23 L -179.88 6.66 L -179.88 -6.66 L -175.36 -9.23 L -171.11 -11.35 L -167.17 -13.06 L -163.56 -14.39 L -160.32 -15.39 L -157.46 -16.1 L -155.02 -16.57 L -153 -16.85 L -151.42 -16.97 L -150.29 -17 L -149.62 -16.98 L -149.39 -16.97 A 8 8 0 0 0 -144.51 -41.5 L -144.73 -41.57 L -145.36 -41.81 L -146.39 -42.27 L -147.8 -42.99 L -149.56 -44.01 L -151.64 -45.38 L -154 -47.13 L -156.62 -49.29 L -159.44 -51.9 L -162.43 -54.99 L -165.54 -58.58 L -168.73 -62.69 L -163.64 -74.98 L -158.48 -75.64 L -153.74 -75.97 L -149.44 -76.04 L -145.6 -75.89 L -142.22 -75.57 L -139.31 -75.14 L -136.88 -74.63 L -134.91 -74.11 L -133.4 -73.63 L -132.35 -73.22 L -131.73 -72.95 L -131.53 -72.84 A 8 8 0 0 0 -117.63 -93.64 L -117.8 -93.79 L -118.3 -94.25 L -119.07 -95.07 L -120.1 -96.28 L -121.33 -97.9 L -122.73 -99.96 L -124.24 -102.48 L -125.83 -105.48 L -127.44 -108.97 L -129.02 -112.96 L -130.52 -117.47 L -131.9 -122.49 L -122.49 -131.9 L -117.47 -130.52 L -112.96 -129.02 L -108.97 -127.44 L -105.48 -125.83 L -102.48 -124.24 L -99.96 -122.73 L -97.9 -121.33 L -96.28 -120.1 L -95.07 -119.07 L -94.25 -118.3 L -93.79 -117.8 L -93.64 -117.63 A 8 8 0 0 0 -72.84 -131.53 L -72.95 -131.73 L -73.22 -132.35 L -73.63 -133.4 L -74.11 -134.91 L -74.63 -136.88 L -75.14 -139.31 L -75.57 -142.22 L -75.89 -145.6 L -76.04 -149.44 L -75.97 -153.74 L -75.64 -158.48 L -74.98 -163.64 L -62.69 -168.73 L -58.58 -165.54 L -54.99 -162.43 L -51.9 -159.44 L -49.29 -156.62 L -47.13 -154 L -45.38 -151.64 L -44.01 -149.56 L -42.99 -147.8 L -42.27 -146.39 L -41.81 -145.36 L -41.57 -144.73 L -41.5 -144.51 A 8 8 0 0 0 -16.97 -149.39 L -16.98 -149.62 L -17 -150.29 L -16.97 -151.42 L -16.85 -153 L -16.57 -155.02 L -16.1 -157.46 L -15.39 -160.32 L -14.39 -163.56 L -13.06 -167.17 L -11.35 -171.11 L -9.23 -175.36 L -6.66 -179.88 L 6.66 -179.88 L 9.23 -175.36 L 11.35 -171.11 L 13.06 -167.17 L 14.39 -163.56 L 15.39 -160.32 L 16.1 -157.46 L 16.57 -155.02 L 16.85 -153 L 16.97 -151.42 L 17 -150.29 L 16.98 -149.62 L 16.97 -149.39 A 8 8 0 0 0 41.5 -144.51 L 41.57 -144.73 L 41.81 -145.36 L 42.27 -146.39 L 42.99 -147.8 L 44.01 -149.56 L 45.38 -151.64 L 47.13 -154 L 49.29 -156.62 L 51.9 -159.44 L 54.99 -162.43 L 58.58 -165.54 L 62.69 -168.73 L 74.98 -163.64 L 75.64 -158.48 L 75.97 -153.74 L 76.04 -149.44 L 75.89 -145.6 L 75.57 -142.22 L 75.14 -139.31 L 74.63 -136.88 L 74.11 -134.91 L 73.63 -133.4 L 73.22 -132.35 L 72.95 -131.73 L 72.84 -131.53 A 8 8 0 0 0 93.64 -117.63 L 93.79 -117.8 L 94.25 -118.3 L 95.07 -119.07 L 96.28 -120.1 L 97.9 -121.33 L 99.96 -122.73 L 102.48 -124.24 L 105.48 -125.83 L 108.97 -127.44 L 112.96 -129.02 L 117.47 -130.52 L 122.49 -131.9 L 131.9 -122.49 L 130.52 -117.47 L 129.02 -112.96 L 127.44 -108.97 L 125.83 -105.48 L 124.24 -102.48 L 122.73 -99.96 L 121.33 -97.9 L 120.1 -96.28 L 119.07 -95.07 L 118.3 -94.25 L 117.8 -93.79 L 117.63 -93.64 A 8 8 0 0 0 131.53 -72.84 L 131.73 -72.95 L 132.35 -73.22 L 133.4 -73.63 L 134.91 -74.11 L 136.88 -74.63 L 139.31 -75.14 L 142.22 -75.57 L 145.6 -75.89 L 149.44 -76.04 L 153.74 -75.97 L 158.48 -75.64 L 163.64 -74.98 L 168.73 -62.69 L 165.54 -58.58 L 162.43 -54.99 L 159.44 -51.9 L 156.62 -49.29 L 154 -47.13 L 151.64 -45.38 L 149.56 -44.01 L 147.8 -42.99 L 146.39 -42.27 L 145.36 -41.81 L 144.73 -41.57 L 144.51 -41.5 A 8 8 0 0 0 149.39 -16.97 L 149.62 -16.98 L 150.29 -17 L 151.42 -16.97 L 153 -16.85 L 155.02 -16.57 L 157.46 -16.1 L 160.32 -15.39 L 163.56 -14.39 L 167.17 -13.06 L 171.11 -11.35 L 175.36 -9.23 L 179.88 -6.66 L 179.88 6.66 L 175.36 9.23 L 171.11 11.35 L 167.17 13.06 L 163.56 14.39 L 160.32 15.39 L 157.46 16.1 L 155.02 16.57 L 153 16.85 L 151.42 16.97 L 150.29 17 L 149.62 16.98 L 149.39 16.97
 			  M -110 0
 				a 110 110 0 1 0 220 0
 				a 110 110 0 1 0 -220 0
-			" mask="url(#wedge-mask)" stroke="none" stroke-width="4"></path><circle cx="0" cy="0" r="60" stroke="none"></circle><path d="
-						M 0 -28
-						L 160 -14
-						L 160 14
-						L 0 28
+			" stroke="none" stroke-width="4"></path><circle cx="0" cy="0" r="60" stroke="none"></circle><path d="
+						M 0 -25
+						L 120 -20
+						L 120 20
+						L 0 25
 						Z
-					"></path></g></svg>Crank.js</a></div><div><a href="/guides/getting-started" aria-current="page">Guides</a></div><div><a href="/api">API</a></div><div><a href="/blog/">Blog</a></div><div><a href="/playground/">Playground</a></div></div><div class="css-1n0j5y9"><div><a href="https://github.com/bikeshaving/crank">GitHub</a></div><div><a href="http://npm.im/@b9g/crank">NPM</a></div><button role="switch" aria-label="toggle color scheme" aria-checked="true" class="css-yop4go"><span>🌙</span><span>💡</span><span class="css-zj66tk"></span></button></div></nav></div><div id="sidebar" class="css-1wkb9s8"><h2 class="css-ep9szm">Guides</h2><div id="search-root"><div class="css-1d9zsa"><input type="search" placeholder="Search..." value="" class="css-okn4a3"></div></div><div class="css-w1ljn4"><a href="/guides/getting-started" class="css-1l0nd7p">Getting Started</a></div><div class="css-w1ljn4"><a href="/guides/elements" class="css-1l0nd7p">Elements and Renderers</a></div><div class="css-w1ljn4"><a href="/guides/components" class="css-1l0nd7p">Components</a></div><div class="css-w1ljn4"><a href="/guides/handling-events" class="css-1l0nd7p">Handling Events</a></div><div class="css-w1ljn4"><a href="/guides/async-components" class="css-1l0nd7p">Async Components</a></div><div class="css-w1ljn4"><a href="/guides/special-props-and-components" class="css-1l0nd7p">Special Props and Components</a></div><div class="css-w1ljn4"><a href="/guides/lifecycles" class="css-1l0nd7p">Lifecycles</a></div><div class="css-w1ljn4"><a href="/guides/hydration" class="css-1l0nd7p">Hydration</a></div><div class="css-w1ljn4"><a href="/guides/reusable-logic" class="css-1l0nd7p">Reusable Logic</a></div><div class="css-w1ljn4"><a href="/guides/working-with-typescript" class="css-1l0nd7p">Working with TypeScript</a></div><div class="css-w1ljn4"><a href="/guides/custom-renderers" aria-current="page" class="css-1l0nd7p">Custom Renderers</a></div><div class="css-w1ljn4"><a href="/guides/reference-for-react-developers" class="css-1l0nd7p">React to Crank Migration Guide</a></div><div class="css-w1ljn4"><a href="/guides/jsx-template-tag" class="css-1l0nd7p">JSX Template Tag</a></div></div><main data-pagefind-body class="css-1mkiuoh"><h1>Custom Renderers</h1><p>Crank&#039;s custom renderer API allows you to render components to any target
-environment beyond the DOM. Whether you&#039;re building games with Canvas/WebGL,
+					"></path></g></svg>Crank.js</a></div><div><a href="/guides/getting-started" aria-current="page">Guides</a></div><div><a href="/api">API</a></div><div><a href="/blog/">Blog</a></div><div><a href="/spec">Spec</a></div><div><a href="/playground/">Playground</a></div></div><div class="css-1n0j5y9"><div><a href="https://github.com/bikeshaving/crank">GitHub</a></div><div><a href="http://npm.im/@b9g/crank">NPM</a></div><button role="switch" aria-label="toggle color scheme" aria-checked="true" class="css-yop4go"><span>🌙</span><span>💡</span><span class="css-zj66tk"></span></button></div></nav></div><div id="sidebar" class="css-1wkb9s8"><h2 class="css-ep9szm">Guides</h2><div id="search-root"><div class="css-1d9zsa"><input type="search" placeholder="Search..." value="" class="css-okn4a3"></div></div><div class="css-w1ljn4"><a href="/guides/getting-started" class="css-1l0nd7p">Getting Started</a></div><div class="css-w1ljn4"><a href="/guides/elements" class="css-1l0nd7p">Elements and Renderers</a></div><div class="css-w1ljn4"><a href="/guides/components" class="css-1l0nd7p">Components</a></div><div class="css-w1ljn4"><a href="/guides/handling-events" class="css-1l0nd7p">Handling Events</a></div><div class="css-w1ljn4"><a href="/guides/async-components" class="css-1l0nd7p">Async Components</a></div><div class="css-w1ljn4"><a href="/guides/special-props-and-components" class="css-1l0nd7p">Special Props and Components</a></div><div class="css-w1ljn4"><a href="/guides/lifecycles" class="css-1l0nd7p">Lifecycles</a></div><div class="css-w1ljn4"><a href="/guides/hydration" class="css-1l0nd7p">Hydration</a></div><div class="css-w1ljn4"><a href="/guides/reusable-logic" class="css-1l0nd7p">Reusable Logic</a></div><div class="css-w1ljn4"><a href="/guides/working-with-typescript" class="css-1l0nd7p">Working with TypeScript</a></div><div class="css-w1ljn4"><a href="/guides/jsx-template-tag" class="css-1l0nd7p">JSX Template Tag</a></div><div class="css-w1ljn4"><a href="/guides/crank-style-guide" class="css-1l0nd7p">Crank Style Guide</a></div><div class="css-w1ljn4"><a href="/guides/reference-for-react-developers" class="css-1l0nd7p">Reference for React Developers</a></div><div class="css-w1ljn4"><a href="/guides/custom-renderers" aria-current="page" class="css-1l0nd7p">Custom Renderers</a></div></div><main data-pagefind-body class="css-s848sl"><h1>Custom Renderers</h1><p>Crank’s custom renderer API allows you to render components to any target
+environment beyond the DOM. Whether you’re building games with Canvas/WebGL,
 creating terminal UIs, generating images, building emails, or interfacing with
-any other graphics system, Crank&#039;s <code class="inline">RenderAdapter</code> interface provides the
-foundation.</p><h2 id="overview">Overview</h2><p>A custom renderer consists of two main parts:</p><ol><li><strong>RenderAdapter</strong> - A set of functions which determine how elements map to
-your target environment</li><li><strong>Renderer() class</strong> - An class which you subclass which orchestrates the
+any other graphics system, Crank’s <code class="inline">RenderAdapter</code> interface provides the
+foundation.</p><h2 id="overview">Overview <a class="heading-anchor" href="#overview">#</a></h2><p>A custom renderer consists of two main parts:</p><ol><li><strong>RenderAdapter</strong>: A set of functions which determine how elements map to
+your target environment</li><li><strong>Renderer() class</strong>: A class which you subclass which orchestrates the
 rendering process and manages the component tree</li></ol><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
-							language-
+							language-typescript
 							css-1ashatc
 						"><div class="
 				prism-line
 				css-1flouoi
-			" data-index="0"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>Renderer<span class="token punctuation">,</span> type RenderAdapter<span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="0"><code><span class="token keyword">import</span> <span class="token punctuation">{</span>Renderer<span class="token punctuation">,</span> <span class="token keyword">type</span> <span class="token class-name">RenderAdapter</span><span class="token punctuation">}</span> <span class="token keyword">from</span> <span class="token string">&quot;@b9g/crank&quot;</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="1"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="2"><code><span class="token keyword">export</span> <span class="token keyword">const</span> <span class="token literal-property property">adapter</span><span class="token operator">:</span> RenderAdapter<span class="token operator">&lt;</span>MyNode<span class="token punctuation">,</span> MyScope<span class="token operator">&gt;</span> <span class="token operator">=</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="2"><code><span class="token keyword">export</span> <span class="token keyword">const</span> adapter<span class="token operator">:</span> RenderAdapter<span class="token operator">&lt;</span>MyNode<span class="token punctuation">,</span> MyScope<span class="token punctuation">,</span> MyRoot<span class="token operator">&gt;</span> <span class="token operator">=</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><code>  <span class="token function-variable function">create</span><span class="token operator">:</span> <span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>tag<span class="token punctuation">,</span> props<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token keyword">new</span> <span class="token class-name">MyNode</span><span class="token punctuation">(</span>tag<span class="token punctuation">,</span> props<span class="token punctuation">)</span><span class="token punctuation">,</span></code><br></div><div class="
+			" data-index="3"><code>  <span class="token function-variable function">create</span><span class="token operator">:</span> <span class="token punctuation">(</span><span class="token punctuation">{</span>tag<span class="token punctuation">,</span> props<span class="token punctuation">}</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token keyword">new</span> <span class="token class-name">MyNode</span><span class="token punctuation">(</span>tag<span class="token punctuation">,</span> props<span class="token punctuation">)</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code>  <span class="token function-variable function">patch</span><span class="token operator">:</span> <span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>node<span class="token punctuation">,</span> props<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> node<span class="token punctuation">.</span><span class="token function">update</span><span class="token punctuation">(</span>props<span class="token punctuation">)</span><span class="token punctuation">,</span></code><br></div><div class="
+			" data-index="4"><code>  <span class="token function-variable function">patch</span><span class="token operator">:</span> <span class="token punctuation">(</span><span class="token punctuation">{</span>node<span class="token punctuation">,</span> props<span class="token punctuation">}</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> node<span class="token punctuation">.</span><span class="token function">update</span><span class="token punctuation">(</span>props<span class="token punctuation">)</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code>  <span class="token function-variable function">arrange</span><span class="token operator">:</span> <span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>node<span class="token punctuation">,</span> children<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> node<span class="token punctuation">.</span><span class="token function">replaceChildren</span><span class="token punctuation">(</span>children<span class="token punctuation">)</span><span class="token punctuation">,</span></code><br></div><div class="
+			" data-index="5"><code>  <span class="token function-variable function">arrange</span><span class="token operator">:</span> <span class="token punctuation">(</span><span class="token punctuation">{</span>node<span class="token punctuation">,</span> children<span class="token punctuation">}</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> node<span class="token punctuation">.</span><span class="token function">replaceChildren</span><span class="token punctuation">(</span>children<span class="token punctuation">)</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="6"><code>  <span class="token comment">// ... other methods</span></code><br></div><div class="
@@ -63,7 +58,7 @@ rendering process and manages the component tree</li></ol><div style="margin: 30
 			" data-index="8"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="9"><code><span class="token keyword">export</span> <span class="token keyword">class</span> <span class="token class-name">MyRenderer</span> <span class="token keyword">extends</span> <span class="token class-name">Renderer</span><span class="token operator">&lt;</span>MyNode<span class="token punctuation">,</span> MyScope<span class="token punctuation">,</span> MyRoot<span class="token operator">&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="9"><code><span class="token keyword">export</span> <span class="token keyword">class</span> <span class="token class-name">MyRenderer</span> <span class="token keyword">extends</span> <span class="token class-name">Renderer<span class="token operator">&lt;</span>MyNode<span class="token punctuation">,</span> MyScope<span class="token punctuation">,</span> MyRoot<span class="token operator">&gt;</span></span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="10"><code>  <span class="token function">constructor</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
@@ -81,27 +76,28 @@ rendering process and manages the component tree</li></ol><div style="margin: 30
 			" data-index="14"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="15"><code><span class="token keyword">export</span> <span class="token keyword">const</span> renderer <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">MyRenderer</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-226" class="props">
+			" data-index="15"><code><span class="token keyword">export</span> <span class="token keyword">const</span> renderer <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">MyRenderer</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-299" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-226'] = {"code":"import {Renderer, type RenderAdapter} from \"@b9g\u002Fcrank\";\n\nexport const adapter: RenderAdapter\u003CMyNode, MyScope\u003E = {\n  create: ({tag, props}) =\u003E new MyNode(tag, props),\n  patch: ({node, props}) =\u003E node.update(props),\n  arrange: ({node, children}) =\u003E node.replaceChildren(children),\n  \u002F\u002F ... other methods\n};\n\nexport class MyRenderer extends Renderer\u003CMyNode, MyScope, MyRoot\u003E {\n  constructor() {\n    super(adapter);\n  }\n}\n\nexport const renderer = new MyRenderer();","lang":"typescript"};
+			window.__embeddedJSON__['inline-code-block-props-299'] = {"code":"import {Renderer, type RenderAdapter} from \"@b9g\u002Fcrank\";\n\nexport const adapter: RenderAdapter\u003CMyNode, MyScope, MyRoot\u003E = {\n  create: ({tag, props}) =\u003E new MyNode(tag, props),\n  patch: ({node, props}) =\u003E node.update(props),\n  arrange: ({node, children}) =\u003E node.replaceChildren(children),\n  \u002F\u002F ... other methods\n};\n\nexport class MyRenderer extends Renderer\u003CMyNode, MyScope, MyRoot\u003E {\n  constructor() {\n    super(adapter);\n  }\n}\n\nexport const renderer = new MyRenderer();","lang":"typescript"};
 		</script></div><p>A module which implements a custom renderer should by convention export an
-adapter, the subclass, and an instance of the subclass for convenience.</p><h2 id="renderadapter-interface">RenderAdapter Interface</h2><p>The <code class="inline">RenderAdapter</code> interface defines how Crank elements are turned into nodes
+adapter, the subclass, and an instance of the subclass for convenience.</p><h2 id="renderadapter-interface">RenderAdapter Interface <a class="heading-anchor" href="#renderadapter-interface">#</a></h2><p>The <code class="inline">RenderAdapter</code> interface defines how Crank elements are turned into nodes
 in your target environment. Each method handles a specific part of the element
-lifecycle.</p><h3 id="type-parameters">Type Parameters</h3><p>It’s highly recommended to use TypeScript to write a custom renderer, as this
+lifecycle.</p><h3 id="type-parameters">Type Parameters <a class="heading-anchor" href="#type-parameters">#</a></h3><p>It’s highly recommended to use TypeScript to write a custom renderer, as this
 will help you understand the types of values which are passed to your
 RenderAdapter methods. The <code class="inline">Renderer</code> class takes the following type
-parameters.</p><ul><li><code class="inline">TNode</code> - The type representing nodes in your target environment.</li><li><code class="inline">TScope</code> - Context data passed down the component tree (e.g., coordinate
+parameters.</p><ul><li><code class="inline">TNode</code>: The type representing nodes in your target environment.</li><li><code class="inline">TScope</code>: Context data passed down the component tree (e.g., coordinate
 systems, themes). The DOM renderer passes down xmlns info so that SVG
-elements are properly created.</li><li><code class="inline">TRoot</code> - The root container type (defaults to <code class="inline">TNode</code>).</li><li><code class="inline">TResult</code> - The type returned when reading element values (defaults to
-<code class="inline">ElementValue&lt;TNode&gt;</code>).</li></ul><h3 id="core-methods">Core Methods</h3><h4 id="create-data-tnode"><code class="inline">create(data): TNode</code></h4><p>Creates a new node when an element is rendered for the first time.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
-							language-
+elements are properly created.</li><li><code class="inline">TRoot</code>: The root container type (defaults to <code class="inline">TNode</code>).</li><li><code class="inline">TResult</code>: The type returned when reading element values (defaults to
+<code class="inline">ElementValue&lt;TNode&gt;</code>).</li></ul><h3 id="core-methods">Core Methods <a class="heading-anchor" href="#core-methods">#</a></h3><p>All methods except <code class="inline">read</code> and <code class="inline">finalize</code> receive a <code class="inline">data</code> object. Every data
+object includes <code class="inline">root: TRoot | undefined</code>, giving access to the root container.</p><h4 id="create-data-tnode"><code class="inline">create(data): TNode</code> <a class="heading-anchor" href="#create-data-tnode">#</a></h4><p>Creates a new node when an element is rendered for the first time.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-typescript
 							css-1ashatc
 						"><div class="
 				prism-line
 				css-1flouoi
-			" data-index="0"><code><span class="token function">create</span><span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>tag<span class="token punctuation">,</span> props<span class="token punctuation">,</span> scope<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="0"><code><span class="token function">create</span><span class="token punctuation">(</span><span class="token punctuation">{</span>tag<span class="token punctuation">,</span> props<span class="token punctuation">,</span> scope<span class="token punctuation">}</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="1"><code>  <span class="token keyword">switch</span> <span class="token punctuation">(</span>tag<span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
@@ -110,13 +106,13 @@ elements are properly created.</li><li><code class="inline">TRoot</code> - The r
 			" data-index="2"><code>    <span class="token keyword">case</span> <span class="token string">&quot;sprite&quot;</span><span class="token operator">:</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><code>      <span class="token keyword">return</span> <span class="token keyword">new</span> <span class="token class-name">PIXI<span class="token punctuation">.</span>Sprite</span><span class="token punctuation">(</span>props<span class="token punctuation">.</span>texture<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="3"><code>      <span class="token keyword">return</span> <span class="token keyword">new</span> <span class="token class-name"><span class="token constant">PIXI</span></span><span class="token punctuation">.</span><span class="token function">Sprite</span><span class="token punctuation">(</span>props<span class="token punctuation">.</span>texture<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="4"><code>    <span class="token keyword">case</span> <span class="token string">&quot;container&quot;</span><span class="token operator">:</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code>      <span class="token keyword">return</span> <span class="token keyword">new</span> <span class="token class-name">PIXI<span class="token punctuation">.</span>Container</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="5"><code>      <span class="token keyword">return</span> <span class="token keyword">new</span> <span class="token class-name"><span class="token constant">PIXI</span></span><span class="token punctuation">.</span><span class="token function">Container</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="6"><code>    <span class="token keyword">default</span><span class="token operator">:</span></code><br></div><div class="
@@ -128,20 +124,20 @@ elements are properly created.</li><li><code class="inline">TRoot</code> - The r
 			" data-index="8"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="9"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-227" class="props">
+			" data-index="9"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-300" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-227'] = {"code":"create({tag, props, scope}) {\n  switch (tag) {\n    case \"sprite\":\n      return new PIXI.Sprite(props.texture);\n    case \"container\":\n      return new PIXI.Container();\n    default:\n      throw new Error(`Unknown tag: ${tag}`);\n  }\n}","lang":"typescript"};
-		</script></div><p><strong>Parameters:</strong></p><ul><li><code class="inline">tag</code> - Element tag (string or symbol)</li><li><code class="inline">tagName</code> - String representation for debugging</li><li><code class="inline">props</code> - Element props object</li><li><code class="inline">scope</code> - Current scope context</li></ul><h4 id="patch-data-void"><code class="inline">patch(data): void</code></h4><p>Updates a node&#039;s properties when props change. This is where you implement
+			window.__embeddedJSON__['inline-code-block-props-300'] = {"code":"create({tag, props, scope}) {\n  switch (tag) {\n    case \"sprite\":\n      return new PIXI.Sprite(props.texture);\n    case \"container\":\n      return new PIXI.Container();\n    default:\n      throw new Error(`Unknown tag: ${tag}`);\n  }\n}","lang":"typescript"};
+		</script></div><p><strong>Parameters:</strong> <code class="inline">tag</code>, <code class="inline">tagName</code>, <code class="inline">props</code>, <code class="inline">scope</code>, <code class="inline">root</code></p><h4 id="patch-data-void"><code class="inline">patch(data): void</code> <a class="heading-anchor" href="#patch-data-void">#</a></h4><p>Updates a node’s properties when props change. This is where you implement
 prop-to-attribute mapping, event listener binding, and property
 synchronization.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
-							language-
+							language-typescript
 							css-1ashatc
 						"><div class="
 				prism-line
 				css-1flouoi
-			" data-index="0"><code><span class="token literal-property property">patch</span><span class="token operator">:</span> <span class="token punctuation">(</span><span class="token punctuation">{</span>node<span class="token punctuation">,</span> props<span class="token punctuation">,</span> oldProps<span class="token punctuation">}</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="0"><code><span class="token function">patch</span><span class="token punctuation">(</span><span class="token punctuation">{</span>node<span class="token punctuation">,</span> props<span class="token punctuation">,</span> oldProps<span class="token punctuation">}</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="1"><code>  <span class="token keyword">for</span> <span class="token punctuation">(</span><span class="token keyword">const</span> <span class="token punctuation">[</span>key<span class="token punctuation">,</span> value<span class="token punctuation">]</span> <span class="token keyword">of</span> Object<span class="token punctuation">.</span><span class="token function">entries</span><span class="token punctuation">(</span>props<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
@@ -153,110 +149,99 @@ synchronization.</p><div style="margin: 30px auto;" class="code-block-container 
 			" data-index="3"><code>      <span class="token keyword">if</span> <span class="token punctuation">(</span>key<span class="token punctuation">.</span><span class="token function">startsWith</span><span class="token punctuation">(</span><span class="token string">&quot;on&quot;</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code>        <span class="token comment">// Handle events</span></code><br></div><div class="
+			" data-index="4"><code>        <span class="token keyword">const</span> eventName <span class="token operator">=</span> key<span class="token punctuation">.</span><span class="token function">slice</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">toLowerCase</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code>        <span class="token keyword">const</span> eventName <span class="token operator">=</span> key<span class="token punctuation">.</span><span class="token function">slice</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">.</span><span class="token function">toLowerCase</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="5"><code>        node<span class="token punctuation">.</span><span class="token function">removeAllListeners</span><span class="token punctuation">(</span>eventName<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><code>        node<span class="token punctuation">.</span><span class="token function">removeAllListeners</span><span class="token punctuation">(</span>eventName<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="6"><code>        <span class="token keyword">if</span> <span class="token punctuation">(</span>value<span class="token punctuation">)</span> node<span class="token punctuation">.</span><span class="token function">on</span><span class="token punctuation">(</span>eventName<span class="token punctuation">,</span> value<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code>        <span class="token keyword">if</span> <span class="token punctuation">(</span>value<span class="token punctuation">)</span> node<span class="token punctuation">.</span><span class="token function">on</span><span class="token punctuation">(</span>eventName<span class="token punctuation">,</span> value<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="7"><code>      <span class="token punctuation">}</span> <span class="token keyword">else</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code>      <span class="token punctuation">}</span> <span class="token keyword">else</span> <span class="token keyword">if</span> <span class="token punctuation">(</span>key <span class="token operator">===</span> <span class="token string">&quot;texture&quot;</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="8"><code>        node<span class="token punctuation">[</span>key<span class="token punctuation">]</span> <span class="token operator">=</span> value<span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="9"><code>        node<span class="token punctuation">.</span>texture <span class="token operator">=</span> <span class="token function">resolveTexture</span><span class="token punctuation">(</span>value<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="9"><code>      <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="10"><code>      <span class="token punctuation">}</span> <span class="token keyword">else</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="10"><code>    <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="11"><code>        node<span class="token punctuation">[</span>key<span class="token punctuation">]</span> <span class="token operator">=</span> value<span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="11"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="12"><code>      <span class="token punctuation">}</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="13"><code>    <span class="token punctuation">}</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="14"><code>  <span class="token punctuation">}</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="15"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-228" class="props">
+			" data-index="12"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-301" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-228'] = {"code":"patch: ({node, props, oldProps}) {\n  for (const [key, value] of Object.entries(props)) {\n    if (oldProps?.[key] !== value) {\n      if (key.startsWith(\"on\")) {\n        \u002F\u002F Handle events\n        const eventName = key.slice(2).toLowerCase();\n        node.removeAllListeners(eventName);\n        if (value) node.on(eventName, value);\n      } else if (key === \"texture\") {\n        node.texture = resolveTexture(value);\n      } else {\n        node[key] = value;\n      }\n    }\n  }\n}","lang":"typescript"};
-		</script></div><p><strong>Parameters:</strong></p><ul><li><code class="inline">node</code> - The node to update</li><li><code class="inline">props</code> - New props object</li><li><code class="inline">oldProps</code> - Previous props (undefined on first render)</li><li><code class="inline">tag</code> Element tag (string or symbol)</li><li><code class="inline">scope</code> Current scope context</li><li><code class="inline">copyProps</code> A set of props which should not be updated because the user has
-provided a copy with meta-prop syntax.</li><li><code class="inline">isHydrating</code> Whether you are currently hydrating</li><li><code class="inline">quietProps</code> A set of props which should not cause hydration warnings because
-the user has provided a hydrate with meta-prop syntax.</li></ul><h4 id="arrange-data-void"><code class="inline">arrange(data): void</code></h4><p>Organizes child nodes within their parent after child elements are rendered.
-The remove method handles the removal of nodes, so this method is primarily
-about re-ordering existing nodes in the tree.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
-							language-
+			window.__embeddedJSON__['inline-code-block-props-301'] = {"code":"patch({node, props, oldProps}) {\n  for (const [key, value] of Object.entries(props)) {\n    if (oldProps?.[key] !== value) {\n      if (key.startsWith(\"on\")) {\n        const eventName = key.slice(2).toLowerCase();\n        node.removeAllListeners(eventName);\n        if (value) node.on(eventName, value);\n      } else {\n        node[key] = value;\n      }\n    }\n  }\n}","lang":"typescript"};
+		</script></div><p><strong>Parameters:</strong> <code class="inline">tag</code>, <code class="inline">tagName</code>, <code class="inline">node</code>, <code class="inline">props</code>, <code class="inline">oldProps</code>, <code class="inline">scope</code>, <code class="inline">root</code>,
+<code class="inline">copyProps</code>, <code class="inline">isHydrating</code>, <code class="inline">quietProps</code></p><ul><li><code class="inline">copyProps</code>: A set of props to skip because the user provided a copy with
+meta-prop syntax.</li><li><code class="inline">isHydrating</code>: Whether we are currently hydrating.</li><li><code class="inline">quietProps</code>: A set of props to suppress hydration warnings for because the
+user provided a hydrate with meta-prop syntax.</li></ul><h4 id="arrange-data-void"><code class="inline">arrange(data): void</code> <a class="heading-anchor" href="#arrange-data-void">#</a></h4><p>Organizes child nodes within their parent after child elements are rendered.
+The <code class="inline">remove</code> method handles node removal, so this method is primarily about
+re-ordering existing nodes in the tree.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-typescript
 							css-1ashatc
 						"><div class="
 				prism-line
 				css-1flouoi
-			" data-index="0"><code><span class="token function">arrange</span><span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>node<span class="token punctuation">,</span> children<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="0"><code><span class="token function">arrange</span><span class="token punctuation">(</span><span class="token punctuation">{</span>node<span class="token punctuation">,</span> children<span class="token punctuation">}</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="1"><code>  node<span class="token punctuation">.</span><span class="token function">removeChildren</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// Clear existing</span></code><br></div><div class="
+			" data-index="1"><code>  node<span class="token punctuation">.</span><span class="token function">removeChildren</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="2"><code>  children<span class="token punctuation">.</span><span class="token function">forEach</span><span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token parameter">child<span class="token punctuation">,</span> index</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> node<span class="token punctuation">.</span><span class="token function">addChildAt</span><span class="token punctuation">(</span>child<span class="token punctuation">,</span> index<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="2"><code>  children<span class="token punctuation">.</span><span class="token function">forEach</span><span class="token punctuation">(</span><span class="token punctuation">(</span>child<span class="token punctuation">,</span> index<span class="token punctuation">)</span> <span class="token operator">=&gt;</span> node<span class="token punctuation">.</span><span class="token function">addChildAt</span><span class="token punctuation">(</span>child<span class="token punctuation">,</span> index<span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-229" class="props">
+			" data-index="3"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-302" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-229'] = {"code":"arrange({node, children}) {\n  node.removeChildren(); \u002F\u002F Clear existing\n  children.forEach((child, index) =\u003E node.addChildAt(child, index));\n}","lang":"typescript"};
-		</script></div><p><strong>Parameters:</strong></p><ul><li><code class="inline">node</code> - The parent node</li><li><code class="inline">children</code> - Array of child nodes in correct order</li><li><code class="inline">tag</code>,</li><li><code class="inline">props</code></li><li><code class="inline">oldProps</code></li></ul><h4 id="remove-data-void"><code class="inline">remove(data): void</code></h4><p>Removes a node when an element is unmounted.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
-							language-
+			window.__embeddedJSON__['inline-code-block-props-302'] = {"code":"arrange({node, children}) {\n  node.removeChildren();\n  children.forEach((child, index) =\u003E node.addChildAt(child, index));\n}","lang":"typescript"};
+		</script></div><p><strong>Parameters:</strong> <code class="inline">tag</code>, <code class="inline">tagName</code>, <code class="inline">node</code>, <code class="inline">props</code>, <code class="inline">children</code>, <code class="inline">oldProps</code>,
+<code class="inline">root</code></p><h4 id="remove-data-void"><code class="inline">remove(data): void</code> <a class="heading-anchor" href="#remove-data-void">#</a></h4><p>Removes a node when an element is unmounted.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-typescript
 							css-1ashatc
 						"><div class="
 				prism-line
 				css-1flouoi
-			" data-index="0"><code><span class="token function">remove</span><span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>node<span class="token punctuation">,</span> parentNode<span class="token punctuation">,</span> isNested<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="0"><code><span class="token function">remove</span><span class="token punctuation">(</span><span class="token punctuation">{</span>node<span class="token punctuation">,</span> parentNode<span class="token punctuation">,</span> isNested<span class="token punctuation">}</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="1"><code>  <span class="token comment">// Clean up resources</span></code><br></div><div class="
+			" data-index="1"><code>  node<span class="token punctuation">.</span>destroy<span class="token operator">?.</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="2"><code>  node<span class="token punctuation">.</span>destroy<span class="token operator">?.</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="2"><code>  <span class="token comment">// Remove from parent (unless nested removal)</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="3"><br></div><div class="
+			" data-index="3"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span>isNested <span class="token operator">&amp;&amp;</span> parentNode<span class="token punctuation">.</span>children<span class="token punctuation">.</span><span class="token function">includes</span><span class="token punctuation">(</span>node<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code>  <span class="token comment">// Remove from parent (unless nested removal)</span></code><br></div><div class="
+			" data-index="4"><code>    parentNode<span class="token punctuation">.</span><span class="token function">removeChild</span><span class="token punctuation">(</span>node<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token operator">!</span>isNested <span class="token operator">&amp;&amp;</span> parentNode<span class="token punctuation">.</span>children<span class="token punctuation">.</span><span class="token function">includes</span><span class="token punctuation">(</span>node<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="5"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><code>    parentNode<span class="token punctuation">.</span><span class="token function">removeChild</span><span class="token punctuation">(</span>node<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="7"><code>  <span class="token punctuation">}</span></code><br></div><div class="
-				prism-line
-				css-1flouoi
-			" data-index="8"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-230" class="props">
+			" data-index="6"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-303" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-230'] = {"code":"remove({node, parentNode, isNested}) =\u003E {\n  \u002F\u002F Clean up resources\n  node.destroy?.();\n\n  \u002F\u002F Remove from parent (unless nested removal)\n  if (!isNested && parentNode.children.includes(node)) {\n    parentNode.removeChild(node);\n  }\n}","lang":"typescript"};
-		</script></div><h4 id="text-data-tnode"><code class="inline">text(data): TNode</code></h4><p>Creates or updates text nodes.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
-							language-
+			window.__embeddedJSON__['inline-code-block-props-303'] = {"code":"remove({node, parentNode, isNested}) {\n  node.destroy?.();\n  \u002F\u002F Remove from parent (unless nested removal)\n  if (!isNested && parentNode.children.includes(node)) {\n    parentNode.removeChild(node);\n  }\n}","lang":"typescript"};
+		</script></div><p><strong>Parameters:</strong> <code class="inline">node</code>, <code class="inline">parentNode</code>, <code class="inline">isNested</code>, <code class="inline">root</code></p><ul><li><code class="inline">isNested</code>: Whether this removal is nested in another removal. Depending on
+your target environment, you may only need to remove the top-level node from
+its parent and leave the remaining nodes untouched.</li></ul><h4 id="text-data-tnode"><code class="inline">text(data): TNode</code> <a class="heading-anchor" href="#text-data-tnode">#</a></h4><p>Creates or updates text nodes.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-typescript
 							css-1ashatc
 						"><div class="
 				prism-line
 				css-1flouoi
-			" data-index="0"><code><span class="token function-variable function">text</span><span class="token operator">:</span> <span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>value<span class="token punctuation">,</span> oldNode<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="0"><code><span class="token function">text</span><span class="token punctuation">(</span><span class="token punctuation">{</span>value<span class="token punctuation">,</span> oldNode<span class="token punctuation">}</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="1"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span>oldNode <span class="token operator">&amp;&amp;</span> oldNode<span class="token punctuation">.</span>text <span class="token operator">!==</span> value<span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
@@ -274,52 +259,77 @@ about re-ordering existing nodes in the tree.</p><div style="margin: 30px auto;"
 			" data-index="5"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><code>  <span class="token keyword">return</span> <span class="token keyword">new</span> <span class="token class-name">Text</span><span class="token punctuation">(</span>value<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="6"><code>  <span class="token keyword">return</span> <span class="token keyword">new</span> <span class="token class-name">TextNode</span><span class="token punctuation">(</span>value<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-231" class="props">
+			" data-index="7"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-304" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-231'] = {"code":"text: ({value, oldNode}) =\u003E {\n  if (oldNode && oldNode.text !== value) {\n    oldNode.text = value;\n    return oldNode;\n  }\n\n  return new Text(value);\n}","lang":"typescript"};
-		</script></div><h4 id="raw-data-elementvalue-tnode"><code class="inline">raw(data): ElementValue&lt;TNode&gt;</code></h4><p>Handles raw values that bypass normal element processing.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
-							language-
+			window.__embeddedJSON__['inline-code-block-props-304'] = {"code":"text({value, oldNode}) {\n  if (oldNode && oldNode.text !== value) {\n    oldNode.text = value;\n    return oldNode;\n  }\n\n  return new TextNode(value);\n}","lang":"typescript"};
+		</script></div><p><strong>Parameters:</strong> <code class="inline">value</code>, <code class="inline">scope</code>, <code class="inline">oldNode</code>, <code class="inline">hydrationNodes</code>, <code class="inline">root</code></p><h4 id="raw-data-elementvalue-tnode"><code class="inline">raw(data): ElementValue&lt;TNode&gt;</code> <a class="heading-anchor" href="#raw-data-elementvalue-tnode">#</a></h4><p>Handles raw values that bypass normal element processing.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-typescript
 							css-1ashatc
 						"><div class="
 				prism-line
 				css-1flouoi
-			" data-index="0"><code><span class="token function-variable function">raw</span><span class="token operator">:</span> <span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>value<span class="token punctuation">,</span> scope<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="0"><code><span class="token function">raw</span><span class="token punctuation">(</span><span class="token punctuation">{</span>value<span class="token punctuation">}</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="1"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token keyword">typeof</span> value <span class="token operator">===</span> <span class="token string">&quot;string&quot;</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="2"><code>    <span class="token keyword">return</span> <span class="token function">parseMarkup</span><span class="token punctuation">(</span>value<span class="token punctuation">)</span><span class="token punctuation">;</span> <span class="token comment">// Convert string to nodes</span></code><br></div><div class="
+			" data-index="2"><code>    <span class="token keyword">return</span> <span class="token function">parseMarkup</span><span class="token punctuation">(</span>value<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="3"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code>  <span class="token keyword">return</span> value<span class="token punctuation">;</span> <span class="token comment">// Pass through nodes directly</span></code><br></div><div class="
+			" data-index="4"><code>  <span class="token keyword">return</span> value<span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-232" class="props">
+			" data-index="5"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-305" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-232'] = {"code":"raw: ({value, scope}) =\u003E {\n  if (typeof value === \"string\") {\n    return parseMarkup(value); \u002F\u002F Convert string to nodes\n  }\n  return value; \u002F\u002F Pass through nodes directly\n}","lang":"typescript"};
-		</script></div><p><strong>Parameters:</strong></p><ul><li><code class="inline">node</code> - The node which has been removed</li><li><code class="inline">parentNode</code> - The parent node which this node is being removed from</li><li><code class="inline">isNested</code> - Whether this removal is nested in another removal.
-Depending on your target environment, you may only need to remove the
-top-level node from its parent and leave the remaining nodes untouched.</li></ul><h4 id="adopt-data-array-tnode-undefined"><code class="inline">adopt(data): Array&lt;TNode&gt; | undefined</code></h4><p>Adopts existing nodes during hydration (for server-side rendering or state
-restoration).</p><h4 id="scope-data-tscope-undefined"><code class="inline">scope(data): TScope | undefined</code></h4><p>Computes scope context for child elements. Useful for passing coordinate
-systems, themes, or namespaces down the tree. This method is only called once
-when elements are created.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
-							language-
+			window.__embeddedJSON__['inline-code-block-props-305'] = {"code":"raw({value}) {\n  if (typeof value === \"string\") {\n    return parseMarkup(value);\n  }\n  return value;\n}","lang":"typescript"};
+		</script></div><p><strong>Parameters:</strong> <code class="inline">value</code>, <code class="inline">scope</code>, <code class="inline">hydrationNodes</code>, <code class="inline">root</code></p><h4 id="adopt-data-array-tnode-undefined"><code class="inline">adopt(data): Array&lt;TNode&gt; | undefined</code> <a class="heading-anchor" href="#adopt-data-array-tnode-undefined">#</a></h4><p>Adopts existing nodes during hydration (for server-side rendering or state
+restoration). Should return an array of child nodes if the provided node
+matches the expected tag, or <code class="inline">undefined</code> if hydration should fail.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-typescript
 							css-1ashatc
 						"><div class="
 				prism-line
 				css-1flouoi
-			" data-index="0"><code><span class="token function">scope</span><span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>tag<span class="token punctuation">,</span> props<span class="token punctuation">,</span> scope<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="0"><code><span class="token function">adopt</span><span class="token punctuation">(</span><span class="token punctuation">{</span>tag<span class="token punctuation">,</span> node<span class="token punctuation">}</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="1"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span>node <span class="token operator">&amp;&amp;</span> node<span class="token punctuation">.</span>tagName<span class="token punctuation">.</span><span class="token function">toLowerCase</span><span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token operator">===</span> tag<span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="2"><code>    <span class="token keyword">return</span> <span class="token builtin">Array</span><span class="token punctuation">.</span><span class="token function">from</span><span class="token punctuation">(</span>node<span class="token punctuation">.</span>children<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="3"><code>  <span class="token punctuation">}</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="4"><code>  <span class="token keyword">return</span> <span class="token keyword">undefined</span><span class="token punctuation">;</span></code><br></div><div class="
+				prism-line
+				css-1flouoi
+			" data-index="5"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-306" class="props">
+			if (window.__embeddedJSON__ == null) {
+				window.__embeddedJSON__ = {};
+			}
+			window.__embeddedJSON__['inline-code-block-props-306'] = {"code":"adopt({tag, node}) {\n  if (node && node.tagName.toLowerCase() === tag) {\n    return Array.from(node.children);\n  }\n  return undefined;\n}","lang":"typescript"};
+		</script></div><p><strong>Parameters:</strong> <code class="inline">tag</code>, <code class="inline">tagName</code>, <code class="inline">props</code>, <code class="inline">node</code>, <code class="inline">scope</code>, <code class="inline">root</code></p><h4 id="scope-data-tscope-undefined"><code class="inline">scope(data): TScope | undefined</code> <a class="heading-anchor" href="#scope-data-tscope-undefined">#</a></h4><p>Computes scope context for child elements. Useful for passing coordinate
+systems, themes, or namespaces down the tree. Called once when elements are
+created.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-typescript
+							css-1ashatc
+						"><div class="
+				prism-line
+				css-1flouoi
+			" data-index="0"><code><span class="token function">scope</span><span class="token punctuation">(</span><span class="token punctuation">{</span>tag<span class="token punctuation">,</span> props<span class="token punctuation">,</span> scope<span class="token punctuation">}</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="1"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span>tag <span class="token operator">===</span> <span class="token string">&quot;viewport&quot;</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
@@ -331,7 +341,7 @@ when elements are created.</p><div style="margin: 30px auto;" class="code-block-
 			" data-index="3"><code>      <span class="token operator">...</span>scope<span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code>      <span class="token literal-property property">transform</span><span class="token operator">:</span> <span class="token keyword">new</span> <span class="token class-name">Transform</span><span class="token punctuation">(</span>props<span class="token punctuation">.</span>x<span class="token punctuation">,</span> props<span class="token punctuation">.</span>y<span class="token punctuation">,</span> props<span class="token punctuation">.</span>scale<span class="token punctuation">)</span></code><br></div><div class="
+			" data-index="4"><code>      transform<span class="token operator">:</span> <span class="token keyword">new</span> <span class="token class-name">Transform</span><span class="token punctuation">(</span>props<span class="token punctuation">.</span>x<span class="token punctuation">,</span> props<span class="token punctuation">.</span>y<span class="token punctuation">,</span> props<span class="token punctuation">.</span>scale<span class="token punctuation">)</span><span class="token punctuation">,</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="5"><code>    <span class="token punctuation">}</span><span class="token punctuation">;</span></code><br></div><div class="
@@ -343,24 +353,24 @@ when elements are created.</p><div style="margin: 30px auto;" class="code-block-
 			" data-index="7"><code>  <span class="token keyword">return</span> scope<span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-233" class="props">
+			" data-index="8"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-307" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-233'] = {"code":"scope({tag, props, scope}) =\u003E {\n  if (tag === \"viewport\") {\n    return {\n      ...scope,\n      transform: new Transform(props.x, props.y, props.scale)\n    };\n  }\n  return scope;\n}","lang":"typescript"};
-		</script></div><h4 id="read-value-tresult"><code class="inline">read(value): TResult</code></h4><p>Transforms the internal node representation into the public API.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
-							language-
+			window.__embeddedJSON__['inline-code-block-props-307'] = {"code":"scope({tag, props, scope}) {\n  if (tag === \"viewport\") {\n    return {\n      ...scope,\n      transform: new Transform(props.x, props.y, props.scale),\n    };\n  }\n  return scope;\n}","lang":"typescript"};
+		</script></div><p><strong>Parameters:</strong> <code class="inline">tag</code>, <code class="inline">tagName</code>, <code class="inline">props</code>, <code class="inline">scope</code>, <code class="inline">root</code></p><h4 id="read-value-tresult"><code class="inline">read(value): TResult</code> <a class="heading-anchor" href="#read-value-tresult">#</a></h4><p>Transforms the internal node representation into the public API.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-typescript
 							css-1ashatc
 						"><div class="
 				prism-line
 				css-1flouoi
-			" data-index="0"><code><span class="token function-variable function">read</span><span class="token operator">:</span> <span class="token punctuation">(</span><span class="token parameter">value</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="0"><code><span class="token function-variable function">read</span><span class="token operator">:</span> <span class="token punctuation">(</span>value<span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="1"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span>Array<span class="token punctuation">.</span><span class="token function">isArray</span><span class="token punctuation">(</span>value<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="1"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span><span class="token builtin">Array</span><span class="token punctuation">.</span><span class="token function">isArray</span><span class="token punctuation">(</span>value<span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="2"><code>    <span class="token keyword">return</span> value<span class="token punctuation">.</span><span class="token function">map</span><span class="token punctuation">(</span><span class="token parameter">node</span> <span class="token operator">=&gt;</span> node<span class="token punctuation">.</span><span class="token function">getPublicAPI</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="2"><code>    <span class="token keyword">return</span> value<span class="token punctuation">.</span><span class="token function">map</span><span class="token punctuation">(</span>node <span class="token operator">=&gt;</span> node<span class="token punctuation">.</span><span class="token function">getPublicAPI</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="3"><code>  <span class="token punctuation">}</span></code><br></div><div class="
@@ -369,21 +379,21 @@ when elements are created.</p><div style="margin: 30px auto;" class="code-block-
 			" data-index="4"><code>  <span class="token keyword">return</span> value<span class="token operator">?.</span><span class="token function">getPublicAPI</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-234" class="props">
+			" data-index="5"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-308" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-234'] = {"code":"read: (value) =\u003E {\n  if (Array.isArray(value)) {\n    return value.map(node =\u003E node.getPublicAPI());\n  }\n  return value?.getPublicAPI();\n}","lang":"typescript"};
-		</script></div><h4 id="finalize-root-void"><code class="inline">finalize(root): void</code></h4><p>Performs final rendering operations (e.g., triggering a render pass).</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
-							language-
+			window.__embeddedJSON__['inline-code-block-props-308'] = {"code":"read: (value) =\u003E {\n  if (Array.isArray(value)) {\n    return value.map(node =\u003E node.getPublicAPI());\n  }\n  return value?.getPublicAPI();\n}","lang":"typescript"};
+		</script></div><h4 id="finalize-root-void"><code class="inline">finalize(root): void</code> <a class="heading-anchor" href="#finalize-root-void">#</a></h4><p>Performs final rendering operations (e.g., triggering a render pass).</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-typescript
 							css-1ashatc
 						"><div class="
 				prism-line
 				css-1flouoi
-			" data-index="0"><code><span class="token function-variable function">finalize</span><span class="token operator">:</span> <span class="token punctuation">(</span><span class="token parameter">root</span><span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="0"><code><span class="token function-variable function">finalize</span><span class="token operator">:</span> <span class="token punctuation">(</span>root<span class="token punctuation">)</span> <span class="token operator">=&gt;</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="1"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span>root <span class="token keyword">instanceof</span> <span class="token class-name">PIXI<span class="token punctuation">.</span>Application</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="1"><code>  <span class="token keyword">if</span> <span class="token punctuation">(</span>root <span class="token keyword">instanceof</span> <span class="token class-name"><span class="token constant">PIXI</span></span><span class="token punctuation">.</span>Application<span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="2"><code>    root<span class="token punctuation">.</span><span class="token function">render</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
@@ -392,21 +402,207 @@ when elements are created.</p><div style="margin: 30px auto;" class="code-block-
 			" data-index="3"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-235" class="props">
+			" data-index="4"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-309" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-235'] = {"code":"finalize: (root) =\u003E {\n  if (root instanceof PIXI.Application) {\n    root.render();\n  }\n}","lang":"typescript"};
-		</script></div><h2 id="jsx-type-definitions">JSX Type Definitions</h2><p>To get proper TypeScript support, define JSX types for your custom elements:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
-							language-
+			window.__embeddedJSON__['inline-code-block-props-309'] = {"code":"finalize: (root) =\u003E {\n  if (root instanceof PIXI.Application) {\n    root.render();\n  }\n}","lang":"typescript"};
+		</script></div><!--
+## Complete Example: Canvas Renderer
+Here’s a complete example of a custom renderer for HTML5 Canvas:
+
+```tsx live
+import {Renderer, RenderAdapter, ElementValue } from "@b9g/crank";
+
+// Node types for our canvas environment
+interface CanvasNode {
+  type: string;
+  props: Record<string, any>;
+  children: CanvasNode[];
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  render(ctx: CanvasRenderingContext2D): void;
+}
+
+class CanvasRect implements CanvasNode {
+  type = "rect";
+  children: CanvasNode[] = [];
+
+  constructor(
+    public props: Record<string, any>,
+    public x = 0,
+    public y = 0,
+    public width = 100,
+    public height = 100
+  ) {}
+
+  render(ctx: CanvasRenderingContext2D) {
+    ctx.fillStyle = this.props.fill || "black";
+    ctx.fillRect(this.x, this.y, this.width, this.height);
+
+    // Render children
+    this.children.forEach(child => child.render(ctx));
+  }
+}
+
+class CanvasText implements CanvasNode {
+  type = "text";
+  children: CanvasNode[] = [];
+
+  constructor(
+    public text: string,
+    public x = 0,
+    public y = 0,
+    public width = 0,
+    public height = 20
+  ) {}
+
+  render(ctx: CanvasRenderingContext2D) {
+    ctx.fillStyle = "black";
+    ctx.fillText(this.text, this.x, this.y);
+  }
+}
+
+// Scope type for coordinate transformations
+interface CanvasScope {
+  offsetX: number;
+  offsetY: number;
+  scale: number;
+}
+
+const canvasAdapter: RenderAdapter<CanvasNode, CanvasScope, HTMLCanvasElement> = {
+  create({tag, props, scope}) {
+    const x = (props.x || 0) + (scope?.offsetX || 0);
+    const y = (props.y || 0) + (scope?.offsetY || 0);
+
+    switch (tag) {
+      case "rect":
+        return new CanvasRect(props, x, y, props.width, props.height);
+      case "text":
+        return new CanvasText(props.children || "", x, y);
+      default:
+        throw new Error(`Unknown canvas tag: ${tag}`);
+    }
+  },
+
+  patch({node, props, oldProps, scope}) {
+    // Update position with scope offset
+    node.x = (props.x || 0) + (scope?.offsetX || 0);
+    node.y = (props.y || 0) + (scope?.offsetY || 0);
+
+    // Update other properties
+    Object.assign(node.props, props);
+
+    if (node.type === "rect") {
+      node.width = props.width || node.width;
+      node.height = props.height || node.height;
+    }
+  },
+
+  arrange({node, children}) {
+    node.children = children;
+  },
+
+  remove({node, parentNode}) {
+    const index = parentNode.children.indexOf(node);
+    if (index !== -1) {
+      parentNode.children.splice(index, 1);
+    }
+  },
+
+  text({value, oldNode}) {
+    if (oldNode && oldNode.type === "text") {
+      (oldNode as CanvasText).text = value;
+      return oldNode;
+    }
+    return new CanvasText(value);
+  },
+
+  scope({tag, props, scope}) {
+    if (tag === "group") {
+      return {
+        offsetX: (scope?.offsetX || 0) + (props.x || 0),
+        offsetY: (scope?.offsetY || 0) + (props.y || 0),
+        scale: (scope?.scale || 1) * (props.scale || 1)
+      };
+    }
+    return scope;
+  },
+
+  finalize(canvas) {
+    const ctx = canvas.getContext("2d")!;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Render the root node and all children
+    const rootNode = (canvas as any).__crankRoot;
+    if (rootNode) {
+      rootNode.render(ctx);
+    }
+  }
+};
+
+class CanvasRenderer extends Renderer<CanvasNode, CanvasScope, HTMLCanvasElement> {
+  constructor() {
+    super(canvasAdapter);
+  }
+
+  render(children, canvas) {
+    // Store root for finalize method
+    const result = super.render(children, canvas);
+    if (result && !Array.isArray(result)) {
+      (canvas as any).__crankRoot = result;
+    }
+
+    return result;
+  }
+}
+
+export const canvasRenderer = new CanvasRenderer();
+
+// Usage
+const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+
+function* CanvasApp() {
+  let x = 0;
+
+  let prevFrame;
+  const nextFrame = () => this.refresh(() => {
+    x = (x + 1) % (canvas.width - 100);
+    prevFrame = requestAnimationFrame(nextFrame);
+  });
+
+  prevFrame = requestAnimationFrame(nextFrame);
+  for ({} of this) {
+    yield (
+      <group x={x} y={50}>
+        <rect width={100} height={100} fill="red" />
+        <text x={0} y={120}>
+          Position: {x}
+        </text>
+      </group>
+    );
+  }
+
+  cancelAnimationFrame(prevFrame);
+}
+
+// Render with animation
+canvasRenderer.render(<CanvasApp />, canvas);
+```
+-->
+
+<h2 id="jsx-type-definitions">JSX Type Definitions <a class="heading-anchor" href="#jsx-type-definitions">#</a></h2><p>To get proper TypeScript support, define JSX types for your custom elements:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-typescript
 							css-1ashatc
 						"><div class="
 				prism-line
 				css-1flouoi
-			" data-index="0"><code>declare global <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="0"><code><span class="token keyword">declare</span> global <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="1"><code>  namespace <span class="token constant">JSX</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="1"><code>  <span class="token keyword">namespace</span> <span class="token constant">JSX</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="2"><code>    <span class="token keyword">interface</span> <span class="token class-name">IntrinsicElements</span> <span class="token punctuation">{</span></code><br></div><div class="
@@ -415,25 +611,25 @@ when elements are created.</p><div style="margin: 30px auto;" class="code-block-
 			" data-index="3"><code>      <span class="token comment">// Canvas elements</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="4"><code>      <span class="token literal-property property">rect</span><span class="token operator">:</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="4"><code>      rect<span class="token operator">:</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="5"><code>        x<span class="token operator">?</span><span class="token operator">:</span> number<span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="5"><code>        x<span class="token operator">?</span><span class="token operator">:</span> <span class="token builtin">number</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="6"><code>        y<span class="token operator">?</span><span class="token operator">:</span> number<span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="6"><code>        y<span class="token operator">?</span><span class="token operator">:</span> <span class="token builtin">number</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code>        width<span class="token operator">?</span><span class="token operator">:</span> number<span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="7"><code>        width<span class="token operator">?</span><span class="token operator">:</span> <span class="token builtin">number</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code>        height<span class="token operator">?</span><span class="token operator">:</span> number<span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="8"><code>        height<span class="token operator">?</span><span class="token operator">:</span> <span class="token builtin">number</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="9"><code>        fill<span class="token operator">?</span><span class="token operator">:</span> string<span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="9"><code>        fill<span class="token operator">?</span><span class="token operator">:</span> <span class="token builtin">string</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="10"><code>        children<span class="token operator">?</span><span class="token operator">:</span> any<span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="10"><code>        children<span class="token operator">?</span><span class="token operator">:</span> <span class="token builtin">any</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="11"><code>      <span class="token punctuation">}</span><span class="token punctuation">;</span></code><br></div><div class="
@@ -442,16 +638,16 @@ when elements are created.</p><div style="margin: 30px auto;" class="code-block-
 			" data-index="12"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="13"><code>      <span class="token literal-property property">text</span><span class="token operator">:</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="13"><code>      text<span class="token operator">:</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="14"><code>        x<span class="token operator">?</span><span class="token operator">:</span> number<span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="14"><code>        x<span class="token operator">?</span><span class="token operator">:</span> <span class="token builtin">number</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="15"><code>        y<span class="token operator">?</span><span class="token operator">:</span> number<span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="15"><code>        y<span class="token operator">?</span><span class="token operator">:</span> <span class="token builtin">number</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="16"><code>        children<span class="token operator">?</span><span class="token operator">:</span> string <span class="token operator">|</span> number<span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="16"><code>        children<span class="token operator">?</span><span class="token operator">:</span> <span class="token builtin">string</span> <span class="token operator">|</span> <span class="token builtin">number</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="17"><code>      <span class="token punctuation">}</span><span class="token punctuation">;</span></code><br></div><div class="
@@ -460,19 +656,19 @@ when elements are created.</p><div style="margin: 30px auto;" class="code-block-
 			" data-index="18"><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="19"><code>      <span class="token literal-property property">group</span><span class="token operator">:</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="19"><code>      group<span class="token operator">:</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="20"><code>        x<span class="token operator">?</span><span class="token operator">:</span> number<span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="20"><code>        x<span class="token operator">?</span><span class="token operator">:</span> <span class="token builtin">number</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="21"><code>        y<span class="token operator">?</span><span class="token operator">:</span> number<span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="21"><code>        y<span class="token operator">?</span><span class="token operator">:</span> <span class="token builtin">number</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="22"><code>        scale<span class="token operator">?</span><span class="token operator">:</span> number<span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="22"><code>        scale<span class="token operator">?</span><span class="token operator">:</span> <span class="token builtin">number</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="23"><code>        children<span class="token operator">?</span><span class="token operator">:</span> any<span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="23"><code>        children<span class="token operator">?</span><span class="token operator">:</span> <span class="token builtin">any</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="24"><code>      <span class="token punctuation">}</span><span class="token punctuation">;</span></code><br></div><div class="
@@ -484,21 +680,21 @@ when elements are created.</p><div style="margin: 30px auto;" class="code-block-
 			" data-index="26"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="27"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-236" class="props">
+			" data-index="27"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-310" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-236'] = {"code":"declare global {\n  namespace JSX {\n    interface IntrinsicElements {\n      \u002F\u002F Canvas elements\n      rect: {\n        x?: number;\n        y?: number;\n        width?: number;\n        height?: number;\n        fill?: string;\n        children?: any;\n      };\n\n      text: {\n        x?: number;\n        y?: number;\n        children?: string | number;\n      };\n\n      group: {\n        x?: number;\n        y?: number;\n        scale?: number;\n        children?: any;\n      };\n    }\n  }\n}","lang":"typescript"};
-		</script></div><h2 id="advanced-patterns">Advanced Patterns</h2><h3 id="bridge-components">Bridge Components</h3><p>Create components that bridge between different renderers:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
-							language-
+			window.__embeddedJSON__['inline-code-block-props-310'] = {"code":"declare global {\n  namespace JSX {\n    interface IntrinsicElements {\n      \u002F\u002F Canvas elements\n      rect: {\n        x?: number;\n        y?: number;\n        width?: number;\n        height?: number;\n        fill?: string;\n        children?: any;\n      };\n\n      text: {\n        x?: number;\n        y?: number;\n        children?: string | number;\n      };\n\n      group: {\n        x?: number;\n        y?: number;\n        scale?: number;\n        children?: any;\n      };\n    }\n  }\n}","lang":"typescript"};
+		</script></div><h2 id="advanced-patterns">Advanced Patterns <a class="heading-anchor" href="#advanced-patterns">#</a></h2><h3 id="bridge-components">Bridge Components <a class="heading-anchor" href="#bridge-components">#</a></h3><p>Create components that bridge between different renderers:</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
+							language-typescript
 							css-1ashatc
 						"><div class="
 				prism-line
 				css-1flouoi
-			" data-index="0"><code><span class="token keyword">function</span><span class="token operator">*</span> <span class="token function">PixiApplication</span><span class="token punctuation">(</span><span class="token parameter"><span class="token punctuation">{</span>children<span class="token punctuation">,</span> <span class="token operator">...</span>props<span class="token punctuation">}</span></span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
+			" data-index="0"><code><span class="token keyword">function</span><span class="token operator">*</span> <span class="token function">PixiApplication</span><span class="token punctuation">(</span><span class="token punctuation">{</span>children<span class="token punctuation">,</span> <span class="token operator">...</span>props<span class="token punctuation">}</span><span class="token punctuation">)</span> <span class="token punctuation">{</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="1"><code>  <span class="token keyword">const</span> app <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name">PIXI<span class="token punctuation">.</span>Application</span><span class="token punctuation">(</span>props<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
+			" data-index="1"><code>  <span class="token keyword">const</span> app <span class="token operator">=</span> <span class="token keyword">new</span> <span class="token class-name"><span class="token constant">PIXI</span></span><span class="token punctuation">.</span><span class="token function">Application</span><span class="token punctuation">(</span>props<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="2"><code>  document<span class="token punctuation">.</span>body<span class="token punctuation">.</span><span class="token function">appendChild</span><span class="token punctuation">(</span>app<span class="token punctuation">.</span>view<span class="token punctuation">)</span><span class="token punctuation">;</span></code><br></div><div class="
@@ -516,14 +712,14 @@ when elements are created.</p><div style="margin: 30px auto;" class="code-block-
 			" data-index="6"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="7"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-237" class="props">
+			" data-index="7"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-311" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-237'] = {"code":"function* PixiApplication({children, ...props}) {\n  const app = new PIXI.Application(props);\n  document.body.appendChild(app.view);\n\n  for ({children, ...props} of this) {\n    pixiRenderer.render(children, app.stage, this);\n  }\n}","lang":"typescript"};
+			window.__embeddedJSON__['inline-code-block-props-311'] = {"code":"function* PixiApplication({children, ...props}) {\n  const app = new PIXI.Application(props);\n  document.body.appendChild(app.view);\n\n  for ({children, ...props} of this) {\n    pixiRenderer.render(children, app.stage, this);\n  }\n}","lang":"typescript"};
 		</script></div><p>The third parameter to <code class="inline">render()</code> allows you to connect the contexts of your
 child renderer with your parent renderer.</p><div style="margin: 30px auto;" class="code-block-container "><div class="css-1vm8pxc"><div class="css-1s1lac9"><div class="css-1lyfw13"><div class="css-1xzghkg"><button class="css-1y5ulpa">Copy</button></div><div class="css-i7rnhw"><div class="css-1y4o4pq"><content-area class="css-84ojsb"><pre autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" class="
-							language-
+							language-typescript
 							css-1ashatc
 						"><div class="
 				prism-line
@@ -552,7 +748,7 @@ child renderer with your parent renderer.</p><div style="margin: 30px auto;" cla
 			" data-index="7"><code>        <span class="token punctuation">{</span><span class="token comment">/* DOM UI */</span><span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="8"><code>        <span class="token operator">&lt;</span>div className<span class="token operator">=</span><span class="token string">&quot;ui&quot;</span><span class="token operator">&gt;</span></code><br></div><div class="
+			" data-index="8"><code>        <span class="token operator">&lt;</span>div <span class="token keyword">class</span><span class="token operator">=</span><span class="token string">&quot;ui&quot;</span><span class="token operator">&gt;</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
 			" data-index="9"><code>          <span class="token operator">&lt;</span>Score value<span class="token operator">=</span><span class="token punctuation">{</span>gameState<span class="token punctuation">.</span>score<span class="token punctuation">}</span> <span class="token operator">/</span><span class="token operator">&gt;</span></code><br></div><div class="
@@ -588,14 +784,14 @@ child renderer with your parent renderer.</p><div style="margin: 30px auto;" cla
 			" data-index="19"><code>  <span class="token punctuation">}</span></code><br></div><div class="
 				prism-line
 				css-1flouoi
-			" data-index="20"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-238" class="props">
+			" data-index="20"><code><span class="token punctuation">}</span></code><br></div></pre></content-area></div></div></div></div></div><script data-name="inline-code-block-props-312" class="props">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['inline-code-block-props-238'] = {"code":"function* GameUI() {\n  const gameState = new GameState();\n  \u002F\u002F You can add provision for child Canvas components to read\n  this.provide(\"gameState\", gameState);\n  for ({} of this) {\n    yield (\n      \u003C\u003E\n        {\u002F* DOM UI *\u002F}\n        \u003Cdiv className=\"ui\"\u003E\n          \u003CScore value={gameState.score} \u002F\u003E\n          \u003Cbutton onclick={() =\u003E gameState.restart()}\u003E\n            Restart\n          \u003C\u002Fbutton\u003E\n        \u003C\u002Fdiv\u003E\n\n        {\u002F* Canvas Game components will read the provisions *\u002F}\n        \u003CGameCanvas \u002F\u003E\n      \u003C\u002F\u003E\n    );\n  }\n}","lang":"typescript"};
-		</script></div><div class="css-1lyshc7"><a href="https://github.com/bikeshaving/crank/edit/main/docs/guides/10-custom-renderers.md" target="_blank" rel="noopener noreferrer" class="css-vrpffa"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>Edit on GitHub</a></div></main><footer class="css-1nd56js"><nav class="css-nf2n4z"><a href="/guides/getting-started">Docs</a><a href="/blog">Blog</a><a href="/playground">Playground</a><a href="https://github.com/bikeshaving/crank">GitHub</a><a href="https://www.npmjs.com/package/@b9g/crank">NPM</a></nav><p class="css-1st8n6b">MIT Licensed · Made with Crank.js</p></footer><script data-name="embedded-json-239" id="static-urls">
+			window.__embeddedJSON__['inline-code-block-props-312'] = {"code":"function* GameUI() {\n  const gameState = new GameState();\n  \u002F\u002F You can add provision for child Canvas components to read\n  this.provide(\"gameState\", gameState);\n  for ({} of this) {\n    yield (\n      \u003C\u003E\n        {\u002F* DOM UI *\u002F}\n        \u003Cdiv class=\"ui\"\u003E\n          \u003CScore value={gameState.score} \u002F\u003E\n          \u003Cbutton onclick={() =\u003E gameState.restart()}\u003E\n            Restart\n          \u003C\u002Fbutton\u003E\n        \u003C\u002Fdiv\u003E\n\n        {\u002F* Canvas Game components will read the provisions *\u002F}\n        \u003CGameCanvas \u002F\u003E\n      \u003C\u002F\u003E\n    );\n  }\n}","lang":"typescript"};
+		</script></div><div class="css-1lyshc7"><a href="https://github.com/bikeshaving/crank/edit/main/docs/guides/14-custom-renderers.md" target="_blank" rel="noopener noreferrer" class="css-vrpffa"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>Edit on GitHub</a></div></main><footer class="css-1nd56js"><nav class="css-nf2n4z"><a href="/guides/getting-started">Docs</a><a href="/blog">Blog</a><a href="/playground">Playground</a><a href="/press-kit">Press Kit</a><a href="https://github.com/bikeshaving/crank">GitHub</a><a href="https://www.npmjs.com/package/@b9g/crank">NPM</a></nav><p class="css-1st8n6b">MIT Licensed · Made with Crank.js</p></footer><script data-name="embedded-json-313" id="static-urls">
 			if (window.__embeddedJSON__ == null) {
 				window.__embeddedJSON__ = {};
 			}
-			window.__embeddedJSON__['embedded-json-239'] = {"client.css":"\u002Fstatic\u002Fclient-3f2e47bea41770a9.css","@b9g\u002Fcrank":"\u002Fstatic\u002Findex-edda6cf40c955e0b.js","@b9g\u002Fcrank\u002Fasync":"\u002Fstatic\u002Fasync-e24e607c061c2bd6.js","@b9g\u002Fcrank\u002Fdom":"\u002Fstatic\u002Fdom-aa42f22e47f5e08f.js","@b9g\u002Fcrank\u002Fevent-target":"\u002Fstatic\u002Fevent-target-2c01c58f7606eeb9.js","@b9g\u002Fcrank\u002Fhtml":"\u002Fstatic\u002Fhtml-51dd6651603637e1.js","@b9g\u002Fcrank\u002Fjsx-dev-runtime":"\u002Fstatic\u002Fjsx-dev-runtime-d4251d2d2df77801.js","@b9g\u002Fcrank\u002Fjsx-runtime":"\u002Fstatic\u002Fjsx-runtime-d4251d2d2df77801.js","@b9g\u002Fcrank\u002Fjsx-tag":"\u002Fstatic\u002Fjsx-tag-baf2f4398d28ee0f.js","@b9g\u002Fcrank\u002Fstandalone":"\u002Fstatic\u002Fstandalone-0a4d0927a194cb53.js"};
-		</script><script type="module" src="/static/navbar-576c280523a27b04.js"></script><script type="module" src="/static/code-blocks-6c0f3eefa6cc7465.js"></script><script type="module" src="/static/search-8c387537e444c409.js"></script><script type="module" src="/static/gear-16699826f92534de.js"></script></body></html>
+			window.__embeddedJSON__['embedded-json-313'] = {"client.css":"\u002Fstatic\u002Fclient-bb3474147984aa38.css","@b9g\u002Fcrank":"\u002Fstatic\u002Findex-835f48d5d698f635.js","@b9g\u002Fcrank\u002Fasync":"\u002Fstatic\u002Fasync-7a0898ccf81c5403.js","@b9g\u002Fcrank\u002Fdom":"\u002Fstatic\u002Fdom-74a4cebc0c921555.js","@b9g\u002Fcrank\u002Fevent-target":"\u002Fstatic\u002Fevent-target-2c01c58f7606eeb9.js","@b9g\u002Fcrank\u002Fhtml":"\u002Fstatic\u002Fhtml-73f831a625c89975.js","@b9g\u002Fcrank\u002Fjsx-dev-runtime":"\u002Fstatic\u002Fjsx-dev-runtime-b26fe4b1616557b3.js","@b9g\u002Fcrank\u002Fjsx-runtime":"\u002Fstatic\u002Fjsx-runtime-b26fe4b1616557b3.js","@b9g\u002Fcrank\u002Fjsx-tag":"\u002Fstatic\u002Fjsx-tag-e2f0fee83a9ee90b.js","@b9g\u002Fcrank\u002Fstandalone":"\u002Fstatic\u002Fstandalone-b89867b9499f4f17.js"};
+		</script><script type="module" src="/static/navbar-efb7937721dd23d2.js"></script><script type="module" src="/static/code-blocks-bda9963f4ec14503.js"></script><script type="module" src="/static/search-225966f48e2c7ecd.js"></script><script type="module" src="/static/gear-07110d36816de564.js"></script></body></html>
