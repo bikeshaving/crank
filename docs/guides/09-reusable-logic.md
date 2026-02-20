@@ -48,7 +48,7 @@ Anything can be passed as a key to the `provide` and `consume` methods, so you c
 
 **Note:** Crank does not link “providers” and “consumers” in any way, and doesn’t automatically refresh consumer components when the `provide` method is called. It’s up to you to ensure consumers update when providers update.
 
-For the lifecycle methods `schedule()`, `after()`, and `cleanup()`, see the [Lifecycles guide](/guides/lifecycles).
+For the lifecycle methods `schedule()`, `after()`, and `cleanup()`, see the [Lifecycles guide](07-lifecycles.md).
 
 ## Strategies for Reusing Logic
 

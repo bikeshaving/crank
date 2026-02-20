@@ -36,7 +36,7 @@ export default async function Guide({url}: ViewProps) {
 			<${Sidebar} docs=${docs} url=${url} title="Guides" />
 			<${Main}>
 				<h1>${title}</h1>
-				<${Marked} markdown=${body} components=${components} />
+				<${Marked} markdown=${body} components=${components} basePath="guides" />
 				<div class=${css`
 					margin-top: 3rem;
 					padding-top: 1.5rem;

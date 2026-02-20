@@ -80,7 +80,7 @@ export default async function BlogPage({url}: ViewProps) {
 					authorURL=${authorURL}
 					readTime=${readTime}
 				>
-					<${Marked} markdown=${body} components=${components} />
+					<${Marked} markdown=${body} components=${components} basePath="blog" />
 				<//BlogContent>
 
 				<div class=${css`

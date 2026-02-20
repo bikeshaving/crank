@@ -10,7 +10,7 @@ The key thesis behind Crank is that JavaScript already has all the primitives yo
 3. **Own the execution.** Avoid unnecessary reactive abstractions. Understanding the execution of components is your job, and `this.refresh(() => ...)` makes it legible.
 4. **Compose uniformly.** A component should resemble built-in elements: props in, events out.
 
-For full explanations, see the [Components](/guides/components), [Lifecycles](/guides/lifecycles), and [Async Components](/guides/async-components) guides. Many of the conventions described in this document can be fixed automatically through the [`eslint-plugin-crank`](https://github.com/bikeshaving/crank/tree/main/packages/eslint-plugin-crank) package.
+For full explanations, see the [Components](03-components.md), [Lifecycles](07-lifecycles.md), and [Async Components](05-async-components.md) guides. Many of the conventions described in this document can be fixed automatically through the [`eslint-plugin-crank`](https://github.com/bikeshaving/crank/tree/main/packages/eslint-plugin-crank) package.
 
 ## Do’s and Don’ts
 
@@ -609,7 +609,7 @@ function App() {
 }
 ```
 
-See the [Async Components guide](/guides/async-components) for details on `Suspense`, `SuspenseList`, and `lazy`.
+See the [Async Components guide](05-async-components.md) for details on `Suspense`, `SuspenseList`, and `lazy`.
 
 ### Error Handling
 
@@ -779,7 +779,7 @@ function memo(Component) {
 }
 ```
 
-See [Reusable Logic](/guides/reusable-logic) for alternative approaches and tradeoffs.
+See [Reusable Logic](09-reusable-logic.md) for alternative approaches and tradeoffs.
 
 ### TypeScript
 

@@ -683,7 +683,7 @@ function App() {
 </SuspenseList>
 ```
 
-See the [Async Components guide](/guides/async-components) for details.
+See the [Async Components guide](05-async-components.md) for details.
 
 ## Error Boundaries
 
