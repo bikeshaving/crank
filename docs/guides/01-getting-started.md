@@ -115,7 +115,7 @@ Here’s the configuration you will need to set up JSX transpilation.
 }
 ```
 
-Crank is written in TypeScript. Refer to [the guide on TypeScript](/guides/working-with-typescript) for more information about Crank types.
+Crank is written in TypeScript. Refer to [the guide on TypeScript](10-working-with-typescript.md) for more information about Crank types.
 
 ```tsx
 import type {Context} from "@b9g/crank";

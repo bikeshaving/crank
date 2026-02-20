@@ -201,7 +201,7 @@ The `hydrate` prop provides fine-grained control over server-side rendering hydr
 
 This is particularly useful when you have server-rendered content that should remain static, or when dealing with third-party widgets that shouldn’t be disturbed during hydration.
 
-For comprehensive hydration patterns, best practices, and advanced techniques, see the [Hydration guide](/guides/hydration).
+For comprehensive hydration patterns, best practices, and advanced techniques, see the [Hydration guide](08-hydration.md).
 
 ### The children prop
 The `children` prop passed to components is special because it is not usually set with JSX’s `key="value"` prop syntax, but by the contents between the opening and closing tags. It is the responsibility of the component to make sure the `children` passed in are rendered in its yielded or returned element tree.
