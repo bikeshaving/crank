@@ -484,7 +484,7 @@ function* GameUI() {
     yield (
       <>
         {/* DOM UI */}
-        <div className="ui">
+        <div class="ui">
           <Score value={gameState.score} />
           <button onclick={() => gameState.restart()}>
             Restart

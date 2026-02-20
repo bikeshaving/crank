@@ -62,7 +62,7 @@ import {Context} from "@b9g/crank";
 
 const ContextIntervalSymbol = Symbol.for("ContextIntervalSymbol");
 
-Context.prototype.setInterval = function(callback, delay, ...args) {`
+Context.prototype.setInterval = function(callback, delay, ...args) {
   const interval = window.setInterval(callback, delay, ...args);
   if (typeof this[ContextIntervalSymbol] === "undefined") {
     this[ContextIntervalSymbol] = new Set();
@@ -109,7 +109,7 @@ As an alternative, you can write utility functions that accept a context to scop
 
 
 ```ts
-function createSetInterval(ctx, callback, delay, ...args) {
+function useSetInterval(ctx, callback, delay, ...args) {
   const interval = window.setInterval(callback, delay, ...args);
   ctx.cleanup(() => window.clearInterval(interval));
   return interval;
@@ -117,13 +117,11 @@ function createSetInterval(ctx, callback, delay, ...args) {
 
 function *Counter() {
   let seconds = 0;
-  const setInterval = createSetInterval(this);
-  setInterval(() => this.refresh(() => seconds++), 1000);
+  useSetInterval(this, () => this.refresh(() => seconds++), 1000);
 
   for ({} of this) {
     yield <div>Seconds: {seconds}</div>;
   }
-
 }
 ```
 

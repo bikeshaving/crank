@@ -335,7 +335,7 @@ renderer.render(<Dictionary />, document.body);
 ```
 
 Async generator functions let you write components that are both async *and*
-stateful. Crank uses promises wherever they makes sense, and has a rich async
+stateful. Crank uses promises wherever they make sense, and has a rich async
 execution model which allows you to do things like racing components to display
 loading states.
 

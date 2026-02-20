@@ -3,7 +3,7 @@ Title: Crank Component Specification
 Shortname: crank-components
 Level: 1
 Status: LS
-Date: 2026-02-11
+Date: 2026-02-20
 URL: https://crank.js.org/spec
 Editor: Brian Kim, bikeshaving, https://github.com/brainkim
 Abstract: This document specifies the component model for [Crank.js](https://crank.js.org): element creation, component types and their lifecycles, reconciliation, and the renderer interface. The core framework is renderer-agnostic; DOM-specific behavior is noted where applicable.
