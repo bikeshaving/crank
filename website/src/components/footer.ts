@@ -24,6 +24,7 @@ export function Footer() {
 				<a href="/guides/getting-started">Docs</a>
 				<a href="/blog">Blog</a>
 				<a href="/playground">Playground</a>
+				<a href="/press-kit">Press Kit</a>
 				<a href="https://github.com/bikeshaving/crank">GitHub</a>
 				<a href="https://www.npmjs.com/package/@b9g/crank">NPM</a>
 			</nav>

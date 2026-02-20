@@ -24,6 +24,7 @@ import BlogView from "./views/blog.js";
 import GuideView from "./views/guide.js";
 import APIView from "./views/api.js";
 import PlaygroundView from "./views/playground.js";
+import PressKitView from "./views/press-kit.js";
 import NotFoundView from "./views/not-found.js";
 
 // Import assets with assetBase for content-hashed URLs
@@ -37,7 +38,7 @@ import playgroundScript from "./clients/playground.ts" with {
 };
 import searchScript from "./clients/search.ts" with {assetBase: "/static/"};
 import gearScript from "./clients/gear.ts" with {assetBase: "/static/"};
-import favicon from "../static/favicon.ico" with {assetBase: "/static/"};
+import favicon from "../static/favicon.ico" with {assetBase: "/", assetName: "favicon.ico"};
 import logo from "../static/logo.svg" with {assetBase: "/static/"};
 
 // Import Crank client bundles for playground iframe
@@ -260,6 +261,11 @@ router.route("/playground").get(async (request) => {
 	return renderView(PlaygroundView, url.pathname);
 });
 
+router.route("/press-kit").get(async (request) => {
+	const url = new URL(request.url);
+	return renderView(PressKitView, url.pathname);
+});
+
 // Build and serve the Bikeshed spec on each request
 router.route("/spec").get(async () => {
 	try {
@@ -328,7 +334,7 @@ async function generateStaticSite() {
 		const staticBucket = await self.directories.open("public");
 
 		// Static routes (landing pages that need index.html at directory root)
-		const staticRoutes = ["/", "/blog", "/playground", "/spec"];
+		const staticRoutes = ["/", "/blog", "/playground", "/press-kit", "/spec"];
 
 		// Collect blog and guide documents
 		const docsDir = await self.directories.open("docs");

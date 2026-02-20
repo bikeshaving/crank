@@ -98,7 +98,7 @@ const interactiveBackground = css`
 
 function Hero() {
 	return jsx`
-		<div id="gear-interactive" />
+		<div id="gears" />
 		<header
 			class=${css`
 				height: 100vh;

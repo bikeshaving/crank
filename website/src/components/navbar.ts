@@ -1,7 +1,7 @@
 import {jsx} from "@b9g/crank/standalone";
 import {css} from "@emotion/css";
 
-import {GearLogo} from "./gear-interactive.js";
+import {GearLogo} from "./gears.js";
 import {ColorSchemeToggle} from "./color-scheme-toggle.js";
 
 const positionFixed = css`

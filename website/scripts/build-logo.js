@@ -1,32 +1,43 @@
 #!/usr/bin/env bun
 /** @jsxImportSource @b9g/crank */
-import {GearLogo} from "../src/components/gear-interactive.ts";
+import {GearLogo} from "../src/components/gears.ts";
 import {jsx} from "@b9g/crank/jsx-tag";
 import {renderer} from "@b9g/crank/html";
 // @ts-ignore
 import svgToIco from "svg-to-ico";
 
-// Simple script to generate the logo directly
-// Since we know the exact structure, let's generate it directly
+import {resolve} from "node:path";
 
-function generateLogoSVG(color) {
-	const logo = renderer.render(jsx`<${GearLogo} />`);
-	if (color) {
-		return logo.replaceAll("var(--highlight-color)", "#DAA520");
-	}
+const scriptsDir = import.meta.dir;
+const websiteDir = resolve(scriptsDir, "..");
+const rootDir = resolve(websiteDir, "..");
 
-	return logo;
+function generateLogoSVG({color, background} = {}) {
+	return renderer.render(
+		jsx`<${GearLogo} color=${color} background=${background} />`,
+	);
 }
 
-// Generate website logo with goldenrod
+// Generate website logo (CSS var, transparent)
 const websiteLogo = generateLogoSVG();
-await Bun.write("./static/logo.svg", websiteLogo);
+await Bun.write(resolve(websiteDir, "static/logo.svg"), websiteLogo);
 
-// Generate README logo with goldenrod
-const readmeLogo = generateLogoSVG("#DAA520");
-await Bun.write("../../logo.svg", readmeLogo);
+// Generate README logo with goldenrod (transparent)
+const readmeLogo = generateLogoSVG({color: "#DAA520"});
+const rootLogo = resolve(rootDir, "logo.svg");
+await Bun.write(rootLogo, readmeLogo);
+
+// Generate press kit variants
+const darkLogo = generateLogoSVG({color: "#DAA520", background: "#0a0e1f"});
+await Bun.write(resolve(websiteDir, "static/logo-dark.svg"), darkLogo);
+
+const lightLogo = generateLogoSVG({color: "#DAA520", background: "#e7f4f5"});
+await Bun.write(resolve(websiteDir, "static/logo-light.svg"), lightLogo);
+
+const transparentLogo = generateLogoSVG({color: "#DAA520"});
+await Bun.write(resolve(websiteDir, "static/logo-transparent.svg"), transparentLogo);
 
 await svgToIco({
-	input_name: "../../logo.svg",
-	output_name: "./static/favicon.ico",
+	input_name: rootLogo,
+	output_name: resolve(websiteDir, "static/favicon.ico"),
 });
