@@ -373,36 +373,32 @@ export function* GearInteractive(this: Context<typeof GearInteractive>, {}) {
 	}
 }
 
-export function GearLogo({width = 400, height = 400}) {
-	const r = 300;
-	const wa = (35 * Math.PI) / 180;
+export function GearLogo({
+	width = 400,
+	height = 400,
+	color = "var(--highlight-color)",
+	background,
+}: {
+	width?: number;
+	height?: number;
+	color?: string;
+	background?: string;
+}) {
+	const style = background
+		? `flex: none; background-color: ${background};`
+		: "flex: none;";
 	return jsx`
 		<svg
-			style="flex: none;"
+			style=${style}
 			fill="none"
 			viewBox="-200 -200 400 400"
 			width=${width}
 			height=${height}
 			xmlns="http://www.w3.org/2000/svg"
 		>
-			<defs>
-				<mask id="wedge-mask">
-					<rect x="-200" y="-200" width="400" height="400" fill="white" />
-					<path
-						stroke="none"
-						fill="black"
-						d="
-							M 0 0
-							L ${Math.cos(wa) * r} ${Math.sin(wa) * r}
-							L ${Math.cos(wa) * r} ${-Math.sin(wa) * r}
-							z
-						"
-					/>
-				</mask>
-			</defs>
 			<g
 				stroke="none"
-				fill="var(--highlight-color)"
+				fill=${color}
 			>
 				<${Gear}
 					mod=${20}
@@ -410,16 +406,15 @@ export function GearLogo({width = 400, height = 400}) {
 					offset=${1}
 					stroke="none"
 					strokeWidth="4"
-					mask="url(#wedge-mask)"
 					circleRadius=${110}
 				/>
 				<circle cx="0" cy="0" r="60" stroke="none" />
 				<path
 					d="
-						M 0 -28
-						L 160 -14
-						L 160 14
-						L 0 28
+						M 0 -25
+						L 120 -20
+						L 120 20
+						L 0 25
 						Z
 					"
 				/>
