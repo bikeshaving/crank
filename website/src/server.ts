@@ -38,7 +38,10 @@ import playgroundScript from "./clients/playground.ts" with {
 };
 import searchScript from "./clients/search.ts" with {assetBase: "/static/"};
 import gearScript from "./clients/gear.ts" with {assetBase: "/static/"};
-import favicon from "../static/favicon.ico" with {assetBase: "/", assetName: "favicon.ico"};
+import favicon from "../static/favicon.ico" with {
+	assetBase: "/",
+	assetName: "favicon.ico",
+};
 import logo from "../static/logo.svg" with {assetBase: "/static/"};
 
 // Import Crank client bundles for playground iframe

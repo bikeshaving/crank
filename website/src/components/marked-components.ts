@@ -13,9 +13,13 @@ function resolveMarkdownHref(href: string, basePath: string): string {
 		}
 	}
 
-	return "/" + baseParts.join("/")
-		.replace(/\.md$/, "")
-		.replace(/([0-9]+-)+/, "");
+	return (
+		"/" +
+		baseParts
+			.join("/")
+			.replace(/\.md$/, "")
+			.replace(/([0-9]+-)+/, "")
+	);
 }
 
 export const components = {
@@ -23,9 +27,10 @@ export const components = {
 
 	link({token, rootProps, children}: any) {
 		const {href, title} = token;
-		const resolvedHref = href && href.endsWith(".md") && rootProps.basePath
-			? resolveMarkdownHref(href, rootProps.basePath)
-			: href;
+		const resolvedHref =
+			href && href.endsWith(".md") && rootProps.basePath
+				? resolveMarkdownHref(href, rootProps.basePath)
+				: href;
 		return jsx`<a href=${resolvedHref} title=${title}>${children}</a>`;
 	},
 
