@@ -65,7 +65,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install
       - name: Build skill archive
-        run: npx @b9g/skillpack docs/SKILL.md -o crank-component-authoring.skill
+        run: npx @b9g/skillpack docs/SKILL.md -o skills/crank-component-authoring.skill
       - name: Build skill directory
         run: |
           rm -rf skills/crank-component-authoring
@@ -80,5 +80,5 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: crank-component-authoring.skill
+          files: skills/crank-component-authoring.skill
           generate_release_notes: true
