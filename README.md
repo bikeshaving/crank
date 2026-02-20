@@ -7,13 +7,20 @@ The Just JavaScript UI Framework
 
 ## Get Started
 
-The fastest way to try Crank is via the [online playground](https://crank.js.org/playground).
+Scaffold a new project:
+
+```shell
+npm create crank
+```
+
+Or try it instantly in the [online playground](https://crank.js.org/playground).
 
 Other links:
 - [crank.js.org](https://crank.js.org)
 - [NPM](https://www.npmjs.com/package/@b9g/crank)
 - [Introducing Crank.js](https://crank.js.org/blog/introducing-crank/)
 - [Examples](https://github.com/bikeshaving/crank/tree/main/examples)
+- [Crank for Python](https://github.com/bikeshaving/crankpy)
 - [Deep Wiki](https://deepwiki.com/bikeshaving/crank)
 
 ## Motivation
