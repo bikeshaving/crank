@@ -487,21 +487,20 @@ async function *Continuous({children}) {
 }
 ```
 
-### 3. No-loop Mode (no iterator)
+### No-loop Mode (no iterator)
 Starting in 0.7, async generators without a props iterator behave exactly like
 sync generators: they execute once and suspend at `yield`.
 
 ```jsx
 async function *NoLoop({children}) {
-  // Executes once, then suspends at yield just like sync generators const
-  result = yield children; // waits for children to complete
-  console.log("Rendered once:", result); // Any code here executes on
-  subsequent renders
+  // Executes once, then suspends at yield just like sync generators
+  const result = yield children; // waits for children to complete
+  console.log("Rendered once:", result);
+  // Any code here executes on subsequent renders
 }
 ```
 
-This is important, for instance, when converting a sync generator component
-which
+This is useful when converting a sync generator component to async, since the component can retain the same structure without adding a `for await...of` loop.
 
 ### Key Differences in Yield Behavior
 The most important distinction is what the `yield` expression evaluates to:

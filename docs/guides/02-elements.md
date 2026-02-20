@@ -36,7 +36,7 @@ The classic transform turns JSX elements into `createElement()` calls.
 /** @jsx createElement */
 import {createElement} from "@b9g/crank";
 
-const el = <div id="element">An element</div>;
+const el = <div id="hello">An element</div>;
 ```
 
 Transpiles to:
@@ -101,10 +101,10 @@ import {renderer as HTMLRenderer} from "@b9g/crank/html";
 const el = <div id="hello">Hello world</div>;
 const node = document.createElement("div");
 DOMRenderer.render(el, node);
-console.log(node.innerHTML); // <div id="element">Hello world</div>
+console.log(node.innerHTML); // <div id="hello">Hello world</div>
 
 const html = HTMLRenderer.render(el);
-console.log(html); // <div id="element">Hello world</div>
+console.log(html); // <div id="hello">Hello world</div>
 ```
 
 ## The Parts of an Element

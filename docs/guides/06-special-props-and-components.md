@@ -83,12 +83,12 @@ renderer.render(<Shuffler />, document.body);
 console.log(document.body.innerHTML);
 // "<div><span>3</span><span>2</span><span>1</span><span>0</span></div>";
 
-console.log(document.firstChild.lastChild === span); // true
+console.log(document.body.firstChild.lastChild === span); // true
 renderer.render(<Shuffler />, document.body);
 console.log(document.body.innerHTML);
 // "<div><span>0</span><span>1</span><span>2</span><span>3</span></div>";
 
-console.log(document.firstChild.firstChild === span); // true
+console.log(document.body.firstChild.firstChild === span); // true
 ```
 
 ### The ref prop
@@ -240,7 +240,7 @@ The style prop can be used to add inline styles to an element. It can either be 
 <div style="color: red"><span style={{"font-size": "16px"}}>Hello</span></div>
 ```
 
-**Note:** Unlike other frameworks like React, Crank does not camel-case style names or add pixel units to numbers.
+**Note:** Like React, Crank converts camelCase style names to kebab-case and adds `px` units to numeric values for non-unitless properties (such as `width` and `fontSize`, but not `opacity` or `zIndex`).
 
 ### The innerHTML prop
 The `innerHTML` prop can be used to set the element’s children with an HTML string.
@@ -397,7 +397,7 @@ renderer.render(<MyComponent />, document.body);
 This component is useful for creating modals or tooltips, which usually need to be rendered into separate DOM elements at the bottom of the page for visibility reasons. Events dispatched from a `Portal` element’s child components via the `dispatchEvent` method will still bubble into parent components.
 
 ### Raw
-Sometimes, you may want to insert raw HTML or actual DOM nodes directly into the element tree. Crank allows you to do this with the `<Raw>` element. The `<Raw>` element takes a `value` prop, which can be . For the DOM renderer, if `value` is an HTML string, the renderer will parse and insert the resulting DOM nodes. If the value is already a DOM node, Crank will insert them in place.
+Sometimes, you may want to insert raw HTML or actual DOM nodes directly into the element tree. Crank allows you to do this with the `<Raw>` element. The `<Raw>` element takes a `value` prop, which can be a string of HTML or an actual DOM node. For the DOM renderer, if `value` is an HTML string, the renderer will parse and insert the resulting DOM nodes. If the value is already a DOM node, Crank will insert them in place.
 
 ```jsx
 import {Raw} from "@b9g/crank";

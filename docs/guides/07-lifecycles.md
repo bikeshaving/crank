@@ -1,53 +1,45 @@
 ---
 title: Lifecycles
-description: Master component lifecycles in Crank using generator functions. Learn cleanup patterns, resource management, and how to handle component unmounting naturally.
+description: Component lifecycles in Crank follow the natural flow of generator functions. Setup, render, update, and cleanup all happen in predictable regions of your code.
 ---
 
-Component lifecycles in Crank are straightforward: they follow the natural flow of JavaScript generator functions. Unlike other frameworks that require special lifecycle methods, Crank lets you write lifecycle logic using normal JavaScript.
+Component lifecycles in Crank follow the natural flow of generator functions. There are no special lifecycle methods to memorize — setup, render, update, and cleanup are regions of your generator function.
 
-## The Natural Generator Lifecycle
+## Generator Regions
 
-Generator components have a simple, predictable lifecycle that mirrors the generator execution:
-
-### Mount Phase
-When a component first renders, the generator function starts executing until it hits the first `yield`:
+A generator component has three regions:
 
 ```jsx
-import {renderer} from "@b9g/crank/dom";
-
-function *LifecycleDemo() {
-
-  // mount phase for logic before rendering
+function *Component({prop}) {
+  // 1. Setup: runs once on mount
   let count = 0;
+  const interval = setInterval(() => this.refresh(() => count++), 1000);
 
-  // This `for...of` loop IS the component lifecycle
-  for ({} of this) {
-    // code which executes after we received props
-    yield (
-      <div>
-        <p>Count: {count}</p>
-        <button onclick={() => this.refresh(() => count++)}>
-          Increment
-        </button>
-      </div>
-    );
-    // code which executes before we receive new props
+  for ({prop} of this) {
+    // 2. Render: runs on every update
+    yield <div>{prop}: {count}</div>;
   }
 
-  // code which executes before we unmount
+  // 3. Cleanup: runs on unmount
+  clearInterval(interval);
 }
-
-renderer.render(<LifecycleDemo />, document.body);
 ```
 
-### Update Phase
-When `this.refresh()` is called, the generator resumes from where it paused (after the `yield`) and continues to the next iteration of the loop. This gives you two important spaces for update logic:
+**Setup** (before the loop): Runs once when the component mounts. Initialize state, set up subscriptions, create intervals.
+
+**Render** (inside the loop): Runs on every update. The `for...of this` loop receives fresh props each iteration. Code before `yield` prepares the current render; code after `yield` runs before the next render begins.
+
+**Cleanup** (after the loop): Runs when the component unmounts. The `for...of` loop exits naturally when the component is removed from the tree, so any code after the loop runs as teardown.
+
+## Prop Comparison
+
+Because code after `yield` runs before the next render, you can compare old and new props by saving the current value after each yield:
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
 
 function *UpdateDemo({count}) {
-  let oldCount = null; // What the count was in the previous render
+  let oldCount = null;
 
   for ({count} of this) {
     yield (
@@ -59,7 +51,7 @@ function *UpdateDemo({count}) {
       </div>
     );
 
-    oldCount = count; // Save current props as "old" for next comparison
+    oldCount = count;
   }
 }
 
@@ -81,104 +73,13 @@ function *App() {
 renderer.render(<App />, document.body);
 ```
 
-The key insight: you have TWO execution spaces in each loop iteration:
-- **Before `yield`**: Set up for the current render
-- **After `yield`**: Only runs when re-rendering, save current state as “old” state for comparison
+## DOM Lifecycle Methods
 
-Here’s a practical example using prop comparison for memoization:
+The generator regions cover most lifecycle needs. But sometimes you need precise timing around DOM operations — knowing when nodes are created, when they're inserted, and when they're removed.
 
-```jsx
-import {renderer} from "@b9g/crank/dom";
+### ref: Capture a Host Element
 
-function *ExpensiveComponent({items, threshold}) {
-  let oldItems = [];
-  let oldThreshold = 0;
-  let cachedResult = null;
-
-  for ({items, threshold} of this) {
-    // Check if we can use cached result
-    const itemsChanged = JSON.stringify(items) !== JSON.stringify(oldItems);
-    const thresholdChanged = threshold !== oldThreshold;
-
-    if (!cachedResult || itemsChanged || thresholdChanged) {
-      // Simulate expensive calculation
-      cachedResult = items
-        .filter(item => item.value > threshold)
-        .map(item => `${item.name}: ${item.value}`)
-        .join(', ');
-    }
-
-    yield (
-      <div>
-        <h3>Filtered Items (threshold: {threshold})</h3>
-        <p>{cachedResult || "No items match"}</p>
-      </div>
-    );
-
-    // Save current props as "old" for next comparison
-    oldItems = [...items];
-    oldThreshold = threshold;
-  }
-}
-
-function *App() {
-  let threshold = 50;
-  const items = [
-    {name: "Item A", value: 25},
-    {name: "Item B", value: 75},
-    {name: "Item C", value: 100}
-  ];
-
-  const updateThreshold = () => this.refresh(() =>
-    threshold = threshold === 50 ? 30 : 50
-  );
-
-  for ({} of this) {
-    yield (
-      <div>
-        <button onclick={updateThreshold}>
-          Toggle Threshold ({threshold})
-        </button>
-        <ExpensiveComponent items={items} threshold={threshold} />
-      </div>
-    );
-  }
-}
-
-renderer.render(<App />, document.body);
-```
-
-### Unmount Phase
-When the component is removed from the tree, the generator exits the `for...of` loop and any code after it runs as cleanup:
-
-```jsx
-function *Timer({message}, ctx) {
-  let seconds = 0;
-  const interval = setInterval(() => ctx.refresh(() => seconds++), 1000);
-
-  for ({message} of ctx) {
-    yield (
-      <div>{message} {seconds}</div>
-    );
-  }
-  // When the component unmounts, the props iterator returns and code after the
-  // loop can run
-  clearInterval(interval);
-}
-```
-
-## Why You Need Extra Lifecycle Methods
-
-The natural generator lifecycle is perfect for most logic, but sometimes you need more precise timing around DOM operations. The `for...of` loop pauses at each `yield`, which means:
-
-- **After `yield`**: The element description exists, but DOM nodes might not be created yet
-- **You need to know**: When DOM nodes are created, when they’re inserted, and when they’re removed
-
-For these DOM-specific timings, Crank provides the `ref` prop and three lifecycle methods:
-
-### Ref: Capture a Host Element
-
-The `ref` prop accepts a callback that receives the underlying DOM node. It fires once on first commit, after the element and its children are created but **before insertion into the parent**. Use it to store a reference to a host element for later use:
+The `ref` prop accepts a callback that receives the underlying DOM node after the element and its children are created, but **before insertion into the parent**:
 
 ```jsx
 function *Canvas() {
@@ -190,7 +91,7 @@ function *Canvas() {
 }
 ```
 
-`ref` only fires on host elements (`<div>`, `<input>`, etc.), not on component elements, fragments, or portals. For component elements, `ref` is passed as a regular prop — just like `key`. A component that wraps a host element should forward `ref` to its root element:
+`ref` only fires on host elements (`<div>`, `<canvas>`, etc.), not on component elements. For component elements, `ref` is passed as a regular prop — forward it to the root host element:
 
 ```jsx
 function MyInput({ref, class: cls, ...props}) {
@@ -198,15 +99,15 @@ function MyInput({ref, class: cls, ...props}) {
 }
 ```
 
-### Schedule: DOM Created but Not Inserted
+### schedule(): Before Insertion
 
-**`schedule(callback)`** runs after DOM nodes are created, but **before they’re inserted into the document**. The callback receives the element value. This is the right time to set up properties or styles before the user sees the element, or to trigger an immediate re-render.
+`schedule(callback)` runs after DOM nodes are created but **before they're inserted into the document**. The callback receives the element value. Use it to set up properties before the user sees the element, or to trigger an immediate re-render:
 
 ```jsx
 function *FadeIn() {
   this.schedule((el) => {
     // Element exists but is NOT in the document yet — no flicker
-    el.style.opacity = ‘0’;
+    el.style.opacity = "0";
   });
 
   for ({} of this) {
@@ -215,9 +116,9 @@ function *FadeIn() {
 }
 ```
 
-### After: DOM Inserted and Live
+### after(): After Insertion
 
-**`after(callback)`** runs after the element is inserted and live in the DOM. The callback receives the element value. This is where you focus inputs, measure layout, or trigger animations that require the element to be visible.
+`after(callback)` runs after the element is inserted and live in the DOM. The callback receives the element value. Use it for focus, measurement, or animations that require the element to be visible:
 
 ```jsx
 function *AutoFocusInput() {
@@ -230,76 +131,65 @@ function *AutoFocusInput() {
 }
 ```
 
-### Cleanup: DOM Removed and Unmounted
+### cleanup(): On Unmount
 
-**`cleanup(callback)`** runs when the component is unmounted. Use this for cleaning up event listeners, timers, subscriptions, or performing exit animations.
+`cleanup(callback)` runs when the component unmounts. The callback receives the element value. Use it for teardown that lives outside the component function:
 
-```jsx
-function *Component() {
-  const interval = setInterval(() => console.log('tick'), 1000);
+```jsx live
+import {renderer} from "@b9g/crank/dom";
 
-  this.cleanup(() => {
-    clearInterval(interval);
-    console.log('Component cleaned up');
-  });
+function addGlobalEventListener(ctx, type, listener, options) {
+  window.addEventListener(type, listener, options);
+  ctx.cleanup(() => window.removeEventListener(type, listener, options));
+}
 
+function *KeyboardListener() {
+  let key = "";
+  const listener = (ev) => this.refresh(() => key = ev.key);
+
+  addGlobalEventListener(this, "keypress", listener);
   for ({} of this) {
-    yield <div>Timer running...</div>;
+    yield <div>Last key pressed: {key || "N/A"}</div>
   }
 }
+
+renderer.render(<KeyboardListener />, document.body);
 ```
 
+For cleanup that lives inside the component, code after the `for...of` loop is usually sufficient (see [Generator Regions](#generator-regions)).
+
 ### Execution Order
+
 For any given render:
-1. `ref` callbacks fire first (host element created, children arranged, but not yet inserted into parent)
-2. `schedule()` callbacks run next (same timing window — element exists but is not inserted)
-3. Host nodes are inserted into the document (`arrange`)
-4. `after()` callbacks run last (element live in DOM)
-5. `cleanup()` callbacks run when component unmounts
+1. `ref` callbacks fire (host nodes created, children arranged, not yet inserted)
+2. `schedule()` callbacks run (same timing — nodes exist, not inserted)
+3. Host nodes are inserted into the document
+4. `after()` callbacks run (nodes live in DOM)
+5. `cleanup()` callbacks run on unmount
 
-### When to Use Which Method
+### Promise-based API
 
-This timing difference is crucial for choosing the right method:
-
-**Use `schedule()` for:**
-- Setting up properties, styles, or attributes before the user sees the element
-- Triggering re-renders (the `this.schedule(() => this.refresh())` pattern)
-- DOM setup that doesn’t require the element to be part of the document tree
-- Preparing elements before they become visible
-
-**Use `after()` for:**
-- Focusing elements (requires element to be in the document)
-- Measuring dimensions with `getBoundingClientRect()`
-- Triggering animations that need the element to be visible
-- Any DOM operations requiring the element to be live in the document tree
-
-The key insight: `schedule()` happens in the perfect “sweet spot” where you can modify elements without visual flicker, while `after()` gives you access to the fully live, measurable element.
-
-### Promise-based API (0.7+)
-All three methods return promises when called without arguments:
+All three methods return promises when called without arguments, for use in async generator components:
 
 ```jsx
 async function *Component() {
-  await this.schedule(); // Wait for DOM creation
-  await this.after();    // Wait for DOM insertion
-  // ... component logic
-  await this.cleanup();  // Wait for cleanup (on unmount)
+  await this.schedule(); // wait for DOM creation
+  await this.after();    // wait for DOM insertion
+  await this.cleanup();  // wait for unmount
 }
 ```
 
-### Context State Properties (0.7+)
+## Context State Properties
 
-The context provides two boolean properties to check component state:
+### isExecuting
 
-#### Execution State: `isExecuting`
-**`this.isExecuting`** is true when the component is currently executing (between yield points). Useful for avoiding redundant refresh calls:
+`this.isExecuting` is `true` when the component is currently executing (between yield points). Useful for avoiding redundant refresh calls from event handlers:
 
 ```jsx
 function *Component() {
   const handleClick = () => {
-    // Avoid calling refresh if component is already executing
     if (!this.isExecuting) {
-      this.refresh(() => console.log('Refreshing'));
+      this.refresh();
     }
   };
 
@@ -309,129 +199,31 @@ function *Component() {
 }
 ```
 
-#### Mount State: `isUnmounted`
-**`this.isUnmounted`** is true after the component has been unmounted. Useful for avoiding work in async operations after unmount:
+### isUnmounted
+
+`this.isUnmounted` is `true` after the component has been unmounted. Useful for guarding async work:
 
 ```jsx
-function *SearchComponent() {
-  let searchTerm = '';
-  let searchTimeout = null;
-
-  const performSearch = (term) => {
-    // Clear existing timeout
-    if (searchTimeout) {
-      clearTimeout(searchTimeout);
+function *Component() {
+  const fetchData = async () => {
+    const data = await fetch("/api/data");
+    if (!this.isUnmounted) {
+      this.refresh();
     }
-
-    // Debounce search requests
-    searchTimeout = setTimeout(() => {
-      // Check if component is still mounted before making the request
-      if (!this.isUnmounted) {
-        console.log(`Searching for: ${term}`);
-        // Simulate API call that would call this.refresh() when complete
-      }
-    }, 300);
-  };
-
-  const handleInput = (ev) => {
-    this.refresh(() => {
-      searchTerm = ev.target.value;
-      performSearch(searchTerm);
-    });
   };
 
   for ({} of this) {
-    yield (
-      <div>
-        <input 
-          type="text" 
-          value={searchTerm}
-          oninput={handleInput}
-          placeholder="Search..."
-        />
-        <p>Search term: {searchTerm}</p>
-      </div>
-    );
-  }
-
-  // Cleanup timeout on unmount
-  if (searchTimeout) {
-    clearTimeout(searchTimeout);
+    yield <div />;
   }
 }
 ```
-
-These properties help write safer async code by preventing common issues like calling `refresh()` on unmounted components or doing unnecessary work after unmount.
 
 ## The Two-Pass Render Pattern
 
-A common pattern is to use `schedule()` to trigger an immediate re-render, so a component renders twice — once for initial setup, then again with updated state:
+Use `schedule()` to trigger an immediate re-render, so a component renders twice — once for setup, then again with updated state:
 
 ```jsx
-function *TwoPassComponent() {
-  let secondPass = false;
-
-  if (!secondPass) {
-    // Schedule a refresh to happen after this render
-    this.schedule(() => this.refresh(() => secondPass = true));
-  }
-
-  for ({} of this) {
-    if (!secondPass) {
-      yield <div>First render - setting up...</div>;
-    } else {
-      yield <div>Second render - ready!</div>;
-    }
-  }
-}
-```
-
-This pattern is especially powerful for:
-
-**CSS-in-JS extraction during SSR:**
-```jsx
-function *SSRComponent({children}) {
-  for ({children} of this) {
-    // First render to extract styles
-    this.schedule(() => this.refresh());
-
-    const html = yield <div>{children}</div>;
-
-    // Extract CSS from the rendered HTML
-    const {html: finalHtml, css} = extractCritical(html);
-
-    // Second render with extracted CSS
-    yield (
-      <>
-        <style>{css}</style>
-        <div innerHTML={finalHtml} />
-      </>
-    );
-  }
-}
-```
-
-**Progressive enhancement:**
-```jsx
-function *ProgressiveComponent() {
-  let hydrated = false;
-
-  // After initial render, mark as hydrated and re-render
-  this.schedule(() => this.refresh(() => hydrated = true));
-
-  for ({} of this) {
-    if (hydrated) {
-      yield <InteractiveVersion />;
-    } else {
-      yield <StaticVersion />;
-    }
-  }
-}
-```
-
-**Measuring and adjusting:**
-```jsx
-function *ResponsiveComponent() {
+function *MeasuredComponent() {
   let width = 0;
 
   this.after((element) => {
@@ -452,15 +244,15 @@ function *ResponsiveComponent() {
 }
 ```
 
-## Setup, update and teardown logic
+## Setup, Update, and Teardown
 
-The execution of Crank components is well-defined and well-behaved, so there are no restrictions around where you need to place side-effects. This means much of setup, update and teardown logic can be placed directly in components.
+Here is a practical example showing all three generator regions working together:
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
 
 function *Blinker({seconds}) {
-  // setup logic can go at the top of the scope
+  // Setup
   let blinking = false;
   const blink = async () => {
     this.refresh(() => blinking = true);
@@ -472,15 +264,13 @@ function *Blinker({seconds}) {
   let oldSeconds = seconds;
 
   for ({seconds} of this) {
-    // update logic can go directly in the loop
+    // Update: recreate interval if prop changed
     if (seconds !== oldSeconds) {
       blinking = false;
       clearInterval(interval);
       interval = setInterval(blink, seconds * 1000);
       oldSeconds = seconds;
     }
-
-    console.log(blinking);
 
     yield (
       <p style={{"background-color": blinking ? "red" : null, color: blinking ? "white" : null}}>
@@ -489,7 +279,7 @@ function *Blinker({seconds}) {
     );
   }
 
-  // cleanup logic can go at the end of the loop
+  // Teardown
   clearInterval(interval);
 }
 
@@ -519,99 +309,9 @@ function *App() {
 renderer.render(<App />, document.body);
 ```
 
-## Working with the DOM
+## Error Boundaries
 
-Logic which needs to happen after rendering, such as doing direct DOM manipulations or taking measurements, can be done directly after a `yield` in async generator components which use `for await...of` loops, because the component is continuously resumed until the bottom of the `for await` loop. Conveniently, the `yield` expression will evaluate to the rendered result of the component.
-
-```jsx
-async function *Component(this, props) {
-  for await (props of this) {
-    const div = yield <div />;
-    // logic which manipulates the div can go here.
-    div.innerHTML = props.innerHTML;
-  }
-}
-```
-
-Unfortunately, this approach will not work for code in `for...of` loops. In a `for...of` loop, the behavior of `yield` works such that the component will suspend at the `yield` for each render, and this behavior holds for both sync and async generator components. This behavior is necessary for sync generator components, because there is nowhere else to suspend, and is mimicked in async generator components, to make refactoring between sync and async generator components easier.
-
-```jsx
-// The following behavior happens in both sync and async generator components
-// so long as they use a `for...of` and not a `for await...of` loop.
-
-function *Component(this, props) {
-  let div = null;
-
-  const onclick = () => {
-    // If the component is only rendered once, div will still be null.
-    console.log(div);
-  };
-  for ({} of this) {
-    // This does not work in sync components because the function is paused
-    // exactly at the yield. Only after rendering a second time will cause the
-    // div variable to be assigned.
-    div = yield <button onclick={div}>Click me</button>;
-    // Any code below the yield will not run until the next render.
-  }
-}
-```
-
-For `for...of` components, use the `schedule()` and `after()` lifecycle methods [described above](#schedule-dom-created-but-not-inserted) to access rendered DOM elements reliably.
-
-## Cleanup logic
-While you can use context iterators to write cleanup logic after `for...of` and `for await...of` loops, this does not account for errors in components, and it does work if you are not using a render loop. To solve these issues, you can use `try`/`finally` block. When a generator component is removed from the tree, Crank calls the `return` method on the component’s generator object.
-
-You can think of it as whatever `yield` expression your component was suspended on being replaced by a `return` statement. This means any loops your component was in when the generator suspended are broken out of, and code after the yield does not execute.
-
-```jsx
-import {renderer} from "@b9g/crank/dom";
-
-function *Cleanup() {
-  try {
-    for ({} of this) {
-      yield "Hi";
-    }
-  } finally {
-    console.log("finally block executed");
-  }
-}
-
-renderer.render(<Cleanup />, document.body);
-console.log(document.body); // "Hi"
-renderer.render(null, document.body);
-// "finally block executed"
-console.log(document.body); // ""
-```
-
-[The same best practices](https://eslint.org/docs/rules/no-unsafe-finally) which apply to `try` / `finally` statements in regular functions apply to generator components. In short, you should not yield or return anything in the `finally` block. Crank will not use the yielded or returned values and doing so might cause your components to inadvertently swallow errors or suspend in unexpected locations.
-
-To write cleanup logic which can be abstractd outside the component function, you can use the `cleanup()` method on the context. This method is similar to `after()` and `schedule()` in that it takes a callback.
-
-
-```jsx live
-import {renderer} from "@b9g/crank/dom";
-function addGlobalEventListener(ctx, type, listener, options) {
-  window.addEventListener(type, listener, options);
-  // ctx.cleanup allows you to write cleanup logic outside the component
-  ctx.cleanup(() => window.removeEventListener(type, listener, options));
-}
-
-function *KeyboardListener() {
-  let key = "";
-  const listener = (ev) => this.refresh(() => key = ev.key);
-
-  addGlobalEventListener(this, "keypress", listener);
-  for ({} of this) {
-    yield <div>Last key pressed: {key || "N/A"}</div>
-  }
-}
-
-renderer.render(<KeyboardListener />, document.body);
-```
-
-## Catching Errors
-
-It can be useful to catch errors thrown by components to show the user an error notification or to notify error-logging services. To facilitate this, Crank will cause `yield` expressions to rethrow errors which happen when rendering children. You can take advantage of this behavior by wrapping your `yield` operations in a `try` / `catch` block to catch errors caused by children.
+Crank rethrows child errors at the `yield` point. Wrap `yield` in `try`/`catch` to catch errors from children:
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
@@ -622,7 +322,7 @@ function *Thrower({shouldThrow}) {
       throw new Error("Component error triggered!");
     }
 
-    yield <div style={{color: 'green'}}>Component working fine</div>;
+    yield <div style={{color: "green"}}>Component working fine</div>;
   }
 }
 
@@ -634,14 +334,14 @@ function *ErrorDemo() {
        yield (
          <div>
            <button onclick={() => this.refresh(() => shouldThrow = !shouldThrow)}>
-             {shouldThrow ? 'Fix Component' : 'Break Component'}
+             {shouldThrow ? "Fix Component" : "Break Component"}
            </button>
            <Thrower shouldThrow={shouldThrow} />
          </div>
        );
      } catch (err) {
        yield (
-         <div style={{color: 'red', border: '1px solid red', padding: '10px', 'border-radius': '4px'}}>
+         <div style={{color: "red", border: "1px solid red", padding: "10px", "border-radius": "4px"}}>
            <div>Error: {err.message}</div>
            <button onclick={() => this.refresh(() => shouldThrow = false)}>
              Reset Component
@@ -655,12 +355,13 @@ function *ErrorDemo() {
 renderer.render(<ErrorDemo />, document.body);
 ```
 
-## Returning values from generator components
+## Returning from Generator Components
 
-When you return from a generator component, the returned value is rendered and the component scope is thrown away, same as would happen when using a function component. This means that the component cannot have local variables which persist across returns.
+When you `return` from a generator component, the returned value is rendered and the component scope is discarded — just like a function component. The component cannot persist local state across returns.
 
 ```jsx live
 import {renderer} from "@b9g/crank/dom";
+
 function *Countdown() {
   yield <div>3…</div>;
   yield <div>2…</div>;
