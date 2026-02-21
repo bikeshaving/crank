@@ -1,0 +1,88 @@
+name: Release
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-skill:
+    name: Build Skill
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - name: Build skill archive
+        run: npx @b9g/skillpack docs/SKILL.md -o skills/crank-component-authoring.skill
+      - name: Build skill directory
+        run: |
+          rm -rf skills/crank-component-authoring
+          npx @b9g/skillpack docs/SKILL.md --format flat -o skills/crank-component-authoring/
+      - name: Commit skill directory
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add skills/
+          git diff --cached --quiet || git commit -m "Build skill directory for ${GITHUB_REF_NAME}"
+          git push origin HEAD:main
+      - name: Upload skill artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: skill-archive
+          path: skills/crank-component-authoring.skill
+
+  publish-npm:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    environment: npm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: bun run build
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Publish @b9g/crank
+        run: npm publish --provenance --access public
+        working-directory: dist
+      - name: Publish @bikeshaving/crank mirror
+        run: |
+          cp package.bikeshaving.json package.json
+          cat > README.md <<'EOF'
+          # @bikeshaving/crank
+
+          **This package has been deprecated in favor of [`@b9g/crank`](https://www.npmjs.com/package/@b9g/crank).**
+
+          Please install `@b9g/crank` instead:
+
+          ```sh
+          npm install @b9g/crank
+          ```
+          EOF
+          npm publish --provenance --access public
+        working-directory: dist
+      - name: Deprecate @bikeshaving/crank
+        run: npm deprecate @bikeshaving/crank "Deprecated in favor of @b9g/crank — please install that instead."
+
+  create-release:
+    name: Create GitHub Release
+    needs: [build-skill, publish-npm]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download skill artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: skill-archive
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: crank-component-authoring.skill
+          generate_release_notes: true

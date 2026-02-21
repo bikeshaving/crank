@@ -47,6 +47,14 @@ function copyPackage() {
 			rewritePaths(pkg1.exports);
 			fs.writeFileSync("./dist/package.json", JSON.stringify(pkg1, null, 2));
 			fs.copyFileSync("./README.md", "./dist/README.md");
+
+			// Mirror package for @bikeshaving/crank
+			const pkg2 = JSON.parse(JSON.stringify(pkg1));
+			pkg2.name = "@bikeshaving/crank";
+			fs.writeFileSync(
+				"./dist/package.bikeshaving.json",
+				JSON.stringify(pkg2, null, 2),
+			);
 		},
 	};
 }
