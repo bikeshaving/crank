@@ -1,6 +1,6 @@
 # create-crank
 
-Create a new [Crank.js](https://crank.js.org) project.
+Create a new [Crank.js](https://crank.js.org) project powered by [Shovel](https://github.com/bikeshaving/shovel).
 
 ## Usage
 
@@ -8,34 +8,38 @@ Create a new [Crank.js](https://crank.js.org) project.
 npm create crank
 ```
 
-This is a shortcut for:
+Or with a project name:
 
 ```bash
-npm create shovel --template crank
+npm create crank my-app
 ```
 
 ## Options
 
 All options are passed through to `create-shovel`:
 
-```bash
-# Skip TypeScript prompt
-npm create crank --typescript
-npm create crank --no-typescript
+```
+--template <name>       hello-world, api, static-site, full-stack
+--jsx / --no-jsx        Use JSX syntax or tagged template literals
+--typescript / --no-typescript
+--platform <name>       node, bun, cloudflare
+```
 
-# Skip platform prompt
-npm create crank --platform node
-npm create crank --platform bun
-npm create crank --platform cloudflare
+Skip all prompts:
+
+```bash
+npm create crank my-app -- --template full-stack --no-jsx --typescript --platform bun
 ```
 
 ## What you get
 
 A Crank.js project with:
 
-- Server-rendered JSX components using `@b9g/crank/html`
+- Server-rendered components (JSX or tagged template literals)
+- Router-based routing with `@b9g/router`
 - [Shovel](https://github.com/bikeshaving/shovel) for builds and dev server
 - TypeScript support (optional)
+- ESLint configuration
 - Deploy to Node.js, Bun, or Cloudflare Workers
 
 ## Learn more
