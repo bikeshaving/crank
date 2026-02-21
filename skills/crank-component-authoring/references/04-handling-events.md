@@ -6,7 +6,7 @@ description: Handle user interactions in Crank applications. Learn event listene
 Most web applications require some measure of interactivity, where the user interface updates according to interactions like clicks and form inputs. To facilitate this, Crank provides several ways to listen to and trigger events.
 
 ## DOM Event Props
-You can attach event callbacks to host element directly using event props.
+You can attach event callbacks to host elements directly using event props.
 These props start with `on`, are lowercase, and correspond to the event type
 (`onclick`, `onkeydown`). By combining event props, local variables and
 `this.refresh()`, you can write interactive components.
