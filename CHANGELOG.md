@@ -1,4 +1,11 @@
 # Changelog
+## [0.7.7] - 2026-02-21
+### Bug Fixes
+- **Fix missing TypeScript type definitions in published package**
+  The `.d.ts` files were accidentally dropped from the build output in 0.7.6
+  due to `declaration: true` being removed from tsconfig.json. Type definitions
+  are now restored.
+
 ## [0.7.6] - 2026-02-16
 ### New Features
 - **Standalone module re-exports renderers**

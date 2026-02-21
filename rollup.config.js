@@ -65,6 +65,11 @@ const input = [
 const ts = typescript2({
 	clean: true,
 	tsconfigOverride: {
+		compilerOptions: {
+			declaration: true,
+			sourceMap: true,
+			noEmit: false,
+		},
 		exclude: ["test"],
 	},
 });
