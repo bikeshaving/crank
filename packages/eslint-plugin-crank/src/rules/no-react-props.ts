@@ -31,7 +31,7 @@ export const noReactProps: Rule.RuleModule = {
 	},
 
 	create(context) {
-		const sourceCode = context.getSourceCode();
+		const sourceCode = context.sourceCode;
 
 		// Create the mapper for simple prop replacements, only for native elements
 		const handleSimpleMapping = createConditionalJSXAttributeMapper(

@@ -42,7 +42,7 @@ export const jsxUsesVars: Rule.RuleModule = {
 				}
 
 				if (name) {
-					const sourceCode = context.sourceCode || context.getSourceCode();
+					const sourceCode = context.sourceCode;
 					(sourceCode as any).markVariableAsUsed(name, node);
 				}
 			},

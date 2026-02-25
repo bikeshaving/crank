@@ -64,7 +64,7 @@ export const preferPropsIterator: Rule.RuleModule = {
 						node,
 						messageId: "preferPropsIterator",
 						fix: (fixer) => {
-							const sourceCode = context.getSourceCode();
+							const sourceCode = context.sourceCode;
 							const bodyText = sourceCode.getText(node.body);
 							return fixer.replaceText(
 								node,

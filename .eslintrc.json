@@ -52,7 +52,7 @@
   },
   "overrides": [
     {
-      "files": ["examples/**/*", "website/examples/**/*"],
+      "files": ["examples/**/*", "website/examples/**/*", "skills/**/*"],
       "rules": {
         "prettier/prettier": [
           "error",

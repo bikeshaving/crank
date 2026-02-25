@@ -36,7 +36,7 @@ export const jsxNoUndef: Rule.RuleModule = {
 		function checkIdentifierInJSX(node: ESLintNode) {
 			if (node.name === "this") return;
 
-			const sourceCode = context.sourceCode || context.getSourceCode();
+			const sourceCode = context.sourceCode;
 			let scope: Scope.Scope = (sourceCode as any).getScope
 				? (sourceCode as any).getScope(node)
 				: (context as any).getScope();

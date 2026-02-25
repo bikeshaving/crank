@@ -206,7 +206,7 @@ export const preferRefreshCallback: Rule.RuleModule = {
 				if (finalActionRefreshCalls[0] !== node) return;
 
 				// Generate and report the suggestion
-				const sourceCode = context.getSourceCode();
+				const sourceCode = context.sourceCode;
 				const contextRef = currentFunction.contextVariable || "this";
 
 				context.report({

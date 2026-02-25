@@ -25,13 +25,13 @@ export const jsxUsesCrank: Rule.RuleModule = {
 		return {
 			JSXOpeningElement(_node: ESLintNode) {
 				for (const name of CRANK_IDENTIFIERS) {
-					const sourceCode = context.sourceCode || context.getSourceCode();
+					const sourceCode = context.sourceCode;
 					(sourceCode as any).markVariableAsUsed(name, _node);
 				}
 			},
 			JSXOpeningFragment(_node: ESLintNode) {
 				for (const name of CRANK_IDENTIFIERS) {
-					const sourceCode = context.sourceCode || context.getSourceCode();
+					const sourceCode = context.sourceCode;
 					(sourceCode as any).markVariableAsUsed(name, _node);
 				}
 			},
