@@ -65,7 +65,9 @@ export default async function BlogHome({url}: ViewProps) {
 							class=${css`
 								color: var(--highlight-color);
 								text-decoration: none;
-								&:hover { text-decoration: underline; }
+								&:hover {
+									text-decoration: underline;
+								}
 							`}
 						>RSS Feed</a>
 					</p>

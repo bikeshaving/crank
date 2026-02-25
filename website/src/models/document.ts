@@ -58,11 +58,12 @@ export async function collectDocuments(
 			}
 
 			const urlBase = prefix ? `/${prefix}` : "";
-			const url = `${urlBase}/${filename}`
-				.replace(/\.md$/, "")
-				.replace(/([0-9]+-)+/, "")
-				.replace(/\/index$/, "") // index.md -> parent directory URL
-				+ "/";
+			const url =
+				`${urlBase}/${filename}`
+					.replace(/\.md$/, "")
+					.replace(/([0-9]+-)+/, "")
+					.replace(/\/index$/, "") + // index.md -> parent directory URL
+				"/";
 			const docsRelativeFilename = prefix ? `${prefix}/${filename}` : filename;
 			docs.push({url, filename: docsRelativeFilename, body, attributes});
 		}

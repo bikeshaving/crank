@@ -394,7 +394,13 @@ async function generateStaticSite() {
 		const staticBucket = await self.directories.open("public");
 
 		// Static routes (with trailing slashes to match route patterns)
-		const staticRoutes = ["/", "/blog/", "/playground/", "/press-kit/", "/spec/"];
+		const staticRoutes = [
+			"/",
+			"/blog/",
+			"/playground/",
+			"/press-kit/",
+			"/spec/",
+		];
 
 		// Collect blog and guide documents
 		const docsDir = await self.directories.open("docs");
