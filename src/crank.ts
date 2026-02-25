@@ -3583,7 +3583,7 @@ async function unmountComponent(
 	}
 
 	let didLinger = false;
-	if (!isNested && cleanupPromises && getChildValues(ctx.ret).length > 0) {
+	if (!isNested && cleanupPromises) {
 		didLinger = true;
 		const index = ctx.index;
 		const lingerers = ctx.host.lingerers || (ctx.host.lingerers = []);
