@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Crank.js Blog</title>
+    <link>https://crank.js.org/blog/</link>
+    <description>Articles about Crank.js, UI frameworks, and building for the web</description>
+    <atom:link href="https://crank.js.org/blog/feed.xml" rel="self" type="application/rss+xml"/>
+    <item>
+      <title>Introducing Crank.py</title>
+      <link>https://crank.js.org/blog/introducing-crank-py/</link>
+      <guid>https://crank.js.org/blog/introducing-crank-py/</guid>
+      <pubDate>Mon, 06 Oct 2025 00:00:00 GMT</pubDate>
+      <description>A deep dive into Crank.py, the Python adapter for Crank.js that makes Python functions components for frontend development.</description>
+      <author>Brian Kim</author>
+    </item>
+    <item>
+      <title>Why Be Reactive?</title>
+      <link>https://crank.js.org/blog/why-be-reactive/</link>
+      <guid>https://crank.js.org/blog/why-be-reactive/</guid>
+      <pubDate>Wed, 20 Aug 2025 00:00:00 GMT</pubDate>
+      <description>Reactive frameworks promise automatic UI updates but create subtle bugs and performance traps. Crank’s explicit refresh() calls aren’t a limitation — they’re a superpower for building ambitious web applications. This essay examines common gotchas of reactive abstractions and provides a philosophical grounding for why Crank will never have a reactive abstraction.</description>
+      <author>Brian Kim</author>
+    </item>
+    <item>
+      <title>Writing Crank from Scratch</title>
+      <link>https://crank.js.org/blog/writing-crank-from-scratch/</link>
+      <guid>https://crank.js.org/blog/writing-crank-from-scratch/</guid>
+      <pubDate>Tue, 13 Oct 2020 00:00:00 GMT</pubDate>
+      <description>A step-by-step guide to building Crank.js from the ground up, demonstrating how virtual DOM libraries work and showcasing advanced techniques with iterators and promises.</description>
+      <author>Brian Kim</author>
+    </item>
+    <item>
+      <title>Introducing Crank</title>
+      <link>https://crank.js.org/blog/introducing-crank/</link>
+      <guid>https://crank.js.org/blog/introducing-crank/</guid>
+      <pubDate>Wed, 15 Apr 2020 00:00:00 GMT</pubDate>
+      <description>A deep dive into why Crank.js was created, exploring the limitations of React’s Suspense API and the philosophy behind using generators and async functions for components.</description>
+      <author>Brian Kim</author>
+    </item>
+  </channel>
+</rss>
