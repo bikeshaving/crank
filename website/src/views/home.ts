@@ -172,7 +172,7 @@ function CallToAction() {
 				}
 			`}>
 				<a
-					href="/guides/getting-started"
+					href="/guides/getting-started/"
 					class=${css`
 						&& {
 							background: var(--highlight-color);
@@ -188,8 +188,8 @@ function CallToAction() {
 						}
 					`}
 				>Get Started</a>
-				<a href="/playground">Playground</a>
-				<a href="/api">API Reference</a>
+				<a href="/playground/">Playground</a>
+				<a href="/api/">API Reference</a>
 				<a href="https://github.com/bikeshaving/crank">GitHub</a>
 			</nav>
 			<div class="code-block-container ${css`
@@ -260,7 +260,7 @@ function BlogSection({posts}: {posts: Array<any>}) {
 				margin-top: 2rem;
 			`}>
 				<a
-					href="/blog"
+					href="/blog/"
 					class=${css`
 						color: var(--highlight-color);
 						font-size: 1.1rem;

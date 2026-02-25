@@ -56,6 +56,21 @@ export default async function BlogHome({url}: ViewProps) {
 						font-size: 1.1rem;
 						margin: 0;
 					`}>Thoughts on UI frameworks, JavaScript, and building for the web</p>
+					<p class=${css`
+						margin: 0.75rem 0 0;
+						font-size: 0.9rem;
+					`}>
+						<a
+							href="/blog/feed.xml"
+							class=${css`
+								color: var(--highlight-color);
+								text-decoration: none;
+								&:hover {
+									text-decoration: underline;
+								}
+							`}
+						>RSS Feed</a>
+					</p>
 				</header>
 
 				<div class=${css`

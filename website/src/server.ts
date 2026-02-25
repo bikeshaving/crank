@@ -15,7 +15,7 @@ import {Router} from "@b9g/router";
 import {trailingSlash} from "@b9g/router/middleware";
 import {assets as assetsMiddleware} from "@b9g/assets/middleware";
 
-import {collectDocuments} from "./models/document.js";
+import {collectDocuments, type DocInfo} from "./models/document.js";
 
 // Import views
 import HomeView from "./views/home.js";
@@ -114,12 +114,12 @@ router.use(async (request) => {
 	return;
 });
 
-// Strip trailing slashes (redirect /path/ → /path)
-router.use(trailingSlash("strip"));
+// Append trailing slashes on 404 (redirect /path → /path/ as fallback)
+router.use(trailingSlash("append"));
 
 // Redirects for renamed URLs (handled in middleware to avoid router conflicts)
 const redirects: Record<string, string> = {
-	"/guides/special-props-and-tags": "/guides/special-props-and-components",
+	"/guides/special-props-and-tags/": "/guides/special-props-and-components/",
 };
 
 router.use(async (request) => {
@@ -211,6 +211,11 @@ async function renderView(
 	url: string,
 	params: Record<string, string> = {},
 ): Promise<Response> {
+	// Normalize URL to always include trailing slash, matching GitHub Pages
+	if (!url.endsWith("/")) {
+		url = url + "/";
+	}
+
 	const html = await renderer.render(jsx`
 		<${View}
 			url=${url}
@@ -229,48 +234,48 @@ router.route("/").get(async (request) => {
 	return renderView(HomeView, url.pathname);
 });
 
-router.route("/blog").get(async (request) => {
+router.route("/blog/").get(async (request) => {
 	const url = new URL(request.url);
 	return renderView(BlogHomeView, url.pathname);
 });
 
-router.route("/blog/:slug").get(async (request, context) => {
+router.route("/blog/:slug/").get(async (request, context) => {
 	const url = new URL(request.url);
 	return renderView(BlogView, url.pathname, context.params);
 });
 
-router.route("/guides/:slug").get(async (request, context) => {
+router.route("/guides/:slug/").get(async (request, context) => {
 	const url = new URL(request.url);
 	return renderView(GuideView, url.pathname, context.params);
 });
 
-router.route("/api").get(async (request) => {
+router.route("/api/").get(async (request) => {
 	const url = new URL(request.url);
 	return renderView(APIView, url.pathname);
 });
 
-router.route("/api/:module").get(async (request, context) => {
+router.route("/api/:module/").get(async (request, context) => {
 	const url = new URL(request.url);
 	return renderView(APIView, url.pathname, context.params);
 });
 
-router.route("/api/:module/:category/:slug").get(async (request, context) => {
+router.route("/api/:module/:category/:slug/").get(async (request, context) => {
 	const url = new URL(request.url);
 	return renderView(APIView, url.pathname, context.params);
 });
 
-router.route("/playground").get(async (request) => {
+router.route("/playground/").get(async (request) => {
 	const url = new URL(request.url);
 	return renderView(PlaygroundView, url.pathname);
 });
 
-router.route("/press-kit").get(async (request) => {
+router.route("/press-kit/").get(async (request) => {
 	const url = new URL(request.url);
 	return renderView(PressKitView, url.pathname);
 });
 
 // Build and serve the Bikeshed spec on each request
-router.route("/spec").get(async () => {
+router.route("/spec/").get(async () => {
 	try {
 		const proc = Bun.spawn(
 			["bikeshed", "spec", "--die-on=nothing", "docs/spec.bs", "/dev/stdout"],
@@ -301,6 +306,58 @@ router.route("/spec").get(async () => {
 			{status: 500, headers: {"Content-Type": "text/html"}},
 		);
 	}
+});
+
+// robots.txt
+const robotsTxt = `User-agent: *
+Allow: /
+
+Sitemap: https://crank.js.org/sitemap.xml
+`;
+
+router.route("/robots.txt").get(async () => {
+	return new Response(robotsTxt, {
+		headers: {"Content-Type": "text/plain"},
+	});
+});
+
+// Sitemap (dev route; static build writes the file directly)
+router.route("/sitemap.xml").get(async () => {
+	const docsDir = await self.directories.open("docs");
+	const blogDocs = await collectDocuments(
+		await docsDir.getDirectoryHandle("blog"),
+		"blog",
+	);
+	const guideDocs = await collectDocuments(
+		await docsDir.getDirectoryHandle("guides"),
+		"guides",
+	);
+	const apiDocs = await collectDocuments(
+		await docsDir.getDirectoryHandle("api"),
+		"api",
+	);
+
+	const urls = ["/", "/blog/", "/playground/", "/press-kit/", "/spec/"];
+	for (const doc of [...blogDocs, ...guideDocs, ...apiDocs]) {
+		urls.push(doc.url);
+	}
+
+	return new Response(generateSitemap(urls), {
+		headers: {"Content-Type": "application/xml"},
+	});
+});
+
+// RSS feed (dev route; static build writes the file directly)
+router.route("/blog/feed.xml").get(async () => {
+	const docsDir = await self.directories.open("docs");
+	const blogDocs = await collectDocuments(
+		await docsDir.getDirectoryHandle("blog"),
+		"blog",
+	);
+
+	return new Response(generateFeed(blogDocs), {
+		headers: {"Content-Type": "application/xml"},
+	});
 });
 
 // 404 catch-all (must be last)
@@ -336,8 +393,14 @@ async function generateStaticSite() {
 	try {
 		const staticBucket = await self.directories.open("public");
 
-		// Static routes (landing pages that need index.html at directory root)
-		const staticRoutes = ["/", "/blog", "/playground", "/press-kit", "/spec"];
+		// Static routes (with trailing slashes to match route patterns)
+		const staticRoutes = [
+			"/",
+			"/blog/",
+			"/playground/",
+			"/press-kit/",
+			"/spec/",
+		];
 
 		// Collect blog and guide documents
 		const docsDir = await self.directories.open("docs");
@@ -374,9 +437,9 @@ async function generateStaticSite() {
 				if (response.ok) {
 					const content = await response.text();
 					// Generate proper directory structure for static servers
-					// /blog/slug -> blog/slug/index.html
+					// /blog/slug/ -> blog/slug/index.html
 					const filePath =
-						route === "/" ? "index.html" : `${route.slice(1)}/index.html`;
+						route === "/" ? "index.html" : `${route.slice(1)}index.html`;
 
 					// Create nested directories if needed
 					const parts = filePath.split("/");
@@ -440,7 +503,7 @@ async function generateStaticSite() {
 </body>
 </html>`;
 
-			const filePath = `${oldPath.slice(1)}/index.html`;
+			const filePath = `${oldPath.replace(/^\/|\/$/g, "")}/index.html`;
 			const parts = filePath.split("/");
 			let currentDir = staticBucket;
 			for (let i = 0; i < parts.length - 1; i++) {
@@ -459,8 +522,95 @@ async function generateStaticSite() {
 			logger.info(`Generated redirect ${oldPath} -> ${newPath}`);
 		}
 
+		// Generate sitemap.xml
+		const sitemapXML = generateSitemap(staticRoutes);
+		const sitemapHandle = await staticBucket.getFileHandle("sitemap.xml", {
+			create: true,
+		});
+		const sitemapWritable = await sitemapHandle.createWritable();
+		await sitemapWritable.write(sitemapXML);
+		await sitemapWritable.close();
+		logger.info("Generated sitemap.xml");
+
+		// Generate RSS feed
+		const feedXML = generateFeed(blogDocs);
+		const blogOutputDir = await staticBucket.getDirectoryHandle("blog", {
+			create: true,
+		});
+		const feedHandle = await blogOutputDir.getFileHandle("feed.xml", {
+			create: true,
+		});
+		const feedWritable = await feedHandle.createWritable();
+		await feedWritable.write(feedXML);
+		await feedWritable.close();
+		logger.info("Generated blog/feed.xml");
+
+		// Generate robots.txt
+		const robotsHandle = await staticBucket.getFileHandle("robots.txt", {
+			create: true,
+		});
+		const robotsWritable = await robotsHandle.createWritable();
+		await robotsWritable.write(robotsTxt);
+		await robotsWritable.close();
+		logger.info("Generated robots.txt");
+
 		logger.info("Static site generation complete!");
 	} catch (error: any) {
 		logger.error("Static site generation failed: {error}", {error});
 	}
+}
+
+function escapeXml(str: string): string {
+	return str
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&apos;");
+}
+
+function generateSitemap(urls: string[]): string {
+	const entries = urls
+		.map((url) => `  <url><loc>https://crank.js.org${url}</loc></url>`)
+		.join("\n");
+	return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${entries}
+</urlset>
+`;
+}
+
+function generateFeed(blogDocs: Array<DocInfo>): string {
+	const posts = [...blogDocs]
+		.filter((doc) => doc.attributes.publish)
+		.sort((a, b) => {
+			const dateA = a.attributes.publishDate?.getTime() ?? 0;
+			const dateB = b.attributes.publishDate?.getTime() ?? 0;
+			return dateB - dateA;
+		});
+
+	const items = posts
+		.map((post) => {
+			const pubDate = post.attributes.publishDate
+				? post.attributes.publishDate.toUTCString()
+				: "";
+			return `    <item>
+      <title>${escapeXml(post.attributes.title)}</title>
+      <link>https://crank.js.org${post.url}</link>
+      <guid>https://crank.js.org${post.url}</guid>${pubDate ? `\n      <pubDate>${pubDate}</pubDate>` : ""}${post.attributes.description ? `\n      <description>${escapeXml(post.attributes.description)}</description>` : ""}${post.attributes.author ? `\n      <author>${escapeXml(post.attributes.author)}</author>` : ""}
+    </item>`;
+		})
+		.join("\n");
+
+	return `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Crank.js Blog</title>
+    <link>https://crank.js.org/blog/</link>
+    <description>Articles about Crank.js, UI frameworks, and building for the web</description>
+    <atom:link href="https://crank.js.org/blog/feed.xml" rel="self" type="application/rss+xml"/>
+${items}
+  </channel>
+</rss>
+`;
 }

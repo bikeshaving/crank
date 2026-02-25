@@ -57,7 +57,7 @@ export function buildAPIModules(docs: DocInfo[]): APIModule[] {
 			moduleMap.set(moduleSlug, {
 				name: moduleSlug, // Will be overwritten by index.md title
 				slug: moduleSlug,
-				url: `/api/${moduleSlug}`,
+				url: `/api/${moduleSlug}/`,
 				categories: new Map(),
 			});
 		}
@@ -186,11 +186,11 @@ export function APISidebar({
 				margin-top: 0;
 			`}>
 				<a
-					href="/api"
+					href="/api/"
 					class=${css`
 						text-decoration: none;
 					`}
-					aria-current=${url === "/api" && "page"}
+					aria-current=${url === "/api/" && "page"}
 				>API Reference</a>
 			</h2>
 			<div id="search-root">
