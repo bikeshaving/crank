@@ -55,6 +55,7 @@ export function* Root(
 					<style><${Raw} value=${css} /></style>
 					<link rel="stylesheet" type="text/css" href=${assets.clientCSS} />
 					<meta name="description" content=${description} />
+					<link rel="alternate" type="application/rss+xml" title="Crank.js Blog" href="/blog/feed.xml" />
 					<meta property="og:title" content=${title} />
 					<meta property="og:url" content=${`https://crank.js.org${url}`} />
 					<meta property="og:description" content=${description} />

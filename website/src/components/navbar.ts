@@ -63,13 +63,13 @@ export function Navbar({url}: {url: string}) {
 				</div>
 				<div>
 					<a
-						href="/guides/getting-started"
+						href="/guides/getting-started/"
 						aria-current=${url.startsWith("/guides") && "page"}
 					>Guides</a>
 				</div>
 				<div>
 					<a
-						href="/api"
+						href="/api/"
 						aria-current=${url.startsWith("/api") && "page"}
 					>API</a>
 				</div>
@@ -81,7 +81,7 @@ export function Navbar({url}: {url: string}) {
 				</div>
 				<div>
 					<a
-						href="/spec"
+						href="/spec/"
 						aria-current=${url.startsWith("/spec") && "page"}
 					>Spec</a>
 				</div>

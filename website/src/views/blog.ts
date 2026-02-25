@@ -56,7 +56,7 @@ export default async function BlogPage({url}: ViewProps) {
 					margin-bottom: 2rem;
 				`}>
 					<a
-						href="/blog"
+						href="/blog/"
 						class=${css`
 							color: var(--highlight-color);
 							text-decoration: none;
