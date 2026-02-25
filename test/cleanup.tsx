@@ -2,7 +2,13 @@ import {suite} from "uvu";
 import * as Assert from "uvu/assert";
 import * as Sinon from "sinon";
 
-import {createElement, Context, Element, Fragment} from "../src/crank.js";
+import {
+	createElement,
+	Context,
+	Element,
+	Fragment,
+	Portal,
+} from "../src/crank.js";
 import {renderer} from "../src/dom.js";
 
 const test = suite("cleanup");
@@ -668,6 +674,522 @@ test("lingering component cleared when parent unmounted", async () => {
 	Assert.is(cleanup.callCount, 1);
 	await new Promise((resolve) => setTimeout(resolve));
 	Assert.is(document.body.innerHTML, "<span>No more div</span>");
+});
+
+test("component wrapping lingering component (no host boundary)", async () => {
+	// AlertModal wraps Modal directly (no intermediate <div>).
+	// Does Modal linger when AlertModal is removed?
+	let cleanup = Sinon.fake();
+	let resolve!: Function;
+
+	function* Modal(this: Context) {
+		this.cleanup(() => {
+			cleanup();
+			return new Promise((r) => (resolve = r));
+		});
+		for ({} of this) {
+			yield <span>Modal</span>;
+		}
+	}
+
+	function AlertModal() {
+		return <Modal />;
+	}
+
+	renderer.render(
+		<div>
+			<AlertModal />
+			<span>Sibling</span>
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Modal</span><span>Sibling</span></div>",
+	);
+
+	renderer.render(
+		<div>
+			<span>Sibling</span>
+		</div>,
+		document.body,
+	);
+
+	Assert.is(cleanup.callCount, 1, "cleanup should be called");
+	// Modal lingers because isNested stays false through components
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Modal</span><span>Sibling</span></div>",
+		"Modal should still be visible (lingering)",
+	);
+
+	resolve();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Sibling</span></div>",
+		"Modal should be removed after cleanup resolves",
+	);
+});
+
+test("component wrapping lingering component with host boundary", async () => {
+	// AlertModal wraps Modal inside a <div class="wrapper">.
+	// Does Modal linger when AlertModal is removed?
+	let cleanup = Sinon.fake();
+	let _resolve!: Function;
+
+	function* Modal(this: Context) {
+		this.cleanup(() => {
+			cleanup();
+			return new Promise((r) => (_resolve = r));
+		});
+		for ({} of this) {
+			yield <span>Modal</span>;
+		}
+	}
+
+	function AlertModal() {
+		return (
+			<div class="wrapper">
+				<Modal />
+			</div>
+		);
+	}
+
+	renderer.render(
+		<div>
+			<AlertModal />
+			<span>Sibling</span>
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div><div class="wrapper"><span>Modal</span></div><span>Sibling</span></div>',
+	);
+
+	renderer.render(
+		<div>
+			<span>Sibling</span>
+		</div>,
+		document.body,
+	);
+
+	Assert.is(cleanup.callCount, 1, "cleanup should be called");
+	// Modal cannot linger because <div class="wrapper"> forces isNested=true
+	// So everything is removed immediately
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Sibling</span></div>",
+		"wrapper and Modal should be removed immediately (isNested=true)",
+	);
+});
+
+test("lingering component can refresh during cleanup", async () => {
+	// Modal calls this.refresh() in cleanup to trigger exit animation class.
+	// Does the refresh actually re-render?
+	let resolve!: Function;
+
+	function* Modal(this: Context) {
+		let visible = true;
+		this.cleanup(() => {
+			this.refresh(() => (visible = false));
+			return new Promise((r) => (resolve = r));
+		});
+		for ({} of this) {
+			yield <div class={visible ? "visible" : "hidden"}>Modal</div>;
+		}
+	}
+
+	renderer.render(
+		<div>
+			<Modal />
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div><div class="visible">Modal</div></div>',
+	);
+
+	renderer.render(<div />, document.body);
+
+	// refresh during cleanup triggers re-render with visible=false
+	Assert.is(
+		document.body.innerHTML,
+		'<div><div class="hidden">Modal</div></div>',
+		"Modal should re-render with hidden class during linger",
+	);
+
+	resolve();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div></div>");
+});
+
+test("deeply nested component wrapping (no host boundaries)", async () => {
+	// Three levels of component wrapping: Outer -> Middle -> Modal
+	// No host elements between them. Does Modal linger?
+	let cleanup = Sinon.fake();
+	let resolve!: Function;
+
+	function* Modal(this: Context) {
+		this.cleanup(() => {
+			cleanup();
+			return new Promise((r) => (resolve = r));
+		});
+		for ({} of this) {
+			yield <span>Modal</span>;
+		}
+	}
+
+	function Middle() {
+		return <Modal />;
+	}
+
+	function Outer() {
+		return <Middle />;
+	}
+
+	renderer.render(
+		<div>
+			<Outer />
+			<span>Sibling</span>
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Modal</span><span>Sibling</span></div>",
+	);
+
+	renderer.render(
+		<div>
+			<span>Sibling</span>
+		</div>,
+		document.body,
+	);
+
+	Assert.is(cleanup.callCount, 1, "cleanup should be called");
+	Assert.is(
+		document.body.innerHTML,
+		"<div><span>Modal</span><span>Sibling</span></div>",
+		"Modal should linger through component wrappers",
+	);
+
+	resolve();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div><span>Sibling</span></div>");
+});
+
+test("component rendering Portal can linger", async () => {
+	// Modal renders its content via a Portal. Portal content should
+	// stay visible during async cleanup (lingering).
+	let cleanup = Sinon.fake();
+	let resolve!: Function;
+
+	const portalRoot = document.createElement("div");
+	document.body.appendChild(portalRoot);
+
+	function* Modal(this: Context) {
+		this.cleanup(() => {
+			cleanup();
+			return new Promise((r) => (resolve = r));
+		});
+		for ({} of this) {
+			yield (
+				<Portal root={portalRoot}>
+					<div class="modal">Modal Content</div>
+				</Portal>
+			);
+		}
+	}
+
+	renderer.render(
+		<div>
+			<Modal />
+			<span>Sibling</span>
+		</div>,
+		document.body,
+	);
+
+	Assert.is(portalRoot.innerHTML, '<div class="modal">Modal Content</div>');
+	Assert.is(document.body.innerHTML.includes("<span>Sibling</span>"), true);
+
+	renderer.render(
+		<div>
+			<span>Sibling</span>
+		</div>,
+		document.body,
+	);
+
+	Assert.is(cleanup.callCount, 1, "cleanup should be called");
+	// Portal content should linger during async cleanup
+	Assert.is(
+		portalRoot.innerHTML,
+		'<div class="modal">Modal Content</div>',
+		"Portal content should stay visible during linger",
+	);
+
+	resolve();
+	await new Promise((resolve) => setTimeout(resolve));
+
+	Assert.is(
+		portalRoot.innerHTML,
+		"",
+		"Portal content should be removed after cleanup resolves",
+	);
+
+	document.body.removeChild(portalRoot);
+});
+
+test("Portal-rendering component can refresh during linger", async () => {
+	// Modal renders via Portal, calls this.refresh() in cleanup to trigger
+	// CSS transition class, then defers with a Promise.
+	let resolve!: Function;
+
+	const portalRoot = document.createElement("div");
+	document.body.appendChild(portalRoot);
+
+	function* Modal(this: Context) {
+		let visible = true;
+		this.cleanup(() => {
+			this.refresh(() => (visible = false));
+			return new Promise((r) => (resolve = r));
+		});
+		for ({} of this) {
+			yield (
+				<Portal root={portalRoot}>
+					<div class={visible ? "visible" : "hidden"}>Modal</div>
+				</Portal>
+			);
+		}
+	}
+
+	renderer.render(
+		<div>
+			<Modal />
+		</div>,
+		document.body,
+	);
+
+	Assert.is(portalRoot.innerHTML, '<div class="visible">Modal</div>');
+
+	renderer.render(<div />, document.body);
+
+	// Modal should re-render with hidden class during linger
+	Assert.is(
+		portalRoot.innerHTML,
+		'<div class="hidden">Modal</div>',
+		"Modal should refresh with hidden class during linger",
+	);
+
+	resolve();
+	await new Promise((resolve) => setTimeout(resolve));
+
+	Assert.is(
+		portalRoot.innerHTML,
+		"",
+		"Portal content should be removed after cleanup resolves",
+	);
+
+	document.body.removeChild(portalRoot);
+});
+
+test("lingering component can refresh multiple times", async () => {
+	// Component plays a multi-step exit animation via repeated refreshes
+	let step = 0;
+	let resolve!: Function;
+
+	function* Animated(this: Context) {
+		this.cleanup(() => {
+			this.refresh(() => (step = 1));
+			return new Promise((r) => (resolve = r));
+		});
+		for ({} of this) {
+			yield <div class={`step-${step}`}>Content</div>;
+		}
+	}
+
+	renderer.render(
+		<div>
+			<Animated />
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div><div class="step-0">Content</div></div>',
+	);
+
+	renderer.render(<div />, document.body);
+	Assert.is(
+		document.body.innerHTML,
+		'<div><div class="step-1">Content</div></div>',
+	);
+
+	resolve();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div></div>");
+});
+
+test("lingering component responds to events during linger", async () => {
+	let clickCount = 0;
+	let resolve!: Function;
+
+	function* Counter(this: Context) {
+		this.cleanup(() => {
+			return new Promise((r) => (resolve = r));
+		});
+		this.addEventListener("click", () => {
+			this.refresh(() => clickCount++);
+		});
+		for ({} of this) {
+			yield <button>Clicked {clickCount} times</button>;
+		}
+	}
+
+	renderer.render(
+		<div>
+			<Counter />
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		"<div><button>Clicked 0 times</button></div>",
+	);
+
+	// Remove Counter — it should linger
+	renderer.render(<div />, document.body);
+	Assert.is(
+		document.body.innerHTML,
+		"<div><button>Clicked 0 times</button></div>",
+		"Counter should linger",
+	);
+
+	// Click the button while lingering
+	document.querySelector("button")!.click();
+	Assert.is(
+		document.body.innerHTML,
+		"<div><button>Clicked 1 times</button></div>",
+		"Counter should respond to clicks during linger",
+	);
+
+	document.querySelector("button")!.click();
+	Assert.is(
+		document.body.innerHTML,
+		"<div><button>Clicked 2 times</button></div>",
+		"Counter should respond to multiple clicks during linger",
+	);
+
+	resolve();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div></div>");
+});
+
+test("lingering component children update on refresh", async () => {
+	let resolve!: Function;
+	let phase = "active";
+
+	function Badge({label}: {label: string}) {
+		return <span class="badge">{label}</span>;
+	}
+
+	function* Panel(this: Context) {
+		this.cleanup(() => {
+			this.refresh(() => (phase = "exiting"));
+			return new Promise((r) => (resolve = r));
+		});
+		for ({} of this) {
+			yield (
+				<div>
+					<Badge label={phase} />
+				</div>
+			);
+		}
+	}
+
+	renderer.render(
+		<div>
+			<Panel />
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div><div><span class="badge">active</span></div></div>',
+	);
+
+	renderer.render(<div />, document.body);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div><div><span class="badge">exiting</span></div></div>',
+		"Child component should re-render with updated props during linger",
+	);
+
+	resolve();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div></div>");
+});
+
+test("lingering component with async refresh during linger", async () => {
+	// Simulates a real exit animation: cleanup triggers state change,
+	// then a timer fires and resolves the cleanup promise
+	let visible = true;
+	let cleanupResolve!: Function;
+
+	function* Toast(this: Context) {
+		this.cleanup(() => {
+			this.refresh(() => (visible = false));
+			return new Promise((r) => (cleanupResolve = r));
+		});
+		for ({} of this) {
+			yield <div class={visible ? "toast show" : "toast hide"}>Message</div>;
+		}
+	}
+
+	renderer.render(
+		<div>
+			<Toast />
+		</div>,
+		document.body,
+	);
+
+	Assert.is(
+		document.body.innerHTML,
+		'<div><div class="toast show">Message</div></div>',
+	);
+
+	renderer.render(<div />, document.body);
+
+	// Immediately after unmount: class should flip
+	Assert.is(
+		document.body.innerHTML,
+		'<div><div class="toast hide">Message</div></div>',
+		"Toast should show exit state during linger",
+	);
+
+	// Resolve after a tick (simulating setTimeout in real code)
+	await new Promise((resolve) => setTimeout(resolve, 50));
+
+	// Still lingering — hasn't resolved yet
+	Assert.is(
+		document.body.innerHTML,
+		'<div><div class="toast hide">Message</div></div>',
+		"Toast should still be visible while waiting",
+	);
+
+	cleanupResolve();
+	await new Promise((resolve) => setTimeout(resolve));
+	Assert.is(document.body.innerHTML, "<div></div>");
 });
 
 test.run();
