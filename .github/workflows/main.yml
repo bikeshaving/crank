@@ -82,6 +82,8 @@ jobs:
       - run: bun install
       - run: bun install
         working-directory: website
+      - name: Install Bikeshed
+        run: pipx install bikeshed && bikeshed update
       - name: Deploy website
         run: |
           git config user.name "github-actions[bot]"
