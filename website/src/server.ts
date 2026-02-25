@@ -114,7 +114,7 @@ router.use(async (request) => {
 	return;
 });
 
-// Append trailing slashes (redirect /path → /path/)
+// Append trailing slashes on 404 (redirect /path → /path/ as fallback)
 router.use(trailingSlash("append"));
 
 // Redirects for renamed URLs (handled in middleware to avoid router conflicts)
@@ -234,48 +234,48 @@ router.route("/").get(async (request) => {
 	return renderView(HomeView, url.pathname);
 });
 
-router.route("/blog").get(async (request) => {
+router.route("/blog/").get(async (request) => {
 	const url = new URL(request.url);
 	return renderView(BlogHomeView, url.pathname);
 });
 
-router.route("/blog/:slug").get(async (request, context) => {
+router.route("/blog/:slug/").get(async (request, context) => {
 	const url = new URL(request.url);
 	return renderView(BlogView, url.pathname, context.params);
 });
 
-router.route("/guides/:slug").get(async (request, context) => {
+router.route("/guides/:slug/").get(async (request, context) => {
 	const url = new URL(request.url);
 	return renderView(GuideView, url.pathname, context.params);
 });
 
-router.route("/api").get(async (request) => {
+router.route("/api/").get(async (request) => {
 	const url = new URL(request.url);
 	return renderView(APIView, url.pathname);
 });
 
-router.route("/api/:module").get(async (request, context) => {
+router.route("/api/:module/").get(async (request, context) => {
 	const url = new URL(request.url);
 	return renderView(APIView, url.pathname, context.params);
 });
 
-router.route("/api/:module/:category/:slug").get(async (request, context) => {
+router.route("/api/:module/:category/:slug/").get(async (request, context) => {
 	const url = new URL(request.url);
 	return renderView(APIView, url.pathname, context.params);
 });
 
-router.route("/playground").get(async (request) => {
+router.route("/playground/").get(async (request) => {
 	const url = new URL(request.url);
 	return renderView(PlaygroundView, url.pathname);
 });
 
-router.route("/press-kit").get(async (request) => {
+router.route("/press-kit/").get(async (request) => {
 	const url = new URL(request.url);
 	return renderView(PressKitView, url.pathname);
 });
 
 // Build and serve the Bikeshed spec on each request
-router.route("/spec").get(async () => {
+router.route("/spec/").get(async () => {
 	try {
 		const proc = Bun.spawn(
 			["bikeshed", "spec", "--die-on=nothing", "docs/spec.bs", "/dev/stdout"],
@@ -393,23 +393,23 @@ async function generateStaticSite() {
 	try {
 		const staticBucket = await self.directories.open("public");
 
-		// Static routes (without trailing slashes for fetching via router)
-		const staticRoutes = ["/", "/blog", "/playground", "/press-kit", "/spec"];
+		// Static routes (with trailing slashes to match route patterns)
+		const staticRoutes = ["/", "/blog/", "/playground/", "/press-kit/", "/spec/"];
 
 		// Collect blog and guide documents
 		const docsDir = await self.directories.open("docs");
 
 		const blogDir = await docsDir.getDirectoryHandle("blog");
 		const blogDocs = await collectDocuments(blogDir, "blog");
-		staticRoutes.push(...blogDocs.map((doc) => doc.url.replace(/\/$/, "")));
+		staticRoutes.push(...blogDocs.map((doc) => doc.url));
 
 		const guidesDir = await docsDir.getDirectoryHandle("guides");
 		const guideDocs = await collectDocuments(guidesDir, "guides");
-		staticRoutes.push(...guideDocs.map((doc) => doc.url.replace(/\/$/, "")));
+		staticRoutes.push(...guideDocs.map((doc) => doc.url));
 
 		const apiDir = await docsDir.getDirectoryHandle("api");
 		const apiDocs = await collectDocuments(apiDir, "api");
-		staticRoutes.push(...apiDocs.map((doc) => doc.url.replace(/\/$/, "")));
+		staticRoutes.push(...apiDocs.map((doc) => doc.url));
 
 		logger.info(`Pre-rendering ${staticRoutes.length} routes...`);
 
@@ -431,9 +431,9 @@ async function generateStaticSite() {
 				if (response.ok) {
 					const content = await response.text();
 					// Generate proper directory structure for static servers
-					// /blog/slug -> blog/slug/index.html
+					// /blog/slug/ -> blog/slug/index.html
 					const filePath =
-						route === "/" ? "index.html" : `${route.slice(1)}/index.html`;
+						route === "/" ? "index.html" : `${route.slice(1)}index.html`;
 
 					// Create nested directories if needed
 					const parts = filePath.split("/");
@@ -517,20 +517,17 @@ async function generateStaticSite() {
 		}
 
 		// Generate sitemap.xml
-		const sitemapUrls = staticRoutes.map((route) =>
-			route === "/" ? "/" : route + "/",
-		);
-		const sitemapXml = generateSitemap(sitemapUrls);
+		const sitemapXML = generateSitemap(staticRoutes);
 		const sitemapHandle = await staticBucket.getFileHandle("sitemap.xml", {
 			create: true,
 		});
 		const sitemapWritable = await sitemapHandle.createWritable();
-		await sitemapWritable.write(sitemapXml);
+		await sitemapWritable.write(sitemapXML);
 		await sitemapWritable.close();
 		logger.info("Generated sitemap.xml");
 
 		// Generate RSS feed
-		const feedXml = generateFeed(blogDocs);
+		const feedXML = generateFeed(blogDocs);
 		const blogOutputDir = await staticBucket.getDirectoryHandle("blog", {
 			create: true,
 		});
@@ -538,7 +535,7 @@ async function generateStaticSite() {
 			create: true,
 		});
 		const feedWritable = await feedHandle.createWritable();
-		await feedWritable.write(feedXml);
+		await feedWritable.write(feedXML);
 		await feedWritable.close();
 		logger.info("Generated blog/feed.xml");
 

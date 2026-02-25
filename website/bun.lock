@@ -10,7 +10,7 @@
         "@b9g/platform": "^0.1.17",
         "@b9g/platform-bun": "^0.1.16",
         "@b9g/revise": "^0.1.3",
-        "@b9g/router": "^0.2.2",
+        "@b9g/router": "^0.2.5",
         "@b9g/shovel": "^0.2.8",
         "@emotion/css": "^11.13.5",
         "@emotion/server": "^11.11.0",
@@ -79,7 +79,7 @@
 
     "@b9g/revise": ["@b9g/revise@0.1.3", "", {}, "sha512-KohPDhyxEEaxTUiU/GhKsj9Lin/mV8Iz4NS0vXIOYeye86p9CvrZaBV9PBQlitSxayoO6iikIGyMMlMADMQ8iQ=="],
 
-    "@b9g/router": ["@b9g/router@0.2.2", "", { "dependencies": { "@b9g/http-errors": "^0.2.1", "@b9g/match-pattern": "^0.2.1", "@logtape/logtape": "^1.2.0" } }, "sha512-VlgGpsgNOm0eblHIm0tTExrucDeZU5DpnEMcDYtIrDAa8y4noU8pSxyjr/Dvf4cQsRkLqQkKkrm0Xv4ttxlUEQ=="],
+    "@b9g/router": ["@b9g/router@0.2.5", "", { "dependencies": { "@b9g/http-errors": "^0.2.1", "@b9g/match-pattern": "^0.2.1", "@logtape/logtape": "^2.0.0" } }, "sha512-KPYntpC6TxjlgQU/8nFcfsoOgH4u4RfLQTatGza3LXFNtZOX3tbnDTrfEgKSv/QXQ7t1YdABgqq1MtiW2OB5tQ=="],
 
     "@b9g/shovel": ["@b9g/shovel@0.2.8", "", { "dependencies": { "@b9g/async-context": "^0.2.1", "@b9g/cache": "^0.2.2", "@b9g/filesystem": "^0.1.11", "@b9g/http-errors": "^0.2.1", "@b9g/node-webworker": "^0.2.1", "@b9g/platform": "^0.1.17", "@b9g/platform-bun": "^0.1.16", "@b9g/platform-cloudflare": "^0.1.15", "@b9g/platform-node": "^0.1.17", "@clack/prompts": "^0.7.0", "@esbuild-plugins/node-globals-polyfill": "^0.2.3", "@esbuild-plugins/node-modules-polyfill": "^0.2.2", "@logtape/logtape": "^1.2.0", "commander": "^13.1.0", "esbuild": "^0.27.2", "mime": "^4.0.4", "zod": "^3.23.0" }, "bin": { "shovel": "bin/cli.js", "create-shovel": "bin/create.js", "cli": "bin/cli.js", "create": "bin/create.js" } }, "sha512-7WkAiTh+Q/q2j/q4zR/WenrunEQ2QEjOpS2bL2F8Jgc5jPXOzy4QszBeCR0apBTPlCoqtIJhQUm7YhcqBDjHFA=="],
 
@@ -886,6 +886,8 @@
     "@b9g/crank-codemods/@b9g/crank": ["@b9g/crank@file:..", {}],
 
     "@b9g/crank-codemods/typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+
+    "@b9g/router/@logtape/logtape": ["@logtape/logtape@2.0.4", "", {}, "sha512-Z4COeAMdedcBFuFkXaPFvDPOVuHoEom1hwNnPCIkSyojyikuNguplwPoSG+kZthWrS7GiOJo1USQyjWwIFfTKA=="],
 
     "@babel/core/convert-source-map": ["convert-source-map@2.0.0", "", {}, "sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg=="],
 
