@@ -17,7 +17,7 @@ const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>>
 
 ## Description
 
-The `impl` object (short for "implementation") contains the adapter methods for converting Crank elements to HTML strings. It implements a subset of the [RenderAdapter](/api/core/interfaces/RenderAdapter) interface.
+The `impl` object (short for \u201Cimplementation\u201D) contains the adapter methods for converting Crank elements to HTML strings. It implements a subset of the [RenderAdapter](/api/core/interfaces/RenderAdapter) interface.
 
 Unlike the DOM adapter which creates real nodes, the HTML adapter works with simple `TextNode` objects that hold string values. The final HTML is assembled by joining these strings.
 

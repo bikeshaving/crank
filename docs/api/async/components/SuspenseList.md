@@ -47,7 +47,7 @@ SuspenseList coordinates the reveal order of multiple Suspense boundaries. This 
 
 Suspense components that are not rendered immediately (because they are children of another async component) will not be coordinated.
 
-In Crank, async components by default render together. The "together" mode might not be necessary unless you're using Suspense fallbacks.
+In Crank, async components by default render together. The \u201Ctogether\u201D mode might not be necessary unless you\u2019re using Suspense fallbacks.
 
 ## Examples
 
