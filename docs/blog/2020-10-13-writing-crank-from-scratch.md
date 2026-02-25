@@ -1021,7 +1021,7 @@ After Crank’s release, multiple people objected to this unusual usage of `this
 
 There are of course other reasons for and against using the `this` value as the context in components. At its root, I believe most arguments *against* using `this` are driven by a desire to define all functions as top-level arrow function assignments (`const MyComponent = (props) => `). While I don’t think I’ll be able to convince people of the benefit of one or the other style of coding in the general case, hopefully I’ve convinced you as to why using `this` like we do in Crank might make sense for a component framework.
 
-A second controversial design decison was the usage of explicit `refresh()` calls rather than some kind of “reactive”  `setState()`- or proxy-based system. I will probably write another essay at some point explaining why I think explicit, opt-in rerendering is preferable to any other system for a component framework, but for now, note that it’s easier to implement: the `refresh()` method is currently a one-liner!
+A second controversial design decision was the usage of explicit `refresh()` calls rather than some kind of “reactive”  `setState()`- or proxy-based system. I will probably write another essay at some point explaining why I think explicit, opt-in rerendering is preferable to any other system for a component framework, but for now, note that it’s easier to implement: the `refresh()` method is currently a one-liner!
 
 ## Step 7: Rearranging
 
