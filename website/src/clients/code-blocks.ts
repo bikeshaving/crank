@@ -15,12 +15,15 @@ if (containers.length > 0) {
 			Prism.default.manual = true;
 			await Promise.all([
 				import("prismjs/components/prism-javascript"),
-				import("prismjs/components/prism-jsx"),
-				import("prismjs/components/prism-typescript"),
-				import("prismjs/components/prism-tsx"),
 				import("prismjs/components/prism-diff"),
 				import("prismjs/components/prism-bash"),
 			]);
+			// tsx depends on both jsx and typescript being registered
+			await Promise.all([
+				import("prismjs/components/prism-jsx"),
+				import("prismjs/components/prism-typescript"),
+			]);
+			await import("prismjs/components/prism-tsx");
 			return Prism;
 		}),
 	]).then(
