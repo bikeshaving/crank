@@ -8,33 +8,14 @@ import {
 	arrayify,
 	isIteratorLike,
 	isPromiseLike,
+	markStart,
+	measureMark,
 	safeRace,
 	unwrap,
 	wrap,
 } from "./_utils.js";
 
 const NOOP = (): undefined => {};
-
-const supportsUserTiming =
-	typeof performance !== "undefined" && typeof performance.mark === "function";
-
-function markStart(label: string): void {
-	if (supportsUserTiming) {
-		performance.mark("⚙ " + label);
-	}
-}
-
-function measureMark(label: string): void {
-	if (supportsUserTiming) {
-		const name = "⚙ " + label;
-		try {
-			performance.measure(name, name);
-		} catch (_) {
-			// Mark may not exist
-		}
-		performance.clearMarks(name);
-	}
-}
 
 /**
  * A type which represents all valid values for an element tag.
@@ -1055,6 +1036,7 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	ret: Retainer<TNode, TScope>,
 	children: Children,
 ): Promise<TResult> | TResult {
+	const commitLabel = "commit (" + getTagName(ret.el.tag) + ")";
 	markStart("diff");
 	const diff = diffChildren(
 		adapter,
@@ -1070,7 +1052,7 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	if (isPromiseLike(diff)) {
 		return diff.then(() => {
 			measureMark("diff");
-			markStart("commit");
+			markStart(commitLabel);
 			commit(
 				adapter,
 				ret,
@@ -1082,7 +1064,7 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				schedulePromises,
 				undefined,
 			);
-			measureMark("commit");
+			measureMark(commitLabel);
 			if (schedulePromises.length > 0) {
 				return Promise.all(schedulePromises).then(() => {
 					if (typeof root !== "object" || root === null) {
@@ -1100,7 +1082,7 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	}
 
 	measureMark("diff");
-	markStart("commit");
+	markStart(commitLabel);
 	commit(
 		adapter,
 		ret,
@@ -1112,7 +1094,7 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		schedulePromises,
 		undefined,
 	);
-	measureMark("commit");
+	measureMark(commitLabel);
 	if (schedulePromises.length > 0) {
 		return Promise.all(schedulePromises).then(() => {
 			if (typeof root !== "object" || root === null) {
@@ -2617,6 +2599,7 @@ export class Context<
 			setFlag(ctx.ret, IsSchedulingRefresh);
 		}
 
+		const commitLabel = "commit (" + getTagName(ctx.ret.el.tag) + ")";
 		let diff: Promise<undefined> | undefined;
 		const schedulePromises: Array<PromiseLike<unknown>> = [];
 		try {
@@ -2624,7 +2607,12 @@ export class Context<
 			diff = enqueueComponent(ctx);
 			if (isPromiseLike(diff)) {
 				return diff
-					.then(() => ctx.adapter.read(commitComponent(ctx, schedulePromises)))
+					.then(() => {
+						markStart(commitLabel);
+						const value = commitComponent(ctx, schedulePromises);
+						measureMark(commitLabel);
+						return ctx.adapter.read(value);
+					})
 					.then((result) => {
 						if (schedulePromises.length) {
 							return Promise.all(schedulePromises).then(() => {
@@ -2659,7 +2647,9 @@ export class Context<
 					.finally(() => setFlag(ctx.ret, IsRefreshing, false));
 			}
 
+			markStart(commitLabel);
 			const result = ctx.adapter.read(commitComponent(ctx, schedulePromises));
+			measureMark(commitLabel);
 			if (schedulePromises.length) {
 				return Promise.all(schedulePromises).then(() => {
 					return ctx.adapter.read(getValue(ctx.ret));

@@ -1,3 +1,24 @@
+export const supportsUserTiming =
+	typeof performance !== "undefined" && typeof performance.mark === "function";
+
+export function markStart(label: string): void {
+	if (supportsUserTiming) {
+		performance.mark("⚙ " + label);
+	}
+}
+
+export function measureMark(label: string): void {
+	if (supportsUserTiming) {
+		const name = "⚙ " + label;
+		try {
+			performance.measure(name, name);
+		} catch (_) {
+			// Mark may not exist
+		}
+		performance.clearMarks(name);
+	}
+}
+
 export function wrap<T>(value: Array<T> | T | undefined): Array<T> {
 	return value === undefined ? [] : Array.isArray(value) ? value : [value];
 }
