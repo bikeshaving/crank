@@ -1,0 +1,3 @@
+import{h as a,i as d}from"./chunk-TNNNJY3N.js";d();a();(function(i){i.languages.diff={coord:[/^(?:\*{3}|-{3}|\+{3}).*$/m,/^@@.*@@$/m,/^\d.*$/m]};var r={"deleted-sign":"-","deleted-arrow":"<","inserted-sign":"+","inserted-arrow":">",unchanged:" ",diff:"!"};Object.keys(r).forEach(function(e){var f=r[e],n=[];/^\w+$/.test(e)||n.push(/\w+/.exec(e)[0]),e==="diff"&&n.push("bold"),i.languages.diff[e]={pattern:RegExp("^(?:["+f+`].*(?:\r
+?|
+|(?![\\s\\S])))+`,"m"),alias:n,inside:{line:{pattern:/(.)(?=[\s\S]).*(?:\r\n?|\n)?/,lookbehind:!0},prefix:{pattern:/[\s\S]/,alias:/\w+/.exec(e)[0]}}}}),Object.defineProperty(i.languages.diff,"PREFIXES",{value:r})})(Prism);
