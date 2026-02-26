@@ -2,7 +2,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predeploy": "npm run static",
+    "check-links": "bun run scripts/check-links.ts",
+    "predeploy": "npm run static && npm run check-links",
     "deploy": "gh-pages -d dist/public --nojekyll --cname crank.js.org",
     "develop": "shovel develop src/server.ts --port 1337 --platform bun",
     "pagefind": "pagefind --site dist/public",
