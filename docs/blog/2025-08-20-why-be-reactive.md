@@ -199,7 +199,7 @@ Vue provides escape hatches like `shallowRef()` and `markRaw()` to work around t
 
 Again, consider the bug severity heuristics. Vue reactivity bugs are hard to spot because reactivity is a property which is invisibly added to your data structures and selectively removed for performance. And they are difficult to fix because again the quality of your data structures being reactive requires you to trace your state all the way back to where it was created to figure out why or why not it is reactive, and then trace all usage of the state to make sure consumers don’t assume it’s reactive.
 
-Again, consider Crank’s alternative. Crank does not care whether you make updates to deeply nested state, just that you call `refresh()`. Again, a reactive abstraction which is meant to “fix” the bug which Crank is susceptible to, exhibits abstraction leaks, and potentially causes the same exact bug in a more subtle manner.
+Again, consider Crank as the alternative. Crank does not care whether you make updates to deeply nested state, just that you call `refresh()`. Again, a reactive abstraction which is meant to “fix” the bug which Crank is susceptible to, exhibits abstraction leaks, and potentially causes the same exact bug in a more subtle manner. Many experienced Vue developers often suggest using shallow abstractions only, but then this is just `refresh()` with more steps.
 
 ### Effects and Infinite Loops
 
@@ -268,7 +268,7 @@ Unfortunately, the Svelte maintainers thought that this lack of reactivity was a
 {/each}
 ```
 
-There’s a lot to dislike about runes. For instance, runes only work in files ending in `*.svelte.js`. They require advanced compiler infrastructure. There are weird edge-cases like you can’t assign `$derived()` rune to a let variable and re-assign it. There is a lot of inherent complexity here, and the closest analogy for what Svelte Runes are C++ compiler intrinsics, except instead of providing low-level access to memory and assembly they provide access to a high-level reactive abstraction.
+There’s a lot to dislike about runes. For instance, runes only work in files ending in `*.svelte.js`. They require advanced compiler infrastructure. There are weird edge-cases like you can’t assign `$derived()` rune to a let variable and re-assign it. There is a lot of inherent complexity here, and the closest analogy for what Svelte Runes are is C++ compiler intrinsics, except instead of providing low-level access to memory and assembly, Runes provide access to a high-level reactive abstraction.
 
 However, the thing I want to focus on is that any reactive abstraction which uses effects is prone to infinite loops:
 
@@ -312,11 +312,11 @@ However, the thing I want to focus on is that any reactive abstraction which use
 
 This component immediately blows the stack because we’re both reading to and writing to the same `$state()` rune in an `$effect()` rune callback, so the callback keeps firing.
 
-[Reactivity proponents often wax poetic](https://www.youtube.com/watch?v=AdNJ3fydeao) about reactivity making programming like using spreadsheets, where variables are cells which update and cause other computed cells to update. This just betrays the fact that these programmers have never had to update an Excel file in anger. Spreadsheets with many computed cells often suffer from issues like slow-loading, and messy ones might fail to open at all.
+[Reactivity proponents often wax poetic](https://www.youtube.com/watch?v=AdNJ3fydeao) about reactivity making programming like using spreadsheets, where variables are cells which point to other cells and can cause other computed cells to update. This just betrays the fact that these programmers have never had to update an Excel file in anger. Spreadsheets with many computed cells often suffer from issues like slow-loading, and messy ones might fail to open at all.
 
 All “effect” callback APIs suffer from the possibility that a write causes another read, and therefore an infinite loop. Just like Excel, Svelte provides sophisticated heuristics and tricks to prevent infinite loops for most cases, but these crashes can still happen.
 
-The solution in Svelte is to not use the `$effect()` rune, be careful about updating random variables in `$effect()`, or use Svelte’s special escape hatch to mark a read of a rune as being non-reactive: the `untrack()` function.
+The solution in Svelte is to not use the `$effect()` rune, or be careful about updating random variables in `$effect()`, or use Svelte’s special escape hatch to mark a read of a rune as being non-reactive: the `untrack()` function.
 
 ```js
 // ✅ Must use untrack() to break the reactive chain
@@ -334,11 +334,11 @@ Again, let’s apply the bug severity heuristic. Are these bugs easy to spot? Us
 
 Qualitatively, these infinite loop bugs are also uniquely *infuriating* to fix because, like Schrodinger’s cat, observing reactive values in reactive effects might subtly alter the reactivity. Even innocuous operations like logging different pieces of state can trigger infinite loops which wouldn’t happen when the logging code is commented out, making it so that you can’t actually introspect your functions without changing their behavior.
 
-In Crank, there is no effect API to cause infinite loops. In fact, there is no effect API at all. Crank uses the natural lifecycle of generator functions along with some strategic callback APIs for when rendering finishes or a component is unmounted. You can definitely still cause infinite loops, but it will likely be your own fault and the error will usually come with a clear stack trace.
+In Crank, there is no effect API to cause infinite loops. In fact, there is no effect/tracking API at all. Crank uses the natural lifecycle of generator functions along with some strategic callback APIs for when rendering finishes or a component is unmounted. You can definitely still cause infinite loops, but it will likely be your own fault and the error will usually come with a clear stack trace.
 
 ---
 
-The irony of reactive abstractions is that they promise to eliminate manual update management, yet each framework requires its own set of escape hatches and workarounds. Solid needs `splitProps()` and `mergeProps()` to safely manipulate props. Vue needs `shallowRef()` and `markRaw()` to avoid performance cliffs. Svelte needs `untrack()` to prevent infinite loops. These APIs exist precisely because reactivity doesn’t fully insulate you from update concerns — it just transforms them into different, often more subtle problems. Every single reactive framework faces issues with losing reactive contexts, nesting performance traps, and accidental infinite loops.
+The irony of reactive abstractions is that they promise to eliminate manual update management, yet each framework requires its own set of escape hatches and workarounds which precisely force you to get things working. Solid needs `splitProps()` and `mergeProps()` to safely manipulate props. Vue needs `shallowRef()` and `markRaw()` to avoid performance cliffs. Svelte needs `untrack()` to prevent infinite loops. These APIs exist precisely because reactivity doesn’t fully insulate you from update concerns — it just transforms them into different, more subtle and annoying problems. And these problems aren’t particular to Solid, Vue or Svelte: every single reactive framework faces issues with losing reactive contexts, nested performance traps, and accidental infinite loops.
 
 ### Executional Transparency
 
