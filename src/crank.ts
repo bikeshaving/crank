@@ -15,6 +15,27 @@ import {
 
 const NOOP = (): undefined => {};
 
+const supportsUserTiming =
+	typeof performance !== "undefined" && typeof performance.mark === "function";
+
+function markStart(label: string): void {
+	if (supportsUserTiming) {
+		performance.mark("⚙ " + label);
+	}
+}
+
+function measureMark(label: string): void {
+	if (supportsUserTiming) {
+		const name = "⚙ " + label;
+		try {
+			performance.measure(name, name);
+		} catch (_) {
+			// Mark may not exist
+		}
+		performance.clearMarks(name);
+	}
+}
+
 /**
  * A type which represents all valid values for an element tag.
  */
@@ -1034,6 +1055,7 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	ret: Retainer<TNode, TScope>,
 	children: Children,
 ): Promise<TResult> | TResult {
+	markStart("diff");
 	const diff = diffChildren(
 		adapter,
 		root,
@@ -1047,6 +1069,8 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 	const schedulePromises: Array<PromiseLike<unknown>> = [];
 	if (isPromiseLike(diff)) {
 		return diff.then(() => {
+			measureMark("diff");
+			markStart("commit");
 			commit(
 				adapter,
 				ret,
@@ -1058,6 +1082,7 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 				schedulePromises,
 				undefined,
 			);
+			measureMark("commit");
 			if (schedulePromises.length > 0) {
 				return Promise.all(schedulePromises).then(() => {
 					if (typeof root !== "object" || root === null) {
@@ -1074,6 +1099,8 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		});
 	}
 
+	measureMark("diff");
+	markStart("commit");
 	commit(
 		adapter,
 		ret,
@@ -1085,6 +1112,7 @@ function renderRoot<TNode, TScope, TRoot extends TNode | undefined, TResult>(
 		schedulePromises,
 		undefined,
 	);
+	measureMark("commit");
 	if (schedulePromises.length > 0) {
 		return Promise.all(schedulePromises).then(() => {
 			if (typeof root !== "object" || root === null) {
@@ -2946,11 +2974,13 @@ function runComponent<TNode, TResult>(
 
 	const ret = ctx.ret;
 	const initial = !ctx.iterator;
+	const tagName = getTagName(ret.el.tag);
 	if (initial) {
 		setFlag(ctx.ret, IsExecuting);
 		clearEventListeners(ctx.ctx);
 		let returned: ReturnType<Component>;
 		try {
+			markStart(tagName);
 			returned = (ret.el.tag as Component).call(ctx.ctx, ret.el.props, ctx.ctx);
 		} catch (err) {
 			setFlag(ctx.ret, IsErrored);
@@ -2963,6 +2993,7 @@ function runComponent<TNode, TResult>(
 			ctx.iterator = returned;
 		} else if (!isPromiseLike(returned)) {
 			// sync function component
+			measureMark(tagName);
 			return [
 				undefined,
 				diffComponentChildren<TNode, TResult>(ctx, returned, false),
@@ -2971,6 +3002,10 @@ function runComponent<TNode, TResult>(
 			// async function component
 			const returned1 =
 				returned instanceof Promise ? returned : Promise.resolve(returned);
+			returned1.then(
+				() => measureMark(tagName),
+				() => measureMark(tagName),
+			);
 			return [
 				returned1.catch(NOOP),
 				returned1.then(
@@ -2989,6 +3024,7 @@ function runComponent<TNode, TResult>(
 	if (initial) {
 		try {
 			setFlag(ctx.ret, IsExecuting);
+			markStart(tagName);
 			iteration = ctx.iterator!.next();
 		} catch (err) {
 			setFlag(ctx.ret, IsErrored);
@@ -3010,13 +3046,17 @@ function runComponent<TNode, TResult>(
 			try {
 				setFlag(ctx.ret, IsExecuting);
 				const oldResult = ctx.adapter.read(getValue(ctx.ret));
+				markStart(tagName);
 				iteration = ctx.iterator!.next(oldResult);
+				measureMark(tagName);
 			} catch (err) {
 				setFlag(ctx.ret, IsErrored);
 				throw err;
 			} finally {
 				setFlag(ctx.ret, IsExecuting, false);
 			}
+		} else {
+			measureMark(tagName);
 		}
 
 		if (isPromiseLike(iteration)) {
@@ -3051,6 +3091,7 @@ function runComponent<TNode, TResult>(
 	} else {
 		if (getFlag(ctx.ret, IsInForAwaitOfLoop)) {
 			// initializes the async generator loop
+			measureMark(tagName);
 			pullComponent(ctx, iteration);
 			const block = resumePropsAsyncIterator(ctx);
 			return [block, ctx.pull && ctx.pull.diff];
@@ -3062,6 +3103,7 @@ function runComponent<TNode, TResult>(
 				try {
 					setFlag(ctx.ret, IsExecuting);
 					const oldResult = ctx.adapter.read(getValue(ctx.ret));
+					markStart(tagName);
 					iteration = ctx.iterator!.next(oldResult);
 				} catch (err) {
 					setFlag(ctx.ret, IsErrored);
@@ -3075,6 +3117,10 @@ function runComponent<TNode, TResult>(
 				throw new Error("Mixed generator component");
 			}
 
+			iteration.then(
+				() => measureMark(tagName),
+				() => measureMark(tagName),
+			);
 			const diff = iteration.then(
 				(iteration) => {
 					if (getFlag(ctx.ret, IsInForAwaitOfLoop)) {
