@@ -42,7 +42,7 @@ async function Item({id}) {
   const item = await result.json();
   return (
     <div style="max-width: 800px; margin: 0 auto; padding: 20px;">
-      <a href={item.url} style="text-decoration: none; color: #000;">
+      <a href={item.url} target="_blank" style="text-decoration: none; color: #000;">
         <h1 style="margin-bottom: 5px;">{item.title}</h1>
       </a>
       <p style="color: #666; margin-bottom: 5px;">{item.domain}</p>
@@ -61,6 +61,7 @@ function Story({story}) {
     <li style="margin-bottom: 15px; list-style: none;">
       <a
         href={story.url}
+        target="_blank"
         style="text-decoration: none; color: #000; font-weight: bold;"
       >
         {story.title}
