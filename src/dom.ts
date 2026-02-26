@@ -5,6 +5,7 @@ import {
 	Portal,
 	Renderer,
 	RenderAdapter,
+	RendererOptions,
 } from "./crank.js";
 import {camelToKebabCase, formatStyleValue} from "./_css.js";
 import {REACT_SVG_PROPS} from "./_svg.js";
@@ -833,8 +834,8 @@ export const adapter: Partial<RenderAdapter<Node, string, Node>> = {
 };
 
 export class DOMRenderer extends Renderer<Node, string, Element> {
-	constructor() {
-		super(adapter);
+	constructor(options?: RendererOptions) {
+		super(adapter, options);
 	}
 
 	render(

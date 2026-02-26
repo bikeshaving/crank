@@ -905,6 +905,11 @@ const defaultAdapter: RenderAdapter<any, any, any, any> = {
 	finalize: NOOP,
 };
 
+export type ComponentIdMode = "fast" | "stable";
+export interface RendererOptions {
+	componentIdMode?: ComponentIdMode;
+}
+
 /**
  * An abstract class which is subclassed to render to different target
  * environments. Subclasses call super() with a custom RenderAdapter object.
@@ -928,9 +933,13 @@ export class Renderer<
 	 */
 	declare cache: WeakMap<object, Retainer<TNode, TScope>>;
 	declare adapter: RenderAdapter<TNode, TScope, TRoot, TResult>;
-	constructor(adapter: Partial<RenderAdapter<TNode, TScope, TRoot, TResult>>) {
+	constructor(
+		adapter: Partial<RenderAdapter<TNode, TScope, TRoot, TResult>>,
+		options?: RendererOptions,
+	) {
 		this.cache = new WeakMap();
 		this.adapter = {...defaultAdapter, ...adapter};
+		initComponentIdState(this.adapter, options?.componentIdMode ?? "fast");
 	}
 
 	/**
@@ -2306,6 +2315,30 @@ const cleanupMap = new WeakMap<ContextState, Set<Function>>();
 // keys are roots
 const afterMapByRoot = new WeakMap<object, Map<ContextState, Set<Function>>>();
 
+function djb2Hash(str: string): string {
+	let hash = 5381;
+	for (let i = 0; i < str.length; i++) {
+		hash = ((hash << 5) + hash + str.charCodeAt(i)) | 0;
+	}
+	return (hash >>> 0).toString(36);
+}
+
+interface ComponentIdState {
+	ids: WeakMap<Function, string>;
+	generate: (fn: Function) => string;
+}
+
+const componentIdStates = new WeakMap<object, ComponentIdState>();
+
+function initComponentIdState(adapter: object, mode: ComponentIdMode): void {
+	let counter = 0;
+	const generate =
+		mode === "stable"
+			? (fn: Function) => `crank-${djb2Hash(fn.toString())}`
+			: (_fn: Function) => `crank-${++counter}`;
+	componentIdStates.set(adapter, {ids: new WeakMap(), generate});
+}
+
 interface PullController {
 	iterationP: Promise<ChildrenIteratorResult> | undefined;
 	diff: Promise<undefined> | undefined;
@@ -2485,6 +2518,21 @@ export class Context<
 
 	get isUnmounted(): boolean {
 		return getFlag(this[_ContextState].ret, IsUnmounted);
+	}
+
+	get componentId(): string {
+		const ctx = this[_ContextState];
+		const tag = ctx.ret.el.tag;
+		if (typeof tag !== "function") {
+			throw new Error("componentId is only available on component contexts");
+		}
+		const state = componentIdStates.get(ctx.adapter)!;
+		let id = state.ids.get(tag);
+		if (id === undefined) {
+			id = state.generate(tag);
+			state.ids.set(tag, id);
+		}
+		return id;
 	}
 
 	*[Symbol.iterator](): Generator<ComponentPropsOrProps<T>, undefined> {
