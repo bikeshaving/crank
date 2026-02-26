@@ -1,0 +1,1 @@
+import{h as a,i as g}from"./chunk-Z4NPT5MU.js";a();g();(function(e){var l=e.util.clone(e.languages.typescript);e.languages.tsx=e.languages.extend("jsx",l),delete e.languages.tsx.parameter,delete e.languages.tsx["literal-property"];var t=e.languages.tsx.tag;t.pattern=RegExp(/(^|[^\w$]|(?=<\/))/.source+"(?:"+t.pattern.source+")",t.pattern.flags),t.lookbehind=!0})(Prism);
