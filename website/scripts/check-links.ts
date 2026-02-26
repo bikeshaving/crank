@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Crawls the built static site and verifies all internal links resolve to
  * actual files. Exits with code 1 if any broken links are found.
@@ -20,7 +21,12 @@ for await (const path of glob.scan(ROOT)) {
 	let match;
 	while ((match = hrefRe.exec(html)) !== null) {
 		const href = match[1];
-		if (!href || href.startsWith("http://") || href.startsWith("https://") || href.startsWith("mailto:")) {
+		if (
+			!href ||
+			href.startsWith("http://") ||
+			href.startsWith("https://") ||
+			href.startsWith("mailto:")
+		) {
 			continue;
 		}
 
