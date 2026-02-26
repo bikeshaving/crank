@@ -43,6 +43,12 @@ import favicon from "../static/favicon.ico" with {
 	assetName: "favicon.ico",
 };
 import logo from "../static/logo.svg" with {assetBase: "/static/"};
+import logo192 from "../static/logo-192.png" with {
+	assetBase: "/static/",
+};
+import logo512 from "../static/logo-512.png" with {
+	assetBase: "/static/",
+};
 
 // Import Crank client bundles for playground iframe
 import crankModule from "./clients/crank/index.ts" with {assetBase: "/static/"};
@@ -84,6 +90,8 @@ export const assets = {
 	gearScript,
 	favicon,
 	logo,
+	logo192,
+	logo512,
 };
 
 // Static URLs for playground iframe (maps module specifiers to bundled URLs)

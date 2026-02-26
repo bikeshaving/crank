@@ -44,3 +44,15 @@ await svgToIco({
 	input_name: rootLogo,
 	output_name: resolve(websiteDir, "static/favicon.ico"),
 });
+
+// Generate PNG icons at multiples of 16 for Google search results
+// @ts-ignore
+const sharp = (await import("sharp")).default;
+const sizes = [16, 32, 48, 64, 96, 128, 192, 256, 512];
+const svgBuffer = Buffer.from(readmeLogo);
+for (const size of sizes) {
+	await sharp(svgBuffer)
+		.resize(size, size, {fit: "contain", background: {r: 0, g: 0, b: 0, alpha: 0}})
+		.png()
+		.toFile(resolve(websiteDir, `static/logo-${size}.png`));
+}

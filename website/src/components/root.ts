@@ -52,6 +52,8 @@ export function* Root(
 					<meta name="viewport" content="width=device-width" />
 					<title>${title}</title>
 					<link rel="shortcut icon" href=${assets.favicon} />
+					<link rel="icon" type="image/png" sizes="192x192" href=${assets.logo192} />
+					<link rel="apple-touch-icon" href=${assets.logo192} />
 					<style><${Raw} value=${css} /></style>
 					<link rel="stylesheet" type="text/css" href=${assets.clientCSS} />
 					<meta name="description" content=${description} />
@@ -61,11 +63,11 @@ export function* Root(
 					<meta property="og:description" content=${description} />
 					<meta property="og:type" content="website" />
 					<meta property="og:site_name" content="Crank.js" />
-					<meta property="og:image" content=${assets.logo} />
+					<meta property="og:image" content=${`https://crank.js.org${assets.logo512}`} />
 					<meta name="twitter:card" content="summary" />
 					<meta name="twitter:title" content=${title} />
 					<meta name="twitter:description" content=${description} />
-					<meta name="twitter:image" content=${assets.logo} />
+					<meta name="twitter:image" content=${`https://crank.js.org${assets.logo512}`} />
 				</head>
 				<body>
 					<${ColorSchemeScript} />
