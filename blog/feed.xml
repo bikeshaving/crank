@@ -18,7 +18,7 @@
       <link>https://crank.js.org/blog/why-be-reactive/</link>
       <guid>https://crank.js.org/blog/why-be-reactive/</guid>
       <pubDate>Wed, 20 Aug 2025 00:00:00 GMT</pubDate>
-      <description>Reactive frameworks promise automatic UI updates but create subtle bugs and performance traps. Crank’s explicit refresh() calls aren’t a limitation — they’re a superpower for building ambitious web applications. This essay examines common gotchas of reactive abstractions and provides a philosophical grounding for why Crank will never have a reactive abstraction.</description>
+      <description>Reactive frameworks promise automatic UI updates but create subtle bugs and performance traps. Crank’s explicit refresh() calls aren’t a limitation — they’re a superpower for building ambitious web applications. This essay examines common gotchas of reactive abstractions and provides a philosophical grounding for why Crank will never ship one.</description>
       <author>Brian Kim</author>
     </item>
     <item>
