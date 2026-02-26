@@ -63,7 +63,7 @@ jobs:
           fetch-depth: 0
       - id: check
         run: |
-          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -qE '^(website|docs|examples)/'; then
+          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -qE '^(website|docs|examples)/|^package\.json$'; then
             echo "website=true" >> "$GITHUB_OUTPUT"
           else
             echo "website=false" >> "$GITHUB_OUTPUT"
