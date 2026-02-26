@@ -68,6 +68,30 @@ export function* Root(
 					<meta name="twitter:title" content=${title} />
 					<meta name="twitter:description" content=${description} />
 					<meta name="twitter:image" content=${`https://crank.js.org${assets.logo512}`} />
+					<script type="application/ld+json">
+						<${Raw} value=${JSON.stringify({
+							"@context": "https://schema.org",
+							"@type": "SoftwareApplication",
+							"name": "Crank.js",
+							"url": "https://crank.js.org",
+							"logo": `https://crank.js.org${assets.logo512}`,
+							"image": `https://crank.js.org${assets.logo512}`,
+							"description": "The Just JavaScript UI Framework",
+							"applicationCategory": "DeveloperApplication",
+							"operatingSystem": "Any",
+							"author": {
+								"@type": "Person",
+								"name": "Brian Kim",
+								"url": "https://github.com/brainkim",
+							},
+							"license": "https://opensource.org/licenses/MIT",
+							"offers": {
+								"@type": "Offer",
+								"price": "0",
+								"priceCurrency": "USD",
+							},
+						})} />
+					</script>
 				</head>
 				<body>
 					<${ColorSchemeScript} />

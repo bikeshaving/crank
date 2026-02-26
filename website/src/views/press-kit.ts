@@ -133,6 +133,37 @@ function LogoSection() {
 					background="repeating-conic-gradient(rgba(255,255,255,0.08) 0% 25%, rgba(0,0,0,0.08) 25% 50%) 50% / 16px 16px"
 				/>
 			</div>
+			<h2 class=${headingStyle}>PNG Icons</h2>
+			<p class=${css`margin-bottom: 1rem;`}>For use in app icons, social media, and search results.</p>
+			<div class=${css`
+				display: flex;
+				flex-wrap: wrap;
+				gap: 1rem;
+				align-items: end;
+			`}>
+				${[512, 256, 192, 128, 96, 64, 48, 32, 16].map(
+					(size) => jsx`
+						<a href=${`/static/logo-${size}.png`} download class=${css`
+							text-align: center;
+							text-decoration: none;
+							color: var(--text-color);
+						`}>
+							<img
+								src=${`/static/logo-${size}.png`}
+								width=${Math.min(size, 128)}
+								height=${Math.min(size, 128)}
+								alt=${`${size}x${size} logo`}
+								class=${css`
+									display: block;
+									margin: 0 auto 0.25rem;
+									image-rendering: pixelated;
+								`}
+							/>
+							<small>${size}px</small>
+						</a>
+					`,
+				)}
+			</div>
 		</section>
 	`;
 }
