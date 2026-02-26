@@ -1,4 +1,7 @@
 {
+	"build": {
+		"minify": false
+	},
 	"directories": {
 		"docs": {
 			"module": "@b9g/filesystem/node-fs",
