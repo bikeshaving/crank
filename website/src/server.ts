@@ -276,23 +276,22 @@ router.route("/press-kit/").get(async (request) => {
 
 // Build and serve the Bikeshed spec on each request
 router.route("/spec/").get(async () => {
+	const outFile = `${import.meta.dirname}/../../docs/spec.html`;
 	try {
 		const proc = Bun.spawn(
-			["bikeshed", "spec", "--die-on=nothing", "docs/spec.bs", "/dev/stdout"],
+			["bikeshed", "spec", "--die-on=nothing", "docs/spec.bs", outFile],
 			{
 				cwd: import.meta.dirname + "/../..",
 				stdout: "pipe",
 				stderr: "pipe",
 			},
 		);
-		const [html, exitCode] = await Promise.all([
-			new Response(proc.stdout).text(),
-			proc.exited,
-		]);
+		const exitCode = await proc.exited;
 		if (exitCode !== 0) {
 			const stderr = await new Response(proc.stderr).text();
 			throw new Error(stderr || `bikeshed exited with code ${exitCode}`);
 		}
+		const html = await Bun.file(outFile).text();
 		return new Response(html, {
 			headers: {"Content-Type": "text/html"},
 		});
