@@ -1,17 +1,17 @@
-import { jsx, Raw } from "@b9g/crank/standalone";
-import type { Children, Context } from "@b9g/crank";
-import { extractCritical } from "@emotion/server";
-import { Navbar } from "./navbar.js";
-import { Footer } from "./footer.js";
-import { SerializeScript } from "./serialize-javascript.js";
-import { getColorSchemeScript } from "../utils/color-scheme.js";
-import { assets, staticURLs } from "../server.js";
+import {jsx, Raw} from "@b9g/crank/standalone";
+import type {Children, Context} from "@b9g/crank";
+import {extractCritical} from "@emotion/server";
+import {Navbar} from "./navbar.js";
+import {Footer} from "./footer.js";
+import {SerializeScript} from "./serialize-javascript.js";
+import {getColorSchemeScript} from "../utils/color-scheme.js";
+import {assets, staticURLs} from "../server.js";
 
 function ColorSchemeScript() {
-  // This script must be executed as early as possible to prevent a FOUC.
-  // It also cannot be `type="module"` because that will also cause an FOUC.
-  const scriptText = `(() => { ${getColorSchemeScript()} })()`;
-  return jsx`
+	// This script must be executed as early as possible to prevent a FOUC.
+	// It also cannot be `type="module"` because that will also cause an FOUC.
+	const scriptText = `(() => { ${getColorSchemeScript()} })()`;
+	return jsx`
 		<script>
 			<${Raw} value=${scriptText} />
 		</script>
@@ -19,32 +19,32 @@ function ColorSchemeScript() {
 }
 
 export function* Root(
-  this: Context,
-  {
-    title,
-    children,
-    url,
-    description = "",
-    noFooter = false,
-  }: {
-    title: string;
-    children: Children;
-    url: string;
-    description?: string;
-    noFooter?: boolean;
-  },
+	this: Context,
+	{
+		title,
+		children,
+		url,
+		description = "",
+		noFooter = false,
+	}: {
+		title: string;
+		children: Children;
+		url: string;
+		description?: string;
+		noFooter?: boolean;
+	},
 ) {
-  for ({ title, children, url, description = "", noFooter = false } of this) {
-    this.schedule(() => this.refresh());
-    const childrenHTML: string = yield jsx`
+	for ({title, children, url, description = "", noFooter = false} of this) {
+		this.schedule(() => this.refresh());
+		const childrenHTML: string = yield jsx`
 			<div id="navbar-root">
 				<${Navbar} url=${url} />
 			</div>
 			${children}
 			${!noFooter && jsx`<${Footer} />`}
 		`;
-    const { html, css } = extractCritical(childrenHTML);
-    yield jsx`
+		const {html, css} = extractCritical(childrenHTML);
+		yield jsx`
 			<${Raw} value="<!DOCTYPE html>" />
 			<html lang="en">
 				<head>
@@ -70,27 +70,27 @@ export function* Root(
 					<meta name="twitter:image" content=${`https://crank.js.org${assets.logo512}`} />
 					<script type="application/ld+json">
 						<${Raw} value=${JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "SoftwareApplication",
-              name: "Crank.js",
-              url: "https://crank.js.org",
-              logo: `https://crank.js.org${assets.logo512}`,
-              image: `https://crank.js.org${assets.logo512}`,
-              description: "The Just JavaScript UI Framework",
-              applicationCategory: "DeveloperApplication",
-              operatingSystem: "Any",
-              author: {
-                "@type": "Person",
-                name: "Brian Kim",
-                url: "https://github.com/brainkim",
-              },
-              license: "https://opensource.org/licenses/MIT",
-              offers: {
-                "@type": "Offer",
-                price: "0",
-                priceCurrency: "USD",
-              },
-            })} />
+							"@context": "https://schema.org",
+							"@type": "SoftwareApplication",
+							name: "Crank.js",
+							url: "https://crank.js.org",
+							logo: `https://crank.js.org${assets.logo512}`,
+							image: `https://crank.js.org${assets.logo512}`,
+							description: "The Just JavaScript UI Framework",
+							applicationCategory: "DeveloperApplication",
+							operatingSystem: "Any",
+							author: {
+								"@type": "Person",
+								name: "Brian Kim",
+								url: "https://github.com/brainkim",
+							},
+							license: "https://opensource.org/licenses/MIT",
+							offers: {
+								"@type": "Offer",
+								price: "0",
+								priceCurrency: "USD",
+							},
+						})} />
 					</script>
 				</head>
 				<body>
@@ -104,5 +104,5 @@ export function* Root(
 				</body>
 			</html>
 		`;
-  }
+	}
 }
