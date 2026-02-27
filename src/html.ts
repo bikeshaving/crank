@@ -1,5 +1,5 @@
 import {Portal, Renderer} from "./crank.js";
-import type {ElementValue, RenderAdapter, RendererOptions} from "./crank.js";
+import type {ElementValue, RenderAdapter} from "./crank.js";
 import {camelToKebabCase, formatStyleValue} from "./_css.js";
 import {REACT_SVG_PROPS} from "./_svg.js";
 
@@ -226,8 +226,8 @@ export const impl: Partial<RenderAdapter<TextNode, string, TextNode, string>> =
 	};
 
 export class HTMLRenderer extends Renderer<TextNode, string, any, string> {
-	constructor(options?: RendererOptions) {
-		super(impl, options);
+	constructor() {
+		super(impl);
 	}
 }
 
