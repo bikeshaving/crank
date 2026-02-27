@@ -80,45 +80,12 @@ A minimal template:
 See the [JSX Template Tag](/guides/jsx-template-tag/) guide for full details on
 the standalone module.
 
-## Tips for Prompting
-
-A few small additions to your prompts go a long way:
-
-- **Pin the version.** Mention “Crank 0.7.8” (or whatever you’re using) so
-  the assistant doesn’t confuse APIs across versions.
-- **Name the pattern you want.** Saying “use a generator component with
-  `this.refresh()`“ is more reliable than “make it stateful.”
-- **Ask for standalone output.** If you want a single HTML file, say so
-  explicitly, otherwise the assistant may assume a bundler.
-- **Reference the guides.** Phrases like “follow the Crank style guide” or
-  “use async components for data fetching” help steer the output toward
-  idiomatic patterns.
-
 ## Without the Skill
 
 If you’re using a tool that doesn’t support skill files, you can still get good
 results by giving the model context manually.
 
-### Paste the quick-reference table
-
-Copy this into your conversation so the assistant knows the basics:
-
-| React | Crank | Why |
-|---|---|---|
-| `onClick` | `onclick` | Lowercase DOM event names |
-| `className` | `class` | Standard HTML attributes |
-| `htmlFor` | `for` | Standard HTML attributes |
-| `dangerouslySetInnerHTML` | `innerHTML` | Direct DOM property |
-| `useState(init)` | `let x = init` | Variable in generator scope |
-| `setState(val)` | `this.refresh(() => x = val)` | Explicit refresh |
-| `useEffect(fn, [])` | Code before first `yield` | Generator mount phase |
-| `useEffect(() => cleanup)` | Code after `for` loop | Generator cleanup |
-| `useRef(null)` | `let el = null` + `ref={n => el = n}` | Variable + ref prop |
-| `useContext(ctx)` | `this.consume(key)` | No Provider components |
-
-### Link the full references
-
-For deeper context, paste or link to these documents:
+Paste or link to these documents so the assistant has enough context:
 
 - [Component Specification](/spec/): complete API reference covering all
   component types, lifecycle, context methods, and async behavior
