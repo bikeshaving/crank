@@ -28211,6 +28211,76 @@ function generateJavaScriptIFrameHTML(id, code, staticURLs) {
 		</html>
 	`;
 }
+function generateHTMLIFrameHTML(id, code) {
+  const scripts = `
+		<script>
+			${getColorSchemeScript()}
+
+			// Listen for color scheme changes from parent
+			window.addEventListener('storage', (e) => {
+				if (e.key === 'color-scheme' && (e.newValue === 'dark' || e.newValue === 'light')) {
+					const isDark = e.newValue === 'dark';
+					document.documentElement.dataset.theme = e.newValue;
+					document.documentElement.style.setProperty('--bg-color', isDark ? '#0a0e1f' : '#e7f4f5');
+					document.documentElement.style.setProperty('--text-color', isDark ? '#f5f9ff' : '#0a0e1f');
+					document.documentElement.classList.toggle('color-scheme-light', !isDark);
+					document.body.classList.toggle('color-scheme-light', !isDark);
+				}
+			});
+
+			window.addEventListener("load", (ev) => {
+				window.parent.postMessage(
+					JSON.stringify({type: "executed", id: ${id}}),
+					window.location.origin,
+				);
+			});
+
+			window.addEventListener("error", (ev) => {
+				if (/ResizeObserver loop completed with undelivered notifications/.test(ev.message)) {
+					return;
+				}
+
+				window.parent.postMessage(
+					JSON.stringify({type: "error", id: ${id}, message: ev.message}),
+					window.location.origin,
+				);
+			});
+
+			window.addEventListener("unhandledrejection", (ev) => {
+				if (/ResizeObserver loop completed with undelivered notifications/.test(ev.reason.message)) {
+					return;
+				}
+				window.parent.postMessage(
+					JSON.stringify({type: "error", id: ${id}, message: ev.reason.message}),
+					window.location.origin,
+				);
+			});
+
+			const obs = new ResizeObserver((entries) => {
+				const height = Math.max(entries[0].contentRect.height, 100);
+				if (
+					document.documentElement.clientHeight <
+					document.documentElement.scrollHeight
+				) {
+					window.parent.postMessage(
+						JSON.stringify({
+							type: "resize",
+							id: ${id},
+							height,
+						}),
+						window.location.origin,
+					);
+				}
+			})
+
+			obs.observe(document.documentElement);
+		<\/script>
+	`;
+  if (/<\/body>/i.test(code)) {
+    return code.replace(/<\/body>/i, scripts + "</body>");
+  }
+  return code + scripts;
+}
 function generatePythonIFrameHTML(id, code, staticURLs) {
   return `
 		<!DOCTYPE html>
@@ -28332,6 +28402,7 @@ function* CodePreview({
   let suppressErrors = false;
   const currentLanguage = language || "javascript";
   const isPython = currentLanguage === "python";
+  const isHTML = currentLanguage === "html";
   let staticURLs;
   let execute;
   let executeDebounced;
@@ -28351,7 +28422,9 @@ function* CodePreview({
         return;
       }
       let code = value;
-      if (isPython) {
+      if (isHTML) {
+        document1.write(generateHTMLIFrameHTML(id, code));
+      } else if (isPython) {
         document1.write(generatePythonIFrameHTML(id, code, staticURLs));
       } else {
         try {

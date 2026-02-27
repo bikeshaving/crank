@@ -12,7 +12,7 @@ if (containers.length > 0) {
     import("./standalone-LE4PK7N4.js"),
     import("./dom-2KCSDALJ.js"),
     import("./contentarea-DRDBCSEW.js"),
-    import("./inline-code-block-VDHVI6CG.js"),
+    import("./inline-code-block-BWLZM3FG.js"),
     import("./serialize-javascript-GRMSCJET.js"),
     // Prism and components
     import("./prism-GAXZM3SR.js").then(async (Prism) => {
@@ -20,6 +20,7 @@ if (containers.length > 0) {
       Prism.default.manual = true;
       await Promise.all([
         import("./prism-javascript-OKHMDSIJ.js"),
+        import("./prism-markup-NBMLY44R.js"),
         import("./prism-diff-6RLALL5R.js"),
         import("./prism-bash-PBFJQVBJ.js")
       ]);
