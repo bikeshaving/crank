@@ -315,6 +315,27 @@ router.route("/spec/").get(async () => {
 	}
 });
 
+// Serve .skill archive for Claude Code skill installation
+router.route("/skill").get(async () => {
+	try {
+		const skillsDir = await self.directories.open("skills");
+		const fileHandle = await skillsDir.getFileHandle(
+			"crank-component-authoring.skill",
+		);
+		const file = await fileHandle.getFile();
+		const content = await file.arrayBuffer();
+		return new Response(content, {
+			headers: {
+				"Content-Type": "application/zip",
+				"Content-Disposition":
+					'attachment; filename="crank-component-authoring.skill"',
+			},
+		});
+	} catch {
+		return new Response("Not Found", {status: 404});
+	}
+});
+
 // robots.txt
 const robotsTxt = `User-agent: *
 Allow: /
@@ -560,6 +581,25 @@ async function generateStaticSite() {
 		await robotsWritable.write(robotsTxt);
 		await robotsWritable.close();
 		logger.info("Generated robots.txt");
+
+		// Copy .skill archive for Claude Code skill installation
+		try {
+			const skillsDir = await self.directories.open("skills");
+			const skillHandle = await skillsDir.getFileHandle(
+				"crank-component-authoring.skill",
+			);
+			const skillFile = await skillHandle.getFile();
+			const skillContent = await skillFile.arrayBuffer();
+			const skillDestHandle = await staticBucket.getFileHandle("skill", {
+				create: true,
+			});
+			const skillWritable = await skillDestHandle.createWritable();
+			await skillWritable.write(skillContent);
+			await skillWritable.close();
+			logger.info("Generated skill (crank-component-authoring.skill)");
+		} catch (error: any) {
+			logger.error("Failed to generate skill: {error}", {error: error.message});
+		}
 
 		logger.info("Static site generation complete!");
 	} catch (error: any) {

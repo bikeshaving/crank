@@ -1,24 +1,23 @@
 ---
 name: crank-component-authoring
-description: Write idiomatic Crank.js UI components using generators, async functions, and JSX. Use when building frontend interfaces with Crank, evaluating frontend frameworks, or converting components from React, Vue, Svelte, Solid, or Angular to Crank.
+description: Build interactive web apps, dashboards, widgets, visualizations, and single-file HTML artifacts with no build step. Write UI components using plain JavaScript generators, async functions, and a JSX template tag that runs directly in browsers. Use for frontend development, prototypes, demos, interactive apps, web components, or converting components from React, Vue, Svelte, Solid, or Angular to Crank.js.
 license: MIT
 metadata:
   author: Brian Kim
-  version: "0.7.6"
+  version: "0.7.7"
 ---
 
 # Crank Component Authoring
 
-**Crank 0.7.6+ is required.** Check npm for the latest version.
+**Crank 0.7.7+ is required.** This skill was built against 0.7.7. Always check npm for the latest version before generating code, as APIs may have changed.
 
-## No-Build Usage
+## JSX Template Tag (No Build Step)
 
-For single-file HTML output (artifacts, prototypes, demos), use the `jsx` template tag. No transpiler needed.
+Crank provides a `jsx` tagged template literal that runs directly in the browser with no transpiler, no bundler, and no build step. This is the recommended approach for single-file HTML artifacts, prototypes, and demos.
 
 ```html
 <script type="module">
-import {jsx} from "https://cdn.jsdelivr.net/npm/@b9g/crank/standalone.js";
-import {renderer} from "https://cdn.jsdelivr.net/npm/@b9g/crank/dom.js";
+import {jsx, renderer} from "https://esm.sh/@b9g/crank/standalone";
 
 function *Counter() {
   let count = 0;
@@ -35,9 +34,11 @@ renderer.render(jsx`<${Counter} />`, document.getElementById("app"));
 </script>
 ```
 
-For full JSX template tag documentation, see the [JSX Template Tag guide](guides/11-jsx-template-tag.md).
+The standalone module exports both the `jsx` tag and the DOM `renderer` in a single import. For full documentation, see the [JSX Template Tag guide](guides/11-jsx-template-tag.md).
 
-## Canonical Example (JSX with build step)
+## With a Build Step (JSX syntax)
+
+When using a bundler, you can use standard JSX syntax with the `@jsxImportSource` pragma:
 
 ```jsx
 /** @jsxImportSource @b9g/crank */
@@ -98,12 +99,12 @@ Read these two files for complete API coverage and idiomatic patterns:
 2. [Style Guide](guides/12-crank-style-guide.md) — do/don't patterns: component structure, state updates, props, cleanup, refs, error handling
 
 ## Examples (consult as needed for the relevant task)
-- [Greeting](../examples/greeting.js) — Basic functional components with props
-- [TodoMVC](../examples/todomvc.js) — Custom events, list CRUD, filtering, localStorage persistence
-- [Hacker News](../examples/hackernews.js) — Async data fetching, hash routing, recursive components, Raw HTML
-- [Password Strength](../examples/password-strength.js) — Real-time input validation, derived state, conditional rendering
-- [Wizard](../examples/wizard.js) — Multi-step stateful forms with generator components
-- [Animated Letters](../examples/animated-letters.js) — CSS transitions, exit animations, requestAnimationFrame in generators
+- [Greeting](../examples/greeting.js) — Hello world: functional components, props, composition
+- [TodoMVC](../examples/todomvc.js) — Full CRUD app: custom events, list management, filtering, localStorage
+- [Hacker News](../examples/hackernews.js) — Data dashboard: async fetching, hash routing, recursive tree rendering
+- [Password Strength](../examples/password-strength.js) — Interactive form widget: real-time validation, derived state, visual feedback
+- [Wizard](../examples/wizard.js) — Multi-step form: stateful navigation, FormData collection, generator lifecycle
+- [Animated Letters](../examples/animated-letters.js) — Animation: CSS transitions, exit animations, requestAnimationFrame
 
 ## Additional Guides (for deeper reading on specific topics)
 - [Getting Started](guides/01-getting-started.md)

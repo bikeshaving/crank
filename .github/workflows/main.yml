@@ -84,6 +84,8 @@ jobs:
         working-directory: website
       - name: Install Bikeshed
         run: pipx install bikeshed && bikeshed update
+      - name: Build skill archive
+        run: npx @b9g/skillpack docs/SKILL.md -o skills/
       - name: Deploy website
         run: |
           git config user.name "github-actions[bot]"

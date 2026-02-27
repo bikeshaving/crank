@@ -94,6 +94,9 @@ export function Navbar({url}: {url: string}) {
 			</div>
 			<div class=${navbarGroupLayout}>
 				<div>
+					<a href="/skill">Skill</a>
+				</div>
+				<div>
 					<a href="https://github.com/bikeshaving/crank">GitHub</a>
 				</div>
 				<div>

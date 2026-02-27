@@ -18,6 +18,11 @@
 			"export": "NodeFSDirectory",
 			"path": "../examples"
 		},
+		"skills": {
+			"module": "@b9g/filesystem/node-fs",
+			"export": "NodeFSDirectory",
+			"path": "../skills"
+		},
 		"pagefind": {
 			"module": "@b9g/filesystem/node-fs",
 			"export": "NodeFSDirectory",
