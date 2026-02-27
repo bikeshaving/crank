@@ -4,12 +4,12 @@ description: Build interactive web apps, dashboards, widgets, visualizations, an
 license: MIT
 metadata:
   author: Brian Kim
-  version: "0.7.7"
+  version: "0.7.8"
 ---
 
 # Crank Component Authoring
 
-**Crank 0.7.7+ is required.** This skill was built against 0.7.7. Always check npm for the latest version before generating code, as APIs may have changed.
+**Crank 0.7.8+ is required.** This skill was built against 0.7.8. Always check npm for the latest version before generating code, as APIs may have changed.
 
 ## JSX Template Tag (No Build Step)
 

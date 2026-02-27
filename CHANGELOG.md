@@ -1,4 +1,21 @@
 # Changelog
+## [0.7.8] - 2026-02-27
+### New Features
+- **User Timing API instrumentation**
+  Component render times now appear in the browser DevTools Performance panel via
+  `performance.mark()`/`performance.measure()`. Instruments component execution
+  and render phases (diff/commit) with no configuration needed.
+
+### Bug Fixes
+- **Fix Portal-rendering components unable to linger during async cleanup** (#343)
+  Components rendering via Portal couldn\u2019t play exit animations because
+  `getChildValues()` returns `[]` for Portal children, causing the lingering
+  check to always fail.
+
+- **Fix eslint-plugin-crank compatibility with ESLint 9+/10**
+  Replaced deprecated `context.getSourceCode()` with `context.sourceCode` across
+  all rules. `getSourceCode()` was deprecated in ESLint 9 and removed in ESLint 10.
+
 ## [0.7.7] - 2026-02-21
 ### Bug Fixes
 - **Fix missing TypeScript type definitions in published package**
