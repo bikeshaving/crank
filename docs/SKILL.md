@@ -131,7 +131,6 @@ Read these two files for complete API coverage and idiomatic patterns:
 - [JSX Template Tag](guides/11-jsx-template-tag.md)
 - [Reference for React Developers](guides/13-reference-for-react-developers.md)
 - [Custom Renderers](guides/14-custom-renderers.md)
-- [Usage with LLMs](guides/15-usage-with-llms.md)
 
 ## Blog Posts
 - [Introducing Crank](blog/2020-04-15-introducing-crank.md)
