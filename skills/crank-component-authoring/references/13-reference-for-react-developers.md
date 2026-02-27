@@ -14,7 +14,7 @@ Crank shares JSX syntax and component concepts with React but differs in how it 
 | `onClick` | `onclick` | Both accepted; lowercase preferred |
 | `onChange` | `onchange` | Both accepted; lowercase preferred |
 | `dangerouslySetInnerHTML` | `innerHTML` | Both accepted; direct prop preferred |
-| `strokeWidth` etc. | `stroke-width` etc. | SVG camelCase auto-mapped to kebab-case |
+| `strokeWidth` etc. | `stroke-width` etc. | Both accepted; kebab-case preferred |
 | `style={{fontSize: 16}}` | Same | camelCase → kebab-case, numeric values get `px` |
 | `clsx()`/`classnames()` | `class={{active: bool}}` | Built-in object syntax for conditional classes |
 | `defaultValue` | `copy="!value" value="initial"` | See [Forms](#forms) |

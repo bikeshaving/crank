@@ -75,7 +75,7 @@ renderer.render(<App />, document.body);
 
 ## DOM Lifecycle Methods
 
-The generator regions cover most lifecycle needs. But sometimes you need precise timing around DOM operations — knowing when nodes are created, when they're inserted, and when they're removed.
+The generator regions cover most lifecycle needs. But sometimes you need precise timing around DOM operations — knowing when nodes are created, when they\u2019re inserted, and when they\u2019re removed.
 
 ### ref: Capture a Host Element
 
@@ -101,7 +101,7 @@ function MyInput({ref, class: cls, ...props}) {
 
 ### schedule(): Before Insertion
 
-`schedule(callback)` runs after DOM nodes are created but **before they're inserted into the document**. The callback receives the element value. Use it to set up properties before the user sees the element, or to trigger an immediate re-render:
+`schedule(callback)` runs after DOM nodes are created but **before they\u2019re inserted into the document**. The callback receives the element value. Use it to set up properties before the user sees the element, or to trigger an immediate re-render:
 
 ```jsx
 function *FadeIn() {

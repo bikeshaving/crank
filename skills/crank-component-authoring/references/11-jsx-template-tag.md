@@ -71,7 +71,7 @@ build tools required:
   </style>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="app"></div>
 
   <script type="module">
     // Import everything from a single module - no build required!
@@ -149,7 +149,7 @@ build tools required:
     }
 
     // Render the application
-    renderer.render(jsx`<${App} />`, document.getElementById("root"));
+    renderer.render(jsx`<${App} />`, document.getElementById("app"));
 
     console.log("Crank application loaded successfully!");
   </script>
@@ -179,7 +179,7 @@ The `html` tag is an alias for `jsx` — they are the same function.
 
 String tags are written literally. Component and other expression tags must be interpolated:
 
-```js notoggle
+```js
 jsx`<div />`                    // host element
 jsx`<${Component} />`           // component element
 jsx`<${Fragment} />`            // symbol element
@@ -187,7 +187,7 @@ jsx`<${Fragment} />`            // symbol element
 
 Component closing tags can be written in three styles:
 
-```js notoggle
+```js
 // Symmetric — must match the opening tag
 jsx`<${Component}>${children}</${Component}>`
 // Comment-style — text after // is not checked, serves as documentation
@@ -200,7 +200,7 @@ jsx`<${Component}>${children}<//>`
 
 Props appear after the tag name, before `>` or `/>`:
 
-```js notoggle
+```js
 // Boolean prop — value is true
 jsx`<button disabled>`
 
@@ -224,7 +224,7 @@ Escape sequences (`\n`, `\t`, `\xNN`, `\uNNNN`, `\u{N...}`) are processed within
 
 Between opening and closing tags, the template accepts text, `${expressions}`, and nested elements. HTML-style comments are also supported — their contents are ignored, including any expressions:
 
-```js notoggle
+```js
 jsx`
   <div>
     <!-- This comment is ignored -->

@@ -37,7 +37,7 @@ npm i @b9g/crank
 Crank works with any JSX setup. Here are the most common approaches:
 
 **Option A: Automatic JSX Transform** (recommended for new projects)
-```jsx notoggle
+```jsx
 /** @jsxImportSource @b9g/crank */
 import {renderer} from "@b9g/crank/dom";
 
@@ -49,7 +49,7 @@ renderer.render(<Greeting name="Crank" />, document.body);
 ```
 
 **Option B: Classic JSX Transform** (works with older setups)
-```jsx notoggle
+```jsx
 /** @jsx createElement */
 /** @jsxFrag Fragment */
 import {createElement, Fragment} from "@b9g/crank";
@@ -63,7 +63,7 @@ renderer.render(<Greeting name="Crank" />, document.body);
 ```
 
 **Option C: No Build Required**
-```js notoggle
+```js
 import {jsx, renderer} from "@b9g/crank/standalone";
 
 function Greeting({name = "World"}) {
@@ -79,23 +79,46 @@ Most modern tools support JSX out of the box. See the [tool
 configurations](#common-tool-configurations) section below for specific setup
 instructions.
 
-## Using CDNs
-Crank is also available on CDNs like [jsDelivr](https://www.jsdelivr.com)
-(https://cdn.jsdelivr.net/npm/@b9g/crank/) and [esm.sh](https://esm.sh)
-(https://esm.sh/@b9g/crank) for usage in ESM-ready environments.
+## Single-File HTML
 
-```jsx live notoggle
-import {jsx, renderer} from "https://cdn.jsdelivr.net/npm/@b9g/crank/standalone.js";
+You can use Crank with no bundler at all. Save this as an HTML file, open it in
+your browser, and you're done:
 
-renderer.render(
-  jsx`
-    <div id="hello">
-      Running on <a href="https://www.jsdelivr.com">jsDelivr</a>
-    </div>
-  `,
-  document.body,
-);
+```html live
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width" />
+  <title>Crank App</title>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import {jsx, renderer} from "https://cdn.jsdelivr.net/npm/@b9g/crank/standalone.js";
+
+    function *Counter() {
+      let count = 0;
+      const onclick = () => this.refresh(() => count++);
+
+      for ({} of this) {
+        yield jsx`
+          <button onclick=${onclick}>Count: ${count}</button>
+        `;
+      }
+    }
+
+    renderer.render(jsx`<${Counter} />`, document.getElementById("app"));
+  </script>
+</body>
+</html>
 ```
+
+Crank is available on CDNs like
+[jsDelivr](https://cdn.jsdelivr.net/npm/@b9g/crank/) and
+[esm.sh](https://esm.sh/@b9g/crank). See the [JSX Template
+Tag](https://crank.js.org/guides/jsx-template-tag/) guide for more on the
+standalone module.
 
 ## Common tool configurations
 The following is an incomplete list of configurations to get started with Crank.
@@ -313,7 +336,7 @@ maintaining full backward compatibility. Here are the highlights:
 The `refresh()` method now accepts a callback function, making it impossible to
 forget to re-render after updating state:
 
-```jsx notoggle
+```jsx
 // Before: Easy to forget refresh()
 const onclick = () => {
   count++;
